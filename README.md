@@ -23,8 +23,8 @@ The editor represtented in the above screeenshot is a standalone project develop
    - Cascaded shadow mapping.
    - Font loader & renderer.
    - Audio source and listener components.
+   - Ability to save everything in a custom engine format.
    - Draw call batching (static & dynamic).
    - D3D12 Renderer.
    - UI components.
-   - Editor prefabs.
    - OpenGL Renderer.
