@@ -2,7 +2,7 @@
 Directus3D strives to be a simple yet powerful game engine. This is achieved by prioritizing a coherent design (including clean code) over anything else. While still in it's infancy and under heavy development, creating small scenes that require scripting, physics and so on, is possible.
 
 ![Screenshot](/Directus3D/Assets/screenshot.jpg)
-The editor represtented in the above screeenshot is a standalone project developed on top of the engine, at some point it will also be included here.
+The editor prestented in the above screenshot is a standalone project developed on top of the engine, at some point it will also be included here.
 
 # Features
 - 30+ image formats support (FreeImage).
