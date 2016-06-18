@@ -8,9 +8,10 @@ The editor represtented in the above screeenshot is a standalone project develop
 - 30+ image formats support (FreeImage).
 - 40+ 3D model formats support (Assimp).
 - Component-based game object system.
-- Deferred rendering (D3D11).
+- D3D11 Renderer.
+- Deferred shading.
 - Frustum culling.
-- Physically based shading.
+- Physically based rendering.
 - Physics (Bullet).
 - Post-process effects like FXAA & Sharpening.
 - Scripting (AngelScript)
