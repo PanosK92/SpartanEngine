@@ -8,8 +8,7 @@ The editor represtented in the above screeenshot is a standalone project develop
 - 30+ image formats support (FreeImage).
 - 40+ 3D model formats support (Assimp).
 - Component-based game object system.
-- D3D11 Renderer.
-- Deferred rendering.
+- Deferred rendering (D3D11).
 - Frustum culling.
 - Physically based shading.
 - Physics (Bullet).
