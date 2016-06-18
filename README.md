@@ -5,18 +5,18 @@ Directus3D strives to be a simple yet powerful game engine. This is achieved by 
 The editor prestented in the above screenshot is a standalone project developed on top of the engine, at some point it will also be included here.
 
 # Features
-- 30+ image formats support (FreeImage).
-- 40+ 3D model formats support (Assimp).
+- 30+ image formats support).
+- 40+ 3D model formats support.
 - Component-based game object system.
 - D3D11 Renderer.
 - Deferred shading.
 - Frustum culling.
 - Physically based rendering.
-- Physics (Bullet).
+- Physics.
 - Post-process effects like FXAA & Sharpening.
-- Scripting (AngelScript)
+- Scripting.
 - Statically and dynamically linked to your application.
-- Windows support
+- Windows support.
 
 # Planned Features
 - Ability to save everything in a custom engine format.
@@ -28,3 +28,5 @@ The editor prestented in the above screenshot is a standalone project developed 
 - OpenGL Renderer.
 - SSAO, SSR, Volumetric Lighting.
 - UI components.
+
+Dependencies that are not included in the repository: AngelScript, Assimp, Bullet, FreeImage.
