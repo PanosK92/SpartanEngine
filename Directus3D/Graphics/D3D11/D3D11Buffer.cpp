@@ -146,9 +146,7 @@ void D3D11Buffer::Unmap()
 	m_D3D11Device->GetDeviceContext()->Unmap(m_buffer, 0);
 }
 
-/*------------------------------------------------------------------------------
-									[PRIVATE]
-------------------------------------------------------------------------------*/
+//= PRIVATE ===================================================================================================================================
 bool D3D11Buffer::CreateBuffer(unsigned int size, void* data, D3D11_USAGE usage, D3D11_BIND_FLAG bindFlag, D3D11_CPU_ACCESS_FLAG cpuAccessFlag)
 {
 	// fill in a buffer description.

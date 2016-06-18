@@ -501,14 +501,24 @@
     <Image Include="Assets\Environment\irradiance.dds">
       <Filter>Assets</Filter>
     </Image>
-    <Image Include="Assets\screenshot.jpg" />
+    <Image Include="Assets\screenshot.jpg">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
-    <Xml Include="Assets\Scripts\dss.xml" />
+    <None Include="Assets\Scripts\FirstPersonController.dss">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\Scripts\FirstPersonControllerPhysics.dss">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\Scripts\MouseLook.dss">
+      <Filter>Assets</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Assets\Scripts\FirstPersonController.dss" />
-    <None Include="Assets\Scripts\FirstPersonControllerPhysics.dss" />
-    <None Include="Assets\Scripts\MouseLook.dss" />
+    <Xml Include="Assets\Scripts\dss.xml">
+      <Filter>Assets</Filter>
+    </Xml>
   </ItemGroup>
 </Project>

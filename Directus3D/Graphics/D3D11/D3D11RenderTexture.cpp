@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
-
 //=============================
 
 D3D11RenderTexture::D3D11RenderTexture()

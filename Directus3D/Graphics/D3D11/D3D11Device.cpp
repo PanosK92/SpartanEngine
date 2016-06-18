@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include "../../Misc/Settings.h"
 #include "../../IO/Log.h"
-
 //==============================
 
 D3D11Device::D3D11Device()
