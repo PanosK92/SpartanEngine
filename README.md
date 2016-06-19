@@ -30,3 +30,5 @@ The editor presented in the above screenshot is a standalone project developed o
 - UI components.
 
 Dependencies that are not included in the repository: AngelScript, Assimp, Bullet, FreeImage.
+
+This project is devoted to my father who always believes in me and encourages me to follow my crazy dreams.
