@@ -264,7 +264,7 @@ Material* ModelLoader::ProcessMaterial(aiMaterial* material)
 	Material* engineMaterial = new Material(m_texturePool, m_shaderPool);
 
 	/*------------------------------------------------------------------------------
-										[NAME]
+	[NAME]
 	------------------------------------------------------------------------------*/
 	aiString name;
 	aiGetMaterialString(material, AI_MATKEY_NAME, &name);
@@ -272,7 +272,7 @@ Material* ModelLoader::ProcessMaterial(aiMaterial* material)
 	engineMaterial->SetModelID(FileHelper::GetFileNameFromPath(m_fullModelPath));
 
 	/*------------------------------------------------------------------------------
-									[FACE CULLING]
+	[FACE CULLING]
 	------------------------------------------------------------------------------*/
 	// Specifies whether meshes using this material must be rendered
 	// without backface culling. 0 for false, !0 for true.
@@ -285,21 +285,21 @@ Material* ModelLoader::ProcessMaterial(aiMaterial* material)
 		engineMaterial->SetFaceCulling(CullBack);
 
 	/*------------------------------------------------------------------------------
-								[DIFFUSE COLOR]
+	[DIFFUSE COLOR]
 	------------------------------------------------------------------------------*/
 	aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
 	aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &colorDiffuse);
 	engineMaterial->SetColorAlbedo(Vector4(colorDiffuse.r, colorDiffuse.g, colorDiffuse.b, colorDiffuse.a));
 
 	/*------------------------------------------------------------------------------
-									[OPACITY]
+	[OPACITY]
 	------------------------------------------------------------------------------*/
 	aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
 	aiGetMaterialColor(material, AI_MATKEY_OPACITY, &opacity);
 	engineMaterial->SetOpacity(opacity.r);
 
 	/*------------------------------------------------------------------------------
-								[ALBEDO TEXTURE]
+	[ALBEDO TEXTURE]
 	------------------------------------------------------------------------------*/
 	aiString Path;
 	if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
@@ -311,37 +311,75 @@ Material* ModelLoader::ProcessMaterial(aiMaterial* material)
 		// Get the full texture path.
 		if (material->GetTexture(aiTextureType_DIFFUSE, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 		{
-			engineMaterial->AddTextureFromFile(FindTexture(ConstructRelativeTexturePath(Path.data)), Albedo);
+			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
+			if (path != TEXTURE_PATH_UNKNOWN)
+			{
+				Texture* texture = new Texture();
+				texture->LoadFromFile(path, Albedo);
+				engineMaterial->AddTexture(texture);
+			}
 		}
 	}
 
 	/*------------------------------------------------------------------------------
-									[OCCLUSION TEXTURE]
+	[OCCLUSION TEXTURE]
 	------------------------------------------------------------------------------*/
 	if (material->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
 		if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			engineMaterial->AddTextureFromFile(FindTexture(ConstructRelativeTexturePath(Path.data)), Occlusion);
+		{
+			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
+			if (path != TEXTURE_PATH_UNKNOWN)
+			{
+				Texture* texture = new Texture();
+				texture->LoadFromFile(path, Occlusion);
+				engineMaterial->AddTexture(texture);
+			}
+		}
 
 	/*------------------------------------------------------------------------------
-									[NORMAL TEXTURE]
+	[NORMAL TEXTURE]
 	------------------------------------------------------------------------------*/
 	if (material->GetTextureCount(aiTextureType_NORMALS) > 0)
 		if (material->GetTexture(aiTextureType_NORMALS, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			engineMaterial->AddTextureFromFile(FindTexture(ConstructRelativeTexturePath(Path.data)), Normal);
+		{
+			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
+			if (path != TEXTURE_PATH_UNKNOWN)
+			{
+				Texture* texture = new Texture();
+				texture->LoadFromFile(path, Normal);
+				engineMaterial->AddTexture(texture);
+			}
+		}
 
 	/*------------------------------------------------------------------------------
-									[HEIGHT TEXTURE]
+	[HEIGHT TEXTURE]
 	------------------------------------------------------------------------------*/
 	if (material->GetTextureCount(aiTextureType_HEIGHT) > 0)
 		if (material->GetTexture(aiTextureType_HEIGHT, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			engineMaterial->AddTextureFromFile(FindTexture(ConstructRelativeTexturePath(Path.data)), Height);
+		{
+			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
+			if (path != TEXTURE_PATH_UNKNOWN)
+			{
+				Texture* texture = new Texture();
+				texture->LoadFromFile(path, Height);
+				engineMaterial->AddTexture(texture);
+			}
+		}
 
 	/*------------------------------------------------------------------------------
-								[MASK TEXTURE]
+	[MASK TEXTURE]
 	------------------------------------------------------------------------------*/
 	if (material->GetTextureCount(aiTextureType_OPACITY) > 0)
 		if (material->GetTexture(aiTextureType_OPACITY, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			engineMaterial->AddTextureFromFile(FindTexture(ConstructRelativeTexturePath(Path.data)), Mask);
+		{
+			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
+			if (path != TEXTURE_PATH_UNKNOWN)
+			{
+				Texture* texture = new Texture();
+				texture->LoadFromFile(path, Mask);
+				engineMaterial->AddTexture(texture);
+			}
+		}
 
 	return engineMaterial;
 }

@@ -37,7 +37,6 @@ Engine::Engine(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
 	m_engineSocket = nullptr;
 	m_scriptEngine = nullptr;
 	m_renderer = nullptr;
-	m_imageLoader = nullptr;
 	m_modelLoader = nullptr;
 	m_scene = nullptr;
 	m_input = nullptr;
@@ -90,10 +89,10 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_meshPool = new MeshPool();
 
 	// 9 - IMAGE LOADER
-	m_imageLoader = new ImageLoader(m_D3D11Device);
+	ImageLoader::GetInstance().Initialize(m_D3D11Device);
 
 	// 10 - TEXTURE POOL
-	m_texturePool = new TexturePool(m_imageLoader);
+	m_texturePool = new TexturePool();
 
 	// 11 - MODEL LOADER
 	m_modelLoader = new ModelLoader();
@@ -105,7 +104,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	// 13 - RENDERER
 	m_renderer = new Renderer();
 	m_scene = new Scene(m_texturePool, m_materialPool, m_meshPool, m_scriptEngine, m_physicsEngine, m_modelLoader, m_renderer);
-	m_renderer->Initialize(true, m_D3D11Device, m_imageLoader, m_timer, m_physicsEngine, m_scene);
+	m_renderer->Initialize(true, m_D3D11Device, m_timer, m_physicsEngine, m_scene);
 
 	// 14 - GAMEOBJECT POOL
 	GameObjectPool::GetInstance().Initialize(m_D3D11Device, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physicsEngine, m_scriptEngine);
@@ -114,7 +113,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_scene->Initialize();
 
 	// 16 - ENGINE SOCKET
-	m_engineSocket = new Socket(m_scene, m_renderer, m_timer, m_modelLoader, m_physicsEngine, m_imageLoader);
+	m_engineSocket = new Socket(m_scene, m_renderer, m_timer, m_modelLoader, m_physicsEngine);
 }
 
 void Engine::Shutdown()
@@ -144,7 +143,7 @@ void Engine::Shutdown()
 	delete m_texturePool;
 
 	// 9 - IMAGE LOADER
-	delete m_imageLoader;
+	ImageLoader::GetInstance().Clear();
 
 	// 8 - MESH POOL
 	delete m_meshPool;

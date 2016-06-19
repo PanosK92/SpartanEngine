@@ -58,7 +58,7 @@ void DeferredShader::Initialize(D3D11Device* d3d11device)
 	m_shader = new D3D11Shader();
 	m_shader->Initialize(m_D3D11Device);
 	m_shader->Load("Assets/Shaders/Deferred.hlsl");
-	m_shader->SetInputLayout(PositionTexture);
+	m_shader->SetInputLayout(PositionTextureNormalTangent);
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 

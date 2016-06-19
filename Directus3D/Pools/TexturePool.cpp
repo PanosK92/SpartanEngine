@@ -26,11 +26,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 //===========================
 
+//= NAMESPACES =====
 using namespace std;
+//==================
 
-TexturePool::TexturePool(ImageLoader* imageLoader)
+TexturePool::TexturePool()
 {
-	m_imageLoader = imageLoader;
+
 }
 
 TexturePool::~TexturePool()
@@ -38,67 +40,56 @@ TexturePool::~TexturePool()
 	Clear();
 }
 
-void TexturePool::Save()
+void TexturePool::Serialize()
 {
-	Serializer::SaveInt((int)m_textures.size());
+	Serializer::SaveInt(int(m_textures.size()));
 	for (int i = 0; i < m_textures.size(); i++)
-		m_textures[i]->Save();
+		m_textures[i]->Serialize();
 }
 
-void TexturePool::Load()
+void TexturePool::Deserialize()
 {
 	int textureCount = Serializer::LoadInt();
 	for (int i = 0; i < textureCount; i++)
 	{
 		Texture* texture = new Texture();
-		texture->Load();
-		m_imageLoader->Load(texture->GetPath());
-		texture->SetShaderResourceView(m_imageLoader->GetAsD3D11ShaderResourceView());
+		texture->Deserialize();
 
 		m_textures.push_back(texture);
 	}
 }
 
-Texture* TexturePool::Add(string path, TextureType type)
+Texture* TexturePool::Add(Texture* texture)
 {
-	// make sure it's not already loaded
-	if (!IsTextureLoadedByPath(path))
+	if (!texture)
+		return nullptr;
+
+	// If loaded, return the already loaded one
+	Texture* loaded = GetTextureByPath(texture->GetPath());
+	if (loaded)
+		return loaded;
+
+	// If not, save it and return it
+	m_textures.push_back(texture);
+	return texture;
+}
+
+Texture* TexturePool::GetTextureByName(string name)
+{
+	for (auto i = 0; i < m_textures.size(); i++)
 	{
-		// load it
-		bool loadedSuccessfully = m_imageLoader->Load(path);
-
-		if (!loadedSuccessfully)
-		{
-			LOG("Failed to load texture \"" + path +"\".", Log::Error);
-			return nullptr;
-		}
-
-		Texture* texture = m_imageLoader->GetAsTexture();
-		texture->SetType(type);
-
-		// FIX: some models pass a normal map as a height map...
-		if (texture->GetType() == Height && !texture->IsGrayscale())
-			texture->SetType(Normal);
-
-		// FIX: and others pass a height map as a normal map...
-		if (texture->GetType() == Normal && texture->IsGrayscale())
-			texture->SetType(Height);
-
-		// save it
-		m_textures.push_back(texture);
-
-		return texture;
+		if (m_textures[i]->GetName() == name)
+			return m_textures[i];
 	}
 
-	// if it's loaded, return the existing one
-	return GetTextureByPath(path);
+	return nullptr;
 }
 
 Texture* TexturePool::GetTextureByID(string ID)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 	{
-		if (ID == m_textures[i]->GetID())
+		if (m_textures[i]->GetID() == ID)
 			return m_textures[i];
 	}
 
@@ -150,13 +141,4 @@ int TexturePool::GetTextureIndex(Texture* texture)
 			return i;
 
 	return -1;
-}
-
-bool TexturePool::IsTextureLoadedByPath(string path)
-{
-	for (unsigned int i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetPath() == path)
-			return true;
-
-	return false;
 }

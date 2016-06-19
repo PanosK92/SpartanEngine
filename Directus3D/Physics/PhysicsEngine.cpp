@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "PhysicsDebugDraw.h"
 #include "../Misc/Globals.h"
-
 //==============================================================================
 
 PhysicsEngine::PhysicsEngine()
@@ -118,9 +117,7 @@ void PhysicsEngine::Reset()
 	}
 }
 
-/*------------------------------------------------------------------------------
-							[RIGIDBODY]
-------------------------------------------------------------------------------*/
+//= RIGIDBODY ==================================================================
 void PhysicsEngine::AddRigidBody(btRigidBody* rigidBody)
 {
 	m_dynamicsWorld->addRigidBody(rigidBody);
@@ -131,10 +128,7 @@ void PhysicsEngine::RemoveRigidBody(btRigidBody* rigidBody)
 	m_dynamicsWorld->removeRigidBody(rigidBody);
 }
 
-/*------------------------------------------------------------------------------
-								[CONSTRAINT]
-------------------------------------------------------------------------------*/
-
+//= CONSTRAINT =================================================================
 void PhysicsEngine::AddConstraint(btTypedConstraint* constraint)
 {
 	m_dynamicsWorld->addConstraint(constraint);
@@ -145,9 +139,7 @@ void PhysicsEngine::RemoveConstraint(btTypedConstraint* constraint)
 	m_dynamicsWorld->removeConstraint(constraint);
 }
 
-/*------------------------------------------------------------------------------
-								[DEBUG DRAW]
-------------------------------------------------------------------------------*/
+//= DEBUG DRAW ==================================================================
 void PhysicsEngine::SetDebugDraw(bool enable)
 {
 	m_debugDrawEnabled = enable;

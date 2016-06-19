@@ -61,7 +61,6 @@ XPM files[reading, writing]
 #define FREEIMAGE_LIB
 
 //= INCLUDES =============================
-#include "../Core/Texture.h"
 #include "../Graphics/D3D11/D3D11Shader.h"
 //========================================
 
@@ -70,18 +69,23 @@ class FIBITMAP;
 class __declspec(dllexport) ImageLoader
 {
 public:
-	ImageLoader(D3D11Device* d3d11device);
+	static ImageLoader& GetInstance()
+	{
+		static ImageLoader instance;
+		return instance;
+	}
+
+	ImageLoader();
 	~ImageLoader();
 
+	void Initialize(D3D11Device* D3D11evice);
 	bool Load(std::string path);
 	bool Load(std::string path, int width, int height);
-
 	void Clear();
 
 	/*------------------------------------------------------------------------------
 									[PROPERTIES]
 	------------------------------------------------------------------------------*/
-	Texture* GetAsTexture();
 	ID3D11ShaderResourceView* GetAsD3D11ShaderResourceView();
 	unsigned char* GetRGBA();
 	unsigned char* GetRGBACopy();

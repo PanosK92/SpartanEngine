@@ -32,14 +32,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace std;
 
-Socket::Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics, ImageLoader* imageLoader)
+Socket::Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics)
 {
 	m_scene = scene;
 	m_renderer = renderer;
 	m_timer = timer;
 	m_modelLoader = modelLoader;
 	m_physics = physics;
-	m_imageLoader = imageLoader;
 }
 
 Socket::~Socket()
@@ -90,7 +89,7 @@ GameObject* Socket::GetGameObjectByIndex(int index)
 	return GameObjectPool::GetInstance().GetGameObjectByIndex(index);
 }
 
-GameObject* Socket::GetGameObjectByID(std::string gameObjectID)
+GameObject* Socket::GetGameObjectByID(string gameObjectID)
 {
 	return GameObjectPool::GetInstance().GetGameObjectByID(gameObjectID);
 }
@@ -119,14 +118,14 @@ bool Socket::GameObjectExists(GameObject* gameObject)
 /*------------------------------------------------------------------------------
 						[ASSET LOADING]
 ------------------------------------------------------------------------------*/
-void Socket::LoadModel(GameObject* gameObject, std::string path)
+void Socket::LoadModel(GameObject* gameObject, string path)
 {
 	m_modelLoader->Load(path, gameObject);
 }
 
 ImageLoader* Socket::GetImageLoader()
 {
-	return m_imageLoader;
+	return &ImageLoader::GetInstance();
 }
 
 /*------------------------------------------------------------------------------
@@ -170,7 +169,7 @@ float Socket::GetRenderTime()
 	return m_renderer->GetRenderTime();
 }
 
-void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, std::string texturePath)
+void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string texturePath)
 {
 	if (gameObject == nullptr)
 	{
@@ -187,6 +186,8 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, std::s
 	Material* material = gameObject->GetComponent<MeshRenderer>()->GetMaterial();
 	if (material)
 	{
-		material->AddTextureFromFile(texturePath, type);
+		Texture* texture = new Texture();
+		texture->LoadFromFile(texturePath, type);
+		material->AddTexture(texture);
 	}
 }

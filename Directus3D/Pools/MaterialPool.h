@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ShaderPool.h"
 #include "TexturePool.h"
 #include "../Core/Material.h"
-
 //============================
 
 class MaterialPool
@@ -46,8 +45,8 @@ public:
 	/*------------------------------------------------------------------------------
 									[I/O]
 	------------------------------------------------------------------------------*/
-	void Save();
-	void Load();
+	void Serialize();
+	void Deserialize();
 
 private:
 	std::vector<Material*> m_materials;

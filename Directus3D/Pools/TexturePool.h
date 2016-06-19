@@ -23,22 +23,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include <vector>
-#include "../Loading/ImageLoader.h"
 #include "../Core/Texture.h"
 ///================================
-
-#define TEXTURE_PATH_UNKNOWN "-1"
 
 class TexturePool
 {
 public:
-	TexturePool(ImageLoader* imageLoader);
+	TexturePool();
 	~TexturePool();
 
-	void Save();
-	void Load();
+	void Serialize();
+	void Deserialize();
 
-	Texture* Add(std::string path, TextureType type);
+	Texture* Add(Texture* texture);
+	Texture* GetTextureByName(std::string name);
 	Texture* GetTextureByID(std::string ID);
 	Texture* GetTextureByPath(std::string path);
 	void RemoveTextureByPath(std::string path);
@@ -46,11 +44,9 @@ public:
 
 private:
 	std::vector<Texture*> m_textures;
-	ImageLoader* m_imageLoader;
 
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
 	int GetTextureIndex(Texture* texture);
-	bool TexturePool::IsTextureLoadedByPath(std::string path);
 };

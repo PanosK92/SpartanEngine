@@ -222,7 +222,7 @@ void MeshPool::GetMinMax(MeshData* meshData, Vector3& min, Vector3& max)
 /*------------------------------------------------------------------------------
 									[I/O]
 ------------------------------------------------------------------------------*/
-void MeshPool::Save()
+void MeshPool::Serialize()
 {
 	int meshDataCount = m_meshDataPool.size();
 
@@ -252,7 +252,7 @@ void MeshPool::Save()
 	}
 }
 
-void MeshPool::Load()
+void MeshPool::Deserialize()
 {
 	Clear();
 

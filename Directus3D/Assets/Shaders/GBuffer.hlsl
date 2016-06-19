@@ -49,7 +49,7 @@ cbuffer DefaultBuffer : register(b0)
 struct VertexInputType
 {
     float4 position : POSITION;
-    float2 uv : TEXCOORD0;
+    float2 uv : TEXCOORD;
     float3 normal : NORMAL;
     float3 tangent : TANGENT;
 };

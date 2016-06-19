@@ -237,7 +237,6 @@
     <ClCompile Include="Core\Scene.cpp" />
     <ClCompile Include="Components\Script.cpp" />
     <ClCompile Include="IO\Serializer.cpp" />
-    <ClCompile Include="Loading\ShaderLoader.cpp" />
     <ClCompile Include="Pools\ShaderPool.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
     <ClCompile Include="Components\Transform.cpp" />
@@ -307,7 +306,6 @@
     <ClInclude Include="Core\Scene.h" />
     <ClInclude Include="Components\Script.h" />
     <ClInclude Include="IO\Serializer.h" />
-    <ClInclude Include="Loading\ShaderLoader.h" />
     <ClInclude Include="Pools\ShaderPool.h" />
     <ClInclude Include="Pools\TexturePool.h" />
     <ClInclude Include="Pools\ThreadPool.h" />

@@ -65,15 +65,13 @@ cbuffer PointLightBuffer : register(b2)
 #endif
 
 /*------------------------------------------------------------------------------
-								[STRUCTS]
+						    [INPUT LAYOUT]
 ------------------------------------------------------------------------------*/
-#if COMPILE_VS == 1
 struct VertexInputType
 {
     float4 position : POSITION;
     float2 uv : TEXCOORD0;
 };
-#endif
 
 struct PixelInputType
 {

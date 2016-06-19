@@ -19,17 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ======================
 #include "Texture.h"
 #include "../Misc/GUIDGenerator.h"
 #include "../Misc/Globals.h"
 #include "../IO/Serializer.h"
-//================================
+#include "../IO/Log.h"
+#include "../Loading/ImageLoader.h"
+//=================================
 
-//= NAMESPACES ===========
+//= NAMESPACES =====
 using namespace std;
-
-//========================
+//==================
 
 Texture::Texture()
 {
@@ -38,7 +39,8 @@ Texture::Texture()
 	m_height = 0;
 	m_shaderResourceView = nullptr;
 	m_type = Albedo;
-	m_isGrayscale = false;
+	m_grayscale = false;
+	m_transparency = false;
 	m_alphaIsTransparency = false;
 }
 
@@ -47,24 +49,30 @@ Texture::~Texture()
 	DirectusSafeRelease(m_shaderResourceView);
 }
 
-void Texture::Save() const
+void Texture::Serialize() const
 {
 	Serializer::SaveSTR(m_ID);
+	Serializer::SaveSTR(m_name);
 	Serializer::SaveSTR(m_path);
 	Serializer::SaveInt(m_width);
 	Serializer::SaveInt(m_height);
 	Serializer::SaveInt(int(m_type));
-	Serializer::SaveBool(m_isGrayscale);
+	Serializer::SaveBool(m_grayscale);
+	Serializer::SaveBool(m_transparency);
 }
 
-void Texture::Load()
+void Texture::Deserialize()
 {
 	m_ID = Serializer::LoadSTR();
+	m_name = Serializer::LoadSTR();
 	m_path = Serializer::LoadSTR();
 	m_width = Serializer::LoadInt();
 	m_height = Serializer::LoadInt();
 	m_type = TextureType(Serializer::LoadInt());
-	m_isGrayscale = Serializer::LoadBool();
+	m_grayscale = Serializer::LoadBool();
+	m_transparency = Serializer::LoadBool();
+
+	LoadFromFile(m_path, m_type);
 }
 
 ID3D11ShaderResourceView* Texture::GetID3D11ShaderResourceView() const
@@ -72,14 +80,56 @@ ID3D11ShaderResourceView* Texture::GetID3D11ShaderResourceView() const
 	return m_shaderResourceView;
 }
 
-void Texture::SetShaderResourceView(ID3D11ShaderResourceView* shaderResourceView)
+void Texture::SetID3D11ShaderResourceView(ID3D11ShaderResourceView* srv)
 {
-	m_shaderResourceView = shaderResourceView;
+	m_shaderResourceView = srv;
+}
+
+bool Texture::LoadFromFile(string path, TextureType type)
+{
+	// load it
+	bool result = ImageLoader::GetInstance().Load(path);
+
+	if (!result)
+	{
+		LOG("Failed to load texture \"" + path + "\".", Log::Error);
+		return false;
+	}
+
+	// Fill the texture with data
+	SetPath(ImageLoader::GetInstance().GetPath());
+	SetWidth(ImageLoader::GetInstance().GetWidth());
+	SetHeight(ImageLoader::GetInstance().GetHeight());
+	SetGrayscale(ImageLoader::GetInstance().IsGrayscale());
+	SetTransparency(ImageLoader::GetInstance().IsTransparent());
+	m_shaderResourceView = ImageLoader::GetInstance().GetAsD3D11ShaderResourceView();
+
+	// Determine texture type
+	// FIX: some models pass a normal map as a height map
+	// and others pass a height map as a normal map...
+	SetType(type);
+	if (GetType() == Height && !GetGrayscale()) SetType(Normal);
+	if (GetType() == Normal && GetGrayscale()) SetType(Height);
+
+	// Clear any memory allocated by the image loader
+	ImageLoader::GetInstance().Clear();
+
+	return true;
 }
 
 string Texture::GetID() const
 {
 	return m_ID;
+}
+
+void Texture::SetName(string name)
+{
+	m_name = name;
+}
+
+string Texture::GetName()
+{
+	return m_name;
 }
 
 void Texture::SetWidth(int width)
@@ -124,10 +174,20 @@ void Texture::SetType(TextureType type)
 
 void Texture::SetGrayscale(bool isGrayscale)
 {
-	m_isGrayscale = isGrayscale;
+	m_grayscale = isGrayscale;
 }
 
-bool Texture::IsGrayscale() const
+bool Texture::GetGrayscale() const
 {
-	return m_isGrayscale;
+	return m_grayscale;
+}
+
+void Texture::SetTransparency(bool transparency)
+{
+	m_transparency = transparency;
+}
+
+bool Texture::GetTransparency()
+{
+	return m_transparency;
 }

@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace Directus::Math;
 using namespace std;
-
 //=============================
 
 ShaderVariation::ShaderVariation()
@@ -130,29 +129,27 @@ void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix
 	/*------------------------------------------------------------------------------
 							[FILL THE BUFFER]
 	------------------------------------------------------------------------------*/
-	// map the buffer
-	DefaultBufferType* defaultBufferType = (DefaultBufferType*)m_befaultBuffer->Map();
-
-	// fill with data
-	defaultBufferType->world = world.Transpose();
-	defaultBufferType->worldView = worldView.Transpose();
-	defaultBufferType->worldViewProjection = worldViewProjection.Transpose();
-	defaultBufferType->viewProjectionDirLight = viewProjectionDirectionaLight.Transpose();
-	defaultBufferType->materialAlbedoColor = material->GetColorAlbedo();
-	defaultBufferType->roughness = material->GetRoughness();
-	defaultBufferType->metallic = material->GetMetallic();
-	defaultBufferType->occlusion = material->GetOcclusion();
-	defaultBufferType->normalStrength = material->GetNormalStrength();
-	defaultBufferType->reflectivity = material->GetReflectivity();
-	defaultBufferType->shadingMode = float(material->GetShadingMode());
-	defaultBufferType->materialTiling = material->GetTiling();
-	defaultBufferType->bias = directionalLight->GetBias();
-	defaultBufferType->lightDirection = directionalLight->GetDirection();
-
-	m_befaultBuffer->Unmap(); // unmap buffer
+	{ // this can be done only when needed - tested
+		// map the buffer
+		DefaultBufferType* defaultBufferType = (DefaultBufferType*)m_befaultBuffer->Map();
+		defaultBufferType->world = world.Transpose();
+		defaultBufferType->worldView = worldView.Transpose();
+		defaultBufferType->worldViewProjection = worldViewProjection.Transpose();
+		defaultBufferType->viewProjectionDirLight = viewProjectionDirectionaLight.Transpose();
+		defaultBufferType->materialAlbedoColor = material->GetColorAlbedo();
+		defaultBufferType->roughness = material->GetRoughness();
+		defaultBufferType->metallic = material->GetMetallic();
+		defaultBufferType->occlusion = material->GetOcclusion();
+		defaultBufferType->normalStrength = material->GetNormalStrength();
+		defaultBufferType->reflectivity = material->GetReflectivity();
+		defaultBufferType->shadingMode = float(material->GetShadingMode());
+		defaultBufferType->materialTiling = material->GetTiling();
+		defaultBufferType->bias = directionalLight->GetBias();
+		defaultBufferType->lightDirection = directionalLight->GetDirection();
+		m_befaultBuffer->Unmap();
+	}
 	m_befaultBuffer->SetVS(0); // set buffer in the vertex shader
 	m_befaultBuffer->SetPS(0); // set buffer in the pixel shader
-
 	/*------------------------------------------------------------------------------
 								[TEXTURES]
 	------------------------------------------------------------------------------*/
@@ -164,6 +161,7 @@ void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix
 	ID3D11ShaderResourceView* heightTexture = material->GetShaderResourceViewByTextureType(Height);
 	ID3D11ShaderResourceView* maskTexture = material->GetShaderResourceViewByTextureType(Mask);
 
+	// Set textures
 	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(0, 1, &albedoTexture);
 	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(1, 1, &roughnessTexture);
 	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(2, 1, &metallicTexture);
@@ -173,9 +171,7 @@ void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix
 	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(6, 1, &maskTexture);
 	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(7, 1, &dirLightDepthTex);
 
-	/*------------------------------------------------------------------------------
-										[RENDER]
-	------------------------------------------------------------------------------*/
+	// Draw
 	m_D3D11Device->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 

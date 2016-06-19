@@ -83,9 +83,8 @@ Renderer::~Renderer()
 	DirectusSafeDelete(m_noiseMap);
 }
 
-void Renderer::Initialize(bool debugDraw, D3D11Device* d3d11device, ImageLoader* imageLoader, Timer* timer, PhysicsEngine* physics, Scene* scene)
+void Renderer::Initialize(bool debugDraw, D3D11Device* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene)
 {
-	m_imageLoader = imageLoader;
 	m_timer = timer;
 	m_physics = physics;
 	m_scene = scene;
@@ -132,8 +131,8 @@ void Renderer::Initialize(bool debugDraw, D3D11Device* d3d11device, ImageLoader*
 	/*------------------------------------------------------------------------------
 										[MISC]
 	------------------------------------------------------------------------------*/
-	m_imageLoader->Load("Assets/Shaders/noise.png");
-	m_noiseMap = m_imageLoader->GetAsTexture();
+	m_noiseMap = new Texture();
+	m_noiseMap->LoadFromFile("Assets/Shaders/noise.png", Normal);
 	m_noiseMap->SetType(Normal);
 }
 

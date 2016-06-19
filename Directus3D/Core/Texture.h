@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //========================================
 
 #define NULL_TEXTURE_ID "-1"
+#define TEXTURE_PATH_UNKNOWN "-1"
 
 enum TextureType
 {
@@ -45,13 +46,18 @@ public:
 	Texture();
 	~Texture();
 
-	void Save() const;
-	void Load();
+	void Serialize() const;
+	void Deserialize();
 
 	ID3D11ShaderResourceView* GetID3D11ShaderResourceView() const;
-	void SetShaderResourceView(ID3D11ShaderResourceView* shaderResourceView);
+	void SetID3D11ShaderResourceView(ID3D11ShaderResourceView* srv);
+
+	bool LoadFromFile(std::string path, TextureType expectedType);
 
 	std::string GetID() const;
+
+	void SetName(std::string name);
+	std::string GetName();
 
 	void SetWidth(int width);
 	int GetWidth() const;
@@ -65,18 +71,23 @@ public:
 	TextureType GetType() const;
 	void SetType(TextureType type);
 
-	void SetGrayscale(bool isGrayscale);
-	bool IsGrayscale() const;
+	void SetGrayscale(bool grayscale);
+	bool GetGrayscale() const;
+
+	void SetTransparency(bool transparency);
+	bool GetTransparency();
 
 private:
 
 	// data
 	std::string m_ID;
+	std::string m_name;
 	int m_width;
 	int m_height;
 	TextureType m_type;
 	std::string m_path;
-	bool m_isGrayscale;
+	bool m_grayscale;
+	bool m_transparency;
 	bool m_alphaIsTransparency;
 	ID3D11ShaderResourceView* m_shaderResourceView;
 };
