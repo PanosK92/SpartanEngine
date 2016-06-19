@@ -23,7 +23,6 @@ DEALINGS IN THE SOFTWARE. */
 class Socket;
 class ScriptEngine;
 class Renderer;
-class ImageLoader;
 class ModelLoader;
 class D3D11Device;
 class Scene;
@@ -54,7 +53,6 @@ private:
 	Socket* m_engineSocket;
 	ScriptEngine* m_scriptEngine;
 	Renderer* m_renderer;
-	ImageLoader* m_imageLoader;
 	ModelLoader* m_modelLoader;
 	D3D11Device* m_D3D11Device;
 	Scene* m_scene;

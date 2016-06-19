@@ -57,8 +57,8 @@ public:
 	/*------------------------------------------------------------------------------
 										[I/O]
 	------------------------------------------------------------------------------*/
-	void Save();
-	void Load();
+	void Serialize();
+	void Deserialize();
 
 private:
 	std::vector<MeshData*> m_meshDataPool;

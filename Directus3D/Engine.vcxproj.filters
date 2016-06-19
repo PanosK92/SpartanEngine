@@ -130,9 +130,6 @@
     <ClCompile Include="Core\Scene.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Loading\ShaderLoader.cpp">
-      <Filter>Loaders</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\Shaders\PostProcessShader.cpp">
       <Filter>Graphics\Shaders</Filter>
     </ClCompile>
@@ -323,9 +320,6 @@
     </ClInclude>
     <ClInclude Include="Core\Scene.h">
       <Filter>Core</Filter>
-    </ClInclude>
-    <ClInclude Include="Loading\ShaderLoader.h">
-      <Filter>Loaders</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Shaders\PostProcessShader.h">
       <Filter>Graphics\Shaders</Filter>

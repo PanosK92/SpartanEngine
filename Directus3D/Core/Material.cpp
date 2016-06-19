@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/TexturePool.h"
 #include "../IO/Serializer.h"
 #include "../Misc/GUIDGenerator.h"
-#include "../IO/FileHelper.h"
 #include "../Pools/ShaderPool.h"
+#include "../IO/Log.h"
 //================================
 
 //= NAMESPACES ================
@@ -56,7 +56,7 @@ Material::~Material()
 /*------------------------------------------------------------------------------
 									[I/O]
 ------------------------------------------------------------------------------*/
-void Material::Save()
+void Material::Serialize()
 {
 	Serializer::SaveSTR(m_ID);
 	Serializer::SaveSTR(m_name);
@@ -79,7 +79,7 @@ void Material::Save()
 		Serializer::SaveSTR(m_textures[i]->GetID());
 }
 
-void Material::Load()
+void Material::Deserialize()
 {
 	m_ID = Serializer::LoadSTR();
 	m_name = Serializer::LoadSTR();
@@ -97,9 +97,17 @@ void Material::Load()
 	reflectivity = Serializer::LoadFloat();
 	tiling = Serializer::LoadVector2();
 
-	int textureIDsCount = Serializer::LoadInt();
-	for (int i = 0; i < textureIDsCount; i++)
-		m_textures.push_back(m_texturePool->GetTextureByID(Serializer::LoadSTR()));
+	int textureCount = Serializer::LoadInt();
+	for (int i = 0; i < textureCount; i++)
+	{
+		string textureID = Serializer::LoadSTR();
+		Texture* texture = m_texturePool->GetTextureByID(textureID);
+		if (texture)
+		{
+			LOG("Failed to acquire texture with ID: \"" + textureID + "\" for material \"" + m_name +"\" from the texture pool.", Log::Error);
+			m_textures.push_back(texture);
+		}
+	}
 
 	AcquireShader();
 }
@@ -107,32 +115,21 @@ void Material::Load()
 /*------------------------------------------------------------------------------
 								[TEXTURES]
 ------------------------------------------------------------------------------*/
-void Material::AddTextureFromFile(string path, TextureType type)
+void Material::AddTexture(Texture* texture)
 {
-	if (path == TEXTURE_PATH_UNKNOWN)
+	if (!texture)
 		return;
 
-	// Make sure that the path is relative.
-	path = FileHelper::GetRelativePathFromAbsolutePath(path);
-
-	// The texture pool will load the texture or return it (if it already exists)
-	Texture* texture = m_texturePool->Add(path, type);
-
-	AddTextureFromMemory(texture);
-}
-
-void Material::AddTextureFromMemory(Texture* texture)
-{
 	TextureType newTextureType = texture->GetType();
 
 	if (HasTextureOfType(newTextureType)) // Overwrite
 	{
 		int textureIndex = GetTextureIndexByType(newTextureType);
-		m_textures[textureIndex] = texture;
+		m_textures[textureIndex] = m_texturePool->Add(texture);
 	}
 	else // Add
 	{
-		m_textures.push_back(texture);
+		m_textures.push_back(m_texturePool->Add(texture));
 	}
 
 	// adjust material values

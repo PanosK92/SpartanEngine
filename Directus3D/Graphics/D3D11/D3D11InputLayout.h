@@ -23,11 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========
 #include "D3D11Device.h"
-
+#include <vector>
 //======================
 
 enum InputLayout
 {
+	Auto,
 	Position,
 	PositionColor,
 	PositionTexture,
@@ -40,24 +41,22 @@ public:
 	D3D11InputLayout();
 	~D3D11InputLayout();
 
+	//= MISC =================================
 	void Initialize(D3D11Device* d3d11Device);
-	bool Create(ID3D10Blob* VSBlob, InputLayout layout);
 	void Set();
 
+	//= LAYOUT CREATION ==================================================================================
+	bool Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount);
+	bool Create(ID3D10Blob* VSBlob, InputLayout layout);
+
 private:
+	//= LAYOUTS ===============================
+	bool CreatePosDesc(ID3D10Blob* VSBlob);
+	bool CreatePosColDesc(ID3D10Blob* VSBlob);
+	bool CreatePosTexDesc(ID3D10Blob* VSBlob);
+	bool CreatePosTexNorTanDesc(ID3D10Blob* VSBlob);
+
 	D3D11Device* m_D3D11Device;
 	ID3D11InputLayout* m_layout;
-
-	/*------------------------------------------------------------------------------
-								[LAYOUTS]
-	------------------------------------------------------------------------------*/
-	bool CreatePos(ID3D10Blob* VSBlob);
-	bool CreatePosCol(ID3D10Blob* VSBlob);
-	bool CreatePosTex(ID3D10Blob* VSBlob);
-	bool CreatePosTexNorTan(ID3D10Blob* VSBlob);
-
-	/*------------------------------------------------------------------------------
-								[MISC]
-	------------------------------------------------------------------------------*/
-	bool CreateLayout(D3D11_INPUT_ELEMENT_DESC vertexInputLayout[], unsigned int elementCount, ID3D10Blob* VSBlob);
+	std::vector<D3D11_INPUT_ELEMENT_DESC> m_layoutDesc;
 };

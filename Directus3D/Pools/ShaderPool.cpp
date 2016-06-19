@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========
 #include "ShaderPool.h"
+#include "../IO/Log.h"
 //=====================
 
 using namespace std;
@@ -66,8 +67,10 @@ ShaderVariation* ShaderPool::GetShaderByID(string shaderID)
 ShaderVariation* ShaderPool::FindMatchingShader(Material* material)
 {
 	for (int i = 0; i < m_shaders.size(); i++)
+	{
 		if (m_shaders[i]->MatchesMaterial(material))
 			return m_shaders[i];
+	}
 
 	return nullptr;
 }

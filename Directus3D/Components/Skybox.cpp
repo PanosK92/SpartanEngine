@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace DirectX;
 using namespace Directus::Math;
-
 //=============================
 
 Skybox::Skybox()
@@ -65,14 +64,20 @@ void Skybox::Initialize()
 	if (FAILED(hr))
 		return;
 
-	Texture* texture = new Texture();
-	texture->SetType(CubeMap);
-	texture->SetPath("Assets/Environment/environment.dds");
-	texture->SetWidth(1024);
-	texture->SetHeight(1024);
-	texture->SetGrayscale(false);
-	texture->SetShaderResourceView(m_environmentSRV);
-	g_materialPool->GetMaterialStandardSkybox()->AddTextureFromMemory(texture);
+	Texture* texture = g_texturePool->GetTextureByPath("Assets/Environment/environment.dds");
+	if (!texture)
+	{
+		texture = new Texture();
+		texture->SetType(CubeMap);
+		texture->SetPath("Assets/Environment/environment.dds");
+		texture->SetWidth(1024);
+		texture->SetHeight(1024);
+		texture->SetGrayscale(false);
+		texture->SetID3D11ShaderResourceView(m_environmentSRV);
+		g_texturePool->Add(texture);
+	}
+
+	g_materialPool->GetMaterialStandardSkybox()->AddTexture(texture);
 
 	// Add the actual "box"
 	Mesh* mesh = g_gameObject->AddComponent<Mesh>();

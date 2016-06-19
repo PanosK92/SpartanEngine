@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GBuffer.h"
 #include "FullScreenQuad.h"
 #include "Frustrum.h"
-#include "../Loading/ImageLoader.h"
 #include "../Core/GameObject.h"
 #include "../Core/Timer.h"
 #include "../Components/Camera.h"
@@ -46,7 +45,7 @@ public:
 	Renderer();
 	~Renderer();
 
-	void Initialize(bool debugDraw, D3D11Device* d3d11device, ImageLoader* imageLoader, Timer* timer, PhysicsEngine* physics, Scene* scene);
+	void Initialize(bool debugDraw, D3D11Device* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene);
 	void UpdateFromScene();
 	void PostProcessing(Camera* camera, Skybox* skybox, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mBaseView, Directus::Math::Matrix mPerspectiveProjection, Directus::Math::Matrix mOrthographicProjection);
 	void StartCalculatingStats();
@@ -68,7 +67,6 @@ private:
 	GBuffer* m_GBuffer;
 	Frustrum* m_frustrum;
 	FullScreenQuad* m_fullScreenQuad;
-	ImageLoader* m_imageLoader;
 	Timer* m_timer;
 	PhysicsEngine* m_physics;
 	Scene* m_scene;

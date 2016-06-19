@@ -56,14 +56,13 @@ public:
 	/*------------------------------------------------------------------------------
 										[I/O]
 	------------------------------------------------------------------------------*/
-	void Save();
-	void Load();
+	void Serialize();
+	void Deserialize();
 
 	/*------------------------------------------------------------------------------
 										[TEXTURES]
 	------------------------------------------------------------------------------*/
-	void AddTextureFromFile(std::string path, TextureType type);
-	void AddTextureFromMemory(Texture* texture);
+	void AddTexture(Texture* texture);
 	Texture* GetTextureByType(TextureType type);
 	bool HasTextureOfType(TextureType type);
 	bool HasTexture(std::string path);
@@ -128,7 +127,6 @@ private:
 	std::string m_ID;
 	std::string m_name;
 	std::string m_modelID;
-	std::string m_shaderID;
 	Culling culling;
 	float opacity;
 	bool alphaBlending;

@@ -84,10 +84,10 @@ bool Scene::SaveToFile(std::string path)
 {
 	Serializer::StartWriting(path);
 	//================================================
-	m_texturePool->Save();
-	m_materialPool->Save();
-	m_meshPool->Save();
-	GameObjectPool::GetInstance().Save();
+	m_texturePool->Serialize();
+	m_materialPool->Serialize();
+	m_meshPool->Serialize();
+	GameObjectPool::GetInstance().Serialize();
 	//================================================
 	Serializer::StopWriting();
 
@@ -110,10 +110,10 @@ bool Scene::LoadFromFile(std::string path)
 
 	Serializer::StartReading(path);
 	//===========================================
-	m_texturePool->Load();
-	m_materialPool->Load();
-	m_meshPool->Load();
-	GameObjectPool::GetInstance().Load();
+	m_texturePool->Deserialize();
+	m_materialPool->Deserialize();
+	m_meshPool->Deserialize();
+	GameObjectPool::GetInstance().Deserialize();
 	//===========================================
 	Serializer::StopReading();
 

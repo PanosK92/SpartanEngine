@@ -27,9 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //===========================
 
-ImageLoader::ImageLoader(D3D11Device* d3d11device)
+ImageLoader::ImageLoader()
 {
-	m_d3d11Device = d3d11device;
 	m_bitmap = nullptr;
 	m_bitmap32 = nullptr;
 	m_bitmapScaled = nullptr;
@@ -49,6 +48,11 @@ ImageLoader::~ImageLoader()
 {
 	Clear();
 	FreeImage_DeInitialise();
+}
+
+void ImageLoader::Initialize(D3D11Device* D3D11evice)
+{
+	m_d3d11Device = D3D11evice;
 }
 
 bool ImageLoader::Load(std::string path)
@@ -153,19 +157,6 @@ ID3D11ShaderResourceView* ImageLoader::GetAsD3D11ShaderResourceView()
 	m_d3d11Device->GetDeviceContext()->GenerateMips(shaderResourceView);
 
 	return shaderResourceView;
-}
-
-Texture* ImageLoader::GetAsTexture()
-{
-	// create a texture and initialize it
-	Texture* texture = new Texture();
-	texture->SetPath(m_path);
-	texture->SetWidth(GetWidth());
-	texture->SetHeight(GetHeight());
-	texture->SetGrayscale(IsGrayscale());
-	texture->SetShaderResourceView(GetAsD3D11ShaderResourceView());
-
-	return texture;
 }
 
 unsigned char* ImageLoader::GetRGBA()
@@ -335,7 +326,7 @@ bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 	}
 
 	//= Get some extra data ========================================================
-	m_transparent = (bool)FreeImage_IsTransparent(m_bitmap32);
+	m_transparent = bool(FreeImage_IsTransparent(m_bitmap32));
 	m_path = path;
 	m_grayscale = CheckIfGrayscale();
 

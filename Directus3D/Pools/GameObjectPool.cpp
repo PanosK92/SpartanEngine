@@ -87,7 +87,7 @@ void GameObjectPool::Clear()
 /*------------------------------------------------------------------------------
 									[I/O]
 ------------------------------------------------------------------------------*/
-void GameObjectPool::Save()
+void GameObjectPool::Serialize()
 {
 	// 1st - gameObjectCount
 	Serializer::SaveInt(m_pool.size());
@@ -97,7 +97,7 @@ void GameObjectPool::Save()
 		m_pool[i]->Save();
 }
 
-void GameObjectPool::Load()
+void GameObjectPool::Deserialize()
 {
 	Clear();
 

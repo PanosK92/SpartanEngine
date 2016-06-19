@@ -110,17 +110,17 @@ Material* MaterialPool::GetMaterialStandardSkybox()
 /*------------------------------------------------------------------------------
 								[I/O]
 ------------------------------------------------------------------------------*/
-void MaterialPool::Save()
+void MaterialPool::Serialize()
 {
 	// save material count
-	Serializer::SaveInt(m_materials.size());
+	Serializer::SaveInt(int(m_materials.size()));
 
 	// save materials
 	for (unsigned int i = 0; i < m_materials.size(); i++)
-		m_materials[i]->Save();
+		m_materials[i]->Serialize();
 }
 
-void MaterialPool::Load()
+void MaterialPool::Deserialize()
 {
 	Clear();
 
@@ -131,7 +131,7 @@ void MaterialPool::Load()
 	for (int i = 0; i < materialCount; i++)
 	{
 		Material* mat = new Material(m_texturePool, m_shaderPool);
-		mat->Load();
+		mat->Deserialize();
 		m_materials.push_back(mat);
 	}
 }
