@@ -31,4 +31,4 @@ The editor presented in the above screenshot is a standalone project developed o
 
 Dependencies that are not included in the repository: AngelScript, Assimp, Bullet, FreeImage.
 
-This project is devoted to my father who always believes in me and encourages me to follow my crazy dreams.
+This project is devoted to my father.
