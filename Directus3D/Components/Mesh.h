@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Misc/Vertex.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
 #include "../Misc/MeshData.h"
+#include <memory>
 //========================================
 
 class __declspec(dllexport) Mesh : public IComponent
@@ -59,7 +60,7 @@ private:
 
 	D3D11Buffer* m_vertexBuffer;
 	D3D11Buffer* m_indexBuffer;
-	MeshData* m_meshData;
+	std::shared_ptr<MeshData> m_meshData;
 	Directus::Math::Vector3 m_min;
 	Directus::Math::Vector3 m_max;
 	Directus::Math::Vector3 m_extent;
