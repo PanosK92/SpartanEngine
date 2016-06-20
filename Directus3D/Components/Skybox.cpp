@@ -19,9 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= LINKING ==========================
+// Required by DDSTextureLoader
+#pragma comment(lib, "WindowsApp.lib")
+//====================================
+
+//= INCLUDES ===========================
 #include "Skybox.h"
-#include <DDSTextureLoader.h>
+#include "../Loading/DDSTextureLoader.h"
 #include "Transform.h"
 #include "MeshRenderer.h"
 #include "Mesh.h"
@@ -30,14 +35,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Texture.h"
 #include "../Math/Vector3.h"
 #include "../Pools/MaterialPool.h"
-//================================
+//======================================
 
 //= NAMESPACES ================
 using namespace DirectX;
 using namespace Directus::Math;
 using namespace std;
 //=============================
-
 Skybox::Skybox()
 {
 	m_environmentSRV = nullptr;

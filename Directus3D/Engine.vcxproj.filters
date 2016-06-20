@@ -181,6 +181,7 @@
     <ClCompile Include="Core\Engine.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="Loading\DDSTextureLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\D3D11\D3D11Buffer.h">
@@ -393,6 +394,7 @@
     <ClInclude Include="Core\Engine.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="Loading\DDSTextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Components">
