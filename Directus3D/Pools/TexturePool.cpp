@@ -67,7 +67,10 @@ shared_ptr<Texture> TexturePool::Add(shared_ptr<Texture> texture)
 	// If loaded, return the already loaded one
 	shared_ptr<Texture> loaded = GetTextureByPath(texture->GetPath());
 	if (loaded)
+	{
+		texture.reset();
 		return loaded;
+	}
 
 	// If not, save it and return it
 	m_textures.push_back(texture);

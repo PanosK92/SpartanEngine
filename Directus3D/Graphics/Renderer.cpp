@@ -268,7 +268,7 @@ void Renderer::RenderToGBuffer(vector<GameObject*> renderableGameObjects, Light*
 		GameObject* gameObject = renderableGameObjects[i];
 		Mesh* mesh = gameObject->GetComponent<Mesh>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
-		std::shared_ptr<Material> material = meshRenderer->GetMaterial();
+		shared_ptr<Material> material = meshRenderer->GetMaterial();
 		Matrix worldMatrix = gameObject->GetTransform()->GetWorldMatrix();
 
 		if (!mesh || !meshRenderer || !material)
@@ -369,22 +369,18 @@ void Renderer::DebugDraw(GameObject* camera)
 
 	// Get the line renderer component
 	LineRenderer* lineRenderer = camera->GetComponent<LineRenderer>();
-	if (!lineRenderer) lineRenderer = camera->AddComponent<LineRenderer>();
+	if (!lineRenderer) 
+		return;
 
-	// Get debug draw data from bullet
-	vector<VertexPositionColor> lines = m_physics->GetPhysicsDebugDraw()->GetLines();
-	int vertexCount = lines.size();
-
-	// Pass it to the line renderer
-	for (unsigned int i = 0; i < vertexCount; i++)
-		lineRenderer->AddPoint(lines[i].position, lines[i].color);
+	// Pass the line list from bullet to the line renderer component
+	lineRenderer->AddLineList(m_physics->GetPhysicsDebugDraw()->GetLines());
 
 	// Set the buffer
 	lineRenderer->SetBuffer();
 
 	// Render
 	m_debugShader->Render(
-		vertexCount,
+		lineRenderer->GetVertexCount(),
 		Matrix::Identity(),
 		camera->GetComponent<Camera>()->GetViewMatrix(),
 		camera->GetComponent<Camera>()->GetProjectionMatrix(),
