@@ -251,7 +251,7 @@ void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* ga
 	if (scene->HasMaterials())
 	{
 		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-		gameobject->AddComponent<MeshRenderer>()->SetMaterial(ProcessMaterial(material));
+		gameobject->AddComponent<MeshRenderer>()->SetMaterial(GenerateMaterialFromAiMaterial(material));
 	}
 
 	// free memory
@@ -259,9 +259,9 @@ void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* ga
 	indices.clear();
 }
 
-Material* ModelLoader::ProcessMaterial(aiMaterial* material)
+shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 {
-	Material* engineMaterial = new Material(m_texturePool, m_shaderPool);
+	shared_ptr<Material> engineMaterial(new Material(m_texturePool, m_shaderPool));
 
 	/*------------------------------------------------------------------------------
 	[NAME]

@@ -53,11 +53,31 @@ ShaderVariation::~ShaderVariation()
 	DirectusSafeDelete(m_D3D11Shader);
 }
 
-void ShaderVariation::Initialize(Material* material, D3D11Device* d3d11device)
+void ShaderVariation::Initialize(
+	bool albedo,
+	bool roughness,
+	bool metallic,
+	bool occlusion,
+	bool normal,
+	bool height,
+	bool mask,
+	bool cubemap,
+	D3D11Device* d3d11device
+	)
 {
+	// Save the properties of the material
+	m_hasAlbedoTexture = albedo;
+	m_hasRoughnessTexture = roughness;
+	m_hasMetallicTexture = metallic;
+	m_hasOcclusionTexture = occlusion;
+	m_hasNormalTexture = normal;
+	m_hasHeightTexture = height;
+	m_hasMaskTexture = mask;
+	m_hasCubeMap = cubemap;
+
 	m_D3D11Device = d3d11device;
 	m_ID = GENERATE_GUID; // generate an ID for this shader
-	Load(material); // load the shader
+	Load(); // load the shader
 }
 
 void ShaderVariation::Set()
@@ -65,35 +85,25 @@ void ShaderVariation::Set()
 	m_D3D11Shader->Set();
 }
 
-void ShaderVariation::AddDefinesBasedOnMaterial(Material* material)
+void ShaderVariation::AddDefinesBasedOnMaterial()
 {
-	// Save the properties of the material
-	m_hasAlbedoTexture = material->HasTextureOfType(Albedo);
-	m_hasRoughnessTexture = material->HasTextureOfType(Roughness);
-	m_hasMetallicTexture = material->HasTextureOfType(Metallic);
-	m_hasOcclusionTexture = material->HasTextureOfType(Occlusion);
-	m_hasNormalTexture = material->HasTextureOfType(Normal);
-	m_hasHeightTexture = material->HasTextureOfType(Height);
-	m_hasMaskTexture = material->HasTextureOfType(Mask);
-	m_hasCubeMap = material->HasTextureOfType(CubeMap);
-
 	// Write the properties of the material as defines
-	m_D3D11Shader->AddDefine("ALBEDO_MAP", material->HasTextureOfType(Albedo));
-	m_D3D11Shader->AddDefine("ROUGHNESS_MAP", material->HasTextureOfType(Roughness));
-	m_D3D11Shader->AddDefine("METALLIC_MAP", material->HasTextureOfType(Metallic));
-	m_D3D11Shader->AddDefine("OCCLUSION_MAP", material->HasTextureOfType(Occlusion));
-	m_D3D11Shader->AddDefine("NORMAL_MAP", material->HasTextureOfType(Normal));
-	m_D3D11Shader->AddDefine("HEIGHT_MAP", material->HasTextureOfType(Height));
-	m_D3D11Shader->AddDefine("MASK_MAP", material->HasTextureOfType(Mask));
-	m_D3D11Shader->AddDefine("CUBE_MAP", material->HasTextureOfType(CubeMap));
+	m_D3D11Shader->AddDefine("ALBEDO_MAP", m_hasAlbedoTexture);
+	m_D3D11Shader->AddDefine("ROUGHNESS_MAP", m_hasRoughnessTexture);
+	m_D3D11Shader->AddDefine("METALLIC_MAP", m_hasMetallicTexture);
+	m_D3D11Shader->AddDefine("OCCLUSION_MAP", m_hasOcclusionTexture);
+	m_D3D11Shader->AddDefine("NORMAL_MAP", m_hasNormalTexture);
+	m_D3D11Shader->AddDefine("HEIGHT_MAP", m_hasHeightTexture);
+	m_D3D11Shader->AddDefine("MASK_MAP", m_hasMaskTexture);
+	m_D3D11Shader->AddDefine("CUBE_MAP", m_hasCubeMap);
 }
 
-void ShaderVariation::Load(Material* material)
+void ShaderVariation::Load()
 {
 	// load the vertex and the pixel shader
 	m_D3D11Shader = new D3D11Shader();
 	m_D3D11Shader->Initialize(m_D3D11Device);
-	AddDefinesBasedOnMaterial(material);
+	AddDefinesBasedOnMaterial();
 	m_D3D11Shader->Load("Assets/Shaders/GBuffer.hlsl");
 	m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
 	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
@@ -104,7 +114,7 @@ void ShaderVariation::Load(Material* material)
 	m_befaultBuffer->Initialize(sizeof(DefaultBufferType), m_D3D11Device);
 }
 
-void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mProjection, Light* directionalLight, Material* material)
+void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mProjection, Light* directionalLight, shared_ptr<Material> material)
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{
@@ -180,37 +190,42 @@ string ShaderVariation::GetID()
 	return m_ID;
 }
 
-bool ShaderVariation::MatchesMaterial(Material* material)
+bool ShaderVariation::HasAlbedoTexture()
 {
-	if (!material)
-	{
-		LOG("Can't compare with null material.", Warning);
-		return false;
-	}
+	return m_hasAlbedoTexture;
+}
 
-	if (m_hasAlbedoTexture != material->HasTextureOfType(Albedo))
-		return false;
+bool ShaderVariation::HasRoughnessTexture()
+{
+	return m_hasRoughnessTexture;
+}
 
-	if (m_hasRoughnessTexture != material->HasTextureOfType(Roughness))
-		return false;
+bool ShaderVariation::HasMetallicTexture()
+{
+	return m_hasMetallicTexture;
+}
 
-	if (m_hasMetallicTexture != material->HasTextureOfType(Metallic))
-		return false;
+bool ShaderVariation::HasOcclusionTexture()
+{
+	return m_hasOcclusionTexture;
+}
 
-	if (m_hasOcclusionTexture != material->HasTextureOfType(Occlusion))
-		return false;
+bool ShaderVariation::HasNormalTexture()
+{
+	return m_hasNormalTexture;
+}
 
-	if (m_hasNormalTexture != material->HasTextureOfType(Normal))
-		return false;
+bool ShaderVariation::HasHeightTexture()
+{
+	return m_hasHeightTexture;
+}
 
-	if (m_hasHeightTexture != material->HasTextureOfType(Height))
-		return false;
+bool ShaderVariation::HasMaskTexture()
+{
+	return m_hasMaskTexture;
+}
 
-	if (m_hasMaskTexture != material->HasTextureOfType(Mask))
-		return false;
-
-	if (m_hasCubeMap != material->HasTextureOfType(CubeMap))
-		return false;
-
-	return true;
+bool ShaderVariation::HasCubeMapTexture()
+{
+	return m_hasCubeMap;
 }

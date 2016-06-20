@@ -59,14 +59,14 @@ public:
 	/*------------------------------------------------------------------------------
 									[MATERIAL]
 	------------------------------------------------------------------------------*/
-	Material* GetMaterial();
-	void SetMaterial(Material* material);
+	std::shared_ptr<Material> GetMaterial();
+	void SetMaterial(std::shared_ptr<Material> material);
 	void SetMaterialStandardDefault();
 	void SetMaterialStandardSkybox();
 	bool HasMaterial();
 
 private:
-	Material* m_material;
+	std::shared_ptr<Material> m_material;
 	bool m_castShadows;
 	bool m_receiveShadows;
 };

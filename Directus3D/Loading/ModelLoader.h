@@ -52,7 +52,7 @@ private:
 	------------------------------------------------------------------------------*/
 	void ProcessNode(aiNode* assimpNode, const aiScene* assimpScene, GameObject* rootGameObject);
 	void ProcessMesh(aiMesh* assimpMesh, const aiScene* assimpScene, GameObject* parentGameObject);
-	Material* ProcessMaterial(aiMaterial* assimpMaterial);
+	std::shared_ptr<Material> GenerateMaterialFromAiMaterial(aiMaterial* assimpMaterial);
 
 	/*------------------------------------------------------------------------------
 									[HELPER FUNCTIONS]

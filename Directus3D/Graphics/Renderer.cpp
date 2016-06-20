@@ -40,7 +40,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
-
 //=============================
 
 Renderer::Renderer()
@@ -269,7 +268,7 @@ void Renderer::RenderToGBuffer(vector<GameObject*> renderableGameObjects, Light*
 		GameObject* gameObject = renderableGameObjects[i];
 		Mesh* mesh = gameObject->GetComponent<Mesh>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
-		Material* material = meshRenderer->GetMaterial();
+		std::shared_ptr<Material> material = meshRenderer->GetMaterial();
 		Matrix worldMatrix = gameObject->GetTransform()->GetWorldMatrix();
 
 		if (!mesh || !meshRenderer || !material)

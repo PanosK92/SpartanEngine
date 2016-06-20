@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================
 #include "../Graphics/Shaders/ShaderVariation.h"
-
 //==============================================
 
 class ShaderPool
@@ -32,12 +31,30 @@ public:
 	ShaderPool(D3D11Device* d3d11device);
 	~ShaderPool();
 
-	ShaderVariation* CreateShaderBasedOnMaterial(Material* material);
+	ShaderVariation* CreateShaderBasedOnMaterial(
+		bool albedo,
+		bool roughness,
+		bool metallic,
+		bool occlusion,
+		bool normal,
+		bool height,
+		bool mask,
+		bool cubemap
+	);
 	ShaderVariation* GetShaderByID(std::string shaderID);
 	void Clear();
 
 private:
-	ShaderVariation* FindMatchingShader(Material* material);
+	ShaderVariation* FindMatchingShader(
+		bool albedo,
+		bool roughness,
+		bool metallic,
+		bool occlusion,
+		bool normal,
+		bool height,
+		bool mask,
+		bool cubemap
+	);
 
 	std::vector<ShaderVariation*> m_shaders;
 	D3D11Device* m_D3D11Device;

@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
-
 //=============================
 
 MaterialPool::MaterialPool(TexturePool* texturePool, ShaderPool* shaderPool)
@@ -50,15 +49,11 @@ MaterialPool::~MaterialPool()
 // Removes all the materials
 void MaterialPool::Clear()
 {
-	vector<Material*>::iterator it;
-	for (it = m_materials.begin(); it < m_materials.end(); ++it)
-		delete *it;
-
 	m_materials.clear();
 	m_materials.shrink_to_fit();
 }
 
-Material* MaterialPool::AddMaterial(Material* material)
+shared_ptr<Material> MaterialPool::AddMaterial(shared_ptr<Material> material)
 {
 	if (!material)
 	{
@@ -80,7 +75,7 @@ Material* MaterialPool::AddMaterial(Material* material)
 	return material;
 }
 
-Material* MaterialPool::GetMaterialByID(string materialID)
+shared_ptr<Material> MaterialPool::GetMaterialByID(string materialID)
 {
 	for (auto i = 0; i < m_materials.size(); i++)
 	{
@@ -91,7 +86,7 @@ Material* MaterialPool::GetMaterialByID(string materialID)
 	return nullptr;
 }
 
-Material* MaterialPool::GetMaterialStandardDefault()
+shared_ptr<Material> MaterialPool::GetMaterialStandardDefault()
 {
 	if (m_materials.empty())
 		AddStandardMaterials();
@@ -99,7 +94,7 @@ Material* MaterialPool::GetMaterialStandardDefault()
 	return GetMaterialByID("Standard_Material_0");
 }
 
-Material* MaterialPool::GetMaterialStandardSkybox()
+shared_ptr<Material> MaterialPool::GetMaterialStandardSkybox()
 {
 	if (m_materials.empty())
 		AddStandardMaterials();
@@ -130,7 +125,7 @@ void MaterialPool::Deserialize()
 	// load materials
 	for (int i = 0; i < materialCount; i++)
 	{
-		Material* mat = new Material(m_texturePool, m_shaderPool);
+		shared_ptr<Material> mat(new Material(m_texturePool, m_shaderPool));
 		mat->Deserialize();
 		m_materials.push_back(mat);
 	}
@@ -139,15 +134,15 @@ void MaterialPool::Deserialize()
 /*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
-void MaterialPool::RemoveMaterial(Material* material)
+void MaterialPool::RemoveMaterial(shared_ptr<Material> material)
 {
 	// make sure the material is not null
 	if (!material) return;
 
-	vector<Material*>::iterator it;
+	vector<shared_ptr<Material>>::iterator it;
 	for (it = m_materials.begin(); it != m_materials.end();)
 	{
-		Material* mat = *it;
+		shared_ptr<Material> mat = *it;
 		if (mat->GetID() == material->GetID())
 		{
 			it = m_materials.erase(it);
@@ -159,7 +154,7 @@ void MaterialPool::RemoveMaterial(Material* material)
 
 void MaterialPool::AddStandardMaterials()
 {
-	Material* defaultMaterial = new Material(m_texturePool, m_shaderPool);
+	shared_ptr<Material> defaultMaterial(new Material(m_texturePool, m_shaderPool));
 	defaultMaterial->SetName("Standard_Default");
 	defaultMaterial->SetID("Standard_Material_0");
 	defaultMaterial->SetColorAlbedo(Vector4(1, 1, 1, 1));
@@ -167,7 +162,7 @@ void MaterialPool::AddStandardMaterials()
 
 	// A texture must be loaded for that one, if all goes smooth
 	// it's done by the skybox component
-	Material* skyboxMaterial = new Material(m_texturePool, m_shaderPool);
+	shared_ptr<Material> skyboxMaterial(new Material(m_texturePool, m_shaderPool));
 	skyboxMaterial->SetName("Standard_Skybox");
 	skyboxMaterial->SetID("Standard_Material_1");
 	skyboxMaterial->SetFaceCulling(CullNone);

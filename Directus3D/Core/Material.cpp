@@ -31,20 +31,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
-
 //=============================
 
 Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 {
 	m_texturePool = texturePool;
 	m_shaderPool = shaderPool;
-	m_name = "N/A";
+	m_shader = nullptr;
 	m_ID = GENERATE_GUID;
-	shadingMode = Physically_Based;
+	m_name = "N/A";
+	m_modelID = "N/A";
 	culling = CullBack;
-	tiling = Vector2(1.0f, 1.0f);
-	alphaBlending = false;
 	opacity = 1.0f;
+	alphaBlending = false;
+	shadingMode = Physically_Based;
+	colorAlbedo = false;
+	roughness = false;
+	metallic = false;
+	occlusion = false;
+	normalStrength = 0.0f;
+	height = false;
+	reflectivity = 0.0f;
+	tiling = Vector2(1.0f, 1.0f);
 
 	AcquireShader();
 }
@@ -201,7 +209,16 @@ void Material::AcquireShader()
 {
 	// Add a shader to the pool based on this material, if a 
 	// matching shader already exists, it will be returned instead.
-	m_shader = m_shaderPool->CreateShaderBasedOnMaterial(this);
+	m_shader = m_shaderPool->CreateShaderBasedOnMaterial(
+		HasTextureOfType(Albedo),
+		HasTextureOfType(Roughness),
+		HasTextureOfType(Metallic),
+		HasTextureOfType(Occlusion),
+		HasTextureOfType(Normal),
+		HasTextureOfType(Height),
+		HasTextureOfType(Mask),
+		HasTextureOfType(CubeMap)
+	);
 }
 
 ShaderVariation* Material::GetShader()
