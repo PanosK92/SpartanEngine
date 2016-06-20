@@ -405,7 +405,7 @@ void Renderer::Pong()
 
 void Renderer::StartCalculatingStats()
 {
-	m_renderStartTime = m_timer->GetTime();
+	m_renderStartTime = m_timer->GetTimeMs();
 	m_meshesRendered = 0;
 }
 
@@ -415,14 +415,14 @@ void Renderer::StopCalculatingStats()
 	m_renderedMeshesCount = m_meshesRendered;
 
 	// get current time
-	float currentTime = m_timer->GetTime();
+	float currentTime = m_timer->GetTimeMs();
 
 	// calculate render time
 	m_renderTime = currentTime - m_renderStartTime;
 
 	// fps
 	m_frameCount++;
-	if (currentTime >= m_fpsLastKnownTime + 1)
+	if (currentTime >= m_fpsLastKnownTime + 1000)
 	{
 		m_fps = m_frameCount;
 		m_frameCount = 0;
@@ -473,7 +473,7 @@ float Renderer::GetFPS()
 	return m_fps;
 }
 
-float Renderer::GetRenderTime()
+float Renderer::GetRenderTimeMs()
 {
 	return m_renderTime;
 }

@@ -52,7 +52,8 @@ void ColorShader::Initialize(D3D11Device* d3d11device)
 
 	// create buffer
 	m_miscBuffer = new D3D11Buffer();
-	m_miscBuffer->Initialize(sizeof(MiscBufferType), m_d3d11Device);
+	m_miscBuffer->Initialize(m_d3d11Device);
+	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
 }
 
 void ColorShader::Render(int vertexCount, Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix)

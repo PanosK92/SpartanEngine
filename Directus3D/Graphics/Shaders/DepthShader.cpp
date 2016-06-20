@@ -54,7 +54,8 @@ void DepthShader::Initialize(D3D11Device* d3d11device)
 
 	// create a buffer
 	m_defaultBuffer = new D3D11Buffer();
-	m_defaultBuffer->Initialize(sizeof(DefaultBuffer), m_D3D11Device);
+	m_defaultBuffer->Initialize(m_D3D11Device);
+	m_defaultBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
 void DepthShader::Render(int indexCount, Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix)

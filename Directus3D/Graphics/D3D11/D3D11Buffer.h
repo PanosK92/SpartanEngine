@@ -33,17 +33,18 @@ public:
 	D3D11Buffer();
 	~D3D11Buffer();
 
-	bool Initialize(unsigned int size, D3D11Device* d3d11device);
-	bool Initialize(std::vector<VertexPositionTextureNormalTangent> vertices, D3D11Device* d3d11device);
-	bool Initialize(std::vector<unsigned int> indices, D3D11Device* d3d11device);
-
+	void Initialize(D3D11Device* d3d11device);
+	bool CreateConstantBuffer(unsigned int size);
+	bool CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent> vertices);
+	bool CreateIndexBuffer(std::vector<unsigned int> indices);
+	bool Create(unsigned int stride, unsigned int size, void* data, D3D11_USAGE usage, D3D11_BIND_FLAG bindFlag, D3D11_CPU_ACCESS_FLAG cpuAccessFlag);
+	
 	void SetIA();
 	void SetVS(unsigned int startSlot);
 	void SetPS(unsigned int startSlot);
 
 	void* Map();
 	void Unmap();
-
 private:
 	D3D11Device* m_D3D11Device;
 	ID3D11Buffer* m_buffer;
@@ -52,9 +53,4 @@ private:
 	D3D11_USAGE m_usage;
 	D3D11_BIND_FLAG m_bindFlag;
 	D3D11_CPU_ACCESS_FLAG m_cpuAccessFlag;
-
-	/*------------------------------------------------------------------------------
-									[PRIVATE]
-	------------------------------------------------------------------------------*/
-	bool CreateBuffer(unsigned int size, void* data, D3D11_USAGE usage, D3D11_BIND_FLAG bindFlag, D3D11_CPU_ACCESS_FLAG cpuAccessFlag);
 };

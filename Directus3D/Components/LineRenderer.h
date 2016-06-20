@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Core/Vertex.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
+#include <memory>
+
 //========================================
 
 class __declspec(dllexport) LineRenderer : public IComponent
@@ -39,33 +41,24 @@ public:
 	virtual void Save();
 	virtual void Load();
 
-	/*------------------------------------------------------------------------------
-									[INPUT]
-	------------------------------------------------------------------------------*/
+	//= INPUT ==============================================================================================
 	void AddLineList(std::vector<VertexPositionColor> vertices);
 	void AddLine(Directus::Math::Vector3 start, Directus::Math::Vector3 end, Directus::Math::Vector4 color);
 	void AddVertex(Directus::Math::Vector3 point, Directus::Math::Vector4 color);
-	/*------------------------------------------------------------------------------
-									[MISC]
-	------------------------------------------------------------------------------*/
+
+	//= MISC =====================
 	void SetBuffer();
 	unsigned int GetVertexCount();
 
 private:
-	/*------------------------------------------------------------------------------
-									[VERTICES]
-	------------------------------------------------------------------------------*/
+	//= VERTICES ==============================
 	std::vector<VertexPositionColor> m_vertices;
 
-	/*------------------------------------------------------------------------------
-									[VERTEX BUFFER]
-	------------------------------------------------------------------------------*/
-	ID3D11Buffer* m_vertexBuffer;
+	//= VERTEX BUFFER ==========================
+	std::shared_ptr<D3D11Buffer> m_vertexBuffer;
+	int m_maximumVertices = 1000000;
 
-	/*------------------------------------------------------------------------------
-										[MISC]
-	------------------------------------------------------------------------------*/
-	void CreateDynamicVertexBuffer();
+	//= MISC =================
 	void UpdateVertexBuffer();
 	void ClearVertices();
 };

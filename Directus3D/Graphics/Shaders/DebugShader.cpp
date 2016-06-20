@@ -53,7 +53,8 @@ void DebugShader::Initialize(D3D11Device* d3d11device)
 
 	// create buffer
 	m_miscBuffer = new D3D11Buffer();
-	m_miscBuffer->Initialize(sizeof(DefaultBuffer), m_D3D11Device);
+	m_miscBuffer->Initialize(m_D3D11Device);
+	m_miscBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
 void DebugShader::Render(int vertexCount, Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix, ID3D11ShaderResourceView* depthMap)

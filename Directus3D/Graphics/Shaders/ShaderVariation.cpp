@@ -111,7 +111,8 @@ void ShaderVariation::Load()
 
 	// material buffer
 	m_befaultBuffer = new D3D11Buffer();
-	m_befaultBuffer->Initialize(sizeof(DefaultBufferType), m_D3D11Device);
+	m_befaultBuffer->Initialize(m_D3D11Device);
+	m_befaultBuffer->CreateConstantBuffer(sizeof(DefaultBufferType));
 }
 
 void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mProjection, Light* directionalLight, shared_ptr<Material> material)
