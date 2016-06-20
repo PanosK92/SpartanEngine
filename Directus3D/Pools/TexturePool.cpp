@@ -52,20 +52,20 @@ void TexturePool::Deserialize()
 	int textureCount = Serializer::LoadInt();
 	for (int i = 0; i < textureCount; i++)
 	{
-		Texture* texture = new Texture();
+		shared_ptr<Texture> texture(new Texture());
 		texture->Deserialize();
 
 		m_textures.push_back(texture);
 	}
 }
 
-Texture* TexturePool::Add(Texture* texture)
+shared_ptr<Texture> TexturePool::Add(shared_ptr<Texture> texture)
 {
 	if (!texture)
 		return nullptr;
 
 	// If loaded, return the already loaded one
-	Texture* loaded = GetTextureByPath(texture->GetPath());
+	shared_ptr<Texture> loaded = GetTextureByPath(texture->GetPath());
 	if (loaded)
 		return loaded;
 
@@ -74,7 +74,7 @@ Texture* TexturePool::Add(Texture* texture)
 	return texture;
 }
 
-Texture* TexturePool::GetTextureByName(string name)
+shared_ptr<Texture> TexturePool::GetTextureByName(string name)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 	{
@@ -85,7 +85,7 @@ Texture* TexturePool::GetTextureByName(string name)
 	return nullptr;
 }
 
-Texture* TexturePool::GetTextureByID(string ID)
+shared_ptr<Texture> TexturePool::GetTextureByID(string ID)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 	{
@@ -96,7 +96,7 @@ Texture* TexturePool::GetTextureByID(string ID)
 	return nullptr;
 }
 
-Texture* TexturePool::GetTextureByPath(string path)
+shared_ptr<Texture> TexturePool::GetTextureByPath(string path)
 {
 	for (unsigned int i = 0; i < m_textures.size(); i++)
 		if (m_textures[i]->GetPath() == path)
@@ -107,13 +107,12 @@ Texture* TexturePool::GetTextureByPath(string path)
 
 void TexturePool::RemoveTextureByPath(string path)
 {
-	vector<Texture*>::iterator it;
+	vector<shared_ptr<Texture>>::iterator it;
 	for (it = m_textures.begin(); it < m_textures.end();)
 	{
-		Texture* tex = *it;
+		shared_ptr<Texture> tex = *it;
 		if (tex->GetPath() == path)
 		{
-			delete tex;
 			it = m_textures.erase(it);
 			return;
 		}
@@ -123,10 +122,6 @@ void TexturePool::RemoveTextureByPath(string path)
 
 void TexturePool::Clear()
 {
-	vector<Texture*>::iterator it;
-	for (it = m_textures.begin(); it < m_textures.end(); ++it)
-		delete *it;
-
 	m_textures.clear();
 	m_textures.shrink_to_fit();
 }
@@ -134,7 +129,7 @@ void TexturePool::Clear()
 /*------------------------------------------------------------------------------
 						[HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
-int TexturePool::GetTextureIndex(Texture* texture)
+int TexturePool::GetTextureIndex(shared_ptr<Texture> texture)
 {
 	for (unsigned int i = 0; i < m_textures.size(); i++)
 		if (m_textures[i]->GetPath() == texture->GetPath())

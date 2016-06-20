@@ -76,7 +76,7 @@ inline ThreadPool::ThreadPool() : stop(false)
 						                     });
 						if (this->stop && this->tasks.empty())
 							return;
-						task = std::move(this->tasks.front());
+						task = move(this->tasks.front());
 						this->tasks.pop();
 					}
 

@@ -101,7 +101,7 @@ void Material::Deserialize()
 	for (int i = 0; i < textureCount; i++)
 	{
 		string textureID = Serializer::LoadSTR();
-		Texture* texture = m_texturePool->GetTextureByID(textureID);
+		shared_ptr<Texture> texture = m_texturePool->GetTextureByID(textureID);
 		if (texture)
 		{
 			LOG("Failed to acquire texture with ID: \"" + textureID + "\" for material \"" + m_name +"\" from the texture pool.", Log::Error);
@@ -115,7 +115,7 @@ void Material::Deserialize()
 /*------------------------------------------------------------------------------
 								[TEXTURES]
 ------------------------------------------------------------------------------*/
-void Material::AddTexture(Texture* texture)
+void Material::AddTexture(shared_ptr<Texture> texture)
 {
 	if (!texture)
 		return;
@@ -147,7 +147,7 @@ void Material::AddTexture(Texture* texture)
 	AcquireShader(); // takes into account any existing textures
 }
 
-Texture* Material::GetTextureByType(TextureType type)
+shared_ptr<Texture> Material::GetTextureByType(TextureType type)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 	{
@@ -160,7 +160,7 @@ Texture* Material::GetTextureByType(TextureType type)
 
 bool Material::HasTextureOfType(TextureType type)
 {
-	Texture* texture = GetTextureByType(type);
+	shared_ptr<Texture> texture = GetTextureByType(type);
 	if (texture)
 		return true;
 
@@ -178,7 +178,7 @@ bool Material::HasTexture(string path)
 
 string Material::GetTexturePathByType(TextureType type)
 {
-	Texture* texture = GetTextureByType(type);
+	shared_ptr<Texture> texture = GetTextureByType(type);
 	if (texture)
 		return texture->GetPath();
 
@@ -219,7 +219,7 @@ bool Material::HasShader()
 
 ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureType type)
 {
-	Texture* texture = GetTextureByType(type);
+	shared_ptr<Texture> texture = GetTextureByType(type);
 
 	if (texture)
 		return texture->GetID3D11ShaderResourceView();

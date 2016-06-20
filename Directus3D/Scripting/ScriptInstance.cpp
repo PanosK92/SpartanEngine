@@ -71,7 +71,7 @@ bool ScriptInstance::IsInstantiated()
 	return m_isInstantiated;
 }
 
-std::string ScriptInstance::GetScriptPath()
+string ScriptInstance::GetScriptPath()
 {
 	return m_scriptPath;
 }

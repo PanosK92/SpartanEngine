@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/D3D11/D3D11Shader.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
+#include <memory>
 //========================================
 
 class ShaderVariation;
@@ -62,8 +63,8 @@ public:
 	/*------------------------------------------------------------------------------
 										[TEXTURES]
 	------------------------------------------------------------------------------*/
-	void AddTexture(Texture* texture);
-	Texture* GetTextureByType(TextureType type);
+	void AddTexture(std::shared_ptr<Texture> texture);
+	std::shared_ptr<Texture> GetTextureByType(TextureType type);
 	bool HasTextureOfType(TextureType type);
 	bool HasTexture(std::string path);
 	std::string GetTexturePathByType(TextureType type);
@@ -123,7 +124,7 @@ public:
 	Directus::Math::Vector2 GetTiling();
 
 private:
-	std::vector<Texture*> m_textures;
+	std::vector<std::shared_ptr<Texture>> m_textures;
 	std::string m_ID;
 	std::string m_name;
 	std::string m_modelID;

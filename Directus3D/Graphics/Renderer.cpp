@@ -80,7 +80,6 @@ Renderer::~Renderer()
 	// textures
 	DirectusSafeDelete(m_renderTexturePing);
 	DirectusSafeDelete(m_renderTexturePong);
-	DirectusSafeDelete(m_noiseMap);
 }
 
 void Renderer::Initialize(bool debugDraw, D3D11Device* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene)
@@ -131,7 +130,7 @@ void Renderer::Initialize(bool debugDraw, D3D11Device* d3d11device, Timer* timer
 	/*------------------------------------------------------------------------------
 										[MISC]
 	------------------------------------------------------------------------------*/
-	m_noiseMap = new Texture();
+	m_noiseMap = make_shared<Texture>();
 	m_noiseMap->LoadFromFile("Assets/Shaders/noise.png", Normal);
 	m_noiseMap->SetType(Normal);
 }

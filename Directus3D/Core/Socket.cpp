@@ -186,7 +186,7 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 	Material* material = gameObject->GetComponent<MeshRenderer>()->GetMaterial();
 	if (material)
 	{
-		Texture* texture = new Texture();
+		shared_ptr<Texture> texture(new Texture());
 		texture->LoadFromFile(texturePath, type);
 		material->AddTexture(texture);
 	}
