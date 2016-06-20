@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "D3D11Sampler.h"
 #include "D3D11Device.h"
-#include "../../Misc/Globals.h"
-#include "../../Misc/Settings.h"
+#include "../../Core/Globals.h"
+#include "../../Core/Settings.h"
 #include "../../IO/Log.h"
 
 //=============================

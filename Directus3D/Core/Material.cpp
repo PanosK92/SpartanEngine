@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "../Pools/TexturePool.h"
 #include "../IO/Serializer.h"
-#include "../Misc/GUIDGenerator.h"
+#include "../Core/GUIDGenerator.h"
 #include "../Pools/ShaderPool.h"
 #include "../IO/Log.h"
 //================================

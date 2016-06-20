@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include "../IO/Log.h"
 #include "../Components/RigidBody.h"
-#include "../Misc/Settings.h"
+#include "../Core/Settings.h"
 #include "../Components/Camera.h"
 #include "../Core/GameObject.h"
 #include "../Components/Transform.h"

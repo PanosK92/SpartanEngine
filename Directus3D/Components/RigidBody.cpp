@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <LinearMath/btMotionState.h>
 #include "Collider.h"
 #include "../Physics/BulletPhysicsHelper.h"
-#include "../Misc/Settings.h"
+#include "../Core/Settings.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Physics/PhysicsEngine.h"

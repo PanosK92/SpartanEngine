@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================
 #include "Input.h"
-#include "../Misc/Settings.h"
+#include "../Core/Settings.h"
 //===========================
 
 //= NAMESPACES ================

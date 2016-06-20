@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshRenderer.h"
 #include "Mesh.h"
 #include "../Core/GameObject.h"
-#include "../Misc/Globals.h"
+#include "../Core/Globals.h"
 #include "../Core/Texture.h"
 #include "../Math/Vector3.h"
 #include "../Pools/MaterialPool.h"

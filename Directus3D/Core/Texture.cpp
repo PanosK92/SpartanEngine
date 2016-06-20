@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "Texture.h"
-#include "../Misc/GUIDGenerator.h"
-#include "../Misc/Globals.h"
+#include "../Core/GUIDGenerator.h"
+#include "../Core/Globals.h"
 #include "../IO/Serializer.h"
 #include "../IO/Log.h"
 #include "../Loading/ImageLoader.h"

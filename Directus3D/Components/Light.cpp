@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "Light.h"
 #include "Transform.h"
-#include "../Misc/Settings.h"
+#include "../Core/Settings.h"
 #include "../IO/Serializer.h"
 #include "../Core/Scene.h"
 //===========================

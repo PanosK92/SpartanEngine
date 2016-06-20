@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "MeshPool.h"
-#include "../Misc/GUIDGenerator.h"
+#include "../Core/GUIDGenerator.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Components/Mesh.h"
