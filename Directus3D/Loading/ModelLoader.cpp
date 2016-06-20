@@ -263,20 +263,14 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 {
 	shared_ptr<Material> engineMaterial(new Material(m_texturePool, m_shaderPool));
 
-	/*------------------------------------------------------------------------------
-	[NAME]
-	------------------------------------------------------------------------------*/
+	//= NAME ====================================================================
 	aiString name;
 	aiGetMaterialString(material, AI_MATKEY_NAME, &name);
 	engineMaterial->SetName(name.C_Str());
-	engineMaterial->SetModelID(FileHelper::GetFileNameFromPath(m_fullModelPath));
+	engineMaterial->SetModelID(m_modelName);
 
-	/*------------------------------------------------------------------------------
-	[FACE CULLING]
-	------------------------------------------------------------------------------*/
-	// Specifies whether meshes using this material must be rendered
-	// without backface culling. 0 for false, !0 for true.
-	// Culling
+	//= CULLING ===============================================================================================
+	// Specifies whether meshes using this material must be rendered without backface culling. 0 for false, !0 for true.
 	unsigned int max = 1;
 	int two_sided;
 	if ((AI_SUCCESS == aiGetMaterialIntegerArray(material, AI_MATKEY_TWOSIDED, &two_sided, &max)) && two_sided)
@@ -284,23 +278,17 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 	else
 		engineMaterial->SetFaceCulling(CullBack);
 
-	/*------------------------------------------------------------------------------
-	[DIFFUSE COLOR]
-	------------------------------------------------------------------------------*/
+	//= DIFFUSE COLOR ======================================================================================
 	aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
 	aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &colorDiffuse);
 	engineMaterial->SetColorAlbedo(Vector4(colorDiffuse.r, colorDiffuse.g, colorDiffuse.b, colorDiffuse.a));
 
-	/*------------------------------------------------------------------------------
-	[OPACITY]
-	------------------------------------------------------------------------------*/
+	//= OPACITY ==============================================
 	aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
 	aiGetMaterialColor(material, AI_MATKEY_OPACITY, &opacity);
 	engineMaterial->SetOpacity(opacity.r);
 
-	/*------------------------------------------------------------------------------
-	[ALBEDO TEXTURE]
-	------------------------------------------------------------------------------*/
+	//= ALBEDO TEXTURE ======================================================================================================
 	aiString Path;
 	if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
 	{
@@ -321,9 +309,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 		}
 	}
 
-	/*------------------------------------------------------------------------------
-	[OCCLUSION TEXTURE]
-	------------------------------------------------------------------------------*/
+	//= OCCLUSION TEXTURE ====================================================================================================
 	if (material->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
 		if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 		{
@@ -336,9 +322,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			}
 		}
 
-	/*------------------------------------------------------------------------------
-	[NORMAL TEXTURE]
-	------------------------------------------------------------------------------*/
+	//= NORMAL TEXTURE ======================================================================================================
 	if (material->GetTextureCount(aiTextureType_NORMALS) > 0)
 		if (material->GetTexture(aiTextureType_NORMALS, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 		{
@@ -351,9 +335,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			}
 		}
 
-	/*------------------------------------------------------------------------------
-	[HEIGHT TEXTURE]
-	------------------------------------------------------------------------------*/
+	//= HEIGHT TEXTURE =====================================================================================================
 	if (material->GetTextureCount(aiTextureType_HEIGHT) > 0)
 		if (material->GetTexture(aiTextureType_HEIGHT, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 		{
@@ -366,9 +348,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			}
 		}
 
-	/*------------------------------------------------------------------------------
-	[MASK TEXTURE]
-	------------------------------------------------------------------------------*/
+	//= MASK TEXTURE ========================================================================================================
 	if (material->GetTextureCount(aiTextureType_OPACITY) > 0)
 		if (material->GetTexture(aiTextureType_OPACITY, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 		{
