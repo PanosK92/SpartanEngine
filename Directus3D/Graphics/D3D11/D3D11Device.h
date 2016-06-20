@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======
 #include <d3d11.h>
 #include <string>
-
 //=================
 
 class D3D11Device

@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../IO/Log.h"
 #include "../Loading/ImageLoader.h"
+#include "../IO/FileHelper.h"
 //=================================
 
 //= NAMESPACES =====
@@ -93,11 +94,13 @@ bool Texture::LoadFromFile(string path, TextureType type)
 	if (!result)
 	{
 		LOG("Failed to load texture \"" + path + "\".", Log::Error);
+		ImageLoader::GetInstance().Clear();
 		return false;
 	}
 
 	// Fill the texture with data
 	SetPath(ImageLoader::GetInstance().GetPath());
+	SetName(FileHelper::GetFileNameFromPath(GetPath()));
 	SetWidth(ImageLoader::GetInstance().GetWidth());
 	SetHeight(ImageLoader::GetInstance().GetHeight());
 	SetGrayscale(ImageLoader::GetInstance().IsGrayscale());
