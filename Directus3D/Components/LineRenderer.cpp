@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
-
 //=============================
 
 LineRenderer::LineRenderer()
@@ -39,13 +38,12 @@ LineRenderer::LineRenderer()
 LineRenderer::~LineRenderer()
 {
 	DirectusSafeRelease(m_vertexBuffer);
-	delete[] m_vertices;
+	m_vertices.clear();
 }
 
 void LineRenderer::Initialize()
 {
 	// initialize vertex array
-	m_vertices = new VertexPositionColor[m_maxVertices];
 	ClearVertices();
 
 	// craete buffer
@@ -54,28 +52,40 @@ void LineRenderer::Initialize()
 
 void LineRenderer::Update()
 {
+
 }
 
 void LineRenderer::Save()
 {
+
 }
 
 void LineRenderer::Load()
 {
+
 }
 
 /*------------------------------------------------------------------------------
 								[INPUT]
 ------------------------------------------------------------------------------*/
+void LineRenderer::AddLineList(std::vector<VertexPositionColor> vertices)
+{
+	ClearVertices();
+	m_vertices = vertices;
+}
+
 void LineRenderer::AddLine(Vector3 start, Vector3 end, Vector4 color)
 {
 	AddVertex(start, color);
 	AddVertex(end, color);
 }
 
-void LineRenderer::AddPoint(Vector3 point, Vector4 color)
+void LineRenderer::AddVertex(Vector3 position, Vector4 color)
 {
-	AddVertex(point, color);
+	VertexPositionColor vertex;
+	vertex.position = position;
+	vertex.color = color;
+	m_vertices.push_back(vertex);
 }
 
 /*------------------------------------------------------------------------------
@@ -98,22 +108,24 @@ void LineRenderer::SetBuffer()
 	ClearVertices();
 }
 
+unsigned int LineRenderer::GetVertexCount()
+{
+	return unsigned int(m_vertices.size());
+}
+
 /*------------------------------------------------------------------------------
 								[MISC]
 ------------------------------------------------------------------------------*/
-
-void LineRenderer::AddVertex(Vector3 vertex, Vector4 color)
-{
-	m_vertices[m_vertexIndex].position = vertex;
-	m_vertices[m_vertexIndex].color = color;
-	m_vertexIndex++;
-}
-
 void LineRenderer::CreateDynamicVertexBuffer()
 {
+	if (m_vertices.empty())
+		return;
+
+	DirectusSafeRelease(m_vertexBuffer);
+
 	// Set up dynamic vertex buffer
 	D3D11_BUFFER_DESC vertexBufferDesc;
-	vertexBufferDesc.ByteWidth = sizeof(VertexPositionColor) * m_maxVertices;
+	vertexBufferDesc.ByteWidth = sizeof(VertexPositionColor) * 1000000;
 	vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -122,23 +134,32 @@ void LineRenderer::CreateDynamicVertexBuffer()
 
 	// Give the subresource structure a pointer to the vertex data.
 	D3D11_SUBRESOURCE_DATA subResourceData;
-	subResourceData.pSysMem = m_vertices;
+	subResourceData.pSysMem = &m_vertices[0];
 
 	// Create the vertex buffer.
 	HRESULT result = g_d3d11Device->GetDevice()->CreateBuffer(&vertexBufferDesc, &subResourceData, &m_vertexBuffer);
 	if (FAILED(result))
-	LOG("Failed to create line renderer dynamic vertex buffer.", Log::Error);
+		LOG("Failed to create line renderer dynamic vertex buffer.", Log::Error);
 }
 
 void LineRenderer::UpdateVertexBuffer()
 {
+	if (m_vertices.empty())
+		return;
+
+	if (!m_vertexBuffer)
+	{
+		CreateDynamicVertexBuffer();
+		return;
+	}
+
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 
 	// disable GPU access to the vertex buffer data.	
 	g_d3d11Device->GetDeviceContext()->Map(m_vertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 
 	// update the vertex buffer.
-	memcpy(mappedResource.pData, &m_vertices[0], sizeof(VertexPositionColor) * m_maxVertices);
+	memcpy(mappedResource.pData, &m_vertices[0], sizeof(VertexPositionColor) * m_vertices.size());
 
 	// re-enable GPU access to the vertex buffer data.
 	g_d3d11Device->GetDeviceContext()->Unmap(m_vertexBuffer, 0);
@@ -146,11 +167,5 @@ void LineRenderer::UpdateVertexBuffer()
 
 void LineRenderer::ClearVertices()
 {
-	for (int i = 0; i < m_maxVertices; i++)
-	{
-		m_vertices[i].position = Vector3(0, 0, 0);
-		m_vertices[i].color = Vector4(0, 0, 0, 0);
-	}
-
-	m_vertexIndex = 0;
+	m_vertices.clear();
 }

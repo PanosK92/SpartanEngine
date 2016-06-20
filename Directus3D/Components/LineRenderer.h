@@ -42,21 +42,20 @@ public:
 	/*------------------------------------------------------------------------------
 									[INPUT]
 	------------------------------------------------------------------------------*/
+	void AddLineList(std::vector<VertexPositionColor> vertices);
 	void AddLine(Directus::Math::Vector3 start, Directus::Math::Vector3 end, Directus::Math::Vector4 color);
-	void AddPoint(Directus::Math::Vector3 point, Directus::Math::Vector4 color);
-
+	void AddVertex(Directus::Math::Vector3 point, Directus::Math::Vector4 color);
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/
 	void SetBuffer();
+	unsigned int GetVertexCount();
 
 private:
 	/*------------------------------------------------------------------------------
 									[VERTICES]
 	------------------------------------------------------------------------------*/
-	int m_maxVertices = 1000000;
-	VertexPositionColor* m_vertices;
-	int m_vertexIndex;
+	std::vector<VertexPositionColor> m_vertices;
 
 	/*------------------------------------------------------------------------------
 									[VERTEX BUFFER]
@@ -66,7 +65,6 @@ private:
 	/*------------------------------------------------------------------------------
 										[MISC]
 	------------------------------------------------------------------------------*/
-	void AddVertex(Directus::Math::Vector3 point, Directus::Math::Vector4 color);
 	void CreateDynamicVertexBuffer();
 	void UpdateVertexBuffer();
 	void ClearVertices();

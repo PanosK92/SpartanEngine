@@ -62,23 +62,16 @@ bool D3D11Buffer::Initialize(std::vector<VertexPositionTextureNormalTangent> ver
 {
 	m_D3D11Device = d3d11device;
 
-	// convert
-	VertexPositionTextureNormalTangent* vertexArray = new VertexPositionTextureNormalTangent[vertices.size()];
-	for (unsigned int i = 0; i < vertices.size(); i++)
-		vertexArray[i] = vertices[i];
-
 	m_stride = sizeof(VertexPositionTextureNormalTangent);
 	m_size = m_stride * vertices.size();
 	m_usage = D3D11_USAGE_DEFAULT;
 	m_bindFlag = D3D11_BIND_VERTEX_BUFFER;
 	m_cpuAccessFlag = static_cast<D3D11_CPU_ACCESS_FLAG>(0);
 
-	bool result = CreateBuffer(m_size, vertexArray, m_usage, m_bindFlag, m_cpuAccessFlag);
+	bool result = CreateBuffer(m_size, &vertices[0], m_usage, m_bindFlag, m_cpuAccessFlag);
 
 	if (!result)
 		LOG("Failed to create vertex buffer.", Log::Error);
-
-	delete[] vertexArray;
 
 	return result;
 }
@@ -87,23 +80,16 @@ bool D3D11Buffer::Initialize(std::vector<unsigned int> indices, D3D11Device* d3d
 {
 	m_D3D11Device = d3d11device;
 
-	// convert
-	unsigned int* indexArray = new unsigned int[indices.size()];
-	for (unsigned int i = 0; i < indices.size(); i++)
-		indexArray[i] = indices[i];
-
 	m_stride = sizeof(unsigned int);
 	m_size = m_stride * indices.size();
 	m_usage = D3D11_USAGE_DEFAULT;
 	m_bindFlag = D3D11_BIND_INDEX_BUFFER;
 	m_cpuAccessFlag = static_cast<D3D11_CPU_ACCESS_FLAG>(0);
 
-	bool result = CreateBuffer(m_size, indexArray, m_usage, m_bindFlag, m_cpuAccessFlag);
+	bool result = CreateBuffer(m_size, &indices[0], m_usage, m_bindFlag, m_cpuAccessFlag);
 
 	if (!result)
 		LOG("Failed to create index buffer.", Log::Error);
-
-	delete[] indexArray;
 
 	return result;
 }
