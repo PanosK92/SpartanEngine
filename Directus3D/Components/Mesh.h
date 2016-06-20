@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include "../Math/Vector3.h"
 #include <vector>
-#include "../Misc/Vertex.h"
+#include "../Core/Vertex.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
-#include "../Misc/MeshData.h"
+#include "../Core/MeshData.h"
 #include <memory>
 //========================================
 

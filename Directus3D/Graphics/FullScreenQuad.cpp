@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "FullScreenQuad.h"
-#include "../Misc/Globals.h"
-#include "../Misc/Vertex.h"
+#include "../Core/Globals.h"
+#include "../Core/Vertex.h"
 //==========================
 
 //= NAMESPACES ================

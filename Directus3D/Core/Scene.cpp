@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/GameObjectPool.h"
 #include "../IO/FileHelper.h"
 #include "../IO/Log.h"
-#include "../Misc/Settings.h"
+#include "../Core/Settings.h"
 #include "../Graphics//Renderer.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"

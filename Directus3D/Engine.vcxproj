@@ -254,7 +254,7 @@
     <ClInclude Include="Graphics\D3D11\D3D11Shader.h" />
     <ClInclude Include="Graphics\Shaders\DebugShader.h" />
     <ClInclude Include="Graphics\Frustrum.h" />
-    <ClInclude Include="Misc\GUIDGenerator.h" />
+    <ClInclude Include="Core\GUIDGenerator.h" />
     <ClInclude Include="Components\Hinge.h" />
     <ClInclude Include="Components\IComponent.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Device.h" />
@@ -275,7 +275,7 @@
     <ClInclude Include="Pools\GameObjectPool.h" />
     <ClInclude Include="Graphics\GBuffer.h" />
     <ClInclude Include="Graphics\Shaders\ShaderVariation.h" />
-    <ClInclude Include="Misc\Globals.h" />
+    <ClInclude Include="Core\Globals.h" />
     <ClInclude Include="IO\ILogger.h" />
     <ClInclude Include="Loading\ImageLoader.h" />
     <ClInclude Include="Input\DX8Input.h" />
@@ -288,7 +288,7 @@
     <ClInclude Include="Math\Matrix.h" />
     <ClInclude Include="Components\Mesh.h" />
     <ClInclude Include="Components\MeshCollider.h" />
-    <ClInclude Include="Misc\MeshData.h" />
+    <ClInclude Include="Core\MeshData.h" />
     <ClInclude Include="Pools\MeshPool.h" />
     <ClInclude Include="Components\MeshRenderer.h" />
     <ClInclude Include="Loading\ModelLoader.h" />
@@ -301,7 +301,7 @@
     <ClInclude Include="Graphics\Renderer.h" />
     <ClInclude Include="Graphics\D3D11\D3D11RenderTexture.h" />
     <ClInclude Include="Components\RigidBody.h" />
-    <ClInclude Include="Misc\Settings.h" />
+    <ClInclude Include="Core\Settings.h" />
     <ClInclude Include="Core\Texture.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Sampler.h" />
     <ClInclude Include="Core\Scene.h" />
@@ -316,7 +316,7 @@
     <ClInclude Include="Math\Vector3.h" />
     <ClInclude Include="Math\Vector4.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Buffer.h" />
-    <ClInclude Include="Misc\Vertex.h" />
+    <ClInclude Include="Core\Vertex.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Assets\Shaders\Color.hlsl">

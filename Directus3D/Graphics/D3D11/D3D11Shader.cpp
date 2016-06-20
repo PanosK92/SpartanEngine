@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11Shader.h"
 #include "D3D11Device.h"
 #include <sstream>  // std::ostringstream
-#include "../../Misc/Globals.h"
-#include "../../Misc/Settings.h"
+#include "../../Core/Globals.h"
+#include "../../Core/Settings.h"
 #include "../../IO/Log.h"
 #include "../../IO/FileHelper.h"
 #include <d3dcompiler.h>

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene.h"
 #include "Timer.h"
 #include "../Physics/PhysicsEngine.h"
-#include "../Misc/Settings.h"
+#include "../Core/Settings.h"
 #include "../Loading/ImageLoader.h"
 //===================================
 

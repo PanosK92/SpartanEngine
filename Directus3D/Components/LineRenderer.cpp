@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "LineRenderer.h"
-#include "../Misc/Globals.h"
+#include "../Core/Globals.h"
 #include "../IO/Log.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
 //========================================

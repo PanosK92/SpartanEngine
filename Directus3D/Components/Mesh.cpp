@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "Mesh.h"
 #include "Transform.h"
-#include "../Misc/Globals.h"
+#include "../Core/Globals.h"
 #include "../IO/Serializer.h"
 #include "../IO/Log.h"
 #include "../Core/GameObject.h"

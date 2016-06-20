@@ -24,8 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include <LinearMath/btIDebugDraw.h>
 #include <vector>
-#include "../Misc/Vertex.h"
-
+#include "../Core/Vertex.h"
 //===================================
 
 class PhysicsDebugDraw : public btIDebugDraw

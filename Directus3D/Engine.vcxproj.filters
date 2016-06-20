@@ -358,18 +358,6 @@
     <ClInclude Include="Core\Texture.h">
       <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Misc\Vertex.h">
-      <Filter>Misc</Filter>
-    </ClInclude>
-    <ClInclude Include="Misc\MeshData.h">
-      <Filter>Misc</Filter>
-    </ClInclude>
-    <ClInclude Include="Misc\GUIDGenerator.h">
-      <Filter>Misc</Filter>
-    </ClInclude>
-    <ClInclude Include="Misc\Globals.h">
-      <Filter>Misc</Filter>
-    </ClInclude>
     <ClInclude Include="Pools\MeshPool.h">
       <Filter>Pools</Filter>
     </ClInclude>
@@ -378,9 +366,6 @@
     </ClInclude>
     <ClInclude Include="Core\Socket.h">
       <Filter>Core</Filter>
-    </ClInclude>
-    <ClInclude Include="Misc\Settings.h">
-      <Filter>Misc</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\GBuffer.h">
       <Filter>Graphics</Filter>
@@ -395,6 +380,21 @@
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="Loading\DDSTextureLoader.h" />
+    <ClInclude Include="Core\MeshData.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Globals.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\GUIDGenerator.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Settings.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Vertex.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Components">

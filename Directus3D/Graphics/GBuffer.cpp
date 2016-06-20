@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "GBuffer.h"
-#include "../Misc/Globals.h"
+#include "../Core/Globals.h"
 
 //==========================
 

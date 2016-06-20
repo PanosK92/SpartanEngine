@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include "D3D11Device.h"
 #include <string>
-#include "../../Misc/Settings.h"
+#include "../../Core/Settings.h"
 #include "../../IO/Log.h"
 //==============================
 
