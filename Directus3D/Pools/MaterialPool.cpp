@@ -66,7 +66,10 @@ shared_ptr<Material> MaterialPool::AddMaterial(shared_ptr<Material> material)
 	{
 		if (m_materials[i]->GetName() == material->GetName())
 			if (m_materials[i]->GetModelID() == material->GetModelID())
+			{
+				material.reset();
 				return m_materials[i];
+			}
 	}
 
 	// if nothing of the above was true, add the 
