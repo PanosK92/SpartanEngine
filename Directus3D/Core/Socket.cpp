@@ -183,7 +183,7 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 		return;
 	}
 
-	Material* material = gameObject->GetComponent<MeshRenderer>()->GetMaterial();
+	std::shared_ptr<Material> material = gameObject->GetComponent<MeshRenderer>()->GetMaterial();
 	if (material)
 	{
 		shared_ptr<Texture> texture(new Texture());

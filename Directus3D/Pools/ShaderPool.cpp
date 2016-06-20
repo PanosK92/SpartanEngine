@@ -36,19 +36,45 @@ ShaderPool::~ShaderPool()
 	Clear();
 }
 
-ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(Material* material)
+ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
+	bool albedo,
+	bool roughness,
+	bool metallic,
+	bool occlusion,
+	bool normal,
+	bool height,
+	bool mask,
+	bool cubemap
+)
 {
-	if (!material)
-		return nullptr;
-
 	// If an appropriate shader already exists, return it's ID
-	ShaderVariation* existingShader = FindMatchingShader(material);
+	ShaderVariation* existingShader = FindMatchingShader(
+		albedo, 
+		roughness, 
+		metallic, 
+		occlusion, 
+		normal, 
+		height, 
+		mask, 
+		cubemap
+	);
+
 	if (existingShader)
 		return existingShader;
 
 	// If not, create a new one
 	ShaderVariation* shader = new ShaderVariation();
-	shader->Initialize(material, m_D3D11Device);
+	shader->Initialize(
+		albedo,
+		roughness,
+		metallic,
+		occlusion,
+		normal,
+		height,
+		mask,
+		cubemap,
+		m_D3D11Device
+	);
 
 	// Add the shader to the pool and return it
 	m_shaders.push_back(shader);
@@ -64,12 +90,31 @@ ShaderVariation* ShaderPool::GetShaderByID(string shaderID)
 	return nullptr;
 }
 
-ShaderVariation* ShaderPool::FindMatchingShader(Material* material)
+ShaderVariation* ShaderPool::FindMatchingShader(
+	bool albedo,
+	bool roughness,
+	bool metallic,
+	bool occlusion,
+	bool normal,
+	bool height,
+	bool mask,
+	bool cubemap
+)
 {
 	for (int i = 0; i < m_shaders.size(); i++)
 	{
-		if (m_shaders[i]->MatchesMaterial(material))
-			return m_shaders[i];
+		ShaderVariation* shader = m_shaders[i];
+		
+		if (shader->HasAlbedoTexture() != albedo) continue;
+		if (shader->HasAlbedoTexture() != roughness) continue;
+		if (shader->HasAlbedoTexture() != metallic) continue;
+		if (shader->HasAlbedoTexture() != occlusion) continue;
+		if (shader->HasAlbedoTexture() != normal) continue;
+		if (shader->HasAlbedoTexture() != height) continue;
+		if (shader->HasAlbedoTexture() != mask) continue;
+		if (shader->HasAlbedoTexture() != cubemap) continue;
+
+		return shader;
 	}
 
 	return nullptr;

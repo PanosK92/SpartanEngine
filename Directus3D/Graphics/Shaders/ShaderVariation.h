@@ -41,15 +41,33 @@ public:
 	ShaderVariation();
 	~ShaderVariation();
 
-	void Initialize(Material* material, D3D11Device* d3d11device);
+	void Initialize(
+		bool albedo,
+		bool roughness,
+		bool metallic,
+		bool occlusion,
+		bool normal,
+		bool height,
+		bool mask,
+		bool cubemap,
+		D3D11Device* d3d11device
+	);
 	void Set();
-	void Render(int indexCount, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, Light* directionalLight, Material* material);
+	void Render(int indexCount, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, Light* directionalLight, std::shared_ptr<Material> material);
 	std::string GetID();
-	bool MatchesMaterial(Material* material);
+
+	bool HasAlbedoTexture();
+	bool HasRoughnessTexture();
+	bool HasMetallicTexture();
+	bool HasOcclusionTexture();
+	bool HasNormalTexture();
+	bool HasHeightTexture();
+	bool HasMaskTexture();
+	bool HasCubeMapTexture();
 
 private:
-	void AddDefinesBasedOnMaterial(Material* material);
-	void Load(Material* material);
+	void AddDefinesBasedOnMaterial();
+	void Load();
 
 	/*------------------------------------------------------------------------------
 									[PROPERTIES]
