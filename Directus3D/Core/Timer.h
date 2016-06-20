@@ -36,7 +36,13 @@ public:
 	void Update();
 
 	float GetDeltaTime();
+	float GetDeltaTimeMs();
+
 	float GetTime();
+	float GetTimeMs();
+
+	float GetElapsedTime();
+	float GetElapsedTimeMs();
 
 private:
 	INT64 m_frequency;
@@ -44,8 +50,4 @@ private:
 	float m_deltaTime;
 	float m_startTime;
 	float m_lastKnownTime;
-
-	float GetDeltaTimeMs();
-	float GetTimeMs();
-	float GetElapsedTimeMs();
 };

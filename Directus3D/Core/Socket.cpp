@@ -161,12 +161,12 @@ int Socket::GetRenderedMeshesCount()
 
 float Socket::GetDeltaTime()
 {
-	return m_timer->GetDeltaTime();
+	return m_timer->GetDeltaTimeMs();
 }
 
 float Socket::GetRenderTime()
 {
-	return m_renderer->GetRenderTime();
+	return m_renderer->GetRenderTimeMs();
 }
 
 void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string texturePath)
@@ -183,7 +183,7 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 		return;
 	}
 
-	std::shared_ptr<Material> material = gameObject->GetComponent<MeshRenderer>()->GetMaterial();
+	shared_ptr<Material> material = gameObject->GetComponent<MeshRenderer>()->GetMaterial();
 	if (material)
 	{
 		shared_ptr<Texture> texture(new Texture());

@@ -272,8 +272,10 @@ void Mesh::CreateBuffers()
 	DirectusSafeDelete(m_indexBuffer);
 
 	m_vertexBuffer = new D3D11Buffer();
-	m_vertexBuffer->Initialize(GetVertices(), g_d3d11Device);
+	m_vertexBuffer->Initialize(g_d3d11Device);
+	m_vertexBuffer->CreateVertexBuffer(GetVertices());
 
 	m_indexBuffer = new D3D11Buffer();
-	m_indexBuffer->Initialize(GetIndices(), g_d3d11Device);
+	m_indexBuffer->Initialize(g_d3d11Device);
+	m_indexBuffer->CreateIndexBuffer(GetIndices());
 }

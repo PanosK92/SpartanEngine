@@ -68,15 +68,18 @@ void DeferredShader::Initialize(D3D11Device* d3d11device)
 	------------------------------------------------------------------------------*/
 	// misc buffer
 	m_miscBuffer = new D3D11Buffer();
-	m_miscBuffer->Initialize(sizeof(MiscBufferType), m_D3D11Device);
+	m_miscBuffer->Initialize(m_D3D11Device);
+	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
 
 	// dir light buffer
 	m_dirLightBuffer = new D3D11Buffer();
-	m_dirLightBuffer->Initialize(sizeof(DirLightBufferType), m_D3D11Device);
+	m_dirLightBuffer->Initialize(m_D3D11Device);
+	m_dirLightBuffer->CreateConstantBuffer(sizeof(DirLightBufferType));
 
 	// point light buffer
 	m_pointLightBuffer = new D3D11Buffer();
-	m_pointLightBuffer->Initialize(sizeof(PointLightBufferType), m_D3D11Device);
+	m_pointLightBuffer->Initialize(m_D3D11Device);
+	m_pointLightBuffer->CreateConstantBuffer(sizeof(PointLightBufferType));
 }
 
 void DeferredShader::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mBaseView, Matrix mPerspectiveProjection, Matrix mOrthographicProjection,

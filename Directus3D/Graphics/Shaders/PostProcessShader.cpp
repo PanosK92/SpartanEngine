@@ -56,7 +56,8 @@ void PostProcessShader::Initialize(LPCSTR pass, D3D11Device* d3d11device)
 
 	// create buffer
 	m_miscBuffer = new D3D11Buffer();
-	m_miscBuffer->Initialize(sizeof(MiscBufferType), m_D3D11Device);
+	m_miscBuffer->Initialize(m_D3D11Device);
+	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
 }
 
 void PostProcessShader::Render(int indexCount, Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix, ID3D11ShaderResourceView* texture)

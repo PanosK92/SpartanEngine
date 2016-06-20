@@ -72,19 +72,16 @@ float Timer::GetDeltaTime()
 	return GetDeltaTimeMs() / 1000;
 }
 
-// Returns time in seconds
-float Timer::GetTime()
-{
-	return GetTimeMs() / 1000;
-}
-
-/*------------------------------------------------------------------------------
-							[PRIVATE]
-------------------------------------------------------------------------------*/
 // Returns delta time in milliseconds
 float Timer::GetDeltaTimeMs()
 {
 	return m_deltaTime;
+}
+
+// Returns time in seconds
+float Timer::GetTime()
+{
+	return GetTimeMs() / 1000;
 }
 
 // Returns time in milliseconds
@@ -94,6 +91,11 @@ float Timer::GetTimeMs()
 	QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
 
 	return currentTime / m_ticksPerMs;
+}
+
+float Timer::GetElapsedTime()
+{
+	return GetElapsedTimeMs() / 1000;
 }
 
 // Returns elapsed time (milliseconds) since engine initialization

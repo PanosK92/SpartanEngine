@@ -59,7 +59,7 @@ public:
 	------------------------------------------------------------------------------*/
 	int GetRenderedMeshesCount();
 	float GetFPS();
-	float GetRenderTime();
+	float GetRenderTimeMs();
 	void MakeDirty();
 
 private:

@@ -30,8 +30,8 @@ D3D11Buffer::D3D11Buffer()
 {
 	m_D3D11Device = nullptr;
 	m_buffer = nullptr;
-	m_stride = 0;
-	m_size = 0;
+	m_stride = -1;
+	m_size = -1;
 	m_usage = (D3D11_USAGE)0;
 	m_bindFlag = (D3D11_BIND_FLAG)0;
 	m_cpuAccessFlag = (D3D11_CPU_ACCESS_FLAG)0;
@@ -42,15 +42,21 @@ D3D11Buffer::~D3D11Buffer()
 	DirectusSafeRelease(m_buffer);
 }
 
-bool D3D11Buffer::Initialize(unsigned int size, D3D11Device* d3d11device)
+void D3D11Buffer::Initialize(D3D11Device* d3d11device)
 {
 	m_D3D11Device = d3d11device;
-	m_size = size;
-	m_usage = D3D11_USAGE_DYNAMIC;
-	m_bindFlag = D3D11_BIND_CONSTANT_BUFFER;
-	m_cpuAccessFlag = D3D11_CPU_ACCESS_WRITE;
+}
 
-	bool result = CreateBuffer(size, nullptr, m_usage, m_bindFlag, m_cpuAccessFlag);
+bool D3D11Buffer::CreateConstantBuffer(unsigned int size)
+{
+	bool result = Create(
+		-1, 
+		size,
+		nullptr, 
+		D3D11_USAGE_DYNAMIC,
+		D3D11_BIND_CONSTANT_BUFFER,
+		D3D11_CPU_ACCESS_WRITE
+	);
 
 	if (!result)
 		LOG("Failed to create constant buffer.", Log::Error);
@@ -58,17 +64,16 @@ bool D3D11Buffer::Initialize(unsigned int size, D3D11Device* d3d11device)
 	return result;
 }
 
-bool D3D11Buffer::Initialize(std::vector<VertexPositionTextureNormalTangent> vertices, D3D11Device* d3d11device)
+bool D3D11Buffer::CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent> vertices)
 {
-	m_D3D11Device = d3d11device;
-
-	m_stride = sizeof(VertexPositionTextureNormalTangent);
-	m_size = m_stride * vertices.size();
-	m_usage = D3D11_USAGE_DEFAULT;
-	m_bindFlag = D3D11_BIND_VERTEX_BUFFER;
-	m_cpuAccessFlag = static_cast<D3D11_CPU_ACCESS_FLAG>(0);
-
-	bool result = CreateBuffer(m_size, &vertices[0], m_usage, m_bindFlag, m_cpuAccessFlag);
+	bool result = Create(
+		sizeof(VertexPositionTextureNormalTangent),
+		(unsigned int)vertices.size(),
+		&vertices[0],
+		D3D11_USAGE_DEFAULT,
+		D3D11_BIND_VERTEX_BUFFER,
+		static_cast<D3D11_CPU_ACCESS_FLAG>(0)
+	);
 
 	if (!result)
 		LOG("Failed to create vertex buffer.", Log::Error);
@@ -76,22 +81,61 @@ bool D3D11Buffer::Initialize(std::vector<VertexPositionTextureNormalTangent> ver
 	return result;
 }
 
-bool D3D11Buffer::Initialize(std::vector<unsigned int> indices, D3D11Device* d3d11device)
+bool D3D11Buffer::CreateIndexBuffer(std::vector<unsigned int> indices)
 {
-	m_D3D11Device = d3d11device;
-
-	m_stride = sizeof(unsigned int);
-	m_size = m_stride * indices.size();
-	m_usage = D3D11_USAGE_DEFAULT;
-	m_bindFlag = D3D11_BIND_INDEX_BUFFER;
-	m_cpuAccessFlag = static_cast<D3D11_CPU_ACCESS_FLAG>(0);
-
-	bool result = CreateBuffer(m_size, &indices[0], m_usage, m_bindFlag, m_cpuAccessFlag);
+	bool result = Create(
+		sizeof(unsigned int),
+		indices.size(),
+		&indices[0], 
+		D3D11_USAGE_DEFAULT,
+		D3D11_BIND_INDEX_BUFFER,
+		static_cast<D3D11_CPU_ACCESS_FLAG>(0)
+	);
 
 	if (!result)
 		LOG("Failed to create index buffer.", Log::Error);
 
 	return result;
+}
+
+bool D3D11Buffer::Create(unsigned int stride, unsigned int size, void* data, D3D11_USAGE usage, D3D11_BIND_FLAG bindFlag, D3D11_CPU_ACCESS_FLAG cpuAccessFlag)
+{
+	m_stride = stride;
+	m_size = size;
+	m_usage = usage;
+	m_bindFlag = bindFlag;
+	m_cpuAccessFlag = cpuAccessFlag;
+	unsigned int finalSize = m_stride * m_size;
+
+	// This means that this is a constant buffer
+	if (stride == -1 && size != -1)
+		finalSize = size;
+
+	// fill in a buffer description.
+	D3D11_BUFFER_DESC bufferDesc;
+	bufferDesc.Usage = usage;
+	bufferDesc.ByteWidth = finalSize;
+	bufferDesc.BindFlags = bindFlag;
+	bufferDesc.CPUAccessFlags = cpuAccessFlag;
+	bufferDesc.MiscFlags = 0;
+	bufferDesc.StructureByteStride = 0;
+
+	// fill in the subresource data.
+	D3D11_SUBRESOURCE_DATA initData;
+	initData.pSysMem = data;
+	initData.SysMemPitch = 0;
+	initData.SysMemSlicePitch = 0;
+
+	HRESULT result;
+	if (bindFlag == D3D11_BIND_VERTEX_BUFFER || bindFlag == D3D11_BIND_INDEX_BUFFER)
+		result = m_D3D11Device->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
+	else
+		result = m_D3D11Device->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
+
+	if (FAILED(result))
+		return false;
+
+	return true;
 }
 
 void D3D11Buffer::SetIA()
@@ -115,8 +159,9 @@ void D3D11Buffer::SetPS(unsigned int startSlot)
 }
 
 void* D3D11Buffer::Map()
-{
+{	
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	// disable GPU access to the vertex buffer data.
 	HRESULT result = m_D3D11Device->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(result))
 	{
@@ -129,35 +174,6 @@ void* D3D11Buffer::Map()
 
 void D3D11Buffer::Unmap()
 {
+	// re-enable GPU access to the vertex buffer data.
 	m_D3D11Device->GetDeviceContext()->Unmap(m_buffer, 0);
-}
-
-//= PRIVATE ===================================================================================================================================
-bool D3D11Buffer::CreateBuffer(unsigned int size, void* data, D3D11_USAGE usage, D3D11_BIND_FLAG bindFlag, D3D11_CPU_ACCESS_FLAG cpuAccessFlag)
-{
-	// fill in a buffer description.
-	D3D11_BUFFER_DESC bufferDesc;
-	bufferDesc.Usage = usage;
-	bufferDesc.ByteWidth = size;
-	bufferDesc.BindFlags = bindFlag;
-	bufferDesc.CPUAccessFlags = cpuAccessFlag;
-	bufferDesc.MiscFlags = 0;
-	bufferDesc.StructureByteStride = 0;
-
-	// fill in the subresource data.
-	D3D11_SUBRESOURCE_DATA initData;
-	initData.pSysMem = data;
-	initData.SysMemPitch = 0;
-	initData.SysMemSlicePitch = 0;
-
-	HRESULT result;
-	if (bindFlag == D3D11_BIND_VERTEX_BUFFER || bindFlag == D3D11_BIND_INDEX_BUFFER)
-		result = m_D3D11Device->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
-	else
-		result = m_D3D11Device->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
-
-	if (FAILED(result))
-		return false;
-
-	return true;
 }
