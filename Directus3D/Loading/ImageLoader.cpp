@@ -99,9 +99,7 @@ void ImageLoader::Clear()
 	m_transparent = false;
 }
 
-/*------------------------------------------------------------------------------
-							[PROPERTIES]
-------------------------------------------------------------------------------*/
+//= PROPERTIES =====================================================
 ID3D11ShaderResourceView* ImageLoader::GetAsD3D11ShaderResourceView()
 {
 	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM; // texture format
@@ -248,32 +246,9 @@ std::string ImageLoader::GetPath()
 	return m_path;
 }
 
-/*------------------------------------------------------------------------------
-							[PRIVATE]
-------------------------------------------------------------------------------*/
-FREE_IMAGE_FORMAT GetFormat(std::string path)
-{
-	// get image format
-	FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
-
-	// if the image was not found
-	//if (format == -1)
-
-	// if the image format couldn't be determined, try getting the format from the file extension
-	if (format == FIF_UNKNOWN)
-	{
-		LOG("Couldn't determine image format, attempting to get from file extension...", Log::Warning);
-
-		format = FreeImage_GetFIFFromFilename(path.c_str());
-		if (!FreeImage_FIFSupportsReading(format))
-		LOG("Detected image format cannot be read.", Log::Warning);
-	}
-
-	return format;
-}
-
 bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 {
+	// Clear any data left from a previous image loading (if necessary)
 	Clear();
 
 	if (!FileHelper::FileExists(path))
@@ -282,35 +257,58 @@ bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 		return false;
 	}
 
-	//= Load ========================================================================
-	FREE_IMAGE_FORMAT format = GetFormat(path); // get image format
+	// Get the format of the image
+	FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
+
+	// If the image format couldn't be determined
+	if (format == FIF_UNKNOWN)
+	{
+		// Try getting the format from the file extension
+		LOG("Couldn't determine image format, attempting to get from file extension...", Log::Warning);
+		format = FreeImage_GetFIFFromFilename(path.c_str());
+
+		if (!FreeImage_FIFSupportsReading(format))
+			LOG("Detected image format cannot be read.", Log::Warning);
+	}
+
+	// Get image format, format == -1 means the file was not found
+	// but I am checking against it also, just in case.
 	if (format == -1 || format == FIF_UNKNOWN)
 		return false;
 
-	m_bitmap = FreeImage_Load(format, path.c_str()); // load the image as a bitmap
-	FreeImage_FlipVertical(m_bitmap); // flip the image vertically
+	// Load the image as a FIBITMAP*
+	m_bitmap = FreeImage_Load(format, path.c_str());
 
-	//= Scale =======================================================================
+	// Flip it vertically
+	FreeImage_FlipVertical(m_bitmap);
+
+	// Perform any scaling (if necessary)
 	if (scale)
 		m_bitmapScaled = FreeImage_Rescale(m_bitmap, width, height, FILTER_LANCZOS3);
 	else
 		m_bitmapScaled = m_bitmap;
 
-	//= Convert to 32-bit ===========================================================
+	// Convert it to 32 bits (if necessery)
 	m_bpp = FreeImage_GetBPP(m_bitmap); // get bits per pixel
 	if (m_bpp != 32)
 		m_bitmap32 = FreeImage_ConvertTo32Bits(m_bitmapScaled);
 	else
 		m_bitmap32 = m_bitmapScaled;
 
-	//= Get bits ====================================================================
+	// Store some useful data	
+	m_transparent = bool(FreeImage_IsTransparent(m_bitmap32));
+	m_path = path;
 	m_width = FreeImage_GetWidth(m_bitmap32);
 	m_height = FreeImage_GetHeight(m_bitmap32);
 	m_dataRGBA = new unsigned char[m_width * m_height * m_channels];
-	unsigned int bytespp = FreeImage_GetLine(m_bitmap32) / m_width;
+	unsigned int bytespp = m_width != 0 ? FreeImage_GetLine(m_bitmap32) / m_width : -1;
+	if (bytespp == -1)
+		return false;
+
+	// Construct a 2D RGBA array
 	for (unsigned int y = 0; y < m_height; y++)
 	{
-		unsigned char* bits = static_cast<unsigned char*>(FreeImage_GetScanLine(m_bitmap32, y));
+		unsigned char* bits = (unsigned char*)FreeImage_GetScanLine(m_bitmap32, y);
 		for (unsigned int x = 0; x < m_width; x++)
 		{
 			unsigned int id = (x + y * m_width) * m_channels;
@@ -325,12 +323,10 @@ bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 		}
 	}
 
-	//= Get some extra data ========================================================
-	m_transparent = bool(FreeImage_IsTransparent(m_bitmap32));
-	m_path = path;
+	// Store some useful data that require m_dataRGBA to be filled
 	m_grayscale = CheckIfGrayscale();
 
-	//= Free memory =================================================================
+	//= Free memory =====================================
 	// unload the 32-bit bitmap
 	FreeImage_Unload(m_bitmap32);
 
@@ -341,6 +337,7 @@ bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 	// unload the non 32-bit bitmap only if it was scaled
 	if (scale)
 		FreeImage_Unload(m_bitmap);
+	//====================================================
 
 	return true;
 }

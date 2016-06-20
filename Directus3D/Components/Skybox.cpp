@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace DirectX;
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 Skybox::Skybox()
@@ -64,10 +65,10 @@ void Skybox::Initialize()
 	if (FAILED(hr))
 		return;
 
-	Texture* texture = g_texturePool->GetTextureByPath("Assets/Environment/environment.dds");
+	shared_ptr<Texture> texture = g_texturePool->GetTextureByPath("Assets/Environment/environment.dds");
 	if (!texture)
 	{
-		texture = new Texture();
+		texture = make_shared<Texture>();
 		texture->SetType(CubeMap);
 		texture->SetPath("Assets/Environment/environment.dds");
 		texture->SetWidth(1024);

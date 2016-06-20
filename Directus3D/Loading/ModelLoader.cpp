@@ -314,7 +314,7 @@ Material* ModelLoader::ProcessMaterial(aiMaterial* material)
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				Texture* texture = new Texture();
+				shared_ptr<Texture> texture(new Texture());
 				texture->LoadFromFile(path, Albedo);
 				engineMaterial->AddTexture(texture);
 			}
@@ -330,7 +330,7 @@ Material* ModelLoader::ProcessMaterial(aiMaterial* material)
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				Texture* texture = new Texture();
+				shared_ptr<Texture> texture(new Texture());
 				texture->LoadFromFile(path, Occlusion);
 				engineMaterial->AddTexture(texture);
 			}
@@ -345,7 +345,7 @@ Material* ModelLoader::ProcessMaterial(aiMaterial* material)
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				Texture* texture = new Texture();
+				shared_ptr<Texture> texture(new Texture());
 				texture->LoadFromFile(path, Normal);
 				engineMaterial->AddTexture(texture);
 			}
@@ -360,7 +360,7 @@ Material* ModelLoader::ProcessMaterial(aiMaterial* material)
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				Texture* texture = new Texture();
+				shared_ptr<Texture> texture(new Texture());
 				texture->LoadFromFile(path, Height);
 				engineMaterial->AddTexture(texture);
 			}
@@ -375,7 +375,7 @@ Material* ModelLoader::ProcessMaterial(aiMaterial* material)
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				Texture* texture = new Texture();
+				shared_ptr<Texture> texture(new Texture());
 				texture->LoadFromFile(path, Mask);
 				engineMaterial->AddTexture(texture);
 			}
@@ -446,21 +446,21 @@ string ModelLoader::TryPathWithMultipleExtensions(string fullpath)
 	// create path for a couple of different extensions
 	const int extensions = 12;
 	string multipleExtensionPaths[extensions] =
-		{
-			rawPath + ".jpg",
-			rawPath + ".png",
-			rawPath + ".bmp",
-			rawPath + ".tga",
-			rawPath + ".dds",
-			rawPath + ".psd",
+	{
+		rawPath + ".jpg",
+		rawPath + ".png",
+		rawPath + ".bmp",
+		rawPath + ".tga",
+		rawPath + ".dds",
+		rawPath + ".psd",
 
-			rawPath + ".JPG",
-			rawPath + ".PNG",
-			rawPath + ".BMP",
-			rawPath + ".TGA",
-			rawPath + ".DDS",
-			rawPath + ".PSD",
-		};
+		rawPath + ".JPG",
+		rawPath + ".PNG",
+		rawPath + ".BMP",
+		rawPath + ".TGA",
+		rawPath + ".DDS",
+		rawPath + ".PSD",
+	};
 
 	for (int i = 0; i < extensions; i++)
 		if (FileHelper::FileExists(multipleExtensionPaths[i]))
