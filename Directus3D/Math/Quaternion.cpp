@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========
+//= INCLUDES ==============
 #include "Quaternion.h"
 #include "MathHelper.h"
 #include <math.h>
 #include "Vector3.h"
-
-//=====================
+#include "../Math/Matrix.h"
+//=========================
 
 //= Based on ==========================================================================//
 // http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/index.htm //

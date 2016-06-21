@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ==================
+#include <vector>
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
-#include <vector>
-
-//==========================
+#include "../Math/Vector4.h"
+#include "../Math/Quaternion.h"
+//=============================
 
 class Serializer
 {

@@ -30,6 +30,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEG_TO_RAD_2	(float)PI / 360.0f;
 #define RAD_TO_DEG		(float)180.0 / PI
 
+
+//= INCLUDE =====
+#include <math.h>
+//===============
+
 namespace Directus
 {
 	namespace Math

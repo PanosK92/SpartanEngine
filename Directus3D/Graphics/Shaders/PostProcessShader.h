@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../D3D11/D3D11Device.h"
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
-
+#include "../../Math/Matrix.h"
 //===============================
 
 class PostProcessShader

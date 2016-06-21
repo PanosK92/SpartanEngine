@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Timer.h"
 #include "../Input/Input.h"
 #include <angelscript.h>
-
 //=========================
 
 class ScriptDefinitions

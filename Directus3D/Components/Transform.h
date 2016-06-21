@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================
+//= INCLUDES ==================
 #include "IComponent.h"
 #include <vector>
 #include "../Math/Vector3.h"
-
-//===========================
+#include "../Math/Matrix.h"
+#include "../Math/Quaternion.h"
+//=============================
 
 class __declspec(dllexport) Transform : public IComponent
 {
