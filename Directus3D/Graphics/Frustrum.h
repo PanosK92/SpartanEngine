@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "../Math/Vector3.h"
 #include "../Math/Plane.h"
-
+#include "../Math/Matrix.h"
 //==========================
 
 enum FrustrumSpace

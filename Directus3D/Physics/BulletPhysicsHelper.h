@@ -23,7 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include <LinearMath/btQuaternion.h>
-
+#include "../Math/Vector3.h"
+#include "../Math/Vector4.h"
+#include "../Math/Quaternion.h"
 //==================================
 
 inline Directus::Math::Vector3 BtVector3ToVector3(const btVector3& vector)

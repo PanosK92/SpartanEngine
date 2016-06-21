@@ -28,6 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Camera.h"
 #include "../Core/GameObject.h"
 #include "../Components/Transform.h"
+#include "../Math/Vector3.h"
+#include "../Math/Matrix.h"
+#include "../Math/Quaternion.h"
 //==================================
 
 using namespace std;
