@@ -64,9 +64,7 @@ cbuffer PointLightBuffer : register(b2)
 };
 #endif
 
-/*------------------------------------------------------------------------------
-						    [INPUT LAYOUT]
-------------------------------------------------------------------------------*/
+//= INPUT LAYOUT ================
 struct VertexInputType
 {
     float4 position : POSITION;
@@ -79,9 +77,7 @@ struct PixelInputType
     float2 uv : TEXCOORD0;
 };
 
-/*------------------------------------------------------------------------------
-									[VS()]
-------------------------------------------------------------------------------*/
+//= VS() =============================================================
 #if COMPILE_VS == 1
 PixelInputType DirectusVertexShader(VertexInputType input)
 {
@@ -95,9 +91,7 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 }
 #endif
 
-/*------------------------------------------------------------------------------
-									[PS()]
-------------------------------------------------------------------------------*/
+//= PS() =================================================================================
 #if COMPILE_PS == 1
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
@@ -126,14 +120,15 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float3 viewDir				= normalize(cameraPosWS.xyz - worldPos.xyz); 
 	float3 reflectionVector		= reflect(-viewDir, normal);
 	
+    // NOTE: The cubemap is already in linear space
 	// Sample the skybox and the irradiance texture
 	float mipIndex				= roughness * roughness * 8.0f;
-	float3 envColor				= ToLinear(environmentMap.SampleLevel(samplerAniso, reflectionVector, mipIndex));
-	float3 irradiance			= ToLinear(irradianceMap.Sample(samplerAniso, reflectionVector));	
+	float3 envColor				= environmentMap.SampleLevel(samplerAniso, reflectionVector, mipIndex);
+	float3 irradiance			= irradianceMap.Sample(samplerAniso, reflectionVector);	
 	
 	if (renderMode == 0.0f) // Texture mapping
 	{
-		finalColor = ToLinear(environmentMap.Sample(samplerAniso, -viewDir));
+		finalColor = environmentMap.Sample(samplerAniso, -viewDir);
 		finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
 		finalColor = ToGamma(finalColor); // gamma correction
 		float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
