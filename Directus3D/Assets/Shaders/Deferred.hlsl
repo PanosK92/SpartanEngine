@@ -123,12 +123,12 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     // NOTE: The cubemap is already in linear space
 	// Sample the skybox and the irradiance texture
 	float mipIndex				= roughness * roughness * 8.0f;
-	float3 envColor				= environmentMap.SampleLevel(samplerAniso, reflectionVector, mipIndex);
-	float3 irradiance			= irradianceMap.Sample(samplerAniso, reflectionVector);	
+	float3 envColor				= ToLinear(environmentMap.SampleLevel(samplerAniso, reflectionVector, mipIndex));
+	float3 irradiance			= ToLinear(irradianceMap.Sample(samplerAniso, reflectionVector));	
 	
 	if (renderMode == 0.0f) // Texture mapping
 	{
-		finalColor = environmentMap.Sample(samplerAniso, -viewDir);
+		finalColor = ToLinear(environmentMap.Sample(samplerAniso, -viewDir));
 		finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
 		finalColor = ToGamma(finalColor); // gamma correction
 		float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
