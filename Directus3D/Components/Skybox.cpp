@@ -99,11 +99,11 @@ void Skybox::Update()
 {
 }
 
-void Skybox::Save()
+void Skybox::Serialize()
 {
 }
 
-void Skybox::Load()
+void Skybox::Deserialize()
 {
 }
 

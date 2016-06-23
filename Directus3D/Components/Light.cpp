@@ -61,7 +61,7 @@ void Light::Update()
 {
 }
 
-void Light::Save()
+void Light::Serialize()
 {
 	Serializer::SaveInt(static_cast<int>(m_type));
 	Serializer::SaveVector4(m_color);
@@ -70,7 +70,7 @@ void Light::Save()
 	Serializer::SaveFloat(m_bias);
 }
 
-void Light::Load()
+void Light::Deserialize()
 {
 	m_type = static_cast<LightType>(Serializer::LoadInt());
 	m_color = Serializer::LoadVector4();

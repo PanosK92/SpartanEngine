@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Vertex.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
 #include <memory>
-
 //========================================
 
 class __declspec(dllexport) LineRenderer : public IComponent
@@ -36,25 +35,23 @@ public:
 	LineRenderer();
 	~LineRenderer();
 
+	//= INTERFACE ============
 	virtual void Initialize();
 	virtual void Update();
-	virtual void Save();
-	virtual void Load();
+	virtual void Serialize();
+	virtual void Deserialize();
 
 	//= INPUT ==============================================================================================
 	void AddLineList(std::vector<VertexPositionColor> vertices);
 	void AddLine(Directus::Math::Vector3 start, Directus::Math::Vector3 end, Directus::Math::Vector4 color);
 	void AddVertex(Directus::Math::Vector3 point, Directus::Math::Vector4 color);
 
-	//= MISC =====================
+	//= PROPERTIES ===============
 	void SetBuffer();
 	unsigned int GetVertexCount();
 
 private:
-	//= VERTICES ==============================
 	std::vector<VertexPositionColor> m_vertices;
-
-	//= VERTEX BUFFER ==========================
 	std::shared_ptr<D3D11Buffer> m_vertexBuffer;
 	int m_maximumVertices = 1000000;
 

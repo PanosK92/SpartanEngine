@@ -67,7 +67,7 @@ void Camera::Update()
 	m_isDirty = false;
 }
 
-void Camera::Save()
+void Camera::Serialize()
 {
 	Serializer::SaveInt(static_cast<int>(m_projection));
 	Serializer::SaveFloat(m_FOV);
@@ -75,7 +75,7 @@ void Camera::Save()
 	Serializer::SaveFloat(m_farPlane);
 }
 
-void Camera::Load()
+void Camera::Deserialize()
 {
 	m_projection = static_cast<Projection>(Serializer::LoadInt());
 	m_FOV = Serializer::LoadFloat();

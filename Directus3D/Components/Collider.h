@@ -49,8 +49,8 @@ public:
 	------------------------------------------------------------------------------*/
 	virtual void Initialize();
 	virtual void Update();
-	virtual void Save();
-	virtual void Load();
+	virtual void Serialize();
+	virtual void Deserialize();
 
 	/*------------------------------------------------------------------------------
 									[PROPERTIES]

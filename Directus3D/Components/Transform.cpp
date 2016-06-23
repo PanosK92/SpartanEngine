@@ -78,7 +78,7 @@ void Transform::Update()
 	m_isDirty = false;
 }
 
-void Transform::Save()
+void Transform::Serialize()
 {
 	Serializer::SaveVector3(m_translationLocal);
 	Serializer::SaveQuaternion(m_rotationLocal);
@@ -91,7 +91,7 @@ void Transform::Save()
 		Serializer::SaveSTR(NULL_GAMEOBJECT_ID);
 }
 
-void Transform::Load()
+void Transform::Deserialize()
 {
 	m_translationLocal = Serializer::LoadVector3();
 	m_rotationLocal = Serializer::LoadQuaternion();

@@ -81,14 +81,14 @@ void Collider::Update()
 	m_isDirty = false;
 }
 
-void Collider::Save()
+void Collider::Serialize()
 {
 	Serializer::SaveInt(int(m_shapeType));
 	Serializer::SaveVector3(m_boundingBox);
 	Serializer::SaveVector3(m_center);
 }
 
-void Collider::Load()
+void Collider::Deserialize()
 {
 	m_shapeType = ShapeType(Serializer::LoadInt());
 	m_boundingBox = Serializer::LoadVector3();

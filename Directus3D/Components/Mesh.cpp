@@ -60,7 +60,7 @@ void Mesh::Update()
 {
 }
 
-void Mesh::Save()
+void Mesh::Serialize()
 {
 	Serializer::SaveSTR(m_meshData->ID);
 	Serializer::SaveVector3(m_min);
@@ -69,7 +69,7 @@ void Mesh::Save()
 	Serializer::SaveVector3(m_center);
 }
 
-void Mesh::Load()
+void Mesh::Deserialize()
 {
 	string meshDataID = Serializer::LoadSTR();
 	m_meshData = g_meshPool->GetMesh(meshDataID);

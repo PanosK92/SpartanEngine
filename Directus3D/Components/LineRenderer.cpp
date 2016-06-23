@@ -40,6 +40,7 @@ LineRenderer::~LineRenderer()
 	m_vertices.clear();
 }
 
+//= INTERFACE ===================================
 void LineRenderer::Initialize()
 {
 	m_vertexBuffer = make_shared<D3D11Buffer>();
@@ -59,12 +60,12 @@ void LineRenderer::Update()
 
 }
 
-void LineRenderer::Save()
+void LineRenderer::Serialize()
 {
 
 }
 
-void LineRenderer::Load()
+void LineRenderer::Deserialize()
 {
 
 }
@@ -90,7 +91,7 @@ void LineRenderer::AddVertex(Vector3 position, Vector4 color)
 	m_vertices.push_back(vertex);
 }
 
-//= MISC =====================
+//= PROPERTIES ========================================================================
 void LineRenderer::SetBuffer()
 {
 	UpdateVertexBuffer();
@@ -108,7 +109,7 @@ unsigned int LineRenderer::GetVertexCount()
 	return unsigned int(m_vertices.size());
 }
 
-//= MISC =====================================
+//= MISC =============================================================================
 void LineRenderer::UpdateVertexBuffer()
 {
 	if (m_vertices.empty() || !m_vertexBuffer)
