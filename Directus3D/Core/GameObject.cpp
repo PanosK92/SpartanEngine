@@ -150,7 +150,7 @@ void GameObject::Save()
 	for (map<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end(); ++it)
 	{
 		Serializer::SaveSTR(it->first); // save component's type
-		it->second->Save(); // save the component
+		it->second->Serialize(); // save the component
 	}
 }
 
@@ -260,40 +260,40 @@ Transform* GameObject::GetTransform()
 void GameObject::LoadCompFromTypeStr(string typeStr)
 {
 	if (typeStr == "Transform")
-		AddComponent<Transform>()->Load();
+		AddComponent<Transform>()->Deserialize();
 
 	if (typeStr == "Mesh")
-		AddComponent<Mesh>()->Load();
+		AddComponent<Mesh>()->Deserialize();
 
 	if (typeStr == "MeshRenderer")
-		AddComponent<MeshRenderer>()->Load();
+		AddComponent<MeshRenderer>()->Deserialize();
 
 	if (typeStr == "Light")
-		AddComponent<Light>()->Load();
+		AddComponent<Light>()->Deserialize();
 
 	if (typeStr == "Camera")
-		AddComponent<Camera>()->Load();
+		AddComponent<Camera>()->Deserialize();
 
 	if (typeStr == "Skybox")
-		AddComponent<Skybox>()->Load();
+		AddComponent<Skybox>()->Deserialize();
 
 	if (typeStr == "RigidBody")
-		AddComponent<RigidBody>()->Load();
+		AddComponent<RigidBody>()->Deserialize();
 
 	if (typeStr == "Collider")
-		AddComponent<Collider>()->Load();
+		AddComponent<Collider>()->Deserialize();
 
 	if (typeStr == "MeshCollider")
-		AddComponent<MeshCollider>()->Load();
+		AddComponent<MeshCollider>()->Deserialize();
 
 	if (typeStr == "Hinge")
-		AddComponent<Hinge>()->Load();
+		AddComponent<Hinge>()->Deserialize();
 
 	if (typeStr == "Script")
-		AddComponent<Script>()->Load();
+		AddComponent<Script>()->Deserialize();
 
 	if (typeStr == "LineRenderer")
-		AddComponent<LineRenderer>()->Load();
+		AddComponent<LineRenderer>()->Deserialize();
 }
 
 /*------------------------------------------------------------------------------

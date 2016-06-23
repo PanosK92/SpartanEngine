@@ -41,8 +41,8 @@ public:
 
 	virtual void Initialize() = 0;
 	virtual void Update() = 0;
-	virtual void Save() = 0;
-	virtual void Load() = 0;
+	virtual void Serialize() = 0;
+	virtual void Deserialize() = 0;
 
 	GameObject* g_gameObject;
 	Transform* g_transform;

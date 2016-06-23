@@ -83,12 +83,12 @@ void MeshCollider::Update()
 	m_isDirty = false;
 }
 
-void MeshCollider::Save()
+void MeshCollider::Serialize()
 {
 	Serializer::SaveBool(m_convex);
 }
 
-void MeshCollider::Load()
+void MeshCollider::Deserialize()
 {
 	m_convex = Serializer::LoadBool();
 	m_isDirty = true;

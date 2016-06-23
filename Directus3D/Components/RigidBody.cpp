@@ -130,7 +130,7 @@ void RigidBody::Update()
 	}
 }
 
-void RigidBody::Save()
+void RigidBody::Serialize()
 {
 	Serializer::SaveFloat(GetMass());
 	Serializer::SaveFloat(GetRestitution());
@@ -138,7 +138,7 @@ void RigidBody::Save()
 	Serializer::SaveVector3(m_rotationLock);
 }
 
-void RigidBody::Load()
+void RigidBody::Deserialize()
 {
 	float mass = Serializer::LoadFloat();
 	float restitution = Serializer::LoadFloat();

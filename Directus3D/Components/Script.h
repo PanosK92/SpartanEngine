@@ -39,8 +39,8 @@ public:
 	------------------------------------------------------------------------------*/
 	virtual void Initialize();
 	virtual void Update();
-	virtual void Save();
-	virtual void Load();
+	virtual void Serialize();
+	virtual void Deserialize();
 
 	bool AddScript(std::string path, int slot);
 	std::string GetScriptPath(int slot);

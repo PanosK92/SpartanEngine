@@ -60,7 +60,7 @@ void Script::Update()
 	}
 }
 
-void Script::Save()
+void Script::Serialize()
 {
 	// save script count
 	Serializer::SaveInt(static_cast<int>(m_scriptInstances.size()));
@@ -70,7 +70,7 @@ void Script::Save()
 		Serializer::SaveSTR(m_scriptInstances[i]->GetScriptPath());
 }
 
-void Script::Load()
+void Script::Deserialize()
 {
 	// load script count
 	int scriptCount = Serializer::LoadInt();

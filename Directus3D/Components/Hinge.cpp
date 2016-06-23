@@ -74,7 +74,7 @@ void Hinge::Update()
 	m_isDirty = false;
 }
 
-void Hinge::Save()
+void Hinge::Serialize()
 {
 	Serializer::SaveBool(m_isConnected);
 	if (m_isConnected)
@@ -89,7 +89,7 @@ void Hinge::Save()
 	Serializer::SaveVector3(m_pivotB);
 }
 
-void Hinge::Load()
+void Hinge::Deserialize()
 {
 	m_isConnected = Serializer::LoadBool();
 	if (m_isConnected)

@@ -303,8 +303,6 @@ void Renderer::PostProcessing(Camera* camera, Skybox* skybox, Matrix mWorld, Mat
 	if (!m_shaderDeferred->IsCompiled())
 		return;
 
-	Ping();
-
 	ID3D11ShaderResourceView* environmentTexture = nullptr;
 	ID3D11ShaderResourceView* irradianceTexture = nullptr;
 
@@ -313,6 +311,8 @@ void Renderer::PostProcessing(Camera* camera, Skybox* skybox, Matrix mWorld, Mat
 		environmentTexture = skybox->GetEnvironmentTexture();
 		irradianceTexture = skybox->GetIrradianceTexture();
 	}
+
+	Ping();
 
 	// deferred rendering
 	m_shaderDeferred->Render(
