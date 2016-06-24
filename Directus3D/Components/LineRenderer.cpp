@@ -45,14 +45,18 @@ void LineRenderer::Initialize()
 {
 	m_vertexBuffer = make_shared<D3D11Buffer>();
 	m_vertexBuffer->Initialize(g_d3d11Device);
-	m_vertexBuffer->Create(
+
+	bool result = m_vertexBuffer->Create(
 		sizeof(VertexPositionColor),
 		m_maximumVertices,
-		0,
+		nullptr,
 		D3D11_USAGE_DYNAMIC,
 		D3D11_BIND_VERTEX_BUFFER,
 		D3D11_CPU_ACCESS_WRITE
 	);
+
+	if (!result)
+		LOG("Failed to create a vertex buffer for the LineRenderer component.", Log::Error);
 }
 
 void LineRenderer::Update()
@@ -112,13 +116,16 @@ unsigned int LineRenderer::GetVertexCount()
 //= MISC =============================================================================
 void LineRenderer::UpdateVertexBuffer()
 {
-	if (m_vertices.empty() || !m_vertexBuffer)
+	if (!m_vertexBuffer)
 		return;
 
 	void* pData = m_vertexBuffer->Map();
 
+	if (!pData)
+		return;
+
 	// update the vertex buffer.
-	memcpy(pData, &m_vertices[0], sizeof(VertexPositionColor) * m_maximumVertices);
+	memcpy(pData, &m_vertices[0], sizeof(VertexPositionColor) * m_vertices.size());
 
 	m_vertexBuffer->Unmap();
 }

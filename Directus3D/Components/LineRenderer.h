@@ -53,7 +53,7 @@ public:
 private:
 	std::vector<VertexPositionColor> m_vertices;
 	std::shared_ptr<D3D11Buffer> m_vertexBuffer;
-	int m_maximumVertices = 1000000;
+	unsigned int m_maximumVertices = 1000000;
 
 	//= MISC =================
 	void UpdateVertexBuffer();

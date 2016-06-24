@@ -127,7 +127,7 @@ bool D3D11Buffer::Create(unsigned int stride, unsigned int size, void* data, D3D
 	initData.SysMemSlicePitch = 0;
 
 	HRESULT result;
-	if (bindFlag == D3D11_BIND_VERTEX_BUFFER || bindFlag == D3D11_BIND_INDEX_BUFFER)
+	if ((bindFlag == D3D11_BIND_VERTEX_BUFFER || bindFlag == D3D11_BIND_INDEX_BUFFER) && data)
 		result = m_D3D11Device->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 	else
 		result = m_D3D11Device->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
@@ -160,9 +160,16 @@ void D3D11Buffer::SetPS(unsigned int startSlot)
 
 void* D3D11Buffer::Map()
 {	
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	if (!m_buffer)
+	{
+		LOG("Can't map uninitialized buffer.", Log::Error);
+		return nullptr;
+	}
+
 	// disable GPU access to the vertex buffer data.
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	HRESULT result = m_D3D11Device->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+
 	if (FAILED(result))
 	{
 		LOG("Failed to map buffer.", Log::Error);
