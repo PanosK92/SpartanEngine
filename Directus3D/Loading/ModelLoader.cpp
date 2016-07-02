@@ -304,7 +304,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			{
 				shared_ptr<Texture> texture(new Texture());
 				texture->LoadFromFile(path, Albedo);
-				engineMaterial->AddTexture(texture);
+				engineMaterial->SetTexture(texture);
 			}
 		}
 	}
@@ -318,7 +318,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			{
 				shared_ptr<Texture> texture(new Texture());
 				texture->LoadFromFile(path, Occlusion);
-				engineMaterial->AddTexture(texture);
+				engineMaterial->SetTexture(texture);
 			}
 		}
 
@@ -331,7 +331,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			{
 				shared_ptr<Texture> texture(new Texture());
 				texture->LoadFromFile(path, Normal);
-				engineMaterial->AddTexture(texture);
+				engineMaterial->SetTexture(texture);
 			}
 		}
 
@@ -344,7 +344,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			{
 				shared_ptr<Texture> texture(new Texture());
 				texture->LoadFromFile(path, Height);
-				engineMaterial->AddTexture(texture);
+				engineMaterial->SetTexture(texture);
 			}
 		}
 
@@ -357,7 +357,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			{
 				shared_ptr<Texture> texture(new Texture());
 				texture->LoadFromFile(path, Mask);
-				engineMaterial->AddTexture(texture);
+				engineMaterial->SetTexture(texture);
 			}
 		}
 

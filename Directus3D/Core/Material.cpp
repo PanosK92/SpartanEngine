@@ -62,7 +62,7 @@ Material::~Material()
 }
 
 /*------------------------------------------------------------------------------
-									[I/O]
+[I/O]
 ------------------------------------------------------------------------------*/
 void Material::Serialize()
 {
@@ -112,7 +112,7 @@ void Material::Deserialize()
 		shared_ptr<Texture> texture = m_texturePool->GetTextureByID(textureID);
 		if (texture)
 		{
-			LOG("Failed to acquire texture with ID: \"" + textureID + "\" for material \"" + m_name +"\" from the texture pool.", Log::Error);
+			LOG("Failed to acquire texture with ID: \"" + textureID + "\" for material \"" + m_name + "\" from the texture pool.", Log::Error);
 			m_textures.push_back(texture);
 		}
 	}
@@ -121,38 +121,41 @@ void Material::Deserialize()
 }
 
 /*------------------------------------------------------------------------------
-								[TEXTURES]
+[TEXTURES]
 ------------------------------------------------------------------------------*/
-void Material::AddTexture(shared_ptr<Texture> texture)
+void Material::SetTexture(shared_ptr<Texture> texture)
 {
 	if (!texture)
 		return;
 
-	TextureType newTextureType = texture->GetType();
-
-	if (HasTextureOfType(newTextureType)) // Overwrite
+	if (HasTextureOfType(texture->GetType())) 	// Overwrite
 	{
-		int textureIndex = GetTextureIndexByType(newTextureType);
+		int textureIndex = GetTextureIndexByType(texture->GetType());
 		m_textures[textureIndex] = m_texturePool->Add(texture);
 	}
 	else // Add
-	{
 		m_textures.push_back(m_texturePool->Add(texture));
-	}
 
-	// adjust material values
-	if (newTextureType == Roughness)
+	AdjustTextureDependentProperties();
+	AcquireShader();
+}
+
+void Material::AdjustTextureDependentProperties()
+{
+	if (HasTextureOfType(Roughness))
 		roughness = 1.0f;
-	if (newTextureType == Metallic)
-		metallic = 1.0f;
-	if (newTextureType == Occlusion)
-		occlusion = 1.0f;
-	if (newTextureType == Normal)
-		normalStrength = 1.0f;
-	if (newTextureType == Height)
-		height = 1.0f;
 
-	AcquireShader(); // takes into account any existing textures
+	if (HasTextureOfType(Metallic))
+		metallic = 1.0f;
+
+	if (HasTextureOfType(Occlusion))
+		occlusion = 1.0f;
+
+	if (HasTextureOfType(Normal))
+		normalStrength = 1.0f;
+
+	if (HasTextureOfType(Height))
+		height = 1.0f;
 }
 
 shared_ptr<Texture> Material::GetTextureByType(TextureType type)
@@ -203,7 +206,7 @@ vector<string> Material::GetTexturePaths()
 }
 
 /*------------------------------------------------------------------------------
-									[SHADER]
+[SHADER]
 ------------------------------------------------------------------------------*/
 void Material::AcquireShader()
 {
@@ -245,7 +248,7 @@ ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureTy
 }
 
 /*------------------------------------------------------------------------------
-								[PROPERTIES]
+[PROPERTIES]
 ------------------------------------------------------------------------------*/
 void Material::SetID(string id)
 {
@@ -393,7 +396,7 @@ Vector2 Material::GetTiling()
 }
 
 /*------------------------------------------------------------------------------
-						[HELPER FUNCTIONS]
+[HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
 int Material::GetTextureIndexByType(TextureType type)
 {

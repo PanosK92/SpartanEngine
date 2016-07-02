@@ -188,6 +188,6 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 	{
 		shared_ptr<Texture> texture(new Texture());
 		texture->LoadFromFile(texturePath, type);
-		material->AddTexture(texture);
+		material->SetTexture(texture);
 	}
 }
