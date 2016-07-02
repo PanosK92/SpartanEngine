@@ -82,7 +82,7 @@ void Skybox::Initialize()
 		g_texturePool->Add(texture);
 	}
 
-	g_materialPool->GetMaterialStandardSkybox()->AddTexture(texture);
+	g_materialPool->GetMaterialStandardSkybox()->SetTexture(texture);
 
 	// Add the actual "box"
 	Mesh* mesh = g_gameObject->AddComponent<Mesh>();

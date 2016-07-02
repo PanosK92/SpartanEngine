@@ -55,15 +55,16 @@ public:
 	~Material();
 
 	/*------------------------------------------------------------------------------
-										[I/O]
+	[I/O]
 	------------------------------------------------------------------------------*/
 	void Serialize();
 	void Deserialize();
-
+	
 	/*------------------------------------------------------------------------------
-										[TEXTURES]
+	[TEXTURES]
 	------------------------------------------------------------------------------*/
-	void AddTexture(std::shared_ptr<Texture> texture);
+	void SetTexture(std::shared_ptr<Texture> texture);
+	void AdjustTextureDependentProperties();
 	std::shared_ptr<Texture> GetTextureByType(TextureType type);
 	bool HasTextureOfType(TextureType type);
 	bool HasTexture(std::string path);
@@ -71,7 +72,7 @@ public:
 	std::vector<std::string> GetTexturePaths();
 
 	/*------------------------------------------------------------------------------
-									[SHADER]
+	[SHADER]
 	------------------------------------------------------------------------------*/
 	void AcquireShader();
 	ShaderVariation* GetShader();
@@ -79,7 +80,7 @@ public:
 	ID3D11ShaderResourceView* GetShaderResourceViewByTextureType(TextureType type);
 
 	/*------------------------------------------------------------------------------
-									[PROPERTIES]
+	[PROPERTIES]
 	------------------------------------------------------------------------------*/
 	void SetID(std::string id);
 	std::string GetID();
@@ -146,7 +147,7 @@ private:
 	ShaderPool* m_shaderPool;
 
 	/*------------------------------------------------------------------------------
-								[HELPER FUNCTIONS]
+	[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
 	int GetTextureIndexByType(TextureType type);
 };
