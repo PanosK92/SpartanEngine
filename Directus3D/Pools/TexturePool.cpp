@@ -52,83 +52,71 @@ void TexturePool::Deserialize()
 	int textureCount = Serializer::LoadInt();
 	for (int i = 0; i < textureCount; i++)
 	{
-		shared_ptr<Texture> texture(new Texture());
+		unique_ptr<Texture> texture(new Texture());
 		texture->Deserialize();
 
-		m_textures.push_back(texture);
+		m_textures.push_back(move(texture));
 	}
 }
 
-shared_ptr<Texture> TexturePool::AddFromFile(string texturePath, TextureType textureType)
+Texture* TexturePool::CreateNewTexture()
 {
-	shared_ptr<Texture> texture = GetTextureByPath(texturePath);
+	unique_ptr<Texture> texture(new Texture());
+	m_textures.push_back(move(texture));
 
-	// If the texture already exists, return it
-	if (texture)
-		return texture;
-
-	// If not, load it and return it
-	texture = make_shared<Texture>();
-	texture->LoadFromFile(texturePath, textureType);
-	return Add(texture);
+	return m_textures.back().get();
 }
 
-shared_ptr<Texture> TexturePool::Add(shared_ptr<Texture> texture)
+Texture* TexturePool::AddFromFile(string texturePath, TextureType textureType)
 {
-	if (!texture)
-		return nullptr;
-
 	// If loaded, return the already loaded one
-	shared_ptr<Texture> loaded = GetTextureByPath(texture->GetPath());
+	Texture* loaded = GetTextureByPath(texturePath);
 	if (loaded)
-	{
-		texture.reset();
 		return loaded;
-	}
 
-	// If not, save it and return it
-	m_textures.push_back(texture);
-	return texture;
+	// If not, load it
+	unique_ptr<Texture> texture(new Texture());
+	texture->LoadFromFile(texturePath, textureType);
+
+	m_textures.push_back(move(texture));
+	return m_textures.back().get();
 }
 
-shared_ptr<Texture> TexturePool::GetTextureByName(string name)
+Texture* TexturePool::GetTextureByName(string name)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 	{
 		if (m_textures[i]->GetName() == name)
-			return m_textures[i];
+			return m_textures[i].get();
 	}
 
 	return nullptr;
 }
 
-shared_ptr<Texture> TexturePool::GetTextureByID(string ID)
+Texture* TexturePool::GetTextureByID(string ID)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
-	{
 		if (m_textures[i]->GetID() == ID)
-			return m_textures[i];
-	}
+			return m_textures[i].get();
 
 	return nullptr;
 }
 
-shared_ptr<Texture> TexturePool::GetTextureByPath(string path)
+Texture* TexturePool::GetTextureByPath(string path)
 {
 	for (unsigned int i = 0; i < m_textures.size(); i++)
 		if (m_textures[i]->GetPath() == path)
-			return m_textures[i];
+			return m_textures[i].get();
 
 	return nullptr;
 }
 
 void TexturePool::RemoveTextureByPath(string path)
 {
-	vector<shared_ptr<Texture>>::iterator it;
+	vector<unique_ptr<Texture>>::iterator it;
 	for (it = m_textures.begin(); it < m_textures.end();)
 	{
-		shared_ptr<Texture> tex = *it;
-		if (tex->GetPath() == path)
+		if (it->get()->GetPath() == path)
 		{
 			it = m_textures.erase(it);
 			return;

@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsEngine.h"
 #include "../Physics/PhysicsDebugDraw.h"
 #include "D3D11/D3D11RenderTexture.h"
+#include "../Core/Scene.h"
 //======================================
 
 //= NAMESPACES ================
@@ -268,7 +269,7 @@ void Renderer::RenderToGBuffer(vector<GameObject*> renderableGameObjects, Light*
 		GameObject* gameObject = renderableGameObjects[i];
 		Mesh* mesh = gameObject->GetComponent<Mesh>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
-		shared_ptr<Material> material = meshRenderer->GetMaterial();
+		Material* material = meshRenderer->GetMaterial();
 		Matrix worldMatrix = gameObject->GetTransform()->GetWorldMatrix();
 
 		if (!mesh || !meshRenderer || !material)

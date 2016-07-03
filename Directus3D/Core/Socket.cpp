@@ -32,13 +32,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace std;
 
-Socket::Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics)
+Socket::Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics, TexturePool* texturePool)
 {
 	m_scene = scene;
 	m_renderer = renderer;
 	m_timer = timer;
 	m_modelLoader = modelLoader;
 	m_physics = physics;
+	m_texturePool = texturePool;
 }
 
 Socket::~Socket()
@@ -183,11 +184,17 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 		return;
 	}
 
-	shared_ptr<Material> material = gameObject->GetComponent<MeshRenderer>()->GetMaterial();
+	Material* material = gameObject->GetComponent<MeshRenderer>()->GetMaterial();
 	if (material)
 	{
-		shared_ptr<Texture> texture(new Texture());
-		texture->LoadFromFile(texturePath, type);
-		material->SetTexture(texture);
+		// Get the texture from the texture pool
+		Texture* texture = m_texturePool->GetTextureByPath(texturePath);
+
+		// If it's not loaded yet, load it
+		if (!texture)
+			texture = m_texturePool->AddFromFile(texturePath, type);
+
+		// Set it to the material
+		material->SetTexture(texture->GetID());
 	}
 }

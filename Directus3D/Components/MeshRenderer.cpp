@@ -126,15 +126,14 @@ bool MeshRenderer::GetReceiveShadows()
 /*------------------------------------------------------------------------------
 									[MATERIAL]
 ------------------------------------------------------------------------------*/
-shared_ptr<Material> MeshRenderer::GetMaterial()
+Material* MeshRenderer::GetMaterial()
 {
 	return m_material;
 }
 
-void MeshRenderer::SetMaterial(shared_ptr<Material> material)
+void MeshRenderer::SetMaterial(string materialID)
 {
-	// Add the material to the pool
-	m_material = g_materialPool->AddMaterial(material);
+	m_material = g_materialPool->GetMaterialByID(materialID);
 }
 
 void MeshRenderer::SetMaterialStandardDefault()

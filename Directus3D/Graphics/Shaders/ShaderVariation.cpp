@@ -115,7 +115,7 @@ void ShaderVariation::Load()
 	m_befaultBuffer->CreateConstantBuffer(sizeof(DefaultBufferType));
 }
 
-void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mProjection, Light* directionalLight, shared_ptr<Material> material)
+void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mProjection, Light* directionalLight, Material* material)
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{

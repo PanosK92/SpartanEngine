@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../IO/Log.h"
 #include "../Components/Transform.h"
+#include "../Core/Scene.h"
 //==================================
 
 using namespace std;
@@ -59,12 +60,9 @@ void GameObjectPool::Initialize(D3D11Device* d3d11Device, Scene* scene, MeshPool
 void GameObjectPool::Update()
 {
 	// update gameobjects
-	vector<GameObject*>::iterator it;
+	vector<unique_ptr<GameObject>>::iterator it;
 	for (it = m_pool.begin(); it < m_pool.end(); ++it)
-	{
-		GameObject* gameobject = *it;
-		gameobject->Update();
-	}
+		(*it)->Update();
 }
 
 void GameObjectPool::Release()
@@ -74,12 +72,6 @@ void GameObjectPool::Release()
 
 void GameObjectPool::Clear()
 {
-	// clear gameobject pool
-	vector<GameObject*>::iterator it;
-	for (it = m_pool.begin(); it < m_pool.end(); ++it)
-	{
-		delete *it;
-	}
 	m_pool.clear();
 	m_pool.shrink_to_fit();
 }
@@ -122,7 +114,11 @@ void GameObjectPool::Deserialize()
 ------------------------------------------------------------------------------*/
 vector<GameObject*> GameObjectPool::GetAllGameObjects()
 {
-	return m_pool;
+	vector<GameObject*> gameObjects;
+	for (int i = 0; i < m_pool.size(); i++)
+		gameObjects.push_back(m_pool[i].get());
+
+	return gameObjects;
 }
 
 int GameObjectPool::GetGameObjectCount()
@@ -151,7 +147,7 @@ GameObject* GameObjectPool::GetGameObjectByName(string name)
 	for (unsigned int i = 0; i < m_pool.size(); i++)
 	{
 		if (m_pool[i]->GetName() == name)
-			return m_pool[i];
+			return m_pool[i].get();
 	}
 
 	LOG("Can't return GameObject. No gameObject with name (" + name + ") exists.", Log::Warning);
@@ -160,13 +156,13 @@ GameObject* GameObjectPool::GetGameObjectByName(string name)
 
 GameObject* GameObjectPool::GetGameObjectByIndex(int index)
 {
-	if (index >= (int)m_pool.size())
+	if (index >= int(m_pool.size()))
 	{
 		LOG("Can't return GameObject, index out of range.", Log::Warning);
 		return nullptr;
 	}
 
-	return m_pool[index];
+	return m_pool[index].get();
 }
 
 GameObject* GameObjectPool::GetGameObjectByID(string ID)
@@ -174,7 +170,7 @@ GameObject* GameObjectPool::GetGameObjectByID(string ID)
 	for (unsigned int i = 0; i < m_pool.size(); i++)
 	{
 		if (m_pool[i]->GetID() == ID)
-			return m_pool[i];
+			return m_pool[i].get();
 	}
 
 	return nullptr;
@@ -192,7 +188,7 @@ vector<GameObject*> GameObjectPool::GetGameObjectsByParentID(string ID)
 
 		// if it does, check it's ID
 		if (m_pool[i]->GetTransform()->GetParent()->g_gameObject->GetID() == ID)
-			gameObjects.push_back(m_pool[i]);
+			gameObjects.push_back(m_pool[i].get());
 	}
 
 	return gameObjects;
@@ -216,7 +212,7 @@ bool GameObjectPool::GameObjectExistsByName(string name)
 	for (unsigned int i = 0; i < m_pool.size(); i++)
 	{
 		if (m_pool[i]->GetName() == name)
-			gameObject = m_pool[i];
+			gameObject = m_pool[i].get();
 	}
 
 	if (gameObject)
@@ -250,17 +246,13 @@ void GameObjectPool::RemoveGameObject(GameObject* gameObject)
 // Removes a gameobject but leaves the parent and the children as is
 void GameObjectPool::RemoveSingleGameObject(GameObject* gameObject)
 {
-	vector<GameObject*>::iterator it;
+	vector<unique_ptr<GameObject>>::iterator it;
 	for (it = m_pool.begin(); it < m_pool.end();)
 	{
-		GameObject* item = *it;
-		if (item->GetID() == gameObject->GetID())
+		if ((*it)->GetID() == gameObject->GetID())
 		{
-			delete item;
 			it = m_pool.erase(it);
-
 			m_scene->MakeDirty();
-
 			return;
 		}
 		++it;
@@ -272,6 +264,8 @@ void GameObjectPool::RemoveSingleGameObject(GameObject* gameObject)
 ------------------------------------------------------------------------------*/
 void GameObjectPool::AddGameObjectToPool(GameObject* gameObject)
 {
+	unique_ptr<GameObject> smartPtrGameObject(gameObject);
+
 	// check if it already exists.
 	for (unsigned int i = 0; i < m_pool.size(); i++)
 	{
@@ -280,7 +274,7 @@ void GameObjectPool::AddGameObjectToPool(GameObject* gameObject)
 	}
 
 	gameObject->Initialize(m_D3D11Device, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physics, m_scriptEngine);
-	m_pool.push_back(gameObject);
+	m_pool.push_back(move(smartPtrGameObject));
 
 	m_scene->MakeDirty();
 }

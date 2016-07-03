@@ -21,12 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ===============
 #include <vector>
 #include "../Core/Texture.h"
 #include <memory>
-
-///================================
+///=========================
 
 class TexturePool
 {
@@ -37,16 +36,16 @@ public:
 	void Serialize();
 	void Deserialize();
 
-	std::shared_ptr<Texture> AddFromFile(std::string texturePath, TextureType textureType);
-	std::shared_ptr<Texture> Add(std::shared_ptr<Texture> texture);
-	std::shared_ptr<Texture> GetTextureByName(std::string name);
-	std::shared_ptr<Texture> GetTextureByID(std::string ID);
-	std::shared_ptr<Texture> GetTextureByPath(std::string path);
+	Texture* CreateNewTexture();
+	Texture* AddFromFile(std::string texturePath, TextureType textureType);
+	Texture* GetTextureByName(std::string name);
+	Texture* GetTextureByID(std::string ID);
+	Texture* GetTextureByPath(std::string path);
 	void RemoveTextureByPath(std::string path);
 	void Clear();
 
 private:
-	std::vector<std::shared_ptr<Texture>> m_textures;
+	std::vector<std::unique_ptr<Texture>> m_textures;
 
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]

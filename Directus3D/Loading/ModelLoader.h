@@ -38,7 +38,7 @@ public:
 	ModelLoader();
 	~ModelLoader();
 
-	void Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool);
+	void Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool);
 	bool Load(std::string path, GameObject* gameObject);
 
 private:
@@ -52,16 +52,17 @@ private:
 	------------------------------------------------------------------------------*/
 	void ProcessNode(aiNode* assimpNode, const aiScene* assimpScene, GameObject* rootGameObject);
 	void ProcessMesh(aiMesh* assimpMesh, const aiScene* assimpScene, GameObject* parentGameObject);
-	std::shared_ptr<Material> GenerateMaterialFromAiMaterial(aiMaterial* assimpMaterial);
+	Material* GenerateMaterialFromAiMaterial(aiMaterial* assimpMaterial);
 
 	/*------------------------------------------------------------------------------
 									[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
 	std::string ConstructRelativeTexturePath(std::string absoluteTexturePath);
-	std::string FindTexture(std::string texturePath);
-	std::string TryPathWithMultipleExtensions(std::string fullpath);
+	std::string FindTexture(std::string texturePath) const;
+	static std::string TryPathWithMultipleExtensions(std::string fullpath);
 
 	MeshPool* m_meshPool;
 	TexturePool* m_texturePool;
 	ShaderPool* m_shaderPool;
+	MaterialPool* m_materialPool;
 };
