@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES =====================
 #include "Material.h"
 #include "../Pools/TexturePool.h"
 #include "../IO/Serializer.h"
@@ -110,11 +110,9 @@ void Material::Deserialize()
 	{
 		string textureID = Serializer::LoadSTR();
 		shared_ptr<Texture> texture = m_texturePool->GetTextureByID(textureID);
+
 		if (texture)
-		{
-			LOG("Failed to acquire texture with ID: \"" + textureID + "\" for material \"" + m_name + "\" from the texture pool.", Log::Error);
 			m_textures.push_back(texture);
-		}
 	}
 
 	AcquireShader();

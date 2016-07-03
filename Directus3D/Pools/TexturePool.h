@@ -37,6 +37,7 @@ public:
 	void Serialize();
 	void Deserialize();
 
+	std::shared_ptr<Texture> AddFromFile(std::string texturePath, TextureType textureType);
 	std::shared_ptr<Texture> Add(std::shared_ptr<Texture> texture);
 	std::shared_ptr<Texture> GetTextureByName(std::string name);
 	std::shared_ptr<Texture> GetTextureByID(std::string ID);
