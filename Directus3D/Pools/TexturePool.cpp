@@ -59,6 +59,20 @@ void TexturePool::Deserialize()
 	}
 }
 
+shared_ptr<Texture> TexturePool::AddFromFile(string texturePath, TextureType textureType)
+{
+	shared_ptr<Texture> texture = GetTextureByPath(texturePath);
+
+	// If the texture already exists, return it
+	if (texture)
+		return texture;
+
+	// If not, load it and return it
+	texture = make_shared<Texture>();
+	texture->LoadFromFile(texturePath, textureType);
+	return Add(texture);
+}
+
 shared_ptr<Texture> TexturePool::Add(shared_ptr<Texture> texture)
 {
 	if (!texture)

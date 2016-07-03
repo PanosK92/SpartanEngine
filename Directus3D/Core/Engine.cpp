@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 //====================================
 
-Engine::Engine(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
+Engine::Engine()
 {
 	m_engineSocket = nullptr;
 	m_scriptEngine = nullptr;
@@ -45,13 +45,11 @@ Engine::Engine(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
 	m_meshPool = nullptr;
 	m_materialPool = nullptr;
 	m_texturePool = nullptr;
-
-	Initialize(instance, windowHandle, drawPaneHandle);
 }
 
 Engine::~Engine()
 {
-	Shutdown();
+	
 }
 
 void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
@@ -119,7 +117,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 void Engine::Shutdown()
 {
 	/*------------------------------------------------------------------------------
-								[COMPONENT SHUTDOWN]
+	[COMPONENT SHUTDOWN]
 	------------------------------------------------------------------------------*/
 	// 16 - ENGINE INTERFACE
 	delete m_engineSocket;

@@ -37,16 +37,15 @@ class ShaderPool;
 class __declspec(dllexport) Engine
 {
 public:
-	Engine(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
+	Engine();
 	~Engine();
 
+	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
 	void Run();
+	void Shutdown();
 	Socket* GetSocket();
 
 private:
-	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
-	void Shutdown();
-
 	/*------------------------------------------------------------------------------
 									[COMPONENTS]
 	------------------------------------------------------------------------------*/

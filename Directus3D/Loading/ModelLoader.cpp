@@ -302,8 +302,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				shared_ptr<Texture> texture(new Texture());
-				texture->LoadFromFile(path, Albedo);
+				shared_ptr<Texture> texture = m_texturePool->AddFromFile(path, Albedo);
 				engineMaterial->SetTexture(texture);
 			}
 		}
@@ -316,8 +315,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				shared_ptr<Texture> texture(new Texture());
-				texture->LoadFromFile(path, Occlusion);
+				shared_ptr<Texture> texture = m_texturePool->AddFromFile(path, Occlusion);
 				engineMaterial->SetTexture(texture);
 			}
 		}
@@ -329,8 +327,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				shared_ptr<Texture> texture(new Texture());
-				texture->LoadFromFile(path, Normal);
+				shared_ptr<Texture> texture = m_texturePool->AddFromFile(path, Normal);
 				engineMaterial->SetTexture(texture);
 			}
 		}
@@ -342,8 +339,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				shared_ptr<Texture> texture(new Texture());
-				texture->LoadFromFile(path, Height);
+				shared_ptr<Texture> texture = m_texturePool->AddFromFile(path, Height);
 				engineMaterial->SetTexture(texture);
 			}
 		}
@@ -355,8 +351,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				shared_ptr<Texture> texture(new Texture());
-				texture->LoadFromFile(path, Mask);
+				shared_ptr<Texture> texture = m_texturePool->AddFromFile(path, Mask);
 				engineMaterial->SetTexture(texture);
 			}
 		}
