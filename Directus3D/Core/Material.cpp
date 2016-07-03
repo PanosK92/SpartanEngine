@@ -109,7 +109,7 @@ void Material::Deserialize()
 	for (int i = 0; i < textureCount; i++)
 	{
 		string textureID = Serializer::LoadSTR();
-		shared_ptr<Texture> texture = m_texturePool->GetTextureByID(textureID);
+		Texture* texture = m_texturePool->GetTextureByID(textureID);
 
 		if (texture)
 			m_textures.push_back(texture);
@@ -121,18 +121,23 @@ void Material::Deserialize()
 /*------------------------------------------------------------------------------
 [TEXTURES]
 ------------------------------------------------------------------------------*/
-void Material::SetTexture(shared_ptr<Texture> texture)
+void Material::SetTexture(string textureID)
 {
+	// Get the texture from the pool
+	Texture* texture = m_texturePool->GetTextureByID(textureID);
+
+	// Make sure this texture exists
 	if (!texture)
 		return;
 
-	if (HasTextureOfType(texture->GetType())) 	// Overwrite
+	// Overwrite
+	if (HasTextureOfType(texture->GetType())) 	
 	{
 		int textureIndex = GetTextureIndexByType(texture->GetType());
-		m_textures[textureIndex] = m_texturePool->Add(texture);
+		m_textures[textureIndex] = texture;
 	}
 	else // Add
-		m_textures.push_back(m_texturePool->Add(texture));
+		m_textures.push_back(texture);
 
 	AdjustTextureDependentProperties();
 	AcquireShader();
@@ -156,7 +161,7 @@ void Material::AdjustTextureDependentProperties()
 		height = 1.0f;
 }
 
-shared_ptr<Texture> Material::GetTextureByType(TextureType type)
+Texture* Material::GetTextureByType(TextureType type)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 	{
@@ -169,7 +174,7 @@ shared_ptr<Texture> Material::GetTextureByType(TextureType type)
 
 bool Material::HasTextureOfType(TextureType type)
 {
-	shared_ptr<Texture> texture = GetTextureByType(type);
+	Texture* texture = GetTextureByType(type);
 	if (texture)
 		return true;
 
@@ -187,7 +192,7 @@ bool Material::HasTexture(string path)
 
 string Material::GetTexturePathByType(TextureType type)
 {
-	shared_ptr<Texture> texture = GetTextureByType(type);
+	Texture* texture = GetTextureByType(type);
 	if (texture)
 		return texture->GetPath();
 
@@ -237,7 +242,7 @@ bool Material::HasShader()
 
 ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureType type)
 {
-	shared_ptr<Texture> texture = GetTextureByType(type);
+	Texture* texture = GetTextureByType(type);
 
 	if (texture)
 		return texture->GetID3D11ShaderResourceView();

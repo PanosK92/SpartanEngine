@@ -63,9 +63,9 @@ public:
 	/*------------------------------------------------------------------------------
 	[TEXTURES]
 	------------------------------------------------------------------------------*/
-	void SetTexture(std::shared_ptr<Texture> texture);
+	void SetTexture(std::string textureID);
 	void AdjustTextureDependentProperties();
-	std::shared_ptr<Texture> GetTextureByType(TextureType type);
+	Texture* GetTextureByType(TextureType type);
 	bool HasTextureOfType(TextureType type);
 	bool HasTexture(std::string path);
 	std::string GetTexturePathByType(TextureType type);
@@ -125,7 +125,7 @@ public:
 	Directus::Math::Vector2 GetTiling();
 
 private:
-	std::vector<std::shared_ptr<Texture>> m_textures;
+	std::vector<Texture*> m_textures;
 	std::string m_ID;
 	std::string m_name;
 	std::string m_modelID;

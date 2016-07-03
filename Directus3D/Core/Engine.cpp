@@ -92,12 +92,12 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	// 10 - TEXTURE POOL
 	m_texturePool = new TexturePool();
 
-	// 11 - MODEL LOADER
-	m_modelLoader = new ModelLoader();
-	m_modelLoader->Initialize(m_meshPool, m_texturePool, m_shaderPool);
-
-	// 12 - MATERIAL POOL
+	// 11 - MATERIAL POOL
 	m_materialPool = new MaterialPool(m_texturePool, m_shaderPool);
+
+	// 12 - MODEL LOADER
+	m_modelLoader = new ModelLoader();
+	m_modelLoader->Initialize(m_meshPool, m_texturePool, m_shaderPool, m_materialPool);
 
 	// 13 - RENDERER
 	m_renderer = new Renderer();
@@ -111,7 +111,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_scene->Initialize();
 
 	// 16 - ENGINE SOCKET
-	m_engineSocket = new Socket(m_scene, m_renderer, m_timer, m_modelLoader, m_physicsEngine);
+	m_engineSocket = new Socket(m_scene, m_renderer, m_timer, m_modelLoader, m_physicsEngine, m_texturePool);
 }
 
 void Engine::Shutdown()
@@ -131,11 +131,11 @@ void Engine::Shutdown()
 	// 13 - RENDERER
 	delete m_renderer;
 
-	// 12 - MATERIAL POOL
-	delete m_materialPool;
-
-	// 11 - MODEL LOADER
+	// 12 - MODEL LOADER
 	delete m_modelLoader;
+
+	// 11 - MATERIAL POOL
+	delete m_materialPool;
 
 	// 10 - TEXTURE POOL
 	delete m_texturePool;

@@ -69,20 +69,19 @@ void Skybox::Initialize()
 	if (FAILED(hr))
 		return;
 
-	shared_ptr<Texture> texture = g_texturePool->GetTextureByPath("Assets/Environment/environment.dds");
+	Texture* texture = g_texturePool->GetTextureByPath("Assets/Environment/environment.dds");
 	if (!texture)
 	{
-		texture = make_shared<Texture>();
+		texture = g_texturePool->CreateNewTexture();
 		texture->SetType(CubeMap);
 		texture->SetPath("Assets/Environment/environment.dds");
 		texture->SetWidth(1024);
 		texture->SetHeight(1024);
 		texture->SetGrayscale(false);
 		texture->SetID3D11ShaderResourceView(m_environmentSRV);
-		g_texturePool->Add(texture);
 	}
 
-	g_materialPool->GetMaterialStandardSkybox()->SetTexture(texture);
+	g_materialPool->GetMaterialStandardSkybox()->SetTexture(texture->GetID());
 
 	// Add the actual "box"
 	Mesh* mesh = g_gameObject->AddComponent<Mesh>();

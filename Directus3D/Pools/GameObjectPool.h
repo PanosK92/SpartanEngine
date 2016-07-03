@@ -74,7 +74,7 @@ public:
 	void AddGameObjectToPool(GameObject* gameObject);
 
 private:
-	std::vector<GameObject*> m_pool;
+	std::vector<std::unique_ptr<GameObject>> m_pool;
 
 	D3D11Device* m_D3D11Device;
 	Scene* m_scene;

@@ -37,10 +37,10 @@ public:
 									[MISC]
 	------------------------------------------------------------------------------*/
 	void Clear();
-	std::shared_ptr<Material> AddMaterial(std::shared_ptr<Material> material);
-	std::shared_ptr<Material> GetMaterialByID(std::string ID);
-	std::shared_ptr<Material> GetMaterialStandardDefault();
-	std::shared_ptr<Material> GetMaterialStandardSkybox();
+	Material* AddMaterial(Material* material);
+	Material* GetMaterialByID(std::string materialID);
+	Material* GetMaterialStandardDefault();
+	Material* GetMaterialStandardSkybox();
 
 	/*------------------------------------------------------------------------------
 									[I/O]
@@ -49,13 +49,13 @@ public:
 	void Deserialize();
 
 private:
-	std::vector<std::shared_ptr<Material>> m_materials;
+	std::vector<std::unique_ptr<Material>> m_materials;
 
 	TexturePool* m_texturePool;
 	ShaderPool* m_shaderPool;
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	void RemoveMaterial(std::shared_ptr<Material> material);
+	void RemoveMaterial(std::string materialID);
 	void AddStandardMaterials();
 };

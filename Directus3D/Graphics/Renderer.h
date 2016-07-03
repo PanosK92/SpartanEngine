@@ -35,6 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Shaders/DebugShader.h"
 #include "Shaders/PostProcessShader.h"
 #include "Shaders/DeferredShader.h"
+#include <memory>
+#include "../Core/Texture.h"
 //====================================
 
 enum Culling;

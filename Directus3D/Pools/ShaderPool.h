@@ -56,6 +56,6 @@ private:
 		bool cubemap
 	);
 
-	std::vector<ShaderVariation*> m_shaders;
+	std::vector<std::unique_ptr<ShaderVariation>> m_shaders;
 	D3D11Device* m_D3D11Device;
 };

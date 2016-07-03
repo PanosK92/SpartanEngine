@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshRenderer.h"
 #include "../Components/Mesh.h"
 #include "../Core/GameObject.h"
+#include "../Pools/MaterialPool.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -70,11 +71,12 @@ ModelLoader::~ModelLoader()
 {
 }
 
-void ModelLoader::Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool)
+void ModelLoader::Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool)
 {
 	m_meshPool = meshPool;
 	m_texturePool = texturePool;
 	m_shaderPool = shaderPool;
+	m_materialPool = materialPool;
 }
 
 bool ModelLoader::Load(string path, GameObject* gameObject)
@@ -250,8 +252,17 @@ void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* ga
 	// process materials
 	if (scene->HasMaterials())
 	{
-		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-		gameobject->AddComponent<MeshRenderer>()->SetMaterial(GenerateMaterialFromAiMaterial(material));
+		// Get assimp material
+		aiMaterial* assimpMaterial = scene->mMaterials[mesh->mMaterialIndex];
+
+		// Convert it
+		Material* material = GenerateMaterialFromAiMaterial(assimpMaterial);
+
+		// Add it to the material pool
+		material = m_materialPool->AddMaterial(material);
+
+		// Set it in the mesh renderer component
+		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material->GetID());
 	}
 
 	// free memory
@@ -259,9 +270,9 @@ void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* ga
 	indices.clear();
 }
 
-shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
+Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 {
-	shared_ptr<Material> engineMaterial(new Material(m_texturePool, m_shaderPool));
+	Material* engineMaterial = new Material(m_texturePool, m_shaderPool);
 
 	//= NAME ====================================================================
 	aiString name;
@@ -302,8 +313,8 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				shared_ptr<Texture> texture = m_texturePool->AddFromFile(path, Albedo);
-				engineMaterial->SetTexture(texture);
+				Texture* texture = m_texturePool->AddFromFile(path, Albedo);
+				engineMaterial->SetTexture(texture->GetID());
 			}
 		}
 	}
@@ -315,8 +326,8 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				shared_ptr<Texture> texture = m_texturePool->AddFromFile(path, Occlusion);
-				engineMaterial->SetTexture(texture);
+				Texture* texture = m_texturePool->AddFromFile(path, Occlusion);
+				engineMaterial->SetTexture(texture->GetID());
 			}
 		}
 
@@ -327,8 +338,8 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				shared_ptr<Texture> texture = m_texturePool->AddFromFile(path, Normal);
-				engineMaterial->SetTexture(texture);
+				Texture* texture = m_texturePool->AddFromFile(path, Normal);
+				engineMaterial->SetTexture(texture->GetID());
 			}
 		}
 
@@ -339,8 +350,8 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				shared_ptr<Texture> texture = m_texturePool->AddFromFile(path, Height);
-				engineMaterial->SetTexture(texture);
+				Texture* texture = m_texturePool->AddFromFile(path, Height);
+				engineMaterial->SetTexture(texture->GetID());
 			}
 		}
 
@@ -351,8 +362,8 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
-				shared_ptr<Texture> texture = m_texturePool->AddFromFile(path, Mask);
-				engineMaterial->SetTexture(texture);
+				Texture* texture = m_texturePool->AddFromFile(path, Mask);
+				engineMaterial->SetTexture(texture->GetID());
 			}
 		}
 
@@ -360,7 +371,7 @@ shared_ptr<Material> ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* mat
 }
 
 /*------------------------------------------------------------------------------
-							[HELPER FUNCTIONS]
+[HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
 // The texture path is relative to the model directory and the model path is absolute...
 // This methods constructs a path relative to the engine based on the above paths.
@@ -382,7 +393,7 @@ string ModelLoader::ConstructRelativeTexturePath(string absoluteTexturePath)
 	return relativeTexturePath;
 }
 
-string ModelLoader::FindTexture(string texturePath)
+string ModelLoader::FindTexture(string texturePath) const
 {
 	if (FileHelper::FileExists(texturePath))
 		return texturePath;

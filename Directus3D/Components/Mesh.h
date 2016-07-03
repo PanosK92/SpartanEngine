@@ -60,7 +60,7 @@ private:
 
 	D3D11Buffer* m_vertexBuffer;
 	D3D11Buffer* m_indexBuffer;
-	std::shared_ptr<MeshData> m_meshData;
+	MeshData* m_meshData;
 	Directus::Math::Vector3 m_min;
 	Directus::Math::Vector3 m_max;
 	Directus::Math::Vector3 m_extent;

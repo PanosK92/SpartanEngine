@@ -53,7 +53,7 @@ public:
 		D3D11Device* d3d11device
 	);
 	void Set();
-	void Render(int indexCount, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, Light* directionalLight, std::shared_ptr<Material> material);
+	void Render(int indexCount, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, Light* directionalLight, Material* material);
 	std::string GetID();
 
 	bool HasAlbedoTexture();

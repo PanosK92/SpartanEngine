@@ -34,7 +34,7 @@ class PhysicsDebugDraw;
 class __declspec(dllexport) Socket
 {
 public:
-	Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics);
+	Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics, TexturePool* texturePool);
 	~Socket();
 
 	/*------------------------------------------------------------------------------
@@ -87,6 +87,7 @@ private:
 	Scene* m_scene;
 	Renderer* m_renderer;
 	Timer* m_timer;
+	TexturePool* m_texturePool;
 	ModelLoader* m_modelLoader;
 	PhysicsEngine* m_physics;
 };
