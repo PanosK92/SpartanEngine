@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Camera.h"
 #include "../Components/Skybox.h"
 #include "../Components/Light.h"
-#include "D3D11/D3D11RenderTexture.h"
+#include "GraphicsDevice.h"
 #include "Shaders/DepthShader.h"
 #include "Shaders/DebugShader.h"
 #include "Shaders/PostProcessShader.h"
@@ -39,15 +39,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Texture.h"
 //====================================
 
-enum Culling;
-
 class Renderer
 {
 public:
 	Renderer();
 	~Renderer();
 
-	void Initialize(bool debugDraw, D3D11Device* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene);
+	void Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene);
 	void UpdateFromScene();
 	void PostProcessing(Camera* camera, Skybox* skybox, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mBaseView, Directus::Math::Matrix mPerspectiveProjection, Directus::Math::Matrix mOrthographicProjection);
 	void StartCalculatingStats();
@@ -65,7 +63,7 @@ public:
 	void MakeDirty();
 
 private:
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 	GBuffer* m_GBuffer;
 	Frustrum* m_frustrum;
 	FullScreenQuad* m_fullScreenQuad;
@@ -103,7 +101,6 @@ private:
 	------------------------------------------------------------------------------*/
 	void RenderLightDepthToTexture(std::vector<GameObject*> renderableGameObjects, int projectionSize, Light* light, float nearPlane, float farPlane);
 	void RenderToGBuffer(std::vector<GameObject*> renderableGameObjects, Light* dirLight, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix);
-	void CheckCulling(Culling culling);
 	void DebugDraw(GameObject* camera);
 	void Ping();
 	void Pong();

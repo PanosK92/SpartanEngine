@@ -21,14 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES ====================
 #include <vector>
 #include "Texture.h"
-#include "../Graphics/D3D11/D3D11Shader.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
-#include <memory>
-//========================================
+#include "../Graphics/Renderer.h"
+//===============================
 
 class ShaderVariation;
 class ShaderPool;
@@ -39,13 +38,6 @@ enum ShadingMode
 	Physically_Based,
 	Unlit,
 	Skysphere
-};
-
-enum Culling
-{
-	CullBack,
-	CullFront,
-	CullNone
 };
 
 class __declspec(dllexport) Material
@@ -91,8 +83,8 @@ public:
 	void SetModelID(std::string id);
 	std::string GetModelID();
 
-	void SetFaceCulling(Culling backFaceCulling);
-	Culling GetFaceCulling();
+	void SetFaceCullMode(CullMode backFaceCullMode);
+	CullMode GetFaceCullMode();
 
 	void SetOpacity(float opacity);
 	float GetOpacity();
@@ -129,7 +121,7 @@ private:
 	std::string m_ID;
 	std::string m_name;
 	std::string m_modelID;
-	Culling culling;
+	CullMode cullMode;
 	float opacity;
 	bool alphaBlending;
 	Directus::Math::Vector4 colorAlbedo;

@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 D3D11InputLayout::D3D11InputLayout()
 {
 	m_layout = nullptr;
-	m_D3D11Device = nullptr;
+	m_graphicsDevice = nullptr;
 }
 
 D3D11InputLayout::~D3D11InputLayout()
@@ -39,21 +39,21 @@ D3D11InputLayout::~D3D11InputLayout()
 
 //= MISC ==================================================
 //=========================================================
-void D3D11InputLayout::Initialize(D3D11Device* d3d11Device)
+void D3D11InputLayout::Initialize(GraphicsDevice* graphicsDevice)
 {
-	m_D3D11Device = d3d11Device;
+	m_graphicsDevice = graphicsDevice;
 }
 
 void D3D11InputLayout::Set()
 {
-	m_D3D11Device->GetDeviceContext()->IASetInputLayout(m_layout);
+	m_graphicsDevice->GetDeviceContext()->IASetInputLayout(m_layout);
 }
 
 //= LAYOUT CREATION ==================================================
 //====================================================================
 bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount)
 {
-	HRESULT result = m_D3D11Device->GetDevice()->CreateInputLayout(
+	HRESULT result = m_graphicsDevice->GetDevice()->CreateInputLayout(
 		vertexInputLayout,
 		elementCount,
 		VSBlob->GetBufferPointer(),

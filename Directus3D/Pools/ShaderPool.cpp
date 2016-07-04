@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace std;
 
-ShaderPool::ShaderPool(D3D11Device* d3d11device)
+ShaderPool::ShaderPool(GraphicsDevice* graphicsDevice)
 {
-	m_D3D11Device = d3d11device;
+	m_graphicsDevice = graphicsDevice;
 }
 
 ShaderPool::~ShaderPool()
@@ -73,7 +73,7 @@ ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
 		height,
 		mask,
 		cubemap,
-		m_D3D11Device
+		m_graphicsDevice
 	);
 
 	// Add the shader to the pool and return it

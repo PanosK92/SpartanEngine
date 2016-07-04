@@ -60,12 +60,12 @@ void Skybox::Initialize()
 {
 	// I had some trouble getting the FreeImage to load and create DDS textures, for now I load the .dds textures manually and then add them
 	// to a material which then get's assigned to the MeshRenderer.
-	HRESULT hr = CreateDDSTextureFromFile(g_d3d11Device->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &m_environmentSRV);
+	HRESULT hr = CreateDDSTextureFromFile(g_graphicsDevice->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &m_environmentSRV);
 	if (FAILED(hr))
 		return;
 
 	// Load irradiance texture
-	hr = CreateDDSTextureFromFile(g_d3d11Device->GetDevice(), L"Assets/Environment/irradiance.dds", nullptr, &m_irradianceSRV);
+	hr = CreateDDSTextureFromFile(g_graphicsDevice->GetDevice(), L"Assets/Environment/irradiance.dds", nullptr, &m_irradianceSRV);
 	if (FAILED(hr))
 		return;
 

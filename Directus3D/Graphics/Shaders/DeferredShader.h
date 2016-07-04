@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/GameObject.h"
 #include "../../Math/Vector4.h"
 #include "../../Components/Camera.h"
-#include "../D3D11/D3D11Device.h"
+#include "../GraphicsDevice.h"
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
 //==================================
@@ -37,7 +37,7 @@ public:
 	DeferredShader();
 	~DeferredShader();
 
-	void Initialize(D3D11Device* d3d11device);
+	void Initialize(GraphicsDevice* graphicsDevice);
 	void Render(int indexCount, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mBaseView, Directus::Math::Matrix mPerspectiveProjection, Directus::Math::Matrix mOrthographicProjection,
 	            std::vector<GameObject*> directionalLights, std::vector<GameObject*> pointLights,
 	            Camera* camera, ID3D11ShaderResourceView* albedo, ID3D11ShaderResourceView* normal, ID3D11ShaderResourceView* depth, ID3D11ShaderResourceView* material,
@@ -82,7 +82,6 @@ private:
 	};
 
 	D3D11Buffer* m_pointLightBuffer;
-
 	D3D11Shader* m_shader;
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 };

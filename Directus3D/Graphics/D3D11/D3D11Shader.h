@@ -26,11 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=====================================
 
 //= INCLUDES ================
-#include "D3D11Device.h"
 #include <vector>
 #include "D3D11InputLayout.h"
 #include "D3D11Sampler.h"
 #include <set>
+#include "../GraphicsDevice.h"
 //===========================
 
 class D3D11Shader
@@ -39,7 +39,7 @@ public:
 	D3D11Shader();
 	~D3D11Shader();
 
-	void Initialize(D3D11Device* d3d11Device);
+	void Initialize(GraphicsDevice* d3d11Device);
 	bool Load(std::string path);
 	bool SetInputLayout(InputLayout inputLayout);
 	bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
@@ -81,5 +81,5 @@ private:
 	bool m_layoutHasBeenSet;
 
 	//= DEPENDENCIES============
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 };

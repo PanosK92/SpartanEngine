@@ -280,14 +280,14 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 	engineMaterial->SetName(name.C_Str());
 	engineMaterial->SetModelID(m_modelName);
 
-	//= CULLING ===============================================================================================
-	// Specifies whether meshes using this material must be rendered without backface culling. 0 for false, !0 for true.
+	//= CullMode ===============================================================================================
+	// Specifies whether meshes using this material must be rendered without backface CullMode. 0 for false, !0 for true.
 	unsigned int max = 1;
 	int two_sided;
 	if ((AI_SUCCESS == aiGetMaterialIntegerArray(material, AI_MATKEY_TWOSIDED, &two_sided, &max)) && two_sided)
-		engineMaterial->SetFaceCulling(CullNone);
+		engineMaterial->SetFaceCullMode(CullNone);
 	else
-		engineMaterial->SetFaceCulling(CullBack);
+		engineMaterial->SetFaceCullMode(CullBack);
 
 	//= DIFFUSE COLOR ======================================================================================
 	aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);

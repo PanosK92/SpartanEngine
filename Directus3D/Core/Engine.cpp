@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ==========================
 #include "Engine.h"
 #include "Socket.h"
 #include "Scene.h"
@@ -30,7 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Renderer.h"
 #include "../Loading/ModelLoader.h"
 #include "../Input/Input.h"
-//====================================
+#include "../Graphics/GraphicsDevice.h"
+#include "Globals.h"
+//=====================================
 
 Engine::Engine()
 {
@@ -45,6 +47,8 @@ Engine::Engine()
 	m_meshPool = nullptr;
 	m_materialPool = nullptr;
 	m_texturePool = nullptr;
+	m_graphicsDevice = nullptr;
+	m_shaderPool = nullptr;
 }
 
 Engine::~Engine()
@@ -61,8 +65,8 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	Log::Initialize();
 
 	// 2 - D3D11
-	m_D3D11Device = new D3D11Device();
-	m_D3D11Device->Initialize(drawPaneHandle);
+	m_graphicsDevice = new GraphicsDevice();
+	m_graphicsDevice->Initialize(drawPaneHandle);
 
 	// 3 - TIMER
 	m_timer = new Timer();
@@ -81,13 +85,13 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_scriptEngine->Initialize();
 
 	// 7 - SHADER POOL
-	m_shaderPool = new ShaderPool(m_D3D11Device);
+	m_shaderPool = new ShaderPool(m_graphicsDevice);
 
 	// 8 - MESH POOL
 	m_meshPool = new MeshPool();
 
 	// 9 - IMAGE LOADER
-	ImageLoader::GetInstance().Initialize(m_D3D11Device);
+	ImageLoader::GetInstance().Initialize(m_graphicsDevice);
 
 	// 10 - TEXTURE POOL
 	m_texturePool = new TexturePool();
@@ -102,10 +106,10 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	// 13 - RENDERER
 	m_renderer = new Renderer();
 	m_scene = new Scene(m_texturePool, m_materialPool, m_meshPool, m_scriptEngine, m_physicsEngine, m_modelLoader, m_renderer);
-	m_renderer->Initialize(true, m_D3D11Device, m_timer, m_physicsEngine, m_scene);
+	m_renderer->Initialize(true, m_graphicsDevice, m_timer, m_physicsEngine, m_scene);
 
 	// 14 - GAMEOBJECT POOL
-	GameObjectPool::GetInstance().Initialize(m_D3D11Device, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physicsEngine, m_scriptEngine);
+	GameObjectPool::GetInstance().Initialize(m_graphicsDevice, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physicsEngine, m_scriptEngine);
 
 	// 15 - SCENE	
 	m_scene->Initialize();
@@ -129,40 +133,40 @@ void Engine::Shutdown()
 	GameObjectPool::GetInstance().Release();
 
 	// 13 - RENDERER
-	delete m_renderer;
+	DirectusSafeDelete(m_renderer);
 
 	// 12 - MODEL LOADER
-	delete m_modelLoader;
+	DirectusSafeDelete(m_modelLoader);
 
 	// 11 - MATERIAL POOL
-	delete m_materialPool;
+	DirectusSafeDelete(m_materialPool);
 
 	// 10 - TEXTURE POOL
-	delete m_texturePool;
+	DirectusSafeDelete(m_texturePool);
 
 	// 9 - IMAGE LOADER
 	ImageLoader::GetInstance().Clear();
 
 	// 8 - MESH POOL
-	delete m_meshPool;
+	DirectusSafeDelete(m_meshPool);
 
 	// 7 - SHADER POOL
-	delete m_shaderPool;
+	DirectusSafeDelete(m_shaderPool);
 
 	// 6 - SCRIPT ENGINE
-	delete m_scriptEngine;
+	DirectusSafeDelete(m_scriptEngine);
 
 	// 5 - PHYSICS ENGINE
-	delete m_physicsEngine;
+	DirectusSafeDelete(m_physicsEngine);
 
 	// 4 - INPUT
-	delete m_input;
+	DirectusSafeDelete(m_input);
 
 	// 3 - TIMER
-	delete m_timer;
+	DirectusSafeDelete(m_timer);
 
 	//2 - D3D11
-	delete m_D3D11Device;
+	DirectusSafeDelete(m_graphicsDevice);
 
 	// 1- DEBUG LOG
 	Log::Release();

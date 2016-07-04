@@ -40,20 +40,20 @@ DebugShader::~DebugShader()
 	DirectusSafeDelete(m_shader);
 }
 
-void DebugShader::Initialize(D3D11Device* d3d11device)
+void DebugShader::Initialize(GraphicsDevice* graphicsDevice)
 {
-	m_D3D11Device = d3d11device;
+	m_graphicsDevice = graphicsDevice;
 
 	// load the vertex and the pixel shader
 	m_shader = new D3D11Shader();
-	m_shader->Initialize(m_D3D11Device);
+	m_shader->Initialize(m_graphicsDevice);
 	m_shader->Load("Assets/Shaders/Debug.hlsl");
 	m_shader->SetInputLayout(PositionColor);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// create buffer
 	m_miscBuffer = new D3D11Buffer();
-	m_miscBuffer->Initialize(m_D3D11Device);
+	m_miscBuffer->Initialize(m_graphicsDevice);
 	m_miscBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
@@ -79,7 +79,7 @@ void DebugShader::SetShaderBuffers(Matrix worldMatrix, Matrix viewMatrix, Matrix
 	m_miscBuffer->Unmap();
 	m_miscBuffer->SetVS(0);
 
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(0, 1, &depthMap);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, 1, &depthMap);
 }
 
 void DebugShader::RenderShader(unsigned int vertexCount)
@@ -87,5 +87,5 @@ void DebugShader::RenderShader(unsigned int vertexCount)
 	m_shader->Set();
 
 	// render
-	m_D3D11Device->GetDeviceContext()->Draw(vertexCount, 0);
+	m_graphicsDevice->GetDeviceContext()->Draw(vertexCount, 0);
 }

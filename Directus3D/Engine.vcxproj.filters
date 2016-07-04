@@ -182,6 +182,7 @@
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="Loading\DDSTextureLoader.cpp" />
+    <ClCompile Include="Graphics\GraphicsDevice.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\D3D11\D3D11Buffer.h">
@@ -395,6 +396,7 @@
     <ClInclude Include="Core\Vertex.h">
       <Filter>Misc</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\GraphicsDevice.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Components">

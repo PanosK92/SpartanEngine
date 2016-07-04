@@ -44,7 +44,7 @@ LineRenderer::~LineRenderer()
 void LineRenderer::Initialize()
 {
 	m_vertexBuffer = make_shared<D3D11Buffer>();
-	m_vertexBuffer->Initialize(g_d3d11Device);
+	m_vertexBuffer->Initialize(g_graphicsDevice);
 
 	bool result = m_vertexBuffer->Create(
 		sizeof(VertexPositionColor),
@@ -103,7 +103,7 @@ void LineRenderer::SetBuffer()
 	m_vertexBuffer->SetIA();
 
 	// Set primitive topology
-	g_d3d11Device->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	g_graphicsDevice->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
 	ClearVertices();
 }

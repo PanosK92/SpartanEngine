@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ====================
-#include "../D3D11/D3D11Device.h"
+#include "../GraphicsDevice.h"
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../../Math/Matrix.h"
@@ -34,7 +34,7 @@ public:
 	PostProcessShader();
 	~PostProcessShader();
 
-	void Initialize(LPCSTR pass, D3D11Device* d3d11device);
+	void Initialize(LPCSTR pass, GraphicsDevice* d3d11device);
 	void Render(int indexCount, Directus::Math::Matrix worldMatrix, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix, ID3D11ShaderResourceView* texture);
 
 private:
@@ -45,6 +45,6 @@ private:
 
 	D3D11Buffer* m_miscBuffer;
 
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 	D3D11Shader* m_shader;
 };

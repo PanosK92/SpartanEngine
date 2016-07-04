@@ -62,6 +62,7 @@ XPM files[reading, writing]
 
 //= INCLUDES =============================
 #include "../Graphics/D3D11/D3D11Shader.h"
+#include "../Graphics/GraphicsDevice.h"
 //========================================
 
 class FIBITMAP;
@@ -78,7 +79,7 @@ public:
 	ImageLoader();
 	~ImageLoader();
 
-	void Initialize(D3D11Device* D3D11evice);
+	void Initialize(GraphicsDevice* D3D11evice);
 	bool Load(std::string path);
 	bool Load(std::string path, int width, int height);
 	void Clear();
@@ -115,5 +116,5 @@ private:
 	bool m_transparent;
 
 	// dependencies
-	D3D11Device* m_d3d11Device;
+	GraphicsDevice* m_graphicsDevice;
 };

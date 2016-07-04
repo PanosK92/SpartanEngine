@@ -32,7 +32,7 @@ using namespace Directus::Math;
 
 D3D11RenderTexture::D3D11RenderTexture()
 {
-	m_D3D11Device = nullptr;
+	m_graphicsDevice = nullptr;
 	m_renderTargetTexture = nullptr;
 	m_renderTargetView = nullptr;
 	m_shaderResourceView = nullptr;
@@ -51,9 +51,9 @@ D3D11RenderTexture::~D3D11RenderTexture()
 	DirectusSafeRelease(m_renderTargetTexture);
 }
 
-bool D3D11RenderTexture::Initialize(D3D11Device* d3d11device, int textureWidth, int textureHeight)
+bool D3D11RenderTexture::Initialize(GraphicsDevice* graphicsDevice, int textureWidth, int textureHeight)
 {
-	m_D3D11Device = d3d11device;
+	m_graphicsDevice = graphicsDevice;
 	m_width = textureHeight;
 	m_height = textureHeight;
 
@@ -75,7 +75,7 @@ bool D3D11RenderTexture::Initialize(D3D11Device* d3d11device, int textureWidth, 
 	textureDesc.MiscFlags = 0;
 
 	// Create the render target texture.
-	HRESULT result = m_D3D11Device->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTexture);
+	HRESULT result = m_graphicsDevice->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTexture);
 	if (FAILED(result))
 		return false;
 
@@ -86,7 +86,7 @@ bool D3D11RenderTexture::Initialize(D3D11Device* d3d11device, int textureWidth, 
 	renderTargetViewDesc.Texture2D.MipSlice = 0;
 
 	// Create the render target view.
-	result = m_D3D11Device->GetDevice()->CreateRenderTargetView(m_renderTargetTexture, &renderTargetViewDesc, &m_renderTargetView);
+	result = m_graphicsDevice->GetDevice()->CreateRenderTargetView(m_renderTargetTexture, &renderTargetViewDesc, &m_renderTargetView);
 	if (FAILED(result))
 		return false;
 
@@ -98,7 +98,7 @@ bool D3D11RenderTexture::Initialize(D3D11Device* d3d11device, int textureWidth, 
 	shaderResourceViewDesc.Texture2D.MipLevels = 1;
 
 	// Create the shader resource view.
-	result = m_D3D11Device->GetDevice()->CreateShaderResourceView(m_renderTargetTexture, &shaderResourceViewDesc, &m_shaderResourceView);
+	result = m_graphicsDevice->GetDevice()->CreateShaderResourceView(m_renderTargetTexture, &shaderResourceViewDesc, &m_shaderResourceView);
 	if (FAILED(result))
 		return false;
 
@@ -119,7 +119,7 @@ bool D3D11RenderTexture::Initialize(D3D11Device* d3d11device, int textureWidth, 
 	depthBufferDesc.MiscFlags = 0;
 
 	// Create the texture for the depth buffer using the filled out description.
-	result = m_D3D11Device->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
+	result = m_graphicsDevice->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
 	if (FAILED(result))
 		return false;
 
@@ -133,13 +133,13 @@ bool D3D11RenderTexture::Initialize(D3D11Device* d3d11device, int textureWidth, 
 	depthStencilViewDesc.Texture2D.MipSlice = 0;
 
 	// Create the depth stencil view.
-	result = m_D3D11Device->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
+	result = m_graphicsDevice->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
 	if (FAILED(result))
 		return false;
 
 	// Setup the viewport for rendering.
-	m_viewport.Width = (float)textureWidth;
-	m_viewport.Height = (float)textureHeight;
+	m_viewport.Width = float(textureWidth);
+	m_viewport.Height = float(textureHeight);
 	m_viewport.MinDepth = 0.0f;
 	m_viewport.MaxDepth = 1.0f;
 	m_viewport.TopLeftX = 0.0f;
@@ -151,10 +151,10 @@ bool D3D11RenderTexture::Initialize(D3D11Device* d3d11device, int textureWidth, 
 void D3D11RenderTexture::SetAsRenderTarget()
 {
 	// Bind the render target view and depth stencil buffer to the output render pipeline.
-	m_D3D11Device->GetDeviceContext()->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
+	m_graphicsDevice->GetDeviceContext()->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
 
 	// Set the viewport.
-	m_D3D11Device->GetDeviceContext()->RSSetViewports(1, &m_viewport);
+	m_graphicsDevice->GetDeviceContext()->RSSetViewports(1, &m_viewport);
 }
 
 void D3D11RenderTexture::Clear(float red, float green, float blue, float alpha)
@@ -167,21 +167,21 @@ void D3D11RenderTexture::Clear(float red, float green, float blue, float alpha)
 	clearColor[2] = blue;
 	clearColor[3] = alpha;
 
-	m_D3D11Device->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor); // Clear the back buffer.
-	m_D3D11Device->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0); // Clear the depth buffer.
+	m_graphicsDevice->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor); // Clear the back buffer.
+	m_graphicsDevice->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0); // Clear the depth buffer.
 }
 
-ID3D11ShaderResourceView* D3D11RenderTexture::GetShaderResourceView()
+ID3D11ShaderResourceView* D3D11RenderTexture::GetShaderResourceView() const
 {
 	return m_shaderResourceView;
 }
 
 void D3D11RenderTexture::CreateOrthographicProjectionMatrix(float nearPlane, float farPlane)
 {
-	m_orthographicProjectionMatrix = Matrix::CreateOrthographicLH((float)m_width, (float)m_height, nearPlane, farPlane);
+	m_orthographicProjectionMatrix = Matrix::CreateOrthographicLH(float(m_width), float(m_height), nearPlane, farPlane);
 }
 
-Matrix D3D11RenderTexture::GetOrthographicProjectionMatrix()
+Matrix D3D11RenderTexture::GetOrthographicProjectionMatrix() const
 {
 	return m_orthographicProjectionMatrix;
 }

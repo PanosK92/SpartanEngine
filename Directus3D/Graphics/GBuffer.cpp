@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //==========================
 
-GBuffer::GBuffer(D3D11Device* d3d11device)
+GBuffer::GBuffer(GraphicsDevice* graphicsDevice)
 {
-	m_D3D11Device = d3d11device;
+	m_graphicsDevice = graphicsDevice;
 
 	for (int i = 0; i < BUFFER_COUNT; i++)
 	{
@@ -85,7 +85,7 @@ bool GBuffer::Initialize(int width, int height)
 	// Create the render target textures.
 	for (int i = 0; i < BUFFER_COUNT; i++)
 	{
-		result = m_D3D11Device->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTextureArray[i]);
+		result = m_graphicsDevice->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTextureArray[i]);
 		if (FAILED(result))
 		{
 			return false;
@@ -100,7 +100,7 @@ bool GBuffer::Initialize(int width, int height)
 	// Create the render target views.
 	for (int i = 0; i < BUFFER_COUNT; i++)
 	{
-		result = m_D3D11Device->GetDevice()->CreateRenderTargetView(m_renderTargetTextureArray[i], &renderTargetViewDesc, &m_renderTargetViewArray[i]);
+		result = m_graphicsDevice->GetDevice()->CreateRenderTargetView(m_renderTargetTextureArray[i], &renderTargetViewDesc, &m_renderTargetViewArray[i]);
 		if (FAILED(result))
 			return false;
 	}
@@ -114,7 +114,7 @@ bool GBuffer::Initialize(int width, int height)
 	// Create the shader resource views.
 	for (int i = 0; i < BUFFER_COUNT; i++)
 	{
-		result = m_D3D11Device->GetDevice()->CreateShaderResourceView(m_renderTargetTextureArray[i], &shaderResourceViewDesc, &m_shaderResourceViewArray[i]);
+		result = m_graphicsDevice->GetDevice()->CreateShaderResourceView(m_renderTargetTextureArray[i], &shaderResourceViewDesc, &m_shaderResourceViewArray[i]);
 		if (FAILED(result))
 			return false;
 	}
@@ -136,7 +136,7 @@ bool GBuffer::Initialize(int width, int height)
 	depthBufferDesc.MiscFlags = 0;
 
 	// Create the texture for the depth buffer using the filled out description.
-	result = m_D3D11Device->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
+	result = m_graphicsDevice->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
 	if (FAILED(result))
 	{
 		return false;
@@ -151,7 +151,7 @@ bool GBuffer::Initialize(int width, int height)
 	depthStencilViewDesc.Texture2D.MipSlice = 0;
 
 	// Create the depth stencil view.
-	result = m_D3D11Device->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
+	result = m_graphicsDevice->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
 	if (FAILED(result))
 	{
 		return false;
@@ -171,10 +171,10 @@ bool GBuffer::Initialize(int width, int height)
 void GBuffer::SetRenderTargets()
 {
 	// Bind the render target view array and depth stencil buffer to the output render pipeline.
-	m_D3D11Device->GetDeviceContext()->OMSetRenderTargets(BUFFER_COUNT, m_renderTargetViewArray, m_depthStencilView);
+	m_graphicsDevice->GetDeviceContext()->OMSetRenderTargets(BUFFER_COUNT, m_renderTargetViewArray, m_depthStencilView);
 
 	// Set the viewport.
-	m_D3D11Device->GetDeviceContext()->RSSetViewports(1, &m_viewport);
+	m_graphicsDevice->GetDeviceContext()->RSSetViewports(1, &m_viewport);
 }
 
 void GBuffer::ClearRenderTargets(float red, float green, float blue, float alpha)
@@ -190,11 +190,11 @@ void GBuffer::ClearRenderTargets(float red, float green, float blue, float alpha
 	// Clear the render target buffers.
 	for (int i = 0; i < BUFFER_COUNT; i++)
 	{
-		m_D3D11Device->GetDeviceContext()->ClearRenderTargetView(m_renderTargetViewArray[i], color);
+		m_graphicsDevice->GetDeviceContext()->ClearRenderTargetView(m_renderTargetViewArray[i], color);
 	}
 
 	// Clear the depth buffer.
-	m_D3D11Device->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+	m_graphicsDevice->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
 ID3D11ShaderResourceView* GBuffer::GetShaderResourceView(int index)

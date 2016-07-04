@@ -41,7 +41,7 @@ Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 	m_ID = GENERATE_GUID;
 	m_name = "N/A";
 	m_modelID = "N/A";
-	culling = CullBack;
+	cullMode = CullBack;
 	opacity = 1.0f;
 	alphaBlending = false;
 	shadingMode = Physically_Based;
@@ -69,7 +69,7 @@ void Material::Serialize()
 	Serializer::SaveSTR(m_ID);
 	Serializer::SaveSTR(m_name);
 	Serializer::SaveSTR(m_modelID);
-	Serializer::SaveInt(culling);
+	Serializer::SaveInt(cullMode);
 	Serializer::SaveFloat(opacity);
 	Serializer::SaveBool(alphaBlending);
 	Serializer::SaveInt(shadingMode);
@@ -92,7 +92,7 @@ void Material::Deserialize()
 	m_ID = Serializer::LoadSTR();
 	m_name = Serializer::LoadSTR();
 	m_modelID = Serializer::LoadSTR();
-	culling = Culling(Serializer::LoadInt());
+	cullMode = CullMode(Serializer::LoadInt());
 	opacity = Serializer::LoadFloat();
 	alphaBlending = Serializer::LoadBool();
 	shadingMode = ShadingMode(Serializer::LoadInt());
@@ -283,14 +283,14 @@ string Material::GetModelID()
 	return m_modelID;
 }
 
-void Material::SetFaceCulling(Culling culling)
+void Material::SetFaceCullMode(CullMode cullMode)
 {
-	this->culling = culling;
+	this->cullMode = cullMode;
 }
 
-Culling Material::GetFaceCulling()
+CullMode Material::GetFaceCullMode()
 {
-	return culling;
+	return cullMode;
 }
 
 void Material::SetOpacity(float opacity)

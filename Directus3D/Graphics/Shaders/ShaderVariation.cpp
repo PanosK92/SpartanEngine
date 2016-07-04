@@ -33,7 +33,7 @@ using namespace std;
 
 ShaderVariation::ShaderVariation()
 {
-	m_D3D11Device = nullptr;
+	m_graphicsDevice = nullptr;
 	m_D3D11Shader = nullptr;
 	m_befaultBuffer = nullptr;
 
@@ -62,7 +62,7 @@ void ShaderVariation::Initialize(
 	bool height,
 	bool mask,
 	bool cubemap,
-	D3D11Device* d3d11device
+	GraphicsDevice* graphicsDevice
 	)
 {
 	// Save the properties of the material
@@ -75,7 +75,7 @@ void ShaderVariation::Initialize(
 	m_hasMaskTexture = mask;
 	m_hasCubeMap = cubemap;
 
-	m_D3D11Device = d3d11device;
+	m_graphicsDevice = graphicsDevice;
 	m_ID = GENERATE_GUID; // generate an ID for this shader
 	Load(); // load the shader
 }
@@ -102,7 +102,7 @@ void ShaderVariation::Load()
 {
 	// load the vertex and the pixel shader
 	m_D3D11Shader = new D3D11Shader();
-	m_D3D11Shader->Initialize(m_D3D11Device);
+	m_D3D11Shader->Initialize(m_graphicsDevice);
 	AddDefinesBasedOnMaterial();
 	m_D3D11Shader->Load("Assets/Shaders/GBuffer.hlsl");
 	m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
@@ -111,7 +111,7 @@ void ShaderVariation::Load()
 
 	// material buffer
 	m_befaultBuffer = new D3D11Buffer();
-	m_befaultBuffer->Initialize(m_D3D11Device);
+	m_befaultBuffer->Initialize(m_graphicsDevice);
 	m_befaultBuffer->CreateConstantBuffer(sizeof(DefaultBufferType));
 }
 
@@ -173,17 +173,17 @@ void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix
 	ID3D11ShaderResourceView* maskTexture = material->GetShaderResourceViewByTextureType(Mask);
 
 	// Set textures
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(0, 1, &albedoTexture);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(1, 1, &roughnessTexture);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(2, 1, &metallicTexture);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(3, 1, &occlusionTexture);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(4, 1, &normalTexture);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(5, 1, &heightTexture);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(6, 1, &maskTexture);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(7, 1, &dirLightDepthTex);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, 1, &albedoTexture);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(1, 1, &roughnessTexture);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(2, 1, &metallicTexture);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(3, 1, &occlusionTexture);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(4, 1, &normalTexture);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(5, 1, &heightTexture);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(6, 1, &maskTexture);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(7, 1, &dirLightDepthTex);
 
 	// Draw
-	m_D3D11Device->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
 string ShaderVariation::GetID()
