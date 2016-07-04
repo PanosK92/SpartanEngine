@@ -115,7 +115,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_scene->Initialize();
 
 	// 16 - ENGINE SOCKET
-	m_engineSocket = new Socket(m_scene, m_renderer, m_timer, m_modelLoader, m_physicsEngine, m_texturePool);
+	m_engineSocket = new Socket(m_scene, m_renderer, m_timer, m_modelLoader, m_physicsEngine, m_texturePool, m_graphicsDevice);
 }
 
 void Engine::Shutdown()

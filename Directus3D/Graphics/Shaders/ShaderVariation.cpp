@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Globals.h"
 #include "../../Core/GUIDGenerator.h"
 #include "../../IO/Log.h"
+#include "../../Core/Settings.h"
 //===================================
 
 //= NAMESPACES ================
@@ -155,6 +156,8 @@ void ShaderVariation::Render(int indexCount,
 		defaultBufferType->materialTiling = material->GetTiling();
 		defaultBufferType->bias = directionalLight->GetBias();
 		defaultBufferType->lightDirection = directionalLight->GetDirection();
+		defaultBufferType->viewport = RESOLUTION;
+		defaultBufferType->padding = RESOLUTION;
 		m_befaultBuffer->Unmap();
 	}
 	m_befaultBuffer->SetVS(0); // set buffer in the vertex shader

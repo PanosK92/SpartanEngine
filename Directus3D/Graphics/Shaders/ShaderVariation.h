@@ -110,7 +110,7 @@ private:
 		Directus::Math::Vector2 materialTiling;
 		float bias;
 		Directus::Math::Vector3 lightDirection;
-		Directus::Math::Vector3 cameraPos;
-		float padding;
+		Directus::Math::Vector2 viewport;
+		Directus::Math::Vector2 padding;
 	};
 };

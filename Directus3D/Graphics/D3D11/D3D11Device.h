@@ -55,8 +55,9 @@ public:
 	void SetFaceCullMode(D3D11_CULL_MODE cull);
 
 	void SetBackBufferRenderTarget();
+
+	void SetViewport(int clientWidth, int clientHeight);
 	void ResetViewport();
-	void SetResolution(unsigned int width, unsigned int height);
 
 private:
 	DXGI_MODE_DESC* m_displayModeList;
@@ -74,6 +75,7 @@ private:
 	ID3D11RasterizerState* m_rasterStateCullBack;
 	ID3D11RasterizerState* m_rasterStateCullNone;
 	D3D11_VIEWPORT m_viewport;
+	float m_aspectRatio;
 	ID3D11BlendState* m_alphaBlendingStateEnabled;
 	ID3D11BlendState* m_alphaBlendingStateDisabled;
 

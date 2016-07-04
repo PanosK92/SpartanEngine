@@ -38,9 +38,11 @@ public:
 	void Render(int indexCount, Directus::Math::Matrix worldMatrix, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix, ID3D11ShaderResourceView* texture);
 
 private:
-	struct MiscBufferType
+	struct DefaultBuffer
 	{
 		Directus::Math::Matrix worldViewProjection;
+		Directus::Math::Vector2 viewport;
+		Directus::Math::Vector2 padding;
 	};
 
 	D3D11Buffer* m_miscBuffer;

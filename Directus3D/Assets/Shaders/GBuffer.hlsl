@@ -35,8 +35,8 @@ cbuffer DefaultBuffer : register(b0)
     float2 materialTiling;
     float bias;
     float3 lightDirection;
-    float3 cameraPosition;
-    float padding;
+	float2 viewport;
+    float2 padding;
 };
 //===========================================
 
@@ -87,6 +87,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	PixelOutputType output;
 
+	float2 texel			= float2(1.0f / viewport.x, 1.0f / viewport.y);
 	float depth 			= input.positionCS.z /  input.positionCS.w; // default depth
 	float depthLinear		= input.positionCS.z /  input.positionVS.w; // linear depth	
 	float2 texCoord 		= float2(input.uv.x * materialTiling.x, input.uv.y * materialTiling.y);
@@ -143,7 +144,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
     float slopeScaledBias = bias * tan(acos(dot(normal.rgb, -lightDirection.rgb)));
 	float4 lightClipSpace = mul(input.positionWS, mViewProjectionDirLight);
-    shadow = ShadowMapping(textures[7], shadowSampler, lightClipSpace, slopeScaledBias, PCF);
+    shadow = ShadowMapping(textures[7], shadowSampler, lightClipSpace, slopeScaledBias, PCF, texel);
 	//===========================================================================================
 	
 	//= DETERMINE RENDER QUALITY ================================================================

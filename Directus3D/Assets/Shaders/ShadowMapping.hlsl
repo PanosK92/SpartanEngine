@@ -1,6 +1,5 @@
-float DepthMapLookup(Texture2D depthMap, SamplerState samplerState, float2 coords, float2 offset, float bias, float4 lightViewPosition)
+float DepthMapLookup(Texture2D depthMap, SamplerState samplerState, float2 coords, float2 offset, float bias, float4 lightViewPosition, float2 texel)
 {
-	float2 texel = float2(1.0f / 1920, 1.0f / 1080);
 	float shadowAmount = 0.0f;
 
 	if ((saturate(coords).x == coords.x) && (saturate(coords).y == coords.y))
@@ -18,7 +17,7 @@ float DepthMapLookup(Texture2D depthMap, SamplerState samplerState, float2 coord
 	return shadowAmount;
 }
 
-float ShadowMapping(Texture2D depthMap, SamplerState samplerState, float4 view, float bias)
+float ShadowMapping(Texture2D depthMap, SamplerState samplerState, float4 view, float bias, float2 texel)
 {
 	float shadowFactor = 0.0f;
 
@@ -27,10 +26,10 @@ float ShadowMapping(Texture2D depthMap, SamplerState samplerState, float4 view, 
 	projectDepthMapTexCoord.x = view.x / view.w / 2.0f + 0.5f;
 	projectDepthMapTexCoord.y = -view.y / view.w / 2.0f + 0.5f;
 
-	return DepthMapLookup(depthMap, samplerState, projectDepthMapTexCoord, float2(0.0f, 0.0f), bias, view);
+	return DepthMapLookup(depthMap, samplerState, projectDepthMapTexCoord, float2(0.0f, 0.0f), bias, view, texel);
 }
 
-float ShadowMappingPCF(Texture2D depthMap, SamplerState samplerState, float4 view, float bias)
+float ShadowMappingPCF(Texture2D depthMap, SamplerState samplerState, float4 view, float bias, float2 texel)
 {
 	float shadow = 0.0f;
 
@@ -43,19 +42,19 @@ float ShadowMappingPCF(Texture2D depthMap, SamplerState samplerState, float4 vie
 	for (float y = -1.5f; y <= 1.5f; y += 1.0f)
 		for (float x = -1.5f; x <= 1.5f; x += 1.0f)
 		{
-			shadow += DepthMapLookup(depthMap, samplerState, projectDepthMapTexCoord, float2(x, y), bias, view);
+			shadow += DepthMapLookup(depthMap, samplerState, projectDepthMapTexCoord, float2(x, y), bias, view, texel);
 		}
 
 	return shadow / 16.0f;
 }
 
-float ShadowMapping(Texture2D depthMap, SamplerState samplerState, float4 lightPos, float bias, bool PCF)
+float ShadowMapping(Texture2D depthMap, SamplerState samplerState, float4 lightPos, float bias, bool PCF, float2 texel)
 {
 	float shadow = 0.0f;
 	if (PCF)
-		shadow = ShadowMappingPCF(depthMap, samplerState, lightPos, bias);
+		shadow = ShadowMappingPCF(depthMap, samplerState, lightPos, bias, texel);
 	else
-		shadow = ShadowMapping(depthMap, samplerState, lightPos, bias);
+		shadow = ShadowMapping(depthMap, samplerState, lightPos, bias, texel);
 		
 	return 1.0f - shadow;
 }

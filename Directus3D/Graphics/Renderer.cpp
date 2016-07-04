@@ -135,6 +135,29 @@ void Renderer::Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* ti
 	m_noiseMap->SetType(Normal);
 }
 
+void Renderer::SetResolution(int width, int height)
+{
+	Settings::GetInstance().SetResolution(width, height);
+
+	m_graphicsDevice->SetViewport(width, height);
+
+	DirectusSafeDelete(m_GBuffer);
+	m_GBuffer = new GBuffer(m_graphicsDevice);
+	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+
+	DirectusSafeDelete(m_fullScreenQuad);
+	m_fullScreenQuad = new FullScreenQuad;
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphicsDevice);
+
+	DirectusSafeDelete(m_renderTexturePing);
+	m_renderTexturePing = new D3D11RenderTexture;
+	m_renderTexturePing->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+
+	DirectusSafeDelete(m_renderTexturePong);
+	m_renderTexturePong = new D3D11RenderTexture;
+	m_renderTexturePong->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+}
+
 void Renderer::UpdateFromScene()
 {
 	// Get renderables
@@ -433,15 +456,6 @@ void Renderer::StopCalculatingStats()
 
 		m_fpsLastKnownTime = currentTime;
 	}
-}
-
-void Renderer::SetResolution(int width, int height)
-{
-	//m_D3D11Device->SetResolution(width, height);
-
-	//Release();
-	//Initialize();
-	//Render();
 }
 
 void Renderer::SetPhysicsDebugDraw(bool enable)

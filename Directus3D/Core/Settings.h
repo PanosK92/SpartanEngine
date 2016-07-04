@@ -21,11 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======
-//==================
+//= INCLUDES ===============
+#include "../Math/Vector2.h"
+//==========================
 
 #define ENGINE_MODE Settings::GetInstance().GetEngineMode()
 #define RESOLUTION_WIDTH Settings::GetInstance().GetResolutionWidth()
+#define RESOLUTION Settings::GetInstance().GetResolution()
 #define RESOLUTION_HEIGHT Settings::GetInstance().GetResolutionHeight()
 #define SHADOWMAP_RESOLUTION Settings::GetInstance().GetShadowMapResolution()
 
@@ -61,6 +63,7 @@ public:
 	bool IsMouseVisible();
 	VSync GetVSync();
 	void SetResolution(int width, int height);
+	Directus::Math::Vector2 GetResolution();
 	int GetResolutionWidth();
 	int GetResolutionHeight();
 	float GetScreenAspect();
@@ -85,7 +88,7 @@ inline Settings::Settings()
 	m_fullScreen = false;
 	m_resolutionWidth = 1920;
 	m_resolutionHeight = 1080;
-	m_screenAspect = (float)m_resolutionWidth / m_resolutionHeight;
+	m_screenAspect = float(m_resolutionWidth) / m_resolutionHeight;
 	m_shadowMapResolution = 2048;
 	m_anisotropy = 16;
 	m_vsync = Off;
@@ -125,7 +128,12 @@ inline void Settings::SetResolution(int width, int height)
 {
 	m_resolutionWidth = width;
 	m_resolutionHeight = height;
-	m_screenAspect = (float)m_resolutionWidth / m_resolutionHeight;
+	m_screenAspect = float(m_resolutionWidth) / m_resolutionHeight;
+}
+
+inline Directus::Math::Vector2 Settings::GetResolution()
+{
+	return Directus::Math::Vector2(GetResolutionWidth(), GetResolutionHeight());
 }
 
 inline int Settings::GetResolutionWidth()

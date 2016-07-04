@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "PostProcessShader.h"
 #include "../../Core/Globals.h"
+#include "../../Core/Settings.h"
 //=============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
-
 //=============================
 
 PostProcessShader::PostProcessShader()
@@ -57,25 +57,28 @@ void PostProcessShader::Initialize(LPCSTR pass, GraphicsDevice* graphicsDevice)
 	// create buffer
 	m_miscBuffer = new D3D11Buffer();
 	m_miscBuffer->Initialize(m_graphicsDevice);
-	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
+	m_miscBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
 void PostProcessShader::Render(int indexCount, Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix, ID3D11ShaderResourceView* texture)
 {
-	// get a pointer to the data in the constant buffer.
-	MiscBufferType* miscBufferType = static_cast<MiscBufferType*>(m_miscBuffer->Map());
+	//= Fill the constant buffer ===============================================
+	DefaultBuffer* defaultBuffer = (DefaultBuffer*)m_miscBuffer->Map();
 
-	// fill buffer
-	miscBufferType->worldViewProjection = Matrix::Transpose(worldMatrix * viewMatrix * Matrix::Transpose(projectionMatrix));
+	defaultBuffer->worldViewProjection = Matrix::Transpose(worldMatrix * viewMatrix * Matrix::Transpose(projectionMatrix));
+	defaultBuffer->viewport = RESOLUTION;
+	defaultBuffer->padding = Vector2(0, 0);
 
-	m_miscBuffer->Unmap(); // unlock the constant buffer
-	m_miscBuffer->SetVS(0); // set the constant buffer in the vertex shader
+	m_miscBuffer->Unmap();
+	m_miscBuffer->SetVS(0);
+	//==========================================================================
 
-	// set shader texture resource in the pixel shader.
+	//= SET TEXTURE ============================================================
 	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
 
+	//= SET SHADER =============================================================
 	m_shader->Set();
 
-	// render
+	//= DRAW ===================================================================
 	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
