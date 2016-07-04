@@ -38,6 +38,9 @@ public:
 	~D3D11Device();
 
 	void Initialize(HWND handle);
+	bool CreateDepthStencilBuffer();
+	bool CreateDepthStencil();
+	bool CreateDepthStencilView();
 	void Release();
 
 	void Begin();
@@ -56,7 +59,8 @@ public:
 
 	void SetBackBufferRenderTarget();
 
-	void SetViewport(int clientWidth, int clientHeight);
+	void SetResolution(int width, int height);
+	void SetViewport(int width, int height);
 	void ResetViewport();
 
 private:
@@ -75,11 +79,12 @@ private:
 	ID3D11RasterizerState* m_rasterStateCullBack;
 	ID3D11RasterizerState* m_rasterStateCullNone;
 	D3D11_VIEWPORT m_viewport;
-	float m_aspectRatio;
 	ID3D11BlendState* m_alphaBlendingStateEnabled;
 	ID3D11BlendState* m_alphaBlendingStateDisabled;
 
+	DXGI_SWAP_CHAIN_DESC GetSwapchainDesc(HWND handle);
 	D3D11_RASTERIZER_DESC GetRasterizerDesc(D3D11_CULL_MODE cullMode);
 	D3D11_DEPTH_STENCIL_DESC GetDepthStencilDesc(bool depthEnable);
 	D3D11_BLEND_DESC GetBlendDesc(bool blendEnable);
+
 };

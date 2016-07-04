@@ -32,12 +32,12 @@ using namespace Directus::Math;
 PostProcessShader::PostProcessShader()
 {
 	m_shader = nullptr;
-	m_miscBuffer = nullptr;
+	m_constantBuffer = nullptr;
 }
 
 PostProcessShader::~PostProcessShader()
 {
-	DirectusSafeDelete(m_miscBuffer);
+	DirectusSafeDelete(m_constantBuffer);
 	DirectusSafeDelete(m_shader);
 }
 
@@ -55,22 +55,22 @@ void PostProcessShader::Initialize(LPCSTR pass, GraphicsDevice* graphicsDevice)
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// create buffer
-	m_miscBuffer = new D3D11Buffer();
-	m_miscBuffer->Initialize(m_graphicsDevice);
-	m_miscBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
+	m_constantBuffer = new D3D11Buffer();
+	m_constantBuffer->Initialize(m_graphicsDevice);
+	m_constantBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
 void PostProcessShader::Render(int indexCount, Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix, ID3D11ShaderResourceView* texture)
 {
 	//= Fill the constant buffer ===============================================
-	DefaultBuffer* defaultBuffer = (DefaultBuffer*)m_miscBuffer->Map();
+	DefaultBuffer* defaultBuffer = (DefaultBuffer*)m_constantBuffer->Map();
 
 	defaultBuffer->worldViewProjection = Matrix::Transpose(worldMatrix * viewMatrix * Matrix::Transpose(projectionMatrix));
 	defaultBuffer->viewport = RESOLUTION;
-	defaultBuffer->padding = Vector2(0, 0);
+	defaultBuffer->padding = RESOLUTION;
 
-	m_miscBuffer->Unmap();
-	m_miscBuffer->SetVS(0);
+	m_constantBuffer->Unmap();
+	m_constantBuffer->SetVS(0);
 	//==========================================================================
 
 	//= SET TEXTURE ============================================================

@@ -112,5 +112,5 @@ void GraphicsDevice::SetCullMode(CullMode cullMode)
 
 void GraphicsDevice::SetViewport(int width, int height)
 {
-	m_D3D11Device->SetViewport(width, height);
+	m_D3D11Device->SetResolution(width, height);
 }

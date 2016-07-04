@@ -37,6 +37,22 @@ namespace Directus
 
 			Vector2 operator+(const Vector2& b);
 			void operator+=(const Vector2& b);
+
+			bool operator==(const Vector2& b)
+			{
+				if (x == b.x && y == b.y)
+					return true;
+
+				return false;
+			}
+
+			bool operator!=(const Vector2& b)
+			{
+				if (x != b.x || y != b.y)
+					return true;
+
+				return false;
+			}
 		};
 	}
 }
