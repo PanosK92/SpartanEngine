@@ -74,10 +74,6 @@ bool D3D11Shader::Load(string path)
 {
 	m_path = path;
 
-	// Add defines that always exist by default
-	AddDefine("RESOLUTION_WIDTH", RESOLUTION_WIDTH);
-	AddDefine("RESOLUTION_HEIGHT", RESOLUTION_HEIGHT);
-
 	//= Vertex shader =================================================
 	vector<D3D_SHADER_MACRO> vsMacros = m_macros;
 	vsMacros.push_back(D3D_SHADER_MACRO{ "COMPILE_VS", "1" });

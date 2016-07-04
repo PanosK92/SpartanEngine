@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "GraphicsDevice.h"
+#include "../Core/Settings.h"
+
 //=========================
 
 //= NAMESPACES ================
@@ -106,4 +108,9 @@ void GraphicsDevice::SetCullMode(CullMode cullMode)
 
 	// Save the current CullMode mode
 	m_cullMode = cullMode;
+}
+
+void GraphicsDevice::SetViewport(int width, int height)
+{
+	m_D3D11Device->SetViewport(width, height);
 }

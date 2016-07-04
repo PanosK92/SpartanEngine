@@ -58,6 +58,7 @@ public:
 	void EnableZBuffer(bool enable);
 	bool SetInputLayout(InputLayout inputLayout);
 	void SetCullMode(CullMode cullMode);
+	void SetViewport(int width, int height);
 private:
 	D3D11Device* m_D3D11Device;
 	InputLayout m_inputLayout;

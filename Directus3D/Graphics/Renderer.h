@@ -46,12 +46,12 @@ public:
 	~Renderer();
 
 	void Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene);
+	void SetResolution(int width, int height);
 	void UpdateFromScene();
 	void PostProcessing(Camera* camera, Skybox* skybox, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mBaseView, Directus::Math::Matrix mPerspectiveProjection, Directus::Math::Matrix mOrthographicProjection);
 	void StartCalculatingStats();
 	void StopCalculatingStats();
 	void Render();
-	void SetResolution(int width, int height);
 	void SetPhysicsDebugDraw(bool enable);
 
 	/*------------------------------------------------------------------------------

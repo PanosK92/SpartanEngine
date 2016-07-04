@@ -46,24 +46,24 @@ public:
 	/*------------------------------------------------------------------------------
 										[MISC]
 	------------------------------------------------------------------------------*/
-	void Render(unsigned int indexCount, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix, Light* directionalLight);
+	void Render(unsigned int indexCount, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix, Light* directionalLight) const;
 
 	/*------------------------------------------------------------------------------
 										[PROPERTIES]
 	------------------------------------------------------------------------------*/
 	void SetCastShadows(bool castShadows);
-	bool GetCastShadows();
+	bool GetCastShadows() const;
 	void SetReceiveShadows(bool receiveShadows);
-	bool GetReceiveShadows();
+	bool GetReceiveShadows() const;
 
 	/*------------------------------------------------------------------------------
 									[MATERIAL]
 	------------------------------------------------------------------------------*/
-	Material* GetMaterial();
+	Material* GetMaterial() const;
 	void SetMaterial(std::string materialID);
 	void SetMaterialStandardDefault();
 	void SetMaterialStandardSkybox();
-	bool HasMaterial();
+	bool HasMaterial() const;
 
 private:
 	Material* m_material;

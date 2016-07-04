@@ -1,5 +1,3 @@
-#if COMPILE_PS == 1
-
 Texture2D sourceTexture			: register(t0);
 SamplerState anisotropicSampler	: register(s0);
 SamplerState bilinearSampler	: register(s1);
@@ -11,15 +9,16 @@ SamplerState bilinearSampler	: register(s1);
 #include "FXAA.hlsl"
 #endif
 
-#endif
-
-//= Constant Buffers ===============
-cbuffer MiscBuffer : register(b0)
+//= CONSTANT BUFFERS ===============
+cbuffer DefaultBuffer : register(b0)
 {
 	matrix mWorldViewProjection;
+	float2 viewport;
+	float2 padding;
 };
+//==================================
 
-//= Structs ========================
+//= STRUCTS ========================
 struct VertexInputType
 {
     float4 position : POSITION;
@@ -31,39 +30,25 @@ struct PixelInputType
     float4 position : SV_POSITION;
     float2 uv : TEXCOORD;
 };
+//==================================
 
-/*------------------------------------------------------------------------------
-								[VS()]
-------------------------------------------------------------------------------*/
-#if COMPILE_VS == 1
 PixelInputType DirectusVertexShader(VertexInputType input)
 {
     PixelInputType output; 
 	
-    input.position.w = 1.0f;
-	
-	// Calculate the world space position for a full-screen quad
+    input.position.w = 1.0f;	
     output.position = mul(input.position, mWorldViewProjection);
-	
-	// UV
 	output.uv = input.uv;
 	
 	return output;
 }
-#endif
 
-#if COMPILE_PS == 1
-/*------------------------------------------------------------------------------
-                             [GLOBALS|FUNCTIONS]
-------------------------------------------------------------------------------*/
-static float2 resolution 				= float2(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-static float2 texelSize 				= float2(1.0f / RESOLUTION_WIDTH, 1.0f / RESOLUTION_HEIGHT);
 
 /*------------------------------------------------------------------------------
                           [FXAA CODE SECTION]
 ------------------------------------------------------------------------------*/
 #if FXAA == 1
-float4 FXAAPass(float2 texCoord)
+float4 FXAAPass(float2 texCoord, float2 texelSize)
 {
 	FxaaTex tex 						= { bilinearSampler, sourceTexture };	
     float2 fxaaQualityRcpFrame			= texelSize;
@@ -94,8 +79,8 @@ float4 SharpeningPass(float2 texCoord)
   	float val0 = 2.0f;
 	float val1 = -0.125f;
 	float effect_width = 0.6f;
-	float dx = effect_width / RESOLUTION_WIDTH;
-	float dy = effect_width / RESOLUTION_HEIGHT;
+	float dx = effect_width / viewport.x;
+	float dy = effect_width / viewport.y;
 
 	float4 c1 = sourceTexture.Sample(anisotropicSampler, texCoord + float2(-dx, -dy)) * val1;
 	float4 c2 = sourceTexture.Sample(anisotropicSampler, texCoord + float2(  0, -dy)) * val1;
@@ -115,7 +100,7 @@ float4 SharpeningPass(float2 texCoord)
 						[BLUR]
 ------------------------------------------------------------------------------*/
 #if BLUR == 1
-float4 BlurPass(float2 texCoord)
+float4 BlurPass(float2 texCoord, float2 texelSize)
 {
 	int uBlurSize = 5; // use size of noise texture
 	
@@ -142,9 +127,10 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	float2 texCoord = input.uv;
 	float4 color;
+	float2 texelSize = float2(1.0f / viewport.x, 1.0f / viewport.y);
 
 	#if FXAA == 1
-	color = FXAAPass(texCoord);
+	color = FXAAPass(texCoord, texelSize);
 	#endif
 	
 	#if SHARPENING == 1 
@@ -152,9 +138,8 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	#endif
 	
 	#if BLUR == 1 
-	color = BlurPass(texCoord);
+	color = BlurPass(texCoord, texelSize);
 	#endif
 	
 	return color;
 }
-#endif

@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
-
 //=============================
 
 MeshRenderer::MeshRenderer()
@@ -49,7 +48,6 @@ MeshRenderer::~MeshRenderer()
 /*------------------------------------------------------------------------------
 							[INTERFACE]
 ------------------------------------------------------------------------------*/
-
 void MeshRenderer::Initialize()
 {
 }
@@ -75,7 +73,7 @@ void MeshRenderer::Deserialize()
 /*------------------------------------------------------------------------------
 									[MISC]
 ------------------------------------------------------------------------------*/
-void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix projectionMatrix, Light* directionalLight)
+void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix projectionMatrix, Light* directionalLight) const
 {
 	if (!HasMaterial()) // If there is a material
 	{
@@ -113,15 +111,13 @@ void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix pro
 	);
 }
 
-/*------------------------------------------------------------------------------
-								[PROPERTIES]
-------------------------------------------------------------------------------*/
+//= PROPERTIES =================================================
 void MeshRenderer::SetCastShadows(bool castShadows)
 {
 	m_castShadows = castShadows;
 }
 
-bool MeshRenderer::GetCastShadows()
+bool MeshRenderer::GetCastShadows() const
 {
 	return m_castShadows;
 }
@@ -131,15 +127,13 @@ void MeshRenderer::SetReceiveShadows(bool receiveShadows)
 	m_receiveShadows = receiveShadows;
 }
 
-bool MeshRenderer::GetReceiveShadows()
+bool MeshRenderer::GetReceiveShadows() const
 {
 	return m_receiveShadows;
 }
 
-/*------------------------------------------------------------------------------
-									[MATERIAL]
-------------------------------------------------------------------------------*/
-Material* MeshRenderer::GetMaterial()
+//= MATERIAL RELATED FUNCTIONS =================================
+Material* MeshRenderer::GetMaterial() const
 {
 	return m_material;
 }
@@ -159,7 +153,7 @@ void MeshRenderer::SetMaterialStandardSkybox()
 	m_material = g_materialPool->GetMaterialStandardSkybox();
 }
 
-bool MeshRenderer::HasMaterial()
+bool MeshRenderer::HasMaterial() const
 {
 	if (!GetMaterial())
 		return false;

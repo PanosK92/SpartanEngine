@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace std;
 
-Socket::Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics, TexturePool* texturePool)
+Socket::Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice)
 {
 	m_scene = scene;
 	m_renderer = renderer;
@@ -40,6 +40,7 @@ Socket::Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* mode
 	m_modelLoader = modelLoader;
 	m_physics = physics;
 	m_texturePool = texturePool;
+	m_graphicsDevice = graphicsDevice;
 }
 
 Socket::~Socket()
@@ -47,11 +48,11 @@ Socket::~Socket()
 }
 
 /*------------------------------------------------------------------------------
-								[RESOLUTION]
+[RESOLUTION]
 ------------------------------------------------------------------------------*/
-void Socket::SetResolution(int width, int height)
+void Socket::SetViewport(int width, int height) const
 {
-	//Settings::GetInstance().SetResolution(width, height);
+	m_renderer->SetResolution(width, height);
 }
 
 /*------------------------------------------------------------------------------
