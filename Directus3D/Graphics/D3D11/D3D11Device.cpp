@@ -52,9 +52,6 @@ D3D11Device::~D3D11Device()
 
 void D3D11Device::Initialize(HWND handle)
 {
-	unsigned int screenWidth = (unsigned int)RESOLUTION_WIDTH;
-	unsigned int screenHeight = (unsigned int)RESOLUTION_HEIGHT;
-
 	/*------------------------------------------------------------------------------
 							[Graphics Interface Factory]
 	------------------------------------------------------------------------------*/
@@ -115,9 +112,9 @@ void D3D11Device::Initialize(HWND handle)
 	// When a match is found store the numerator and denominator of the refresh rate for that monitor.
 	for (i = 0; i < numModes; i++)
 	{
-		if (m_displayModeList[i].Width == (unsigned int)screenWidth)
+		if (m_displayModeList[i].Width == (unsigned int)RESOLUTION_WIDTH)
 		{
-			if (m_displayModeList[i].Height == (unsigned int)screenHeight)
+			if (m_displayModeList[i].Height == (unsigned int)RESOLUTION_HEIGHT)
 			{
 				numerator = m_displayModeList[i].RefreshRate.Numerator;
 				denominator = m_displayModeList[i].RefreshRate.Denominator;
@@ -148,54 +145,13 @@ void D3D11Device::Initialize(HWND handle)
 		LOG("Failed to convert the adapter's name.", Log::Error);
 
 	/*------------------------------------------------------------------------------
-							[Swap Chain Description]
-	------------------------------------------------------------------------------*/
-	DXGI_SWAP_CHAIN_DESC swapChainDesc;
-
-	// Initialize the swap chain description.
-	ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
-
-	swapChainDesc.BufferCount = 2; // Set to a single back buffer.
-	swapChainDesc.BufferDesc.Width = screenWidth; // Set the width of the back buffer.
-	swapChainDesc.BufferDesc.Height = screenHeight; // Set the height of the back buffer.
-	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // Set regular 32-bit surface for the back buffer.
-
-	// Set the refresh rate of the back buffer.
-	/*if (Settings::GetInstance().IsVsyncEnabled())
-	{
-		swapChainDesc.BufferDesc.RefreshRate.Numerator = numerator;
-		swapChainDesc.BufferDesc.RefreshRate.Denominator = denominator;
-	}
-	else
-	{
-		swapChainDesc.BufferDesc.RefreshRate.Numerator = 0;
-		swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-	}
-*/
-	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // Set the usage of the back buffer.	
-	swapChainDesc.OutputWindow = handle; // Set the handle for the window to render to.
-	swapChainDesc.SampleDesc.Count = 1;
-	swapChainDesc.SampleDesc.Quality = 0;
-
-	// Set to full screen or windowed mode.
-	if (Settings::GetInstance().IsFullScreen())
-		swapChainDesc.Windowed = false;
-	else
-		swapChainDesc.Windowed = true;
-
-	// Set the scan line ordering and scaling to unspecified.
-	swapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-	swapChainDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-	swapChainDesc.Flags = 0;
-
-	/*------------------------------------------------------------------------------
 									[Feature Level]
 	------------------------------------------------------------------------------*/
 	// Set the feature level to DirectX 11.
 	D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
 
 	// Create the swap chain, Direct3D device, and Direct3D device context.
+	DXGI_SWAP_CHAIN_DESC swapChainDesc = GetSwapchainDesc(handle);
 	hResult = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, &featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc, &m_swapChain, &m_device, nullptr, &m_deviceContext);
 	if (FAILED(hResult))
 		LOG("Failed to create the swap chain, Direct3D device, and Direct3D device context.", Log::Error);
@@ -218,68 +174,14 @@ void D3D11Device::Initialize(HWND handle)
 	backBufferPtr->Release();
 	backBufferPtr = nullptr;
 
-	/*------------------------------------------------------------------------------
-							[Depth Buffer Description]
-	------------------------------------------------------------------------------*/
-	D3D11_TEXTURE2D_DESC depthBufferDesc;
-	// Initialize the description of the depth buffer.
-	ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
+	// Depth Stencil Buffer
+	CreateDepthStencilBuffer();
 
-	// Set up the description of the depth buffer.
-	depthBufferDesc.Width = screenWidth;
-	depthBufferDesc.Height = screenHeight;
-	depthBufferDesc.MipLevels = 1;
-	depthBufferDesc.ArraySize = 1;
-	depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	depthBufferDesc.SampleDesc.Count = 1;
-	depthBufferDesc.SampleDesc.Quality = 0;
-	depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-	depthBufferDesc.CPUAccessFlags = 0;
-	depthBufferDesc.MiscFlags = 0;
+	// Depth-Stencil
+	CreateDepthStencil();
 
-	// Create the texture for the depth buffer using the filled out description.
-	hResult = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
-	if (FAILED(hResult))
-		LOG("Failed to create the texture for the depth buffer.", Log::Error);
-
-	/*------------------------------------------------------------------------------
-									[Depth-Stencil]
-	------------------------------------------------------------------------------*/
-	// Create a depth stencil state with depth enabled
-	D3D11_DEPTH_STENCIL_DESC depthStencilDesc = GetDepthStencilDesc(true);
-	hResult = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateEnabled);
-	if (FAILED(hResult))
-		LOG("Failed to create depth stencil state.", Log::Error);
-
-	// Create a depth stencil state with depth disabled
-	depthStencilDesc = GetDepthStencilDesc(false);
-	HRESULT result = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateDisabled);
-	if (FAILED(result))
-		LOG("Failed to create depth stencil state.", Log::Error);
-
-	// Set the default depth stencil state
-	m_deviceContext->OMSetDepthStencilState(m_depthStencilStateEnabled, 1);
-
-	/*------------------------------------------------------------------------------
-						[Depth-Stencil View Description]
-	------------------------------------------------------------------------------*/
-	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-	// Initialize the depth stencil view.
-	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-
-	// Set up the depth stencil view description.
-	depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-	depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-	// Create the depth stencil view.
-	hResult = m_device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
-	if (FAILED(hResult))
-		LOG("Failed to create the depth stencil view.", Log::Error);
-
-	// Bind the render target view and depth stencil buffer to the output render pipeline.
-	m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
+	// Depth-Stencil View
+	CreateDepthStencilView();
 
 	/*------------------------------------------------------------------------------
 							[Rasterizer Description]
@@ -310,7 +212,7 @@ void D3D11Device::Initialize(HWND handle)
 	------------------------------------------------------------------------------*/
 	// Create a blending state with alpha blending enabled
 	D3D11_BLEND_DESC blendStateDescription = GetBlendDesc(true);
-	result = m_device->CreateBlendState(&blendStateDescription, &m_alphaBlendingStateEnabled);
+	HRESULT result = m_device->CreateBlendState(&blendStateDescription, &m_alphaBlendingStateEnabled);
 	if (FAILED(result))
 		LOG("Failed to create the blend state.", Log::Error);
 
@@ -320,21 +222,88 @@ void D3D11Device::Initialize(HWND handle)
 	if (FAILED(result))
 		LOG("Failed to create the blend state.", Log::Error);
 
-	/*------------------------------------------------------------------------------
-									[Misc]
-	------------------------------------------------------------------------------*/
-	// Setup the viewport for rendering
-	m_viewport.Width = float(screenWidth);
-	m_viewport.Height = float(screenHeight);
-	m_viewport.MinDepth = 0.0f;
-	m_viewport.MaxDepth = 1.0f;
-	m_viewport.TopLeftX = 0.0f;
-	m_viewport.TopLeftY = 0.0f;
+	SetViewport(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+}
 
-	// Create the viewport
-	m_deviceContext->RSSetViewports(1, &m_viewport);
+bool D3D11Device::CreateDepthStencilBuffer()
+{
+	D3D11_TEXTURE2D_DESC depthBufferDesc;
+	// Initialize the description of the depth buffer.
+	ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
 
-	//LOG(m_videoCardDescription + " " + Log::IntToString(m_videoCardMemory) + " MB", Log::Info);
+	// Set up the description of the depth buffer.
+	depthBufferDesc.Width = RESOLUTION_WIDTH;
+	depthBufferDesc.Height = RESOLUTION_HEIGHT;
+	depthBufferDesc.MipLevels = 1;
+	depthBufferDesc.ArraySize = 1;
+	depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	depthBufferDesc.SampleDesc.Count = 1;
+	depthBufferDesc.SampleDesc.Quality = 0;
+	depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	depthBufferDesc.CPUAccessFlags = 0;
+	depthBufferDesc.MiscFlags = 0;
+
+	// Create the texture for the depth buffer using the filled out description.
+	HRESULT hResult = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
+	if (FAILED(hResult))
+	{
+		LOG("Failed to create the texture for the depth buffer.", Log::Error);
+		return false;
+	}
+
+	return true;
+}
+
+bool D3D11Device::CreateDepthStencil()
+{
+	// Create a depth stencil state with depth enabled
+	D3D11_DEPTH_STENCIL_DESC depthStencilDesc = GetDepthStencilDesc(true);
+	HRESULT hResult = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateEnabled);
+	if (FAILED(hResult))
+	{
+		LOG("Failed to create depth stencil state.", Log::Error);
+		return false;
+	}
+
+	// Create a depth stencil state with depth disabled
+	depthStencilDesc = GetDepthStencilDesc(false);
+	HRESULT result = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateDisabled);
+	if (FAILED(result))
+	{
+		LOG("Failed to create depth stencil state.", Log::Error);
+		return false;
+	}
+
+	// Set the default depth stencil state
+	m_deviceContext->OMSetDepthStencilState(m_depthStencilStateEnabled, 1);
+
+	return true;
+}
+
+bool D3D11Device::CreateDepthStencilView()
+{
+	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
+	// Initialize the depth stencil view.
+	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
+
+	// Set up the depth stencil view description.
+	depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	depthStencilViewDesc.Texture2D.MipSlice = 0;
+
+	// Create the depth stencil view.
+	HRESULT hResult = m_device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
+	if (FAILED(hResult))
+	{
+		LOG("Failed to create the depth stencil view.", Log::Error);
+		return false;
+	}
+
+	// Bind the render target view and depth stencil buffer to the output render pipeline.
+	m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
+
+	return true;
 }
 
 void D3D11Device::Release()
@@ -440,62 +409,41 @@ void D3D11Device::SetBackBufferRenderTarget()
 	m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
 }
 
-void D3D11Device::SetViewport(int clientWidth, int clientHeight)
+void D3D11Device::SetResolution(int width, int height)
 {
-	//Called when the window is resized - will also be called at the end 
-	//of Direct3DInit(). 
-
 	//Release old views and the old depth/stencil buffer.
 	DirectusSafeRelease(m_renderTargetView);
 	DirectusSafeRelease(m_depthStencilView);
 	DirectusSafeRelease(m_depthStencilBuffer);
 
 	//Resize the swap chain and recreate the render target views. 
-	HRESULT hResult = m_swapChain->ResizeBuffers(1, clientWidth, clientHeight, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+	HRESULT hResult = m_swapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
 	ID3D11Texture2D* backBuffer;
 	hResult = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer));
 	hResult = m_device->CreateRenderTargetView(backBuffer, nullptr, &m_renderTargetView);
 	DirectusSafeRelease(backBuffer);
 
-	//Create depth/stencil buffer and view. 
-	D3D11_TEXTURE2D_DESC dsDesc;
+	CreateDepthStencilBuffer();
+	CreateDepthStencil();
 
-	dsDesc.Width = clientWidth;
-	dsDesc.Height = clientHeight;
-	dsDesc.MipLevels = 1;
-	dsDesc.ArraySize = 1;
-	dsDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	dsDesc.SampleDesc.Count = 1;
-	dsDesc.SampleDesc.Quality = 0;
-	dsDesc.Usage = D3D11_USAGE_DEFAULT;
-	dsDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-	dsDesc.CPUAccessFlags = NULL;
-	dsDesc.MiscFlags = NULL;
+	SetViewport(width, height);
+}
 
-	hResult = m_device->CreateTexture2D(&dsDesc, nullptr, &m_depthStencilBuffer);
-	hResult = m_device->CreateDepthStencilView(m_depthStencilBuffer, nullptr, &m_depthStencilView);
-
-	//Bind the render target view and depth/stencil view to the pipeline
-	m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
-
-	//Set the viewport transform (Default to the entire screen)
-	m_viewport.TopLeftX = 0;
-	m_viewport.TopLeftY = 0;
-	m_viewport.Width = static_cast<float>(clientWidth);
-	m_viewport.Height = static_cast<float>(clientHeight);
+void D3D11Device::SetViewport(int width, int height)
+{
+	// Setup the viewport
+	m_viewport.Width = float(width);
+	m_viewport.Height = float(height);
 	m_viewport.MinDepth = 0.0f;
 	m_viewport.MaxDepth = 1.0f;
+	m_viewport.TopLeftX = 0.0f;
+	m_viewport.TopLeftY = 0.0f;
 
-	//Apply viewport to the context
 	m_deviceContext->RSSetViewports(1, &m_viewport);
-
-	//set aspect ratio
-	m_aspectRatio = float(clientWidth) / clientHeight;
 }
 
 void D3D11Device::ResetViewport()
 {
-	// Set the viewport.
 	m_deviceContext->RSSetViewports(1, &m_viewport);
 }
 
@@ -507,6 +455,50 @@ void D3D11Device::SetFaceCullMode(D3D11_CULL_MODE cull)
 		m_deviceContext->RSSetState(m_rasterStateCullBack);
 	else if (cull == D3D11_CULL_NONE)
 		m_deviceContext->RSSetState(m_rasterStateCullNone);
+}
+
+DXGI_SWAP_CHAIN_DESC D3D11Device::GetSwapchainDesc(HWND handle)
+{
+	DXGI_SWAP_CHAIN_DESC swapChainDesc;
+
+	// Initialize the swap chain description.
+	ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
+
+	swapChainDesc.BufferCount = 2; // Set to a single back buffer.
+	swapChainDesc.BufferDesc.Width = RESOLUTION_WIDTH; // Set the width of the back buffer.
+	swapChainDesc.BufferDesc.Height = RESOLUTION_HEIGHT; // Set the height of the back buffer.
+	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // Set regular 32-bit surface for the back buffer.
+
+	// Set the refresh rate of the back buffer.
+	/*if (Settings::GetInstance().IsVsyncEnabled())
+	{
+		swapChainDesc.BufferDesc.RefreshRate.Numerator = numerator;
+		swapChainDesc.BufferDesc.RefreshRate.Denominator = denominator;
+	}
+	else
+	{
+		swapChainDesc.BufferDesc.RefreshRate.Numerator = 0;
+		swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
+	}*/
+
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // Set the usage of the back buffer.	
+	swapChainDesc.OutputWindow = handle; // Set the handle for the window to render to.
+	swapChainDesc.SampleDesc.Count = 1;
+	swapChainDesc.SampleDesc.Quality = 0;
+
+	// Set to full screen or windowed mode.
+	if (Settings::GetInstance().IsFullScreen())
+		swapChainDesc.Windowed = false;
+	else
+		swapChainDesc.Windowed = true;
+
+	// Set the scan line ordering and scaling to unspecified.
+	swapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+	swapChainDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+	swapChainDesc.Flags = 0;
+
+	return swapChainDesc;
 }
 
 D3D11_RASTERIZER_DESC D3D11Device::GetRasterizerDesc(D3D11_CULL_MODE cullMode)

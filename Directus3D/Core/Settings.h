@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RESOLUTION_WIDTH Settings::GetInstance().GetResolutionWidth()
 #define RESOLUTION Settings::GetInstance().GetResolution()
 #define RESOLUTION_HEIGHT Settings::GetInstance().GetResolutionHeight()
+#define ASPECT_RATIO Settings::GetInstance().GetScreenAspect()
 #define SHADOWMAP_RESOLUTION Settings::GetInstance().GetShadowMapResolution()
 
 enum EngineMode
@@ -88,7 +89,7 @@ inline Settings::Settings()
 	m_fullScreen = false;
 	m_resolutionWidth = 1920;
 	m_resolutionHeight = 1080;
-	m_screenAspect = float(m_resolutionWidth) / m_resolutionHeight;
+	m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
 	m_shadowMapResolution = 2048;
 	m_anisotropy = 16;
 	m_vsync = Off;
@@ -128,7 +129,7 @@ inline void Settings::SetResolution(int width, int height)
 {
 	m_resolutionWidth = width;
 	m_resolutionHeight = height;
-	m_screenAspect = float(m_resolutionWidth) / m_resolutionHeight;
+	m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
 }
 
 inline Directus::Math::Vector2 Settings::GetResolution()

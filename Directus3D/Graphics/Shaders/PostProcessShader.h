@@ -44,8 +44,7 @@ private:
 		Directus::Math::Vector2 viewport;
 		Directus::Math::Vector2 padding;
 	};
-
-	D3D11Buffer* m_miscBuffer;
+	D3D11Buffer* m_constantBuffer;
 
 	GraphicsDevice* m_graphicsDevice;
 	D3D11Shader* m_shader;

@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
-
 //=============================
 
 Camera::Camera()
@@ -49,6 +48,13 @@ void Camera::Initialize()
 
 void Camera::Update()
 {
+	// calculate the projectiom matrix only if the resolution has changed
+	if (m_lastKnownResolution != RESOLUTION)
+	{	
+		m_lastKnownResolution = RESOLUTION;
+		m_isDirty = true;
+	}
+
 	// calculate the view matrix only if the transform has changed
 	if (m_position != g_transform->GetPosition() || m_rotation != g_transform->GetRotation())
 	{
@@ -209,6 +215,6 @@ void Camera::CalculateBaseView()
 
 void Camera::CalculateProjectionMatrix()
 {
-	m_perspectiveProjectionMatrix = Matrix::CreatePerspectiveFieldOfViewLH(m_FOV, Settings::GetInstance().GetScreenAspect(), m_nearPlane, m_farPlane);
+	m_perspectiveProjectionMatrix = Matrix::CreatePerspectiveFieldOfViewLH(m_FOV, ASPECT_RATIO, m_nearPlane, m_farPlane);
 	m_orthographicProjectionMatrix = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
 }
