@@ -25,6 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11/D3D11Device.h"
 //============================
 
+enum InputLayout
+{
+	Auto,
+	Position,
+	PositionColor,
+	PositionTexture,
+	PositionTextureNormalTangent
+};
+
 enum CullMode
 {
 	CullBack,
@@ -47,8 +56,10 @@ public:
 	void ResetRenderTarget();
 	void ResetViewport();
 	void EnableZBuffer(bool enable);
+	bool SetInputLayout(InputLayout inputLayout);
 	void SetCullMode(CullMode cullMode);
 private:
 	D3D11Device* m_D3D11Device;
+	InputLayout m_inputLayout;
 	CullMode m_cullMode;
 };

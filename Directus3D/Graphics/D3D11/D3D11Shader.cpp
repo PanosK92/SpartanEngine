@@ -39,7 +39,7 @@ D3D11Shader::D3D11Shader()
 {
 	m_vertexShader = nullptr;
 	m_pixelShader = nullptr;
-	m_layout = nullptr;
+	m_D3D11InputLayout = nullptr;
 	m_VSBlob = nullptr;
 	m_compiled = false;
 	m_graphicsDevice = nullptr;
@@ -49,7 +49,7 @@ D3D11Shader::~D3D11Shader()
 {
 	DirectusSafeRelease(m_vertexShader);
 	DirectusSafeRelease(m_pixelShader);
-	DirectusSafeDelete(m_layout);
+	DirectusSafeDelete(m_D3D11InputLayout);
 
 	// delete sampler
 	vector<D3D11Sampler*>::iterator it;
@@ -66,8 +66,8 @@ void D3D11Shader::Initialize(GraphicsDevice* graphicsDevice)
 	m_graphicsDevice = graphicsDevice;
 
 	// initialize input layout
-	m_layout = new D3D11InputLayout();
-	m_layout->Initialize(m_graphicsDevice);
+	m_D3D11InputLayout = new D3D11InputLayout();
+	m_D3D11InputLayout->Initialize(m_graphicsDevice);
 }
 
 bool D3D11Shader::Load(string path)
@@ -129,12 +129,12 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 
 	// Create vertex input layout
 	if (inputLayout != Auto)
-		m_layoutHasBeenSet = m_layout->Create(m_VSBlob, inputLayout);
+		m_layoutHasBeenSet = m_D3D11InputLayout->Create(m_VSBlob, inputLayout);
 	else
 	{
 		vector<D3D11_INPUT_ELEMENT_DESC> inputLayoutDesc = Reflect(m_VSBlob);
-		m_layoutHasBeenSet = m_layout->Create(m_VSBlob, &inputLayoutDesc[0], UINT(inputLayoutDesc.size()));
-	}		
+		m_layoutHasBeenSet = m_D3D11InputLayout->Create(m_VSBlob, &inputLayoutDesc[0], UINT(inputLayoutDesc.size()));
+	}
 
 	// If the creation was successful, release vsBlob else print a message
 	if (m_layoutHasBeenSet)
@@ -166,7 +166,8 @@ void D3D11Shader::Set()
 		return;
 
 	// set the vertex input layout.
-	m_layout->Set();
+	if (m_graphicsDevice->SetInputLayout(m_D3D11InputLayout->GetInputLayout()))
+		m_D3D11InputLayout->Set();
 
 	// set the vertex and pixel shaders
 	m_graphicsDevice->GetDeviceContext()->VSSetShader(m_vertexShader, nullptr, 0);
@@ -349,7 +350,7 @@ vector<D3D11_INPUT_ELEMENT_DESC> D3D11Shader::Reflect(ID3D10Blob* vsBlob) const
 	reflector->GetDesc(&shaderDesc);
 
 	// Read input layout description from shader info
-	for (UINT i = 0; i< shaderDesc.InputParameters; i++)
+	for (UINT i = 0; i < shaderDesc.InputParameters; i++)
 	{
 		D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
 		reflector->GetInputParameterDesc(i, &paramDesc);

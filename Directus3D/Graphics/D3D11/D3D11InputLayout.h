@@ -26,26 +26,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../GraphicsDevice.h"
 //============================
 
-enum InputLayout
-{
-	Auto,
-	Position,
-	PositionColor,
-	PositionTexture,
-	PositionTextureNormalTangent
-};
-
 class D3D11InputLayout
 {
 public:
 	D3D11InputLayout();
 	~D3D11InputLayout();
 
-	//= MISC =================================
+	//= MISC ====================================
 	void Initialize(GraphicsDevice* d3d11Device);
 	void Set();
+	InputLayout GetInputLayout();
 
-	//= LAYOUT CREATION ==================================================================================
+	//= LAYOUT CREATION ============================================================================
 	bool Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount);
 	bool Create(ID3D10Blob* VSBlob, InputLayout layout);
 
@@ -57,6 +49,7 @@ private:
 	bool CreatePosTexNorTanDesc(ID3D10Blob* VSBlob);
 
 	GraphicsDevice* m_graphicsDevice;
-	ID3D11InputLayout* m_layout;
+	ID3D11InputLayout* m_ID3D11InputLayout;
+	InputLayout m_inputLayout;
 	std::vector<D3D11_INPUT_ELEMENT_DESC> m_layoutDesc;
 };

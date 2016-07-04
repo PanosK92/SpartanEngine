@@ -211,18 +211,18 @@ void Renderer::Render()
 		m_graphicsDevice->SetCullMode(CullBack);
 	}
 
-	//// Render G-Buffer
-	//m_GBuffer->SetRenderTargets();
-	//m_GBuffer->ClearRenderTargets(0.0f, 0.0f, 0.0f, 1.0f);
-	//RenderToGBuffer(m_renderables, dirLight, mView, mPerspectiveProjection);
+	// Render G-Buffer
+	m_GBuffer->SetRenderTargets();
+	m_GBuffer->ClearRenderTargets(0.0f, 0.0f, 0.0f, 1.0f);
+	RenderToGBuffer(m_renderables, dirLight, mView, mPerspectiveProjection);
 	m_graphicsDevice->EnableZBuffer(false);
 
-	//// Post processing, fxaa, sharpening etc...
+	// Post processing, fxaa, sharpening etc...
 	m_fullScreenQuad->SetBuffers(); // set full screen quad buffers
-	//PostProcessing(camera, skybox, mWorld, mView, mBaseView, mPerspectiveProjection, mOrthographicProjection);
+	PostProcessing(camera, skybox, mWorld, mView, mBaseView, mPerspectiveProjection, mOrthographicProjection);
 
-	//// Debug draw - Colliders
-	//DebugDraw(mainCamera);
+	// Debug draw - Colliders
+	DebugDraw(mainCamera);
 
 	m_graphicsDevice->End(); // display frame
 

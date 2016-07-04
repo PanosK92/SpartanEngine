@@ -28,17 +28,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 D3D11InputLayout::D3D11InputLayout()
 {
-	m_layout = nullptr;
+	m_ID3D11InputLayout = nullptr;
 	m_graphicsDevice = nullptr;
 }
 
 D3D11InputLayout::~D3D11InputLayout()
 {
-	DirectusSafeRelease(m_layout);
+	DirectusSafeRelease(m_ID3D11InputLayout);
 }
 
 //= MISC ==================================================
-//=========================================================
 void D3D11InputLayout::Initialize(GraphicsDevice* graphicsDevice)
 {
 	m_graphicsDevice = graphicsDevice;
@@ -46,11 +45,15 @@ void D3D11InputLayout::Initialize(GraphicsDevice* graphicsDevice)
 
 void D3D11InputLayout::Set()
 {
-	m_graphicsDevice->GetDeviceContext()->IASetInputLayout(m_layout);
+	m_graphicsDevice->GetDeviceContext()->IASetInputLayout(m_ID3D11InputLayout);
+}
+
+InputLayout D3D11InputLayout::GetInputLayout()
+{
+	return m_inputLayout;
 }
 
 //= LAYOUT CREATION ==================================================
-//====================================================================
 bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount)
 {
 	HRESULT result = m_graphicsDevice->GetDevice()->CreateInputLayout(
@@ -58,7 +61,7 @@ bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vert
 		elementCount,
 		VSBlob->GetBufferPointer(),
 		VSBlob->GetBufferSize(),
-		&m_layout
+		&m_ID3D11InputLayout
 	);
 
 	if (FAILED(result))
@@ -69,23 +72,24 @@ bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vert
 
 bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, InputLayout layout)
 {
-	if (layout == Position)
+	m_inputLayout = layout;
+
+	if (m_inputLayout == Position)
 		return CreatePosDesc(VSBlob);
 
-	if (layout == PositionColor)
+	if (m_inputLayout == PositionColor)
 		return CreatePosColDesc(VSBlob);
 
-	if (layout == PositionTexture)
+	if (m_inputLayout == PositionTexture)
 		return CreatePosTexDesc(VSBlob);
 
-	if (layout == PositionTextureNormalTangent)
+	if (m_inputLayout == PositionTextureNormalTangent)
 		return CreatePosTexNorTanDesc(VSBlob);
 
 	return false;
 }
 
 //= LAYOUTS DESCRIPTIONS =============================================
-//====================================================================
 bool D3D11InputLayout::CreatePosDesc(ID3D10Blob* VSBlob)
 {
 	D3D11_INPUT_ELEMENT_DESC positionDesc;
