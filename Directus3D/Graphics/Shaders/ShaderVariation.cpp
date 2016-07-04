@@ -63,7 +63,7 @@ void ShaderVariation::Initialize(
 	bool mask,
 	bool cubemap,
 	GraphicsDevice* graphicsDevice
-	)
+)
 {
 	// Save the properties of the material
 	m_hasAlbedoTexture = albedo;
@@ -115,7 +115,9 @@ void ShaderVariation::Load()
 	m_befaultBuffer->CreateConstantBuffer(sizeof(DefaultBufferType));
 }
 
-void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mProjection, Light* directionalLight, Material* material)
+void ShaderVariation::Render(int indexCount,
+	Matrix mWorld, Matrix mView, Matrix mProjection, 
+	Light* directionalLight, Material* material, vector<ID3D11ShaderResourceView*> textureArray)
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{
@@ -126,17 +128,13 @@ void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix
 	Matrix world = mWorld;
 	Matrix worldView = world * mView;
 	Matrix worldViewProjection = worldView * mProjection;
-
-	ID3D11ShaderResourceView* dirLightDepthTex = nullptr;
 	Matrix viewProjectionDirectionaLight = Matrix::Identity();
 	if (directionalLight)
 	{
-		dirLightDepthTex = directionalLight->GetDepthMap();
 		directionalLight->GenerateOrthographicProjectionMatrix(100, 100, 0.3f, 1000.0f);
 		directionalLight->GenerateViewMatrix();
 		viewProjectionDirectionaLight = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix();
 	}
-
 	/*------------------------------------------------------------------------------
 							[FILL THE BUFFER]
 	------------------------------------------------------------------------------*/
@@ -161,28 +159,11 @@ void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix
 	}
 	m_befaultBuffer->SetVS(0); // set buffer in the vertex shader
 	m_befaultBuffer->SetPS(0); // set buffer in the pixel shader
-	/*------------------------------------------------------------------------------
-								[TEXTURES]
-	------------------------------------------------------------------------------*/
-	ID3D11ShaderResourceView* albedoTexture = material->GetShaderResourceViewByTextureType(Albedo);
-	ID3D11ShaderResourceView* roughnessTexture = material->GetShaderResourceViewByTextureType(Roughness);
-	ID3D11ShaderResourceView* metallicTexture = material->GetShaderResourceViewByTextureType(Metallic);
-	ID3D11ShaderResourceView* occlusionTexture = material->GetShaderResourceViewByTextureType(Occlusion);
-	ID3D11ShaderResourceView* normalTexture = material->GetShaderResourceViewByTextureType(Normal);
-	ID3D11ShaderResourceView* heightTexture = material->GetShaderResourceViewByTextureType(Height);
-	ID3D11ShaderResourceView* maskTexture = material->GetShaderResourceViewByTextureType(Mask);
 
-	// Set textures
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, 1, &albedoTexture);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(1, 1, &roughnessTexture);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(2, 1, &metallicTexture);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(3, 1, &occlusionTexture);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(4, 1, &normalTexture);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(5, 1, &heightTexture);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(6, 1, &maskTexture);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(7, 1, &dirLightDepthTex);
+	//= SET TEXTURES ========================================================================================
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, textureArray.size(), &textureArray.front());
 
-	// Draw
+	//= DRAW ===========================================================
 	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 

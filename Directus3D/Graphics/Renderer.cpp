@@ -314,6 +314,16 @@ void Renderer::PostProcessing(Camera* camera, Skybox* skybox, Matrix mWorld, Mat
 
 	Ping();
 
+	// Setting a texture array instead of multiple textures is faster
+	vector<ID3D11ShaderResourceView*> textures;
+	textures.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
+	textures.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
+	textures.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
+	textures.push_back(m_GBuffer->GetShaderResourceView(3)); // material
+	textures.push_back(environmentTexture);
+	textures.push_back(irradianceTexture);
+	textures.push_back(m_noiseMap->GetID3D11ShaderResourceView());
+
 	// deferred rendering
 	m_shaderDeferred->Render(
 		m_fullScreenQuad->GetIndexCount(),
@@ -325,13 +335,7 @@ void Renderer::PostProcessing(Camera* camera, Skybox* skybox, Matrix mWorld, Mat
 		m_directionalLights,
 		m_pointLights,
 		camera,
-		m_GBuffer->GetShaderResourceView(0), // albedo
-		m_GBuffer->GetShaderResourceView(1), // normal
-		m_GBuffer->GetShaderResourceView(2), // depth
-		m_GBuffer->GetShaderResourceView(3), // material
-		environmentTexture,
-		irradianceTexture,
-		m_noiseMap->GetID3D11ShaderResourceView()
+		textures
 	);
 
 	Pong();

@@ -39,9 +39,7 @@ public:
 
 	void Initialize(GraphicsDevice* graphicsDevice);
 	void Render(int indexCount, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mBaseView, Directus::Math::Matrix mPerspectiveProjection, Directus::Math::Matrix mOrthographicProjection,
-	            std::vector<GameObject*> directionalLights, std::vector<GameObject*> pointLights,
-	            Camera* camera, ID3D11ShaderResourceView* albedo, ID3D11ShaderResourceView* normal, ID3D11ShaderResourceView* depth, ID3D11ShaderResourceView* material,
-	            ID3D11ShaderResourceView* environmentTexture, ID3D11ShaderResourceView* irradianceTexture, ID3D11ShaderResourceView* noiseTexture);
+	            std::vector<GameObject*> directionalLights, std::vector<GameObject*> pointLights, Camera* camera, std::vector<ID3D11ShaderResourceView*> textures);
 	bool IsCompiled();
 
 private:
