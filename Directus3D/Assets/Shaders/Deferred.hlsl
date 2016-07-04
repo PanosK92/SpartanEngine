@@ -31,29 +31,18 @@ cbuffer MiscBuffer : register(b0)
 	matrix mWorldViewProjection;
 	matrix mViewProjectionInverse;
 	float4 cameraPosWS;
-	float nearPlane;
-	float farPlane;
-	float2 padding3;
-};
-
-cbuffer DirectionalLightBuffer : register (b1)
-{
 	matrix dirLightViewProjection[MaxLights];
 	float4 dirLightDirection[MaxLights];
 	float4 dirLightColor[MaxLights];	
 	float4 dirLightIntensity[MaxLights];
-	float dirLightCount;
-	float3 padding;
-};
-
-cbuffer PointLightBuffer : register(b2)
-{
 	float4 pointLightPosition[MaxLights];
 	float4 pointLightColor[MaxLights];
 	float4 pointLightRange[MaxLights];
 	float4 pointLightIntensity[MaxLights];
+	float dirLightCount;
 	float pointlightCount;
-	float3 padding2;
+	float nearPlane;
+	float farPlane;
 };
 //=================================
 

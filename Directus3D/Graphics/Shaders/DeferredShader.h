@@ -43,43 +43,27 @@ public:
 	bool IsCompiled();
 
 private:
-	struct MiscBufferType
+	const static int maxLights = 300;
+	struct DefaultBuffer
 	{
 		Directus::Math::Matrix worldViewProjection;
 		Directus::Math::Matrix viewProjectionInverse;
 		Directus::Math::Vector4 cameraPosition;
-		float nearPlane;
-		float farPlane;
-		Directus::Math::Vector2 padding;
-	};
-
-	D3D11Buffer* m_miscBuffer;
-
-	const static int maxLights = 300;
-
-	struct DirLightBufferType
-	{
 		Directus::Math::Matrix dirViewProjection[maxLights];
 		Directus::Math::Vector4 dirLightDirection[maxLights];
 		Directus::Math::Vector4 dirLightColor[maxLights];
 		Directus::Math::Vector4 dirLightIntensity[maxLights];
-		float dirLightCount;
-		Directus::Math::Vector3 padding;
-	};
-
-	D3D11Buffer* m_dirLightBuffer;
-
-	struct PointLightBufferType
-	{
 		Directus::Math::Vector4 pointLightPosition[maxLights];
 		Directus::Math::Vector4 pointLightColor[maxLights];
 		Directus::Math::Vector4 pointLightRange[maxLights];
 		Directus::Math::Vector4 pointLightIntensity[maxLights];
+		float dirLightCount;
 		float pointLightCount;
-		Directus::Math::Vector3 padding;
+		float nearPlane;
+		float farPlane;
 	};
 
-	D3D11Buffer* m_pointLightBuffer;
+	D3D11Buffer* m_constantBuffer;
 	D3D11Shader* m_shader;
 	GraphicsDevice* m_graphicsDevice;
 };
