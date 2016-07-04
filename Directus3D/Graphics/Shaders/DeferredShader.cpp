@@ -35,17 +35,13 @@ using namespace Directus::Math;
 DeferredShader::DeferredShader()
 {
 	m_graphicsDevice = nullptr;
-	m_miscBuffer = nullptr;
-	m_dirLightBuffer = nullptr;
-	m_pointLightBuffer = nullptr;
+	m_constantBuffer = nullptr;
 	m_shader = nullptr;
 }
 
 DeferredShader::~DeferredShader()
 {
-	DirectusSafeDelete(m_miscBuffer);
-	DirectusSafeDelete(m_dirLightBuffer);
-	DirectusSafeDelete(m_pointLightBuffer);
+	DirectusSafeDelete(m_constantBuffer);
 	DirectusSafeDelete(m_shader);
 }
 
@@ -62,23 +58,11 @@ void DeferredShader::Initialize(GraphicsDevice* graphicsDevice)
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 
-	/*------------------------------------------------------------------------------
-									[BUFFERS]
-	------------------------------------------------------------------------------*/
-	// misc buffer
-	m_miscBuffer = new D3D11Buffer();
-	m_miscBuffer->Initialize(m_graphicsDevice);
-	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
-
-	// dir light buffer
-	m_dirLightBuffer = new D3D11Buffer();
-	m_dirLightBuffer->Initialize(m_graphicsDevice);
-	m_dirLightBuffer->CreateConstantBuffer(sizeof(DirLightBufferType));
-
-	// point light buffer
-	m_pointLightBuffer = new D3D11Buffer();
-	m_pointLightBuffer->Initialize(m_graphicsDevice);
-	m_pointLightBuffer->CreateConstantBuffer(sizeof(PointLightBufferType));
+	//= CREATE DEFAULT CONSTANT BUFFER ===========================
+	m_constantBuffer = new D3D11Buffer();
+	m_constantBuffer->Initialize(m_graphicsDevice);
+	m_constantBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
+	//============================================================
 }
 
 void DeferredShader::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mBaseView, Matrix mPerspectiveProjection, Matrix mOrthographicProjection,
@@ -99,73 +83,49 @@ void DeferredShader::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix 
 	Vector3 camPos = camera->g_transform->GetPosition();
 
 	// Get a pointer to the data in the constant buffer.
-	MiscBufferType* buffer = (MiscBufferType*)m_miscBuffer->Map();
+	DefaultBuffer* buffer = (DefaultBuffer*)m_constantBuffer->Map();
 
-	// Fill buffer
+	// Fill with matrices
 	buffer->worldViewProjection = worlBaseViewProjection.Transpose();
 	buffer->viewProjectionInverse = viewProjection.Inverse().Transpose();
 	buffer->cameraPosition = Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
-	buffer->nearPlane = camera->GetNearPlane();
-	buffer->farPlane = camera->GetFarPlane();
-	buffer->padding = Vector2(0.0f, 0.0f);
 
-	// Unlock the constant buffer
-	m_miscBuffer->Unmap();
-	m_miscBuffer->SetVS(0);
-	m_miscBuffer->SetPS(0);
-
-	/*------------------------------------------------------------------------------
-							[DIRECTIONAL LIGHT BUFFER]
-	------------------------------------------------------------------------------*/
-	// Get a pointer to the data in the constant buffer.
-	DirLightBufferType* dirLightBufferType = (DirLightBufferType*)m_dirLightBuffer->Map();
-
-	// Fill buffer
+	// Fill with directional lights
 	for (unsigned int i = 0; i < directionalLights.size(); i++)
 	{
 		Light* light = directionalLights[i]->GetComponent<Light>();
-
 		Matrix lightView = light->GetViewMatrix();
 		Matrix ligtProjection = light->GetOrthographicProjectionMatrix();
-
-		dirLightBufferType->dirViewProjection[i] = Matrix::Transpose(lightView * ligtProjection);
-		dirLightBufferType->dirLightColor[i] = light->GetColor();
-
+		buffer->dirViewProjection[i] = Matrix::Transpose(lightView * ligtProjection);
+		buffer->dirLightColor[i] = light->GetColor();
 		Vector3 direction = light->GetDirection();
-		dirLightBufferType->dirLightDirection[i] = Vector4(direction.x, direction.y, direction.z, 1.0f);
-		dirLightBufferType->dirLightIntensity[i] = Vector4(directionalLights[i]->GetComponent<Light>()->GetIntensity());
+		buffer->dirLightDirection[i] = Vector4(direction.x, direction.y, direction.z, 1.0f);
+		buffer->dirLightIntensity[i] = Vector4(directionalLights[i]->GetComponent<Light>()->GetIntensity());
 	}
-	dirLightBufferType->dirLightCount = directionalLights.size();
-	dirLightBufferType->padding = Vector3(0, 0, 0);
-
-	// Unlock the constant buffer
-	m_dirLightBuffer->Unmap();
-	m_dirLightBuffer->SetPS(1);
-
-	/*------------------------------------------------------------------------------
-							[POINT LIGHT BUFFER]
-	------------------------------------------------------------------------------*/
-	// Get a pointer to the data in the constant buffer.
-	PointLightBufferType* pointLightBufferType = static_cast<PointLightBufferType*>(m_pointLightBuffer->Map());
-
-	// Fill buffer
+	
+	// Fill with point lights
 	for (unsigned int i = 0; i < pointLights.size(); i++)
 	{
 		Vector3 pos = pointLights[i]->GetTransform()->GetPosition();
-		pointLightBufferType->pointLightPosition[i] = Vector4(pos.x, pos.y, pos.z, 1.0f);
-		pointLightBufferType->pointLightColor[i] = pointLights[i]->GetComponent<Light>()->GetColor();
-		pointLightBufferType->pointLightIntensity[i] = Vector4(pointLights[i]->GetComponent<Light>()->GetIntensity());
-		pointLightBufferType->pointLightRange[i] = Vector4(pointLights[i]->GetComponent<Light>()->GetRange());
+		buffer->pointLightPosition[i] = Vector4(pos.x, pos.y, pos.z, 1.0f);
+		buffer->pointLightColor[i] = pointLights[i]->GetComponent<Light>()->GetColor();
+		buffer->pointLightIntensity[i] = Vector4(pointLights[i]->GetComponent<Light>()->GetIntensity());
+		buffer->pointLightRange[i] = Vector4(pointLights[i]->GetComponent<Light>()->GetRange());
 	}
-	pointLightBufferType->pointLightCount = pointLights.size();
-	pointLightBufferType->padding = Vector3(0, 0, 0);
+
+	// Fill with misca data
+	buffer->dirLightCount = directionalLights.size();
+	buffer->pointLightCount = pointLights.size();
+	buffer->nearPlane = camera->GetNearPlane();
+	buffer->farPlane = camera->GetFarPlane();
 
 	// Unlock the constant buffer
-	m_pointLightBuffer->Unmap();
-	m_pointLightBuffer->SetPS(2);
+	m_constantBuffer->Unmap();
+	m_constantBuffer->SetVS(0);
+	m_constantBuffer->SetPS(0);
 
 	//= SET TEXTURES =============================================================
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, textures.size(), &textures.front());
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, UINT(textures.size()), &textures.front());
 
 	//= SET SHADER ===============================================================
 	m_shader->Set();
