@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PostProcessShader.h"
 #include "../../Core/Globals.h"
 #include "../../Core/Settings.h"
+#include "../../IO/Log.h"
 //=============================
 
 //= NAMESPACES ================
@@ -70,6 +71,7 @@ void PostProcessShader::Render(int indexCount, Matrix worldMatrix, Matrix viewMa
 	defaultBuffer->padding = RESOLUTION;
 
 	m_constantBuffer->Unmap();
+	m_constantBuffer->SetPS(0);
 	m_constantBuffer->SetVS(0);
 	//==========================================================================
 

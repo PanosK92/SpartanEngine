@@ -128,7 +128,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float2 texCoord = input.uv;
 	float4 color;
 	float2 texelSize = float2(1.0f / viewport.x, 1.0f / viewport.y);
-
+	
 	#if FXAA == 1
 	color = FXAAPass(texCoord, texelSize);
 	#endif
