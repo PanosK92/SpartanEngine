@@ -53,7 +53,9 @@ public:
 		GraphicsDevice* d3d11device
 	);
 	void Set();
-	void Render(int indexCount, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, Light* directionalLight, Material* material);
+	void Render(int indexCount, 
+		Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, 
+		Light* directionalLight, Material* material, std::vector<ID3D11ShaderResourceView*> textureArray);
 	std::string GetID();
 
 	bool HasAlbedoTexture();

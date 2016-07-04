@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
-
 //=============================
 
 DeferredShader::DeferredShader()
@@ -83,9 +82,7 @@ void DeferredShader::Initialize(GraphicsDevice* graphicsDevice)
 }
 
 void DeferredShader::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mBaseView, Matrix mPerspectiveProjection, Matrix mOrthographicProjection,
-                            vector<GameObject*> directionalLights, vector<GameObject*> pointLights,
-                            Camera* camera, ID3D11ShaderResourceView* albedo, ID3D11ShaderResourceView* normal, ID3D11ShaderResourceView* depth, ID3D11ShaderResourceView* material,
-                            ID3D11ShaderResourceView* environmentTexture, ID3D11ShaderResourceView* irradianceTexture, ID3D11ShaderResourceView* noiseTexture)
+                            vector<GameObject*> directionalLights, vector<GameObject*> pointLights, Camera* camera, std::vector<ID3D11ShaderResourceView*> textures)
 {
 	if (!m_shader->IsCompiled())
 	{
@@ -167,22 +164,13 @@ void DeferredShader::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix 
 	m_pointLightBuffer->Unmap();
 	m_pointLightBuffer->SetPS(2);
 
-	/*------------------------------------------------------------------------------
-								[TEXTURES]
-	------------------------------------------------------------------------------*/
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, 1, &albedo);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(1, 1, &normal);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(2, 1, &depth);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(3, 1, &material);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(4, 1, &noiseTexture);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(5, 1, &environmentTexture);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(6, 1, &irradianceTexture);
+	//= SET TEXTURES =============================================================
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, textures.size(), &textures.front());
 
-	/*------------------------------------------------------------------------------
-									[RENDER]
-	------------------------------------------------------------------------------*/
+	//= SET SHADER ===============================================================
 	m_shader->Set();
-	// render
+	
+	//= DRAW =====================================================================
 	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 

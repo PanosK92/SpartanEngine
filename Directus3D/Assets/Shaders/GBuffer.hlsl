@@ -1,27 +1,24 @@
 #include "Normal.hlsl"
 #include "ShadowMapping.hlsl"
 
-/*------------------------------------------------------------------------------
-[TEXTURES]
-------------------------------------------------------------------------------*/
-Texture2D albedoTexture 	: register(t0);
-Texture2D roughnessTexture 	: register(t1);
-Texture2D metallicTexture 	: register(t2);
-Texture2D occlusionTexture 	: register(t3);
-Texture2D normalTexture 	: register(t4);
-Texture2D heightTexture 	: register(t5);
-Texture2D maskTexture 		: register(t6);
-Texture2D dirLightDepthTex 	: register(t7);
+//= TEXTURES =========
+Texture2D textures[8];
+// 0 - Albedo
+// 1 - Roughness
+// 2 - Metallic
+// 3 - Occlusion
+// 4 - Normal
+// 5 - Height
+// 6 - Mask
+// 7 - DirLightDepth
+//====================
 
-/*------------------------------------------------------------------------------
-[SAMPLERS]
-------------------------------------------------------------------------------*/
+//= SAMPLERS =================================
 SamplerState samplerAnisoWrap : register (s0);
 SamplerState shadowSampler    : register (s1);
+//============================================
 
-/*------------------------------------------------------------------------------
-[BUFFERS]
-------------------------------------------------------------------------------*/
+//= BUFFERS ==================================
 cbuffer DefaultBuffer : register(b0)
 {
     matrix mWorld;
@@ -41,10 +38,9 @@ cbuffer DefaultBuffer : register(b0)
     float3 cameraPosition;
     float padding;
 };
+//===========================================
 
-/*------------------------------------------------------------------------------
-[STRUCTS]
-------------------------------------------------------------------------------*/
+//= STRUCTS ====================
 struct VertexInputType
 {
     float4 position : POSITION;
@@ -70,10 +66,8 @@ struct PixelOutputType
 	float4 depth		: SV_Target2;
 	float4 material		: SV_Target3;
 };
+//==============================
 
-/*------------------------------------------------------------------------------
-[VS()]
-------------------------------------------------------------------------------*/
 PixelInputType DirectusVertexShader(VertexInputType input)
 {
     PixelInputType output;
@@ -89,9 +83,6 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 	return output;
 }
 
-/*------------------------------------------------------------------------------
-									[PS()]
-------------------------------------------------------------------------------*/
 PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	PixelOutputType output;
@@ -112,7 +103,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	//= SAMPLING ================================================================================
 #if MASK_MAP == 1
-		float3 maskSample = maskTexture.Sample(samplerAnisoWrap, texCoord).rgb;
+		float3 maskSample = textures[6].Sample(samplerAnisoWrap, texCoord).rgb;
 		float threshold = 0.6f;
 		if (maskSample.r <= threshold && maskSample.g <= threshold && maskSample.b <= threshold)
 			discard;
@@ -120,27 +111,27 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	//= SAMPLING ================================================================================
 #if ALBEDO_MAP == 1
-		albedo *= albedoTexture.Sample(samplerAnisoWrap, texCoord);
+		albedo *= textures[0].Sample(samplerAnisoWrap, texCoord);
 #endif
 	
 	//= SAMPLING ================================================================================
 #if ROUGHNESS_MAP == 1
-		roughness *= roughnessTexture.Sample(samplerAnisoWrap, texCoord).r;
+		roughness *= textures[1].Sample(samplerAnisoWrap, texCoord).r;
 #endif
 	
 	//= SAMPLING ================================================================================
 #if METALLIC_MAP == 1
-		metallic *= metallicTexture.Sample(samplerAnisoWrap, texCoord).r;
+		metallic *= textures[2].Sample(samplerAnisoWrap, texCoord).r;
 #endif
 	
 	//= SAMPLING ================================================================================
 #if OCCLUSION_MAP == 1
-		occlusion = clamp(occlusionTexture.Sample(samplerAnisoWrap, texCoord).r * (1 / materialOcclusion), 0.0f, 1.0f);
+		occlusion = clamp(textures[3].Sample(samplerAnisoWrap, texCoord).r * (1 / materialOcclusion), 0.0f, 1.0f);
 #endif
 	
 	//= SAMPLING ================================================================================
 #if NORMAL_MAP == 1
-		normal 	= normalTexture.Sample(samplerAnisoWrap, texCoord); // sample
+		normal 	= textures[4].Sample(samplerAnisoWrap, texCoord); // sample
 		normal 	= float4(NormalSampleToWorldSpace(normal, input.normal, input.tangent, materialNormalStrength), 1.0f); // transform to world space
 		normal 	= float4(PackNormal(normal), 1.0f);
 #endif
@@ -152,7 +143,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
     float slopeScaledBias = bias * tan(acos(dot(normal.rgb, -lightDirection.rgb)));
 	float4 lightClipSpace = mul(input.positionWS, mViewProjectionDirLight);
-	shadow = ShadowMapping(dirLightDepthTex, shadowSampler, lightClipSpace, slopeScaledBias, PCF);	
+    shadow = ShadowMapping(textures[7], shadowSampler, lightClipSpace, slopeScaledBias, PCF);
 	//===========================================================================================
 	
 	//= DETERMINE RENDER QUALITY ================================================================

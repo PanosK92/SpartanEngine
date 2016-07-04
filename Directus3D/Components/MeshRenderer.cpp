@@ -89,15 +89,28 @@ void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix pro
 		return;
 	}
 
+	Material* material = GetMaterial();
+
+	vector<ID3D11ShaderResourceView*> textures;
+	textures.push_back(material->GetShaderResourceViewByTextureType(Albedo));
+	textures.push_back(material->GetShaderResourceViewByTextureType(Roughness));
+	textures.push_back(material->GetShaderResourceViewByTextureType(Metallic));
+	textures.push_back(material->GetShaderResourceViewByTextureType(Occlusion));
+	textures.push_back(material->GetShaderResourceViewByTextureType(Normal));
+	textures.push_back(material->GetShaderResourceViewByTextureType(Height));
+	textures.push_back(material->GetShaderResourceViewByTextureType(Mask));
+	textures.push_back(directionalLight->GetDepthMap());
+
 	// Render
 	GetMaterial()->GetShader()->Set();
 	GetMaterial()->GetShader()->Render(
-		             indexCount,
-		             g_transform->GetWorldMatrix(),
-		             viewMatrix, projectionMatrix,
-		             directionalLight,
-		             GetMaterial()
-	             );
+		indexCount,
+		g_transform->GetWorldMatrix(),
+		viewMatrix, projectionMatrix,
+		directionalLight,
+		GetMaterial(),
+		textures
+	);
 }
 
 /*------------------------------------------------------------------------------
