@@ -41,12 +41,12 @@ D3D11Device::D3D11Device()
 	m_rasterStateCullNone = nullptr;
 	m_alphaBlendingStateEnabled = nullptr;
 	m_alphaBlendingStateDisabled = nullptr;
-	currentCullMode = D3D11_CULL_BACK;
 	m_videoCardMemory = 0;
 }
 
 D3D11Device::~D3D11Device()
 {
+
 }
 
 void D3D11Device::Initialize(HWND handle)
@@ -287,19 +287,19 @@ void D3D11Device::Initialize(HWND handle)
 	/*------------------------------------------------------------------------------
 							[Rasterizer Description]
 	------------------------------------------------------------------------------*/
-	// Create a rasterizer state with back face culling
+	// Create a rasterizer state with back face CullMode
 	D3D11_RASTERIZER_DESC rasterDesc = GetRasterizerDesc(D3D11_CULL_BACK);
 	hResult = m_device->CreateRasterizerState(&rasterDesc, &m_rasterStateCullBack);
 	if (FAILED(hResult))
 	LOG("Failed to create the rasterizer state.", Log::Error);
 
-	// Create a rasterizer state with front face culling
+	// Create a rasterizer state with front face CullMode
 	rasterDesc = GetRasterizerDesc(D3D11_CULL_FRONT);
 	hResult = m_device->CreateRasterizerState(&rasterDesc, &m_rasterStateCullFront);
 	if (FAILED(hResult))
 	LOG("Failed to create the rasterizer state.", Log::Error);
 
-	// Create a rasterizer state with no face culling
+	// Create a rasterizer state with no face CullMode
 	rasterDesc = GetRasterizerDesc(D3D11_CULL_NONE);
 	hResult = m_device->CreateRasterizerState(&rasterDesc, &m_rasterStateCullNone);
 	if (FAILED(hResult))
@@ -327,8 +327,8 @@ void D3D11Device::Initialize(HWND handle)
 									[Misc]
 	------------------------------------------------------------------------------*/
 	// Setup the viewport for rendering
-	m_viewport.Width = (float)screenWidth;
-	m_viewport.Height = (float)screenHeight;
+	m_viewport.Width = float(screenWidth);
+	m_viewport.Height = float(screenHeight);
 	m_viewport.MinDepth = 0.0f;
 	m_viewport.MaxDepth = 1.0f;
 	m_viewport.TopLeftX = 0.0f;
@@ -467,30 +467,14 @@ void D3D11Device::SetResolution(unsigned int width, unsigned int height)
 	m_swapChain->ResizeTarget(m_displayModeList);
 }
 
-void D3D11Device::SetFaceCulling(D3D11_CULL_MODE cull)
+void D3D11Device::SetFaceCullMode(D3D11_CULL_MODE cull)
 {
-	if (currentCullMode == cull)
-		return;
-
 	if (cull == D3D11_CULL_FRONT)
-	{
 		m_deviceContext->RSSetState(m_rasterStateCullFront);
-		currentCullMode = cull;
-		return;
-	}
-
-	if (cull == D3D11_CULL_BACK)
-	{
+	else if (cull == D3D11_CULL_BACK)
 		m_deviceContext->RSSetState(m_rasterStateCullBack);
-		currentCullMode = cull;
-		return;
-	}
-
-	if (cull == D3D11_CULL_NONE)
-	{
+	else if (cull == D3D11_CULL_NONE)
 		m_deviceContext->RSSetState(m_rasterStateCullNone);
-		currentCullMode = cull;
-	}
 }
 
 D3D11_RASTERIZER_DESC D3D11Device::GetRasterizerDesc(D3D11_CULL_MODE cullMode)

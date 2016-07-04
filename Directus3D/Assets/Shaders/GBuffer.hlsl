@@ -1,9 +1,8 @@
 #include "Normal.hlsl"
 #include "ShadowMapping.hlsl"
 
-#if COMPILE_PS == 1
 /*------------------------------------------------------------------------------
-								[TEXTURES]
+[TEXTURES]
 ------------------------------------------------------------------------------*/
 Texture2D albedoTexture 	: register(t0);
 Texture2D roughnessTexture 	: register(t1);
@@ -13,15 +12,15 @@ Texture2D normalTexture 	: register(t4);
 Texture2D heightTexture 	: register(t5);
 Texture2D maskTexture 		: register(t6);
 Texture2D dirLightDepthTex 	: register(t7);
+
 /*------------------------------------------------------------------------------
-								[SAMPLERS]
+[SAMPLERS]
 ------------------------------------------------------------------------------*/
 SamplerState samplerAnisoWrap : register (s0);
 SamplerState shadowSampler    : register (s1);
-#endif
 
 /*------------------------------------------------------------------------------
-								[BUFFERS]
+[BUFFERS]
 ------------------------------------------------------------------------------*/
 cbuffer DefaultBuffer : register(b0)
 {
@@ -44,7 +43,7 @@ cbuffer DefaultBuffer : register(b0)
 };
 
 /*------------------------------------------------------------------------------
-								[STRUCTS]
+[STRUCTS]
 ------------------------------------------------------------------------------*/
 struct VertexInputType
 {
@@ -64,7 +63,6 @@ struct PixelInputType
     float3 tangent : TANGENT;
 };
 
-#if COMPILE_PS == 1
 struct PixelOutputType
 {
 	float4 albedo		: SV_Target0;
@@ -72,12 +70,10 @@ struct PixelOutputType
 	float4 depth		: SV_Target2;
 	float4 material		: SV_Target3;
 };
-#endif
 
 /*------------------------------------------------------------------------------
-									[VS()]
+[VS()]
 ------------------------------------------------------------------------------*/
-#if COMPILE_VS == 1
 PixelInputType DirectusVertexShader(VertexInputType input)
 {
     PixelInputType output;
@@ -92,12 +88,10 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 	
 	return output;
 }
-#endif
 
 /*------------------------------------------------------------------------------
 									[PS()]
 ------------------------------------------------------------------------------*/
-#if COMPILE_PS == 1
 PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	PixelOutputType output;
@@ -181,4 +175,3 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 		
     return output;
 }
-#endif

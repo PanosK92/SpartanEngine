@@ -35,7 +35,7 @@ using namespace Directus::Math;
 
 DeferredShader::DeferredShader()
 {
-	m_D3D11Device = nullptr;
+	m_graphicsDevice = nullptr;
 	m_miscBuffer = nullptr;
 	m_dirLightBuffer = nullptr;
 	m_pointLightBuffer = nullptr;
@@ -50,13 +50,13 @@ DeferredShader::~DeferredShader()
 	DirectusSafeDelete(m_shader);
 }
 
-void DeferredShader::Initialize(D3D11Device* d3d11device)
+void DeferredShader::Initialize(GraphicsDevice* graphicsDevice)
 {
-	m_D3D11Device = d3d11device;
+	m_graphicsDevice = graphicsDevice;
 
 	// load the vertex and the pixel shader
 	m_shader = new D3D11Shader();
-	m_shader->Initialize(m_D3D11Device);
+	m_shader->Initialize(m_graphicsDevice);
 	m_shader->Load("Assets/Shaders/Deferred.hlsl");
 	m_shader->SetInputLayout(PositionTextureNormalTangent);
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
@@ -68,17 +68,17 @@ void DeferredShader::Initialize(D3D11Device* d3d11device)
 	------------------------------------------------------------------------------*/
 	// misc buffer
 	m_miscBuffer = new D3D11Buffer();
-	m_miscBuffer->Initialize(m_D3D11Device);
+	m_miscBuffer->Initialize(m_graphicsDevice);
 	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
 
 	// dir light buffer
 	m_dirLightBuffer = new D3D11Buffer();
-	m_dirLightBuffer->Initialize(m_D3D11Device);
+	m_dirLightBuffer->Initialize(m_graphicsDevice);
 	m_dirLightBuffer->CreateConstantBuffer(sizeof(DirLightBufferType));
 
 	// point light buffer
 	m_pointLightBuffer = new D3D11Buffer();
-	m_pointLightBuffer->Initialize(m_D3D11Device);
+	m_pointLightBuffer->Initialize(m_graphicsDevice);
 	m_pointLightBuffer->CreateConstantBuffer(sizeof(PointLightBufferType));
 }
 
@@ -170,20 +170,20 @@ void DeferredShader::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix 
 	/*------------------------------------------------------------------------------
 								[TEXTURES]
 	------------------------------------------------------------------------------*/
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(0, 1, &albedo);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(1, 1, &normal);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(2, 1, &depth);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(3, 1, &material);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(4, 1, &noiseTexture);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(5, 1, &environmentTexture);
-	m_D3D11Device->GetDeviceContext()->PSSetShaderResources(6, 1, &irradianceTexture);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, 1, &albedo);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(1, 1, &normal);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(2, 1, &depth);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(3, 1, &material);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(4, 1, &noiseTexture);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(5, 1, &environmentTexture);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(6, 1, &irradianceTexture);
 
 	/*------------------------------------------------------------------------------
 									[RENDER]
 	------------------------------------------------------------------------------*/
 	m_shader->Set();
 	// render
-	m_D3D11Device->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
 bool DeferredShader::IsCompiled()

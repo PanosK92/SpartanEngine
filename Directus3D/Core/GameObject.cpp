@@ -76,9 +76,9 @@ GameObject::~GameObject()
 	m_hierarchyVisibility = false;
 }
 
-void GameObject::Initialize(D3D11Device* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine)
+void GameObject::Initialize(GraphicsDevice* graphicsDevice, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine)
 {
-	m_D3D11Device = d3d11Device;
+	m_graphicsDevice = graphicsDevice;
 	m_scene = scene;
 	m_meshPool = meshPool;
 	m_materialPool = materialPool;
@@ -185,7 +185,7 @@ Type* GameObject::AddComponent()
 	m_components.insert(pair<string, IComponent*>(typeStr, new Type));
 	m_components[typeStr]->g_gameObject = this;
 	m_components[typeStr]->g_transform = GetTransform();
-	m_components[typeStr]->g_d3d11Device = m_D3D11Device;
+	m_components[typeStr]->g_graphicsDevice = m_graphicsDevice;
 	m_components[typeStr]->g_meshPool = m_meshPool;
 	m_components[typeStr]->g_scene = m_scene;
 	m_components[typeStr]->g_materialPool = m_materialPool;

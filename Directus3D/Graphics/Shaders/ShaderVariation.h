@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======================
-#include "../D3D11/D3D11Device.h"
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../../Math/Matrix.h"
@@ -31,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector4.h"
 #include "../../Core/Material.h"
 #include "../../Components/Light.h"
+#include "../GraphicsDevice.h"
 //=================================
 
 #define NULL_SHADER_ID "-1";
@@ -50,7 +50,7 @@ public:
 		bool height,
 		bool mask,
 		bool cubemap,
-		D3D11Device* d3d11device
+		GraphicsDevice* d3d11device
 	);
 	void Set();
 	void Render(int indexCount, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, Light* directionalLight, Material* material);
@@ -85,7 +85,7 @@ private:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 	D3D11Buffer* m_befaultBuffer;
 	D3D11Shader* m_D3D11Shader;
 

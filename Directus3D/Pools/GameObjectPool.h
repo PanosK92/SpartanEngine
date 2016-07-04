@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ==========================
 #include "MeshPool.h"
-#include "../Graphics/D3D11/D3D11Device.h"
+#include "../Graphics/GraphicsDevice.h"
 #include "../Pools/MaterialPool.h"
-//========================================
+//=====================================
 
 class GameObject;
 #define NULL_GAMEOBJECT_ID "-1"
@@ -42,7 +42,7 @@ public:
 		return instance;
 	}
 
-	void Initialize(D3D11Device* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine);
+	void Initialize(GraphicsDevice* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine);
 	void Update();
 	void Release();
 	void Clear();
@@ -76,7 +76,7 @@ public:
 private:
 	std::vector<std::unique_ptr<GameObject>> m_pool;
 
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 	Scene* m_scene;
 	MeshPool* m_meshPool;
 	MaterialPool* m_materialPool;

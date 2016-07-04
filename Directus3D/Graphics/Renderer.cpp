@@ -45,7 +45,7 @@ using namespace Directus::Math;
 
 Renderer::Renderer()
 {
-	m_D3D11Device = nullptr;
+	m_graphicsDevice = nullptr;
 	m_GBuffer = nullptr;
 	m_fullScreenQuad = nullptr;
 	m_renderedMeshesCount = 0;
@@ -82,50 +82,50 @@ Renderer::~Renderer()
 	DirectusSafeDelete(m_renderTexturePong);
 }
 
-void Renderer::Initialize(bool debugDraw, D3D11Device* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene)
+void Renderer::Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene)
 {
 	m_timer = timer;
 	m_physics = physics;
 	m_scene = scene;
 
-	m_D3D11Device = d3d11device;
+	m_graphicsDevice = d3d11device;
 
 	SetPhysicsDebugDraw(debugDraw);
 
-	m_GBuffer = new GBuffer(m_D3D11Device);
+	m_GBuffer = new GBuffer(m_graphicsDevice);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_frustrum = new Frustrum();
 
 	m_fullScreenQuad = new FullScreenQuad;
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_D3D11Device);
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphicsDevice);
 
 	/*------------------------------------------------------------------------------
 									[SHADERS]
 	------------------------------------------------------------------------------*/
 	m_shaderDeferred = new DeferredShader();
-	m_shaderDeferred->Initialize(m_D3D11Device);
+	m_shaderDeferred->Initialize(m_graphicsDevice);
 
 	m_depthShader = new DepthShader();
-	m_depthShader->Initialize(m_D3D11Device);
+	m_depthShader->Initialize(m_graphicsDevice);
 
 	m_debugShader = new DebugShader();
-	m_debugShader->Initialize(m_D3D11Device);
+	m_debugShader->Initialize(m_graphicsDevice);
 
 	m_shaderFXAA = new PostProcessShader();
-	m_shaderFXAA->Initialize("FXAA", m_D3D11Device);
+	m_shaderFXAA->Initialize("FXAA", m_graphicsDevice);
 
 	m_shaderSharpening = new PostProcessShader();
-	m_shaderSharpening->Initialize("SHARPENING", m_D3D11Device);
+	m_shaderSharpening->Initialize("SHARPENING", m_graphicsDevice);
 
 	/*------------------------------------------------------------------------------
 								[RENDER TEXTURES]
 	------------------------------------------------------------------------------*/
 	m_renderTexturePing = new D3D11RenderTexture;
-	m_renderTexturePing->Initialize(m_D3D11Device, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexturePing->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_renderTexturePong = new D3D11RenderTexture;
-	m_renderTexturePong->Initialize(m_D3D11Device, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexturePong->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	/*------------------------------------------------------------------------------
 										[MISC]
@@ -155,14 +155,14 @@ void Renderer::UpdateFromScene()
 
 void Renderer::Render()
 {
+	// Stats
+	StartCalculatingStats();
+
 	if (m_isDirty)
 	{
 		UpdateFromScene();
 		m_isDirty = false;
 	}
-
-	// Stats
-	StartCalculatingStats();
 
 	// Get the main as a GameObject
 	GameObject* mainCamera = m_scene->GetMainCamera();
@@ -196,36 +196,35 @@ void Renderer::Render()
 		m_frustrum->ConstructFrustum(farPlane);
 	}
 
-	m_D3D11Device->TurnZBufferOn();
-
 	Light* dirLight = nullptr;
 	if (m_directionalLights.size() != 0)
 		dirLight = m_directionalLights[0]->GetComponent<Light>();
 
+	m_graphicsDevice->EnableZBuffer(true);
+
 	if (dirLight)
 	{
 		// Render light depth
-		m_D3D11Device->SetFaceCulling(D3D11_CULL_FRONT);
+		m_graphicsDevice->SetCullMode(CullFront);
 		dirLight->SetDepthMapAsRenderTarget();
 		RenderLightDepthToTexture(m_renderables, dirLight->GetProjectionSize(), dirLight, nearPlane, farPlane);
-		m_D3D11Device->SetFaceCulling(D3D11_CULL_BACK);
+		m_graphicsDevice->SetCullMode(CullBack);
 	}
 
-	// Render G-Buffer
-	m_GBuffer->SetRenderTargets();
-	m_GBuffer->ClearRenderTargets(0.0f, 0.0f, 0.0f, 1.0f);
-	RenderToGBuffer(m_renderables, dirLight, mView, mPerspectiveProjection);
+	//// Render G-Buffer
+	//m_GBuffer->SetRenderTargets();
+	//m_GBuffer->ClearRenderTargets(0.0f, 0.0f, 0.0f, 1.0f);
+	//RenderToGBuffer(m_renderables, dirLight, mView, mPerspectiveProjection);
+	m_graphicsDevice->EnableZBuffer(false);
 
-	m_D3D11Device->TurnZBufferOff();
-
-	// Post processing, fxaa, sharpening etc...
+	//// Post processing, fxaa, sharpening etc...
 	m_fullScreenQuad->SetBuffers(); // set full screen quad buffers
-	PostProcessing(camera, skybox, mWorld, mView, mBaseView, mPerspectiveProjection, mOrthographicProjection);
+	//PostProcessing(camera, skybox, mWorld, mView, mBaseView, mPerspectiveProjection, mOrthographicProjection);
 
-	// Debug draw - Colliders
-	DebugDraw(mainCamera);
+	//// Debug draw - Colliders
+	//DebugDraw(mainCamera);
 
-	m_D3D11Device->End(); // display frame
+	m_graphicsDevice->End(); // display frame
 
 	StopCalculatingStats();
 }
@@ -275,7 +274,7 @@ void Renderer::RenderToGBuffer(vector<GameObject*> renderableGameObjects, Light*
 		if (!mesh || !meshRenderer || !material)
 			continue;
 
-		//= Frustrum culling ==================================
+		//= Frustrum CullMode ==================================
 		Vector3 center = Vector3::Transform(mesh->GetCenter(), worldMatrix);
 		Vector3 extent = mesh->GetExtent() * gameObject->GetTransform()->GetScale();
 
@@ -287,8 +286,8 @@ void Renderer::RenderToGBuffer(vector<GameObject*> renderableGameObjects, Light*
 			continue;
 		//=====================================================
 
-		// Handle face culling
-		CheckCulling(material->GetFaceCulling());
+		// Handle face CullMode
+		m_graphicsDevice->SetCullMode(material->GetFaceCullMode());
 
 		// render mesh
 		if (mesh->SetBuffers())
@@ -346,9 +345,9 @@ void Renderer::PostProcessing(Camera* camera, Skybox* skybox, Matrix mWorld, Mat
 		m_renderTexturePing->GetShaderResourceView()
 	);
 
-	m_D3D11Device->SetBackBufferRenderTarget(); // Reset the render target back to the original back buffer and not the render to texture anymore.
-	m_D3D11Device->ResetViewport(); // Reset the viewport back to the original.
-	m_D3D11Device->Begin();
+	m_graphicsDevice->ResetRenderTarget(); // Reset the render target back to the original back buffer and not the render to texture anymore.
+	m_graphicsDevice->ResetViewport(); // Reset the viewport back to the original.
+	m_graphicsDevice->Begin();
 
 	// sharpening pass
 	m_shaderSharpening->Render(
@@ -370,7 +369,7 @@ void Renderer::DebugDraw(GameObject* camera)
 
 	// Get the line renderer component
 	LineRenderer* lineRenderer = camera->GetComponent<LineRenderer>();
-	if (!lineRenderer) 
+	if (!lineRenderer)
 		return;
 
 	// Pass the line list from bullet to the line renderer component
@@ -429,24 +428,6 @@ void Renderer::StopCalculatingStats()
 		m_frameCount = 0;
 
 		m_fpsLastKnownTime = currentTime;
-	}
-}
-
-void Renderer::CheckCulling(Culling culling)
-{
-	switch (culling)
-	{
-	case CullBack:
-		m_D3D11Device->SetFaceCulling(D3D11_CULL_BACK);
-		break;
-	case CullFront:
-		m_D3D11Device->SetFaceCulling(D3D11_CULL_FRONT);
-		break;
-	case CullNone:
-		m_D3D11Device->SetFaceCulling(D3D11_CULL_NONE);
-		break;
-	default:
-		m_D3D11Device->SetFaceCulling(D3D11_CULL_BACK);
 	}
 }
 

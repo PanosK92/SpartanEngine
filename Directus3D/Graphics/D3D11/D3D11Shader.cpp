@@ -42,7 +42,7 @@ D3D11Shader::D3D11Shader()
 	m_layout = nullptr;
 	m_VSBlob = nullptr;
 	m_compiled = false;
-	m_D3D11Device = nullptr;
+	m_graphicsDevice = nullptr;
 }
 
 D3D11Shader::~D3D11Shader()
@@ -61,13 +61,13 @@ D3D11Shader::~D3D11Shader()
 	m_samplers.shrink_to_fit();
 }
 
-void D3D11Shader::Initialize(D3D11Device* d3d11Device)
+void D3D11Shader::Initialize(GraphicsDevice* graphicsDevice)
 {
-	m_D3D11Device = d3d11Device;
+	m_graphicsDevice = graphicsDevice;
 
 	// initialize input layout
 	m_layout = new D3D11InputLayout();
-	m_layout->Initialize(m_D3D11Device);
+	m_layout->Initialize(m_graphicsDevice);
 }
 
 bool D3D11Shader::Load(string path)
@@ -148,7 +148,7 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 bool D3D11Shader::AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction)
 {
 	D3D11Sampler* sampler = new D3D11Sampler();
-	if (!sampler->Create(filter, textureAddressMode, comparisonFunction, m_D3D11Device))
+	if (!sampler->Create(filter, textureAddressMode, comparisonFunction, m_graphicsDevice))
 	{
 		LOG("Failed to create shader sampler", Log::Error);
 		DirectusSafeDelete(sampler);
@@ -169,8 +169,8 @@ void D3D11Shader::Set()
 	m_layout->Set();
 
 	// set the vertex and pixel shaders
-	m_D3D11Device->GetDeviceContext()->VSSetShader(m_vertexShader, nullptr, 0);
-	m_D3D11Device->GetDeviceContext()->PSSetShader(m_pixelShader, nullptr, 0);
+	m_graphicsDevice->GetDeviceContext()->VSSetShader(m_vertexShader, nullptr, 0);
+	m_graphicsDevice->GetDeviceContext()->PSSetShader(m_pixelShader, nullptr, 0);
 
 	// set the samplers
 	for (int i = 0; i < m_samplers.size(); i++)
@@ -216,7 +216,7 @@ bool D3D11Shader::CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** 
 
 	// Create the shader from the buffer.
 	ID3D10Blob* vsb = *vsBlob;
-	result = m_D3D11Device->GetDevice()->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
+	result = m_graphicsDevice->GetDevice()->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
 	if (FAILED(result))
 	{
 		LOG("Failed to create vertex shader.", Log::Error);
@@ -234,7 +234,7 @@ bool D3D11Shader::CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pi
 
 	ID3D10Blob* psb = *psBlob;
 	// Create the shader from the buffer.
-	result = m_D3D11Device->GetDevice()->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader);
+	result = m_graphicsDevice->GetDevice()->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader);
 	if (FAILED(result))
 	{
 		LOG("Failed to create pixel shader.", Log::Error);

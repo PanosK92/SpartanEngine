@@ -31,7 +31,7 @@ using namespace Directus::Math;
 
 DepthShader::DepthShader()
 {
-	m_D3D11Device = nullptr;
+	m_graphicsDevice = nullptr;
 	m_shader = nullptr;
 	m_defaultBuffer = nullptr;
 }
@@ -42,19 +42,19 @@ DepthShader::~DepthShader()
 	DirectusSafeDelete(m_shader);
 }
 
-void DepthShader::Initialize(D3D11Device* d3d11device)
+void DepthShader::Initialize(GraphicsDevice* graphicsDevice)
 {
-	m_D3D11Device = d3d11device;
+	m_graphicsDevice = graphicsDevice;
 
 	// load the vertex and the pixel shader
 	m_shader = new D3D11Shader();
-	m_shader->Initialize(m_D3D11Device);
+	m_shader->Initialize(m_graphicsDevice);
 	m_shader->Load("Assets/Shaders/Depth.hlsl");
 	m_shader->SetInputLayout(Position);
 
 	// create a buffer
 	m_defaultBuffer = new D3D11Buffer();
-	m_defaultBuffer->Initialize(m_D3D11Device);
+	m_defaultBuffer->Initialize(m_graphicsDevice);
 	m_defaultBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
@@ -84,5 +84,5 @@ void DepthShader::RenderShader(int indexCount)
 	m_shader->Set();
 
 	// render
-	m_D3D11Device->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }

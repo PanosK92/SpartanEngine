@@ -1,4 +1,3 @@
-#if COMPILE_PS == 1
 /*------------------------------------------------------------------------------
 							[G-BUFFER]
 ------------------------------------------------------------------------------*/
@@ -27,8 +26,6 @@ SamplerState samplerAniso	 	: register(s1);
 #include "ToneMapping.hlsl"
 #include "Normal.hlsl"
 
-#endif
-
 /*------------------------------------------------------------------------------
 							[CONSTANT BUFFERS]
 ------------------------------------------------------------------------------*/
@@ -42,7 +39,6 @@ cbuffer MiscBuffer : register(b0)
 	float2 padding3;
 };
 
-#if COMPILE_PS == 1
 cbuffer DirectionalLightBuffer : register (b1)
 {
 	matrix dirLightViewProjection[MaxLights];
@@ -62,7 +58,6 @@ cbuffer PointLightBuffer : register(b2)
 	float pointlightCount;
 	float3 padding2;
 };
-#endif
 
 //= INPUT LAYOUT ================
 struct VertexInputType
@@ -78,7 +73,6 @@ struct PixelInputType
 };
 
 //= VS() =============================================================
-#if COMPILE_VS == 1
 PixelInputType DirectusVertexShader(VertexInputType input)
 {
     PixelInputType output;
@@ -89,10 +83,8 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 	
 	return output;
 }
-#endif
 
 //= PS() =================================================================================
-#if COMPILE_PS == 1
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	// Misc
@@ -100,7 +92,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float3 finalColor			= float3(0,0,0);
 	
 	// Sample from G-Buffer
-	float4 albedo				= ToLinear(albedoTexture.Sample(samplerAniso, input.uv));	
+	float3 albedo				= ToLinear(albedoTexture.Sample(samplerAniso, input.uv)).rgb;	
 	float4 normalSample			= normalTexture.Sample(samplerAniso, input.uv); 
 	float4 depthSample 			= depthTexture.Sample(samplerPoint, input.uv);
 	float4 materialSample		= materialTexture.Sample(samplerPoint, input.uv);
@@ -171,4 +163,3 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	return float4(finalColor, luma);
 }
-#endif // COMPILE_PS

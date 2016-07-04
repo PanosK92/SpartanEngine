@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class GameObject;
 class Transform;
-class D3D11Device;
+class GraphicsDevice;
 class Scene;
 class PhysicsEngine;
 class ScriptEngine;
@@ -46,7 +46,7 @@ public:
 
 	GameObject* g_gameObject;
 	Transform* g_transform;
-	D3D11Device* g_d3d11Device;
+	GraphicsDevice* g_graphicsDevice;
 	Scene* g_scene;
 	MeshPool* g_meshPool;
 	MaterialPool* g_materialPool;

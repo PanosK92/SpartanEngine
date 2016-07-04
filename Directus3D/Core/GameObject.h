@@ -34,7 +34,7 @@ public:
 	GameObject();
 	~GameObject();
 
-	void Initialize(D3D11Device* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine);
+	void Initialize(GraphicsDevice* graphicsDevice, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine);
 	void Update();
 
 	std::string GetName();
@@ -79,7 +79,7 @@ private:
 	// keep a local copy of it here and avoid any runtime searching.
 	Transform* m_transform;
 
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 	Scene* m_scene;
 	MeshPool* m_meshPool;
 	MaterialPool* m_materialPool;

@@ -50,9 +50,9 @@ ImageLoader::~ImageLoader()
 	FreeImage_DeInitialise();
 }
 
-void ImageLoader::Initialize(D3D11Device* D3D11evice)
+void ImageLoader::Initialize(GraphicsDevice* D3D11evice)
 {
-	m_d3d11Device = D3D11evice;
+	m_graphicsDevice = D3D11evice;
 }
 
 bool ImageLoader::Load(std::string path)
@@ -120,7 +120,7 @@ ID3D11ShaderResourceView* ImageLoader::GetAsD3D11ShaderResourceView()
 
 	// Create 2D texture from texture description
 	ID3D11Texture2D* texture = nullptr;
-	HRESULT hResult = m_d3d11Device->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
+	HRESULT hResult = m_graphicsDevice->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
 	if (FAILED(hResult))
 	{
 		LOG("Failed to create ID3D11Texture2D from imported image data while trying to load " + m_path + ".", Log::Error);
@@ -136,7 +136,7 @@ ID3D11ShaderResourceView* ImageLoader::GetAsD3D11ShaderResourceView()
 
 	// Create shader resource view from resource view description
 	ID3D11ShaderResourceView* shaderResourceView = nullptr;
-	hResult = m_d3d11Device->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &shaderResourceView);
+	hResult = m_graphicsDevice->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &shaderResourceView);
 	if (FAILED(hResult))
 	{
 		LOG("Failed to create the shader resource view.", Log::Error);
@@ -149,10 +149,10 @@ ID3D11ShaderResourceView* ImageLoader::GetAsD3D11ShaderResourceView()
 	mapResource.SysMemPitch = sizeof(unsigned char) * m_width * m_channels;
 
 	// Copy data from memory to the subresource created in non-mappable memory
-	m_d3d11Device->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, mapResource.pSysMem, mapResource.SysMemPitch, 0);
+	m_graphicsDevice->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, mapResource.pSysMem, mapResource.SysMemPitch, 0);
 
 	// Generate mip chain
-	m_d3d11Device->GetDeviceContext()->GenerateMips(shaderResourceView);
+	m_graphicsDevice->GetDeviceContext()->GenerateMips(shaderResourceView);
 
 	return shaderResourceView;
 }

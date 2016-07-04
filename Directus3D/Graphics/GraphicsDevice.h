@@ -22,41 +22,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include <vector>
-#include "../GraphicsDevice.h"
+#include "D3D11/D3D11Device.h"
 //============================
 
-enum InputLayout
+enum CullMode
 {
-	Auto,
-	Position,
-	PositionColor,
-	PositionTexture,
-	PositionTextureNormalTangent
+	CullBack,
+	CullFront,
+	CullNone,
 };
 
-class D3D11InputLayout
+class GraphicsDevice
 {
 public:
-	D3D11InputLayout();
-	~D3D11InputLayout();
+	GraphicsDevice();
+	~GraphicsDevice();
 
-	//= MISC =================================
-	void Initialize(GraphicsDevice* d3d11Device);
-	void Set();
+	void Initialize(HWND drawPaneHandle);
+	ID3D11Device* GetDevice();
+	ID3D11DeviceContext* GetDeviceContext();
 
-	//= LAYOUT CREATION ==================================================================================
-	bool Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount);
-	bool Create(ID3D10Blob* VSBlob, InputLayout layout);
-
+	void Begin();
+	void End();
+	void ResetRenderTarget();
+	void ResetViewport();
+	void EnableZBuffer(bool enable);
+	void SetCullMode(CullMode cullMode);
 private:
-	//= LAYOUTS ===============================
-	bool CreatePosDesc(ID3D10Blob* VSBlob);
-	bool CreatePosColDesc(ID3D10Blob* VSBlob);
-	bool CreatePosTexDesc(ID3D10Blob* VSBlob);
-	bool CreatePosTexNorTanDesc(ID3D10Blob* VSBlob);
-
-	GraphicsDevice* m_graphicsDevice;
-	ID3D11InputLayout* m_layout;
-	std::vector<D3D11_INPUT_ELEMENT_DESC> m_layoutDesc;
+	D3D11Device* m_D3D11Device;
+	CullMode m_cullMode;
 };

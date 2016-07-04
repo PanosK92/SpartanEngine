@@ -23,8 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 //= INCLUDES =================
-#include "D3D11/D3D11Device.h"
-
+#include "GraphicsDevice.h"
 //============================
 
 class FullScreenQuad
@@ -33,14 +32,14 @@ public:
 	FullScreenQuad();
 	~FullScreenQuad();
 
-	bool Initialize(int, int, D3D11Device* d3d11device);
+	bool Initialize(int, int, GraphicsDevice* graphicsDevice);
 	void SetBuffers();
 	int GetIndexCount();
 
 private:
 	bool InitializeBuffers(int, int);
 
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 	ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
 	int m_vertexCount, m_indexCount;
 };

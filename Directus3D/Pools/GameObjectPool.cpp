@@ -32,7 +32,7 @@ using namespace std;
 
 GameObjectPool::GameObjectPool()
 {
-	m_D3D11Device = nullptr;
+	m_graphicsDevice = nullptr;
 	m_scene = nullptr;
 	m_meshPool = nullptr;
 	m_materialPool = nullptr;
@@ -45,9 +45,9 @@ GameObjectPool::~GameObjectPool()
 	Clear();
 }
 
-void GameObjectPool::Initialize(D3D11Device* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine)
+void GameObjectPool::Initialize(GraphicsDevice* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine)
 {
-	m_D3D11Device = d3d11Device;
+	m_graphicsDevice = d3d11Device;
 	m_scene = scene;
 	m_meshPool = meshPool;
 	m_materialPool = materialPool;
@@ -273,7 +273,7 @@ void GameObjectPool::AddGameObjectToPool(GameObject* gameObject)
 			return;
 	}
 
-	gameObject->Initialize(m_D3D11Device, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physics, m_scriptEngine);
+	gameObject->Initialize(m_graphicsDevice, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physics, m_scriptEngine);
 	m_pool.push_back(move(smartPtrGameObject));
 
 	m_scene->MakeDirty();

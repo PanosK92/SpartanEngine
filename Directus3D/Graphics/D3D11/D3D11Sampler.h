@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
-#include "D3D11Device.h"
-
-//======================
+//= INCLUDES =================
+#include "../GraphicsDevice.h"
+//============================
 
 class D3D11Sampler
 {
@@ -32,9 +31,9 @@ public:
 	D3D11Sampler();
 	~D3D11Sampler();
 
-	bool Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, D3D11Device* d3d11device);
+	bool Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, GraphicsDevice* graphicsDevice);
 	void Set(unsigned int startSlot);
 private:
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 	ID3D11SamplerState* m_sampler;
 };

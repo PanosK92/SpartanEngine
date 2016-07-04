@@ -24,7 +24,7 @@ class Socket;
 class ScriptEngine;
 class Renderer;
 class ModelLoader;
-class D3D11Device;
+class GraphicsDevice;
 class Scene;
 class Input;
 class Timer;
@@ -53,7 +53,7 @@ private:
 	ScriptEngine* m_scriptEngine;
 	Renderer* m_renderer;
 	ModelLoader* m_modelLoader;
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 	Scene* m_scene;
 	Input* m_input;
 	Timer* m_timer;

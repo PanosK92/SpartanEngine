@@ -25,12 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Globals.h"
 #include "../../Core/Settings.h"
 #include "../../IO/Log.h"
-
 //=============================
 
 D3D11Sampler::D3D11Sampler()
 {
-	m_D3D11Device = nullptr;
+	m_graphicsDevice = nullptr;
 	m_sampler = nullptr;
 }
 
@@ -39,9 +38,9 @@ D3D11Sampler::~D3D11Sampler()
 	DirectusSafeRelease(m_sampler);
 }
 
-bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, D3D11Device* d3d11device)
+bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, GraphicsDevice* graphicsDevice)
 {
-	m_D3D11Device = d3d11device;
+	m_graphicsDevice = graphicsDevice;
 
 	D3D11_SAMPLER_DESC samplerDesc;
 	samplerDesc.Filter = filter;
@@ -59,7 +58,7 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
 	// create sampler state.
-	HRESULT result = m_D3D11Device->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
+	HRESULT result = m_graphicsDevice->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
 	if (FAILED(result))
 	{
 		LOG("Failed to create texture sampler", Log::Error);
@@ -71,5 +70,5 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 
 void D3D11Sampler::Set(unsigned int startSlot)
 {
-	m_D3D11Device->GetDeviceContext()->PSSetSamplers(startSlot, 1, &m_sampler);
+	m_graphicsDevice->GetDeviceContext()->PSSetSamplers(startSlot, 1, &m_sampler);
 }

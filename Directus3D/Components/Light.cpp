@@ -53,7 +53,7 @@ Light::~Light()
 void Light::Initialize()
 {
 	m_depthMap = new D3D11RenderTexture();
-	m_depthMap->Initialize(g_d3d11Device, SHADOWMAP_RESOLUTION, SHADOWMAP_RESOLUTION);
+	m_depthMap->Initialize(g_graphicsDevice, SHADOWMAP_RESOLUTION, SHADOWMAP_RESOLUTION);
 	m_projectionSize = 100;
 }
 

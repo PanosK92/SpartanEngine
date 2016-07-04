@@ -30,7 +30,7 @@ using namespace Directus::Math;
 
 ColorShader::ColorShader()
 {
-	m_d3d11Device = nullptr;
+	m_graphicsDevice = nullptr;
 }
 
 ColorShader::~ColorShader()
@@ -39,20 +39,20 @@ ColorShader::~ColorShader()
 	DirectusSafeDelete(m_miscBuffer);
 }
 
-void ColorShader::Initialize(D3D11Device* d3d11device)
+void ColorShader::Initialize(GraphicsDevice* graphicsDevice)
 {
-	m_d3d11Device = d3d11device;
+	m_graphicsDevice = graphicsDevice;
 
 	// load the vertex and the pixel shader
 	m_shader = new D3D11Shader();
-	m_shader->Initialize(m_d3d11Device);
+	m_shader->Initialize(m_graphicsDevice);
 	m_shader->Load("Assets/Shaders/Color.hlsl");
 	m_shader->SetInputLayout(PositionColor);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// create buffer
 	m_miscBuffer = new D3D11Buffer();
-	m_miscBuffer->Initialize(m_d3d11Device);
+	m_miscBuffer->Initialize(m_graphicsDevice);
 	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
 }
 
@@ -89,5 +89,5 @@ void ColorShader::RenderShader(unsigned int vertexCount)
 {
 	m_shader->Set();
 	// render
-	m_d3d11Device->GetDeviceContext()->Draw(vertexCount, 0);
+	m_graphicsDevice->GetDeviceContext()->Draw(vertexCount, 0);
 }

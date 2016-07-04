@@ -23,8 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "../../Math/Matrix.h"
-#include "D3D11Device.h"
-
+#include "../GraphicsDevice.h"
 //============================
 
 class D3D11RenderTexture
@@ -33,15 +32,15 @@ public:
 	D3D11RenderTexture();
 	~D3D11RenderTexture();
 
-	bool Initialize(D3D11Device* device, int, int);
+	bool Initialize(GraphicsDevice* graphicsDevice, int, int);
 	void SetAsRenderTarget();
 	void Clear(float, float, float, float);
-	ID3D11ShaderResourceView* GetShaderResourceView();
+	ID3D11ShaderResourceView* GetShaderResourceView() const;
 	void CreateOrthographicProjectionMatrix(float nearPlane, float farPlane);
-	Directus::Math::Matrix GetOrthographicProjectionMatrix();
+	Directus::Math::Matrix GetOrthographicProjectionMatrix() const;
 
 private:
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 	ID3D11Texture2D* m_renderTargetTexture;
 	ID3D11RenderTargetView* m_renderTargetView;
 	ID3D11ShaderResourceView* m_shaderResourceView;

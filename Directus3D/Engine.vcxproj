@@ -187,6 +187,7 @@
     <ClCompile Include="Components\Collider.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11InputLayout.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11Shader.cpp" />
+    <ClCompile Include="Graphics\GraphicsDevice.cpp" />
     <ClCompile Include="Graphics\Shaders\DebugShader.cpp" />
     <ClCompile Include="Graphics\Frustrum.cpp" />
     <ClCompile Include="Components\Hinge.cpp" />
@@ -246,6 +247,7 @@
     <ClCompile Include="Graphics\D3D11\D3D11Buffer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Graphics\GraphicsDevice.h" />
     <ClInclude Include="Loading\DDSTextureLoader.h" />
     <ClInclude Include="Physics\BulletPhysicsHelper.h" />
     <ClInclude Include="Components\Camera.h" />

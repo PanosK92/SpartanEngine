@@ -52,7 +52,7 @@ public:
 	void TurnOnAlphaBlending();
 	void TurnOffAlphaBlending();
 
-	void SetFaceCulling(D3D11_CULL_MODE cull);
+	void SetFaceCullMode(D3D11_CULL_MODE cull);
 
 	void SetBackBufferRenderTarget();
 	void ResetViewport();
@@ -74,7 +74,6 @@ private:
 	ID3D11RasterizerState* m_rasterStateCullBack;
 	ID3D11RasterizerState* m_rasterStateCullNone;
 	D3D11_VIEWPORT m_viewport;
-	D3D11_CULL_MODE currentCullMode;
 	ID3D11BlendState* m_alphaBlendingStateEnabled;
 	ID3D11BlendState* m_alphaBlendingStateDisabled;
 

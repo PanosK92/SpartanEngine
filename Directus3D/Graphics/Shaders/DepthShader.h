@@ -23,11 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "../../Math/Matrix.h"
-#include "../D3D11/D3D11Device.h"
+#include "../GraphicsDevice.h"
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
-
-//===============================
+//==============================
 
 class DepthShader
 {
@@ -35,7 +34,7 @@ public:
 	DepthShader();
 	~DepthShader();
 
-	void Initialize(D3D11Device* d3d11device);
+	void Initialize(GraphicsDevice* graphicsDevice);
 	void Render(int indexCount, Directus::Math::Matrix worldMatrix, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix);
 
 private:
@@ -49,6 +48,6 @@ private:
 	void SetShaderBuffers(Directus::Math::Matrix worldMatrix, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix);
 	void RenderShader(int indexCount);
 
-	D3D11Device* m_D3D11Device;
+	GraphicsDevice* m_graphicsDevice;
 	D3D11Shader* m_shader;
 };
