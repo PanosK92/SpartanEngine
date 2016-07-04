@@ -77,7 +77,7 @@ private:
 	std::set<std::string> m_definitionPool;
 
 	//= INPUT LAYOUT ======================
-	D3D11InputLayout* m_layout;
+	D3D11InputLayout* m_D3D11InputLayout;
 	bool m_layoutHasBeenSet;
 
 	//= DEPENDENCIES============

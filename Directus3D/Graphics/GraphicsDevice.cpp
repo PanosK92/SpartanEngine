@@ -81,6 +81,15 @@ void GraphicsDevice::EnableZBuffer(bool enable)
 		m_D3D11Device->TurnZBufferOff();
 }
 
+bool GraphicsDevice::SetInputLayout(InputLayout inputLayout)
+{
+	if (m_inputLayout == inputLayout)
+		return false;
+
+	m_inputLayout = inputLayout;
+	return true;
+}
+
 void GraphicsDevice::SetCullMode(CullMode cullMode)
 {
 	// Set face CullMode only if not already set
