@@ -85,9 +85,12 @@ private:
 	D3D11RenderTexture* m_renderTexturePong;
 	//======================================
 
-	//= MISC ===========================
+	//= MISC =====================================================
+	std::vector<ID3D11ShaderResourceView*> m_deferredPassTextures;
+	ID3D11ShaderResourceView* m_environmentTex;
+	ID3D11ShaderResourceView* m_irradianceTex;
 	std::shared_ptr<Texture> m_noiseMap;
-	//==================================
+	//============================================================
 
 	//= SHADERS =========================
 	DeferredShader* m_shaderDeferred;
