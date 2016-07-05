@@ -65,8 +65,10 @@ void DeferredShader::Initialize(GraphicsDevice* graphicsDevice)
 	//============================================================
 }
 
-void DeferredShader::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mBaseView, Matrix mPerspectiveProjection, Matrix mOrthographicProjection,
-                            vector<GameObject*> directionalLights, vector<GameObject*> pointLights, Camera* camera, std::vector<ID3D11ShaderResourceView*> textures)
+void DeferredShader::Render(
+	int indexCount, Matrix mWorld, Matrix mView, Matrix mBaseView, Matrix mPerspectiveProjection, Matrix mOrthographicProjection,
+    vector<GameObject*> directionalLights, vector<GameObject*> pointLights, Camera* camera, 
+	vector<ID3D11ShaderResourceView*> textures, ID3D11ShaderResourceView* environmentTex, ID3D11ShaderResourceView* irradienceTex)
 {
 	if (!m_shader->IsCompiled())
 	{
@@ -113,7 +115,7 @@ void DeferredShader::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix 
 		buffer->pointLightRange[i] = Vector4(pointLights[i]->GetComponent<Light>()->GetRange());
 	}
 
-	// Fill with misca data
+	// Fill with misc data
 	buffer->dirLightCount = directionalLights.size();
 	buffer->pointLightCount = pointLights.size();
 	buffer->nearPlane = camera->GetNearPlane();
@@ -124,8 +126,11 @@ void DeferredShader::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix 
 	m_constantBuffer->SetVS(0);
 	m_constantBuffer->SetPS(0);
 
-	//= SET TEXTURES =============================================================
+	//= SET TEXTURES =======================================================================================
 	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, UINT(textures.size()), &textures.front());
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(UINT(textures.size()), 1, &environmentTex);
+	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(UINT(textures.size()) + 1, 1, &irradienceTex);
+	//======================================================================================================
 
 	//= SET SHADER ===============================================================
 	m_shader->Set();

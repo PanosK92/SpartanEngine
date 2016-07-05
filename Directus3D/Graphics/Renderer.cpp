@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsDebugDraw.h"
 #include "D3D11/D3D11RenderTexture.h"
 #include "../Core/Scene.h"
+#include "../IO/Log.h"
 //======================================
 
 //= NAMESPACES ================
@@ -247,7 +248,7 @@ void Renderer::Render()
 	DebugDraw();
 
 	// display frame
-	m_graphicsDevice->End(); 
+	m_graphicsDevice->End();
 
 	StopCalculatingStats();
 }
@@ -312,7 +313,7 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects, Light* dir
 		// If something is missing, skip this GameObject
 		if (!mesh || !meshRenderer || !material)
 			continue;
-		
+
 		//= Frustrum culling =======================================================
 		Vector3 center = Vector3::Transform(mesh->GetCenter(), worldMatrix);
 		Vector3 extent = mesh->GetExtent() * gameObject->GetTransform()->GetScale();
@@ -334,9 +335,9 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects, Light* dir
 		if (buffersHaveBeenSet)
 		{
 			meshRenderer->Render(
-				mesh->GetIndexCount(), 
-				mView, 
-				mPerspectiveProjection, 
+				mesh->GetIndexCount(),
+				mView,
+				mPerspectiveProjection,
 				dirLight
 			);
 
@@ -354,22 +355,19 @@ void Renderer::DeferredPass()
 	Ping();
 
 	// Setting a texture array instead of multiple textures is faster
-	vector<ID3D11ShaderResourceView*> textures;
-	textures.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
-	textures.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
-	textures.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
-	textures.push_back(m_GBuffer->GetShaderResourceView(3)); // material
+	m_deferredPassTextures.clear();
+	m_deferredPassTextures.shrink_to_fit();
+	m_deferredPassTextures.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
+	m_deferredPassTextures.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
+	m_deferredPassTextures.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
+	m_deferredPassTextures.push_back(m_GBuffer->GetShaderResourceView(3)); // material
+	m_deferredPassTextures.push_back(m_noiseMap->GetID3D11ShaderResourceView());
+
 	if (m_skybox)
 	{
-		textures.push_back(m_skybox->GetEnvironmentTexture());
-		textures.push_back(m_skybox->GetIrradianceTexture());
+		m_environmentTex = m_skybox->GetEnvironmentTexture();
+		m_irradianceTex = m_skybox->GetIrradianceTexture();
 	}
-	else
-	{
-		textures.push_back(m_noiseMap->GetID3D11ShaderResourceView());
-		textures.push_back(m_noiseMap->GetID3D11ShaderResourceView());
-	}
-	textures.push_back(m_noiseMap->GetID3D11ShaderResourceView());
 
 	// deferred rendering
 	m_shaderDeferred->Render(
@@ -382,7 +380,9 @@ void Renderer::DeferredPass()
 		m_directionalLights,
 		m_pointLights,
 		m_camera,
-		textures
+		m_deferredPassTextures,
+		m_environmentTex,
+		m_irradianceTex
 	);
 }
 
