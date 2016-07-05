@@ -59,7 +59,16 @@ Renderer::Renderer()
 	m_shaderSharpening = nullptr;
 	m_noiseMap = nullptr;
 	m_frustrum = nullptr;
-
+	m_skybox = nullptr;
+	m_physics = nullptr;
+	m_scene = nullptr;
+	m_timer = nullptr;
+	m_camera = nullptr;
+	m_renderStartTime = 0;
+	m_renderTime = 0;
+	m_frameCount = 0;
+	m_fpsLastKnownTime = 0;
+	m_fps = 0;
 	m_isDirty = true;
 }
 
@@ -187,81 +196,86 @@ void Renderer::Render()
 		m_isDirty = false;
 	}
 
-	// Get the main as a GameObject
-	GameObject* mainCamera = m_scene->GetMainCamera();
-	if (!mainCamera)
+	AcquirePrerequisites();
+
+	if (!m_camera)
+	{
+		m_graphicsDevice->Begin();
+		m_graphicsDevice->End();
 		return;
-
-	// Get the camera component out of the camera GameObject
-	Camera* camera = mainCamera->GetComponent<Camera>();
-	if (!camera)
-		return;
-
-	Skybox* skybox = mainCamera->GetComponent<Skybox>();
-	ID3D11ShaderResourceView* environmentMap = nullptr;
-	if (skybox)
-		environmentMap = skybox->GetEnvironmentTexture();
-
-	// get all necessery data from the camera
-	Matrix mPerspectiveProjection = camera->GetPerspectiveProjectionMatrix();
-	Matrix mOrthographicProjection = camera->GetOrthographicProjectionMatrix();
-	Matrix mView = camera->GetViewMatrix();
-	Matrix mBaseView = camera->GetBaseViewMatrix();
-	Matrix mWorld = Matrix::Identity();
-	float nearPlane = camera->GetNearPlane();
-	float farPlane = camera->GetFarPlane();
+	}
 
 	// Construct frustum (if necessery)
 	if (m_frustrum->GetProjectionMatrix() != mPerspectiveProjection || m_frustrum->GetViewMatrix() != mView)
 	{
 		m_frustrum->SetProjectionMatrix(mPerspectiveProjection);
 		m_frustrum->SetViewMatrix(mView);
-		m_frustrum->ConstructFrustum(farPlane);
+		m_frustrum->ConstructFrustum(m_farPlane);
 	}
 
+	// ENABLE Z-BUFFER
+	m_graphicsDevice->EnableZBuffer(true);
+
+	// Render light depth
 	Light* dirLight = nullptr;
 	if (m_directionalLights.size() != 0)
 		dirLight = m_directionalLights[0]->GetComponent<Light>();
-
-	m_graphicsDevice->EnableZBuffer(true);
-
 	if (dirLight)
 	{
-		// Render light depth
 		m_graphicsDevice->SetCullMode(CullFront);
 		dirLight->SetDepthMapAsRenderTarget();
-		RenderLightDepthToTexture(m_renderables, dirLight->GetProjectionSize(), dirLight, nearPlane, farPlane);
+		DirectionalLightDepthPass(m_renderables, dirLight->GetProjectionSize(), dirLight);
 		m_graphicsDevice->SetCullMode(CullBack);
 	}
 
-	// Render G-Buffer
+	// G-Buffer Construction
 	m_GBuffer->SetRenderTargets();
 	m_GBuffer->ClearRenderTargets(0.0f, 0.0f, 0.0f, 1.0f);
-	RenderToGBuffer(m_renderables, dirLight, mView, mPerspectiveProjection);
+	GBufferPass(m_renderables, dirLight);
+
+	// DISABLE Z BUFFER - SET FULLSCREEN QUAD
 	m_graphicsDevice->EnableZBuffer(false);
+	m_fullScreenQuad->SetBuffers();
 
-	// Post processing, fxaa, sharpening etc...
-	m_fullScreenQuad->SetBuffers(); // set full screen quad buffers
-	PostProcessing(camera, skybox, mWorld, mView, mBaseView, mPerspectiveProjection, mOrthographicProjection);
+	// Deferred Pass
+	DeferredPass();
 
-	// Debug draw - Colliders
-	DebugDraw(mainCamera);
+	// Post Proessing
+	PostProcessing();
 
-	m_graphicsDevice->End(); // display frame
+	// Debug Draw - Colliders
+	DebugDraw();
+
+	// display frame
+	m_graphicsDevice->End(); 
 
 	StopCalculatingStats();
 }
 
-void Renderer::RenderLightDepthToTexture(vector<GameObject*> renderableGameObjects, int projectionSize, Light* light, float nearPlane, float farPlane)
+void Renderer::AcquirePrerequisites()
 {
-	light->GenerateOrthographicProjectionMatrix(projectionSize, projectionSize, nearPlane, farPlane);
+	GameObject* camera = m_scene->GetMainCamera();
+	if (camera)
+	{
+		m_camera = camera->GetComponent<Camera>();
+		m_skybox = camera->GetComponent<Skybox>();
+
+		mPerspectiveProjection = m_camera->GetPerspectiveProjectionMatrix();
+		mOrthographicProjection = m_camera->GetOrthographicProjectionMatrix();
+		mView = m_camera->GetViewMatrix();
+		mBaseView = m_camera->GetBaseViewMatrix();
+		mWorld = Matrix::Identity();
+		m_nearPlane = m_camera->GetNearPlane();
+		m_farPlane = m_camera->GetFarPlane();
+	}
+}
+
+void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjects, int projectionSize, Light* light) const
+{
+	light->GenerateOrthographicProjectionMatrix(projectionSize, projectionSize, m_nearPlane, m_farPlane);
 	light->GenerateViewMatrix();
 
-	// Get the metrices
-	Matrix viewMatrix = light->GetViewMatrix();
-	Matrix orthographicMatrix = light->GetOrthographicProjectionMatrix();
-
-	for (unsigned int i = 0; i < renderableGameObjects.size(); i++)
+	for (auto i = 0; i < renderableGameObjects.size(); i++)
 	{
 		GameObject* gameObject = renderableGameObjects[i];
 		Mesh* mesh = gameObject->GetComponent<Mesh>();
@@ -276,28 +290,30 @@ void Renderer::RenderLightDepthToTexture(vector<GameObject*> renderableGameObjec
 			m_depthShader->Render(
 				gameObject->GetComponent<Mesh>()->GetIndexCount(),
 				gameObject->GetTransform()->GetWorldMatrix(),
-				viewMatrix,
-				orthographicMatrix
+				light->GetViewMatrix(),
+				light->GetOrthographicProjectionMatrix()
 			);
 		}
 	}
 }
 
-void Renderer::RenderToGBuffer(vector<GameObject*> renderableGameObjects, Light* dirLight, Matrix viewMatrix, Matrix projectionMatrix)
+void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects, Light* dirLight)
 {
-	for (unsigned int i = 0; i < renderableGameObjects.size(); i++)
+	for (auto i = 0; i < renderableGameObjects.size(); i++)
 	{
-		// Gather some useful objects
+		//= Get all that we need ===================================================
 		GameObject* gameObject = renderableGameObjects[i];
 		Mesh* mesh = gameObject->GetComponent<Mesh>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
 		Material* material = meshRenderer->GetMaterial();
 		Matrix worldMatrix = gameObject->GetTransform()->GetWorldMatrix();
+		//==========================================================================
 
+		// If something is missing, skip this GameObject
 		if (!mesh || !meshRenderer || !material)
 			continue;
-
-		//= Frustrum CullMode ==================================
+		
+		//= Frustrum culling =======================================================
 		Vector3 center = Vector3::Transform(mesh->GetCenter(), worldMatrix);
 		Vector3 extent = mesh->GetExtent() * gameObject->GetTransform()->GetScale();
 
@@ -307,33 +323,33 @@ void Renderer::RenderToGBuffer(vector<GameObject*> renderableGameObjects, Light*
 
 		if (m_frustrum->CheckSphere(center, radius) == Outside)
 			continue;
-		//=====================================================
+		//==========================================================================
 
-		// Handle face CullMode
+		//= Face culling ===========================================================
 		m_graphicsDevice->SetCullMode(material->GetFaceCullMode());
+		//==========================================================================
 
-		// render mesh
-		if (mesh->SetBuffers())
+		//= Render =================================================================
+		bool buffersHaveBeenSet = mesh->SetBuffers();
+		if (buffersHaveBeenSet)
 		{
-			meshRenderer->Render(mesh->GetIndexCount(), viewMatrix, projectionMatrix, dirLight);
+			meshRenderer->Render(
+				mesh->GetIndexCount(), 
+				mView, 
+				mPerspectiveProjection, 
+				dirLight
+			);
+
 			m_meshesRendered++;
 		}
+		//==========================================================================
 	}
 }
 
-void Renderer::PostProcessing(Camera* camera, Skybox* skybox, Matrix mWorld, Matrix mView, Matrix mBaseView, Matrix mPerspectiveProjection, Matrix mOrthographicProjection)
+void Renderer::DeferredPass()
 {
 	if (!m_shaderDeferred->IsCompiled())
 		return;
-
-	ID3D11ShaderResourceView* environmentTexture = nullptr;
-	ID3D11ShaderResourceView* irradianceTexture = nullptr;
-
-	if (skybox)
-	{
-		environmentTexture = skybox->GetEnvironmentTexture();
-		irradianceTexture = skybox->GetIrradianceTexture();
-	}
 
 	Ping();
 
@@ -343,8 +359,16 @@ void Renderer::PostProcessing(Camera* camera, Skybox* skybox, Matrix mWorld, Mat
 	textures.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
 	textures.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
 	textures.push_back(m_GBuffer->GetShaderResourceView(3)); // material
-	textures.push_back(environmentTexture);
-	textures.push_back(irradianceTexture);
+	if (m_skybox)
+	{
+		textures.push_back(m_skybox->GetEnvironmentTexture());
+		textures.push_back(m_skybox->GetIrradianceTexture());
+	}
+	else
+	{
+		textures.push_back(m_noiseMap->GetID3D11ShaderResourceView());
+		textures.push_back(m_noiseMap->GetID3D11ShaderResourceView());
+	}
 	textures.push_back(m_noiseMap->GetID3D11ShaderResourceView());
 
 	// deferred rendering
@@ -357,10 +381,13 @@ void Renderer::PostProcessing(Camera* camera, Skybox* skybox, Matrix mWorld, Mat
 		mOrthographicProjection,
 		m_directionalLights,
 		m_pointLights,
-		camera,
+		m_camera,
 		textures
 	);
+}
 
+void Renderer::PostProcessing() const
+{
 	Pong();
 
 	// fxaa pass
@@ -386,7 +413,7 @@ void Renderer::PostProcessing(Camera* camera, Skybox* skybox, Matrix mWorld, Mat
 	);
 }
 
-void Renderer::DebugDraw(GameObject* camera)
+void Renderer::DebugDraw() const
 {
 	if (!m_physics->GetDebugDraw())
 		return;
@@ -395,7 +422,7 @@ void Renderer::DebugDraw(GameObject* camera)
 		return;
 
 	// Get the line renderer component
-	LineRenderer* lineRenderer = camera->GetComponent<LineRenderer>();
+	LineRenderer* lineRenderer = m_camera->g_gameObject->GetComponent<LineRenderer>();
 	if (!lineRenderer)
 		return;
 
@@ -409,8 +436,8 @@ void Renderer::DebugDraw(GameObject* camera)
 	m_debugShader->Render(
 		lineRenderer->GetVertexCount(),
 		Matrix::Identity(),
-		camera->GetComponent<Camera>()->GetViewMatrix(),
-		camera->GetComponent<Camera>()->GetProjectionMatrix(),
+		m_camera->GetViewMatrix(),
+		m_camera->GetProjectionMatrix(),
 		m_GBuffer->GetShaderResourceView(2) // depth
 	);
 
@@ -418,13 +445,13 @@ void Renderer::DebugDraw(GameObject* camera)
 	m_physics->GetPhysicsDebugDraw()->ClearLines();
 }
 
-void Renderer::Ping()
+void Renderer::Ping() const
 {
 	m_renderTexturePing->SetAsRenderTarget(); // Set the render target to be the render to texture. 
 	m_renderTexturePing->Clear(0.0f, 0.0f, 0.0f, 1.0f); // Clear the render to texture.
 }
 
-void Renderer::Pong()
+void Renderer::Pong() const
 {
 	m_renderTexturePong->SetAsRenderTarget(); // Set the render target to be the render to texture. 
 	m_renderTexturePong->Clear(0.0f, 0.0f, 0.0f, 1.0f); // Clear the render to texture.
@@ -458,22 +485,32 @@ void Renderer::StopCalculatingStats()
 	}
 }
 
-void Renderer::SetPhysicsDebugDraw(bool enable)
+void Renderer::SetPhysicsDebugDraw(bool enable) const
 {
 	m_physics->SetDebugDraw(enable);
 }
 
-int Renderer::GetRenderedMeshesCount()
+void Renderer::SetCamera(Camera* camera)
+{
+	m_camera = camera;
+}
+
+void Renderer::SetSkybox(Skybox* skybox)
+{
+	m_skybox = skybox;
+}
+
+int Renderer::GetRenderedMeshesCount() const
 {
 	return m_renderedMeshesCount;
 }
 
-float Renderer::GetFPS()
+float Renderer::GetFPS() const
 {
 	return m_fps;
 }
 
-float Renderer::GetRenderTimeMs()
+float Renderer::GetRenderTimeMs() const
 {
 	return m_renderTime;
 }

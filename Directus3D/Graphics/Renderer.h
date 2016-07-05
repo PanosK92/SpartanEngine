@@ -48,21 +48,22 @@ public:
 	void Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene);
 	void SetResolution(int width, int height);
 	void UpdateFromScene();
-	void PostProcessing(Camera* camera, Skybox* skybox, Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mBaseView, Directus::Math::Matrix mPerspectiveProjection, Directus::Math::Matrix mOrthographicProjection);
 	void StartCalculatingStats();
 	void StopCalculatingStats();
 	void Render();
-	void SetPhysicsDebugDraw(bool enable);
+	void SetPhysicsDebugDraw(bool enable) const;
+	void SetCamera(Camera* camera);
+	void SetSkybox(Skybox* skybox);
 
-	/*------------------------------------------------------------------------------
-								[STATS]
-	------------------------------------------------------------------------------*/
-	int GetRenderedMeshesCount();
-	float GetFPS();
-	float GetRenderTimeMs();
+	//= STATS =========================
+	int GetRenderedMeshesCount() const;
+	float GetFPS() const;
+	float GetRenderTimeMs() const;
 	void MakeDirty();
+	//=================================
 
 private:
+	//= DEPENDENCIES ================
 	GraphicsDevice* m_graphicsDevice;
 	GBuffer* m_GBuffer;
 	Frustrum* m_frustrum;
@@ -70,44 +71,33 @@ private:
 	Timer* m_timer;
 	PhysicsEngine* m_physics;
 	Scene* m_scene;
+	//===============================
 
+	// GAMEOBJECTS ==============================
 	std::vector<GameObject*> m_renderables;
 	std::vector<GameObject*> m_directionalLights;
 	std::vector<GameObject*> m_pointLights;
 	bool m_isDirty;
+	//===========================================
 
-	/*------------------------------------------------------------------------------
-									[RENDER TEXTURES]
-	------------------------------------------------------------------------------*/
+	//= RENDER TEXTURES ====================
 	D3D11RenderTexture* m_renderTexturePing;
 	D3D11RenderTexture* m_renderTexturePong;
+	//======================================
 
-	/*------------------------------------------------------------------------------
-										[MISC]
-	------------------------------------------------------------------------------*/
+	//= MISC ===========================
 	std::shared_ptr<Texture> m_noiseMap;
+	//==================================
 
-	/*------------------------------------------------------------------------------
-										[SHADERS]
-	------------------------------------------------------------------------------*/
+	//= SHADERS =========================
 	DeferredShader* m_shaderDeferred;
 	DepthShader* m_depthShader;
 	DebugShader* m_debugShader;
 	PostProcessShader* m_shaderFXAA;
 	PostProcessShader* m_shaderSharpening;
+	//====================================
 
-	/*------------------------------------------------------------------------------
-										[HELPER]
-	------------------------------------------------------------------------------*/
-	void RenderLightDepthToTexture(std::vector<GameObject*> renderableGameObjects, int projectionSize, Light* light, float nearPlane, float farPlane);
-	void RenderToGBuffer(std::vector<GameObject*> renderableGameObjects, Light* dirLight, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix);
-	void DebugDraw(GameObject* camera);
-	void Ping();
-	void Pong();
-
-	/*------------------------------------------------------------------------------
-										[STATS]
-	------------------------------------------------------------------------------*/
+	//= STATS ================
 	int m_renderedMeshesCount;
 	int m_meshesRendered;
 	float m_renderStartTime;
@@ -115,4 +105,32 @@ private:
 	int m_frameCount;
 	float m_fpsLastKnownTime;
 	float m_fps;
+	//========================
+
+	//= PREREQUISITES =============================
+	Camera* m_camera;
+	Skybox* m_skybox;
+	Directus::Math::Matrix mPerspectiveProjection;
+	Directus::Math::Matrix mOrthographicProjection;
+	Directus::Math::Matrix mView;
+	Directus::Math::Matrix mBaseView;
+	Directus::Math::Matrix mWorld;
+	float m_nearPlane;
+	float m_farPlane;
+	//=============================================
+	
+	//= HELPER FUNCTIONS ==========================
+	void AcquirePrerequisites();
+	void DirectionalLightDepthPass(
+		std::vector<GameObject*> renderableGameObjects, 
+		int projectionSize, 
+		Light* light
+	) const;
+	void GBufferPass(std::vector<GameObject*> renderableGameObjects, Light* dirLight);
+	void DeferredPass();
+	void PostProcessing() const;
+	void DebugDraw() const;
+	void Ping() const;
+	void Pong() const;
+	//=============================================
 };

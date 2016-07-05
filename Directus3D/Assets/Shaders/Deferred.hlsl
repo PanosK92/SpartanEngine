@@ -1,4 +1,4 @@
-//= TEXTURES =========
+//= TEXTURES ============================
 Texture2D textures[7];
 // 0 - Albedo
 // 1 - Normal
@@ -7,25 +7,25 @@ Texture2D textures[7];
 // 4 - Environment
 // 5 - Irradiance
 // 6 - Noise
-//====================
+//=======================================
 
 //= SAMPLERS ============================
 SamplerState samplerPoint : register(s0);
 SamplerState samplerAniso : register(s1);
 //=======================================
 
-//= DEFINES =========
+//= DEFINES =============================
 #define MaxLights 300
-//===================
+//=======================================
 
-// = INCLUDES =============
+// = INCLUDES ===========================
 #include "Helper.hlsl"
 #include "PBR.hlsl"
 #include "ToneMapping.hlsl"
 #include "Normal.hlsl"
-//=========================
+//======================================
 
-//= CONSTANT BUFFERS ==============
+//= CONSTANT BUFFERS ===================
 cbuffer MiscBuffer : register(b0)
 {
 	matrix mWorldViewProjection;
@@ -44,9 +44,9 @@ cbuffer MiscBuffer : register(b0)
 	float nearPlane;
 	float farPlane;
 };
-//=================================
+//=====================================
 
-//= INPUT LAYOUT ==================
+//= INPUT LAYOUT ======================
 struct VertexInputType
 {
     float4 position : POSITION;
@@ -58,9 +58,9 @@ struct PixelInputType
     float4 position : SV_POSITION;
     float2 uv : TEXCOORD0;
 };
-//================================
+//=====================================
 
-//= VS() =============================================================
+//= VS() ==================================================================================
 PixelInputType DirectusVertexShader(VertexInputType input)
 {
     PixelInputType output;
