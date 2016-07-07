@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =======================
-#include <LinearMath/btQuaternion.h>
+#include "LinearMath/btQuaternion.h""
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"

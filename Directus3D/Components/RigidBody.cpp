@@ -19,23 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES =========================
 #include "RigidBody.h"
 #include "Transform.h"
-#include "btBulletDynamicsCommon.h"
-#include "btBulletCollisionCommon.h"
-#include <LinearMath/btMotionState.h>
 #include "Collider.h"
-#include "../Physics/BulletPhysicsHelper.h"
 #include "../Core/Settings.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Physics/PhysicsEngine.h"
-//=========================================
+//===================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
-
 //=============================
 
 class MotionState : public btMotionState

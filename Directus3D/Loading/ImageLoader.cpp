@@ -21,10 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================
 #include "ImageLoader.h"
-#include <FreeImagePlus.h>
 #include "../IO/Log.h"
 #include "../IO/FileHelper.h"
-
 //===========================
 
 ImageLoader::ImageLoader()
@@ -256,7 +254,7 @@ bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 		LOG("Could not find image \"" + path + "\".", Log::Error);
 		return false;
 	}
-
+	
 	// Get the format of the image
 	FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
 
