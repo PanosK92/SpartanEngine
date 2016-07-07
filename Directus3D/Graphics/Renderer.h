@@ -46,20 +46,18 @@ public:
 	~Renderer();
 
 	void Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene);
-	void SetResolution(int width, int height);
-	void UpdateFromScene();
-	void StartCalculatingStats();
-	void StopCalculatingStats();
 	void Render();
+	void SetResolution(int width, int height);
+	void Clear();
+	void Update(std::vector<GameObject*> renderables, std::vector<GameObject*> lightsDirectional, std::vector<GameObject*> lightsPoint);
 	void SetPhysicsDebugDraw(bool enable) const;
-	void SetCamera(Camera* camera);
-	void SetSkybox(Skybox* skybox);
 
 	//= STATS =========================
+	void StartCalculatingStats();
+	void StopCalculatingStats();
 	int GetRenderedMeshesCount() const;
 	float GetFPS() const;
 	float GetRenderTimeMs() const;
-	void MakeDirty();
 	//=================================
 
 private:
@@ -75,27 +73,26 @@ private:
 
 	// GAMEOBJECTS ==============================
 	std::vector<GameObject*> m_renderables;
-	std::vector<GameObject*> m_directionalLights;
-	std::vector<GameObject*> m_pointLights;
-	bool m_isDirty;
+	std::vector<GameObject*> m_lightsDirectional;
+	std::vector<GameObject*> m_lightsPoint;
 	//===========================================
 
 	//= RENDER TEXTURES ====================
-	D3D11RenderTexture* m_renderTexturePing;
-	D3D11RenderTexture* m_renderTexturePong;
+	D3D11RenderTexture* m_renderTexPing;
+	D3D11RenderTexture* m_renderTexPong;
 	//======================================
 
 	//= MISC =====================================================
-	std::vector<ID3D11ShaderResourceView*> m_deferredPassTextures;
-	ID3D11ShaderResourceView* m_environmentTex;
-	ID3D11ShaderResourceView* m_irradianceTex;
-	std::shared_ptr<Texture> m_noiseMap;
+	std::vector<ID3D11ShaderResourceView*> m_texArrayDeferredPass;
+	ID3D11ShaderResourceView* m_texEnvironment;
+	ID3D11ShaderResourceView* m_texIrradiance;
+	std::shared_ptr<Texture> m_texNoiseMap;
 	//============================================================
 
 	//= SHADERS =========================
 	DeferredShader* m_shaderDeferred;
-	DepthShader* m_depthShader;
-	DebugShader* m_debugShader;
+	DepthShader* m_shaderDepth;
+	DebugShader* m_shaderDebug;
 	PostProcessShader* m_shaderFXAA;
 	PostProcessShader* m_shaderSharpening;
 	//====================================
@@ -124,11 +121,7 @@ private:
 	
 	//= HELPER FUNCTIONS ==========================
 	void AcquirePrerequisites();
-	void DirectionalLightDepthPass(
-		std::vector<GameObject*> renderableGameObjects, 
-		int projectionSize, 
-		Light* light
-	) const;
+	void DirectionalLightDepthPass(std::vector<GameObject*> renderableGameObjects, int projectionSize, Light* light) const;
 	void GBufferPass(std::vector<GameObject*> renderableGameObjects, Light* dirLight);
 	void DeferredPass();
 	void PostProcessing() const;

@@ -51,26 +51,29 @@ Renderer::Renderer()
 	m_fullScreenQuad = nullptr;
 	m_renderedMeshesCount = 0;
 	m_meshesRendered = 0;
-	m_renderTexturePing = nullptr;
-	m_renderTexturePong = nullptr;
+	m_renderTexPing = nullptr;
+	m_renderTexPong = nullptr;
 	m_shaderDeferred = nullptr;
-	m_depthShader = nullptr;
-	m_debugShader = nullptr;
+	m_shaderDepth = nullptr;
+	m_shaderDebug = nullptr;
 	m_shaderFXAA = nullptr;
 	m_shaderSharpening = nullptr;
-	m_noiseMap = nullptr;
+	m_texNoiseMap = nullptr;
 	m_frustrum = nullptr;
 	m_skybox = nullptr;
 	m_physics = nullptr;
 	m_scene = nullptr;
 	m_timer = nullptr;
 	m_camera = nullptr;
+	m_texEnvironment = nullptr;
+	m_texIrradiance = nullptr;
+	m_nearPlane = 0.0;
+	m_farPlane = 0.0f;
 	m_renderStartTime = 0;
 	m_renderTime = 0;
 	m_frameCount = 0;
 	m_fpsLastKnownTime = 0;
 	m_fps = 0;
-	m_isDirty = true;
 }
 
 Renderer::~Renderer()
@@ -82,14 +85,14 @@ Renderer::~Renderer()
 
 	// shaders
 	DirectusSafeDelete(m_shaderDeferred);
-	DirectusSafeDelete(m_depthShader);
-	DirectusSafeDelete(m_debugShader);
+	DirectusSafeDelete(m_shaderDepth);
+	DirectusSafeDelete(m_shaderDebug);
 	DirectusSafeDelete(m_shaderFXAA);
 	DirectusSafeDelete(m_shaderSharpening);
 
 	// textures
-	DirectusSafeDelete(m_renderTexturePing);
-	DirectusSafeDelete(m_renderTexturePong);
+	DirectusSafeDelete(m_renderTexPing);
+	DirectusSafeDelete(m_renderTexPong);
 }
 
 void Renderer::Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene)
@@ -116,11 +119,11 @@ void Renderer::Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* ti
 	m_shaderDeferred = new DeferredShader();
 	m_shaderDeferred->Initialize(m_graphicsDevice);
 
-	m_depthShader = new DepthShader();
-	m_depthShader->Initialize(m_graphicsDevice);
+	m_shaderDepth = new DepthShader();
+	m_shaderDepth->Initialize(m_graphicsDevice);
 
-	m_debugShader = new DebugShader();
-	m_debugShader->Initialize(m_graphicsDevice);
+	m_shaderDebug = new DebugShader();
+	m_shaderDebug->Initialize(m_graphicsDevice);
 
 	m_shaderFXAA = new PostProcessShader();
 	m_shaderFXAA->Initialize("FXAA", m_graphicsDevice);
@@ -131,73 +134,27 @@ void Renderer::Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* ti
 	/*------------------------------------------------------------------------------
 								[RENDER TEXTURES]
 	------------------------------------------------------------------------------*/
-	m_renderTexturePing = new D3D11RenderTexture;
-	m_renderTexturePing->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPing = new D3D11RenderTexture;
+	m_renderTexPing->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	m_renderTexturePong = new D3D11RenderTexture;
-	m_renderTexturePong->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPong = new D3D11RenderTexture;
+	m_renderTexPong->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	/*------------------------------------------------------------------------------
 										[MISC]
 	------------------------------------------------------------------------------*/
-	m_noiseMap = make_shared<Texture>();
-	m_noiseMap->LoadFromFile("Assets/Shaders/noise.png", Normal);
-	m_noiseMap->SetType(Normal);
-}
-
-void Renderer::SetResolution(int width, int height)
-{
-	Settings::GetInstance().SetResolution(width, height);
-
-	m_graphicsDevice->SetViewport(width, height);
-
-	DirectusSafeDelete(m_GBuffer);
-	m_GBuffer = new GBuffer(m_graphicsDevice);
-	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-
-	DirectusSafeDelete(m_fullScreenQuad);
-	m_fullScreenQuad = new FullScreenQuad;
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphicsDevice);
-
-	DirectusSafeDelete(m_renderTexturePing);
-	m_renderTexturePing = new D3D11RenderTexture;
-	m_renderTexturePing->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-
-	DirectusSafeDelete(m_renderTexturePong);
-	m_renderTexturePong = new D3D11RenderTexture;
-	m_renderTexturePong->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-}
-
-void Renderer::UpdateFromScene()
-{
-	// Get renderables
-	m_renderables.clear();
-	m_renderables.shrink_to_fit();
-	m_renderables = m_scene->GetRenderables();
-
-	// Get directional lights
-	m_directionalLights.clear();
-	m_directionalLights.shrink_to_fit();
-	m_directionalLights = m_scene->GetDirectionalLights();
-
-	// Get point lights
-	m_pointLights.clear();
-	m_pointLights.shrink_to_fit();
-	m_pointLights = m_scene->GetPointLights();
+	m_texNoiseMap = make_shared<Texture>();
+	m_texNoiseMap->LoadFromFile("Assets/Shaders/noise.png", Normal);
+	m_texNoiseMap->SetType(Normal);
 }
 
 void Renderer::Render()
 {
-	// Stats
 	StartCalculatingStats();
-
-	if (m_isDirty)
-	{
-		UpdateFromScene();
-		m_isDirty = false;
-	}
-
 	AcquirePrerequisites();
+
+	if (m_renderables.size() == 0)
+		return;
 
 	if (!m_camera)
 	{
@@ -219,8 +176,8 @@ void Renderer::Render()
 
 	// Render light depth
 	Light* dirLight = nullptr;
-	if (m_directionalLights.size() != 0)
-		dirLight = m_directionalLights[0]->GetComponent<Light>();
+	if (m_lightsDirectional.size() != 0)
+		dirLight = m_lightsDirectional[0]->GetComponent<Light>();
 	if (dirLight)
 	{
 		m_graphicsDevice->SetCullMode(CullFront);
@@ -251,6 +208,50 @@ void Renderer::Render()
 	m_graphicsDevice->End();
 
 	StopCalculatingStats();
+}
+
+void Renderer::SetResolution(int width, int height)
+{
+	Settings::GetInstance().SetResolution(width, height);
+
+	m_graphicsDevice->SetViewport(width, height);
+
+	DirectusSafeDelete(m_GBuffer);
+	m_GBuffer = new GBuffer(m_graphicsDevice);
+	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+
+	DirectusSafeDelete(m_fullScreenQuad);
+	m_fullScreenQuad = new FullScreenQuad;
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphicsDevice);
+
+	DirectusSafeDelete(m_renderTexPing);
+	m_renderTexPing = new D3D11RenderTexture;
+	m_renderTexPing->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+
+	DirectusSafeDelete(m_renderTexPong);
+	m_renderTexPong = new D3D11RenderTexture;
+	m_renderTexPong->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+}
+
+void Renderer::Clear()
+{
+	m_renderables.clear();
+	m_renderables.shrink_to_fit();
+
+	m_lightsDirectional.clear();
+	m_lightsDirectional.shrink_to_fit();
+
+	m_lightsPoint.clear();
+	m_lightsPoint.shrink_to_fit();
+}
+
+void Renderer::Update(vector<GameObject*> renderables, vector<GameObject*> lightsDirectional, vector<GameObject*> lightsPoint)
+{
+	Clear();
+
+	m_renderables = renderables;
+	m_lightsDirectional = lightsDirectional;
+	m_lightsPoint = lightsPoint;
 }
 
 void Renderer::AcquirePrerequisites()
@@ -288,7 +289,7 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 
 		if (mesh->SetBuffers())
 		{
-			m_depthShader->Render(
+			m_shaderDepth->Render(
 				gameObject->GetComponent<Mesh>()->GetIndexCount(),
 				gameObject->GetTransform()->GetWorldMatrix(),
 				light->GetViewMatrix(),
@@ -334,13 +335,7 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects, Light* dir
 		bool buffersHaveBeenSet = mesh->SetBuffers();
 		if (buffersHaveBeenSet)
 		{
-			meshRenderer->Render(
-				mesh->GetIndexCount(),
-				mView,
-				mPerspectiveProjection,
-				dirLight
-			);
-
+			meshRenderer->Render(mesh->GetIndexCount(), mView, mPerspectiveProjection);
 			m_meshesRendered++;
 		}
 		//==========================================================================
@@ -355,18 +350,21 @@ void Renderer::DeferredPass()
 	Ping();
 
 	// Setting a texture array instead of multiple textures is faster
-	m_deferredPassTextures.clear();
-	m_deferredPassTextures.shrink_to_fit();
-	m_deferredPassTextures.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
-	m_deferredPassTextures.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
-	m_deferredPassTextures.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
-	m_deferredPassTextures.push_back(m_GBuffer->GetShaderResourceView(3)); // material
-	m_deferredPassTextures.push_back(m_noiseMap->GetID3D11ShaderResourceView());
-
+	m_texArrayDeferredPass.clear();
+	m_texArrayDeferredPass.shrink_to_fit();
+	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
+	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
+	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
+	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(3)); // material
+	m_texArrayDeferredPass.push_back(m_texNoiseMap->GetID3D11ShaderResourceView());
+	if (m_lightsDirectional.size() != 0)
+		m_texArrayDeferredPass.push_back(m_lightsDirectional[0]->GetComponent<Light>()->GetDepthMap());
+	else
+		m_texArrayDeferredPass.push_back(nullptr);
 	if (m_skybox)
 	{
-		m_environmentTex = m_skybox->GetEnvironmentTexture();
-		m_irradianceTex = m_skybox->GetIrradianceTexture();
+		m_texEnvironment = m_skybox->GetEnvironmentTexture();
+		m_texIrradiance = m_skybox->GetIrradianceTexture();
 	}
 
 	// deferred rendering
@@ -377,12 +375,12 @@ void Renderer::DeferredPass()
 		mBaseView,
 		mPerspectiveProjection,
 		mOrthographicProjection,
-		m_directionalLights,
-		m_pointLights,
+		m_lightsDirectional,
+		m_lightsPoint,
 		m_camera,
-		m_deferredPassTextures,
-		m_environmentTex,
-		m_irradianceTex
+		m_texArrayDeferredPass,
+		m_texEnvironment,
+		m_texIrradiance
 	);
 }
 
@@ -396,11 +394,11 @@ void Renderer::PostProcessing() const
 		mWorld,
 		mBaseView,
 		mOrthographicProjection,
-		m_renderTexturePing->GetShaderResourceView()
+		m_renderTexPing->GetShaderResourceView()
 	);
 
-	m_graphicsDevice->ResetRenderTarget(); // Reset the render target back to the original back buffer and not the render to texture anymore.
-	m_graphicsDevice->ResetViewport(); // Reset the viewport back to the original.
+	m_graphicsDevice->ResetRenderTarget();
+	m_graphicsDevice->ResetViewport();
 	m_graphicsDevice->Begin();
 
 	// sharpening pass
@@ -409,7 +407,7 @@ void Renderer::PostProcessing() const
 		mWorld,
 		mBaseView,
 		mOrthographicProjection,
-		m_renderTexturePing->GetShaderResourceView()
+		m_renderTexPong->GetShaderResourceView()
 	);
 }
 
@@ -433,7 +431,7 @@ void Renderer::DebugDraw() const
 	lineRenderer->SetBuffer();
 
 	// Render
-	m_debugShader->Render(
+	m_shaderDebug->Render(
 		lineRenderer->GetVertexCount(),
 		Matrix::Identity(),
 		m_camera->GetViewMatrix(),
@@ -447,16 +445,22 @@ void Renderer::DebugDraw() const
 
 void Renderer::Ping() const
 {
-	m_renderTexturePing->SetAsRenderTarget(); // Set the render target to be the render to texture. 
-	m_renderTexturePing->Clear(0.0f, 0.0f, 0.0f, 1.0f); // Clear the render to texture.
+	m_renderTexPing->SetAsRenderTarget(); // Set the render target to be the render to texture. 
+	m_renderTexPing->Clear(0.0f, 0.0f, 0.0f, 1.0f); // Clear the render to texture.
 }
 
 void Renderer::Pong() const
 {
-	m_renderTexturePong->SetAsRenderTarget(); // Set the render target to be the render to texture. 
-	m_renderTexturePong->Clear(0.0f, 0.0f, 0.0f, 1.0f); // Clear the render to texture.
+	m_renderTexPong->SetAsRenderTarget(); // Set the render target to be the render to texture. 
+	m_renderTexPong->Clear(0.0f, 0.0f, 0.0f, 1.0f); // Clear the render to texture.
 }
 
+void Renderer::SetPhysicsDebugDraw(bool enable) const
+{
+	m_physics->SetDebugDraw(enable);
+}
+
+//= STATS ============================
 void Renderer::StartCalculatingStats()
 {
 	m_renderStartTime = m_timer->GetTimeMs();
@@ -485,21 +489,6 @@ void Renderer::StopCalculatingStats()
 	}
 }
 
-void Renderer::SetPhysicsDebugDraw(bool enable) const
-{
-	m_physics->SetDebugDraw(enable);
-}
-
-void Renderer::SetCamera(Camera* camera)
-{
-	m_camera = camera;
-}
-
-void Renderer::SetSkybox(Skybox* skybox)
-{
-	m_skybox = skybox;
-}
-
 int Renderer::GetRenderedMeshesCount() const
 {
 	return m_renderedMeshesCount;
@@ -514,8 +503,4 @@ float Renderer::GetRenderTimeMs() const
 {
 	return m_renderTime;
 }
-
-void Renderer::MakeDirty()
-{
-	m_isDirty = true;
-}
+//====================================

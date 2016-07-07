@@ -57,19 +57,15 @@ public:
 	Directus::Math::Vector3 GetAmbientLight();
 	void MakeDirty();
 
-	std::vector<GameObject*> GetRenderables();
-	std::vector<GameObject*> GetDirectionalLights();
-	std::vector<GameObject*> GetPointLights();
-
 private:
 	/*------------------------------------------------------------------------------
 							[SCENE ANALYSIS]
 	------------------------------------------------------------------------------*/
 	void AnalyzeGameObjects();
 
-	std::vector<GameObject*> m_renderablePool;
-	std::vector<GameObject*> m_directionalLightPool;
-	std::vector<GameObject*> m_pointLightPool;
+	std::vector<GameObject*> m_renderables;
+	std::vector<GameObject*> m_lightsDirectional;
+	std::vector<GameObject*> m_lightsPoint;
 
 	/*------------------------------------------------------------------------------
 										[CREATE]

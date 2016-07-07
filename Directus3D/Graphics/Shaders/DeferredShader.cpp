@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/Log.h"
 #include "../../Components/Transform.h"
 #include "../../Components/Light.h"
+#include "../../Core/Settings.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -56,7 +57,7 @@ void DeferredShader::Initialize(GraphicsDevice* graphicsDevice)
 	m_shader->SetInputLayout(PositionTextureNormalTangent);
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-
+	m_shader->AddSampler(D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_MIRROR, D3D11_COMPARISON_LESS_EQUAL);
 
 	//= CREATE DEFAULT CONSTANT BUFFER ===========================
 	m_constantBuffer = new D3D11Buffer();
@@ -67,7 +68,7 @@ void DeferredShader::Initialize(GraphicsDevice* graphicsDevice)
 
 void DeferredShader::Render(
 	int indexCount, Matrix mWorld, Matrix mView, Matrix mBaseView, Matrix mPerspectiveProjection, Matrix mOrthographicProjection,
-    vector<GameObject*> directionalLights, vector<GameObject*> pointLights, Camera* camera, 
+	vector<GameObject*> directionalLights, vector<GameObject*> pointLights, Camera* camera,
 	vector<ID3D11ShaderResourceView*> textures, ID3D11ShaderResourceView* environmentTex, ID3D11ShaderResourceView* irradienceTex)
 {
 	if (!m_shader->IsCompiled())
@@ -96,15 +97,21 @@ void DeferredShader::Render(
 	for (unsigned int i = 0; i < directionalLights.size(); i++)
 	{
 		Light* light = directionalLights[i]->GetComponent<Light>();
+		light->GenerateOrthographicProjectionMatrix(100, 100, camera->GetNearPlane(), camera->GetFarPlane());
+		light->GenerateViewMatrix();
+
 		Matrix lightView = light->GetViewMatrix();
-		Matrix ligtProjection = light->GetOrthographicProjectionMatrix();
-		buffer->dirViewProjection[i] = Matrix::Transpose(lightView * ligtProjection);
-		buffer->dirLightColor[i] = light->GetColor();
+		Matrix lightProjection = light->GetOrthographicProjectionMatrix();
+		Matrix lightViewProjection = lightView * lightProjection;
 		Vector3 direction = light->GetDirection();
+
+		buffer->dirViewProjection[i] = lightViewProjection.Transpose();
+		buffer->dirLightColor[i] = light->GetColor();
 		buffer->dirLightDirection[i] = Vector4(direction.x, direction.y, direction.z, 1.0f);
-		buffer->dirLightIntensity[i] = Vector4(directionalLights[i]->GetComponent<Light>()->GetIntensity());
+		buffer->dirLightIntensity[i] = Vector4(light->GetIntensity());
+		buffer->dirLightBias[i] = Vector4(light->GetBias());
 	}
-	
+
 	// Fill with point lights
 	for (unsigned int i = 0; i < pointLights.size(); i++)
 	{
@@ -120,6 +127,8 @@ void DeferredShader::Render(
 	buffer->pointLightCount = pointLights.size();
 	buffer->nearPlane = camera->GetNearPlane();
 	buffer->farPlane = camera->GetFarPlane();
+	buffer->viewport = RESOLUTION;
+	buffer->padding = RESOLUTION;
 
 	// Unlock the constant buffer
 	m_constantBuffer->Unmap();
@@ -134,7 +143,7 @@ void DeferredShader::Render(
 
 	//= SET SHADER ===============================================================
 	m_shader->Set();
-	
+
 	//= DRAW =====================================================================
 	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }

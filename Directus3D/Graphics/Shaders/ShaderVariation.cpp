@@ -108,7 +108,6 @@ void ShaderVariation::Load()
 	m_D3D11Shader->Load("Assets/Shaders/GBuffer.hlsl");
 	m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
 	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-	m_D3D11Shader->AddSampler(D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_MIRROR, D3D11_COMPARISON_LESS_EQUAL);
 
 	// material buffer
 	m_befaultBuffer = new D3D11Buffer();
@@ -118,7 +117,7 @@ void ShaderVariation::Load()
 
 void ShaderVariation::Render(int indexCount,
 	Matrix mWorld, Matrix mView, Matrix mProjection, 
-	Light* directionalLight, Material* material, vector<ID3D11ShaderResourceView*> textureArray)
+	Material* material, vector<ID3D11ShaderResourceView*> textureArray)
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{
@@ -129,13 +128,7 @@ void ShaderVariation::Render(int indexCount,
 	Matrix world = mWorld;
 	Matrix worldView = world * mView;
 	Matrix worldViewProjection = worldView * mProjection;
-	Matrix viewProjectionDirectionaLight = Matrix::Identity();
-	if (directionalLight)
-	{
-		directionalLight->GenerateOrthographicProjectionMatrix(100, 100, 0.3f, 1000.0f);
-		directionalLight->GenerateViewMatrix();
-		viewProjectionDirectionaLight = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix();
-	}
+
 	/*------------------------------------------------------------------------------
 							[FILL THE BUFFER]
 	------------------------------------------------------------------------------*/
@@ -145,7 +138,6 @@ void ShaderVariation::Render(int indexCount,
 		defaultBufferType->world = world.Transpose();
 		defaultBufferType->worldView = worldView.Transpose();
 		defaultBufferType->worldViewProjection = worldViewProjection.Transpose();
-		defaultBufferType->viewProjectionDirLight = viewProjectionDirectionaLight.Transpose();
 		defaultBufferType->materialAlbedoColor = material->GetColorAlbedo();
 		defaultBufferType->roughness = material->GetRoughness();
 		defaultBufferType->metallic = material->GetMetallic();
@@ -154,8 +146,6 @@ void ShaderVariation::Render(int indexCount,
 		defaultBufferType->reflectivity = material->GetReflectivity();
 		defaultBufferType->shadingMode = float(material->GetShadingMode());
 		defaultBufferType->materialTiling = material->GetTiling();
-		defaultBufferType->bias = directionalLight->GetBias();
-		defaultBufferType->lightDirection = directionalLight->GetDirection();
 		defaultBufferType->viewport = RESOLUTION;
 		defaultBufferType->padding = RESOLUTION;
 		m_befaultBuffer->Unmap();

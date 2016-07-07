@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
-
 //=============================
 
 Light::Light()
@@ -132,7 +131,7 @@ float Light::GetBias()
 
 Vector3 Light::GetDirection()
 {
-	return g_transform->GetForward() * g_transform->GetRotation();
+	return g_transform->GetForward();
 }
 
 void Light::SetIntensity(float value)
