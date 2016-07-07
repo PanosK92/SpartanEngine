@@ -27,11 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Physics/PhysicsEngine.h"
 #include "../Physics/BulletPhysicsHelper.h"
+#include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
 //============================================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
-
 //=============================
 
 Hinge::Hinge()

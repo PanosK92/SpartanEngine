@@ -61,9 +61,12 @@ XPM files[reading, writing]
 #define FREEIMAGE_LIB
 
 //= INCLUDES ==========================
-#include "FreeImagePlus.h"
 #include "../Graphics/GraphicsDevice.h"
 //=====================================
+
+// Forward declaration to avoid dependencies
+// when used in editor mode
+class FIBITMAP;
 
 class __declspec(dllexport) ImageLoader
 {

@@ -17,13 +17,13 @@
    <locale language="English" country="UnitedStates"/>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <widget class="Directus3DRenderWidget" name="widget" native="true">
+   <widget class="Directus3DWidget" name="widget" native="true">
     <property name="geometry">
      <rect>
-      <x>170</x>
-      <y>110</y>
-      <width>120</width>
-      <height>80</height>
+      <x>130</x>
+      <y>30</y>
+      <width>871</width>
+      <height>531</height>
      </rect>
     </property>
    </widget>
@@ -51,9 +51,9 @@
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
   <customwidget>
-   <class>Directus3DRenderWidget</class>
+   <class>Directus3DWidget</class>
    <extends>QWidget</extends>
-   <header>directus3drenderwidget.h</header>
+   <header>directus3dwidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

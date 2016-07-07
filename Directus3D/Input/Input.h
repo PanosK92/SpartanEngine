@@ -121,4 +121,5 @@ private:
 	Directus::Math::Vector2 m_mousePosDelta;
 
 	DX8Input* m_DX8Input;
+	bool m_initializedSuccessfully;
 };
