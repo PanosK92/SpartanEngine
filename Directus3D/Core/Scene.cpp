@@ -127,14 +127,14 @@ bool Scene::LoadFromFile(std::string path)
 ------------------------------------------------------------------------------*/
 void Scene::Clear()
 {
-	m_renderablePool.clear();
-	m_renderablePool.shrink_to_fit();
+	m_renderables.clear();
+	m_renderables.shrink_to_fit();
 
-	m_directionalLightPool.clear();
-	m_directionalLightPool.shrink_to_fit();
+	m_lightsDirectional.clear();
+	m_lightsDirectional.shrink_to_fit();
 
-	m_pointLightPool.clear();
-	m_pointLightPool.shrink_to_fit();
+	m_lightsPoint.clear();
+	m_lightsPoint.shrink_to_fit();
 
 	m_mainCamera = nullptr;
 
@@ -144,6 +144,7 @@ void Scene::Clear()
 	GameObjectPool::GetInstance().Clear();
 	m_scriptEngine->Reset();
 	m_physics->Reset();
+	m_renderer->Clear();
 }
 
 GameObject* Scene::GetMainCamera()
@@ -164,22 +165,6 @@ Vector3 Scene::GetAmbientLight()
 void Scene::MakeDirty()
 {
 	m_isDirty = true;
-	m_renderer->MakeDirty();
-}
-
-std::vector<GameObject*> Scene::GetRenderables()
-{
-	return m_renderablePool;
-}
-
-std::vector<GameObject*> Scene::GetDirectionalLights()
-{
-	return m_directionalLightPool;
-}
-
-std::vector<GameObject*> Scene::GetPointLights()
-{
-	return m_pointLightPool;
 }
 
 /*------------------------------------------------------------------------------
@@ -187,14 +172,14 @@ std::vector<GameObject*> Scene::GetPointLights()
 ------------------------------------------------------------------------------*/
 void Scene::AnalyzeGameObjects()
 {
-	m_renderablePool.clear();
-	m_renderablePool.shrink_to_fit();
+	m_renderables.clear();
+	m_renderables.shrink_to_fit();
 
-	m_directionalLightPool.clear();
-	m_directionalLightPool.shrink_to_fit();
+	m_lightsDirectional.clear();
+	m_lightsDirectional.shrink_to_fit();
 
-	m_pointLightPool.clear();
-	m_pointLightPool.shrink_to_fit();
+	m_lightsPoint.clear();
+	m_lightsPoint.shrink_to_fit();
 
 	std::vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
 	for (int i = 0; i < GameObjectPool::GetInstance().GetGameObjectCount(); i++)
@@ -207,17 +192,19 @@ void Scene::AnalyzeGameObjects()
 
 		// Find renderables
 		if (gameObject->HasComponent<MeshRenderer>())
-			m_renderablePool.push_back(gameObject);
+			m_renderables.push_back(gameObject);
 
 		// Find lights
 		if (gameObject->HasComponent<Light>())
 		{
 			if (gameObject->GetComponent<Light>()->GetLightType() == Directional)
-				m_directionalLightPool.push_back(gameObject);
+				m_lightsDirectional.push_back(gameObject);
 			else if (gameObject->GetComponent<Light>()->GetLightType() == Point)
-				m_pointLightPool.push_back(gameObject);
+				m_lightsPoint.push_back(gameObject);
 		}
 	}
+
+	m_renderer->Update(m_renderables, m_lightsDirectional, m_lightsPoint);
 }
 
 /*------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
-Texture2D sourceTexture			: register(t0);
-SamplerState anisotropicSampler	: register(s0);
-SamplerState bilinearSampler	: register(s1);
+Texture2D sourceTexture : register(t0);
+SamplerState anisotropicSampler : register(s0);
+SamplerState bilinearSampler : register(s1);
 
 #if FXAA == 1
 #define FXAA_PC 1
@@ -12,9 +12,9 @@ SamplerState bilinearSampler	: register(s1);
 //= CONSTANT BUFFERS ===============
 cbuffer DefaultBuffer : register(b0)
 {
-	matrix mWorldViewProjection;
-	float2 viewport;
-	float2 padding;
+    matrix mWorldViewProjection;
+    float2 viewport;
+    float2 padding;
 };
 //==================================
 
@@ -34,13 +34,13 @@ struct PixelInputType
 
 PixelInputType DirectusVertexShader(VertexInputType input)
 {
-    PixelInputType output; 
+    PixelInputType output;
 	
-    input.position.w = 1.0f;	
+    input.position.w = 1.0f;
     output.position = mul(input.position, mWorldViewProjection);
-	output.uv = input.uv;
+    output.uv = input.uv;
 	
-	return output;
+    return output;
 }
 
 
@@ -125,21 +125,21 @@ float4 BlurPass(float2 texCoord, float2 texelSize)
 ------------------------------------------------------------------------------*/
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
-	float2 texCoord = input.uv;
-	float4 color;
-	float2 texelSize = float2(1.0f / viewport.x, 1.0f / viewport.y);
+    float2 texCoord = input.uv;
+    float4 color;
+    float2 texelSize = float2(1.0f / viewport.x, 1.0f / viewport.y);
 	
-	#if FXAA == 1
+#if FXAA == 1
 	color = FXAAPass(texCoord, texelSize);
-	#endif
+#endif
 	
-	#if SHARPENING == 1 
+#if SHARPENING == 1 
 	color = SharpeningPass(texCoord);
-	#endif
+#endif
 	
-	#if BLUR == 1 
+#if BLUR == 1 
 	color = BlurPass(texCoord, texelSize);
-	#endif
+#endif
 	
-	return color;
+    return color;
 }

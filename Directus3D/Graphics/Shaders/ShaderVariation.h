@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../D3D11/D3D11Shader.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Vector2.h"
-#include "../../Math/Vector3.h"
 #include "../../Math/Vector4.h"
 #include "../../Core/Material.h"
 #include "../../Components/Light.h"
@@ -55,7 +54,7 @@ public:
 	void Set();
 	void Render(int indexCount, 
 		Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, 
-		Light* directionalLight, Material* material, std::vector<ID3D11ShaderResourceView*> textureArray);
+		Material* material, std::vector<ID3D11ShaderResourceView*> textureArray);
 	std::string GetID();
 
 	bool HasAlbedoTexture();
@@ -99,7 +98,6 @@ private:
 		Directus::Math::Matrix world;
 		Directus::Math::Matrix worldView;
 		Directus::Math::Matrix worldViewProjection;
-		Directus::Math::Matrix viewProjectionDirLight;
 		Directus::Math::Vector4 materialAlbedoColor;
 		float roughness;
 		float metallic;
@@ -108,8 +106,6 @@ private:
 		float reflectivity;
 		float shadingMode;
 		Directus::Math::Vector2 materialTiling;
-		float bias;
-		Directus::Math::Vector3 lightDirection;
 		Directus::Math::Vector2 viewport;
 		Directus::Math::Vector2 padding;
 	};

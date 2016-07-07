@@ -54,6 +54,7 @@ private:
 		Directus::Math::Vector4 dirLightDirection[maxLights];
 		Directus::Math::Vector4 dirLightColor[maxLights];
 		Directus::Math::Vector4 dirLightIntensity[maxLights];
+		Directus::Math::Vector4 dirLightBias[maxLights];
 		Directus::Math::Vector4 pointLightPosition[maxLights];
 		Directus::Math::Vector4 pointLightColor[maxLights];
 		Directus::Math::Vector4 pointLightRange[maxLights];
@@ -62,6 +63,8 @@ private:
 		float pointLightCount;
 		float nearPlane;
 		float farPlane;
+		Directus::Math::Vector2 viewport;
+		Directus::Math::Vector2 padding;
 	};
 
 	D3D11Buffer* m_constantBuffer;
