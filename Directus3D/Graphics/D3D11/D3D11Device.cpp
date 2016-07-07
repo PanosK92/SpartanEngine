@@ -138,11 +138,11 @@ void D3D11Device::Initialize(HWND handle)
 	m_videoCardMemory = static_cast<int>(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
 
 	// Convert the name of the video card to a character array and store it.
-	char cardDescription[128];
-	int error = wcstombs_s(&stringLength, cardDescription, 128, adapterDesc.Description, 128);
-	m_videoCardDescription = cardDescription;
-	if (error != 0)
-		LOG("Failed to convert the adapter's name.", Log::Error);
+	//char cardDescription[128];
+	//int error = wcstombs_s(&stringLength, cardDescription, 128, adapterDesc.Description, 128);
+	//m_videoCardDescription = cardDescription;
+	//if (error != 0)
+	//	LOG("Failed to convert the adapter's name.", Log::Error);
 
 	/*------------------------------------------------------------------------------
 									[Feature Level]

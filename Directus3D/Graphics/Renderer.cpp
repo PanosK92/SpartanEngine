@@ -153,7 +153,7 @@ void Renderer::Render()
 	StartCalculatingStats();
 	AcquirePrerequisites();
 
-	if (m_renderables.size() == 0)
+	if (int(m_renderables.size()) == 0)
 		return;
 
 	if (!m_camera)
