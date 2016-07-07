@@ -1,0 +1,400 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{62044385-AE59-4670-AA3D-4AA4F95E032E}</ProjectGuid>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <Keyword>ManagedCProj</Keyword>
+    <RootNamespace>Directus3D</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CLRSupport>true</CLRSupport>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CLRSupport>true</CLRSupport>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CLRSupport>true</CLRSupport>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CLRSupport>true</CLRSupport>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies />
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies />
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies />
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies />
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Components\Camera.h" />
+    <ClInclude Include="Components\Collider.h" />
+    <ClInclude Include="Components\Hinge.h" />
+    <ClInclude Include="Components\IComponent.h" />
+    <ClInclude Include="Components\Light.h" />
+    <ClInclude Include="Components\LineRenderer.h" />
+    <ClInclude Include="Components\Mesh.h" />
+    <ClInclude Include="Components\MeshCollider.h" />
+    <ClInclude Include="Components\MeshRenderer.h" />
+    <ClInclude Include="Components\RigidBody.h" />
+    <ClInclude Include="Components\Script.h" />
+    <ClInclude Include="Components\Skybox.h" />
+    <ClInclude Include="Components\Transform.h" />
+    <ClInclude Include="Core\Engine.h" />
+    <ClInclude Include="Core\GameObject.h" />
+    <ClInclude Include="Core\Globals.h" />
+    <ClInclude Include="Core\GUIDGenerator.h" />
+    <ClInclude Include="Core\Material.h" />
+    <ClInclude Include="Core\MeshData.h" />
+    <ClInclude Include="Core\Scene.h" />
+    <ClInclude Include="Core\Settings.h" />
+    <ClInclude Include="Core\Socket.h" />
+    <ClInclude Include="Core\Texture.h" />
+    <ClInclude Include="Core\Timer.h" />
+    <ClInclude Include="Core\Vertex.h" />
+    <ClInclude Include="Directus3D.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11Buffer.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11Device.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11InputLayout.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11RenderTexture.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11Sampler.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11Shader.h" />
+    <ClInclude Include="Graphics\Frustrum.h" />
+    <ClInclude Include="Graphics\FullScreenQuad.h" />
+    <ClInclude Include="Graphics\GBuffer.h" />
+    <ClInclude Include="Graphics\GraphicsDevice.h" />
+    <ClInclude Include="Graphics\Renderer.h" />
+    <ClInclude Include="Graphics\Shaders\ColorShader.h" />
+    <ClInclude Include="Graphics\Shaders\DebugShader.h" />
+    <ClInclude Include="Graphics\Shaders\DeferredShader.h" />
+    <ClInclude Include="Graphics\Shaders\DepthShader.h" />
+    <ClInclude Include="Graphics\Shaders\PostProcessShader.h" />
+    <ClInclude Include="Graphics\Shaders\ShaderVariation.h" />
+    <ClInclude Include="Input\DX8Input.h" />
+    <ClInclude Include="Input\Input.h" />
+    <ClInclude Include="IO\dirent.h" />
+    <ClInclude Include="IO\FileHelper.h" />
+    <ClInclude Include="IO\ILogger.h" />
+    <ClInclude Include="IO\Log.h" />
+    <ClInclude Include="IO\Serializer.h" />
+    <ClInclude Include="Loading\DDSTextureLoader.h" />
+    <ClInclude Include="Loading\ImageLoader.h" />
+    <ClInclude Include="Loading\ModelLoader.h" />
+    <ClInclude Include="Math\MathHelper.h" />
+    <ClInclude Include="Math\Matrix.h" />
+    <ClInclude Include="Math\Plane.h" />
+    <ClInclude Include="Math\Quaternion.h" />
+    <ClInclude Include="Math\Vector2.h" />
+    <ClInclude Include="Math\Vector3.h" />
+    <ClInclude Include="Math\Vector4.h" />
+    <ClInclude Include="Physics\BulletPhysicsHelper.h" />
+    <ClInclude Include="Physics\PhysicsDebugDraw.h" />
+    <ClInclude Include="Physics\PhysicsEngine.h" />
+    <ClInclude Include="Pools\GameObjectPool.h" />
+    <ClInclude Include="Pools\MaterialPool.h" />
+    <ClInclude Include="Pools\MeshPool.h" />
+    <ClInclude Include="Pools\ShaderPool.h" />
+    <ClInclude Include="Pools\TexturePool.h" />
+    <ClInclude Include="Pools\ThreadPool.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="Scripting\Module.h" />
+    <ClInclude Include="Scripting\ScriptDefinitions.h" />
+    <ClInclude Include="Scripting\ScriptEngine.h" />
+    <ClInclude Include="Scripting\ScriptInstance.h" />
+    <ClInclude Include="Stdafx.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AssemblyInfo.cpp" />
+    <ClCompile Include="Components\Camera.cpp" />
+    <ClCompile Include="Components\Collider.cpp" />
+    <ClCompile Include="Components\Hinge.cpp" />
+    <ClCompile Include="Components\Light.cpp" />
+    <ClCompile Include="Components\LineRenderer.cpp" />
+    <ClCompile Include="Components\Mesh.cpp" />
+    <ClCompile Include="Components\MeshCollider.cpp" />
+    <ClCompile Include="Components\MeshRenderer.cpp" />
+    <ClCompile Include="Components\RigidBody.cpp" />
+    <ClCompile Include="Components\Script.cpp" />
+    <ClCompile Include="Components\Skybox.cpp" />
+    <ClCompile Include="Components\Transform.cpp" />
+    <ClCompile Include="Core\Engine.cpp" />
+    <ClCompile Include="Core\GameObject.cpp" />
+    <ClCompile Include="Core\Material.cpp" />
+    <ClCompile Include="Core\Scene.cpp" />
+    <ClCompile Include="Core\Socket.cpp" />
+    <ClCompile Include="Core\Texture.cpp" />
+    <ClCompile Include="Core\Timer.cpp" />
+    <ClCompile Include="Directus3D.cpp" />
+    <ClCompile Include="Graphics\D3D11\D3D11Buffer.cpp" />
+    <ClCompile Include="Graphics\D3D11\D3D11Device.cpp" />
+    <ClCompile Include="Graphics\D3D11\D3D11InputLayout.cpp" />
+    <ClCompile Include="Graphics\D3D11\D3D11RenderTexture.cpp" />
+    <ClCompile Include="Graphics\D3D11\D3D11Sampler.cpp" />
+    <ClCompile Include="Graphics\D3D11\D3D11Shader.cpp" />
+    <ClCompile Include="Graphics\Frustrum.cpp" />
+    <ClCompile Include="Graphics\FullScreenQuad.cpp" />
+    <ClCompile Include="Graphics\GBuffer.cpp" />
+    <ClCompile Include="Graphics\GraphicsDevice.cpp" />
+    <ClCompile Include="Graphics\Renderer.cpp" />
+    <ClCompile Include="Graphics\Shaders\ColorShader.cpp" />
+    <ClCompile Include="Graphics\Shaders\DebugShader.cpp" />
+    <ClCompile Include="Graphics\Shaders\DeferredShader.cpp" />
+    <ClCompile Include="Graphics\Shaders\DepthShader.cpp" />
+    <ClCompile Include="Graphics\Shaders\PostProcessShader.cpp" />
+    <ClCompile Include="Graphics\Shaders\ShaderVariation.cpp" />
+    <ClCompile Include="Input\DX8Input.cpp" />
+    <ClCompile Include="Input\Input.cpp" />
+    <ClCompile Include="IO\FileHelper.cpp" />
+    <ClCompile Include="IO\Log.cpp" />
+    <ClCompile Include="IO\Serializer.cpp" />
+    <ClCompile Include="Loading\DDSTextureLoader.cpp" />
+    <ClCompile Include="Loading\ImageLoader.cpp" />
+    <ClCompile Include="Loading\ModelLoader.cpp" />
+    <ClCompile Include="Math\MathHelper.cpp" />
+    <ClCompile Include="Math\Matrix.cpp" />
+    <ClCompile Include="Math\Plane.cpp" />
+    <ClCompile Include="Math\Quaternion.cpp" />
+    <ClCompile Include="Math\Vector2.cpp" />
+    <ClCompile Include="Math\Vector3.cpp" />
+    <ClCompile Include="Math\Vector4.cpp" />
+    <ClCompile Include="Physics\PhysicsDebugDraw.cpp" />
+    <ClCompile Include="Physics\PhysicsEngine.cpp" />
+    <ClCompile Include="Pools\GameObjectPool.cpp" />
+    <ClCompile Include="Pools\MaterialPool.cpp" />
+    <ClCompile Include="Pools\MeshPool.cpp" />
+    <ClCompile Include="Pools\ShaderPool.cpp" />
+    <ClCompile Include="Pools\TexturePool.cpp" />
+    <ClCompile Include="Scripting\Module.cpp" />
+    <ClCompile Include="Scripting\ScriptDefinitions.cpp" />
+    <ClCompile Include="Scripting\ScriptEngine.cpp" />
+    <ClCompile Include="Scripting\ScriptInstance.cpp" />
+    <ClCompile Include="Stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="app.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="app.ico" />
+    <Image Include="Assets\Environment\environment.dds">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+    <Image Include="Assets\Environment\irradiance.dds">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+    <Image Include="Assets\screenshot.jpg">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+    <Image Include="Assets\Shaders\noise.png">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Assets\Scripts\FirstPersonController.dss">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Assets\Scripts\FirstPersonControllerPhysics.dss">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Assets\Scripts\MouseLook.dss">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="Assets\Scripts\dss.xml">
+      <DeploymentContent>true</DeploymentContent>
+    </Xml>
+    <Xml Include="Assets\Shaders\HLSL.xml">
+      <DeploymentContent>true</DeploymentContent>
+    </Xml>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\Shaders\Color.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\Debug.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\Deferred.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\Depth.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\FXAA.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\GBuffer.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\Godrays.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\Helper.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\Normal.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\PBR.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\PostProcess.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\ShadowMapping.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\SSAO.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\ToneMapping.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+    <Resource Include="Assets\Shaders\VolumetricLighting.hlsl">
+      <DeploymentContent>true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Resource>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
