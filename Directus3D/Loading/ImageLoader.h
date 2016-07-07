@@ -60,12 +60,10 @@ XPM files[reading, writing]
 
 #define FREEIMAGE_LIB
 
-//= INCLUDES =============================
-#include "../Graphics/D3D11/D3D11Shader.h"
+//= INCLUDES ==========================
+#include "FreeImagePlus.h"
 #include "../Graphics/GraphicsDevice.h"
-//========================================
-
-class FIBITMAP;
+//=====================================
 
 class __declspec(dllexport) ImageLoader
 {

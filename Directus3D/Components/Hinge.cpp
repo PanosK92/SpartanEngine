@@ -22,8 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================================
 #include "Hinge.h"
 #include "RigidBody.h"
-#include <LinearMath/btVector3.h>
-#include <BulletDynamics/ConstraintSolver/btHingeConstraint.h>
 #include "../IO/Serializer.h"
 #include "../Pools/GameObjectPool.h"
 #include "../Core/GameObject.h"
