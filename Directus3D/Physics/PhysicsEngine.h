@@ -21,18 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#pragma managed(push, off)
-//= INCLUDES =================================================
-#include "btBulletCollisionCommon.h"
-#include "btBulletDynamicsCommon.h"
-#include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
-#include "LinearMath/btMotionState.h"
-#include "LinearMath/btVector3.h"
-#include <LinearMath/btQuaternion.h>
-#include "BulletPhysicsHelper.h"
-#include "PhysicsDebugDraw.h"
-//============================================================
-#pragma managed(pop)
+// Forward declarations to avoid dependencies when used in editor
+class PhysicsDebugDraw;
+class btBroadphaseInterface;
+class btRigidBody;
+class btTypedConstraint;
+class btCollisionDispatcher;
+class btConstraintSolver;
+class btDefaultCollisionConfiguration;
+class btDiscreteDynamicsWorld;
 
 class PhysicsEngine
 {

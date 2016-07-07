@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ================================================
 #include "RigidBody.h"
 #include "Transform.h"
 #include "Collider.h"
@@ -27,7 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Physics/PhysicsEngine.h"
-//===================================
+#include <LinearMath/btMotionState.h>
+#include "../Physics/BulletPhysicsHelper.h"
+#include "BulletDynamics/Dynamics/btRigidBody.h"
+#include <BulletCollision/CollisionShapes/btCollisionShape.h>
+//===========================================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;

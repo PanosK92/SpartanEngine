@@ -14,10 +14,10 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         editor.cpp \
-    directus3drenderwidget.cpp
+    Directus3DWidget.cpp
 
 HEADERS  += editor.h \
-    directus3drenderwidget.h
+    Directus3DWidget.h
 
 FORMS    += editor.ui
 

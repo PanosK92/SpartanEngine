@@ -40,7 +40,7 @@ public:
 	DX8Input();
 	~DX8Input();
 
-	void Initialize(HINSTANCE instance, HWND handle);
+	bool Initialize(HINSTANCE instance, HWND handle);
 	void Update();
 	void Release();
 

@@ -19,15 +19,21 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES =================================================
 #include "Collider.h"
 #include "Mesh.h"
 #include "RigidBody.h"
 #include <algorithm>
 #include "../Core/GameObject.h"
 #include "../IO/Serializer.h"
-#include "../Physics/PhysicsEngine.h"
-//===================================
+#include <LinearMath/btVector3.h>
+#include "../Physics/BulletPhysicsHelper.h"
+#include <BulletCollision/CollisionShapes/btCollisionShape.h>
+#include <BulletCollision/CollisionShapes/btBoxShape.h>
+#include <BulletCollision/CollisionShapes/btSphereShape.h>
+#include <BulletCollision/CollisionShapes/btCylinderShape.h>
+#include <BulletCollision/CollisionShapes/btCapsuleShape.h>
+//===========================================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;

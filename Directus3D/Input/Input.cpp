@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
-
 //=============================
 
 Input::Input()
 {
 	m_DX8Input = nullptr;
+	m_initializedSuccessfully = false;
 }
 
 Input::~Input()
@@ -43,11 +43,14 @@ Input::~Input()
 void Input::Initialize(HINSTANCE instance, HWND handle)
 {
 	m_DX8Input = new DX8Input();
-	m_DX8Input->Initialize(instance, handle);
+	m_initializedSuccessfully = m_DX8Input->Initialize(instance, handle);
 }
 
 void Input::Update()
 {
+	if (!m_initializedSuccessfully)
+		return;
+
 	m_DX8Input->Update();
 
 	// get mouse delta position
@@ -66,6 +69,9 @@ void Input::Update()
 
 bool Input::GetKey(KeyCode key)
 {
+	if (!m_initializedSuccessfully)
+		return false;
+
 	if (key == Q) return m_DX8Input->IsKeyboardKeyDown(DIK_Q);
 	if (key == W) return m_DX8Input->IsKeyboardKeyDown(DIK_W);
 	if (key == E) return m_DX8Input->IsKeyboardKeyDown(DIK_E);
@@ -87,6 +93,9 @@ bool Input::GetKey(KeyCode key)
 
 bool Input::GetMouseButton(int button)
 {
+	if (!m_initializedSuccessfully)
+		return false;
+
 	return m_DX8Input->IsMouseKeyDown(button);
 }
 
