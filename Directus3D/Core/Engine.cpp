@@ -58,9 +58,6 @@ Engine::~Engine()
 
 void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
 {
-	/*------------------------------------------------------------------------------
-								[COMPONENT INITIALIZATION]
-	------------------------------------------------------------------------------*/
 	// 1 - DEBUG LOG
 	Log::Initialize();
 
@@ -115,14 +112,11 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_scene->Initialize();
 
 	// 16 - ENGINE SOCKET
-	m_engineSocket = new Socket(m_scene, m_renderer, m_timer, m_modelLoader, m_physicsEngine, m_texturePool, m_graphicsDevice);
+	m_engineSocket = new Socket(m_scene, m_renderer, m_input, m_timer, m_modelLoader, m_physicsEngine, m_texturePool, m_graphicsDevice);
 }
 
 void Engine::Shutdown()
 {
-	/*------------------------------------------------------------------------------
-	[COMPONENT SHUTDOWN]
-	------------------------------------------------------------------------------*/
 	// 16 - ENGINE INTERFACE
 	delete m_engineSocket;
 
@@ -170,27 +164,6 @@ void Engine::Shutdown()
 
 	// 1- DEBUG LOG
 	Log::Release();
-}
-
-void Engine::Run()
-{
-	// update time
-	m_timer->Update();
-
-	// update input
-	m_input->Update();
-
-	// update physics
-	m_physicsEngine->Update();
-
-	// update gaemeobjects
-	GameObjectPool::GetInstance().Update();
-
-	// update scene
-	m_scene->Update();
-
-	// render
-	m_renderer->Render();
 }
 
 Socket* Engine::GetSocket()

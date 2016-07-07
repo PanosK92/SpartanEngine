@@ -30,9 +30,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Loading/ModelLoader.h"
 //=====================================
 
+//= NAMESPACES =====
 using namespace std;
+//==================
 
-Socket::Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice)
+Socket::Socket(Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice)
 {
 	m_scene = scene;
 	m_renderer = renderer;
@@ -41,6 +43,7 @@ Socket::Socket(Scene* scene, Renderer* renderer, Timer* timer, ModelLoader* mode
 	m_physics = physics;
 	m_texturePool = texturePool;
 	m_graphicsDevice = graphicsDevice;
+	m_input = input;
 }
 
 Socket::~Socket()
@@ -66,6 +69,27 @@ EngineMode Socket::GetEngineMode()
 void Socket::SetEngineMode(EngineMode mode)
 {
 	Settings::GetInstance().SetEngineMode(mode);
+}
+
+void Socket::Run()
+{
+	// update time
+	m_timer->Update();
+
+	// update input
+	m_input->Update();
+
+	// update physics
+	m_physics->Update();
+
+	// update gaemeobjects
+	GameObjectPool::GetInstance().Update();
+
+	// update scene
+	m_scene->Update();
+
+	// render
+	m_renderer->Render();
 }
 
 void Socket::SetPhysicsDebugDraw(bool enable)

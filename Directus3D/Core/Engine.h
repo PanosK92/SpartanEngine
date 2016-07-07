@@ -41,7 +41,6 @@ public:
 	~Engine();
 
 	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
-	void Run();
 	void Shutdown();
 	Socket* GetSocket();
 
