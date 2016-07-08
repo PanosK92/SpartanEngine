@@ -59,10 +59,9 @@ public:
 	/*------------------------------------------------------------------------------
 									[GAMEOBJECT]
 	------------------------------------------------------------------------------*/
-	int GetGameObjectCount();
-	GameObject* GetGameObjectByIndex(int index);
+	std::vector<GameObject*> GetAllGameObjects();
 	GameObject* GetGameObjectByID(std::string gameObjectID);
-	void CopyGameObject(GameObject* gameObject);
+	int GetGameObjectCount();
 	void DestroyGameObject(GameObject* gameObject);
 	bool GameObjectExists(GameObject* gameObject);
 

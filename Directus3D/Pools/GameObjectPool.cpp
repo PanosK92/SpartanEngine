@@ -179,7 +179,6 @@ GameObject* GameObjectPool::GetGameObjectByID(string ID)
 vector<GameObject*> GameObjectPool::GetGameObjectsByParentID(string ID)
 {
 	vector<GameObject*> gameObjects;
-
 	for (unsigned int i = 0; i < m_pool.size(); i++)
 	{
 		// check if the gameobject has a parent
@@ -196,6 +195,9 @@ vector<GameObject*> GameObjectPool::GetGameObjectsByParentID(string ID)
 
 GameObject* GameObjectPool::GetRootGameObjectByGameObject(GameObject* gameObject)
 {
+	if (!gameObject)
+		return nullptr;
+
 	GameObject* parent = gameObject;
 	if (gameObject->GetTransform()->HasParent())
 		parent = gameObject->GetTransform()->GetParent()->g_gameObject;
@@ -206,17 +208,23 @@ GameObject* GameObjectPool::GetRootGameObjectByGameObject(GameObject* gameObject
 	return parent; // if not, then is is the root gameObject
 }
 
+bool GameObjectPool::GameObjectExists(GameObject* gameObject)
+{
+	if (!gameObject)
+		return false;
+
+	for (unsigned int i = 0; i < m_pool.size(); i++)
+		if (m_pool[i]->GetID() == gameObject->GetID())
+			return true;
+
+	return false;
+}
+
 bool GameObjectPool::GameObjectExistsByName(string name)
 {
-	GameObject* gameObject = nullptr;
 	for (unsigned int i = 0; i < m_pool.size(); i++)
-	{
 		if (m_pool[i]->GetName() == name)
-			gameObject = m_pool[i].get();
-	}
-
-	if (gameObject)
-		return true;
+			return true;
 
 	return false;
 }

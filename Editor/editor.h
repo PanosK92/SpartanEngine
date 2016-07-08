@@ -1,7 +1,11 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
+//= INCLUDES ===========
 #include <QMainWindow>
+#include "Core/Socket.h"
+#include "Hierarchy.h"
+//======================
 
 namespace Ui {
 class Editor;
@@ -17,6 +21,8 @@ public:
 
 private:
     Ui::Editor *ui;
+    Socket* m_engineSocket;
+    Hierarchy* m_hierarchy;
 };
 
 #endif // EDITOR_H
