@@ -7,7 +7,8 @@ Editor::Editor(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    m_engineSocket = ui->directus3DWidget->GetEngineSocket();
+    Socket* engineSocket = ui->directus3DWidget->GetEngineSocket();
+    ui->hierarchyTree->SetEngineSocket(engineSocket);
 }
 
 Editor::~Editor()

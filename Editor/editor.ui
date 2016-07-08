@@ -2044,70 +2044,112 @@ QDirectus3DWidget
    <property name="text">
     <string>New Scene</string>
    </property>
+   <property name="toolTip">
+    <string>Create a new scene</string>
+   </property>
   </action>
   <action name="actionOpen_Scene">
    <property name="text">
     <string>Open Scene</string>
+   </property>
+   <property name="toolTip">
+    <string>Load an existing scene</string>
    </property>
   </action>
   <action name="actionSave_Scene">
    <property name="text">
     <string>Save Scene</string>
    </property>
+   <property name="toolTip">
+    <string>Save the current scene</string>
+   </property>
   </action>
   <action name="actionCreate_Empy">
    <property name="text">
     <string>Create Empy</string>
+   </property>
+   <property name="toolTip">
+    <string>Create an empty GameObject</string>
    </property>
   </action>
   <action name="action3D_Object">
    <property name="text">
     <string>3D Object</string>
    </property>
+   <property name="toolTip">
+    <string>A selection of commonly used 3D Objects</string>
+   </property>
   </action>
   <action name="actionCamera">
    <property name="text">
     <string>Camera</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a Camera component</string>
    </property>
   </action>
   <action name="actionSkybox">
    <property name="text">
     <string>Skybox</string>
    </property>
+   <property name="toolTip">
+    <string>Add a Skybox component</string>
+   </property>
   </action>
   <action name="actionRigidBody">
    <property name="text">
     <string>RigidBody</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a RigidBody component</string>
    </property>
   </action>
   <action name="actionCollider">
    <property name="text">
     <string>Primitive Collider</string>
    </property>
+   <property name="toolTip">
+    <string>Add a Collider component</string>
+   </property>
   </action>
   <action name="actionMesh_Collider">
    <property name="text">
     <string>Mesh Collider</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a Mesh Collider component</string>
    </property>
   </action>
   <action name="actionHinge_Joint">
    <property name="text">
     <string>Hinge Joint</string>
    </property>
+   <property name="toolTip">
+    <string>Add a Hinge Joint component</string>
+   </property>
   </action>
   <action name="actionMesh_Filter">
    <property name="text">
     <string>Mesh Filter</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a Mesh Filter component</string>
    </property>
   </action>
   <action name="actionMesh_Renderer">
    <property name="text">
     <string>Mesh Renderer</string>
    </property>
+   <property name="toolTip">
+    <string>Add a Mesh Renderer component</string>
+   </property>
   </action>
   <action name="actionLight">
    <property name="text">
     <string>Light</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a Light component</string>
    </property>
   </action>
   <action name="actionEffects">
@@ -2138,8 +2180,49 @@ QDirectus3DWidget
    <class>DirectusTreeWidget</class>
    <extends>QTreeWidget</extends>
    <header>DirectusTreeWidget.h</header>
+   <slots>
+    <slot>CreateEmptyGameObject()</slot>
+    <slot>Populate()</slot>
+    <slot>NewScene()</slot>
+    <slot>OpenScene()</slot>
+    <slot>SaveScene()</slot>
+    <slot>SaveSceneAs()</slot>
+   </slots>
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>actionCreate_Empy</sender>
+   <signal>triggered()</signal>
+   <receiver>hierarchyTree</receiver>
+   <slot>CreateEmptyGameObject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>101</x>
+     <y>61</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>127</x>
+     <y>327</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionNew_Scene</sender>
+   <signal>triggered()</signal>
+   <receiver>hierarchyTree</receiver>
+   <slot>NewScene()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>127</x>
+     <y>327</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

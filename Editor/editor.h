@@ -1,9 +1,8 @@
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES =========
 #include <QMainWindow>
-#include "Core/Socket.h"
-//======================
+//====================
 
 namespace Ui {
 class Editor;
@@ -19,5 +18,4 @@ public:
 
 private:
     Ui::Editor* ui;
-    Socket* m_engineSocket;
 };

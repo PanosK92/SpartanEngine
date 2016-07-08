@@ -10,13 +10,24 @@ using namespace std;
 
 DirectusTreeWidget::DirectusTreeWidget(QWidget *parent) : QTreeWidget(parent)
 {
-    m_socket = DirectusQTHelper::GetEngineSocket();
+
 }
 
-// Updates the tree to represent the current state
-// of the game engine's gameobjects
-void DirectusTreeWidget::Update()
+void DirectusTreeWidget::SetEngineSocket(Socket *socket)
 {
+    m_socket = socket;
+    Populate();
+}
+
+void DirectusTreeWidget::Clear()
+{
+    this->clear();
+}
+
+void DirectusTreeWidget::Populate()
+{
+    Clear();
+
     if (!m_socket)
         return;
 
@@ -33,4 +44,32 @@ void DirectusTreeWidget::Update()
 
         this->addTopLevelItem(item);
     }
+}
+
+void DirectusTreeWidget::CreateEmptyGameObject()
+{
+    GameObject* gameobject = new GameObject();
+    Populate();
+}
+
+void DirectusTreeWidget::NewScene()
+{
+    m_socket->ClearScene();
+    Populate();
+}
+
+void DirectusTreeWidget::OpenScene()
+{
+    //m_socket->LoadSceneFromFile();
+    Populate();
+}
+
+void DirectusTreeWidget::SaveScene()
+{
+
+}
+
+void DirectusTreeWidget::SaveSceneAs()
+{
+
 }

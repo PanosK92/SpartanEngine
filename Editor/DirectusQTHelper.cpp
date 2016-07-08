@@ -7,16 +7,12 @@
 
 Socket* DirectusQTHelper::GetEngineSocket()
 {
-    QWidget* widget = FindQWidgetByName("directus3DWidget");
-
-    Directus3DWidget* directus3DWidget = nullptr;
-    if (widget)
-        directus3DWidget = widget->findChild<Directus3DWidget*>("directus3DWidget");
+    Directus3DWidget*  directus3DWidget = (Directus3DWidget*)FindQWidgetByName("directus3DWidget");
 
     if (directus3DWidget)
         return directus3DWidget->GetEngineSocket();
 
-    return nullptr;
+    return directus3DWidget->GetEngineSocket();
 }
 
 QWidget* DirectusQTHelper::FindQWidgetByName(QString name)
