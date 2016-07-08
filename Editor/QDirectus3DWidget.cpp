@@ -1,9 +1,9 @@
-#include "Directus3DWidget.h"
-#include "Core/Engine.h"
-#include "Core/Socket.h"
+//= INCLUDES =================
+#include "QDirectus3DWidget.h"
+//============================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
-Directus3DWidget::Directus3DWidget(QWidget *parent)
+QDirectus3DWidget::QDirectus3DWidget(QWidget *parent)
  : QWidget(parent) {
 
     setAttribute(Qt::WA_PaintOnScreen, true);
@@ -13,13 +13,19 @@ Directus3DWidget::Directus3DWidget(QWidget *parent)
     Resize(this->size().width(), this->size().height());
 }
 
-Directus3DWidget::~Directus3DWidget()
+QDirectus3DWidget::~QDirectus3DWidget()
 {
     ShutdownEngine();
 }
 
-//= OVERRIDDEN FUNCTIONS ============================
-void Directus3DWidget::resizeEvent(QResizeEvent* evt)
+Socket* QDirectus3DWidget::GetEngineSocket()
+{
+    return m_socket;
+}
+//====================================================
+
+//= OVERRIDDEN FUNCTIONS =============================
+void QDirectus3DWidget::resizeEvent(QResizeEvent* evt)
 {
     int width = evt->size().width();
     int height = evt->size().width();
@@ -27,14 +33,14 @@ void Directus3DWidget::resizeEvent(QResizeEvent* evt)
     Resize(width, height);
 }
 
-void Directus3DWidget::paintEvent(QPaintEvent* evt)
+void QDirectus3DWidget::paintEvent(QPaintEvent* evt)
 {
     Render();
 }
 //===================================================
 
 //= Engine functions ================================
-void Directus3DWidget::InitializeEngine()
+void QDirectus3DWidget::InitializeEngine()
 {
     // Create and initialize Directus3D
     m_engine = new Engine();
@@ -47,21 +53,19 @@ void Directus3DWidget::InitializeEngine()
     m_socket = m_engine->GetSocket();
 }
 
-void Directus3DWidget::ShutdownEngine()
+void QDirectus3DWidget::ShutdownEngine()
 {
     m_engine->Shutdown();
     delete m_engine;
 }
 
-void Directus3DWidget::Render()
+void QDirectus3DWidget::Render()
 {
-    if (m_socket)
-        m_socket->Run();
+    m_socket->Run();
 }
 
-void Directus3DWidget::Resize(int width, int height)
+void QDirectus3DWidget::Resize(int width, int height)
 {
-    if (m_socket)
-        m_socket->SetViewport(width, height);
+    m_socket->SetViewport(width, height);
 }
-//==================================================
+//===================================================

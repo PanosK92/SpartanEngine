@@ -105,14 +105,9 @@ PhysicsDebugDraw* Socket::GetPhysicsDebugDraw()
 /*------------------------------------------------------------------------------
 							[GAMEOBJECT]
 ------------------------------------------------------------------------------*/
-int Socket::GetGameObjectCount()
+vector<GameObject*> Socket::GetAllGameObjects()
 {
-	return GameObjectPool::GetInstance().GetGameObjectCount();
-}
-
-GameObject* Socket::GetGameObjectByIndex(int index)
-{
-	return GameObjectPool::GetInstance().GetGameObjectByIndex(index);
+	return GameObjectPool::GetInstance().GetAllGameObjects();
 }
 
 GameObject* Socket::GetGameObjectByID(string gameObjectID)
@@ -120,25 +115,27 @@ GameObject* Socket::GetGameObjectByID(string gameObjectID)
 	return GameObjectPool::GetInstance().GetGameObjectByID(gameObjectID);
 }
 
-void Socket::CopyGameObject(GameObject* gameObject)
+int Socket::GetGameObjectCount()
 {
+	return GameObjectPool::GetInstance().GetGameObjectCount();
 }
 
 void Socket::DestroyGameObject(GameObject* gameObject)
 {
+	if (!gameObject)
+		return;
+
 	GameObjectPool::GetInstance().RemoveGameObject(gameObject);
 }
 
 bool Socket::GameObjectExists(GameObject* gameObject)
 {
-	if (!gameObject) return false;
+	if (!gameObject) 
+		return false;
 
-	GameObject* found = GameObjectPool::GetInstance().GetGameObjectByID(gameObject->GetID());
+	bool exists = GameObjectPool::GetInstance().GameObjectExists(gameObject);
 
-	if (found)
-		return true;
-
-	return false;
+	return exists;
 }
 
 /*------------------------------------------------------------------------------

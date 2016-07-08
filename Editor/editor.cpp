@@ -6,6 +6,9 @@ Editor::Editor(QWidget *parent) :
     ui(new Ui::Editor)
 {
     ui->setupUi(this);
+
+    m_engineSocket = ui->directus3DWidget->GetEngineSocket();
+    m_hierarchy = new Hierarchy(ui->hierarchyTree, m_engineSocket);
 }
 
 Editor::~Editor()

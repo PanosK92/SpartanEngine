@@ -6,22 +6,20 @@
 #include <QWidget>
 #include <QPaintEngine>
 #include <QResizeEvent>
+#include "Core/Engine.h"
+#include "Core/Socket.h"
 //========================
 
-//= FORWARD DECLARATIONS =
-class Engine;
-class Socket;
-//========================
-
-class Directus3DWidget : public QWidget
+class QDirectus3DWidget : public QWidget
 {
     Q_OBJECT
-    Q_DISABLE_COPY(Directus3DWidget)
+    Q_DISABLE_COPY(QDirectus3DWidget)
 
     public:
-      Directus3DWidget(QWidget* parent = NULL);
-      virtual ~Directus3DWidget();
+      QDirectus3DWidget(QWidget* parent = NULL);
+      virtual ~QDirectus3DWidget();
       virtual QPaintEngine* paintEngine() const { return NULL; }
+      Socket* GetEngineSocket();
 
     protected:
       virtual void resizeEvent(QResizeEvent* evt);

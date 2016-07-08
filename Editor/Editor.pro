@@ -14,10 +14,12 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         editor.cpp \
-    Directus3DWidget.cpp
+    Hierarchy.cpp \
+    QDirectus3DWidget.cpp
 
 HEADERS  += editor.h \
-    Directus3DWidget.h
+    Hierarchy.h \
+    QDirectus3DWidget.h
 
 FORMS    += editor.ui
 
@@ -26,3 +28,5 @@ else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirec
 
 INCLUDEPATH += $$PWD/../Directus3D
 DEPENDPATH += $$PWD/../Directus3D
+
+DISTFILES +=
