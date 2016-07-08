@@ -32,18 +32,19 @@ void Hierarchy::Update()
         GameObject* gameObject = gameObjects[i];
         QString name = QString::fromStdString(gameObject->GetName());
 
-        //QTreeWidgetItem* item = new QTreeWidgetGameObjectItem(gameObject);
+        QTreeWidgetItem* item = new QTreeWidgetItem(m_tree);
 
-        //m_tree->addTopLevelItem(item);
+        item->setTextColor(0, QColor("#B4B4B4"));
+        item->setText(0, name);
+
+        m_tree->addTopLevelItem(item);
     }
 }
 
 //= PRIVATE ========================
 void Hierarchy::Initialize()
 {
-    // GreyDark     = #292929
-    // GreyMedium   = #383838
-    // GreyLight    = #404040
+
 }
 
 void Hierarchy::AddRoot()
