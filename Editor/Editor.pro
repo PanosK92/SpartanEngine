@@ -14,12 +14,14 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         editor.cpp \
-    Hierarchy.cpp \
-    QDirectus3DWidget.cpp
+    DirectusTreeWidget.cpp \
+    Directus3DWidget.cpp \
+    DirectusQTHelper.cpp
 
 HEADERS  += editor.h \
-    Hierarchy.h \
-    QDirectus3DWidget.h
+    DirectusTreeWidget.h \
+    Directus3DWidget.h \
+    DirectusQTHelper.h
 
 FORMS    += editor.ui
 
