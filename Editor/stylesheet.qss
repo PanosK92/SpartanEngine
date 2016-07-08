@@ -1,0 +1,111 @@
+/*
+GreyDark		= #292929
+GreyMedium		= #383838
+GreyLight		= #404040
+GreyLightText	= #B4B4B4
+*/
+
+QMainWindow
+{
+	background-color: #292929;
+	font: 9pt "Calibri";
+	padding: 1px;
+}
+
+QWidget
+{
+	background-color: #292929;	
+	font: 9pt "Calibri";
+	padding: 0px;
+}
+
+QMenuBar
+{
+	color: #B4B4B4;
+	background-color: #404040;
+	padding: 0px;
+}
+
+QMenu::selected
+{
+	color: #292929;
+	background-color: #B4B4B4;
+}
+
+QMenu::item
+{
+	color: #B4B4B4;
+	background-color: #404040;
+}
+
+QMenu::separator
+{
+	
+}
+
+
+QMenu::item::selected
+{
+	color: #292929;
+	background-color: #B4B4B4;
+}
+
+QTreeWidget
+{
+	color: #B4B4B4;
+	background-color: #404040;
+	padding: 0px;
+	border-style: outset;
+	border-width: 1px;
+	border-color: black;
+}
+
+QTreeView
+{
+	color: #B4B4B4;
+	background-color: #404040;
+	padding: 0px;
+	border-style: outset;
+	border-width: 1px;
+	border-color: black;
+}
+
+QListWidget
+{
+	color: #B4B4B4;
+	background-color: #404040;
+	padding: 0px;
+	border-style: outset;
+	border-width: 1px;
+	border-color: black;
+}
+
+QListView
+{
+	color: #B4B4B4;
+	background-color: #404040;
+	padding: 0px;
+	border-style: outset;
+	border-width: 1px;
+	border-color: black;
+}
+
+QTabWidget
+{
+	color: #B4B4B4;
+	background-color: #404040;
+	padding: 0px;
+	border-style: outset;
+	border-width: 1px;
+	border-color: black;
+}
+
+QDirectus3DWidget
+{
+	color: #B4B4B4;
+	background-color: #404040;
+	padding: 0px;
+	border-style: outset;
+	border-width: 1px;
+	border-color: black;
+}

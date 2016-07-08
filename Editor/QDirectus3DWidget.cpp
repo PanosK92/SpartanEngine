@@ -28,7 +28,7 @@ Socket* QDirectus3DWidget::GetEngineSocket()
 void QDirectus3DWidget::resizeEvent(QResizeEvent* evt)
 {
     int width = evt->size().width();
-    int height = evt->size().width();
+    int height = evt->size().height();
 
     Resize(width, height);
 }
