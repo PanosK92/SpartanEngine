@@ -50,17 +50,31 @@ Socket::~Socket()
 {
 }
 
-/*------------------------------------------------------------------------------
-[RESOLUTION]
-------------------------------------------------------------------------------*/
+//= IO ========================================================================
+void Socket::SetLogger(ILogger* logger)
+{
+	Log::SetLogger(logger);
+}
+
+void Socket::LoadModel(GameObject* gameObject, string path)
+{
+	m_modelLoader->Load(path, gameObject);
+}
+
+ImageLoader* Socket::GetImageLoader()
+{
+	return &ImageLoader::GetInstance();
+}
+//==============================================================================
+
+//= GRAPHICS ===================================================================
 void Socket::SetViewport(int width, int height) const
 {
 	m_renderer->SetResolution(width, height);
 }
+//==============================================================================
 
-/*------------------------------------------------------------------------------
-									[STATES]
-------------------------------------------------------------------------------*/
+//= MISC =======================================================================
 EngineMode Socket::GetEngineMode()
 {
 	return Settings::GetInstance().GetEngineMode();
@@ -101,10 +115,9 @@ PhysicsDebugDraw* Socket::GetPhysicsDebugDraw()
 {
 	return m_physics->GetPhysicsDebugDraw();
 }
+//==============================================================================
 
-/*------------------------------------------------------------------------------
-							[GAMEOBJECT]
-------------------------------------------------------------------------------*/
+//= GAMEOBJECTS ================================================================
 vector<GameObject*> Socket::GetAllGameObjects()
 {
 	return GameObjectPool::GetInstance().GetAllGameObjects();
@@ -137,23 +150,9 @@ bool Socket::GameObjectExists(GameObject* gameObject)
 
 	return exists;
 }
+//==============================================================================
 
-/*------------------------------------------------------------------------------
-						[ASSET LOADING]
-------------------------------------------------------------------------------*/
-void Socket::LoadModel(GameObject* gameObject, string path)
-{
-	m_modelLoader->Load(path, gameObject);
-}
-
-ImageLoader* Socket::GetImageLoader()
-{
-	return &ImageLoader::GetInstance();
-}
-
-/*------------------------------------------------------------------------------
-							[SCENE]
-------------------------------------------------------------------------------*/
+//= SCENE ======================================================================
 bool Socket::SaveSceneToFile(string path)
 {
 	return m_scene->SaveToFile(path);
@@ -168,10 +167,9 @@ void Socket::ClearScene()
 {
 	m_scene->Clear();
 }
+//==============================================================================
 
-/*------------------------------------------------------------------------------
-								[STATS]
-------------------------------------------------------------------------------*/
+//= STATS ======================================================================
 float Socket::GetFPS()
 {
 	return m_renderer->GetFPS();
@@ -191,6 +189,7 @@ float Socket::GetRenderTime()
 {
 	return m_renderer->GetRenderTimeMs();
 }
+//==============================================================================
 
 void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string texturePath)
 {
