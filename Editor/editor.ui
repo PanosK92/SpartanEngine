@@ -1123,7 +1123,7 @@ QDirectus3DWidget
                <attribute name="title">
                 <string>Console</string>
                </attribute>
-               <widget class="QListWidget" name="listWidget">
+               <widget class="DirectusListWidget" name="consoleList">
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
@@ -1132,7 +1132,7 @@ QDirectus3DWidget
                   <x>0</x>
                   <y>0</y>
                   <width>1111</width>
-                  <height>111</height>
+                  <height>101</height>
                  </rect>
                 </property>
                 <property name="sizePolicy">
@@ -2189,6 +2189,11 @@ QDirectus3DWidget
     <slot>SaveSceneAs()</slot>
    </slots>
   </customwidget>
+  <customwidget>
+   <class>DirectusListWidget</class>
+   <extends>QListWidget</extends>
+   <header>DirectusListWidget.h</header>
+  </customwidget>
  </customwidgets>
  <resources/>
  <connections>
@@ -2199,8 +2204,8 @@ QDirectus3DWidget
    <slot>CreateEmptyGameObject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>101</x>
-     <y>61</y>
+     <x>-1</x>
+     <y>-1</y>
     </hint>
     <hint type="destinationlabel">
      <x>127</x>

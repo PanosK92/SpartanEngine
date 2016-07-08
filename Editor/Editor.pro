@@ -16,12 +16,14 @@ SOURCES += main.cpp\
         editor.cpp \
     DirectusTreeWidget.cpp \
     Directus3DWidget.cpp \
-    DirectusQTHelper.cpp
+    DirectusQTHelper.cpp \
+    DirectusListWidget.cpp
 
 HEADERS  += editor.h \
     DirectusTreeWidget.h \
     Directus3DWidget.h \
-    DirectusQTHelper.h
+    DirectusQTHelper.h \
+    DirectusListWidget.h
 
 FORMS    += editor.ui
 

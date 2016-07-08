@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Loading/ImageLoader.h"
 //===================================
 
+class ILogger;
 class PhysicsDebugDraw;
 
 class __declspec(dllexport) Socket
@@ -38,53 +39,44 @@ public:
 	Socket(Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice);
 	~Socket();
 
-	/*------------------------------------------------------------------------------
-							[VIEWPORT]
-	------------------------------------------------------------------------------*/
-	void SetViewport(int width, int height) const;
+	//= IO =========================
+	void SetLogger(ILogger* logger);
+	void LoadModel(GameObject* gameObject, std::string path);
+	ImageLoader* GetImageLoader();
+	//==============================
 
-	/*------------------------------------------------------------------------------
-								[STATES]
-	------------------------------------------------------------------------------*/
-	EngineMode GetEngineMode();
-	void SetEngineMode(EngineMode mode);
+	//= GRAPHICS =================================
+	void SetViewport(int width, int height) const;
+	//============================================
 
 	//= MISC =======================================================================
+	EngineMode GetEngineMode();
+	void SetEngineMode(EngineMode mode);
 	void Run();
-
 	void SetPhysicsDebugDraw(bool enable);
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
 	//==============================================================================
 
-	/*------------------------------------------------------------------------------
-									[GAMEOBJECT]
-	------------------------------------------------------------------------------*/
+	//= GAMEOBJECTS ================================================================
 	std::vector<GameObject*> GetAllGameObjects();
 	GameObject* GetGameObjectByID(std::string gameObjectID);
 	int GetGameObjectCount();
 	void DestroyGameObject(GameObject* gameObject);
 	bool GameObjectExists(GameObject* gameObject);
+	//==============================================================================
 
-	/*------------------------------------------------------------------------------
-							[ASSET LOADING]
-	------------------------------------------------------------------------------*/
-	void LoadModel(GameObject* gameObject, std::string path);
-	ImageLoader* GetImageLoader();
-
-	/*------------------------------------------------------------------------------
-								[SCENE]
-	------------------------------------------------------------------------------*/
+	//= SCENE ======================================================================
 	bool SaveSceneToFile(std::string path);
 	bool LoadSceneFromFile(std::string path);
 	void ClearScene();
+	//==============================================================================
 
-	/*------------------------------------------------------------------------------
-								[STATS]
-	------------------------------------------------------------------------------*/
+	//= STATS ======================================================================
 	float GetFPS();
 	int GetRenderedMeshesCount();
 	float GetDeltaTime();
 	float GetRenderTime();
+	//==============================================================================
 
 	void SetMaterialTexture(GameObject* gameObject, TextureType type, std::string texturePath);
 private:
