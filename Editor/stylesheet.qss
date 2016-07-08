@@ -1,8 +1,8 @@
 /*
-GreyDark		= #292929
-GreyMedium		= #383838
-GreyLight		= #404040
-GreyLightText	= #B4B4B4
+GreyDark				= #292929
+GreyMedium			= #383838
+GreyLight				= #404040
+GreyLightText		= #B4B4B4
 */
 
 QMainWindow
@@ -12,9 +12,23 @@ QMainWindow
 	padding: 1px;
 }
 
+QPushButton
+{
+	background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255));
+	font: 9pt "Calibri";
+	padding: 1px;
+}
+
 QWidget
 {
 	background-color: #292929;	
+	font: 9pt "Calibri";
+	padding: 0px;
+}
+
+QStatusBar
+{
+	background-color: #404040;	
 	font: 9pt "Calibri";
 	padding: 0px;
 }

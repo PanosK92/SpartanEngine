@@ -10,14 +10,14 @@
 #include "Core/Socket.h"
 //========================
 
-class QDirectus3DWidget : public QWidget
+class Directus3DWidget : public QWidget
 {
     Q_OBJECT
-    Q_DISABLE_COPY(QDirectus3DWidget)
+    Q_DISABLE_COPY(Directus3DWidget)
 
     public:
-      QDirectus3DWidget(QWidget* parent = NULL);
-      virtual ~QDirectus3DWidget();
+      Directus3DWidget(QWidget* parent = NULL);
+      virtual ~Directus3DWidget();
       virtual QPaintEngine* paintEngine() const { return NULL; }
       Socket* GetEngineSocket();
 

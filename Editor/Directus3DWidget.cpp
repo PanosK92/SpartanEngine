@@ -1,9 +1,9 @@
 //= INCLUDES =================
-#include "QDirectus3DWidget.h"
+#include "Directus3DWidget.h"
 //============================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
-QDirectus3DWidget::QDirectus3DWidget(QWidget *parent)
+Directus3DWidget::Directus3DWidget(QWidget *parent)
  : QWidget(parent) {
 
     setAttribute(Qt::WA_PaintOnScreen, true);
@@ -13,19 +13,19 @@ QDirectus3DWidget::QDirectus3DWidget(QWidget *parent)
     Resize(this->size().width(), this->size().height());
 }
 
-QDirectus3DWidget::~QDirectus3DWidget()
+Directus3DWidget::~Directus3DWidget()
 {
     ShutdownEngine();
 }
 
-Socket* QDirectus3DWidget::GetEngineSocket()
+Socket* Directus3DWidget::GetEngineSocket()
 {
     return m_socket;
 }
 //====================================================
 
 //= OVERRIDDEN FUNCTIONS =============================
-void QDirectus3DWidget::resizeEvent(QResizeEvent* evt)
+void Directus3DWidget::resizeEvent(QResizeEvent* evt)
 {
     int width = evt->size().width();
     int height = evt->size().height();
@@ -33,14 +33,14 @@ void QDirectus3DWidget::resizeEvent(QResizeEvent* evt)
     Resize(width, height);
 }
 
-void QDirectus3DWidget::paintEvent(QPaintEvent* evt)
+void Directus3DWidget::paintEvent(QPaintEvent* evt)
 {
     Render();
 }
 //===================================================
 
 //= Engine functions ================================
-void QDirectus3DWidget::InitializeEngine()
+void Directus3DWidget::InitializeEngine()
 {
     // Create and initialize Directus3D
     m_engine = new Engine();
@@ -53,18 +53,18 @@ void QDirectus3DWidget::InitializeEngine()
     m_socket = m_engine->GetSocket();
 }
 
-void QDirectus3DWidget::ShutdownEngine()
+void Directus3DWidget::ShutdownEngine()
 {
     m_engine->Shutdown();
     delete m_engine;
 }
 
-void QDirectus3DWidget::Render()
+void Directus3DWidget::Render()
 {
     m_socket->Run();
 }
 
-void QDirectus3DWidget::Resize(int width, int height)
+void Directus3DWidget::Resize(int width, int height)
 {
     m_socket->SetViewport(width, height);
 }

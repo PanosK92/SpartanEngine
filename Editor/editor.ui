@@ -16,6 +16,18 @@
     <verstretch>1</verstretch>
    </sizepolicy>
   </property>
+  <property name="minimumSize">
+   <size>
+    <width>800</width>
+    <height>600</height>
+   </size>
+  </property>
+  <property name="baseSize">
+   <size>
+    <width>1366</width>
+    <height>768</height>
+   </size>
+  </property>
   <property name="palette">
    <palette>
     <active>
@@ -137,9 +149,23 @@ QMainWindow
 	padding: 1px;
 }
 
+QPushButton
+{
+	background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255));
+	font: 9pt &quot;Calibri&quot;;
+	padding: 1px;
+}
+
 QWidget
 {
 	background-color: #292929;	
+	font: 9pt &quot;Calibri&quot;;
+	padding: 0px;
+}
+
+QStatusBar
+{
+	background-color: #404040;	
 	font: 9pt &quot;Calibri&quot;;
 	padding: 0px;
 }
@@ -241,25 +267,28 @@ QDirectus3DWidget
   <property name="documentMode">
    <bool>false</bool>
   </property>
-  <widget class="QWidget" name="centralWidget">
+  <widget class="QWidget" name="mainWindow">
    <property name="sizePolicy">
     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
-   <layout class="QHBoxLayout" name="horizontalLayout">
+   <property name="minimumSize">
+    <size>
+     <width>800</width>
+     <height>600</height>
+    </size>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout_3">
     <property name="spacing">
      <number>0</number>
-    </property>
-    <property name="sizeConstraint">
-     <enum>QLayout::SetNoConstraint</enum>
     </property>
     <property name="leftMargin">
      <number>0</number>
     </property>
     <property name="topMargin">
-     <number>10</number>
+     <number>0</number>
     </property>
     <property name="rightMargin">
      <number>0</number>
@@ -268,9 +297,92 @@ QDirectus3DWidget
      <number>0</number>
     </property>
     <item>
-     <widget class="QSplitter" name="splitter_3">
+     <widget class="QWidget" name="toolBar" native="true">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <item>
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton">
+           <property name="text">
+            <string>PushButton</string>
+           </property>
+           <property name="autoDefault">
+            <bool>false</bool>
+           </property>
+           <property name="default">
+            <bool>false</bool>
+           </property>
+           <property name="flat">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_2">
+           <property name="text">
+            <string>PushButton</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QSplitter" name="splitterInspectorLeft">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>1</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
@@ -307,6 +419,18 @@ QDirectus3DWidget
            <enum>Qt::Vertical</enum>
           </property>
           <widget class="QWidget" name="widgetUpperLeft" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="baseSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
            <layout class="QHBoxLayout" name="horizontalLayout_2">
             <property name="spacing">
              <number>0</number>
@@ -328,16 +452,22 @@ QDirectus3DWidget
               <property name="orientation">
                <enum>Qt::Horizontal</enum>
               </property>
-              <widget class="QTreeWidget" name="hierarchyTree">
+              <widget class="DirectusTreeWidget" name="hierarchyTree">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
+                <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
+               <property name="minimumSize">
+                <size>
+                 <width>100</width>
+                 <height>0</height>
+                </size>
+               </property>
                <property name="maximumSize">
                 <size>
-                 <width>544</width>
+                 <width>16777215</width>
                  <height>16777215</height>
                 </size>
                </property>
@@ -594,7 +724,7 @@ QDirectus3DWidget
                 </property>
                </column>
               </widget>
-              <widget class="QDirectus3DWidget" name="directus3DWidget" native="true">
+              <widget class="Directus3DWidget" name="directus3DWidget" native="true">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -733,8 +863,23 @@ QDirectus3DWidget
             </item>
            </layout>
           </widget>
-          <widget class="QWidget" name="widgetBottomLeft" native="true">
-           <layout class="QGridLayout" name="gridLayout_2">
+          <widget class="QWidget" name="widgetConsoleProject" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>100</height>
+            </size>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <property name="spacing">
+             <number>0</number>
+            </property>
             <property name="leftMargin">
              <number>0</number>
             </property>
@@ -747,11 +892,14 @@ QDirectus3DWidget
             <property name="bottomMargin">
              <number>0</number>
             </property>
-            <property name="spacing">
-             <number>0</number>
-            </property>
-            <item row="1" column="0">
+            <item>
              <widget class="QTabWidget" name="tabWidget">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="palette">
                <palette>
                 <active>
@@ -976,18 +1124,21 @@ QDirectus3DWidget
                 <string>Console</string>
                </attribute>
                <widget class="QListWidget" name="listWidget">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
                 <property name="geometry">
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>1031</width>
+                  <width>1111</width>
                   <height>111</height>
                  </rect>
                 </property>
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
+                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                  <horstretch>2</horstretch>
+                  <verstretch>1</verstretch>
                  </sizepolicy>
                 </property>
                 <property name="palette">
@@ -1173,6 +1324,12 @@ QDirectus3DWidget
        </layout>
       </widget>
       <widget class="QWidget" name="widgetInspector" native="true">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>0</height>
+        </size>
+       </property>
        <property name="palette">
         <palette>
          <active>
@@ -1612,6 +1769,12 @@ QDirectus3DWidget
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>16777215</height>
+           </size>
+          </property>
           <property name="palette">
            <palette>
             <active>
@@ -1801,6 +1964,12 @@ QDirectus3DWidget
      <height>20</height>
     </rect>
    </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
@@ -1865,6 +2034,11 @@ QDirectus3DWidget
    <addaction name="menuGameObject"/>
    <addaction name="menuComponent"/>
    <addaction name="menuAbout"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar">
+   <property name="sizeGripEnabled">
+    <bool>false</bool>
+   </property>
   </widget>
   <action name="actionNew_Scene">
    <property name="text">
@@ -1955,10 +2129,15 @@ QDirectus3DWidget
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
   <customwidget>
-   <class>QDirectus3DWidget</class>
+   <class>Directus3DWidget</class>
    <extends>QWidget</extends>
-   <header>QDirectus3DWidget.h</header>
+   <header>Directus3DWidget.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>DirectusTreeWidget</class>
+   <extends>QTreeWidget</extends>
+   <header>DirectusTreeWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
