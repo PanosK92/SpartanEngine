@@ -115,10 +115,30 @@ void GameObjectPool::Deserialize()
 vector<GameObject*> GameObjectPool::GetAllGameObjects()
 {
 	vector<GameObject*> gameObjects;
-	for (int i = 0; i < m_pool.size(); i++)
+	for (auto i = 0; i < m_pool.size(); i++)
 		gameObjects.push_back(m_pool[i].get());
 
 	return gameObjects;
+}
+
+vector<GameObject*> GameObjectPool::GetRootGameObjects()
+{
+	vector<GameObject*> rootGameObjects;
+	for (auto i = 0; i < m_pool.size(); i++)
+	{
+		if (m_pool[i]->GetTransform()->IsRoot())
+			rootGameObjects.push_back(m_pool[i].get());
+	}
+
+	return rootGameObjects;
+}
+
+GameObject* GameObjectPool::GetGameObjectRoot(GameObject* gameObject)
+{
+	if (!gameObject)
+		return nullptr;
+
+	return gameObject->GetTransform()->GetRoot()->GetGameObject();
 }
 
 int GameObjectPool::GetGameObjectCount()
@@ -191,21 +211,6 @@ vector<GameObject*> GameObjectPool::GetGameObjectsByParentID(string ID)
 	}
 
 	return gameObjects;
-}
-
-GameObject* GameObjectPool::GetRootGameObjectByGameObject(GameObject* gameObject)
-{
-	if (!gameObject)
-		return nullptr;
-
-	GameObject* parent = gameObject;
-	if (gameObject->GetTransform()->HasParent())
-		parent = gameObject->GetTransform()->GetParent()->g_gameObject;
-
-	if (parent->GetTransform()->HasParent()) // if the parent has a parent, do it again
-		GetRootGameObjectByGameObject(parent);
-
-	return parent; // if not, then is is the root gameObject
 }
 
 bool GameObjectPool::GameObjectExists(GameObject* gameObject)

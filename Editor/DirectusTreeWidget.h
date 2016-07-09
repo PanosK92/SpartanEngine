@@ -15,6 +15,10 @@ public:
 private:
     Socket* m_socket;
     void Clear();
+    QTreeWidgetItem* GameObjectToQTreeItem(GameObject* gameobject);
+    void AddRoot(QTreeWidgetItem* item);
+    void AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child);
+    void AddGameObject(GameObject* gameobject, QTreeWidgetItem *parent);
 
 signals:
 

@@ -57,13 +57,14 @@ public:
 									[MISC]
 	------------------------------------------------------------------------------*/
 	std::vector<GameObject*> GetAllGameObjects();
+	std::vector<GameObject*> GetRootGameObjects();
+	GameObject* GetGameObjectRoot(GameObject* gameObject);
 	int GetGameObjectCount();
 	int GetGameObjectIndex(GameObject* gameObject);
 	GameObject* GetGameObjectByName(std::string name);
 	GameObject* GetGameObjectByIndex(int index);
 	GameObject* GetGameObjectByID(std::string ID);
 	std::vector<GameObject*> GetGameObjectsByParentID(std::string ID);
-	GameObject* GetRootGameObjectByGameObject(GameObject* gameObject);
 	bool GameObjectExists(GameObject* gameObject);
 	bool GameObjectExistsByName(std::string name);
 	void RemoveGameObject(GameObject* gameObject);

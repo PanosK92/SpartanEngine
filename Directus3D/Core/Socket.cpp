@@ -87,6 +87,7 @@ void Socket::SetEngineMode(EngineMode mode)
 
 void Socket::Run()
 {
+	LOG(GetFPS());
 	// update time
 	m_timer->Update();
 
@@ -121,6 +122,11 @@ PhysicsDebugDraw* Socket::GetPhysicsDebugDraw()
 vector<GameObject*> Socket::GetAllGameObjects()
 {
 	return GameObjectPool::GetInstance().GetAllGameObjects();
+}
+
+std::vector<GameObject*> Socket::GetRootGameObjects()
+{
+	return GameObjectPool::GetInstance().GetRootGameObjects();
 }
 
 GameObject* Socket::GetGameObjectByID(string gameObjectID)

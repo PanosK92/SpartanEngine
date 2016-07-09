@@ -59,6 +59,7 @@ public:
 
 	//= GAMEOBJECTS ================================================================
 	std::vector<GameObject*> GetAllGameObjects();
+	std::vector<GameObject*> GetRootGameObjects();
 	GameObject* GetGameObjectByID(std::string gameObjectID);
 	int GetGameObjectCount();
 	void DestroyGameObject(GameObject* gameObject);
