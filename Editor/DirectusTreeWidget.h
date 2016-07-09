@@ -25,6 +25,7 @@ private:
     void AddGameObject(GameObject* gameobject, QTreeWidgetItem *parent);
     GameObject* GetSelectedGameObject();
     bool IsAnyGameObjectSelected();
+    QString m_sceneFileName;
 
 signals:
 

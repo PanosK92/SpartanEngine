@@ -902,7 +902,7 @@ GreyLightText		= #B4B4B4;
                <bool>false</bool>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <property name="elideMode">
                <enum>Qt::ElideNone</enum>
@@ -1856,6 +1856,38 @@ border-color: black;</string>
     <hint type="destinationlabel">
      <x>127</x>
      <y>327</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionSave_Scene_as</sender>
+   <signal>triggered()</signal>
+   <receiver>hierarchyTree</receiver>
+   <slot>SaveSceneAs()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>127</x>
+     <y>342</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionSave_Scene</sender>
+   <signal>triggered()</signal>
+   <receiver>hierarchyTree</receiver>
+   <slot>SaveScene()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>127</x>
+     <y>342</y>
     </hint>
    </hints>
   </connection>
