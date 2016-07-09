@@ -5,6 +5,7 @@
 #include <QtCore>
 #include "Core/Socket.h"
 #include <QVariant>
+#include "QMouseEvent"
 //======================
 
 class DirectusTreeWidget : public QTreeWidget
@@ -13,6 +14,7 @@ class DirectusTreeWidget : public QTreeWidget
 public:
     explicit DirectusTreeWidget(QWidget* parent = 0);
     void SetEngineSocket(Socket* socket);
+    virtual void mousePressEvent(QMouseEvent *event);
 
 private:
     Socket* m_socket;
@@ -21,6 +23,8 @@ private:
     void AddRoot(QTreeWidgetItem* item);
     void AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child);
     void AddGameObject(GameObject* gameobject, QTreeWidgetItem *parent);
+    GameObject* GetSelectedGameObject();
+    bool IsAnyGameObjectSelected();
 
 signals:
 
