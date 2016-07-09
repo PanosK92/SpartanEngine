@@ -22,6 +22,21 @@ void DirectusTreeWidget::SetEngineSocket(Socket *socket)
     Populate();
 }
 
+void DirectusTreeWidget::mousePressEvent(QMouseEvent *event)
+{
+    // I implement this myself because the QTreeWidget doesn't
+    // deselect any items when you click anywhere else but on an item.
+    QModelIndex item = indexAt(event->pos());
+    bool selected = selectionModel()->isSelected(indexAt(event->pos()));
+    QTreeWidget::mousePressEvent(event);
+    if ((item.row() == -1 && item.column() == -1) || selected)
+    {
+        clearSelection();
+        const QModelIndex index;
+        selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
+    }
+}
+
 void DirectusTreeWidget::Clear()
 {
     //m_socket->ClearScene();
@@ -46,6 +61,7 @@ QTreeWidgetItem *DirectusTreeWidget::GameObjectToQTreeItem(GameObject* gameobjec
     // Value        -> 0x0100
     // Description  -> The first role that can be used for application-specific purposes.
     //===================================================================================
+
     return item;
 }
 
@@ -94,6 +110,24 @@ void DirectusTreeWidget::AddGameObject(GameObject* gameobject, QTreeWidgetItem* 
     }
 }
 
+GameObject *DirectusTreeWidget::GetSelectedGameObject()
+{
+    QList<QTreeWidgetItem*> selectedItems = this->selectedItems();
+    if (selectedItems.count() == 0)
+        return nullptr;
+
+    QTreeWidgetItem* item = selectedItems[0];
+    QVariant data = item->data(0, Qt::UserRole);
+    GameObject* gameobject = VPtr<GameObject>::asPtr(data);
+
+    return gameobject;
+}
+
+bool DirectusTreeWidget::IsAnyGameObjectSelected()
+{
+    return GetSelectedGameObject() ? true : false;
+}
+
 void DirectusTreeWidget::Populate()
 {
     Clear();
@@ -109,6 +143,12 @@ void DirectusTreeWidget::Populate()
 void DirectusTreeWidget::CreateEmptyGameObject()
 {
     GameObject* gameobject = new GameObject();
+    Transform* transform = gameobject->GetTransform();
+
+    GameObject* selectedGameObject = GetSelectedGameObject();
+    if (selectedGameObject)
+        transform->SetParent(selectedGameObject->GetTransform());
+
     Populate();
 }
 
@@ -142,8 +182,5 @@ void DirectusTreeWidget::SaveScene()
 
 void DirectusTreeWidget::SaveSceneAs()
 {
-    QTreeWidgetItem* item = this->selectedItems()[0];
-    QVariant data = item->data(0, Qt::UserRole);
-    GameObject* test = VPtr<GameObject>::asPtr(data);
-    LOG(test->GetName());
+
 }
