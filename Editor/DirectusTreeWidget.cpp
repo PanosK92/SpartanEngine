@@ -11,9 +11,12 @@
 using namespace std;
 //==================
 
+#define NO_PATH "-1"
+
 DirectusTreeWidget::DirectusTreeWidget(QWidget *parent) : QTreeWidget(parent)
 {
-
+    m_socket= nullptr;
+    m_sceneFileName = NO_PATH;
 }
 
 void DirectusTreeWidget::SetEngineSocket(Socket *socket)
@@ -154,6 +157,7 @@ void DirectusTreeWidget::CreateEmptyGameObject()
 
 void DirectusTreeWidget::NewScene()
 {
+    m_sceneFileName = NO_PATH;
     m_socket->ClearScene();
     Populate();
 }
@@ -163,24 +167,40 @@ void DirectusTreeWidget::OpenScene()
     QString title = "Load Scene";
     QString filter = "All files (*.dss)";
     QString dir = "../Assets";
-    QString fileName = QFileDialog::getOpenFileName(
+    m_sceneFileName = QFileDialog::getOpenFileName(
                 this,
                 title,
                 dir,
                 filter
                 );
 
-    m_socket->LoadSceneFromFile(fileName.toStdString());
+    m_socket->LoadSceneFromFile(m_sceneFileName.toStdString());
 
     Populate();
 }
 
 void DirectusTreeWidget::SaveScene()
 {
+    if (m_sceneFileName == NO_PATH)
+    {
+        SaveSceneAs();
+        return;
+    }
 
+    m_socket->SaveSceneToFile(m_sceneFileName.toStdString());
 }
 
 void DirectusTreeWidget::SaveSceneAs()
 {
+    QString title = "Save Scene";
+    QString filter = "All files (*.dss)";
+    QString dir = "../Assets";
+    m_sceneFileName = QFileDialog::getSaveFileName(
+                this,
+                title,
+                dir,
+                filter
+                );
 
+    m_socket->SaveSceneToFile(m_sceneFileName.toStdString());
 }
