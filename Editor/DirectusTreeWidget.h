@@ -2,7 +2,9 @@
 
 //= INCLUDES ===========
 #include <QTreeWidget>
+#include <QtCore>
 #include "Core/Socket.h"
+#include <QVariant>
 //======================
 
 class DirectusTreeWidget : public QTreeWidget

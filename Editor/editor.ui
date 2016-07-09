@@ -706,11 +706,32 @@ QDirectus3DWidget
                <property name="midLineWidth">
                 <number>0</number>
                </property>
+               <property name="editTriggers">
+                <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
+               </property>
+               <property name="dragDropOverwriteMode">
+                <bool>false</bool>
+               </property>
+               <property name="dragDropMode">
+                <enum>QAbstractItemView::DragDrop</enum>
+               </property>
+               <property name="defaultDropAction">
+                <enum>Qt::MoveAction</enum>
+               </property>
+               <property name="autoExpandDelay">
+                <number>-1</number>
+               </property>
                <property name="rootIsDecorated">
+                <bool>true</bool>
+               </property>
+               <property name="animated">
                 <bool>true</bool>
                </property>
                <property name="headerHidden">
                 <bool>true</bool>
+               </property>
+               <property name="expandsOnDoubleClick">
+                <bool>false</bool>
                </property>
                <property name="columnCount">
                 <number>1</number>
@@ -1094,7 +1115,7 @@ QDirectus3DWidget
                <bool>false</bool>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <property name="elideMode">
                <enum>Qt::ElideNone</enum>
