@@ -14,9 +14,7 @@ QMainWindow
 
 QPushButton
 {
-	background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255));
-	font: 9pt "Calibri";
-	padding: 1px;
+	background-color: #292929;
 }
 
 QWidget
@@ -28,7 +26,7 @@ QWidget
 
 QStatusBar
 {
-	background-color: #404040;	
+	background-color:  #292929;
 	font: 9pt "Calibri";
 	padding: 0px;
 }
@@ -40,28 +38,27 @@ QMenuBar
 	padding: 0px;
 }
 
-QMenu::selected
-{
-	color: #292929;
-	background-color: #B4B4B4;
-}
-
 QMenu::item
 {
 	color: #B4B4B4;
 	background-color: #404040;
 }
 
-QMenu::separator
+QMenu::item:hover
 {
-	
+
 }
 
-
-QMenu::item::selected
+QMenu::item:selected
 {
-	color: #292929;
-	background-color: #B4B4B4;
+	color:  #404040;
+	background-color:#B4B4B4;
+}
+
+QMenuBar::item:pressed 
+{
+    color:  #404040;
+	background-color:#B4B4B4;
 }
 
 QTreeWidget
@@ -123,3 +120,62 @@ QDirectus3DWidget
 	border-width: 1px;
 	border-color: black;
 }
+
+QScrollBar 
+{
+  border-color: rgb(227, 227, 227);
+  border-width: 1px;
+  border-style: solid;
+
+  background-color:  rgb(241, 241, 241);
+  width: 15px;
+  margin: 21px 0 21px 0;
+}
+
+QScrollBar::handle 
+{
+  background-color: rgb(200, 200, 200);
+  min-height: 25px;
+}
+
+ QScrollBar::add-line 
+{
+    border: 1px solid grey;
+	background-color: rgb(241, 241, 241);
+    height: 20px;
+    subcontrol-position: bottom;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::sub-line
+ {
+    border: 1px solid grey;
+    background-color: rgb(241, 241, 241);
+    height: 20px;
+    subcontrol-position: top;
+    subcontrol-origin: margin;
+}
+
+QTabBar::tab:selected 
+{
+		background-color: #B4B4B4;
+		color: #383838;
+}
+
+QTabBar::tab
+{
+		background-color: #383838;
+		color: #B4B4B4;
+}
+
+QListView::item:alternate 
+{
+    background:  #383838;
+}
+
+/*
+GreyDark				= #292929;
+GreyMedium			= #383838;
+GreyLight				= #404040;
+GreyLightText		= #B4B4B4;
+*/
