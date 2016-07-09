@@ -222,6 +222,11 @@ Vector3 Transform::GetRight()
 	return GetRotationLocal() * Vector3::Right;
 }
 
+bool Transform::IsRoot()
+{
+	return !HasParent();
+}
+
 /*------------------------------------------------------------------------------
 								[HIERARCHY]
 ------------------------------------------------------------------------------*/

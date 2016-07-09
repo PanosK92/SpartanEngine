@@ -718,6 +718,9 @@ QDirectus3DWidget
                <attribute name="headerVisible">
                 <bool>false</bool>
                </attribute>
+               <attribute name="headerCascadingSectionResizes">
+                <bool>false</bool>
+               </attribute>
                <column>
                 <property name="text">
                  <string>GameObjects</string>
@@ -1312,6 +1315,9 @@ QDirectus3DWidget
                    </colorrole>
                   </disabled>
                  </palette>
+                </property>
+                <property name="alternatingRowColors">
+                 <bool>false</bool>
                 </property>
                </widget>
               </widget>
@@ -2218,6 +2224,22 @@ QDirectus3DWidget
    <signal>triggered()</signal>
    <receiver>hierarchyTree</receiver>
    <slot>NewScene()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>127</x>
+     <y>327</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionOpen_Scene</sender>
+   <signal>triggered()</signal>
+   <receiver>hierarchyTree</receiver>
+   <slot>OpenScene()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>

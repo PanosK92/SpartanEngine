@@ -34,3 +34,11 @@ INCLUDEPATH += $$PWD/../Directus3D
 DEPENDPATH += $$PWD/../Directus3D
 
 DISTFILES +=
+
+ParentDirectory = D:\Projects\Directus3D\Binaries
+
+DESTDIR = "$$ParentDirectory"
+RCC_DIR = "$$ParentDirectory\RCCFiles"
+UI_DIR = "$$ParentDirectory\UICFiles"
+MOC_DIR = "$$ParentDirectory\MOCFiles"
+OBJECTS_DIR = "$$ParentDirectory\ObjFiles"

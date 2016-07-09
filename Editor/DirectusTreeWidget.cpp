@@ -1,8 +1,10 @@
-//= INCLUDES ==================
+//= INCLUDES ====================
 #include "DirectusTreeWidget.h"
 #include "DirectusQTHelper.h"
 #include <vector>
-//=============================
+#include <QFileDialog>
+#include "Components/Transform.h"
+//===============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -21,7 +23,70 @@ void DirectusTreeWidget::SetEngineSocket(Socket *socket)
 
 void DirectusTreeWidget::Clear()
 {
-    this->clear();
+    //m_socket->ClearScene();
+    clear();
+}
+
+// Converts a GameObject to a QTreeWidgetItem
+QTreeWidgetItem *DirectusTreeWidget::GameObjectToQTreeItem(GameObject* gameobject)
+{
+    // Get data from the GameObject
+    QString name = QString::fromStdString(gameobject->GetName());
+    QString ID = QString::fromStdString(gameobject->GetID());
+    bool isRoot = gameobject->GetTransform()->IsRoot();
+
+    // Create a tree item
+    QTreeWidgetItem* item = isRoot ? new QTreeWidgetItem(this) : new QTreeWidgetItem();
+    item->setTextColor(0, QColor("#B4B4B4"));
+    item->setText(0, name);
+    item->setText(1, ID);
+
+    return item;
+}
+
+void DirectusTreeWidget::AddRoot(QTreeWidgetItem* item)
+{
+    this->addTopLevelItem(item);
+}
+
+void DirectusTreeWidget::AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child)
+{
+    parent->addChild(child);
+}
+
+// Adds a gameobject, including any children, to the tree
+void DirectusTreeWidget::AddGameObject(GameObject* gameobject, QTreeWidgetItem* parent)
+{
+    if (!gameobject)
+        return;
+
+    // Convert GameObject to QTreeWidgetItem
+    QTreeWidgetItem* item = GameObjectToQTreeItem(gameobject);
+
+    // Add it to the tree
+    if (gameobject->GetTransform()->IsRoot()) // This is a root gameobject
+    {
+        AddRoot(item);
+    }
+    else // This is a child gameobject
+    {
+        if (parent)
+        {
+            QTreeWidgetItem* child = item;
+            AddChild(parent, child);
+        }
+    }
+
+    // Do the same (recursively) for any children
+    vector<Transform*> children = gameobject->GetTransform()->GetChildren();
+    for(int i = 0; i < children.size(); i++)
+    {
+        GameObject* child = children[i]->GetGameObject();
+        if (!child->IsVisibleInHierarchy())
+            continue;
+
+        AddGameObject(child, item);
+    }
 }
 
 void DirectusTreeWidget::Populate()
@@ -31,19 +96,9 @@ void DirectusTreeWidget::Populate()
     if (!m_socket)
         return;
 
-    vector<GameObject*> gameObjects = m_socket->GetAllGameObjects();
+    vector<GameObject*> gameObjects = m_socket->GetRootGameObjects();
     for (int i = 0; i < gameObjects.size(); i++)
-    {
-        GameObject* gameObject = gameObjects[i];
-        QString name = QString::fromStdString(gameObject->GetName());
-
-        QTreeWidgetItem* item = new QTreeWidgetItem(this);
-
-        item->setTextColor(0, QColor("#B4B4B4"));
-        item->setText(0, name);
-
-        this->addTopLevelItem(item);
-    }
+            AddGameObject(gameObjects[i], nullptr);
 }
 
 void DirectusTreeWidget::CreateEmptyGameObject()
@@ -60,7 +115,18 @@ void DirectusTreeWidget::NewScene()
 
 void DirectusTreeWidget::OpenScene()
 {
-    //m_socket->LoadSceneFromFile();
+    QString title = "Load Scene";
+    QString filter = "All files (*.dss)";
+    QString dir = "../Assets";
+    QString fileName = QFileDialog::getOpenFileName(
+                this,
+                title,
+                dir,
+                filter
+                );
+
+    m_socket->LoadSceneFromFile(fileName.toStdString());
+
     Populate();
 }
 
