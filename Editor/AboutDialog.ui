@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AboutDialog</class>
+ <widget class="QDialog" name="AboutDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>479</width>
+    <height>310</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>About Directus3D</string>
+  </property>
+  <property name="locale">
+   <locale language="English" country="UnitedStates"/>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>&lt;html&gt;
+&lt;head/&gt;
+&lt;body&gt;
+
+&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Copyright(c) 2016 &lt;/span&gt;&lt;a href=&quot;https://panoskarabelas.com/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#6DB8FF;&quot;&gt;Panos Karabelas&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; color:#b4b4b4;&quot;/&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Permission is hereby granted, free of charge, to any person obtaining a copy&lt;br/&gt;of this software and associated documentation files (the &amp;quot;Software&amp;quot;), to deal&lt;br/&gt;in the Software without restriction, including without limitation the rights&lt;br/&gt;to use, copy, modify, merge, publish, distribute, sublicense, and / or sell&lt;br/&gt;copies of the Software, and to permit persons to whom the Software is furnished&lt;br/&gt;to do so, subject to the following conditions :&lt;/span&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;The above copyright notice and this permission notice shall be included in&lt;br/&gt;all copies or substantial portions of the Software. &lt;/span&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;THE SOFTWARE IS PROVIDED &amp;quot;AS IS&amp;quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR&lt;br/&gt;IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS&lt;br/&gt;FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR&lt;br/&gt;COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER&lt;br/&gt;IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN&lt;br/&gt;CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. &lt;/span&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Source code: &lt;/span&gt;&lt;a href=&quot;https://github.com/PanosK92/Directus3D&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#6DB8FF;&quot;&gt;GitHub&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; color:#b4b4b4;&quot;/&gt;&lt;/p&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;</string>
+     </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

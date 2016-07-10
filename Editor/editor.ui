@@ -34,27 +34,27 @@
      <colorrole role="Button">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>33</red>
+        <green>33</green>
+        <blue>33</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>33</red>
+        <green>33</green>
+        <blue>33</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>33</red>
+        <green>33</green>
+        <blue>33</blue>
        </color>
       </brush>
      </colorrole>
@@ -63,27 +63,27 @@
      <colorrole role="Button">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>33</red>
+        <green>33</green>
+        <blue>33</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>33</red>
+        <green>33</green>
+        <blue>33</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>33</red>
+        <green>33</green>
+        <blue>33</blue>
        </color>
       </brush>
      </colorrole>
@@ -92,27 +92,27 @@
      <colorrole role="Button">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>33</red>
+        <green>33</green>
+        <blue>33</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>33</red>
+        <green>33</green>
+        <blue>33</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>33</red>
+        <green>33</green>
+        <blue>33</blue>
        </color>
       </brush>
      </colorrole>
@@ -135,35 +135,35 @@
    <bool>false</bool>
   </property>
   <property name="styleSheet">
-   <string notr="true">/*
-GreyDark				= #292929
-GreyMedium			= #383838
-GreyLight				= #404040
-GreyLightText		= #B4B4B4
-*/
+   <string notr="true">/* Frame background: 212121 */
+/* Text color: 909090 */
+/* Text highlighted: EDEDED */
+/* widgets: 383838 */
+/* widgets highlighted: 484848*/
+/* border fade: 464646*/
 
 QMainWindow
 {
-	background-color: #292929;
+	background-color: #212121;
 	font: 9pt &quot;Calibri&quot;;
 	padding: 1px;
 }
 
 QPushButton
 {
-	background-color: #292929;
+	background-color: #212121;
 }
 
 QWidget
 {
-	background-color: #292929;	
+	background-color: #212121;	
 	font: 9pt &quot;Calibri&quot;;
 	padding: 0px;
 }
 
 QStatusBar
 {
-	background-color:  #292929;
+	background-color:  #212121;
 	font: 9pt &quot;Calibri&quot;;
 	padding: 0px;
 }
@@ -171,14 +171,14 @@ QStatusBar
 QMenuBar
 {
 	color: #B4B4B4;
-	background-color: #404040;
+	background-color: #383838;
 	padding: 0px;
 }
 
 QMenu::item
 {
-	color: #B4B4B4;
-	background-color: #404040;
+	color: #909090;
+	background-color: #383838;
 }
 
 QMenu::item:hover
@@ -188,20 +188,20 @@ QMenu::item:hover
 
 QMenu::item:selected
 {
-	color:  #404040;
-	background-color:#B4B4B4;
+	color:  #EDEDED;
+	background-color:#484848;
 }
 
 QMenuBar::item:pressed 
 {
-    color:  #404040;
-	background-color:#B4B4B4;
+    color:  black;
+	background-color:#484848;
 }
 
 QTreeWidget
 {
 	color: #B4B4B4;
-	background-color: #404040;
+	background-color: #383838;
 	padding: 0px;
 	border-style: outset;
 	border-width: 1px;
@@ -210,8 +210,8 @@ QTreeWidget
 
 QTreeView
 {
-	color: #B4B4B4;
-	background-color: #404040;
+	color: #909090;
+	background-color: #383838;
 	padding: 0px;
 	border-style: outset;
 	border-width: 1px;
@@ -220,8 +220,8 @@ QTreeView
 
 QListWidget
 {
-	color: #B4B4B4;
-	background-color: #404040;
+	color: #909090;
+	background-color: #383838;
 	padding: 0px;
 	border-style: outset;
 	border-width: 1px;
@@ -230,28 +230,83 @@ QListWidget
 
 QListView
 {
-	color: #B4B4B4;
-	background-color: #404040;
+	color: #909090;
+	background-color: #383838;
 	padding: 0px;
 	border-style: outset;
 	border-width: 1px;
 	border-color: black;
+}
+
+QListView::item:alternate 
+{
+    background:  #383838;
 }
 
 QTabWidget
 {
-	color: #B4B4B4;
-	background-color: #404040;
+	color: #909090;
+	background-color: #383838;
 	padding: 0px;
 	border-style: outset;
 	border-width: 1px;
 	border-color: black;
 }
 
+QTabBar::tab
+{
+	color: #909090;
+	background-color: #212121;	
+
+	background-image: url(:/Images/tabProject.png);
+	background-repeat: no-repeat;
+	background-position: left;
+
+	border-color: #464646;
+	border-style: none;
+	border-width: 1px;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-width: 0px;
+
+	min-width: 3.5em;
+	min-height: 1.3em;
+
+	padding-top: 1px;
+	padding-bottom: 1px;
+	padding-left: 18px;
+	padding-right: 6px;
+}
+
+QTabBar::tab:selected
+{
+	color: #909090;
+	background-color: #484848;	
+
+	background-image: url(:/Images/tabProject.png);
+	background-repeat: no-repeat;
+	background-position: left;
+
+	border-color: #464646;
+	border-style: solid;
+	border-width: 1px;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-width: 0px;
+
+	min-width: 3.5em;
+	min-height: 1.3em;
+
+	padding-top: 1px;
+	padding-bottom: 1px;
+	padding-left: 18px;
+	padding-right: 6px;
+}
+
 QDirectus3DWidget
 {
-	color: #B4B4B4;
-	background-color: #404040;
+	color: #909090;
+	background-color: #383838;
 	padding: 0px;
 	border-style: outset;
 	border-width: 1px;
@@ -293,31 +348,12 @@ QScrollBar::sub-line
     subcontrol-origin: margin;
 }
 
-QTabBar::tab:selected 
-{
-		background-color: #B4B4B4;
-		color: #383838;
-		/*border-radius: 2px;*/
-}
-
-QTabBar::tab
-{
-		background-color: #383838;
-		color: #B4B4B4;
-		/*border-radius: 2px;*/
-}
-
-QListView::item:alternate 
-{
-    background:  #383838;
-}
-
-/*
-GreyDark				= #292929;
-GreyMedium			= #383838;
-GreyLight				= #404040;
-GreyLightText		= #B4B4B4;
-*/
+/* Frame background: 212121 */
+/* Text color: 909090 */
+/* Text highlighted: EDEDED */
+/* widgets: 383838 */
+/* widgets highlighted: 484848*/
+/* border fade: 464646*/
 </string>
   </property>
   <property name="locale">
@@ -420,7 +456,7 @@ GreyLightText		= #B4B4B4;
 {
 min-width: 2em;
 padding: 3px;
-border-color: #383838;
+border-color: #464646;
 background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
 background-image: url(:/Images/play.png);
 background-repeat: no-repeat;
@@ -436,7 +472,7 @@ QPushButton:checked
 {
 min-width: 2em;
 padding: 3px;
-border-color: #383838;
+border-color: #464646;
 background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
 background-image: url(:/Images/play.png);
 background-repeat: no-repeat;
@@ -447,12 +483,13 @@ border-top-left-radius: 5px;
 border-bottom-left-radius: 5px;
 }
  
-/*
-GreyDark				= #292929
-GreyMedium			= #383838
-GreyLight				= #404040
-GreyLightText		= #B4B4B4
-*/</string>
+/* Frame background: 212121 */
+/* Text color: 909090 */
+/* Text highlighted: EDEDED */
+/* widgets: 383838 */
+/* widgets highlighted: 484848*/
+/* border fade: 464646*/
+</string>
            </property>
            <property name="text">
             <string/>
@@ -484,7 +521,7 @@ GreyLightText		= #B4B4B4
 {
 min-width: 2em;
 padding: 3px;
-border-color: #383838;
+border-color: #464646;
 background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
 background-image: url(:/Images/pause.png) contain;
 background-repeat: no-repeat;
@@ -499,7 +536,7 @@ QPushButton:checked
 {
 min-width: 2em;
 padding: 3px;
-border-color: #383838;
+border-color: #464646;
 background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
 background-image: url(:/Images/pause.png);
 background-repeat: no-repeat;
@@ -510,12 +547,13 @@ border-top-right-radius: 5px;
 border-bottom-right-radius: 5px;
 }
  
-/*
-GreyDark				= #292929
-GreyMedium			= #383838
-GreyLight				= #404040
-GreyLightText		= #B4B4B4
-*/</string>
+/* Frame background: 212121 */
+/* Text color: 909090 */
+/* Text highlighted: EDEDED */
+/* widgets: 383838 */
+/* widgets highlighted: 484848*/
+/* border fade: 464646*/
+</string>
            </property>
            <property name="text">
             <string/>
@@ -644,54 +682,54 @@ GreyLightText		= #B4B4B4
                   <colorrole role="WindowText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>180</red>
-                     <green>180</green>
-                     <blue>180</blue>
+                     <red>144</red>
+                     <green>144</green>
+                     <blue>144</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>64</red>
-                     <green>64</green>
-                     <blue>64</blue>
+                     <red>56</red>
+                     <green>56</green>
+                     <blue>56</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Text">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>180</red>
-                     <green>180</green>
-                     <blue>180</blue>
+                     <red>144</red>
+                     <green>144</green>
+                     <blue>144</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="ButtonText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>180</red>
-                     <green>180</green>
-                     <blue>180</blue>
+                     <red>144</red>
+                     <green>144</green>
+                     <blue>144</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>64</red>
-                     <green>64</green>
-                     <blue>64</blue>
+                     <red>56</red>
+                     <green>56</green>
+                     <blue>56</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>64</red>
-                     <green>64</green>
-                     <blue>64</blue>
+                     <red>56</red>
+                     <green>56</green>
+                     <blue>56</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -718,54 +756,54 @@ GreyLightText		= #B4B4B4
                   <colorrole role="WindowText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>180</red>
-                     <green>180</green>
-                     <blue>180</blue>
+                     <red>144</red>
+                     <green>144</green>
+                     <blue>144</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>64</red>
-                     <green>64</green>
-                     <blue>64</blue>
+                     <red>56</red>
+                     <green>56</green>
+                     <blue>56</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Text">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>180</red>
-                     <green>180</green>
-                     <blue>180</blue>
+                     <red>144</red>
+                     <green>144</green>
+                     <blue>144</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="ButtonText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>180</red>
-                     <green>180</green>
-                     <blue>180</blue>
+                     <red>144</red>
+                     <green>144</green>
+                     <blue>144</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>64</red>
-                     <green>64</green>
-                     <blue>64</blue>
+                     <red>56</red>
+                     <green>56</green>
+                     <blue>56</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>64</red>
-                     <green>64</green>
-                     <blue>64</blue>
+                     <red>56</red>
+                     <green>56</green>
+                     <blue>56</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -792,54 +830,54 @@ GreyLightText		= #B4B4B4
                   <colorrole role="WindowText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>180</red>
-                     <green>180</green>
-                     <blue>180</blue>
+                     <red>144</red>
+                     <green>144</green>
+                     <blue>144</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>64</red>
-                     <green>64</green>
-                     <blue>64</blue>
+                     <red>56</red>
+                     <green>56</green>
+                     <blue>56</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Text">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>180</red>
-                     <green>180</green>
-                     <blue>180</blue>
+                     <red>144</red>
+                     <green>144</green>
+                     <blue>144</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="ButtonText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>180</red>
-                     <green>180</green>
-                     <blue>180</blue>
+                     <red>144</red>
+                     <green>144</green>
+                     <blue>144</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>64</red>
-                     <green>64</green>
-                     <blue>64</blue>
+                     <red>56</red>
+                     <green>56</green>
+                     <blue>56</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>64</red>
-                     <green>64</green>
-                     <blue>64</blue>
+                     <red>56</red>
+                     <green>56</green>
+                     <blue>56</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -989,7 +1027,7 @@ GreyLightText		= #B4B4B4
              <widget class="QTabWidget" name="tabWidget">
               <property name="minimumSize">
                <size>
-                <width>0</width>
+                <width>51</width>
                 <height>0</height>
                </size>
               </property>
@@ -1011,11 +1049,23 @@ GreyLightText		= #B4B4B4
               <property name="autoFillBackground">
                <bool>false</bool>
               </property>
+              <property name="tabShape">
+               <enum>QTabWidget::Rounded</enum>
+              </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
+              </property>
+              <property name="iconSize">
+               <size>
+                <width>15</width>
+                <height>15</height>
+               </size>
               </property>
               <property name="elideMode">
                <enum>Qt::ElideNone</enum>
+              </property>
+              <property name="usesScrollButtons">
+               <bool>true</bool>
               </property>
               <property name="documentMode">
                <bool>true</bool>
@@ -1024,7 +1074,7 @@ GreyLightText		= #B4B4B4
                <bool>false</bool>
               </property>
               <property name="movable">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -1042,27 +1092,27 @@ GreyLightText		= #B4B4B4
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>33</red>
+                     <green>33</green>
+                     <blue>33</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>33</red>
+                     <green>33</green>
+                     <blue>33</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>33</red>
+                     <green>33</green>
+                     <blue>33</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1071,27 +1121,27 @@ GreyLightText		= #B4B4B4
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>33</red>
+                     <green>33</green>
+                     <blue>33</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>33</red>
+                     <green>33</green>
+                     <blue>33</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>33</red>
+                     <green>33</green>
+                     <blue>33</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1100,27 +1150,27 @@ GreyLightText		= #B4B4B4
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>33</red>
+                     <green>33</green>
+                     <blue>33</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>33</red>
+                     <green>33</green>
+                     <blue>33</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>33</red>
+                     <green>33</green>
+                     <blue>33</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1130,7 +1180,7 @@ GreyLightText		= #B4B4B4
                <attribute name="title">
                 <string>Project</string>
                </attribute>
-               <layout class="QHBoxLayout" name="tabProjectLayout">
+               <layout class="QHBoxLayout" name="horizontalLayout_5">
                 <property name="spacing">
                  <number>0</number>
                 </property>
@@ -1147,10 +1197,20 @@ GreyLightText		= #B4B4B4
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="QListView" name="listView"/>
+                 <layout class="QHBoxLayout" name="horizontalLayout">
+                  <property name="spacing">
+                   <number>0</number>
+                  </property>
+                 </layout>
                 </item>
                 <item>
-                 <widget class="QTreeView" name="treeView"/>
+                 <widget class="QSplitter" name="splitterProject">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <widget class="DirectusFileExplorer" name="projectListView"/>
+                  <widget class="DirectusDirExplorer" name="projectTreeView"/>
+                 </widget>
                 </item>
                </layout>
               </widget>
@@ -1922,22 +1982,38 @@ border-color: black;</string>
    <extends>QPushButton</extends>
    <header>DirectusPlayButton.h</header>
   </customwidget>
+  <customwidget>
+   <class>DirectusDirExplorer</class>
+   <extends>QTreeView</extends>
+   <header>DirectusDirExplorer.h</header>
+   <slots>
+    <slot>UpdateFileExplorer(QModelIndex)</slot>
+   </slots>
+  </customwidget>
+  <customwidget>
+   <class>DirectusFileExplorer</class>
+   <extends>QListView</extends>
+   <header>DirectusFileExplorer.h</header>
+   <slots>
+    <slot>SetRootPath(QString)</slot>
+   </slots>
+  </customwidget>
  </customwidgets>
  <resources/>
  <connections>
   <connection>
-   <sender>actionCreate_Empy</sender>
-   <signal>triggered()</signal>
-   <receiver>hierarchyTree</receiver>
-   <slot>CreateEmptyGameObject()</slot>
+   <sender>projectTreeView</sender>
+   <signal>clicked(QModelIndex)</signal>
+   <receiver>projectTreeView</receiver>
+   <slot>UpdateFileExplorer(QModelIndex)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
+     <x>947</x>
+     <y>708</y>
     </hint>
     <hint type="destinationlabel">
-     <x>127</x>
-     <y>327</y>
+     <x>947</x>
+     <y>708</y>
     </hint>
    </hints>
   </connection>
@@ -1953,7 +2029,7 @@ border-color: black;</string>
     </hint>
     <hint type="destinationlabel">
      <x>127</x>
-     <y>327</y>
+     <y>347</y>
     </hint>
    </hints>
   </connection>
@@ -1969,23 +2045,7 @@ border-color: black;</string>
     </hint>
     <hint type="destinationlabel">
      <x>127</x>
-     <y>327</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>actionSave_Scene_as</sender>
-   <signal>triggered()</signal>
-   <receiver>hierarchyTree</receiver>
-   <slot>SaveSceneAs()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>127</x>
-     <y>342</y>
+     <y>347</y>
     </hint>
    </hints>
   </connection>
@@ -2001,9 +2061,44 @@ border-color: black;</string>
     </hint>
     <hint type="destinationlabel">
      <x>127</x>
-     <y>342</y>
+     <y>347</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionSave_Scene_as</sender>
+   <signal>triggered()</signal>
+   <receiver>hierarchyTree</receiver>
+   <slot>SaveSceneAs()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>127</x>
+     <y>347</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>127</x>
+     <y>347</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionCreate_Empy</sender>
+   <signal>triggered()</signal>
+   <receiver>hierarchyTree</receiver>
+   <slot>CreateEmptyGameObject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>127</x>
+     <y>347</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>127</x>
+     <y>347</y>
     </hint>
    </hints>
   </connection>
  </connections>
+ <slots>
+  <slot>DisplayAboutDialog()</slot>
+ </slots>
 </ui>
