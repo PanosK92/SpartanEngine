@@ -19,35 +19,35 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
-#include "editor.h"
-#include "ui_editor.h"
-//====================
+#pragma once
 
-Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
+//= INCLUDES ===========
+#include <QListWidget>
+#include "Core/Socket.h"
+#include "IO/ILogger.h"
+#include <string>
+//======================
+
+class DirectusConsoleWidget : public QListWidget
 {
-    ui->setupUi(this);
+    Q_OBJECT
+public:
+    explicit DirectusConsoleWidget(QWidget *parent = 0);
+    void SetEngineSocket(Socket* socket);
+private:
+    Socket* m_socket;
+    ILogger* m_engineLogger;
 
-    // Create whatever we need here
-    m_aboutDialog = new AboutDialog(this);
+signals:
 
-    // Get engine socket
-    Socket* engineSocket = ui->directus3DWidget->GetEngineSocket();
+public slots:
+};
 
-    // Pass the engine socket to the widgets that need it
-    ui->hierarchyTree->SetEngineSocket(engineSocket);
-    ui->consoleList->SetEngineSocket(engineSocket);
-
-    // Resolve other dependencies
-    ui->projectTreeView->SetFileExplorer(ui->projectListView);
-}
-
-Editor::~Editor()
+class EngineLogger : public ILogger
 {
-    delete ui;
-}
-
-void Editor::on_actionAbout_Directus3D_triggered()
-{
-    m_aboutDialog->show();
-}
+public:
+    EngineLogger(QListWidget* list);
+    virtual void Log(std::string log, int type);
+private:
+    QListWidget* m_list;
+};

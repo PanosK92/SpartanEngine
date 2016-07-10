@@ -17,21 +17,21 @@ SOURCES += main.cpp\
     DirectusTreeWidget.cpp \
     Directus3DWidget.cpp \
     DirectusQTHelper.cpp \
-    DirectusListWidget.cpp \
     DirectusPlayButton.cpp \
     AboutDialog.cpp \
     DirectusDirExplorer.cpp \
-    DirectusFileExplorer.cpp
+    DirectusFileExplorer.cpp \
+    DirectusConsoleWidget.cpp
 
 HEADERS  += editor.h \
     DirectusTreeWidget.h \
     Directus3DWidget.h \
     DirectusQTHelper.h \
-    DirectusListWidget.h \
     DirectusPlayButton.h \
     AboutDialog.h \
     DirectusDirExplorer.h \
-    DirectusFileExplorer.h
+    DirectusFileExplorer.h \
+    DirectusConsoleWidget.h
 
 FORMS    += editor.ui \
     AboutDialog.ui
