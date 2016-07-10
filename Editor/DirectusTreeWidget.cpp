@@ -46,28 +46,6 @@ void DirectusTreeWidget::Clear()
     clear();
 }
 
-// Converts a GameObject to a QTreeWidgetItem
-QTreeWidgetItem *DirectusTreeWidget::GameObjectToQTreeItem(GameObject* gameobject)
-{
-    // Get data from the GameObject
-    QString name = QString::fromStdString(gameobject->GetName());
-    bool isRoot = gameobject->GetTransform()->IsRoot();
-
-    // Create a tree item
-    QTreeWidgetItem* item = isRoot ? new QTreeWidgetItem(this) : new QTreeWidgetItem();
-    item->setTextColor(0, QColor("#B4B4B4"));
-    item->setText(0, name);   
-    item->setData(0, Qt::UserRole, VPtr<GameObject>::asQVariant(gameobject));
-
-    //= About Qt::UserRole ==============================================================
-    // Constant     -> Qt::UserRole
-    // Value        -> 0x0100
-    // Description  -> The first role that can be used for application-specific purposes.
-    //===================================================================================
-
-    return item;
-}
-
 void DirectusTreeWidget::AddRoot(QTreeWidgetItem* item)
 {
     this->addTopLevelItem(item);
@@ -131,6 +109,29 @@ bool DirectusTreeWidget::IsAnyGameObjectSelected()
     return GetSelectedGameObject() ? true : false;
 }
 
+// Converts a GameObject to a QTreeWidgetItem
+QTreeWidgetItem *DirectusTreeWidget::GameObjectToQTreeItem(GameObject* gameobject)
+{
+	// Get data from the GameObject
+	QString name = QString::fromStdString(gameobject->GetName());
+	bool isRoot = gameobject->GetTransform()->IsRoot();
+
+	// Create a tree item
+	QTreeWidgetItem* item = isRoot ? new QTreeWidgetItem(this) : new QTreeWidgetItem();
+	item->setTextColor(0, QColor("#B4B4B4"));
+	item->setText(0, name);
+	item->setData(0, Qt::UserRole, VPtr<GameObject>::asQVariant(gameobject));
+
+	//= About Qt::UserRole ==============================================================
+	// Constant     -> Qt::UserRole
+	// Value        -> 0x0100
+	// Description  -> The first role that can be used for application-specific purposes.
+	//===================================================================================
+
+	return item;
+}
+
+//= SLOTS ===============================================
 void DirectusTreeWidget::Populate()
 {
     Clear();
@@ -204,3 +205,4 @@ void DirectusTreeWidget::SaveSceneAs()
 
     m_socket->SaveSceneToFile(m_sceneFileName.toStdString());
 }
+//========================================================

@@ -85,9 +85,8 @@ void Socket::SetEngineMode(EngineMode mode)
 	Settings::GetInstance().SetEngineMode(mode);
 }
 
-void Socket::Run()
+void Socket::Update()
 {
-	LOG(GetFPS());
 	// update time
 	m_timer->Update();
 
@@ -102,8 +101,10 @@ void Socket::Run()
 
 	// update scene
 	m_scene->Update();
+}
 
-	// render
+void Socket::Render()
+{
 	m_renderer->Render();
 }
 
