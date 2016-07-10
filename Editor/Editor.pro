@@ -18,16 +18,23 @@ SOURCES += main.cpp\
     Directus3DWidget.cpp \
     DirectusQTHelper.cpp \
     DirectusListWidget.cpp \
-    DirectusPlayButton.cpp
+    DirectusPlayButton.cpp \
+    AboutDialog.cpp \
+    DirectusDirExplorer.cpp \
+    DirectusFileExplorer.cpp
 
 HEADERS  += editor.h \
     DirectusTreeWidget.h \
     Directus3DWidget.h \
     DirectusQTHelper.h \
     DirectusListWidget.h \
-    DirectusPlayButton.h
+    DirectusPlayButton.h \
+    AboutDialog.h \
+    DirectusDirExplorer.h \
+    DirectusFileExplorer.h
 
-FORMS    += editor.ui
+FORMS    += editor.ui \
+    AboutDialog.ui
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirectus3d
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirectus3d
