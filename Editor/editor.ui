@@ -1165,7 +1165,7 @@ border-width: 1px;
                <bool>false</bool>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <property name="iconSize">
                <size>
@@ -2120,6 +2120,22 @@ border-width: 1px;
     <hint type="destinationlabel">
      <x>127</x>
      <y>347</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>projectDirExplorer</sender>
+   <signal>clicked(QModelIndex)</signal>
+   <receiver>projectDirExplorer</receiver>
+   <slot>UpdateFileExplorer(QModelIndex)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>128</x>
+     <y>708</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>128</x>
+     <y>708</y>
     </hint>
    </hints>
   </connection>
