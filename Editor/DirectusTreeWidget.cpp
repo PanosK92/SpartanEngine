@@ -188,7 +188,7 @@ void DirectusTreeWidget::OpenScene()
 {
     QString title = "Load Scene";
     QString filter = "All files (*.dss)";
-    QString dir = "../Assets";
+    QString dir = "Assets";
     m_sceneFileName = QFileDialog::getOpenFileName(
                 this,
                 title,
@@ -216,7 +216,7 @@ void DirectusTreeWidget::SaveSceneAs()
 {
     QString title = "Save Scene";
     QString filter = "All files (*.dss)";
-    QString dir = "../Assets";
+    QString dir = "Assets";
     m_sceneFileName = QFileDialog::getSaveFileName(
                 this,
                 title,
