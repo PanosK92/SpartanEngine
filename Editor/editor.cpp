@@ -39,7 +39,7 @@ Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
     ui->consoleList->SetEngineSocket(engineSocket);
 
     // Resolve other dependencies
-    ui->projectTreeView->SetFileExplorer(ui->projectListView);
+    ui->projectDirExplorer->SetFileExplorer(ui->projectFileExplorer);
 }
 
 Editor::~Editor()
