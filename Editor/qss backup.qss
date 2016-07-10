@@ -25,6 +25,84 @@ QWidget
 	padding: 0px;
 }
 
+QDirectus3DWidget
+{
+	background-color: #383838;
+	border-style: outset;
+	border-color: black;
+}
+
+/*= SCROLLBAR - VERTICAL ========================================================================*/
+QScrollBar:vertical 
+{
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
+	background-color: qlineargradient(spread:pad, x1:0, y1:0.5, x2:1, y2:0.5, stop:0 rgba(54, 54, 54, 255), stop:1 rgba(79, 79, 79, 255));
+	margin: 21px 0 21px 0;
+}
+
+QScrollBar::handle:vertical 
+{
+	background-color: qlineargradient(spread:pad, x1:0, y1:0.5, x2:1, y2:0.5, stop:0 rgba(100, 100, 100, 255), stop:1 rgba(79, 79, 79, 255));
+}
+
+QScrollBar::add-line:vertical 
+{
+	height: 15px;
+	subcontrol-position: bottom;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::sub-line:vertical 
+{
+	height: 15px;
+	subcontrol-position: top;
+    subcontrol-origin: margin;
+}
+
+ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical 
+{
+	background: none;
+ }
+/*========================================================================================*/
+
+/*= SCROLLBAR - HORIZONTAL ======================================================================*/
+QScrollBar:horizontal 
+{
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
+	background-color:  qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(46, 46, 46, 255), stop:1 rgba(79, 79, 79, 255));
+	margin: 0 21px 0 21px;
+}
+
+QScrollBar::handle:horizontal 
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(54, 54, 54, 255), stop:1 rgba(79, 79, 79, 255));
+}
+
+QScrollBar::add-line:horizontal 
+{
+	width: 15px;
+	subcontrol-position: left;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::sub-line:horizontal 
+{
+	width: 15px;
+	subcontrol-position: right;
+    subcontrol-origin: margin;
+}
+
+ QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal 
+{
+	background: none;
+ }
+/*========================================================================================*/
+
+/*= MENU ===================================================================================*/
 QMenuBar
 {
 	color: #B4B4B4;
@@ -49,7 +127,9 @@ QMenuBar::item:pressed
     color:  black;
 	background-color:#484848;
 }
+/*========================================================================================*/
 
+/*= TREES ==================================================================================*/
 QTreeWidget
 {
 	background-color: #383838;
@@ -61,7 +141,9 @@ QTreeView
 	background-color: #383838;
 	border-style: outset;
 }
+/*========================================================================================*/
 
+/*= LISTS ===================================================================================*/
 QListWidget
 {
 	color: #383838;
@@ -86,7 +168,9 @@ QListView::item:alternate
 	color: #909090;				
     background:  #484848;
 }
+/*========================================================================================*/
 
+/*= TAB ====================================================================================*/
 QTabWidget
 {
 	background-color: #383838;
@@ -136,45 +220,7 @@ QTabBar::tab:selected
 	padding-left: 18px;
 	padding-right: 6px;
 }
-
-QDirectus3DWidget
-{
-	background-color: #383838;
-	border-style: outset;
-	border-color: black;
-}
-
-QScrollBar 
-{
-	border-color: rgb(227, 227, 227);
-  	background-color:  rgb(241, 241, 241);
-	width: 15px;
-	margin: 21px 0 21px 0;
-}
-
-QScrollBar::handle 
-{
-	background-color: rgb(200, 200, 200);
- 	min-height: 25px;
-}
-
- QScrollBar::add-line 
-{
-    border: 1px solid grey;
-	background-color: rgb(241, 241, 241);
-    height: 20px;
-    subcontrol-position: bottom;
-    subcontrol-origin: margin;
-}
-
-QScrollBar::sub-line
- {
-    border: 1px solid grey;
-    background-color: rgb(241, 241, 241);
-    height: 20px;
-    subcontrol-position: top;
-    subcontrol-origin: margin;
-}
+/*========================================================================================*/
 
 /* Frame background: 212121 */
 /* Text color: 909090 */

@@ -29,7 +29,7 @@ DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
     m_fileModel = new QFileSystemModel(this);
 
     // Set a filter that displays only folders
-    m_fileModel->setFilter(QDir::Files);
+    m_fileModel->setFilter(QDir::Files | QDir::AllDirs);
 
     // Set the root path
     m_fileModel->setRootPath(root);
