@@ -297,12 +297,14 @@ QTabBar::tab:selected
 {
 		background-color: #B4B4B4;
 		color: #383838;
+		/*border-radius: 2px;*/
 }
 
 QTabBar::tab
 {
 		background-color: #383838;
 		color: #B4B4B4;
+		/*border-radius: 2px;*/
 }
 
 QListView::item:alternate 
@@ -383,6 +385,22 @@ GreyLightText		= #B4B4B4;
           <number>0</number>
          </property>
          <item>
+          <spacer name="verticalSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Fixed</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>30</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
           <spacer name="horizontalSpacer">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
@@ -396,9 +414,57 @@ GreyLightText		= #B4B4B4;
           </spacer>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButton">
+          <widget class="DirectusPlayButton" name="buttonPlay">
+           <property name="styleSheet">
+            <string notr="true">QPushButton
+{
+min-width: 2em;
+padding: 3px;
+border-color: #383838;
+background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
+background-image: url(:/Images/play.png);
+background-repeat: no-repeat;
+background-position: center;
+background-size: cover;
+border-style: outset;
+border-width: 1px;
+border-top-left-radius: 5px;
+border-bottom-left-radius: 5px;
+}
+
+QPushButton:checked 
+{
+min-width: 2em;
+padding: 3px;
+border-color: #383838;
+background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
+background-image: url(:/Images/play.png);
+background-repeat: no-repeat;
+background-position: center;
+border-style: outset;
+border-width: 1px;
+border-top-left-radius: 5px;
+border-bottom-left-radius: 5px;
+}
+ 
+/*
+GreyDark				= #292929
+GreyMedium			= #383838
+GreyLight				= #404040
+GreyLightText		= #B4B4B4
+*/</string>
+           </property>
            <property name="text">
-            <string>PushButton</string>
+            <string/>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="autoRepeat">
+            <bool>false</bool>
+           </property>
+           <property name="autoExclusive">
+            <bool>false</bool>
            </property>
            <property name="autoDefault">
             <bool>false</bool>
@@ -412,9 +478,53 @@ GreyLightText		= #B4B4B4;
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButton_2">
+          <widget class="QPushButton" name="buttonPause">
+           <property name="styleSheet">
+            <string notr="true">QPushButton
+{
+min-width: 2em;
+padding: 3px;
+border-color: #383838;
+background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
+background-image: url(:/Images/pause.png) contain;
+background-repeat: no-repeat;
+background-position: center;
+border-style: outset;
+border-width: 1px;
+border-top-right-radius: 5px;
+border-bottom-right-radius: 5px;
+}
+
+QPushButton:checked 
+{
+min-width: 2em;
+padding: 3px;
+border-color: #383838;
+background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
+background-image: url(:/Images/pause.png);
+background-repeat: no-repeat;
+background-position: center;
+border-style: outset;
+border-width: 1px;
+border-top-right-radius: 5px;
+border-bottom-right-radius: 5px;
+}
+ 
+/*
+GreyDark				= #292929
+GreyMedium			= #383838
+GreyLight				= #404040
+GreyLightText		= #B4B4B4
+*/</string>
+           </property>
            <property name="text">
-            <string>PushButton</string>
+            <string/>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
            </property>
           </widget>
          </item>
@@ -902,7 +1012,7 @@ GreyLightText		= #B4B4B4;
                <bool>false</bool>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <property name="elideMode">
                <enum>Qt::ElideNone</enum>
@@ -1037,11 +1147,10 @@ GreyLightText		= #B4B4B4;
                  <number>0</number>
                 </property>
                 <item>
-                 <layout class="QHBoxLayout" name="layoutTabProject">
-                  <property name="spacing">
-                   <number>0</number>
-                  </property>
-                 </layout>
+                 <widget class="QListView" name="listView"/>
+                </item>
+                <item>
+                 <widget class="QTreeView" name="treeView"/>
                 </item>
                </layout>
               </widget>
@@ -1807,6 +1916,11 @@ border-color: black;</string>
    <class>DirectusListWidget</class>
    <extends>QListWidget</extends>
    <header>DirectusListWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>DirectusPlayButton</class>
+   <extends>QPushButton</extends>
+   <header>DirectusPlayButton.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

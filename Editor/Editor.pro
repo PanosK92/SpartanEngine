@@ -17,13 +17,15 @@ SOURCES += main.cpp\
     DirectusTreeWidget.cpp \
     Directus3DWidget.cpp \
     DirectusQTHelper.cpp \
-    DirectusListWidget.cpp
+    DirectusListWidget.cpp \
+    DirectusPlayButton.cpp
 
 HEADERS  += editor.h \
     DirectusTreeWidget.h \
     Directus3DWidget.h \
     DirectusQTHelper.h \
-    DirectusListWidget.h
+    DirectusListWidget.h \
+    DirectusPlayButton.h
 
 FORMS    += editor.ui
 
@@ -42,3 +44,6 @@ RCC_DIR = "$$ParentDirectory\RCCFiles"
 UI_DIR = "$$ParentDirectory\UICFiles"
 MOC_DIR = "$$ParentDirectory\MOCFiles"
 OBJECTS_DIR = "$$ParentDirectory\ObjFiles"
+
+RESOURCES += \
+    Images/images.qrc

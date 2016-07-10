@@ -52,7 +52,8 @@ public:
 	//= MISC =======================================================================
 	EngineMode GetEngineMode();
 	void SetEngineMode(EngineMode mode);
-	void Run();
+	void Update();
+	void Render();
 	void SetPhysicsDebugDraw(bool enable);
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
 	//==============================================================================
