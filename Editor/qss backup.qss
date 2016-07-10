@@ -1,0 +1,184 @@
+/* Frame background: 292929 */
+/* Text color: 909090 */
+/* Text highlighted: EDEDED */
+/* widgets: 383838 */
+/* widgets highlighted: 484848*/
+/* border: 212121/
+/* border highlighted: 464646*/
+
+QMainWindow
+{
+	color: #909090;
+	background-color: #292929;
+	font: 9pt "Calibri";
+	padding: 0px;
+}
+
+QWidget
+{
+	color: #909090;
+	background-color: #292929;
+	border-color: #212121;
+	border-style: none;
+	border-width: 1px;
+	font: 9pt "Calibri";
+	padding: 0px;
+}
+
+QMenuBar
+{
+	color: #B4B4B4;
+	background-color: #383838;
+	padding: 0px;
+}
+
+QMenu::item
+{
+	color: #909090;
+	background-color: #383838;
+}
+
+QMenu::item:selected
+{
+	color:  #EDEDED;
+	background-color:#484848;
+}
+
+QMenuBar::item:pressed 
+{
+    color:  black;
+	background-color:#484848;
+}
+
+QTreeWidget
+{
+	background-color: #383838;
+	border-style: solid;
+}
+
+QTreeView
+{
+	background-color: #383838;
+	border-style: outset;
+}
+
+QListWidget
+{
+	color: #383838;
+	background-color: #383838;
+	border-style: outset;
+}
+
+QListView
+{
+	background-color: #383838;
+	border-style: outset;
+}
+
+QListView::item 
+{
+	color: #909090;				
+    background:  #383838;
+}
+
+QListView::item:alternate 
+{
+	color: #909090;				
+    background:  #484848;
+}
+
+QTabWidget
+{
+	background-color: #383838;
+	border-style: outset;
+}
+
+QTabBar::tab
+{
+	background-image: url(:/Images/tabProject.png);
+	background-repeat: no-repeat;
+	background-position: left;
+
+	border-color: #464646;
+	border-style: none;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-width: 0px;
+
+	min-width: 3.5em;
+	min-height: 1.3em;
+
+	padding-top: 1px;
+	padding-bottom: 1px;
+	padding-left: 18px;
+	padding-right: 6px;
+}
+
+QTabBar::tab:selected
+{
+	background-color: #484848;	
+
+	background-image: url(:/Images/tabProject.png);
+	background-repeat: no-repeat;
+	background-position: left;
+
+	border-color: #464646;
+	border-style: solid;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-width: 0px;
+
+	min-width: 3.5em;
+	min-height: 1.3em;
+
+	padding-top: 1px;
+	padding-bottom: 1px;
+	padding-left: 18px;
+	padding-right: 6px;
+}
+
+QDirectus3DWidget
+{
+	background-color: #383838;
+	border-style: outset;
+	border-color: black;
+}
+
+QScrollBar 
+{
+	border-color: rgb(227, 227, 227);
+  	background-color:  rgb(241, 241, 241);
+	width: 15px;
+	margin: 21px 0 21px 0;
+}
+
+QScrollBar::handle 
+{
+	background-color: rgb(200, 200, 200);
+ 	min-height: 25px;
+}
+
+ QScrollBar::add-line 
+{
+    border: 1px solid grey;
+	background-color: rgb(241, 241, 241);
+    height: 20px;
+    subcontrol-position: bottom;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::sub-line
+ {
+    border: 1px solid grey;
+    background-color: rgb(241, 241, 241);
+    height: 20px;
+    subcontrol-position: top;
+    subcontrol-origin: margin;
+}
+
+/* Frame background: 212121 */
+/* Text color: 909090 */
+/* Text highlighted: EDEDED */
+/* widgets: 383838 */
+/* widgets highlighted: 484848*/
+/* border fade: 464646*/

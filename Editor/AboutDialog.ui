@@ -10,6 +10,15 @@
     <height>310</height>
    </rect>
   </property>
+  <property name="maximumSize">
+   <size>
+    <width>479</width>
+    <height>310</height>
+   </size>
+  </property>
+  <property name="contextMenuPolicy">
+   <enum>Qt::DefaultContextMenu</enum>
+  </property>
   <property name="windowTitle">
    <string>About Directus3D</string>
   </property>
@@ -19,12 +28,17 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="label">
+     <property name="contextMenuPolicy">
+      <enum>Qt::NoContextMenu</enum>
+     </property>
      <property name="text">
       <string>&lt;html&gt;
 &lt;head/&gt;
 &lt;body&gt;
 
 &lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Copyright(c) 2016 &lt;/span&gt;&lt;a href=&quot;https://panoskarabelas.com/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#6DB8FF;&quot;&gt;Panos Karabelas&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; color:#b4b4b4;&quot;/&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Directus3D is licensed under the MIT License.&lt;/span&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Permission is hereby granted, free of charge, to any person obtaining a copy&lt;br/&gt;of this software and associated documentation files (the &amp;quot;Software&amp;quot;), to deal&lt;br/&gt;in the Software without restriction, including without limitation the rights&lt;br/&gt;to use, copy, modify, merge, publish, distribute, sublicense, and / or sell&lt;br/&gt;copies of the Software, and to permit persons to whom the Software is furnished&lt;br/&gt;to do so, subject to the following conditions :&lt;/span&gt;&lt;/p&gt;
 
@@ -36,6 +50,9 @@
 
 &lt;/body&gt;
 &lt;/html&gt;</string>
+     </property>
+     <property name="scaledContents">
+      <bool>false</bool>
      </property>
      <property name="openExternalLinks">
       <bool>true</bool>
