@@ -38,6 +38,7 @@ public:
     void SetDirectusSocket(Socket* socket);
     void SetDirectusInspector(DirectusInspector* inspector);
     virtual void mousePressEvent(QMouseEvent *event);
+    virtual void selectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
 
 private:
     void Clear();
@@ -54,14 +55,13 @@ private:
   
 	QString m_sceneFileName;	
 	Socket* m_socket;
-
-signals:
+    DirectusInspector* m_inspector;
 
 public slots:
-     void Populate();
-     void CreateEmptyGameObject();
-     void NewScene();
-     void OpenScene();
-     void SaveScene();
-     void SaveSceneAs();
+    void Populate();
+    void CreateEmptyGameObject();
+    void NewScene();
+    void OpenScene();
+    void SaveScene();
+    void SaveSceneAs();
 };

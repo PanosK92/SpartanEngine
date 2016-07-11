@@ -46,6 +46,11 @@ void DirectusHierarchy::SetDirectusSocket(Socket *socket)
     Populate();
 }
 
+void DirectusHierarchy::SetDirectusInspector(DirectusInspector *inspector)
+{
+    m_inspector = inspector;
+}
+
 void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
 {
     // I implement this myself because the QTreeWidget doesn't
@@ -59,6 +64,14 @@ void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
         const QModelIndex index;
         selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
     }
+}
+
+void DirectusHierarchy::selectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
+{
+    QTreeWidget::selectionChanged(selected, deselected);
+
+    if (m_inspector)
+        m_inspector->inspect(GetSelectedGameObject());
 }
 
 void DirectusHierarchy::Clear()

@@ -35,5 +35,5 @@ public:
 signals:
 
 public slots:
-    void Inspect(GameObject* gameobject);
+    void inspect(GameObject* gameobject);
 };
