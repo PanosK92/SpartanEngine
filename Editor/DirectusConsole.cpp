@@ -20,20 +20,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==================
-#include "DirectusConsoleWidget.h"
+#include "DirectusConsole.h"
 //=============================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
 
-DirectusConsoleWidget::DirectusConsoleWidget(QWidget *parent) : QListWidget(parent)
+DirectusConsole::DirectusConsole(QWidget *parent) : QListWidget(parent)
 {
     m_socket = nullptr;
     m_engineLogger = nullptr;
 }
 
-void DirectusConsoleWidget::SetEngineSocket(Socket* socket)
+void DirectusConsole::SetDirectusSocket(Socket* socket)
 {
     m_socket = socket;
 

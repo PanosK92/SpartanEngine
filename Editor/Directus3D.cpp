@@ -20,12 +20,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =================
-#include "Directus3DWidget.h"
+#include "Directus3D.h"
 #include "IO/Log.h"
 //============================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
-Directus3DWidget::Directus3DWidget(QWidget* parent) : QWidget(parent) 
+Directus3D::Directus3D(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_MSWindowsUseDirect3D, true);
 	setAttribute(Qt::WA_PaintOnScreen, true);
@@ -35,19 +35,19 @@ Directus3DWidget::Directus3DWidget(QWidget* parent) : QWidget(parent)
 	Resize(this->size().width(), this->size().height());
 }
 
-Socket* Directus3DWidget::GetEngineSocket()
+Socket* Directus3D::GetEngineSocket()
 {
 
 	return m_socket;
 }
-Directus3DWidget::~Directus3DWidget()
+Directus3D::~Directus3D()
 {
 	ShutdownEngine();
 }
 //====================================================
 
 //= OVERRIDDEN FUNCTIONS =============================
-void Directus3DWidget::resizeEvent(QResizeEvent* evt)
+void Directus3D::resizeEvent(QResizeEvent* evt)
 {
 	int width = evt->size().width();
 	int height = evt->size().height();
@@ -55,9 +55,9 @@ void Directus3DWidget::resizeEvent(QResizeEvent* evt)
 	Resize(width, height);
 }
 
-void Directus3DWidget::paintEvent(QPaintEvent* evt)
+void Directus3D::paintEvent(QPaintEvent* evt)
 {
-	Render();
+	Update();
 
     //Force update works but makes the entire UI perfom laggy
     // update();
@@ -65,7 +65,7 @@ void Directus3DWidget::paintEvent(QPaintEvent* evt)
 //===================================================
 
 //= Engine functions ================================
-void Directus3DWidget::InitializeEngine()
+void Directus3D::InitializeEngine()
 {
 	// Create and initialize Directus3D
 	m_engine = new Engine();
@@ -78,19 +78,19 @@ void Directus3DWidget::InitializeEngine()
 	m_socket = m_engine->GetSocket();
 }
 
-void Directus3DWidget::ShutdownEngine()
+void Directus3D::ShutdownEngine()
 {
 	m_engine->Shutdown();
 	delete m_engine;
 }
 
-void Directus3DWidget::Render()
+void Directus3D::Update()
 {
     m_socket->Update();
     m_socket->Render();
 }
 
-void Directus3DWidget::Resize(int width, int height)
+void Directus3D::Resize(int width, int height)
 {
 	m_socket->SetViewport(width, height);
 }

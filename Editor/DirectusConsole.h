@@ -22,40 +22,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===========
-#include <QTreeWidget>
-#include <QtCore>
+#include <QListWidget>
 #include "Core/Socket.h"
-#include <QVariant>
-#include "QMouseEvent"
+#include "IO/ILogger.h"
+#include <string>
 //======================
 
-class DirectusTreeWidget : public QTreeWidget
+class DirectusConsole : public QListWidget
 {
     Q_OBJECT
 public:
-    explicit DirectusTreeWidget(QWidget* parent = 0);
-    void SetEngineSocket(Socket* socket);
-    virtual void mousePressEvent(QMouseEvent *event);
-
+    explicit DirectusConsole(QWidget *parent = 0);
+    void SetDirectusSocket(Socket* socket);
 private:
-    void Clear();
-    void AddRoot(QTreeWidgetItem* item);
-    void AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child);
-    void AddGameObject(GameObject* gameobject, QTreeWidgetItem *parent);
-    GameObject* GetSelectedGameObject();
-    bool IsAnyGameObjectSelected();
-	QTreeWidgetItem* GameObjectToQTreeItem(GameObject* gameobject);
-  
-	QString m_sceneFileName;	
-	Socket* m_socket;
+    Socket* m_socket;
+    ILogger* m_engineLogger;
 
 signals:
 
 public slots:
-     void Populate();
-     void CreateEmptyGameObject();
-     void NewScene();
-     void OpenScene();
-     void SaveScene();
-     void SaveSceneAs();
+};
+
+class EngineLogger : public ILogger
+{
+public:
+    EngineLogger(QListWidget* list);
+    virtual void Log(std::string log, int type);
+private:
+    QListWidget* m_list;
 };

@@ -1,5 +1,5 @@
 //= INCLUDES ====================
-#include "DirectusTreeWidget.h"
+#include "DirectusHierarchy.h"
 #include "DirectusQTHelper.h"
 #include <vector>
 #include <QFileDialog>
@@ -34,19 +34,19 @@ using namespace std;
 
 #define NO_PATH "-1"
 
-DirectusTreeWidget::DirectusTreeWidget(QWidget *parent) : QTreeWidget(parent)
+DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
 {
     m_socket= nullptr;
     m_sceneFileName = NO_PATH;
 }
 
-void DirectusTreeWidget::SetEngineSocket(Socket *socket)
+void DirectusHierarchy::SetDirectusSocket(Socket *socket)
 {
     m_socket = socket;
     Populate();
 }
 
-void DirectusTreeWidget::mousePressEvent(QMouseEvent *event)
+void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
 {
     // I implement this myself because the QTreeWidget doesn't
     // deselect any items when you click anywhere else but on an item.
@@ -61,30 +61,31 @@ void DirectusTreeWidget::mousePressEvent(QMouseEvent *event)
     }
 }
 
-void DirectusTreeWidget::Clear()
+void DirectusHierarchy::Clear()
 {
     //m_socket->ClearScene();
     clear();
 }
 
-void DirectusTreeWidget::AddRoot(QTreeWidgetItem* item)
+void DirectusHierarchy::AddRoot(QTreeWidgetItem* item)
 {
     this->addTopLevelItem(item);
 }
 
-void DirectusTreeWidget::AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child)
+void DirectusHierarchy::AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child)
 {
     parent->addChild(child);
 }
 
-// Adds a gameobject, including any children, to the tree
-void DirectusTreeWidget::AddGameObject(GameObject* gameobject, QTreeWidgetItem* parent)
+// Adds a gameobject, including any children, to the tree.
+// NOTE: You probably want to pass root gameobjects here.
+void DirectusHierarchy::AddGameObject(GameObject* gameobject, QTreeWidgetItem* parent)
 {
     if (!gameobject)
         return;
 
     // Convert GameObject to QTreeWidgetItem
-    QTreeWidgetItem* item = GameObjectToQTreeItem(gameobject);
+    QTreeWidgetItem* item = GameObjectToTreeItem(gameobject);
 
     // Add it to the tree
     if (gameobject->GetTransform()->IsRoot()) // This is a root gameobject
@@ -112,48 +113,74 @@ void DirectusTreeWidget::AddGameObject(GameObject* gameobject, QTreeWidgetItem* 
     }
 }
 
-GameObject *DirectusTreeWidget::GetSelectedGameObject()
+// Converts a QTreeWidgetItem to a GameObject
+GameObject* DirectusHierarchy::TreeItemToGameObject(QTreeWidgetItem* treeItem)
+{
+    if (!treeItem)
+        return nullptr;
+
+    QVariant data = treeItem->data(0, Qt::UserRole);
+    GameObject* gameObject = VPtr<GameObject>::asPtr(data);
+
+    return gameObject;
+}
+
+// Converts a GameObject to a QTreeWidgetItem
+QTreeWidgetItem* DirectusHierarchy::GameObjectToTreeItem(GameObject* gameobject)
+{
+    if (!gameobject)
+        return nullptr;
+
+    // Get data from the GameObject
+    QString name = QString::fromStdString(gameobject->GetName());
+    bool isRoot = gameobject->GetTransform()->IsRoot();
+
+    // Create a tree item
+    QTreeWidgetItem* item = isRoot ? new QTreeWidgetItem(this) : new QTreeWidgetItem();
+    item->setText(0, name);
+    item->setData(0, Qt::UserRole, VPtr<GameObject>::asQVariant(gameobject));
+
+    //= About Qt::UserRole ==============================================================
+    // Constant     -> Qt::UserRole
+    // Value        -> 0x0100
+    // Description  -> The first role that can be used for application-specific purposes.
+    //===================================================================================
+
+    return item;
+}
+
+// Returns the currently selected item
+QTreeWidgetItem *DirectusHierarchy::GetSelectedItem()
 {
     QList<QTreeWidgetItem*> selectedItems = this->selectedItems();
     if (selectedItems.count() == 0)
         return nullptr;
 
     QTreeWidgetItem* item = selectedItems[0];
-    QVariant data = item->data(0, Qt::UserRole);
-    GameObject* gameobject = VPtr<GameObject>::asPtr(data);
+
+    return item;
+}
+
+// Returns the currently selected item as a GameObject pointer
+GameObject *DirectusHierarchy::GetSelectedGameObject()
+{
+    QTreeWidgetItem* item = GetSelectedItem();
+
+    if (!item)
+        return nullptr;
+
+    GameObject* gameobject = TreeItemToGameObject(item);
 
     return gameobject;
 }
 
-bool DirectusTreeWidget::IsAnyGameObjectSelected()
+bool DirectusHierarchy::IsAnyGameObjectSelected()
 {
     return GetSelectedGameObject() ? true : false;
 }
 
-// Converts a GameObject to a QTreeWidgetItem
-QTreeWidgetItem *DirectusTreeWidget::GameObjectToQTreeItem(GameObject* gameobject)
-{
-	// Get data from the GameObject
-	QString name = QString::fromStdString(gameobject->GetName());
-	bool isRoot = gameobject->GetTransform()->IsRoot();
-
-	// Create a tree item
-	QTreeWidgetItem* item = isRoot ? new QTreeWidgetItem(this) : new QTreeWidgetItem();
-	item->setTextColor(0, QColor("#B4B4B4"));
-	item->setText(0, name);
-	item->setData(0, Qt::UserRole, VPtr<GameObject>::asQVariant(gameobject));
-
-	//= About Qt::UserRole ==============================================================
-	// Constant     -> Qt::UserRole
-	// Value        -> 0x0100
-	// Description  -> The first role that can be used for application-specific purposes.
-	//===================================================================================
-
-	return item;
-}
-
 //= SLOTS ===============================================
-void DirectusTreeWidget::Populate()
+void DirectusHierarchy::Populate()
 {
     Clear();
 
@@ -165,7 +192,7 @@ void DirectusTreeWidget::Populate()
             AddGameObject(gameObjects[i], nullptr);
 }
 
-void DirectusTreeWidget::CreateEmptyGameObject()
+void DirectusHierarchy::CreateEmptyGameObject()
 {
     GameObject* gameobject = new GameObject();
     Transform* transform = gameobject->GetTransform();
@@ -177,14 +204,14 @@ void DirectusTreeWidget::CreateEmptyGameObject()
     Populate();
 }
 
-void DirectusTreeWidget::NewScene()
+void DirectusHierarchy::NewScene()
 {
     m_sceneFileName = NO_PATH;
     m_socket->ClearScene();
     Populate();
 }
 
-void DirectusTreeWidget::OpenScene()
+void DirectusHierarchy::OpenScene()
 {
     QString title = "Load Scene";
     QString filter = "All files (*.dss)";
@@ -201,7 +228,7 @@ void DirectusTreeWidget::OpenScene()
     Populate();
 }
 
-void DirectusTreeWidget::SaveScene()
+void DirectusHierarchy::SaveScene()
 {
     if (m_sceneFileName == NO_PATH)
     {
@@ -212,7 +239,7 @@ void DirectusTreeWidget::SaveScene()
     m_socket->SaveSceneToFile(m_sceneFileName.toStdString());
 }
 
-void DirectusTreeWidget::SaveSceneAs()
+void DirectusHierarchy::SaveSceneAs()
 {
     QString title = "Save Scene";
     QString filter = "All files (*.dss)";
