@@ -29,7 +29,16 @@ DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
 
 }
 
-void DirectusInspector::Inspect(GameObject *gameobject)
+void DirectusInspector::inspect(GameObject* gameobject)
 {
-    LOG("I will inspect " + gameobject->GetName() + " dude... chill.");
+    // NOTE: If no item is selected,
+    // the gameobject will be null
+    if (gameobject)
+    {
+        LOG(gameobject->GetName());
+    }
+    else
+    {
+        LOG("null");
+    }
 }

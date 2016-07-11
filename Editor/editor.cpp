@@ -32,15 +32,16 @@ Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
     m_aboutDialog = new AboutDialog(this);
 
     // Get engine socket
-    Socket* engineSocket = ui->directus3DWidget->GetEngineSocket();
+    Socket* engineSocket = ui->directus3D->GetEngineSocket();
 
     // Resolve other dependencies
-    ui->projectDirExplorer->SetFileExplorer(ui->projectFileExplorer);
-    ui->buttonPlay->SetDirectus3DWidget(ui->directus3DWidget);
+    ui->directusHierarchy->SetDirectusInspector(ui->directusInspector);
+    ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);
+    ui->directusPlayButton->SetDirectus3DWidget(ui->directus3D);
 
     // Pass the engine socket to the widgets that need it
-    ui->hierarchyTree->SetDirectusSocket(engineSocket);
-    ui->consoleList->SetDirectusSocket(engineSocket);
+    ui->directusHierarchy->SetDirectusSocket(engineSocket);
+    ui->directusConsole->SetDirectusSocket(engineSocket);
 }
 
 Editor::~Editor()
