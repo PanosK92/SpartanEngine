@@ -22,7 +22,8 @@ SOURCES += main.cpp\
     Directus3D.cpp \
     DirectusConsole.cpp \
     DirectusInspector.cpp \
-    DirectusHierarchy.cpp
+    DirectusHierarchy.cpp \
+    DirectusTransform.cpp
 
 HEADERS  += editor.h \
     DirectusQTHelper.h \
@@ -33,7 +34,8 @@ HEADERS  += editor.h \
     DirectusConsole.h \
     Directus3D.h \
     DirectusInspector.h \
-    DirectusHierarchy.h
+    DirectusHierarchy.h \
+    DirectusTransform.h
 
 FORMS    += editor.ui \
     AboutDialog.ui

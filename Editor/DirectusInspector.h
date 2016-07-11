@@ -21,16 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES =================
 #include <QWidget>
 #include "Core/GameObject.h"
-//==========================
+#include "DirectusTransform.h"
+//============================
 
 class DirectusInspector : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusInspector(QWidget *parent = 0);
+
+private:
+     DirectusTransform* m_transform;
 
 signals:
 

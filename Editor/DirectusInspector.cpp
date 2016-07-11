@@ -19,14 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES =================
 #include "DirectusInspector.h"
 #include "IO/Log.h"
-//==================================
+//============================
 
 DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
 {
-
+    m_transform = new DirectusTransform(this);
+    m_transform->hide();
 }
 
 void DirectusInspector::inspect(GameObject* gameobject)
@@ -34,11 +35,11 @@ void DirectusInspector::inspect(GameObject* gameobject)
     // NOTE: If no item is selected,
     // the gameobject will be null
     if (gameobject)
-    {
-        LOG(gameobject->GetName());
+    {    
+        m_transform->show();
     }
     else
     {
-        LOG("null");
+        m_transform->hide();
     }
 }
