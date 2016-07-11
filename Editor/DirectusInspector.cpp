@@ -19,40 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =======================
+#include "DirectusInspector.h"
+#include "IO/Log.h"
+//==================================
 
-//= INCLUDES ===========
-#include <QObject>
-#include <QWidget>
-#include <QPaintEngine>
-#include <QResizeEvent>
-#include "Core/Engine.h"
-#include "Core/Socket.h"
-//======================
-
-class Directus3DWidget : public QWidget
+DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
 {
-	Q_OBJECT
-	Q_DISABLE_COPY(Directus3DWidget)
 
-public:
-	Directus3DWidget(QWidget* parent = NULL);
-	virtual ~Directus3DWidget();
-	Socket* GetEngineSocket();
+}
 
-    // I will take care of the drawing
-	virtual QPaintEngine* paintEngine() const { return NULL; }
-
-protected:
-	virtual void resizeEvent(QResizeEvent* evt);
-	virtual void paintEvent(QPaintEvent* evt);
-
-private:
-	void InitializeEngine();
-	void ShutdownEngine();
-	void Render();
-	void Resize(int width, int height);
-
-	Socket* m_socket;
-	Engine* m_engine;
-};
+void DirectusInspector::Inspect(GameObject *gameobject)
+{
+    LOG("I will inspect " + gameobject->GetName() + " dude... chill.");
+}

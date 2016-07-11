@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================
 #include "DirectusQTHelper.h"
-#include "Directus3DWidget.h"
+#include "Directus3D.h"
 #include <QApplication>
 #include <QObject>
 //===========================
 
 Socket* DirectusQTHelper::GetEngineSocket()
 {
-    Directus3DWidget*  directus3DWidget = (Directus3DWidget*)FindQWidgetByName("directus3DWidget");
+    Directus3D*  directus3DWidget = (Directus3D*)FindQWidgetByName("directus3DWidget");
 
     if (directus3DWidget)
         return directus3DWidget->GetEngineSocket();

@@ -25,5 +25,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 DirectusPlayButton::DirectusPlayButton(QWidget *parent) : QPushButton(parent)
 {
+    m_d3dWidget = nullptr;
+}
 
+void DirectusPlayButton::SetDirectus3DWidget(Directus3D* directus3DWidget)
+{
+    m_d3dWidget = directus3DWidget;
+}
+
+void DirectusPlayButton::Play()
+{
+    if (!m_d3dWidget)
+        return;
+
+    m_d3dWidget->Update();
 }

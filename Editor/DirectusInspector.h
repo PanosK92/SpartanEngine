@@ -19,36 +19,21 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
-#include "editor.h"
-#include "ui_editor.h"
-//====================
+#pragma once
 
-Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
+//= INCLUDES ===============
+#include <QWidget>
+#include "Core/GameObject.h"
+//==========================
+
+class DirectusInspector : public QWidget
 {
-    ui->setupUi(this);
+    Q_OBJECT
+public:
+    explicit DirectusInspector(QWidget *parent = 0);
 
-    // Create whatever we need here
-    m_aboutDialog = new AboutDialog(this);
+signals:
 
-    // Get engine socket
-    Socket* engineSocket = ui->directus3DWidget->GetEngineSocket();
-
-    // Resolve other dependencies
-    ui->projectDirExplorer->SetFileExplorer(ui->projectFileExplorer);
-    ui->buttonPlay->SetDirectus3DWidget(ui->directus3DWidget);
-
-    // Pass the engine socket to the widgets that need it
-    ui->hierarchyTree->SetDirectusSocket(engineSocket);
-    ui->consoleList->SetDirectusSocket(engineSocket);
-}
-
-Editor::~Editor()
-{
-    delete ui;
-}
-
-void Editor::on_actionAbout_Directus3D_triggered()
-{
-    m_aboutDialog->show();
-}
+public slots:
+    void Inspect(GameObject* gameobject);
+};

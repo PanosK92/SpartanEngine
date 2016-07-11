@@ -22,32 +22,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===========
-#include <QListWidget>
+#include <QObject>
+#include <QWidget>
+#include <QPaintEngine>
+#include <QResizeEvent>
+#include "Core/Engine.h"
 #include "Core/Socket.h"
-#include "IO/ILogger.h"
-#include <string>
 //======================
 
-class DirectusConsoleWidget : public QListWidget
+class Directus3D : public QWidget
 {
-    Q_OBJECT
-public:
-    explicit DirectusConsoleWidget(QWidget *parent = 0);
-    void SetEngineSocket(Socket* socket);
-private:
-    Socket* m_socket;
-    ILogger* m_engineLogger;
+	Q_OBJECT
+    Q_DISABLE_COPY(Directus3D)
 
-signals:
+public:
+    Directus3D(QWidget* parent = NULL);
+    virtual ~Directus3D();
+	Socket* GetEngineSocket();
+
+    // I will take care of the drawing
+	virtual QPaintEngine* paintEngine() const { return NULL; }
+protected:
+	virtual void resizeEvent(QResizeEvent* evt);
+	virtual void paintEvent(QPaintEvent* evt);
+
+private:
+	void InitializeEngine();
+	void ShutdownEngine();
+	void Resize(int width, int height);
+
+	Socket* m_socket;
+	Engine* m_engine;
 
 public slots:
-};
-
-class EngineLogger : public ILogger
-{
-public:
-    EngineLogger(QListWidget* list);
-    virtual void Log(std::string log, int type);
-private:
-    QListWidget* m_list;
+    void Update();
 };

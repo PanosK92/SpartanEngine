@@ -14,24 +14,26 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         editor.cpp \
-    DirectusTreeWidget.cpp \
-    Directus3DWidget.cpp \
     DirectusQTHelper.cpp \
     DirectusPlayButton.cpp \
     AboutDialog.cpp \
     DirectusDirExplorer.cpp \
     DirectusFileExplorer.cpp \
-    DirectusConsoleWidget.cpp
+    Directus3D.cpp \
+    DirectusConsole.cpp \
+    DirectusInspector.cpp \
+    DirectusHierarchy.cpp
 
 HEADERS  += editor.h \
-    DirectusTreeWidget.h \
-    Directus3DWidget.h \
     DirectusQTHelper.h \
     DirectusPlayButton.h \
     AboutDialog.h \
     DirectusDirExplorer.h \
     DirectusFileExplorer.h \
-    DirectusConsoleWidget.h
+    DirectusConsole.h \
+    Directus3D.h \
+    DirectusInspector.h \
+    DirectusHierarchy.h
 
 FORMS    += editor.ui \
     AboutDialog.ui

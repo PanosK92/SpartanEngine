@@ -21,22 +21,47 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//===========================
-#include <QPushButton>
-#include "Directus3D.h"
-//===========================
+//= INCLUDES =======================
+#include <QTreeWidget>
+#include <QtCore>
+#include "Core/Socket.h"
+#include <QVariant>
+#include "QMouseEvent"
+#include "DirectusInspector.h"
+//==================================
 
-class DirectusPlayButton : public QPushButton
+class DirectusHierarchy : public QTreeWidget
 {
     Q_OBJECT
 public:
-    explicit DirectusPlayButton(QWidget *parent = 0);
-    void SetDirectus3DWidget(Directus3D* directus3DWidget);
+    explicit DirectusHierarchy(QWidget* parent = 0);
+    void SetDirectusSocket(Socket* socket);
+    void SetDirectusInspector(DirectusInspector* inspector);
+    virtual void mousePressEvent(QMouseEvent *event);
 
 private:
-    Directus3D* m_d3dWidget;
+    void Clear();
+    void AddRoot(QTreeWidgetItem* item);
+    void AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child);
+    void AddGameObject(GameObject* gameobject, QTreeWidgetItem *parent);
+
+    QTreeWidgetItem* GameObjectToTreeItem(GameObject* gameobject);
+    GameObject* TreeItemToGameObject(QTreeWidgetItem* treeItem);
+    QTreeWidgetItem* GetSelectedItem();
+    GameObject* GetSelectedGameObject();
+
+    bool IsAnyGameObjectSelected();   
+  
+	QString m_sceneFileName;	
+	Socket* m_socket;
+
 signals:
 
 public slots:
-    void Play();
+     void Populate();
+     void CreateEmptyGameObject();
+     void NewScene();
+     void OpenScene();
+     void SaveScene();
+     void SaveSceneAs();
 };

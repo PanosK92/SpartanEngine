@@ -223,6 +223,7 @@
 /* widgets highlighted: 484848*/
 /* border: 212121/
 /* border highlighted: 464646*/
+/* text edit background: 414141*/
 
 QMainWindow
 {
@@ -248,7 +249,13 @@ Directus3DWidget
 	background-color: #909090;
 }
 
-/*= TAB ====================================================================================*/
+QTextEdit
+{
+	background-color: #414141;
+	border-style: inset;
+}
+
+/*= TABS ===================================================================================*/
 QTabWidget
 {
 	background-color: #383838;
@@ -758,7 +765,7 @@ border-bottom-right-radius: 5px;
               <property name="handleWidth">
                <number>2</number>
               </property>
-              <widget class="DirectusTreeWidget" name="hierarchyTree">
+              <widget class="DirectusHierarchy" name="hierarchyTree">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="Ignored">
                  <horstretch>0</horstretch>
@@ -1057,7 +1064,7 @@ border-bottom-right-radius: 5px;
                 </property>
                </column>
               </widget>
-              <widget class="Directus3DWidget" name="directus3DWidget" native="true">
+              <widget class="Directus3D" name="directus3DWidget" native="true">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -1165,7 +1172,7 @@ border-width: 1px;
                <bool>false</bool>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <property name="iconSize">
                <size>
@@ -1188,7 +1195,7 @@ border-width: 1px;
               <property name="tabBarAutoHide">
                <bool>false</bool>
               </property>
-              <widget class="QWidget" name="tabProject" native="true">
+              <widget class="QWidget" name="tabProject">
                <attribute name="title">
                 <string>Project</string>
                </attribute>
@@ -1267,7 +1274,7 @@ border-width: 1px;
                 </item>
                </layout>
               </widget>
-              <widget class="QWidget" name="tabConsole" native="true">
+              <widget class="QWidget" name="tabConsole">
                <attribute name="title">
                 <string>Console</string>
                </attribute>
@@ -1293,7 +1300,7 @@ border-width: 1px;
                    <number>0</number>
                   </property>
                   <item>
-                   <widget class="DirectusConsoleWidget" name="consoleList">
+                   <widget class="DirectusConsole" name="consoleList">
                     <property name="enabled">
                      <bool>true</bool>
                     </property>
@@ -1320,7 +1327,7 @@ border-width: 1px;
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="widgetInspector" native="true">
+      <widget class="DirectusInspector" name="widgetInspector" native="true">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
          <horstretch>0</horstretch>
@@ -1764,16 +1771,6 @@ border-width: 1px;
         <property name="bottomMargin">
          <number>0</number>
         </property>
-        <item>
-         <widget class="QListView" name="listView">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Ignored">
-            <horstretch>1</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
        </layout>
       </widget>
      </widget>
@@ -1996,25 +1993,6 @@ border-width: 1px;
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
   <customwidget>
-   <class>Directus3DWidget</class>
-   <extends>QWidget</extends>
-   <header>Directus3DWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>DirectusTreeWidget</class>
-   <extends>QTreeWidget</extends>
-   <header>DirectusTreeWidget.h</header>
-   <slots>
-    <slot>CreateEmptyGameObject()</slot>
-    <slot>Populate()</slot>
-    <slot>NewScene()</slot>
-    <slot>OpenScene()</slot>
-    <slot>SaveScene()</slot>
-    <slot>SaveSceneAs()</slot>
-   </slots>
-  </customwidget>
-  <customwidget>
    <class>DirectusPlayButton</class>
    <extends>QPushButton</extends>
    <header>DirectusPlayButton.h</header>
@@ -2036,9 +2014,26 @@ border-width: 1px;
    </slots>
   </customwidget>
   <customwidget>
-   <class>DirectusConsoleWidget</class>
+   <class>DirectusConsole</class>
    <extends>QListWidget</extends>
-   <header>DirectusConsoleWidget.h</header>
+   <header>DirectusConsole.h</header>
+  </customwidget>
+  <customwidget>
+   <class>DirectusHierarchy</class>
+   <extends>QTreeWidget</extends>
+   <header>DirectusHierarchy.h</header>
+  </customwidget>
+  <customwidget>
+   <class>Directus3D</class>
+   <extends>QWidget</extends>
+   <header>Directus3D.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>DirectusInspector</class>
+   <extends>QWidget</extends>
+   <header>DirectusInspector.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>
