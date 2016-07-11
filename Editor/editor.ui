@@ -546,7 +546,7 @@ QScrollBar::sub-line:horizontal
           </spacer>
          </item>
          <item>
-          <widget class="DirectusPlayButton" name="buttonPlay">
+          <widget class="DirectusPlayButton" name="directusPlayButton">
            <property name="styleSheet">
             <string notr="true">QPushButton
 {
@@ -611,7 +611,7 @@ border-bottom-left-radius: 5px;
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="buttonPause">
+          <widget class="QPushButton" name="directusPauseButton">
            <property name="styleSheet">
             <string notr="true">QPushButton
 {
@@ -765,7 +765,7 @@ border-bottom-right-radius: 5px;
               <property name="handleWidth">
                <number>2</number>
               </property>
-              <widget class="DirectusHierarchy" name="hierarchyTree">
+              <widget class="DirectusHierarchy" name="directusHierarchy">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="Ignored">
                  <horstretch>0</horstretch>
@@ -1064,7 +1064,7 @@ border-bottom-right-radius: 5px;
                 </property>
                </column>
               </widget>
-              <widget class="Directus3D" name="directus3DWidget" native="true">
+              <widget class="Directus3D" name="directus3D" native="true">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -1172,7 +1172,7 @@ border-width: 1px;
                <bool>false</bool>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <property name="iconSize">
                <size>
@@ -1228,7 +1228,7 @@ border-width: 1px;
                     <property name="handleWidth">
                      <number>0</number>
                     </property>
-                    <widget class="DirectusDirExplorer" name="projectDirExplorer">
+                    <widget class="DirectusDirExplorer" name="directusDirExplorer">
                      <property name="sizePolicy">
                       <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
                        <horstretch>0</horstretch>
@@ -1248,7 +1248,7 @@ border-width: 1px;
                       <number>300</number>
                      </attribute>
                     </widget>
-                    <widget class="DirectusFileExplorer" name="projectFileExplorer">
+                    <widget class="DirectusFileExplorer" name="directusFileExplorer">
                      <property name="sizePolicy">
                       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                        <horstretch>1</horstretch>
@@ -1300,7 +1300,7 @@ border-width: 1px;
                    <number>0</number>
                   </property>
                   <item>
-                   <widget class="DirectusConsole" name="consoleList">
+                   <widget class="DirectusConsole" name="directusConsole">
                     <property name="enabled">
                      <bool>true</bool>
                     </property>
@@ -1327,7 +1327,7 @@ border-width: 1px;
         </item>
        </layout>
       </widget>
-      <widget class="DirectusInspector" name="widgetInspector" native="true">
+      <widget class="DirectusInspector" name="directusInspector" native="true">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
          <horstretch>0</horstretch>
@@ -2041,7 +2041,7 @@ border-width: 1px;
   <connection>
    <sender>actionNew_Scene</sender>
    <signal>triggered()</signal>
-   <receiver>hierarchyTree</receiver>
+   <receiver>directusHierarchy</receiver>
    <slot>NewScene()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2057,7 +2057,7 @@ border-width: 1px;
   <connection>
    <sender>actionOpen_Scene</sender>
    <signal>triggered()</signal>
-   <receiver>hierarchyTree</receiver>
+   <receiver>directusHierarchy</receiver>
    <slot>OpenScene()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2073,7 +2073,7 @@ border-width: 1px;
   <connection>
    <sender>actionSave_Scene</sender>
    <signal>triggered()</signal>
-   <receiver>hierarchyTree</receiver>
+   <receiver>directusHierarchy</receiver>
    <slot>SaveScene()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2089,7 +2089,7 @@ border-width: 1px;
   <connection>
    <sender>actionSave_Scene_as</sender>
    <signal>triggered()</signal>
-   <receiver>hierarchyTree</receiver>
+   <receiver>directusHierarchy</receiver>
    <slot>SaveSceneAs()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2105,7 +2105,7 @@ border-width: 1px;
   <connection>
    <sender>actionCreate_Empy</sender>
    <signal>triggered()</signal>
-   <receiver>hierarchyTree</receiver>
+   <receiver>directusHierarchy</receiver>
    <slot>CreateEmptyGameObject()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2119,9 +2119,9 @@ border-width: 1px;
    </hints>
   </connection>
   <connection>
-   <sender>projectDirExplorer</sender>
+   <sender>directusDirExplorer</sender>
    <signal>clicked(QModelIndex)</signal>
-   <receiver>projectDirExplorer</receiver>
+   <receiver>directusDirExplorer</receiver>
    <slot>UpdateFileExplorer(QModelIndex)</slot>
    <hints>
     <hint type="sourcelabel">
