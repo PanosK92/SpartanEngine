@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//===============================
+//==========================
 #include <QWidget>
 #include <QGridLayout>
 #include <QLineEdit>
 #include <QLabel>
 #include "Math/Vector3.h"
 #include "Math/Quaternion.h"
-#include "Components/Transform.h"
-//===============================
+#include "Core/GameObject.h"
+//==========================
 
 class DirectusTransform : public QWidget
 {
@@ -37,7 +37,7 @@ class DirectusTransform : public QWidget
 public:
     explicit DirectusTransform(QWidget *parent = 0);
 
-    void Map(Transform* transform);
+    void Map(GameObject* gameobject);
     Directus::Math::Vector3 GetPosition();
     void SetPosition(Directus::Math::Vector3 pos);
 
@@ -50,6 +50,7 @@ public:
 private:
     QGridLayout* m_gridLayout;
 
+    QWidget* m_image;
     QLabel* m_transTitle;
 
     // = POSITION ===========

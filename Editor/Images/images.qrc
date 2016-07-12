@@ -4,5 +4,6 @@
         <file>pause.png</file>
         <file>tabConsole.png</file>
         <file>tabProject.png</file>
+        <file>transform.png</file>
     </qresource>
 </RCC>

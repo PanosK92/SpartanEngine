@@ -27,18 +27,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
 {
     m_transform = new DirectusTransform(this);
-    m_transform->hide();
 }
 
 void DirectusInspector::inspect(GameObject* gameobject)
 {
-    // NOTE: If no item is selected,
-    // the gameobject will be null
     if (gameobject)
     {    
-        m_transform->show();
+        m_transform->Map(gameobject);
     }
-    else
+    else // NOTE: If no item is selected, the gameobject will be null
     {
         m_transform->hide();
     }
