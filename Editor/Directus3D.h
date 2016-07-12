@@ -39,7 +39,7 @@ public:
     Directus3D(QWidget* parent = NULL);
     virtual ~Directus3D();
 	Socket* GetEngineSocket();
-
+    void Initialize(HWND hwnd, HINSTANCE hinstance);
 protected:
     // I will take care of the drawing
     virtual QPaintEngine* paintEngine() const { return NULL; }
@@ -47,7 +47,6 @@ protected:
 	virtual void paintEvent(QPaintEvent* evt);
 
 private:
-	void InitializeEngine();
 	void ShutdownEngine();
 	void Resize(int width, int height);
 
