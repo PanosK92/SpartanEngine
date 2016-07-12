@@ -38,31 +38,40 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
 
     // = POSITION =================================
     m_posLabel = new QLabel("Position");
-    m_posXLabel = new QLabel("X");
+    m_posXLabel = new DirectusAdjustLabel();
+    m_posXLabel->setText("X");
     m_posX = CreateQLineEdit();
-    m_posYLabel = new QLabel("Y");
+    m_posYLabel = new DirectusAdjustLabel();
+    m_posYLabel->setText("Y");
     m_posY = CreateQLineEdit();
-    m_posZLabel = new QLabel("Z");
+    m_posZLabel = new DirectusAdjustLabel();
+    m_posZLabel->setText("Z");
     m_posZ = CreateQLineEdit();
     //=============================================
 
     //= ROTATION ==================================
     m_rotLabel = new QLabel("Rotation");
-    m_rotXLabel = new QLabel("X");
+    m_rotXLabel = new DirectusAdjustLabel();
+    m_rotXLabel->setText("X");
     m_rotX = CreateQLineEdit();
-    m_rotYLabel = new QLabel("Y");
+    m_rotYLabel = new DirectusAdjustLabel();
+    m_rotYLabel->setText("Y");
     m_rotY = CreateQLineEdit();
-    m_rotZLabel = new QLabel("Z");
+    m_rotZLabel = new DirectusAdjustLabel();
+    m_rotZLabel->setText("Z");
     m_rotZ = CreateQLineEdit();
     //=============================================
 
     //= SCALE =====================================
     m_scaLabel = new QLabel("Scale");
-    m_scaXLabel = new QLabel("X");
+    m_scaXLabel = new DirectusAdjustLabel();
+    m_scaXLabel->setText("X");
     m_scaX = CreateQLineEdit();
-    m_scaYLabel = new QLabel("Y");
+    m_scaYLabel = new DirectusAdjustLabel();
+    m_scaYLabel->setText("Y");
     m_scaY = CreateQLineEdit();
-    m_scaZLabel = new QLabel("Z");
+    m_scaZLabel = new DirectusAdjustLabel();
+    m_scaZLabel->setText("Z");
     m_scaZ = CreateQLineEdit();
     //=============================================
 
