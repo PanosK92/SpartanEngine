@@ -30,6 +30,7 @@ using namespace Directus::Math;
 DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
 {
     m_gridLayout = new QGridLayout();
+    m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     m_image = new QWidget(this);
     m_image->setStyleSheet("background-image: url(:/Images/transform.png); background-repeat: no-repeat; background-position: center;");
@@ -38,31 +39,31 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
     // = POSITION =================================
     m_transPosLabel = new QLabel("Position");
     m_transPosXLabel = new QLabel("X");
-    m_transPosX = new QLineEdit();
+    m_transPosX = CreateQLineEdit();
     m_transPosYLabel = new QLabel("Y");
-    m_transPosY = new QLineEdit();
+    m_transPosY = CreateQLineEdit();
     m_transPosZLabel = new QLabel("Z");
-    m_transPosZ = new QLineEdit();
+    m_transPosZ = CreateQLineEdit();
     //=============================================
 
     //= ROTATION ==================================
     m_transRotLabel = new QLabel("Rotation");
     m_transRotXLabel = new QLabel("X");
-    m_transRotX = new QLineEdit();
+    m_transRotX = CreateQLineEdit();
     m_transRotYLabel = new QLabel("Y");
-    m_transRotY = new QLineEdit();
+    m_transRotY = CreateQLineEdit();
     m_transRotZLabel = new QLabel("Z");
-    m_transRotZ = new QLineEdit();
+    m_transRotZ = CreateQLineEdit();
     //=============================================
 
     //= SCALE =====================================
     m_transScaLabel = new QLabel("Scale");
     m_transScaXLabel = new QLabel("X");
-    m_transScaX = new QLineEdit();
+    m_transScaX = CreateQLineEdit();
     m_transScaYLabel = new QLabel("Y");
-    m_transScaY = new QLineEdit();
+    m_transScaY = CreateQLineEdit();
     m_transScaZLabel = new QLabel("Z");
-    m_transScaZ = new QLineEdit();
+    m_transScaZ = CreateQLineEdit();
     //=============================================
 
     // addWidget(*Widget, row, column, rowspan, colspan)
@@ -180,4 +181,12 @@ void DirectusTransform::SetScale(Vector3 sca)
     m_transScaX->setText(QString::number(sca.x));
     m_transScaY->setText(QString::number(sca.y));
     m_transScaZ->setText(QString::number(sca.z));
+}
+
+QLineEdit* DirectusTransform::CreateQLineEdit()
+{
+    QLineEdit* lineEdit = new QLineEdit();
+    lineEdit->setValidator(m_validator);
+
+    return lineEdit;
 }
