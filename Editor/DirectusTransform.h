@@ -44,6 +44,7 @@ public:
 
     Directus::Math::Quaternion GetRotation();
     void SetRotation(Directus::Math::Quaternion rot);
+    void SetRotation(Directus::Math::Vector3 rot);
 
     Directus::Math::Vector3 GetScale();
     void SetScale(Directus::Math::Vector3 sca);
@@ -52,37 +53,37 @@ private:
 
     //= TITLE ===============
     QWidget* m_image;
-    QLabel* m_transTitle;
+    QLabel* m_title;
     //=======================
 
     // = POSITION ===========
-    QLabel* m_transPosLabel;
-    QLabel* m_transPosXLabel;
-    QLineEdit* m_transPosX;
-    QLabel* m_transPosYLabel;
-    QLineEdit* m_transPosY;
-    QLabel* m_transPosZLabel;
-    QLineEdit* m_transPosZ;
+    QLabel* m_posLabel;
+    QLabel* m_posXLabel;
+    QLineEdit* m_posX;
+    QLabel* m_posYLabel;
+    QLineEdit* m_posY;
+    QLabel* m_posZLabel;
+    QLineEdit* m_posZ;
     //=======================
 
     //= ROTATION ============
-    QLabel* m_transRotLabel;
-    QLabel* m_transRotXLabel;
-    QLineEdit* m_transRotX;
-    QLabel* m_transRotYLabel;
-    QLineEdit* m_transRotY;
-    QLabel* m_transRotZLabel;
-    QLineEdit* m_transRotZ;
+    QLabel* m_rotLabel;
+    QLabel* m_rotXLabel;
+    QLineEdit* m_rotX;
+    QLabel* m_rotYLabel;
+    QLineEdit* m_rotY;
+    QLabel* m_rotZLabel;
+    QLineEdit* m_rotZ;
     //=======================
 
     //= SCALE ===============
-    QLabel* m_transScaLabel;
-    QLabel* m_transScaXLabel;
-    QLineEdit* m_transScaX;
-    QLabel* m_transScaYLabel;
-    QLineEdit* m_transScaY;
-    QLabel* m_transScaZLabel;
-    QLineEdit* m_transScaZ;
+    QLabel* m_scaLabel;
+    QLabel* m_scaXLabel;
+    QLineEdit* m_scaX;
+    QLabel* m_scaYLabel;
+    QLineEdit* m_scaY;
+    QLabel* m_scaZLabel;
+    QLineEdit* m_scaZ;
     //=======================
 
     //= MISC ====================
@@ -91,4 +92,17 @@ private:
     //===========================
 
     QLineEdit* CreateQLineEdit();
+
+public slots:
+    void SetPosX(QString posX);
+    void SetPosY(QString posY);
+    void SetPosZ(QString posZ);
+
+    void SetRotX(QString rotX);
+    void SetRotY(QString rotY);
+    void SetRotZ(QString rotZ);
+
+    void SetScaX(QString scaX);
+    void SetScaY(QString scaY);
+    void SetScaZ(QString scaZ);
 };

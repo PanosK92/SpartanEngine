@@ -34,78 +34,90 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
 
     m_image = new QWidget(this);
     m_image->setStyleSheet("background-image: url(:/Images/transform.png); background-repeat: no-repeat; background-position: left;");
-    m_transTitle = new QLabel("Transform");
+    m_title = new QLabel("Transform");
 
     // = POSITION =================================
-    m_transPosLabel = new QLabel("Position");
-    m_transPosXLabel = new QLabel("X");
-    m_transPosX = CreateQLineEdit();
-    m_transPosYLabel = new QLabel("Y");
-    m_transPosY = CreateQLineEdit();
-    m_transPosZLabel = new QLabel("Z");
-    m_transPosZ = CreateQLineEdit();
+    m_posLabel = new QLabel("Position");
+    m_posXLabel = new QLabel("X");
+    m_posX = CreateQLineEdit();
+    m_posYLabel = new QLabel("Y");
+    m_posY = CreateQLineEdit();
+    m_posZLabel = new QLabel("Z");
+    m_posZ = CreateQLineEdit();
     //=============================================
 
     //= ROTATION ==================================
-    m_transRotLabel = new QLabel("Rotation");
-    m_transRotXLabel = new QLabel("X");
-    m_transRotX = CreateQLineEdit();
-    m_transRotYLabel = new QLabel("Y");
-    m_transRotY = CreateQLineEdit();
-    m_transRotZLabel = new QLabel("Z");
-    m_transRotZ = CreateQLineEdit();
+    m_rotLabel = new QLabel("Rotation");
+    m_rotXLabel = new QLabel("X");
+    m_rotX = CreateQLineEdit();
+    m_rotYLabel = new QLabel("Y");
+    m_rotY = CreateQLineEdit();
+    m_rotZLabel = new QLabel("Z");
+    m_rotZ = CreateQLineEdit();
     //=============================================
 
     //= SCALE =====================================
-    m_transScaLabel = new QLabel("Scale");
-    m_transScaXLabel = new QLabel("X");
-    m_transScaX = CreateQLineEdit();
-    m_transScaYLabel = new QLabel("Y");
-    m_transScaY = CreateQLineEdit();
-    m_transScaZLabel = new QLabel("Z");
-    m_transScaZ = CreateQLineEdit();
+    m_scaLabel = new QLabel("Scale");
+    m_scaXLabel = new QLabel("X");
+    m_scaX = CreateQLineEdit();
+    m_scaYLabel = new QLabel("Y");
+    m_scaY = CreateQLineEdit();
+    m_scaZLabel = new QLabel("Z");
+    m_scaZ = CreateQLineEdit();
     //=============================================
 
     // addWidget(*Widget, row, column, rowspan, colspan)
 
     // 0th row
     m_gridLayout->addWidget(m_image, 0, 0, 1, 1);
-    m_gridLayout->addWidget(m_transTitle, 0, 1, 1, 2);
+    m_gridLayout->addWidget(m_title, 0, 1, 1, 2);
 
     // 1st row
-    m_gridLayout->addWidget(m_transPosLabel,    1, 0, 1, 1);
-    m_gridLayout->addWidget(m_transPosXLabel,   1, 1, 1, 1);
-    m_gridLayout->addWidget(m_transPosX,        1, 2, 1, 1);
-    m_gridLayout->addWidget(m_transPosYLabel,   1, 3, 1, 1);
-    m_gridLayout->addWidget(m_transPosY,        1, 4, 1, 1);
-    m_gridLayout->addWidget(m_transPosZLabel,   1, 5, 1, 1);
-    m_gridLayout->addWidget(m_transPosZ,        1, 6, 1, 1);
+    m_gridLayout->addWidget(m_posLabel,    1, 0, 1, 1);
+    m_gridLayout->addWidget(m_posXLabel,   1, 1, 1, 1);
+    m_gridLayout->addWidget(m_posX,        1, 2, 1, 1);
+    m_gridLayout->addWidget(m_posYLabel,   1, 3, 1, 1);
+    m_gridLayout->addWidget(m_posY,        1, 4, 1, 1);
+    m_gridLayout->addWidget(m_posZLabel,   1, 5, 1, 1);
+    m_gridLayout->addWidget(m_posZ,        1, 6, 1, 1);
 
     // 2nd row
-    m_gridLayout->addWidget(m_transRotLabel,    2, 0, 1, 1);
-    m_gridLayout->addWidget(m_transRotXLabel,   2, 1, 1, 1);
-    m_gridLayout->addWidget(m_transRotX,        2, 2, 1, 1);
-    m_gridLayout->addWidget(m_transRotYLabel,   2, 3, 1, 1);
-    m_gridLayout->addWidget(m_transRotY,        2, 4, 1, 1);
-    m_gridLayout->addWidget(m_transRotZLabel,   2, 5, 1, 1);
-    m_gridLayout->addWidget(m_transRotZ,        2, 6, 1, 1);
+    m_gridLayout->addWidget(m_rotLabel,    2, 0, 1, 1);
+    m_gridLayout->addWidget(m_rotXLabel,   2, 1, 1, 1);
+    m_gridLayout->addWidget(m_rotX,        2, 2, 1, 1);
+    m_gridLayout->addWidget(m_rotYLabel,   2, 3, 1, 1);
+    m_gridLayout->addWidget(m_rotY,        2, 4, 1, 1);
+    m_gridLayout->addWidget(m_rotZLabel,   2, 5, 1, 1);
+    m_gridLayout->addWidget(m_rotZ,        2, 6, 1, 1);
 
     // 3rd row
-    m_gridLayout->addWidget(m_transScaLabel,    3, 0, 1, 1);
-    m_gridLayout->addWidget(m_transScaXLabel,   3, 1, 1, 1);
-    m_gridLayout->addWidget(m_transScaX,        3, 2, 1, 1);
-    m_gridLayout->addWidget(m_transScaYLabel,   3, 3, 1, 1);
-    m_gridLayout->addWidget(m_transScaY,        3, 4, 1, 1);
-    m_gridLayout->addWidget(m_transScaZLabel,   3, 5, 1, 1);
-    m_gridLayout->addWidget(m_transScaZ,        3, 6, 1, 1);
+    m_gridLayout->addWidget(m_scaLabel,    3, 0, 1, 1);
+    m_gridLayout->addWidget(m_scaXLabel,   3, 1, 1, 1);
+    m_gridLayout->addWidget(m_scaX,        3, 2, 1, 1);
+    m_gridLayout->addWidget(m_scaYLabel,   3, 3, 1, 1);
+    m_gridLayout->addWidget(m_scaY,        3, 4, 1, 1);
+    m_gridLayout->addWidget(m_scaZLabel,   3, 5, 1, 1);
+    m_gridLayout->addWidget(m_scaZ,        3, 6, 1, 1);
 
-    this->setParent(parent);
-    this->setLayout(m_gridLayout);
+   // Connect textEdit(QString) signal with the appropriate slot
+   connect(m_posX, SIGNAL(textEdited(QString)), this, SLOT(SetPosX(QString)));
+   connect(m_posY, SIGNAL(textEdited(QString)), this, SLOT(SetPosY(QString)));
+   connect(m_posZ, SIGNAL(textEdited(QString)), this, SLOT(SetPosZ(QString)));
+   connect(m_rotX, SIGNAL(textEdited(QString)), this, SLOT(SetRotX(QString)));
+   connect(m_rotY, SIGNAL(textEdited(QString)), this, SLOT(SetRotY(QString)));
+   connect(m_rotZ, SIGNAL(textEdited(QString)), this, SLOT(SetRotZ(QString)));
+   connect(m_scaX, SIGNAL(textEdited(QString)), this, SLOT(SetScaX(QString)));
+   connect(m_scaY, SIGNAL(textEdited(QString)), this, SLOT(SetScaY(QString)));
+   connect(m_scaZ, SIGNAL(textEdited(QString)), this, SLOT(SetScaZ(QString)));
 
-    // This is not a mistake, it helps get the widget
-    // fully initialized
-    this->show();
-    this->hide();
+   // Unlike textChanged(), this signal is not emitted
+   // when the text is changed programmatically,
+   // for example, by calling setText().
+
+   this->setParent(parent);
+   this->setLayout(m_gridLayout);
+   this->show(); // This is not a mistake, it helps
+   this->hide(); // get the widget fully initialized
 }
 
 void DirectusTransform::Map(GameObject* gameobject)
@@ -136,51 +148,55 @@ void DirectusTransform::Map(GameObject* gameobject)
 
 Vector3 DirectusTransform::GetPosition()
 {
-    float x = m_transPosX->text().toFloat();
-    float y = m_transPosY->text().toFloat();
-    float z = m_transPosZ->text().toFloat();
+    float x = m_posX->text().toFloat();
+    float y = m_posY->text().toFloat();
+    float z = m_posZ->text().toFloat();
 
     return Vector3(x, y, z);
 }
 
 void DirectusTransform::SetPosition(Vector3 pos)
 {
-    m_transPosX->setText(QString::number(pos.x));
-    m_transPosY->setText(QString::number(pos.y));
-    m_transPosZ->setText(QString::number(pos.z));
+    m_posX->setText(QString::number(pos.x));
+    m_posY->setText(QString::number(pos.y));
+    m_posZ->setText(QString::number(pos.z));
 }
 
 Quaternion DirectusTransform::GetRotation()
 {
-    float x = m_transRotX->text().toFloat();
-    float y = m_transRotY->text().toFloat();
-    float z = m_transRotZ->text().toFloat();
+    float x = m_rotX->text().toFloat();
+    float y = m_rotY->text().toFloat();
+    float z = m_rotZ->text().toFloat();
 
     return Quaternion::FromEulerAngles(x, y, z);
 }
 
 void DirectusTransform::SetRotation(Quaternion rot)
 {
-    Vector3 rotEuler = rot.ToEulerAngles();
-    m_transRotX->setText(QString::number(rotEuler.x));
-    m_transRotY->setText(QString::number(rotEuler.y));
-    m_transRotZ->setText(QString::number(rotEuler.z));
+    SetRotation(rot.ToEulerAngles());
+}
+
+void DirectusTransform::SetRotation(Vector3 rot)
+{
+    m_rotX->setText(QString::number(rot.x));
+    m_rotY->setText(QString::number(rot.y));
+    m_rotZ->setText(QString::number(rot.z));
 }
 
 Vector3 DirectusTransform::GetScale()
 {
-    float x = m_transScaX->text().toFloat();
-    float y = m_transScaY->text().toFloat();
-    float z = m_transScaZ->text().toFloat();
+    float x = m_scaX->text().toFloat();
+    float y = m_scaY->text().toFloat();
+    float z = m_scaZ->text().toFloat();
 
     return Vector3(x, y, z);
 }
 
 void DirectusTransform::SetScale(Vector3 sca)
 {
-    m_transScaX->setText(QString::number(sca.x));
-    m_transScaY->setText(QString::number(sca.y));
-    m_transScaZ->setText(QString::number(sca.z));
+    m_scaX->setText(QString::number(sca.x));
+    m_scaY->setText(QString::number(sca.y));
+    m_scaZ->setText(QString::number(sca.z));
 }
 
 QLineEdit* DirectusTransform::CreateQLineEdit()
@@ -189,4 +205,49 @@ QLineEdit* DirectusTransform::CreateQLineEdit()
     lineEdit->setValidator(m_validator);
 
     return lineEdit;
+}
+
+void DirectusTransform::SetPosX(QString posX)
+{
+    LOG("Edited PosX");
+}
+
+void DirectusTransform::SetPosY(QString posY)
+{
+    LOG("Edited PosY");
+}
+
+void DirectusTransform::SetPosZ(QString posZ)
+{
+    LOG("Edited PosZ");
+}
+
+void DirectusTransform::SetRotX(QString rotX)
+{
+    LOG("Edited RotX");
+}
+
+void DirectusTransform::SetRotY(QString rotY)
+{
+    LOG("Edited RotY");
+}
+
+void DirectusTransform::SetRotZ(QString rotZ)
+{
+    LOG("Edited RotZ");
+}
+
+void DirectusTransform::SetScaX(QString scaX)
+{
+    LOG("Edited ScaX");
+}
+
+void DirectusTransform::SetScaY(QString scaY)
+{
+    LOG("Edited ScaY");
+}
+
+void DirectusTransform::SetScaZ(QString scaZ)
+{
+    LOG("Edited ScaZ");
 }
