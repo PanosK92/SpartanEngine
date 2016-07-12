@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "Directus3D.h"
 #include "IO/Log.h"
+#include <qtimer.h>
 //============================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
@@ -33,6 +34,14 @@ Directus3D::Directus3D(QWidget* parent) : QWidget(parent)
 
 	InitializeEngine();
 	Resize(this->size().width(), this->size().height());
+
+    // This will make Qt update this widget as fast as possible.
+    // Yes, paintEvent(QPaintEvent*) will be called also.
+    // NOTE: I tested this technique and it yields thousands
+    // of FPS, so it should do.
+    QTimer* timer = new QTimer(this);
+    connect(timer, SIGNAL(timeout()), this, SLOT(update()));
+    timer->start(0);
 }
 
 Socket* Directus3D::GetEngineSocket()
@@ -49,18 +58,19 @@ Directus3D::~Directus3D()
 //= OVERRIDDEN FUNCTIONS =============================
 void Directus3D::resizeEvent(QResizeEvent* evt)
 {
-	int width = evt->size().width();
-	int height = evt->size().height();
+    int width = this->size().width();
+    int height = this->size().height();
 
+    height = width / (16.0f/9.0f);
+    setGeometry(QRect(0, 0, width, height));
 	Resize(width, height);
+    update();
 }
 
 void Directus3D::paintEvent(QPaintEvent* evt)
 {
-	Update();
-
-    //Force update works but makes the entire UI perfom laggy
-    // update();
+    m_socket->Update();
+    m_socket->Render();
 }
 //===================================================
 
@@ -82,12 +92,6 @@ void Directus3D::ShutdownEngine()
 {
 	m_engine->Shutdown();
 	delete m_engine;
-}
-
-void Directus3D::Update()
-{
-    m_socket->Update();
-    m_socket->Render();
 }
 
 void Directus3D::Resize(int width, int height)

@@ -5,5 +5,8 @@
         <file>tabConsole.png</file>
         <file>tabProject.png</file>
         <file>transform.png</file>
+        <file>tabHierarchy.png</file>
+        <file>tabInspector.png</file>
+        <file>tabScene.png</file>
     </qresource>
 </RCC>

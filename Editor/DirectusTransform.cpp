@@ -33,7 +33,7 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     m_image = new QWidget(this);
-    m_image->setStyleSheet("background-image: url(:/Images/transform.png); background-repeat: no-repeat; background-position: center;");
+    m_image->setStyleSheet("background-image: url(:/Images/transform.png); background-repeat: no-repeat; background-position: left;");
     m_transTitle = new QLabel("Transform");
 
     // = POSITION =================================
@@ -126,9 +126,9 @@ void DirectusTransform::Map(GameObject* gameobject)
     }
 
     // Do the actual mapping
-    SetPosition(transform->GetPosition());
-    SetRotation(transform->GetRotation());
-    SetScale(transform->GetScale());
+    SetPosition(transform->GetPositionLocal());
+    SetRotation(transform->GetRotationLocal());
+    SetScale(transform->GetScaleLocal());
 
     // Make this widget visible
     this->show();

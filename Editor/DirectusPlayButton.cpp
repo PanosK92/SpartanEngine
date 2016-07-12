@@ -37,6 +37,4 @@ void DirectusPlayButton::Play()
 {
     if (!m_d3dWidget)
         return;
-
-    m_d3dWidget->Update();
 }
