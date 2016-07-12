@@ -23,18 +23,16 @@ void DirectusAdjustLabel::mouseMoveEvent(QMouseEvent* event)
     // Change cursor to <->
     this->setCursor(Qt::SizeHorCursor);
 
+    // More about cursor icons:
+    // http://doc.qt.io/qt-5/qcursor.html
+
     // Forward the original event
     QLabel::mouseMoveEvent(event);
 
      if(event->buttons() == Qt::LeftButton)
      {
-         QPoint mousePos = QCursor::pos();
-         QPoint labelPos = this->geometry().center();
-         labelPos = QWidget::mapToGlobal(labelPos);
-
-         float x1 = mousePos.x();
-         float x2 = labelPos.x();
-         LOG(x2 - x1);
+        CalculateDelta();
+        Adjust();
      }
 }
 
@@ -49,4 +47,27 @@ void DirectusAdjustLabel::leaveEvent(QEvent* event)
     // Forward the original event
     QLabel::leaveEvent(event);
 }
-// More about cursor icons: http://doc.qt.io/qt-5/qcursor.html
+
+void DirectusAdjustLabel::CalculateDelta()
+{
+    QPoint mousePos = QCursor::pos();
+    QPoint labelPos = this->geometry().center();
+    labelPos = QWidget::mapToGlobal(labelPos);
+
+    float x1 = mousePos.x();
+    float x2 = labelPos.x();
+    float x = x2 - x1;
+
+    m_delta = m_x - x;
+    m_x = x;
+}
+
+void DirectusAdjustLabel::Adjust()
+{
+    if (!m_lineEdit)
+        return;
+
+    float currentValue = m_lineEdit->text().toFloat();
+    float newValue = currentValue + m_delta;
+    m_lineEdit->setText(QString::number(newValue));
+}

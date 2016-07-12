@@ -40,8 +40,14 @@ protected:
     virtual void leaveEvent(QEvent* event);
 
 private:
+    void CalculateDelta();
+    void Adjust();
+
     QLineEdit* m_lineEdit;
     bool m_isMouseHovering;
+    float m_x;
+    float m_delta;
+
 signals:
 
 public slots:

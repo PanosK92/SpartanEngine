@@ -38,41 +38,56 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
 
     // = POSITION =================================
     m_posLabel = new QLabel("Position");
+
+    m_posX = CreateQLineEdit();   
+    m_posY = CreateQLineEdit(); 
+    m_posZ = CreateQLineEdit();
+
     m_posXLabel = new DirectusAdjustLabel();
     m_posXLabel->setText("X");
-    m_posX = CreateQLineEdit();
+    m_posXLabel->AdjustQLineEdit(m_posX);
     m_posYLabel = new DirectusAdjustLabel();
     m_posYLabel->setText("Y");
-    m_posY = CreateQLineEdit();
+    m_posYLabel->AdjustQLineEdit(m_posY);
     m_posZLabel = new DirectusAdjustLabel();
     m_posZLabel->setText("Z");
-    m_posZ = CreateQLineEdit();
+    m_posZLabel->AdjustQLineEdit(m_posZ);
     //=============================================
 
     //= ROTATION ==================================
     m_rotLabel = new QLabel("Rotation");
+
+    m_rotX = CreateQLineEdit();  
+    m_rotY = CreateQLineEdit();   
+    m_rotZ = CreateQLineEdit();
+
     m_rotXLabel = new DirectusAdjustLabel();
     m_rotXLabel->setText("X");
-    m_rotX = CreateQLineEdit();
+    m_rotXLabel->AdjustQLineEdit(m_rotX);
     m_rotYLabel = new DirectusAdjustLabel();
     m_rotYLabel->setText("Y");
-    m_rotY = CreateQLineEdit();
+    m_rotYLabel->AdjustQLineEdit(m_rotY);
     m_rotZLabel = new DirectusAdjustLabel();
     m_rotZLabel->setText("Z");
-    m_rotZ = CreateQLineEdit();
+    m_rotZLabel->AdjustQLineEdit(m_rotZ);
     //=============================================
 
     //= SCALE =====================================
     m_scaLabel = new QLabel("Scale");
+
+    m_scaX = CreateQLineEdit();
+    m_scaY = CreateQLineEdit();
+    m_scaZ = CreateQLineEdit();
+
     m_scaXLabel = new DirectusAdjustLabel();
     m_scaXLabel->setText("X");
-    m_scaX = CreateQLineEdit();
+    m_scaXLabel->AdjustQLineEdit(m_scaX);
     m_scaYLabel = new DirectusAdjustLabel();
     m_scaYLabel->setText("Y");
-    m_scaY = CreateQLineEdit();
+    m_scaYLabel->AdjustQLineEdit(m_scaY);
     m_scaZLabel = new DirectusAdjustLabel();
     m_scaZLabel->setText("Z");
-    m_scaZ = CreateQLineEdit();
+    m_scaZLabel->AdjustQLineEdit(m_scaZ);
     //=============================================
 
     // addWidget(*Widget, row, column, rowspan, colspan)
@@ -111,15 +126,15 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
    // Connect textEdit(QString) signal with the appropriate slot
    // NOTE: Unlike textChanged(), this signal is not emitted when the
    // text is changed programmatically, for example, by calling setText().
-   connect(m_posX, SIGNAL(textEdited(QString)), this, SLOT(UpdateEnginePos()));
-   connect(m_posY, SIGNAL(textEdited(QString)), this, SLOT(UpdateEnginePos()));
-   connect(m_posZ, SIGNAL(textEdited(QString)), this, SLOT(UpdateEnginePos()));
-   connect(m_rotX, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineRot()));
-   connect(m_rotY, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineRot()));
-   connect(m_rotZ, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineRot()));
-   connect(m_scaX, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineSca()));
-   connect(m_scaY, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineSca()));
-   connect(m_scaZ, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineSca()));
+   connect(m_posX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
+   connect(m_posY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
+   connect(m_posZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
+   connect(m_rotX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
+   connect(m_rotY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
+   connect(m_rotZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
+   connect(m_scaX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
+   connect(m_scaY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
+   connect(m_scaZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
 
    this->setParent(parent);
    this->setLayout(m_gridLayout);
