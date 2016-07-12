@@ -34,6 +34,7 @@ class DirectusConsole : public QListWidget
 public:
     explicit DirectusConsole(QWidget *parent = 0);
     void SetDirectusSocket(Socket* socket);
+
 private:
     Socket* m_socket;
     ILogger* m_engineLogger;
