@@ -32,6 +32,9 @@ Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
     m_aboutDialog = new AboutDialog(this);
 
     // Get engine socket
+    HWND hWnd = (HWND)this->winId();
+    HINSTANCE hinstance = (HINSTANCE)::GetModuleHandle(NULL);
+    ui->directus3D->Initialize(hWnd, hinstance);
     Socket* engineSocket = ui->directus3D->GetEngineSocket();
 
     // Resolve other dependencies

@@ -32,9 +32,6 @@ Directus3D::Directus3D(QWidget* parent) : QWidget(parent)
 	setAttribute(Qt::WA_PaintOnScreen, true);
 	setAttribute(Qt::WA_NativeWindow, true);
 
-	InitializeEngine();
-	Resize(this->size().width(), this->size().height());
-
     // This will make Qt update this widget as fast as possible.
     // Yes, paintEvent(QPaintEvent*) will be called also.
     // NOTE: I tested this technique and it yields thousands
@@ -47,7 +44,21 @@ Directus3D::Directus3D(QWidget* parent) : QWidget(parent)
 Socket* Directus3D::GetEngineSocket()
 {
 
-	return m_socket;
+    return m_socket;
+}
+
+void Directus3D::Initialize(HWND hwnd, HINSTANCE hinstance)
+{
+    // Create and initialize Directus3D
+    m_engine = new Engine();
+
+    HINSTANCE hInstance = hinstance;
+    HWND mainWindowHandle = hwnd;
+    HWND widgetHandle = (HWND)this->winId();
+    m_engine->Initialize(hInstance, mainWindowHandle, widgetHandle);
+
+    // Get the socket
+    m_socket = m_engine->GetSocket();
 }
 Directus3D::~Directus3D()
 {
@@ -69,25 +80,15 @@ void Directus3D::resizeEvent(QResizeEvent* evt)
 
 void Directus3D::paintEvent(QPaintEvent* evt)
 {
+    if (!m_socket)
+        return;
+
     m_socket->Update();
     m_socket->Render();
 }
 //===================================================
 
 //= Engine functions ================================
-void Directus3D::InitializeEngine()
-{
-	// Create and initialize Directus3D
-	m_engine = new Engine();
-	HINSTANCE hInstance = (HINSTANCE)::GetModuleHandle(NULL);
-	HWND mainWindowHandle = (HWND)this->parentWidget()->winId();
-	HWND widgetHandle = (HWND)this->winId();
-	m_engine->Initialize(hInstance, mainWindowHandle, widgetHandle);
-
-	// Get the socket
-	m_socket = m_engine->GetSocket();
-}
-
 void Directus3D::ShutdownEngine()
 {
 	m_engine->Shutdown();
@@ -96,6 +97,9 @@ void Directus3D::ShutdownEngine()
 
 void Directus3D::Resize(int width, int height)
 {
+    if (!m_socket)
+        return;
+
 	m_socket->SetViewport(width, height);
 }
 //===================================================

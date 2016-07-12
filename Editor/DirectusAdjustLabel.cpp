@@ -2,6 +2,8 @@
 #include "DirectusAdjustLabel.h"
 #include <QMouseEvent>
 #include "IO/Log.h"
+#include <QApplication>
+#include <QDesktopWidget>
 //==============================
 
 DirectusAdjustLabel::DirectusAdjustLabel(QWidget *parent) : QLabel(parent)
@@ -23,17 +25,15 @@ void DirectusAdjustLabel::mouseMoveEvent(QMouseEvent* event)
     // Change cursor to <->
     this->setCursor(Qt::SizeHorCursor);
 
-    // More about cursor icons:
-    // http://doc.qt.io/qt-5/qcursor.html
-
     // Forward the original event
     QLabel::mouseMoveEvent(event);
 
      if(event->buttons() == Qt::LeftButton)
-     {
-        CalculateDelta();
-        Adjust();
-     }
+        m_isMouseDragged = true;
+     else
+        m_isMouseDragged = false;
+
+     Adjust();
 }
 
 // The mouse cursor just left the widget
@@ -48,26 +48,50 @@ void DirectusAdjustLabel::leaveEvent(QEvent* event)
     QLabel::leaveEvent(event);
 }
 
-void DirectusAdjustLabel::CalculateDelta()
+void DirectusAdjustLabel::RepositionMouseOnScreenEdge(QPoint mousePos)
 {
-    QPoint mousePos = QCursor::pos();
-    QPoint labelPos = this->geometry().center();
-    labelPos = QWidget::mapToGlobal(labelPos);
+    QRect screen = QApplication::desktop()->screenGeometry();
+    if (mousePos.x() == 0)
+    {
+        QPoint newMousePos = QPoint(screen.width(), mousePos.y());
+        QCursor::setPos(newMousePos);
+    }
 
+    if (mousePos.x() == screen.width() - 1)
+    {
+        QPoint newMousePos = QPoint(0, mousePos.y());
+        QCursor::setPos(newMousePos);
+    }
+}
+
+float DirectusAdjustLabel::CalculateDelta(QPoint mousePos, QPoint labelPos)
+{
     float x1 = mousePos.x();
     float x2 = labelPos.x();
     float x = x2 - x1;
 
     m_delta = m_x - x;
     m_x = x;
+
+    return m_delta;
 }
 
 void DirectusAdjustLabel::Adjust()
 {
-    if (!m_lineEdit)
+    if (!m_lineEdit || !m_isMouseDragged)
         return;
 
+    // Aquire data
+    QPoint mousePos = QCursor::pos();
+    QPoint labelPos = this->geometry().center();
+    labelPos = QWidget::mapToGlobal(labelPos);
+
+    // Perform any actions needed on them
+    CalculateDelta(mousePos, labelPos);
+    RepositionMouseOnScreenEdge(mousePos);
+
+    // Update the QLineEdit
     float currentValue = m_lineEdit->text().toFloat();
-    float newValue = currentValue + m_delta;
+    float newValue = currentValue + m_delta;  
     m_lineEdit->setText(QString::number(newValue));
 }

@@ -40,11 +40,13 @@ protected:
     virtual void leaveEvent(QEvent* event);
 
 private:
-    void CalculateDelta();
+    void RepositionMouseOnScreenEdge(QPoint mousePos);
+    float CalculateDelta(QPoint mousePos, QPoint labelPos);
     void Adjust();
 
     QLineEdit* m_lineEdit;
     bool m_isMouseHovering;
+    bool m_isMouseDragged;
     float m_x;
     float m_delta;
 
