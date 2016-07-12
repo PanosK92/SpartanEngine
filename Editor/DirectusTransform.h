@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==========================
+//==============================
 #include <QWidget>
 #include <QGridLayout>
+#include "DirectusAdjustLabel.h"
 #include <QLineEdit>
-#include <QLabel>
 #include "Math/Vector3.h"
 #include "Math/Quaternion.h"
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
-//==========================
+//===============================
 
 class DirectusTransform : public QWidget
 {
@@ -51,45 +51,45 @@ public:
 
 private:
 
-    //= TITLE ===============
+    //= TITLE =======================
     QWidget* m_image;
     QLabel* m_title;
-    //=======================
+    //===============================
 
-    // = POSITION ===========
+    // = POSITION ===================
     QLabel* m_posLabel;
-    QLabel* m_posXLabel;
+    DirectusAdjustLabel* m_posXLabel;
     QLineEdit* m_posX;
-    QLabel* m_posYLabel;
+    DirectusAdjustLabel* m_posYLabel;
     QLineEdit* m_posY;
-    QLabel* m_posZLabel;
+    DirectusAdjustLabel* m_posZLabel;
     QLineEdit* m_posZ;
-    //=======================
+    //===============================
 
-    //= ROTATION ============
+    //= ROTATION ====================
     QLabel* m_rotLabel;
-    QLabel* m_rotXLabel;
+    DirectusAdjustLabel* m_rotXLabel;
     QLineEdit* m_rotX;
-    QLabel* m_rotYLabel;
+    DirectusAdjustLabel* m_rotYLabel;
     QLineEdit* m_rotY;
-    QLabel* m_rotZLabel;
+    DirectusAdjustLabel* m_rotZLabel;
     QLineEdit* m_rotZ;
-    //=======================
+    //===============================
 
-    //= SCALE ===============
+    //= SCALE =======================
     QLabel* m_scaLabel;
-    QLabel* m_scaXLabel;
+    DirectusAdjustLabel* m_scaXLabel;
     QLineEdit* m_scaX;
-    QLabel* m_scaYLabel;
+    DirectusAdjustLabel* m_scaYLabel;
     QLineEdit* m_scaY;
-    QLabel* m_scaZLabel;
+    DirectusAdjustLabel* m_scaZLabel;
     QLineEdit* m_scaZ;
-    //=======================
+    //===============================
 
-    //= MISC ====================
+    //= MISC ========================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
-    //===========================
+    //===============================
 
     QLineEdit* CreateQLineEdit();
     Transform* m_inspectedTransform;

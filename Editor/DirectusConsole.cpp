@@ -60,4 +60,5 @@ void EngineLogger::Log(string log, int type)
 
     QListWidgetItem* listItem = new QListWidgetItem(QString::fromStdString(log));
     m_list->addItem(listItem);
+    m_list->scrollToBottom();
 }

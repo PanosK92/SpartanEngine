@@ -21,38 +21,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
-#include <QObject>
-#include <QWidget>
-#include <QPaintEngine>
-#include <QResizeEvent>
-#include "Core/Engine.h"
-#include "Core/Socket.h"
-//======================
+// INCLUDES ===============
+#include <QLabel>
+#include <QLineEdit>
+//=========================
 
-class Directus3D : public QWidget
+class DirectusAdjustLabel : public QLabel
 {
-	Q_OBJECT
-    Q_DISABLE_COPY(Directus3D)
-
+    Q_OBJECT
 public:
-    Directus3D(QWidget* parent = NULL);
-    virtual ~Directus3D();
-	Socket* GetEngineSocket();
-
+    explicit DirectusAdjustLabel(QWidget* parent = 0);
+    void AdjustQLineEdit(QLineEdit* lineEdit);
 protected:
-    // I will take care of the drawing
-    virtual QPaintEngine* paintEngine() const { return NULL; }
-	virtual void resizeEvent(QResizeEvent* evt);
-	virtual void paintEvent(QPaintEvent* evt);
+    // mouseMoveEvent() is called whenever the
+    // mouse moves while a mouse button is held down.
+    // This can be useful during drag and drop operations.
+    virtual void mouseMoveEvent(QMouseEvent* event);
+    virtual void leaveEvent(QEvent* event);
 
 private:
-	void InitializeEngine();
-	void ShutdownEngine();
-	void Resize(int width, int height);
-
-	Socket* m_socket;
-	Engine* m_engine;
+    QLineEdit* m_lineEdit;
+    bool m_isMouseHovering;
+signals:
 
 public slots:
 };
