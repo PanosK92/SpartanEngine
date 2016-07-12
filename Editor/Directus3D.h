@@ -55,5 +55,4 @@ private:
 	Engine* m_engine;
 
 public slots:
-    void Update();
 };
