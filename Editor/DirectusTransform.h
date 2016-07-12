@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Math/Vector3.h"
 #include "Math/Quaternion.h"
 #include "Core/GameObject.h"
+#include <QDoubleValidator>
 //==========================
 
 class DirectusTransform : public QWidget
@@ -48,10 +49,11 @@ public:
     void SetScale(Directus::Math::Vector3 sca);
 
 private:
-    QGridLayout* m_gridLayout;
 
+    //= TITLE ===============
     QWidget* m_image;
     QLabel* m_transTitle;
+    //=======================
 
     // = POSITION ===========
     QLabel* m_transPosLabel;
@@ -82,4 +84,11 @@ private:
     QLabel* m_transScaZLabel;
     QLineEdit* m_transScaZ;
     //=======================
+
+    //= MISC ====================
+    QGridLayout* m_gridLayout;
+    QValidator* m_validator;
+    //===========================
+
+    QLineEdit* CreateQLineEdit();
 };
