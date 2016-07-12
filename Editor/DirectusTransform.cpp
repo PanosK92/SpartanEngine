@@ -100,19 +100,17 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
     m_gridLayout->addWidget(m_scaZ,        3, 6, 1, 1);
 
    // Connect textEdit(QString) signal with the appropriate slot
-   connect(m_posX, SIGNAL(textEdited(QString)), this, SLOT(SetPosX(QString)));
-   connect(m_posY, SIGNAL(textEdited(QString)), this, SLOT(SetPosY(QString)));
-   connect(m_posZ, SIGNAL(textEdited(QString)), this, SLOT(SetPosZ(QString)));
-   connect(m_rotX, SIGNAL(textEdited(QString)), this, SLOT(SetRotX(QString)));
-   connect(m_rotY, SIGNAL(textEdited(QString)), this, SLOT(SetRotY(QString)));
-   connect(m_rotZ, SIGNAL(textEdited(QString)), this, SLOT(SetRotZ(QString)));
-   connect(m_scaX, SIGNAL(textEdited(QString)), this, SLOT(SetScaX(QString)));
-   connect(m_scaY, SIGNAL(textEdited(QString)), this, SLOT(SetScaY(QString)));
-   connect(m_scaZ, SIGNAL(textEdited(QString)), this, SLOT(SetScaZ(QString)));
-
-   // Unlike textChanged(), this signal is not emitted
-   // when the text is changed programmatically,
-   // for example, by calling setText().
+   // NOTE: Unlike textChanged(), this signal is not emitted when the
+   // text is changed programmatically, for example, by calling setText().
+   connect(m_posX, SIGNAL(textEdited(QString)), this, SLOT(UpdateEnginePos()));
+   connect(m_posY, SIGNAL(textEdited(QString)), this, SLOT(UpdateEnginePos()));
+   connect(m_posZ, SIGNAL(textEdited(QString)), this, SLOT(UpdateEnginePos()));
+   connect(m_rotX, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineRot()));
+   connect(m_rotY, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineRot()));
+   connect(m_rotZ, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineRot()));
+   connect(m_scaX, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineSca()));
+   connect(m_scaY, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineSca()));
+   connect(m_scaZ, SIGNAL(textEdited(QString)), this, SLOT(UpdateEngineSca()));
 
    this->setParent(parent);
    this->setLayout(m_gridLayout);
@@ -122,6 +120,8 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
 
 void DirectusTransform::Map(GameObject* gameobject)
 {
+    m_inspectedTransform = nullptr;
+
     // Catch evil case
     if (!gameobject)
     {
@@ -130,17 +130,17 @@ void DirectusTransform::Map(GameObject* gameobject)
     }
 
     // Catch the seed of the evil
-    Transform* transform = gameobject->GetTransform();
-    if (!transform)
+    m_inspectedTransform = gameobject->GetTransform();
+    if (!m_inspectedTransform)
     {
         this->hide();
         return;
     }
 
     // Do the actual mapping
-    SetPosition(transform->GetPositionLocal());
-    SetRotation(transform->GetRotationLocal());
-    SetScale(transform->GetScaleLocal());
+    SetPosition(m_inspectedTransform->GetPositionLocal());
+    SetRotation(m_inspectedTransform->GetRotationLocal());
+    SetScale(m_inspectedTransform->GetScaleLocal());
 
     // Make this widget visible
     this->show();
@@ -207,47 +207,26 @@ QLineEdit* DirectusTransform::CreateQLineEdit()
     return lineEdit;
 }
 
-void DirectusTransform::SetPosX(QString posX)
+void DirectusTransform::UpdateEnginePos()
 {
-    LOG("Edited PosX");
+    if (!m_inspectedTransform)
+        return;
+
+    m_inspectedTransform->SetPositionLocal(GetPosition());
 }
 
-void DirectusTransform::SetPosY(QString posY)
+void DirectusTransform::UpdateEngineRot()
 {
-    LOG("Edited PosY");
+    if (!m_inspectedTransform)
+        return;
+
+    m_inspectedTransform->SetRotationLocal(GetRotation());
 }
 
-void DirectusTransform::SetPosZ(QString posZ)
+void DirectusTransform::UpdateEngineSca()
 {
-    LOG("Edited PosZ");
-}
+    if (!m_inspectedTransform)
+        return;
 
-void DirectusTransform::SetRotX(QString rotX)
-{
-    LOG("Edited RotX");
-}
-
-void DirectusTransform::SetRotY(QString rotY)
-{
-    LOG("Edited RotY");
-}
-
-void DirectusTransform::SetRotZ(QString rotZ)
-{
-    LOG("Edited RotZ");
-}
-
-void DirectusTransform::SetScaX(QString scaX)
-{
-    LOG("Edited ScaX");
-}
-
-void DirectusTransform::SetScaY(QString scaY)
-{
-    LOG("Edited ScaY");
-}
-
-void DirectusTransform::SetScaZ(QString scaZ)
-{
-    LOG("Edited ScaZ");
+    m_inspectedTransform->SetScaleLocal(GetScale());
 }

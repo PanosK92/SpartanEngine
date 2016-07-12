@@ -92,17 +92,10 @@ private:
     //===========================
 
     QLineEdit* CreateQLineEdit();
+    Transform* m_inspectedTransform;
 
 public slots:
-    void SetPosX(QString posX);
-    void SetPosY(QString posY);
-    void SetPosZ(QString posZ);
-
-    void SetRotX(QString rotX);
-    void SetRotY(QString rotY);
-    void SetRotZ(QString rotZ);
-
-    void SetScaX(QString scaX);
-    void SetScaY(QString scaY);
-    void SetScaZ(QString scaZ);
+    void UpdateEnginePos();
+    void UpdateEngineRot();
+    void UpdateEngineSca();
 };
