@@ -19,9 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//============================
+//===============================
 #include "DirectusTransform.h"
-//============================
+#include "Components/Transform.h"
+#include "IO/Log.h"
+//===============================
 
 using namespace Directus::Math;
 
@@ -29,6 +31,8 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
 {
     m_gridLayout = new QGridLayout();
 
+    m_image = new QWidget(this);
+    m_image->setStyleSheet("background-image: url(:/Images/transform.png); background-repeat: no-repeat; background-position: center;");
     m_transTitle = new QLabel("Transform");
 
     // = POSITION =================================
@@ -64,7 +68,8 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
     // addWidget(*Widget, row, column, rowspan, colspan)
 
     // 0th row
-    m_gridLayout->addWidget(m_transTitle, 0, 0, 1, 1);
+    m_gridLayout->addWidget(m_image, 0, 0, 1, 1);
+    m_gridLayout->addWidget(m_transTitle, 0, 1, 1, 2);
 
     // 1st row
     m_gridLayout->addWidget(m_transPosLabel,    1, 0, 1, 1);
@@ -95,48 +100,84 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
 
     this->setParent(parent);
     this->setLayout(m_gridLayout);
+
+    // This is not a mistake, it helps get the widget
+    // fully initialized
     this->show();
+    this->hide();
 }
 
-void DirectusTransform::Map(Transform* transform)
+void DirectusTransform::Map(GameObject* gameobject)
 {
+    // Catch evil case
+    if (!gameobject)
+    {
+        this->hide();
+        return;
+    }
+
+    // Catch the seed of the evil
+    Transform* transform = gameobject->GetTransform();
+    if (!transform)
+    {
+        this->hide();
+        return;
+    }
+
+    // Do the actual mapping
     SetPosition(transform->GetPosition());
     SetRotation(transform->GetRotation());
     SetScale(transform->GetScale());
+
+    // Make this widget visible
+    this->show();
 }
 
 Vector3 DirectusTransform::GetPosition()
 {
-    Vector3 pos;
+    float x = m_transPosX->text().toFloat();
+    float y = m_transPosY->text().toFloat();
+    float z = m_transPosZ->text().toFloat();
 
-    return pos;
+    return Vector3(x, y, z);
 }
 
 void DirectusTransform::SetPosition(Vector3 pos)
 {
-
+    m_transPosX->setText(QString::number(pos.x));
+    m_transPosY->setText(QString::number(pos.y));
+    m_transPosZ->setText(QString::number(pos.z));
 }
 
 Quaternion DirectusTransform::GetRotation()
 {
-    Quaternion rot;
+    float x = m_transRotX->text().toFloat();
+    float y = m_transRotY->text().toFloat();
+    float z = m_transRotZ->text().toFloat();
 
-    return rot;
+    return Quaternion::FromEulerAngles(x, y, z);
 }
 
 void DirectusTransform::SetRotation(Quaternion rot)
 {
-
+    Vector3 rotEuler = rot.ToEulerAngles();
+    m_transRotX->setText(QString::number(rotEuler.x));
+    m_transRotY->setText(QString::number(rotEuler.y));
+    m_transRotZ->setText(QString::number(rotEuler.z));
 }
 
 Vector3 DirectusTransform::GetScale()
 {
-    Vector3 sca;
+    float x = m_transScaX->text().toFloat();
+    float y = m_transScaY->text().toFloat();
+    float z = m_transScaZ->text().toFloat();
 
-    return sca;
+    return Vector3(x, y, z);
 }
 
 void DirectusTransform::SetScale(Vector3 sca)
 {
-
+    m_transScaX->setText(QString::number(sca.x));
+    m_transScaY->setText(QString::number(sca.y));
+    m_transScaZ->setText(QString::number(sca.z));
 }
