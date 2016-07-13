@@ -36,10 +36,16 @@ void DirectusInspector::Initialize()
     m_camera = new DirectusCamera();
     m_camera->Initialize();
 
+    m_meshRenderer = new DirectusMeshRenderer();
+    m_meshRenderer->Initialize();
+
+    m_material = new DirectusMaterial();
+    m_material->Initialize();
+
     this->layout()->addWidget(m_transform);
     this->layout()->addWidget(m_camera);
-    //m_meshRenderer = new DirectusMeshRenderer(this);
-    //m_material = new DirectusMaterial(this);
+    this->layout()->addWidget(m_meshRenderer);
+    this->layout()->addWidget(m_material);
 }
 
 void DirectusInspector::inspect(GameObject* gameobject)
@@ -48,14 +54,14 @@ void DirectusInspector::inspect(GameObject* gameobject)
     {    
         m_transform->Map(gameobject);
         m_camera->Map(gameobject);
-        //m_meshRenderer->Map(gameobject);
-        //m_material->Map(gameobject);
+        m_meshRenderer->Map(gameobject);
+        m_material->Map(gameobject);
     }
     else // NOTE: If no item is selected, the gameobject will be null
     {
         m_transform->hide();
         m_camera->hide();
-       // m_meshRenderer->hide();
-        //m_meshRenderer->hide();
+        m_meshRenderer->hide();
+        m_material->hide();
     }
 }

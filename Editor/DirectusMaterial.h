@@ -27,7 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusAdjustLabel.h"
 #include <QLineEdit>
 #include "Core/GameObject.h"
+#include "Core/Material.h"
 #include <QDoubleValidator>
+#include <QSlider>
+#include <QPushButton>
+#include <QComboBox>
 //==============================
 
 class DirectusMaterial : public QWidget
@@ -35,6 +39,7 @@ class DirectusMaterial : public QWidget
     Q_OBJECT
 public:
     explicit DirectusMaterial(QWidget *parent = 0);
+    void Initialize();
     void Map(GameObject* gameobject);
 private:
 
@@ -43,13 +48,89 @@ private:
     QLabel* m_title;
     //===============================
 
+    //= SHADER ======================
+    QLabel* m_shaderLabel;
+    QComboBox* m_shader;
+    //===============================
+
+    //= ALBEDO ======================
+    QWidget* m_albedoImage;
+    QLabel* m_albedoLabel;
+    QPushButton* m_albedoColor;
+    //===============================
+
+    //= ROUGHNESS ===================
+    QWidget* m_roughnessImage;
+    QLabel* m_roughnessLabel;
+    QSlider* m_roughnessSlider;
+    QLineEdit* m_roughnessLineEdit;
+    //===============================
+
+    //= METALLIC ====================
+    QWidget* m_metallicImage;
+    QLabel* m_metallicLabel;
+    QSlider* m_metallicSlider;
+    QLineEdit* m_metallicLineEdit;
+    //===============================
+
+    //= NORMAL ======================
+    QWidget* m_normalImage;
+    QLabel* m_normalLabel;
+    QSlider* m_normalSlider;
+    QLineEdit* m_normalLineEdit;
+    //===============================
+
+    //= HEIGHT ======================
+    QWidget* m_heightImage;
+    QLabel* m_heightLabel;
+    QSlider* m_heightSlider;
+    QLineEdit* m_heightLineEdit;
+    //===============================
+
+    //= OCCLUSION ===================
+    QWidget* m_occlusionImage;
+    QLabel* m_occlusionLabel;
+    //===============================
+
+    //= EMISSION ====================
+    QWidget* m_emissionImage;
+    QLabel* m_emissionLabel;
+    //===============================
+
+    //= MASK ========================
+    QWidget* m_maskImage;
+    QLabel* m_maskLabel;
+    //===============================
+
+    //= REFLECTIVITY ================
+    QLabel* m_reflectivityLabel;
+    QSlider* m_reflectivitySlider;
+    QLineEdit* m_reflectivityLineEdit;
+    //===============================
+
+    //= TILING ======================
+    QLabel* m_tilingLabel;
+    DirectusAdjustLabel* m_tilingXLabel;
+    DirectusAdjustLabel* m_tilingYLabel;
+    QLineEdit* m_tilingX;
+    QLineEdit* m_tilingY;
+    //===============================
+
+    //= OFFSET ======================
+    QLabel* m_offsetLabel;
+    DirectusAdjustLabel* m_offsetXLabel;
+    DirectusAdjustLabel* m_offsetYLabel;
+    QLineEdit* m_offsetX;
+    QLineEdit* m_offsetY;
+    //===============================
+
     //= MISC ========================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
     //===============================
 
     QLineEdit* CreateQLineEdit();
-    Transform* m_inspectedTransform;
+    Material* m_inspectedMaterial;
 
 public slots:
     //void UpdateEnginePos();

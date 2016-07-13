@@ -27,7 +27,7 @@ SOURCES += main.cpp\
     DirectusAdjustLabel.cpp \
     DirectusCamera.cpp \
     DirectusMeshRenderer.cpp \
-    DirectusMateriall.cpp
+    DirectusMaterial.cpp
 
 HEADERS  += editor.h \
     DirectusQTHelper.h \
