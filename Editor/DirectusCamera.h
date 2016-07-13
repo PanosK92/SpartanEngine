@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QComboBox>
 #include <QSlider>
 #include "Components/Camera.h"
+#include <QPushButton>
 //==============================
 
 class DirectusCamera : public QWidget
@@ -39,7 +40,7 @@ class DirectusCamera : public QWidget
 public:
     explicit DirectusCamera(QWidget *parent = 0);
     void Initialize();
-    void Map(GameObject* gameobject);
+    void Reflect(GameObject* gameobject);
 private:
 
     //= TITLE =======================
@@ -49,6 +50,7 @@ private:
 
     //= BACKGROUND =================================
     QLabel* m_backgroundLabel;
+    QPushButton* m_background;
     //==============================================
 
     //= PROJECTION =================================
@@ -83,7 +85,7 @@ private:
     void SetFOV(float fov);
 
 public slots:
-    //void UpdateEnginePos();
-    //void UpdateEngineRot();
-    //void UpdateEngineSca();
+    void MapProjection();
+    void MapFOV();
+    void MapClippingPlanes();
 };

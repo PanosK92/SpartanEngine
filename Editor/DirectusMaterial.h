@@ -40,7 +40,7 @@ class DirectusMaterial : public QWidget
 public:
     explicit DirectusMaterial(QWidget *parent = 0);
     void Initialize();
-    void Map(GameObject* gameobject);
+    void Reflect(GameObject* gameobject);
 private:
 
     //= TITLE =======================
@@ -133,7 +133,5 @@ private:
     Material* m_inspectedMaterial;
 
 public slots:
-    //void UpdateEnginePos();
-    //void UpdateEngineRot();
-    //void UpdateEngineSca();
+    //void Map();
 };

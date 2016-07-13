@@ -39,7 +39,7 @@ public:
     explicit DirectusTransform(QWidget *parent = 0);
     void Initialize();
 
-    void Map(GameObject* gameobject);
+    void Reflect(GameObject* gameobject);
     Directus::Math::Vector3 GetPosition();
     void SetPosition(Directus::Math::Vector3 pos);
 
@@ -96,7 +96,7 @@ private:
     Transform* m_inspectedTransform;
 
 public slots:
-    void UpdateEnginePos();
-    void UpdateEngineRot();
-    void UpdateEngineSca();
+    void MapPosition();
+    void MapRotation();
+    void MapScale();
 };

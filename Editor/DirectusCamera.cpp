@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //=========================
 #include "DirectusCamera.h"
+#include "IO/Log.h"
 //=========================
 
 DirectusCamera::DirectusCamera(QWidget *parent) : QWidget(parent)
@@ -53,23 +54,26 @@ void DirectusCamera::Initialize()
     //= FOV ===================================================
     m_fovLabel = new QLabel("Field of view");
     m_fovSlider = new QSlider(Qt::Horizontal);
+    m_fovSlider->setMaximum(179);
     m_fovLineEdit = CreateQLineEdit();
     //=========================================================
 
-    //= CLIPPING PLANES =======================================
+    //= CLIPPING PLANES ==========================================================
     m_clippingPlanesLabel = new QLabel("Clipping planes");
     m_clippingNear = CreateQLineEdit();
     m_clippingFar = CreateQLineEdit();
     m_clippingPlanesNearLabel = new DirectusAdjustLabel();
     m_clippingPlanesNearLabel->setText("Near");
+    m_clippingPlanesNearLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_clippingPlanesNearLabel->AdjustQLineEdit(m_clippingNear);
     m_clippingPlanesFarLabel = new DirectusAdjustLabel();
     m_clippingPlanesFarLabel->setText("Far");
+    m_clippingPlanesFarLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_clippingPlanesFarLabel->AdjustQLineEdit(m_clippingFar);
-    //=========================================================
+    //=============================================================================
 
     // addWidget(widget, row, column, rowspan, colspan)
-    //= GRID =====================================================================
+    //= GRID ======================================================================
     // Row 0
     m_gridLayout->addWidget(m_image, 0, 0, 1, 1);
     m_gridLayout->addWidget(m_title, 0, 1, 1, 2);
@@ -94,25 +98,18 @@ void DirectusCamera::Initialize()
     m_gridLayout->addWidget(m_clippingFar, 5, 2, 1, 1);
     //=============================================================================
 
-    // Connect textEdit(QString) signal with the appropriate slot
-    // NOTE: Unlike textChanged(), this signal is not emitted when the
-    // text is changed programmatically, for example, by calling setText().
-    //connect(m_posX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-    //connect(m_posY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-    //connect(m_posZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-    //connect(m_rotX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-    //connect(m_rotY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-    //connect(m_rotZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-    //connect(m_scaX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
-    //connect(m_scaY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
-    //connect(m_scaZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
+    connect(m_projectionComboBox, SIGNAL(activated(int)), this, SLOT(MapProjection()));
+    connect(m_fovSlider, SIGNAL(valueChanged(int)), this, SLOT(MapFOV()));
+    connect(m_fovLineEdit, SIGNAL(textChanged(QString)), this, SLOT(MapFOV()));
+    connect(m_clippingNear, SIGNAL(textChanged(QString)), this, SLOT(MapClippingPlanes()));
+    connect(m_clippingFar, SIGNAL(textChanged(QString)), this, SLOT(MapClippingPlanes()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     this->hide();
 }
 
-void DirectusCamera::Map(GameObject* gameobject)
+void DirectusCamera::Reflect(GameObject* gameobject)
 {
     m_inspectedCamera = nullptr;
 
@@ -158,6 +155,7 @@ void DirectusCamera::SetFarPlane(float farPlane)
 
 void DirectusCamera::SetFOV(float fov)
 {
+    m_fovSlider->setValue(fov);
     m_fovLineEdit->setText(QString::number(fov));
 }
 
@@ -168,3 +166,44 @@ QLineEdit* DirectusCamera::CreateQLineEdit()
 
     return lineEdit;
 }
+
+
+void DirectusCamera::MapProjection()
+{
+    if(!m_inspectedCamera)
+        return;
+
+
+    Projection projection = (Projection)(m_projectionComboBox->currentIndex());
+    m_inspectedCamera->SetProjection(projection);
+}
+
+void DirectusCamera::MapFOV()
+{
+    if(!m_inspectedCamera)
+        return;
+
+    float fovSliderValue = m_fovSlider->value();
+    float fovTextBoxValue = m_fovLineEdit->text().toFloat();
+    float fov = m_inspectedCamera->GetFieldOfView();
+
+    float adjustedValue = fovSliderValue;
+    if (adjustedValue == fov)
+        adjustedValue = fovTextBoxValue;
+
+    m_inspectedCamera->SetFieldOfView(adjustedValue);
+    SetFOV(adjustedValue);
+}
+
+void DirectusCamera::MapClippingPlanes()
+{
+    if(!m_inspectedCamera)
+        return;
+
+    float nearPlane = m_clippingNear->text().toFloat();
+    float farPlane = m_clippingFar->text().toFloat();
+
+    m_inspectedCamera->SetNearPlane(nearPlane);
+    m_inspectedCamera->SetFarPlane(farPlane);
+}
+

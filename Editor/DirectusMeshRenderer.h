@@ -38,7 +38,7 @@ class DirectusMeshRenderer : public QWidget
 public:
     explicit DirectusMeshRenderer(QWidget *parent = 0);
     void Initialize();
-    void Map(GameObject* gameobject);
+    void Reflect(GameObject* gameobject);
 private:
 
     //= TITLE ============================
@@ -69,8 +69,10 @@ private:
 
     QLineEdit* CreateQLineEdit();
 
+    void SetCastShadows(bool cast);
+    void SetReceiveShadows(bool receive);
+    void SetMaterial(Material* material);
+
 public slots:
-    //void UpdateEnginePos();
-    //void UpdateEngineRot();
-    //void UpdateEngineSca();
+    void Map();
 };
