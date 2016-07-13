@@ -90,12 +90,14 @@ void DirectusAdjustLabel::RepositionMouseOnScreenEdge()
     {
         QPoint newMousePos = QPoint(screen.width(), mousePos.y());
         QCursor::setPos(newMousePos);
+        m_lastMousePos = GetMousePosLocal().x();
     }
 
     if (mousePos.x() == screen.width() - 1)
     {
         QPoint newMousePos = QPoint(0, mousePos.y());
         QCursor::setPos(newMousePos);
+        m_lastMousePos = GetMousePosLocal().x();
     }
 }
 
