@@ -10,6 +10,9 @@ DirectusAdjustLabel::DirectusAdjustLabel(QWidget *parent) : QLabel(parent)
 {
     // Required by mouseMoveEvent(QMouseEvent*)
     this->setMouseTracking(true);
+
+    m_isMouseHovering = false;
+    m_isMouseDragged = false;
 }
 
 void DirectusAdjustLabel::AdjustQLineEdit(QLineEdit* lineEdit)
@@ -20,6 +23,9 @@ void DirectusAdjustLabel::AdjustQLineEdit(QLineEdit* lineEdit)
 // The mouse cursor is hovering above the label
 void DirectusAdjustLabel::mouseMoveEvent(QMouseEvent* event)
 {
+    if (!m_isMouseHovering)
+       MouseEntered();
+
     m_isMouseHovering = true;
 
     // Change cursor to <->
@@ -48,9 +54,38 @@ void DirectusAdjustLabel::leaveEvent(QEvent* event)
     QLabel::leaveEvent(event);
 }
 
-void DirectusAdjustLabel::RepositionMouseOnScreenEdge(QPoint mousePos)
+void DirectusAdjustLabel::MouseEntered()
 {
+    m_currentTexBoxValue = GetTextBoxValue();
+}
+
+QPoint DirectusAdjustLabel::GetMousePosLocal()
+{
+    QPoint mousePos = this->mapFromGlobal(QCursor::pos());
+    return mousePos;
+}
+
+float DirectusAdjustLabel::GetTextBoxValue()
+{
+    if (!m_lineEdit)
+        return 0;
+
+    return m_lineEdit->text().toFloat();
+}
+
+void DirectusAdjustLabel::SetTextBoxValue(float value)
+{
+    if (!m_lineEdit)
+        return;
+
+    m_lineEdit->setText(QString::number(value));
+}
+
+void DirectusAdjustLabel::RepositionMouseOnScreenEdge()
+{
+    QPoint mousePos = QCursor::pos();
     QRect screen = QApplication::desktop()->screenGeometry();
+
     if (mousePos.x() == 0)
     {
         QPoint newMousePos = QPoint(screen.width(), mousePos.y());
@@ -64,34 +99,26 @@ void DirectusAdjustLabel::RepositionMouseOnScreenEdge(QPoint mousePos)
     }
 }
 
-float DirectusAdjustLabel::CalculateDelta(QPoint mousePos, QPoint labelPos)
+float DirectusAdjustLabel::CalculateDelta()
 {
-    float x1 = mousePos.x();
-    float x2 = labelPos.x();
-    float x = x2 - x1;
+    float mousePosX = GetMousePosLocal().x();
+    float mouseDelta = mousePosX - m_lastMousePos;
+    m_lastMousePos = mousePosX;
 
-    m_delta = m_x - x;
-    m_x = x;
-
-    return m_delta;
+    return mouseDelta;
 }
 
 void DirectusAdjustLabel::Adjust()
 {
-    if (!m_lineEdit || !m_isMouseDragged)
+    if (!m_isMouseDragged)
         return;
 
-    // Aquire data
-    QPoint mousePos = QCursor::pos();
-    QPoint labelPos = this->geometry().center();
-    labelPos = QWidget::mapToGlobal(labelPos);
+    m_mouseDelta = CalculateDelta();
+    RepositionMouseOnScreenEdge();
 
-    // Perform any actions needed on them
-    CalculateDelta(mousePos, labelPos);
-    RepositionMouseOnScreenEdge(mousePos);
+    // Calculate the new texBox value
+    m_currentTexBoxValue += m_mouseDelta * m_sensitivity;
 
     // Update the QLineEdit
-    float currentValue = m_lineEdit->text().toFloat();
-    float newValue = currentValue + m_delta;  
-    m_lineEdit->setText(QString::number(newValue));
+    SetTextBoxValue(m_currentTexBoxValue);
 }
