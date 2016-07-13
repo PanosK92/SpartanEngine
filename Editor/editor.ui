@@ -217,7 +217,7 @@
   </property>
   <property name="styleSheet">
    <string notr="true">/*
- widget background dark: 			292929
+widget background dark: 			292929
 widget background light:				383838
 widget background highlighted: 	484848
 text color: 									909090
@@ -256,6 +256,31 @@ QLineEdit
 	background-color: #414141;
 	border-style: inset;
 }
+
+/*= SLIDER ==================================================================================*/
+QSlider::groove:horizontal 
+{
+	border: 1px;
+	border-color: #212121;
+	border-style: solid;
+	background: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.488318, y2:0.358, stop:0 rgba(192, 192, 192, 255), stop:1 rgba(79, 79, 79, 255));
+	height: 5px;
+	border-radius: 4px;
+}
+
+QSlider::handle:horizontal 
+{
+	background: qlineargradient(spread:pad, x1:0.5, y1:0.340909, x2:0.5, y2:1, stop:0 rgba(142, 142, 142, 255), stop:1 rgba(79, 79, 79, 255));
+	border: 1px;
+	border-color: #212121;
+	border-style: solid;
+	width: 10px;
+	height: 10px;
+	margin-top: -4px;
+	margin-bottom: -4px;
+	border-radius: 5px;
+}
+/*========================================================================================*/
 
 /*= TABS ===================================================================================*/
 QTabWidget
