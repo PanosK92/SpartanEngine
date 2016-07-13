@@ -132,6 +132,11 @@ private:
     QLineEdit* CreateQLineEdit();
     Material* m_inspectedMaterial;
 
+    void SetRoughness(float roughness);
+    void SetMetallic(float metallic);
 public slots:
-    //void Map();
+    void MapRoughnessFromSlider();
+    void MapRoughnessFromText();
+    void MapMetallicFromSlider();
+    void MapMetallicFromText();
 };

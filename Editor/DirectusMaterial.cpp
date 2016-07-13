@@ -56,6 +56,7 @@ void DirectusMaterial::Initialize()
     m_roughnessLabel = new QLabel("Roughness");
     m_roughnessImage = new QWidget();
     m_roughnessSlider = new QSlider(Qt::Horizontal);
+    m_roughnessSlider->setRange(0, 1);
     m_roughnessLineEdit = CreateQLineEdit();
     //=========================================================
 
@@ -63,6 +64,7 @@ void DirectusMaterial::Initialize()
     m_metallicLabel = new QLabel("Metallic");
     m_metallicImage = new QWidget();
     m_metallicSlider = new QSlider(Qt::Horizontal);
+    m_metallicSlider->setRange(0, 1);
     m_metallicLineEdit = CreateQLineEdit();
     //=========================================================
 
@@ -70,6 +72,7 @@ void DirectusMaterial::Initialize()
     m_normalLabel = new QLabel("Normal");
     m_normalImage = new QWidget();
     m_normalSlider = new QSlider(Qt::Horizontal);
+    m_normalSlider->setRange(0, 1);
     m_normalLineEdit = CreateQLineEdit();
     //=========================================================
 
@@ -77,6 +80,7 @@ void DirectusMaterial::Initialize()
     m_heightLabel = new QLabel("Height");
     m_heightImage = new QWidget();
     m_heightSlider = new QSlider(Qt::Horizontal);
+    m_heightSlider->setRange(0, 1);
     m_heightLineEdit = CreateQLineEdit();
     //=========================================================
 
@@ -98,6 +102,7 @@ void DirectusMaterial::Initialize()
     //= REFLECTIVITY  =========================================
     m_reflectivityLabel = new QLabel("Reflectivity");
     m_reflectivitySlider = new QSlider(Qt::Horizontal);
+    m_reflectivitySlider->setRange(0, 1);
     m_reflectivityLineEdit = CreateQLineEdit();
     //=========================================================
 
@@ -196,18 +201,12 @@ void DirectusMaterial::Initialize()
     m_gridLayout->addWidget(m_offsetY, 12, 4, 1, 1);
     //=========================================================
 
-    // Connect textEdit(QString) signal with the appropriate slot
-    // NOTE: Unlike textChanged(), this signal is not emitted when the
-    // text is changed programmatically, for example, by calling setText().
-    //connect(m_posX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-    //connect(m_posY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-    //connect(m_posZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-    //connect(m_rotX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-    //connect(m_rotY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-    //connect(m_rotZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-    //connect(m_scaX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
-    //connect(m_scaY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
-    //connect(m_scaZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
+    // textChanged(QString) -> emits signal when changed through code
+    // textEdit(QString) -> doesn't emits signal when changed through code
+    connect(m_roughnessSlider, SIGNAL(valueChanged(int)), this, SLOT(MapRoughnessFromSlider()));
+    connect(m_roughnessLineEdit, SIGNAL(textChanged(QString)), this, SLOT(MapRoughnessFromText()));
+    connect(m_metallicSlider, SIGNAL(valueChanged(int)), this, SLOT(MapMetallicFromSlider()));
+    connect(m_metallicLineEdit, SIGNAL(textChanged(QString)), this, SLOT(MapMetallicFromText()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -240,10 +239,8 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
     }
 
     // Do the actual mapping
-    //SetProjection(m_inspectedCamera->GetProjection());
-    //SetFOV(m_inspectedCamera->GetFieldOfView());
-    //SetNearPlane(m_inspectedCamera->GetNearPlane());
-    //SetFarPlane( m_inspectedCamera->GetFarPlane());
+    SetRoughness(m_inspectedMaterial->GetRoughness());
+    SetMetallic(m_inspectedMaterial->GetMetallic());
 
     // Make this widget visible
     this->show();
@@ -255,4 +252,60 @@ QLineEdit*DirectusMaterial::CreateQLineEdit()
     lineEdit->setValidator(m_validator);
 
     return lineEdit;
+}
+
+void DirectusMaterial::SetRoughness(float roughness)
+{
+    m_roughnessSlider->setValue(roughness);
+    m_roughnessLineEdit->setText(QString::number(roughness));
+}
+
+void DirectusMaterial::SetMetallic(float metallic)
+{
+    m_metallicSlider->setValue(metallic);
+    m_metallicLineEdit->setText(QString::number(metallic));
+}
+
+void DirectusMaterial::MapRoughnessFromSlider()
+{
+    if (!m_inspectedMaterial)
+        return;
+
+    float roughness =  m_roughnessSlider->value();
+
+    m_inspectedMaterial->SetRoughness(roughness);
+    m_roughnessLineEdit->setText(QString::number(roughness));
+}
+
+void DirectusMaterial::MapRoughnessFromText()
+{
+    if (!m_inspectedMaterial)
+        return;
+
+    float roughness =  m_roughnessLineEdit->text().toFloat();
+
+    m_inspectedMaterial->SetRoughness(roughness);
+    m_roughnessSlider->setValue(roughness);
+}
+
+void DirectusMaterial::MapMetallicFromSlider()
+{
+    if (!m_inspectedMaterial)
+        return;
+
+    float metallic =  m_metallicSlider->value();
+
+    m_inspectedMaterial->SetRoughness(metallic);
+    m_metallicLineEdit->setText(QString::number(metallic));
+}
+
+void DirectusMaterial::MapMetallicFromText()
+{
+    if (!m_inspectedMaterial)
+        return;
+
+    float metallic =  m_metallicLineEdit->text().toFloat();
+
+    m_inspectedMaterial->SetMetallic(metallic);
+    m_metallicSlider->setValue(metallic);
 }

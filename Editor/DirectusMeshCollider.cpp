@@ -19,43 +19,26 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
-//= INCLUDES ====================
-#include <QWidget>
-#include "Core/GameObject.h"
-#include "DirectusTransform.h"
-#include "DirectusCamera.h"
-#include "DirectusMeshRenderer.h"
-#include "DirectusMaterial.h"
-#include "DirectusCollider.h"
-#include "DirectusRigidBody.h"
-#include "DirectusLight.h"
-#include "DirectusScript.h"
-#include "DirectusMesh.h"
+//===============================
 #include "DirectusMeshCollider.h"
 //===============================
 
-class DirectusInspector : public QWidget
+DirectusMeshCollider::DirectusMeshCollider(QWidget *parent) : QWidget(parent)
 {
-    Q_OBJECT
-public:
-    explicit DirectusInspector(QWidget *parent = 0);
-    void Initialize();
 
-private:
-    DirectusTransform* m_transform;
-    DirectusCamera* m_camera;
-    DirectusMeshRenderer* m_meshRenderer;
-    DirectusMaterial* m_material; 
-    DirectusCollider* m_collider;
-    DirectusRigidBody* m_rigidBody;
-    DirectusLight* m_light;
-    DirectusScript* m_script;
-    DirectusMesh* m_mesh;
-    DirectusMeshCollider* m_meshCollider;
-signals:
+}
 
-public slots:
-    void inspect(GameObject* gameobject);
-};
+void DirectusMeshCollider::Initialize()
+{
+
+}
+
+void DirectusMeshCollider::Reflect(GameObject* gameobject)
+{
+
+}
+
+void DirectusMeshCollider::Map()
+{
+
+}

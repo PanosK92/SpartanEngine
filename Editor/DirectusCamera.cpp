@@ -54,7 +54,7 @@ void DirectusCamera::Initialize()
     //= FOV ===================================================
     m_fovLabel = new QLabel("Field of view");
     m_fovSlider = new QSlider(Qt::Horizontal);
-    m_fovSlider->setMaximum(179);
+    m_fovSlider->setRange(1, 179);
     m_fovLineEdit = CreateQLineEdit();
     //=========================================================
 
@@ -99,8 +99,8 @@ void DirectusCamera::Initialize()
     //=============================================================================
 
     connect(m_projectionComboBox, SIGNAL(activated(int)), this, SLOT(MapProjection()));
-    connect(m_fovSlider, SIGNAL(valueChanged(int)), this, SLOT(MapFOV()));
-    connect(m_fovLineEdit, SIGNAL(textChanged(QString)), this, SLOT(MapFOV()));
+    connect(m_fovSlider, SIGNAL(valueChanged(int)), this, SLOT(MapFOVfromSlider()));
+    connect(m_fovLineEdit, SIGNAL(textChanged(QString)), this, SLOT(MapFOVfromText()));
     connect(m_clippingNear, SIGNAL(textChanged(QString)), this, SLOT(MapClippingPlanes()));
     connect(m_clippingFar, SIGNAL(textChanged(QString)), this, SLOT(MapClippingPlanes()));
 
@@ -132,7 +132,7 @@ void DirectusCamera::Reflect(GameObject* gameobject)
     SetProjection(m_inspectedCamera->GetProjection());
     SetFOV(m_inspectedCamera->GetFieldOfView());
     SetNearPlane(m_inspectedCamera->GetNearPlane());
-    SetFarPlane( m_inspectedCamera->GetFarPlane());
+    SetFarPlane(m_inspectedCamera->GetFarPlane());
 
     // Make this widget visible
     this->show();
@@ -167,32 +167,35 @@ QLineEdit* DirectusCamera::CreateQLineEdit()
     return lineEdit;
 }
 
-
 void DirectusCamera::MapProjection()
 {
     if(!m_inspectedCamera)
         return;
 
-
     Projection projection = (Projection)(m_projectionComboBox->currentIndex());
     m_inspectedCamera->SetProjection(projection);
 }
 
-void DirectusCamera::MapFOV()
+void DirectusCamera::MapFOVfromSlider()
 {
     if(!m_inspectedCamera)
         return;
 
     float fovSliderValue = m_fovSlider->value();
+
+    m_inspectedCamera->SetFieldOfView(fovSliderValue);
+    m_fovLineEdit->setText(QString::number(fovSliderValue));
+}
+
+void DirectusCamera::MapFOVfromText()
+{
+    if(!m_inspectedCamera)
+        return;
+
     float fovTextBoxValue = m_fovLineEdit->text().toFloat();
-    float fov = m_inspectedCamera->GetFieldOfView();
 
-    float adjustedValue = fovSliderValue;
-    if (adjustedValue == fov)
-        adjustedValue = fovTextBoxValue;
-
-    m_inspectedCamera->SetFieldOfView(adjustedValue);
-    SetFOV(adjustedValue);
+    m_inspectedCamera->SetFieldOfView(fovTextBoxValue);
+    m_fovSlider->setValue(fovTextBoxValue);
 }
 
 void DirectusCamera::MapClippingPlanes()
