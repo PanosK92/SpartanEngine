@@ -52,7 +52,7 @@ void DirectusDirExplorer::SetFileExplorer(DirectusFileExplorer* fileExplorer)
 
 void DirectusDirExplorer::UpdateFileExplorer(QModelIndex index)
 {
-    QString path = m_dirModel->fileInfo(index).absolutePath();
+    QString path = m_dirModel->fileInfo(index).absoluteFilePath();
 
     if (m_fileExplorer)
         m_fileExplorer->SetRootPath(path);
