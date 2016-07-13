@@ -52,10 +52,10 @@ void DirectusInspector::inspect(GameObject* gameobject)
 {
     if (gameobject)
     {    
-        m_transform->Map(gameobject);
-        m_camera->Map(gameobject);
-        m_meshRenderer->Map(gameobject);
-        m_material->Map(gameobject);
+        m_transform->Reflect(gameobject);
+        m_camera->Reflect(gameobject);
+        m_meshRenderer->Reflect(gameobject);
+        m_material->Reflect(gameobject);
     }
     else // NOTE: If no item is selected, the gameobject will be null
     {

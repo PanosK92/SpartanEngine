@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "DirectusMeshRenderer.h"
+#include "IO/Log.h"
 //===============================
 
 DirectusMeshRenderer::DirectusMeshRenderer(QWidget *parent) : QWidget(parent)
@@ -73,25 +74,15 @@ void DirectusMeshRenderer::Initialize()
     m_gridLayout->addWidget(m_material, 3, 1, 1, 1);
     //============================================================
 
-    // Connect textEdit(QString) signal with the appropriate slot
-    // NOTE: Unlike textChanged(), this signal is not emitted when the
-    // text is changed programmatically, for example, by calling setText().
-    //connect(m_posX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-    //connect(m_posY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-    //connect(m_posZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-    //connect(m_rotX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-    //connect(m_rotY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-    //connect(m_rotZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-    //connect(m_scaX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
-    //connect(m_scaY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
-    //connect(m_scaZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
+    connect(m_castShadowsCheckBox, SIGNAL(clicked(bool)), this, SLOT(Map()));
+    connect(m_receiveShadowsCheckBox, SIGNAL(clicked(bool)), this, SLOT(Map()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     this->hide();
 }
 
-void DirectusMeshRenderer::Map(GameObject* gameobject)
+void DirectusMeshRenderer::Reflect(GameObject* gameobject)
 {
     m_inspectedMeshRenderer = nullptr;
 
@@ -111,11 +102,39 @@ void DirectusMeshRenderer::Map(GameObject* gameobject)
     }
 
     // Do the actual mapping
-   // SetProjection(m_inspectedCamera->GetProjection());
-    //SetFOV(m_inspectedCamera->GetFieldOfView());
-    //SetNearPlane(m_inspectedCamera->GetNearPlane());
-    //SetFarPlane( m_inspectedCamera->GetFarPlane());
+    SetCastShadows(m_inspectedMeshRenderer->GetCastShadows());
+    SetReceiveShadows(m_inspectedMeshRenderer->GetReceiveShadows());
+    SetMaterial(m_inspectedMeshRenderer->GetMaterial());
 
     // Make this widget visible
     this->show();
+}
+
+void DirectusMeshRenderer::SetCastShadows(bool cast)
+{
+     m_castShadowsCheckBox->setChecked(cast);
+}
+
+void DirectusMeshRenderer::SetReceiveShadows(bool receive)
+{
+    m_receiveShadowsCheckBox->setChecked(receive);
+}
+
+void DirectusMeshRenderer::SetMaterial(Material* material)
+{
+    std::string materialName = material->GetName();
+    m_material->setText(QString::fromStdString(materialName));
+}
+
+void DirectusMeshRenderer::Map()
+{
+    if (!m_inspectedMeshRenderer)
+        return;
+
+    bool castShadows = m_castShadowsCheckBox->isChecked();
+    bool receiveShadows = m_receiveShadowsCheckBox->isChecked();
+    m_inspectedMeshRenderer->SetCastShadows(castShadows);
+    m_inspectedMeshRenderer->SetReceiveShadows(receiveShadows);
+
+    LOG("1");
 }

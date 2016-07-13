@@ -148,22 +148,22 @@ void DirectusTransform::Initialize()
    // Connect textEdit(QString) signal with the appropriate slot
    // NOTE: Unlike textChanged(), this signal is not emitted when the
    // text is changed programmatically, for example, by calling setText().
-   connect(m_posX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-   connect(m_posY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-   connect(m_posZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEnginePos()));
-   connect(m_rotX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-   connect(m_rotY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-   connect(m_rotZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineRot()));
-   connect(m_scaX, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
-   connect(m_scaY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
-   connect(m_scaZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
+   connect(m_posX, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
+   connect(m_posY, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
+   connect(m_posZ, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
+   connect(m_rotX, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
+   connect(m_rotY, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
+   connect(m_rotZ, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
+   connect(m_scaX, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
+   connect(m_scaY, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
+   connect(m_scaZ, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
 
    this->setLayout(m_gridLayout);
    this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
    this->hide();
 }
 
-void DirectusTransform::Map(GameObject* gameobject)
+void DirectusTransform::Reflect(GameObject* gameobject)
 {
     m_inspectedTransform = nullptr;
 
@@ -252,7 +252,7 @@ QLineEdit* DirectusTransform::CreateQLineEdit()
     return lineEdit;
 }
 
-void DirectusTransform::UpdateEnginePos()
+void DirectusTransform::MapPosition()
 {
     if (!m_inspectedTransform)
         return;
@@ -260,7 +260,7 @@ void DirectusTransform::UpdateEnginePos()
     m_inspectedTransform->SetPositionLocal(GetPosition());
 }
 
-void DirectusTransform::UpdateEngineRot()
+void DirectusTransform::MapRotation()
 {
     if (!m_inspectedTransform)
         return;
@@ -268,7 +268,7 @@ void DirectusTransform::UpdateEngineRot()
     m_inspectedTransform->SetRotationLocal(GetRotation());
 }
 
-void DirectusTransform::UpdateEngineSca()
+void DirectusTransform::MapScale()
 {
     if (!m_inspectedTransform)
         return;
