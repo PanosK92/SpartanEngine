@@ -145,22 +145,21 @@ void DirectusTransform::Initialize()
     m_gridLayout->addWidget(m_scaZLabel,   3, 5, 1, 1);
     m_gridLayout->addWidget(m_scaZ,        3, 6, 1, 1);
 
-   // Connect textEdit(QString) signal with the appropriate slot
-   // NOTE: Unlike textChanged(), this signal is not emitted when the
-   // text is changed programmatically, for example, by calling setText().
-   connect(m_posX, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
-   connect(m_posY, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
-   connect(m_posZ, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
-   connect(m_rotX, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
-   connect(m_rotY, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
-   connect(m_rotZ, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
-   connect(m_scaX, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
-   connect(m_scaY, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
-   connect(m_scaZ, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
+    // textChanged(QString) -> emits signal when changed through code
+    // textEdit(QString) -> doesn't emits signal when changed through code
+    connect(m_posX, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
+    connect(m_posY, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
+    connect(m_posZ, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
+    connect(m_rotX, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
+    connect(m_rotY, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
+    connect(m_rotZ, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
+    connect(m_scaX, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
+    connect(m_scaY, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
+    connect(m_scaZ, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
 
-   this->setLayout(m_gridLayout);
-   this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-   this->hide();
+    this->setLayout(m_gridLayout);
+    this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    this->hide();
 }
 
 void DirectusTransform::Reflect(GameObject* gameobject)

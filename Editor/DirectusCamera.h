@@ -86,6 +86,7 @@ private:
 
 public slots:
     void MapProjection();
-    void MapFOV();
+    void MapFOVfromSlider();
+    void MapFOVfromText();
     void MapClippingPlanes();
 };

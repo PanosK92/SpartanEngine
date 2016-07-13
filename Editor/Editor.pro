@@ -27,7 +27,13 @@ SOURCES += main.cpp\
     DirectusAdjustLabel.cpp \
     DirectusCamera.cpp \
     DirectusMeshRenderer.cpp \
-    DirectusMaterial.cpp
+    DirectusMaterial.cpp \
+    DirectusLight.cpp \
+    DirectusRigidBody.cpp \
+    DirectusCollider.cpp \
+    DirectusMesh.cpp \
+    DirectusScript.cpp \
+    DirectusMeshCollider.cpp
 
 HEADERS  += editor.h \
     DirectusQTHelper.h \
@@ -43,7 +49,13 @@ HEADERS  += editor.h \
     DirectusAdjustLabel.h \
     DirectusCamera.h \
     DirectusMeshRenderer.h \
-    DirectusMaterial.h
+    DirectusMaterial.h \
+    DirectusLight.h \
+    DirectusRigidBody.h \
+    DirectusCollider.h \
+    DirectusMesh.h \
+    DirectusScript.h \
+    DirectusMeshCollider.h
 
 FORMS    += editor.ui \
     AboutDialog.ui
