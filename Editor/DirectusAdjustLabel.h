@@ -40,15 +40,21 @@ protected:
     virtual void leaveEvent(QEvent* event);
 
 private:
-    void RepositionMouseOnScreenEdge(QPoint mousePos);
-    float CalculateDelta(QPoint mousePos, QPoint labelPos);
+    void MouseEntered();
+    QPoint GetMousePosLocal();
+    float GetTextBoxValue();
+    void SetTextBoxValue(float value);
+    void RepositionMouseOnScreenEdge();
+    float CalculateDelta();
     void Adjust();
 
     QLineEdit* m_lineEdit;
     bool m_isMouseHovering;
     bool m_isMouseDragged;
-    float m_x;
-    float m_delta;
+    float m_lastMousePos;
+    float m_mouseDelta;
+    float m_currentTexBoxValue;
+    float m_sensitivity = 0.1f;
 
 signals:
 
