@@ -1801,7 +1801,7 @@ QTabBar::tab:last
 }</string>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <property name="iconSize">
                <size>
@@ -1884,8 +1884,20 @@ QTabBar::tab:last
                        <verstretch>0</verstretch>
                       </sizepolicy>
                      </property>
+                     <property name="contextMenuPolicy">
+                      <enum>Qt::DefaultContextMenu</enum>
+                     </property>
+                     <property name="dragEnabled">
+                      <bool>true</bool>
+                     </property>
+                     <property name="defaultDropAction">
+                      <enum>Qt::MoveAction</enum>
+                     </property>
+                     <property name="selectionMode">
+                      <enum>QAbstractItemView::MultiSelection</enum>
+                     </property>
                      <property name="movement">
-                      <enum>QListView::Free</enum>
+                      <enum>QListView::Snap</enum>
                      </property>
                      <property name="resizeMode">
                       <enum>QListView::Adjust</enum>
@@ -2399,6 +2411,9 @@ QTabBar::tab:last
        <property name="layoutDirection">
         <enum>Qt::LeftToRight</enum>
        </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
        <property name="styleSheet">
         <string notr="true">QWidget
 {
@@ -2415,12 +2430,27 @@ QTabBar::tab
 }</string>
        </property>
        <widget class="DirectusInspector" name="directusInspector">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="layoutDirection">
+         <enum>Qt::LeftToRight</enum>
+        </property>
+        <property name="autoFillBackground">
+         <bool>false</bool>
+        </property>
         <attribute name="title">
          <string>Inspector</string>
         </attribute>
         <layout class="QVBoxLayout" name="verticalLayout_5">
          <property name="spacing">
           <number>0</number>
+         </property>
+         <property name="sizeConstraint">
+          <enum>QLayout::SetNoConstraint</enum>
          </property>
          <property name="leftMargin">
           <number>0</number>

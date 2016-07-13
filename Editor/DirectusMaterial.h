@@ -21,29 +21,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//==============================
 #include <QWidget>
+#include <QGridLayout>
+#include "DirectusAdjustLabel.h"
+#include <QLineEdit>
 #include "Core/GameObject.h"
-#include "DirectusTransform.h"
-#include "DirectusCamera.h"
-#include "DirectusMeshRenderer.h"
-#include "DirectusMaterial.h"
-//===============================
+#include <QDoubleValidator>
+//==============================
 
-class DirectusInspector : public QWidget
+class DirectusMaterial : public QWidget
 {
     Q_OBJECT
 public:
-    explicit DirectusInspector(QWidget *parent = 0);
-    void Initialize();
-
+    explicit DirectusMaterial(QWidget *parent = 0);
+    void Map(GameObject* gameobject);
 private:
-    DirectusTransform* m_transform;
-    DirectusCamera* m_camera;
-    DirectusMeshRenderer* m_meshRenderer;
-    DirectusMaterial* m_material;
-signals:
+
+    //= TITLE =======================
+    QWidget* m_image;
+    QLabel* m_title;
+    //===============================
+
+    //= MISC ========================
+    QGridLayout* m_gridLayout;
+    QValidator* m_validator;
+    //===============================
+
+    QLineEdit* CreateQLineEdit();
+    Transform* m_inspectedTransform;
 
 public slots:
-    void inspect(GameObject* gameobject);
+    //void UpdateEnginePos();
+    //void UpdateEngineRot();
+    //void UpdateEngineSca();
 };

@@ -26,30 +26,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QGridLayout>
 #include "DirectusAdjustLabel.h"
 #include <QLineEdit>
-#include "Math/Vector3.h"
-#include "Math/Quaternion.h"
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
+#include <QComboBox>
+#include <QSlider>
+#include "Components/Camera.h"
 //==============================
 
-class DirectusTransform : public QWidget
+class DirectusCamera : public QWidget
 {
     Q_OBJECT
 public:
-    explicit DirectusTransform(QWidget *parent = 0);
+    explicit DirectusCamera(QWidget *parent = 0);
     void Initialize();
-
     void Map(GameObject* gameobject);
-    Directus::Math::Vector3 GetPosition();
-    void SetPosition(Directus::Math::Vector3 pos);
-
-    Directus::Math::Quaternion GetRotation();
-    void SetRotation(Directus::Math::Quaternion rot);
-    void SetRotation(Directus::Math::Vector3 rot);
-
-    Directus::Math::Vector3 GetScale();
-    void SetScale(Directus::Math::Vector3 sca);
-
 private:
 
     //= TITLE =======================
@@ -57,46 +47,43 @@ private:
     QLabel* m_title;
     //===============================
 
-    // = POSITION ===================
-    QLabel* m_posLabel;
-    DirectusAdjustLabel* m_posXLabel;
-    QLineEdit* m_posX;
-    DirectusAdjustLabel* m_posYLabel;
-    QLineEdit* m_posY;
-    DirectusAdjustLabel* m_posZLabel;
-    QLineEdit* m_posZ;
-    //===============================
+    //= BACKGROUND =================================
+    QLabel* m_backgroundLabel;
+    //==============================================
 
-    //= ROTATION ====================
-    QLabel* m_rotLabel;
-    DirectusAdjustLabel* m_rotXLabel;
-    QLineEdit* m_rotX;
-    DirectusAdjustLabel* m_rotYLabel;
-    QLineEdit* m_rotY;
-    DirectusAdjustLabel* m_rotZLabel;
-    QLineEdit* m_rotZ;
-    //===============================
+    //= PROJECTION =================================
+    QLabel* m_projectionLabel;
+    QComboBox* m_projectionComboBox;
+    //==============================================
 
-    //= SCALE =======================
-    QLabel* m_scaLabel;
-    DirectusAdjustLabel* m_scaXLabel;
-    QLineEdit* m_scaX;
-    DirectusAdjustLabel* m_scaYLabel;
-    QLineEdit* m_scaY;
-    DirectusAdjustLabel* m_scaZLabel;
-    QLineEdit* m_scaZ;
-    //===============================
+    //= FOV ========================================
+    QLabel* m_fovLabel;
+    QSlider* m_fovSlider;
+    QLineEdit* m_fovLineEdit;
+    QLabel* m_clippingPlanesLabel;
+    //==============================================
+
+    //= CLIPPING PLANES ============================
+    DirectusAdjustLabel* m_clippingPlanesFarLabel;
+    DirectusAdjustLabel* m_clippingPlanesNearLabel;
+    QLineEdit* m_clippingNear;
+    QLineEdit* m_clippingFar;
+    //==============================================
 
     //= MISC ========================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
+    Camera* m_inspectedCamera;
     //===============================
 
     QLineEdit* CreateQLineEdit();
-    Transform* m_inspectedTransform;
+    void SetProjection(Projection projection);
+    void SetNearPlane(float nearPlane);
+    void SetFarPlane(float farPlane);
+    void SetFOV(float fov);
 
 public slots:
-    void UpdateEnginePos();
-    void UpdateEngineRot();
-    void UpdateEngineSca();
+    //void UpdateEnginePos();
+    //void UpdateEngineRot();
+    //void UpdateEngineSca();
 };

@@ -26,7 +26,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
 {
-    m_transform = new DirectusTransform(this);
+
+}
+void DirectusInspector::Initialize()
+{
+    m_transform = new DirectusTransform();
+    m_transform->Initialize();
+
+    m_camera = new DirectusCamera();
+    m_camera->Initialize();
+
+    this->layout()->addWidget(m_transform);
+    this->layout()->addWidget(m_camera);
+    //m_meshRenderer = new DirectusMeshRenderer(this);
+    //m_material = new DirectusMaterial(this);
 }
 
 void DirectusInspector::inspect(GameObject* gameobject)
@@ -34,9 +47,15 @@ void DirectusInspector::inspect(GameObject* gameobject)
     if (gameobject)
     {    
         m_transform->Map(gameobject);
+        m_camera->Map(gameobject);
+        //m_meshRenderer->Map(gameobject);
+        //m_material->Map(gameobject);
     }
     else // NOTE: If no item is selected, the gameobject will be null
     {
         m_transform->hide();
+        m_camera->hide();
+       // m_meshRenderer->hide();
+        //m_meshRenderer->hide();
     }
 }

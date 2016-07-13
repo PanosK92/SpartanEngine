@@ -27,7 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace Directus::Math;
 
-DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
+DirectusTransform::DirectusTransform(QWidget* parent) : QWidget(parent)
+{
+
+}
+
+void DirectusTransform::Initialize()
 {
     m_gridLayout = new QGridLayout();
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
@@ -39,8 +44,8 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
     // = POSITION =================================
     m_posLabel = new QLabel("Position");
 
-    m_posX = CreateQLineEdit();   
-    m_posY = CreateQLineEdit(); 
+    m_posX = CreateQLineEdit();
+    m_posY = CreateQLineEdit();
     m_posZ = CreateQLineEdit();
 
     m_posXLabel = new DirectusAdjustLabel();
@@ -57,8 +62,8 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
     //= ROTATION ==================================
     m_rotLabel = new QLabel("Rotation");
 
-    m_rotX = CreateQLineEdit();  
-    m_rotY = CreateQLineEdit();   
+    m_rotX = CreateQLineEdit();
+    m_rotY = CreateQLineEdit();
     m_rotZ = CreateQLineEdit();
 
     m_rotXLabel = new DirectusAdjustLabel();
@@ -136,10 +141,9 @@ DirectusTransform::DirectusTransform(QWidget *parent) : QWidget(parent)
    connect(m_scaY, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
    connect(m_scaZ, SIGNAL(textChanged(QString)), this, SLOT(UpdateEngineSca()));
 
-   this->setParent(parent);
    this->setLayout(m_gridLayout);
-   this->show(); // This is not a mistake, it helps
-   this->hide(); // get the widget fully initialized
+   this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+   this->hide();
 }
 
 void DirectusTransform::Map(GameObject* gameobject)
