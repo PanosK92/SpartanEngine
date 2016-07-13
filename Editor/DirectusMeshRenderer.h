@@ -21,35 +21,53 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==============================
+//==================================
 #include <QWidget>
 #include <QGridLayout>
 #include "DirectusAdjustLabel.h"
 #include <QLineEdit>
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
-//==============================
+#include "Components/MeshRenderer.h"
+#include <QCheckBox>
+//==================================
 
 class DirectusMeshRenderer : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusMeshRenderer(QWidget *parent = 0);
+    void Initialize();
     void Map(GameObject* gameobject);
 private:
 
-    //= TITLE =======================
+    //= TITLE ============================
     QWidget* m_image;
     QLabel* m_title;
-    //===============================
+    //====================================
 
-    //= MISC ========================
+    //= CAST SHADOWS =====================
+    QLabel* m_castShadowsLabel;
+    QCheckBox* m_castShadowsCheckBox;
+    //====================================
+
+    //= RECEIVE SHADOWS ==================
+    QLabel* m_receiveShadowsLabel;
+    QCheckBox* m_receiveShadowsCheckBox;
+    //====================================
+
+    //= MATERIAL =========================
+    QLabel* m_materialLabel;
+    QLineEdit* m_material;
+    //====================================
+
+    //= MISC =============================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
-    //===============================
+    MeshRenderer* m_inspectedMeshRenderer;
+    //====================================
 
     QLineEdit* CreateQLineEdit();
-    Transform* m_inspectedTransform;
 
 public slots:
     //void UpdateEnginePos();

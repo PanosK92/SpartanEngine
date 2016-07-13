@@ -37,9 +37,11 @@ void DirectusTransform::Initialize()
     m_gridLayout = new QGridLayout();
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
-    m_image = new QWidget(this);
+    //= TITLE =====================================
+    m_image = new QWidget();
     m_image->setStyleSheet("background-image: url(:/Images/transform.png); background-repeat: no-repeat; background-position: left;");
     m_title = new QLabel("Transform");
+    //============================================
 
     // = POSITION =================================
     m_posLabel = new QLabel("Position");
@@ -50,12 +52,17 @@ void DirectusTransform::Initialize()
 
     m_posXLabel = new DirectusAdjustLabel();
     m_posXLabel->setText("X");
+    m_posXLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_posXLabel->AdjustQLineEdit(m_posX);
+
     m_posYLabel = new DirectusAdjustLabel();
     m_posYLabel->setText("Y");
+    m_posYLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_posYLabel->AdjustQLineEdit(m_posY);
+
     m_posZLabel = new DirectusAdjustLabel();
     m_posZLabel->setText("Z");
+    m_posZLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_posZLabel->AdjustQLineEdit(m_posZ);
     //=============================================
 
@@ -68,12 +75,17 @@ void DirectusTransform::Initialize()
 
     m_rotXLabel = new DirectusAdjustLabel();
     m_rotXLabel->setText("X");
+    m_rotXLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_rotXLabel->AdjustQLineEdit(m_rotX);
+
     m_rotYLabel = new DirectusAdjustLabel();
     m_rotYLabel->setText("Y");
+    m_rotYLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_rotYLabel->AdjustQLineEdit(m_rotY);
+
     m_rotZLabel = new DirectusAdjustLabel();
     m_rotZLabel->setText("Z");
+    m_rotZLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_rotZLabel->AdjustQLineEdit(m_rotZ);
     //=============================================
 
@@ -86,22 +98,27 @@ void DirectusTransform::Initialize()
 
     m_scaXLabel = new DirectusAdjustLabel();
     m_scaXLabel->setText("X");
+    m_scaXLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_scaXLabel->AdjustQLineEdit(m_scaX);
+
     m_scaYLabel = new DirectusAdjustLabel();
     m_scaYLabel->setText("Y");
+    m_scaYLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_scaYLabel->AdjustQLineEdit(m_scaY);
-    m_scaZLabel = new DirectusAdjustLabel();
+
+    m_scaZLabel = new DirectusAdjustLabel();   
     m_scaZLabel->setText("Z");
+    m_scaZLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_scaZLabel->AdjustQLineEdit(m_scaZ);
     //=============================================
 
-    // addWidget(*Widget, row, column, rowspan, colspan)
-
-    // 0th row
+    // addWidget(widget, row, column, rowspan, colspan)
+    //= GRID ==================================================
+    // Row 0 - TITLE
     m_gridLayout->addWidget(m_image, 0, 0, 1, 1);
     m_gridLayout->addWidget(m_title, 0, 1, 1, 2);
 
-    // 1st row
+    // Row 1 - POSITION
     m_gridLayout->addWidget(m_posLabel,    1, 0, 1, 1);
     m_gridLayout->addWidget(m_posXLabel,   1, 1, 1, 1);
     m_gridLayout->addWidget(m_posX,        1, 2, 1, 1);
@@ -110,7 +127,7 @@ void DirectusTransform::Initialize()
     m_gridLayout->addWidget(m_posZLabel,   1, 5, 1, 1);
     m_gridLayout->addWidget(m_posZ,        1, 6, 1, 1);
 
-    // 2nd row
+    // Row 2 - ROTATION
     m_gridLayout->addWidget(m_rotLabel,    2, 0, 1, 1);
     m_gridLayout->addWidget(m_rotXLabel,   2, 1, 1, 1);
     m_gridLayout->addWidget(m_rotX,        2, 2, 1, 1);
@@ -119,7 +136,7 @@ void DirectusTransform::Initialize()
     m_gridLayout->addWidget(m_rotZLabel,   2, 5, 1, 1);
     m_gridLayout->addWidget(m_rotZ,        2, 6, 1, 1);
 
-    // 3rd row
+    // Row 3 - SCALE
     m_gridLayout->addWidget(m_scaLabel,    3, 0, 1, 1);
     m_gridLayout->addWidget(m_scaXLabel,   3, 1, 1, 1);
     m_gridLayout->addWidget(m_scaX,        3, 2, 1, 1);
