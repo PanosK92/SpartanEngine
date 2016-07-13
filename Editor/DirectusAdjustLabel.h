@@ -54,7 +54,7 @@ private:
     float m_lastMousePos;
     float m_mouseDelta;
     float m_currentTexBoxValue;
-    float m_sensitivity = 0.1f;
+    float m_sensitivity = 0.05f;
 
 signals:
 
