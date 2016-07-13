@@ -57,6 +57,7 @@ void DirectusAdjustLabel::leaveEvent(QEvent* event)
 void DirectusAdjustLabel::MouseEntered()
 {
     m_currentTexBoxValue = GetTextBoxValue();
+    m_lastMousePos = GetMousePosLocal().x();
 }
 
 QPoint DirectusAdjustLabel::GetMousePosLocal()
