@@ -38,6 +38,7 @@ Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
     Socket* engineSocket = ui->directus3D->GetEngineSocket();
 
     // Resolve other dependencies
+    ui->directusInspector->Initialize();
     ui->directusHierarchy->SetDirectusInspector(ui->directusInspector);
     ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);
     ui->directusPlayButton->SetDirectus3DWidget(ui->directus3D);

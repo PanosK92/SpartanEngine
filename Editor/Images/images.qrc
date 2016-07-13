@@ -8,5 +8,6 @@
         <file>tabHierarchy.png</file>
         <file>tabInspector.png</file>
         <file>tabScene.png</file>
+        <file>camera.png</file>
     </qresource>
 </RCC>
