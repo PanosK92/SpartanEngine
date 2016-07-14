@@ -252,7 +252,7 @@ bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 
 	if (!FileHelper::FileExists(path))
 	{
-		LOG("Could not find image \"" + path + "\".", Log::Error);
+		LOG("Failed to load image \"" + path + "\", it doesn't exist.", Log::Error);
 		return false;
 	}
 	

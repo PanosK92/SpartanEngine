@@ -90,6 +90,8 @@ private:
 	Directus::Math::Quaternion m_rotation;
 	bool m_isDirty;
 
+	Directus::Math::Vector2 m_lastKnownResolution;
+
 	/*------------------------------------------------------------------------------
 									[PRIVATE]
 	------------------------------------------------------------------------------*/
