@@ -29,9 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/GameObject.h"
 #include "Core/Material.h"
 #include <QDoubleValidator>
-#include <QSlider>
+#include "DirectusSliderText.h"
 #include <QPushButton>
 #include <QComboBox>
+#include "Math/Vector2.h"
 //==============================
 
 class DirectusMaterial : public QWidget
@@ -62,29 +63,25 @@ private:
     //= ROUGHNESS ===================
     QWidget* m_roughnessImage;
     QLabel* m_roughnessLabel;
-    QSlider* m_roughnessSlider;
-    QLineEdit* m_roughnessLineEdit;
+    DirectusSliderText* m_roughness;
     //===============================
 
     //= METALLIC ====================
     QWidget* m_metallicImage;
     QLabel* m_metallicLabel;
-    QSlider* m_metallicSlider;
-    QLineEdit* m_metallicLineEdit;
+    DirectusSliderText* m_metallic;
     //===============================
 
     //= NORMAL ======================
     QWidget* m_normalImage;
     QLabel* m_normalLabel;
-    QSlider* m_normalSlider;
-    QLineEdit* m_normalLineEdit;
+    DirectusSliderText* m_normal;
     //===============================
 
     //= HEIGHT ======================
     QWidget* m_heightImage;
     QLabel* m_heightLabel;
-    QSlider* m_heightSlider;
-    QLineEdit* m_heightLineEdit;
+    DirectusSliderText* m_height;
     //===============================
 
     //= OCCLUSION ===================
@@ -104,8 +101,7 @@ private:
 
     //= REFLECTIVITY ================
     QLabel* m_reflectivityLabel;
-    QSlider* m_reflectivitySlider;
-    QLineEdit* m_reflectivityLineEdit;
+    DirectusSliderText* m_reflectivity;
     //===============================
 
     //= TILING ======================
@@ -132,11 +128,14 @@ private:
     QLineEdit* CreateQLineEdit();
     Material* m_inspectedMaterial;
 
+    void SetName(std::string name);
     void SetRoughness(float roughness);
     void SetMetallic(float metallic);
+    void SetReflectivity(float reflectivity);
+    void SetTiling(Directus::Math::Vector2 tiling);
 public slots:
-    void MapRoughnessFromSlider();
-    void MapRoughnessFromText();
-    void MapMetallicFromSlider();
-    void MapMetallicFromText();
+    void MapRoughness();
+    void MapMetallic();
+    void MapReflectivity();
+    void MapTiling();
 };

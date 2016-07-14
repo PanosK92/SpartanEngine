@@ -2444,7 +2444,7 @@ QTabBar::tab:last
 {
 color: #909090;
 background-color: #383838;
-border-color: #464646;
+border-color: #212121;
 border-style: solid;
 border-width: 1px;
 }
@@ -2452,7 +2452,19 @@ border-width: 1px;
 QTabBar::tab
 {
 	background-image: url(:/Images/tabInspector.png);
-}</string>
+}
+
+/*
+widget background dark: 			292929
+widget background light:				383838
+widget background highlighted: 	484848
+text color: 									909090
+text highlighted:							 EDEDED
+border: 										212121
+border highlighted:						464646
+text edit background:					414141
+*/
+</string>
        </property>
        <widget class="DirectusInspector" name="directusInspector">
         <property name="sizePolicy">
