@@ -37,6 +37,18 @@ DirectusTransform::DirectusTransform(QWidget* parent) : QWidget(parent)
 void DirectusTransform::Initialize()
 {
     m_gridLayout = new QGridLayout();
+    //this->setStyleSheet("background-color: #383838");
+    /*
+    widget background dark: 			292929
+    widget background light:				383838
+    widget background highlighted: 	484848
+    text color: 									909090
+    text highlighted:							 EDEDED
+    border: 										212121
+    border highlighted:						464646
+    text edit background:					414141
+    */
+
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     //= TITLE =====================================

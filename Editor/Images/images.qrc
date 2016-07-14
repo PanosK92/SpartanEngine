@@ -11,5 +11,6 @@
         <file>camera.png</file>
         <file>material.png</file>
         <file>meshRenderer.png</file>
+        <file>light.png</file>
     </qresource>
 </RCC>

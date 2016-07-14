@@ -25,11 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QWidget>
 #include <QGridLayout>
 #include "DirectusAdjustLabel.h"
-#include <QLineEdit>
+#include <QPushButton>
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
 #include "Components/Light.h"
-#include <QCheckBox>
+#include <QComboBox>
 //==================================
 
 class DirectusLight : public QWidget
@@ -42,35 +42,39 @@ public:
 private:
 
     //= TITLE ============================
-    QWidget* m_image;
     QLabel* m_title;
     //====================================
 
-    //= CAST SHADOWS =====================
-    QLabel* m_castShadowsLabel;
-    QCheckBox* m_castShadowsCheckBox;
+    //= TYPE =============================
+    QLabel* m_lightTypeLabel;
+    QComboBox* m_lightType;
     //====================================
 
-    //= RECEIVE SHADOWS ==================
-    QLabel* m_receiveShadowsLabel;
-    QCheckBox* m_receiveShadowsCheckBox;
+    //= COLOR ============================
+    QLabel* m_colorLabel;
+    QPushButton* m_color;
     //====================================
 
-    //= MATERIAL =========================
-    QLabel* m_materialLabel;
-    QLineEdit* m_material;
+    //= INTENSTITY =======================
+    QLabel* m_intensityLabel;
+    DirectusAdjustLabel* m_intensity;
+    //====================================
+
+    //= SHADOW TYPE ======================
+    QLabel* m_shadowTypeLabel;
+    QComboBox* m_shadowType;
     //====================================
 
     //= MISC =============================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
-    Light* m_inspectedMeshRenderer;
+    Light* m_inspectedLight;
     //====================================
 
     QLineEdit* CreateQLineEdit();
 
-    void SetCastShadows(bool cast);
-    void SetReceiveShadows(bool receive);
+    //void SetCastShadows(bool cast);
+    //void SetReceiveShadows(bool receive);
 
 public slots:
     void Map();

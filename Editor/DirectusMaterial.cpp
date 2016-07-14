@@ -147,41 +147,41 @@ void DirectusMaterial::Initialize()
 
     // Row 5 - SHADER
     m_gridLayout->addWidget(m_shaderLabel,  row, 0, 1, 1);
-    m_gridLayout->addWidget(m_shader,       row, 1, 1, 1);
+    m_gridLayout->addWidget(m_shader,       row, 1, 1, 5);
     row++;
 
     // Row 6 - ALBEDO
     m_gridLayout->addWidget(m_albedoImage, row, 0, 1, 1);
     m_gridLayout->addWidget(m_albedoLabel, row, 1, 1, 1);
-    m_gridLayout->addWidget(m_albedoColor, row, 2, 1, 1);
+    m_gridLayout->addWidget(m_albedoColor, row, 2, 1, 3);
     row++;
 
     // Row 7 - ROUGHNESS
     m_gridLayout->addWidget(m_roughnessImage,           row, 0, 1, 1);
     m_gridLayout->addWidget(m_roughnessLabel,           row, 1, 1, 1);
-    m_gridLayout->addWidget(m_roughness->GetSlider(),   row, 2, 1, 1);
-    m_gridLayout->addWidget(m_roughness->GetLineEdit(), row, 3, 1, 1);
+    m_gridLayout->addWidget(m_roughness->GetSlider(),   row, 2, 1, 2);
+    m_gridLayout->addWidget(m_roughness->GetLineEdit(), row, 4, 1, 1);
     row++;
 
     // Row 8 - METALLIC
     m_gridLayout->addWidget(m_metallicImage,            row, 0, 1, 1);
     m_gridLayout->addWidget(m_metallicLabel,            row, 1, 1, 1);
-    m_gridLayout->addWidget(m_metallic->GetSlider(),    row, 2, 1, 1);
-    m_gridLayout->addWidget(m_metallic->GetLineEdit(),  row, 3, 1, 1);
+    m_gridLayout->addWidget(m_metallic->GetSlider(),    row, 2, 1, 2);
+    m_gridLayout->addWidget(m_metallic->GetLineEdit(),  row, 4, 1, 1);
     row++;
 
     // Row 9 - NORMAL
     m_gridLayout->addWidget(m_normalImage,              row, 0, 1, 1);
     m_gridLayout->addWidget(m_normalLabel,              row, 1, 1, 1);
-    m_gridLayout->addWidget(m_normal->GetSlider(),      row, 2, 1, 1);
-    m_gridLayout->addWidget(m_normal->GetLineEdit(),    row, 3, 1, 1);
+    m_gridLayout->addWidget(m_normal->GetSlider(),      row, 2, 1, 2);
+    m_gridLayout->addWidget(m_normal->GetLineEdit(),    row, 4, 1, 1);
     row++;
 
     // Row 10 - HEIGHT
     m_gridLayout->addWidget(m_heightImage,              row, 0, 1, 1);
     m_gridLayout->addWidget(m_heightLabel,              row, 1, 1, 1);
-    m_gridLayout->addWidget(m_height->GetSlider(),      row, 2, 1, 1);
-    m_gridLayout->addWidget(m_height->GetLineEdit(),    row, 3, 1, 1);
+    m_gridLayout->addWidget(m_height->GetSlider(),      row, 2, 1, 2);
+    m_gridLayout->addWidget(m_height->GetLineEdit(),    row, 4, 1, 1);
     row++;
 
     // Row 11 - OCCLUSION
@@ -201,8 +201,8 @@ void DirectusMaterial::Initialize()
 
     // Row 14 - REFLECTIVITY
     m_gridLayout->addWidget(m_reflectivityLabel,            row, 0, 1, 1);
-    m_gridLayout->addWidget(m_reflectivity->GetSlider(),    row, 2, 1, 1);
-    m_gridLayout->addWidget(m_reflectivity->GetLineEdit(),  row, 3, 1, 1);
+    m_gridLayout->addWidget(m_reflectivity->GetSlider(),    row, 2, 1, 2);
+    m_gridLayout->addWidget(m_reflectivity->GetLineEdit(),  row, 4, 1, 1);
     row++;
 
     // Row 15 - TILING

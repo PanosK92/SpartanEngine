@@ -15,12 +15,10 @@ void DirectusSliderText::Initialize(int min, int max)
 
     m_slider = new QSlider(Qt::Horizontal);
     m_slider->setRange(min * 100, max * 100);
-    m_slider->setBaseSize(300, 20);
-    m_slider->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    m_slider->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 
     m_lineEdit = new QLineEdit();
-    m_lineEdit->setBaseSize(50, 20);
-    m_lineEdit->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
+    m_lineEdit->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     m_lineEdit->setValidator(m_validator);
 
     connect(m_slider, SIGNAL(valueChanged(int)), this, SLOT(UpdateFromSlider()));

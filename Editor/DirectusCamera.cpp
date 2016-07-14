@@ -46,6 +46,7 @@ void DirectusCamera::Initialize()
 
     //= BACKGROUND ============================================
      m_backgroundLabel = new QLabel("Background");
+    m_background = new QPushButton("ClearColor");
     //=========================================================
 
     //= PROJECTION ============================================
@@ -82,22 +83,23 @@ void DirectusCamera::Initialize()
 
     // Row 1
     m_gridLayout->addWidget(m_backgroundLabel, 1, 0, 1, 1);
+     m_gridLayout->addWidget(m_background, 1, 1, 1, 3);
 
     // Row 2
     m_gridLayout->addWidget(m_projectionLabel, 2, 0, 1, 1);
-    m_gridLayout->addWidget(m_projectionComboBox, 2, 1, 1, 1);
+    m_gridLayout->addWidget(m_projectionComboBox, 2, 1, 1, 3);
 
     // Row 3
     m_gridLayout->addWidget(m_fovLabel, 3, 0, 1, 1);
-    m_gridLayout->addWidget(m_fov->GetSlider(), 3, 1, 1, 1);
-    m_gridLayout->addWidget(m_fov->GetLineEdit(), 3, 2, 1, 1);
+    m_gridLayout->addWidget(m_fov->GetSlider(), 3, 1, 1, 2);
+    m_gridLayout->addWidget(m_fov->GetLineEdit(), 3, 3, 1, 1);
 
     // Row 4 and 5
     m_gridLayout->addWidget(m_clippingPlanesLabel, 4, 0, 1, 1);
     m_gridLayout->addWidget(m_clippingPlanesNearLabel, 4, 1, 1, 1);
-    m_gridLayout->addWidget(m_clippingNear, 4, 2, 1, 1);
+    m_gridLayout->addWidget(m_clippingNear, 4, 2, 1, 2);
     m_gridLayout->addWidget(m_clippingPlanesFarLabel, 5, 1, 1, 1);
-    m_gridLayout->addWidget(m_clippingFar, 5, 2, 1, 1);
+    m_gridLayout->addWidget(m_clippingFar, 5, 2, 1, 2);
     //=============================================================================
 
     // textChanged(QString) -> emits signal when changed through code

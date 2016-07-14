@@ -30,12 +30,57 @@ DirectusLight::DirectusLight(QWidget *parent) : QWidget(parent)
 
 void DirectusLight::Initialize()
 {
+    m_gridLayout = new QGridLayout();
+    m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
+    //= TITLE =================================================
+    m_title = new QLabel("Light");
+    m_title->setStyleSheet(
+                "background-image: url(:/Images/light.png);"
+                "background-repeat: no-repeat;"
+                "background-position: left;"
+                "padding-left: 20px;"
+                );
+    //=========================================================
+
+    // addWidget(widget, row, column, rowspan, colspan)
+    //= GRID ======================================================================
+    // Row 0
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 3);
+    //==============================================================================
+
+    this->setLayout(m_gridLayout);
+    this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    this->hide();
 }
 
 void DirectusLight::Reflect(GameObject* gameobject)
 {
+    m_inspectedLight = nullptr;
 
+    // Catch evil case
+    if (!gameobject)
+    {
+        this->hide();
+        return;
+    }
+
+    // Catch the seed of the evil
+    m_inspectedLight = gameobject->GetComponent<Light>();
+    if (!m_inspectedLight)
+    {
+        this->hide();
+        return;
+    }
+
+    // Do the actual mapping
+    //SetProjection(m_inspectedCamera->GetProjection());
+    //SetFOV(m_inspectedCamera->GetFieldOfView());
+    //SetNearPlane(m_inspectedCamera->GetNearPlane());
+    //SetFarPlane(m_inspectedCamera->GetFarPlane());
+
+    // Make this widget visible
+    this->show();
 }
 
 void DirectusLight::Map()
