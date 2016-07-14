@@ -40,22 +40,24 @@ ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
 	bool albedo,
 	bool roughness,
 	bool metallic,
-	bool occlusion,
 	bool normal,
 	bool height,
+	bool occlusion,
+	bool emission,
 	bool mask,
 	bool cubemap
 )
 {
 	// If an appropriate shader already exists, return it's ID
 	ShaderVariation* existingShader = FindMatchingShader(
-		albedo, 
-		roughness, 
-		metallic, 
-		occlusion, 
-		normal, 
-		height, 
-		mask, 
+		albedo,
+		roughness,
+		metallic,
+		normal,
+		height,
+		occlusion,
+		emission,
+		mask,
 		cubemap
 	);
 
@@ -68,9 +70,10 @@ ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
 		albedo,
 		roughness,
 		metallic,
-		occlusion,
 		normal,
 		height,
+		occlusion,
+		emission,
 		mask,
 		cubemap,
 		m_graphicsDevice
@@ -94,9 +97,10 @@ ShaderVariation* ShaderPool::FindMatchingShader(
 	bool albedo,
 	bool roughness,
 	bool metallic,
-	bool occlusion,
 	bool normal,
 	bool height,
+	bool occlusion,
+	bool emission,
 	bool mask,
 	bool cubemap
 )
@@ -106,13 +110,14 @@ ShaderVariation* ShaderPool::FindMatchingShader(
 		ShaderVariation* shader = m_shaders[i].get();
 		
 		if (shader->HasAlbedoTexture() != albedo) continue;
-		if (shader->HasAlbedoTexture() != roughness) continue;
-		if (shader->HasAlbedoTexture() != metallic) continue;
-		if (shader->HasAlbedoTexture() != occlusion) continue;
-		if (shader->HasAlbedoTexture() != normal) continue;
-		if (shader->HasAlbedoTexture() != height) continue;
-		if (shader->HasAlbedoTexture() != mask) continue;
-		if (shader->HasAlbedoTexture() != cubemap) continue;
+		if (shader->HasRoughnessTexture() != roughness) continue;
+		if (shader->HasMetallicTexture() != metallic) continue;
+		if (shader->HasNormalTexture() != normal) continue;
+		if (shader->HasHeightTexture() != height) continue;
+		if (shader->HasOcclusionTexture() != occlusion) continue;
+		if (shader->HasEmissionTexture() != emission) continue;	
+		if (shader->HasMaskTexture() != mask) continue;
+		if (shader->HasCubeMapTexture() != cubemap) continue;
 
 		return shader;
 	}

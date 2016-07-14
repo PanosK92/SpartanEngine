@@ -58,9 +58,10 @@ void ShaderVariation::Initialize(
 	bool albedo,
 	bool roughness,
 	bool metallic,
-	bool occlusion,
 	bool normal,
 	bool height,
+	bool occlusion,
+	bool emission,
 	bool mask,
 	bool cubemap,
 	GraphicsDevice* graphicsDevice
@@ -70,9 +71,10 @@ void ShaderVariation::Initialize(
 	m_hasAlbedoTexture = albedo;
 	m_hasRoughnessTexture = roughness;
 	m_hasMetallicTexture = metallic;
-	m_hasOcclusionTexture = occlusion;
 	m_hasNormalTexture = normal;
 	m_hasHeightTexture = height;
+	m_hasOcclusionTexture = occlusion;
+	m_hasEmissionTexture = emission;	
 	m_hasMaskTexture = mask;
 	m_hasCubeMap = cubemap;
 
@@ -92,9 +94,10 @@ void ShaderVariation::AddDefinesBasedOnMaterial()
 	m_D3D11Shader->AddDefine("ALBEDO_MAP", m_hasAlbedoTexture);
 	m_D3D11Shader->AddDefine("ROUGHNESS_MAP", m_hasRoughnessTexture);
 	m_D3D11Shader->AddDefine("METALLIC_MAP", m_hasMetallicTexture);
-	m_D3D11Shader->AddDefine("OCCLUSION_MAP", m_hasOcclusionTexture);
 	m_D3D11Shader->AddDefine("NORMAL_MAP", m_hasNormalTexture);
 	m_D3D11Shader->AddDefine("HEIGHT_MAP", m_hasHeightTexture);
+	m_D3D11Shader->AddDefine("OCCLUSION_MAP", m_hasOcclusionTexture);
+	m_D3D11Shader->AddDefine("EMISSION_MAP", m_hasEmissionTexture);
 	m_D3D11Shader->AddDefine("MASK_MAP", m_hasMaskTexture);
 	m_D3D11Shader->AddDefine("CUBE_MAP", m_hasCubeMap);
 }
@@ -180,11 +183,6 @@ bool ShaderVariation::HasMetallicTexture()
 	return m_hasMetallicTexture;
 }
 
-bool ShaderVariation::HasOcclusionTexture()
-{
-	return m_hasOcclusionTexture;
-}
-
 bool ShaderVariation::HasNormalTexture()
 {
 	return m_hasNormalTexture;
@@ -193,6 +191,16 @@ bool ShaderVariation::HasNormalTexture()
 bool ShaderVariation::HasHeightTexture()
 {
 	return m_hasHeightTexture;
+}
+
+bool ShaderVariation::HasOcclusionTexture()
+{
+	return m_hasOcclusionTexture;
+}
+
+bool ShaderVariation::HasEmissionTexture()
+{
+	return m_hasEmissionTexture;
 }
 
 bool ShaderVariation::HasMaskTexture()

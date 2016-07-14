@@ -37,9 +37,10 @@ public:
 		bool albedo,
 		bool roughness,
 		bool metallic,
-		bool occlusion,
 		bool normal,
 		bool height,
+		bool occlusion,
+		bool emission,
 		bool mask,
 		bool cubemap
 	);
@@ -51,9 +52,10 @@ private:
 		bool albedo,
 		bool roughness,
 		bool metallic,
-		bool occlusion,
 		bool normal,
 		bool height,
+		bool occlusion,
+		bool emission,
 		bool mask,
 		bool cubemap
 	);

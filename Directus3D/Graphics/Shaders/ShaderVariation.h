@@ -44,9 +44,10 @@ public:
 		bool albedo,
 		bool roughness,
 		bool metallic,
-		bool occlusion,
 		bool normal,
 		bool height,
+		bool occlusion,
+		bool emission,
 		bool mask,
 		bool cubemap,
 		GraphicsDevice* d3d11device
@@ -60,9 +61,10 @@ public:
 	bool HasAlbedoTexture();
 	bool HasRoughnessTexture();
 	bool HasMetallicTexture();
-	bool HasOcclusionTexture();
 	bool HasNormalTexture();
 	bool HasHeightTexture();
+	bool HasOcclusionTexture();
+	bool HasEmissionTexture();
 	bool HasMaskTexture();
 	bool HasCubeMapTexture();
 
@@ -77,9 +79,10 @@ private:
 	bool m_hasAlbedoTexture;
 	bool m_hasRoughnessTexture;
 	bool m_hasMetallicTexture;
-	bool m_hasOcclusionTexture;
 	bool m_hasNormalTexture;
 	bool m_hasHeightTexture;
+	bool m_hasOcclusionTexture;
+	bool m_hasEmissionTexture;
 	bool m_hasMaskTexture;
 	bool m_hasCubeMap;
 
