@@ -274,29 +274,74 @@ void DirectusMaterial::SetName(string name)
 
 void DirectusMaterial::SetAlbedo(Vector4 color)
 {
-   string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Albedo);
-   QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-   m_albedoLabel->setPixmap(pix);
+    // Load the albedo texture preview
+    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Albedo);
+    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
+    m_albedoImage->setPixmap(pix);
 }
 
 void DirectusMaterial::SetRoughness(float roughness)
 {
     m_roughness->SetValue(roughness);
+
+    // Load the roughness texture preview
+    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Roughness);
+    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
+    m_roughnessImage->setPixmap(pix);
 }
 
 void DirectusMaterial::SetMetallic(float metallic)
 {
     m_metallic->SetValue(metallic);
+
+    // Load the metallic texture preview
+    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Metallic);
+    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
+    m_metallicImage->setPixmap(pix);
 }
 
 void DirectusMaterial::SetNormal(float normal)
 {
     m_normal->SetValue(normal);
+
+    // Load the normal texture preview
+    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Normal);
+    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
+    m_normalImage->setPixmap(pix);
 }
 
 void DirectusMaterial::SetHeight(float height)
 {
     m_height->SetValue(height);
+
+    // Load the height texture preview
+    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Height);
+    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
+    m_heightImage->setPixmap(pix);
+}
+
+void DirectusMaterial::SetOcclusion()
+{
+    // Load the occlusion texture preview
+    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Occlusion);
+    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
+    m_occlusionImage->setPixmap(pix);
+}
+
+void DirectusMaterial::SetEmission()
+{
+    // Load the emission texture preview
+    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Emission);
+    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
+    m_emissionImage->setPixmap(pix);
+}
+
+void DirectusMaterial::SetMask()
+{
+    // Load the mask texture preview
+    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Mask);
+    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
+    m_maskImage->setPixmap(pix);
 }
 
 void DirectusMaterial::SetReflectivity(float reflectivity)
@@ -350,6 +395,21 @@ void DirectusMaterial::MapHeight()
 
     //float height =  m_height->GetValue();
     //m_inspectedMaterial->Seth(height);
+}
+
+void DirectusMaterial::MapOcclusion()
+{
+
+}
+
+void DirectusMaterial::MapEmission()
+{
+
+}
+
+void DirectusMaterial::MapMask()
+{
+
 }
 
 void DirectusMaterial::MapReflectivity()
