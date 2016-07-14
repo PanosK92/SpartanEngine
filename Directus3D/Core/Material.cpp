@@ -219,9 +219,10 @@ void Material::AcquireShader()
 		HasTextureOfType(Albedo),
 		HasTextureOfType(Roughness),
 		HasTextureOfType(Metallic),
-		HasTextureOfType(Occlusion),
 		HasTextureOfType(Normal),
 		HasTextureOfType(Height),
+		HasTextureOfType(Occlusion),
+		HasTextureOfType(Emission),
 		HasTextureOfType(Mask),
 		HasTextureOfType(CubeMap)
 	);

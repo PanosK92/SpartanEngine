@@ -277,7 +277,7 @@ void DirectusMaterial::SetAlbedo(Vector4 color)
     // Load the albedo texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Albedo);
     QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-   // m_albedoImage->setPixmap(pix);
+    m_albedoImage->setPixmap(pix);
 }
 
 void DirectusMaterial::SetRoughness(float roughness)
