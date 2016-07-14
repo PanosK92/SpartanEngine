@@ -25,7 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IO/Log.h"
 //===============================
 
+//= NAMESPACES ================
 using namespace Directus::Math;
+//=============================
 
 DirectusTransform::DirectusTransform(QWidget* parent) : QWidget(parent)
 {
@@ -146,7 +148,7 @@ void DirectusTransform::Initialize()
     m_gridLayout->addWidget(m_scaZ,        3, 6, 1, 1);
 
     // textChanged(QString) -> emits signal when changed through code
-    // textEdit(QString) -> doesn't emits signal when changed through code
+    // textEdit(QString) -> doesn't emit signal when changed through code
     connect(m_posX, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
     connect(m_posY, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
     connect(m_posZ, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));

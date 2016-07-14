@@ -53,9 +53,8 @@ void DirectusCamera::Initialize()
 
     //= FOV ===================================================
     m_fovLabel = new QLabel("Field of view");
-    m_fovSlider = new QSlider(Qt::Horizontal);
-    m_fovSlider->setRange(1, 179);
-    m_fovLineEdit = CreateQLineEdit();
+    m_fov = new DirectusSliderText();
+    m_fov->Initialize(1, 179);;
     //=========================================================
 
     //= CLIPPING PLANES ==========================================================
@@ -87,8 +86,8 @@ void DirectusCamera::Initialize()
 
     // Row 3
     m_gridLayout->addWidget(m_fovLabel, 3, 0, 1, 1);
-    m_gridLayout->addWidget(m_fovSlider, 3, 1, 1, 1);
-    m_gridLayout->addWidget(m_fovLineEdit, 3, 2, 1, 1);
+    m_gridLayout->addWidget(m_fov->GetSlider(), 3, 1, 1, 1);
+    m_gridLayout->addWidget(m_fov->GetLineEdit(), 3, 2, 1, 1);
 
     // Row 4 and 5
     m_gridLayout->addWidget(m_clippingPlanesLabel, 4, 0, 1, 1);
@@ -98,11 +97,12 @@ void DirectusCamera::Initialize()
     m_gridLayout->addWidget(m_clippingFar, 5, 2, 1, 1);
     //=============================================================================
 
+    // textChanged(QString) -> emits signal when changed through code
+    // textEdit(QString) -> doesn't emit signal when changed through code
     connect(m_projectionComboBox, SIGNAL(activated(int)), this, SLOT(MapProjection()));
-    connect(m_fovSlider, SIGNAL(valueChanged(int)), this, SLOT(MapFOVfromSlider()));
-    connect(m_fovLineEdit, SIGNAL(textChanged(QString)), this, SLOT(MapFOVfromText()));
-    connect(m_clippingNear, SIGNAL(textChanged(QString)), this, SLOT(MapClippingPlanes()));
-    connect(m_clippingFar, SIGNAL(textChanged(QString)), this, SLOT(MapClippingPlanes()));
+    connect(m_fov, SIGNAL(valueChanged(float)), this, SLOT(MapFOV()));
+    connect(m_clippingNear, SIGNAL(textEdited(QString)), this, SLOT(MapClippingPlanes()));
+    connect(m_clippingFar, SIGNAL(textEdited(QString)), this, SLOT(MapClippingPlanes()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -155,8 +155,7 @@ void DirectusCamera::SetFarPlane(float farPlane)
 
 void DirectusCamera::SetFOV(float fov)
 {
-    m_fovSlider->setValue(fov);
-    m_fovLineEdit->setText(QString::number(fov));
+    m_fov->SetValue(fov);
 }
 
 QLineEdit* DirectusCamera::CreateQLineEdit()
@@ -176,26 +175,13 @@ void DirectusCamera::MapProjection()
     m_inspectedCamera->SetProjection(projection);
 }
 
-void DirectusCamera::MapFOVfromSlider()
+void DirectusCamera::MapFOV()
 {
     if(!m_inspectedCamera)
         return;
 
-    float fovSliderValue = m_fovSlider->value();
-
-    m_inspectedCamera->SetFieldOfView(fovSliderValue);
-    m_fovLineEdit->setText(QString::number(fovSliderValue));
-}
-
-void DirectusCamera::MapFOVfromText()
-{
-    if(!m_inspectedCamera)
-        return;
-
-    float fovTextBoxValue = m_fovLineEdit->text().toFloat();
-
-    m_inspectedCamera->SetFieldOfView(fovTextBoxValue);
-    m_fovSlider->setValue(fovTextBoxValue);
+    float fov = m_fov->GetValue();
+    m_inspectedCamera->SetFieldOfView(fov);
 }
 
 void DirectusCamera::MapClippingPlanes()

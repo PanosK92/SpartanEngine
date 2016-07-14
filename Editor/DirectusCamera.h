@@ -29,9 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
 #include <QComboBox>
-#include <QSlider>
 #include "Components/Camera.h"
 #include <QPushButton>
+#include "DirectusSliderText.h"
 //==============================
 
 class DirectusCamera : public QWidget
@@ -60,12 +60,11 @@ private:
 
     //= FOV ========================================
     QLabel* m_fovLabel;
-    QSlider* m_fovSlider;
-    QLineEdit* m_fovLineEdit;
-    QLabel* m_clippingPlanesLabel;
+    DirectusSliderText* m_fov;
     //==============================================
 
     //= CLIPPING PLANES ============================
+    QLabel* m_clippingPlanesLabel;
     DirectusAdjustLabel* m_clippingPlanesFarLabel;
     DirectusAdjustLabel* m_clippingPlanesNearLabel;
     QLineEdit* m_clippingNear;
@@ -86,7 +85,6 @@ private:
 
 public slots:
     void MapProjection();
-    void MapFOVfromSlider();
-    void MapFOVfromText();
+    void MapFOV();
     void MapClippingPlanes();
 };
