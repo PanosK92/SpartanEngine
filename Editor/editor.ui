@@ -2033,9 +2033,9 @@ QTabBar::tab:last
           <colorrole role="Button">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>56</red>
-             <green>56</green>
-             <blue>56</blue>
+             <red>41</red>
+             <green>41</green>
+             <blue>41</blue>
             </color>
            </brush>
           </colorrole>
@@ -2105,18 +2105,18 @@ QTabBar::tab:last
           <colorrole role="Base">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>56</red>
-             <green>56</green>
-             <blue>56</blue>
+             <red>41</red>
+             <green>41</green>
+             <blue>41</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Window">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>56</red>
-             <green>56</green>
-             <blue>56</blue>
+             <red>41</red>
+             <green>41</green>
+             <blue>41</blue>
             </color>
            </brush>
           </colorrole>
@@ -2170,9 +2170,9 @@ QTabBar::tab:last
           <colorrole role="Button">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>56</red>
-             <green>56</green>
-             <blue>56</blue>
+             <red>41</red>
+             <green>41</green>
+             <blue>41</blue>
             </color>
            </brush>
           </colorrole>
@@ -2242,18 +2242,18 @@ QTabBar::tab:last
           <colorrole role="Base">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>56</red>
-             <green>56</green>
-             <blue>56</blue>
+             <red>41</red>
+             <green>41</green>
+             <blue>41</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Window">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>56</red>
-             <green>56</green>
-             <blue>56</blue>
+             <red>41</red>
+             <green>41</green>
+             <blue>41</blue>
             </color>
            </brush>
           </colorrole>
@@ -2307,9 +2307,9 @@ QTabBar::tab:last
           <colorrole role="Button">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>56</red>
-             <green>56</green>
-             <blue>56</blue>
+             <red>41</red>
+             <green>41</green>
+             <blue>41</blue>
             </color>
            </brush>
           </colorrole>
@@ -2379,18 +2379,18 @@ QTabBar::tab:last
           <colorrole role="Base">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>56</red>
-             <green>56</green>
-             <blue>56</blue>
+             <red>41</red>
+             <green>41</green>
+             <blue>41</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Window">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>56</red>
-             <green>56</green>
-             <blue>56</blue>
+             <red>41</red>
+             <green>41</green>
+             <blue>41</blue>
             </color>
            </brush>
           </colorrole>
@@ -2445,7 +2445,8 @@ QTabBar::tab:last
 	background-image: url(:/Images/tabInspector.png);
 }
 
-QWidget
+/*
+QWidget::directusInspector
 {
 color: #909090;
 background-color: #383838;
