@@ -31,11 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 enum TextureType
 {
 	Albedo,
-	Metallic,
 	Roughness,
-	Occlusion,
+	Metallic,
 	Normal,
 	Height,
+	Occlusion,
+	Emission,
 	Mask,
 	CubeMap,
 };

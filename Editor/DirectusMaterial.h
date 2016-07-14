@@ -123,10 +123,10 @@ private:
     //= MISC ========================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
+    Material* m_inspectedMaterial;
     //===============================
 
     QLineEdit* CreateQLineEdit();
-    Material* m_inspectedMaterial;
 
     void SetName(std::string name);
     void SetAlbedo(Directus::Math::Vector4 color);
@@ -134,14 +134,21 @@ private:
     void SetMetallic(float metallic);
     void SetNormal(float normal);
     void SetHeight(float height);
+    void SetOcclusion();
+    void SetEmission();
+    void SetMask();
     void SetReflectivity(float reflectivity);
     void SetTiling(Directus::Math::Vector2 tiling);
+
 public slots:
     void MapAlbedo();
     void MapRoughness();
     void MapMetallic();
     void MapNormal();
     void MapHeight();
+    void MapOcclusion();
+    void MapEmission();
+    void MapMask();
     void MapReflectivity();
     void MapTiling();
 };
