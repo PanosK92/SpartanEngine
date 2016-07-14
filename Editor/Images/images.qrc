@@ -9,5 +9,7 @@
         <file>tabInspector.png</file>
         <file>tabScene.png</file>
         <file>camera.png</file>
+        <file>material.png</file>
+        <file>meshRenderer.png</file>
     </qresource>
 </RCC>

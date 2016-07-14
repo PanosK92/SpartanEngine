@@ -43,9 +43,13 @@ void DirectusMaterial::Initialize()
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     //= TITLE =================================================
-    m_image = new QWidget();
-    m_image->setStyleSheet("background-image: url(:/Images/material.png); background-repeat: no-repeat; background-position: left;");
     m_title = new QLabel("Material");
+    m_title->setStyleSheet(
+                "background-image: url(:/Images/material.png);"
+                "background-repeat: no-repeat;"
+                "background-position: left;"
+                "padding-left: 40px;"
+                );
     //=========================================================
 
     //= SHADER ================================================
@@ -135,73 +139,86 @@ void DirectusMaterial::Initialize()
 
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
+    int row = 0;
+
     // Row 0
-    m_gridLayout->addWidget(m_image, 0, 0, 1, 1);
-    m_gridLayout->addWidget(m_title, 0, 1, 1, 2);
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 5);
+    row++;
 
-    // Row 1 - SHADER
-    m_gridLayout->addWidget(m_shaderLabel, 1, 0, 1, 1);
-    m_gridLayout->addWidget(m_shader, 1, 1, 1, 1);
+    // Row 5 - SHADER
+    m_gridLayout->addWidget(m_shaderLabel,  row, 0, 1, 1);
+    m_gridLayout->addWidget(m_shader,       row, 1, 1, 1);
+    row++;
 
-    // Row 2 - ALBEDO
-    m_gridLayout->addWidget(m_albedoImage, 2, 0, 1, 1);
-    m_gridLayout->addWidget(m_albedoLabel, 2, 1, 1, 1);
-    m_gridLayout->addWidget(m_albedoColor, 2, 2, 1, 1);
+    // Row 6 - ALBEDO
+    m_gridLayout->addWidget(m_albedoImage, row, 0, 1, 1);
+    m_gridLayout->addWidget(m_albedoLabel, row, 1, 1, 1);
+    m_gridLayout->addWidget(m_albedoColor, row, 2, 1, 1);
+    row++;
 
-    // Row 3 - ROUGHNESS
-    m_gridLayout->addWidget(m_roughnessImage, 3, 0, 1, 1);
-    m_gridLayout->addWidget(m_roughnessLabel, 3, 1, 1, 1);
-    m_gridLayout->addWidget(m_roughness->GetSlider(), 3, 2, 1, 1);
-    m_gridLayout->addWidget(m_roughness->GetLineEdit(), 3, 3, 1, 1);
+    // Row 7 - ROUGHNESS
+    m_gridLayout->addWidget(m_roughnessImage,           row, 0, 1, 1);
+    m_gridLayout->addWidget(m_roughnessLabel,           row, 1, 1, 1);
+    m_gridLayout->addWidget(m_roughness->GetSlider(),   row, 2, 1, 1);
+    m_gridLayout->addWidget(m_roughness->GetLineEdit(), row, 3, 1, 1);
+    row++;
 
-    // Row 4 - METALLIC
-    m_gridLayout->addWidget(m_metallicImage, 4, 0, 1, 1);
-    m_gridLayout->addWidget(m_metallicLabel, 4, 1, 1, 1);
-    m_gridLayout->addWidget(m_metallic->GetSlider(), 4, 2, 1, 1);
-    m_gridLayout->addWidget(m_metallic->GetLineEdit(), 4, 3, 1, 1);
+    // Row 8 - METALLIC
+    m_gridLayout->addWidget(m_metallicImage,            row, 0, 1, 1);
+    m_gridLayout->addWidget(m_metallicLabel,            row, 1, 1, 1);
+    m_gridLayout->addWidget(m_metallic->GetSlider(),    row, 2, 1, 1);
+    m_gridLayout->addWidget(m_metallic->GetLineEdit(),  row, 3, 1, 1);
+    row++;
 
-    // Row 5 - NORMAL
-    m_gridLayout->addWidget(m_normalImage, 5, 0, 1, 1);
-    m_gridLayout->addWidget(m_normalLabel, 5, 1, 1, 1);
-    m_gridLayout->addWidget(m_normal->GetSlider(), 5, 2, 1, 1);
-    m_gridLayout->addWidget(m_normal->GetLineEdit(), 5, 3, 1, 1);
+    // Row 9 - NORMAL
+    m_gridLayout->addWidget(m_normalImage,              row, 0, 1, 1);
+    m_gridLayout->addWidget(m_normalLabel,              row, 1, 1, 1);
+    m_gridLayout->addWidget(m_normal->GetSlider(),      row, 2, 1, 1);
+    m_gridLayout->addWidget(m_normal->GetLineEdit(),    row, 3, 1, 1);
+    row++;
 
-    // Row 6 - HEIGHT
-    m_gridLayout->addWidget(m_heightImage, 6, 0, 1, 1);
-    m_gridLayout->addWidget(m_heightLabel, 6, 1, 1, 1);
-    m_gridLayout->addWidget(m_height->GetSlider(), 6, 2, 1, 1);
-    m_gridLayout->addWidget(m_height->GetLineEdit(), 6, 3, 1, 1);
+    // Row 10 - HEIGHT
+    m_gridLayout->addWidget(m_heightImage,              row, 0, 1, 1);
+    m_gridLayout->addWidget(m_heightLabel,              row, 1, 1, 1);
+    m_gridLayout->addWidget(m_height->GetSlider(),      row, 2, 1, 1);
+    m_gridLayout->addWidget(m_height->GetLineEdit(),    row, 3, 1, 1);
+    row++;
 
-    // Row 7 - OCCLUSION
-    m_gridLayout->addWidget(m_occlusionImage, 7, 0, 1, 1);
-    m_gridLayout->addWidget(m_occlusionLabel, 7, 1, 1, 1);
+    // Row 11 - OCCLUSION
+    m_gridLayout->addWidget(m_occlusionImage, row, 0, 1, 1);
+    m_gridLayout->addWidget(m_occlusionLabel, row, 1, 1, 1);
+    row++;
 
-    // Row 8 - EMISSION
-    m_gridLayout->addWidget(m_emissionImage, 8, 0, 1, 1);
-    m_gridLayout->addWidget(m_emissionLabel, 8, 1, 1, 1);
+    // Row 12 - EMISSION
+    m_gridLayout->addWidget(m_emissionImage, row, 0, 1, 1);
+    m_gridLayout->addWidget(m_emissionLabel, row, 1, 1, 1);
+    row++;
 
-    // Row 9 - MASK
-    m_gridLayout->addWidget(m_maskImage, 9, 0, 1, 1);
-    m_gridLayout->addWidget(m_maskLabel, 9, 1, 1, 1);
+    // Row 13 - MASK
+    m_gridLayout->addWidget(m_maskImage, row, 0, 1, 1);
+    m_gridLayout->addWidget(m_maskLabel, row, 1, 1, 1);
+    row++;
 
-    // Row 10 - REFLECTIVITY
-    m_gridLayout->addWidget(m_reflectivityLabel, 10, 0, 1, 1);
-    m_gridLayout->addWidget(m_reflectivity->GetSlider(), 10, 2, 1, 1);
-    m_gridLayout->addWidget(m_reflectivity->GetLineEdit(), 10, 3, 1, 1);
+    // Row 14 - REFLECTIVITY
+    m_gridLayout->addWidget(m_reflectivityLabel,            row, 0, 1, 1);
+    m_gridLayout->addWidget(m_reflectivity->GetSlider(),    row, 2, 1, 1);
+    m_gridLayout->addWidget(m_reflectivity->GetLineEdit(),  row, 3, 1, 1);
+    row++;
 
-    // Row 11 - TILING
-    m_gridLayout->addWidget(m_tilingLabel, 11, 0, 1, 1);
-    m_gridLayout->addWidget(m_tilingXLabel, 11, 1, 1, 1);
-    m_gridLayout->addWidget(m_tilingX, 11, 2, 1, 1);
-    m_gridLayout->addWidget(m_tilingYLabel, 11, 3, 1, 1);
-    m_gridLayout->addWidget(m_tilingY, 11, 4, 1, 1);
+    // Row 15 - TILING
+    m_gridLayout->addWidget(m_tilingLabel,      row, 0, 1, 1);
+    m_gridLayout->addWidget(m_tilingXLabel,     row, 1, 1, 1);
+    m_gridLayout->addWidget(m_tilingX,          row, 2, 1, 1);
+    m_gridLayout->addWidget(m_tilingYLabel,     row, 3, 1, 1);
+    m_gridLayout->addWidget(m_tilingY,          row, 4, 1, 1);
+    row++;
 
-    // Row 12 - OFFSET
-    m_gridLayout->addWidget(m_offsetLabel, 12, 0, 1, 1);
-    m_gridLayout->addWidget(m_offsetXLabel, 12, 1, 1, 1);
-    m_gridLayout->addWidget(m_offsetX, 12, 2, 1, 1);
-    m_gridLayout->addWidget(m_offsetYLabel, 12, 3, 1, 1);
-    m_gridLayout->addWidget(m_offsetY, 12, 4, 1, 1);
+    // Row 16 - OFFSET
+    m_gridLayout->addWidget(m_offsetLabel,  row, 0, 1, 1);
+    m_gridLayout->addWidget(m_offsetXLabel, row, 1, 1, 1);
+    m_gridLayout->addWidget(m_offsetX,      row, 2, 1, 1);
+    m_gridLayout->addWidget(m_offsetYLabel, row, 3, 1, 1);
+    m_gridLayout->addWidget(m_offsetY,      row, 4, 1, 1);
     //=========================================================
 
     // textChanged(QString) -> emits signal when changed through code
@@ -277,7 +294,7 @@ void DirectusMaterial::SetAlbedo(Vector4 color)
     // Load the albedo texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Albedo);
     QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-   // m_albedoImage->setPixmap(pix);
+    m_albedoImage->setPixmap(pix);
 }
 
 void DirectusMaterial::SetRoughness(float roughness)

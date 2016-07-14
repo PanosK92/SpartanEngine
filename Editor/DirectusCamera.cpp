@@ -35,9 +35,13 @@ void DirectusCamera::Initialize()
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     //= TITLE =================================================
-    m_image = new QWidget(this);
-    m_image->setStyleSheet("background-image: url(:/Images/camera.png); background-repeat: no-repeat; background-position: left;");
     m_title = new QLabel("Camera");
+    m_title->setStyleSheet(
+                "background-image: url(:/Images/camera.png);"
+                "background-repeat: no-repeat;"
+                "background-position: left;"
+                "padding-left: 20px;"
+                );
     //=========================================================
 
     //= BACKGROUND ============================================
@@ -74,8 +78,7 @@ void DirectusCamera::Initialize()
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ======================================================================
     // Row 0
-    m_gridLayout->addWidget(m_image, 0, 0, 1, 1);
-    m_gridLayout->addWidget(m_title, 0, 1, 1, 2);
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 3);
 
     // Row 1
     m_gridLayout->addWidget(m_backgroundLabel, 1, 0, 1, 1);

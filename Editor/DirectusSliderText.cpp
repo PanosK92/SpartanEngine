@@ -14,9 +14,13 @@ void DirectusSliderText::Initialize(int min, int max)
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     m_slider = new QSlider(Qt::Horizontal);
-    m_slider->setRange(min * 10, max * 10);
+    m_slider->setRange(min * 100, max * 100);
+    m_slider->setBaseSize(300, 20);
+    m_slider->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
 
     m_lineEdit = new QLineEdit();
+    m_lineEdit->setBaseSize(50, 20);
+    m_lineEdit->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     m_lineEdit->setValidator(m_validator);
 
     connect(m_slider, SIGNAL(valueChanged(int)), this, SLOT(UpdateFromSlider()));
@@ -26,7 +30,7 @@ void DirectusSliderText::Initialize(int min, int max)
 void DirectusSliderText::SetValue(float value)
 {
     m_lineEdit->setText(QString::number(value));
-    m_slider->setValue(value * 10);
+    m_slider->setValue(value * 100);
 }
 
 float DirectusSliderText::GetValue()
@@ -46,7 +50,7 @@ QLineEdit* DirectusSliderText::GetLineEdit()
 
 void DirectusSliderText::UpdateFromSlider()
 {
-    float value = (float)m_slider->value() / 10;
+    float value = (float)m_slider->value() / 100;
     m_lineEdit->setText(QString::number(value));
 
     emit valueChanged(value);
@@ -55,7 +59,7 @@ void DirectusSliderText::UpdateFromSlider()
 void DirectusSliderText::UpdateFromLineEdit()
 {
     float value = m_lineEdit->text().toFloat();
-    m_slider->setValue(value * 10);
+    m_slider->setValue(value * 100);
 
     emit valueChanged(value);
 }

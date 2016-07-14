@@ -40,9 +40,13 @@ void DirectusTransform::Initialize()
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     //= TITLE =====================================
-    m_image = new QWidget();
-    m_image->setStyleSheet("background-image: url(:/Images/transform.png); background-repeat: no-repeat; background-position: left;");
     m_title = new QLabel("Transform");
+    m_title->setStyleSheet(
+                "background-image: url(:/Images/transform.png);"
+                "background-repeat: no-repeat;"
+                "background-position: left;"
+                "padding-left: 20px;"
+                );
     //============================================
 
     // = POSITION =================================
@@ -117,8 +121,7 @@ void DirectusTransform::Initialize()
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     // Row 0 - TITLE
-    m_gridLayout->addWidget(m_image, 0, 0, 1, 1);
-    m_gridLayout->addWidget(m_title, 0, 1, 1, 2);
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 7);
 
     // Row 1 - POSITION
     m_gridLayout->addWidget(m_posLabel,    1, 0, 1, 1);
