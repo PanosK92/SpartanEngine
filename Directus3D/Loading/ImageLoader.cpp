@@ -31,7 +31,6 @@ ImageLoader::ImageLoader()
 	m_bitmap = nullptr;
 	m_bitmap32 = nullptr;
 	m_bitmapScaled = nullptr;
-	m_dataRGBA = nullptr;
 	m_bpp = 0;
 	m_width = 0;
 	m_height = 0;
@@ -39,6 +38,7 @@ ImageLoader::ImageLoader()
 	m_channels = 4;
 	m_grayscale = false;
 	m_transparent = false;
+	m_graphicsDevice = nullptr;
 
 	FreeImage_Initialise(true);
 }
@@ -80,16 +80,11 @@ bool ImageLoader::Load(std::string path, int width, int height)
 
 void ImageLoader::Clear()
 {
-	if (m_dataRGBA != nullptr)
-	{
-		delete[] m_dataRGBA;
-		m_dataRGBA = nullptr;
-	}
-
+	m_dataRGBA.clear();
+	m_dataRGBA.shrink_to_fit();
 	m_bitmap = nullptr;
 	m_bitmap32 = nullptr;
 	m_bitmapScaled = nullptr;
-	m_dataRGBA = nullptr;
 	m_bpp = 0;
 	m_width = 0;
 	m_height = 0;
@@ -144,7 +139,7 @@ ID3D11ShaderResourceView* ImageLoader::GetAsD3D11ShaderResourceView()
 
 	// Resource data description
 	D3D11_SUBRESOURCE_DATA mapResource{};
-	mapResource.pSysMem = m_dataRGBA;
+	mapResource.pSysMem = m_dataRGBA.data();
 	mapResource.SysMemPitch = sizeof(unsigned char) * m_width * m_channels;
 
 	// Copy data from memory to the subresource created in non-mappable memory
@@ -158,7 +153,7 @@ ID3D11ShaderResourceView* ImageLoader::GetAsD3D11ShaderResourceView()
 
 unsigned char* ImageLoader::GetRGBA()
 {
-	return m_dataRGBA;
+	return m_dataRGBA.data();
 }
 
 unsigned char* ImageLoader::GetRGBACopy()
@@ -299,23 +294,20 @@ bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 	m_path = path;
 	m_width = FreeImage_GetWidth(m_bitmap32);
 	m_height = FreeImage_GetHeight(m_bitmap32);
-	m_dataRGBA = new unsigned char[m_width * m_height * m_channels];
 	unsigned int bytespp = m_width != 0 ? FreeImage_GetLine(m_bitmap32) / m_width : -1;
 	if (bytespp == -1)
 		return false;
 
-	// Construct a 2D RGBA array
+	// Construct an RGBA array
 	for (unsigned int y = 0; y < m_height; y++)
 	{
 		unsigned char* bits = (unsigned char*)FreeImage_GetScanLine(m_bitmap32, y);
 		for (unsigned int x = 0; x < m_width; x++)
 		{
-			unsigned int id = (x + y * m_width) * m_channels;
-
-			m_dataRGBA[id + 0] = bits[FI_RGBA_RED];
-			m_dataRGBA[id + 1] = bits[FI_RGBA_GREEN];
-			m_dataRGBA[id + 2] = bits[FI_RGBA_BLUE];
-			m_dataRGBA[id + 3] = bits[FI_RGBA_ALPHA];
+			m_dataRGBA.push_back(bits[FI_RGBA_RED]);
+			m_dataRGBA.push_back(bits[FI_RGBA_GREEN]);
+			m_dataRGBA.push_back(bits[FI_RGBA_BLUE]);
+			m_dataRGBA.push_back(bits[FI_RGBA_ALPHA]);
 
 			// jump to next pixel
 			bits += bytespp;

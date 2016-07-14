@@ -62,6 +62,7 @@ XPM files[reading, writing]
 
 //= INCLUDES ==========================
 #include "../Graphics/GraphicsDevice.h"
+#include <vector>
 //=====================================
 
 // Forward declaration to avoid dependencies
@@ -107,7 +108,7 @@ private:
 	FIBITMAP* m_bitmap;
 	FIBITMAP* m_bitmap32;
 	FIBITMAP* m_bitmapScaled;
-	unsigned char* m_dataRGBA;
+	std::vector<unsigned char> m_dataRGBA;
 	unsigned int m_bpp;
 	unsigned int m_width;
 	unsigned int m_height;
