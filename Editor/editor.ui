@@ -2440,7 +2440,12 @@ QTabBar::tab:last
         <bool>false</bool>
        </property>
        <property name="styleSheet">
-        <string notr="true">QWidget
+        <string notr="true">QTabBar::tab
+{
+	background-image: url(:/Images/tabInspector.png);
+}
+
+QWidget
 {
 color: #909090;
 background-color: #383838;
@@ -2449,10 +2454,7 @@ border-style: solid;
 border-width: 1px;
 }
 
-QTabBar::tab
-{
-	background-image: url(:/Images/tabInspector.png);
-}
+
 
 /*
 widget background dark: 			292929

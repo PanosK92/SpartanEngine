@@ -35,9 +35,13 @@ void DirectusMeshRenderer::Initialize()
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     //= TITLE =================================================
-    m_image = new QWidget(this);
-    m_image->setStyleSheet("background-image: url(:/Images/meshRenderer.png); background-repeat: no-repeat; background-position: left;");
     m_title = new QLabel("Mesh Renderer");
+    m_title->setStyleSheet(
+                "background-image: url(:/Images/meshRenderer.png);"
+                "background-repeat: no-repeat;"
+                "background-position: left;"
+                "padding-left: 20px;"
+                );
     //=========================================================
 
     //= CAST SHADOWS ==========================================
@@ -58,8 +62,7 @@ void DirectusMeshRenderer::Initialize()
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     // Row 0
-    m_gridLayout->addWidget(m_image, 0, 0, 1, 1);
-    m_gridLayout->addWidget(m_title, 0, 1, 1, 1);
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 2);
 
     // Row 1
     m_gridLayout->addWidget(m_castShadowsLabel, 1, 0, 1, 1);

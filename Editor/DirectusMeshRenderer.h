@@ -42,7 +42,6 @@ public:
 private:
 
     //= TITLE ============================
-    QWidget* m_image;
     QLabel* m_title;
     //====================================
 
