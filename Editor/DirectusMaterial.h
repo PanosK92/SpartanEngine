@@ -55,47 +55,47 @@ private:
     //===============================
 
     //= ALBEDO ======================
-    QWidget* m_albedoImage;
+    QLabel* m_albedoImage;
     QLabel* m_albedoLabel;
     QPushButton* m_albedoColor;
     //===============================
 
     //= ROUGHNESS ===================
-    QWidget* m_roughnessImage;
+    QLabel* m_roughnessImage;
     QLabel* m_roughnessLabel;
     DirectusSliderText* m_roughness;
     //===============================
 
     //= METALLIC ====================
-    QWidget* m_metallicImage;
+    QLabel* m_metallicImage;
     QLabel* m_metallicLabel;
     DirectusSliderText* m_metallic;
     //===============================
 
     //= NORMAL ======================
-    QWidget* m_normalImage;
+    QLabel* m_normalImage;
     QLabel* m_normalLabel;
     DirectusSliderText* m_normal;
     //===============================
 
     //= HEIGHT ======================
-    QWidget* m_heightImage;
+    QLabel* m_heightImage;
     QLabel* m_heightLabel;
     DirectusSliderText* m_height;
     //===============================
 
     //= OCCLUSION ===================
-    QWidget* m_occlusionImage;
+    QLabel* m_occlusionImage;
     QLabel* m_occlusionLabel;
     //===============================
 
     //= EMISSION ====================
-    QWidget* m_emissionImage;
+    QLabel* m_emissionImage;
     QLabel* m_emissionLabel;
     //===============================
 
     //= MASK ========================
-    QWidget* m_maskImage;
+    QLabel* m_maskImage;
     QLabel* m_maskLabel;
     //===============================
 
@@ -129,13 +129,19 @@ private:
     Material* m_inspectedMaterial;
 
     void SetName(std::string name);
+    void SetAlbedo(Directus::Math::Vector4 color);
     void SetRoughness(float roughness);
     void SetMetallic(float metallic);
+    void SetNormal(float normal);
+    void SetHeight(float height);
     void SetReflectivity(float reflectivity);
     void SetTiling(Directus::Math::Vector2 tiling);
 public slots:
+    void MapAlbedo();
     void MapRoughness();
     void MapMetallic();
+    void MapNormal();
+    void MapHeight();
     void MapReflectivity();
     void MapTiling();
 };

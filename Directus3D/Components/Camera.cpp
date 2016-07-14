@@ -48,6 +48,12 @@ void Camera::Initialize()
 
 void Camera::Update()
 {
+	if (m_lastKnownResolution != RESOLUTION)
+	{
+		m_lastKnownResolution = RESOLUTION;
+		m_isDirty = true;
+	}
+
 	// calculate the view matrix only if the transform has changed
 	if (m_position != g_transform->GetPosition() || m_rotation != g_transform->GetRotation())
 	{

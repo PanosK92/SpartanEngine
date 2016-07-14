@@ -57,7 +57,8 @@ HEADERS  += editor.h \
     DirectusMesh.h \
     DirectusScript.h \
     DirectusMeshCollider.h \
-    DirectusSliderText.h
+    DirectusSliderText.h \
+    DirectusImageLoader.h
 
 FORMS    += editor.ui \
     AboutDialog.ui

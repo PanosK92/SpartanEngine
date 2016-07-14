@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //== INCLUDES ======================
 #include "DirectusMaterial.h"
 #include "Components/MeshRenderer.h"
+#include "IO/Log.h"
+#include <QByteArray>
+#include "DirectusImageLoader.h"
 //==================================
 
 //= NAMESPACES =====================
@@ -53,51 +56,51 @@ void DirectusMaterial::Initialize()
 
     //= ALBEDO ================================================
     m_albedoLabel = new QLabel("Albedo");
-    m_albedoImage = new QWidget();
+    m_albedoImage = new QLabel();
     m_albedoColor = new QPushButton("ColorPicker");
     //=========================================================
 
     //= ROUGHNESS =============================================
     m_roughnessLabel = new QLabel("Roughness");
-    m_roughnessImage = new QWidget();
+    m_roughnessImage = new QLabel();
     m_roughness = new DirectusSliderText();
     m_roughness->Initialize(0, 1);
     //=========================================================
 
     //= METALLIC ==============================================
     m_metallicLabel = new QLabel("Metallic");
-    m_metallicImage = new QWidget();
+    m_metallicImage = new QLabel();
     m_metallic = new DirectusSliderText();
     m_metallic->Initialize(0, 1);
     //=========================================================
 
     //= NORMAL ================================================
     m_normalLabel = new QLabel("Normal");
-    m_normalImage = new QWidget();
+    m_normalImage = new QLabel();
     m_normal = new DirectusSliderText();
     m_normal->Initialize(0, 1);
     //=========================================================
 
     //= HEIGHT ================================================
     m_heightLabel = new QLabel("Height");
-    m_heightImage = new QWidget();
+    m_heightImage = new QLabel();
     m_height = new DirectusSliderText();
     m_height->Initialize(0, 1);
     //=========================================================
 
     //= OCCLUSION =============================================
     m_occlusionLabel = new QLabel("Occlusion");
-    m_occlusionImage = new QWidget();
+    m_occlusionImage = new QLabel();
     //=========================================================
 
     //= EMISSION ==============================================
     m_emissionLabel = new QLabel("Emission");
-    m_emissionImage = new QWidget();
+    m_emissionImage = new QLabel();
     //=========================================================
 
     //= MASK ==================================================
     m_maskLabel = new QLabel("Mask");
-    m_maskImage = new QWidget();
+    m_maskImage = new QLabel();
     //=========================================================
 
     //= REFLECTIVITY  =========================================
@@ -205,6 +208,8 @@ void DirectusMaterial::Initialize()
     // textEdited(QString) -> doesn't emits signal when changed through code
     connect(m_roughness, SIGNAL(valueChanged(float)), this, SLOT(MapRoughness()));
     connect(m_metallic, SIGNAL(valueChanged(float)), this, SLOT(MapMetallic()));
+    connect(m_normal, SIGNAL(valueChanged(float)), this, SLOT(MapNormal()));
+    connect(m_height, SIGNAL(valueChanged(float)), this, SLOT(MapHeight()));
     connect(m_reflectivity, SIGNAL(valueChanged(float)), this, SLOT(MapReflectivity()));
     connect(m_tilingX, SIGNAL(textEdited(QString)), this, SLOT(MapTiling()));
     connect(m_tilingY, SIGNAL(textEdited(QString)), this, SLOT(MapTiling()));
@@ -241,8 +246,11 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
 
     // Do the actual mapping
     SetName(m_inspectedMaterial->GetName());
+    SetAlbedo(m_inspectedMaterial->GetColorAlbedo());
     SetRoughness(m_inspectedMaterial->GetRoughness());
     SetMetallic(m_inspectedMaterial->GetMetallic());
+    SetNormal(m_inspectedMaterial->GetNormalStrength());
+    SetHeight(0);
     SetTiling(m_inspectedMaterial->GetTiling());
     SetReflectivity(m_inspectedMaterial->GetReflectivity());
 
@@ -264,6 +272,13 @@ void DirectusMaterial::SetName(string name)
     m_title->setText(text);
 }
 
+void DirectusMaterial::SetAlbedo(Vector4 color)
+{
+   string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Albedo);
+   QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
+   m_albedoLabel->setPixmap(pix);
+}
+
 void DirectusMaterial::SetRoughness(float roughness)
 {
     m_roughness->SetValue(roughness);
@@ -272,6 +287,16 @@ void DirectusMaterial::SetRoughness(float roughness)
 void DirectusMaterial::SetMetallic(float metallic)
 {
     m_metallic->SetValue(metallic);
+}
+
+void DirectusMaterial::SetNormal(float normal)
+{
+    m_normal->SetValue(normal);
+}
+
+void DirectusMaterial::SetHeight(float height)
+{
+    m_height->SetValue(height);
 }
 
 void DirectusMaterial::SetReflectivity(float reflectivity)
@@ -283,6 +308,11 @@ void DirectusMaterial::SetTiling(Vector2 tiling)
 {
     m_tilingX->setText(QString::number(tiling.x));
     m_tilingY->setText(QString::number(tiling.y));
+}
+
+void DirectusMaterial::MapAlbedo()
+{
+
 }
 
 void DirectusMaterial::MapRoughness()
@@ -302,6 +332,24 @@ void DirectusMaterial::MapMetallic()
 
     float metallic =  m_metallic->GetValue();
     m_inspectedMaterial->SetMetallic(metallic);
+}
+
+void DirectusMaterial::MapNormal()
+{
+    if (!m_inspectedMaterial)
+        return;
+
+    float normal =  m_normal->GetValue();
+    m_inspectedMaterial->SetNormalStrength(normal);
+}
+
+void DirectusMaterial::MapHeight()
+{
+    if (!m_inspectedMaterial)
+        return;
+
+    //float height =  m_height->GetValue();
+    //m_inspectedMaterial->Seth(height);
 }
 
 void DirectusMaterial::MapReflectivity()
