@@ -60,7 +60,7 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
     //= FOV ===================================================
     m_fovLabel = new QLabel("Field of view");
     m_fov = new DirectusSliderText();
-    m_fov->Initialize(1, 179);;
+    m_fov->Initialize(1, 179);
     //=========================================================
 
     //= CLIPPING PLANES ==========================================================
@@ -107,8 +107,8 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
     // textEdit(QString) -> doesn't emit signal when changed through code
     connect(m_projectionComboBox, SIGNAL(activated(int)), this, SLOT(MapProjection()));
     connect(m_fov, SIGNAL(valueChanged(float)), this, SLOT(MapFOV()));
-    connect(m_clippingNear, SIGNAL(textEdited(QString)), this, SLOT(MapClippingPlanes()));
-    connect(m_clippingFar, SIGNAL(textEdited(QString)), this, SLOT(MapClippingPlanes()));
+    connect(m_clippingNear, SIGNAL(textChanged(QString)), this, SLOT(MapClippingPlanes()));
+    connect(m_clippingFar, SIGNAL(textChanged(QString)), this, SLOT(MapClippingPlanes()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
