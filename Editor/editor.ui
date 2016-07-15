@@ -1331,8 +1331,17 @@ border-bottom-right-radius: 5px;
                  </property>
                  <item>
                   <widget class="DirectusHierarchy" name="directusHierarchy">
+                   <property name="dragDropMode">
+                    <enum>QAbstractItemView::DragDrop</enum>
+                   </property>
+                   <property name="uniformRowHeights">
+                    <bool>true</bool>
+                   </property>
                    <property name="animated">
                     <bool>true</bool>
+                   </property>
+                   <property name="expandsOnDoubleClick">
+                    <bool>false</bool>
                    </property>
                    <attribute name="headerVisible">
                     <bool>false</bool>
@@ -1895,7 +1904,7 @@ QTabBar::tab:last
 }</string>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <property name="iconSize">
                <size>

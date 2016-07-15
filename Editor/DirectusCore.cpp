@@ -91,6 +91,13 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
     int height = this->size().height();
 
     height = width / (16.0f/9.0f);
+
+    if (width % 2 != 0)
+        width++;
+
+    if (height % 2 != 0)
+        height++;
+
     setGeometry(QRect(0, 0, width, height));
 	Resize(width, height);
 
