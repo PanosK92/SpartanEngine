@@ -41,7 +41,7 @@ public:
 
 	//= IO =========================
 	void SetLogger(ILogger* logger);
-	void LoadModel(GameObject* gameObject, std::string path);
+	void LoadModel(std::string path);
 	ImageLoader* GetImageLoader();
 	//==============================
 

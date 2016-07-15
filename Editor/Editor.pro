@@ -33,7 +33,9 @@ SOURCES += main.cpp\
     DirectusScript.cpp \
     DirectusMeshCollider.cpp \
     DirectusSliderText.cpp \
-    DirectusCore.cpp
+    DirectusCore.cpp \
+    DirectusImage.cpp \
+    DirectusAssetLoader.cpp
 
 HEADERS  += editor.h \
     DirectusPlayButton.h \
@@ -55,9 +57,10 @@ HEADERS  += editor.h \
     DirectusScript.h \
     DirectusMeshCollider.h \
     DirectusSliderText.h \
-    DirectusImageLoader.h \
     DirectusCore.h \
-    DirectusQVariantPacker.h
+    DirectusQVariantPacker.h \
+    DirectusImage.h \
+    DirectusAssetLoader.h
 
 FORMS    += editor.ui \
     AboutDialog.ui

@@ -21,31 +21,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==============================
+//= INCLUDES ===========
+#include <QObject>
 #include <QPixmap>
-#include "Loading/ImageLoader.h"
-//==============================
+#include "Core/Socket.h"
+//======================
 
-class DirectusImageLoader
+class DirectusAssetLoader : public QObject
 {
-    public:
-    static QPixmap LoadFromFile(std::string filePath, int width, int height)
-    {
-        ImageLoader::GetInstance().Load(filePath, 20, 20);
-        const uchar* data = (const uchar*)ImageLoader::GetInstance().GetRGBA();
+    Q_OBJECT
+public:
+    explicit DirectusAssetLoader(QObject* parent = nullptr);
 
-        QPixmap pixmap = QPixmap::fromImage(
-             QImage(data,
-                    20,
-                    20,
-                    QImage::Format_RGBA8888
-                    )
-        );
+    void PrepareForScene(std::string filePath, Socket* socket);
+    void PrepareForModel(std::string filePath, Socket* socket);
+    void PrepareForImage(std::string filePath, int width, int height);
 
-        ImageLoader::GetInstance().Clear();
+private:
+    void LoadSceneFromFile();
+    void SaveSceneToFile();
+    void LoadModelFromFile();
+    QPixmap LoadImageFromFile();
 
-        return pixmap;
-    }
+    Socket* m_socket;
+    QPixmap m_pixmap;
+    std::string m_filePath;
+    int m_width;
+    int m_height;
 
-    private:
+signals:
+    void ImageReady(QPixmap);
+    void Finished();
+
+public slots:
+    void LoadScene();
+    void SaveScene();
+    void LoadModel();
+    void LoadTexture();
+    void DeleteLater();
 };

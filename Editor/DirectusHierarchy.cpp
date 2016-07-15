@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Transform.h"
 #include "IO/Log.h"
 #include "DirectusQVariantPacker.h"
+#include "DirectusAssetLoader.h"
 //=================================
 
 //= NAMESPACES =====
@@ -242,9 +243,19 @@ void DirectusHierarchy::OpenScene()
                 filter
                 );
 
-    m_socket->LoadSceneFromFile(m_sceneFileName.toStdString());
+    QThread* thread = new QThread();
+    DirectusAssetLoader* sceneLoader = new DirectusAssetLoader();
 
-    Populate();
+    sceneLoader->moveToThread(thread);
+    sceneLoader->PrepareForScene(m_sceneFileName.toStdString(), m_socket);
+
+    connect(thread,         SIGNAL(started()), sceneLoader, SLOT(LoadScene()));
+    connect(sceneLoader,    SIGNAL(Finished()),   this, SLOT(Populate()));
+    connect(sceneLoader,    SIGNAL(Finished()), thread, SLOT(quit()));
+    connect(sceneLoader,    SIGNAL(Finished()), sceneLoader, SLOT(deleteLater()));
+    connect(thread,         SIGNAL(finished()), thread, SLOT(deleteLater()));
+
+    thread->start(QThread::HighestPriority);
 }
 
 void DirectusHierarchy::SaveScene()
@@ -255,7 +266,19 @@ void DirectusHierarchy::SaveScene()
         return;
     }
 
-    m_socket->SaveSceneToFile(m_sceneFileName.toStdString());
+    QThread* thread = new QThread();
+    DirectusAssetLoader* sceneLoader = new DirectusAssetLoader();
+
+    sceneLoader->moveToThread(thread);
+    sceneLoader->PrepareForScene(m_sceneFileName.toStdString(), m_socket);
+
+    connect(thread,         SIGNAL(started()), sceneLoader, SLOT(SaveScene()));
+    connect(sceneLoader,    SIGNAL(Finished()),   this, SLOT(Populate()));
+    connect(sceneLoader,    SIGNAL(Finished()), thread, SLOT(quit()));
+    connect(sceneLoader,    SIGNAL(Finished()), sceneLoader, SLOT(deleteLater()));
+    connect(thread,         SIGNAL(finished()), thread, SLOT(deleteLater()));
+
+    thread->start(QThread::HighestPriority);
 }
 
 void DirectusHierarchy::SaveSceneAs()
@@ -270,7 +293,19 @@ void DirectusHierarchy::SaveSceneAs()
                 filter
                 );
 
-    m_socket->SaveSceneToFile(m_sceneFileName.toStdString());
+    QThread* thread = new QThread();
+    DirectusAssetLoader* sceneLoader = new DirectusAssetLoader();
+
+    sceneLoader->moveToThread(thread);
+    sceneLoader->PrepareForScene(m_sceneFileName.toStdString(), m_socket);
+
+    connect(thread,         SIGNAL(started()), sceneLoader, SLOT(SaveScene()));
+    connect(sceneLoader,    SIGNAL(Finished()),   this, SLOT(Populate()));
+    connect(sceneLoader,    SIGNAL(Finished()), thread, SLOT(quit()));
+    connect(sceneLoader,    SIGNAL(Finished()), sceneLoader, SLOT(deleteLater()));
+    connect(thread,         SIGNAL(finished()), thread, SLOT(deleteLater()));
+
+    thread->start(QThread::HighestPriority);
 }
 
 void DirectusHierarchy::LoadModel()
@@ -285,7 +320,18 @@ void DirectusHierarchy::LoadModel()
                 filter
                 );
 
-    m_socket->LoadModel(new GameObject(), filePath.toStdString());
-    Populate();
+    QThread* thread = new QThread();
+    DirectusAssetLoader* modelLoader = new DirectusAssetLoader();
+
+    modelLoader->moveToThread(thread);
+    modelLoader->PrepareForModel(filePath.toStdString(), m_socket);
+
+    connect(thread,         SIGNAL(started()), modelLoader, SLOT(LoadModel()));
+    connect(modelLoader,    SIGNAL(Finished()),   this, SLOT(Populate()));
+    connect(modelLoader,    SIGNAL(Finished()), thread, SLOT(quit()));
+    connect(modelLoader,    SIGNAL(Finished()), modelLoader, SLOT(deleteLater()));
+    connect(thread,         SIGNAL(finished()), thread, SLOT(deleteLater()));
+
+    thread->start(QThread::HighestPriority);
 }
 //========================================================
