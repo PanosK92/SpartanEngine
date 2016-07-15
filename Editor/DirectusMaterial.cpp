@@ -34,11 +34,12 @@ using namespace std;
 
 DirectusMaterial::DirectusMaterial(QWidget *parent) : QWidget(parent)
 {
-
+    m_directusCore = nullptr;
 }
 
-void DirectusMaterial::Initialize()
+void DirectusMaterial::Initialize(DirectusCore* directusCore)
 {
+    m_directusCore = directusCore;
     m_gridLayout = new QGridLayout();
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
@@ -261,7 +262,7 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
         return;
     }
 
-    // Do the actual mapping
+    // Do the actual reflection
     SetName(m_inspectedMaterial->GetName());
     SetAlbedo(m_inspectedMaterial->GetColorAlbedo());
     SetRoughness(m_inspectedMaterial->GetRoughness());
@@ -379,39 +380,43 @@ void DirectusMaterial::MapAlbedo()
 
 void DirectusMaterial::MapRoughness()
 {
-    if (!m_inspectedMaterial)
+    if (!m_inspectedMaterial || !m_directusCore)
         return;
 
     float roughness =  m_roughness->GetValue();
     m_inspectedMaterial->SetRoughness(roughness);
+    m_directusCore->Update();
 }
 
 
 void DirectusMaterial::MapMetallic()
 {
-    if (!m_inspectedMaterial)
+    if (!m_inspectedMaterial || !m_directusCore)
         return;
 
     float metallic =  m_metallic->GetValue();
     m_inspectedMaterial->SetMetallic(metallic);
+    m_directusCore->Update();
 }
 
 void DirectusMaterial::MapNormal()
 {
-    if (!m_inspectedMaterial)
+    if (!m_inspectedMaterial || !m_directusCore)
         return;
 
     float normal =  m_normal->GetValue();
     m_inspectedMaterial->SetNormalStrength(normal);
+    m_directusCore->Update();
 }
 
 void DirectusMaterial::MapHeight()
 {
-    if (!m_inspectedMaterial)
+    if (!m_inspectedMaterial || !m_directusCore)
         return;
 
     //float height =  m_height->GetValue();
     //m_inspectedMaterial->Seth(height);
+    //m_directusCore->Update();
 }
 
 void DirectusMaterial::MapOcclusion()
@@ -431,16 +436,17 @@ void DirectusMaterial::MapMask()
 
 void DirectusMaterial::MapReflectivity()
 {
-    if (!m_inspectedMaterial)
+    if (!m_inspectedMaterial || !m_directusCore)
         return;
 
     float reflectivity = m_reflectivity->GetValue();
     m_inspectedMaterial->SetReflectivity(reflectivity);
+    m_directusCore->Update();
 }
 
 void DirectusMaterial::MapTiling()
 {
-    if (!m_inspectedMaterial)
+    if (!m_inspectedMaterial || !m_directusCore)
         return;
 
     Vector2 tiling;
@@ -448,4 +454,5 @@ void DirectusMaterial::MapTiling()
     tiling.y = m_tilingY->text().toFloat();
 
     m_inspectedMaterial->SetTiling(tiling);
+    m_directusCore->Update();
 }

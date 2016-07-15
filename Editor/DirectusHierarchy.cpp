@@ -1,12 +1,3 @@
-//= INCLUDES ====================
-#include "DirectusHierarchy.h"
-#include "DirectusQTHelper.h"
-#include <vector>
-#include <QFileDialog>
-#include "Components/Transform.h"
-#include "IO/Log.h"
-//===============================
-
 /*
 Copyright(c) 2016 Panos Karabelas
 
@@ -28,6 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= INCLUDES ======================
+#include "DirectusHierarchy.h"
+#include <vector>
+#include <QFileDialog>
+#include "Components/Transform.h"
+#include "IO/Log.h"
+#include "DirectusQVariantPacker.h"
+//=================================
+
 //= NAMESPACES =====
 using namespace std;
 //==================
@@ -40,9 +40,11 @@ DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
     m_sceneFileName = NO_PATH;
 }
 
-void DirectusHierarchy::SetDirectusSocket(Socket *socket)
+void DirectusHierarchy::SetDirectusCore(DirectusCore* directusCore)
 {
-    m_socket = socket;
+    m_directusCore = directusCore;
+    m_socket = m_directusCore->GetEngineSocket();
+
     Populate();
 }
 
@@ -78,6 +80,7 @@ void DirectusHierarchy::Clear()
 {
     //m_socket->ClearScene();
     clear();
+    m_directusCore->Update();
 }
 
 void DirectusHierarchy::AddRoot(QTreeWidgetItem* item)
@@ -203,6 +206,8 @@ void DirectusHierarchy::Populate()
     vector<GameObject*> gameObjects = m_socket->GetRootGameObjects();
     for (int i = 0; i < gameObjects.size(); i++)
             AddGameObject(gameObjects[i], nullptr);
+
+     m_directusCore->Update();
 }
 
 void DirectusHierarchy::CreateEmptyGameObject()
@@ -221,6 +226,7 @@ void DirectusHierarchy::NewScene()
 {
     m_sceneFileName = NO_PATH;
     m_socket->ClearScene();
+
     Populate();
 }
 

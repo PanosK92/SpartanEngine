@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusScript.h"
 #include "DirectusMesh.h"
 #include "DirectusMeshCollider.h"
+#include "DirectusCore.h"
 //===============================
 
 class DirectusInspector : public QWidget
@@ -41,6 +42,7 @@ class DirectusInspector : public QWidget
     Q_OBJECT
 public:
     explicit DirectusInspector(QWidget *parent = 0);
+    void SetDirectusCore(DirectusCore* directusCore);
     void Initialize();
 
 private:
@@ -54,7 +56,8 @@ private:
     DirectusScript* m_script;
     DirectusMesh* m_mesh;
     DirectusMeshCollider* m_meshCollider;
-signals:
+
+    DirectusCore* m_directusCore;
 
 public slots:
     void inspect(GameObject* gameobject);

@@ -33,9 +33,9 @@ DirectusConsole::DirectusConsole(QWidget *parent) : QListWidget(parent)
     m_engineLogger = nullptr;
 }
 
-void DirectusConsole::SetDirectusSocket(Socket* socket)
+void DirectusConsole::SetDirectusCore(DirectusCore* directusCore)
 {
-    m_socket = socket;
+    m_socket = directusCore->GetEngineSocket();
 
     // Create an engineLogger (implements
     // ILogger interface)and pass it to the engine

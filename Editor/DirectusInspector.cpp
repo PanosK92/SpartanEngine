@@ -28,19 +28,25 @@ DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
 {
 
 }
+
+void DirectusInspector::SetDirectusCore(DirectusCore* directusCore)
+{
+    m_directusCore = directusCore;
+}
+
 void DirectusInspector::Initialize()
 {
     m_transform = new DirectusTransform();
-    m_transform->Initialize();
+    m_transform->Initialize(m_directusCore);
 
     m_camera = new DirectusCamera();
-    m_camera->Initialize();
+    m_camera->Initialize(m_directusCore);
 
     m_meshRenderer = new DirectusMeshRenderer();
     m_meshRenderer->Initialize();
 
     m_material = new DirectusMaterial();
-    m_material->Initialize();
+    m_material->Initialize(m_directusCore);
 
     m_mesh = new DirectusMesh();
     m_mesh->Initialize();
@@ -52,7 +58,7 @@ void DirectusInspector::Initialize()
     m_collider->Initialize();
 
     m_light = new DirectusLight();
-    m_light->Initialize();
+    m_light->Initialize(m_directusCore);
 
     m_script = new DirectusScript();
     m_script->Initialize();

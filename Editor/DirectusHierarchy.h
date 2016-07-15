@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QVariant>
 #include "QMouseEvent"
 #include "DirectusInspector.h"
+#include "DirectusCore.h"
 //==================================
 
 class DirectusHierarchy : public QTreeWidget
@@ -35,8 +36,8 @@ class DirectusHierarchy : public QTreeWidget
     Q_OBJECT
 public:
     explicit DirectusHierarchy(QWidget* parent = 0);
-    void SetDirectusSocket(Socket* socket);
-    void SetDirectusInspector(DirectusInspector* inspector);
+    void SetDirectusCore(DirectusCore* directusCore);
+    void SetDirectusInspector(DirectusInspector* inspector);   
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void selectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
 
@@ -56,6 +57,7 @@ private:
 	QString m_sceneFileName;	
 	Socket* m_socket;
     DirectusInspector* m_inspector;
+    DirectusCore* m_directusCore;
 
 public slots:
     void Populate();

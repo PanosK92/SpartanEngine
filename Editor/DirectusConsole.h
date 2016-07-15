@@ -21,19 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES ============
 #include <QListWidget>
+#include "DirectusCore.h"
 #include "Core/Socket.h"
 #include "IO/ILogger.h"
 #include <string>
-//======================
+//=======================
 
 class DirectusConsole : public QListWidget
 {
     Q_OBJECT
 public:
     explicit DirectusConsole(QWidget *parent = 0);
-    void SetDirectusSocket(Socket* socket);
+    void SetDirectusCore(DirectusCore* directusCore);
 
 private:
     Socket* m_socket;
