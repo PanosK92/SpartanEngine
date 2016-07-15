@@ -19,11 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ==========
 #include "Directus3D.h"
 #include "IO/Log.h"
-#include <qtimer.h>
-//============================
+//=====================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
 Directus3D::Directus3D(QWidget* parent) : QWidget(parent)
@@ -36,9 +35,8 @@ Directus3D::Directus3D(QWidget* parent) : QWidget(parent)
     // Yes, paintEvent(QPaintEvent*) will be called also.
     // NOTE: I tested this technique and it yields thousands
     // of FPS, so it should do.
-    QTimer* timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(update()));
-    timer->start(0);
+    m_timer = new QTimer(this);
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(update()));
 }
 
 Socket* Directus3D::GetEngineSocket()
@@ -60,6 +58,17 @@ void Directus3D::Initialize(HWND hwnd, HINSTANCE hinstance)
     // Get the socket
     m_socket = m_engine->GetSocket();
 }
+
+void Directus3D::Play()
+{
+    m_timer->start(0);
+}
+
+void Directus3D::Stop()
+{
+    m_timer->stop();
+}
+
 Directus3D::~Directus3D()
 {
 	ShutdownEngine();

@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QResizeEvent>
 #include "Core/Engine.h"
 #include "Core/Socket.h"
+#include <QTimer>
 //======================
 
 class Directus3D : public QWidget
@@ -40,6 +41,9 @@ public:
     virtual ~Directus3D();
 	Socket* GetEngineSocket();
     void Initialize(HWND hwnd, HINSTANCE hinstance);
+
+    void Play();
+    void Stop();
 protected:
     // I will take care of the drawing
     virtual QPaintEngine* paintEngine() const { return NULL; }
@@ -52,6 +56,7 @@ private:
 
 	Socket* m_socket;
 	Engine* m_engine;
+    QTimer* m_timer;
 
 public slots:
 };
