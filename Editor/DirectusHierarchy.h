@@ -64,4 +64,5 @@ public slots:
     void OpenScene();
     void SaveScene();
     void SaveSceneAs();
+    void LoadModel();
 };
