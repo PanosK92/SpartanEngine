@@ -2535,6 +2535,8 @@ text edit background:					414141
     <addaction name="separator"/>
     <addaction name="actionSave_Scene"/>
     <addaction name="actionSave_Scene_as"/>
+    <addaction name="separator"/>
+    <addaction name="actionLoad_Model"/>
    </widget>
    <widget class="QMenu" name="menuGameObject">
     <property name="title">
@@ -2723,6 +2725,11 @@ text edit background:					414141
     <string>Save Scene as...</string>
    </property>
   </action>
+  <action name="actionLoad_Model">
+   <property name="text">
+    <string>Load Model</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -2762,6 +2769,7 @@ text edit background:					414141
     <slot>SaveSceneAs()</slot>
     <slot>NewScene()</slot>
     <slot>CreateEmptyGameObject()</slot>
+    <slot>LoadModel()</slot>
    </slots>
   </customwidget>
   <customwidget>
@@ -2874,6 +2882,22 @@ text edit background:					414141
     </hint>
     <hint type="destinationlabel">
      <x>131</x>
+     <y>358</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLoad_Model</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>LoadModel()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
      <y>358</y>
     </hint>
    </hints>

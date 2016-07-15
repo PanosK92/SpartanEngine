@@ -266,4 +266,20 @@ void DirectusHierarchy::SaveSceneAs()
 
     m_socket->SaveSceneToFile(m_sceneFileName.toStdString());
 }
+
+void DirectusHierarchy::LoadModel()
+{
+    QString title = "Load model";
+    QString filter = "All files (*.*)";
+    QString dir = "Assets";
+    QString filePath = QFileDialog::getOpenFileName(
+                this,
+                title,
+                dir,
+                filter
+                );
+
+    m_socket->LoadModel(new GameObject(), filePath.toStdString());
+    Populate();
+}
 //========================================================
