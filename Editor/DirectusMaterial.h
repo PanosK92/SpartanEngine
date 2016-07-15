@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QComboBox>
 #include "Math/Vector2.h"
 #include "DirectusCore.h"
+#include "DirectusImage.h"
 //==============================
 
 class DirectusMaterial : public QWidget
@@ -55,47 +56,47 @@ private:
     //===============================
 
     //= ALBEDO ======================
-    QLabel* m_albedoImage;
+    DirectusImage* m_albedoImage;
     QLabel* m_albedoLabel;
     QPushButton* m_albedoColor;
     //===============================
 
     //= ROUGHNESS ===================
-    QLabel* m_roughnessImage;
+    DirectusImage* m_roughnessImage;
     QLabel* m_roughnessLabel;
     DirectusSliderText* m_roughness;
     //===============================
 
     //= METALLIC ====================
-    QLabel* m_metallicImage;
+    DirectusImage* m_metallicImage;
     QLabel* m_metallicLabel;
     DirectusSliderText* m_metallic;
     //===============================
 
     //= NORMAL ======================
-    QLabel* m_normalImage;
+    DirectusImage* m_normalImage;
     QLabel* m_normalLabel;
     DirectusSliderText* m_normal;
     //===============================
 
     //= HEIGHT ======================
-    QLabel* m_heightImage;
+    DirectusImage* m_heightImage;
     QLabel* m_heightLabel;
     DirectusSliderText* m_height;
     //===============================
 
     //= OCCLUSION ===================
-    QLabel* m_occlusionImage;
+    DirectusImage* m_occlusionImage;
     QLabel* m_occlusionLabel;
     //===============================
 
     //= EMISSION ====================
-    QLabel* m_emissionImage;
+    DirectusImage* m_emissionImage;
     QLabel* m_emissionLabel;
     //===============================
 
     //= MASK ========================
-    QLabel* m_maskImage;
+    DirectusImage* m_maskImage;
     QLabel* m_maskLabel;
     //===============================
 

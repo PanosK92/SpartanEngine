@@ -386,7 +386,11 @@ void Renderer::DeferredPass()
 
 void Renderer::PostProcessing() const
 {
-	Pong();
+	//Pong();
+
+	m_graphicsDevice->ResetRenderTarget();
+	m_graphicsDevice->ResetViewport();
+	m_graphicsDevice->Begin();
 
 	// fxaa pass
 	m_shaderFXAA->Render(
@@ -397,18 +401,18 @@ void Renderer::PostProcessing() const
 		m_renderTexPing->GetShaderResourceView()
 	);
 
-	m_graphicsDevice->ResetRenderTarget();
+	/*m_graphicsDevice->ResetRenderTarget();
 	m_graphicsDevice->ResetViewport();
-	m_graphicsDevice->Begin();
+	m_graphicsDevice->Begin();*/
 
-	// sharpening pass
-	m_shaderSharpening->Render(
-		m_fullScreenQuad->GetIndexCount(),
-		mWorld,
-		mBaseView,
-		mOrthographicProjection,
-		m_renderTexPong->GetShaderResourceView()
-	);
+	//// sharpening pass
+	//m_shaderSharpening->Render(
+	//	m_fullScreenQuad->GetIndexCount(),
+	//	mWorld,
+	//	mBaseView,
+	//	mOrthographicProjection,
+	//	m_renderTexPong->GetShaderResourceView()
+	//);
 }
 
 void Renderer::DebugDraw() const

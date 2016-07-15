@@ -79,9 +79,9 @@ void ModelLoader::Initialize(MeshPool* meshPool, TexturePool* texturePool, Shade
 	m_materialPool = materialPool;
 }
 
-bool ModelLoader::Load(string path, GameObject* gameObject)
+bool ModelLoader::Load(string filePath, GameObject* gameObject)
 {
-	m_fullModelPath = path;
+	m_fullModelPath = filePath;
 	m_rootGameObject = gameObject;
 
 	Assimp::Importer importer;
@@ -98,6 +98,9 @@ bool ModelLoader::Load(string path, GameObject* gameObject)
 		LOG("Failed to load \"" + FileHelper::GetFileNameNoExtensionFromPath(m_fullModelPath) + "\". " + importer.GetErrorString(), Log::Error);
 		return false;
 	}
+
+	string name = FileHelper::GetFileNameNoExtensionFromPath(filePath);
+	gameObject->SetName(name);
 
 	// This function will recursively process the entire model
 	ProcessNode(scene->mRootNode, scene, gameObject);

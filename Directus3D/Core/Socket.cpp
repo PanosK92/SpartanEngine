@@ -56,9 +56,9 @@ void Socket::SetLogger(ILogger* logger)
 	Log::SetLogger(logger);
 }
 
-void Socket::LoadModel(GameObject* gameObject, string path)
+void Socket::LoadModel(string path)
 {
-	m_modelLoader->Load(path, gameObject);
+	m_modelLoader->Load(path, new GameObject());
 }
 
 ImageLoader* Socket::GetImageLoader()

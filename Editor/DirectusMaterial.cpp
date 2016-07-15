@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/MeshRenderer.h"
 #include "IO/Log.h"
 #include <QByteArray>
-#include "DirectusImageLoader.h"
 //==================================
 
 //= NAMESPACES =====================
@@ -61,51 +60,51 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore)
 
     //= ALBEDO ================================================
     m_albedoLabel = new QLabel("Albedo");
-    m_albedoImage = new QLabel();
+    m_albedoImage = new DirectusImage();
     m_albedoColor = new QPushButton("ColorPicker");
     //=========================================================
 
     //= ROUGHNESS =============================================
     m_roughnessLabel = new QLabel("Roughness");
-    m_roughnessImage = new QLabel();
+    m_roughnessImage = new DirectusImage();
     m_roughness = new DirectusSliderText();
     m_roughness->Initialize(0, 1);
     //=========================================================
 
     //= METALLIC ==============================================
     m_metallicLabel = new QLabel("Metallic");
-    m_metallicImage = new QLabel();
+    m_metallicImage = new DirectusImage();
     m_metallic = new DirectusSliderText();
     m_metallic->Initialize(0, 1);
     //=========================================================
 
     //= NORMAL ================================================
     m_normalLabel = new QLabel("Normal");
-    m_normalImage = new QLabel();
+    m_normalImage = new DirectusImage();
     m_normal = new DirectusSliderText();
     m_normal->Initialize(0, 1);
     //=========================================================
 
     //= HEIGHT ================================================
     m_heightLabel = new QLabel("Height");
-    m_heightImage = new QLabel();
+    m_heightImage = new DirectusImage();
     m_height = new DirectusSliderText();
     m_height->Initialize(0, 1);
     //=========================================================
 
     //= OCCLUSION =============================================
     m_occlusionLabel = new QLabel("Occlusion");
-    m_occlusionImage = new QLabel();
+    m_occlusionImage = new DirectusImage();
     //=========================================================
 
     //= EMISSION ==============================================
     m_emissionLabel = new QLabel("Emission");
-    m_emissionImage = new QLabel();
+    m_emissionImage = new DirectusImage();
     //=========================================================
 
     //= MASK ==================================================
     m_maskLabel = new QLabel("Mask");
-    m_maskImage = new QLabel();
+    m_maskImage = new DirectusImage();
     //=========================================================
 
     //= REFLECTIVITY  =========================================
@@ -224,13 +223,13 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore)
 
     // textChanged(QString) -> emits signal when changed through code
     // textEdited(QString) -> doesn't emits signal when changed through code
-    connect(m_roughness, SIGNAL(valueChanged(float)), this, SLOT(MapRoughness()));
-    connect(m_metallic, SIGNAL(valueChanged(float)), this, SLOT(MapMetallic()));
-    connect(m_normal, SIGNAL(valueChanged(float)), this, SLOT(MapNormal()));
-    connect(m_height, SIGNAL(valueChanged(float)), this, SLOT(MapHeight()));
-    connect(m_reflectivity, SIGNAL(valueChanged(float)), this, SLOT(MapReflectivity()));
-    connect(m_tilingX, SIGNAL(textEdited(QString)), this, SLOT(MapTiling()));
-    connect(m_tilingY, SIGNAL(textEdited(QString)), this, SLOT(MapTiling()));
+    connect(m_roughness,    SIGNAL(valueChanged(float)),    this, SLOT(MapRoughness()));
+    connect(m_metallic,     SIGNAL(valueChanged(float)),    this, SLOT(MapMetallic()));
+    connect(m_normal,       SIGNAL(valueChanged(float)),    this, SLOT(MapNormal()));
+    connect(m_height,       SIGNAL(valueChanged(float)),    this, SLOT(MapHeight()));
+    connect(m_reflectivity, SIGNAL(valueChanged(float)),    this, SLOT(MapReflectivity()));
+    connect(m_tilingX,      SIGNAL(textEdited(QString)),    this, SLOT(MapTiling()));
+    connect(m_tilingY,      SIGNAL(textEdited(QString)),    this, SLOT(MapTiling()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -294,8 +293,7 @@ void DirectusMaterial::SetAlbedo(Vector4 color)
 {
     // Load the albedo texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Albedo);
-    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-    m_albedoImage->setPixmap(pix);
+    m_albedoImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::SetRoughness(float roughness)
@@ -304,8 +302,7 @@ void DirectusMaterial::SetRoughness(float roughness)
 
     // Load the roughness texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Roughness);
-    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-    m_roughnessImage->setPixmap(pix);
+    m_roughnessImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::SetMetallic(float metallic)
@@ -314,8 +311,7 @@ void DirectusMaterial::SetMetallic(float metallic)
 
     // Load the metallic texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Metallic);
-    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-    m_metallicImage->setPixmap(pix);
+    m_metallicImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::SetNormal(float normal)
@@ -324,8 +320,7 @@ void DirectusMaterial::SetNormal(float normal)
 
     // Load the normal texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Normal);
-    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-    m_normalImage->setPixmap(pix);
+    m_normalImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::SetHeight(float height)
@@ -334,32 +329,28 @@ void DirectusMaterial::SetHeight(float height)
 
     // Load the height texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Height);
-    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-    m_heightImage->setPixmap(pix);
+    m_heightImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::SetOcclusion()
 {
     // Load the occlusion texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Occlusion);
-    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-    m_occlusionImage->setPixmap(pix);
+    m_occlusionImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::SetEmission()
 {
     // Load the emission texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Emission);
-    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-    m_emissionImage->setPixmap(pix);
+    m_emissionImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::SetMask()
 {
     // Load the mask texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Mask);
-    QPixmap pix = DirectusImageLoader::LoadFromFile(texPath, 20, 20);
-    m_maskImage->setPixmap(pix);
+    m_maskImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::SetReflectivity(float reflectivity)
