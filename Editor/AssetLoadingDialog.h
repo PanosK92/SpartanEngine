@@ -1,7 +1,7 @@
-#ifndef ASSETLOADINGDIALOG_H
-#define ASSETLOADINGDIALOG_H
+#pragma once
 
 #include <QDialog>
+#include <QTimer>
 
 namespace Ui {
 class AssetLoadingDialog;
@@ -15,8 +15,10 @@ public:
     explicit AssetLoadingDialog(QWidget *parent = 0);
     ~AssetLoadingDialog();
 
+public slots:
+    void UpdateProgressBar();
+
 private:
     Ui::AssetLoadingDialog *ui;
+    QTimer* m_timer;
 };
-
-#endif // ASSETLOADINGDIALOG_H

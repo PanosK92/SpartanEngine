@@ -35,7 +35,8 @@ SOURCES += main.cpp\
     DirectusSliderText.cpp \
     DirectusCore.cpp \
     DirectusImage.cpp \
-    DirectusAssetLoader.cpp
+    DirectusAssetLoader.cpp \
+    AssetLoadingDialog.cpp
 
 HEADERS  += editor.h \
     DirectusPlayButton.h \
@@ -60,10 +61,12 @@ HEADERS  += editor.h \
     DirectusCore.h \
     DirectusQVariantPacker.h \
     DirectusImage.h \
-    DirectusAssetLoader.h
+    DirectusAssetLoader.h \
+    AssetLoadingDialog.h
 
 FORMS    += editor.ui \
-    AboutDialog.ui
+    AboutDialog.ui \
+    AssetLoadingDialog.ui
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirectus3d
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirectus3d

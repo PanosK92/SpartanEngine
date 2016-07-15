@@ -45,6 +45,9 @@ public:
     void SetDirectusCore(DirectusCore* directusCore);
     void Initialize();
 
+protected:
+    virtual void paintEvent(QPaintEvent* evt);
+
 private:
     DirectusTransform* m_transform;
     DirectusCamera* m_camera;
