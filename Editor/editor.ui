@@ -246,23 +246,132 @@ QWidget
 	padding: 0px;
 }
 
-Directus3DWidget 
-{
-	background-color: #909090;
-}
-
 QLineEdit
 {
-	background-color: #414141;
+	color: #909090;
+	background-color: #484848;
 	border-style: inset;
 }
 
-/*= SLIDER ==================================================================================*/
+QLabel
+{
+	color: #909090;
+	background-color: #383838;
+	border-style: none;
+}
+
+QCheckBox
+{
+	color: #909090;
+	background-color: #383838;
+	border-style: none;
+}
+
+/*= MENU ===================================================================================*/
+QMenuBar
+{
+	color: #B4B4B4;
+	background-color: #383838;
+	padding: 0px;
+}
+
+QMenuBar::item
+{
+	color: #909090;
+	background-color: #383838;
+}
+
+QMenuBar::item:selected
+{
+	color:  #EDEDED;
+	background-color:#484848;
+}
+
+QMenuBar::item:pressed 
+{
+    color:  #909090;
+	background-color:#484848;
+}
+
+QMenu::item
+{
+	color: #909090;
+	background-color: #383838;
+}
+
+QMenu::item:selected
+{
+	color:  #EDEDED;
+	background-color:#484848;
+}
+
+v::item:pressed 
+{
+    color:  #909090;
+	background-color:#484848;
+}
+
+QMenu::separator 
+{
+	height: 1px;
+	background:#292929;
+}
+
+/*===========================================================================================*/
+
+/*= CUSTOM ====================================================================================*/
+DirectusInspector
+{
+	color: #909090;
+	background-color: #383838;
+	border-width: 1px;
+}
+
+DirectusCore
+{
+	color: #909090;
+	background-color: #383838;
+	border-width: 1px;
+}
+/*===========================================================================================*/
+
+/*= COMBOBOX ==================================================================================*/
+QComboBox
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(57, 57, 57, 255), stop:1 rgba(68, 68, 68, 255));
+	border-radius: 5px;
+    border-color: #464646;
+    border-width: 1px;
+    border-style: solid;
+	padding-left: 5px;
+}
+
+QComboBox::drop-down
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(57, 57, 57, 255), stop:1 rgba(68, 68, 68, 255));
+    border-width: 1px;
+    border-style: none;
+}
+
+QComboBox::down-arrow
+{   
+    background-image: url(:/Images/arrow.png);
+	background-repeat: no-repeat;
+	background-position: center;
+}
+/*===========================================================================================*/
+
+/*= SLIDER =====================================================================================*/
+QSlider
+{
+	background-color: #383838;
+}
+
 QSlider::groove:horizontal 
 {
 	border: 1px;
 	border-color: #212121;
-	border-style: solid;
+	border-style: inset;
 	background: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.488318, y2:0.358, stop:0 rgba(192, 192, 192, 255), stop:1 rgba(79, 79, 79, 255));
 	height: 5px;
 	border-radius: 4px;
@@ -270,14 +379,14 @@ QSlider::groove:horizontal
 
 QSlider::handle:horizontal 
 {
-	background: qlineargradient(spread:pad, x1:0.5, y1:0.340909, x2:0.5, y2:1, stop:0 rgba(142, 142, 142, 255), stop:1 rgba(79, 79, 79, 255));
+	background: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(110, 110, 110, 255), stop:1 rgba(68, 68, 68, 255));
 	border: 1px;
 	border-color: #212121;
-	border-style: solid;
+	border-style: outset;
 	width: 10px;
 	height: 10px;
-	margin-top: -4px;
-	margin-bottom: -4px;
+	margin-top: -3px;
+	margin-bottom: -3px;
 	border-radius: 5px;
 }
 /*========================================================================================*/
@@ -301,7 +410,7 @@ QTabBar::tab
 	background-position: left;
 
 	border-color: #464646;
-	border-style: none;
+	border-style: solid;
 	border-top-left-radius: 3px;
 	border-top-right-radius: 3px;
 	border-bottom-width: 0px;
@@ -309,42 +418,15 @@ QTabBar::tab
 	min-width: 3.5em;
 	min-height: 1.3em;
 
-	padding-top: 1px;
-	padding-bottom: 1px;
+	padding-top: 0px;
+	padding-bottom: 0px;
 	padding-left: 18px;
-	padding-right: 6px;
+	padding-right: 10px;
 }
 
 QTabBar::tab:selected
 {
 	background-color: #484848;	
-}
-/*========================================================================================*/
-
-/*= MENU ===================================================================================*/
-QMenuBar
-{
-	color: #B4B4B4;
-	background-color: #383838;
-	padding: 0px;
-}
-
-QMenu::item
-{
-	color: #909090;
-	background-color: #383838;
-}
-
-QMenu::item:selected
-{
-	color:  #EDEDED;
-	background-color:#484848;
-}
-
-QMenuBar::item:pressed 
-{
-    color:  black;
-	background-color:#484848;
 }
 /*========================================================================================*/
 
@@ -358,7 +440,7 @@ QTreeWidget
 QTreeView
 {
 	background-color: #383838;
-	border-style: outset;
+	border-style: inset;
 }
 /*========================================================================================*/
 
@@ -422,6 +504,14 @@ QScrollBar::sub-line:vertical
 {
 	background: none;
  }
+
+QScrollBar::down-arrow
+{   
+		background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(57, 57, 57, 255), stop:1 rgba(68, 68, 68, 255));
+		border-width: 1px;
+		border-style: none;
+}
+
 /*========================================================================================*/
 
 /*= SCROLLBAR - HORIZONTAL ======================================================================*/
@@ -1291,9 +1381,9 @@ border-bottom-right-radius: 5px;
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>56</red>
-                     <green>56</green>
-                     <blue>56</blue>
+                     <red>41</red>
+                     <green>41</green>
+                     <blue>41</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1363,18 +1453,18 @@ border-bottom-right-radius: 5px;
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>56</red>
-                     <green>56</green>
-                     <blue>56</blue>
+                     <red>41</red>
+                     <green>41</green>
+                     <blue>41</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>56</red>
-                     <green>56</green>
-                     <blue>56</blue>
+                     <red>41</red>
+                     <green>41</green>
+                     <blue>41</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1428,9 +1518,9 @@ border-bottom-right-radius: 5px;
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>56</red>
-                     <green>56</green>
-                     <blue>56</blue>
+                     <red>41</red>
+                     <green>41</green>
+                     <blue>41</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1500,18 +1590,18 @@ border-bottom-right-radius: 5px;
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>56</red>
-                     <green>56</green>
-                     <blue>56</blue>
+                     <red>41</red>
+                     <green>41</green>
+                     <blue>41</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>56</red>
-                     <green>56</green>
-                     <blue>56</blue>
+                     <red>41</red>
+                     <green>41</green>
+                     <blue>41</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1565,9 +1655,9 @@ border-bottom-right-radius: 5px;
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>56</red>
-                     <green>56</green>
-                     <blue>56</blue>
+                     <red>41</red>
+                     <green>41</green>
+                     <blue>41</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1637,18 +1727,18 @@ border-bottom-right-radius: 5px;
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>56</red>
-                     <green>56</green>
-                     <blue>56</blue>
+                     <red>41</red>
+                     <green>41</green>
+                     <blue>41</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>56</red>
-                     <green>56</green>
-                     <blue>56</blue>
+                     <red>41</red>
+                     <green>41</green>
+                     <blue>41</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1695,31 +1785,10 @@ border-bottom-right-radius: 5px;
                 <enum>Qt::LeftToRight</enum>
                </property>
                <property name="styleSheet">
-                <string notr="true">QWidget
-{
-color: #909090;
-background-color: #383838;
-border-color: #212121;
-border-style: solid;
-border-width: 1px;
-}
-
-QTabBar::tab
+                <string notr="true">QTabBar::tab
 {
 	background-image: url(:/Images/tabScene.png);
-}
-
-/*
-widget background dark: 			292929
-widget background light:				383838
-widget background highlighted: 	484848
-text color: 									909090
-text highlighted:							 EDEDED
-border: 										212121
-border highlighted:						464646
-text edit background:					414141
-*/
-</string>
+}</string>
                </property>
                <widget class="DirectusInspector" name="layoutTabScene">
                 <attribute name="title">
@@ -1826,7 +1895,7 @@ QTabBar::tab:last
 }</string>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <property name="iconSize">
                <size>
@@ -2443,31 +2512,7 @@ QTabBar::tab:last
         <string notr="true">QTabBar::tab
 {
 	background-image: url(:/Images/tabInspector.png);
-}
-
-/*
-QWidget::directusInspector
-{
-color: #909090;
-background-color: #383838;
-border-color: #212121;
-border-style: solid;
-border-width: 1px;
-}
-
-
-
-/*
-widget background dark: 			292929
-widget background light:				383838
-widget background highlighted: 	484848
-text color: 									909090
-text highlighted:							 EDEDED
-border: 										212121
-border highlighted:						464646
-text edit background:					414141
-*/
-</string>
+}</string>
        </property>
        <widget class="DirectusInspector" name="directusInspector">
         <property name="sizePolicy">
@@ -2481,6 +2526,9 @@ text edit background:					414141
         </property>
         <property name="autoFillBackground">
          <bool>false</bool>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
         </property>
         <attribute name="title">
          <string>Inspector</string>

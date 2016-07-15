@@ -57,6 +57,7 @@ void DirectusMeshRenderer::Initialize()
     //= RECEIVE SHADOWS =======================================
     m_materialLabel = new QLabel("Material");
     m_material = new QLineEdit();
+    m_material->setReadOnly(true);
     //=========================================================
 
     // addWidget(widget, row, column, rowspan, colspan)

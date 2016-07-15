@@ -31,6 +31,9 @@
      <property name="contextMenuPolicy">
       <enum>Qt::NoContextMenu</enum>
      </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: #292929;</string>
+     </property>
      <property name="text">
       <string>&lt;html&gt;
 &lt;head/&gt;

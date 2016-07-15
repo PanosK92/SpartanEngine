@@ -12,5 +12,6 @@
         <file>material.png</file>
         <file>meshRenderer.png</file>
         <file>light.png</file>
+        <file>arrow.png</file>
     </qresource>
 </RCC>

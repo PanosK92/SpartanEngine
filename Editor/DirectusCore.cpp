@@ -19,10 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========
+//= INCLUDES ============
 #include "DirectusCore.h"
 #include "IO/Log.h"
-//=====================
+#include <QStyleOption>
+//=======================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
 DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
@@ -92,7 +93,12 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
     height = width / (16.0f/9.0f);
     setGeometry(QRect(0, 0, width, height));
 	Resize(width, height);
-    update();
+
+    // Has to be overriden for QSS to take affect
+    QStyleOption opt;
+    opt.init(this);
+    QPainter p(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
 void DirectusCore::paintEvent(QPaintEvent* evt)

@@ -78,6 +78,15 @@ void DirectusInspector::Initialize()
     this->layout()->addWidget(m_meshCollider);
 }
 
+void DirectusInspector::paintEvent(QPaintEvent* evt)
+{
+    // Has to be overriden for QSS to take affect
+    QStyleOption opt;
+    opt.init(this);
+    QPainter p(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+}
+
 void DirectusInspector::inspect(GameObject* gameobject)
 {
     if (gameobject)
