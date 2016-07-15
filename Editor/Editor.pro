@@ -14,12 +14,10 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         editor.cpp \
-    DirectusQTHelper.cpp \
     DirectusPlayButton.cpp \
     AboutDialog.cpp \
     DirectusDirExplorer.cpp \
     DirectusFileExplorer.cpp \
-    Directus3D.cpp \
     DirectusConsole.cpp \
     DirectusInspector.cpp \
     DirectusHierarchy.cpp \
@@ -34,16 +32,15 @@ SOURCES += main.cpp\
     DirectusMesh.cpp \
     DirectusScript.cpp \
     DirectusMeshCollider.cpp \
-    DirectusSliderText.cpp
+    DirectusSliderText.cpp \
+    DirectusCore.cpp
 
 HEADERS  += editor.h \
-    DirectusQTHelper.h \
     DirectusPlayButton.h \
     AboutDialog.h \
     DirectusDirExplorer.h \
     DirectusFileExplorer.h \
     DirectusConsole.h \
-    Directus3D.h \
     DirectusInspector.h \
     DirectusHierarchy.h \
     DirectusTransform.h \
@@ -58,7 +55,9 @@ HEADERS  += editor.h \
     DirectusScript.h \
     DirectusMeshCollider.h \
     DirectusSliderText.h \
-    DirectusImageLoader.h
+    DirectusImageLoader.h \
+    DirectusCore.h \
+    DirectusQVariantPacker.h
 
 FORMS    += editor.ui \
     AboutDialog.ui

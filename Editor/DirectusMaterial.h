@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QPushButton>
 #include <QComboBox>
 #include "Math/Vector2.h"
+#include "DirectusCore.h"
 //==============================
 
 class DirectusMaterial : public QWidget
@@ -40,7 +41,7 @@ class DirectusMaterial : public QWidget
     Q_OBJECT
 public:
     explicit DirectusMaterial(QWidget *parent = 0);
-    void Initialize();
+    void Initialize(DirectusCore* directusCore);
     void Reflect(GameObject* gameobject);
 private:
 
@@ -123,6 +124,7 @@ private:
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
     Material* m_inspectedMaterial;
+    DirectusCore* m_directusCore;
     //===============================
 
     QLineEdit* CreateQLineEdit();

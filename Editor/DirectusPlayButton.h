@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //===========================
 #include <QPushButton>
-#include "Directus3D.h"
+#include "DirectusCore.h"
 //===========================
 
 class DirectusPlayButton : public QPushButton
@@ -31,13 +31,13 @@ class DirectusPlayButton : public QPushButton
     Q_OBJECT
 public:
     explicit DirectusPlayButton(QWidget *parent = 0);
-    void SetDirectus3DWidget(Directus3D* directus3DWidget);
+    void SetDirectusCore(DirectusCore* directusCore);
 
 public slots:
      void AdjustEngine(bool play);
 
 private:
-    Directus3D* m_d3dWidget;
+    DirectusCore* m_directusCore;
 
     void Play();
     void Stop();

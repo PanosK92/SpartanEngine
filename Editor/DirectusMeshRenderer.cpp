@@ -104,7 +104,7 @@ void DirectusMeshRenderer::Reflect(GameObject* gameobject)
         return;
     }
 
-    // Do the actual mapping
+    // Do the actual reflection
     SetCastShadows(m_inspectedMeshRenderer->GetCastShadows());
     SetReceiveShadows(m_inspectedMeshRenderer->GetReceiveShadows());
     SetMaterial(m_inspectedMeshRenderer->GetMaterial());

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Math/Quaternion.h"
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
+#include "DirectusCore.h"
 //==============================
 
 class DirectusTransform : public QWidget
@@ -37,7 +38,7 @@ class DirectusTransform : public QWidget
     Q_OBJECT
 public:
     explicit DirectusTransform(QWidget *parent = 0);
-    void Initialize();
+    void Initialize(DirectusCore* directusCore);
 
     void Reflect(GameObject* gameobject);
     Directus::Math::Vector3 GetPosition();
@@ -93,6 +94,7 @@ private:
 
     QLineEdit* CreateQLineEdit();
     Transform* m_inspectedTransform;
+    DirectusCore* m_directusCore;
 
 public slots:
     void MapPosition();

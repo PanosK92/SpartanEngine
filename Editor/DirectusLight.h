@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QDoubleValidator>
 #include "Components/Light.h"
 #include <QComboBox>
+#include "DirectusCore.h"
 //==================================
 
 class DirectusLight : public QWidget
@@ -37,7 +38,7 @@ class DirectusLight : public QWidget
     Q_OBJECT
 public:
     explicit DirectusLight(QWidget *parent = 0);
-    void Initialize();
+    void Initialize(DirectusCore* directusCore);
     void Reflect(GameObject* gameobject);
 private:
 
@@ -69,6 +70,7 @@ private:
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
     Light* m_inspectedLight;
+    DirectusCore* m_directusCore;
     //====================================
 
     QLineEdit* CreateQLineEdit();

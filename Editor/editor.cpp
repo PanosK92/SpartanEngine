@@ -34,18 +34,20 @@ Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
     // Get engine socket
     HWND hWnd = (HWND)this->winId();
     HINSTANCE hinstance = (HINSTANCE)::GetModuleHandle(NULL);
-    ui->directus3D->Initialize(hWnd, hinstance);
-    Socket* engineSocket = ui->directus3D->GetEngineSocket();
+
+    DirectusCore* directusCore = ui->directusCore;
+    directusCore->Initialize(hWnd, hinstance);
+
+    // Pass the engine around
+    ui->directusInspector->SetDirectusCore(directusCore);
+    ui->directusHierarchy->SetDirectusCore(directusCore);
+    ui->directusConsole->SetDirectusCore(directusCore);
+    ui->directusPlayButton->SetDirectusCore(directusCore);
 
     // Resolve other dependencies
     ui->directusInspector->Initialize();
     ui->directusHierarchy->SetDirectusInspector(ui->directusInspector);
-    ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);
-    ui->directusPlayButton->SetDirectus3DWidget(ui->directus3D);
-
-    // Pass the engine socket to the widgets that need it
-    ui->directusHierarchy->SetDirectusSocket(engineSocket);
-    ui->directusConsole->SetDirectusSocket(engineSocket);
+    ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);  
 }
 
 Editor::~Editor()

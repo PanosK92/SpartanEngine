@@ -26,11 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 DirectusCamera::DirectusCamera(QWidget *parent) : QWidget(parent)
 {
-
+    m_directusCore = nullptr;
 }
 
-void DirectusCamera::Initialize()
+void DirectusCamera::Initialize(DirectusCore* directusCore)
 {
+    m_directusCore = directusCore;
     m_gridLayout = new QGridLayout();
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
@@ -133,7 +134,7 @@ void DirectusCamera::Reflect(GameObject* gameobject)
         return;
     }
 
-    // Do the actual mapping
+    // Do the actual reflection
     SetProjection(m_inspectedCamera->GetProjection());
     SetFOV(m_inspectedCamera->GetFieldOfView());
     SetNearPlane(m_inspectedCamera->GetNearPlane());
@@ -173,25 +174,27 @@ QLineEdit* DirectusCamera::CreateQLineEdit()
 
 void DirectusCamera::MapProjection()
 {
-    if(!m_inspectedCamera)
+    if(!m_inspectedCamera || !m_directusCore)
         return;
 
     Projection projection = (Projection)(m_projectionComboBox->currentIndex());
     m_inspectedCamera->SetProjection(projection);
+    m_directusCore->Update();
 }
 
 void DirectusCamera::MapFOV()
 {
-    if(!m_inspectedCamera)
+    if(!m_inspectedCamera || !m_directusCore)
         return;
 
     float fov = m_fov->GetValue();
     m_inspectedCamera->SetFieldOfView(fov);
+    m_directusCore->Update();
 }
 
 void DirectusCamera::MapClippingPlanes()
-{
-    if(!m_inspectedCamera)
+{ 
+    if(!m_inspectedCamera || !m_directusCore)
         return;
 
     float nearPlane = m_clippingNear->text().toFloat();
@@ -199,5 +202,6 @@ void DirectusCamera::MapClippingPlanes()
 
     m_inspectedCamera->SetNearPlane(nearPlane);
     m_inspectedCamera->SetFarPlane(farPlane);
+    m_directusCore->Update();
 }
 

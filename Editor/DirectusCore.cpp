@@ -20,12 +20,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==========
-#include "Directus3D.h"
+#include "DirectusCore.h"
 #include "IO/Log.h"
 //=====================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
-Directus3D::Directus3D(QWidget* parent) : QWidget(parent)
+DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_MSWindowsUseDirect3D, true);
 	setAttribute(Qt::WA_PaintOnScreen, true);
@@ -39,13 +39,17 @@ Directus3D::Directus3D(QWidget* parent) : QWidget(parent)
     connect(m_timer, SIGNAL(timeout()), this, SLOT(update()));
 }
 
-Socket* Directus3D::GetEngineSocket()
+DirectusCore::~DirectusCore()
 {
+    ShutdownEngine();
+}
 
+Socket* DirectusCore::GetEngineSocket()
+{
     return m_socket;
 }
 
-void Directus3D::Initialize(HWND hwnd, HINSTANCE hinstance)
+void DirectusCore::Initialize(HWND hwnd, HINSTANCE hinstance)
 {
     // Create and initialize Directus3D
     m_engine = new Engine();
@@ -59,24 +63,28 @@ void Directus3D::Initialize(HWND hwnd, HINSTANCE hinstance)
     m_socket = m_engine->GetSocket();
 }
 
-void Directus3D::Play()
+void DirectusCore::Play()
 {
     m_timer->start(0);
 }
 
-void Directus3D::Stop()
+void DirectusCore::Stop()
 {
     m_timer->stop();
 }
 
-Directus3D::~Directus3D()
+void DirectusCore::Update()
 {
-	ShutdownEngine();
+    if (!m_socket)
+        return;
+
+    m_socket->Update();
+    m_socket->Render();
 }
 //====================================================
 
 //= OVERRIDDEN FUNCTIONS =============================
-void Directus3D::resizeEvent(QResizeEvent* evt)
+void DirectusCore::resizeEvent(QResizeEvent* evt)
 {
     int width = this->size().width();
     int height = this->size().height();
@@ -87,24 +95,20 @@ void Directus3D::resizeEvent(QResizeEvent* evt)
     update();
 }
 
-void Directus3D::paintEvent(QPaintEvent* evt)
+void DirectusCore::paintEvent(QPaintEvent* evt)
 {
-    if (!m_socket)
-        return;
-
-    m_socket->Update();
-    m_socket->Render();
+   Update();
 }
 //===================================================
 
 //= Engine functions ================================
-void Directus3D::ShutdownEngine()
+void DirectusCore::ShutdownEngine()
 {
 	m_engine->Shutdown();
 	delete m_engine;
 }
 
-void Directus3D::Resize(int width, int height)
+void DirectusCore::Resize(int width, int height)
 {
     if (!m_socket)
         return;

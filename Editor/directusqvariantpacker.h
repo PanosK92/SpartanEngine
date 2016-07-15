@@ -19,44 +19,19 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+
 #pragma once
 
-//= INCLUDES ===========
-#include <QObject>
-#include <QWidget>
-#include <QPaintEngine>
-#include <QResizeEvent>
-#include "Core/Engine.h"
-#include "Core/Socket.h"
-#include <QTimer>
-//======================
-
-class Directus3D : public QWidget
+template <class T> class VPtr
 {
-	Q_OBJECT
-    Q_DISABLE_COPY(Directus3D)
-
 public:
-    Directus3D(QWidget* parent = NULL);
-    virtual ~Directus3D();
-	Socket* GetEngineSocket();
-    void Initialize(HWND hwnd, HINSTANCE hinstance);
+    static T* asPtr(QVariant v)
+    {
+    return  (T *) v.value<void *>();
+    }
 
-    void Play();
-    void Stop();
-protected:
-    // I will take care of the drawing
-    virtual QPaintEngine* paintEngine() const { return NULL; }
-	virtual void resizeEvent(QResizeEvent* evt);
-	virtual void paintEvent(QPaintEvent* evt);
-
-private:
-	void ShutdownEngine();
-	void Resize(int width, int height);
-
-	Socket* m_socket;
-	Engine* m_engine;
-    QTimer* m_timer;
-
-public slots:
+    static QVariant asQVariant(T* ptr)
+    {
+    return qVariantFromValue((void *) ptr);
+    }
 };

@@ -25,11 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 DirectusLight::DirectusLight(QWidget *parent) : QWidget(parent)
 {
-
+    m_directusCore = nullptr;
 }
 
-void DirectusLight::Initialize()
+void DirectusLight::Initialize(DirectusCore* directusCore)
 {
+    m_directusCore = directusCore;
     m_gridLayout = new QGridLayout();
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
@@ -73,7 +74,7 @@ void DirectusLight::Reflect(GameObject* gameobject)
         return;
     }
 
-    // Do the actual mapping
+    // Do the actual reflection
     //SetProjection(m_inspectedCamera->GetProjection());
     //SetFOV(m_inspectedCamera->GetFieldOfView());
     //SetNearPlane(m_inspectedCamera->GetNearPlane());

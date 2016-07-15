@@ -31,11 +31,13 @@ using namespace Directus::Math;
 
 DirectusTransform::DirectusTransform(QWidget* parent) : QWidget(parent)
 {
-
+    m_directusCore = nullptr;
 }
 
-void DirectusTransform::Initialize()
+void DirectusTransform::Initialize(DirectusCore* directusCore)
 {
+    m_directusCore = directusCore;
+
     m_gridLayout = new QGridLayout();
     //this->setStyleSheet("background-color: #383838");
     /*
@@ -198,7 +200,7 @@ void DirectusTransform::Reflect(GameObject* gameobject)
         return;
     }
 
-    // Do the actual mapping
+    // Do the actual reflection
     SetPosition(m_inspectedTransform->GetPositionLocal());
     SetRotation(m_inspectedTransform->GetRotationLocal());
     SetScale(m_inspectedTransform->GetScaleLocal());
@@ -270,24 +272,27 @@ QLineEdit* DirectusTransform::CreateQLineEdit()
 
 void DirectusTransform::MapPosition()
 {
-    if (!m_inspectedTransform)
+    if (!m_inspectedTransform || !m_directusCore)
         return;
 
     m_inspectedTransform->SetPositionLocal(GetPosition());
+    m_directusCore->Update();
 }
 
 void DirectusTransform::MapRotation()
 {
-    if (!m_inspectedTransform)
+    if (!m_inspectedTransform || !m_directusCore)
         return;
 
     m_inspectedTransform->SetRotationLocal(GetRotation());
+    m_directusCore->Update();
 }
 
 void DirectusTransform::MapScale()
 {
-    if (!m_inspectedTransform)
+    if (!m_inspectedTransform || !m_directusCore)
         return;
 
     m_inspectedTransform->SetScaleLocal(GetScale());
+    m_directusCore->Update();
 }

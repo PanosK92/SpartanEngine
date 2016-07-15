@@ -1742,7 +1742,7 @@ text edit background:					414141
                   <number>0</number>
                  </property>
                  <item>
-                  <widget class="Directus3D" name="directus3D" native="true"/>
+                  <widget class="DirectusCore" name="directusCore" native="true"/>
                  </item>
                 </layout>
                </widget>
@@ -2773,12 +2773,6 @@ text edit background:					414141
    </slots>
   </customwidget>
   <customwidget>
-   <class>Directus3D</class>
-   <extends>QWidget</extends>
-   <header>Directus3D.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>DirectusInspector</class>
    <extends>QWidget</extends>
    <header>DirectusInspector.h</header>
@@ -2786,6 +2780,12 @@ text edit background:					414141
    <slots>
     <slot>inspect(GameObject*)</slot>
    </slots>
+  </customwidget>
+  <customwidget>
+   <class>DirectusCore</class>
+   <extends>QWidget</extends>
+   <header>DirectusCore.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

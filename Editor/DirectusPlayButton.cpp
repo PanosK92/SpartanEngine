@@ -26,14 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 DirectusPlayButton::DirectusPlayButton(QWidget *parent) : QPushButton(parent)
 {
-    m_d3dWidget = nullptr;
+    m_directusCore = nullptr;
 
     connect(this, SIGNAL(toggled(bool)), this, SLOT(AdjustEngine(bool)));
 }
 
-void DirectusPlayButton::SetDirectus3DWidget(Directus3D* directus3DWidget)
+void DirectusPlayButton::SetDirectusCore(DirectusCore* directusCore)
 {
-    m_d3dWidget = directus3DWidget;
+    m_directusCore = directusCore;
 }
 
 void DirectusPlayButton::AdjustEngine(bool play)
@@ -46,16 +46,16 @@ void DirectusPlayButton::AdjustEngine(bool play)
 
 void DirectusPlayButton::Play()
 {
-    if (!m_d3dWidget)
+    if (!m_directusCore)
         return;
 
-    m_d3dWidget->Play();
+    m_directusCore->Play();
 }
 
 void DirectusPlayButton::Stop()
 {
-    if (!m_d3dWidget)
+    if (!m_directusCore)
         return;
 
-    m_d3dWidget->Stop();
+    m_directusCore->Stop();
 }

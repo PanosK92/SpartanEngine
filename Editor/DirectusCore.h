@@ -19,28 +19,46 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================
-#include "DirectusQTHelper.h"
-#include "Directus3D.h"
-#include <QApplication>
+#pragma once
+
+//= INCLUDES ===========
 #include <QObject>
-//===========================
+#include <QWidget>
+#include <QPaintEngine>
+#include <QResizeEvent>
+#include "Core/Engine.h"
+#include "Core/Socket.h"
+#include <QTimer>
+//======================
 
-Socket* DirectusQTHelper::GetEngineSocket()
+class DirectusCore : public QWidget
 {
-    Directus3D*  directus3DWidget = (Directus3D*)FindQWidgetByName("directus3DWidget");
+	Q_OBJECT
+    Q_DISABLE_COPY(DirectusCore)
 
-    if (directus3DWidget)
-        return directus3DWidget->GetEngineSocket();
+public:
+    DirectusCore(QWidget* parent = NULL);
+    virtual ~DirectusCore();
+	Socket* GetEngineSocket();
+    void Initialize(HWND hwnd, HINSTANCE hinstance);
 
-    return directus3DWidget->GetEngineSocket();
-}
+    void Play();
+    void Stop();
+    void Update();
 
-QWidget* DirectusQTHelper::FindQWidgetByName(QString name)
-{
-    foreach(QWidget* widget, QApplication::allWidgets())
-        if (widget->objectName() == name)
-              return widget;
+protected:
+    // I will take care of the drawing
+    virtual QPaintEngine* paintEngine() const { return NULL; }
+	virtual void resizeEvent(QResizeEvent* evt);
+	virtual void paintEvent(QPaintEvent* evt);
 
-    return nullptr;
-}
+private:
+	void ShutdownEngine();
+	void Resize(int width, int height);
+
+	Socket* m_socket;
+	Engine* m_engine;
+    QTimer* m_timer;
+
+public slots:
+};

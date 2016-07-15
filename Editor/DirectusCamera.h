@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Camera.h"
 #include <QPushButton>
 #include "DirectusSliderText.h"
+#include "DirectusCore.h"
 //==============================
 
 class DirectusCamera : public QWidget
@@ -39,7 +40,7 @@ class DirectusCamera : public QWidget
     Q_OBJECT
 public:
     explicit DirectusCamera(QWidget *parent = 0);
-    void Initialize();
+    void Initialize(DirectusCore* directusCore);
     void Reflect(GameObject* gameobject);
 private:
 
@@ -74,6 +75,7 @@ private:
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
     Camera* m_inspectedCamera;
+    DirectusCore* m_directusCore;
     //===============================
 
     QLineEdit* CreateQLineEdit();
