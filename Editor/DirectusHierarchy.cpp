@@ -270,7 +270,7 @@ void DirectusHierarchy::SaveSceneAs()
 void DirectusHierarchy::LoadModel()
 {
     QString title = "Load model";
-    QString filter = "All files (*.*)";
+    QString filter = "All models (*.3ds; *.obj; *.fbx; *.blend; *.dae; *.lwo; *.c4d)";
     QString dir = "Assets";
     QString filePath = QFileDialog::getOpenFileName(
                 this,

@@ -21,11 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "DirectusPlayButton.h"
+#include "IO/Log.h"
 //=============================
 
 DirectusPlayButton::DirectusPlayButton(QWidget *parent) : QPushButton(parent)
 {
     m_d3dWidget = nullptr;
+
+    connect(this, SIGNAL(toggled(bool)), this, SLOT(AdjustEngine(bool)));
 }
 
 void DirectusPlayButton::SetDirectus3DWidget(Directus3D* directus3DWidget)
@@ -33,8 +36,26 @@ void DirectusPlayButton::SetDirectus3DWidget(Directus3D* directus3DWidget)
     m_d3dWidget = directus3DWidget;
 }
 
+void DirectusPlayButton::AdjustEngine(bool play)
+{
+    if (play)
+        Play();
+    else
+        Stop();
+}
+
 void DirectusPlayButton::Play()
 {
     if (!m_d3dWidget)
         return;
+
+    m_d3dWidget->Play();
+}
+
+void DirectusPlayButton::Stop()
+{
+    if (!m_d3dWidget)
+        return;
+
+    m_d3dWidget->Stop();
 }

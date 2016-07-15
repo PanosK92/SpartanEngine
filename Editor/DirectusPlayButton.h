@@ -33,10 +33,12 @@ public:
     explicit DirectusPlayButton(QWidget *parent = 0);
     void SetDirectus3DWidget(Directus3D* directus3DWidget);
 
+public slots:
+     void AdjustEngine(bool play);
+
 private:
     Directus3D* m_d3dWidget;
-signals:
 
-public slots:
     void Play();
+    void Stop();
 };
