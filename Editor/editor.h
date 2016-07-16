@@ -37,6 +37,7 @@ class Editor : public QMainWindow
 public:
     explicit Editor(QWidget *parent = 0);
     ~Editor();
+    void InitializeEngine();
 
 private slots:
     void on_actionAbout_Directus3D_triggered();

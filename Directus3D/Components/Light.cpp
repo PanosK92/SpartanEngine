@@ -33,7 +33,8 @@ using namespace Directus::Math;
 
 Light::Light()
 {
-	m_type = Point;
+	m_lightType = Point;
+	m_shadowType = Soft_Shadows;
 	m_range = 1.0f;
 	m_intensity = 5.0f;
 	m_color = Vector4(
@@ -62,7 +63,8 @@ void Light::Update()
 
 void Light::Serialize()
 {
-	Serializer::SaveInt(static_cast<int>(m_type));
+	Serializer::SaveInt(int(m_lightType));
+	Serializer::SaveInt(int(m_shadowType));
 	Serializer::SaveVector4(m_color);
 	Serializer::SaveFloat(m_range);
 	Serializer::SaveFloat(m_intensity);
@@ -71,7 +73,8 @@ void Light::Serialize()
 
 void Light::Deserialize()
 {
-	m_type = static_cast<LightType>(Serializer::LoadInt());
+	m_lightType = LightType(Serializer::LoadInt());
+	m_shadowType = ShadowType(Serializer::LoadInt());
 	m_color = Serializer::LoadVector4();
 	m_range = Serializer::LoadFloat();
 	m_intensity = Serializer::LoadFloat();
@@ -80,12 +83,12 @@ void Light::Deserialize()
 
 LightType Light::GetLightType()
 {
-	return m_type;
+	return m_lightType;
 }
 
 void Light::SetLightType(LightType type)
 {
-	m_type = type;
+	m_lightType = type;
 	g_scene->MakeDirty();
 }
 
@@ -107,6 +110,16 @@ void Light::SetColor(Vector4 color)
 float Light::GetIntensity()
 {
 	return m_intensity;
+}
+
+ShadowType Light::GetShadowType()
+{
+	return m_shadowType;
+}
+
+void Light::SetShadowType(ShadowType shadowType)
+{
+	m_shadowType = shadowType;
 }
 
 void Light::SetRange(float value)

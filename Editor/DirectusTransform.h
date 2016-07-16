@@ -87,6 +87,10 @@ private:
     QLineEdit* m_scaZ;
     //===============================
 
+    //= LINE ========================
+    QWidget* m_line;
+    //===============================
+
     //= MISC ========================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;

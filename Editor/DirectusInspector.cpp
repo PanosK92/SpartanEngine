@@ -61,7 +61,7 @@ void DirectusInspector::Initialize()
     m_light->Initialize(m_directusCore);
 
     m_script = new DirectusScript();
-    m_script->Initialize();
+    m_script->Initialize(m_directusCore);
 
     m_meshCollider = new DirectusMeshCollider();
     m_meshCollider->Initialize();;

@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========
 #include "editor.h"
 #include "ui_editor.h"
+#include <windows.h>
 //====================
 
 Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
@@ -30,13 +31,25 @@ Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
 
     // Create whatever we need here
     m_aboutDialog = new AboutDialog(this);
+}
 
-    // Get engine socket
-    HWND hWnd = (HWND)this->winId();
-    HINSTANCE hinstance = (HINSTANCE)::GetModuleHandle(NULL);
+Editor::~Editor()
+{
+    delete ui;
+}
 
+void Editor::InitializeEngine()
+{
+    // Get engine core
     DirectusCore* directusCore = ui->directusCore;
-    directusCore->Initialize(hWnd, hinstance);
+
+    // Aqcuire HWND and HINSTANCE
+    #pragma comment(lib, "User32.lib")
+    HWND hWnd = (HWND)this->winId();
+    HINSTANCE hInstance = (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE);
+
+    // Initialize the engine
+    directusCore->Initialize(hWnd, hInstance);
 
     // Pass the engine around
     ui->directusInspector->SetDirectusCore(directusCore);
@@ -47,12 +60,7 @@ Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
     // Resolve other dependencies
     ui->directusInspector->Initialize();
     ui->directusHierarchy->SetDirectusInspector(ui->directusInspector);
-    ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);  
-}
-
-Editor::~Editor()
-{
-    delete ui;
+    ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);
 }
 
 void Editor::on_actionAbout_Directus3D_triggered()

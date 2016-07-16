@@ -13,5 +13,6 @@
         <file>meshRenderer.png</file>
         <file>light.png</file>
         <file>arrow.png</file>
+        <file>script.png</file>
     </qresource>
 </RCC>

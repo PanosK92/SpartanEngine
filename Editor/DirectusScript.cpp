@@ -28,14 +28,72 @@ DirectusScript::DirectusScript(QWidget *parent) : QWidget(parent)
 
 }
 
-void DirectusScript::Initialize()
+void DirectusScript::Initialize(DirectusCore* directusCore)
 {
+    m_directusCore = directusCore;
+    m_gridLayout = new QGridLayout();
+    m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
+    //= TITLE =================================================
+    m_title = new QLabel("Script");
+    m_title->setStyleSheet(
+                "background-image: url(:/Images/script.png);"
+                "background-repeat: no-repeat;"
+                "background-position: left;"
+                "padding-left: 20px;"
+                );
+    //=========================================================
+
+    //= LINE ======================================
+    m_line = new QWidget();
+    m_line->setFixedHeight(1);
+    m_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_line->setStyleSheet(QString("background-color: #585858;"));
+    //=============================================
+
+    // addWidget(widget, row, column, rowspan, colspan)
+    //= GRID ======================================================================
+    // Row 0
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
+
+    // Row 1 - LINE
+    m_gridLayout->addWidget(m_line, 1, 0, 1, 1);
+     //============================================================================
+
+    this->setLayout(m_gridLayout);
+    this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    this->hide();
 }
 
 void DirectusScript::Reflect(GameObject* gameobject)
 {
+    m_inspectedScript = nullptr;
 
+    // Catch evil case
+    if (!gameobject)
+    {
+        this->hide();
+        return;
+    }
+
+    // Catch the seed of the evil
+    m_inspectedScript = gameobject->GetComponent<Script>();
+    if (!m_inspectedScript)
+    {
+        this->hide();
+        return;
+    }
+
+    // Do the actual reflection
+    SetScriptName(m_inspectedScript->GetName());
+
+    // Make this widget visible
+    this->show();
+}
+
+void DirectusScript::SetScriptName(std::string name)
+{
+    m_title->setText(QString::fromStdString(name) + " (Script)");
 }
 
 void DirectusScript::Map()

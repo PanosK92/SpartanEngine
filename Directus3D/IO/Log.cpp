@@ -29,6 +29,7 @@ using namespace Directus::Math;
 //=============================
 
 ILogger* Log::m_logger;
+map<string, Log::LogType> Log::m_queuedLogs;
 
 void Log::Initialize()
 {
@@ -49,7 +50,10 @@ void Log::SetLogger(ILogger* logger)
 void Log::Write(string text, LogType type) // all functions resolve to that one
 {
 	if (!m_logger)
+	{
+		m_queuedLogs.insert(make_pair(text, type));
 		return;
+	}
 
 	string prefix = "";
 
@@ -62,8 +66,20 @@ void Log::Write(string text, LogType type) // all functions resolve to that one
 	if (type == Error)
 		prefix = "Error:";
 
+	if (type == Undefined)
+		prefix = "Undefined:";
+
 	string finalText = prefix + " " + text;
 
+	// Print any queued logs
+	map<string, LogType>::iterator it;
+	for (it = m_queuedLogs.begin(); it != m_queuedLogs.end(); ++it)
+	{
+		m_logger->Log(it->first, it->second);
+	}
+	m_queuedLogs.clear();
+
+	// Print the log
 	m_logger->Log(finalText, type);
 }
 

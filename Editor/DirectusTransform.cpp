@@ -132,6 +132,13 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
     m_scaZLabel->AdjustQLineEdit(m_scaZ);
     //=============================================
 
+    //= LINE ======================================
+    m_line = new QWidget();
+    m_line->setFixedHeight(1);
+    m_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_line->setStyleSheet(QString("background-color: #585858;"));
+    //=============================================
+
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     // Row 0 - TITLE
@@ -163,6 +170,9 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
     m_gridLayout->addWidget(m_scaY,        3, 4, 1, 1);
     m_gridLayout->addWidget(m_scaZLabel,   3, 5, 1, 1);
     m_gridLayout->addWidget(m_scaZ,        3, 6, 1, 1);
+
+    // Row 4 - LINE
+    m_gridLayout->addWidget(m_line,    4, 0, 1, 7);
 
     // textChanged(QString) -> emits signal when changed through code
     // textEdit(QString) -> doesn't emit signal when changed through code
