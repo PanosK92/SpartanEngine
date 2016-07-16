@@ -28,6 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusQVariantPacker.h"
 #include "DirectusAssetLoader.h"
 #include "AssetLoadingDialog.h"
+#include <QApplication>
+#include <QDrag>
 //=================================
 
 //= NAMESPACES =====
@@ -40,6 +42,7 @@ DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
 {
     m_socket= nullptr;
     m_sceneFileName = NO_PATH;
+    setAcceptDrops(true);
 }
 
 void DirectusHierarchy::SetDirectusCore(DirectusCore* directusCore)
@@ -57,6 +60,12 @@ void DirectusHierarchy::SetDirectusInspector(DirectusInspector *inspector)
 
 void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
 {
+    // In case this mouse press evolves into a drag and drop
+    // we have to keep the starting position in order to determine
+    // if it's indeed one, in mouseMoveEvent(QMouseEvent* event)
+    if (event->button() == Qt::LeftButton)
+              m_dragStartPosition = event->pos();
+
     // I implement this myself because the QTreeWidget doesn't
     // deselect any items when you click anywhere else but on an item.
     QModelIndex item = indexAt(event->pos());
@@ -77,6 +86,83 @@ void DirectusHierarchy::selectionChanged(const QItemSelection &selected, const Q
     if (m_inspector)
         m_inspector->inspect(GetSelectedGameObject());
 }
+
+//= DRAG N DROP RELATED ============================================================================
+// Determine whether a drag should begin, and
+// construct a drag object to handle the operation.
+void DirectusHierarchy::mouseMoveEvent(QMouseEvent* event)
+{
+    if (!(event->buttons() & Qt::LeftButton))
+            return;
+
+    if ((event->pos() - m_dragStartPosition).manhattanLength() < QApplication::startDragDistance())
+            return;
+
+    // Make sure the guy actually clicked on something
+    GameObject* draggedGameObject = GetSelectedGameObject();
+    if (!draggedGameObject)
+        return;
+
+    QDrag* drag = new QDrag(this);
+    QMimeData* mimeData = new QMimeData;
+
+    QString gameObjectID = QString::fromStdString(draggedGameObject->GetID());
+    mimeData->setText(gameObjectID);
+    drag->setMimeData(mimeData);
+
+    drag->exec();
+}
+
+// The dragEnterEvent() function is typically used to
+// inform Qt about the types of data that the widget accepts.
+void DirectusHierarchy::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (event->source() == this && event->mimeData()->hasText())
+    {
+        event->setDropAction(Qt::MoveAction);
+        event->accept();
+        return;
+    }
+
+    event->ignore();
+}
+
+void DirectusHierarchy::dragMoveEvent(QDragMoveEvent* event)
+{
+    if (event->source() == this && event->mimeData()->hasText())
+    {
+        event->setDropAction(Qt::MoveAction);
+        event->accept();
+        return;
+    }
+
+    event->ignore();
+}
+
+// The dropEvent() is used to unpack dropped data and
+// handle however I want.
+void DirectusHierarchy::dropEvent(QDropEvent* event)
+{
+    if (!event->mimeData()->hasText())
+    {
+        event->ignore();
+        return;
+    }
+
+    const QMimeData *mime = event->mimeData();
+    QString pieces = mime->text();
+
+    if (event->source() == this)
+    {
+        event->setDropAction(Qt::MoveAction);
+        event->accept();
+        LOG(pieces.toStdString());
+        return;
+    }
+
+    event->acceptProposedAction();
+}
+//===================================================================================================
 
 void DirectusHierarchy::Clear()
 {

@@ -69,11 +69,33 @@ void ScriptDefinitions::RegisterEnumerations()
 
 	// KeyCode
 	m_scriptEngine->RegisterEnum("KeyCode");
+	m_scriptEngine->RegisterEnumValue("KeyCode", "Space", int(Space));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "Q", int(Q));
 	m_scriptEngine->RegisterEnumValue("KeyCode", "W", int(W));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "E", int(E));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "R", int(R));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "T", int(T));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "Y", int(Y));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "U", int(U));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "I", int(I));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "O", int(O));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "P", int(P));
 	m_scriptEngine->RegisterEnumValue("KeyCode", "A", int(A));
 	m_scriptEngine->RegisterEnumValue("KeyCode", "S", int(S));
 	m_scriptEngine->RegisterEnumValue("KeyCode", "D", int(D));
-	m_scriptEngine->RegisterEnumValue("KeyCode", "Space", int(Space));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "F", int(F));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "G", int(G));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "H", int(H));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "J", int(J));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "K", int(K));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "L", int(L));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "Z", int(Z));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "X", int(X));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "C", int(C));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "V", int(V));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "B", int(B));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "N", int(N));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "M", int(M));
 
 	// ForceMode
 	m_scriptEngine->RegisterEnum("ForceMode");
