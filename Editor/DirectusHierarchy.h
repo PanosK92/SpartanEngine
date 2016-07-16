@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QtCore>
 #include "Core/Socket.h"
 #include <QVariant>
-#include "QMouseEvent"
+#include <QMouseEvent>
 #include "DirectusInspector.h"
 #include "DirectusCore.h"
 //==================================
@@ -40,6 +40,10 @@ public:
     void SetDirectusInspector(DirectusInspector* inspector);   
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void selectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
+    virtual void mouseMoveEvent(QMouseEvent* event);
+    virtual void dragEnterEvent(QDragEnterEvent* event);
+    virtual void dragMoveEvent (QDragMoveEvent* event);
+    virtual void dropEvent(QDropEvent* event);
 
 private:
     void Clear();
@@ -58,6 +62,7 @@ private:
 	Socket* m_socket;
     DirectusInspector* m_inspector;
     DirectusCore* m_directusCore;
+    QPoint m_dragStartPosition;
 
 public slots:
     void Populate();
