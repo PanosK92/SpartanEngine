@@ -25,9 +25,9 @@ The editor presented in the above screenshot is a standalone project developed o
 - D3D12 Renderer.
 - Draw call batching (static & dynamic).
 - Font loader & renderer.
-- OpenGL Renderer.
 - SSAO, SSR, Volumetric Lighting.
 - UI components.
+- Vulkan Renderer.
 
 Dependencies that are not included in the repository: AngelScript, Assimp, Bullet, FreeImage.
 
