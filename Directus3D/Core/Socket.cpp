@@ -75,16 +75,6 @@ void Socket::SetViewport(int width, int height) const
 //==============================================================================
 
 //= MISC =======================================================================
-EngineMode Socket::GetEngineMode()
-{
-	return Settings::GetInstance().GetEngineMode();
-}
-
-void Socket::SetEngineMode(EngineMode mode)
-{
-	Settings::GetInstance().SetEngineMode(mode);
-}
-
 void Socket::Update()
 {
 	// update time

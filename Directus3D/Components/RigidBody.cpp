@@ -106,7 +106,7 @@ void RigidBody::Initialize()
 
 void RigidBody::Update()
 {
-	if (ENGINE_MODE == Editor_Debug)
+	/*if (ENGINE_MODE == Editor_Debug)
 	{
 		if (m_executeEvent)
 		{
@@ -126,7 +126,7 @@ void RigidBody::Update()
 			OnEditorPlay();
 			m_executeEvent = true;
 		}
-	}
+	}*/
 }
 
 void RigidBody::Serialize()

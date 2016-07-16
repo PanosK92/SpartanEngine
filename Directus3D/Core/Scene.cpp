@@ -103,11 +103,6 @@ bool Scene::LoadFromFile(std::string path)
 	}
 	Clear();
 
-	// if we are in EDITOR mode and the scene 
-	// is in Editor_Play, reset it to Editor_Debug.
-	if (ENGINE_MODE == Editor_Play)
-		Settings::GetInstance().SetEngineMode(Editor_Debug);
-
 	Serializer::StartReading(path);
 	//===========================================
 	m_texturePool->Deserialize();

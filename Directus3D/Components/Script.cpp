@@ -51,9 +51,6 @@ void Script::Initialize()
 
 void Script::Update()
 {
-	if (ENGINE_MODE != Editor_Play)
-		return;
-
 	for (auto i = 0; i < m_scriptInstances.size(); i++)
 	{
 		if (m_scriptInstances[i]->IsInstantiated())
