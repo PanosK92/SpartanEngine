@@ -58,7 +58,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
 
     //= INTENSTITY =======================
     m_intensityLabel = new QLabel("Intensity");
-    m_intensity = new DirectusSliderText();
+    m_intensity = new DirectusComboSliderText();
     m_intensity->Initialize(0, 8);
     //====================================
 
@@ -69,7 +69,6 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
     m_shadowType->addItem("Hard Shadows");
     m_shadowType->addItem("Soft Shadows");
     //====================================
-
 
     //= LINE ======================================
     m_line = new QWidget();
@@ -85,11 +84,11 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
 
     // Row 1 - LIGHT TYPE
     m_gridLayout->addWidget(m_lightTypeLabel,   1, 0, 1, 1);
-    m_gridLayout->addWidget(m_lightType,        1, 1, 1, 1);
+    m_gridLayout->addWidget(m_lightType,        1, 1, 1, 2);
 
     // Row 2 - COLOR
     m_gridLayout->addWidget(m_colorLabel,   2, 0, 1, 1);
-    m_gridLayout->addWidget(m_color,        2, 1, 1, 1);
+    m_gridLayout->addWidget(m_color,        2, 1, 1, 2);
 
     // Row 3 - INTENSTITY
     m_gridLayout->addWidget(m_intensityLabel,               3, 0, 1, 1);
@@ -98,11 +97,15 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
 
     // Row 4 - SHADOW TYPE
     m_gridLayout->addWidget(m_shadowTypeLabel,  4, 0, 1, 1);
-    m_gridLayout->addWidget(m_shadowType,       4, 1, 1, 1);
+    m_gridLayout->addWidget(m_shadowType,       4, 1, 1, 2);
 
     // Row 5 - LINE
-    m_gridLayout->addWidget(m_line, 5, 0, 1, 2);
+    m_gridLayout->addWidget(m_line, 5, 0, 1, 3);
     //==============================================================================
+
+    connect(m_lightType, SIGNAL(currentIndexChanged(int)), this, SLOT(MapLightType()));
+    connect(m_intensity, SIGNAL(ValueChanged()), this, SLOT(MapIntensity()));
+    connect(m_shadowType, SIGNAL(currentIndexChanged(int)), this, SLOT(MapShadowType()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -172,8 +175,8 @@ void DirectusLight::MapColor()
     if(!m_inspectedLight || !m_directusCore)
         return;
 
-    float intensity = m_intensity->GetValue();
-    m_inspectedLight->SetIntensity(intensity);
+    //float intensity = m_intensity->GetValue();
+    //m_inspectedLight->SetIntensity(intensity);
 }
 
 void DirectusLight::MapIntensity()
@@ -181,8 +184,8 @@ void DirectusLight::MapIntensity()
     if(!m_inspectedLight || !m_directusCore)
         return;
 
-   // float intensity = m_intensity->GetValue();
-    //m_inspectedLight->SetIntensity(intensity);
+    float intensity = m_intensity->GetValue();
+    m_inspectedLight->SetIntensity(intensity);
 }
 
 void DirectusLight::MapShadowType()

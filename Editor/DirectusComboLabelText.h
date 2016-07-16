@@ -21,34 +21,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//===================
-#include <QSlider>
+//= INCLUDES ===================
+#include <QWidget>
+#include "DirectusAdjustLabel.h"
 #include <QLineEdit>
 #include <QValidator>
-//===================
+//==============================
 
-class DirectusSliderText : public QWidget
+class DirectusComboLabelText : public QWidget
 {
     Q_OBJECT
 public:
-    DirectusSliderText(QWidget* parent = NULL);
-    void Initialize(int min, int max);
+    explicit DirectusComboLabelText(QWidget *parent = 0);
 
-    void SetValue(float value);
-    float GetValue();
+    void Initialize(QString labelText);
+    void SetValidator(QValidator* validator);
 
-    QSlider* GetSlider();
-    QLineEdit* GetLineEdit();
+    DirectusAdjustLabel* GetLabelWidget();
+    QLineEdit* GetTextWidget();
 
-signals:
-    void valueChanged(float value);
-
-public slots:
-    void UpdateFromSlider();
-    void UpdateFromLineEdit();
+    float GetAsFloat();
+    void SetFromFloat(float value);
 
 private:
-    QSlider* m_slider;
-    QLineEdit* m_lineEdit;
-    QValidator* m_validator;
+    DirectusAdjustLabel* m_label;
+    QLineEdit* m_text;
+
+signals:
+    void ValueChanged();
+
+public slots: 
+    void TextGotEdited();
 };

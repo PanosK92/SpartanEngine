@@ -21,17 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==============================
+//================================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusAdjustLabel.h"
-#include <QLineEdit>
 #include "Math/Vector3.h"
 #include "Math/Quaternion.h"
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
 #include "DirectusCore.h"
-//==============================
+#include "DirectusComboLabelText.h"
+//=================================
 
 class DirectusTransform : public QWidget
 {
@@ -59,32 +58,23 @@ private:
 
     // = POSITION ===================
     QLabel* m_posLabel;
-    DirectusAdjustLabel* m_posXLabel;
-    QLineEdit* m_posX;
-    DirectusAdjustLabel* m_posYLabel;
-    QLineEdit* m_posY;
-    DirectusAdjustLabel* m_posZLabel;
-    QLineEdit* m_posZ;
+    DirectusComboLabelText* m_posX;
+    DirectusComboLabelText* m_posY;
+    DirectusComboLabelText* m_posZ;
     //===============================
 
     //= ROTATION ====================
     QLabel* m_rotLabel;
-    DirectusAdjustLabel* m_rotXLabel;
-    QLineEdit* m_rotX;
-    DirectusAdjustLabel* m_rotYLabel;
-    QLineEdit* m_rotY;
-    DirectusAdjustLabel* m_rotZLabel;
-    QLineEdit* m_rotZ;
+    DirectusComboLabelText* m_rotX;
+    DirectusComboLabelText* m_rotY;
+    DirectusComboLabelText* m_rotZ;
     //===============================
 
     //= SCALE =======================
     QLabel* m_scaLabel;
-    DirectusAdjustLabel* m_scaXLabel;
-    QLineEdit* m_scaX;
-    DirectusAdjustLabel* m_scaYLabel;
-    QLineEdit* m_scaY;
-    DirectusAdjustLabel* m_scaZLabel;
-    QLineEdit* m_scaZ;
+    DirectusComboLabelText* m_scaX;
+    DirectusComboLabelText* m_scaY;
+    DirectusComboLabelText* m_scaZ;
     //===============================
 
     //= LINE ========================
@@ -96,7 +86,6 @@ private:
     QValidator* m_validator;
     //===============================
 
-    QLineEdit* CreateQLineEdit();
     Transform* m_inspectedTransform;
     DirectusCore* m_directusCore;
 

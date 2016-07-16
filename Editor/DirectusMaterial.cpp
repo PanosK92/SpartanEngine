@@ -67,28 +67,28 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore)
     //= ROUGHNESS =============================================
     m_roughnessLabel = new QLabel("Roughness");
     m_roughnessImage = new DirectusImage();
-    m_roughness = new DirectusSliderText();
+    m_roughness = new DirectusComboSliderText();
     m_roughness->Initialize(0, 1);
     //=========================================================
 
     //= METALLIC ==============================================
     m_metallicLabel = new QLabel("Metallic");
     m_metallicImage = new DirectusImage();
-    m_metallic = new DirectusSliderText();
+    m_metallic = new DirectusComboSliderText();
     m_metallic->Initialize(0, 1);
     //=========================================================
 
     //= NORMAL ================================================
     m_normalLabel = new QLabel("Normal");
     m_normalImage = new DirectusImage();
-    m_normal = new DirectusSliderText();
+    m_normal = new DirectusComboSliderText();
     m_normal->Initialize(0, 1);
     //=========================================================
 
     //= HEIGHT ================================================
     m_heightLabel = new QLabel("Height");
     m_heightImage = new DirectusImage();
-    m_height = new DirectusSliderText();
+    m_height = new DirectusComboSliderText();
     m_height->Initialize(0, 1);
     //=========================================================
 
@@ -109,32 +109,28 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore)
 
     //= REFLECTIVITY  =========================================
     m_reflectivityLabel = new QLabel("Reflectivity");
-    m_reflectivity = new DirectusSliderText();
+    m_reflectivity = new DirectusComboSliderText();
     m_reflectivity->Initialize(0, 1);
     //=========================================================
 
     //= TILING ================================================
     m_tilingLabel = new QLabel("Tiling");
-    m_tilingX = CreateQLineEdit();
-    m_tilingY = CreateQLineEdit();
-    m_tilingXLabel = new DirectusAdjustLabel();
-    m_tilingXLabel->setText("X");
-    m_tilingXLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_tilingYLabel = new DirectusAdjustLabel();
-    m_tilingYLabel->setText("Y");
-    m_tilingYLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+    m_tilingX = new DirectusComboLabelText();
+    m_tilingX->Initialize("X");
+
+    m_tilingY = new DirectusComboLabelText();
+    m_tilingY->Initialize("X");
     //=========================================================
 
     //= OFFSET ================================================
     m_offsetLabel = new QLabel("Offset");
-    m_offsetX = CreateQLineEdit();
-    m_offsetY = CreateQLineEdit();
-    m_offsetXLabel = new DirectusAdjustLabel();
-    m_offsetXLabel->setText("X");
-    m_offsetXLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_offsetYLabel = new DirectusAdjustLabel();
-    m_offsetYLabel->setText("Y");
-    m_offsetYLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+    m_offsetX = new DirectusComboLabelText();
+    m_offsetX->Initialize("X");
+
+    m_offsetY = new DirectusComboLabelText();
+    m_offsetY->Initialize("X");
     //=========================================================
 
     //= LINE ======================================
@@ -214,33 +210,31 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore)
 
     // Row 15 - TILING
     m_gridLayout->addWidget(m_tilingLabel,      row, 0, 1, 1);
-    m_gridLayout->addWidget(m_tilingXLabel,     row, 1, 1, 1);
-    m_gridLayout->addWidget(m_tilingX,          row, 2, 1, 1);
-    m_gridLayout->addWidget(m_tilingYLabel,     row, 3, 1, 1);
-    m_gridLayout->addWidget(m_tilingY,          row, 4, 1, 1);
+    m_gridLayout->addWidget(m_tilingX->GetLabelWidget(),     row, 1, 1, 1);
+    m_gridLayout->addWidget(m_tilingX->GetTextWidget(),          row, 2, 1, 1);
+    m_gridLayout->addWidget(m_tilingY->GetLabelWidget(),     row, 3, 1, 1);
+    m_gridLayout->addWidget(m_tilingY->GetTextWidget(),          row, 4, 1, 1);
     row++;
 
     // Row 16 - OFFSET
     m_gridLayout->addWidget(m_offsetLabel,  row, 0, 1, 1);
-    m_gridLayout->addWidget(m_offsetXLabel, row, 1, 1, 1);
-    m_gridLayout->addWidget(m_offsetX,      row, 2, 1, 1);
-    m_gridLayout->addWidget(m_offsetYLabel, row, 3, 1, 1);
-    m_gridLayout->addWidget(m_offsetY,      row, 4, 1, 1);
+    m_gridLayout->addWidget(m_offsetX->GetLabelWidget(), row, 1, 1, 1);
+    m_gridLayout->addWidget(m_offsetX->GetTextWidget(),      row, 2, 1, 1);
+    m_gridLayout->addWidget(m_offsetY->GetLabelWidget(), row, 3, 1, 1);
+    m_gridLayout->addWidget(m_offsetY->GetTextWidget(),      row, 4, 1, 1);
     row++;
 
     // Row 17 - LINE
     m_gridLayout->addWidget(m_line, row, 0, 1, 5);
     //=========================================================
 
-    // textChanged(QString) -> emits signal when changed through code
-    // textEdited(QString) -> doesn't emits signal when changed through code
-    connect(m_roughness,    SIGNAL(valueChanged(float)),    this, SLOT(MapRoughness()));
-    connect(m_metallic,     SIGNAL(valueChanged(float)),    this, SLOT(MapMetallic()));
-    connect(m_normal,       SIGNAL(valueChanged(float)),    this, SLOT(MapNormal()));
-    connect(m_height,       SIGNAL(valueChanged(float)),    this, SLOT(MapHeight()));
-    connect(m_reflectivity, SIGNAL(valueChanged(float)),    this, SLOT(MapReflectivity()));
-    connect(m_tilingX,      SIGNAL(textEdited(QString)),    this, SLOT(MapTiling()));
-    connect(m_tilingY,      SIGNAL(textEdited(QString)),    this, SLOT(MapTiling()));
+    connect(m_roughness,    SIGNAL(ValueChanged()), this, SLOT(MapRoughness()));
+    connect(m_metallic,     SIGNAL(ValueChanged()), this, SLOT(MapMetallic()));
+    connect(m_normal,       SIGNAL(ValueChanged()), this, SLOT(MapNormal()));
+    connect(m_height,       SIGNAL(ValueChanged()), this, SLOT(MapHeight()));
+    connect(m_reflectivity, SIGNAL(ValueChanged()), this, SLOT(MapReflectivity()));
+    connect(m_tilingX,      SIGNAL(ValueChanged()), this, SLOT(MapTiling()));
+    connect(m_tilingY,      SIGNAL(ValueChanged()), this, SLOT(MapTiling()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -371,8 +365,8 @@ void DirectusMaterial::SetReflectivity(float reflectivity)
 
 void DirectusMaterial::SetTiling(Vector2 tiling)
 {
-    m_tilingX->setText(QString::number(tiling.x));
-    m_tilingY->setText(QString::number(tiling.y));
+    m_tilingX->SetFromFloat(tiling.x);
+    m_tilingY->SetFromFloat(tiling.y);
 }
 
 void DirectusMaterial::MapAlbedo()
@@ -452,8 +446,8 @@ void DirectusMaterial::MapTiling()
         return;
 
     Vector2 tiling;
-    tiling.x = m_tilingX->text().toFloat();
-    tiling.y = m_tilingY->text().toFloat();
+    tiling.x = m_tilingX->GetAsFloat();
+    tiling.y = m_tilingY->GetAsFloat();
 
     m_inspectedMaterial->SetTiling(tiling);
     m_directusCore->Update();

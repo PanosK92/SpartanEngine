@@ -21,43 +21,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-// INCLUDES ========
-#include <QLabel>
+//===================
+#include <QSlider>
 #include <QLineEdit>
-//==================
+#include <QValidator>
+//===================
 
-class DirectusAdjustLabel : public QLabel
+class DirectusComboSliderText : public QWidget
 {
     Q_OBJECT
 public:
-    explicit DirectusAdjustLabel(QWidget* parent = 0);
-    void AdjustQLineEdit(QLineEdit* lineEdit);
-protected:
-    // mouseMoveEvent() is called whenever the
-    // mouse moves while a mouse button is held down.
-    // This can be useful during drag and drop operations.
-    virtual void mouseMoveEvent(QMouseEvent* event);
-    virtual void leaveEvent(QEvent* event);
+    DirectusComboSliderText(QWidget* parent = NULL);
+    void Initialize(int min, int max);
 
-private:
-    void MouseEntered();
-    QPoint GetMousePosLocal();
-    float GetTextBoxValue();
-    void SetTextBoxValue(float value);
-    void RepositionMouseOnScreenEdge();
-    float CalculateDelta();
-    void Adjust();
+    void SetValue(float value);
+    float GetValue();
 
-    QLineEdit* m_lineEdit;
-    bool m_isMouseHovering;
-    bool m_isMouseDragged;
-    float m_lastMousePos;
-    float m_mouseDelta;
-    float m_currentTexBoxValue;
-    float m_sensitivity = 0.05f;
+    QSlider* GetSlider();
+    QLineEdit* GetLineEdit();
 
 signals:
-    void Adjusted();
+    void ValueChanged();
 
 public slots:
+    void UpdateFromSlider();
+    void UpdateFromLineEdit();
+
+private:
+    QSlider* m_slider;
+    QLineEdit* m_lineEdit;
+    QValidator* m_validator;
 };
