@@ -10,7 +10,7 @@ class FirstPersonController
 	Vector2 mouseRotation = Vector2(0.0f, 0.0f);
 	
 	// wasd movement
-	float movementAcceleration = 0.02f;
+	float movementAcceleration = 0.0025f;
 	float movementDeacceleration = 0.9f;
 	Vector3 movementSpeed = Vector3(0,0,0);
 	
@@ -35,9 +35,6 @@ class FirstPersonController
 
 	void MouseLook()
 	{
-		if (!input.GetKey(Space))
-			return;			
-		
 		// Get raw mouse input
 		Vector2 mouseDelta = Vector2(input.GetMousePositionDelta().x, input.GetMousePositionDelta().y);
 	

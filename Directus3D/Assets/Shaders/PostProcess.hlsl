@@ -2,7 +2,7 @@ Texture2D sourceTexture : register(t0);
 SamplerState anisotropicSampler : register(s0);
 SamplerState bilinearSampler : register(s1);
 
-#if FXAA == 1
+#if FXAA
 #define FXAA_PC 1
 #define FXAA_HLSL_5 1
 #define FXAA_QUALITY__PRESET 29
@@ -47,7 +47,7 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 /*------------------------------------------------------------------------------
                           [FXAA CODE SECTION]
 ------------------------------------------------------------------------------*/
-#if FXAA == 1
+#if FXAA
 float4 FXAAPass(float2 texCoord, float2 texelSize)
 {
 	FxaaTex tex 						= { bilinearSampler, sourceTexture };	
@@ -73,7 +73,7 @@ float4 FXAAPass(float2 texCoord, float2 texelSize)
 /*------------------------------------------------------------------------------
 						[SHARPENING CODE SECTION]
 ------------------------------------------------------------------------------*/
-#if SHARPENING == 1 
+#if SHARPENING
 float4 SharpeningPass(float2 texCoord)
 {
   	float val0 = 2.0f;
@@ -99,7 +99,7 @@ float4 SharpeningPass(float2 texCoord)
 /*------------------------------------------------------------------------------
 						[BLUR]
 ------------------------------------------------------------------------------*/
-#if BLUR == 1
+#if BLUR
 float4 BlurPass(float2 texCoord, float2 texelSize)
 {
 	int uBlurSize = 5; // use size of noise texture
@@ -129,15 +129,15 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float4 color;
     float2 texelSize = float2(1.0f / viewport.x, 1.0f / viewport.y);
 	
-#if FXAA == 1
+#if FXAA
 	color = FXAAPass(texCoord, texelSize);
 #endif
 	
-#if SHARPENING == 1 
+#if SHARPENING
 	color = SharpeningPass(texCoord);
 #endif
 	
-#if BLUR == 1 
+#if BLUR
 	color = BlurPass(texCoord, texelSize);
 #endif
 	
