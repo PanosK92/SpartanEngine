@@ -32,6 +32,7 @@ DirectusMeshRenderer::DirectusMeshRenderer(QWidget *parent) : QWidget(parent)
 void DirectusMeshRenderer::Initialize()
 {
     m_gridLayout = new QGridLayout();
+    m_gridLayout->setMargin(4);
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     //= TITLE =================================================

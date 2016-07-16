@@ -33,6 +33,7 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
 {
     m_directusCore = directusCore;
     m_gridLayout = new QGridLayout();
+    m_gridLayout->setMargin(4);
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     //= TITLE =================================================

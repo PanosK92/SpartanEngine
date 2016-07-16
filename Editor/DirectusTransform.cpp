@@ -39,6 +39,7 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
     m_directusCore = directusCore;
 
     m_gridLayout = new QGridLayout();
+    m_gridLayout->setMargin(4);
     //this->setStyleSheet("background-color: #383838");
     /*
     widget background dark: 			292929

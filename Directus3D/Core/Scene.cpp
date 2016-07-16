@@ -230,7 +230,7 @@ GameObject* Scene::CreateDirectionalLight()
 	light->AddComponent<Light>();
 	light->GetComponent<Transform>()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
 	light->GetComponent<Light>()->SetLightType(Directional);
-	light->GetComponent<Light>()->SetIntensity(8.0f);
+	light->GetComponent<Light>()->SetIntensity(4.0f);
 
 	return light;
 }

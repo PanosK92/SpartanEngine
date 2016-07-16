@@ -32,6 +32,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
 {
     m_directusCore = directusCore;
     m_gridLayout = new QGridLayout();
+    m_gridLayout->setMargin(4);
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     //= TITLE =================================================
@@ -168,6 +169,7 @@ void DirectusLight::MapLightType()
 
     LightType type = (LightType)(m_lightType->currentIndex());
     m_inspectedLight->SetLightType(type);
+    m_directusCore->Update();
 }
 
 void DirectusLight::MapColor()
@@ -186,6 +188,7 @@ void DirectusLight::MapIntensity()
 
     float intensity = m_intensity->GetValue();
     m_inspectedLight->SetIntensity(intensity);
+    m_directusCore->Update();
 }
 
 void DirectusLight::MapShadowType()
@@ -195,4 +198,5 @@ void DirectusLight::MapShadowType()
 
     ShadowType type = (ShadowType)(m_shadowType->currentIndex());
     m_inspectedLight->SetShadowType(type);
+    m_directusCore->Update();
 }

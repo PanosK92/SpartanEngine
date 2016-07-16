@@ -164,9 +164,9 @@ void Renderer::Render()
 	}
 
 	// Construct frustum (if necessery)
-	if (m_frustrum->GetProjectionMatrix() != mPerspectiveProjection || m_frustrum->GetViewMatrix() != mView)
+	if (m_frustrum->GetProjectionMatrix() != mProjection || m_frustrum->GetViewMatrix() != mView)
 	{
-		m_frustrum->SetProjectionMatrix(mPerspectiveProjection);
+		m_frustrum->SetProjectionMatrix(mProjection);
 		m_frustrum->SetViewMatrix(mView);
 		m_frustrum->ConstructFrustum(m_farPlane);
 	}
@@ -262,7 +262,7 @@ void Renderer::AcquirePrerequisites()
 		m_camera = camera->GetComponent<Camera>();
 		m_skybox = camera->GetComponent<Skybox>();
 
-		mPerspectiveProjection = m_camera->GetPerspectiveProjectionMatrix();
+		mProjection = m_camera->GetProjectionMatrix();
 		mOrthographicProjection = m_camera->GetOrthographicProjectionMatrix();
 		mView = m_camera->GetViewMatrix();
 		mBaseView = m_camera->GetBaseViewMatrix();
@@ -335,7 +335,7 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects, Light* dir
 		bool buffersHaveBeenSet = mesh->SetBuffers();
 		if (buffersHaveBeenSet)
 		{
-			meshRenderer->Render(mesh->GetIndexCount(), mView, mPerspectiveProjection);
+			meshRenderer->Render(mesh->GetIndexCount(), mView, mProjection);
 			m_meshesRendered++;
 		}
 		//==========================================================================
@@ -373,7 +373,7 @@ void Renderer::DeferredPass()
 		mWorld,
 		mView,
 		mBaseView,
-		mPerspectiveProjection,
+		mProjection,
 		mOrthographicProjection,
 		m_lightsDirectional,
 		m_lightsPoint,
