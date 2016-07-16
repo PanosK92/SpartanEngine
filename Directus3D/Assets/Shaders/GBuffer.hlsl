@@ -1,21 +1,19 @@
+// = INCLUDES ========
 #include "Normal.hlsl"
-#include "ShadowMapping.hlsl"
-
-//= TEXTURES =========
-Texture2D textures[8];
-// 0 - Albedo
-// 1 - Roughness
-// 2 - Metallic
-// 3 - Occlusion
-// 4 - Normal
-// 5 - Height
-// 6 - Mask
-// 7 - DirLightDepth
 //====================
+
+//= TEXTURES ===============================
+Texture2D texAlbedo 		: register (t0);
+Texture2D texRoughness 		: register (t1);
+Texture2D texMetallic 		: register (t2);
+Texture2D texOcclusion 		: register (t3);
+Texture2D texNormal 		: register (t4);
+Texture2D texHeight 		: register (t5);
+Texture2D texMask 			: register (t6);
+//==========================================
 
 //= SAMPLERS =================================
 SamplerState samplerAnisoWrap : register (s0);
-SamplerState shadowSampler    : register (s1);
 //============================================
 
 //= BUFFERS ==================================
@@ -24,7 +22,6 @@ cbuffer DefaultBuffer : register(b0)
     matrix mWorld;
     matrix mWorldView;
     matrix mWorldViewProjection;
-    matrix mViewProjectionDirLight;
     float4 materialAlbedoColor;
     float materialRoughness;
     float materialMetallic;
@@ -33,14 +30,12 @@ cbuffer DefaultBuffer : register(b0)
     float materialReflectivity;
     float materialShadingMode;
     float2 materialTiling;
-    float bias;
-    float3 lightDirection;
 	float2 viewport;
     float2 padding;
 };
 //===========================================
 
-//= STRUCTS ====================
+//= STRUCTS =================================
 struct VertexInputType
 {
     float4 position : POSITION;
@@ -66,7 +61,7 @@ struct PixelOutputType
 	float4 depth		: SV_Target2;
 	float4 material		: SV_Target3;
 };
-//==============================
+//===========================================
 
 PixelInputType DirectusVertexShader(VertexInputType input)
 {
@@ -99,52 +94,43 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float4 normal			= float4(PackNormal(input.normal.xyz), occlusion);
 
 	//= SAMPLING ================================================================================
-#if HEIGHT_MAP == 1	
+#if HEIGHT_MAP
 #endif
 	
 	//= SAMPLING ================================================================================
-#if MASK_MAP == 1
-		float3 maskSample = textures[6].Sample(samplerAnisoWrap, texCoord).rgb;
+#if MASK_MAP
+		float3 maskSample = texMask.Sample(samplerAnisoWrap, texCoord).rgb;
 		float threshold = 0.6f;
 		if (maskSample.r <= threshold && maskSample.g <= threshold && maskSample.b <= threshold)
 			discard;
 #endif
 	
 	//= SAMPLING ================================================================================
-#if ALBEDO_MAP == 1
-		albedo *= textures[0].Sample(samplerAnisoWrap, texCoord);
+#if ALBEDO_MAP
+		albedo *= texAlbedo.Sample(samplerAnisoWrap, texCoord);
 #endif
 	
 	//= SAMPLING ================================================================================
-#if ROUGHNESS_MAP == 1
-		roughness *= textures[1].Sample(samplerAnisoWrap, texCoord).r;
+#if ROUGHNESS_MAP
+		roughness *= texRoughness.Sample(samplerAnisoWrap, texCoord).r;
 #endif
 	
 	//= SAMPLING ================================================================================
-#if METALLIC_MAP == 1
-		metallic *= textures[2].Sample(samplerAnisoWrap, texCoord).r;
+#if METALLIC_MAP
+		metallic *= texMetallic.Sample(samplerAnisoWrap, texCoord).r;
 #endif
 	
 	//= SAMPLING ================================================================================
-#if OCCLUSION_MAP == 1
-		occlusion = clamp(textures[3].Sample(samplerAnisoWrap, texCoord).r * (1 / materialOcclusion), 0.0f, 1.0f);
+#if OCCLUSION_MAP
+		occlusion = clamp(texOcclusion.Sample(samplerAnisoWrap, texCoord).r * (1 / materialOcclusion), 0.0f, 1.0f);
 #endif
 	
 	//= SAMPLING ================================================================================
-#if NORMAL_MAP == 1
-		normal 	= textures[4].Sample(samplerAnisoWrap, texCoord); // sample
+#if NORMAL_MAP
+		normal 	= texNormal.Sample(samplerAnisoWrap, texCoord); // sample
 		normal 	= float4(NormalSampleToWorldSpace(normal, input.normal, input.tangent, materialNormalStrength), 1.0f); // transform to world space
 		normal 	= float4(PackNormal(normal), 1.0f);
 #endif
-	//===========================================================================================
-	
-	//= SHADOWING ===============================================================================
-	bool PCF = true;
-	float shadow = 1.0f;
-	
-    float slopeScaledBias = bias * tan(acos(dot(normal.rgb, -lightDirection.rgb)));
-	float4 lightClipSpace = mul(input.positionWS, mViewProjectionDirLight);
-    shadow = ShadowMapping(textures[7], shadowSampler, lightClipSpace, slopeScaledBias, PCF, texel);
 	//===========================================================================================
 	
 	//= DETERMINE RENDER QUALITY ================================================================
@@ -161,7 +147,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	// Write to G-Buffer
 	output.albedo 		= albedo;
-	output.normal 		= float4(normal.rgb, shadow);
+	output.normal 		= float4(normal.rgb, 1.0f);
 	output.depth 		= float4(depth, depthLinear, 1.0f, 1.0f);
 	output.material		= float4(roughness, metallic, reflectivity, renderMode);
 		
