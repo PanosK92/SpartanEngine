@@ -24,12 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==============================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusAdjustLabel.h"
 #include <QLineEdit>
 #include "Core/GameObject.h"
 #include "Core/Material.h"
 #include <QDoubleValidator>
-#include "DirectusSliderText.h"
+#include "DirectusComboSliderText.h"
+#include "DirectusComboLabelText.h"
 #include <QPushButton>
 #include <QComboBox>
 #include "Math/Vector2.h"
@@ -64,25 +64,25 @@ private:
     //= ROUGHNESS ===================
     DirectusImage* m_roughnessImage;
     QLabel* m_roughnessLabel;
-    DirectusSliderText* m_roughness;
+    DirectusComboSliderText* m_roughness;
     //===============================
 
     //= METALLIC ====================
     DirectusImage* m_metallicImage;
     QLabel* m_metallicLabel;
-    DirectusSliderText* m_metallic;
+    DirectusComboSliderText* m_metallic;
     //===============================
 
     //= NORMAL ======================
     DirectusImage* m_normalImage;
     QLabel* m_normalLabel;
-    DirectusSliderText* m_normal;
+    DirectusComboSliderText* m_normal;
     //===============================
 
     //= HEIGHT ======================
     DirectusImage* m_heightImage;
     QLabel* m_heightLabel;
-    DirectusSliderText* m_height;
+    DirectusComboSliderText* m_height;
     //===============================
 
     //= OCCLUSION ===================
@@ -102,23 +102,19 @@ private:
 
     //= REFLECTIVITY ================
     QLabel* m_reflectivityLabel;
-    DirectusSliderText* m_reflectivity;
+    DirectusComboSliderText* m_reflectivity;
     //===============================
 
     //= TILING ======================
     QLabel* m_tilingLabel;
-    DirectusAdjustLabel* m_tilingXLabel;
-    DirectusAdjustLabel* m_tilingYLabel;
-    QLineEdit* m_tilingX;
-    QLineEdit* m_tilingY;
+    DirectusComboLabelText* m_tilingX;
+    DirectusComboLabelText* m_tilingY;
     //===============================
 
     //= OFFSET ======================
     QLabel* m_offsetLabel;
-    DirectusAdjustLabel* m_offsetXLabel;
-    DirectusAdjustLabel* m_offsetYLabel;
-    QLineEdit* m_offsetX;
-    QLineEdit* m_offsetY;
+    DirectusComboLabelText* m_offsetX;
+    DirectusComboLabelText* m_offsetY;
     //===============================
 
     //= LINE ========================

@@ -66,70 +66,49 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
     // = POSITION =================================
     m_posLabel = new QLabel("Position");
 
-    m_posX = CreateQLineEdit();
-    m_posY = CreateQLineEdit();
-    m_posZ = CreateQLineEdit();
+    m_posX = new DirectusComboLabelText();
+    m_posX->Initialize("X");
+    m_posX->SetValidator(m_validator);
 
-    m_posXLabel = new DirectusAdjustLabel();
-    m_posXLabel->setText("X");
-    m_posXLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_posXLabel->AdjustQLineEdit(m_posX);
+    m_posY = new DirectusComboLabelText();
+    m_posY->Initialize("Y");
+    m_posY->SetValidator(m_validator);
 
-    m_posYLabel = new DirectusAdjustLabel();
-    m_posYLabel->setText("Y");
-    m_posYLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_posYLabel->AdjustQLineEdit(m_posY);
-
-    m_posZLabel = new DirectusAdjustLabel();
-    m_posZLabel->setText("Z");
-    m_posZLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_posZLabel->AdjustQLineEdit(m_posZ);
+    m_posZ = new DirectusComboLabelText();
+    m_posZ->Initialize("Z");
+    m_posZ->SetValidator(m_validator);
     //=============================================
 
     //= ROTATION ==================================
     m_rotLabel = new QLabel("Rotation");
 
-    m_rotX = CreateQLineEdit();
-    m_rotY = CreateQLineEdit();
-    m_rotZ = CreateQLineEdit();
+    m_rotX = new DirectusComboLabelText();
+    m_rotX->Initialize("X");
+    m_rotX->SetValidator(m_validator);
 
-    m_rotXLabel = new DirectusAdjustLabel();
-    m_rotXLabel->setText("X");
-    m_rotXLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_rotXLabel->AdjustQLineEdit(m_rotX);
+    m_rotY = new DirectusComboLabelText();
+    m_rotY->Initialize("Y");
+    m_rotY->SetValidator(m_validator);
 
-    m_rotYLabel = new DirectusAdjustLabel();
-    m_rotYLabel->setText("Y");
-    m_rotYLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_rotYLabel->AdjustQLineEdit(m_rotY);
-
-    m_rotZLabel = new DirectusAdjustLabel();
-    m_rotZLabel->setText("Z");
-    m_rotZLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_rotZLabel->AdjustQLineEdit(m_rotZ);
+    m_rotZ = new DirectusComboLabelText();
+    m_rotZ->Initialize("Z");
+    m_rotZ->SetValidator(m_validator);
     //=============================================
 
     //= SCALE =====================================
     m_scaLabel = new QLabel("Scale");
 
-    m_scaX = CreateQLineEdit();
-    m_scaY = CreateQLineEdit();
-    m_scaZ = CreateQLineEdit();
+    m_scaX = new DirectusComboLabelText();
+    m_scaX->Initialize("X");
+    m_scaX->SetValidator(m_validator);
 
-    m_scaXLabel = new DirectusAdjustLabel();
-    m_scaXLabel->setText("X");
-    m_scaXLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_scaXLabel->AdjustQLineEdit(m_scaX);
+    m_scaY = new DirectusComboLabelText();
+    m_scaY->Initialize("Y");
+    m_scaY->SetValidator(m_validator);
 
-    m_scaYLabel = new DirectusAdjustLabel();
-    m_scaYLabel->setText("Y");
-    m_scaYLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_scaYLabel->AdjustQLineEdit(m_scaY);
-
-    m_scaZLabel = new DirectusAdjustLabel();   
-    m_scaZLabel->setText("Z");
-    m_scaZLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_scaZLabel->AdjustQLineEdit(m_scaZ);
+    m_scaZ = new DirectusComboLabelText();
+    m_scaZ->Initialize("Z");
+    m_scaZ->SetValidator(m_validator);
     //=============================================
 
     //= LINE ======================================
@@ -146,45 +125,45 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
 
     // Row 1 - POSITION
     m_gridLayout->addWidget(m_posLabel,    1, 0, 1, 1);
-    m_gridLayout->addWidget(m_posXLabel,   1, 1, 1, 1);
-    m_gridLayout->addWidget(m_posX,        1, 2, 1, 1);
-    m_gridLayout->addWidget(m_posYLabel,   1, 3, 1, 1);
-    m_gridLayout->addWidget(m_posY,        1, 4, 1, 1);
-    m_gridLayout->addWidget(m_posZLabel,   1, 5, 1, 1);
-    m_gridLayout->addWidget(m_posZ,        1, 6, 1, 1);
+    m_gridLayout->addWidget(m_posX->GetLabelWidget(),   1, 1, 1, 1);
+    m_gridLayout->addWidget(m_posX->GetTextWidget(),        1, 2, 1, 1);
+    m_gridLayout->addWidget(m_posY->GetLabelWidget(),   1, 3, 1, 1);
+    m_gridLayout->addWidget(m_posY->GetTextWidget(),        1, 4, 1, 1);
+    m_gridLayout->addWidget(m_posZ->GetLabelWidget(),   1, 5, 1, 1);
+    m_gridLayout->addWidget(m_posZ->GetTextWidget(),        1, 6, 1, 1);
 
     // Row 2 - ROTATION
     m_gridLayout->addWidget(m_rotLabel,    2, 0, 1, 1);
-    m_gridLayout->addWidget(m_rotXLabel,   2, 1, 1, 1);
-    m_gridLayout->addWidget(m_rotX,        2, 2, 1, 1);
-    m_gridLayout->addWidget(m_rotYLabel,   2, 3, 1, 1);
-    m_gridLayout->addWidget(m_rotY,        2, 4, 1, 1);
-    m_gridLayout->addWidget(m_rotZLabel,   2, 5, 1, 1);
-    m_gridLayout->addWidget(m_rotZ,        2, 6, 1, 1);
+    m_gridLayout->addWidget(m_rotX->GetLabelWidget(),   2, 1, 1, 1);
+    m_gridLayout->addWidget(m_rotX->GetTextWidget(),        2, 2, 1, 1);
+    m_gridLayout->addWidget(m_rotY->GetLabelWidget(),   2, 3, 1, 1);
+    m_gridLayout->addWidget(m_rotY->GetTextWidget(),        2, 4, 1, 1);
+    m_gridLayout->addWidget(m_rotZ->GetLabelWidget(),   2, 5, 1, 1);
+    m_gridLayout->addWidget(m_rotZ->GetTextWidget(),        2, 6, 1, 1);
 
     // Row 3 - SCALE
     m_gridLayout->addWidget(m_scaLabel,    3, 0, 1, 1);
-    m_gridLayout->addWidget(m_scaXLabel,   3, 1, 1, 1);
-    m_gridLayout->addWidget(m_scaX,        3, 2, 1, 1);
-    m_gridLayout->addWidget(m_scaYLabel,   3, 3, 1, 1);
-    m_gridLayout->addWidget(m_scaY,        3, 4, 1, 1);
-    m_gridLayout->addWidget(m_scaZLabel,   3, 5, 1, 1);
-    m_gridLayout->addWidget(m_scaZ,        3, 6, 1, 1);
+    m_gridLayout->addWidget(m_scaX->GetLabelWidget(),   3, 1, 1, 1);
+    m_gridLayout->addWidget(m_scaX->GetTextWidget(),        3, 2, 1, 1);
+    m_gridLayout->addWidget(m_scaY->GetLabelWidget(),   3, 3, 1, 1);
+    m_gridLayout->addWidget(m_scaY->GetTextWidget(),        3, 4, 1, 1);
+    m_gridLayout->addWidget(m_scaZ->GetLabelWidget(),   3, 5, 1, 1);
+    m_gridLayout->addWidget(m_scaZ->GetTextWidget(),        3, 6, 1, 1);
 
     // Row 4 - LINE
     m_gridLayout->addWidget(m_line,    4, 0, 1, 7);
 
     // textChanged(QString) -> emits signal when changed through code
-    // textEdit(QString) -> doesn't emit signal when changed through code
-    connect(m_posX, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
-    connect(m_posY, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
-    connect(m_posZ, SIGNAL(textChanged(QString)), this, SLOT(MapPosition()));
-    connect(m_rotX, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
-    connect(m_rotY, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
-    connect(m_rotZ, SIGNAL(textChanged(QString)), this, SLOT(MapRotation()));
-    connect(m_scaX, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
-    connect(m_scaY, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
-    connect(m_scaZ, SIGNAL(textChanged(QString)), this, SLOT(MapScale()));
+    // textEdited(QString) -> doesn't emit signal when changed through code
+    connect(m_posX, SIGNAL(ValueChanged()), this, SLOT(MapPosition()));
+    connect(m_posY, SIGNAL(ValueChanged()), this, SLOT(MapPosition()));
+    connect(m_posZ, SIGNAL(ValueChanged()), this, SLOT(MapPosition()));
+    connect(m_rotX, SIGNAL(ValueChanged()), this, SLOT(MapRotation()));
+    connect(m_rotY, SIGNAL(ValueChanged()), this, SLOT(MapRotation()));
+    connect(m_rotZ, SIGNAL(ValueChanged()), this, SLOT(MapRotation()));
+    connect(m_scaX, SIGNAL(ValueChanged()), this, SLOT(MapScale()));
+    connect(m_scaY, SIGNAL(ValueChanged()), this, SLOT(MapScale()));
+    connect(m_scaZ, SIGNAL(ValueChanged()), this, SLOT(MapScale()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -221,25 +200,25 @@ void DirectusTransform::Reflect(GameObject* gameobject)
 
 Vector3 DirectusTransform::GetPosition()
 {
-    float x = m_posX->text().toFloat();
-    float y = m_posY->text().toFloat();
-    float z = m_posZ->text().toFloat();
+    float x = m_posX->GetAsFloat();
+    float y = m_posY->GetAsFloat();
+    float z = m_posZ->GetAsFloat();
 
     return Vector3(x, y, z);
 }
 
 void DirectusTransform::SetPosition(Vector3 pos)
 {
-    m_posX->setText(QString::number(pos.x));
-    m_posY->setText(QString::number(pos.y));
-    m_posZ->setText(QString::number(pos.z));
+    m_posX->SetFromFloat(pos.x);
+    m_posY->SetFromFloat(pos.y);
+    m_posZ->SetFromFloat(pos.z);
 }
 
 Quaternion DirectusTransform::GetRotation()
 {
-    float x = m_rotX->text().toFloat();
-    float y = m_rotY->text().toFloat();
-    float z = m_rotZ->text().toFloat();
+    float x = m_rotX->GetAsFloat();
+    float y = m_rotY->GetAsFloat();
+    float z = m_rotZ->GetAsFloat();
 
     return Quaternion::FromEulerAngles(x, y, z);
 }
@@ -251,33 +230,25 @@ void DirectusTransform::SetRotation(Quaternion rot)
 
 void DirectusTransform::SetRotation(Vector3 rot)
 {
-    m_rotX->setText(QString::number(rot.x));
-    m_rotY->setText(QString::number(rot.y));
-    m_rotZ->setText(QString::number(rot.z));
+    m_rotX->SetFromFloat(rot.x);
+    m_rotY->SetFromFloat(rot.y);
+    m_rotZ->SetFromFloat(rot.z);
 }
 
 Vector3 DirectusTransform::GetScale()
 {
-    float x = m_scaX->text().toFloat();
-    float y = m_scaY->text().toFloat();
-    float z = m_scaZ->text().toFloat();
+    float x = m_scaX->GetAsFloat();
+    float y = m_scaY->GetAsFloat();
+    float z = m_scaZ->GetAsFloat();
 
     return Vector3(x, y, z);
 }
 
 void DirectusTransform::SetScale(Vector3 sca)
 {
-    m_scaX->setText(QString::number(sca.x));
-    m_scaY->setText(QString::number(sca.y));
-    m_scaZ->setText(QString::number(sca.z));
-}
-
-QLineEdit* DirectusTransform::CreateQLineEdit()
-{
-    QLineEdit* lineEdit = new QLineEdit();
-    lineEdit->setValidator(m_validator);
-
-    return lineEdit;
+    m_scaX->SetFromFloat(sca.x);
+    m_scaY->SetFromFloat(sca.y);
+    m_scaZ->SetFromFloat(sca.z);
 }
 
 void DirectusTransform::MapPosition()

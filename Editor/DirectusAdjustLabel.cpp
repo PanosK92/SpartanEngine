@@ -80,6 +80,8 @@ void DirectusAdjustLabel::SetTextBoxValue(float value)
         return;
 
     m_lineEdit->setText(QString::number(value));
+
+    emit Adjusted();
 }
 
 void DirectusAdjustLabel::RepositionMouseOnScreenEdge()

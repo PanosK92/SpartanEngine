@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusSliderText.h"
+#include "DirectusComboSliderText.h"
 #include <QPushButton>
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
@@ -60,7 +60,7 @@ private:
 
     //= INTENSTITY =======================
     QLabel* m_intensityLabel;
-    DirectusSliderText* m_intensity;
+    DirectusComboSliderText* m_intensity;
     //====================================
 
     //= SHADOW TYPE ======================

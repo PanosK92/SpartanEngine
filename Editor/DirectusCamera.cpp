@@ -59,22 +59,20 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
 
     //= FOV ===================================================
     m_fovLabel = new QLabel("Field of view");
-    m_fov = new DirectusSliderText();
+    m_fov = new DirectusComboSliderText();
     m_fov->Initialize(1, 179);
     //=========================================================
 
     //= CLIPPING PLANES ==========================================================
     m_clippingPlanesLabel = new QLabel("Clipping planes");
-    m_clippingNear = CreateQLineEdit();
-    m_clippingFar = CreateQLineEdit();
-    m_clippingPlanesNearLabel = new DirectusAdjustLabel();
-    m_clippingPlanesNearLabel->setText("Near");
-    m_clippingPlanesNearLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_clippingPlanesNearLabel->AdjustQLineEdit(m_clippingNear);
-    m_clippingPlanesFarLabel = new DirectusAdjustLabel();
-    m_clippingPlanesFarLabel->setText("Far");
-    m_clippingPlanesFarLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_clippingPlanesFarLabel->AdjustQLineEdit(m_clippingFar);
+
+    m_nearPlane = new DirectusComboLabelText();
+    m_nearPlane->Initialize("Near");
+    m_nearPlane->SetValidator(m_validator);
+
+    m_farPlane = new DirectusComboLabelText();
+    m_farPlane->Initialize("Far");
+    m_farPlane->SetValidator(m_validator);
     //=============================================================================
 
     //= LINE ======================================
@@ -91,7 +89,7 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
 
     // Row 1
     m_gridLayout->addWidget(m_backgroundLabel, 1, 0, 1, 1);
-     m_gridLayout->addWidget(m_background, 1, 1, 1, 3);
+    m_gridLayout->addWidget(m_background, 1, 1, 1, 3);
 
     // Row 2
     m_gridLayout->addWidget(m_projectionLabel, 2, 0, 1, 1);
@@ -104,10 +102,10 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
 
     // Row 4 and 5
     m_gridLayout->addWidget(m_clippingPlanesLabel, 4, 0, 1, 1);
-    m_gridLayout->addWidget(m_clippingPlanesNearLabel, 4, 1, 1, 1);
-    m_gridLayout->addWidget(m_clippingNear, 4, 2, 1, 2);
-    m_gridLayout->addWidget(m_clippingPlanesFarLabel, 5, 1, 1, 1);
-    m_gridLayout->addWidget(m_clippingFar, 5, 2, 1, 2);
+    m_gridLayout->addWidget(m_nearPlane->GetLabelWidget(), 4, 1, 1, 1);
+    m_gridLayout->addWidget(m_nearPlane->GetTextWidget(), 4, 2, 1, 2);
+    m_gridLayout->addWidget(m_farPlane->GetLabelWidget(), 5, 1, 1, 1);
+    m_gridLayout->addWidget(m_farPlane->GetTextWidget(), 5, 2, 1, 2);
 
     // Row 6 - LINE
     m_gridLayout->addWidget(m_line, 6, 0, 1, 4);
@@ -116,9 +114,9 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
     // textChanged(QString) -> emits signal when changed through code
     // textEdit(QString) -> doesn't emit signal when changed through code
     connect(m_projectionComboBox, SIGNAL(activated(int)), this, SLOT(MapProjection()));
-    connect(m_fov, SIGNAL(valueChanged(float)), this, SLOT(MapFOV()));
-    connect(m_clippingNear, SIGNAL(textChanged(QString)), this, SLOT(MapClippingPlanes()));
-    connect(m_clippingFar, SIGNAL(textChanged(QString)), this, SLOT(MapClippingPlanes()));
+    connect(m_fov, SIGNAL(ValueChanged()), this, SLOT(MapFOV()));
+    connect(m_nearPlane, SIGNAL(ValueChanged()), this, SLOT(MapNearPlane()));
+    connect(m_farPlane, SIGNAL(ValueChanged()), this, SLOT(MapFarPlane()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -161,12 +159,12 @@ void DirectusCamera::SetProjection(Projection projection)
 
 void DirectusCamera::SetNearPlane(float nearPlane)
 {
-    m_clippingNear->setText(QString::number(nearPlane));
+    m_nearPlane->SetFromFloat(nearPlane);
 }
 
 void DirectusCamera::SetFarPlane(float farPlane)
 {
-    m_clippingFar->setText(QString::number(farPlane));
+    m_farPlane->SetFromFloat(farPlane);
 }
 
 void DirectusCamera::SetFOV(float fov)
@@ -202,16 +200,22 @@ void DirectusCamera::MapFOV()
     m_directusCore->Update();
 }
 
-void DirectusCamera::MapClippingPlanes()
-{ 
+void DirectusCamera::MapNearPlane()
+{
     if(!m_inspectedCamera || !m_directusCore)
         return;
 
-    float nearPlane = m_clippingNear->text().toFloat();
-    float farPlane = m_clippingFar->text().toFloat();
-
+    float nearPlane = m_nearPlane->GetAsFloat();
     m_inspectedCamera->SetNearPlane(nearPlane);
-    m_inspectedCamera->SetFarPlane(farPlane);
     m_directusCore->Update();
 }
 
+void DirectusCamera::MapFarPlane()
+{
+    if(!m_inspectedCamera || !m_directusCore)
+        return;
+
+    float farPlane = m_farPlane->GetAsFloat();
+    m_inspectedCamera->SetFarPlane(farPlane);
+    m_directusCore->Update();
+}

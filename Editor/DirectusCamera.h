@@ -21,19 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==============================
+//=================================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusAdjustLabel.h"
 #include <QLineEdit>
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
 #include <QComboBox>
 #include "Components/Camera.h"
 #include <QPushButton>
-#include "DirectusSliderText.h"
+#include "DirectusComboSliderText.h"
+#include "DirectusComboLabelText.h"
 #include "DirectusCore.h"
-//==============================
+//==================================
 
 class DirectusCamera : public QWidget
 {
@@ -60,15 +60,13 @@ private:
 
     //= FOV ========================================
     QLabel* m_fovLabel;
-    DirectusSliderText* m_fov;
+    DirectusComboSliderText* m_fov;
     //==============================================
 
     //= CLIPPING PLANES ============================
     QLabel* m_clippingPlanesLabel;
-    DirectusAdjustLabel* m_clippingPlanesFarLabel;
-    DirectusAdjustLabel* m_clippingPlanesNearLabel;
-    QLineEdit* m_clippingNear;
-    QLineEdit* m_clippingFar;
+    DirectusComboLabelText* m_nearPlane;
+    DirectusComboLabelText* m_farPlane;
     //==============================================
 
     //= LINE ========================
@@ -91,5 +89,6 @@ private:
 public slots:
     void MapProjection();
     void MapFOV();
-    void MapClippingPlanes();
+    void MapNearPlane();
+    void MapFarPlane();
 };
