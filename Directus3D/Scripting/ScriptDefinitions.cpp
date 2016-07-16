@@ -62,29 +62,29 @@ void ScriptDefinitions::RegisterEnumerations()
 {
 	// Log
 	m_scriptEngine->RegisterEnum("LogType");
-	m_scriptEngine->RegisterEnumValue("LogType", "Info", (int)Log::Info);
-	m_scriptEngine->RegisterEnumValue("LogType", "Warning", (int)Log::Warning);
-	m_scriptEngine->RegisterEnumValue("LogType", "Error", (int)Log::Error);
-	m_scriptEngine->RegisterEnumValue("LogType", "Undefined", (int)Log::Undefined);
+	m_scriptEngine->RegisterEnumValue("LogType", "Info", int(Log::Info));
+	m_scriptEngine->RegisterEnumValue("LogType", "Warning", int(Log::Warning));
+	m_scriptEngine->RegisterEnumValue("LogType", "Error", int(Log::Error));
+	m_scriptEngine->RegisterEnumValue("LogType", "Undefined", int(Log::Undefined));
 
 	// KeyCode
 	m_scriptEngine->RegisterEnum("KeyCode");
-	m_scriptEngine->RegisterEnumValue("KeyCode", "W", (int)W);
-	m_scriptEngine->RegisterEnumValue("KeyCode", "A", (int)A);
-	m_scriptEngine->RegisterEnumValue("KeyCode", "S", (int)S);
-	m_scriptEngine->RegisterEnumValue("KeyCode", "D", (int)D);
-	m_scriptEngine->RegisterEnumValue("KeyCode", "Space", (int)Space);
+	m_scriptEngine->RegisterEnumValue("KeyCode", "W", int(W));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "A", int(A));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "S", int(S));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "D", int(D));
+	m_scriptEngine->RegisterEnumValue("KeyCode", "Space", int(Space));
 
 	// ForceMode
 	m_scriptEngine->RegisterEnum("ForceMode");
-	m_scriptEngine->RegisterEnumValue("ForceMode", "Force", (int)Force);
-	m_scriptEngine->RegisterEnumValue("ForceMode", "Impulse", (int)Impulse);
+	m_scriptEngine->RegisterEnumValue("ForceMode", "Force", int(Force));
+	m_scriptEngine->RegisterEnumValue("ForceMode", "Impulse", int(Impulse));
 
 	// EngineMode
 	m_scriptEngine->RegisterEnum("EngineMode");
-	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Debug", (int)Editor_Debug);
-	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Play", (int)Editor_Play);
-	m_scriptEngine->RegisterEnumValue("EngineMode", "Standalone", (int)Standalone);
+	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Debug", int(Editor_Debug));
+	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Play", int(Editor_Play));
+	m_scriptEngine->RegisterEnumValue("EngineMode", "Standalone", int(Standalone));
 }
 
 void ScriptDefinitions::RegisterTypes()
@@ -110,7 +110,6 @@ void ScriptDefinitions::RegisterTypes()
 void ScriptDefinitions::RegisterSettings()
 {
 	m_scriptEngine->RegisterGlobalProperty("Settings settings", Settings::GetInstance);
-	m_scriptEngine->RegisterObjectMethod("Settings", "EngineMode GetEngineMode()", asMETHOD(Settings, GetEngineMode), asCALL_THISCALL);
 }
 
 /*------------------------------------------------------------------------------

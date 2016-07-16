@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector2.h"
 //==========================
 
-#define ENGINE_MODE Settings::GetInstance().GetEngineMode()
 #define RESOLUTION_WIDTH Settings::GetInstance().GetResolutionWidth()
 #define RESOLUTION Settings::GetInstance().GetResolution()
 #define RESOLUTION_HEIGHT Settings::GetInstance().GetResolutionHeight()
@@ -58,7 +57,6 @@ public:
 		return instance;
 	}
 
-	EngineMode GetEngineMode();
 	void SetEngineMode(EngineMode mode);
 	bool IsFullScreen();
 	bool IsMouseVisible();
@@ -85,7 +83,6 @@ private:
 
 inline Settings::Settings()
 {
-	m_engineMode = Editor_Debug;
 	m_fullScreen = false;
 	m_resolutionWidth = 1920;
 	m_resolutionHeight = 1080;
@@ -98,11 +95,6 @@ inline Settings::Settings()
 
 inline Settings::~Settings()
 {
-}
-
-inline EngineMode Settings::GetEngineMode()
-{
-	return m_engineMode;
 }
 
 inline void Settings::SetEngineMode(EngineMode mode)
