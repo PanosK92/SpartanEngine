@@ -24,13 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusAdjustLabel.h"
+#include "DirectusSliderText.h"
 #include <QPushButton>
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
 #include "Components/Light.h"
 #include <QComboBox>
 #include "DirectusCore.h"
+#include <QLabel>
+#include "Math/Vector4.h"
 //==================================
 
 class DirectusLight : public QWidget
@@ -46,7 +48,7 @@ private:
     QLabel* m_title;
     //====================================
 
-    //= TYPE =============================
+    //= LIGHT TYPE =======================
     QLabel* m_lightTypeLabel;
     QComboBox* m_lightType;
     //====================================
@@ -58,13 +60,17 @@ private:
 
     //= INTENSTITY =======================
     QLabel* m_intensityLabel;
-    DirectusAdjustLabel* m_intensity;
+    DirectusSliderText* m_intensity;
     //====================================
 
     //= SHADOW TYPE ======================
     QLabel* m_shadowTypeLabel;
     QComboBox* m_shadowType;
     //====================================
+
+    //= LINE ========================
+    QWidget* m_line;
+    //===============================
 
     //= MISC =============================
     QGridLayout* m_gridLayout;
@@ -75,9 +81,14 @@ private:
 
     QLineEdit* CreateQLineEdit();
 
-    //void SetCastShadows(bool cast);
-    //void SetReceiveShadows(bool receive);
+    void SetLightType(LightType type);
+    void SetColor(Directus::Math::Vector4 color);
+    void SetIntensity(float intensity);
+    void SetShadowType(ShadowType type);
 
 public slots:
-    void Map();
+    void MapLightType();
+    void MapColor();
+    void MapIntensity();
+    void MapShadowType();
 };

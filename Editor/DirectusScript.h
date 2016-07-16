@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QDoubleValidator>
 #include "Components/Script.h"
 #include <QCheckBox>
+#include "DirectusCore.h"
 //==================================
 
 class DirectusScript : public QWidget
@@ -37,7 +38,7 @@ class DirectusScript : public QWidget
     Q_OBJECT
 public:
     explicit DirectusScript(QWidget *parent = 0);
-    void Initialize();
+    void Initialize(DirectusCore* directusCore);
     void Reflect(GameObject* gameobject);
 private:
 
@@ -46,32 +47,20 @@ private:
     QLabel* m_title;
     //====================================
 
-    //= CAST SHADOWS =====================
-    QLabel* m_castShadowsLabel;
-    QCheckBox* m_castShadowsCheckBox;
-    //====================================
-
-    //= RECEIVE SHADOWS ==================
-    QLabel* m_receiveShadowsLabel;
-    QCheckBox* m_receiveShadowsCheckBox;
-    //====================================
-
-    //= MATERIAL =========================
-    QLabel* m_materialLabel;
-    QLineEdit* m_material;
-    //====================================
+    //= LINE ========================
+    QWidget* m_line;
+    //===============================
 
     //= MISC =============================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
-    Script* m_inspectedMeshRenderer;
+    Script* m_inspectedScript;
+    DirectusCore* m_directusCore;
     //====================================
 
     QLineEdit* CreateQLineEdit();
 
-    void SetCastShadows(bool cast);
-    void SetReceiveShadows(bool receive);
-
+    void SetScriptName(std::string name);
 public slots:
     void Map();
 };

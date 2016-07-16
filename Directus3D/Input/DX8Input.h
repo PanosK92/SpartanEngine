@@ -28,11 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "dxguid.lib")
 //=====================================
 
-//= INCLUDES ================
+//= INCLUDES ===============
 #include "../Math/Vector3.h"
 #include <dinput.h>
-
-//===========================
+//==========================
 
 class DX8Input
 {

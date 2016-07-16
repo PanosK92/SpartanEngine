@@ -31,8 +31,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum LightType
 {
-	Point,
-	Directional
+	Directional,
+	Point
+};
+
+enum ShadowType
+{
+	No_Shadows,
+	Hard_Shadows,
+	Soft_Shadows
 };
 
 class __declspec(dllexport) Light : public IComponent
@@ -56,6 +63,9 @@ public:
 	void SetIntensity(float value);
 	float GetIntensity();
 
+	ShadowType GetShadowType();
+	void SetShadowType(ShadowType shadowType);
+
 	void SetRange(float value);
 	float GetRange();
 
@@ -74,7 +84,8 @@ public:
 	float GetProjectionSize();
 
 private:
-	LightType m_type;
+	LightType m_lightType;
+	ShadowType m_shadowType;
 	Directus::Math::Vector4 m_color;
 	float m_range;
 	float m_intensity;

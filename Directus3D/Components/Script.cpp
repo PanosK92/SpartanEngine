@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Script.h"
 #include "../Core/Settings.h"
 #include "../IO/Serializer.h"
+#include "../IO/FileHelper.h"
 //===========================
 
 using namespace std;
@@ -135,4 +136,12 @@ string Script::GetScriptPath(int slot)
 	}
 
 	return SCRIPT_PATH_INVALID;
+}
+
+string Script::GetName()
+{
+	if (m_scriptInstances.size() != 0)
+		return FileHelper::GetFileNameNoExtensionFromPath(GetScriptPath(0));
+
+	return "";
 }

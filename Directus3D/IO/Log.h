@@ -26,10 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "ILogger.h"
 #include "../Math/Quaternion.h"
+#include <map>
 //=============================
 
-#define LOG(text, type) Log::Write(text, type)
-#define LOG(text) Log::Write(text, Log::Undefined)
+#define LOG(text)	Log::Write(text, Log::Undefined)
 
 class __declspec(dllexport) Log
 {
@@ -64,4 +64,5 @@ public:
 
 private:
 	static ILogger* m_logger;
+	static std::map<std::string, LogType> m_queuedLogs;
 };

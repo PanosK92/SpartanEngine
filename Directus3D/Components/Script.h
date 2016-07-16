@@ -44,7 +44,9 @@ public:
 
 	bool AddScript(std::string path, int slot);
 	std::string GetScriptPath(int slot);
+	std::string GetName();
 
 private:
 	std::vector<ScriptInstance*> m_scriptInstances;
+	std::string m_name;
 };

@@ -60,6 +60,13 @@ void DirectusMeshRenderer::Initialize()
     m_material->setReadOnly(true);
     //=========================================================
 
+    //= LINE ======================================
+    m_line = new QWidget();
+    m_line->setFixedHeight(1);
+    m_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_line->setStyleSheet(QString("background-color: #585858;"));
+    //=============================================
+
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     // Row 0
@@ -76,7 +83,11 @@ void DirectusMeshRenderer::Initialize()
     // Row 3
     m_gridLayout->addWidget(m_materialLabel, 3, 0, 1, 1);
     m_gridLayout->addWidget(m_material, 3, 1, 1, 1);
+
+    // Row 4 - LINE
+    m_gridLayout->addWidget(m_line, 4, 0, 1, 2);
     //============================================================
+
 
     connect(m_castShadowsCheckBox, SIGNAL(clicked(bool)), this, SLOT(Map()));
     connect(m_receiveShadowsCheckBox, SIGNAL(clicked(bool)), this, SLOT(Map()));

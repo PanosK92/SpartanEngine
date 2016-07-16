@@ -44,10 +44,64 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
                 );
     //=========================================================
 
+    //= LIGHT TYPE ============================================
+    m_lightTypeLabel = new QLabel("Type");
+    m_lightType = new QComboBox();
+    m_lightType->addItem("Directional");
+    m_lightType->addItem("Point");
+    //=========================================================
+
+    //= COLOR ====================================
+    m_colorLabel = new QLabel("Color");
+    m_color = new QPushButton("Color Picker");
+    //=============================================
+
+    //= INTENSTITY =======================
+    m_intensityLabel = new QLabel("Intensity");
+    m_intensity = new DirectusSliderText();
+    m_intensity->Initialize(0, 8);
+    //====================================
+
+    //= SHADOW TYPE ======================
+    m_shadowTypeLabel = new QLabel("Shadow type");
+    m_shadowType = new QComboBox();
+    m_shadowType->addItem("No Shadows");
+    m_shadowType->addItem("Hard Shadows");
+    m_shadowType->addItem("Soft Shadows");
+    //====================================
+
+
+    //= LINE ======================================
+    m_line = new QWidget();
+    m_line->setFixedHeight(1);
+    m_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_line->setStyleSheet(QString("background-color: #585858;"));
+    //=============================================
+
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ======================================================================
     // Row 0
-    m_gridLayout->addWidget(m_title, 0, 0, 1, 3);
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
+
+    // Row 1 - LIGHT TYPE
+    m_gridLayout->addWidget(m_lightTypeLabel,   1, 0, 1, 1);
+    m_gridLayout->addWidget(m_lightType,        1, 1, 1, 1);
+
+    // Row 2 - COLOR
+    m_gridLayout->addWidget(m_colorLabel,   2, 0, 1, 1);
+    m_gridLayout->addWidget(m_color,        2, 1, 1, 1);
+
+    // Row 3 - INTENSTITY
+    m_gridLayout->addWidget(m_intensityLabel,               3, 0, 1, 1);
+    m_gridLayout->addWidget(m_intensity->GetSlider(),       3, 1, 1, 1);
+    m_gridLayout->addWidget(m_intensity->GetLineEdit(),     3, 2, 1, 1);
+
+    // Row 4 - SHADOW TYPE
+    m_gridLayout->addWidget(m_shadowTypeLabel,  4, 0, 1, 1);
+    m_gridLayout->addWidget(m_shadowType,       4, 1, 1, 1);
+
+    // Row 5 - LINE
+    m_gridLayout->addWidget(m_line, 5, 0, 1, 2);
     //==============================================================================
 
     this->setLayout(m_gridLayout);
@@ -75,16 +129,67 @@ void DirectusLight::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    //SetProjection(m_inspectedCamera->GetProjection());
-    //SetFOV(m_inspectedCamera->GetFieldOfView());
-    //SetNearPlane(m_inspectedCamera->GetNearPlane());
-    //SetFarPlane(m_inspectedCamera->GetFarPlane());
+    SetLightType(m_inspectedLight->GetLightType());
+    SetColor(m_inspectedLight->GetColor());
+    SetIntensity(m_inspectedLight->GetIntensity());
+    SetShadowType(m_inspectedLight->GetShadowType());
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusLight::Map()
+void DirectusLight::SetLightType(LightType type)
+{
+    m_lightType->setCurrentIndex((int)type);
+}
+
+void DirectusLight::SetColor(Directus::Math::Vector4 color)
 {
 
+}
+
+void DirectusLight::SetIntensity(float intensity)
+{
+    m_intensity->SetValue(intensity);
+}
+
+void DirectusLight::SetShadowType(ShadowType type)
+{
+    m_shadowType->setCurrentIndex((int)type);
+}
+
+void DirectusLight::MapLightType()
+{
+    if(!m_inspectedLight || !m_directusCore)
+        return;
+
+    LightType type = (LightType)(m_lightType->currentIndex());
+    m_inspectedLight->SetLightType(type);
+}
+
+void DirectusLight::MapColor()
+{
+    if(!m_inspectedLight || !m_directusCore)
+        return;
+
+    float intensity = m_intensity->GetValue();
+    m_inspectedLight->SetIntensity(intensity);
+}
+
+void DirectusLight::MapIntensity()
+{
+    if(!m_inspectedLight || !m_directusCore)
+        return;
+
+   // float intensity = m_intensity->GetValue();
+    //m_inspectedLight->SetIntensity(intensity);
+}
+
+void DirectusLight::MapShadowType()
+{
+    if(!m_inspectedLight || !m_directusCore)
+        return;
+
+    ShadowType type = (ShadowType)(m_shadowType->currentIndex());
+    m_inspectedLight->SetShadowType(type);
 }

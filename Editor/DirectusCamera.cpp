@@ -46,7 +46,7 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
     //=========================================================
 
     //= BACKGROUND ============================================
-     m_backgroundLabel = new QLabel("Background");
+    m_backgroundLabel = new QLabel("Background");
     m_background = new QPushButton("ClearColor");
     //=========================================================
 
@@ -77,6 +77,13 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
     m_clippingPlanesFarLabel->AdjustQLineEdit(m_clippingFar);
     //=============================================================================
 
+    //= LINE ======================================
+    m_line = new QWidget();
+    m_line->setFixedHeight(1);
+    m_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_line->setStyleSheet(QString("background-color: #585858;"));
+    //=============================================
+
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ======================================================================
     // Row 0
@@ -101,6 +108,9 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
     m_gridLayout->addWidget(m_clippingNear, 4, 2, 1, 2);
     m_gridLayout->addWidget(m_clippingPlanesFarLabel, 5, 1, 1, 1);
     m_gridLayout->addWidget(m_clippingFar, 5, 2, 1, 2);
+
+    // Row 6 - LINE
+    m_gridLayout->addWidget(m_line, 6, 0, 1, 4);
     //=============================================================================
 
     // textChanged(QString) -> emits signal when changed through code

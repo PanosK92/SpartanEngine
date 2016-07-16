@@ -137,6 +137,13 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore)
     m_offsetYLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     //=========================================================
 
+    //= LINE ======================================
+    m_line = new QWidget();
+    m_line->setFixedHeight(1);
+    m_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_line->setStyleSheet(QString("background-color: #585858;"));
+    //=============================================
+
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     int row = 0;
@@ -219,6 +226,10 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore)
     m_gridLayout->addWidget(m_offsetX,      row, 2, 1, 1);
     m_gridLayout->addWidget(m_offsetYLabel, row, 3, 1, 1);
     m_gridLayout->addWidget(m_offsetY,      row, 4, 1, 1);
+    row++;
+
+    // Row 17 - LINE
+    m_gridLayout->addWidget(m_line, row, 0, 1, 5);
     //=========================================================
 
     // textChanged(QString) -> emits signal when changed through code
