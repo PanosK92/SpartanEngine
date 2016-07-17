@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 #include "../../Math/Vector4.h"
 #include "../../Core/Material.h"
-#include "../../Components/Light.h"
 #include "../GraphicsDevice.h"
 //=================================
 
