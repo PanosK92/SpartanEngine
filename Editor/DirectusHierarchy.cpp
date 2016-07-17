@@ -83,7 +83,7 @@ void DirectusHierarchy::selectionChanged(const QItemSelection &selected, const Q
     QTreeWidget::selectionChanged(selected, deselected);
 
     if (m_inspector)
-        m_inspector->inspect(GetSelectedGameObject());
+        m_inspector->Inspect(GetSelectedGameObject());
 }
 
 //= DRAG N DROP RELATED ============================================================================
@@ -189,11 +189,17 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
 }
 //===================================================================================================
 
-void DirectusHierarchy::Clear()
+void DirectusHierarchy::Clear(bool clearEngine)
 {
-    //m_socket->ClearScene();
+    // Clears the tree (purely visual)
     clear();
-    m_directusCore->Update();
+
+    // Clear the inspector
+    //if (m_inspector)
+       // m_inspector->Inspect(nullptr);
+
+    if (clearEngine)
+        m_socket->ClearScene();
 }
 
 void DirectusHierarchy::AddRoot(QTreeWidgetItem* item)
@@ -313,7 +319,7 @@ bool DirectusHierarchy::IsAnyGameObjectSelected()
 //= SLOTS ===============================================
 void DirectusHierarchy::Populate()
 {
-    Clear();
+    Clear(false);
 
     if (!m_socket)
         return;
@@ -370,6 +376,7 @@ void DirectusHierarchy::OpenScene()
     connect(sceneLoader,    SIGNAL(Finished()), thread, SLOT(quit()));
     connect(sceneLoader,    SIGNAL(Finished()), sceneLoader, SLOT(deleteLater()));
     connect(thread,         SIGNAL(finished()), m_assetLoadingDialog, SLOT(deleteLater()));
+    connect(thread,         SIGNAL(finished()), m_directusCore, SLOT(Update()));
     connect(thread,         SIGNAL(finished()), thread, SLOT(deleteLater()));
 
     thread->start(QThread::HighestPriority);
@@ -389,12 +396,10 @@ void DirectusHierarchy::SaveScene()
     sceneLoader->moveToThread(thread);
     sceneLoader->PrepareForScene(m_sceneFileName.toStdString(), m_socket);
 
-    connect(thread,         SIGNAL(started()), sceneLoader, SLOT(SaveScene()));
-    connect(sceneLoader,    SIGNAL(Finished()),   this, SLOT(Populate()));
+    connect(thread,         SIGNAL(started()),  sceneLoader, SLOT(SaveScene()));
     connect(sceneLoader,    SIGNAL(Finished()), thread, SLOT(quit()));
     connect(sceneLoader,    SIGNAL(Finished()), sceneLoader, SLOT(deleteLater()));
     connect(thread,         SIGNAL(finished()), thread, SLOT(deleteLater()));
-    connect(thread,         SIGNAL(finished()), this, SLOT(deleteLater()));
 
     thread->start(QThread::HighestPriority);
 }
@@ -418,7 +423,6 @@ void DirectusHierarchy::SaveSceneAs()
     sceneLoader->PrepareForScene(m_sceneFileName.toStdString(), m_socket);
 
     connect(thread,         SIGNAL(started()), sceneLoader, SLOT(SaveScene()));
-    connect(sceneLoader,    SIGNAL(Finished()),   this, SLOT(Populate()));
     connect(sceneLoader,    SIGNAL(Finished()), thread, SLOT(quit()));
     connect(sceneLoader,    SIGNAL(Finished()), sceneLoader, SLOT(deleteLater()));
     connect(thread,         SIGNAL(finished()), thread, SLOT(deleteLater()));
@@ -451,6 +455,7 @@ void DirectusHierarchy::LoadModel()
     connect(modelLoader,    SIGNAL(Finished()), thread, SLOT(quit()));
     connect(modelLoader,    SIGNAL(Finished()), modelLoader, SLOT(deleteLater()));
     connect(thread,         SIGNAL(finished()), m_assetLoadingDialog, SLOT(deleteLater()));
+    connect(thread,         SIGNAL(finished()), m_directusCore, SLOT(Update()));
     connect(thread,         SIGNAL(finished()), thread, SLOT(deleteLater()));
 
     thread->start(QThread::HighestPriority);

@@ -42,10 +42,6 @@ public:
 	Socket* GetEngineSocket();
     void Initialize(HWND hwnd, HINSTANCE hinstance);
 
-    void Play();
-    void Stop();
-    void Update();
-
 protected:
     // I will take care of the drawing
     virtual QPaintEngine* paintEngine() const { return NULL; }
@@ -61,4 +57,7 @@ private:
     QTimer* m_timer;
 
 public slots:
+    void Play();
+    void Stop();
+    void Update();
 };

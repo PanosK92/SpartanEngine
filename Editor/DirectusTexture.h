@@ -42,6 +42,7 @@ public:
     virtual void dropEvent(QDropEvent* event);
 
 private:
+    std::string m_currentFilePath;
     DirectusCore* m_directusCore;
     DirectusInspector* m_inspector;
     TextureType m_textureType;
