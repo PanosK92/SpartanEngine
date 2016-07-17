@@ -79,8 +79,6 @@ public:
 	bool GetTransparency();
 
 private:
-
-	// data
 	std::string m_ID;
 	std::string m_name;
 	int m_width;
