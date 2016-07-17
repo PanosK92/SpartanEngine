@@ -1,28 +1,26 @@
-//= TEXTURES ============================
+//= TEXTURES ==============================
 Texture2D texAlbedo 		: register(t0);
 Texture2D texNormal 		: register(t1);
 Texture2D texDepth 			: register(t2);
 Texture2D texMaterial 		: register(t3);
 Texture2D texNoise 			: register(t4);
-TextureCube lightDepth 		: register(t5);
-TextureCube environmentTex 	: register(t6);
-TextureCube irradianceTex 	: register(t7);
-//=======================================
+TextureCube environmentTex 	: register(t5);
+TextureCube irradianceTex 	: register(t6);
+//=========================================
 
-//= SAMPLERS ============================
+//= SAMPLERS ==============================
 SamplerState samplerPoint 	: register(s0);
 SamplerState samplerAniso 	: register(s1);
-SamplerState samplerMirror 	: register(s2);
-//=======================================
+//=========================================
 
-//= DEFINES =============================
+//= DEFINES =========
 #define MaxLights 300
-//=======================================
+//===================
 
-// = INCLUDES ===========================
+// = INCLUDES ========
 #include "Helper.hlsl"
 #include "PBR.hlsl"
-//======================================
+//====================
 
 //= CONSTANT BUFFERS ===================
 cbuffer MiscBuffer : register(b0)
@@ -30,11 +28,9 @@ cbuffer MiscBuffer : register(b0)
 	matrix mWorldViewProjection;
 	matrix mViewProjectionInverse;
 	float4 cameraPosWS;
-	matrix dirLightViewProjection[MaxLights];
 	float4 dirLightDirection[MaxLights];
 	float4 dirLightColor[MaxLights];	
 	float4 dirLightIntensity[MaxLights];
-	float4 dirLightBias[MaxLights];
 	float4 pointLightPosition[MaxLights];
 	float4 pointLightColor[MaxLights];
 	float4 pointLightRange[MaxLights];
@@ -86,12 +82,12 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float4 normalSample         = texNormal.Sample(samplerAniso, input.uv);
     float4 depthSample          = texDepth.Sample(samplerPoint, input.uv);
     float4 materialSample       = texMaterial.Sample(samplerPoint, input.uv);
-	
+		
 	// Extract any values out of those samples
 	float3 normal				= normalize(UnpackNormal(normalSample.rgb));	
-	float shadowing				= 1.0f;
-	//shadowing					= clamp(shadowing, ambientLightIntensity, 1.0f);
 	float depthLinear			= depthSample.g;
+	float shadowing 			= depthSample.b;
+	shadowing 					= clamp(shadowing, ambientLightIntensity, 1.0f);
 	float3 worldPos				= ReconstructPosition(depthLinear, input.uv, mViewProjectionInverse);
 	float roughness				= materialSample.r;
 	float metallic				= materialSample.g;
@@ -110,14 +106,14 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 
 	if (renderMode == 0.0f) // Texture mapping
 	{
-        finalColor = ToLinear(environmentTex.Sample(samplerMirror, -viewDir));
+        finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir));
 		finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
 		finalColor = ToGamma(finalColor); // gamma correction
 		float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
 	
 		return float4(finalColor, luma);
 	}
-	
+
 	// directional lights
 	for (int i = 0; i < dirLightCount; i++)
 	{
