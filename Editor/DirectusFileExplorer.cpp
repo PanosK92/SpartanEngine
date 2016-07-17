@@ -22,6 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "DirectusFileExplorer.h"
 #include <QStandardItem>
+#include <QMouseEvent>
+#include <QApplication>
+#include <QDrag>
+#include <QMimeData>
 //===============================
 
 DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
@@ -46,5 +50,42 @@ DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
 
 void DirectusFileExplorer::SetRootPath(QString path)
 {
-     this->setRootIndex(m_fileModel->setRootPath(path));
+    this->setRootIndex(m_fileModel->setRootPath(path));
 }
+
+//= DRAG N DROP RELATED ============================================================================
+void DirectusFileExplorer::mousePressEvent(QMouseEvent* event)
+{
+    // In case this mouse press evolves into a drag and drop
+    // we have to keep the starting position in order to determine
+    // if it's indeed one, in mouseMoveEvent(QMouseEvent* event)
+    if (event->button() == Qt::LeftButton)
+              m_dragStartPosition = event->pos();
+
+    QListView::mousePressEvent(event);
+}
+
+// Determine whether a drag should begin, and
+// construct a drag object to handle the operation.
+void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
+{
+    if (!(event->buttons() & Qt::LeftButton))
+            return;
+
+    if ((event->pos() - m_dragStartPosition).manhattanLength() < QApplication::startDragDistance())
+            return;
+
+    QModelIndexList selectedItems = this->selectionModel()->selectedIndexes();
+    if (selectedItems.empty())
+        return;
+
+    QDrag* drag = new QDrag(this);
+    QMimeData* mimeData = new QMimeData;
+
+    QString filePath = m_fileModel->fileInfo(selectedItems[0]).absoluteFilePath();
+    mimeData->setText(filePath);
+    drag->setMimeData(mimeData);
+
+    drag->exec();
+}
+//===================================================================================================

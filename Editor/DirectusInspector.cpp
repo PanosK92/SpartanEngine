@@ -46,7 +46,7 @@ void DirectusInspector::Initialize()
     m_meshRenderer->Initialize();
 
     m_material = new DirectusMaterial();
-    m_material->Initialize(m_directusCore);
+    m_material->Initialize(m_directusCore, this);
 
     m_mesh = new DirectusMesh();
     m_mesh->Initialize();
@@ -78,6 +78,11 @@ void DirectusInspector::Initialize()
     this->layout()->addWidget(m_meshCollider);
 }
 
+GameObject*DirectusInspector::GetInspectedGameObject()
+{
+    return m_inspectedGameObject;
+}
+
 void DirectusInspector::paintEvent(QPaintEvent* evt)
 {
     // Has to be overriden for QSS to take affect
@@ -89,6 +94,8 @@ void DirectusInspector::paintEvent(QPaintEvent* evt)
 
 void DirectusInspector::inspect(GameObject* gameobject)
 {
+    m_inspectedGameObject = gameobject;
+
     if (gameobject)
     {    
         m_transform->Reflect(gameobject);

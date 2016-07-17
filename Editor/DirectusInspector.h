@@ -44,6 +44,7 @@ public:
     explicit DirectusInspector(QWidget *parent = 0);
     void SetDirectusCore(DirectusCore* directusCore);
     void Initialize();
+    GameObject* GetInspectedGameObject();
 
 protected:
     virtual void paintEvent(QPaintEvent* evt);
@@ -61,6 +62,7 @@ private:
     DirectusMeshCollider* m_meshCollider;
 
     DirectusCore* m_directusCore;
+    GameObject* m_inspectedGameObject;
 
 public slots:
     void inspect(GameObject* gameobject);

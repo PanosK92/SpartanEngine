@@ -33,11 +33,11 @@ SOURCES += main.cpp\
     DirectusScript.cpp \
     DirectusMeshCollider.cpp \
     DirectusCore.cpp \
-    DirectusImage.cpp \
     DirectusAssetLoader.cpp \
     AssetLoadingDialog.cpp \
     DirectusComboLabelText.cpp \
-    DirectusComboSliderText.cpp
+    DirectusComboSliderText.cpp \
+    DirectusTexture.cpp
 
 HEADERS  += editor.h \
     DirectusPlayButton.h \
@@ -60,11 +60,11 @@ HEADERS  += editor.h \
     DirectusMeshCollider.h \
     DirectusCore.h \
     DirectusQVariantPacker.h \
-    DirectusImage.h \
     DirectusAssetLoader.h \
     AssetLoadingDialog.h \
     DirectusComboLabelText.h \
-    DirectusComboSliderText.h
+    DirectusComboSliderText.h \
+    DirectusTexture.h
 
 FORMS    += editor.ui \
     AboutDialog.ui \

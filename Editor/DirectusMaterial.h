@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QComboBox>
 #include "Math/Vector2.h"
 #include "DirectusCore.h"
-#include "DirectusImage.h"
+#include "DirectusTexture.h"
 //==============================
 
 class DirectusMaterial : public QWidget
@@ -42,7 +42,7 @@ class DirectusMaterial : public QWidget
     Q_OBJECT
 public:
     explicit DirectusMaterial(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
     void Reflect(GameObject* gameobject);
 private:
 
@@ -56,47 +56,47 @@ private:
     //===============================
 
     //= ALBEDO ======================
-    DirectusImage* m_albedoImage;
+    DirectusTexture* m_albedoImage;
     QLabel* m_albedoLabel;
     QPushButton* m_albedoColor;
     //===============================
 
     //= ROUGHNESS ===================
-    DirectusImage* m_roughnessImage;
+    DirectusTexture* m_roughnessImage;
     QLabel* m_roughnessLabel;
     DirectusComboSliderText* m_roughness;
     //===============================
 
     //= METALLIC ====================
-    DirectusImage* m_metallicImage;
+    DirectusTexture* m_metallicImage;
     QLabel* m_metallicLabel;
     DirectusComboSliderText* m_metallic;
     //===============================
 
     //= NORMAL ======================
-    DirectusImage* m_normalImage;
+    DirectusTexture* m_normalImage;
     QLabel* m_normalLabel;
     DirectusComboSliderText* m_normal;
     //===============================
 
     //= HEIGHT ======================
-    DirectusImage* m_heightImage;
+    DirectusTexture* m_heightImage;
     QLabel* m_heightLabel;
     DirectusComboSliderText* m_height;
     //===============================
 
     //= OCCLUSION ===================
-    DirectusImage* m_occlusionImage;
+    DirectusTexture* m_occlusionImage;
     QLabel* m_occlusionLabel;
     //===============================
 
     //= EMISSION ====================
-    DirectusImage* m_emissionImage;
+    DirectusTexture* m_emissionImage;
     QLabel* m_emissionLabel;
     //===============================
 
     //= MASK ========================
-    DirectusImage* m_maskImage;
+    DirectusTexture* m_maskImage;
     QLabel* m_maskLabel;
     //===============================
 
@@ -126,9 +126,8 @@ private:
     QValidator* m_validator;
     Material* m_inspectedMaterial;
     DirectusCore* m_directusCore;
+    DirectusInspector* m_inspector;
     //===============================
-
-    QLineEdit* CreateQLineEdit();
 
     void SetName(std::string name);
     void SetAlbedo(Directus::Math::Vector4 color);

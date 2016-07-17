@@ -190,19 +190,14 @@ float Socket::GetRenderTime()
 
 void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string texturePath)
 {
-	if (gameObject == nullptr)
-	{
-		LOG("Can't update material texture, the GameObject is null", Log::Warning);
+	if (!gameObject)
 		return;
-	}
 
-	if (!gameObject->HasComponent<MeshRenderer>())
-	{
-		LOG("Can't update material texture, the GameObject has no mesh renderer", Log::Warning);
+	MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
+	if (!meshRenderer)
 		return;
-	}
 
-	Material* material = gameObject->GetComponent<MeshRenderer>()->GetMaterial();
+	Material* material = meshRenderer->GetMaterial();
 	if (material)
 	{
 		// Get the texture from the texture pool
@@ -214,5 +209,9 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 
 		// Set it to the material
 		material->SetTexture(texture->GetID());
+
+		return;
 	}
+
+	LOG("Unable to set texture: \"" + texturePath +"\" to material", LogType::Warning);
 }

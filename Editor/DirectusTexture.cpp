@@ -20,17 +20,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //==============================
-#include "DirectusImage.h"
+#include "DirectusTexture.h"
 #include "DirectusAssetLoader.h"
 #include <QThread>
+#include <QDragMoveEvent>
+#include <QMimeData>
+#include "IO/Log.h"
+#include "DirectusInspector.h"
 //==============================
 
-DirectusImage::DirectusImage(QWidget *parent) : QLabel(parent)
+DirectusTexture::DirectusTexture(QWidget *parent) : QLabel(parent)
 {
-
+    setAcceptDrops(true);
 }
 
-void DirectusImage::LoadImageAsync(std::string filePath)
+void DirectusTexture::Initialize(Socket* socket, DirectusInspector* inspector, TextureType textureType)
+{
+    m_socket = socket;
+    m_inspector = inspector;
+    m_textureType = textureType;
+}
+
+void DirectusTexture::LoadImageAsync(std::string filePath)
 {
     QThread* thread = new QThread();
     DirectusAssetLoader* imageLoader = new DirectusAssetLoader();
@@ -46,3 +57,49 @@ void DirectusImage::LoadImageAsync(std::string filePath)
 
     thread->start(QThread::HighestPriority);
 }
+
+//= DROP ============================================================================
+void DirectusTexture::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (!event->mimeData()->hasText())
+    {
+        event->ignore();
+        return;
+    }
+
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+}
+
+void DirectusTexture::dragMoveEvent(QDragMoveEvent* event)
+{
+    if (!event->mimeData()->hasText())
+    {
+        event->ignore();
+        return;
+    }
+
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+}
+
+void DirectusTexture::dropEvent(QDropEvent* event)
+{
+    GameObject* gameObject = m_inspector->GetInspectedGameObject();
+
+    if (!gameObject || !event->mimeData()->hasText())
+    {
+        event->ignore();
+        return;
+    }
+
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+
+    // Get the ID of the GameObject being dragged
+    const QMimeData *mime = event->mimeData();
+    std::string imagePath = mime->text().toStdString();
+
+    m_socket->SetMaterialTexture(gameObject, m_textureType, imagePath);
+}
+//=========================================================================================

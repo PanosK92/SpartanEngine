@@ -188,6 +188,7 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     return;
 }
 //===================================================================================================
+
 void DirectusHierarchy::Clear()
 {
     //m_socket->ClearScene();
