@@ -21,14 +21,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====
+//= INCLUDES =================
 #include <QLabel>
-//================
+#include "Core/Socket.h"
+//============================
 
-class DirectusImage : public QLabel
+//= FORWARD DECLARATIONS =
+class DirectusInspector;
+//========================
+
+class DirectusTexture : public QLabel
 {
     Q_OBJECT
 public:
-    explicit DirectusImage(QWidget *parent = 0);
-    void DirectusImage::LoadImageAsync(std::string filePath);
+    explicit DirectusTexture(QWidget *parent = 0);
+    void Initialize(Socket* socket, DirectusInspector* inspector, TextureType textureType);
+    void LoadImageAsync(std::string filePath);
+    virtual void dragEnterEvent(QDragEnterEvent* event);
+    virtual void dragMoveEvent (QDragMoveEvent* event);
+    virtual void dropEvent(QDropEvent* event);
+
+private:
+    Socket* m_socket;
+    DirectusInspector* m_inspector;
+    TextureType m_textureType;
 };

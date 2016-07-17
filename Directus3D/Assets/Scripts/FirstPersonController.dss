@@ -3,6 +3,10 @@ class FirstPersonController
 	GameObject @gameobject;
 	Transform @transform;
 	
+	// misc
+	bool control = false;
+	bool allowToggle = false;
+	
 	// mouse look
 	float mouseSensitivity = 0.025f;
 	float mouseSmoothing = 7.0f;
@@ -29,8 +33,21 @@ class FirstPersonController
 	// Update is called once per frame
 	void Update()
 	{
-		MouseLook();
-		WASD();
+		if (input.GetKey(E) && allowToggle)
+		{
+			control = !control;
+			allowToggle = false;
+		}
+		else if (!input.GetKey(E))
+		{
+			allowToggle = true;
+		}
+	
+		if (control)
+		{
+			MouseLook();
+			WASD();
+		}
 	}
 
 	void MouseLook()

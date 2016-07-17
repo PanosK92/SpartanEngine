@@ -2003,10 +2003,10 @@ QTabBar::tab:last
                       <enum>Qt::MoveAction</enum>
                      </property>
                      <property name="selectionMode">
-                      <enum>QAbstractItemView::MultiSelection</enum>
+                      <enum>QAbstractItemView::SingleSelection</enum>
                      </property>
                      <property name="movement">
-                      <enum>QListView::Snap</enum>
+                      <enum>QListView::Static</enum>
                      </property>
                      <property name="resizeMode">
                       <enum>QListView::Adjust</enum>
@@ -2015,6 +2015,9 @@ QTabBar::tab:last
                       <enum>QListView::IconMode</enum>
                      </property>
                      <property name="uniformItemSizes">
+                      <bool>true</bool>
+                     </property>
+                     <property name="selectionRectVisible">
                       <bool>true</bool>
                      </property>
                     </widget>

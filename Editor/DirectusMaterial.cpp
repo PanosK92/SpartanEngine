@@ -36,9 +36,11 @@ DirectusMaterial::DirectusMaterial(QWidget *parent) : QWidget(parent)
     m_directusCore = nullptr;
 }
 
-void DirectusMaterial::Initialize(DirectusCore* directusCore)
+void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector* inspector)
 {
     m_directusCore = directusCore;
+    m_inspector = inspector;
+
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
@@ -61,51 +63,59 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore)
 
     //= ALBEDO ================================================
     m_albedoLabel = new QLabel("Albedo");
-    m_albedoImage = new DirectusImage();
+    m_albedoImage = new DirectusTexture();
+    m_albedoImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Albedo);
     m_albedoColor = new QPushButton("ColorPicker");
     //=========================================================
 
     //= ROUGHNESS =============================================
     m_roughnessLabel = new QLabel("Roughness");
-    m_roughnessImage = new DirectusImage();
+    m_roughnessImage = new DirectusTexture();
+    m_roughnessImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Roughness);
     m_roughness = new DirectusComboSliderText();
     m_roughness->Initialize(0, 1);
     //=========================================================
 
     //= METALLIC ==============================================
     m_metallicLabel = new QLabel("Metallic");
-    m_metallicImage = new DirectusImage();
+    m_metallicImage = new DirectusTexture();
+    m_metallicImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Metallic);
     m_metallic = new DirectusComboSliderText();
     m_metallic->Initialize(0, 1);
     //=========================================================
 
     //= NORMAL ================================================
     m_normalLabel = new QLabel("Normal");
-    m_normalImage = new DirectusImage();
+    m_normalImage = new DirectusTexture();
+    m_normalImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Normal);
     m_normal = new DirectusComboSliderText();
     m_normal->Initialize(0, 1);
     //=========================================================
 
     //= HEIGHT ================================================
     m_heightLabel = new QLabel("Height");
-    m_heightImage = new DirectusImage();
+    m_heightImage = new DirectusTexture();
+    m_heightImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Height);
     m_height = new DirectusComboSliderText();
     m_height->Initialize(0, 1);
     //=========================================================
 
     //= OCCLUSION =============================================
     m_occlusionLabel = new QLabel("Occlusion");
-    m_occlusionImage = new DirectusImage();
+    m_occlusionImage = new DirectusTexture();
+    m_occlusionImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Occlusion);
     //=========================================================
 
     //= EMISSION ==============================================
     m_emissionLabel = new QLabel("Emission");
-    m_emissionImage = new DirectusImage();
+    m_emissionImage = new DirectusTexture();
+    m_emissionImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Emission);
     //=========================================================
 
     //= MASK ==================================================
     m_maskLabel = new QLabel("Mask");
-    m_maskImage = new DirectusImage();
+    m_maskImage = new DirectusTexture();
+    m_maskImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Mask);
     //=========================================================
 
     //= REFLECTIVITY  =========================================
@@ -279,14 +289,6 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
 
     // Make this widget visible
     this->show();
-}
-
-QLineEdit*DirectusMaterial::CreateQLineEdit()
-{
-    QLineEdit* lineEdit = new QLineEdit();
-    lineEdit->setValidator(m_validator);
-
-    return lineEdit;
 }
 
 void DirectusMaterial::SetName(string name)

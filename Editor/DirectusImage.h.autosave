@@ -21,26 +21,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-// INCLUDES ===============
-#include <QListView>
-#include <QFileSystemModel>
-//=========================
+//= INCLUDES ===========
+#include <QLabel>
+#include "Core/Socket.h"
+//======================
 
-class DirectusFileExplorer : public QListView
+class DirectusImage : public QLabel
 {
     Q_OBJECT
 public:
-    explicit DirectusFileExplorer(QWidget *parent = 0);
-    void SetRootPath(QString path);
-    virtual void mousePressEvent(QMouseEvent *event);
-    virtual void mouseMoveEvent(QMouseEvent* event);
-
+    explicit DirectusImage(QWidget *parent = 0);
+    void Initialize(Socket* socket);
+    void DirectusImage::LoadImageAsync(std::string filePath);
+    virtual void dragEnterEvent(QDragEnterEvent* event);
+    virtual void dragMoveEvent (QDragMoveEvent* event);
+    virtual void dropEvent(QDropEvent* event);
+    
 private:
-    QFileSystemModel* m_fileModel;
-    QPoint m_dragStartPosition;
-
-signals:
-
-public slots:
-
+    Socket* m_socket;
 };
