@@ -129,17 +129,17 @@ private:
     DirectusInspector* m_inspector;
     //===============================
 
-    void SetName(std::string name);
-    void SetAlbedo(Directus::Math::Vector4 color);
-    void SetRoughness(float roughness);
-    void SetMetallic(float metallic);
-    void SetNormal(float normal);
-    void SetHeight(float height);
-    void SetOcclusion();
-    void SetEmission();
-    void SetMask();
-    void SetReflectivity(float reflectivity);
-    void SetTiling(Directus::Math::Vector2 tiling);
+    void ReflectName();
+    void ReflectAlbedo();
+    void ReflectRoughness();
+    void ReflectMetallic();
+    void ReflectNormal();
+    void ReflectHeight();
+    void ReflectOcclusion();
+    void ReflectEmission();
+    void ReflectMask();
+    void ReflectReflectivity();
+    void ReflectTiling();
 
 public slots:
     void MapAlbedo();

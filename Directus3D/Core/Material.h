@@ -56,7 +56,6 @@ public:
 	[TEXTURES]
 	------------------------------------------------------------------------------*/
 	void SetTexture(std::string textureID);
-	void AdjustTextureDependentProperties();
 	Texture* GetTextureByType(TextureType type);
 	bool HasTextureOfType(TextureType type);
 	bool HasTexture(std::string path);
@@ -92,20 +91,23 @@ public:
 	void SetAlphaBlending(bool alphaBlending);
 	bool GetAlphaBlending();
 
-	void SetRoughness(float roughness);
-	float GetRoughness();
+	void SetRoughnessMultiplier(float roughness);
+	float GetRoughnessMultiplier();
 
-	void SetMetallic(float metallic);
-	float GetMetallic();
+	void SetMetallicMultiplier(float metallic);
+	float GetMetallicMultiplier();
 
-	void SetOcclusion(float occlusion);
-	float GetOcclusion();
+	void SetNormalMultiplier(float normal);
+	float GetNormalMultiplier();
+
+	void SetHeightMultiplier(float height);
+	float GetHeightMultiplier();
+
+	void SetOcclusionMultiplier(float occlusion);
+	float GetOcclusionMultiplier();
 
 	void SetReflectivity(float reflectivity);
 	float GetReflectivity();
-
-	void SetNormalStrength(float strength);
-	float GetNormalStrength();
 
 	void SetShadingMode(ShadingMode shadingMode);
 	ShadingMode GetShadingMode();
@@ -121,18 +123,18 @@ private:
 	std::string m_ID;
 	std::string m_name;
 	std::string m_modelID;
-	CullMode cullMode;
-	float opacity;
-	bool alphaBlending;
-	Directus::Math::Vector4 colorAlbedo;
-	float roughness;
-	float metallic;
-	float occlusion;
-	float normalStrength;
-	float height;
-	float reflectivity;
-	Directus::Math::Vector2 tiling;
-	ShadingMode shadingMode;
+	CullMode m_cullMode;
+	float m_opacity;
+	bool m_alphaBlending;
+	Directus::Math::Vector4 m_colorAlbedo;
+	float m_roughnessMultiplier;
+	float m_metallicMultiplier;
+	float m_normalMultiplier;
+	float m_heightMultiplier;
+	float m_occlusionMultiplier;
+	float m_reflectivity;
+	Directus::Math::Vector2 m_tiling;
+	ShadingMode m_shadingMode;
 	ShaderVariation* m_shader;
 
 	TexturePool* m_texturePool;

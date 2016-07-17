@@ -220,19 +220,19 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     row++;
 
     // Row 15 - TILING
-    m_gridLayout->addWidget(m_tilingLabel,      row, 0, 1, 1);
-    m_gridLayout->addWidget(m_tilingX->GetLabelWidget(),     row, 1, 1, 1);
-    m_gridLayout->addWidget(m_tilingX->GetTextWidget(),          row, 2, 1, 1);
-    m_gridLayout->addWidget(m_tilingY->GetLabelWidget(),     row, 3, 1, 1);
-    m_gridLayout->addWidget(m_tilingY->GetTextWidget(),          row, 4, 1, 1);
+    m_gridLayout->addWidget(m_tilingLabel,                  row, 0, 1, 1);
+    m_gridLayout->addWidget(m_tilingX->GetLabelWidget(),    row, 1, 1, 1);
+    m_gridLayout->addWidget(m_tilingX->GetTextWidget(),     row, 2, 1, 1);
+    m_gridLayout->addWidget(m_tilingY->GetLabelWidget(),    row, 3, 1, 1);
+    m_gridLayout->addWidget(m_tilingY->GetTextWidget(),     row, 4, 1, 1);
     row++;
 
     // Row 16 - OFFSET
-    m_gridLayout->addWidget(m_offsetLabel,  row, 0, 1, 1);
-    m_gridLayout->addWidget(m_offsetX->GetLabelWidget(), row, 1, 1, 1);
-    m_gridLayout->addWidget(m_offsetX->GetTextWidget(),      row, 2, 1, 1);
-    m_gridLayout->addWidget(m_offsetY->GetLabelWidget(), row, 3, 1, 1);
-    m_gridLayout->addWidget(m_offsetY->GetTextWidget(),      row, 4, 1, 1);
+    m_gridLayout->addWidget(m_offsetLabel,                  row, 0, 1, 1);
+    m_gridLayout->addWidget(m_offsetX->GetLabelWidget(),    row, 1, 1, 1);
+    m_gridLayout->addWidget(m_offsetX->GetTextWidget(),     row, 2, 1, 1);
+    m_gridLayout->addWidget(m_offsetY->GetLabelWidget(),    row, 3, 1, 1);
+    m_gridLayout->addWidget(m_offsetY->GetTextWidget(),     row, 4, 1, 1);
     row++;
 
     // Row 17 - LINE
@@ -278,34 +278,39 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    SetName(m_inspectedMaterial->GetName());
-    SetAlbedo(m_inspectedMaterial->GetColorAlbedo());
-    SetRoughness(m_inspectedMaterial->GetRoughness());
-    SetMetallic(m_inspectedMaterial->GetMetallic());
-    SetNormal(m_inspectedMaterial->GetNormalStrength());
-    SetHeight(0);
-    SetTiling(m_inspectedMaterial->GetTiling());
-    SetReflectivity(m_inspectedMaterial->GetReflectivity());
+    ReflectName();
+    ReflectAlbedo();
+    ReflectRoughness();
+    ReflectMetallic();
+    ReflectNormal();
+    ReflectHeight();
+    ReflectOcclusion();
+    ReflectEmission();
+    ReflectMask();
+    ReflectReflectivity();
+    ReflectTiling();
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusMaterial::SetName(string name)
+void DirectusMaterial::ReflectName()
 {
+    std::string name = m_inspectedMaterial->GetName();
     QString text = QString::fromStdString("Material - " + name);
     m_title->setText(text);
 }
 
-void DirectusMaterial::SetAlbedo(Vector4 color)
+void DirectusMaterial::ReflectAlbedo()
 {
     // Load the albedo texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Albedo);
     m_albedoImage->LoadImageAsync(texPath);
 }
 
-void DirectusMaterial::SetRoughness(float roughness)
+void DirectusMaterial::ReflectRoughness()
 {
+    float roughness = m_inspectedMaterial->GetRoughnessMultiplier();
     m_roughness->SetValue(roughness);
 
     // Load the roughness texture preview
@@ -313,8 +318,9 @@ void DirectusMaterial::SetRoughness(float roughness)
     m_roughnessImage->LoadImageAsync(texPath);
 }
 
-void DirectusMaterial::SetMetallic(float metallic)
+void DirectusMaterial::ReflectMetallic()
 {
+    float metallic = m_inspectedMaterial->GetMetallicMultiplier();
     m_metallic->SetValue(metallic);
 
     // Load the metallic texture preview
@@ -322,8 +328,9 @@ void DirectusMaterial::SetMetallic(float metallic)
     m_metallicImage->LoadImageAsync(texPath);
 }
 
-void DirectusMaterial::SetNormal(float normal)
+void DirectusMaterial::ReflectNormal()
 {
+    float normal = m_inspectedMaterial->GetNormalMultiplier();
     m_normal->SetValue(normal);
 
     // Load the normal texture preview
@@ -331,8 +338,9 @@ void DirectusMaterial::SetNormal(float normal)
     m_normalImage->LoadImageAsync(texPath);
 }
 
-void DirectusMaterial::SetHeight(float height)
+void DirectusMaterial::ReflectHeight()
 {
+    float height = m_inspectedMaterial->GetHeightMultiplier();
     m_height->SetValue(height);
 
     // Load the height texture preview
@@ -340,34 +348,36 @@ void DirectusMaterial::SetHeight(float height)
     m_heightImage->LoadImageAsync(texPath);
 }
 
-void DirectusMaterial::SetOcclusion()
+void DirectusMaterial::ReflectOcclusion()
 {
     // Load the occlusion texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Occlusion);
     m_occlusionImage->LoadImageAsync(texPath);
 }
 
-void DirectusMaterial::SetEmission()
+void DirectusMaterial::ReflectEmission()
 {
     // Load the emission texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Emission);
     m_emissionImage->LoadImageAsync(texPath);
 }
 
-void DirectusMaterial::SetMask()
+void DirectusMaterial::ReflectMask()
 {
     // Load the mask texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Mask);
     m_maskImage->LoadImageAsync(texPath);
 }
 
-void DirectusMaterial::SetReflectivity(float reflectivity)
+void DirectusMaterial::ReflectReflectivity() // :-)
 {
+    float reflectivity = m_inspectedMaterial->GetReflectivity();
     m_reflectivity->SetValue(reflectivity);
 }
 
-void DirectusMaterial::SetTiling(Vector2 tiling)
+void DirectusMaterial::ReflectTiling()
 {
+    Vector2 tiling = m_inspectedMaterial->GetTiling();
     m_tilingX->SetFromFloat(tiling.x);
     m_tilingY->SetFromFloat(tiling.y);
 }
@@ -383,7 +393,7 @@ void DirectusMaterial::MapRoughness()
         return;
 
     float roughness =  m_roughness->GetValue();
-    m_inspectedMaterial->SetRoughness(roughness);
+    m_inspectedMaterial->SetRoughnessMultiplier(roughness);
     m_directusCore->Update();
 }
 
@@ -394,7 +404,7 @@ void DirectusMaterial::MapMetallic()
         return;
 
     float metallic =  m_metallic->GetValue();
-    m_inspectedMaterial->SetMetallic(metallic);
+    m_inspectedMaterial->SetMetallicMultiplier(metallic);
     m_directusCore->Update();
 }
 
@@ -404,7 +414,7 @@ void DirectusMaterial::MapNormal()
         return;
 
     float normal =  m_normal->GetValue();
-    m_inspectedMaterial->SetNormalStrength(normal);
+    m_inspectedMaterial->SetNormalMultiplier(normal);
     m_directusCore->Update();
 }
 
@@ -413,9 +423,9 @@ void DirectusMaterial::MapHeight()
     if (!m_inspectedMaterial || !m_directusCore)
         return;
 
-    //float height =  m_height->GetValue();
-    //m_inspectedMaterial->Seth(height);
-    //m_directusCore->Update();
+    float height =  m_height->GetValue();
+    m_inspectedMaterial->SetHeightMultiplier(height);
+    m_directusCore->Update();
 }
 
 void DirectusMaterial::MapOcclusion()

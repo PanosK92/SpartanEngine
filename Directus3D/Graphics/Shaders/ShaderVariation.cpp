@@ -142,10 +142,10 @@ void ShaderVariation::Render(int indexCount,
 		defaultBufferType->worldView = worldView.Transpose();
 		defaultBufferType->worldViewProjection = worldViewProjection.Transpose();
 		defaultBufferType->materialAlbedoColor = material->GetColorAlbedo();
-		defaultBufferType->roughness = material->GetRoughness();
-		defaultBufferType->metallic = material->GetMetallic();
-		defaultBufferType->occlusion = material->GetOcclusion();
-		defaultBufferType->normalStrength = material->GetNormalStrength();
+		defaultBufferType->roughness = material->GetRoughnessMultiplier();
+		defaultBufferType->metallic = material->GetMetallicMultiplier();
+		defaultBufferType->occlusion = material->GetOcclusionMultiplier();
+		defaultBufferType->normalStrength = material->GetNormalMultiplier();
 		defaultBufferType->reflectivity = material->GetReflectivity();
 		defaultBufferType->shadingMode = float(material->GetShadingMode());
 		defaultBufferType->materialTiling = material->GetTiling();
