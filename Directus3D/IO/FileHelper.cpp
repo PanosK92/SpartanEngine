@@ -70,9 +70,8 @@ string FileHelper::GetExtensionFromPath(string path)
 
 string FileHelper::GetRelativePathFromAbsolutePath(string absolutePath)
 {
-	// NOTE
-	// This function assumes that the path resolves somewhere 
-	// insided the folder Assets (The default engine folder)
+	// NOTE: This function assumes that the path resolves somewhere 
+	// inside the folder "Assets" (The default engine folder)
 
 	// D:\Projects\Directus3D\Build\Assets\Models\cube\tex.jpg --> Assets\Models\cube\tex.jpg
 

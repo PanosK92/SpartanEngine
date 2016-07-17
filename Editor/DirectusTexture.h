@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include <QLabel>
-#include "Core/Socket.h"
+#include "DirectusCore.h"
 //============================
 
 //= FORWARD DECLARATIONS =
@@ -35,14 +35,14 @@ class DirectusTexture : public QLabel
     Q_OBJECT
 public:
     explicit DirectusTexture(QWidget *parent = 0);
-    void Initialize(Socket* socket, DirectusInspector* inspector, TextureType textureType);
+    void Initialize(DirectusCore* socket, DirectusInspector* inspector, TextureType textureType);
     void LoadImageAsync(std::string filePath);
     virtual void dragEnterEvent(QDragEnterEvent* event);
     virtual void dragMoveEvent (QDragMoveEvent* event);
     virtual void dropEvent(QDropEvent* event);
 
 private:
-    Socket* m_socket;
+    DirectusCore* m_directusCore;
     DirectusInspector* m_inspector;
     TextureType m_textureType;
 };
