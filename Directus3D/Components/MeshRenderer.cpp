@@ -73,7 +73,7 @@ void MeshRenderer::Deserialize()
 /*------------------------------------------------------------------------------
 									[MISC]
 ------------------------------------------------------------------------------*/
-void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix projectionMatrix) const
+void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix projectionMatrix, Light* dicrectionalLight, Camera* camera) const
 {
 	if (!HasMaterial()) // If there is a material
 	{
@@ -97,6 +97,10 @@ void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix pro
 	textures.push_back(material->GetShaderResourceViewByTextureType(Normal));
 	textures.push_back(material->GetShaderResourceViewByTextureType(Height));
 	textures.push_back(material->GetShaderResourceViewByTextureType(Mask));
+	if (dicrectionalLight)
+		textures.push_back(dicrectionalLight->GetDepthMap());
+	else
+		textures.push_back(nullptr);
 
 	// Render
 	GetMaterial()->GetShader()->Set();
@@ -105,7 +109,7 @@ void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix pro
 		g_transform->GetWorldMatrix(),
 		viewMatrix, projectionMatrix,
 		GetMaterial(),
-		textures
+		textures, dicrectionalLight, camera
 	);
 }
 

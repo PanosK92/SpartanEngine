@@ -1,6 +1,7 @@
-// = INCLUDES ========
+// = INCLUDES ===============
 #include "Helper.hlsl"
-//====================
+#include "ShadowMapping.hlsl"
+//===========================
 
 //= TEXTURES ===============================
 Texture2D texAlbedo 		: register (t0);
@@ -10,6 +11,7 @@ Texture2D texOcclusion 		: register (t3);
 Texture2D texNormal 		: register (t4);
 Texture2D texHeight 		: register (t5);
 Texture2D texMask 			: register (t6);
+Texture2D lightDepth 		: register (t7);
 //==========================================
 
 //= SAMPLERS =================================
@@ -22,6 +24,7 @@ cbuffer DefaultBuffer : register(b0)
     matrix mWorld;
     matrix mWorldView;
     matrix mWorldViewProjection;
+	matrix mLightViewProjection;
     float4 materialAlbedoColor;
     float materialRoughness;
     float materialMetallic;
@@ -145,10 +148,16 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 #endif
 	//============================================================================================
 	
+	// SHADOW MAPPING
+	float pcf = true;
+	float bias = padding.x;
+	float4 lightPos = mul(input.positionWS, mLightViewProjection);
+	float shadowing	= ShadowMapping(lightDepth, samplerAnisoWrap, lightPos, bias, pcf, texel);
+	
 	// Write to G-Buffer
 	output.albedo 		= albedo;
 	output.normal 		= float4(normal.rgb, 1.0f);
-	output.depth 		= float4(depth, depthLinear, 1.0f, 1.0f);
+	output.depth 		= float4(depth, depthLinear, shadowing, 1.0f);
 	output.material		= float4(roughness, metallic, reflectivity, renderMode);
 		
     return output;

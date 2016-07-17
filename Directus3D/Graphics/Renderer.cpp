@@ -335,7 +335,11 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects, Light* dir
 		bool buffersHaveBeenSet = mesh->SetBuffers();
 		if (buffersHaveBeenSet)
 		{
-			meshRenderer->Render(mesh->GetIndexCount(), mView, mProjection);
+			Light* directionalLight = nullptr;
+			if (m_lightsDirectional.size() != 0)
+				directionalLight = m_lightsDirectional[0]->GetComponent<Light>();
+
+			meshRenderer->Render(mesh->GetIndexCount(), mView, mProjection, directionalLight, m_camera);
 			m_meshesRendered++;
 		}
 		//==========================================================================
@@ -357,10 +361,6 @@ void Renderer::DeferredPass()
 	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
 	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(3)); // material
 	m_texArrayDeferredPass.push_back(m_texNoiseMap->GetID3D11ShaderResourceView());
-	if (m_lightsDirectional.size() != 0)
-		m_texArrayDeferredPass.push_back(m_lightsDirectional[0]->GetComponent<Light>()->GetDepthMap());
-	else
-		m_texArrayDeferredPass.push_back(nullptr);
 	if (m_skybox)
 	{
 		m_texEnvironment = m_skybox->GetEnvironmentTexture();

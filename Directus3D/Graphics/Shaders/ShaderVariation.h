@@ -54,7 +54,7 @@ public:
 	void Set();
 	void Render(int indexCount, 
 		Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, 
-		Material* material, std::vector<ID3D11ShaderResourceView*> textureArray);
+		Material* material, std::vector<ID3D11ShaderResourceView*> textureArray, Light* light, Camera* camera);
 	std::string GetID();
 
 	bool HasAlbedoTexture();
@@ -100,6 +100,7 @@ private:
 		Directus::Math::Matrix world;
 		Directus::Math::Matrix worldView;
 		Directus::Math::Matrix worldViewProjection;
+		Directus::Math::Matrix lightViewProjection;
 		Directus::Math::Vector4 materialAlbedoColor;
 		float roughness;
 		float metallic;

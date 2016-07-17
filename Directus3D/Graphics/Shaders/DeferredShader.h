@@ -50,11 +50,9 @@ private:
 		Directus::Math::Matrix worldViewProjection;
 		Directus::Math::Matrix viewProjectionInverse;
 		Directus::Math::Vector4 cameraPosition;
-		Directus::Math::Matrix dirViewProjection[maxLights];
 		Directus::Math::Vector4 dirLightDirection[maxLights];
 		Directus::Math::Vector4 dirLightColor[maxLights];
 		Directus::Math::Vector4 dirLightIntensity[maxLights];
-		Directus::Math::Vector4 dirLightBias[maxLights];
 		Directus::Math::Vector4 pointLightPosition[maxLights];
 		Directus::Math::Vector4 pointLightColor[maxLights];
 		Directus::Math::Vector4 pointLightRange[maxLights];

@@ -118,9 +118,7 @@ void ShaderVariation::Load()
 	m_befaultBuffer->CreateConstantBuffer(sizeof(DefaultBufferType));
 }
 
-void ShaderVariation::Render(int indexCount,
-	Matrix mWorld, Matrix mView, Matrix mProjection, 
-	Material* material, vector<ID3D11ShaderResourceView*> textureArray)
+void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mProjection, Material* material, vector<ID3D11ShaderResourceView*> textureArray, Light* directionalLight, Camera* camera)
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{
@@ -128,9 +126,15 @@ void ShaderVariation::Render(int indexCount,
 		return;
 	}
 
+	directionalLight->GenerateOrthographicProjectionMatrix(100, 100, camera->GetNearPlane(), camera->GetFarPlane());
+	directionalLight->GenerateViewMatrix();
+
 	Matrix world = mWorld;
 	Matrix worldView = world * mView;
 	Matrix worldViewProjection = worldView * mProjection;
+	Matrix lightView = directionalLight->GetViewMatrix();
+	Matrix lightProjection = directionalLight->GetOrthographicProjectionMatrix();
+	Matrix lightViewProjection = lightView * lightProjection;
 
 	/*------------------------------------------------------------------------------
 							[FILL THE BUFFER]
@@ -141,6 +145,7 @@ void ShaderVariation::Render(int indexCount,
 		defaultBufferType->world = world.Transpose();
 		defaultBufferType->worldView = worldView.Transpose();
 		defaultBufferType->worldViewProjection = worldViewProjection.Transpose();
+		defaultBufferType->lightViewProjection = lightViewProjection.Transpose();
 		defaultBufferType->materialAlbedoColor = material->GetColorAlbedo();
 		defaultBufferType->roughness = material->GetRoughnessMultiplier();
 		defaultBufferType->metallic = material->GetMetallicMultiplier();
@@ -150,7 +155,7 @@ void ShaderVariation::Render(int indexCount,
 		defaultBufferType->shadingMode = float(material->GetShadingMode());
 		defaultBufferType->materialTiling = material->GetTiling();
 		defaultBufferType->viewport = RESOLUTION;
-		defaultBufferType->padding = RESOLUTION;
+		defaultBufferType->padding = Vector2(directionalLight->GetBias(), directionalLight->GetBias());
 		m_befaultBuffer->Unmap();
 	}
 	m_befaultBuffer->SetVS(0); // set buffer in the vertex shader

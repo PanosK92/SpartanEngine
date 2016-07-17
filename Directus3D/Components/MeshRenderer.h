@@ -46,7 +46,7 @@ public:
 	/*------------------------------------------------------------------------------
 										[MISC]
 	------------------------------------------------------------------------------*/
-	void Render(unsigned int indexCount, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix) const;
+	void Render(unsigned int indexCount, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix, Light* dicrectionalLight, Camera* camera) const;
 
 	/*------------------------------------------------------------------------------
 										[PROPERTIES]
