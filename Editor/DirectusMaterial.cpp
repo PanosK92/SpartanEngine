@@ -64,14 +64,14 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= ALBEDO ================================================
     m_albedoLabel = new QLabel("Albedo");
     m_albedoImage = new DirectusTexture();
-    m_albedoImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Albedo);
+    m_albedoImage->Initialize(m_directusCore, inspector, Albedo);
     m_albedoColor = new QPushButton("ColorPicker");
     //=========================================================
 
     //= ROUGHNESS =============================================
     m_roughnessLabel = new QLabel("Roughness");
     m_roughnessImage = new DirectusTexture();
-    m_roughnessImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Roughness);
+    m_roughnessImage->Initialize(m_directusCore, inspector, Roughness);
     m_roughness = new DirectusComboSliderText();
     m_roughness->Initialize(0, 1);
     //=========================================================
@@ -79,7 +79,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= METALLIC ==============================================
     m_metallicLabel = new QLabel("Metallic");
     m_metallicImage = new DirectusTexture();
-    m_metallicImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Metallic);
+    m_metallicImage->Initialize(m_directusCore, inspector, Metallic);
     m_metallic = new DirectusComboSliderText();
     m_metallic->Initialize(0, 1);
     //=========================================================
@@ -87,7 +87,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= NORMAL ================================================
     m_normalLabel = new QLabel("Normal");
     m_normalImage = new DirectusTexture();
-    m_normalImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Normal);
+    m_normalImage->Initialize(m_directusCore, inspector, Normal);
     m_normal = new DirectusComboSliderText();
     m_normal->Initialize(0, 1);
     //=========================================================
@@ -95,7 +95,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= HEIGHT ================================================
     m_heightLabel = new QLabel("Height");
     m_heightImage = new DirectusTexture();
-    m_heightImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Height);
+    m_heightImage->Initialize(m_directusCore, inspector, Height);
     m_height = new DirectusComboSliderText();
     m_height->Initialize(0, 1);
     //=========================================================
@@ -103,19 +103,19 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= OCCLUSION =============================================
     m_occlusionLabel = new QLabel("Occlusion");
     m_occlusionImage = new DirectusTexture();
-    m_occlusionImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Occlusion);
+    m_occlusionImage->Initialize(m_directusCore, inspector, Occlusion);
     //=========================================================
 
     //= EMISSION ==============================================
     m_emissionLabel = new QLabel("Emission");
     m_emissionImage = new DirectusTexture();
-    m_emissionImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Emission);
+    m_emissionImage->Initialize(m_directusCore, inspector, Emission);
     //=========================================================
 
     //= MASK ==================================================
     m_maskLabel = new QLabel("Mask");
     m_maskImage = new DirectusTexture();
-    m_maskImage->Initialize(m_directusCore->GetEngineSocket(), inspector, Mask);
+    m_maskImage->Initialize(m_directusCore, inspector, Mask);
     //=========================================================
 
     //= REFLECTIVITY  =========================================

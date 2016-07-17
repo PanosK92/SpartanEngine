@@ -43,7 +43,7 @@ void DirectusAssetLoader::PrepareForModel(std::string filePath, Socket* socket)
      m_filePath = filePath;
 }
 
-void DirectusAssetLoader::PrepareForImage(std::string filePath, int width, int height)
+void DirectusAssetLoader::PrepareForTexture(std::string filePath, int width, int height)
 {
     m_filePath = filePath;
     m_width = width;
@@ -65,7 +65,7 @@ void DirectusAssetLoader::LoadModelFromFile()
     m_socket->LoadModel(m_filePath);
 }
 
-QPixmap DirectusAssetLoader::LoadImageFromFile()
+QPixmap DirectusAssetLoader::LoadTextureFromFile()
 {
     ImageLoader* engineImageLoader = new ImageLoader();
     QPixmap pixmap;
@@ -127,7 +127,7 @@ void DirectusAssetLoader::LoadTexture()
     QMutex mutex;
 
     mutex.lock();
-    m_pixmap = LoadImageFromFile();
+    m_pixmap = LoadTextureFromFile();
     mutex.unlock();
 
     emit ImageReady(m_pixmap);

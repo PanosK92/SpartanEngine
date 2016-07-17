@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <filesystem>
 #include "../IO/Serializer.h"
 #include "../IO/Log.h"
+#include "../IO/FileHelper.h"
 //===========================
 
 //= NAMESPACES =====
@@ -69,6 +70,9 @@ Texture* TexturePool::CreateNewTexture()
 
 Texture* TexturePool::AddFromFile(string texturePath, TextureType textureType)
 {
+	// This is essential to avoid an absolute path mess. Everything is relative.
+	texturePath = FileHelper::GetRelativePathFromAbsolutePath(texturePath);
+
 	// If loaded, return the already loaded one
 	Texture* loaded = GetTextureByPath(texturePath);
 	if (loaded)

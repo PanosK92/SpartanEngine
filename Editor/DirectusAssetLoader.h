@@ -35,13 +35,13 @@ public:
 
     void PrepareForScene(std::string filePath, Socket* socket);
     void PrepareForModel(std::string filePath, Socket* socket);
-    void PrepareForImage(std::string filePath, int width, int height);
+    void PrepareForTexture(std::string filePath, int width, int height);
 
 private:
     void LoadSceneFromFile();
     void SaveSceneToFile();
     void LoadModelFromFile();
-    QPixmap LoadImageFromFile();
+    QPixmap LoadTextureFromFile();
 
     Socket* m_socket;
     QPixmap m_pixmap;

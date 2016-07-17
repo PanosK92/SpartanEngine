@@ -34,9 +34,9 @@ DirectusTexture::DirectusTexture(QWidget *parent) : QLabel(parent)
     setAcceptDrops(true);
 }
 
-void DirectusTexture::Initialize(Socket* socket, DirectusInspector* inspector, TextureType textureType)
+void DirectusTexture::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, TextureType textureType)
 {
-    m_socket = socket;
+    m_directusCore = directusCore;
     m_inspector = inspector;
     m_textureType = textureType;
 }
@@ -47,7 +47,7 @@ void DirectusTexture::LoadImageAsync(std::string filePath)
     DirectusAssetLoader* imageLoader = new DirectusAssetLoader();
 
     imageLoader->moveToThread(thread);
-    imageLoader->PrepareForImage(filePath, 20, 20);
+    imageLoader->PrepareForTexture(filePath, 20, 20);
 
     connect(thread,         SIGNAL(started()), imageLoader, SLOT(LoadTexture()));
     connect(imageLoader,    SIGNAL(ImageReady(QPixmap)), this, SLOT(setPixmap(QPixmap)));
@@ -100,6 +100,7 @@ void DirectusTexture::dropEvent(QDropEvent* event)
     const QMimeData *mime = event->mimeData();
     std::string imagePath = mime->text().toStdString();
 
-    m_socket->SetMaterialTexture(gameObject, m_textureType, imagePath);
+    m_directusCore->GetEngineSocket()->SetMaterialTexture(gameObject, m_textureType, imagePath);
+    m_directusCore->Update();
 }
 //=========================================================================================
