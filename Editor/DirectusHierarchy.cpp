@@ -69,9 +69,8 @@ void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
     // I implement this myself because the QTreeWidget doesn't
     // deselect any items when you click anywhere else but on an item.
     QModelIndex item = indexAt(event->pos());
-    bool selected = selectionModel()->isSelected(indexAt(event->pos()));
     QTreeWidget::mousePressEvent(event);
-    if ((item.row() == -1 && item.column() == -1) || selected)
+    if ((item.row() == -1 && item.column() == -1))
     {
         clearSelection();
         const QModelIndex index;
@@ -117,26 +116,33 @@ void DirectusHierarchy::mouseMoveEvent(QMouseEvent* event)
 // inform Qt about the types of data that the widget accepts.
 void DirectusHierarchy::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (event->source() == this && event->mimeData()->hasText())
+    if (event->source() != this || !event->mimeData()->hasText())
     {
-        event->setDropAction(Qt::MoveAction);
-        event->accept();
+        event->ignore();
         return;
     }
 
-    event->ignore();
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
 }
 
 void DirectusHierarchy::dragMoveEvent(QDragMoveEvent* event)
 {
-    if (event->source() == this && event->mimeData()->hasText())
+    if (event->source() != this || !event->mimeData()->hasText())
     {
-        event->setDropAction(Qt::MoveAction);
-        event->accept();
+        event->ignore();
         return;
     }
 
-    event->ignore();
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+
+    // Change the color of the hovered item
+    /*QTreeWidgetItem* item = this->itemAt(event->pos());
+    if (item)
+        item->setBackgroundColor(0, QColor(0, 0, 200, 150));*/
+    // NOTE: I need to find an efficient way to clear the color
+    // from any previously hovered items.
 }
 
 // The dropEvent() is used to unpack dropped data and
@@ -149,21 +155,39 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
         return;
     }
 
-    const QMimeData *mime = event->mimeData();
-    QString pieces = mime->text();
-
     if (event->source() == this)
     {
         event->setDropAction(Qt::MoveAction);
         event->accept();
-        LOG(pieces.toStdString());
-        return;
+    }
+    else
+        event->acceptProposedAction();
+
+    // Get the ID of the GameObject being dragged
+    const QMimeData *mime = event->mimeData();
+    std::string gameObjectID = mime->text().toStdString();
+
+    // Get the dragged and the hovered GameObject
+    GameObject* dragged = m_socket->GetGameObjectByID(gameObjectID);
+    GameObject* hovered = TreeItemToGameObject(this->itemAt(event->pos()));
+
+    // It was dropped on a gameobject
+    if (dragged && hovered)
+    {
+        if (dragged->GetID() != hovered->GetID())
+            dragged->GetTransform()->SetParent(hovered->GetTransform());
+
+    }
+    // It was dropped on nothing
+    else if (dragged && !hovered)
+    {
+        dragged->GetTransform()->SetParent(nullptr);
     }
 
-    event->acceptProposedAction();
+    Populate();
+    return;
 }
 //===================================================================================================
-
 void DirectusHierarchy::Clear()
 {
     //m_socket->ClearScene();
@@ -249,6 +273,8 @@ QTreeWidgetItem* DirectusHierarchy::GameObjectToTreeItem(GameObject* gameobject)
     // Value        -> 0x0100
     // Description  -> The first role that can be used for application-specific purposes.
     //===================================================================================
+
+    item->setFlags(item->flags() | Qt::ItemIsEditable);
 
     return item;
 }
