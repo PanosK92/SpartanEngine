@@ -41,18 +41,18 @@ Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 	m_ID = GENERATE_GUID;
 	m_name = "N/A";
 	m_modelID = "N/A";
-	cullMode = CullBack;
-	opacity = 1.0f;
-	alphaBlending = false;
-	shadingMode = Physically_Based;
-	colorAlbedo = false;
-	roughness = false;
-	metallic = false;
-	occlusion = false;
-	normalStrength = 0.0f;
-	height = false;
-	reflectivity = 0.0f;
-	tiling = Vector2(1.0f, 1.0f);
+	m_cullMode = CullBack;
+	m_opacity = 1.0f;
+	m_alphaBlending = false;
+	m_shadingMode = Physically_Based;
+	m_colorAlbedo = false;
+	m_roughnessMultiplier = false;
+	m_metallicMultiplier = false;
+	m_occlusionMultiplier = false;
+	m_normalMultiplier = 0.0f;
+	m_heightMultiplier = false;
+	m_reflectivity = 0.0f;
+	m_tiling = Vector2(1.0f, 1.0f);
 
 	AcquireShader();
 }
@@ -69,18 +69,18 @@ void Material::Serialize()
 	Serializer::SaveSTR(m_ID);
 	Serializer::SaveSTR(m_name);
 	Serializer::SaveSTR(m_modelID);
-	Serializer::SaveInt(cullMode);
-	Serializer::SaveFloat(opacity);
-	Serializer::SaveBool(alphaBlending);
-	Serializer::SaveInt(shadingMode);
-	Serializer::SaveVector4(colorAlbedo);
-	Serializer::SaveFloat(roughness);
-	Serializer::SaveFloat(metallic);
-	Serializer::SaveFloat(occlusion);
-	Serializer::SaveFloat(normalStrength);
-	Serializer::SaveFloat(height);
-	Serializer::SaveFloat(reflectivity);
-	Serializer::SaveVector2(tiling);
+	Serializer::SaveInt(m_cullMode);
+	Serializer::SaveFloat(m_opacity);
+	Serializer::SaveBool(m_alphaBlending);
+	Serializer::SaveInt(m_shadingMode);
+	Serializer::SaveVector4(m_colorAlbedo);
+	Serializer::SaveFloat(m_roughnessMultiplier);
+	Serializer::SaveFloat(m_metallicMultiplier);
+	Serializer::SaveFloat(m_normalMultiplier);
+	Serializer::SaveFloat(m_heightMultiplier);
+	Serializer::SaveFloat(m_occlusionMultiplier);
+	Serializer::SaveFloat(m_reflectivity);
+	Serializer::SaveVector2(m_tiling);
 
 	Serializer::SaveInt(int(m_textures.size()));
 	for (auto i = 0; i < m_textures.size(); i++)
@@ -92,18 +92,18 @@ void Material::Deserialize()
 	m_ID = Serializer::LoadSTR();
 	m_name = Serializer::LoadSTR();
 	m_modelID = Serializer::LoadSTR();
-	cullMode = CullMode(Serializer::LoadInt());
-	opacity = Serializer::LoadFloat();
-	alphaBlending = Serializer::LoadBool();
-	shadingMode = ShadingMode(Serializer::LoadInt());
-	colorAlbedo = Serializer::LoadVector4();
-	roughness = Serializer::LoadFloat();
-	metallic = Serializer::LoadFloat();
-	occlusion = Serializer::LoadFloat();
-	normalStrength = Serializer::LoadFloat();
-	height = Serializer::LoadFloat();
-	reflectivity = Serializer::LoadFloat();
-	tiling = Serializer::LoadVector2();
+	m_cullMode = CullMode(Serializer::LoadInt());
+	m_opacity = Serializer::LoadFloat();
+	m_alphaBlending = Serializer::LoadBool();
+	m_shadingMode = ShadingMode(Serializer::LoadInt());
+	m_colorAlbedo = Serializer::LoadVector4();
+	m_roughnessMultiplier = Serializer::LoadFloat();
+	m_metallicMultiplier = Serializer::LoadFloat();
+	m_normalMultiplier = Serializer::LoadFloat();
+	m_heightMultiplier = Serializer::LoadFloat();
+	m_occlusionMultiplier = Serializer::LoadFloat();	
+	m_reflectivity = Serializer::LoadFloat();
+	m_tiling = Serializer::LoadVector2();
 
 	int textureCount = Serializer::LoadInt();
 	for (int i = 0; i < textureCount; i++)
@@ -139,26 +139,7 @@ void Material::SetTexture(string textureID)
 	else // Add
 		m_textures.push_back(texture);
 
-	AdjustTextureDependentProperties();
 	AcquireShader();
-}
-
-void Material::AdjustTextureDependentProperties()
-{
-	if (HasTextureOfType(Roughness))
-		roughness = 1.0f;
-
-	if (HasTextureOfType(Metallic))
-		metallic = 1.0f;
-
-	if (HasTextureOfType(Occlusion))
-		occlusion = 1.0f;
-
-	if (HasTextureOfType(Normal))
-		normalStrength = 1.0f;
-
-	if (HasTextureOfType(Height))
-		height = 1.0f;
 }
 
 Texture* Material::GetTextureByType(TextureType type)
@@ -286,117 +267,127 @@ string Material::GetModelID()
 
 void Material::SetFaceCullMode(CullMode cullMode)
 {
-	this->cullMode = cullMode;
+	this->m_cullMode = cullMode;
 }
 
 CullMode Material::GetFaceCullMode()
 {
-	return cullMode;
+	return m_cullMode;
 }
 
 void Material::SetOpacity(float opacity)
 {
-	this->opacity = opacity;
+	this->m_opacity = opacity;
 
 	if (opacity != 1.0f)
-		alphaBlending = true;
+		m_alphaBlending = true;
 	else
-		alphaBlending = false;
+		m_alphaBlending = false;
 }
 
 float Material::GetOpacity()
 {
-	return opacity;
+	return m_opacity;
 }
 
 void Material::SetAlphaBlending(bool alphaBlending)
 {
-	this->alphaBlending = alphaBlending;
+	this->m_alphaBlending = alphaBlending;
 }
 
 bool Material::GetAlphaBlending()
 {
-	return alphaBlending;
+	return m_alphaBlending;
 }
 
-void Material::SetRoughness(float roughness)
+void Material::SetRoughnessMultiplier(float roughness)
 {
-	this->roughness = roughness;
+	m_roughnessMultiplier = roughness;
 }
 
-float Material::GetRoughness()
+float Material::GetRoughnessMultiplier()
 {
-	return roughness;
+	return m_roughnessMultiplier;
+}
+
+void Material::SetMetallicMultiplier(float metallic)
+{
+	m_metallicMultiplier = metallic;
+}
+
+float Material::GetMetallicMultiplier()
+{
+	return m_metallicMultiplier;
+}
+
+void Material::SetOcclusionMultiplier(float occlusion)
+{
+	m_occlusionMultiplier = occlusion;
+}
+
+float Material::GetOcclusionMultiplier()
+{
+	return m_occlusionMultiplier;
+}
+
+void Material::SetNormalMultiplier(float intensity)
+{
+	m_normalMultiplier = intensity;
+}
+
+float Material::GetNormalMultiplier()
+{
+	return m_normalMultiplier;
+}
+
+void Material::SetHeightMultiplier(float height)
+{
+	m_heightMultiplier = height;
+}
+
+float Material::GetHeightMultiplier()
+{
+	return m_heightMultiplier;
 }
 
 void Material::SetReflectivity(float reflectivity)
 {
-	this->reflectivity = reflectivity;
+	m_reflectivity = reflectivity;
 }
 
 float Material::GetReflectivity()
 {
-	return reflectivity;
-}
-
-void Material::SetMetallic(float metallic)
-{
-	this->metallic = metallic;
-}
-
-float Material::GetMetallic()
-{
-	return metallic;
-}
-
-void Material::SetOcclusion(float occlusion)
-{
-	this->occlusion = occlusion;
-}
-
-float Material::GetOcclusion()
-{
-	return occlusion;
-}
-
-void Material::SetNormalStrength(float intensity)
-{
-	normalStrength = intensity;
-}
-
-float Material::GetNormalStrength()
-{
-	return normalStrength;
+	return m_reflectivity;
 }
 
 void Material::SetShadingMode(ShadingMode shadingMode)
 {
-	this->shadingMode = shadingMode;
+	this->m_shadingMode = shadingMode;
 }
 
 ShadingMode Material::GetShadingMode()
 {
-	return shadingMode;
+	return m_shadingMode;
 }
 
 void Material::SetColorAlbedo(Vector4 color)
 {
-	colorAlbedo = color;
+	m_colorAlbedo = color;
 }
 
 Vector4 Material::GetColorAlbedo()
 {
-	return colorAlbedo;
+	return m_colorAlbedo;
 }
 
 void Material::SetTiling(Vector2 tiling)
 {
-	this->tiling = tiling;
+	this->m_tiling = tiling;
 }
 
 Vector2 Material::GetTiling()
 {
-	return tiling;
+	return m_tiling;
 }
 
 /*------------------------------------------------------------------------------

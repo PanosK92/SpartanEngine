@@ -104,7 +104,9 @@ void DirectusTexture::dropEvent(QDropEvent* event)
     const QMimeData *mime = event->mimeData();
     std::string imagePath = mime->text().toStdString();
 
+    LoadImageAsync(imagePath);
+
     m_directusCore->GetEngineSocket()->SetMaterialTexture(gameObject, m_textureType, imagePath);
-    m_directusCore->Update();
+    m_directusCore->Update();     
 }
 //=========================================================================================
