@@ -1,5 +1,5 @@
 // = INCLUDES ========
-#include "Normal.hlsl"
+#include "Helper.hlsl"
 //====================
 
 //= TEXTURES ===============================
@@ -140,7 +140,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float shadingHigh 		= 0.75f;
 	float shadingUltra 		= 1.0f; // This has been implemented
 	float renderMode		= shadingUltra;
-#if CUBE_MAP == 1
+#if CUBE_MAP
 		renderMode			= textureMapping;
 #endif
 	//============================================================================================
