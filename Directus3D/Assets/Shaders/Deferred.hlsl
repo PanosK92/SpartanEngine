@@ -85,10 +85,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		
 	// Extract any values out of those samples
 	float3 normal				= normalize(UnpackNormal(normalSample.rgb));	
-	float depthLinear			= depthSample.g;
+	float depth					= depthSample.g;
 	float shadowing 			= depthSample.b;
-	shadowing 					= clamp(shadowing, ambientLightIntensity, 1.0f);
-	float3 worldPos				= ReconstructPosition(depthLinear, input.uv, mViewProjectionInverse);
+	float3 worldPos				= ReconstructPosition(depth, input.uv, mViewProjectionInverse);
 	float roughness				= materialSample.r;
 	float metallic				= materialSample.g;
 	float reflectivity			= materialSample.b;	

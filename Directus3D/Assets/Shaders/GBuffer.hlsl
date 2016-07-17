@@ -14,9 +14,10 @@ Texture2D texMask 			: register (t6);
 Texture2D lightDepth 		: register (t7);
 //==========================================
 
-//= SAMPLERS =================================
-SamplerState samplerAnisoWrap : register (s0);
-//============================================
+//= SAMPLERS ===========================================
+SamplerState samplerAniso 				: register (s0);
+SamplerComparisonState samplerShadow	: register (s1);
+//======================================================
 
 //= BUFFERS ==================================
 cbuffer DefaultBuffer : register(b0)
@@ -86,8 +87,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	PixelOutputType output;
 
 	float2 texel			= float2(1.0f / viewport.x, 1.0f / viewport.y);
-	float depth 			= input.positionCS.z /  input.positionCS.w; // default depth
-	float depthLinear		= input.positionCS.z /  input.positionVS.w; // linear depth	
+	float depth 			= input.positionCS.z /  input.positionCS.w;
 	float2 texCoord 		= float2(input.uv.x * materialTiling.x, input.uv.y * materialTiling.y);
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= materialRoughness;
@@ -102,7 +102,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	//= SAMPLING ================================================================================
 #if MASK_MAP
-		float3 maskSample = texMask.Sample(samplerAnisoWrap, texCoord).rgb;
+		float3 maskSample = texMask.Sample(samplerAniso, texCoord).rgb;
 		float threshold = 0.6f;
 		if (maskSample.r <= threshold && maskSample.g <= threshold && maskSample.b <= threshold)
 			discard;
@@ -110,27 +110,27 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	//= SAMPLING ================================================================================
 #if ALBEDO_MAP
-		albedo *= texAlbedo.Sample(samplerAnisoWrap, texCoord);
+		albedo *= texAlbedo.Sample(samplerAniso, texCoord);
 #endif
 	
 	//= SAMPLING ================================================================================
 #if ROUGHNESS_MAP
-		roughness *= texRoughness.Sample(samplerAnisoWrap, texCoord).r;
+		roughness *= texRoughness.Sample(samplerAniso, texCoord).r;
 #endif
 	
 	//= SAMPLING ================================================================================
 #if METALLIC_MAP
-		metallic *= texMetallic.Sample(samplerAnisoWrap, texCoord).r;
+		metallic *= texMetallic.Sample(samplerAniso, texCoord).r;
 #endif
 	
 	//= SAMPLING ================================================================================
 #if OCCLUSION_MAP
-		occlusion = clamp(texOcclusion.Sample(samplerAnisoWrap, texCoord).r * (1 / materialOcclusion), 0.0f, 1.0f);
+		occlusion = clamp(texOcclusion.Sample(samplerAniso, texCoord).r * (1 / materialOcclusion), 0.0f, 1.0f);
 #endif
 	
 	//= SAMPLING ================================================================================
 #if NORMAL_MAP
-		normal 	= texNormal.Sample(samplerAnisoWrap, texCoord); // sample
+		normal 	= texNormal.Sample(samplerAniso, texCoord); // sample
 		normal 	= float4(NormalSampleToWorldSpace(normal, input.normal, input.tangent, materialNormalStrength), 1.0f); // transform to world space
 		normal 	= float4(PackNormal(normal), 1.0f);
 #endif
@@ -149,15 +149,14 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	//============================================================================================
 	
 	// SHADOW MAPPING
-	float pcf = true;
 	float bias = padding.x;
 	float4 lightPos = mul(input.positionWS, mLightViewProjection);
-	float shadowing	= ShadowMapping(lightDepth, samplerAnisoWrap, lightPos, bias, pcf, texel);
+	float shadowing	= ShadowMappingPCF(lightDepth, samplerShadow, lightPos, bias, texel);
 	
 	// Write to G-Buffer
 	output.albedo 		= albedo;
 	output.normal 		= float4(normal.rgb, 1.0f);
-	output.depth 		= float4(depth, depthLinear, shadowing, 1.0f);
+	output.depth 		= float4(depth, 1.0f, shadowing, 1.0f);
 	output.material		= float4(roughness, metallic, reflectivity, renderMode);
 		
     return output;
