@@ -46,7 +46,7 @@ public:
     virtual void dropEvent(QDropEvent* event);
 
 private:
-    void Clear();
+    void Clear(bool clearEngine);
     void AddRoot(QTreeWidgetItem* item);
     void AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child);
     void AddGameObject(GameObject* gameobject, QTreeWidgetItem *parent);

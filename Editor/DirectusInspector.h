@@ -63,7 +63,8 @@ private:
 
     DirectusCore* m_directusCore;
     GameObject* m_inspectedGameObject;
+    bool m_initialized;
 
 public slots:
-    void inspect(GameObject* gameobject);
+    void Inspect(GameObject* gameobject);
 };

@@ -76,6 +76,8 @@ void DirectusInspector::Initialize()
     this->layout()->addWidget(m_light);
     this->layout()->addWidget(m_script);
     this->layout()->addWidget(m_meshCollider);
+
+    m_initialized = true;
 }
 
 GameObject*DirectusInspector::GetInspectedGameObject()
@@ -92,8 +94,11 @@ void DirectusInspector::paintEvent(QPaintEvent* evt)
     style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
-void DirectusInspector::inspect(GameObject* gameobject)
+void DirectusInspector::Inspect(GameObject* gameobject)
 {
+    if (!m_initialized)
+        return;
+
     m_inspectedGameObject = gameobject;
 
     if (gameobject)
