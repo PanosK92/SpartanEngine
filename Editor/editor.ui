@@ -1331,8 +1331,14 @@ border-bottom-right-radius: 5px;
                  </property>
                  <item>
                   <widget class="DirectusHierarchy" name="directusHierarchy">
+                   <property name="editTriggers">
+                    <set>QAbstractItemView::DoubleClicked</set>
+                   </property>
+                   <property name="dragEnabled">
+                    <bool>true</bool>
+                   </property>
                    <property name="dragDropMode">
-                    <enum>QAbstractItemView::DragDrop</enum>
+                    <enum>QAbstractItemView::InternalMove</enum>
                    </property>
                    <property name="uniformRowHeights">
                     <bool>true</bool>
