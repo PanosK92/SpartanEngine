@@ -110,7 +110,8 @@ void ShaderVariation::Load()
 	AddDefinesBasedOnMaterial();
 	m_D3D11Shader->Load("Assets/Shaders/GBuffer.hlsl");
 	m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
-	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS); // anisotropic
+	m_D3D11Shader->AddSampler(D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_MIRROR, D3D11_COMPARISON_LESS_EQUAL); // bilinear
 
 	// material buffer
 	m_befaultBuffer = new D3D11Buffer();
