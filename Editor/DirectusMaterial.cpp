@@ -43,7 +43,6 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
 
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
-    m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     //= TITLE =================================================
     m_title = new QLabel("Material");

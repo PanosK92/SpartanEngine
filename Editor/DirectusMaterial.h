@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QLineEdit>
 #include "Core/GameObject.h"
 #include "Core/Material.h"
-#include <QDoubleValidator>
 #include "DirectusComboSliderText.h"
 #include "DirectusComboLabelText.h"
 #include <QPushButton>
@@ -123,7 +122,6 @@ private:
 
     //= MISC ========================
     QGridLayout* m_gridLayout;
-    QValidator* m_validator;
     Material* m_inspectedMaterial;
     DirectusCore* m_directusCore;
     DirectusInspector* m_inspector;

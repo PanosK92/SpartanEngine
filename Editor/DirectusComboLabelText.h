@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QWidget>
 #include "DirectusAdjustLabel.h"
 #include <QLineEdit>
-#include <QValidator>
+#include <QDoubleValidator>
 //==============================
 
 class DirectusComboLabelText : public QWidget
@@ -35,7 +35,6 @@ public:
     explicit DirectusComboLabelText(QWidget *parent = 0);
 
     void Initialize(QString labelText);
-    void SetValidator(QValidator* validator);
 
     DirectusAdjustLabel* GetLabelWidget();
     QLineEdit* GetTextWidget();
@@ -46,6 +45,7 @@ public:
 private:
     DirectusAdjustLabel* m_label;
     QLineEdit* m_text;
+    QValidator* m_validator;
 
 signals:
     void ValueChanged();

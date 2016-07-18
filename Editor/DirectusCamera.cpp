@@ -34,7 +34,6 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
     m_directusCore = directusCore;
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
-    m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
     //= TITLE =================================================
     m_title = new QLabel("Camera");
@@ -69,11 +68,9 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
 
     m_nearPlane = new DirectusComboLabelText();
     m_nearPlane->Initialize("Near");
-    m_nearPlane->SetValidator(m_validator);
 
     m_farPlane = new DirectusComboLabelText();
     m_farPlane->Initialize("Far");
-    m_farPlane->SetValidator(m_validator);
     //=============================================================================
 
     //= LINE ======================================
@@ -171,14 +168,6 @@ void DirectusCamera::SetFarPlane(float farPlane)
 void DirectusCamera::SetFOV(float fov)
 {
     m_fov->SetValue(fov);
-}
-
-QLineEdit* DirectusCamera::CreateQLineEdit()
-{
-    QLineEdit* lineEdit = new QLineEdit();
-    lineEdit->setValidator(m_validator);
-
-    return lineEdit;
 }
 
 void DirectusCamera::MapProjection()

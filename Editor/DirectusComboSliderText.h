@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//===================
+//=========================
 #include <QSlider>
 #include <QLineEdit>
-#include <QValidator>
-//===================
+#include <QDoubleValidator>
+//=========================
 
 class DirectusComboSliderText : public QWidget
 {

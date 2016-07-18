@@ -69,15 +69,12 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
 
     m_posX = new DirectusComboLabelText();
     m_posX->Initialize("X");
-    m_posX->SetValidator(m_validator);
 
     m_posY = new DirectusComboLabelText();
     m_posY->Initialize("Y");
-    m_posY->SetValidator(m_validator);
 
     m_posZ = new DirectusComboLabelText();
     m_posZ->Initialize("Z");
-    m_posZ->SetValidator(m_validator);
     //=============================================
 
     //= ROTATION ==================================
@@ -85,15 +82,12 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
 
     m_rotX = new DirectusComboLabelText();
     m_rotX->Initialize("X");
-    m_rotX->SetValidator(m_validator);
 
     m_rotY = new DirectusComboLabelText();
     m_rotY->Initialize("Y");
-    m_rotY->SetValidator(m_validator);
 
     m_rotZ = new DirectusComboLabelText();
     m_rotZ->Initialize("Z");
-    m_rotZ->SetValidator(m_validator);
     //=============================================
 
     //= SCALE =====================================
@@ -101,15 +95,12 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
 
     m_scaX = new DirectusComboLabelText();
     m_scaX->Initialize("X");
-    m_scaX->SetValidator(m_validator);
 
     m_scaY = new DirectusComboLabelText();
     m_scaY->Initialize("Y");
-    m_scaY->SetValidator(m_validator);
 
     m_scaZ = new DirectusComboLabelText();
     m_scaZ->Initialize("Z");
-    m_scaZ->SetValidator(m_validator);
     //=============================================
 
     //= LINE ======================================

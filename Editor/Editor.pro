@@ -70,8 +70,8 @@ FORMS    += editor.ui \
     AboutDialog.ui \
     AssetLoadingDialog.ui
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../Binaries/ -ldirectusRuntime
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Binaries/ -ldirectusRuntime
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirectus3DRuntime
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirectus3DRuntime
 
 INCLUDEPATH += $$PWD/../Directus3D
 DEPENDPATH += $$PWD/../Directus3D
