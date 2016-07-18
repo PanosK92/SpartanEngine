@@ -149,9 +149,11 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	//============================================================================================
 	
 	// SHADOW MAPPING
+	float ambientLightIntensity = 0.0f;
 	float bias = padding.x;
 	float4 lightPos = mul(input.positionWS, mLightViewProjection);
-	float shadowing	= ShadowMappingPCF(lightDepth, samplerShadow, lightPos, bias, texel);
+	float shadowing	= ShadowMappingPCF(lightDepth, samplerShadow, lightPos, bias);
+	shadowing 		= clamp(shadowing, ambientLightIntensity, 1.0f);
 	
 	// Write to G-Buffer
 	output.albedo 		= albedo;

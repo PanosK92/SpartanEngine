@@ -280,6 +280,11 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 	for (auto i = 0; i < renderableGameObjects.size(); i++)
 	{
 		GameObject* gameObject = renderableGameObjects[i];
+
+		// Don't shadow the skyboxe...
+		if (gameObject->GetComponent<Skybox>())
+			continue;
+
 		Mesh* mesh = gameObject->GetComponent<Mesh>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
 
