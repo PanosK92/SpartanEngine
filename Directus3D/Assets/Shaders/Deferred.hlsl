@@ -90,7 +90,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float3 worldPos				= ReconstructPosition(depth, input.uv, mViewProjectionInverse);
 	float roughness				= materialSample.r;
 	float metallic				= materialSample.g;
-	float reflectivity			= materialSample.b;	
+	float specular				= materialSample.b;	
 	float renderMode			= materialSample.a;
 	
 	// Calculate view direction and the reflection vector
@@ -121,7 +121,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float3 lightDir 		= normalize(-dirLightDirection[i]);
 		float lightAttunation	= 0.99f;
 			
-		finalColor += BRDF(albedo, roughness, metallic, reflectivity, normal, viewDir, lightDir, lightColor, lightAttunation, lightIntensity, ambientLightIntensity, envColor, irradiance);	
+		finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightAttunation, lightIntensity, ambientLightIntensity, envColor, irradiance);	
 	}
 		
 	// point lights
@@ -140,7 +140,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		
 		 // Do expensive lighting
 		if (dx < radius)
-			finalColor += BRDF(albedo, roughness, metallic, reflectivity, normal, viewDir, lightDir, lightColor, attunation, lightIntensity, ambientLightIntensity, envColor, irradiance);				
+			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, attunation, lightIntensity, ambientLightIntensity, envColor, irradiance);				
 	}
 	
 	finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)

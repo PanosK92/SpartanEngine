@@ -85,7 +85,7 @@ float3 BRDF
 float3 albedo, 
 float roughness, 
 float metallic, 
-float reflectivity, 
+float specular, 
 float3 normal, 
 float3 viewDir, 
 float3 lightDir, 
@@ -103,7 +103,7 @@ float3 irradianceColor)
 	float3 envFresnel 	= Specular_F_Roughness(specularColor, roughness * roughness, normal, viewDir);
 	
 	float3 finalLight		= light * lightAttunation * lightIntensity;
-	float3 finalReflection 	= envFresnel * environmentColor * reflectivity;
+	float3 finalReflection 	= envFresnel * environmentColor * specular;
 	float3 finalAlbedo		= albedoColor * irradianceColor * ambientLightIntensity;
 
 	return finalLight + finalReflection + finalAlbedo;

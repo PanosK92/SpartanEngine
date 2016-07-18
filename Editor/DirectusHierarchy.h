@@ -46,7 +46,7 @@ public:
     virtual void dropEvent(QDropEvent* event);
 
 private:
-    void Clear(bool clearEngine);
+
     void AddRoot(QTreeWidgetItem* item);
     void AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child);
     void AddGameObject(GameObject* gameobject, QTreeWidgetItem *parent);
@@ -66,6 +66,7 @@ private:
     QPoint m_dragStartPosition;
 
 public slots:
+    void Clear();
     void Populate();
     void CreateEmptyGameObject();
     void NewScene();
@@ -73,4 +74,8 @@ public slots:
     void SaveScene();
     void SaveSceneAs();
     void LoadModel();
+
+signals:
+    void SceneLoadingStarted();
+    void ModelLoadingStarted();
 };

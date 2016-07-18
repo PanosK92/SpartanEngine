@@ -61,6 +61,8 @@ void Editor::InitializeEngine()
     ui->directusInspector->Initialize();
     ui->directusHierarchy->Initialize(ui->directusInspector, this);
     ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);
+
+    connect(ui->directusHierarchy, SIGNAL(SceneLoadingStarted()), ui->directusPlayButton, SLOT(Stop()));
 }
 
 void Editor::on_actionAbout_Directus3D_triggered()

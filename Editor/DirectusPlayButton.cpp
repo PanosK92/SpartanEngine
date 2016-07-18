@@ -28,7 +28,8 @@ DirectusPlayButton::DirectusPlayButton(QWidget *parent) : QPushButton(parent)
 {
     m_directusCore = nullptr;
 
-    connect(this, SIGNAL(toggled(bool)), this, SLOT(AdjustEngine(bool)));
+    // An a signal tha will fire each time the button is toggled
+    connect(this, SIGNAL(toggled(bool)), this, SLOT(SetPressed(bool)));
 }
 
 void DirectusPlayButton::SetDirectusCore(DirectusCore* directusCore)
@@ -36,12 +37,20 @@ void DirectusPlayButton::SetDirectusCore(DirectusCore* directusCore)
     m_directusCore = directusCore;
 }
 
+// NOTE: toggled(bool) sets the checked state of the button automatically,
+// however in a few functions we also do it manually. This is important as
+// sometimes a state change can be invoked directly from other widgets and
+// not necessarily from toggled(bool).
+
 void DirectusPlayButton::Play()
 {
     if (!m_directusCore)
         return;
 
     m_directusCore->Play();
+
+    if (!this->isChecked())
+       this->setChecked(true);
 }
 
 void DirectusPlayButton::Stop()
@@ -50,4 +59,15 @@ void DirectusPlayButton::Stop()
         return;
 
     m_directusCore->Stop();
+
+    if (this->isChecked())
+       this->setChecked(false);
+}
+
+void DirectusPlayButton::SetPressed(bool pressed)
+{
+    if (pressed)
+        Play();
+    else
+        Stop();
 }

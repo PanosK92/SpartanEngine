@@ -31,7 +31,7 @@ cbuffer DefaultBuffer : register(b0)
     float materialMetallic;
     float materialOcclusion;
     float materialNormalStrength;
-    float materialReflectivity;
+    float materialSpecular;
     float materialShadingMode;
     float2 materialTiling;
 	float2 viewport;
@@ -92,7 +92,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= materialRoughness;
 	float metallic 			= materialMetallic;
-	float reflectivity 		= clamp(materialReflectivity, 0.03f, 1.0f);
+	float specular 			= clamp(materialSpecular, 0.03f, 1.0f);
 	float occlusion			= 1.0f - materialOcclusion;
 	float4 normal			= float4(PackNormal(input.normal.xyz), occlusion);
 
@@ -159,7 +159,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	output.albedo 		= albedo;
 	output.normal 		= float4(normal.rgb, 1.0f);
 	output.depth 		= float4(depth, 1.0f, shadowing, 1.0f);
-	output.material		= float4(roughness, metallic, reflectivity, renderMode);
+	output.material		= float4(roughness, metallic, specular, renderMode);
 		
     return output;
 }
