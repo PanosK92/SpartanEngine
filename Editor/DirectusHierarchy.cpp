@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusAssetLoader.h"
 #include <QApplication>
 #include <QDrag>
+#include <QMenu>
 //=================================
 
 //= NAMESPACES =====
@@ -41,7 +42,13 @@ DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
 {
     m_socket= nullptr;
     m_sceneFileName = NO_PATH;
-    setAcceptDrops(true);
+
+    // QTreeWidget properties
+    this->setAcceptDrops(true);
+    this->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // Connect context menu signal with the construction of a custom one
+    connect(this, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(ShowContextMenu(const QPoint&)));
 }
 
 void DirectusHierarchy::SetDirectusCore(DirectusCore* directusCore)
@@ -461,3 +468,64 @@ void DirectusHierarchy::LoadModel()
     thread->start(QThread::HighestPriority);
 }
 //========================================================
+
+void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
+{
+    QMenu contextMenu(tr("Context menu"), this);
+
+    //= ACTIONS ======================================
+    QAction actionCopy          ("Copy", this);
+    actionCopy.setEnabled(false);
+
+    QAction actionPaste         ("Paste", this);
+    actionPaste.setEnabled(false);
+
+    QAction actionRename        ("Rename", this);
+
+    QAction actionDuplicate     ("Duplicate", this);
+    actionDuplicate.setEnabled(false);
+
+    QAction actionDelete        ("Delete", this);
+
+    QAction actionCreateEmpty   ("Create Empty", this);
+
+    QAction action3DObject      ("3D Object", this);
+    action3DObject.setEnabled(false);
+
+    QAction actionLight         ("Light", this);
+    actionLight.setEnabled(false);
+
+    QAction actionCamera        ("Camera", this);
+    actionCamera.setEnabled(false);
+    //=================================================
+
+    //= SEPERATORS ===============
+    QAction seperatorA(this);
+    seperatorA.setSeparator(true);
+
+    QAction seperatorB(this);
+    seperatorB.setSeparator(true);
+
+    QAction seperatorC(this);
+    seperatorC.setSeparator(true);
+    //============================
+
+    //= SIGNAL - SLOT connections ===========================================
+    connect(&actionCopy, SIGNAL(triggered()), this, SLOT(removeDataPoint()));
+    //=======================================================================
+
+    contextMenu.addAction(&actionCopy);
+    contextMenu.addAction(&actionPaste);
+    contextMenu.addAction(&seperatorA);
+    contextMenu.addAction(&actionRename);
+    contextMenu.addAction(&actionDuplicate);
+    contextMenu.addAction(&actionDelete);
+    contextMenu.addAction(&seperatorB);
+    contextMenu.addAction(&actionCreateEmpty);
+    contextMenu.addAction(&seperatorC);
+    contextMenu.addAction(&action3DObject);
+    contextMenu.addAction(&actionLight);
+    contextMenu.addAction(&actionCamera);
+
+    contextMenu.exec(mapToGlobal(pos));
+}
