@@ -72,11 +72,13 @@
     <IncludePath>D:\Projects\Directus3D\ThirdParty\Source\FreeImage 3.17.0\Wrapper\FreeImagePlus;D:\Projects\Directus3D\ThirdParty\Source\FreeImage 3.17.0\Source;D:\Projects\Directus3D\ThirdParty\Source\AngelScript 2.31.1\angelscript\include;D:\Projects\Directus3D\ThirdParty\Source\AngelScript 2.31.1\add_on;D:\Projects\Directus3D\ThirdParty\Source\Assimp 3.3\include;D:\Projects\Directus3D\ThirdParty\Source\Bullet 2.83.7\src;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
     <LibraryPath>D:\Projects\Directus3D\ThirdParty\Source\AngelScript 2.31.1\angelscript\lib;D:\Projects\Directus3D\ThirdParty\Source\FreeImage 3.17.0\Source\FreeImageLib\x64\Debug;D:\Projects\Directus3D\ThirdParty\Build\Assimp\code\Debug;D:\Projects\Directus3D\ThirdParty\Build\Bullet\lib\Debug;$(LibraryPath)</LibraryPath>
+    <TargetName>directusRuntime</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>D:\Projects\Directus3D\ThirdParty\Source\FreeImage 3.17.0\Wrapper\FreeImagePlus;D:\Projects\Directus3D\ThirdParty\Source\FreeImage 3.17.0\Source;D:\Projects\Directus3D\ThirdParty\Source\AngelScript 2.31.1\angelscript\include;D:\Projects\Directus3D\ThirdParty\Source\AngelScript 2.31.1\add_on;D:\Projects\Directus3D\ThirdParty\Source\Assimp 3.3\include;D:\Projects\Directus3D\ThirdParty\Source\Bullet 2.83.7\src;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
     <LibraryPath>D:\Projects\Directus3D\ThirdParty\Source\AngelScript 2.31.1\angelscript\lib;D:\Projects\Directus3D\ThirdParty\Source\FreeImage 3.17.0\Source\FreeImageLib\x64\Release;D:\Projects\Directus3D\ThirdParty\Build\Assimp\code\Release;D:\Projects\Directus3D\ThirdParty\Build\Bullet\lib\Release;$(LibraryPath)</LibraryPath>
+    <TargetName>directusRuntime</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

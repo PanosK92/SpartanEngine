@@ -14,5 +14,6 @@
         <file>light.png</file>
         <file>arrow.png</file>
         <file>script.png</file>
+        <file>icon.ico</file>
     </qresource>
 </RCC>
