@@ -175,21 +175,18 @@ void Renderer::Render()
 	m_graphicsDevice->EnableZBuffer(true);
 
 	// Render light depth
-	Light* dirLight = nullptr;
-	if (m_lightsDirectional.size() != 0)
-		dirLight = m_lightsDirectional[0]->GetComponent<Light>();
-	if (dirLight)
+	if (m_directionalLight)
 	{
 		m_graphicsDevice->SetCullMode(CullFront);
-		dirLight->SetDepthMapAsRenderTarget();
-		DirectionalLightDepthPass(m_renderables, dirLight->GetProjectionSize(), dirLight);
+		m_directionalLight->SetDepthMapAsRenderTarget();
+		DirectionalLightDepthPass(m_renderables, m_directionalLight->GetProjectionSize(), m_directionalLight);
 		m_graphicsDevice->SetCullMode(CullBack);
 	}
 
 	// G-Buffer Construction
 	m_GBuffer->SetRenderTargets();
 	m_GBuffer->ClearRenderTargets(0.0f, 0.0f, 0.0f, 1.0f);
-	GBufferPass(m_renderables, dirLight);
+	GBufferPass(m_renderables, m_directionalLight);
 
 	// DISABLE Z BUFFER - SET FULLSCREEN QUAD
 	m_graphicsDevice->EnableZBuffer(false);
@@ -262,6 +259,11 @@ void Renderer::AcquirePrerequisites()
 		m_camera = camera->GetComponent<Camera>();
 		m_skybox = camera->GetComponent<Skybox>();
 
+		if (m_lightsDirectional.size() != 0)
+			m_directionalLight = m_lightsDirectional[0]->GetComponent<Light>();
+		else
+			m_directionalLight = nullptr;
+
 		mProjection = m_camera->GetProjectionMatrix();
 		mOrthographicProjection = m_camera->GetOrthographicProjectionMatrix();
 		mView = m_camera->GetViewMatrix();
@@ -280,13 +282,12 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 	for (auto i = 0; i < renderableGameObjects.size(); i++)
 	{
 		GameObject* gameObject = renderableGameObjects[i];
-
-		// Don't shadow the skyboxe...
-		if (gameObject->GetComponent<Skybox>())
-			continue;
-
 		Mesh* mesh = gameObject->GetComponent<Mesh>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
+
+		// Prevent the skybox from casting a shadow
+		if (gameObject->GetComponent<Skybox>())
+			continue;
 
 		// if the gameObject can't cast shadows, don't bother
 		if (!meshRenderer->GetCastShadows())

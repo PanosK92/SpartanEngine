@@ -102,7 +102,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float mipIndex				= roughness * 8.0f;
     float3 envColor             = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, mipIndex));
     float3 irradiance           = ToLinear(irradianceTex.Sample(samplerAniso, reflectionVector));
-
+	
 	if (renderMode == 0.0f) // Texture mapping
 	{
         finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir));

@@ -110,6 +110,7 @@ private:
 	//= PREREQUISITES =============================
 	Camera* m_camera;
 	Skybox* m_skybox;
+	Light* m_directionalLight;
 	Directus::Math::Matrix mProjection;
 	Directus::Math::Matrix mOrthographicProjection;
 	Directus::Math::Matrix mView;

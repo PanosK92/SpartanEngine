@@ -39,6 +39,25 @@ void DirectusTexture::Initialize(DirectusCore* directusCore, DirectusInspector* 
     m_directusCore = directusCore;
     m_inspector = inspector;
     m_textureType = textureType;
+
+    /*
+    widget background dark:         292929
+    widget background light:		383838
+    widget background highlighted: 	484848
+    text color:                     909090
+    text highlighted:               EDEDED
+    border:                         212121
+    border highlighted:             464646
+    text edit background:           414141
+    */
+
+    this->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    this->setMinimumSize(20,20);
+    this->setStyleSheet(
+                "background-color: #484848;"
+                "border-color: #212121;"
+                "border-style: inset;"
+                );
 }
 
 void DirectusTexture::LoadImageAsync(std::string filePath)

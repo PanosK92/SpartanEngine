@@ -61,9 +61,7 @@ Material::~Material()
 {
 }
 
-/*------------------------------------------------------------------------------
-[I/O]
-------------------------------------------------------------------------------*/
+//= I/O ========================================================================
 void Material::Serialize()
 {
 	Serializer::SaveSTR(m_ID);
@@ -117,10 +115,9 @@ void Material::Deserialize()
 
 	AcquireShader();
 }
+//==============================================================================
 
-/*------------------------------------------------------------------------------
-[TEXTURES]
-------------------------------------------------------------------------------*/
+//= TEXTURES ===================================================================
 void Material::SetTexture(string textureID)
 {
 	// Get the texture from the pool
@@ -139,6 +136,7 @@ void Material::SetTexture(string textureID)
 	else // Add
 		m_textures.push_back(texture);
 
+	TextureBasedMultiplierAdjustment();
 	AcquireShader();
 }
 
@@ -188,10 +186,9 @@ vector<string> Material::GetTexturePaths()
 
 	return paths;
 }
+//==============================================================================
 
-/*------------------------------------------------------------------------------
-[SHADER]
-------------------------------------------------------------------------------*/
+//= SHADER =====================================================================
 void Material::AcquireShader()
 {
 	// Add a shader to the pool based on this material, if a 
@@ -231,10 +228,9 @@ ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureTy
 
 	return nullptr;
 }
+//==============================================================================
 
-/*------------------------------------------------------------------------------
-[PROPERTIES]
-------------------------------------------------------------------------------*/
+//= PROPERTIES =================================================================
 void Material::SetID(string id)
 {
 	m_ID = id;
@@ -389,10 +385,9 @@ Vector2 Material::GetTiling()
 {
 	return m_tiling;
 }
+//==============================================================================
 
-/*------------------------------------------------------------------------------
-[HELPER FUNCTIONS]
-------------------------------------------------------------------------------*/
+//= HELPER FUNCTIONS ===========================================================
 int Material::GetTextureIndexByType(TextureType type)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
@@ -401,3 +396,19 @@ int Material::GetTextureIndexByType(TextureType type)
 
 	return -1;
 }
+
+void Material::TextureBasedMultiplierAdjustment()
+{
+	if (HasTextureOfType(Roughness))
+		SetRoughnessMultiplier(1.0f);
+
+	if (HasTextureOfType(Metallic))
+		SetMetallicMultiplier(1.0f);
+
+	if (HasTextureOfType(Normal))
+		SetNormalMultiplier(1.0f);
+
+	if (HasTextureOfType(Height))
+		SetHeightMultiplier(1.0f);
+}
+//==============================================================================
