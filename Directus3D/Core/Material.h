@@ -46,33 +46,28 @@ public:
 	Material(TexturePool* texturePool, ShaderPool* shaderPool);
 	~Material();
 
-	/*------------------------------------------------------------------------------
-	[I/O]
-	------------------------------------------------------------------------------*/
+	//= I/O =======================================================================
 	void Serialize();
 	void Deserialize();
-	
-	/*------------------------------------------------------------------------------
-	[TEXTURES]
-	------------------------------------------------------------------------------*/
+	//=============================================================================
+
+	//= TEXTURES ==================================================================
 	void SetTexture(std::string textureID);
 	Texture* GetTextureByType(TextureType type);
 	bool HasTextureOfType(TextureType type);
 	bool HasTexture(std::string path);
 	std::string GetTexturePathByType(TextureType type);
 	std::vector<std::string> GetTexturePaths();
+	//=============================================================================
 
-	/*------------------------------------------------------------------------------
-	[SHADER]
-	------------------------------------------------------------------------------*/
+	//= SHADER ====================================================================
 	void AcquireShader();
 	ShaderVariation* GetShader();
 	bool HasShader();
 	ID3D11ShaderResourceView* GetShaderResourceViewByTextureType(TextureType type);
+	//=============================================================================
 
-	/*------------------------------------------------------------------------------
-	[PROPERTIES]
-	------------------------------------------------------------------------------*/
+	//= PROPERTIES ================================================================
 	void SetID(std::string id);
 	std::string GetID();
 
@@ -117,8 +112,14 @@ public:
 
 	void SetTiling(Directus::Math::Vector2 tiling);
 	Directus::Math::Vector2 GetTiling();
+	//=============================================================================
 
 private:
+	//= HELPER FUNCTIONS =======================
+	int GetTextureIndexByType(TextureType type);
+	void TextureBasedMultiplierAdjustment();
+	//==========================================
+
 	std::vector<Texture*> m_textures;
 	std::string m_ID;
 	std::string m_name;
@@ -137,11 +138,8 @@ private:
 	ShadingMode m_shadingMode;
 	ShaderVariation* m_shader;
 
+	//= DEPENDENCIES ==========
 	TexturePool* m_texturePool;
 	ShaderPool* m_shaderPool;
-
-	/*------------------------------------------------------------------------------
-	[HELPER FUNCTIONS]
-	------------------------------------------------------------------------------*/
-	int GetTextureIndexByType(TextureType type);
+	//=========================
 };
