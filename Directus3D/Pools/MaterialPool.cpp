@@ -168,7 +168,7 @@ void MaterialPool::AddStandardMaterials()
 	unique_ptr<Material> skyboxMaterial(new Material(m_texturePool, m_shaderPool));
 	skyboxMaterial->SetName("Standard_Skybox");
 	skyboxMaterial->SetID("Standard_Material_1");
-	skyboxMaterial->SetFaceCullMode(CullNone);
+	skyboxMaterial->SetFaceCullMode(CullFront);
 	skyboxMaterial->SetColorAlbedo(Vector4(1, 1, 1, 1));
 	m_materials.push_back(move(skyboxMaterial));
 }

@@ -1,41 +1,32 @@
-float ShadowMappingPCF(Texture2D shadowMap, SamplerComparisonState samplerState, float4 pos, float bias, float2 texel)
+float ShadowMappingPCF(Texture2D shadowMap, SamplerComparisonState samplerState, float4 pos, float bias)
 {
-	float ambient = 0.2f;
-	
-	//re-homogenize position after interpolation
+	// Re-homogenize position after interpolation
     pos.xyz /= pos.w;
 	
-	//if position is not visible to the light - dont illuminate it
-    //results in hard light frustum
+	// If position is not visible to the light - dont illuminate it
+    // results in hard light frustum
     if( pos.x < -1.0f || pos.x > 1.0f ||
         pos.y < -1.0f || pos.y > 1.0f ||
-        pos.z < 0.0f  || pos.z > 1.0f ) return ambient;
+        pos.z < 0.0f  || pos.z > 1.0f ) return 1.0f; // (1.0f - 0.0f = 1.0f)
 
-	//transform clip space coords to texture space coords (-1:1 to 0:1)
+	// Transform clip space coords to texture space coords (-1:1 to 0:1)
 	pos.x = pos.x / 2.0f + 0.5f;
 	pos.y = pos.y / -2.0f + 0.5f;
 
-	//apply shadow map bias
+	// Apply shadow map bias
     pos.z -= bias;
 
-	float2 xy = float2(pos.x, pos.y);
-	float2 z = pos.z;
-	
-	 //PCF sampling for shadow map
-    float sum = 0;
-    float x, y;
-
-    //perform PCF filtering on a 4 x 4 texel neighborhood
-    for (y = -1.5f; y <= 1.5f; y += 1.0f)
-    {
-        for (x = -1.5; x <= 1.5f; x += 1.0f)
+    // Perform PCF filtering on a 4 x 4 texel neighborhood
+	float shadowAmount = 0;
+	float texel = 1.0f / 2048.0f;
+		for (float y = -1.5f; y <= 1.5f; y += 1.0f)
+        for (float x = -1.5f; x <= 1.5f; x += 1.0f)
         {
-            sum += shadowMap.SampleCmpLevelZero(samplerState, xy, z);
+            shadowAmount += shadowMap.SampleCmpLevelZero(samplerState, pos.xy + float2(x,y) * texel, pos.z);
         }
-    }
-	float shadowAmount = sum / 16.0f;
+	shadowAmount /= 16.0f;
 	
-	return shadowAmount;
+	return 1.0f - shadowAmount;
 }
 
 float random(float4 seed4) 
@@ -44,24 +35,22 @@ float random(float4 seed4)
     return frac(sin(dot_product) * 43758.5453);
 }
 
-float ShadowMappingPoisson(Texture2D shadowMap, SamplerComparisonState samplerState, float4 pos, float bias, float2 texel)
+float ShadowMappingPoisson(Texture2D shadowMap, SamplerComparisonState samplerState, float4 pos, float bias)
 {
-	float ambient = 0.2f;
-	
-	//re-homogenize position after interpolation
+	// Re-homogenize position after interpolation
     pos.xyz /= pos.w;
 	
-	//if position is not visible to the light - dont illuminate it
-    //results in hard light frustum
+	// If position is not visible to the light - dont illuminate it
+    // results in hard light frustum
     if( pos.x < -1.0f || pos.x > 1.0f ||
         pos.y < -1.0f || pos.y > 1.0f ||
-        pos.z < 0.0f  || pos.z > 1.0f ) return ambient;
+        pos.z < 0.0f  || pos.z > 1.0f ) return 0.0f;
 
-	//transform clip space coords to texture space coords (-1:1 to 0:1)
+	// Transform clip space coords to texture space coords (-1:1 to 0:1)
 	pos.x = pos.x / 2.0f + 0.5f;
 	pos.y = pos.y / -2.0f + 0.5f;
 
-	//apply shadow map bias
+	// Apply shadow map bias
     pos.z -= bias;
 
 	 //Poisson sampling for shadow map
