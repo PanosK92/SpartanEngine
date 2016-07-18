@@ -4,15 +4,17 @@
 AssetLoadingDialog::AssetLoadingDialog(QWidget *parent) : QDialog(parent), ui(new Ui::AssetLoadingDialog)
 {
     ui->setupUi(this);
+    m_mainWindow = nullptr;
 
+    // WINDOW FLAGS - How the window appears
     Qt::WindowFlags flags = windowFlags() | Qt::MSWindowsFixedSizeDialogHint;
     Qt::WindowFlags helpFlag = Qt::WindowContextHelpButtonHint | Qt::WindowCloseButtonHint;
     flags = flags & (~helpFlag);
        setWindowFlags(flags);
 
-    m_mainWindow = nullptr;
+    // How fast the progress bar... progresses
     m_timer = new QTimer(this);
-    m_timer->start(40);
+    m_timer->start(20);
 
     connect(m_timer, SIGNAL(timeout()), this, SLOT(UpdateProgressBar()));
 }

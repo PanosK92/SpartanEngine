@@ -213,7 +213,8 @@
    <string>Directus3D</string>
   </property>
   <property name="windowIcon">
-   <iconset theme=":/Images/icon.ico"/>
+   <iconset theme=":/Images/icon.ico">
+    <normaloff>.</normaloff>.</iconset>
   </property>
   <property name="autoFillBackground">
    <bool>false</bool>
@@ -223,7 +224,8 @@
 widget background dark: 			292929
 widget background light:				383838
 widget background highlighted: 	484848
-text color: 									909090
+text disabled:								585858
+text : 											909090
 text highlighted:							 EDEDED
 border: 										212121
 border highlighted:						464646
@@ -302,7 +304,13 @@ QMenu::item
 	background-color: #383838;
 }
 
-QMenu::item:selected
+QMenu::item:!enabled
+{
+	color: #585858;
+	background-color: #383838;
+}
+
+QMenu::item:selected:enabled
 {
 	color:  #EDEDED;
 	background-color:#484848;

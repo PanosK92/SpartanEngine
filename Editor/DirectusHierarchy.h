@@ -74,6 +74,7 @@ public slots:
     void SaveScene();
     void SaveSceneAs();
     void LoadModel();
+    void ShowContextMenu(const QPoint& pos);
 
 signals:
     void SceneLoadingStarted();
