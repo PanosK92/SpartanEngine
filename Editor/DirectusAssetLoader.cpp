@@ -24,11 +24,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Loading/ImageLoader.h"
 #include "IO/FileHelper.h"
 #include <QMutex>
+#include "AssetLoadingDialog.h"
 //==============================
 
 DirectusAssetLoader::DirectusAssetLoader(QObject* parent) : QObject(parent)
 {
 
+}
+
+void DirectusAssetLoader::EnableProgressBar(QWidget* mainWindow)
+{
+    AssetLoadingDialog* loadingDialog = new AssetLoadingDialog(mainWindow);
+    loadingDialog->SetMainWindow(mainWindow);
+
+    // When the loading dialog should show up
+    connect(this, SIGNAL(Started()), loadingDialog, SLOT(Show()));
+    connect(this, SIGNAL(Finished()), loadingDialog, SLOT(Kill()));
 }
 
 void DirectusAssetLoader::PrepareForScene(std::string filePath, Socket* socket)
@@ -52,21 +63,29 @@ void DirectusAssetLoader::PrepareForTexture(std::string filePath, int width, int
 
 void DirectusAssetLoader::LoadSceneFromFile()
 {
-    m_socket->LoadSceneFromFile(m_filePath);
+    emit Started();
+    m_socket->LoadSceneFromFile(m_filePath);  
+    emit Finished();
 }
 
 void DirectusAssetLoader::SaveSceneToFile()
 {
+    emit Started();
     m_socket->SaveSceneToFile(m_filePath);
+    emit Finished();
 }
 
 void DirectusAssetLoader::LoadModelFromFile()
 {
-    m_socket->LoadModel(m_filePath);
+    emit Started();
+    m_socket->LoadModel(m_filePath);  
+    emit Finished();
 }
 
 QPixmap DirectusAssetLoader::LoadTextureFromFile()
 {
+    emit Started();
+
     ImageLoader* engineImageLoader = new ImageLoader();
     QPixmap pixmap;
     if (FileHelper::FileExists(m_filePath))
@@ -86,6 +105,8 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
         delete engineImageLoader;
     }
 
+    emit Finished();
+
     return pixmap;
 }
 
@@ -96,8 +117,6 @@ void DirectusAssetLoader::LoadScene()
     mutex.lock();
     LoadSceneFromFile();
     mutex.unlock();
-
-    emit Finished();
 }
 
 void DirectusAssetLoader::SaveScene()
@@ -132,9 +151,4 @@ void DirectusAssetLoader::LoadTexture()
 
     emit ImageReady(m_pixmap);
     emit Finished();
-}
-
-void DirectusAssetLoader::DeleteLater()
-{
-
 }

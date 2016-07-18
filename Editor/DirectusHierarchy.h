@@ -37,7 +37,7 @@ class DirectusHierarchy : public QTreeWidget
 public:
     explicit DirectusHierarchy(QWidget* parent = 0);
     void SetDirectusCore(DirectusCore* directusCore);
-    void SetDirectusInspector(DirectusInspector* inspector);   
+    void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void selectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
     virtual void mouseMoveEvent(QMouseEvent* event);
@@ -62,6 +62,7 @@ private:
 	Socket* m_socket;
     DirectusInspector* m_inspector;
     DirectusCore* m_directusCore;
+    QWidget* m_mainWindow;
     QPoint m_dragStartPosition;
 
 public slots:

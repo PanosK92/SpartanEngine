@@ -33,9 +33,6 @@ public:
     explicit DirectusPlayButton(QWidget *parent = 0);
     void SetDirectusCore(DirectusCore* directusCore);
 
-public slots:
-     void AdjustEngine(bool play);
-
 private:
     DirectusCore* m_directusCore;
 

@@ -36,14 +36,6 @@ void DirectusPlayButton::SetDirectusCore(DirectusCore* directusCore)
     m_directusCore = directusCore;
 }
 
-void DirectusPlayButton::AdjustEngine(bool play)
-{
-    if (play)
-        Play();
-    else
-        Stop();
-}
-
 void DirectusPlayButton::Play()
 {
     if (!m_directusCore)

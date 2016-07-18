@@ -100,9 +100,9 @@ private:
     QLabel* m_maskLabel;
     //===============================
 
-    //= REFLECTIVITY ================
-    QLabel* m_reflectivityLabel;
-    DirectusComboSliderText* m_reflectivity;
+    //= SPECULAR ====================
+    QLabel* m_specularLabel;
+    DirectusComboSliderText* m_specular;
     //===============================
 
     //= TILING ======================
@@ -138,7 +138,7 @@ private:
     void ReflectOcclusion();
     void ReflectEmission();
     void ReflectMask();
-    void ReflectReflectivity();
+    void ReflectSpecular();
     void ReflectTiling();
 
 public slots:
@@ -150,6 +150,6 @@ public slots:
     void MapOcclusion();
     void MapEmission();
     void MapMask();
-    void MapReflectivity();
+    void MapSpecular();
     void MapTiling();
 };

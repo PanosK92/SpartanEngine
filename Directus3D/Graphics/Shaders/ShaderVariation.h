@@ -102,11 +102,11 @@ private:
 		Directus::Math::Matrix worldViewProjection;
 		Directus::Math::Matrix lightViewProjection;
 		Directus::Math::Vector4 materialAlbedoColor;
-		float roughness;
-		float metallic;
-		float occlusion;
-		float normalStrength;
-		float reflectivity;
+		float roughnessMultiplier;
+		float metallicMultiplier;
+		float occlusionMultiplier;
+		float normalMultiplier;
+		float specularMultiplier;
 		float shadingMode;
 		Directus::Math::Vector2 materialTiling;
 		Directus::Math::Vector2 viewport;

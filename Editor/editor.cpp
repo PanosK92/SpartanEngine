@@ -59,7 +59,7 @@ void Editor::InitializeEngine()
 
     // Resolve other dependencies
     ui->directusInspector->Initialize();
-    ui->directusHierarchy->SetDirectusInspector(ui->directusInspector);
+    ui->directusHierarchy->Initialize(ui->directusInspector, this);
     ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);
 }
 

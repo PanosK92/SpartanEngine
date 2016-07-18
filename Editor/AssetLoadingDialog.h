@@ -13,12 +13,17 @@ class AssetLoadingDialog : public QDialog
 
 public:
     explicit AssetLoadingDialog(QWidget *parent = 0);
-    ~AssetLoadingDialog();
+    void SetMainWindow(QWidget* mainWindow);
+
+private slots:
+    void UpdateProgressBar();
 
 public slots:
-    void UpdateProgressBar();
+    void Show();
+    void Kill();
 
 private:
     Ui::AssetLoadingDialog *ui;
     QTimer* m_timer;
+    QWidget* m_mainWindow;
 };

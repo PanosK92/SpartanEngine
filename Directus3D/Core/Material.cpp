@@ -46,12 +46,12 @@ Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 	m_alphaBlending = false;
 	m_shadingMode = Physically_Based;
 	m_colorAlbedo = false;
-	m_roughnessMultiplier = false;
-	m_metallicMultiplier = false;
-	m_occlusionMultiplier = false;
+	m_roughnessMultiplier = 1.0f;
+	m_metallicMultiplier = 0.0f;
+	m_occlusionMultiplier = 0.0f;
 	m_normalMultiplier = 0.0f;
-	m_heightMultiplier = false;
-	m_reflectivity = 0.0f;
+	m_heightMultiplier = 0.0f;
+	m_specularMultiplier = 0.5f; // unreal default
 	m_tiling = Vector2(1.0f, 1.0f);
 
 	AcquireShader();
@@ -79,7 +79,7 @@ void Material::Serialize()
 	Serializer::SaveFloat(m_normalMultiplier);
 	Serializer::SaveFloat(m_heightMultiplier);
 	Serializer::SaveFloat(m_occlusionMultiplier);
-	Serializer::SaveFloat(m_reflectivity);
+	Serializer::SaveFloat(m_specularMultiplier);
 	Serializer::SaveVector2(m_tiling);
 
 	Serializer::SaveInt(int(m_textures.size()));
@@ -102,7 +102,7 @@ void Material::Deserialize()
 	m_normalMultiplier = Serializer::LoadFloat();
 	m_heightMultiplier = Serializer::LoadFloat();
 	m_occlusionMultiplier = Serializer::LoadFloat();	
-	m_reflectivity = Serializer::LoadFloat();
+	m_specularMultiplier = Serializer::LoadFloat();
 	m_tiling = Serializer::LoadVector2();
 
 	int textureCount = Serializer::LoadInt();
@@ -350,14 +350,14 @@ float Material::GetHeightMultiplier()
 	return m_heightMultiplier;
 }
 
-void Material::SetReflectivity(float reflectivity)
+void Material::SetSpecularMultiplier(float specular)
 {
-	m_reflectivity = reflectivity;
+	m_specularMultiplier = specular;
 }
 
-float Material::GetReflectivity()
+float Material::GetSpecularMultiplier()
 {
-	return m_reflectivity;
+	return m_specularMultiplier;
 }
 
 void Material::SetShadingMode(ShadingMode shadingMode)
