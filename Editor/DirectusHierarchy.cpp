@@ -188,20 +188,6 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     return;
 }
 //===================================================================================================
-
-void DirectusHierarchy::Clear(bool clearEngine)
-{
-    // Clears the tree (purely visual)
-    clear();
-
-    // Clear the inspector
-    //if (m_inspector)
-       // m_inspector->Inspect(nullptr);
-
-    if (clearEngine)
-        m_socket->ClearScene();
-}
-
 void DirectusHierarchy::AddRoot(QTreeWidgetItem* item)
 {
     this->addTopLevelItem(item);
@@ -317,9 +303,22 @@ bool DirectusHierarchy::IsAnyGameObjectSelected()
 }
 
 //= SLOTS ===============================================
+void DirectusHierarchy::Clear()
+{
+    // Clears the tree (purely visual)
+    clear();
+
+    // Clear the inspector
+    //if (m_inspector)
+       // m_inspector->Inspect(nullptr);
+
+    //if (clearEngine)
+        //m_socket->ClearScene();
+}
+
 void DirectusHierarchy::Populate()
 {
-    Clear(false);
+    Clear();
 
     if (!m_socket)
         return;
@@ -353,29 +352,26 @@ void DirectusHierarchy::NewScene()
 
 void DirectusHierarchy::OpenScene()
 {
+    // Display and open file dialog, aqcuire a file name
     QString title = "Load Scene";
     QString filter = "All files (*.dss)";
     QString dir = "Assets";
-    m_sceneFileName = QFileDialog::getOpenFileName(
-                this,
-                title,
-                dir,
-                filter
-                );
+    m_sceneFileName = QFileDialog::getOpenFileName(this, title, dir, filter);
 
-    // It's really important to stop updating
-    // othewrise the engine will try to update
-    // gameobject that will be deleted in order
-    // for the new scene to be loaded.
-    m_directusCore->Stop();
-
-    QThread* thread = new QThread();
-    DirectusAssetLoader* sceneLoader = new DirectusAssetLoader();
+    // Create an asset loader and enable a progress bar dialog
+    DirectusAssetLoader* sceneLoader = new DirectusAssetLoader();  
+    sceneLoader->PrepareForScene(m_sceneFileName.toStdString(), m_socket);
     sceneLoader->EnableProgressBar(m_mainWindow);
 
+    // Move the scene loader to the newly created thread
+    QThread* thread = new QThread();
     sceneLoader->moveToThread(thread);
-    sceneLoader->PrepareForScene(m_sceneFileName.toStdString(), m_socket);
 
+    // Emit a signal and clear the hierarchy
+    emit SceneLoadingStarted();
+    //Clear();
+
+    // Connect all the necessery signals to their slots
     connect(thread,         SIGNAL(started()),  sceneLoader,    SLOT(LoadScene()));
     connect(sceneLoader,    SIGNAL(Finished()), this,           SLOT(Populate()));
     connect(sceneLoader,    SIGNAL(Finished()), thread,         SLOT(quit()));
@@ -383,6 +379,7 @@ void DirectusHierarchy::OpenScene()
     connect(thread,         SIGNAL(finished()), m_directusCore, SLOT(Update()));
     connect(thread,         SIGNAL(finished()), thread,         SLOT(deleteLater()));
 
+    // Start the thread
     thread->start(QThread::HighestPriority);
 }
 
@@ -436,24 +433,25 @@ void DirectusHierarchy::SaveSceneAs()
 
 void DirectusHierarchy::LoadModel()
 {
+    // Display and open file dialog, aqcuire a file name
     QString title = "Load model";
     QString filter = "All models (*.3ds; *.obj; *.fbx; *.blend; *.dae; *.lwo; *.c4d)";
     QString dir = "Assets";
-    QString filePath = QFileDialog::getOpenFileName(
-                this,
-                title,
-                dir,
-                filter
-                );
+    QString filePath = QFileDialog::getOpenFileName(this, title, dir, filter);
 
-    QThread* thread = new QThread();
+    // Create an asset loader and enable a progress bar dialog
     DirectusAssetLoader* modelLoader = new DirectusAssetLoader();
+    modelLoader->PrepareForModel(filePath.toStdString(), m_socket);
     modelLoader->EnableProgressBar(m_mainWindow);
 
+    // Move the model loader to the newly created thread
+    QThread* thread = new QThread();
     modelLoader->moveToThread(thread);
-    modelLoader->PrepareForModel(filePath.toStdString(), m_socket);
 
-    connect(thread,         SIGNAL(started()), modelLoader,     SLOT(LoadModel()));
+    // Emit a signal
+    emit ModelLoadingStarted();
+
+    connect(thread,         SIGNAL(started()),  modelLoader,    SLOT(LoadModel()));
     connect(modelLoader,    SIGNAL(Finished()), this,           SLOT(Populate()));
     connect(modelLoader,    SIGNAL(Finished()), thread,         SLOT(quit()));
     connect(modelLoader,    SIGNAL(Finished()), modelLoader,    SLOT(deleteLater()));

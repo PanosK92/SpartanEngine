@@ -36,6 +36,8 @@ public:
 private:
     DirectusCore* m_directusCore;
 
+public slots:
     void Play();
     void Stop();
+    void SetPressed(bool pressed);
 };
