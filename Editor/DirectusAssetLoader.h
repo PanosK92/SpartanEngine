@@ -32,7 +32,7 @@ class DirectusAssetLoader : public QObject
     Q_OBJECT
 public:
     explicit DirectusAssetLoader(QObject* parent = nullptr);
-
+    void EnableProgressBar(QWidget* mainWindow);
     void PrepareForScene(std::string filePath, Socket* socket);
     void PrepareForModel(std::string filePath, Socket* socket);
     void PrepareForTexture(std::string filePath, int width, int height);
@@ -51,6 +51,7 @@ private:
 
 signals:
     void ImageReady(QPixmap);
+    void Started();
     void Finished();
 
 public slots:
@@ -58,5 +59,4 @@ public slots:
     void SaveScene();
     void LoadModel();
     void LoadTexture();
-    void DeleteLater();
 };

@@ -119,9 +119,9 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //=========================================================
 
     //= REFLECTIVITY  =========================================
-    m_reflectivityLabel = new QLabel("Reflectivity");
-    m_reflectivity = new DirectusComboSliderText();
-    m_reflectivity->Initialize(0, 1);
+    m_specularLabel = new QLabel("Specular");
+    m_specular = new DirectusComboSliderText();
+    m_specular->Initialize(0, 1);
     //=========================================================
 
     //= TILING ================================================
@@ -214,9 +214,9 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     row++;
 
     // Row 14 - REFLECTIVITY
-    m_gridLayout->addWidget(m_reflectivityLabel,            row, 0, 1, 1);
-    m_gridLayout->addWidget(m_reflectivity->GetSlider(),    row, 2, 1, 2);
-    m_gridLayout->addWidget(m_reflectivity->GetLineEdit(),  row, 4, 1, 1);
+    m_gridLayout->addWidget(m_specularLabel,            row, 0, 1, 1);
+    m_gridLayout->addWidget(m_specular->GetSlider(),    row, 2, 1, 2);
+    m_gridLayout->addWidget(m_specular->GetLineEdit(),  row, 4, 1, 1);
     row++;
 
     // Row 15 - TILING
@@ -243,7 +243,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     connect(m_metallic,     SIGNAL(ValueChanged()), this, SLOT(MapMetallic()));
     connect(m_normal,       SIGNAL(ValueChanged()), this, SLOT(MapNormal()));
     connect(m_height,       SIGNAL(ValueChanged()), this, SLOT(MapHeight()));
-    connect(m_reflectivity, SIGNAL(ValueChanged()), this, SLOT(MapReflectivity()));
+    connect(m_specular,     SIGNAL(ValueChanged()), this, SLOT(MapSpecular()));
     connect(m_tilingX,      SIGNAL(ValueChanged()), this, SLOT(MapTiling()));
     connect(m_tilingY,      SIGNAL(ValueChanged()), this, SLOT(MapTiling()));
 
@@ -287,7 +287,7 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
     ReflectOcclusion();
     ReflectEmission();
     ReflectMask();
-    ReflectReflectivity();
+    ReflectSpecular();
     ReflectTiling();
 
     // Make this widget visible
@@ -369,10 +369,10 @@ void DirectusMaterial::ReflectMask()
     m_maskImage->LoadImageAsync(texPath);
 }
 
-void DirectusMaterial::ReflectReflectivity() // :-)
+void DirectusMaterial::ReflectSpecular()
 {
-    float reflectivity = m_inspectedMaterial->GetReflectivity();
-    m_reflectivity->SetValue(reflectivity);
+    float specular = m_inspectedMaterial->GetSpecularMultiplier();
+    m_specular->SetValue(specular);
 }
 
 void DirectusMaterial::ReflectTiling()
@@ -443,13 +443,13 @@ void DirectusMaterial::MapMask()
 
 }
 
-void DirectusMaterial::MapReflectivity()
+void DirectusMaterial::MapSpecular()
 {
     if (!m_inspectedMaterial || !m_directusCore)
         return;
 
-    float reflectivity = m_reflectivity->GetValue();
-    m_inspectedMaterial->SetReflectivity(reflectivity);
+    float specular = m_specular->GetValue();
+    m_inspectedMaterial->SetSpecularMultiplier(specular);
     m_directusCore->Update();
 }
 

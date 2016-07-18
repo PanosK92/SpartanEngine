@@ -106,8 +106,8 @@ public:
 	void SetOcclusionMultiplier(float occlusion);
 	float GetOcclusionMultiplier();
 
-	void SetReflectivity(float reflectivity);
-	float GetReflectivity();
+	void SetSpecularMultiplier(float specular);
+	float GetSpecularMultiplier();
 
 	void SetShadingMode(ShadingMode shadingMode);
 	ShadingMode GetShadingMode();
@@ -132,7 +132,7 @@ private:
 	float m_normalMultiplier;
 	float m_heightMultiplier;
 	float m_occlusionMultiplier;
-	float m_reflectivity;
+	float m_specularMultiplier;
 	Directus::Math::Vector2 m_tiling;
 	ShadingMode m_shadingMode;
 	ShaderVariation* m_shader;

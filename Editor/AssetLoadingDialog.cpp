@@ -5,15 +5,16 @@ AssetLoadingDialog::AssetLoadingDialog(QWidget *parent) : QDialog(parent), ui(ne
 {
     ui->setupUi(this);
     setWindowFlags(Qt::Tool);
-
+    m_mainWindow = nullptr;
     m_timer = new QTimer(this);
     m_timer->start(40);
+
     connect(m_timer, SIGNAL(timeout()), this, SLOT(UpdateProgressBar()));
 }
 
-AssetLoadingDialog::~AssetLoadingDialog()
+void AssetLoadingDialog::SetMainWindow(QWidget* mainWindow)
 {
-    delete ui;
+    m_mainWindow = mainWindow;
 }
 
 void AssetLoadingDialog::UpdateProgressBar()
@@ -29,4 +30,17 @@ void AssetLoadingDialog::UpdateProgressBar()
     // Increment
     value += 1;
     ui->progressBar->setValue(value);
+}
+
+void AssetLoadingDialog::Show()
+{
+    m_mainWindow->children();
+    m_mainWindow->setEnabled(false);
+    show();
+}
+
+void AssetLoadingDialog::Kill()
+{
+    m_mainWindow->setEnabled(true);
+    deleteLater();
 }
