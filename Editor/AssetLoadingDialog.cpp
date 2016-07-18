@@ -4,7 +4,12 @@
 AssetLoadingDialog::AssetLoadingDialog(QWidget *parent) : QDialog(parent), ui(new Ui::AssetLoadingDialog)
 {
     ui->setupUi(this);
-    setWindowFlags(Qt::Tool);
+
+    Qt::WindowFlags flags = windowFlags() | Qt::MSWindowsFixedSizeDialogHint;
+    Qt::WindowFlags helpFlag = Qt::WindowContextHelpButtonHint | Qt::WindowCloseButtonHint;
+    flags = flags & (~helpFlag);
+       setWindowFlags(flags);
+
     m_mainWindow = nullptr;
     m_timer = new QTimer(this);
     m_timer->start(40);

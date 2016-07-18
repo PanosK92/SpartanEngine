@@ -27,7 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui(new Ui::AboutDialog)
 {
     ui->setupUi(this);
-    setWindowFlags(Qt::Tool);
+
+    Qt::WindowFlags flags = windowFlags() | Qt::MSWindowsFixedSizeDialogHint;
+    Qt::WindowFlags helpFlag = Qt::WindowContextHelpButtonHint;
+    flags = flags & (~helpFlag);
+       setWindowFlags(flags);
 }
 
 AboutDialog::~AboutDialog()
