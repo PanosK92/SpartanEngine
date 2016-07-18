@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Preferred" vsizetype="Ignored">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
     <horstretch>1</horstretch>
     <verstretch>1</verstretch>
    </sizepolicy>
@@ -211,6 +211,9 @@
   </property>
   <property name="windowTitle">
    <string>Directus3D</string>
+  </property>
+  <property name="windowIcon">
+   <iconset theme=":/Images/icon.ico"/>
   </property>
   <property name="autoFillBackground">
    <bool>false</bool>
@@ -565,16 +568,19 @@ QScrollBar::sub-line:horizontal
   </property>
   <widget class="QWidget" name="mainWindow">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
    <property name="minimumSize">
     <size>
-     <width>800</width>
-     <height>600</height>
+     <width>0</width>
+     <height>0</height>
     </size>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_3">
     <property name="spacing">

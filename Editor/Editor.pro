@@ -8,7 +8,7 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = Editor
+TARGET = "Directus3D"
 TEMPLATE = app
 
 
@@ -70,8 +70,8 @@ FORMS    += editor.ui \
     AboutDialog.ui \
     AssetLoadingDialog.ui
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirectus3d
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirectus3d
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../Binaries/ -ldirectusRuntime
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Binaries/ -ldirectusRuntime
 
 INCLUDEPATH += $$PWD/../Directus3D
 DEPENDPATH += $$PWD/../Directus3D
@@ -88,3 +88,6 @@ OBJECTS_DIR = "$$ParentDirectory\ObjFiles"
 
 RESOURCES += \
     Images/images.qrc
+
+# Set .exe icon
+win32:RC_ICONS += Images/icon.ico
