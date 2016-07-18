@@ -33,6 +33,7 @@ DirectusComboSliderText::DirectusComboSliderText(QWidget* parent) : QWidget(pare
 void DirectusComboSliderText::Initialize(int min, int max)
 {
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
+    m_validator->setProperty("notation", QDoubleValidator::StandardNotation);
 
     m_slider = new QSlider(Qt::Horizontal);
     m_slider->setRange(min * 100, max * 100);

@@ -32,8 +32,12 @@ DirectusComboLabelText::DirectusComboLabelText(QWidget *parent) : QWidget(parent
 
 void DirectusComboLabelText::Initialize(QString labelText)
 {
+    m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
+    m_validator->setProperty("notation", QDoubleValidator::StandardNotation);
+
     // Initialize the text
     m_text = new QLineEdit();
+    m_text->setValidator(m_validator);
 
     // Initialize the label
     m_label = new DirectusAdjustLabel();
@@ -45,11 +49,6 @@ void DirectusComboLabelText::Initialize(QString labelText)
     // textEdited(QString) -> doesn't emit signal when changed through code
     connect(m_label, SIGNAL(Adjusted()), this, SLOT(TextGotEdited()));
     connect(m_text, SIGNAL(textEdited(QString)), this, SLOT(TextGotEdited()));
-}
-
-void DirectusComboLabelText::SetValidator(QValidator* validator)
-{
-    m_text->setValidator(validator);
 }
 
 DirectusAdjustLabel*DirectusComboLabelText::GetLabelWidget()

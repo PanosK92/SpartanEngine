@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QGridLayout>
 #include <QLineEdit>
 #include "Core/GameObject.h"
-#include <QDoubleValidator>
 #include <QComboBox>
 #include "Components/Camera.h"
 #include <QPushButton>
@@ -75,12 +74,10 @@ private:
 
     //= MISC ========================
     QGridLayout* m_gridLayout;
-    QValidator* m_validator;
     Camera* m_inspectedCamera;
     DirectusCore* m_directusCore;
     //===============================
 
-    QLineEdit* CreateQLineEdit();
     void SetProjection(Projection projection);
     void SetNearPlane(float nearPlane);
     void SetFarPlane(float farPlane);
