@@ -24,6 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 //============================
 
+//= NAMESPACES ================
+using namespace Directus::Math;
+//=============================
+
 DirectusCollider::DirectusCollider(QWidget *parent) : QWidget(parent)
 {
     m_directusCore = nullptr;
@@ -42,7 +46,7 @@ void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_gridLayout->setMargin(4);
 
     //= TITLE =================================================
-    m_title = new QLabel("Material");
+    m_title = new QLabel("Collider");
     m_title->setStyleSheet(
                 "background-image: url(:/Images/collider.png);"
                 "background-repeat: no-repeat;"
@@ -80,6 +84,13 @@ void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_sizeZ->Initialize("Z");
     //=========================================================
 
+    //= LINE ======================================
+    m_line = new QWidget();
+    m_line->setFixedHeight(1);
+    m_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_line->setStyleSheet(QString("background-color: #585858;"));
+    //=============================================
+
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     int row = 0;
@@ -90,30 +101,40 @@ void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector*
 
     // Row 1 - TYPE
     m_gridLayout->addWidget(m_shapeTypeLabel,  row, 0, 1, 1);
-    m_gridLayout->addWidget(m_shapeType,       row, 1, 1, 1);
+    m_gridLayout->addWidget(m_shapeType,       row, 1, 1, 6);
     row++;
 
     // Row 2 - CENTER
-    m_gridLayout->addWidget(m_centerLabel,  row, 0, 1, 1);
-    m_gridLayout->addWidget(m_centerX,      row, 1, 1, 1);
-    m_gridLayout->addWidget(m_centerY,      row, 2, 1, 1);
-    m_gridLayout->addWidget(m_centerZ,      row, 3, 1, 1);
+    m_gridLayout->addWidget(m_centerLabel,                  row, 0, 1, 1);
+    m_gridLayout->addWidget(m_centerX->GetLabelWidget(),    row, 1, 1, 1);
+    m_gridLayout->addWidget(m_centerX->GetTextWidget(),     row, 2, 1, 1);
+    m_gridLayout->addWidget(m_centerY->GetLabelWidget(),    row, 3, 1, 1);
+    m_gridLayout->addWidget(m_centerY->GetTextWidget(),     row, 4, 1, 1);
+    m_gridLayout->addWidget(m_centerZ->GetLabelWidget(),    row, 5, 1, 1);
+    m_gridLayout->addWidget(m_centerZ->GetTextWidget(),     row, 6, 1, 1);
     row++;
 
     // Row 3 - SIZE
-    m_gridLayout->addWidget(m_sizeLabel,  row, 0, 1, 1);
-    m_gridLayout->addWidget(m_sizeX,      row, 1, 1, 1);
-    m_gridLayout->addWidget(m_sizeY,      row, 2, 1, 1);
-    m_gridLayout->addWidget(m_sizeZ,      row, 3, 1, 1);
-    //=========================================================
+    m_gridLayout->addWidget(m_sizeLabel,                row, 0, 1, 1);
+    m_gridLayout->addWidget(m_sizeX->GetLabelWidget(),  row, 1, 1, 1);
+    m_gridLayout->addWidget(m_sizeX->GetTextWidget(),   row, 2, 1, 1);
+    m_gridLayout->addWidget(m_sizeY->GetLabelWidget(),  row, 3, 1, 1);
+    m_gridLayout->addWidget(m_sizeY->GetTextWidget(),   row, 4, 1, 1);
+    m_gridLayout->addWidget(m_sizeZ->GetLabelWidget(),  row, 5, 1, 1);
+    m_gridLayout->addWidget(m_sizeZ->GetTextWidget(),   row, 6, 1, 1);
+    row++;
 
-    connect(m_shapeType,     SIGNAL(currentIndexChanged(int)),   this, SLOT(MapType()));
-    connect(m_centerX,  SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
-    connect(m_centerY,  SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
-    connect(m_centerZ,  SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
-    connect(m_sizeX,    SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
-    connect(m_sizeY,    SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
-    connect(m_sizeZ,    SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
+    // Row 4 - LINE
+    m_gridLayout->addWidget(m_line, row, 0, 1, 7);
+    //==============================================================================
+
+    connect(m_shapeType,    SIGNAL(currentIndexChanged(int)),   this, SLOT(MapType()));
+    connect(m_centerX,      SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
+    connect(m_centerY,      SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
+    connect(m_centerZ,      SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
+    connect(m_sizeX,        SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
+    connect(m_sizeY,        SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
+    connect(m_sizeZ,        SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -168,15 +189,32 @@ void DirectusCollider::ReflectSize(Directus::Math::Vector3 size)
 
 void DirectusCollider::MapType()
 {
+    int index = m_shapeType->currentIndex();
+    m_inspectedCollider->SetShapeType((ColliderShape)index);
 
+    m_directusCore->Update();
 }
 
 void DirectusCollider::MapCenter()
 {
+    Vector3 center = Vector3(
+        m_centerX->GetAsFloat(),
+        m_centerY->GetAsFloat(),
+        m_centerZ->GetAsFloat()
+    );
+    m_inspectedCollider->SetCenter(center);
 
+    m_directusCore->Update();
 }
 
 void DirectusCollider::MapSize()
 {
+    Vector3 size = Vector3(
+        m_sizeX->GetAsFloat(),
+        m_sizeY->GetAsFloat(),
+        m_sizeZ->GetAsFloat()
+    );
+    m_inspectedCollider->SetBoundingBox(size);
 
+    m_directusCore->Update();
 }

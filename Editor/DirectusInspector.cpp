@@ -52,7 +52,7 @@ void DirectusInspector::Initialize()
     m_mesh->Initialize();
 
     m_rigidBody = new DirectusRigidBody();
-    m_rigidBody->Initialize();
+    m_rigidBody->Initialize(m_directusCore, this);
 
     m_collider = new DirectusCollider();
     m_collider->Initialize(m_directusCore, this);

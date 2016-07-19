@@ -69,6 +69,10 @@ private:
     DirectusComboLabelText* m_sizeZ;
     //====================================
 
+    //= LINE ========================
+    QWidget* m_line;
+    //===============================
+
     //= MISC =============================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
