@@ -15,5 +15,7 @@
         <file>arrow.png</file>
         <file>script.png</file>
         <file>icon.ico</file>
+        <file>rigidBody.png</file>
+        <file>collider.png</file>
     </qresource>
 </RCC>

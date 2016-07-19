@@ -21,23 +21,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==================================
+//=================================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusAdjustLabel.h"
+#include "DirectusComboLabelText.h"
 #include <QLineEdit>
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
 #include "Components/Collider.h"
 #include <QCheckBox>
+#include "DirectusCore.h"
+#include "QComboBox.h"
 //==================================
+
+class DirectusInspector;
 
 class DirectusCollider : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusCollider(QWidget *parent = 0);
-    void Initialize();
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
     void Reflect(GameObject* gameobject);
 private:
 
@@ -46,32 +50,39 @@ private:
     QLabel* m_title;
     //====================================
 
-    //= CAST SHADOWS =====================
-    QLabel* m_castShadowsLabel;
-    QCheckBox* m_castShadowsCheckBox;
+    //= SHAPE TYPE =======================
+    QLabel* m_shapeTypeLabel;
+    QComboBox* m_shapeType;
     //====================================
 
-    //= RECEIVE SHADOWS ==================
-    QLabel* m_receiveShadowsLabel;
-    QCheckBox* m_receiveShadowsCheckBox;
+    //= CENTER ===========================
+    QLabel* m_centerLabel;
+    DirectusComboLabelText* m_centerX;
+    DirectusComboLabelText* m_centerY;
+    DirectusComboLabelText* m_centerZ;
     //====================================
 
-    //= MATERIAL =========================
-    QLabel* m_materialLabel;
-    QLineEdit* m_material;
+    //= SIZE =============================
+    QLabel* m_sizeLabel;
+    DirectusComboLabelText* m_sizeX;
+    DirectusComboLabelText* m_sizeY;
+    DirectusComboLabelText* m_sizeZ;
     //====================================
 
     //= MISC =============================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
-    Collider* m_inspectedMeshRenderer;
+    Collider* m_inspectedCollider;
+    DirectusCore* m_directusCore;
+    DirectusInspector* m_inspector;
     //====================================
 
-    QLineEdit* CreateQLineEdit();
-
-    void SetCastShadows(bool cast);
-    void SetReceiveShadows(bool receive);
+    void ReflectType(ColliderShape shape);
+    void ReflectCenter(Directus::Math::Vector3 center);
+    void ReflectSize(Directus::Math::Vector3 size);
 
 public slots:
-    void Map();
+    void MapType();
+    void MapCenter();
+    void MapSize();
 };

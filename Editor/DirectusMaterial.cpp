@@ -50,7 +50,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
                 "background-image: url(:/Images/material.png);"
                 "background-repeat: no-repeat;"
                 "background-position: left;"
-                "padding-left: 40px;"
+                "padding-left: 20px;"
                 );
     //=========================================================
 
