@@ -38,6 +38,8 @@ public:
     explicit DirectusHierarchy(QWidget* parent = 0);
     void SetDirectusCore(DirectusCore* directusCore);
     void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
+
+protected:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void selectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
     virtual void mouseMoveEvent(QMouseEvent* event);
@@ -46,7 +48,6 @@ public:
     virtual void dropEvent(QDropEvent* event);
 
 private:
-
     void AddRoot(QTreeWidgetItem* item);
     void AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child);
     void AddGameObject(GameObject* gameobject, QTreeWidgetItem *parent);
@@ -74,6 +75,7 @@ public slots:
     void SaveSceneAs();
     void LoadModel();
     void ShowContextMenu(const QPoint& pos);
+    void RenameItem(QTreeWidgetItem*, int);
     void RenameSelected();
     void DeleteSelected();
     void CreateEmpty();

@@ -30,7 +30,7 @@ class btBoxShape;
 class Mesh;
 class btCollisionShape;
 
-enum ShapeType
+enum ColliderShape
 {
 	Box,
 	Capsule,
@@ -64,11 +64,13 @@ public:
 	Directus::Math::Vector3 GetCenter();
 	void SetCenter(Directus::Math::Vector3 offset);
 
-	btCollisionShape* GetShape();
-	void SetShapeType(ShapeType type);
+	ColliderShape GetShapeType();
+	void SetShapeType(ColliderShape type);
+
+	btCollisionShape* GetBtCollisionShape();
 
 private:
-	ShapeType m_shapeType;
+	ColliderShape m_shapeType;
 	btCollisionShape* m_shape;
 	Directus::Math::Vector3 m_boundingBox;
 	Directus::Math::Vector3 m_center;

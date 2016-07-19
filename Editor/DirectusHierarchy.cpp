@@ -49,6 +49,7 @@ DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
 
     // Connect context menu signal with the construction of a custom one
     connect(this, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(ShowContextMenu(const QPoint&)));
+    connect(this, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(RenameItem(QTreeWidgetItem*, int)));
 }
 
 void DirectusHierarchy::SetDirectusCore(DirectusCore* directusCore)
@@ -194,6 +195,7 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     Populate();
     return;
 }
+
 //===================================================================================================
 void DirectusHierarchy::AddRoot(QTreeWidgetItem* item)
 {
@@ -524,9 +526,27 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     contextMenu.exec(mapToGlobal(pos));
 }
 
-void DirectusHierarchy::RenameSelected()
+void DirectusHierarchy::RenameItem(QTreeWidgetItem*, int)
 {
 
+}
+
+void DirectusHierarchy::RenameSelected()
+{
+    LOG("1");
+    // Get the currently selected GameObject
+    GameObject* gameObject = GetSelectedGameObject();
+    if (!gameObject)
+        return;
+
+     LOG("2");
+    QTreeWidgetItem* item = GetSelectedItem();
+
+    // Set the name of the tree item as the name
+    // of the actual gameobject inside the engine
+    this->editItem(item);
+    string name = item->text(0).toStdString();
+    gameObject->SetName(name);
 }
 
 void DirectusHierarchy::DeleteSelected()

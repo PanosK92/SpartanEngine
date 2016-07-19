@@ -94,7 +94,7 @@ void Collider::Serialize()
 
 void Collider::Deserialize()
 {
-	m_shapeType = ShapeType(Serializer::LoadInt());
+	m_shapeType = ColliderShape(Serializer::LoadInt());
 	m_boundingBox = Serializer::LoadVector3();
 	m_center = Serializer::LoadVector3();
 
@@ -150,15 +150,20 @@ void Collider::SetCenter(Vector3 center)
 	m_isDirty = true;
 }
 
-btCollisionShape* Collider::GetShape()
+ColliderShape Collider::GetShapeType()
 {
-	return m_shape;
+	return m_shapeType;
 }
 
-void Collider::SetShapeType(ShapeType type)
+void Collider::SetShapeType(ColliderShape type)
 {
 	m_shapeType = type;
 	ConstructCollisionShape();
+}
+
+btCollisionShape* Collider::GetBtCollisionShape()
+{
+	return m_shape;
 }
 
 /*------------------------------------------------------------------------------

@@ -55,7 +55,7 @@ void DirectusInspector::Initialize()
     m_rigidBody->Initialize();
 
     m_collider = new DirectusCollider();
-    m_collider->Initialize();
+    m_collider->Initialize(m_directusCore, this);
 
     m_light = new DirectusLight();
     m_light->Initialize(m_directusCore);
