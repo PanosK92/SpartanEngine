@@ -2848,7 +2848,7 @@ QTabBar::tab:last
     <slot>SaveScene()</slot>
     <slot>SaveSceneAs()</slot>
     <slot>NewScene()</slot>
-    <slot>CreateEmptyGameObject()</slot>
+    <slot>CreateEmpty()</slot>
     <slot>LoadModel()</slot>
    </slots>
   </customwidget>
@@ -2938,7 +2938,7 @@ QTabBar::tab:last
    <sender>actionCreate_Empy</sender>
    <signal>triggered()</signal>
    <receiver>directusHierarchy</receiver>
-   <slot>CreateEmptyGameObject()</slot>
+   <slot>CreateEmpty()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>

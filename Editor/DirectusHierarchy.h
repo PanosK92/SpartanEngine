@@ -68,13 +68,15 @@ private:
 public slots:
     void Clear();
     void Populate();
-    void CreateEmptyGameObject();
     void NewScene();
     void OpenScene();
     void SaveScene();
     void SaveSceneAs();
     void LoadModel();
     void ShowContextMenu(const QPoint& pos);
+    void RenameSelected();
+    void DeleteSelected();
+    void CreateEmpty();
 
 signals:
     void SceneLoadingStarted();

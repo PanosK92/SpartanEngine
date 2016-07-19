@@ -337,18 +337,6 @@ void DirectusHierarchy::Populate()
      m_directusCore->Update();
 }
 
-void DirectusHierarchy::CreateEmptyGameObject()
-{
-    GameObject* gameobject = new GameObject();
-    Transform* transform = gameobject->GetTransform();
-
-    GameObject* selectedGameObject = GetSelectedGameObject();
-    if (selectedGameObject)
-        transform->SetParent(selectedGameObject->GetTransform());
-
-    Populate();
-}
-
 void DirectusHierarchy::NewScene()
 {
     m_sceneFileName = NO_PATH;
@@ -467,35 +455,39 @@ void DirectusHierarchy::LoadModel()
 
     thread->start(QThread::HighestPriority);
 }
-//========================================================
 
 void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
 {
+    bool selected = IsAnyGameObjectSelected();
+
     QMenu contextMenu(tr("Context menu"), this);
 
     //= ACTIONS ======================================
-    QAction actionCopy          ("Copy", this);
+    QAction actionCopy("Copy", this);
     actionCopy.setEnabled(false);
 
-    QAction actionPaste         ("Paste", this);
+    QAction actionPaste("Paste", this);
     actionPaste.setEnabled(false);
 
-    QAction actionRename        ("Rename", this);
+    QAction actionRename("Rename", this);
+    actionRename.setEnabled(selected);
 
-    QAction actionDuplicate     ("Duplicate", this);
+    QAction actionDuplicate("Duplicate", this);
     actionDuplicate.setEnabled(false);
 
-    QAction actionDelete        ("Delete", this);
+    QAction actionDelete("Delete", this);
+    actionDelete.setEnabled(selected);
 
-    QAction actionCreateEmpty   ("Create Empty", this);
+    QAction actionCreateEmpty("Create Empty", this);
+    actionCreateEmpty.setEnabled(true);
 
-    QAction action3DObject      ("3D Object", this);
+    QAction action3DObject("3D Object", this);
     action3DObject.setEnabled(false);
 
-    QAction actionLight         ("Light", this);
+    QAction actionLight("Light", this);
     actionLight.setEnabled(false);
 
-    QAction actionCamera        ("Camera", this);
+    QAction actionCamera("Camera", this);
     actionCamera.setEnabled(false);
     //=================================================
 
@@ -510,9 +502,11 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     seperatorC.setSeparator(true);
     //============================
 
-    //= SIGNAL - SLOT connections ===========================================
-    connect(&actionCopy, SIGNAL(triggered()), this, SLOT(removeDataPoint()));
-    //=======================================================================
+    //= SIGNAL - SLOT connections =========================================================
+    connect(&actionRename,      SIGNAL(triggered()), this,  SLOT(RenameSelected()));
+    connect(&actionDelete,      SIGNAL(triggered()), this,  SLOT(DeleteSelected()));
+    connect(&actionCreateEmpty, SIGNAL(triggered()), this,  SLOT(CreateEmpty()));
+    //=====================================================================================
 
     contextMenu.addAction(&actionCopy);
     contextMenu.addAction(&actionPaste);
@@ -529,3 +523,38 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
 
     contextMenu.exec(mapToGlobal(pos));
 }
+
+void DirectusHierarchy::RenameSelected()
+{
+
+}
+
+void DirectusHierarchy::DeleteSelected()
+{
+    // Get the currently selected GameObject
+    GameObject* gameObject = GetSelectedGameObject();
+    if (!gameObject)
+        return;
+
+    // Delete it
+    m_socket->DestroyGameObject(gameObject);
+
+    // Refresh the hierarchy
+    Populate();
+}
+
+void DirectusHierarchy::CreateEmpty()
+{
+    // Create an empty GameObject and get it's Transform
+    GameObject* gameobject = new GameObject();
+    Transform* transform = gameobject->GetTransform();
+
+    // Make it a child of the selected GameObject (if there is one)
+    GameObject* selectedGameObject = GetSelectedGameObject();
+    if (selectedGameObject)
+        transform->SetParent(selectedGameObject->GetTransform());
+
+    // Refresh the hierarchy
+    Populate();
+}
+//========================================================
