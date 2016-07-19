@@ -1,8 +1,7 @@
 # Directus3D
 Directus3D is a simple yet powerful game engine. This is achieved by prioritizing a coherent design (including clean code) over anything else. Constructing scenes that require scripting, physics and so on, is possible.
 
-![Screenshot](/Directus3D/Assets/screenshot.jpg)
-The editor presented in the above screenshot is a standalone project developed on top of the engine using wxWidgets. The editor included in the repository has just been added and it's using Qt. It will be developed rapidly and it will look beautiful ;-)
+![Screenshot](/Directus3D/Assets/editorScreenshot.jpg)
 
 # Features
 - 30+ image formats support.
