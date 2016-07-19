@@ -78,7 +78,27 @@ public slots:
     void RenameItem(QTreeWidgetItem*, int);
     void RenameSelected();
     void DeleteSelected();
-    void CreateEmpty();
+
+    //= GAMEOBJECT ADDITIONS =====
+    void CreateEmptyGameObject();
+    void CreateEmptyGameObjectRoot();
+    void CreateCube();
+    void CreateQuad();
+    void CreateDirectionalLight();
+    void CreatePointLight();
+    //============================
+
+    //= COMPONENT ADDITIONS ======
+    void AddCameraComponent();
+    void AddMeshFilterComponent();
+    void AddMeshRendererComponent();
+    void AddLightComponent();
+    void AddRigidBodyComponent();
+    void AddColliderComponent();
+    void AddMeshColliderComponent();
+    void AddHingeComponent();
+    void AddSkyboxComponent();
+    //============================
 
 signals:
     void SceneLoadingStarted();

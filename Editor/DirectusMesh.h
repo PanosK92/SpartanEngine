@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QLineEdit>
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
-#include "Components/Mesh.h"
+#include "Components/MeshFilter.h"
 #include <QCheckBox>
 //==================================
 
@@ -64,7 +64,7 @@ private:
     //= MISC =============================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
-    Mesh* m_inspectedMeshRenderer;
+    MeshFilter* m_inspectedMeshRenderer;
     //====================================
 
     QLineEdit* CreateQLineEdit();

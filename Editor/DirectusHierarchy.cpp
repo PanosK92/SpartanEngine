@@ -30,6 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QApplication>
 #include <QDrag>
 #include <QMenu>
+#include "Components/Light.h"
+#include "Components/Hinge.h"
+#include "Components/MeshFilter.h"
 //=================================
 
 //= NAMESPACES =====
@@ -507,7 +510,7 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     //= SIGNAL - SLOT connections =========================================================
     connect(&actionRename,      SIGNAL(triggered()), this,  SLOT(RenameSelected()));
     connect(&actionDelete,      SIGNAL(triggered()), this,  SLOT(DeleteSelected()));
-    connect(&actionCreateEmpty, SIGNAL(triggered()), this,  SLOT(CreateEmpty()));
+    connect(&actionCreateEmpty, SIGNAL(triggered()), this,  SLOT(CreateEmptyGameObject()));
     //=====================================================================================
 
     contextMenu.addAction(&actionCopy);
@@ -533,7 +536,6 @@ void DirectusHierarchy::RenameItem(QTreeWidgetItem*, int)
 
 void DirectusHierarchy::RenameSelected()
 {
-    LOG("1");
     // Get the currently selected GameObject
     GameObject* gameObject = GetSelectedGameObject();
     if (!gameObject)
@@ -562,8 +564,10 @@ void DirectusHierarchy::DeleteSelected()
     // Refresh the hierarchy
     Populate();
 }
+//========================================================
 
-void DirectusHierarchy::CreateEmpty()
+//= GAMEOBJECT ADDITIONS =================================
+void DirectusHierarchy::CreateEmptyGameObject()
 {
     // Create an empty GameObject and get it's Transform
     GameObject* gameobject = new GameObject();
@@ -576,5 +580,201 @@ void DirectusHierarchy::CreateEmpty()
 
     // Refresh the hierarchy
     Populate();
+}
+
+void DirectusHierarchy::CreateEmptyGameObjectRoot()
+{
+    // Create an empty GameObject and get it's Transform
+    GameObject* gameobject = new GameObject();
+
+    // Refresh the hierarchy
+    Populate();
+}
+
+void DirectusHierarchy::CreateCube()
+{
+    // Create GameObject
+    GameObject* gameobject = new GameObject();
+    gameobject->SetName("Cube");
+
+    // Add a mesh component
+    MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
+    meshComp->CreateCube();
+
+    // Add a mesh renderer
+    MeshRenderer* meshRendererComp = gameobject->AddComponent<MeshRenderer>();
+    meshRendererComp->SetMaterialStandardDefault();
+
+    // Add a box collider
+    Collider* collider = gameobject->AddComponent<Collider>();
+    collider->SetShapeType(ColliderShape::Box);
+
+    // Refresh hierarchy
+    Populate();
+}
+
+void DirectusHierarchy::CreateQuad()
+{
+    // Create GameObject
+    GameObject* gameobject = new GameObject();
+    gameobject->SetName("Quad");
+
+    // Add a mesh component
+    MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
+    meshComp->CreateQuad();
+
+    // Add a mesh renderer
+    MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>();
+    meshRenderer->SetMaterialStandardDefault();
+
+    // Add a mesh collider
+    MeshCollider* collider = gameobject->AddComponent<MeshCollider>();
+
+    // Refresh hierarchy
+    Populate();
+}
+
+void DirectusHierarchy::CreateDirectionalLight()
+{
+    // Create GameObject
+    GameObject* gameobject = new GameObject();
+    gameobject->SetName("Directional light");
+
+    // Add component
+    Light* light = gameobject->AddComponent<Light>();
+    light->SetLightType(Directional);
+
+    // Refresh hierarchy
+    Populate();
+}
+
+void DirectusHierarchy::CreatePointLight()
+{
+    // Create GameObject
+    GameObject* gameobject = new GameObject();
+    gameobject->SetName("Point light");
+
+    // Add component
+    Light* light = gameobject->AddComponent<Light>();
+    light->SetLightType(Point);
+
+    // Refresh hierarchy
+    Populate();
+}
+//========================================================
+
+//= COMPONENT ADDITIONS ==================================
+void DirectusHierarchy::AddCameraComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<Camera>();
+
+    // Update the inspector
+    m_inspector->Inspect(gameobject);
+}
+
+void DirectusHierarchy::AddMeshFilterComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<MeshFilter>();
+
+    // Update the inspector
+    m_inspector->Inspect(gameobject);
+}
+
+void DirectusHierarchy::AddMeshRendererComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<MeshRenderer>();
+
+    // Update the inspector
+    m_inspector->Inspect(gameobject);
+}
+
+void DirectusHierarchy::AddLightComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<Light>();
+
+    // Update the inspector
+    m_inspector->Inspect(gameobject);
+}
+
+void DirectusHierarchy::AddRigidBodyComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<RigidBody>();
+
+    // Update the inspector
+    m_inspector->Inspect(gameobject);
+}
+
+void DirectusHierarchy::AddColliderComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<Collider>();
+
+    // Update the inspector
+    m_inspector->Inspect(gameobject);
+}
+
+void DirectusHierarchy::AddMeshColliderComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<Collider>();
+}
+
+void DirectusHierarchy::AddHingeComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<Hinge>();
+
+    // Update the inspector
+    m_inspector->Inspect(gameobject);
+}
+
+void DirectusHierarchy::AddSkyboxComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<Skybox>();
+
+    // Update the inspector
+    m_inspector->Inspect(gameobject);
 }
 //========================================================

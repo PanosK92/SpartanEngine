@@ -2622,8 +2622,29 @@ QTabBar::tab:last
     <property name="title">
      <string>GameObject</string>
     </property>
+    <widget class="QMenu" name="menu3D_Object">
+     <property name="title">
+      <string>3D Object</string>
+     </property>
+     <addaction name="actionCube"/>
+     <addaction name="actionSphere"/>
+     <addaction name="actionCapsule"/>
+     <addaction name="actionCylinder"/>
+     <addaction name="actionPlane"/>
+     <addaction name="actionQuad"/>
+    </widget>
+    <widget class="QMenu" name="menuLight">
+     <property name="title">
+      <string>Light</string>
+     </property>
+     <addaction name="separator"/>
+     <addaction name="separator"/>
+     <addaction name="actionDirectional"/>
+     <addaction name="actionPoint"/>
+    </widget>
     <addaction name="actionCreate_Empy"/>
-    <addaction name="action3D_Object"/>
+    <addaction name="menu3D_Object"/>
+    <addaction name="menuLight"/>
    </widget>
    <widget class="QMenu" name="menuComponent">
     <property name="title">
@@ -2633,29 +2654,29 @@ QTabBar::tab:last
      <property name="title">
       <string>Rendering</string>
      </property>
-     <addaction name="actionCamera"/>
-     <addaction name="actionSkybox"/>
+     <addaction name="actionCamera_Component"/>
+     <addaction name="actionSkybox_Component"/>
      <addaction name="separator"/>
-     <addaction name="actionLight"/>
+     <addaction name="actionLight_Component"/>
     </widget>
     <widget class="QMenu" name="menuPhysics">
      <property name="title">
       <string>Physics</string>
      </property>
-     <addaction name="actionRigidBody"/>
+     <addaction name="actionRigidBody_Component"/>
      <addaction name="separator"/>
-     <addaction name="actionCollider"/>
-     <addaction name="actionMesh_Collider"/>
+     <addaction name="actionCollider_Component"/>
+     <addaction name="actionMesh_Collider_Component"/>
      <addaction name="separator"/>
-     <addaction name="actionHinge_Joint"/>
+     <addaction name="actionHinge_Joint_Component"/>
     </widget>
     <widget class="QMenu" name="menuMesh">
      <property name="title">
       <string>Mesh</string>
      </property>
-     <addaction name="actionMesh_Filter"/>
+     <addaction name="actionMesh_Filter_Component"/>
      <addaction name="separator"/>
-     <addaction name="actionMesh_Renderer"/>
+     <addaction name="actionMesh_Renderer_Component"/>
     </widget>
     <addaction name="menuMesh"/>
     <addaction name="actionEffects"/>
@@ -2710,15 +2731,7 @@ QTabBar::tab:last
     <string>Create an empty GameObject</string>
    </property>
   </action>
-  <action name="action3D_Object">
-   <property name="text">
-    <string>3D Object</string>
-   </property>
-   <property name="toolTip">
-    <string>A selection of commonly used 3D Objects</string>
-   </property>
-  </action>
-  <action name="actionCamera">
+  <action name="actionCamera_Component">
    <property name="text">
     <string>Camera</string>
    </property>
@@ -2726,7 +2739,7 @@ QTabBar::tab:last
     <string>Add a Camera component</string>
    </property>
   </action>
-  <action name="actionSkybox">
+  <action name="actionSkybox_Component">
    <property name="text">
     <string>Skybox</string>
    </property>
@@ -2734,7 +2747,7 @@ QTabBar::tab:last
     <string>Add a Skybox component</string>
    </property>
   </action>
-  <action name="actionRigidBody">
+  <action name="actionRigidBody_Component">
    <property name="text">
     <string>RigidBody</string>
    </property>
@@ -2742,15 +2755,15 @@ QTabBar::tab:last
     <string>Add a RigidBody component</string>
    </property>
   </action>
-  <action name="actionCollider">
+  <action name="actionCollider_Component">
    <property name="text">
-    <string>Primitive Collider</string>
+    <string>Collider</string>
    </property>
    <property name="toolTip">
     <string>Add a Collider component</string>
    </property>
   </action>
-  <action name="actionMesh_Collider">
+  <action name="actionMesh_Collider_Component">
    <property name="text">
     <string>Mesh Collider</string>
    </property>
@@ -2758,7 +2771,7 @@ QTabBar::tab:last
     <string>Add a Mesh Collider component</string>
    </property>
   </action>
-  <action name="actionHinge_Joint">
+  <action name="actionHinge_Joint_Component">
    <property name="text">
     <string>Hinge Joint</string>
    </property>
@@ -2766,7 +2779,10 @@ QTabBar::tab:last
     <string>Add a Hinge Joint component</string>
    </property>
   </action>
-  <action name="actionMesh_Filter">
+  <action name="actionMesh_Filter_Component">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Mesh Filter</string>
    </property>
@@ -2774,7 +2790,7 @@ QTabBar::tab:last
     <string>Add a Mesh Filter component</string>
    </property>
   </action>
-  <action name="actionMesh_Renderer">
+  <action name="actionMesh_Renderer_Component">
    <property name="text">
     <string>Mesh Renderer</string>
    </property>
@@ -2782,7 +2798,7 @@ QTabBar::tab:last
     <string>Add a Mesh Renderer component</string>
    </property>
   </action>
-  <action name="actionLight">
+  <action name="actionLight_Component">
    <property name="text">
     <string>Light</string>
    </property>
@@ -2791,6 +2807,9 @@ QTabBar::tab:last
    </property>
   </action>
   <action name="actionEffects">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Effects</string>
    </property>
@@ -2808,6 +2827,58 @@ QTabBar::tab:last
   <action name="actionLoad_Model">
    <property name="text">
     <string>Load Model</string>
+   </property>
+  </action>
+  <action name="actionCube">
+   <property name="text">
+    <string>Cube</string>
+   </property>
+  </action>
+  <action name="actionSphere">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Sphere</string>
+   </property>
+  </action>
+  <action name="actionCapsule">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Capsule</string>
+   </property>
+  </action>
+  <action name="actionCylinder">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Cylinder</string>
+   </property>
+  </action>
+  <action name="actionPlane">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Plane</string>
+   </property>
+  </action>
+  <action name="actionQuad">
+   <property name="text">
+    <string>Quad</string>
+   </property>
+  </action>
+  <action name="actionDirectional">
+   <property name="text">
+    <string>Directional</string>
+   </property>
+  </action>
+  <action name="actionPoint">
+   <property name="text">
+    <string>Point</string>
    </property>
   </action>
  </widget>
@@ -2848,8 +2919,21 @@ QTabBar::tab:last
     <slot>SaveScene()</slot>
     <slot>SaveSceneAs()</slot>
     <slot>NewScene()</slot>
-    <slot>CreateEmpty()</slot>
+    <slot>CreateEmptyGameObjectRoot()</slot>
     <slot>LoadModel()</slot>
+    <slot>CreateDirectionalLight()</slot>
+    <slot>CreatePointLight()</slot>
+    <slot>CreateCube()</slot>
+    <slot>CreateQuad()</slot>
+    <slot>AddCameraComponent()</slot>
+    <slot>AddLightComponent()</slot>
+    <slot>AddHingeComponent()</slot>
+    <slot>AddColliderComponent()</slot>
+    <slot>AddRigidBodyComponent()</slot>
+    <slot>AddMeshFilterComponent()</slot>
+    <slot>AddMeshRendererComponent()</slot>
+    <slot>AddMeshColliderComponent()</slot>
+    <slot>AddSkyboxComponent()</slot>
    </slots>
   </customwidget>
   <customwidget>
@@ -2938,7 +3022,7 @@ QTabBar::tab:last
    <sender>actionCreate_Empy</sender>
    <signal>triggered()</signal>
    <receiver>directusHierarchy</receiver>
-   <slot>CreateEmpty()</slot>
+   <slot>CreateEmptyGameObjectRoot()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -2979,6 +3063,214 @@ QTabBar::tab:last
     <hint type="destinationlabel">
      <x>130</x>
      <y>358</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionDirectional</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>CreateDirectionalLight()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionPoint</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>CreatePointLight()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionCube</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>CreateCube()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionQuad</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>CreateQuad()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionCamera_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddCameraComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLight_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddLightComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionHinge_Joint_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddHingeComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionMesh_Collider_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddMeshColliderComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionMesh_Renderer_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddMeshRendererComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionCollider_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddColliderComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionRigidBody_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddRigidBodyComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionMesh_Filter_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddMeshFilterComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionSkybox_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddSkyboxComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>130</x>
+     <y>357</y>
     </hint>
    </hints>
   </connection>

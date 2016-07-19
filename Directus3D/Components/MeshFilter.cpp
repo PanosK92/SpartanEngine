@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==================
-#include "Mesh.h"
+#include "MeshFilter.h"
 #include "Transform.h"
 #include "../Core/Globals.h"
 #include "../IO/Serializer.h"
@@ -34,7 +34,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Mesh::Mesh()
+MeshFilter::MeshFilter()
 {
 	m_vertexBuffer = nullptr;
 	m_indexBuffer = nullptr;
@@ -45,21 +45,21 @@ Mesh::Mesh()
 	m_center = Vector3::Zero;
 }
 
-Mesh::~Mesh()
+MeshFilter::~MeshFilter()
 {
 	DirectusSafeDelete(m_vertexBuffer);
 	DirectusSafeDelete(m_indexBuffer);
 }
 
-void Mesh::Initialize()
+void MeshFilter::Initialize()
 {
 }
 
-void Mesh::Update()
+void MeshFilter::Update()
 {
 }
 
-void Mesh::Serialize()
+void MeshFilter::Serialize()
 {
 	Serializer::SaveSTR(m_meshData->ID);
 	Serializer::SaveVector3(m_min);
@@ -68,7 +68,7 @@ void Mesh::Serialize()
 	Serializer::SaveVector3(m_center);
 }
 
-void Mesh::Deserialize()
+void MeshFilter::Deserialize()
 {
 	string meshDataID = Serializer::LoadSTR();
 	m_meshData = g_meshPool->GetMesh(meshDataID);
@@ -80,7 +80,7 @@ void Mesh::Deserialize()
 	Refresh();
 }
 
-void Mesh::CreateCube()
+void MeshFilter::CreateCube()
 {
 	vector<VertexPositionTextureNormalTangent> vertices;
 
@@ -173,7 +173,7 @@ void Mesh::CreateCube()
 	Set(g_transform->GetRoot()->GetGameObject()->GetID(), vertices, indices, 2);
 }
 
-void Mesh::CreateQuad()
+void MeshFilter::CreateQuad()
 {
 	vector<VertexPositionTextureNormalTangent> vertices;
 	vertices.push_back({Vector3(-0.5f, 0.0f, 0.5f),Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0)}); // 0 top-left
@@ -192,7 +192,7 @@ void Mesh::CreateQuad()
 	Set(g_transform->GetRoot()->GetGameObject()->GetID(), vertices, indices, 2);
 }
 
-void Mesh::Set(string rootGameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices, unsigned int faceCount)
+void MeshFilter::Set(string rootGameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices, unsigned int faceCount)
 {
 	// Add the mesh data to the pool so it gets initialized properly
 	m_meshData = g_meshPool->AddMesh(rootGameObjectID, g_gameObject->GetID(), vertices, indices, faceCount);
@@ -201,7 +201,7 @@ void Mesh::Set(string rootGameObjectID, vector<VertexPositionTextureNormalTangen
 }
 
 // Set the buffers to active in the input assembler so they can be rendered.
-bool Mesh::SetBuffers()
+bool MeshFilter::SetBuffers()
 {
 	if (!m_vertexBuffer || !m_indexBuffer)
 	{
@@ -219,7 +219,7 @@ bool Mesh::SetBuffers()
 }
 
 // Calculates the min, max, extent, center and re-creates the buffers
-void Mesh::Refresh()
+void MeshFilter::Refresh()
 {
 	g_meshPool->GetMinMax(m_meshData, m_min, m_max);
 	m_extent = g_meshPool->GetMeshExtent(m_min, m_max);
@@ -229,43 +229,43 @@ void Mesh::Refresh()
 }
 
 // Returns the bounding box of the mesh
-Vector3 Mesh::GetExtent()
+Vector3 MeshFilter::GetExtent()
 {
 	return m_extent;
 }
 
 // Returns the center of the mesh
-Vector3 Mesh::GetCenter()
+Vector3 MeshFilter::GetCenter()
 {
 	return m_center;
 }
 
-vector<VertexPositionTextureNormalTangent> Mesh::GetVertices()
+vector<VertexPositionTextureNormalTangent> MeshFilter::GetVertices()
 {
 	return m_meshData->vertices;
 }
 
-vector<unsigned int> Mesh::GetIndices()
+vector<unsigned int> MeshFilter::GetIndices()
 {
 	return m_meshData->indices;
 }
 
-unsigned int Mesh::GetVertexCount()
+unsigned int MeshFilter::GetVertexCount()
 {
 	return m_meshData->vertexCount;
 }
 
-unsigned int Mesh::GetIndexCount()
+unsigned int MeshFilter::GetIndexCount()
 {
 	return m_meshData->indexCount;
 }
 
-unsigned int Mesh::GetFaceCount()
+unsigned int MeshFilter::GetFaceCount()
 {
 	return m_meshData->faceCount;
 }
 
-void Mesh::CreateBuffers()
+void MeshFilter::CreateBuffers()
 {
 	DirectusSafeDelete(m_vertexBuffer);
 	DirectusSafeDelete(m_indexBuffer);

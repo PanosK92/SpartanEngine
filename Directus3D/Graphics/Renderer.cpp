@@ -30,13 +30,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
-#include "../Components/Mesh.h"
 #include "../Components/LineRenderer.h"
 #include "../Physics/PhysicsEngine.h"
 #include "../Physics/PhysicsDebugDraw.h"
 #include "D3D11/D3D11RenderTexture.h"
 #include "../Core/Scene.h"
 #include "../IO/Log.h"
+#include "../Components/MeshFilter.h"
 //======================================
 
 //= NAMESPACES ================
@@ -282,7 +282,7 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 	for (auto i = 0; i < renderableGameObjects.size(); i++)
 	{
 		GameObject* gameObject = renderableGameObjects[i];
-		Mesh* mesh = gameObject->GetComponent<Mesh>();
+		MeshFilter* mesh = gameObject->GetComponent<MeshFilter>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
 
 		// Prevent the skybox from casting a shadow
@@ -296,7 +296,7 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 		if (mesh->SetBuffers())
 		{
 			m_shaderDepth->Render(
-				gameObject->GetComponent<Mesh>()->GetIndexCount(),
+				gameObject->GetComponent<MeshFilter>()->GetIndexCount(),
 				gameObject->GetTransform()->GetWorldMatrix(),
 				light->GetViewMatrix(),
 				light->GetOrthographicProjectionMatrix()
@@ -311,7 +311,7 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects, Light* dir
 	{
 		//= Get all that we need ===================================================
 		GameObject* gameObject = renderableGameObjects[i];
-		Mesh* mesh = gameObject->GetComponent<Mesh>();
+		MeshFilter* mesh = gameObject->GetComponent<MeshFilter>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
 		Material* material = meshRenderer->GetMaterial();
 		Matrix worldMatrix = gameObject->GetTransform()->GetWorldMatrix();
