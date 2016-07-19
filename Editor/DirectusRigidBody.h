@@ -21,23 +21,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==================================
+//=================================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusAdjustLabel.h"
-#include <QLineEdit>
+#include "DirectusComboLabelText.h"
 #include "Core/GameObject.h"
-#include <QDoubleValidator>
 #include "Components/RigidBody.h"
 #include <QCheckBox>
+#include "DirectusCore.h"
+#include "QComboBox.h"
 //==================================
+
+class DirectusInspector;
 
 class DirectusRigidBody : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusRigidBody(QWidget *parent = 0);
-    void Initialize();
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
     void Reflect(GameObject* gameobject);
 private:
 
@@ -46,32 +48,72 @@ private:
     QLabel* m_title;
     //====================================
 
-    //= CAST SHADOWS =====================
-    QLabel* m_castShadowsLabel;
-    QCheckBox* m_castShadowsCheckBox;
+    //= MASS =============================
+    DirectusComboLabelText* m_mass;
     //====================================
 
-    //= RECEIVE SHADOWS ==================
-    QLabel* m_receiveShadowsLabel;
-    QCheckBox* m_receiveShadowsCheckBox;
+    //= DRAG =============================
+    DirectusComboLabelText* m_drag;
     //====================================
 
-    //= MATERIAL =========================
-    QLabel* m_materialLabel;
-    QLineEdit* m_material;
+    //= ANGULAR DRAG =====================
+    DirectusComboLabelText* m_angularDrag;
+    //====================================
+
+    //= USE GRAVITY  =====================
+    QLabel* m_useGravityLabel;
+    QCheckBox* m_useGravity;
+    //====================================
+
+    //= IS KINEMATIC  ====================
+    QLabel* m_isKinematicLabel;
+    QCheckBox* m_isKinematic;
+    //====================================
+
+    //= CONSTRAINTS  =====================
+    QLabel* m_freezePosLabel;
+    QLabel* m_freezePosXLabel;
+    QLabel* m_freezePosYLabel;
+    QLabel* m_freezePosZLabel;
+    QCheckBox* m_freezePosX;
+    QCheckBox* m_freezePosY;
+    QCheckBox* m_freezePosZ;
+
+    QLabel* m_freezeRotLabel;
+    QLabel* m_freezeRotXLabel;
+    QLabel* m_freezeRotYLabel;
+    QLabel* m_freezeRotZLabel;
+    QCheckBox* m_freezeRotX;
+    QCheckBox* m_freezeRotY;
+    QCheckBox* m_freezeRotZ;
+    //====================================
+
+    //= LINE =============================
+    QWidget* m_line;
     //====================================
 
     //= MISC =============================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
-    RigidBody* m_inspectedMeshRenderer;
+    RigidBody* m_inspectedRigidBody;
+    DirectusCore* m_directusCore;
+    DirectusInspector* m_inspector;
     //====================================
 
-    QLineEdit* CreateQLineEdit();
-
-    void SetCastShadows(bool cast);
-    void SetReceiveShadows(bool receive);
+    void ReflectMass(float mass);
+    void ReflectDrag(float drag);
+    void ReflectAngulaDrag(float angularDrag);
+    void ReflectUseGravity(bool useGravity);
+    void ReflectIsKinematic(bool useGravity);
+    void ReflectFreezePosition(Directus::Math::Vector3 posFreeze);
+    void ReflectFreezeRotation(Directus::Math::Vector3 rotFreeze);
 
 public slots:
-    void Map();
+    void MapMass();
+    void MapDrag();
+    void MapAngularDrag();
+    void MapUseGravity();
+    void MapIsKinematic();
+    void MapFreezePosition();
+    void MapFreezeRotation();
 };

@@ -58,20 +58,31 @@ public:
 	float GetMass();
 	void SetMass(float mass);
 
+	float GetDrag();
+	void SetDrag(float drag);
+
+	float GetAngularDrag();
+	void SetAngularDrag(float angularDrag);
+
 	float GetRestitution();
 	void SetRestitution(float restitution);
-
-	float GetFriction();
-	void SetFriction(float friction);
 
 	void ApplyForce(Directus::Math::Vector3 force, ForceMode mode);
 	void ApplyForceAtPosition(Directus::Math::Vector3 force, Directus::Math::Vector3 position, ForceMode mode);
 	void ApplyTorque(Directus::Math::Vector3 torque, ForceMode mode);
 	void SetGravity(Directus::Math::Vector3 acceleration);
 
+	//= POSITION LOCK =================================
+	void SetPositionLock(bool lock);
+	void SetPositionLock(Directus::Math::Vector3 lock);
+	Directus::Math::Vector3 GetPositionLock();
+	//=================================================
+
+	//= ROTATION LOCK =================================
 	void SetRotationLock(bool lock);
 	void SetRotationLock(Directus::Math::Vector3 lock);
 	Directus::Math::Vector3 GetRotationLock();
+	//=================================================
 
 	/*------------------------------------------------------------------------------
 								[POSITION]

@@ -133,7 +133,7 @@ void RigidBody::Serialize()
 {
 	Serializer::SaveFloat(GetMass());
 	Serializer::SaveFloat(GetRestitution());
-	Serializer::SaveFloat(GetFriction());
+	Serializer::SaveFloat(GetDrag());
 	Serializer::SaveVector3(m_rotationLock);
 }
 
@@ -182,25 +182,54 @@ void RigidBody::SetMass(float mass)
 	g_physics->AddRigidBody(m_rigidBody);
 }
 
+float RigidBody::GetDrag()
+{
+	if (!m_rigidBody)
+		return 0.0f;
+
+	return (float)m_rigidBody->getFriction();
+}
+
+void RigidBody::SetDrag(float drag)
+{
+	if (!m_rigidBody)
+		return;
+
+	m_rigidBody->setFriction((btScalar)drag);
+}
+
+float RigidBody::GetAngularDrag()
+{
+	if (!m_rigidBody)
+		return 0.0f;
+
+	return (float)m_rigidBody->getRollingFriction();
+}
+
+void RigidBody::SetAngularDrag(float angularDrag)
+{
+	if (!m_rigidBody)
+		return;
+
+	m_rigidBody->setRollingFriction((btScalar)angularDrag);
+}
+
 float RigidBody::GetRestitution()
 {
+	if (!m_rigidBody)
+		return 0.0f;
+
 	return m_rigidBody->getRestitution();
 }
 
 void RigidBody::SetRestitution(float restitution)
 {
+	if (!m_rigidBody)
+		return;
+
 	m_rigidBody->setRestitution(restitution);
 }
 
-float RigidBody::GetFriction()
-{
-	return m_rigidBody->getFriction();
-}
-
-void RigidBody::SetFriction(float friction)
-{
-	m_rigidBody->setFriction(friction);
-}
 
 void RigidBody::ApplyForce(Vector3 force, ForceMode mode)
 {
@@ -237,6 +266,24 @@ void RigidBody::SetGravity(Vector3 acceleration)
 	m_rigidBody->setGravity(Vector3ToBtVector3(acceleration));
 }
 
+//= POSITION LOCK =================================
+void RigidBody::SetPositionLock(bool lock)
+{
+
+}
+
+void RigidBody::SetPositionLock(Vector3 lock)
+{
+
+}
+
+Vector3 RigidBody::GetPositionLock()
+{
+	return Vector3::Zero;
+}
+//=================================================
+
+//= POSITION LOCK =================================
 void RigidBody::SetRotationLock(bool lock)
 {
 	if (lock)
@@ -248,7 +295,7 @@ void RigidBody::SetRotationLock(bool lock)
 void RigidBody::SetRotationLock(Vector3 lock)
 {
 	m_rotationLock = lock;
-
+	
 	Vector3 rotationFreedom = Vector3(!lock.x, !lock.y, !lock.z);
 	m_rigidBody->setAngularFactor(Vector3ToBtVector3(rotationFreedom));
 }
@@ -257,6 +304,7 @@ Vector3 RigidBody::GetRotationLock()
 {
 	return m_rotationLock;
 }
+//=================================================
 
 /*------------------------------------------------------------------------------
 							[POSITION]
@@ -314,7 +362,7 @@ void RigidBody::SetCollisionShape(btCollisionShape* shape)
 
 	m_shape = shape;
 
-	ConstructRigidBody(GetMass(), GetRestitution(), GetFriction());
+	ConstructRigidBody(GetMass(), GetRestitution(), GetDrag());
 }
 
 btRigidBody* RigidBody::GetBtRigidBody()
