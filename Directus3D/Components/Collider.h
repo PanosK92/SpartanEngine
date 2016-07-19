@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==========================
 
 class btBoxShape;
-class Mesh;
+class MeshFilter;
 class btCollisionShape;
 
 enum ColliderShape

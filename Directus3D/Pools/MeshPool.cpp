@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GUIDGenerator.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
-#include "../Components/Mesh.h"
+#include "../Components/MeshFilter.h"
 #include "../Components/Transform.h"
 //==================================
 
@@ -139,7 +139,7 @@ void MeshPool::NormalizeModelScale(GameObject* rootGameObject)
 	vector<Transform*> descendants = rootGameObject->GetTransform()->GetDescendants();
 	for (auto i = 0; i < descendants.size(); i++)
 	{
-		Mesh* mesh = descendants[i]->g_gameObject->GetComponent<Mesh>();
+		MeshFilter* mesh = descendants[i]->g_gameObject->GetComponent<MeshFilter>();
 		if (mesh) mesh->Refresh();
 	}
 }

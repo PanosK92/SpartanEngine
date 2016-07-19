@@ -132,7 +132,7 @@
     <ClCompile Include="Components\Hinge.cpp" />
     <ClCompile Include="Components\Light.cpp" />
     <ClCompile Include="Components\LineRenderer.cpp" />
-    <ClCompile Include="Components\Mesh.cpp" />
+    <ClCompile Include="Components\MeshFilter.cpp" />
     <ClCompile Include="Components\MeshCollider.cpp" />
     <ClCompile Include="Components\MeshRenderer.cpp" />
     <ClCompile Include="Components\RigidBody.cpp" />
@@ -197,7 +197,7 @@
     <ClInclude Include="Components\IComponent.h" />
     <ClInclude Include="Components\Light.h" />
     <ClInclude Include="Components\LineRenderer.h" />
-    <ClInclude Include="Components\Mesh.h" />
+    <ClInclude Include="Components\MeshFilter.h" />
     <ClInclude Include="Components\MeshCollider.h" />
     <ClInclude Include="Components\MeshRenderer.h" />
     <ClInclude Include="Components\RigidBody.h" />

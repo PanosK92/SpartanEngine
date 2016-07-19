@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/GameObjectPool.h"
 #include "../IO/Serializer.h"
 #include "../Components/Transform.h"
-#include "../Components/Mesh.h"
+#include "../Components/MeshFilter.h"
 #include "../Components/MeshRenderer.h"
 #include "../Components/Camera.h"
 #include "../Components/Skybox.h"
@@ -263,7 +263,7 @@ void GameObject::LoadCompFromTypeStr(string typeStr)
 		AddComponent<Transform>()->Deserialize();
 
 	if (typeStr == "Mesh")
-		AddComponent<Mesh>()->Deserialize();
+		AddComponent<MeshFilter>()->Deserialize();
 
 	if (typeStr == "MeshRenderer")
 		AddComponent<MeshRenderer>()->Deserialize();
@@ -300,7 +300,7 @@ void GameObject::LoadCompFromTypeStr(string typeStr)
 			[Explicit template declerations and exporting]
 ------------------------------------------------------------------------------*/
 template __declspec(dllexport) Transform* GameObject::AddComponent<Transform>();
-template __declspec(dllexport) Mesh* GameObject::AddComponent<Mesh>();
+template __declspec(dllexport) MeshFilter* GameObject::AddComponent<MeshFilter>();
 template __declspec(dllexport) MeshRenderer* GameObject::AddComponent<MeshRenderer>();
 template __declspec(dllexport) Light* GameObject::AddComponent<Light>();
 template __declspec(dllexport) Camera* GameObject::AddComponent<Camera>();
@@ -313,7 +313,7 @@ template __declspec(dllexport) Script* GameObject::AddComponent<Script>();
 template __declspec(dllexport) LineRenderer* GameObject::AddComponent<LineRenderer>();
 
 template __declspec(dllexport) Transform* GameObject::GetComponent();
-template __declspec(dllexport) Mesh* GameObject::GetComponent();
+template __declspec(dllexport) MeshFilter* GameObject::GetComponent();
 template __declspec(dllexport) MeshRenderer* GameObject::GetComponent();
 template __declspec(dllexport) Light* GameObject::GetComponent();
 template __declspec(dllexport) Camera* GameObject::GetComponent();
@@ -326,7 +326,7 @@ template __declspec(dllexport) Script* GameObject::GetComponent();
 template __declspec(dllexport) LineRenderer* GameObject::GetComponent();
 
 template __declspec(dllexport) bool GameObject::HasComponent<Transform>();
-template __declspec(dllexport) bool GameObject::HasComponent<Mesh>();
+template __declspec(dllexport) bool GameObject::HasComponent<MeshFilter>();
 template __declspec(dllexport) bool GameObject::HasComponent<MeshRenderer>();
 template __declspec(dllexport) bool GameObject::HasComponent<Light>();
 template __declspec(dllexport) bool GameObject::HasComponent<Camera>();
@@ -339,7 +339,7 @@ template __declspec(dllexport) bool GameObject::HasComponent<Script>();
 template __declspec(dllexport) bool GameObject::HasComponent<LineRenderer>();
 
 template __declspec(dllexport) void GameObject::RemoveComponent<Transform>();
-template __declspec(dllexport) void GameObject::RemoveComponent<Mesh>();
+template __declspec(dllexport) void GameObject::RemoveComponent<MeshFilter>();
 template __declspec(dllexport) void GameObject::RemoveComponent<MeshRenderer>();
 template __declspec(dllexport) void GameObject::RemoveComponent<Light>();
 template __declspec(dllexport) void GameObject::RemoveComponent<Camera>();

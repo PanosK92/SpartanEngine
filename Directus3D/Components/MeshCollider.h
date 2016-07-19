@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=====================
 
 class RigidBody;
-class Mesh;
+class MeshFilter;
 class btCollisionShape;
 
 class __declspec(dllexport) MeshCollider : public IComponent
@@ -47,7 +47,7 @@ public:
 	void SetConvex(bool isConvex);
 
 private:
-	Mesh* m_mesh;
+	MeshFilter* m_mesh;
 	int m_vertexLimit = 1024;
 	btCollisionShape* m_collider;
 	bool m_convex;

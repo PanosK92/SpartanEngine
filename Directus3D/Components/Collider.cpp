@@ -21,9 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================================
 #include "Collider.h"
-#include "Mesh.h"
+#include "MeshFilter.h"
 #include "RigidBody.h"
-#include <algorithm>
 #include "../Core/GameObject.h"
 #include "../IO/Serializer.h"
 #include <LinearMath/btVector3.h>
@@ -62,9 +61,9 @@ Collider::~Collider()
 void Collider::Initialize()
 {
 	// get bounding box and center
-	if (g_gameObject->HasComponent<Mesh>())
+	if (g_gameObject->HasComponent<MeshFilter>())
 	{
-		Mesh* mesh = g_gameObject->GetComponent<Mesh>();
+		MeshFilter* mesh = g_gameObject->GetComponent<MeshFilter>();
 		m_boundingBox = mesh->GetExtent();
 		m_center = mesh->GetCenter();
 	}

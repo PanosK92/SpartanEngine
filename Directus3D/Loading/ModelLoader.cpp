@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
-#include "../Components/Mesh.h"
+#include "../Components/MeshFilter.h"
 #include "../Core/GameObject.h"
 #include "../Pools/MaterialPool.h"
 //=====================================
@@ -249,7 +249,7 @@ void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* ga
 	}
 
 	// Add a mesh component and pass the data
-	Mesh* meshComp = gameobject->AddComponent<Mesh>();
+	MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
 	meshComp->Set(m_rootGameObject->GetID(), vertices, indices, mesh->mNumFaces);
 
 	// process materials

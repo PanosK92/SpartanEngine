@@ -28,14 +28,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Vertex.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
 #include "../Core/MeshData.h"
-#include <memory>
 //========================================
 
-class __declspec(dllexport) Mesh : public IComponent
+class __declspec(dllexport) MeshFilter : public IComponent
 {
 public:
-	Mesh();
-	~Mesh();
+	MeshFilter();
+	~MeshFilter();
 
 	virtual void Initialize();
 	virtual void Update();

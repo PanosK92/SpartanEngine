@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Loading/DDSTextureLoader.h"
 #include "Transform.h"
 #include "MeshRenderer.h"
-#include "Mesh.h"
+#include "MeshFilter.h"
 #include "../Core/GameObject.h"
 #include "../Core/Globals.h"
 #include "../Core/Texture.h"
@@ -84,7 +84,7 @@ void Skybox::Initialize()
 	g_materialPool->GetMaterialStandardSkybox()->SetTexture(texture->GetID());
 
 	// Add the actual "box"
-	Mesh* mesh = g_gameObject->AddComponent<Mesh>();
+	MeshFilter* mesh = g_gameObject->AddComponent<MeshFilter>();
 	mesh->CreateCube();
 
 	// Add a mesh renderer

@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================================================
 #include "MeshCollider.h"
-#include "Mesh.h"
+#include "MeshFilter.h"
 #include "RigidBody.h"
 #include <BulletCollision/CollisionShapes/btShapeHull.h>
 #include <BulletCollision/CollisionShapes/btTriangleMesh.h>
@@ -170,7 +170,7 @@ bool MeshCollider::ComponentCheck()
 		m_rigidBody = g_gameObject->GetComponent<RigidBody>();
 
 	if (!m_mesh)
-		m_mesh = g_gameObject->GetComponent<Mesh>();
+		m_mesh = g_gameObject->GetComponent<MeshFilter>();
 
 	if (m_rigidBody && m_mesh)
 		return true;
