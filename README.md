@@ -21,7 +21,6 @@ Directus3D is a simple yet powerful game engine. This is achieved by prioritizin
 - Ability to save everything in a custom engine format.
 - Audio source and listener components.
 - Cascaded shadow mapping.
-- D3D12 Renderer.
 - Draw call batching (static & dynamic).
 - Font loader & renderer.
 - SSAO, SSR, Volumetric Lighting.
