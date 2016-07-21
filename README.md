@@ -27,6 +27,6 @@ Directus3D is a simple yet powerful game engine. This is achieved by prioritizin
 - UI components.
 - Vulkan Renderer.
 
-Dependencies that are not included in the repository: AngelScript, Assimp, Bullet, FreeImage.
+Dependencies that are not included in the repository: AngelScript, Assimp, Bullet, FreeImage, Qt.
 
 This project is devoted to my father.
