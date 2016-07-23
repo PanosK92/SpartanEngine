@@ -209,8 +209,7 @@ Type* GameObject::GetComponent()
 
 		// casting failure == nullptr
 		Type* typed_cmp = dynamic_cast<Type*>(component);
-
-		if (typed_cmp != nullptr)
+		if (typed_cmp)
 			return typed_cmp;
 	}
 
@@ -220,10 +219,10 @@ Type* GameObject::GetComponent()
 template <class Type>
 bool GameObject::HasComponent()
 {
-	if (GetComponent<Type>() == nullptr)
-		return false;
+	if (GetComponent<Type>())
+		return true;
 
-	return true;
+	return false;
 }
 
 template <class Type>

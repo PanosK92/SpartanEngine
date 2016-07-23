@@ -209,6 +209,12 @@ void Renderer::Render()
 
 void Renderer::SetResolution(int width, int height)
 {
+	// A resolution of 0 won'tcause a crash or anything crazy,
+	// but it will cause the depth stancil buffer creation to fail,
+	// various error messages to be displayed. I silently prevent that.
+	if (width == 0 || height == 0)
+		return;
+
 	Settings::GetInstance().SetResolution(width, height);
 
 	m_graphicsDevice->SetViewport(width, height);

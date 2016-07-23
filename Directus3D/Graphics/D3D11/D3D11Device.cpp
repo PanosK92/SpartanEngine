@@ -92,9 +92,6 @@ void D3D11Device::Initialize(HWND handle)
 	/*------------------------------------------------------------------------------
 							[Display Mode Description]
 	------------------------------------------------------------------------------*/
-	unsigned int i, stringLength;
-	unsigned int numerator = 0, denominator = 1;
-
 	// Create a list to hold all the possible display modes for this monitor/video card combination.
 	DXGI_MODE_DESC* m_displayModeList = new DXGI_MODE_DESC[numModes];
 	if (!m_displayModeList)
@@ -108,9 +105,9 @@ void D3D11Device::Initialize(HWND handle)
 	// Release the adapter output.
 	adapterOutput->Release();
 
-	// Now go through all the display modes and find the one that matches the screen width and height.
-	// When a match is found store the numerator and denominator of the refresh rate for that monitor.
-	for (i = 0; i < numModes; i++)
+	// Go through all the display modes and find the one that matches the screen width and height.
+	unsigned int numerator = 0, denominator = 1;
+	for (int i = 0; i < numModes; i++)
 	{
 		if (m_displayModeList[i].Width == (unsigned int)RESOLUTION_WIDTH)
 		{
