@@ -96,13 +96,14 @@ void GameObjectPool::Deserialize()
 	// 1st - gameObjectCount
 	int gameObjectCount = Serializer::LoadInt();
 
-	// create gameObjects
-	for (int i = 0; i < gameObjectCount; i++)
-		new GameObject(); // no need to add it to the pool manually. The gameobject will call AddGameObject()
-
 	// 2nd - gameObjects
 	for (int i = 0; i < gameObjectCount; i++)
-		m_pool[i]->Load();
+	{
+		// The gameobject will add itself in the pool, 
+		// no need to do it here or call delete on it.
+		GameObject* gameObject = new GameObject(); 
+		gameObject->Load();
+	}
 
 	// resolve hierarchy relationships
 	for (int i = 0; i < gameObjectCount; i++)
