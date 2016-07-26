@@ -57,14 +57,14 @@ void DirectusInspector::Initialize()
     m_collider = new DirectusCollider();
     m_collider->Initialize(m_directusCore, this);
 
+    m_meshCollider = new DirectusMeshCollider();
+    m_meshCollider->Initialize(m_directusCore, this);
+
     m_light = new DirectusLight();
     m_light->Initialize(m_directusCore);
 
     m_script = new DirectusScript();
     m_script->Initialize(m_directusCore);
-
-    m_meshCollider = new DirectusMeshCollider();
-    m_meshCollider->Initialize();;
 
     this->layout()->addWidget(m_transform);
     this->layout()->addWidget(m_camera);
@@ -73,9 +73,9 @@ void DirectusInspector::Initialize()
     this->layout()->addWidget(m_material); 
     this->layout()->addWidget(m_rigidBody);
     this->layout()->addWidget(m_collider);
+    this->layout()->addWidget(m_meshCollider);
     this->layout()->addWidget(m_light);
     this->layout()->addWidget(m_script);
-    this->layout()->addWidget(m_meshCollider);
 
     m_initialized = true;
 }
@@ -110,9 +110,9 @@ void DirectusInspector::Inspect(GameObject* gameobject)
         m_material->Reflect(gameobject);
         m_rigidBody->Reflect(gameobject);
         m_collider->Reflect(gameobject);
-        m_light->Reflect(gameobject);
-        m_script->Reflect(gameobject);
         m_meshCollider->Reflect(gameobject);
+        m_light->Reflect(gameobject);
+        m_script->Reflect(gameobject);   
     }
     else // NOTE: If no item is selected, the gameobject will be null
     {
@@ -123,8 +123,8 @@ void DirectusInspector::Inspect(GameObject* gameobject)
         m_material->hide();    
         m_rigidBody->hide();
         m_collider->hide();
-        m_light->hide();
-        m_script->hide();
         m_meshCollider->hide();
+        m_light->hide();
+        m_script->hide();    
     }
 }

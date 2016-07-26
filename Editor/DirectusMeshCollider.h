@@ -24,52 +24,57 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusAdjustLabel.h"
-#include <QLineEdit>
+#include "DirectusComboSliderText.h"
+#include <QPushButton>
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
 #include "Components/MeshCollider.h"
 #include <QCheckBox>
+#include "DirectusCore.h"
+#include <QLabel>
+#include "Math/Vector4.h"
 //==================================
+
+class DirectusInspector;
 
 class DirectusMeshCollider : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusMeshCollider(QWidget *parent = 0);
-    void Initialize();
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
     void Reflect(GameObject* gameobject);
-private:
 
+private:
     //= TITLE ============================
-    QWidget* m_image;
     QLabel* m_title;
     //====================================
 
-    //= CAST SHADOWS =====================
-    QLabel* m_castShadowsLabel;
-    QCheckBox* m_castShadowsCheckBox;
+    //= CONVEX ===========================
+    QLabel* m_convexLabel;
+    QCheckBox* m_convex;
     //====================================
 
-    //= RECEIVE SHADOWS ==================
-    QLabel* m_receiveShadowsLabel;
-    QCheckBox* m_receiveShadowsCheckBox;
+    //= MESH =============================
+    QLabel* m_meshLabel;
+    QLineEdit* m_mesh;
     //====================================
 
-    //= MATERIAL =========================
-    QLabel* m_materialLabel;
-    QLineEdit* m_material;
+    //= LINE =============================
+    QWidget* m_line;
     //====================================
 
     //= MISC =============================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
-    MeshCollider* m_inspectedMeshRenderer;
+    MeshCollider* m_inspectedMeshCollider;
+    DirectusCore* m_directusCore;
     //====================================
 
-    void SetCastShadows(bool cast);
-    void SetReceiveShadows(bool receive);
+    void SetConvex(bool convex);
+    void SetMesh(Mesh* mesh);
 
 public slots:
-    void Map();
+    void MapConvex();
+    void MapMesh();
 };

@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES =====
 using namespace std;
-
 //==================
 
 MeshCollider::MeshCollider()
@@ -43,7 +42,7 @@ MeshCollider::MeshCollider()
 	m_collider = nullptr;
 	m_convex = false;
 	m_rigidBody = nullptr;
-	m_mesh = nullptr;
+	m_meshFilter = nullptr;
 
 	m_isDirty = true;
 }
@@ -53,10 +52,12 @@ MeshCollider::~MeshCollider()
 	delete m_collider;
 	m_collider = nullptr;
 
+	// This has to be done in a remove function that I have to implement
+	// in the component interface
 	// update the rigidbody if it exists
-	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
+	/*RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 	if (rigidBody)
-		rigidBody->SetCollisionShape(m_collider);
+		rigidBody->SetCollisionShape(m_collider);*/
 }
 
 /*------------------------------------------------------------------------------
@@ -105,24 +106,37 @@ void MeshCollider::SetConvex(bool isConvex)
 	m_isDirty = true;
 }
 
+Mesh* MeshCollider::GetMesh()
+{
+	if (!m_meshFilter)
+		return nullptr;
+
+	return m_meshFilter->GetMesh();
+}
+
+void MeshCollider::SetMesh(Mesh* mesh)
+{
+	// needs to be implemented
+}
+
 /*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
 void MeshCollider::ConstructFromVertexCloud()
 {
-	if (m_mesh->GetVertexCount() > m_vertexLimit)
+	if (m_meshFilter->GetVertexCount() > m_vertexLimit)
 	{
 		LOG("No user defined collider with more than " + std::to_string(m_vertexLimit) + " vertices is allowed.", Log::Warning);
 		return;
 	}
 
 	// vertices & indices
-	vector<VertexPositionTextureNormalTangent> vertices = m_mesh->GetVertices();
-	vector<unsigned int> indices = m_mesh->GetIndices();
+	vector<VertexPositionTextureNormalTangent> vertices = m_meshFilter->GetVertices();
+	vector<unsigned int> indices = m_meshFilter->GetIndices();
 
 	//= contruct collider ========================================================================================
 	btTriangleMesh* trimesh = new btTriangleMesh();
-	for (auto i = 0; i < m_mesh->GetFaceCount(); i++)
+	for (auto i = 0; i < m_meshFilter->GetFaceCount(); i++)
 	{
 		int index0 = indices[i * 3];
 		int index1 = indices[i * 3 + 1];
@@ -169,10 +183,10 @@ bool MeshCollider::ComponentCheck()
 	if (!m_rigidBody)
 		m_rigidBody = g_gameObject->GetComponent<RigidBody>();
 
-	if (!m_mesh)
-		m_mesh = g_gameObject->GetComponent<MeshFilter>();
+	if (!m_meshFilter)
+		m_meshFilter = g_gameObject->GetComponent<MeshFilter>();
 
-	if (m_rigidBody && m_mesh)
+	if (m_rigidBody && m_meshFilter)
 		return true;
 
 	return false;

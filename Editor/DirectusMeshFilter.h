@@ -65,7 +65,7 @@ private:
     MeshFilter* m_inspectedMeshFilter;
     //====================================
 
-    void SetMesh(std::string meshName);
+    void SetMesh(Mesh* mesh);
 
 public slots:
     void MapMesh();

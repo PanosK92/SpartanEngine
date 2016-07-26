@@ -28,17 +28,123 @@ DirectusMeshCollider::DirectusMeshCollider(QWidget *parent) : QWidget(parent)
 
 }
 
-void DirectusMeshCollider::Initialize()
+void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspector* inspector)
 {
+    m_directusCore = directusCore;
 
+    m_gridLayout = new QGridLayout();
+    m_gridLayout->setMargin(4);
+    m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
+
+    //= TITLE =================================================
+    m_title = new QLabel("Mesh Collider");
+    m_title->setStyleSheet(
+                "background-image: url(:/Images/meshCollider.png);"
+                "background-repeat: no-repeat;"
+                "background-position: left;"
+                "padding-left: 20px;"
+                );
+    //=========================================================
+
+    //= CONVEX ================================================
+    m_convexLabel = new QLabel("Convex");
+    m_convex = new QCheckBox();
+    //=========================================================
+
+    //= MESH ==================================================
+    m_meshLabel = new QLabel("Mesh");
+    m_mesh = new QLineEdit();
+    m_mesh->setReadOnly(true);
+    //=========================================================
+
+    //= LINE ======================================
+    m_line = new QWidget();
+    m_line->setFixedHeight(1);
+    m_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_line->setStyleSheet(QString("background-color: #585858;"));
+    //=============================================
+
+    // addWidget(widget, row, column, rowspan, colspan)
+    //= GRID ==================================================
+    // Row 0 - TITLE
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 2);
+
+    // Row 1 - CONVEX
+    m_gridLayout->addWidget(m_convexLabel, 1, 0, 1, 1);
+    m_gridLayout->addWidget(m_convex, 1, 1, 1, 1);
+
+    // Row 2 - MESH
+    m_gridLayout->addWidget(m_meshLabel, 2, 0, 1, 1);
+    m_gridLayout->addWidget(m_mesh, 2, 1, 1, 1);
+
+    // Row 3 - LINE
+    m_gridLayout->addWidget(m_line, 3, 0, 1, 2);
+    //============================================================
+
+
+    this->setLayout(m_gridLayout);
+    this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    this->hide();
 }
 
 void DirectusMeshCollider::Reflect(GameObject* gameobject)
 {
+    m_inspectedMeshCollider = nullptr;
 
+    // Catch evil case
+    if (!gameobject)
+    {
+        this->hide();
+        return;
+    }
+
+    // Catch the seed of the evil
+    m_inspectedMeshCollider = gameobject->GetComponent<MeshCollider>();
+    if (!m_inspectedMeshCollider)
+    {
+        this->hide();
+        return;
+    }
+
+    // Do the actual reflection
+    SetConvex(m_inspectedMeshCollider->GetConvex());
+    SetMesh(m_inspectedMeshCollider->GetMesh());
+
+    // Make this widget visible
+    this->show();
 }
 
-void DirectusMeshCollider::Map()
+void DirectusMeshCollider::SetConvex(bool convex)
 {
+    m_convex->setChecked(convex);
+}
 
+void DirectusMeshCollider::SetMesh(Mesh* mesh)
+{
+    if (!mesh)
+        return;
+
+    m_mesh->setText(QString::fromStdString(mesh->name));
+}
+
+void DirectusMeshCollider::MapConvex()
+{
+    if (!m_inspectedMeshCollider || !m_directusCore)
+        return;
+
+    bool convex = m_convex->isChecked();
+    m_inspectedMeshCollider->SetConvex(convex);
+
+    m_directusCore->Update();
+}
+
+void DirectusMeshCollider::MapMesh()
+{
+    if (!m_inspectedMeshCollider || !m_directusCore)
+        return;
+
+    //Mesh* mesh = m_convex->isChecked();
+    //m_inspectedMeshCollider->SetMesh(mesh);
+
+    m_directusCore->Update();
 }

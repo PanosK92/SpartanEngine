@@ -2781,7 +2781,7 @@ QTabBar::tab:last
   </action>
   <action name="actionMesh_Filter_Component">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>Mesh Filter</string>
