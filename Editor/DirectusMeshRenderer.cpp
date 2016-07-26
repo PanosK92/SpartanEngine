@@ -138,6 +138,9 @@ void DirectusMeshRenderer::SetReceiveShadows(bool receive)
 
 void DirectusMeshRenderer::SetMaterial(Material* material)
 {
+    if (!material)
+        return;
+
     std::string materialName = material->GetName();
     m_material->setText(QString::fromStdString(materialName));
 }
@@ -147,10 +150,9 @@ void DirectusMeshRenderer::Map()
     if (!m_inspectedMeshRenderer)
         return;
 
-    bool castShadows = m_castShadowsCheckBox->isChecked();
-    bool receiveShadows = m_receiveShadowsCheckBox->isChecked();
+    bool castShadows = m_castShadowsCheckBox->isChecked();  
     m_inspectedMeshRenderer->SetCastShadows(castShadows);
-    m_inspectedMeshRenderer->SetReceiveShadows(receiveShadows);
 
-    LOG("1");
+    bool receiveShadows = m_receiveShadowsCheckBox->isChecked();
+    m_inspectedMeshRenderer->SetReceiveShadows(receiveShadows);
 }

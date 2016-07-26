@@ -261,7 +261,7 @@ void GameObject::LoadCompFromTypeStr(string typeStr)
 	if (typeStr == "Transform")
 		AddComponent<Transform>()->Deserialize();
 
-	if (typeStr == "Mesh")
+	if (typeStr == "MeshFilter")
 		AddComponent<MeshFilter>()->Deserialize();
 
 	if (typeStr == "MeshRenderer")

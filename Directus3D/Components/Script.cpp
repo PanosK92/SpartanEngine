@@ -61,7 +61,7 @@ void Script::Update()
 void Script::Serialize()
 {
 	// save script count
-	Serializer::SaveInt(static_cast<int>(m_scriptInstances.size()));
+	Serializer::SaveInt((int)m_scriptInstances.size());
 
 	// save script paths
 	for (auto i = 0; i < m_scriptInstances.size(); i++)

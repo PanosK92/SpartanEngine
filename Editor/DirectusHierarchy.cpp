@@ -748,7 +748,7 @@ void DirectusHierarchy::AddMeshColliderComponent()
     if (!gameobject)
         return;
 
-    gameobject->AddComponent<Collider>();
+    gameobject->AddComponent<MeshCollider>();
 }
 
 void DirectusHierarchy::AddHingeComponent()
