@@ -43,6 +43,7 @@ MeshRenderer::MeshRenderer()
 
 MeshRenderer::~MeshRenderer()
 {
+
 }
 
 /*------------------------------------------------------------------------------
@@ -50,10 +51,12 @@ MeshRenderer::~MeshRenderer()
 ------------------------------------------------------------------------------*/
 void MeshRenderer::Initialize()
 {
+
 }
 
 void MeshRenderer::Update()
 {
+
 }
 
 void MeshRenderer::Serialize()
@@ -75,19 +78,19 @@ void MeshRenderer::Deserialize()
 ------------------------------------------------------------------------------*/
 void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix projectionMatrix, Light* dicrectionalLight, Camera* camera) const
 {
-	if (!HasMaterial()) // If there is a material
+	Material* material = GetMaterial();
+
+	if (!material) // Check if a material exists
 	{
 		LOG("GameObject \"" + g_gameObject->GetName() + "\" has no material. It can't be rendered.");
 		return;
 	}
 
-	if (!GetMaterial()->HasShader()) // And a shader is associated with it
+	if (!material->HasShader()) // Check if the material has a shader
 	{
 		LOG("GameObject \"" + g_gameObject->GetName() + "\" has a material but not a shader associated with it. It can't be rendered.");
 		return;
 	}
-
-	Material* material = GetMaterial();
 
 	vector<ID3D11ShaderResourceView*> textures;
 	textures.push_back(material->GetShaderResourceViewByTextureType(Albedo));
@@ -106,10 +109,9 @@ void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix pro
 	GetMaterial()->GetShader()->Set();
 	GetMaterial()->GetShader()->Render(
 		indexCount,
-		g_transform->GetWorldMatrix(),
-		viewMatrix, projectionMatrix,
-		GetMaterial(),
-		textures, dicrectionalLight, camera
+		g_transform->GetWorldMatrix(), viewMatrix, projectionMatrix,
+		GetMaterial(), textures, 
+		dicrectionalLight, camera
 	);
 }
 

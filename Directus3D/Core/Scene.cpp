@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/LineRenderer.h"
 #include "../Components/Skybox.h"
 #include "../Components/Script.h"
+#include "../Components/MeshFilter.h"
 #include "../Physics/PhysicsEngine.h"
 //=====================================
 
@@ -187,23 +188,23 @@ void Scene::AnalyzeGameObjects()
 	std::vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
 	for (int i = 0; i < GameObjectPool::GetInstance().GetGameObjectCount(); i++)
 	{
-		GameObject* gameObject = gameObjects[i];
+		GameObject* gameobject = gameObjects[i];
 
 		// Find a camera
-		if (gameObject->HasComponent<Camera>())
-			m_mainCamera = gameObject;
+		if (gameobject->HasComponent<Camera>())
+			m_mainCamera = gameobject;
 
 		// Find renderables
-		if (gameObject->HasComponent<MeshRenderer>())
-			m_renderables.push_back(gameObject);
+		if (gameobject->HasComponent<MeshRenderer>() && gameobject->HasComponent<MeshFilter>())
+			m_renderables.push_back(gameobject);
 
 		// Find lights
-		if (gameObject->HasComponent<Light>())
+		if (gameobject->HasComponent<Light>())
 		{
-			if (gameObject->GetComponent<Light>()->GetLightType() == Directional)
-				m_lightsDirectional.push_back(gameObject);
-			else if (gameObject->GetComponent<Light>()->GetLightType() == Point)
-				m_lightsPoint.push_back(gameObject);
+			if (gameobject->GetComponent<Light>()->GetLightType() == Directional)
+				m_lightsDirectional.push_back(gameobject);
+			else if (gameobject->GetComponent<Light>()->GetLightType() == Point)
+				m_lightsPoint.push_back(gameobject);
 		}
 	}
 
