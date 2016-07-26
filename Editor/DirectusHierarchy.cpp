@@ -369,7 +369,6 @@ void DirectusHierarchy::OpenScene()
 
     // Emit a signal and clear the hierarchy
     emit SceneLoadingStarted();
-    //Clear();
 
     // Connect all the necessery signals to their slots
     connect(thread,         SIGNAL(started()),  sceneLoader,    SLOT(LoadScene()));

@@ -86,7 +86,7 @@ void GameObjectPool::Serialize()
 
 	// 2nd - gameObjects
 	for (unsigned int i = 0; i < m_pool.size(); i++)
-		m_pool[i]->Save();
+		m_pool[i]->Serialize();
 }
 
 void GameObjectPool::Deserialize()
@@ -101,8 +101,8 @@ void GameObjectPool::Deserialize()
 	{
 		// The gameobject will add itself in the pool, 
 		// no need to do it here or call delete on it.
-		GameObject* gameObject = new GameObject(); 
-		gameObject->Load();
+		GameObject* gameObject = new GameObject();
+		gameObject->Deserialize();
 	}
 
 	// resolve hierarchy relationships

@@ -102,10 +102,10 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
 	Resize(width, height);
 
     // Has to be overriden for QSS to take affect
-    QStyleOption opt;
-    opt.init(this);
-    QPainter p(this);
-    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+    //QStyleOption opt;
+    //opt.init(this);
+    //QPainter p(this);
+    //style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
 void DirectusCore::paintEvent(QPaintEvent* evt)
