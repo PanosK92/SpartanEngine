@@ -186,7 +186,7 @@ void Renderer::Render()
 	// G-Buffer Construction
 	m_GBuffer->SetRenderTargets();
 	m_GBuffer->ClearRenderTargets(0.0f, 0.0f, 0.0f, 1.0f);
-	GBufferPass(m_renderables, m_directionalLight);
+	GBufferPass(m_renderables);
 
 	// DISABLE Z BUFFER - SET FULLSCREEN QUAD
 	m_graphicsDevice->EnableZBuffer(false);
@@ -311,7 +311,7 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 	}
 }
 
-void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects, Light* dirLight)
+void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 {
 	for (auto i = 0; i < renderableGameObjects.size(); i++)
 	{
@@ -347,11 +347,7 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects, Light* dir
 		bool buffersHaveBeenSet = mesh->SetBuffers();
 		if (buffersHaveBeenSet)
 		{
-			Light* directionalLight = nullptr;
-			if (m_lightsDirectional.size() != 0)
-				directionalLight = m_lightsDirectional[0]->GetComponent<Light>();
-
-			meshRenderer->Render(mesh->GetIndexCount(), mView, mProjection, directionalLight, m_camera);
+			meshRenderer->Render(mesh->GetIndexCount(), mView, mProjection, m_directionalLight, m_camera);
 			m_meshesRendered++;
 		}
 		//==========================================================================

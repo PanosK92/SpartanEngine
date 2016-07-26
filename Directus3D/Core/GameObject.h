@@ -49,8 +49,8 @@ public:
 	void SetHierarchyVisibility(bool value);
 	bool IsVisibleInHierarchy();
 
-	void Save();
-	void Load();
+	void Serialize();
+	void Deserialize();
 
 	//= Components ============================================
 	template <class Type>

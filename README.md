@@ -8,9 +8,9 @@ Directus3D is a simple yet powerful game engine. This is achieved by prioritizin
 - 40+ 3D model formats support.
 - Component-based game object system.
 - D3D11 Renderer.
-- Deferred shading.
+- Deferred rendering.
 - Frustum culling.
-- Physically based rendering.
+- Physically based shading.
 - Physics.
 - Post-process effects like FXAA & Sharpening.
 - Scripting.

@@ -83,12 +83,14 @@ void Scene::Update()
 bool Scene::SaveToFile(std::string path)
 {
 	Serializer::StartWriting(path);
-	//================================================
+
+	//========================================
 	m_texturePool->Serialize();
 	m_materialPool->Serialize();
 	m_meshPool->Serialize();
 	GameObjectPool::GetInstance().Serialize();
-	//================================================
+	//========================================
+
 	Serializer::StopWriting();
 
 	return true;
@@ -104,12 +106,14 @@ bool Scene::LoadFromFile(std::string path)
 	Clear();
 
 	Serializer::StartReading(path);
-	//===========================================
+
+	//==========================================
 	m_texturePool->Deserialize();
 	m_materialPool->Deserialize();
 	m_meshPool->Deserialize();
 	GameObjectPool::GetInstance().Deserialize();
-	//===========================================
+	//==========================================
+
 	Serializer::StopReading();
 
 	m_isDirty = true;
@@ -175,6 +179,10 @@ void Scene::AnalyzeGameObjects()
 
 	m_lightsPoint.clear();
 	m_lightsPoint.shrink_to_fit();
+
+	// It's necessery to not forget to shit this to nullptr,
+	// otherwise it can end up as a nice dangling pointer :-)
+	m_mainCamera = nullptr;
 
 	std::vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
 	for (int i = 0; i < GameObjectPool::GetInstance().GetGameObjectCount(); i++)

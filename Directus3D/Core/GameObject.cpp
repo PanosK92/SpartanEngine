@@ -139,7 +139,7 @@ bool GameObject::IsVisibleInHierarchy()
 	return m_hierarchyVisibility;
 }
 
-void GameObject::Save()
+void GameObject::Serialize()
 {
 	Serializer::SaveSTR(m_ID);
 	Serializer::SaveSTR(m_name);
@@ -154,7 +154,7 @@ void GameObject::Save()
 	}
 }
 
-void GameObject::Load()
+void GameObject::Deserialize()
 {
 	m_ID = Serializer::LoadSTR();
 	m_name = Serializer::LoadSTR();
