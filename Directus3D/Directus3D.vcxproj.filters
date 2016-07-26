@@ -254,9 +254,6 @@
     <ClInclude Include="Core\Material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Core\MeshData.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -417,6 +414,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Components\MeshFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -24,54 +24,49 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusAdjustLabel.h"
-#include <QLineEdit>
+#include "DirectusComboSliderText.h"
+#include <QPushButton>
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
 #include "Components/MeshFilter.h"
-#include <QCheckBox>
+#include <QComboBox>
+#include "DirectusCore.h"
+#include <QLabel>
+#include "Math/Vector4.h"
 //==================================
 
-class DirectusMesh : public QWidget
+class DirectusInspector;
+
+class DirectusMeshFilter : public QWidget
 {
     Q_OBJECT
 public:
-    explicit DirectusMesh(QWidget *parent = 0);
-    void Initialize();
+    explicit DirectusMeshFilter(QWidget *parent = 0);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
     void Reflect(GameObject* gameobject);
-private:
 
+private:
     //= TITLE ============================
-    QWidget* m_image;
     QLabel* m_title;
     //====================================
 
-    //= CAST SHADOWS =====================
-    QLabel* m_castShadowsLabel;
-    QCheckBox* m_castShadowsCheckBox;
+    //= MESH =============================
+    QLabel* m_meshLabel;
+    QLineEdit* m_mesh;
     //====================================
 
-    //= RECEIVE SHADOWS ==================
-    QLabel* m_receiveShadowsLabel;
-    QCheckBox* m_receiveShadowsCheckBox;
-    //====================================
-
-    //= MATERIAL =========================
-    QLabel* m_materialLabel;
-    QLineEdit* m_material;
-    //====================================
+    //= LINE ========================
+    QWidget* m_line;
+    //===============================
 
     //= MISC =============================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
-    MeshFilter* m_inspectedMeshRenderer;
+    MeshFilter* m_inspectedMeshFilter;
     //====================================
 
-    QLineEdit* CreateQLineEdit();
-
-    void SetCastShadows(bool cast);
-    void SetReceiveShadows(bool receive);
+    void SetMesh(std::string meshName);
 
 public slots:
-    void Map();
+    void MapMesh();
 };

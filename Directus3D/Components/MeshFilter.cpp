@@ -170,7 +170,7 @@ void MeshFilter::CreateCube()
 	indices.push_back(21);
 	indices.push_back(22);
 
-	Set(g_transform->GetRoot()->GetGameObject()->GetID(), vertices, indices, 2);
+	Set("Cube", g_transform->GetRoot()->GetGameObject()->GetID(), vertices, indices);
 }
 
 void MeshFilter::CreateQuad()
@@ -189,13 +189,13 @@ void MeshFilter::CreateQuad()
 	indices.push_back(0);
 	indices.push_back(1);
 
-	Set(g_transform->GetRoot()->GetGameObject()->GetID(), vertices, indices, 2);
+	Set("Quad", g_transform->GetRoot()->GetGameObject()->GetID(), vertices, indices);
 }
 
-void MeshFilter::Set(string rootGameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices, unsigned int faceCount)
+void MeshFilter::Set(string name, string rootGameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices)
 {
 	// Add the mesh data to the pool so it gets initialized properly
-	m_meshData = g_meshPool->AddMesh(rootGameObjectID, g_gameObject->GetID(), vertices, indices, faceCount);
+	m_meshData = g_meshPool->AddMesh(name, rootGameObjectID, g_gameObject->GetID(), vertices, indices);
 
 	Refresh();
 }
@@ -263,6 +263,11 @@ unsigned int MeshFilter::GetIndexCount()
 unsigned int MeshFilter::GetFaceCount()
 {
 	return m_meshData->faceCount;
+}
+
+std::string MeshFilter::GetName()
+{
+	return m_meshData->name;
 }
 
 void MeshFilter::CreateBuffers()

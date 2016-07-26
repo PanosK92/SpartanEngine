@@ -17,5 +17,6 @@
         <file>icon.ico</file>
         <file>rigidBody.png</file>
         <file>collider.png</file>
+        <file>meshFilter.png</file>
     </qresource>
 </RCC>

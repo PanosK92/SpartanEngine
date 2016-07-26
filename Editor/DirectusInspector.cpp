@@ -42,14 +42,14 @@ void DirectusInspector::Initialize()
     m_camera = new DirectusCamera();
     m_camera->Initialize(m_directusCore);
 
+    m_meshFilter = new DirectusMeshFilter();
+    m_meshFilter->Initialize(m_directusCore, this);
+
     m_meshRenderer = new DirectusMeshRenderer();
     m_meshRenderer->Initialize();
 
     m_material = new DirectusMaterial();
     m_material->Initialize(m_directusCore, this);
-
-    m_mesh = new DirectusMesh();
-    m_mesh->Initialize();
 
     m_rigidBody = new DirectusRigidBody();
     m_rigidBody->Initialize(m_directusCore, this);
@@ -68,9 +68,9 @@ void DirectusInspector::Initialize()
 
     this->layout()->addWidget(m_transform);
     this->layout()->addWidget(m_camera);
+    this->layout()->addWidget(m_meshFilter);
     this->layout()->addWidget(m_meshRenderer);
-    this->layout()->addWidget(m_material);
-    this->layout()->addWidget(m_mesh);
+    this->layout()->addWidget(m_material); 
     this->layout()->addWidget(m_rigidBody);
     this->layout()->addWidget(m_collider);
     this->layout()->addWidget(m_light);
@@ -105,9 +105,9 @@ void DirectusInspector::Inspect(GameObject* gameobject)
     {    
         m_transform->Reflect(gameobject);
         m_camera->Reflect(gameobject);
+        m_meshFilter->Reflect(gameobject);
         m_meshRenderer->Reflect(gameobject);
         m_material->Reflect(gameobject);
-        m_mesh->Reflect(gameobject);
         m_rigidBody->Reflect(gameobject);
         m_collider->Reflect(gameobject);
         m_light->Reflect(gameobject);
@@ -118,9 +118,9 @@ void DirectusInspector::Inspect(GameObject* gameobject)
     {
         m_transform->hide();
         m_camera->hide();
+        m_meshFilter->hide();
         m_meshRenderer->hide();
         m_material->hide();    
-        m_mesh->hide();
         m_rigidBody->hide();
         m_collider->hide();
         m_light->hide();

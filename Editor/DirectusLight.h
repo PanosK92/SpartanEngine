@@ -79,8 +79,6 @@ private:
     DirectusCore* m_directusCore;
     //====================================
 
-    QLineEdit* CreateQLineEdit();
-
     void SetLightType(LightType type);
     void SetColor(Directus::Math::Vector4 color);
     void SetIntensity(float intensity);

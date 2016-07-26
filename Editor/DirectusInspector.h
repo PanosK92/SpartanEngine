@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusRigidBody.h"
 #include "DirectusLight.h"
 #include "DirectusScript.h"
-#include "DirectusMesh.h"
+#include "DirectusMeshFilter.h"
 #include "DirectusMeshCollider.h"
 #include "DirectusCore.h"
 //===============================
@@ -58,7 +58,7 @@ private:
     DirectusRigidBody* m_rigidBody;
     DirectusLight* m_light;
     DirectusScript* m_script;
-    DirectusMesh* m_mesh;
+    DirectusMeshFilter* m_meshFilter;
     DirectusMeshCollider* m_meshCollider;
 
     DirectusCore* m_directusCore;

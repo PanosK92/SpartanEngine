@@ -51,10 +51,11 @@ void MeshPool::Clear()
 	m_meshDataPool.shrink_to_fit();
 }
 
-MeshData* MeshPool::AddMesh(string rootGameObjectID, string gameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices, unsigned int faceCount)
+Mesh* MeshPool::AddMesh(string name, string rootGameObjectID, string gameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices)
 {
 	// construct mesh
-	unique_ptr<MeshData> meshData(new MeshData());
+	unique_ptr<Mesh> meshData(new Mesh());
+	meshData->name = name;
 	meshData->rootGameObjectID = rootGameObjectID;
 	meshData->ID = GENERATE_GUID;
 	meshData->gameObjectID = gameObjectID;
@@ -62,7 +63,7 @@ MeshData* MeshPool::AddMesh(string rootGameObjectID, string gameObjectID, vector
 	meshData->indices = indices;
 	meshData->vertexCount = vertices.size();
 	meshData->indexCount = indices.size();
-	meshData->faceCount = faceCount;
+	meshData->faceCount = vertices.size() / 3;
 
 	m_meshDataPool.push_back(move(meshData));
 
@@ -70,7 +71,7 @@ MeshData* MeshPool::AddMesh(string rootGameObjectID, string gameObjectID, vector
 	return m_meshDataPool.back().get();
 }
 
-MeshData* MeshPool::GetMesh(string ID)
+Mesh* MeshPool::GetMesh(string ID)
 {
 	for (int i = 0; i < m_meshDataPool.size(); i++)
 	{
@@ -82,9 +83,9 @@ MeshData* MeshPool::GetMesh(string ID)
 }
 
 // Returns the meshes tha belong to the same model
-vector<MeshData*> MeshPool::GetModelMeshesByModelName(string rootGameObjectID)
+vector<Mesh*> MeshPool::GetModelMeshesByModelName(string rootGameObjectID)
 {
-	vector<MeshData*> modelMeshes;
+	vector<Mesh*> modelMeshes;
 	for (unsigned int i = 0; i < m_meshDataPool.size(); i++)
 	{
 		if (m_meshDataPool[i]->rootGameObjectID == rootGameObjectID)
@@ -102,10 +103,10 @@ vector<MeshData*> MeshPool::GetModelMeshesByModelName(string rootGameObjectID)
 float MeshPool::GetNormalizedModelScaleByRootGameObjectID(string rootGameObjectID)
 {
 	// get all the meshes related to this model
-	vector<MeshData*> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
+	vector<Mesh*> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
 
 	// find the mesh with the largest bounding box
-	MeshData* largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
+	Mesh* largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
 
 	// calculate the scale
 	Vector3 boundingBox = GetMeshExtent(largestBoundingBoxMesh);
@@ -114,7 +115,7 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(string rootGameObjectI
 	return 1.0f / scaleOffset;
 }
 
-void MeshPool::SetMeshScale(MeshData* meshData, float scale)
+void MeshPool::SetMeshScale(Mesh* meshData, float scale)
 {
 	for (int j = 0; j < meshData->vertexCount; j++)
 		meshData->vertices[j].position *= scale;
@@ -123,7 +124,7 @@ void MeshPool::SetMeshScale(MeshData* meshData, float scale)
 void MeshPool::SetModelScale(string rootGameObjectID, float scale)
 {
 	// get all the meshes related to this model
-	vector<MeshData*> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
+	vector<Mesh*> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
 
 	for (int i = 0; i < modelMeshes.size(); i++)
 		SetMeshScale(modelMeshes[i], scale);
@@ -145,9 +146,9 @@ void MeshPool::NormalizeModelScale(GameObject* rootGameObject)
 }
 
 // Returns the largest bounding box in an array of meshes
-MeshData* MeshPool::GetLargestBoundingBox(vector<MeshData*> meshes)
+Mesh* MeshPool::GetLargestBoundingBox(vector<Mesh*> meshes)
 {
-	MeshData* largestBoundingBoxMesh = meshes[0];
+	Mesh* largestBoundingBoxMesh = meshes[0];
 	Vector3 largestBoundingBox = Vector3(0, 0, 0);
 
 	for (unsigned int i = 0; i < meshes.size(); i++)
@@ -164,7 +165,7 @@ MeshData* MeshPool::GetLargestBoundingBox(vector<MeshData*> meshes)
 }
 
 // Returns the bounding box of a mesh
-Vector3 MeshPool::GetMeshExtent(MeshData* mesh)
+Vector3 MeshPool::GetMeshExtent(Mesh* mesh)
 {
 	Vector3 min, max;
 
@@ -188,7 +189,7 @@ Vector3 MeshPool::GetMeshCenter(Vector3 min, Vector3 max)
 }
 
 // Returns the minimum and maximum point in an array of meshes
-void MeshPool::GetMinMax(MeshData* meshData, Vector3& min, Vector3& max)
+void MeshPool::GetMinMax(Mesh* meshData, Vector3& min, Vector3& max)
 {
 	min = Vector3(INFINITY, INFINITY, INFINITY);
 	max = Vector3(-INFINITY, -INFINITY, -INFINITY);
@@ -253,7 +254,7 @@ void MeshPool::Deserialize()
 	int meshDataCount = Serializer::LoadInt(); // 1st - meshDataCount
 	for (int i = 0; i < meshDataCount; i++)
 	{
-		unique_ptr<MeshData> meshData(new MeshData());
+		unique_ptr<Mesh> meshData(new Mesh());
 
 		// load simple data
 		meshData->rootGameObjectID = Serializer::LoadSTR(); // 2nd - root GameObject id

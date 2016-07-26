@@ -19,26 +19,40 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//=========================
-#include "DirectusMesh.h"
-//=========================
+#pragma once
 
-DirectusMesh::DirectusMesh(QWidget *parent) : QWidget(parent)
+//= INCLUDES ======
+#include <vector>
+#include "Vertex.h"
+//=================
+
+class Mesh
 {
+public:
+	Mesh()
+	{
+		name = "";
+		rootGameObjectID = "";
+		ID = "";
+		gameObjectID = "";
+		vertexCount = 0;
+		indexCount = 0;
+		faceCount = 0;
+	}
 
-}
+	~Mesh()
+	{
+		vertices.clear();
+		indices.clear();
+	}
 
-void DirectusMesh::Initialize()
-{
-
-}
-
-void DirectusMesh::Reflect(GameObject* gameobject)
-{
-
-}
-
-void DirectusMesh::Map()
-{
-
-}
+	std::string name;
+	std::string rootGameObjectID;
+	std::string ID;
+	std::string gameObjectID;
+	std::vector<VertexPositionTextureNormalTangent> vertices;
+	std::vector<unsigned int> indices;
+	unsigned int vertexCount;
+	unsigned int indexCount;
+	unsigned int faceCount;
+};

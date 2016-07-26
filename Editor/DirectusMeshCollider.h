@@ -67,8 +67,6 @@ private:
     MeshCollider* m_inspectedMeshRenderer;
     //====================================
 
-    QLineEdit* CreateQLineEdit();
-
     void SetCastShadows(bool cast);
     void SetReceiveShadows(bool receive);
 
