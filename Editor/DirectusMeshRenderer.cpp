@@ -55,7 +55,7 @@ void DirectusMeshRenderer::Initialize()
     m_receiveShadowsCheckBox = new QCheckBox();
     //=========================================================
 
-    //= RECEIVE SHADOWS =======================================
+    //= MATERIAL ==============================================
     m_materialLabel = new QLabel("Material");
     m_material = new QLineEdit();
     m_material->setReadOnly(true);

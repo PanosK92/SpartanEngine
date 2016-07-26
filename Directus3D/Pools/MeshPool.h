@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================
-#include "../Core/MeshData.h"
+//= INCLUDES ============
+#include "../Core/Mesh.h"
 #include <memory>
-//===========================
+//=======================
 
 class GameObject;
 
@@ -38,22 +38,22 @@ public:
 										[MISC]
 	------------------------------------------------------------------------------*/
 	void Clear();
-	MeshData* AddMesh(std::string rootGameObjectID, std::string gameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices, unsigned int faceCount);
-	MeshData* GetMesh(std::string ID);
-	std::vector<MeshData*> GetModelMeshesByModelName(std::string modelName);
+	Mesh* AddMesh(std::string name, std::string rootGameObjectID, std::string gameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices);
+	Mesh* GetMesh(std::string ID);
+	std::vector<Mesh*> GetModelMeshesByModelName(std::string modelName);
 
 	/*------------------------------------------------------------------------------
 								[MESH PROCESSING]
 	------------------------------------------------------------------------------*/
 	float GetNormalizedModelScaleByRootGameObjectID(std::string modelName);
-	void SetMeshScale(MeshData* meshData, float scale);
+	void SetMeshScale(Mesh* meshData, float scale);
 	void SetModelScale(std::string rootGameObjectID, float scale);
 	void NormalizeModelScale(GameObject* rootGameObject);
-	MeshData* GetLargestBoundingBox(std::vector<MeshData*> meshes);
-	Directus::Math::Vector3 GetMeshExtent(MeshData* mesh);
+	Mesh* GetLargestBoundingBox(std::vector<Mesh*> meshes);
+	Directus::Math::Vector3 GetMeshExtent(Mesh* mesh);
 	Directus::Math::Vector3 GetMeshExtent(Directus::Math::Vector3 min, Directus::Math::Vector3 max);
 	Directus::Math::Vector3 GetMeshCenter(Directus::Math::Vector3 min, Directus::Math::Vector3 max);
-	void GetMinMax(MeshData* mesh, Directus::Math::Vector3& min, Directus::Math::Vector3& max);
+	void GetMinMax(Mesh* mesh, Directus::Math::Vector3& min, Directus::Math::Vector3& max);
 
 	/*------------------------------------------------------------------------------
 										[I/O]
@@ -62,7 +62,7 @@ public:
 	void Deserialize();
 
 private:
-	std::vector<std::unique_ptr<MeshData>> m_meshDataPool;
+	std::vector<std::unique_ptr<Mesh>> m_meshDataPool;
 
 	/*------------------------------------------------------------------------------
 									[HELPER FUNCTIONS]

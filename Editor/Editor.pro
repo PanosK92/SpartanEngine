@@ -29,7 +29,6 @@ SOURCES += main.cpp\
     DirectusLight.cpp \
     DirectusRigidBody.cpp \
     DirectusCollider.cpp \
-    DirectusMesh.cpp \
     DirectusScript.cpp \
     DirectusMeshCollider.cpp \
     DirectusCore.cpp \
@@ -37,7 +36,8 @@ SOURCES += main.cpp\
     DirectusComboLabelText.cpp \
     DirectusComboSliderText.cpp \
     DirectusTexture.cpp \
-    AssetLoadingDialog.cpp
+    AssetLoadingDialog.cpp \
+    DirectusMeshFilter.cpp
 
 HEADERS  += editor.h \
     DirectusPlayButton.h \
@@ -55,7 +55,6 @@ HEADERS  += editor.h \
     DirectusLight.h \
     DirectusRigidBody.h \
     DirectusCollider.h \
-    DirectusMesh.h \
     DirectusScript.h \
     DirectusMeshCollider.h \
     DirectusCore.h \
@@ -64,7 +63,8 @@ HEADERS  += editor.h \
     DirectusComboLabelText.h \
     DirectusComboSliderText.h \
     DirectusTexture.h \
-    AssetLoadingDialog.h
+    AssetLoadingDialog.h \
+    DirectusMeshFilter.h
 
 FORMS    += editor.ui \
     AboutDialog.ui \

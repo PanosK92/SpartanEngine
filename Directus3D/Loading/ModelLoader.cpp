@@ -250,7 +250,7 @@ void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* ga
 
 	// Add a mesh component and pass the data
 	MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
-	meshComp->Set(m_rootGameObject->GetID(), vertices, indices, mesh->mNumFaces);
+	meshComp->Set(mesh->mName.C_Str(), m_rootGameObject->GetID(), vertices, indices);
 
 	// process materials
 	if (scene->HasMaterials())

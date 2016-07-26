@@ -209,7 +209,7 @@
     <ClInclude Include="Core\Globals.h" />
     <ClInclude Include="Core\GUIDGenerator.h" />
     <ClInclude Include="Core\Material.h" />
-    <ClInclude Include="Core\MeshData.h" />
+    <ClInclude Include="Core\Mesh.h" />
     <ClInclude Include="Core\Scene.h" />
     <ClInclude Include="Core\Settings.h" />
     <ClInclude Include="Core\Socket.h" />

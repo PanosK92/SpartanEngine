@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../Core/Vertex.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
-#include "../Core/MeshData.h"
+#include "../Core/Mesh.h"
 //========================================
 
 class __declspec(dllexport) MeshFilter : public IComponent
@@ -43,7 +43,7 @@ public:
 
 	void CreateCube();
 	void CreateQuad();
-	void Set(std::string rootGameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices, unsigned int faceCount);
+	void Set(std::string name, std::string rootGameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices);
 	bool SetBuffers();
 	void Refresh();
 	Directus::Math::Vector3 GetExtent();
@@ -53,13 +53,14 @@ public:
 	unsigned int GetVertexCount();
 	unsigned int GetIndexCount();
 	unsigned int GetFaceCount();
+	std::string GetName();
 
 private:
 	void CreateBuffers();
 
 	D3D11Buffer* m_vertexBuffer;
 	D3D11Buffer* m_indexBuffer;
-	MeshData* m_meshData;
+	Mesh* m_meshData;
 	Directus::Math::Vector3 m_min;
 	Directus::Math::Vector3 m_max;
 	Directus::Math::Vector3 m_extent;

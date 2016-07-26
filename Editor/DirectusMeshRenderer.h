@@ -70,8 +70,6 @@ private:
     MeshRenderer* m_inspectedMeshRenderer;
     //====================================
 
-    QLineEdit* CreateQLineEdit();
-
     void SetCastShadows(bool cast);
     void SetReceiveShadows(bool receive);
     void SetMaterial(Material* material);
