@@ -18,5 +18,6 @@
         <file>rigidBody.png</file>
         <file>collider.png</file>
         <file>meshFilter.png</file>
+        <file>meshCollider.png</file>
     </qresource>
 </RCC>

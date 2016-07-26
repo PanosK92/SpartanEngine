@@ -265,9 +265,9 @@ unsigned int MeshFilter::GetFaceCount()
 	return m_meshData->faceCount;
 }
 
-std::string MeshFilter::GetName()
+Mesh* MeshFilter::GetMesh()
 {
-	return m_meshData->name;
+	return m_meshData;
 }
 
 void MeshFilter::CreateBuffers()

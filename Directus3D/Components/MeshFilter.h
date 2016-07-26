@@ -53,7 +53,7 @@ public:
 	unsigned int GetVertexCount();
 	unsigned int GetIndexCount();
 	unsigned int GetFaceCount();
-	std::string GetName();
+	Mesh* GetMesh();
 
 private:
 	void CreateBuffers();

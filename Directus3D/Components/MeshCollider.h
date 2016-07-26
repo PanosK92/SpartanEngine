@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ============
 #include "IComponent.h"
-//=====================
+#include "../Core/Mesh.h"
+//=======================
 
 class RigidBody;
 class MeshFilter;
@@ -45,9 +46,11 @@ public:
 
 	bool GetConvex();
 	void SetConvex(bool isConvex);
+	Mesh* GetMesh();
+	void SetMesh(Mesh* mesh);
 
 private:
-	MeshFilter* m_mesh;
+	MeshFilter* m_meshFilter;
 	int m_vertexLimit = 1024;
 	btCollisionShape* m_collider;
 	bool m_convex;

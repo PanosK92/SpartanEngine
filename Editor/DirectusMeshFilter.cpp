@@ -96,15 +96,18 @@ void DirectusMeshFilter::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    SetMesh(m_inspectedMeshFilter->GetName());
+    SetMesh(m_inspectedMeshFilter->GetMesh());
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusMeshFilter::SetMesh(std::string meshName)
+void DirectusMeshFilter::SetMesh(Mesh* mesh)
 {
-    m_mesh->setText(QString::fromStdString(meshName));
+    if (!mesh)
+        return;
+
+    m_mesh->setText(QString::fromStdString(mesh->name));
 }
 
 void DirectusMeshFilter::MapMesh()
