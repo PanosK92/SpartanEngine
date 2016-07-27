@@ -40,7 +40,7 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_transform->Initialize(m_directusCore);
 
     m_camera = new DirectusCamera();
-    m_camera->Initialize(m_directusCore);
+    m_camera->Initialize(m_directusCore, mainWindow);
 
     m_meshFilter = new DirectusMeshFilter();
     m_meshFilter->Initialize(m_directusCore, this);
@@ -61,7 +61,7 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_meshCollider->Initialize(m_directusCore, this);
 
     m_light = new DirectusLight();
-    m_light->Initialize(m_directusCore);
+    m_light->Initialize(m_directusCore, mainWindow);
 
     m_script = new DirectusScript();
     m_script->Initialize(m_directusCore);

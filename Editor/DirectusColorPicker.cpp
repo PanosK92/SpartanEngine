@@ -19,12 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// INCLUDES ==========================
+// INCLUDES ====================
 #include "DirectusColorPicker.h"
 #include "IO/Log.h"
-//====================================
+#include <QColorDialog>
+//==============================
 
 //=============================
+using namespace std;
 using namespace Directus::Math;
 //=============================
 
@@ -33,13 +35,12 @@ DirectusColorPicker::DirectusColorPicker(QWidget *parent) : QWidget(parent)
 
 }
 
-void DirectusColorPicker::Initialize()
+void DirectusColorPicker::Initialize(QWidget* mainWindow)
 {
+    m_mainWindow = mainWindow;
     m_button = new QPushButton();
-    m_colorDialog = new QColorDialog();
 
-    connect(m_button, SIGNAL(pressed()), this, SLOT(ShowColorPicker()));
-    connect(m_colorDialog, SIGNAL(colorSelected(QColor)), this, SLOT(GetColorFromColorPicker(QColor)));
+    connect(m_button, SIGNAL(pressed()), this, SLOT(GetColorFromColorPicker()));
 }
 
 Vector4 DirectusColorPicker::GetColor()
@@ -50,6 +51,13 @@ Vector4 DirectusColorPicker::GetColor()
 void DirectusColorPicker::SetColor(Vector4 color)
 {
     m_color = color;
+    string r = to_string(color.x * 255.0f);
+    string g = to_string(color.y * 255.0f);
+    string b = to_string(color.z * 255.0f);
+    string a = to_string(color.w * 255.0f);
+    string rgba = "background-color: rgb(" + r + "," + g + "," + b + "," + a + ");";
+
+    m_button->setStyleSheet(QString::fromStdString(rgba));
 }
 
 QPushButton* DirectusColorPicker::GetWidget()
@@ -57,14 +65,16 @@ QPushButton* DirectusColorPicker::GetWidget()
     return m_button;
 }
 
-void DirectusColorPicker::ShowColorPicker()
+void DirectusColorPicker::GetColorFromColorPicker()
 {
-    m_colorDialog->getColor();
-}
+    emit ColorPickingStarted();
 
-void DirectusColorPicker::GetColorFromColorPicker(QColor color)
-{
-    m_color = Vector4(color.redF(), color.greenF(), color.blueF(), color.alphaF());
-    LOG("1");
-    emit ColorPicked();
+    const QColorDialog::ColorDialogOptions options = QColorDialog::DontUseNativeDialog | QColorDialog::ShowAlphaChannel;
+    QColor originalColor = QColor(m_color.x * 255.0f, m_color.y * 255.0f, m_color.z * 255.0f, m_color.w * 255.0f);
+    QColor newColor = QColorDialog::getColor(originalColor, m_mainWindow, "Select Color", options);
+
+    emit ColorPickingCompleted();
+
+    Vector4 color = Vector4(newColor.redF(), newColor.greenF(), newColor.blueF(), newColor.alphaF());
+    SetColor(color);
 }

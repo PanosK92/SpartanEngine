@@ -33,7 +33,7 @@ DirectusCamera::DirectusCamera(QWidget *parent) : QWidget(parent)
     m_directusCore = nullptr;
 }
 
-void DirectusCamera::Initialize(DirectusCore* directusCore)
+void DirectusCamera::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
 {
     m_directusCore = directusCore;
     m_gridLayout = new QGridLayout();
@@ -52,7 +52,7 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
     //= BACKGROUND ============================================
     m_backgroundLabel = new QLabel("Background");
     m_background = new DirectusColorPicker();
-    m_background->Initialize();
+    m_background->Initialize(mainWindow);
     //=========================================================
 
     //= PROJECTION ============================================
@@ -116,7 +116,7 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
 
     // textChanged(QString) -> emits signal when changed through code
     // textEdit(QString) -> doesn't emit signal when changed through code
-    connect(m_background, SIGNAL(ColorPicked()), this, SLOT(MapBackground()));
+    connect(m_background, SIGNAL(ColorPickingCompleted()), this, SLOT(MapBackground()));
     connect(m_projectionComboBox, SIGNAL(activated(int)), this, SLOT(MapProjection()));
     connect(m_fov, SIGNAL(ValueChanged()), this, SLOT(MapFOV()));
     connect(m_nearPlane, SIGNAL(ValueChanged()), this, SLOT(MapNearPlane()));
