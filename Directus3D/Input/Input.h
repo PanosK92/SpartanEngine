@@ -97,7 +97,7 @@ enum KeyCode
 	Delete,
 	Insert,
 	Home,
-	End,
+	Present,
 	PageUp,
 	PageDown
 };

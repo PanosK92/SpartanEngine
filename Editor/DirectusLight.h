@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QWidget>
 #include <QGridLayout>
 #include "DirectusComboSliderText.h"
+#include "DirectusColorPicker.h"
 #include <QPushButton>
 #include "Core/GameObject.h"
 #include <QDoubleValidator>
@@ -55,7 +56,7 @@ private:
 
     //= COLOR ============================
     QLabel* m_colorLabel;
-    QPushButton* m_color;
+    DirectusColorPicker* m_color;
     //====================================
 
     //= INTENSTITY =======================
@@ -79,10 +80,10 @@ private:
     DirectusCore* m_directusCore;
     //====================================
 
-    void SetLightType(LightType type);
-    void SetColor(Directus::Math::Vector4 color);
-    void SetIntensity(float intensity);
-    void SetShadowType(ShadowType type);
+    void ReflectLightType(LightType type);
+    void ReflectColor(Directus::Math::Vector4 color);
+    void ReflectIntensity(float intensity);
+    void ReflectShadowType(ShadowType type);
 
 public slots:
     void MapLightType();

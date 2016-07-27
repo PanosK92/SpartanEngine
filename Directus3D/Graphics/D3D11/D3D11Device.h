@@ -26,10 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "dxgi.lib")
 //===============================
 
-//= INCLUDES ======
+//= INCLUDES ==================
 #include <d3d11.h>
 #include <string>
-//=================
+#include "../../Math/Vector4.h"
+//=============================
 
 class D3D11Device
 {
@@ -43,8 +44,8 @@ public:
 	bool CreateDepthStencilView();
 	void Release();
 
-	void Begin();
-	void End();
+	void Clear(Directus::Math::Vector4 color);
+	void Present();
 
 	ID3D11Device* GetDevice();
 	ID3D11DeviceContext* GetDeviceContext();

@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QPushButton>
 #include "DirectusComboSliderText.h"
 #include "DirectusComboLabelText.h"
+#include "DirectusColorPicker.h"
 #include "DirectusCore.h"
 //==================================
 
@@ -49,7 +50,7 @@ private:
 
     //= BACKGROUND =================================
     QLabel* m_backgroundLabel;
-    QPushButton* m_background;
+    DirectusColorPicker* m_background;
     //==============================================
 
     //= PROJECTION =================================
@@ -78,12 +79,14 @@ private:
     DirectusCore* m_directusCore;
     //===============================
 
-    void SetProjection(Projection projection);
-    void SetNearPlane(float nearPlane);
-    void SetFarPlane(float farPlane);
-    void SetFOV(float fov);
+    void ReflectBackground(Directus::Math::Vector4 color);
+    void ReflectProjection(Projection projection);
+    void ReflectNearPlane(float nearPlane);
+    void ReflectFarPlane(float farPlane);
+    void ReflectFOV(float fov);
 
 public slots:
+    void MapBackground();
     void MapProjection();
     void MapFOV();
     void MapNearPlane();

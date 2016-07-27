@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==============================
+//====================================
 #include <QWidget>
 #include <QGridLayout>
 #include <QLineEdit>
@@ -29,19 +29,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Material.h"
 #include "DirectusComboSliderText.h"
 #include "DirectusComboLabelText.h"
-#include <QPushButton>
+#include "DirectusColorPicker.h"
 #include <QComboBox>
 #include "Math/Vector2.h"
 #include "DirectusCore.h"
 #include "DirectusTexture.h"
-//==============================
+//====================================
 
 class DirectusMaterial : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusMaterial(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
 private:
 
@@ -57,7 +57,7 @@ private:
     //= ALBEDO ======================
     DirectusTexture* m_albedoImage;
     QLabel* m_albedoLabel;
-    QPushButton* m_albedoColor;
+    DirectusColorPicker* m_albedoColor;
     //===============================
 
     //= ROUGHNESS ===================

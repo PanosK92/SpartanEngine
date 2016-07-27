@@ -21,47 +21,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
-#include "D3D11/D3D11Device.h"
-#include "../Math/Vector4.h"
-//============================
+// INCLUDES =============
+#include <QPushButton>
+#include "Math/Vector4.h"
+#include <QColorDialog>
+//=======================
 
-enum InputLayout
+class DirectusColorPicker : public QWidget
 {
-	Auto,
-	Position,
-	PositionColor,
-	PositionTexture,
-	PositionTextureNormalTangent
-};
-
-enum CullMode
-{
-	CullBack,
-	CullFront,
-	CullNone,
-};
-
-class GraphicsDevice
-{
+    Q_OBJECT
 public:
-	GraphicsDevice();
-	~GraphicsDevice();
+    explicit DirectusColorPicker(QWidget *parent = 0);
+    void Initialize();
 
-	void Initialize(HWND drawPaneHandle);
-	ID3D11Device* GetDevice();
-	ID3D11DeviceContext* GetDeviceContext();
+    Directus::Math::Vector4 GetColor();
+    void SetColor(Directus::Math::Vector4 color);
+    QPushButton* GetWidget();
 
-	void Clear(Directus::Math::Vector4 color);
-	void Present();
-	void ResetRenderTarget();
-	void ResetViewport();
-	void EnableZBuffer(bool enable);
-	bool SetInputLayout(InputLayout inputLayout);
-	void SetCullMode(CullMode cullMode);
-	void SetViewport(int width, int height);
 private:
-	D3D11Device* m_D3D11Device;
-	InputLayout m_inputLayout;
-	CullMode m_cullMode;
+    QColorDialog* m_colorDialog;
+    QPushButton* m_button;
+    Directus::Math::Vector4 m_color;
+
+signals:
+    void ColorPicked();
+
+private slots:
+    void ShowColorPicker();
+    void GetColorFromColorPicker(QColor color);
 };

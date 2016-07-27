@@ -19,9 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//========================
+//= INCLUDES =============
 #include "DirectusLight.h"
 //========================
+
+//=============================
+using namespace Directus::Math;
+//=============================
 
 DirectusLight::DirectusLight(QWidget *parent) : QWidget(parent)
 {
@@ -54,7 +58,8 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
 
     //= COLOR ====================================
     m_colorLabel = new QLabel("Color");
-    m_color = new QPushButton("Color Picker");
+    m_color = new DirectusColorPicker();
+    m_color->Initialize();
     //=============================================
 
     //= INTENSTITY =======================
@@ -89,7 +94,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
 
     // Row 2 - COLOR
     m_gridLayout->addWidget(m_colorLabel,   2, 0, 1, 1);
-    m_gridLayout->addWidget(m_color,        2, 1, 1, 2);
+    m_gridLayout->addWidget(m_color->GetWidget(),        2, 1, 1, 2);
 
     // Row 3 - INTENSTITY
     m_gridLayout->addWidget(m_intensityLabel,               3, 0, 1, 1);
@@ -105,6 +110,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
     //==============================================================================
 
     connect(m_lightType, SIGNAL(currentIndexChanged(int)), this, SLOT(MapLightType()));
+    connect(m_color, SIGNAL(ColorPicked()), this, SLOT(MapColor()));
     connect(m_intensity, SIGNAL(ValueChanged()), this, SLOT(MapIntensity()));
     connect(m_shadowType, SIGNAL(currentIndexChanged(int)), this, SLOT(MapShadowType()));
 
@@ -133,31 +139,31 @@ void DirectusLight::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    SetLightType(m_inspectedLight->GetLightType());
-    SetColor(m_inspectedLight->GetColor());
-    SetIntensity(m_inspectedLight->GetIntensity());
-    SetShadowType(m_inspectedLight->GetShadowType());
+    ReflectLightType(m_inspectedLight->GetLightType());
+    ReflectColor(m_inspectedLight->GetColor());
+    ReflectIntensity(m_inspectedLight->GetIntensity());
+    ReflectShadowType(m_inspectedLight->GetShadowType());
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusLight::SetLightType(LightType type)
+void DirectusLight::ReflectLightType(LightType type)
 {
     m_lightType->setCurrentIndex((int)type);
 }
 
-void DirectusLight::SetColor(Directus::Math::Vector4 color)
+void DirectusLight::ReflectColor(Directus::Math::Vector4 color)
 {
-
+    m_color->SetColor(color);
 }
 
-void DirectusLight::SetIntensity(float intensity)
+void DirectusLight::ReflectIntensity(float intensity)
 {
     m_intensity->SetValue(intensity);
 }
 
-void DirectusLight::SetShadowType(ShadowType type)
+void DirectusLight::ReflectShadowType(ShadowType type)
 {
     m_shadowType->setCurrentIndex((int)type);
 }
@@ -169,6 +175,7 @@ void DirectusLight::MapLightType()
 
     LightType type = (LightType)(m_lightType->currentIndex());
     m_inspectedLight->SetLightType(type);
+
     m_directusCore->Update();
 }
 
@@ -177,8 +184,10 @@ void DirectusLight::MapColor()
     if(!m_inspectedLight || !m_directusCore)
         return;
 
-    //float intensity = m_intensity->GetValue();
-    //m_inspectedLight->SetIntensity(intensity);
+    Vector4 color = m_color->GetColor();
+    m_inspectedLight->SetColor(color);
+
+    m_directusCore->Update();
 }
 
 void DirectusLight::MapIntensity()
@@ -188,6 +197,7 @@ void DirectusLight::MapIntensity()
 
     float intensity = m_intensity->GetValue();
     m_inspectedLight->SetIntensity(intensity);
+
     m_directusCore->Update();
 }
 
@@ -198,5 +208,6 @@ void DirectusLight::MapShadowType()
 
     ShadowType type = (ShadowType)(m_shadowType->currentIndex());
     m_inspectedLight->SetShadowType(type);
+
     m_directusCore->Update();
 }

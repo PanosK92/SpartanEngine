@@ -34,7 +34,7 @@ void DirectusInspector::SetDirectusCore(DirectusCore* directusCore)
     m_directusCore = directusCore;
 }
 
-void DirectusInspector::Initialize()
+void DirectusInspector::Initialize(QWidget* mainWindow)
 {
     m_transform = new DirectusTransform();
     m_transform->Initialize(m_directusCore);
@@ -49,7 +49,7 @@ void DirectusInspector::Initialize()
     m_meshRenderer->Initialize();
 
     m_material = new DirectusMaterial();
-    m_material->Initialize(m_directusCore, this);
+    m_material->Initialize(m_directusCore, this, mainWindow);
 
     m_rigidBody = new DirectusRigidBody();
     m_rigidBody->Initialize(m_directusCore, this);

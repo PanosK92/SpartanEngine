@@ -43,7 +43,7 @@ class DirectusInspector : public QWidget
 public:
     explicit DirectusInspector(QWidget *parent = 0);
     void SetDirectusCore(DirectusCore* directusCore);
-    void Initialize();
+    void Initialize(QWidget* mainWindow);
     GameObject* GetInspectedGameObject();
 
 protected:
