@@ -154,7 +154,11 @@ void Light::SetIntensity(float value)
 
 void Light::GenerateViewMatrix()
 {
-	Vector3 cameraPos = g_scene->GetMainCamera()->GetTransform()->GetPosition();
+	GameObject* camera = g_scene->GetMainCamera();
+	if (!camera)
+		return;
+
+	Vector3 cameraPos = camera->GetTransform()->GetPosition();
 	Vector3 direction = GetDirection();
 	Vector3 position = cameraPos - (g_transform->GetForward() * m_shadowTextureSize * 0.5f); // or center of scene's bounding box
 	Vector3 lookAt = cameraPos + direction;
