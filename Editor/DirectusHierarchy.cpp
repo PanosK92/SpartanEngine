@@ -367,6 +367,9 @@ void DirectusHierarchy::OpenScene()
     QThread* thread = new QThread();
     sceneLoader->moveToThread(thread);
 
+    // Stop the engine (in case it's running)
+    m_directusCore->Stop();
+
     // Emit a signal and clear the hierarchy
     emit SceneLoadingStarted();
 
@@ -446,6 +449,9 @@ void DirectusHierarchy::LoadModel()
     // Move the model loader to the newly created thread
     QThread* thread = new QThread();
     modelLoader->moveToThread(thread);
+
+    // Stop the engine (in case it's running)
+    m_directusCore->Stop();
 
     // Emit a signal
     emit ModelLoadingStarted();
