@@ -37,7 +37,7 @@ Camera::Camera()
 	m_nearPlane = 0.3f;
 	m_farPlane = 1000.0f;
 	m_projection = Perspective;
-	m_clearColor = Vector4(200.396f, 0.611f, 0.937f, 0.0f); // A nice cornflower blue 
+	m_clearColor = Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
 }
 
 Camera::~Camera()

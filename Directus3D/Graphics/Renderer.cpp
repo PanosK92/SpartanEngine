@@ -158,7 +158,7 @@ void Renderer::Render()
 
 	if (!m_camera)
 	{
-		m_graphicsDevice->Clear(Vector4(0,0,0,1));
+		m_graphicsDevice->Clear(Vector4(0, 0, 0, 1));
 		m_graphicsDevice->Present();
 		return;
 	}
@@ -277,6 +277,12 @@ void Renderer::AcquirePrerequisites()
 		mWorld = Matrix::Identity();
 		m_nearPlane = m_camera->GetNearPlane();
 		m_farPlane = m_camera->GetFarPlane();
+	}
+	else
+	{
+		m_camera = nullptr;
+		m_skybox = nullptr;
+		m_directionalLight = nullptr;
 	}
 }
 
