@@ -158,8 +158,8 @@ void Renderer::Render()
 
 	if (!m_camera)
 	{
-		m_graphicsDevice->Begin();
-		m_graphicsDevice->End();
+		m_graphicsDevice->Clear(Vector4(0,0,0,1));
+		m_graphicsDevice->Present();
 		return;
 	}
 
@@ -202,7 +202,7 @@ void Renderer::Render()
 	DebugDraw();
 
 	// display frame
-	m_graphicsDevice->End();
+	m_graphicsDevice->Present();
 
 	StopCalculatingStats();
 }
@@ -407,7 +407,7 @@ void Renderer::PostProcessing() const
 
 	m_graphicsDevice->ResetRenderTarget();
 	m_graphicsDevice->ResetViewport();
-	m_graphicsDevice->Begin();
+	m_graphicsDevice->Clear(m_camera->GetClearColor());
 
 	// sharpening pass
 	m_shaderSharpening->Render(

@@ -22,10 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "GraphicsDevice.h"
 #include "../Core/Settings.h"
-
 //=========================
 
 //= NAMESPACES ================
+using namespace Directus::Math;
 //=============================
 
 GraphicsDevice::GraphicsDevice()
@@ -55,14 +55,14 @@ ID3D11DeviceContext* GraphicsDevice::GetDeviceContext()
 	return m_D3D11Device->GetDeviceContext();
 }
 
-void GraphicsDevice::Begin()
+void GraphicsDevice::Clear(Vector4 color)
 {
-	m_D3D11Device->Begin();
+	m_D3D11Device->Clear(color);
 }
 
-void GraphicsDevice::End()
+void GraphicsDevice::Present()
 {
-	m_D3D11Device->End();
+	m_D3D11Device->Present();
 }
 
 void GraphicsDevice::ResetRenderTarget()

@@ -58,7 +58,7 @@ void Editor::InitializeEngine()
     ui->directusPlayButton->SetDirectusCore(directusCore);
 
     // Resolve other dependencies
-    ui->directusInspector->Initialize();
+    ui->directusInspector->Initialize(this);
     ui->directusHierarchy->Initialize(ui->directusInspector, this);
     ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);
 

@@ -19,10 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//=========================
+//= INCLUDES ==============
 #include "DirectusCamera.h"
 #include "IO/Log.h"
 //=========================
+
+//= NAMESPACES ================
+using namespace Directus::Math;
+//=============================
 
 DirectusCamera::DirectusCamera(QWidget *parent) : QWidget(parent)
 {
@@ -47,7 +51,8 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
 
     //= BACKGROUND ============================================
     m_backgroundLabel = new QLabel("Background");
-    m_background = new QPushButton("ClearColor");
+    m_background = new DirectusColorPicker();
+    m_background->Initialize();
     //=========================================================
 
     //= PROJECTION ============================================
@@ -87,7 +92,7 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
 
     // Row 1
     m_gridLayout->addWidget(m_backgroundLabel, 1, 0, 1, 1);
-    m_gridLayout->addWidget(m_background, 1, 1, 1, 3);
+    m_gridLayout->addWidget(m_background->GetWidget(), 1, 1, 1, 3);
 
     // Row 2
     m_gridLayout->addWidget(m_projectionLabel, 2, 0, 1, 1);
@@ -111,6 +116,7 @@ void DirectusCamera::Initialize(DirectusCore* directusCore)
 
     // textChanged(QString) -> emits signal when changed through code
     // textEdit(QString) -> doesn't emit signal when changed through code
+    connect(m_background, SIGNAL(ColorPicked()), this, SLOT(MapBackground()));
     connect(m_projectionComboBox, SIGNAL(activated(int)), this, SLOT(MapProjection()));
     connect(m_fov, SIGNAL(ValueChanged()), this, SLOT(MapFOV()));
     connect(m_nearPlane, SIGNAL(ValueChanged()), this, SLOT(MapNearPlane()));
@@ -141,33 +147,50 @@ void DirectusCamera::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    SetProjection(m_inspectedCamera->GetProjection());
-    SetFOV(m_inspectedCamera->GetFieldOfView());
-    SetNearPlane(m_inspectedCamera->GetNearPlane());
-    SetFarPlane(m_inspectedCamera->GetFarPlane());
+    ReflectBackground(m_inspectedCamera->GetClearColor());
+    ReflectProjection(m_inspectedCamera->GetProjection());
+    ReflectFOV(m_inspectedCamera->GetFieldOfView());
+    ReflectNearPlane(m_inspectedCamera->GetNearPlane());
+    ReflectFarPlane(m_inspectedCamera->GetFarPlane());
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusCamera::SetProjection(Projection projection)
+void DirectusCamera::ReflectBackground(Directus::Math::Vector4 color)
+{
+    m_background->SetColor(color);
+}
+
+void DirectusCamera::ReflectProjection(Projection projection)
 {
     m_projectionComboBox->setCurrentIndex((int)projection);
 }
 
-void DirectusCamera::SetNearPlane(float nearPlane)
+void DirectusCamera::ReflectNearPlane(float nearPlane)
 {
     m_nearPlane->SetFromFloat(nearPlane);
 }
 
-void DirectusCamera::SetFarPlane(float farPlane)
+void DirectusCamera::ReflectFarPlane(float farPlane)
 {
     m_farPlane->SetFromFloat(farPlane);
 }
 
-void DirectusCamera::SetFOV(float fov)
+void DirectusCamera::ReflectFOV(float fov)
 {
     m_fov->SetValue(fov);
+}
+
+void DirectusCamera::MapBackground()
+{
+    if(!m_inspectedCamera || !m_directusCore)
+        return;
+
+    Vector4 clearColor = m_background->GetColor();
+    m_inspectedCamera->SetClearColor(clearColor);
+
+    m_directusCore->Update();
 }
 
 void DirectusCamera::MapProjection()
@@ -177,6 +200,7 @@ void DirectusCamera::MapProjection()
 
     Projection projection = (Projection)(m_projectionComboBox->currentIndex());
     m_inspectedCamera->SetProjection(projection);
+
     m_directusCore->Update();
 }
 
@@ -187,6 +211,7 @@ void DirectusCamera::MapFOV()
 
     float fov = m_fov->GetValue();
     m_inspectedCamera->SetFieldOfView(fov);
+
     m_directusCore->Update();
 }
 
@@ -197,6 +222,7 @@ void DirectusCamera::MapNearPlane()
 
     float nearPlane = m_nearPlane->GetAsFloat();
     m_inspectedCamera->SetNearPlane(nearPlane);
+
     m_directusCore->Update();
 }
 
@@ -207,5 +233,6 @@ void DirectusCamera::MapFarPlane()
 
     float farPlane = m_farPlane->GetAsFloat();
     m_inspectedCamera->SetFarPlane(farPlane);
+
     m_directusCore->Update();
 }

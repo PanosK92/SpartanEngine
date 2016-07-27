@@ -33,6 +33,11 @@ using namespace Directus::Math;
 
 Camera::Camera()
 {
+	m_FOV = 1.04719755f; // 60 degrees
+	m_nearPlane = 0.3f;
+	m_farPlane = 1000.0f;
+	m_projection = Perspective;
+	m_clearColor = Vector4(200.396f, 0.611f, 0.937f, 0.0f); // A nice cornflower blue 
 }
 
 Camera::~Camera()
@@ -75,6 +80,7 @@ void Camera::Update()
 
 void Camera::Serialize()
 {
+	Serializer::SaveVector4(m_clearColor);
 	Serializer::SaveInt((int)m_projection);
 	Serializer::SaveFloat(m_FOV);
 	Serializer::SaveFloat(m_nearPlane);
@@ -83,6 +89,7 @@ void Camera::Serialize()
 
 void Camera::Deserialize()
 {
+	m_clearColor = Serializer::LoadVector4();
 	m_projection = (Projection)Serializer::LoadInt();
 	m_FOV = Serializer::LoadFloat();
 	m_nearPlane = Serializer::LoadFloat();
@@ -156,6 +163,16 @@ void Camera::SetFieldOfView(float fov)
 	m_FOV = MathHelper::GetInstance().DegreesToRadians(fov);
 
 	m_isDirty = true;
+}
+
+Vector4 Camera::GetClearColor()
+{
+	return m_clearColor;
+}
+
+void Camera::SetClearColor(Vector4 color)
+{
+	m_clearColor = color;
 }
 
 /*------------------------------------------------------------------------------

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
+#include "../Math/Vector4.h"
 #include "../Math/Matrix.h"
 #include "../Math/Quaternion.h"
 //=============================
@@ -63,9 +64,7 @@ public:
 	------------------------------------------------------------------------------*/
 	Directus::Math::Vector2 WorldSpaceToScreenPoint(Directus::Math::Vector3 point);
 
-	/*------------------------------------------------------------------------------
-								[PLANES/PROJECTION]
-	------------------------------------------------------------------------------*/
+	//= PLANES/PROJECTION ====================
 	float GetNearPlane();
 	void SetNearPlane(float nearPlane);
 	float GetFarPlane();
@@ -75,11 +74,16 @@ public:
 	float GetFieldOfView();
 	void SetFieldOfView(float fov);
 
+	//= MISC ==================================
+	Directus::Math::Vector4 GetClearColor();
+	void SetClearColor(Directus::Math::Vector4 color);
+
 private:
-	float m_FOV = 1.04719755f; // 60 degrees
-	float m_nearPlane = 0.3f;
-	float m_farPlane = 1000.0f;
-	Projection m_projection = Perspective;
+	float m_FOV;
+	float m_nearPlane;
+	float m_farPlane;
+	Projection m_projection;
+	Directus::Math::Vector4 m_clearColor;
 
 	Directus::Math::Matrix m_viewMatrix;
 	Directus::Math::Matrix m_perspectiveProjectionMatrix;

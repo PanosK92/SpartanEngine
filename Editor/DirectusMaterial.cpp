@@ -36,7 +36,7 @@ DirectusMaterial::DirectusMaterial(QWidget *parent) : QWidget(parent)
     m_directusCore = nullptr;
 }
 
-void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector* inspector)
+void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
 {
     m_directusCore = directusCore;
     m_inspector = inspector;
@@ -64,7 +64,8 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_albedoLabel = new QLabel("Albedo");
     m_albedoImage = new DirectusTexture();
     m_albedoImage->Initialize(m_directusCore, inspector, Albedo);
-    m_albedoColor = new QPushButton("ColorPicker");
+    m_albedoColor = new DirectusColorPicker();
+    m_albedoColor->Initialize();
     //=========================================================
 
     //= ROUGHNESS =============================================
@@ -166,7 +167,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     // Row 6 - ALBEDO
     m_gridLayout->addWidget(m_albedoImage, row, 0, 1, 1);
     m_gridLayout->addWidget(m_albedoLabel, row, 1, 1, 1);
-    m_gridLayout->addWidget(m_albedoColor, row, 2, 1, 3);
+    m_gridLayout->addWidget(m_albedoColor->GetWidget(), row, 2, 1, 3);
     row++;
 
     // Row 7 - ROUGHNESS
@@ -238,6 +239,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_gridLayout->addWidget(m_line, row, 0, 1, 5);
     //=========================================================
 
+    connect(m_albedoColor,  SIGNAL(ColorPicked()),  this, SLOT(MapAlbedo()));
     connect(m_roughness,    SIGNAL(ValueChanged()), this, SLOT(MapRoughness()));
     connect(m_metallic,     SIGNAL(ValueChanged()), this, SLOT(MapMetallic()));
     connect(m_normal,       SIGNAL(ValueChanged()), this, SLOT(MapNormal()));
@@ -305,6 +307,9 @@ void DirectusMaterial::ReflectAlbedo()
     // Load the albedo texture preview
     string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Albedo);
     m_albedoImage->LoadImageAsync(texPath);
+
+    Vector4 color = m_inspectedMaterial->GetColorAlbedo();
+    m_albedoColor->SetColor(color);
 }
 
 void DirectusMaterial::ReflectRoughness()
@@ -383,7 +388,13 @@ void DirectusMaterial::ReflectTiling()
 
 void DirectusMaterial::MapAlbedo()
 {
+    if (!m_inspectedMaterial || !m_directusCore)
+        return;
 
+    Vector4 color =  m_albedoColor->GetColor();
+    m_inspectedMaterial->SetColorAlbedo(color);
+
+    m_directusCore->Update();
 }
 
 void DirectusMaterial::MapRoughness()

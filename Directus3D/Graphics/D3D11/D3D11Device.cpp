@@ -27,6 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Globals.h"
 //==============================
 
+//= NAMESPACES ================
+using namespace Directus::Math;
+//=============================
+
 D3D11Device::D3D11Device()
 {
 	m_swapChain = nullptr;
@@ -329,15 +333,15 @@ void D3D11Device::Release()
 	m_displayModeList = nullptr;
 }
 
-void D3D11Device::Begin()
+void D3D11Device::Clear(Vector4 color)
 {
 	float clearColor[4];
 
 	// Setup the color to clear the buffer to.
-	clearColor[0] = 0.0f;
-	clearColor[1] = 0.0f;
-	clearColor[2] = 0.0f;
-	clearColor[3] = 0.0f;
+	clearColor[0] = color.x;
+	clearColor[1] = color.y;
+	clearColor[2] = color.z;
+	clearColor[3] = color.w;
 
 	// Clear the back buffer.
 	m_deviceContext->ClearRenderTargetView(m_renderTargetView, clearColor);
@@ -346,7 +350,7 @@ void D3D11Device::Begin()
 	m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
-void D3D11Device::End()
+void D3D11Device::Present()
 {
 	VSync vSync = Settings::GetInstance().GetVSync();
 	m_swapChain->Present(vSync, 0);
