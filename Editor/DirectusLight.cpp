@@ -32,7 +32,7 @@ DirectusLight::DirectusLight(QWidget *parent) : QWidget(parent)
     m_directusCore = nullptr;
 }
 
-void DirectusLight::Initialize(DirectusCore* directusCore)
+void DirectusLight::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
 {
     m_directusCore = directusCore;
     m_gridLayout = new QGridLayout();
@@ -59,7 +59,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
     //= COLOR ====================================
     m_colorLabel = new QLabel("Color");
     m_color = new DirectusColorPicker();
-    m_color->Initialize();
+    m_color->Initialize(mainWindow);
     //=============================================
 
     //= INTENSTITY =======================
@@ -110,7 +110,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore)
     //==============================================================================
 
     connect(m_lightType, SIGNAL(currentIndexChanged(int)), this, SLOT(MapLightType()));
-    connect(m_color, SIGNAL(ColorPicked()), this, SLOT(MapColor()));
+    connect(m_color, SIGNAL(ColorPickingCompleted()), this, SLOT(MapColor()));
     connect(m_intensity, SIGNAL(ValueChanged()), this, SLOT(MapIntensity()));
     connect(m_shadowType, SIGNAL(currentIndexChanged(int)), this, SLOT(MapShadowType()));
 

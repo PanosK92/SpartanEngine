@@ -24,29 +24,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // INCLUDES =============
 #include <QPushButton>
 #include "Math/Vector4.h"
-#include <QColorDialog>
 //=======================
 
 class DirectusColorPicker : public QWidget
 {
     Q_OBJECT
 public:
-    explicit DirectusColorPicker(QWidget *parent = 0);
-    void Initialize();
+    explicit DirectusColorPicker(QWidget* parent = 0);
+    void Initialize(QWidget* mainWindow);
 
     Directus::Math::Vector4 GetColor();
     void SetColor(Directus::Math::Vector4 color);
     QPushButton* GetWidget();
 
 private:
-    QColorDialog* m_colorDialog;
     QPushButton* m_button;
     Directus::Math::Vector4 m_color;
+    QWidget* m_mainWindow;
 
 signals:
-    void ColorPicked();
+    void ColorPickingStarted();
+    void ColorPickingCompleted();
 
 private slots:
-    void ShowColorPicker();
-    void GetColorFromColorPicker(QColor color);
+    void GetColorFromColorPicker();
 };

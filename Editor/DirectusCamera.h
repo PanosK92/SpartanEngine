@@ -40,7 +40,7 @@ class DirectusCamera : public QWidget
     Q_OBJECT
 public:
     explicit DirectusCamera(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore);
+    void Initialize(DirectusCore* directusCore, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
 private:
 

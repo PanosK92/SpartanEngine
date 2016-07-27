@@ -41,7 +41,7 @@ class DirectusLight : public QWidget
     Q_OBJECT
 public:
     explicit DirectusLight(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore);
+    void Initialize(DirectusCore* directusCore, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
 private:
 

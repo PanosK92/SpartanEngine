@@ -65,7 +65,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_albedoImage = new DirectusTexture();
     m_albedoImage->Initialize(m_directusCore, inspector, Albedo);
     m_albedoColor = new DirectusColorPicker();
-    m_albedoColor->Initialize();
+    m_albedoColor->Initialize(mainWindow);
     //=========================================================
 
     //= ROUGHNESS =============================================
@@ -239,7 +239,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_gridLayout->addWidget(m_line, row, 0, 1, 5);
     //=========================================================
 
-    connect(m_albedoColor,  SIGNAL(ColorPicked()),  this, SLOT(MapAlbedo()));
+    connect(m_albedoColor,  SIGNAL(ColorPickingCompleted()),  this, SLOT(MapAlbedo()));
     connect(m_roughness,    SIGNAL(ValueChanged()), this, SLOT(MapRoughness()));
     connect(m_metallic,     SIGNAL(ValueChanged()), this, SLOT(MapMetallic()));
     connect(m_normal,       SIGNAL(ValueChanged()), this, SLOT(MapNormal()));
