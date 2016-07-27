@@ -90,8 +90,8 @@ void DirectusMeshRenderer::Initialize()
     //============================================================
 
 
-    connect(m_castShadowsCheckBox, SIGNAL(clicked(bool)), this, SLOT(Map()));
-    connect(m_receiveShadowsCheckBox, SIGNAL(clicked(bool)), this, SLOT(Map()));
+    connect(m_castShadowsCheckBox,      SIGNAL(clicked(bool)), this, SLOT(Map()));
+    connect(m_receiveShadowsCheckBox,   SIGNAL(clicked(bool)), this, SLOT(Map()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
