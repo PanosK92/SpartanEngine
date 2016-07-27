@@ -239,14 +239,14 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_gridLayout->addWidget(m_line, row, 0, 1, 5);
     //=========================================================
 
-    connect(m_albedoColor,  SIGNAL(ColorPickingCompleted()),  this, SLOT(MapAlbedo()));
-    connect(m_roughness,    SIGNAL(ValueChanged()), this, SLOT(MapRoughness()));
-    connect(m_metallic,     SIGNAL(ValueChanged()), this, SLOT(MapMetallic()));
-    connect(m_normal,       SIGNAL(ValueChanged()), this, SLOT(MapNormal()));
-    connect(m_height,       SIGNAL(ValueChanged()), this, SLOT(MapHeight()));
-    connect(m_specular,     SIGNAL(ValueChanged()), this, SLOT(MapSpecular()));
-    connect(m_tilingX,      SIGNAL(ValueChanged()), this, SLOT(MapTiling()));
-    connect(m_tilingY,      SIGNAL(ValueChanged()), this, SLOT(MapTiling()));
+    connect(m_albedoColor,  SIGNAL(ColorPickingCompleted()),    this, SLOT(MapAlbedo()));
+    connect(m_roughness,    SIGNAL(ValueChanged()),             this, SLOT(MapRoughness()));
+    connect(m_metallic,     SIGNAL(ValueChanged()),             this, SLOT(MapMetallic()));
+    connect(m_normal,       SIGNAL(ValueChanged()),             this, SLOT(MapNormal()));
+    connect(m_height,       SIGNAL(ValueChanged()),             this, SLOT(MapHeight()));
+    connect(m_specular,     SIGNAL(ValueChanged()),             this, SLOT(MapSpecular()));
+    connect(m_tilingX,      SIGNAL(ValueChanged()),             this, SLOT(MapTiling()));
+    connect(m_tilingY,      SIGNAL(ValueChanged()),             this, SLOT(MapTiling()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -404,6 +404,7 @@ void DirectusMaterial::MapRoughness()
 
     float roughness =  m_roughness->GetValue();
     m_inspectedMaterial->SetRoughnessMultiplier(roughness);
+
     m_directusCore->Update();
 }
 
@@ -415,6 +416,7 @@ void DirectusMaterial::MapMetallic()
 
     float metallic =  m_metallic->GetValue();
     m_inspectedMaterial->SetMetallicMultiplier(metallic);
+
     m_directusCore->Update();
 }
 
@@ -425,6 +427,7 @@ void DirectusMaterial::MapNormal()
 
     float normal =  m_normal->GetValue();
     m_inspectedMaterial->SetNormalMultiplier(normal);
+
     m_directusCore->Update();
 }
 
@@ -435,6 +438,7 @@ void DirectusMaterial::MapHeight()
 
     float height =  m_height->GetValue();
     m_inspectedMaterial->SetHeightMultiplier(height);
+
     m_directusCore->Update();
 }
 
@@ -460,6 +464,7 @@ void DirectusMaterial::MapSpecular()
 
     float specular = m_specular->GetValue();
     m_inspectedMaterial->SetSpecularMultiplier(specular);
+
     m_directusCore->Update();
 }
 
@@ -471,7 +476,7 @@ void DirectusMaterial::MapTiling()
     Vector2 tiling;
     tiling.x = m_tilingX->GetAsFloat();
     tiling.y = m_tilingY->GetAsFloat();
-
     m_inspectedMaterial->SetTiling(tiling);
+
     m_directusCore->Update();
 }

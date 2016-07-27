@@ -69,12 +69,18 @@ void DirectusColorPicker::GetColorFromColorPicker()
 {
     emit ColorPickingStarted();
 
-    const QColorDialog::ColorDialogOptions options = QColorDialog::DontUseNativeDialog | QColorDialog::ShowAlphaChannel;
+    // Color picker options.
+    QColorDialog::ColorDialogOptions options = QColorDialog::DontUseNativeDialog | QColorDialog::ShowAlphaChannel;
+
+    // Save original color.
     QColor originalColor = QColor(m_color.x * 255.0f, m_color.y * 255.0f, m_color.z * 255.0f, m_color.w * 255.0f);
+
+    // Open color picker with the original color, preselected.
     QColor newColor = QColorDialog::getColor(originalColor, m_mainWindow, "Select Color", options);
 
-    emit ColorPickingCompleted();
-
+    // Set the color picker's color as the current color.
     Vector4 color = Vector4(newColor.redF(), newColor.greenF(), newColor.blueF(), newColor.alphaF());
     SetColor(color);
+
+    emit ColorPickingCompleted();  
 }
