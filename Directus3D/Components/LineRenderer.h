@@ -29,14 +29,13 @@ public:
 
 private:
 	//= VERTICES ===================	
-	ID3D11Buffer* m_vertexBuffer;
+	D3D11Buffer* m_vertexBuffer;
 	VertexPositionColor* m_vertices;
 	int m_maxVertices = 1000000;
 	int m_vertexIndex;	
 	//==============================
 
 	//= MISC ========================
-	void CreateDynamicVertexBuffer();
 	void UpdateVertexBuffer();
 	void ClearVertices();
 	//==============================
