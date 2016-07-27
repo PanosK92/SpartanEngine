@@ -1,34 +1,10 @@
-/*
-Copyright(c) 2016 Panos Karabelas
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
-copies of the Software, and to permit persons to whom the Software is furnished
-to do so, subject to the following conditions :
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-//= INCLUDES =============================
+//= INCLUDES ================
 #include "LineRenderer.h"
+#include "../Core/Globals.h"
 #include "../IO/Log.h"
-#include "../Graphics/D3D11/D3D11Buffer.h"
-//========================================
+//===========================
 
-//= NAMESPACES ================
 using namespace Directus::Math;
-using namespace std;
-//=============================
 
 LineRenderer::LineRenderer()
 {
@@ -37,26 +13,18 @@ LineRenderer::LineRenderer()
 
 LineRenderer::~LineRenderer()
 {
-	m_vertices.clear();
+	DirectusSafeRelease(m_vertexBuffer);
+	delete[] m_vertices;
 }
 
-//= INTERFACE ===================================
 void LineRenderer::Initialize()
 {
-	m_vertexBuffer = make_shared<D3D11Buffer>();
-	m_vertexBuffer->Initialize(g_graphicsDevice);
+	// initialize vertex array
+	m_vertices = new VertexPositionColor[m_maxVertices];
+	ClearVertices();
 
-	bool result = m_vertexBuffer->Create(
-		sizeof(VertexPositionColor),
-		m_maximumVertices,
-		nullptr,
-		D3D11_USAGE_DYNAMIC,
-		D3D11_BIND_VERTEX_BUFFER,
-		D3D11_CPU_ACCESS_WRITE
-	);
-
-	if (!result)
-		LOG("Failed to create a vertex buffer for the LineRenderer component.", Log::Error);
+	// create buffer
+	CreateDynamicVertexBuffer();
 }
 
 void LineRenderer::Update()
@@ -74,33 +42,32 @@ void LineRenderer::Deserialize()
 
 }
 
-//= INPUT ===================================================================
-void LineRenderer::AddLineList(vector<VertexPositionColor> vertices)
+//= INPUT ===============================================================
+void LineRenderer::AddLineList(std::vector<VertexPositionColor> lineList)
 {
 	ClearVertices();
-	m_vertices = vertices;
+
+	for (int i = 0; i < lineList.size(); i++)
+		AddVertex(lineList[i]);
 }
 
-void LineRenderer::AddLine(Vector3 start, Vector3 end, Vector4 color)
+void LineRenderer::AddVertex(VertexPositionColor vertex)
 {
-	AddVertex(start, color);
-	AddVertex(end, color);
+	m_vertices[m_vertexIndex] = vertex;
+	m_vertexIndex++;
 }
 
-void LineRenderer::AddVertex(Vector3 position, Vector4 color)
-{
-	VertexPositionColor vertex;
-	vertex.position = position;
-	vertex.color = color;
-	m_vertices.push_back(vertex);
-}
-
-//= PROPERTIES ========================================================================
+//= MISC ================================================================
 void LineRenderer::SetBuffer()
 {
 	UpdateVertexBuffer();
 
-	m_vertexBuffer->SetIA();
+	// Set vertex buffer stride and offset.
+	UINT stride = sizeof(VertexPositionColor);
+	UINT offset = 0;
+
+	// Set vertex buffer
+	g_graphicsDevice->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
 
 	// Set primitive topology
 	g_graphicsDevice->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
@@ -108,30 +75,49 @@ void LineRenderer::SetBuffer()
 	ClearVertices();
 }
 
-unsigned int LineRenderer::GetVertexCount()
+//= MISC ================================================================
+void LineRenderer::CreateDynamicVertexBuffer()
 {
-	return unsigned int(m_vertices.size());
+	// Set up dynamic vertex buffer
+	D3D11_BUFFER_DESC vertexBufferDesc;
+	vertexBufferDesc.ByteWidth = sizeof(VertexPositionColor) * m_maxVertices;
+	vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	vertexBufferDesc.MiscFlags = 0;
+	vertexBufferDesc.StructureByteStride = 0;
+
+	// Give the subresource structure a pointer to the vertex data.
+	D3D11_SUBRESOURCE_DATA subResourceData;
+	subResourceData.pSysMem = m_vertices;
+
+	// Create the vertex buffer.
+	HRESULT result = g_graphicsDevice->GetDevice()->CreateBuffer(&vertexBufferDesc, &subResourceData, &m_vertexBuffer);
+	if (FAILED(result))
+		LOG("Failed to create line renderer dynamic vertex buffer.");
 }
 
-//= MISC =============================================================================
 void LineRenderer::UpdateVertexBuffer()
 {
-	if (!m_vertexBuffer)
-		return;
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
 
-	void* pData = m_vertexBuffer->Map();
-
-	if (!pData)
-		return;
+	// disable GPU access to the vertex buffer data.	
+	g_graphicsDevice->GetDeviceContext()->Map(m_vertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 
 	// update the vertex buffer.
-	memcpy(pData, &m_vertices[0], sizeof(VertexPositionColor) * m_vertices.size());
+	memcpy(mappedResource.pData, &m_vertices[0], sizeof(VertexPositionColor) * m_maxVertices);
 
-	m_vertexBuffer->Unmap();
+	// re-enable GPU access to the vertex buffer data.
+	g_graphicsDevice->GetDeviceContext()->Unmap(m_vertexBuffer, 0);
 }
 
 void LineRenderer::ClearVertices()
 {
-	m_vertices.clear();
-	m_vertices.shrink_to_fit();
+	for (int i = 0; i < m_maxVertices; i++)
+	{
+		m_vertices[i].position = Vector3(0, 0, 0);
+		m_vertices[i].color = Vector4(0, 0, 0, 0);
+	}
+
+	m_vertexIndex = 0;
 }

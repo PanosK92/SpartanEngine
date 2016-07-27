@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "DebugShader.h"
 #include "../../Core/Globals.h"
+#include "../../IO/Log.h"
 //=============================
 
 //= NAMESPACES ================
