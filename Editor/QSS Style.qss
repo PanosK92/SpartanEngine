@@ -1,0 +1,449 @@
+/*
+widget background dark: 			292929
+widget background light:				383838
+widget background highlighted: 	484848
+text disabled:								585858
+text : 											909090
+text highlighted:							 EDEDED
+border: 										212121
+border highlighted:						464646
+text edit background:					414141
+*/
+
+QMainWindow
+{
+	color: #909090;
+	background-color: #292929;
+	font: 9pt "Calibri";
+	padding: 0px;
+}
+
+QWidget
+{
+	color: #909090;
+	background-color: #292929;
+	border-color: #212121;
+	border-style: none;
+	border-width: 1px;
+	font: 9pt "Calibri";
+	padding: 0px;
+}
+
+QLineEdit
+{
+	color: #909090;
+	background-color: #484848;
+	border-style: inset;
+}
+
+QLabel
+{
+	color: #909090;
+	background-color: #383838;
+	border-style: none;
+}
+
+QCheckBox
+{
+	color: #909090;
+	background-color: #383838;
+	border-style: none;
+}
+
+/*= PLAY/PAUSE BUTTONS ===================================================================================*/
+#directusPlayButton
+{
+	min-width: 2em;
+	padding: 3px;
+	border-color: #464646;
+	background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
+	background-image: url(:/Images/play.png);
+	background-repeat: no-repeat;
+	background-position: center;
+	border-style: outset;
+	border-width: 1px;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+}
+
+#directusPlayButton:checked 
+{
+	min-width: 2em;
+	padding: 3px;
+	border-color: #464646;
+	background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
+	background-image: url(:/Images/play.png);
+	background-repeat: no-repeat;
+	background-position: center;
+	border-style: outset;
+	border-width: 1px;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+}
+
+#directusPauseButton
+{
+	min-width: 2em;
+	padding: 3px;
+	border-color: #464646;
+	background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
+	background-image: url(:/Images/pause.png) contain;
+	background-repeat: no-repeat;
+	background-position: center;
+	border-style: outset;
+	border-width: 1px;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 5px;
+}
+
+#directusPauseButton:checked 
+{
+	min-width: 2em;
+	padding: 3px;
+	border-color: #464646;
+	background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
+	background-image: url(:/Images/pause.png);
+	background-repeat: no-repeat;
+	background-position: center;
+	border-style: outset;
+	border-width: 1px;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 5px;
+}
+/*= MENU ===================================================================================*/
+QMenuBar
+{
+	color: #B4B4B4;
+	background-color: #383838;
+	padding: 0px;
+}
+
+QMenuBar::item
+{
+	color: #909090;
+	background-color: #383838;
+}
+
+QMenuBar::item:selected
+{
+	color:  #EDEDED;
+	background-color:#484848;
+}
+
+QMenuBar::item:pressed 
+{
+    color:  #909090;
+	background-color:#484848;
+}
+
+QMenu::item
+{
+	color: #909090;
+	background-color: #383838;
+}
+
+QMenu::item:!enabled
+{
+	color: #585858;
+	background-color: #383838;
+}
+
+QMenu::item:selected:enabled
+{
+	color:  #EDEDED;
+	background-color:#484848;
+}
+
+v::item:pressed 
+{
+    color:  #909090;
+	background-color:#484848;
+}
+
+QMenu::separator 
+{
+	height: 1px;
+	background:#292929;
+}
+
+/*===========================================================================================*/
+
+/*= CUSTOM ====================================================================================*/
+DirectusInspector
+{
+	color: #909090;
+	background-color: #383838;
+	border-width: 1px;
+}
+
+DirectusCore
+{
+	color: #909090;
+	background-color: #383838;
+	border-width: 1px;
+}
+/*===========================================================================================*/
+
+/*= COMBOBOX ==================================================================================*/
+QComboBox
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(57, 57, 57, 255), stop:1 rgba(68, 68, 68, 255));
+	border-radius: 5px;
+    border-color: #464646;
+    border-width: 1px;
+    border-style: solid;
+	padding-left: 5px;
+}
+
+QComboBox::drop-down
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(57, 57, 57, 255), stop:1 rgba(68, 68, 68, 255));
+    border-width: 1px;
+    border-style: none;
+}
+
+QComboBox::down-arrow
+{   
+    background-image: url(:/Images/arrow.png);
+	background-repeat: no-repeat;
+	background-position: center;
+}
+/*===========================================================================================*/
+
+/*= SLIDER =====================================================================================*/
+QSlider
+{
+	background-color: #383838;
+}
+
+QSlider::groove:horizontal 
+{
+	border: 1px;
+	border-color: #212121;
+	border-style: inset;
+	background: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.488318, y2:0.358, stop:0 rgba(192, 192, 192, 255), stop:1 rgba(79, 79, 79, 255));
+	height: 5px;
+	border-radius: 4px;
+}
+
+QSlider::handle:horizontal 
+{
+	background: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(110, 110, 110, 255), stop:1 rgba(68, 68, 68, 255));
+	border: 1px;
+	border-color: #212121;
+	border-style: outset;
+	width: 10px;
+	height: 10px;
+	margin-top: -3px;
+	margin-bottom: -3px;
+	border-radius: 5px;
+}
+/*========================================================================================*/
+
+/*= TABS ===================================================================================*/
+QTabWidget
+{
+	border-color: #212121;
+	border-style: solid;
+}
+
+ /* The tab widget frame */
+QTabWidget::pane
+{  
+
+}
+
+QTabBar::tab
+{	
+	background-repeat: no-repeat;
+	background-position: left;
+
+	border-color: #464646;
+	border-style: solid;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-width: 0px;
+
+	min-width: 3.5em;
+	min-height: 1.3em;
+
+	padding-top: 0px;
+	padding-bottom: 0px;
+	padding-left: 18px;
+	padding-right: 10px;
+}
+
+QTabBar::tab:selected
+{
+	background-color: #484848;	
+}
+/*========================================================================================*/
+
+/*= TREES ==================================================================================*/
+QTreeWidget
+{
+	background-color: #383838;
+	border-style: solid;
+}
+
+QTreeView
+{
+	background-color: #383838;
+	border-style: inset;
+}
+/*========================================================================================*/
+
+/*= LISTS ===================================================================================*/
+QListWidget
+{
+	color: #383838;
+	background-color: #383838;
+	border-style: outset;
+}
+
+QListView
+{
+	background-color: #383838;
+	border-style: outset;
+}
+
+QListView::item 
+{
+	color: #909090;				
+    background:  #383838;
+}
+
+QListView::item:alternate 
+{
+	color: #909090;				
+    background:  #484848;
+}
+/*========================================================================================*/
+
+/*= SCROLLBAR - VERTICAL ========================================================================*/
+/* Background (non scrollabe area) */
+QScrollBar:vertical 
+{
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
+	background-color: #212121;
+	margin: 15px 0 15px 0;
+}
+
+/* Background (scrollable area) */
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical 
+{
+	background: #292929;
+ }
+
+/* Handle */
+QScrollBar::handle:vertical 
+{
+	background-color: qlineargradient(spread:pad, x1:0, y1:0.5, x2:1, y2:0.5, stop:0 rgba(66, 66, 66, 255), stop:1 rgba(53, 53, 53, 255));
+}
+
+/* Top arrow (clickable area) */
+QScrollBar::sub-line:vertical 
+{
+	subcontrol-position: top;
+  	height: 15px;
+    subcontrol-origin: margin;
+	background-color:#292929;
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
+}
+
+/* Bottom arrow (clickable area) */
+QScrollBar::add-line:vertical 
+{
+	subcontrol-position: bottom;
+	height: 15px;
+    subcontrol-origin: margin;
+	background-color:#292929;
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
+}
+
+QScrollBar::down-arrow::vertical
+{   
+	background-image: url(:/Images/arrowDown.png) contain;
+}
+
+QScrollBar::up-arrow::vertical
+{   
+	background-image: url(:/Images/arrowUp.png) contain;
+}
+/*========================================================================================*/
+
+/*= SCROLLBAR - HORIZONTAL ======================================================================*/
+/* Background (non scrollabe area) */
+QScrollBar:horizontal 
+{
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
+	background-color: #212121;
+	margin: 0 15px 0 15px;
+}
+
+/* Background (scrollable area) */
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal 
+{
+	background: #292929;
+ }
+
+/* Handle */
+QScrollBar::handle:horizontal 
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(54, 54, 54, 255), stop:1 rgba(79, 79, 79, 255));
+}
+
+/* Right arrow (clickable area) */
+QScrollBar::add-line:horizontal 
+{
+	subcontrol-position: right;
+	width: 15px;
+    subcontrol-origin: margin;
+	background-color:#292929;
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
+}
+
+/* Left arrow (clickable area) */
+QScrollBar::sub-line:horizontal 
+{
+	subcontrol-position: left;
+  	width: 15px;
+    subcontrol-origin: margin;
+	background-color:#292929;
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
+}
+
+QScrollBar::right-arrow:horizontal
+{   
+	background-image: url(:/Images/arrowRight.png) contain;
+}
+
+QScrollBar::left-arrow:horizontal
+{   
+	background-image: url(:/Images/arrowLeft.png) contain;
+}
+/*========================================================================================*/
+
+/*
+widget background dark: 			292929
+widget background light:				383838
+widget background highlighted: 	484848
+text disabled:								585858
+text : 											909090
+text highlighted:							 EDEDED
+border: 										212121
+border highlighted:						464646
+text edit background:					414141
+*/

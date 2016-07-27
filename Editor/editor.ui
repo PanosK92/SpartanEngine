@@ -272,6 +272,66 @@ QCheckBox
 	border-style: none;
 }
 
+/*= PLAY/PAUSE BUTTONS ===================================================================================*/
+#directusPlayButton
+{
+	min-width: 2em;
+	padding: 3px;
+	border-color: #464646;
+	background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
+	background-image: url(:/Images/play.png);
+	background-repeat: no-repeat;
+	background-position: center;
+	border-style: outset;
+	border-width: 1px;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+}
+
+#directusPlayButton:checked 
+{
+	min-width: 2em;
+	padding: 3px;
+	border-color: #464646;
+	background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
+	background-image: url(:/Images/play.png);
+	background-repeat: no-repeat;
+	background-position: center;
+	border-style: outset;
+	border-width: 1px;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+}
+
+#directusPauseButton
+{
+	min-width: 2em;
+	padding: 3px;
+	border-color: #464646;
+	background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
+	background-image: url(:/Images/pause.png) contain;
+	background-repeat: no-repeat;
+	background-position: center;
+	border-style: outset;
+	border-width: 1px;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 5px;
+}
+
+#directusPauseButton:checked 
+{
+	min-width: 2em;
+	padding: 3px;
+	border-color: #464646;
+	background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
+	background-image: url(:/Images/pause.png);
+	background-repeat: no-repeat;
+	background-position: center;
+	border-style: outset;
+	border-width: 1px;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 5px;
+}
 /*= MENU ===================================================================================*/
 QMenuBar
 {
@@ -483,90 +543,132 @@ QListView::item:alternate
 /*========================================================================================*/
 
 /*= SCROLLBAR - VERTICAL ========================================================================*/
+/* Background (non scrollabe area) */
 QScrollBar:vertical 
 {
 	border-color: #212121;
 	border-style: solid;
 	border-width: 1px;
-	background-color: qlineargradient(spread:pad, x1:0, y1:0.5, x2:1, y2:0.5, stop:0 rgba(54, 54, 54, 255), stop:1 rgba(79, 79, 79, 255));
-	margin: 21px 0 21px 0;
+	background-color: #212121;
+	margin: 15px 0 15px 0;
 }
 
-QScrollBar::handle:vertical 
+/* Background (scrollable area) */
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical 
 {
-	background-color: qlineargradient(spread:pad, x1:0, y1:0.5, x2:1, y2:0.5, stop:0 rgba(100, 100, 100, 255), stop:1 rgba(79, 79, 79, 255));
-}
-
-QScrollBar::add-line:vertical 
-{
-	height: 15px;
-	subcontrol-position: bottom;
-    subcontrol-origin: margin;
-}
-
-QScrollBar::sub-line:vertical 
-{
-	height: 15px;
-	subcontrol-position: top;
-    subcontrol-origin: margin;
-}
-
- QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical 
-{
-	background: none;
+	background: #292929;
  }
 
-QScrollBar::down-arrow
-{   
-		background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(57, 57, 57, 255), stop:1 rgba(68, 68, 68, 255));
-		border-width: 1px;
-		border-style: none;
+/* Handle */
+QScrollBar::handle:vertical 
+{
+	background-color: qlineargradient(spread:pad, x1:0, y1:0.5, x2:1, y2:0.5, stop:0 rgba(66, 66, 66, 255), stop:1 rgba(53, 53, 53, 255));
 }
 
+/* Top arrow (clickable area) */
+QScrollBar::sub-line:vertical 
+{
+	subcontrol-position: top;
+  	height: 15px;
+    subcontrol-origin: margin;
+	background-color:#292929;
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
+}
+
+/* Bottom arrow (clickable area) */
+QScrollBar::add-line:vertical 
+{
+	subcontrol-position: bottom;
+	height: 15px;
+    subcontrol-origin: margin;
+	background-color:#292929;
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
+}
+
+QScrollBar::down-arrow::vertical
+{   
+	background-image: url(:/Images/arrowDown.png) contain;
+}
+
+QScrollBar::up-arrow::vertical
+{   
+	background-image: url(:/Images/arrowUp.png) contain;
+}
 /*========================================================================================*/
 
 /*= SCROLLBAR - HORIZONTAL ======================================================================*/
+/* Background (non scrollabe area) */
 QScrollBar:horizontal 
 {
 	border-color: #212121;
 	border-style: solid;
 	border-width: 1px;
-	background-color:  qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(46, 46, 46, 255), stop:1 rgba(79, 79, 79, 255));
-	margin: 0 21px 0 21px;
+	background-color: #212121;
+	margin: 0 15px 0 15px;
 }
 
+/* Background (scrollable area) */
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal 
+{
+	background: #292929;
+ }
+
+/* Handle */
 QScrollBar::handle:horizontal 
 {
 	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(54, 54, 54, 255), stop:1 rgba(79, 79, 79, 255));
 }
 
+/* Right arrow (clickable area) */
 QScrollBar::add-line:horizontal 
 {
+	subcontrol-position: right;
 	width: 15px;
-	subcontrol-position: left;
     subcontrol-origin: margin;
+	background-color:#292929;
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
 }
 
+/* Left arrow (clickable area) */
 QScrollBar::sub-line:horizontal 
 {
-	width: 15px;
-	subcontrol-position: right;
+	subcontrol-position: left;
+  	width: 15px;
     subcontrol-origin: margin;
+	background-color:#292929;
+	border-color: #212121;
+	border-style: solid;
+	border-width: 1px;
 }
 
- QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal 
-{
-	background: none;
- }
+QScrollBar::right-arrow:horizontal
+{   
+	background-image: url(:/Images/arrowRight.png) contain;
+}
+
+QScrollBar::left-arrow:horizontal
+{   
+	background-image: url(:/Images/arrowLeft.png) contain;
+}
 /*========================================================================================*/
 
-/* Frame background: 212121 */
-/* Text color: 909090 */
-/* Text highlighted: EDEDED */
-/* widgets: 383838 */
-/* widgets highlighted: 484848*/
-/* border fade: 464646*/
-</string>
+/*
+widget background dark: 			292929
+widget background light:				383838
+widget background highlighted: 	484848
+text disabled:								585858
+text : 											909090
+text highlighted:							 EDEDED
+border: 										212121
+border highlighted:						464646
+text edit background:					414141
+*/</string>
   </property>
   <property name="locale">
    <locale language="English" country="UnitedStates"/>
@@ -666,44 +768,11 @@ QScrollBar::sub-line:horizontal
          </item>
          <item>
           <widget class="DirectusPlayButton" name="directusPlayButton">
+           <property name="autoFillBackground">
+            <bool>false</bool>
+           </property>
            <property name="styleSheet">
-            <string notr="true">QPushButton
-{
-min-width: 2em;
-padding: 3px;
-border-color: #464646;
-background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
-background-image: url(:/Images/play.png);
-background-repeat: no-repeat;
-background-position: center;
-border-style: outset;
-border-width: 1px;
-border-top-left-radius: 5px;
-border-bottom-left-radius: 5px;
-}
-
-QPushButton:checked 
-{
-min-width: 2em;
-padding: 3px;
-border-color: #464646;
-background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
-background-image: url(:/Images/play.png);
-background-repeat: no-repeat;
-background-position: center;
-border-style: outset;
-border-width: 1px;
-border-top-left-radius: 5px;
-border-bottom-left-radius: 5px;
-}
- 
-/* Frame background: 212121 */
-/* Text color: 909090 */
-/* Text highlighted: EDEDED */
-/* widgets: 383838 */
-/* widgets highlighted: 484848*/
-/* border fade: 464646*/
-</string>
+            <string notr="true"/>
            </property>
            <property name="text">
             <string/>
@@ -731,43 +800,7 @@ border-bottom-left-radius: 5px;
          <item>
           <widget class="QPushButton" name="directusPauseButton">
            <property name="styleSheet">
-            <string notr="true">QPushButton
-{
-min-width: 2em;
-padding: 3px;
-border-color: #464646;
-background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
-background-image: url(:/Images/pause.png) contain;
-background-repeat: no-repeat;
-background-position: center;
-border-style: outset;
-border-width: 1px;
-border-top-right-radius: 5px;
-border-bottom-right-radius: 5px;
-}
-
-QPushButton:checked 
-{
-min-width: 2em;
-padding: 3px;
-border-color: #464646;
-background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
-background-image: url(:/Images/pause.png);
-background-repeat: no-repeat;
-background-position: center;
-border-style: outset;
-border-width: 1px;
-border-top-right-radius: 5px;
-border-bottom-right-radius: 5px;
-}
- 
-/* Frame background: 212121 */
-/* Text color: 909090 */
-/* Text highlighted: EDEDED */
-/* widgets: 383838 */
-/* widgets highlighted: 484848*/
-/* border fade: 464646*/
-</string>
+            <string notr="true"/>
            </property>
            <property name="text">
             <string/>
@@ -810,7 +843,7 @@ border-bottom-right-radius: 5px;
        <enum>Qt::Horizontal</enum>
       </property>
       <property name="handleWidth">
-       <number>2</number>
+       <number>5</number>
       </property>
       <widget class="QWidget" name="widgetLeft" native="true">
        <property name="sizePolicy">
@@ -844,7 +877,7 @@ border-bottom-right-radius: 5px;
            <enum>Qt::Vertical</enum>
           </property>
           <property name="handleWidth">
-           <number>2</number>
+           <number>5</number>
           </property>
           <widget class="QWidget" name="widgetUpperLeft" native="true">
            <property name="sizePolicy">
@@ -1978,7 +2011,7 @@ QTabBar::tab:last
                      <enum>Qt::Horizontal</enum>
                     </property>
                     <property name="handleWidth">
-                     <number>0</number>
+                     <number>5</number>
                     </property>
                     <widget class="DirectusDirExplorer" name="directusDirExplorer">
                      <property name="sizePolicy">

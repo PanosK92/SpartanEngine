@@ -19,5 +19,9 @@
         <file>collider.png</file>
         <file>meshFilter.png</file>
         <file>meshCollider.png</file>
+        <file>arrowDown.png</file>
+        <file>arrowLeft.png</file>
+        <file>arrowRight.png</file>
+        <file>arrowUp.png</file>
     </qresource>
 </RCC>
