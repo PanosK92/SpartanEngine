@@ -109,10 +109,10 @@ void DirectusLight::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
     m_gridLayout->addWidget(m_line, 5, 0, 1, 3);
     //==============================================================================
 
-    connect(m_lightType, SIGNAL(currentIndexChanged(int)), this, SLOT(MapLightType()));
-    connect(m_color, SIGNAL(ColorPickingCompleted()), this, SLOT(MapColor()));
-    connect(m_intensity, SIGNAL(ValueChanged()), this, SLOT(MapIntensity()));
-    connect(m_shadowType, SIGNAL(currentIndexChanged(int)), this, SLOT(MapShadowType()));
+    connect(m_lightType,    SIGNAL(currentIndexChanged(int)),   this, SLOT(MapLightType()));
+    connect(m_color,        SIGNAL(ColorPickingCompleted()),    this, SLOT(MapColor()));
+    connect(m_intensity,    SIGNAL(ValueChanged()),             this, SLOT(MapIntensity()));
+    connect(m_shadowType,   SIGNAL(currentIndexChanged(int)),   this, SLOT(MapShadowType()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
