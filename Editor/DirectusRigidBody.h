@@ -100,13 +100,13 @@ private:
     DirectusInspector* m_inspector;
     //====================================
 
-    void ReflectMass(float mass);
-    void ReflectDrag(float drag);
-    void ReflectAngulaDrag(float angularDrag);
-    void ReflectUseGravity(bool useGravity);
-    void ReflectIsKinematic(bool useGravity);
-    void ReflectFreezePosition(Directus::Math::Vector3 posFreeze);
-    void ReflectFreezeRotation(Directus::Math::Vector3 rotFreeze);
+    void ReflectMass();
+    void ReflectDrag();
+    void ReflectAngulaDrag();
+    void ReflectUseGravity();
+    void ReflectIsKinematic();
+    void ReflectFreezePosition();
+    void ReflectFreezeRotation();
 
 public slots:
     void MapMass();

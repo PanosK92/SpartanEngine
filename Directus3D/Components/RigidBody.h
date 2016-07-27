@@ -70,7 +70,14 @@ public:
 	void ApplyForce(Directus::Math::Vector3 force, ForceMode mode);
 	void ApplyForceAtPosition(Directus::Math::Vector3 force, Directus::Math::Vector3 position, ForceMode mode);
 	void ApplyTorque(Directus::Math::Vector3 torque, ForceMode mode);
+
+	void SetUseGravity(bool use);
+	bool GetUseGravity();
+	Directus::Math::Vector3 GetGravity();
 	void SetGravity(Directus::Math::Vector3 acceleration);
+
+	void SetKinematic(bool kinematic);
+	bool GetKinematic();
 
 	//= POSITION LOCK =================================
 	void SetPositionLock(bool lock);

@@ -261,9 +261,34 @@ void RigidBody::ApplyTorque(Vector3 torque, ForceMode mode)
 		m_rigidBody->applyTorqueImpulse(Vector3ToBtVector3(torque));
 }
 
+void RigidBody::SetUseGravity(bool use)
+{
+
+}
+
+bool RigidBody::GetUseGravity()
+{
+	return true;
+}
+
+Directus::Math::Vector3 RigidBody::GetGravity()
+{
+	return BtVector3ToVector3(m_rigidBody->getGravity());
+}
+
 void RigidBody::SetGravity(Vector3 acceleration)
 {
 	m_rigidBody->setGravity(Vector3ToBtVector3(acceleration));
+}
+
+void RigidBody::SetKinematic(bool kinematic)
+{
+
+}
+
+bool RigidBody::GetKinematic()
+{
+	return false;
 }
 
 //= POSITION LOCK =================================
