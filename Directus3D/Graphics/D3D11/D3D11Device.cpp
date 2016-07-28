@@ -352,7 +352,7 @@ void D3D11Device::Clear(Vector4 color)
 
 void D3D11Device::Present()
 {
-	VSync vSync = Settings::GetInstance().GetVSync();
+	VSync vSync = VSYNC;
 	m_swapChain->Present(vSync, 0);
 }
 
@@ -488,7 +488,7 @@ DXGI_SWAP_CHAIN_DESC D3D11Device::GetSwapchainDesc(HWND handle)
 	swapChainDesc.SampleDesc.Quality = 0;
 
 	// Set to full screen or windowed mode.
-	if (Settings::GetInstance().IsFullScreen())
+	if (FULLSCREEN)
 		swapChainDesc.Windowed = false;
 	else
 		swapChainDesc.Windowed = true;

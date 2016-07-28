@@ -117,8 +117,8 @@ void DeferredShader::Render(
 	buffer->pointLightCount = pointLights.size();
 	buffer->nearPlane = camera->GetNearPlane();
 	buffer->farPlane = camera->GetFarPlane();
-	buffer->viewport = RESOLUTION;
-	buffer->padding = RESOLUTION;
+	buffer->viewport = GET_RESOLUTION;
+	buffer->padding = GET_RESOLUTION;
 
 	// Unlock the constant buffer
 	m_constantBuffer->Unmap();

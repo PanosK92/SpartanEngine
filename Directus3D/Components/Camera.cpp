@@ -60,9 +60,9 @@ void Camera::Remove()
 
 void Camera::Update()
 {
-	if (m_lastKnownResolution != RESOLUTION)
+	if (m_lastKnownResolution != GET_RESOLUTION)
 	{
-		m_lastKnownResolution = RESOLUTION;
+		m_lastKnownResolution = GET_RESOLUTION;
 		m_isDirty = true;
 	}
 

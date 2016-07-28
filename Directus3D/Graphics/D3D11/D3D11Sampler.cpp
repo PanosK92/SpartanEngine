@@ -48,7 +48,7 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 	samplerDesc.AddressV = textureAddressMode;
 	samplerDesc.AddressW = textureAddressMode;
 	samplerDesc.MipLODBias = 0.0f;
-	samplerDesc.MaxAnisotropy = Settings::GetInstance().GetAnisotropy();
+	samplerDesc.MaxAnisotropy = ANISOTROPY;
 	samplerDesc.ComparisonFunc = comparisonFunction;
 	samplerDesc.BorderColor[0] = 0;
 	samplerDesc.BorderColor[1] = 0;

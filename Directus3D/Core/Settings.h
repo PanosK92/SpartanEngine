@@ -25,13 +25,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector2.h"
 //==========================
 
-#define GET_ENGINE_MODE Settings::GetInstance().GetEngineMode()
-#define SET_ENGINE_MODE(mode) Settings::GetInstance().SetEngineMode(mode)
-#define RESOLUTION_WIDTH Settings::GetInstance().GetResolutionWidth()
-#define RESOLUTION Settings::GetInstance().GetResolution()
-#define RESOLUTION_HEIGHT Settings::GetInstance().GetResolutionHeight()
-#define ASPECT_RATIO Settings::GetInstance().GetScreenAspect()
-#define SHADOWMAP_RESOLUTION Settings::GetInstance().GetShadowMapResolution()
+#define GET_ENGINE_MODE Settings::GetEngineMode()
+#define SET_ENGINE_MODE(mode) Settings::SetEngineMode(mode)
+#define SET_RESOLUTION(x,y) Settings::SetResolution(x,y)
+#define GET_RESOLUTION Settings::GetResolution()
+#define RESOLUTION_WIDTH Settings::GetResolutionWidth()
+#define RESOLUTION_HEIGHT Settings::GetResolutionHeight()
+#define ASPECT_RATIO Settings::GetScreenAspect()
+#define SHADOWMAP_RESOLUTION Settings::GetShadowMapResolution()
+#define VSYNC Settings::GetVSync()
+#define FULLSCREEN Settings::IsFullScreen()
+#define ANISOTROPY Settings::GetAnisotropy()
 
 enum EngineMode
 {
@@ -49,118 +53,30 @@ enum VSync
 	Every_Second_VBlank
 };
 
-class Settings
+class __declspec(dllexport) Settings
 {
 public:
-	Settings();
-	~Settings();
-
-	static Settings& GetInstance()
-	{
-		static Settings instance;
-		return instance;
-	}
-
-	void SetEngineMode(EngineMode mode);
-	EngineMode GetEngineMode() const;
-	bool IsFullScreen() const;
-	bool IsMouseVisible() const;
-	VSync GetVSync() const;
-	void SetResolution(int width, int height);
-	Directus::Math::Vector2 GetResolution() const;
-	int GetResolutionWidth() const;
-	int GetResolutionHeight() const;
-	float GetScreenAspect() const;
-	int GetShadowMapResolution() const;
-	unsigned int GetAnisotropy() const;
+	static void SetEngineMode(EngineMode mode);
+	static EngineMode GetEngineMode();
+	static bool IsFullScreen();
+	static bool IsMouseVisible();
+	static VSync GetVSync();
+	static void SetResolution(int width, int height);
+	static Directus::Math::Vector2 GetResolution();
+	static int GetResolutionWidth();
+	static int GetResolutionHeight();
+	static float GetScreenAspect();
+	static int GetShadowMapResolution();
+	static unsigned int GetAnisotropy();
 
 private:
-	EngineMode m_engineMode;
-	bool m_fullScreen;
-	VSync m_vsync;
-	bool m_mouseVisible;
-	int m_resolutionWidth;
-	int m_resolutionHeight;
-	float m_screenAspect;
-	int m_shadowMapResolution;
-	unsigned int m_anisotropy;
+	static EngineMode m_engineMode;
+	static bool m_fullScreen;
+	static VSync m_vsync;
+	static bool m_mouseVisible;
+	static int m_resolutionWidth;
+	static int m_resolutionHeight;
+	static float m_screenAspect;
+	static int m_shadowMapResolution;
+	static unsigned int m_anisotropy;
 };
-
-inline Settings::Settings()
-{
-	m_fullScreen = false;
-	m_resolutionWidth = 1920;
-	m_resolutionHeight = 1080;
-	m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
-	m_shadowMapResolution = 2048;
-	m_anisotropy = 16;
-	m_vsync = Off;
-	m_mouseVisible = true;
-	m_engineMode = Editor_Stop;
-}
-
-inline Settings::~Settings()
-{
-}
-
-inline void Settings::SetEngineMode(EngineMode mode)
-{
-	m_engineMode = mode;
-}
-
-inline EngineMode Settings::GetEngineMode() const
-{
-	return m_engineMode;
-}
-
-inline bool Settings::IsFullScreen() const
-{
-	return m_fullScreen;
-}
-
-inline bool Settings::IsMouseVisible() const
-{
-	return m_mouseVisible;
-}
-
-inline VSync Settings::GetVSync() const
-{
-	return m_vsync;
-}
-
-inline void Settings::SetResolution(int width, int height)
-{
-	m_resolutionWidth = width;
-	m_resolutionHeight = height;
-	m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
-}
-
-inline Directus::Math::Vector2 Settings::GetResolution() const
-{
-	return Directus::Math::Vector2(GetResolutionWidth(), GetResolutionHeight());
-}
-
-inline int Settings::GetResolutionWidth() const
-{
-	return m_resolutionWidth;
-}
-
-inline int Settings::GetResolutionHeight() const
-{
-	return m_resolutionHeight;
-}
-
-inline float Settings::GetScreenAspect() const
-{
-	return m_screenAspect;
-}
-
-inline int Settings::GetShadowMapResolution() const
-{
-	return m_shadowMapResolution;
-}
-
-inline unsigned int Settings::GetAnisotropy() const
-{
-	return m_anisotropy;
-}

@@ -133,7 +133,7 @@ void ScriptDefinitions::RegisterTypes()
 ------------------------------------------------------------------------------*/
 void ScriptDefinitions::RegisterSettings()
 {
-	m_scriptEngine->RegisterGlobalProperty("Settings settings", Settings::GetInstance);
+
 }
 
 /*------------------------------------------------------------------------------
