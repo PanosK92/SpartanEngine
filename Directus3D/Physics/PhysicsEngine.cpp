@@ -39,7 +39,6 @@ PhysicsEngine::PhysicsEngine()
 	m_collisionConfiguration = nullptr;
 	m_dynamicsWorld = nullptr;
 	m_physicsDebugDraw = nullptr;
-
 	m_debugDrawEnabled = false;
 	gravity = -9.81f;
 }

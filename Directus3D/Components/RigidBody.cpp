@@ -85,6 +85,14 @@ RigidBody::RigidBody()
 {
 	m_rigidBody = nullptr;
 	m_shape = nullptr;
+
+	m_mass = 0.0f;
+	m_restitution = 0.5f;
+	m_drag = 0.0f;
+	m_angularDrag = 0.0f;
+	m_useGravity = true;
+	m_kinematic = false;
+	m_positionLock = Vector3::Zero;
 	m_rotationLock = Vector3::Zero;
 }
 
@@ -94,12 +102,10 @@ RigidBody::~RigidBody()
 	m_rigidBody = nullptr;
 }
 
-/*------------------------------------------------------------------------------
-								[INTERFACE]
-------------------------------------------------------------------------------*/
+//= ICOMPONENT ==========================================================
 void RigidBody::Initialize()
 {
-	ConstructRigidBody(1.0f, 0.5f, 0.5f);
+	ConstructRigidBody();
 }
 
 void RigidBody::Remove()
@@ -111,118 +117,125 @@ void RigidBody::Update()
 {
 	if (GET_ENGINE_MODE == Editor_Stop)
 	{
-		//SetPosition(g_transform->GetPosition());
-		//SetRotation(g_transform->GetRotation());
-		//SetColliderScale(g_transform->GetScale());
+		SetPosition(g_transform->GetPosition());
+		SetRotation(g_transform->GetRotation());
+		SetColliderScale(g_transform->GetScale());
 	}
 	else if(GET_ENGINE_MODE == Editor_Play)
 	{
-		LOG("Play");
+
 	}
 }
 
 void RigidBody::Serialize()
 {
-	Serializer::SaveFloat(GetMass());
-	Serializer::SaveFloat(GetRestitution());
-	Serializer::SaveFloat(GetDrag());
+	Serializer::SaveFloat(m_mass);
+	Serializer::SaveFloat(m_drag);
+	Serializer::SaveFloat(m_angularDrag);
+	Serializer::SaveFloat(m_restitution);
+	Serializer::SaveBool(m_useGravity);
+	Serializer::SaveVector3(m_gravity);
+	Serializer::SaveBool(m_kinematic);
+	Serializer::SaveVector3(m_positionLock);
 	Serializer::SaveVector3(m_rotationLock);
 }
 
 void RigidBody::Deserialize()
 {
-	float mass = Serializer::LoadFloat();
-	float restitution = Serializer::LoadFloat();
-	float friction = Serializer::LoadFloat();
+	m_mass = Serializer::LoadFloat();
+	m_drag = Serializer::LoadFloat();
+	m_angularDrag = Serializer::LoadFloat();
+	m_restitution = Serializer::LoadFloat();
+	m_useGravity = Serializer::LoadBool();
+	m_gravity = Serializer::LoadVector3();
+	m_kinematic = Serializer::LoadBool();
+	m_positionLock = Serializer::LoadVector3();
 	m_rotationLock = Serializer::LoadVector3();
 
-	ConstructRigidBody(mass, restitution, friction);
-	DeactivateRigidBody();
+	ConstructRigidBody();
 }
+//=======================================================================
 
-bool RigidBody::IsStatic()
+// = PROPERTIES =========================================================
+float RigidBody::GetMass() const
 {
-	if (GetMass() != 0.0f)
-		return true;
-
-	return true;
-}
-
-/*------------------------------------------------------------------------------
-								[PROPERTIES]
-------------------------------------------------------------------------------*/
-float RigidBody::GetMass()
-{
-	return m_rigidBody->getInvMass();
+	return m_mass;
 }
 
 void RigidBody::SetMass(float mass)
 {
-	// remove the rigidBody from the world
-	g_physics->RemoveRigidBody(m_rigidBody);
-
-	btVector3 inertia(0, 0, 0);
-
-	if (m_rigidBody->getCollisionShape())
-		m_rigidBody->getCollisionShape()->calculateLocalInertia(mass, inertia);
-
-	m_rigidBody->setMassProps(mass, inertia);
-	m_rigidBody->updateInertiaTensor();
-
-	// add the rigiBody back to the world,
-	// so that the data structures are properly updated
-	g_physics->AddRigidBody(m_rigidBody);
+	m_mass = mass;
+	ConstructRigidBody();
 }
 
-float RigidBody::GetDrag()
+float RigidBody::GetDrag() const
 {
-	if (!m_rigidBody)
-		return 0.0f;
-
-	return float(m_rigidBody->getFriction());
+	return m_drag;
 }
 
-void RigidBody::SetDrag(float drag) const
+void RigidBody::SetDrag(float drag)
 {
-	if (!m_rigidBody)
-		return;
-
-	m_rigidBody->setFriction(btScalar(drag));
+	m_drag = drag;
+	ConstructRigidBody();
 }
 
 float RigidBody::GetAngularDrag() const
 {
-	if (!m_rigidBody)
-		return 0.0f;
-
-	return (float)m_rigidBody->getRollingFriction();
+	return m_angularDrag;
 }
 
-void RigidBody::SetAngularDrag(float angularDrag) const
+void RigidBody::SetAngularDrag(float angularDrag) 
 {
-	if (!m_rigidBody)
-		return;
-
-	m_rigidBody->setRollingFriction(btScalar(angularDrag));
+	m_angularDrag = angularDrag;
+	ConstructRigidBody();
 }
 
 float RigidBody::GetRestitution() const
 {
-	if (!m_rigidBody)
-		return 0.0f;
-
-	return m_rigidBody->getRestitution();
+	return m_restitution;
 }
 
-void RigidBody::SetRestitution(float restitution) const
+void RigidBody::SetRestitution(float restitution)
 {
-	if (!m_rigidBody)
-		return;
-
-	m_rigidBody->setRestitution(restitution);
+	m_restitution = restitution;
+	ConstructRigidBody();
 }
 
+bool RigidBody::GetUseGravity() const
+{
+	return m_useGravity;
+}
 
+void RigidBody::SetUseGravity(bool use)
+{
+	m_useGravity = use;
+	ConstructRigidBody();
+}
+
+Vector3 RigidBody::GetGravity() const
+{
+	return m_gravity;
+}
+
+void RigidBody::SetGravity(Vector3 acceleration)
+{
+	m_gravity = acceleration;
+	ConstructRigidBody();
+}
+
+void RigidBody::SetKinematic(bool kinematic)
+{
+	m_kinematic = kinematic;
+	ConstructRigidBody();
+}
+
+bool RigidBody::GetKinematic() const
+{
+	return m_kinematic;
+}
+//=======================================================================
+
+//= FORCE/TORQUE ========================================================
 void RigidBody::ApplyForce(Vector3 force, ForceMode mode)
 {
 	ActivateRigidBody();
@@ -252,55 +265,30 @@ void RigidBody::ApplyTorque(Vector3 torque, ForceMode mode)
 	else if (mode == Impulse)
 		m_rigidBody->applyTorqueImpulse(Vector3ToBtVector3(torque));
 }
+//=======================================================================
 
-void RigidBody::SetUseGravity(bool use)
-{
-
-}
-
-bool RigidBody::GetUseGravity()
-{
-	return true;
-}
-
-Vector3 RigidBody::GetGravity() const
-{
-	return BtVector3ToVector3(m_rigidBody->getGravity());
-}
-
-void RigidBody::SetGravity(Vector3 acceleration) const
-{
-	m_rigidBody->setGravity(Vector3ToBtVector3(acceleration));
-}
-
-void RigidBody::SetKinematic(bool kinematic)
-{
-
-}
-
-bool RigidBody::GetKinematic()
-{
-	return false;
-}
-
-//= POSITION LOCK =================================
+//= CONSTRAINTS =========================================================
 void RigidBody::SetPositionLock(bool lock)
 {
-
+	if (lock)
+		SetPositionLock(Vector3(1, 1, 1));
+	else
+		SetPositionLock(Vector3(0, 0, 0));
 }
 
 void RigidBody::SetPositionLock(Vector3 lock)
 {
+	m_positionLock = lock;
 
+	Vector3 translationFreedom = Vector3(!lock.x, !lock.y, !lock.z);
+	m_rigidBody->setLinearFactor(Vector3ToBtVector3(translationFreedom));
 }
 
-Vector3 RigidBody::GetPositionLock()
+Vector3 RigidBody::GetPositionLock() const
 {
-	return Vector3::Zero;
+	return m_positionLock;
 }
-//=================================================
 
-//= POSITION LOCK =================================
 void RigidBody::SetRotationLock(bool lock)
 {
 	if (lock)
@@ -317,16 +305,16 @@ void RigidBody::SetRotationLock(Vector3 lock)
 	m_rigidBody->setAngularFactor(Vector3ToBtVector3(rotationFreedom));
 }
 
-Vector3 RigidBody::GetRotationLock() const
+Vector3 RigidBody::GetRotationLock()
 {
 	return m_rotationLock;
 }
-//=================================================
+//=======================================================================
 
 /*------------------------------------------------------------------------------
 							[POSITION]
 ------------------------------------------------------------------------------*/
-Vector3 RigidBody::GetPosition() const
+Vector3 RigidBody::GetPosition()
 {
 	if (!m_rigidBody)
 		return Vector3::Zero;
@@ -336,20 +324,20 @@ Vector3 RigidBody::GetPosition() const
 	return BtVector3ToVector3(currentTransform.getOrigin());
 }
 
-void RigidBody::SetPosition(Vector3 position) const
+void RigidBody::SetPosition(Vector3 position)
 {
 	if (!m_rigidBody)
 		return;
 
 	btTransform currentTransform;
 	m_rigidBody->getMotionState()->getWorldTransform(currentTransform);
-	m_rigidBody->getWorldTransform().setOrigin(currentTransform.getOrigin());
+	m_rigidBody->getWorldTransform().setOrigin(Vector3ToBtVector3(position));
 }
 
 /*------------------------------------------------------------------------------
 							[ROTATION]
 ------------------------------------------------------------------------------*/
-Quaternion RigidBody::GetRotation() const
+Quaternion RigidBody::GetRotation()
 {
 	if (!m_rigidBody)
 		return Quaternion::Identity();
@@ -359,14 +347,14 @@ Quaternion RigidBody::GetRotation() const
 	return BtQuaternionToQuaternion(currentTransform.getRotation());
 }
 
-void RigidBody::SetRotation(Quaternion rotation) const
+void RigidBody::SetRotation(Quaternion rotation)
 {
 	if (!m_rigidBody)
 		return;
 
 	btTransform currentTransform;
 	m_rigidBody->getMotionState()->getWorldTransform(currentTransform);
-	m_rigidBody->getWorldTransform().setRotation(currentTransform.getRotation());
+	m_rigidBody->getWorldTransform().setRotation(QuaternionToBtQuaternion(rotation));
 }
 
 /*------------------------------------------------------------------------------
@@ -374,12 +362,8 @@ void RigidBody::SetRotation(Quaternion rotation) const
 ------------------------------------------------------------------------------*/
 void RigidBody::SetCollisionShape(btCollisionShape* shape)
 {
-	if (!m_rigidBody)
-		return;
-
 	m_shape = shape;
-
-	ConstructRigidBody(GetMass(), GetRestitution(), GetDrag());
+	ConstructRigidBody();
 }
 
 btRigidBody* RigidBody::GetBtRigidBody() const
@@ -390,7 +374,7 @@ btRigidBody* RigidBody::GetBtRigidBody() const
 /*------------------------------------------------------------------------------
 								[COLLIDER]
 ------------------------------------------------------------------------------*/
-Vector3 RigidBody::GetColliderScale() const
+Vector3 RigidBody::GetColliderScale()
 {
 	if (g_gameObject->HasComponent<Collider>())
 		return g_gameObject->GetComponent<Collider>()->GetScale();
@@ -398,13 +382,13 @@ Vector3 RigidBody::GetColliderScale() const
 	return Vector3(0, 0, 0);
 }
 
-void RigidBody::SetColliderScale(Vector3 scale) const
+void RigidBody::SetColliderScale(Vector3 scale)
 {
 	if (g_gameObject->HasComponent<Collider>())
 		g_gameObject->GetComponent<Collider>()->SetScale(scale);
 }
 
-Vector3 RigidBody::GetColliderCenter() const
+Vector3 RigidBody::GetColliderCenter()
 {
 	Vector3 center = Vector3(0, 0, 0);
 
@@ -417,7 +401,7 @@ Vector3 RigidBody::GetColliderCenter() const
 /*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
-void RigidBody::ConstructRigidBody(float mass, float restitution, float friction)
+void RigidBody::ConstructRigidBody()
 {
 	btVector3 inertia(0, 0, 0);
 
@@ -430,33 +414,39 @@ void RigidBody::ConstructRigidBody(float mass, float restitution, float friction
 		m_rigidBody = nullptr;
 	}
 
-	// crete motion state
+	// Motion State
 	MotionState* motionState = new MotionState(g_transform, GetColliderCenter());
 
+	// Colision Shape
 	if (m_shape) // if a shape has been assigned
-		m_shape->calculateLocalInertia(mass, inertia); // calculate local inertia
+		m_shape->calculateLocalInertia(m_mass, inertia);
 
-	// crete contruction info
-	btRigidBody::btRigidBodyConstructionInfo rigidBodyConstructionInfo(mass, motionState, m_shape, inertia);
+	// Construction Info
+	btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, m_shape, inertia);
+	constructionInfo.m_mass = m_mass;
+	constructionInfo.m_friction = m_drag;
+	constructionInfo.m_rollingFriction = m_angularDrag;
+	constructionInfo.m_restitution = m_restitution;
+	constructionInfo.m_startWorldTransform;
+	constructionInfo.m_collisionShape = m_shape;
+	constructionInfo.m_localInertia = inertia;
+	constructionInfo.m_motionState = motionState;
 
-	rigidBodyConstructionInfo.m_restitution = restitution;
-	rigidBodyConstructionInfo.m_friction = friction;
+	// RigidBody
+	m_rigidBody = new btRigidBody(constructionInfo);
 
-	// construct it and save it
-	m_rigidBody = new btRigidBody(rigidBodyConstructionInfo);
-
+	// Constraints
+	SetPositionLock(m_positionLock);
 	SetRotationLock(m_rotationLock);
 
-	// add it to the world
+	// PHYSICS WORLD - ADD
 	g_physics->AddRigidBody(m_rigidBody);
 }
 
-void RigidBody::ActivateRigidBody() const
+void RigidBody::ActivateRigidBody()
 {
-	m_rigidBody->activate(true);
-}
+	if (!m_rigidBody)
+		return;
 
-void RigidBody::DeactivateRigidBody() const
-{
-	m_rigidBody->setActivationState(0);
+	m_rigidBody->activate(true);
 }
