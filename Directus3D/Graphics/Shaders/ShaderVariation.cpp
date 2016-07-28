@@ -158,7 +158,7 @@ void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix
 		defaultBufferType->specularMultiplier = material->GetSpecularMultiplier();
 		defaultBufferType->shadingMode = float(material->GetShadingMode());
 		defaultBufferType->materialTiling = material->GetTiling();
-		defaultBufferType->viewport = RESOLUTION;
+		defaultBufferType->viewport = GET_RESOLUTION;
 		defaultBufferType->padding = Vector2(directionalLight->GetBias(), directionalLight->GetBias());
 		m_befaultBuffer->Unmap();
 	}

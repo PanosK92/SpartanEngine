@@ -143,6 +143,7 @@
     <ClCompile Include="Core\GameObject.cpp" />
     <ClCompile Include="Core\Material.cpp" />
     <ClCompile Include="Core\Scene.cpp" />
+    <ClCompile Include="Core\Settings.cpp" />
     <ClCompile Include="Core\Socket.cpp" />
     <ClCompile Include="Core\Texture.cpp" />
     <ClCompile Include="Core\Timer.cpp" />

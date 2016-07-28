@@ -215,7 +215,7 @@ void Renderer::SetResolution(int width, int height)
 	if (width == 0 || height == 0)
 		return;
 
-	Settings::GetInstance().SetResolution(width, height);
+	SET_RESOLUTION(width, height);
 
 	m_graphicsDevice->SetViewport(width, height);
 
