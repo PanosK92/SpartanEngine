@@ -1,7 +1,7 @@
 # Directus3D
 Directus3D is a simple yet powerful game engine. This is achieved by prioritizing a coherent design (including clean code) over anything else. Constructing scenes that require scripting, physics and so on, is possible.
 
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/editorScreenshot.jpg)
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/screenshot.jpg)
 
 # Features
 - 30+ image formats support.
