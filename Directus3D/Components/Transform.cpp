@@ -42,6 +42,7 @@ Transform::Transform()
 
 Transform::~Transform()
 {
+
 }
 
 /*------------------------------------------------------------------------------
@@ -49,6 +50,12 @@ Transform::~Transform()
 ------------------------------------------------------------------------------*/
 void Transform::Initialize()
 {
+
+}
+
+void Transform::Remove()
+{
+
 }
 
 void Transform::Update()

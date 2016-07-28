@@ -36,6 +36,11 @@ void LineRenderer::Initialize()
 	);
 }
 
+void LineRenderer::Remove()
+{
+
+}
+
 void LineRenderer::Update()
 {
 

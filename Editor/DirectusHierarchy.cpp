@@ -610,10 +610,6 @@ void DirectusHierarchy::CreateCube()
     MeshRenderer* meshRendererComp = gameobject->AddComponent<MeshRenderer>();
     meshRendererComp->SetMaterialStandardDefault();
 
-    // Add a box collider
-    Collider* collider = gameobject->AddComponent<Collider>();
-    collider->SetShapeType(ColliderShape::Box);
-
     // Refresh hierarchy
     Populate();
 }
@@ -631,9 +627,6 @@ void DirectusHierarchy::CreateQuad()
     // Add a mesh renderer
     MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>();
     meshRenderer->SetMaterialStandardDefault();
-
-    // Add a mesh collider
-    MeshCollider* collider = gameobject->AddComponent<MeshCollider>();
 
     // Refresh hierarchy
     Populate();

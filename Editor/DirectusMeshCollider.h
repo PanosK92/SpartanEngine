@@ -71,8 +71,8 @@ private:
     DirectusCore* m_directusCore;
     //====================================
 
-    void SetConvex(bool convex);
-    void SetMesh(Mesh* mesh);
+    void ReflectConvex();
+    void ReflectMesh();
 
 public slots:
     void MapConvex();

@@ -107,20 +107,28 @@ void DirectusMeshCollider::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    SetConvex(m_inspectedMeshCollider->GetConvex());
-    SetMesh(m_inspectedMeshCollider->GetMesh());
+    ReflectConvex();
+    ReflectMesh();
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusMeshCollider::SetConvex(bool convex)
+void DirectusMeshCollider::ReflectConvex()
 {
+    if (!m_inspectedMeshCollider)
+        return;
+
+    bool convex = m_inspectedMeshCollider->GetConvex();
     m_convex->setChecked(convex);
 }
 
-void DirectusMeshCollider::SetMesh(Mesh* mesh)
+void DirectusMeshCollider::ReflectMesh()
 {
+    if (!m_inspectedMeshCollider)
+        return;
+
+    Mesh* mesh = m_inspectedMeshCollider->GetMesh();
     if (!mesh)
         return;
 
@@ -140,11 +148,5 @@ void DirectusMeshCollider::MapConvex()
 
 void DirectusMeshCollider::MapMesh()
 {
-    if (!m_inspectedMeshCollider || !m_directusCore)
-        return;
 
-    //Mesh* mesh = m_convex->isChecked();
-    //m_inspectedMeshCollider->SetMesh(mesh);
-
-    m_directusCore->Update();
 }

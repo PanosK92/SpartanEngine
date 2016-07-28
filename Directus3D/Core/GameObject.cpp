@@ -59,12 +59,8 @@ GameObject::~GameObject()
 	map<string, IComponent*>::iterator it;
 	for (it = m_components.begin(); it != m_components.end(); ++it)
 	{
-		// some components might use these pointers if they are not null
-		// however when the gameobject is being destroyed they will become
-		// dangling pointers, it's important to set them to null to avoid crashes.
 		IComponent* component = it->second;
-		component->g_gameObject = nullptr;
-		component->g_transform = nullptr;
+		component->Remove();
 
 		delete component;
 	}
@@ -237,6 +233,7 @@ void GameObject::RemoveComponent()
 
 		if (typed_cmp != nullptr)
 		{
+			component->Remove();
 			delete component;
 			it = m_components.erase(it);
 

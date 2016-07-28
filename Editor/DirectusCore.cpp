@@ -66,11 +66,13 @@ void DirectusCore::Initialize(HWND hwnd, HINSTANCE hinstance)
 
 void DirectusCore::Play()
 {
+    SET_ENGINE_MODE(Editor_Play);
     m_timer->start(0);
 }
 
 void DirectusCore::Stop()
 {
+    SET_ENGINE_MODE(Editor_Stop);
     m_timer->stop();
 }
 
