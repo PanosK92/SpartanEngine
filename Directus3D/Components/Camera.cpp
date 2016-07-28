@@ -34,7 +34,7 @@ using namespace Directus::Math;
 Camera::Camera()
 {
 	m_FOV = 1.04719755f; // 60 degrees
-	m_nearPlane = 0.3f;
+	m_nearPlane = 0.1f;
 	m_farPlane = 1000.0f;
 	m_projection = Perspective;
 	m_clearColor = Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 

@@ -52,7 +52,7 @@ public:
 
 private:
 	MeshFilter* m_meshFilter;
-	int m_vertexLimit = 1024;
+	int m_vertexLimit = 100000;
 	btCollisionShape* m_collider;
 	bool m_convex;
 	bool m_isDirty;
