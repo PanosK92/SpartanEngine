@@ -47,6 +47,12 @@ Script::~Script()
 
 void Script::Initialize()
 {
+
+}
+
+void Script::Remove()
+{
+
 }
 
 void Script::Update()

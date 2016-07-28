@@ -98,6 +98,11 @@ void Skybox::Update()
 {
 }
 
+void Skybox::Remove()
+{
+
+}
+
 void Skybox::Serialize()
 {
 }

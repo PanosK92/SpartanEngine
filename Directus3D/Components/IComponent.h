@@ -40,6 +40,7 @@ public:
 	};
 
 	virtual void Initialize() = 0;
+	virtual void Remove() = 0;
 	virtual void Update() = 0;
 	virtual void Serialize() = 0;
 	virtual void Deserialize() = 0;

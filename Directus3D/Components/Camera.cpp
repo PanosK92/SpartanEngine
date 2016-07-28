@@ -42,6 +42,7 @@ Camera::Camera()
 
 Camera::~Camera()
 {
+
 }
 
 /*------------------------------------------------------------------------------
@@ -50,6 +51,11 @@ Camera::~Camera()
 void Camera::Initialize()
 {
 	CalculateProjectionMatrix();
+}
+
+void Camera::Remove()
+{
+
 }
 
 void Camera::Update()

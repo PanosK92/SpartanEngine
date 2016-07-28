@@ -54,6 +54,11 @@ void MeshRenderer::Initialize()
 
 }
 
+void MeshRenderer::Remove()
+{
+
+}
+
 void MeshRenderer::Update()
 {
 

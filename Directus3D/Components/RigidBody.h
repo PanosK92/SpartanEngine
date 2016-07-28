@@ -42,96 +42,83 @@ public:
 	RigidBody();
 	~RigidBody();
 
-	/*------------------------------------------------------------------------------
-								[INTERFACE]
-	------------------------------------------------------------------------------*/
+	//= ICOMPONENT ==========================================
 	virtual void Initialize();
+	virtual void Remove();
 	virtual void Update();
 	virtual void Serialize();
 	virtual void Deserialize();
 
-	/*------------------------------------------------------------------------------
-								[PROPERTIES]
-	------------------------------------------------------------------------------*/
 	bool IsStatic();
 
+	//= MASS ================================================
 	float GetMass();
 	void SetMass(float mass);
 
+	//= DRAG ===============================================
 	float GetDrag();
-	void SetDrag(float drag);
+	void SetDrag(float drag) const;
 
-	float GetAngularDrag();
-	void SetAngularDrag(float angularDrag);
+	//= ANGULAR DRAG =======================================
+	float GetAngularDrag() const;
+	void SetAngularDrag(float angularDrag) const;
 
-	float GetRestitution();
-	void SetRestitution(float restitution);
+	//= RESTITUTION ========================================
+	float GetRestitution() const;
+	void SetRestitution(float restitution) const;
 
+	//= FORCE/TORQUE =======================================
 	void ApplyForce(Directus::Math::Vector3 force, ForceMode mode);
 	void ApplyForceAtPosition(Directus::Math::Vector3 force, Directus::Math::Vector3 position, ForceMode mode);
 	void ApplyTorque(Directus::Math::Vector3 torque, ForceMode mode);
 
-	void SetUseGravity(bool use);
-	bool GetUseGravity();
-	Directus::Math::Vector3 GetGravity();
-	void SetGravity(Directus::Math::Vector3 acceleration);
+	//= GRAVITY ============================================
+	static void SetUseGravity(bool use);
+	static bool GetUseGravity();
+	Directus::Math::Vector3 GetGravity() const;
+	void SetGravity(Directus::Math::Vector3 acceleration) const;
+	//======================================================
 
-	void SetKinematic(bool kinematic);
-	bool GetKinematic();
+	//= KINEMATIC ==========================================
+	static void SetKinematic(bool kinematic);
+	static bool GetKinematic();
 
 	//= POSITION LOCK =================================
-	void SetPositionLock(bool lock);
-	void SetPositionLock(Directus::Math::Vector3 lock);
-	Directus::Math::Vector3 GetPositionLock();
+	static void SetPositionLock(bool lock);
+	static void SetPositionLock(Directus::Math::Vector3 lock);
+	static Directus::Math::Vector3 GetPositionLock();
 	//=================================================
 
 	//= ROTATION LOCK =================================
 	void SetRotationLock(bool lock);
 	void SetRotationLock(Directus::Math::Vector3 lock);
-	Directus::Math::Vector3 GetRotationLock();
+	Directus::Math::Vector3 GetRotationLock() const;
 	//=================================================
 
-	/*------------------------------------------------------------------------------
-								[POSITION]
-	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetPosition();
-	void SetPosition(Directus::Math::Vector3 position);
+	//= POSITION ============================================
+	Directus::Math::Vector3 GetPosition() const;
+	void SetPosition(Directus::Math::Vector3 position) const;
 
-	/*------------------------------------------------------------------------------
-								[ROTATION]
-	------------------------------------------------------------------------------*/
-	Directus::Math::Quaternion GetRotation();
-	void SetRotation(Directus::Math::Quaternion rotation);
+	//= ROTATION ============================================
+	Directus::Math::Quaternion GetRotation() const;
+	void SetRotation(Directus::Math::Quaternion rotation) const;
 
-	/*------------------------------------------------------------------------------
-								[MISC]
-	------------------------------------------------------------------------------*/
+	//= MISC ================================================
 	void SetCollisionShape(btCollisionShape* shape);
-	btRigidBody* GetBtRigidBody();
+	btRigidBody* GetBtRigidBody() const;
 
 private:
+	//= COLLIDER ================================================
+	Directus::Math::Vector3 GetColliderScale() const;
+	void SetColliderScale(Directus::Math::Vector3 scale) const;
+	Directus::Math::Vector3 GetColliderCenter() const;
+
+	//= HELPER FUNCTIONS ========================================
+	void ConstructRigidBody(float mass, float restitution, float friction);
+	void ActivateRigidBody() const;
+	void DeactivateRigidBody() const;
+
 	btRigidBody* m_rigidBody;
 	btCollisionShape* m_shape;
 	Directus::Math::Vector3 m_rotationLock;
-	bool m_executeEvent;
-
-	/*------------------------------------------------------------------------------
-									[EVENTS]
-	------------------------------------------------------------------------------*/
-	void OnEditorPlay();
-	void OnEditorDebug();
-
-	/*------------------------------------------------------------------------------
-								[COLLIDER]
-	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetColliderScale();
-	void SetColliderScale(Directus::Math::Vector3 scale);
-	Directus::Math::Vector3 GetColliderCenter();
-
-	/*------------------------------------------------------------------------------
-								[HELPER FUNCTIONS]
-	------------------------------------------------------------------------------*/
-	void ConstructRigidBody(float mass, float restitution, float friction);
-	void ActivateRigidBody();
-	void DeactivateRigidBody();
 };

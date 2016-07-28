@@ -46,6 +46,7 @@ public:
 									[INTERFACE]
 	------------------------------------------------------------------------------*/
 	virtual void Initialize();
+	virtual void Remove();
 	virtual void Update();
 	virtual void Serialize();
 	virtual void Deserialize();

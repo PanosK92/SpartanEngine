@@ -51,13 +51,9 @@ Collider::~Collider()
 {
 	delete m_shape;
 	m_shape = nullptr;
-
-	SetRigidBodyCollisionShape(nullptr);
 }
 
-/*------------------------------------------------------------------------------
-							[INTERFACE]
-------------------------------------------------------------------------------*/
+//= ICOMPONENT ========================================================================
 void Collider::Initialize()
 {
 	// get bounding box and center
@@ -71,13 +67,18 @@ void Collider::Initialize()
 	m_isDirty = true;
 }
 
+void Collider::Remove()
+{
+	SetRigidBodyCollisionShape(nullptr);
+}
+
 void Collider::Update()
 {
 	if (!m_isDirty)
 		return;
 
 	// This function constructs a btCollisionShape and assigns it to a RigidBody (if attached).
-	// It's important that it's called here and not in Load() as there is a possibility
+	// It's important that it's called here and not in Deserialize() as there is a possibility
 	// that the RigidBody has not been attached yet (still loading).
 	ConstructCollisionShape();
 
@@ -100,9 +101,7 @@ void Collider::Deserialize()
 	m_isDirty = true;
 }
 
-/*------------------------------------------------------------------------------
-								[PROPERTIES]
-------------------------------------------------------------------------------*/
+//= BOUNDING BOX =============================================
 Vector3 Collider::GetBoundingBox()
 {
 	return m_boundingBox;
@@ -117,6 +116,7 @@ void Collider::SetBoundingBox(Vector3 boxSize)
 	ConstructCollisionShape();
 }
 
+//= SCALE ========================================================
 Vector3 Collider::GetScale()
 {
 	if (!m_shape)
@@ -137,6 +137,7 @@ void Collider::SetScale(Vector3 scale)
 	m_shape->setLocalScaling(Vector3ToBtVector3(scale.Absolute()));
 }
 
+//= CENTER ========================================================
 Vector3 Collider::GetCenter()
 {
 	return m_center;
@@ -149,6 +150,7 @@ void Collider::SetCenter(Vector3 center)
 	m_isDirty = true;
 }
 
+//= COLLISION SHAPE ================================================
 ColliderShape Collider::GetShapeType()
 {
 	return m_shapeType;
@@ -165,9 +167,7 @@ btCollisionShape* Collider::GetBtCollisionShape()
 	return m_shape;
 }
 
-/*------------------------------------------------------------------------------
-								[MISC]
-------------------------------------------------------------------------------*/
+//= MISC ====================================================================
 void Collider::ConstructCollisionShape()
 {
 	// delete old shape (if it exists)

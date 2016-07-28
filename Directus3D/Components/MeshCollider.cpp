@@ -51,13 +51,6 @@ MeshCollider::~MeshCollider()
 {
 	delete m_collider;
 	m_collider = nullptr;
-
-	// This has to be done in a remove function that I have to implement
-	// in the component interface
-	// update the rigidbody if it exists
-	/*RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
-	if (rigidBody)
-		rigidBody->SetCollisionShape(m_collider);*/
 }
 
 /*------------------------------------------------------------------------------
@@ -69,6 +62,14 @@ void MeshCollider::Initialize()
 		g_gameObject->AddComponent<RigidBody>();
 
 	m_rigidBody = g_gameObject->GetComponent<RigidBody>();
+}
+
+void MeshCollider::Remove()
+{
+	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
+
+	if (rigidBody)
+		rigidBody->SetCollisionShape(m_collider);
 }
 
 void MeshCollider::Update()

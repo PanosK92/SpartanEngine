@@ -45,7 +45,7 @@ Hinge::Hinge()
 
 Hinge::~Hinge()
 {
-	g_physics->RemoveConstraint(m_hinge);
+	
 }
 
 /*------------------------------------------------------------------------------
@@ -58,6 +58,11 @@ void Hinge::Initialize()
 	m_axisB = Vector3(0.f, 0.f, 0.f); // The axis in A should be equal to to the axis in B and point away from the car off to the side.
 	m_pivotA = Vector3(0.f, 1.f, 0.f); // the mount point for the tyre on the chassis
 	m_pivotB = Vector3(0.f, 0.f, 0.f); // the centre of the tyre
+}
+
+void Hinge::Remove()
+{
+	g_physics->RemoveConstraint(m_hinge);
 }
 
 void Hinge::Update()

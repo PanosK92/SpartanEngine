@@ -86,7 +86,7 @@ void Socket::Update()
 	// update physics
 	m_physics->Update();
 
-	// update gaemeobjects
+	// update gameobjects
 	GameObjectPool::GetInstance().Update();
 
 	// update scene
@@ -115,7 +115,7 @@ vector<GameObject*> Socket::GetAllGameObjects()
 	return GameObjectPool::GetInstance().GetAllGameObjects();
 }
 
-std::vector<GameObject*> Socket::GetRootGameObjects()
+vector<GameObject*> Socket::GetRootGameObjects()
 {
 	return GameObjectPool::GetInstance().GetRootGameObjects();
 }

@@ -37,6 +37,7 @@ public:
 	------------------------------------------------------------------------------*/
 	virtual void Initialize();
 	virtual void Update();
+	virtual void Remove();
 	virtual void Serialize();
 	virtual void Deserialize();
 

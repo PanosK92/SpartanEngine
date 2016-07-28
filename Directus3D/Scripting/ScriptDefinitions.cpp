@@ -104,9 +104,11 @@ void ScriptDefinitions::RegisterEnumerations()
 
 	// EngineMode
 	m_scriptEngine->RegisterEnum("EngineMode");
-	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Debug", int(Editor_Debug));
 	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Play", int(Editor_Play));
-	m_scriptEngine->RegisterEnumValue("EngineMode", "Standalone", int(Standalone));
+	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Stop", int(Editor_Stop));
+	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Pause", int(Editor_Pause));
+	m_scriptEngine->RegisterEnumValue("EngineMode", "Build_Developer", int(Build_Developer));
+	m_scriptEngine->RegisterEnumValue("EngineMode", "Build_Release", int(Build_Release));
 }
 
 void ScriptDefinitions::RegisterTypes()

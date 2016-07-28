@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/BulletPhysicsHelper.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
+#include "../IO/Log.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -85,13 +86,10 @@ RigidBody::RigidBody()
 	m_rigidBody = nullptr;
 	m_shape = nullptr;
 	m_rotationLock = Vector3::Zero;
-	m_executeEvent = true;
 }
 
 RigidBody::~RigidBody()
 {
-	g_physics->RemoveRigidBody(m_rigidBody);
-
 	delete m_rigidBody;
 	m_rigidBody = nullptr;
 }
@@ -101,32 +99,26 @@ RigidBody::~RigidBody()
 ------------------------------------------------------------------------------*/
 void RigidBody::Initialize()
 {
-	ConstructRigidBody(0.0f, 0.5f, 0.5f);
+	ConstructRigidBody(1.0f, 0.5f, 0.5f);
+}
+
+void RigidBody::Remove()
+{
+	g_physics->RemoveRigidBody(m_rigidBody);
 }
 
 void RigidBody::Update()
 {
-	/*if (ENGINE_MODE == Editor_Debug)
+	if (GET_ENGINE_MODE == Editor_Stop)
 	{
-		if (m_executeEvent)
-		{
-			OnEditorDebug();
-			m_executeEvent = false;
-		}
-
-		SetPosition(g_transform->GetPosition());
-		SetRotation(g_transform->GetRotation());
-		SetColliderScale(g_transform->GetScale());
+		//SetPosition(g_transform->GetPosition());
+		//SetRotation(g_transform->GetRotation());
+		//SetColliderScale(g_transform->GetScale());
 	}
-
-	if (ENGINE_MODE == Editor_Play)
+	else if(GET_ENGINE_MODE == Editor_Play)
 	{
-		if (!m_executeEvent)
-		{
-			OnEditorPlay();
-			m_executeEvent = true;
-		}
-	}*/
+		LOG("Play");
+	}
 }
 
 void RigidBody::Serialize()
@@ -187,18 +179,18 @@ float RigidBody::GetDrag()
 	if (!m_rigidBody)
 		return 0.0f;
 
-	return (float)m_rigidBody->getFriction();
+	return float(m_rigidBody->getFriction());
 }
 
-void RigidBody::SetDrag(float drag)
+void RigidBody::SetDrag(float drag) const
 {
 	if (!m_rigidBody)
 		return;
 
-	m_rigidBody->setFriction((btScalar)drag);
+	m_rigidBody->setFriction(btScalar(drag));
 }
 
-float RigidBody::GetAngularDrag()
+float RigidBody::GetAngularDrag() const
 {
 	if (!m_rigidBody)
 		return 0.0f;
@@ -206,15 +198,15 @@ float RigidBody::GetAngularDrag()
 	return (float)m_rigidBody->getRollingFriction();
 }
 
-void RigidBody::SetAngularDrag(float angularDrag)
+void RigidBody::SetAngularDrag(float angularDrag) const
 {
 	if (!m_rigidBody)
 		return;
 
-	m_rigidBody->setRollingFriction((btScalar)angularDrag);
+	m_rigidBody->setRollingFriction(btScalar(angularDrag));
 }
 
-float RigidBody::GetRestitution()
+float RigidBody::GetRestitution() const
 {
 	if (!m_rigidBody)
 		return 0.0f;
@@ -222,7 +214,7 @@ float RigidBody::GetRestitution()
 	return m_rigidBody->getRestitution();
 }
 
-void RigidBody::SetRestitution(float restitution)
+void RigidBody::SetRestitution(float restitution) const
 {
 	if (!m_rigidBody)
 		return;
@@ -271,12 +263,12 @@ bool RigidBody::GetUseGravity()
 	return true;
 }
 
-Directus::Math::Vector3 RigidBody::GetGravity()
+Vector3 RigidBody::GetGravity() const
 {
 	return BtVector3ToVector3(m_rigidBody->getGravity());
 }
 
-void RigidBody::SetGravity(Vector3 acceleration)
+void RigidBody::SetGravity(Vector3 acceleration) const
 {
 	m_rigidBody->setGravity(Vector3ToBtVector3(acceleration));
 }
@@ -325,7 +317,7 @@ void RigidBody::SetRotationLock(Vector3 lock)
 	m_rigidBody->setAngularFactor(Vector3ToBtVector3(rotationFreedom));
 }
 
-Vector3 RigidBody::GetRotationLock()
+Vector3 RigidBody::GetRotationLock() const
 {
 	return m_rotationLock;
 }
@@ -334,7 +326,7 @@ Vector3 RigidBody::GetRotationLock()
 /*------------------------------------------------------------------------------
 							[POSITION]
 ------------------------------------------------------------------------------*/
-Vector3 RigidBody::GetPosition()
+Vector3 RigidBody::GetPosition() const
 {
 	if (!m_rigidBody)
 		return Vector3::Zero;
@@ -344,7 +336,7 @@ Vector3 RigidBody::GetPosition()
 	return BtVector3ToVector3(currentTransform.getOrigin());
 }
 
-void RigidBody::SetPosition(Vector3 position)
+void RigidBody::SetPosition(Vector3 position) const
 {
 	if (!m_rigidBody)
 		return;
@@ -357,7 +349,7 @@ void RigidBody::SetPosition(Vector3 position)
 /*------------------------------------------------------------------------------
 							[ROTATION]
 ------------------------------------------------------------------------------*/
-Quaternion RigidBody::GetRotation()
+Quaternion RigidBody::GetRotation() const
 {
 	if (!m_rigidBody)
 		return Quaternion::Identity();
@@ -367,7 +359,7 @@ Quaternion RigidBody::GetRotation()
 	return BtQuaternionToQuaternion(currentTransform.getRotation());
 }
 
-void RigidBody::SetRotation(Quaternion rotation)
+void RigidBody::SetRotation(Quaternion rotation) const
 {
 	if (!m_rigidBody)
 		return;
@@ -390,25 +382,15 @@ void RigidBody::SetCollisionShape(btCollisionShape* shape)
 	ConstructRigidBody(GetMass(), GetRestitution(), GetDrag());
 }
 
-btRigidBody* RigidBody::GetBtRigidBody()
+btRigidBody* RigidBody::GetBtRigidBody() const
 {
 	return m_rigidBody;
-}
-
-void RigidBody::OnEditorPlay()
-{
-	ActivateRigidBody();
-}
-
-void RigidBody::OnEditorDebug()
-{
-	DeactivateRigidBody();
 }
 
 /*------------------------------------------------------------------------------
 								[COLLIDER]
 ------------------------------------------------------------------------------*/
-Vector3 RigidBody::GetColliderScale()
+Vector3 RigidBody::GetColliderScale() const
 {
 	if (g_gameObject->HasComponent<Collider>())
 		return g_gameObject->GetComponent<Collider>()->GetScale();
@@ -416,13 +398,13 @@ Vector3 RigidBody::GetColliderScale()
 	return Vector3(0, 0, 0);
 }
 
-void RigidBody::SetColliderScale(Vector3 scale)
+void RigidBody::SetColliderScale(Vector3 scale) const
 {
 	if (g_gameObject->HasComponent<Collider>())
 		g_gameObject->GetComponent<Collider>()->SetScale(scale);
 }
 
-Vector3 RigidBody::GetColliderCenter()
+Vector3 RigidBody::GetColliderCenter() const
 {
 	Vector3 center = Vector3(0, 0, 0);
 
@@ -469,12 +451,12 @@ void RigidBody::ConstructRigidBody(float mass, float restitution, float friction
 	g_physics->AddRigidBody(m_rigidBody);
 }
 
-void RigidBody::ActivateRigidBody()
+void RigidBody::ActivateRigidBody() const
 {
 	m_rigidBody->activate(true);
 }
 
-void RigidBody::DeactivateRigidBody()
+void RigidBody::DeactivateRigidBody() const
 {
 	m_rigidBody->setActivationState(0);
 }
