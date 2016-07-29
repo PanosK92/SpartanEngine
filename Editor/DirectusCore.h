@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES =================
 #include <QObject>
 #include <QWidget>
 #include <QPaintEngine>
@@ -29,7 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "Core/Socket.h"
 #include <QTimer>
-//======================
+#include "DirectusStatsLabel.h"
+//=============================
 
 class DirectusCore : public QWidget
 {
@@ -40,7 +41,7 @@ public:
     DirectusCore(QWidget* parent = NULL);
     virtual ~DirectusCore();
 	Socket* GetEngineSocket();
-    void Initialize(HWND hwnd, HINSTANCE hinstance);
+    void Initialize(HWND hwnd, HINSTANCE hinstance, DirectusStatsLabel* directusStatsLabel);
 
 protected:
     // I will take care of the drawing
@@ -55,6 +56,7 @@ private:
 	Socket* m_socket;
 	Engine* m_engine;
     QTimer* m_timer;
+    DirectusStatsLabel* m_directusStatsLabel;
 
 public slots:
     void Play();

@@ -49,7 +49,7 @@ void Editor::InitializeEngine()
     HINSTANCE hInstance = (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE);
 
     // Initialize the engine
-    directusCore->Initialize(hWnd, hInstance);
+    directusCore->Initialize(hWnd, hInstance, ui->directusStatsLabel);
 
     // Pass the engine around
     ui->directusInspector->SetDirectusCore(directusCore);

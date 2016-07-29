@@ -70,9 +70,6 @@ Texture* TexturePool::CreateNewTexture()
 
 Texture* TexturePool::AddFromFile(string texturePath, TextureType textureType)
 {
-	// This is essential to avoid an absolute path mess. Everything is relative.
-	texturePath = FileHelper::GetRelativePathFromAbsolutePath(texturePath);
-
 	// If loaded, return the already loaded one
 	Texture* loaded = GetTextureByPath(texturePath);
 	if (loaded)

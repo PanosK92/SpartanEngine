@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QMimeData>
 #include "IO/Log.h"
 #include "DirectusInspector.h"
+#include "IO/FileHelper.h"
 //==============================
 
 DirectusTexture::DirectusTexture(QWidget *parent) : QLabel(parent)
@@ -119,9 +120,12 @@ void DirectusTexture::dropEvent(QDropEvent* event)
     event->setDropAction(Qt::MoveAction);
     event->accept();
 
-    // Get the ID of the GameObject being dragged
+    // Get the ID of the texture being dragged
     const QMimeData *mime = event->mimeData();
     std::string imagePath = mime->text().toStdString();
+
+    // This is essential to avoid an absolute path mess. Everything is relative.
+    imagePath = FileHelper::GetRelativePathFromAbsolutePath(imagePath);
 
     LoadImageAsync(imagePath);
 

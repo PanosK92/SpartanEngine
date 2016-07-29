@@ -50,7 +50,7 @@ Socket* DirectusCore::GetEngineSocket()
     return m_socket;
 }
 
-void DirectusCore::Initialize(HWND hwnd, HINSTANCE hinstance)
+void DirectusCore::Initialize(HWND hwnd, HINSTANCE hinstance, DirectusStatsLabel* directusStatsLabel)
 {
     // Create and initialize Directus3D
     m_engine = new Engine();
@@ -62,6 +62,8 @@ void DirectusCore::Initialize(HWND hwnd, HINSTANCE hinstance)
 
     // Get the socket
     m_socket = m_engine->GetSocket();
+
+    m_directusStatsLabel = directusStatsLabel;
 }
 
 void DirectusCore::Play()
@@ -83,6 +85,7 @@ void DirectusCore::Update()
 
     m_socket->Update();
     m_socket->Render();
+    m_directusStatsLabel->UpdateStats(this);
 }
 //====================================================
 

@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "DirectusInspector.h"
 #include "IO/Log.h"
+#include "IO/FileHelper.h"
+#include <QMimeData>
 //============================
 
 DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
@@ -128,3 +130,57 @@ void DirectusInspector::Inspect(GameObject* gameobject)
         m_script->hide();    
     }
 }
+
+//= DROP ============================================================================
+void DirectusInspector::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (!event->mimeData()->hasText())
+    {
+        event->ignore();
+        return;
+    }
+
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+}
+
+void DirectusInspector::dragMoveEvent(QDragMoveEvent* event)
+{
+    if (!event->mimeData()->hasText())
+    {
+        event->ignore();
+        return;
+    }
+
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+}
+
+void DirectusInspector::dropEvent(QDropEvent* event)
+{
+    if (!event->mimeData()->hasText())
+    {
+        event->ignore();
+        return;
+    }
+
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+
+    // Get the ID of the file being dragged
+    const QMimeData *mime = event->mimeData();
+    std::string scriptPath = mime->text().toStdString();
+
+    // Make the absolute path, relative
+    scriptPath = FileHelper::GetRelativePathFromAbsolutePath(scriptPath);
+
+    if (FileHelper::IsSupportedScript(scriptPath) && m_inspectedGameObject)
+    {
+        Script* scriptComp = m_inspectedGameObject->AddComponent<Script>();
+        scriptComp->AddScript(scriptPath, 0);
+
+        m_directusCore->Update();
+        Inspect(m_inspectedGameObject);
+    }
+}
+//=========================================================================================
