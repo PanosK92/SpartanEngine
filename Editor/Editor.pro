@@ -38,7 +38,8 @@ SOURCES += main.cpp\
     DirectusTexture.cpp \
     AssetLoadingDialog.cpp \
     DirectusMeshFilter.cpp \
-    DirectusColorPicker.cpp
+    DirectusColorPicker.cpp \
+    DirectusStatsLabel.cpp
 
 HEADERS  += editor.h \
     DirectusPlayButton.h \
@@ -66,7 +67,8 @@ HEADERS  += editor.h \
     DirectusTexture.h \
     AssetLoadingDialog.h \
     DirectusMeshFilter.h \
-    DirectusColorPicker.h
+    DirectusColorPicker.h \
+    DirectusStatsLabel.h
 
 FORMS    += editor.ui \
     AboutDialog.ui \

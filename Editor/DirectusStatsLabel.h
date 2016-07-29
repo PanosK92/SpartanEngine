@@ -1,17 +1,15 @@
-#ifndef DIRECTUSSTATSLABEL_H
-#define DIRECTUSSTATSLABEL_H
+#pragma once
 
-#include <QWidget>
+//= INCLUDES =======
+#include <QLineEdit>
+//==================
 
-class DirectusStatsLabel : public QWidget
+class DirectusCore;
+
+class DirectusStatsLabel : public QLineEdit
 {
     Q_OBJECT
 public:
     explicit DirectusStatsLabel(QWidget *parent = 0);
-
-signals:
-
-public slots:
+    void UpdateStats(DirectusCore* directusCore);
 };
-
-#endif // DIRECTUSSTATSLABEL_H

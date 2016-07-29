@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QApplication>
 #include <QDrag>
 #include <QMimeData>
+#include "IO/Log.h"
 //===============================
 
 DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)

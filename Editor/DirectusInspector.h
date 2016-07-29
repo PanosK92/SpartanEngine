@@ -46,6 +46,11 @@ public:
     void Initialize(QWidget* mainWindow);
     GameObject* GetInspectedGameObject();
 
+    //= DROP ===========================================
+    virtual void dragEnterEvent(QDragEnterEvent* event);
+    virtual void dragMoveEvent (QDragMoveEvent* event);
+    virtual void dropEvent(QDropEvent* event);
+
 protected:
     virtual void paintEvent(QPaintEvent* evt);
 

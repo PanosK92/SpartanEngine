@@ -206,7 +206,7 @@ bool FileHelper::IsSupportedScript(string path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
-	supportedExt.push_back(".dss");
+	supportedExt.push_back(".as");
 
 	for (int i = 0; i < supportedExt.size(); i++)
 	{
