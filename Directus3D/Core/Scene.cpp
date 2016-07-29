@@ -223,7 +223,7 @@ GameObject* Scene::CreateCamera()
 	camera->AddComponent<Script>()->AddScript("Assets/Scripts/FirstPersonController.as", 0);
 	camera->AddComponent<LineRenderer>();
 	camera->AddComponent<Skybox>();
-
+	
 	return camera;
 }
 
