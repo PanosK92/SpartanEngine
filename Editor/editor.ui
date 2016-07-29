@@ -272,6 +272,38 @@ QCheckBox
 	border-style: none;
 }
 
+#directusCore
+{
+	background-color:#383838;
+}
+
+#directusInspector
+{
+	background-color:#383838;
+}
+
+/*= SCENE/CONSOLE TABS TOOLBARS =============================================================================*/
+#sceneToolbar, #tabConsoleToolbar, #tabHierarchyToolbar, #tabProjectToolbar
+{
+	background-color:qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
+}
+
+#buttonGizmos, #buttonConsoleClear, #buttonConsoleClearOnPlay, #buttonHierarchyCreate, #buttonProjectCreate
+{
+	min-width: 2em;
+	padding-left: 2px;
+	padding-right: 2px;
+	color: #909090;
+	border-color: #383838;
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
+	border-style: solid;
+	border-top-width: 0px;
+	border-bottom-width: 0px;
+	border-left-width: 1px;
+	border-right-width: 1px;
+	border-radius: 0px;
+}
+
 /*= PLAY/PAUSE BUTTONS ===================================================================================*/
 #directusPlayButton
 {
@@ -1356,7 +1388,7 @@ text edit background:					414141
 	background-image: url(:/Images/tabHierarchy.png);
 }</string>
                </property>
-               <widget class="DirectusInspector" name="layoutTabHierarchy">
+               <widget class="QWidget" name="layoutTabHierarchy">
                 <attribute name="title">
                  <string>Hierarchy</string>
                 </attribute>
@@ -1377,34 +1409,101 @@ text edit background:					414141
                   <number>0</number>
                  </property>
                  <item>
-                  <widget class="DirectusHierarchy" name="directusHierarchy">
-                   <property name="editTriggers">
-                    <set>QAbstractItemView::DoubleClicked</set>
+                  <layout class="QGridLayout" name="tabHierarchyGridLayout">
+                   <property name="spacing">
+                    <number>0</number>
                    </property>
-                   <property name="dragEnabled">
-                    <bool>true</bool>
-                   </property>
-                   <property name="dragDropMode">
-                    <enum>QAbstractItemView::InternalMove</enum>
-                   </property>
-                   <property name="uniformRowHeights">
-                    <bool>true</bool>
-                   </property>
-                   <property name="animated">
-                    <bool>true</bool>
-                   </property>
-                   <property name="expandsOnDoubleClick">
-                    <bool>false</bool>
-                   </property>
-                   <attribute name="headerVisible">
-                    <bool>false</bool>
-                   </attribute>
-                   <column>
-                    <property name="text">
-                     <string notr="true">1</string>
-                    </property>
-                   </column>
-                  </widget>
+                   <item row="1" column="0">
+                    <layout class="QHBoxLayout" name="tabHierarchyLayout">
+                     <property name="spacing">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="DirectusHierarchy" name="directusHierarchy">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked</set>
+                       </property>
+                       <property name="dragEnabled">
+                        <bool>true</bool>
+                       </property>
+                       <property name="dragDropMode">
+                        <enum>QAbstractItemView::InternalMove</enum>
+                       </property>
+                       <property name="uniformRowHeights">
+                        <bool>true</bool>
+                       </property>
+                       <property name="animated">
+                        <bool>true</bool>
+                       </property>
+                       <property name="expandsOnDoubleClick">
+                        <bool>false</bool>
+                       </property>
+                       <attribute name="headerVisible">
+                        <bool>false</bool>
+                       </attribute>
+                       <column>
+                        <property name="text">
+                         <string notr="true">1</string>
+                        </property>
+                       </column>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QWidget" name="tabHierarchyToolbar" native="true">
+                     <layout class="QHBoxLayout" name="tabHierarchyToolbarLayout">
+                      <property name="spacing">
+                       <number>0</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QPushButton" name="buttonHierarchyCreate">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Create</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <spacer name="horizontalSpacer_5">
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                  </layout>
                  </item>
                 </layout>
                </widget>
@@ -1852,7 +1951,7 @@ text edit background:					414141
 	background-image: url(:/Images/tabScene.png);
 }</string>
                </property>
-               <widget class="DirectusInspector" name="layoutTabScene">
+               <widget class="QWidget" name="layoutTabScene">
                 <attribute name="title">
                  <string>Scene</string>
                 </attribute>
@@ -1877,28 +1976,8 @@ text edit background:					414141
                    <property name="spacing">
                     <number>0</number>
                    </property>
-                   <item row="0" column="0">
-                    <spacer name="horizontalSpacer_3">
-                     <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>40</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                   <item row="0" column="2">
-                    <widget class="QPushButton" name="buttonGizmos">
-                     <property name="text">
-                      <string>Gizmos</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0" colspan="3">
-                    <widget class="QFrame" name="frame">
+                   <item row="1" column="0" colspan="2">
+                    <widget class="QFrame" name="directusCoreFrame">
                      <property name="frameShape">
                       <enum>QFrame::StyledPanel</enum>
                      </property>
@@ -1922,22 +2001,106 @@ text edit background:					414141
                        <number>0</number>
                       </property>
                       <item>
-                       <widget class="DirectusCore" name="directusCore" native="true"/>
+                       <widget class="DirectusCore" name="directusCore" native="true">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                       </widget>
                       </item>
                      </layout>
                     </widget>
                    </item>
-                   <item row="0" column="1">
-                    <widget class="DirectusStatsLabel" name="directusStatsLabel">
-                     <property name="text">
-                      <string>FPS: 0, Update: 0, Render: 0, Meshes Rendered: 0</string>
+                   <item row="0" column="0">
+                    <widget class="QWidget" name="sceneToolbar" native="true">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
                      </property>
-                     <property name="alignment">
-                      <set>Qt::AlignCenter</set>
+                     <property name="maximumSize">
+                      <size>
+                       <width>16777215</width>
+                       <height>16777215</height>
+                      </size>
                      </property>
-                     <property name="readOnly">
-                      <bool>true</bool>
+                     <property name="styleSheet">
+                      <string notr="true"/>
                      </property>
+                     <layout class="QHBoxLayout" name="horizontalLayout">
+                      <property name="spacing">
+                       <number>0</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <spacer name="horizontalSpacer_3">
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>543</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                      <item>
+                       <widget class="DirectusStatsLabel" name="directusStatsLabel">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>400</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>16777215</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                        <property name="text">
+                         <string>FPS: 0, Update: 0, Render: 0, Meshes Rendered: 0</string>
+                        </property>
+                        <property name="alignment">
+                         <set>Qt::AlignCenter</set>
+                        </property>
+                        <property name="readOnly">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="buttonGizmos">
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <property name="text">
+                         <string>Gizmos</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </widget>
                    </item>
                   </layout>
@@ -2073,69 +2236,154 @@ QTabBar::tab:last
                    <number>0</number>
                   </property>
                   <item>
-                   <widget class="QSplitter" name="splitter">
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
+                   <layout class="QGridLayout" name="tabProjectGridLayout">
+                    <property name="spacing">
+                     <number>0</number>
                     </property>
-                    <property name="handleWidth">
-                     <number>5</number>
-                    </property>
-                    <widget class="DirectusDirExplorer" name="directusDirExplorer">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="sortingEnabled">
-                      <bool>true</bool>
-                     </property>
-                     <property name="animated">
-                      <bool>true</bool>
-                     </property>
-                     <property name="headerHidden">
-                      <bool>true</bool>
-                     </property>
-                     <attribute name="headerDefaultSectionSize">
-                      <number>300</number>
-                     </attribute>
-                    </widget>
-                    <widget class="DirectusFileExplorer" name="directusFileExplorer">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                       <horstretch>1</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="contextMenuPolicy">
-                      <enum>Qt::DefaultContextMenu</enum>
-                     </property>
-                     <property name="dragEnabled">
-                      <bool>true</bool>
-                     </property>
-                     <property name="defaultDropAction">
-                      <enum>Qt::MoveAction</enum>
-                     </property>
-                     <property name="selectionMode">
-                      <enum>QAbstractItemView::SingleSelection</enum>
-                     </property>
-                     <property name="movement">
-                      <enum>QListView::Static</enum>
-                     </property>
-                     <property name="resizeMode">
-                      <enum>QListView::Adjust</enum>
-                     </property>
-                     <property name="viewMode">
-                      <enum>QListView::IconMode</enum>
-                     </property>
-                     <property name="uniformItemSizes">
-                      <bool>true</bool>
-                     </property>
-                     <property name="selectionRectVisible">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </widget>
+                    <item row="0" column="0">
+                     <widget class="QWidget" name="tabProjectToolbar" native="true">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <layout class="QHBoxLayout" name="horizontalLayout_8">
+                       <property name="spacing">
+                        <number>0</number>
+                       </property>
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
+                        <number>0</number>
+                       </property>
+                       <item>
+                        <widget class="QPushButton" name="buttonProjectCreate">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="text">
+                          <string>Create</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <spacer name="horizontalSpacer_6">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <layout class="QHBoxLayout" name="tabProjectLayout">
+                      <property name="spacing">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QSplitter" name="splitter">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="handleWidth">
+                         <number>5</number>
+                        </property>
+                        <widget class="DirectusDirExplorer" name="directusDirExplorer">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="frameShape">
+                          <enum>QFrame::StyledPanel</enum>
+                         </property>
+                         <property name="frameShadow">
+                          <enum>QFrame::Sunken</enum>
+                         </property>
+                         <property name="editTriggers">
+                          <set>QAbstractItemView::NoEditTriggers</set>
+                         </property>
+                         <property name="sortingEnabled">
+                          <bool>false</bool>
+                         </property>
+                         <property name="animated">
+                          <bool>true</bool>
+                         </property>
+                         <property name="headerHidden">
+                          <bool>true</bool>
+                         </property>
+                         <attribute name="headerDefaultSectionSize">
+                          <number>300</number>
+                         </attribute>
+                        </widget>
+                        <widget class="DirectusFileExplorer" name="directusFileExplorer">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                           <horstretch>1</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="contextMenuPolicy">
+                          <enum>Qt::DefaultContextMenu</enum>
+                         </property>
+                         <property name="dragEnabled">
+                          <bool>true</bool>
+                         </property>
+                         <property name="defaultDropAction">
+                          <enum>Qt::MoveAction</enum>
+                         </property>
+                         <property name="selectionMode">
+                          <enum>QAbstractItemView::SingleSelection</enum>
+                         </property>
+                         <property name="movement">
+                          <enum>QListView::Static</enum>
+                         </property>
+                         <property name="resizeMode">
+                          <enum>QListView::Adjust</enum>
+                         </property>
+                         <property name="viewMode">
+                          <enum>QListView::IconMode</enum>
+                         </property>
+                         <property name="uniformItemSizes">
+                          <bool>true</bool>
+                         </property>
+                         <property name="selectionRectVisible">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                   </layout>
                   </item>
                  </layout>
                 </item>
@@ -2162,25 +2410,93 @@ QTabBar::tab:last
                  <number>0</number>
                 </property>
                 <item>
-                 <layout class="QHBoxLayout" name="layoutTabConsole">
-                  <property name="spacing">
-                   <number>0</number>
-                  </property>
-                  <item>
-                   <widget class="DirectusConsole" name="directusConsole">
-                    <property name="enabled">
-                     <bool>true</bool>
+                 <layout class="QGridLayout" name="gridLayout_2">
+                  <item row="1" column="0">
+                   <layout class="QVBoxLayout" name="tabConsoleLayoutConsole">
+                    <property name="spacing">
+                     <number>0</number>
                     </property>
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
+                    <item>
+                     <widget class="DirectusConsole" name="directusConsole">
+                      <property name="alternatingRowColors">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item row="0" column="0">
+                   <layout class="QVBoxLayout" name="tabConsoleLayoutToolbar">
+                    <property name="spacing">
+                     <number>0</number>
                     </property>
-                    <property name="alternatingRowColors">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
+                    <item>
+                     <widget class="QWidget" name="tabConsoleToolbar" native="true">
+                      <layout class="QHBoxLayout" name="horizontalLayout_5">
+                       <property name="spacing">
+                        <number>0</number>
+                       </property>
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
+                        <number>0</number>
+                       </property>
+                       <item>
+                        <widget class="QPushButton" name="buttonConsoleClear">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="text">
+                          <string>Clear</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="buttonConsoleClearOnPlay">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="text">
+                          <string>Clear on Play</string>
+                         </property>
+                         <property name="checkable">
+                          <bool>true</bool>
+                         </property>
+                         <property name="checked">
+                          <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <spacer name="horizontalSpacer_4">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>1145</width>
+                           <height>15</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                   </layout>
                   </item>
                  </layout>
                 </item>
@@ -3051,7 +3367,7 @@ QTabBar::tab:last
   <customwidget>
    <class>DirectusCore</class>
    <extends>QWidget</extends>
-   <header location="global">DirectusCore.h</header>
+   <header>DirectusCore.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
