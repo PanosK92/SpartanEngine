@@ -124,12 +124,17 @@ void DirectusTexture::dropEvent(QDropEvent* event)
     const QMimeData *mime = event->mimeData();
     std::string imagePath = mime->text().toStdString();
 
-    // This is essential to avoid an absolute path mess. Everything is relative.
-    imagePath = FileHelper::GetRelativePathFromAbsolutePath(imagePath);
+    if (FileHelper::IsSupportedImage(imagePath))
+    {
+        // This is essential to avoid an absolute path mess. Everything is relative.
+        imagePath = FileHelper::GetRelativePathFromAbsolutePath(imagePath);
 
-    LoadImageAsync(imagePath);
+        // Load the image
+        LoadImageAsync(imagePath);
 
-    m_directusCore->GetEngineSocket()->SetMaterialTexture(gameObject, m_textureType, imagePath);
-    m_directusCore->Update();     
+        // Update the engine
+        m_directusCore->GetEngineSocket()->SetMaterialTexture(gameObject, m_textureType, imagePath);
+        m_directusCore->Update();
+    }
 }
 //=========================================================================================

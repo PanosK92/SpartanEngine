@@ -157,7 +157,7 @@ void DirectusHierarchy::dragMoveEvent(QDragMoveEvent* event)
 }
 
 // The dropEvent() is used to unpack dropped data and
-// handle however I want.
+// handle them however I want.
 void DirectusHierarchy::dropEvent(QDropEvent* event)
 {
     if (!event->mimeData()->hasText())

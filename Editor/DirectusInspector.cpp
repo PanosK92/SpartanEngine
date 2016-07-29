@@ -171,14 +171,16 @@ void DirectusInspector::dropEvent(QDropEvent* event)
     const QMimeData *mime = event->mimeData();
     std::string scriptPath = mime->text().toStdString();
 
-    // Make the absolute path, relative
-    scriptPath = FileHelper::GetRelativePathFromAbsolutePath(scriptPath);
-
     if (FileHelper::IsSupportedScript(scriptPath) && m_inspectedGameObject)
     {
+        // Make the absolute path, relative
+        scriptPath = FileHelper::GetRelativePathFromAbsolutePath(scriptPath);
+
+        // Add a script component and load the script
         Script* scriptComp = m_inspectedGameObject->AddComponent<Script>();
         scriptComp->AddScript(scriptPath, 0);
 
+        // Update the engine and the inspector (to reflect the changes)
         m_directusCore->Update();
         Inspect(m_inspectedGameObject);
     }
