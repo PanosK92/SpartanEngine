@@ -4,9 +4,9 @@ widget background light:				383838
 widget background highlighted: 	484848
 text disabled:								585858
 text : 											909090
-text highlighted:							 EDEDED
+text highlighted:							EDEDED
 border: 										212121
-border highlighted:						464646
+border highlighted:						575757
 text edit background:					414141
 */
 
@@ -49,6 +49,102 @@ QCheckBox
 	background-color: #383838;
 	border-style: none;
 }
+
+/* PROGRESS BAR =========================================================================================*/
+QProgressBar 
+{
+    border: 1px solid #76797C;
+    border-radius: 5px;
+}
+
+QProgressBar::chunk 
+{
+    background-color: #05B8CC;
+	width: 1px;
+}
+
+/*= SPECIFIC ===========================================================================================*/
+#directusCore
+{
+	background-color:#383838;
+}
+
+#directusInspector
+{
+	background-color:#383838;
+}
+
+#directusDirExplorer, #directusFileExplorer, #directusHierarchy, #directusInspector
+{
+	border-width: 1px;
+	border-style: solid;
+	border-top-width: 0px;
+}
+
+/*= SCENE/CONSOLE TABS TOOLBARS =============================================================================*/
+#sceneToolbar , #tabConsoleToolbar, #tabHierarchyToolbar, #tabProjectToolbar 
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
+	border-color: #212121;
+
+	border-width: 1px;
+	border-style: solid;
+}
+
+#buttonGizmos, #buttonConsoleClear, #buttonConsoleClearOnPlay, #buttonHierarchyCreate, #buttonProjectCreate
+{
+	min-width: 3em;
+	padding-left: 2px;
+	padding-right: 2px;
+	color: #909090;
+	border-color: #212121;
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
+	border-style: solid;
+	border-top-width: 0px;
+	border-bottom-width: 0px;
+	border-left-width: 1px;
+	border-right-width: 1px;
+	border-radius: 0px;
+	margin-top: 1px;
+	margin-bottom: 1px;
+}
+
+/*= TABS ===================================================================================*/
+QTabWidget::pane  
+{  
+	/* This thing is empty but it does keep
+ 	some weird white borders away */
+}
+
+QTabBar::tab
+{	
+	background-repeat: no-repeat;
+	background-position: left;
+
+	border-color: red;
+	border-style: solid;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-width: 0px;
+
+	min-width: 3.5em;
+	min-height: 1.3em;
+
+	padding-top: 0px;
+	padding-bottom: 0px;
+	padding-left: 18px;
+	padding-right: 10px;
+}
+
+QTabBar::tab:selected
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(70, 70, 70, 255), stop:1 rgba(64, 64, 64, 255));
+	border-color: #575757;
+	border-style: solid;
+	border-width: 1px;
+	border-bottom-width: 0px;
+}
+/*========================================================================================*/
 
 /*= PLAY/PAUSE BUTTONS ===================================================================================*/
 #directusPlayButton
@@ -154,7 +250,7 @@ QMenu::item:selected:enabled
 	background-color:#484848;
 }
 
-v::item:pressed 
+QMenu::item:pressed 
 {
     color:  #909090;
 	background-color:#484848;
@@ -240,50 +336,13 @@ QSlider::handle:horizontal
 }
 /*========================================================================================*/
 
-/*= TABS ===================================================================================*/
-QTabWidget
-{
-	border-color: #212121;
-	border-style: solid;
-}
-
- /* The tab widget frame */
-QTabWidget::pane
-{  
-
-}
-
-QTabBar::tab
-{	
-	background-repeat: no-repeat;
-	background-position: left;
-
-	border-color: #464646;
-	border-style: solid;
-	border-top-left-radius: 3px;
-	border-top-right-radius: 3px;
-	border-bottom-width: 0px;
-
-	min-width: 3.5em;
-	min-height: 1.3em;
-
-	padding-top: 0px;
-	padding-bottom: 0px;
-	padding-left: 18px;
-	padding-right: 10px;
-}
-
-QTabBar::tab:selected
-{
-	background-color: #484848;	
-}
-/*========================================================================================*/
-
 /*= TREES ==================================================================================*/
 QTreeWidget
 {
 	background-color: #383838;
 	border-style: solid;
+	border-width: 1px;
+	border-top-width: 0px;
 }
 
 QTreeView
