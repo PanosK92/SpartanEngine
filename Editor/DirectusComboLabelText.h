@@ -35,6 +35,7 @@ public:
     explicit DirectusComboLabelText(QWidget *parent = 0);
 
     void Initialize(QString labelText);
+    void AlignLabelToTheLeft();
 
     DirectusAdjustLabel* GetLabelWidget();
     QLineEdit* GetTextWidget();

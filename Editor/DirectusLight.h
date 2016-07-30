@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================================
 #include <QWidget>
 #include <QGridLayout>
+#include "DirectusComboLabelText.h"
 #include "DirectusComboSliderText.h"
 #include "DirectusColorPicker.h"
 #include <QPushButton>
@@ -54,6 +55,10 @@ private:
     QComboBox* m_lightType;
     //====================================
 
+    //= RANGE ============================
+    DirectusComboLabelText* m_range;
+    //====================================
+
     //= COLOR ============================
     QLabel* m_colorLabel;
     DirectusColorPicker* m_color;
@@ -80,13 +85,15 @@ private:
     DirectusCore* m_directusCore;
     //====================================
 
-    void ReflectLightType(LightType type);
-    void ReflectColor(Directus::Math::Vector4 color);
-    void ReflectIntensity(float intensity);
-    void ReflectShadowType(ShadowType type);
+    void ReflectLightType();
+    void ReflectRange();
+    void ReflectColor();
+    void ReflectIntensity();
+    void ReflectShadowType();
 
 public slots:
     void MapLightType();
+    void MapRange();
     void MapColor();
     void MapIntensity();
     void MapShadowType();

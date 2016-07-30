@@ -54,16 +54,19 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
     //= MASS =============================
     m_mass = new DirectusComboLabelText();
     m_mass->Initialize("Mass");
+    m_mass->AlignLabelToTheLeft();
     //====================================
 
     //= DRAG =============================
     m_drag = new DirectusComboLabelText();
     m_drag->Initialize("Drag");
+    m_drag->AlignLabelToTheLeft();
     //====================================
 
     //= ANGULAR DRAG =====================
     m_angularDrag = new DirectusComboLabelText();
     m_angularDrag->Initialize("Angular Drag");
+    m_angularDrag->AlignLabelToTheLeft();
     //====================================
 
     //= USE GRAVITY  =====================
@@ -79,8 +82,11 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
     //= FREEZE POSITION ==================
     m_freezePosLabel = new QLabel("Freeze Position");
     m_freezePosXLabel= new QLabel("X");
+    m_freezePosXLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     m_freezePosYLabel= new QLabel("Y");
+    m_freezePosYLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     m_freezePosZLabel= new QLabel("Z");
+    m_freezePosZLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     m_freezePosX = new QCheckBox();
     m_freezePosY = new QCheckBox();
     m_freezePosZ = new QCheckBox();
@@ -89,8 +95,11 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
     //= FREEZE ROTATION ==================
     m_freezeRotLabel = new QLabel("Freeze Rotation");
     m_freezeRotXLabel= new QLabel("X");
+    m_freezeRotXLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     m_freezeRotYLabel= new QLabel("Y");
+    m_freezeRotYLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     m_freezeRotZLabel= new QLabel("Z");
+    m_freezeRotZLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     m_freezeRotX = new QCheckBox();
     m_freezeRotY = new QCheckBox();
     m_freezeRotZ = new QCheckBox();
@@ -112,28 +121,28 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
     row++;
 
     // Row 1 - MASS
-    m_gridLayout->addWidget(m_mass->GetLabelWidget(), row, 0, 1, 1);
-    m_gridLayout->addWidget(m_mass->GetTextWidget(), row, 1, 1, 1);
+    m_gridLayout->addWidget(m_mass->GetLabelWidget(),   row, 0, 1, 1);
+    m_gridLayout->addWidget(m_mass->GetTextWidget(),    row, 1, 1, 6);
     row++;
 
     // Row 2 - DRAG
-    m_gridLayout->addWidget(m_drag->GetLabelWidget(), row, 0, 1, 1);
-    m_gridLayout->addWidget(m_drag->GetTextWidget(), row, 1, 1, 1);
+    m_gridLayout->addWidget(m_drag->GetLabelWidget(),   row, 0, 1, 1);
+    m_gridLayout->addWidget(m_drag->GetTextWidget(),    row, 1, 1, 6);
     row++;
 
     // Row 3 - ANGULAR DRAG
-    m_gridLayout->addWidget(m_angularDrag->GetLabelWidget(), row, 0, 1, 1);
-    m_gridLayout->addWidget(m_angularDrag->GetTextWidget(), row, 1, 1, 1);
+    m_gridLayout->addWidget(m_angularDrag->GetLabelWidget(),    row, 0, 1, 1);
+    m_gridLayout->addWidget(m_angularDrag->GetTextWidget(),     row, 1, 1, 6);
     row++;
 
     // Row 4 - USE GRAVITY
-    m_gridLayout->addWidget(m_useGravityLabel, row, 0, 1, 1);
-    m_gridLayout->addWidget(m_useGravity, row, 1, 1, 1);
+    m_gridLayout->addWidget(m_useGravityLabel,  row, 0, 1, 1);
+    m_gridLayout->addWidget(m_useGravity,       row, 1, 1, 1);
     row++;
 
     // Row 5 - IS KINEMATIC
     m_gridLayout->addWidget(m_isKinematicLabel, row, 0, 1, 1);
-    m_gridLayout->addWidget(m_isKinematic, row, 1, 1, 1);
+    m_gridLayout->addWidget(m_isKinematic,      row, 1, 1, 1);
     row++;
 
     // Row 6 - FREEZE POSITION

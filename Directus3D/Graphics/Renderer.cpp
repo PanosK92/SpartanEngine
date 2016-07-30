@@ -177,10 +177,13 @@ void Renderer::Render()
 	// Render light depth
 	if (m_directionalLight)
 	{
-		m_graphicsDevice->SetCullMode(CullFront);
-		m_directionalLight->SetDepthMapAsRenderTarget();
-		DirectionalLightDepthPass(m_renderables, m_directionalLight->GetProjectionSize(), m_directionalLight);
-		m_graphicsDevice->SetCullMode(CullBack);
+		if (m_directionalLight->GetShadowType() != No_Shadows)
+		{
+			m_graphicsDevice->SetCullMode(CullFront);
+			m_directionalLight->SetDepthMapAsRenderTarget();
+			DirectionalLightDepthPass(m_renderables, m_directionalLight->GetProjectionSize(), m_directionalLight);
+			m_graphicsDevice->SetCullMode(CullBack);
+		}
 	}
 
 	// G-Buffer Construction

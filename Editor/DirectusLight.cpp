@@ -56,6 +56,12 @@ void DirectusLight::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
     m_lightType->addItem("Point");
     //=========================================================
 
+    //= RANGE ======================================
+    m_range = new DirectusComboLabelText();
+    m_range->Initialize("Range");
+    m_range->AlignLabelToTheLeft();
+    //=============================================
+
     //= COLOR ====================================
     m_colorLabel = new QLabel("Color");
     m_color = new DirectusColorPicker();
@@ -92,21 +98,25 @@ void DirectusLight::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
     m_gridLayout->addWidget(m_lightTypeLabel,   1, 0, 1, 1);
     m_gridLayout->addWidget(m_lightType,        1, 1, 1, 2);
 
-    // Row 2 - COLOR
-    m_gridLayout->addWidget(m_colorLabel,   2, 0, 1, 1);
-    m_gridLayout->addWidget(m_color->GetWidget(),        2, 1, 1, 2);
+    // Row 2 - RANGE
+    m_gridLayout->addWidget(m_range->GetLabelWidget(),  2, 0, 1, 1);
+    m_gridLayout->addWidget(m_range->GetTextWidget(),   2, 1, 1, 2);
 
-    // Row 3 - INTENSTITY
-    m_gridLayout->addWidget(m_intensityLabel,               3, 0, 1, 1);
-    m_gridLayout->addWidget(m_intensity->GetSlider(),       3, 1, 1, 1);
-    m_gridLayout->addWidget(m_intensity->GetLineEdit(),     3, 2, 1, 1);
+    // Row 3 - COLOR
+    m_gridLayout->addWidget(m_colorLabel,           3, 0, 1, 1);
+    m_gridLayout->addWidget(m_color->GetWidget(),   3, 1, 1, 2);
 
-    // Row 4 - SHADOW TYPE
-    m_gridLayout->addWidget(m_shadowTypeLabel,  4, 0, 1, 1);
-    m_gridLayout->addWidget(m_shadowType,       4, 1, 1, 2);
+    // Row 4 - INTENSTITY
+    m_gridLayout->addWidget(m_intensityLabel,               4, 0, 1, 1);
+    m_gridLayout->addWidget(m_intensity->GetSlider(),       4, 1, 1, 1);
+    m_gridLayout->addWidget(m_intensity->GetLineEdit(),     4, 2, 1, 1);
 
-    // Row 5 - LINE
-    m_gridLayout->addWidget(m_line, 5, 0, 1, 3);
+    // Row 5 - SHADOW TYPE
+    m_gridLayout->addWidget(m_shadowTypeLabel,  5, 0, 1, 1);
+    m_gridLayout->addWidget(m_shadowType,       5, 1, 1, 2);
+
+    // Row 6 - LINE
+    m_gridLayout->addWidget(m_line, 6, 0, 1, 3);
     //==============================================================================
 
     connect(m_lightType,    SIGNAL(currentIndexChanged(int)),   this, SLOT(MapLightType()));
@@ -139,32 +149,58 @@ void DirectusLight::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    ReflectLightType(m_inspectedLight->GetLightType());
-    ReflectColor(m_inspectedLight->GetColor());
-    ReflectIntensity(m_inspectedLight->GetIntensity());
-    ReflectShadowType(m_inspectedLight->GetShadowType());
+    ReflectLightType();
+    ReflectRange();
+    ReflectColor();
+    ReflectIntensity();
+    ReflectShadowType();
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusLight::ReflectLightType(LightType type)
+void DirectusLight::ReflectLightType()
 {
+    if (!m_inspectedLight)
+        return;
+
+    LightType type = m_inspectedLight->GetLightType();
     m_lightType->setCurrentIndex((int)type);
 }
 
-void DirectusLight::ReflectColor(Directus::Math::Vector4 color)
+void DirectusLight::ReflectRange()
 {
+    if (!m_inspectedLight)
+        return;
+
+    float range = m_inspectedLight->GetRange();
+    m_range->SetFromFloat(range);
+}
+
+void DirectusLight::ReflectColor()
+{
+    if (!m_inspectedLight)
+        return;
+
+    Directus::Math::Vector4 color = m_inspectedLight->GetColor();
     m_color->SetColor(color);
 }
 
-void DirectusLight::ReflectIntensity(float intensity)
+void DirectusLight::ReflectIntensity()
 {
+    if (!m_inspectedLight)
+        return;
+
+    float intensity = m_inspectedLight->GetIntensity();
     m_intensity->SetValue(intensity);
 }
 
-void DirectusLight::ReflectShadowType(ShadowType type)
+void DirectusLight::ReflectShadowType()
 {
+    if (!m_inspectedLight)
+        return;
+
+    ShadowType type = m_inspectedLight->GetShadowType();
     m_shadowType->setCurrentIndex((int)type);
 }
 
@@ -177,6 +213,17 @@ void DirectusLight::MapLightType()
     m_inspectedLight->SetLightType(type);
 
     m_directusCore->Update();
+}
+
+void DirectusLight::MapRange()
+{
+    if(!m_inspectedLight || !m_directusCore)
+        return;
+
+    float range = m_range->GetAsFloat();
+    m_inspectedLight->SetRange(range);
+
+     m_directusCore->Update();
 }
 
 void DirectusLight::MapColor()

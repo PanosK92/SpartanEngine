@@ -51,6 +51,11 @@ void DirectusComboLabelText::Initialize(QString labelText)
     connect(m_text, SIGNAL(textEdited(QString)), this, SLOT(TextGotEdited()));
 }
 
+void DirectusComboLabelText::AlignLabelToTheLeft()
+{
+     m_label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+}
+
 DirectusAdjustLabel*DirectusComboLabelText::GetLabelWidget()
 {
     return m_label;
