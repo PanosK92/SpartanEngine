@@ -68,6 +68,7 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_script = new DirectusScript();
     m_script->Initialize(m_directusCore);
 
+    this->layout()->setAlignment(Qt::AlignTop);
     this->layout()->addWidget(m_transform);
     this->layout()->addWidget(m_camera);
     this->layout()->addWidget(m_meshFilter);
