@@ -39,6 +39,8 @@ namespace Directus
 		const Vector3 Vector3::Forward(0.0f, 0.0f, 1.0f);
 		const Vector3 Vector3::Back(0.0f, 0.0f, -1.0f);
 		const Vector3 Vector3::One(1.0f, 1.0f, 1.0f);
+		const Vector3 Vector3::Infinity(INFINITY, INFINITY, INFINITY);
+		const Vector3 Vector3::InfinityNeg(-INFINITY, -INFINITY, -INFINITY);
 
 		Vector3 Vector3::Transform(Vector3 vector, Matrix matrix)
 		{

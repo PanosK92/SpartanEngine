@@ -84,14 +84,14 @@ void Socket::Update()
 	// update input
 	m_input->Update();
 
-	// update physics
-	m_physics->Update();
-
 	// update gameobjects
 	GameObjectPool::GetInstance().Update();
 
 	// update scene
 	m_scene->Update();
+
+	// update physics
+	m_physics->Update();
 }
 
 void Socket::Render()
