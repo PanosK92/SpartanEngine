@@ -13,6 +13,8 @@ DirectusAdjustLabel::DirectusAdjustLabel(QWidget *parent) : QLabel(parent)
 
     m_isMouseHovering = false;
     m_isMouseDragged = false;
+
+    this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 }
 
 void DirectusAdjustLabel::AdjustQLineEdit(QLineEdit* lineEdit)

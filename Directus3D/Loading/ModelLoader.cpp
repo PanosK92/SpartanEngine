@@ -95,7 +95,7 @@ bool ModelLoader::Load(string filePath, GameObject* gameObject)
 
 	if (!scene) // Someting went wrong. Print it.
 	{
-		LOG("Failed to load \"" + FileHelper::GetFileNameNoExtensionFromPath(m_fullModelPath) + "\". " + importer.GetErrorString(), Log::Error);
+		LOG_ERROR("Failed to load \"" + FileHelper::GetFileNameNoExtensionFromPath(m_fullModelPath) + "\". " + importer.GetErrorString());
 		return false;
 	}
 
@@ -319,6 +319,8 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 				Texture* texture = m_texturePool->AddFromFile(path, Albedo);
 				engineMaterial->SetTexture(texture->GetID());
 			}
+			else
+				LOG_WARNING("Failed to find \"" + FileHelper::GetFileNameFromPath(string(Path.data)) + "\".");
 		}
 	}
 
@@ -332,6 +334,8 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 				Texture* texture = m_texturePool->AddFromFile(path, Occlusion);
 				engineMaterial->SetTexture(texture->GetID());
 			}
+			else
+				LOG_WARNING("Failed to find \"" + FileHelper::GetFileNameFromPath(string(Path.data)) + "\".");
 		}
 
 	//= NORMAL TEXTURE ======================================================================================================
@@ -344,6 +348,8 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 				Texture* texture = m_texturePool->AddFromFile(path, Normal);
 				engineMaterial->SetTexture(texture->GetID());
 			}
+			else
+				LOG_WARNING("Failed to find \"" + FileHelper::GetFileNameFromPath(string(Path.data)) + "\".");
 		}
 
 	//= HEIGHT TEXTURE =====================================================================================================
@@ -356,6 +362,8 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 				Texture* texture = m_texturePool->AddFromFile(path, Height);
 				engineMaterial->SetTexture(texture->GetID());
 			}
+			else
+				LOG_WARNING("Failed to find \"" + FileHelper::GetFileNameFromPath(string(Path.data)) + "\".");
 		}
 
 	//= MASK TEXTURE ========================================================================================================
@@ -368,6 +376,8 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 				Texture* texture = m_texturePool->AddFromFile(path, Mask);
 				engineMaterial->SetTexture(texture->GetID());
 			}
+			else
+				LOG_WARNING("Failed to find \"" + FileHelper::GetFileNameFromPath(string(Path.data)) + "\".");
 		}
 
 	return engineMaterial;
@@ -420,8 +430,6 @@ string ModelLoader::FindTexture(string texturePath) const
 	if (FileHelper::FileExists(newPath))
 		return newPath;
 	//==========================================================
-
-	LOG("Failed to find \"" + filename + "\", some models can have absolute texture paths.", Log::Warning);
 
 	return TEXTURE_PATH_UNKNOWN;
 }

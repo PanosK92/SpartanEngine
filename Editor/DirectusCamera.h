@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusComboLabelText.h"
 #include "DirectusColorPicker.h"
 #include "DirectusCore.h"
+#include <QToolButton>
 //==================================
 
 class DirectusCamera : public QWidget
@@ -46,6 +47,7 @@ private:
 
     //= TITLE =======================
     QLabel* m_title;
+    QToolButton* m_optionsButton;
     //===============================
 
     //= BACKGROUND =================================

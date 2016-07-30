@@ -40,8 +40,6 @@ namespace Directus
 			Quaternion(float x, float y, float z, float w);
 			~Quaternion();
 
-			static Quaternion Identity();
-
 			Quaternion Conjugate();
 			float Magnitude();
 			Quaternion Normalize();
@@ -76,6 +74,8 @@ namespace Directus
 			bool operator==(const Quaternion& b);
 			bool operator!=(const Quaternion& b);
 			void operator*=(const Quaternion& b);
+
+			static const Quaternion Identity;
 		};
 	}
 }

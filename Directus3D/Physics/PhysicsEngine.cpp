@@ -116,6 +116,11 @@ void PhysicsEngine::Reset()
 	}
 }
 
+btDiscreteDynamicsWorld* PhysicsEngine::GetWorld()
+{
+	return m_dynamicsWorld;
+}
+
 //= RIGIDBODY ==================================================================
 void PhysicsEngine::AddRigidBody(btRigidBody* rigidBody)
 {

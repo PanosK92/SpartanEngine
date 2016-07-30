@@ -24,5 +24,6 @@
         <file>arrowRight.png</file>
         <file>arrowUp.png</file>
         <file>check.png</file>
+        <file>componentOptions.png</file>
     </qresource>
 </RCC>

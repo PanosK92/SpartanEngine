@@ -83,7 +83,7 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_initialized = true;
 }
 
-GameObject*DirectusInspector::GetInspectedGameObject()
+GameObject* DirectusInspector::GetInspectedGameObject()
 {
     return m_inspectedGameObject;
 }
