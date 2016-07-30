@@ -23,5 +23,6 @@
         <file>arrowLeft.png</file>
         <file>arrowRight.png</file>
         <file>arrowUp.png</file>
+        <file>check.png</file>
     </qresource>
 </RCC>
