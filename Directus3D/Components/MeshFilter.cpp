@@ -39,9 +39,9 @@ MeshFilter::MeshFilter()
 	m_vertexBuffer = nullptr;
 	m_indexBuffer = nullptr;
 	m_meshData = nullptr;
-	m_min = Vector3(INFINITY, INFINITY, INFINITY);
-	m_max = Vector3(-INFINITY, -INFINITY, -INFINITY);
-	m_extent = Vector3(1, 1, 1);
+	m_min = Vector3::Infinity;
+	m_max = Vector3::InfinityNeg;
+	m_extent = Vector3::One;
 	m_center = Vector3::Zero;
 }
 

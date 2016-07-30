@@ -326,6 +326,8 @@ namespace Directus
 			static const Vector3 Forward;
 			static const Vector3 Back;
 			static const Vector3 One;
+			static const Vector3 Infinity;
+			static const Vector3 InfinityNeg;
 		};
 	}
 }

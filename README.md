@@ -4,8 +4,8 @@ Directus3D is a simple yet powerful game engine. This is achieved by prioritizin
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/screenshot.jpg)
 
 # Features
-- 30+ image formats support.
-- 40+ 3D model formats support.
+- 30+ image file formats support.
+- 40+ 3D file formats support.
 - Component-based game object system.
 - D3D11 Renderer.
 - Deferred rendering.
