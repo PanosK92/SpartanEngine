@@ -86,6 +86,7 @@ public slots:
     void CreateQuad();
     void CreateDirectionalLight();
     void CreatePointLight();
+    void CreateCamera();
     //============================
 
     //= COMPONENT ADDITIONS ======

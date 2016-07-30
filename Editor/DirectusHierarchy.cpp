@@ -491,14 +491,36 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     QAction actionCreateEmpty("Create Empty", this);
     actionCreateEmpty.setEnabled(true);
 
-    QAction action3DObject("3D Object", this);
-    action3DObject.setEnabled(false);
+    //= 3D Object =======================================
+    QMenu menu3DObject("3D Object", this);
+    menu3DObject.setEnabled(true);
 
-    QAction actionLight("Light", this);
-    actionLight.setEnabled(false);
+    QAction actionCube("Cube", this);
+    actionCube.setEnabled(true);
+
+    QAction actionQuad("Quad", this);
+    actionCube.setEnabled(true);
+
+    menu3DObject.addAction(&actionCube);
+    menu3DObject.addAction(&actionQuad);
+    //====================================================
+
+     //= 3D Object =======================================
+    QMenu menuLight("Light", this);
+    menuLight.setEnabled(true);
+
+    QAction actionDirectionalLight("Directional Light", this);
+    actionDirectionalLight.setEnabled(true);
+
+    QAction actionPointLight("Point Light", this);
+    actionPointLight.setEnabled(true);
+
+    menuLight.addAction(&actionDirectionalLight);
+    menuLight.addAction(&actionPointLight);
+    //====================================================
 
     QAction actionCamera("Camera", this);
-    actionCamera.setEnabled(false);
+    actionCamera.setEnabled(true);
     //=================================================
 
     //= SEPERATORS ===============
@@ -513,9 +535,14 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     //============================
 
     //= SIGNAL - SLOT connections =========================================================
-    connect(&actionRename,      SIGNAL(triggered()), this,  SLOT(RenameSelected()));
-    connect(&actionDelete,      SIGNAL(triggered()), this,  SLOT(DeleteSelected()));
-    connect(&actionCreateEmpty, SIGNAL(triggered()), this,  SLOT(CreateEmptyGameObject()));
+    connect(&actionRename,              SIGNAL(triggered()), this,  SLOT(RenameSelected()));
+    connect(&actionDelete,              SIGNAL(triggered()), this,  SLOT(DeleteSelected()));
+    connect(&actionCreateEmpty,         SIGNAL(triggered()), this,  SLOT(CreateEmptyGameObject()));
+    connect(&actionCube,                SIGNAL(triggered()), this,  SLOT(CreateCube()));
+    connect(&actionQuad,                SIGNAL(triggered()), this,  SLOT(CreateQuad()));
+    connect(&actionDirectionalLight,    SIGNAL(triggered()), this,  SLOT(CreateDirectionalLight()));
+    connect(&actionPointLight,          SIGNAL(triggered()), this,  SLOT(CreatePointLight()));
+    connect(&actionCamera,              SIGNAL(triggered()), this,  SLOT(CreateCamera()));
     //=====================================================================================
 
     contextMenu.addAction(&actionCopy);
@@ -527,8 +554,8 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     contextMenu.addAction(&seperatorB);
     contextMenu.addAction(&actionCreateEmpty);
     contextMenu.addAction(&seperatorC);
-    contextMenu.addAction(&action3DObject);
-    contextMenu.addAction(&actionLight);
+    contextMenu.addMenu(&menu3DObject);
+    contextMenu.addMenu(&menuLight);
     contextMenu.addAction(&actionCamera);
 
     contextMenu.exec(mapToGlobal(pos));
@@ -655,6 +682,19 @@ void DirectusHierarchy::CreatePointLight()
     // Add component
     Light* light = gameobject->AddComponent<Light>();
     light->SetLightType(Point);
+
+    // Refresh hierarchy
+    Populate();
+}
+
+void DirectusHierarchy::CreateCamera()
+{
+    // Create GameObject
+    GameObject* gameobject = new GameObject();
+    gameobject->SetName("Camera");
+
+    // Add component
+    Camera* light = gameobject->AddComponent<Camera>();
 
     // Refresh hierarchy
     Populate();
