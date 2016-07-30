@@ -41,8 +41,8 @@ public:
     explicit DirectusRigidBody(QWidget *parent = 0);
     void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
     void Reflect(GameObject* gameobject);
-private:
 
+private:
     //= TITLE ============================
     QWidget* m_image;
     QLabel* m_title;
@@ -100,6 +100,7 @@ private:
     DirectusInspector* m_inspector;
     //====================================
 
+    //= REFLECTION =======================
     void ReflectMass();
     void ReflectDrag();
     void ReflectAngulaDrag();
@@ -107,8 +108,13 @@ private:
     void ReflectIsKinematic();
     void ReflectFreezePosition();
     void ReflectFreezeRotation();
+     //====================================
 
+    //= MISC ================
+    void SetSizeMinAlignmentRight(QLabel* label, QCheckBox* checkBox);
+    //=======================
 public slots:
+    //= MAPPING =============
     void MapMass();
     void MapDrag();
     void MapAngularDrag();
@@ -116,4 +122,5 @@ public slots:
     void MapIsKinematic();
     void MapFreezePosition();
     void MapFreezeRotation();
+    //=======================
 };
