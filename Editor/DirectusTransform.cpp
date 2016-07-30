@@ -40,17 +40,6 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
 
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
-    //this->setStyleSheet("background-color: #383838");
-    /*
-    widget background dark: 			292929
-    widget background light:				383838
-    widget background highlighted: 	484848
-    text color: 									909090
-    text highlighted:							 EDEDED
-    border: 										212121
-    border highlighted:						464646
-    text edit background:					414141
-    */
 
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
 
@@ -113,37 +102,37 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     // Row 0 - TITLE
-    m_gridLayout->addWidget(m_title, 0, 0, 1, 7);
+    m_gridLayout->addWidget(m_title,                        0, 0, 1, 7);
 
     // Row 1 - POSITION
-    m_gridLayout->addWidget(m_posLabel,    1, 0, 1, 1);
-    m_gridLayout->addWidget(m_posX->GetLabelWidget(),   1, 1, 1, 1);
+    m_gridLayout->addWidget(m_posLabel,                     1, 0, 1, 1);
+    m_gridLayout->addWidget(m_posX->GetLabelWidget(),       1, 1, 1, 1);
     m_gridLayout->addWidget(m_posX->GetTextWidget(),        1, 2, 1, 1);
-    m_gridLayout->addWidget(m_posY->GetLabelWidget(),   1, 3, 1, 1);
+    m_gridLayout->addWidget(m_posY->GetLabelWidget(),       1, 3, 1, 1);
     m_gridLayout->addWidget(m_posY->GetTextWidget(),        1, 4, 1, 1);
-    m_gridLayout->addWidget(m_posZ->GetLabelWidget(),   1, 5, 1, 1);
+    m_gridLayout->addWidget(m_posZ->GetLabelWidget(),       1, 5, 1, 1);
     m_gridLayout->addWidget(m_posZ->GetTextWidget(),        1, 6, 1, 1);
 
     // Row 2 - ROTATION
-    m_gridLayout->addWidget(m_rotLabel,    2, 0, 1, 1);
-    m_gridLayout->addWidget(m_rotX->GetLabelWidget(),   2, 1, 1, 1);
+    m_gridLayout->addWidget(m_rotLabel,                     2, 0, 1, 1);
+    m_gridLayout->addWidget(m_rotX->GetLabelWidget(),       2, 1, 1, 1);
     m_gridLayout->addWidget(m_rotX->GetTextWidget(),        2, 2, 1, 1);
-    m_gridLayout->addWidget(m_rotY->GetLabelWidget(),   2, 3, 1, 1);
+    m_gridLayout->addWidget(m_rotY->GetLabelWidget(),       2, 3, 1, 1);
     m_gridLayout->addWidget(m_rotY->GetTextWidget(),        2, 4, 1, 1);
-    m_gridLayout->addWidget(m_rotZ->GetLabelWidget(),   2, 5, 1, 1);
+    m_gridLayout->addWidget(m_rotZ->GetLabelWidget(),       2, 5, 1, 1);
     m_gridLayout->addWidget(m_rotZ->GetTextWidget(),        2, 6, 1, 1);
 
     // Row 3 - SCALE
-    m_gridLayout->addWidget(m_scaLabel,    3, 0, 1, 1);
-    m_gridLayout->addWidget(m_scaX->GetLabelWidget(),   3, 1, 1, 1);
+    m_gridLayout->addWidget(m_scaLabel,                     3, 0, 1, 1);
+    m_gridLayout->addWidget(m_scaX->GetLabelWidget(),       3, 1, 1, 1);
     m_gridLayout->addWidget(m_scaX->GetTextWidget(),        3, 2, 1, 1);
-    m_gridLayout->addWidget(m_scaY->GetLabelWidget(),   3, 3, 1, 1);
+    m_gridLayout->addWidget(m_scaY->GetLabelWidget(),       3, 3, 1, 1);
     m_gridLayout->addWidget(m_scaY->GetTextWidget(),        3, 4, 1, 1);
-    m_gridLayout->addWidget(m_scaZ->GetLabelWidget(),   3, 5, 1, 1);
+    m_gridLayout->addWidget(m_scaZ->GetLabelWidget(),       3, 5, 1, 1);
     m_gridLayout->addWidget(m_scaZ->GetTextWidget(),        3, 6, 1, 1);
 
     // Row 4 - LINE
-    m_gridLayout->addWidget(m_line,    4, 0, 1, 7);
+    m_gridLayout->addWidget(m_line,                         4, 0, 1, 7);
 
     // textChanged(QString) -> emits signal when changed through code
     // textEdited(QString) -> doesn't emit signal when changed through code
