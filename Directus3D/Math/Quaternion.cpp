@@ -38,6 +38,8 @@ namespace Directus
 {
 	namespace Math
 	{
+		const Quaternion Quaternion::Identity(0, 0, 0, 1);
+
 		Quaternion::Quaternion()
 		{
 			this->x = 0;
@@ -57,11 +59,6 @@ namespace Directus
 
 		Quaternion::~Quaternion()
 		{
-		}
-
-		Quaternion Quaternion::Identity()
-		{
-			return Quaternion(0, 0, 0, 1);
 		}
 
 		Quaternion Quaternion::Conjugate()

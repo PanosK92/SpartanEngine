@@ -36,6 +36,7 @@ public:
 
     void Initialize(QString labelText);
     void AlignLabelToTheLeft();
+    void AlignLabelToTheRight();
 
     DirectusAdjustLabel* GetLabelWidget();
     QLineEdit* GetTextWidget();

@@ -277,7 +277,7 @@ void Renderer::AcquirePrerequisites()
 		mOrthographicProjection = m_camera->GetOrthographicProjectionMatrix();
 		mView = m_camera->GetViewMatrix();
 		mBaseView = m_camera->GetBaseViewMatrix();
-		mWorld = Matrix::Identity();
+		mWorld = Matrix::Identity;
 		m_nearPlane = m_camera->GetNearPlane();
 		m_farPlane = m_camera->GetFarPlane();
 	}
@@ -450,7 +450,7 @@ void Renderer::DebugDraw() const
 	// Render
 	m_shaderDebug->Render(
 		lineRenderer->GetVertexCount(),
-		Matrix::Identity(),
+		Matrix::Identity,
 		m_camera->GetViewMatrix(),
 		m_camera->GetProjectionMatrix(),
 		m_GBuffer->GetShaderResourceView(2) // depth

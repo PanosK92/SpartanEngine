@@ -3006,7 +3006,7 @@ QTabBar::tab:last
        </property>
        <widget class="DirectusInspector" name="directusInspector">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
           <horstretch>0</horstretch>
           <verstretch>1</verstretch>
          </sizepolicy>

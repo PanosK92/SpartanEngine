@@ -28,28 +28,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Quaternion.h"
 //==================================
 
-inline Directus::Math::Vector3 BtVector3ToVector3(const btVector3& vector)
+inline Directus::Math::Vector3 ToVector3(const btVector3& vector)
 {
 	return Directus::Math::Vector3(vector.getX(), vector.getY(), vector.getZ());
 }
 
-inline Directus::Math::Vector4 BtVector3ToVector4(const btVector3& vector)
+inline Directus::Math::Vector4 ToVector4(const btVector3& vector)
 {
 	return Directus::Math::Vector4(vector.getX(), vector.getY(), vector.getZ(), 1.0f);
 }
 
 
-inline btVector3 Vector3ToBtVector3(Directus::Math::Vector3 vector)
+inline btVector3 ToBtVector3(Directus::Math::Vector3 vector)
 {
 	return btVector3(vector.x, vector.y, vector.z);
 }
 
-inline btQuaternion QuaternionToBtQuaternion(Directus::Math::Quaternion quaternion)
+inline btQuaternion ToBtQuaternion(Directus::Math::Quaternion quaternion)
 {
 	return btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
 }
 
-inline Directus::Math::Quaternion BtQuaternionToQuaternion(const btQuaternion& quaternion)
+inline Directus::Math::Quaternion ToQuaternion(const btQuaternion& quaternion)
 {
 	return Directus::Math::Quaternion(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
 }

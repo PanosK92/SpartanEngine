@@ -53,16 +53,6 @@ namespace Directus
 
 			~Matrix(){}
 
-			static Matrix Identity()
-			{
-				return Matrix(
-					1, 0, 0, 0,
-					0, 1, 0, 0,
-					0, 0, 1, 0,
-					0, 0, 0, 1
-				);
-			}
-
 			Matrix Transpose()
 			{
 				return Transpose(*this);
@@ -311,6 +301,8 @@ namespace Directus
 			float m31;
 			float m32;
 			float m33;
+
+			static const Matrix Identity;
 
 		private:
 			static Matrix Multiply(Matrix matrix1, Matrix matrix2)

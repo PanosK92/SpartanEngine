@@ -30,8 +30,8 @@ using namespace Directus::Math;
 
 Frustrum::Frustrum()
 {
-	m_projectionMatrix = Matrix::Identity();
-	m_viewMatrix = Matrix::Identity();
+	m_projectionMatrix = Matrix::Identity;
+	m_viewMatrix = Matrix::Identity;
 }
 
 Frustrum::~Frustrum()

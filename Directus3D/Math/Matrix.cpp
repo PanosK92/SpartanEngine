@@ -29,6 +29,14 @@ namespace Directus
 {
 	namespace Math
 	{
+		const Matrix Matrix::Identity
+		(
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1
+		);
+
 		Matrix Matrix::CreateScale(Vector3 scale)
 		{
 			return CreateScale(scale.x, scale.y, scale.z);
@@ -95,7 +103,7 @@ namespace Directus
 			// let's calculate the rotation now
 			if ((scale.x == 0.0f) || (scale.y == 0.0f) || (scale.z == 0.0f))
 			{
-				rotation = Quaternion::Identity();
+				rotation = Quaternion::Identity;
 				return;
 			}
 

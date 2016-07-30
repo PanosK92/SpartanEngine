@@ -178,10 +178,10 @@ void Hinge::ConstructHinge()
 	CalculateConnections();
 
 	// convert data to bullet data
-	btVector3 axisA = Vector3ToBtVector3(m_axisA);
-	btVector3 axisB = Vector3ToBtVector3(m_axisB);
-	btVector3 pivotA = Vector3ToBtVector3(m_pivotA);
-	btVector3 pivotB = Vector3ToBtVector3(m_pivotB);
+	btVector3 axisA = ToBtVector3(m_axisA);
+	btVector3 axisB = ToBtVector3(m_axisB);
+	btVector3 pivotA = ToBtVector3(m_pivotA);
+	btVector3 pivotB = ToBtVector3(m_pivotB);
 
 	// create the hinge
 	m_hinge = new btHingeConstraint(*rigidBodyA, *rigidBodyB, axisA, axisB, pivotA, pivotB);

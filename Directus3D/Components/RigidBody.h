@@ -76,7 +76,9 @@ public:
 	void SetKinematic(bool kinematic);
 	bool GetKinematic() const;
 
-	//= FORCE/TORQUE =======================================
+	//= VELOCITY/FORCE/TORQUE =======================================
+	void SetLinearVelocity(Directus::Math::Vector3 velocity);
+	void SetAngularVelocity(Directus::Math::Vector3 velocity);
 	void ApplyForce(Directus::Math::Vector3 force, ForceMode mode);
 	void ApplyForceAtPosition(Directus::Math::Vector3 force, Directus::Math::Vector3 position, ForceMode mode);
 	void ApplyTorque(Directus::Math::Vector3 torque, ForceMode mode);
@@ -104,6 +106,7 @@ public:
 	//= MISC ================================================
 	void SetCollisionShape(btCollisionShape* shape);
 	btRigidBody* GetBtRigidBody() const;
+	void ClearForces();
 
 private:
 	//= COLLIDER ================================================
@@ -112,8 +115,10 @@ private:
 	Directus::Math::Vector3 GetColliderCenter();
 
 	//= HELPER FUNCTIONS ========================================
-	void ConstructRigidBody();
-	void ActivateRigidBody();
+	void AddBodyToWorld();
+	void RemoveBodyFromWorld();
+	void UpdateGravity();
+	void Activate();
 
 	btRigidBody* m_rigidBody;
 	btCollisionShape* m_shape;
@@ -127,4 +132,6 @@ private:
 	Directus::Math::Vector3 m_gravity;
 	Directus::Math::Vector3 m_positionLock;
 	Directus::Math::Vector3 m_rotationLock;
+
+	bool m_inWorld;
 };

@@ -33,9 +33,9 @@ using namespace Directus::Math;
 Transform::Transform()
 {
 	m_translationLocal = Vector3::Zero;
-	m_rotationLocal = Quaternion::Identity();
-	m_scaleLocal = Vector3(1.0f, 1.0f, 1.0f);
-	m_worldMatrix = Matrix::Identity();
+	m_rotationLocal = Quaternion::Identity;
+	m_scaleLocal = Vector3::One;
+	m_worldMatrix = Matrix::Identity;
 	m_parent = nullptr;
 	m_isDirty = true;
 }
@@ -474,7 +474,7 @@ void Transform::GetDescendants(vector<Transform*>& descendants)
 Matrix Transform::GetParentMatrix()
 {
 	if (!HasParent())
-		return Matrix::Identity();
+		return Matrix::Identity;
 
 	return GetParent()->GetWorldMatrix();
 }

@@ -134,7 +134,7 @@ void Collider::SetScale(Vector3 scale)
 	if (scale.x == 0 || scale.y == 0 || scale.z == 0)
 		return;
 
-	m_shape->setLocalScaling(Vector3ToBtVector3(scale.Absolute()));
+	m_shape->setLocalScaling(ToBtVector3(scale.Absolute()));
 }
 
 //= CENTER ========================================================
@@ -180,7 +180,7 @@ void Collider::ConstructCollisionShape()
 	// create new shape
 	if (m_shapeType == Box)
 	{
-		m_shape = new btBoxShape(Vector3ToBtVector3(m_boundingBox));
+		m_shape = new btBoxShape(ToBtVector3(m_boundingBox));
 	}
 	else if (m_shapeType == Capsule)
 	{
@@ -190,7 +190,7 @@ void Collider::ConstructCollisionShape()
 	}
 	else if (m_shapeType == Cylinder)
 	{
-		m_shape = new btCylinderShape(Vector3ToBtVector3(m_boundingBox));
+		m_shape = new btCylinderShape(ToBtVector3(m_boundingBox));
 	}
 	else if (m_shapeType == Sphere)
 	{

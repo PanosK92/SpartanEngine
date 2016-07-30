@@ -47,6 +47,16 @@ void DirectusCamera::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
                 "background-position: left;"
                 "padding-left: 20px;"
                 );
+    m_optionsButton = new QToolButton();
+    m_optionsButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
+    m_optionsButton->setStyleSheet(
+                "background-image: url(:/Images/componentOptions.png);"
+                "background-repeat: no-repeat;"
+                "background-position: center;"
+                "background-color: rgba(0,0,0,0);"
+                "margin-left: 100;"
+                "margin-right: 0;"
+                );
     //=========================================================
 
     //= BACKGROUND ============================================
@@ -88,27 +98,28 @@ void DirectusCamera::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ======================================================================
     // Row 0
-    m_gridLayout->addWidget(m_title, 0, 0, 1, 3);
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 2);
+    m_gridLayout->addWidget(m_optionsButton, 0, 3, 1, 1);
 
     // Row 1
-    m_gridLayout->addWidget(m_backgroundLabel, 1, 0, 1, 1);
-    m_gridLayout->addWidget(m_background->GetWidget(), 1, 1, 1, 3);
+    m_gridLayout->addWidget(m_backgroundLabel,          1, 0, 1, 1);
+    m_gridLayout->addWidget(m_background->GetWidget(),  1, 1, 1, 3);
 
     // Row 2
-    m_gridLayout->addWidget(m_projectionLabel, 2, 0, 1, 1);
-    m_gridLayout->addWidget(m_projectionComboBox, 2, 1, 1, 3);
+    m_gridLayout->addWidget(m_projectionLabel,      2, 0, 1, 1);
+    m_gridLayout->addWidget(m_projectionComboBox,   2, 1, 1, 3);
 
     // Row 3
-    m_gridLayout->addWidget(m_fovLabel, 3, 0, 1, 1);
-    m_gridLayout->addWidget(m_fov->GetSlider(), 3, 1, 1, 2);
-    m_gridLayout->addWidget(m_fov->GetLineEdit(), 3, 3, 1, 1);
+    m_gridLayout->addWidget(m_fovLabel,             3, 0, 1, 1);
+    m_gridLayout->addWidget(m_fov->GetSlider(),     3, 1, 1, 2);
+    m_gridLayout->addWidget(m_fov->GetLineEdit(),   3, 3, 1, 1);
 
     // Row 4 and 5
-    m_gridLayout->addWidget(m_clippingPlanesLabel, 4, 0, 1, 1);
-    m_gridLayout->addWidget(m_nearPlane->GetLabelWidget(), 4, 1, 1, 1);
-    m_gridLayout->addWidget(m_nearPlane->GetTextWidget(), 4, 2, 1, 2);
-    m_gridLayout->addWidget(m_farPlane->GetLabelWidget(), 5, 1, 1, 1);
-    m_gridLayout->addWidget(m_farPlane->GetTextWidget(), 5, 2, 1, 2);
+    m_gridLayout->addWidget(m_clippingPlanesLabel,          4, 0, 1, 1);
+    m_gridLayout->addWidget(m_nearPlane->GetLabelWidget(),  4, 1, 1, 1);
+    m_gridLayout->addWidget(m_nearPlane->GetTextWidget(),   4, 2, 1, 2);
+    m_gridLayout->addWidget(m_farPlane->GetLabelWidget(),   5, 1, 1, 1);
+    m_gridLayout->addWidget(m_farPlane->GetTextWidget(),    5, 2, 1, 2);
 
     // Row 6 - LINE
     m_gridLayout->addWidget(m_line, 6, 0, 1, 4);

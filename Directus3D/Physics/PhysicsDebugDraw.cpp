@@ -40,16 +40,16 @@ void PhysicsDebugDraw::Release()
 
 void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor)
 {
-	m_lines.push_back(VertexPositionColor{BtVector3ToVector3(from), BtVector3ToVector4(fromColor)});
-	m_lines.push_back(VertexPositionColor{BtVector3ToVector3(to), BtVector3ToVector4(toColor)});
+	m_lines.push_back(VertexPositionColor{ToVector3(from), ToVector4(fromColor)});
+	m_lines.push_back(VertexPositionColor{ToVector3(to), ToVector4(toColor)});
 
 	m_isDirty = true;
 }
 
 void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
 {
-	m_lines.push_back(VertexPositionColor{BtVector3ToVector3(from), BtVector3ToVector4(color)});
-	m_lines.push_back(VertexPositionColor{BtVector3ToVector3(to), BtVector3ToVector4(color)});
+	m_lines.push_back(VertexPositionColor{ToVector3(from), ToVector4(color)});
+	m_lines.push_back(VertexPositionColor{ToVector3(to), ToVector4(color)});
 
 	m_isDirty = true;
 }

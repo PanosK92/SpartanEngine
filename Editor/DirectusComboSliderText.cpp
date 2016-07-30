@@ -37,10 +37,10 @@ void DirectusComboSliderText::Initialize(int min, int max)
 
     m_slider = new QSlider(Qt::Horizontal);
     m_slider->setRange(min * 100, max * 100);
-    m_slider->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+    m_slider->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     m_lineEdit = new QLineEdit();
-    m_lineEdit->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+    m_lineEdit->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
     m_lineEdit->setValidator(m_validator);
 
     // textChanged(QString) -> emits signal when changed through code
