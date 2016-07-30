@@ -228,7 +228,7 @@ text disabled:								585858
 text : 											909090
 text highlighted:							EDEDED
 border: 										212121
-border highlighted:						464646
+border highlighted:						575757
 text edit background:					414141
 */
 
@@ -282,19 +282,34 @@ QCheckBox
 	background-color:#383838;
 }
 
+#directusDirExplorer, #directusFileExplorer, #directusHierarchy, #directusInspector
+{
+	border-width: 1px;
+	border-style: solid;
+	border-top-width: 0px;
+}
+
+#directusCoreWidget
+{
+margin: 5px;
+}
+
 /*= SCENE/CONSOLE TABS TOOLBARS =============================================================================*/
 #sceneToolbar, #tabConsoleToolbar, #tabHierarchyToolbar, #tabProjectToolbar
 {
-	background-color:qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
+	border-color: #212121;
+	border-width: 1px;
+	border-style: solid;
 }
 
 #buttonGizmos, #buttonConsoleClear, #buttonConsoleClearOnPlay, #buttonHierarchyCreate, #buttonProjectCreate
 {
-	min-width: 2em;
+	min-width: 3em;
 	padding-left: 2px;
 	padding-right: 2px;
 	color: #909090;
-	border-color: #383838;
+	border-color: #212121;
 	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
 	border-style: solid;
 	border-top-width: 0px;
@@ -302,7 +317,52 @@ QCheckBox
 	border-left-width: 1px;
 	border-right-width: 1px;
 	border-radius: 0px;
+	margin-top: 1px;
+	margin-bottom: 1px;
 }
+
+/*= TABS ===================================================================================*/
+QTabWidget
+{
+	border-color: red;
+	border-style: solid;
+}
+
+ /* The tab widget frame */
+QTabWidget::pane
+{  
+
+}
+
+QTabBar::tab
+{	
+	background-repeat: no-repeat;
+	background-position: left;
+
+	border-color: red;
+	border-style: solid;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-width: 0px;
+
+	min-width: 3.5em;
+	min-height: 1.3em;
+
+	padding-top: 0px;
+	padding-bottom: 0px;
+	padding-left: 18px;
+	padding-right: 10px;
+}
+
+QTabBar::tab:selected
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(70, 70, 70, 255), stop:1 rgba(64, 64, 64, 255));
+	border-color: #575757;
+	border-style: solid;
+	border-width: 1px;
+	border-bottom-width: 0px;
+}
+/*========================================================================================*/
 
 /*= PLAY/PAUSE BUTTONS ===================================================================================*/
 #directusPlayButton
@@ -494,50 +554,13 @@ QSlider::handle:horizontal
 }
 /*========================================================================================*/
 
-/*= TABS ===================================================================================*/
-QTabWidget
-{
-	border-color: #212121;
-	border-style: solid;
-}
-
- /* The tab widget frame */
-QTabWidget::pane
-{  
-
-}
-
-QTabBar::tab
-{	
-	background-repeat: no-repeat;
-	background-position: left;
-
-	border-color: #464646;
-	border-style: solid;
-	border-top-left-radius: 3px;
-	border-top-right-radius: 3px;
-	border-bottom-width: 0px;
-
-	min-width: 3.5em;
-	min-height: 1.3em;
-
-	padding-top: 0px;
-	padding-bottom: 0px;
-	padding-left: 18px;
-	padding-right: 10px;
-}
-
-QTabBar::tab:selected
-{
-	background-color: #484848;	
-}
-/*========================================================================================*/
-
 /*= TREES ==================================================================================*/
 QTreeWidget
 {
 	background-color: #383838;
 	border-style: solid;
+	border-width: 1px;
+	border-top-width: 0px;
 }
 
 QTreeView
@@ -1972,47 +1995,10 @@ text edit background:					414141
                   <number>0</number>
                  </property>
                  <item>
-                  <layout class="QGridLayout" name="gridLayout">
+                  <layout class="QGridLayout" name="directusCoreGridLayout">
                    <property name="spacing">
                     <number>0</number>
                    </property>
-                   <item row="1" column="0" colspan="2">
-                    <widget class="QFrame" name="directusCoreFrame">
-                     <property name="frameShape">
-                      <enum>QFrame::StyledPanel</enum>
-                     </property>
-                     <property name="frameShadow">
-                      <enum>QFrame::Raised</enum>
-                     </property>
-                     <layout class="QHBoxLayout" name="horizontalLayout_3">
-                      <property name="spacing">
-                       <number>0</number>
-                      </property>
-                      <property name="leftMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="topMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="rightMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="bottomMargin">
-                       <number>0</number>
-                      </property>
-                      <item>
-                       <widget class="DirectusCore" name="directusCore" native="true">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                   </item>
                    <item row="0" column="0">
                     <widget class="QWidget" name="sceneToolbar" native="true">
                      <property name="sizePolicy">
@@ -2083,7 +2069,7 @@ text edit background:					414141
                          <string>FPS: 0, Update: 0, Render: 0, Meshes Rendered: 0</string>
                         </property>
                         <property name="alignment">
-                         <set>Qt::AlignCenter</set>
+                         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                         </property>
                         <property name="readOnly">
                          <bool>true</bool>
@@ -2097,6 +2083,37 @@ text edit background:					414141
                         </property>
                         <property name="text">
                          <string>Gizmos</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item row="1" column="0" colspan="2">
+                    <widget class="QWidget" name="directusCoreWidget" native="true">
+                     <layout class="QHBoxLayout" name="horizontalLayout_3">
+                      <property name="spacing">
+                       <number>0</number>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="DirectusCore" name="directusCore" native="true">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
                         </property>
                        </widget>
                       </item>
@@ -2187,7 +2204,7 @@ QTabBar::tab:last
 }</string>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <property name="iconSize">
                <size>
@@ -2411,6 +2428,12 @@ QTabBar::tab:last
                 </property>
                 <item>
                  <layout class="QGridLayout" name="gridLayout_2">
+                  <property name="rightMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="spacing">
+                   <number>0</number>
+                  </property>
                   <item row="1" column="0">
                    <layout class="QVBoxLayout" name="tabConsoleLayoutConsole">
                     <property name="spacing">
@@ -2418,6 +2441,12 @@ QTabBar::tab:last
                     </property>
                     <item>
                      <widget class="DirectusConsole" name="directusConsole">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
                       <property name="alternatingRowColors">
                        <bool>true</bool>
                       </property>
