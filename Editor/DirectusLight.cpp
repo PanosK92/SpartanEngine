@@ -120,6 +120,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
     //==============================================================================
 
     connect(m_lightType,    SIGNAL(currentIndexChanged(int)),   this, SLOT(MapLightType()));
+    connect(m_range,        SIGNAL(ValueChanged()),             this, SLOT(MapRange()));
     connect(m_color,        SIGNAL(ColorPickingCompleted()),    this, SLOT(MapColor()));
     connect(m_intensity,    SIGNAL(ValueChanged()),             this, SLOT(MapIntensity()));
     connect(m_shadowType,   SIGNAL(currentIndexChanged(int)),   this, SLOT(MapShadowType()));
@@ -173,6 +174,17 @@ void DirectusLight::ReflectRange()
     if (!m_inspectedLight)
         return;
 
+    if (m_inspectedLight->GetLightType() == Point)
+    {
+        m_range->GetLabelWidget()->show();
+        m_range->GetTextWidget()->show();
+    }
+    else
+    {
+        m_range->GetLabelWidget()->hide();
+        m_range->GetTextWidget()->hide();
+    }
+
     float range = m_inspectedLight->GetRange();
     m_range->SetFromFloat(range);
 }
@@ -212,6 +224,11 @@ void DirectusLight::MapLightType()
     LightType type = (LightType)(m_lightType->currentIndex());
     m_inspectedLight->SetLightType(type);
 
+    // It's important to reflect the range again because
+    // setting a directional light to a point light, needs
+    // a new field called Range.
+    ReflectRange();
+
     m_directusCore->Update();
 }
 
@@ -223,7 +240,7 @@ void DirectusLight::MapRange()
     float range = m_range->GetAsFloat();
     m_inspectedLight->SetRange(range);
 
-     m_directusCore->Update();
+    m_directusCore->Update();
 }
 
 void DirectusLight::MapColor()

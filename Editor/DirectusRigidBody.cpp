@@ -81,28 +81,31 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
 
     //= FREEZE POSITION ==================
     m_freezePosLabel = new QLabel("Freeze Position");
-    m_freezePosXLabel= new QLabel("X");
-    m_freezePosXLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-    m_freezePosYLabel= new QLabel("Y");
-    m_freezePosYLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-    m_freezePosZLabel= new QLabel("Z");
+    m_freezePosXLabel= new QLabel("X");    
+    m_freezePosYLabel= new QLabel("Y");   
+    m_freezePosZLabel= new QLabel("Z");    
     m_freezePosZLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     m_freezePosX = new QCheckBox();
     m_freezePosY = new QCheckBox();
     m_freezePosZ = new QCheckBox();
+
+    SetSizeMinAlignmentRight(m_freezePosXLabel, m_freezePosX);
+    SetSizeMinAlignmentRight(m_freezePosYLabel, m_freezePosY);
+    SetSizeMinAlignmentRight(m_freezePosZLabel, m_freezePosZ);
     //====================================
 
     //= FREEZE ROTATION ==================
     m_freezeRotLabel = new QLabel("Freeze Rotation");
-    m_freezeRotXLabel= new QLabel("X");
-    m_freezeRotXLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-    m_freezeRotYLabel= new QLabel("Y");
-    m_freezeRotYLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-    m_freezeRotZLabel= new QLabel("Z");
-    m_freezeRotZLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
+    m_freezeRotXLabel= new QLabel("X");   
+    m_freezeRotYLabel= new QLabel("Y");   
+    m_freezeRotZLabel= new QLabel("Z");   
     m_freezeRotX = new QCheckBox();
     m_freezeRotY = new QCheckBox();
     m_freezeRotZ = new QCheckBox();
+
+    SetSizeMinAlignmentRight(m_freezeRotXLabel, m_freezeRotX);
+    SetSizeMinAlignmentRight(m_freezeRotYLabel, m_freezeRotY);
+    SetSizeMinAlignmentRight(m_freezeRotZLabel, m_freezeRotZ);
     //====================================
 
     //= LINE ======================================
@@ -217,6 +220,7 @@ void DirectusRigidBody::Reflect(GameObject* gameobject)
     this->show();
 }
 
+//= REFLECTION =========================================
 void DirectusRigidBody::ReflectMass()
 {
     if (!m_inspectedRigidBody)
@@ -283,7 +287,19 @@ void DirectusRigidBody::ReflectFreezeRotation()
     m_freezeRotY->setChecked(bool(rotFreeze.y));
     m_freezeRotZ->setChecked(bool(rotFreeze.z));
 }
+//==================================================================================
 
+//= MISC ===========================================================================
+void DirectusRigidBody::SetSizeMinAlignmentRight(QLabel* label, QCheckBox* checkBox)
+{
+    label->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+    label->setAlignment(Qt::AlignRight);
+
+    checkBox->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+}
+//==================================================================================
+
+//= MAPPING ========================================================================
 void DirectusRigidBody::MapMass()
 {
     if (!m_inspectedRigidBody || !m_directusCore)
@@ -364,3 +380,4 @@ void DirectusRigidBody::MapFreezeRotation()
 
     m_directusCore->Update();
 }
+//==================================================================================
