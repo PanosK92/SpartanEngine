@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <scriptbuilder/scriptbuilder.cpp>
 #include "ScriptEngine.h"
 #include "../IO/Log.h"
+#include "../IO/FileHelper.h"
+
 //========================================
 
 Module::Module(string moduleName, ScriptEngine* scriptEngine)
@@ -47,7 +49,7 @@ bool Module::LoadScript(string path)
 	int result = m_builder->StartNewModule(m_scriptEngine->GetAsIScriptEngine(), m_moduleName.c_str());
 	if (result < 0)
 	{
-		LOG("Failed to start new module, make sure there is enough memory for it to be allocated.", Log::Error);
+		LOG_ERROR("Failed to start new module, make sure there is enough memory for it to be allocated.");
 		return false;
 	}
 
@@ -55,7 +57,7 @@ bool Module::LoadScript(string path)
 	result = m_builder->AddSectionFromFile(path.c_str());
 	if (result < 0)
 	{
-		LOG("Failed to load script " + path, Log::Error);
+		LOG_ERROR("Failed to load script \"" + path + "\".");
 		return false;
 	}
 
@@ -63,7 +65,7 @@ bool Module::LoadScript(string path)
 	result = m_builder->BuildModule();
 	if (result < 0)
 	{
-		LOG("Failed to compile the script. Correct any errors and try again.", Log::Error);
+		LOG_ERROR("Failed to compile script \"" + FileHelper::GetFileNameFromPath(path) + "\". Correct any errors and try again.");
 		return false;
 	}
 

@@ -72,7 +72,7 @@ void DeferredShader::Render(
 {
 	if (!m_shader->IsCompiled())
 	{
-		LOG("Failed to compile deferred shader.", Log::Error);
+		LOG_ERROR("Failed to compile deferred shader.");
 		return;
 	}
 

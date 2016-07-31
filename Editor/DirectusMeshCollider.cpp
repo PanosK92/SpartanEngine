@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //===============================
 #include "DirectusMeshCollider.h"
+#include "DirectusInspector.h"
 //===============================
 
 DirectusMeshCollider::DirectusMeshCollider(QWidget *parent) : QWidget(parent)
@@ -28,9 +29,10 @@ DirectusMeshCollider::DirectusMeshCollider(QWidget *parent) : QWidget(parent)
 
 }
 
-void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspector* inspector)
+void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
 {
     m_directusCore = directusCore;
+    m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
@@ -44,6 +46,9 @@ void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspec
                 "background-position: left;"
                 "padding-left: 20px;"
                 );
+
+    m_optionsButton = new DirectusDropDownButton();
+    m_optionsButton->Initialize();
     //=========================================================
 
     //= CONVEX ================================================
@@ -68,6 +73,7 @@ void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspec
     //= GRID ==================================================
     // Row 0 - TITLE
     m_gridLayout->addWidget(m_title, 0, 0, 1, 2);
+    m_gridLayout->addWidget(m_optionsButton, 0, 3, 1, 1);
 
     // Row 1 - CONVEX
     m_gridLayout->addWidget(m_convexLabel, 1, 0, 1, 1);
@@ -81,6 +87,7 @@ void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspec
     m_gridLayout->addWidget(m_line, 3, 0, 1, 2);
     //============================================================
 
+    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -149,4 +156,16 @@ void DirectusMeshCollider::MapConvex()
 void DirectusMeshCollider::MapMesh()
 {
 
+}
+
+void DirectusMeshCollider::Remove()
+{
+    if (!m_inspectedMeshCollider)
+        return;
+
+    GameObject* gameObject = m_inspectedMeshCollider->g_gameObject;
+    gameObject->RemoveComponent<MeshCollider>();
+    m_directusCore->Update();
+
+    m_inspector->Inspect(gameObject);
 }

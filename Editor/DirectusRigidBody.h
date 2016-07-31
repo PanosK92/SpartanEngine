@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QCheckBox>
 #include "DirectusCore.h"
 #include "QComboBox.h"
+#include "DirectusDropDownButton.h"
 //==================================
 
 class DirectusInspector;
@@ -39,14 +40,14 @@ class DirectusRigidBody : public QWidget
     Q_OBJECT
 public:
     explicit DirectusRigidBody(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
 
 private:
-    //= TITLE ============================
-    QWidget* m_image;
+    //= TITLE ======================================
     QLabel* m_title;
-    //====================================
+    DirectusDropDownButton* m_optionsButton;
+    //==============================================
 
     //= MASS =============================
     DirectusComboLabelText* m_mass;
@@ -122,5 +123,6 @@ public slots:
     void MapIsKinematic();
     void MapFreezePosition();
     void MapFreezeRotation();
+    void Remove();
     //=======================
 };

@@ -35,9 +35,7 @@ class ShaderPool;
 class __declspec(dllexport) IComponent
 {
 public:
-	virtual ~IComponent()
-	{
-	};
+	virtual ~IComponent(){}
 
 	virtual void Initialize() = 0;
 	virtual void Remove() = 0;

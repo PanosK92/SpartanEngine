@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "DirectusMeshRenderer.h"
 #include "IO/Log.h"
+#include "DirectusInspector.h"
 //===============================
 
 DirectusMeshRenderer::DirectusMeshRenderer(QWidget *parent) : QWidget(parent)
@@ -29,8 +30,11 @@ DirectusMeshRenderer::DirectusMeshRenderer(QWidget *parent) : QWidget(parent)
 
 }
 
-void DirectusMeshRenderer::Initialize()
+void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
 {
+    m_directusCore = directusCore;
+    m_inspector = inspector;
+
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
@@ -43,6 +47,9 @@ void DirectusMeshRenderer::Initialize()
                 "background-position: left;"
                 "padding-left: 20px;"
                 );
+
+    m_optionsButton = new DirectusDropDownButton();
+    m_optionsButton->Initialize();
     //=========================================================
 
     //= CAST SHADOWS ==========================================
@@ -72,6 +79,7 @@ void DirectusMeshRenderer::Initialize()
     //= GRID ==================================================
     // Row 0
     m_gridLayout->addWidget(m_title, 0, 0, 1, 2);
+    m_gridLayout->addWidget(m_optionsButton, 0, 2, 1, 1);
 
     // Row 1
     m_gridLayout->addWidget(m_castShadowsLabel, 1, 0, 1, 1);
@@ -89,7 +97,7 @@ void DirectusMeshRenderer::Initialize()
     m_gridLayout->addWidget(m_line, 4, 0, 1, 2);
     //============================================================
 
-
+    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
     connect(m_castShadowsCheckBox,      SIGNAL(clicked(bool)), this, SLOT(Map()));
     connect(m_receiveShadowsCheckBox,   SIGNAL(clicked(bool)), this, SLOT(Map()));
 
@@ -155,4 +163,16 @@ void DirectusMeshRenderer::Map()
 
     bool receiveShadows = m_receiveShadowsCheckBox->isChecked();
     m_inspectedMeshRenderer->SetReceiveShadows(receiveShadows);
+}
+
+void DirectusMeshRenderer::Remove()
+{
+    if (!m_inspectedMeshRenderer)
+        return;
+
+    GameObject* gameObject = m_inspectedMeshRenderer->g_gameObject;
+    gameObject->RemoveComponent<MeshRenderer>();
+    m_directusCore->Update();
+
+    m_inspector->Inspect(gameObject);
 }

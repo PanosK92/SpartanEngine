@@ -35,20 +35,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusCore.h"
 #include <QLabel>
 #include "Math/Vector4.h"
+#include "DirectusDropDownButton.h"
 //==================================
+
+class DirectusInspector;
 
 class DirectusLight : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusLight(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, QWidget* mainWindow);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
-private:
 
-    //= TITLE ============================
+private:
+    //= TITLE ======================================
     QLabel* m_title;
-    //====================================
+    DirectusDropDownButton* m_optionsButton;
+    //==============================================
 
     //= LIGHT TYPE =======================
     QLabel* m_lightTypeLabel;
@@ -83,6 +87,7 @@ private:
     QValidator* m_validator;
     Light* m_inspectedLight;
     DirectusCore* m_directusCore;
+    DirectusInspector* m_inspector;
     //====================================
 
     void ReflectLightType();
@@ -97,4 +102,5 @@ public slots:
     void MapColor();
     void MapIntensity();
     void MapShadowType();
+    void Remove();
 };

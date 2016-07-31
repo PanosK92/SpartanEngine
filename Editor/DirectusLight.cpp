@@ -19,9 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============
+//= INCLUDES =================
 #include "DirectusLight.h"
-//========================
+#include "DirectusInspector.h"
+//============================
 
 //=============================
 using namespace Directus::Math;
@@ -32,9 +33,11 @@ DirectusLight::DirectusLight(QWidget *parent) : QWidget(parent)
     m_directusCore = nullptr;
 }
 
-void DirectusLight::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
+void DirectusLight::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
 {
     m_directusCore = directusCore;
+    m_inspector = inspector;
+
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
@@ -47,6 +50,9 @@ void DirectusLight::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
                 "background-position: left;"
                 "padding-left: 20px;"
                 );
+
+    m_optionsButton = new DirectusDropDownButton();
+    m_optionsButton->Initialize();
     //=========================================================
 
     //= LIGHT TYPE ============================================
@@ -93,6 +99,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
     //= GRID ======================================================================
     // Row 0
     m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 2, 1, 1);
 
     // Row 1 - LIGHT TYPE
     m_gridLayout->addWidget(m_lightTypeLabel,   1, 0, 1, 1);
@@ -119,6 +126,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
     m_gridLayout->addWidget(m_line, 6, 0, 1, 3);
     //==============================================================================
 
+    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
     connect(m_lightType,    SIGNAL(currentIndexChanged(int)),   this, SLOT(MapLightType()));
     connect(m_range,        SIGNAL(ValueChanged()),             this, SLOT(MapRange()));
     connect(m_color,        SIGNAL(ColorPickingCompleted()),    this, SLOT(MapColor()));
@@ -274,4 +282,16 @@ void DirectusLight::MapShadowType()
     m_inspectedLight->SetShadowType(type);
 
     m_directusCore->Update();
+}
+
+void DirectusLight::Remove()
+{
+    if (!m_inspectedLight)
+        return;
+
+    GameObject* gameObject = m_inspectedLight->g_gameObject;
+    gameObject->RemoveComponent<Light>();
+    m_directusCore->Update();
+
+    m_inspector->Inspect(gameObject);
 }

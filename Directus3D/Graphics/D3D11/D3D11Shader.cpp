@@ -283,17 +283,16 @@ HRESULT D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LP
 		if (errorBlob)
 		{
 			ExportErrorBlobAsText(errorBlob);
-			LOG("Failed to compile shader. File = " + shaderName +
+			LOG_ERROR("Failed to compile shader. File = " + shaderName +
 				", EntryPoint = " + entryPoint +
 				", Target = " + target +
-				". Check shaderError.txt for more details.",
-				Log::Error);
+				". Check shaderError.txt for more details.");
 			DirectusSafeRelease(errorBlob);
 		}
 		else if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
-			LOG("Failed to find shader \"" + shaderName + " \" with path \"" + filePath + "\".", Log::Error);
+			LOG_ERROR("Failed to find shader \"" + shaderName + " \" with path \"" + filePath + "\".");
 		else
-			LOG("An unknown error occured when trying to load and compile \"" + shaderName + "\"", Log::Error);
+			LOG_ERROR("An unknown error occured when trying to load and compile \"" + shaderName + "\"");
 	}
 
 	// Write to blob out

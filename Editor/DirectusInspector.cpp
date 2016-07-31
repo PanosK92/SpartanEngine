@@ -42,33 +42,36 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_transform->Initialize(m_directusCore);
 
     m_camera = new DirectusCamera();
-    m_camera->Initialize(m_directusCore, mainWindow);
+    m_camera->Initialize(m_directusCore, this, mainWindow);
 
     m_meshFilter = new DirectusMeshFilter();
-    m_meshFilter->Initialize(m_directusCore, this);
+    m_meshFilter->Initialize(m_directusCore, this, mainWindow);
 
     m_meshRenderer = new DirectusMeshRenderer();
-    m_meshRenderer->Initialize();
+    m_meshRenderer->Initialize(m_directusCore, this, mainWindow);
 
     m_material = new DirectusMaterial();
     m_material->Initialize(m_directusCore, this, mainWindow);
 
     m_rigidBody = new DirectusRigidBody();
-    m_rigidBody->Initialize(m_directusCore, this);
+    m_rigidBody->Initialize(m_directusCore, this, mainWindow);
 
     m_collider = new DirectusCollider();
-    m_collider->Initialize(m_directusCore, this);
+    m_collider->Initialize(m_directusCore, this, mainWindow);
 
     m_meshCollider = new DirectusMeshCollider();
-    m_meshCollider->Initialize(m_directusCore, this);
+    m_meshCollider->Initialize(m_directusCore, this, mainWindow);
 
     m_light = new DirectusLight();
-    m_light->Initialize(m_directusCore, mainWindow);
+    m_light->Initialize(m_directusCore, this, mainWindow);
 
     m_script = new DirectusScript();
-    m_script->Initialize(m_directusCore);
+    m_script->Initialize(m_directusCore, this, mainWindow);
 
+    // Make the components to stack nicely below each other
+    // instead of spreading to fill the entire space.
     this->layout()->setAlignment(Qt::AlignTop);
+
     this->layout()->addWidget(m_transform);
     this->layout()->addWidget(m_camera);
     this->layout()->addWidget(m_meshFilter);

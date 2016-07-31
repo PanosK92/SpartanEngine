@@ -19,18 +19,21 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//=========================
+//============================
 #include "DirectusScript.h"
-//=========================
+#include "DirectusInspector.h"
+//============================
 
 DirectusScript::DirectusScript(QWidget *parent) : QWidget(parent)
 {
 
 }
 
-void DirectusScript::Initialize(DirectusCore* directusCore)
+void DirectusScript::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
 {
     m_directusCore = directusCore;
+    m_inspector = inspector;
+
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
@@ -43,6 +46,9 @@ void DirectusScript::Initialize(DirectusCore* directusCore)
                 "background-position: left;"
                 "padding-left: 20px;"
                 );
+
+    m_optionsButton = new DirectusDropDownButton();
+    m_optionsButton->Initialize();
     //=========================================================
 
     //= LINE ======================================
@@ -54,12 +60,15 @@ void DirectusScript::Initialize(DirectusCore* directusCore)
 
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ======================================================================
-    // Row 0
+    // Row 0 - TITLE
     m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
 
     // Row 1 - LINE
     m_gridLayout->addWidget(m_line, 1, 0, 1, 1);
-     //============================================================================
+    //==============================================================================
+
+    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -86,18 +95,34 @@ void DirectusScript::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    SetScriptName(m_inspectedScript->GetName());
+    ReflectName();
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusScript::SetScriptName(std::string name)
+void DirectusScript::ReflectName()
 {
-    m_title->setText(QString::fromStdString(name) + " (Script)");
+    if (!m_inspectedScript)
+        return;
+
+    QString name = QString::fromStdString(m_inspectedScript->GetName());
+    m_title->setText(name + " (Script)");
 }
 
 void DirectusScript::Map()
 {
 
+}
+
+void DirectusScript::Remove()
+{
+    if (!m_inspectedScript)
+        return;
+
+    GameObject* gameObject = m_inspectedScript->g_gameObject;
+    gameObject->RemoveComponent<Script>();
+    m_directusCore->Update();
+
+    m_inspector->Inspect(gameObject);
 }

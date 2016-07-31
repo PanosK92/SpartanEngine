@@ -33,22 +33,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusComboLabelText.h"
 #include "DirectusColorPicker.h"
 #include "DirectusCore.h"
-#include <QToolButton>
+#include "DirectusDropDownButton.h"
 //==================================
+
+class DirectusInspector;
 
 class DirectusCamera : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusCamera(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, QWidget* mainWindow);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
-private:
 
-    //= TITLE =======================
+private:
+    //= TITLE ======================================
     QLabel* m_title;
-    QToolButton* m_optionsButton;
-    //===============================
+    DirectusDropDownButton* m_optionsButton;
+    //==============================================
 
     //= BACKGROUND =================================
     QLabel* m_backgroundLabel;
@@ -79,6 +81,7 @@ private:
     QGridLayout* m_gridLayout;
     Camera* m_inspectedCamera;
     DirectusCore* m_directusCore;
+    DirectusInspector* m_inspector;
     //===============================
 
     void ReflectBackground(Directus::Math::Vector4 color);
@@ -93,4 +96,5 @@ public slots:
     void MapFOV();
     void MapNearPlane();
     void MapFarPlane();
+    void Remove();
 };

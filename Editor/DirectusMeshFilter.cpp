@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //=============================
 #include "DirectusMeshFilter.h"
+#include "DirectusInspector.h"
 //=============================
 
 DirectusMeshFilter::DirectusMeshFilter(QWidget *parent) : QWidget(parent)
@@ -28,8 +29,11 @@ DirectusMeshFilter::DirectusMeshFilter(QWidget *parent) : QWidget(parent)
 
 }
 
-void DirectusMeshFilter::Initialize(DirectusCore* directusCore, DirectusInspector* inspector)
+void DirectusMeshFilter::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
 {
+    m_directusCore = directusCore;
+    m_inspector = inspector;
+
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
@@ -42,6 +46,9 @@ void DirectusMeshFilter::Initialize(DirectusCore* directusCore, DirectusInspecto
                 "background-position: left;"
                 "padding-left: 20px;"
                 );
+
+    m_optionsButton = new DirectusDropDownButton();
+    m_optionsButton->Initialize();
     //=========================================================
 
     //= MESH ==================================================
@@ -61,6 +68,7 @@ void DirectusMeshFilter::Initialize(DirectusCore* directusCore, DirectusInspecto
     //= GRID ==================================================
     // Row 0 - TITLE
     m_gridLayout->addWidget(m_title, 0, 0, 1, 2);
+    m_gridLayout->addWidget(m_optionsButton, 0, 2, 1, 1);
 
     // Row 1 - MESH
     m_gridLayout->addWidget(m_meshLabel, 1, 0, 1, 1);
@@ -70,6 +78,7 @@ void DirectusMeshFilter::Initialize(DirectusCore* directusCore, DirectusInspecto
     m_gridLayout->addWidget(m_line, 2, 0, 1, 2);
     //============================================================
 
+    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -96,13 +105,13 @@ void DirectusMeshFilter::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    SetMesh(m_inspectedMeshFilter->GetMesh());
+    ReflectMesh(m_inspectedMeshFilter->GetMesh());
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusMeshFilter::SetMesh(Mesh* mesh)
+void DirectusMeshFilter::ReflectMesh(Mesh* mesh)
 {
     if (!mesh)
         return;
@@ -113,4 +122,16 @@ void DirectusMeshFilter::SetMesh(Mesh* mesh)
 void DirectusMeshFilter::MapMesh()
 {
 
+}
+
+void DirectusMeshFilter::Remove()
+{
+    if (!m_inspectedMeshFilter)
+        return;
+
+    GameObject* gameObject = m_inspectedMeshFilter->g_gameObject;
+    gameObject->RemoveComponent<MeshFilter>();
+    m_directusCore->Update();
+
+    m_inspector->Inspect(gameObject);
 }
