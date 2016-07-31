@@ -55,31 +55,22 @@ public:
 	GameObject* GetMainCamera();
 	void SetAmbientLight(float x, float y, float z);
 	Directus::Math::Vector3 GetAmbientLight();
-	void MakeDirty();
+	void AnalyzeGameObjects();
 
 private:
-	/*------------------------------------------------------------------------------
-							[SCENE ANALYSIS]
-	------------------------------------------------------------------------------*/
-	void AnalyzeGameObjects();
+	// GAMEOBJECT CREATION =======================
+	GameObject* CreateCamera();
+	GameObject* CreateDirectionalLight();
+	//============================================
 
 	std::vector<GameObject*> m_renderables;
 	std::vector<GameObject*> m_lightsDirectional;
 	std::vector<GameObject*> m_lightsPoint;
 
-	/*------------------------------------------------------------------------------
-										[CREATE]
-	------------------------------------------------------------------------------*/
-	GameObject* CreateCamera();
-	GameObject* CreateDirectionalLight();
-
-	/*------------------------------------------------------------------------------
-										[MISC]
-	------------------------------------------------------------------------------*/
 	GameObject* m_mainCamera;
-	bool m_isDirty;
 	Directus::Math::Vector3 m_ambientLight;
 
+	// DEPENDENCIES ==============================
 	TexturePool* m_texturePool;
 	MaterialPool* m_materialPool;
 	MeshPool* m_meshPool;
@@ -87,4 +78,5 @@ private:
 	PhysicsEngine* m_physics;
 	ModelLoader* m_modelLoader;
 	Renderer* m_renderer;
+	//============================================
 };

@@ -191,7 +191,7 @@ Type* GameObject::AddComponent()
 	m_components[typeStr]->g_scriptEngine = m_scriptEngine;
 	m_components[typeStr]->Initialize();
 
-	m_scene->MakeDirty();
+	m_scene->AnalyzeGameObjects();
 
 	return GetComponent<Type>();
 }
@@ -237,7 +237,7 @@ void GameObject::RemoveComponent()
 			delete component;
 			it = m_components.erase(it);
 
-			m_scene->MakeDirty();
+			m_scene->AnalyzeGameObjects();
 
 			return;
 		}

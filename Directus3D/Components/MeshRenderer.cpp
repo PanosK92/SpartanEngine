@@ -66,7 +66,7 @@ void MeshRenderer::Update()
 
 void MeshRenderer::Serialize()
 {
-	Serializer::SaveSTR(m_material->GetID());
+	Serializer::SaveSTR(m_material ? m_material->GetID() : "-1");
 	Serializer::SaveBool(m_castShadows);
 	Serializer::SaveBool(m_receiveShadows);
 }

@@ -66,34 +66,44 @@ bool D3D11Buffer::CreateConstantBuffer(unsigned int size)
 
 bool D3D11Buffer::CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent> vertices)
 {
-	bool result = Create(
-		sizeof(VertexPositionTextureNormalTangent),
-		(unsigned int)vertices.size(),
-		&vertices[0],
-		D3D11_USAGE_DEFAULT,
-		D3D11_BIND_VERTEX_BUFFER,
-		static_cast<D3D11_CPU_ACCESS_FLAG>(0)
-	);
+	bool result = false;
+	
+	if (!vertices.empty())
+	{
+		result = Create(
+			sizeof(VertexPositionTextureNormalTangent),
+			(unsigned int)vertices.size(),
+			&vertices[0],
+			D3D11_USAGE_DEFAULT,
+			D3D11_BIND_VERTEX_BUFFER,
+			static_cast<D3D11_CPU_ACCESS_FLAG>(0)
+		);
+	}
 
 	if (!result)
-		LOG("Failed to create vertex buffer.", Log::Error);
+		LOG_ERROR("Failed to create vertex buffer.");
 
 	return result;
 }
 
 bool D3D11Buffer::CreateIndexBuffer(std::vector<unsigned int> indices)
 {
-	bool result = Create(
-		sizeof(unsigned int),
-		indices.size(),
-		&indices[0], 
-		D3D11_USAGE_DEFAULT,
-		D3D11_BIND_INDEX_BUFFER,
-		static_cast<D3D11_CPU_ACCESS_FLAG>(0)
-	);
+	bool result = false;
+
+	if (!indices.empty())
+	{
+		result = Create(
+			sizeof(unsigned int),
+			indices.size(),
+			&indices[0],
+			D3D11_USAGE_DEFAULT,
+			D3D11_BIND_INDEX_BUFFER,
+			static_cast<D3D11_CPU_ACCESS_FLAG>(0)
+		);
+	}
 
 	if (!result)
-		LOG("Failed to create index buffer.", Log::Error);
+		LOG_ERROR("Failed to create index buffer.");
 
 	return result;
 }

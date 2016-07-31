@@ -67,7 +67,7 @@ void MeshFilter::Update()
 
 void MeshFilter::Serialize()
 {
-	Serializer::SaveSTR(m_meshData->ID);
+	Serializer::SaveSTR(m_meshData ? m_meshData->ID : "-1");
 	Serializer::SaveVector3(m_min);
 	Serializer::SaveVector3(m_max);
 	Serializer::SaveVector3(m_extent);
@@ -248,27 +248,27 @@ Vector3 MeshFilter::GetCenter()
 
 vector<VertexPositionTextureNormalTangent> MeshFilter::GetVertices()
 {
-	return m_meshData->vertices;
+	return m_meshData ? m_meshData->vertices : vector<VertexPositionTextureNormalTangent>();
 }
 
 vector<unsigned int> MeshFilter::GetIndices()
 {
-	return m_meshData->indices;
+	return m_meshData ? m_meshData->indices : vector<unsigned int>();
 }
 
 unsigned int MeshFilter::GetVertexCount()
 {
-	return m_meshData->vertexCount;
+	return m_meshData ? m_meshData->vertexCount : 0;
 }
 
 unsigned int MeshFilter::GetIndexCount()
 {
-	return m_meshData->indexCount;
+	return m_meshData ? m_meshData->indexCount : 0;
 }
 
 unsigned int MeshFilter::GetFaceCount()
 {
-	return m_meshData->faceCount;
+	return m_meshData ? m_meshData->faceCount : 0;
 }
 
 Mesh* MeshFilter::GetMesh()

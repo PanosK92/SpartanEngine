@@ -148,8 +148,11 @@ void MeshPool::NormalizeModelScale(GameObject* rootGameObject)
 // Returns the largest bounding box in an array of meshes
 Mesh* MeshPool::GetLargestBoundingBox(vector<Mesh*> meshes)
 {
+	if (meshes.empty())
+		return nullptr;
+
+	Vector3 largestBoundingBox = Vector3::Zero;
 	Mesh* largestBoundingBoxMesh = meshes[0];
-	Vector3 largestBoundingBox = Vector3(0, 0, 0);
 
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
@@ -167,6 +170,9 @@ Mesh* MeshPool::GetLargestBoundingBox(vector<Mesh*> meshes)
 // Returns the bounding box of a mesh
 Vector3 MeshPool::GetMeshExtent(Mesh* mesh)
 {
+	if (!mesh)
+		return Vector3::Zero;
+
 	Vector3 min, max;
 
 	// find min, max
@@ -191,6 +197,9 @@ Vector3 MeshPool::GetMeshCenter(Vector3 min, Vector3 max)
 // Returns the minimum and maximum point in an array of meshes
 void MeshPool::GetMinMax(Mesh* meshData, Vector3& min, Vector3& max)
 {
+	if (!meshData)
+		return;
+
 	min = Vector3(INFINITY, INFINITY, INFINITY);
 	max = Vector3(-INFINITY, -INFINITY, -INFINITY);
 
