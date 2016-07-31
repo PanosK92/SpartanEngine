@@ -58,12 +58,11 @@ public:
 
 	virtual void getWorldTransform(btTransform& worldTrans) const
 	{
-		Vector3 position = transform->GetPosition(); // engine pos
-		Quaternion rotation = transform->GetRotation(); // engine rotation
-		Vector3 offset = colliderCenter; // engine collider offset
-		offset = rotation * offset;
+		Vector3 position = transform->GetPosition();
+		Quaternion rotation = transform->GetRotation();
+		Vector3 offset = colliderCenter;
 
-		worldTrans.setOrigin(ToBtVector3(position + offset));
+		worldTrans.setOrigin(ToBtVector3(position + rotation * offset));
 		worldTrans.setRotation(ToBtQuaternion(rotation));
 	}
 
@@ -72,12 +71,11 @@ public:
 		if (!transform)
 			return;
 
-		Vector3 btPosition = ToVector3(worldTrans.getOrigin()); // bullet position
-		Quaternion btRotation = ToQuaternion(worldTrans.getRotation()); // bullet rotation
-		Vector3 offset = colliderCenter; // engine collider offset
-		offset = btRotation * offset;
+		Vector3 btPosition = ToVector3(worldTrans.getOrigin());
+		Quaternion btRotation = ToQuaternion(worldTrans.getRotation());
+		Vector3 offset = colliderCenter;
 
-		transform->SetPosition(btPosition - offset);
+		transform->SetPosition(btPosition - btRotation * offset);
 		transform->SetRotation(btRotation);
 	}
 };
@@ -165,7 +163,7 @@ float RigidBody::GetMass() const
 
 void RigidBody::SetMass(float mass)
 {
-	m_mass = mass;
+	m_mass = max(mass, 0.0f);
 	AddBodyToWorld();
 }
 
@@ -177,7 +175,6 @@ float RigidBody::GetDrag() const
 void RigidBody::SetDrag(float drag)
 {
 	m_drag = drag;
-	AddBodyToWorld();
 }
 
 float RigidBody::GetAngularDrag() const
@@ -188,7 +185,6 @@ float RigidBody::GetAngularDrag() const
 void RigidBody::SetAngularDrag(float angularDrag) 
 {
 	m_angularDrag = angularDrag;
-	AddBodyToWorld();
 }
 
 float RigidBody::GetRestitution() const
@@ -199,7 +195,6 @@ float RigidBody::GetRestitution() const
 void RigidBody::SetRestitution(float restitution)
 {
 	m_restitution = restitution;
-	AddBodyToWorld();
 }
 
 bool RigidBody::GetUseGravity() const
@@ -292,9 +287,9 @@ void RigidBody::ApplyTorque(Vector3 torque, ForceMode mode)
 void RigidBody::SetPositionLock(bool lock)
 {
 	if (lock)
-		SetPositionLock(Vector3(1, 1, 1));
+		SetPositionLock(Vector3::One);
 	else
-		SetPositionLock(Vector3(0, 0, 0));
+		SetPositionLock(Vector3::Zero);
 }
 
 void RigidBody::SetPositionLock(Vector3 lock)
@@ -313,9 +308,9 @@ Vector3 RigidBody::GetPositionLock() const
 void RigidBody::SetRotationLock(bool lock)
 {
 	if (lock)
-		SetRotationLock(Vector3(1, 1, 1));
+		SetRotationLock(Vector3::One);
 	else
-		SetRotationLock(Vector3(0, 0, 0));
+		SetRotationLock(Vector3::Zero);
 }
 
 void RigidBody::SetRotationLock(Vector3 lock)
@@ -346,6 +341,9 @@ void RigidBody::SetPosition(Vector3 position)
 	btTransform currentTransform;
 	m_rigidBody->getMotionState()->getWorldTransform(currentTransform);
 	m_rigidBody->getWorldTransform().setOrigin(ToBtVector3(position));
+
+	m_rigidBody->updateInertiaTensor();
+	Activate();
 }
 
 //= ROTATION ============================================================
@@ -362,6 +360,9 @@ void RigidBody::SetRotation(Quaternion rotation)
 	btTransform currentTransform;
 	m_rigidBody->getMotionState()->getWorldTransform(currentTransform);
 	m_rigidBody->getWorldTransform().setRotation(ToBtQuaternion(rotation));
+
+	m_rigidBody->updateInertiaTensor();
+	Activate();
 }
 
 /*------------------------------------------------------------------------------

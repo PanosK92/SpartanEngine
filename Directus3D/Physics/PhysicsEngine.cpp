@@ -53,8 +53,10 @@ PhysicsEngine::~PhysicsEngine()
 	DirectusSafeRelease(m_physicsDebugDraw);
 }
 
-void PhysicsEngine::Initialize()
+void PhysicsEngine::Initialize(Timer* timer)
 {
+	m_timer = timer;
+
 	// build the broadphase
 	m_broadphase = new btDbvtBroadphase();
 
@@ -86,7 +88,7 @@ void PhysicsEngine::Update()
 		return;
 
 	// step physics world
-	m_dynamicsWorld->stepSimulation(1 / 60.f);
+	m_dynamicsWorld->stepSimulation(m_timer->GetDeltaTimeMs());
 
 	if (m_debugDrawEnabled)
 		DebugDraw();

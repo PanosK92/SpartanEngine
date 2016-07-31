@@ -180,12 +180,12 @@ int Socket::GetRenderedMeshesCount()
 
 float Socket::GetDeltaTime()
 {
-	return m_timer->GetDeltaTimeMs();
+	return m_timer->GetDeltaTime();
 }
 
 float Socket::GetRenderTime()
 {
-	return m_renderer->GetRenderTimeMs();
+	return m_renderer->GetRenderTimeMs() / 1000;
 }
 //==============================================================================
 
