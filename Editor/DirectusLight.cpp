@@ -99,7 +99,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore, DirectusInspector* in
     //= GRID ======================================================================
     // Row 0
     m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
-    m_gridLayout->addWidget(m_optionsButton, 0, 2, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
 
     // Row 1 - LIGHT TYPE
     m_gridLayout->addWidget(m_lightTypeLabel,   1, 0, 1, 1);

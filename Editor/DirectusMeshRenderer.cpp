@@ -78,8 +78,8 @@ void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspec
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     // Row 0
-    m_gridLayout->addWidget(m_title, 0, 0, 1, 2);
-    m_gridLayout->addWidget(m_optionsButton, 0, 2, 1, 1);
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
 
     // Row 1
     m_gridLayout->addWidget(m_castShadowsLabel, 1, 0, 1, 1);
@@ -94,7 +94,7 @@ void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspec
     m_gridLayout->addWidget(m_material, 3, 1, 1, 1);
 
     // Row 4 - LINE
-    m_gridLayout->addWidget(m_line, 4, 0, 1, 2);
+    m_gridLayout->addWidget(m_line, 4, 0, 1, 3);
     //============================================================
 
     connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));

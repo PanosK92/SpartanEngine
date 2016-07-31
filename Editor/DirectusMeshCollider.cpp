@@ -72,8 +72,8 @@ void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspec
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     // Row 0 - TITLE
-    m_gridLayout->addWidget(m_title, 0, 0, 1, 2);
-    m_gridLayout->addWidget(m_optionsButton, 0, 3, 1, 1);
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
 
     // Row 1 - CONVEX
     m_gridLayout->addWidget(m_convexLabel, 1, 0, 1, 1);
@@ -87,7 +87,7 @@ void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspec
     m_gridLayout->addWidget(m_line, 3, 0, 1, 2);
     //============================================================
 
-    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
+    connect(m_optionsButton, SIGNAL(Remove()), this, SLOT(Remove()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);

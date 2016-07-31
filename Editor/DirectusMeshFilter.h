@@ -69,7 +69,7 @@ private:
     DirectusInspector* m_inspector;
     //====================================
 
-    void ReflectMesh(Mesh* mesh);
+    void ReflectMesh();
 
 public slots:
     void MapMesh();
