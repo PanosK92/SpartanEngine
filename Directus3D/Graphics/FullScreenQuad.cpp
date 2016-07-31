@@ -38,8 +38,8 @@ FullScreenQuad::FullScreenQuad()
 
 FullScreenQuad::~FullScreenQuad()
 {
-	DirectusSafeRelease(m_vertexBuffer);
-	DirectusSafeRelease(m_indexBuffer);
+	SafeRelease(m_vertexBuffer);
+	SafeRelease(m_indexBuffer);
 }
 
 bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, GraphicsDevice* graphicsDevice)

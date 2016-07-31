@@ -23,25 +23,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Script.h"
 #include "../IO/Serializer.h"
 #include "../IO/FileHelper.h"
+#include "../Core/Globals.h"
 //===========================
 
+//= NAMESPACES =====
 using namespace std;
+//==================
 
 #define SCRIPT_PATH_INVALID "-1"
+#define SCRIPT_NAME_INVALID "-1"
 
 Script::Script()
 {
+	m_scriptInstance = nullptr;
 }
 
 Script::~Script()
 {
-	vector<ScriptInstance*>::iterator it;
-	for (it = m_scriptInstances.begin(); it < m_scriptInstances.end(); ++it)
-	{
-		ScriptInstance* scriptInstance = *it;
-		delete scriptInstance;
-	}
-	m_scriptInstances.clear();
+	SafeDelete(m_scriptInstance);
 }
 
 void Script::Initialize()
@@ -56,94 +55,50 @@ void Script::Remove()
 
 void Script::Update()
 {
-	for (auto i = 0; i < m_scriptInstances.size(); i++)
-	{
-		if (m_scriptInstances[i]->IsInstantiated())
-			m_scriptInstances[i]->ExecuteUpdate();
-	}
+	if (m_scriptInstance->IsInstantiated())
+		m_scriptInstance->ExecuteUpdate();
 }
 
 void Script::Serialize()
 {
-	// save script count
-	Serializer::SaveInt((int)m_scriptInstances.size());
-
-	// save script paths
-	for (auto i = 0; i < m_scriptInstances.size(); i++)
-		Serializer::SaveSTR(m_scriptInstances[i]->GetScriptPath());
+	Serializer::SaveSTR(m_scriptInstance->GetScriptPath());
 }
 
 void Script::Deserialize()
 {
-	// load script count
-	int scriptCount = Serializer::LoadInt();
-
-	// load scripts
-	for (int i = 0; i < scriptCount; i++)
-	{
-		string scriptPath = Serializer::LoadSTR();
-		AddScript(scriptPath, i);
-	}
+	string scriptPath = Serializer::LoadSTR();
+	AddScript(scriptPath);
 }
 
-bool Script::AddScript(string path, int slot)
+bool Script::AddScript(string path)
 {
 	if (path == SCRIPT_PATH_INVALID)
 		return false;
 
 	// Instantiate the script
-	ScriptInstance* scriptInstance = new ScriptInstance();
-	scriptInstance->Instantiate(path, g_gameObject, g_scriptEngine);
+	m_scriptInstance = new ScriptInstance();
+	m_scriptInstance->Instantiate(path, g_gameObject, g_scriptEngine);
 
 	// If the script didn't instantiate successfully, don't bother with anything
-	if (!scriptInstance->IsInstantiated())
+	if (!m_scriptInstance->IsInstantiated())
 	{
-		delete scriptInstance;
+		delete m_scriptInstance;
+		m_scriptInstance = nullptr;
 		return false;
 	}
 
-	// Check for an existing script at the same slot
-	bool replaced = false;
-	for (auto i = 0; i < m_scriptInstances.size(); i++)
-	{
-		if (i != slot)
-			continue;
-
-		ScriptInstance* oldScriptInstance = m_scriptInstances[i];
-
-		// Replace the script at this index with the new one
-		m_scriptInstances.at(i) = scriptInstance;
-		replaced = true;
-
-		// Delete the old one
-		delete oldScriptInstance;
-	}
-
-	// If the script didn't replace any existing one, add it
-	if (!replaced)
-		m_scriptInstances.push_back(scriptInstance);
-
 	// Execute start function
-	scriptInstance->ExecuteStart();
+	m_scriptInstance->ExecuteStart();
 
 	return true;
 }
 
-string Script::GetScriptPath(int slot)
+string Script::GetScriptPath()
 {
-	for (auto i = 0; i < m_scriptInstances.size(); i++)
-	{
-		if (slot == i)
-			return m_scriptInstances[i]->GetScriptPath();
-	}
-
-	return SCRIPT_PATH_INVALID;
+	return m_scriptInstance ? m_scriptInstance->GetScriptPath() : SCRIPT_PATH_INVALID;
 }
 
 string Script::GetName()
 {
-	if (m_scriptInstances.size() != 0)
-		return FileHelper::GetFileNameNoExtensionFromPath(GetScriptPath(0));
-
-	return "";
+	return m_scriptInstance ? FileHelper::GetFileNameNoExtensionFromPath(GetScriptPath()) : SCRIPT_NAME_INVALID;
 }

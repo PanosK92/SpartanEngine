@@ -47,8 +47,8 @@ MeshFilter::MeshFilter()
 
 MeshFilter::~MeshFilter()
 {
-	DirectusSafeDelete(m_vertexBuffer);
-	DirectusSafeDelete(m_indexBuffer);
+	SafeDelete(m_vertexBuffer);
+	SafeDelete(m_indexBuffer);
 }
 
 void MeshFilter::Initialize()
@@ -278,8 +278,8 @@ Mesh* MeshFilter::GetMesh()
 
 void MeshFilter::CreateBuffers()
 {
-	DirectusSafeDelete(m_vertexBuffer);
-	DirectusSafeDelete(m_indexBuffer);
+	SafeDelete(m_vertexBuffer);
+	SafeDelete(m_indexBuffer);
 
 	m_vertexBuffer = new D3D11Buffer();
 	m_vertexBuffer->Initialize(g_graphicsDevice);

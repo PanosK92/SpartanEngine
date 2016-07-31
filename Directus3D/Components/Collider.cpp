@@ -41,8 +41,8 @@ Collider::Collider()
 {
 	m_shapeType = Box;
 	m_shape = nullptr;
-	m_isDirty = false;
 	m_boundingBox = Vector3::One;
+	m_scale = Vector3::One;
 	m_center = Vector3::Zero;
 }
 
@@ -63,7 +63,7 @@ void Collider::Initialize()
 		m_center = mesh->GetCenter();
 	}
 
-	m_isDirty = true;
+	ConstructCollisionShape();
 }
 
 void Collider::Remove()
@@ -73,21 +73,14 @@ void Collider::Remove()
 
 void Collider::Update()
 {
-	if (!m_isDirty)
-		return;
 
-	// This function constructs a btCollisionShape and assigns it to a RigidBody (if attached).
-	// It's important that it's called here and not in Deserialize() as there is a possibility
-	// that the RigidBody has not been attached yet (still loading).
-	ConstructCollisionShape();
-
-	m_isDirty = false;
 }
 
 void Collider::Serialize()
 {
 	Serializer::SaveInt(int(m_shapeType));
 	Serializer::SaveVector3(m_boundingBox);
+	Serializer::SaveVector3(m_scale);
 	Serializer::SaveVector3(m_center);
 }
 
@@ -95,9 +88,10 @@ void Collider::Deserialize()
 {
 	m_shapeType = ColliderShape(Serializer::LoadInt());
 	m_boundingBox = Serializer::LoadVector3();
+	m_scale = Serializer::LoadVector3();
 	m_center = Serializer::LoadVector3();
 
-	m_isDirty = true;
+	ConstructCollisionShape();
 }
 
 //= BOUNDING BOX =============================================
@@ -112,24 +106,21 @@ void Collider::SetBoundingBox(Vector3 boxSize)
 		return;
 
 	m_boundingBox = boxSize.Absolute();
+
 	ConstructCollisionShape();
 }
 
 //= SCALE ========================================================
 Vector3 Collider::GetScale()
 {
-	return m_shape ? ToVector3(m_shape->getLocalScaling()) : Vector3::Zero;
+	return m_scale;
 }
 
 void Collider::SetScale(Vector3 scale)
 {
-	if (!m_shape)
-		return;
+	m_scale = scale;
 
-	if (scale.x == 0 || scale.y == 0 || scale.z == 0)
-		return;
-
-	m_shape->setLocalScaling(ToBtVector3(scale.Absolute()));
+	ConstructCollisionShape();
 }
 
 //= CENTER ========================================================
@@ -142,7 +133,7 @@ void Collider::SetCenter(Vector3 center)
 {
 	m_center = center;
 
-	m_isDirty = true;
+	ConstructCollisionShape();
 }
 
 //= COLLISION SHAPE ================================================
@@ -154,6 +145,7 @@ ColliderShape Collider::GetShapeType()
 void Collider::SetShapeType(ColliderShape type)
 {
 	m_shapeType = type;
+
 	ConstructCollisionShape();
 }
 
@@ -165,32 +157,41 @@ btCollisionShape* Collider::GetBtCollisionShape()
 //= MISC ====================================================================
 void Collider::ConstructCollisionShape()
 {
+	Vector3 boundingBox = m_boundingBox * m_scale;
+
 	// delete old shape (if it exists)
 	if (m_shape)
 	{
+		SetRigidBodyCollisionShape(nullptr);
 		delete m_shape;
 		m_shape = nullptr;
 	}
 
-	// create new shape
+	// Create BOX shape
 	if (m_shapeType == Box)
 	{
-		m_shape = new btBoxShape(ToBtVector3(m_boundingBox));
+		m_shape = new btBoxShape(ToBtVector3(boundingBox));
 	}
-	else if (m_shapeType == Capsule)
+
+	// Create CAPSULE shape
+	if (m_shapeType == Capsule)
 	{
-		float radius = max(m_boundingBox.x, m_boundingBox.z);
-		float height = m_boundingBox.y;
+		float radius = max(boundingBox.x, boundingBox.z);
+		float height = boundingBox.y;
 		m_shape = new btCapsuleShape(radius, height);
 	}
-	else if (m_shapeType == Cylinder)
+
+	// Create CYLINDER shape
+	if (m_shapeType == Cylinder)
 	{
-		m_shape = new btCylinderShape(ToBtVector3(m_boundingBox));
+		m_shape = new btCylinderShape(ToBtVector3(boundingBox));
 	}
-	else if (m_shapeType == Sphere)
+
+	// Create SPHERE shape
+	if (m_shapeType == Sphere)
 	{
-		float radius = max(m_boundingBox.x, m_boundingBox.y);
-		radius = max(radius, m_boundingBox.z);
+		float radius = max(boundingBox.x, boundingBox.y);
+		radius = max(radius, boundingBox.z);
 		m_shape = new btSphereShape(radius);
 	}
 

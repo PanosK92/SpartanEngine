@@ -38,8 +38,8 @@ PostProcessShader::PostProcessShader()
 
 PostProcessShader::~PostProcessShader()
 {
-	DirectusSafeDelete(m_constantBuffer);
-	DirectusSafeDelete(m_shader);
+	SafeDelete(m_constantBuffer);
+	SafeDelete(m_shader);
 }
 
 void PostProcessShader::Initialize(LPCSTR pass, GraphicsDevice* graphicsDevice)

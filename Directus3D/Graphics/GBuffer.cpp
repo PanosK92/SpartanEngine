@@ -42,14 +42,14 @@ GBuffer::GBuffer(GraphicsDevice* graphicsDevice)
 
 GBuffer::~GBuffer()
 {
-	DirectusSafeRelease(m_depthStencilView);
-	DirectusSafeRelease(m_depthStencilBuffer);
+	SafeRelease(m_depthStencilView);
+	SafeRelease(m_depthStencilBuffer);
 
 	for (int i = 0; i < BUFFER_COUNT; i++)
 	{
-		DirectusSafeRelease(m_shaderResourceViewArray[i]);
-		DirectusSafeRelease(m_renderTargetViewArray[i]);
-		DirectusSafeRelease(m_renderTargetTextureArray[i]);
+		SafeRelease(m_shaderResourceViewArray[i]);
+		SafeRelease(m_renderTargetViewArray[i]);
+		SafeRelease(m_renderTargetTextureArray[i]);
 	}
 }
 

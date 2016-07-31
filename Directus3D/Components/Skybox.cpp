@@ -50,7 +50,7 @@ Skybox::Skybox()
 
 Skybox::~Skybox()
 {
-	DirectusSafeRelease(m_irradianceSRV);
+	SafeRelease(m_irradianceSRV);
 }
 
 /*------------------------------------------------------------------------------

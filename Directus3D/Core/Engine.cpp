@@ -127,40 +127,40 @@ void Engine::Shutdown()
 	GameObjectPool::GetInstance().Release();
 
 	// 13 - RENDERER
-	DirectusSafeDelete(m_renderer);
+	SafeDelete(m_renderer);
 
 	// 12 - MODEL LOADER
-	DirectusSafeDelete(m_modelLoader);
+	SafeDelete(m_modelLoader);
 
 	// 11 - MATERIAL POOL
-	DirectusSafeDelete(m_materialPool);
+	SafeDelete(m_materialPool);
 
 	// 10 - TEXTURE POOL
-	DirectusSafeDelete(m_texturePool);
+	SafeDelete(m_texturePool);
 
 	// 9 - IMAGE LOADER
 	ImageLoader::GetInstance().Clear();
 
 	// 8 - MESH POOL
-	DirectusSafeDelete(m_meshPool);
+	SafeDelete(m_meshPool);
 
 	// 7 - SHADER POOL
-	DirectusSafeDelete(m_shaderPool);
+	SafeDelete(m_shaderPool);
 
 	// 6 - SCRIPT ENGINE
-	DirectusSafeDelete(m_scriptEngine);
+	SafeDelete(m_scriptEngine);
 
 	// 5 - PHYSICS ENGINE
-	DirectusSafeDelete(m_physicsEngine);
+	SafeDelete(m_physicsEngine);
 
 	// 4 - INPUT
-	DirectusSafeDelete(m_input);
+	SafeDelete(m_input);
 
 	// 3 - TIMER
-	DirectusSafeDelete(m_timer);
+	SafeDelete(m_timer);
 
 	//2 - D3D11
-	DirectusSafeDelete(m_graphicsDevice);
+	SafeDelete(m_graphicsDevice);
 
 	// 1- DEBUG LOG
 	Log::Release();

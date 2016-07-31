@@ -77,7 +77,7 @@ bool DX8Input::Initialize(HINSTANCE hinstance, HWND hwnd)
 	// Now acquire the keyboard.
 	result = m_keyboard->Acquire();
 	if (FAILED(result))
-		LOG_ERROR("Failed to aquire the keyboard.", Log::Error);
+		LOG_ERROR("Failed to aquire the keyboard.");
 
 	// Initialize the direct input interface for the mouse.
 	result = m_directInput->CreateDevice(GUID_SysMouse, &m_mouse, nullptr);
@@ -90,7 +90,7 @@ bool DX8Input::Initialize(HINSTANCE hinstance, HWND hwnd)
 	// Set the data format for the mouse using the pre-defined mouse data format.
 	result = m_mouse->SetDataFormat(&c_dfDIMouse);
 	if (FAILED(result))
-		LOG("Failed to initialize a DirectInput mouse.", Log::Error);
+		LOG("Failed to initialize a DirectInput mouse.");
 
 	// Set the cooperative level of the mouse to share with other programs.
 	result = m_mouse->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);

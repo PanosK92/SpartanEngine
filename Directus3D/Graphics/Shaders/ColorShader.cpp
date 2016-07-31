@@ -35,8 +35,8 @@ ColorShader::ColorShader()
 
 ColorShader::~ColorShader()
 {
-	DirectusSafeDelete(m_shader);
-	DirectusSafeDelete(m_miscBuffer);
+	SafeDelete(m_shader);
+	SafeDelete(m_miscBuffer);
 }
 
 void ColorShader::Initialize(GraphicsDevice* graphicsDevice)

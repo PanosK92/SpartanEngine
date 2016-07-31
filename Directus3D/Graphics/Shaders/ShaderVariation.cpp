@@ -50,8 +50,8 @@ ShaderVariation::ShaderVariation()
 
 ShaderVariation::~ShaderVariation()
 {
-	DirectusSafeDelete(m_befaultBuffer);
-	DirectusSafeDelete(m_D3D11Shader);
+	SafeDelete(m_befaultBuffer);
+	SafeDelete(m_D3D11Shader);
 }
 
 void ShaderVariation::Initialize(

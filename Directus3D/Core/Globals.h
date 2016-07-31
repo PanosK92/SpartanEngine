@@ -21,12 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-/*------------------------------------------------------------------------------
-							[HELPER FUNCTIONS]
-------------------------------------------------------------------------------*/
-// Safely release a COM object.
+//= A COLLECTION OF SOME HELPFUL FUNCTIONS =================
 template <typename T>
-inline void DirectusSafeRelease(T& ptr)
+void SafeRelease(T& ptr)
 {
 	if (ptr != nullptr)
 	{
@@ -36,7 +33,7 @@ inline void DirectusSafeRelease(T& ptr)
 }
 
 template <typename T>
-inline void DirectusSafeDelete(T& ptr)
+void SafeDelete(T& ptr)
 {
 	if (ptr != nullptr)
 	{
@@ -44,3 +41,4 @@ inline void DirectusSafeDelete(T& ptr)
 		ptr = nullptr;
 	}
 }
+//===========================================================
