@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/GameObjectPool.h"
 #include "../IO/FileHelper.h"
 #include "../IO/Log.h"
-#include "../Core/Settings.h"
 #include "../Graphics//Renderer.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
@@ -39,7 +38,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsEngine.h"
 //=====================================
 
+//= NAMESPACES ================
+using namespace std;
 using namespace Directus::Math;
+//=============================
 
 Scene::Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsEngine* physics, ModelLoader* modelLoader, Renderer* renderer)
 {
@@ -50,9 +52,7 @@ Scene::Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* mes
 	m_scriptEngine = scriptEngine;
 	m_physics = physics;
 	m_modelLoader = modelLoader;
-
 	m_mainCamera = nullptr;
-	m_isDirty = true;
 }
 
 Scene::~Scene()
@@ -65,23 +65,17 @@ void Scene::Initialize()
 	m_ambientLight = Vector3::Zero;
 	m_mainCamera = CreateCamera();
 	CreateDirectionalLight();
-	m_isDirty = true;
+
+	AnalyzeGameObjects();
 }
 
 void Scene::Update()
 {
-	if (!m_isDirty)
-		return;
 
-	AnalyzeGameObjects();
-
-	m_isDirty = false;
 }
 
-/*------------------------------------------------------------------------------
-										[I/O]
-------------------------------------------------------------------------------*/
-bool Scene::SaveToFile(std::string path)
+//= I/O ==============================================================================================
+bool Scene::SaveToFile(string path)
 {
 	Serializer::StartWriting(path);
 
@@ -97,7 +91,7 @@ bool Scene::SaveToFile(std::string path)
 	return true;
 }
 
-bool Scene::LoadFromFile(std::string path)
+bool Scene::LoadFromFile(string path)
 {
 	if (!FileHelper::FileExists(path))
 	{
@@ -117,14 +111,13 @@ bool Scene::LoadFromFile(std::string path)
 
 	Serializer::StopReading();
 
-	m_isDirty = true;
+	AnalyzeGameObjects();
 
 	return true;
 }
+//====================================================================================================
 
-/*------------------------------------------------------------------------------
-									[MISC]
-------------------------------------------------------------------------------*/
+//= MISC =============================================================================================
 void Scene::Clear()
 {
 	m_renderables.clear();
@@ -162,14 +155,6 @@ Vector3 Scene::GetAmbientLight()
 	return m_ambientLight;
 }
 
-void Scene::MakeDirty()
-{
-	m_isDirty = true;
-}
-
-/*------------------------------------------------------------------------------
-							[SCENE ANALYSIS]
-------------------------------------------------------------------------------*/
 void Scene::AnalyzeGameObjects()
 {
 	m_renderables.clear();
@@ -181,11 +166,11 @@ void Scene::AnalyzeGameObjects()
 	m_lightsPoint.clear();
 	m_lightsPoint.shrink_to_fit();
 
-	// It's necessery to not forget to shit this to nullptr,
+	// It's necessery not to forget to set this to nullptr,
 	// otherwise it can end up as a nice dangling pointer :-)
 	m_mainCamera = nullptr;
 
-	std::vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
+	vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
 	for (int i = 0; i < GameObjectPool::GetInstance().GetGameObjectCount(); i++)
 	{
 		GameObject* gameobject = gameObjects[i];
@@ -210,10 +195,9 @@ void Scene::AnalyzeGameObjects()
 
 	m_renderer->Update(m_renderables, m_lightsDirectional, m_lightsPoint);
 }
+//====================================================================================================
 
-/*------------------------------------------------------------------------------
-								[CREATE]
-------------------------------------------------------------------------------*/
+// GAMEOBJECT CREATION ===============================================================================
 GameObject* Scene::CreateCamera()
 {
 	GameObject* camera = new GameObject();
@@ -223,7 +207,7 @@ GameObject* Scene::CreateCamera()
 	camera->AddComponent<Script>()->AddScript("Assets/Scripts/FirstPersonController.as", 0);
 	camera->AddComponent<LineRenderer>();
 	camera->AddComponent<Skybox>();
-	
+
 	return camera;
 }
 
@@ -238,3 +222,4 @@ GameObject* Scene::CreateDirectionalLight()
 
 	return light;
 }
+//====================================================================================================

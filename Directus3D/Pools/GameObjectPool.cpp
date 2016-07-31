@@ -266,7 +266,7 @@ void GameObjectPool::RemoveSingleGameObject(GameObject* gameObject)
 		if ((*it)->GetID() == gameObject->GetID())
 		{
 			it = m_pool.erase(it);
-			m_scene->MakeDirty();
+			m_scene->AnalyzeGameObjects();
 			return;
 		}
 		++it;
@@ -290,5 +290,5 @@ void GameObjectPool::AddGameObjectToPool(GameObject* gameObject)
 	gameObject->Initialize(m_graphicsDevice, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physics, m_scriptEngine);
 	m_pool.push_back(move(smartPtrGameObject));
 
-	m_scene->MakeDirty();
+	m_scene->AnalyzeGameObjects();
 }
