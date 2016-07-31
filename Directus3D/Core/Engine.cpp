@@ -75,7 +75,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 	// 5 - PHYSICS ENGINE
 	m_physicsEngine = new PhysicsEngine();
-	m_physicsEngine->Initialize();
+	m_physicsEngine->Initialize(m_timer);
 
 	// 6 - SCRIPT ENGINE
 	m_scriptEngine = new ScriptEngine(m_timer, m_input);

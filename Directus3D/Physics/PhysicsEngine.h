@@ -21,6 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= INCLUDES =============
+#include "../Core/Timer.h"
+//========================
+
 // Forward declarations to avoid dependencies when used in editor
 class PhysicsDebugDraw;
 class btBroadphaseInterface;
@@ -37,7 +41,7 @@ public:
 	PhysicsEngine();
 	~PhysicsEngine();
 
-	void Initialize();
+	void Initialize(Timer* timer);
 	void Update();
 	void Reset();
 
@@ -69,9 +73,8 @@ private:
 	btConstraintSolver* m_constraintSolver;
 	btDefaultCollisionConfiguration* m_collisionConfiguration;
 	btDiscreteDynamicsWorld* m_dynamicsWorld;
-
 	bool m_debugDrawEnabled;
 	PhysicsDebugDraw* m_physicsDebugDraw;
-
 	float gravity;
+	Timer* m_timer;
 };

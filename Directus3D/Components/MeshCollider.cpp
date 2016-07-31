@@ -69,7 +69,7 @@ void MeshCollider::Remove()
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 
 	if (rigidBody)
-		rigidBody->SetCollisionShape(m_collider);
+		rigidBody->SetCollisionShape(nullptr);
 }
 
 void MeshCollider::Update()

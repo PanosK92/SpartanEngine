@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RigidBody.h"
 #include "../Core/GameObject.h"
 #include "../IO/Serializer.h"
-#include <LinearMath/btVector3.h>
 #include "../Physics/BulletPhysicsHelper.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
@@ -43,7 +42,7 @@ Collider::Collider()
 	m_shapeType = Box;
 	m_shape = nullptr;
 	m_isDirty = false;
-	m_boundingBox = Vector3(1.0, 1.0f, 1.0f);
+	m_boundingBox = Vector3::One;
 	m_center = Vector3::Zero;
 }
 
@@ -119,11 +118,7 @@ void Collider::SetBoundingBox(Vector3 boxSize)
 //= SCALE ========================================================
 Vector3 Collider::GetScale()
 {
-	if (!m_shape)
-		return Vector3(0, 0, 0);
-
-	btVector3 scale = m_shape->getLocalScaling();
-	return Vector3(scale.x(), scale.y(), scale.z());
+	return m_shape ? ToVector3(m_shape->getLocalScaling()) : Vector3::Zero;
 }
 
 void Collider::SetScale(Vector3 scale)
