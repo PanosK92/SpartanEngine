@@ -182,7 +182,7 @@ void DirectusInspector::dropEvent(QDropEvent* event)
 
         // Add a script component and load the script
         Script* scriptComp = m_inspectedGameObject->AddComponent<Script>();
-        scriptComp->AddScript(scriptPath, 0);
+        scriptComp->AddScript(scriptPath);
 
         // Update the engine and the inspector (to reflect the changes)
         m_directusCore->Update();

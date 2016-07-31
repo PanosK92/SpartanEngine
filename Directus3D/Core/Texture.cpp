@@ -47,7 +47,7 @@ Texture::Texture()
 
 Texture::~Texture()
 {
-	DirectusSafeRelease(m_shaderResourceView);
+	SafeRelease(m_shaderResourceView);
 }
 
 void Texture::Serialize() const

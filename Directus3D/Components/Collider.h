@@ -74,8 +74,8 @@ private:
 	ColliderShape m_shapeType;
 	btCollisionShape* m_shape;
 	Directus::Math::Vector3 m_boundingBox;
+	Directus::Math::Vector3 m_scale; // this simply scales the bounding box
 	Directus::Math::Vector3 m_center;
-	bool m_isDirty;
 
 	/*------------------------------------------------------------------------------
 										[MISC]

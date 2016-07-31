@@ -37,8 +37,8 @@ DebugShader::DebugShader()
 
 DebugShader::~DebugShader()
 {
-	DirectusSafeDelete(m_miscBuffer);
-	DirectusSafeDelete(m_shader);
+	SafeDelete(m_miscBuffer);
+	SafeDelete(m_shader);
 }
 
 void DebugShader::Initialize(GraphicsDevice* graphicsDevice)

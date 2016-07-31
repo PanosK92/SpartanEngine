@@ -413,16 +413,16 @@ void D3D11Device::SetBackBufferRenderTarget()
 void D3D11Device::SetResolution(int width, int height)
 {
 	//Release old views and the old depth/stencil buffer.
-	DirectusSafeRelease(m_renderTargetView);
-	DirectusSafeRelease(m_depthStencilView);
-	DirectusSafeRelease(m_depthStencilBuffer);
+	SafeRelease(m_renderTargetView);
+	SafeRelease(m_depthStencilView);
+	SafeRelease(m_depthStencilBuffer);
 
 	//Resize the swap chain and recreate the render target views. 
 	HRESULT hResult = m_swapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
 	ID3D11Texture2D* backBuffer;
 	hResult = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer));
 	hResult = m_device->CreateRenderTargetView(backBuffer, nullptr, &m_renderTargetView);
-	DirectusSafeRelease(backBuffer);
+	SafeRelease(backBuffer);
 
 	CreateDepthStencilBuffer();
 	CreateDepthStencil();

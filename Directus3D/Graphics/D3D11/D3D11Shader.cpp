@@ -46,9 +46,9 @@ D3D11Shader::D3D11Shader()
 
 D3D11Shader::~D3D11Shader()
 {
-	DirectusSafeRelease(m_vertexShader);
-	DirectusSafeRelease(m_pixelShader);
-	DirectusSafeDelete(m_D3D11InputLayout);
+	SafeRelease(m_vertexShader);
+	SafeRelease(m_pixelShader);
+	SafeDelete(m_D3D11InputLayout);
 
 	// delete sampler
 	vector<D3D11Sampler*>::iterator it;
@@ -108,7 +108,7 @@ bool D3D11Shader::Load(string path)
 		&psMacros.front()
 	);
 
-	DirectusSafeRelease(PSBlob);
+	SafeRelease(PSBlob);
 	//==================================================================
 
 	return m_compiled;
@@ -133,7 +133,7 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 
 	// If the creation was successful, release vsBlob else print a message
 	if (m_layoutHasBeenSet)
-		DirectusSafeRelease(m_VSBlob);
+		SafeRelease(m_VSBlob);
 	else
 		LOG("Failed to create vertex input layout for " + FileHelper::GetFileNameFromPath(m_path) + ".", Log::Error);
 
@@ -146,7 +146,7 @@ bool D3D11Shader::AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE tex
 	if (!sampler->Create(filter, textureAddressMode, comparisonFunction, m_graphicsDevice))
 	{
 		LOG("Failed to create shader sampler", Log::Error);
-		DirectusSafeDelete(sampler);
+		SafeDelete(sampler);
 		return false;
 	}
 
@@ -287,7 +287,7 @@ HRESULT D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LP
 				", EntryPoint = " + entryPoint +
 				", Target = " + target +
 				". Check shaderError.txt for more details.");
-			DirectusSafeRelease(errorBlob);
+			SafeRelease(errorBlob);
 		}
 		else if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 			LOG_ERROR("Failed to find shader \"" + shaderName + " \" with path \"" + filePath + "\".");
@@ -386,7 +386,7 @@ vector<D3D11_INPUT_ELEMENT_DESC> D3D11Shader::Reflect(ID3D10Blob* vsBlob) const
 
 		inputLayoutDesc.push_back(elementDesc);
 	}
-	DirectusSafeRelease(reflector);
+	SafeRelease(reflector);
 
 	return inputLayoutDesc;
 }

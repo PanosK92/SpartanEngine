@@ -79,20 +79,20 @@ Renderer::Renderer()
 Renderer::~Renderer()
 {
 	// misc
-	DirectusSafeDelete(m_frustrum);
-	DirectusSafeDelete(m_fullScreenQuad);
-	DirectusSafeDelete(m_GBuffer);
+	SafeDelete(m_frustrum);
+	SafeDelete(m_fullScreenQuad);
+	SafeDelete(m_GBuffer);
 
 	// shaders
-	DirectusSafeDelete(m_shaderDeferred);
-	DirectusSafeDelete(m_shaderDepth);
-	DirectusSafeDelete(m_shaderDebug);
-	DirectusSafeDelete(m_shaderFXAA);
-	DirectusSafeDelete(m_shaderSharpening);
+	SafeDelete(m_shaderDeferred);
+	SafeDelete(m_shaderDepth);
+	SafeDelete(m_shaderDebug);
+	SafeDelete(m_shaderFXAA);
+	SafeDelete(m_shaderSharpening);
 
 	// textures
-	DirectusSafeDelete(m_renderTexPing);
-	DirectusSafeDelete(m_renderTexPong);
+	SafeDelete(m_renderTexPing);
+	SafeDelete(m_renderTexPong);
 }
 
 void Renderer::Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene)
@@ -222,19 +222,19 @@ void Renderer::SetResolution(int width, int height)
 
 	m_graphicsDevice->SetViewport(width, height);
 
-	DirectusSafeDelete(m_GBuffer);
+	SafeDelete(m_GBuffer);
 	m_GBuffer = new GBuffer(m_graphicsDevice);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	DirectusSafeDelete(m_fullScreenQuad);
+	SafeDelete(m_fullScreenQuad);
 	m_fullScreenQuad = new FullScreenQuad;
 	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphicsDevice);
 
-	DirectusSafeDelete(m_renderTexPing);
+	SafeDelete(m_renderTexPing);
 	m_renderTexPing = new D3D11RenderTexture;
 	m_renderTexPing->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	DirectusSafeDelete(m_renderTexPong);
+	SafeDelete(m_renderTexPong);
 	m_renderTexPong = new D3D11RenderTexture;
 	m_renderTexPong->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 }

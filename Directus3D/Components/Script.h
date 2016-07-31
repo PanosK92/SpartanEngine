@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include "../Scripting/ScriptEngine.h"
 #include "../Scripting/ScriptInstance.h"
-
 //======================================
 
 class __declspec(dllexport) Script : public IComponent
@@ -43,11 +42,11 @@ public:
 	virtual void Serialize();
 	virtual void Deserialize();
 
-	bool AddScript(std::string path, int slot);
-	std::string GetScriptPath(int slot);
+	bool AddScript(std::string path);
+	std::string GetScriptPath();
 	std::string GetName();
 
 private:
-	std::vector<ScriptInstance*> m_scriptInstances;
+	ScriptInstance* m_scriptInstance;
 	std::string m_name;
 };

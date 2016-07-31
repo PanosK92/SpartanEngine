@@ -42,8 +42,8 @@ DeferredShader::DeferredShader()
 
 DeferredShader::~DeferredShader()
 {
-	DirectusSafeDelete(m_constantBuffer);
-	DirectusSafeDelete(m_shader);
+	SafeDelete(m_constantBuffer);
+	SafeDelete(m_shader);
 }
 
 void DeferredShader::Initialize(GraphicsDevice* graphicsDevice)

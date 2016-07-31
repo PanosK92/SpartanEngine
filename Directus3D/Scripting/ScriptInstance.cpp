@@ -45,8 +45,8 @@ ScriptInstance::ScriptInstance()
 
 ScriptInstance::~ScriptInstance()
 {
-	DirectusSafeRelease(m_scriptObject);
-	DirectusSafeDelete(m_module);
+	SafeRelease(m_scriptObject);
+	SafeDelete(m_module);
 }
 
 bool ScriptInstance::Instantiate(string path, GameObject* gameObject, ScriptEngine* scriptEngine)

@@ -38,8 +38,8 @@ DepthShader::DepthShader()
 
 DepthShader::~DepthShader()
 {
-	DirectusSafeDelete(m_defaultBuffer);
-	DirectusSafeDelete(m_shader);
+	SafeDelete(m_defaultBuffer);
+	SafeDelete(m_shader);
 }
 
 void DepthShader::Initialize(GraphicsDevice* graphicsDevice)

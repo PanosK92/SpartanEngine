@@ -44,11 +44,11 @@ D3D11RenderTexture::D3D11RenderTexture()
 
 D3D11RenderTexture::~D3D11RenderTexture()
 {
-	DirectusSafeRelease(m_depthStencilView);
-	DirectusSafeRelease(m_depthStencilBuffer);
-	DirectusSafeRelease(m_shaderResourceView);
-	DirectusSafeRelease(m_renderTargetView);
-	DirectusSafeRelease(m_renderTargetTexture);
+	SafeRelease(m_depthStencilView);
+	SafeRelease(m_depthStencilBuffer);
+	SafeRelease(m_shaderResourceView);
+	SafeRelease(m_renderTargetView);
+	SafeRelease(m_renderTargetTexture);
 }
 
 bool D3D11RenderTexture::Initialize(GraphicsDevice* graphicsDevice, int textureWidth, int textureHeight)

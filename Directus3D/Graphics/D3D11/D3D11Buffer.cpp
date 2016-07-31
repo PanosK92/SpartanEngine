@@ -39,7 +39,7 @@ D3D11Buffer::D3D11Buffer()
 
 D3D11Buffer::~D3D11Buffer()
 {
-	DirectusSafeRelease(m_buffer);
+	SafeRelease(m_buffer);
 }
 
 void D3D11Buffer::Initialize(GraphicsDevice* graphicsDevice)

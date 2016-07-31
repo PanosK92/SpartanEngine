@@ -47,12 +47,12 @@ PhysicsWorld::PhysicsWorld()
 
 PhysicsWorld::~PhysicsWorld()
 {
-	DirectusSafeDelete(m_world);
-	DirectusSafeDelete(m_constraintSolver);
-	DirectusSafeDelete(m_broadphase);
-	DirectusSafeDelete(m_dispatcher);
-	DirectusSafeDelete(m_collisionConfiguration);
-	DirectusSafeRelease(m_debugDraw);
+	SafeDelete(m_world);
+	SafeDelete(m_constraintSolver);
+	SafeDelete(m_broadphase);
+	SafeDelete(m_dispatcher);
+	SafeDelete(m_collisionConfiguration);
+	SafeRelease(m_debugDraw);
 }
 
 void PhysicsWorld::Initialize(Timer* timer)

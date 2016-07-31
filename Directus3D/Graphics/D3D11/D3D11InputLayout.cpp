@@ -34,7 +34,7 @@ D3D11InputLayout::D3D11InputLayout()
 
 D3D11InputLayout::~D3D11InputLayout()
 {
-	DirectusSafeRelease(m_ID3D11InputLayout);
+	SafeRelease(m_ID3D11InputLayout);
 }
 
 //= MISC ==================================================
