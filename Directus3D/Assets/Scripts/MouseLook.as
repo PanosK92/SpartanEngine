@@ -11,6 +11,10 @@ class MouseLook
 	Vector2 smoothMouse = Vector2(0.0f, 0.0f);
 	Vector2 mouseRotation = Vector2(0.0f, 0.0f);
 	
+	// misc
+	bool control = false;
+	bool allowToggle = false;
+	
 	// Constructor
 	MouseLook(GameObject @obj)
 	{
@@ -26,6 +30,21 @@ class MouseLook
 	// Update is called once per frame
 	void Update()
 	{	
+		if (input.GetKey(E) && allowToggle)
+		{
+			control = !control;
+			allowToggle = false;
+		}
+		else if (!input.GetKey(E))
+		{
+			allowToggle = true;
+		}
+		
+		if (control)
+			FreeLook();			
+	}
+	void FreeLook()
+	{
 		// Get raw mouse input
 		Vector2 mouseDelta = Vector2(input.GetMousePositionDelta().x, input.GetMousePositionDelta().y);
 	
