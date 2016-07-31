@@ -35,31 +35,23 @@ public:
 	MeshRenderer();
 	~MeshRenderer();
 
-	/*------------------------------------------------------------------------------
-									[INTERFACE]
-	------------------------------------------------------------------------------*/
+	//= ICOMPONENT =============================
 	virtual void Initialize();
 	virtual void Remove();
 	virtual void Update();
 	virtual void Serialize();
 	virtual void Deserialize();
 
-	/*------------------------------------------------------------------------------
-										[MISC]
-	------------------------------------------------------------------------------*/
+	//= MISC ===================================
 	void Render(unsigned int indexCount, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix, Light* dicrectionalLight, Camera* camera) const;
 
-	/*------------------------------------------------------------------------------
-										[PROPERTIES]
-	------------------------------------------------------------------------------*/
+	//= PROPERTIES =============================
 	void SetCastShadows(bool castShadows);
 	bool GetCastShadows() const;
 	void SetReceiveShadows(bool receiveShadows);
 	bool GetReceiveShadows() const;
 
-	/*------------------------------------------------------------------------------
-									[MATERIAL]
-	------------------------------------------------------------------------------*/
+	//= MATERIAL ===============================
 	Material* GetMaterial() const;
 	void SetMaterial(std::string materialID);
 	void SetMaterialStandardDefault();

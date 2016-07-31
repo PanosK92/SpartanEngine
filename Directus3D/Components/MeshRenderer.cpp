@@ -46,9 +46,7 @@ MeshRenderer::~MeshRenderer()
 
 }
 
-/*------------------------------------------------------------------------------
-							[INTERFACE]
-------------------------------------------------------------------------------*/
+//= ICOMPONENT ===============================================================
 void MeshRenderer::Initialize()
 {
 
@@ -77,23 +75,22 @@ void MeshRenderer::Deserialize()
 	m_castShadows = Serializer::LoadBool();
 	m_receiveShadows = Serializer::LoadBool();
 }
+//==============================================================================
 
-/*------------------------------------------------------------------------------
-									[MISC]
-------------------------------------------------------------------------------*/
+//= MISC =======================================================================
 void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix projectionMatrix, Light* dicrectionalLight, Camera* camera) const
 {
 	Material* material = GetMaterial();
 
 	if (!material) // Check if a material exists
 	{
-		LOG("GameObject \"" + g_gameObject->GetName() + "\" has no material. It can't be rendered.");
+		LOG_WARNING("GameObject \"" + g_gameObject->GetName() + "\" has no material. It can't be rendered.");
 		return;
 	}
 
 	if (!material->HasShader()) // Check if the material has a shader
 	{
-		LOG("GameObject \"" + g_gameObject->GetName() + "\" has a material but not a shader associated with it. It can't be rendered.");
+		LOG_WARNING("GameObject \"" + g_gameObject->GetName() + "\" has a material but not a shader associated with it. It can't be rendered.");
 		return;
 	}
 
@@ -119,8 +116,9 @@ void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix pro
 		dicrectionalLight, camera
 	);
 }
+//==============================================================================
 
-//= PROPERTIES =================================================
+//= PROPERTIES =================================================================
 void MeshRenderer::SetCastShadows(bool castShadows)
 {
 	m_castShadows = castShadows;
@@ -140,8 +138,9 @@ bool MeshRenderer::GetReceiveShadows() const
 {
 	return m_receiveShadows;
 }
+//==============================================================================
 
-//= MATERIAL RELATED FUNCTIONS =================================
+//= MATERIAL ===================================================================
 Material* MeshRenderer::GetMaterial() const
 {
 	return m_material;
@@ -169,3 +168,4 @@ bool MeshRenderer::HasMaterial() const
 
 	return true;
 }
+//==============================================================================

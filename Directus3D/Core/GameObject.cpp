@@ -173,8 +173,8 @@ Type* GameObject::AddComponent()
 	if (HasComponent<Type>())
 		return GetComponent<Type>();
 
-	// get component type as string
-	string typeStr(typeid(Type).name());
+
+	string typeStr(typeid(Type).name()); // get component type as string
 	typeStr = typeStr.substr(typeStr.find_first_of(" \t") + 1); // remove word "class"
 
 	// create and initialize the component
@@ -187,7 +187,7 @@ Type* GameObject::AddComponent()
 	m_components[typeStr]->g_materialPool = m_materialPool;
 	m_components[typeStr]->g_texturePool = m_texturePool;
 	m_components[typeStr]->g_shaderPool = m_shaderPool;
-	m_components[typeStr]->g_physics = m_physics;
+	m_components[typeStr]->g_physicsWorld = m_physics;
 	m_components[typeStr]->g_scriptEngine = m_scriptEngine;
 	m_components[typeStr]->Initialize();
 

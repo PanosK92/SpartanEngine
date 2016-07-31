@@ -1,6 +1,5 @@
 //= INCLUDES ================
 #include "LineRenderer.h"
-#include "../Core/Globals.h"
 #include "../IO/Log.h"
 //===========================
 
@@ -10,6 +9,7 @@ LineRenderer::LineRenderer()
 {
 	m_vertexBuffer = nullptr;
 	m_vertices = nullptr;
+	m_vertexIndex = 0;
 }
 
 LineRenderer::~LineRenderer()
@@ -100,7 +100,5 @@ void LineRenderer::UpdateVertexBuffer()
 
 void LineRenderer::ClearVertices()
 {
-	delete[] m_vertices;
-	m_vertices = new VertexPositionColor[m_maxVertices];
 	m_vertexIndex = 0;
 }

@@ -78,7 +78,7 @@ void PhysicsWorld::Initialize(Timer* timer)
 
 void PhysicsWorld::Update()
 {
-	if (!m_world)
+	if (!m_world || !m_timer)
 		return;
 
 	// step physics world
@@ -90,6 +90,9 @@ void PhysicsWorld::Update()
 
 void PhysicsWorld::Reset()
 {
+	if (!m_world)
+		return;
+
 	// delete constraints
 	for (int i = m_world->getNumConstraints() - 1; i >= 0; i--)
 	{
@@ -130,6 +133,9 @@ bool PhysicsWorld::GetDebugDraw()
 
 void PhysicsWorld::DebugDraw()
 {
+	if (!m_world)
+		return;
+
 	m_world->debugDrawWorld();
 }
 

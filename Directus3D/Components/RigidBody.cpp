@@ -109,7 +109,7 @@ void RigidBody::Initialize()
 
 void RigidBody::Remove()
 {
-	g_physics->GetWorld()->removeRigidBody(m_rigidBody);
+	g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody);
 }
 
 void RigidBody::Update()
@@ -424,7 +424,7 @@ void RigidBody::AddBodyToWorld()
 	if (m_rigidBody)
 	{
 		inertia = m_rigidBody->getLocalInertia(); // save the inertia
-		g_physics->GetWorld()->removeRigidBody(m_rigidBody);
+		g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody);
 		delete m_rigidBody;
 		m_rigidBody = nullptr;
 	}
@@ -469,7 +469,7 @@ void RigidBody::AddBodyToWorld()
 	SetRotationLock(m_rotationLock);
 
 	// PHYSICS WORLD - ADD
-	g_physics->GetWorld()->addRigidBody(m_rigidBody);
+	g_physicsWorld->GetWorld()->addRigidBody(m_rigidBody);
 
 	if (m_mass > 0.0f)
 		Activate();
@@ -489,7 +489,7 @@ void RigidBody::RemoveBodyFromWorld()
 
 	if (m_inWorld)
 	{
-		g_physics->GetWorld()->removeRigidBody(m_rigidBody);
+		g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody);
 		m_inWorld = false;
 	}
 }
@@ -499,7 +499,7 @@ void RigidBody::UpdateGravity()
 	if (!m_rigidBody)
 		return;
 
-	btDiscreteDynamicsWorld* world = g_physics->GetWorld();
+	btDiscreteDynamicsWorld* world = g_physicsWorld->GetWorld();
 
 	int flags = m_rigidBody->getFlags();
 	if (m_useGravity)

@@ -49,7 +49,7 @@ public:
 	Scene* g_scene;
 	MeshPool* g_meshPool;
 	MaterialPool* g_materialPool;
-	PhysicsWorld* g_physics;
+	PhysicsWorld* g_physicsWorld;
 	ScriptEngine* g_scriptEngine;
 	TexturePool* g_texturePool;
 	ShaderPool* g_shaderPool;
