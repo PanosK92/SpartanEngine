@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusCore.h"
 #include <QLabel>
 #include "Math/Vector4.h"
+#include "DirectusDropDownButton.h"
 //==================================
 
 class DirectusInspector;
@@ -42,13 +43,14 @@ class DirectusMeshFilter : public QWidget
     Q_OBJECT
 public:
     explicit DirectusMeshFilter(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
 
 private:
-    //= TITLE ============================
+    //= TITLE ======================================
     QLabel* m_title;
-    //====================================
+    DirectusDropDownButton* m_optionsButton;
+    //==============================================
 
     //= MESH =============================
     QLabel* m_meshLabel;
@@ -63,10 +65,13 @@ private:
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
     MeshFilter* m_inspectedMeshFilter;
+    DirectusCore* m_directusCore;
+    DirectusInspector* m_inspector;
     //====================================
 
-    void SetMesh(Mesh* mesh);
+    void ReflectMesh(Mesh* mesh);
 
 public slots:
     void MapMesh();
+    void Remove();
 };

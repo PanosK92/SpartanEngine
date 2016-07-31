@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "DirectusRigidBody.h"
+#include "DirectusInspector.h"
 //============================
 
 //= NAMESPACES ================
@@ -33,7 +34,7 @@ DirectusRigidBody::DirectusRigidBody(QWidget* parent): QWidget(parent)
     m_inspector = nullptr;
 }
 
-void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector* inspector)
+void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
 {
     m_directusCore = directusCore;
     m_inspector = inspector;
@@ -49,6 +50,9 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
                 "background-position: left;"
                 "padding-left: 20px;"
                 );
+
+    m_optionsButton = new DirectusDropDownButton();
+    m_optionsButton->Initialize();
     //=========================================================
 
     //= MASS =============================
@@ -121,6 +125,7 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
 
     // Row 0 - TITLE
     m_gridLayout->addWidget(m_title, row, 0, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 3, 1, 1);
     row++;
 
     // Row 1 - MASS
@@ -172,6 +177,7 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
     m_gridLayout->addWidget(m_line, row, 0, 1, 7);
     //==============================================================================
 
+    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
     connect(m_mass,         SIGNAL(ValueChanged()),     this, SLOT(MapMass()));
     connect(m_drag,         SIGNAL(ValueChanged()),     this, SLOT(MapDrag()));
     connect(m_angularDrag,  SIGNAL(ValueChanged()),     this, SLOT(MapAngularDrag()));
@@ -379,5 +385,17 @@ void DirectusRigidBody::MapFreezeRotation()
     m_inspectedRigidBody->SetRotationLock(Vector3(lockX, lockY, lockZ));
 
     m_directusCore->Update();
+}
+
+void DirectusRigidBody::Remove()
+{
+    if (!m_inspectedRigidBody)
+        return;
+
+    GameObject* gameObject = m_inspectedRigidBody->g_gameObject;
+    gameObject->RemoveComponent<RigidBody>();
+    m_directusCore->Update();
+
+    m_inspector->Inspect(gameObject);
 }
 //==================================================================================

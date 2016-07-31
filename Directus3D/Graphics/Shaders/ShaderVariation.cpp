@@ -123,7 +123,7 @@ void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{
-		LOG("Can't render using a shader variation that hasn't been loaded or failed to compile.", Log::Error);
+		LOG_ERROR("Can't render using a shader variation that hasn't been loaded or failed to compile.");
 		return;
 	}
 

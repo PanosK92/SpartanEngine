@@ -55,7 +55,7 @@ bool ScriptEngine::Initialize()
 	m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	if (!m_scriptEngine)
 	{
-		LOG("Failed to create AngelScript engine.", Log::Error);
+		LOG_ERROR("Failed to create AngelScript engine.");
 		return false;
 	}
 
@@ -173,7 +173,7 @@ void ScriptEngine::LogExceptionInfo(asIScriptContext* ctx)
 	string scriptFile = FileHelper::GetFileNameFromPath(scriptPath);
 	string exceptionLine = to_string(ctx->GetExceptionLineNumber());
 
-	LOG(exceptionDescription + ", at line " + exceptionLine + ", in function " + functionDecleration + ", in script " + scriptFile, Log::Error);
+	LOG_ERROR(exceptionDescription + ", at line " + exceptionLine + ", in function " + functionDecleration + ", in script " + scriptFile);
 }
 
 // This is used for AngelScript error messages
@@ -184,9 +184,9 @@ void ScriptEngine::message_callback(const asSMessageInfo& msg)
 
 	string finalMessage;
 	if (filename != "")
-		finalMessage = "Error: " + filename + " " + message;
+		finalMessage = filename + " " + message;
 	else
-		finalMessage = "Error: " + message;
+		finalMessage = message;
 
-	LOG(finalMessage, Log::Error);
+	LOG_ERROR(finalMessage);
 }

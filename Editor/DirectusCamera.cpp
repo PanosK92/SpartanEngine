@@ -19,10 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES =================
 #include "DirectusCamera.h"
 #include "IO/Log.h"
-//=========================
+#include "DirectusInspector.h"
+//============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -33,9 +34,11 @@ DirectusCamera::DirectusCamera(QWidget *parent) : QWidget(parent)
     m_directusCore = nullptr;
 }
 
-void DirectusCamera::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
+void DirectusCamera::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
 {
     m_directusCore = directusCore;
+    m_inspector = inspector;
+
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
 
@@ -47,16 +50,9 @@ void DirectusCamera::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
                 "background-position: left;"
                 "padding-left: 20px;"
                 );
-    m_optionsButton = new QToolButton();
-    m_optionsButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-    m_optionsButton->setStyleSheet(
-                "background-image: url(:/Images/componentOptions.png);"
-                "background-repeat: no-repeat;"
-                "background-position: center;"
-                "background-color: rgba(0,0,0,0);"
-                "margin-left: 100;"
-                "margin-right: 0;"
-                );
+
+    m_optionsButton = new DirectusDropDownButton();
+    m_optionsButton->Initialize();
     //=========================================================
 
     //= BACKGROUND ============================================
@@ -127,11 +123,12 @@ void DirectusCamera::Initialize(DirectusCore* directusCore, QWidget* mainWindow)
 
     // textChanged(QString) -> emits signal when changed through code
     // textEdit(QString) -> doesn't emit signal when changed through code
-    connect(m_background, SIGNAL(ColorPickingCompleted()), this, SLOT(MapBackground()));
-    connect(m_projectionComboBox, SIGNAL(activated(int)), this, SLOT(MapProjection()));
-    connect(m_fov, SIGNAL(ValueChanged()), this, SLOT(MapFOV()));
-    connect(m_nearPlane, SIGNAL(ValueChanged()), this, SLOT(MapNearPlane()));
-    connect(m_farPlane, SIGNAL(ValueChanged()), this, SLOT(MapFarPlane()));
+    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
+    connect(m_background,           SIGNAL(ColorPickingCompleted()),    this, SLOT(MapBackground()));
+    connect(m_projectionComboBox,   SIGNAL(activated(int)),             this, SLOT(MapProjection()));
+    connect(m_fov,                  SIGNAL(ValueChanged()),             this, SLOT(MapFOV()));
+    connect(m_nearPlane,            SIGNAL(ValueChanged()),             this, SLOT(MapNearPlane()));
+    connect(m_farPlane,             SIGNAL(ValueChanged()),             this, SLOT(MapFarPlane()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -246,4 +243,16 @@ void DirectusCamera::MapFarPlane()
     m_inspectedCamera->SetFarPlane(farPlane);
 
     m_directusCore->Update();
+}
+
+void DirectusCamera::Remove()
+{
+    if (!m_inspectedCamera)
+        return;
+
+    GameObject* gameObject = m_inspectedCamera->g_gameObject;
+    gameObject->RemoveComponent<Camera>();
+    m_directusCore->Update();
+
+    m_inspector->Inspect(gameObject);
 }

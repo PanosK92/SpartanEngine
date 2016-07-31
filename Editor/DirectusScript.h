@@ -31,36 +31,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Script.h"
 #include <QCheckBox>
 #include "DirectusCore.h"
+#include "DirectusDropDownButton.h"
 //==================================
+
+class DirectusInspector;
 
 class DirectusScript : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusScript(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
+
 private:
-
-    //= TITLE ============================
-    QWidget* m_image;
+    //= TITLE ==============================
     QLabel* m_title;
-    //====================================
+    DirectusDropDownButton* m_optionsButton;
+    //======================================
 
-    //= LINE ========================
+    //= LINE ===============================
     QWidget* m_line;
-    //===============================
+    //======================================
 
-    //= MISC =============================
+    //= MISC ===============================
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
     Script* m_inspectedScript;
     DirectusCore* m_directusCore;
-    //====================================
+    DirectusInspector* m_inspector;
+    //======================================
 
-    QLineEdit* CreateQLineEdit();
+    void ReflectName();
 
-    void SetScriptName(std::string name);
 public slots:
     void Map();
+    void Remove();
 };

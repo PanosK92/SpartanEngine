@@ -30,20 +30,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QDoubleValidator>
 #include "Components/MeshRenderer.h"
 #include <QCheckBox>
+#include "DirectusDropDownButton.h"
+#include "DirectusCore.h"
 //==================================
+
+class DirectusInspector;
 
 class DirectusMeshRenderer : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusMeshRenderer(QWidget *parent = 0);
-    void Initialize();
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
-private:
 
-    //= TITLE ============================
+private:
+    //= TITLE ======================================
     QLabel* m_title;
-    //====================================
+    DirectusDropDownButton* m_optionsButton;
+    //==============================================
 
     //= CAST SHADOWS =====================
     QLabel* m_castShadowsLabel;
@@ -68,6 +73,8 @@ private:
     QGridLayout* m_gridLayout;
     QValidator* m_validator;
     MeshRenderer* m_inspectedMeshRenderer;
+    DirectusCore* m_directusCore;
+    DirectusInspector* m_inspector;
     //====================================
 
     void SetCastShadows(bool cast);
@@ -76,4 +83,5 @@ private:
 
 public slots:
     void Map();
+    void Remove();
 };

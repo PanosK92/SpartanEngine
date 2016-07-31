@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QCheckBox>
 #include "DirectusCore.h"
 #include "QComboBox.h"
+#include "DirectusDropDownButton.h"
 //==================================
 
 class DirectusInspector;
@@ -41,14 +42,14 @@ class DirectusCollider : public QWidget
     Q_OBJECT
 public:
     explicit DirectusCollider(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
 private:
 
-    //= TITLE ============================
-    QWidget* m_image;
+    //= TITLE ======================================
     QLabel* m_title;
-    //====================================
+    DirectusDropDownButton* m_optionsButton;
+    //==============================================
 
     //= SHAPE TYPE =======================
     QLabel* m_shapeTypeLabel;
@@ -89,4 +90,5 @@ public slots:
     void MapType();
     void MapCenter();
     void MapSize();
+    void Remove();
 };

@@ -34,11 +34,8 @@ DirectusCollider::DirectusCollider(QWidget *parent) : QWidget(parent)
     m_inspector = nullptr;
 }
 
-void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector* inspector)
+void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
-    m_inspector = inspector;
-
     m_directusCore = directusCore;
     m_inspector = inspector;
 
@@ -53,6 +50,9 @@ void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector*
                 "background-position: left;"
                 "padding-left: 20px;"
                 );
+
+    m_optionsButton = new DirectusDropDownButton();
+    m_optionsButton->Initialize();
     //=========================================================
 
     //= TYPE ==================================================
@@ -97,6 +97,7 @@ void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector*
 
     // Row 0
     m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 3, 1, 1);
     row++;
 
     // Row 1 - TYPE
@@ -128,6 +129,7 @@ void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_gridLayout->addWidget(m_line, row, 0, 1, 7);
     //==============================================================================
 
+    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
     connect(m_shapeType,    SIGNAL(currentIndexChanged(int)),   this, SLOT(MapType()));
     connect(m_centerX,      SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
     connect(m_centerY,      SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
@@ -217,4 +219,16 @@ void DirectusCollider::MapSize()
     m_inspectedCollider->SetBoundingBox(size);
 
     m_directusCore->Update();
+}
+
+void DirectusCollider::Remove()
+{
+    if (!m_inspectedCollider)
+        return;
+
+    GameObject* gameObject = m_inspectedCollider->g_gameObject;
+    gameObject->RemoveComponent<Collider>();
+    m_directusCore->Update();
+
+    m_inspector->Inspect(gameObject);
 }

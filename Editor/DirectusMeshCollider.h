@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusCore.h"
 #include <QLabel>
 #include "Math/Vector4.h"
+#include "DirectusDropDownButton.h"
 //==================================
 
 class DirectusInspector;
@@ -42,13 +43,14 @@ class DirectusMeshCollider : public QWidget
     Q_OBJECT
 public:
     explicit DirectusMeshCollider(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
 
 private:
-    //= TITLE ============================
+    //= TITLE ======================================
     QLabel* m_title;
-    //====================================
+    DirectusDropDownButton* m_optionsButton;
+    //==============================================
 
     //= CONVEX ===========================
     QLabel* m_convexLabel;
@@ -69,6 +71,7 @@ private:
     QValidator* m_validator;
     MeshCollider* m_inspectedMeshCollider;
     DirectusCore* m_directusCore;
+    DirectusInspector* m_inspector;
     //====================================
 
     void ReflectConvex();
@@ -77,4 +80,5 @@ private:
 public slots:
     void MapConvex();
     void MapMesh();
+    void Remove();
 };
