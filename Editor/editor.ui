@@ -941,6 +941,12 @@ text edit background:					414141
           <property name="enabled">
            <bool>true</bool>
           </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="orientation">
            <enum>Qt::Vertical</enum>
           </property>
@@ -949,9 +955,9 @@ text edit background:					414141
           </property>
           <widget class="QWidget" name="widgetUpperLeft" native="true">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
              <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
+             <verstretch>1</verstretch>
             </sizepolicy>
            </property>
            <property name="baseSize">
@@ -2152,7 +2158,13 @@ text edit background:					414141
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>100</height>
+             <height>150</height>
+            </size>
+           </property>
+           <property name="baseSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
             </size>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -2174,14 +2186,14 @@ text edit background:					414141
             <item>
              <widget class="QTabWidget" name="tabProjectConsole">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Ignored">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
               <property name="minimumSize">
                <size>
-                <width>51</width>
+                <width>0</width>
                 <height>0</height>
                </size>
               </property>
@@ -2420,6 +2432,12 @@ QTabBar::tab:last
                </layout>
               </widget>
               <widget class="QWidget" name="tabConsole">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
                <attribute name="title">
                 <string>Console</string>
                </attribute>
@@ -2561,7 +2579,7 @@ QTabBar::tab:last
        </property>
        <property name="minimumSize">
         <size>
-         <width>100</width>
+         <width>270</width>
          <height>0</height>
         </size>
        </property>
@@ -3006,9 +3024,9 @@ QTabBar::tab:last
        </property>
        <widget class="DirectusInspector" name="directusInspector">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
           <horstretch>0</horstretch>
-          <verstretch>1</verstretch>
+          <verstretch>0</verstretch>
          </sizepolicy>
         </property>
         <property name="acceptDrops">

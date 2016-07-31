@@ -97,7 +97,7 @@ void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector*
 
     // Row 0
     m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
-    m_gridLayout->addWidget(m_optionsButton, 0, 3, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
     row++;
 
     // Row 1 - TYPE

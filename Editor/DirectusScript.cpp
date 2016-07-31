@@ -65,10 +65,10 @@ void DirectusScript::Initialize(DirectusCore* directusCore, DirectusInspector* i
     m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
 
     // Row 1 - LINE
-    m_gridLayout->addWidget(m_line, 1, 0, 1, 1);
+    m_gridLayout->addWidget(m_line, 1, 0, 1, 2);
     //==============================================================================
 
-    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
+    connect(m_optionsButton, SIGNAL(Remove()), this, SLOT(Remove()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);

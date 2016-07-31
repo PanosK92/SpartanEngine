@@ -67,8 +67,8 @@ void DirectusMeshFilter::Initialize(DirectusCore* directusCore, DirectusInspecto
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     // Row 0 - TITLE
-    m_gridLayout->addWidget(m_title, 0, 0, 1, 2);
-    m_gridLayout->addWidget(m_optionsButton, 0, 2, 1, 1);
+    m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
 
     // Row 1 - MESH
     m_gridLayout->addWidget(m_meshLabel, 1, 0, 1, 1);
@@ -105,14 +105,18 @@ void DirectusMeshFilter::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    ReflectMesh(m_inspectedMeshFilter->GetMesh());
+    ReflectMesh();
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusMeshFilter::ReflectMesh(Mesh* mesh)
+void DirectusMeshFilter::ReflectMesh()
 {
+    if (!m_inspectedMeshFilter)
+        return;
+
+    Mesh* mesh = m_inspectedMeshFilter->GetMesh();
     if (!mesh)
         return;
 
