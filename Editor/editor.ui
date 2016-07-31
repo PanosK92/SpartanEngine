@@ -2074,7 +2074,7 @@ text edit background:					414141
                         </property>
                         <property name="minimumSize">
                          <size>
-                          <width>400</width>
+                          <width>420</width>
                           <height>0</height>
                          </size>
                         </property>

@@ -45,7 +45,7 @@ public:
 	Renderer();
 	~Renderer();
 
-	void Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene);
+	void Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene);
 	void Render();
 	void SetResolution(int width, int height);
 	void Clear();
@@ -67,7 +67,7 @@ private:
 	Frustrum* m_frustrum;
 	FullScreenQuad* m_fullScreenQuad;
 	Timer* m_timer;
-	PhysicsEngine* m_physics;
+	PhysicsWorld* m_physics;
 	Scene* m_scene;
 	//===============================
 

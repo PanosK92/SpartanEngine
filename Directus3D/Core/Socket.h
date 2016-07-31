@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene.h"
 #include "Timer.h"
 #include "../Input/Input.h"
-#include "../Physics/PhysicsEngine.h"
+#include "../Physics/PhysicsWorld.h"
 #include "../Core/Settings.h"
 #include "../Loading/ImageLoader.h"
 //===================================
@@ -36,7 +36,7 @@ class PhysicsDebugDraw;
 class __declspec(dllexport) Socket
 {
 public:
-	Socket(Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsEngine* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice);
+	Socket(Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice);
 	~Socket();
 
 	//= IO =========================
@@ -87,5 +87,5 @@ private:
 	Input* m_input;
 	TexturePool* m_texturePool;
 	ModelLoader* m_modelLoader;
-	PhysicsEngine* m_physics;
+	PhysicsWorld* m_physics;
 };

@@ -180,7 +180,7 @@
     <ClCompile Include="Math\Vector3.cpp" />
     <ClCompile Include="Math\Vector4.cpp" />
     <ClCompile Include="Physics\PhysicsDebugDraw.cpp" />
-    <ClCompile Include="Physics\PhysicsEngine.cpp" />
+    <ClCompile Include="Physics\PhysicsWorld.cpp" />
     <ClCompile Include="Pools\GameObjectPool.cpp" />
     <ClCompile Include="Pools\MaterialPool.cpp" />
     <ClCompile Include="Pools\MeshPool.cpp" />
@@ -253,7 +253,7 @@
     <ClInclude Include="Math\Vector4.h" />
     <ClInclude Include="Physics\BulletPhysicsHelper.h" />
     <ClInclude Include="Physics\PhysicsDebugDraw.h" />
-    <ClInclude Include="Physics\PhysicsEngine.h" />
+    <ClInclude Include="Physics\PhysicsWorld.h" />
     <ClInclude Include="Pools\GameObjectPool.h" />
     <ClInclude Include="Pools\MaterialPool.h" />
     <ClInclude Include="Pools\MeshPool.h" />

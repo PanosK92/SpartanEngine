@@ -25,7 +25,7 @@ class GameObject;
 class Transform;
 class GraphicsDevice;
 class Scene;
-class PhysicsEngine;
+class PhysicsWorld;
 class ScriptEngine;
 class MeshPool;
 class MaterialPool;
@@ -49,7 +49,7 @@ public:
 	Scene* g_scene;
 	MeshPool* g_meshPool;
 	MaterialPool* g_materialPool;
-	PhysicsEngine* g_physics;
+	PhysicsWorld* g_physics;
 	ScriptEngine* g_scriptEngine;
 	TexturePool* g_texturePool;
 	ShaderPool* g_shaderPool;

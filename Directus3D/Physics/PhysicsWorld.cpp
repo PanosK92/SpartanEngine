@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===================================================================
-#include "PhysicsEngine.h"
+#include "PhysicsWorld.h"
 #include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
 #include <BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h>
 #include <BulletCollision/CollisionDispatch/btCollisionDispatcher.h>
@@ -29,139 +29,111 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "PhysicsDebugDraw.h"
 #include "../Core/Globals.h"
+#include "BulletPhysicsHelper.h"
 //==============================================================================
 
-PhysicsEngine::PhysicsEngine()
+PhysicsWorld::PhysicsWorld()
 {
 	m_broadphase = nullptr;
 	m_dispatcher = nullptr;
 	m_constraintSolver = nullptr;
 	m_collisionConfiguration = nullptr;
-	m_dynamicsWorld = nullptr;
-	m_physicsDebugDraw = nullptr;
+	m_world = nullptr;
+	m_debugDraw = nullptr;
 	m_debugDrawEnabled = false;
-	gravity = -9.81f;
+	m_gravity = Directus::Math::Vector3(0.0f, -9.81f, 0.0f);
+	m_timer = nullptr;
 }
 
-PhysicsEngine::~PhysicsEngine()
+PhysicsWorld::~PhysicsWorld()
 {
-	DirectusSafeDelete(m_dynamicsWorld);
+	DirectusSafeDelete(m_world);
 	DirectusSafeDelete(m_constraintSolver);
 	DirectusSafeDelete(m_broadphase);
 	DirectusSafeDelete(m_dispatcher);
 	DirectusSafeDelete(m_collisionConfiguration);
-	DirectusSafeRelease(m_physicsDebugDraw);
+	DirectusSafeRelease(m_debugDraw);
 }
 
-void PhysicsEngine::Initialize(Timer* timer)
+void PhysicsWorld::Initialize(Timer* timer)
 {
 	m_timer = timer;
 
-	// build the broadphase
 	m_broadphase = new btDbvtBroadphase();
-
-	// set up the collision configuration and dispatcher
 	m_collisionConfiguration = new btDefaultCollisionConfiguration();
 	m_dispatcher = new btCollisionDispatcher(m_collisionConfiguration);
-
-	// the actual physics solver
 	m_constraintSolver = new btSequentialImpulseConstraintSolver;
-
-	// the world
-	m_dynamicsWorld = new btDiscreteDynamicsWorld(m_dispatcher, m_broadphase, m_constraintSolver, m_collisionConfiguration);
-	m_dynamicsWorld->setGravity(btVector3(0, gravity, 0));
-
+	m_world = new btDiscreteDynamicsWorld(m_dispatcher, m_broadphase, m_constraintSolver, m_collisionConfiguration);
+	
 	// create an implementation of the btIDebugDraw interface
-	m_physicsDebugDraw = new PhysicsDebugDraw();
-
-	// set the debug draw mode
+	m_debugDraw = new PhysicsDebugDraw();
 	int debugMode = btIDebugDraw::DBG_DrawWireframe | btIDebugDraw::DBG_DrawConstraintLimits | btIDebugDraw::DBG_DrawConstraints;
-	m_physicsDebugDraw->setDebugMode(debugMode);
+	m_debugDraw->setDebugMode(debugMode);
 
-	// pass the btIDebugDraw interface implementation to Bullet
-	m_dynamicsWorld->setDebugDrawer(m_physicsDebugDraw);
+	m_world->setGravity(ToBtVector3(m_gravity));
+	m_world->getDispatchInfo().m_useContinuous = true;
+	m_world->getSolverInfo().m_splitImpulse = false;
+	m_world->setDebugDrawer(m_debugDraw);
 }
 
-void PhysicsEngine::Update()
+void PhysicsWorld::Update()
 {
-	if (!m_dynamicsWorld)
+	if (!m_world)
 		return;
 
 	// step physics world
-	m_dynamicsWorld->stepSimulation(m_timer->GetDeltaTimeMs());
+	m_world->stepSimulation(m_timer->GetDeltaTimeMs());
 
 	if (m_debugDrawEnabled)
 		DebugDraw();
 }
 
-void PhysicsEngine::Reset()
+void PhysicsWorld::Reset()
 {
 	// delete constraints
-	for (int i = m_dynamicsWorld->getNumConstraints() - 1; i >= 0; i--)
+	for (int i = m_world->getNumConstraints() - 1; i >= 0; i--)
 	{
-		btTypedConstraint* constraint = m_dynamicsWorld->getConstraint(i);
-		m_dynamicsWorld->removeConstraint(constraint);
+		btTypedConstraint* constraint = m_world->getConstraint(i);
+		m_world->removeConstraint(constraint);
 		delete constraint;
 	}
 
 	// remove the rigidbodies from the dynamics world and delete them
-	for (int i = m_dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
+	for (int i = m_world->getNumCollisionObjects() - 1; i >= 0; i--)
 	{
-		btCollisionObject* obj = m_dynamicsWorld->getCollisionObjectArray()[i];
+		btCollisionObject* obj = m_world->getCollisionObjectArray()[i];
 		btRigidBody* body = btRigidBody::upcast(obj);
 		if (body && body->getMotionState())
 		{
 			delete body->getMotionState();
 		}
-		m_dynamicsWorld->removeCollisionObject(obj);
+		m_world->removeCollisionObject(obj);
 		delete obj;
 	}
 }
 
-btDiscreteDynamicsWorld* PhysicsEngine::GetWorld()
+btDiscreteDynamicsWorld* PhysicsWorld::GetWorld()
 {
-	return m_dynamicsWorld;
-}
-
-//= RIGIDBODY ==================================================================
-void PhysicsEngine::AddRigidBody(btRigidBody* rigidBody)
-{
-	m_dynamicsWorld->addRigidBody(rigidBody);
-}
-
-void PhysicsEngine::RemoveRigidBody(btRigidBody* rigidBody)
-{
-	m_dynamicsWorld->removeRigidBody(rigidBody);
-}
-
-//= CONSTRAINT =================================================================
-void PhysicsEngine::AddConstraint(btTypedConstraint* constraint)
-{
-	m_dynamicsWorld->addConstraint(constraint);
-}
-
-void PhysicsEngine::RemoveConstraint(btTypedConstraint* constraint)
-{
-	m_dynamicsWorld->removeConstraint(constraint);
+	return m_world;
 }
 
 //= DEBUG DRAW ==================================================================
-void PhysicsEngine::SetDebugDraw(bool enable)
+void PhysicsWorld::SetDebugDraw(bool enable)
 {
 	m_debugDrawEnabled = enable;
 }
 
-bool PhysicsEngine::GetDebugDraw()
+bool PhysicsWorld::GetDebugDraw()
 {
 	return m_debugDrawEnabled;
 }
 
-void PhysicsEngine::DebugDraw()
+void PhysicsWorld::DebugDraw()
 {
-	m_dynamicsWorld->debugDrawWorld();
+	m_world->debugDrawWorld();
 }
 
-PhysicsDebugDraw* PhysicsEngine::GetPhysicsDebugDraw()
+PhysicsDebugDraw* PhysicsWorld::GetPhysicsDebugDraw()
 {
-	return m_physicsDebugDraw;
+	return m_debugDraw;
 }

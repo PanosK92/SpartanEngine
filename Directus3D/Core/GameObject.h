@@ -34,7 +34,7 @@ public:
 	GameObject();
 	~GameObject();
 
-	void Initialize(GraphicsDevice* graphicsDevice, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine);
+	void Initialize(GraphicsDevice* graphicsDevice, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
 	void Update();
 
 	std::string GetName();
@@ -85,7 +85,7 @@ private:
 	MaterialPool* m_materialPool;
 	TexturePool* m_texturePool;
 	ShaderPool* m_shaderPool;
-	PhysicsEngine* m_physics;
+	PhysicsWorld* m_physics;
 	ScriptEngine* m_scriptEngine;
 
 	/*------------------------------------------------------------------------------

@@ -21,11 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============
+//= INCLUDES ===============
 #include "../Core/Timer.h"
-//========================
+#include "../Math/Vector3.h"
+//==========================
 
 // Forward declarations to avoid dependencies when used in editor
+class btVector3;
 class PhysicsDebugDraw;
 class btBroadphaseInterface;
 class btRigidBody;
@@ -35,29 +37,17 @@ class btConstraintSolver;
 class btDefaultCollisionConfiguration;
 class btDiscreteDynamicsWorld;
 
-class PhysicsEngine
+class PhysicsWorld
 {
 public:
-	PhysicsEngine();
-	~PhysicsEngine();
+	PhysicsWorld();
+	~PhysicsWorld();
 
 	void Initialize(Timer* timer);
 	void Update();
 	void Reset();
 
 	btDiscreteDynamicsWorld* GetWorld();
-
-	/*------------------------------------------------------------------------------
-								[RIGIDBODY]
-	------------------------------------------------------------------------------*/
-	void AddRigidBody(btRigidBody* rigidBody);
-	void RemoveRigidBody(btRigidBody* rigidBody);
-
-	/*------------------------------------------------------------------------------
-								[CONSTRAINT]
-	------------------------------------------------------------------------------*/
-	void AddConstraint(btTypedConstraint* constraint);
-	void RemoveConstraint(btTypedConstraint* constraint);
 
 	/*------------------------------------------------------------------------------
 								[DEBUG DRAW]
@@ -72,9 +62,9 @@ private:
 	btCollisionDispatcher* m_dispatcher;
 	btConstraintSolver* m_constraintSolver;
 	btDefaultCollisionConfiguration* m_collisionConfiguration;
-	btDiscreteDynamicsWorld* m_dynamicsWorld;
+	btDiscreteDynamicsWorld* m_world;
 	bool m_debugDrawEnabled;
-	PhysicsDebugDraw* m_physicsDebugDraw;
-	float gravity;
+	PhysicsDebugDraw* m_debugDraw;
+	Directus::Math::Vector3 m_gravity;
 	Timer* m_timer;
 };
