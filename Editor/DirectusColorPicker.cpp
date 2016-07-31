@@ -40,7 +40,29 @@ void DirectusColorPicker::Initialize(QWidget* mainWindow)
     m_mainWindow = mainWindow;
     m_button = new QPushButton();
 
-    connect(m_button, SIGNAL(pressed()), this, SLOT(GetColorFromColorPicker()));
+    m_colorDialog = new QColorDialog(m_mainWindow);
+    m_colorDialog->setWindowTitle("Color");
+    m_colorDialog->setOptions(QColorDialog::DontUseNativeDialog | QColorDialog::ShowAlphaChannel);
+    m_colorDialog->setStyleSheet(
+                "QPushButton"
+                "{"
+                    "background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(92, 92, 92, 100), stop:1 rgba(92, 92, 92, 255));"
+                    "border-radius: 2px;"
+                    "border-color: #575757;"
+                    "border-width: 1px;"
+                    "border-style: solid;"
+                "}"
+                "QPushButton:pressed"
+                "{"
+                "background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(92, 92, 92, 255), stop:1 rgba(92, 92, 92, 100));"
+                "}"
+                "QLabel"
+                "{"
+                    "padding-left: 3px;"
+                "}"
+                );
+
+    connect(m_button, SIGNAL(pressed()), this, SLOT(ShowColorPickerWindow()));
 }
 
 Vector4 DirectusColorPicker::GetColor()
@@ -65,22 +87,31 @@ QPushButton* DirectusColorPicker::GetWidget()
     return m_button;
 }
 
-void DirectusColorPicker::GetColorFromColorPicker()
+void DirectusColorPicker::ShowColorPickerWindow()
 {
     emit ColorPickingStarted();
 
-    // Color picker options.
-    QColorDialog::ColorDialogOptions options = QColorDialog::DontUseNativeDialog | QColorDialog::ShowAlphaChannel;
+    m_colorDialog->setCurrentColor(QColor(m_color.x * 255.0f, m_color.y * 255.0f, m_color.z * 255.0f, m_color.w * 255.0f));
+    m_colorDialog->exec();
 
-    // Save original color.
-    QColor originalColor = QColor(m_color.x * 255.0f, m_color.y * 255.0f, m_color.z * 255.0f, m_color.w * 255.0f);
+    connect(m_colorDialog, SIGNAL(accepted()), this, SLOT(AcceptColorPicking()));
+    connect(m_colorDialog, SIGNAL(rejected()), this, SLOT(RejectColorPicking()));
 
-    // Open color picker with the original color, preselected.
-    QColor newColor = QColorDialog::getColor(originalColor, m_mainWindow, "Select Color", options);
+    emit ColorPickingCompleted();
+}
 
-    // Set the color picker's color as the current color.
-    Vector4 color = Vector4(newColor.redF(), newColor.greenF(), newColor.blueF(), newColor.alphaF());
-    SetColor(color);
+void DirectusColorPicker::AcceptColorPicking()
+{
+    QColor color = m_colorDialog->selectedColor();
+    Vector4 colorV4 = Vector4(color.redF(), color.greenF(), color.blueF(), color.alphaF());
 
-    emit ColorPickingCompleted();  
+    // Set the color of the widget as the selected color.
+    SetColor(colorV4);
+
+    emit ColorPickingCompleted();
+}
+
+void DirectusColorPicker::RejectColorPicking()
+{
+    emit ColorPickingRejected();
 }
