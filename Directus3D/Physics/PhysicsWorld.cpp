@@ -81,8 +81,8 @@ void PhysicsWorld::Update()
 	if (!m_world || !m_timer)
 		return;
 
-	// step physics world
-	m_world->stepSimulation(m_timer->GetDeltaTimeMs());
+	// Step the physics world
+	m_world->stepSimulation(m_timer->GetDeltaTime());
 
 	if (m_debugDrawEnabled)
 		DebugDraw();
