@@ -523,17 +523,6 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     actionCamera.setEnabled(true);
     //=================================================
 
-    //= SEPERATORS ===============
-    QAction seperatorA(this);
-    seperatorA.setSeparator(true);
-
-    QAction seperatorB(this);
-    seperatorB.setSeparator(true);
-
-    QAction seperatorC(this);
-    seperatorC.setSeparator(true);
-    //============================
-
     //= SIGNAL - SLOT connections =========================================================
     connect(&actionRename,              SIGNAL(triggered()), this,  SLOT(RenameSelected()));
     connect(&actionDelete,              SIGNAL(triggered()), this,  SLOT(DeleteSelected()));
@@ -547,13 +536,13 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
 
     contextMenu.addAction(&actionCopy);
     contextMenu.addAction(&actionPaste);
-    contextMenu.addAction(&seperatorA);
+    contextMenu.addSeparator();
     contextMenu.addAction(&actionRename);
     contextMenu.addAction(&actionDuplicate);
     contextMenu.addAction(&actionDelete);
-    contextMenu.addAction(&seperatorB);
+    contextMenu.addSeparator();
     contextMenu.addAction(&actionCreateEmpty);
-    contextMenu.addAction(&seperatorC);
+    contextMenu.addSeparator();
     contextMenu.addMenu(&menu3DObject);
     contextMenu.addMenu(&menuLight);
     contextMenu.addAction(&actionCamera);

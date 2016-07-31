@@ -48,7 +48,7 @@ void DirectusMeshFilter::Initialize(DirectusCore* directusCore, DirectusInspecto
                 );
 
     m_optionsButton = new DirectusDropDownButton();
-    m_optionsButton->Initialize();
+    m_optionsButton->Initialize(mainWindow);
     //=========================================================
 
     //= MESH ==================================================

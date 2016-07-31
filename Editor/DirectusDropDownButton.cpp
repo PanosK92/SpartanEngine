@@ -30,8 +30,9 @@ DirectusDropDownButton::DirectusDropDownButton(QWidget *parent) : QPushButton(pa
 
 }
 
-void DirectusDropDownButton::Initialize()
+void DirectusDropDownButton::Initialize(QWidget* mainWindow)
 {
+    m_mainWindow = mainWindow;
     this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
     this->setStyleSheet(
                 "background-image: url(:/Images/componentOptions.png);"
@@ -47,21 +48,21 @@ void DirectusDropDownButton::Initialize()
 
 void DirectusDropDownButton::ShowContextMenu()
 {
-    QAction actionReset("Reset", this);
-    QAction seperator(this);
-    QAction actionRemove("Remove Component", this);
+    QAction actionReset("Reset", m_mainWindow);
+    actionReset.setEnabled(false);
+    QAction actionRemove("Remove Component", m_mainWindow);
 
     //= CONNECT ===================================================================
     connect(&actionReset,  SIGNAL(triggered()), this,  SLOT(ResetTransponder()));
     connect(&actionRemove,  SIGNAL(triggered()), this,  SLOT(RemoveTransponder()));
     //=============================================================================
 
-    QMenu contextMenu(tr("Context menu"), this);
+    QMenu contextMenu(tr("Context menu"), m_mainWindow);
     contextMenu.addAction(&actionReset);
-    contextMenu.addAction(&seperator);
+    contextMenu.addSeparator();
     contextMenu.addAction(&actionRemove);
 
-    contextMenu.exec(mapToGlobal(QCursor::pos()));
+    contextMenu.exec(QCursor::pos());
 }
 
 void DirectusDropDownButton::ResetTransponder()

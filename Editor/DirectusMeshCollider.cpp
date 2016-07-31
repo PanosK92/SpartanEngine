@@ -48,7 +48,7 @@ void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspec
                 );
 
     m_optionsButton = new DirectusDropDownButton();
-    m_optionsButton->Initialize();
+    m_optionsButton->Initialize(mainWindow);
     //=========================================================
 
     //= CONVEX ================================================
