@@ -29,8 +29,11 @@ class DirectusDropDownButton : public QPushButton
 {
     Q_OBJECT
 public:
-    explicit DirectusDropDownButton(QWidget *parent = 0);
-    void Initialize();
+    explicit DirectusDropDownButton(QWidget* parent = 0);
+    void Initialize(QWidget* mainWindow);
+
+private:
+    QWidget* m_mainWindow;
 
 signals:
     void Reset();

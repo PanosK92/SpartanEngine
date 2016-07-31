@@ -52,7 +52,7 @@ void DirectusLight::Initialize(DirectusCore* directusCore, DirectusInspector* in
                 );
 
     m_optionsButton = new DirectusDropDownButton();
-    m_optionsButton->Initialize();
+    m_optionsButton->Initialize(mainWindow);
     //=========================================================
 
     //= LIGHT TYPE ============================================

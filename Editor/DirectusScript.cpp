@@ -48,7 +48,7 @@ void DirectusScript::Initialize(DirectusCore* directusCore, DirectusInspector* i
                 );
 
     m_optionsButton = new DirectusDropDownButton();
-    m_optionsButton->Initialize();
+    m_optionsButton->Initialize(mainWindow);
     //=========================================================
 
     //= LINE ======================================
