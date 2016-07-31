@@ -175,6 +175,7 @@ float RigidBody::GetDrag() const
 void RigidBody::SetDrag(float drag)
 {
 	m_drag = drag;
+	AddBodyToWorld();
 }
 
 float RigidBody::GetAngularDrag() const
@@ -185,6 +186,7 @@ float RigidBody::GetAngularDrag() const
 void RigidBody::SetAngularDrag(float angularDrag) 
 {
 	m_angularDrag = angularDrag;
+	AddBodyToWorld();
 }
 
 float RigidBody::GetRestitution() const
@@ -195,6 +197,7 @@ float RigidBody::GetRestitution() const
 void RigidBody::SetRestitution(float restitution)
 {
 	m_restitution = restitution;
+	AddBodyToWorld();
 }
 
 bool RigidBody::GetUseGravity() const

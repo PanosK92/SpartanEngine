@@ -73,6 +73,12 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
     m_angularDrag->AlignLabelToTheLeft();
     //====================================
 
+    //= RESTITUTION ======================
+    m_restitution = new DirectusComboLabelText();
+    m_restitution->Initialize("Restitution");
+    m_restitution->AlignLabelToTheLeft();
+    //====================================
+
     //= USE GRAVITY  =====================
     m_useGravityLabel = new QLabel("Use Gravity");
     m_useGravity = new QCheckBox();
@@ -143,17 +149,22 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
     m_gridLayout->addWidget(m_angularDrag->GetTextWidget(),     row, 1, 1, 6);
     row++;
 
-    // Row 4 - USE GRAVITY
+    // Row 4 - RESTITUION
+    m_gridLayout->addWidget(m_restitution->GetLabelWidget(),    row, 0, 1, 1);
+    m_gridLayout->addWidget(m_restitution->GetTextWidget(),     row, 1, 1, 6);
+    row++;
+
+    // Row 5 - USE GRAVITY
     m_gridLayout->addWidget(m_useGravityLabel,  row, 0, 1, 1);
     m_gridLayout->addWidget(m_useGravity,       row, 1, 1, 1);
     row++;
 
-    // Row 5 - IS KINEMATIC
+    // Row 6 - IS KINEMATIC
     m_gridLayout->addWidget(m_isKinematicLabel, row, 0, 1, 1);
     m_gridLayout->addWidget(m_isKinematic,      row, 1, 1, 1);
     row++;
 
-    // Row 6 - FREEZE POSITION
+    // Row 7 - FREEZE POSITION
     m_gridLayout->addWidget(m_freezePosLabel,   row, 0, 1, 1);
     m_gridLayout->addWidget(m_freezePosXLabel,  row, 1, 1, 1);
     m_gridLayout->addWidget(m_freezePosX,       row, 2, 1, 1);
@@ -163,7 +174,7 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
     m_gridLayout->addWidget(m_freezePosZ,       row, 6, 1, 1);
     row++;
 
-    // Row 7 - FREEZE ROTATION
+    // Row 8 - FREEZE ROTATION
     m_gridLayout->addWidget(m_freezeRotLabel,   row, 0, 1, 1);
     m_gridLayout->addWidget(m_freezeRotXLabel,  row, 1, 1, 1);
     m_gridLayout->addWidget(m_freezeRotX,       row, 2, 1, 1);
@@ -173,22 +184,23 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
     m_gridLayout->addWidget(m_freezeRotZ,       row, 6, 1, 1);
     row++;
 
-    // Row 8 - LINE
+    // Row 9 - LINE
     m_gridLayout->addWidget(m_line, row, 0, 1, 7);
     //==============================================================================
 
-    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
-    connect(m_mass,         SIGNAL(ValueChanged()),     this, SLOT(MapMass()));
-    connect(m_drag,         SIGNAL(ValueChanged()),     this, SLOT(MapDrag()));
-    connect(m_angularDrag,  SIGNAL(ValueChanged()),     this, SLOT(MapAngularDrag()));
-    connect(m_useGravity,   SIGNAL(clicked(bool)),      this, SLOT(MapUseGravity()));
-    connect(m_isKinematic,  SIGNAL(clicked(bool)),      this, SLOT(MapIsKinematic()));
-    connect(m_freezePosX,   SIGNAL(clicked(bool)),      this, SLOT(MapFreezePosition()));
-    connect(m_freezePosY,   SIGNAL(clicked(bool)),      this, SLOT(MapFreezePosition()));
-    connect(m_freezePosZ,   SIGNAL(clicked(bool)),      this, SLOT(MapFreezePosition()));
-    connect(m_freezeRotX,   SIGNAL(clicked(bool)),      this, SLOT(MapFreezeRotation()));
-    connect(m_freezeRotY,   SIGNAL(clicked(bool)),      this, SLOT(MapFreezeRotation()));
-    connect(m_freezeRotZ,   SIGNAL(clicked(bool)),      this, SLOT(MapFreezeRotation()));
+    connect(m_optionsButton,    SIGNAL(Remove()),           this, SLOT(Remove()));
+    connect(m_mass,             SIGNAL(ValueChanged()),     this, SLOT(MapMass()));
+    connect(m_drag,             SIGNAL(ValueChanged()),     this, SLOT(MapDrag()));
+    connect(m_angularDrag,      SIGNAL(ValueChanged()),     this, SLOT(MapAngularDrag()));
+    connect(m_restitution,      SIGNAL(ValueChanged()),     this, SLOT(MapRestitution()));
+    connect(m_useGravity,       SIGNAL(clicked(bool)),      this, SLOT(MapUseGravity()));
+    connect(m_isKinematic,      SIGNAL(clicked(bool)),      this, SLOT(MapIsKinematic()));
+    connect(m_freezePosX,       SIGNAL(clicked(bool)),      this, SLOT(MapFreezePosition()));
+    connect(m_freezePosY,       SIGNAL(clicked(bool)),      this, SLOT(MapFreezePosition()));
+    connect(m_freezePosZ,       SIGNAL(clicked(bool)),      this, SLOT(MapFreezePosition()));
+    connect(m_freezeRotX,       SIGNAL(clicked(bool)),      this, SLOT(MapFreezeRotation()));
+    connect(m_freezeRotY,       SIGNAL(clicked(bool)),      this, SLOT(MapFreezeRotation()));
+    connect(m_freezeRotZ,       SIGNAL(clicked(bool)),      this, SLOT(MapFreezeRotation()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -217,6 +229,7 @@ void DirectusRigidBody::Reflect(GameObject* gameobject)
     ReflectMass();
     ReflectDrag();
     ReflectAngulaDrag();
+    ReflectRestitution();
     ReflectUseGravity();
     ReflectIsKinematic();
     ReflectFreezePosition();
@@ -252,6 +265,15 @@ void DirectusRigidBody::ReflectAngulaDrag()
 
     float angularDrag = m_inspectedRigidBody->GetAngularDrag();
     m_angularDrag->SetFromFloat(angularDrag);
+}
+
+void DirectusRigidBody::ReflectRestitution()
+{
+    if (!m_inspectedRigidBody)
+        return;
+
+    float restitution = m_inspectedRigidBody->GetRestitution();
+    m_restitution->SetFromFloat(restitution);
 }
 
 void DirectusRigidBody::ReflectUseGravity()
@@ -335,6 +357,17 @@ void DirectusRigidBody::MapAngularDrag()
 
     float angularDrag = m_angularDrag->GetAsFloat();
     m_inspectedRigidBody->SetAngularDrag(angularDrag);
+
+    m_directusCore->Update();
+}
+
+void DirectusRigidBody::MapRestitution()
+{
+    if (!m_inspectedRigidBody || !m_directusCore)
+        return;
+
+    float restitution = m_restitution->GetAsFloat();
+    m_inspectedRigidBody->SetRestitution(restitution);
 
     m_directusCore->Update();
 }

@@ -61,6 +61,10 @@ private:
     DirectusComboLabelText* m_angularDrag;
     //====================================
 
+    //= RESTITUTION ======================
+    DirectusComboLabelText* m_restitution;
+    //====================================
+
     //= USE GRAVITY  =====================
     QLabel* m_useGravityLabel;
     QCheckBox* m_useGravity;
@@ -105,6 +109,7 @@ private:
     void ReflectMass();
     void ReflectDrag();
     void ReflectAngulaDrag();
+    void ReflectRestitution();
     void ReflectUseGravity();
     void ReflectIsKinematic();
     void ReflectFreezePosition();
@@ -119,6 +124,7 @@ public slots:
     void MapMass();
     void MapDrag();
     void MapAngularDrag();
+    void MapRestitution();
     void MapUseGravity();
     void MapIsKinematic();
     void MapFreezePosition();
