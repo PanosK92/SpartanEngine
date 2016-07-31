@@ -25,9 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Pools/GameObjectPool.h"
 #include "../Core/GameObject.h"
-#include "../Physics/PhysicsEngine.h"
+#include "../Physics/PhysicsWorld.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
+#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 //============================================================
 
 //= NAMESPACES ================
@@ -62,7 +63,7 @@ void Hinge::Initialize()
 
 void Hinge::Remove()
 {
-	g_physics->RemoveConstraint(m_hinge);
+	g_physics->GetWorld()->removeConstraint(m_hinge);
 }
 
 void Hinge::Update()
@@ -166,7 +167,7 @@ void Hinge::ConstructHinge()
 
 	if (m_hinge)
 	{
-		g_physics->RemoveConstraint(m_hinge);
+		g_physics->GetWorld()->removeConstraint(m_hinge);
 		delete m_hinge;
 		m_hinge = nullptr;
 	}
@@ -188,7 +189,7 @@ void Hinge::ConstructHinge()
 	m_hinge->enableAngularMotor(true, 2, 3);
 
 	// add it to the world
-	g_physics->AddConstraint(m_hinge);
+	g_physics->GetWorld()->addConstraint(m_hinge);
 }
 
 void Hinge::CalculateConnections()

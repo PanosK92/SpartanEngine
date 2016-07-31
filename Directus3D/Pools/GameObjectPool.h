@@ -42,7 +42,7 @@ public:
 		return instance;
 	}
 
-	void Initialize(GraphicsDevice* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine);
+	void Initialize(GraphicsDevice* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
 	void Update();
 	void Release();
 	void Clear();
@@ -84,6 +84,6 @@ private:
 	MaterialPool* m_materialPool;
 	TexturePool* m_texturePool;
 	ShaderPool* m_shaderPool;
-	PhysicsEngine* m_physics;
+	PhysicsWorld* m_physics;
 	ScriptEngine* m_scriptEngine;
 };

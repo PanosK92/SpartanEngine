@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
-#include "../Physics/PhysicsEngine.h"
+#include "../Physics/PhysicsWorld.h"
 #include <LinearMath/btMotionState.h>
 #include "../Physics/BulletPhysicsHelper.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
@@ -109,7 +109,7 @@ void RigidBody::Initialize()
 
 void RigidBody::Remove()
 {
-	g_physics->RemoveRigidBody(m_rigidBody);
+	g_physics->GetWorld()->removeRigidBody(m_rigidBody);
 }
 
 void RigidBody::Update()
@@ -424,7 +424,7 @@ void RigidBody::AddBodyToWorld()
 	if (m_rigidBody)
 	{
 		inertia = m_rigidBody->getLocalInertia(); // save the inertia
-		g_physics->RemoveRigidBody(m_rigidBody);
+		g_physics->GetWorld()->removeRigidBody(m_rigidBody);
 		delete m_rigidBody;
 		m_rigidBody = nullptr;
 	}
@@ -469,7 +469,7 @@ void RigidBody::AddBodyToWorld()
 	SetRotationLock(m_rotationLock);
 
 	// PHYSICS WORLD - ADD
-	g_physics->AddRigidBody(m_rigidBody);
+	g_physics->GetWorld()->addRigidBody(m_rigidBody);
 
 	if (m_mass > 0.0f)
 		Activate();
@@ -489,7 +489,7 @@ void RigidBody::RemoveBodyFromWorld()
 
 	if (m_inWorld)
 	{
-		g_physics->RemoveRigidBody(m_rigidBody);
+		g_physics->GetWorld()->removeRigidBody(m_rigidBody);
 		m_inWorld = false;
 	}
 }

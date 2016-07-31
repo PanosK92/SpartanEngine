@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Skybox.h"
 #include "../Components/Script.h"
 #include "../Components/MeshFilter.h"
-#include "../Physics/PhysicsEngine.h"
+#include "../Physics/PhysicsWorld.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -43,7 +43,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Scene::Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsEngine* physics, ModelLoader* modelLoader, Renderer* renderer)
+Scene::Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsWorld* physics, ModelLoader* modelLoader, Renderer* renderer)
 {
 	m_renderer = renderer;
 	m_texturePool = texturePool;

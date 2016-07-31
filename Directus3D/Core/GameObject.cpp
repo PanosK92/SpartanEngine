@@ -72,7 +72,7 @@ GameObject::~GameObject()
 	m_hierarchyVisibility = false;
 }
 
-void GameObject::Initialize(GraphicsDevice* graphicsDevice, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine)
+void GameObject::Initialize(GraphicsDevice* graphicsDevice, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine)
 {
 	m_graphicsDevice = graphicsDevice;
 	m_scene = scene;

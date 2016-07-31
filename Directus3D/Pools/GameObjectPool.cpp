@@ -45,7 +45,7 @@ GameObjectPool::~GameObjectPool()
 	Clear();
 }
 
-void GameObjectPool::Initialize(GraphicsDevice* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsEngine* physics, ScriptEngine* scriptEngine)
+void GameObjectPool::Initialize(GraphicsDevice* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine)
 {
 	m_graphicsDevice = d3d11Device;
 	m_scene = scene;

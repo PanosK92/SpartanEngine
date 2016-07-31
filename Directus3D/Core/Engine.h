@@ -28,7 +28,7 @@ class GraphicsDevice;
 class Scene;
 class Input;
 class Timer;
-class PhysicsEngine;
+class PhysicsWorld;
 class MeshPool;
 class MaterialPool;
 class TexturePool;
@@ -56,7 +56,7 @@ private:
 	Scene* m_scene;
 	Input* m_input;
 	Timer* m_timer;
-	PhysicsEngine* m_physicsEngine;
+	PhysicsWorld* m_physicsEngine;
 	MeshPool* m_meshPool;
 	MaterialPool* m_materialPool;
 	TexturePool* m_texturePool;

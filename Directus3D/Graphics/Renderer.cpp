@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
 #include "../Components/LineRenderer.h"
-#include "../Physics/PhysicsEngine.h"
+#include "../Physics/PhysicsWorld.h"
 #include "../Physics/PhysicsDebugDraw.h"
 #include "D3D11/D3D11RenderTexture.h"
 #include "../Core/Scene.h"
@@ -95,7 +95,7 @@ Renderer::~Renderer()
 	DirectusSafeDelete(m_renderTexPong);
 }
 
-void Renderer::Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsEngine* physics, Scene* scene)
+void Renderer::Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene)
 {
 	m_timer = timer;
 	m_physics = physics;
