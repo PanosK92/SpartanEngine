@@ -43,6 +43,11 @@ public:
 	virtual void Serialize() = 0;
 	virtual void Deserialize() = 0;
 
+	//= PROPERTIES ===================
+	bool g_enabled;
+	//================================
+
+	//= SOME USEFUL POINTERS =========
 	GameObject* g_gameObject;
 	Transform* g_transform;
 	GraphicsDevice* g_graphicsDevice;
@@ -53,4 +58,5 @@ public:
 	ScriptEngine* g_scriptEngine;
 	TexturePool* g_texturePool;
 	ShaderPool* g_shaderPool;
+	//================================
 };

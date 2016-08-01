@@ -26,6 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QMimeData>
 //============================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
 {
 
@@ -38,6 +42,8 @@ void DirectusInspector::SetDirectusCore(DirectusCore* directusCore)
 
 void DirectusInspector::Initialize(QWidget* mainWindow)
 {
+    m_mainWindow = mainWindow;
+
     m_transform = new DirectusTransform();
     m_transform->Initialize(m_directusCore);
 
@@ -62,8 +68,8 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_light = new DirectusLight();
     m_light->Initialize(m_directusCore, this, mainWindow);
 
-    m_script = new DirectusScript();
-    m_script->Initialize(m_directusCore, this, mainWindow);
+    m_scripts.push_back(new DirectusScript());
+    m_scripts[0]->Initialize(m_directusCore, this, mainWindow);
 
     m_material = new DirectusMaterial();
     m_material->Initialize(m_directusCore, this, mainWindow);
@@ -80,7 +86,7 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     this->layout()->addWidget(m_collider);
     this->layout()->addWidget(m_meshCollider);
     this->layout()->addWidget(m_light);
-    this->layout()->addWidget(m_script);
+    this->layout()->addWidget(m_scripts[0]);
     this->layout()->addWidget(m_material);
 
     m_initialized = true;
@@ -107,6 +113,10 @@ void DirectusInspector::Inspect(GameObject* gameobject)
 
     m_inspectedGameObject = gameobject;
 
+    // Make sure we have at least as many script widgets
+    // as the GameObject has script components.
+    vector<Script*> engineScripts = FitScriptVectorToGameObject();
+
     if (gameobject)
     {    
         m_transform->Reflect(gameobject);
@@ -117,8 +127,11 @@ void DirectusInspector::Inspect(GameObject* gameobject)
         m_collider->Reflect(gameobject);
         m_meshCollider->Reflect(gameobject);
         m_light->Reflect(gameobject);
-        m_script->Reflect(gameobject);   
         m_material->Reflect(gameobject);
+
+        for (int i = 0; i < m_scripts.size(); i++)
+            m_scripts[i]->Reflect(engineScripts[i]);
+
     }
     else // NOTE: If no item is selected, the gameobject will be null
     {
@@ -129,9 +142,11 @@ void DirectusInspector::Inspect(GameObject* gameobject)
         m_rigidBody->hide();
         m_collider->hide();
         m_meshCollider->hide();
-        m_light->hide();
-        m_script->hide();
+        m_light->hide();     
         m_material->hide();
+
+        for (int i = 0; i < m_scripts.size(); i++)
+             m_scripts[i]->hide();
     }
 }
 
@@ -189,4 +204,37 @@ void DirectusInspector::dropEvent(QDropEvent* event)
         Inspect(m_inspectedGameObject);
     }
 }
-//=========================================================================================
+//===================================================================================
+
+//= HELPER FUNCTIONS  ===============================================================
+vector<Script*> DirectusInspector::FitScriptVectorToGameObject()
+{
+    vector<Script*> engineScripts;
+
+    if (!m_inspectedGameObject)
+        return engineScripts;
+
+    // Clear current script vector
+    int scriptCount = (int)m_scripts.size();
+    for (int i = 0; i < scriptCount; i++)
+    {
+       QWidget* widget = m_scripts[i];
+       this->layout()->removeWidget(widget);
+       delete widget;
+    }
+    m_scripts.clear();
+    m_scripts.shrink_to_fit();
+
+    // Reflect back to the script vector
+    engineScripts = m_inspectedGameObject->GetComponents<Script>();
+    scriptCount = (int)engineScripts.size();
+    for (int i = 0; i < scriptCount; i++)
+    {
+        m_scripts.push_back(new DirectusScript());
+        m_scripts.back()->Initialize(m_directusCore, this, m_mainWindow);
+        this->layout()->addWidget(m_scripts.back());
+    }
+
+    return engineScripts;
+}
+//===================================================================================

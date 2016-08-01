@@ -131,6 +131,11 @@ void Log::Write(bool value, LogType type)
 		Write("False", type);
 }
 
+void Log::Write(size_t value, LogType type)
+{
+	Write(int(value), type);
+}
+
 /*------------------------------------------------------------------------------
 							[CONVERTIONS]
 ------------------------------------------------------------------------------*/

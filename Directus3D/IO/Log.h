@@ -60,6 +60,7 @@ public:
 	static void Write(int value, LogType type);
 	static void Write(unsigned int value, LogType type);
 	static void Write(bool value, LogType type);
+	static void Write(size_t value, LogType type);
 	/*------------------------------------------------------------------------------
 									[CONVERTIONS]
 	------------------------------------------------------------------------------*/

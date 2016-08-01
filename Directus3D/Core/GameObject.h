@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include <map>
 #include "../Components/IComponent.h"
+#include <vector>
 //===================================
 
 class Transform;
@@ -60,6 +61,9 @@ public:
 	Type* GetComponent();
 
 	template <class Type>
+	std::vector<Type*> GetComponents();
+
+	template <class Type>
 	bool HasComponent();
 
 	template <class Type>
@@ -72,11 +76,11 @@ private:
 	std::string m_name;
 	bool m_isActive;
 	bool m_hierarchyVisibility;
-	std::map<std::string, IComponent*> m_components;
+	std::multimap<std::string, IComponent*> m_components;
 
 	// This is the only component that is guaranteed to be always attached,
-	// it also is requiested by most systems in the engine, it's important to
-	// keep a local copy of it here and avoid any runtime searching.
+	// it also is required by most systems in the engine, it's important to
+	// keep a local copy of it here and avoid any runtime searching (performance).
 	Transform* m_transform;
 
 	GraphicsDevice* m_graphicsDevice;

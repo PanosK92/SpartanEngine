@@ -55,6 +55,8 @@ protected:
     virtual void paintEvent(QPaintEvent* evt);
 
 private:
+    std::vector<Script*> FitScriptVectorToGameObject();
+
     DirectusTransform* m_transform;
     DirectusCamera* m_camera;
     DirectusMeshRenderer* m_meshRenderer;
@@ -62,12 +64,13 @@ private:
     DirectusCollider* m_collider;
     DirectusRigidBody* m_rigidBody;
     DirectusLight* m_light;
-    DirectusScript* m_script;
+    std::vector<DirectusScript*> m_scripts;
     DirectusMeshFilter* m_meshFilter;
     DirectusMeshCollider* m_meshCollider;
 
     DirectusCore* m_directusCore;
     GameObject* m_inspectedGameObject;
+    QWidget* m_mainWindow;
     bool m_initialized;
 
 public slots:
