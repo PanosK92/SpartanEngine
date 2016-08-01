@@ -66,25 +66,25 @@ void Timer::Update()
 	m_lastKnownTime = currentTime;
 }
 
-// Returns delta time in seconds
-float Timer::GetDeltaTime()
+// Returns them time it took to complete the last frame in seconds 
+float Timer::GetDeltaTime() const
 {
 	return GetDeltaTimeMs() / 1000;
 }
 
-// Returns delta time in milliseconds
-float Timer::GetDeltaTimeMs()
+// Returns them time it took to complete the last frame in milliseconds
+float Timer::GetDeltaTimeMs() const
 {
 	return m_deltaTime;
 }
 
-// Returns time in seconds
+// Returns current time in seconds
 float Timer::GetTime()
 {
 	return GetTimeMs() / 1000;
 }
 
-// Returns time in milliseconds
+// Returns current time in milliseconds
 float Timer::GetTimeMs()
 {
 	INT64 currentTime;
@@ -93,12 +93,13 @@ float Timer::GetTimeMs()
 	return currentTime / m_ticksPerMs;
 }
 
+// Returns them elapsed time since the engine initialization in seconds
 float Timer::GetElapsedTime()
 {
 	return GetElapsedTimeMs() / 1000;
 }
 
-// Returns elapsed time (milliseconds) since engine initialization
+// Returns them elapsed time since the engine initialization in milliseconds
 float Timer::GetElapsedTimeMs()
 {
 	return GetTimeMs() - m_startTime;

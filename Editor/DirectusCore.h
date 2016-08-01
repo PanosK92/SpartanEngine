@@ -55,11 +55,13 @@ private:
 
 	Socket* m_socket;
 	Engine* m_engine;
-    QTimer* m_timer;
+    QTimer* m_timerASAP;
+    QTimer* m_timerSEC;
     DirectusStatsLabel* m_directusStatsLabel;
 
 public slots:
     void Play();
     void Stop();
-    void Update();
+    void UpdateASAP();
+    void UpdateSEC();
 };

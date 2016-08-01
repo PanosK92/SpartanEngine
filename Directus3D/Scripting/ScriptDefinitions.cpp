@@ -154,6 +154,7 @@ void ScriptDefinitions::RegisterTime()
 {
 	m_scriptEngine->RegisterGlobalProperty("Time time", m_timer);
 	m_scriptEngine->RegisterObjectMethod("Time", "float GetDeltaTime()", asMETHOD(Timer, GetDeltaTime), asCALL_THISCALL);
+	//m_scriptEngine->RegisterObjectProperty("Time", "float deltaTime", asOFFSET(Timer, GetDeltaTime));
 }
 
 /*------------------------------------------------------------------------------

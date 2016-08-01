@@ -35,8 +35,8 @@ public:
 	void Initialize();
 	void Update();
 
-	float GetDeltaTime();
-	float GetDeltaTimeMs();
+	float GetDeltaTime() const;
+	float GetDeltaTimeMs() const;
 
 	float GetTime();
 	float GetTimeMs();

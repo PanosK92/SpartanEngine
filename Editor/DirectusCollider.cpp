@@ -194,7 +194,7 @@ void DirectusCollider::MapType()
     int index = m_shapeType->currentIndex();
     m_inspectedCollider->SetShapeType((ColliderShape)index);
 
-    m_directusCore->Update();
+    m_directusCore->UpdateASAP();
 }
 
 void DirectusCollider::MapCenter()
@@ -206,7 +206,7 @@ void DirectusCollider::MapCenter()
     );
     m_inspectedCollider->SetCenter(center);
 
-    m_directusCore->Update();
+    m_directusCore->UpdateASAP();
 }
 
 void DirectusCollider::MapSize()
@@ -218,7 +218,7 @@ void DirectusCollider::MapSize()
     );
     m_inspectedCollider->SetBoundingBox(size);
 
-    m_directusCore->Update();
+    m_directusCore->UpdateASAP();
 }
 
 void DirectusCollider::Remove()
@@ -228,7 +228,7 @@ void DirectusCollider::Remove()
 
     GameObject* gameObject = m_inspectedCollider->g_gameObject;
     gameObject->RemoveComponent<Collider>();
-    m_directusCore->Update();
+    m_directusCore->UpdateASAP();
 
     m_inspector->Inspect(gameObject);
 }

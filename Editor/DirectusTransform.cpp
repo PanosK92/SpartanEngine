@@ -215,7 +215,7 @@ void DirectusTransform::MapPosition()
     float z = m_posZ->GetAsFloat();
     m_inspectedTransform->SetPositionLocal(Vector3(x,y,z));
 
-    m_directusCore->Update();
+    m_directusCore->UpdateASAP();
 }
 
 void DirectusTransform::MapRotation()
@@ -233,7 +233,7 @@ void DirectusTransform::MapRotation()
     Quaternion rotationDelta = Quaternion::FromEulerAngles(deltaEuler);
 
     m_inspectedTransform->Rotate(rotationDelta);
-    m_directusCore->Update();
+    m_directusCore->UpdateASAP();
 }
 
 void DirectusTransform::MapScale()
@@ -246,5 +246,5 @@ void DirectusTransform::MapScale()
     float z = m_scaZ->GetAsFloat();
     m_inspectedTransform->SetScaleLocal(Vector3(x,y,z));
 
-    m_directusCore->Update();
+    m_directusCore->UpdateASAP();
 }
