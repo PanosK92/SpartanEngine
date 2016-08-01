@@ -75,19 +75,10 @@ void DirectusScript::Initialize(DirectusCore* directusCore, DirectusInspector* i
     this->hide();
 }
 
-void DirectusScript::Reflect(GameObject* gameobject)
+void DirectusScript::Reflect(Script* script)
 {
-    m_inspectedScript = nullptr;
+    m_inspectedScript = script;
 
-    // Catch evil case
-    if (!gameobject)
-    {
-        this->hide();
-        return;
-    }
-
-    // Catch the seed of the evil
-    m_inspectedScript = gameobject->GetComponent<Script>();
     if (!m_inspectedScript)
     {
         this->hide();

@@ -36,9 +36,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Hinge.h"
 #include "../Components/Script.h"
 #include "../Components/LineRenderer.h"
+#include "../IO/Log.h"
 //=====================================
 
+//= NAMESPACES =====
 using namespace std;
+//==================
 
 GameObject::GameObject()
 {
@@ -56,7 +59,7 @@ GameObject::GameObject()
 GameObject::~GameObject()
 {
 	// delete components
-	map<string, IComponent*>::iterator it;
+	multimap<string, IComponent*>::iterator it;
 	for (it = m_components.begin(); it != m_components.end(); ++it)
 	{
 		IComponent* component = it->second;
@@ -90,7 +93,7 @@ void GameObject::Update()
 		return;
 
 	// update components
-	map<string, IComponent*>::iterator it;
+	multimap<string, IComponent*>::iterator it;
 	for (it = m_components.begin(); it != m_components.end(); ++it)
 		it->second->Update();
 }
@@ -143,7 +146,7 @@ void GameObject::Serialize()
 	Serializer::SaveBool(m_hierarchyVisibility);
 
 	Serializer::SaveInt(m_components.size());
-	for (map<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end(); ++it)
+	for (multimap<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end(); ++it)
 	{
 		Serializer::SaveSTR(it->first); // save component's type
 		it->second->Serialize(); // save the component
@@ -168,38 +171,55 @@ void GameObject::Deserialize()
 template <class Type>
 Type* GameObject::AddComponent()
 {
-	// if a component of that type already exists
-	// return it and don't create a duplicate
-	if (HasComponent<Type>())
-		return GetComponent<Type>();
+	// Convert class Type to a string.
+	string typeStr(typeid(Type).name());
+	typeStr = typeStr.substr(typeStr.find_first_of(" \t") + 1); // remove word "class".
 
+	// Check if a component of that type already exists
+	IComponent* existingComp = GetComponent<Type>();
+	if (existingComp)
+	{
+		// If it's anything but a script, it can't have multiple
+		// instances return the existing component.
+		if (typeStr != "Script")
+			return dynamic_cast<Type*>(existingComp);
+	}
 
-	string typeStr(typeid(Type).name()); // get component type as string
-	typeStr = typeStr.substr(typeStr.find_first_of(" \t") + 1); // remove word "class"
+	// Get the created component.
+	IComponent* component = new Type;
 
-	// create and initialize the component
-	m_components.insert(pair<string, IComponent*>(typeStr, new Type));
-	m_components[typeStr]->g_gameObject = this;
-	m_components[typeStr]->g_transform = GetTransform();
-	m_components[typeStr]->g_graphicsDevice = m_graphicsDevice;
-	m_components[typeStr]->g_meshPool = m_meshPool;
-	m_components[typeStr]->g_scene = m_scene;
-	m_components[typeStr]->g_materialPool = m_materialPool;
-	m_components[typeStr]->g_texturePool = m_texturePool;
-	m_components[typeStr]->g_shaderPool = m_shaderPool;
-	m_components[typeStr]->g_physicsWorld = m_physics;
-	m_components[typeStr]->g_scriptEngine = m_scriptEngine;
-	m_components[typeStr]->Initialize();
+	// Add the component.
+	m_components.insert(pair<string, IComponent*>(typeStr, component));
 
+	// Set default properties.
+	component->g_enabled = true;
+
+	// Set some useful pointers.
+	component->g_gameObject = this;
+	component->g_transform = GetTransform();
+	component->g_graphicsDevice = m_graphicsDevice;
+	component->g_meshPool = m_meshPool;
+	component->g_scene = m_scene;
+	component->g_materialPool = m_materialPool;
+	component->g_texturePool = m_texturePool;
+	component->g_shaderPool = m_shaderPool;
+	component->g_physicsWorld = m_physics;
+	component->g_scriptEngine = m_scriptEngine;
+
+	// Run Initialize().
+	component->Initialize();
+
+	// Do a scene analysis
 	m_scene->AnalyzeGameObjects();
 
-	return GetComponent<Type>();
+	// Return it as a component of the requested type
+	return dynamic_cast<Type*>(component);
 }
 
 template <class Type>
 Type* GameObject::GetComponent()
 {
-	for (map<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end(); ++it)
+	for (multimap<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end(); ++it)
 	{
 		IComponent* component = it->second;
 
@@ -210,6 +230,24 @@ Type* GameObject::GetComponent()
 	}
 
 	return nullptr;
+}
+
+template <class Type>
+vector<Type*> GameObject::GetComponents()
+{
+	vector<Type*> components;
+
+	for (multimap<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end(); ++it)
+	{
+		IComponent* component = it->second;
+
+		// casting failure == nullptr
+		Type* typed_cmp = dynamic_cast<Type*>(component);
+		if (typed_cmp)
+			components.push_back(typed_cmp);
+	}
+
+	return components;
 }
 
 template <class Type>
@@ -224,14 +262,13 @@ bool GameObject::HasComponent()
 template <class Type>
 void GameObject::RemoveComponent()
 {
-	for (map<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end();)
+	for (multimap<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end();)
 	{
 		IComponent* component = it->second;
 
 		// casting failure == nullptr
 		Type* typed_cmp = dynamic_cast<Type*>(component);
-
-		if (typed_cmp != nullptr)
+		if (typed_cmp)
 		{
 			component->Remove();
 			delete component;
@@ -320,6 +357,19 @@ template __declspec(dllexport) MeshCollider* GameObject::GetComponent();
 template __declspec(dllexport) Hinge* GameObject::GetComponent();
 template __declspec(dllexport) Script* GameObject::GetComponent();
 template __declspec(dllexport) LineRenderer* GameObject::GetComponent();
+
+template __declspec(dllexport) vector<Transform*> GameObject::GetComponents();
+template __declspec(dllexport) vector<MeshFilter*> GameObject::GetComponents();
+template __declspec(dllexport) vector<MeshRenderer*> GameObject::GetComponents();
+template __declspec(dllexport) vector<Light*> GameObject::GetComponents();
+template __declspec(dllexport) vector<Camera*> GameObject::GetComponents();
+template __declspec(dllexport) vector<Skybox*> GameObject::GetComponents();
+template __declspec(dllexport) vector<RigidBody*> GameObject::GetComponents();
+template __declspec(dllexport) vector<Collider*> GameObject::GetComponents();
+template __declspec(dllexport) vector<MeshCollider*> GameObject::GetComponents();
+template __declspec(dllexport) vector<Hinge*> GameObject::GetComponents();
+template __declspec(dllexport) vector<Script*> GameObject::GetComponents();
+template __declspec(dllexport) vector<LineRenderer*> GameObject::GetComponents();
 
 template __declspec(dllexport) bool GameObject::HasComponent<Transform>();
 template __declspec(dllexport) bool GameObject::HasComponent<MeshFilter>();

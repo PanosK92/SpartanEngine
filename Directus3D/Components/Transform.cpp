@@ -27,8 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 //==================================
 
+//= NAMESPACES =====================
 using namespace std;
 using namespace Directus::Math;
+//==================================
 
 Transform::Transform()
 {

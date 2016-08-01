@@ -42,7 +42,7 @@ class DirectusScript : public QWidget
 public:
     explicit DirectusScript(QWidget *parent = 0);
     void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
-    void Reflect(GameObject* gameobject);
+    void Reflect(Script* script);
 
 private:
     //= TITLE ==============================

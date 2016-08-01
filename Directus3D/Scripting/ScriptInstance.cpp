@@ -91,18 +91,20 @@ bool ScriptInstance::CreateScriptObject()
 	// create module
 	m_module = new Module(m_moduleName, m_scriptEngine);
 	bool result = m_module->LoadScript(m_scriptPath);
-	if (!result) return false;
+	if (!result) 
+		return false;
 
 	auto type_id = m_module->GetAsIScriptModule()->GetTypeIdByDecl(m_className.c_str());
 	asITypeInfo* type = m_scriptEngine->GetAsIScriptEngine()->GetTypeInfoById(type_id);
-	if (!type) return false;
+	if (!type) 
+		return false;
 
 	m_startFunction = type->GetMethodByDecl("void Start()"); // Get the Start function from the script
 	m_updateFunction = type->GetMethodByDecl("void Update()"); // Get the Update function from the script
 	m_constructorFunction = type->GetFactoryByDecl(m_constructorDeclaration.c_str()); // Get the constructor function from the script
 	if (!m_constructorFunction)
 	{
-		LOG("Couldn't find the appropriate factory for the type '" + m_className + "'", Log::Error);
+		LOG_ERROR("Couldn't find the appropriate factory for the type '" + m_className + "'");
 		return false;
 	}
 
