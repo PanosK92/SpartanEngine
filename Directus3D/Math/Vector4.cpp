@@ -28,6 +28,8 @@ namespace Directus
 {
 	namespace Math
 	{
+		const Vector4 Vector4::Zero(0.0f, 0.0f, 0.0f, 0.0f);
+
 		Vector4::Vector4()
 		{
 			x = 0;

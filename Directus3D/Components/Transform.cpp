@@ -34,7 +34,7 @@ using namespace Directus::Math;
 
 Transform::Transform()
 {
-	m_translationLocal = Vector3::Zero;
+	m_positionLocal = Vector3::Zero;
 	m_rotationLocal = Quaternion::Identity;
 	m_scaleLocal = Vector3::One;
 	m_worldMatrix = Matrix::Identity;
@@ -66,8 +66,8 @@ void Transform::Update()
 		return;
 
 	// create local translation, rotation and scale matrices
-	Matrix translationLocalMatrix = Matrix::CreateTranslation(m_translationLocal);
-	Matrix rotationLocalMatrix = Matrix::CreateFromQuaternion(m_rotationLocal);
+	Matrix translationLocalMatrix = Matrix::CreateTranslation(m_positionLocal);
+	Matrix rotationLocalMatrix = m_rotationLocal.RotationMatrix();
 	Matrix scaleLocalMatrix = Matrix::CreateScale(m_scaleLocal);
 
 	// calculate the world matrix
@@ -75,7 +75,7 @@ void Transform::Update()
 	m_worldMatrix = localMatrix * GetParentMatrix();
 
 	// calculate world position, rotation and scale
-	m_worldMatrix.Decompose(m_scale, m_rotation, m_translation);
+	m_worldMatrix.Decompose(m_scale, m_rotation, m_position);
 
 	// update children
 	for (auto i = 0; i < m_children.size(); i++)
@@ -89,7 +89,7 @@ void Transform::Update()
 
 void Transform::Serialize()
 {
-	Serializer::SaveVector3(m_translationLocal);
+	Serializer::SaveVector3(m_positionLocal);
 	Serializer::SaveQuaternion(m_rotationLocal);
 	Serializer::SaveVector3(m_scaleLocal);
 	Serializer::SaveVector3(m_lookAt);
@@ -102,7 +102,7 @@ void Transform::Serialize()
 
 void Transform::Deserialize()
 {
-	m_translationLocal = Serializer::LoadVector3();
+	m_positionLocal = Serializer::LoadVector3();
 	m_rotationLocal = Serializer::LoadQuaternion();
 	m_scaleLocal = Serializer::LoadVector3();
 	m_lookAt = Serializer::LoadVector3();
@@ -125,12 +125,12 @@ void Transform::Deserialize()
 ------------------------------------------------------------------------------*/
 Vector3 Transform::GetPosition()
 {
-	return m_translation;
+	return m_position;
 }
 
 Vector3 Transform::GetPositionLocal()
 {
-	return m_translationLocal;
+	return m_positionLocal;
 }
 
 void Transform::SetPosition(Vector3 position)
@@ -143,10 +143,10 @@ void Transform::SetPosition(Vector3 position)
 
 void Transform::SetPositionLocal(Vector3 position)
 {
-	if (m_translationLocal == position)
+	if (m_positionLocal == position)
 		return;
 
-	m_translationLocal = position;
+	m_positionLocal = position;
 
 	MakeDirty();
 }
@@ -215,6 +215,32 @@ void Transform::SetScaleLocal(Vector3 scale)
 
 	MakeDirty();
 }
+
+//= TRANSLATION/ROTATION ========================================================
+void Transform::Translate(Vector3 delta)
+{
+	Vector3 position;
+
+	if (HasParent())
+		position = m_positionLocal + m_rotationLocal * delta;
+	else
+		position = m_positionLocal + delta;
+
+	SetPositionLocal(position);
+}
+
+void Transform::Rotate(Quaternion delta)
+{
+	Quaternion rotation;
+	
+	if (HasParent())
+		rotation = (delta * m_rotationLocal).Normalize();
+	else
+		rotation = (m_rotationLocal * delta).Normalize();
+
+	SetRotationLocal(rotation);
+}
+//===============================================================================
 
 Vector3 Transform::GetUp()
 {

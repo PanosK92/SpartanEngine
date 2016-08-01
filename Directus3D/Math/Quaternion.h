@@ -40,31 +40,22 @@ namespace Directus
 			Quaternion(float x, float y, float z, float w);
 			~Quaternion();
 
+			//= FROM ====================================================================
+			static Quaternion CreateFromAxisAngle(Vector3 axis, float angle);
+			static Quaternion FromEulerAngles(Vector3 eulerAngles);
+			static Quaternion FromEulerAngles(float x, float y, float z);
+			static Quaternion CreateFromRotationMatrix(Matrix matrix);	
+			//===========================================================================
+
+			//= TO ======================================================================
+			Vector3 ToEulerAngles();
+			//===========================================================================
+
 			Quaternion Conjugate();
 			float Magnitude();
 			Quaternion Normalize();
 			Quaternion Inverse();
-
-			/*------------------------------------------------------------------------------
-											[PROPERTIES]
-			------------------------------------------------------------------------------*/
-			float GetYaw();
-			float GetPitch();
-			float GetRoll();
-
-			/*------------------------------------------------------------------------------
-											[CREATE FROM]
-			------------------------------------------------------------------------------*/
-			static Quaternion FromEulerAngles(Vector3 rotation);
-			static Quaternion FromEulerAngles(float x, float y, float z);
-			static Quaternion CreateFromRotationMatrix(Matrix matrix);
-			static Quaternion CreateFromAxisAngle(Vector3 axis, float angle);
-			static Quaternion CreateFromYawPitchRoll(float yaw, float pitch, float roll);
-
-			/*------------------------------------------------------------------------------
-											[CONVERT TO]
-			------------------------------------------------------------------------------*/
-			Vector3 ToEulerAngles();
+			Matrix RotationMatrix();
 
 			/*------------------------------------------------------------------------------
 										[OPERATORS]

@@ -25,7 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <math.h>
 #include "Vector3.h"
 #include "../Math/Matrix.h"
+#include "../IO/Log.h"
 //=========================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 //= Based on ==========================================================================//
 // http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/index.htm //
@@ -59,73 +64,36 @@ namespace Directus
 
 		Quaternion::~Quaternion()
 		{
+
 		}
 
-		Quaternion Quaternion::Conjugate()
+		//= CREATE FROM =============================================================
+		Quaternion Quaternion::CreateFromAxisAngle(Vector3 axis, float angle)
 		{
-			return Quaternion(-x, -y, -z, w);
-		}
+			Vector3 normAxis = axis.Normalize();
+			angle *= DEG_TO_RAD;
+			float sinAngle = sinf(angle);
+			float cosAngle = cosf(angle);
 
-		float Quaternion::Magnitude()
-		{
-			return sqrtf(w * w + x * x + y * y + z * z);
-		}
-
-		Quaternion Quaternion::Normalize()
-		{
-			Quaternion q = Quaternion(x, y, z, w);
-			float n = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
-
-			if (n != 1.0f)
-			{
-				float magnitude = Magnitude();
-				q.w = q.w / magnitude;
-				q.x = q.x / magnitude;
-				q.y = q.y / magnitude;
-				q.z = q.z / magnitude;
-			}
+			Quaternion q;
+			q.w = cosAngle;
+			q.x = normAxis.x * sinAngle;
+			q.y = normAxis.y * sinAngle;
+			q.z = normAxis.z * sinAngle;
 
 			return q;
 		}
 
-		Quaternion Quaternion::Inverse()
+		Quaternion Quaternion::FromEulerAngles(Vector3 eulerAngles)
 		{
-			return Quaternion(-x, -y, -z, w);
+			return FromEulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z);
 		}
-
-		/*------------------------------------------------------------------------------
-										[PROPERTIES]
-		------------------------------------------------------------------------------*/
-		float Quaternion::GetYaw()
-		{
-			return MathHelper::GetInstance().DegreesToRadians(ToEulerAngles().y);
-		}
-
-		float Quaternion::GetPitch()
-		{
-			return MathHelper::GetInstance().DegreesToRadians(ToEulerAngles().x);
-		}
-
-		float Quaternion::GetRoll()
-		{
-			return MathHelper::GetInstance().DegreesToRadians(ToEulerAngles().z);
-		}
-
-		/*------------------------------------------------------------------------------
-										[CREATE FROM]
-		------------------------------------------------------------------------------*/
-		Quaternion Quaternion::FromEulerAngles(Vector3 rotation)
-		{
-			return FromEulerAngles(rotation.x, rotation.y, rotation.z);
-		}
-
 
 		Quaternion Quaternion::FromEulerAngles(float x, float y, float z)
 		{
-			// Order of rotations: Z first, then X, then Y (mimics typical FPS camera with gimbal lock at top/bottom)
-			x *= DEG_TO_RAD_2;
-			y *= DEG_TO_RAD_2;
-			z *= DEG_TO_RAD_2;
+			x *= DEG_TO_RAD;
+			y *= DEG_TO_RAD;
+			z *= DEG_TO_RAD;
 
 			float sinX = sinf(x);
 			float cosX = cosf(x);
@@ -145,7 +113,7 @@ namespace Directus
 
 		Quaternion Quaternion::CreateFromRotationMatrix(Matrix matrix)
 		{
-			matrix = Matrix::Transpose(matrix);
+			//matrix = Matrix::Transpose(matrix);
 			Quaternion q;
 
 			float t = matrix.m00 + matrix.m11 + matrix.m22;
@@ -192,56 +160,20 @@ namespace Directus
 
 			return q;
 		}
+		//================================================================================
 
-		Quaternion Quaternion::CreateFromAxisAngle(Vector3 axis, float angle)
-		{
-			Vector3 normAxis = Vector3::Normalize(axis);
-			angle *= DEG_TO_RAD_2;
-			float sinAngle = sinf(angle);
-			float cosAngle = cosf(angle);
-
-			Quaternion q;
-			q.w = cosAngle;
-			q.x = normAxis.x * sinAngle;
-			q.y = normAxis.y * sinAngle;
-			q.z = normAxis.z * sinAngle;
-
-			return q;
-		}
-
-		Quaternion Quaternion::CreateFromYawPitchRoll(float yaw, float pitch, float roll)
-		{
-			float c1 = cosf(yaw / 2);
-			float s1 = sinf(yaw / 2);
-			float c2 = cosf(pitch / 2);
-			float s2 = sinf(pitch / 2);
-			float c3 = cosf(roll / 2);
-			float s3 = sinf(roll / 2);
-			float c1c2 = c1 * c2;
-			float s1s2 = s1 * s2;
-
-			Quaternion q;
-			q.w = c1c2 * c3 - s1s2 * s3;
-			q.x = c1c2 * s3 + s1s2 * c3;
-			q.y = s1 * c2 * c3 + c1 * s2 * s3;
-			q.z = c1 * s2 * c3 - s1 * c2 * s3;
-
-			return q.Normalize();
-		}
-
-		/*------------------------------------------------------------------------------
-										[CONVERT TO]
-		------------------------------------------------------------------------------*/
+		//= TO ===========================================================================
 		// Returns the euler angle representation of the rotation.
 		Vector3 Quaternion::ToEulerAngles()
 		{
 			// Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
 			// Order of rotations: Z first, then X, then Y
+			Vector3 euler;
 			float check = 2.0f * (-y * z + w * x);
 
 			if (check < -0.995f)
 			{
-				return Vector3(
+				euler = Vector3(
 					-90.0f,
 					0.0f,
 					-atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
@@ -249,7 +181,7 @@ namespace Directus
 			}
 			else if (check > 0.995f)
 			{
-				return Vector3(
+				euler = Vector3(
 					90.0f,
 					0.0f,
 					atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
@@ -257,12 +189,57 @@ namespace Directus
 			}
 			else
 			{
-				return Vector3(
+				euler = Vector3(
 					asinf(check) * RAD_TO_DEG,
 					atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * RAD_TO_DEG,
 					atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * RAD_TO_DEG
 				);
 			}
+
+			return euler;
+		}
+		//================================================================================
+
+		Quaternion Quaternion::Conjugate()
+		{
+			return Quaternion(-x, -y, -z, w);
+		}
+
+		float Quaternion::Magnitude()
+		{
+			return sqrtf(w * w + x * x + y * y + z * z);
+		}
+
+		Quaternion Quaternion::Normalize()
+		{
+			Quaternion q = Quaternion(x, y, z, w);
+			float n = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+
+			if (n != 1.0f)
+			{
+				float magnitude = Magnitude();
+				q.w = q.w / magnitude;
+				q.x = q.x / magnitude;
+				q.y = q.y / magnitude;
+				q.z = q.z / magnitude;
+			}
+
+			return q;
+		}
+
+		Quaternion Quaternion::Inverse()
+		{
+			return Quaternion(-x, -y, -z, w);
+		}
+
+		Matrix Quaternion::RotationMatrix()
+		{
+			return Matrix(
+				1.0f - 2.0f * y * y - 2.0f * z * z, 2.0f * x * y - 2.0f * w * z, 2.0f * x * z + 2.0f * w * y, 0.0f,
+				2.0f * x * y + 2.0f * w * z, 1.0f - 2.0f * x * x - 2.0f * z * z, 2.0f * y * z - 2.0f * w * x, 0.0f,
+				2.0f * x * z - 2.0f * w * y, 2.0f * y * z + 2.0f * w * x, 1.0f - 2.0f * x * x - 2.0f * y * y, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f
+			);//.Transpose();
 		}
 
 		/*------------------------------------------------------------------------------

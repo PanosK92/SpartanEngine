@@ -230,10 +230,8 @@ void Camera::CalculateViewMatrix()
 
 void Camera::CalculateBaseView()
 {
-	Matrix rotationMatrix = Matrix::CreateFromYawPitchRoll(0, 0, 0);
-	Vector3 lookAt = Vector3::Transform(Vector3::Forward, rotationMatrix);
-	lookAt = Vector3::Normalize(lookAt);
-	m_baseViewMatrix = Matrix::CreateLookAtLH(Vector3(0, 0, -0.3), lookAt, Vector3::Up);
+	Vector3 lookAt = Vector3::Transform(Vector3::Forward, Matrix::Identity).Normalize();
+	m_baseViewMatrix = Matrix::CreateLookAtLH(Vector3(0, 0, -0.3f), lookAt, Vector3::Up);
 }
 
 void Camera::CalculateProjectionMatrix()

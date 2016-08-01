@@ -406,7 +406,6 @@ void ScriptDefinitions::RegisterQuaternion()
 	m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f(const Quaternion &in)", asFUNCTION(CopyConstructorQuaternion), asCALL_CDECL_OBJLAST);
 	m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f(double, double, double, double)", asFUNCTION(ConstructorQuaternionDoubles), asCALL_CDECL_OBJLAST);
 	m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestructQuaternion), asCALL_CDECL_OBJLAST);
-	m_scriptEngine->RegisterGlobalFunction("Quaternion QuaternionFromEuler(const Vector3 &in)", asFUNCTIONPR(Quaternion::FromEulerAngles, (Vector3), Quaternion), asCALL_CDECL);
 	m_scriptEngine->RegisterGlobalFunction("Quaternion QuaternionFromEuler(float, float, float)", asFUNCTIONPR(Quaternion::FromEulerAngles, (float, float, float), Quaternion), asCALL_CDECL);
 	m_scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion &opAssign(const Quaternion &in)", asMETHODPR(Quaternion, operator=, (const Quaternion&), Quaternion&), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion &opMulAssign(const Quaternion &in)", asFUNCTION(QuaternionMulAssignQuaternion), asCALL_CDECL_OBJLAST);

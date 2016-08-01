@@ -40,6 +40,8 @@ namespace Directus
 			float y;
 			float z;
 			float w;
+
+			static const Vector4 Zero;
 		};
 	}
 }

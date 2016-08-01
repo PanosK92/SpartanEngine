@@ -42,11 +42,6 @@ namespace Directus
 			return CreateScale(scale.x, scale.y, scale.z);
 		}
 
-		Matrix Matrix::CreateFromQuaternion(Quaternion q)
-		{
-			return CreateFromYawPitchRoll(q.GetYaw(), q.GetPitch(), q.GetRoll());
-		}
-
 		Matrix Matrix::CreateTranslation(Vector3 position)
 		{
 			return Matrix(
