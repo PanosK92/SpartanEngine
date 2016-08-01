@@ -284,14 +284,30 @@ void GameObject::RemoveComponent()
 	m_scene->AnalyzeGameObjects();
 }
 
+void GameObject::RemoveComponentByID(string id)
+{
+	for (auto it = m_components.begin(); it != m_components.end();)
+	{
+		IComponent* component = it->second;
+		if (component->g_ID == id)
+		{
+			component->Remove();
+			delete component;
+			it = m_components.erase(it);
+			return;
+		}
+		++it;
+	}
+
+	m_scene->AnalyzeGameObjects();
+}
+
 Transform* GameObject::GetTransform()
 {
 	return m_transform;
 }
 
-/*------------------------------------------------------------------------------
-							[HELPER]
-------------------------------------------------------------------------------*/
+//= HELPER FUNCTIONS ===========================================
 IComponent* GameObject::AddComponentBasedOnType(string typeStr)
 {
 	IComponent* component = nullptr;

@@ -68,6 +68,8 @@ public:
 
 	template <class Type>
 	void RemoveComponent();
+
+	void RemoveComponentByID(std::string id);
 	//=========================================================
 
 	Transform* GetTransform();
@@ -92,8 +94,6 @@ private:
 	PhysicsWorld* m_physics;
 	ScriptEngine* m_scriptEngine;
 
-	/*------------------------------------------------------------------------------
-									[HELPER]
-	------------------------------------------------------------------------------*/
+	//= HELPER FUNCTIONS ====================================
 	IComponent* AddComponentBasedOnType(std::string typeStr);
 };
