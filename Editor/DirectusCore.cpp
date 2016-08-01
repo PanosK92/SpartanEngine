@@ -29,15 +29,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_MSWindowsUseDirect3D, true);
-	setAttribute(Qt::WA_PaintOnScreen, true);
-	setAttribute(Qt::WA_NativeWindow, true);
+    setAttribute(Qt::WA_PaintOnScreen, true);
+    setAttribute(Qt::WA_NativeWindow, true);
 
     // This will make Qt update this widget as fast as possible.
     // Yes, paintEvent(QPaintEvent*) will be called also.
     // NOTE: I tested this technique and it yields thousands
     // of FPS, so it should do.
-    m_timer = new QTimer(this);
-    connect(m_timer, SIGNAL(timeout()), this, SLOT(update()));
+    m_timerASAP = new QTimer(this);
+    connect(m_timerASAP, SIGNAL(timeout()), this, SLOT(update()));
+
+    m_timerSEC = new QTimer(this);
+    connect(m_timerSEC, SIGNAL(timeout()), this, SLOT(UpdateSEC()));
 }
 
 DirectusCore::~DirectusCore()
@@ -69,22 +72,28 @@ void DirectusCore::Initialize(HWND hwnd, HINSTANCE hinstance, DirectusStatsLabel
 void DirectusCore::Play()
 {
     SET_ENGINE_MODE(Editor_Play);
-    m_timer->start(0);
+    m_timerASAP->start(0);
+    m_timerSEC->start(1000);
 }
 
 void DirectusCore::Stop()
 {
     SET_ENGINE_MODE(Editor_Stop);
-    m_timer->stop();
+    m_timerASAP->stop();
+    m_timerSEC->stop();
 }
 
-void DirectusCore::Update()
+void DirectusCore::UpdateASAP()
 {
     if (!m_socket)
         return;
 
     m_socket->Update();
-    m_socket->Render();
+    m_socket->Render();   
+}
+
+void DirectusCore::UpdateSEC()
+{
     m_directusStatsLabel->UpdateStats(this);
 }
 //====================================================
@@ -92,6 +101,9 @@ void DirectusCore::Update()
 //= OVERRIDDEN FUNCTIONS =============================
 void DirectusCore::resizeEvent(QResizeEvent* evt)
 {
+    if (evt->oldSize() == evt->size())
+        return;
+
     int width = this->size().width();
     int height = this->size().height();
 
@@ -104,18 +116,12 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
         height++;
 
     setGeometry(QRect(0, 0, width, height));
-	Resize(width, height);
-
-    // Has to be overriden for QSS to take affect
-    //QStyleOption opt;
-    //opt.init(this);
-    //QPainter p(this);
-    //style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+    Resize(width, height);
 }
 
 void DirectusCore::paintEvent(QPaintEvent* evt)
 {
-   Update();
+    UpdateASAP();
 }
 //===================================================
 

@@ -134,7 +134,7 @@ void DirectusTexture::dropEvent(QDropEvent* event)
 
         // Update the engine
         m_directusCore->GetEngineSocket()->SetMaterialTexture(gameObject, m_textureType, imagePath);
-        m_directusCore->Update();
+        m_directusCore->UpdateASAP();
     }
 }
 //=========================================================================================
