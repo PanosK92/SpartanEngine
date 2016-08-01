@@ -95,6 +95,5 @@ private:
 	/*------------------------------------------------------------------------------
 									[HELPER]
 	------------------------------------------------------------------------------*/
-
-	void LoadCompFromTypeStr(std::string typeStr);
+	IComponent* AddComponentBasedOnType(std::string typeStr);
 };

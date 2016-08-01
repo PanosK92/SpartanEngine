@@ -21,6 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= INCLUDES ====
+#include <string>
+//===============
+
 class GameObject;
 class Transform;
 class GraphicsDevice;
@@ -44,6 +48,7 @@ public:
 	virtual void Deserialize() = 0;
 
 	//= PROPERTIES ===================
+	std::string g_ID;
 	bool g_enabled;
 	//================================
 
