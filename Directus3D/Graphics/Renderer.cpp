@@ -69,8 +69,6 @@ Renderer::Renderer()
 	m_texIrradiance = nullptr;
 	m_nearPlane = 0.0;
 	m_farPlane = 0.0f;
-	m_renderStartTime = 0;
-	m_renderTime = 0;
 }
 
 Renderer::~Renderer()
@@ -486,7 +484,6 @@ void Renderer::SetPhysicsDebugDraw(bool enable) const
 //= STATS ============================
 void Renderer::StartCalculatingStats()
 {
-	m_renderStartTime = m_timer->GetTimeMs();
 	m_meshesRendered = 0;
 }
 
@@ -494,21 +491,10 @@ void Renderer::StopCalculatingStats()
 {
 	// meshes rendered
 	m_renderedMeshesCount = m_meshesRendered;
-
-	// get current time
-	float currentTime = m_timer->GetTimeMs();
-
-	// calculate render time
-	m_renderTime = currentTime - m_renderStartTime;
 }
 
 int Renderer::GetRenderedMeshesCount() const
 {
 	return m_renderedMeshesCount;
-}
-
-float Renderer::GetRenderTimeMs() const
-{
-	return m_renderTime;
 }
 //====================================

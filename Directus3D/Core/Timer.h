@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Windows.h>
 //==================
 
+class Stopwatch;
+
 class __declspec(dllexport) Timer
 {
 public:
@@ -45,6 +47,12 @@ public:
 
 	float GetFPS() const;
 
+	void UpdateStart() const;
+	void UpdateEnd() const;
+	float GetUpdateTime() const;
+	void RenderStart() const;
+	void RenderEnd() const;
+	float GetRenderTime() const;
 private:
 	INT64 m_ticksPerSec;
 	float m_ticksPerMs;
@@ -56,4 +64,9 @@ private:
 	int m_frameCount;
 	float m_fpsLastKnownTime;
 	float m_fps;
+
+	//= STATS ===================
+	Stopwatch* m_updateStopwatch;
+	Stopwatch* m_renderStopwatch;
+	//===========================
 };

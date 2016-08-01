@@ -41,6 +41,7 @@ public:
 	~Engine();
 
 	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
+	void Update();
 	void Shutdown();
 	Socket* GetSocket();
 
@@ -56,7 +57,7 @@ private:
 	Scene* m_scene;
 	Input* m_input;
 	Timer* m_timer;
-	PhysicsWorld* m_physicsEngine;
+	PhysicsWorld* m_physicsWorld;
 	MeshPool* m_meshPool;
 	MaterialPool* m_materialPool;
 	TexturePool* m_texturePool;

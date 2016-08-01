@@ -35,8 +35,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Socket::Socket(Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice)
+Socket::Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice)
 {
+	m_engine = engine;
 	m_scene = scene;
 	m_renderer = renderer;
 	m_timer = timer;
@@ -78,25 +79,7 @@ void Socket::SetViewport(int width, int height) const
 //= MISC =======================================================================
 void Socket::Update()
 {
-	// update time
-	m_timer->Update();
-
-	// update input
-	m_input->Update();
-
-	// update gameobjects
-	GameObjectPool::GetInstance().Update();
-
-	// update scene
-	m_scene->Update();
-
-	// update physics
-	m_physics->Update();
-}
-
-void Socket::Render()
-{
-	m_renderer->Render();
+	m_engine->Update();
 }
 
 void Socket::SetPhysicsDebugDraw(bool enable)
@@ -168,24 +151,24 @@ void Socket::ClearScene()
 //==============================================================================
 
 //= STATS ======================================================================
-float Socket::GetFPS()
+float Socket::GetFPS() const
 {
 	return m_timer->GetFPS();
 }
 
-int Socket::GetRenderedMeshesCount()
+int Socket::GetRenderedMeshesCount() const
 {
 	return m_renderer->GetRenderedMeshesCount();
 }
 
-float Socket::GetDeltaTime()
+float Socket::GetDeltaTime() const
 {
 	return m_timer->GetDeltaTime();
 }
 
 float Socket::GetRenderTime()
 {
-	return m_renderer->GetRenderTimeMs() / 1000;
+	return m_timer->GetRenderTime();
 }
 //==============================================================================
 

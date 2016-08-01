@@ -43,7 +43,7 @@ Engine::Engine()
 	m_scene = nullptr;
 	m_input = nullptr;
 	m_timer = nullptr;
-	m_physicsEngine = nullptr;
+	m_physicsWorld = nullptr;
 	m_meshPool = nullptr;
 	m_materialPool = nullptr;
 	m_texturePool = nullptr;
@@ -74,8 +74,8 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_input->Initialize(instance, windowHandle);
 
 	// 5 - PHYSICS ENGINE
-	m_physicsEngine = new PhysicsWorld();
-	m_physicsEngine->Initialize(m_timer);
+	m_physicsWorld = new PhysicsWorld();
+	m_physicsWorld->Initialize(m_timer);
 
 	// 6 - SCRIPT ENGINE
 	m_scriptEngine = new ScriptEngine(m_timer, m_input);
@@ -102,17 +102,36 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 	// 13 - RENDERER
 	m_renderer = new Renderer();
-	m_scene = new Scene(m_texturePool, m_materialPool, m_meshPool, m_scriptEngine, m_physicsEngine, m_modelLoader, m_renderer);
-	m_renderer->Initialize(true, m_graphicsDevice, m_timer, m_physicsEngine, m_scene);
+	m_scene = new Scene(m_texturePool, m_materialPool, m_meshPool, m_scriptEngine, m_physicsWorld, m_modelLoader, m_renderer);
+	m_renderer->Initialize(true, m_graphicsDevice, m_timer, m_physicsWorld, m_scene);
 
 	// 14 - GAMEOBJECT POOL
-	GameObjectPool::GetInstance().Initialize(m_graphicsDevice, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physicsEngine, m_scriptEngine);
+	GameObjectPool::GetInstance().Initialize(m_graphicsDevice, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physicsWorld, m_scriptEngine);
 
 	// 15 - SCENE	
 	m_scene->Initialize();
 
 	// 16 - ENGINE SOCKET
-	m_engineSocket = new Socket(m_scene, m_renderer, m_input, m_timer, m_modelLoader, m_physicsEngine, m_texturePool, m_graphicsDevice);
+	m_engineSocket = new Socket(this, m_scene, m_renderer, m_input, m_timer, m_modelLoader, m_physicsWorld, m_texturePool, m_graphicsDevice);
+}
+
+void Engine::Update()
+{
+	m_timer->UpdateStart();
+	//= UPDATE ============================
+	m_timer->Update();
+	m_input->Update();
+	GameObjectPool::GetInstance().Update();
+	m_scene->Update();
+	m_physicsWorld->Update();
+	//=====================================
+	m_timer->UpdateEnd();
+
+	m_timer->RenderStart();
+	//= RENDER ============================
+	m_renderer->Render();	
+	//=====================================
+	m_timer->RenderEnd();
 }
 
 void Engine::Shutdown()
@@ -151,7 +170,7 @@ void Engine::Shutdown()
 	SafeDelete(m_scriptEngine);
 
 	// 5 - PHYSICS ENGINE
-	SafeDelete(m_physicsEngine);
+	SafeDelete(m_physicsWorld);
 
 	// 4 - INPUT
 	SafeDelete(m_input);
