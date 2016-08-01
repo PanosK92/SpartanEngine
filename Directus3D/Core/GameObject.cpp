@@ -146,6 +146,7 @@ void GameObject::Serialize()
 	for (auto it = m_components.begin(); it != m_components.end(); ++it)
 	{
 		Serializer::SaveSTR(it->first); // save component's type
+		Serializer::SaveSTR(it->second->g_ID); // save component's id
 		it->second->Serialize(); // save the component
 	}
 }
@@ -160,8 +161,12 @@ void GameObject::Deserialize()
 	int componentCount = Serializer::LoadInt();
 	for (int i = 0; i < componentCount; i++)
 	{
-		string typeStr = Serializer::LoadSTR(); // load component's type
-		LoadCompFromTypeStr(typeStr);
+		string type = Serializer::LoadSTR(); // load component's type
+		string id = Serializer::LoadSTR(); // laad component's id
+
+		IComponent* component = AddComponentBasedOnType(type);
+		component->Deserialize();
+		component->g_ID = id;
 	}
 }
 
@@ -189,6 +194,7 @@ Type* GameObject::AddComponent()
 	m_components.insert(pair<string, IComponent*>(typeStr, component));
 
 	// Set default properties.
+	component->g_ID = GENERATE_GUID;
 	component->g_enabled = true;
 
 	// Set some useful pointers.
@@ -286,43 +292,47 @@ Transform* GameObject::GetTransform()
 /*------------------------------------------------------------------------------
 							[HELPER]
 ------------------------------------------------------------------------------*/
-void GameObject::LoadCompFromTypeStr(string typeStr)
+IComponent* GameObject::AddComponentBasedOnType(string typeStr)
 {
+	IComponent* component = nullptr;
+
 	if (typeStr == "Transform")
-		AddComponent<Transform>()->Deserialize();
+		component = AddComponent<Transform>();
 
 	if (typeStr == "MeshFilter")
-		AddComponent<MeshFilter>()->Deserialize();
+		component = AddComponent<MeshFilter>();
 
 	if (typeStr == "MeshRenderer")
-		AddComponent<MeshRenderer>()->Deserialize();
+		component = AddComponent<MeshRenderer>();
 
 	if (typeStr == "Light")
-		AddComponent<Light>()->Deserialize();
+		component = AddComponent<Light>();
 
 	if (typeStr == "Camera")
-		AddComponent<Camera>()->Deserialize();
+		component = AddComponent<Camera>();
 
 	if (typeStr == "Skybox")
-		AddComponent<Skybox>()->Deserialize();
+		component = AddComponent<Skybox>();
 
 	if (typeStr == "RigidBody")
-		AddComponent<RigidBody>()->Deserialize();
+		component = AddComponent<RigidBody>();
 
 	if (typeStr == "Collider")
-		AddComponent<Collider>()->Deserialize();
+		component = AddComponent<Collider>();
 
 	if (typeStr == "MeshCollider")
-		AddComponent<MeshCollider>()->Deserialize();
+		component = AddComponent<MeshCollider>();
 
 	if (typeStr == "Hinge")
-		AddComponent<Hinge>()->Deserialize();
+		component = AddComponent<Hinge>();
 
 	if (typeStr == "Script")
-		AddComponent<Script>()->Deserialize();
+		component = AddComponent<Script>();
 
 	if (typeStr == "LineRenderer")
-		AddComponent<LineRenderer>()->Deserialize();
+		component = AddComponent<LineRenderer>();
+
+	return component;
 }
 
 /*------------------------------------------------------------------------------
