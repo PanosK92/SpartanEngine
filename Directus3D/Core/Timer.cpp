@@ -27,11 +27,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Timer::Timer()
 {
-	m_frequency = 0;
+	m_ticksPerSec = 0.0f;
 	m_ticksPerMs = 0.0f;
 	m_deltaTime = 0.0f;
 	m_startTime = 0.0f;
 	m_lastKnownTime = 0.0f;
+
+	//= FPS CALCULATION
+	m_frameCount = 0;
+	m_fpsLastKnownTime = 0;
+	m_fps = 0;
 }
 
 Timer::~Timer()
@@ -40,17 +45,19 @@ Timer::~Timer()
 
 void Timer::Initialize()
 {
-	// Get ticks per second
-	QueryPerformanceFrequency((LARGE_INTEGER*)&m_frequency);
+	LARGE_INTEGER ticksPerSec;
+	if (QueryPerformanceFrequency(&ticksPerSec))
+	{
+		m_ticksPerSec = ticksPerSec.QuadPart;
+	}
+	else
+	{
+		LOG_ERROR("The system does not support high performance timers.");
+		m_ticksPerSec = 1000000;
+	}
 
-	// If the frequency is 0, this machine doesn't support high performance timers.
-	if (m_frequency == 0)
-	LOG("The system does not support high performance timers.", Log::Warning);
-
-	// Convert frequency from ticks per second to ticks every millisecond.
-	m_ticksPerMs = (float)(m_frequency / 1000);
-
-	m_startTime = GetTimeMs(); // Save current time
+	m_ticksPerMs = m_ticksPerSec / 1000.0f;
+	m_startTime = GetTimeMs();
 	m_lastKnownTime = m_startTime;
 }
 
@@ -64,12 +71,21 @@ void Timer::Update()
 
 	// Save current time
 	m_lastKnownTime = currentTime;
+
+	// fps
+	m_frameCount++;
+	if (currentTime >= m_fpsLastKnownTime + 1000)
+	{
+		m_fps = m_frameCount;
+		m_frameCount = 0;
+		m_fpsLastKnownTime = currentTime;
+	}
 }
 
 // Returns them time it took to complete the last frame in seconds 
 float Timer::GetDeltaTime() const
 {
-	return GetDeltaTimeMs() / 1000;
+	return GetDeltaTimeMs() / 1000.0f;
 }
 
 // Returns them time it took to complete the last frame in milliseconds
@@ -81,11 +97,11 @@ float Timer::GetDeltaTimeMs() const
 // Returns current time in seconds
 float Timer::GetTime()
 {
-	return GetTimeMs() / 1000;
+	return GetTimeMs() / 1000.0f;
 }
 
 // Returns current time in milliseconds
-float Timer::GetTimeMs()
+float Timer::GetTimeMs() const
 {
 	INT64 currentTime;
 	QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
@@ -100,7 +116,12 @@ float Timer::GetElapsedTime()
 }
 
 // Returns them elapsed time since the engine initialization in milliseconds
-float Timer::GetElapsedTimeMs()
+float Timer::GetElapsedTimeMs() const
 {
 	return GetTimeMs() - m_startTime;
+}
+
+float Timer::GetFPS() const
+{
+	return m_fps;
 }

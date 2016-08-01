@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================
+//= INCLUDES =======
 #include <Windows.h>
-
-//===========================
+//==================
 
 class __declspec(dllexport) Timer
 {
@@ -39,15 +38,22 @@ public:
 	float GetDeltaTimeMs() const;
 
 	float GetTime();
-	float GetTimeMs();
+	float GetTimeMs() const;
 
 	float GetElapsedTime();
-	float GetElapsedTimeMs();
+	float GetElapsedTimeMs() const;
+
+	float GetFPS() const;
 
 private:
-	INT64 m_frequency;
+	INT64 m_ticksPerSec;
 	float m_ticksPerMs;
 	float m_deltaTime;
 	float m_startTime;
 	float m_lastKnownTime;
+
+	//= FPS CALCULATION
+	int m_frameCount;
+	float m_fpsLastKnownTime;
+	float m_fps;
 };
