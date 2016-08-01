@@ -54,7 +54,7 @@ public:
 	void Set();
 	void Render(int indexCount, 
 		Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, 
-		Material* material, std::vector<ID3D11ShaderResourceView*> textureArray, Light* light, Camera* camera);
+		Material* material, std::vector<ID3D11ShaderResourceView*> textureArray, Light* light, bool receiveShadows, Camera* camera);
 	std::string GetID();
 
 	bool HasAlbedoTexture();
@@ -110,6 +110,6 @@ private:
 		float shadingMode;
 		Directus::Math::Vector2 materialTiling;
 		Directus::Math::Vector2 viewport;
-		Directus::Math::Vector2 padding;
+		Directus::Math::Vector2 receiveShadows;
 	};
 };

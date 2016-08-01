@@ -113,7 +113,7 @@ void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix pro
 		indexCount,
 		g_transform->GetWorldMatrix(), viewMatrix, projectionMatrix,
 		GetMaterial(), textures, 
-		dicrectionalLight, camera
+		dicrectionalLight, GetReceiveShadows(), camera
 	);
 }
 //==============================================================================

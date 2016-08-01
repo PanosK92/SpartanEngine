@@ -56,7 +56,7 @@ public:
 	{
 	}
 
-	virtual void getWorldTransform(btTransform& worldTrans) const
+	void getWorldTransform(btTransform& worldTrans) const override
 	{
 		Vector3 position = transform->GetPosition();
 		Quaternion rotation = transform->GetRotation();
@@ -66,7 +66,7 @@ public:
 		worldTrans.setRotation(ToBtQuaternion(rotation));
 	}
 
-	virtual void setWorldTransform(const btTransform& worldTrans)
+	void setWorldTransform(const btTransform& worldTrans) override
 	{
 		if (!transform)
 			return;
@@ -82,9 +82,7 @@ public:
 
 RigidBody::RigidBody()
 {
-	m_rigidBody = nullptr;
-	m_shape = nullptr;
-
+	m_inWorld = false;
 	m_mass = 0.0f;
 	m_restitution = 0.5f;
 	m_drag = 0.0f;
@@ -93,6 +91,9 @@ RigidBody::RigidBody()
 	m_kinematic = false;
 	m_positionLock = Vector3::Zero;
 	m_rotationLock = Vector3::Zero;
+
+	m_rigidBody = nullptr;
+	m_shape = nullptr;
 }
 
 RigidBody::~RigidBody()
