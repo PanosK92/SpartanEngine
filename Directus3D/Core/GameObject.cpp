@@ -59,12 +59,10 @@ GameObject::GameObject()
 GameObject::~GameObject()
 {
 	// delete components
-	multimap<string, IComponent*>::iterator it;
-	for (it = m_components.begin(); it != m_components.end(); ++it)
+	for (auto it = m_components.begin(); it != m_components.end(); ++it)
 	{
 		IComponent* component = it->second;
 		component->Remove();
-
 		delete component;
 	}
 	m_components.clear();
@@ -93,8 +91,7 @@ void GameObject::Update()
 		return;
 
 	// update components
-	multimap<string, IComponent*>::iterator it;
-	for (it = m_components.begin(); it != m_components.end(); ++it)
+	for (auto it = m_components.begin(); it != m_components.end(); ++it)
 		it->second->Update();
 }
 
@@ -146,7 +143,7 @@ void GameObject::Serialize()
 	Serializer::SaveBool(m_hierarchyVisibility);
 
 	Serializer::SaveInt(m_components.size());
-	for (multimap<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end(); ++it)
+	for (auto it = m_components.begin(); it != m_components.end(); ++it)
 	{
 		Serializer::SaveSTR(it->first); // save component's type
 		it->second->Serialize(); // save the component
@@ -219,7 +216,7 @@ Type* GameObject::AddComponent()
 template <class Type>
 Type* GameObject::GetComponent()
 {
-	for (multimap<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end(); ++it)
+	for (auto it = m_components.begin(); it != m_components.end(); ++it)
 	{
 		IComponent* component = it->second;
 
@@ -237,7 +234,7 @@ vector<Type*> GameObject::GetComponents()
 {
 	vector<Type*> components;
 
-	for (multimap<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end(); ++it)
+	for (auto it = m_components.begin(); it != m_components.end(); ++it)
 	{
 		IComponent* component = it->second;
 
@@ -262,7 +259,7 @@ bool GameObject::HasComponent()
 template <class Type>
 void GameObject::RemoveComponent()
 {
-	for (multimap<string, IComponent*>::iterator it = m_components.begin(); it != m_components.end();)
+	for (auto it = m_components.begin(); it != m_components.end();)
 	{
 		IComponent* component = it->second;
 
@@ -273,13 +270,12 @@ void GameObject::RemoveComponent()
 			component->Remove();
 			delete component;
 			it = m_components.erase(it);
-
-			m_scene->AnalyzeGameObjects();
-
-			return;
+			continue;
 		}
 		++it;
 	}
+
+	m_scene->AnalyzeGameObjects();
 }
 
 Transform* GameObject::GetTransform()
