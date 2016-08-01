@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============
+//= INCLUDES =============
 #include "DirectusCore.h"
 #include "IO/Log.h"
 #include <QStyleOption>
-//=======================
+#include "Core/Settings.h"
+//========================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
 DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
@@ -88,8 +89,7 @@ void DirectusCore::UpdateASAP()
     if (!m_socket)
         return;
 
-    m_socket->Update();
-    m_socket->Render();   
+    m_socket->Update();  
 }
 
 void DirectusCore::UpdateSEC()

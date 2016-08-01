@@ -56,7 +56,6 @@ public:
 	void StartCalculatingStats();
 	void StopCalculatingStats();
 	int GetRenderedMeshesCount() const;
-	float GetRenderTimeMs() const;
 	//=================================
 
 private:
@@ -99,8 +98,6 @@ private:
 	//= STATS ================
 	int m_renderedMeshesCount;
 	int m_meshesRendered;
-	float m_renderStartTime;
-	float m_renderTime;
 	//========================
 
 	//= PREREQUISITES =============================

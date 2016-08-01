@@ -26,8 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Timer.h"
 #include "../Input/Input.h"
 #include "../Physics/PhysicsWorld.h"
-#include "../Core/Settings.h"
 #include "../Loading/ImageLoader.h"
+#include "Engine.h"
 //===================================
 
 class ILogger;
@@ -36,7 +36,7 @@ class PhysicsDebugDraw;
 class __declspec(dllexport) Socket
 {
 public:
-	Socket(Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice);
+	Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice);
 	~Socket();
 
 	//= IO =========================
@@ -51,7 +51,6 @@ public:
 
 	//= MISC =======================================================================
 	void Update();
-	void Render();
 	void SetPhysicsDebugDraw(bool enable);
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
 	//==============================================================================
@@ -72,14 +71,15 @@ public:
 	//==============================================================================
 
 	//= STATS ======================================================================
-	float GetFPS();
-	int GetRenderedMeshesCount();
-	float GetDeltaTime();
+	float GetFPS() const;
+	int GetRenderedMeshesCount() const;
+	float GetDeltaTime() const;
 	float GetRenderTime();
 	//==============================================================================
 
 	void SetMaterialTexture(GameObject* gameObject, TextureType type, std::string texturePath);
 private:
+	Engine* m_engine;
 	Scene* m_scene;
 	Renderer* m_renderer;
 	GraphicsDevice* m_graphicsDevice;
