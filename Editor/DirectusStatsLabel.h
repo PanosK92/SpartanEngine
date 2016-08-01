@@ -12,4 +12,5 @@ class DirectusStatsLabel : public QLineEdit
 public:
     explicit DirectusStatsLabel(QWidget *parent = 0);
     void UpdateStats(DirectusCore* directusCore);
+    std::string BeautifyFloat(float value);
 };
