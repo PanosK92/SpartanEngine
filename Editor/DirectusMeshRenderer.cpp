@@ -77,19 +77,19 @@ void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspec
 
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
-    // Row 0
+    // Row 0 - TITLE
     m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
     m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
 
-    // Row 1
+    // Row 1 - CAST SHADOWS
     m_gridLayout->addWidget(m_castShadowsLabel, 1, 0, 1, 1);
     m_gridLayout->addWidget(m_castShadowsCheckBox, 1, 1, 1, 1);
 
-    // Row 2
+    // Row 2 - RECEIVE SHADOWS
     m_gridLayout->addWidget(m_receiveShadowsLabel, 2, 0, 1, 1);
     m_gridLayout->addWidget(m_receiveShadowsCheckBox, 2, 1, 1, 1);
 
-    // Row 3
+    // Row 3 - MATERIAL
     m_gridLayout->addWidget(m_materialLabel, 3, 0, 1, 1);
     m_gridLayout->addWidget(m_material, 3, 1, 1, 1);
 
@@ -97,9 +97,9 @@ void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspec
     m_gridLayout->addWidget(m_line, 4, 0, 1, 3);
     //============================================================
 
-    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
-    connect(m_castShadowsCheckBox,      SIGNAL(clicked(bool)), this, SLOT(Map()));
-    connect(m_receiveShadowsCheckBox,   SIGNAL(clicked(bool)), this, SLOT(Map()));
+    connect(m_optionsButton,            SIGNAL(Remove()),       this, SLOT(Remove()));
+    connect(m_castShadowsCheckBox,      SIGNAL(clicked(bool)),  this, SLOT(MapCastShadows()));
+    connect(m_receiveShadowsCheckBox,   SIGNAL(clicked(bool)),  this, SLOT(MapReceiveShadows()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -126,26 +126,35 @@ void DirectusMeshRenderer::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    SetCastShadows(m_inspectedMeshRenderer->GetCastShadows());
-    SetReceiveShadows(m_inspectedMeshRenderer->GetReceiveShadows());
-    SetMaterial(m_inspectedMeshRenderer->GetMaterial());
+    SetCastShadows();
+    SetReceiveShadows();
+    SetMaterial();
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusMeshRenderer::SetCastShadows(bool cast)
+void DirectusMeshRenderer::SetCastShadows()
 {
-     m_castShadowsCheckBox->setChecked(cast);
+    if (!m_inspectedMeshRenderer)
+        return;
+
+    bool cast = m_inspectedMeshRenderer->GetCastShadows();
+    m_castShadowsCheckBox->setChecked(cast);
 }
 
-void DirectusMeshRenderer::SetReceiveShadows(bool receive)
+void DirectusMeshRenderer::SetReceiveShadows()
 {
+    if (!m_inspectedMeshRenderer)
+        return;
+
+    bool receive = m_inspectedMeshRenderer->GetReceiveShadows();
     m_receiveShadowsCheckBox->setChecked(receive);
 }
 
-void DirectusMeshRenderer::SetMaterial(Material* material)
+void DirectusMeshRenderer::SetMaterial()
 {
+    Material* material = m_inspectedMeshRenderer->GetMaterial();
     if (!material)
         return;
 
@@ -153,16 +162,26 @@ void DirectusMeshRenderer::SetMaterial(Material* material)
     m_material->setText(QString::fromStdString(materialName));
 }
 
-void DirectusMeshRenderer::Map()
+void DirectusMeshRenderer::MapCastShadows()
 {
     if (!m_inspectedMeshRenderer)
         return;
 
-    bool castShadows = m_castShadowsCheckBox->isChecked();  
+    bool castShadows = m_castShadowsCheckBox->isChecked();
     m_inspectedMeshRenderer->SetCastShadows(castShadows);
+
+    m_directusCore->Update();
+}
+
+void DirectusMeshRenderer::MapReceiveShadows()
+{
+    if (!m_inspectedMeshRenderer)
+        return;
 
     bool receiveShadows = m_receiveShadowsCheckBox->isChecked();
     m_inspectedMeshRenderer->SetReceiveShadows(receiveShadows);
+
+    m_directusCore->Update();
 }
 
 void DirectusMeshRenderer::Remove()
@@ -172,7 +191,7 @@ void DirectusMeshRenderer::Remove()
 
     GameObject* gameObject = m_inspectedMeshRenderer->g_gameObject;
     gameObject->RemoveComponent<MeshRenderer>();
-    m_directusCore->Update();
 
+    m_directusCore->Update();
     m_inspector->Inspect(gameObject);
 }

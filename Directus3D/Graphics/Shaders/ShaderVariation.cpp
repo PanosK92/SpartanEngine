@@ -119,7 +119,7 @@ void ShaderVariation::Load()
 	m_befaultBuffer->CreateConstantBuffer(sizeof(DefaultBufferType));
 }
 
-void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mProjection, Material* material, vector<ID3D11ShaderResourceView*> textureArray, Light* directionalLight, Camera* camera)
+void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mProjection, Material* material, vector<ID3D11ShaderResourceView*> textureArray, Light* directionalLight, bool receiveShadows, Camera* camera)
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{
@@ -159,7 +159,7 @@ void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix
 		defaultBufferType->shadingMode = float(material->GetShadingMode());
 		defaultBufferType->materialTiling = material->GetTiling();
 		defaultBufferType->viewport = GET_RESOLUTION;
-		defaultBufferType->padding = Vector2(directionalLight->GetBias(), directionalLight->GetBias());
+		defaultBufferType->receiveShadows = Vector2(receiveShadows, directionalLight->GetBias());
 		m_befaultBuffer->Unmap();
 	}
 	m_befaultBuffer->SetVS(0); // set buffer in the vertex shader
