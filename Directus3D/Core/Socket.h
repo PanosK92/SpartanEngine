@@ -74,7 +74,8 @@ public:
 	float GetFPS() const;
 	int GetRenderedMeshesCount() const;
 	float GetDeltaTime() const;
-	float GetRenderTime();
+	float GetUpdateTime() const;
+	float GetRenderTime() const;
 	//==============================================================================
 
 	void SetMaterialTexture(GameObject* gameObject, TextureType type, std::string texturePath);
