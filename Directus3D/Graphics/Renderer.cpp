@@ -71,9 +71,6 @@ Renderer::Renderer()
 	m_farPlane = 0.0f;
 	m_renderStartTime = 0;
 	m_renderTime = 0;
-	m_frameCount = 0;
-	m_fpsLastKnownTime = 0;
-	m_fps = 0;
 }
 
 Renderer::~Renderer()
@@ -503,26 +500,11 @@ void Renderer::StopCalculatingStats()
 
 	// calculate render time
 	m_renderTime = currentTime - m_renderStartTime;
-
-	// fps
-	m_frameCount++;
-	if (currentTime >= m_fpsLastKnownTime + 1000)
-	{
-		m_fps = m_frameCount;
-		m_frameCount = 0;
-
-		m_fpsLastKnownTime = currentTime;
-	}
 }
 
 int Renderer::GetRenderedMeshesCount() const
 {
 	return m_renderedMeshesCount;
-}
-
-float Renderer::GetFPS() const
-{
-	return m_fps;
 }
 
 float Renderer::GetRenderTimeMs() const

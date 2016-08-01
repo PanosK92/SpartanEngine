@@ -170,7 +170,7 @@ void Socket::ClearScene()
 //= STATS ======================================================================
 float Socket::GetFPS()
 {
-	return m_renderer->GetFPS();
+	return m_timer->GetFPS();
 }
 
 int Socket::GetRenderedMeshesCount()

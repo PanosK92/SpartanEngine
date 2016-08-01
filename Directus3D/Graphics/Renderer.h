@@ -56,7 +56,6 @@ public:
 	void StartCalculatingStats();
 	void StopCalculatingStats();
 	int GetRenderedMeshesCount() const;
-	float GetFPS() const;
 	float GetRenderTimeMs() const;
 	//=================================
 
@@ -102,9 +101,6 @@ private:
 	int m_meshesRendered;
 	float m_renderStartTime;
 	float m_renderTime;
-	int m_frameCount;
-	float m_fpsLastKnownTime;
-	float m_fps;
 	//========================
 
 	//= PREREQUISITES =============================
