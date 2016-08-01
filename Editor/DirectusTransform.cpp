@@ -179,29 +179,11 @@ void DirectusTransform::Reflect(GameObject* gameobject)
     this->show();
 }
 
-Vector3 DirectusTransform::GetPosition()
-{
-    float x = m_posX->GetAsFloat();
-    float y = m_posY->GetAsFloat();
-    float z = m_posZ->GetAsFloat();
-
-    return Vector3(x, y, z);
-}
-
 void DirectusTransform::SetPosition(Vector3 pos)
 {
     m_posX->SetFromFloat(pos.x);
     m_posY->SetFromFloat(pos.y);
     m_posZ->SetFromFloat(pos.z);
-}
-
-Quaternion DirectusTransform::GetRotation()
-{
-    float x = m_rotX->GetAsFloat();
-    float y = m_rotY->GetAsFloat();
-    float z = m_rotZ->GetAsFloat();
-
-    return Quaternion::FromEulerAngles(x, y, z);
 }
 
 void DirectusTransform::SetRotation(Quaternion rot)
@@ -216,15 +198,6 @@ void DirectusTransform::SetRotation(Vector3 rot)
     m_rotZ->SetFromFloat(rot.z);
 }
 
-Vector3 DirectusTransform::GetScale()
-{
-    float x = m_scaX->GetAsFloat();
-    float y = m_scaY->GetAsFloat();
-    float z = m_scaZ->GetAsFloat();
-
-    return Vector3(x, y, z);
-}
-
 void DirectusTransform::SetScale(Vector3 sca)
 {
     m_scaX->SetFromFloat(sca.x);
@@ -237,7 +210,11 @@ void DirectusTransform::MapPosition()
     if (!m_inspectedTransform || !m_directusCore)
         return;
 
-    m_inspectedTransform->SetPositionLocal(GetPosition());
+    float x = m_posX->GetAsFloat();
+    float y = m_posY->GetAsFloat();
+    float z = m_posZ->GetAsFloat();
+    m_inspectedTransform->SetPositionLocal(Vector3(x,y,z));
+
     m_directusCore->Update();
 }
 
@@ -246,7 +223,16 @@ void DirectusTransform::MapRotation()
     if (!m_inspectedTransform || !m_directusCore)
         return;
 
-    m_inspectedTransform->SetRotationLocal(GetRotation());
+    Vector3 engineRot = m_inspectedTransform->GetRotationLocal().ToEulerAngles();
+    Vector3 editorRot = Vector3(m_rotX->GetAsFloat(), m_rotY->GetAsFloat(), m_rotZ->GetAsFloat());
+    Vector3 deltaEuler = Vector3(
+    editorRot.x - engineRot.x,
+    editorRot.y - engineRot.y,
+    editorRot.z - engineRot.z
+    );
+    Quaternion rotationDelta = Quaternion::FromEulerAngles(deltaEuler);
+
+    m_inspectedTransform->Rotate(rotationDelta);
     m_directusCore->Update();
 }
 
@@ -255,6 +241,10 @@ void DirectusTransform::MapScale()
     if (!m_inspectedTransform || !m_directusCore)
         return;
 
-    m_inspectedTransform->SetScaleLocal(GetScale());
+    float x = m_scaX->GetAsFloat();
+    float y = m_scaY->GetAsFloat();
+    float z = m_scaZ->GetAsFloat();
+    m_inspectedTransform->SetScaleLocal(Vector3(x,y,z));
+
     m_directusCore->Update();
 }

@@ -170,27 +170,6 @@ namespace Directus
 
 			static Matrix CreateScale(Vector3 scale);
 
-			static Matrix CreateFromQuaternion(Quaternion q);
-
-			static Matrix CreateFromYawPitchRoll(float yaw, float pitch, float roll)
-			{
-				float sroll, croll, spitch, cpitch, syaw, cyaw;
-
-				sroll = sinf(roll);
-				croll = cosf(roll);
-				spitch = sinf(pitch);
-				cpitch = cosf(pitch);
-				syaw = sinf(yaw);
-				cyaw = cosf(yaw);
-
-				return Matrix(
-					sroll * spitch * syaw + croll * cyaw, sroll * cpitch, sroll * spitch * cyaw - croll * syaw, 0.0f,
-					croll * spitch * syaw - sroll * cyaw, croll * cpitch, croll * spitch * cyaw + sroll * syaw, 0.0f,
-					cpitch * syaw, -spitch, cpitch * cyaw, 0.0f,
-					0.0f, 0.0f, 0.0f, 1.0f
-				);
-			}
-
 			static Matrix CreateTranslation(Vector3 position);
 
 			static Matrix CreateLookAtLH(Vector3 cameraPosition, Vector3 cameraTarget, Vector3 cameraUpVector);

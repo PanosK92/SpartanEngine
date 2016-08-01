@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========
 #include "MathHelper.h"
 #include <math.h>
-
 //=====================
 
 namespace Directus

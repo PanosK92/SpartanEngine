@@ -68,6 +68,10 @@ public:
 	void SetScale(Directus::Math::Vector3 scale);
 	void SetScaleLocal(Directus::Math::Vector3 scale);
 
+	//= TRANSLATION/ROTATION ========================================================
+	void Translate(Directus::Math::Vector3 delta);
+	void Rotate(Directus::Math::Quaternion delta);
+
 	/*------------------------------------------------------------------------------
 									[DIRECTION]
 	------------------------------------------------------------------------------*/
@@ -105,12 +109,12 @@ private:
 	bool m_isDirty;
 
 	// local
-	Directus::Math::Vector3 m_translationLocal;
+	Directus::Math::Vector3 m_positionLocal;
 	Directus::Math::Quaternion m_rotationLocal;
 	Directus::Math::Vector3 m_scaleLocal;
 
 	// world 
-	Directus::Math::Vector3 m_translation;
+	Directus::Math::Vector3 m_position;
 	Directus::Math::Quaternion m_rotation;
 	Directus::Math::Vector3 m_scale;
 

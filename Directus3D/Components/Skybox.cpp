@@ -90,6 +90,8 @@ void Skybox::Initialize()
 	// Add a mesh renderer
 	MeshRenderer* meshRenderer = g_gameObject->AddComponent<MeshRenderer>();
 	meshRenderer->SetMaterialStandardSkybox();
+	meshRenderer->SetCastShadows(false);
+	meshRenderer->SetReceiveShadows(false);
 
 	g_transform->SetScale(Vector3(500, 500, 500));
 }

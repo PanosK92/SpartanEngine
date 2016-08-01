@@ -153,12 +153,16 @@ void Renderer::Render()
 	StartCalculatingStats();
 	AcquirePrerequisites();
 
-	if (int(m_renderables.size()) == 0)
-		return;
-
 	if (!m_camera)
 	{
 		m_graphicsDevice->Clear(Vector4(0, 0, 0, 1));
+		m_graphicsDevice->Present();
+		return;
+	}
+
+	if (m_renderables.empty())
+	{
+		m_graphicsDevice->Clear(m_camera->GetClearColor());
 		m_graphicsDevice->Present();
 		return;
 	}
@@ -300,12 +304,8 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 		MeshFilter* mesh = gameObject->GetComponent<MeshFilter>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
 
-		// Prevent the skybox from casting a shadow
-		if (gameObject->GetComponent<Skybox>())
-			continue;
-
-		// if the gameObject can't cast shadows, don't bother
-		if (!meshRenderer->GetCastShadows())
+		// Not all gameobjects should cast shadows...
+		if (gameObject->GetComponent<Skybox>() || !meshRenderer->GetCastShadows())
 			continue;
 
 		if (mesh->SetBuffers())
@@ -382,6 +382,11 @@ void Renderer::DeferredPass()
 	{
 		m_texEnvironment = m_skybox->GetEnvironmentTexture();
 		m_texIrradiance = m_skybox->GetIrradianceTexture();
+	}
+	else
+	{
+		m_texEnvironment = nullptr;
+		m_texIrradiance = nullptr;
 	}
 
 	// deferred rendering
@@ -462,14 +467,18 @@ void Renderer::DebugDraw() const
 
 void Renderer::Ping() const
 {
+	Vector4 clearColor = m_camera ? m_camera->GetClearColor() : Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+
 	m_renderTexPing->SetAsRenderTarget(); // Set the render target to be the render to texture. 
-	m_renderTexPing->Clear(0.0f, 0.0f, 0.0f, 1.0f); // Clear the render to texture.
+	m_renderTexPing->Clear(clearColor); // Clear the render to texture.
 }
 
 void Renderer::Pong() const
 {
+	Vector4 clearColor = m_camera ? m_camera->GetClearColor() : Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+
 	m_renderTexPong->SetAsRenderTarget(); // Set the render target to be the render to texture. 
-	m_renderTexPong->Clear(0.0f, 0.0f, 0.0f, 1.0f); // Clear the render to texture.
+	m_renderTexPong->Clear(clearColor); // Clear the render to texture.
 }
 
 void Renderer::SetPhysicsDebugDraw(bool enable) const

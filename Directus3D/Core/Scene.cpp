@@ -204,7 +204,8 @@ GameObject* Scene::CreateCamera()
 	camera->SetName("Camera");
 	camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 	camera->AddComponent<Camera>();
-	camera->AddComponent<Script>()->AddScript("Assets/Scripts/FirstPersonController.as");
+	camera->AddComponent<Script>()->AddScript("Assets/Scripts/FirstPersonMovement.as");
+	camera->AddComponent<Script>()->AddScript("Assets/Scripts/MouseLook.as");
 	camera->AddComponent<LineRenderer>();
 	camera->AddComponent<Skybox>();
 
