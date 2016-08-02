@@ -72,8 +72,7 @@ void Log::Write(string text, LogType type) // all functions resolve to that one
 	string finalText = prefix + " " + text;
 
 	// Print any queued logs
-	map<string, LogType>::iterator it;
-	for (it = m_queuedLogs.begin(); it != m_queuedLogs.end(); ++it)
+	for (auto it = m_queuedLogs.begin(); it != m_queuedLogs.end(); ++it)
 	{
 		m_logger->Log(it->first, it->second);
 	}

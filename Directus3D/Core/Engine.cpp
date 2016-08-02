@@ -75,7 +75,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 	// 5 - PHYSICS ENGINE
 	m_physicsWorld = new PhysicsWorld();
-	m_physicsWorld->Initialize(m_timer);
+	m_physicsWorld->Initialize();
 
 	// 6 - SCRIPT ENGINE
 	m_scriptEngine = new ScriptEngine(m_timer, m_input);
@@ -117,21 +117,33 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 void Engine::Update()
 {
-	m_timer->UpdateStart();
-	//= UPDATE ============================
 	m_timer->Update();
+	
+	//= FIXED UPDATE - 30Hz ======================
+	float updates = 30;
+	float updateInterval = 1.0f / updates;
+	float currentTime = m_timer->GetTime();
+	if (currentTime > m_fixedUpdateTimeRunned + updateInterval)
+	{		
+		m_fixedUpdateTimeRunned = currentTime;
+	}
+	//============================================
+	
+	//= PHYSICS - 60 HZ (INTERNAL CLOCK) =========
+	m_physicsWorld->Step(m_timer->GetDeltaTime());
+	//============================================
+
+	//= UPDATE - MAX HZ ==========================
 	m_input->Update();
 	GameObjectPool::GetInstance().Update();
 	m_scene->Update();
-	m_physicsWorld->Update();
-	//=====================================
-	m_timer->UpdateEnd();
+	//===========================================
 
+	//= RENDERING - MAX HZ ======================
 	m_timer->RenderStart();
-	//= RENDER ============================
-	m_renderer->Render();	
-	//=====================================
+	m_renderer->Render();
 	m_timer->RenderEnd();
+	//===========================================
 }
 
 void Engine::Shutdown()
