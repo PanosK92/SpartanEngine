@@ -131,9 +131,9 @@ void SetGameObjectTransform(GameObject* gameObject, aiMatrix4x4 assimpTransforma
 	worldMatrix.Decompose(scale, rotation, position);
 
 	// apply transformation
-	gameObject->GetTransform()->SetPositionLocal(position);
-	gameObject->GetTransform()->SetRotationLocal(rotation);
-	gameObject->GetTransform()->SetScaleLocal(scale);
+	gameObject->GetTransform()->SetPosition(position);
+	gameObject->GetTransform()->SetRotation(rotation);
+	gameObject->GetTransform()->SetScale(scale);
 }
 
 /*------------------------------------------------------------------------------

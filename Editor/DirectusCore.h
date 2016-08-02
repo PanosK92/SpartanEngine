@@ -62,6 +62,6 @@ private:
 public slots:
     void Play();
     void Stop();
-    void UpdateASAP();
+    void Update();
     void UpdateSEC();
 };

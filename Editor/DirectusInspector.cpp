@@ -200,7 +200,7 @@ void DirectusInspector::dropEvent(QDropEvent* event)
         scriptComp->AddScript(scriptPath);
 
         // Update the engine and the inspector (to reflect the changes)
-        m_directusCore->UpdateASAP();
+        m_directusCore->Update();
         Inspect(m_inspectedGameObject);
     }
 }

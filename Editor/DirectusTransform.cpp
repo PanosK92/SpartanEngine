@@ -215,25 +215,17 @@ void DirectusTransform::MapPosition()
     float z = m_posZ->GetAsFloat();
     m_inspectedTransform->SetPositionLocal(Vector3(x,y,z));
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }
 
 void DirectusTransform::MapRotation()
 {
     if (!m_inspectedTransform || !m_directusCore)
         return;
-
-    Vector3 engineRot = m_inspectedTransform->GetRotationLocal().ToEulerAngles();
     Vector3 editorRot = Vector3(m_rotX->GetAsFloat(), m_rotY->GetAsFloat(), m_rotZ->GetAsFloat());
-    Vector3 deltaEuler = Vector3(
-    editorRot.x - engineRot.x,
-    editorRot.y - engineRot.y,
-    editorRot.z - engineRot.z
-    );
-    Quaternion rotationDelta = Quaternion::FromEulerAngles(deltaEuler);
+    m_inspectedTransform->SetRotationLocal(Quaternion::FromEulerAngles(editorRot));
 
-    m_inspectedTransform->Rotate(rotationDelta);
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }
 
 void DirectusTransform::MapScale()
@@ -246,5 +238,5 @@ void DirectusTransform::MapScale()
     float z = m_scaZ->GetAsFloat();
     m_inspectedTransform->SetScaleLocal(Vector3(x,y,z));
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }

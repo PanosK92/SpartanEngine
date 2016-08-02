@@ -32,26 +32,27 @@ DirectusAssetLoader::DirectusAssetLoader(QObject* parent) : QObject(parent)
 
 }
 
-void DirectusAssetLoader::EnableProgressBar(QWidget* mainWindow)
+void DirectusAssetLoader::Initialize(QWidget* mainWindow, Socket* socket)
 {
-    AssetLoadingDialog* loadingDialog = new AssetLoadingDialog(mainWindow);
-    loadingDialog->SetMainWindow(mainWindow);
+    m_mainWindow = mainWindow;
+    m_socket = socket;
+
+    m_loadingDialog = new AssetLoadingDialog(m_mainWindow);
+    m_loadingDialog->Initialize(m_mainWindow);
 
     // When the loading dialog should show up
-    connect(this, SIGNAL(Started()), loadingDialog, SLOT(Show()));
-    connect(this, SIGNAL(Finished()), loadingDialog, SLOT(Kill()));
+    connect(this, SIGNAL(Started()), m_loadingDialog, SLOT(Show()));
+    connect(this, SIGNAL(Finished()), m_loadingDialog, SLOT(Hide()));
 }
 
-void DirectusAssetLoader::PrepareForScene(std::string filePath, Socket* socket)
+void DirectusAssetLoader::SetFilePath(std::string filePath)
 {
-    m_socket = socket;
     m_filePath = filePath;
 }
 
-void DirectusAssetLoader::PrepareForModel(std::string filePath, Socket* socket)
+void DirectusAssetLoader::GetAssetOperation(AssetOperation assetOperation)
 {
-     m_socket = socket;
-     m_filePath = filePath;
+    m_assetOperation = assetOperation;
 }
 
 void DirectusAssetLoader::PrepareForTexture(std::string filePath, int width, int height)
@@ -59,6 +60,12 @@ void DirectusAssetLoader::PrepareForTexture(std::string filePath, int width, int
     m_filePath = filePath;
     m_width = width;
     m_height = height;
+    m_assetOperation = Load_Texture;
+}
+
+DirectusAssetLoader::AssetOperation DirectusAssetLoader::GetAssetOperation()
+{
+    return m_assetOperation;
 }
 
 void DirectusAssetLoader::LoadSceneFromFile()

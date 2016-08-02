@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/Hinge.h"
 #include "Components/MeshFilter.h"
+#include "IO/FileHelper.h"
 //=================================
 
 //= NAMESPACES =====
@@ -67,6 +68,12 @@ void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWi
 {
     m_inspector = inspector;
     m_mainWindow = mainWindow;
+
+    m_assetLoader = new DirectusAssetLoader();
+    m_assetLoader->Initialize(mainWindow, m_socket);
+
+    m_fileDialog = new QFileDialog(mainWindow);
+    connect(m_fileDialog, SIGNAL(fileSelected(QString)), this, SLOT(FileDialogAccepted(QString)));
 }
 
 void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
@@ -339,7 +346,7 @@ void DirectusHierarchy::Populate()
     for (int i = 0; i < gameObjects.size(); i++)
             AddGameObject(gameObjects[i], nullptr);
 
-     m_directusCore->UpdateASAP();
+     m_directusCore->Update();
 }
 
 void DirectusHierarchy::NewScene()
@@ -352,37 +359,12 @@ void DirectusHierarchy::NewScene()
 
 void DirectusHierarchy::OpenScene()
 {
-    // Display and open file dialog, aqcuire a file name
-    QString title = "Load Scene";
-    QString filter = "All files (*.dss)";
-    QString dir = "Assets";
-    m_sceneFileName = QFileDialog::getOpenFileName(this, title, dir, filter);
+     m_assetLoader->GetAssetOperation(DirectusAssetLoader::Load_Scene);
 
-    // Create an asset loader and enable a progress bar dialog
-    DirectusAssetLoader* sceneLoader = new DirectusAssetLoader();  
-    sceneLoader->PrepareForScene(m_sceneFileName.toStdString(), m_socket);
-    sceneLoader->EnableProgressBar(m_mainWindow);
-
-    // Move the scene loader to the newly created thread
-    QThread* thread = new QThread();
-    sceneLoader->moveToThread(thread);
-
-    // Stop the engine (in case it's running)
-    m_directusCore->Stop();
-
-    // Emit a signal and clear the hierarchy
-    emit SceneLoadingStarted();
-
-    // Connect all the necessery signals to their slots
-    connect(thread,         SIGNAL(started()),  sceneLoader,    SLOT(LoadScene()));
-    connect(sceneLoader,    SIGNAL(Finished()), this,           SLOT(Populate()));
-    connect(sceneLoader,    SIGNAL(Finished()), thread,         SLOT(quit()));
-    connect(sceneLoader,    SIGNAL(Finished()), sceneLoader,    SLOT(deleteLater()));
-    connect(thread,         SIGNAL(finished()), m_directusCore, SLOT(Update()));
-    connect(thread,         SIGNAL(finished()), thread,         SLOT(deleteLater()));
-
-    // Start the thread
-    thread->start(QThread::HighestPriority);
+    m_fileDialog->setWindowTitle("Load Scene");
+    //m_fileDialog->setFilter("Scene (*.dss)");
+    m_fileDialog->setDirectory("Assets");
+    m_fileDialog->show();
 }
 
 void DirectusHierarchy::SaveScene()
@@ -393,77 +375,28 @@ void DirectusHierarchy::SaveScene()
         return;
     }
 
-    QThread* thread = new QThread();
-    DirectusAssetLoader* sceneLoader = new DirectusAssetLoader();
-
-    sceneLoader->moveToThread(thread);
-    sceneLoader->PrepareForScene(m_sceneFileName.toStdString(), m_socket);
-
-    connect(thread,         SIGNAL(started()),  sceneLoader,    SLOT(SaveScene()));
-    connect(sceneLoader,    SIGNAL(Finished()), thread,         SLOT(quit()));
-    connect(sceneLoader,    SIGNAL(Finished()), sceneLoader,    SLOT(deleteLater()));
-    connect(thread,         SIGNAL(finished()), thread,         SLOT(deleteLater()));
-
-    thread->start(QThread::HighestPriority);
+    m_assetLoader->GetAssetOperation(DirectusAssetLoader::Save_Scene);
+    FileDialogAccepted(m_sceneFileName);
 }
 
 void DirectusHierarchy::SaveSceneAs()
 {
-    QString title = "Save Scene";
-    QString filter = "All files (*.dss)";
-    QString dir = "Assets";
-    m_sceneFileName = QFileDialog::getSaveFileName(
-                this,
-                title,
-                dir,
-                filter
-                );
+    m_fileDialog->setWindowTitle("Save Scene");
+    //m_fileDialog->setFilter("Scene (*.dss)");
+    m_fileDialog->setDirectory("Assets");
+    m_fileDialog->show();
 
-    QThread* thread = new QThread();
-    DirectusAssetLoader* sceneLoader = new DirectusAssetLoader();
-
-    sceneLoader->moveToThread(thread);
-    sceneLoader->PrepareForScene(m_sceneFileName.toStdString(), m_socket);
-
-    connect(thread,         SIGNAL(started()), sceneLoader,     SLOT(SaveScene()));
-    connect(sceneLoader,    SIGNAL(Finished()), thread,         SLOT(quit()));
-    connect(sceneLoader,    SIGNAL(Finished()), sceneLoader,    SLOT(deleteLater()));
-    connect(thread,         SIGNAL(finished()), thread,         SLOT(deleteLater()));
-
-    thread->start(QThread::HighestPriority);
+    m_assetLoader->GetAssetOperation(DirectusAssetLoader::Save_Scene_As);
 }
 
 void DirectusHierarchy::LoadModel()
 {
-    // Display and open file dialog, aqcuire a file name
-    QString title = "Load model";
-    QString filter = "All models (*.3ds; *.obj; *.fbx; *.blend; *.dae; *.lwo; *.c4d)";
-    QString dir = "Assets";
-    QString filePath = QFileDialog::getOpenFileName(this, title, dir, filter);
+    m_assetLoader->GetAssetOperation(DirectusAssetLoader::Load_Model);
 
-    // Create an asset loader and enable a progress bar dialog
-    DirectusAssetLoader* modelLoader = new DirectusAssetLoader();
-    modelLoader->PrepareForModel(filePath.toStdString(), m_socket);
-    modelLoader->EnableProgressBar(m_mainWindow);
-
-    // Move the model loader to the newly created thread
-    QThread* thread = new QThread();
-    modelLoader->moveToThread(thread);
-
-    // Stop the engine (in case it's running)
-    m_directusCore->Stop();
-
-    // Emit a signal
-    emit ModelLoadingStarted();
-
-    connect(thread,         SIGNAL(started()),  modelLoader,    SLOT(LoadModel()));
-    connect(modelLoader,    SIGNAL(Finished()), this,           SLOT(Populate()));
-    connect(modelLoader,    SIGNAL(Finished()), thread,         SLOT(quit()));
-    connect(modelLoader,    SIGNAL(Finished()), modelLoader,    SLOT(deleteLater()));
-    connect(thread,         SIGNAL(finished()), m_directusCore, SLOT(Update()));
-    connect(thread,         SIGNAL(finished()), thread,         SLOT(deleteLater()));
-
-    thread->start(QThread::HighestPriority);
+    m_fileDialog->setWindowTitle("Load model");
+    //m_fileDialog->setFilter("All models (*.3ds; *.obj; *.fbx; *.blend; *.dae; *.lwo; *.c4d)");
+    m_fileDialog->setDirectory("Assets");
+    m_fileDialog->show();
 }
 
 void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
@@ -701,7 +634,7 @@ void DirectusHierarchy::AddCameraComponent()
     gameobject->AddComponent<Camera>();
 
     // Update the engine and the inspector
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
     m_inspector->Inspect(gameobject);
 }
 
@@ -715,7 +648,7 @@ void DirectusHierarchy::AddMeshFilterComponent()
     gameobject->AddComponent<MeshFilter>();
 
     // Update the engine and the inspector
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
     m_inspector->Inspect(gameobject);
 }
 
@@ -729,7 +662,7 @@ void DirectusHierarchy::AddMeshRendererComponent()
     gameobject->AddComponent<MeshRenderer>();
 
     // Update the engine and the inspector
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
     m_inspector->Inspect(gameobject);
 }
 
@@ -743,7 +676,7 @@ void DirectusHierarchy::AddLightComponent()
     gameobject->AddComponent<Light>();
 
     // Update the engine and the inspector
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
     m_inspector->Inspect(gameobject);
 }
 
@@ -757,7 +690,7 @@ void DirectusHierarchy::AddRigidBodyComponent()
     gameobject->AddComponent<RigidBody>();
 
     // Update the engine and the inspector
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
     m_inspector->Inspect(gameobject);
 }
 
@@ -771,7 +704,7 @@ void DirectusHierarchy::AddColliderComponent()
     gameobject->AddComponent<Collider>();
 
     // Update the engine and the inspector
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
     m_inspector->Inspect(gameobject);
 }
 
@@ -785,7 +718,7 @@ void DirectusHierarchy::AddMeshColliderComponent()
     gameobject->AddComponent<MeshCollider>();
 
     // Update the engine and the inspector
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
     m_inspector->Inspect(gameobject);
 }
 
@@ -799,7 +732,7 @@ void DirectusHierarchy::AddHingeComponent()
     gameobject->AddComponent<Hinge>();
 
     // Update the engine and the inspector
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
     m_inspector->Inspect(gameobject);
 }
 
@@ -813,7 +746,59 @@ void DirectusHierarchy::AddSkyboxComponent()
     gameobject->AddComponent<Skybox>();
 
     // Update the engine and the inspector
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
     m_inspector->Inspect(gameobject);
+}
+//========================================================
+
+//= PRIVATE SLOTS ========================================
+void DirectusHierarchy::FileDialogAccepted(QString filePath)
+{
+    // it's important to reset it's thread here because
+    // if it remains part of a delete thread it will no
+    // longer be able to be moved again.
+    m_assetLoader->moveToThread(this->thread());
+
+    // Create a thread and move the asset loader to it
+    QThread* thread = new QThread();
+    m_assetLoader->SetFilePath(filePath.toStdString());
+    m_assetLoader->moveToThread(thread);
+
+    // Stop the engine (in case it's running)
+    m_directusCore->Stop();
+
+    if (m_assetLoader->GetAssetOperation() == DirectusAssetLoader::Load_Model)
+    {
+        // Emit a signal
+        emit ModelLoadingStarted();
+
+        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(LoadModel()));
+        connect(m_assetLoader,  SIGNAL(Finished()), this,           SLOT(Populate()));
+        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
+        connect(thread,         SIGNAL(finished()), m_directusCore, SLOT(Update()));
+    }
+    else if (m_assetLoader->GetAssetOperation() == DirectusAssetLoader::Save_Scene_As)
+    {
+        m_sceneFileName = filePath;
+        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(SaveScene()));
+        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
+    }
+    else if (m_assetLoader->GetAssetOperation() == DirectusAssetLoader::Save_Scene)
+    {
+        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(SaveScene()));
+        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
+    }
+    else if (m_assetLoader->GetAssetOperation() == DirectusAssetLoader::Load_Scene)
+    {
+        emit SceneLoadingStarted();
+
+        connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(LoadScene()));
+        connect(m_assetLoader,  SIGNAL(Finished()), this,               SLOT(Populate()));
+        connect(m_assetLoader,  SIGNAL(Finished()), thread,             SLOT(quit()));
+        connect(thread,         SIGNAL(finished()), m_directusCore,     SLOT(Update()));
+    }
+    connect(thread,         SIGNAL(finished()), thread,         SLOT(deleteLater()));
+
+    thread->start(QThread::HighestPriority);
 }
 //========================================================

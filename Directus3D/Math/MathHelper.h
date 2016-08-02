@@ -38,6 +38,7 @@ namespace Directus
 		static const float PI_DIV_4		= 0.785398163f;
 		static const float PI_INV		= 0.318309886f;
 		static const float DEG_TO_RAD	= PI / 180.0f;
+		static const float DEG_TO_RAD_2 = PI / 360.0f;
 		static const float RAD_TO_DEG	= 180.0f / PI;
 
 		class __declspec(dllexport) MathHelper

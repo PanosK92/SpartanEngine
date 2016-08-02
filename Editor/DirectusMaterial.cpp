@@ -394,7 +394,7 @@ void DirectusMaterial::MapAlbedo()
     Vector4 color =  m_albedoColor->GetColor();
     m_inspectedMaterial->SetColorAlbedo(color);
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }
 
 void DirectusMaterial::MapRoughness()
@@ -405,7 +405,7 @@ void DirectusMaterial::MapRoughness()
     float roughness =  m_roughness->GetValue();
     m_inspectedMaterial->SetRoughnessMultiplier(roughness);
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }
 
 
@@ -417,7 +417,7 @@ void DirectusMaterial::MapMetallic()
     float metallic =  m_metallic->GetValue();
     m_inspectedMaterial->SetMetallicMultiplier(metallic);
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }
 
 void DirectusMaterial::MapNormal()
@@ -428,7 +428,7 @@ void DirectusMaterial::MapNormal()
     float normal =  m_normal->GetValue();
     m_inspectedMaterial->SetNormalMultiplier(normal);
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }
 
 void DirectusMaterial::MapHeight()
@@ -439,7 +439,7 @@ void DirectusMaterial::MapHeight()
     float height =  m_height->GetValue();
     m_inspectedMaterial->SetHeightMultiplier(height);
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }
 
 void DirectusMaterial::MapOcclusion()
@@ -465,7 +465,7 @@ void DirectusMaterial::MapSpecular()
     float specular = m_specular->GetValue();
     m_inspectedMaterial->SetSpecularMultiplier(specular);
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }
 
 void DirectusMaterial::MapTiling()
@@ -478,5 +478,5 @@ void DirectusMaterial::MapTiling()
     tiling.y = m_tilingY->GetAsFloat();
     m_inspectedMaterial->SetTiling(tiling);
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }

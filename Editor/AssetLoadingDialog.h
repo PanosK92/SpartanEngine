@@ -13,13 +13,14 @@ class AssetLoadingDialog : public QDialog
 
 public:
     explicit AssetLoadingDialog(QWidget *parent = 0);
-    void SetMainWindow(QWidget* mainWindow);
+    void Initialize(QWidget* mainWindow);
 
 private slots:
     void UpdateProgressBar();
 
 public slots:
     void Show();
+    void Hide();
     void Kill();
 
 private:

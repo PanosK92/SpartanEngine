@@ -135,7 +135,7 @@ void DirectusMeshFilter::Remove()
 
     GameObject* gameObject = m_inspectedMeshFilter->g_gameObject;
     gameObject->RemoveComponent<MeshFilter>();
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 
     m_inspector->Inspect(gameObject);
 }
