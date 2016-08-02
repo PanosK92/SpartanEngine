@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include "../Core/Timer.h"
 #include "../Math/Vector3.h"
 //==========================
 
@@ -43,8 +42,8 @@ public:
 	PhysicsWorld();
 	~PhysicsWorld();
 
-	void Initialize(Timer* timer);
-	void Update();
+	void Initialize();
+	void Step(float timeStep);
 	void Reset();
 
 	btDiscreteDynamicsWorld* GetWorld();
@@ -65,6 +64,9 @@ private:
 	btDiscreteDynamicsWorld* m_world;
 	bool m_debugDrawEnabled;
 	PhysicsDebugDraw* m_debugDraw;
+
+	//= PROPERTIES ====================
+	float m_updatesPerSec;
 	Directus::Math::Vector3 m_gravity;
-	Timer* m_timer;
+	//=================================
 };

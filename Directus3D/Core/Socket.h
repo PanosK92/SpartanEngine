@@ -74,7 +74,6 @@ public:
 	float GetFPS() const;
 	int GetRenderedMeshesCount() const;
 	float GetDeltaTime() const;
-	float GetUpdateTime() const;
 	float GetRenderTime() const;
 	//==============================================================================
 

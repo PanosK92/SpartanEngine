@@ -47,12 +47,11 @@ public:
 
 	float GetFPS() const;
 
-	void UpdateStart() const;
-	void UpdateEnd() const;
-	float GetUpdateTime() const;
 	void RenderStart() const;
 	void RenderEnd() const;
 	float GetRenderTime() const;
+
+	Stopwatch* GetStopwatch();
 private:
 	INT64 m_ticksPerSec;
 	float m_ticksPerMs;
@@ -66,7 +65,44 @@ private:
 	float m_fps;
 
 	//= STATS ===================
-	Stopwatch* m_updateStopwatch;
 	Stopwatch* m_renderStopwatch;
 	//===========================
+};
+
+class Stopwatch
+{
+public:
+	Stopwatch(Timer* timer)
+	{
+		m_timer = timer;
+
+		m_startTime = 0.0f;
+		m_endTime = 0.0f;
+		m_deltaTime = 0.0f;
+	}
+
+	void Start()
+	{
+		m_startTime = m_timer->GetTime();
+	}
+
+	void Stop()
+	{
+		m_endTime = m_timer->GetTime();
+	}
+
+	float GetDeltaTime() const
+	{
+		return m_endTime - m_startTime;
+	}
+
+	float GetDeltaTimeMs() const
+	{
+		return GetDeltaTime() / 1000.0f;
+	}
+
+	float m_startTime;
+	float m_endTime;
+	float m_deltaTime;
+	Timer* m_timer;
 };

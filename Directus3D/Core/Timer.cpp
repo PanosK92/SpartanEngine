@@ -24,44 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 //====================
 
-class Stopwatch
-{
-public:
-	Stopwatch(Timer* timer)
-	{
-		m_timer = timer;
-
-		m_startTime = 0.0f;
-		m_endTime = 0.0f;
-		m_deltaTime = 0.0f;
-	}
-
-	void Start()
-	{
-		m_startTime = m_timer->GetTime();
-	}
-
-	void Stop()
-	{
-		m_endTime = m_timer->GetTime();
-	}
-
-	float GetDeltaTime() const
-	{
-		return m_endTime - m_startTime;
-	}
-
-	float GetDeltaTimeMs() const
-	{
-		return GetDeltaTime() / 1000.0f;
-	}
-
-	float m_startTime;
-	float m_endTime;
-	float m_deltaTime;
-	Timer* m_timer;
-};
-
 Timer::Timer()
 {
 	m_ticksPerSec = 0.0f;
@@ -75,7 +37,6 @@ Timer::Timer()
 	m_fpsLastKnownTime = 0;
 	m_fps = 0;
 
-	m_updateStopwatch = new Stopwatch(this);
 	m_renderStopwatch = new Stopwatch(this);
 }
 
@@ -166,21 +127,6 @@ float Timer::GetFPS() const
 	return m_fps;
 }
 
-void Timer::UpdateStart() const
-{
-	m_updateStopwatch->Start();
-}
-
-void Timer::UpdateEnd() const
-{
-	m_updateStopwatch->Stop();
-}
-
-float Timer::GetUpdateTime() const
-{
-	return m_updateStopwatch->GetDeltaTime();
-}
-
 void Timer::RenderStart() const
 {
 	m_renderStopwatch->Start();
@@ -194,4 +140,9 @@ void Timer::RenderEnd() const
 float Timer::GetRenderTime() const
 {
 	return m_renderStopwatch->GetDeltaTime();
+}
+
+Stopwatch* Timer::GetStopwatch()
+{
+	return new Stopwatch(this);
 }

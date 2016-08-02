@@ -34,6 +34,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 PhysicsWorld::PhysicsWorld()
 {
+	m_updatesPerSec = 60;
+	m_gravity = Directus::Math::Vector3(0.0f, -9.81f, 0.0f);
+
 	m_broadphase = nullptr;
 	m_dispatcher = nullptr;
 	m_constraintSolver = nullptr;
@@ -41,8 +44,6 @@ PhysicsWorld::PhysicsWorld()
 	m_world = nullptr;
 	m_debugDraw = nullptr;
 	m_debugDrawEnabled = false;
-	m_gravity = Directus::Math::Vector3(0.0f, -9.81f, 0.0f);
-	m_timer = nullptr;
 }
 
 PhysicsWorld::~PhysicsWorld()
@@ -55,10 +56,8 @@ PhysicsWorld::~PhysicsWorld()
 	SafeRelease(m_debugDraw);
 }
 
-void PhysicsWorld::Initialize(Timer* timer)
+void PhysicsWorld::Initialize()
 {
-	m_timer = timer;
-
 	m_broadphase = new btDbvtBroadphase();
 	m_collisionConfiguration = new btDefaultCollisionConfiguration();
 	m_dispatcher = new btCollisionDispatcher(m_collisionConfiguration);
@@ -76,13 +75,13 @@ void PhysicsWorld::Initialize(Timer* timer)
 	m_world->setDebugDrawer(m_debugDraw);
 }
 
-void PhysicsWorld::Update()
+void PhysicsWorld::Step(float timeStep)
 {
-	if (!m_world || !m_timer)
+	if (!m_world)
 		return;
 
 	// Step the physics world
-	m_world->stepSimulation(m_timer->GetDeltaTime());
+	m_world->stepSimulation(timeStep, 1, 1.0f / m_updatesPerSec);
 
 	if (m_debugDrawEnabled)
 		DebugDraw();

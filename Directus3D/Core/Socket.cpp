@@ -166,11 +166,6 @@ float Socket::GetDeltaTime() const
 	return m_timer->GetDeltaTime();
 }
 
-float Socket::GetUpdateTime() const
-{
-	return m_timer->GetUpdateTime();
-}
-
 float Socket::GetRenderTime() const
 {
 	return m_timer->GetRenderTime();

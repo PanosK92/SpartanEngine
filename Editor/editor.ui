@@ -2097,7 +2097,7 @@ text edit background:					414141
                          </size>
                         </property>
                         <property name="text">
-                         <string>FPS: 0, Delta: 0, Update: 0, Render: 0, Meshes Rendered: 0</string>
+                         <string>FPS: 0, Delta: 0, Render: 0, Meshes Rendered: 0</string>
                         </property>
                         <property name="alignment">
                          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
