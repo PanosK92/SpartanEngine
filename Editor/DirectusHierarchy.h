@@ -54,9 +54,9 @@ private:
     void AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child);
     void AddGameObject(GameObject* gameobject, QTreeWidgetItem *parent);
 
-    QTreeWidgetItem* GameObjectToTreeItem(GameObject* gameobject);
-    GameObject* TreeItemToGameObject(QTreeWidgetItem* treeItem);
-    QTreeWidgetItem* GetSelectedItem();
+    QTreeWidgetItem* ToQTreeWidgetItem(GameObject* gameobject);
+    GameObject* ToGameObject(QTreeWidgetItem* treeItem);
+    QTreeWidgetItem* GetSelectedQTreeWidgetItem();
     GameObject* GetSelectedGameObject();
 
     bool IsAnyGameObjectSelected();   
@@ -79,7 +79,6 @@ public slots:
     void SaveSceneAs();
     void LoadModel();
     void ShowContextMenu(const QPoint& pos);
-    void RenameItem(QTreeWidgetItem*, int);
     void RenameSelected();
     void DeleteSelected();
 

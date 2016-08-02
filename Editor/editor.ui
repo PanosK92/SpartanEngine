@@ -410,6 +410,7 @@ QProgressBar::chunk
 #buttonConsoleClearOnPlay
 {
 	width: 80px;
+	border-left-width: 0px;
 }
 
 #buttonGizmos:pressed,#buttonConsoleClear:pressed, #buttonConsoleClearOnPlay:pressed, #buttonHierarchyCreate:pressed, #buttonProjectCreate:pressed

@@ -53,7 +53,7 @@ DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
 
     // Connect context menu signal with the construction of a custom one
     connect(this, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(ShowContextMenu(const QPoint&)));
-    connect(this, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(RenameItem(QTreeWidgetItem*, int)));
+    connect(this, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(RenameSelected()));
 }
 
 void DirectusHierarchy::SetDirectusCore(DirectusCore* directusCore)
@@ -187,7 +187,7 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
 
     // Get the dragged and the hovered GameObject
     GameObject* dragged = m_socket->GetGameObjectByID(gameObjectID);
-    GameObject* hovered = TreeItemToGameObject(this->itemAt(event->pos()));
+    GameObject* hovered = ToGameObject(this->itemAt(event->pos()));
 
     // It was dropped on a gameobject
     if (dragged && hovered)
@@ -225,7 +225,7 @@ void DirectusHierarchy::AddGameObject(GameObject* gameobject, QTreeWidgetItem* p
         return;
 
     // Convert GameObject to QTreeWidgetItem
-    QTreeWidgetItem* item = GameObjectToTreeItem(gameobject);
+    QTreeWidgetItem* item = ToQTreeWidgetItem(gameobject);
 
     // Add it to the tree
     if (gameobject->GetTransform()->IsRoot()) // This is a root gameobject
@@ -254,7 +254,7 @@ void DirectusHierarchy::AddGameObject(GameObject* gameobject, QTreeWidgetItem* p
 }
 
 // Converts a QTreeWidgetItem to a GameObject
-GameObject* DirectusHierarchy::TreeItemToGameObject(QTreeWidgetItem* treeItem)
+GameObject* DirectusHierarchy::ToGameObject(QTreeWidgetItem* treeItem)
 {
     if (!treeItem)
         return nullptr;
@@ -266,7 +266,7 @@ GameObject* DirectusHierarchy::TreeItemToGameObject(QTreeWidgetItem* treeItem)
 }
 
 // Converts a GameObject to a QTreeWidgetItem
-QTreeWidgetItem* DirectusHierarchy::GameObjectToTreeItem(GameObject* gameobject)
+QTreeWidgetItem* DirectusHierarchy::ToQTreeWidgetItem(GameObject* gameobject)
 {
     if (!gameobject)
         return nullptr;
@@ -292,7 +292,7 @@ QTreeWidgetItem* DirectusHierarchy::GameObjectToTreeItem(GameObject* gameobject)
 }
 
 // Returns the currently selected item
-QTreeWidgetItem *DirectusHierarchy::GetSelectedItem()
+QTreeWidgetItem *DirectusHierarchy::GetSelectedQTreeWidgetItem()
 {
     QList<QTreeWidgetItem*> selectedItems = this->selectedItems();
     if (selectedItems.count() == 0)
@@ -306,12 +306,12 @@ QTreeWidgetItem *DirectusHierarchy::GetSelectedItem()
 // Returns the currently selected item as a GameObject pointer
 GameObject *DirectusHierarchy::GetSelectedGameObject()
 {
-    QTreeWidgetItem* item = GetSelectedItem();
+    QTreeWidgetItem* item = GetSelectedQTreeWidgetItem();
 
     if (!item)
         return nullptr;
 
-    GameObject* gameobject = TreeItemToGameObject(item);
+    GameObject* gameobject = ToGameObject(item);
 
     return gameobject;
 }
@@ -476,24 +476,22 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     contextMenu.exec(mapToGlobal(pos));
 }
 
-void DirectusHierarchy::RenameItem(QTreeWidgetItem*, int)
-{
-
-}
-
+// Called when the user click rename from the context menu
 void DirectusHierarchy::RenameSelected()
 {
-    // Get the currently selected GameObject
+    // Get the currently selected item
+    QTreeWidgetItem* item = GetSelectedQTreeWidgetItem();
     GameObject* gameObject = GetSelectedGameObject();
+
     if (!gameObject)
         return;
 
-     LOG("2");
-    QTreeWidgetItem* item = GetSelectedItem();
+    // If this action is called by the tree itself,
+    // the item will already be in edit mode (double clicked)
+    if (this->state() != QTreeWidget::EditingState)
+        this->editItem(item);
 
-    // Set the name of the tree item as the name
-    // of the actual gameobject inside the engine
-    this->editItem(item);
+    // Set the name of the gameobject from the item
     string name = item->text(0).toStdString();
     gameObject->SetName(name);
 }
