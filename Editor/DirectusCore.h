@@ -42,6 +42,7 @@ public:
     virtual ~DirectusCore();
 	Socket* GetEngineSocket();
     void Initialize(HWND hwnd, HINSTANCE hinstance, DirectusStatsLabel* directusStatsLabel);
+    bool IsRunning();
 
 protected:
     // I will take care of the drawing
@@ -55,13 +56,22 @@ private:
 
 	Socket* m_socket;
 	Engine* m_engine;
-    QTimer* m_timerASAP;
-    QTimer* m_timerSEC;
+    QTimer* m_timerUpdate;
+    QTimer* m_timerPerSec;
+    bool m_isRunning;
+    bool m_locked;
     DirectusStatsLabel* m_directusStatsLabel;
 
+signals:
+    void EngineStarting();
+    void EngineStopping();
+
 public slots:
-    void Play();
+    void Start();
     void Stop();
     void Update();
-    void UpdateSEC();
+    void UpdatePerSec();
+
+    void Lock();
+    void Unlock();
 };

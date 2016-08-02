@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
 // It's not used here but it will provide functionality
 // to any code that includes this header.
+//= INCLUDES ====
 #include <math.h> 
 //===============
 
@@ -31,39 +31,44 @@ namespace Directus
 {
 	namespace Math
 	{
-		static const float M_EPSILON	= 0.000001f;
-		static const float PI			= 3.14159265358979323846264338327950288f;
-		static const float PI_2			= 6.283185307f;
-		static const float PI_DIV_2		= 1.570796327f;
-		static const float PI_DIV_4		= 0.785398163f;
-		static const float PI_INV		= 0.318309886f;
-		static const float DEG_TO_RAD	= PI / 180.0f;
+		static const float M_EPSILON = 0.000001f;
+		static const float PI = 3.14159265358979323846264338327950288f;
+		static const float PI_2 = 6.283185307f;
+		static const float PI_DIV_2 = 1.570796327f;
+		static const float PI_DIV_4 = 0.785398163f;
+		static const float PI_INV = 0.318309886f;
+		static const float DEG_TO_RAD = PI / 180.0f;
 		static const float DEG_TO_RAD_2 = PI / 360.0f;
-		static const float RAD_TO_DEG	= 180.0f / PI;
+		static const float RAD_TO_DEG = 180.0f / PI;
 
-		class __declspec(dllexport) MathHelper
+		inline __declspec(dllexport) double Cot(float x)
 		{
-		public:
-			MathHelper()
-			{
-			}
+			return cos(x) / sin(x);
+		}
 
-			~MathHelper()
-			{
-			}
+		inline __declspec(dllexport) float CotF(float x)
+		{
+			return cosf(x) / sinf(x);
+		}
 
-			static MathHelper& GetInstance()
-			{
-				static MathHelper instance;
-				return instance;
-			}
+		inline __declspec(dllexport) float DegreesToRadians(float degrees)
+		{
+			return degrees * DEG_TO_RAD;
+		}
 
-			double Cot(float x);
-			float CotF(float x);
-			float DegreesToRadians(float degrees);
-			float RadiansToDegrees(float radians);
-			float Clamp(float x, float a, float b);
-			float Lerp(float a, float b, float f);
-		};
+		inline __declspec(dllexport) float RadiansToDegrees(float radians)
+		{
+			return radians * RAD_TO_DEG;
+		}
+
+		inline __declspec(dllexport) float Clamp(float x, float a, float b)
+		{
+			return x < a ? a : (x > b ? b : x);
+		}
+
+		inline __declspec(dllexport) float Lerp(float a, float b, float f)
+		{
+			return a + (b - a) * f;
+		}
 	}
 }

@@ -61,7 +61,7 @@ private:
 
     bool IsAnyGameObjectSelected();   
   
-	QString m_sceneFileName;	
+    QString m_lastSceneFilePath;
 	Socket* m_socket;
     DirectusInspector* m_inspector;
     DirectusCore* m_directusCore;
@@ -71,7 +71,7 @@ private:
     DirectusAssetLoader* m_assetLoader;
 
 public slots:
-    void Clear();
+    void ClearTree();
     void Populate();
     void NewScene();
     void OpenScene();
@@ -107,8 +107,4 @@ public slots:
 
 private slots:
     void FileDialogAccepted(QString filePath);
-
-signals:
-    void SceneLoadingStarted();
-    void ModelLoadingStarted();
 };

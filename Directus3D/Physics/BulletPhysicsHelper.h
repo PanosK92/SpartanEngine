@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =======================
-#include "LinearMath/btQuaternion.h""
+#include "LinearMath/btQuaternion.h"
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
@@ -37,7 +37,6 @@ inline Directus::Math::Vector4 ToVector4(const btVector3& vector)
 {
 	return Directus::Math::Vector4(vector.getX(), vector.getY(), vector.getZ(), 1.0f);
 }
-
 
 inline btVector3 ToBtVector3(Directus::Math::Vector3 vector)
 {

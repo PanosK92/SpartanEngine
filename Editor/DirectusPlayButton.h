@@ -31,13 +31,15 @@ class DirectusPlayButton : public QPushButton
     Q_OBJECT
 public:
     explicit DirectusPlayButton(QWidget *parent = 0);
-    void SetDirectusCore(DirectusCore* directusCore);
+    void Initialize(DirectusCore* directusCore);
 
 private:
     DirectusCore* m_directusCore;
 
 public slots:
-    void Play();
-    void Stop();
+    void StartEngine();
+    void StopEngine();
+    void MakeButtonLookPressed();
+    void MakeButtonLookReleased();
     void SetPressed(bool pressed);
 };

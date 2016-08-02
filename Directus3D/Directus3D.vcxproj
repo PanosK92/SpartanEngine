@@ -172,7 +172,6 @@
     <ClCompile Include="Loading\DDSTextureLoader.cpp" />
     <ClCompile Include="Loading\ImageLoader.cpp" />
     <ClCompile Include="Loading\ModelLoader.cpp" />
-    <ClCompile Include="Math\MathHelper.cpp" />
     <ClCompile Include="Math\Matrix.cpp" />
     <ClCompile Include="Math\Plane.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />

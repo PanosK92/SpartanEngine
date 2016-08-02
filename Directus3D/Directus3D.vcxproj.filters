@@ -144,9 +144,6 @@
     <ClCompile Include="Loading\ModelLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Math\MathHelper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Math\Matrix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
