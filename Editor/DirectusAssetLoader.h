@@ -32,21 +32,13 @@ class DirectusAssetLoader : public QObject
 {
     Q_OBJECT
 public:
-    enum AssetOperation
-    {
-        Load_Model,
-        Load_Scene,
-        Save_Scene,
-        Save_Scene_As,
-        Load_Texture,
-    };
-
     explicit DirectusAssetLoader(QObject* parent = nullptr);
     void Initialize(QWidget* mainWindow, Socket* socket);
-    void SetFilePath(std::string filePath);
-    void GetAssetOperation(AssetOperation assetOperation);
+    std::string GetFilePath();
+    void SetFilePath(std::string filePath); 
     void PrepareForTexture(std::string filePath, int width, int height);
-    AssetOperation GetAssetOperation();
+    void SetAssetOperation(std::string assetOperation);
+    std::string GetAssetOperation();
 
 private:
     void LoadSceneFromFile();
@@ -58,7 +50,7 @@ private:
     std::string m_filePath;
     int m_width;
     int m_height;
-    AssetOperation m_assetOperation;
+    std::string m_assetOperation;
 
     QWidget* m_mainWindow;
     Socket* m_socket;

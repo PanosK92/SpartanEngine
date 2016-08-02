@@ -161,12 +161,12 @@ void Camera::SetProjection(Projection projection)
 
 float Camera::GetFieldOfView()
 {
-	return MathHelper::GetInstance().RadiansToDegrees(m_FOV);
+	return RadiansToDegrees(m_FOV);
 }
 
 void Camera::SetFieldOfView(float fov)
 {
-	m_FOV = MathHelper::GetInstance().DegreesToRadians(fov);
+	m_FOV = DegreesToRadians(fov);
 
 	m_isDirty = true;
 }

@@ -28,46 +28,60 @@ DirectusPlayButton::DirectusPlayButton(QWidget *parent) : QPushButton(parent)
 {
     m_directusCore = nullptr;
 
-    // An a signal tha will fire each time the button is toggled
+    // A signal tha will fire each time the button is toggled
     connect(this, SIGNAL(toggled(bool)), this, SLOT(SetPressed(bool)));
 }
 
-void DirectusPlayButton::SetDirectusCore(DirectusCore* directusCore)
+void DirectusPlayButton::Initialize(DirectusCore* directusCore)
 {
     m_directusCore = directusCore;
+
+    // Connect the engine to the button, allowing to control the button.
+    connect(m_directusCore, SIGNAL(EngineStarting()), this, SLOT(StartEngine()));
+    connect(m_directusCore, SIGNAL(EngineStopping()), this, SLOT(StopEngine()));
+
+    // NOTE: The button can indeed start/stop the engine, but the engine has to also
+    // change the state of the button when it has to stop/start (many scenarios).
 }
 
-// NOTE: toggled(bool) sets the checked state of the button automatically,
-// however in a few functions we also do it manually. This is important as
-// sometimes a state change can be invoked directly from other widgets and
-// not necessarily from toggled(bool).
-
-void DirectusPlayButton::Play()
+// Starts the engine
+void DirectusPlayButton::StartEngine()
 {
-    if (!m_directusCore)
-        return;
+    if (!m_directusCore->IsRunning())
+        m_directusCore->Start();
 
-    m_directusCore->Play();
+    MakeButtonLookPressed();
+}
 
+// Stops the engine
+void DirectusPlayButton::StopEngine()
+{
+    if (m_directusCore->IsRunning())
+        m_directusCore->Stop();
+
+    MakeButtonLookReleased();
+}
+
+// Makes the function appear pressed, purely visual.
+void DirectusPlayButton::MakeButtonLookPressed()
+{
     if (!this->isChecked())
        this->setChecked(true);
 }
 
-void DirectusPlayButton::Stop()
+// Makes the function appear released, purely visual.
+void DirectusPlayButton::MakeButtonLookReleased()
 {
-    if (!m_directusCore)
-        return;
-
-    m_directusCore->Stop();
-
     if (this->isChecked())
-       this->setChecked(false);
+        this->setChecked(false);
 }
 
+// This is called when the button actually gets pressed.
+// It has full control over the engine flow.
 void DirectusPlayButton::SetPressed(bool pressed)
 {
     if (pressed)
-        Play();
+        StartEngine();
     else
-        Stop();
+        StopEngine();
 }

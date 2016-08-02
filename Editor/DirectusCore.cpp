@@ -37,11 +37,11 @@ DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
     // Yes, paintEvent(QPaintEvent*) will be called also.
     // NOTE: I tested this technique and it yields thousands
     // of FPS, so it should do.
-    m_timerASAP = new QTimer(this);
-    connect(m_timerASAP, SIGNAL(timeout()), this, SLOT(update()));
+    m_timerUpdate = new QTimer(this);
+    connect(m_timerUpdate, SIGNAL(timeout()), this, SLOT(update()));
 
-    m_timerSEC = new QTimer(this);
-    connect(m_timerSEC, SIGNAL(timeout()), this, SLOT(UpdateSEC()));
+    m_timerPerSec = new QTimer(this);
+    connect(m_timerPerSec, SIGNAL(timeout()), this, SLOT(UpdatePerSec()));
 }
 
 DirectusCore::~DirectusCore()
@@ -64,37 +64,67 @@ void DirectusCore::Initialize(HWND hwnd, HINSTANCE hinstance, DirectusStatsLabel
     HWND widgetHandle = (HWND)this->winId();
     m_engine->Initialize(hInstance, mainWindowHandle, widgetHandle);
 
-    // Get the socket
     m_socket = m_engine->GetSocket();
-
     m_directusStatsLabel = directusStatsLabel;
+
+    m_locked = false;
 }
 
-void DirectusCore::Play()
+bool DirectusCore::IsRunning()
 {
+    return m_isRunning;
+}
+
+void DirectusCore::Start()
+{
+    if (m_locked)
+        return;
+
     SET_ENGINE_MODE(Editor_Play);
-    m_timerASAP->start(0);
-    m_timerSEC->start(1000);
+    m_timerUpdate->start(0);
+    m_timerPerSec->start(1000);
+    m_isRunning = true;
+
+    emit EngineStarting();
 }
 
 void DirectusCore::Stop()
 {
+    if (m_locked)
+        return;
+
     SET_ENGINE_MODE(Editor_Stop);
-    m_timerASAP->stop();
-    m_timerSEC->stop();
+    m_timerUpdate->stop();
+    m_timerPerSec->stop();
+    m_isRunning = false;
+
+    emit EngineStopping();
 }
 
 void DirectusCore::Update()
 {
-    if (!m_socket)
+    if (m_locked)
         return;
 
     m_socket->Update();  
 }
 
-void DirectusCore::UpdateSEC()
+void DirectusCore::UpdatePerSec()
 {
+    if (m_locked)
+        return;
+
     m_directusStatsLabel->UpdateStats(this);
+}
+
+void DirectusCore::Lock()
+{
+    m_locked = true;
+}
+
+void DirectusCore::Unlock()
+{
+    m_locked = false;
 }
 //====================================================
 

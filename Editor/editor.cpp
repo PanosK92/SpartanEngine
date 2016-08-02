@@ -55,14 +55,12 @@ void Editor::InitializeEngine()
     ui->directusInspector->SetDirectusCore(directusCore);
     ui->directusHierarchy->SetDirectusCore(directusCore);
     ui->directusConsole->SetDirectusCore(directusCore);
-    ui->directusPlayButton->SetDirectusCore(directusCore);
+    ui->directusPlayButton->Initialize(directusCore);
 
     // Resolve other dependencies
     ui->directusInspector->Initialize(this);
     ui->directusHierarchy->Initialize(ui->directusInspector, this);
     ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);
-
-    connect(ui->directusHierarchy, SIGNAL(SceneLoadingStarted()), ui->directusPlayButton, SLOT(Stop()));
 }
 
 void Editor::on_actionAbout_Directus3D_triggered()

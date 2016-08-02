@@ -45,14 +45,14 @@ void DirectusAssetLoader::Initialize(QWidget* mainWindow, Socket* socket)
     connect(this, SIGNAL(Finished()), m_loadingDialog, SLOT(Hide()));
 }
 
+std::string DirectusAssetLoader::GetFilePath()
+{
+    return m_filePath;
+}
+
 void DirectusAssetLoader::SetFilePath(std::string filePath)
 {
     m_filePath = filePath;
-}
-
-void DirectusAssetLoader::GetAssetOperation(AssetOperation assetOperation)
-{
-    m_assetOperation = assetOperation;
 }
 
 void DirectusAssetLoader::PrepareForTexture(std::string filePath, int width, int height)
@@ -60,10 +60,15 @@ void DirectusAssetLoader::PrepareForTexture(std::string filePath, int width, int
     m_filePath = filePath;
     m_width = width;
     m_height = height;
-    m_assetOperation = Load_Texture;
+    m_assetOperation = "Load Texture";
 }
 
-DirectusAssetLoader::AssetOperation DirectusAssetLoader::GetAssetOperation()
+void DirectusAssetLoader::SetAssetOperation(std::string assetOperation)
+{
+    m_assetOperation = assetOperation;
+}
+
+std::string DirectusAssetLoader::GetAssetOperation()
 {
     return m_assetOperation;
 }
@@ -119,32 +124,18 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
 
 void DirectusAssetLoader::LoadScene()
 {
-    QMutex mutex;
-
-    mutex.lock();
     LoadSceneFromFile();
-    mutex.unlock();
 }
 
 void DirectusAssetLoader::SaveScene()
 {
-    QMutex mutex;
-
-    mutex.lock();
     SaveSceneToFile();
-    mutex.unlock();
-
     emit Finished();
 }
 
 void DirectusAssetLoader::LoadModel()
 {
-    QMutex mutex;
-
-    mutex.lock();
     LoadModelFromFile();
-    mutex.unlock();
-
     emit Finished();
 }
 

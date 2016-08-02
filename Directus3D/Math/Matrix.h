@@ -186,7 +186,7 @@ namespace Directus
 
 			static Matrix CreatePerspectiveFieldOfViewLH(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance)
 			{
-				float yScale = MathHelper::GetInstance().Cot(fieldOfView / 2);
+				float yScale = Cot(fieldOfView / 2);
 				float xScale = yScale / aspectRatio;
 				float zn = nearPlaneDistance;
 				float zf = farPlaneDistance;
