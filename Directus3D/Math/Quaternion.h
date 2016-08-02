@@ -49,6 +49,9 @@ namespace Directus
 
 			//= TO ======================================================================
 			Vector3 ToEulerAngles();
+			float Yaw();
+			float Pitch();
+			float Roll();
 			//===========================================================================
 
 			Quaternion Conjugate();

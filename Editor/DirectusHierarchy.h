@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QMouseEvent>
 #include "DirectusInspector.h"
 #include "DirectusCore.h"
+#include <QFileDialog>
+#include "DirectusAssetLoader.h"
 //==================================
 
 class DirectusHierarchy : public QTreeWidget
@@ -65,6 +67,8 @@ private:
     DirectusCore* m_directusCore;
     QWidget* m_mainWindow;
     QPoint m_dragStartPosition;
+    QFileDialog* m_fileDialog;
+    DirectusAssetLoader* m_assetLoader;
 
 public slots:
     void Clear();
@@ -100,6 +104,9 @@ public slots:
     void AddHingeComponent();
     void AddSkyboxComponent();
     //============================
+
+private slots:
+    void FileDialogAccepted(QString filePath);
 
 signals:
     void SceneLoadingStarted();

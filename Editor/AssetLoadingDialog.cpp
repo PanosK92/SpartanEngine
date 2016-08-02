@@ -19,7 +19,7 @@ AssetLoadingDialog::AssetLoadingDialog(QWidget *parent) : QDialog(parent), ui(ne
     connect(m_timer, SIGNAL(timeout()), this, SLOT(UpdateProgressBar()));
 }
 
-void AssetLoadingDialog::SetMainWindow(QWidget* mainWindow)
+void AssetLoadingDialog::Initialize(QWidget* mainWindow)
 {
     m_mainWindow = mainWindow;
 }
@@ -44,6 +44,13 @@ void AssetLoadingDialog::Show()
     m_mainWindow->children();
     m_mainWindow->setEnabled(false);
     show();
+}
+
+void AssetLoadingDialog::Hide()
+{
+    m_mainWindow->setEnabled(true);
+    ui->progressBar->setValue(0);
+    hide();
 }
 
 void AssetLoadingDialog::Kill()

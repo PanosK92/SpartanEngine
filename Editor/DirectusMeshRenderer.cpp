@@ -170,7 +170,7 @@ void DirectusMeshRenderer::MapCastShadows()
     bool castShadows = m_castShadowsCheckBox->isChecked();
     m_inspectedMeshRenderer->SetCastShadows(castShadows);
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }
 
 void DirectusMeshRenderer::MapReceiveShadows()
@@ -181,7 +181,7 @@ void DirectusMeshRenderer::MapReceiveShadows()
     bool receiveShadows = m_receiveShadowsCheckBox->isChecked();
     m_inspectedMeshRenderer->SetReceiveShadows(receiveShadows);
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
 }
 
 void DirectusMeshRenderer::Remove()
@@ -192,6 +192,6 @@ void DirectusMeshRenderer::Remove()
     GameObject* gameObject = m_inspectedMeshRenderer->g_gameObject;
     gameObject->RemoveComponent<MeshRenderer>();
 
-    m_directusCore->UpdateASAP();
+    m_directusCore->Update();
     m_inspector->Inspect(gameObject);
 }

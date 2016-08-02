@@ -71,7 +71,7 @@ namespace Directus
 		Quaternion Quaternion::CreateFromAxisAngle(Vector3 axis, float angle)
 		{
 			Vector3 normAxis = axis.Normalize();
-			angle *= DEG_TO_RAD;
+			angle *= DEG_TO_RAD_2;
 			float sinAngle = sinf(angle);
 			float cosAngle = cosf(angle);
 
@@ -91,9 +91,9 @@ namespace Directus
 
 		Quaternion Quaternion::FromEulerAngles(float x, float y, float z)
 		{
-			x *= DEG_TO_RAD;
-			y *= DEG_TO_RAD;
-			z *= DEG_TO_RAD;
+			x *= DEG_TO_RAD_2;
+			y *= DEG_TO_RAD_2;
+			z *= DEG_TO_RAD_2;
 
 			float sinX = sinf(x);
 			float cosX = cosf(x);
@@ -113,7 +113,7 @@ namespace Directus
 
 		Quaternion Quaternion::CreateFromRotationMatrix(Matrix matrix)
 		{
-			//matrix = Matrix::Transpose(matrix);
+			matrix = matrix.Transpose();
 			Quaternion q;
 
 			float t = matrix.m00 + matrix.m11 + matrix.m22;
@@ -168,12 +168,11 @@ namespace Directus
 		{
 			// Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
 			// Order of rotations: Z first, then X, then Y
-			Vector3 euler;
 			float check = 2.0f * (-y * z + w * x);
 
 			if (check < -0.995f)
 			{
-				euler = Vector3(
+				return Vector3(
 					-90.0f,
 					0.0f,
 					-atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
@@ -181,7 +180,7 @@ namespace Directus
 			}
 			else if (check > 0.995f)
 			{
-				euler = Vector3(
+				return Vector3(
 					90.0f,
 					0.0f,
 					atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
@@ -189,15 +188,29 @@ namespace Directus
 			}
 			else
 			{
-				euler = Vector3(
+				return Vector3(
 					asinf(check) * RAD_TO_DEG,
 					atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * RAD_TO_DEG,
 					atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * RAD_TO_DEG
 				);
 			}
-
-			return euler;
 		}
+
+		float Quaternion::Yaw()
+		{
+			return ToEulerAngles().y;
+		}
+
+		float Quaternion::Pitch()
+		{
+			return ToEulerAngles().x;
+		}
+
+		float Quaternion::Roll()
+		{
+			return ToEulerAngles().z;
+		}
+
 		//================================================================================
 
 		Quaternion Quaternion::Conjugate()
@@ -235,11 +248,23 @@ namespace Directus
 		Matrix Quaternion::RotationMatrix()
 		{
 			return Matrix(
-				1.0f - 2.0f * y * y - 2.0f * z * z, 2.0f * x * y - 2.0f * w * z, 2.0f * x * z + 2.0f * w * y, 0.0f,
-				2.0f * x * y + 2.0f * w * z, 1.0f - 2.0f * x * x - 2.0f * z * z, 2.0f * y * z - 2.0f * w * x, 0.0f,
-				2.0f * x * z - 2.0f * w * y, 2.0f * y * z + 2.0f * w * x, 1.0f - 2.0f * x * x - 2.0f * y * y, 0.0f,
-				0.0f, 0.0f, 0.0f, 1.0f
-			);//.Transpose();
+				1.0f - 2.0f * y * y - 2.0f * z * z, 
+				2.0f * x * y + 2.0f * w * z, 
+				2.0f * x * z - 2.0f * w * y, 
+				0.0f,
+				2.0f * x * y - 2.0f * w * z, 
+				1.0f - 2.0f * x * x - 2.0f * z * z, 
+				2.0f * y * z + 2.0f * w * x, 
+				0.0f,
+				2.0f * x * z + 2.0f * w * y, 
+				2.0f * y * z - 2.0f * w * x, 
+				1.0f - 2.0f * x * x - 2.0f * y * y, 
+				0.0f,
+				0.0f, 
+				0.0f, 
+				0.0f, 
+				1.0f
+			);
 		}
 
 		/*------------------------------------------------------------------------------

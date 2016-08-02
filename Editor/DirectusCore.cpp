@@ -84,7 +84,7 @@ void DirectusCore::Stop()
     m_timerSEC->stop();
 }
 
-void DirectusCore::UpdateASAP()
+void DirectusCore::Update()
 {
     if (!m_socket)
         return;
@@ -121,7 +121,7 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
 
 void DirectusCore::paintEvent(QPaintEvent* evt)
 {
-    UpdateASAP();
+    Update();
 }
 //===================================================
 

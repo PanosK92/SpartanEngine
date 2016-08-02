@@ -21,21 +21,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES ==================
 #include <QObject>
 #include <QPixmap>
 #include "Core/Socket.h"
-//======================
+#include "AssetLoadingDialog.h"
+//=============================
 
 class DirectusAssetLoader : public QObject
 {
     Q_OBJECT
 public:
+    enum AssetOperation
+    {
+        Load_Model,
+        Load_Scene,
+        Save_Scene,
+        Save_Scene_As,
+        Load_Texture,
+    };
+
     explicit DirectusAssetLoader(QObject* parent = nullptr);
-    void EnableProgressBar(QWidget* mainWindow);
-    void PrepareForScene(std::string filePath, Socket* socket);
-    void PrepareForModel(std::string filePath, Socket* socket);
+    void Initialize(QWidget* mainWindow, Socket* socket);
+    void SetFilePath(std::string filePath);
+    void GetAssetOperation(AssetOperation assetOperation);
     void PrepareForTexture(std::string filePath, int width, int height);
+    AssetOperation GetAssetOperation();
 
 private:
     void LoadSceneFromFile();
@@ -43,11 +54,15 @@ private:
     void LoadModelFromFile();
     QPixmap LoadTextureFromFile();
 
-    Socket* m_socket;
     QPixmap m_pixmap;
     std::string m_filePath;
     int m_width;
     int m_height;
+    AssetOperation m_assetOperation;
+
+    QWidget* m_mainWindow;
+    Socket* m_socket;
+    AssetLoadingDialog* m_loadingDialog;
 
 signals:
     void ImageReady(QPixmap);

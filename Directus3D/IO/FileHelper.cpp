@@ -192,6 +192,32 @@ bool FileHelper::IsSupportedImage(string path)
 	supportedExt.push_back(".bmp");
 	supportedExt.push_back(".tga");
 	supportedExt.push_back(".dds");
+	supportedExt.push_back(".exr");
+	supportedExt.push_back(".raw");
+	supportedExt.push_back(".gif");
+	supportedExt.push_back(".hdr");
+	supportedExt.push_back(".ico");
+	supportedExt.push_back(".iff");
+	supportedExt.push_back(".jng");
+	supportedExt.push_back(".jpeg");
+	supportedExt.push_back(".koala");
+	supportedExt.push_back(".kodak");
+	supportedExt.push_back(".mng");
+	supportedExt.push_back(".pcx");
+	supportedExt.push_back(".pbm");
+	supportedExt.push_back(".pgm");
+	supportedExt.push_back(".ppm");
+	supportedExt.push_back(".pfm");
+	supportedExt.push_back(".pict");
+	supportedExt.push_back(".psd");
+	supportedExt.push_back(".raw");
+	supportedExt.push_back(".sgi");
+	supportedExt.push_back(".targa");
+	supportedExt.push_back(".tiff");
+	supportedExt.push_back(".wbmp");
+	supportedExt.push_back(".webp");
+	supportedExt.push_back(".xbm");
+	supportedExt.push_back(".xpm");
 
 	for (int i = 0; i < supportedExt.size(); i++)
 	{
@@ -225,6 +251,34 @@ bool FileHelper::IsSupportedModel(string path)
 	supportedExt.push_back(".obj");
 	supportedExt.push_back(".fbx");
 	supportedExt.push_back(".blend");
+	supportedExt.push_back(".dae");
+	supportedExt.push_back(".lwo");
+	supportedExt.push_back(".c4d");
+	supportedExt.push_back(".ase");
+	supportedExt.push_back(".dxf");
+	supportedExt.push_back(".hmp");
+	supportedExt.push_back(".md2");
+	supportedExt.push_back(".md3");
+	supportedExt.push_back(".md5");
+	supportedExt.push_back(".mdc");
+	supportedExt.push_back(".mdl");
+	supportedExt.push_back(".nff");
+	supportedExt.push_back(".ply");
+	supportedExt.push_back(".stl");
+	supportedExt.push_back(".x");
+	supportedExt.push_back(".smd");
+	supportedExt.push_back(".lxo");
+	supportedExt.push_back(".lws");
+	supportedExt.push_back(".ter");
+	supportedExt.push_back(".ac3d");
+	supportedExt.push_back(".ms3d");
+	supportedExt.push_back(".cob");
+	supportedExt.push_back(".q3bsp");
+	supportedExt.push_back(".xgl");
+	supportedExt.push_back(".csm");
+	supportedExt.push_back(".bvh");
+	supportedExt.push_back(".b3d");
+	supportedExt.push_back(".ndo");
 
 	for (int i = 0; i < supportedExt.size(); i++)
 	{
