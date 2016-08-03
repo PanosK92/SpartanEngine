@@ -22,22 +22,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "GBuffer.h"
 #include "../Core/Globals.h"
-
 //==========================
 
 GBuffer::GBuffer(GraphicsDevice* graphicsDevice)
 {
 	m_graphicsDevice = graphicsDevice;
+	m_depthStencilBuffer = nullptr;
+	m_depthStencilView = nullptr;
+	m_textureWidth = 1;
+	m_textureHeight = 1;
 
 	for (int i = 0; i < BUFFER_COUNT; i++)
 	{
-		m_renderTargetTextureArray[i] = nullptr;
-		m_renderTargetViewArray[i] = nullptr;
-		m_shaderResourceViewArray[i] = nullptr;
+		m_shaderResourceViewArray.push_back(nullptr);
+		m_renderTargetViewArray.push_back(nullptr);
+		m_renderTargetTextureArray.push_back(nullptr);
 	}
-
-	m_depthStencilBuffer = nullptr;
-	m_depthStencilView = nullptr;
 }
 
 GBuffer::~GBuffer()
@@ -171,17 +171,20 @@ bool GBuffer::Initialize(int width, int height)
 void GBuffer::SetRenderTargets()
 {
 	// Bind the render target view array and depth stencil buffer to the output render pipeline.
-	m_graphicsDevice->GetDeviceContext()->OMSetRenderTargets(BUFFER_COUNT, m_renderTargetViewArray, m_depthStencilView);
+	m_graphicsDevice->GetDeviceContext()->OMSetRenderTargets(BUFFER_COUNT, &m_renderTargetViewArray[0], m_depthStencilView);
 
 	// Set the viewport.
 	m_graphicsDevice->GetDeviceContext()->RSSetViewports(1, &m_viewport);
 }
 
-void GBuffer::ClearRenderTargets(float red, float green, float blue, float alpha)
+void GBuffer::Clear(Directus::Math::Vector4 color)
+{
+	Clear(color.x, color.y, color.z, color.w);
+}
+
+void GBuffer::Clear(float red, float green, float blue, float alpha)
 {
 	float color[4];
-
-	// Setup the color to clear the buffer to.
 	color[0] = red;
 	color[1] = green;
 	color[2] = blue;
@@ -189,9 +192,7 @@ void GBuffer::ClearRenderTargets(float red, float green, float blue, float alpha
 
 	// Clear the render target buffers.
 	for (int i = 0; i < BUFFER_COUNT; i++)
-	{
 		m_graphicsDevice->GetDeviceContext()->ClearRenderTargetView(m_renderTargetViewArray[i], color);
-	}
 
 	// Clear the depth buffer.
 	m_graphicsDevice->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);

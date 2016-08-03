@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Shaders/DeferredShader.h"
 #include <memory>
 #include "../Core/Texture.h"
+#include "../Components/LineRenderer.h"
 //====================================
 
 class Renderer
@@ -103,6 +104,7 @@ private:
 	//= PREREQUISITES =============================
 	Camera* m_camera;
 	Skybox* m_skybox;
+	LineRenderer* m_lineRenderer;
 	Light* m_directionalLight;
 	Directus::Math::Matrix mProjection;
 	Directus::Math::Matrix mOrthographicProjection;

@@ -64,6 +64,7 @@ void Scene::Initialize()
 {
 	m_ambientLight = Vector3::Zero;
 	m_mainCamera = CreateCamera();
+	m_skybox = CreateSkybox();
 	CreateDirectionalLight();
 
 	AnalyzeGameObjects();
@@ -138,6 +139,14 @@ void Scene::Clear()
 	m_scriptEngine->Reset();
 	m_physics->Reset();
 	m_renderer->Clear();
+
+	m_mainCamera = nullptr;
+	m_skybox = CreateSkybox();
+}
+
+GameObject* Scene::GetSkybox()
+{
+	return m_skybox;
 }
 
 GameObject* Scene::GetMainCamera()
@@ -195,9 +204,22 @@ void Scene::AnalyzeGameObjects()
 
 	m_renderer->Update(m_renderables, m_lightsDirectional, m_lightsPoint);
 }
+
 //====================================================================================================
 
 // GAMEOBJECT CREATION ===============================================================================
+GameObject* Scene::CreateSkybox()
+{
+	GameObject* skybox = new GameObject();
+	skybox->SetName("Skybox");
+	skybox->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
+	skybox->AddComponent<LineRenderer>();
+	skybox->AddComponent<Skybox>();
+	skybox->SetHierarchyVisibility(true);
+
+	return skybox;
+}
+
 GameObject* Scene::CreateCamera()
 {
 	GameObject* camera = new GameObject();
@@ -206,8 +228,6 @@ GameObject* Scene::CreateCamera()
 	camera->AddComponent<Camera>();
 	camera->AddComponent<Script>()->AddScript("Assets/Scripts/FirstPersonMovement.as");
 	camera->AddComponent<Script>()->AddScript("Assets/Scripts/MouseLook.as");
-	camera->AddComponent<LineRenderer>();
-	camera->AddComponent<Skybox>();
 
 	return camera;
 }

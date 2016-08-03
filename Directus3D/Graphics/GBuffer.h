@@ -21,6 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= INCLUDES ====
+#include <vector>
+//===============
+
 //==========================
 const int BUFFER_COUNT = 4;
 //==========================
@@ -38,16 +42,18 @@ public:
 
 	bool Initialize(int width, int height);
 	void SetRenderTargets();
-	void ClearRenderTargets(float, float, float, float);
+
+	void Clear(Directus::Math::Vector4 color);
+	void Clear(float, float, float, float);
 
 	ID3D11ShaderResourceView* GetShaderResourceView(int index);
 
 private:
 	GraphicsDevice* m_graphicsDevice;
 	int m_textureWidth, m_textureHeight;
-	ID3D11Texture2D* m_renderTargetTextureArray[BUFFER_COUNT];
-	ID3D11RenderTargetView* m_renderTargetViewArray[BUFFER_COUNT];
-	ID3D11ShaderResourceView* m_shaderResourceViewArray[BUFFER_COUNT];
+	std::vector<ID3D11Texture2D*> m_renderTargetTextureArray;
+	std::vector<ID3D11RenderTargetView*> m_renderTargetViewArray;
+	std::vector<ID3D11ShaderResourceView*> m_shaderResourceViewArray;
 	ID3D11Texture2D* m_depthStencilBuffer;
 	ID3D11DepthStencilView* m_depthStencilView;
 	D3D11_VIEWPORT m_viewport;
