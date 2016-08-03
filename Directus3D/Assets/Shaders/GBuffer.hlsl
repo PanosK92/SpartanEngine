@@ -35,7 +35,7 @@ cbuffer DefaultBuffer : register(b0)
     float materialShadingMode;
     float2 materialTiling;
 	float2 viewport;
-    float2 padding;
+    float2 receiveShadowsBias;
 };
 //===========================================
 
@@ -95,12 +95,18 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float specular 			= clamp(materialSpecular, 0.03f, 1.0f);
 	float occlusion			= 1.0f - materialOcclusion;
 	float4 normal			= float4(PackNormal(input.normal.xyz), occlusion);
+	float type				= 0.0f; // pbr mesh
+	
+	//= TYPE CODES ============================
+	// 0.0 = Default mesh 	-> PBR
+	// 0.1 = CubeMap 		-> texture mapping
+	//=========================================
 
-	//= SAMPLING ================================================================================
+	//= HEIGHT ==================================================================================
 #if HEIGHT_MAP
 #endif
 	
-	//= SAMPLING ================================================================================
+	//= MASK ====================================================================================
 #if MASK_MAP
 		float3 maskSample = texMask.Sample(samplerAniso, texCoord).rgb;
 		float threshold = 0.6f;
@@ -108,58 +114,56 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 			discard;
 #endif
 	
-	//= SAMPLING ================================================================================
+	//= ALBEDO ==================================================================================
 #if ALBEDO_MAP
 		albedo *= texAlbedo.Sample(samplerAniso, texCoord);
 #endif
 	
-	//= SAMPLING ================================================================================
+	//= ROUGHNESS ===============================================================================
 #if ROUGHNESS_MAP
 		roughness *= texRoughness.Sample(samplerAniso, texCoord).r;
 #endif
 	
-	//= SAMPLING ================================================================================
+	//= METALLIC ================================================================================
 #if METALLIC_MAP
 		metallic *= texMetallic.Sample(samplerAniso, texCoord).r;
 #endif
 	
-	//= SAMPLING ================================================================================
+	//= OCCLUSION ================================================================================
 #if OCCLUSION_MAP
 		occlusion = clamp(texOcclusion.Sample(samplerAniso, texCoord).r * (1 / materialOcclusion), 0.0f, 1.0f);
 #endif
 	
-	//= SAMPLING ================================================================================
+	//= SAMPLING =================================================================================
 #if NORMAL_MAP
 		normal 	= texNormal.Sample(samplerAniso, texCoord); // sample
 		normal 	= float4(NormalSampleToWorldSpace(normal, input.normal, input.tangent, materialNormalStrength), 1.0f); // transform to world space
 		normal 	= float4(PackNormal(normal), 1.0f);
 #endif
-	//===========================================================================================
-	
-	//= DETERMINE RENDER QUALITY ================================================================
-	float textureMapping	= 0.0f; // This has been implemented
-	float shadingLow		= 0.25f;
-	float shadingMedium		= 0.5f;
-	float shadingHigh 		= 0.75f;
-	float shadingUltra 		= 1.0f; // This has been implemented
-	float renderMode		= shadingUltra;
+	//============================================================================================
+		
+	//= CUBEMAP ==================================================================================
 #if CUBE_MAP
-		renderMode			= textureMapping;
+		type = 0.1f;
 #endif
 	//============================================================================================
 	
-	// SHADOW MAPPING
-	float ambientLightIntensity = 0.0f;
-	float bias = padding.x;
-	float4 lightPos = mul(input.positionWS, mLightViewProjection);
-	float shadowing	= ShadowMappingPCF(lightDepth, samplerShadow, lightPos, bias);
-	shadowing 		= clamp(shadowing, ambientLightIntensity, 1.0f);
 	
+	//= SHADOW MAPPING ===========================================================================
+	bool receiveShadows = receiveShadowsBias.x;
+	float shadowing = 1.0f;
+	if (receiveShadows)
+	{
+		float bias 		= receiveShadowsBias.y;
+		float4 lightPos = mul(input.positionWS, mLightViewProjection);
+		shadowing		= ShadowMappingPCF(lightDepth, samplerShadow, lightPos, bias);
+	}
+	//============================================================================================
 	// Write to G-Buffer
 	output.albedo 		= albedo;
 	output.normal 		= float4(normal.rgb, 1.0f);
 	output.depth 		= float4(depth, 1.0f, shadowing, 1.0f);
-	output.material		= float4(roughness, metallic, specular, renderMode);
+	output.material		= float4(roughness, metallic, specular, type);
 		
     return output;
 }
