@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Loading/ImageLoader.h"
 #include "IO/FileHelper.h"
 #include <QMutex>
-#include "AssetLoadingDialog.h"
+#include "DirectusProgressBar.h"
 //==============================
 
 DirectusAssetLoader::DirectusAssetLoader(QObject* parent) : QObject(parent)
@@ -37,7 +37,7 @@ void DirectusAssetLoader::Initialize(QWidget* mainWindow, Socket* socket)
     m_mainWindow = mainWindow;
     m_socket = socket;
 
-    m_loadingDialog = new AssetLoadingDialog(m_mainWindow);
+    m_loadingDialog = new DirectusProgressBar(m_mainWindow);
     m_loadingDialog->Initialize(m_mainWindow);
 
     // When the loading dialog should show up

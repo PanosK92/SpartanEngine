@@ -7,12 +7,12 @@ namespace Ui {
 class AssetLoadingDialog;
 }
 
-class AssetLoadingDialog : public QDialog
+class DirectusProgressBar : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit AssetLoadingDialog(QWidget *parent = 0);
+    explicit DirectusProgressBar(QWidget *parent = 0);
     void Initialize(QWidget* mainWindow);
 
 private slots:

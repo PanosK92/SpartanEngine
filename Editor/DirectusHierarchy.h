@@ -29,8 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QMouseEvent>
 #include "DirectusInspector.h"
 #include "DirectusCore.h"
-#include <QFileDialog>
-#include "DirectusAssetLoader.h"
+#include "DirectusFileDialog.h"
 //==================================
 
 class DirectusHierarchy : public QTreeWidget
@@ -38,8 +37,7 @@ class DirectusHierarchy : public QTreeWidget
     Q_OBJECT
 public:
     explicit DirectusHierarchy(QWidget* parent = 0);
-    void SetDirectusCore(DirectusCore* directusCore);
-    void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
+    void Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusCore* directusCore);
 
 protected:
     virtual void mousePressEvent(QMouseEvent *event);
@@ -61,14 +59,12 @@ private:
 
     bool IsAnyGameObjectSelected();   
   
-    QString m_lastSceneFilePath;
 	Socket* m_socket;
     DirectusInspector* m_inspector;
     DirectusCore* m_directusCore;
     QWidget* m_mainWindow;
     QPoint m_dragStartPosition;
-    QFileDialog* m_fileDialog;
-    DirectusAssetLoader* m_assetLoader;
+    DirectusFileDialog* m_fileDialog;
 
 public slots:
     void ClearTree();
@@ -104,7 +100,4 @@ public slots:
     void AddHingeComponent();
     void AddSkyboxComponent();
     //============================
-
-private slots:
-    void FileDialogAccepted(QString filePath);
 };

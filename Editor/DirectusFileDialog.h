@@ -22,48 +22,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include <QObject>
-#include <QPixmap>
+#include <QFileDialog>
+#include "DirectusAssetLoader.h"
 #include "Core/Socket.h"
-#include "DirectusProgressBar.h"
+#include "DirectusCore.h"
 //=============================
 
-class DirectusAssetLoader : public QObject
+class DirectusFileDialog : public QFileDialog
 {
     Q_OBJECT
 public:
-    explicit DirectusAssetLoader(QObject* parent = nullptr);
-    void Initialize(QWidget* mainWindow, Socket* socket);
-    std::string GetFilePath();
-    void SetFilePath(std::string filePath); 
-    void PrepareForTexture(std::string filePath, int width, int height);
-    void SetAssetOperation(std::string assetOperation);
-    std::string GetAssetOperation();
+    explicit DirectusFileDialog(QWidget *parent = 0);
+    void Initialize(QWidget* mainWindow, DirectusCore* directusCore);
+    void ForgetLastPath();
+    bool RememberPath();
+    void LoadModel();
+    void LoadScene();
+    void SaveSceneAs();
+    void SaveScene();
 
 private:
-    void LoadSceneFromFile();
-    void SaveSceneToFile();
-    void LoadModelFromFile();
-    QPixmap LoadTextureFromFile();
+    QString m_lastSceneFilePath;
 
-    QPixmap m_pixmap;
-    std::string m_filePath;
-    int m_width;
-    int m_height;
-    std::string m_assetOperation;
-
+    DirectusAssetLoader* m_assetLoader;
     QWidget* m_mainWindow;
     Socket* m_socket;
-    DirectusProgressBar* m_loadingDialog;
+    DirectusCore* m_directusCore;
 
 signals:
-    void ImageReady(QPixmap);
-    void Started();
-    void Finished();
 
 public slots:
-    void LoadScene();
-    void SaveScene();
-    void LoadModel();
-    void LoadTexture();
+    void FileDialogAccepted(QString);
 };

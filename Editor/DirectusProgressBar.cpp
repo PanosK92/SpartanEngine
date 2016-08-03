@@ -1,7 +1,7 @@
-#include "AssetLoadingDialog.h"
+#include "DirectusProgressBar.h"
 #include "ui_AssetLoadingDialog.h"
 
-AssetLoadingDialog::AssetLoadingDialog(QWidget *parent) : QDialog(parent), ui(new Ui::AssetLoadingDialog)
+DirectusProgressBar::DirectusProgressBar(QWidget *parent) : QDialog(parent), ui(new Ui::AssetLoadingDialog)
 {
     ui->setupUi(this);
     m_mainWindow = nullptr;
@@ -19,12 +19,12 @@ AssetLoadingDialog::AssetLoadingDialog(QWidget *parent) : QDialog(parent), ui(ne
     connect(m_timer, SIGNAL(timeout()), this, SLOT(UpdateProgressBar()));
 }
 
-void AssetLoadingDialog::Initialize(QWidget* mainWindow)
+void DirectusProgressBar::Initialize(QWidget* mainWindow)
 {
     m_mainWindow = mainWindow;
 }
 
-void AssetLoadingDialog::UpdateProgressBar()
+void DirectusProgressBar::UpdateProgressBar()
 {
     QProgressBar* progressBar = ui->progressBar;
 
@@ -39,21 +39,21 @@ void AssetLoadingDialog::UpdateProgressBar()
     ui->progressBar->setValue(value);
 }
 
-void AssetLoadingDialog::Show()
+void DirectusProgressBar::Show()
 {
     m_mainWindow->children();
     m_mainWindow->setEnabled(false);
     show();
 }
 
-void AssetLoadingDialog::Hide()
+void DirectusProgressBar::Hide()
 {
     m_mainWindow->setEnabled(true);
     ui->progressBar->setValue(0);
     hide();
 }
 
-void AssetLoadingDialog::Kill()
+void DirectusProgressBar::Kill()
 {
     m_mainWindow->setEnabled(true);
     deleteLater();
