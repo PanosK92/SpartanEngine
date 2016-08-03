@@ -69,7 +69,6 @@ private:
 	std::vector<GameObject*> m_lightsDirectional;
 	std::vector<GameObject*> m_lightsPoint;
 
-	GameObject* m_skybox;
 	GameObject* m_mainCamera;
 	Directus::Math::Vector3 m_ambientLight;
 

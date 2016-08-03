@@ -64,7 +64,7 @@ void Scene::Initialize()
 {
 	m_ambientLight = Vector3::Zero;
 	m_mainCamera = CreateCamera();
-	m_skybox = CreateSkybox();
+	CreateSkybox();
 	CreateDirectionalLight();
 
 	AnalyzeGameObjects();
@@ -141,12 +141,19 @@ void Scene::Clear()
 	m_renderer->Clear();
 
 	m_mainCamera = nullptr;
-	m_skybox = CreateSkybox();
+	CreateSkybox();
 }
 
 GameObject* Scene::GetSkybox()
 {
-	return m_skybox;
+	vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
+	for (int i = 0; i < gameObjects.size(); i++)
+	{
+		if (gameObjects[i]->HasComponent<Skybox>())
+			return gameObjects[i];
+	}
+
+	return nullptr;
 }
 
 GameObject* Scene::GetMainCamera()
@@ -180,7 +187,7 @@ void Scene::AnalyzeGameObjects()
 	m_mainCamera = nullptr;
 
 	vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
-	for (int i = 0; i < GameObjectPool::GetInstance().GetGameObjectCount(); i++)
+	for (int i = 0; i < gameObjects.size(); i++)
 	{
 		GameObject* gameobject = gameObjects[i];
 
@@ -215,7 +222,7 @@ GameObject* Scene::CreateSkybox()
 	skybox->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 	skybox->AddComponent<LineRenderer>();
 	skybox->AddComponent<Skybox>();
-	skybox->SetHierarchyVisibility(true);
+	skybox->SetHierarchyVisibility(false);
 
 	return skybox;
 }
