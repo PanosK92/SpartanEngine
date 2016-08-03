@@ -35,8 +35,8 @@ public:
 
 	void Initialize(GraphicsDevice* graphicsDevice);
 	bool CreateConstantBuffer(unsigned int size);
-	bool CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent> vertices);
-	bool CreateIndexBuffer(std::vector<unsigned int> indices);
+	bool CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent>& vertices);
+	bool CreateIndexBuffer(std::vector<unsigned int>& indices);
 	bool Create(unsigned int stride, unsigned int size, void* data, D3D11_USAGE usage, D3D11_BIND_FLAG bindFlag, D3D11_CPU_ACCESS_FLAG cpuAccessFlag);
 	
 	void SetIA();

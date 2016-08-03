@@ -157,7 +157,7 @@ void D3D11RenderTexture::SetAsRenderTarget()
 	m_graphicsDevice->GetDeviceContext()->RSSetViewports(1, &m_viewport);
 }
 
-void D3D11RenderTexture::Clear(Vector4 clearColor)
+void D3D11RenderTexture::Clear(const Directus::Math::Vector4& clearColor)
 {
 	Clear(clearColor.x, clearColor.y, clearColor.z, clearColor.z);
 }
