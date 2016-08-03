@@ -62,6 +62,7 @@ void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWi
 
     m_fileDialog = new DirectusFileDialog(mainWindow);
     m_fileDialog->Initialize(m_mainWindow, m_directusCore);
+    connect(m_fileDialog, SIGNAL(AssetLoaded()), this, SLOT(Populate()));
 
     Populate();
 }
@@ -337,7 +338,7 @@ void DirectusHierarchy::Populate()
 
 void DirectusHierarchy::NewScene()
 {
-    m_fileDialog->ForgetLastUsedFilePath();
+    m_fileDialog->ResetFilePath();
     m_socket->ClearScene();
 
     Populate();

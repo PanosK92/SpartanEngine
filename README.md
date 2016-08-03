@@ -19,7 +19,7 @@ approach when it comes to adding features and a state of the art editor. The edi
 - Windows support.
 
 # Planned Features
-- Ability to save everything in a custom engine format.
+- Ability to save anything in a custom engine format (prefabs).
 - Audio source and listener components.
 - Cascaded shadow mapping.
 - Draw call batching (static & dynamic).
