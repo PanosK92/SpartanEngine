@@ -11,7 +11,7 @@ Texture2D texOcclusion 		: register (t3);
 Texture2D texNormal 		: register (t4);
 Texture2D texHeight 		: register (t5);
 Texture2D texMask 			: register (t6);
-Texture2D lightDepth 		: register (t7);
+Texture2D lightDepthTex 	: register (t7);
 //==========================================
 
 //= SAMPLERS ===========================================
@@ -87,8 +87,8 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	PixelOutputType output;
 
 	float2 texel			= float2(1.0f / viewport.x, 1.0f / viewport.y);
-	float depth1 			= input.positionCS.z /  input.positionCS.w;
-	float depth2 			= input.positionCS.z /  input.positionWS.w;
+	float depth1 			= input.positionCS.z / input.positionCS.w;
+	float depth2 			= input.positionCS.z / input.positionWS.w;
 	float2 texCoord 		= float2(input.uv.x * materialTiling.x, input.uv.y * materialTiling.y);
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= materialRoughness;
@@ -157,13 +157,13 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	{
 		float bias 		= receiveShadowsBias.y;
 		float4 lightPos = mul(input.positionWS, mLightViewProjection);
-		shadowing		= ShadowMappingPCF(lightDepth, samplerShadow, lightPos, bias);
+		shadowing		= 1.0f - ShadowMappingPCF(lightDepthTex, samplerShadow, lightPos, bias);
 	}
 	//============================================================================================
 	// Write to G-Buffer
 	output.albedo 		= albedo;
-	output.normal 		= float4(normal.rgb, 1.0f);
-	output.depth 		= float4(depth1, depth2, shadowing, 1.0f);
+	output.normal 		= float4(normal.rgb, occlusion);
+	output.depth 		= float4(depth1, depth2, shadowing, 0.0f);
 	output.material		= float4(roughness, metallic, specular, type);
 		
     return output;

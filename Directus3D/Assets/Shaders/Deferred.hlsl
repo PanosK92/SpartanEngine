@@ -87,11 +87,13 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float3 normal				= normalize(UnpackNormal(normalSample.rgb));	
 	float depth					= depthSample.g;
 	float3 worldPos				= ReconstructPosition(depth, input.uv, mViewProjectionInverse);
-	float shadowing 			= clamp(1.0f - depthSample.b, 0.0f, 1.0f);
+	float shadowingAttunation 	= depthSample.b;
 	float roughness				= materialSample.r;
 	float metallic				= materialSample.g;
 	float specular				= materialSample.b;	
 	float type					= materialSample.a;
+	
+	//return float4(shadowingAttunation, shadowingAttunation, shadowingAttunation, 1.0f);
 	
 	// Calculate view direction and the reflection vector
 	float3 viewDir				= normalize(cameraPosWS.xyz - worldPos.xyz); 
@@ -119,11 +121,12 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	for (int i = 0; i < dirLightCount; i++)
 	{
 		float3 lightColor 		= dirLightColor[i];
-		float lightIntensity	= dirLightIntensity[i] * shadowing;		
+		float lightIntensity	= dirLightIntensity[i] ;		
 		float3 lightDir 		= normalize(-dirLightDirection[i]);
-		float lightAttunation	= 0.99f;
-			
-		finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightAttunation, lightIntensity, ambientLightIntensity, envColor, irradiance);	
+
+		lightIntensity *= shadowingAttunation;
+		
+		finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);	
 	}
 		
 	// point lights
@@ -132,17 +135,19 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float3 lightColor 		= pointLightColor[i];
 		float3 lightPos 		= pointLightPosition[i];
 		float radius 			= pointLightRange[i];
-		float lightIntensity	= pointLightIntensity[i] * shadowing;		
+		float lightIntensity	= pointLightIntensity[i] ;		
 		float3 lightDir			= normalize(lightPos - worldPos);
 		float dist 				= length(worldPos - lightPos);
-		float attunation 		= clamp(1.0f - dist/radius, 0.0f, 1.0f); attunation *= attunation;
+		float attunation 		= clamp(1.0f - dist / radius, 0.0f, 1.0f); attunation *= attunation;
+		
+		lightIntensity *= attunation * shadowingAttunation;
 
 		 // Calculate distance between light source and current fragment
         float dx = length(lightPos - worldPos);
 		
 		// Do expensive lighting
 		if (dx < radius)
-			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, attunation, lightIntensity, ambientLightIntensity, envColor, irradiance);			
+			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);			
 	}
 	
 	finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)

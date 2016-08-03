@@ -53,7 +53,7 @@ float3 DiffuseBRDF(float3 cDiff)
 	return cDiff / PI;
 }
 
-float3 ComputeLight(float3 albedoColor, float3 specularColor, float3 normal, float roughness, float3 lightColor, float3 lightDir, float3 viewDir)
+float3 BRDF_CookTorrance(float3 albedoColor, float3 specularColor, float3 normal, float roughness, float3 lightColor, float3 lightDir, float3 viewDir)
 {
     // Compute some useful values.
     float NdL = saturate(dot(normal, lightDir));
@@ -61,7 +61,6 @@ float3 ComputeLight(float3 albedoColor, float3 specularColor, float3 normal, flo
     float3 h = normalize(lightDir + viewDir);
     float NdH = saturate(dot(normal, h));
     float VdH = saturate(dot(viewDir, h));
-    float LdV = saturate(dot(lightDir, viewDir));
     float a = max(0.001f, roughness * roughness);
 
 	// calculate deiffuse contribution
@@ -90,19 +89,18 @@ float3 normal,
 float3 viewDir, 
 float3 lightDir, 
 float3 lightColor, 
-float lightAttunation, 
 float lightIntensity, 
 float ambientLightIntensity, 
 float3 environmentColor, 
 float3 irradianceColor)
 {
-    float3 albedoColor = albedo - albedo * metallic;
-    float3 specularColor = lerp(0.03f, albedo, metallic);
+    float3 albedoColor 		= albedo - albedo * metallic;
+    float3 specularColor 	= lerp(0.04f, albedo, metallic);
 			
-	float3 light 		= ComputeLight(albedoColor, specularColor, normal, roughness, lightColor, lightDir, viewDir);	
+	float3 light 		= BRDF_CookTorrance(albedoColor, specularColor, normal, roughness, lightColor, lightDir, viewDir);	
 	float3 envFresnel 	= Specular_F_Roughness(specularColor, roughness * roughness, normal, viewDir);
 	
-	float3 finalLight		= light * lightAttunation * lightIntensity;
+	float3 finalLight		= light * lightIntensity;
 	float3 finalReflection 	= envFresnel * environmentColor * specular;
 	float3 finalAlbedo		= albedoColor * irradianceColor * ambientLightIntensity;
 

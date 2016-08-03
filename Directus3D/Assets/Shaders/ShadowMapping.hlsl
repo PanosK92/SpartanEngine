@@ -1,3 +1,9 @@
+float2 texOffset(int u, int v)
+{
+	float shadowMapSize = 2048.0f;
+    return float2(u * 1.0f / shadowMapSize, v * 1.0f / shadowMapSize);
+}
+
 float ShadowMappingPCF(Texture2D shadowMap, SamplerComparisonState samplerState, float4 pos, float bias)
 {
 	// Re-homogenize position after interpolation
@@ -16,17 +22,14 @@ float ShadowMappingPCF(Texture2D shadowMap, SamplerComparisonState samplerState,
 	// Apply shadow map bias
     pos.z -= bias;
 
-	return shadowMap.SampleCmpLevelZero(samplerState, pos.xy, pos.z);
-	
     // Perform PCF filtering on a 4 x 4 texel neighborhood
-	float shadowAmount = 0;
-	float texel = 1.0f / 2048.0f;
+	float sum = 0;
 	for (float y = -1.5f; y <= 1.5f; y += 1.0f)
         for (float x = -1.5f; x <= 1.5f; x += 1.0f)
         {
-            shadowAmount += shadowMap.SampleCmpLevelZero(samplerState, pos.xy + float2(x,y) * texel, pos.z);
+            sum += shadowMap.SampleCmpLevelZero(samplerState, pos.xy + texOffset(x,y), pos.z);
         }
-	shadowAmount /= 16.0f;
+	float shadowAmount = sum / 16.0f;
 	
 	return shadowAmount;
 }
