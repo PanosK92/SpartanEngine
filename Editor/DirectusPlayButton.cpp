@@ -84,4 +84,6 @@ void DirectusPlayButton::SetPressed(bool pressed)
         StartEngine();
     else
         StopEngine();
+
+    this->clearFocus();
 }

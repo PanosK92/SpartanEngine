@@ -48,13 +48,12 @@ public:
 
 	btDiscreteDynamicsWorld* GetWorld();
 
-	/*------------------------------------------------------------------------------
-								[DEBUG DRAW]
-	------------------------------------------------------------------------------*/
+	//= DEBUG DRAW =========================
 	void SetDebugDraw(bool enable);
 	bool GetDebugDraw();
-	void DebugDraw();
+	void RenderColliders();
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
+	//======================================
 
 private:
 	btBroadphaseInterface* m_broadphase;

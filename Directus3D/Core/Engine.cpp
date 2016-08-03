@@ -103,7 +103,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	// 13 - RENDERER
 	m_renderer = new Renderer();
 	m_scene = new Scene(m_texturePool, m_materialPool, m_meshPool, m_scriptEngine, m_physicsWorld, m_modelLoader, m_renderer);
-	m_renderer->Initialize(true, m_graphicsDevice, m_timer, m_physicsWorld, m_scene);
+	m_renderer->Initialize(m_graphicsDevice, m_timer, m_physicsWorld, m_scene);
 
 	// 14 - GAMEOBJECT POOL
 	GameObjectPool::GetInstance().Initialize(m_graphicsDevice, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physicsWorld, m_scriptEngine);
@@ -119,8 +119,8 @@ void Engine::Update()
 {
 	m_timer->Update();
 	
-	//= FIXED UPDATE - 30Hz ======================
-	float updates = 30;
+	//= FIXED UPDATE - 60Hz ======================
+	float updates = 60;
 	float updateInterval = 1.0f / updates;
 	float currentTime = m_timer->GetTime();
 	if (currentTime > m_fixedUpdateTimeRunned + updateInterval)

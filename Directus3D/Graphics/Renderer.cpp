@@ -90,15 +90,13 @@ Renderer::~Renderer()
 	SafeDelete(m_renderTexPong);
 }
 
-void Renderer::Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene)
+void Renderer::Initialize(GraphicsDevice* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene)
 {
 	m_timer = timer;
 	m_physics = physics;
 	m_scene = scene;
 
 	m_graphicsDevice = d3d11device;
-
-	SetPhysicsDebugDraw(debugDraw);
 
 	m_GBuffer = new GBuffer(m_graphicsDevice);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
@@ -200,8 +198,8 @@ void Renderer::Render()
 	// Post Proessing
 	PostProcessing();
 
-	// Debug Draw - Colliders
-	DebugDraw();
+	// Gizmos
+	Gizmos();
 
 	// display frame
 	m_graphicsDevice->Present();
@@ -435,7 +433,7 @@ void Renderer::PostProcessing() const
 	);
 }
 
-void Renderer::DebugDraw() const
+void Renderer::Gizmos() const
 {
 	if (!m_physics->GetDebugDraw())
 		return;
@@ -480,11 +478,6 @@ void Renderer::Pong() const
 
 	m_renderTexPong->SetAsRenderTarget(); // Set the render target to be the render to texture. 
 	m_renderTexPong->Clear(clearColor); // Clear the render to texture.
-}
-
-void Renderer::SetPhysicsDebugDraw(bool enable) const
-{
-	m_physics->SetDebugDraw(enable);
 }
 
 //= STATS ============================
