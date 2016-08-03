@@ -53,12 +53,12 @@ namespace Directus
 
 			~Matrix(){}
 
-			Matrix Transpose()
+			Matrix Transpose() const
 			{
 				return Transpose(*this);
 			}
 
-			static Matrix Transpose(Matrix matrix)
+			static Matrix Transpose(const Matrix& matrix)
 			{
 				Matrix result;
 
@@ -201,7 +201,13 @@ namespace Directus
 
 			void Decompose(Vector3& scale, Quaternion& rotation, Vector3& translation);
 
+			//= OPERATORS ======================================
 			Matrix operator*(const Matrix& b)
+			{
+				return Multiply(*this, b);
+			}
+
+			Matrix operator*(const Matrix& b) const
 			{
 				return Multiply(*this, b);
 			}
@@ -263,6 +269,7 @@ namespace Directus
 			{
 				return !(*this == b);
 			}
+			//==================================================
 
 			float m00;
 			float m01;

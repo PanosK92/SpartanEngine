@@ -78,7 +78,7 @@ void MeshRenderer::Deserialize()
 //==============================================================================
 
 //= MISC =======================================================================
-void MeshRenderer::Render(unsigned int indexCount, Matrix viewMatrix, Matrix projectionMatrix, Light* dicrectionalLight, Camera* camera) const
+void MeshRenderer::Render(unsigned int indexCount, const Matrix& viewMatrix, const Matrix& projectionMatrix, Light* dicrectionalLight, Camera* camera) const
 {
 	Material* material = GetMaterial();
 

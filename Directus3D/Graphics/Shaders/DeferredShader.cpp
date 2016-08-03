@@ -66,7 +66,8 @@ void DeferredShader::Initialize(GraphicsDevice* graphicsDevice)
 }
 
 void DeferredShader::Render(
-	int indexCount, Matrix mWorld, Matrix mView, Matrix mBaseView, Matrix mPerspectiveProjection, Matrix mOrthographicProjection,
+	int indexCount, const Matrix& mWorld, const Matrix& mView, const Matrix& mBaseView,
+	const Matrix& mPerspectiveProjection, const Matrix& mOrthographicProjection,
 	vector<GameObject*> directionalLights, vector<GameObject*> pointLights, Camera* camera,
 	vector<ID3D11ShaderResourceView*> textures, ID3D11ShaderResourceView* environmentTex, ID3D11ShaderResourceView* irradienceTex)
 {

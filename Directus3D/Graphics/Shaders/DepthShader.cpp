@@ -58,7 +58,7 @@ void DepthShader::Initialize(GraphicsDevice* graphicsDevice)
 	m_defaultBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
-void DepthShader::Render(int indexCount, Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix)
+void DepthShader::Render(int indexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
 {
 	// Set the shader parameters that it will use for rendering.
 	SetShaderBuffers(worldMatrix, viewMatrix, projectionMatrix);
@@ -67,7 +67,7 @@ void DepthShader::Render(int indexCount, Matrix worldMatrix, Matrix viewMatrix, 
 	RenderShader(indexCount);
 }
 
-void DepthShader::SetShaderBuffers(Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix)
+void DepthShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
 {
 	// get a pointer to the data in the constant buffer.
 	DefaultBuffer* miscBufferType = static_cast<DefaultBuffer*>(m_defaultBuffer->Map());

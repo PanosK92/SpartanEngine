@@ -56,7 +56,7 @@ void ColorShader::Initialize(GraphicsDevice* graphicsDevice)
 	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
 }
 
-void ColorShader::Render(int vertexCount, Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix)
+void ColorShader::Render(int vertexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
 {
 	// Set the shader parameters that it will use for rendering.
 	SetShaderBuffers(worldMatrix, viewMatrix, projectionMatrix);
@@ -65,20 +65,15 @@ void ColorShader::Render(int vertexCount, Matrix worldMatrix, Matrix viewMatrix,
 	RenderShader(vertexCount);
 }
 
-void ColorShader::SetShaderBuffers(Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix)
+void ColorShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
 {
 	// get a pointer of the buffer
 	MiscBufferType* miscBufferType = static_cast<MiscBufferType*>(m_miscBuffer->Map());
 
-	// transpose the matrices
-	worldMatrix = Matrix::Transpose(worldMatrix);
-	viewMatrix = Matrix::Transpose(viewMatrix);
-	projectionMatrix = Matrix::Transpose(projectionMatrix);
-
 	// fill the buffer with the matrices
-	miscBufferType->world = worldMatrix;
-	miscBufferType->view = viewMatrix;
-	miscBufferType->projection = projectionMatrix;
+	miscBufferType->world = worldMatrix.Transpose();
+	miscBufferType->view = viewMatrix.Transpose();
+	miscBufferType->projection = projectionMatrix.Transpose();
 
 	// unmap the buffer and set it in the vertex shader
 	m_miscBuffer->Unmap();
