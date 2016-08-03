@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include <vector>
 #include "../Core/Texture.h"
-#include <memory>
 ///=========================
 
 class TexturePool
@@ -42,13 +41,13 @@ public:
 	Texture* GetTextureByID(std::string ID);
 	Texture* GetTextureByPath(std::string path);
 	void RemoveTextureByPath(std::string path);
-	void Clear();
+	void DeleteAll();
 
 private:
-	std::vector<std::unique_ptr<Texture>> m_textures;
+	std::vector<Texture*> m_textures;
 
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	int GetTextureIndex(std::shared_ptr<Texture> texture);
+	int GetTextureIndex(Texture* texture);
 };

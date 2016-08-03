@@ -39,44 +39,47 @@ MeshPool::MeshPool()
 
 MeshPool::~MeshPool()
 {
-	Clear();
+	DeleteAll();
 }
 
 /*------------------------------------------------------------------------------
 									[MISC]
 ------------------------------------------------------------------------------*/
-void MeshPool::Clear()
+void MeshPool::DeleteAll()
 {
-	m_meshDataPool.clear();
-	m_meshDataPool.shrink_to_fit();
+	for (int i = 0; i < m_meshPool.size(); i++)
+		delete m_meshPool[i];
+
+	m_meshPool.clear();
+	m_meshPool.shrink_to_fit();
 }
 
 Mesh* MeshPool::AddMesh(string name, string rootGameObjectID, string gameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices)
 {
 	// construct mesh
-	unique_ptr<Mesh> meshData(new Mesh());
-	meshData->name = name;
-	meshData->rootGameObjectID = rootGameObjectID;
-	meshData->ID = GENERATE_GUID;
-	meshData->gameObjectID = gameObjectID;
-	meshData->vertices = vertices;
-	meshData->indices = indices;
-	meshData->vertexCount = vertices.size();
-	meshData->indexCount = indices.size();
-	meshData->faceCount = vertices.size() / 3;
+	Mesh* mesh = new Mesh();
+	mesh->name = name;
+	mesh->rootGameObjectID = rootGameObjectID;
+	mesh->ID = GENERATE_GUID;
+	mesh->gameObjectID = gameObjectID;
+	mesh->vertices = vertices;
+	mesh->indices = indices;
+	mesh->vertexCount = vertices.size();
+	mesh->indexCount = indices.size();
+	mesh->faceCount = vertices.size() / 3;
 
-	m_meshDataPool.push_back(move(meshData));
+	m_meshPool.push_back(mesh);
 
 	// return the mesh
-	return m_meshDataPool.back().get();
+	return m_meshPool.back();
 }
 
 Mesh* MeshPool::GetMesh(string ID)
 {
-	for (int i = 0; i < m_meshDataPool.size(); i++)
+	for (int i = 0; i < m_meshPool.size(); i++)
 	{
-		if (m_meshDataPool[i]->ID == ID)
-			return m_meshDataPool[i].get();
+		if (m_meshPool[i]->ID == ID)
+			return m_meshPool[i];
 	}
 
 	return nullptr;
@@ -86,10 +89,10 @@ Mesh* MeshPool::GetMesh(string ID)
 vector<Mesh*> MeshPool::GetModelMeshesByModelName(string rootGameObjectID)
 {
 	vector<Mesh*> modelMeshes;
-	for (unsigned int i = 0; i < m_meshDataPool.size(); i++)
+	for (unsigned int i = 0; i < m_meshPool.size(); i++)
 	{
-		if (m_meshDataPool[i]->rootGameObjectID == rootGameObjectID)
-			modelMeshes.push_back(m_meshDataPool[i].get());
+		if (m_meshPool[i]->rootGameObjectID == rootGameObjectID)
+			modelMeshes.push_back(m_meshPool[i]);
 	}
 
 	return modelMeshes;
@@ -146,7 +149,7 @@ void MeshPool::NormalizeModelScale(GameObject* rootGameObject)
 }
 
 // Returns the largest bounding box in an array of meshes
-Mesh* MeshPool::GetLargestBoundingBox(vector<Mesh*> meshes)
+Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
 {
 	if (meshes.empty())
 		return nullptr;
@@ -183,13 +186,13 @@ Vector3 MeshPool::GetMeshExtent(Mesh* mesh)
 }
 
 // Returns the bounding box of a mesh based on it's minimum and maximum points
-Vector3 MeshPool::GetMeshExtent(Vector3 min, Vector3 max)
+Vector3 MeshPool::GetMeshExtent(const Vector3& min, const Vector3& max)
 {
 	return (max - min) * 0.5f;
 }
 
 // Returns the center of the mesh based on it's minimum and maximum points
-Vector3 MeshPool::GetMeshCenter(Vector3 min, Vector3 max)
+Vector3 MeshPool::GetMeshCenter(const Vector3& min, const Vector3& max)
 {
 	return (min + max) * 0.5f;
 }
@@ -200,8 +203,8 @@ void MeshPool::GetMinMax(Mesh* meshData, Vector3& min, Vector3& max)
 	if (!meshData)
 		return;
 
-	min = Vector3(INFINITY, INFINITY, INFINITY);
-	max = Vector3(-INFINITY, -INFINITY, -INFINITY);
+	min = Vector3::Infinity;
+	max = Vector3::InfinityNeg;
 
 	vector<VertexPositionTextureNormalTangent> vertices = meshData->vertices;
 	for (unsigned int i = 0; i < meshData->vertexCount; i++)
@@ -228,71 +231,64 @@ void MeshPool::GetMinMax(Mesh* meshData, Vector3& min, Vector3& max)
 ------------------------------------------------------------------------------*/
 void MeshPool::Serialize()
 {
-	int meshDataCount = m_meshDataPool.size();
+	int meshDataCount = m_meshPool.size();
 
 	Serializer::SaveInt(meshDataCount); // 1st - meshDataCount
 	for (int i = 0; i < meshDataCount; i++)
 	{
 		// save simple data
-		Serializer::SaveSTR(m_meshDataPool[i]->rootGameObjectID); // 2nd - root GameObject id
-		Serializer::SaveSTR(m_meshDataPool[i]->ID); // 3rd - ID
-		Serializer::SaveSTR(m_meshDataPool[i]->gameObjectID); // 4th - GameObjectID
-		Serializer::SaveInt(m_meshDataPool[i]->vertexCount); // 5th - vertexCount
-		Serializer::SaveInt(m_meshDataPool[i]->indexCount); // 6th - indexCount
-		Serializer::SaveInt(m_meshDataPool[i]->faceCount); // 7th - indexCount
+		Serializer::SaveSTR(m_meshPool[i]->rootGameObjectID); // 2nd - root GameObject id
+		Serializer::SaveSTR(m_meshPool[i]->ID); // 3rd - ID
+		Serializer::SaveSTR(m_meshPool[i]->gameObjectID); // 4th - GameObjectID
+		Serializer::SaveInt(m_meshPool[i]->vertexCount); // 5th - vertexCount
+		Serializer::SaveInt(m_meshPool[i]->indexCount); // 6th - indexCount
+		Serializer::SaveInt(m_meshPool[i]->faceCount); // 7th - indexCount
 
 		// save vertices
-		int vertexCount = m_meshDataPool[i]->vertexCount;
+		int vertexCount = m_meshPool[i]->vertexCount;
 		for (int j = 0; j < vertexCount; j++)
-		{
-			VertexPositionTextureNormalTangent vertex = m_meshDataPool[i]->vertices[j]; // 7th - vertices
-			SaveVertex(vertex);
-		}
+			SaveVertex(m_meshPool[i]->vertices[j]); // 7th - vertices
 
 		// save indices
-		int indexCount = m_meshDataPool[i]->indexCount;
+		int indexCount = m_meshPool[i]->indexCount;
 		for (int j = 0; j < indexCount; j++)
-			Serializer::SaveInt(m_meshDataPool[i]->indices[j]); // 8th - indices
+			Serializer::SaveInt(m_meshPool[i]->indices[j]); // 8th - indices
 	}
 }
 
 void MeshPool::Deserialize()
 {
-	Clear();
+	DeleteAll();
 
 	int meshDataCount = Serializer::LoadInt(); // 1st - meshDataCount
 	for (int i = 0; i < meshDataCount; i++)
 	{
-		unique_ptr<Mesh> meshData(new Mesh());
+		Mesh* mesh = new Mesh();
 
 		// load simple data
-		meshData->rootGameObjectID = Serializer::LoadSTR(); // 2nd - root GameObject id
-		meshData->ID = Serializer::LoadSTR(); // 3rd - ID
-		meshData->gameObjectID = Serializer::LoadSTR(); // 4th - GameObjectID
-		meshData->vertexCount = Serializer::LoadInt(); // 5th - vertexCount
-		meshData->indexCount = Serializer::LoadInt(); // 6th - indexCount
-		meshData->faceCount = Serializer::LoadInt(); // 7th - indexCount
+		mesh->rootGameObjectID = Serializer::LoadSTR(); // 2nd - root GameObject id
+		mesh->ID = Serializer::LoadSTR(); // 3rd - ID
+		mesh->gameObjectID = Serializer::LoadSTR(); // 4th - GameObjectID
+		mesh->vertexCount = Serializer::LoadInt(); // 5th - vertexCount
+		mesh->indexCount = Serializer::LoadInt(); // 6th - indexCount
+		mesh->faceCount = Serializer::LoadInt(); // 7th - indexCount
 
 		// load vertices
-		VertexPositionTextureNormalTangent vertex;
-		for (unsigned int j = 0; j < meshData->vertexCount; j++)
-		{
-			LoadVertex(vertex);
-			meshData->vertices.push_back(vertex); // 7th - vertices
-		}
+		for (unsigned int j = 0; j < mesh->vertexCount; j++)
+			mesh->vertices.push_back(LoadVertex()); // 7th - vertices
 
 		// load indices
-		for (unsigned int j = 0; j < meshData->indexCount; j++)
-			meshData->indices.push_back(Serializer::LoadInt()); // 8th - indices
+		for (unsigned int j = 0; j < mesh->indexCount; j++)
+			mesh->indices.push_back(Serializer::LoadInt()); // 8th - indices
 
-		m_meshDataPool.push_back(move(meshData));
+		m_meshPool.push_back(mesh);
 	}
 }
 
 /*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
-void MeshPool::SaveVertex(VertexPositionTextureNormalTangent vertex)
+void MeshPool::SaveVertex(const VertexPositionTextureNormalTangent& vertex)
 {
 	Serializer::SaveFloat(vertex.position.x);
 	Serializer::SaveFloat(vertex.position.y);
@@ -310,8 +306,10 @@ void MeshPool::SaveVertex(VertexPositionTextureNormalTangent vertex)
 	Serializer::SaveFloat(vertex.tangent.z);
 }
 
-void MeshPool::LoadVertex(VertexPositionTextureNormalTangent& vertex)
+VertexPositionTextureNormalTangent MeshPool::LoadVertex()
 {
+	VertexPositionTextureNormalTangent vertex;
+
 	vertex.position.x = Serializer::LoadFloat();
 	vertex.position.y = Serializer::LoadFloat();
 	vertex.position.z = Serializer::LoadFloat();
@@ -326,4 +324,6 @@ void MeshPool::LoadVertex(VertexPositionTextureNormalTangent& vertex)
 	vertex.tangent.x = Serializer::LoadFloat();
 	vertex.tangent.y = Serializer::LoadFloat();
 	vertex.tangent.z = Serializer::LoadFloat();
+
+	return vertex;
 }

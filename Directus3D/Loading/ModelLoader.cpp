@@ -111,7 +111,7 @@ bool ModelLoader::Load(string filePath, GameObject* gameObject)
 	return true;
 }
 
-Matrix aiMatrix4x4ToMatrix(aiMatrix4x4 transform)
+Matrix aiMatrix4x4ToMatrix(const aiMatrix4x4& transform)
 {
 	// row major to column major
 	return Matrix(
@@ -121,7 +121,7 @@ Matrix aiMatrix4x4ToMatrix(aiMatrix4x4 transform)
 		transform.a4, transform.b4, transform.c4, transform.d4);
 }
 
-void SetGameObjectTransform(GameObject* gameObject, aiMatrix4x4 assimpTransformation)
+void SetGameObjectTransform(GameObject* gameObject, const aiMatrix4x4& assimpTransformation)
 {
 	Vector3 position;
 	Quaternion rotation;

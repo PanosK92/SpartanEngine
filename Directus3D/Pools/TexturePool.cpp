@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <filesystem>
 #include "../IO/Serializer.h"
 #include "../IO/Log.h"
-#include "../IO/FileHelper.h"
 //===========================
 
 //= NAMESPACES =====
@@ -38,7 +37,7 @@ TexturePool::TexturePool()
 
 TexturePool::~TexturePool()
 {
-	Clear();
+	DeleteAll();
 }
 
 void TexturePool::Serialize()
@@ -50,22 +49,24 @@ void TexturePool::Serialize()
 
 void TexturePool::Deserialize()
 {
+	DeleteAll();
+
 	int textureCount = Serializer::LoadInt();
 	for (int i = 0; i < textureCount; i++)
 	{
-		unique_ptr<Texture> texture(new Texture());
+		Texture* texture = new Texture();
 		texture->Deserialize();
 
-		m_textures.push_back(move(texture));
+		m_textures.push_back(texture);
 	}
 }
 
 Texture* TexturePool::CreateNewTexture()
 {
-	unique_ptr<Texture> texture(new Texture());
-	m_textures.push_back(move(texture));
+	Texture* texture = new Texture();
+	m_textures.push_back(texture);
 
-	return m_textures.back().get();
+	return m_textures.back();
 }
 
 Texture* TexturePool::AddFromFile(string texturePath, TextureType textureType)
@@ -76,11 +77,11 @@ Texture* TexturePool::AddFromFile(string texturePath, TextureType textureType)
 		return loaded;
 
 	// If not, load it
-	unique_ptr<Texture> texture(new Texture());
+	Texture* texture = new Texture();
 	texture->LoadFromFile(texturePath, textureType);
 
-	m_textures.push_back(move(texture));
-	return m_textures.back().get();
+	m_textures.push_back(texture);
+	return m_textures.back();
 }
 
 Texture* TexturePool::GetTextureByName(string name)
@@ -88,7 +89,7 @@ Texture* TexturePool::GetTextureByName(string name)
 	for (auto i = 0; i < m_textures.size(); i++)
 	{
 		if (m_textures[i]->GetName() == name)
-			return m_textures[i].get();
+			return m_textures[i];
 	}
 
 	return nullptr;
@@ -98,7 +99,7 @@ Texture* TexturePool::GetTextureByID(string ID)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 		if (m_textures[i]->GetID() == ID)
-			return m_textures[i].get();
+			return m_textures[i];
 
 	return nullptr;
 }
@@ -107,18 +108,19 @@ Texture* TexturePool::GetTextureByPath(string path)
 {
 	for (unsigned int i = 0; i < m_textures.size(); i++)
 		if (m_textures[i]->GetPath() == path)
-			return m_textures[i].get();
+			return m_textures[i];
 
 	return nullptr;
 }
 
 void TexturePool::RemoveTextureByPath(string path)
 {
-	vector<unique_ptr<Texture>>::iterator it;
-	for (it = m_textures.begin(); it < m_textures.end();)
+	for (auto it = m_textures.begin(); it < m_textures.end();)
 	{
-		if (it->get()->GetPath() == path)
+		Texture* texture = *it;
+		if (texture->GetPath() == path)
 		{
+			delete texture;
 			it = m_textures.erase(it);
 			return;
 		}
@@ -126,8 +128,11 @@ void TexturePool::RemoveTextureByPath(string path)
 	}
 }
 
-void TexturePool::Clear()
+void TexturePool::DeleteAll()
 {
+	for (int i = 0; i < m_textures.size(); i++)
+		delete m_textures[i];
+
 	m_textures.clear();
 	m_textures.shrink_to_fit();
 }
@@ -135,7 +140,7 @@ void TexturePool::Clear()
 /*------------------------------------------------------------------------------
 						[HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
-int TexturePool::GetTextureIndex(shared_ptr<Texture> texture)
+int TexturePool::GetTextureIndex(Texture* texture)
 {
 	for (unsigned int i = 0; i < m_textures.size(); i++)
 		if (m_textures[i]->GetPath() == texture->GetPath())

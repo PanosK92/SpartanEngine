@@ -26,6 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FreeImagePlus.h"
 //===========================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 ImageLoader::ImageLoader()
 {
 	m_bitmap = nullptr;
@@ -174,6 +178,8 @@ unsigned char* ImageLoader::GetRGBACopy()
 			dataRGBA[(i * m_width + j) * 3 + 3] = alpha;
 		}
 
+	
+
 	return dataRGBA;
 }
 
@@ -247,7 +253,7 @@ bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 
 	if (!FileHelper::FileExists(path))
 	{
-		LOG("Failed to load image \"" + path + "\", it doesn't exist.", Log::Error);
+		LOG_WARNING("Failed to load image \"" + path + "\", it doesn't exist.");
 		return false;
 	}
 	
@@ -258,11 +264,11 @@ bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 	if (format == FIF_UNKNOWN)
 	{
 		// Try getting the format from the file extension
-		LOG("Couldn't determine image format, attempting to get from file extension...", Log::Warning);
+		LOG_WARNING("Couldn't determine image format, attempting to get from file extension...");
 		format = FreeImage_GetFIFFromFilename(path.c_str());
 
 		if (!FreeImage_FIFSupportsReading(format))
-			LOG("Detected image format cannot be read.", Log::Warning);
+			LOG_WARNING("Detected image format cannot be read.");
 	}
 
 	// Get image format, format == -1 means the file was not found

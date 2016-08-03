@@ -41,8 +41,8 @@ void DirectusAssetLoader::Initialize(QWidget* mainWindow, Socket* socket)
     m_loadingDialog->Initialize(m_mainWindow);
 
     // When the loading dialog should show up
-    connect(this, SIGNAL(Started()), m_loadingDialog, SLOT(Show()));
-    connect(this, SIGNAL(Finished()), m_loadingDialog, SLOT(Hide()));
+    connect(this, SIGNAL(Started()),    m_loadingDialog, SLOT(Show()));
+    connect(this, SIGNAL(Finished()),   m_loadingDialog, SLOT(Hide()));
 }
 
 std::string DirectusAssetLoader::GetFilePath()
@@ -87,15 +87,15 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
 {
     emit Started();
 
-    ImageLoader* engineImageLoader = new ImageLoader();
+    ImageLoader* imageLoader = new ImageLoader();
     QPixmap pixmap;
     if (FileHelper::FileExists(m_filePath))
     {
-        engineImageLoader->Load(m_filePath, m_width, m_height);
+        imageLoader->Load(m_filePath, m_width, m_height);
 
         QImage image;
         image =  QImage(
-                    (const uchar*)engineImageLoader->GetRGBA(),
+                    (const uchar*)imageLoader->GetRGBA(),
                     m_width,
                     m_height,
                     QImage::Format_RGBA8888
@@ -103,7 +103,8 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
 
         pixmap = QPixmap::fromImage(image);
 
-        delete engineImageLoader;
+        imageLoader->Clear();
+        delete imageLoader;
     }
 
     emit Finished();

@@ -132,8 +132,8 @@ void Scene::Clear()
 
 	m_mainCamera = nullptr;
 
-	m_texturePool->Clear();
-	m_meshPool->Clear();
+	m_texturePool->DeleteAll();
+	m_meshPool->DeleteAll();
 	m_materialPool->Clear();
 	GameObjectPool::GetInstance().Clear();
 	m_scriptEngine->Reset();
