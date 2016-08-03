@@ -134,8 +134,8 @@ void Scene::Clear()
 
 	m_texturePool->DeleteAll();
 	m_meshPool->DeleteAll();
-	m_materialPool->Clear();
-	GameObjectPool::GetInstance().Clear();
+	m_materialPool->DeleteAll();
+	GameObjectPool::GetInstance().DeleteAll();
 	m_scriptEngine->Reset();
 	m_physics->Reset();
 	m_renderer->Clear();

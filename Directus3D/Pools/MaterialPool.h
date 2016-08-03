@@ -36,7 +36,7 @@ public:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/
-	void Clear();
+	void DeleteAll();
 	Material* AddMaterial(Material* material);
 	Material* GetMaterialByID(std::string materialID);
 	Material* GetMaterialStandardDefault();
@@ -49,7 +49,7 @@ public:
 	void Deserialize();
 
 private:
-	std::vector<std::unique_ptr<Material>> m_materials;
+	std::vector<Material*> m_materials;
 
 	TexturePool* m_texturePool;
 	ShaderPool* m_shaderPool;
