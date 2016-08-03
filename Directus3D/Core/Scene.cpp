@@ -222,7 +222,7 @@ GameObject* Scene::CreateSkybox()
 	skybox->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 	skybox->AddComponent<LineRenderer>();
 	skybox->AddComponent<Skybox>();
-	skybox->SetHierarchyVisibility(false);
+	skybox->SetHierarchyVisibility(true);
 
 	return skybox;
 }

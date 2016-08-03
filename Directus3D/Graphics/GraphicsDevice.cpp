@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "GraphicsDevice.h"
-#include "../Core/Settings.h"
 //=========================
 
 //= NAMESPACES ================
@@ -32,6 +31,7 @@ GraphicsDevice::GraphicsDevice()
 {
 	m_D3D11Device = nullptr;
 	m_cullMode = CullBack;
+	m_inputLayout = PositionTextureNormalTangent;
 }
 
 GraphicsDevice::~GraphicsDevice()
