@@ -4,8 +4,8 @@ class MouseLook
 	Transform @transform;
 	
 	// mouse look settings
-	float sensitivity = 0.025f;
-	float smoothing = 7.0f;
+	float sensitivity = 2.0f;
+	float smoothing = 30.5f;
 
 	// mouse look variables
 	Vector2 smoothMouse = Vector2(0.0f, 0.0f);
@@ -49,12 +49,12 @@ class MouseLook
 		Vector2 mouseDelta = Vector2(input.GetMousePositionDelta().x, input.GetMousePositionDelta().y);
 	
 		// Scale input against the sensitivity setting and multiply that against the smoothing value.
-		mouseDelta.x *= sensitivity * smoothing;
-		mouseDelta.y *= sensitivity * smoothing;
+		mouseDelta.x *= sensitivity * smoothing * time.GetDeltaTime();
+		mouseDelta.y *= sensitivity * smoothing * time.GetDeltaTime();
 		
         // Interpolate mouse movement over time to apply smoothing delta.
-		smoothMouse.x = mathHelper.Lerp(smoothMouse.x, mouseDelta.x, 1.0f / smoothing);
-        smoothMouse.y = mathHelper.Lerp(smoothMouse.y, mouseDelta.y, 1.0f / smoothing);
+		smoothMouse.x = Lerp(smoothMouse.x, mouseDelta.x, 1.0f / smoothing);
+        smoothMouse.y = Lerp(smoothMouse.y, mouseDelta.y, 1.0f / smoothing);
 		
 		mouseRotation += smoothMouse;
 		

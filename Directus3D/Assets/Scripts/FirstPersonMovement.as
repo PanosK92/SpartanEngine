@@ -4,10 +4,10 @@ class FirstPersonMovement
 	Transform @transform;
 	
 	// wasd movement
-	float movementAcceleration = 0.0025f;
-	float movementDeacceleration = 0.9f;
+	float movementAcceleration = 0.9f;
+	float movementDeacceleration = 0.97f;
 	Vector3 movementSpeed = Vector3(0,0,0);
-	
+
 	// Constructor
 	FirstPersonMovement(GameObject @obj)
 	{
@@ -43,7 +43,7 @@ class FirstPersonMovement
 		movementSpeed *= movementDeacceleration;
 		
 		// Update the current position of the transform
-		Vector3 currentPos = transform.GetPositionLocal() + movementSpeed;
+		Vector3 currentPos = transform.GetPositionLocal() + movementSpeed * time.GetDeltaTime();
 		
 		// Update the transform's position
 		transform.SetPositionLocal(currentPos);

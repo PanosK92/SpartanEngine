@@ -74,7 +74,7 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	// Misc
-	float ambientLightIntensity = 0.2f;
+	float ambientLightIntensity = 0.1f;
 	float3 finalColor			= float3(0,0,0);
 	
 	// Sample from G-Buffer
@@ -91,8 +91,8 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float roughness				= materialSample.r;
 	float metallic				= materialSample.g;
 	float specular				= materialSample.b;	
-	float renderMode			= materialSample.a;
-	
+	float type					= materialSample.a;
+	//return float4(shadowing,shadowing,shadowing,1.0f);
 	// Calculate view direction and the reflection vector
 	float3 viewDir				= normalize(cameraPosWS.xyz - worldPos.xyz); 
 	float3 reflectionVector		= reflect(-viewDir, normal);
@@ -103,7 +103,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float3 envColor             = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, mipIndex));
     float3 irradiance           = ToLinear(irradianceTex.Sample(samplerAniso, reflectionVector));
 	
-	if (renderMode == 0.0f) // Texture mapping
+	if (type == 0.1f) // Texture mapping
 	{
         finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir));
 		finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
