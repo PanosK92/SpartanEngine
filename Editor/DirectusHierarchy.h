@@ -79,6 +79,7 @@ public slots:
     void SaveSceneAs();
     void LoadModel();
     void ShowContextMenu(const QPoint& pos);
+    void ShowContextMenuLight();
     void RenameSelected();
     void DeleteSelected();
 
