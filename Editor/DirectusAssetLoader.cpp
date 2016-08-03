@@ -60,17 +60,6 @@ void DirectusAssetLoader::PrepareForTexture(std::string filePath, int width, int
     m_filePath = filePath;
     m_width = width;
     m_height = height;
-    m_assetOperation = "Load Texture";
-}
-
-void DirectusAssetLoader::SetAssetOperation(std::string assetOperation)
-{
-    m_assetOperation = assetOperation;
-}
-
-std::string DirectusAssetLoader::GetAssetOperation()
-{
-    return m_assetOperation;
 }
 
 void DirectusAssetLoader::LoadSceneFromFile()

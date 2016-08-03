@@ -37,8 +37,6 @@ public:
     std::string GetFilePath();
     void SetFilePath(std::string filePath); 
     void PrepareForTexture(std::string filePath, int width, int height);
-    void SetAssetOperation(std::string assetOperation);
-    std::string GetAssetOperation();
 
 private:
     void LoadSceneFromFile();
@@ -50,8 +48,6 @@ private:
     std::string m_filePath;
     int m_width;
     int m_height;
-    std::string m_assetOperation;
-
     QWidget* m_mainWindow;
     Socket* m_socket;
     DirectusProgressBar* m_loadingDialog;
