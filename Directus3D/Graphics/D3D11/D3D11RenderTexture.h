@@ -34,7 +34,7 @@ public:
 
 	bool Initialize(GraphicsDevice* graphicsDevice, int, int);
 	void SetAsRenderTarget();
-	void Clear(Directus::Math::Vector4 clearColor);
+	void Clear(const Directus::Math::Vector4& clearColor);
 	void Clear(float r, float g , float b, float a);
 	ID3D11ShaderResourceView* GetShaderResourceView() const;
 	void CreateOrthographicProjectionMatrix(float nearPlane, float farPlane);

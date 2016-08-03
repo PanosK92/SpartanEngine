@@ -333,7 +333,7 @@ void D3D11Device::Release()
 	m_displayModeList = nullptr;
 }
 
-void D3D11Device::Clear(Vector4 color)
+void D3D11Device::Clear(const Vector4& color)
 {
 	float clearColor[4];
 

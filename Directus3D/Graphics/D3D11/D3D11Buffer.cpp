@@ -26,6 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/Log.h"
 //=============================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 D3D11Buffer::D3D11Buffer()
 {
 	m_graphicsDevice = nullptr;
@@ -64,7 +68,7 @@ bool D3D11Buffer::CreateConstantBuffer(unsigned int size)
 	return result;
 }
 
-bool D3D11Buffer::CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent> vertices)
+bool D3D11Buffer::CreateVertexBuffer(vector<VertexPositionTextureNormalTangent>& vertices)
 {
 	bool result = false;
 	
@@ -86,7 +90,7 @@ bool D3D11Buffer::CreateVertexBuffer(std::vector<VertexPositionTextureNormalTang
 	return result;
 }
 
-bool D3D11Buffer::CreateIndexBuffer(std::vector<unsigned int> indices)
+bool D3D11Buffer::CreateIndexBuffer(vector<unsigned int>& indices)
 {
 	bool result = false;
 

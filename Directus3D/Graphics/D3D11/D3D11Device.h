@@ -44,7 +44,7 @@ public:
 	bool CreateDepthStencilView();
 	void Release();
 
-	void Clear(Directus::Math::Vector4 color);
+	void Clear(const Directus::Math::Vector4& color);
 	void Present();
 
 	ID3D11Device* GetDevice();
