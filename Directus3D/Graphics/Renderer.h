@@ -46,12 +46,11 @@ public:
 	Renderer();
 	~Renderer();
 
-	void Initialize(bool debugDraw, GraphicsDevice* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene);
+	void Initialize(GraphicsDevice* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene);
 	void Render();
 	void SetResolution(int width, int height);
 	void Clear();
 	void Update(std::vector<GameObject*> renderables, std::vector<GameObject*> lightsDirectional, std::vector<GameObject*> lightsPoint);
-	void SetPhysicsDebugDraw(bool enable) const;
 
 	//= STATS =========================
 	void StartCalculatingStats();
@@ -121,7 +120,7 @@ private:
 	void GBufferPass(std::vector<GameObject*> renderableGameObjects);
 	void DeferredPass();
 	void PostProcessing() const;
-	void DebugDraw() const;
+	void Gizmos() const;
 	void Ping() const;
 	void Pong() const;
 	//=============================================

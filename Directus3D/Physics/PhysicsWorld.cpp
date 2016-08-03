@@ -43,7 +43,7 @@ PhysicsWorld::PhysicsWorld()
 	m_collisionConfiguration = nullptr;
 	m_world = nullptr;
 	m_debugDraw = nullptr;
-	m_debugDrawEnabled = false;
+	m_debugDrawEnabled = true;
 }
 
 PhysicsWorld::~PhysicsWorld()
@@ -66,7 +66,7 @@ void PhysicsWorld::Initialize()
 	
 	// create an implementation of the btIDebugDraw interface
 	m_debugDraw = new PhysicsDebugDraw();
-	int debugMode = btIDebugDraw::DBG_DrawWireframe | btIDebugDraw::DBG_DrawConstraintLimits | btIDebugDraw::DBG_DrawConstraints;
+	int debugMode = btIDebugDraw::DBG_MAX_DEBUG_DRAW_MODE;
 	m_debugDraw->setDebugMode(debugMode);
 
 	m_world->setGravity(ToBtVector3(m_gravity));
@@ -84,7 +84,7 @@ void PhysicsWorld::Step(float timeStep)
 	m_world->stepSimulation(timeStep, 1, 1.0f / m_updatesPerSec);
 
 	if (m_debugDrawEnabled)
-		DebugDraw();
+		RenderColliders();
 }
 
 void PhysicsWorld::Reset()
@@ -130,7 +130,7 @@ bool PhysicsWorld::GetDebugDraw()
 	return m_debugDrawEnabled;
 }
 
-void PhysicsWorld::DebugDraw()
+void PhysicsWorld::RenderColliders()
 {
 	if (!m_world)
 		return;

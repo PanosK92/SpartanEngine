@@ -84,7 +84,7 @@ void Socket::Update()
 
 void Socket::SetPhysicsDebugDraw(bool enable)
 {
-	m_renderer->SetPhysicsDebugDraw(enable);
+	//m_renderer->SetPhysicsDebugDraw(enable);
 }
 
 PhysicsDebugDraw* Socket::GetPhysicsDebugDraw()
