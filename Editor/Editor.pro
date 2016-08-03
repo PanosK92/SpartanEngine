@@ -36,11 +36,12 @@ SOURCES += main.cpp\
     DirectusComboLabelText.cpp \
     DirectusComboSliderText.cpp \
     DirectusTexture.cpp \
-    AssetLoadingDialog.cpp \
     DirectusMeshFilter.cpp \
     DirectusColorPicker.cpp \
     DirectusStatsLabel.cpp \
-    DirectusDropDownButton.cpp
+    DirectusDropDownButton.cpp \
+    DirectusProgressBar.cpp \
+    DirectusFileDialog.cpp
 
 HEADERS  += editor.h \
     DirectusPlayButton.h \
@@ -66,11 +67,12 @@ HEADERS  += editor.h \
     DirectusComboLabelText.h \
     DirectusComboSliderText.h \
     DirectusTexture.h \
-    AssetLoadingDialog.h \
     DirectusMeshFilter.h \
     DirectusColorPicker.h \
     DirectusStatsLabel.h \
-    DirectusDropDownButton.h
+    DirectusDropDownButton.h \
+    DirectusProgressBar.h \
+    DirectusFileDialog.h
 
 FORMS    += editor.ui \
     AboutDialog.ui \

@@ -53,13 +53,12 @@ void Editor::InitializeEngine()
 
     // Pass the engine around
     ui->directusInspector->SetDirectusCore(directusCore);
-    ui->directusHierarchy->SetDirectusCore(directusCore);
+    ui->directusHierarchy->Initialize(ui->directusInspector, this, directusCore);
     ui->directusConsole->Initialize(directusCore);
     ui->directusPlayButton->Initialize(directusCore);
 
     // Resolve other dependencies
     ui->directusInspector->Initialize(this);
-    ui->directusHierarchy->Initialize(ui->directusInspector, this);
     ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);
 }
 

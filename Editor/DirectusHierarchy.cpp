@@ -40,12 +40,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-#define NO_PATH "-1"
-
 DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
 {
     m_socket= nullptr;
-    m_lastSceneFilePath = NO_PATH;
 
     // QTreeWidget properties
     this->setAcceptDrops(true);
@@ -56,24 +53,17 @@ DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
     connect(this, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(RenameSelected()));
 }
 
-void DirectusHierarchy::SetDirectusCore(DirectusCore* directusCore)
+void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusCore* directusCore)
 {
     m_directusCore = directusCore;
     m_socket = m_directusCore->GetEngineSocket();
-
-    Populate();
-}
-
-void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
-{
     m_inspector = inspector;
     m_mainWindow = mainWindow;
 
-    m_assetLoader = new DirectusAssetLoader();
-    m_assetLoader->Initialize(mainWindow, m_socket);
+    m_fileDialog = new DirectusFileDialog(mainWindow);
+    m_fileDialog->Initialize(m_mainWindow, m_directusCore);
 
-    m_fileDialog = new QFileDialog(mainWindow);
-    connect(m_fileDialog, SIGNAL(fileSelected(QString)), this, SLOT(FileDialogAccepted(QString)));
+    Populate();
 }
 
 void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
@@ -347,7 +337,7 @@ void DirectusHierarchy::Populate()
 
 void DirectusHierarchy::NewScene()
 {
-    m_lastSceneFilePath = NO_PATH;
+    m_fileDialog->ForgetLastPath();
     m_socket->ClearScene();
 
     Populate();
@@ -355,44 +345,25 @@ void DirectusHierarchy::NewScene()
 
 void DirectusHierarchy::OpenScene()
 {
-    m_assetLoader->SetAssetOperation("Load Scene");
-
-    m_fileDialog->setWindowTitle("Load Scene");
-    //m_fileDialog->setFilter("Scene (*.dss)");
-    m_fileDialog->setDirectory("Assets");
-    m_fileDialog->show();
+    m_fileDialog->LoadScene();
 }
 
 void DirectusHierarchy::SaveScene()
 {
-    if (m_lastSceneFilePath == NO_PATH)
-    {
-        SaveSceneAs();
-        return;
-    }
-
-    m_assetLoader->SetAssetOperation("Save Scene");
-    FileDialogAccepted(m_lastSceneFilePath);
+    if (m_fileDialog->RememberPath())
+        m_fileDialog->SaveScene();
+    else
+        m_fileDialog->SaveSceneAs();
 }
 
 void DirectusHierarchy::SaveSceneAs()
 {
-    m_fileDialog->setWindowTitle("Save Scene");
-    //m_fileDialog->setFilter("Scene (*.dss)");
-    m_fileDialog->setDirectory("Assets");
-    m_fileDialog->show();
-
-    m_assetLoader->SetAssetOperation("Save Scene As");
+    m_fileDialog->SaveSceneAs();
 }
 
 void DirectusHierarchy::LoadModel()
 {
-    m_fileDialog->setWindowTitle("Load model");
-    //m_fileDialog->setFilter("All models (*.3ds; *.obj; *.fbx; *.blend; *.dae; *.lwo; *.c4d)");
-    m_fileDialog->setDirectory("Assets");
-    m_fileDialog->show();
-
-    m_assetLoader->SetAssetOperation("Load Model");
+    m_fileDialog->LoadModel();
 }
 
 void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
@@ -801,54 +772,5 @@ void DirectusHierarchy::AddSkyboxComponent()
     // Update the engine and the inspector
     m_directusCore->Update();
     m_inspector->Inspect(gameobject);
-}
-//========================================================
-
-//= PRIVATE SLOTS ========================================
-void DirectusHierarchy::FileDialogAccepted(QString filePath)
-{
-    // Create a thread and move the asset loader to it
-    QThread* thread = new QThread();
-    m_assetLoader->SetFilePath(filePath.toStdString());
-    m_assetLoader->moveToThread(this->thread()); // works like a reset, necessery to avoid crash
-    m_assetLoader->moveToThread(thread);
-
-    // Stop the engine (in case it's running)
-    m_directusCore->Stop();
-    connect(thread, SIGNAL(started()), m_directusCore, SLOT(Lock()));
-    if (m_assetLoader->GetAssetOperation() == "Load Model")
-    {
-        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(LoadModel()));
-        connect(m_assetLoader,  SIGNAL(Finished()), this,           SLOT(Populate()));
-        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
-        connect(thread,         SIGNAL(finished()), m_directusCore, SLOT(Update()));
-    }
-    else if (m_assetLoader->GetAssetOperation() == "Save Scene As")
-    {
-        m_lastSceneFilePath = filePath;
-
-        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(SaveScene()));
-        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
-    }
-    else if (m_assetLoader->GetAssetOperation() == "Save Scene")
-    {
-        m_lastSceneFilePath = filePath;
-
-        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(SaveScene()));
-        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
-    }
-    else if (m_assetLoader->GetAssetOperation() == "Load Scene")
-    {
-        m_lastSceneFilePath = filePath;
-
-        connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(LoadScene()));
-        connect(thread,         SIGNAL(finished()), m_directusCore,     SLOT(Update()));
-        connect(m_assetLoader,  SIGNAL(Finished()), this,               SLOT(Populate()));
-        connect(m_assetLoader,  SIGNAL(Finished()), thread,             SLOT(quit()));       
-    }
-    connect(thread, SIGNAL(started()), m_directusCore, SLOT(Unlock()));
-    connect(thread,         SIGNAL(finished()), thread,         SLOT(deleteLater()));
-
-    thread->start(QThread::HighestPriority);
 }
 //========================================================
