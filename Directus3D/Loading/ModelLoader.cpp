@@ -127,13 +127,13 @@ void SetGameObjectTransform(GameObject* gameObject, aiMatrix4x4 assimpTransforma
 	Quaternion rotation;
 	Vector3 scale;
 
-	Matrix worldMatrix = aiMatrix4x4ToMatrix(assimpTransformation);
-	worldMatrix.Decompose(scale, rotation, position);
+	Matrix matrix = aiMatrix4x4ToMatrix(assimpTransformation);
+	matrix.Decompose(scale, rotation, position);
 
 	// apply transformation
-	gameObject->GetTransform()->SetPosition(position);
-	gameObject->GetTransform()->SetRotation(rotation);
-	gameObject->GetTransform()->SetScale(scale);
+	gameObject->GetTransform()->SetPositionLocal(position);
+	gameObject->GetTransform()->SetRotationLocal(rotation);
+	gameObject->GetTransform()->SetScaleLocal(scale);
 }
 
 /*------------------------------------------------------------------------------

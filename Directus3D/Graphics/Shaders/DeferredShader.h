@@ -44,7 +44,7 @@ public:
 	bool IsCompiled();
 
 private:
-	const static int maxLights = 300;
+	const static int maxLights = 128;
 	struct DefaultBuffer
 	{
 		Directus::Math::Matrix worldViewProjection;

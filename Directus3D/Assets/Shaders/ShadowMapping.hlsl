@@ -7,7 +7,7 @@ float ShadowMappingPCF(Texture2D shadowMap, SamplerComparisonState samplerState,
     // results in hard light frustum
     if( pos.x < -1.0f || pos.x > 1.0f ||
         pos.y < -1.0f || pos.y > 1.0f ||
-        pos.z < 0.0f  || pos.z > 1.0f ) return 1.0f; // (1.0f - 0.0f = 1.0f)
+        pos.z < 0.0f  || pos.z > 1.0f ) return 0.0f;
 
 	// Transform clip space coords to texture space coords (-1:1 to 0:1)
 	pos.x = pos.x / 2.0f + 0.5f;
@@ -16,17 +16,19 @@ float ShadowMappingPCF(Texture2D shadowMap, SamplerComparisonState samplerState,
 	// Apply shadow map bias
     pos.z -= bias;
 
+	return shadowMap.SampleCmpLevelZero(samplerState, pos.xy, pos.z);
+	
     // Perform PCF filtering on a 4 x 4 texel neighborhood
 	float shadowAmount = 0;
 	float texel = 1.0f / 2048.0f;
-		for (float y = -1.5f; y <= 1.5f; y += 1.0f)
+	for (float y = -1.5f; y <= 1.5f; y += 1.0f)
         for (float x = -1.5f; x <= 1.5f; x += 1.0f)
         {
             shadowAmount += shadowMap.SampleCmpLevelZero(samplerState, pos.xy + float2(x,y) * texel, pos.z);
         }
 	shadowAmount /= 16.0f;
 	
-	return 1.0f - shadowAmount;
+	return shadowAmount;
 }
 
 float random(float4 seed4) 

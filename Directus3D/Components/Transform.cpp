@@ -212,7 +212,6 @@ void Transform::SetScaleLocal(Vector3 scale)
 		return;
 
 	m_scaleLocal = scale;
-
 	MakeDirty();
 }
 

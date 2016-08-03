@@ -178,8 +178,8 @@ void Renderer::Render()
 	{
 		if (m_directionalLight->GetShadowType() != No_Shadows)
 		{
-			m_graphicsDevice->SetCullMode(CullFront);
 			m_directionalLight->SetDepthMapAsRenderTarget();
+			m_graphicsDevice->SetCullMode(CullFront);	
 			DirectionalLightDepthPass(m_renderables, m_directionalLight->GetProjectionSize(), m_directionalLight);
 			m_graphicsDevice->SetCullMode(CullBack);
 		}

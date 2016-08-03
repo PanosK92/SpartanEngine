@@ -14,7 +14,7 @@ SamplerState samplerAniso 	: register(s1);
 //=========================================
 
 //= DEFINES =========
-#define MaxLights 300
+#define MaxLights 128
 //===================
 
 // = INCLUDES ========
@@ -86,13 +86,13 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// Extract any values out of those samples
 	float3 normal				= normalize(UnpackNormal(normalSample.rgb));	
 	float depth					= depthSample.g;
-	float shadowing 			= depthSample.b;
 	float3 worldPos				= ReconstructPosition(depth, input.uv, mViewProjectionInverse);
+	float shadowing 			= clamp(1.0f - depthSample.b, 0.0f, 1.0f);
 	float roughness				= materialSample.r;
 	float metallic				= materialSample.g;
 	float specular				= materialSample.b;	
 	float type					= materialSample.a;
-	//return float4(shadowing,shadowing,shadowing,1.0f);
+	
 	// Calculate view direction and the reflection vector
 	float3 viewDir				= normalize(cameraPosWS.xyz - worldPos.xyz); 
 	float3 reflectionVector		= reflect(-viewDir, normal);
@@ -108,6 +108,8 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
         finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir));
 		finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
 		finalColor = ToGamma(finalColor); // gamma correction
+		finalColor *= clamp(dirLightIntensity[0], 0.1f, 1.0f); // some totally fake day/night effect
+		
 		float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
 	
 		return float4(finalColor, luma);
@@ -138,9 +140,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		 // Calculate distance between light source and current fragment
         float dx = length(lightPos - worldPos);
 		
-		 // Do expensive lighting
+		// Do expensive lighting
 		if (dx < radius)
-			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, attunation, lightIntensity, ambientLightIntensity, envColor, irradiance);				
+			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, attunation, lightIntensity, ambientLightIntensity, envColor, irradiance);			
 	}
 	
 	finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
