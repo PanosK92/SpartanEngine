@@ -39,7 +39,7 @@ MaterialPool::MaterialPool(TexturePool* texturePool, ShaderPool* shaderPool)
 
 MaterialPool::~MaterialPool()
 {
-	Clear();
+	DeleteAll();
 }
 
 /*------------------------------------------------------------------------------
@@ -47,19 +47,20 @@ MaterialPool::~MaterialPool()
 ------------------------------------------------------------------------------*/
 
 // Removes all the materials
-void MaterialPool::Clear()
+void MaterialPool::DeleteAll()
 {
+	for (int i = 0; i < m_materials.size(); i++)
+		delete m_materials[i];
+
 	m_materials.clear();
 	m_materials.shrink_to_fit();
 }
 
 Material* MaterialPool::AddMaterial(Material* material)
 {
-	unique_ptr<Material> smartPtrMaterial(material);
-
 	if (!material)
 	{
-		LOG("The material is null, it can't be added to the pool.", Log::Warning);
+		LOG_WARNING("The material is null, it can't be added to the pool.");
 		return nullptr;
 	}
 
@@ -68,13 +69,13 @@ Material* MaterialPool::AddMaterial(Material* material)
 	{
 		if (m_materials[i]->GetName() == material->GetName())
 			if (m_materials[i]->GetModelID() == material->GetModelID())
-				return m_materials[i].get();
+				return m_materials[i];
 	}
 
 	// if nothing of the above was true, add the 
 	// material to the pool and return it
-	m_materials.push_back(move(smartPtrMaterial));
-	return m_materials.back().get();
+	m_materials.push_back(material);
+	return m_materials.back();
 }
 
 Material* MaterialPool::GetMaterialByID(string materialID)
@@ -82,7 +83,7 @@ Material* MaterialPool::GetMaterialByID(string materialID)
 	for (auto i = 0; i < m_materials.size(); i++)
 	{
 		if (m_materials[i]->GetID() == materialID)
-			return m_materials[i].get();
+			return m_materials[i];
 	}
 
 	return nullptr;
@@ -119,7 +120,7 @@ void MaterialPool::Serialize()
 
 void MaterialPool::Deserialize()
 {
-	Clear();
+	DeleteAll();
 
 	// load material count
 	int materialCount = Serializer::LoadInt();
@@ -127,9 +128,9 @@ void MaterialPool::Deserialize()
 	// load materials
 	for (int i = 0; i < materialCount; i++)
 	{
-		unique_ptr<Material> mat(new Material(m_texturePool, m_shaderPool));
+		Material* mat = new Material(m_texturePool, m_shaderPool);
 		mat->Deserialize();
-		m_materials.push_back(move(mat));
+		m_materials.push_back(mat);
 	}
 }
 
@@ -141,13 +142,15 @@ void MaterialPool::RemoveMaterial(string materialID)
 	Material* material = GetMaterialByID(materialID);
 
 	// make sure the material is not null
-	if (!material) return;
+	if (!material) 
+		return;
 
-	vector<unique_ptr<Material>>::iterator it;
-	for (it = m_materials.begin(); it != m_materials.end();)
+	for (auto it = m_materials.begin(); it != m_materials.end();)
 	{
-		if ((*it)->GetID() == material->GetID())
+		Material* mat = *it;
+		if (mat->GetID() == material->GetID())
 		{
+			delete mat;
 			it = m_materials.erase(it);
 			return;
 		}
@@ -157,18 +160,18 @@ void MaterialPool::RemoveMaterial(string materialID)
 
 void MaterialPool::AddStandardMaterials()
 {
-	unique_ptr<Material> defaultMaterial(new Material(m_texturePool, m_shaderPool));
+	Material* defaultMaterial = new Material(m_texturePool, m_shaderPool);
 	defaultMaterial->SetName("Standard_Default");
 	defaultMaterial->SetID("Standard_Material_0");
 	defaultMaterial->SetColorAlbedo(Vector4(1, 1, 1, 1));
-	m_materials.push_back(move(defaultMaterial));
+	m_materials.push_back(defaultMaterial);
 
 	// A texture must be loaded for that one, if all goes smooth
 	// it's done by the skybox component
-	unique_ptr<Material> skyboxMaterial(new Material(m_texturePool, m_shaderPool));
+	Material* skyboxMaterial = new Material(m_texturePool, m_shaderPool);
 	skyboxMaterial->SetName("Standard_Skybox");
 	skyboxMaterial->SetID("Standard_Material_1");
 	skyboxMaterial->SetFaceCullMode(CullNone);
 	skyboxMaterial->SetColorAlbedo(Vector4(1, 1, 1, 1));
-	m_materials.push_back(move(skyboxMaterial));
+	m_materials.push_back(skyboxMaterial);
 }

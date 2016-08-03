@@ -45,7 +45,7 @@ public:
 	void Initialize(GraphicsDevice* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
 	void Update();
 	void Release();
-	void Clear();
+	void DeleteAll();
 
 	/*------------------------------------------------------------------------------
 									[I/O]
@@ -76,7 +76,7 @@ public:
 	void AddGameObjectToPool(GameObject* gameObject);
 
 private:
-	std::vector<std::unique_ptr<GameObject>> m_pool;
+	std::vector<GameObject*> m_gameObjectPool;
 
 	GraphicsDevice* m_graphicsDevice;
 	Scene* m_scene;

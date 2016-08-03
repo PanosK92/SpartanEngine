@@ -52,6 +52,7 @@ public:
 
 	void Serialize();
 	void Deserialize();
+	void Reset();
 
 	//= Components ============================================
 	template <class Type>
