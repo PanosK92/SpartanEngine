@@ -61,7 +61,7 @@ void PostProcessShader::Initialize(LPCSTR pass, GraphicsDevice* graphicsDevice)
 	m_constantBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
-void PostProcessShader::Render(int indexCount, Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix, ID3D11ShaderResourceView* texture)
+void PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* texture)
 {
 	//= Fill the constant buffer ===============================================
 	DefaultBuffer* defaultBuffer = (DefaultBuffer*)m_constantBuffer->Map();

@@ -43,7 +43,7 @@ public:
 	virtual void Deserialize();
 
 	//= MISC ===================================
-	void Render(unsigned int indexCount, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix, Light* dicrectionalLight, Camera* camera) const;
+	void Render(unsigned int indexCount, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, Light* dicrectionalLight, Camera* camera) const;
 
 	//= PROPERTIES =============================
 	void SetCastShadows(bool castShadows);

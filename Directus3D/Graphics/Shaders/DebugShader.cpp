@@ -58,7 +58,7 @@ void DebugShader::Initialize(GraphicsDevice* graphicsDevice)
 	m_miscBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
-void DebugShader::Render(int vertexCount, Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix, ID3D11ShaderResourceView* depthMap)
+void DebugShader::Render(int vertexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap)
 {
 	// Set the shader parameters that it will use for rendering.
 	SetShaderBuffers(worldMatrix, viewMatrix, projectionMatrix, depthMap);
@@ -67,7 +67,7 @@ void DebugShader::Render(int vertexCount, Matrix worldMatrix, Matrix viewMatrix,
 	RenderShader(vertexCount);
 }
 
-void DebugShader::SetShaderBuffers(Matrix worldMatrix, Matrix viewMatrix, Matrix projectionMatrix, ID3D11ShaderResourceView* depthMap)
+void DebugShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap)
 {
 	// get a pointer of the buffer
 	DefaultBuffer* buffer = static_cast<DefaultBuffer*>(m_miscBuffer->Map());

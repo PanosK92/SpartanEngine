@@ -35,7 +35,7 @@ public:
 	~ColorShader();
 
 	void Initialize(GraphicsDevice* graphicsDevice);
-	void Render(int vertexCount, Directus::Math::Matrix worldMatrix, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix);
+	void Render(int vertexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
 
 private:
 	struct MiscBufferType
@@ -47,7 +47,7 @@ private:
 
 	D3D11Buffer* m_miscBuffer;
 
-	void SetShaderBuffers(Directus::Math::Matrix worldMatrix, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix);
+	void SetShaderBuffers(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
 	void RenderShader(unsigned int vertexCount);
 
 	GraphicsDevice* m_graphicsDevice;

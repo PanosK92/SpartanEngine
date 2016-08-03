@@ -119,7 +119,9 @@ void ShaderVariation::Load()
 	m_befaultBuffer->CreateConstantBuffer(sizeof(DefaultBufferType));
 }
 
-void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix mProjection, Material* material, vector<ID3D11ShaderResourceView*> textureArray, Light* directionalLight, bool receiveShadows, Camera* camera)
+void ShaderVariation::Render(int indexCount,
+	const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection,
+	Material* material, const vector<ID3D11ShaderResourceView*>& textureArray, Light* directionalLight, bool receiveShadows, Camera* camera) const
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{
@@ -172,52 +174,52 @@ void ShaderVariation::Render(int indexCount, Matrix mWorld, Matrix mView, Matrix
 	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
-string ShaderVariation::GetID()
+string ShaderVariation::GetID() const
 {
 	return m_ID;
 }
 
-bool ShaderVariation::HasAlbedoTexture()
+bool ShaderVariation::HasAlbedoTexture() const
 {
 	return m_hasAlbedoTexture;
 }
 
-bool ShaderVariation::HasRoughnessTexture()
+bool ShaderVariation::HasRoughnessTexture() const
 {
 	return m_hasRoughnessTexture;
 }
 
-bool ShaderVariation::HasMetallicTexture()
+bool ShaderVariation::HasMetallicTexture() const
 {
 	return m_hasMetallicTexture;
 }
 
-bool ShaderVariation::HasNormalTexture()
+bool ShaderVariation::HasNormalTexture() const
 {
 	return m_hasNormalTexture;
 }
 
-bool ShaderVariation::HasHeightTexture()
+bool ShaderVariation::HasHeightTexture() const
 {
 	return m_hasHeightTexture;
 }
 
-bool ShaderVariation::HasOcclusionTexture()
+bool ShaderVariation::HasOcclusionTexture() const
 {
 	return m_hasOcclusionTexture;
 }
 
-bool ShaderVariation::HasEmissionTexture()
+bool ShaderVariation::HasEmissionTexture() const
 {
 	return m_hasEmissionTexture;
 }
 
-bool ShaderVariation::HasMaskTexture()
+bool ShaderVariation::HasMaskTexture() const
 {
 	return m_hasMaskTexture;
 }
 
-bool ShaderVariation::HasCubeMapTexture()
+bool ShaderVariation::HasCubeMapTexture() const
 {
 	return m_hasCubeMap;
 }

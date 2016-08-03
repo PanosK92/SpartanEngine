@@ -35,7 +35,7 @@ public:
 	~DepthShader();
 
 	void Initialize(GraphicsDevice* graphicsDevice);
-	void Render(int indexCount, Directus::Math::Matrix worldMatrix, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix);
+	void Render(int indexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
 
 private:
 	struct DefaultBuffer
@@ -45,7 +45,7 @@ private:
 
 	D3D11Buffer* m_defaultBuffer;
 
-	void SetShaderBuffers(Directus::Math::Matrix worldMatrix, Directus::Math::Matrix viewMatrix, Directus::Math::Matrix projectionMatrix);
+	void SetShaderBuffers(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
 	void RenderShader(int indexCount);
 
 	GraphicsDevice* m_graphicsDevice;

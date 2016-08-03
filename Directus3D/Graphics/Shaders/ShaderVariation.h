@@ -52,20 +52,21 @@ public:
 		GraphicsDevice* d3d11device
 	);
 	void Set();
-	void Render(int indexCount, 
-		Directus::Math::Matrix mWorld, Directus::Math::Matrix mView, Directus::Math::Matrix mProjection, 
-		Material* material, std::vector<ID3D11ShaderResourceView*> textureArray, Light* light, bool receiveShadows, Camera* camera);
-	std::string GetID();
+	void Render(
+		int indexCount, 
+		const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection,
+		Material* material, const std::vector<ID3D11ShaderResourceView*>& textureArray, Light* directionalLight, bool receiveShadows, Camera* camera) const;
+	std::string GetID() const;
 
-	bool HasAlbedoTexture();
-	bool HasRoughnessTexture();
-	bool HasMetallicTexture();
-	bool HasNormalTexture();
-	bool HasHeightTexture();
-	bool HasOcclusionTexture();
-	bool HasEmissionTexture();
-	bool HasMaskTexture();
-	bool HasCubeMapTexture();
+	bool HasAlbedoTexture() const;
+	bool HasRoughnessTexture() const;
+	bool HasMetallicTexture() const;
+	bool HasNormalTexture() const;
+	bool HasHeightTexture() const;
+	bool HasOcclusionTexture() const;
+	bool HasEmissionTexture() const;
+	bool HasMaskTexture() const;
+	bool HasCubeMapTexture() const;
 
 private:
 	void AddDefinesBasedOnMaterial();
