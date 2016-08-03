@@ -92,7 +92,7 @@ void DirectusColorPicker::ShowColorPickerWindow()
     emit ColorPickingStarted();
 
     m_colorDialog->setCurrentColor(QColor(m_color.x * 255.0f, m_color.y * 255.0f, m_color.z * 255.0f, m_color.w * 255.0f));
-    m_colorDialog->exec();
+    m_colorDialog->show();
 
     connect(m_colorDialog, SIGNAL(accepted()), this, SLOT(AcceptColorPicking()));
     connect(m_colorDialog, SIGNAL(rejected()), this, SLOT(RejectColorPicking()));
