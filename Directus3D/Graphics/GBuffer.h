@@ -43,7 +43,7 @@ public:
 	bool Initialize(int width, int height);
 	void SetRenderTargets();
 
-	void Clear(Directus::Math::Vector4 color);
+	void Clear(const Directus::Math::Vector4& color);
 	void Clear(float, float, float, float);
 
 	ID3D11ShaderResourceView* GetShaderResourceView(int index);

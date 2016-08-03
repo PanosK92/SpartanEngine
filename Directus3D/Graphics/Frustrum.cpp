@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
-
 //=============================
 
 Frustrum::Frustrum()
@@ -36,6 +35,7 @@ Frustrum::Frustrum()
 
 Frustrum::~Frustrum()
 {
+
 }
 
 void Frustrum::ConstructFrustum(float screenDepth)
@@ -95,7 +95,7 @@ void Frustrum::ConstructFrustum(float screenDepth)
 	m_planes[5].Normalize();
 }
 
-FrustrumSpace Frustrum::CheckCube(Vector3 center, Vector3 extent)
+FrustrumSpace Frustrum::CheckCube(const Vector3& center, const Vector3& extent)
 {
 	// Check if any one point of the cube is in the view frustum.
 	FrustrumSpace result = Inside;
@@ -123,7 +123,7 @@ FrustrumSpace Frustrum::CheckCube(Vector3 center, Vector3 extent)
 	return result;
 }
 
-FrustrumSpace Frustrum::CheckSphere(Vector3 center, float radius)
+FrustrumSpace Frustrum::CheckSphere(const Vector3& center, float radius)
 {
 	// various distances
 	float fDistance;
@@ -147,7 +147,7 @@ FrustrumSpace Frustrum::CheckSphere(Vector3 center, float radius)
 	return Inside;
 }
 
-void Frustrum::SetViewMatrix(Matrix viewMatrix)
+void Frustrum::SetViewMatrix(const Matrix& viewMatrix)
 {
 	m_viewMatrix = viewMatrix;
 }
@@ -157,7 +157,7 @@ Matrix Frustrum::GetViewMatrix()
 	return m_viewMatrix;
 }
 
-void Frustrum::SetProjectionMatrix(Matrix projectionMatrix)
+void Frustrum::SetProjectionMatrix(const Matrix& projectionMatrix)
 {
 	m_projectionMatrix = projectionMatrix;
 }
