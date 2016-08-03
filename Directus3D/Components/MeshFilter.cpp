@@ -211,7 +211,7 @@ bool MeshFilter::SetBuffers()
 {
 	if (!m_vertexBuffer || !m_indexBuffer)
 	{
-		LOG("GameObject \"" + g_gameObject->GetName() + "\" mesh buffer haven't been initialized. They can't be set.");
+		LOG_WARNING("GameObject \"" + g_gameObject->GetName() + "\" mesh buffer haven't been initialized. They can't be set.");
 		return false;
 	}
 
@@ -224,7 +224,8 @@ bool MeshFilter::SetBuffers()
 	return true;
 }
 
-// Calculates the min, max, extent, center and re-creates the buffers
+// Calculates the min, max, extent, center and re-creates the buffers.
+// Useful after extended mesh processing.
 void MeshFilter::Refresh()
 {
 	g_meshPool->GetMinMax(m_meshData, m_min, m_max);

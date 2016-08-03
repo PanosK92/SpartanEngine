@@ -242,7 +242,7 @@ namespace Directus
 			/*------------------------------------------------------------------------------
 											[SUBTRACTION]
 			------------------------------------------------------------------------------*/
-			Vector3 operator-(const Vector3& b)
+			Vector3 operator-(const Vector3& b) const
 			{
 				return Vector3(
 					this->x - b.x,

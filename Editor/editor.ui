@@ -3843,12 +3843,12 @@ QTabBar::tab:last
    <slot>ShowContextMenuLight()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>27</x>
-     <y>80</y>
+     <x>31</x>
+     <y>79</y>
     </hint>
     <hint type="destinationlabel">
-     <x>75</x>
-     <y>159</y>
+     <x>76</x>
+     <y>181</y>
     </hint>
    </hints>
   </connection>
