@@ -49,9 +49,7 @@ bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, GraphicsDevic
 	// Initialize the vertex and index buffer that hold the geometry for the ortho window model.
 	bool result = InitializeBuffers(windowWidth, windowHeight);
 	if (!result)
-	{
 		return false;
-	}
 
 	return true;
 }

@@ -282,11 +282,7 @@ HRESULT D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LP
 		string shaderName = FileHelper::GetFileNameFromPath(filePath);
 		if (errorBlob)
 		{
-			ExportErrorBlobAsText(errorBlob);
-			LOG_ERROR("Failed to compile shader. File = " + shaderName +
-				", EntryPoint = " + entryPoint +
-				", Target = " + target +
-				". Check shaderError.txt for more details.");
+			ExportErrorDebugLog(errorBlob);	
 			SafeRelease(errorBlob);
 		}
 		else if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
@@ -301,30 +297,32 @@ HRESULT D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LP
 	return hr;
 }
 
-void D3D11Shader::ExportErrorBlobAsText(ID3D10Blob* errorMessage)
+void D3D11Shader::ExportErrorDebugLog(ID3D10Blob* errorMessage)
 {
-	char* compileErrors;
-	unsigned long bufferSize, i;
-	ofstream fout;
+	stringstream ss((char*)errorMessage->GetBufferPointer());
+	string to;
 
-	// Get a pointer to the error message text buffer.
-	compileErrors = static_cast<char*>(errorMessage->GetBufferPointer());
+	while (getline(ss, to, '\n'))
+		LOG_ERROR(to);
+}
 
-	// Get the length of the message.
-	bufferSize = errorMessage->GetBufferSize();
+void D3D11Shader::ExportErrorAsTextFile(ID3D10Blob* errorMessage, string fileName)
+{
+	LOG_ERROR("Failed to compile shader \"" + fileName + "\". Check the exported \""+ fileName + ".txt\" for more details.");
+
+	stringstream ss((char*)errorMessage->GetBufferPointer());
+	string to;
 
 	// Open a file to write the error message to.
-	fout.open("shaderError.txt");
+	ofstream fout;
+	fout.open(FileHelper::GetFileNameNoExtensionFromPath(fileName) + ".txt");
 
 	// Write out the error message.
-	for (i = 0; i < bufferSize; i++)
-		fout << compileErrors[i];
+	while (getline(ss, to, '\n'))
+		fout << to << endl;
 
 	// Close the file.
 	fout.close();
-
-	// Release the error message.
-	errorMessage->Release();
 }
 
 //= REFLECTION ================================================================================================================
@@ -335,7 +333,7 @@ vector<D3D11_INPUT_ELEMENT_DESC> D3D11Shader::Reflect(ID3D10Blob* vsBlob) const
 	ID3D11ShaderReflection* reflector = nullptr;
 	if (FAILED(D3DReflect(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), IID_ID3D11ShaderReflection, (void**)&reflector)))
 	{
-		LOG("Failed to reflect shader", Log::Error);
+		LOG_ERROR("Failed to reflect shader.");
 		return inputLayoutDesc;
 	}
 
