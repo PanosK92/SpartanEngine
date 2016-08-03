@@ -33,7 +33,7 @@ DirectusConsole::DirectusConsole(QWidget *parent) : QListWidget(parent)
     m_engineLogger = nullptr;
 }
 
-void DirectusConsole::SetDirectusCore(DirectusCore* directusCore)
+void DirectusConsole::Initialize(DirectusCore* directusCore)
 {
     m_socket = directusCore->GetEngineSocket();
 

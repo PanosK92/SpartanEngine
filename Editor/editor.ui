@@ -265,6 +265,56 @@ QLabel
 	border-style: none;
 }
 
+/*= SCENE/CONSOLE TABS TOOLBARS =============================================================================*/
+#sceneToolbar , #tabConsoleToolbar, #tabHierarchyToolbar, #tabProjectToolbar 
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
+	border-color: #212121;
+
+	border-width: 1px;
+	border-style: solid;
+}
+
+#buttonGizmos, #buttonConsoleClear, #buttonConsoleClearOnPlay, #buttonHierarchyCreate, #buttonProjectCreate
+{
+	min-width: 3em;
+	padding-left: 2px;
+	padding-right: 2px;
+	color: #909090;
+	border-color: #212121;
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
+	border-style: solid;
+	border-top-width: 0px;
+	border-bottom-width: 0px;
+	border-left-width: 1px;
+	border-right-width: 1px;
+	border-radius: 0px;
+	margin-top: 1px;
+	margin-bottom: 1px;
+}
+
+#buttonGizmos
+{
+	width: 40px;
+	border-left-width: 0px;
+}
+
+#buttonConsoleClearOnPlay
+{
+	width: 80px;
+	border-left-width: 0px;
+}
+
+#buttonGizmos:pressed,#buttonConsoleClear:pressed, #buttonConsoleClearOnPlay:pressed, #buttonHierarchyCreate:pressed, #buttonProjectCreate:pressed
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(43, 43, 43, 255), stop:1 rgba(62, 62, 62, 255));
+}
+
+#buttonConsoleClearOnPlay:checked 
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(43, 43, 43, 255), stop:1 rgba(62, 62, 62, 255));
+}
+
 /*= TABS ===================================================================================*/
 QTabWidget::pane  
 {  
@@ -377,45 +427,6 @@ QProgressBar::chunk
 	border-width: 1px;
 	border-style: solid;
 	border-top-width: 0px;
-}
-
-/*= SCENE/CONSOLE TABS TOOLBARS =============================================================================*/
-#sceneToolbar , #tabConsoleToolbar, #tabHierarchyToolbar, #tabProjectToolbar 
-{
-	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
-	border-color: #212121;
-
-	border-width: 1px;
-	border-style: solid;
-}
-
-#buttonGizmos, #buttonConsoleClear, #buttonConsoleClearOnPlay, #buttonHierarchyCreate, #buttonProjectCreate
-{
-	min-width: 3em;
-	padding-left: 2px;
-	padding-right: 2px;
-	color: #909090;
-	border-color: #212121;
-	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
-	border-style: solid;
-	border-top-width: 0px;
-	border-bottom-width: 0px;
-	border-left-width: 1px;
-	border-right-width: 1px;
-	border-radius: 0px;
-	margin-top: 1px;
-	margin-bottom: 1px;
-}
-
-#buttonConsoleClearOnPlay
-{
-	width: 80px;
-	border-left-width: 0px;
-}
-
-#buttonGizmos:pressed,#buttonConsoleClear:pressed, #buttonConsoleClearOnPlay:pressed, #buttonHierarchyCreate:pressed, #buttonProjectCreate:pressed
-{
-	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(43, 43, 43, 255), stop:1 rgba(62, 62, 62, 255));
 }
 
 /*= PLAY/PAUSE BUTTONS ===================================================================================*/
@@ -3426,6 +3437,7 @@ QTabBar::tab:last
     <slot>AddMeshRendererComponent()</slot>
     <slot>AddMeshColliderComponent()</slot>
     <slot>AddSkyboxComponent()</slot>
+    <slot>ShowContextMenuLight()</slot>
    </slots>
   </customwidget>
   <customwidget>
@@ -3458,12 +3470,12 @@ QTabBar::tab:last
    <slot>UpdateFileExplorer(QModelIndex)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>128</x>
-     <y>708</y>
+     <x>99</x>
+     <y>554</y>
     </hint>
     <hint type="destinationlabel">
-     <x>128</x>
-     <y>708</y>
+     <x>99</x>
+     <y>554</y>
     </hint>
    </hints>
   </connection>
@@ -3768,6 +3780,38 @@ QTabBar::tab:last
     <hint type="destinationlabel">
      <x>130</x>
      <y>357</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonConsoleClear</sender>
+   <signal>pressed()</signal>
+   <receiver>directusConsole</receiver>
+   <slot>clear()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>25</x>
+     <y>532</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>62</x>
+     <y>599</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonHierarchyCreate</sender>
+   <signal>pressed()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>ShowContextMenuLight()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>27</x>
+     <y>80</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>75</x>
+     <y>159</y>
     </hint>
    </hints>
   </connection>

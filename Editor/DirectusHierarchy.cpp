@@ -434,7 +434,7 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     menu3DObject.addAction(&actionQuad);
     //====================================================
 
-     //= 3D Object =======================================
+     //= LIGHT ===========================================
     QMenu menuLight("Light", this);
     menuLight.setEnabled(true);
 
@@ -477,6 +477,64 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     contextMenu.addAction(&actionCamera);
 
     contextMenu.exec(mapToGlobal(pos));
+}
+
+void DirectusHierarchy::ShowContextMenuLight()
+{
+    bool selected = IsAnyGameObjectSelected();
+
+    QMenu contextMenu(tr("Context menu"), this);
+
+    QAction actionCreateEmpty("Create Empty", this);
+    actionCreateEmpty.setEnabled(true);
+
+    //= 3D Object =======================================
+    QMenu menu3DObject("3D Object", this);
+    menu3DObject.setEnabled(true);
+
+    QAction actionCube("Cube", this);
+    actionCube.setEnabled(true);
+
+    QAction actionQuad("Quad", this);
+    actionCube.setEnabled(true);
+
+    menu3DObject.addAction(&actionCube);
+    menu3DObject.addAction(&actionQuad);
+    //====================================================
+
+     //= LIGHT ===========================================
+    QMenu menuLight("Light", this);
+    menuLight.setEnabled(true);
+
+    QAction actionDirectionalLight("Directional Light", this);
+    actionDirectionalLight.setEnabled(true);
+
+    QAction actionPointLight("Point Light", this);
+    actionPointLight.setEnabled(true);
+
+    menuLight.addAction(&actionDirectionalLight);
+    menuLight.addAction(&actionPointLight);
+    //====================================================
+
+    QAction actionCamera("Camera", this);
+    actionCamera.setEnabled(true);
+    //=================================================
+
+    //= SIGNAL - SLOT connections =========================================================
+    connect(&actionCreateEmpty,         SIGNAL(triggered()), this,  SLOT(CreateEmptyGameObject()));
+    connect(&actionCube,                SIGNAL(triggered()), this,  SLOT(CreateCube()));
+    connect(&actionQuad,                SIGNAL(triggered()), this,  SLOT(CreateQuad()));
+    connect(&actionDirectionalLight,    SIGNAL(triggered()), this,  SLOT(CreateDirectionalLight()));
+    connect(&actionPointLight,          SIGNAL(triggered()), this,  SLOT(CreatePointLight()));
+    connect(&actionCamera,              SIGNAL(triggered()), this,  SLOT(CreateCamera()));
+    //=====================================================================================
+
+    contextMenu.addAction(&actionCreateEmpty);
+    contextMenu.addMenu(&menu3DObject);
+    contextMenu.addMenu(&menuLight);
+    contextMenu.addAction(&actionCamera);
+
+    contextMenu.exec(QCursor::pos());
 }
 
 // Called when the user click rename from the context menu

@@ -54,7 +54,7 @@ void Editor::InitializeEngine()
     // Pass the engine around
     ui->directusInspector->SetDirectusCore(directusCore);
     ui->directusHierarchy->SetDirectusCore(directusCore);
-    ui->directusConsole->SetDirectusCore(directusCore);
+    ui->directusConsole->Initialize(directusCore);
     ui->directusPlayButton->Initialize(directusCore);
 
     // Resolve other dependencies

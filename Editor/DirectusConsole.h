@@ -34,7 +34,7 @@ class DirectusConsole : public QListWidget
     Q_OBJECT
 public:
     explicit DirectusConsole(QWidget *parent = 0);
-    void SetDirectusCore(DirectusCore* directusCore);
+    void Initialize(DirectusCore* directusCore);
 
 private:
     Socket* m_socket;
