@@ -63,11 +63,15 @@ bool DirectusFileDialog::FilePathExists()
 
 void DirectusFileDialog::LoadModel()
 {
-    setWindowTitle("Load model");
-    QString selfilter = tr("Model (*.3ds; *.obj; *.fbx; *.blend; *.dae; *.lwo; *.c4d)");
-    QDir dir(selfilter);
-    setFilter(dir.filter());
+    QString title = "Load model";
+    QStringList filters;
+    filters << "Model (*.3ds *.obj *.fbx *.blend *.dae *.lwo *.c4d)"
+            << "Any files (*)";
+
+    setWindowTitle(title);;
+    setNameFilters(filters);
     setDirectory("Assets");
+    setAcceptMode(AcceptOpen);
     show();
 
     m_assetOperation = "Load Model";
@@ -75,9 +79,15 @@ void DirectusFileDialog::LoadModel()
 
 void DirectusFileDialog::LoadScene()
 {
-    setWindowTitle("Load Scene");
-    //m_fileDialog->setFilter("Scene (*.dss)");
+    QString title = "Load Scene";
+    QStringList filters;
+    filters << "Scene (*.dss)"
+            << "Any files (*)";
+
+    setWindowTitle(title);
+    setNameFilters(filters);
     setDirectory("Assets");
+    setAcceptMode(AcceptOpen);
     show();
 
     m_assetOperation = "Load Scene";
@@ -85,9 +95,15 @@ void DirectusFileDialog::LoadScene()
 
 void DirectusFileDialog::SaveSceneAs()
 {
-    setWindowTitle("Save Scene");
-    //m_fileDialog->setFilter("Scene (*.dss)");
+    QString title = "Save Scene";
+    QStringList filters;
+    filters << "Scene (*.dss)"
+            << "Any files (*)";
+
+    setWindowTitle(title);
+    setNameFilters(filters);
     setDirectory("Assets");
+    setAcceptMode(AcceptSave);
     show();
 
     m_assetOperation = "Save Scene As";
