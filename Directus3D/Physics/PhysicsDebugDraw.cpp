@@ -100,7 +100,7 @@ void PhysicsDebugDraw::drawContactPoint(const btVector3& PointOnB, const btVecto
 
 void PhysicsDebugDraw::reportErrorWarning(const char* warningString)
 {
-	LOG(warningString, Log::Undefined);
+	LOG_ERROR(warningString);
 }
 
 void PhysicsDebugDraw::draw3dText(const btVector3& location, const char* textString)

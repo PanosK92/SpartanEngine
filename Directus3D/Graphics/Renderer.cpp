@@ -67,6 +67,8 @@ Renderer::Renderer()
 	m_camera = nullptr;
 	m_texEnvironment = nullptr;
 	m_texIrradiance = nullptr;
+	m_lineRenderer = nullptr;
+	m_directionalLight = nullptr;
 	m_nearPlane = 0.0;
 	m_farPlane = 0.0f;
 }

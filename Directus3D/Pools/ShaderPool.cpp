@@ -33,7 +33,7 @@ ShaderPool::ShaderPool(GraphicsDevice* graphicsDevice)
 
 ShaderPool::~ShaderPool()
 {
-	Clear();
+	DeleteAll();
 }
 
 ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
@@ -65,7 +65,7 @@ ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
 		return existingShader;
 
 	// If not, create a new one
-	unique_ptr<ShaderVariation> shader(new ShaderVariation());
+	ShaderVariation* shader = new ShaderVariation();
 	shader->Initialize(
 		albedo,
 		roughness,
@@ -80,15 +80,15 @@ ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
 	);
 
 	// Add the shader to the pool and return it
-	m_shaders.push_back(move(shader));
-	return m_shaders.back().get();
+	m_shaders.push_back(shader);
+	return m_shaders.back();
 }
 
 ShaderVariation* ShaderPool::GetShaderByID(string shaderID)
 {
 	for (int i = 0; i < m_shaders.size(); i++)
 		if (m_shaders[i]->GetID() == shaderID)
-			return m_shaders[i].get();
+			return m_shaders[i];
 
 	return nullptr;
 }
@@ -107,7 +107,7 @@ ShaderVariation* ShaderPool::FindMatchingShader(
 {
 	for (int i = 0; i < m_shaders.size(); i++)
 	{
-		ShaderVariation* shader = m_shaders[i].get();
+		ShaderVariation* shader = m_shaders[i];
 		
 		if (shader->HasAlbedoTexture() != albedo) continue;
 		if (shader->HasRoughnessTexture() != roughness) continue;
@@ -125,8 +125,11 @@ ShaderVariation* ShaderPool::FindMatchingShader(
 	return nullptr;
 }
 
-void ShaderPool::Clear()
+void ShaderPool::DeleteAll()
 {
+	for (int i = 0; i < m_shaders.size(); i++)
+		delete m_shaders[i];
+
 	m_shaders.clear();
 	m_shaders.shrink_to_fit();
 }

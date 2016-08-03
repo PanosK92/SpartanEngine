@@ -58,7 +58,19 @@ GameObject::GameObject()
 
 GameObject::~GameObject()
 {
-	Reset();
+	// delete components
+	for (auto it = m_components.begin(); it != m_components.end(); ++it)
+	{
+		IComponent* component = it->second;
+		component->Remove();
+		delete component;
+	}
+	m_components.clear();
+
+	m_ID.clear();
+	m_name.clear();
+	m_isActive = true;
+	m_hierarchyVisibility = true;
 }
 
 void GameObject::Initialize(GraphicsDevice* graphicsDevice, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine)
@@ -141,8 +153,6 @@ void GameObject::Serialize()
 
 void GameObject::Deserialize()
 {
-	Reset();
-
 	m_ID = Serializer::LoadSTR();
 	m_name = Serializer::LoadSTR();
 	m_isActive = Serializer::LoadBool();
@@ -158,21 +168,6 @@ void GameObject::Deserialize()
 		component->Deserialize();
 		component->g_ID = id;
 	}
-}
-
-void GameObject::Reset()
-{
-	// delete components
-	for (auto it = m_components.begin(); it != m_components.end(); ++it)
-	{
-		IComponent* component = it->second;
-		component->Remove();
-		delete component;
-	}
-	m_components.clear();
-
-	m_isActive = true;
-	m_hierarchyVisibility = true;
 }
 
 template <class Type>

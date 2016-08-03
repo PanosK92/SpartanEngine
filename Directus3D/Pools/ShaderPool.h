@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "../Graphics/Shaders/ShaderVariation.h"
 #include "../Graphics/GraphicsDevice.h"
-#include <memory>
 //==============================================
 
 class ShaderPool
@@ -45,7 +44,7 @@ public:
 		bool cubemap
 	);
 	ShaderVariation* GetShaderByID(std::string shaderID);
-	void Clear();
+	void DeleteAll();
 
 private:
 	ShaderVariation* FindMatchingShader(
@@ -60,6 +59,6 @@ private:
 		bool cubemap
 	);
 
-	std::vector<std::unique_ptr<ShaderVariation>> m_shaders;
+	std::vector<ShaderVariation*> m_shaders;
 	GraphicsDevice* m_graphicsDevice;
 };

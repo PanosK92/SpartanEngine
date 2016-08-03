@@ -102,7 +102,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 	// 13 - RENDERER
 	m_renderer = new Renderer();
-	m_scene = new Scene(m_texturePool, m_materialPool, m_meshPool, m_scriptEngine, m_physicsWorld, m_modelLoader, m_renderer);
+	m_scene = new Scene(m_texturePool, m_materialPool, m_meshPool, m_scriptEngine, m_physicsWorld, m_modelLoader, m_renderer, m_shaderPool);
 	m_renderer->Initialize(m_graphicsDevice, m_timer, m_physicsWorld, m_scene);
 
 	// 14 - GAMEOBJECT POOL
