@@ -34,7 +34,7 @@ class DirectusFileDialog : public QFileDialog
 public:
     explicit DirectusFileDialog(QWidget *parent = 0);
     void Initialize(QWidget* mainWindow, DirectusCore* directusCore);
-    void ForgetLastUsedFilePath();
+    void ResetFilePath();
     bool FilePathExists();
     void LoadModel();
     void LoadScene();
@@ -51,7 +51,12 @@ private:
     DirectusCore* m_directusCore;
 
 signals:
+    void AssetLoaded();
+
+private slots:
+    void AssetLoadedSurrogate();
 
 public slots:
     void FileDialogAccepted(QString);
+
 };

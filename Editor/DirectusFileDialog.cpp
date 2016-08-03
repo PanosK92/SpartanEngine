@@ -48,7 +48,7 @@ void DirectusFileDialog::Initialize(QWidget* mainWindow, DirectusCore* directusC
     m_lastSceneFilePath = NO_PATH;
 }
 
-void DirectusFileDialog::ForgetLastUsedFilePath()
+void DirectusFileDialog::ResetFilePath()
 {
     m_lastSceneFilePath = NO_PATH;
 }
@@ -99,6 +99,11 @@ void DirectusFileDialog::SaveScene()
     m_assetOperation = "Save Scene";
 }
 
+void DirectusFileDialog::AssetLoadedSurrogate()
+{
+    emit AssetLoaded();
+}
+
 void DirectusFileDialog::FileDialogAccepted(QString filePath)
 {
     // Create a thread and move the asset loader to it
@@ -110,14 +115,8 @@ void DirectusFileDialog::FileDialogAccepted(QString filePath)
     // Stop the engine (in case it's running)
     m_directusCore->Stop();
     connect(thread, SIGNAL(started()), m_directusCore, SLOT(Lock()));
-    if (m_assetOperation  == "Load Model")
-    {
-        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(LoadModel()));
-        connect(m_assetLoader,  SIGNAL(Finished()), this,           SLOT(Populate()));
-        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
-        connect(thread,         SIGNAL(finished()), m_directusCore, SLOT(Update()));
-    }
-    else if (m_assetOperation == "Save Scene As")
+
+    if (m_assetOperation == "Save Scene As")
     {
         m_lastSceneFilePath = filePath;
 
@@ -137,8 +136,15 @@ void DirectusFileDialog::FileDialogAccepted(QString filePath)
 
         connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(LoadScene()));
         connect(thread,         SIGNAL(finished()), m_directusCore,     SLOT(Update()));
-        connect(m_assetLoader,  SIGNAL(Finished()), this,               SLOT(Populate()));
+        connect(m_assetLoader,  SIGNAL(Finished()), this,               SLOT(AssetLoadedSurrogate()));
         connect(m_assetLoader,  SIGNAL(Finished()), thread,             SLOT(quit()));
+    }
+    else if (m_assetOperation  == "Load Model")
+    {
+        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(LoadModel()));
+        connect(m_assetLoader,  SIGNAL(Finished()), this,           SLOT(AssetLoadedSurrogate()));
+        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
+        connect(thread,         SIGNAL(finished()), m_directusCore, SLOT(Update()));
     }
     connect(thread,         SIGNAL(started()), m_directusCore,          SLOT(Unlock()));
     connect(thread,         SIGNAL(finished()), thread,                 SLOT(deleteLater()));
