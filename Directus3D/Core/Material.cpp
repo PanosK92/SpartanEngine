@@ -59,6 +59,7 @@ Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 
 Material::~Material()
 {
+
 }
 
 //= I/O ========================================================================

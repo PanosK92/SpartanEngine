@@ -43,7 +43,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Scene::Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsWorld* physics, ModelLoader* modelLoader, Renderer* renderer)
+Scene::Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsWorld* physics, ModelLoader* modelLoader, Renderer* renderer, ShaderPool* shaderPool)
 {
 	m_renderer = renderer;
 	m_texturePool = texturePool;
@@ -52,6 +52,8 @@ Scene::Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* mes
 	m_scriptEngine = scriptEngine;
 	m_physics = physics;
 	m_modelLoader = modelLoader;
+	m_shaderPool = shaderPool;
+
 	m_mainCamera = nullptr;
 }
 
@@ -132,10 +134,14 @@ void Scene::Clear()
 
 	m_mainCamera = nullptr;
 
+	//= Clear all the pools ==================
 	m_texturePool->DeleteAll();
 	m_meshPool->DeleteAll();
 	m_materialPool->DeleteAll();
+	m_shaderPool->DeleteAll();
 	GameObjectPool::GetInstance().DeleteAll();
+	//========================================
+
 	m_scriptEngine->Reset();
 	m_physics->Reset();
 	m_renderer->Clear();

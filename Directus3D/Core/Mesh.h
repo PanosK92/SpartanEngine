@@ -31,10 +31,6 @@ class Mesh
 public:
 	Mesh()
 	{
-		name = "";
-		rootGameObjectID = "";
-		ID = "";
-		gameObjectID = "";
 		vertexCount = 0;
 		indexCount = 0;
 		faceCount = 0;
@@ -44,6 +40,14 @@ public:
 	{
 		vertices.clear();
 		indices.clear();
+
+		name.clear();
+		rootGameObjectID.clear();
+		ID.clear();
+		gameObjectID.clear();
+		vertexCount = 0;
+		indexCount = 0;
+		faceCount = 0;
 	}
 
 	std::string name;

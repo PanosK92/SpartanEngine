@@ -1,12 +1,10 @@
 #pragma once
 
-//= INCLUDES ================
+//= INCLUDES =============================
 #include "IComponent.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
 #include "../Core/Vertex.h"
-#include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
-//===========================
+//========================================
 
 class __declspec(dllexport) LineRenderer : public IComponent
 {
@@ -21,8 +19,8 @@ public:
 	virtual void Deserialize();
 
 	//= INPUT ==================================================
-	void AddLineList(std::vector<VertexPositionColor> lineList);
-	void AddVertex(VertexPositionColor vertex);
+	void AddLineList(const std::vector<VertexPositionColor>& lineList);
+	void AddVertex(const VertexPositionColor& vertex);
 
 	//= MISC ===================================================
 	void SetBuffer();
@@ -32,7 +30,7 @@ private:
 	//= VERTICES ===================	
 	D3D11Buffer* m_vertexBuffer;
 	VertexPositionColor* m_vertices;
-	int m_maxVertices = 1000000;
+	int m_maxVertices = 10000;
 	int m_vertexIndex;	
 	//==============================
 

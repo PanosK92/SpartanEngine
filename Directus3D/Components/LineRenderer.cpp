@@ -57,7 +57,7 @@ void LineRenderer::Deserialize()
 }
 
 //= INPUT ===============================================================
-void LineRenderer::AddLineList(std::vector<VertexPositionColor> lineList)
+void LineRenderer::AddLineList(const std::vector<VertexPositionColor>& lineList)
 {
 	ClearVertices();
 
@@ -65,7 +65,7 @@ void LineRenderer::AddLineList(std::vector<VertexPositionColor> lineList)
 		AddVertex(lineList[i]);
 }
 
-void LineRenderer::AddVertex(VertexPositionColor vertex)
+void LineRenderer::AddVertex(const VertexPositionColor& vertex)
 {
 	m_vertices[m_vertexIndex] = vertex;
 	m_vertexIndex++;

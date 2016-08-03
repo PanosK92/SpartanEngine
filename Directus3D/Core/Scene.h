@@ -36,7 +36,7 @@ class ModelLoader;
 class Scene
 {
 public:
-	Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsWorld* physics, ModelLoader* modelLoader, Renderer* renderer);
+	Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsWorld* physics, ModelLoader* modelLoader, Renderer* renderer, ShaderPool* shaderPool);
 	~Scene();
 
 	void Initialize();
@@ -80,5 +80,6 @@ private:
 	PhysicsWorld* m_physics;
 	ModelLoader* m_modelLoader;
 	Renderer* m_renderer;
+	ShaderPool* m_shaderPool;
 	//============================================
 };

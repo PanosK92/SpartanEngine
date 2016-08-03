@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "../IO/Log.h"
+#include "../Core/Globals.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -98,8 +99,7 @@ RigidBody::RigidBody()
 
 RigidBody::~RigidBody()
 {
-	delete m_rigidBody;
-	m_rigidBody = nullptr;
+	SafeDelete(m_rigidBody);
 }
 
 //= ICOMPONENT ==========================================================
