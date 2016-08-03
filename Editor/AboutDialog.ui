@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>479</width>
-    <height>310</height>
+    <width>550</width>
+    <height>324</height>
    </rect>
   </property>
   <property name="maximumSize">
    <size>
-    <width>479</width>
-    <height>310</height>
+    <width>900</width>
+    <height>900</height>
    </size>
   </property>
   <property name="contextMenuPolicy">
@@ -28,6 +28,12 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="label">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="contextMenuPolicy">
       <enum>Qt::NoContextMenu</enum>
      </property>
@@ -38,6 +44,8 @@
       <string>&lt;html&gt;
 &lt;head/&gt;
 &lt;body&gt;
+
+&lt;img src=&quot;:/Images/icon.ico&quot; align=&quot;left&quot; width=&quot;100&quot; height=&quot;100&quot;&gt;
 
 &lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Copyright(c) 2016 &lt;/span&gt;&lt;a href=&quot;https://panoskarabelas.com/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#6DB8FF;&quot;&gt;Panos Karabelas&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; color:#b4b4b4;&quot;/&gt;&lt;/p&gt;
 

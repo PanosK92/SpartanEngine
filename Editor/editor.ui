@@ -265,6 +265,35 @@ QLabel
 	border-style: none;
 }
 
+/*= TREES ==================================================================================*/
+/*NOTE: I am using QTreeView everywhere because even QTreeWidgets inherit from them */
+QTreeView
+{
+	background-color: #383838;
+	border-style: solid;
+	border-width: 1px;
+	border-top-width: 0px;
+	outline: 0px; /* removes ugly selection dashed border */
+}
+
+QTreeView::item
+{
+    background-color: rgba(0, 0, 0, 0);
+	color: #909090;
+}
+
+QTreeView::item:selected 
+{
+	background-color: rgb(62, 95, 150);
+	color: white;
+}
+
+QTreeWidget::item:hover 
+{
+	
+	
+}
+
 /*= SCENE/CONSOLE TABS TOOLBARS =============================================================================*/
 #sceneToolbar , #tabConsoleToolbar, #tabHierarchyToolbar, #tabProjectToolbar 
 {
@@ -588,22 +617,6 @@ QSlider::handle:horizontal
 	margin-top: -3px;
 	margin-bottom: -3px;
 	border-radius: 5px;
-}
-/*========================================================================================*/
-
-/*= TREES ==================================================================================*/
-QTreeWidget
-{
-	background-color: #383838;
-	border-style: solid;
-	border-width: 1px;
-	border-top-width: 0px;
-}
-
-QTreeView
-{
-	background-color: #383838;
-	border-style: inset;
 }
 /*========================================================================================*/
 
@@ -1492,6 +1505,9 @@ text edit background:					414141
                          <verstretch>0</verstretch>
                         </sizepolicy>
                        </property>
+                       <property name="sizeAdjustPolicy">
+                        <enum>QAbstractScrollArea::AdjustIgnored</enum>
+                       </property>
                        <property name="editTriggers">
                         <set>QAbstractItemView::DoubleClicked</set>
                        </property>
@@ -1501,10 +1517,22 @@ text edit background:					414141
                        <property name="dragDropMode">
                         <enum>QAbstractItemView::InternalMove</enum>
                        </property>
+                       <property name="textElideMode">
+                        <enum>Qt::ElideRight</enum>
+                       </property>
+                       <property name="indentation">
+                        <number>20</number>
+                       </property>
+                       <property name="rootIsDecorated">
+                        <bool>true</bool>
+                       </property>
                        <property name="uniformRowHeights">
                         <bool>true</bool>
                        </property>
                        <property name="animated">
+                        <bool>true</bool>
+                       </property>
+                       <property name="headerHidden">
                         <bool>true</bool>
                        </property>
                        <property name="expandsOnDoubleClick">
@@ -1513,9 +1541,18 @@ text edit background:					414141
                        <attribute name="headerVisible">
                         <bool>false</bool>
                        </attribute>
+                       <attribute name="headerCascadingSectionResizes">
+                        <bool>false</bool>
+                       </attribute>
+                       <attribute name="headerShowSortIndicator" stdset="0">
+                        <bool>false</bool>
+                       </attribute>
+                       <attribute name="headerStretchLastSection">
+                        <bool>true</bool>
+                       </attribute>
                        <column>
                         <property name="text">
-                         <string notr="true">1</string>
+                         <string>GameObjects</string>
                         </property>
                        </column>
                       </widget>
