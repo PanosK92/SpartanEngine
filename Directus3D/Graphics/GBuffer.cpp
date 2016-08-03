@@ -24,6 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Globals.h"
 //==========================
 
+//= NAMESPACES ================
+using namespace Directus::Math;
+//=============================
+
 GBuffer::GBuffer(GraphicsDevice* graphicsDevice)
 {
 	m_graphicsDevice = graphicsDevice;
@@ -177,7 +181,7 @@ void GBuffer::SetRenderTargets()
 	m_graphicsDevice->GetDeviceContext()->RSSetViewports(1, &m_viewport);
 }
 
-void GBuffer::Clear(Directus::Math::Vector4 color)
+void GBuffer::Clear(const Vector4& color)
 {
 	Clear(color.x, color.y, color.z, color.w);
 }
