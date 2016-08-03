@@ -224,6 +224,9 @@ void DirectusHierarchy::AddGameObject(GameObject* gameobject, QTreeWidgetItem* p
     if (!gameobject)
         return;
 
+    if (!gameobject->IsVisibleInHierarchy())
+        return;
+
     // Convert GameObject to QTreeWidgetItem
     QTreeWidgetItem* item = ToQTreeWidgetItem(gameobject);
 

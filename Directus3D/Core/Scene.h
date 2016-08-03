@@ -52,6 +52,7 @@ public:
 										[MISC]
 	------------------------------------------------------------------------------*/
 	void Clear();
+	GameObject* GetSkybox();
 	GameObject* GetMainCamera();
 	void SetAmbientLight(float x, float y, float z);
 	Directus::Math::Vector3 GetAmbientLight();
@@ -59,6 +60,7 @@ public:
 
 private:
 	// GAMEOBJECT CREATION =======================
+	GameObject* CreateSkybox();
 	GameObject* CreateCamera();
 	GameObject* CreateDirectionalLight();
 	//============================================
@@ -67,6 +69,7 @@ private:
 	std::vector<GameObject*> m_lightsDirectional;
 	std::vector<GameObject*> m_lightsPoint;
 
+	GameObject* m_skybox;
 	GameObject* m_mainCamera;
 	Directus::Math::Vector3 m_ambientLight;
 

@@ -187,7 +187,7 @@ void Renderer::Render()
 
 	// G-Buffer Construction
 	m_GBuffer->SetRenderTargets();
-	m_GBuffer->ClearRenderTargets(0.0f, 0.0f, 0.0f, 1.0f);
+	m_GBuffer->Clear(m_camera->GetClearColor());
 	GBufferPass(m_renderables);
 
 	// DISABLE Z BUFFER - SET FULLSCREEN QUAD
@@ -265,7 +265,13 @@ void Renderer::AcquirePrerequisites()
 	if (camera)
 	{
 		m_camera = camera->GetComponent<Camera>();
-		m_skybox = camera->GetComponent<Skybox>();
+
+		GameObject* skybox = m_scene->GetSkybox();
+		if (skybox)
+		{
+			m_skybox = skybox->GetComponent<Skybox>();
+			m_lineRenderer = skybox->GetComponent<LineRenderer>(); // Hush hush...
+		}
 
 		if (m_lightsDirectional.size() != 0)
 			m_directionalLight = m_lightsDirectional[0]->GetComponent<Light>();
@@ -284,6 +290,7 @@ void Renderer::AcquirePrerequisites()
 	{
 		m_camera = nullptr;
 		m_skybox = nullptr;
+		m_lineRenderer = nullptr;
 		m_directionalLight = nullptr;
 	}
 }
@@ -433,23 +440,22 @@ void Renderer::DebugDraw() const
 	if (!m_physics->GetDebugDraw())
 		return;
 
+	// Get the line renderer component
+	if (!m_lineRenderer)
+		return;
+
 	if (!m_physics->GetPhysicsDebugDraw()->IsDirty())
 		return;
 
-	// Get the line renderer component
-	LineRenderer* lineRenderer = m_camera->g_gameObject->GetComponent<LineRenderer>();
-	if (!lineRenderer)
-		return;
-
 	// Pass the line list from bullet to the line renderer component
-	lineRenderer->AddLineList(m_physics->GetPhysicsDebugDraw()->GetLines());
+	m_lineRenderer->AddLineList(m_physics->GetPhysicsDebugDraw()->GetLines());
 
 	// Set the buffer
-	lineRenderer->SetBuffer();
+	m_lineRenderer->SetBuffer();
 
 	// Render
 	m_shaderDebug->Render(
-		lineRenderer->GetVertexCount(),
+		m_lineRenderer->GetVertexCount(),
 		Matrix::Identity,
 		m_camera->GetViewMatrix(),
 		m_camera->GetProjectionMatrix(),

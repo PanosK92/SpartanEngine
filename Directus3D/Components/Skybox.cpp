@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Texture.h"
 #include "../Math/Vector3.h"
 #include "../Pools/MaterialPool.h"
+#include "../Core/Scene.h"
 //======================================
 
 //= NAMESPACES ================
@@ -93,11 +94,14 @@ void Skybox::Initialize()
 	meshRenderer->SetCastShadows(false);
 	meshRenderer->SetReceiveShadows(false);
 
-	g_transform->SetScale(Vector3(500, 500, 500));
+	g_transform->SetScale(Vector3(1000, 1000, 1000));
 }
 
 void Skybox::Update()
 {
+	GameObject* camera = g_scene->GetMainCamera();
+	if (camera)
+		g_transform->SetPosition(camera->GetTransform()->GetPosition());
 }
 
 void Skybox::Remove()
@@ -107,10 +111,12 @@ void Skybox::Remove()
 
 void Skybox::Serialize()
 {
+
 }
 
 void Skybox::Deserialize()
 {
+
 }
 
 /*------------------------------------------------------------------------------
