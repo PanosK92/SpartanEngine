@@ -337,7 +337,7 @@ void DirectusHierarchy::Populate()
 
 void DirectusHierarchy::NewScene()
 {
-    m_fileDialog->ForgetLastPath();
+    m_fileDialog->ForgetLastUsedFilePath();
     m_socket->ClearScene();
 
     Populate();
@@ -350,7 +350,7 @@ void DirectusHierarchy::OpenScene()
 
 void DirectusHierarchy::SaveScene()
 {
-    if (m_fileDialog->RememberPath())
+    if (m_fileDialog->FilePathExists())
         m_fileDialog->SaveScene();
     else
         m_fileDialog->SaveSceneAs();
