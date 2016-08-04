@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PhysicsDebugDraw.h"
 #include "../Core/Globals.h"
 #include "BulletPhysicsHelper.h"
+#include "../Signals/Signaling.h"
 //==============================================================================
 
 PhysicsWorld::PhysicsWorld()
@@ -81,6 +82,7 @@ void PhysicsWorld::Step(float timeStep)
 		return;
 
 	// Step the physics world
+	EMIT(SIGNAL_PHYSICS_STEP);
 	m_world->stepSimulation(timeStep, 1, 1.0f / m_updatesPerSec);
 
 	if (m_debugDrawEnabled)

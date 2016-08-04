@@ -7,6 +7,7 @@ approach when it comes to adding features and a state of the art editor. The edi
 # Features
 - 30+ image file formats support.
 - 40+ 3D file formats support.
+- Build as single static or dynamic external library.
 - Component-based game object system.
 - D3D11 Renderer.
 - Deferred rendering.
@@ -15,7 +16,6 @@ approach when it comes to adding features and a state of the art editor. The edi
 - Physics.
 - Post-process effects like FXAA & Sharpening.
 - Scripting.
-- Statically and dynamically linked to your application.
 - Windows support.
 
 # Planned Features

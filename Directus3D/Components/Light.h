@@ -53,7 +53,7 @@ public:
 	virtual void Update();
 	virtual void Serialize();
 	virtual void Deserialize();
-
+	
 	LightType GetLightType();
 	void SetLightType(LightType type);
 

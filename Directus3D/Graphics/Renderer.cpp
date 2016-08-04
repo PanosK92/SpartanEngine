@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../IO/Log.h"
 #include "../Components/MeshFilter.h"
+#include "../Signals/Signaling.h"
 //======================================
 
 //= NAMESPACES ================
@@ -144,6 +145,8 @@ void Renderer::Initialize(GraphicsDevice* d3d11device, Timer* timer, PhysicsWorl
 
 void Renderer::Render()
 {
+	EMIT(SIGNAL_RENDER_START);
+
 	StartCalculatingStats();
 	AcquirePrerequisites();
 
@@ -206,6 +209,8 @@ void Renderer::Render()
 	m_graphicsDevice->Present();
 
 	StopCalculatingStats();
+
+	EMIT(SIGNAL_RENDER_END);
 }
 
 void Renderer::SetResolution(int width, int height)
