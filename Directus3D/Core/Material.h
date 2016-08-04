@@ -107,11 +107,14 @@ public:
 	void SetShadingMode(ShadingMode shadingMode);
 	ShadingMode GetShadingMode();
 
-	void SetColorAlbedo(Directus::Math::Vector4 color);
+	void SetColorAlbedo(const Directus::Math::Vector4& color);
 	Directus::Math::Vector4 GetColorAlbedo();
 
-	void SetTiling(Directus::Math::Vector2 tiling);
-	Directus::Math::Vector2 GetTiling();
+	void SetTilingUV(const Directus::Math::Vector2& tiling);
+	Directus::Math::Vector2 GetTilingUV();
+
+	void SetOffsetUV(const Directus::Math::Vector2& offset);
+	Directus::Math::Vector2 GetOffsetUV();
 	//=============================================================================
 
 private:
@@ -134,7 +137,8 @@ private:
 	float m_heightMultiplier;
 	float m_occlusionMultiplier;
 	float m_specularMultiplier;
-	Directus::Math::Vector2 m_tiling;
+	Directus::Math::Vector2 m_tilingUV;
+	Directus::Math::Vector2 m_offsetUV;
 	ShadingMode m_shadingMode;
 	ShaderVariation* m_shader;
 

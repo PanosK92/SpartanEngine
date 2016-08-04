@@ -122,7 +122,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float lightIntensity	= dirLightIntensity[i] ;		
 		float3 lightDir 		= normalize(-dirLightDirection[i]);
 
-		float ambientLightIntensity = min(1.0f, lightIntensity);
+		float ambientLightIntensity = clamp(lightIntensity, 0.0f, 1.0f);
 		lightIntensity *= shadowingAttunation * occlusion;
 		
 		finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);	
@@ -146,7 +146,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		
 		// Do expensive lighting
 		if (dx < radius)
-			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, 1.0f, envColor, irradiance);			
+			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, 0.0f, envColor, irradiance);			
 	}
 	
 	finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)

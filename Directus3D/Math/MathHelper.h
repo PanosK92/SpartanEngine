@@ -70,5 +70,10 @@ namespace Directus
 		{
 			return a + (b - a) * f;
 		}
+
+		inline __declspec(dllexport) float Abs(float value)
+		{
+			return fabsf(value);
+		}
 	}
 }

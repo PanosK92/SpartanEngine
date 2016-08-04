@@ -27,15 +27,18 @@ cbuffer DefaultBuffer : register(b0)
     matrix mWorldViewProjection;
 	matrix mLightViewProjection;
     float4 materialAlbedoColor;
+	float2 materialTiling;
+	float2 materialOffset;
+	float2 viewport;
     float materialRoughness;
     float materialMetallic;
     float materialOcclusion;
     float materialNormalStrength;
     float materialSpecular;
     float materialShadingMode;
-    float2 materialTiling;
-	float2 viewport;
-    float2 receiveShadowsBias;
+    float receiveShadows;
+	float shadowBias;
+	float2 padding;
 };
 //===========================================
 
@@ -89,7 +92,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float2 texel			= float2(1.0f / viewport.x, 1.0f / viewport.y);
 	float depth1 			= input.positionCS.z / input.positionCS.w;
 	float depth2 			= input.positionCS.z / input.positionWS.w;
-	float2 texCoord 		= float2(input.uv.x * materialTiling.x, input.uv.y * materialTiling.y);
+	float2 texCoord 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= materialRoughness;
 	float metallic 			= materialMetallic;
@@ -151,13 +154,11 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	
 	//= SHADOW MAPPING ===========================================================================
-	bool receiveShadows = receiveShadowsBias.x;
 	float shadowing = 1.0f;
-	if (receiveShadows)
+	if (receiveShadows == 1.0f)
 	{
-		float bias 		= receiveShadowsBias.y;
 		float4 lightPos = mul(input.positionWS, mLightViewProjection);
-		shadowing		= 1.0f - ShadowMappingPCF(lightDepthTex, samplerShadow, lightPos, bias);
+		shadowing		= 1.0f - ShadowMappingPCF(lightDepthTex, samplerShadow, lightPos, shadowBias);
 	}
 	//============================================================================================
 	// Write to G-Buffer

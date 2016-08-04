@@ -53,7 +53,7 @@ Engine::Engine()
 
 Engine::~Engine()
 {
-	
+
 }
 
 void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
@@ -118,17 +118,17 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 void Engine::Update()
 {
 	m_timer->Update();
-	
+
 	//= FIXED UPDATE - 60Hz ======================
 	float updates = 60;
 	float updateInterval = 1.0f / updates;
 	float currentTime = m_timer->GetTime();
 	if (currentTime > m_fixedUpdateTimeRunned + updateInterval)
-	{		
+	{
 		m_fixedUpdateTimeRunned = currentTime;
 	}
 	//============================================
-	
+
 	//= PHYSICS - 60 HZ (INTERNAL CLOCK) =========
 	m_physicsWorld->Step(m_timer->GetDeltaTime());
 	//============================================

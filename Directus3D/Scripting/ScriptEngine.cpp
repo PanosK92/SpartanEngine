@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Module.h"
 #include "../IO/Log.h"
 #include "../IO/FileHelper.h"
+#include "../Core/Settings.h"
 //==========================================
 
 #define AS_USE_STLNAMES = 1

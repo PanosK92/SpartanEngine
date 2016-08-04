@@ -69,7 +69,6 @@ public:
 private:
 	asIScriptEngine* m_scriptEngine;
 	std::vector<asIScriptContext*> m_contexts;
-
 	Timer* m_timer;
 	Input* m_input;
 

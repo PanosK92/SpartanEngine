@@ -58,6 +58,11 @@ void Light::Initialize()
 	m_projectionSize = 100;
 }
 
+void Light::Start()
+{
+
+}
+
 void Light::Remove()
 {
 

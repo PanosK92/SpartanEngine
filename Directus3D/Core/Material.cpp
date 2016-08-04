@@ -52,7 +52,8 @@ Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 	m_normalMultiplier = 0.0f;
 	m_heightMultiplier = 0.0f;
 	m_specularMultiplier = 0.5f;
-	m_tiling = Vector2(1.0f, 1.0f);
+	m_tilingUV = Vector2(1.0f, 1.0f);
+	m_offsetUV = Vector2(0.0f, 0.0f);
 
 	AcquireShader();
 }
@@ -79,7 +80,8 @@ void Material::Serialize()
 	Serializer::SaveFloat(m_heightMultiplier);
 	Serializer::SaveFloat(m_occlusionMultiplier);
 	Serializer::SaveFloat(m_specularMultiplier);
-	Serializer::SaveVector2(m_tiling);
+	Serializer::SaveVector2(m_tilingUV);
+	Serializer::SaveVector2(m_offsetUV);
 
 	Serializer::SaveInt(int(m_textures.size()));
 	for (auto i = 0; i < m_textures.size(); i++)
@@ -102,7 +104,8 @@ void Material::Deserialize()
 	m_heightMultiplier = Serializer::LoadFloat();
 	m_occlusionMultiplier = Serializer::LoadFloat();	
 	m_specularMultiplier = Serializer::LoadFloat();
-	m_tiling = Serializer::LoadVector2();
+	m_tilingUV = Serializer::LoadVector2();
+	m_offsetUV = Serializer::LoadVector2();
 
 	int textureCount = Serializer::LoadInt();
 	for (int i = 0; i < textureCount; i++)
@@ -367,7 +370,7 @@ ShadingMode Material::GetShadingMode()
 	return m_shadingMode;
 }
 
-void Material::SetColorAlbedo(Vector4 color)
+void Material::SetColorAlbedo(const Vector4& color)
 {
 	m_colorAlbedo = color;
 }
@@ -377,15 +380,26 @@ Vector4 Material::GetColorAlbedo()
 	return m_colorAlbedo;
 }
 
-void Material::SetTiling(Vector2 tiling)
+void Material::SetTilingUV(const Vector2& tiling)
 {
-	this->m_tiling = tiling;
+	this->m_tilingUV = tiling;
 }
 
-Vector2 Material::GetTiling()
+Vector2 Material::GetTilingUV()
 {
-	return m_tiling;
+	return m_tilingUV;
 }
+
+void Material::SetOffsetUV(const Vector2& offset)
+{
+	m_offsetUV = offset;
+}
+
+Vector2 Material::GetOffsetUV()
+{
+	return m_offsetUV;
+}
+
 //==============================================================================
 
 //= HELPER FUNCTIONS ===========================================================

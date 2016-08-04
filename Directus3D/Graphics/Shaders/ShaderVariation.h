@@ -98,19 +98,42 @@ private:
 	------------------------------------------------------------------------------*/
 	struct DefaultBufferType
 	{
-		Directus::Math::Matrix world;
-		Directus::Math::Matrix worldView;
-		Directus::Math::Matrix worldViewProjection;
-		Directus::Math::Matrix lightViewProjection;
-		Directus::Math::Vector4 materialAlbedoColor;
+		Directus::Math::Matrix mWorld;
+		Directus::Math::Matrix mWorldView;
+		Directus::Math::Matrix mWorldViewProjection;
+		Directus::Math::Matrix mLightViewProjection;
+		Directus::Math::Vector4 albedoColor;
+		Directus::Math::Vector2 tilingUV;
+		Directus::Math::Vector2 offsetUV;
+		Directus::Math::Vector2 viewport;
 		float roughnessMultiplier;
 		float metallicMultiplier;
 		float occlusionMultiplier;
 		float normalMultiplier;
 		float specularMultiplier;
-		float shadingMode;
-		Directus::Math::Vector2 materialTiling;
-		Directus::Math::Vector2 viewport;
-		Directus::Math::Vector2 receiveShadows;
+		float shadingMode;	
+		float receiveShadows;
+		float shadowBias;
+		Directus::Math::Vector2 padding;
+
+		/*
+		matrix mWorld;
+		matrix mWorldView;
+		matrix mWorldViewProjection;
+		matrix mLightViewProjection;
+		float4 materialAlbedoColor;
+		float2 materialTiling;
+		float2 materialOffset;
+		float2 viewport;
+		float materialRoughness;
+		float materialMetallic;
+		float materialOcclusion;
+		float materialNormalStrength;
+		float materialSpecular;
+		float materialShadingMode;
+		float receiveShadows;
+		float shadowBias;
+		float2 padding;
+		*/
 	};
 };

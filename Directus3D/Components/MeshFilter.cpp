@@ -55,6 +55,11 @@ void MeshFilter::Initialize()
 {
 }
 
+void MeshFilter::Start()
+{
+
+}
+
 void MeshFilter::Remove()
 {
 

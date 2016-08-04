@@ -61,6 +61,11 @@ void Hinge::Initialize()
 	m_pivotB = Vector3(0.f, 0.f, 0.f); // the centre of the tyre
 }
 
+void Hinge::Start()
+{
+
+}
+
 void Hinge::Remove()
 {
 	g_physicsWorld->GetWorld()->removeConstraint(m_hinge);

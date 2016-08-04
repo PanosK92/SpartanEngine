@@ -148,20 +148,23 @@ void ShaderVariation::Render(int indexCount,
 	{ // this can be done only when needed - tested
 		// map the buffer
 		DefaultBufferType* defaultBufferType = (DefaultBufferType*)m_befaultBuffer->Map();
-		defaultBufferType->world = world.Transpose();
-		defaultBufferType->worldView = worldView.Transpose();
-		defaultBufferType->worldViewProjection = worldViewProjection.Transpose();
-		defaultBufferType->lightViewProjection = lightViewProjection.Transpose();
-		defaultBufferType->materialAlbedoColor = material->GetColorAlbedo();
+		defaultBufferType->mWorld = world.Transpose();
+		defaultBufferType->mWorldView = worldView.Transpose();
+		defaultBufferType->mWorldViewProjection = worldViewProjection.Transpose();
+		defaultBufferType->mLightViewProjection = lightViewProjection.Transpose();
+		defaultBufferType->albedoColor = material->GetColorAlbedo();
+		defaultBufferType->tilingUV = material->GetTilingUV();
+		defaultBufferType->offsetUV = material->GetOffsetUV();
+		defaultBufferType->viewport = GET_RESOLUTION;
 		defaultBufferType->roughnessMultiplier = material->GetRoughnessMultiplier();
 		defaultBufferType->metallicMultiplier = material->GetMetallicMultiplier();
 		defaultBufferType->occlusionMultiplier = material->GetOcclusionMultiplier();
 		defaultBufferType->normalMultiplier = material->GetNormalMultiplier();
 		defaultBufferType->specularMultiplier = material->GetSpecularMultiplier();
-		defaultBufferType->shadingMode = float(material->GetShadingMode());
-		defaultBufferType->materialTiling = material->GetTiling();
-		defaultBufferType->viewport = GET_RESOLUTION;
-		defaultBufferType->receiveShadows = Vector2(receiveShadows, directionalLight->GetBias());
+		defaultBufferType->shadingMode = float(material->GetShadingMode());	
+		defaultBufferType->receiveShadows = float(receiveShadows);
+		defaultBufferType->shadowBias = float(directionalLight->GetBias());
+		defaultBufferType->padding = Vector2(0, 0);
 		m_befaultBuffer->Unmap();
 	}
 	m_befaultBuffer->SetVS(0); // set buffer in the vertex shader

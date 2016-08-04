@@ -91,16 +91,21 @@ void Skybox::Initialize()
 	g_transform->SetScale(Vector3(1000, 1000, 1000));
 }
 
-void Skybox::Update()
+void Skybox::Start()
 {
-	GameObject* camera = g_scene->GetMainCamera();
-	if (camera)
-		g_transform->SetPosition(camera->GetTransform()->GetPosition());
+
 }
 
 void Skybox::Remove()
 {
 
+}
+
+void Skybox::Update()
+{
+	GameObject* camera = g_scene->GetMainCamera();
+	if (camera)
+		g_transform->SetPosition(camera->GetTransform()->GetPosition());
 }
 
 void Skybox::Serialize()

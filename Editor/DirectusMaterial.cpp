@@ -247,6 +247,8 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     connect(m_specular,     SIGNAL(ValueChanged()),             this, SLOT(MapSpecular()));
     connect(m_tilingX,      SIGNAL(ValueChanged()),             this, SLOT(MapTiling()));
     connect(m_tilingY,      SIGNAL(ValueChanged()),             this, SLOT(MapTiling()));
+    connect(m_offsetX,      SIGNAL(ValueChanged()),             this, SLOT(MapOffset()));
+    connect(m_offsetY,      SIGNAL(ValueChanged()),             this, SLOT(MapOffset()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -290,6 +292,7 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
     ReflectMask();
     ReflectSpecular();
     ReflectTiling();
+    ReflectOffset();
 
     // Make this widget visible
     this->show();
@@ -381,9 +384,16 @@ void DirectusMaterial::ReflectSpecular()
 
 void DirectusMaterial::ReflectTiling()
 {
-    Vector2 tiling = m_inspectedMaterial->GetTiling();
+    Vector2 tiling = m_inspectedMaterial->GetTilingUV();
     m_tilingX->SetFromFloat(tiling.x);
     m_tilingY->SetFromFloat(tiling.y);
+}
+
+void DirectusMaterial::ReflectOffset()
+{
+    Vector2 offset = m_inspectedMaterial->GetOffsetUV();
+    m_offsetX->SetFromFloat(offset.x);
+    m_offsetY->SetFromFloat(offset.y);
 }
 
 void DirectusMaterial::MapAlbedo()
@@ -476,7 +486,20 @@ void DirectusMaterial::MapTiling()
     Vector2 tiling;
     tiling.x = m_tilingX->GetAsFloat();
     tiling.y = m_tilingY->GetAsFloat();
-    m_inspectedMaterial->SetTiling(tiling);
+    m_inspectedMaterial->SetTilingUV(tiling);
+
+    m_directusCore->Update();
+}
+
+void DirectusMaterial::MapOffset()
+{
+    if (!m_inspectedMaterial || !m_directusCore)
+        return;
+
+    Vector2 offset;
+    offset.x = m_offsetX->GetAsFloat();
+    offset.y = m_offsetY->GetAsFloat();
+    m_inspectedMaterial->SetOffsetUV(offset);
 
     m_directusCore->Update();
 }

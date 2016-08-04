@@ -66,6 +66,11 @@ void Collider::Initialize()
 	ConstructCollisionShape();
 }
 
+void Collider::Start()
+{
+
+}
+
 void Collider::Remove()
 {
 	SetRigidBodyCollisionShape(nullptr);

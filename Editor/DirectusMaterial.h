@@ -138,6 +138,7 @@ private:
     void ReflectMask();
     void ReflectSpecular();
     void ReflectTiling();
+    void ReflectOffset();
 
 public slots:
     void MapAlbedo();
@@ -150,4 +151,5 @@ public slots:
     void MapMask();
     void MapSpecular();
     void MapTiling();
+    void MapOffset();
 };
