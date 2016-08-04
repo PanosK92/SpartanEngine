@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====
 #include "Plane.h"
-
 //================
 
 namespace Directus
@@ -30,15 +29,16 @@ namespace Directus
 	{
 		Plane::Plane()
 		{
+
 		}
 
-		Plane::Plane(Vector3 normal, float d)
+		Plane::Plane(const Vector3& normal, float d)
 		{
 			this->normal = normal;
 			this->d = d;
 		}
 
-		Plane::Plane(Vector3 a, Vector3 b, Vector3 c)
+		Plane::Plane(const Vector3& a, const Vector3& b, const Vector3& c)
 		{
 			Vector3 ab = b - a;
 			Vector3 ac = c - a;
@@ -66,20 +66,22 @@ namespace Directus
 			this->d = result.d;
 		}
 
-		Plane Plane::Normalize(Plane plane)
+		Plane Plane::Normalize(const Plane& plane)
 		{
-			plane.Normalize();
-			return plane;
+			Plane newPlane = plane;
+			newPlane.Normalize();
+			return newPlane;
 		}
 
-		float Plane::DotCoordinate(Vector3 v)
+		float Plane::DotCoordinate(const Vector3& v)
 		{
 			return (this->normal.x * v.x) + (this->normal.y * v.y) + (this->normal.z * v.z) + this->d;
 		}
 
-		float Plane::DotCoordinate(Plane p, Vector3 v)
+		float Plane::DotCoordinate(const Plane& p, const Vector3& v)
 		{
-			return p.DotCoordinate(v);
+			Plane newPlane = p;
+			return newPlane.DotCoordinate(v);
 		}
 	}
 }

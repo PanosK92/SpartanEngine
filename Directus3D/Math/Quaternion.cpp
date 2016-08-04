@@ -68,7 +68,7 @@ namespace Directus
 		}
 
 		//= CREATE FROM =============================================================
-		Quaternion Quaternion::CreateFromAxisAngle(Vector3 axis, float angle)
+		Quaternion Quaternion::CreateFromAxisAngle(const Vector3& axis, float angle)
 		{
 			Vector3 normAxis = axis.Normalize();
 			angle *= DEG_TO_RAD_2;
@@ -84,7 +84,7 @@ namespace Directus
 			return q;
 		}
 
-		Quaternion Quaternion::FromEulerAngles(Vector3 eulerAngles)
+		Quaternion Quaternion::FromEulerAngles(const Vector3& eulerAngles)
 		{
 			return FromEulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z);
 		}
@@ -111,50 +111,50 @@ namespace Directus
 			return q;
 		}
 
-		Quaternion Quaternion::CreateFromRotationMatrix(Matrix matrix)
+		Quaternion Quaternion::CreateFromRotationMatrix(const Matrix& matrix)
 		{
-			matrix = matrix.Transpose();
+			Matrix mTransposed = matrix.Transpose();
 			Quaternion q;
 
-			float t = matrix.m00 + matrix.m11 + matrix.m22;
+			float t = mTransposed.m00 + mTransposed.m11 + mTransposed.m22;
 
 			if (t > 0.0f)
 			{
 				float invS = 0.5f / sqrtf(1.0f + t);
 
-				q.x = (matrix.m21 - matrix.m12) * invS;
-				q.y = (matrix.m02 - matrix.m20) * invS;
-				q.z = (matrix.m10 - matrix.m01) * invS;
+				q.x = (mTransposed.m21 - mTransposed.m12) * invS;
+				q.y = (mTransposed.m02 - mTransposed.m20) * invS;
+				q.z = (mTransposed.m10 - mTransposed.m01) * invS;
 				q.w = 0.25f / invS;
 			}
 			else
 			{
-				if (matrix.m00 > matrix.m11 && matrix.m00 > matrix.m22)
+				if (mTransposed.m00 > mTransposed.m11 && mTransposed.m00 > mTransposed.m22)
 				{
-					float invS = 0.5f / sqrtf(1.0f + matrix.m00 - matrix.m11 - matrix.m22);
+					float invS = 0.5f / sqrtf(1.0f + mTransposed.m00 - mTransposed.m11 - mTransposed.m22);
 
 					q.x = 0.25f / invS;
-					q.y = (matrix.m01 + matrix.m10) * invS;
-					q.z = (matrix.m20 + matrix.m02) * invS;
-					q.w = (matrix.m21 - matrix.m12) * invS;
+					q.y = (mTransposed.m01 + mTransposed.m10) * invS;
+					q.z = (mTransposed.m20 + mTransposed.m02) * invS;
+					q.w = (mTransposed.m21 - mTransposed.m12) * invS;
 				}
-				else if (matrix.m11 > matrix.m22)
+				else if (mTransposed.m11 > mTransposed.m22)
 				{
-					float invS = 0.5f / sqrtf(1.0f + matrix.m11 - matrix.m00 - matrix.m22);
+					float invS = 0.5f / sqrtf(1.0f + mTransposed.m11 - mTransposed.m00 - mTransposed.m22);
 
-					q.x = (matrix.m01 + matrix.m10) * invS;
+					q.x = (mTransposed.m01 + mTransposed.m10) * invS;
 					q.y = 0.25f / invS;
-					q.z = (matrix.m12 + matrix.m21) * invS;
-					q.w = (matrix.m02 - matrix.m20) * invS;
+					q.z = (mTransposed.m12 + mTransposed.m21) * invS;
+					q.w = (mTransposed.m02 - mTransposed.m20) * invS;
 				}
 				else
 				{
-					float invS = 0.5f / sqrtf(1.0f + matrix.m22 - matrix.m00 - matrix.m11);
+					float invS = 0.5f / sqrtf(1.0f + mTransposed.m22 - mTransposed.m00 - mTransposed.m11);
 
-					q.x = (matrix.m02 + matrix.m20) * invS;
-					q.y = (matrix.m12 + matrix.m21) * invS;
+					q.x = (mTransposed.m02 + mTransposed.m20) * invS;
+					q.y = (mTransposed.m12 + mTransposed.m21) * invS;
 					q.z = 0.25f / invS;
-					q.w = (matrix.m10 - matrix.m01) * invS;
+					q.w = (mTransposed.m10 - mTransposed.m01) * invS;
 				}
 			}
 
@@ -265,67 +265,6 @@ namespace Directus
 				0.0f, 
 				1.0f
 			);
-		}
-
-		/*------------------------------------------------------------------------------
-											[OPERATORS]
-		------------------------------------------------------------------------------*/
-		Quaternion Quaternion::operator*(Quaternion q)
-		{
-			Quaternion tmp;
-
-			tmp.w = (q.w * w) - (q.x * x) - (q.y * y) - (q.z * z);
-			tmp.x = (q.w * x) + (q.x * w) + (q.y * z) - (q.z * y);
-			tmp.y = (q.w * y) + (q.y * w) + (q.z * x) - (q.x * z);
-			tmp.z = (q.w * z) + (q.z * w) + (q.x * y) - (q.y * x);
-
-			return tmp;
-		}
-
-		Vector3 Quaternion::operator*(Vector3 v)
-		{
-			float num = x * 2.0f;
-			float num2 = y * 2.0f;
-			float num3 = z * 2.0f;
-			float num4 = x * num;
-			float num5 = y * num2;
-			float num6 = z * num3;
-			float num7 = x * num2;
-			float num8 = x * num3;
-			float num9 = y * num3;
-			float num10 = w * num;
-			float num11 = w * num2;
-			float num12 = w * num3;
-
-			Vector3 result;
-			result.x = (1.0f - (num5 + num6)) * v.x + (num7 - num12) * v.y + (num8 + num11) * v.z;
-			result.y = (num7 + num12) * v.x + (1.0f - (num4 + num6)) * v.y + (num9 - num10) * v.z;
-			result.z = (num8 - num11) * v.x + (num9 + num10) * v.y + (1.0f - (num4 + num5)) * v.z;
-			return result;
-		}
-
-		bool Quaternion::operator==(const Quaternion& b)
-		{
-			if (x == b.x && y == b.y && z == b.z && w == b.w)
-				return true;
-
-			return false;
-		}
-
-		bool Quaternion::operator!=(const Quaternion& b)
-		{
-			if (x != b.x || y != b.y || z != b.z || w != b.w)
-				return true;
-
-			return false;
-		}
-
-		void Quaternion::operator*=(const Quaternion& b)
-		{
-			this->x *= b.x;
-			this->y *= b.y;
-			this->z *= b.z;
-			this->w *= b.w;
 		}
 	}
 }

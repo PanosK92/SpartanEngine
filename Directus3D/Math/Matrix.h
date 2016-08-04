@@ -51,7 +51,7 @@ namespace Directus
 				this->m30 = m41; this->m31 = m42; this->m32 = m43; this->m33 = m44;
 			}
 
-			~Matrix(){}
+			~Matrix() {}
 
 			Matrix Transpose() const
 			{
@@ -85,12 +85,13 @@ namespace Directus
 				return result;
 			}
 
-			Matrix Inverse()
+
+			Matrix Inverse() const
 			{
 				return Invert(*this);
 			}
 
-			static Matrix Invert(Matrix matrix)
+			static Matrix Invert(const Matrix& matrix)
 			{
 				float num1 = matrix.m00;
 				float num2 = matrix.m01;
@@ -168,11 +169,11 @@ namespace Directus
 				return CreateScale(scale, scale, scale);
 			}
 
-			static Matrix CreateScale(Vector3 scale);
+			static Matrix CreateScale(const Vector3& scale);
 
-			static Matrix CreateTranslation(Vector3 position);
+			static Matrix CreateTranslation(const Vector3& position);
 
-			static Matrix CreateLookAtLH(Vector3 cameraPosition, Vector3 cameraTarget, Vector3 cameraUpVector);
+			static Matrix CreateLookAtLH(const Vector3& cameraPosition, const Vector3& cameraTarget, const Vector3& cameraUpVector);
 
 			static Matrix CreateOrthographicLH(float width, float height, float zNearPlane, float zFarPlane)
 			{
@@ -291,7 +292,7 @@ namespace Directus
 			static const Matrix Identity;
 
 		private:
-			static Matrix Multiply(Matrix matrix1, Matrix matrix2)
+			static Matrix Multiply(const Matrix& matrix1, const Matrix&  matrix2)
 			{
 				float m11 = (((matrix1.m00 * matrix2.m00) + (matrix1.m01 * matrix2.m10)) + (matrix1.m02 * matrix2.m20)) + (matrix1.m03 * matrix2.m30);
 				float m12 = (((matrix1.m00 * matrix2.m01) + (matrix1.m01 * matrix2.m11)) + (matrix1.m02 * matrix2.m21)) + (matrix1.m03 * matrix2.m31);
@@ -313,27 +314,24 @@ namespace Directus
 				float m43 = (((matrix1.m30 * matrix2.m02) + (matrix1.m31 * matrix2.m12)) + (matrix1.m32 * matrix2.m22)) + (matrix1.m33 * matrix2.m32);
 				float m44 = (((matrix1.m30 * matrix2.m03) + (matrix1.m31 * matrix2.m13)) + (matrix1.m32 * matrix2.m23)) + (matrix1.m33 * matrix2.m33);
 
-				matrix1.m00 = m11;
-				matrix1.m01 = m12;
-				matrix1.m02 = m13;
-				matrix1.m03 = m14;
-
-				matrix1.m10 = m21;
-				matrix1.m11 = m22;
-				matrix1.m12 = m23;
-				matrix1.m13 = m24;
-
-				matrix1.m20 = m31;
-				matrix1.m21 = m32;
-				matrix1.m22 = m33;
-				matrix1.m23 = m34;
-
-				matrix1.m30 = m41;
-				matrix1.m31 = m42;
-				matrix1.m32 = m43;
-				matrix1.m33 = m44;
-
-				return matrix1;
+				return Matrix(
+					m11,
+					m12,
+					m13,
+					m14,
+					m21,
+					m22,
+					m23,
+					m24,
+					m31,
+					m32,
+					m33,
+					m34,
+					m41,
+					m42,
+					m43,
+					m44
+				);
 			}
 		};
 	}

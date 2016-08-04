@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========
+//= INCLUDES ===========
 #include <sstream>
 #include "Vector3.h"
 #include "Vector4.h"
@@ -42,7 +42,7 @@ namespace Directus
 		const Vector3 Vector3::Infinity(INFINITY, INFINITY, INFINITY);
 		const Vector3 Vector3::InfinityNeg(-INFINITY, -INFINITY, -INFINITY);
 
-		Vector3 Vector3::Transform(Vector3 vector, Matrix matrix)
+		Vector3 Vector3::Transform(const Vector3& vector, const Matrix& matrix)
 		{
 			Vector4 vWorking;
 
@@ -54,49 +54,24 @@ namespace Directus
 			return Vector3(vWorking.x * vWorking.w, vWorking.y * vWorking.w, vWorking.z * vWorking.w);
 		}
 
-		Vector3 Vector3::QuaternionToEuler(Quaternion quaternion)
-		{
-			Vector3 vec;
-			double sqw = quaternion.w * quaternion.w;
-			double sqx = quaternion.x * quaternion.x;
-			double sqy = quaternion.y * quaternion.y;
-			double sqz = quaternion.z * quaternion.z;
-
-			vec.x = atan2l(2.0 * (quaternion.y * quaternion.z + quaternion.x * quaternion.w), (-sqx - sqy + sqz + sqw));
-			vec.y = asinl(-2.0 * (quaternion.x * quaternion.z - quaternion.y * quaternion.w));
-			vec.z = atan2l(2.0 * (quaternion.x * quaternion.y + quaternion.z * quaternion.w), (sqx - sqy - sqz + sqw));
-
-			return vec;
-		}
-
-		std::string Vector3::ToString()
+		std::string Vector3::ToString() const
 		{
 			std::ostringstream os;
-			os << x << ", " << y << ", " << z;
+			os << "X: " << this->x << ", Y: " << this->y << ", Z:" << this->z;
 
 			return os.str();
 		}
 
-		Vector3 Vector3::operator*(const Quaternion& b)
+		// The multiplication operator between quaternions
+		// is defined in Quaternion.h, however Quaternion.h
+		// includes Vector3.h, therefore this operator
+		// has to be defined here.
+		void Vector3::operator*=(const Quaternion& q)
 		{
-			float num = b.x * 2.0f;
-			float num2 = b.y * 2.0f;
-			float num3 = b.z * 2.0f;
-			float num4 = b.x * num;
-			float num5 = b.y * num2;
-			float num6 = b.z * num3;
-			float num7 = b.x * num2;
-			float num8 = b.x * num3;
-			float num9 = b.y * num3;
-			float num10 = b.w * num;
-			float num11 = b.w * num2;
-			float num12 = b.w * num3;
-
-			Vector3 result;
-			result.x = (1.0f - (num5 + num6)) * x + (num7 - num12) * y + (num8 + num11) * z;
-			result.y = (num7 + num12) * x + (1.0f - (num4 + num6)) * y + (num9 - num10) * z;
-			result.z = (num8 - num11) * x + (num9 + num10) * y + (1.0f - (num4 + num5)) * z;
-			return result;
+			Vector3 result = Vector3(x, y, z) * q;
+			x = result.x;
+			y = result.y;
+			z = result.z;
 		}
 	}
 }
