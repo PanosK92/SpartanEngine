@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 #include "../Graphics/GraphicsDevice.h"
 #include "Globals.h"
+#include "../Signals/Signaling.h"
 //=====================================
 
 Engine::Engine()
@@ -117,6 +118,8 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 void Engine::Update()
 {
+	EMIT(SIGNAL_FRAME_START);
+
 	m_timer->Update();
 
 	//= FIXED UPDATE - 60Hz ======================
@@ -144,6 +147,8 @@ void Engine::Update()
 	m_renderer->Render();
 	m_timer->RenderEnd();
 	//===========================================
+
+	EMIT(SIGNAL_FRAME_END);
 }
 
 void Engine::Shutdown()

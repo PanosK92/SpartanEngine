@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 #include "../IO/Serializer.h"
 #include "../Core/Scene.h"
+#include "../IO/Log.h"
 //===========================
 
 //= NAMESPACES ================
@@ -70,6 +71,7 @@ void Light::Remove()
 
 void Light::Update()
 {
+
 }
 
 void Light::Serialize()

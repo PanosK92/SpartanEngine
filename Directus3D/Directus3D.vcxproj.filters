@@ -201,6 +201,9 @@
     <ClCompile Include="Physics\PhysicsWorld.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Signals\Signaling.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components\Camera.h">
@@ -417,6 +420,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Physics\PhysicsWorld.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Signals\Signaling.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Signals\Signals.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
