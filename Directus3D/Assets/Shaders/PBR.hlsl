@@ -90,18 +90,24 @@ float3 viewDir,
 float3 lightDir, 
 float3 lightColor, 
 float lightIntensity, 
-float ambientLightIntensity, 
+float ambientLightIntensity,
 float3 environmentColor, 
 float3 irradianceColor)
 {
     float3 albedoColor 		= albedo - albedo * metallic;
     float3 specularColor 	= lerp(0.04f, albedo, metallic);
+	
+	// empirically, metallic and smooth tend to be more reflective
+	float smoothness		= 1.0f - roughness;
+	smoothness 				*= specular; // user defined multiplier (defaults to 0.5f)
+	float reflectivity		= min(1.0f, metallic + smoothness);
+
 			
 	float3 light 		= BRDF_CookTorrance(albedoColor, specularColor, normal, roughness, lightColor, lightDir, viewDir);	
 	float3 envFresnel 	= Specular_F_Roughness(specularColor, roughness * roughness, normal, viewDir);
 	
 	float3 finalLight		= light * lightIntensity;
-	float3 finalReflection 	= envFresnel * environmentColor * specular;
+	float3 finalReflection 	= envFresnel * environmentColor * reflectivity;
 	float3 finalAlbedo		= albedoColor * irradianceColor * ambientLightIntensity;
 
 	return finalLight + finalReflection + finalAlbedo;

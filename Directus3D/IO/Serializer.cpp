@@ -79,27 +79,27 @@ void Serializer::SaveFloat(float value)
 	out.write(reinterpret_cast<char*>(&value), sizeof(value));
 }
 
-void Serializer::SaveVectorSTR(std::vector<std::string> vector)
+void Serializer::SaveVectorSTR(std::vector<std::string>& vector)
 {
-	SaveInt((int)vector.size());
+	SaveInt(int(vector.size()));
 	for (auto i = 0; i < vector.size(); i++)
 		SaveSTR(vector[i]);
 }
 
-void Serializer::SaveVector2(Vector2 vector)
+void Serializer::SaveVector2(Vector2& vector)
 {
 	out.write(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
 	out.write(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
 }
 
-void Serializer::SaveVector3(Vector3 vector)
+void Serializer::SaveVector3(Vector3& vector)
 {
 	out.write(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
 	out.write(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
 	out.write(reinterpret_cast<char*>(&vector.z), sizeof(vector.z));
 }
 
-void Serializer::SaveVector4(Vector4 vector)
+void Serializer::SaveVector4(Vector4& vector)
 {
 	out.write(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
 	out.write(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
@@ -107,7 +107,7 @@ void Serializer::SaveVector4(Vector4 vector)
 	out.write(reinterpret_cast<char*>(&vector.w), sizeof(vector.w));
 }
 
-void Serializer::SaveQuaternion(Quaternion quaternion)
+void Serializer::SaveQuaternion(Quaternion& quaternion)
 {
 	out.write(reinterpret_cast<char*>(&quaternion.x), sizeof(quaternion.x));
 	out.write(reinterpret_cast<char*>(&quaternion.y), sizeof(quaternion.y));

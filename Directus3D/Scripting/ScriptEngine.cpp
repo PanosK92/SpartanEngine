@@ -76,9 +76,8 @@ bool ScriptEngine::Initialize()
 void ScriptEngine::Reset()
 {
 	for (unsigned int n = 0; n < m_contexts.size(); n++)
-	{
 		m_contexts[n]->Release();
-	}
+
 	m_contexts.clear();
 	m_contexts.shrink_to_fit();
 }

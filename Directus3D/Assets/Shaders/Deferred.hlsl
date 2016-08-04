@@ -5,7 +5,6 @@ Texture2D texDepth 			: register(t2);
 Texture2D texMaterial 		: register(t3);
 Texture2D texNoise 			: register(t4);
 TextureCube environmentTex 	: register(t5);
-TextureCube irradianceTex 	: register(t6);
 //=========================================
 
 //= SAMPLERS ==============================
@@ -73,8 +72,6 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 //= PS() =================================================================================
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
-	// Misc
-	float ambientLightIntensity = 0.1f;
 	float3 finalColor			= float3(0,0,0);
 	
 	// Sample from G-Buffer
@@ -88,6 +85,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float depth					= depthSample.g;
 	float3 worldPos				= ReconstructPosition(depth, input.uv, mViewProjectionInverse);
 	float shadowingAttunation 	= depthSample.b;
+	float occlusion 			= normalSample.a;
 	float roughness				= materialSample.r;
 	float metallic				= materialSample.g;
 	float specular				= materialSample.b;	
@@ -101,9 +99,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
     // NOTE: The cubemap is already in linear space
 	// Sample the skybox and the irradiance texture
-	float mipIndex				= roughness * 8.0f;
+	float mipIndex				= roughness * 10.0f;
     float3 envColor             = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, mipIndex));
-    float3 irradiance           = ToLinear(irradianceTex.Sample(samplerAniso, reflectionVector));
+    float3 irradiance           = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, 10.0f));
 	
 	if (type == 0.1f) // Texture mapping
 	{
@@ -124,7 +122,8 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float lightIntensity	= dirLightIntensity[i] ;		
 		float3 lightDir 		= normalize(-dirLightDirection[i]);
 
-		lightIntensity *= shadowingAttunation;
+		float ambientLightIntensity = min(1.0f, lightIntensity);
+		lightIntensity *= shadowingAttunation * occlusion;
 		
 		finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);	
 	}
@@ -140,14 +139,14 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float dist 				= length(worldPos - lightPos);
 		float attunation 		= clamp(1.0f - dist / radius, 0.0f, 1.0f); attunation *= attunation;
 		
-		lightIntensity *= attunation * shadowingAttunation;
+		lightIntensity *= attunation * shadowingAttunation * occlusion;
 
 		 // Calculate distance between light source and current fragment
         float dx = length(lightPos - worldPos);
 		
 		// Do expensive lighting
 		if (dx < radius)
-			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);			
+			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, 1.0f, envColor, irradiance);			
 	}
 	
 	finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)

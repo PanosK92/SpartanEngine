@@ -4,8 +4,8 @@ class MouseLook
 	Transform @transform;
 	
 	// mouse look settings
-	float sensitivity = 2.0f;
-	float smoothing = 30.5f;
+	float sensitivity = 3.0f;
+	float smoothing = 20.0f;
 
 	// mouse look variables
 	Vector2 smoothMouse = Vector2(0.0f, 0.0f);

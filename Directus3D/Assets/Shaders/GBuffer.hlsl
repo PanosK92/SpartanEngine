@@ -94,7 +94,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float roughness 		= materialRoughness;
 	float metallic 			= materialMetallic;
 	float specular 			= clamp(materialSpecular, 0.03f, 1.0f);
-	float occlusion			= 1.0f - materialOcclusion;
+	float occlusion			= materialOcclusion;
 	float4 normal			= float4(PackNormal(input.normal.xyz), occlusion);
 	float type				= 0.0f; // pbr mesh
 	
@@ -135,7 +135,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 		occlusion = clamp(texOcclusion.Sample(samplerAniso, texCoord).r * (1 / materialOcclusion), 0.0f, 1.0f);
 #endif
 	
-	//= SAMPLING =================================================================================
+	//= NORMAL ==================================================================================
 #if NORMAL_MAP
 		normal 	= texNormal.Sample(samplerAniso, texCoord); // sample
 		normal 	= float4(NormalSampleToWorldSpace(normal, input.normal, input.tangent, materialNormalStrength), 1.0f); // transform to world space

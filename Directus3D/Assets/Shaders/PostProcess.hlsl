@@ -134,7 +134,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 #endif
 	
 #if SHARPENING
-	color = sourceTexture.Sample(anisotropicSampler, texCoord); // I have to implement a better sharpening
+	color = SharpeningPass(texCoord);
 #endif
 	
 #if BLUR

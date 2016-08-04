@@ -45,9 +45,7 @@ public:
 									[MISC]
 	------------------------------------------------------------------------------*/
 	ID3D11ShaderResourceView* GetEnvironmentTexture() const;
-	ID3D11ShaderResourceView* GetIrradianceTexture() const;
 
 private:
 	ID3D11ShaderResourceView* m_environmentSRV;
-	ID3D11ShaderResourceView* m_irradianceSRV;
 };
