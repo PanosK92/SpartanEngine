@@ -82,20 +82,31 @@ namespace Directus
 				return Vector3(x, y, z);
 			}
 
-			// Normalize vector
-			Vector3 Normalize() const { return Normalize(*this); }
-
-			static Vector3 Normalize(const Vector3& v)
+			//= NORMALIZATION ========================================================================================
+			Vector3 Normalized() const
 			{
-				float factor = Length(v, Vector3(0, 0, 0));
+				float factor = Length();
 				factor = 1.0f / factor;
-				return Vector3(v.x * factor, v.y * factor, v.z * factor);
+				return Vector3(x * factor, y * factor, z * factor);
 			}
 
-			// Calculate dot product
-			static float Dot(const Vector3& v1, const Vector3& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
+			void Normalize()
+			{
+				float factor = Length();
+				factor = 1.0f / factor;
+				x *= factor;
+				y *= factor;
+				z *= factor;
+			};
+			static Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
+			//========================================================================================================
 
-			// Calculate cross product
+			//= DOT PRODUCT ==========================================================================================
+			static float Dot(const Vector3& v1, const Vector3& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
+			float Dot(const Vector3& rhs) const { return x * rhs.x + y * rhs.y + z * rhs.z; }
+			//========================================================================================================
+
+			//= CROSS PRODUCT ========================================================================================
 			static Vector3 Cross(const Vector3& v1, const Vector3& v2)
 			{
 				float x = v1.y * v2.z - v2.y * v1.z;
@@ -104,34 +115,23 @@ namespace Directus
 
 				return Vector3(x, y, z);
 			}
-
 			Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
+			//========================================================================================================
 
-			// Return length
-			static float Length(const Vector3& v1, const Vector3& v2)
-			{
-				float result = LengthSquared(v1, v2);
-				return sqrtf(result);
-			}
-
-			// Return squared length.
+			//= LENGTH ===============================================================================================
 			static float LengthSquared(const Vector3& v1, const Vector3& v2)
 			{
 				return (v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z);
 			}
 
-			float Length() const
-			{
-				float result = LengthSquared(*this, Vector3(0, 0, 0));
-				return sqrtf(result);
-			}
+			float Length() const { return sqrtf(x * x + y * y + z * z); }
+			float LengthSquared() const { return x * x + y * y + z * z; }
+			//========================================================================================================
 
 			static Vector3 Transform(const Vector3& vector, const Matrix& matrix);
-
 			Vector3 Reciprocal() const { return Vector3(1, 1, 1) / Vector3(x, y, z); }
 			Vector3 Absolute() const { return Vector3(abs(x), abs(y), abs(z)); }
 			float Volume() const { return x * y * z; }
-
 			std::string ToString() const;
 
 			//= MULTIPLICATION =============================================================

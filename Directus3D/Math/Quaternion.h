@@ -45,24 +45,28 @@ namespace Directus
 			~Quaternion();
 
 			//= FROM ====================================================================
-			static Quaternion CreateFromAxisAngle(const Vector3& axis, float angle);
+			static Quaternion FromAngleAxis(float angle, const Vector3& axis);
+			void FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
 			static Quaternion FromEulerAngles(const Vector3& eulerAngles);
 			static Quaternion FromEulerAngles(float x, float y, float z);
-			static Quaternion CreateFromRotationMatrix(const Matrix& matrix);	
+			static Quaternion FromRotationMatrix(const Matrix& matrix);
 			//===========================================================================
 
 			//= TO ======================================================================
 			Vector3 ToEulerAngles();
+			Matrix RotationMatrix();
 			float Yaw();
 			float Pitch();
 			float Roll();
 			//===========================================================================
 
+			void FromRotationTo(const Vector3& start, const Vector3& end);
+			bool FromLookRotation(const Vector3& direction, const Vector3& upDirection);
 			Quaternion Conjugate();
 			float Magnitude();
 			Quaternion Normalize();
 			Quaternion Inverse();
-			Matrix RotationMatrix();
+			
 
 			/*------------------------------------------------------------------------------
 										[OPERATORS]
@@ -85,7 +89,7 @@ namespace Directus
 
 				return rhs + 2.0f * (cross1 * w + cross2);
 			}
-				
+
 			bool Quaternion::operator==(const Quaternion& b)
 			{
 				if (x == b.x && y == b.y && z == b.z && w == b.w)

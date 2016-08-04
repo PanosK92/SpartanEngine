@@ -122,7 +122,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float lightIntensity	= dirLightIntensity[i] ;		
 		float3 lightDir 		= normalize(-dirLightDirection[i]);
 
-		float ambientLightIntensity = clamp(lightIntensity, 0.0f, 1.0f);
+		float ambientLightIntensity = clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
 		lightIntensity *= shadowingAttunation * occlusion;
 		
 		finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);	
@@ -149,8 +149,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, 0.0f, envColor, irradiance);			
 	}
 	
-	finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
+	
 	finalColor = ToGamma(finalColor); // gamma correction
+	finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
 	float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
 	
 	return float4(finalColor, luma);
