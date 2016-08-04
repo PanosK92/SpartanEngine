@@ -113,7 +113,7 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(string rootGameObjectI
 
 	// calculate the scale
 	Vector3 boundingBox = GetMeshExtent(largestBoundingBoxMesh);
-	float scaleOffset = Vector3::Length(boundingBox, Vector3::Zero);
+	float scaleOffset = boundingBox.Length();
 
 	return 1.0f / scaleOffset;
 }

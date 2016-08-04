@@ -32,12 +32,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-//= Based on ==========================================================================//
+//= Based on Urho3D
+//= Based also on =====================================================================//
 // http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/index.htm //
 // Heading	-> Yaw		-> Y-axis													   //
 // Attitude	-> Pitch	-> X-axis													   //
 // Bank		-> Roll		-> Z-axis													   //
 //=====================================================================================//
+
 
 namespace Directus
 {
@@ -67,10 +69,10 @@ namespace Directus
 
 		}
 
-		//= CREATE FROM =============================================================
-		Quaternion Quaternion::CreateFromAxisAngle(const Vector3& axis, float angle)
+		//= FROM =========================================================================================
+		Quaternion Quaternion::FromAngleAxis(float angle, const Vector3& axis)
 		{
-			Vector3 normAxis = axis.Normalize();
+			Vector3 normAxis = axis.Normalized();
 			angle *= DEG_TO_RAD_2;
 			float sinAngle = sinf(angle);
 			float cosAngle = cosf(angle);
@@ -83,6 +85,19 @@ namespace Directus
 
 			return q;
 		}
+
+		void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis)
+		{
+			Matrix matrix(
+				xAxis.x, yAxis.x, zAxis.x, 0,
+				xAxis.y, yAxis.y, zAxis.y, 0,
+				xAxis.z, yAxis.z, zAxis.z, 0,
+				0, 0, 0, 1
+			);
+
+			FromRotationMatrix(matrix);
+		}
+
 
 		Quaternion Quaternion::FromEulerAngles(const Vector3& eulerAngles)
 		{
@@ -111,7 +126,7 @@ namespace Directus
 			return q;
 		}
 
-		Quaternion Quaternion::CreateFromRotationMatrix(const Matrix& matrix)
+		Quaternion Quaternion::FromRotationMatrix(const Matrix& matrix)
 		{
 			Matrix mTransposed = matrix.Transpose();
 			Quaternion q;
@@ -196,6 +211,27 @@ namespace Directus
 			}
 		}
 
+		Matrix Quaternion::RotationMatrix()
+		{
+			return Matrix(
+				1.0f - 2.0f * y * y - 2.0f * z * z,
+				2.0f * x * y + 2.0f * w * z,
+				2.0f * x * z - 2.0f * w * y,
+				0.0f,
+				2.0f * x * y - 2.0f * w * z,
+				1.0f - 2.0f * x * x - 2.0f * z * z,
+				2.0f * y * z + 2.0f * w * x,
+				0.0f,
+				2.0f * x * z + 2.0f * w * y,
+				2.0f * y * z - 2.0f * w * x,
+				1.0f - 2.0f * x * x - 2.0f * y * y,
+				0.0f,
+				0.0f,
+				0.0f,
+				0.0f,
+				1.0f
+			);
+		}
 		float Quaternion::Yaw()
 		{
 			return ToEulerAngles().y;
@@ -210,8 +246,62 @@ namespace Directus
 		{
 			return ToEulerAngles().z;
 		}
-
 		//================================================================================
+
+		void Quaternion::FromRotationTo(const Vector3& start, const Vector3& end)
+		{
+			Vector3 normStart = start.Normalized();
+			Vector3 normEnd = end.Normalized();
+			float d = normStart.Dot(normEnd);
+
+			if (d > -1.0f + M_EPSILON)
+			{
+				Vector3 c = normStart.Cross(normEnd);
+				float s = sqrtf((1.0f + d) * 2.0f);
+				float invS = 1.0f / s;
+
+				x = c.x * invS;
+				y = c.y * invS;
+				z = c.z * invS;
+				w = 0.5f * s;
+			}
+			else
+			{
+				Vector3 axis = Vector3::Right.Cross(normStart);
+				if (axis.Length() < M_EPSILON)
+					axis = Vector3::Up.Cross(normStart);
+
+				FromAngleAxis(180.0f, axis);
+			}
+		}
+
+		bool Quaternion::FromLookRotation(const Vector3& direction, const Vector3& upDirection)
+		{
+			Quaternion ret;
+			Vector3 forward = direction.Normalized();
+
+			Vector3 v = forward.Cross(upDirection);
+			// If direction & upDirection are parallel and crossproduct becomes zero, use FromRotationTo() fallback
+			if (v.LengthSquared() >= M_EPSILON)
+			{
+				v.Normalize();
+				Vector3 up = v.Cross(forward);
+				Vector3 right = up.Cross(forward);
+				ret.FromAxes(right, up, forward);
+			}
+			else
+				ret.FromRotationTo(Vector3::Forward, forward);
+
+			/*if (!ret.IsNaN())
+			{
+				(*this) = ret;
+				return true;
+			}
+			else
+				return false;*/
+
+			return true;
+		}
 
 		Quaternion Quaternion::Conjugate()
 		{
@@ -243,28 +333,6 @@ namespace Directus
 		Quaternion Quaternion::Inverse()
 		{
 			return Quaternion(-x, -y, -z, w);
-		}
-
-		Matrix Quaternion::RotationMatrix()
-		{
-			return Matrix(
-				1.0f - 2.0f * y * y - 2.0f * z * z, 
-				2.0f * x * y + 2.0f * w * z, 
-				2.0f * x * z - 2.0f * w * y, 
-				0.0f,
-				2.0f * x * y - 2.0f * w * z, 
-				1.0f - 2.0f * x * x - 2.0f * z * z, 
-				2.0f * y * z + 2.0f * w * x, 
-				0.0f,
-				2.0f * x * z + 2.0f * w * y, 
-				2.0f * y * z - 2.0f * w * x, 
-				1.0f - 2.0f * x * x - 2.0f * y * y, 
-				0.0f,
-				0.0f, 
-				0.0f, 
-				0.0f, 
-				1.0f
-			);
 		}
 	}
 }

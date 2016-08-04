@@ -112,7 +112,7 @@ namespace Directus
 			normalized.m21 = pm.m21 / scale.z;
 			normalized.m22 = pm.m22 / scale.z;
 
-			rotation = Quaternion::CreateFromRotationMatrix(normalized);
+			rotation = Quaternion::FromRotationMatrix(normalized);
 		}
 	}
 }

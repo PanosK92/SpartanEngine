@@ -234,7 +234,7 @@ void Camera::CalculateViewMatrix()
 
 void Camera::CalculateBaseView()
 {
-	Vector3 lookAt = Vector3::Transform(Vector3::Forward, Matrix::Identity).Normalize();
+	Vector3 lookAt = Vector3::Transform(Vector3::Forward, Matrix::Identity).Normalized();
 	m_baseViewMatrix = Matrix::CreateLookAtLH(Vector3(0, 0, -0.3f), lookAt, Vector3::Up);
 }
 
