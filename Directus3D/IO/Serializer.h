@@ -41,11 +41,11 @@ public:
 	static void SaveSTR(std::string value);
 	static void SaveInt(int value);
 	static void SaveFloat(float value);
-	static void SaveVectorSTR(std::vector<std::string> vector);
-	static void SaveVector2(Directus::Math::Vector2 vector);
-	static void SaveVector3(Directus::Math::Vector3 vector);
-	static void SaveVector4(Directus::Math::Vector4 vector);
-	static void SaveQuaternion(Directus::Math::Quaternion quaternion);
+	static void SaveVectorSTR(std::vector<std::string>& vector);
+	static void SaveVector2(Directus::Math::Vector2& vector);
+	static void SaveVector3(Directus::Math::Vector3& vector);
+	static void SaveVector4(Directus::Math::Vector4& vector);
+	static void SaveQuaternion(Directus::Math::Quaternion& quaternion);
 
 	static bool LoadBool();
 	static std::string LoadSTR();

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QThread>
 //=============================
 
-#define NO_PATH "-1"
+#define EMPTY "-1"
 
 DirectusFileDialog::DirectusFileDialog(QWidget* parent) : QFileDialog(parent)
 {
@@ -45,20 +45,13 @@ void DirectusFileDialog::Initialize(QWidget* mainWindow, DirectusCore* directusC
     m_assetLoader = new DirectusAssetLoader();
     m_assetLoader->Initialize(m_mainWindow, m_socket);
 
-    m_lastSceneFilePath = NO_PATH;
+    m_lastSceneFilePath = EMPTY;
 }
 
-void DirectusFileDialog::ResetFilePath()
+void DirectusFileDialog::Reset()
 {
-    m_lastSceneFilePath = NO_PATH;
-}
-
-bool DirectusFileDialog::FilePathExists()
-{
-    if (m_lastSceneFilePath == NO_PATH)
-        return false;
-
-    return true;
+    m_lastSceneFilePath = EMPTY;
+    m_assetOperation = EMPTY;
 }
 
 void DirectusFileDialog::LoadModel()
@@ -93,6 +86,18 @@ void DirectusFileDialog::LoadScene()
     m_assetOperation = "Load Scene";
 }
 
+void DirectusFileDialog::SaveScene()
+{
+    if (m_lastSceneFilePath == EMPTY)
+    {
+        SaveSceneAs();
+        return;
+    }
+
+    FileDialogAccepted(QString::fromStdString(m_lastSceneFilePath));
+    m_assetOperation = "Save Scene";
+}
+
 void DirectusFileDialog::SaveSceneAs()
 {
     QString title = "Save Scene";
@@ -107,12 +112,6 @@ void DirectusFileDialog::SaveSceneAs()
     show();
 
     m_assetOperation = "Save Scene As";
-}
-
-void DirectusFileDialog::SaveScene()
-{
-    FileDialogAccepted(m_lastSceneFilePath);
-    m_assetOperation = "Save Scene";
 }
 
 void DirectusFileDialog::AssetLoadedSurrogate()
@@ -134,21 +133,21 @@ void DirectusFileDialog::FileDialogAccepted(QString filePath)
 
     if (m_assetOperation == "Save Scene As")
     {
-        m_lastSceneFilePath = filePath;
+        m_lastSceneFilePath = filePath.toStdString();
 
         connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(SaveScene()));
         connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
     }
     else if (m_assetOperation == "Save Scene")
     {
-        m_lastSceneFilePath = filePath;
+        m_lastSceneFilePath = filePath.toStdString();
 
         connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(SaveScene()));
         connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
     }
     else if (m_assetOperation == "Load Scene")
     {
-        m_lastSceneFilePath = filePath;
+        m_lastSceneFilePath = filePath.toStdString();
 
         connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(LoadScene()));
         connect(thread,         SIGNAL(finished()), m_directusCore,     SLOT(Update()));

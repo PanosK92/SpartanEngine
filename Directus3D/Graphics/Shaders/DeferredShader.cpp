@@ -69,7 +69,7 @@ void DeferredShader::Render(
 	int indexCount, const Matrix& mWorld, const Matrix& mView, const Matrix& mBaseView,
 	const Matrix& mPerspectiveProjection, const Matrix& mOrthographicProjection,
 	vector<GameObject*> directionalLights, vector<GameObject*> pointLights, Camera* camera,
-	vector<ID3D11ShaderResourceView*> textures, ID3D11ShaderResourceView* environmentTex, ID3D11ShaderResourceView* irradienceTex)
+	vector<ID3D11ShaderResourceView*> textures, ID3D11ShaderResourceView* environmentTex)
 {
 	if (!m_shader->IsCompiled())
 	{
@@ -129,7 +129,6 @@ void DeferredShader::Render(
 	//= SET TEXTURES =======================================================================================
 	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, UINT(textures.size()), &textures.front());
 	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(UINT(textures.size()), 1, &environmentTex);
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(UINT(textures.size()) + 1, 1, &irradienceTex);
 	//======================================================================================================
 
 	//= SET SHADER ===============================================================

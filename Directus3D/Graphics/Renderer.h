@@ -83,7 +83,6 @@ private:
 	//= MISC =====================================================
 	std::vector<ID3D11ShaderResourceView*> m_texArrayDeferredPass;
 	ID3D11ShaderResourceView* m_texEnvironment;
-	ID3D11ShaderResourceView* m_texIrradiance;
 	std::shared_ptr<Texture> m_texNoiseMap;
 	//============================================================
 

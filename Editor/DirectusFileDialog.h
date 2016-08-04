@@ -34,16 +34,15 @@ class DirectusFileDialog : public QFileDialog
 public:
     explicit DirectusFileDialog(QWidget *parent = 0);
     void Initialize(QWidget* mainWindow, DirectusCore* directusCore);
-    void ResetFilePath();
-    bool FilePathExists();
+    void Reset();
     void LoadModel();
     void LoadScene();
-    void SaveSceneAs();
     void SaveScene();
+    void SaveSceneAs();
 
 private:
-    QString m_lastSceneFilePath;
-    QString m_assetOperation;
+    std::string m_lastSceneFilePath;
+    std::string m_assetOperation;
 
     DirectusAssetLoader* m_assetLoader;
     QWidget* m_mainWindow;

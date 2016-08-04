@@ -46,12 +46,11 @@ using namespace std;
 Skybox::Skybox()
 {
 	m_environmentSRV = nullptr;
-	m_irradianceSRV = nullptr;
 }
 
 Skybox::~Skybox()
 {
-	SafeRelease(m_irradianceSRV);
+	SafeRelease(m_environmentSRV);
 }
 
 /*------------------------------------------------------------------------------
@@ -65,19 +64,14 @@ void Skybox::Initialize()
 	if (FAILED(hr))
 		return;
 
-	// Load irradiance texture
-	hr = CreateDDSTextureFromFile(g_graphicsDevice->GetDevice(), L"Assets/Environment/irradiance.dds", nullptr, &m_irradianceSRV);
-	if (FAILED(hr))
-		return;
-
 	Texture* texture = g_texturePool->GetTextureByPath("Assets/Environment/environment.dds");
 	if (!texture)
 	{
 		texture = g_texturePool->CreateNewTexture();
 		texture->SetType(CubeMap);
 		texture->SetPath("Assets/Environment/environment.dds");
-		texture->SetWidth(1024);
-		texture->SetHeight(1024);
+		texture->SetWidth(1200);
+		texture->SetHeight(1200);
 		texture->SetGrayscale(false);
 		texture->SetID3D11ShaderResourceView(m_environmentSRV);
 	}
@@ -125,9 +119,4 @@ void Skybox::Deserialize()
 ID3D11ShaderResourceView* Skybox::GetEnvironmentTexture() const
 {
 	return m_environmentSRV;
-}
-
-ID3D11ShaderResourceView* Skybox::GetIrradianceTexture() const
-{
-	return m_irradianceSRV;
 }

@@ -66,7 +66,6 @@ Renderer::Renderer()
 	m_timer = nullptr;
 	m_camera = nullptr;
 	m_texEnvironment = nullptr;
-	m_texIrradiance = nullptr;
 	m_lineRenderer = nullptr;
 	m_directionalLight = nullptr;
 	m_nearPlane = 0.0;
@@ -380,16 +379,11 @@ void Renderer::DeferredPass()
 	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
 	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(3)); // material
 	m_texArrayDeferredPass.push_back(m_texNoiseMap->GetID3D11ShaderResourceView());
+
 	if (m_skybox)
-	{
 		m_texEnvironment = m_skybox->GetEnvironmentTexture();
-		m_texIrradiance = m_skybox->GetIrradianceTexture();
-	}
 	else
-	{
 		m_texEnvironment = nullptr;
-		m_texIrradiance = nullptr;
-	}
 
 	// deferred rendering
 	m_shaderDeferred->Render(
@@ -403,8 +397,7 @@ void Renderer::DeferredPass()
 		m_lightsPoint,
 		m_camera,
 		m_texArrayDeferredPass,
-		m_texEnvironment,
-		m_texIrradiance
+		m_texEnvironment
 	);
 }
 
