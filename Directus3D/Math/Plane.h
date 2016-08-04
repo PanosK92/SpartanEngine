@@ -33,15 +33,15 @@ namespace Directus
 		{
 		public:
 			Plane();
-			Plane(Vector3 normal, float d);
-			Plane(Vector3 a, Vector3 b, Vector3 c);
+			Plane(const Vector3& normal, float d);
+			Plane(const Vector3& a, const Vector3& b, const Vector3& c);
 			~Plane();
 
 			void Normalize();
-			static Plane Normalize(Plane plane);
+			static Plane Normalize(const Plane& plane);
 
-			float DotCoordinate(Vector3 v);
-			static float DotCoordinate(Plane p, Vector3 v);
+			float DotCoordinate(const Vector3& v);
+			static float DotCoordinate(const Plane& p, const Vector3& v);
 
 			float d;
 			Vector3 normal;

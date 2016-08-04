@@ -49,28 +49,28 @@ public:
 	------------------------------------------------------------------------------*/
 	Directus::Math::Vector3 GetPosition();
 	Directus::Math::Vector3 GetPositionLocal();
-	void SetPosition(Directus::Math::Vector3 position);
-	void SetPositionLocal(Directus::Math::Vector3 position);
+	void SetPosition(const Directus::Math::Vector3& position);
+	void SetPositionLocal(const Directus::Math::Vector3& position);
 
 	/*------------------------------------------------------------------------------
 									[ROTATION]
 	------------------------------------------------------------------------------*/
 	Directus::Math::Quaternion GetRotation();
 	Directus::Math::Quaternion GetRotationLocal();
-	void SetRotation(Directus::Math::Quaternion rotation);
-	void SetRotationLocal(Directus::Math::Quaternion q);
+	void SetRotation(const Directus::Math::Quaternion& rotation);
+	void SetRotationLocal(const Directus::Math::Quaternion& rotation);
 
 	/*------------------------------------------------------------------------------
 									[SCALE]
 	------------------------------------------------------------------------------*/
 	Directus::Math::Vector3 GetScale();
 	Directus::Math::Vector3 GetScaleLocal();
-	void SetScale(Directus::Math::Vector3 scale);
-	void SetScaleLocal(Directus::Math::Vector3 scale);
+	void SetScale(const Directus::Math::Vector3& scale);
+	void SetScaleLocal(const Directus::Math::Vector3& scale);
 
 	//= TRANSLATION/ROTATION ========================================================
-	void Translate(Directus::Math::Vector3 delta);
-	void Rotate(Directus::Math::Quaternion delta);
+	void Translate(const Directus::Math::Vector3& delta);
+	void Rotate(const Directus::Math::Quaternion& delta);
 
 	/*------------------------------------------------------------------------------
 									[DIRECTION]
@@ -100,7 +100,7 @@ public:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/
-	void LookAt(Directus::Math::Vector3 v);
+	void LookAt(const Directus::Math::Vector3& v);
 	Directus::Math::Matrix GetWorldMatrix();
 	void MakeDirty();
 	GameObject* GetGameObject();

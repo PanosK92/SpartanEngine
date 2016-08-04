@@ -69,7 +69,7 @@ public:
 	void SetUseGravity(bool use);
 	bool GetUseGravity() const;
 	Directus::Math::Vector3 GetGravity() const;
-	void SetGravity(Directus::Math::Vector3 acceleration);
+	void SetGravity(const Directus::Math::Vector3& acceleration);
 	//======================================================
 
 	//= KINEMATIC ==========================================
@@ -77,31 +77,31 @@ public:
 	bool GetKinematic() const;
 
 	//= VELOCITY/FORCE/TORQUE =======================================
-	void SetLinearVelocity(Directus::Math::Vector3 velocity);
-	void SetAngularVelocity(Directus::Math::Vector3 velocity);
-	void ApplyForce(Directus::Math::Vector3 force, ForceMode mode);
-	void ApplyForceAtPosition(Directus::Math::Vector3 force, Directus::Math::Vector3 position, ForceMode mode);
-	void ApplyTorque(Directus::Math::Vector3 torque, ForceMode mode);
+	void SetLinearVelocity(const Directus::Math::Vector3& velocity);
+	void SetAngularVelocity(const Directus::Math::Vector3& velocity);
+	void ApplyForce(const Directus::Math::Vector3& force, ForceMode mode);
+	void ApplyForceAtPosition(const Directus::Math::Vector3& force, Directus::Math::Vector3 position, ForceMode mode);
+	void ApplyTorque(const Directus::Math::Vector3& torque, ForceMode mode);
 
 	//= POSITION LOCK =================================
 	void SetPositionLock(bool lock);
-	void SetPositionLock(Directus::Math::Vector3 lock);
+	void SetPositionLock(const Directus::Math::Vector3& lock);
 	Directus::Math::Vector3 GetPositionLock() const;
 	//=================================================
 
 	//= ROTATION LOCK =================================
 	void SetRotationLock(bool lock);
-	void SetRotationLock(Directus::Math::Vector3 lock);
+	void SetRotationLock(const Directus::Math::Vector3& lock);
 	Directus::Math::Vector3 GetRotationLock();
 	//=================================================
 
 	//= POSITION ============================================
 	Directus::Math::Vector3 GetPosition();
-	void SetPosition(Directus::Math::Vector3 position);
+	void SetPosition(const Directus::Math::Vector3& position);
 
 	//= ROTATION ============================================
 	Directus::Math::Quaternion GetRotation();
-	void SetRotation(Directus::Math::Quaternion rotation);
+	void SetRotation(const Directus::Math::Quaternion& rotation);
 
 	//= MISC ================================================
 	void SetCollisionShape(btCollisionShape* shape);
@@ -111,7 +111,7 @@ public:
 private:
 	//= COLLIDER ================================================
 	Directus::Math::Vector3 GetColliderScale();
-	void SetColliderScale(Directus::Math::Vector3 scale);
+	void SetColliderScale(const Directus::Math::Vector3& scale);
 	Directus::Math::Vector3 GetColliderCenter();
 
 	//= HELPER FUNCTIONS ========================================

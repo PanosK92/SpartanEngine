@@ -60,10 +60,7 @@ namespace Directus
 				this->z = z;
 			}
 
-			Vector3 DegreesToRadians(Vector3 v) const
-			{
-				return DegreesToRadians(v.x, v.y, v.z);
-			}
+			Vector3 DegreesToRadians(const Vector3& v) const { return DegreesToRadians(v.x, v.y, v.z); }
 
 			static Vector3 DegreesToRadians(float x, float y, float z)
 			{
@@ -74,10 +71,7 @@ namespace Directus
 				return Vector3(x, y, z);
 			}
 
-			static Vector3 RadiansToDegrees(Vector3 v)
-			{
-				return RadiansToDegrees(v.x, v.y, v.z);
-			}
+			static Vector3 RadiansToDegrees(const Vector3& v) { return RadiansToDegrees(v.x, v.y, v.z); }
 
 			static Vector3 RadiansToDegrees(float x, float y, float z)
 			{
@@ -89,12 +83,9 @@ namespace Directus
 			}
 
 			// Normalize vector
-			Vector3 Normalize() const
-			{
-				return Normalize(*this);
-			}
+			Vector3 Normalize() const { return Normalize(*this); }
 
-			static Vector3 Normalize(Vector3 v)
+			static Vector3 Normalize(const Vector3& v)
 			{
 				float factor = Length(v, Vector3(0, 0, 0));
 				factor = 1.0f / factor;
@@ -102,13 +93,10 @@ namespace Directus
 			}
 
 			// Calculate dot product
-			static float Dot(Vector3 v1, Vector3 v2)
-			{
-				return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
-			}
+			static float Dot(const Vector3& v1, const Vector3& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
 
 			// Calculate cross product
-			static Vector3 Cross(Vector3 v1, Vector3 v2)
+			static Vector3 Cross(const Vector3& v1, const Vector3& v2)
 			{
 				float x = v1.y * v2.z - v2.y * v1.z;
 				float y = -(v1.x * v2.z - v2.x * v1.z);
@@ -117,15 +105,17 @@ namespace Directus
 				return Vector3(x, y, z);
 			}
 
+			Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
+
 			// Return length
-			static float Length(Vector3 v1, Vector3 v2)
+			static float Length(const Vector3& v1, const Vector3& v2)
 			{
 				float result = LengthSquared(v1, v2);
 				return sqrtf(result);
 			}
 
 			// Return squared length.
-			static float LengthSquared(Vector3 v1, Vector3 v2)
+			static float LengthSquared(const Vector3& v1, const Vector3& v2)
 			{
 				return (v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z);
 			}
@@ -136,77 +126,51 @@ namespace Directus
 				return sqrtf(result);
 			}
 
-			static Vector3 Transform(Vector3 vector, Matrix matrix);
+			static Vector3 Transform(const Vector3& vector, const Matrix& matrix);
 
-			static Vector3 QuaternionToEuler(Quaternion quaternion);
+			Vector3 Reciprocal() const { return Vector3(1, 1, 1) / Vector3(x, y, z); }
+			Vector3 Absolute() const { return Vector3(abs(x), abs(y), abs(z)); }
+			float Volume() const { return x * y * z; }
 
-			Vector3 Reciprocal()
-			{
-				return Vector3(1, 1, 1) / Vector3(x, y, z);
-			}
+			std::string ToString() const;
 
-			// Return absolute vector
-			Vector3 Absolute() const
-			{
-				return Vector3(abs(x), abs(y), abs(z));
-			}
-
-			// Return vector's volume
-			float Volume() const
-			{
-				return x * y * z;
-			}
-
-			std::string ToString();
-
-			/*------------------------------------------------------------------------------
-											[MULTIPLICATION]
-			------------------------------------------------------------------------------*/
-			Vector3 operator*(const Vector3& b)
+			//= MULTIPLICATION =============================================================
+			Vector3 operator*(const Vector3& b) const
 			{
 				return Vector3(
-					this->x * b.x,
-					this->y * b.y,
-					this->z * b.z
-				);
-			}
-
-			Vector3 operator*(const Quaternion& b);
-
-			Vector3 operator*(const float value)
-			{
-				return Vector3(
-					this->x * value,
-					this->y * value,
-					this->z * value
+					x * b.x,
+					y * b.y,
+					z * b.z
 				);
 			}
 
 			void operator*=(const Vector3& b)
 			{
-				this->x *= b.x;
-				this->y *= b.y;
-				this->z *= b.z;
+				x *= b.x;
+				y *= b.y;
+				z *= b.z;
+			}
+
+			Vector3 operator*(const float value) const
+			{
+				return Vector3(
+					x * value,
+					y * value,
+					z * value
+				);
 			}
 
 			void operator*=(const float value)
 			{
-				this->x *= value;
-				this->y *= value;
-				this->z *= value;
+				x *= value;
+				y *= value;
+				z *= value;
 			}
 
-			void operator*=(const Quaternion& q)
-			{
-				Vector3 result = Vector3(x, y, z) * q;
-				this->x = result.x;
-				this->y = result.y;
-				this->z = result.z;
-			}
+			void operator*=(const Quaternion& q);
+			//==============================================================================
 
-			/*------------------------------------------------------------------------------
-											[ADDITION]
-			------------------------------------------------------------------------------*/
+			//= ADDITION ===================================================================
 			Vector3 operator+(const Vector3& b) const
 			{
 				return Vector3(
@@ -238,10 +202,9 @@ namespace Directus
 				this->y += value;
 				this->z += value;
 			}
+			//==============================================================================
 
-			/*------------------------------------------------------------------------------
-											[SUBTRACTION]
-			------------------------------------------------------------------------------*/
+			//= SUBTRACTION =============================================================
 			Vector3 operator-(const Vector3& b) const
 			{
 				return Vector3(
@@ -266,10 +229,9 @@ namespace Directus
 				this->y -= b.y;
 				this->z -= b.z;
 			}
+			//==============================================================================
 
-			/*------------------------------------------------------------------------------
-											[DIVISION]
-			------------------------------------------------------------------------------*/
+			//= DIVISION =============================================================
 			Vector3 operator/(const Vector3& b)
 			{
 				return Vector3(
@@ -294,11 +256,18 @@ namespace Directus
 				this->y /= b.y;
 				this->z /= b.z;
 			}
+			//==============================================================================
 
-			/*------------------------------------------------------------------------------
-												[COMPARISON]
-			------------------------------------------------------------------------------*/
+			//= COMPARISON =============================================================
 			bool operator==(const Vector3& b)
+			{
+				if (x == b.x && y == b.y && z == b.z)
+					return true;
+
+				return false;
+			}
+
+			bool operator==(const Vector3& b) const
 			{
 				if (x == b.x && y == b.y && z == b.z)
 					return true;
@@ -313,6 +282,15 @@ namespace Directus
 
 				return false;
 			}
+
+			bool operator!=(const Vector3& b) const
+			{
+				if (x != b.x || y != b.y || z != b.z)
+					return true;
+
+				return false;
+			}
+			//==============================================================================
 
 			float x;
 			float y;
@@ -329,5 +307,7 @@ namespace Directus
 			static const Vector3 Infinity;
 			static const Vector3 InfinityNeg;
 		};
+
+		inline __declspec(dllexport) Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
 	}
 }

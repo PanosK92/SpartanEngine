@@ -37,12 +37,12 @@ namespace Directus
 			0, 0, 0, 1
 		);
 
-		Matrix Matrix::CreateScale(Vector3 scale)
+		Matrix Matrix::CreateScale(const Vector3& scale)
 		{
 			return CreateScale(scale.x, scale.y, scale.z);
 		}
 
-		Matrix Matrix::CreateTranslation(Vector3 position)
+		Matrix Matrix::CreateTranslation(const Vector3& position)
 		{
 			return Matrix(
 				1, 0, 0, 0,
@@ -52,7 +52,7 @@ namespace Directus
 			);
 		}
 
-		Matrix Matrix::CreateLookAtLH(Vector3 eye, Vector3 at, Vector3 up)
+		Matrix Matrix::CreateLookAtLH(const Vector3& eye, const Vector3& at, const Vector3& up)
 		{
 			Vector3 zaxis = Vector3::Normalize(at - eye);
 			Vector3 xaxis = Vector3::Normalize(Vector3::Cross(up, zaxis));

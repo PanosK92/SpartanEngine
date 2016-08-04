@@ -133,15 +133,15 @@ Vector3 Transform::GetPositionLocal()
 	return m_positionLocal;
 }
 
-void Transform::SetPosition(Vector3 position)
+void Transform::SetPosition(const Vector3& position)
 {
-	if (HasParent()) // world to local conversion
-		position = Vector3::Transform(position, GetParent()->GetWorldMatrix().Inverse());
-
-	SetPositionLocal(position);
+	if (HasParent()) 
+		SetPositionLocal(Vector3::Transform(position, GetParent()->GetWorldMatrix().Inverse())); // world to local conversion
+	else
+		SetPositionLocal(position);
 }
 
-void Transform::SetPositionLocal(Vector3 position)
+void Transform::SetPositionLocal(const Vector3& position)
 {
 	if (m_positionLocal == position)
 		return;
@@ -165,7 +165,7 @@ Quaternion Transform::GetRotationLocal()
 	return m_rotationLocal;
 }
 
-void Transform::SetRotation(Quaternion rotation)
+void Transform::SetRotation(const Quaternion& rotation)
 {
 	if (!HasParent())
 		SetRotationLocal(rotation);
@@ -173,7 +173,7 @@ void Transform::SetRotation(Quaternion rotation)
 		SetRotationLocal(GetParent()->GetRotation().Conjugate() * rotation); // world to local
 }
 
-void Transform::SetRotationLocal(Quaternion rotation)
+void Transform::SetRotationLocal(const Quaternion& rotation)
 {
 	if (m_rotationLocal == rotation)
 		return;
@@ -196,7 +196,7 @@ Vector3 Transform::GetScaleLocal()
 	return m_scaleLocal;
 }
 
-void Transform::SetScale(Vector3 scale)
+void Transform::SetScale(const Vector3& scale)
 {
 	Vector3 localScale = scale;
 
@@ -206,7 +206,7 @@ void Transform::SetScale(Vector3 scale)
 	SetScaleLocal(localScale);
 }
 
-void Transform::SetScaleLocal(Vector3 scale)
+void Transform::SetScaleLocal(const Vector3& scale)
 {
 	if (m_scaleLocal == scale)
 		return;
@@ -216,7 +216,7 @@ void Transform::SetScaleLocal(Vector3 scale)
 }
 
 //= TRANSLATION/ROTATION ========================================================
-void Transform::Translate(Vector3 delta)
+void Transform::Translate(const Vector3& delta)
 {
 	Vector3 position;
 
@@ -228,7 +228,7 @@ void Transform::Translate(Vector3 delta)
 	SetPositionLocal(position);
 }
 
-void Transform::Rotate(Quaternion delta)
+void Transform::Rotate(const Quaternion& delta)
 {
 	Quaternion rotation;
 	
@@ -434,7 +434,7 @@ string Transform::GetID()
 	return g_gameObject->GetID();
 }
 
-void Transform::LookAt(Vector3 v)
+void Transform::LookAt(const Vector3& v)
 {
 	m_lookAt = v;
 }

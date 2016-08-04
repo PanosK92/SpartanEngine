@@ -217,7 +217,7 @@ Vector3 RigidBody::GetGravity() const
 	return m_gravity;
 }
 
-void RigidBody::SetGravity(Vector3 acceleration)
+void RigidBody::SetGravity(const Vector3& acceleration)
 {
 	m_gravity = acceleration;
 	AddBodyToWorld();
@@ -236,7 +236,7 @@ bool RigidBody::GetKinematic() const
 //=======================================================================
 
 //= FORCE/TORQUE ========================================================
-void RigidBody::SetLinearVelocity(Vector3 velocity)
+void RigidBody::SetLinearVelocity(const Vector3& velocity)
 {
 	if (!m_rigidBody)
 		return;
@@ -246,7 +246,7 @@ void RigidBody::SetLinearVelocity(Vector3 velocity)
 		Activate();
 }
 
-void RigidBody::SetAngularVelocity(Directus::Math::Vector3 velocity)
+void RigidBody::SetAngularVelocity(const Vector3& velocity)
 {
 	if (!m_rigidBody)
 		return;
@@ -256,7 +256,7 @@ void RigidBody::SetAngularVelocity(Directus::Math::Vector3 velocity)
 		Activate();
 }
 
-void RigidBody::ApplyForce(Vector3 force, ForceMode mode)
+void RigidBody::ApplyForce(const Vector3& force, ForceMode mode)
 {
 	Activate();
 
@@ -266,7 +266,7 @@ void RigidBody::ApplyForce(Vector3 force, ForceMode mode)
 		m_rigidBody->applyCentralImpulse(ToBtVector3(force));
 }
 
-void RigidBody::ApplyForceAtPosition(Vector3 force, Vector3 position, ForceMode mode)
+void RigidBody::ApplyForceAtPosition(const Vector3& force, Vector3 position, ForceMode mode)
 {
 	Activate();
 
@@ -276,7 +276,7 @@ void RigidBody::ApplyForceAtPosition(Vector3 force, Vector3 position, ForceMode 
 		m_rigidBody->applyImpulse(ToBtVector3(force), ToBtVector3(position));
 }
 
-void RigidBody::ApplyTorque(Vector3 torque, ForceMode mode)
+void RigidBody::ApplyTorque(const Vector3& torque, ForceMode mode)
 {
 	Activate();
 
@@ -296,7 +296,7 @@ void RigidBody::SetPositionLock(bool lock)
 		SetPositionLock(Vector3::Zero);
 }
 
-void RigidBody::SetPositionLock(Vector3 lock)
+void RigidBody::SetPositionLock(const Vector3& lock)
 {
 	m_positionLock = lock;
 
@@ -317,7 +317,7 @@ void RigidBody::SetRotationLock(bool lock)
 		SetRotationLock(Vector3::Zero);
 }
 
-void RigidBody::SetRotationLock(Vector3 lock)
+void RigidBody::SetRotationLock(const Vector3& lock)
 {
 	m_rotationLock = lock;
 	
@@ -337,7 +337,7 @@ Vector3 RigidBody::GetPosition()
 	return m_rigidBody ? ToVector3(m_rigidBody->getWorldTransform().getOrigin()) : Vector3::Zero;
 }
 
-void RigidBody::SetPosition(Vector3 position)
+void RigidBody::SetPosition(const Vector3& position)
 {
 	if (!m_rigidBody)
 		return;
@@ -356,7 +356,7 @@ Quaternion RigidBody::GetRotation()
 	return m_rigidBody ? ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) : Quaternion::Identity;
 }
 
-void RigidBody::SetRotation(Quaternion rotation)
+void RigidBody::SetRotation(const Quaternion& rotation)
 {
 	if (!m_rigidBody)
 		return;
@@ -400,7 +400,7 @@ Vector3 RigidBody::GetColliderScale()
 	return colliderComp ? colliderComp->GetScale() : Vector3::Zero;
 }
 
-void RigidBody::SetColliderScale(Vector3 scale)
+void RigidBody::SetColliderScale(const Vector3& scale)
 {
 	Collider* colliderComp = g_gameObject->GetComponent<Collider>();
 
