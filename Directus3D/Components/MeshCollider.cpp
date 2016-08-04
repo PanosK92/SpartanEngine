@@ -64,6 +64,11 @@ void MeshCollider::Initialize()
 	m_rigidBody = g_gameObject->GetComponent<RigidBody>();
 }
 
+void MeshCollider::Start()
+{
+
+}
+
 void MeshCollider::Remove()
 {
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();

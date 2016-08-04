@@ -52,6 +52,11 @@ void Camera::Initialize()
 	CalculateProjectionMatrix();
 }
 
+void Camera::Start()
+{
+
+}
+
 void Camera::Remove()
 {
 

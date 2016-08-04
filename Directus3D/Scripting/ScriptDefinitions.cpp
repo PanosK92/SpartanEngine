@@ -231,6 +231,7 @@ void ScriptDefinitions::RegisterRigidBody()
 void ScriptDefinitions::RegisterMathHelper()
 {
 	m_scriptEngine->RegisterGlobalFunction("float Lerp(float, float, float)", asFUNCTIONPR(Lerp, (float, float, float), float), asCALL_CDECL);
+	m_scriptEngine->RegisterGlobalFunction("float Abs(float)", asFUNCTIONPR(Abs, (float), float), asCALL_CDECL);
 }
 
 /*------------------------------------------------------------------------------

@@ -108,6 +108,11 @@ void RigidBody::Initialize()
 	AddBodyToWorld();
 }
 
+void RigidBody::Start()
+{
+
+}
+
 void RigidBody::Remove()
 {
 	g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody);

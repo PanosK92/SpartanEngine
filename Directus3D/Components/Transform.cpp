@@ -55,6 +55,11 @@ void Transform::Initialize()
 
 }
 
+void Transform::Start()
+{
+
+}
+
 void Transform::Remove()
 {
 

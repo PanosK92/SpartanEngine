@@ -13,6 +13,7 @@ public:
 	~LineRenderer();
 
 	virtual void Initialize();
+	virtual void Start();
 	virtual void Remove();
 	virtual void Update();
 	virtual void Serialize();

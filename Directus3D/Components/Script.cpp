@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../IO/FileHelper.h"
 #include "../Core/Globals.h"
+#include "../Core/Settings.h"
 //===========================
 
 //= NAMESPACES =====
@@ -48,6 +49,11 @@ void Script::Initialize()
 
 }
 
+void Script::Start()
+{
+
+}
+
 void Script::Remove()
 {
 
@@ -55,6 +61,9 @@ void Script::Remove()
 
 void Script::Update()
 {
+	if (GET_ENGINE_MODE == Editor_Stop || GET_ENGINE_MODE == Editor_Pause)
+		return;
+
 	if (m_scriptInstance->IsInstantiated())
 		m_scriptInstance->ExecuteUpdate();
 }
