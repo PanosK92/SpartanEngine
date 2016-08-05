@@ -12,12 +12,13 @@ class FirstPersonMovement
 	FirstPersonMovement(GameObject @obj)
 	{
 		@gameobject = obj;
+		@transform = gameobject.GetTransform();
 	}
 	
 	// Use this for initialization
 	void Start()
 	{
-		@transform = gameobject.GetTransform();
+		
 	}
 
 	// Update is called once per frame
@@ -42,10 +43,7 @@ class FirstPersonMovement
 		// Apply some drag
 		movementSpeed *= movementDeacceleration;
 		
-		// Update the current position of the transform
-		Vector3 currentPos = transform.GetPositionLocal() + movementSpeed * time.GetDeltaTime();
-		
 		// Update the transform's position
-		transform.SetPositionLocal(currentPos);
+		transform.Translate(movementSpeed * time.GetDeltaTime());
 	}
 }

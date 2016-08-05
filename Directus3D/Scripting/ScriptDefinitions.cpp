@@ -204,6 +204,8 @@ void ScriptDefinitions::RegisterTransform()
 	m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetParent()", asMETHOD(Transform, GetParent), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByIndex(int)", asMETHOD(Transform, GetChildByIndex), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Transform", "GameObject &GetGameObject()", asMETHOD(Transform, GetGameObject), asCALL_THISCALL);
+	m_scriptEngine->RegisterObjectMethod("Transform", "void Translate(const Vector3& in)", asMETHOD(Transform, Translate), asCALL_THISCALL);
+	m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in)", asMETHOD(Transform, Rotate), asCALL_THISCALL);
 }
 
 /*------------------------------------------------------------------------------

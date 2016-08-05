@@ -35,6 +35,7 @@ public:
 
 	void Initialize();
 	void Update();
+	void Reset();
 
 	float GetDeltaTime() const;
 	float GetDeltaTimeMs() const;

@@ -133,10 +133,7 @@ void Transform::UpdateWorldTransform()
 
 	// update children
 	for (auto i = 0; i < m_children.size(); i++)
-	{
-		if (m_children[i])
-			m_children[i]->MakeDirty();
-	}
+		if (m_children[i]) m_children[i]->MakeDirty();
 }
 
 /*------------------------------------------------------------------------------
@@ -228,14 +225,11 @@ void Transform::SetScaleLocal(const Vector3& scale)
 
 	m_scaleLocal = scale;
 
-	// zero scale cause division by zero 
-	// when decomposing the world transform matrix
-	if (m_scaleLocal.x == 0.0f)
-		m_scaleLocal.x = M_EPSILON;
-	if (m_scaleLocal.y == 0.0f)
-		m_scaleLocal.y = M_EPSILON;
-	if (m_scaleLocal.z == 0.0f)
-		m_scaleLocal.z = M_EPSILON;
+	// A scale of 0 will cause a division by zero when 
+	// decomposing the world transform matrix.
+	if (m_scaleLocal.x == 0.0f) m_scaleLocal.x = M_EPSILON;
+	if (m_scaleLocal.y == 0.0f) m_scaleLocal.y = M_EPSILON;
+	if (m_scaleLocal.z == 0.0f) m_scaleLocal.z = M_EPSILON;
 
 	MakeDirty();
 }
@@ -243,14 +237,14 @@ void Transform::SetScaleLocal(const Vector3& scale)
 //= TRANSLATION/ROTATION ========================================================
 void Transform::Translate(const Vector3& delta)
 {
-	Vector3 position;
-
-	if (HasParent())
-		position = m_positionLocal + m_rotationLocal * delta;
+	if (!HasParent())
+	{
+		SetPositionLocal(m_positionLocal + delta);
+	}
 	else
-		position = m_positionLocal + delta;
-
-	SetPositionLocal(position);
+	{
+		SetPositionLocal(m_positionLocal + GetParent()->GetWorldTransform().Inverse() * delta);
+	}
 }
 
 void Transform::Rotate(const Quaternion& delta)
@@ -268,17 +262,17 @@ void Transform::Rotate(const Quaternion& delta)
 
 Vector3 Transform::GetUp()
 {
-	return GetRotationLocal() * Vector3::Up;
+	return GetRotation() * Vector3::Up;
 }
 
 Vector3 Transform::GetForward()
 {
-	return GetRotationLocal() * Vector3::Forward;
+	return GetRotation() * Vector3::Forward;
 }
 
 Vector3 Transform::GetRight()
 {
-	return GetRotationLocal() * Vector3::Right;
+	return GetRotation() * Vector3::Right;
 }
 
 bool Transform::IsRoot()
