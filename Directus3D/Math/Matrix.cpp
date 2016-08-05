@@ -37,11 +37,6 @@ namespace Directus
 			0, 0, 0, 1
 		);
 
-		Matrix Matrix::CreateScale(const Vector3& scale)
-		{
-			return CreateScale(scale.x, scale.y, scale.z);
-		}
-
 		Matrix Matrix::CreateTranslation(const Vector3& position)
 		{
 			return Matrix(

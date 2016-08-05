@@ -30,4 +30,5 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SIGNAL_RENDER_START			5 // Fired when the starts.
 #define SIGNAL_RENDER_END			6 // Fired when the rendering ends.
 #define SIGNAL_PHYSICS_STEP			7 // Fired when the physics get stepped (updated).
+#define SIGNAL_TRANSFORM_UPDATED	8 // Fired when any transform updates.
 //====================================
