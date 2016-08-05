@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusTransform.h"
 #include "Components/Transform.h"
 #include "IO/Log.h"
+#include "Core/Settings.h"
+#include "Signals/Signaling.h"
 //===============================
 
 //= NAMESPACES ================
@@ -149,6 +151,8 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     this->hide();
+
+    CONNECT_TO_SIGNAL(SIGNAL_TRANSFORM_UPDATED, std::bind(&DirectusTransform::Refresh, this));
 }
 
 void DirectusTransform::Reflect(GameObject* gameobject)
@@ -171,35 +175,54 @@ void DirectusTransform::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    SetPosition(m_inspectedTransform->GetPositionLocal());
-    SetRotation(m_inspectedTransform->GetRotationLocal());
-    SetScale(m_inspectedTransform->GetScaleLocal());
+    ReflectPosition();
+    ReflectRotation();
+    ReflectScale();
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusTransform::SetPosition(Vector3 pos)
+void DirectusTransform::Refresh()
 {
+    // When the game is playing give priority to it
+    if (GET_ENGINE_MODE != Editor_Play)
+        return;
+
+    // Do the actual reflection
+    ReflectPosition();
+    ReflectRotation();
+    ReflectScale();
+}
+
+void DirectusTransform::ReflectPosition()
+{
+    if (!m_inspectedTransform)
+        return;
+
+    Vector3 pos = m_inspectedTransform->GetPositionLocal();
     m_posX->SetFromFloat(pos.x);
     m_posY->SetFromFloat(pos.y);
     m_posZ->SetFromFloat(pos.z);
 }
 
-void DirectusTransform::SetRotation(Quaternion rot)
+void DirectusTransform::ReflectRotation()
 {
-    SetRotation(rot.ToEulerAngles());
-}
+    if (!m_inspectedTransform)
+        return;
 
-void DirectusTransform::SetRotation(Vector3 rot)
-{
+    Vector3 rot = m_inspectedTransform->GetRotationLocal().ToEulerAngles();
     m_rotX->SetFromFloat(rot.x);
     m_rotY->SetFromFloat(rot.y);
     m_rotZ->SetFromFloat(rot.z);
 }
 
-void DirectusTransform::SetScale(Vector3 sca)
+void DirectusTransform::ReflectScale()
 {
+    if (!m_inspectedTransform)
+        return;
+
+    Vector3 sca = m_inspectedTransform->GetScaleLocal();
     m_scaX->SetFromFloat(sca.x);
     m_scaY->SetFromFloat(sca.y);
     m_scaZ->SetFromFloat(sca.z);

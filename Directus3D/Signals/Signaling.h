@@ -33,7 +33,7 @@ struct Slot
 	std::function<void(void)> function;
 };
 
-class Signaling
+class __declspec(dllexport) Signaling
 {
 public:
 	static void Connect(int signalID, std::function<void(void)> function);
@@ -41,6 +41,7 @@ public:
 	static void EmitSignal(int signalID);
 	static void DeleteAll();
 
+private:
 	static std::vector<Slot> m_slots;
 };
 

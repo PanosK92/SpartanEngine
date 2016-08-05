@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/GameObjectPool.h"
 #include "../Core/GameObject.h"
 #include "../IO/Log.h"
+#include "../Signals/Signaling.h"
 //==================================
 
 //= NAMESPACES =====================
@@ -117,7 +118,7 @@ void Transform::UpdateWorldTransform()
 
 	// Calculate the world matrix
 	Matrix localMatrix = scaleLocalMatrix * rotationLocalMatrix * translationLocalMatrix;
-	m_worldMatrix = localMatrix * GetParentMatrix();
+	m_worldMatrix = localMatrix * GetParentWorldTransform();
 
 	// If there is no parent, local space equals world space
 	if (!HasParent())
@@ -126,14 +127,14 @@ void Transform::UpdateWorldTransform()
 		m_rotation = m_rotationLocal;
 		m_scale = m_scaleLocal;
 	}
-	else
-	{// ... decompose world matrix to get world position, rotation and scale
+	else // ... decompose world matrix to get world position, rotation and scale
 		m_worldMatrix.Decompose(m_scale, m_rotation, m_position);
-	}
 
 	// update children
 	for (auto i = 0; i < m_children.size(); i++)
 		if (m_children[i]) m_children[i]->MakeDirty();
+
+	EMIT_SIGNAL(SIGNAL_TRANSFORM_UPDATED);
 }
 
 /*------------------------------------------------------------------------------
@@ -520,7 +521,7 @@ void Transform::GetDescendants(vector<Transform*>& descendants)
 	}
 }
 
-Matrix Transform::GetParentMatrix()
+Matrix Transform::GetParentWorldTransform()
 {
 	if (!HasParent())
 		return Matrix::Identity;

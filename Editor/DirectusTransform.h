@@ -40,13 +40,11 @@ public:
     void Initialize(DirectusCore* directusCore);
 
     void Reflect(GameObject* gameobject);
+    void Refresh();
 
-    void SetPosition(Directus::Math::Vector3 pos);
-
-    void SetRotation(Directus::Math::Quaternion rot);
-    void SetRotation(Directus::Math::Vector3 rot);
-
-    void SetScale(Directus::Math::Vector3 sca);
+    void ReflectPosition();
+    void ReflectRotation();
+    void ReflectScale();
 
 private:
 

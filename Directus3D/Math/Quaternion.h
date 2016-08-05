@@ -137,10 +137,7 @@ namespace Directus
 				return *this;
 			}
 
-			Quaternion operator *(float rhs) const
-			{
-				return Quaternion(w * rhs, x * rhs, y * rhs, z * rhs);
-			}
+			Quaternion operator *(float rhs) const { return Quaternion(w * rhs, x * rhs, y * rhs, z * rhs); }
 
 			bool Quaternion::operator==(const Quaternion& b) const
 			{

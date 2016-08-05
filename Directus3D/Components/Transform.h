@@ -137,5 +137,5 @@ private:
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
 	void GetDescendants(std::vector<Transform*>& descendants);
-	Directus::Math::Matrix GetParentMatrix();
+	Directus::Math::Matrix GetParentWorldTransform();
 };

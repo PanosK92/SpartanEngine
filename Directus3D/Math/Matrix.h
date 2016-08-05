@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========
 #include "MathHelper.h"
+#include "Vector3.h"
+#include "Quaternion.h"
 //=====================
 
 namespace Directus
@@ -30,7 +32,6 @@ namespace Directus
 	namespace Math
 	{
 		class Quaternion;
-		class Vector3;
 
 		class __declspec(dllexport) Matrix
 		{
@@ -53,10 +54,7 @@ namespace Directus
 
 			~Matrix() {}
 
-			Matrix Transpose() const
-			{
-				return Transpose(*this);
-			}
+			Matrix Transpose() const { return Transpose(*this); }
 
 			static Matrix Transpose(const Matrix& matrix)
 			{
@@ -86,10 +84,7 @@ namespace Directus
 			}
 
 
-			Matrix Inverse() const
-			{
-				return Invert(*this);
-			}
+			Matrix Inverse() const { return Invert(*this); }
 
 			static Matrix Invert(const Matrix& matrix)
 			{
@@ -154,6 +149,8 @@ namespace Directus
 				return result;
 			}
 
+			static Matrix CreateScale(float scale) { return CreateScale(scale, scale, scale); }
+			static Matrix CreateScale(const Vector3& scale) { return CreateScale(scale.x, scale.y, scale.z); }
 			static Matrix CreateScale(float scaleX, float scaleY, float ScaleZ)
 			{
 				return Matrix(
@@ -163,13 +160,6 @@ namespace Directus
 					0, 0, 0, 1
 				);
 			}
-
-			static Matrix CreateScale(float scale)
-			{
-				return CreateScale(scale, scale, scale);
-			}
-
-			static Matrix CreateScale(const Vector3& scale);
 
 			static Matrix CreateTranslation(const Vector3& position);
 
