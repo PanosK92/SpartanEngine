@@ -45,6 +45,8 @@ public:
 	virtual void Serialize();
 	virtual void Deserialize();
 
+	void UpdateWorldTransform();
+
 	/*------------------------------------------------------------------------------
 									[POSITION]
 	------------------------------------------------------------------------------*/
@@ -102,7 +104,7 @@ public:
 									[MISC]
 	------------------------------------------------------------------------------*/
 	void LookAt(const Directus::Math::Vector3& v);
-	Directus::Math::Matrix GetWorldMatrix();
+	Directus::Math::Matrix GetWorldTransform();
 	void MakeDirty();
 	GameObject* GetGameObject();
 

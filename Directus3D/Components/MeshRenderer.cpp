@@ -116,7 +116,7 @@ void MeshRenderer::Render(unsigned int indexCount, const Matrix& viewMatrix, con
 	GetMaterial()->GetShader()->Set();
 	GetMaterial()->GetShader()->Render(
 		indexCount,
-		g_transform->GetWorldMatrix(), viewMatrix, projectionMatrix,
+		g_transform->GetWorldTransform(), viewMatrix, projectionMatrix,
 		GetMaterial(), textures, 
 		dicrectionalLight, GetReceiveShadows(), camera
 	);
