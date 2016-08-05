@@ -44,14 +44,16 @@ Script::~Script()
 	SafeDelete(m_scriptInstance);
 }
 
+//= ICOMPONENT ==================================================================
 void Script::Initialize()
 {
-
+	
 }
 
 void Script::Start()
 {
-
+	if (m_scriptInstance->IsInstantiated())
+		m_scriptInstance->ExecuteStart();
 }
 
 void Script::Remove()
@@ -78,6 +80,7 @@ void Script::Deserialize()
 	string scriptPath = Serializer::LoadSTR();
 	AddScript(scriptPath);
 }
+//====================================================================================
 
 bool Script::AddScript(string path)
 {
@@ -96,8 +99,8 @@ bool Script::AddScript(string path)
 		return false;
 	}
 
-	// Execute start function
-	m_scriptInstance->ExecuteStart();
+	if (m_scriptInstance->IsInstantiated())
+		m_scriptInstance->ExecuteStart();
 
 	return true;
 }

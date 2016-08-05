@@ -88,7 +88,7 @@ void Log::Write(const char* text, LogType type)
 	Write(str, type);
 }
 
-void Log::Write(Vector3 vector, LogType type)
+void Log::Write(const Vector3& vector, LogType type)
 {
 	string x = "X: " + to_string(vector.x);
 	string y = "Y: " + to_string(vector.y);
@@ -97,7 +97,7 @@ void Log::Write(Vector3 vector, LogType type)
 	Write(x + ", " + y + ", " + z, type);
 }
 
-void Log::Write(Quaternion quaternion, LogType type)
+void Log::Write(const Quaternion& quaternion, LogType type)
 {
 	string x = "X: " + to_string(quaternion.x);
 	string y = "Y: " + to_string(quaternion.y);

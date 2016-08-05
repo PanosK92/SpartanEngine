@@ -445,6 +445,6 @@ void ScriptDefinitions::RegisterDebug()
 	m_scriptEngine->RegisterGlobalFunction("void Log(string, LogType)", asFUNCTIONPR(Log::Write, (string, Log::LogType), void), asCALL_CDECL);
 	m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)", asFUNCTIONPR(Log::Write, (int, Log::LogType), void), asCALL_CDECL);
 	m_scriptEngine->RegisterGlobalFunction("void Log(float, LogType)", asFUNCTIONPR(Log::Write, (float, Log::LogType), void), asCALL_CDECL);
-	m_scriptEngine->RegisterGlobalFunction("void Log(Vector3, LogType)", asFUNCTIONPR(Log::Write, (Vector3, Log::LogType), void), asCALL_CDECL);
-	m_scriptEngine->RegisterGlobalFunction("void Log(Quaternion, LogType)", asFUNCTIONPR(Log::Write, (Quaternion, Log::LogType), void), asCALL_CDECL);
+	m_scriptEngine->RegisterGlobalFunction("void Log(const Vector3& in, LogType)", asFUNCTIONPR(Log::Write, (const Vector3&, Log::LogType), void), asCALL_CDECL);
+	m_scriptEngine->RegisterGlobalFunction("void Log(const Quaternion& in, LogType)", asFUNCTIONPR(Log::Write, (const Quaternion&, Log::LogType), void), asCALL_CDECL);
 }

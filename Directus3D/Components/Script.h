@@ -33,15 +33,14 @@ public:
 	Script();
 	~Script();
 
-	/*------------------------------------------------------------------------------
-										[INTERFACE]
-	------------------------------------------------------------------------------*/
+	//= ICOMPONENT =============
 	virtual void Initialize();
 	virtual void Start();
 	virtual void Remove();
 	virtual void Update();
 	virtual void Serialize();
 	virtual void Deserialize();
+	//==========================
 
 	bool AddScript(std::string path);
 	std::string GetScriptPath();

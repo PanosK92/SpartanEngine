@@ -145,7 +145,7 @@ void Renderer::Initialize(GraphicsDevice* d3d11device, Timer* timer, PhysicsWorl
 
 void Renderer::Render()
 {
-	EMIT(SIGNAL_RENDER_START);
+	EMIT_SIGNAL(SIGNAL_RENDER_START);
 
 	StartCalculatingStats();
 	AcquirePrerequisites();
@@ -210,7 +210,7 @@ void Renderer::Render()
 
 	StopCalculatingStats();
 
-	EMIT(SIGNAL_RENDER_END);
+	EMIT_SIGNAL(SIGNAL_RENDER_END);
 }
 
 void Renderer::SetResolution(int width, int height)

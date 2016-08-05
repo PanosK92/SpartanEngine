@@ -39,6 +39,11 @@ public:
 	Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice);
 	~Socket();
 
+	//= STATE CONTROL ==============
+	void StartEngine();
+	void StopEngine();
+	//==============================
+
 	//= IO =========================
 	void SetLogger(ILogger* logger);
 	void LoadModel(std::string path);
