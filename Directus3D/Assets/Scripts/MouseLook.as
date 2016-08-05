@@ -19,12 +19,13 @@ class MouseLook
 	MouseLook(GameObject @obj)
 	{
 		@gameobject = obj;
+		@transform = gameobject.GetTransform();
 	}
 	
 	// Use this for initialization
 	void Start()
 	{
-		@transform = gameobject.GetTransform();
+		
 	}
 
 	// Update is called once per frame

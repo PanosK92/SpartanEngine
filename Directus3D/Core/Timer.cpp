@@ -83,6 +83,11 @@ void Timer::Update()
 	}
 }
 
+void Timer::Reset()
+{
+	m_startTime = GetTimeMs();
+}
+
 // Returns them time it took to complete the last frame in seconds 
 float Timer::GetDeltaTime() const
 {
