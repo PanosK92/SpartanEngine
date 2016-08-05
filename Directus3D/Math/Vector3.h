@@ -129,7 +129,6 @@ namespace Directus
 			//========================================================================================================
 
 			static Vector3 Transform(const Vector3& vector, const Matrix& matrix);
-			Vector3 Reciprocal() const { return Vector3(1, 1, 1) / Vector3(x, y, z); }
 			Vector3 Absolute() const { return Vector3(abs(x), abs(y), abs(z)); }
 			float Volume() const { return x * y * z; }
 			std::string ToString() const;
@@ -142,6 +141,11 @@ namespace Directus
 					y * b.y,
 					z * b.z
 				);
+			}
+
+			Vector3 operator*(const Matrix& matrix) const
+			{
+				return Transform(*this, matrix);
 			}
 
 			void operator*=(const Vector3& b)
@@ -232,7 +236,7 @@ namespace Directus
 			//==============================================================================
 
 			//= DIVISION =============================================================
-			Vector3 operator/(const Vector3& b)
+			Vector3 operator/(const Vector3& b) const
 			{
 				return Vector3(
 					this->x / b.x,
@@ -309,5 +313,6 @@ namespace Directus
 		};
 
 		inline __declspec(dllexport) Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
+		inline __declspec(dllexport) Vector3 operator*(const Matrix& lhs, const Vector3& rhs) { return rhs * lhs; }
 	}
 }

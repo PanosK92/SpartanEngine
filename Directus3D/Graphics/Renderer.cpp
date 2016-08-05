@@ -318,7 +318,7 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 		{
 			m_shaderDepth->Render(
 				gameObject->GetComponent<MeshFilter>()->GetIndexCount(),
-				gameObject->GetTransform()->GetWorldMatrix(),
+				gameObject->GetTransform()->GetWorldTransform(),
 				light->GetViewMatrix(),
 				light->GetOrthographicProjectionMatrix()
 			);
@@ -335,7 +335,7 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 		MeshFilter* mesh = gameObject->GetComponent<MeshFilter>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
 		Material* material = meshRenderer->GetMaterial();
-		Matrix worldMatrix = gameObject->GetTransform()->GetWorldMatrix();
+		Matrix worldMatrix = gameObject->GetTransform()->GetWorldTransform();
 		//==========================================================================
 
 		// If something is missing, skip this GameObject

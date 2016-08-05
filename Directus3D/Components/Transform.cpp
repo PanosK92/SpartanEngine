@@ -70,24 +70,7 @@ void Transform::Update()
 	if (!m_isDirty)
 		return;
 
-	// create local translation, rotation and scale matrices
-	Matrix translationLocalMatrix = Matrix::CreateTranslation(m_positionLocal);
-	Matrix rotationLocalMatrix = m_rotationLocal.RotationMatrix();
-	Matrix scaleLocalMatrix = Matrix::CreateScale(m_scaleLocal);
-
-	// calculate the world matrix
-	Matrix localMatrix = scaleLocalMatrix * rotationLocalMatrix * translationLocalMatrix;
-	m_worldMatrix = localMatrix * GetParentMatrix();
-
-	// calculate world position, rotation and scale
-	m_worldMatrix.Decompose(m_scale, m_rotation, m_position);
-
-	// update children
-	for (auto i = 0; i < m_children.size(); i++)
-	{
-		if (m_children[i])
-			m_children[i]->MakeDirty();
-	}
+	UpdateWorldTransform();
 
 	m_isDirty = false;
 }
@@ -125,11 +108,45 @@ void Transform::Deserialize()
 	MakeDirty();
 }
 
+void Transform::UpdateWorldTransform()
+{
+	// Create local translation, rotation and scale matrices
+	Matrix translationLocalMatrix = Matrix::CreateTranslation(m_positionLocal);
+	Matrix rotationLocalMatrix = m_rotationLocal.RotationMatrix();
+	Matrix scaleLocalMatrix = Matrix::CreateScale(m_scaleLocal);
+
+	// Calculate the world matrix
+	Matrix localMatrix = scaleLocalMatrix * rotationLocalMatrix * translationLocalMatrix;
+	m_worldMatrix = localMatrix * GetParentMatrix();
+
+	// If there is no parent, local space equals world space
+	if (!HasParent())
+	{
+		m_position = m_positionLocal;
+		m_rotation = m_rotationLocal;
+		m_scale = m_scaleLocal;
+	}
+	else
+	{// ... decompose world matrix to get world position, rotation and scale
+		m_worldMatrix.Decompose(m_scale, m_rotation, m_position);
+	}
+
+	// update children
+	for (auto i = 0; i < m_children.size(); i++)
+	{
+		if (m_children[i])
+			m_children[i]->MakeDirty();
+	}
+}
+
 /*------------------------------------------------------------------------------
 									[POSITION]
 ------------------------------------------------------------------------------*/
 Vector3 Transform::GetPosition()
 {
+	if (m_isDirty)
+		UpdateWorldTransform();
+
 	return m_position;
 }
 
@@ -140,10 +157,7 @@ Vector3 Transform::GetPositionLocal()
 
 void Transform::SetPosition(const Vector3& position)
 {
-	if (HasParent()) 
-		SetPositionLocal(Vector3::Transform(position, GetParent()->GetWorldMatrix().Inverse())); // world to local conversion
-	else
-		SetPositionLocal(position);
+	SetPositionLocal(!HasParent() ? position : GetParent()->GetWorldTransform().Inverse() * position);
 }
 
 void Transform::SetPositionLocal(const Vector3& position)
@@ -152,7 +166,6 @@ void Transform::SetPositionLocal(const Vector3& position)
 		return;
 
 	m_positionLocal = position;
-
 	MakeDirty();
 }
 
@@ -162,6 +175,9 @@ void Transform::SetPositionLocal(const Vector3& position)
 
 Quaternion Transform::GetRotation()
 {
+	if (m_isDirty)
+		UpdateWorldTransform();
+
 	return m_rotation;
 }
 
@@ -172,10 +188,7 @@ Quaternion Transform::GetRotationLocal()
 
 void Transform::SetRotation(const Quaternion& rotation)
 {
-	if (!HasParent())
-		SetRotationLocal(rotation);
-	else
-		SetRotationLocal(GetParent()->GetRotation().Conjugate() * rotation); // world to local
+	SetRotationLocal(!HasParent() ? rotation : GetParent()->GetRotation().Inverse() * rotation);
 }
 
 void Transform::SetRotationLocal(const Quaternion& rotation)
@@ -184,7 +197,6 @@ void Transform::SetRotationLocal(const Quaternion& rotation)
 		return;
 
 	m_rotationLocal = rotation;
-
 	MakeDirty();
 }
 
@@ -193,6 +205,9 @@ void Transform::SetRotationLocal(const Quaternion& rotation)
 ------------------------------------------------------------------------------*/
 Vector3 Transform::GetScale()
 {
+	if (m_isDirty)
+		UpdateWorldTransform();
+
 	return m_scale;
 }
 
@@ -203,12 +218,7 @@ Vector3 Transform::GetScaleLocal()
 
 void Transform::SetScale(const Vector3& scale)
 {
-	Vector3 localScale = scale;
-
-	if (HasParent()) // world to local
-		localScale = localScale * GetParent()->GetScale().Reciprocal();
-
-	SetScaleLocal(localScale);
+	SetScaleLocal(!HasParent() ? scale : scale / GetParent()->GetScale());
 }
 
 void Transform::SetScaleLocal(const Vector3& scale)
@@ -217,6 +227,16 @@ void Transform::SetScaleLocal(const Vector3& scale)
 		return;
 
 	m_scaleLocal = scale;
+
+	// zero scale cause division by zero 
+	// when decomposing the world transform matrix
+	if (m_scaleLocal.x == 0.0f)
+		m_scaleLocal.x = M_EPSILON;
+	if (m_scaleLocal.y == 0.0f)
+		m_scaleLocal.y = M_EPSILON;
+	if (m_scaleLocal.z == 0.0f)
+		m_scaleLocal.z = M_EPSILON;
+
 	MakeDirty();
 }
 
@@ -236,7 +256,7 @@ void Transform::Translate(const Vector3& delta)
 void Transform::Rotate(const Quaternion& delta)
 {
 	Quaternion rotation;
-	
+
 	if (HasParent())
 		rotation = (delta * m_rotationLocal).Normalize();
 	else
@@ -475,7 +495,7 @@ bool Transform::HasParent()
 /*------------------------------------------------------------------------------
 									[MISC]
 ------------------------------------------------------------------------------*/
-Matrix Transform::GetWorldMatrix()
+Matrix Transform::GetWorldTransform()
 {
 	return m_worldMatrix;
 }
@@ -508,5 +528,5 @@ Matrix Transform::GetParentMatrix()
 	if (!HasParent())
 		return Matrix::Identity;
 
-	return GetParent()->GetWorldMatrix();
+	return GetParent()->GetWorldTransform();
 }
