@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Renderer.h"
 #include "../Loading/ModelLoader.h"
 #include "../IO/FileHelper.h"
+#include "Settings.h"
+#include "../Signals/Signaling.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -51,6 +53,20 @@ Socket::Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, T
 Socket::~Socket()
 {
 }
+
+//= STATE CONTROL ==============
+void Socket::StartEngine()
+{
+	SET_ENGINE_MODE(Editor_Play);
+	EMIT_SIGNAL(SIGNAL_ENGINE_START);
+}
+
+void Socket::StopEngine()
+{
+	SET_ENGINE_MODE(Editor_Stop);
+	EMIT_SIGNAL(SIGNAL_ENGINE_STOP);
+}
+//==============================
 
 //= IO ========================================================================
 void Socket::SetLogger(ILogger* logger)

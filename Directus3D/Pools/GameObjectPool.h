@@ -43,6 +43,7 @@ public:
 	}
 
 	void Initialize(GraphicsDevice* d3d11Device, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
+	void Start();
 	void Update();
 	void Release();
 	void DeleteAll();

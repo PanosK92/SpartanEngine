@@ -85,12 +85,19 @@ void GameObject::Initialize(GraphicsDevice* graphicsDevice, Scene* scene, MeshPo
 	m_scriptEngine = scriptEngine;
 }
 
+void GameObject::Start()
+{
+	// call component Start()
+	for (auto it = m_components.begin(); it != m_components.end(); ++it)
+		it->second->Start();
+}
+
 void GameObject::Update()
 {
 	if (!m_isActive)
 		return;
 
-	// update components
+	// call component Update()
 	for (auto it = m_components.begin(); it != m_components.end(); ++it)
 		it->second->Update();
 }

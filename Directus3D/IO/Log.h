@@ -54,8 +54,8 @@ public:
 	------------------------------------------------------------------------------*/
 	static void Write(std::string text, LogType type);
 	static void Write(const char* text, LogType type);
-	static void Write(Directus::Math::Vector3 vector, LogType type);
-	static void Write(Directus::Math::Quaternion quaternion, LogType type);
+	static void Write(const Directus::Math::Vector3& vector, LogType type);
+	static void Write(const Directus::Math::Quaternion& quaternion, LogType type);
 	static void Write(float value, LogType type);
 	static void Write(int value, LogType type);
 	static void Write(unsigned int value, LogType type);

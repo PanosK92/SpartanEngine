@@ -118,7 +118,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 void Engine::Update()
 {
-	EMIT(SIGNAL_FRAME_START);
+	EMIT_SIGNAL(SIGNAL_FRAME_START);
 
 	m_timer->Update();
 
@@ -148,7 +148,7 @@ void Engine::Update()
 	m_timer->RenderEnd();
 	//===========================================
 
-	EMIT(SIGNAL_FRAME_END);
+	EMIT_SIGNAL(SIGNAL_FRAME_END);
 }
 
 void Engine::Shutdown()

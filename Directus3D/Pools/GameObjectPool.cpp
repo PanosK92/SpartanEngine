@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 #include "../Components/Transform.h"
 #include "../Core/Scene.h"
+#include "../Signals/Signaling.h"
 //==================================
 
 //= NAMESPACES =====
@@ -59,11 +60,20 @@ void GameObjectPool::Initialize(GraphicsDevice* d3d11Device, Scene* scene, MeshP
 	m_shaderPool = shaderPool;
 	m_physics = physics;
 	m_scriptEngine = scriptEngine;
+
+	CONNECT_TO_SIGNAL(SIGNAL_ENGINE_START, std::bind(&GameObjectPool::Start, this));
+}
+
+void GameObjectPool::Start()
+{
+	// call gameobject Start()
+	for (auto it = m_gameObjectPool.begin(); it < m_gameObjectPool.end(); ++it)
+		(*it)->Start();
 }
 
 void GameObjectPool::Update()
 {
-	// update gameobjects
+	// call gameobject Update()
 	for (auto it = m_gameObjectPool.begin(); it < m_gameObjectPool.end(); ++it)
 		(*it)->Update();
 }

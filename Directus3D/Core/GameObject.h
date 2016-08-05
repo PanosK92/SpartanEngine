@@ -36,6 +36,7 @@ public:
 	~GameObject();
 
 	void Initialize(GraphicsDevice* graphicsDevice, Scene* scene, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
+	void Start();
 	void Update();
 
 	std::string GetName();
@@ -52,7 +53,6 @@ public:
 
 	void Serialize();
 	void Deserialize();
-	void Reset();
 
 	//= Components ============================================
 	template <class Type>

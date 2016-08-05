@@ -80,7 +80,7 @@ void DirectusCore::Start()
     if (m_locked)
         return;
 
-    SET_ENGINE_MODE(Editor_Play);
+    m_socket->StartEngine();
     m_timerUpdate->start(0);
     m_timerPerSec->start(1000);
     m_isRunning = true;
@@ -93,7 +93,7 @@ void DirectusCore::Stop()
     if (m_locked)
         return;
 
-    SET_ENGINE_MODE(Editor_Stop);
+    m_socket->StopEngine();
     m_timerUpdate->stop();
     m_timerPerSec->stop();
     m_isRunning = false;

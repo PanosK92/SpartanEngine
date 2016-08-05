@@ -37,16 +37,21 @@ class Signaling
 {
 public:
 	static void Connect(int signalID, std::function<void(void)> function);
+	static void Disconnect(int signalID, std::function<void(void)> function);
 	static void EmitSignal(int signalID);
 	static void DeleteAll();
 
 	static std::vector<Slot> m_slots;
 };
 
-#define CONNECT(signalID, function) Signaling::Connect(signalID, function)
-#define EMIT(signalID) Signaling::EmitSignal(signalID)
+#define CONNECT_TO_SIGNAL(signalID, function)		Signaling::Connect(signalID, function)
+#define DISCONNECT_FROM_SIGNAL(signalID, function)	Signaling::Disconnect(signalID, function)
+#define EMIT_SIGNAL(signalID)						Signaling::EmitSignal(signalID)
 
 /*
-THIS IS HOW I CONNECTED THE LIGHT
-CONNECT(FRAME_START, std::bind(&Light::Test, this));
+HOW TO USE
+==========
+CONNECT_TO_SIGNAL		(SIGNAL_FRAME_START, std::bind(&Class::Function, this));
+DISCONNECT_FROM_SIGNAL	(SIGNAL_FRAME_START, std::bind(&Class::Function, this));
+EMIT_SIGNAL				(SIGNAL_FRAME_START);
 */
