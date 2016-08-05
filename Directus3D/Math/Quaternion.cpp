@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <math.h>
 #include "Vector3.h"
 #include "../Math/Matrix.h"
-#include "../IO/Log.h"
 //=========================
 
 //= NAMESPACES =====
@@ -179,7 +178,7 @@ namespace Directus
 
 		//= TO ===========================================================================
 		// Returns the euler angle representation of the rotation.
-		Vector3 Quaternion::ToEulerAngles()
+		Vector3 Quaternion::ToEulerAngles() const
 		{
 			// Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
 			// Order of rotations: Z first, then X, then Y
@@ -187,31 +186,33 @@ namespace Directus
 
 			if (check < -0.995f)
 			{
-				return Vector3(
+				return Vector3
+				(
 					-90.0f,
 					0.0f,
 					-atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
 				);
 			}
-			else if (check > 0.995f)
+
+			if (check > 0.995f)
 			{
-				return Vector3(
+				return Vector3
+				(
 					90.0f,
 					0.0f,
 					atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
 				);
 			}
-			else
-			{
-				return Vector3(
-					asinf(check) * RAD_TO_DEG,
-					atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * RAD_TO_DEG,
-					atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * RAD_TO_DEG
-				);
-			}
+
+			return Vector3
+			(
+				asinf(check) * RAD_TO_DEG,
+				atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * RAD_TO_DEG,
+				atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * RAD_TO_DEG
+			);
 		}
 
-		Matrix Quaternion::RotationMatrix()
+		Matrix Quaternion::RotationMatrix() const
 		{
 			return Matrix(
 				1.0f - 2.0f * y * y - 2.0f * z * z,
@@ -231,20 +232,6 @@ namespace Directus
 				0.0f,
 				1.0f
 			);
-		}
-		float Quaternion::Yaw()
-		{
-			return ToEulerAngles().y;
-		}
-
-		float Quaternion::Pitch()
-		{
-			return ToEulerAngles().x;
-		}
-
-		float Quaternion::Roll()
-		{
-			return ToEulerAngles().z;
 		}
 		//================================================================================
 
@@ -275,13 +262,12 @@ namespace Directus
 			}
 		}
 
-		bool Quaternion::FromLookRotation(const Vector3& direction, const Vector3& upDirection)
+		bool Quaternion::FromLookRotation(const Vector3& direction, const Vector3& upDirection) const
 		{
 			Quaternion ret;
 			Vector3 forward = direction.Normalized();
 
 			Vector3 v = forward.Cross(upDirection);
-			// If direction & upDirection are parallel and crossproduct becomes zero, use FromRotationTo() fallback
 			if (v.LengthSquared() >= M_EPSILON)
 			{
 				v.Normalize();
@@ -292,47 +278,22 @@ namespace Directus
 			else
 				ret.FromRotationTo(Vector3::Forward, forward);
 
-			/*if (!ret.IsNaN())
-			{
-				(*this) = ret;
-				return true;
-			}
-			else
-				return false;*/
-
 			return true;
 		}
 
-		Quaternion Quaternion::Conjugate()
+		Quaternion Quaternion::Inverse() const
 		{
-			return Quaternion(-x, -y, -z, w);
-		}
+			float lenSquared = LengthSquared();
 
-		float Quaternion::Magnitude()
-		{
-			return sqrtf(w * w + x * x + y * y + z * z);
-		}
+			if (lenSquared == 1.0f)
+				return Conjugate();
 
-		Quaternion Quaternion::Normalize()
-		{
-			Quaternion q = Quaternion(x, y, z, w);
-			float n = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+			if (lenSquared >= M_EPSILON)
+				return Conjugate() * (1.0f / lenSquared);
 
-			if (n != 1.0f)
-			{
-				float magnitude = Magnitude();
-				q.w = q.w / magnitude;
-				q.x = q.x / magnitude;
-				q.y = q.y / magnitude;
-				q.z = q.z / magnitude;
-			}
-
-			return q;
-		}
-
-		Quaternion Quaternion::Inverse()
-		{
-			return Quaternion(-x, -y, -z, w);
+			// impemented this here because Identity (static)
+			// doesnt play well with dllexport
+			return Identity;
 		}
 	}
 }

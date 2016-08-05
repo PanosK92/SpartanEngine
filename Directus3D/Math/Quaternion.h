@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======
+//= INCLUDES ==========
 #include "Vector3.h"
-//==================
+#include "MathHelper.h"
+//=====================
 
 namespace Directus
 {
@@ -53,24 +54,60 @@ namespace Directus
 			//===========================================================================
 
 			//= TO ======================================================================
-			Vector3 ToEulerAngles();
-			Matrix RotationMatrix();
-			float Yaw();
-			float Pitch();
-			float Roll();
+			Vector3 ToEulerAngles() const;
+			Matrix RotationMatrix() const;
+
+			float Yaw() const { return ToEulerAngles().y; }
+			float Pitch() const { return ToEulerAngles().x; }
+			float Roll() const { return ToEulerAngles().z; }
 			//===========================================================================
 
 			void FromRotationTo(const Vector3& start, const Vector3& end);
-			bool FromLookRotation(const Vector3& direction, const Vector3& upDirection);
-			Quaternion Conjugate();
-			float Magnitude();
-			Quaternion Normalize();
-			Quaternion Inverse();
-			
+			bool FromLookRotation(const Vector3& direction, const Vector3& upDirection) const;
+
+			Quaternion Conjugate() const { return Quaternion(w, -x, -y, -z); }
+			float LengthSquared() const { return w * w + x * x + y * y + z * z; }
+
+			void Normalize()
+			{
+				float lenSquared = LengthSquared();
+				if (!Equals(lenSquared, 1.0f) && lenSquared > 0.0f)
+				{
+					float invLen = 1.0f / sqrtf(lenSquared);
+					w *= invLen;
+					x *= invLen;
+					y *= invLen;
+					z *= invLen;
+				}
+			}
+
+			Quaternion Normalized() const
+			{
+				float lenSquared = LengthSquared();
+				if (!Equals(lenSquared, 1.0f) && lenSquared > 0.0f)
+				{
+					float invLen = 1.0f / sqrtf(lenSquared);
+					return *this * invLen;
+				}
+
+				return *this;
+			}
+
+			Quaternion Inverse() const;
 
 			/*------------------------------------------------------------------------------
 										[OPERATORS]
 			------------------------------------------------------------------------------*/
+			Quaternion& operator =(const Quaternion& rhs)
+			{
+				w = rhs.w;
+				x = rhs.x;
+				y = rhs.y;
+				z = rhs.z;
+
+				return *this;
+			}
+
 			Quaternion operator*(const Quaternion& rhs) const
 			{
 				return Quaternion(
@@ -90,7 +127,22 @@ namespace Directus
 				return rhs + 2.0f * (cross1 * w + cross2);
 			}
 
-			bool Quaternion::operator==(const Quaternion& b)
+			Quaternion& operator *=(float rhs)
+			{
+				w *= rhs;
+				x *= rhs;
+				y *= rhs;
+				z *= rhs;
+
+				return *this;
+			}
+
+			Quaternion operator *(float rhs) const
+			{
+				return Quaternion(w * rhs, x * rhs, y * rhs, z * rhs);
+			}
+
+			bool Quaternion::operator==(const Quaternion& b) const
 			{
 				if (x == b.x && y == b.y && z == b.z && w == b.w)
 					return true;
@@ -98,7 +150,7 @@ namespace Directus
 				return false;
 			}
 
-			bool Quaternion::operator!=(const Quaternion& b)
+			bool Quaternion::operator!=(const Quaternion& b) const
 			{
 				if (x != b.x || y != b.y || z != b.z || w != b.w)
 					return true;
@@ -118,5 +170,6 @@ namespace Directus
 		};
 
 		inline __declspec(dllexport) Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
+		inline __declspec(dllexport) Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
 	}
 }

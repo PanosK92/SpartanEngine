@@ -32,6 +32,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class __declspec(dllexport) Transform : public IComponent
 {
 public:
+	enum Space
+	{
+		Local,
+		World
+	};
+
 	Transform();
 	~Transform();
 
@@ -73,7 +79,7 @@ public:
 
 	//= TRANSLATION/ROTATION ========================================================
 	void Translate(const Directus::Math::Vector3& delta);
-	void Rotate(const Directus::Math::Quaternion& delta);
+	void Rotate(const Directus::Math::Quaternion& delta, Space space);
 
 	/*------------------------------------------------------------------------------
 									[DIRECTION]

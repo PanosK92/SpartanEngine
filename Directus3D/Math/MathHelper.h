@@ -23,9 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // It's not used here but it will provide functionality
 // to any code that includes this header.
-//= INCLUDES ====
-#include <math.h> 
-//===============
+//= INCLUDES =====
+#include <cmath>
+#include <limits>
+//================
 
 namespace Directus
 {
@@ -41,39 +42,26 @@ namespace Directus
 		static const float DEG_TO_RAD_2 = PI / 360.0f;
 		static const float RAD_TO_DEG = 180.0f / PI;
 
-		inline __declspec(dllexport) double Cot(float x)
-		{
-			return cos(x) / sin(x);
-		}
+		inline __declspec(dllexport) double Cot(float x) { return cos(x) / sin(x); }
 
-		inline __declspec(dllexport) float CotF(float x)
-		{
-			return cosf(x) / sinf(x);
-		}
+		inline __declspec(dllexport) float CotF(float x) { return cosf(x) / sinf(x); }
 
-		inline __declspec(dllexport) float DegreesToRadians(float degrees)
-		{
-			return degrees * DEG_TO_RAD;
-		}
+		inline __declspec(dllexport) float DegreesToRadians(float degrees){ return degrees * DEG_TO_RAD; }
 
-		inline __declspec(dllexport) float RadiansToDegrees(float radians)
-		{
-			return radians * RAD_TO_DEG;
-		}
+		inline __declspec(dllexport) float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
 
-		inline __declspec(dllexport) float Clamp(float x, float a, float b)
-		{
-			return x < a ? a : (x > b ? b : x);
-		}
+		inline __declspec(dllexport) float Clamp(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
 
-		inline __declspec(dllexport) float Lerp(float a, float b, float f)
-		{
-			return a + (b - a) * f;
-		}
+		// Lerp linearly between to values
+		template <class T, class U>
+		T Lerp(T lhs, T rhs, U t) { return lhs * (1.0 - t) + rhs * t; }
 
-		inline __declspec(dllexport) float Abs(float value)
-		{
-			return fabsf(value);
-		}
+		// Returns the absolute value
+		template <class T>
+		T Abs(T value) { return value >= 0.0 ? value : -value; }
+
+		// Check for equality but allow for a small error
+		template <class T>
+		bool Equals(T lhs, T rhs) { return lhs + std::numeric_limits<T>::epsilon() >= rhs && lhs - std::numeric_limits<T>::epsilon() <= rhs; }
 	}
 }

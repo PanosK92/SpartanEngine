@@ -238,25 +238,28 @@ void Transform::SetScaleLocal(const Vector3& scale)
 void Transform::Translate(const Vector3& delta)
 {
 	if (!HasParent())
-	{
 		SetPositionLocal(m_positionLocal + delta);
-	}
 	else
-	{
 		SetPositionLocal(m_positionLocal + GetParent()->GetWorldTransform().Inverse() * delta);
-	}
 }
 
-void Transform::Rotate(const Quaternion& delta)
+void Transform::Rotate(const Quaternion& delta, Space space)
 {
 	Quaternion rotation;
 
-	if (HasParent())
-		rotation = (delta * m_rotationLocal).Normalize();
-	else
-		rotation = (m_rotationLocal * delta).Normalize();
+	switch (space)
+	{
+	case Local:
+		SetRotationLocal((m_rotationLocal * delta).Normalized());
+		break;
 
-	SetRotationLocal(rotation);
+	case World:
+		if (!HasParent())
+			SetRotationLocal((delta * m_rotationLocal).Normalized());
+		else
+			SetRotationLocal(m_rotationLocal * GetRotation().Inverse() * delta * GetRotation());
+		break;
+	}
 }
 //===============================================================================
 

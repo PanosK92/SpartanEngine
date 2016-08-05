@@ -112,6 +112,11 @@ void ScriptDefinitions::RegisterEnumerations()
 	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Pause", int(Editor_Pause));
 	m_scriptEngine->RegisterEnumValue("EngineMode", "Build_Developer", int(Build_Developer));
 	m_scriptEngine->RegisterEnumValue("EngineMode", "Build_Release", int(Build_Release));
+
+	// Space
+	m_scriptEngine->RegisterEnum("Space");
+	m_scriptEngine->RegisterEnumValue("Space", "Local", int(Transform::Local));
+	m_scriptEngine->RegisterEnumValue("Space", "World", int(Transform::World));
 }
 
 void ScriptDefinitions::RegisterTypes()
@@ -205,7 +210,7 @@ void ScriptDefinitions::RegisterTransform()
 	m_scriptEngine->RegisterObjectMethod("Transform", "Transform &GetChildByIndex(int)", asMETHOD(Transform, GetChildByIndex), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Transform", "GameObject &GetGameObject()", asMETHOD(Transform, GetGameObject), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Transform", "void Translate(const Vector3& in)", asMETHOD(Transform, Translate), asCALL_THISCALL);
-	m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in)", asMETHOD(Transform, Rotate), asCALL_THISCALL);
+	m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in, Space)", asMETHOD(Transform, Rotate), asCALL_THISCALL);
 }
 
 /*------------------------------------------------------------------------------
