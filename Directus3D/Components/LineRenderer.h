@@ -28,10 +28,12 @@ public:
 	unsigned int GetVertexCount() { return m_maxVertices; };
 
 private:
+	void CreateBuffer();
+
 	//= VERTICES ===================	
 	D3D11Buffer* m_vertexBuffer;
 	VertexPositionColor* m_vertices;
-	int m_maxVertices = 10000;
+	int m_maxVertices;
 	int m_vertexIndex;	
 	//==============================
 

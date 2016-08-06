@@ -77,9 +77,9 @@ private:
     DirectusInspector* m_inspector;
     //====================================
 
-    void SetCastShadows();
-    void SetReceiveShadows();
-    void SetMaterial();
+    void ReflectCastShadows();
+    void ReflectReceiveShadows();
+    void ReflectMaterial();
 
 public slots:
     void MapCastShadows();
