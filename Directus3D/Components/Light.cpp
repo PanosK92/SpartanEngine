@@ -173,8 +173,8 @@ void Light::GenerateViewMatrix()
 
 	Vector3 cameraPos = camera->GetTransform()->GetPosition();
 	Vector3 direction = GetDirection();
-	Vector3 position = cameraPos - (g_transform->GetForward() * m_shadowTextureSize * 0.5f); // or center of scene's bounding box
-	Vector3 lookAt = cameraPos + direction;
+	Vector3 position = Vector3(10, 10, 0);//cameraPos - (g_transform->GetForward() * m_shadowTextureSize * 0.5f); // or center of scene's bounding box
+	Vector3 lookAt = Vector3(0, 0, 0);  //cameraPos + direction;
 	Vector3 up = Vector3::Up;
 
 	// Create the view matrix from the three vectors.
@@ -188,7 +188,6 @@ Matrix Light::GetViewMatrix()
 
 void Light::GenerateOrthographicProjectionMatrix(float width, float height, float nearPlane, float farPlane)
 {
-	m_shadowTextureSize = width;
 	m_orthoMatrix = Matrix::CreateOrthographicLH(width, height, nearPlane, farPlane);
 }
 

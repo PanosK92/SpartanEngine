@@ -89,8 +89,8 @@ void DeferredShader::Render(
 	DefaultBuffer* buffer = (DefaultBuffer*)m_constantBuffer->Map();
 
 	// Fill with matrices
-	buffer->worldViewProjection = worlBaseViewProjection.Transpose();
-	buffer->viewProjectionInverse = viewProjection.Inverse().Transpose();
+	buffer->worldViewProjection = worlBaseViewProjection.Transposed();
+	buffer->viewProjectionInverse = viewProjection.Inverse().Transposed();
 	buffer->cameraPosition = Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
 
 	// Fill with directional lights

@@ -54,9 +54,9 @@ namespace Directus
 
 			~Matrix() {}
 
-			Matrix Transpose() const { return Transpose(*this); }
+			Matrix Transposed() const { return Transposed(*this); }
 
-			static Matrix Transpose(const Matrix& matrix)
+			static Matrix Transposed(const Matrix& matrix)
 			{
 				Matrix result;
 

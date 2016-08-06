@@ -94,7 +94,6 @@ private:
 
 	Directus::Math::Matrix m_viewMatrix;
 	Directus::Math::Matrix m_orthoMatrix;
-	float m_shadowTextureSize;
 
 	D3D11RenderTexture* m_depthMap;
 	float m_projectionSize;

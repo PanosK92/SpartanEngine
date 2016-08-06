@@ -71,9 +71,9 @@ void ColorShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& view
 	MiscBufferType* miscBufferType = static_cast<MiscBufferType*>(m_miscBuffer->Map());
 
 	// fill the buffer with the matrices
-	miscBufferType->world = worldMatrix.Transpose();
-	miscBufferType->view = viewMatrix.Transpose();
-	miscBufferType->projection = projectionMatrix.Transpose();
+	miscBufferType->world = worldMatrix.Transposed();
+	miscBufferType->view = viewMatrix.Transposed();
+	miscBufferType->projection = projectionMatrix.Transposed();
 
 	// unmap the buffer and set it in the vertex shader
 	m_miscBuffer->Unmap();
