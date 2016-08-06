@@ -79,7 +79,7 @@ void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspec
     //= GRID ==================================================
     // Row 0 - TITLE
     m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
-    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1, Qt::AlignRight);
 
     // Row 1 - CAST SHADOWS
     m_gridLayout->addWidget(m_castShadowsLabel, 1, 0, 1, 1);

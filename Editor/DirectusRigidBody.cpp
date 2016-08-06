@@ -131,7 +131,7 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
 
     // Row 0 - TITLE
     m_gridLayout->addWidget(m_title, row, 0, 1, 1);
-    m_gridLayout->addWidget(m_optionsButton, 0, 3, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 6, 1, 1, Qt::AlignRight);
     row++;
 
     // Row 1 - MASS

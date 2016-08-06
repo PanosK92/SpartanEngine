@@ -62,7 +62,7 @@ void DirectusScript::Initialize(DirectusCore* directusCore, DirectusInspector* i
     //= GRID ======================================================================
     // Row 0 - TITLE
     m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
-    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1, Qt::AlignRight);
 
     // Row 1 - LINE
     m_gridLayout->addWidget(m_line, 1, 0, 1, 2);

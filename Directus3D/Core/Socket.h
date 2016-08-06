@@ -45,7 +45,7 @@ public:
 	//==============================
 
 	//= IO =========================
-	void SetLogger(ILogger* logger);
+	void SetLogger(std::unique_ptr<ILogger> logger);
 	void LoadModel(std::string path);
 	ImageLoader* GetImageLoader();
 	//==============================

@@ -95,7 +95,7 @@ void DirectusCamera::Initialize(DirectusCore* directusCore, DirectusInspector* i
     //= GRID ======================================================================
     // Row 0
     m_gridLayout->addWidget(m_title, 0, 0, 1, 1);
-    m_gridLayout->addWidget(m_optionsButton, 0, 1, 1, 1);
+    m_gridLayout->addWidget(m_optionsButton, 0, 3, 1, 1, Qt::AlignRight);
 
     // Row 1
     m_gridLayout->addWidget(m_backgroundLabel,          1, 0, 1, 1);

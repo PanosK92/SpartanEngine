@@ -30,7 +30,6 @@ using namespace std;
 DirectusConsole::DirectusConsole(QWidget *parent) : QListWidget(parent)
 {
     m_socket = nullptr;
-    m_engineLogger = nullptr;
 }
 
 void DirectusConsole::Initialize(DirectusCore* directusCore)
@@ -39,8 +38,7 @@ void DirectusConsole::Initialize(DirectusCore* directusCore)
 
     // Create an engineLogger (implements
     // ILogger interface)and pass it to the engine
-    m_engineLogger = new EngineLogger(this);
-    m_socket->SetLogger(m_engineLogger);
+    m_socket->SetLogger(make_unique<EngineLogger>(this));
 }
 
 EngineLogger::EngineLogger(QListWidget* list)

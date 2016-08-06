@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SIGNAL_FRAME_END			4 // Fired when an engine cycle ends.
 #define SIGNAL_RENDER_START			5 // Fired when the starts.
 #define SIGNAL_RENDER_END			6 // Fired when the rendering ends.
-#define SIGNAL_PHYSICS_STEP			7 // Fired when the physics get stepped (updated).
+#define SIGNAL_PHYSICS_STEPPED		7 // Fired when the physics get's stepped (updated).
 #define SIGNAL_TRANSFORM_UPDATED	8 // Fired when any transform updates.
+#define SIGNAL_FORCE_UPDATE_PHYSICS 9 // Forces a step in the physics simulation.
 //====================================

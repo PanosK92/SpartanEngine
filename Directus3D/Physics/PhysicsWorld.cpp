@@ -81,9 +81,9 @@ void PhysicsWorld::Step(float timeStep)
 	if (!m_world)
 		return;
 
-	// Step the physics world
-	EMIT_SIGNAL(SIGNAL_PHYSICS_STEP);
+	// Step the physics world	
 	m_world->stepSimulation(timeStep, 1, 1.0f / m_updatesPerSec);
+	EMIT_SIGNAL(SIGNAL_PHYSICS_STEPPED);
 
 	if (m_debugDrawEnabled)
 		RenderColliders();

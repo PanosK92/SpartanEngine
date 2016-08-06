@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "../IO/Log.h"
-#include "../Core/Globals.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -99,7 +98,12 @@ RigidBody::RigidBody()
 
 RigidBody::~RigidBody()
 {
-	SafeDelete(m_rigidBody);
+	if (!m_rigidBody)
+		return;
+
+	SetCollisionShape(nullptr);
+	delete m_rigidBody;
+	m_rigidBody = nullptr;
 }
 
 //= ICOMPONENT ==========================================================
@@ -126,7 +130,7 @@ void RigidBody::Update()
 		SetRotation(g_transform->GetRotation());
 		SetColliderScale(g_transform->GetScale());
 	}
-	else if(GET_ENGINE_MODE == Editor_Play)
+	else if (GET_ENGINE_MODE == Editor_Play)
 	{
 
 	}
@@ -189,7 +193,7 @@ float RigidBody::GetAngularDrag() const
 	return m_angularDrag;
 }
 
-void RigidBody::SetAngularDrag(float angularDrag) 
+void RigidBody::SetAngularDrag(float angularDrag)
 {
 	m_angularDrag = angularDrag;
 	AddBodyToWorld();
@@ -325,7 +329,7 @@ void RigidBody::SetRotationLock(bool lock)
 void RigidBody::SetRotationLock(const Vector3& lock)
 {
 	m_rotationLock = lock;
-	
+
 	Vector3 rotationFreedom = Vector3(!lock.x, !lock.y, !lock.z);
 	m_rigidBody->setAngularFactor(ToBtVector3(rotationFreedom));
 }
@@ -392,7 +396,7 @@ void RigidBody::ClearForces()
 {
 	if (!m_rigidBody)
 		return;
-	
+
 	m_rigidBody->clearForces();
 }
 
@@ -518,7 +522,7 @@ void RigidBody::UpdateGravity()
 	m_rigidBody->setFlags(flags);
 
 	if (m_useGravity)
-		m_rigidBody->setGravity(world->getGravity());		
+		m_rigidBody->setGravity(world->getGravity());
 	else
 		m_rigidBody->setGravity(btVector3(0.0f, 0.0f, 0.0f));
 }
