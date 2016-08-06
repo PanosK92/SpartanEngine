@@ -342,6 +342,10 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 		if (!mesh || !meshRenderer || !material)
 			continue;
 
+		//= Skip transparent meshes ================================================
+		if (material->GetOpacity() < 1.0f)
+			continue;
+
 		//= Frustrum culling =======================================================
 		Vector3 center = Vector3::Transform(mesh->GetCenter(), worldMatrix);
 		Vector3 extent = mesh->GetExtent() * gameObject->GetTransform()->GetScale();

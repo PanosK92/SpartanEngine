@@ -36,7 +36,7 @@ GBuffer::GBuffer(GraphicsDevice* graphicsDevice)
 	m_textureWidth = 1;
 	m_textureHeight = 1;
 
-	for (int i = 0; i < BUFFER_COUNT; i++)
+	for (auto i = 0; i < BUFFER_COUNT; i++)
 	{
 		m_shaderResourceViewArray.push_back(nullptr);
 		m_renderTargetViewArray.push_back(nullptr);
@@ -49,7 +49,7 @@ GBuffer::~GBuffer()
 	SafeRelease(m_depthStencilView);
 	SafeRelease(m_depthStencilBuffer);
 
-	for (int i = 0; i < BUFFER_COUNT; i++)
+	for (auto i = 0; i < BUFFER_COUNT; i++)
 	{
 		SafeRelease(m_shaderResourceViewArray[i]);
 		SafeRelease(m_renderTargetViewArray[i]);
@@ -59,18 +59,12 @@ GBuffer::~GBuffer()
 
 bool GBuffer::Initialize(int width, int height)
 {
-	D3D11_TEXTURE2D_DESC textureDesc;
-	HRESULT result;
-	D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
-	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-	D3D11_TEXTURE2D_DESC depthBufferDesc;
-	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-
 	// Store the width and height of the render texture.
 	m_textureWidth = width;
 	m_textureHeight = height;
 
 	// Initialize the render target texture description.
+	D3D11_TEXTURE2D_DESC textureDesc;
 	ZeroMemory(&textureDesc, sizeof(textureDesc));
 
 	// Setup the render target texture description.
@@ -87,6 +81,7 @@ bool GBuffer::Initialize(int width, int height)
 	textureDesc.MiscFlags = 0;
 
 	// Create the render target textures.
+	HRESULT result;
 	for (int i = 0; i < BUFFER_COUNT; i++)
 	{
 		result = m_graphicsDevice->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTextureArray[i]);
@@ -97,6 +92,7 @@ bool GBuffer::Initialize(int width, int height)
 	}
 
 	// Setup the description of the render target view.
+	D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
 	renderTargetViewDesc.Format = textureDesc.Format;
 	renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 	renderTargetViewDesc.Texture2D.MipSlice = 0;
@@ -110,6 +106,7 @@ bool GBuffer::Initialize(int width, int height)
 	}
 
 	// Setup the description of the shader resource view.
+	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
 	shaderResourceViewDesc.Format = textureDesc.Format;
 	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
@@ -124,6 +121,7 @@ bool GBuffer::Initialize(int width, int height)
 	}
 
 	// Initialize the description of the depth buffer.
+	D3D11_TEXTURE2D_DESC depthBufferDesc;
 	ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
 
 	// Set up the description of the depth buffer.
@@ -142,11 +140,10 @@ bool GBuffer::Initialize(int width, int height)
 	// Create the texture for the depth buffer using the filled out description.
 	result = m_graphicsDevice->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
 	if (FAILED(result))
-	{
 		return false;
-	}
 
 	// Initailze the depth stencil view description.
+	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
 
 	// Set up the depth stencil view description.
@@ -157,9 +154,7 @@ bool GBuffer::Initialize(int width, int height)
 	// Create the depth stencil view.
 	result = m_graphicsDevice->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
 	if (FAILED(result))
-	{
 		return false;
-	}
 
 	// Setup the viewport for rendering.
 	m_viewport.Width = static_cast<float>(width);

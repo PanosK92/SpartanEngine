@@ -57,6 +57,7 @@ public:
 	void ResetRenderTarget();
 	void ResetViewport();
 	void EnableZBuffer(bool enable);
+	void EnableAlphaBlending(bool enable);
 	bool SetInputLayout(InputLayout inputLayout);
 	void SetCullMode(CullMode cullMode);
 	void SetViewport(int width, int height);

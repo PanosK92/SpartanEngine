@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int main(int argc, char *argv[])
 {
+    QCoreApplication::addLibraryPath("./");
     QApplication a(argc, argv);
     Editor window;
     window.InitializeEngine();

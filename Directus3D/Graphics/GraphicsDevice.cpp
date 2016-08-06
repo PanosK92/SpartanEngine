@@ -77,10 +77,12 @@ void GraphicsDevice::ResetViewport()
 
 void GraphicsDevice::EnableZBuffer(bool enable)
 {
-	if (enable)
-		m_D3D11Device->TurnZBufferOn();
-	else
-		m_D3D11Device->TurnZBufferOff();
+	enable ? m_D3D11Device->TurnZBufferOn() : m_D3D11Device->TurnZBufferOff();
+}
+
+void GraphicsDevice::EnableAlphaBlending(bool enable)
+{
+	enable ? m_D3D11Device->TurnOnAlphaBlending() : m_D3D11Device->TurnOffAlphaBlending();
 }
 
 bool GraphicsDevice::SetInputLayout(InputLayout inputLayout)

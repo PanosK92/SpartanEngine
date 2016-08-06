@@ -44,9 +44,8 @@ void Editor::InitializeEngine()
     DirectusCore* directusCore = ui->directusCore;
 
     // Aqcuire HWND and HINSTANCE
-    #pragma comment(lib, "User32.lib")
     HWND hWnd = (HWND)this->winId();
-    HINSTANCE hInstance = (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE);
+    HINSTANCE hInstance = (HINSTANCE)::GetModuleHandle(NULL);
 
     // Initialize the engine
     directusCore->Initialize(hWnd, hInstance, ui->directusStatsLabel);
