@@ -71,6 +71,8 @@ bool ScriptEngine::Initialize()
 	// Set the message callback to print the human readable messages that the engine gives in case of errors
 	m_scriptEngine->SetMessageCallback(asMETHOD(ScriptEngine, message_callback), this, asCALL_THISCALL);
 
+	m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
+
 	return true;
 }
 

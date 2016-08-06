@@ -64,6 +64,7 @@ GameObject::~GameObject()
 		IComponent* component = it->second;
 		component->Remove();
 		delete component;
+		it = m_components.erase(it);
 	}
 	m_components.clear();
 
