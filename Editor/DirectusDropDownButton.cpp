@@ -39,8 +39,6 @@ void DirectusDropDownButton::Initialize(QWidget* mainWindow)
                 "background-repeat: no-repeat;"
                 "background-position: center;"
                 "background-color: rgba(0,0,0,0);"
-                "margin-left: 100;"
-                "margin-right: 0;"
                 );
 
     connect(this, SIGNAL(pressed()), this, SLOT(ShowContextMenu()));

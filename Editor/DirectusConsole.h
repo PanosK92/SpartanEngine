@@ -38,7 +38,6 @@ public:
 
 private:
     Socket* m_socket;
-    ILogger* m_engineLogger;
 
 signals:
 

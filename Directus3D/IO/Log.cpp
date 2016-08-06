@@ -28,7 +28,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-ILogger* Log::m_logger;
+unique_ptr<ILogger> Log::m_logger;
 map<string, Log::LogType> Log::m_queuedLogs;
 
 void Log::Initialize()
@@ -37,11 +37,12 @@ void Log::Initialize()
 
 void Log::Release()
 {
+	
 }
 
-void Log::SetLogger(ILogger* logger)
+void Log::SetLogger(unique_ptr<ILogger> logger)
 {
-	m_logger = logger;
+	m_logger = move(logger);
 }
 
 /*------------------------------------------------------------------------------

@@ -129,6 +129,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
 
     m_tilingX = new DirectusComboLabelText();
     m_tilingX->Initialize("X");
+    m_tilingX->setStyleSheet("text-aling: right;");
 
     m_tilingY = new DirectusComboLabelText();
     m_tilingY->Initialize("X");
@@ -213,15 +214,15 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_gridLayout->addWidget(m_maskLabel, row, 1, 1, 1);
     row++;
 
-    // Row 14 - REFLECTIVITY
+    // Row 14 - SPECULAR
     m_gridLayout->addWidget(m_specularLabel,            row, 0, 1, 1);
-    m_gridLayout->addWidget(m_specular->GetSlider(),    row, 2, 1, 2);
+    m_gridLayout->addWidget(m_specular->GetSlider(),    row, 1, 1, 3);
     m_gridLayout->addWidget(m_specular->GetLineEdit(),  row, 4, 1, 1);
     row++;
 
     // Row 15 - TILING
     m_gridLayout->addWidget(m_tilingLabel,                  row, 0, 1, 1);
-    m_gridLayout->addWidget(m_tilingX->GetLabelWidget(),    row, 1, 1, 1);
+    m_gridLayout->addWidget(m_tilingX->GetLabelWidget(),    row, 1, 1, 1, Qt::AlignRight);
     m_gridLayout->addWidget(m_tilingX->GetTextWidget(),     row, 2, 1, 1);
     m_gridLayout->addWidget(m_tilingY->GetLabelWidget(),    row, 3, 1, 1);
     m_gridLayout->addWidget(m_tilingY->GetTextWidget(),     row, 4, 1, 1);
@@ -229,7 +230,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
 
     // Row 16 - OFFSET
     m_gridLayout->addWidget(m_offsetLabel,                  row, 0, 1, 1);
-    m_gridLayout->addWidget(m_offsetX->GetLabelWidget(),    row, 1, 1, 1);
+    m_gridLayout->addWidget(m_offsetX->GetLabelWidget(),    row, 1, 1, 1, Qt::AlignRight);
     m_gridLayout->addWidget(m_offsetX->GetTextWidget(),     row, 2, 1, 1);
     m_gridLayout->addWidget(m_offsetY->GetLabelWidget(),    row, 3, 1, 1);
     m_gridLayout->addWidget(m_offsetY->GetTextWidget(),     row, 4, 1, 1);
