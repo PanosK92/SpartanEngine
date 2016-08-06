@@ -30,4 +30,6 @@ approach when it comes to adding features and a state of the art editor. The edi
 
 Dependencies that are not included in the repository: AngelScript, Assimp, Bullet, FreeImage, Qt.
 
+The editor has been build with Visual C++ 2015. You need to install the [Visual C++ 2015 (x86) runtime package] (https://www.microsoft.com/en-us/download/details.aspx?id=48145) to run it.
+
 This project is devoted to my father.
