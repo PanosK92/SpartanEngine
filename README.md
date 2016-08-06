@@ -29,8 +29,8 @@ approach when it comes to adding features and a state of the art editor. The edi
 - Vulkan Renderer.
 
 ### Dependencies
-- Runtime (AngelScript, Assimp, Bullet, FreeImage).
-- Editor ([Visual C++ 2015 (x86) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145)).
+- Runtime: [AngelScript](http://www.angelcode.com/angelscript/), [Assimp](https://github.com/assimp/assimp), [Bullet](https://github.com/bulletphysics/bullet3), [FreeImage](http://freeimage.sourceforge.net/).
+- Editor: [Visual C++ 2015 (x86) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145), [Qt](https://www.qt.io/).
 
 ### License
 - Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
