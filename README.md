@@ -33,7 +33,6 @@ approach when it comes to adding features and a state of the art editor. The edi
 - Editor ([Visual C++ 2015 (x86) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145)).
 
 ### License
-Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
-
+- Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
 
 This project is devoted to my father.
