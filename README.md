@@ -1,6 +1,6 @@
 # Directus3D
-Directus3D is a game engine that strives to be powerful yet simple. This is achieved by prioriziting a coherent and modern codebase design, a minimalistic 
-approach when it comes to adding features and a state of the art editor. The editor is greatly inspired by Unity, it should make the engine feel familiar and pleasurable to use.
+Directus3D is a game engine that strives to be powerful yet simple. This is achieved by prioriziting a coherent and modern design and a minimalistic approach when it comes to adding new features. 
+The editor is greatly inspired by Unity, it should make the engine feel familiar and pleasurable to use.
 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/screenshot.jpg)
 
@@ -9,6 +9,7 @@ approach when it comes to adding features and a state of the art editor. The edi
 - 40+ 3D file formats support.
 - Build as single static or dynamic external library.
 - Component-based game object system.
+- Cross-Platform state of the art editor.
 - D3D11 Renderer.
 - Deferred rendering.
 - Frustum culling.
