@@ -24,7 +24,7 @@ LineRenderer::~LineRenderer()
 
 void LineRenderer::Initialize()
 {
-	CreateBuffer();
+
 }
 
 void LineRenderer::Start()

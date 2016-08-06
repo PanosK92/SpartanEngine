@@ -352,12 +352,11 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 			continue;
 
 		//= Frustrum culling =======================================================
-		Vector3 center = Vector3::Transform(meshFilter->GetCenter(), worldMatrix);
+		Vector3 center = meshFilter->GetCenter() * worldMatrix;
 		Vector3 extent = meshFilter->GetExtent() * gameObject->GetTransform()->GetScale();
 
-		float radius = abs(extent.x);
-		if (abs(extent.y) > radius) radius = abs(extent.y);
-		if (abs(extent.z) > radius) radius = abs(extent.z);
+		float radius = max(abs(extent.x), abs(extent.y));
+		radius = max(radius, abs(extent.z));
 
 		if (m_frustrum->CheckSphere(center, radius) == Outside)
 			continue;
