@@ -132,7 +132,7 @@ void ShaderVariation::Render(int indexCount,
 	if (!directionalLight || !camera)
 		return;
 
-	directionalLight->GenerateOrthographicProjectionMatrix(100, 100, camera->GetNearPlane(), camera->GetFarPlane());
+	directionalLight->GenerateOrthographicProjectionMatrix(40, 40, camera->GetNearPlane(), camera->GetFarPlane());
 	directionalLight->GenerateViewMatrix();
 
 	Matrix world = mWorld;
@@ -148,10 +148,10 @@ void ShaderVariation::Render(int indexCount,
 	{ // this can be done only when needed - tested
 		// map the buffer
 		DefaultBufferType* defaultBufferType = (DefaultBufferType*)m_befaultBuffer->Map();
-		defaultBufferType->mWorld = world.Transpose();
-		defaultBufferType->mWorldView = worldView.Transpose();
-		defaultBufferType->mWorldViewProjection = worldViewProjection.Transpose();
-		defaultBufferType->mLightViewProjection = lightViewProjection.Transpose();
+		defaultBufferType->mWorld = world.Transposed();
+		defaultBufferType->mWorldView = worldView.Transposed();
+		defaultBufferType->mWorldViewProjection = worldViewProjection.Transposed();
+		defaultBufferType->mLightViewProjection = lightViewProjection.Transposed();
 		defaultBufferType->albedoColor = material->GetColorAlbedo();
 		defaultBufferType->tilingUV = material->GetTilingUV();
 		defaultBufferType->offsetUV = material->GetOffsetUV();

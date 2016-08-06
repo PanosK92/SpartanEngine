@@ -127,7 +127,7 @@ namespace Directus
 
 		Quaternion Quaternion::FromRotationMatrix(const Matrix& matrix)
 		{
-			Matrix mTransposed = matrix.Transpose();
+			Matrix mTransposed = matrix.Transposed();
 			Quaternion q;
 
 			float t = mTransposed.m00 + mTransposed.m11 + mTransposed.m22;

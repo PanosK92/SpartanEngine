@@ -73,7 +73,7 @@ void DepthShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& view
 	DefaultBuffer* miscBufferType = static_cast<DefaultBuffer*>(m_defaultBuffer->Map());
 
 	// fill buffer
-	miscBufferType->worldViewProjection = Matrix::Transpose(worldMatrix * viewMatrix * projectionMatrix);
+	miscBufferType->worldViewProjection = Matrix::Transposed(worldMatrix * viewMatrix * projectionMatrix);
 
 	m_defaultBuffer->Unmap(); // unlock the buffer
 	m_defaultBuffer->SetVS(0); // set the buffer in the vertex shader

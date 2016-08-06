@@ -48,7 +48,7 @@ Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 	m_colorAlbedo = false;
 	m_roughnessMultiplier = 1.0f;
 	m_metallicMultiplier = 0.0f;
-	m_occlusionMultiplier = 1.0f;
+	m_occlusionMultiplier = 0.0f;
 	m_normalMultiplier = 0.0f;
 	m_heightMultiplier = 0.0f;
 	m_specularMultiplier = 0.5f;
