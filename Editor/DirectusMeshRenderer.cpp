@@ -126,15 +126,15 @@ void DirectusMeshRenderer::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    SetCastShadows();
-    SetReceiveShadows();
-    SetMaterial();
+    ReflectCastShadows();
+    ReflectReceiveShadows();
+    ReflectMaterial();
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusMeshRenderer::SetCastShadows()
+void DirectusMeshRenderer::ReflectCastShadows()
 {
     if (!m_inspectedMeshRenderer)
         return;
@@ -143,7 +143,7 @@ void DirectusMeshRenderer::SetCastShadows()
     m_castShadowsCheckBox->setChecked(cast);
 }
 
-void DirectusMeshRenderer::SetReceiveShadows()
+void DirectusMeshRenderer::ReflectReceiveShadows()
 {
     if (!m_inspectedMeshRenderer)
         return;
@@ -152,7 +152,7 @@ void DirectusMeshRenderer::SetReceiveShadows()
     m_receiveShadowsCheckBox->setChecked(receive);
 }
 
-void DirectusMeshRenderer::SetMaterial()
+void DirectusMeshRenderer::ReflectMaterial()
 {
     Material* material = m_inspectedMeshRenderer->GetMaterial();
     if (!material)

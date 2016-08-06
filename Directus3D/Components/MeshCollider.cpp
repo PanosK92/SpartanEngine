@@ -41,7 +41,7 @@ MeshCollider::MeshCollider()
 {
 	m_collisionShape = nullptr;
 	m_convex = false;
-	m_meshFilter = nullptr;
+	m_mesh = nullptr;
 }
 
 MeshCollider::~MeshCollider()
@@ -53,9 +53,8 @@ MeshCollider::~MeshCollider()
 //= ICOMPONENT ========================================
 void MeshCollider::Initialize()
 {
-	// Initialize with the mesh filter that might
-	// be attached to this GameObject
-	m_meshFilter = g_gameObject->GetComponent<MeshFilter>();
+	m_mesh = GetMeshFromAttachedMeshFilter();
+	ConstructFromVertexCloud();
 }
 
 void MeshCollider::Start()
@@ -97,50 +96,43 @@ void MeshCollider::SetConvex(bool isConvex)
 
 Mesh* MeshCollider::GetMesh() const
 {
-	return m_meshFilter ? m_meshFilter->GetMesh() : nullptr;
+	return m_mesh;
 }
 
 void MeshCollider::SetMesh(Mesh* mesh)
 {
-	m_meshFilter = m_meshFilter;
+	m_mesh = m_mesh;
 }
 //======================================================================================================================
 
 //= HELPER FUNCTIONS ===================================================================================================
 void MeshCollider::ConstructFromVertexCloud()
 {
-	if (!m_meshFilter)
+	if (!m_mesh)
 		return;
 
-	if (m_meshFilter->GetVertexCount() >= m_vertexLimit)
+	if (m_mesh->GetVertexCount() >= m_vertexLimit)
 	{
 		LOG_WARNING("No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
 		return;
 	}
 
-	// vertices & indices
-	vector<VertexPositionTextureNormalTangent> vertices = m_meshFilter->GetVertices();
-	vector<unsigned int> indices = m_meshFilter->GetIndices();
-
 	//= contruct collider ========================================================================================
 	btTriangleMesh* trimesh = new btTriangleMesh();
-	for (auto i = 0; i < m_meshFilter->GetTriangleCount(); i++)
+	for (auto i = 0; i < m_mesh->GetTriangleCount(); i++)
 	{
-		int index0 = indices[i * 3];
-		int index1 = indices[i * 3 + 1];
-		int index2 = indices[i * 3 + 2];
+		int index0 = m_mesh->GetIndices()[i * 3];
+		int index1 = m_mesh->GetIndices()[i * 3 + 1];
+		int index2 = m_mesh->GetIndices()[i * 3 + 2];
 
-		btVector3 vertex0(vertices[index0].position.x, vertices[index0].position.y, vertices[index0].position.z);
-		btVector3 vertex1(vertices[index1].position.x, vertices[index1].position.y, vertices[index1].position.z);
-		btVector3 vertex2(vertices[index2].position.x, vertices[index2].position.y, vertices[index2].position.z);
+		btVector3 vertex0(m_mesh->GetVertices()[index0].position.x, m_mesh->GetVertices()[index0].position.y, m_mesh->GetVertices()[index0].position.z);
+		btVector3 vertex1(m_mesh->GetVertices()[index1].position.x, m_mesh->GetVertices()[index1].position.y, m_mesh->GetVertices()[index1].position.z);
+		btVector3 vertex2(m_mesh->GetVertices()[index2].position.x, m_mesh->GetVertices()[index2].position.y, m_mesh->GetVertices()[index2].position.z);
 
 		trimesh->addTriangle(vertex0, vertex1, vertex2);
 	}
 	bool useQuantization = true;
 	m_collisionShape = new btBvhTriangleMeshShape(trimesh, useQuantization);
-
-	vertices.clear();
-	indices.clear();
 
 	//= construct a hull approximation ===========================================================================
 	if (m_convex)
@@ -173,5 +165,11 @@ void MeshCollider::SetCollisionShapeToRigidBody(btCollisionShape* collisionShape
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 	if (rigidBody)
 		rigidBody->SetCollisionShape(m_collisionShape);
+}
+
+Mesh* MeshCollider::GetMeshFromAttachedMeshFilter() const
+{
+	MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
+	return meshFilter ? meshFilter->GetMesh() : nullptr;
 }
 //======================================================================================================================

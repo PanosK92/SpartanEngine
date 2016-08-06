@@ -307,17 +307,21 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 	for (auto i = 0; i < renderableGameObjects.size(); i++)
 	{
 		GameObject* gameObject = renderableGameObjects[i];
-		MeshFilter* mesh = gameObject->GetComponent<MeshFilter>();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
+		MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
+		Mesh* mesh = meshFilter->GetMesh();
+
+		if (!mesh)
+			continue;
 
 		// Not all gameobjects should cast shadows...
 		if (gameObject->GetComponent<Skybox>() || !meshRenderer->GetCastShadows())
 			continue;
 
-		if (mesh->SetBuffers())
+		if (meshFilter->SetBuffers())
 		{
 			m_shaderDepth->Render(
-				gameObject->GetComponent<MeshFilter>()->GetIndexCount(),
+				mesh->GetIndexCount(),
 				gameObject->GetTransform()->GetWorldTransform(),
 				light->GetViewMatrix(),
 				light->GetOrthographicProjectionMatrix()
@@ -332,14 +336,15 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 	{
 		//= Get all that we need ===================================================
 		GameObject* gameObject = renderableGameObjects[i];
-		MeshFilter* mesh = gameObject->GetComponent<MeshFilter>();
+		MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
+		Mesh* mesh = meshFilter->GetMesh();
 		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
 		Material* material = meshRenderer->GetMaterial();
 		Matrix worldMatrix = gameObject->GetTransform()->GetWorldTransform();
 		//==========================================================================
 
 		// If something is missing, skip this GameObject
-		if (!mesh || !meshRenderer || !material)
+		if (!meshFilter || !mesh || !meshRenderer || !material)
 			continue;
 
 		//= Skip transparent meshes ================================================
@@ -347,8 +352,8 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 			continue;
 
 		//= Frustrum culling =======================================================
-		Vector3 center = Vector3::Transform(mesh->GetCenter(), worldMatrix);
-		Vector3 extent = mesh->GetExtent() * gameObject->GetTransform()->GetScale();
+		Vector3 center = Vector3::Transform(meshFilter->GetCenter(), worldMatrix);
+		Vector3 extent = meshFilter->GetExtent() * gameObject->GetTransform()->GetScale();
 
 		float radius = abs(extent.x);
 		if (abs(extent.y) > radius) radius = abs(extent.y);
@@ -363,7 +368,7 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 		//==========================================================================
 
 		//= Render =================================================================
-		bool buffersHaveBeenSet = mesh->SetBuffers();
+		bool buffersHaveBeenSet = meshFilter->SetBuffers();
 		if (buffersHaveBeenSet)
 		{
 			meshRenderer->Render(mesh->GetIndexCount(), mView, mProjection, m_directionalLight, m_camera);

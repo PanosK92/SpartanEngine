@@ -50,11 +50,6 @@ public:
 	void Refresh();
 	Directus::Math::Vector3 GetExtent() const;
 	Directus::Math::Vector3 GetCenter() const;
-	std::vector<VertexPositionTextureNormalTangent> GetVertices() const;
-	std::vector<unsigned int> GetIndices() const;
-	unsigned int GetVertexCount() const;
-	unsigned int GetIndexCount() const;
-	unsigned int GetTriangleCount() const;
 	Mesh* GetMesh() const;
 
 private:
@@ -62,7 +57,7 @@ private:
 
 	D3D11Buffer* m_vertexBuffer;
 	D3D11Buffer* m_indexBuffer;
-	Mesh* m_meshData;
+	Mesh* m_mesh;
 	Directus::Math::Vector3 m_min;
 	Directus::Math::Vector3 m_max;
 	Directus::Math::Vector3 m_extent;

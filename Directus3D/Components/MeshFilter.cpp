@@ -38,7 +38,7 @@ MeshFilter::MeshFilter()
 {
 	m_vertexBuffer = nullptr;
 	m_indexBuffer = nullptr;
-	m_meshData = nullptr;
+	m_mesh = nullptr;
 	m_min = Vector3::Infinity;
 	m_max = Vector3::InfinityNeg;
 	m_extent = Vector3::One;
@@ -72,7 +72,7 @@ void MeshFilter::Update()
 
 void MeshFilter::Serialize()
 {
-	Serializer::SaveSTR(m_meshData ? m_meshData->GetID() : "-1");
+	Serializer::SaveSTR(m_mesh ? m_mesh->GetID() : "-1");
 	Serializer::SaveVector3(m_min);
 	Serializer::SaveVector3(m_max);
 	Serializer::SaveVector3(m_extent);
@@ -82,7 +82,7 @@ void MeshFilter::Serialize()
 void MeshFilter::Deserialize()
 {
 	string meshDataID = Serializer::LoadSTR();
-	m_meshData = g_meshPool->GetMesh(meshDataID);
+	m_mesh = g_meshPool->GetMesh(meshDataID);
 	m_min = Serializer::LoadVector3();
 	m_max = Serializer::LoadVector3();
 	m_extent = Serializer::LoadVector3();
@@ -206,7 +206,7 @@ void MeshFilter::CreateQuad()
 void MeshFilter::Set(string name, string rootGameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices)
 {
 	// Add the mesh data to the pool so it gets initialized properly
-	m_meshData = g_meshPool->AddMesh(name, rootGameObjectID, g_gameObject->GetID(), vertices, indices);
+	m_mesh = g_meshPool->AddMesh(name, rootGameObjectID, g_gameObject->GetID(), vertices, indices);
 	Refresh();
 }
 
@@ -232,7 +232,7 @@ bool MeshFilter::SetBuffers() const
 // Useful after extended mesh processing.
 void MeshFilter::Refresh()
 {
-	g_meshPool->GetMinMax(m_meshData, m_min, m_max);
+	g_meshPool->GetMinMax(m_mesh, m_min, m_max);
 	m_extent = g_meshPool->GetMeshExtent(m_min, m_max);
 	m_center = g_meshPool->GetMeshCenter(m_min, m_max);
 
@@ -251,34 +251,9 @@ Vector3 MeshFilter::GetCenter() const
 	return m_center;
 }
 
-vector<VertexPositionTextureNormalTangent> MeshFilter::GetVertices() const
-{
-	return m_meshData ? m_meshData->GetVertices() : vector<VertexPositionTextureNormalTangent>();
-}
-
-vector<unsigned int> MeshFilter::GetIndices() const
-{
-	return m_meshData ? m_meshData->GetIndices() : vector<unsigned int>();
-}
-
-unsigned int MeshFilter::GetVertexCount() const
-{
-	return m_meshData ? m_meshData->GetVertexCount() : 0;
-}
-
-unsigned int MeshFilter::GetIndexCount() const
-{
-	return m_meshData ? m_meshData->GetIndexCount() : 0;
-}
-
-unsigned int MeshFilter::GetTriangleCount() const
-{
-	return m_meshData ? m_meshData->GetTriangleCount() : 0;
-}
-
 Mesh* MeshFilter::GetMesh() const
 {
-	return m_meshData;
+	return m_mesh;
 }
 
 void MeshFilter::CreateBuffers()
@@ -286,11 +261,14 @@ void MeshFilter::CreateBuffers()
 	SafeDelete(m_vertexBuffer);
 	SafeDelete(m_indexBuffer);
 
+	if (!m_mesh)
+		return;
+
 	m_vertexBuffer = new D3D11Buffer();
 	m_vertexBuffer->Initialize(g_graphicsDevice);
-	m_vertexBuffer->CreateVertexBuffer(GetVertices());
+	m_vertexBuffer->CreateVertexBuffer(m_mesh->GetVertices());
 
 	m_indexBuffer = new D3D11Buffer();
 	m_indexBuffer->Initialize(g_graphicsDevice);
-	m_indexBuffer->CreateIndexBuffer(GetIndices());
+	m_indexBuffer->CreateIndexBuffer(m_mesh->GetIndices());
 }

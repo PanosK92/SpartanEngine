@@ -51,7 +51,7 @@ public:
 	void SetMesh(Mesh* mesh);
 
 private:
-	MeshFilter* m_meshFilter;
+	Mesh* m_mesh;
 	int m_vertexLimit = 100000;
 	btCollisionShape* m_collisionShape;
 	bool m_convex;
@@ -61,4 +61,5 @@ private:
 	------------------------------------------------------------------------------*/
 	void ConstructFromVertexCloud();
 	void SetCollisionShapeToRigidBody(btCollisionShape* collisionShape) const;
+	Mesh* GetMeshFromAttachedMeshFilter() const;
 };
