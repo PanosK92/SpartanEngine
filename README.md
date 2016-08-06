@@ -28,11 +28,11 @@ approach when it comes to adding features and a state of the art editor. The edi
 - UI components.
 - Vulkan Renderer.
 
-# Dependencies
+### Dependencies
 - Runtime (AngelScript, Assimp, Bullet, FreeImage).
 - Editor ([Visual C++ 2015 (x86) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145)).
 
-# License
+### License
 Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
 
 
