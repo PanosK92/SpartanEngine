@@ -166,22 +166,22 @@ void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector
 
     // Row 7 - FREEZE POSITION
     m_gridLayout->addWidget(m_freezePosLabel,   row, 0, 1, 1);
-    m_gridLayout->addWidget(m_freezePosXLabel,  row, 1, 1, 1);
-    m_gridLayout->addWidget(m_freezePosX,       row, 2, 1, 1);
-    m_gridLayout->addWidget(m_freezePosYLabel,  row, 3, 1, 1);
-    m_gridLayout->addWidget(m_freezePosY,       row, 4, 1, 1);
-    m_gridLayout->addWidget(m_freezePosZLabel,  row, 5, 1, 1);
-    m_gridLayout->addWidget(m_freezePosZ,       row, 6, 1, 1);
+    m_gridLayout->addWidget(m_freezePosXLabel,  row, 1, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_freezePosX,       row, 2, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_freezePosYLabel,  row, 3, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_freezePosY,       row, 4, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_freezePosZLabel,  row, 5, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_freezePosZ,       row, 6, 1, 1, Qt::AlignRight);
     row++;
 
     // Row 8 - FREEZE ROTATION
     m_gridLayout->addWidget(m_freezeRotLabel,   row, 0, 1, 1);
-    m_gridLayout->addWidget(m_freezeRotXLabel,  row, 1, 1, 1);
-    m_gridLayout->addWidget(m_freezeRotX,       row, 2, 1, 1);
-    m_gridLayout->addWidget(m_freezeRotYLabel,  row, 3, 1, 1);
-    m_gridLayout->addWidget(m_freezeRotY,       row, 4, 1, 1);
-    m_gridLayout->addWidget(m_freezeRotZLabel,  row, 5, 1, 1);
-    m_gridLayout->addWidget(m_freezeRotZ,       row, 6, 1, 1);
+    m_gridLayout->addWidget(m_freezeRotXLabel,  row, 1, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_freezeRotX,       row, 2, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_freezeRotYLabel,  row, 3, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_freezeRotY,       row, 4, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_freezeRotZLabel,  row, 5, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_freezeRotZ,       row, 6, 1, 1, Qt::AlignRight);
     row++;
 
     // Row 9 - LINE

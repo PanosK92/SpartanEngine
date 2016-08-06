@@ -58,15 +58,11 @@ Mesh* MeshPool::AddMesh(string name, string rootGameObjectID, string gameObjectI
 {
 	// construct mesh
 	Mesh* mesh = new Mesh();
-	mesh->name = name;
-	mesh->rootGameObjectID = rootGameObjectID;
-	mesh->ID = GENERATE_GUID;
-	mesh->gameObjectID = gameObjectID;
-	mesh->vertices = vertices;
-	mesh->indices = indices;
-	mesh->vertexCount = vertices.size();
-	mesh->indexCount = indices.size();
-	mesh->faceCount = vertices.size() / 3;
+	mesh->SetName(name);
+	mesh->SetGameObjectID(gameObjectID);
+	mesh->SetRootGameObjectID(rootGameObjectID);
+	mesh->SetVertices(vertices);
+	mesh->SetIndices(indices);
 
 	m_meshPool.push_back(mesh);
 
@@ -78,7 +74,7 @@ Mesh* MeshPool::GetMesh(string ID)
 {
 	for (int i = 0; i < m_meshPool.size(); i++)
 	{
-		if (m_meshPool[i]->ID == ID)
+		if (m_meshPool[i]->GetID() == ID)
 			return m_meshPool[i];
 	}
 
@@ -91,7 +87,7 @@ vector<Mesh*> MeshPool::GetModelMeshesByModelName(string rootGameObjectID)
 	vector<Mesh*> modelMeshes;
 	for (unsigned int i = 0; i < m_meshPool.size(); i++)
 	{
-		if (m_meshPool[i]->rootGameObjectID == rootGameObjectID)
+		if (m_meshPool[i]->GetRootGameObjectID() == rootGameObjectID)
 			modelMeshes.push_back(m_meshPool[i]);
 	}
 
@@ -120,8 +116,8 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(string rootGameObjectI
 
 void MeshPool::SetMeshScale(Mesh* meshData, float scale)
 {
-	for (int j = 0; j < meshData->vertexCount; j++)
-		meshData->vertices[j].position *= scale;
+	for (int j = 0; j < meshData->GetVertexCount(); j++)
+		meshData->GetVertices()[j].position *= scale;
 }
 
 void MeshPool::SetModelScale(string rootGameObjectID, float scale)
@@ -206,12 +202,11 @@ void MeshPool::GetMinMax(Mesh* meshData, Vector3& min, Vector3& max)
 	min = Vector3::Infinity;
 	max = Vector3::InfinityNeg;
 
-	vector<VertexPositionTextureNormalTangent> vertices = meshData->vertices;
-	for (unsigned int i = 0; i < meshData->vertexCount; i++)
+	for (unsigned int i = 0; i < meshData->GetVertexCount(); i++)
 	{
-		float x = vertices[i].position.x;
-		float y = vertices[i].position.y;
-		float z = vertices[i].position.z;
+		float x = meshData->GetVertices()[i].position.x;
+		float y = meshData->GetVertices()[i].position.y;
+		float z = meshData->GetVertices()[i].position.z;
 
 		if (x > max.x) max.x = x;
 		if (y > max.y) max.y = y;
@@ -221,9 +216,6 @@ void MeshPool::GetMinMax(Mesh* meshData, Vector3& min, Vector3& max)
 		if (y < min.y) min.y = y;
 		if (z < min.z) min.z = z;
 	}
-
-	vertices.clear();
-	vertices.shrink_to_fit();
 }
 
 /*------------------------------------------------------------------------------
@@ -231,99 +223,22 @@ void MeshPool::GetMinMax(Mesh* meshData, Vector3& min, Vector3& max)
 ------------------------------------------------------------------------------*/
 void MeshPool::Serialize()
 {
-	int meshDataCount = m_meshPool.size();
+	int meshCount = (int)m_meshPool.size();
+	Serializer::SaveInt(meshCount);
 
-	Serializer::SaveInt(meshDataCount); // 1st - meshDataCount
-	for (int i = 0; i < meshDataCount; i++)
-	{
-		// save simple data
-		Serializer::SaveSTR(m_meshPool[i]->rootGameObjectID); // 2nd - root GameObject id
-		Serializer::SaveSTR(m_meshPool[i]->ID); // 3rd - ID
-		Serializer::SaveSTR(m_meshPool[i]->gameObjectID); // 4th - GameObjectID
-		Serializer::SaveInt(m_meshPool[i]->vertexCount); // 5th - vertexCount
-		Serializer::SaveInt(m_meshPool[i]->indexCount); // 6th - indexCount
-		Serializer::SaveInt(m_meshPool[i]->faceCount); // 7th - indexCount
-
-		// save vertices
-		int vertexCount = m_meshPool[i]->vertexCount;
-		for (int j = 0; j < vertexCount; j++)
-			SaveVertex(m_meshPool[i]->vertices[j]); // 7th - vertices
-
-		// save indices
-		int indexCount = m_meshPool[i]->indexCount;
-		for (int j = 0; j < indexCount; j++)
-			Serializer::SaveInt(m_meshPool[i]->indices[j]); // 8th - indices
-	}
+	for (int i = 0; i < meshCount; i++)
+		m_meshPool[i]->Serialize();
 }
 
 void MeshPool::Deserialize()
 {
 	DeleteAll();
 
-	int meshDataCount = Serializer::LoadInt(); // 1st - meshDataCount
+	int meshDataCount = Serializer::LoadInt();
 	for (int i = 0; i < meshDataCount; i++)
 	{
 		Mesh* mesh = new Mesh();
-
-		// load simple data
-		mesh->rootGameObjectID = Serializer::LoadSTR(); // 2nd - root GameObject id
-		mesh->ID = Serializer::LoadSTR(); // 3rd - ID
-		mesh->gameObjectID = Serializer::LoadSTR(); // 4th - GameObjectID
-		mesh->vertexCount = Serializer::LoadInt(); // 5th - vertexCount
-		mesh->indexCount = Serializer::LoadInt(); // 6th - indexCount
-		mesh->faceCount = Serializer::LoadInt(); // 7th - indexCount
-
-		// load vertices
-		for (unsigned int j = 0; j < mesh->vertexCount; j++)
-			mesh->vertices.push_back(LoadVertex()); // 7th - vertices
-
-		// load indices
-		for (unsigned int j = 0; j < mesh->indexCount; j++)
-			mesh->indices.push_back(Serializer::LoadInt()); // 8th - indices
-
+		mesh->Deserialize();
 		m_meshPool.push_back(mesh);
 	}
-}
-
-/*------------------------------------------------------------------------------
-							[HELPER FUNCTIONS]
-------------------------------------------------------------------------------*/
-void MeshPool::SaveVertex(const VertexPositionTextureNormalTangent& vertex)
-{
-	Serializer::SaveFloat(vertex.position.x);
-	Serializer::SaveFloat(vertex.position.y);
-	Serializer::SaveFloat(vertex.position.z);
-
-	Serializer::SaveFloat(vertex.texture.x);
-	Serializer::SaveFloat(vertex.texture.y);
-
-	Serializer::SaveFloat(vertex.normal.x);
-	Serializer::SaveFloat(vertex.normal.y);
-	Serializer::SaveFloat(vertex.normal.z);
-
-	Serializer::SaveFloat(vertex.tangent.x);
-	Serializer::SaveFloat(vertex.tangent.y);
-	Serializer::SaveFloat(vertex.tangent.z);
-}
-
-VertexPositionTextureNormalTangent MeshPool::LoadVertex()
-{
-	VertexPositionTextureNormalTangent vertex;
-
-	vertex.position.x = Serializer::LoadFloat();
-	vertex.position.y = Serializer::LoadFloat();
-	vertex.position.z = Serializer::LoadFloat();
-
-	vertex.texture.x = Serializer::LoadFloat();
-	vertex.texture.y = Serializer::LoadFloat();
-
-	vertex.normal.x = Serializer::LoadFloat();
-	vertex.normal.y = Serializer::LoadFloat();
-	vertex.normal.z = Serializer::LoadFloat();
-
-	vertex.tangent.x = Serializer::LoadFloat();
-	vertex.tangent.y = Serializer::LoadFloat();
-	vertex.tangent.z = Serializer::LoadFloat();
-
-	return vertex;
 }

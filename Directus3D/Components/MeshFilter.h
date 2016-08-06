@@ -46,16 +46,16 @@ public:
 	void CreateCube();
 	void CreateQuad();
 	void Set(std::string name, std::string rootGameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices);
-	bool SetBuffers();
+	bool SetBuffers() const;
 	void Refresh();
-	Directus::Math::Vector3 GetExtent();
-	Directus::Math::Vector3 GetCenter();
-	std::vector<VertexPositionTextureNormalTangent> GetVertices();
-	std::vector<unsigned int> GetIndices();
-	unsigned int GetVertexCount();
-	unsigned int GetIndexCount();
-	unsigned int GetFaceCount();
-	Mesh* GetMesh();
+	Directus::Math::Vector3 GetExtent() const;
+	Directus::Math::Vector3 GetCenter() const;
+	std::vector<VertexPositionTextureNormalTangent> GetVertices() const;
+	std::vector<unsigned int> GetIndices() const;
+	unsigned int GetVertexCount() const;
+	unsigned int GetIndexCount() const;
+	unsigned int GetTriangleCount() const;
+	Mesh* GetMesh() const;
 
 private:
 	void CreateBuffers();

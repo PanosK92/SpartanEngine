@@ -42,7 +42,7 @@ void DirectusComboLabelText::Initialize(QString labelText)
     // Initialize the label
     m_label = new DirectusAdjustLabel();
     m_label->setText(labelText);
-    m_label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    m_label->setAlignment(Qt::AlignRight);
     m_label->AdjustQLineEdit(m_text);
 
     // textChanged(QString) -> emits signal when changed through code
