@@ -36,32 +36,29 @@ public:
 	MeshCollider();
 	~MeshCollider();
 
-	/*------------------------------------------------------------------------------
-									[INTERFACE]
-	------------------------------------------------------------------------------*/
+	//= ICOMPONENT ==============
 	virtual void Initialize();
 	virtual void Start();
 	virtual void Remove();
 	virtual void Update();
 	virtual void Serialize();
 	virtual void Deserialize();
+	//===========================
 
-	bool GetConvex();
+	bool GetConvex() const;
 	void SetConvex(bool isConvex);
-	Mesh* GetMesh();
+	Mesh* GetMesh() const;
 	void SetMesh(Mesh* mesh);
 
 private:
 	MeshFilter* m_meshFilter;
 	int m_vertexLimit = 100000;
-	btCollisionShape* m_collider;
+	btCollisionShape* m_collisionShape;
 	bool m_convex;
-	bool m_isDirty;
-	RigidBody* m_rigidBody;
 
 	/*------------------------------------------------------------------------------
 								[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
 	void ConstructFromVertexCloud();
-	bool ComponentCheck();
+	void SetCollisionShapeToRigidBody(btCollisionShape* collisionShape) const;
 };

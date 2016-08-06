@@ -72,7 +72,7 @@ void MeshFilter::Update()
 
 void MeshFilter::Serialize()
 {
-	Serializer::SaveSTR(m_meshData ? m_meshData->ID : "-1");
+	Serializer::SaveSTR(m_meshData ? m_meshData->GetID() : "-1");
 	Serializer::SaveVector3(m_min);
 	Serializer::SaveVector3(m_max);
 	Serializer::SaveVector3(m_extent);
@@ -207,12 +207,11 @@ void MeshFilter::Set(string name, string rootGameObjectID, vector<VertexPosition
 {
 	// Add the mesh data to the pool so it gets initialized properly
 	m_meshData = g_meshPool->AddMesh(name, rootGameObjectID, g_gameObject->GetID(), vertices, indices);
-
 	Refresh();
 }
 
 // Set the buffers to active in the input assembler so they can be rendered.
-bool MeshFilter::SetBuffers()
+bool MeshFilter::SetBuffers() const
 {
 	if (!m_vertexBuffer || !m_indexBuffer)
 	{
@@ -241,43 +240,43 @@ void MeshFilter::Refresh()
 }
 
 // Returns the bounding box of the mesh
-Vector3 MeshFilter::GetExtent()
+Vector3 MeshFilter::GetExtent() const
 {
 	return m_extent;
 }
 
 // Returns the center of the mesh
-Vector3 MeshFilter::GetCenter()
+Vector3 MeshFilter::GetCenter() const
 {
 	return m_center;
 }
 
-vector<VertexPositionTextureNormalTangent> MeshFilter::GetVertices()
+vector<VertexPositionTextureNormalTangent> MeshFilter::GetVertices() const
 {
-	return m_meshData ? m_meshData->vertices : vector<VertexPositionTextureNormalTangent>();
+	return m_meshData ? m_meshData->GetVertices() : vector<VertexPositionTextureNormalTangent>();
 }
 
-vector<unsigned int> MeshFilter::GetIndices()
+vector<unsigned int> MeshFilter::GetIndices() const
 {
-	return m_meshData ? m_meshData->indices : vector<unsigned int>();
+	return m_meshData ? m_meshData->GetIndices() : vector<unsigned int>();
 }
 
-unsigned int MeshFilter::GetVertexCount()
+unsigned int MeshFilter::GetVertexCount() const
 {
-	return m_meshData ? m_meshData->vertexCount : 0;
+	return m_meshData ? m_meshData->GetVertexCount() : 0;
 }
 
-unsigned int MeshFilter::GetIndexCount()
+unsigned int MeshFilter::GetIndexCount() const
 {
-	return m_meshData ? m_meshData->indexCount : 0;
+	return m_meshData ? m_meshData->GetIndexCount() : 0;
 }
 
-unsigned int MeshFilter::GetFaceCount()
+unsigned int MeshFilter::GetTriangleCount() const
 {
-	return m_meshData ? m_meshData->faceCount : 0;
+	return m_meshData ? m_meshData->GetTriangleCount() : 0;
 }
 
-Mesh* MeshFilter::GetMesh()
+Mesh* MeshFilter::GetMesh() const
 {
 	return m_meshData;
 }

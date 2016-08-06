@@ -39,29 +39,23 @@ using namespace std;
 
 MeshCollider::MeshCollider()
 {
-	m_collider = nullptr;
+	m_collisionShape = nullptr;
 	m_convex = false;
-	m_rigidBody = nullptr;
 	m_meshFilter = nullptr;
-
-	m_isDirty = true;
 }
 
 MeshCollider::~MeshCollider()
 {
-	delete m_collider;
-	m_collider = nullptr;
+	delete m_collisionShape;
+	m_collisionShape = nullptr;
 }
 
-/*------------------------------------------------------------------------------
-							[INTERFACE]
-------------------------------------------------------------------------------*/
+//= ICOMPONENT ========================================
 void MeshCollider::Initialize()
 {
-	if (!g_gameObject->HasComponent<RigidBody>())
-		g_gameObject->AddComponent<RigidBody>();
-
-	m_rigidBody = g_gameObject->GetComponent<RigidBody>();
+	// Initialize with the mesh filter that might
+	// be attached to this GameObject
+	m_meshFilter = g_gameObject->GetComponent<MeshFilter>();
 }
 
 void MeshCollider::Start()
@@ -71,23 +65,12 @@ void MeshCollider::Start()
 
 void MeshCollider::Remove()
 {
-	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
-
-	if (rigidBody)
-		rigidBody->SetCollisionShape(nullptr);
+	SetCollisionShapeToRigidBody(nullptr);
 }
 
 void MeshCollider::Update()
 {
-	if (!ComponentCheck())
-		return;
 
-	if (!m_isDirty)
-		return;
-
-	ConstructFromVertexCloud();
-
-	m_isDirty = false;
 }
 
 void MeshCollider::Serialize()
@@ -98,10 +81,10 @@ void MeshCollider::Serialize()
 void MeshCollider::Deserialize()
 {
 	m_convex = Serializer::LoadBool();
-	m_isDirty = true;
+	ConstructFromVertexCloud();
 }
 
-bool MeshCollider::GetConvex()
+bool MeshCollider::GetConvex() const
 {
 	return m_convex;
 }
@@ -109,30 +92,29 @@ bool MeshCollider::GetConvex()
 void MeshCollider::SetConvex(bool isConvex)
 {
 	m_convex = isConvex;
-	m_isDirty = true;
+	ConstructFromVertexCloud();
 }
 
-Mesh* MeshCollider::GetMesh()
+Mesh* MeshCollider::GetMesh() const
 {
-	if (!m_meshFilter)
-		return nullptr;
-
-	return m_meshFilter->GetMesh();
+	return m_meshFilter ? m_meshFilter->GetMesh() : nullptr;
 }
 
 void MeshCollider::SetMesh(Mesh* mesh)
 {
-	// needs to be implemented
+	m_meshFilter = m_meshFilter;
 }
+//======================================================================================================================
 
-/*------------------------------------------------------------------------------
-							[HELPER FUNCTIONS]
-------------------------------------------------------------------------------*/
+//= HELPER FUNCTIONS ===================================================================================================
 void MeshCollider::ConstructFromVertexCloud()
 {
-	if (m_meshFilter->GetVertexCount() > m_vertexLimit)
+	if (!m_meshFilter)
+		return;
+
+	if (m_meshFilter->GetVertexCount() >= m_vertexLimit)
 	{
-		LOG("No user defined collider with more than " + std::to_string(m_vertexLimit) + " vertices is allowed.", Log::Warning);
+		LOG_WARNING("No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
 		return;
 	}
 
@@ -142,7 +124,7 @@ void MeshCollider::ConstructFromVertexCloud()
 
 	//= contruct collider ========================================================================================
 	btTriangleMesh* trimesh = new btTriangleMesh();
-	for (auto i = 0; i < m_meshFilter->GetFaceCount(); i++)
+	for (auto i = 0; i < m_meshFilter->GetTriangleCount(); i++)
 	{
 		int index0 = indices[i * 3];
 		int index1 = indices[i * 3 + 1];
@@ -155,7 +137,10 @@ void MeshCollider::ConstructFromVertexCloud()
 		trimesh->addTriangle(vertex0, vertex1, vertex2);
 	}
 	bool useQuantization = true;
-	m_collider = new btBvhTriangleMeshShape(trimesh, useQuantization);
+	m_collisionShape = new btBvhTriangleMeshShape(trimesh, useQuantization);
+
+	vertices.clear();
+	indices.clear();
 
 	//= construct a hull approximation ===========================================================================
 	if (m_convex)
@@ -174,26 +159,19 @@ void MeshCollider::ConstructFromVertexCloud()
 		}
 		convexShape->recalcLocalAabb();
 
-		m_collider = convexShape;
+		m_collisionShape = convexShape;
 
 		delete tmpConvexShape;
 		delete hull;
 	}
 
-	//= set rigidbody's collision shape ===========================================================================
-	m_rigidBody->SetCollisionShape(m_collider);
+	SetCollisionShapeToRigidBody(m_collisionShape);
 }
 
-bool MeshCollider::ComponentCheck()
+void MeshCollider::SetCollisionShapeToRigidBody(btCollisionShape* collisionShape) const
 {
-	if (!m_rigidBody)
-		m_rigidBody = g_gameObject->GetComponent<RigidBody>();
-
-	if (!m_meshFilter)
-		m_meshFilter = g_gameObject->GetComponent<MeshFilter>();
-
-	if (m_rigidBody && m_meshFilter)
-		return true;
-
-	return false;
+	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
+	if (rigidBody)
+		rigidBody->SetCollisionShape(m_collisionShape);
 }
+//======================================================================================================================
