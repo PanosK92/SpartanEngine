@@ -372,6 +372,7 @@ compiler_rcc_clean:
 		Images\material.png \
 		Images\rigidBody.png \
 		Images\tabConsole.png \
+		Images\scene.png \
 		Images\tabInspector.png \
 		Images\meshRenderer.png \
 		Images\camera.png \
@@ -1786,6 +1787,9 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QPixmap \
 		DirectusProgressBar.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QDialog \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
 		DirectusHierarchy.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusHierarchy.h -o ..\..\Binaries\MOCFiles\moc_DirectusHierarchy.cpp
@@ -5127,6 +5131,10 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qframe.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qicon.h \
 		DirectusFileDialog.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusFileDialog.h -o ..\..\Binaries\MOCFiles\moc_DirectusFileDialog.cpp
@@ -6088,6 +6096,9 @@ compiler_uic_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QPixmap \
 		DirectusProgressBar.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QDialog \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qwindowdefs.h \
@@ -8112,6 +8123,9 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QPixmap \
 		DirectusProgressBar.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QDialog \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
 		..\Directus3D\Components\Transform.h \
 		..\Directus3D\IO\Log.h \
 		..\Directus3D\IO\ILogger.h \
@@ -11851,6 +11865,10 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qframe.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qicon.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QThread \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qthread.h
 
