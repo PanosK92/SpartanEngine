@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include "D3D11Shader.h"
 #include "D3D11Device.h"
-#include <sstream>  // std::ostringstream
 #include "../../Core/Globals.h"
 #include "../../IO/Log.h"
 #include "../../IO/FileHelper.h"
 #include <d3dcompiler.h>
+#include <sstream> 
 #include <fstream>
 //==============================
 
@@ -304,25 +304,6 @@ void D3D11Shader::ExportErrorDebugLog(ID3D10Blob* errorMessage)
 
 	while (getline(ss, to, '\n'))
 		LOG_ERROR(to);
-}
-
-void D3D11Shader::ExportErrorAsTextFile(ID3D10Blob* errorMessage, string fileName)
-{
-	LOG_ERROR("Failed to compile shader \"" + fileName + "\". Check the exported \""+ fileName + ".txt\" for more details.");
-
-	stringstream ss((char*)errorMessage->GetBufferPointer());
-	string to;
-
-	// Open a file to write the error message to.
-	ofstream fout;
-	fout.open(FileHelper::GetFileNameNoExtensionFromPath(fileName) + ".txt");
-
-	// Write out the error message.
-	while (getline(ss, to, '\n'))
-		fout << to << endl;
-
-	// Close the file.
-	fout.close();
 }
 
 //= REFLECTION ================================================================================================================

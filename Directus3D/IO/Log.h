@@ -50,10 +50,9 @@ public:
 	static void Release();
 	static void SetLogger(ILogger* logger);
 
-	/*------------------------------------------------------------------------------
-									[LOGGING]
-	------------------------------------------------------------------------------*/
+	//= LOGGING ==========================================================================
 	static void Write(std::string text, LogType type);
+	static void WriteAsText(std::string text, LogType type);
 	static void Write(const char* text, LogType type);
 	static void Write(const Directus::Math::Vector3& vector, LogType type);
 	static void Write(const Directus::Math::Quaternion& quaternion, LogType type);
@@ -62,9 +61,8 @@ public:
 	static void Write(unsigned int value, LogType type);
 	static void Write(bool value, LogType type);
 	static void Write(size_t value, LogType type);
-	/*------------------------------------------------------------------------------
-									[CONVERTIONS]
-	------------------------------------------------------------------------------*/
+
+	//= HELPER FUNCTIONS ==============================================================
 	static std::string WCHARPToString(WCHAR*);
 
 private:

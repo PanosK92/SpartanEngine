@@ -129,7 +129,6 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
 
     m_tilingX = new DirectusComboLabelText();
     m_tilingX->Initialize("X");
-    m_tilingX->setStyleSheet("text-aling: right;");
 
     m_tilingY = new DirectusComboLabelText();
     m_tilingY->Initialize("X");
