@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QDrag>
 #include <QMimeData>
 #include "IO/Log.h"
+#include <QMenu>
 //===============================
 
 DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
@@ -54,6 +55,8 @@ void DirectusFileExplorer::Initialize()
     // (at least visually) refuses to change anything.
     QModelIndex index = m_fileModel->index("Assets");
     this->setRootIndex(index);
+
+    connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ShowContextMenu(QPoint)));
 }
 
 void DirectusFileExplorer::SetRootPath(QString path)
@@ -70,7 +73,12 @@ void DirectusFileExplorer::mousePressEvent(QMouseEvent* event)
     if (event->button() == Qt::LeftButton)
               m_dragStartPosition = event->pos();
 
-    QListView::mousePressEvent(event);
+    if(event->button() == Qt::RightButton)
+    {
+        emit customContextMenuRequested(event->pos());
+    }
+    else
+        QListView::mousePressEvent(event);
 }
 
 // Determine whether a drag should begin, and
@@ -95,5 +103,39 @@ void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
     drag->setMimeData(mimeData);
 
     drag->exec();
+}
+
+void DirectusFileExplorer::ShowContextMenu(QPoint pos)
+{
+    QMenu contextMenu(tr("Context menu"), this);
+
+    QMenu actionCreate("Create", this);
+    actionCreate.setEnabled(false);
+
+    QAction menuShowInExplorer("Show in Explorer", this);
+    menuShowInExplorer.setEnabled(false);
+
+    QAction actionOpen("Open", this);
+    actionOpen.setEnabled(false);
+
+    QAction actionDelete("Delete", this);
+    actionDelete.setEnabled(false);
+
+    QAction actionOpenSceneAdditive("Open Scene Additive", this);
+    actionOpenSceneAdditive.setEnabled(false);
+
+    QAction actionImportNewAsset("Import New Asset...", this);
+    actionImportNewAsset.setEnabled(false);
+
+    contextMenu.addMenu(&actionCreate);
+    contextMenu.addAction(&menuShowInExplorer);
+    contextMenu.addAction(&actionOpen);
+    contextMenu.addAction(&actionDelete);
+    contextMenu.addSeparator();
+    contextMenu.addAction(&actionOpenSceneAdditive);
+    contextMenu.addSeparator();
+    contextMenu.addAction(&actionImportNewAsset);
+
+    contextMenu.exec(QCursor::pos());
 }
 //===================================================================================================
