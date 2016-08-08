@@ -45,6 +45,10 @@ void DirectusFileDialog::Initialize(QWidget* mainWindow, DirectusCore* directusC
     m_assetLoader = new DirectusAssetLoader();
     m_assetLoader->Initialize(m_mainWindow, m_socket);
 
+    m_iconProvider = new DirectusIconProvider();
+    m_iconProvider->Initialize();
+    setIconProvider(m_iconProvider);
+
     m_lastSceneFilePath = EMPTY;
 }
 

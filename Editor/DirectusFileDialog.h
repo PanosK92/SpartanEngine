@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ====================
 #include <QFileDialog>
 #include "DirectusAssetLoader.h"
 #include "Core/Socket.h"
 #include "DirectusCore.h"
-//=============================
+#include "DirectusIconProvider.h"
+//===============================
 
 class DirectusFileDialog : public QFileDialog
 {
@@ -48,6 +49,7 @@ private:
     QWidget* m_mainWindow;
     Socket* m_socket;
     DirectusCore* m_directusCore;
+    DirectusIconProvider* m_iconProvider;
 
 signals:
     void AssetLoaded();
