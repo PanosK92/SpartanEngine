@@ -132,9 +132,6 @@ void ShaderVariation::Render(int indexCount,
 	if (!directionalLight || !camera)
 		return;
 
-	directionalLight->GenerateOrthographicProjectionMatrix(40, 40, camera->GetNearPlane(), camera->GetFarPlane());
-	directionalLight->GenerateViewMatrix();
-
 	Matrix world = mWorld;
 	Matrix worldView = world * mView;
 	Matrix worldViewProjection = worldView * mProjection;

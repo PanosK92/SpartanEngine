@@ -56,8 +56,7 @@ aiProcess_FindInstances |
 aiProcess_ValidateDataStructure |
 aiProcess_OptimizeMeshes |
 aiProcess_Debone |
-aiProcess_ConvertToLeftHanded |
-0;
+aiProcess_ConvertToLeftHanded;
 
 ModelLoader::ModelLoader()
 {

@@ -191,19 +191,21 @@ void D3D11Device::Initialize(HWND handle)
 	D3D11_RASTERIZER_DESC rasterDesc = GetRasterizerDesc(D3D11_CULL_BACK);
 	hResult = m_device->CreateRasterizerState(&rasterDesc, &m_rasterStateCullBack);
 	if (FAILED(hResult))
-		LOG("Failed to create the rasterizer state.", Log::Error);
+		LOG_ERROR("Failed to create the rasterizer state.");
 
 	// Create a rasterizer state with front face CullMode
+	ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC));
 	rasterDesc = GetRasterizerDesc(D3D11_CULL_FRONT);
 	hResult = m_device->CreateRasterizerState(&rasterDesc, &m_rasterStateCullFront);
 	if (FAILED(hResult))
-		LOG("Failed to create the rasterizer state.", Log::Error);
+		LOG_ERROR("Failed to create the rasterizer state.");
 
 	// Create a rasterizer state with no face CullMode
+	ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC));
 	rasterDesc = GetRasterizerDesc(D3D11_CULL_NONE);
 	hResult = m_device->CreateRasterizerState(&rasterDesc, &m_rasterStateCullNone);
 	if (FAILED(hResult))
-		LOG("Failed to create the rasterizer state.", Log::Error);
+		LOG_ERROR("Failed to create the rasterizer state.");
 
 	// set the default rasterizer state
 	m_deviceContext->RSSetState(m_rasterStateCullBack);
@@ -215,13 +217,13 @@ void D3D11Device::Initialize(HWND handle)
 	D3D11_BLEND_DESC blendStateDescription = GetBlendDesc(true);
 	HRESULT result = m_device->CreateBlendState(&blendStateDescription, &m_alphaBlendingStateEnabled);
 	if (FAILED(result))
-		LOG("Failed to create the blend state.", Log::Error);
+		LOG_ERROR("Failed to create the blend state.");
 
 	// Create a blending state with alpha blending disabled
 	blendStateDescription = GetBlendDesc(false);
 	result = m_device->CreateBlendState(&blendStateDescription, &m_alphaBlendingStateDisabled);
 	if (FAILED(result))
-		LOG("Failed to create the blend state.", Log::Error);
+		LOG_ERROR("Failed to create the blend state.");
 
 	SetViewport(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 }
@@ -469,19 +471,6 @@ DXGI_SWAP_CHAIN_DESC D3D11Device::GetSwapchainDesc(HWND handle)
 	swapChainDesc.BufferDesc.Width = RESOLUTION_WIDTH; // Set the width of the back buffer.
 	swapChainDesc.BufferDesc.Height = RESOLUTION_HEIGHT; // Set the height of the back buffer.
 	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // Set regular 32-bit surface for the back buffer.
-
-	// Set the refresh rate of the back buffer.
-	/*if (Settings::GetInstance().IsVsyncEnabled())
-	{
-		swapChainDesc.BufferDesc.RefreshRate.Numerator = numerator;
-		swapChainDesc.BufferDesc.RefreshRate.Denominator = denominator;
-	}
-	else
-	{
-		swapChainDesc.BufferDesc.RefreshRate.Numerator = 0;
-		swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-	}*/
-
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // Set the usage of the back buffer.	
 	swapChainDesc.OutputWindow = handle; // Set the handle for the window to render to.
 	swapChainDesc.SampleDesc.Count = 1;

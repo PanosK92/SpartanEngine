@@ -77,7 +77,7 @@ public:
 
 	Directus::Math::Matrix GetViewMatrix();
 	void GenerateViewMatrix();
-	void GenerateOrthographicProjectionMatrix(float width, float height, float nearPlane, float farPlane);
+	void GenerateOrthographicProjectionMatrix();
 	Directus::Math::Matrix GetOrthographicProjectionMatrix();
 
 	void SetDepthMapAsRenderTarget();
@@ -91,6 +91,8 @@ private:
 	float m_range;
 	float m_intensity;
 	float m_bias;
+	float m_nearPlane;
+	float m_farPlane;
 
 	Directus::Math::Matrix m_viewMatrix;
 	Directus::Math::Matrix m_orthoMatrix;

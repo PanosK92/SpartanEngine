@@ -69,9 +69,9 @@ void Socket::StopEngine()
 //==============================
 
 //= IO ========================================================================
-void Socket::SetLogger(unique_ptr<ILogger> logger)
+void Socket::SetLogger(ILogger* logger)
 {
-	Log::SetLogger(move(logger));
+	Log::SetLogger(logger);
 }
 
 void Socket::LoadModel(string path)

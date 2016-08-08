@@ -48,7 +48,7 @@ public:
 
 	static void Initialize();
 	static void Release();
-	static void SetLogger(std::unique_ptr<ILogger> logger);
+	static void SetLogger(ILogger* logger);
 
 	/*------------------------------------------------------------------------------
 									[LOGGING]
@@ -68,6 +68,6 @@ public:
 	static std::string WCHARPToString(WCHAR*);
 
 private:
-	static std::unique_ptr<ILogger> m_logger;
+	static ILogger* m_logger;
 	static std::map<std::string, LogType> m_queuedLogs;
 };

@@ -115,7 +115,7 @@ private:
 	
 	//= HELPER FUNCTIONS ==========================
 	void AcquirePrerequisites();
-	void DirectionalLightDepthPass(std::vector<GameObject*> renderableGameObjects, int projectionSize, Light* light) const;
+	void DirectionalLightDepthPass(std::vector<GameObject*> renderableGameObjects, Light* light) const;
 	void GBufferPass(std::vector<GameObject*> renderableGameObjects);
 	void DeferredPass();
 	void PostProcessing() const;

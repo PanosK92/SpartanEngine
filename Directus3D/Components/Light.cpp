@@ -44,7 +44,10 @@ Light::Light()
 		214.0f / 255.0f,
 		1.0f
 	);
-	m_bias = 0.00001;
+	m_bias = 0.0001f;
+	m_projectionSize = 50;
+	m_nearPlane = 0.3f;
+	m_farPlane = 300.0f;
 }
 
 Light::~Light()
@@ -56,7 +59,7 @@ void Light::Initialize()
 {
 	m_depthMap = new D3D11RenderTexture();
 	m_depthMap->Initialize(g_graphicsDevice, SHADOWMAP_RESOLUTION, SHADOWMAP_RESOLUTION);
-	m_projectionSize = 100;
+	
 }
 
 void Light::Start()
@@ -173,8 +176,8 @@ void Light::GenerateViewMatrix()
 
 	Vector3 cameraPos = camera->GetTransform()->GetPosition();
 	Vector3 direction = GetDirection();
-	Vector3 position = Vector3(10, 10, 0); //cameraPos - (g_transform->GetForward() * m_shadowTextureSize * 0.5f); // or center of scene's bounding box
-	Vector3 lookAt = Vector3(0, 0, 0);  //cameraPos + direction;
+	Vector3 position = cameraPos - (g_transform->GetForward() * 512 * 0.5f); // or center of scene's bounding box
+	Vector3 lookAt = cameraPos + direction;
 	Vector3 up = Vector3::Up;
 
 	// Create the view matrix from the three vectors.
@@ -186,9 +189,9 @@ Matrix Light::GetViewMatrix()
 	return m_viewMatrix;
 }
 
-void Light::GenerateOrthographicProjectionMatrix(float width, float height, float nearPlane, float farPlane)
+void Light::GenerateOrthographicProjectionMatrix()
 {
-	m_orthoMatrix = Matrix::CreateOrthographicLH(width, height, nearPlane, farPlane);
+	m_orthoMatrix = Matrix::CreateOrthographicLH(m_projectionSize, m_projectionSize, m_nearPlane, m_farPlane);
 }
 
 Matrix Light::GetOrthographicProjectionMatrix()

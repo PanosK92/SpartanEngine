@@ -60,10 +60,7 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 	// create sampler state.
 	HRESULT result = m_graphicsDevice->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
 	if (FAILED(result))
-	{
-		LOG("Failed to create texture sampler", Log::Error);
 		return false;
-	}
 
 	return true;
 }
