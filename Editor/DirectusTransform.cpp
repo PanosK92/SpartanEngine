@@ -34,6 +34,9 @@ using namespace Directus::Math;
 DirectusTransform::DirectusTransform(QWidget* parent) : QWidget(parent)
 {
     m_directusCore = nullptr;
+    m_inspectedTransform = nullptr;
+    m_gridLayout = nullptr;
+    m_validator = nullptr;
 }
 
 void DirectusTransform::Initialize(DirectusCore* directusCore)

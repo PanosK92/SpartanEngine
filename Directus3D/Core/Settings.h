@@ -43,7 +43,8 @@ enum EngineMode
 	Editor_Stop,
 	Editor_Pause,
 	Build_Developer,
-	Build_Release
+	Build_Release,
+	Shutdown
 };
 
 enum VSync

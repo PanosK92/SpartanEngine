@@ -33,6 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/GraphicsDevice.h"
 #include "Globals.h"
 #include "../Signals/Signaling.h"
+#include "Settings.h"
+
 //=====================================
 
 Engine::Engine()
