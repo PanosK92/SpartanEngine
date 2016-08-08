@@ -1,4 +1,4 @@
-class FirstPersonMovement
+class FirstPersonController
 {
 	GameObject @gameobject;
 	Transform @transform;
@@ -9,7 +9,7 @@ class FirstPersonMovement
 	Vector3 movementSpeed = Vector3(0,0,0);
 
 	// Constructor
-	FirstPersonMovement(GameObject @obj)
+	FirstPersonController(GameObject @obj)
 	{
 		@gameobject = obj;
 		@transform = gameobject.GetTransform();

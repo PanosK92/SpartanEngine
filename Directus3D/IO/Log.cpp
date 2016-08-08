@@ -19,10 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===
+//= INCLUDES ====================
 #include "Log.h"
 #include "../Signals/Signaling.h"
-//==============
+#include <sstream> 
+#include <fstream>
+//===============================
 
 //= NAMESPACES ================
 using namespace std;
@@ -47,17 +49,9 @@ void Log::SetLogger(ILogger* logger)
 	m_logger = logger;
 }
 
-/*------------------------------------------------------------------------------
-								[LOGGING]
-------------------------------------------------------------------------------*/
+//= LOGGING ==========================================================================
 void Log::Write(string text, LogType type) // all functions resolve to that one
 {
-	if (!m_logger)
-	{
-		m_queuedLogs.insert(make_pair(text, type));
-		return;
-	}
-
 	string prefix = "";
 
 	if (type == Info)
@@ -74,6 +68,13 @@ void Log::Write(string text, LogType type) // all functions resolve to that one
 
 	string finalText = prefix + " " + text;
 
+	if (!m_logger)
+	{
+		m_queuedLogs.insert(make_pair(text, type));
+		WriteAsText(finalText, type);
+		return;
+	}
+
 	// Print any queued logs
 	for (auto it = m_queuedLogs.begin(); it != m_queuedLogs.end(); ++it)
 	{
@@ -83,6 +84,19 @@ void Log::Write(string text, LogType type) // all functions resolve to that one
 
 	// Print the log
 	m_logger->Log(finalText, type);
+}
+
+void Log::WriteAsText(string text, LogType type)
+{
+	// Open a file to write the error message to.
+	ofstream fout;
+	fout.open("error.txt");
+
+	// Write out the error message.
+	fout << text << endl;
+
+	// Close the file.
+	fout.close();
 }
 
 void Log::Write(const char* text, LogType type)
@@ -137,10 +151,9 @@ void Log::Write(size_t value, LogType type)
 {
 	Write(int(value), type);
 }
+//=================================================================================
 
-/*------------------------------------------------------------------------------
-							[CONVERTIONS]
-------------------------------------------------------------------------------*/
+//= HELPER FUNCTIONS ==============================================================
 string Log::WCHARPToString(WCHAR* text)
 {
 	wstring ws(text);

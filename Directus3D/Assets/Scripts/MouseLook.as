@@ -9,7 +9,7 @@ class MouseLook
 
 	// mouse look variables
 	Vector2 smoothMouse = Vector2(0.0f, 0.0f);
-	Vector2 mouseRotation = Vector2(0.0f, 0.0f);
+	Vector3 currentRotation;
 	
 	// misc
 	bool control = false;
@@ -25,7 +25,7 @@ class MouseLook
 	// Use this for initialization
 	void Start()
 	{
-		
+		currentRotation = transform.GetRotation().ToEulerAngles();
 	}
 
 	// Update is called once per frame
@@ -57,11 +57,12 @@ class MouseLook
 		smoothMouse.x = Lerp(smoothMouse.x, mouseDelta.x, 1.0f / smoothing);
         smoothMouse.y = Lerp(smoothMouse.y, mouseDelta.y, 1.0f / smoothing);
 		
-		mouseRotation += smoothMouse;
+		currentRotation.x += smoothMouse.x;
+		currentRotation.y += smoothMouse.y;
 		
-		mouseRotation.y = ClampRotation(mouseRotation.y);
+		currentRotation.y = ClampRotation(currentRotation.y);
 		
-		Quaternion newRot = QuaternionFromEuler(mouseRotation.y, mouseRotation.x, 0.0f);
+		Quaternion newRot = QuaternionFromEuler(currentRotation.y, currentRotation.x, 0.0f);
 		
 		transform.SetRotationLocal(newRot);
 	}
