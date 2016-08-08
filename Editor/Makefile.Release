@@ -72,7 +72,8 @@ SOURCES       = main.cpp \
 		DirectusStatsLabel.cpp \
 		DirectusDropDownButton.cpp \
 		DirectusProgressBar.cpp \
-		DirectusFileDialog.cpp ..\..\Binaries\RCCFiles\qrc_images.cpp \
+		DirectusFileDialog.cpp \
+		DirectusIconProvider.cpp ..\..\Binaries\RCCFiles\qrc_images.cpp \
 		..\..\Binaries\MOCFiles\moc_editor.cpp \
 		..\..\Binaries\MOCFiles\moc_DirectusPlayButton.cpp \
 		..\..\Binaries\MOCFiles\moc_AboutDialog.cpp \
@@ -132,6 +133,7 @@ OBJECTS       = ..\..\Binaries\ObjFiles\main.obj \
 		..\..\Binaries\ObjFiles\DirectusDropDownButton.obj \
 		..\..\Binaries\ObjFiles\DirectusProgressBar.obj \
 		..\..\Binaries\ObjFiles\DirectusFileDialog.obj \
+		..\..\Binaries\ObjFiles\DirectusIconProvider.obj \
 		..\..\Binaries\ObjFiles\qrc_images.obj \
 		..\..\Binaries\ObjFiles\moc_editor.obj \
 		..\..\Binaries\ObjFiles\moc_DirectusPlayButton.obj \
@@ -192,7 +194,8 @@ DIST          =  editor.h \
 		DirectusStatsLabel.h \
 		DirectusDropDownButton.h \
 		DirectusProgressBar.h \
-		DirectusFileDialog.h main.cpp \
+		DirectusFileDialog.h \
+		DirectusIconProvider.h main.cpp \
 		editor.cpp \
 		DirectusPlayButton.cpp \
 		AboutDialog.cpp \
@@ -221,7 +224,8 @@ DIST          =  editor.h \
 		DirectusStatsLabel.cpp \
 		DirectusDropDownButton.cpp \
 		DirectusProgressBar.cpp \
-		DirectusFileDialog.cpp
+		DirectusFileDialog.cpp \
+		DirectusIconProvider.cpp
 QMAKE_TARGET  = Directus3D
 DESTDIR        = ..\..\Binaries\ #avoid trailing-slash linebreak
 TARGET         = Directus3D.exe
@@ -333,8 +337,8 @@ dist:
 	$(ZIP) Directus3D.zip $(SOURCES) $(DIST) Editor.pro C:\Qt\5.7\msvc2015_64\mkspecs\features\spec_pre.prf C:\Qt\5.7\msvc2015_64\mkspecs\common\angle.conf C:\Qt\5.7\msvc2015_64\mkspecs\common\msvc-base.conf C:\Qt\5.7\msvc2015_64\mkspecs\common\msvc-desktop.conf C:\Qt\5.7\msvc2015_64\mkspecs\qconfig.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dcore.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dcore_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dextras.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dextras_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dinput.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dinput_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dlogic.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dlogic_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dquick.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dquick_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dquickextras.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dquickextras_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dquickinput.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dquickinput_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dquickrender.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3dquickrender_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3drender.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_3drender_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_axbase.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_axbase_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_axcontainer.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_axcontainer_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_axserver.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_axserver_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_bluetooth.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_bluetooth_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_bootstrap_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_clucene_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_concurrent.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_concurrent_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_core.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_core_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_dbus.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_dbus_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_designer.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_designer_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_designercomponents_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_gamepad.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_gamepad_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_gui.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_gui_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_help.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_help_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_location.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_location_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_multimedia.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_multimedia_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_multimediawidgets.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_multimediawidgets_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_network.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_network_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_nfc.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_nfc_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_opengl.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_opengl_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_openglextensions.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_openglextensions_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_packetprotocol_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_platformsupport_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_positioning.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_positioning_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_printsupport.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_printsupport_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_purchasing.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_purchasing_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_qml.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_qml_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_qmldebug_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_qmldevtools_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_qmltest.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_qmltest_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_qtmultimediaquicktools_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_quick.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_quick_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_quickcontrols2.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_quickcontrols2_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_quickparticles_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_quicktemplates2_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_quickwidgets.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_quickwidgets_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_script.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_script_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_scripttools.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_scripttools_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_scxml.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_scxml_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_sensors.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_sensors_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_serialbus.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_serialbus_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_serialport.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_serialport_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_sql.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_sql_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_svg.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_svg_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_testlib.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_testlib_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_uiplugin.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_uitools.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_uitools_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webchannel.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webchannel_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webengine.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webengine_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webenginecore.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webenginecore_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webenginecoreheaders_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webenginewidgets.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webenginewidgets_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_websockets.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_websockets_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webview.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_webview_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_widgets.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_widgets_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_winextras.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_winextras_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_xml.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_xml_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_xmlpatterns.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_xmlpatterns_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\modules\qt_lib_zlib_private.pri C:\Qt\5.7\msvc2015_64\mkspecs\features\qt_functions.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\qt_config.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\win32\qt_config.prf C:\Qt\5.7\msvc2015_64\mkspecs\win32-msvc2015\qmake.conf C:\Qt\5.7\msvc2015_64\mkspecs\features\spec_post.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\exclusive_builds.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\default_pre.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\win32\default_pre.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\resolve_config.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\exclusive_builds_post.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\default_post.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\build_pass.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\win32\rtti.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\precompile_header.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\warn_on.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\qt.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\resources.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\moc.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\win32\opengl.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\uic.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\file_copies.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\win32\windows.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\testcase_targets.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\exceptions.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\yacc.prf C:\Qt\5.7\msvc2015_64\mkspecs\features\lex.prf Editor.pro Images\images.qrc C:\Qt\5.7\msvc2015_64\lib\qtmain.prl C:\Qt\5.7\msvc2015_64\lib\Qt5Widgets.prl C:\Qt\5.7\msvc2015_64\lib\Qt5Gui.prl C:\Qt\5.7\msvc2015_64\lib\Qt5Core.prl  NO_PCH_SOURCES RESOURCES HEADERS SOURCES OBJECTIVE_SOURCES FORMS YACCSOURCES YACCSOURCES LEXSOURCES 
 
 clean: compiler_clean 
-	-$(DEL_FILE) ..\..\Binaries\ObjFiles\main.obj ..\..\Binaries\ObjFiles\editor.obj ..\..\Binaries\ObjFiles\DirectusPlayButton.obj ..\..\Binaries\ObjFiles\AboutDialog.obj ..\..\Binaries\ObjFiles\DirectusDirExplorer.obj ..\..\Binaries\ObjFiles\DirectusFileExplorer.obj ..\..\Binaries\ObjFiles\DirectusConsole.obj ..\..\Binaries\ObjFiles\DirectusInspector.obj ..\..\Binaries\ObjFiles\DirectusHierarchy.obj ..\..\Binaries\ObjFiles\DirectusTransform.obj ..\..\Binaries\ObjFiles\DirectusAdjustLabel.obj ..\..\Binaries\ObjFiles\DirectusCamera.obj ..\..\Binaries\ObjFiles\DirectusMeshRenderer.obj ..\..\Binaries\ObjFiles\DirectusMaterial.obj ..\..\Binaries\ObjFiles\DirectusLight.obj ..\..\Binaries\ObjFiles\DirectusRigidBody.obj ..\..\Binaries\ObjFiles\DirectusCollider.obj ..\..\Binaries\ObjFiles\DirectusScript.obj ..\..\Binaries\ObjFiles\DirectusMeshCollider.obj ..\..\Binaries\ObjFiles\DirectusCore.obj ..\..\Binaries\ObjFiles\DirectusAssetLoader.obj ..\..\Binaries\ObjFiles\DirectusComboLabelText.obj ..\..\Binaries\ObjFiles\DirectusComboSliderText.obj ..\..\Binaries\ObjFiles\DirectusTexture.obj ..\..\Binaries\ObjFiles\DirectusMeshFilter.obj ..\..\Binaries\ObjFiles\DirectusColorPicker.obj ..\..\Binaries\ObjFiles\DirectusStatsLabel.obj ..\..\Binaries\ObjFiles\DirectusDropDownButton.obj ..\..\Binaries\ObjFiles\DirectusProgressBar.obj ..\..\Binaries\ObjFiles\DirectusFileDialog.obj ..\..\Binaries\ObjFiles\qrc_images.obj ..\..\Binaries\ObjFiles\moc_editor.obj ..\..\Binaries\ObjFiles\moc_DirectusPlayButton.obj ..\..\Binaries\ObjFiles\moc_AboutDialog.obj ..\..\Binaries\ObjFiles\moc_DirectusDirExplorer.obj ..\..\Binaries\ObjFiles\moc_DirectusFileExplorer.obj ..\..\Binaries\ObjFiles\moc_DirectusConsole.obj ..\..\Binaries\ObjFiles\moc_DirectusInspector.obj ..\..\Binaries\ObjFiles\moc_DirectusHierarchy.obj ..\..\Binaries\ObjFiles\moc_DirectusTransform.obj ..\..\Binaries\ObjFiles\moc_DirectusAdjustLabel.obj ..\..\Binaries\ObjFiles\moc_DirectusCamera.obj ..\..\Binaries\ObjFiles\moc_DirectusMeshRenderer.obj
-	-$(DEL_FILE) ..\..\Binaries\ObjFiles\moc_DirectusMaterial.obj ..\..\Binaries\ObjFiles\moc_DirectusLight.obj ..\..\Binaries\ObjFiles\moc_DirectusRigidBody.obj ..\..\Binaries\ObjFiles\moc_DirectusCollider.obj ..\..\Binaries\ObjFiles\moc_DirectusScript.obj ..\..\Binaries\ObjFiles\moc_DirectusMeshCollider.obj ..\..\Binaries\ObjFiles\moc_DirectusCore.obj ..\..\Binaries\ObjFiles\moc_DirectusAssetLoader.obj ..\..\Binaries\ObjFiles\moc_DirectusComboLabelText.obj ..\..\Binaries\ObjFiles\moc_DirectusComboSliderText.obj ..\..\Binaries\ObjFiles\moc_DirectusTexture.obj ..\..\Binaries\ObjFiles\moc_DirectusMeshFilter.obj ..\..\Binaries\ObjFiles\moc_DirectusColorPicker.obj ..\..\Binaries\ObjFiles\moc_DirectusStatsLabel.obj ..\..\Binaries\ObjFiles\moc_DirectusDropDownButton.obj ..\..\Binaries\ObjFiles\moc_DirectusProgressBar.obj ..\..\Binaries\ObjFiles\moc_DirectusFileDialog.obj
+	-$(DEL_FILE) ..\..\Binaries\ObjFiles\main.obj ..\..\Binaries\ObjFiles\editor.obj ..\..\Binaries\ObjFiles\DirectusPlayButton.obj ..\..\Binaries\ObjFiles\AboutDialog.obj ..\..\Binaries\ObjFiles\DirectusDirExplorer.obj ..\..\Binaries\ObjFiles\DirectusFileExplorer.obj ..\..\Binaries\ObjFiles\DirectusConsole.obj ..\..\Binaries\ObjFiles\DirectusInspector.obj ..\..\Binaries\ObjFiles\DirectusHierarchy.obj ..\..\Binaries\ObjFiles\DirectusTransform.obj ..\..\Binaries\ObjFiles\DirectusAdjustLabel.obj ..\..\Binaries\ObjFiles\DirectusCamera.obj ..\..\Binaries\ObjFiles\DirectusMeshRenderer.obj ..\..\Binaries\ObjFiles\DirectusMaterial.obj ..\..\Binaries\ObjFiles\DirectusLight.obj ..\..\Binaries\ObjFiles\DirectusRigidBody.obj ..\..\Binaries\ObjFiles\DirectusCollider.obj ..\..\Binaries\ObjFiles\DirectusScript.obj ..\..\Binaries\ObjFiles\DirectusMeshCollider.obj ..\..\Binaries\ObjFiles\DirectusCore.obj ..\..\Binaries\ObjFiles\DirectusAssetLoader.obj ..\..\Binaries\ObjFiles\DirectusComboLabelText.obj ..\..\Binaries\ObjFiles\DirectusComboSliderText.obj ..\..\Binaries\ObjFiles\DirectusTexture.obj ..\..\Binaries\ObjFiles\DirectusMeshFilter.obj ..\..\Binaries\ObjFiles\DirectusColorPicker.obj ..\..\Binaries\ObjFiles\DirectusStatsLabel.obj ..\..\Binaries\ObjFiles\DirectusDropDownButton.obj ..\..\Binaries\ObjFiles\DirectusProgressBar.obj ..\..\Binaries\ObjFiles\DirectusFileDialog.obj ..\..\Binaries\ObjFiles\DirectusIconProvider.obj ..\..\Binaries\ObjFiles\qrc_images.obj ..\..\Binaries\ObjFiles\moc_editor.obj ..\..\Binaries\ObjFiles\moc_DirectusPlayButton.obj ..\..\Binaries\ObjFiles\moc_AboutDialog.obj ..\..\Binaries\ObjFiles\moc_DirectusDirExplorer.obj ..\..\Binaries\ObjFiles\moc_DirectusFileExplorer.obj ..\..\Binaries\ObjFiles\moc_DirectusConsole.obj ..\..\Binaries\ObjFiles\moc_DirectusInspector.obj ..\..\Binaries\ObjFiles\moc_DirectusHierarchy.obj ..\..\Binaries\ObjFiles\moc_DirectusTransform.obj ..\..\Binaries\ObjFiles\moc_DirectusAdjustLabel.obj ..\..\Binaries\ObjFiles\moc_DirectusCamera.obj
+	-$(DEL_FILE) ..\..\Binaries\ObjFiles\moc_DirectusMeshRenderer.obj ..\..\Binaries\ObjFiles\moc_DirectusMaterial.obj ..\..\Binaries\ObjFiles\moc_DirectusLight.obj ..\..\Binaries\ObjFiles\moc_DirectusRigidBody.obj ..\..\Binaries\ObjFiles\moc_DirectusCollider.obj ..\..\Binaries\ObjFiles\moc_DirectusScript.obj ..\..\Binaries\ObjFiles\moc_DirectusMeshCollider.obj ..\..\Binaries\ObjFiles\moc_DirectusCore.obj ..\..\Binaries\ObjFiles\moc_DirectusAssetLoader.obj ..\..\Binaries\ObjFiles\moc_DirectusComboLabelText.obj ..\..\Binaries\ObjFiles\moc_DirectusComboSliderText.obj ..\..\Binaries\ObjFiles\moc_DirectusTexture.obj ..\..\Binaries\ObjFiles\moc_DirectusMeshFilter.obj ..\..\Binaries\ObjFiles\moc_DirectusColorPicker.obj ..\..\Binaries\ObjFiles\moc_DirectusStatsLabel.obj ..\..\Binaries\ObjFiles\moc_DirectusDropDownButton.obj ..\..\Binaries\ObjFiles\moc_DirectusProgressBar.obj ..\..\Binaries\ObjFiles\moc_DirectusFileDialog.obj
 	-$(DEL_FILE) ..\..\Binaries\Directus3D.exp
 	-$(DEL_FILE) D:\Projects\Directus3D\Binaries\ObjFiles\Directus3D_resource.res
 
@@ -363,6 +367,7 @@ compiler_rcc_clean:
 		Images\tabHierarchy.png \
 		Images\pause.png \
 		Images\arrowLeft.png \
+		Images\folder.png \
 		Images\play.png \
 		Images\material.png \
 		Images\rigidBody.png \
@@ -889,6 +894,9 @@ compiler_moc_header_clean:
 		DirectusFileExplorer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListView \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
 		DirectusDirExplorer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusDirExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusDirExplorer.cpp
@@ -1013,6 +1021,9 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qdir.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qfileinfo.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qdiriterator.h \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
 		DirectusFileExplorer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusFileExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusFileExplorer.cpp
@@ -5411,6 +5422,9 @@ compiler_uic_clean:
 		DirectusFileExplorer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListView \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListView \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractitemview.h \
@@ -5531,6 +5545,9 @@ compiler_uic_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qdir.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qfileinfo.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qdiriterator.h \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistwidget.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
@@ -7166,6 +7183,9 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusFileExplorer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListView \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
 		..\Directus3D\IO\Log.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
@@ -7293,6 +7313,9 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qdir.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qfileinfo.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qdiriterator.h \
+		DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QStandardItem \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qstandarditemmodel.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QMouseEvent \
@@ -11802,6 +11825,92 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QThread \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qthread.h
+
+..\..\Binaries\ObjFiles\DirectusIconProvider.obj: DirectusIconProvider.cpp DirectusIconProvider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qfileinfo.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qfile.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qfiledevice.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qiodevice.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qglobal.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qconfig.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qfeatures.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qsystemdetection.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qprocessordetection.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qcompilerdetection.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qtypeinfo.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qtypetraits.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qisenum.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qsysinfo.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qlogging.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qflags.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qatomic.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasicatomic.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qatomic_bootstrap.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qgenericatomic.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qatomic_cxx11.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qatomic_msvc.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qglobalstatic.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qmutex.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qnumeric.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qversiontagging.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qobject.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qobjectdefs.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qnamespace.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qobjectdefs_impl.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qstring.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qchar.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qbytearray.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qrefcount.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qarraydata.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qstringbuilder.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qlist.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qalgorithms.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qiterator.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qhashfunctions.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qpair.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qbytearraylist.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qstringlist.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qregexp.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qstringmatcher.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qcoreevent.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qscopedpointer.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qmetatype.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qvarlengtharray.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qcontainerfwd.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qobject_impl.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qshareddata.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qhash.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qicon.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qsize.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qpixmap.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qpaintdevice.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qwindowdefs.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qwindowdefs_win.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qrect.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qmargins.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qpoint.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qcolor.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qrgb.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qrgba64.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qsharedpointer.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qsharedpointer_impl.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qimage.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qpixelformat.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qtransform.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qmatrix.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qpolygon.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qvector.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qregion.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qdatastream.h \
+		C:\Qt\5.7\msvc2015_64\include\QtCore\qline.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\qpainterpath.h \
+		..\Directus3D\IO\Log.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\IO\ILogger.h \
+		..\Directus3D\Math\Quaternion.h
 
 ..\..\Binaries\ObjFiles\qrc_images.obj: ..\..\Binaries\RCCFiles\qrc_images.cpp 
 

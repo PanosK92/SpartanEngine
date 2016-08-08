@@ -21,29 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-// INCLUDES =====================
-#include <QListView>
-#include <QFileSystemModel>
-#include "DirectusIconProvider.h"
-//===============================
+//= INCLUDES ===================
+#include <QFileIconProvider>
+#include "Loading/ImageLoader.h"
+//==============================
 
-class DirectusFileExplorer : public QListView
+class DirectusIconProvider : public QFileIconProvider
 {
-    Q_OBJECT
 public:
-    explicit DirectusFileExplorer(QWidget *parent = 0);
     void Initialize();
-    void SetRootPath(QString path);
-    virtual void mousePressEvent(QMouseEvent *event);
-    virtual void mouseMoveEvent(QMouseEvent* event);
+    QIcon icon(const QFileInfo& info) const;
 
 private:
-    QFileSystemModel* m_fileModel;
-    QPoint m_dragStartPosition;
-    DirectusIconProvider* m_directusIconProvider;
+    ImageLoader* m_imageLoader;
 
-signals:
-
-public slots:
-
+    QIcon m_unknownIcon;
+    QIcon m_folderIcon;
+    QIcon m_modelIcon;
+    QIcon m_sceneIcon;
+    QIcon m_scriptIcon;
+    QIcon m_imageIcon;
 };

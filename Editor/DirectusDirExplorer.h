@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QTreeView>
 #include <QFileSystemModel>
 #include "DirectusFileExplorer.h"
+#include "DirectusIconProvider.h"
 //===============================
 
 class DirectusDirExplorer : public QTreeView
@@ -36,6 +37,7 @@ public:
 private:
     QFileSystemModel* m_dirModel;
     DirectusFileExplorer* m_fileExplorer;
+    DirectusIconProvider* m_iconProvider;
 signals:
 
 public slots:

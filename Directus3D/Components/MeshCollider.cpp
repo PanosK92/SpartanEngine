@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../IO/Log.h"
+#include "../Core/Globals.h"
 //====================================================================
 
 //= NAMESPACES =====
@@ -46,8 +47,7 @@ MeshCollider::MeshCollider()
 
 MeshCollider::~MeshCollider()
 {
-	delete m_collisionShape;
-	m_collisionShape = nullptr;
+	SafeDelete(m_collisionShape);
 }
 
 //= ICOMPONENT ========================================
