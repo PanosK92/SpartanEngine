@@ -45,5 +45,5 @@ private:
 signals:
 
 public slots:
-
+    void ShowContextMenu(QPoint pos);
 };
