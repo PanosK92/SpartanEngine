@@ -145,7 +145,7 @@ bool D3D11Shader::AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE tex
 	D3D11Sampler* sampler = new D3D11Sampler();
 	if (!sampler->Create(filter, textureAddressMode, comparisonFunction, m_graphicsDevice))
 	{
-		LOG("Failed to create shader sampler", Log::Error);
+		LOG_ERROR("Failed to create shader sampler");
 		SafeDelete(sampler);
 		return false;
 	}

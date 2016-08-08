@@ -182,8 +182,7 @@ void Renderer::Render()
 		{
 			m_directionalLight->SetDepthMapAsRenderTarget();
 			m_graphicsDevice->SetCullMode(CullFront);	
-			DirectionalLightDepthPass(m_renderables, m_directionalLight->GetProjectionSize(), m_directionalLight);
-			m_graphicsDevice->SetCullMode(CullBack);
+			DirectionalLightDepthPass(m_renderables, m_directionalLight);
 		}
 	}
 
@@ -299,9 +298,9 @@ void Renderer::AcquirePrerequisites()
 	}
 }
 
-void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjects, int projectionSize, Light* light) const
+void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjects, Light* light) const
 {
-	light->GenerateOrthographicProjectionMatrix(projectionSize, projectionSize, m_nearPlane, m_farPlane);
+	light->GenerateOrthographicProjectionMatrix();
 	light->GenerateViewMatrix();
 
 	for (auto i = 0; i < renderableGameObjects.size(); i++)

@@ -59,6 +59,8 @@ Engine::~Engine()
 
 void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
 {
+	EMIT_SIGNAL(SIGNAL_ENGINE_INITIALIZE);
+
 	// 1 - DEBUG LOG
 	Log::Initialize();
 
@@ -153,6 +155,8 @@ void Engine::Update()
 
 void Engine::Shutdown()
 {
+	EMIT_SIGNAL(SIGNAL_ENGINE_SHUTDOWN);
+
 	// 16 - ENGINE INTERFACE
 	delete m_engineSocket;
 

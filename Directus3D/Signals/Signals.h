@@ -22,14 +22,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= SIGNAL IDs ======================
-#define SIGNAL_ENGINE_INITIALIZED	0 // Fired when engine get's initialized, happens only once.
-#define SIGNAL_ENGINE_START			1 // Fired when the engine starts, can happen at any time (e.g. Button play get's clicked in the editor).
-#define SIGNAL_ENGINE_STOP			2 // Fired when the engine stops.
-#define SIGNAL_FRAME_START			3 // Fired when an engine cycle starts.
-#define SIGNAL_FRAME_END			4 // Fired when an engine cycle ends.
-#define SIGNAL_RENDER_START			5 // Fired when the starts.
-#define SIGNAL_RENDER_END			6 // Fired when the rendering ends.
-#define SIGNAL_PHYSICS_STEPPED		7 // Fired when the physics get's stepped (updated).
-#define SIGNAL_TRANSFORM_UPDATED	8 // Fired when any transform updates.
-#define SIGNAL_FORCE_UPDATE_PHYSICS 9 // Forces a step in the physics simulation.
+#define SIGNAL_ENGINE_INITIALIZE	0	// Fired when the engine get's initialized, happens only once.
+#define SIGNAL_ENGINE_SHUTDOWN		1	// Fired when the engine get's shutdown, happens only once.
+#define SIGNAL_ENGINE_START			2	// Fired when the engine starts, can happen at any time (e.g. Button play get's clicked in the editor).
+#define SIGNAL_ENGINE_STOP			3	// Fired when the engine stops.
+#define SIGNAL_FRAME_START			4	// Fired when an engine cycle starts.
+#define SIGNAL_FRAME_END			5	// Fired when an engine cycle ends.
+#define SIGNAL_RENDER_START			6	// Fired when the rendering starts.
+#define SIGNAL_RENDER_END			7	// Fired when the rendering ends.
+#define SIGNAL_PHYSICS_STEPPED		8	// Fired when the physics get's stepped (updated).
+#define SIGNAL_TRANSFORM_UPDATED	9	// Fired when any transform updates.
+#define SIGNAL_FORCE_UPDATE_PHYSICS 10	// Forces a step in the physics simulation.
 //====================================

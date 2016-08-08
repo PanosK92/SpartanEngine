@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===
 #include "Log.h"
+#include "../Signals/Signaling.h"
 //==============
 
 //= NAMESPACES ================
@@ -28,21 +29,22 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-unique_ptr<ILogger> Log::m_logger;
+ILogger* Log::m_logger;
 map<string, Log::LogType> Log::m_queuedLogs;
 
 void Log::Initialize()
 {
+	CONNECT_TO_SIGNAL(SIGNAL_ENGINE_SHUTDOWN, std::bind(&Log::Release));
 }
 
 void Log::Release()
 {
-	
+	m_logger = nullptr;
 }
 
-void Log::SetLogger(unique_ptr<ILogger> logger)
+void Log::SetLogger(ILogger* logger)
 {
-	m_logger = move(logger);
+	m_logger = logger;
 }
 
 /*------------------------------------------------------------------------------
