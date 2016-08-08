@@ -39,6 +39,7 @@ void DirectusIconProvider::Initialize()
     m_imageIcon = QIcon(":/Images/image.png");
     m_modelIcon = QIcon(":/Images/model.png");
     m_scriptIcon = QIcon(":/Images/scriptLarge.png");
+    m_sceneIcon = QIcon(":/Images/scene.png");
 }
 
 // Returns an icon for the file described by info.
@@ -82,6 +83,12 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     if (FileHelper::IsSupportedScript(filePath))
     {
         return m_scriptIcon;
+    }
+
+    // Scene
+    if (FileHelper::IsSupportedScene(filePath))
+    {
+        return m_sceneIcon;
     }
 
     // Unknown

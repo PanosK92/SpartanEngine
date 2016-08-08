@@ -243,6 +243,21 @@ bool FileHelper::IsSupportedScript(string path)
 	return false;
 }
 
+bool FileHelper::IsSupportedScene(std::string path)
+{
+	string fileExt = GetExtensionFromPath(path);
+	vector<string> supportedExt;
+	supportedExt.push_back(".dss");
+
+	for (int i = 0; i < supportedExt.size(); i++)
+	{
+		if (fileExt == supportedExt[i] || fileExt == ConvertToUppercase(supportedExt[i]))
+			return true;
+	}
+
+	return false;
+}
+
 bool FileHelper::IsSupportedModel(string path)
 {
 	string fileExt = GetExtensionFromPath(path);

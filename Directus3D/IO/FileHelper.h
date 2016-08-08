@@ -43,6 +43,7 @@ public:
 	static std::vector<std::string> GetModelsFromPaths(std::vector<std::string> paths);
 	static bool IsSupportedImage(std::string path);
 	static bool IsSupportedScript(std::string path);
+	static bool IsSupportedScene(std::string path);
 	static bool IsSupportedModel(std::string path);
 
 	// string
