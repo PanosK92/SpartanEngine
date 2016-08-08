@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "../IO/Log.h"
+#include "../Core/Globals.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -42,13 +43,13 @@ using namespace Directus::Math;
 class MotionState : public btMotionState
 {
 protected:
-	Transform* transform;
+	Transform* engineTrans;
 	Vector3 colliderCenter;
 
 public:
 	MotionState(Transform* transform, Vector3 colliderCenter)
 	{
-		this->transform = transform;
+		this->engineTrans = transform;
 		this->colliderCenter = colliderCenter;
 	}
 
@@ -56,27 +57,27 @@ public:
 	{
 	}
 
-	void getWorldTransform(btTransform& worldTrans) const override
+	void getWorldTransform(btTransform& bulletTrans) const override
 	{
-		Vector3 position = transform->GetPosition();
-		Quaternion rotation = transform->GetRotation();
+		Vector3 position = engineTrans->GetPosition();
+		Quaternion rotation = engineTrans->GetRotation();
 		Vector3 offset = colliderCenter;
 
-		worldTrans.setOrigin(ToBtVector3(position + rotation * offset));
-		worldTrans.setRotation(ToBtQuaternion(rotation));
+		bulletTrans.setOrigin(ToBtVector3(position + rotation * offset));
+		bulletTrans.setRotation(ToBtQuaternion(rotation));
 	}
 
-	void setWorldTransform(const btTransform& worldTrans) override
+	void setWorldTransform(const btTransform& bulletTrans) override
 	{
-		if (!transform)
+		if (!engineTrans)
 			return;
 
-		Vector3 btPosition = ToVector3(worldTrans.getOrigin());
-		Quaternion btRotation = ToQuaternion(worldTrans.getRotation());
+		Vector3 btPosition = ToVector3(bulletTrans.getOrigin());
+		Quaternion btRotation = ToQuaternion(bulletTrans.getRotation());
 		Vector3 offset = colliderCenter;
 
-		transform->SetPosition(btPosition - btRotation * offset);
-		transform->SetRotation(btRotation);
+		engineTrans->SetPosition(btPosition - btRotation * offset);
+		engineTrans->SetRotation(btRotation);
 	}
 };
 
@@ -102,8 +103,7 @@ RigidBody::~RigidBody()
 		return;
 
 	SetCollisionShape(nullptr);
-	delete m_rigidBody;
-	m_rigidBody = nullptr;
+	SafeDelete(m_rigidBody);
 }
 
 //= ICOMPONENT ==========================================================

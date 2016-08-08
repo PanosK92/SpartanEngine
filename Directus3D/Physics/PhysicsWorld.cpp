@@ -31,11 +31,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Globals.h"
 #include "BulletPhysicsHelper.h"
 #include "../Signals/Signaling.h"
+#include <algorithm>
 //==============================================================================
 
 PhysicsWorld::PhysicsWorld()
 {
-	m_updatesPerSec = 60;
+	m_internalFPS = 60.0f;
+	m_maxSubSteps = 0;
 	m_gravity = Directus::Math::Vector3(0.0f, -9.81f, 0.0f);
 
 	m_broadphase = nullptr;
@@ -64,7 +66,7 @@ void PhysicsWorld::Initialize()
 	m_dispatcher = new btCollisionDispatcher(m_collisionConfiguration);
 	m_constraintSolver = new btSequentialImpulseConstraintSolver;
 	m_world = new btDiscreteDynamicsWorld(m_dispatcher, m_broadphase, m_constraintSolver, m_collisionConfiguration);
-	
+
 	// create an implementation of the btIDebugDraw interface
 	m_debugDraw = new PhysicsDebugDraw();
 	int debugMode = btIDebugDraw::DBG_MAX_DEBUG_DRAW_MODE;
@@ -81,12 +83,25 @@ void PhysicsWorld::Step(float timeStep)
 	if (!m_world)
 		return;
 
-	// Step the physics world	
-	m_world->stepSimulation(timeStep, 1, 1.0f / m_updatesPerSec);
+	// Note from the bullet guy: timeStep < maxSubSteps * fixedTimeStep
+
+	float internalTimeStep = 1.0f / m_internalFPS;
+	int maxSubSteps = timeStep * m_internalFPS + 1;
+	if (m_maxSubSteps < 0)
+	{
+		internalTimeStep = timeStep;
+		maxSubSteps = 1;
+	}
+	else if (m_maxSubSteps > 0)
+		maxSubSteps = std::min(maxSubSteps, m_maxSubSteps);
+
+	// Step the physics world. 
+	m_world->stepSimulation(timeStep, maxSubSteps, internalTimeStep); 
+
 	EMIT_SIGNAL(SIGNAL_PHYSICS_STEPPED);
 
 	if (m_debugDrawEnabled)
-		RenderColliders();
+		m_world->debugDrawWorld();
 }
 
 void PhysicsWorld::Reset()
@@ -131,15 +146,6 @@ bool PhysicsWorld::GetDebugDraw()
 {
 	return m_debugDrawEnabled;
 }
-
-void PhysicsWorld::RenderColliders()
-{
-	if (!m_world)
-		return;
-
-	m_world->debugDrawWorld();
-}
-
 PhysicsDebugDraw* PhysicsWorld::GetPhysicsDebugDraw()
 {
 	return m_debugDraw;

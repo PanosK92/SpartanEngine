@@ -63,5 +63,4 @@ private:
 	MaterialPool* m_materialPool;
 	TexturePool* m_texturePool;
 	ShaderPool* m_shaderPool;
-	float m_fixedUpdateTimeRunned;
 };

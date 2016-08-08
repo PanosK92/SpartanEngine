@@ -62,10 +62,10 @@ public:
 		Serializer::SaveInt(m_indexCount);
 		Serializer::SaveInt(m_triangleCount);
 
-		for (int i = 0; i < m_vertexCount; i++)
+                for (auto i = 0; i < m_vertexCount; i++)
 			SaveVertex(m_vertices[i]);
 
-		for (int i = 0; i < m_indexCount; i++)
+                for (auto i = 0; i < m_indexCount; i++)
 			Serializer::SaveInt(m_indices[i]); 
 	}
 
@@ -78,10 +78,10 @@ public:
 		m_indexCount = Serializer::LoadInt();
 		m_triangleCount = Serializer::LoadInt();
 
-		for (int i = 0; i < m_vertexCount; i++)
+                for (auto i = 0; i < m_vertexCount; i++)
 			m_vertices.push_back(LoadVertex());
 
-		for (int i = 0; i < m_indexCount; i++)
+                for (auto i = 0; i < m_indexCount; i++)
 			m_indices.push_back(Serializer::LoadInt());
 	}
 

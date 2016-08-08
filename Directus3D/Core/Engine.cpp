@@ -33,8 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/GraphicsDevice.h"
 #include "Globals.h"
 #include "../Signals/Signaling.h"
-#include "Settings.h"
-
 //=====================================
 
 Engine::Engine()
@@ -126,16 +124,6 @@ void Engine::Update()
 
 	m_timer->Update();
 
-	//= FIXED UPDATE - 60Hz ======================
-	float updates = 60;
-	float updateInterval = 1.0f / updates;
-	float currentTime = m_timer->GetTime();
-	if (currentTime > m_fixedUpdateTimeRunned + updateInterval)
-	{
-		m_fixedUpdateTimeRunned = currentTime;
-	}
-	//============================================
-
 	//= PHYSICS - 60 HZ (INTERNAL CLOCK) =========
 	m_physicsWorld->Step(m_timer->GetDeltaTime());
 	//============================================
@@ -144,13 +132,13 @@ void Engine::Update()
 	m_input->Update();
 	GameObjectPool::GetInstance().Update();
 	m_scene->Update();
-	//===========================================
+	//============================================
 
-	//= RENDERING - MAX HZ ======================
+	//= RENDERING - MAX HZ =======================
 	m_timer->RenderStart();
 	m_renderer->Render();
 	m_timer->RenderEnd();
-	//===========================================
+	//============================================
 
 	EMIT_SIGNAL(SIGNAL_FRAME_END);
 }
