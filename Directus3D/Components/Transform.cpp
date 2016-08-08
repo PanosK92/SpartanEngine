@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Signals/Signaling.h"
 //==================================
 
-//= NAMESPACES =====================
+//= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
-//==================================
+//=============================
 
 Transform::Transform()
 {
@@ -40,7 +40,6 @@ Transform::Transform()
 	m_scaleLocal = Vector3::One;
 	m_worldMatrix = Matrix::Identity;
 	m_parent = nullptr;
-	m_isDirty = true;
 }
 
 Transform::~Transform()
@@ -48,12 +47,10 @@ Transform::~Transform()
 
 }
 
-/*------------------------------------------------------------------------------
-								[INTERFACE]
-------------------------------------------------------------------------------*/
+//= INTERFACE ====================================================================================
 void Transform::Initialize()
 {
-
+	UpdateWorldTransform();
 }
 
 void Transform::Start()
@@ -68,12 +65,7 @@ void Transform::Remove()
 
 void Transform::Update()
 {
-	if (!m_isDirty)
-		return;
 
-	UpdateWorldTransform();
-
-	m_isDirty = false;
 }
 
 void Transform::Serialize()
@@ -106,8 +98,9 @@ void Transform::Deserialize()
 			m_parent = parent->GetTransform();
 	}
 
-	MakeDirty();
+	UpdateWorldTransform();
 }
+//================================================================================================
 
 void Transform::UpdateWorldTransform()
 {
@@ -142,9 +135,6 @@ void Transform::UpdateWorldTransform()
 ------------------------------------------------------------------------------*/
 Vector3 Transform::GetPosition()
 {
-	if (m_isDirty)
-		UpdateWorldTransform();
-
 	return m_position;
 }
 
@@ -164,7 +154,7 @@ void Transform::SetPositionLocal(const Vector3& position)
 		return;
 
 	m_positionLocal = position;
-	MakeDirty();
+	UpdateWorldTransform();
 }
 
 /*------------------------------------------------------------------------------
@@ -173,9 +163,6 @@ void Transform::SetPositionLocal(const Vector3& position)
 
 Quaternion Transform::GetRotation()
 {
-	if (m_isDirty)
-		UpdateWorldTransform();
-
 	return m_rotation;
 }
 
@@ -195,7 +182,7 @@ void Transform::SetRotationLocal(const Quaternion& rotation)
 		return;
 
 	m_rotationLocal = rotation;
-	MakeDirty();
+	UpdateWorldTransform();
 }
 
 /*------------------------------------------------------------------------------
@@ -203,9 +190,6 @@ void Transform::SetRotationLocal(const Quaternion& rotation)
 ------------------------------------------------------------------------------*/
 Vector3 Transform::GetScale()
 {
-	if (m_isDirty)
-		UpdateWorldTransform();
-
 	return m_scale;
 }
 
@@ -232,7 +216,7 @@ void Transform::SetScaleLocal(const Vector3& scale)
 	if (m_scaleLocal.y == 0.0f) m_scaleLocal.y = M_EPSILON;
 	if (m_scaleLocal.z == 0.0f) m_scaleLocal.z = M_EPSILON;
 
-	MakeDirty();
+	UpdateWorldTransform();
 }
 
 //= TRANSLATION/ROTATION ========================================================
@@ -342,7 +326,7 @@ void Transform::SetParent(Transform* newParent)
 	if (m_parent)
 		m_parent->FindChildren();
 
-	MakeDirty();
+	UpdateWorldTransform();
 }
 
 // Checks whether this transform has any children
@@ -496,12 +480,6 @@ bool Transform::HasParent()
 Matrix Transform::GetWorldTransform()
 {
 	return m_worldMatrix;
-}
-
-// Causes this transform and all of it's descendands (if any) to update.
-void Transform::MakeDirty()
-{
-	m_isDirty = true;
 }
 
 GameObject* Transform::GetGameObject()

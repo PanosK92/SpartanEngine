@@ -5,7 +5,7 @@ class FirstPersonControllerPhysics
 	RigidBody @rigidbody;
 	
 	float movementSpeed = 10.0f;
-	float jumpForce = 0.4f;
+	float jumpForce = 0.1f;
 	
 	// Constructor
 	FirstPersonControllerPhysics(GameObject @obj)

@@ -111,11 +111,9 @@ public:
 	------------------------------------------------------------------------------*/
 	void LookAt(const Directus::Math::Vector3& v);
 	Directus::Math::Matrix GetWorldTransform();
-	void MakeDirty();
 	GameObject* GetGameObject();
 
 private:
-	bool m_isDirty;
 
 	// local
 	Directus::Math::Vector3 m_positionLocal;

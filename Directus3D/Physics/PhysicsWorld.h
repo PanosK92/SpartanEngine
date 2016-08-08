@@ -51,7 +51,6 @@ public:
 	//= DEBUG DRAW =========================
 	void SetDebugDraw(bool enable);
 	bool GetDebugDraw();
-	void RenderColliders();
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
 	//======================================
 
@@ -65,7 +64,8 @@ private:
 	PhysicsDebugDraw* m_debugDraw;
 
 	//= PROPERTIES ====================
-	float m_updatesPerSec;
+	float m_internalFPS;
+	int m_maxSubSteps;
 	Directus::Math::Vector3 m_gravity;
 	//=================================
 };
