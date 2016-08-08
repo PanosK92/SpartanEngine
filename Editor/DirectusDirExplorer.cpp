@@ -28,13 +28,15 @@ DirectusDirExplorer::DirectusDirExplorer(QWidget *parent) : QTreeView(parent)
 {
     QString rootPath = "Assets";
     m_fileExplorer = nullptr;
+
     m_dirModel = new QFileSystemModel(this);
+    m_dirModel->setFilter(QDir::NoDotAndDotDot | QDir::AllDirs);  // Set a filter that displays only folders
+    m_dirModel->setRootPath(rootPath);  // Set the root path
 
-    // Set a filter that displays only folders
-    m_dirModel->setFilter(QDir::NoDotAndDotDot | QDir::AllDirs);
-
-    // Set the root path
-    m_dirModel->setRootPath(rootPath);
+    // Set icon provider
+    m_iconProvider = new DirectusIconProvider();
+    m_iconProvider->Initialize();
+    m_dirModel->setIconProvider(m_iconProvider);
 
     // Set the model to the list view
     this->setModel(m_dirModel);

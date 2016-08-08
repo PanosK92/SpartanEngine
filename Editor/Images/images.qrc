@@ -25,5 +25,9 @@
         <file>arrowUp.png</file>
         <file>check.png</file>
         <file>componentOptions.png</file>
+        <file>folder.png</file>
+        <file>image.png</file>
+        <file>model.png</file>
+        <file>file.png</file>
     </qresource>
 </RCC>

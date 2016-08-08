@@ -31,14 +31,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
 {
+
+}
+
+void DirectusFileExplorer::Initialize()
+{
     QString root = "Assets";
+
     m_fileModel = new QFileSystemModel(this);
+    m_fileModel->setFilter(QDir::Files | QDir::AllDirs | QDir::NoDotAndDotDot); // Set a filter that displays only folders
+    m_fileModel->setRootPath(root);  // Set the root path
 
-    // Set a filter that displays only folders
-    m_fileModel->setFilter(QDir::Files | QDir::AllDirs | QDir::NoDotAndDotDot);
-
-    // Set the root path
-    m_fileModel->setRootPath(root);
+    // Set icon provider
+    m_directusIconProvider = new DirectusIconProvider();
+    m_directusIconProvider->Initialize();
+    m_fileModel->setIconProvider(m_directusIconProvider);
 
     // Set the model to the tree view
     this->setModel(m_fileModel);
