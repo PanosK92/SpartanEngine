@@ -378,12 +378,16 @@ compiler_rcc_clean:
 		Images\arrowRight.png \
 		Images\collider.png \
 		Images\check.png \
+		Images\file.png \
 		Images\meshFilter.png \
 		Images\componentOptions.png \
+		Images\image.png \
+		Images\model.png \
 		Images\meshCollider.png \
+		Images\scriptLarge.png \
+		Images\scriptSmall.png \
 		Images\icon.ico \
 		Images\arrow.png \
-		Images\script.png \
 		Images\arrowDown.png \
 		Images\arrowUp.png \
 		Images\tabScene.png \
@@ -897,6 +901,10 @@ compiler_moc_header_clean:
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
+		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\Graphics\GraphicsDevice.h \
+		..\Directus3D\Graphics\D3D11\D3D11Device.h \
+		..\Directus3D\Math\Vector4.h \
 		DirectusDirExplorer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusDirExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusDirExplorer.cpp
@@ -1024,6 +1032,10 @@ compiler_moc_header_clean:
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
+		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\Graphics\GraphicsDevice.h \
+		..\Directus3D\Graphics\D3D11\D3D11Device.h \
+		..\Directus3D\Math\Vector4.h \
 		DirectusFileExplorer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusFileExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusFileExplorer.cpp
@@ -5425,6 +5437,10 @@ compiler_uic_clean:
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
+		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\Graphics\GraphicsDevice.h \
+		..\Directus3D\Graphics\D3D11\D3D11Device.h \
+		..\Directus3D\Math\Vector4.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListView \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractitemview.h \
@@ -5548,6 +5564,10 @@ compiler_uic_clean:
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
+		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\Graphics\GraphicsDevice.h \
+		..\Directus3D\Graphics\D3D11\D3D11Device.h \
+		..\Directus3D\Math\Vector4.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistwidget.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
@@ -7186,6 +7206,10 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
+		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\Graphics\GraphicsDevice.h \
+		..\Directus3D\Graphics\D3D11\D3D11Device.h \
+		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\IO\Log.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
@@ -7316,6 +7340,10 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
+		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\Graphics\GraphicsDevice.h \
+		..\Directus3D\Graphics\D3D11\D3D11Device.h \
+		..\Directus3D\Math\Vector4.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QStandardItem \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qstandarditemmodel.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QMouseEvent \
@@ -11906,11 +11934,16 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qdatastream.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qline.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qpainterpath.h \
+		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\Graphics\GraphicsDevice.h \
+		..\Directus3D\Graphics\D3D11\D3D11Device.h \
+		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\IO\Log.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\IO\ILogger.h \
-		..\Directus3D\Math\Quaternion.h
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\IO\FileHelper.h
 
 ..\..\Binaries\ObjFiles\qrc_images.obj: ..\..\Binaries\RCCFiles\qrc_images.cpp 
 

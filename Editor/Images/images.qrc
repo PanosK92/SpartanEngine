@@ -13,7 +13,6 @@
         <file>meshRenderer.png</file>
         <file>light.png</file>
         <file>arrow.png</file>
-        <file>script.png</file>
         <file>icon.ico</file>
         <file>rigidBody.png</file>
         <file>collider.png</file>
@@ -29,5 +28,7 @@
         <file>image.png</file>
         <file>model.png</file>
         <file>file.png</file>
+        <file>scriptLarge.png</file>
+        <file>scriptSmall.png</file>
     </qresource>
 </RCC>
