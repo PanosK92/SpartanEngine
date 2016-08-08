@@ -38,6 +38,7 @@ void DirectusIconProvider::Initialize()
     m_folderIcon = QIcon(":/Images/folder.png");
     m_imageIcon = QIcon(":/Images/image.png");
     m_modelIcon = QIcon(":/Images/model.png");
+    m_scriptIcon = QIcon(":/Images/scriptLarge.png");
 }
 
 // Returns an icon for the file described by info.
@@ -75,6 +76,12 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     if (FileHelper::IsSupportedModel(filePath))
     {
         return m_modelIcon;
+    }
+
+    // Script
+    if (FileHelper::IsSupportedScript(filePath))
+    {
+        return m_scriptIcon;
     }
 
     // Unknown

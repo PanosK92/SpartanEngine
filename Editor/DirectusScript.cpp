@@ -41,7 +41,7 @@ void DirectusScript::Initialize(DirectusCore* directusCore, DirectusInspector* i
     //= TITLE =================================================
     m_title = new QLabel("Script");
     m_title->setStyleSheet(
-                "background-image: url(:/Images/script.png);"
+                "background-image: url(:/Images/scriptSmall.png);"
                 "background-repeat: no-repeat;"
                 "background-position: left;"
                 "padding-left: 20px;"
