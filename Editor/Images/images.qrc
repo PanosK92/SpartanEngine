@@ -31,5 +31,6 @@
         <file>scriptLarge.png</file>
         <file>scriptSmall.png</file>
         <file>scene.png</file>
+        <file>hlsl.png</file>
     </qresource>
 </RCC>

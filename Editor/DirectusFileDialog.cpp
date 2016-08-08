@@ -45,10 +45,6 @@ void DirectusFileDialog::Initialize(QWidget* mainWindow, DirectusCore* directusC
     m_assetLoader = new DirectusAssetLoader();
     m_assetLoader->Initialize(m_mainWindow, m_socket);
 
-    m_iconProvider = new DirectusIconProvider();
-    m_iconProvider->Initialize();
-    setIconProvider(m_iconProvider);
-
     m_lastSceneFilePath = EMPTY;
 }
 
@@ -133,40 +129,33 @@ void DirectusFileDialog::FileDialogAccepted(QString filePath)
 
     // Stop the engine (in case it's running)
     m_directusCore->Stop();
-    connect(thread, SIGNAL(started()), m_directusCore, SLOT(Lock()));
 
+    connect(thread,             SIGNAL(started()),  m_directusCore,     SLOT(Lock()),                   Qt::QueuedConnection);
     if (m_assetOperation == "Save Scene As")
     {
         m_lastSceneFilePath = filePath.toStdString();
-
-        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(SaveScene()));
-        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
+        connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(SaveScene()),              Qt::QueuedConnection);
     }
     else if (m_assetOperation == "Save Scene")
     {
         m_lastSceneFilePath = filePath.toStdString();
-
-        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(SaveScene()));
-        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
+        connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(SaveScene()),              Qt::QueuedConnection);
     }
     else if (m_assetOperation == "Load Scene")
     {
         m_lastSceneFilePath = filePath.toStdString();
-
-        connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(LoadScene()));
-        connect(thread,         SIGNAL(finished()), m_directusCore,     SLOT(Update()));
-        connect(m_assetLoader,  SIGNAL(Finished()), this,               SLOT(AssetLoadedSurrogate()));
-        connect(m_assetLoader,  SIGNAL(Finished()), thread,             SLOT(quit()));
+        connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(LoadScene()),              Qt::QueuedConnection);
+        connect(m_assetLoader,  SIGNAL(Finished()), this,               SLOT(AssetLoadedSurrogate()),   Qt::QueuedConnection);
     }
     else if (m_assetOperation  == "Load Model")
     {
-        connect(thread,         SIGNAL(started()),  m_assetLoader,  SLOT(LoadModel()));
-        connect(m_assetLoader,  SIGNAL(Finished()), this,           SLOT(AssetLoadedSurrogate()));
-        connect(m_assetLoader,  SIGNAL(Finished()), thread,         SLOT(quit()));
-        connect(thread,         SIGNAL(finished()), m_directusCore, SLOT(Update()));
+        connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(LoadModel()),              Qt::QueuedConnection);
+        connect(m_assetLoader,  SIGNAL(Finished()), this,               SLOT(AssetLoadedSurrogate()),   Qt::QueuedConnection);
     }
-    connect(thread,         SIGNAL(started()), m_directusCore,          SLOT(Unlock()));
-    connect(thread,         SIGNAL(finished()), thread,                 SLOT(deleteLater()));
+    connect(m_assetLoader,  SIGNAL(Finished()), thread,                 SLOT(quit()),                   Qt::QueuedConnection);
+    connect(thread,         SIGNAL(finished()), thread,                 SLOT(deleteLater()),            Qt::QueuedConnection);
+    connect(m_assetLoader,  SIGNAL(Finished()), m_directusCore,         SLOT(Unlock()),                 Qt::QueuedConnection);
+    connect(m_assetLoader,  SIGNAL(Finished()), m_directusCore,         SLOT(Update()),                 Qt::QueuedConnection);
 
     thread->start(QThread::HighestPriority);
 }

@@ -243,7 +243,7 @@ bool FileHelper::IsSupportedScript(string path)
 	return false;
 }
 
-bool FileHelper::IsSupportedScene(std::string path)
+bool FileHelper::IsSupportedScene(string path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -294,6 +294,21 @@ bool FileHelper::IsSupportedModel(string path)
 	supportedExt.push_back(".bvh");
 	supportedExt.push_back(".b3d");
 	supportedExt.push_back(".ndo");
+
+	for (int i = 0; i < supportedExt.size(); i++)
+	{
+		if (fileExt == supportedExt[i] || fileExt == ConvertToUppercase(supportedExt[i]))
+			return true;
+	}
+
+	return false;
+}
+
+bool FileHelper::IsSupportedShader(string path)
+{
+	string fileExt = GetExtensionFromPath(path);
+	vector<string> supportedExt;
+	supportedExt.push_back(".hlsl");
 
 	for (int i = 0; i < supportedExt.size(); i++)
 	{

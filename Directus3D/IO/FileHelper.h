@@ -45,6 +45,7 @@ public:
 	static bool IsSupportedScript(std::string path);
 	static bool IsSupportedScene(std::string path);
 	static bool IsSupportedModel(std::string path);
+	static bool IsSupportedShader(std::string path);
 
 	// string
 	static std::string ConvertToUppercase(std::string);
