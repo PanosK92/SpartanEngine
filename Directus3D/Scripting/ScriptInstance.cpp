@@ -29,7 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 //=============================
 
+//= NAMESPACES =====
 using namespace std;
+//==================
 
 ScriptInstance::ScriptInstance()
 {
@@ -47,6 +49,13 @@ ScriptInstance::~ScriptInstance()
 {
 	SafeRelease(m_scriptObject);
 	SafeDelete(m_module);
+
+	m_gameObject = nullptr;
+	m_constructorFunction = nullptr;
+	m_startFunction = nullptr;
+	m_updateFunction = nullptr;
+	m_scriptEngine = nullptr;
+	m_isInstantiated = false;
 }
 
 bool ScriptInstance::Instantiate(string path, GameObject* gameObject, ScriptEngine* scriptEngine)
