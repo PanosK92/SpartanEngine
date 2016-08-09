@@ -41,6 +41,7 @@ Mesh::Mesh()
 	m_min = Vector3::Infinity;
 	m_center = Vector3::Zero;
 	m_extent = Vector3::One;
+	m_onUpdate = nullptr;
 }
 
 Mesh::~Mesh()
@@ -106,6 +107,19 @@ void Mesh::Update()
 	GetMinMax(this, m_min, m_max);
 	m_center = GetCenter(m_min, m_max);
 	m_extent = GetExtent(m_min, m_max);
+
+	if (m_onUpdate)
+		m_onUpdate();
+}
+
+// This is usually attached CreateBuffers function of the MeshFilter component.
+// Whenever something changes, the buffers are auto-updated.
+void Mesh::OnUpdate(function<void()> function)
+{
+	m_onUpdate = function;
+
+	if (m_onUpdate)
+		m_onUpdate();
 }
 
 void Mesh::Scale(float scale)

@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============
+//= INCLUDES =================
 #include <vector>
 #include "Vertex.h"
 #include "GUIDGenerator.h"
 #include "../IO/Serializer.h"
-//========================
+#include <functional>
+//===========================
 
 class Mesh
 {
@@ -77,6 +78,7 @@ public:
 
 	//= PROCESSING =================================================================
 	void Update();
+	void OnUpdate(std::function<void(void)> function);
 	void Scale(float scale);
 	//==============================================================================
 
@@ -109,4 +111,6 @@ private:
 	Directus::Math::Vector3 m_max;
 	Directus::Math::Vector3 m_center;
 	Directus::Math::Vector3 m_extent;
+
+	std::function<void(void)> m_onUpdate;
 };

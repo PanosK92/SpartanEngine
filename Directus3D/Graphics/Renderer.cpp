@@ -348,17 +348,17 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 		Matrix worldMatrix = gameObject->GetTransform()->GetWorldTransform();
 		//==========================================================================
 
-		// If something is missing, skip this GameObject
+		// If any rendering requirement is missing, skip this GameObject
 		if (!meshFilter || !mesh || !meshRenderer || !material)
 			continue;
 
-		//= Skip transparent meshes ================================================
+		// Skip transparent meshes
 		if (material->GetOpacity() < 1.0f)
 			continue;
 
 		//= Frustrum culling =======================================================
-		Vector3 center = mesh->GetCenter() * worldMatrix;
-		Vector3 extent = mesh->GetExtent() * gameObject->GetTransform()->GetScale();
+		Vector3 center = meshFilter->GetCenter();
+		Vector3 extent = meshFilter->GetExtent();
 
 		float radius = max(abs(extent.x), abs(extent.y));
 		radius = max(radius, abs(extent.z));
@@ -367,18 +367,18 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 			continue;
 		//==========================================================================
 
-		//= Face culling ===========================================================
-		m_graphicsDevice->SetCullMode(material->GetFaceCullMode());
-		//==========================================================================
-
-		//= Render =================================================================
+		// Set mesh buffer
 		bool buffersHaveBeenSet = meshFilter->SetBuffers();
 		if (buffersHaveBeenSet)
 		{
+			// Set face culling
+			m_graphicsDevice->SetCullMode(material->GetFaceCullMode());
+
+			//= Render =================================================================
 			meshRenderer->Render(mesh->GetIndexCount(), mView, mProjection, m_directionalLight, m_camera);
 			m_meshesRendered++;
+			//==========================================================================
 		}
-		//==========================================================================
 	}
 }
 

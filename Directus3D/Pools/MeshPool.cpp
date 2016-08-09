@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Components/MeshFilter.h"
-#include "../Components/Transform.h"
 #include "../IO/Log.h"
 //==================================
 
@@ -57,7 +56,7 @@ void MeshPool::DeleteAll()
 
 Mesh* MeshPool::AddMesh(string name, string rootGameObjectID, string gameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices)
 {
-	// construct mesh
+	// construct the mesh
 	Mesh* mesh = new Mesh();
 	mesh->SetName(name);
 	mesh->SetGameObjectID(gameObjectID);
@@ -66,9 +65,10 @@ Mesh* MeshPool::AddMesh(string name, string rootGameObjectID, string gameObjectI
 	mesh->SetIndices(indices);
 	mesh->Update();
 
+	// add it to the pool
 	m_meshPool.push_back(mesh);
 
-	// return the mesh
+	// return it
 	return m_meshPool.back();
 }
 

@@ -195,7 +195,9 @@ void MeshFilter::Set(string name, string rootGameObjectID, vector<VertexPosition
 {
 	// Add the mesh data to the pool so it gets initialized properly
 	m_mesh = g_meshPool->AddMesh(name, rootGameObjectID, g_gameObject->GetID(), vertices, indices);
-	CreateBuffers();
+
+	// Make the mesh auto-update the buffers whenever it's changes.
+	m_mesh->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
 }
 
 // Set the buffers to active in the input assembler so they can be rendered.
@@ -214,6 +216,16 @@ bool MeshFilter::SetBuffers() const
 	g_graphicsDevice->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	return true;
+}
+
+Vector3 MeshFilter::GetCenter() const
+{
+	return m_mesh ? m_mesh->GetCenter() * g_transform->GetWorldTransform() : Vector3::Zero;
+}
+
+Vector3 MeshFilter::GetExtent() const
+{
+	return m_mesh ? m_mesh->GetExtent() * g_transform->GetScale() : Vector3::One;
 }
 
 Mesh* MeshFilter::GetMesh() const
