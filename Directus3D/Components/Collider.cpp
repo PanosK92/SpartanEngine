@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btCylinderShape.h>
 #include <BulletCollision/CollisionShapes/btCapsuleShape.h>
+#include "../Core/Globals.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -164,12 +165,8 @@ void Collider::ConstructCollisionShape()
 	Vector3 boundingBox = m_boundingBox * m_scale;
 
 	// delete old shape (if it exists)
-	if (m_shape)
-	{
-		SetRigidBodyCollisionShape(nullptr);
-		delete m_shape;
-		m_shape = nullptr;
-	}
+	SetRigidBodyCollisionShape(nullptr);
+	SafeDelete(m_shape);
 
 	// Create BOX shape
 	if (m_shapeType == Box)

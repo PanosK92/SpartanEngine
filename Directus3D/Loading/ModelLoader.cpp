@@ -241,6 +241,10 @@ void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* ga
 	for (auto i = 0; i < mesh->mNumFaces; i++)
 	{
 		aiFace face = mesh->mFaces[i];
+
+		if (face.mNumIndices < 3)
+			continue;
+
 		for (auto j = 0; j < face.mNumIndices; j++)
 			indices.push_back(face.mIndices[j]);
 	}
@@ -284,10 +288,11 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 	// Specifies whether meshes using this material must be rendered without backface CullMode. 0 for false, !0 for true.
 	unsigned int max = 1;
 	int two_sided;
-	if ((AI_SUCCESS == aiGetMaterialIntegerArray(material, AI_MATKEY_TWOSIDED, &two_sided, &max)) && two_sided)
-		engineMaterial->SetFaceCullMode(CullNone);
-	else
+	aiGetMaterialIntegerArray(material, AI_MATKEY_TWOSIDED, &two_sided, &max);
+	if (two_sided == 0)
 		engineMaterial->SetFaceCullMode(CullBack);
+	else
+		engineMaterial->SetFaceCullMode(CullNone);
 
 	//= DIFFUSE COLOR ======================================================================================
 	aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
