@@ -47,9 +47,6 @@ public:
 	void CreateQuad();
 	void Set(std::string name, std::string rootGameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices);
 	bool SetBuffers() const;
-	void Refresh();
-	Directus::Math::Vector3 GetExtent() const;
-	Directus::Math::Vector3 GetCenter() const;
 	Mesh* GetMesh() const;
 
 private:
@@ -58,8 +55,4 @@ private:
 	D3D11Buffer* m_vertexBuffer;
 	D3D11Buffer* m_indexBuffer;
 	Mesh* m_mesh;
-	Directus::Math::Vector3 m_min;
-	Directus::Math::Vector3 m_max;
-	Directus::Math::Vector3 m_extent;
-	Directus::Math::Vector3 m_center;
 };

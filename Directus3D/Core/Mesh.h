@@ -26,64 +26,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vertex.h"
 #include "GUIDGenerator.h"
 #include "../IO/Serializer.h"
-
 //========================
 
 class Mesh
 {
 public:
-	Mesh()
-	{
-		m_ID = GENERATE_GUID;
-		m_vertexCount = 0;
-		m_indexCount = 0;
-		m_triangleCount = 0;
-	}
+	Mesh();
+	~Mesh();
 
-	~Mesh()
-	{
-		m_vertices.clear();
-		m_indices.clear();
-		m_name.clear();
-		m_rootGameObjectID.clear();
-		m_ID.clear();
-		m_gameObjectID.clear();
-		m_vertexCount = 0;
-		m_indexCount = 0;
-		m_triangleCount = 0;
-	}
-
-	void Serialize()
-	{
-		Serializer::SaveSTR(m_ID);
-		Serializer::SaveSTR(m_gameObjectID);
-		Serializer::SaveSTR(m_rootGameObjectID);	
-		Serializer::SaveInt(m_vertexCount);
-		Serializer::SaveInt(m_indexCount);
-		Serializer::SaveInt(m_triangleCount);
-
-                for (auto i = 0; i < m_vertexCount; i++)
-			SaveVertex(m_vertices[i]);
-
-                for (auto i = 0; i < m_indexCount; i++)
-			Serializer::SaveInt(m_indices[i]); 
-	}
-
-	void Deserialize()
-	{
-		m_ID = Serializer::LoadSTR();
-		m_gameObjectID = Serializer::LoadSTR();
-		m_rootGameObjectID = Serializer::LoadSTR();
-		m_vertexCount = Serializer::LoadInt();
-		m_indexCount = Serializer::LoadInt();
-		m_triangleCount = Serializer::LoadInt();
-
-                for (auto i = 0; i < m_vertexCount; i++)
-			m_vertices.push_back(LoadVertex());
-
-                for (auto i = 0; i < m_indexCount; i++)
-			m_indices.push_back(Serializer::LoadInt());
-	}
+	//= IO =========================================================================
+	void Serialize();
+	void Deserialize();
+	//==============================================================================
 
 	std::string GetName() const { return m_name; }
 	void SetName(std::string name) { m_name = name; }
@@ -116,57 +70,43 @@ public:
 	unsigned int GetTriangleCount() const { return m_triangleCount; }
 	unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
 
+	const Directus::Math::Vector3& GetMin() const { return m_min; }
+	const Directus::Math::Vector3& GetMax() const { return m_max; }
+	const Directus::Math::Vector3& GetCenter() const { return m_center; }
+	const Directus::Math::Vector3& GetExtent() const { return m_extent; }
+
+	//= PROCESSING =================================================================
+	void Update();
+	void Scale(float scale);
+	//==============================================================================
+
 private:
-	void Mesh::SaveVertex(const VertexPositionTextureNormalTangent& vertex)
-	{
-		Serializer::SaveFloat(vertex.position.x);
-		Serializer::SaveFloat(vertex.position.y);
-		Serializer::SaveFloat(vertex.position.z);
+	//= IO =========================================================================
+	static void Mesh::SaveVertex(const VertexPositionTextureNormalTangent& vertex);
+	static VertexPositionTextureNormalTangent Mesh::LoadVertex();
+	//==============================================================================
 
-		Serializer::SaveFloat(vertex.texture.x);
-		Serializer::SaveFloat(vertex.texture.y);
-
-		Serializer::SaveFloat(vertex.normal.x);
-		Serializer::SaveFloat(vertex.normal.y);
-		Serializer::SaveFloat(vertex.normal.z);
-
-		Serializer::SaveFloat(vertex.tangent.x);
-		Serializer::SaveFloat(vertex.tangent.y);
-		Serializer::SaveFloat(vertex.tangent.z);
-	}
-
-	VertexPositionTextureNormalTangent Mesh::LoadVertex()
-	{
-		VertexPositionTextureNormalTangent vertex;
-
-		vertex.position.x = Serializer::LoadFloat();
-		vertex.position.y = Serializer::LoadFloat();
-		vertex.position.z = Serializer::LoadFloat();
-
-		vertex.texture.x = Serializer::LoadFloat();
-		vertex.texture.y = Serializer::LoadFloat();
-
-		vertex.normal.x = Serializer::LoadFloat();
-		vertex.normal.y = Serializer::LoadFloat();
-		vertex.normal.z = Serializer::LoadFloat();
-
-		vertex.tangent.x = Serializer::LoadFloat();
-		vertex.tangent.y = Serializer::LoadFloat();
-		vertex.tangent.z = Serializer::LoadFloat();
-
-		return vertex;
-	}
-
+	//= HELPER FUNCTIONS ===========================================================
+	static void SetScale(Mesh* meshData, float scale);
+	static Directus::Math::Vector3 GetExtent(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
+	static Directus::Math::Vector3 GetCenter(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
+	static void GetMinMax(Mesh* mesh, Directus::Math::Vector3& min, Directus::Math::Vector3& max);
+	//==============================================================================
 
 	std::string m_name;
 	std::string m_ID;
 	std::string m_gameObjectID;
 	std::string m_rootGameObjectID;
-	
+
 	std::vector<VertexPositionTextureNormalTangent> m_vertices;
 	std::vector<unsigned int> m_indices;
 
 	unsigned int m_vertexCount;
 	unsigned int m_indexCount;
 	unsigned int m_triangleCount;
+
+	Directus::Math::Vector3 m_min;
+	Directus::Math::Vector3 m_max;
+	Directus::Math::Vector3 m_center;
+	Directus::Math::Vector3 m_extent;
 };

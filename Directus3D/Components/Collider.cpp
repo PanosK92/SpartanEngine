@@ -55,10 +55,9 @@ Collider::~Collider()
 //= ICOMPONENT ========================================================================
 void Collider::Initialize()
 {
-	// get bounding box and center
-	if (g_gameObject->HasComponent<MeshFilter>())
+	Mesh* mesh = GetMeshFromAttachedMeshFilter();
+	if (mesh)
 	{
-		MeshFilter* mesh = g_gameObject->GetComponent<MeshFilter>();
 		m_boundingBox = mesh->GetExtent();
 		m_center = mesh->GetCenter();
 	}
@@ -211,4 +210,10 @@ void Collider::SetRigidBodyCollisionShape(btCollisionShape* shape)
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 	if (rigidBody)
 		rigidBody->SetCollisionShape(shape);
+}
+
+Mesh* Collider::GetMeshFromAttachedMeshFilter() const
+{
+	MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
+	return meshFilter ? meshFilter->GetMesh() : nullptr;
 }

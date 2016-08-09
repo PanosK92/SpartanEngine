@@ -39,10 +39,6 @@ MeshFilter::MeshFilter()
 	m_vertexBuffer = nullptr;
 	m_indexBuffer = nullptr;
 	m_mesh = nullptr;
-	m_min = Vector3::Infinity;
-	m_max = Vector3::InfinityNeg;
-	m_extent = Vector3::One;
-	m_center = Vector3::Zero;
 }
 
 MeshFilter::~MeshFilter()
@@ -73,22 +69,14 @@ void MeshFilter::Update()
 void MeshFilter::Serialize()
 {
 	Serializer::SaveSTR(m_mesh ? m_mesh->GetID() : "-1");
-	Serializer::SaveVector3(m_min);
-	Serializer::SaveVector3(m_max);
-	Serializer::SaveVector3(m_extent);
-	Serializer::SaveVector3(m_center);
 }
 
 void MeshFilter::Deserialize()
 {
 	string meshDataID = Serializer::LoadSTR();
 	m_mesh = g_meshPool->GetMesh(meshDataID);
-	m_min = Serializer::LoadVector3();
-	m_max = Serializer::LoadVector3();
-	m_extent = Serializer::LoadVector3();
-	m_center = Serializer::LoadVector3();
 
-	Refresh();
+	CreateBuffers();
 }
 
 void MeshFilter::CreateCube()
@@ -207,7 +195,7 @@ void MeshFilter::Set(string name, string rootGameObjectID, vector<VertexPosition
 {
 	// Add the mesh data to the pool so it gets initialized properly
 	m_mesh = g_meshPool->AddMesh(name, rootGameObjectID, g_gameObject->GetID(), vertices, indices);
-	Refresh();
+	CreateBuffers();
 }
 
 // Set the buffers to active in the input assembler so they can be rendered.
@@ -226,29 +214,6 @@ bool MeshFilter::SetBuffers() const
 	g_graphicsDevice->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	return true;
-}
-
-// Calculates the min, max, extent, center and re-creates the buffers.
-// Useful after extended mesh processing.
-void MeshFilter::Refresh()
-{
-	g_meshPool->GetMinMax(m_mesh, m_min, m_max);
-	m_extent = g_meshPool->GetMeshExtent(m_min, m_max);
-	m_center = g_meshPool->GetMeshCenter(m_min, m_max);
-
-	CreateBuffers();
-}
-
-// Returns the bounding box of the mesh
-Vector3 MeshFilter::GetExtent() const
-{
-	return m_extent;
-}
-
-// Returns the center of the mesh
-Vector3 MeshFilter::GetCenter() const
-{
-	return m_center;
 }
 
 Mesh* MeshFilter::GetMesh() const
