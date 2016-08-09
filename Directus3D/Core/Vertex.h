@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 struct VertexPositionTextureNormalTangent
 {
 	Directus::Math::Vector3 position;
-	Directus::Math::Vector2 texture;
+	Directus::Math::Vector2 uv;
 	Directus::Math::Vector3 normal;
 	Directus::Math::Vector3 tangent;
 };
@@ -38,14 +38,14 @@ struct VertexPositionTextureNormalTangent
 struct VertexPositionTextureNormal
 {
 	Directus::Math::Vector3 position;
-	Directus::Math::Vector2 texture;
+	Directus::Math::Vector2 uv;
 	Directus::Math::Vector3 normal;
 };
 
 struct VertexPositionTexture
 {
 	Directus::Math::Vector3 position;
-	Directus::Math::Vector2 texture;
+	Directus::Math::Vector2 uv;
 };
 
 struct VertexPositionColor
