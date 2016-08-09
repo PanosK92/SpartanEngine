@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../IO/Log.h"
 #include "../Core/Globals.h"
+#include "../Physics/BulletPhysicsHelper.h"
 //====================================================================
 
 //= NAMESPACES =====
@@ -47,7 +48,7 @@ MeshCollider::MeshCollider()
 
 MeshCollider::~MeshCollider()
 {
-	SafeDelete(m_collisionShape);
+	
 }
 
 //= ICOMPONENT ========================================
@@ -65,6 +66,7 @@ void MeshCollider::Start()
 void MeshCollider::Remove()
 {
 	SetCollisionShapeToRigidBody(nullptr);
+	SafeDelete(m_collisionShape);
 }
 
 void MeshCollider::Update()
@@ -119,17 +121,23 @@ void MeshCollider::ConstructFromVertexCloud()
 
 	//= contruct collider ========================================================================================
 	btTriangleMesh* trimesh = new btTriangleMesh();
+	std::vector<Directus::Math::Vector3> vertices;
 	for (auto i = 0; i < m_mesh->GetTriangleCount(); i++)
 	{
+		
 		int index0 = m_mesh->GetIndices()[i * 3];
 		int index1 = m_mesh->GetIndices()[i * 3 + 1];
 		int index2 = m_mesh->GetIndices()[i * 3 + 2];
 
-		btVector3 vertex0(m_mesh->GetVertices()[index0].position.x, m_mesh->GetVertices()[index0].position.y, m_mesh->GetVertices()[index0].position.z);
-		btVector3 vertex1(m_mesh->GetVertices()[index1].position.x, m_mesh->GetVertices()[index1].position.y, m_mesh->GetVertices()[index1].position.z);
-		btVector3 vertex2(m_mesh->GetVertices()[index2].position.x, m_mesh->GetVertices()[index2].position.y, m_mesh->GetVertices()[index2].position.z);
+		vertices.push_back(m_mesh->GetVertices()[index0].position);
+		vertices.push_back(m_mesh->GetVertices()[index0].position);
+		vertices.push_back(m_mesh->GetVertices()[index0].position);
 
-		trimesh->addTriangle(vertex0, vertex1, vertex2);		
+		btVector3 vertex0 = ToBtVector3(m_mesh->GetVertices()[index0].position);
+		btVector3 vertex1 = ToBtVector3(m_mesh->GetVertices()[index1].position);
+		btVector3 vertex2 = ToBtVector3(m_mesh->GetVertices()[index2].position);
+
+		trimesh->addTriangle(vertex0, vertex1, vertex2);
 	}
 	bool useQuantization = true;
 	m_collisionShape = new btBvhTriangleMeshShape(trimesh, useQuantization);
@@ -137,26 +145,17 @@ void MeshCollider::ConstructFromVertexCloud()
 	//= construct a hull approximation ===========================================================================
 	if (m_convex)
 	{
-		btConvexShape* tmpConvexShape = new btConvexTriangleMeshShape(trimesh);
-		btShapeHull* hull = new btShapeHull(tmpConvexShape);
-		btScalar margin = tmpConvexShape->getMargin();
-		hull->buildHull(margin);
-		tmpConvexShape->setUserPointer(hull);
+		btConvexHullShape* shape = new btConvexHullShape((btScalar*)vertices.data(), m_mesh->GetVertexCount(), sizeof(Directus::Math::Vector3));
 
-		bool updateLocalAabb = false;
-		btConvexHullShape* convexShape = new btConvexHullShape();
-		for (int i = 0; i < hull->numVertices(); i++)
-		{
-			convexShape->addPoint(hull->getVertexPointer()[i], updateLocalAabb);
-		}
-		convexShape->recalcLocalAabb();
-
+		// OPTIMIZE
+		btShapeHull* hull = new btShapeHull(shape);
+		hull->buildHull(shape->getMargin());
+		btConvexHullShape* convexShape = new btConvexHullShape((btScalar*)hull->getVertexPointer(), hull->numVertices(), sizeof(btVector3));
 		m_collisionShape = convexShape;
 
-		delete tmpConvexShape;
 		delete hull;
 	}
-	
+
 	SetCollisionShapeToRigidBody(m_collisionShape);
 }
 
