@@ -136,8 +136,8 @@ void Mesh::SaveVertex(const VertexPositionTextureNormalTangent& vertex)
 	Serializer::SaveFloat(vertex.position.y);
 	Serializer::SaveFloat(vertex.position.z);
 
-	Serializer::SaveFloat(vertex.texture.x);
-	Serializer::SaveFloat(vertex.texture.y);
+	Serializer::SaveFloat(vertex.uv.x);
+	Serializer::SaveFloat(vertex.uv.y);
 
 	Serializer::SaveFloat(vertex.normal.x);
 	Serializer::SaveFloat(vertex.normal.y);
@@ -156,8 +156,8 @@ VertexPositionTextureNormalTangent Mesh::LoadVertex()
 	vertex.position.y = Serializer::LoadFloat();
 	vertex.position.z = Serializer::LoadFloat();
 
-	vertex.texture.x = Serializer::LoadFloat();
-	vertex.texture.y = Serializer::LoadFloat();
+	vertex.uv.x = Serializer::LoadFloat();
+	vertex.uv.y = Serializer::LoadFloat();
 
 	vertex.normal.x = Serializer::LoadFloat();
 	vertex.normal.y = Serializer::LoadFloat();

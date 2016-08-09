@@ -53,6 +53,8 @@ namespace Directus
 
 				return false;
 			}
+
+			static const Vector2 Zero;
 		};
 	}
 }

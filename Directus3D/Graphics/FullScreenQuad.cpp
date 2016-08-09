@@ -121,23 +121,23 @@ bool FullScreenQuad::InitializeBuffers(int windowWidth, int windowHeight)
 	// Load the vertex array with data.
 	// First triangle.
 	vertices[0].position = Vector3(left, top, 0.0f); // Top left.
-	vertices[0].texture = Vector2(0.0f, 0.0f);
+	vertices[0].uv = Vector2(0.0f, 0.0f);
 
 	vertices[1].position = Vector3(right, bottom, 0.0f); // Bottom right.
-	vertices[1].texture = Vector2(1.0f, 1.0f);
+	vertices[1].uv = Vector2(1.0f, 1.0f);
 
 	vertices[2].position = Vector3(left, bottom, 0.0f); // Bottom left.
-	vertices[2].texture = Vector2(0.0f, 1.0f);
+	vertices[2].uv = Vector2(0.0f, 1.0f);
 
 	// Second triangle.
 	vertices[3].position = Vector3(left, top, 0.0f); // Top left.
-	vertices[3].texture = Vector2(0.0f, 0.0f);
+	vertices[3].uv = Vector2(0.0f, 0.0f);
 
 	vertices[4].position = Vector3(right, top, 0.0f);// Top right.
-	vertices[4].texture = Vector2(1.0f, 0.0f);
+	vertices[4].uv = Vector2(1.0f, 0.0f);
 
 	vertices[5].position = Vector3(right, bottom, 0.0f); // Bottom right.
-	vertices[5].texture = Vector2(1.0f, 1.0f);
+	vertices[5].uv = Vector2(1.0f, 1.0f);
 
 	// Load the index array with data.
 	for (i = 0; i < m_indexCount; i++)

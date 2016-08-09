@@ -110,6 +110,7 @@ bool ModelLoader::Load(string filePath, GameObject* gameObject)
 	return true;
 }
 
+//= HELPER FUNCTIONS ========================================================================
 Matrix aiMatrix4x4ToMatrix(const aiMatrix4x4& transform)
 {
 	// row major to column major
@@ -135,6 +136,22 @@ void SetGameObjectTransform(GameObject* gameObject, const aiMatrix4x4& assimpTra
 	gameObject->GetTransform()->SetScaleLocal(scale);
 }
 
+Vector4 ToVector4(const aiColor4D& aiColor)
+{
+	return Vector4(aiColor.r, aiColor.g, aiColor.b, aiColor.a);
+}
+
+Vector3 ToVector3(const aiVector3D& aiVector)
+{
+	return Vector3(aiVector.x, aiVector.y, aiVector.z);
+}
+
+Vector2 ToVector2(const aiVector2D& aiVector)
+{
+	return Vector2(aiVector.x, aiVector.y);
+}
+//============================================================================================
+
 /*------------------------------------------------------------------------------
 								[PROCESSING]
 ------------------------------------------------------------------------------*/
@@ -151,7 +168,7 @@ void ModelLoader::ProcessNode(aiNode* node, const aiScene* scene, GameObject* pa
 	}
 
 	// process all the node's meshes
-	for (unsigned int i = 0; i < node->mNumMeshes; i++)
+	for (auto i = 0; i < node->mNumMeshes; i++)
 	{
 		GameObject* gameobject = parentGameObject; // set the current gameobject
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]]; // get mesh
@@ -174,7 +191,7 @@ void ModelLoader::ProcessNode(aiNode* node, const aiScene* scene, GameObject* pa
 	}
 
 	// process child nodes (if any)
-	for (unsigned int i = 0; i < node->mNumChildren; i++)
+	for (auto i = 0; i < node->mNumChildren; i++)
 	{
 		aiNode* childNode = node->mChildren[i]; // get  node
 
@@ -193,57 +210,38 @@ void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* ga
 	vector<VertexPositionTextureNormalTangent> vertices;
 	vector<unsigned int> indices;
 
-	for (unsigned int vertexIndex = 0; vertexIndex < mesh->mNumVertices; vertexIndex++)
+	VertexPositionTextureNormalTangent vertex;
+	for (auto vertexIndex = 0; vertexIndex < mesh->mNumVertices; vertexIndex++)
 	{
-		// vertex
-		aiVector3D position = mesh->mVertices[vertexIndex];
+		// get the position
+		vertex.position = ToVector3(mesh->mVertices[vertexIndex]);
 
-		// normal
-		aiVector3D normal = aiVector3D(0.0f, 0.0f, 0.0f);
+		// get the normal
 		if (NULL != mesh->mNormals)
-			normal = mesh->mNormals[vertexIndex];
+			vertex.normal = ToVector3(mesh->mNormals[vertexIndex]);
 
-		// tangent
-		aiVector3D tangent = aiVector3D(0.0f, 0.0f, 0.0f);
+		// get the tangent
 		if (NULL != mesh->mTangents)
-			tangent = mesh->mTangents[vertexIndex];
+			vertex.tangent = ToVector3(mesh->mTangents[vertexIndex]);
 
-		// bitangent
-		aiVector3D bitangent = aiVector3D(0.0f, 0.0f, 0.0f);
-		if (NULL != mesh->mBitangents)
-			bitangent = mesh->mBitangents[vertexIndex];
-
-		// texture coordinates
-		aiVector2D texture = aiVector2D(0.5f, 0.5f);
+		// get the texture coordinates
 		if (mesh->HasTextureCoords(0))
-			texture = aiVector2D(mesh->mTextureCoords[0][vertexIndex].x, mesh->mTextureCoords[0][vertexIndex].y);
+			vertex.uv = ToVector2(aiVector2D(mesh->mTextureCoords[0][vertexIndex].x, mesh->mTextureCoords[0][vertexIndex].y));
 
-		// fill the vertex
-		VertexPositionTextureNormalTangent vertex;
-		vertex.position.x = position.x;
-		vertex.position.y = position.y;
-		vertex.position.z = position.z;
-
-		vertex.texture.x = texture.x;
-		vertex.texture.y = texture.y;
-
-		vertex.normal.x = normal.x;
-		vertex.normal.y = normal.y;
-		vertex.normal.z = normal.z;
-
-		vertex.tangent.x = tangent.x;
-		vertex.tangent.y = tangent.y;
-		vertex.tangent.z = tangent.z;
-
-		// save it
+		// save the vertex
 		vertices.push_back(vertex);
+
+		// reset the vertex for use in the next loop
+		vertex.normal = Vector3::Zero;
+		vertex.tangent = Vector3::Zero;
+		vertex.uv = Vector2::Zero;
 	}
 
 	// get the indices by iterating through each face of the mesh.
-	for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+	for (auto i = 0; i < mesh->mNumFaces; i++)
 	{
 		aiFace face = mesh->mFaces[i];
-		for (unsigned int j = 0; j < face.mNumIndices; j++)
+		for (auto j = 0; j < face.mNumIndices; j++)
 			indices.push_back(face.mIndices[j]);
 	}
 
@@ -294,7 +292,7 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 	//= DIFFUSE COLOR ======================================================================================
 	aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
 	aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &colorDiffuse);
-	engineMaterial->SetColorAlbedo(Vector4(colorDiffuse.r, colorDiffuse.g, colorDiffuse.b, colorDiffuse.a));
+	engineMaterial->SetColorAlbedo(ToVector4(colorDiffuse));
 
 	//= OPACITY ==============================================
 	aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
