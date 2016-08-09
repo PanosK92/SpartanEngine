@@ -78,6 +78,31 @@ Material* MaterialPool::AddMaterial(Material* material)
 	return m_materials.back();
 }
 
+void MaterialPool::RemoveMaterial(Material* material)
+{
+	// make sure the material is not null
+	if (!material)
+		return;
+
+	for (auto it = m_materials.begin(); it != m_materials.end();)
+	{
+		Material* mat = *it;
+		if (mat->GetID() == material->GetID())
+		{
+			delete mat;
+			it = m_materials.erase(it);
+			return;
+		}
+		++it;
+	}
+}
+
+void MaterialPool::RemoveMaterial(string materialID)
+{
+	Material* material = GetMaterialByID(materialID);
+	RemoveMaterial(material);
+}
+
 Material* MaterialPool::GetMaterialByID(string materialID)
 {
 	for (auto i = 0; i < m_materials.size(); i++)
@@ -137,27 +162,6 @@ void MaterialPool::Deserialize()
 /*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
-void MaterialPool::RemoveMaterial(string materialID)
-{
-	Material* material = GetMaterialByID(materialID);
-
-	// make sure the material is not null
-	if (!material) 
-		return;
-
-	for (auto it = m_materials.begin(); it != m_materials.end();)
-	{
-		Material* mat = *it;
-		if (mat->GetID() == material->GetID())
-		{
-			delete mat;
-			it = m_materials.erase(it);
-			return;
-		}
-		++it;
-	}
-}
-
 void MaterialPool::AddStandardMaterials()
 {
 	Material* defaultMaterial = new Material(m_texturePool, m_shaderPool);
