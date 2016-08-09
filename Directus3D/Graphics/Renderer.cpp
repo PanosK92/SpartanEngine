@@ -181,7 +181,7 @@ void Renderer::Render()
 		if (m_directionalLight->GetShadowType() != No_Shadows)
 		{
 			m_directionalLight->SetDepthMapAsRenderTarget();
-			m_graphicsDevice->SetCullMode(CullFront);	
+			m_graphicsDevice->SetCullMode(CullFront);
 			DirectionalLightDepthPass(m_renderables, m_directionalLight);
 		}
 	}
@@ -202,7 +202,8 @@ void Renderer::Render()
 	PostProcessing();
 
 	// Gizmos
-	Gizmos();
+	if (GET_ENGINE_MODE == Editor_Stop)
+		Gizmos();
 
 	// display frame
 	m_graphicsDevice->Present();
@@ -442,10 +443,6 @@ void Renderer::PostProcessing() const
 
 void Renderer::Gizmos() const
 {
-	if (!m_physics->GetDebugDraw())
-		return;
-
-	// Get the line renderer component
 	if (!m_lineRenderer)
 		return;
 
@@ -466,9 +463,6 @@ void Renderer::Gizmos() const
 		m_camera->GetProjectionMatrix(),
 		m_GBuffer->GetShaderResourceView(2) // depth
 	);
-
-	// clear physics debug draw
-	m_physics->GetPhysicsDebugDraw()->ClearLines();
 }
 
 void Renderer::Ping() const

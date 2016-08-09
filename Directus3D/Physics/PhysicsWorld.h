@@ -47,12 +47,7 @@ public:
 	void Reset();
 
 	btDiscreteDynamicsWorld* GetWorld();
-
-	//= DEBUG DRAW =========================
-	void SetDebugDraw(bool enable);
-	bool GetDebugDraw();
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
-	//======================================
 
 private:
 	btBroadphaseInterface* m_broadphase;
@@ -60,7 +55,6 @@ private:
 	btConstraintSolver* m_constraintSolver;
 	btDefaultCollisionConfiguration* m_collisionConfiguration;
 	btDiscreteDynamicsWorld* m_world;
-	bool m_debugDrawEnabled;
 	PhysicsDebugDraw* m_debugDraw;
 
 	//= PROPERTIES ====================

@@ -64,7 +64,11 @@ public:
 	void SetViewport(int width, int height);
 	void ResetViewport();
 
-private:
+private:	
+	D3D11_RASTERIZER_DESC m_rasterizerDesc;
+	D3D11_DEPTH_STENCIL_DESC m_depthStencilDesc;
+	D3D11_BLEND_DESC m_blendStateDesc;
+
 	DXGI_MODE_DESC* m_displayModeList;
 	int m_videoCardMemory;
 	std::string m_videoCardDescription;
@@ -84,8 +88,5 @@ private:
 	ID3D11BlendState* m_alphaBlendingStateDisabled;
 
 	DXGI_SWAP_CHAIN_DESC GetSwapchainDesc(HWND handle);
-	D3D11_RASTERIZER_DESC GetRasterizerDesc(D3D11_CULL_MODE cullMode);
-	D3D11_DEPTH_STENCIL_DESC GetDepthStencilDesc(bool depthEnable);
-	D3D11_BLEND_DESC GetBlendDesc(bool blendEnable);
 
 };
