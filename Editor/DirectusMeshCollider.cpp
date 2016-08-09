@@ -87,6 +87,7 @@ void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspec
     m_gridLayout->addWidget(m_line, 3, 0, 1, 2);
     //============================================================
 
+    connect(m_convex,  SIGNAL(clicked(bool)),    this, SLOT(MapConvex()));
     connect(m_optionsButton, SIGNAL(Remove()), this, SLOT(Remove()));
 
     this->setLayout(m_gridLayout);
