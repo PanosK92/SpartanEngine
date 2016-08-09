@@ -91,7 +91,6 @@ bool ModelLoader::Load(string filePath, GameObject* gameObject)
 	importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, smoothAngle);
 
 	const aiScene* scene = importer.ReadFile(m_fullModelPath, ppsteps);
-
 	if (!scene) // Someting went wrong. Print it.
 	{
 		LOG_ERROR("Failed to load \"" + FileHelper::GetFileNameNoExtensionFromPath(m_fullModelPath) + "\". " + importer.GetErrorString());
@@ -286,12 +285,9 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 
 	//= CullMode ===============================================================================================
 	// Specifies whether meshes using this material must be rendered without backface CullMode. 0 for false, !0 for true.
-	unsigned int max = 1;
-	int two_sided;
-	aiGetMaterialIntegerArray(material, AI_MATKEY_TWOSIDED, &two_sided, &max);
-	if (two_sided == 0)
-		engineMaterial->SetFaceCullMode(CullBack);
-	else
+	bool isTwoSided = false;
+	int r = material->Get(AI_MATKEY_TWOSIDED, isTwoSided);
+	if (r == aiReturn_SUCCESS && isTwoSided)
 		engineMaterial->SetFaceCullMode(CullNone);
 
 	//= DIFFUSE COLOR ======================================================================================
