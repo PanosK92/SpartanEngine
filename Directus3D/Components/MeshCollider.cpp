@@ -129,7 +129,7 @@ void MeshCollider::ConstructFromVertexCloud()
 		btVector3 vertex1(m_mesh->GetVertices()[index1].position.x, m_mesh->GetVertices()[index1].position.y, m_mesh->GetVertices()[index1].position.z);
 		btVector3 vertex2(m_mesh->GetVertices()[index2].position.x, m_mesh->GetVertices()[index2].position.y, m_mesh->GetVertices()[index2].position.z);
 
-		trimesh->addTriangle(vertex0, vertex1, vertex2);
+		trimesh->addTriangle(vertex0, vertex1, vertex2);		
 	}
 	bool useQuantization = true;
 	m_collisionShape = new btBvhTriangleMeshShape(trimesh, useQuantization);
@@ -156,7 +156,7 @@ void MeshCollider::ConstructFromVertexCloud()
 		delete tmpConvexShape;
 		delete hull;
 	}
-
+	
 	SetCollisionShapeToRigidBody(m_collisionShape);
 }
 
