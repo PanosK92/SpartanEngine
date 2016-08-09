@@ -56,6 +56,54 @@ D3D11Device::~D3D11Device()
 
 void D3D11Device::Initialize(HWND handle)
 {
+	//= DEFAULT RATERIZER STATE =============================================
+	m_rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+	m_rasterizerDesc.CullMode = D3D11_CULL_BACK;
+	m_rasterizerDesc.FrontCounterClockwise = false;
+	m_rasterizerDesc.DepthBias = 0;
+	m_rasterizerDesc.SlopeScaledDepthBias = 0.0f;
+	m_rasterizerDesc.DepthBiasClamp = 0.0f;
+	m_rasterizerDesc.DepthClipEnable = true;
+	m_rasterizerDesc.ScissorEnable = false;
+	m_rasterizerDesc.MultisampleEnable = false;
+	m_rasterizerDesc.AntialiasedLineEnable = false;
+	//=======================================================================
+
+	//= DEFAULT DEPTH STENCIL STATE =========================================
+	// Depth test parameters
+	m_depthStencilDesc.DepthEnable = true;
+	m_depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	m_depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+
+	// Stencil test parameters
+	m_depthStencilDesc.StencilEnable = true;
+	m_depthStencilDesc.StencilReadMask = 0xFF;
+	m_depthStencilDesc.StencilWriteMask = 0xFF;
+
+	// Stencil operations if pixel is front-facing
+	m_depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	m_depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+	m_depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	m_depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+	// Stencil operations if pixel is back-facing
+	m_depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	m_depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+	m_depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	m_depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	//=======================================================================
+
+	//= DEFAULT BLEND STATE =================================================
+	m_blendStateDesc.RenderTarget[0].BlendEnable = int(true);
+	m_blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	m_blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	m_blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	m_blendStateDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	m_blendStateDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	m_blendStateDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	m_blendStateDesc.RenderTarget[0].RenderTargetWriteMask = 0x0f;
+	//=======================================================================
+
 	/*------------------------------------------------------------------------------
 							[Graphics Interface Factory]
 	------------------------------------------------------------------------------*/
@@ -63,7 +111,7 @@ void D3D11Device::Initialize(HWND handle)
 	IDXGIFactory* factory;
 	HRESULT hResult = CreateDXGIFactory(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory));
 	if (FAILED(hResult))
-		LOG("Failed to create a DirectX graphics interface factory.", Log::Error);
+		LOG_ERROR("Failed to create a DirectX graphics interface factory.");
 
 	/*------------------------------------------------------------------------------
 										[Adapter]
@@ -72,7 +120,7 @@ void D3D11Device::Initialize(HWND handle)
 	IDXGIAdapter* adapter;
 	hResult = factory->EnumAdapters(0, &adapter);
 	if (FAILED(hResult))
-		LOG("Failed to create a primary graphics interface adapter.", Log::Error);
+		LOG_ERROR("Failed to create a primary graphics interface adapter.");
 
 	// Release the factory.
 	factory->Release();
@@ -86,12 +134,12 @@ void D3D11Device::Initialize(HWND handle)
 	// Enumerate the primary adapter output (monitor).
 	hResult = adapter->EnumOutputs(0, &adapterOutput);
 	if (FAILED(hResult))
-		LOG("Failed to enumerate the primary adapter output.", Log::Error);
+		LOG_ERROR("Failed to enumerate the primary adapter output.");
 
 	// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the adapter output (monitor).
 	hResult = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, nullptr);
 	if (FAILED(hResult))
-		LOG("Failed to get adapter's display modes.", Log::Error);
+		LOG_ERROR("Failed to get adapter's display modes.");
 
 	/*------------------------------------------------------------------------------
 							[Display Mode Description]
@@ -99,27 +147,24 @@ void D3D11Device::Initialize(HWND handle)
 	// Create a list to hold all the possible display modes for this monitor/video card combination.
 	DXGI_MODE_DESC* m_displayModeList = new DXGI_MODE_DESC[numModes];
 	if (!m_displayModeList)
-		LOG("Failed to create a display mode list.", Log::Error);
+		LOG_ERROR("Failed to create a display mode list.");
 
 	// Now fill the display mode list structures.
 	hResult = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, m_displayModeList);
 	if (FAILED(hResult))
-		LOG("Failed to fill the display mode list structures.", Log::Error);
+		LOG_ERROR("Failed to fill the display mode list structures.");
 
 	// Release the adapter output.
 	adapterOutput->Release();
 
 	// Go through all the display modes and find the one that matches the screen width and height.
 	unsigned int numerator = 0, denominator = 1;
-	for (int i = 0; i < numModes; i++)
+	for (auto i = 0; i < numModes; i++)
 	{
-		if (m_displayModeList[i].Width == (unsigned int)RESOLUTION_WIDTH)
+		if (m_displayModeList[i].Width == (unsigned int)RESOLUTION_WIDTH && m_displayModeList[i].Height == (unsigned int)RESOLUTION_HEIGHT)
 		{
-			if (m_displayModeList[i].Height == (unsigned int)RESOLUTION_HEIGHT)
-			{
-				numerator = m_displayModeList[i].RefreshRate.Numerator;
-				denominator = m_displayModeList[i].RefreshRate.Denominator;
-			}
+			numerator = m_displayModeList[i].RefreshRate.Numerator;
+			denominator = m_displayModeList[i].RefreshRate.Denominator;
 		}
 	}
 
@@ -130,20 +175,13 @@ void D3D11Device::Initialize(HWND handle)
 	// Get the adapter (video card) description.
 	hResult = adapter->GetDesc(&adapterDesc);
 	if (FAILED(hResult))
-		LOG("Failed to get the adapter's description.", Log::Error);
+		LOG_ERROR("Failed to get the adapter's description.");
 
 	// Release the adapter.
 	adapter->Release();
 
 	// Store the dedicated video card memory in megabytes.
 	m_videoCardMemory = static_cast<int>(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
-
-	// Convert the name of the video card to a character array and store it.
-	//char cardDescription[128];
-	//int error = wcstombs_s(&stringLength, cardDescription, 128, adapterDesc.Description, 128);
-	//m_videoCardDescription = cardDescription;
-	//if (error != 0)
-	//	LOG("Failed to convert the adapter's name.", Log::Error);
 
 	/*------------------------------------------------------------------------------
 									[Feature Level]
@@ -155,7 +193,7 @@ void D3D11Device::Initialize(HWND handle)
 	DXGI_SWAP_CHAIN_DESC swapChainDesc = GetSwapchainDesc(handle);
 	hResult = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, &featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc, &m_swapChain, &m_device, nullptr, &m_deviceContext);
 	if (FAILED(hResult))
-		LOG("Failed to create the swap chain, Direct3D device, and Direct3D device context.", Log::Error);
+		LOG_ERROR("Failed to create the swap chain, Direct3D device, and Direct3D device context.");
 
 	/*------------------------------------------------------------------------------
 					[Create a render target view for the back buffer]
@@ -164,14 +202,14 @@ void D3D11Device::Initialize(HWND handle)
 	// Get the pointer to the back buffer.
 	hResult = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<LPVOID*>(&backBufferPtr));
 	if (FAILED(hResult))
-		LOG("Failed to get the pointer to the back buffer.", Log::Error);
+		LOG_ERROR("Failed to get the pointer to the back buffer.");
 
 	// Create the render target view with the back buffer pointer.
 	hResult = m_device->CreateRenderTargetView(backBufferPtr, nullptr, &m_renderTargetView);
 	if (FAILED(hResult))
-		LOG("Failed to create the render target view.", Log::Error);
+		LOG_ERROR("Failed to create the render target view.");
 
-	// Release pointer to the back buffer as we no longer need it.
+	// Release pointer to the back buffer
 	backBufferPtr->Release();
 	backBufferPtr = nullptr;
 
@@ -188,22 +226,20 @@ void D3D11Device::Initialize(HWND handle)
 							[Rasterizer Description]
 	------------------------------------------------------------------------------*/
 	// Create a rasterizer state with back face CullMode
-	D3D11_RASTERIZER_DESC rasterDesc = GetRasterizerDesc(D3D11_CULL_BACK);
-	hResult = m_device->CreateRasterizerState(&rasterDesc, &m_rasterStateCullBack);
+	m_rasterizerDesc.CullMode = D3D11_CULL_BACK;
+	hResult = m_device->CreateRasterizerState(&m_rasterizerDesc, &m_rasterStateCullBack);
 	if (FAILED(hResult))
 		LOG_ERROR("Failed to create the rasterizer state.");
 
 	// Create a rasterizer state with front face CullMode
-	ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC));
-	rasterDesc = GetRasterizerDesc(D3D11_CULL_FRONT);
-	hResult = m_device->CreateRasterizerState(&rasterDesc, &m_rasterStateCullFront);
+	m_rasterizerDesc.CullMode = D3D11_CULL_FRONT;
+	hResult = m_device->CreateRasterizerState(&m_rasterizerDesc, &m_rasterStateCullFront);
 	if (FAILED(hResult))
 		LOG_ERROR("Failed to create the rasterizer state.");
 
 	// Create a rasterizer state with no face CullMode
-	ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC));
-	rasterDesc = GetRasterizerDesc(D3D11_CULL_NONE);
-	hResult = m_device->CreateRasterizerState(&rasterDesc, &m_rasterStateCullNone);
+	m_rasterizerDesc.CullMode = D3D11_CULL_NONE;
+	hResult = m_device->CreateRasterizerState(&m_rasterizerDesc, &m_rasterStateCullNone);
 	if (FAILED(hResult))
 		LOG_ERROR("Failed to create the rasterizer state.");
 
@@ -214,14 +250,14 @@ void D3D11Device::Initialize(HWND handle)
 							[Blend State Description]
 	------------------------------------------------------------------------------*/
 	// Create a blending state with alpha blending enabled
-	D3D11_BLEND_DESC blendStateDescription = GetBlendDesc(true);
-	HRESULT result = m_device->CreateBlendState(&blendStateDescription, &m_alphaBlendingStateEnabled);
+	m_blendStateDesc.RenderTarget[0].BlendEnable = int(true);
+	HRESULT result = m_device->CreateBlendState(&m_blendStateDesc, &m_alphaBlendingStateEnabled);
 	if (FAILED(result))
 		LOG_ERROR("Failed to create the blend state.");
 
 	// Create a blending state with alpha blending disabled
-	blendStateDescription = GetBlendDesc(false);
-	result = m_device->CreateBlendState(&blendStateDescription, &m_alphaBlendingStateDisabled);
+	m_blendStateDesc.RenderTarget[0].BlendEnable = int(false);
+	result = m_device->CreateBlendState(&m_blendStateDesc, &m_alphaBlendingStateDisabled);
 	if (FAILED(result))
 		LOG_ERROR("Failed to create the blend state.");
 
@@ -251,7 +287,7 @@ bool D3D11Device::CreateDepthStencilBuffer()
 	HRESULT hResult = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
 	if (FAILED(hResult))
 	{
-		LOG("Failed to create the texture for the depth buffer.", Log::Error);
+		LOG_ERROR("Failed to create the texture for the depth buffer.");
 		return false;
 	}
 
@@ -261,20 +297,20 @@ bool D3D11Device::CreateDepthStencilBuffer()
 bool D3D11Device::CreateDepthStencil()
 {
 	// Create a depth stencil state with depth enabled
-	D3D11_DEPTH_STENCIL_DESC depthStencilDesc = GetDepthStencilDesc(true);
-	HRESULT hResult = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateEnabled);
+	m_depthStencilDesc.DepthEnable = true;
+	HRESULT hResult = m_device->CreateDepthStencilState(&m_depthStencilDesc, &m_depthStencilStateEnabled);
 	if (FAILED(hResult))
 	{
-		LOG("Failed to create depth stencil state.", Log::Error);
+		LOG_ERROR("Failed to create depth stencil state.");
 		return false;
 	}
 
 	// Create a depth stencil state with depth disabled
-	depthStencilDesc = GetDepthStencilDesc(false);
-	HRESULT result = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateDisabled);
+	m_depthStencilDesc.DepthEnable = false;
+	HRESULT result = m_device->CreateDepthStencilState(&m_depthStencilDesc, &m_depthStencilStateDisabled);
 	if (FAILED(result))
 	{
-		LOG("Failed to create depth stencil state.", Log::Error);
+		LOG_ERROR("Failed to create depth stencil state.");
 		return false;
 	}
 
@@ -299,7 +335,7 @@ bool D3D11Device::CreateDepthStencilView()
 	HRESULT hResult = m_device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
 	if (FAILED(hResult))
 	{
-		LOG("Failed to create the depth stencil view.", Log::Error);
+		LOG_ERROR("Failed to create the depth stencil view.");
 		return false;
 	}
 
@@ -313,9 +349,7 @@ void D3D11Device::Release()
 {
 	// Before shutting down set to windowed mode or when you release the swap chain it will throw an exception.
 	if (m_swapChain)
-	{
 		m_swapChain->SetFullscreenState(false, nullptr);
-	}
 
 	m_alphaBlendingStateEnabled->Release();
 	m_alphaBlendingStateDisabled->Release();
@@ -489,75 +523,4 @@ DXGI_SWAP_CHAIN_DESC D3D11Device::GetSwapchainDesc(HWND handle)
 	swapChainDesc.Flags = 0;
 
 	return swapChainDesc;
-}
-
-D3D11_RASTERIZER_DESC D3D11Device::GetRasterizerDesc(D3D11_CULL_MODE cullMode)
-{
-	// A rasterizer state determines determines
-	// how and what polygons will be drawn.
-	D3D11_RASTERIZER_DESC rasterDesc;
-
-	rasterDesc.FillMode = D3D11_FILL_SOLID;
-	rasterDesc.CullMode = cullMode;
-	rasterDesc.FrontCounterClockwise = false;
-	rasterDesc.DepthBias = 0;
-	rasterDesc.SlopeScaledDepthBias = 0.0f;
-	rasterDesc.DepthBiasClamp = 0.0f;
-	rasterDesc.DepthClipEnable = true;
-	rasterDesc.ScissorEnable = false;
-	rasterDesc.MultisampleEnable = false;
-	rasterDesc.AntialiasedLineEnable = false;
-
-	return rasterDesc;
-}
-
-D3D11_DEPTH_STENCIL_DESC D3D11Device::GetDepthStencilDesc(bool depthEnable)
-{
-	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
-
-	// Initialize the description of the stencil state.
-	ZeroMemory(&depthStencilDesc, sizeof(depthStencilDesc));
-
-	// Depth test parameters
-	depthStencilDesc.DepthEnable = depthEnable;
-	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-	depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
-
-	// Stencil test parameters
-	depthStencilDesc.StencilEnable = true;
-	depthStencilDesc.StencilReadMask = 0xFF;
-	depthStencilDesc.StencilWriteMask = 0xFF;
-
-	// Stencil operations if pixel is front-facing
-	depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-	depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-
-	// Stencil operations if pixel is back-facing
-	depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-	depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-
-	return depthStencilDesc;
-}
-
-D3D11_BLEND_DESC D3D11Device::GetBlendDesc(bool blendEnable)
-{
-	D3D11_BLEND_DESC blendStateDescription;
-	// Clear the blend state description.
-	ZeroMemory(&blendStateDescription, sizeof(D3D11_BLEND_DESC));
-
-	// Create an alpha enabled blend state description.
-	blendStateDescription.RenderTarget[0].BlendEnable = (int)blendEnable;
-	blendStateDescription.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-	blendStateDescription.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-	blendStateDescription.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-	blendStateDescription.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-	blendStateDescription.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-	blendStateDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-	blendStateDescription.RenderTarget[0].RenderTargetWriteMask = 0x0f;
-
-	return blendStateDescription;
 }

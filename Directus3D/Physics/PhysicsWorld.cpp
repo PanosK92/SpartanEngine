@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletPhysicsHelper.h"
 #include "../Signals/Signaling.h"
 #include <algorithm>
+#include "../Core/Settings.h"
+
 //==============================================================================
 
 PhysicsWorld::PhysicsWorld()
@@ -46,7 +48,6 @@ PhysicsWorld::PhysicsWorld()
 	m_collisionConfiguration = nullptr;
 	m_world = nullptr;
 	m_debugDraw = nullptr;
-	m_debugDrawEnabled = true;
 }
 
 PhysicsWorld::~PhysicsWorld()
@@ -100,8 +101,11 @@ void PhysicsWorld::Step(float timeStep)
 
 	EMIT_SIGNAL(SIGNAL_PHYSICS_STEPPED);
 
-	if (m_debugDrawEnabled)
+	if (GET_ENGINE_MODE == Editor_Stop)
+	{
+		m_debugDraw->ClearLines();
 		m_world->debugDrawWorld();
+	}
 }
 
 void PhysicsWorld::Reset()
@@ -136,16 +140,6 @@ btDiscreteDynamicsWorld* PhysicsWorld::GetWorld()
 	return m_world;
 }
 
-//= DEBUG DRAW ==================================================================
-void PhysicsWorld::SetDebugDraw(bool enable)
-{
-	m_debugDrawEnabled = enable;
-}
-
-bool PhysicsWorld::GetDebugDraw()
-{
-	return m_debugDrawEnabled;
-}
 PhysicsDebugDraw* PhysicsWorld::GetPhysicsDebugDraw()
 {
 	return m_debugDraw;
