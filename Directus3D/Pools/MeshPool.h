@@ -40,18 +40,13 @@ public:
 	void DeleteAll();
 	Mesh* AddMesh(std::string name, std::string rootGameObjectID, std::string gameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices);
 	Mesh* GetMesh(std::string ID);
-	std::vector<Mesh*> GetModelMeshesByModelName(std::string modelName);
+	const std::vector<Mesh*>& GetModelMeshesByModelName(std::string modelName);
 
 	//= MESH PROCESSING =============================================================================
 	float GetNormalizedModelScaleByRootGameObjectID(std::string modelName);
-	void SetMeshScale(Mesh* meshData, float scale);
 	void SetModelScale(std::string rootGameObjectID, float scale);
 	void NormalizeModelScale(GameObject* rootGameObject);
-	Mesh* GetLargestBoundingBox(const std::vector<Mesh*>& meshes);
-	Directus::Math::Vector3 GetMeshExtent(Mesh* mesh);
-	Directus::Math::Vector3 GetMeshExtent(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
-	Directus::Math::Vector3 GetMeshCenter(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
-	void GetMinMax(Mesh* mesh, Directus::Math::Vector3& min, Directus::Math::Vector3& max);
+	static Mesh* GetLargestBoundingBox(const std::vector<Mesh*>& meshes);
 	//===============================================================================================
 
 	/*------------------------------------------------------------------------------
@@ -62,10 +57,4 @@ public:
 
 private:
 	std::vector<Mesh*> m_meshPool;
-
-	/*------------------------------------------------------------------------------
-									[HELPER FUNCTIONS]
-	------------------------------------------------------------------------------*/
-	static void SaveVertex(const VertexPositionTextureNormalTangent& vertex);
-	static VertexPositionTextureNormalTangent LoadVertex();
 };

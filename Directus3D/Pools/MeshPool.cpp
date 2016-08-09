@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Components/MeshFilter.h"
 #include "../Components/Transform.h"
+#include "../IO/Log.h"
 //==================================
 
 //= NAMESPACES ================
@@ -63,6 +64,7 @@ Mesh* MeshPool::AddMesh(string name, string rootGameObjectID, string gameObjectI
 	mesh->SetRootGameObjectID(rootGameObjectID);
 	mesh->SetVertices(vertices);
 	mesh->SetIndices(indices);
+	mesh->Update();
 
 	m_meshPool.push_back(mesh);
 
@@ -82,7 +84,7 @@ Mesh* MeshPool::GetMesh(string ID)
 }
 
 // Returns the meshes tha belong to the same model
-vector<Mesh*> MeshPool::GetModelMeshesByModelName(string rootGameObjectID)
+const vector<Mesh*>& MeshPool::GetModelMeshesByModelName(string rootGameObjectID)
 {
 	vector<Mesh*> modelMeshes;
 	for (unsigned int i = 0; i < m_meshPool.size(); i++)
@@ -108,16 +110,10 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(string rootGameObjectI
 	Mesh* largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
 
 	// calculate the scale
-	Vector3 boundingBox = GetMeshExtent(largestBoundingBoxMesh);
+	Vector3 boundingBox = largestBoundingBoxMesh->GetExtent();
 	float scaleOffset = boundingBox.Length();
 
 	return 1.0f / scaleOffset;
-}
-
-void MeshPool::SetMeshScale(Mesh* meshData, float scale)
-{
-	for (int j = 0; j < meshData->GetVertexCount(); j++)
-		meshData->GetVertices()[j].position *= scale;
 }
 
 void MeshPool::SetModelScale(string rootGameObjectID, float scale)
@@ -126,25 +122,16 @@ void MeshPool::SetModelScale(string rootGameObjectID, float scale)
 	vector<Mesh*> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
 
 	for (int i = 0; i < modelMeshes.size(); i++)
-		SetMeshScale(modelMeshes[i], scale);
+		modelMeshes[i]->Scale(scale);
 }
 
 void MeshPool::NormalizeModelScale(GameObject* rootGameObject)
 {
 	float normalizedScale = GetNormalizedModelScaleByRootGameObjectID(rootGameObject->GetID());
 	SetModelScale(rootGameObject->GetID(), normalizedScale);
-
-	// Also, refresh it's mesh in the gameobject now that the scale has changed
-	// this will cause ot's mesh to recalculate it's bounding box and so on.
-	vector<Transform*> descendants = rootGameObject->GetTransform()->GetDescendants();
-	for (auto i = 0; i < descendants.size(); i++)
-	{
-		MeshFilter* mesh = descendants[i]->g_gameObject->GetComponent<MeshFilter>();
-		if (mesh) mesh->Refresh();
-	}
 }
 
-// Returns the largest bounding box in an array of meshes
+// Returns the largest bounding box in an vector of meshes
 Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
 {
 	if (meshes.empty())
@@ -155,7 +142,7 @@ Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
 
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
-		Vector3 boundingBox = GetMeshExtent(meshes[i]);
+		Vector3 boundingBox = meshes[i]->GetExtent();
 		if (boundingBox.Volume() > largestBoundingBox.Volume())
 		{
 			largestBoundingBox = boundingBox;
@@ -166,64 +153,12 @@ Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
 	return largestBoundingBoxMesh;
 }
 
-// Returns the bounding box of a mesh
-Vector3 MeshPool::GetMeshExtent(Mesh* mesh)
-{
-	if (!mesh)
-		return Vector3::Zero;
-
-	Vector3 min, max;
-
-	// find min, max
-	GetMinMax(mesh, min, max);
-
-	// return the bounding box
-	return GetMeshExtent(min, max);
-}
-
-// Returns the bounding box of a mesh based on it's minimum and maximum points
-Vector3 MeshPool::GetMeshExtent(const Vector3& min, const Vector3& max)
-{
-	return (max - min) * 0.5f;
-}
-
-// Returns the center of the mesh based on it's minimum and maximum points
-Vector3 MeshPool::GetMeshCenter(const Vector3& min, const Vector3& max)
-{
-	return (min + max) * 0.5f;
-}
-
-// Returns the minimum and maximum point in an array of meshes
-void MeshPool::GetMinMax(Mesh* meshData, Vector3& min, Vector3& max)
-{
-	if (!meshData)
-		return;
-
-	min = Vector3::Infinity;
-	max = Vector3::InfinityNeg;
-
-	for (unsigned int i = 0; i < meshData->GetVertexCount(); i++)
-	{
-		float x = meshData->GetVertices()[i].position.x;
-		float y = meshData->GetVertices()[i].position.y;
-		float z = meshData->GetVertices()[i].position.z;
-
-		if (x > max.x) max.x = x;
-		if (y > max.y) max.y = y;
-		if (z > max.z) max.z = z;
-
-		if (x < min.x) min.x = x;
-		if (y < min.y) min.y = y;
-		if (z < min.z) min.z = z;
-	}
-}
-
 /*------------------------------------------------------------------------------
 									[I/O]
 ------------------------------------------------------------------------------*/
 void MeshPool::Serialize()
 {
-	int meshCount = (int)m_meshPool.size();
+	int meshCount = int(m_meshPool.size());
 	Serializer::SaveInt(meshCount);
 
 	for (int i = 0; i < meshCount; i++)

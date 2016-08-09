@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "IComponent.h"
 #include "../Math/Vector3.h"
+#include "../Core/Mesh.h"
 //==========================
 
 class btBoxShape;
@@ -83,4 +84,5 @@ private:
 	------------------------------------------------------------------------------*/
 	void ConstructCollisionShape();
 	void SetRigidBodyCollisionShape(btCollisionShape* shape);
+	Mesh* GetMeshFromAttachedMeshFilter() const;
 };

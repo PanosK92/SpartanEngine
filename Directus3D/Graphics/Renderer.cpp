@@ -357,8 +357,8 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 			continue;
 
 		//= Frustrum culling =======================================================
-		Vector3 center = meshFilter->GetCenter() * worldMatrix;
-		Vector3 extent = meshFilter->GetExtent() * gameObject->GetTransform()->GetScale();
+		Vector3 center = mesh->GetCenter() * worldMatrix;
+		Vector3 extent = mesh->GetExtent() * gameObject->GetTransform()->GetScale();
 
 		float radius = max(abs(extent.x), abs(extent.y));
 		radius = max(radius, abs(extent.z));

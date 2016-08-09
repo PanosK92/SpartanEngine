@@ -142,6 +142,7 @@
     <ClCompile Include="Core\Engine.cpp" />
     <ClCompile Include="Core\GameObject.cpp" />
     <ClCompile Include="Core\Material.cpp" />
+    <ClCompile Include="Core\Mesh.cpp" />
     <ClCompile Include="Core\Scene.cpp" />
     <ClCompile Include="Core\Settings.cpp" />
     <ClCompile Include="Signals\Signaling.cpp" />

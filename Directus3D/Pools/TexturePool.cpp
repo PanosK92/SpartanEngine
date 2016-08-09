@@ -79,8 +79,8 @@ Texture* TexturePool::AddFromFile(string texturePath, TextureType textureType)
 	// If not, load it
 	Texture* texture = new Texture();
 	texture->LoadFromFile(texturePath, textureType);
-
 	m_textures.push_back(texture);
+
 	return m_textures.back();
 }
 
