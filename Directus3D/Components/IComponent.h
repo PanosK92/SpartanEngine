@@ -29,6 +29,7 @@ class GameObject;
 class Transform;
 class GraphicsDevice;
 class Scene;
+class Renderer;
 class PhysicsWorld;
 class ScriptEngine;
 class MeshPool;
@@ -58,6 +59,7 @@ public:
 	Transform* g_transform;
 	GraphicsDevice* g_graphicsDevice;
 	Scene* g_scene;
+	Renderer* g_renderer;
 	MeshPool* g_meshPool;
 	MaterialPool* g_materialPool;
 	PhysicsWorld* g_physicsWorld;

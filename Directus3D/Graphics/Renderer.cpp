@@ -254,13 +254,18 @@ void Renderer::Clear()
 	m_lightsPoint.shrink_to_fit();
 }
 
-void Renderer::Update(vector<GameObject*> renderables, vector<GameObject*> lightsDirectional, vector<GameObject*> lightsPoint)
+void Renderer::Update(const vector<GameObject*>& renderables, const vector<GameObject*>& lightsDirectional, const vector<GameObject*>& lightsPoint)
 {
 	Clear();
 
 	m_renderables = renderables;
 	m_lightsDirectional = lightsDirectional;
 	m_lightsPoint = lightsPoint;
+}
+
+const vector<GameObject*>& Renderer::GetRenderables() const
+{
+	return m_renderables;
 }
 
 void Renderer::AcquirePrerequisites()

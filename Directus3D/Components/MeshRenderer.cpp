@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 #include "../Core/GameObject.h"
 #include "../Pools/MaterialPool.h"
+#include "../Graphics/Renderer.h"
 //================================
 
 //= NAMESPACES ================
@@ -117,7 +118,7 @@ void MeshRenderer::Render(unsigned int indexCount, const Matrix& viewMatrix, con
 	GetMaterial()->GetShader()->Render(
 		indexCount,
 		g_transform->GetWorldTransform(), viewMatrix, projectionMatrix,
-		GetMaterial(), textures, 
+		GetMaterial(), textures,
 		dicrectionalLight, GetReceiveShadows(), camera
 	);
 }

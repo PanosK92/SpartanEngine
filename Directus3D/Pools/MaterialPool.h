@@ -38,6 +38,8 @@ public:
 	------------------------------------------------------------------------------*/
 	void DeleteAll();
 	Material* AddMaterial(Material* material);
+	void RemoveMaterial(Material* material);
+	void RemoveMaterial(std::string materialID);
 	Material* GetMaterialByID(std::string materialID);
 	Material* GetMaterialStandardDefault();
 	Material* GetMaterialStandardSkybox();
@@ -55,7 +57,6 @@ private:
 	ShaderPool* m_shaderPool;
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
-	------------------------------------------------------------------------------*/
-	void RemoveMaterial(std::string materialID);
+	------------------------------------------------------------------------------*/	
 	void AddStandardMaterials();
 };

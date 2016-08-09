@@ -109,7 +109,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_renderer->Initialize(m_graphicsDevice, m_timer, m_physicsWorld, m_scene);
 
 	// 14 - GAMEOBJECT POOL
-	GameObjectPool::GetInstance().Initialize(m_graphicsDevice, m_scene, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physicsWorld, m_scriptEngine);
+	GameObjectPool::GetInstance().Initialize(m_graphicsDevice, m_scene, m_renderer, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physicsWorld, m_scriptEngine);
 
 	// 15 - SCENE	
 	m_scene->Initialize();

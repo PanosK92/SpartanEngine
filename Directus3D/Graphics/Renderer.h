@@ -50,7 +50,8 @@ public:
 	void Render();
 	void SetResolution(int width, int height);
 	void Clear();
-	void Update(std::vector<GameObject*> renderables, std::vector<GameObject*> lightsDirectional, std::vector<GameObject*> lightsPoint);
+	void Update(const std::vector<GameObject*>& renderables, const std::vector<GameObject*>& lightsDirectional, const std::vector<GameObject*>& lightsPoint);
+	const std::vector<GameObject*>& GetRenderables() const;
 
 	//= STATS =========================
 	void StartCalculatingStats();
