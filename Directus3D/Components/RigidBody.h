@@ -21,11 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ===============
 #include "IComponent.h"
 #include "../Math/Vector3.h"
-#include <LinearMath/btMotionState.h>
-//===================================
+//==========================
 
 class GameObject;
 class btRigidBody;
@@ -37,7 +36,7 @@ enum ForceMode
 	Impulse
 };
 
-class __declspec(dllexport) RigidBody : public IComponent, public btMotionState
+class __declspec(dllexport) RigidBody : public IComponent
 {
 public:
 	RigidBody();
@@ -50,11 +49,6 @@ public:
 	virtual void Update();
 	virtual void Serialize();
 	virtual void Deserialize();
-	//=======================================================
-
-	//= MOTION STATE ========================================
-	virtual void getWorldTransform(btTransform& worldTrans) const;
-	virtual void setWorldTransform(const btTransform& worldTrans);
 	//=======================================================
 
 	//= MASS ================================================
@@ -100,11 +94,11 @@ public:
 	//= ROTATION LOCK =================================
 	void SetRotationLock(bool lock);
 	void SetRotationLock(const Directus::Math::Vector3& lock);
-	Directus::Math::Vector3 GetRotationLock();
+	Directus::Math::Vector3 GetRotationLock() const;
 	//=================================================
 
 	//= POSITION ============================================
-	Directus::Math::Vector3 GetPosition();
+	Directus::Math::Vector3 GetPosition() const;
 	void SetPosition(const Directus::Math::Vector3& position);
 
 	//= ROTATION ============================================
@@ -115,14 +109,14 @@ public:
 	void SetCollisionShape(btCollisionShape* shape);
 	btRigidBody* GetBtRigidBody() const;
 	void ClearForces() const;
+	Directus::Math::Vector3 GetColliderCenter() const;
 
 private:
 	//= HELPER FUNCTIONS ========================================
-	Directus::Math::Vector3 GetColliderCenter() const;
 	void AddBodyToWorld();
 	void RemoveBodyFromWorld();
 	void UpdateGravity();
-	void Activate();
+	void Activate() const;
 
 	btRigidBody* m_rigidBody;
 	btCollisionShape* m_shape;

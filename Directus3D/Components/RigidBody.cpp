@@ -33,11 +33,39 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "../IO/Log.h"
 #include "../Core/Globals.h"
+#include <LinearMath/btMotionState.h>
 //===========================================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
 //=============================
+
+class MotionState : public btMotionState
+{
+	RigidBody* m_rigidBody;
+public:
+	MotionState(RigidBody* rigidBody) { m_rigidBody = rigidBody; }
+
+	// Update bullet, ENGINE -> BULLET
+	void btMotionState::getWorldTransform(btTransform& worldTransform) const override
+	{
+		Vector3 enginePositon = m_rigidBody->g_transform->GetPosition();
+		Quaternion engineRotation = m_rigidBody->g_transform->GetRotation();
+
+		worldTransform.setOrigin(ToBtVector3(enginePositon + engineRotation * m_rigidBody->GetColliderCenter()));
+		worldTransform.setRotation(ToBtQuaternion(engineRotation));
+	}
+
+	// Update from bullet, ENGINE <- BULLET
+	void btMotionState::setWorldTransform(const btTransform& worldTransform) override
+	{
+		Quaternion bulletRot = ToQuaternion(worldTransform.getRotation());
+		Vector3 bulletPos = ToVector3(worldTransform.getOrigin()) - bulletRot *  m_rigidBody->GetColliderCenter();
+
+		m_rigidBody->g_transform->SetPosition(bulletPos);
+		m_rigidBody->g_transform->SetRotation(bulletRot);
+	}
+};
 
 RigidBody::RigidBody()
 {
@@ -119,28 +147,6 @@ void RigidBody::Deserialize()
 	m_rotationLock = Serializer::LoadVector3();
 
 	AddBodyToWorld();
-}
-//=======================================================================
-
-//= MOTION STATE ========================================================
-// Update bullet, ENGINE -> BULLET
-void RigidBody::getWorldTransform(btTransform& worldTransform) const
-{
-	Vector3 enginePositon = g_transform->GetPosition();
-	Quaternion engineRotation = g_transform->GetRotation();
-
-	worldTransform.setOrigin(ToBtVector3(enginePositon + engineRotation * GetColliderCenter()));
-	worldTransform.setRotation(ToBtQuaternion(engineRotation));
-}
-
-// Update from bullet, ENGINE <- BULLET
-void RigidBody::setWorldTransform(const btTransform& worldTransform)
-{
-	Quaternion bulletRot = ToQuaternion(worldTransform.getRotation());
-	Vector3 bulletPos = ToVector3(worldTransform.getOrigin()) - bulletRot * GetColliderCenter();
-
-	g_transform->SetPosition(bulletPos);
-	g_transform->SetRotation(bulletRot);
 }
 //=======================================================================
 
@@ -313,14 +319,14 @@ void RigidBody::SetRotationLock(const Vector3& lock)
 	m_rigidBody->setAngularFactor(ToBtVector3(rotationFreedom));
 }
 
-Vector3 RigidBody::GetRotationLock()
+Vector3 RigidBody::GetRotationLock() const
 {
 	return m_rotationLock;
 }
 //=======================================================================
 
 //= POSITION ============================================================
-Vector3 RigidBody::GetPosition()
+Vector3 RigidBody::GetPosition() const
 {
 	return m_rigidBody ? ToVector3(m_rigidBody->getWorldTransform().getOrigin()) : Vector3::Zero;
 }
@@ -361,9 +367,7 @@ void RigidBody::SetRotation(const Quaternion& rotation)
 	Activate();
 }
 
-/*------------------------------------------------------------------------------
-								[MISC]
-------------------------------------------------------------------------------*/
+//= MISC ====================================================================
 void RigidBody::SetCollisionShape(btCollisionShape* shape)
 {
 	m_shape = shape;
@@ -383,14 +387,14 @@ void RigidBody::ClearForces() const
 	m_rigidBody->clearForces();
 }
 
-//= HELPER FUNCTIONS =========================================
 Vector3 RigidBody::GetColliderCenter() const
 {
 	Collider* collider = g_gameObject->GetComponent<Collider>();
 	return collider ? collider->GetCenter() : Vector3::Zero;
 }
-//============================================================
+//===========================================================================
 
+//= HELPER FUNCTIONS ========================================================
 void RigidBody::AddBodyToWorld()
 {
 	btVector3 inertia(0, 0, 0);
@@ -410,8 +414,11 @@ void RigidBody::AddBodyToWorld()
 	if (m_shape) // if a shape has been assigned
 		m_shape->calculateLocalInertia(m_mass, inertia);
 
+	// Motion state
+	MotionState* motionState = new MotionState(this);
+
 	// Construction Info
-	btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, this, m_shape, inertia);	
+	btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, m_shape, inertia);
 	constructionInfo.m_mass = m_mass;
 	constructionInfo.m_friction = m_drag;
 	constructionInfo.m_rollingFriction = m_angularDrag;
@@ -419,7 +426,7 @@ void RigidBody::AddBodyToWorld()
 	constructionInfo.m_startWorldTransform;
 	constructionInfo.m_collisionShape = m_shape;
 	constructionInfo.m_localInertia = inertia;
-	constructionInfo.m_motionState = this;
+	constructionInfo.m_motionState = motionState;
 
 	// RigidBody
 	m_rigidBody = new btRigidBody(constructionInfo);
@@ -488,7 +495,7 @@ void RigidBody::UpdateGravity()
 		m_rigidBody->setGravity(btVector3(0.0f, 0.0f, 0.0f));
 }
 
-void RigidBody::Activate()
+void RigidBody::Activate() const
 {
 	if (!m_rigidBody)
 		return;
@@ -496,3 +503,4 @@ void RigidBody::Activate()
 	if (m_mass > 0.0f)
 		m_rigidBody->activate(true);
 }
+//===========================================================================
