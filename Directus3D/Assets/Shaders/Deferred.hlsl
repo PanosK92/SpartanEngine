@@ -84,7 +84,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float3 normal				= normalize(UnpackNormal(normalSample.rgb));	
 	float depth					= depthSample.g;
 	float3 worldPos				= ReconstructPosition(depth, input.uv, mViewProjectionInverse);
-	float shadowing 			= normalSample.a;
+	float shadowing 			= clamp(normalSample.a, 0.1f, 1.0f);
 	float roughness				= materialSample.r;
 	float metallic				= materialSample.g;
 	float specular				= materialSample.b;	
@@ -118,7 +118,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float3 lightDir 		= normalize(-dirLightDirection[i]);
 
 		float ambientLightIntensity 	= clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
-		lightIntensity 					*= clamp(shadowing, 0.1f, 1.0f);
+		lightIntensity 					*= shadowing;
 		envColor 						*= clamp(lightIntensity, 0.0f, 1.0f);
 		irradiance 						*= clamp(lightIntensity, 0.0f, 1.0f);
 		
@@ -136,7 +136,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float dist 				= length(worldPos - lightPos);
 		float attunation 		= clamp(1.0f - dist / radius, 0.0f, 1.0f); attunation *= attunation;
 		
-		lightIntensity *= attunation * shadowing;
+		lightIntensity *= attunation;
 
 		 // Calculate distance between light source and current fragment
         float dx = length(lightPos - worldPos);

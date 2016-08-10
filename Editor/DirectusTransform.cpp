@@ -188,7 +188,7 @@ void DirectusTransform::Reflect(GameObject* gameobject)
 
 void DirectusTransform::Refresh()
 {
-    // When the game is playing give priority to it
+    // Only live refresh when we are in play mode
     if (GET_ENGINE_MODE != Editor_Play)
         return;
 

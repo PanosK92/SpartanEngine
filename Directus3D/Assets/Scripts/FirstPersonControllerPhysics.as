@@ -30,19 +30,19 @@ class FirstPersonControllerPhysics
 	{
 		// forward
 		if (input.GetKey(W))
-			rigidbody.ApplyForce(-movementSpeed * transform.GetForward(), Force);
+			rigidbody.ApplyForce(movementSpeed * transform.GetForward(), Force);
 			
 		// backward
 		if (input.GetKey(S))
-			rigidbody.ApplyForce(movementSpeed * transform.GetForward(), Force);
+			rigidbody.ApplyForce(-movementSpeed * transform.GetForward(), Force);
 		
 		// right
 		if (input.GetKey(D))
-			rigidbody.ApplyForce(-movementSpeed * transform.GetRight(), Force);
+			rigidbody.ApplyForce(movementSpeed * transform.GetRight(), Force);
 		
 		// left
 		if (input.GetKey(A))
-			rigidbody.ApplyForce(movementSpeed * transform.GetRight(), Force);
+			rigidbody.ApplyForce(-movementSpeed * transform.GetRight(), Force);
 			
 		// jump
 		if (input.GetKey(Space))

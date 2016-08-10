@@ -45,7 +45,7 @@ Light::Light()
 		1.0f
 	);
 	m_bias = 0.0001f;
-	m_projectionSize = 50;
+	m_projectionSize = 100;
 	m_nearPlane = 0.1f;
 	m_farPlane = 300;
 }
