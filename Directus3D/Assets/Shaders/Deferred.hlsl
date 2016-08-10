@@ -84,24 +84,22 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float3 normal				= normalize(UnpackNormal(normalSample.rgb));	
 	float depth					= depthSample.g;
 	float3 worldPos				= ReconstructPosition(depth, input.uv, mViewProjectionInverse);
-	float shadowingAttunation 	= depthSample.b;
-	float occlusion 			= normalSample.a;
+	float shadowing 			= normalSample.a;
 	float roughness				= materialSample.r;
 	float metallic				= materialSample.g;
 	float specular				= materialSample.b;	
 	float type					= materialSample.a;
 	
-	//return float4(shadowingAttunation, shadowingAttunation, shadowingAttunation, 1.0f);
+	//return float4(shadowing,shadowing,shadowing, 1.0f);
 	
 	// Calculate view direction and the reflection vector
-	float3 viewDir				= normalize(cameraPosWS.xyz - worldPos.xyz); 
+	float3 viewDir				= normalize(cameraPosWS.xyz - worldPos.xyz); 	
 	float3 reflectionVector		= reflect(-viewDir, normal);
 	
-    // NOTE: The cubemap is already in linear space
 	// Sample the skybox and the irradiance texture
 	float mipIndex				= roughness * 10.0f;
     float3 envColor             = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, mipIndex));
-    float3 irradiance           = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, 10.0f));
+    float3 irradiance           = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, 10.0f));	
 	
 	if (type == 0.1f) // Texture mapping
 	{
@@ -111,10 +109,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		finalColor *= clamp(dirLightIntensity[0], 0.1f, 1.0f); // some totally fake day/night effect
 		
 		float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
-	
 		return float4(finalColor, luma);
 	}
-
+		
 	// directional lights
 	for (int i = 0; i < dirLightCount; i++)
 	{
@@ -122,8 +119,10 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float lightIntensity	= dirLightIntensity[i] ;		
 		float3 lightDir 		= normalize(-dirLightDirection[i]);
 
-		float ambientLightIntensity = clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
-		lightIntensity *= shadowingAttunation * occlusion;
+		float ambientLightIntensity 	= clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
+		lightIntensity 					*= shadowing;
+		envColor 						*= clamp(lightIntensity, 0.0f, 1.0f);
+		irradiance 						*= clamp(lightIntensity, 0.0f, 1.0f);
 		
 		finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);	
 	}
@@ -139,7 +138,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float dist 				= length(worldPos - lightPos);
 		float attunation 		= clamp(1.0f - dist / radius, 0.0f, 1.0f); attunation *= attunation;
 		
-		lightIntensity *= attunation * shadowingAttunation * occlusion;
+		lightIntensity *= attunation * shadowing;
 
 		 // Calculate distance between light source and current fragment
         float dx = length(lightPos - worldPos);
@@ -149,9 +148,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 			finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, 0.0f, envColor, irradiance);			
 	}
 	
-	
-	finalColor = ToGamma(finalColor); // gamma correction
 	finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
+	finalColor = ToGamma(finalColor); // gamma correction
+	
 	float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
 	
 	return float4(finalColor, luma);

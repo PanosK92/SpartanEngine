@@ -57,11 +57,9 @@ bool D3D11RenderTexture::Initialize(GraphicsDevice* graphicsDevice, int textureW
 	m_width = textureHeight;
 	m_height = textureHeight;
 
-	// Initialize the render target texture description.
+	//= RENDER TARGET TEXTURE ========================================================================================================
 	D3D11_TEXTURE2D_DESC textureDesc;
 	ZeroMemory(&textureDesc, sizeof(textureDesc));
-
-	// Setup the render target texture description.
 	textureDesc.Width = textureWidth;
 	textureDesc.Height = textureHeight;
 	textureDesc.MipLevels = 1;
@@ -74,38 +72,37 @@ bool D3D11RenderTexture::Initialize(GraphicsDevice* graphicsDevice, int textureW
 	textureDesc.CPUAccessFlags = 0;
 	textureDesc.MiscFlags = 0;
 
-	// Create the render target texture.
 	HRESULT result = m_graphicsDevice->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTexture);
 	if (FAILED(result))
 		return false;
+	//=================================================================================================================================
 
-	// Setup the description of the render target view.
+	//= RENDER TARGET VIEW ============================================================================================================
 	D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
 	renderTargetViewDesc.Format = textureDesc.Format;
 	renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 	renderTargetViewDesc.Texture2D.MipSlice = 0;
 
-	// Create the render target view.
 	result = m_graphicsDevice->GetDevice()->CreateRenderTargetView(m_renderTargetTexture, &renderTargetViewDesc, &m_renderTargetView);
 	if (FAILED(result))
 		return false;
+	//=================================================================================================================================
 
-	// Setup the description of the shader resource view.
+	//= SHADER RESOURCE VIEW ==========================================================================================================
 	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
 	shaderResourceViewDesc.Format = textureDesc.Format;
 	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
 	shaderResourceViewDesc.Texture2D.MipLevels = 1;
 
-	// Create the shader resource view.
 	result = m_graphicsDevice->GetDevice()->CreateShaderResourceView(m_renderTargetTexture, &shaderResourceViewDesc, &m_shaderResourceView);
 	if (FAILED(result))
 		return false;
+	//=================================================================================================================================
 
+	//= DEPTH BUFFER ==================================================================================================================
 	D3D11_TEXTURE2D_DESC depthBufferDesc;
-	// Initialize the description of the depth buffer.
 	ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-	// Set up the description of the depth buffer.
 	depthBufferDesc.Width = textureWidth;
 	depthBufferDesc.Height = textureHeight;
 	depthBufferDesc.MipLevels = 1;
@@ -118,24 +115,22 @@ bool D3D11RenderTexture::Initialize(GraphicsDevice* graphicsDevice, int textureW
 	depthBufferDesc.CPUAccessFlags = 0;
 	depthBufferDesc.MiscFlags = 0;
 
-	// Create the texture for the depth buffer using the filled out description.
 	result = m_graphicsDevice->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
 	if (FAILED(result))
 		return false;
+	//=================================================================================================================================
 
-	// Initailze the depth stencil view description.
+	//= DEPTH STENCIL VIEW ============================================================================================================
 	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-
-	// Set up the depth stencil view description.
 	depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 	depthStencilViewDesc.Texture2D.MipSlice = 0;
 
-	// Create the depth stencil view.
 	result = m_graphicsDevice->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
 	if (FAILED(result))
 		return false;
+	//=================================================================================================================================
 
 	// Setup the viewport for rendering.
 	m_viewport.Width = float(textureWidth);
@@ -148,7 +143,7 @@ bool D3D11RenderTexture::Initialize(GraphicsDevice* graphicsDevice, int textureW
 	return true;
 }
 
-void D3D11RenderTexture::SetAsRenderTarget()
+void D3D11RenderTexture::SetAsRenderTarget() const
 {
 	// Bind the render target view and depth stencil buffer to the output render pipeline.
 	m_graphicsDevice->GetDeviceContext()->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
@@ -162,7 +157,7 @@ void D3D11RenderTexture::Clear(const Directus::Math::Vector4& clearColor)
 	Clear(clearColor.x, clearColor.y, clearColor.z, clearColor.z);
 }
 
-void D3D11RenderTexture::Clear(float red, float green, float blue, float alpha)
+void D3D11RenderTexture::Clear(float red, float green, float blue, float alpha) const
 {
 	float clearColor[4];
 
