@@ -223,9 +223,9 @@ Vector3 MeshFilter::GetCenter() const
 	return m_mesh ? m_mesh->GetCenter() * g_transform->GetWorldTransform() : Vector3::Zero;
 }
 
-Vector3 MeshFilter::GetExtent() const
+Vector3 MeshFilter::GetBoundingBox() const
 {
-	return m_mesh ? m_mesh->GetExtent() * g_transform->GetScale() : Vector3::One;
+	return m_mesh ? m_mesh->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
 }
 
 Mesh* MeshFilter::GetMesh() const

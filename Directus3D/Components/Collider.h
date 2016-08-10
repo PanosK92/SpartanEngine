@@ -58,31 +58,27 @@ public:
 	/*------------------------------------------------------------------------------
 									[PROPERTIES]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetBoundingBox();
-	void SetBoundingBox(Directus::Math::Vector3 boundingBox);
+	const Directus::Math::Vector3& GetBoundingBox() const;
+	void SetBoundingBox(const Directus::Math::Vector3& boundingBox);
 
-	Directus::Math::Vector3 GetScale();
-	void SetScale(Directus::Math::Vector3 scale);
+	const Directus::Math::Vector3& GetCenter() const;
+	void SetCenter(const Directus::Math::Vector3& center);
 
-	Directus::Math::Vector3 GetCenter();
-	void SetCenter(Directus::Math::Vector3 offset);
-
-	ColliderShape GetShapeType();
+	ColliderShape GetShapeType() const;
 	void SetShapeType(ColliderShape type);
 
-	btCollisionShape* GetBtCollisionShape();
+	btCollisionShape* GetBtCollisionShape() const;
 
 private:
 	ColliderShape m_shapeType;
 	btCollisionShape* m_shape;
 	Directus::Math::Vector3 m_boundingBox;
-	Directus::Math::Vector3 m_scale; // this simply scales the bounding box
 	Directus::Math::Vector3 m_center;
 
 	/*------------------------------------------------------------------------------
 										[MISC]
 	------------------------------------------------------------------------------*/
 	void ConstructCollisionShape();
-	void SetRigidBodyCollisionShape(btCollisionShape* shape);
+	void SetRigidBodyCollisionShape(btCollisionShape* shape) const;
 	Mesh* GetMeshFromAttachedMeshFilter() const;
 };

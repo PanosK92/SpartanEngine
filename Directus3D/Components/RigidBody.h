@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================
+//= INCLUDES ========================
 #include "IComponent.h"
 #include "../Math/Vector3.h"
-//===========================
+#include <LinearMath/btMotionState.h>
+//===================================
 
 class GameObject;
 class btRigidBody;
@@ -36,7 +37,7 @@ enum ForceMode
 	Impulse
 };
 
-class __declspec(dllexport) RigidBody : public IComponent
+class __declspec(dllexport) RigidBody : public IComponent, public btMotionState
 {
 public:
 	RigidBody();
@@ -49,6 +50,12 @@ public:
 	virtual void Update();
 	virtual void Serialize();
 	virtual void Deserialize();
+	//=======================================================
+
+	//= MOTION STATE ========================================
+	virtual void getWorldTransform(btTransform& worldTrans) const;
+	virtual void setWorldTransform(const btTransform& worldTrans);
+	//=======================================================
 
 	//= MASS ================================================
 	float GetMass() const;
@@ -101,21 +108,17 @@ public:
 	void SetPosition(const Directus::Math::Vector3& position);
 
 	//= ROTATION ============================================
-	Directus::Math::Quaternion GetRotation();
+	Directus::Math::Quaternion GetRotation() const;
 	void SetRotation(const Directus::Math::Quaternion& rotation);
 
 	//= MISC ================================================
 	void SetCollisionShape(btCollisionShape* shape);
 	btRigidBody* GetBtRigidBody() const;
-	void ClearForces();
+	void ClearForces() const;
 
 private:
-	//= COLLIDER ================================================
-	Directus::Math::Vector3 GetColliderScale();
-	void SetColliderScale(const Directus::Math::Vector3& scale);
-	Directus::Math::Vector3 GetColliderCenter();
-
 	//= HELPER FUNCTIONS ========================================
+	Directus::Math::Vector3 GetColliderCenter() const;
 	void AddBodyToWorld();
 	void RemoveBodyFromWorld();
 	void UpdateGravity();
