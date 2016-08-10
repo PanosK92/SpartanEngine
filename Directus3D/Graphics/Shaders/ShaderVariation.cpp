@@ -142,7 +142,6 @@ void ShaderVariation::Render(int indexCount,
 							[FILL THE BUFFER]
 	------------------------------------------------------------------------------*/
 	{ // this can be done only when needed - tested
-		// map the buffer
 		DefaultBufferType* defaultBufferType = (DefaultBufferType*)m_befaultBuffer->Map();
 		defaultBufferType->mWorld = world.Transposed();
 		defaultBufferType->mWorldView = worldView.Transposed();

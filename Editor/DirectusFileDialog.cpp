@@ -94,8 +94,8 @@ void DirectusFileDialog::SaveScene()
         return;
     }
 
-    FileDialogAccepted(QString::fromStdString(m_lastSceneFilePath));
     m_assetOperation = "Save Scene";
+    FileDialogAccepted(QString::fromStdString(m_lastSceneFilePath));  
 }
 
 void DirectusFileDialog::SaveSceneAs()
