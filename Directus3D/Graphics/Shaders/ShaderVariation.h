@@ -114,7 +114,10 @@ private:
 		float shadingMode;	
 		float receiveShadows;
 		float shadowBias;
-		Directus::Math::Vector2 padding;
+		float shadowMapResolution;
+		float shadowMappingQuality;
+		Directus::Math::Vector3 lightDir;
+		float padding;
 
 		/*
 		matrix mWorld;

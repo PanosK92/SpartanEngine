@@ -15,8 +15,7 @@ Texture2D lightDepthTex 	: register (t7);
 //==========================================
 
 //= SAMPLERS ===========================================
-SamplerState samplerAniso 				: register (s0);
-SamplerComparisonState samplerShadow	: register (s1);
+SamplerState samplerAniso : register (s0);
 //======================================================
 
 //= BUFFERS ==================================
@@ -38,7 +37,10 @@ cbuffer DefaultBuffer : register(b0)
     float materialShadingMode;
     float receiveShadows;
 	float shadowBias;
-	float2 padding;
+	float shadowMapResolution;
+	float shadowMappingQuality;
+	float3 lightDir;
+	float padding;
 };
 //===========================================
 
@@ -154,10 +156,10 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	//= SHADOW MAPPING ===========================================================================
 	float shadowing = 1.0f;
-	if (receiveShadows == 1.0f)
+	if (receiveShadows == 1.0f && shadowMappingQuality != 0.0f)
 	{
 		float4 lightPos = mul(input.positionWS, mLightViewProjection);
-		shadowing		= ShadowMappingPCF(lightDepthTex, samplerAniso, lightPos, shadowBias);
+		shadowing		= ShadowMapping(lightDepthTex, samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
 	}
 	//============================================================================================
 	
