@@ -110,7 +110,7 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(string rootGameObjectI
 	Mesh* largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
 
 	// calculate the scale
-	Vector3 boundingBox = largestBoundingBoxMesh->GetExtent();
+	Vector3 boundingBox = largestBoundingBoxMesh->GetBoundingBox();
 	float scaleOffset = boundingBox.Length();
 
 	return 1.0f / scaleOffset;
@@ -142,7 +142,7 @@ Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
 
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
-		Vector3 boundingBox = meshes[i]->GetExtent();
+		Vector3 boundingBox = meshes[i]->GetBoundingBox();
 		if (boundingBox.Volume() > largestBoundingBox.Volume())
 		{
 			largestBoundingBox = boundingBox;

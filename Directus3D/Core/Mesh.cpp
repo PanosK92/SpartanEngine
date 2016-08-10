@@ -40,7 +40,7 @@ Mesh::Mesh()
 	m_min = Vector3::InfinityNeg;
 	m_min = Vector3::Infinity;
 	m_center = Vector3::Zero;
-	m_extent = Vector3::One;
+	m_boundingBox = Vector3::One;
 	m_onUpdate = nullptr;
 }
 
@@ -76,7 +76,7 @@ void Mesh::Serialize()
 	Serializer::SaveVector3(m_min);
 	Serializer::SaveVector3(m_max);
 	Serializer::SaveVector3(m_center);
-	Serializer::SaveVector3(m_extent);
+	Serializer::SaveVector3(m_boundingBox);
 }
 
 void Mesh::Deserialize()
@@ -97,7 +97,7 @@ void Mesh::Deserialize()
 	m_min = Serializer::LoadVector3();
 	m_max = Serializer::LoadVector3();
 	m_center = Serializer::LoadVector3();
-	m_extent = Serializer::LoadVector3();
+	m_boundingBox = Serializer::LoadVector3();
 }
 //==============================================================================
 
@@ -106,7 +106,7 @@ void Mesh::Update()
 {
 	GetMinMax(this, m_min, m_max);
 	m_center = GetCenter(m_min, m_max);
-	m_extent = GetExtent(m_min, m_max);
+	m_boundingBox = GetBoundingBox(m_min, m_max);
 
 	if (m_onUpdate)
 		m_onUpdate();
@@ -179,7 +179,7 @@ void Mesh::SetScale(Mesh* meshData, float scale)
 }
 
 // Returns the bounding box of a mesh
-Vector3 Mesh::GetExtent(const Vector3& min, const Vector3& max)
+Vector3 Mesh::GetBoundingBox(const Vector3& min, const Vector3& max)
 {
 	return (max - min) * 0.5f;
 }

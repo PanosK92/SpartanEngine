@@ -74,7 +74,7 @@ public:
 	const Directus::Math::Vector3& GetMin() const { return m_min; }
 	const Directus::Math::Vector3& GetMax() const { return m_max; }
 	const Directus::Math::Vector3& GetCenter() const { return m_center; }
-	const Directus::Math::Vector3& GetExtent() const { return m_extent; }
+	const Directus::Math::Vector3& GetBoundingBox() const { return m_boundingBox; }
 
 	//= PROCESSING =================================================================
 	void Update();
@@ -90,7 +90,7 @@ private:
 
 	//= HELPER FUNCTIONS ===========================================================
 	static void SetScale(Mesh* meshData, float scale);
-	static Directus::Math::Vector3 GetExtent(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
+	static Directus::Math::Vector3 GetBoundingBox(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
 	static Directus::Math::Vector3 GetCenter(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
 	static void GetMinMax(Mesh* mesh, Directus::Math::Vector3& min, Directus::Math::Vector3& max);
 	//==============================================================================
@@ -110,7 +110,7 @@ private:
 	Directus::Math::Vector3 m_min;
 	Directus::Math::Vector3 m_max;
 	Directus::Math::Vector3 m_center;
-	Directus::Math::Vector3 m_extent;
+	Directus::Math::Vector3 m_boundingBox;
 
 	std::function<void(void)> m_onUpdate;
 };
