@@ -180,8 +180,12 @@ void Renderer::Render()
 	{
 		if (m_directionalLight->GetShadowType() != No_Shadows)
 		{
-			m_directionalLight->SetDepthMapAsRenderTarget();
-			m_graphicsDevice->SetCullMode(CullFront);
+			// Some say that you should cull the front faces to avoid self-shadowing,
+			// But any object with improper front-face or back-face geometry causes artifacts in the shadow map.
+			// For now, we don't change the culling. I don't trust assimp and free 3d models.
+
+			//m_graphicsDevice->SetCullMode(CullFront);
+			m_directionalLight->SetDepthMapAsRenderTarget();		
 			DirectionalLightDepthPass(m_renderables, m_directionalLight);
 		}
 	}
