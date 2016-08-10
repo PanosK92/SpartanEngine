@@ -56,24 +56,24 @@ public:
 	/*------------------------------------------------------------------------------
 									[POSITION]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetPosition();
-	Directus::Math::Vector3 GetPositionLocal();
+	Directus::Math::Vector3 GetPosition() const;
+	Directus::Math::Vector3 GetPositionLocal() const;
 	void SetPosition(const Directus::Math::Vector3& position);
 	void SetPositionLocal(const Directus::Math::Vector3& position);
 
 	/*------------------------------------------------------------------------------
 									[ROTATION]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Quaternion GetRotation();
-	Directus::Math::Quaternion GetRotationLocal();
+	Directus::Math::Quaternion GetRotation() const;
+	Directus::Math::Quaternion GetRotationLocal() const;
 	void SetRotation(const Directus::Math::Quaternion& rotation);
 	void SetRotationLocal(const Directus::Math::Quaternion& rotation);
 
 	/*------------------------------------------------------------------------------
 									[SCALE]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetScale();
-	Directus::Math::Vector3 GetScaleLocal();
+	Directus::Math::Vector3 GetScale() const;
+	Directus::Math::Vector3 GetScaleLocal() const;
 	void SetScale(const Directus::Math::Vector3& scale);
 	void SetScaleLocal(const Directus::Math::Vector3& scale);
 
@@ -84,34 +84,35 @@ public:
 	/*------------------------------------------------------------------------------
 									[DIRECTION]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetUp();
-	Directus::Math::Vector3 GetForward();
-	Directus::Math::Vector3 GetRight();
+	Directus::Math::Vector3 GetUp() const;
+	Directus::Math::Vector3 GetForward() const;
+	Directus::Math::Vector3 GetRight() const;
 
 	/*------------------------------------------------------------------------------
 								[HIERARCHY]
 	------------------------------------------------------------------------------*/
 	bool IsRoot();
-	bool HasParent();
+	bool HasParent() const;
 	void SetParent(Transform* parent);
 	void BecomeOrphan();
-	bool HasChildren();
+	bool HasChildren() const;
+	void AddChild(Transform* child);
 	Transform* GetRoot();
-	Transform* GetParent();
+	Transform* GetParent() const;
 	Transform* GetChildByIndex(int index);
-	std::vector<Transform*> GetChildren();
-	int GetChildrenCount();
+	std::vector<Transform*> GetChildren() const;
+	int GetChildrenCount() const;
 	void FindChildren();
-	bool IsDescendantOf(Transform* transform);
+	bool IsDescendantOf(Transform* transform) const;
 	std::vector<Transform*> GetDescendants();
-	std::string GetID();
+	std::string GetID() const;
 
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/
 	void LookAt(const Directus::Math::Vector3& v);
-	Directus::Math::Matrix GetWorldTransform();
-	GameObject* GetGameObject();
+	Directus::Math::Matrix GetWorldTransform() const;
+	GameObject* GetGameObject() const;
 
 private:
 
@@ -135,5 +136,5 @@ private:
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
 	void GetDescendants(std::vector<Transform*>& descendants);
-	Directus::Math::Matrix GetParentWorldTransform();
+	Directus::Math::Matrix GetParentWorldTransform() const;
 };

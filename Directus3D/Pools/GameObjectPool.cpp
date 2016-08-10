@@ -121,10 +121,6 @@ void GameObjectPool::Deserialize()
 		GameObject* gameObject = new GameObject();
 		gameObject->Deserialize();
 	}
-
-	// resolve hierarchy relationships
-	for (int i = 0; i < gameObjectCount; i++)
-		m_gameObjectPool[i]->GetComponent<Transform>()->FindChildren();
 }
 
 /*------------------------------------------------------------------------------
@@ -196,7 +192,7 @@ GameObject* GameObjectPool::GetGameObjectByIndex(int index)
 {
 	if (index >= int(m_gameObjectPool.size()))
 	{
-		LOG("Can't return GameObject, index out of range.", Log::Warning);
+		LOG_WARNING("Can't return GameObject, index out of range.");
 		return nullptr;
 	}
 
@@ -214,7 +210,7 @@ GameObject* GameObjectPool::GetGameObjectByID(string ID)
 	return nullptr;
 }
 
-vector<GameObject*> GameObjectPool::GetGameObjectsByParentID(string ID)
+const vector<GameObject*>& GameObjectPool::GetGameObjectsByParentID(string ID)
 {
 	vector<GameObject*> gameObjects;
 	for (unsigned int i = 0; i < m_gameObjectPool.size(); i++)
