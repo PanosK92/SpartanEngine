@@ -90,8 +90,6 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float specular				= materialSample.b;	
 	float type					= materialSample.a;
 	
-	//return float4(shadowing,shadowing,shadowing, 1.0f);
-	
 	// Calculate view direction and the reflection vector
 	float3 viewDir				= normalize(cameraPosWS.xyz - worldPos.xyz); 	
 	float3 reflectionVector		= reflect(-viewDir, normal);
@@ -120,7 +118,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		float3 lightDir 		= normalize(-dirLightDirection[i]);
 
 		float ambientLightIntensity 	= clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
-		lightIntensity 					*= shadowing;
+		lightIntensity 					*= clamp(shadowing, 0.1f, 1.0f);
 		envColor 						*= clamp(lightIntensity, 0.0f, 1.0f);
 		irradiance 						*= clamp(lightIntensity, 0.0f, 1.0f);
 		

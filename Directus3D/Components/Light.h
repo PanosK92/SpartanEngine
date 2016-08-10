@@ -66,6 +66,7 @@ public:
 
 	ShadowType GetShadowType();
 	void SetShadowType(ShadowType shadowType);
+	float GetShadowTypeAsFloat() const;
 
 	void SetRange(float value);
 	float GetRange();
@@ -83,6 +84,7 @@ public:
 	void SetDepthMapAsRenderTarget();
 	ID3D11ShaderResourceView* GetDepthMap();
 	float GetProjectionSize();
+	float GetShadowMapResolution();
 
 private:
 	LightType m_lightType;

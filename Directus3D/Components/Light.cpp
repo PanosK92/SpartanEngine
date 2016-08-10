@@ -46,7 +46,7 @@ Light::Light()
 	);
 	m_bias = 0.0001f;
 	m_projectionSize = 50;
-	m_nearPlane = 0.1;
+	m_nearPlane = 0.1f;
 	m_farPlane = 300;
 }
 
@@ -138,6 +138,17 @@ void Light::SetShadowType(ShadowType shadowType)
 	m_shadowType = shadowType;
 }
 
+float Light::GetShadowTypeAsFloat() const
+{
+	if (m_shadowType == Hard_Shadows)
+		return 0.5f;
+
+	if (m_shadowType == Soft_Shadows)
+		return 1.0f;
+
+	return 0.0f;
+}
+
 void Light::SetRange(float value)
 {
 	m_range = value;
@@ -213,4 +224,9 @@ ID3D11ShaderResourceView* Light::GetDepthMap()
 float Light::GetProjectionSize()
 {
 	return m_projectionSize;
+}
+
+float Light::GetShadowMapResolution()
+{
+	return SHADOWMAP_RESOLUTION;
 }

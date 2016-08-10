@@ -111,7 +111,6 @@ void ShaderVariation::Load()
 	m_D3D11Shader->Load("Assets/Shaders/GBuffer.hlsl");
 	m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
 	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS); // anisotropic
-	m_D3D11Shader->AddSampler(D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_MIRROR, D3D11_COMPARISON_LESS_EQUAL); // bilinear
 
 	// material buffer
 	m_befaultBuffer = new D3D11Buffer();
@@ -160,8 +159,11 @@ void ShaderVariation::Render(int indexCount,
 		defaultBufferType->specularMultiplier = material->GetSpecularMultiplier();
 		defaultBufferType->shadingMode = float(material->GetShadingMode());	
 		defaultBufferType->receiveShadows = float(receiveShadows);
-		defaultBufferType->shadowBias = float(directionalLight->GetBias());
-		defaultBufferType->padding = Vector2(0, 0);
+		defaultBufferType->shadowBias = directionalLight->GetBias();
+		defaultBufferType->shadowMapResolution = directionalLight->GetShadowMapResolution();
+		defaultBufferType->shadowMappingQuality = directionalLight->GetShadowTypeAsFloat();
+		defaultBufferType->lightDir = directionalLight->GetDirection();
+		defaultBufferType->padding = 0.0f;
 		m_befaultBuffer->Unmap();
 	}
 	m_befaultBuffer->SetVS(0); // set buffer in the vertex shader
