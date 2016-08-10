@@ -97,8 +97,8 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float roughness 		= materialRoughness;
 	float metallic 			= materialMetallic;
 	float specular 			= clamp(materialSpecular, 0.03f, 1.0f);
-	float occlusion			= materialOcclusion;
-	float4 normal			= float4(PackNormal(input.normal.xyz), occlusion);
+	float flippedOcclusion	= 1.0f - materialOcclusion;
+	float4 normal			= float4(PackNormal(input.normal.xyz), flippedOcclusion);
 	float type				= 0.0f; // pbr mesh
 	
 	//= TYPE CODES ============================
@@ -135,7 +135,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	//= OCCLUSION ================================================================================
 #if OCCLUSION_MAP
-		occlusion = clamp(texOcclusion.Sample(samplerAniso, texCoord).r * (1 / materialOcclusion), 0.0f, 1.0f);
+		flippedOcclusion = clamp(texOcclusion.Sample(samplerAniso, texCoord).r * (1.0f / (flippedOcclusion)), 0.0f, 1.0f);
 #endif
 	
 	//= NORMAL ==================================================================================
@@ -152,19 +152,21 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 #endif
 	//============================================================================================
 	
-	
 	//= SHADOW MAPPING ===========================================================================
 	float shadowing = 1.0f;
 	if (receiveShadows == 1.0f)
 	{
 		float4 lightPos = mul(input.positionWS, mLightViewProjection);
-		shadowing		= 1.0f - ShadowMappingPCF(lightDepthTex, samplerShadow, lightPos, shadowBias);
+		shadowing		= ShadowMappingPCF(lightDepthTex, samplerAniso, lightPos, shadowBias);
 	}
 	//============================================================================================
+	
+	float totalShadowing = clamp(flippedOcclusion * shadowing, 0.0f, 1.0f);
+	
 	// Write to G-Buffer
 	output.albedo 		= albedo;
-	output.normal 		= float4(normal.rgb, occlusion);
-	output.depth 		= float4(depth1, depth2, shadowing, 0.0f);
+	output.normal 		= float4(normal.rgb, totalShadowing);
+	output.depth 		= float4(depth1, depth2, 0.0f, 0.0f);
 	output.material		= float4(roughness, metallic, specular, type);
 		
     return output;

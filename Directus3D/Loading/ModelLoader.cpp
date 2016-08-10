@@ -288,7 +288,10 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 	bool isTwoSided = false;
 	int r = material->Get(AI_MATKEY_TWOSIDED, isTwoSided);
 	if (r == aiReturn_SUCCESS && isTwoSided)
+	{
+		LOG("two-sided");
 		engineMaterial->SetFaceCullMode(CullNone);
+	}
 
 	//= DIFFUSE COLOR ======================================================================================
 	aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
@@ -304,7 +307,7 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 	aiString Path;
 	if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
 	{
-		// FIX: materials who have a diffuse texture should not be tinted black
+		// FIX: materials that have a diffuse texture should not be tinted black
 		if (engineMaterial->GetColorAlbedo() == Vector4(0.0f, 0.0f, 0.0f, 1.0f))
 			engineMaterial->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
