@@ -347,7 +347,6 @@ void Transform::AddChild(Transform* child)
 		return;
 
 	child->SetParent(this);
-	m_children.push_back(child);
 }
 
 Transform* Transform::GetRoot()

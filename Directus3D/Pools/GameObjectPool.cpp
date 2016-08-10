@@ -98,11 +98,15 @@ void GameObjectPool::DeleteAll()
 ------------------------------------------------------------------------------*/
 void GameObjectPool::Serialize()
 {
-	// 1st - gameObjectCount
+	// 1st - GameObject count
 	Serializer::SaveInt(m_gameObjectPool.size());
 
-	// 2nd - gameObjects
-	for (unsigned int i = 0; i < m_gameObjectPool.size(); i++)
+	// 2nd - GameObject IDs
+	for (auto i = 0; i < m_gameObjectPool.size(); i++)
+		Serializer::SaveSTR(m_gameObjectPool[i]->GetID());
+
+	// 3rd - GameObjects
+	for (auto i = 0; i < m_gameObjectPool.size(); i++)
 		m_gameObjectPool[i]->Serialize();
 }
 
@@ -110,17 +114,19 @@ void GameObjectPool::Deserialize()
 {
 	DeleteAll();
 
-	// 1st - gameObjectCount
+	// 1st - GameObject count
 	int gameObjectCount = Serializer::LoadInt();
 
-	// 2nd - gameObjects
-	for (int i = 0; i < gameObjectCount; i++)
+	// 2nd - GameObject IDs
+	for (auto i = 0; i < gameObjectCount; i++)
 	{
-		// The gameobject will add itself in the pool, 
-		// no need to do it here or call delete on it.
 		GameObject* gameObject = new GameObject();
-		gameObject->Deserialize();
+		gameObject->SetID(Serializer::LoadSTR());
 	}
+
+	// 3rd - GameObjects
+	for (auto i = 0; i < gameObjectCount; i++)
+		m_gameObjectPool[i]->Deserialize();
 }
 
 /*------------------------------------------------------------------------------
