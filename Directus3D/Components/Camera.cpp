@@ -37,6 +37,7 @@ Camera::Camera()
 	m_farPlane = 1000.0f;
 	m_projection = Perspective;
 	m_clearColor = Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
+	m_isDirty = false;
 }
 
 Camera::~Camera()
@@ -91,7 +92,7 @@ void Camera::Update()
 void Camera::Serialize()
 {
 	Serializer::SaveVector4(m_clearColor);
-	Serializer::SaveInt((int)m_projection);
+	Serializer::SaveInt(int(m_projection));
 	Serializer::SaveFloat(m_FOV);
 	Serializer::SaveFloat(m_nearPlane);
 	Serializer::SaveFloat(m_farPlane);
@@ -100,7 +101,7 @@ void Camera::Serialize()
 void Camera::Deserialize()
 {
 	m_clearColor = Serializer::LoadVector4();
-	m_projection = (Projection)Serializer::LoadInt();
+	m_projection = Projection(Serializer::LoadInt());
 	m_FOV = Serializer::LoadFloat();
 	m_nearPlane = Serializer::LoadFloat();
 	m_farPlane = Serializer::LoadFloat();

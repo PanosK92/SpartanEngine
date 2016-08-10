@@ -93,9 +93,8 @@ void Transform::Deserialize()
 	if (parentGameObjectID != NULL_GAMEOBJECT_ID)
 	{
 		GameObject* parent = GameObjectPool::GetInstance().GetGameObjectByID(parentGameObjectID);
-
 		if (parent)
-			m_parent = parent->GetTransform();
+			parent->GetTransform()->AddChild(this);
 	}
 
 	UpdateWorldTransform();
@@ -133,12 +132,12 @@ void Transform::UpdateWorldTransform()
 /*------------------------------------------------------------------------------
 									[POSITION]
 ------------------------------------------------------------------------------*/
-Vector3 Transform::GetPosition()
+Vector3 Transform::GetPosition() const
 {
 	return m_position;
 }
 
-Vector3 Transform::GetPositionLocal()
+Vector3 Transform::GetPositionLocal() const
 {
 	return m_positionLocal;
 }
@@ -161,12 +160,12 @@ void Transform::SetPositionLocal(const Vector3& position)
 								[ROTATION]
 ------------------------------------------------------------------------------*/
 
-Quaternion Transform::GetRotation()
+Quaternion Transform::GetRotation() const
 {
 	return m_rotation;
 }
 
-Quaternion Transform::GetRotationLocal()
+Quaternion Transform::GetRotationLocal() const
 {
 	return m_rotationLocal;
 }
@@ -188,12 +187,12 @@ void Transform::SetRotationLocal(const Quaternion& rotation)
 /*------------------------------------------------------------------------------
 								[SCALE]
 ------------------------------------------------------------------------------*/
-Vector3 Transform::GetScale()
+Vector3 Transform::GetScale() const
 {
 	return m_scale;
 }
 
-Vector3 Transform::GetScaleLocal()
+Vector3 Transform::GetScaleLocal() const
 {
 	return m_scaleLocal;
 }
@@ -248,17 +247,17 @@ void Transform::Rotate(const Quaternion& delta, Space space)
 }
 //===============================================================================
 
-Vector3 Transform::GetUp()
+Vector3 Transform::GetUp() const
 {
 	return GetRotation() * Vector3::Up;
 }
 
-Vector3 Transform::GetForward()
+Vector3 Transform::GetForward() const
 {
 	return GetRotation() * Vector3::Forward;
 }
 
-Vector3 Transform::GetRight()
+Vector3 Transform::GetRight() const
 {
 	return GetRotation() * Vector3::Right;
 }
@@ -274,7 +273,7 @@ bool Transform::IsRoot()
 // Sets a parent for this transform
 void Transform::SetParent(Transform* newParent)
 {
-	// This is the most important and complex function 
+	// This is the most complex function 
 	// in this script, tweak it with great caution.
 
 	// if the new parent is null, it means that this should become a root transform
@@ -285,7 +284,8 @@ void Transform::SetParent(Transform* newParent)
 	}
 
 	// make sure the new parent is not this transform
-	if (newParent->GetID() == GetID()) return;
+	if (GetID() == newParent->GetID()) 
+		return;
 
 	// make sure the new parent is different from the existing parent
 	if (HasParent())
@@ -330,12 +330,24 @@ void Transform::SetParent(Transform* newParent)
 }
 
 // Checks whether this transform has any children
-bool Transform::HasChildren()
+bool Transform::HasChildren() const
 {
 	if (GetChildrenCount() > 0)
 		return true;
 
 	return false;
+}
+
+void Transform::AddChild(Transform* child)
+{
+	if (!child)
+		return;
+
+	if (GetID() == child->GetID())
+		return;
+
+	child->SetParent(this);
+	m_children.push_back(child);
 }
 
 Transform* Transform::GetRoot()
@@ -347,7 +359,7 @@ Transform* Transform::GetRoot()
 }
 
 // Returns the parent of this transform
-Transform* Transform::GetParent()
+Transform* Transform::GetParent() const
 {
 	return m_parent;
 }
@@ -371,13 +383,13 @@ Transform* Transform::GetChildByIndex(int index)
 	return m_children[index];
 }
 
-vector<Transform*> Transform::GetChildren()
+vector<Transform*> Transform::GetChildren() const
 {
 	return m_children;
 }
 
 // Returns the number of children
-int Transform::GetChildrenCount()
+int Transform::GetChildrenCount() const
 {
 	return m_children.size();
 }
@@ -395,7 +407,7 @@ void Transform::FindChildren()
 		// get the possible child
 		Transform* possibleChild = gameObjects[i]->GetTransform();
 
-		// if it has not parent, forget about it.
+		// if it doesn't have a parent, forget about it.
 		if (!possibleChild->HasParent())
 			continue;
 
@@ -412,7 +424,7 @@ void Transform::FindChildren()
 	}
 }
 
-bool Transform::IsDescendantOf(Transform* transform)
+bool Transform::IsDescendantOf(Transform* transform) const
 {
 	vector<Transform*> descendants = transform->GetDescendants();
 
@@ -436,7 +448,7 @@ vector<Transform*> Transform::GetDescendants()
 	return descendants;
 }
 
-string Transform::GetID()
+string Transform::GetID() const
 {
 	return g_gameObject->GetID();
 }
@@ -466,7 +478,7 @@ void Transform::BecomeOrphan()
 }
 
 // Checks whether this transform has a parent
-bool Transform::HasParent()
+bool Transform::HasParent() const
 {
 	if (m_parent == nullptr)
 		return false;
@@ -477,12 +489,12 @@ bool Transform::HasParent()
 /*------------------------------------------------------------------------------
 									[MISC]
 ------------------------------------------------------------------------------*/
-Matrix Transform::GetWorldTransform()
+Matrix Transform::GetWorldTransform() const
 {
 	return m_worldMatrix;
 }
 
-GameObject* Transform::GetGameObject()
+GameObject* Transform::GetGameObject() const
 {
 	return g_gameObject;
 }
@@ -499,7 +511,7 @@ void Transform::GetDescendants(vector<Transform*>& descendants)
 	}
 }
 
-Matrix Transform::GetParentWorldTransform()
+Matrix Transform::GetParentWorldTransform() const
 {
 	if (!HasParent())
 		return Matrix::Identity;
