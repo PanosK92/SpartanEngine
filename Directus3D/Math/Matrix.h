@@ -175,6 +175,16 @@ namespace Directus
 				);
 			}
 
+			static Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float znearPlane, float zfarPlane)
+			{
+				return Matrix(
+					2 / (right - left), 0, 0, 0,
+					0, 2 / (top - bottom), 0, 0,
+					0, 0, 1 / (zfarPlane - znearPlane), 0,
+					(left + right) / (left - right), (top + bottom) / (bottom - top), znearPlane / (znearPlane - zfarPlane), 1
+				);
+			}
+
 			static Matrix CreatePerspectiveFieldOfViewLH(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance)
 			{
 				float yScale = Cot(fieldOfView / 2);

@@ -11,7 +11,7 @@ Texture2D texOcclusion 		: register (t3);
 Texture2D texNormal 		: register (t4);
 Texture2D texHeight 		: register (t5);
 Texture2D texMask 			: register (t6);
-Texture2D lightDepthTex[4] 	: register (t7);
+Texture2D lightDepthTex[3] 	: register (t7);
 //==========================================
 
 //= SAMPLERS ===========================================
@@ -19,7 +19,7 @@ SamplerState samplerAniso : register (s0);
 //======================================================
 
 //= DEFINES ======
-#define CASCADES 4
+#define CASCADES 3
 //================
 
 //= BUFFERS ==================================
@@ -168,11 +168,9 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	{
 		float z = depth1;
 		if (z < shadowSplits.x)
-			cascadeIndex = 3;		
-		else if (z < shadowSplits.y)
 			cascadeIndex = 2;		
-		else if (z < shadowSplits.z)
-			cascadeIndex = 1;
+		else if (z < shadowSplits.y)
+			cascadeIndex = 1;		
 		
 		if (cascadeIndex == 0)
 		{
@@ -189,11 +187,6 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 			float4 lightPos = mul(input.positionWS, mLightViewProjection[2]);
 			shadowing		= ShadowMapping(lightDepthTex[2], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
 		}
-		else if (cascadeIndex == 3)
-		{
-			float4 lightPos = mul(input.positionWS, mLightViewProjection[3]);
-			shadowing		= ShadowMapping(lightDepthTex[3], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
-		}
 	}
 	//============================================================================================
 	
@@ -205,8 +198,6 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 		output.albedo		= float4(0,1,0,1);
 	if (cascadeIndex == 2)
 		output.albedo		= float4(0,0,1,1);
-	if (cascadeIndex == 3)
-		output.albedo		= float4(1,1,0,1);
 */
 	// Write to G-Buffer
 	output.albedo		= albedo;	
