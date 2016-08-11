@@ -134,9 +134,11 @@ void ShaderVariation::Render(int indexCount,
 	Matrix world = mWorld;
 	Matrix worldView = world * mView;
 	Matrix worldViewProjection = worldView * mProjection;
-	Matrix lightView = directionalLight->GetViewMatrix();
-	Matrix lightProjection = directionalLight->GetOrthographicProjectionMatrix();
-	Matrix lightViewProjection = lightView * lightProjection;
+
+	Matrix lightViewProjection1 = directionalLight->GetViewMatrix(0) * directionalLight->GetOrthographicProjectionMatrix(0);
+	Matrix lightViewProjection2 = directionalLight->GetViewMatrix(1) * directionalLight->GetOrthographicProjectionMatrix(1);
+	Matrix lightViewProjection3 = directionalLight->GetViewMatrix(2) * directionalLight->GetOrthographicProjectionMatrix(2);
+	Matrix lightViewProjection4 = directionalLight->GetViewMatrix(3) * directionalLight->GetOrthographicProjectionMatrix(3);
 
 	/*------------------------------------------------------------------------------
 							[FILL THE BUFFER]
@@ -146,7 +148,11 @@ void ShaderVariation::Render(int indexCount,
 		defaultBufferType->mWorld = world.Transposed();
 		defaultBufferType->mWorldView = worldView.Transposed();
 		defaultBufferType->mWorldViewProjection = worldViewProjection.Transposed();
-		defaultBufferType->mLightViewProjection = lightViewProjection.Transposed();
+		defaultBufferType->mLightViewProjection[0] = lightViewProjection1.Transposed();
+		defaultBufferType->mLightViewProjection[1] = lightViewProjection2.Transposed();
+		defaultBufferType->mLightViewProjection[2] = lightViewProjection3.Transposed();
+		defaultBufferType->mLightViewProjection[3] = lightViewProjection4.Transposed();
+		defaultBufferType->shadowSplits = Vector4(directionalLight->GetCascadeSplit(0), directionalLight->GetCascadeSplit(1), directionalLight->GetCascadeSplit(2), directionalLight->GetCascadeSplit(3));
 		defaultBufferType->albedoColor = material->GetColorAlbedo();
 		defaultBufferType->tilingUV = material->GetTilingUV();
 		defaultBufferType->offsetUV = material->GetOffsetUV();
@@ -162,7 +168,9 @@ void ShaderVariation::Render(int indexCount,
 		defaultBufferType->shadowMapResolution = directionalLight->GetShadowMapResolution();
 		defaultBufferType->shadowMappingQuality = directionalLight->GetShadowTypeAsFloat();
 		defaultBufferType->lightDir = directionalLight->GetDirection();
-		defaultBufferType->padding = 0.0f;
+		defaultBufferType->nearPlane = camera->GetNearPlane();
+		defaultBufferType->farPlane = camera->GetFarPlane();
+		defaultBufferType->padding = Vector3::Zero;
 		m_befaultBuffer->Unmap();
 	}
 	m_befaultBuffer->SetVS(0); // set buffer in the vertex shader

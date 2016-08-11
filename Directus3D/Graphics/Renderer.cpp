@@ -177,18 +177,8 @@ void Renderer::Render()
 
 	// Render light depth
 	if (m_directionalLight)
-	{
 		if (m_directionalLight->GetShadowType() != No_Shadows)
-		{
-			// Some say that you should cull the front faces to avoid self-shadowing,
-			// But any object with improper front-face or back-face geometry causes artifacts in the shadow map.
-			// For now, we don't change the culling. I don't trust assimp and free 3d models.
-
-			//m_graphicsDevice->SetCullMode(CullFront);
-			m_directionalLight->SetDepthMapAsRenderTarget();		
 			DirectionalLightDepthPass(m_renderables, m_directionalLight);
-		}
-	}
 
 	// G-Buffer Construction
 	m_GBuffer->SetRenderTargets();
@@ -310,31 +300,38 @@ void Renderer::AcquirePrerequisites()
 
 void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjects, Light* light) const
 {
-	light->GenerateOrthographicProjectionMatrix();
-	light->GenerateViewMatrix();
+	// Some say that you should cull the front faces to avoid self-shadowing,
+	// But any object with improper front-face or back-face geometry causes artifacts in the shadow map.
+	// For now, we don't change the culling. I don't trust assimp and free 3d models.
+	//m_graphicsDevice->SetCullMode(CullFront);	
 
-	for (auto i = 0; i < renderableGameObjects.size(); i++)
+	for (int cascadeIndex = 0; cascadeIndex < light->GetCascadeCount(); cascadeIndex++)
 	{
-		GameObject* gameObject = renderableGameObjects[i];
-		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
-		MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
-		Mesh* mesh = meshFilter->GetMesh();
+		light->SetShadowMapAsRenderTarget(cascadeIndex);
 
-		if (!mesh)
-			continue;
-
-		// Not all gameobjects should cast shadows...
-		if (gameObject->GetComponent<Skybox>() || !meshRenderer->GetCastShadows())
-			continue;
-
-		if (meshFilter->SetBuffers())
+		for (auto i = 0; i < renderableGameObjects.size(); i++)
 		{
-			m_shaderDepth->Render(
-				mesh->GetIndexCount(),
-				gameObject->GetTransform()->GetWorldTransform(),
-				light->GetViewMatrix(),
-				light->GetOrthographicProjectionMatrix()
-			);
+			GameObject* gameObject = renderableGameObjects[i];
+			MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
+			MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
+			Mesh* mesh = meshFilter->GetMesh();
+
+			if (!mesh)
+				continue;
+
+			// Not all gameobjects should cast shadows...
+			if (gameObject->GetComponent<Skybox>() || !meshRenderer->GetCastShadows())
+				continue;
+
+			if (meshFilter->SetBuffers())
+			{
+				m_shaderDepth->Render(
+					mesh->GetIndexCount(),
+					gameObject->GetTransform()->GetWorldTransform(),
+					light->GetViewMatrix(cascadeIndex),
+					light->GetOrthographicProjectionMatrix(cascadeIndex)
+				);
+			}
 		}
 	}
 }

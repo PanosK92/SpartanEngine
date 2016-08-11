@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================================
+//= INCLUDES ========================
 #include "../Components/IComponent.h"
 #include "../Math/Vector4.h"
 #include "../Math/Vector3.h"
-#include "../Graphics/D3D11/D3D11RenderTexture.h"
-//===============================================
+#include <vector>
+#include "../Graphics/ShadowMap.h"
+//===================================
 
 enum LightType
 {
@@ -76,15 +77,13 @@ public:
 
 	Directus::Math::Vector3 GetDirection();
 
-	Directus::Math::Matrix GetViewMatrix();
-	void GenerateViewMatrix();
-	void GenerateOrthographicProjectionMatrix();
-	Directus::Math::Matrix GetOrthographicProjectionMatrix();
-
-	void SetDepthMapAsRenderTarget();
-	ID3D11ShaderResourceView* GetDepthMap();
-	float GetProjectionSize();
+	Directus::Math::Matrix GetViewMatrix(int cascade);
+	Directus::Math::Matrix GetOrthographicProjectionMatrix(int cascade);
+	void SetShadowMapAsRenderTarget(int cascade);
+	ID3D11ShaderResourceView* GetDepthMap(int cascade);
 	float GetShadowMapResolution();
+	int GetCascadeCount();
+	float GetCascadeSplit(int cascade);
 
 private:
 	LightType m_lightType;
@@ -93,12 +92,9 @@ private:
 	float m_range;
 	float m_intensity;
 	float m_bias;
-	float m_nearPlane;
-	float m_farPlane;
 
 	Directus::Math::Matrix m_viewMatrix;
-	Directus::Math::Matrix m_orthoMatrix;
 
-	D3D11RenderTexture* m_depthMap;
-	float m_projectionSize;
+	int m_cascades;
+	std::vector<ShadowMap*> m_shadowMaps;
 };

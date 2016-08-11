@@ -127,6 +127,9 @@ void MeshPool::SetModelScale(string rootGameObjectID, float scale)
 
 void MeshPool::NormalizeModelScale(GameObject* rootGameObject)
 {
+	if (!rootGameObject)
+		return;
+
 	float normalizedScale = GetNormalizedModelScaleByRootGameObjectID(rootGameObject->GetID());
 	SetModelScale(rootGameObject->GetID(), normalizedScale);
 }
@@ -142,6 +145,9 @@ Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
 
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
+		if (!meshes[i])
+			continue;
+
 		Vector3 boundingBox = meshes[i]->GetBoundingBox();
 		if (boundingBox.Volume() > largestBoundingBox.Volume())
 		{
