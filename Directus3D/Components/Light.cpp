@@ -19,14 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ==================
 #include "Light.h"
 #include "Transform.h"
 #include "../Core/Settings.h"
 #include "../IO/Serializer.h"
 #include "../Core/Scene.h"
 #include "../IO/Log.h"
-//===========================
+#include "../Math/MathHelper.h"
+//=============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -35,7 +36,7 @@ using namespace Directus::Math;
 Light::Light()
 {
 	m_lightType = Point;
-	m_shadowType = Soft_Shadows;
+	m_shadowType = Hard_Shadows;
 	m_range = 1.0f;
 	m_intensity = 5.0f;
 	m_color = Vector4(
@@ -45,9 +46,7 @@ Light::Light()
 		1.0f
 	);
 	m_bias = 0.0003f;
-	m_projectionSize = 100;
-	m_nearPlane = 0.1f;
-	m_farPlane = 1000;
+	m_cascades = 4;
 }
 
 Light::~Light()
@@ -57,9 +56,17 @@ Light::~Light()
 
 void Light::Initialize()
 {
-	m_depthMap = new D3D11RenderTexture();
-	m_depthMap->Initialize(g_graphicsDevice, SHADOWMAP_RESOLUTION, SHADOWMAP_RESOLUTION);
-	
+	float camNear = 0.1f;
+	float camFar = 1000.0f;
+	for (int i = 0; i < m_cascades; i++)
+	{
+		float n = i + 1;
+		float farPlane = camNear * powf(camFar / camNear, n / m_cascades);
+		float nearPlane = farPlane - (camFar / m_cascades);
+		float projectionSize = 20 * camFar * (farPlane / camFar);
+
+		m_shadowMaps.push_back(new ShadowMap(g_graphicsDevice, SHADOWMAP_RESOLUTION / n, nearPlane, farPlane, projectionSize));
+	}
 }
 
 void Light::Start()
@@ -179,54 +186,60 @@ void Light::SetIntensity(float value)
 	m_intensity = value;
 }
 
-void Light::GenerateViewMatrix()
+Matrix Light::GetViewMatrix(int cascade)
 {
-	GameObject* camera = g_scene->GetMainCamera();
-	if (!camera)
-		return;
+	GameObject* cameraGameObject = g_scene->GetMainCamera();
+	if (!cameraGameObject)
+		return Matrix::Identity;
 
-	Vector3 cameraPos = camera->GetTransform()->GetPosition();
-	Vector3 direction = GetDirection();
-	Vector3 position = cameraPos - (g_transform->GetForward() * 512 * 0.5f); // or center of scene's bounding box
-	Vector3 lookAt = cameraPos + direction;
+	Transform* camera = cameraGameObject->GetTransform();
+	Vector3 lightDirection = GetDirection();
+
+	Vector3 position = Vector3::Zero; //- lightDirection * m_shadowMaps[cascade]->GetFarPlane();
+	Vector3 lookAt = Vector3::Zero + lightDirection;
 	Vector3 up = Vector3::Up;
 
 	// Create the view matrix from the three vectors.
 	m_viewMatrix = Matrix::CreateLookAtLH(position, lookAt, up);
-}
 
-Matrix Light::GetViewMatrix()
-{
 	return m_viewMatrix;
 }
 
-void Light::GenerateOrthographicProjectionMatrix()
+Matrix Light::GetOrthographicProjectionMatrix(int cascade)
 {
-	m_orthoMatrix = Matrix::CreateOrthographicLH(m_projectionSize, m_projectionSize, m_nearPlane, m_farPlane);
+	if (m_shadowMaps.empty())
+		return Matrix::Identity;
+
+	return m_shadowMaps[cascade]->GetProjectionMatrix();
 }
 
-Matrix Light::GetOrthographicProjectionMatrix()
+void Light::SetShadowMapAsRenderTarget(int cascade)
 {
-	return m_orthoMatrix;
+	if (m_shadowMaps.empty())
+		return;
+
+	m_shadowMaps[cascade]->SetAsRenderTarget();
 }
 
-void Light::SetDepthMapAsRenderTarget()
+ID3D11ShaderResourceView* Light::GetDepthMap(int cascade)
 {
-	m_depthMap->Clear(0, 0, 0, 0);
-	m_depthMap->SetAsRenderTarget();
-}
+	if (m_shadowMaps.empty())
+		return nullptr;
 
-ID3D11ShaderResourceView* Light::GetDepthMap()
-{
-	return m_depthMap->GetShaderResourceView();
-}
-
-float Light::GetProjectionSize()
-{
-	return m_projectionSize;
+	return m_shadowMaps[cascade]->GetShaderResourceView();
 }
 
 float Light::GetShadowMapResolution()
 {
 	return SHADOWMAP_RESOLUTION;
+}
+
+int Light::GetCascadeCount()
+{
+	return m_cascades;
+}
+
+float Light::GetCascadeSplit(int cascade)
+{
+	return m_shadowMaps[cascade]->GetSplit();
 }

@@ -11,12 +11,16 @@ Texture2D texOcclusion 		: register (t3);
 Texture2D texNormal 		: register (t4);
 Texture2D texHeight 		: register (t5);
 Texture2D texMask 			: register (t6);
-Texture2D lightDepthTex 	: register (t7);
+Texture2D lightDepthTex[4] 	: register (t7);
 //==========================================
 
 //= SAMPLERS ===========================================
 SamplerState samplerAniso : register (s0);
 //======================================================
+
+//= DEFINES ======
+#define CASCADES 4
+//================
 
 //= BUFFERS ==================================
 cbuffer DefaultBuffer : register(b0)
@@ -24,7 +28,8 @@ cbuffer DefaultBuffer : register(b0)
     matrix mWorld;
     matrix mWorldView;
     matrix mWorldViewProjection;
-	matrix mLightViewProjection;
+	matrix mLightViewProjection[CASCADES];
+	float4 shadowSplits;
     float4 materialAlbedoColor;
 	float2 materialTiling;
 	float2 materialOffset;
@@ -40,7 +45,9 @@ cbuffer DefaultBuffer : register(b0)
 	float shadowMapResolution;
 	float shadowMappingQuality;
 	float3 lightDir;
-	float padding;
+	float nearPlane;
+	float farPlane;
+	float3 padding;
 };
 //===========================================
 
@@ -153,20 +160,56 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 		type = 0.1f;
 #endif
 	//============================================================================================
-	
-	//= SHADOW MAPPING ===========================================================================
+
+	//= SHADOW MAPPING ===========================================================================	
 	float shadowing = 1.0f;
+	int cascadeIndex = 0;	
 	if (receiveShadows == 1.0f && shadowMappingQuality != 0.0f)
 	{
-		float4 lightPos = mul(input.positionWS, mLightViewProjection);
-		shadowing		= ShadowMapping(lightDepthTex, samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
+		float z = depth1;
+		if (z < shadowSplits.x)
+			cascadeIndex = 3;		
+		else if (z < shadowSplits.y)
+			cascadeIndex = 2;		
+		else if (z < shadowSplits.z)
+			cascadeIndex = 1;
+		
+		if (cascadeIndex == 0)
+		{
+			float4 lightPos = mul(input.positionWS, mLightViewProjection[0]);
+			shadowing		= ShadowMapping(lightDepthTex[0], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
+		}
+		else if (cascadeIndex == 1)
+		{
+			float4 lightPos = mul(input.positionWS, mLightViewProjection[1]);
+			shadowing		= ShadowMapping(lightDepthTex[1], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
+		}
+		else if (cascadeIndex == 2)
+		{
+			float4 lightPos = mul(input.positionWS, mLightViewProjection[2]);
+			shadowing		= ShadowMapping(lightDepthTex[2], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
+		}
+		else if (cascadeIndex == 3)
+		{
+			float4 lightPos = mul(input.positionWS, mLightViewProjection[3]);
+			shadowing		= ShadowMapping(lightDepthTex[3], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
+		}
 	}
 	//============================================================================================
 	
 	float totalShadowing = clamp(flippedOcclusion * shadowing, 0.0f, 1.0f);
 	
+	/*if (cascadeIndex == 0)
+		output.albedo		= float4(1,0,0,1);
+	if (cascadeIndex == 1)
+		output.albedo		= float4(0,1,0,1);
+	if (cascadeIndex == 2)
+		output.albedo		= float4(0,0,1,1);
+	if (cascadeIndex == 3)
+		output.albedo		= float4(1,1,0,1);
+*/
 	// Write to G-Buffer
-	output.albedo 		= albedo;
+	output.albedo		= albedo;	
 	output.normal 		= float4(normal.rgb, totalShadowing);
 	output.depth 		= float4(depth1, depth2, 0.0f, 0.0f);
 	output.material		= float4(roughness, metallic, specular, type);

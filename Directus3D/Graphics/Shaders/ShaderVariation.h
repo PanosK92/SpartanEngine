@@ -96,12 +96,14 @@ private:
 	/*------------------------------------------------------------------------------
 									[BUFFER TYPE]
 	------------------------------------------------------------------------------*/
+	const static int cascades = 4;
 	struct DefaultBufferType
 	{
 		Directus::Math::Matrix mWorld;
 		Directus::Math::Matrix mWorldView;
 		Directus::Math::Matrix mWorldViewProjection;
-		Directus::Math::Matrix mLightViewProjection;
+		Directus::Math::Matrix mLightViewProjection[cascades];
+		Directus::Math::Vector4 shadowSplits;
 		Directus::Math::Vector4 albedoColor;
 		Directus::Math::Vector2 tilingUV;
 		Directus::Math::Vector2 offsetUV;
@@ -117,7 +119,9 @@ private:
 		float shadowMapResolution;
 		float shadowMappingQuality;
 		Directus::Math::Vector3 lightDir;
-		float padding;
+		float nearPlane;
+		float farPlane;
+		Directus::Math::Vector3 padding;
 
 		/*
 		matrix mWorld;

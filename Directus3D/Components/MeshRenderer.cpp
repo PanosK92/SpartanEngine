@@ -109,7 +109,10 @@ void MeshRenderer::Render(unsigned int indexCount, const Matrix& viewMatrix, con
 	textures.push_back(material->GetShaderResourceViewByTextureType(Height));
 	textures.push_back(material->GetShaderResourceViewByTextureType(Mask));
 	if (dicrectionalLight)
-		textures.push_back(dicrectionalLight->GetDepthMap());
+	{
+		for (int i = 0; i < dicrectionalLight->GetCascadeCount(); i++)
+			textures.push_back(dicrectionalLight->GetDepthMap(i));
+	}
 	else
 		textures.push_back(nullptr);
 
