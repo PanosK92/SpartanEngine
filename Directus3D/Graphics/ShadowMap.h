@@ -24,18 +24,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "D3D11/D3D11RenderTexture.h"
 #include "../Core/Globals.h"
+#include "../Components/Transform.h"
 //===================================
 
 class ShadowMap
 {
 public:
-	ShadowMap(GraphicsDevice* device, int resolution, float nearPlane, float farPlane, float projectionSize)
+	ShadowMap(GraphicsDevice* device, Transform* directionalLight, int resolution, float nearPlane, float farPlane)
 	{
 		m_resolution = resolution;
 		m_nearPlane = nearPlane;
 		m_farPlane = farPlane;
-		m_projectionSize = projectionSize;
-
+		m_light = directionalLight;
 		m_depthMap = new D3D11RenderTexture();
 		m_depthMap->Initialize(device, resolution, resolution);
 	}
@@ -47,18 +47,31 @@ public:
 		m_depthMap->SetAsRenderTarget();
 	}
 
-	Directus::Math::Matrix GetProjectionMatrix() const { return Directus::Math::Matrix::CreateOrthographicLH(m_projectionSize, m_projectionSize, m_nearPlane, m_farPlane); }
+	Directus::Math::Matrix GetProjectionMatrix() const
+	{
+		Directus::Math::Vector3 center = Directus::Math::Vector3::Zero;
+		float radius = 20 * 1000 * (m_farPlane / 1000);
+		Directus::Math::Vector3 min = center - Directus::Math::Vector3(radius, radius, radius);
+		Directus::Math::Vector3 max = center + Directus::Math::Vector3(radius, radius, radius);
+
+		return Directus::Math::Matrix::CreateOrthoOffCenterLH(
+			min.x,
+			max.x,
+			min.y,
+			max.y,
+			min.z, // near
+			max.z // far
+		);
+	}
 	ID3D11ShaderResourceView* GetShaderResourceView() const { return m_depthMap->GetShaderResourceView(); }
 	float GetSplit() const { return m_farPlane / 1000; } // divaded by camera far
-	float GetFarPlane() const { return m_farPlane; } // divaded by camera far
-	float GetProjectionSize() const
-	{ return m_projectionSize; }
+	float GetFarPlane() const { return m_farPlane / 1000; } // divaded by camera far
 
 private:
 	int m_resolution;
 	float m_nearPlane;
 	float m_farPlane;
-	float m_projectionSize;
 	D3D11RenderTexture* m_depthMap;
 	Directus::Math::Matrix m_projectionMatrix;
+	Transform* m_light;
 };

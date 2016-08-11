@@ -96,7 +96,7 @@ private:
 	/*------------------------------------------------------------------------------
 									[BUFFER TYPE]
 	------------------------------------------------------------------------------*/
-	const static int cascades = 4;
+	const static int cascades = 3;
 	struct DefaultBufferType
 	{
 		Directus::Math::Matrix mWorld;

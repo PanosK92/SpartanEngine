@@ -46,7 +46,7 @@ Light::Light()
 		1.0f
 	);
 	m_bias = 0.0003f;
-	m_cascades = 4;
+	m_cascades = 3;
 }
 
 Light::~Light()
@@ -63,9 +63,8 @@ void Light::Initialize()
 		float n = i + 1;
 		float farPlane = camNear * powf(camFar / camNear, n / m_cascades);
 		float nearPlane = farPlane - (camFar / m_cascades);
-		float projectionSize = 20 * camFar * (farPlane / camFar);
 
-		m_shadowMaps.push_back(new ShadowMap(g_graphicsDevice, SHADOWMAP_RESOLUTION / n, nearPlane, farPlane, projectionSize));
+		m_shadowMaps.push_back(new ShadowMap(g_graphicsDevice, g_gameObject->GetTransform(), SHADOWMAP_RESOLUTION / n, nearPlane, farPlane));
 	}
 }
 
@@ -195,8 +194,8 @@ Matrix Light::GetViewMatrix(int cascade)
 	Transform* camera = cameraGameObject->GetTransform();
 	Vector3 lightDirection = GetDirection();
 
-	Vector3 position = Vector3::Zero; //- lightDirection * m_shadowMaps[cascade]->GetFarPlane();
-	Vector3 lookAt = Vector3::Zero + lightDirection;
+	Vector3 position = camera->GetPosition(); //- lightDirection * m_shadowMaps[cascade]->GetFarPlane();
+	Vector3 lookAt = camera->GetPosition() + lightDirection;
 	Vector3 up = Vector3::Up;
 
 	// Create the view matrix from the three vectors.
