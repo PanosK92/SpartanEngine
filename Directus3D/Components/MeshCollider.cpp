@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 #include "../Core/Helper.h"
 #include "../Physics/BulletPhysicsHelper.h"
+#include "../Pools/MeshPool.h"
 //====================================================================
 
 //= NAMESPACES =====
@@ -53,7 +54,7 @@ MeshCollider::~MeshCollider()
 //= ICOMPONENT ========================================
 void MeshCollider::Initialize()
 {
-	m_mesh = GetMeshFromAttachedMeshFilter();
+	SetMesh(GetMeshFromAttachedMeshFilter());
 	ConstructFromVertexCloud();
 }
 
@@ -76,11 +77,14 @@ void MeshCollider::Update()
 void MeshCollider::Serialize()
 {
 	Serializer::SaveBool(m_convex);
+	Serializer::SaveSTR(m_mesh ? m_mesh->GetID() : "-1");
 }
 
 void MeshCollider::Deserialize()
 {
 	m_convex = Serializer::LoadBool();
+	m_mesh = g_meshPool->GetMesh(Serializer::LoadSTR());
+	LOG(m_mesh->GetName());
 	ConstructFromVertexCloud();
 }
 
@@ -102,7 +106,7 @@ Mesh* MeshCollider::GetMesh() const
 
 void MeshCollider::SetMesh(Mesh* mesh)
 {
-	m_mesh = m_mesh;
+	m_mesh = mesh;
 }
 //======================================================================================================================
 
@@ -120,7 +124,7 @@ void MeshCollider::ConstructFromVertexCloud()
 
 	//= contruct collider ========================================================================================
 	btTriangleMesh* trimesh = new btTriangleMesh();
-	std::vector<Directus::Math::Vector3> vertices;
+	vector<Directus::Math::Vector3> vertices;
 	for (auto i = 0; i < m_mesh->GetTriangleCount(); i++)
 	{
 		

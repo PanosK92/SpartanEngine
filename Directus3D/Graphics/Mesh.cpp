@@ -63,6 +63,7 @@ void Mesh::Serialize()
 	Serializer::SaveSTR(m_ID);
 	Serializer::SaveSTR(m_gameObjectID);
 	Serializer::SaveSTR(m_rootGameObjectID);
+	Serializer::SaveSTR(m_name);
 	Serializer::SaveInt(m_vertexCount);
 	Serializer::SaveInt(m_indexCount);
 	Serializer::SaveInt(m_triangleCount);
@@ -84,6 +85,7 @@ void Mesh::Deserialize()
 	m_ID = Serializer::LoadSTR();
 	m_gameObjectID = Serializer::LoadSTR();
 	m_rootGameObjectID = Serializer::LoadSTR();
+	m_name = Serializer::LoadSTR();
 	m_vertexCount = Serializer::LoadInt();
 	m_indexCount = Serializer::LoadInt();
 	m_triangleCount = Serializer::LoadInt();
