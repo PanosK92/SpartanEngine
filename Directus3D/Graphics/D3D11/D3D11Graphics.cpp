@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===================
-#include "D3D11Device.h"
+#include "D3D11Graphics.h"
 #include <string>
 #include "../../Core/Settings.h"
 #include "../../IO/Log.h"
@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace Directus::Math;
 //=============================
 
-D3D11Device::D3D11Device()
+D3D11Graphics::D3D11Graphics()
 {
 	m_swapChain = nullptr;
 	m_device = nullptr;
@@ -49,12 +49,12 @@ D3D11Device::D3D11Device()
 	m_videoCardMemory = 0;
 }
 
-D3D11Device::~D3D11Device()
+D3D11Graphics::~D3D11Graphics()
 {
 
 }
 
-void D3D11Device::Initialize(HWND handle)
+void D3D11Graphics::Initialize(HWND handle)
 {
 	//= DEFAULT RATERIZER STATE =============================================
 	m_rasterizerDesc.FillMode = D3D11_FILL_SOLID;
@@ -264,7 +264,7 @@ void D3D11Device::Initialize(HWND handle)
 	SetViewport(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 }
 
-bool D3D11Device::CreateDepthStencilBuffer()
+bool D3D11Graphics::CreateDepthStencilBuffer()
 {
 	D3D11_TEXTURE2D_DESC depthBufferDesc;
 	// Initialize the description of the depth buffer.
@@ -294,7 +294,7 @@ bool D3D11Device::CreateDepthStencilBuffer()
 	return true;
 }
 
-bool D3D11Device::CreateDepthStencil()
+bool D3D11Graphics::CreateDepthStencil()
 {
 	// Create a depth stencil state with depth enabled
 	m_depthStencilDesc.DepthEnable = true;
@@ -320,7 +320,7 @@ bool D3D11Device::CreateDepthStencil()
 	return true;
 }
 
-bool D3D11Device::CreateDepthStencilView()
+bool D3D11Graphics::CreateDepthStencilView()
 {
 	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 	// Initialize the depth stencil view.
@@ -345,7 +345,7 @@ bool D3D11Device::CreateDepthStencilView()
 	return true;
 }
 
-void D3D11Device::Release()
+void D3D11Graphics::Release()
 {
 	// Before shutting down set to windowed mode or when you release the swap chain it will throw an exception.
 	if (m_swapChain)
@@ -369,7 +369,7 @@ void D3D11Device::Release()
 	m_displayModeList = nullptr;
 }
 
-void D3D11Device::Clear(const Vector4& color)
+void D3D11Graphics::Clear(const Vector4& color)
 {
 	float clearColor[4];
 
@@ -386,33 +386,33 @@ void D3D11Device::Clear(const Vector4& color)
 	m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
-void D3D11Device::Present()
+void D3D11Graphics::Present()
 {
 	VSync vSync = VSYNC;
 	m_swapChain->Present(vSync, 0);
 }
 
-ID3D11Device* D3D11Device::GetDevice()
+ID3D11Device* D3D11Graphics::GetDevice()
 {
 	return m_device;
 }
 
-ID3D11DeviceContext* D3D11Device::GetDeviceContext()
+ID3D11DeviceContext* D3D11Graphics::GetDeviceContext()
 {
 	return m_deviceContext;
 }
 
-void D3D11Device::TurnZBufferOn()
+void D3D11Graphics::TurnZBufferOn()
 {
 	m_deviceContext->OMSetDepthStencilState(m_depthStencilStateEnabled, 1);
 }
 
-void D3D11Device::TurnZBufferOff()
+void D3D11Graphics::TurnZBufferOff()
 {
 	m_deviceContext->OMSetDepthStencilState(m_depthStencilStateDisabled, 1);
 }
 
-void D3D11Device::TurnOnAlphaBlending()
+void D3D11Graphics::TurnOnAlphaBlending()
 {
 	float blendFactor[4];
 
@@ -426,7 +426,7 @@ void D3D11Device::TurnOnAlphaBlending()
 	m_deviceContext->OMSetBlendState(m_alphaBlendingStateEnabled, blendFactor, 0xffffffff);
 }
 
-void D3D11Device::TurnOffAlphaBlending()
+void D3D11Graphics::TurnOffAlphaBlending()
 {
 	float blendFactor[4];
 
@@ -440,13 +440,13 @@ void D3D11Device::TurnOffAlphaBlending()
 	m_deviceContext->OMSetBlendState(m_alphaBlendingStateDisabled, blendFactor, 0xffffffff);
 }
 
-void D3D11Device::SetBackBufferRenderTarget()
+void D3D11Graphics::SetBackBufferRenderTarget()
 {
 	// Bind the render target view and depth stencil buffer to the output render pipeline.
 	m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
 }
 
-void D3D11Device::SetResolution(int width, int height)
+void D3D11Graphics::SetResolution(int width, int height)
 {
 	//Release old views and the old depth/stencil buffer.
 	SafeRelease(m_renderTargetView);
@@ -466,7 +466,7 @@ void D3D11Device::SetResolution(int width, int height)
 	SetViewport(width, height);
 }
 
-void D3D11Device::SetViewport(int width, int height)
+void D3D11Graphics::SetViewport(int width, int height)
 {
 	// Setup the viewport
 	m_viewport.Width = float(width);
@@ -479,12 +479,12 @@ void D3D11Device::SetViewport(int width, int height)
 	m_deviceContext->RSSetViewports(1, &m_viewport);
 }
 
-void D3D11Device::ResetViewport()
+void D3D11Graphics::ResetViewport()
 {
 	m_deviceContext->RSSetViewports(1, &m_viewport);
 }
 
-void D3D11Device::SetFaceCullMode(D3D11_CULL_MODE cull)
+void D3D11Graphics::SetFaceCullMode(D3D11_CULL_MODE cull)
 {
 	if (cull == D3D11_CULL_FRONT)
 		m_deviceContext->RSSetState(m_rasterStateCullFront);
@@ -494,7 +494,7 @@ void D3D11Device::SetFaceCullMode(D3D11_CULL_MODE cull)
 		m_deviceContext->RSSetState(m_rasterStateCullNone);
 }
 
-DXGI_SWAP_CHAIN_DESC D3D11Device::GetSwapchainDesc(HWND handle)
+DXGI_SWAP_CHAIN_DESC D3D11Graphics::GetSwapchainDesc(HWND handle)
 {
 	DXGI_SWAP_CHAIN_DESC swapChainDesc;
 

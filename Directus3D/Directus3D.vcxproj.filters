@@ -72,9 +72,6 @@
     <ClCompile Include="Graphics\D3D11\D3D11Buffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\D3D11\D3D11Device.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\D3D11\D3D11InputLayout.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -207,6 +204,9 @@
     <ClCompile Include="Core\Mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\D3D11\D3D11Graphics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components\Camera.h">
@@ -279,9 +279,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\D3D11\D3D11Buffer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\D3D11\D3D11Device.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\D3D11\D3D11InputLayout.h">
@@ -432,6 +429,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\ShadowMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D11\D3D11Graphics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

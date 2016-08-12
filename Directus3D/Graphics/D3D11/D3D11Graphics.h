@@ -28,15 +28,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <d3d11.h>
-#include <string>
 #include "../../Math/Vector4.h"
+#include <string>
 //=============================
 
-class D3D11Device
+class D3D11Graphics
 {
 public:
-	D3D11Device();
-	~D3D11Device();
+	D3D11Graphics();
+	~D3D11Graphics();
 
 	void Initialize(HWND handle);
 	bool CreateDepthStencilBuffer();
@@ -65,10 +65,11 @@ public:
 	void ResetViewport();
 
 private:	
+	DXGI_SWAP_CHAIN_DESC GetSwapchainDesc(HWND handle);
+
 	D3D11_RASTERIZER_DESC m_rasterizerDesc;
 	D3D11_DEPTH_STENCIL_DESC m_depthStencilDesc;
 	D3D11_BLEND_DESC m_blendStateDesc;
-
 	DXGI_MODE_DESC* m_displayModeList;
 	int m_videoCardMemory;
 	std::string m_videoCardDescription;
@@ -86,7 +87,4 @@ private:
 	D3D11_VIEWPORT m_viewport;
 	ID3D11BlendState* m_alphaBlendingStateEnabled;
 	ID3D11BlendState* m_alphaBlendingStateDisabled;
-
-	DXGI_SWAP_CHAIN_DESC GetSwapchainDesc(HWND handle);
-
 };

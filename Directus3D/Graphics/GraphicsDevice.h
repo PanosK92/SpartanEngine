@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include "D3D11/D3D11Device.h"
+#include "D3D11/D3D11Graphics.h"
 #include "../Math/Vector4.h"
 //============================
 
@@ -62,7 +62,7 @@ public:
 	void SetCullMode(CullMode cullMode);
 	void SetViewport(int width, int height);
 private:
-	D3D11Device* m_D3D11Device;
+	D3D11Graphics* m_D3D11Device;
 	InputLayout m_inputLayout;
 	CullMode m_cullMode;
 };
