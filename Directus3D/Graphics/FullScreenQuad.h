@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 
-//= INCLUDES =================
-#include "GraphicsDevice.h"
-//============================
+//= INCLUDES ========
+#include "Graphics.h"
+//===================
 
 class FullScreenQuad
 {
@@ -32,14 +32,14 @@ public:
 	FullScreenQuad();
 	~FullScreenQuad();
 
-	bool Initialize(int, int, GraphicsDevice* graphicsDevice);
+	bool Initialize(int, int, Graphics* graphicsDevice);
 	void SetBuffers();
 	int GetIndexCount();
 
 private:
 	bool InitializeBuffers(int, int);
 
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
 	int m_vertexCount, m_indexCount;
 };

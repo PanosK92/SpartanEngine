@@ -31,13 +31,13 @@ const int BUFFER_COUNT = 4;
 
 //= INCLUDES =============================
 #include "../Graphics/D3D11/D3D11Graphics.h"
-#include "GraphicsDevice.h"
+#include "Graphics.h"
 //========================================
 
 class GBuffer
 {
 public:
-	GBuffer(GraphicsDevice* graphicsDevice);
+	GBuffer(Graphics* graphicsDevice);
 	~GBuffer();
 
 	bool Initialize(int width, int height);
@@ -49,7 +49,7 @@ public:
 	ID3D11ShaderResourceView* GetShaderResourceView(int index);
 
 private:
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	int m_textureWidth, m_textureHeight;
 	std::vector<ID3D11Texture2D*> m_renderTargetTextureArray;
 	std::vector<ID3D11RenderTargetView*> m_renderTargetViewArray;

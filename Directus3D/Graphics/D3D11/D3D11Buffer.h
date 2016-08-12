@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include "../GraphicsDevice.h"
+#include "../Graphics.h"
 #include <vector>
 #include "../Vertex.h"
 //============================
@@ -33,7 +33,7 @@ public:
 	D3D11Buffer();
 	~D3D11Buffer();
 
-	void Initialize(GraphicsDevice* graphicsDevice);
+	void Initialize(Graphics* graphicsDevice);
 	bool CreateConstantBuffer(unsigned int size);
 	bool CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent>& vertices);
 	bool CreateIndexBuffer(std::vector<unsigned int>& indices);
@@ -46,7 +46,7 @@ public:
 	void* Map();
 	void Unmap();
 private:
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	ID3D11Buffer* m_buffer;
 	unsigned int m_stride;
 	unsigned int m_size;

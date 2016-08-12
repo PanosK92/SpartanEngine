@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 D3D11Sampler::D3D11Sampler()
 {
-	m_graphicsDevice = nullptr;
+	m_graphics = nullptr;
 	m_sampler = nullptr;
 }
 
@@ -38,9 +38,9 @@ D3D11Sampler::~D3D11Sampler()
 	SafeRelease(m_sampler);
 }
 
-bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, GraphicsDevice* graphicsDevice)
+bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, Graphics* graphicsDevice)
 {
-	m_graphicsDevice = graphicsDevice;
+	m_graphics = graphicsDevice;
 
 	D3D11_SAMPLER_DESC samplerDesc;
 	samplerDesc.Filter = filter;
@@ -58,7 +58,7 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
 	// create sampler state.
-	HRESULT result = m_graphicsDevice->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
+	HRESULT result = m_graphics->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
 	if (FAILED(result))
 		return false;
 
@@ -67,5 +67,5 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 
 void D3D11Sampler::Set(unsigned int startSlot)
 {
-	m_graphicsDevice->GetDeviceContext()->PSSetSamplers(startSlot, 1, &m_sampler);
+	m_graphics->GetDeviceContext()->PSSetSamplers(startSlot, 1, &m_sampler);
 }

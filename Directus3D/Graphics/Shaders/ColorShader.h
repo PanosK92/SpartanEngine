@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "../../Math/Matrix.h"
-#include "../GraphicsDevice.h"
+#include "../Graphics.h"
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
 //===============================
@@ -34,7 +34,7 @@ public:
 	ColorShader();
 	~ColorShader();
 
-	void Initialize(GraphicsDevice* graphicsDevice);
+	void Initialize(Graphics* graphicsDevice);
 	void Render(int vertexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
 
 private:
@@ -50,6 +50,6 @@ private:
 	void SetShaderBuffers(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
 	void RenderShader(unsigned int vertexCount);
 
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	D3D11Shader* m_shader;
 };

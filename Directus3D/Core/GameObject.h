@@ -35,7 +35,7 @@ public:
 	GameObject();
 	~GameObject();
 
-	void Initialize(GraphicsDevice* graphicsDevice, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
+	void Initialize(Graphics* graphicsDevice, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
 	void Start();
 	void Update();
 
@@ -86,7 +86,7 @@ private:
 	// keep a local copy of it here and avoid any runtime searching (performance).
 	Transform* m_transform;
 
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	Scene* m_scene;
 	Renderer* m_renderer;
 	MeshPool* m_meshPool;

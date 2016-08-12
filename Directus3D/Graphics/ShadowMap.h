@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class ShadowMap
 {
 public:
-	ShadowMap(GraphicsDevice* device, int cascadeNumber, Light* light, Camera* camera, int resolution, float nearPlane, float farPlane)
+	ShadowMap(Graphics* device, int cascadeNumber, Light* light, Camera* camera, int resolution, float nearPlane, float farPlane)
 	{
 		m_resolution = resolution;
 		m_nearPlane = nearPlane;

@@ -42,11 +42,11 @@ enum CullMode
 	CullNone,
 };
 
-class GraphicsDevice
+class Graphics
 {
 public:
-	GraphicsDevice();
-	~GraphicsDevice();
+	Graphics();
+	~Graphics();
 
 	void Initialize(HWND drawPaneHandle);
 	ID3D11Device* GetDevice();
@@ -62,7 +62,7 @@ public:
 	void SetCullMode(CullMode cullMode);
 	void SetViewport(int width, int height);
 private:
-	D3D11Graphics* m_D3D11Device;
+	D3D11Graphics* m_d3d11Graphics;
 	InputLayout m_inputLayout;
 	CullMode m_cullMode;
 };

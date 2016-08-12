@@ -24,7 +24,7 @@ class Socket;
 class ScriptEngine;
 class Renderer;
 class ModelLoader;
-class GraphicsDevice;
+class Graphics;
 class Scene;
 class Input;
 class Timer;
@@ -54,7 +54,7 @@ private:
 	ScriptEngine* m_scriptEngine;
 	Renderer* m_renderer;
 	ModelLoader* m_modelLoader;
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	Scene* m_scene;
 	Input* m_input;
 	Timer* m_timer;

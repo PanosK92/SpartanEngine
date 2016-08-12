@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "MeshPool.h"
-#include "../Graphics/GraphicsDevice.h"
+#include "../Graphics/Graphics.h"
 #include "../Pools/MaterialPool.h"
 //=====================================
 
@@ -42,7 +42,7 @@ public:
 		return instance;
 	}
 
-	void Initialize(GraphicsDevice* d3d11Device, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
+	void Initialize(Graphics* d3d11Device, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
 	void Start();
 	void Update();
 	void Release();
@@ -79,7 +79,7 @@ public:
 private:
 	std::vector<GameObject*> m_gameObjectPool;
 
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	Scene* m_scene;
 	Renderer* m_renderer;
 	MeshPool* m_meshPool;

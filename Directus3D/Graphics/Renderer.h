@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Camera.h"
 #include "../Components/Skybox.h"
 #include "../Components/Light.h"
-#include "GraphicsDevice.h"
+#include "Graphics.h"
 #include "Shaders/DepthShader.h"
 #include "Shaders/DebugShader.h"
 #include "Shaders/PostProcessShader.h"
@@ -47,7 +47,7 @@ public:
 	Renderer();
 	~Renderer();
 
-	void Initialize(GraphicsDevice* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene);
+	void Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene);
 	void Render();
 	void SetResolution(int width, int height);
 	void Clear();
@@ -62,7 +62,7 @@ public:
 
 private:
 	//= DEPENDENCIES ================
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	GBuffer* m_GBuffer;
 	Frustrum* m_frustrum;
 	FullScreenQuad* m_fullScreenQuad;

@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 #include "../../Math/Vector4.h"
 #include "../Material.h"
-#include "../GraphicsDevice.h"
+#include "../Graphics.h"
 //===============================
 
 #define NULL_SHADER_ID "-1";
@@ -49,7 +49,7 @@ public:
 		bool emission,
 		bool mask,
 		bool cubemap,
-		GraphicsDevice* d3d11device
+		Graphics* d3d11device
 	);
 	void Set();
 	void Render(
@@ -89,7 +89,7 @@ private:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	D3D11Buffer* m_befaultBuffer;
 	D3D11Shader* m_D3D11Shader;
 

@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/GameObject.h"
 #include "../../Math/Vector4.h"
 #include "../../Components/Camera.h"
-#include "../GraphicsDevice.h"
+#include "../Graphics.h"
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
 //==================================
@@ -37,7 +37,7 @@ public:
 	DeferredShader();
 	~DeferredShader();
 
-	void Initialize(GraphicsDevice* graphicsDevice);
+	void Initialize(Graphics* graphicsDevice);
 	void Render(
 		int indexCount, const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mBaseView,
 		const Directus::Math::Matrix& mPerspectiveProjection, const Directus::Math::Matrix& mOrthographicProjection,
@@ -69,5 +69,5 @@ private:
 
 	D3D11Buffer* m_constantBuffer;
 	D3D11Shader* m_shader;
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 };

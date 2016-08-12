@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "../../Math/Matrix.h"
-#include "../GraphicsDevice.h"
+#include "../Graphics.h"
 //============================
 
 class D3D11RenderTexture
@@ -32,7 +32,7 @@ public:
 	D3D11RenderTexture();
 	~D3D11RenderTexture();
 
-	bool Initialize(GraphicsDevice* graphicsDevice, int, int);
+	bool Initialize(Graphics* graphicsDevice, int, int);
 	void SetAsRenderTarget() const;
 	void Clear(const Directus::Math::Vector4& clearColor);
 	void Clear(float r, float g , float b, float a) const;
@@ -41,7 +41,7 @@ public:
 	Directus::Math::Matrix GetOrthographicProjectionMatrix() const;
 
 private:
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	ID3D11Texture2D* m_renderTargetTexture;
 	ID3D11RenderTargetView* m_renderTargetView;
 	ID3D11ShaderResourceView* m_shaderResourceView;

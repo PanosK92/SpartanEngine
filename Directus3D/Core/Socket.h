@@ -36,7 +36,7 @@ class PhysicsDebugDraw;
 class __declspec(dllexport) Socket
 {
 public:
-	Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice);
+	Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, Graphics* graphicsDevice);
 	~Socket();
 
 	//= STATE CONTROL ==============
@@ -87,7 +87,7 @@ private:
 	Engine* m_engine;
 	Scene* m_scene;
 	Renderer* m_renderer;
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 	Timer* m_timer;
 	Input* m_input;
 	TexturePool* m_texturePool;

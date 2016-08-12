@@ -31,7 +31,7 @@ using namespace Directus::Math;
 
 FullScreenQuad::FullScreenQuad()
 {
-	m_graphicsDevice = nullptr;
+	m_graphics = nullptr;
 	m_vertexBuffer = nullptr;
 	m_indexBuffer = nullptr;
 }
@@ -42,9 +42,9 @@ FullScreenQuad::~FullScreenQuad()
 	SafeRelease(m_indexBuffer);
 }
 
-bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, GraphicsDevice* graphicsDevice)
+bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, Graphics* graphicsDevice)
 {
-	m_graphicsDevice = graphicsDevice;
+	m_graphics = graphicsDevice;
 
 	// Initialize the vertex and index buffer that hold the geometry for the ortho window model.
 	bool result = InitializeBuffers(windowWidth, windowHeight);
@@ -65,13 +65,13 @@ void FullScreenQuad::SetBuffers()
 	offset = 0;
 
 	// Set the vertex buffer to active in the input assembler so it can be rendered.
-	m_graphicsDevice->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
+	m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
 
 	// Set the index buffer to active in the input assembler so it can be rendered.
-	m_graphicsDevice->GetDeviceContext()->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+	m_graphics->GetDeviceContext()->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
 	// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
-	m_graphicsDevice->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	m_graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 
@@ -157,7 +157,7 @@ bool FullScreenQuad::InitializeBuffers(int windowWidth, int windowHeight)
 	vertexData.SysMemSlicePitch = 0;
 
 	// Now finally create the vertex buffer.
-	result = m_graphicsDevice->GetDevice()->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
+	result = m_graphics->GetDevice()->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
 	if (FAILED(result))
 		return false;
 
@@ -175,7 +175,7 @@ bool FullScreenQuad::InitializeBuffers(int windowWidth, int windowHeight)
 	indexData.SysMemSlicePitch = 0;
 
 	// Create the index buffer.
-	result = m_graphicsDevice->GetDevice()->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
+	result = m_graphics->GetDevice()->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
 	if (FAILED(result))
 		return false;
 

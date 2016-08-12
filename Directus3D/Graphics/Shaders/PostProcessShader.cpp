@@ -42,13 +42,13 @@ PostProcessShader::~PostProcessShader()
 	SafeDelete(m_shader);
 }
 
-void PostProcessShader::Initialize(LPCSTR pass, GraphicsDevice* graphicsDevice)
+void PostProcessShader::Initialize(LPCSTR pass, Graphics* graphicsDevice)
 {
-	m_graphicsDevice = graphicsDevice;
+	m_graphics = graphicsDevice;
 
 	// load the vertex and the pixel shader
 	m_shader = new D3D11Shader();
-	m_shader->Initialize(m_graphicsDevice);
+	m_shader->Initialize(m_graphics);
 	m_shader->AddDefine(pass, true);
 	m_shader->Load("Assets/Shaders/PostProcess.hlsl");
 	m_shader->SetInputLayout(PositionTexture);
@@ -57,7 +57,7 @@ void PostProcessShader::Initialize(LPCSTR pass, GraphicsDevice* graphicsDevice)
 
 	// create buffer
 	m_constantBuffer = new D3D11Buffer();
-	m_constantBuffer->Initialize(m_graphicsDevice);
+	m_constantBuffer->Initialize(m_graphics);
 	m_constantBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
@@ -76,11 +76,11 @@ void PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const 
 	//==========================================================================
 
 	//= SET TEXTURE ============================================================
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
+	m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
 
 	//= SET SHADER =============================================================
 	m_shader->Set();
 
 	//= DRAW ===================================================================
-	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
