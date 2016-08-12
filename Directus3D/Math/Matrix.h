@@ -175,13 +175,13 @@ namespace Directus
 				);
 			}
 
-			static Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float znearPlane, float zfarPlane)
+			static Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float zNearPlane, float zFarPlane)
 			{
 				return Matrix(
 					2 / (right - left), 0, 0, 0,
 					0, 2 / (top - bottom), 0, 0,
-					0, 0, 1 / (zfarPlane - znearPlane), 0,
-					(left + right) / (left - right), (top + bottom) / (bottom - top), znearPlane / (znearPlane - zfarPlane), 1
+					0, 0, 1 / (zFarPlane - zNearPlane), 0,
+					(left + right) / (left - right), (top + bottom) / (bottom - top), zNearPlane / (zNearPlane - zFarPlane), 1
 				);
 			}
 
@@ -203,17 +203,10 @@ namespace Directus
 			void Decompose(Vector3& scale, Quaternion& rotation, Vector3& translation);
 
 			//= OPERATORS ======================================
-			Matrix operator*(const Matrix& b)
-			{
-				return Multiply(*this, b);
-			}
+			Matrix operator*(const Matrix& b) { return Multiply(*this, b); }
+			Matrix operator*(const Matrix& b) const { return Multiply(*this, b); }
 
-			Matrix operator*(const Matrix& b) const
-			{
-				return Multiply(*this, b);
-			}
-
-			bool operator==(const Matrix& b)
+			bool operator==(const Matrix& b) const
 			{
 				if (this->m00 != b.m00)
 					return false;
@@ -266,28 +259,13 @@ namespace Directus
 				return true;
 			}
 
-			bool operator!=(const Matrix& b)
-			{
-				return !(*this == b);
-			}
+			bool operator!=(const Matrix& b) const { return !(*this == b); }
 			//==================================================
 
-			float m00;
-			float m01;
-			float m02;
-			float m03;
-			float m10;
-			float m11;
-			float m12;
-			float m13;
-			float m20;
-			float m21;
-			float m22;
-			float m23;
-			float m30;
-			float m31;
-			float m32;
-			float m33;
+			float m00, m01, m02, m03;
+			float m10, m11, m12, m13;
+			float m20, m21, m22, m23;
+			float m30, m31, m32, m33;
 
 			static const Matrix Identity;
 
@@ -315,22 +293,10 @@ namespace Directus
 				float m44 = (((matrix1.m30 * matrix2.m03) + (matrix1.m31 * matrix2.m13)) + (matrix1.m32 * matrix2.m23)) + (matrix1.m33 * matrix2.m33);
 
 				return Matrix(
-					m11,
-					m12,
-					m13,
-					m14,
-					m21,
-					m22,
-					m23,
-					m24,
-					m31,
-					m32,
-					m33,
-					m34,
-					m41,
-					m42,
-					m43,
-					m44
+					m11, m12, m13, m14,
+					m21, m22, m23, m24,
+					m31, m32, m33, m34,
+					m41, m42, m43, m44
 				);
 			}
 		};
