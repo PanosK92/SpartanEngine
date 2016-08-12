@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../IO/Log.h"
-#include "../Core/Globals.h"
+#include "../Core/Helper.h"
 #include "../Physics/BulletPhysicsHelper.h"
 //====================================================================
 

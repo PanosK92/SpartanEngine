@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "ShaderVariation.h"
-#include "../../Core/Globals.h"
+#include "../../Core/Helper.h"
 #include "../../Core/GUIDGenerator.h"
 #include "../../IO/Log.h"
 #include "../../Core/Settings.h"

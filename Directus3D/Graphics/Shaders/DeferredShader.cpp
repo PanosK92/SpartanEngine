@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "DeferredShader.h"
-#include "../../Core/Globals.h"
+#include "../../Core/Helper.h"
 #include "../../IO/Log.h"
 #include "../../Components/Transform.h"
 #include "../../Components/Light.h"

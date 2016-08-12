@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Loading/ModelLoader.h"
 #include "../Input/Input.h"
 #include "../Graphics/GraphicsDevice.h"
-#include "Globals.h"
+#include "Helper.h"
 #include "../Signals/Signaling.h"
 //=====================================
 

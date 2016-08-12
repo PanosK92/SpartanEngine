@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "Texture.h"
 #include "../Core/GUIDGenerator.h"
-#include "../Core/Globals.h"
+#include "../Core/Helper.h"
 #include "../IO/Serializer.h"
 #include "../IO/Log.h"
 #include "../Loading/ImageLoader.h"

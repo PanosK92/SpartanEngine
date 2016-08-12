@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "PhysicsDebugDraw.h"
-#include "../Core/Globals.h"
+#include "../Core/Helper.h"
 #include "BulletPhysicsHelper.h"
 #include "../Signals/Signaling.h"
 #include <algorithm>

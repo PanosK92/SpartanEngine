@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "D3D11/D3D11RenderTexture.h"
-#include "../Core/Globals.h"
+#include "../Core/Helper.h"
 #include "../Components/Transform.h"
 #include "../Components/Light.h"
 //===================================

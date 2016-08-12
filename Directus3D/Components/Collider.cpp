@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btCylinderShape.h>
 #include <BulletCollision/CollisionShapes/btCapsuleShape.h>
-#include "../Core/Globals.h"
+#include "../Core/Helper.h"
 #include "Transform.h"
 //===========================================================
 

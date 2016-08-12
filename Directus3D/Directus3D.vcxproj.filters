@@ -251,9 +251,6 @@
     <ClInclude Include="Core\GameObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Core\Globals.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Core\GUIDGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -432,6 +429,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\D3D11\D3D11Graphics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

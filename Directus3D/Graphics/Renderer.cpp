@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Renderer.h"
-#include "../Core/Globals.h"
+#include "../Core/Helper.h"
 #include "../Core/Settings.h"
 #include "Shaders/PostProcessShader.h"
 #include "Shaders/DebugShader.h"
