@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/GameObjectPool.h"
 #include "../Scripting/ScriptEngine.h"
 #include "../Graphics/Renderer.h"
-#include "../Loading/ModelLoader.h"
+#include "../AssetImporting/ModelImporter.h"
 #include "../Input/Input.h"
 #include "../Graphics/Graphics.h"
 #include "Helper.h"
@@ -91,7 +91,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_meshPool = new MeshPool();
 
 	// 9 - IMAGE LOADER
-	ImageLoader::GetInstance().Initialize(m_graphics);
+	ImageImporter::GetInstance().Initialize(m_graphics);
 
 	// 10 - TEXTURE POOL
 	m_texturePool = new TexturePool();
@@ -100,7 +100,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_materialPool = new MaterialPool(m_texturePool, m_shaderPool);
 
 	// 12 - MODEL LOADER
-	m_modelLoader = new ModelLoader();
+	m_modelLoader = new ModelImporter();
 	m_modelLoader->Initialize(m_meshPool, m_texturePool, m_shaderPool, m_materialPool);
 
 	// 13 - RENDERER
@@ -169,7 +169,7 @@ void Engine::Shutdown()
 	SafeDelete(m_texturePool);
 
 	// 9 - IMAGE LOADER
-	ImageLoader::GetInstance().Clear();
+	ImageImporter::GetInstance().Clear();
 
 	// 8 - MESH POOL
 	SafeDelete(m_meshPool);

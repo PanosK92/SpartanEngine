@@ -31,12 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //================================
 
 class Renderer;
-class ModelLoader;
+class ModelImporter;
 
 class Scene
 {
 public:
-	Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsWorld* physics, ModelLoader* modelLoader, Renderer* renderer, ShaderPool* shaderPool);
+	Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsWorld* physics, ModelImporter* modelLoader, Renderer* renderer, ShaderPool* shaderPool);
 	~Scene();
 
 	void Initialize();
@@ -78,7 +78,7 @@ private:
 	MeshPool* m_meshPool;
 	ScriptEngine* m_scriptEngine;
 	PhysicsWorld* m_physics;
-	ModelLoader* m_modelLoader;
+	ModelImporter* m_modelLoader;
 	Renderer* m_renderer;
 	ShaderPool* m_shaderPool;
 	//============================================

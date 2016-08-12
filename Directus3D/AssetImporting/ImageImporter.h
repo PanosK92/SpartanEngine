@@ -69,17 +69,17 @@ XPM files[reading, writing]
 // when used in editor mode
 class FIBITMAP;
 
-class __declspec(dllexport) ImageLoader
+class __declspec(dllexport) ImageImporter
 {
 public:
-	static ImageLoader& GetInstance()
+	static ImageImporter& GetInstance()
 	{
-		static ImageLoader instance;
+		static ImageImporter instance;
 		return instance;
 	}
 
-	ImageLoader();
-	~ImageLoader();
+	ImageImporter();
+	~ImageImporter();
 
 	void Initialize(Graphics* D3D11evice);
 	bool Load(std::string path);

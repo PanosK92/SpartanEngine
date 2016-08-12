@@ -19,12 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES ============================
 #include "DirectusIconProvider.h"
 #include "IO/Log.h"
 #include "IO/FileHelper.h"
-#include "Loading/ImageLoader.h"
-//===============================
+//=======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -32,7 +31,7 @@ using namespace std;
 
 void DirectusIconProvider::Initialize()
 {
-    m_imageLoader = new ImageLoader();
+    m_imageLoader = new ImageImporter();
 
     m_unknownIcon = QIcon(":/Images/file.png");
     m_folderIcon = QIcon(":/Images/folder.png");

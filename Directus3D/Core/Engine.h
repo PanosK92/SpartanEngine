@@ -23,7 +23,7 @@ DEALINGS IN THE SOFTWARE. */
 class Socket;
 class ScriptEngine;
 class Renderer;
-class ModelLoader;
+class ModelImporter;
 class Graphics;
 class Scene;
 class Input;
@@ -53,7 +53,7 @@ private:
 	Socket* m_engineSocket;
 	ScriptEngine* m_scriptEngine;
 	Renderer* m_renderer;
-	ModelLoader* m_modelLoader;
+	ModelImporter* m_modelLoader;
 	Graphics* m_graphics;
 	Scene* m_scene;
 	Input* m_input;

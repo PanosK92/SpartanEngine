@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ===============================
 #include "Scene.h"
 #include "Timer.h"
 #include "../Input/Input.h"
 #include "../Physics/PhysicsWorld.h"
-#include "../Loading/ImageLoader.h"
+#include "../AssetImporting/ImageImporter.h"
 #include "Engine.h"
-//===================================
+//==========================================
 
 class ILogger;
 class PhysicsDebugDraw;
@@ -36,7 +36,7 @@ class PhysicsDebugDraw;
 class __declspec(dllexport) Socket
 {
 public:
-	Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, Graphics* graphicsDevice);
+	Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelImporter* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, Graphics* graphicsDevice);
 	~Socket();
 
 	//= STATE CONTROL ==============
@@ -47,7 +47,7 @@ public:
 	//= IO =========================
 	void SetLogger(ILogger* logger);
 	void LoadModel(std::string path);
-	ImageLoader* GetImageLoader();
+	ImageImporter* GetImageLoader();
 	//==============================
 
 	//= GRAPHICS =================================
@@ -91,6 +91,6 @@ private:
 	Timer* m_timer;
 	Input* m_input;
 	TexturePool* m_texturePool;
-	ModelLoader* m_modelLoader;
+	ModelImporter* m_modelLoader;
 	PhysicsWorld* m_physics;
 };

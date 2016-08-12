@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "WindowsApp.lib")
 //====================================
 
-//= INCLUDES ===========================
+//= INCLUDES =============================
 #include "Skybox.h"
-#include "../Loading/DDSTextureLoader.h"
+#include "../AssetImporting/DDSTextureImporter.h"
 #include "Transform.h"
 #include "MeshRenderer.h"
 #include "MeshFilter.h"
@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Pools/MaterialPool.h"
 #include "../Core/Scene.h"
-//======================================
+//========================================
 
 //= NAMESPACES ================
 using namespace DirectX;

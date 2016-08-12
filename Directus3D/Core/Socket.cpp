@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 #include "../Components/MeshRenderer.h"
 #include "../Graphics/Renderer.h"
-#include "../Loading/ModelLoader.h"
+#include "../AssetImporting/ModelImporter.h"
 #include "../IO/FileHelper.h"
 #include "Settings.h"
 #include "../Signals/Signaling.h"
@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Socket::Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, Graphics* graphicsDevice)
+Socket::Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelImporter* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, Graphics* graphicsDevice)
 {
 	m_engine = engine;
 	m_scene = scene;
@@ -79,9 +79,9 @@ void Socket::LoadModel(string path)
 	m_modelLoader->Load(path, new GameObject());
 }
 
-ImageLoader* Socket::GetImageLoader()
+ImageImporter* Socket::GetImageLoader()
 {
-	return &ImageLoader::GetInstance();
+	return &ImageImporter::GetInstance();
 }
 //==============================================================================
 
