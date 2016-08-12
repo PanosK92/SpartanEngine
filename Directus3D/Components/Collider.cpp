@@ -183,9 +183,6 @@ void Collider::ConstructCollisionShape()
 
 void Collider::SetRigidBodyCollisionShape(btCollisionShape* shape) const
 {
-	if (!g_gameObject)
-		return;
-
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 	if (rigidBody)
 		rigidBody->SetCollisionShape(shape);

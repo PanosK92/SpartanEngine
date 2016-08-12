@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btShapeHull.h>
 #include <BulletCollision/CollisionShapes/btTriangleMesh.h>
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
-#include <BulletCollision/CollisionShapes/btConvexTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
@@ -163,7 +162,7 @@ void MeshCollider::SetCollisionShapeToRigidBody(btCollisionShape* collisionShape
 {
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 	if (rigidBody)
-		rigidBody->SetCollisionShape(m_collisionShape);
+		rigidBody->SetCollisionShape(collisionShape);
 }
 
 Mesh* MeshCollider::GetMeshFromAttachedMeshFilter() const
