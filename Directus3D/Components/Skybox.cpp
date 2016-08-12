@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshFilter.h"
 #include "../Core/GameObject.h"
 #include "../Core/Helper.h"
-#include "../Core/Texture.h"
+#include "../Graphics/Texture.h"
 #include "../Math/Vector3.h"
 #include "../Pools/MaterialPool.h"
 #include "../Core/Scene.h"

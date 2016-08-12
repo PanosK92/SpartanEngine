@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Shaders/PostProcessShader.h"
 #include "Shaders/DeferredShader.h"
 #include <memory>
-#include "../Core/Texture.h"
+#include "../Graphics/Texture.h"
 #include "../Components/LineRenderer.h"
 #include "D3D11/D3D11RenderTexture.h"
 //====================================

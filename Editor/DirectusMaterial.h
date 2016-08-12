@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QGridLayout>
 #include <QLineEdit>
 #include "Core/GameObject.h"
-#include "Core/Material.h"
+#include "Graphics/Material.h"
 #include "DirectusComboSliderText.h"
 #include "DirectusComboLabelText.h"
 #include "DirectusColorPicker.h"

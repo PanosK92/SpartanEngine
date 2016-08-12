@@ -623,7 +623,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -634,11 +634,11 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -655,7 +655,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -1175,7 +1175,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -1186,11 +1186,11 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -1207,7 +1207,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -1350,7 +1350,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -1361,10 +1361,10 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -1381,7 +1381,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -1680,7 +1680,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -1691,11 +1691,11 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -1712,7 +1712,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -1914,7 +1914,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -1925,10 +1925,10 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -1945,7 +1945,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -2235,7 +2235,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -2245,8 +2245,8 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -2262,7 +2262,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -2400,8 +2400,8 @@ compiler_moc_header_clean:
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Material.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -2420,7 +2420,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -2447,7 +2447,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -2573,36 +2573,6 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextoption.h \
 		..\Directus3D\Core\GameObject.h \
 		..\Directus3D\Components\IComponent.h \
-		..\Directus3D\Core\Material.h \
-		..\Directus3D\Core\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\GraphicsDevice.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Math\Vector4.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Graphics\Renderer.h \
-		..\Directus3D\Graphics\GBuffer.h \
-		..\Directus3D\Graphics\FullScreenQuad.h \
-		..\Directus3D\Graphics\Frustrum.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Plane.h \
-		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Timer.h \
-		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Components\Skybox.h \
-		..\Directus3D\Components\Light.h \
-		..\Directus3D\Graphics\Shaders\DepthShader.h \
-		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
-		..\Directus3D\Graphics\Shaders\DebugShader.h \
-		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
-		..\Directus3D\Graphics\Shaders\DeferredShader.h \
-		..\Directus3D\Components\LineRenderer.h \
-		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		DirectusComboSliderText.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QSlider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qslider.h \
@@ -2619,6 +2589,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qicon.h \
+		..\Directus3D\Math\Vector4.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QColorDialog \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcolordialog.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qdialog.h \
@@ -2632,6 +2603,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qtabwidget.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qrubberband.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qabstractitemmodel.h \
+		..\Directus3D\Math\Vector2.h \
 		DirectusCore.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QPaintEngine \
@@ -2641,12 +2613,40 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\GraphicsDevice.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
+		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Matrix.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\Graphics\Material.h \
+		..\Directus3D\Graphics\Renderer.h \
+		..\Directus3D\Graphics\GBuffer.h \
+		..\Directus3D\Graphics\FullScreenQuad.h \
+		..\Directus3D\Graphics\Frustrum.h \
+		..\Directus3D\Math\Plane.h \
+		..\Directus3D\Core\Timer.h \
+		..\Directus3D\Components\Camera.h \
+		..\Directus3D\Components\Skybox.h \
+		..\Directus3D\Components\Light.h \
+		..\Directus3D\Graphics\Shaders\DepthShader.h \
+		..\Directus3D\Graphics\Shaders\DebugShader.h \
+		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
+		..\Directus3D\Graphics\Shaders\DeferredShader.h \
+		..\Directus3D\Components\LineRenderer.h \
+		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -2823,14 +2823,14 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -2846,7 +2846,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -2997,7 +2997,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -3008,11 +3008,11 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -3029,7 +3029,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -3179,8 +3179,8 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\Collider.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Core\Mesh.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Core\GUIDGenerator.h \
@@ -3200,7 +3200,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -3211,7 +3211,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -3390,7 +3390,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -3401,11 +3401,11 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -3422,7 +3422,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -3563,8 +3563,8 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\GameObject.h \
 		..\Directus3D\Components\IComponent.h \
 		..\Directus3D\Components\MeshCollider.h \
-		..\Directus3D\Core\Mesh.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
@@ -3584,7 +3584,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -3595,7 +3595,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -3739,7 +3739,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -3750,11 +3750,11 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -3771,7 +3771,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -3873,7 +3873,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -3884,11 +3884,11 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -3905,7 +3905,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -4289,7 +4289,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -4300,11 +4300,11 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -4321,7 +4321,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -4465,13 +4465,13 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\MeshFilter.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Math\Quaternion.h \
@@ -4495,7 +4495,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
@@ -4503,7 +4503,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -5070,7 +5070,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -5081,11 +5081,11 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -5102,7 +5102,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -5265,7 +5265,7 @@ compiler_uic_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -5276,11 +5276,11 @@ compiler_uic_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -5297,7 +5297,7 @@ compiler_uic_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -5703,7 +5703,7 @@ compiler_uic_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -5714,11 +5714,11 @@ compiler_uic_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -5735,7 +5735,7 @@ compiler_uic_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -5982,7 +5982,7 @@ compiler_uic_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -5993,11 +5993,11 @@ compiler_uic_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -6014,7 +6014,7 @@ compiler_uic_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -6213,7 +6213,7 @@ compiler_uic_clean:
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -6224,10 +6224,10 @@ compiler_uic_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -6244,7 +6244,7 @@ compiler_uic_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -6420,7 +6420,7 @@ compiler_uic_clean:
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -6431,11 +6431,11 @@ compiler_uic_clean:
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -6452,7 +6452,7 @@ compiler_uic_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -6929,7 +6929,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -6940,11 +6940,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -6961,7 +6961,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -7504,7 +7504,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -7515,11 +7515,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -7536,7 +7536,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -7677,7 +7677,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -7688,10 +7688,10 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -7708,7 +7708,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -8010,7 +8010,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -8021,11 +8021,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -8042,7 +8042,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -8259,7 +8259,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -8270,10 +8270,10 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -8290,7 +8290,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -8596,7 +8596,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -8606,8 +8606,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -8623,7 +8623,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -8783,8 +8783,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Material.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -8803,7 +8803,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -8830,7 +8830,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -8994,36 +8994,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextoption.h \
 		..\Directus3D\Core\GameObject.h \
 		..\Directus3D\Components\IComponent.h \
-		..\Directus3D\Core\Material.h \
-		..\Directus3D\Core\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\GraphicsDevice.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Math\Vector4.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Graphics\Renderer.h \
-		..\Directus3D\Graphics\GBuffer.h \
-		..\Directus3D\Graphics\FullScreenQuad.h \
-		..\Directus3D\Graphics\Frustrum.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Plane.h \
-		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Timer.h \
-		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Components\Skybox.h \
-		..\Directus3D\Components\Light.h \
-		..\Directus3D\Graphics\Shaders\DepthShader.h \
-		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
-		..\Directus3D\Graphics\Shaders\DebugShader.h \
-		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
-		..\Directus3D\Graphics\Shaders\DeferredShader.h \
-		..\Directus3D\Components\LineRenderer.h \
-		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		DirectusComboSliderText.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QSlider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qslider.h \
@@ -9040,6 +9010,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qicon.h \
+		..\Directus3D\Math\Vector4.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QColorDialog \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcolordialog.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qdialog.h \
@@ -9053,6 +9024,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qtabwidget.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qrubberband.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qabstractitemmodel.h \
+		..\Directus3D\Math\Vector2.h \
 		DirectusCore.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QPaintEngine \
@@ -9062,12 +9034,40 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\GraphicsDevice.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
+		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Matrix.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\Graphics\Material.h \
+		..\Directus3D\Graphics\Renderer.h \
+		..\Directus3D\Graphics\GBuffer.h \
+		..\Directus3D\Graphics\FullScreenQuad.h \
+		..\Directus3D\Graphics\Frustrum.h \
+		..\Directus3D\Math\Plane.h \
+		..\Directus3D\Core\Timer.h \
+		..\Directus3D\Components\Camera.h \
+		..\Directus3D\Components\Skybox.h \
+		..\Directus3D\Components\Light.h \
+		..\Directus3D\Graphics\Shaders\DepthShader.h \
+		..\Directus3D\Graphics\Shaders\DebugShader.h \
+		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
+		..\Directus3D\Graphics\Shaders\DeferredShader.h \
+		..\Directus3D\Components\LineRenderer.h \
+		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -9246,14 +9246,14 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -9269,7 +9269,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -9440,7 +9440,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -9451,11 +9451,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -9472,7 +9472,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -9646,8 +9646,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Collider.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Core\Mesh.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Core\GUIDGenerator.h \
@@ -9667,7 +9667,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -9678,7 +9678,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -9881,7 +9881,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -9892,11 +9892,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -9913,7 +9913,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -10088,8 +10088,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\GameObject.h \
 		..\Directus3D\Components\IComponent.h \
 		..\Directus3D\Components\MeshCollider.h \
-		..\Directus3D\Core\Mesh.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
@@ -10109,7 +10109,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -10120,7 +10120,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -10297,7 +10297,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -10308,11 +10308,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -10329,7 +10329,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -10445,7 +10445,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -10456,11 +10456,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -10477,7 +10477,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -10867,7 +10867,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -10878,11 +10878,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -10899,7 +10899,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -11108,13 +11108,13 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\MeshFilter.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Math\Quaternion.h \
@@ -11138,7 +11138,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Socket.h \
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
@@ -11146,7 +11146,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -11432,7 +11432,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -11443,11 +11443,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -11464,7 +11464,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \
@@ -11798,7 +11798,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
 		..\Directus3D\Pools\TexturePool.h \
-		..\Directus3D\Core\Texture.h \
+		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\GraphicsDevice.h \
@@ -11809,11 +11809,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Core\Vertex.h \
+		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\Core\Material.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -11830,7 +11830,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Core\Mesh.h \
+		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\Core\GUIDGenerator.h \
 		..\Directus3D\IO\Serializer.h \
 		..\Directus3D\Input\Input.h \

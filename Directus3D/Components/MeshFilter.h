@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include "../Math/Vector3.h"
 #include <vector>
-#include "../Core/Vertex.h"
+#include "../Graphics/Vertex.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
-#include "../Core/Mesh.h"
+#include "../Graphics/Mesh.h"
 //========================================
 
 class __declspec(dllexport) MeshFilter : public IComponent
