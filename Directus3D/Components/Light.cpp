@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include "Light.h"
 #include "Transform.h"
 #include "../Core/Settings.h"
@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../IO/Log.h"
 #include "../Math/MathHelper.h"
-//=============================
+#include "../Graphics/ShadowMap.h"
+//================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -62,9 +63,8 @@ void Light::Initialize()
 	{
 		float n = i + 1;
 		float farPlane = camNear * powf(camFar / camNear, n / m_cascades);
-		float nearPlane = farPlane - (camFar / m_cascades);
-
-		m_shadowMaps.push_back(new ShadowMap(g_graphicsDevice, g_gameObject->GetTransform(), SHADOWMAP_RESOLUTION / n, nearPlane, farPlane));
+		float nearPlane = Clamp(farPlane - (camFar / m_cascades), camNear, camFar);
+		m_shadowMaps.push_back(new ShadowMap(g_graphicsDevice, n, this, g_scene->GetMainCamera()->GetComponent<Camera>(), SHADOWMAP_RESOLUTION / n, nearPlane, farPlane));
 	}
 }
 
@@ -185,7 +185,7 @@ void Light::SetIntensity(float value)
 	m_intensity = value;
 }
 
-Matrix Light::GetViewMatrix(int cascade)
+Matrix Light::GetViewMatrix()
 {
 	GameObject* cameraGameObject = g_scene->GetMainCamera();
 	if (!cameraGameObject)

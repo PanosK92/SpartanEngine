@@ -164,14 +164,6 @@ void Renderer::Render()
 		return;
 	}
 
-	// Construct frustum (if necessery)
-	if (m_frustrum->GetProjectionMatrix() != mProjection || m_frustrum->GetViewMatrix() != mView)
-	{
-		m_frustrum->SetProjectionMatrix(mProjection);
-		m_frustrum->SetViewMatrix(mView);
-		m_frustrum->ConstructFrustum(m_farPlane);
-	}
-
 	// ENABLE Z-BUFFER
 	m_graphicsDevice->EnableZBuffer(true);
 
@@ -323,12 +315,31 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 			if (gameObject->GetComponent<Skybox>() || !meshRenderer->GetCastShadows())
 				continue;
 
+			//= Frustrum culling =======================================================
+			/*// Construct frustum (if necessery)
+			if (m_frustrum->GetProjectionMatrix() != light->GetOrthographicProjectionMatrix(cascadeIndex) || m_frustrum->GetViewMatrix() != light->GetViewMatrix())
+			{
+				m_frustrum->SetProjectionMatrix(light->GetOrthographicProjectionMatrix(cascadeIndex));
+				m_frustrum->SetViewMatrix(light->GetViewMatrix());
+				m_frustrum->ConstructFrustum(light->GetCascadeSplit(cascadeIndex) * 1000.0f);
+			}
+
+			Vector3 center = meshFilter->GetCenter();
+			Vector3 extent = meshFilter->GetBoundingBox();
+
+			float radius = max(abs(extent.x), abs(extent.y));
+			radius = max(radius, abs(extent.z));
+
+			if (m_frustrum->CheckSphere(center, radius) == Outside)
+				continue;*/
+			//==========================================================================
+
 			if (meshFilter->SetBuffers())
 			{
 				m_shaderDepth->Render(
 					mesh->GetIndexCount(),
 					gameObject->GetTransform()->GetWorldTransform(),
-					light->GetViewMatrix(cascadeIndex),
+					light->GetViewMatrix(),
 					light->GetOrthographicProjectionMatrix(cascadeIndex)
 				);
 			}
@@ -358,6 +369,13 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 			continue;
 
 		//= Frustrum culling =======================================================
+		if (m_frustrum->GetProjectionMatrix() != mProjection || m_frustrum->GetViewMatrix() != mView)
+		{
+			m_frustrum->SetProjectionMatrix(mProjection);
+			m_frustrum->SetViewMatrix(mView);
+			m_frustrum->ConstructFrustum(m_farPlane);
+		}
+
 		Vector3 center = meshFilter->GetCenter();
 		Vector3 extent = meshFilter->GetBoundingBox();
 

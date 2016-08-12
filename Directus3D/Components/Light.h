@@ -21,13 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =============================
 #include "../Components/IComponent.h"
 #include "../Math/Vector4.h"
 #include "../Math/Vector3.h"
 #include <vector>
-#include "../Graphics/ShadowMap.h"
-//===================================
+#include "../Graphics/D3D11/D3D11Shader.h"
+#include "../Math/Matrix.h"
+//========================================
+
+class ShadowMap;
 
 enum LightType
 {
@@ -77,7 +80,7 @@ public:
 
 	Directus::Math::Vector3 GetDirection();
 
-	Directus::Math::Matrix GetViewMatrix(int cascade);
+	Directus::Math::Matrix GetViewMatrix();
 	Directus::Math::Matrix GetOrthographicProjectionMatrix(int cascade);
 	void SetShadowMapAsRenderTarget(int cascade);
 	ID3D11ShaderResourceView* GetDepthMap(int cascade);

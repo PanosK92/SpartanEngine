@@ -144,7 +144,7 @@ Vector3 Transform::GetPositionLocal() const
 
 void Transform::SetPosition(const Vector3& position)
 {
-	SetPositionLocal(!HasParent() ? position : GetParent()->GetWorldTransform().Inverse() * position);
+	SetPositionLocal(!HasParent() ? position : GetParent()->GetWorldTransform().Inverted() * position);
 }
 
 void Transform::SetPositionLocal(const Vector3& position)
@@ -224,7 +224,7 @@ void Transform::Translate(const Vector3& delta)
 	if (!HasParent())
 		SetPositionLocal(m_positionLocal + delta);
 	else
-		SetPositionLocal(m_positionLocal + GetParent()->GetWorldTransform().Inverse() * delta);
+		SetPositionLocal(m_positionLocal + GetParent()->GetWorldTransform().Inverted() * delta);
 }
 
 void Transform::Rotate(const Quaternion& delta, Space space)

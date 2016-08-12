@@ -84,7 +84,7 @@ namespace Directus
 			}
 
 
-			Matrix Inverse() const { return Invert(*this); }
+			Matrix Inverted() const { return Invert(*this); }
 
 			static Matrix Invert(const Matrix& matrix)
 			{
