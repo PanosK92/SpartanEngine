@@ -41,7 +41,7 @@ GraphicsDevice::~GraphicsDevice()
 
 void GraphicsDevice::Initialize(HWND drawPaneHandle)
 {
-	m_D3D11Device = new D3D11Device();
+	m_D3D11Device = new D3D11Graphics();
 	m_D3D11Device->Initialize(drawPaneHandle);
 }
 

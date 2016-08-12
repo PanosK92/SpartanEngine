@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "D3D11Buffer.h"
-#include "D3D11Device.h"
+#include "D3D11Graphics.h"
 #include "../../Core/Globals.h"
 #include "../../IO/Log.h"
 //=============================

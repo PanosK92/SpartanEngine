@@ -30,7 +30,7 @@ const int BUFFER_COUNT = 4;
 //==========================
 
 //= INCLUDES =============================
-#include "../Graphics/D3D11/D3D11Device.h"
+#include "../Graphics/D3D11/D3D11Graphics.h"
 #include "GraphicsDevice.h"
 //========================================
 
