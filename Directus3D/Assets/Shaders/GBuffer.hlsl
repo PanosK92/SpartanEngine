@@ -192,13 +192,14 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	float totalShadowing = clamp(flippedOcclusion * shadowing, 0.0f, 1.0f);
 	
+	// Uncomment to vizualize cascade splits 
 	/*if (cascadeIndex == 0)
 		output.albedo		= float4(1,0,0,1);
 	if (cascadeIndex == 1)
 		output.albedo		= float4(0,1,0,1);
 	if (cascadeIndex == 2)
-		output.albedo		= float4(0,0,1,1);
-*/
+		output.albedo		= float4(0,0,1,1);*/
+
 	// Write to G-Buffer
 	output.albedo		= albedo;	
 	output.normal 		= float4(normal.rgb, totalShadowing);

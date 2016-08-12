@@ -135,9 +135,9 @@ void ShaderVariation::Render(int indexCount,
 	Matrix worldView = world * mView;
 	Matrix worldViewProjection = worldView * mProjection;
 
-	Matrix lightViewProjection1 = directionalLight->GetViewMatrix(0) * directionalLight->GetOrthographicProjectionMatrix(0);
-	Matrix lightViewProjection2 = directionalLight->GetViewMatrix(1) * directionalLight->GetOrthographicProjectionMatrix(1);
-	Matrix lightViewProjection3 = directionalLight->GetViewMatrix(2) * directionalLight->GetOrthographicProjectionMatrix(2);
+	Matrix lightViewProjection1 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(0);
+	Matrix lightViewProjection2 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(1);
+	Matrix lightViewProjection3 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
 
 	/*------------------------------------------------------------------------------
 							[FILL THE BUFFER]

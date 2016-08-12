@@ -60,6 +60,14 @@ namespace Directus
 				this->z = z;
 			}
 
+			// Construct from single value.
+			Vector3(float v)
+			{
+				this->x = v;
+				this->y = v;
+				this->z = v;
+			}
+
 			Vector3 DegreesToRadians(const Vector3& v) const { return DegreesToRadians(v.x, v.y, v.z); }
 
 			static Vector3 DegreesToRadians(float x, float y, float z)
