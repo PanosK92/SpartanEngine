@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 #include "../IO/Serializer.h"
 #include "../IO/Log.h"
-#include "../Loading/ImageLoader.h"
+#include "../AssetImporting/ImageImporter.h"
 #include "../IO/FileHelper.h"
 //=================================
 
@@ -89,23 +89,23 @@ void Texture::SetID3D11ShaderResourceView(ID3D11ShaderResourceView* srv)
 bool Texture::LoadFromFile(string path, TextureType type)
 {
 	// load it
-	bool result = ImageLoader::GetInstance().Load(path);
+	bool result = ImageImporter::GetInstance().Load(path);
 
 	if (!result)
 	{
 		LOG("Failed to load texture \"" + path + "\".", Log::Error);
-		ImageLoader::GetInstance().Clear();
+		ImageImporter::GetInstance().Clear();
 		return false;
 	}
 
 	// Fill the texture with data
-	SetPath(ImageLoader::GetInstance().GetPath());
+	SetPath(ImageImporter::GetInstance().GetPath());
 	SetName(FileHelper::GetFileNameFromPath(GetPath()));
-	SetWidth(ImageLoader::GetInstance().GetWidth());
-	SetHeight(ImageLoader::GetInstance().GetHeight());
-	SetGrayscale(ImageLoader::GetInstance().IsGrayscale());
-	SetTransparency(ImageLoader::GetInstance().IsTransparent());
-	m_shaderResourceView = ImageLoader::GetInstance().GetAsD3D11ShaderResourceView();
+	SetWidth(ImageImporter::GetInstance().GetWidth());
+	SetHeight(ImageImporter::GetInstance().GetHeight());
+	SetGrayscale(ImageImporter::GetInstance().IsGrayscale());
+	SetTransparency(ImageImporter::GetInstance().IsTransparent());
+	m_shaderResourceView = ImageImporter::GetInstance().GetAsD3D11ShaderResourceView();
 
 	// Determine texture type
 	// FIX: some models pass a normal map as a height map
@@ -115,7 +115,7 @@ bool Texture::LoadFromFile(string path, TextureType type)
 	if (GetType() == Normal && GetGrayscale()) SetType(Height);
 
 	// Clear any memory allocated by the image loader
-	ImageLoader::GetInstance().Clear();
+	ImageImporter::GetInstance().Clear();
 
 	return true;
 }

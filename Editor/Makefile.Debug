@@ -661,7 +661,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -903,10 +903,6 @@ compiler_moc_header_clean:
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\Loading\ImageLoader.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Math\Vector4.h \
 		DirectusDirExplorer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusDirExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusDirExplorer.cpp
@@ -1034,10 +1030,6 @@ compiler_moc_header_clean:
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\Loading\ImageLoader.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Math\Vector4.h \
 		DirectusFileExplorer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusFileExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusFileExplorer.cpp
@@ -1213,7 +1205,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -1387,7 +1379,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -1718,7 +1710,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		..\Directus3D\Core\Engine.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QVariant \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QMouseEvent \
@@ -1951,7 +1943,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -2268,7 +2260,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -2453,7 +2445,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -2652,7 +2644,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -2852,7 +2844,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3035,7 +3027,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3231,7 +3223,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3428,7 +3420,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3615,7 +3607,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3777,7 +3769,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3911,7 +3903,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		..\Directus3D\Core\Engine.h \
 		DirectusProgressBar.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QDialog \
@@ -4327,7 +4319,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -4523,7 +4515,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -5108,7 +5100,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		..\Directus3D\Core\Engine.h \
 		DirectusProgressBar.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QDialog \
@@ -5303,7 +5295,7 @@ compiler_uic_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -5439,10 +5431,6 @@ compiler_uic_clean:
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\Loading\ImageLoader.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Math\Vector4.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListView \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractitemview.h \
@@ -5566,10 +5554,6 @@ compiler_uic_clean:
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\Loading\ImageLoader.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Math\Vector4.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistwidget.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
@@ -5741,7 +5725,7 @@ compiler_uic_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -6020,7 +6004,7 @@ compiler_uic_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		..\Directus3D\Core\Engine.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QVariant \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QMouseEvent \
@@ -6250,7 +6234,7 @@ compiler_uic_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -6458,7 +6442,7 @@ compiler_uic_clean:
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -6967,7 +6951,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -7208,10 +7192,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\Loading\ImageLoader.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\IO\Log.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \
@@ -7342,10 +7322,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusIconProvider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\Loading\ImageLoader.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Math\Vector4.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QStandardItem \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qstandarditemmodel.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QMouseEvent \
@@ -7542,7 +7518,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -7714,7 +7690,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -8048,7 +8024,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		..\Directus3D\Core\Engine.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QVariant \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QMouseEvent \
@@ -8296,7 +8272,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -8629,7 +8605,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -8836,7 +8812,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -9073,7 +9049,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -9275,7 +9251,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -9478,7 +9454,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -9698,7 +9674,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -9919,7 +9895,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -10140,7 +10116,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -10335,7 +10311,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -10483,7 +10459,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		..\Directus3D\Core\Engine.h \
 		DirectusProgressBar.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QDialog \
@@ -10905,7 +10881,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -11166,7 +11142,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -11470,7 +11446,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h
@@ -11836,7 +11812,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
-		..\Directus3D\Loading\ImageLoader.h \
+		..\Directus3D\AssetImporting\ImageImporter.h \
 		..\Directus3D\Core\Engine.h \
 		DirectusProgressBar.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QDialog \
@@ -11940,10 +11916,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qdatastream.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qline.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qpainterpath.h \
-		..\Directus3D\Loading\ImageLoader.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\IO\Log.h \
 		..\Directus3D\Math\Vector3.h \
 		..\Directus3D\Math\MathHelper.h \

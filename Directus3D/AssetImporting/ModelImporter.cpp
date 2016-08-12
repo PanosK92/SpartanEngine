@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <vector>
-#include "ModelLoader.h"
+#include "ModelImporter.h"
 #include "../IO/FileHelper.h"
 #include "../IO/Log.h"
 #include "../Components/Transform.h"
@@ -58,7 +58,7 @@ aiProcess_OptimizeMeshes |
 aiProcess_Debone |
 aiProcess_ConvertToLeftHanded;
 
-ModelLoader::ModelLoader()
+ModelImporter::ModelImporter()
 {
 	m_rootGameObject = nullptr;
 	m_meshPool = nullptr;
@@ -66,11 +66,11 @@ ModelLoader::ModelLoader()
 	m_shaderPool = nullptr;
 }
 
-ModelLoader::~ModelLoader()
+ModelImporter::~ModelImporter()
 {
 }
 
-void ModelLoader::Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool)
+void ModelImporter::Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool)
 {
 	m_meshPool = meshPool;
 	m_texturePool = texturePool;
@@ -78,7 +78,7 @@ void ModelLoader::Initialize(MeshPool* meshPool, TexturePool* texturePool, Shade
 	m_materialPool = materialPool;
 }
 
-bool ModelLoader::Load(string filePath, GameObject* gameObject)
+bool ModelImporter::Load(string filePath, GameObject* gameObject)
 {
 	m_fullModelPath = filePath;
 	m_rootGameObject = gameObject;
@@ -155,7 +155,7 @@ Vector2 ToVector2(const aiVector2D& aiVector)
 								[PROCESSING]
 ------------------------------------------------------------------------------*/
 
-void ModelLoader::ProcessNode(aiNode* node, const aiScene* scene, GameObject* parentGameObject)
+void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* parentGameObject)
 {
 	// process root node
 	if (!node->mParent)
@@ -204,7 +204,7 @@ void ModelLoader::ProcessNode(aiNode* node, const aiScene* scene, GameObject* pa
 	}
 }
 
-void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* gameobject)
+void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* gameobject)
 {
 	vector<VertexPositionTextureNormalTangent> vertices;
 	vector<unsigned int> indices;
@@ -273,7 +273,7 @@ void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* ga
 	indices.clear();
 }
 
-Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
+Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 {
 	Material* engineMaterial = new Material(m_texturePool, m_shaderPool);
 
@@ -389,7 +389,7 @@ Material* ModelLoader::GenerateMaterialFromAiMaterial(aiMaterial* material)
 ------------------------------------------------------------------------------*/
 // The texture path is relative to the model directory and the model path is absolute...
 // This methods constructs a path relative to the engine based on the above paths.
-string ModelLoader::ConstructRelativeTexturePath(string absoluteTexturePath)
+string ModelImporter::ConstructRelativeTexturePath(string absoluteTexturePath)
 {
 	// Save original texture path;
 	m_fullTexturePath = absoluteTexturePath;
@@ -407,7 +407,7 @@ string ModelLoader::ConstructRelativeTexturePath(string absoluteTexturePath)
 	return relativeTexturePath;
 }
 
-string ModelLoader::FindTexture(string texturePath) const
+string ModelImporter::FindTexture(string texturePath) const
 {
 	if (FileHelper::FileExists(texturePath))
 		return texturePath;
@@ -435,7 +435,7 @@ string ModelLoader::FindTexture(string texturePath) const
 	return TEXTURE_PATH_UNKNOWN;
 }
 
-string ModelLoader::TryPathWithMultipleExtensions(string fullpath)
+string ModelImporter::TryPathWithMultipleExtensions(string fullpath)
 {
 	// Remove extension
 	int lastindex = fullpath.find_last_of(".");

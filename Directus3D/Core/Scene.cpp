@@ -43,7 +43,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Scene::Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsWorld* physics, ModelLoader* modelLoader, Renderer* renderer, ShaderPool* shaderPool)
+Scene::Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsWorld* physics, ModelImporter* modelLoader, Renderer* renderer, ShaderPool* shaderPool)
 {
 	m_renderer = renderer;
 	m_texturePool = texturePool;

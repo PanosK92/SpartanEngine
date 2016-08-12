@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ================
-#include "ImageLoader.h"
+#include "ImageImporter.h"
 #include "../IO/Log.h"
 #include "../IO/FileHelper.h"
 #include "FreeImagePlus.h"
@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-ImageLoader::ImageLoader()
+ImageImporter::ImageImporter()
 {
 	m_bitmap = nullptr;
 	m_bitmap32 = nullptr;
@@ -47,18 +47,18 @@ ImageLoader::ImageLoader()
 	FreeImage_Initialise(true);
 }
 
-ImageLoader::~ImageLoader()
+ImageImporter::~ImageImporter()
 {
 	Clear();
 	FreeImage_DeInitialise();
 }
 
-void ImageLoader::Initialize(Graphics* D3D11evice)
+void ImageImporter::Initialize(Graphics* D3D11evice)
 {
 	m_graphics = D3D11evice;
 }
 
-bool ImageLoader::Load(std::string path)
+bool ImageImporter::Load(std::string path)
 {
 	// keep the path
 	m_path = path;
@@ -70,7 +70,7 @@ bool ImageLoader::Load(std::string path)
 	return Load(path, 0, 0, false);
 }
 
-bool ImageLoader::Load(std::string path, int width, int height)
+bool ImageImporter::Load(std::string path, int width, int height)
 {
 	// keep the path
 	m_path = path;
@@ -82,7 +82,7 @@ bool ImageLoader::Load(std::string path, int width, int height)
 	return Load(path, width, height, true);
 }
 
-void ImageLoader::Clear()
+void ImageImporter::Clear()
 {
 	m_dataRGBA.clear();
 	m_dataRGBA.shrink_to_fit();
@@ -98,7 +98,7 @@ void ImageLoader::Clear()
 }
 
 //= PROPERTIES =====================================================
-ID3D11ShaderResourceView* ImageLoader::GetAsD3D11ShaderResourceView()
+ID3D11ShaderResourceView* ImageImporter::GetAsD3D11ShaderResourceView()
 {
 	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM; // texture format
 	unsigned int mipLevels = 7; // 0 for a full mip chain. The mip chain will extend to 1x1 at the lowest level, even if the dimensions aren't square.
@@ -155,12 +155,12 @@ ID3D11ShaderResourceView* ImageLoader::GetAsD3D11ShaderResourceView()
 	return shaderResourceView;
 }
 
-unsigned char* ImageLoader::GetRGBA()
+unsigned char* ImageImporter::GetRGBA()
 {
 	return m_dataRGBA.data();
 }
 
-unsigned char* ImageLoader::GetRGBACopy()
+unsigned char* ImageImporter::GetRGBACopy()
 {
 	unsigned char* dataRGBA = new unsigned char[m_width * m_height * 4];
 
@@ -183,7 +183,7 @@ unsigned char* ImageLoader::GetRGBACopy()
 	return dataRGBA;
 }
 
-unsigned char* ImageLoader::GetRGBCopy()
+unsigned char* ImageImporter::GetRGBCopy()
 {
 	unsigned char* m_dataRGB = new unsigned char[m_width * m_height * 3];
 
@@ -202,7 +202,7 @@ unsigned char* ImageLoader::GetRGBCopy()
 	return m_dataRGB;
 }
 
-unsigned char* ImageLoader::GetAlphaCopy()
+unsigned char* ImageImporter::GetAlphaCopy()
 {
 	unsigned char* m_dataAlpha = new unsigned char[m_width * m_height];
 
@@ -216,37 +216,37 @@ unsigned char* ImageLoader::GetAlphaCopy()
 	return m_dataAlpha;
 }
 
-unsigned ImageLoader::GetBPP()
+unsigned ImageImporter::GetBPP()
 {
 	return m_bpp;
 }
 
-unsigned ImageLoader::GetWidth()
+unsigned ImageImporter::GetWidth()
 {
 	return m_width;
 }
 
-unsigned ImageLoader::GetHeight()
+unsigned ImageImporter::GetHeight()
 {
 	return m_height;
 }
 
-bool ImageLoader::IsGrayscale()
+bool ImageImporter::IsGrayscale()
 {
 	return m_grayscale;
 }
 
-bool ImageLoader::IsTransparent()
+bool ImageImporter::IsTransparent()
 {
 	return m_transparent;
 }
 
-std::string ImageLoader::GetPath()
+std::string ImageImporter::GetPath()
 {
 	return m_path;
 }
 
-bool ImageLoader::Load(std::string path, int width, int height, bool scale)
+bool ImageImporter::Load(std::string path, int width, int height, bool scale)
 {
 	// Clear any data left from a previous image loading (if necessary)
 	Clear();
@@ -339,7 +339,7 @@ bool ImageLoader::Load(std::string path, int width, int height, bool scale)
 	return true;
 }
 
-bool ImageLoader::CheckIfGrayscale()
+bool ImageImporter::CheckIfGrayscale()
 {
 	int grayPixels = 0;
 	int scannedPixels = 0;

@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//==============================
+//=======================================
 #include "DirectusAssetLoader.h"
-#include "Loading/ImageLoader.h"
+#include "AssetImporting/ImageImporter.h"
 #include "IO/FileHelper.h"
 #include <QMutex>
 #include "DirectusProgressBar.h"
-//==============================
+//=======================================
 
 DirectusAssetLoader::DirectusAssetLoader(QObject* parent) : QObject(parent)
 {
@@ -87,7 +87,7 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
 {
     emit Started();
 
-    ImageLoader* imageLoader = new ImageLoader();
+    ImageImporter* imageLoader = new ImageImporter();
     QPixmap pixmap;
     if (FileHelper::FileExists(m_filePath))
     {

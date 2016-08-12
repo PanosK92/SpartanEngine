@@ -32,11 +32,11 @@ struct aiScene;
 struct aiMaterial;
 struct aiMesh;
 
-class ModelLoader
+class ModelImporter
 {
 public:
-	ModelLoader();
-	~ModelLoader();
+	ModelImporter();
+	~ModelImporter();
 
 	void Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool);
 	bool Load(std::string path, GameObject* gameObject);

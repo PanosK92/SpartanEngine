@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <memory>
 
-#include "DDSTextureLoader.h"
+#include "DDSTextureImporter.h"
 
 #if !defined(NO_D3D11_DEBUG_NAME) && ( defined(_DEBUG) || defined(PROFILE) )
 #pragma comment(lib,"dxguid.lib")
