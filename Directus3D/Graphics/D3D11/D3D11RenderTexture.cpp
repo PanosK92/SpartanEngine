@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11RenderTexture.h"
 #include "D3D11Graphics.h"
 #include "../../Core/Settings.h"
-#include "../../Core/Globals.h"
+#include "../../Core/Helper.h"
 //==============================
 
 //= NAMESPACES ================

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Script.h"
 #include "../IO/Serializer.h"
 #include "../IO/FileHelper.h"
-#include "../Core/Globals.h"
+#include "../Core/Helper.h"
 #include "../Core/Settings.h"
 //===========================
 

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include "../../Core/Settings.h"
 #include "../../IO/Log.h"
-#include "../../Core/Globals.h"
+#include "../../Core/Helper.h"
 //==============================
 
 //= NAMESPACES ================

@@ -43,13 +43,9 @@ namespace Directus
 		static const float RAD_TO_DEG = 180.0f / PI;
 
 		inline __declspec(dllexport) double Cot(float x) { return cos(x) / sin(x); }
-
 		inline __declspec(dllexport) float CotF(float x) { return cosf(x) / sinf(x); }
-
 		inline __declspec(dllexport) float DegreesToRadians(float degrees){ return degrees * DEG_TO_RAD; }
-
 		inline __declspec(dllexport) float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
-
 		inline __declspec(dllexport) float Clamp(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
 
 		// Lerp linearly between to values

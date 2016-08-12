@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "../IO/Log.h"
-#include "../Core/Globals.h"
+#include "../Core/Helper.h"
 #include <LinearMath/btMotionState.h>
 //===========================================================
 

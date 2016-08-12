@@ -1,7 +1,7 @@
 //= INCLUDES ================
 #include "LineRenderer.h"
 #include "../IO/Log.h"
-#include "../Core/Globals.h"
+#include "../Core/Helper.h"
 //===========================
 
 //= NAMESPACES ================
