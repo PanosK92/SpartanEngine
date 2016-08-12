@@ -61,7 +61,7 @@ XPM files[reading, writing]
 #define FREEIMAGE_LIB
 
 //= INCLUDES ==========================
-#include "../Graphics/GraphicsDevice.h"
+#include "../Graphics/Graphics.h"
 #include <vector>
 //=====================================
 
@@ -81,7 +81,7 @@ public:
 	ImageLoader();
 	~ImageLoader();
 
-	void Initialize(GraphicsDevice* D3D11evice);
+	void Initialize(Graphics* D3D11evice);
 	bool Load(std::string path);
 	bool Load(std::string path, int width, int height);
 	void Clear();
@@ -118,5 +118,5 @@ private:
 	bool m_transparent;
 
 	// dependencies
-	GraphicsDevice* m_graphicsDevice;
+	Graphics* m_graphics;
 };

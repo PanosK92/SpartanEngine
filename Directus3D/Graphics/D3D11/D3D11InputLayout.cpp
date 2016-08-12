@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 D3D11InputLayout::D3D11InputLayout()
 {
 	m_ID3D11InputLayout = nullptr;
-	m_graphicsDevice = nullptr;
+	m_graphics = nullptr;
 }
 
 D3D11InputLayout::~D3D11InputLayout()
@@ -38,14 +38,14 @@ D3D11InputLayout::~D3D11InputLayout()
 }
 
 //= MISC ==================================================
-void D3D11InputLayout::Initialize(GraphicsDevice* graphicsDevice)
+void D3D11InputLayout::Initialize(Graphics* graphicsDevice)
 {
-	m_graphicsDevice = graphicsDevice;
+	m_graphics = graphicsDevice;
 }
 
 void D3D11InputLayout::Set()
 {
-	m_graphicsDevice->GetDeviceContext()->IASetInputLayout(m_ID3D11InputLayout);
+	m_graphics->GetDeviceContext()->IASetInputLayout(m_ID3D11InputLayout);
 }
 
 InputLayout D3D11InputLayout::GetInputLayout()
@@ -56,7 +56,7 @@ InputLayout D3D11InputLayout::GetInputLayout()
 //= LAYOUT CREATION ==================================================
 bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount)
 {
-	HRESULT result = m_graphicsDevice->GetDevice()->CreateInputLayout(
+	HRESULT result = m_graphics->GetDevice()->CreateInputLayout(
 		vertexInputLayout,
 		elementCount,
 		VSBlob->GetBufferPointer(),

@@ -20,72 +20,72 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==============
-#include "GraphicsDevice.h"
+#include "Graphics.h"
 //=========================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
 //=============================
 
-GraphicsDevice::GraphicsDevice()
+Graphics::Graphics()
 {
-	m_D3D11Device = nullptr;
+	m_d3d11Graphics = nullptr;
 	m_cullMode = CullBack;
 	m_inputLayout = PositionTextureNormalTangent;
 }
 
-GraphicsDevice::~GraphicsDevice()
+Graphics::~Graphics()
 {
 
 }
 
-void GraphicsDevice::Initialize(HWND drawPaneHandle)
+void Graphics::Initialize(HWND drawPaneHandle)
 {
-	m_D3D11Device = new D3D11Graphics();
-	m_D3D11Device->Initialize(drawPaneHandle);
+	m_d3d11Graphics = new D3D11Graphics();
+	m_d3d11Graphics->Initialize(drawPaneHandle);
 }
 
-ID3D11Device* GraphicsDevice::GetDevice()
+ID3D11Device* Graphics::GetDevice()
 {
-	return m_D3D11Device->GetDevice();
+	return m_d3d11Graphics->GetDevice();
 }
 
-ID3D11DeviceContext* GraphicsDevice::GetDeviceContext()
+ID3D11DeviceContext* Graphics::GetDeviceContext()
 {
-	return m_D3D11Device->GetDeviceContext();
+	return m_d3d11Graphics->GetDeviceContext();
 }
 
-void GraphicsDevice::Clear(Vector4 color)
+void Graphics::Clear(Vector4 color)
 {
-	m_D3D11Device->Clear(color);
+	m_d3d11Graphics->Clear(color);
 }
 
-void GraphicsDevice::Present()
+void Graphics::Present()
 {
-	m_D3D11Device->Present();
+	m_d3d11Graphics->Present();
 }
 
-void GraphicsDevice::ResetRenderTarget()
+void Graphics::ResetRenderTarget()
 {
-	m_D3D11Device->SetBackBufferRenderTarget();
+	m_d3d11Graphics->SetBackBufferRenderTarget();
 }
 
-void GraphicsDevice::ResetViewport()
+void Graphics::ResetViewport()
 {
-	m_D3D11Device->ResetViewport();
+	m_d3d11Graphics->ResetViewport();
 }
 
-void GraphicsDevice::EnableZBuffer(bool enable)
+void Graphics::EnableZBuffer(bool enable)
 {
-	enable ? m_D3D11Device->TurnZBufferOn() : m_D3D11Device->TurnZBufferOff();
+	enable ? m_d3d11Graphics->TurnZBufferOn() : m_d3d11Graphics->TurnZBufferOff();
 }
 
-void GraphicsDevice::EnableAlphaBlending(bool enable)
+void Graphics::EnableAlphaBlending(bool enable)
 {
-	enable ? m_D3D11Device->TurnOnAlphaBlending() : m_D3D11Device->TurnOffAlphaBlending();
+	enable ? m_d3d11Graphics->TurnOnAlphaBlending() : m_d3d11Graphics->TurnOffAlphaBlending();
 }
 
-bool GraphicsDevice::SetInputLayout(InputLayout inputLayout)
+bool Graphics::SetInputLayout(InputLayout inputLayout)
 {
 	if (m_inputLayout == inputLayout)
 		return false;
@@ -94,7 +94,7 @@ bool GraphicsDevice::SetInputLayout(InputLayout inputLayout)
 	return true;
 }
 
-void GraphicsDevice::SetCullMode(CullMode cullMode)
+void Graphics::SetCullMode(CullMode cullMode)
 {
 	// Set face CullMode only if not already set
 	if (m_cullMode == cullMode)
@@ -102,17 +102,17 @@ void GraphicsDevice::SetCullMode(CullMode cullMode)
 
 	// Set CullMode mode
 	if (cullMode == CullBack)
-		m_D3D11Device->SetFaceCullMode(D3D11_CULL_BACK);
+		m_d3d11Graphics->SetFaceCullMode(D3D11_CULL_BACK);
 	else if (cullMode == CullFront)
-		m_D3D11Device->SetFaceCullMode(D3D11_CULL_FRONT);
+		m_d3d11Graphics->SetFaceCullMode(D3D11_CULL_FRONT);
 	else if (cullMode == CullNone)
-		m_D3D11Device->SetFaceCullMode(D3D11_CULL_NONE);
+		m_d3d11Graphics->SetFaceCullMode(D3D11_CULL_NONE);
 
 	// Save the current CullMode mode
 	m_cullMode = cullMode;
 }
 
-void GraphicsDevice::SetViewport(int width, int height)
+void Graphics::SetViewport(int width, int height)
 {
-	m_D3D11Device->SetResolution(width, height);
+	m_d3d11Graphics->SetResolution(width, height);
 }

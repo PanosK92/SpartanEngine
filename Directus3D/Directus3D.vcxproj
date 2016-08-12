@@ -158,7 +158,7 @@
     <ClCompile Include="Graphics\Frustrum.cpp" />
     <ClCompile Include="Graphics\FullScreenQuad.cpp" />
     <ClCompile Include="Graphics\GBuffer.cpp" />
-    <ClCompile Include="Graphics\GraphicsDevice.cpp" />
+    <ClCompile Include="Graphics\Graphics.cpp" />
     <ClCompile Include="Graphics\Renderer.cpp" />
     <ClCompile Include="Graphics\Shaders\ColorShader.cpp" />
     <ClCompile Include="Graphics\Shaders\DebugShader.cpp" />
@@ -230,7 +230,7 @@
     <ClInclude Include="Graphics\Frustrum.h" />
     <ClInclude Include="Graphics\FullScreenQuad.h" />
     <ClInclude Include="Graphics\GBuffer.h" />
-    <ClInclude Include="Graphics\GraphicsDevice.h" />
+    <ClInclude Include="Graphics\Graphics.h" />
     <ClInclude Include="Graphics\Renderer.h" />
     <ClInclude Include="Graphics\Shaders\ColorShader.h" />
     <ClInclude Include="Graphics\Shaders\DebugShader.h" />

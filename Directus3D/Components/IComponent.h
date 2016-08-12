@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class GameObject;
 class Transform;
-class GraphicsDevice;
+class Graphics;
 class Scene;
 class Renderer;
 class PhysicsWorld;
@@ -57,7 +57,7 @@ public:
 	//= SOME USEFUL POINTERS =========
 	GameObject* g_gameObject;
 	Transform* g_transform;
-	GraphicsDevice* g_graphicsDevice;
+	Graphics* g_graphicsDevice;
 	Scene* g_scene;
 	Renderer* g_renderer;
 	MeshPool* g_meshPool;

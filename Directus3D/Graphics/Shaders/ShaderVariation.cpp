@@ -34,7 +34,7 @@ using namespace std;
 
 ShaderVariation::ShaderVariation()
 {
-	m_graphicsDevice = nullptr;
+	m_graphics = nullptr;
 	m_D3D11Shader = nullptr;
 	m_befaultBuffer = nullptr;
 
@@ -64,7 +64,7 @@ void ShaderVariation::Initialize(
 	bool emission,
 	bool mask,
 	bool cubemap,
-	GraphicsDevice* graphicsDevice
+	Graphics* graphicsDevice
 )
 {
 	// Save the properties of the material
@@ -78,7 +78,7 @@ void ShaderVariation::Initialize(
 	m_hasMaskTexture = mask;
 	m_hasCubeMap = cubemap;
 
-	m_graphicsDevice = graphicsDevice;
+	m_graphics = graphicsDevice;
 	m_ID = GENERATE_GUID; // generate an ID for this shader
 	Load(); // load the shader
 }
@@ -106,7 +106,7 @@ void ShaderVariation::Load()
 {
 	// load the vertex and the pixel shader
 	m_D3D11Shader = new D3D11Shader();
-	m_D3D11Shader->Initialize(m_graphicsDevice);
+	m_D3D11Shader->Initialize(m_graphics);
 	AddDefinesBasedOnMaterial();
 	m_D3D11Shader->Load("Assets/Shaders/GBuffer.hlsl");
 	m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
@@ -114,7 +114,7 @@ void ShaderVariation::Load()
 
 	// material buffer
 	m_befaultBuffer = new D3D11Buffer();
-	m_befaultBuffer->Initialize(m_graphicsDevice);
+	m_befaultBuffer->Initialize(m_graphics);
 	m_befaultBuffer->CreateConstantBuffer(sizeof(DefaultBufferType));
 }
 
@@ -175,10 +175,10 @@ void ShaderVariation::Render(int indexCount,
 	m_befaultBuffer->SetPS(0); // set buffer in the pixel shader
 
 	//= SET TEXTURES ========================================================================================
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, textureArray.size(), &textureArray.front());
+	m_graphics->GetDeviceContext()->PSSetShaderResources(0, textureArray.size(), &textureArray.front());
 
 	//= DRAW ===========================================================
-	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
 string ShaderVariation::GetID() const

@@ -35,7 +35,7 @@ using namespace Directus::Math;
 
 DeferredShader::DeferredShader()
 {
-	m_graphicsDevice = nullptr;
+	m_graphics = nullptr;
 	m_constantBuffer = nullptr;
 	m_shader = nullptr;
 }
@@ -46,13 +46,13 @@ DeferredShader::~DeferredShader()
 	SafeDelete(m_shader);
 }
 
-void DeferredShader::Initialize(GraphicsDevice* graphicsDevice)
+void DeferredShader::Initialize(Graphics* graphicsDevice)
 {
-	m_graphicsDevice = graphicsDevice;
+	m_graphics = graphicsDevice;
 
 	// load the vertex and the pixel shader
 	m_shader = new D3D11Shader();
-	m_shader->Initialize(m_graphicsDevice);
+	m_shader->Initialize(m_graphics);
 	m_shader->Load("Assets/Shaders/Deferred.hlsl");
 	m_shader->SetInputLayout(PositionTextureNormalTangent);
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
@@ -60,7 +60,7 @@ void DeferredShader::Initialize(GraphicsDevice* graphicsDevice)
 
 	//= CREATE DEFAULT CONSTANT BUFFER ===========================
 	m_constantBuffer = new D3D11Buffer();
-	m_constantBuffer->Initialize(m_graphicsDevice);
+	m_constantBuffer->Initialize(m_graphics);
 	m_constantBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 	//============================================================
 }
@@ -127,15 +127,15 @@ void DeferredShader::Render(
 	m_constantBuffer->SetPS(0);
 
 	//= SET TEXTURES =======================================================================================
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(0, UINT(textures.size()), &textures.front());
-	m_graphicsDevice->GetDeviceContext()->PSSetShaderResources(UINT(textures.size()), 1, &environmentTex);
+	m_graphics->GetDeviceContext()->PSSetShaderResources(0, UINT(textures.size()), &textures.front());
+	m_graphics->GetDeviceContext()->PSSetShaderResources(UINT(textures.size()), 1, &environmentTex);
 	//======================================================================================================
 
 	//= SET SHADER ===============================================================
 	m_shader->Set();
 
 	//= DRAW =====================================================================
-	m_graphicsDevice->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
 bool DeferredShader::IsCompiled()

@@ -47,7 +47,7 @@ using namespace Directus::Math;
 
 Renderer::Renderer()
 {
-	m_graphicsDevice = nullptr;
+	m_graphics = nullptr;
 	m_GBuffer = nullptr;
 	m_fullScreenQuad = nullptr;
 	m_renderedMeshesCount = 0;
@@ -92,48 +92,48 @@ Renderer::~Renderer()
 	SafeDelete(m_renderTexPong);
 }
 
-void Renderer::Initialize(GraphicsDevice* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene)
+void Renderer::Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene)
 {
 	m_timer = timer;
 	m_physics = physics;
 	m_scene = scene;
 
-	m_graphicsDevice = d3d11device;
+	m_graphics = d3d11device;
 
-	m_GBuffer = new GBuffer(m_graphicsDevice);
+	m_GBuffer = new GBuffer(m_graphics);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_frustrum = new Frustrum();
 
 	m_fullScreenQuad = new FullScreenQuad;
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphicsDevice);
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
 	/*------------------------------------------------------------------------------
 									[SHADERS]
 	------------------------------------------------------------------------------*/
 	m_shaderDeferred = new DeferredShader();
-	m_shaderDeferred->Initialize(m_graphicsDevice);
+	m_shaderDeferred->Initialize(m_graphics);
 
 	m_shaderDepth = new DepthShader();
-	m_shaderDepth->Initialize(m_graphicsDevice);
+	m_shaderDepth->Initialize(m_graphics);
 
 	m_shaderDebug = new DebugShader();
-	m_shaderDebug->Initialize(m_graphicsDevice);
+	m_shaderDebug->Initialize(m_graphics);
 
 	m_shaderFXAA = new PostProcessShader();
-	m_shaderFXAA->Initialize("FXAA", m_graphicsDevice);
+	m_shaderFXAA->Initialize("FXAA", m_graphics);
 
 	m_shaderSharpening = new PostProcessShader();
-	m_shaderSharpening->Initialize("SHARPENING", m_graphicsDevice);
+	m_shaderSharpening->Initialize("SHARPENING", m_graphics);
 
 	/*------------------------------------------------------------------------------
 								[RENDER TEXTURES]
 	------------------------------------------------------------------------------*/
 	m_renderTexPing = new D3D11RenderTexture;
-	m_renderTexPing->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPing->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_renderTexPong = new D3D11RenderTexture;
-	m_renderTexPong->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPong->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	/*------------------------------------------------------------------------------
 										[MISC]
@@ -152,20 +152,20 @@ void Renderer::Render()
 
 	if (!m_camera)
 	{
-		m_graphicsDevice->Clear(Vector4(0, 0, 0, 1));
-		m_graphicsDevice->Present();
+		m_graphics->Clear(Vector4(0, 0, 0, 1));
+		m_graphics->Present();
 		return;
 	}
 
 	if (m_renderables.empty())
 	{
-		m_graphicsDevice->Clear(m_camera->GetClearColor());
-		m_graphicsDevice->Present();
+		m_graphics->Clear(m_camera->GetClearColor());
+		m_graphics->Present();
 		return;
 	}
 
 	// ENABLE Z-BUFFER
-	m_graphicsDevice->EnableZBuffer(true);
+	m_graphics->EnableZBuffer(true);
 
 	// Render light depth
 	if (m_directionalLight)
@@ -178,7 +178,7 @@ void Renderer::Render()
 	GBufferPass(m_renderables);
 
 	// DISABLE Z BUFFER - SET FULLSCREEN QUAD
-	m_graphicsDevice->EnableZBuffer(false);
+	m_graphics->EnableZBuffer(false);
 	m_fullScreenQuad->SetBuffers();
 
 	// Deferred Pass
@@ -192,7 +192,7 @@ void Renderer::Render()
 		Gizmos();
 
 	// display frame
-	m_graphicsDevice->Present();
+	m_graphics->Present();
 
 	StopCalculatingStats();
 
@@ -209,23 +209,23 @@ void Renderer::SetResolution(int width, int height)
 
 	SET_RESOLUTION(width, height);
 
-	m_graphicsDevice->SetViewport(width, height);
+	m_graphics->SetViewport(width, height);
 
 	SafeDelete(m_GBuffer);
-	m_GBuffer = new GBuffer(m_graphicsDevice);
+	m_GBuffer = new GBuffer(m_graphics);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	SafeDelete(m_fullScreenQuad);
 	m_fullScreenQuad = new FullScreenQuad;
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphicsDevice);
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
 	SafeDelete(m_renderTexPing);
 	m_renderTexPing = new D3D11RenderTexture;
-	m_renderTexPing->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPing->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	SafeDelete(m_renderTexPong);
 	m_renderTexPong = new D3D11RenderTexture;
-	m_renderTexPong->Initialize(m_graphicsDevice, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPong->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 }
 
 void Renderer::Clear()
@@ -295,7 +295,7 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 	// Some say that you should cull the front faces to avoid self-shadowing,
 	// But any object with improper front-face or back-face geometry causes artifacts in the shadow map.
 	// For now, we don't change the culling. I don't trust assimp and free 3d models.
-	//m_graphicsDevice->SetCullMode(CullFront);	
+	//m_graphics->SetCullMode(CullFront);	
 
 	for (int cascadeIndex = 0; cascadeIndex < light->GetCascadeCount(); cascadeIndex++)
 	{
@@ -391,7 +391,7 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 		if (buffersHaveBeenSet)
 		{
 			// Set face culling
-			m_graphicsDevice->SetCullMode(material->GetFaceCullMode());
+			m_graphics->SetCullMode(material->GetFaceCullMode());
 
 			//= Render =================================================================
 			meshRenderer->Render(mesh->GetIndexCount(), mView, mProjection, m_directionalLight, m_camera);
@@ -451,9 +451,9 @@ void Renderer::PostProcessing() const
 		m_renderTexPing->GetShaderResourceView()
 	);
 
-	m_graphicsDevice->ResetRenderTarget();
-	m_graphicsDevice->ResetViewport();
-	m_graphicsDevice->Clear(m_camera->GetClearColor());
+	m_graphics->ResetRenderTarget();
+	m_graphics->ResetViewport();
+	m_graphics->Clear(m_camera->GetClearColor());
 
 	// sharpening pass
 	m_shaderSharpening->Render(

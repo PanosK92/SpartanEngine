@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Socket::Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, GraphicsDevice* graphicsDevice)
+Socket::Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelLoader* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, Graphics* graphicsDevice)
 {
 	m_engine = engine;
 	m_scene = scene;
@@ -46,7 +46,7 @@ Socket::Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, T
 	m_modelLoader = modelLoader;
 	m_physics = physics;
 	m_texturePool = texturePool;
-	m_graphicsDevice = graphicsDevice;
+	m_graphics = graphicsDevice;
 	m_input = input;
 }
 

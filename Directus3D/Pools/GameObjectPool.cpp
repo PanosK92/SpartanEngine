@@ -35,7 +35,7 @@ using namespace std;
 
 GameObjectPool::GameObjectPool()
 {
-	m_graphicsDevice = nullptr;
+	m_graphics = nullptr;
 	m_scene = nullptr;
 	m_meshPool = nullptr;
 	m_materialPool = nullptr;
@@ -50,9 +50,9 @@ GameObjectPool::~GameObjectPool()
 	DeleteAll();
 }
 
-void GameObjectPool::Initialize(GraphicsDevice* d3d11Device, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine)
+void GameObjectPool::Initialize(Graphics* d3d11Device, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine)
 {
-	m_graphicsDevice = d3d11Device;
+	m_graphics = d3d11Device;
 	m_scene = scene;
 	m_renderer = renderer;
 	m_meshPool = meshPool;
@@ -305,7 +305,7 @@ void GameObjectPool::AddGameObjectToPool(GameObject* gameObject)
 			return;
 	}
 
-	gameObject->Initialize(m_graphicsDevice, m_scene, m_renderer, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physics, m_scriptEngine);
+	gameObject->Initialize(m_graphics, m_scene, m_renderer, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physics, m_scriptEngine);
 	m_gameObjectPool.push_back(gameObject);
 
 	m_scene->AnalyzeGameObjects();

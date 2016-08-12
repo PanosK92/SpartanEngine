@@ -74,9 +74,9 @@ GameObject::~GameObject()
 	m_hierarchyVisibility = true;
 }
 
-void GameObject::Initialize(GraphicsDevice* graphicsDevice, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine)
+void GameObject::Initialize(Graphics* graphicsDevice, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine)
 {
-	m_graphicsDevice = graphicsDevice;
+	m_graphics = graphicsDevice;
 	m_scene = scene;
 	m_renderer = renderer;
 	m_meshPool = meshPool;
@@ -209,7 +209,7 @@ Type* GameObject::AddComponent()
 	// Set some useful pointers.
 	component->g_gameObject = this;
 	component->g_transform = GetTransform();
-	component->g_graphicsDevice = m_graphicsDevice;
+	component->g_graphicsDevice = m_graphics;
 	component->g_meshPool = m_meshPool;
 	component->g_scene = m_scene;
 	component->g_renderer = m_renderer;
