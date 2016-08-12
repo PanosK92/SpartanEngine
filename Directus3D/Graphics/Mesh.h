@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES =====================
 #include <vector>
 #include "Vertex.h"
-#include "GUIDGenerator.h"
+#include "../Core/GUIDGenerator.h"
 #include "../IO/Serializer.h"
 #include <functional>
-//===========================
+//===============================
 
 class Mesh
 {

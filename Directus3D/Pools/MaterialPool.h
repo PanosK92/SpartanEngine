@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ====================
 #include "ShaderPool.h"
 #include "TexturePool.h"
-#include "../Core/Material.h"
-//============================
+#include "../Graphics/Material.h"
+//===============================
 
 class MaterialPool
 {

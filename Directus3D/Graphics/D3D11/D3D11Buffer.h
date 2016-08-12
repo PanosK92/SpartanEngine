@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "../GraphicsDevice.h"
 #include <vector>
-#include "../../Core/Vertex.h"
+#include "../Vertex.h"
 //============================
 
 class D3D11Buffer

@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES ================
 #include "IComponent.h"
-#include "../Core/Mesh.h"
-//=======================
+#include "../Graphics/Mesh.h"
+//===========================
 
 class RigidBody;
 class MeshFilter;

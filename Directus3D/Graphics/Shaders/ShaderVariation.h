@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ====================
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/Vector4.h"
-#include "../../Core/Material.h"
+#include "../Material.h"
 #include "../GraphicsDevice.h"
-//=================================
+//===============================
 
 #define NULL_SHADER_ID "-1";
 

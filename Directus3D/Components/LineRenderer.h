@@ -3,7 +3,7 @@
 //= INCLUDES =============================
 #include "IComponent.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
-#include "../Core/Vertex.h"
+#include "../Graphics/Vertex.h"
 //========================================
 
 class __declspec(dllexport) LineRenderer : public IComponent
