@@ -32,7 +32,6 @@ using namespace Directus::Math;
 //=============================
 
 ILogger* Log::m_logger;
-map<string, Log::LogType> Log::m_queuedLogs;
 
 void Log::Initialize()
 {
@@ -70,17 +69,9 @@ void Log::Write(string text, LogType type) // all functions resolve to that one
 
 	if (!m_logger)
 	{
-		m_queuedLogs.insert(make_pair(text, type));
 		WriteAsText(finalText, type);
 		return;
 	}
-
-	// Print any queued logs
-	for (auto it = m_queuedLogs.begin(); it != m_queuedLogs.end(); ++it)
-	{
-		m_logger->Log(it->first, it->second);
-	}
-	m_queuedLogs.clear();
 
 	// Print the log
 	m_logger->Log(finalText, type);
@@ -88,12 +79,28 @@ void Log::Write(string text, LogType type) // all functions resolve to that one
 
 void Log::WriteAsText(string text, LogType type)
 {
+	string prefix = "";
+
+	if (type == Info)
+		prefix = "Info:";
+
+	if (type == Warning)
+		prefix = "Warning:";
+
+	if (type == Error)
+		prefix = "Error:";
+
+	if (type == Undefined)
+		prefix = "Undefined:";
+
+	string finalText = prefix + " " + text;
+
 	// Open a file to write the error message to.
 	ofstream fout;
-	fout.open("error.txt");
+	fout.open("log.txt");
 
 	// Write out the error message.
-	fout << text << endl;
+	fout << finalText << endl;
 
 	// Close the file.
 	fout.close();

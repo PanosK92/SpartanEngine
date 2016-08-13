@@ -197,10 +197,7 @@ void Collider::SetRigidBodyCollisionShape(btCollisionShape* shape) const
 {
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 	if (rigidBody)
-	{
 		rigidBody->SetCollisionShape(shape);
-		LOG("Collider got assigned to the RigidBody.");
-	}
 }
 
 Mesh* Collider::GetMeshFromAttachedMeshFilter() const
