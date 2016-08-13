@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ScriptEngine.h"
 #include "../IO/Log.h"
 #include "../IO/FileHelper.h"
-
 //========================================
 
 Module::Module(string moduleName, ScriptEngine* scriptEngine)

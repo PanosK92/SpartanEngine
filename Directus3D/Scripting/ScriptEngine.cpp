@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Module.h"
 #include "../IO/Log.h"
 #include "../IO/FileHelper.h"
-#include "../Core/Settings.h"
 //==========================================
 
 #define AS_USE_STLNAMES = 1
@@ -78,7 +77,7 @@ bool ScriptEngine::Initialize()
 
 void ScriptEngine::Reset()
 {
-	for (unsigned int n = 0; n < m_contexts.size(); n++)
+	for (auto n = 0; n < m_contexts.size(); n++)
 		m_contexts[n]->Release();
 
 	m_contexts.clear();

@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ILogger.h"
 #include "../Math/Quaternion.h"
 #include <map>
-#include <memory>
 //=============================
 
 #define LOG_INFO(text) Log::Write(text, Log::Info)
@@ -67,5 +66,4 @@ public:
 
 private:
 	static ILogger* m_logger;
-	static std::map<std::string, LogType> m_queuedLogs;
 };

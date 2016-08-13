@@ -94,8 +94,7 @@ bool Script::AddScript(string path)
 	// If the script didn't instantiate successfully, don't bother with anything
 	if (!m_scriptInstance->IsInstantiated())
 	{
-		delete m_scriptInstance;
-		m_scriptInstance = nullptr;
+		SafeDelete(m_scriptInstance);
 		return false;
 	}
 
