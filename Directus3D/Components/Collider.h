@@ -59,7 +59,7 @@ public:
 									[PROPERTIES]
 	------------------------------------------------------------------------------*/
 	const Directus::Math::Vector3& GetBoundingBox() const;
-	void SetBoundingBox(const Directus::Math::Vector3& boundingBox);
+	void SetBoundingBox(Directus::Math::Vector3& boundingBox);
 
 	const Directus::Math::Vector3& GetCenter() const;
 	void SetCenter(const Directus::Math::Vector3& center);
@@ -70,15 +70,15 @@ public:
 	btCollisionShape* GetBtCollisionShape() const;
 
 private:
+	//= HELPER FUNCTIONS ======================================================
+	void ConstructCollisionShape();
+	void DeleteCollisionShape();
+	void SetRigidBodyCollisionShape(btCollisionShape* shape) const;
+	Mesh* GetMeshFromAttachedMeshFilter() const;
+	//=========================================================================
+
 	ColliderShape m_shapeType;
 	btCollisionShape* m_shape;
 	Directus::Math::Vector3 m_boundingBox;
 	Directus::Math::Vector3 m_center;
-
-	/*------------------------------------------------------------------------------
-										[MISC]
-	------------------------------------------------------------------------------*/
-	void ConstructCollisionShape();
-	void SetRigidBodyCollisionShape(btCollisionShape* shape) const;
-	Mesh* GetMeshFromAttachedMeshFilter() const;
 };

@@ -79,11 +79,11 @@ public:
 	bool GetKinematic() const;
 
 	//= VELOCITY/FORCE/TORQUE =======================================
-	void SetLinearVelocity(const Directus::Math::Vector3& velocity);
+	void SetLinearVelocity(const Directus::Math::Vector3& velocity) const;
 	void SetAngularVelocity(const Directus::Math::Vector3& velocity);
-	void ApplyForce(const Directus::Math::Vector3& force, ForceMode mode);
-	void ApplyForceAtPosition(const Directus::Math::Vector3& force, Directus::Math::Vector3 position, ForceMode mode);
-	void ApplyTorque(const Directus::Math::Vector3& torque, ForceMode mode);
+	void ApplyForce(const Directus::Math::Vector3& force, ForceMode mode) const;
+	void ApplyForceAtPosition(const Directus::Math::Vector3& force, Directus::Math::Vector3 position, ForceMode mode) const;
+	void ApplyTorque(const Directus::Math::Vector3& torque, ForceMode mode) const;
 
 	//= POSITION LOCK =================================
 	void SetPositionLock(bool lock);
@@ -99,11 +99,11 @@ public:
 
 	//= POSITION ============================================
 	Directus::Math::Vector3 GetPosition() const;
-	void SetPosition(const Directus::Math::Vector3& position);
+	void SetPosition(const Directus::Math::Vector3& position) const;
 
 	//= ROTATION ============================================
 	Directus::Math::Quaternion GetRotation() const;
-	void SetRotation(const Directus::Math::Quaternion& rotation);
+	void SetRotation(const Directus::Math::Quaternion& rotation) const;
 
 	//= MISC ================================================
 	void SetCollisionShape(btCollisionShape* shape);
@@ -115,7 +115,9 @@ private:
 	//= HELPER FUNCTIONS ========================================
 	void AddBodyToWorld();
 	void RemoveBodyFromWorld();
-	void UpdateGravity();
+	void UpdateGravity() const;
+	void DeleteBtRigidBody();
+	//===========================================================
 	void Activate() const;
 
 	btRigidBody* m_rigidBody;

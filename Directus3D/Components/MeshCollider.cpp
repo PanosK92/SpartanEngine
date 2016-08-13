@@ -30,9 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../IO/Log.h"
-#include "../Core/Helper.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Pools/MeshPool.h"
+#include "../Core/Helper.h"
 //====================================================================
 
 //= NAMESPACES =====
@@ -48,14 +48,14 @@ MeshCollider::MeshCollider()
 
 MeshCollider::~MeshCollider()
 {
-	
+
 }
 
 //= ICOMPONENT ========================================
 void MeshCollider::Initialize()
 {
 	SetMesh(GetMeshFromAttachedMeshFilter());
-	ConstructFromVertexCloud();
+	ConstructCollisionShape();
 }
 
 void MeshCollider::Start()
@@ -65,8 +65,7 @@ void MeshCollider::Start()
 
 void MeshCollider::Remove()
 {
-	SetCollisionShapeToRigidBody(nullptr);
-	SafeDelete(m_collisionShape);
+	DeleteCollisionShape();
 }
 
 void MeshCollider::Update()
@@ -84,9 +83,10 @@ void MeshCollider::Deserialize()
 {
 	m_convex = Serializer::LoadBool();
 	m_mesh = g_meshPool->GetMesh(Serializer::LoadSTR());
-	LOG(m_mesh->GetName());
-	ConstructFromVertexCloud();
+
+	ConstructCollisionShape();
 }
+//======================================================================================================================
 
 bool MeshCollider::GetConvex() const
 {
@@ -96,7 +96,7 @@ bool MeshCollider::GetConvex() const
 void MeshCollider::SetConvex(bool isConvex)
 {
 	m_convex = isConvex;
-	ConstructFromVertexCloud();
+	ConstructCollisionShape();
 }
 
 Mesh* MeshCollider::GetMesh() const
@@ -107,11 +107,11 @@ Mesh* MeshCollider::GetMesh() const
 void MeshCollider::SetMesh(Mesh* mesh)
 {
 	m_mesh = mesh;
+	ConstructCollisionShape();
 }
-//======================================================================================================================
 
-//= HELPER FUNCTIONS ===================================================================================================
-void MeshCollider::ConstructFromVertexCloud()
+//= HELPER FUNCTIONS ================================================================================================
+void MeshCollider::ConstructCollisionShape()
 {
 	if (!m_mesh)
 		return;
@@ -122,6 +122,7 @@ void MeshCollider::ConstructFromVertexCloud()
 		return;
 	}
 
+	DeleteCollisionShape();
 	//= contruct collider ========================================================================================
 	btTriangleMesh* trimesh = new btTriangleMesh();
 	vector<Directus::Math::Vector3> vertices;
@@ -162,16 +163,25 @@ void MeshCollider::ConstructFromVertexCloud()
 	SetCollisionShapeToRigidBody(m_collisionShape);
 }
 
-void MeshCollider::SetCollisionShapeToRigidBody(btCollisionShape* collisionShape) const
+void MeshCollider::SetCollisionShapeToRigidBody(btCollisionShape* shape) const
 {
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 	if (rigidBody)
-		rigidBody->SetCollisionShape(collisionShape);
+		rigidBody->SetCollisionShape(shape);
 }
 
 Mesh* MeshCollider::GetMeshFromAttachedMeshFilter() const
 {
 	MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
 	return meshFilter ? meshFilter->GetMesh() : nullptr;
+}
+
+void MeshCollider::DeleteCollisionShape()
+{
+	if (m_collisionShape)
+	{
+		SafeDelete(m_collisionShape);
+		SetCollisionShapeToRigidBody(m_collisionShape);	
+	}
 }
 //======================================================================================================================

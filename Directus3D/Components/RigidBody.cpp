@@ -85,11 +85,7 @@ RigidBody::RigidBody()
 
 RigidBody::~RigidBody()
 {
-	if (!m_rigidBody)
-		return;
-
-	SetCollisionShape(nullptr);
-	SafeDelete(m_rigidBody);
+	DeleteBtRigidBody();
 }
 
 //= ICOMPONENT ==========================================================
@@ -105,7 +101,7 @@ void RigidBody::Start()
 
 void RigidBody::Remove()
 {
-	g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody);
+	
 }
 
 void RigidBody::Update()
@@ -230,7 +226,7 @@ bool RigidBody::GetKinematic() const
 //=======================================================================
 
 //= FORCE/TORQUE ========================================================
-void RigidBody::SetLinearVelocity(const Vector3& velocity)
+void RigidBody::SetLinearVelocity(const Vector3& velocity) const
 {
 	if (!m_rigidBody)
 		return;
@@ -250,7 +246,7 @@ void RigidBody::SetAngularVelocity(const Vector3& velocity)
 		Activate();
 }
 
-void RigidBody::ApplyForce(const Vector3& force, ForceMode mode)
+void RigidBody::ApplyForce(const Vector3& force, ForceMode mode) const
 {
 	Activate();
 
@@ -260,7 +256,7 @@ void RigidBody::ApplyForce(const Vector3& force, ForceMode mode)
 		m_rigidBody->applyCentralImpulse(ToBtVector3(force));
 }
 
-void RigidBody::ApplyForceAtPosition(const Vector3& force, Vector3 position, ForceMode mode)
+void RigidBody::ApplyForceAtPosition(const Vector3& force, Vector3 position, ForceMode mode) const
 {
 	Activate();
 
@@ -270,7 +266,7 @@ void RigidBody::ApplyForceAtPosition(const Vector3& force, Vector3 position, For
 		m_rigidBody->applyImpulse(ToBtVector3(force), ToBtVector3(position));
 }
 
-void RigidBody::ApplyTorque(const Vector3& torque, ForceMode mode)
+void RigidBody::ApplyTorque(const Vector3& torque, ForceMode mode) const
 {
 	Activate();
 
@@ -331,7 +327,7 @@ Vector3 RigidBody::GetPosition() const
 	return m_rigidBody ? ToVector3(m_rigidBody->getWorldTransform().getOrigin()) : Vector3::Zero;
 }
 
-void RigidBody::SetPosition(const Vector3& position)
+void RigidBody::SetPosition(const Vector3& position) const
 {
 	if (!m_rigidBody)
 		return;
@@ -351,7 +347,7 @@ Quaternion RigidBody::GetRotation() const
 	return m_rigidBody ? ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) : Quaternion::Identity;
 }
 
-void RigidBody::SetRotation(const Quaternion& rotation)
+void RigidBody::SetRotation(const Quaternion& rotation) const
 {
 	if (!m_rigidBody)
 		return;
@@ -406,8 +402,7 @@ void RigidBody::AddBodyToWorld()
 	if (m_rigidBody)
 	{
 		inertia = m_rigidBody->getLocalInertia(); // save the inertia
-		g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody);
-		SafeDelete(m_rigidBody);
+		DeleteBtRigidBody();
 	}
 
 	// Colision Shape
@@ -475,7 +470,7 @@ void RigidBody::RemoveBodyFromWorld()
 	}
 }
 
-void RigidBody::UpdateGravity()
+void RigidBody::UpdateGravity() const
 {
 	if (!m_rigidBody)
 		return;
@@ -493,6 +488,16 @@ void RigidBody::UpdateGravity()
 		m_rigidBody->setGravity(world->getGravity());
 	else
 		m_rigidBody->setGravity(btVector3(0.0f, 0.0f, 0.0f));
+}
+
+void RigidBody::DeleteBtRigidBody()
+{
+	if (!m_rigidBody || !g_physicsWorld)
+		return;
+	
+	g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody);
+	delete m_rigidBody->getMotionState();
+	SafeDelete(m_rigidBody);
 }
 
 void RigidBody::Activate() const

@@ -129,14 +129,14 @@ void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_gridLayout->addWidget(m_line, row, 0, 1, 7);
     //==============================================================================
 
-    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
-    connect(m_shapeType,    SIGNAL(currentIndexChanged(int)),   this, SLOT(MapType()));
-    connect(m_centerX,      SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
-    connect(m_centerY,      SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
-    connect(m_centerZ,      SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
-    connect(m_sizeX,        SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
-    connect(m_sizeY,        SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
-    connect(m_sizeZ,        SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
+    connect(m_optionsButton,    SIGNAL(Remove()),                   this, SLOT(Remove()));
+    connect(m_shapeType,        SIGNAL(currentIndexChanged(int)),   this, SLOT(MapType()));
+    connect(m_centerX,          SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
+    connect(m_centerY,          SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
+    connect(m_centerZ,          SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));
+    connect(m_sizeX,            SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
+    connect(m_sizeY,            SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
+    connect(m_sizeZ,            SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -162,28 +162,40 @@ void DirectusCollider::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
-    ReflectType(m_inspectedCollider->GetShapeType());
-    ReflectCenter(m_inspectedCollider->GetCenter());
-    ReflectSize(m_inspectedCollider->GetBoundingBox());
+    ReflectType();
+    ReflectCenter();
+    ReflectSize();
 
     // Make this widget visible
     this->show();
 }
 
-void DirectusCollider::ReflectType(ColliderShape shape)
+void DirectusCollider::ReflectType()
 {
+    if (!m_inspectedCollider)
+        return;
+
+    ColliderShape shape = m_inspectedCollider->GetShapeType();
     m_shapeType->setCurrentIndex((int)shape);
 }
 
-void DirectusCollider::ReflectCenter(Directus::Math::Vector3 center)
+void DirectusCollider::ReflectCenter()
 {
+    if (!m_inspectedCollider)
+        return;
+
+    Directus::Math::Vector3 center = m_inspectedCollider->GetCenter();
     m_centerX->SetFromFloat(center.x);
     m_centerY->SetFromFloat(center.y);
     m_centerZ->SetFromFloat(center.z);
 }
 
-void DirectusCollider::ReflectSize(Directus::Math::Vector3 size)
+void DirectusCollider::ReflectSize()
 {
+    if (!m_inspectedCollider)
+        return;
+
+    Directus::Math::Vector3 size = m_inspectedCollider->GetBoundingBox();
     m_sizeX->SetFromFloat(size.x);
     m_sizeY->SetFromFloat(size.y);
     m_sizeZ->SetFromFloat(size.z);
@@ -204,8 +216,8 @@ void DirectusCollider::MapCenter()
         m_centerY->GetAsFloat(),
         m_centerZ->GetAsFloat()
     );
-    m_inspectedCollider->SetCenter(center);
 
+    m_inspectedCollider->SetCenter(center);
     m_directusCore->Update();
 }
 
@@ -216,8 +228,8 @@ void DirectusCollider::MapSize()
         m_sizeY->GetAsFloat(),
         m_sizeZ->GetAsFloat()
     );
-    m_inspectedCollider->SetBoundingBox(size);
 
+    m_inspectedCollider->SetBoundingBox(size);
     m_directusCore->Update();
 }
 

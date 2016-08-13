@@ -156,8 +156,10 @@ void GameObject::Serialize()
 	{
 		Serializer::SaveSTR(it->first); // save component's type
 		Serializer::SaveSTR(it->second->g_ID); // save component's id
-		it->second->Serialize(); // save the component
 	}
+
+	for (auto it = m_components.begin(); it != m_components.end(); ++it)
+		it->second->Serialize();
 }
 
 void GameObject::Deserialize()
@@ -174,9 +176,14 @@ void GameObject::Deserialize()
 		string id = Serializer::LoadSTR(); // laad component's id
 
 		IComponent* component = AddComponentBasedOnType(type);
-		component->Deserialize();
 		component->g_ID = id;
 	}
+
+	// Sometimes there are component dependencies, e.g. a collider that needs
+	// to set it's shape to a rigibody. So, it's important to first create all 
+	// the components (like above) and then deserialize them (like here).
+	for (auto it = m_components.begin(); it != m_components.end(); ++it)
+		it->second->Deserialize();
 }
 
 template <class Type>

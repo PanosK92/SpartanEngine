@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btCapsuleShape.h>
 #include "../Core/Helper.h"
 #include "Transform.h"
+#include "../IO/Log.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -49,7 +50,7 @@ Collider::Collider()
 
 Collider::~Collider()
 {
-	SafeDelete(m_shape);
+
 }
 
 //= ICOMPONENT ========================================================================
@@ -72,7 +73,7 @@ void Collider::Start()
 
 void Collider::Remove()
 {
-	SetRigidBodyCollisionShape(nullptr);
+	DeleteCollisionShape();
 }
 
 void Collider::Update()
@@ -102,12 +103,13 @@ const Vector3& Collider::GetBoundingBox() const
 	return m_boundingBox;
 }
 
-void Collider::SetBoundingBox(const Vector3& boxSize)
+void Collider::SetBoundingBox(Vector3& boundingBox)
 {
-	if (boxSize.x == boxSize.y == boxSize.z == 0.0f)
-		return;
+	boundingBox.x = Clamp(boundingBox.x, M_EPSILON, INFINITY);
+	boundingBox.y = Clamp(boundingBox.y, M_EPSILON, INFINITY);
+	boundingBox.z = Clamp(boundingBox.z, M_EPSILON, INFINITY);
 
-	m_boundingBox = boxSize.Absolute();
+	m_boundingBox = boundingBox;
 
 	ConstructCollisionShape();
 }
@@ -143,12 +145,11 @@ btCollisionShape* Collider::GetBtCollisionShape() const
 	return m_shape;
 }
 
-//= MISC ====================================================================
+//= HELPER FUNCTIONS ======================================================
 void Collider::ConstructCollisionShape()
 {
 	// delete old shape (if it exists)
-	SetRigidBodyCollisionShape(nullptr);
-	SafeDelete(m_shape);
+	DeleteCollisionShape();
 
 	// Create BOX shape
 	if (m_shapeType == Box)
@@ -157,35 +158,49 @@ void Collider::ConstructCollisionShape()
 	}
 
 	// Create CAPSULE shape
-	if (m_shapeType == Capsule)
+	else if (m_shapeType == Capsule)
 	{
-		float radius = max(m_boundingBox.x, m_boundingBox.z);
-		float height = m_boundingBox.y;
+		float height = max(m_boundingBox.x, m_boundingBox.z);
+		height = max(height, m_boundingBox.y);
+
+		float radius = min(m_boundingBox.x, m_boundingBox.z);
+		radius = min(radius, m_boundingBox.y);
+
 		m_shape = new btCapsuleShape(radius, height);
 	}
 
 	// Create CYLINDER shape
-	if (m_shapeType == Cylinder)
+	else if (m_shapeType == Cylinder)
 	{
 		m_shape = new btCylinderShape(ToBtVector3(m_boundingBox));
 	}
 
 	// Create SPHERE shape
-	if (m_shapeType == Sphere)
+	else if (m_shapeType == Sphere)
 	{
 		float radius = max(m_boundingBox.x, m_boundingBox.y);
 		radius = max(radius, m_boundingBox.z);
+
 		m_shape = new btSphereShape(radius);
 	}
 
 	SetRigidBodyCollisionShape(m_shape);
 }
 
+void Collider::DeleteCollisionShape()
+{
+	SetRigidBodyCollisionShape(nullptr);
+	SafeDelete(m_shape);
+}
+
 void Collider::SetRigidBodyCollisionShape(btCollisionShape* shape) const
 {
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 	if (rigidBody)
+	{
 		rigidBody->SetCollisionShape(shape);
+		LOG("Collider got assigned to the RigidBody.");
+	}
 }
 
 Mesh* Collider::GetMeshFromAttachedMeshFilter() const
@@ -193,3 +208,4 @@ Mesh* Collider::GetMeshFromAttachedMeshFilter() const
 	MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
 	return meshFilter ? meshFilter->GetMesh() : nullptr;
 }
+//=========================================================================
