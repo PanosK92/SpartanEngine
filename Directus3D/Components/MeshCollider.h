@@ -49,17 +49,20 @@ public:
 	void SetConvex(bool isConvex);
 	Mesh* GetMesh() const;
 	void SetMesh(Mesh* mesh);
+	
 
 private:
+	//= HELPER FUNCTIONS ======================================================
+	void DeleteCollisionShape();
+	void ConstructCollisionShape();
+	void SetCollisionShapeToRigidBody(btCollisionShape* shape) const;
+	Mesh* GetMeshFromAttachedMeshFilter() const;
+	//========================================================================
+
 	Mesh* m_mesh;
 	int m_vertexLimit = 100000;
 	btCollisionShape* m_collisionShape;
 	bool m_convex;
 
-	/*------------------------------------------------------------------------------
-								[HELPER FUNCTIONS]
-	------------------------------------------------------------------------------*/
-	void ConstructFromVertexCloud();
-	void SetCollisionShapeToRigidBody(btCollisionShape* collisionShape) const;
-	Mesh* GetMeshFromAttachedMeshFilter() const;
+	
 };

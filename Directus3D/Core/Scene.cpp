@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Script.h"
 #include "../Components/MeshFilter.h"
 #include "../Physics/PhysicsWorld.h"
+#include "../Signals/Signaling.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -104,6 +105,7 @@ bool Scene::LoadFromFile(string path)
 	Clear();
 
 	Serializer::StartReading(path);
+	EMIT_SIGNAL(SIGNAL_SCENE_LOADING_STARTED);
 
 	//==========================================
 	m_texturePool->Deserialize();
@@ -112,6 +114,7 @@ bool Scene::LoadFromFile(string path)
 	GameObjectPool::GetInstance().Deserialize();
 	//==========================================
 
+	EMIT_SIGNAL(SIGNAL_SCENE_LOADING_COMPLETED);
 	Serializer::StopReading();
 
 	AnalyzeGameObjects();

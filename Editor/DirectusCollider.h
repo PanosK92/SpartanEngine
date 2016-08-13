@@ -82,9 +82,9 @@ private:
     DirectusInspector* m_inspector;
     //====================================
 
-    void ReflectType(ColliderShape shape);
-    void ReflectCenter(Directus::Math::Vector3 center);
-    void ReflectSize(Directus::Math::Vector3 size);
+    void ReflectType();
+    void ReflectCenter();
+    void ReflectSize();
 
 public slots:
     void MapType();

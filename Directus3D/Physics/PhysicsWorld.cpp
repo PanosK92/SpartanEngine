@@ -83,7 +83,7 @@ void PhysicsWorld::Step(float timeStep)
 {
 	if (!m_world)
 		return;
-
+	
 	// Note from the bullet guy: timeStep < maxSubSteps * fixedTimeStep
 
 	float internalTimeStep = 1.0f / m_internalFPS;
