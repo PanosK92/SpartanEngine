@@ -8,6 +8,7 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 - 30+ image file formats support.
 - 40+ 3D file formats support.
 - Build as single static or dynamic library.
+- Cascaded shadow mapping.
 - Component-based game object system.
 - Cross-Platform state of the art editor.
 - D3D11 Renderer.
@@ -22,7 +23,6 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 # Planned Features
 - Ability to save anything in a custom engine format (prefabs).
 - Audio source and listener components.
-- Cascaded shadow mapping.
 - Draw call batching (static & dynamic).
 - Font loader & renderer.
 - SSAO, SSR, Volumetric Lighting.
