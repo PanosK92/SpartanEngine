@@ -3,7 +3,7 @@
 //===================
 
 // Initialize static members
-EngineMode Settings::m_engineMode = Editor_Stop;
+EngineMode Settings::m_engineMode = Editor_Idle;
 bool Settings::m_fullScreen = false;
 VSync Settings::m_vsync = Off;
 bool Settings::m_mouseVisible = true;

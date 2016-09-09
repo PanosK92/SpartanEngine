@@ -63,7 +63,7 @@ void Script::Remove()
 
 void Script::Update()
 {
-	if (GET_ENGINE_MODE == Editor_Stop || GET_ENGINE_MODE == Editor_Pause)
+	if (GET_ENGINE_MODE == Editor_Idle || GET_ENGINE_MODE == Editor_Paused)
 		return;
 
 	if (m_scriptInstance->IsInstantiated())

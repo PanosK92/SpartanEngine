@@ -189,7 +189,7 @@ void DirectusTransform::Reflect(GameObject* gameobject)
 void DirectusTransform::Refresh()
 {
     // Only live refresh when we are in play mode
-    if (GET_ENGINE_MODE != Editor_Play)
+    if (GET_ENGINE_MODE != Editor_Playing)
         return;
 
     // Do the actual reflection

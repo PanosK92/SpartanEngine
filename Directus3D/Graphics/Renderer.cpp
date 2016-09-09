@@ -188,7 +188,7 @@ void Renderer::Render()
 	PostProcessing();
 
 	// Gizmos
-	if (GET_ENGINE_MODE == Editor_Stop)
+	if (GET_ENGINE_MODE == Editor_Idle)
 		Gizmos();
 
 	// display frame

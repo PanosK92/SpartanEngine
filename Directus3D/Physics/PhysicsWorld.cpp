@@ -101,7 +101,8 @@ void PhysicsWorld::Step(float timeStep)
 
 	EMIT_SIGNAL(SIGNAL_PHYSICS_STEPPED);
 
-	if (GET_ENGINE_MODE == Editor_Stop)
+	// Draw colliders when the editor is idle
+	if (GET_ENGINE_MODE == Editor_Idle)
 	{
 		m_debugDraw->ClearLines();
 		m_world->debugDrawWorld();

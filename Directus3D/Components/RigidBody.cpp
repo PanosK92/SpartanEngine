@@ -106,12 +106,12 @@ void RigidBody::Remove()
 
 void RigidBody::Update()
 {
-	if (GET_ENGINE_MODE == Editor_Stop)
+	if (GET_ENGINE_MODE == Editor_Idle)
 	{
 		SetPosition(g_transform->GetPosition());
 		SetRotation(g_transform->GetRotation());
 	}
-	else if (GET_ENGINE_MODE == Editor_Play)
+	else if (GET_ENGINE_MODE == Editor_Playing)
 	{
 
 	}

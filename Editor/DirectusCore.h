@@ -72,6 +72,6 @@ public slots:
     void Update();
     void UpdatePerSec();
 
-    void Lock();
-    void Unlock();
+    void LockUpdate();
+    void UnlockUpdate();
 };

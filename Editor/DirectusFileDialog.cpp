@@ -130,7 +130,7 @@ void DirectusFileDialog::FileDialogAccepted(QString filePath)
     // Stop the engine (in case it's running)
     m_directusCore->Stop();
 
-    connect(thread,             SIGNAL(started()),  m_directusCore,     SLOT(Lock()),                   Qt::QueuedConnection);
+    connect(thread,             SIGNAL(started()),  m_directusCore,     SLOT(LockUpdate()),             Qt::QueuedConnection);
     if (m_assetOperation == "Save Scene As")
     {
         m_lastSceneFilePath = filePath.toStdString();
@@ -154,7 +154,7 @@ void DirectusFileDialog::FileDialogAccepted(QString filePath)
     }
     connect(m_assetLoader,  SIGNAL(Finished()), thread,                 SLOT(quit()),                   Qt::QueuedConnection);
     connect(thread,         SIGNAL(finished()), thread,                 SLOT(deleteLater()),            Qt::QueuedConnection);
-    connect(m_assetLoader,  SIGNAL(Finished()), m_directusCore,         SLOT(Unlock()),                 Qt::QueuedConnection);
+    connect(m_assetLoader,  SIGNAL(Finished()), m_directusCore,         SLOT(UnlockUpdate()),           Qt::QueuedConnection);
     connect(m_assetLoader,  SIGNAL(Finished()), m_directusCore,         SLOT(Update()),                 Qt::QueuedConnection);
 
     thread->start(QThread::HighestPriority);

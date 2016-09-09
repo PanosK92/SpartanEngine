@@ -57,13 +57,17 @@ Socket::~Socket()
 //= STATE CONTROL ==============
 void Socket::StartEngine()
 {
-	SET_ENGINE_MODE(Editor_Play);
+	// reset the timer so we don't 
+	// get a very large delta time
+	m_timer->Reset();
+
+	SET_ENGINE_MODE(Editor_Playing);
 	EMIT_SIGNAL(SIGNAL_ENGINE_START);
 }
 
 void Socket::StopEngine()
 {
-	SET_ENGINE_MODE(Editor_Stop);
+	SET_ENGINE_MODE(Editor_Idle);
 	EMIT_SIGNAL(SIGNAL_ENGINE_STOP);
 }
 //==============================

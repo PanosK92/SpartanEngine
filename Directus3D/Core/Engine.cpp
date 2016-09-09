@@ -61,10 +61,10 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 {
 	EMIT_SIGNAL(SIGNAL_ENGINE_INITIALIZE);
 
-	// 1 - DEBUG LOG
+	// 1 - LOG
 	Log::Initialize();
 
-	// 2 - D3D11
+	// 2 - GRAPHICS
 	m_graphics = new Graphics();
 	m_graphics->Initialize(drawPaneHandle);
 
@@ -189,10 +189,10 @@ void Engine::Shutdown()
 	// 3 - TIMER
 	SafeDelete(m_timer);
 
-	//2 - D3D11
+	//2  - GRAPHICS
 	SafeDelete(m_graphics);
 
-	// 1- DEBUG LOG
+	// 1- LOG
 	Log::Release();
 }
 
