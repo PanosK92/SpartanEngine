@@ -117,12 +117,12 @@ void DirectusCore::UpdatePerSec()
     m_directusStatsLabel->UpdateStats(this);
 }
 
-void DirectusCore::Lock()
+void DirectusCore::LockUpdate()
 {
     m_locked = true;
 }
 
-void DirectusCore::Unlock()
+void DirectusCore::UnlockUpdate()
 {
     m_locked = false;
 }

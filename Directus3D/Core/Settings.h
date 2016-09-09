@@ -39,9 +39,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum EngineMode
 {
-	Editor_Play,
-	Editor_Stop,
-	Editor_Pause,
+	Editor_Playing,
+	Editor_Idle,
+	Editor_Paused,
 	Build_Developer,
 	Build_Release,
 	Shutdown
