@@ -382,6 +382,15 @@ Transform* Transform::GetChildByIndex(int index)
 	return m_children[index];
 }
 
+Transform* Transform::GetChildByName(string name)
+{
+	for (auto i = 0; i < m_children.size(); i++)
+		if (m_children[i]->GetName() == name)
+			return m_children[i];
+
+	return nullptr;
+}
+
 vector<Transform*> Transform::GetChildren() const
 {
 	return m_children;
@@ -496,6 +505,11 @@ Matrix Transform::GetWorldTransform() const
 GameObject* Transform::GetGameObject() const
 {
 	return g_gameObject;
+}
+
+string Transform::GetName() const
+{
+	return GetGameObject()->GetName();
 }
 
 /*------------------------------------------------------------------------------

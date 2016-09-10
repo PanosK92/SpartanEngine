@@ -54,15 +54,11 @@ Socket* DirectusCore::GetEngineSocket()
     return m_socket;
 }
 
-void DirectusCore::Initialize(HWND hwnd, HINSTANCE hinstance, DirectusStatsLabel* directusStatsLabel)
+void DirectusCore::Initialize(HWND mainWindowHandle, HINSTANCE hInstance, DirectusStatsLabel* directusStatsLabel)
 {
-    // Create and initialize Directus3D
+    // Initialize the engine
     m_engine = new Engine();
-
-    HINSTANCE hInstance = hinstance;
-    HWND mainWindowHandle = hwnd;
-    HWND widgetHandle = (HWND)this->winId();
-    m_engine->Initialize(hInstance, mainWindowHandle, widgetHandle);
+    m_engine->Initialize(hInstance, mainWindowHandle, (HWND)this->winId());
 
     m_socket = m_engine->GetSocket();
     m_directusStatsLabel = directusStatsLabel;

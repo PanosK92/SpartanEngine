@@ -40,8 +40,8 @@ public:
 	~Socket();
 
 	//= STATE CONTROL ==============
-	void StartEngine();
-	void StopEngine();
+	void StartEngine() const;
+	static void StopEngine();
 	//==============================
 
 	//= IO =========================
@@ -55,7 +55,7 @@ public:
 	//============================================
 
 	//= MISC =======================================================================
-	void Update();
+	void Update() const;
 	void SetPhysicsDebugDraw(bool enable);
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
 	//==============================================================================

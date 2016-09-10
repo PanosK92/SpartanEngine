@@ -54,8 +54,8 @@ Socket::~Socket()
 {
 }
 
-//= STATE CONTROL ==============
-void Socket::StartEngine()
+//= STATE CONTROL ==============================================================
+void Socket::StartEngine() const
 {
 	// reset the timer so we don't 
 	// get a very large delta time
@@ -70,7 +70,12 @@ void Socket::StopEngine()
 	SET_ENGINE_MODE(Editor_Idle);
 	EMIT_SIGNAL(SIGNAL_ENGINE_STOP);
 }
-//==============================
+
+void Socket::Update() const
+{
+	m_engine->Update();
+}
+//=============================================================================
 
 //= IO ========================================================================
 void Socket::SetLogger(ILogger* logger)
@@ -97,11 +102,6 @@ void Socket::SetViewport(int width, int height) const
 //==============================================================================
 
 //= MISC =======================================================================
-void Socket::Update()
-{
-	m_engine->Update();
-}
-
 void Socket::SetPhysicsDebugDraw(bool enable)
 {
 	//m_renderer->SetPhysicsDebugDraw(enable);

@@ -44,6 +44,7 @@ class MouseLook
 		if (control)
 			FreeLook();			
 	}
+	
 	void FreeLook()
 	{
 		// Get raw mouse input

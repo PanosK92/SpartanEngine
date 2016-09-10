@@ -100,6 +100,7 @@ public:
 	Transform* GetRoot();
 	Transform* GetParent() const;
 	Transform* GetChildByIndex(int index);
+	Transform* GetChildByName(std::string name);
 	std::vector<Transform*> GetChildren() const;
 	int GetChildrenCount() const;
 	void FindChildren();
@@ -113,6 +114,7 @@ public:
 	void LookAt(const Directus::Math::Vector3& v);
 	Directus::Math::Matrix GetWorldTransform() const;
 	GameObject* GetGameObject() const;
+	std::string GetName() const;
 
 private:
 
