@@ -57,10 +57,6 @@ Socket::~Socket()
 //= STATE CONTROL ==============================================================
 void Socket::StartEngine() const
 {
-	// reset the timer so we don't 
-	// get a very large delta time
-	m_timer->Reset();
-
 	SET_ENGINE_MODE(Editor_Playing);
 	EMIT_SIGNAL(SIGNAL_ENGINE_START);
 }
@@ -75,6 +71,7 @@ void Socket::Update() const
 {
 	m_engine->Update();
 }
+
 //=============================================================================
 
 //= IO ========================================================================

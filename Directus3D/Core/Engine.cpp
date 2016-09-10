@@ -33,6 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Graphics.h"
 #include "Helper.h"
 #include "../Signals/Signaling.h"
+#include "Settings.h"
+
 //=====================================
 
 Engine::Engine()
@@ -124,17 +126,25 @@ void Engine::Update()
 
 	m_timer->Update();
 
-	//= PHYSICS - 60 HZ (INTERNAL CLOCK) =========
-	m_physicsWorld->Step(m_timer->GetDeltaTime());
+	//= PHYSICS ==================================
+	// It's important to not interpolate when the
+	// editor is in an Idle state. This a temporary solution
+	// The engine should be state agnostic and the editor
+	// should handle this, but for now it should do.
+	float deltaTime = m_timer->GetDeltaTime();
+	if (GET_ENGINE_MODE == Editor_Idle)
+		deltaTime = 0;
+
+	m_physicsWorld->Step(deltaTime);
 	//============================================
 
-	//= UPDATE - MAX HZ ==========================
+	//= UPDATE ===================================
 	m_input->Update();
 	GameObjectPool::GetInstance().Update();
 	m_scene->Update();
 	//============================================
 
-	//= RENDERING - MAX HZ =======================
+	//= RENDERING ================================
 	m_timer->RenderStart();
 	m_renderer->Render();
 	m_timer->RenderEnd();
