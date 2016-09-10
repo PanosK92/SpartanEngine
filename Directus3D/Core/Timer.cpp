@@ -86,6 +86,8 @@ void Timer::Update()
 void Timer::Reset()
 {
 	m_startTime = GetTimeMs();
+	m_lastKnownTime = 0;
+	m_deltaTime = 0;
 }
 
 // Returns them time it took to complete the last frame in seconds 

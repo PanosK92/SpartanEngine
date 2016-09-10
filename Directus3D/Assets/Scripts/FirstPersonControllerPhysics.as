@@ -58,7 +58,7 @@ class FirstPersonControllerPhysics
 			
 		// jump
 		if (input.GetKey(Space))
-			rigidbody.ApplyForce(jumpForce * cameraTransform.GetUp(), Impulse);
+			rigidbody.ApplyForce(jumpForce * Vector3(0,1,0), Impulse);
 	}
 	
 	void MouseLook()

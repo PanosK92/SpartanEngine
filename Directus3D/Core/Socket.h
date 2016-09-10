@@ -42,6 +42,7 @@ public:
 	//= STATE CONTROL ==============
 	void StartEngine() const;
 	static void StopEngine();
+	void Update() const;
 	//==============================
 
 	//= IO =========================
@@ -55,7 +56,6 @@ public:
 	//============================================
 
 	//= MISC =======================================================================
-	void Update() const;
 	void SetPhysicsDebugDraw(bool enable);
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
 	//==============================================================================
