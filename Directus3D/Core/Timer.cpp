@@ -86,7 +86,7 @@ void Timer::Update()
 void Timer::Reset()
 {
 	m_startTime = GetTimeMs();
-	m_lastKnownTime = 0;
+	m_lastKnownTime = m_startTime;
 	m_deltaTime = 0;
 }
 

@@ -14,6 +14,8 @@ class FirstPersonControllerPhysics
 	float smoothing = 20.0f;
 	Vector2 smoothMouse = Vector2(0.0f, 0.0f);
 	Vector3 currentRotation;
+	bool control = false;
+	bool allowToggle = false;
 	
 	// Constructor
 	FirstPersonControllerPhysics(GameObject @obj)
@@ -34,7 +36,19 @@ class FirstPersonControllerPhysics
 	// Update is called once per frame
 	void Update()
 	{
-		MouseLook();
+		if (input.GetKey(E) && allowToggle)
+		{
+			control = !control;
+			allowToggle = false;
+		}
+		else if (!input.GetKey(E))
+		{
+			allowToggle = true;
+		}
+			
+		if (control)
+			MouseLook();			
+			
 		Movement();
 	}
 		

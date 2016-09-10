@@ -158,6 +158,7 @@ bool Socket::SaveSceneToFile(string path)
 
 bool Socket::LoadSceneFromFile(string path)
 {
+	m_timer->Reset();
 	return m_scene->LoadFromFile(path);
 }
 

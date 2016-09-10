@@ -127,15 +127,7 @@ void Engine::Update()
 	m_timer->Update();
 
 	//= PHYSICS ==================================
-	// It's important to not interpolate when the
-	// editor is in an Idle state. This a temporary solution
-	// The engine should be state agnostic and the editor
-	// should handle this, but for now it should do.
-	float deltaTime = m_timer->GetDeltaTime();
-	if (GET_ENGINE_MODE == Editor_Idle)
-		deltaTime = 0;
-
-	m_physicsWorld->Step(deltaTime);
+	m_physicsWorld->Step(m_timer->GetDeltaTime());
 	//============================================
 
 	//= UPDATE ===================================

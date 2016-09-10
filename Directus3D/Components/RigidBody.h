@@ -118,17 +118,23 @@ private:
 	void UpdateGravity() const;
 	void DeleteBtRigidBody();
 	//===========================================================
+	bool IsActivated() const;
 	void Activate() const;
+	void Deactivate() const;
 
 	btRigidBody* m_rigidBody;
 	btCollisionShape* m_shape;
+	bool m_wasKinematic;
 
 	float m_mass;
 	float m_drag;
 	float m_angularDrag;
 	float m_restitution;
 	bool m_useGravity;
-	bool m_kinematic;
+	bool m_isKinematic;
+public:
+	bool m_hasSimulated;
+private:
 	Directus::Math::Vector3 m_gravity;
 	Directus::Math::Vector3 m_positionLock;
 	Directus::Math::Vector3 m_rotationLock;
