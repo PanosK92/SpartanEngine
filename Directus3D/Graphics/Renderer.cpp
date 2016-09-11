@@ -292,10 +292,7 @@ void Renderer::AcquirePrerequisites()
 
 void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjects, Light* light) const
 {
-	// Some say that you should cull the front faces to avoid self-shadowing,
-	// But any object with improper front-face or back-face geometry causes artifacts in the shadow map.
-	// For now, we don't change the culling. I don't trust assimp and free 3d models.
-	//m_graphics->SetCullMode(CullFront);	
+	m_graphics->SetCullMode(CullFront);	
 
 	for (int cascadeIndex = 0; cascadeIndex < light->GetCascadeCount(); cascadeIndex++)
 	{
