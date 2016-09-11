@@ -463,6 +463,7 @@ void RigidBody::AddBodyToWorld()
 	m_rigidBody->setCollisionFlags(flags);
 	m_rigidBody->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
 	//======================================================================================
+	m_rigidBody->setDeactivationTime(2000);
 
 	SetPosition(g_transform->GetPosition());
 	SetRotation(g_transform->GetRotation());
