@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= LINKING ==========================
-// Required by DDSTextureLoader
-#pragma comment(lib, "WindowsApp.lib")
+// Required by DDSTextureLoader when using Windows 10 SDK
+//#pragma comment(lib, "WindowsApp.lib")
 //====================================
 
 //= INCLUDES =============================
