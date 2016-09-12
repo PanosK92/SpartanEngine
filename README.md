@@ -2,7 +2,7 @@
 Directus3D is a game engine that aims to be powerful yet simple. This is achieved by prioriziting a coherent and modern design and a minimalistic approach when it comes to adding new features. 
 The editor is greatly inspired by Unity, it should make the engine feel familiar and pleasurable to use.
 
-The engine has been under development for about a year and a half, it isn't production ready yet, meaning you can certainly make playble scenes within the editor but don't expect to export a game to PS4. On the plus side, it will get there faster than you might expect.
+The engine has been under development for about a year and a half, it isn't production ready yet, meaning you can certainly make playble scenes within the editor but don't expect to export a game to PS4. On the plus side, it will get there, this is an on going project.
 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/screenshot.jpg)
 
