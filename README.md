@@ -2,6 +2,8 @@
 Directus3D is a game engine that aims to be powerful yet simple. This is achieved by prioriziting a coherent and modern design and a minimalistic approach when it comes to adding new features. 
 The editor is greatly inspired by Unity, it should make the engine feel familiar and pleasurable to use.
 
+The engine has been under development for about a year and a half, it isn't production ready yet, meaning you can certainly make playble scenes within the editor but don't expect to export a game to PS4. On the plus side, it will get there, this is an on going project.
+
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/screenshot.jpg)
 
 # Features
@@ -30,7 +32,7 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 - Vulkan Renderer.
 
 ### Download
-- [Binaries] (https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21123959&authkey=ACJkuKNAq8z_qUI)
+- [Directus v0.1 (Windows x64)] (https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21123959&authkey=ACJkuKNAq8z_qUI)
 
 ### Dependencies
 - Runtime: [AngelScript](http://www.angelcode.com/angelscript/), [Assimp](https://github.com/assimp/assimp), [Bullet](https://github.com/bulletphysics/bullet3), [FreeImage](http://freeimage.sourceforge.net/), [Visual C++ 2015 (x64) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145).
