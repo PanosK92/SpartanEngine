@@ -117,6 +117,9 @@ struct DDS_HEADER_DXT10
 
 #pragma pack(pop)
 
+// This is why this file has to be deleted and use FreeImage to do proper DSS loading...
+#define _WIN32_WINNT 0x0600 // // Windows Vista and up
+
 //--------------------------------------------------------------------------------------
 namespace
 {

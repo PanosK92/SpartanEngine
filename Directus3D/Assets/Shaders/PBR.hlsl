@@ -97,7 +97,7 @@ float3 irradianceColor)
     float3 albedoColor 		= albedo - albedo * metallic;
     float3 specularColor 	= lerp(0.04f, albedo, metallic);
 	
-	// empirically, metallic and smooth tend to be more reflective
+	// metallic and smooth surfaces tend to be more reflective
 	float smoothness		= 1.0f - roughness;
 	smoothness 				*= specular; // user defined multiplier (defaults to 0.5f)
 	float reflectivity		= min(1.0f, metallic + smoothness);

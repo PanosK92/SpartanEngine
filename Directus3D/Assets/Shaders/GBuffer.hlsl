@@ -14,9 +14,9 @@ Texture2D texMask 			: register (t6);
 Texture2D lightDepthTex[3] 	: register (t7);
 //==========================================
 
-//= SAMPLERS ===========================================
+//= SAMPLERS =============================
 SamplerState samplerAniso : register (s0);
-//======================================================
+//========================================
 
 //= DEFINES ======
 #define CASCADES 3
