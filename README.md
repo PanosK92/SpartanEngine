@@ -32,7 +32,7 @@ The engine has been under development for about a year and a half, it isn't prod
 - Vulkan Renderer.
 
 ### Download
-- [Directus v0.1 (Windows x64)] (https://onedrive.live.com/download?resid=96760D43099D7718!124438&authkey=!AA9aq-t6xAMbU88)
+- [Directus v0.1 (Windows x64)] (https://onedrive.live.com/download?resid=96760D43099D7718!124439&authkey=!ALD0yN8dIO_DAEg)
 
 ### Dependencies
 - Runtime: [AngelScript](http://www.angelcode.com/angelscript/), [Assimp](https://github.com/assimp/assimp), [Bullet](https://github.com/bulletphysics/bullet3), [FreeImage](http://freeimage.sourceforge.net/), [Visual C++ 2015 (x64) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145).
