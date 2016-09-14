@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Signals/Signaling.h"
 #include <algorithm>
 #include "../Core/Settings.h"
-
 //==============================================================================
 
 PhysicsWorld::PhysicsWorld()
