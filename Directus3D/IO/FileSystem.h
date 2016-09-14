@@ -23,10 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====
 #include <vector>
-
 //===============
 
-class __declspec(dllexport) FileHelper
+class __declspec(dllexport) FileSystem
 {
 public:
 	static bool FileExists(const std::string& path);

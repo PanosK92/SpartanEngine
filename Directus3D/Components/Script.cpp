@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "Script.h"
 #include "../IO/Serializer.h"
-#include "../IO/FileHelper.h"
+#include "../IO/FileSystem.h"
 #include "../Core/Helper.h"
 #include "../Core/Settings.h"
 //===========================
@@ -111,5 +111,5 @@ string Script::GetScriptPath()
 
 string Script::GetName()
 {
-	return m_scriptInstance ? FileHelper::GetFileNameNoExtensionFromPath(GetScriptPath()) : SCRIPT_NAME_INVALID;
+	return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromPath(GetScriptPath()) : SCRIPT_NAME_INVALID;
 }
