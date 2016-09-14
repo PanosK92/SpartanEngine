@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QMimeData>
 #include "IO/Log.h"
 #include <QMenu>
+#include "IO/FileSystem.h"
 //===============================
 
 DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
@@ -35,9 +36,10 @@ DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
 
 }
 
-void DirectusFileExplorer::Initialize()
+void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusCore* directusCore)
 {
     QString root = "Assets";
+    setAcceptDrops(true);
 
     m_fileModel = new QFileSystemModel(this);
     m_fileModel->setFilter(QDir::Files | QDir::AllDirs | QDir::NoDotAndDotDot); // Set a filter that displays only folders
@@ -47,6 +49,10 @@ void DirectusFileExplorer::Initialize()
     m_directusIconProvider = new DirectusIconProvider();
     m_directusIconProvider->Initialize();
     m_fileModel->setIconProvider(m_directusIconProvider);
+
+    // Create file dialog
+    m_fileDialog = new DirectusFileDialog();
+    m_fileDialog->Initialize(mainWindow, directusCore);
 
     // Set the model to the tree view
     this->setModel(m_fileModel);
@@ -67,9 +73,10 @@ void DirectusFileExplorer::SetRootPath(QString path)
 //= DRAG N DROP RELATED ============================================================================
 void DirectusFileExplorer::mousePressEvent(QMouseEvent* event)
 {
-    // In case this mouse press evolves into a drag and drop
-    // we have to keep the starting position in order to determine
-    // if it's indeed one, in mouseMoveEvent(QMouseEvent* event)
+    // In case this mouse press is the future start point of a drag n drop event,
+    // we have to keep the starting position in order to calculate the delta
+    // and determine if there has been any dragging, in mouseMoveEvent(QMouseEvent* event)
+
     if (event->button() == Qt::LeftButton)
               m_dragStartPosition = event->pos();
 
@@ -81,10 +88,11 @@ void DirectusFileExplorer::mousePressEvent(QMouseEvent* event)
         QListView::mousePressEvent(event);
 }
 
-// Determine whether a drag should begin, and
-// construct a drag object to handle the operation.
 void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
 {
+    // Determine whether a drag should begin, and
+    // construct a drag object to handle the operation.
+
     if (!(event->buttons() & Qt::LeftButton))
             return;
 
@@ -105,6 +113,36 @@ void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
     drag->exec();
 }
 
+void DirectusFileExplorer::dragEnterEvent(QDragEnterEvent* event)
+{
+    event->accept();
+}
+
+void DirectusFileExplorer::dragMoveEvent(QDragMoveEvent* event)
+{
+    event->accept();
+}
+
+void DirectusFileExplorer::dropEvent(QDropEvent* event)
+{
+    QList<QUrl> droppedUrls = event->mimeData()->urls();
+    int droppedUrlCnt = droppedUrls.size();
+    for(int i = 0; i < droppedUrlCnt; i++)
+    {
+        QString localPath = droppedUrls[i].toLocalFile();
+        QFileInfo fileInfo(localPath);
+
+        if(fileInfo.isFile() && FileSystem::IsSupportedModel(fileInfo.filePath().toStdString()))
+        {
+           m_fileDialog->LoadModelDirectly(fileInfo.filePath());
+        }
+    }
+
+    event->acceptProposedAction();
+}
+//===================================================================================================
+
+// CONTEXT MENU =====================================================================================
 void DirectusFileExplorer::ShowContextMenu(QPoint pos)
 {
     QMenu contextMenu(tr("Context menu"), this);

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=======================================
 #include "DirectusAssetLoader.h"
 #include "AssetImporting/ImageImporter.h"
-#include "IO/FileHelper.h"
+#include "IO/FileSystem.h"
 #include <QMutex>
 #include "DirectusProgressBar.h"
 //=======================================
@@ -89,7 +89,7 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
 
     ImageImporter* imageLoader = new ImageImporter();
     QPixmap pixmap;
-    if (FileHelper::FileExists(m_filePath))
+    if (FileSystem::FileExists(m_filePath))
     {
         imageLoader->Load(m_filePath, m_width, m_height);
 
