@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshRenderer.h"
 #include "../Graphics/Renderer.h"
 #include "../AssetImporting/ModelImporter.h"
-#include "../IO/FileHelper.h"
+#include "../IO/FileSystem.h"
 #include "Settings.h"
 #include "../Signals/Signaling.h"
 //=====================================

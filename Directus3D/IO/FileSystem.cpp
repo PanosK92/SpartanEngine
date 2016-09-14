@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==========
-#include "FileHelper.h"
+#include "FileSystem.h"
 #include "dirent.h"
 #include <locale>
 //=====================
@@ -30,19 +30,19 @@ using namespace std;
 
 //==================
 
-bool FileHelper::FileExists(const string& path)
+bool FileSystem::FileExists(const string& path)
 {
 	struct stat buffer;
 	return (stat(path.c_str(), &buffer) == 0);
 }
 
-string FileHelper::GetFileNameFromPath(string path)
+string FileSystem::GetFileNameFromPath(string path)
 {
 	int lastindex = path.find_last_of("\\/");
 	return path.substr(lastindex + 1, path.length());
 }
 
-string FileHelper::GetFileNameNoExtensionFromPath(string path)
+string FileSystem::GetFileNameNoExtensionFromPath(string path)
 {
 	path = GetFileNameFromPath(path);
 
@@ -52,13 +52,13 @@ string FileHelper::GetFileNameNoExtensionFromPath(string path)
 	return rawPath;
 }
 
-string FileHelper::GetPathWithoutFileName(string path)
+string FileSystem::GetPathWithoutFileName(string path)
 {
 	int lastindex = path.find_last_of("\\/");
 	return path.substr(0, lastindex + 1);
 }
 
-string FileHelper::GetExtensionFromPath(string path)
+string FileSystem::GetExtensionFromPath(string path)
 {
 	size_t lastindex = path.find_last_of(".");
 	if (string::npos != lastindex)
@@ -68,7 +68,7 @@ string FileHelper::GetExtensionFromPath(string path)
 	return path;
 }
 
-string FileHelper::GetRelativePathFromAbsolutePath(string absolutePath)
+string FileSystem::GetRelativePathFromAbsolutePath(string absolutePath)
 {
 	// NOTE: This function assumes that the path resolves somewhere 
 	// inside the folder "Assets" (The default engine folder)
@@ -82,7 +82,7 @@ string FileHelper::GetRelativePathFromAbsolutePath(string absolutePath)
 	return relativePath;
 }
 
-vector<string> FileHelper::GetFoldersInDirectory(string directory)
+vector<string> FileSystem::GetFoldersInDirectory(string directory)
 {
 	vector<string> folderPaths;
 
@@ -100,7 +100,7 @@ vector<string> FileHelper::GetFoldersInDirectory(string directory)
 	return folderPaths;
 }
 
-vector<string> FileHelper::GetFilesInDirectory(string directory)
+vector<string> FileSystem::GetFilesInDirectory(string directory)
 {
 	DIR* dir;
 	struct dirent* ent;
@@ -117,7 +117,7 @@ vector<string> FileHelper::GetFilesInDirectory(string directory)
 	return filePaths;
 }
 
-vector<string> FileHelper::GetSupportedFilesInDirectory(string directory)
+vector<string> FileSystem::GetSupportedFilesInDirectory(string directory)
 {
 	vector<string> filesInDirectory = GetFilesInDirectory(directory);
 
@@ -141,7 +141,7 @@ vector<string> FileHelper::GetSupportedFilesInDirectory(string directory)
 	return supportedFiles;
 }
 
-vector<string> FileHelper::GetImagesFromPaths(vector<string> paths)
+vector<string> FileSystem::GetImagesFromPaths(vector<string> paths)
 {
 	vector<string> images;
 	for (int i = 0; i < paths.size(); i++)
@@ -155,7 +155,7 @@ vector<string> FileHelper::GetImagesFromPaths(vector<string> paths)
 	return images;
 }
 
-vector<string> FileHelper::GetScriptsFromPaths(vector<string> paths)
+vector<string> FileSystem::GetScriptsFromPaths(vector<string> paths)
 {
 	vector<string> scripts;
 	for (int i = 0; i < paths.size(); i++)
@@ -169,7 +169,7 @@ vector<string> FileHelper::GetScriptsFromPaths(vector<string> paths)
 	return scripts;
 }
 
-vector<string> FileHelper::GetModelsFromPaths(vector<string> paths)
+vector<string> FileSystem::GetModelsFromPaths(vector<string> paths)
 {
 	vector<string> images;
 	for (int i = 0; i < paths.size(); i++)
@@ -183,7 +183,7 @@ vector<string> FileHelper::GetModelsFromPaths(vector<string> paths)
 	return images;
 }
 
-bool FileHelper::IsSupportedImage(string path)
+bool FileSystem::IsSupportedImage(string path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -228,7 +228,7 @@ bool FileHelper::IsSupportedImage(string path)
 	return false;
 }
 
-bool FileHelper::IsSupportedScript(string path)
+bool FileSystem::IsSupportedScript(string path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -243,7 +243,7 @@ bool FileHelper::IsSupportedScript(string path)
 	return false;
 }
 
-bool FileHelper::IsSupportedScene(string path)
+bool FileSystem::IsSupportedScene(string path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -258,7 +258,7 @@ bool FileHelper::IsSupportedScene(string path)
 	return false;
 }
 
-bool FileHelper::IsSupportedModel(string path)
+bool FileSystem::IsSupportedModel(string path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -304,7 +304,7 @@ bool FileHelper::IsSupportedModel(string path)
 	return false;
 }
 
-bool FileHelper::IsSupportedShader(string path)
+bool FileSystem::IsSupportedShader(string path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -319,7 +319,7 @@ bool FileHelper::IsSupportedShader(string path)
 	return false;
 }
 
-string FileHelper::ConvertToUppercase(string lower)
+string FileSystem::ConvertToUppercase(string lower)
 {
 	locale loc;
 	string upper;

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <complex>
 #include "../IO/Serializer.h"
 #include "../Pools/GameObjectPool.h"
-#include "../IO/FileHelper.h"
+#include "../IO/FileSystem.h"
 #include "../IO/Log.h"
 #include "../Graphics//Renderer.h"
 #include "../Components/Transform.h"
@@ -97,7 +97,7 @@ bool Scene::SaveToFile(string path)
 
 bool Scene::LoadFromFile(string path)
 {
-	if (!FileHelper::FileExists(path))
+	if (!FileSystem::FileExists(path))
 	{
 		LOG(path + " was not found.", Log::Error);
 		return false;
