@@ -70,6 +70,12 @@ void DirectusFileDialog::LoadModel()
     m_assetOperation = "Load Model";
 }
 
+void DirectusFileDialog::LoadModelDirectly(QString filePath)
+{
+     m_assetOperation = "Load Model";
+     FileDialogAccepted(filePath);
+}
+
 void DirectusFileDialog::LoadScene()
 {
     QString title = "Load Scene";

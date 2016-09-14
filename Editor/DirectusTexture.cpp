@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QMimeData>
 #include "IO/Log.h"
 #include "DirectusInspector.h"
-#include "IO/FileHelper.h"
+#include "IO/FileSystem.h"
 //==============================
 
 DirectusTexture::DirectusTexture(QWidget *parent) : QLabel(parent)
@@ -124,10 +124,10 @@ void DirectusTexture::dropEvent(QDropEvent* event)
     const QMimeData *mime = event->mimeData();
     std::string imagePath = mime->text().toStdString();
 
-    if (FileHelper::IsSupportedImage(imagePath))
+    if (FileSystem::IsSupportedImage(imagePath))
     {
         // This is essential to avoid an absolute path mess. Everything is relative.
-        imagePath = FileHelper::GetRelativePathFromAbsolutePath(imagePath);
+        imagePath = FileSystem::GetRelativePathFromAbsolutePath(imagePath);
 
         // Load the image
         LoadImageAsync(imagePath);

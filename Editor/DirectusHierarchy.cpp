@@ -33,7 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/Hinge.h"
 #include "Components/MeshFilter.h"
-#include "IO/FileHelper.h"
+#include "IO/FileSystem.h"
+#include "Signals/Signaling.h"
 //=================================
 
 //= NAMESPACES =====
@@ -62,7 +63,12 @@ void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWi
 
     m_fileDialog = new DirectusFileDialog(mainWindow);
     m_fileDialog->Initialize(m_mainWindow, m_directusCore);
+
+    // UI SIGNALS
     connect(m_fileDialog, SIGNAL(AssetLoaded()), this, SLOT(Populate()));
+
+    // ENGINE SIGNALS
+    //CONNECT_TO_SIGNAL(SIGNAL_HIERARCHY_CHANGED, std::bind(&DirectusHierarchy::Populate, this));
 
     Populate();
 }
