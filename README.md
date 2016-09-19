@@ -25,6 +25,7 @@ The engine has been under development for about a year and a half, it isn't prod
 # Planned Features
 - Ability to save anything in a custom engine format (prefabs).
 - Audio source and listener components.
+- DirectX 12 Renderer.
 - Draw call batching (static & dynamic).
 - Font loader & renderer.
 - SSAO, SSR, Volumetric Lighting.
