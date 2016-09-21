@@ -13,7 +13,7 @@ The engine has been under development for about a year and a half, it isn't prod
 - Cascaded shadow mapping.
 - Component-based game object system.
 - Cross-Platform state of the art editor.
-- D3D11 Renderer.
+- D3D11 Renderer
 - Deferred rendering.
 - Frustum culling.
 - Physically based shading.
@@ -31,6 +31,8 @@ The engine has been under development for about a year and a half, it isn't prod
 - SSAO, SSR, Volumetric Lighting.
 - UI components.
 - Vulkan Renderer.
+
+Note: Regarding DirectX 12 and Vulkan, these are the most high priority planned features, research is being conducted as to avoid a simple porting from DirectX 11 which can result in lower performance. Most likely a new rendering approach will be written so there are actual gains in terms of performance & memory usage.
 
 ### Download
 - [Directus v0.1 (Windows x64)] (https://onedrive.live.com/download?resid=96760D43099D7718!124439&authkey=!ALD0yN8dIO_DAEg)
