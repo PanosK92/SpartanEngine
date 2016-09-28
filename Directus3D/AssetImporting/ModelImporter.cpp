@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assimp/postprocess.h>
 #include <vector>
 #include "ModelImporter.h"
-#include "../IO/FileHelper.h"
+#include "../IO/FileSystem.h"
 #include "../IO/Log.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
@@ -93,11 +93,11 @@ bool ModelImporter::Load(string filePath, GameObject* gameObject)
 	const aiScene* scene = importer.ReadFile(m_fullModelPath, ppsteps);
 	if (!scene) // Someting went wrong. Print it.
 	{
-		LOG_ERROR("Failed to load \"" + FileHelper::GetFileNameNoExtensionFromPath(m_fullModelPath) + "\". " + importer.GetErrorString());
+		LOG_ERROR("Failed to load \"" + FileSystem::GetFileNameNoExtensionFromPath(m_fullModelPath) + "\". " + importer.GetErrorString());
 		return false;
 	}
 
-	string name = FileHelper::GetFileNameNoExtensionFromPath(filePath);
+	string name = FileSystem::GetFileNameNoExtensionFromPath(filePath);
 	gameObject->SetName(name);
 
 	// This function will recursively process the entire model
@@ -163,7 +163,7 @@ void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* 
 		SetGameObjectTransform(parentGameObject, node->mTransformation); // apply transformation	
 
 		// node->mName always returns "RootNode", therefore the modelName has to be extracted from the path
-		m_modelName = FileHelper::GetFileNameFromPath(m_fullModelPath);
+		m_modelName = FileSystem::GetFileNameFromPath(m_fullModelPath);
 	}
 
 	// process all the node's meshes
@@ -321,7 +321,7 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 				engineMaterial->SetTexture(texture->GetID());
 			}
 			else
-				LOG_WARNING("Failed to find \"" + FileHelper::GetFileNameFromPath(string(Path.data)) + "\".");
+				LOG_WARNING("Failed to find \"" + FileSystem::GetFileNameFromPath(string(Path.data)) + "\".");
 		}
 	}
 
@@ -336,7 +336,7 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 				engineMaterial->SetTexture(texture->GetID());
 			}
 			else
-				LOG_WARNING("Failed to find \"" + FileHelper::GetFileNameFromPath(string(Path.data)) + "\".");
+				LOG_WARNING("Failed to find \"" + FileSystem::GetFileNameFromPath(string(Path.data)) + "\".");
 		}
 
 	//= NORMAL TEXTURE ======================================================================================================
@@ -350,7 +350,7 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 				engineMaterial->SetTexture(texture->GetID());
 			}
 			else
-				LOG_WARNING("Failed to find \"" + FileHelper::GetFileNameFromPath(string(Path.data)) + "\".");
+				LOG_WARNING("Failed to find \"" + FileSystem::GetFileNameFromPath(string(Path.data)) + "\".");
 		}
 
 	//= HEIGHT TEXTURE =====================================================================================================
@@ -364,7 +364,7 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 				engineMaterial->SetTexture(texture->GetID());
 			}
 			else
-				LOG_WARNING("Failed to find \"" + FileHelper::GetFileNameFromPath(string(Path.data)) + "\".");
+				LOG_WARNING("Failed to find \"" + FileSystem::GetFileNameFromPath(string(Path.data)) + "\".");
 		}
 
 	//= MASK TEXTURE ========================================================================================================
@@ -378,7 +378,7 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 				engineMaterial->SetTexture(texture->GetID());
 			}
 			else
-				LOG_WARNING("Failed to find \"" + FileHelper::GetFileNameFromPath(string(Path.data)) + "\".");
+				LOG_WARNING("Failed to find \"" + FileSystem::GetFileNameFromPath(string(Path.data)) + "\".");
 		}
 
 	return engineMaterial;
@@ -409,26 +409,26 @@ string ModelImporter::ConstructRelativeTexturePath(string absoluteTexturePath)
 
 string ModelImporter::FindTexture(string texturePath) const
 {
-	if (FileHelper::FileExists(texturePath))
+	if (FileSystem::FileExists(texturePath))
 		return texturePath;
 
 	//= try path as is but with multiple extensions ===========
 	texturePath = TryPathWithMultipleExtensions(texturePath);
-	if (FileHelper::FileExists(texturePath))
+	if (FileSystem::FileExists(texturePath))
 		return texturePath;
 	//=========================================================
 
 	//= try path as filename only, with multiple extensions ====
-	string filename = FileHelper::GetFileNameFromPath(m_fullTexturePath);
+	string filename = FileSystem::GetFileNameFromPath(m_fullTexturePath);
 
 	// get model's root directory.
 	string modelPath = m_fullModelPath;
-	string path = FileHelper::GetPathWithoutFileName(modelPath);
+	string path = FileSystem::GetPathWithoutFileName(modelPath);
 
 	// combine them
 	string newPath = path + filename;
 	newPath = TryPathWithMultipleExtensions(newPath);
-	if (FileHelper::FileExists(newPath))
+	if (FileSystem::FileExists(newPath))
 		return newPath;
 	//==========================================================
 
@@ -461,7 +461,7 @@ string ModelImporter::TryPathWithMultipleExtensions(string fullpath)
 	};
 
 	for (int i = 0; i < extensions; i++)
-		if (FileHelper::FileExists(multipleExtensionPaths[i]))
+		if (FileSystem::FileExists(multipleExtensionPaths[i]))
 			return multipleExtensionPaths[i];
 
 	return fullpath;

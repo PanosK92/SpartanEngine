@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <scriptbuilder/scriptbuilder.cpp>
 #include "ScriptEngine.h"
 #include "../IO/Log.h"
-#include "../IO/FileHelper.h"
+#include "../IO/FileSystem.h"
 //========================================
 
 Module::Module(string moduleName, ScriptEngine* scriptEngine)
@@ -64,7 +64,7 @@ bool Module::LoadScript(string path)
 	result = m_builder->BuildModule();
 	if (result < 0)
 	{
-		LOG_ERROR("Failed to compile script \"" + FileHelper::GetFileNameFromPath(path) + "\". Correct any errors and try again.");
+		LOG_ERROR("Failed to compile script \"" + FileSystem::GetFileNameFromPath(path) + "\". Correct any errors and try again.");
 		return false;
 	}
 

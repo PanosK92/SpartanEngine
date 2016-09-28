@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "ImageImporter.h"
 #include "../IO/Log.h"
-#include "../IO/FileHelper.h"
+#include "../IO/FileSystem.h"
 #include "FreeImagePlus.h"
 //===========================
 
@@ -251,7 +251,7 @@ bool ImageImporter::Load(std::string path, int width, int height, bool scale)
 	// Clear any data left from a previous image loading (if necessary)
 	Clear();
 
-	if (!FileHelper::FileExists(path))
+	if (!FileSystem::FileExists(path))
 	{
 		LOG_WARNING("Failed to load image \"" + path + "\", it doesn't exist.");
 		return false;
