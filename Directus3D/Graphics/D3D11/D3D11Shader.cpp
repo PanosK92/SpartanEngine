@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11Graphics.h"
 #include "../../Core/Helper.h"
 #include "../../IO/Log.h"
-#include "../../IO/FileSystem.h"
+#include "../../IO/FileHelper.h"
 #include <d3dcompiler.h>
 #include <sstream> 
 #include <fstream>
@@ -135,7 +135,7 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 	if (m_layoutHasBeenSet)
 		SafeRelease(m_VSBlob);
 	else
-		LOG("Failed to create vertex input layout for " + FileSystem::GetFileNameFromPath(m_path) + ".", Log::Error);
+		LOG("Failed to create vertex input layout for " + FileHelper::GetFileNameFromPath(m_path) + ".", Log::Error);
 
 	return m_layoutHasBeenSet;
 }
@@ -279,7 +279,7 @@ HRESULT D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LP
 	// Handle any errors
 	if (FAILED(hr))
 	{
-		string shaderName = FileSystem::GetFileNameFromPath(filePath);
+		string shaderName = FileHelper::GetFileNameFromPath(filePath);
 		if (errorBlob)
 		{
 			ExportErrorDebugLog(errorBlob);	

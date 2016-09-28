@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../IO/Log.h"
 #include "../AssetImporting/ImageImporter.h"
-#include "../IO/FileSystem.h"
+#include "../IO/FileHelper.h"
 //=================================
 
 //= NAMESPACES =====
@@ -100,7 +100,7 @@ bool Texture::LoadFromFile(string path, TextureType type)
 
 	// Fill the texture with data
 	SetPath(ImageImporter::GetInstance().GetPath());
-	SetName(FileSystem::GetFileNameFromPath(GetPath()));
+	SetName(FileHelper::GetFileNameFromPath(GetPath()));
 	SetWidth(ImageImporter::GetInstance().GetWidth());
 	SetHeight(ImageImporter::GetInstance().GetHeight());
 	SetGrayscale(ImageImporter::GetInstance().IsGrayscale());
