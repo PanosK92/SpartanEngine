@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ScriptDefinitions.h"
 #include "Module.h"
 #include "../IO/Log.h"
-#include "../IO/FileSystem.h"
+#include "../IO/FileHelper.h"
 //==========================================
 
 #define AS_USE_STLNAMES = 1
@@ -171,7 +171,7 @@ void ScriptEngine::LogExceptionInfo(asIScriptContext* ctx)
 	string functionDecleration = function->GetDeclaration();
 	string moduleName = function->GetModuleName();
 	string scriptPath = function->GetScriptSectionName();
-	string scriptFile = FileSystem::GetFileNameFromPath(scriptPath);
+	string scriptFile = FileHelper::GetFileNameFromPath(scriptPath);
 	string exceptionLine = to_string(ctx->GetExceptionLineNumber());
 
 	LOG_ERROR(exceptionDescription + ", at line " + exceptionLine + ", in function " + functionDecleration + ", in script " + scriptFile);
@@ -180,7 +180,7 @@ void ScriptEngine::LogExceptionInfo(asIScriptContext* ctx)
 // This is used for AngelScript error messages
 void ScriptEngine::message_callback(const asSMessageInfo& msg)
 {
-	string filename = FileSystem::GetFileNameFromPath(msg.section);
+	string filename = FileHelper::GetFileNameFromPath(msg.section);
 	string message = msg.message;
 
 	string finalMessage;

@@ -114,6 +114,9 @@
     <ClCompile Include="Input\Input.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="IO\FileHelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="IO\Log.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -202,9 +205,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="AssetImporting\ModelImporter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="IO\FileSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -320,6 +320,9 @@
     <ClInclude Include="IO\dirent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="IO\FileHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="IO\ILogger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -431,14 +434,10 @@
     <ClInclude Include="AssetImporting\ModelImporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="IO\FileSystem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Xml Include="Assets\Shaders\HLSL.xml" />
     <Xml Include="Assets\Scripts\dss.xml" />
-    <Xml Include="Assets\Scripts\notepad++.xml" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\Shaders\noise.png">
@@ -469,10 +468,5 @@
     <None Include="Assets\Shaders\SSAO.hlsl" />
     <None Include="Assets\Shaders\ToneMapping.hlsl" />
     <None Include="Assets\Shaders\VolumetricLighting.hlsl" />
-    <None Include="Assets\Scripts\FirstPersonController.as" />
-    <None Include="Assets\Scripts\FirstPersonControllerPhysics.as" />
-    <None Include="Assets\Scripts\MouseLook.as" />
-    <None Include="Assets\Scripts\PingPongAlongX.as" />
-    <None Include="Assets\Scripts\RotateAroundSelf.as" />
   </ItemGroup>
 </Project>
