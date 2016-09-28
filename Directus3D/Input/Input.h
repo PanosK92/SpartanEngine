@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "DX8Input.h"
 #include "../Math/Vector2.h"
-
 //==========================
 
 enum KeyCode

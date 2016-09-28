@@ -168,7 +168,7 @@
     <ClCompile Include="Graphics\Shaders\ShaderVariation.cpp" />
     <ClCompile Include="Input\DX8Input.cpp" />
     <ClCompile Include="Input\Input.cpp" />
-    <ClCompile Include="IO\FileHelper.cpp" />
+    <ClCompile Include="IO\FileSystem.cpp" />
     <ClCompile Include="IO\Log.cpp" />
     <ClCompile Include="IO\Serializer.cpp" />
     <ClCompile Include="AssetImporting\DDSTextureImporter.cpp" />
@@ -241,7 +241,7 @@
     <ClInclude Include="Input\DX8Input.h" />
     <ClInclude Include="Input\Input.h" />
     <ClInclude Include="IO\dirent.h" />
-    <ClInclude Include="IO\FileHelper.h" />
+    <ClInclude Include="IO\FileSystem.h" />
     <ClInclude Include="IO\ILogger.h" />
     <ClInclude Include="IO\Log.h" />
     <ClInclude Include="IO\Serializer.h" />
@@ -270,6 +270,11 @@
     <ClInclude Include="Scripting\ScriptInstance.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets\Scripts\FirstPersonController.as" />
+    <None Include="Assets\Scripts\FirstPersonControllerPhysics.as" />
+    <None Include="Assets\Scripts\MouseLook.as" />
+    <None Include="Assets\Scripts\PingPongAlongX.as" />
+    <None Include="Assets\Scripts\RotateAroundSelf.as" />
     <None Include="Assets\Shaders\Color.hlsl">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
       <FileType>Document</FileType>
@@ -333,6 +338,7 @@
   </ItemGroup>
   <ItemGroup>
     <Xml Include="Assets\Scripts\dss.xml" />
+    <Xml Include="Assets\Scripts\notepad++.xml" />
     <Xml Include="Assets\Shaders\HLSL.xml" />
   </ItemGroup>
   <ItemGroup>

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <angelscript.h>
 #include "Module.h"
 #include "../Core/Helper.h"
-#include "../IO/FileHelper.h"
+#include "../IO/FileSystem.h"
 #include "../IO/Log.h"
 #include "../Core/GameObject.h"
 //=============================
@@ -65,7 +65,7 @@ bool ScriptInstance::Instantiate(string path, GameObject* gameObject, ScriptEngi
 	// Extract properties from path
 	m_scriptPath = path;
 	m_gameObject = gameObject;
-	m_className = FileHelper::GetFileNameNoExtensionFromPath(m_scriptPath);
+	m_className = FileSystem::GetFileNameNoExtensionFromPath(m_scriptPath);
 	m_moduleName = m_className + m_gameObject->GetID();
 	m_constructorDeclaration = m_className + " @" + m_className + "(GameObject @)";
 
