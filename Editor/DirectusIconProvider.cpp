@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "DirectusIconProvider.h"
 #include "IO/Log.h"
-#include "IO/FileHelper.h"
+#include "IO/FileSystem.h"
 //=======================================
 
 //= NAMESPACES =====
@@ -52,7 +52,7 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     string filePath = info.absoluteFilePath().toStdString();
 
     // Icon
-    if(FileHelper::IsSupportedImage(filePath))
+    if(FileSystem::IsSupportedImage(filePath))
     {
         int width = 100;
         int heigh = 100;
@@ -74,25 +74,25 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     }
 
     // Model
-    if (FileHelper::IsSupportedModel(filePath))
+    if (FileSystem::IsSupportedModel(filePath))
     {
         return m_modelIcon;
     }
 
     // Script
-    if (FileHelper::IsSupportedScript(filePath))
+    if (FileSystem::IsSupportedScript(filePath))
     {
         return m_scriptIcon;
     }
 
     // Scene
-    if (FileHelper::IsSupportedScene(filePath))
+    if (FileSystem::IsSupportedScene(filePath))
     {
         return m_sceneIcon;
     }
 
     // Shader
-    if (FileHelper::IsSupportedShader(filePath))
+    if (FileSystem::IsSupportedShader(filePath))
     {
         return m_shaderIcon;
     }

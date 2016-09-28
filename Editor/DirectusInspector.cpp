@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "DirectusInspector.h"
 #include "IO/Log.h"
-#include "IO/FileHelper.h"
+#include "IO/FileSystem.h"
 #include <QMimeData>
 //============================
 
@@ -190,10 +190,10 @@ void DirectusInspector::dropEvent(QDropEvent* event)
     const QMimeData *mime = event->mimeData();
     std::string scriptPath = mime->text().toStdString();
 
-    if (FileHelper::IsSupportedScript(scriptPath) && m_inspectedGameObject)
+    if (FileSystem::IsSupportedScript(scriptPath) && m_inspectedGameObject)
     {
         // Make the absolute path, relative
-        scriptPath = FileHelper::GetRelativePathFromAbsolutePath(scriptPath);
+        scriptPath = FileSystem::GetRelativePathFromAbsolutePath(scriptPath);
 
         // Add a script component and load the script
         Script* scriptComp = m_inspectedGameObject->AddComponent<Script>();

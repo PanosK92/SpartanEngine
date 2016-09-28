@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QListView>
 #include <QFileSystemModel>
 #include "DirectusIconProvider.h"
+#include "DirectusFileDialog.h"
 //===============================
 
 class DirectusFileExplorer : public QListView
@@ -32,15 +33,19 @@ class DirectusFileExplorer : public QListView
     Q_OBJECT
 public:
     explicit DirectusFileExplorer(QWidget *parent = 0);
-    void Initialize();
+    void Initialize(QWidget* mainWindow, DirectusCore* directusCore);
     void SetRootPath(QString path);
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseMoveEvent(QMouseEvent* event);
+    virtual void dragEnterEvent(QDragEnterEvent* event);
+    virtual void dragMoveEvent (QDragMoveEvent* event);
+    virtual void dropEvent(QDropEvent* event);
 
 private:
     QFileSystemModel* m_fileModel;
     QPoint m_dragStartPosition;
     DirectusIconProvider* m_directusIconProvider;
+    DirectusFileDialog* m_fileDialog;
 
 signals:
 

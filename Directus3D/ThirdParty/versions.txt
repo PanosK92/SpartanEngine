@@ -1,0 +1,4 @@
+AngelScript 	2.31.1
+Assimp 		3.3.1
+Bullet 		2.83.7
+FreeImage 	3.17.0

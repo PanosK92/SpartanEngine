@@ -21,19 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================================================
 #include "PhysicsWorld.h"
-#include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
-#include <BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h>
-#include <BulletCollision/CollisionDispatch/btCollisionDispatcher.h>
-#include <BulletDynamics/ConstraintSolver/btTypedConstraint.h>
-#include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
-#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
+#include "BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
+#include "BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h"
+#include "BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
+#include "BulletDynamics/ConstraintSolver/btTypedConstraint.h"
+#include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
+#include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
 #include "PhysicsDebugDraw.h"
 #include "../Core/Helper.h"
 #include "BulletPhysicsHelper.h"
 #include "../Signals/Signaling.h"
 #include <algorithm>
 #include "../Core/Settings.h"
-
 //==============================================================================
 
 PhysicsWorld::PhysicsWorld()
