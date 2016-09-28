@@ -307,6 +307,7 @@ void GameObjectPool::AddGameObjectToPool(GameObject* gameObject)
 
 	gameObject->Initialize(m_graphics, m_scene, m_renderer, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physics, m_scriptEngine);
 	m_gameObjectPool.push_back(gameObject);
+	EMIT_SIGNAL(SIGNAL_HIERARCHY_CHANGED);
 
 	m_scene->AnalyzeGameObjects();
 }

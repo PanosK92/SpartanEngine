@@ -1,0 +1,44 @@
+Release Notes
+--------------
+This version of the library has been tested under OSX 10.3.9 PPC and OSX 10.4.8 Intel.
+
+While the makefiles will make a .dylib and a .a, it is recommended to simply staticly link with the .a file.
+
+FreeImage is now built as a Universal Binary and targets the 10.3.9 SDK for PPC and the 10.4u SDK for i386.
+This means that you must have both of these SDKs installed and that you must be running on OSX 10.4+ to build FreeImage.
+The library will run on 10.3 PPC, but probably not 10.2 or below anymore. wchar.h did not exist on 10.2.
+
+FreeImage is now built with gcc 4.0 and will thus only run on 10.3.9 or above (some libraries may not exist on 10.3.8 and below).
+
+The FreeImage makefile makes use of the gcc "-fvisibility=hidden" in order to avoid incompatibilities between 
+internal third party libraries and the OS libraries. This feature is available with gcc 4 or greater. 
+
+
+Ryan Rubley
+
+Building the Library
+--------------------
+Makefile detects the environment by calling 'uname'. Assuming this reports 'Darwin' on your system, Makefile will automatically
+defer commands to Makefile.osx. If this doesn't work, type 'make -f Makefile.osx' in place of just 'make'
+
+The build process is as simple as this: 
+1) Enter the FreeImage directory
+2) Build the distribution: 
+make
+3) The libraries and header will be in the Dist directory when the build is finished
+
+To install FreeImage in the /usr/local/lib and /usr/local/include directories (not recommended):
+make install
+
+To clean all files produced during the build process:
+make clean
+
+
+Additional notes
+----------------
+
+Building on Mac OS X Leopard : 
+
+Install the xcode dev tools from the Leopard disk. 
+When installing the dev tools make sure to have installed 10.3.9 SDK (it's not selected by default). 
+

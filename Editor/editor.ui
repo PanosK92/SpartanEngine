@@ -2460,6 +2460,9 @@ QTabBar::tab:last
                          <property name="dragEnabled">
                           <bool>true</bool>
                          </property>
+                         <property name="dragDropMode">
+                          <enum>QAbstractItemView::NoDragDrop</enum>
+                         </property>
                          <property name="defaultDropAction">
                           <enum>Qt::MoveAction</enum>
                          </property>
@@ -3156,7 +3159,6 @@ QTabBar::tab:last
     <addaction name="actionSave_Scene"/>
     <addaction name="actionSave_Scene_as"/>
     <addaction name="separator"/>
-    <addaction name="actionLoad_Model"/>
    </widget>
    <widget class="QMenu" name="menuGameObject">
     <property name="title">

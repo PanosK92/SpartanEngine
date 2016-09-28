@@ -1,0 +1,67 @@
+Release Notes
+--------------
+Hey folks, 
+
+I just went through the process of building and using the freeimage library
+on Solaris 9.  Things don't work out of the box so I thought I would share my
+experiences in case someone else wants to do the same.
+
+I'm using Solaris 9, and I have installed all the development libraries, make,
+and the gcc 3.3.2 found on sunfreeware.com.
+
+You have to use the make from sunfreeware because the Solaris 9 make program
+chokes hard on FreeImages makefiles.
+
+First thing I had to do was modify the main FreeImage makefile:
+
+1. go to the $(SHAREDLIB): line and replace the $(CC) line with the following.
+(there are 2 corrections)
+
+$(CC) -s -G -Wl,-soname=$(LIBNAME) -o $@ $(MODULES) $(LIBRARIES)
+
+The two changes are -G instead of -shared, and the = sign instead of a comma
+after the -soname.
+
+2. change INSTALLDIR = /usr/lib to INSTALLDIR = /usr/local/lib
+
+This is because the sunfreeware tools assume the libs being built will reside
+in /usr/local/lib and thus set the default linker search paths to that.  Another
+solution for this would be to use the -R and -L linker options, but I chose
+the easy way :)
+
+That's it!  You can now use freeimage.   
+
+Also, if you have an autoconf/automake project that links against FreeImage,
+you can use the following in your configure.in, it works rather well for me:
+
+AC_CHECK_LIB(freeimage-3.5.0, FreeImage_Initialise, [],
+                                 [AC_MSG_ERROR([libfreeimage-3.5.0.so required and missing. See
+http://freeimage.sourceforge.net.]) ])
+
+the AC_CHECK_LIB macro will not only find the library, it will automatically
+link against it as well so you dont have to add it to your Makefile.am.
+
+I hope this helps someone!
+
+---
+ogtharox at users.sourceforge.net
+
+
+Installation
+------------
+Note: You will need to have root privileges in order to install the library in the /usr/local/lib directory.
+The installation process is as simple as this : 
+1) Enter the FreeImage directory
+2) Build the distribution : 
+make -f Makefile.solaris
+make -f Makefile.solaris install
+3) Clean all files produced during the build process
+make -f Makefile.solaris clean
+
+Release Notes for Solaris/Sparc
+--------------------------------
+Under Solaris/Sparc, you will need to modify the following line : 
+COMPILERFLAGS = -O3
+modified into
+COMPILERFLAGS = -O3 -DBYTE_ORDER=BIG_ENDIAN -D__BIG_ENDIAN__
+

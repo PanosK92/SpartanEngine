@@ -36,6 +36,7 @@ public:
     void Initialize(QWidget* mainWindow, DirectusCore* directusCore);
     void Reset();
     void LoadModel();
+    void LoadModelDirectly(QString filePath);
     void LoadScene();
     void SaveScene();
     void SaveSceneAs();
