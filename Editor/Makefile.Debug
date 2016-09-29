@@ -17,13 +17,13 @@ CXXFLAGS      = -nologo -Zc:wchar_t -FS -Zc:strictStrings -Zc:throwingNew -Zi -M
 INCPATH       = -I. -I..\Directus3D -IC:\Qt\5.7\msvc2015_64\include -IC:\Qt\5.7\msvc2015_64\include\QtWidgets -IC:\Qt\5.7\msvc2015_64\include\QtGui -IC:\Qt\5.7\msvc2015_64\include\QtANGLE -IC:\Qt\5.7\msvc2015_64\include\QtCore -I..\..\Binaries\MOCFiles -I..\..\Binaries\UICFiles -IC:\Qt\5.7\msvc2015_64\mkspecs\win32-msvc2015 
 LINKER        = link
 LFLAGS        = /NOLOGO /DYNAMICBASE /NXCOMPAT /DEBUG /SUBSYSTEM:WINDOWS "/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'"
-LIBS          = /LIBPATH:C:\Qt\5.7\msvc2015_64\lib C:\Qt\5.7\msvc2015_64\lib\qtmaind.lib /LIBPATH:C:\utils\postgresql\pgsql\lib /LIBPATH:C:\utils\my_sql\my_sql\lib shell32.lib /LIBPATH:D:\Projects\Directus3D\Binaries D:\Projects\Directus3D\Binaries\Directus3DRuntime.lib C:\Qt\5.7\msvc2015_64\lib\Qt5Widgetsd.lib C:\Qt\5.7\msvc2015_64\lib\Qt5Guid.lib C:\Qt\5.7\msvc2015_64\lib\Qt5Cored.lib D:\Projects\Directus3D\Binaries\ObjFiles\Directus3D_resource.res 
+LIBS          = /LIBPATH:C:\Qt\5.7\msvc2015_64\lib C:\Qt\5.7\msvc2015_64\lib\qtmaind.lib /LIBPATH:C:\utils\postgresql\pgsql\lib /LIBPATH:C:\utils\my_sql\my_sql\lib shell32.lib /LIBPATH:C:\Users\Panos\Desktop\Binaries C:\Users\Panos\Desktop\Binaries\Directus3DRuntime.lib C:\Qt\5.7\msvc2015_64\lib\Qt5Widgetsd.lib C:\Qt\5.7\msvc2015_64\lib\Qt5Guid.lib C:\Qt\5.7\msvc2015_64\lib\Qt5Cored.lib C:\Users\Panos\Desktop\Binaries\ObjFiles\Directus3D_resource.res 
 QMAKE         = C:\Qt\5.7\msvc2015_64\bin\qmake.exe
 IDC           = idc
 IDL           = midl
 ZIP           = zip -r -9
 DEF_FILE      = 
-RES_FILE      = D:\Projects\Directus3D\Binaries\ObjFiles\Directus3D_resource.res
+RES_FILE      = C:\Users\Panos\Desktop\Binaries\ObjFiles\Directus3D_resource.res
 COPY          = copy /y
 SED           = $(QMAKE) -install sed
 COPY_FILE     = copy /y
@@ -255,6 +255,26 @@ DESTDIR_TARGET = ..\..\Binaries\Directus3D.exe
 	$<
 <<
 
+{C:/Users/Panos/Desktop/Directus3D/Editor/../../Binaries/\UICFiles}.cpp{..\..\Binaries\ObjFiles\}.obj::
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -Fo..\..\Binaries\ObjFiles\ @<<
+	$<
+<<
+
+{C:/Users/Panos/Desktop/Directus3D/Editor/../../Binaries/\UICFiles}.cc{..\..\Binaries\ObjFiles\}.obj::
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -Fo..\..\Binaries\ObjFiles\ @<<
+	$<
+<<
+
+{C:/Users/Panos/Desktop/Directus3D/Editor/../../Binaries/\UICFiles}.cxx{..\..\Binaries\ObjFiles\}.obj::
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -Fo..\..\Binaries\ObjFiles\ @<<
+	$<
+<<
+
+{C:/Users/Panos/Desktop/Directus3D/Editor/../../Binaries/\UICFiles}.c{..\..\Binaries\ObjFiles\}.obj::
+	$(CC) -c $(CFLAGS) $(INCPATH) -Fo..\..\Binaries\ObjFiles\ @<<
+	$<
+<<
+
 {.}.cpp{..\..\Binaries\ObjFiles\}.obj::
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -Fo..\..\Binaries\ObjFiles\ @<<
 	$<
@@ -271,26 +291,6 @@ DESTDIR_TARGET = ..\..\Binaries\Directus3D.exe
 <<
 
 {.}.c{..\..\Binaries\ObjFiles\}.obj::
-	$(CC) -c $(CFLAGS) $(INCPATH) -Fo..\..\Binaries\ObjFiles\ @<<
-	$<
-<<
-
-{D:\Projects\Directus3D\Binaries\UICFiles}.cpp{..\..\Binaries\ObjFiles\}.obj::
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -Fo..\..\Binaries\ObjFiles\ @<<
-	$<
-<<
-
-{D:\Projects\Directus3D\Binaries\UICFiles}.cc{..\..\Binaries\ObjFiles\}.obj::
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -Fo..\..\Binaries\ObjFiles\ @<<
-	$<
-<<
-
-{D:\Projects\Directus3D\Binaries\UICFiles}.cxx{..\..\Binaries\ObjFiles\}.obj::
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -Fo..\..\Binaries\ObjFiles\ @<<
-	$<
-<<
-
-{D:\Projects\Directus3D\Binaries\UICFiles}.c{..\..\Binaries\ObjFiles\}.obj::
 	$(CC) -c $(CFLAGS) $(INCPATH) -Fo..\..\Binaries\ObjFiles\ @<<
 	$<
 <<
@@ -320,13 +320,13 @@ DESTDIR_TARGET = ..\..\Binaries\Directus3D.exe
 first: all
 all: Makefile.Debug  $(DESTDIR_TARGET)
 
-$(DESTDIR_TARGET): ..\..\Binaries\UICFiles\ui_editor.h ..\..\Binaries\UICFiles\ui_AboutDialog.h ..\..\Binaries\UICFiles\ui_AssetLoadingDialog.h $(OBJECTS) D:\Projects\Directus3D\Binaries\ObjFiles\Directus3D_resource.res
+$(DESTDIR_TARGET): ..\..\Binaries\UICFiles\ui_editor.h ..\..\Binaries\UICFiles\ui_AboutDialog.h ..\..\Binaries\UICFiles\ui_AssetLoadingDialog.h $(OBJECTS) C:\Users\Panos\Desktop\Binaries\ObjFiles\Directus3D_resource.res
 	$(LINKER) $(LFLAGS) /MANIFEST:embed /OUT:$(DESTDIR_TARGET) @<<
 $(OBJECTS) $(LIBS)
 <<
 
-D:\Projects\Directus3D\Binaries\ObjFiles\Directus3D_resource.res: Directus3D_resource.rc
-	rc -D_DEBUG $(DEFINES) -fo D:\Projects\Directus3D\Binaries\ObjFiles\Directus3D_resource.res Directus3D_resource.rc
+C:\Users\Panos\Desktop\Binaries\ObjFiles\Directus3D_resource.res: Directus3D_resource.rc
+	rc -D_DEBUG $(DEFINES) -fo C:\Users\Panos\Desktop\Binaries\ObjFiles\Directus3D_resource.res Directus3D_resource.rc
 
 qmake: FORCE
 	@$(QMAKE) -spec win32-msvc2015 -o Makefile.Debug Editor.pro
@@ -340,7 +340,7 @@ clean: compiler_clean
 	-$(DEL_FILE) ..\..\Binaries\ObjFiles\main.obj ..\..\Binaries\ObjFiles\editor.obj ..\..\Binaries\ObjFiles\DirectusPlayButton.obj ..\..\Binaries\ObjFiles\AboutDialog.obj ..\..\Binaries\ObjFiles\DirectusDirExplorer.obj ..\..\Binaries\ObjFiles\DirectusFileExplorer.obj ..\..\Binaries\ObjFiles\DirectusConsole.obj ..\..\Binaries\ObjFiles\DirectusInspector.obj ..\..\Binaries\ObjFiles\DirectusHierarchy.obj ..\..\Binaries\ObjFiles\DirectusTransform.obj ..\..\Binaries\ObjFiles\DirectusAdjustLabel.obj ..\..\Binaries\ObjFiles\DirectusCamera.obj ..\..\Binaries\ObjFiles\DirectusMeshRenderer.obj ..\..\Binaries\ObjFiles\DirectusMaterial.obj ..\..\Binaries\ObjFiles\DirectusLight.obj ..\..\Binaries\ObjFiles\DirectusRigidBody.obj ..\..\Binaries\ObjFiles\DirectusCollider.obj ..\..\Binaries\ObjFiles\DirectusScript.obj ..\..\Binaries\ObjFiles\DirectusMeshCollider.obj ..\..\Binaries\ObjFiles\DirectusCore.obj ..\..\Binaries\ObjFiles\DirectusAssetLoader.obj ..\..\Binaries\ObjFiles\DirectusComboLabelText.obj ..\..\Binaries\ObjFiles\DirectusComboSliderText.obj ..\..\Binaries\ObjFiles\DirectusTexture.obj ..\..\Binaries\ObjFiles\DirectusMeshFilter.obj ..\..\Binaries\ObjFiles\DirectusColorPicker.obj ..\..\Binaries\ObjFiles\DirectusStatsLabel.obj ..\..\Binaries\ObjFiles\DirectusDropDownButton.obj ..\..\Binaries\ObjFiles\DirectusProgressBar.obj ..\..\Binaries\ObjFiles\DirectusFileDialog.obj ..\..\Binaries\ObjFiles\DirectusIconProvider.obj ..\..\Binaries\ObjFiles\qrc_images.obj ..\..\Binaries\ObjFiles\moc_editor.obj ..\..\Binaries\ObjFiles\moc_DirectusPlayButton.obj ..\..\Binaries\ObjFiles\moc_AboutDialog.obj ..\..\Binaries\ObjFiles\moc_DirectusDirExplorer.obj ..\..\Binaries\ObjFiles\moc_DirectusFileExplorer.obj ..\..\Binaries\ObjFiles\moc_DirectusConsole.obj ..\..\Binaries\ObjFiles\moc_DirectusInspector.obj ..\..\Binaries\ObjFiles\moc_DirectusHierarchy.obj ..\..\Binaries\ObjFiles\moc_DirectusTransform.obj ..\..\Binaries\ObjFiles\moc_DirectusAdjustLabel.obj ..\..\Binaries\ObjFiles\moc_DirectusCamera.obj
 	-$(DEL_FILE) ..\..\Binaries\ObjFiles\moc_DirectusMeshRenderer.obj ..\..\Binaries\ObjFiles\moc_DirectusMaterial.obj ..\..\Binaries\ObjFiles\moc_DirectusLight.obj ..\..\Binaries\ObjFiles\moc_DirectusRigidBody.obj ..\..\Binaries\ObjFiles\moc_DirectusCollider.obj ..\..\Binaries\ObjFiles\moc_DirectusScript.obj ..\..\Binaries\ObjFiles\moc_DirectusMeshCollider.obj ..\..\Binaries\ObjFiles\moc_DirectusCore.obj ..\..\Binaries\ObjFiles\moc_DirectusAssetLoader.obj ..\..\Binaries\ObjFiles\moc_DirectusComboLabelText.obj ..\..\Binaries\ObjFiles\moc_DirectusComboSliderText.obj ..\..\Binaries\ObjFiles\moc_DirectusTexture.obj ..\..\Binaries\ObjFiles\moc_DirectusMeshFilter.obj ..\..\Binaries\ObjFiles\moc_DirectusColorPicker.obj ..\..\Binaries\ObjFiles\moc_DirectusStatsLabel.obj ..\..\Binaries\ObjFiles\moc_DirectusDropDownButton.obj ..\..\Binaries\ObjFiles\moc_DirectusProgressBar.obj ..\..\Binaries\ObjFiles\moc_DirectusFileDialog.obj
 	-$(DEL_FILE) ..\..\Binaries\Directus3D.exp ..\..\Binaries\Directus3D.ilk ..\..\Binaries\Directus3D.idb
-	-$(DEL_FILE) D:\Projects\Directus3D\Binaries\ObjFiles\Directus3D_resource.res
+	-$(DEL_FILE) C:\Users\Panos\Desktop\Binaries\ObjFiles\Directus3D_resource.res
 
 distclean: clean 
 	-$(DEL_FILE) ..\..\Binaries\Directus3D.lib ..\..\Binaries\Directus3D.pdb
@@ -504,7 +504,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qdialog.h \
 		editor.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore editor.h -o ..\..\Binaries\MOCFiles\moc_editor.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore editor.h -o ..\..\Binaries\MOCFiles\moc_editor.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusPlayButton.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QPushButton \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
@@ -673,7 +673,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusPlayButton.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusPlayButton.h -o ..\..\Binaries\MOCFiles\moc_DirectusPlayButton.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusPlayButton.h -o ..\..\Binaries\MOCFiles\moc_DirectusPlayButton.cpp
 
 ..\..\Binaries\MOCFiles\moc_AboutDialog.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qdialog.h \
@@ -775,7 +775,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtouchdevice.h \
 		AboutDialog.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore AboutDialog.h -o ..\..\Binaries\MOCFiles\moc_AboutDialog.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore AboutDialog.h -o ..\..\Binaries\MOCFiles\moc_AboutDialog.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusDirExplorer.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QTreeView \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qtreeview.h \
@@ -977,7 +977,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusDirExplorer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusDirExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusDirExplorer.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusDirExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusDirExplorer.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusFileExplorer.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListView \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
@@ -1176,7 +1176,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusFileExplorer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusFileExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusFileExplorer.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusFileExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusFileExplorer.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusConsole.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistwidget.h \
@@ -1361,7 +1361,7 @@ compiler_moc_header_clean:
 		..\Directus3D\IO\ILogger.h \
 		DirectusConsole.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusConsole.h -o ..\..\Binaries\MOCFiles\moc_DirectusConsole.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusConsole.h -o ..\..\Binaries\MOCFiles\moc_DirectusConsole.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusInspector.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -1583,7 +1583,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\MeshCollider.h \
 		DirectusInspector.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusInspector.h -o ..\..\Binaries\MOCFiles\moc_DirectusInspector.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusInspector.h -o ..\..\Binaries\MOCFiles\moc_DirectusInspector.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusHierarchy.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QTreeWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qtreewidget.h \
@@ -1926,7 +1926,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		DirectusHierarchy.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusHierarchy.h -o ..\..\Binaries\MOCFiles\moc_DirectusHierarchy.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusHierarchy.h -o ..\..\Binaries\MOCFiles\moc_DirectusHierarchy.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusTransform.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -2103,7 +2103,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
 		DirectusTransform.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusTransform.h -o ..\..\Binaries\MOCFiles\moc_DirectusTransform.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusTransform.h -o ..\..\Binaries\MOCFiles\moc_DirectusTransform.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusAdjustLabel.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QLabel \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
@@ -2212,7 +2212,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextoption.h \
 		DirectusAdjustLabel.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusAdjustLabel.h -o ..\..\Binaries\MOCFiles\moc_DirectusAdjustLabel.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusAdjustLabel.h -o ..\..\Binaries\MOCFiles\moc_DirectusAdjustLabel.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusCamera.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -2412,7 +2412,7 @@ compiler_moc_header_clean:
 		DirectusDropDownButton.h \
 		DirectusCamera.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusCamera.h -o ..\..\Binaries\MOCFiles\moc_DirectusCamera.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusCamera.h -o ..\..\Binaries\MOCFiles\moc_DirectusCamera.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusMeshRenderer.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -2596,7 +2596,7 @@ compiler_moc_header_clean:
 		DirectusStatsLabel.h \
 		DirectusMeshRenderer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusMeshRenderer.h -o ..\..\Binaries\MOCFiles\moc_DirectusMeshRenderer.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusMeshRenderer.h -o ..\..\Binaries\MOCFiles\moc_DirectusMeshRenderer.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusMaterial.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -2796,7 +2796,7 @@ compiler_moc_header_clean:
 		DirectusTexture.h \
 		DirectusMaterial.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusMaterial.h -o ..\..\Binaries\MOCFiles\moc_DirectusMaterial.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusMaterial.h -o ..\..\Binaries\MOCFiles\moc_DirectusMaterial.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusLight.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -2996,7 +2996,7 @@ compiler_moc_header_clean:
 		DirectusDropDownButton.h \
 		DirectusLight.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusLight.h -o ..\..\Binaries\MOCFiles\moc_DirectusLight.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusLight.h -o ..\..\Binaries\MOCFiles\moc_DirectusLight.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusRigidBody.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -3192,7 +3192,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
 		DirectusRigidBody.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusRigidBody.h -o ..\..\Binaries\MOCFiles\moc_DirectusRigidBody.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusRigidBody.h -o ..\..\Binaries\MOCFiles\moc_DirectusRigidBody.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusCollider.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -3388,7 +3388,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
 		DirectusCollider.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusCollider.h -o ..\..\Binaries\MOCFiles\moc_DirectusCollider.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusCollider.h -o ..\..\Binaries\MOCFiles\moc_DirectusCollider.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusScript.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -3574,7 +3574,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
 		DirectusScript.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusScript.h -o ..\..\Binaries\MOCFiles\moc_DirectusScript.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusScript.h -o ..\..\Binaries\MOCFiles\moc_DirectusScript.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusMeshCollider.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -3761,7 +3761,7 @@ compiler_moc_header_clean:
 		DirectusDropDownButton.h \
 		DirectusMeshCollider.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusMeshCollider.h -o ..\..\Binaries\MOCFiles\moc_DirectusMeshCollider.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusMeshCollider.h -o ..\..\Binaries\MOCFiles\moc_DirectusMeshCollider.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusCore.cpp: C:\Qt\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qobject.h \
@@ -3925,7 +3925,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusCore.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusCore.h -o ..\..\Binaries\MOCFiles\moc_DirectusCore.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusCore.h -o ..\..\Binaries\MOCFiles\moc_DirectusCore.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusAssetLoader.cpp: C:\Qt\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qobject.h \
@@ -4080,7 +4080,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
 		DirectusAssetLoader.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusAssetLoader.h -o ..\..\Binaries\MOCFiles\moc_DirectusAssetLoader.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusAssetLoader.h -o ..\..\Binaries\MOCFiles\moc_DirectusAssetLoader.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusComboLabelText.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -4194,7 +4194,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qregularexpression.h \
 		DirectusComboLabelText.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusComboLabelText.h -o ..\..\Binaries\MOCFiles\moc_DirectusComboLabelText.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusComboLabelText.h -o ..\..\Binaries\MOCFiles\moc_DirectusComboLabelText.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusComboSliderText.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QSlider \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qslider.h \
@@ -4307,7 +4307,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qregularexpression.h \
 		DirectusComboSliderText.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusComboSliderText.h -o ..\..\Binaries\MOCFiles\moc_DirectusComboSliderText.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusComboSliderText.h -o ..\..\Binaries\MOCFiles\moc_DirectusComboSliderText.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusTexture.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QLabel \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
@@ -4474,7 +4474,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusTexture.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusTexture.h -o ..\..\Binaries\MOCFiles\moc_DirectusTexture.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusTexture.h -o ..\..\Binaries\MOCFiles\moc_DirectusTexture.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusMeshFilter.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qwidget.h \
@@ -4669,7 +4669,7 @@ compiler_moc_header_clean:
 		DirectusDropDownButton.h \
 		DirectusMeshFilter.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusMeshFilter.h -o ..\..\Binaries\MOCFiles\moc_DirectusMeshFilter.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusMeshFilter.h -o ..\..\Binaries\MOCFiles\moc_DirectusMeshFilter.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusColorPicker.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QPushButton \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
@@ -4777,7 +4777,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qdialog.h \
 		DirectusColorPicker.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusColorPicker.h -o ..\..\Binaries\MOCFiles\moc_DirectusColorPicker.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusColorPicker.h -o ..\..\Binaries\MOCFiles\moc_DirectusColorPicker.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusStatsLabel.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
@@ -4884,7 +4884,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextoption.h \
 		DirectusStatsLabel.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusStatsLabel.h -o ..\..\Binaries\MOCFiles\moc_DirectusStatsLabel.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusStatsLabel.h -o ..\..\Binaries\MOCFiles\moc_DirectusStatsLabel.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusDropDownButton.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QPushButton \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
@@ -4988,7 +4988,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtouchdevice.h \
 		DirectusDropDownButton.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusDropDownButton.h -o ..\..\Binaries\MOCFiles\moc_DirectusDropDownButton.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusDropDownButton.h -o ..\..\Binaries\MOCFiles\moc_DirectusDropDownButton.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusProgressBar.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qdialog.h \
@@ -5093,7 +5093,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
 		DirectusProgressBar.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusProgressBar.h -o ..\..\Binaries\MOCFiles\moc_DirectusProgressBar.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusProgressBar.h -o ..\..\Binaries\MOCFiles\moc_DirectusProgressBar.cpp
 
 ..\..\Binaries\MOCFiles\moc_DirectusFileDialog.cpp: C:\Qt\5.7\msvc2015_64\include\QtWidgets\QFileDialog \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qfiledialog.h \
@@ -5267,7 +5267,7 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusFileDialog.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
-	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -ID:/Projects/Directus3D/Directus3D/Editor -ID:/Projects/Directus3D/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusFileDialog.h -o ..\..\Binaries\MOCFiles\moc_DirectusFileDialog.cpp
+	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusFileDialog.h -o ..\..\Binaries\MOCFiles\moc_DirectusFileDialog.cpp
 
 compiler_moc_source_make_all:
 compiler_moc_source_clean:
