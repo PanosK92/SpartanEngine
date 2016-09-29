@@ -69,15 +69,15 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\FreeImage\Wrapper\FreeImagePlus\src;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\FreeImage\Source\OpenEXR;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\FreeImage\Dist\x64;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\AngelScript\add_on;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\AngelScript\include;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Assimp\contrib\rapidjson\include;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Assimp\contrib\openddlparser\include;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Assimp\contrib\zlib;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Assimp;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Assimp\include;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Bullet;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\Panos\Desktop\Directus3D\ThirdParty\FreeImage 3.17.0;C:\Users\Panos\Desktop\Directus3D\ThirdParty\Bullet 2.83.7;C:\Users\Panos\Desktop\Directus3D\ThirdParty\Assimp 3.3.1;C:\Users\Panos\Desktop\Directus3D\ThirdParty\AngelScript 2.31.1;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
-    <LibraryPath>$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\Users\Panos\Desktop\Directus3D\ThirdParty\Compiled x64;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\FreeImage\Wrapper\FreeImagePlus\src;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\FreeImage\Source\OpenEXR;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\FreeImage\Dist\x64;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\AngelScript\add_on;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\AngelScript\include;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Assimp\contrib\rapidjson\include;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Assimp\contrib\openddlparser\include;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Assimp\contrib\zlib;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Assimp;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Assimp\include;D:\Projects\Directus3D\Directus3D\Directus3D\ThirdParty\Bullet;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\Panos\Desktop\Directus3D\ThirdParty\FreeImage 3.17.0;C:\Users\Panos\Desktop\Directus3D\ThirdParty\Bullet 2.83.7;C:\Users\Panos\Desktop\Directus3D\ThirdParty\Assimp 3.3.1;C:\Users\Panos\Desktop\Directus3D\ThirdParty\AngelScript 2.31.1;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
-    <LibraryPath>$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\Users\Panos\Desktop\Directus3D\ThirdParty\Compiled x64;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

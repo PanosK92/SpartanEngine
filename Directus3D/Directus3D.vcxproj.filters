@@ -207,93 +207,6 @@
     <ClCompile Include="IO\FileSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\BatchLoad.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\CloneMultiPage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\CreateAlpha.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\FIFImportExport.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\FIIO_Mem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\LoadFromHandle.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\LoadFromMemory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\LoadFromMemory-classified.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\ShowMetadata.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Linux\linux-gtk.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Linux\linux-svgalib.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\OpenGL\TextureManager\TextureManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Plugin\PluginCradle.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\MainTestSuite.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testChannels.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testHeaderOnly.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testImageType.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testJPEG.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testMemIO.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testMPage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testMPageMemory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testMPageStream.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testPlugins.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testThumbnail.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testTools.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testWrappedBuffer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\AssemblyInfo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\FreeImageIO.Net.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\Stdafx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components\Camera.h">
@@ -521,36 +434,6 @@
     <ClInclude Include="IO\FileSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ThirdParty\Assimp\contrib\zlib\zconf.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\FreeImage\Dist\x64\FreeImage.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\FreeImage\Examples\Generic\FIIO_Mem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\FreeImage\Examples\OpenGL\TextureManager\TextureManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\FreeImage\Examples\Plugin\PluginCradle.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\FreeImage\Source\LibJXR\image\x86\x86.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\FreeImage\TestAPI\TestSuite.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\FreeImageIO.Net.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\Stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Xml Include="Assets\Shaders\HLSL.xml" />
@@ -591,44 +474,7 @@
     <None Include="Assets\Scripts\MouseLook.as" />
     <None Include="Assets\Scripts\PingPongAlongX.as" />
     <None Include="Assets\Scripts\RotateAroundSelf.as" />
-    <None Include="ThirdParty\Assimp\contrib\zlib\zconf.h.included" />
-    <None Include="ThirdParty\Assimp\revision.h" />
-    <None Include="ThirdParty\FreeImage\Wrapper\Delphi\src\Version.inc">
       <Filter>Header Files</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="ThirdParty\Bullet\version.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\app.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
-    <ResourceCompile Include="ThirdParty\FreeImage\FreeImage.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 04 - Getting bitmap informations\MainForm.resx">
-      <Filter>Resource Files</Filter>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 06 - Converting\MainForm.resx">
-      <Filter>Resource Files</Filter>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 08 - Creating a plugin\SampleForm.resx">
-      <Filter>Resource Files</Filter>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 09 - Working with streams\SampleForm.resx">
-      <Filter>Resource Files</Filter>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 10 - Metadata\MainForm.resx">
-      <Filter>Resource Files</Filter>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 11 - Using the FreeImageBitmap class\MainForm.resx">
-      <Filter>Resource Files</Filter>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 11 - Using the FreeImageBitmap class\MetaDataFrame.resx">
-      <Filter>Resource Files</Filter>
-    </EmbeddedResource>
   </ItemGroup>
 </Project>
