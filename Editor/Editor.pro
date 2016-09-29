@@ -88,7 +88,7 @@ DEPENDPATH += $$PWD/../Directus3D
 
 DISTFILES +=
 
-ParentDirectory = D:\Projects\Directus3D\Binaries
+ParentDirectory = $$PWD/../../Binaries/
 
 DESTDIR = "$$ParentDirectory"
 RCC_DIR = "$$ParentDirectory\RCCFiles"
