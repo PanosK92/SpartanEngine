@@ -58,6 +58,8 @@ aiProcess_OptimizeMeshes |
 aiProcess_Debone |
 aiProcess_ConvertToLeftHanded;
 
+static int smoothAngle = 80;
+
 ModelImporter::ModelImporter()
 {
 	m_rootGameObject = nullptr;
@@ -87,7 +89,6 @@ bool ModelImporter::Load(string filePath, GameObject* gameObject)
 	importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64); // Optimize mesh
 	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT); // Remove points and lines.
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS); // Remove cameras and lights
-	int smoothAngle = 80;
 	importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, smoothAngle);
 
 	const aiScene* scene = importer.ReadFile(m_fullModelPath, ppsteps);
