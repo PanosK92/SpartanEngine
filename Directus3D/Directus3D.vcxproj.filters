@@ -474,7 +474,5 @@
     <None Include="Assets\Scripts\MouseLook.as" />
     <None Include="Assets\Scripts\PingPongAlongX.as" />
     <None Include="Assets\Scripts\RotateAroundSelf.as" />
-      <Filter>Header Files</Filter>
-    </None>
   </ItemGroup>
 </Project>

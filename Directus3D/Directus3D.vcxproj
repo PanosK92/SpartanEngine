@@ -95,7 +95,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>angelscript64.lib;assimp-vc140-mt.lib;BulletCollision.lib;BulletDynamics.lib;FreeImage.lib;FreeImagePlus.lib;LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions> /machine:x64 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
@@ -124,7 +124,7 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>angelscript64.lib;assimp-vc140-mt.lib;BulletCollision.lib;BulletDynamics.lib;FreeImage.lib;FreeImagePlus.lib;LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions> /machine:x64 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
@@ -193,35 +193,6 @@
     <ClCompile Include="Scripting\ScriptDefinitions.cpp" />
     <ClCompile Include="Scripting\ScriptEngine.cpp" />
     <ClCompile Include="Scripting\ScriptInstance.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\BatchLoad.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\CloneMultiPage.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\CreateAlpha.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\FIFImportExport.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\FIIO_Mem.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\LoadFromHandle.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\LoadFromMemory-classified.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\LoadFromMemory.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Generic\ShowMetadata.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Linux\linux-gtk.c" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Linux\linux-svgalib.c" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\OpenGL\TextureManager\TextureManager.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Examples\Plugin\PluginCradle.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\MainTestSuite.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testChannels.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testHeaderOnly.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testImageType.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testJPEG.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testMemIO.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testMPage.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testMPageMemory.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testMPageStream.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testPlugins.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testThumbnail.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testTools.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\TestAPI\testWrappedBuffer.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\AssemblyInfo.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\FreeImageIO.Net.cpp" />
-    <ClCompile Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\Stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components\Camera.h" />
@@ -299,16 +270,6 @@
     <ClInclude Include="Scripting\ScriptDefinitions.h" />
     <ClInclude Include="Scripting\ScriptEngine.h" />
     <ClInclude Include="Scripting\ScriptInstance.h" />
-    <ClInclude Include="ThirdParty\Assimp\contrib\zlib\zconf.h" />
-    <ClInclude Include="ThirdParty\FreeImage\Dist\x64\FreeImage.h" />
-    <ClInclude Include="ThirdParty\FreeImage\Examples\Generic\FIIO_Mem.h" />
-    <ClInclude Include="ThirdParty\FreeImage\Examples\OpenGL\TextureManager\TextureManager.h" />
-    <ClInclude Include="ThirdParty\FreeImage\Examples\Plugin\PluginCradle.h" />
-    <ClInclude Include="ThirdParty\FreeImage\Source\LibJXR\image\x86\x86.h" />
-    <ClInclude Include="ThirdParty\FreeImage\TestAPI\TestSuite.h" />
-    <ClInclude Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\FreeImageIO.Net.h" />
-    <ClInclude Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\resource.h" />
-    <ClInclude Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\Stdafx.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Scripts\FirstPersonController.as" />
@@ -376,9 +337,6 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
       <FileType>Document</FileType>
     </None>
-    <None Include="ThirdParty\Assimp\contrib\zlib\zconf.h.included" />
-    <None Include="ThirdParty\Assimp\revision.h" />
-    <None Include="ThirdParty\FreeImage\Wrapper\Delphi\src\Version.inc" />
   </ItemGroup>
   <ItemGroup>
     <Xml Include="Assets\Scripts\dss.xml" />
@@ -395,22 +353,6 @@
     <None Include="Assets\Scripts\FirstPersonController.dss" />
     <None Include="Assets\Scripts\FirstPersonControllerPhysics.dss" />
     <None Include="Assets\Scripts\MouseLook.dss" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="ThirdParty\Bullet\version.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="ThirdParty\FreeImage\FreeImage.rc" />
-    <ResourceCompile Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cpp\FreeImageIO\app.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 04 - Getting bitmap informations\MainForm.resx" />
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 06 - Converting\MainForm.resx" />
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 08 - Creating a plugin\SampleForm.resx" />
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 09 - Working with streams\SampleForm.resx" />
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 10 - Metadata\MainForm.resx" />
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 11 - Using the FreeImageBitmap class\MainForm.resx" />
-    <EmbeddedResource Include="ThirdParty\FreeImage\Wrapper\FreeImage.NET\cs\Samples\Sample 11 - Using the FreeImageBitmap class\MetaDataFrame.resx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
