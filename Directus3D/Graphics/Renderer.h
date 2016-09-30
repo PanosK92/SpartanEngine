@@ -112,7 +112,6 @@ private:
 	Directus::Math::Matrix mOrthographicProjection;
 	Directus::Math::Matrix mView;
 	Directus::Math::Matrix mBaseView;
-	Directus::Math::Matrix mWorld;
 	float m_nearPlane;
 	float m_farPlane;
 	//=============================================
