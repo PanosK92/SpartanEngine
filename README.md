@@ -35,10 +35,10 @@ The engine has been under development for about a year and a half, it isn't prod
 Note: Regarding DirectX 12 and Vulkan, these are the most high priority planned features, research is being conducted as to avoid a simple porting from DirectX 11 which can result in lower performance. Most likely a new rendering approach will be written so there are actual gains in terms of performance & memory usage.
 
 ### Download
-- [Directus v0.1 (Windows x64)] (https://onedrive.live.com/download?resid=96760D43099D7718!124439&authkey=!ALD0yN8dIO_DAEg)
+- [Directus v0.1.1 (Windows x64)] (https://onedrive.live.com/download?resid=96760D43099D7718%21125980&authkey=AC4fwz-Zxcv-dJo)
 
 ### Dependencies
-- Runtime: [AngelScript](http://www.angelcode.com/angelscript/), [Assimp](https://github.com/assimp/assimp), [Bullet](https://github.com/bulletphysics/bullet3), [FreeImage](http://freeimage.sourceforge.net/), [Visual C++ 2015 (x64) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145).
+- Runtime: [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109), [Visual C++ 2015 (x64) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145).
 - Editor: [Qt](https://www.qt.io/).
 
 ### License
