@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========
+//= INCLUDES ==========
 #include "Serializer.h"
 #include "Log.h"
 #include <fstream>
-//======================
+//=====================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -48,7 +48,7 @@ void Serializer::StartReading(std::string path)
 	in.open(path, std::ios::in | std::ios::binary);
 
 	if (in.fail())
-	LOG("Can't open " + path, Log::Error);
+	LOG_ERROR("Can't open " + path);
 }
 
 void Serializer::StopReading()

@@ -76,6 +76,20 @@ void Texture::Deserialize()
 	LoadFromFile(m_path, m_type);
 }
 
+void Texture::Save(string filePath) const
+{
+	Serializer::StartWriting(filePath);
+	Serialize();
+	Serializer::StopWriting();
+}
+
+void Texture::Load(string filePath)
+{
+	Serializer::StartReading(filePath);
+	Deserialize();
+	Serializer::StopReading();
+}
+
 ID3D11ShaderResourceView* Texture::GetID3D11ShaderResourceView() const
 {
 	return m_shaderResourceView;
