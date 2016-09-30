@@ -279,7 +279,6 @@ void Renderer::AcquirePrerequisites()
 		mOrthographicProjection = m_camera->GetOrthographicProjectionMatrix();
 		mView = m_camera->GetViewMatrix();
 		mBaseView = m_camera->GetBaseViewMatrix();
-		mWorld = Matrix::Identity;
 		m_nearPlane = m_camera->GetNearPlane();
 		m_farPlane = m_camera->GetFarPlane();
 	}
@@ -342,7 +341,7 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 			Material* currentMaterial = materials[m];
 
 			if (currentMaterial->GetShader()->GetID() != currentShader->GetID())
-				continue;
+				continue;	
 
 			for (auto g = 0; g < renderableGameObjects.size(); g++) // for each mesh that uses this material:
 			{
@@ -355,7 +354,26 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 				Matrix mWorld = gameObject->GetTransform()->GetWorldTransform();
 				//==========================================================================
 
-				if (currentMaterial != material)
+				vector<ID3D11ShaderResourceView*> textures;
+				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Albedo));
+				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Roughness));
+				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Metallic));
+				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Occlusion));
+				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Normal));
+				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Height));
+				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Mask));
+				if (m_directionalLight)
+				{
+					for (int i = 0; i < m_directionalLight->GetCascadeCount(); i++)
+						textures.push_back(m_directionalLight->GetDepthMap(i));
+				}
+				else
+					textures.push_back(nullptr);
+
+				currentShader->SetBuffers(mWorld, mView, mProjection, currentMaterial, m_directionalLight, true, m_camera);
+				currentShader->SetResources(textures);
+
+				if (currentMaterial->GetID() != material->GetID())
 					continue;
 
 				// If any rendering requirement is missing, skip this GameObject
@@ -376,25 +394,7 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 					// Set face culling
 					m_graphics->SetCullMode(material->GetFaceCullMode());
 
-					//= Render =================================================================
-					vector<ID3D11ShaderResourceView*> textures;
-					textures.push_back(material->GetShaderResourceViewByTextureType(Albedo));
-					textures.push_back(material->GetShaderResourceViewByTextureType(Roughness));
-					textures.push_back(material->GetShaderResourceViewByTextureType(Metallic));
-					textures.push_back(material->GetShaderResourceViewByTextureType(Occlusion));
-					textures.push_back(material->GetShaderResourceViewByTextureType(Normal));
-					textures.push_back(material->GetShaderResourceViewByTextureType(Height));
-					textures.push_back(material->GetShaderResourceViewByTextureType(Mask));
-					if (m_directionalLight)
-					{
-						for (int i = 0; i < m_directionalLight->GetCascadeCount(); i++)
-							textures.push_back(m_directionalLight->GetDepthMap(i));
-					}
-					else
-						textures.push_back(nullptr);
-
-					currentShader->SetBuffers(mWorld, mView, mProjection, currentMaterial, m_directionalLight, meshRenderer->GetReceiveShadows(), m_camera);
-					currentShader->SetResources(textures);
+					//= Render =================================================================					
 					meshRenderer->Render(mesh->GetIndexCount());
 					m_meshesRendered++;
 					//==========================================================================
@@ -428,7 +428,7 @@ void Renderer::DeferredPass()
 	// deferred rendering
 	m_shaderDeferred->Render(
 		m_fullScreenQuad->GetIndexCount(),
-		mWorld,
+		Matrix::Identity,
 		mView,
 		mBaseView,
 		mProjection,
@@ -448,7 +448,7 @@ void Renderer::PostProcessing() const
 	// fxaa pass
 	m_shaderFXAA->Render(
 		m_fullScreenQuad->GetIndexCount(),
-		mWorld,
+		Matrix::Identity,
 		mBaseView,
 		mOrthographicProjection,
 		m_renderTexPing->GetShaderResourceView()
@@ -461,7 +461,7 @@ void Renderer::PostProcessing() const
 	// sharpening pass
 	m_shaderSharpening->Render(
 		m_fullScreenQuad->GetIndexCount(),
-		mWorld,
+		Matrix::Identity,
 		mBaseView,
 		mOrthographicProjection,
 		m_renderTexPong->GetShaderResourceView()
