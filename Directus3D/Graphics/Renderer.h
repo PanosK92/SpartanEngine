@@ -126,5 +126,6 @@ private:
 	void Gizmos() const;
 	void Ping() const;
 	void Pong() const;
+	bool IsInViewFrustrum(const Directus::Math::Vector3& center, const Directus::Math::Vector3& extent);
 	//=============================================
 };

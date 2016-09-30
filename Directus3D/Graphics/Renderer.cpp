@@ -331,8 +331,6 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 {
 	vector<ShaderVariation*> shaders = m_shaderPool->GetAllShaders();
 	vector<Material*> materials = m_materialPool->GetAllMaterials();
-	Matrix mView = m_camera->GetViewMatrix();
-	Matrix mProjection = m_camera->GetProjectionMatrix();
 
 	for (auto s = 0; s < shaders.size(); s++) // for each shader
 	{	
@@ -368,25 +366,9 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 				if (material->GetOpacity() < 1.0f)
 					continue;
 
-				//= Frustrum culling =======================================================
-				if (m_frustrum->GetProjectionMatrix() != mProjection || m_frustrum->GetViewMatrix() != mView)
-				{
-					m_frustrum->SetProjectionMatrix(mProjection);
-					m_frustrum->SetViewMatrix(mView);
-					m_frustrum->ConstructFrustum(m_farPlane);
-				}
-
-				Vector3 center = meshFilter->GetCenter();
-				Vector3 extent = meshFilter->GetBoundingBox();
-
-				float radius = max(abs(extent.x), abs(extent.y));
-				radius = max(radius, abs(extent.z));
-
-				if (m_frustrum->CheckSphere(center, radius) == Outside)
+				// Frustrum culling
+				if (!IsInViewFrustrum(meshFilter->GetCenter(), meshFilter->GetBoundingBox()))
 					continue;
-				//==========================================================================
-
-				//currentMaterial->GetShader()->SetBuffers(mWorld, mView, mProjection, currentMaterial, m_directionalLight, meshRenderer->GetReceiveShadows(), m_camera);
 
 				// Set mesh buffer
 				if (meshFilter->SetBuffers())
@@ -524,6 +506,25 @@ void Renderer::Pong() const
 
 	m_renderTexPong->SetAsRenderTarget(); // Set the render target to be the render to texture. 
 	m_renderTexPong->Clear(clearColor); // Clear the render to texture.
+}
+
+bool Renderer::IsInViewFrustrum(const Vector3& center, const Vector3& extent)
+{
+	//= Frustrum culling =======================================================
+	if (m_frustrum->GetProjectionMatrix() != mProjection || m_frustrum->GetViewMatrix() != mView)
+	{
+		m_frustrum->SetProjectionMatrix(mProjection);
+		m_frustrum->SetViewMatrix(mView);
+		m_frustrum->ConstructFrustum(m_farPlane);
+	}
+
+	float radius = max(abs(extent.x), abs(extent.y));
+	radius = max(radius, abs(extent.z));
+
+	if (m_frustrum->CheckSphere(center, radius) == Outside)
+		return false;
+
+	return true;
 }
 
 //= STATS ============================
