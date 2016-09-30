@@ -47,7 +47,7 @@ public:
 	Renderer();
 	~Renderer();
 
-	void Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene);
+	void Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene, ShaderPool* shaderPool, MaterialPool* materialPool);
 	void Render();
 	void SetResolution(int width, int height);
 	void Clear();
@@ -69,6 +69,8 @@ private:
 	Timer* m_timer;
 	PhysicsWorld* m_physics;
 	Scene* m_scene;
+	ShaderPool* m_shaderPool;
+	MaterialPool* m_materialPool;
 	//===============================
 
 	// GAMEOBJECTS ==============================

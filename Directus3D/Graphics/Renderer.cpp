@@ -92,11 +92,13 @@ Renderer::~Renderer()
 	SafeDelete(m_renderTexPong);
 }
 
-void Renderer::Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene)
+void Renderer::Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene, ShaderPool* shaderPool, MaterialPool* materialPool)
 {
 	m_timer = timer;
 	m_physics = physics;
 	m_scene = scene;
+	m_shaderPool = shaderPool;
+	m_materialPool = materialPool;
 
 	m_graphics = d3d11device;
 
@@ -312,25 +314,6 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 			if (gameObject->GetComponent<Skybox>() || !meshRenderer->GetCastShadows())
 				continue;
 
-			//= Frustrum culling =======================================================
-			/*// Construct frustum (if necessery)
-			if (m_frustrum->GetProjectionMatrix() != light->GetOrthographicProjectionMatrix(cascadeIndex) || m_frustrum->GetViewMatrix() != light->GetViewMatrix())
-			{
-				m_frustrum->SetProjectionMatrix(light->GetOrthographicProjectionMatrix(cascadeIndex));
-				m_frustrum->SetViewMatrix(light->GetViewMatrix());
-				m_frustrum->ConstructFrustum(light->GetCascadeSplit(cascadeIndex) * 1000.0f);
-			}
-
-			Vector3 center = meshFilter->GetCenter();
-			Vector3 extent = meshFilter->GetBoundingBox();
-
-			float radius = max(abs(extent.x), abs(extent.y));
-			radius = max(radius, abs(extent.z));
-
-			if (m_frustrum->CheckSphere(center, radius) == Outside)
-				continue;*/
-			//==========================================================================
-
 			if (meshFilter->SetBuffers())
 			{
 				m_shaderDepth->Render(
@@ -346,54 +329,95 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 
 void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 {
-	for (auto i = 0; i < renderableGameObjects.size(); i++)
-	{
-		//= Get all that we need ===================================================
-		GameObject* gameObject = renderableGameObjects[i];
-		MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
-		Mesh* mesh = meshFilter->GetMesh();
-		MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
-		Material* material = meshRenderer->GetMaterial();
-		Matrix worldMatrix = gameObject->GetTransform()->GetWorldTransform();
-		//==========================================================================
+	vector<ShaderVariation*> shaders = m_shaderPool->GetAllShaders();
+	vector<Material*> materials = m_materialPool->GetAllMaterials();
+	Matrix mView = m_camera->GetViewMatrix();
+	Matrix mProjection = m_camera->GetProjectionMatrix();
 
-		// If any rendering requirement is missing, skip this GameObject
-		if (!meshFilter || !mesh || !meshRenderer || !material)
-			continue;
-
-		// Skip transparent meshes
-		if (material->GetOpacity() < 1.0f)
-			continue;
-
-		//= Frustrum culling =======================================================
-		if (m_frustrum->GetProjectionMatrix() != mProjection || m_frustrum->GetViewMatrix() != mView)
+	for (auto s = 0; s < shaders.size(); s++) // for each shader
+	{	
+		ShaderVariation* currentShader = shaders[s];
+		currentShader->Set();
+	
+		for (auto m = 0; m < materials.size(); m++) // for each material that uses this shader
 		{
-			m_frustrum->SetProjectionMatrix(mProjection);
-			m_frustrum->SetViewMatrix(mView);
-			m_frustrum->ConstructFrustum(m_farPlane);
-		}
+			Material* currentMaterial = materials[m];
 
-		Vector3 center = meshFilter->GetCenter();
-		Vector3 extent = meshFilter->GetBoundingBox();
+			if (currentMaterial->GetShader()->GetID() != currentShader->GetID())
+				continue;
 
-		float radius = max(abs(extent.x), abs(extent.y));
-		radius = max(radius, abs(extent.z));
+			for (auto g = 0; g < renderableGameObjects.size(); g++) // for each mesh that uses this material:
+			{
+				//= Get all that we need ===================================================
+				GameObject* gameObject = renderableGameObjects[g];
+				MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
+				Mesh* mesh = meshFilter->GetMesh();
+				MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
+				Material* material = meshRenderer->GetMaterial();
+				Matrix mWorld = gameObject->GetTransform()->GetWorldTransform();
+				//==========================================================================
 
-		if (m_frustrum->CheckSphere(center, radius) == Outside)
-			continue;
-		//==========================================================================
+				if (currentMaterial != material)
+					continue;
 
-		// Set mesh buffer
-		bool buffersHaveBeenSet = meshFilter->SetBuffers();
-		if (buffersHaveBeenSet)
-		{
-			// Set face culling
-			m_graphics->SetCullMode(material->GetFaceCullMode());
+				// If any rendering requirement is missing, skip this GameObject
+				if (!meshFilter || !mesh || !meshRenderer || !material)
+					continue;
 
-			//= Render =================================================================
-			meshRenderer->Render(mesh->GetIndexCount(), mView, mProjection, m_directionalLight, m_camera);
-			m_meshesRendered++;
-			//==========================================================================
+				// Skip transparent meshes
+				if (material->GetOpacity() < 1.0f)
+					continue;
+
+				//= Frustrum culling =======================================================
+				if (m_frustrum->GetProjectionMatrix() != mProjection || m_frustrum->GetViewMatrix() != mView)
+				{
+					m_frustrum->SetProjectionMatrix(mProjection);
+					m_frustrum->SetViewMatrix(mView);
+					m_frustrum->ConstructFrustum(m_farPlane);
+				}
+
+				Vector3 center = meshFilter->GetCenter();
+				Vector3 extent = meshFilter->GetBoundingBox();
+
+				float radius = max(abs(extent.x), abs(extent.y));
+				radius = max(radius, abs(extent.z));
+
+				if (m_frustrum->CheckSphere(center, radius) == Outside)
+					continue;
+				//==========================================================================
+
+				//currentMaterial->GetShader()->SetBuffers(mWorld, mView, mProjection, currentMaterial, m_directionalLight, meshRenderer->GetReceiveShadows(), m_camera);
+
+				// Set mesh buffer
+				if (meshFilter->SetBuffers())
+				{
+					// Set face culling
+					m_graphics->SetCullMode(material->GetFaceCullMode());
+
+					//= Render =================================================================
+					vector<ID3D11ShaderResourceView*> textures;
+					textures.push_back(material->GetShaderResourceViewByTextureType(Albedo));
+					textures.push_back(material->GetShaderResourceViewByTextureType(Roughness));
+					textures.push_back(material->GetShaderResourceViewByTextureType(Metallic));
+					textures.push_back(material->GetShaderResourceViewByTextureType(Occlusion));
+					textures.push_back(material->GetShaderResourceViewByTextureType(Normal));
+					textures.push_back(material->GetShaderResourceViewByTextureType(Height));
+					textures.push_back(material->GetShaderResourceViewByTextureType(Mask));
+					if (m_directionalLight)
+					{
+						for (int i = 0; i < m_directionalLight->GetCascadeCount(); i++)
+							textures.push_back(m_directionalLight->GetDepthMap(i));
+					}
+					else
+						textures.push_back(nullptr);
+
+					currentShader->SetBuffers(mWorld, mView, mProjection, currentMaterial, m_directionalLight, meshRenderer->GetReceiveShadows(), m_camera);
+					currentShader->SetResources(textures);
+					meshRenderer->Render(mesh->GetIndexCount());
+					m_meshesRendered++;
+					//==========================================================================
+				}
+			}
 		}
 	}
 }
