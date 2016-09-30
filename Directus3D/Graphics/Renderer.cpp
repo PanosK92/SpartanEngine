@@ -343,6 +343,23 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 			if (currentMaterial->GetShader()->GetID() != currentShader->GetID())
 				continue;	
 
+			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Albedo));
+			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Roughness));
+			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Metallic));
+			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Occlusion));
+			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Normal));
+			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Height));
+			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Mask));
+			if (m_directionalLight)
+			{
+				for (int i = 0; i < m_directionalLight->GetCascadeCount(); i++)
+					m_textures.push_back(m_directionalLight->GetDepthMap(i));
+			}
+			else
+				m_textures.push_back(nullptr);
+
+			currentShader->SetResources(m_textures);
+
 			for (auto g = 0; g < renderableGameObjects.size(); g++) // for each mesh that uses this material:
 			{
 				//= Get all that we need ===================================================
@@ -353,25 +370,6 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 				Material* material = meshRenderer->GetMaterial();
 				Matrix mWorld = gameObject->GetTransform()->GetWorldTransform();
 				//==========================================================================
-
-				vector<ID3D11ShaderResourceView*> textures;
-				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Albedo));
-				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Roughness));
-				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Metallic));
-				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Occlusion));
-				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Normal));
-				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Height));
-				textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Mask));
-				if (m_directionalLight)
-				{
-					for (int i = 0; i < m_directionalLight->GetCascadeCount(); i++)
-						textures.push_back(m_directionalLight->GetDepthMap(i));
-				}
-				else
-					textures.push_back(nullptr);
-
-				currentShader->SetBuffers(mWorld, mView, mProjection, currentMaterial, m_directionalLight, true, m_camera);
-				currentShader->SetResources(textures);
 
 				if (currentMaterial->GetID() != material->GetID())
 					continue;
@@ -388,6 +386,8 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 				if (!IsInViewFrustrum(meshFilter->GetCenter(), meshFilter->GetBoundingBox()))
 					continue;
 
+				currentShader->SetBuffers(mWorld, mView, mProjection, currentMaterial, m_directionalLight, meshRenderer->GetReceiveShadows(), m_camera);
+				
 				// Set mesh buffer
 				if (meshFilter->SetBuffers())
 				{
@@ -400,6 +400,9 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 					//==========================================================================
 				}
 			}
+
+			m_textures.clear();
+			m_textures.shrink_to_fit();
 		}
 	}
 }
