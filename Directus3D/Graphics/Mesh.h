@@ -21,13 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ================
 #include <vector>
 #include "Vertex.h"
-#include "../Core/GUIDGenerator.h"
 #include "../IO/Serializer.h"
 #include <functional>
-//===============================
+//===========================
 
 class Mesh
 {
@@ -38,6 +37,9 @@ public:
 	//= IO =========================================================================
 	void Serialize();
 	void Deserialize();
+
+	void Save(std::string filePath);
+	void Load(std::string filePath);
 	//==============================================================================
 
 	std::string GetName() const { return m_name; }

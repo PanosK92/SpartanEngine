@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES =====================
 #include "../Graphics/Mesh.h"
 #include "../IO/Log.h"
-//=======================
+#include "../Core/GUIDGenerator.h"
+//================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -101,6 +102,21 @@ void Mesh::Deserialize()
 	m_center = Serializer::LoadVector3();
 	m_boundingBox = Serializer::LoadVector3();
 }
+
+void Mesh::Save(string filePath)
+{
+	Serializer::StartWriting(filePath);
+	Serialize();
+	Serializer::StopWriting();
+}
+
+void Mesh::Load(string filePath)
+{
+	Serializer::StartReading(filePath);
+	Deserialize();
+	Serializer::StopReading();
+}
+
 //==============================================================================
 
 //= PROCESSING =================================================================

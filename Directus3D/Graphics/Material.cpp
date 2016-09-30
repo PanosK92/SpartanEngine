@@ -119,6 +119,20 @@ void Material::Deserialize()
 
 	AcquireShader();
 }
+
+void Material::Save(string filePath)
+{
+	Serializer::StartWriting(filePath);
+	Serialize();
+	Serializer::StopWriting();
+}
+
+void Material::Load(string filePath)
+{
+	Serializer::StartReading(filePath);
+	Deserialize();
+	Serializer::StopReading();
+}
 //==============================================================================
 
 //= TEXTURES ===================================================================

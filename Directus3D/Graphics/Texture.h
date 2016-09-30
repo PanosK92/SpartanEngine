@@ -47,8 +47,13 @@ public:
 	Texture();
 	~Texture();
 
+	//= IO =========================================================================
 	void Serialize() const;
 	void Deserialize();
+
+	void Save(std::string filePath) const;
+	void Load(std::string filePath);
+	//==============================================================================
 
 	ID3D11ShaderResourceView* GetID3D11ShaderResourceView() const;
 	void SetID3D11ShaderResourceView(ID3D11ShaderResourceView* srv);
