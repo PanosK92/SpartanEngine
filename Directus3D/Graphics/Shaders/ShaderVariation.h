@@ -52,10 +52,9 @@ public:
 		Graphics* d3d11device
 	);
 	void Set();
-	void Render(
-		int indexCount, 
-		const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection,
-		Material* material, const std::vector<ID3D11ShaderResourceView*>& textureArray, Light* directionalLight, bool receiveShadows, Camera* camera) const;
+	void SetBuffers(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection, Material* material, Light* directionalLight, bool receiveShadows, Camera* camera);
+	void SetResources(const std::vector<ID3D11ShaderResourceView*>& textureArray);
+	void Draw(int indexCount);
 	std::string GetID() const;
 
 	bool HasAlbedoTexture() const;

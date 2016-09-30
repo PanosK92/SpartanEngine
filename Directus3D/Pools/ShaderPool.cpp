@@ -93,6 +93,11 @@ ShaderVariation* ShaderPool::GetShaderByID(string shaderID)
 	return nullptr;
 }
 
+const vector<ShaderVariation*>& ShaderPool::GetAllShaders() const
+{
+	return m_shaders;
+}
+
 ShaderVariation* ShaderPool::FindMatchingShader(
 	bool albedo,
 	bool roughness,

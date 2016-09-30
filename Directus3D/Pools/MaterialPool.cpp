@@ -130,6 +130,11 @@ Material* MaterialPool::GetMaterialStandardSkybox()
 	return GetMaterialByID("Standard_Material_1");
 }
 
+const std::vector<Material*>& MaterialPool::GetAllMaterials()
+{
+	return m_materials;
+}
+
 /*------------------------------------------------------------------------------
 								[I/O]
 ------------------------------------------------------------------------------*/

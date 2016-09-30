@@ -84,7 +84,12 @@ void MeshRenderer::Deserialize()
 //==============================================================================
 
 //= MISC =======================================================================
-void MeshRenderer::Render(unsigned int indexCount, const Matrix& viewMatrix, const Matrix& projectionMatrix, Light* dicrectionalLight, Camera* camera) const
+void MeshRenderer::SetShader() const
+{
+	GetMaterial()->GetShader()->Set();
+}
+
+void MeshRenderer::Render(unsigned int indexCount) const
 {
 	Material* material = GetMaterial();
 
@@ -100,30 +105,8 @@ void MeshRenderer::Render(unsigned int indexCount, const Matrix& viewMatrix, con
 		return;
 	}
 
-	vector<ID3D11ShaderResourceView*> textures;
-	textures.push_back(material->GetShaderResourceViewByTextureType(Albedo));
-	textures.push_back(material->GetShaderResourceViewByTextureType(Roughness));
-	textures.push_back(material->GetShaderResourceViewByTextureType(Metallic));
-	textures.push_back(material->GetShaderResourceViewByTextureType(Occlusion));
-	textures.push_back(material->GetShaderResourceViewByTextureType(Normal));
-	textures.push_back(material->GetShaderResourceViewByTextureType(Height));
-	textures.push_back(material->GetShaderResourceViewByTextureType(Mask));
-	if (dicrectionalLight)
-	{
-		for (int i = 0; i < dicrectionalLight->GetCascadeCount(); i++)
-			textures.push_back(dicrectionalLight->GetDepthMap(i));
-	}
-	else
-		textures.push_back(nullptr);
-
-	// Render
-	GetMaterial()->GetShader()->Set();
-	GetMaterial()->GetShader()->Render(
-		indexCount,
-		g_transform->GetWorldTransform(), viewMatrix, projectionMatrix,
-		GetMaterial(), textures,
-		dicrectionalLight, GetReceiveShadows(), camera
-	);
+	// Set the buffers and draw
+	GetMaterial()->GetShader()->Draw(indexCount);
 }
 //==============================================================================
 

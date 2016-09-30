@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "IComponent.h"
-#include "../Math/Matrix.h"
 #include "../Graphics/Material.h"
 //==============================
 
@@ -44,7 +43,8 @@ public:
 	virtual void Deserialize();
 
 	//= MISC ===================================
-	void Render(unsigned int indexCount, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, Light* dicrectionalLight, Camera* camera) const;
+	void SetShader() const;
+	void Render(unsigned int indexCount) const;
 
 	//= PROPERTIES =============================
 	void SetCastShadows(bool castShadows);

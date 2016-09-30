@@ -43,6 +43,7 @@ public:
 	Material* GetMaterialByID(std::string materialID);
 	Material* GetMaterialStandardDefault();
 	Material* GetMaterialStandardSkybox();
+	const std::vector<Material*>& GetAllMaterials();
 
 	/*------------------------------------------------------------------------------
 									[I/O]

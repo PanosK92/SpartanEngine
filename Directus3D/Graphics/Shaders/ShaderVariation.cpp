@@ -88,6 +88,72 @@ void ShaderVariation::Set()
 	m_D3D11Shader->Set();
 }
 
+void ShaderVariation::SetBuffers(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection, Material* material, Light* directionalLight, bool receiveShadows, Camera* camera)
+{
+	if (!m_D3D11Shader->IsCompiled())
+	{
+		LOG_ERROR("Can't render using a shader variation that hasn't been loaded or failed to compile.");
+		return;
+	}
+
+	if (!directionalLight || !camera)
+		return;
+
+	Matrix world = mWorld;
+	Matrix worldView = world * mView;
+	Matrix worldViewProjection = worldView * mProjection;
+
+	Matrix lightViewProjection1 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(0);
+	Matrix lightViewProjection2 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(1);
+	Matrix lightViewProjection3 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
+
+	/*------------------------------------------------------------------------------
+	[FILL THE BUFFER]
+	------------------------------------------------------------------------------*/
+	{ // this can be done only when needed - tested
+		DefaultBufferType* defaultBufferType = (DefaultBufferType*)m_befaultBuffer->Map();
+		defaultBufferType->mWorld = world.Transposed();
+		defaultBufferType->mWorldView = worldView.Transposed();
+		defaultBufferType->mWorldViewProjection = worldViewProjection.Transposed();
+		defaultBufferType->mLightViewProjection[0] = lightViewProjection1.Transposed();
+		defaultBufferType->mLightViewProjection[1] = lightViewProjection2.Transposed();
+		defaultBufferType->mLightViewProjection[2] = lightViewProjection3.Transposed();
+		defaultBufferType->shadowSplits = Vector4(directionalLight->GetCascadeSplit(0), directionalLight->GetCascadeSplit(1), directionalLight->GetCascadeSplit(2), directionalLight->GetCascadeSplit(2));
+		defaultBufferType->albedoColor = material->GetColorAlbedo();
+		defaultBufferType->tilingUV = material->GetTilingUV();
+		defaultBufferType->offsetUV = material->GetOffsetUV();
+		defaultBufferType->viewport = GET_RESOLUTION;
+		defaultBufferType->roughnessMultiplier = material->GetRoughnessMultiplier();
+		defaultBufferType->metallicMultiplier = material->GetMetallicMultiplier();
+		defaultBufferType->occlusionMultiplier = material->GetOcclusionMultiplier();
+		defaultBufferType->normalMultiplier = material->GetNormalMultiplier();
+		defaultBufferType->specularMultiplier = material->GetSpecularMultiplier();
+		defaultBufferType->shadingMode = float(material->GetShadingMode());
+		defaultBufferType->receiveShadows = float(receiveShadows);
+		defaultBufferType->shadowBias = directionalLight->GetBias();
+		defaultBufferType->shadowMapResolution = directionalLight->GetShadowMapResolution();
+		defaultBufferType->shadowMappingQuality = directionalLight->GetShadowTypeAsFloat();
+		defaultBufferType->lightDir = directionalLight->GetDirection();
+		defaultBufferType->nearPlane = camera->GetNearPlane();
+		defaultBufferType->farPlane = camera->GetFarPlane();
+		defaultBufferType->padding = Vector3::Zero;
+		m_befaultBuffer->Unmap();
+	}
+
+	m_befaultBuffer->SetVS(0); // set buffer in the vertex shader
+	m_befaultBuffer->SetPS(0); // set buffer in the pixel shader
+}
+
+void ShaderVariation::SetResources(const vector<ID3D11ShaderResourceView*>& textureArray)
+{
+	m_graphics->GetDeviceContext()->PSSetShaderResources(0, textureArray.size(), &textureArray.front());
+}
+
+void ShaderVariation::Draw(int indexCount)
+{
+	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+}
+
 void ShaderVariation::AddDefinesBasedOnMaterial()
 {
 	// Write the properties of the material as defines
@@ -116,69 +182,6 @@ void ShaderVariation::Load()
 	m_befaultBuffer = new D3D11Buffer();
 	m_befaultBuffer->Initialize(m_graphics);
 	m_befaultBuffer->CreateConstantBuffer(sizeof(DefaultBufferType));
-}
-
-void ShaderVariation::Render(int indexCount,
-	const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection,
-	Material* material, const vector<ID3D11ShaderResourceView*>& textureArray, Light* directionalLight, bool receiveShadows, Camera* camera) const
-{
-	if (!m_D3D11Shader->IsCompiled())
-	{
-		LOG_ERROR("Can't render using a shader variation that hasn't been loaded or failed to compile.");
-		return;
-	}
-
-	if (!directionalLight || !camera)
-		return;
-
-	Matrix world = mWorld;
-	Matrix worldView = world * mView;
-	Matrix worldViewProjection = worldView * mProjection;
-
-	Matrix lightViewProjection1 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(0);
-	Matrix lightViewProjection2 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(1);
-	Matrix lightViewProjection3 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
-
-	/*------------------------------------------------------------------------------
-							[FILL THE BUFFER]
-	------------------------------------------------------------------------------*/
-	{ // this can be done only when needed - tested
-		DefaultBufferType* defaultBufferType = (DefaultBufferType*)m_befaultBuffer->Map();
-		defaultBufferType->mWorld = world.Transposed();
-		defaultBufferType->mWorldView = worldView.Transposed();
-		defaultBufferType->mWorldViewProjection = worldViewProjection.Transposed();
-		defaultBufferType->mLightViewProjection[0] = lightViewProjection1.Transposed();
-		defaultBufferType->mLightViewProjection[1] = lightViewProjection2.Transposed();
-		defaultBufferType->mLightViewProjection[2] = lightViewProjection3.Transposed();
-		defaultBufferType->shadowSplits = Vector4(directionalLight->GetCascadeSplit(0), directionalLight->GetCascadeSplit(1), directionalLight->GetCascadeSplit(2), directionalLight->GetCascadeSplit(2));
-		defaultBufferType->albedoColor = material->GetColorAlbedo();
-		defaultBufferType->tilingUV = material->GetTilingUV();
-		defaultBufferType->offsetUV = material->GetOffsetUV();
-		defaultBufferType->viewport = GET_RESOLUTION;
-		defaultBufferType->roughnessMultiplier = material->GetRoughnessMultiplier();
-		defaultBufferType->metallicMultiplier = material->GetMetallicMultiplier();
-		defaultBufferType->occlusionMultiplier = material->GetOcclusionMultiplier();
-		defaultBufferType->normalMultiplier = material->GetNormalMultiplier();
-		defaultBufferType->specularMultiplier = material->GetSpecularMultiplier();
-		defaultBufferType->shadingMode = float(material->GetShadingMode());	
-		defaultBufferType->receiveShadows = float(receiveShadows);
-		defaultBufferType->shadowBias = directionalLight->GetBias();
-		defaultBufferType->shadowMapResolution = directionalLight->GetShadowMapResolution();
-		defaultBufferType->shadowMappingQuality = directionalLight->GetShadowTypeAsFloat();
-		defaultBufferType->lightDir = directionalLight->GetDirection();
-		defaultBufferType->nearPlane = camera->GetNearPlane();
-		defaultBufferType->farPlane = camera->GetFarPlane();
-		defaultBufferType->padding = Vector3::Zero;
-		m_befaultBuffer->Unmap();
-	}
-	m_befaultBuffer->SetVS(0); // set buffer in the vertex shader
-	m_befaultBuffer->SetPS(0); // set buffer in the pixel shader
-
-	//= SET TEXTURES ========================================================================================
-	m_graphics->GetDeviceContext()->PSSetShaderResources(0, textureArray.size(), &textureArray.front());
-
-	//= DRAW ===========================================================
-	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
 string ShaderVariation::GetID() const

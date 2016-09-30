@@ -44,6 +44,7 @@ public:
 		bool cubemap
 	);
 	ShaderVariation* GetShaderByID(std::string shaderID);
+	const std::vector<ShaderVariation*>& GetAllShaders() const;
 	void DeleteAll();
 
 private:
