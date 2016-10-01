@@ -120,16 +120,18 @@ void Material::Deserialize()
 	AcquireShader();
 }
 
-void Material::Save(string filePath)
+void Material::Save(string path)
 {
-	Serializer::StartWriting(filePath);
+	m_filepath = path + GetName() + ".mat";
+
+	Serializer::StartWriting(m_filepath);
 	Serialize();
 	Serializer::StopWriting();
 }
 
-void Material::Load(string filePath)
+void Material::Load(string path)
 {
-	Serializer::StartReading(filePath);
+	Serializer::StartReading(path);
 	Deserialize();
 	Serializer::StopReading();
 }
@@ -277,6 +279,16 @@ void Material::SetModelID(string id)
 string Material::GetModelID()
 {
 	return m_modelID;
+}
+
+void Material::SetFilePath(string filepath)
+{
+	m_filepath = filepath;
+}
+
+string Material::GetFilePath()
+{
+	return m_filepath;
 }
 
 void Material::SetFaceCullMode(CullMode cullMode)

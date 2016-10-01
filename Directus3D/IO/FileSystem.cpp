@@ -35,6 +35,18 @@ bool FileSystem::FileExists(const string& path)
 	return (stat(path.c_str(), &buffer) == 0);
 }
 
+void FileSystem::CreateFolder(const string& path)
+{
+	if (CreateDirectory(path.c_str(), nullptr) || ERROR_ALREADY_EXISTS == GetLastError())
+	{
+		// CopyFile(...)
+	}
+	else
+	{
+		// Failed to create directory.
+	}
+}
+
 string FileSystem::GetFileNameFromPath(string path)
 {
 	int lastindex = path.find_last_of("\\/");

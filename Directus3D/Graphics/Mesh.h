@@ -53,6 +53,9 @@ public:
 	std::string GetRootGameObjectID() const { return m_rootGameObjectID; }
 	void SetRootGameObjectID(std::string ID) { m_rootGameObjectID = ID; }
 
+	void SetFilePath(std::string filepath);
+	std::string GetFilePath();
+
 	std::vector<VertexPositionTextureNormalTangent>& GetVertices() { return m_vertices; }
 	void SetVertices(std::vector<VertexPositionTextureNormalTangent> vertices)
 	{
@@ -101,6 +104,7 @@ private:
 	std::string m_ID;
 	std::string m_gameObjectID;
 	std::string m_rootGameObjectID;
+	std::string m_filePath;
 
 	std::vector<VertexPositionTextureNormalTangent> m_vertices;
 	std::vector<unsigned int> m_indices;
