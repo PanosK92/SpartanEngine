@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES =====
 using namespace std;
-
 //==================
 
 bool FileSystem::FileExists(const string& path)
@@ -68,18 +67,64 @@ string FileSystem::GetExtensionFromPath(string path)
 	return path;
 }
 
-string FileSystem::GetRelativePathFromAbsolutePath(string absolutePath)
+string FileSystem::GetRelativePathFromAbsolutePath(string filePath)
 {
 	// NOTE: This function assumes that the path resolves somewhere 
-	// inside the folder "Assets" (The default engine folder)
-
+	// inside the folder "Assets" (The default engine folder).
 	// D:\Projects\Directus3D\Build\Assets\Models\cube\tex.jpg --> Assets\Models\cube\tex.jpg
+	// It removes everything before the folder "Assets", making the path relative to the engine
 
-	// Remove everything before the folder "Assets", making the path relative to the engine
-	size_t position = absolutePath.find("Assets");
-	string relativePath = absolutePath.substr(position);
+	size_t position = filePath.find("Assets");
 
-	return relativePath;
+	if (position == string::npos)
+		return filePath;
+
+	return filePath.substr(position);
+}
+
+vector<string> FileSystem::GetSupportedImageFormats(bool includeUppercase)
+{
+	vector<string> supportedFormats;
+	supportedFormats.push_back(".jpg");
+	supportedFormats.push_back(".png");
+	supportedFormats.push_back(".bmp");
+	supportedFormats.push_back(".tga");
+	supportedFormats.push_back(".dds");
+	supportedFormats.push_back(".exr");
+	supportedFormats.push_back(".raw");
+	supportedFormats.push_back(".gif");
+	supportedFormats.push_back(".hdr");
+	supportedFormats.push_back(".ico");
+	supportedFormats.push_back(".iff");
+	supportedFormats.push_back(".jng");
+	supportedFormats.push_back(".jpeg");
+	supportedFormats.push_back(".koala");
+	supportedFormats.push_back(".kodak");
+	supportedFormats.push_back(".mng");
+	supportedFormats.push_back(".pcx");
+	supportedFormats.push_back(".pbm");
+	supportedFormats.push_back(".pgm");
+	supportedFormats.push_back(".ppm");
+	supportedFormats.push_back(".pfm");
+	supportedFormats.push_back(".pict");
+	supportedFormats.push_back(".psd");
+	supportedFormats.push_back(".raw");
+	supportedFormats.push_back(".sgi");
+	supportedFormats.push_back(".targa");
+	supportedFormats.push_back(".tiff");
+	supportedFormats.push_back(".wbmp");
+	supportedFormats.push_back(".webp");
+	supportedFormats.push_back(".xbm");
+	supportedFormats.push_back(".xpm");
+
+	if (includeUppercase)
+	{
+		int extCount = supportedFormats.size();
+		for (auto i = 0; i < extCount; i++)
+			supportedFormats.push_back(ConvertToUppercase(supportedFormats[i]));
+	}
+
+	return supportedFormats;
 }
 
 vector<string> FileSystem::GetFoldersInDirectory(string directory)
@@ -186,44 +231,11 @@ vector<string> FileSystem::GetModelsFromPaths(vector<string> paths)
 bool FileSystem::IsSupportedImage(string path)
 {
 	string fileExt = GetExtensionFromPath(path);
-	vector<string> supportedExt;
-	supportedExt.push_back(".jpg");
-	supportedExt.push_back(".png");
-	supportedExt.push_back(".bmp");
-	supportedExt.push_back(".tga");
-	supportedExt.push_back(".dds");
-	supportedExt.push_back(".exr");
-	supportedExt.push_back(".raw");
-	supportedExt.push_back(".gif");
-	supportedExt.push_back(".hdr");
-	supportedExt.push_back(".ico");
-	supportedExt.push_back(".iff");
-	supportedExt.push_back(".jng");
-	supportedExt.push_back(".jpeg");
-	supportedExt.push_back(".koala");
-	supportedExt.push_back(".kodak");
-	supportedExt.push_back(".mng");
-	supportedExt.push_back(".pcx");
-	supportedExt.push_back(".pbm");
-	supportedExt.push_back(".pgm");
-	supportedExt.push_back(".ppm");
-	supportedExt.push_back(".pfm");
-	supportedExt.push_back(".pict");
-	supportedExt.push_back(".psd");
-	supportedExt.push_back(".raw");
-	supportedExt.push_back(".sgi");
-	supportedExt.push_back(".targa");
-	supportedExt.push_back(".tiff");
-	supportedExt.push_back(".wbmp");
-	supportedExt.push_back(".webp");
-	supportedExt.push_back(".xbm");
-	supportedExt.push_back(".xpm");
+	vector<string> supportedImageExt = GetSupportedImageFormats(true);
 
-	for (int i = 0; i < supportedExt.size(); i++)
-	{
-		if (fileExt == supportedExt[i] || fileExt == ConvertToUppercase(supportedExt[i]))
+	for (int i = 0; i < supportedImageExt.size(); i++)
+		if (fileExt == supportedImageExt[i])
 			return true;
-	}
 
 	return false;
 }
