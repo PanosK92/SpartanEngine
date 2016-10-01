@@ -103,18 +103,30 @@ void Mesh::Deserialize()
 	m_boundingBox = Serializer::LoadVector3();
 }
 
-void Mesh::Save(string filePath)
+void Mesh::Save(string path)
 {
-	Serializer::StartWriting(filePath);
+	m_filePath = path + GetName() + ".msh";
+
+	Serializer::StartWriting(m_filePath);
 	Serialize();
 	Serializer::StopWriting();
 }
 
-void Mesh::Load(string filePath)
+void Mesh::Load(string path)
 {
-	Serializer::StartReading(filePath);
+	Serializer::StartReading(path);
 	Deserialize();
 	Serializer::StopReading();
+}
+
+void Mesh::SetFilePath(string filepath)
+{
+	m_filePath = filepath;
+}
+
+string Mesh::GetFilePath()
+{
+	return m_filePath;
 }
 
 //==============================================================================

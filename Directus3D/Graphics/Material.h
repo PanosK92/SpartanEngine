@@ -50,8 +50,8 @@ public:
 	void Serialize();
 	void Deserialize();
 
-	void Save(std::string filePath);
-	void Load(std::string filePath);
+	void Save(std::string path);
+	void Load(std::string path);
 	//=============================================================================
 
 	//= TEXTURES ==================================================================
@@ -79,6 +79,9 @@ public:
 
 	void SetModelID(std::string id);
 	std::string GetModelID();
+
+	void SetFilePath(std::string filepath);
+	std::string GetFilePath();
 
 	void SetFaceCullMode(CullMode backFaceCullMode);
 	CullMode GetFaceCullMode();
@@ -130,6 +133,7 @@ private:
 	std::string m_ID;
 	std::string m_name;
 	std::string m_modelID;
+	std::string m_filepath;
 	CullMode m_cullMode;
 	float m_opacity;
 	bool m_alphaBlending;

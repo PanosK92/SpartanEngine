@@ -29,6 +29,8 @@ class __declspec(dllexport) FileSystem
 {
 public:
 	static bool FileExists(const std::string& path);
+	static void CreateFolder(const std::string& path);
+
 	static std::string GetFileNameFromPath(std::string path);
 	static std::string GetFileNameNoExtensionFromPath(std::string path);
 	static std::string GetPathWithoutFileName(std::string path);

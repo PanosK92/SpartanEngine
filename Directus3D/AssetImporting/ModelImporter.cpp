@@ -253,7 +253,11 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 	MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
 	meshComp->Set(mesh->mName.C_Str(), m_rootGameObject->GetID(), vertices, indices);
 
-	meshComp->GetMesh()->Save("Assets/Meshes/" + meshComp->GetMesh()->GetName() + ".msh");
+	FileSystem::CreateFolder("Assets/");
+	FileSystem::CreateFolder("Assets/Models/");
+	FileSystem::CreateFolder("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
+	FileSystem::CreateFolder("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
+	meshComp->GetMesh()->Save("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
 
 	// process materials
 	if (scene->HasMaterials())
@@ -270,7 +274,9 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		// Set it in the mesh renderer component
 		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material->GetID());
 
-		material->Save("Assets/Materials/" + material->GetName() + ".mat");
+		// Save the material in our custom format
+		FileSystem::CreateFolder("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
+		material->Save("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
 	}
 
 	// free memory
