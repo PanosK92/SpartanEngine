@@ -253,6 +253,8 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 	MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
 	meshComp->Set(mesh->mName.C_Str(), m_rootGameObject->GetID(), vertices, indices);
 
+	meshComp->GetMesh()->Save("Assets/Meshes/" + meshComp->GetMesh()->GetName() + ".msh");
+
 	// process materials
 	if (scene->HasMaterials())
 	{
@@ -267,6 +269,8 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 
 		// Set it in the mesh renderer component
 		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material->GetID());
+
+		material->Save("Assets/Materials/" + material->GetName() + ".mat");
 	}
 
 	// free memory
@@ -274,7 +278,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 	indices.clear();
 }
 
-Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
+Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material) const
 {
 	Material* engineMaterial = new Material(m_texturePool, m_shaderPool);
 
@@ -305,7 +309,7 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 	engineMaterial->SetOpacity(opacity.r);
 
 	//= ALBEDO TEXTURE ======================================================================================================
-	aiString Path;
+	aiString texturePath;
 	if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
 	{
 		// FIX: materials that have a diffuse texture should not be tinted black
@@ -313,73 +317,73 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 			engineMaterial->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
 		// Get the full texture path.
-		if (material->GetTexture(aiTextureType_DIFFUSE, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+		if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 		{
-			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
+			string path = FindTexture(texturePath.data);
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
 				Texture* texture = m_texturePool->AddFromFile(path, Albedo);
 				engineMaterial->SetTexture(texture->GetID());
 			}
 			else
-				LOG_WARNING("Failed to find \"" + FileSystem::GetFileNameFromPath(string(Path.data)) + "\".");
+				LOG_WARNING("Failed to find \"" + string(texturePath.data) + "\".");
 		}
 	}
 
 	//= OCCLUSION TEXTURE ====================================================================================================
 	if (material->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
-		if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+		if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 		{
-			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
+			string path = FindTexture(texturePath.data);
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
 				Texture* texture = m_texturePool->AddFromFile(path, Occlusion);
 				engineMaterial->SetTexture(texture->GetID());
 			}
 			else
-				LOG_WARNING("Failed to find \"" + FileSystem::GetFileNameFromPath(string(Path.data)) + "\".");
+				LOG_WARNING("Failed to find \"" + string(texturePath.data) + "\".");
 		}
 
 	//= NORMAL TEXTURE ======================================================================================================
 	if (material->GetTextureCount(aiTextureType_NORMALS) > 0)
-		if (material->GetTexture(aiTextureType_NORMALS, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+		if (material->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 		{
-			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
+			string path = FindTexture(texturePath.data);
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
 				Texture* texture = m_texturePool->AddFromFile(path, Normal);
 				engineMaterial->SetTexture(texture->GetID());
 			}
 			else
-				LOG_WARNING("Failed to find \"" + FileSystem::GetFileNameFromPath(string(Path.data)) + "\".");
+				LOG_WARNING("Failed to find \"" + string(texturePath.data) + "\".");
 		}
 
 	//= HEIGHT TEXTURE =====================================================================================================
 	if (material->GetTextureCount(aiTextureType_HEIGHT) > 0)
-		if (material->GetTexture(aiTextureType_HEIGHT, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+		if (material->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 		{
-			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
+			string path = FindTexture(texturePath.data);
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
 				Texture* texture = m_texturePool->AddFromFile(path, Height);
 				engineMaterial->SetTexture(texture->GetID());
 			}
 			else
-				LOG_WARNING("Failed to find \"" + FileSystem::GetFileNameFromPath(string(Path.data)) + "\".");
+				LOG_WARNING("Failed to find \"" + string(texturePath.data) + "\".");
 		}
 
 	//= MASK TEXTURE ========================================================================================================
 	if (material->GetTextureCount(aiTextureType_OPACITY) > 0)
-		if (material->GetTexture(aiTextureType_OPACITY, 0, &Path, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+		if (material->GetTexture(aiTextureType_OPACITY, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 		{
-			string path = FindTexture(ConstructRelativeTexturePath(Path.data));
+			string path = FindTexture(texturePath.data);
 			if (path != TEXTURE_PATH_UNKNOWN)
 			{
 				Texture* texture = m_texturePool->AddFromFile(path, Mask);
 				engineMaterial->SetTexture(texture->GetID());
 			}
 			else
-				LOG_WARNING("Failed to find \"" + FileSystem::GetFileNameFromPath(string(Path.data)) + "\".");
+				LOG_WARNING("Failed to find \"" + string(texturePath.data) + "\".");
 		}
 
 	return engineMaterial;
@@ -388,51 +392,23 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 /*------------------------------------------------------------------------------
 [HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
-// The texture path is relative to the model directory and the model path is absolute...
-// This methods constructs a path relative to the engine based on the above paths.
-string ModelImporter::ConstructRelativeTexturePath(string absoluteTexturePath)
-{
-	// Save original texture path;
-	m_fullTexturePath = absoluteTexturePath;
-
-	// Remove the model's filename from the model path
-	string absoluteModelPath = m_fullModelPath.substr(0, m_fullModelPath.find_last_of("\\/"));
-
-	// Remove everything before the folder "Assets", making the path relative to the engine
-	size_t position = absoluteModelPath.find("Assets");
-	string relativeModelPath = absoluteModelPath.substr(position);
-
-	// Construct the final relative texture path
-	string relativeTexturePath = relativeModelPath + "/" + absoluteTexturePath;
-
-	return relativeTexturePath;
-}
-
 string ModelImporter::FindTexture(string texturePath) const
 {
+	// The texture path is usually relative to the model, that could be something like "Textures\Alan_Wake_Jacket.jpg"
+	string modelRootDirectory = FileSystem::GetPathWithoutFileName(m_fullModelPath);
+	texturePath = modelRootDirectory + texturePath;
+
+	// 1. Check if the texture name is the actual path
 	if (FileSystem::FileExists(texturePath))
 		return texturePath;
 
-	//= try path as is but with multiple extensions ===========
+	// 2. Check the same texture path as previously but 
+	// this time with different file extensions (jpg, png and so on).
 	texturePath = TryPathWithMultipleExtensions(texturePath);
 	if (FileSystem::FileExists(texturePath))
 		return texturePath;
-	//=========================================================
 
-	//= try path as filename only, with multiple extensions ====
-	string filename = FileSystem::GetFileNameFromPath(m_fullTexturePath);
-
-	// get model's root directory.
-	string modelPath = m_fullModelPath;
-	string path = FileSystem::GetPathWithoutFileName(modelPath);
-
-	// combine them
-	string newPath = path + filename;
-	newPath = TryPathWithMultipleExtensions(newPath);
-	if (FileSystem::FileExists(newPath))
-		return newPath;
-	//==========================================================
-
+	// Give up, no valid texture path was found
 	return TEXTURE_PATH_UNKNOWN;
 }
 
@@ -440,30 +416,14 @@ string ModelImporter::TryPathWithMultipleExtensions(string fullpath)
 {
 	// Remove extension
 	int lastindex = fullpath.find_last_of(".");
-	string rawPath = fullpath.substr(0, lastindex);
+	string fileName = fullpath.substr(0, lastindex);
 
 	// create path for a couple of different extensions
-	const int extensions = 12;
-	string multipleExtensionPaths[extensions] =
-	{
-		rawPath + ".jpg",
-		rawPath + ".png",
-		rawPath + ".bmp",
-		rawPath + ".tga",
-		rawPath + ".dds",
-		rawPath + ".psd",
+	vector<string> supportedImageExtensions = FileSystem::GetSupportedImageFormats(true);
 
-		rawPath + ".JPG",
-		rawPath + ".PNG",
-		rawPath + ".BMP",
-		rawPath + ".TGA",
-		rawPath + ".DDS",
-		rawPath + ".PSD",
-	};
-
-	for (int i = 0; i < extensions; i++)
-		if (FileSystem::FileExists(multipleExtensionPaths[i]))
-			return multipleExtensionPaths[i];
+	for (auto i = 0; i < supportedImageExtensions.size(); i++)
+		if (FileSystem::FileExists(fileName + supportedImageExtensions[i]))
+			return fileName + supportedImageExtensions[i];
 
 	return fullpath;
 }
