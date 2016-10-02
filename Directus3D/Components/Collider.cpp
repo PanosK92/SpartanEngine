@@ -83,16 +83,16 @@ void Collider::Update()
 
 void Collider::Serialize()
 {
-	Serializer::SaveInt(int(m_shapeType));
-	Serializer::SaveVector3(m_boundingBox);
-	Serializer::SaveVector3(m_center);
+	Serializer::WriteInt(int(m_shapeType));
+	Serializer::WriteVector3(m_boundingBox);
+	Serializer::WriteVector3(m_center);
 }
 
 void Collider::Deserialize()
 {
-	m_shapeType = ColliderShape(Serializer::LoadInt());
-	m_boundingBox = Serializer::LoadVector3();
-	m_center = Serializer::LoadVector3();
+	m_shapeType = ColliderShape(Serializer::ReadInt());
+	m_boundingBox = Serializer::ReadVector3();
+	m_center = Serializer::ReadVector3();
 
 	ConstructCollisionShape();
 }

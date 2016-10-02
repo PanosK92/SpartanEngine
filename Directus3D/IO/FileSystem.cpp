@@ -77,6 +77,14 @@ string FileSystem::GetPathWithoutFileName(const string& path)
 	return path.substr(0, lastindex + 1);
 }
 
+string FileSystem::GetPathWithoutFileNameExtension(const string& path)
+{
+	string filename = GetFileNameNoExtensionFromPath(path);
+	string rawPath = GetPathWithoutFileName(path);
+
+	return rawPath + filename;
+}
+
 string FileSystem::GetExtensionFromPath(const string& path)
 {
 	size_t lastindex = path.find_last_of(".");
@@ -147,7 +155,7 @@ vector<string> FileSystem::GetSupportedImageFormats(bool includeUppercase)
 	return supportedFormats;
 }
 
-vector<string> FileSystem::GetFoldersInDirectory(const std::string& directory)
+vector<string> FileSystem::GetFoldersInDirectory(const string& directory)
 {
 	vector<string> folderPaths;
 
@@ -165,7 +173,7 @@ vector<string> FileSystem::GetFoldersInDirectory(const std::string& directory)
 	return folderPaths;
 }
 
-vector<string> FileSystem::GetFilesInDirectory(const std::string& directory)
+vector<string> FileSystem::GetFilesInDirectory(const string& directory)
 {
 	DIR* dir;
 	struct dirent* ent;
@@ -182,7 +190,7 @@ vector<string> FileSystem::GetFilesInDirectory(const std::string& directory)
 	return filePaths;
 }
 
-vector<string> FileSystem::GetSupportedFilesInDirectory(const std::string& directory)
+vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
 {
 	vector<string> filesInDirectory = GetFilesInDirectory(directory);
 
@@ -206,7 +214,7 @@ vector<string> FileSystem::GetSupportedFilesInDirectory(const std::string& direc
 	return supportedFiles;
 }
 
-vector<string> FileSystem::GetImagesFromPaths(const std::vector<std::string>& paths)
+vector<string> FileSystem::GetImagesFromPaths(const vector<string>& paths)
 {
 	vector<string> images;
 	for (int i = 0; i < paths.size(); i++)
@@ -220,7 +228,7 @@ vector<string> FileSystem::GetImagesFromPaths(const std::vector<std::string>& pa
 	return images;
 }
 
-vector<string> FileSystem::GetScriptsFromPaths(const std::vector<std::string>& paths)
+vector<string> FileSystem::GetScriptsFromPaths(const vector<string>& paths)
 {
 	vector<string> scripts;
 	for (int i = 0; i < paths.size(); i++)
@@ -234,7 +242,7 @@ vector<string> FileSystem::GetScriptsFromPaths(const std::vector<std::string>& p
 	return scripts;
 }
 
-vector<string> FileSystem::GetModelsFromPaths(const std::vector<std::string>& paths)
+vector<string> FileSystem::GetModelsFromPaths(const vector<string>& paths)
 {
 	vector<string> images;
 	for (int i = 0; i < paths.size(); i++)

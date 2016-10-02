@@ -36,6 +36,9 @@ using namespace std;
 Texture::Texture()
 {
 	m_ID = GENERATE_GUID;
+	m_name = "N/A";
+	m_filePathImage = "N/A";
+	m_filePathMetadata = "N/A";
 	m_width = 0;
 	m_height = 0;
 	m_shaderResourceView = nullptr;
@@ -52,35 +55,38 @@ Texture::~Texture()
 
 void Texture::Serialize() const
 {
-	Serializer::SaveSTR(m_ID);
-	Serializer::SaveSTR(m_name);
-	Serializer::SaveSTR(m_filePath);
-	Serializer::SaveInt(m_width);
-	Serializer::SaveInt(m_height);
-	Serializer::SaveInt(int(m_type));
-	Serializer::SaveBool(m_grayscale);
-	Serializer::SaveBool(m_transparency);
+	Serializer::WriteSTR(m_ID);
+	Serializer::WriteSTR(m_name);
+	Serializer::WriteSTR(m_filePathImage);
+	Serializer::WriteSTR(m_filePathMetadata);
+	Serializer::WriteInt(m_width);
+	Serializer::WriteInt(m_height);
+	Serializer::WriteInt(int(m_type));
+	Serializer::WriteBool(m_grayscale);
+	Serializer::WriteBool(m_transparency);
 }
 
 void Texture::Deserialize()
 {
-	m_ID = Serializer::LoadSTR();
-	m_name = Serializer::LoadSTR();
-	m_filePath = Serializer::LoadSTR();
-	m_width = Serializer::LoadInt();
-	m_height = Serializer::LoadInt();
-	m_type = TextureType(Serializer::LoadInt());
-	m_grayscale = Serializer::LoadBool();
-	m_transparency = Serializer::LoadBool();
+	m_ID = Serializer::ReadSTR();
+	m_name = Serializer::ReadSTR();
+	m_filePathImage = Serializer::ReadSTR();
+	m_filePathMetadata = Serializer::ReadSTR();
+	m_width = Serializer::ReadInt();
+	m_height = Serializer::ReadInt();
+	m_type = TextureType(Serializer::ReadInt());
+	m_grayscale = Serializer::ReadBool();
+	m_transparency = Serializer::ReadBool();
 
-	LoadFromImageFile(m_filePath, m_type);
+	LoadFromImageFile(m_filePathImage, m_type);
 }
 
 void Texture::SaveToFile(string filePath)
 {
-	filePath += GetName() + TEXTURE_EXTENSION;
+	m_filePathImage = filePath;
+	m_filePathMetadata = m_filePathImage + GetName() + TEXTURE_EXTENSION;
 
-	Serializer::StartWriting(filePath);
+	Serializer::StartWriting(m_filePathMetadata);
 	Serialize();
 	Serializer::StopWriting();
 }
@@ -110,8 +116,8 @@ bool Texture::LoadFromImageFile(string path, TextureType type)
 	}
 
 	// Fill the texture with data
-	SetFilePath(ImageImporter::GetInstance().GetPath());
-	SetName(FileSystem::GetFileNameNoExtensionFromPath(GetFilePath()));
+	SetFilePathImage(ImageImporter::GetInstance().GetPath());
+	SetName(FileSystem::GetFileNameNoExtensionFromPath(GetFilePathImage()));
 	SetWidth(ImageImporter::GetInstance().GetWidth());
 	SetHeight(ImageImporter::GetInstance().GetHeight());
 	SetGrayscale(ImageImporter::GetInstance().IsGrayscale());

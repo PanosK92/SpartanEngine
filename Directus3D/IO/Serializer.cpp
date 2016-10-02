@@ -60,49 +60,49 @@ void Serializer::StopReading()
 	in.close();
 }
 
-void Serializer::SaveBool(bool value)
+void Serializer::WriteBool(bool value)
 {
 	out.write(reinterpret_cast<char*>(&value), sizeof(value));
 }
 
-void Serializer::SaveSTR(string value)
+void Serializer::WriteSTR(string value)
 {
 	int stringSize = value.size();
 	out.write(reinterpret_cast<char*>(&stringSize), sizeof(stringSize));
 	out.write(const_cast<char*>(value.c_str()), stringSize);
 }
 
-void Serializer::SaveInt(int value)
+void Serializer::WriteInt(int value)
 {
 	out.write(reinterpret_cast<char*>(&value), sizeof(value));
 }
 
-void Serializer::SaveFloat(float value)
+void Serializer::WriteFloat(float value)
 {
 	out.write(reinterpret_cast<char*>(&value), sizeof(value));
 }
 
-void Serializer::SaveVectorSTR(vector<string>& vector)
+void Serializer::WriteVectorSTR(vector<string>& vector)
 {
-	SaveInt(int(vector.size()));
+	WriteInt(int(vector.size()));
 	for (auto i = 0; i < vector.size(); i++)
-		SaveSTR(vector[i]);
+		WriteSTR(vector[i]);
 }
 
-void Serializer::SaveVector2(Vector2& vector)
+void Serializer::WriteVector2(Vector2& vector)
 {
 	out.write(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
 	out.write(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
 }
 
-void Serializer::SaveVector3(Vector3& vector)
+void Serializer::WriteVector3(Vector3& vector)
 {
 	out.write(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
 	out.write(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
 	out.write(reinterpret_cast<char*>(&vector.z), sizeof(vector.z));
 }
 
-void Serializer::SaveVector4(Vector4& vector)
+void Serializer::WriteVector4(Vector4& vector)
 {
 	out.write(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
 	out.write(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
@@ -110,7 +110,7 @@ void Serializer::SaveVector4(Vector4& vector)
 	out.write(reinterpret_cast<char*>(&vector.w), sizeof(vector.w));
 }
 
-void Serializer::SaveQuaternion(Quaternion& quaternion)
+void Serializer::WriteQuaternion(Quaternion& quaternion)
 {
 	out.write(reinterpret_cast<char*>(&quaternion.x), sizeof(quaternion.x));
 	out.write(reinterpret_cast<char*>(&quaternion.y), sizeof(quaternion.y));
@@ -118,7 +118,7 @@ void Serializer::SaveQuaternion(Quaternion& quaternion)
 	out.write(reinterpret_cast<char*>(&quaternion.w), sizeof(quaternion.w));
 }
 
-bool Serializer::LoadBool()
+bool Serializer::ReadBool()
 {
 	bool value;
 	in.read(reinterpret_cast<char*>(&value), sizeof(value));
@@ -126,7 +126,7 @@ bool Serializer::LoadBool()
 	return value;
 }
 
-string Serializer::LoadSTR()
+string Serializer::ReadSTR()
 {
 	int stringSize;
 	in.read(reinterpret_cast<char*>(&stringSize), sizeof(stringSize));
@@ -138,7 +138,7 @@ string Serializer::LoadSTR()
 	return value;
 }
 
-unsigned int Serializer::LoadUINT()
+unsigned int Serializer::ReadUINT()
 {
 	unsigned int value;
 	in.read(reinterpret_cast<char*>(&value), sizeof(value));
@@ -146,7 +146,7 @@ unsigned int Serializer::LoadUINT()
 	return value;
 }
 
-int Serializer::LoadInt()
+int Serializer::ReadInt()
 {
 	int value;
 	in.read(reinterpret_cast<char*>(&value), sizeof(value));
@@ -154,7 +154,7 @@ int Serializer::LoadInt()
 	return value;
 }
 
-float Serializer::LoadFloat()
+float Serializer::ReadFloat()
 {
 	float value;
 	in.read(reinterpret_cast<char*>(&value), sizeof(value));
@@ -162,18 +162,18 @@ float Serializer::LoadFloat()
 	return value;
 }
 
-vector<string> Serializer::LoadVectorSTR()
+vector<string> Serializer::ReadVectorSTR()
 {
 	vector<string> vector;
 
-	int textureIDsCount = LoadInt();
+	int textureIDsCount = ReadInt();
 	for (int i = 0; i < textureIDsCount; i++)
-		vector.push_back(LoadSTR());
+		vector.push_back(ReadSTR());
 
 	return vector;
 }
 
-Vector2 Serializer::LoadVector2()
+Vector2 Serializer::ReadVector2()
 {
 	Vector2 vector;
 	in.read(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
@@ -182,7 +182,7 @@ Vector2 Serializer::LoadVector2()
 	return vector;
 }
 
-Vector3 Serializer::LoadVector3()
+Vector3 Serializer::ReadVector3()
 {
 	Vector3 vector;
 	in.read(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
@@ -192,7 +192,7 @@ Vector3 Serializer::LoadVector3()
 	return vector;
 }
 
-Vector4 Serializer::LoadVector4()
+Vector4 Serializer::ReadVector4()
 {
 	Vector4 vector;
 	in.read(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
@@ -203,7 +203,7 @@ Vector4 Serializer::LoadVector4()
 	return vector;
 }
 
-Quaternion Serializer::LoadQuaternion()
+Quaternion Serializer::ReadQuaternion()
 {
 	Quaternion quaternion = Quaternion::Identity;
 	in.read(reinterpret_cast<char*>(&quaternion.x), sizeof(quaternion.x));

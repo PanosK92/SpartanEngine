@@ -36,17 +36,15 @@ using namespace Directus::Math;
 
 Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 {
-	m_texturePool = texturePool;
-	m_shaderPool = shaderPool;
-	m_shader = nullptr;
 	m_ID = GENERATE_GUID;
 	m_name = "N/A";
 	m_modelID = "N/A";
+	m_filePath = "N/A";
 	m_cullMode = CullBack;
 	m_opacity = 1.0f;
 	m_alphaBlending = false;
 	m_shadingMode = Physically_Based;
-	m_colorAlbedo = false;
+	m_colorAlbedo = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 	m_roughnessMultiplier = 1.0f;
 	m_metallicMultiplier = 0.0f;
 	m_occlusionMultiplier = 0.0f;
@@ -55,6 +53,10 @@ Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 	m_specularMultiplier = 0.5f;
 	m_tilingUV = Vector2(1.0f, 1.0f);
 	m_offsetUV = Vector2(0.0f, 0.0f);
+
+	m_texturePool = texturePool;
+	m_shaderPool = shaderPool;
+	m_shader = nullptr;
 
 	AcquireShader();
 }
@@ -67,53 +69,53 @@ Material::~Material()
 //= I/O ========================================================================
 void Material::Serialize()
 {
-	Serializer::SaveSTR(m_ID);
-	Serializer::SaveSTR(m_name);
-	Serializer::SaveSTR(m_modelID);
-	Serializer::SaveSTR(m_filepath);
-	Serializer::SaveInt(m_cullMode);
-	Serializer::SaveFloat(m_opacity);
-	Serializer::SaveBool(m_alphaBlending);
-	Serializer::SaveInt(m_shadingMode);
-	Serializer::SaveVector4(m_colorAlbedo);
-	Serializer::SaveFloat(m_roughnessMultiplier);
-	Serializer::SaveFloat(m_metallicMultiplier);
-	Serializer::SaveFloat(m_normalMultiplier);
-	Serializer::SaveFloat(m_heightMultiplier);
-	Serializer::SaveFloat(m_occlusionMultiplier);
-	Serializer::SaveFloat(m_specularMultiplier);
-	Serializer::SaveVector2(m_tilingUV);
-	Serializer::SaveVector2(m_offsetUV);
+	Serializer::WriteSTR(m_ID);
+	Serializer::WriteSTR(m_name);
+	Serializer::WriteSTR(m_modelID);
+	Serializer::WriteSTR(m_filePath);
+	Serializer::WriteInt(m_cullMode);
+	Serializer::WriteFloat(m_opacity);
+	Serializer::WriteBool(m_alphaBlending);
+	Serializer::WriteInt(m_shadingMode);
+	Serializer::WriteVector4(m_colorAlbedo);
+	Serializer::WriteFloat(m_roughnessMultiplier);
+	Serializer::WriteFloat(m_metallicMultiplier);
+	Serializer::WriteFloat(m_normalMultiplier);
+	Serializer::WriteFloat(m_heightMultiplier);
+	Serializer::WriteFloat(m_occlusionMultiplier);
+	Serializer::WriteFloat(m_specularMultiplier);
+	Serializer::WriteVector2(m_tilingUV);
+	Serializer::WriteVector2(m_offsetUV);
 
-	Serializer::SaveInt(int(m_textures.size()));
+	Serializer::WriteInt(int(m_textures.size()));
 	for (auto i = 0; i < m_textures.size(); i++)
-		Serializer::SaveSTR(m_textures[i]->GetID());
+		Serializer::WriteSTR(m_textures[i]->GetID());
 }
 
 void Material::Deserialize()
 {
-	m_ID = Serializer::LoadSTR();
-	m_name = Serializer::LoadSTR();
-	m_modelID = Serializer::LoadSTR();
-	m_filepath = Serializer::LoadSTR();
-	m_cullMode = CullMode(Serializer::LoadInt());
-	m_opacity = Serializer::LoadFloat();
-	m_alphaBlending = Serializer::LoadBool();
-	m_shadingMode = ShadingMode(Serializer::LoadInt());
-	m_colorAlbedo = Serializer::LoadVector4();
-	m_roughnessMultiplier = Serializer::LoadFloat();
-	m_metallicMultiplier = Serializer::LoadFloat();
-	m_normalMultiplier = Serializer::LoadFloat();
-	m_heightMultiplier = Serializer::LoadFloat();
-	m_occlusionMultiplier = Serializer::LoadFloat();	
-	m_specularMultiplier = Serializer::LoadFloat();
-	m_tilingUV = Serializer::LoadVector2();
-	m_offsetUV = Serializer::LoadVector2();
+	m_ID = Serializer::ReadSTR();
+	m_name = Serializer::ReadSTR();
+	m_modelID = Serializer::ReadSTR();
+	m_filePath = Serializer::ReadSTR();
+	m_cullMode = CullMode(Serializer::ReadInt());
+	m_opacity = Serializer::ReadFloat();
+	m_alphaBlending = Serializer::ReadBool();
+	m_shadingMode = ShadingMode(Serializer::ReadInt());
+	m_colorAlbedo = Serializer::ReadVector4();
+	m_roughnessMultiplier = Serializer::ReadFloat();
+	m_metallicMultiplier = Serializer::ReadFloat();
+	m_normalMultiplier = Serializer::ReadFloat();
+	m_heightMultiplier = Serializer::ReadFloat();
+	m_occlusionMultiplier = Serializer::ReadFloat();
+	m_specularMultiplier = Serializer::ReadFloat();
+	m_tilingUV = Serializer::ReadVector2();
+	m_offsetUV = Serializer::ReadVector2();
 
-	int textureCount = Serializer::LoadInt();
+	int textureCount = Serializer::ReadInt();
 	for (int i = 0; i < textureCount; i++)
 	{
-		string textureID = Serializer::LoadSTR(); // texture id
+		string textureID = Serializer::ReadSTR(); // texture id
 		Texture* texture = m_texturePool->GetTextureByID(textureID);
 
 		if (texture)
@@ -125,9 +127,9 @@ void Material::Deserialize()
 
 void Material::SaveAsFile(const string& path)
 {
-	m_filepath = path + GetName() + MATERIAL_EXTENSION;
+	m_filePath = path + GetName() + MATERIAL_EXTENSION;
 
-	Serializer::StartWriting(m_filepath);
+	Serializer::StartWriting(m_filePath);
 	Serialize();
 	Serializer::StopWriting();
 }
@@ -156,7 +158,7 @@ void Material::SetTexture(string textureID)
 		return;
 
 	// Overwrite
-	if (HasTextureOfType(texture->GetType())) 	
+	if (HasTextureOfType(texture->GetType()))
 	{
 		int textureIndex = GetTextureIndexByType(texture->GetType());
 		m_textures[textureIndex] = texture;
@@ -191,7 +193,7 @@ bool Material::HasTextureOfType(TextureType type)
 bool Material::HasTexture(string path)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetFilePath() == path)
+		if (m_textures[i]->GetFilePathImage() == path)
 			return true;
 
 	return false;
@@ -201,7 +203,7 @@ string Material::GetTexturePathByType(TextureType type)
 {
 	Texture* texture = GetTextureByType(type);
 	if (texture)
-		return texture->GetFilePath();
+		return texture->GetFilePathImage();
 
 	return TEXTURE_PATH_UNKNOWN;
 }
@@ -210,7 +212,7 @@ vector<string> Material::GetTexturePaths()
 {
 	vector<string> paths;
 	for (auto i = 0; i < m_textures.size(); i++)
-		paths.push_back(m_textures[i]->GetFilePath());
+		paths.push_back(m_textures[i]->GetFilePathImage());
 
 	return paths;
 }

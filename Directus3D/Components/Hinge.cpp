@@ -85,33 +85,33 @@ void Hinge::Update()
 
 void Hinge::Serialize()
 {
-	Serializer::SaveBool(m_isConnected);
+	Serializer::WriteBool(m_isConnected);
 	if (m_isConnected)
 	{
 		// save gameobject
-		Serializer::SaveSTR(m_connectedGameObject->GetID());
+		Serializer::WriteSTR(m_connectedGameObject->GetID());
 	}
 
-	Serializer::SaveVector3(m_axisA);
-	Serializer::SaveVector3(m_axisB);
-	Serializer::SaveVector3(m_pivotA);
-	Serializer::SaveVector3(m_pivotB);
+	Serializer::WriteVector3(m_axisA);
+	Serializer::WriteVector3(m_axisB);
+	Serializer::WriteVector3(m_pivotA);
+	Serializer::WriteVector3(m_pivotB);
 }
 
 void Hinge::Deserialize()
 {
-	m_isConnected = Serializer::LoadBool();
+	m_isConnected = Serializer::ReadBool();
 	if (m_isConnected)
 	{
 		// load gameobject
-		std::string gameObjectID = Serializer::LoadSTR();
+		std::string gameObjectID = Serializer::ReadSTR();
 		m_connectedGameObject = GameObjectPool::GetInstance().GetGameObjectByID(gameObjectID);
 	}
 
-	m_axisA = Serializer::LoadVector3();
-	m_axisB = Serializer::LoadVector3();
-	m_pivotA = Serializer::LoadVector3();
-	m_pivotB = Serializer::LoadVector3();
+	m_axisA = Serializer::ReadVector3();
+	m_axisB = Serializer::ReadVector3();
+	m_pivotA = Serializer::ReadVector3();
+	m_pivotB = Serializer::ReadVector3();
 
 	m_isDirty = true;
 }

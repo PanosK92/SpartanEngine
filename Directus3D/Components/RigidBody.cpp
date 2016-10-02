@@ -125,28 +125,28 @@ void RigidBody::Update()
 
 void RigidBody::Serialize()
 {
-	Serializer::SaveFloat(m_mass);
-	Serializer::SaveFloat(m_drag);
-	Serializer::SaveFloat(m_angularDrag);
-	Serializer::SaveFloat(m_restitution);
-	Serializer::SaveBool(m_useGravity);
-	Serializer::SaveVector3(m_gravity);
-	Serializer::SaveBool(m_isKinematic);
-	Serializer::SaveVector3(m_positionLock);
-	Serializer::SaveVector3(m_rotationLock);
+	Serializer::WriteFloat(m_mass);
+	Serializer::WriteFloat(m_drag);
+	Serializer::WriteFloat(m_angularDrag);
+	Serializer::WriteFloat(m_restitution);
+	Serializer::WriteBool(m_useGravity);
+	Serializer::WriteVector3(m_gravity);
+	Serializer::WriteBool(m_isKinematic);
+	Serializer::WriteVector3(m_positionLock);
+	Serializer::WriteVector3(m_rotationLock);
 }
 
 void RigidBody::Deserialize()
 {
-	m_mass = Serializer::LoadFloat();
-	m_drag = Serializer::LoadFloat();
-	m_angularDrag = Serializer::LoadFloat();
-	m_restitution = Serializer::LoadFloat();
-	m_useGravity = Serializer::LoadBool();
-	m_gravity = Serializer::LoadVector3();
-	m_isKinematic = Serializer::LoadBool();
-	m_positionLock = Serializer::LoadVector3();
-	m_rotationLock = Serializer::LoadVector3();
+	m_mass = Serializer::ReadFloat();
+	m_drag = Serializer::ReadFloat();
+	m_angularDrag = Serializer::ReadFloat();
+	m_restitution = Serializer::ReadFloat();
+	m_useGravity = Serializer::ReadBool();
+	m_gravity = Serializer::ReadVector3();
+	m_isKinematic = Serializer::ReadBool();
+	m_positionLock = Serializer::ReadVector3();
+	m_rotationLock = Serializer::ReadVector3();
 
 	AddBodyToWorld();
 }

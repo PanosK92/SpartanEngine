@@ -39,7 +39,7 @@ public:
 	Texture* GetTextureByName(const std::string& name);
 	Texture* GetTextureByID(const std::string& ID);
 	Texture* GetTextureByPath(const std::string& path);
-	void GetAllTextureFilePaths(std::vector<std::string>& paths);
+	std::vector<std::string> GetAllTextureFilePaths();
 
 	void RemoveTextureByPath(const std::string& path);
 	void Clear();

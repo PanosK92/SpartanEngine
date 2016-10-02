@@ -70,26 +70,26 @@ void Transform::Update()
 
 void Transform::Serialize()
 {
-	Serializer::SaveVector3(m_positionLocal);
-	Serializer::SaveQuaternion(m_rotationLocal);
-	Serializer::SaveVector3(m_scaleLocal);
-	Serializer::SaveVector3(m_lookAt);
+	Serializer::WriteVector3(m_positionLocal);
+	Serializer::WriteQuaternion(m_rotationLocal);
+	Serializer::WriteVector3(m_scaleLocal);
+	Serializer::WriteVector3(m_lookAt);
 
 	if (m_parent)
-		Serializer::SaveSTR(m_parent->g_gameObject->GetID());
+		Serializer::WriteSTR(m_parent->g_gameObject->GetID());
 	else
-		Serializer::SaveSTR(NULL_GAMEOBJECT_ID);
+		Serializer::WriteSTR(NULL_GAMEOBJECT_ID);
 }
 
 void Transform::Deserialize()
 {
-	m_positionLocal = Serializer::LoadVector3();
-	m_rotationLocal = Serializer::LoadQuaternion();
-	m_scaleLocal = Serializer::LoadVector3();
-	m_lookAt = Serializer::LoadVector3();
+	m_positionLocal = Serializer::ReadVector3();
+	m_rotationLocal = Serializer::ReadQuaternion();
+	m_scaleLocal = Serializer::ReadVector3();
+	m_lookAt = Serializer::ReadVector3();
 
 	// get parent transform
-	string parentGameObjectID = Serializer::LoadSTR();
+	string parentGameObjectID = Serializer::ReadSTR();
 	if (parentGameObjectID != NULL_GAMEOBJECT_ID)
 	{
 		GameObject* parent = GameObjectPool::GetInstance().GetGameObjectByID(parentGameObjectID);

@@ -154,10 +154,13 @@ Material* MaterialPool::GetMaterialStandardSkybox()
 	return GetMaterialByID("Standard_Material_1");
 }
 
-void MaterialPool::GetAllMaterialFilePaths(vector<string>& paths)
+vector<string> MaterialPool::GetAllMaterialFilePaths()
 {
+	vector<string> paths;
 	for (auto i = 0; i < m_materials.size(); i++)
 		paths.push_back(m_materials[i]->GetFilePath());
+
+	return paths;
 }
 
 const vector<Material*>& MaterialPool::GetAllMaterials()

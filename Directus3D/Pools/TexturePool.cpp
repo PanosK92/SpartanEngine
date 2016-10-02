@@ -114,16 +114,19 @@ Texture* TexturePool::GetTextureByID(const string&  ID)
 Texture* TexturePool::GetTextureByPath(const string&  path)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetFilePath() == path)
+		if (m_textures[i]->GetFilePathImage() == path)
 			return m_textures[i];
 
 	return nullptr;
 }
 
-void TexturePool::GetAllTextureFilePaths(vector<string>& paths)
+vector<string> TexturePool::GetAllTextureFilePaths()
 {
+	vector<string> paths;
 	for (auto i = 0; i < m_textures.size(); i++)
-		paths.push_back(m_textures[i]->GetFilePath());
+		paths.push_back(m_textures[i]->GetFilePathImage());
+
+	return paths;
 }
 
 void TexturePool::RemoveTextureByPath(const string&  path)
@@ -131,7 +134,7 @@ void TexturePool::RemoveTextureByPath(const string&  path)
 	for (auto it = m_textures.begin(); it < m_textures.end();)
 	{
 		Texture* texture = *it;
-		if (texture->GetFilePath() == path)
+		if (texture->GetFilePathImage() == path)
 		{
 			delete texture;
 			it = m_textures.erase(it);
@@ -156,7 +159,7 @@ void TexturePool::Clear()
 int TexturePool::GetTextureIndex(Texture* texture)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetFilePath() == texture->GetFilePath())
+		if (m_textures[i]->GetFilePathImage() == texture->GetFilePathImage())
 			return i;
 
 	return -1;

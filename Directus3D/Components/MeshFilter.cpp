@@ -68,12 +68,12 @@ void MeshFilter::Update()
 
 void MeshFilter::Serialize()
 {
-	Serializer::SaveSTR(m_mesh ? m_mesh->GetID() : "-1");
+	Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : "-1");
 }
 
 void MeshFilter::Deserialize()
 {
-	string meshDataID = Serializer::LoadSTR();
+	string meshDataID = Serializer::ReadSTR();
 	m_mesh = g_meshPool->GetMesh(meshDataID);
 
 	CreateBuffers();

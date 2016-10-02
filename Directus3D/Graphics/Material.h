@@ -83,8 +83,8 @@ public:
 	void SetModelID(const std::string& ID) { m_modelID = ID; }
 	std::string GetModelID() { return m_modelID; }
 
-	void SetFilePath(const std::string& filepath) { m_filepath = filepath; }
-	std::string GetFilePath() { return m_filepath; }
+	void SetFilePath(const std::string& filepath) { m_filePath = filepath; }
+	std::string GetFilePath() { return m_filePath; }
 
 	void SetFaceCullMode(CullMode cullMode) { m_cullMode = cullMode; }
 	CullMode GetFaceCullMode() { return m_cullMode; }
@@ -140,7 +140,7 @@ private:
 	std::string m_ID;
 	std::string m_name;
 	std::string m_modelID;
-	std::string m_filepath;
+	std::string m_filePath;
 	CullMode m_cullMode;
 	float m_opacity;
 	bool m_alphaBlending;

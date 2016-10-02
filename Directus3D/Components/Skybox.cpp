@@ -69,7 +69,7 @@ void Skybox::Initialize()
 	{
 		texture = new Texture();
 		texture->SetType(CubeMap);
-		texture->SetFilePath("Assets/Environment/environment.dds");
+		texture->SetFilePathImage("Assets/Environment/environment.dds");
 		texture->SetWidth(1200);
 		texture->SetHeight(1200);
 		texture->SetGrayscale(false);

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "../Graphics/D3D11/D3D11Shader.h"
+#include "../IO/FileSystem.h"
 //========================================
 
 #define TEXTURE_ID_NA "-1"
@@ -64,12 +65,15 @@ public:
 	std::string GetName() { return m_name; }
 	void SetName(const std::string& name) { m_name = name; }
 
-	std::string GetFilePath() { return m_filePath; };
-	void SetFilePath(const std::string& filepath) { m_filePath = filepath; }
-	
+	std::string GetFilePathImage() { return m_filePathImage; }
+	void SetFilePathImage(const std::string& filepath) { m_filePathImage = filepath; }
+
+	std::string GetFilePathMetadata() { return m_filePathMetadata; }
+	void SetFilePathMetadata(const std::string& filepath) { m_filePathMetadata = filepath; }
+
 	int GetWidth() { return m_width; }
 	void SetWidth(int width) { m_width = width; }
-	
+
 	int GetHeight() { return m_height; }
 	void SetHeight(int height) { m_height = height; }
 
@@ -78,7 +82,7 @@ public:
 
 	bool GetGrayscale() { return m_grayscale; }
 	void SetGrayscale(bool grayscale) { m_grayscale = grayscale; }
-	
+
 	bool GetTransparency() { return m_transparency; }
 	void SetTransparency(bool transparency) { m_transparency = transparency; }
 
@@ -88,12 +92,13 @@ public:
 private:
 	std::string m_ID;
 	std::string m_name;
-	std::string m_filePath;
+	std::string m_filePathImage;
+	std::string m_filePathMetadata;
 	int m_width;
 	int m_height;
 	TextureType m_type;
 	bool m_grayscale;
 	bool m_transparency;
-	bool m_alphaIsTransparency;	
+	bool m_alphaIsTransparency;
 	ID3D11ShaderResourceView* m_shaderResourceView;
 };

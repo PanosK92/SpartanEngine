@@ -72,12 +72,12 @@ void Script::Update()
 
 void Script::Serialize()
 {
-	Serializer::SaveSTR(m_scriptInstance->GetScriptPath());
+	Serializer::WriteSTR(m_scriptInstance->GetScriptPath());
 }
 
 void Script::Deserialize()
 {
-	string scriptPath = Serializer::LoadSTR();
+	string scriptPath = Serializer::ReadSTR();
 	AddScript(scriptPath);
 }
 //====================================================================================
