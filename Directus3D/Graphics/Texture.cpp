@@ -76,8 +76,10 @@ void Texture::Deserialize()
 	LoadFromFile(m_filePath, m_type);
 }
 
-void Texture::SaveToFile(const string& filePath) const
+void Texture::SaveToFile(string filePath)
 {
+	filePath += GetName() + ".tex";
+
 	Serializer::StartWriting(filePath);
 	Serialize();
 	Serializer::StopWriting();
@@ -119,7 +121,7 @@ bool Texture::LoadFromFile(string path, TextureType type)
 
 	// Fill the texture with data
 	SetFilePath(ImageImporter::GetInstance().GetPath());
-	SetName(FileSystem::GetFileNameFromPath(GetFilePath()));
+	SetName(FileSystem::GetFileNameNoExtensionFromPath(GetFilePath()));
 	SetWidth(ImageImporter::GetInstance().GetWidth());
 	SetHeight(ImageImporter::GetInstance().GetHeight());
 	SetGrayscale(ImageImporter::GetInstance().IsGrayscale());
