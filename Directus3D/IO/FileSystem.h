@@ -32,20 +32,20 @@ public:
 	static void CreateFolder(const std::string& path);
 	static void CopyFileFromTo(const std::string& source, const std::string& destination);
 
-	static std::string GetFileNameFromPath(std::string path);
-	static std::string GetFileNameNoExtensionFromPath(std::string path);
-	static std::string GetPathWithoutFileName(std::string path);
-	static std::string GetExtensionFromPath(std::string path);
-	static std::string GetRelativePathFromAbsolutePath(std::string path);
+	static std::string GetFileNameFromPath(const std::string& path);
+	static std::string GetFileNameNoExtensionFromPath(const std::string& path);
+	static std::string GetPathWithoutFileName(const std::string& path);
+	static std::string GetExtensionFromPath(const std::string& path);
+	static std::string GetRelativePathFromAbsolutePath(const std::string& path);
 
 	static std::vector<std::string> FileSystem::GetSupportedImageFormats(bool includeUppercase);
 
-	static std::vector<std::string> GetFoldersInDirectory(std::string directory);
-	static std::vector<std::string> GetFilesInDirectory(std::string directory);
-	static std::vector<std::string> GetSupportedFilesInDirectory(std::string directory);
-	static std::vector<std::string> GetImagesFromPaths(std::vector<std::string> paths);
-	static std::vector<std::string> GetScriptsFromPaths(std::vector<std::string> paths);
-	static std::vector<std::string> GetModelsFromPaths(std::vector<std::string> paths);
+	static std::vector<std::string> GetFoldersInDirectory(const std::string& directory);
+	static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
+	static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& directory);
+	static std::vector<std::string> GetImagesFromPaths(const std::vector<std::string>& paths);
+	static std::vector<std::string> GetScriptsFromPaths(const std::vector<std::string>& paths);
+	static std::vector<std::string> GetModelsFromPaths(const std::vector<std::string>& paths);
 
 	static bool IsSupportedImage(const std::string& path);
 	static bool IsSupportedScript(const std::string& path);

@@ -125,16 +125,6 @@ bool Mesh::LoadFromFile(const string& filePath)
 	return true;
 }
 
-void Mesh::SetFilePath(string filepath)
-{
-	m_filePath = filepath;
-}
-
-string Mesh::GetFilePath()
-{
-	return m_filePath;
-}
-
 //==============================================================================
 
 //= PROCESSING =================================================================

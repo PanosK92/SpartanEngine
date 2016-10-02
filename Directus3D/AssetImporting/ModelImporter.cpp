@@ -394,7 +394,7 @@ string ModelImporter::FindTexture(string texturePath)
 	return TEXTURE_PATH_UNKNOWN;
 }
 
-string ModelImporter::TryPathWithMultipleExtensions(string fullpath)
+string ModelImporter::TryPathWithMultipleExtensions(const string& fullpath)
 {
 	// Remove extension
 	int lastindex = fullpath.find_last_of(".");

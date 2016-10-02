@@ -59,7 +59,7 @@ private:
 	------------------------------------------------------------------------------*/
 	void AddTextureToMaterial(Material* material, TextureType textureType, const std::string& texturePath);
 	std::string FindTexture(std::string texturePath);
-	std::string TryPathWithMultipleExtensions(std::string fullpath);
+	std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 
 	MeshPool* m_meshPool;
 	TexturePool* m_texturePool;

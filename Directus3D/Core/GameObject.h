@@ -40,10 +40,10 @@ public:
 	void Update();
 
 	std::string GetName();
-	void SetName(std::string name);
+	void SetName(const std::string& name);
 
 	std::string GetID();
-	void SetID(std::string ID);
+	void SetID(const std::string& ID);
 
 	void SetActive(bool active);
 	bool IsActive();
@@ -70,7 +70,7 @@ public:
 	template <class Type>
 	void RemoveComponent();
 
-	void RemoveComponentByID(std::string id);
+	void RemoveComponentByID(const std::string& id);
 	//=========================================================
 
 	Transform* GetTransform();
@@ -97,5 +97,5 @@ private:
 	ScriptEngine* m_scriptEngine;
 
 	//= HELPER FUNCTIONS ====================================
-	IComponent* AddComponentBasedOnType(std::string typeStr);
+	IComponent* AddComponentBasedOnType(const std::string& typeStr);
 };

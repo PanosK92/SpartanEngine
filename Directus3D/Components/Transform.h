@@ -100,7 +100,7 @@ public:
 	Transform* GetRoot();
 	Transform* GetParent() const;
 	Transform* GetChildByIndex(int index);
-	Transform* GetChildByName(std::string name);
+	Transform* GetChildByName(const std::string& name);
 	std::vector<Transform*> GetChildren() const;
 	int GetChildrenCount() const;
 	void FindChildren();

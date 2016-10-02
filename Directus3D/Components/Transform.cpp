@@ -382,7 +382,7 @@ Transform* Transform::GetChildByIndex(int index)
 	return m_children[index];
 }
 
-Transform* Transform::GetChildByName(string name)
+Transform* Transform::GetChildByName(const std::string& name)
 {
 	for (auto i = 0; i < m_children.size(); i++)
 		if (m_children[i]->GetName() == name)
