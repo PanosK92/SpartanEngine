@@ -39,24 +39,14 @@ MaterialPool::MaterialPool(TexturePool* texturePool, ShaderPool* shaderPool)
 
 MaterialPool::~MaterialPool()
 {
-	DeleteAll();
+	Clear();
 }
 
 /*------------------------------------------------------------------------------
 								[MISC]
 ------------------------------------------------------------------------------*/
-
-// Removes all the materials
-void MaterialPool::DeleteAll()
-{
-	for (int i = 0; i < m_materials.size(); i++)
-		delete m_materials[i];
-
-	m_materials.clear();
-	m_materials.shrink_to_fit();
-}
-
-Material* MaterialPool::AddMaterial(Material* material)
+// Adds a material to the pool directly from memory
+Material* MaterialPool::Add(Material* material)
 {
 	if (!material)
 	{
@@ -65,17 +55,39 @@ Material* MaterialPool::AddMaterial(Material* material)
 	}
 
 	// check for existing material from the same model
-	for (int i = 0; i < m_materials.size(); i++)
+	for (auto i = 0; i < m_materials.size(); i++)
 	{
 		if (m_materials[i]->GetName() == material->GetName())
 			if (m_materials[i]->GetModelID() == material->GetModelID())
 				return m_materials[i];
 	}
 
-	// if nothing of the above was true, add the 
-	// material to the pool and return it
 	m_materials.push_back(material);
 	return m_materials.back();
+}
+
+// Adds multiple materials to the pool by reading them from files
+void MaterialPool::Add(vector<string> filePaths)
+{
+	for (auto i = 0; i < filePaths.size(); i++)
+	{
+		Material* material = new Material(m_texturePool, m_shaderPool);
+
+		if (material->LoadFromFile(filePaths[i]))
+			m_materials.push_back(material);
+		else
+			delete material;
+	}
+}
+
+// Removes all the materials
+void MaterialPool::Clear()
+{
+	for (auto i = 0; i < m_materials.size(); i++)
+		delete m_materials[i];
+
+	m_materials.clear();
+	m_materials.shrink_to_fit();
 }
 
 void MaterialPool::RemoveMaterial(Material* material)
@@ -130,38 +142,15 @@ Material* MaterialPool::GetMaterialStandardSkybox()
 	return GetMaterialByID("Standard_Material_1");
 }
 
-const std::vector<Material*>& MaterialPool::GetAllMaterials()
+void MaterialPool::GetAllMaterialFilePaths(vector<string>& paths)
+{
+	for (auto i = 0; i < m_materials.size(); i++)
+		paths.push_back(m_materials[i]->GetFilePath());
+}
+
+const vector<Material*>& MaterialPool::GetAllMaterials()
 {
 	return m_materials;
-}
-
-/*------------------------------------------------------------------------------
-								[I/O]
-------------------------------------------------------------------------------*/
-void MaterialPool::Serialize()
-{
-	// save material count
-	Serializer::SaveInt(int(m_materials.size()));
-
-	// save materials
-	for (unsigned int i = 0; i < m_materials.size(); i++)
-		m_materials[i]->Serialize();
-}
-
-void MaterialPool::Deserialize()
-{
-	DeleteAll();
-
-	// load material count
-	int materialCount = Serializer::LoadInt();
-
-	// load materials
-	for (int i = 0; i < materialCount; i++)
-	{
-		Material* mat = new Material(m_texturePool, m_shaderPool);
-		mat->Deserialize();
-		m_materials.push_back(mat);
-	}
 }
 
 /*------------------------------------------------------------------------------

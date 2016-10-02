@@ -35,21 +35,19 @@ public:
 
 	/*------------------------------------------------------------------------------
 									[MISC]
-	------------------------------------------------------------------------------*/
-	void DeleteAll();
-	Material* AddMaterial(Material* material);
+	------------------------------------------------------------------------------*/	
+	Material* Add(Material* material);
+	void Add(std::vector<std::string> filePaths);
+
+	void Clear();
 	void RemoveMaterial(Material* material);
 	void RemoveMaterial(std::string materialID);
+
 	Material* GetMaterialByID(std::string materialID);
 	Material* GetMaterialStandardDefault();
 	Material* GetMaterialStandardSkybox();
+	void GetAllMaterialFilePaths(std::vector<std::string>& paths);
 	const std::vector<Material*>& GetAllMaterials();
-
-	/*------------------------------------------------------------------------------
-									[I/O]
-	------------------------------------------------------------------------------*/
-	void Serialize();
-	void Deserialize();
 
 private:
 	std::vector<Material*> m_materials;

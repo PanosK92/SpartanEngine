@@ -27,14 +27,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
-std::ofstream out;
-std::ifstream in;
+//= STREAMS =
+ofstream out;
+ifstream in;
+//===========
 
-void Serializer::StartWriting(std::string path)
+void Serializer::StartWriting(const string& path)
 {
-	out.open(path, std::ios::out | std::ios::binary);
+	out.open(path, ios::out | ios::binary);
 }
 
 void Serializer::StopWriting()
@@ -43,12 +46,12 @@ void Serializer::StopWriting()
 	out.close();
 }
 
-void Serializer::StartReading(std::string path)
+void Serializer::StartReading(const string& path)
 {
-	in.open(path, std::ios::in | std::ios::binary);
+	in.open(path, ios::in | ios::binary);
 
 	if (in.fail())
-	LOG_ERROR("Can't open " + path);
+		LOG_ERROR("Can't open " + path);
 }
 
 void Serializer::StopReading()
@@ -62,7 +65,7 @@ void Serializer::SaveBool(bool value)
 	out.write(reinterpret_cast<char*>(&value), sizeof(value));
 }
 
-void Serializer::SaveSTR(std::string value)
+void Serializer::SaveSTR(string value)
 {
 	int stringSize = value.size();
 	out.write(reinterpret_cast<char*>(&stringSize), sizeof(stringSize));
@@ -79,7 +82,7 @@ void Serializer::SaveFloat(float value)
 	out.write(reinterpret_cast<char*>(&value), sizeof(value));
 }
 
-void Serializer::SaveVectorSTR(std::vector<std::string>& vector)
+void Serializer::SaveVectorSTR(vector<string>& vector)
 {
 	SaveInt(int(vector.size()));
 	for (auto i = 0; i < vector.size(); i++)
@@ -123,12 +126,12 @@ bool Serializer::LoadBool()
 	return value;
 }
 
-std::string Serializer::LoadSTR()
+string Serializer::LoadSTR()
 {
 	int stringSize;
 	in.read(reinterpret_cast<char*>(&stringSize), sizeof(stringSize));
 
-	std::string value;
+	string value;
 	value.resize(stringSize);
 	in.read(const_cast<char*>(value.c_str()), stringSize);
 
@@ -159,9 +162,9 @@ float Serializer::LoadFloat()
 	return value;
 }
 
-std::vector<std::string> Serializer::LoadVectorSTR()
+vector<string> Serializer::LoadVectorSTR()
 {
-	std::vector<std::string> vector;
+	vector<string> vector;
 
 	int textureIDsCount = LoadInt();
 	for (int i = 0; i < textureIDsCount; i++)

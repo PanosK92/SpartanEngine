@@ -194,7 +194,7 @@ void MeshFilter::CreateQuad()
 void MeshFilter::Set(string name, string rootGameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices)
 {
 	// Add the mesh data to the pool so it gets initialized properly
-	m_mesh = g_meshPool->AddMesh(name, rootGameObjectID, g_gameObject->GetID(), vertices, indices);
+	m_mesh = g_meshPool->Add(name, rootGameObjectID, g_gameObject->GetID(), vertices, indices);
 
 	// Make the mesh auto-update the buffers whenever it's changes.
 	m_mesh->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));

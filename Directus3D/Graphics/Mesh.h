@@ -38,8 +38,8 @@ public:
 	void Serialize();
 	void Deserialize();
 
-	void Save(std::string filePath);
-	void Load(std::string filePath);
+	void SaveToFile(const std::string& filePath);
+	bool LoadFromFile(const std::string& filePath);
 	//==============================================================================
 
 	std::string GetName() const { return m_name; }

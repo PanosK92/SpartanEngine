@@ -47,12 +47,12 @@ public:
 	static std::vector<std::string> GetScriptsFromPaths(std::vector<std::string> paths);
 	static std::vector<std::string> GetModelsFromPaths(std::vector<std::string> paths);
 
-	static bool IsSupportedImage(std::string path);
-	static bool IsSupportedScript(std::string path);
-	static bool IsSupportedScene(std::string path);
-	static bool IsSupportedModel(std::string path);
-	static bool IsSupportedShader(std::string path);
+	static bool IsSupportedImage(const std::string& path);
+	static bool IsSupportedScript(const std::string& path);
+	static bool IsSupportedScene(const std::string& path);
+	static bool IsSupportedModel(const std::string& path);
+	static bool IsSupportedShader(const std::string& path);
 
 	// string
-	static std::string ConvertToUppercase(std::string);
+	static std::string ConvertToUppercase(const std::string& lower);
 };

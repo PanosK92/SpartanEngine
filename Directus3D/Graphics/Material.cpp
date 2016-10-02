@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GUIDGenerator.h"
 #include "../Pools/ShaderPool.h"
 #include "../IO/Log.h"
+#include "../IO/FileSystem.h"
 //================================
 
 //= NAMESPACES ================
@@ -69,6 +70,7 @@ void Material::Serialize()
 	Serializer::SaveSTR(m_ID);
 	Serializer::SaveSTR(m_name);
 	Serializer::SaveSTR(m_modelID);
+	Serializer::SaveSTR(m_filepath);
 	Serializer::SaveInt(m_cullMode);
 	Serializer::SaveFloat(m_opacity);
 	Serializer::SaveBool(m_alphaBlending);
@@ -93,6 +95,7 @@ void Material::Deserialize()
 	m_ID = Serializer::LoadSTR();
 	m_name = Serializer::LoadSTR();
 	m_modelID = Serializer::LoadSTR();
+	m_filepath = Serializer::LoadSTR();
 	m_cullMode = CullMode(Serializer::LoadInt());
 	m_opacity = Serializer::LoadFloat();
 	m_alphaBlending = Serializer::LoadBool();
@@ -110,7 +113,7 @@ void Material::Deserialize()
 	int textureCount = Serializer::LoadInt();
 	for (int i = 0; i < textureCount; i++)
 	{
-		string textureID = Serializer::LoadSTR();
+		string textureID = Serializer::LoadSTR(); // texture id
 		Texture* texture = m_texturePool->GetTextureByID(textureID);
 
 		if (texture)
@@ -120,7 +123,7 @@ void Material::Deserialize()
 	AcquireShader();
 }
 
-void Material::Save(string path)
+void Material::SaveAsFile(const string& path)
 {
 	m_filepath = path + GetName() + ".mat";
 
@@ -129,11 +132,16 @@ void Material::Save(string path)
 	Serializer::StopWriting();
 }
 
-void Material::Load(string path)
+bool Material::LoadFromFile(const string& filePath)
 {
-	Serializer::StartReading(path);
+	if (!FileSystem::FileExists(filePath))
+		return false;
+
+	Serializer::StartReading(filePath);
 	Deserialize();
 	Serializer::StopReading();
+
+	return true;
 }
 //==============================================================================
 
@@ -183,7 +191,7 @@ bool Material::HasTextureOfType(TextureType type)
 bool Material::HasTexture(string path)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetPath() == path)
+		if (m_textures[i]->GetFilePath() == path)
 			return true;
 
 	return false;
@@ -193,7 +201,7 @@ string Material::GetTexturePathByType(TextureType type)
 {
 	Texture* texture = GetTextureByType(type);
 	if (texture)
-		return texture->GetPath();
+		return texture->GetFilePath();
 
 	return TEXTURE_PATH_UNKNOWN;
 }
@@ -202,7 +210,7 @@ vector<string> Material::GetTexturePaths()
 {
 	vector<string> paths;
 	for (auto i = 0; i < m_textures.size(); i++)
-		paths.push_back(m_textures[i]->GetPath());
+		paths.push_back(m_textures[i]->GetFilePath());
 
 	return paths;
 }
