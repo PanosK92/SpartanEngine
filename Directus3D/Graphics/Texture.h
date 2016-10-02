@@ -51,8 +51,8 @@ public:
 	void Serialize() const;
 	void Deserialize();
 
-	void Save(std::string filePath) const;
-	void Load(std::string filePath);
+	void SaveToFile(const std::string& filePath) const;
+	bool LoadFromFile(const std::string& filePath);
 	//==============================================================================
 
 	ID3D11ShaderResourceView* GetID3D11ShaderResourceView() const;
@@ -65,14 +65,14 @@ public:
 	void SetName(std::string name);
 	std::string GetName();
 
+	void SetFilePath(std::string filepath);
+	std::string GetFilePath();
+
 	void SetWidth(int width);
 	int GetWidth() const;
 
 	void SetHeight(int height);
 	int GetHeight() const;
-
-	std::string GetPath() const;
-	void SetPath(std::string path);
 
 	TextureType GetType() const;
 	void SetType(TextureType type);
@@ -86,12 +86,13 @@ public:
 private:
 	std::string m_ID;
 	std::string m_name;
+	std::string m_filePath;
 	int m_width;
 	int m_height;
 	TextureType m_type;
-	std::string m_path;
 	bool m_grayscale;
 	bool m_transparency;
 	bool m_alphaIsTransparency;
+	
 	ID3D11ShaderResourceView* m_shaderResourceView;
 };

@@ -32,16 +32,17 @@ public:
 	TexturePool();
 	~TexturePool();
 
-	void Serialize();
-	void Deserialize();
+	Texture* Add(Texture* texture);
+	Texture* Add(const std::string& texturePath, TextureType textureType);
+	void Add(std::vector<std::string> filePaths);
 
-	Texture* CreateNewTexture();
-	Texture* AddFromFile(std::string texturePath, TextureType textureType);
-	Texture* GetTextureByName(std::string name);
-	Texture* GetTextureByID(std::string ID);
-	Texture* GetTextureByPath(std::string path);
-	void RemoveTextureByPath(std::string path);
-	void DeleteAll();
+	Texture* GetTextureByName(const std::string& name);
+	Texture* GetTextureByID(const std::string& ID);
+	Texture* GetTextureByPath(const std::string& path);
+	void GetAllTextureFilePaths(std::vector<std::string>& paths);
+
+	void RemoveTextureByPath(const std::string& path);
+	void Clear();
 
 private:
 	std::vector<Texture*> m_textures;

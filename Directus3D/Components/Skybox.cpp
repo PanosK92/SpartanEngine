@@ -67,14 +67,15 @@ void Skybox::Initialize()
 	Texture* texture = g_texturePool->GetTextureByPath("Assets/Environment/environment.dds");
 	if (!texture)
 	{
-		texture = g_texturePool->CreateNewTexture();
+		texture = new Texture();
 		texture->SetType(CubeMap);
-		texture->SetPath("Assets/Environment/environment.dds");
+		texture->SetFilePath("Assets/Environment/environment.dds");
 		texture->SetWidth(1200);
 		texture->SetHeight(1200);
 		texture->SetGrayscale(false);
 		texture->SetID3D11ShaderResourceView(m_environmentSRV);
 	}
+	g_texturePool->Add(texture);
 
 	g_materialPool->GetMaterialStandardSkybox()->SetTexture(texture->GetID());
 

@@ -83,12 +83,20 @@ bool Scene::SaveToFile(string path)
 {
 	Serializer::StartWriting(path);
 
-	//========================================
-	m_texturePool->Serialize();
-	m_materialPool->Serialize();
-	m_meshPool->Serialize();
+	// Gather all the paths of any resource files that are
+	// currently used by the scene
+	vector<string> resourcePaths;
+	m_texturePool->GetAllTextureFilePaths(resourcePaths);
+	m_materialPool->GetAllMaterialFilePaths(resourcePaths);
+	m_meshPool->GetAllMeshFilePaths(resourcePaths);
+
+	// Save all the paths of the resource files used by the scene
+	Serializer::SaveInt(resourcePaths.size());
+	for (auto i = 0; i < resourcePaths.size(); i++)
+		Serializer::SaveSTR(resourcePaths[i]);
+
+	// Save all the currently used GameObjects
 	GameObjectPool::GetInstance().Serialize();
-	//========================================
 
 	Serializer::StopWriting();
 
@@ -99,23 +107,45 @@ bool Scene::LoadFromFile(string path)
 {
 	if (!FileSystem::FileExists(path))
 	{
-		LOG(path + " was not found.", Log::Error);
+		LOG_ERROR(path + " was not found.");
 		return false;
 	}
 	Clear();
 
-	Serializer::StartReading(path);
 	EMIT_SIGNAL(SIGNAL_SCENE_LOADING_STARTED);
+	
+	// Read all the paths of any resource files used by the scene
+	//===========================================================
+	Serializer::StartReading(path);
 
-	//==========================================
-	m_texturePool->Deserialize();
-	m_materialPool->Deserialize();
-	m_meshPool->Deserialize();
-	GameObjectPool::GetInstance().Deserialize();
-	//==========================================
+	vector<string> resourcePaths;
+	int resourceCount = Serializer::LoadInt();
+	for (auto i = 0; i < resourceCount; i++)
+		resourcePaths.push_back(Serializer::LoadSTR());
+
+	Serializer::StopReading();
+	//===========================================================
+
+	// Load all the used resources into memory
+	m_texturePool->Add(resourcePaths);
+	m_materialPool->Add(resourcePaths);
+	m_meshPool->Add(resourcePaths);
+	
+	// Load all the GameObjects present in the scene
+	//==============================================
+	Serializer::StartReading(path);
+
+	// We loop our way to the point where GameObject data starts.
+	// There might be a more elegant solution here, but the brute force approach should do too.
+	Serializer::LoadInt();
+	for (auto i = 0; i < resourceCount; i++)
+		Serializer::LoadSTR();
+
+	GameObjectPool::GetInstance().Deserialize();	
+	Serializer::StopReading();
+	//==============================================
 
 	EMIT_SIGNAL(SIGNAL_SCENE_LOADING_COMPLETED);
-	Serializer::StopReading();
 
 	AnalyzeGameObjects();
 
@@ -138,9 +168,9 @@ void Scene::Clear()
 	m_mainCamera = nullptr;
 
 	//= Clear all the pools ==================
-	m_texturePool->DeleteAll();
-	m_meshPool->DeleteAll();
-	m_materialPool->DeleteAll();
+	m_texturePool->Clear();
+	m_meshPool->Clear();
+	m_materialPool->Clear();
 	m_shaderPool->DeleteAll();
 	GameObjectPool::GetInstance().DeleteAll();
 	//========================================

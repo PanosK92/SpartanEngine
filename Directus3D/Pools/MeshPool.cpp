@@ -39,22 +39,23 @@ MeshPool::MeshPool()
 
 MeshPool::~MeshPool()
 {
-	DeleteAll();
+	Clear();
 }
 
 /*------------------------------------------------------------------------------
 									[MISC]
 ------------------------------------------------------------------------------*/
-void MeshPool::DeleteAll()
+void MeshPool::Clear()
 {
-	for (int i = 0; i < m_meshPool.size(); i++)
-		delete m_meshPool[i];
+	for (auto i = 0; i < m_meshes.size(); i++)
+		delete m_meshes[i];
 
-	m_meshPool.clear();
-	m_meshPool.shrink_to_fit();
+	m_meshes.clear();
+	m_meshes.shrink_to_fit();
 }
 
-Mesh* MeshPool::AddMesh(string name, string rootGameObjectID, string gameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices)
+// Adds a mesh to the pool directly from memory
+Mesh* MeshPool::Add(const string& name, const string& rootGameObjectID, const string& gameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices)
 {
 	// construct the mesh
 	Mesh* mesh = new Mesh();
@@ -66,31 +67,51 @@ Mesh* MeshPool::AddMesh(string name, string rootGameObjectID, string gameObjectI
 	mesh->Update();
 
 	// add it to the pool
-	m_meshPool.push_back(mesh);
+	m_meshes.push_back(mesh);
 
 	// return it
-	return m_meshPool.back();
+	return m_meshes.back();
 }
 
-Mesh* MeshPool::GetMesh(string ID)
+// Adds multiple meshes to the pool by reading them from files
+void MeshPool::Add(vector<string> filePaths)
 {
-	for (int i = 0; i < m_meshPool.size(); i++)
+	for (auto i = 0; i < filePaths.size(); i++)
 	{
-		if (m_meshPool[i]->GetID() == ID)
-			return m_meshPool[i];
+		Mesh* mesh = new Mesh();
+
+		if (mesh->LoadFromFile(filePaths[i]))
+			m_meshes.push_back(mesh);
+		else
+			delete mesh;
+	}
+}
+
+Mesh* MeshPool::GetMesh(const string& ID)
+{
+	for (auto i = 0; i < m_meshes.size(); i++)
+	{
+		if (m_meshes[i]->GetID() == ID)
+			return m_meshes[i];
 	}
 
 	return nullptr;
 }
 
+void MeshPool::GetAllMeshFilePaths(vector<string> paths)
+{
+	for (auto i = 0; i < m_meshes.size(); i++)
+		paths.push_back(m_meshes[i]->GetFilePath());
+}
+
 // Returns the meshes tha belong to the same model
-const vector<Mesh*>& MeshPool::GetModelMeshesByModelName(string rootGameObjectID)
+const vector<Mesh*>& MeshPool::GetModelMeshesByModelName(const string& rootGameObjectID)
 {
 	vector<Mesh*> modelMeshes;
-	for (unsigned int i = 0; i < m_meshPool.size(); i++)
+	for (unsigned int i = 0; i < m_meshes.size(); i++)
 	{
-		if (m_meshPool[i]->GetRootGameObjectID() == rootGameObjectID)
-			modelMeshes.push_back(m_meshPool[i]);
+		if (m_meshes[i]->GetRootGameObjectID() == rootGameObjectID)
+			modelMeshes.push_back(m_meshes[i]);
 	}
 
 	return modelMeshes;
@@ -101,7 +122,7 @@ const vector<Mesh*>& MeshPool::GetModelMeshesByModelName(string rootGameObjectID
 ------------------------------------------------------------------------------*/
 // Returns a value that can be used (by multiplying against the original scale)
 // to normalize the scale of a transform
-float MeshPool::GetNormalizedModelScaleByRootGameObjectID(string rootGameObjectID)
+float MeshPool::GetNormalizedModelScaleByRootGameObjectID(const string& rootGameObjectID)
 {
 	// get all the meshes related to this model
 	vector<Mesh*> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
@@ -116,7 +137,7 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(string rootGameObjectI
 	return 1.0f / scaleOffset;
 }
 
-void MeshPool::SetModelScale(string rootGameObjectID, float scale)
+void MeshPool::SetModelScale(const string& rootGameObjectID, float scale)
 {
 	// get all the meshes related to this model
 	vector<Mesh*> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
@@ -157,29 +178,4 @@ Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
 	}
 
 	return largestBoundingBoxMesh;
-}
-
-/*------------------------------------------------------------------------------
-									[I/O]
-------------------------------------------------------------------------------*/
-void MeshPool::Serialize()
-{
-	int meshCount = int(m_meshPool.size());
-	Serializer::SaveInt(meshCount);
-
-	for (int i = 0; i < meshCount; i++)
-		m_meshPool[i]->Serialize();
-}
-
-void MeshPool::Deserialize()
-{
-	DeleteAll();
-
-	int meshDataCount = Serializer::LoadInt();
-	for (int i = 0; i < meshDataCount; i++)
-	{
-		Mesh* mesh = new Mesh();
-		mesh->Deserialize();
-		m_meshPool.push_back(mesh);
-	}
 }

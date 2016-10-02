@@ -248,7 +248,7 @@ vector<string> FileSystem::GetModelsFromPaths(vector<string> paths)
 	return images;
 }
 
-bool FileSystem::IsSupportedImage(string path)
+bool FileSystem::IsSupportedImage(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedImageExt = GetSupportedImageFormats(true);
@@ -260,7 +260,7 @@ bool FileSystem::IsSupportedImage(string path)
 	return false;
 }
 
-bool FileSystem::IsSupportedScript(string path)
+bool FileSystem::IsSupportedScript(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -275,7 +275,7 @@ bool FileSystem::IsSupportedScript(string path)
 	return false;
 }
 
-bool FileSystem::IsSupportedScene(string path)
+bool FileSystem::IsSupportedScene(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -290,7 +290,7 @@ bool FileSystem::IsSupportedScene(string path)
 	return false;
 }
 
-bool FileSystem::IsSupportedModel(string path)
+bool FileSystem::IsSupportedModel(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -336,7 +336,7 @@ bool FileSystem::IsSupportedModel(string path)
 	return false;
 }
 
-bool FileSystem::IsSupportedShader(string path)
+bool FileSystem::IsSupportedShader(const std::string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -351,7 +351,7 @@ bool FileSystem::IsSupportedShader(string path)
 	return false;
 }
 
-string FileSystem::ConvertToUppercase(string lower)
+string FileSystem::ConvertToUppercase(const string& lower)
 {
 	locale loc;
 	string upper;

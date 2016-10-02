@@ -32,11 +32,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Serializer
 {
 public:
-	static void StartWriting(std::string path);
+	//= STREAMS ======================================
+	static void StartWriting(const std::string& path);
 	static void StopWriting();
-	static void StartReading(std::string path);
+	static void StartReading(const std::string& path);
 	static void StopReading();
-
+	//================================================
+	
+	//= SAVING =========================================================
 	static void SaveBool(bool value);
 	static void SaveSTR(std::string value);
 	static void SaveInt(int value);
@@ -46,7 +49,9 @@ public:
 	static void SaveVector3(Directus::Math::Vector3& vector);
 	static void SaveVector4(Directus::Math::Vector4& vector);
 	static void SaveQuaternion(Directus::Math::Quaternion& quaternion);
+	//==================================================================
 
+	//= LOADING ========================================
 	static bool LoadBool();
 	static std::string LoadSTR();
 	static unsigned int LoadUINT();
@@ -57,4 +62,5 @@ public:
 	static Directus::Math::Vector3 LoadVector3();
 	static Directus::Math::Vector4 LoadVector4();
 	static Directus::Math::Quaternion LoadQuaternion();
+	//=================================================
 };

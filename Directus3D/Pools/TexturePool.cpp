@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "TexturePool.h"
 #include <filesystem>
-#include "../IO/Serializer.h"
 #include "../IO/Log.h"
 //===========================
 
@@ -37,39 +36,21 @@ TexturePool::TexturePool()
 
 TexturePool::~TexturePool()
 {
-	DeleteAll();
+	Clear();
 }
 
-void TexturePool::Serialize()
+// Adds a texture to the pool directly from memory
+Texture* TexturePool::Add(Texture* texture)
 {
-	Serializer::SaveInt(int(m_textures.size()));
-	for (int i = 0; i < m_textures.size(); i++)
-		m_textures[i]->Serialize();
-}
+	if (!texture)
+		return nullptr;
 
-void TexturePool::Deserialize()
-{
-	DeleteAll();
-
-	int textureCount = Serializer::LoadInt();
-	for (int i = 0; i < textureCount; i++)
-	{
-		Texture* texture = new Texture();
-		texture->Deserialize();
-
-		m_textures.push_back(texture);
-	}
-}
-
-Texture* TexturePool::CreateNewTexture()
-{
-	Texture* texture = new Texture();
 	m_textures.push_back(texture);
-
 	return m_textures.back();
 }
 
-Texture* TexturePool::AddFromFile(string texturePath, TextureType textureType)
+// Adds a texture to the pool by loading it from a file
+Texture* TexturePool::Add(const string& texturePath, TextureType textureType)
 {
 	// If loaded, return the already loaded one
 	Texture* loaded = GetTextureByPath(texturePath);
@@ -84,7 +65,21 @@ Texture* TexturePool::AddFromFile(string texturePath, TextureType textureType)
 	return m_textures.back();
 }
 
-Texture* TexturePool::GetTextureByName(string name)
+// Adds multiple textures to the pool by reading them from files
+void TexturePool::Add(vector<string> filePaths)
+{
+	for (auto i = 0; i < filePaths.size(); i++)
+	{
+		Texture* texture = new Texture();
+
+		if (texture->LoadFromFile(filePaths[i]))
+			m_textures.push_back(texture);
+		else
+			delete texture;
+	}
+}
+
+Texture* TexturePool::GetTextureByName(const string&  name)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 	{
@@ -95,7 +90,7 @@ Texture* TexturePool::GetTextureByName(string name)
 	return nullptr;
 }
 
-Texture* TexturePool::GetTextureByID(string ID)
+Texture* TexturePool::GetTextureByID(const string&  ID)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 		if (m_textures[i]->GetID() == ID)
@@ -104,21 +99,27 @@ Texture* TexturePool::GetTextureByID(string ID)
 	return nullptr;
 }
 
-Texture* TexturePool::GetTextureByPath(string path)
+Texture* TexturePool::GetTextureByPath(const string&  path)
 {
-	for (unsigned int i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetPath() == path)
+	for (auto i = 0; i < m_textures.size(); i++)
+		if (m_textures[i]->GetFilePath() == path)
 			return m_textures[i];
 
 	return nullptr;
 }
 
-void TexturePool::RemoveTextureByPath(string path)
+void TexturePool::GetAllTextureFilePaths(vector<string>& paths)
+{
+	for (auto i = 0; i < m_textures.size(); i++)
+		paths.push_back(m_textures[i]->GetFilePath());
+}
+
+void TexturePool::RemoveTextureByPath(const string&  path)
 {
 	for (auto it = m_textures.begin(); it < m_textures.end();)
 	{
 		Texture* texture = *it;
-		if (texture->GetPath() == path)
+		if (texture->GetFilePath() == path)
 		{
 			delete texture;
 			it = m_textures.erase(it);
@@ -128,9 +129,9 @@ void TexturePool::RemoveTextureByPath(string path)
 	}
 }
 
-void TexturePool::DeleteAll()
+void TexturePool::Clear()
 {
-	for (int i = 0; i < m_textures.size(); i++)
+	for (auto i = 0; i < m_textures.size(); i++)
 		delete m_textures[i];
 
 	m_textures.clear();
@@ -142,8 +143,8 @@ void TexturePool::DeleteAll()
 ------------------------------------------------------------------------------*/
 int TexturePool::GetTextureIndex(Texture* texture)
 {
-	for (unsigned int i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetPath() == texture->GetPath())
+	for (auto i = 0; i < m_textures.size(); i++)
+		if (m_textures[i]->GetFilePath() == texture->GetFilePath())
 			return i;
 
 	return -1;

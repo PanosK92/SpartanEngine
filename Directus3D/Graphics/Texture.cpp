@@ -54,7 +54,7 @@ void Texture::Serialize() const
 {
 	Serializer::SaveSTR(m_ID);
 	Serializer::SaveSTR(m_name);
-	Serializer::SaveSTR(m_path);
+	Serializer::SaveSTR(m_filePath);
 	Serializer::SaveInt(m_width);
 	Serializer::SaveInt(m_height);
 	Serializer::SaveInt(int(m_type));
@@ -66,28 +66,33 @@ void Texture::Deserialize()
 {
 	m_ID = Serializer::LoadSTR();
 	m_name = Serializer::LoadSTR();
-	m_path = Serializer::LoadSTR();
+	m_filePath = Serializer::LoadSTR();
 	m_width = Serializer::LoadInt();
 	m_height = Serializer::LoadInt();
 	m_type = TextureType(Serializer::LoadInt());
 	m_grayscale = Serializer::LoadBool();
 	m_transparency = Serializer::LoadBool();
 
-	LoadFromFile(m_path, m_type);
+	LoadFromFile(m_filePath, m_type);
 }
 
-void Texture::Save(string filePath) const
+void Texture::SaveToFile(const string& filePath) const
 {
 	Serializer::StartWriting(filePath);
 	Serialize();
 	Serializer::StopWriting();
 }
 
-void Texture::Load(string filePath)
+bool Texture::LoadFromFile(const string& filePath)
 {
+	if (!FileSystem::FileExists(filePath))
+		return false;
+
 	Serializer::StartReading(filePath);
 	Deserialize();
 	Serializer::StopReading();
+
+	return true;
 }
 
 ID3D11ShaderResourceView* Texture::GetID3D11ShaderResourceView() const
@@ -113,8 +118,8 @@ bool Texture::LoadFromFile(string path, TextureType type)
 	}
 
 	// Fill the texture with data
-	SetPath(ImageImporter::GetInstance().GetPath());
-	SetName(FileSystem::GetFileNameFromPath(GetPath()));
+	SetFilePath(ImageImporter::GetInstance().GetPath());
+	SetName(FileSystem::GetFileNameFromPath(GetFilePath()));
 	SetWidth(ImageImporter::GetInstance().GetWidth());
 	SetHeight(ImageImporter::GetInstance().GetHeight());
 	SetGrayscale(ImageImporter::GetInstance().IsGrayscale());
@@ -125,8 +130,10 @@ bool Texture::LoadFromFile(string path, TextureType type)
 	// FIX: some models pass a normal map as a height map
 	// and others pass a height map as a normal map...
 	SetType(type);
-	if (GetType() == Height && !GetGrayscale()) SetType(Normal);
-	if (GetType() == Normal && GetGrayscale()) SetType(Height);
+	if (GetType() == Height && !GetGrayscale())
+		SetType(Normal);
+	if (GetType() == Normal && GetGrayscale())
+		SetType(Height);
 
 	// Clear any memory allocated by the image loader
 	ImageImporter::GetInstance().Clear();
@@ -149,6 +156,16 @@ string Texture::GetName()
 	return m_name;
 }
 
+void Texture::SetFilePath(string filepath)
+{
+	m_filePath = filepath;
+}
+
+string Texture::GetFilePath()
+{
+	return m_filePath;
+}
+
 void Texture::SetWidth(int width)
 {
 	m_width = width;
@@ -167,16 +184,6 @@ void Texture::SetHeight(int height)
 int Texture::GetHeight() const
 {
 	return m_height;
-}
-
-string Texture::GetPath() const
-{
-	return m_path;
-}
-
-void Texture::SetPath(string path)
-{
-	m_path = path;
 }
 
 TextureType Texture::GetType() const

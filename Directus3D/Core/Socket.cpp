@@ -207,7 +207,7 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 
 		// If it's not loaded yet, load it
 		if (!texture)
-			texture = m_texturePool->AddFromFile(texturePath, type);
+			texture = m_texturePool->Add(texturePath, type);
 
 		// Set it to the material
 		material->SetTexture(texture->GetID());

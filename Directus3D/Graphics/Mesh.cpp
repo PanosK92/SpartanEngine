@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Mesh.h"
 #include "../IO/Log.h"
 #include "../Core/GUIDGenerator.h"
+#include "../IO/FileSystem.h"
 //================================
 
 //= NAMESPACES ================
@@ -103,7 +104,7 @@ void Mesh::Deserialize()
 	m_boundingBox = Serializer::LoadVector3();
 }
 
-void Mesh::Save(string path)
+void Mesh::SaveToFile(const string& path)
 {
 	m_filePath = path + GetName() + ".msh";
 
@@ -112,11 +113,16 @@ void Mesh::Save(string path)
 	Serializer::StopWriting();
 }
 
-void Mesh::Load(string path)
+bool Mesh::LoadFromFile(const string& filePath)
 {
-	Serializer::StartReading(path);
+	if (!FileSystem::FileExists(filePath))
+		return false;
+
+	Serializer::StartReading(filePath);
 	Deserialize();
 	Serializer::StopReading();
+
+	return true;
 }
 
 void Mesh::SetFilePath(string filepath)

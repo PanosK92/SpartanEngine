@@ -50,8 +50,8 @@ public:
 	void Serialize();
 	void Deserialize();
 
-	void Save(std::string path);
-	void Load(std::string path);
+	void SaveAsFile(const std::string& path);
+	bool LoadFromFile(const std::string& path);
 	//=============================================================================
 
 	//= TEXTURES ==================================================================

@@ -36,24 +36,20 @@ public:
 	/*------------------------------------------------------------------------------
 										[MISC]
 	------------------------------------------------------------------------------*/
-	void DeleteAll();
-	Mesh* AddMesh(std::string name, std::string rootGameObjectID, std::string gameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices);
-	Mesh* GetMesh(std::string ID);
-	const std::vector<Mesh*>& GetModelMeshesByModelName(std::string modelName);
+	void Clear();
+	Mesh* Add(const std::string& name, const std::string& rootGameObjectID, const std::string& gameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices);
+	void Add(std::vector<std::string> filePaths);
+	Mesh* GetMesh(const std::string& ID);
+	void GetAllMeshFilePaths(std::vector<std::string> paths);
+	const std::vector<Mesh*>& GetModelMeshesByModelName(const std::string& modelName);
 
 	//= MESH PROCESSING =============================================================================
-	float GetNormalizedModelScaleByRootGameObjectID(std::string modelName);
-	void SetModelScale(std::string rootGameObjectID, float scale);
+	float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
+	void SetModelScale(const std::string& rootGameObjectID, float scale);
 	void NormalizeModelScale(GameObject* rootGameObject);
 	static Mesh* GetLargestBoundingBox(const std::vector<Mesh*>& meshes);
 	//===============================================================================================
 
-	/*------------------------------------------------------------------------------
-										[I/O]
-	------------------------------------------------------------------------------*/
-	void Serialize();
-	void Deserialize();
-
 private:
-	std::vector<Mesh*> m_meshPool;
+	std::vector<Mesh*> m_meshes;
 };
