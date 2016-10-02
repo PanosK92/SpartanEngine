@@ -376,15 +376,32 @@ void ModelImporter::AddTextureToMaterial(Material* material, TextureType texture
 
 string ModelImporter::FindTexture(string texturePath)
 {
-	// The texture path is usually relative to the model, that could be something like "Textures\Alan_Wake_Jacket.jpg"
+	// The texture path is relative to the model, something like "Textures\Alan_Wake_Jacket.jpg" which is too 
+	// arbitrary to load a texture from it. This is why we get the model's directory (which is relative to the engine)...
 	string modelRootDirectory = FileSystem::GetPathWithoutFileName(m_fullModelPath);
+	
+	// ... and marge it with the texture path, Assets\Models\Alan_Wake\" + "Textures\Alan_Wake_Jacket.jpg".
 	texturePath = modelRootDirectory + texturePath;
 
-	// 1. Check if the texture name is the actual path
+	// 1. Check if the texture path is valid
 	if (FileSystem::FileExists(texturePath))
 		return texturePath;
 
 	// 2. Check the same texture path as previously but 
+	// this time with different file extensions (jpg, png and so on).
+	texturePath = TryPathWithMultipleExtensions(texturePath);
+	if (FileSystem::FileExists(texturePath))
+		return texturePath;
+
+	// At this point we know the provided path is wrong, we make a few guesses
+	// The most common mistake is that the artist provided a path which is absolute to his computer.
+
+	// 3. Check if the texture is in the same folder as the model
+	texturePath = FileSystem::GetFileNameFromPath(texturePath);
+	if (FileSystem::FileExists(texturePath))
+		return texturePath;
+
+	// 4. Check the same texture path as previously but 
 	// this time with different file extensions (jpg, png and so on).
 	texturePath = TryPathWithMultipleExtensions(texturePath);
 	if (FileSystem::FileExists(texturePath))
