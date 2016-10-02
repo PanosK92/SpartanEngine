@@ -59,7 +59,7 @@ Texture* TexturePool::Add(const string& texturePath, TextureType textureType)
 
 	// If not, load it
 	Texture* texture = new Texture();
-	texture->LoadFromFile(texturePath, textureType);
+	texture->LoadFromImageFile(texturePath, textureType);
 	m_textures.push_back(texture);
 
 	return m_textures.back();
@@ -72,7 +72,7 @@ void TexturePool::Add(vector<string> filePaths)
 	{
 		Texture* texture = new Texture();
 
-		if (texture->LoadFromFile(filePaths[i]))
+		if (texture->LoadFromImageFile(filePaths[i]))
 			m_textures.push_back(texture);
 		else
 			delete texture;

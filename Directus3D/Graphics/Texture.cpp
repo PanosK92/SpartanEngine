@@ -73,7 +73,7 @@ void Texture::Deserialize()
 	m_grayscale = Serializer::LoadBool();
 	m_transparency = Serializer::LoadBool();
 
-	LoadFromFile(m_filePath, m_type);
+	LoadFromImageFile(m_filePath, m_type);
 }
 
 void Texture::SaveToFile(string filePath)
@@ -85,7 +85,8 @@ void Texture::SaveToFile(string filePath)
 	Serializer::StopWriting();
 }
 
-bool Texture::LoadFromFile(const string& filePath)
+// Loads a texture from a .tex metadata file
+bool Texture::LoadFromImageFile(const string& filePath)
 {
 	if (!FileSystem::FileExists(filePath))
 		return false;
@@ -97,22 +98,11 @@ bool Texture::LoadFromFile(const string& filePath)
 	return true;
 }
 
-ID3D11ShaderResourceView* Texture::GetID3D11ShaderResourceView() const
-{
-	return m_shaderResourceView;
-}
-
-void Texture::SetID3D11ShaderResourceView(ID3D11ShaderResourceView* srv)
-{
-	m_shaderResourceView = srv;
-}
-
-bool Texture::LoadFromFile(string path, TextureType type)
+// Loads a texture from an image file (.jpg, .png and so on)
+bool Texture::LoadFromImageFile(string path, TextureType type)
 {
 	// load it
-	bool result = ImageImporter::GetInstance().Load(path);
-
-	if (!result)
+	if (!ImageImporter::GetInstance().Load(path))
 	{
 		LOG("Failed to load texture \"" + path + "\".", Log::Error);
 		ImageImporter::GetInstance().Clear();
@@ -141,79 +131,4 @@ bool Texture::LoadFromFile(string path, TextureType type)
 	ImageImporter::GetInstance().Clear();
 
 	return true;
-}
-
-string Texture::GetID() const
-{
-	return m_ID;
-}
-
-void Texture::SetName(string name)
-{
-	m_name = name;
-}
-
-string Texture::GetName()
-{
-	return m_name;
-}
-
-void Texture::SetFilePath(string filepath)
-{
-	m_filePath = filepath;
-}
-
-string Texture::GetFilePath()
-{
-	return m_filePath;
-}
-
-void Texture::SetWidth(int width)
-{
-	m_width = width;
-}
-
-int Texture::GetWidth() const
-{
-	return m_width;
-}
-
-void Texture::SetHeight(int height)
-{
-	m_height = height;
-}
-
-int Texture::GetHeight() const
-{
-	return m_height;
-}
-
-TextureType Texture::GetType() const
-{
-	return m_type;
-}
-
-void Texture::SetType(TextureType type)
-{
-	m_type = type;
-}
-
-void Texture::SetGrayscale(bool isGrayscale)
-{
-	m_grayscale = isGrayscale;
-}
-
-bool Texture::GetGrayscale() const
-{
-	return m_grayscale;
-}
-
-void Texture::SetTransparency(bool transparency)
-{
-	m_transparency = transparency;
-}
-
-bool Texture::GetTransparency()
-{
-	return m_transparency;
 }
