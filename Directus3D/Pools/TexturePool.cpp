@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TexturePool.h"
 #include <filesystem>
 #include "../IO/Log.h"
+#include "../IO/FileSystem.h"
 //===========================
 
 //= NAMESPACES =====
@@ -49,7 +50,7 @@ Texture* TexturePool::Add(Texture* texture)
 	return m_textures.back();
 }
 
-// Adds a texture to the pool by loading it from a file
+// Adds a texture to the pool by loading it from an image file
 Texture* TexturePool::Add(const string& texturePath, TextureType textureType)
 {
 	// If loaded, return the already loaded one
@@ -65,14 +66,25 @@ Texture* TexturePool::Add(const string& texturePath, TextureType textureType)
 	return m_textures.back();
 }
 
-// Adds multiple textures to the pool by reading them from files
-void TexturePool::Add(vector<string> filePaths)
+// Adds multiple textures to the pool by reading their metadata files
+void TexturePool::Add(const vector<string>& filePaths)
 {
+	string filePath;
 	for (auto i = 0; i < filePaths.size(); i++)
 	{
-		Texture* texture = new Texture();
+		filePath = filePaths[i];
 
-		if (texture->LoadFromImageFile(filePaths[i]))
+		// Make sure the path is valid
+		if (!FileSystem::FileExists(filePath))
+			continue;
+
+		// Make sure it's actually a texture metadata file (.tex)
+		if (FileSystem::GetExtensionFromPath(filePath) != TEXTURE_EXTENSION)
+			continue;
+
+		// Create and load the texture
+		Texture* texture = new Texture();
+		if (texture->LoadFromImageFile(filePath))
 			m_textures.push_back(texture);
 		else
 			delete texture;

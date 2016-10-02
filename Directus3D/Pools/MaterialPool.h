@@ -37,7 +37,7 @@ public:
 									[MISC]
 	------------------------------------------------------------------------------*/	
 	Material* Add(Material* material);
-	void Add(std::vector<std::string> filePaths);
+	void Add(const std::vector<std::string>& filePaths);
 
 	void Clear();
 	void RemoveMaterial(Material* material);

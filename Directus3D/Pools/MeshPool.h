@@ -38,7 +38,7 @@ public:
 	------------------------------------------------------------------------------*/
 	void Clear();
 	Mesh* Add(const std::string& name, const std::string& rootGameObjectID, const std::string& gameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices);
-	void Add(std::vector<std::string> filePaths);
+	void Add(const std::vector<std::string>& filePaths);
 	Mesh* GetMesh(const std::string& ID);
 	void GetAllMeshFilePaths(std::vector<std::string> paths);
 	std::vector<Mesh*> GetModelMeshesByModelName(const std::string& modelName);

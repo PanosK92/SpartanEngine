@@ -106,7 +106,7 @@ void Mesh::Deserialize()
 
 void Mesh::SaveToFile(const string& path)
 {
-	m_filePath = path + GetName() + ".msh";
+	m_filePath = path + GetName() + MESH_EXTENSION;
 
 	Serializer::StartWriting(m_filePath);
 	Serialize();

@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Components/MeshFilter.h"
 #include "../IO/Log.h"
+#include "../IO/FileSystem.h"
 //==================================
 
 //= NAMESPACES ================
@@ -74,13 +75,23 @@ Mesh* MeshPool::Add(const string& name, const string& rootGameObjectID, const st
 }
 
 // Adds multiple meshes to the pool by reading them from files
-void MeshPool::Add(vector<string> filePaths)
+void MeshPool::Add(const vector<string>& filePaths)
 {
+	string filePath;
 	for (auto i = 0; i < filePaths.size(); i++)
 	{
-		Mesh* mesh = new Mesh();
+		filePath = filePaths[i];
 
-		if (mesh->LoadFromFile(filePaths[i]))
+		// Make sure the path is valid
+		if (!FileSystem::FileExists(filePath))
+			continue;
+
+		// Make sure it's actually a mesh file
+		if (FileSystem::GetExtensionFromPath(filePath) != MESH_EXTENSION)
+			continue;
+
+		Mesh* mesh = new Mesh();
+		if (mesh->LoadFromFile(filePath))
 			m_meshes.push_back(mesh);
 		else
 			delete mesh;

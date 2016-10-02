@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Renderer.h"
 //===============================
 
+#define MATERIAL_EXTENSION ".mat"
+
 class ShaderVariation;
 class ShaderPool;
 class TexturePool;

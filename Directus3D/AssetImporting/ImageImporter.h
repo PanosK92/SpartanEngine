@@ -82,8 +82,8 @@ public:
 	~ImageImporter();
 
 	void Initialize(Graphics* D3D11evice);
-	bool Load(std::string path);
-	bool Load(std::string path, int width, int height);
+	bool Load(const std::string& path);
+	bool Load(const std::string& path, int width, int height);
 	void Clear();
 
 	/*------------------------------------------------------------------------------
@@ -102,7 +102,7 @@ public:
 	std::string GetPath();
 
 private:
-	bool Load(std::string path, int width, int height, bool scale);
+	bool Load(const std::string& path, int width, int height, bool scale);
 	bool CheckIfGrayscale();
 
 	FIBITMAP* m_bitmap;

@@ -125,7 +125,7 @@ void Material::Deserialize()
 
 void Material::SaveAsFile(const string& path)
 {
-	m_filepath = path + GetName() + ".mat";
+	m_filepath = path + GetName() + MATERIAL_EXTENSION;
 
 	Serializer::StartWriting(m_filepath);
 	Serialize();
