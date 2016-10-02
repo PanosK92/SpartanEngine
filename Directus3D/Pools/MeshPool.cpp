@@ -105,10 +105,10 @@ void MeshPool::GetAllMeshFilePaths(vector<string> paths)
 }
 
 // Returns the meshes tha belong to the same model
-const vector<Mesh*>& MeshPool::GetModelMeshesByModelName(const string& rootGameObjectID)
+vector<Mesh*> MeshPool::GetModelMeshesByModelName(const string& rootGameObjectID)
 {
 	vector<Mesh*> modelMeshes;
-	for (unsigned int i = 0; i < m_meshes.size(); i++)
+	for (auto i = 0; i < m_meshes.size(); i++)
 	{
 		if (m_meshes[i]->GetRootGameObjectID() == rootGameObjectID)
 			modelMeshes.push_back(m_meshes[i]);
@@ -130,6 +130,9 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(const string& rootGame
 	// find the mesh with the largest bounding box
 	Mesh* largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
 
+	if (!largestBoundingBoxMesh)
+		return 1.0f;
+
 	// calculate the scale
 	Vector3 boundingBox = largestBoundingBoxMesh->GetBoundingBox();
 	float scaleOffset = boundingBox.Length();
@@ -142,7 +145,7 @@ void MeshPool::SetModelScale(const string& rootGameObjectID, float scale)
 	// get all the meshes related to this model
 	vector<Mesh*> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
 
-	for (int i = 0; i < modelMeshes.size(); i++)
+	for (auto i = 0; i < modelMeshes.size(); i++)
 		modelMeshes[i]->Scale(scale);
 }
 
@@ -164,7 +167,7 @@ Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
 	Vector3 largestBoundingBox = Vector3::Zero;
 	Mesh* largestBoundingBoxMesh = meshes[0];
 
-	for (unsigned int i = 0; i < meshes.size(); i++)
+	for (auto i = 0; i < meshes.size(); i++)
 	{
 		if (!meshes[i])
 			continue;

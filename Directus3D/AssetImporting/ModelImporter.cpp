@@ -84,6 +84,7 @@ bool ModelImporter::Load(string filePath, GameObject* gameObject)
 {
 	m_fullModelPath = filePath;
 	m_rootGameObject = gameObject;
+	m_modelName = FileSystem::GetFileNameFromPath(m_fullModelPath);
 
 	Assimp::Importer importer;
 	importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64); // Optimize mesh
@@ -98,7 +99,8 @@ bool ModelImporter::Load(string filePath, GameObject* gameObject)
 		return false;
 	}
 
-	FileSystem::CreateFolder("Assets/");
+	LOG(FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
+
 	FileSystem::CreateFolder("Assets/Models/");
 	FileSystem::CreateFolder("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
 	FileSystem::CreateFolder("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
@@ -167,12 +169,9 @@ void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* 
 {
 	// process root node
 	if (!node->mParent)
-	{
 		SetGameObjectTransform(parentGameObject, node->mTransformation); // apply transformation	
-
-		// node->mName always returns "RootNode", therefore the modelName has to be extracted from the path
-		m_modelName = FileSystem::GetFileNameFromPath(m_fullModelPath);
-	}
+	// node->mName always returns "RootNode", therefore the model name has to be extracted from the model path
+	
 
 	// process all the node's meshes
 	for (auto i = 0; i < node->mNumMeshes; i++)
@@ -393,7 +392,7 @@ string ModelImporter::FindTexture(string texturePath)
 	if (FileSystem::FileExists(texturePath))
 		return texturePath;
 
-	// At this point we know the provided path is wrong, we make a few guesses
+	// At this point we know the provided path is wrong, we will make a few guesses.
 	// The most common mistake is that the artist provided a path which is absolute to his computer.
 
 	// 3. Check if the texture is in the same folder as the model
