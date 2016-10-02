@@ -43,19 +43,19 @@ public:
 	//==============================================================================
 
 	std::string GetName() const { return m_name; }
-	void SetName(std::string name) { m_name = name; }
+	void SetName(const std::string& name) { m_name = name; }
 
 	std::string GetID() const { return m_ID; }
 
 	std::string GetGameObjectID() const { return m_gameObjectID; }
-	void SetGameObjectID(std::string ID) { m_gameObjectID = ID; }
+	void SetGameObjectID(const std::string& ID) { m_gameObjectID = ID; }
 
 	std::string GetRootGameObjectID() const { return m_rootGameObjectID; }
-	void SetRootGameObjectID(std::string ID) { m_rootGameObjectID = ID; }
+	void SetRootGameObjectID(const std::string& ID) { m_rootGameObjectID = ID; }
 
-	void SetFilePath(std::string filepath);
-	std::string GetFilePath();
-
+	std::string GetFilePath() { return m_filePath; }
+	void SetFilePath(const std::string& filepath) { m_filePath = filepath; }
+	
 	std::vector<VertexPositionTextureNormalTangent>& GetVertices() { return m_vertices; }
 	void SetVertices(std::vector<VertexPositionTextureNormalTangent> vertices)
 	{

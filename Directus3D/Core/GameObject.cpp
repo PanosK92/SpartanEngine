@@ -109,7 +109,7 @@ string GameObject::GetName()
 	return m_name;
 }
 
-void GameObject::SetName(string name)
+void GameObject::SetName(const string& name)
 {
 	m_name = name;
 }
@@ -119,7 +119,7 @@ string GameObject::GetID()
 	return m_ID;
 }
 
-void GameObject::SetID(string ID)
+void GameObject::SetID(const string& ID)
 {
 	m_ID = ID;
 }
@@ -301,7 +301,7 @@ void GameObject::RemoveComponent()
 	m_scene->AnalyzeGameObjects();
 }
 
-void GameObject::RemoveComponentByID(string id)
+void GameObject::RemoveComponentByID(const string& id)
 {
 	for (auto it = m_components.begin(); it != m_components.end();)
 	{
@@ -325,7 +325,7 @@ Transform* GameObject::GetTransform()
 }
 
 //= HELPER FUNCTIONS ===========================================
-IComponent* GameObject::AddComponentBasedOnType(string typeStr)
+IComponent* GameObject::AddComponentBasedOnType(const string& typeStr)
 {
 	IComponent* component = nullptr;
 

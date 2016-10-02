@@ -47,9 +47,10 @@ public:
 	~Material();
 
 	//= I/O =======================================================================
+private:
 	void Serialize();
 	void Deserialize();
-
+public:
 	void SaveAsFile(const std::string& path);
 	bool LoadFromFile(const std::string& path);
 	//=============================================================================
@@ -71,56 +72,60 @@ public:
 	//=============================================================================
 
 	//= PROPERTIES ================================================================
-	void SetID(std::string id);
-	std::string GetID();
+	void SetID(const std::string& ID) { m_ID = ID; }
+	std::string GetID() { return m_ID; }
 
-	void SetName(std::string name);
-	std::string GetName();
+	void SetName(const std::string& name) { m_name = name; }
+	std::string GetName() { return m_name; }
 
-	void SetModelID(std::string id);
-	std::string GetModelID();
+	void SetModelID(const std::string& ID) { m_modelID = ID; }
+	std::string GetModelID() { return m_modelID; }
 
-	void SetFilePath(std::string filepath);
-	std::string GetFilePath();
+	void SetFilePath(const std::string& filepath) { m_filepath = filepath; }
+	std::string GetFilePath() { return m_filepath; }
 
-	void SetFaceCullMode(CullMode backFaceCullMode);
-	CullMode GetFaceCullMode();
+	void SetFaceCullMode(CullMode cullMode) { m_cullMode = cullMode; }
+	CullMode GetFaceCullMode() { return m_cullMode; }
 
-	void SetOpacity(float opacity);
-	float GetOpacity();
+	void SetOpacity(float opacity)
+	{
+		m_opacity = opacity;
+		m_alphaBlending = bool(opacity) ? true : false;
+	}
+	float GetOpacity() { return m_opacity; }
 
-	void SetAlphaBlending(bool alphaBlending);
-	bool GetAlphaBlending();
+	void SetAlphaBlending(bool alphaBlending) { m_alphaBlending = alphaBlending; }
+	bool GetAlphaBlending() { return m_alphaBlending; }
 
-	void SetRoughnessMultiplier(float roughness);
-	float GetRoughnessMultiplier();
+	void SetRoughnessMultiplier(float roughness) { m_roughnessMultiplier = roughness; }
+	float GetRoughnessMultiplier() { return m_roughnessMultiplier; }
 
-	void SetMetallicMultiplier(float metallic);
-	float GetMetallicMultiplier();
+	void SetMetallicMultiplier(float metallic) { m_metallicMultiplier = metallic; }
+	float GetMetallicMultiplier() { return m_metallicMultiplier; }
 
-	void SetNormalMultiplier(float normal);
-	float GetNormalMultiplier();
+	void SetNormalMultiplier(float normal) { m_normalMultiplier = normal; }
+	float GetNormalMultiplier() { return m_normalMultiplier; }
 
-	void SetHeightMultiplier(float height);
-	float GetHeightMultiplier();
+	void SetHeightMultiplier(float height) { m_heightMultiplier = height; }
+	float GetHeightMultiplier() { return m_heightMultiplier; }
 
-	void SetOcclusionMultiplier(float occlusion);
-	float GetOcclusionMultiplier();
+	void SetOcclusionMultiplier(float occlusion) { m_occlusionMultiplier = occlusion; }
+	float GetOcclusionMultiplier() { return m_occlusionMultiplier; }
 
-	void SetSpecularMultiplier(float specular);
-	float GetSpecularMultiplier();
+	void SetSpecularMultiplier(float specular) { m_specularMultiplier = specular; }
+	float GetSpecularMultiplier() { return m_specularMultiplier; }
 
-	void SetShadingMode(ShadingMode shadingMode);
-	ShadingMode GetShadingMode();
+	void SetShadingMode(ShadingMode shadingMode) { m_shadingMode = shadingMode; }
+	ShadingMode GetShadingMode() { return m_shadingMode; }
 
-	void SetColorAlbedo(const Directus::Math::Vector4& color);
-	Directus::Math::Vector4 GetColorAlbedo();
+	void SetColorAlbedo(const Directus::Math::Vector4& color) { m_colorAlbedo = color; }
+	Directus::Math::Vector4 GetColorAlbedo() { return m_colorAlbedo; }
 
-	void SetTilingUV(const Directus::Math::Vector2& tiling);
-	Directus::Math::Vector2 GetTilingUV();
+	void SetTilingUV(const Directus::Math::Vector2& tiling) { m_tilingUV = tiling; }
+	Directus::Math::Vector2 GetTilingUV() { return m_tilingUV; }
 
-	void SetOffsetUV(const Directus::Math::Vector2& offset);
-	Directus::Math::Vector2 GetOffsetUV();
+	void SetOffsetUV(const Directus::Math::Vector2& offset) { m_offsetUV = offset; }
+	Directus::Math::Vector2 GetOffsetUV() { return m_offsetUV; }
 	//=============================================================================
 
 private:

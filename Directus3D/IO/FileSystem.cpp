@@ -55,29 +55,29 @@ void FileSystem::CopyFileFromTo(const string& source, const string& destination)
 	}
 }
 
-string FileSystem::GetFileNameFromPath(string path)
+string FileSystem::GetFileNameFromPath(const string& path)
 {
 	int lastindex = path.find_last_of("\\/");
 	return path.substr(lastindex + 1, path.length());
 }
 
-string FileSystem::GetFileNameNoExtensionFromPath(string path)
+string FileSystem::GetFileNameNoExtensionFromPath(const string& path)
 {
-	path = GetFileNameFromPath(path);
+	string fileName = GetFileNameFromPath(path);
 
-	int lastindex = path.find_last_of(".");
-	string rawPath = path.substr(0, lastindex);
+	int lastindex = fileName.find_last_of(".");
+	string rawName = fileName.substr(0, lastindex);
 
-	return rawPath;
+	return rawName;
 }
 
-string FileSystem::GetPathWithoutFileName(string path)
+string FileSystem::GetPathWithoutFileName(const string& path)
 {
 	int lastindex = path.find_last_of("\\/");
 	return path.substr(0, lastindex + 1);
 }
 
-string FileSystem::GetExtensionFromPath(string path)
+string FileSystem::GetExtensionFromPath(const string& path)
 {
 	size_t lastindex = path.find_last_of(".");
 	if (string::npos != lastindex)
@@ -87,7 +87,7 @@ string FileSystem::GetExtensionFromPath(string path)
 	return path;
 }
 
-string FileSystem::GetRelativePathFromAbsolutePath(string filePath)
+string FileSystem::GetRelativePathFromAbsolutePath(const string& filePath)
 {
 	// NOTE: This function assumes that the path resolves somewhere 
 	// inside the folder "Assets" (The default engine folder).
@@ -147,7 +147,7 @@ vector<string> FileSystem::GetSupportedImageFormats(bool includeUppercase)
 	return supportedFormats;
 }
 
-vector<string> FileSystem::GetFoldersInDirectory(string directory)
+vector<string> FileSystem::GetFoldersInDirectory(const std::string& directory)
 {
 	vector<string> folderPaths;
 
@@ -165,7 +165,7 @@ vector<string> FileSystem::GetFoldersInDirectory(string directory)
 	return folderPaths;
 }
 
-vector<string> FileSystem::GetFilesInDirectory(string directory)
+vector<string> FileSystem::GetFilesInDirectory(const std::string& directory)
 {
 	DIR* dir;
 	struct dirent* ent;
@@ -182,7 +182,7 @@ vector<string> FileSystem::GetFilesInDirectory(string directory)
 	return filePaths;
 }
 
-vector<string> FileSystem::GetSupportedFilesInDirectory(string directory)
+vector<string> FileSystem::GetSupportedFilesInDirectory(const std::string& directory)
 {
 	vector<string> filesInDirectory = GetFilesInDirectory(directory);
 
@@ -206,7 +206,7 @@ vector<string> FileSystem::GetSupportedFilesInDirectory(string directory)
 	return supportedFiles;
 }
 
-vector<string> FileSystem::GetImagesFromPaths(vector<string> paths)
+vector<string> FileSystem::GetImagesFromPaths(const std::vector<std::string>& paths)
 {
 	vector<string> images;
 	for (int i = 0; i < paths.size(); i++)
@@ -220,7 +220,7 @@ vector<string> FileSystem::GetImagesFromPaths(vector<string> paths)
 	return images;
 }
 
-vector<string> FileSystem::GetScriptsFromPaths(vector<string> paths)
+vector<string> FileSystem::GetScriptsFromPaths(const std::vector<std::string>& paths)
 {
 	vector<string> scripts;
 	for (int i = 0; i < paths.size(); i++)
@@ -234,7 +234,7 @@ vector<string> FileSystem::GetScriptsFromPaths(vector<string> paths)
 	return scripts;
 }
 
-vector<string> FileSystem::GetModelsFromPaths(vector<string> paths)
+vector<string> FileSystem::GetModelsFromPaths(const std::vector<std::string>& paths)
 {
 	vector<string> images;
 	for (int i = 0; i < paths.size(); i++)
@@ -336,7 +336,7 @@ bool FileSystem::IsSupportedModel(const string& path)
 	return false;
 }
 
-bool FileSystem::IsSupportedShader(const std::string& path)
+bool FileSystem::IsSupportedShader(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
