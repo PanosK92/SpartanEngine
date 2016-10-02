@@ -36,6 +36,9 @@ using namespace Directus::Math;
 Mesh::Mesh()
 {
 	m_ID = GENERATE_GUID;
+	m_gameObjectID = "N/A";
+	m_rootGameObjectID = "N/A";
+	m_filePath = "N/A";
 	m_vertexCount = 0;
 	m_indexCount = 0;
 	m_triangleCount = 0;
@@ -62,46 +65,48 @@ Mesh::~Mesh()
 //= IO =========================================================================
 void Mesh::Serialize()
 {
-	Serializer::SaveSTR(m_ID);
-	Serializer::SaveSTR(m_gameObjectID);
-	Serializer::SaveSTR(m_rootGameObjectID);
-	Serializer::SaveSTR(m_name);
-	Serializer::SaveInt(m_vertexCount);
-	Serializer::SaveInt(m_indexCount);
-	Serializer::SaveInt(m_triangleCount);
+	Serializer::WriteSTR(m_ID);
+	Serializer::WriteSTR(m_gameObjectID);
+	Serializer::WriteSTR(m_rootGameObjectID);
+	Serializer::WriteSTR(m_name);
+	Serializer::WriteSTR(m_filePath);
+	Serializer::WriteInt(m_vertexCount);
+	Serializer::WriteInt(m_indexCount);
+	Serializer::WriteInt(m_triangleCount);
 
 	for (auto i = 0; i < m_vertexCount; i++)
 		SaveVertex(m_vertices[i]);
 
 	for (auto i = 0; i < m_indexCount; i++)
-		Serializer::SaveInt(m_indices[i]);
+		Serializer::WriteInt(m_indices[i]);
 
-	Serializer::SaveVector3(m_min);
-	Serializer::SaveVector3(m_max);
-	Serializer::SaveVector3(m_center);
-	Serializer::SaveVector3(m_boundingBox);
+	Serializer::WriteVector3(m_min);
+	Serializer::WriteVector3(m_max);
+	Serializer::WriteVector3(m_center);
+	Serializer::WriteVector3(m_boundingBox);
 }
 
 void Mesh::Deserialize()
 {
-	m_ID = Serializer::LoadSTR();
-	m_gameObjectID = Serializer::LoadSTR();
-	m_rootGameObjectID = Serializer::LoadSTR();
-	m_name = Serializer::LoadSTR();
-	m_vertexCount = Serializer::LoadInt();
-	m_indexCount = Serializer::LoadInt();
-	m_triangleCount = Serializer::LoadInt();
+	m_ID = Serializer::ReadSTR();
+	m_gameObjectID = Serializer::ReadSTR();
+	m_rootGameObjectID = Serializer::ReadSTR();
+	m_name = Serializer::ReadSTR();
+	m_filePath = Serializer::ReadSTR();
+	m_vertexCount = Serializer::ReadInt();
+	m_indexCount = Serializer::ReadInt();
+	m_triangleCount = Serializer::ReadInt();
 
 	for (auto i = 0; i < m_vertexCount; i++)
 		m_vertices.push_back(LoadVertex());
 
 	for (auto i = 0; i < m_indexCount; i++)
-		m_indices.push_back(Serializer::LoadInt());
+		m_indices.push_back(Serializer::ReadInt());
 
-	m_min = Serializer::LoadVector3();
-	m_max = Serializer::LoadVector3();
-	m_center = Serializer::LoadVector3();
-	m_boundingBox = Serializer::LoadVector3();
+	m_min = Serializer::ReadVector3();
+	m_max = Serializer::ReadVector3();
+	m_center = Serializer::ReadVector3();
+	m_boundingBox = Serializer::ReadVector3();
 }
 
 void Mesh::SaveToFile(const string& path)
@@ -158,40 +163,40 @@ void Mesh::Scale(float scale)
 //= IO =========================================================================
 void Mesh::SaveVertex(const VertexPositionTextureNormalTangent& vertex)
 {
-	Serializer::SaveFloat(vertex.position.x);
-	Serializer::SaveFloat(vertex.position.y);
-	Serializer::SaveFloat(vertex.position.z);
+	Serializer::WriteFloat(vertex.position.x);
+	Serializer::WriteFloat(vertex.position.y);
+	Serializer::WriteFloat(vertex.position.z);
 
-	Serializer::SaveFloat(vertex.uv.x);
-	Serializer::SaveFloat(vertex.uv.y);
+	Serializer::WriteFloat(vertex.uv.x);
+	Serializer::WriteFloat(vertex.uv.y);
 
-	Serializer::SaveFloat(vertex.normal.x);
-	Serializer::SaveFloat(vertex.normal.y);
-	Serializer::SaveFloat(vertex.normal.z);
+	Serializer::WriteFloat(vertex.normal.x);
+	Serializer::WriteFloat(vertex.normal.y);
+	Serializer::WriteFloat(vertex.normal.z);
 
-	Serializer::SaveFloat(vertex.tangent.x);
-	Serializer::SaveFloat(vertex.tangent.y);
-	Serializer::SaveFloat(vertex.tangent.z);
+	Serializer::WriteFloat(vertex.tangent.x);
+	Serializer::WriteFloat(vertex.tangent.y);
+	Serializer::WriteFloat(vertex.tangent.z);
 }
 
 VertexPositionTextureNormalTangent Mesh::LoadVertex()
 {
 	VertexPositionTextureNormalTangent vertex;
 
-	vertex.position.x = Serializer::LoadFloat();
-	vertex.position.y = Serializer::LoadFloat();
-	vertex.position.z = Serializer::LoadFloat();
+	vertex.position.x = Serializer::ReadFloat();
+	vertex.position.y = Serializer::ReadFloat();
+	vertex.position.z = Serializer::ReadFloat();
 
-	vertex.uv.x = Serializer::LoadFloat();
-	vertex.uv.y = Serializer::LoadFloat();
+	vertex.uv.x = Serializer::ReadFloat();
+	vertex.uv.y = Serializer::ReadFloat();
 
-	vertex.normal.x = Serializer::LoadFloat();
-	vertex.normal.y = Serializer::LoadFloat();
-	vertex.normal.z = Serializer::LoadFloat();
+	vertex.normal.x = Serializer::ReadFloat();
+	vertex.normal.y = Serializer::ReadFloat();
+	vertex.normal.z = Serializer::ReadFloat();
 
-	vertex.tangent.x = Serializer::LoadFloat();
-	vertex.tangent.y = Serializer::LoadFloat();
-	vertex.tangent.z = Serializer::LoadFloat();
+	vertex.tangent.x = Serializer::ReadFloat();
+	vertex.tangent.y = Serializer::ReadFloat();
+	vertex.tangent.z = Serializer::ReadFloat();
 
 	return vertex;
 }

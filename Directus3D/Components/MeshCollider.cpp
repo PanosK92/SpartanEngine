@@ -75,14 +75,14 @@ void MeshCollider::Update()
 
 void MeshCollider::Serialize()
 {
-	Serializer::SaveBool(m_convex);
-	Serializer::SaveSTR(m_mesh ? m_mesh->GetID() : "-1");
+	Serializer::WriteBool(m_convex);
+	Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : "-1");
 }
 
 void MeshCollider::Deserialize()
 {
-	m_convex = Serializer::LoadBool();
-	m_mesh = g_meshPool->GetMesh(Serializer::LoadSTR());
+	m_convex = Serializer::ReadBool();
+	m_mesh = g_meshPool->GetMesh(Serializer::ReadSTR());
 
 	ConstructCollisionShape();
 }

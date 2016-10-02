@@ -83,19 +83,17 @@ bool Scene::SaveToFile(string path)
 {
 	Serializer::StartWriting(path);
 
-	// Gather all the paths of any resource files that are
-	// currently used by the scene
-	vector<string> resourcePaths;
-	m_texturePool->GetAllTextureFilePaths(resourcePaths);
-	m_materialPool->GetAllMaterialFilePaths(resourcePaths);
-	m_meshPool->GetAllMeshFilePaths(resourcePaths);
+	// Gather all the paths of any resource files used by the scene
+	vector<string> texturePaths = m_texturePool->GetAllTextureFilePaths();
+	vector<string> materialPaths = m_materialPool->GetAllMaterialFilePaths();
+	vector<string> meshPaths = m_meshPool->GetAllMeshFilePaths();
 
-	// Save all the paths of the resource files used by the scene
-	Serializer::SaveInt(resourcePaths.size());
-	for (auto i = 0; i < resourcePaths.size(); i++)
-		Serializer::SaveSTR(resourcePaths[i]);
+	// Save all the paths
+	Serializer::WriteVectorSTR(texturePaths);
+	Serializer::WriteVectorSTR(materialPaths);
+	Serializer::WriteVectorSTR(meshPaths);
 
-	// Save all the currently used GameObjects
+	// Save the GameObjects
 	GameObjectPool::GetInstance().Serialize();
 
 	Serializer::StopWriting();
@@ -118,30 +116,33 @@ bool Scene::LoadFromFile(string path)
 	//===========================================================
 	Serializer::StartReading(path);
 
-	vector<string> resourcePaths;
-	int resourceCount = Serializer::LoadInt();
-	for (auto i = 0; i < resourceCount; i++)
-		resourcePaths.push_back(Serializer::LoadSTR());
+	// Gather all the paths of any resource files used by the scene
+	vector<string> texturePaths = Serializer::ReadVectorSTR();
+	vector<string> materialPaths = Serializer::ReadVectorSTR();
+	vector<string> meshPaths = Serializer::ReadVectorSTR();
 
 	Serializer::StopReading();
 	//===========================================================
 
 	// Load all the used resources into memory
-	m_texturePool->Add(resourcePaths);
-	m_materialPool->Add(resourcePaths);
-	m_meshPool->Add(resourcePaths);
-	
+	m_texturePool->Add(texturePaths);
+	m_materialPool->Add(materialPaths);
+	m_meshPool->Add(meshPaths);
+		
 	// Load all the GameObjects present in the scene
 	//==============================================
 	Serializer::StartReading(path);
 
-	// We loop our way to the point where GameObject data starts.
-	// There might be a more elegant solution here, but the brute force approach should do too.
-	Serializer::LoadInt();
-	for (auto i = 0; i < resourceCount; i++)
-		Serializer::LoadSTR();
+	// We read our way to the point where GameObject data starts.
+	// There might be a more elegant solution here, but the 
+	// brute force approach should do too.
+	Serializer::ReadVectorSTR();
+	Serializer::ReadVectorSTR();
+	Serializer::ReadVectorSTR();
 
+	// Load the GameObjects
 	GameObjectPool::GetInstance().Deserialize();	
+
 	Serializer::StopReading();
 	//==============================================
 

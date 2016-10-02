@@ -46,7 +46,7 @@ public:
 	Material* GetMaterialByID(std::string materialID);
 	Material* GetMaterialStandardDefault();
 	Material* GetMaterialStandardSkybox();
-	void GetAllMaterialFilePaths(std::vector<std::string>& paths);
+	std::vector<std::string> GetAllMaterialFilePaths();
 	const std::vector<Material*>& GetAllMaterials();
 
 private:

@@ -91,20 +91,20 @@ void Camera::Update()
 
 void Camera::Serialize()
 {
-	Serializer::SaveVector4(m_clearColor);
-	Serializer::SaveInt(int(m_projection));
-	Serializer::SaveFloat(m_FOV);
-	Serializer::SaveFloat(m_nearPlane);
-	Serializer::SaveFloat(m_farPlane);
+	Serializer::WriteVector4(m_clearColor);
+	Serializer::WriteInt(int(m_projection));
+	Serializer::WriteFloat(m_FOV);
+	Serializer::WriteFloat(m_nearPlane);
+	Serializer::WriteFloat(m_farPlane);
 }
 
 void Camera::Deserialize()
 {
-	m_clearColor = Serializer::LoadVector4();
-	m_projection = Projection(Serializer::LoadInt());
-	m_FOV = Serializer::LoadFloat();
-	m_nearPlane = Serializer::LoadFloat();
-	m_farPlane = Serializer::LoadFloat();
+	m_clearColor = Serializer::ReadVector4();
+	m_projection = Projection(Serializer::ReadInt());
+	m_FOV = Serializer::ReadFloat();
+	m_nearPlane = Serializer::ReadFloat();
+	m_farPlane = Serializer::ReadFloat();
 
 	CalculateViewMatrix();
 }

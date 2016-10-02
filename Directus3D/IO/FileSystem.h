@@ -35,6 +35,7 @@ public:
 	static std::string GetFileNameFromPath(const std::string& path);
 	static std::string GetFileNameNoExtensionFromPath(const std::string& path);
 	static std::string GetPathWithoutFileName(const std::string& path);
+	static std::string GetPathWithoutFileNameExtension(const std::string& path);
 	static std::string GetExtensionFromPath(const std::string& path);
 	static std::string GetRelativePathFromAbsolutePath(const std::string& path);
 

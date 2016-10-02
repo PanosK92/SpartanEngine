@@ -70,16 +70,16 @@ void MeshRenderer::Update()
 
 void MeshRenderer::Serialize()
 {
-	Serializer::SaveSTR(m_material ? m_material->GetID() : "-1");
-	Serializer::SaveBool(m_castShadows);
-	Serializer::SaveBool(m_receiveShadows);
+	Serializer::WriteSTR(m_material ? m_material->GetID() : "-1");
+	Serializer::WriteBool(m_castShadows);
+	Serializer::WriteBool(m_receiveShadows);
 }
 
 void MeshRenderer::Deserialize()
 {
-	m_material = g_materialPool->GetMaterialByID(Serializer::LoadSTR());
-	m_castShadows = Serializer::LoadBool();
-	m_receiveShadows = Serializer::LoadBool();
+	m_material = g_materialPool->GetMaterialByID(Serializer::ReadSTR());
+	m_castShadows = Serializer::ReadBool();
+	m_receiveShadows = Serializer::ReadBool();
 }
 //==============================================================================
 

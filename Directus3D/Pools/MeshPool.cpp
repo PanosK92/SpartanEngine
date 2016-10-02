@@ -82,6 +82,8 @@ void MeshPool::Add(const vector<string>& filePaths)
 	{
 		filePath = filePaths[i];
 
+		//LOG_INFO(filePath);
+
 		// Make sure the path is valid
 		if (!FileSystem::FileExists(filePath))
 			continue;
@@ -109,10 +111,13 @@ Mesh* MeshPool::GetMesh(const string& ID)
 	return nullptr;
 }
 
-void MeshPool::GetAllMeshFilePaths(vector<string> paths)
+vector<string> MeshPool::GetAllMeshFilePaths()
 {
+	vector<string> paths;
 	for (auto i = 0; i < m_meshes.size(); i++)
 		paths.push_back(m_meshes[i]->GetFilePath());
+
+	return paths;
 }
 
 // Returns the meshes tha belong to the same model
@@ -126,6 +131,11 @@ vector<Mesh*> MeshPool::GetModelMeshesByModelName(const string& rootGameObjectID
 	}
 
 	return modelMeshes;
+}
+
+int MeshPool::GetMeshCount()
+{
+	return (int)m_meshes.size();
 }
 
 /*------------------------------------------------------------------------------

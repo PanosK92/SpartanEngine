@@ -146,16 +146,16 @@ bool GameObject::IsVisibleInHierarchy()
 
 void GameObject::Serialize()
 {
-	Serializer::SaveSTR(m_ID);
-	Serializer::SaveSTR(m_name);
-	Serializer::SaveBool(m_isActive);
-	Serializer::SaveBool(m_hierarchyVisibility);
+	Serializer::WriteSTR(m_ID);
+	Serializer::WriteSTR(m_name);
+	Serializer::WriteBool(m_isActive);
+	Serializer::WriteBool(m_hierarchyVisibility);
 
-	Serializer::SaveInt(m_components.size());
+	Serializer::WriteInt(m_components.size());
 	for (auto it = m_components.begin(); it != m_components.end(); ++it)
 	{
-		Serializer::SaveSTR(it->first); // save component's type
-		Serializer::SaveSTR(it->second->g_ID); // save component's id
+		Serializer::WriteSTR(it->first); // save component's type
+		Serializer::WriteSTR(it->second->g_ID); // save component's id
 	}
 
 	for (auto it = m_components.begin(); it != m_components.end(); ++it)
@@ -164,16 +164,16 @@ void GameObject::Serialize()
 
 void GameObject::Deserialize()
 {
-	m_ID = Serializer::LoadSTR();
-	m_name = Serializer::LoadSTR();
-	m_isActive = Serializer::LoadBool();
-	m_hierarchyVisibility = Serializer::LoadBool();
+	m_ID = Serializer::ReadSTR();
+	m_name = Serializer::ReadSTR();
+	m_isActive = Serializer::ReadBool();
+	m_hierarchyVisibility = Serializer::ReadBool();
 
-	int componentCount = Serializer::LoadInt();
+	int componentCount = Serializer::ReadInt();
 	for (int i = 0; i < componentCount; i++)
 	{
-		string type = Serializer::LoadSTR(); // load component's type
-		string id = Serializer::LoadSTR(); // laad component's id
+		string type = Serializer::ReadSTR(); // load component's type
+		string id = Serializer::ReadSTR(); // laad component's id
 
 		IComponent* component = AddComponentBasedOnType(type);
 		component->g_ID = id;

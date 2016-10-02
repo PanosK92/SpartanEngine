@@ -85,22 +85,22 @@ void Light::Update()
 
 void Light::Serialize()
 {
-	Serializer::SaveInt(int(m_lightType));
-	Serializer::SaveInt(int(m_shadowType));
-	Serializer::SaveVector4(m_color);
-	Serializer::SaveFloat(m_range);
-	Serializer::SaveFloat(m_intensity);
-	Serializer::SaveFloat(m_bias);
+	Serializer::WriteInt(int(m_lightType));
+	Serializer::WriteInt(int(m_shadowType));
+	Serializer::WriteVector4(m_color);
+	Serializer::WriteFloat(m_range);
+	Serializer::WriteFloat(m_intensity);
+	Serializer::WriteFloat(m_bias);
 }
 
 void Light::Deserialize()
 {
-	m_lightType = LightType(Serializer::LoadInt());
-	m_shadowType = ShadowType(Serializer::LoadInt());
-	m_color = Serializer::LoadVector4();
-	m_range = Serializer::LoadFloat();
-	m_intensity = Serializer::LoadFloat();
-	m_bias = Serializer::LoadFloat();
+	m_lightType = LightType(Serializer::ReadInt());
+	m_shadowType = ShadowType(Serializer::ReadInt());
+	m_color = Serializer::ReadVector4();
+	m_range = Serializer::ReadFloat();
+	m_intensity = Serializer::ReadFloat();
+	m_bias = Serializer::ReadFloat();
 }
 
 LightType Light::GetLightType()

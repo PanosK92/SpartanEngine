@@ -40,27 +40,27 @@ public:
 	//================================================
 	
 	//= SAVING =========================================================
-	static void SaveBool(bool value);
-	static void SaveSTR(std::string value);
-	static void SaveInt(int value);
-	static void SaveFloat(float value);
-	static void SaveVectorSTR(std::vector<std::string>& vector);
-	static void SaveVector2(Directus::Math::Vector2& vector);
-	static void SaveVector3(Directus::Math::Vector3& vector);
-	static void SaveVector4(Directus::Math::Vector4& vector);
-	static void SaveQuaternion(Directus::Math::Quaternion& quaternion);
+	static void WriteBool(bool value);
+	static void WriteSTR(std::string value);
+	static void WriteInt(int value);
+	static void WriteFloat(float value);
+	static void WriteVectorSTR(std::vector<std::string>& vector);
+	static void WriteVector2(Directus::Math::Vector2& vector);
+	static void WriteVector3(Directus::Math::Vector3& vector);
+	static void WriteVector4(Directus::Math::Vector4& vector);
+	static void WriteQuaternion(Directus::Math::Quaternion& quaternion);
 	//==================================================================
 
-	//= LOADING ========================================
-	static bool LoadBool();
-	static std::string LoadSTR();
-	static unsigned int LoadUINT();
-	static int LoadInt();
-	static float LoadFloat();
-	static std::vector<std::string> LoadVectorSTR();
-	static Directus::Math::Vector2 LoadVector2();
-	static Directus::Math::Vector3 LoadVector3();
-	static Directus::Math::Vector4 LoadVector4();
-	static Directus::Math::Quaternion LoadQuaternion();
+	//= READING ========================================
+	static bool ReadBool();
+	static std::string ReadSTR();
+	static unsigned int ReadUINT();
+	static int ReadInt();
+	static float ReadFloat();
+	static std::vector<std::string> ReadVectorSTR();
+	static Directus::Math::Vector2 ReadVector2();
+	static Directus::Math::Vector3 ReadVector3();
+	static Directus::Math::Vector4 ReadVector4();
+	static Directus::Math::Quaternion ReadQuaternion();
 	//=================================================
 };
