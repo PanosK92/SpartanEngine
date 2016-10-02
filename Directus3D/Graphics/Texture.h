@@ -47,43 +47,43 @@ public:
 	Texture();
 	~Texture();
 
-	//= IO =========================================================================
+	//= IO ============================================================
 private:
 	void Serialize() const;
 	void Deserialize();
 public:
 	void SaveToFile(std::string filePath);
-	bool LoadFromFile(const std::string& filePath);
-	//==============================================================================
+	bool LoadFromImageFile(const std::string& filePath);
+	bool LoadFromImageFile(std::string path, TextureType expectedType);
+	//=================================================================
 
-	ID3D11ShaderResourceView* GetID3D11ShaderResourceView() const;
-	void SetID3D11ShaderResourceView(ID3D11ShaderResourceView* srv);
+	//= PROPERTIES ===============================================================================
+	std::string GetID() { return m_ID; };
 
-	bool LoadFromFile(std::string path, TextureType expectedType);
+	std::string GetName() { return m_name; }
+	void SetName(const std::string& name) { m_name = name; }
 
-	std::string GetID() const;
+	std::string GetFilePath() { return m_filePath; };
+	void SetFilePath(const std::string& filepath) { m_filePath = filepath; }
+	
+	int GetWidth() { return m_width; }
+	void SetWidth(int width) { m_width = width; }
+	
+	int GetHeight() { return m_height; }
+	void SetHeight(int height) { m_height = height; }
 
-	void SetName(std::string name);
-	std::string GetName();
+	TextureType GetType() { return m_type; }
+	void SetType(TextureType type) { m_type = type; }
 
-	void SetFilePath(std::string filepath);
-	std::string GetFilePath();
+	bool GetGrayscale() { return m_grayscale; }
+	void SetGrayscale(bool grayscale) { m_grayscale = grayscale; }
+	
+	bool GetTransparency() { return m_transparency; }
+	void SetTransparency(bool transparency) { m_transparency = transparency; }
 
-	void SetWidth(int width);
-	int GetWidth() const;
-
-	void SetHeight(int height);
-	int GetHeight() const;
-
-	TextureType GetType() const;
-	void SetType(TextureType type);
-
-	void SetGrayscale(bool grayscale);
-	bool GetGrayscale() const;
-
-	void SetTransparency(bool transparency);
-	bool GetTransparency();
-
+	ID3D11ShaderResourceView* GetID3D11ShaderResourceView() { return m_shaderResourceView; }
+	void SetID3D11ShaderResourceView(ID3D11ShaderResourceView* srv) { m_shaderResourceView = srv; }
+	//=============================================================================================
 private:
 	std::string m_ID;
 	std::string m_name;
@@ -93,7 +93,6 @@ private:
 	TextureType m_type;
 	bool m_grayscale;
 	bool m_transparency;
-	bool m_alphaIsTransparency;
-	
+	bool m_alphaIsTransparency;	
 	ID3D11ShaderResourceView* m_shaderResourceView;
 };
