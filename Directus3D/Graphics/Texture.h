@@ -48,10 +48,11 @@ public:
 	~Texture();
 
 	//= IO =========================================================================
+private:
 	void Serialize() const;
 	void Deserialize();
-
-	void SaveToFile(const std::string& filePath) const;
+public:
+	void SaveToFile(std::string filePath);
 	bool LoadFromFile(const std::string& filePath);
 	//==============================================================================
 
