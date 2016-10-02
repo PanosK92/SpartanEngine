@@ -37,13 +37,21 @@ bool FileSystem::FileExists(const string& path)
 
 void FileSystem::CreateFolder(const string& path)
 {
-	if (CreateDirectory(path.c_str(), nullptr) || ERROR_ALREADY_EXISTS == GetLastError())
+	if (!CreateDirectory(path.c_str(), nullptr))
 	{
-		// CopyFile(...)
+		DWORD err = GetLastError();
+		if (err != ERROR_ALREADY_EXISTS)
+		{
+			// do whatever handling you'd like
+		}
 	}
-	else
+}
+
+void FileSystem::CopyFileFromTo(const string& source, const string& destination)
+{
+	if(!CopyFile(source.c_str(), destination.c_str(), true))
 	{
-		// Failed to create directory.
+		DWORD err = GetLastError();
 	}
 }
 

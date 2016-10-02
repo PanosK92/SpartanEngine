@@ -52,13 +52,14 @@ private:
 	------------------------------------------------------------------------------*/
 	void ProcessNode(aiNode* assimpNode, const aiScene* assimpScene, GameObject* rootGameObject);
 	void ProcessMesh(aiMesh* assimpMesh, const aiScene* assimpScene, GameObject* parentGameObject);
-	Material* GenerateMaterialFromAiMaterial(aiMaterial* assimpMaterial) const;
-
+	Material* GenerateMaterialFromAiMaterial(aiMaterial* assimpMaterial);
+	
 	/*------------------------------------------------------------------------------
 									[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	std::string FindTexture(std::string texturePath) const;
-	static std::string TryPathWithMultipleExtensions(std::string fullpath);
+	void AddTextureToMaterial(Material* material, TextureType textureType, const std::string& texturePath);
+	std::string FindTexture(std::string texturePath);
+	std::string TryPathWithMultipleExtensions(std::string fullpath);
 
 	MeshPool* m_meshPool;
 	TexturePool* m_texturePool;
