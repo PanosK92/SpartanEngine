@@ -35,9 +35,10 @@ public:
 	~Mesh();
 
 	//= IO =========================================================================
+private:
 	void Serialize();
 	void Deserialize();
-
+public:
 	void SaveToFile(const std::string& filePath);
 	bool LoadFromFile(const std::string& filePath);
 	//==============================================================================

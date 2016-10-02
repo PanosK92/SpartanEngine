@@ -41,7 +41,7 @@ public:
 	void Add(std::vector<std::string> filePaths);
 	Mesh* GetMesh(const std::string& ID);
 	void GetAllMeshFilePaths(std::vector<std::string> paths);
-	const std::vector<Mesh*>& GetModelMeshesByModelName(const std::string& modelName);
+	std::vector<Mesh*> GetModelMeshesByModelName(const std::string& modelName);
 
 	//= MESH PROCESSING =============================================================================
 	float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
