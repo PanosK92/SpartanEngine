@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../IO/Log.h"
 #include "../IO/Serializer.h"
+#include "../IO/FileSystem.h"
 //===========================
 
 //= NAMESPACES ================
@@ -67,13 +68,24 @@ Material* MaterialPool::Add(Material* material)
 }
 
 // Adds multiple materials to the pool by reading them from files
-void MaterialPool::Add(vector<string> filePaths)
+void MaterialPool::Add(const vector<string>& filePaths)
 {
+	string filePath;
 	for (auto i = 0; i < filePaths.size(); i++)
 	{
-		Material* material = new Material(m_texturePool, m_shaderPool);
+		filePath = filePaths[i];
 
-		if (material->LoadFromFile(filePaths[i]))
+		// Make sure the path is valid
+		if (!FileSystem::FileExists(filePath))
+			continue;
+
+		// Make sure it's actually a material file
+		if (FileSystem::GetExtensionFromPath(filePath) != MATERIAL_EXTENSION)
+			continue;
+
+		// Create and load the material
+		Material* material = new Material(m_texturePool, m_shaderPool);
+		if (material->LoadFromFile(filePath))
 			m_materials.push_back(material);
 		else
 			delete material;

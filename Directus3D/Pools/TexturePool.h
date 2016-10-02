@@ -34,7 +34,7 @@ public:
 
 	Texture* Add(Texture* texture);
 	Texture* Add(const std::string& texturePath, TextureType textureType);
-	void Add(std::vector<std::string> filePaths);
+	void Add(const std::vector<std::string>& filePaths);
 
 	Texture* GetTextureByName(const std::string& name);
 	Texture* GetTextureByID(const std::string& ID);

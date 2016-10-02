@@ -58,7 +58,7 @@ void ImageImporter::Initialize(Graphics* D3D11evice)
 	m_graphics = D3D11evice;
 }
 
-bool ImageImporter::Load(std::string path)
+bool ImageImporter::Load(const string& path)
 {
 	// keep the path
 	m_path = path;
@@ -70,7 +70,7 @@ bool ImageImporter::Load(std::string path)
 	return Load(path, 0, 0, false);
 }
 
-bool ImageImporter::Load(std::string path, int width, int height)
+bool ImageImporter::Load(const string& path, int width, int height)
 {
 	// keep the path
 	m_path = path;
@@ -241,12 +241,12 @@ bool ImageImporter::IsTransparent()
 	return m_transparent;
 }
 
-std::string ImageImporter::GetPath()
+string ImageImporter::GetPath()
 {
 	return m_path;
 }
 
-bool ImageImporter::Load(std::string path, int width, int height, bool scale)
+bool ImageImporter::Load(const string& path, int width, int height, bool scale)
 {
 	// Clear any data left from a previous image loading (if necessary)
 	Clear();

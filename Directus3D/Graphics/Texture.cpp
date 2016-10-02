@@ -19,15 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES ===============================
 #include "Texture.h"
 #include "../Core/GUIDGenerator.h"
-#include "../Core/Helper.h"
 #include "../IO/Serializer.h"
 #include "../IO/Log.h"
 #include "../AssetImporting/ImageImporter.h"
 #include "../IO/FileSystem.h"
-//=================================
+#include "../Core/Helper.h"
+//==========================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -78,7 +78,7 @@ void Texture::Deserialize()
 
 void Texture::SaveToFile(string filePath)
 {
-	filePath += GetName() + ".tex";
+	filePath += GetName() + TEXTURE_EXTENSION;
 
 	Serializer::StartWriting(filePath);
 	Serialize();
@@ -104,7 +104,7 @@ bool Texture::LoadFromImageFile(string path, TextureType type)
 	// load it
 	if (!ImageImporter::GetInstance().Load(path))
 	{
-		LOG("Failed to load texture \"" + path + "\".", Log::Error);
+		LOG_ERROR("Failed to load texture \"" + path + "\".");
 		ImageImporter::GetInstance().Clear();
 		return false;
 	}
