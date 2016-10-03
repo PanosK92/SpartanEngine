@@ -24,7 +24,7 @@ On the plus side, this is an ongoing project, so it will get there. Exporting on
 - Windows support.
 
 # Planned Features
-- Ability to save anything in a custom engine format, total revamp of scene IO <- Currently working on this
+- Ability to save materials, meshes, textures in a custom format, total revamp of scene IO <- Currently working on this
 - Audio source and listener components.
 - DirectX 12 Renderer
 - Draw call batching (static & dynamic).
@@ -34,7 +34,8 @@ On the plus side, this is an ongoing project, so it will get there. Exporting on
 - UI components.
 - Vulkan Renderer.
 
-Note: Regarding DirectX 12 and Vulkan, these are the most high priority planned features, research is being conducted as to avoid a simple porting from DirectX 11 which can result in lower performance. Most likely a new rendering approach will be written so there are actual gains in terms of performance & memory usage.
+Note: Regarding DirectX 12 and Vulkan, these are the most high priority planned features, research is being conducted as to avoid a simple porting from DirectX 11 which can result in lower performance. 
+Most likely a new rendering approach will be written so there are actual gains in terms of performance & memory usage. I am also looking into adding dynamic resolution support, similar to iD Tech 6 (Doom)
 
 ### Download
 - [Directus v0.1.1 (Windows x64)] (https://onedrive.live.com/download?resid=96760D43099D7718%21125980&authkey=AC4fwz-Zxcv-dJo)
