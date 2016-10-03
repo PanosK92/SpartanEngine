@@ -46,6 +46,9 @@ public:
     void Initialize(QWidget* mainWindow);
     GameObject* GetInspectedGameObject();
 
+    void Clear();
+    void InspectMaterialFile(std::string filepath);
+
     //= DROP ===========================================
     virtual void dragEnterEvent(QDragEnterEvent* event);
     virtual void dragMoveEvent (QDragMoveEvent* event);

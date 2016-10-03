@@ -40,6 +40,7 @@ void DirectusIconProvider::Initialize()
     m_scriptIcon = QIcon(":/Images/scriptLarge.png");
     m_sceneIcon = QIcon(":/Images/scene.png");
     m_shaderIcon = QIcon(":/Images/hlsl.png");
+    m_materialIcon = QIcon(":/Images/materialLarge.png");
 }
 
 // Returns an icon for the file described by info.
@@ -95,6 +96,12 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     if (FileSystem::IsSupportedShader(filePath))
     {
         return m_shaderIcon;
+    }
+
+    // Shader
+    if (FileSystem::IsSupportedMaterial(filePath))
+    {
+        return m_materialIcon;
     }
 
     // Unknown

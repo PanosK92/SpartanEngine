@@ -36,7 +36,12 @@ DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
 
 }
 
-void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusCore* directusCore)
+void DirectusFileExplorer::Initialize(
+        QWidget* mainWindow,
+        DirectusCore* directusCore,
+        DirectusHierarchy* hierarchy,
+        DirectusInspector* inspector
+        )
 {
     QString root = "Assets";
     setAcceptDrops(true);
@@ -44,6 +49,9 @@ void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusCore* directu
     m_fileModel = new QFileSystemModel(this);
     m_fileModel->setFilter(QDir::Files | QDir::AllDirs | QDir::NoDotAndDotDot); // Set a filter that displays only folders
     m_fileModel->setRootPath(root);  // Set the root path
+
+    m_hierarchy = hierarchy;
+    m_inspector = inspector;
 
     // Set icon provider
     m_directusIconProvider = new DirectusIconProvider();
@@ -78,14 +86,12 @@ void DirectusFileExplorer::mousePressEvent(QMouseEvent* event)
     // and determine if there has been any dragging, in mouseMoveEvent(QMouseEvent* event)
 
     if (event->button() == Qt::LeftButton)
-              m_dragStartPosition = event->pos();
+        m_dragStartPosition = event->pos();
 
     if(event->button() == Qt::RightButton)
-    {
         emit customContextMenuRequested(event->pos());
-    }
-    else
-        QListView::mousePressEvent(event);
+
+    QListView::mousePressEvent(event);
 }
 
 void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
@@ -94,10 +100,10 @@ void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
     // construct a drag object to handle the operation.
 
     if (!(event->buttons() & Qt::LeftButton))
-            return;
+        return;
 
     if ((event->pos() - m_dragStartPosition).manhattanLength() < QApplication::startDragDistance())
-            return;
+        return;
 
     QModelIndexList selectedItems = this->selectionModel()->selectedIndexes();
     if (selectedItems.empty())
@@ -111,6 +117,25 @@ void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
     drag->setMimeData(mimeData);
 
     drag->exec();
+}
+
+void DirectusFileExplorer::mouseReleaseEvent(QMouseEvent* event)
+{
+    // Clear the inspector.
+    m_hierarchy->clearSelection();
+    m_inspector->Clear();
+
+    // See if anything was actually clicked,
+    QModelIndexList selectedItems = this->selectionModel()->selectedIndexes();
+    if (selectedItems.empty())
+        return;
+
+    // If something was indeed clicked, get it's path.
+    QString filePath = m_fileModel->fileInfo(selectedItems[0]).filePath();
+
+    // If so, determine what type of file that was, and display it in the inspector (if possible).
+    if (FileSystem::IsSupportedMaterial(filePath.toStdString()))
+        m_inspector->InspectMaterialFile(filePath.toStdString());
 }
 
 void DirectusFileExplorer::dragEnterEvent(QDragEnterEvent* event)
