@@ -24,9 +24,9 @@ On the plus side, this is an ongoing project, so it will get there. Exporting on
 - Windows support.
 
 # Planned Features
-- Ability to save anything in a custom engine format. <- Currently working on this
+- Ability to save anything in a custom engine format, total revamp of scene IO, will bring great flexibility to the editor <- Currently working on this
 - Audio source and listener components.
-- DirectX 12 Renderer.
+- DirectX 12 Renderer
 - Draw call batching (static & dynamic).
 - Export on Windows.
 - Font loader & renderer.
