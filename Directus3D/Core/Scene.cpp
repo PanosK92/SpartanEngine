@@ -78,7 +78,9 @@ void Scene::Update()
 
 }
 
-//= I/O ==============================================================================================
+//====
+// I/O
+//====
 bool Scene::SaveToFile(string path)
 {
 	if (FileSystem::GetExtensionFromPath(path) != SCENE_EXTENSION)
@@ -155,9 +157,10 @@ bool Scene::LoadFromFile(string path)
 
 	return true;
 }
-//====================================================================================================
 
-//= MISC =============================================================================================
+//=====
+// MISC
+//=====
 void Scene::Clear()
 {
 	m_renderables.clear();
@@ -255,9 +258,9 @@ void Scene::AnalyzeGameObjects()
 	m_renderer->Update(m_renderables, m_lightsDirectional, m_lightsPoint);
 }
 
-//====================================================================================================
-
-// GAMEOBJECT CREATION ===============================================================================
+//====================
+// GAMEOBJECT CREATION
+//====================
 GameObject* Scene::CreateSkybox()
 {
 	GameObject* skybox = new GameObject();
@@ -292,4 +295,3 @@ GameObject* Scene::CreateDirectionalLight()
 
 	return light;
 }
-//====================================================================================================
