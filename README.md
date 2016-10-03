@@ -25,6 +25,7 @@ On the plus side, this is an ongoing project, so it will get there. Exporting on
 
 # Planned Features
 - Ability to save materials, meshes, textures in a custom format, total revamp of scene IO <- Currently working on this
+- Ability to use worker threads in the engine runtime too, not just the editor.
 - Audio source and listener components.
 - DirectX 12 Renderer
 - Draw call batching (static & dynamic).
