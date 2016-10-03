@@ -33,8 +33,8 @@ public:
 	~TexturePool();
 
 	Texture* Add(Texture* texture);
-	Texture* Add(const std::string& texturePath, TextureType textureType);
-	void Add(const std::vector<std::string>& filePaths);
+	Texture* Add(const std::string& texturePath);
+	void Add(const std::vector<std::string>& texturePaths);
 
 	Texture* GetTextureByName(const std::string& name);
 	Texture* GetTextureByID(const std::string& ID);

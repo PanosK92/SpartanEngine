@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define TEXTURE_ID_NA "-1"
 #define TEXTURE_PATH_UNKNOWN "-1"
-#define TEXTURE_EXTENSION ".tex"
+#define TEXTURE_METADATA_EXTENSION ".tex"
 
 enum TextureType
 {
@@ -54,9 +54,11 @@ private:
 	void Serialize() const;
 	void Deserialize();
 public:
-	void SaveToFile(std::string filePath);
-	bool LoadFromImageFile(const std::string& filePath);
-	bool LoadFromImageFile(std::string path, TextureType expectedType);
+	void SaveToFile(std::string filePath);	
+	bool LoadFromFile(std::string path);
+private:
+	bool LoadMetadata(const std::string& filePath);
+public:
 	//=================================================================
 
 	//= PROPERTIES ===============================================================================
@@ -65,8 +67,8 @@ public:
 	std::string GetName() { return m_name; }
 	void SetName(const std::string& name) { m_name = name; }
 
-	std::string GetFilePathImage() { return m_filePathImage; }
-	void SetFilePathImage(const std::string& filepath) { m_filePathImage = filepath; }
+	std::string GetFilePathTexture() { return m_filePathTexture; }
+	void SetFilePathTexture(const std::string& filepath) { m_filePathTexture = filepath; }
 
 	std::string GetFilePathMetadata() { return m_filePathMetadata; }
 	void SetFilePathMetadata(const std::string& filepath) { m_filePathMetadata = filepath; }
@@ -78,7 +80,18 @@ public:
 	void SetHeight(int height) { m_height = height; }
 
 	TextureType GetType() { return m_type; }
-	void SetType(TextureType type) { m_type = type; }
+	void SetType(TextureType type)
+	{
+		m_type = type;
+
+		// FIX: some models pass a normal map as a height map
+		// and others pass a height map as a normal map...
+		if (m_type == Height && !GetGrayscale())
+			m_type = Normal;
+		if (m_type == Normal && GetGrayscale())
+			m_type = Height;
+		
+	}
 
 	bool GetGrayscale() { return m_grayscale; }
 	void SetGrayscale(bool grayscale) { m_grayscale = grayscale; }
@@ -92,7 +105,7 @@ public:
 private:
 	std::string m_ID;
 	std::string m_name;
-	std::string m_filePathImage;
+	std::string m_filePathTexture;
 	std::string m_filePathMetadata;
 	int m_width;
 	int m_height;

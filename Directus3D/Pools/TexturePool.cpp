@@ -51,44 +51,34 @@ Texture* TexturePool::Add(Texture* texture)
 }
 
 // Adds a texture to the pool by loading it from an image file
-Texture* TexturePool::Add(const string& texturePath, TextureType textureType)
+Texture* TexturePool::Add(const string& texturePath)
 {
-	// If loaded, return the already loaded one
+	if (!FileSystem::FileExists(texturePath) || !FileSystem::IsSupportedImage(texturePath))
+		return nullptr;
+
+	// If the texture alrady exists, return it
 	Texture* loaded = GetTextureByPath(texturePath);
-	if (loaded)
+	if (loaded) 
 		return loaded;
 
-	// If not, load it
+	// If the texture doesn't exist, create and load it
 	Texture* texture = new Texture();
-	texture->LoadFromImageFile(texturePath, textureType);
+	texture->LoadFromFile(texturePath);
 	m_textures.push_back(texture);
+
+	// If no metadata file exists, create one
+	string metadataPath = FileSystem::GetPathWithoutFileNameExtension(texturePath) + TEXTURE_METADATA_EXTENSION;
+	if (!FileSystem::FileExists(metadataPath))
+		texture->SaveToFile(metadataPath);
 
 	return m_textures.back();
 }
 
-// Adds multiple textures to the pool by reading their metadata files
-void TexturePool::Add(const vector<string>& filePaths)
+// Adds multiple textures to the pool by reading them from image files
+void TexturePool::Add(const vector<string>& imagePaths)
 {
-	string filePath;
-	for (auto i = 0; i < filePaths.size(); i++)
-	{
-		filePath = filePaths[i];
-
-		// Make sure the path is valid
-		if (!FileSystem::FileExists(filePath))
-			continue;
-
-		// Make sure it's actually a texture metadata file (.tex)
-		if (FileSystem::GetExtensionFromPath(filePath) != TEXTURE_EXTENSION)
-			continue;
-
-		// Create and load the texture
-		Texture* texture = new Texture();
-		if (texture->LoadFromImageFile(filePath))
-			m_textures.push_back(texture);
-		else
-			delete texture;
-	}
+	for (auto i = 0; i < imagePaths.size(); i++)
+		Add(imagePaths[i]);
 }
 
 Texture* TexturePool::GetTextureByName(const string&  name)
@@ -114,7 +104,7 @@ Texture* TexturePool::GetTextureByID(const string&  ID)
 Texture* TexturePool::GetTextureByPath(const string&  path)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetFilePathImage() == path)
+		if (m_textures[i]->GetFilePathTexture() == path)
 			return m_textures[i];
 
 	return nullptr;
@@ -124,7 +114,7 @@ vector<string> TexturePool::GetAllTextureFilePaths()
 {
 	vector<string> paths;
 	for (auto i = 0; i < m_textures.size(); i++)
-		paths.push_back(m_textures[i]->GetFilePathImage());
+		paths.push_back(m_textures[i]->GetFilePathTexture());
 
 	return paths;
 }
@@ -134,7 +124,7 @@ void TexturePool::RemoveTextureByPath(const string&  path)
 	for (auto it = m_textures.begin(); it < m_textures.end();)
 	{
 		Texture* texture = *it;
-		if (texture->GetFilePathImage() == path)
+		if (texture->GetFilePathTexture() == path)
 		{
 			delete texture;
 			it = m_textures.erase(it);
@@ -159,7 +149,7 @@ void TexturePool::Clear()
 int TexturePool::GetTextureIndex(Texture* texture)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetFilePathImage() == texture->GetFilePathImage())
+		if (m_textures[i]->GetFilePathTexture() == texture->GetFilePathTexture())
 			return i;
 
 	return -1;

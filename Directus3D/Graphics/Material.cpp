@@ -193,7 +193,7 @@ bool Material::HasTextureOfType(TextureType type)
 bool Material::HasTexture(string path)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetFilePathImage() == path)
+		if (m_textures[i]->GetFilePathTexture() == path)
 			return true;
 
 	return false;
@@ -203,7 +203,7 @@ string Material::GetTexturePathByType(TextureType type)
 {
 	Texture* texture = GetTextureByType(type);
 	if (texture)
-		return texture->GetFilePathImage();
+		return texture->GetFilePathTexture();
 
 	return TEXTURE_PATH_UNKNOWN;
 }
@@ -212,7 +212,7 @@ vector<string> Material::GetTexturePaths()
 {
 	vector<string> paths;
 	for (auto i = 0; i < m_textures.size(); i++)
-		paths.push_back(m_textures[i]->GetFilePathImage());
+		paths.push_back(m_textures[i]->GetFilePathTexture());
 
 	return paths;
 }
