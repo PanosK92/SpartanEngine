@@ -66,11 +66,6 @@ Texture* TexturePool::Add(const string& texturePath)
 	texture->LoadFromFile(texturePath);
 	m_textures.push_back(texture);
 
-	// If no metadata file exists, create one
-	string metadataPath = FileSystem::GetPathWithoutFileNameExtension(texturePath) + TEXTURE_METADATA_EXTENSION;
-	if (!FileSystem::FileExists(metadataPath))
-		texture->SaveToFile(metadataPath);
-
 	return m_textures.back();
 }
 
@@ -143,9 +138,9 @@ void TexturePool::Clear()
 	m_textures.shrink_to_fit();
 }
 
-/*------------------------------------------------------------------------------
-						[HELPER FUNCTIONS]
-------------------------------------------------------------------------------*/
+//=================
+// HELPER FUNCTIONS
+//=================
 int TexturePool::GetTextureIndex(Texture* texture)
 {
 	for (auto i = 0; i < m_textures.size(); i++)

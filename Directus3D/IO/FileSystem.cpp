@@ -80,10 +80,10 @@ string FileSystem::GetPathWithoutFileName(const string& path)
 
 string FileSystem::GetPathWithoutFileNameExtension(const string& path)
 {
-	string filename = GetFileNameNoExtensionFromPath(path);
 	string rawPath = GetPathWithoutFileName(path);
+	string fileName = GetFileNameFromPath(path);
 
-	return rawPath + filename;
+	return rawPath + fileName;
 }
 
 string FileSystem::GetExtensionFromPath(const string& path)
@@ -154,6 +154,14 @@ vector<string> FileSystem::GetSupportedImageFormats(bool includeUppercase)
 	}
 
 	return supportedFormats;
+}
+
+bool FileSystem::IsSupportedTextureMetadata(const string& path)
+{
+	if (GetExtensionFromPath(path) == TEXTURE_METADATA_EXTENSION)
+		return true;
+
+	return false;
 }
 
 vector<string> FileSystem::GetFoldersInDirectory(const string& directory)

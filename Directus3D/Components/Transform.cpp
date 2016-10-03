@@ -47,7 +47,9 @@ Transform::~Transform()
 
 }
 
-//= INTERFACE ====================================================================================
+//==========
+// INTERFACE
+//==========
 void Transform::Initialize()
 {
 	UpdateWorldTransform();
@@ -99,8 +101,10 @@ void Transform::Deserialize()
 
 	UpdateWorldTransform();
 }
-//================================================================================================
 
+//=====================
+// UpdateWorldTransform
+//=====================
 void Transform::UpdateWorldTransform()
 {
 	// Create local translation, rotation and scale matrices
@@ -129,9 +133,9 @@ void Transform::UpdateWorldTransform()
 	EMIT_SIGNAL(SIGNAL_TRANSFORM_UPDATED);
 }
 
-/*------------------------------------------------------------------------------
-									[POSITION]
-------------------------------------------------------------------------------*/
+//=========
+// POSITION
+//=========
 Vector3 Transform::GetPosition() const
 {
 	return m_position;
@@ -156,10 +160,9 @@ void Transform::SetPositionLocal(const Vector3& position)
 	UpdateWorldTransform();
 }
 
-/*------------------------------------------------------------------------------
-								[ROTATION]
-------------------------------------------------------------------------------*/
-
+//=========
+// ROTATION
+//=========
 Quaternion Transform::GetRotation() const
 {
 	return m_rotation;
@@ -184,9 +187,9 @@ void Transform::SetRotationLocal(const Quaternion& rotation)
 	UpdateWorldTransform();
 }
 
-/*------------------------------------------------------------------------------
-								[SCALE]
-------------------------------------------------------------------------------*/
+//======
+// SCALE
+//======
 Vector3 Transform::GetScale() const
 {
 	return m_scale;
@@ -218,7 +221,9 @@ void Transform::SetScaleLocal(const Vector3& scale)
 	UpdateWorldTransform();
 }
 
-//= TRANSLATION/ROTATION ========================================================
+//=====================
+// TRANSLATION/ROTATION
+//=====================
 void Transform::Translate(const Vector3& delta)
 {
 	if (!HasParent())
@@ -245,8 +250,10 @@ void Transform::Rotate(const Quaternion& delta, Space space)
 		break;
 	}
 }
-//===============================================================================
 
+//===========
+// DIRECTIONS
+//===========
 Vector3 Transform::GetUp() const
 {
 	return GetRotation() * Vector3::Up;
@@ -267,9 +274,9 @@ bool Transform::IsRoot()
 	return !HasParent();
 }
 
-/*------------------------------------------------------------------------------
-								[HIERARCHY]
-------------------------------------------------------------------------------*/
+//==========
+// HIERARCHY
+//==========
 // Sets a parent for this transform
 void Transform::SetParent(Transform* newParent)
 {
@@ -494,9 +501,9 @@ bool Transform::HasParent() const
 	return true;
 }
 
-/*------------------------------------------------------------------------------
-									[MISC]
-------------------------------------------------------------------------------*/
+//================
+// MISC PROPERTIES
+//================
 Matrix Transform::GetWorldTransform() const
 {
 	return m_worldMatrix;
@@ -512,9 +519,9 @@ string Transform::GetName() const
 	return GetGameObject()->GetName();
 }
 
-/*------------------------------------------------------------------------------
-							[HELPER FUNCTIONS]
-------------------------------------------------------------------------------*/
+//=================
+// HELPER FUNCTIONS
+//=================
 void Transform::GetDescendants(vector<Transform*>& descendants)
 {
 	for (int i = 0; i < m_children.size(); i++)

@@ -53,7 +53,10 @@ Texture::~Texture()
 	SafeRelease(m_shaderResourceView);
 }
 
-void Texture::Serialize() const
+//===
+// IO
+//===
+void Texture::Serialize()
 {
 	Serializer::WriteSTR(m_ID);
 	Serializer::WriteSTR(m_name);
@@ -79,18 +82,33 @@ void Texture::Deserialize()
 	m_transparency = Serializer::ReadBool();
 }
 
-void Texture::SaveToFile(string filePath)
+bool Texture::SaveMetadata()
 {
-	m_filePathTexture = filePath;
-	m_filePathMetadata = m_filePathTexture + GetName() + TEXTURE_METADATA_EXTENSION;
+	LOG_INFO(m_filePathMetadata);
+	if (!FileSystem::IsSupportedTextureMetadata(m_filePathMetadata))
+		return false;
 
 	Serializer::StartWriting(m_filePathMetadata);
 	Serialize();
 	Serializer::StopWriting();
+
+	return true;
+}
+
+bool Texture::LoadMetadata()
+{
+	if (!FileSystem::FileExists(m_filePathMetadata) || !FileSystem::IsSupportedTextureMetadata(m_filePathMetadata))
+		return false;
+
+	Serializer::StartReading(m_filePathMetadata);
+	Deserialize();
+	Serializer::StopReading();
+
+	return true;
 }
 
 // Loads a texture from an image file (.jpg, .png and so on)
-bool Texture::LoadFromFile(string path)
+bool Texture::LoadFromFile(const string& path)
 {
 	// load it
 	if (!ImageImporter::GetInstance().Load(path))
@@ -101,32 +119,21 @@ bool Texture::LoadFromFile(string path)
 	}
 
 	// Get metadata from texture
-	SetFilePathTexture(ImageImporter::GetInstance().GetPath());
-	SetFilePathMetadata(GetFilePathTexture() + GetName() + TEXTURE_METADATA_EXTENSION);
-	SetName(FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture()));
-	SetWidth(ImageImporter::GetInstance().GetWidth());
-	SetHeight(ImageImporter::GetInstance().GetHeight());
-	SetGrayscale(ImageImporter::GetInstance().IsGrayscale());
-	SetTransparency(ImageImporter::GetInstance().IsTransparent());
+	m_filePathTexture = ImageImporter::GetInstance().GetPath();
+	m_name = FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture());
+	m_filePathMetadata = FileSystem::GetPathWithoutFileNameExtension(m_filePathTexture) + TEXTURE_METADATA_EXTENSION;
+	m_width = ImageImporter::GetInstance().GetWidth();
+	m_height = ImageImporter::GetInstance().GetHeight();
+	m_grayscale = ImageImporter::GetInstance().IsGrayscale();
+	m_transparency = ImageImporter::GetInstance().IsTransparent();
 	m_shaderResourceView = ImageImporter::GetInstance().GetAsD3D11ShaderResourceView();
 
-	// Clear any memory allocated by the image loader
+	// Free any memory allocated by the image importer
 	ImageImporter::GetInstance().Clear();
 
-	// Load metadata file (if it exists)
-	LoadMetadata(GetFilePathMetadata());
-
-	return true;
-}
-
-bool Texture::LoadMetadata(const string& filePath)
-{
-	if (!FileSystem::FileExists(filePath) || !FileSystem::IsSupportedImage(filePath))
-		return false;
-
-	Serializer::StartReading(filePath);
-	Deserialize();
-	Serializer::StopReading();
+	if (!LoadMetadata()) // load metadata file
+		if (!SaveMetadata()) // if a metadata file doesn't exist, create one
+			return false; // if that failed too, it means the filepath is invalid
 
 	return true;
 }

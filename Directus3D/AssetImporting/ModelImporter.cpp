@@ -170,7 +170,7 @@ void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* 
 	if (!node->mParent)
 		SetGameObjectTransform(parentGameObject, node->mTransformation); // apply transformation	
 	// node->mName always returns "RootNode", therefore the model name has to be extracted from the model path
-	
+
 
 	// process all the node's meshes
 	for (auto i = 0; i < node->mNumMeshes; i++)
@@ -354,23 +354,22 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 void ModelImporter::AddTextureToMaterial(Material* material, TextureType textureType, const string& texturePath)
 {
 	string textureSource = FindTexture(texturePath);
-	if (textureSource != TEXTURE_PATH_UNKNOWN)
+	if (textureSource == TEXTURE_PATH_UNKNOWN)
 	{
-		// Copy the source texture to an appropriate directory
-		string textureDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/";
-		FileSystem::CopyFileFromTo(textureSource, textureDestination + FileSystem::GetFileNameFromPath(textureSource));
-
-		Texture* texture = m_texturePool->Add(textureDestination);
-		if (texture)
-		{
-			texture->SetType(textureType);
-			material->SetTexture(texture->GetID());
-		}
-	
+		LOG_WARNING("Failed to find \"" + texturePath + "\".");
 		return;
 	}
-	
-	LOG_WARNING("Failed to find \"" + texturePath + "\".");
+
+	// Copy the source texture to an appropriate directory
+	string textureDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
+	FileSystem::CopyFileFromTo(textureSource, textureDestination);
+
+	Texture* texture = m_texturePool->Add(textureDestination);
+	if (texture)
+	{
+		texture->SetType(textureType);
+		material->SetTexture(texture->GetID());
+	}
 }
 
 string ModelImporter::FindTexture(string texturePath)
@@ -378,7 +377,7 @@ string ModelImporter::FindTexture(string texturePath)
 	// The texture path is relative to the model, something like "Textures\Alan_Wake_Jacket.jpg" which is too 
 	// arbitrary to load a texture from it. This is why we get the model's directory (which is relative to the engine)...
 	string modelRootDirectory = FileSystem::GetPathWithoutFileName(m_fullModelPath);
-	
+
 	// ... and marge it with the texture path, Assets\Models\Alan_Wake\" + "Textures\Alan_Wake_Jacket.jpg".
 	texturePath = modelRootDirectory + texturePath;
 
