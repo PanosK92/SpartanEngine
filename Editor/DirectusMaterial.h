@@ -43,6 +43,8 @@ public:
     explicit DirectusMaterial(QWidget *parent = 0);
     void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
+    void ReflectFile(std::string filepath);
+
 private:
 
     //= TITLE =======================

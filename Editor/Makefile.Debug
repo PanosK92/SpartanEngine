@@ -377,6 +377,7 @@ compiler_rcc_clean:
 		Images\tabInspector.png \
 		Images\meshRenderer.png \
 		Images\camera.png \
+		Images\materialLarge.png \
 		Images\arrowRight.png \
 		Images\collider.png \
 		Images\check.png \
@@ -630,7 +631,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -925,7 +925,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -975,6 +974,50 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		DirectusInspector.h \
+		DirectusTransform.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
+		DirectusComboLabelText.h \
+		DirectusAdjustLabel.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QLabel \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
+		DirectusCamera.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QPushButton \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
+		DirectusComboSliderText.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QSlider \
+		DirectusColorPicker.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QColorDialog \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcolordialog.h \
+		DirectusDropDownButton.h \
+		DirectusMeshRenderer.h \
+		..\Directus3D\Components\MeshRenderer.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QCheckBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcheckbox.h \
+		DirectusMaterial.h \
+		DirectusTexture.h \
+		DirectusCollider.h \
+		..\Directus3D\Components\Collider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
+		DirectusRigidBody.h \
+		..\Directus3D\Components\RigidBody.h \
+		DirectusLight.h \
+		DirectusScript.h \
+		..\Directus3D\Components\Script.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
+		..\Directus3D\Scripting\ScriptInstance.h \
+		DirectusMeshFilter.h \
+		..\Directus3D\Components\MeshFilter.h \
+		DirectusMeshCollider.h \
+		..\Directus3D\Components\MeshCollider.h \
 		DirectusDirExplorer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusDirExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusDirExplorer.cpp
@@ -1124,7 +1167,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -1174,6 +1216,50 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		DirectusInspector.h \
+		DirectusTransform.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
+		DirectusComboLabelText.h \
+		DirectusAdjustLabel.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QLabel \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
+		DirectusCamera.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QPushButton \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
+		DirectusComboSliderText.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QSlider \
+		DirectusColorPicker.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QColorDialog \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcolordialog.h \
+		DirectusDropDownButton.h \
+		DirectusMeshRenderer.h \
+		..\Directus3D\Components\MeshRenderer.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QCheckBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcheckbox.h \
+		DirectusMaterial.h \
+		DirectusTexture.h \
+		DirectusCollider.h \
+		..\Directus3D\Components\Collider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
+		DirectusRigidBody.h \
+		..\Directus3D\Components\RigidBody.h \
+		DirectusLight.h \
+		DirectusScript.h \
+		..\Directus3D\Components\Script.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
+		..\Directus3D\Scripting\ScriptInstance.h \
+		DirectusMeshFilter.h \
+		..\Directus3D\Components\MeshFilter.h \
+		DirectusMeshCollider.h \
+		..\Directus3D\Components\MeshCollider.h \
 		DirectusFileExplorer.h \
 		C:\Qt\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/5.7/msvc2015_64/include -IC:/Qt/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/5.7/msvc2015_64/include/QtGui -IC:/Qt/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/5.7/msvc2015_64/include/QtCore DirectusFileExplorer.h -o ..\..\Binaries\MOCFiles\moc_DirectusFileExplorer.cpp
@@ -1318,7 +1404,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -1493,7 +1578,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -1823,7 +1907,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -2057,7 +2140,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -2377,7 +2459,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -2540,7 +2621,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
@@ -2717,7 +2797,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
@@ -2960,7 +3039,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
 		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -3140,7 +3218,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -3341,7 +3418,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -3533,7 +3609,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -3725,7 +3800,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -3882,7 +3956,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -4016,7 +4089,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -4432,7 +4504,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -4634,7 +4705,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -5213,7 +5283,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -5408,7 +5477,6 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -5597,7 +5665,6 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -5647,6 +5714,50 @@ compiler_uic_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		DirectusInspector.h \
+		DirectusTransform.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
+		DirectusComboLabelText.h \
+		DirectusAdjustLabel.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QLabel \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
+		DirectusCamera.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QPushButton \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
+		DirectusComboSliderText.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QSlider \
+		DirectusColorPicker.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QColorDialog \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcolordialog.h \
+		DirectusDropDownButton.h \
+		DirectusMeshRenderer.h \
+		..\Directus3D\Components\MeshRenderer.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QCheckBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcheckbox.h \
+		DirectusMaterial.h \
+		DirectusTexture.h \
+		DirectusCollider.h \
+		..\Directus3D\Components\Collider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
+		DirectusRigidBody.h \
+		..\Directus3D\Components\RigidBody.h \
+		DirectusLight.h \
+		DirectusScript.h \
+		..\Directus3D\Components\Script.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
+		..\Directus3D\Scripting\ScriptInstance.h \
+		DirectusMeshFilter.h \
+		..\Directus3D\Components\MeshFilter.h \
+		DirectusMeshCollider.h \
+		..\Directus3D\Components\MeshCollider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListView \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractitemview.h \
@@ -5792,7 +5903,6 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -5842,6 +5952,50 @@ compiler_uic_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		DirectusInspector.h \
+		DirectusTransform.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
+		DirectusComboLabelText.h \
+		DirectusAdjustLabel.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QLabel \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
+		DirectusCamera.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QPushButton \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
+		DirectusComboSliderText.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QSlider \
+		DirectusColorPicker.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QColorDialog \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcolordialog.h \
+		DirectusDropDownButton.h \
+		DirectusMeshRenderer.h \
+		..\Directus3D\Components\MeshRenderer.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QCheckBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcheckbox.h \
+		DirectusMaterial.h \
+		DirectusTexture.h \
+		DirectusCollider.h \
+		..\Directus3D\Components\Collider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
+		DirectusRigidBody.h \
+		..\Directus3D\Components\RigidBody.h \
+		DirectusLight.h \
+		DirectusScript.h \
+		..\Directus3D\Components\Script.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
+		..\Directus3D\Scripting\ScriptInstance.h \
+		DirectusMeshFilter.h \
+		..\Directus3D\Components\MeshFilter.h \
+		DirectusMeshCollider.h \
+		..\Directus3D\Components\MeshCollider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListWidget \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistwidget.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlistview.h \
@@ -5982,7 +6136,6 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -6261,7 +6414,6 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -6492,7 +6644,6 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -6699,7 +6850,6 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -7208,7 +7358,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -7502,7 +7651,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -7552,6 +7700,50 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		DirectusInspector.h \
+		DirectusTransform.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
+		DirectusComboLabelText.h \
+		DirectusAdjustLabel.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QLabel \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
+		DirectusCamera.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QPushButton \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
+		DirectusComboSliderText.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QSlider \
+		DirectusColorPicker.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QColorDialog \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcolordialog.h \
+		DirectusDropDownButton.h \
+		DirectusMeshRenderer.h \
+		..\Directus3D\Components\MeshRenderer.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QCheckBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcheckbox.h \
+		DirectusMaterial.h \
+		DirectusTexture.h \
+		DirectusCollider.h \
+		..\Directus3D\Components\Collider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
+		DirectusRigidBody.h \
+		..\Directus3D\Components\RigidBody.h \
+		DirectusLight.h \
+		DirectusScript.h \
+		..\Directus3D\Components\Script.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
+		..\Directus3D\Scripting\ScriptInstance.h \
+		DirectusMeshFilter.h \
+		..\Directus3D\Components\MeshFilter.h \
+		DirectusMeshCollider.h \
+		..\Directus3D\Components\MeshCollider.h \
 		..\Directus3D\IO\Log.h \
 		..\Directus3D\IO\ILogger.h
 
@@ -7701,7 +7893,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -7751,6 +7942,50 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		DirectusInspector.h \
+		DirectusTransform.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
+		C:\Qt\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
+		DirectusComboLabelText.h \
+		DirectusAdjustLabel.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QLabel \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
+		DirectusCamera.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QPushButton \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
+		DirectusComboSliderText.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QSlider \
+		DirectusColorPicker.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QColorDialog \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcolordialog.h \
+		DirectusDropDownButton.h \
+		DirectusMeshRenderer.h \
+		..\Directus3D\Components\MeshRenderer.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QCheckBox \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcheckbox.h \
+		DirectusMaterial.h \
+		DirectusTexture.h \
+		DirectusCollider.h \
+		..\Directus3D\Components\Collider.h \
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
+		DirectusRigidBody.h \
+		..\Directus3D\Components\RigidBody.h \
+		DirectusLight.h \
+		DirectusScript.h \
+		..\Directus3D\Components\Script.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
+		..\Directus3D\Scripting\ScriptInstance.h \
+		DirectusMeshFilter.h \
+		..\Directus3D\Components\MeshFilter.h \
+		DirectusMeshCollider.h \
+		..\Directus3D\Components\MeshCollider.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QStandardItem \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qstandarditemmodel.h \
 		C:\Qt\5.7\msvc2015_64\include\QtGui\QMouseEvent \
@@ -7770,7 +8005,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QMenu \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qmenu.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qaction.h \
-		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qactiongroup.h
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qactiongroup.h \
+		..\Directus3D\IO\FileSystem.h
 
 ..\..\Binaries\ObjFiles\DirectusConsole.obj: DirectusConsole.cpp DirectusConsole.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListWidget \
@@ -7913,7 +8149,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -8086,7 +8321,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -8176,6 +8410,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\MeshCollider.h \
 		..\Directus3D\IO\Log.h \
 		..\Directus3D\IO\ILogger.h \
+		..\Directus3D\IO\FileSystem.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QMimeData \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qmimedata.h
 
@@ -8418,7 +8653,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -8535,6 +8769,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qaction.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qactiongroup.h \
 		..\Directus3D\Components\Hinge.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Signals\Signaling.h \
 		..\Directus3D\Signals\Signals.h
 
@@ -8668,7 +8903,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -9004,7 +9238,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -9189,7 +9422,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
@@ -9404,7 +9636,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
@@ -9649,7 +9880,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
 		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -9849,7 +10079,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10074,7 +10303,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10290,7 +10518,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10516,7 +10743,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10706,7 +10932,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10854,7 +11079,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10916,6 +11140,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
+		..\Directus3D\IO\FileSystem.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QMutex
 
 ..\..\Binaries\ObjFiles\DirectusComboLabelText.obj: DirectusComboLabelText.cpp DirectusComboLabelText.h \
@@ -11275,7 +11500,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -11380,7 +11604,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
-		..\Directus3D\Components\MeshCollider.h
+		..\Directus3D\Components\MeshCollider.h \
+		..\Directus3D\IO\FileSystem.h
 
 ..\..\Binaries\ObjFiles\DirectusMeshFilter.obj: DirectusMeshFilter.cpp DirectusMeshFilter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
@@ -11541,7 +11766,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -11839,7 +12063,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -12205,7 +12428,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \

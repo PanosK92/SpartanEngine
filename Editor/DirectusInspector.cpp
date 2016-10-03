@@ -97,6 +97,17 @@ GameObject* DirectusInspector::GetInspectedGameObject()
     return m_inspectedGameObject;
 }
 
+void DirectusInspector::Clear()
+{
+    Inspect(nullptr);
+}
+
+void DirectusInspector::InspectMaterialFile(string filepath)
+{
+    Clear();
+    m_material->ReflectFile(filepath);
+}
+
 void DirectusInspector::paintEvent(QPaintEvent* evt)
 {
     // Has to be overriden for QSS to take affect

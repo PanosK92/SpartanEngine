@@ -42,4 +42,5 @@ private:
     QIcon m_scriptIcon;
     QIcon m_imageIcon;
     QIcon m_shaderIcon;
+    QIcon m_materialIcon;
 };

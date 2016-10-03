@@ -298,6 +298,27 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
     this->show();
 }
 
+void DirectusMaterial::ReflectFile(string filepath)
+{
+    /*
+    // Do the actual reflection
+    ReflectName();
+    ReflectAlbedo();
+    ReflectRoughness();
+    ReflectMetallic();
+    ReflectNormal();
+    ReflectHeight();
+    ReflectOcclusion();
+    ReflectEmission();
+    ReflectMask();
+    ReflectSpecular();
+    ReflectTiling();
+    ReflectOffset();
+*/
+    // Make this widget visible
+    this->show();
+}
+
 void DirectusMaterial::ReflectName()
 {
     std::string name = m_inspectedMaterial->GetName();

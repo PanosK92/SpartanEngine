@@ -164,6 +164,14 @@ bool FileSystem::IsSupportedTextureMetadata(const string& path)
 	return false;
 }
 
+bool FileSystem::IsSupportedMaterial(const string& path)
+{
+	if (GetExtensionFromPath(path) == MATERIAL_EXTENSION)
+		return true;
+
+	return false;
+}
+
 vector<string> FileSystem::GetFoldersInDirectory(const string& directory)
 {
 	vector<string> folderPaths;
