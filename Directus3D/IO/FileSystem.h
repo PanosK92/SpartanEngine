@@ -40,6 +40,7 @@ public:
 	static std::string GetRelativePathFromAbsolutePath(const std::string& path);
 
 	static std::vector<std::string> FileSystem::GetSupportedImageFormats(bool includeUppercase);
+	static bool IsSupportedTextureMetadata(const std::string& path);
 
 	static std::vector<std::string> GetFoldersInDirectory(const std::string& directory);
 	static std::vector<std::string> GetFilesInDirectory(const std::string& directory);

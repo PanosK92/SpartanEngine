@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "../Graphics/D3D11/D3D11Shader.h"
-#include "../IO/FileSystem.h"
 //========================================
 
 #define TEXTURE_ID_NA "-1"
@@ -49,17 +48,15 @@ public:
 	Texture();
 	~Texture();
 
-	//= IO ============================================================
+	//= IO ================================================
+	bool LoadFromFile(const std::string& path);
 private:
-	void Serialize() const;
+	void Serialize();
 	void Deserialize();
+	bool SaveMetadata();
+	bool LoadMetadata();
 public:
-	void SaveToFile(std::string filePath);	
-	bool LoadFromFile(std::string path);
-private:
-	bool LoadMetadata(const std::string& filePath);
-public:
-	//=================================================================
+	//=====================================================
 
 	//= PROPERTIES ===============================================================================
 	std::string GetID() { return m_ID; };
@@ -89,8 +86,7 @@ public:
 		if (m_type == Height && !GetGrayscale())
 			m_type = Normal;
 		if (m_type == Normal && GetGrayscale())
-			m_type = Height;
-		
+			m_type = Height;		
 	}
 
 	bool GetGrayscale() { return m_grayscale; }
