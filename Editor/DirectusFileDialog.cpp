@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "DirectusFileDialog.h"
 #include <QThread>
+#include "Core/Scene.h"
 //=============================
 
 #define EMPTY "-1"
@@ -79,8 +80,9 @@ void DirectusFileDialog::LoadModelDirectly(QString filePath)
 void DirectusFileDialog::LoadScene()
 {
     QString title = "Load Scene";
+    std::string sceneFilter = std::string("Scene (*") + SCENE_EXTENSION + ")";
     QStringList filters;
-    filters << "Scene (*.dss)"
+    filters << QString::fromStdString(sceneFilter)
             << "Any files (*)";
 
     setWindowTitle(title);
@@ -107,8 +109,9 @@ void DirectusFileDialog::SaveScene()
 void DirectusFileDialog::SaveSceneAs()
 {
     QString title = "Save Scene";
+    std::string sceneFilter = std::string("Scene (*") + SCENE_EXTENSION + ")";
     QStringList filters;
-    filters << "Scene (*.dss)"
+    filters << QString::fromStdString(sceneFilter)
             << "Any files (*)";
 
     setWindowTitle(title);

@@ -141,7 +141,7 @@ void Renderer::Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* phy
 										[MISC]
 	------------------------------------------------------------------------------*/
 	m_texNoiseMap = make_shared<Texture>();
-	m_texNoiseMap->LoadFromImageFile("Assets/Shaders/noise.png", Normal);
+	m_texNoiseMap->LoadFromFile("Assets/Shaders/noise.png");
 	m_texNoiseMap->SetType(Normal);
 }
 

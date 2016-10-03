@@ -81,6 +81,9 @@ void Scene::Update()
 //= I/O ==============================================================================================
 bool Scene::SaveToFile(string path)
 {
+	if (FileSystem::GetExtensionFromPath(path) != SCENE_EXTENSION)
+		path += SCENE_EXTENSION;
+
 	Serializer::StartWriting(path);
 
 	// Gather all the paths of any resource files used by the scene

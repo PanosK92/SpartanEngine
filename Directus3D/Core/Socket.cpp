@@ -207,7 +207,10 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 
 		// If it's not loaded yet, load it
 		if (!texture)
-			texture = m_texturePool->Add(texturePath, type);
+		{
+			texture = m_texturePool->Add(texturePath);
+			texture->SetType(type);
+		}
 
 		// Set it to the material
 		material->SetTexture(texture->GetID());
@@ -215,5 +218,5 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 		return;
 	}
 
-	LOG("Unable to set texture: \"" + texturePath +"\" to material", LogType::Warning);
+	LOG_WARNING("Unable to set texture: \"" + texturePath +"\" to material");
 }

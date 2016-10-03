@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/MeshPool.h"
 //================================
 
+#define SCENE_EXTENSION ".directus"
+
 class Renderer;
 class ModelImporter;
 

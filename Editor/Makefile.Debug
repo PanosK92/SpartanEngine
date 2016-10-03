@@ -630,6 +630,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -924,6 +925,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -1122,6 +1124,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -1315,6 +1318,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -1489,6 +1493,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -1818,6 +1823,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -2051,6 +2057,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -2370,6 +2377,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -2532,6 +2540,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
@@ -2708,6 +2717,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
@@ -2950,6 +2960,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
 		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -3129,6 +3140,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -3329,6 +3341,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -3520,6 +3533,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -3711,6 +3725,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -3867,6 +3882,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -4000,6 +4016,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -4415,6 +4432,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -4616,6 +4634,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -5194,6 +5213,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -5388,6 +5408,7 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -5576,6 +5597,7 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -5770,6 +5792,7 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -5959,6 +5982,7 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -6237,6 +6261,7 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -6467,6 +6492,7 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -6673,6 +6699,7 @@ compiler_uic_clean:
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -7181,6 +7208,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -7474,6 +7502,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -7672,6 +7701,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -7740,8 +7770,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QMenu \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qmenu.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qaction.h \
-		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qactiongroup.h \
-		..\Directus3D\IO\FileSystem.h
+		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qactiongroup.h
 
 ..\..\Binaries\ObjFiles\DirectusConsole.obj: DirectusConsole.cpp DirectusConsole.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QListWidget \
@@ -7884,6 +7913,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -8056,6 +8086,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -8145,7 +8176,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\MeshCollider.h \
 		..\Directus3D\IO\Log.h \
 		..\Directus3D\IO\ILogger.h \
-		..\Directus3D\IO\FileSystem.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QMimeData \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qmimedata.h
 
@@ -8388,6 +8418,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -8504,7 +8535,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qaction.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qactiongroup.h \
 		..\Directus3D\Components\Hinge.h \
-		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Signals\Signaling.h \
 		..\Directus3D\Signals\Signals.h
 
@@ -8638,6 +8668,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -8973,6 +9004,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -9157,6 +9189,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
@@ -9371,6 +9404,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
@@ -9615,6 +9649,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Pools\TexturePool.h \
 		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -9814,6 +9849,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10038,6 +10074,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10253,6 +10290,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10478,6 +10516,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10667,6 +10706,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10814,6 +10854,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -10875,7 +10916,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
-		..\Directus3D\IO\FileSystem.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\QMutex
 
 ..\..\Binaries\ObjFiles\DirectusComboLabelText.obj: DirectusComboLabelText.cpp DirectusComboLabelText.h \
@@ -11235,6 +11275,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -11339,8 +11380,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
-		..\Directus3D\Components\MeshCollider.h \
-		..\Directus3D\IO\FileSystem.h
+		..\Directus3D\Components\MeshCollider.h
 
 ..\..\Binaries\ObjFiles\DirectusMeshFilter.obj: DirectusMeshFilter.cpp DirectusMeshFilter.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QWidget \
@@ -11501,6 +11541,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -11798,6 +11839,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \
@@ -12163,6 +12205,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		..\Directus3D\IO\FileSystem.h \
 		..\Directus3D\Pools\MaterialPool.h \
 		..\Directus3D\Pools\ShaderPool.h \
 		..\Directus3D\Graphics\Shaders\ShaderVariation.h \

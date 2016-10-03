@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========
+//= INCLUDES =============
 #include "FileSystem.h"
 #include "dirent.h"
 #include <locale>
-//=====================
+#include "../Core/Scene.h"
+//========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -287,7 +288,7 @@ bool FileSystem::IsSupportedScene(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
-	supportedExt.push_back(".dss");
+	supportedExt.push_back(SCENE_EXTENSION);
 
 	for (int i = 0; i < supportedExt.size(); i++)
 	{
