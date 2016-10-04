@@ -41,6 +41,8 @@ public:
                     DirectusInspector* inspector
                     );
     void SetRootPath(QString path);
+    QFileSystemModel* GetFileSystemModel();
+
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseMoveEvent(QMouseEvent* event);
     virtual void mouseReleaseEvent(QMouseEvent* event);
@@ -60,4 +62,5 @@ signals:
 
 public slots:
     void ShowContextMenu(QPoint pos);
+    void DoubleClick(QModelIndex);
 };
