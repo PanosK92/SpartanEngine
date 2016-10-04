@@ -70,12 +70,20 @@ void DirectusFileExplorer::Initialize(
     QModelIndex index = m_fileModel->index("Assets");
     this->setRootIndex(index);
 
+    // Context menu
     connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ShowContextMenu(QPoint)));
+    // Double click
+    connect(this, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(DoubleClick(QModelIndex)));
 }
 
 void DirectusFileExplorer::SetRootPath(QString path)
 {
     this->setRootIndex(m_fileModel->setRootPath(path));
+}
+
+QFileSystemModel* DirectusFileExplorer::GetFileSystemModel()
+{
+    return m_fileModel;
 }
 
 //= DRAG N DROP RELATED ============================================================================
@@ -200,5 +208,14 @@ void DirectusFileExplorer::ShowContextMenu(QPoint pos)
     contextMenu.addAction(&actionImportNewAsset);
 
     contextMenu.exec(QCursor::pos());
+}
+
+void DirectusFileExplorer::DoubleClick(QModelIndex modelIndex)
+{
+    if (m_fileModel->fileInfo(modelIndex).isDir())
+    {
+        QString path = m_fileModel->fileInfo(modelIndex).absoluteFilePath();
+        this->SetRootPath(path);
+    }
 }
 //===================================================================================================

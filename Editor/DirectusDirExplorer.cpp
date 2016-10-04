@@ -47,9 +47,10 @@ DirectusDirExplorer::DirectusDirExplorer(QWidget *parent) : QTreeView(parent)
     this->setRootIndex(index);
 }
 
-void DirectusDirExplorer::SetFileExplorer(DirectusFileExplorer* fileExplorer)
+void DirectusDirExplorer::Initialize(DirectusFileExplorer* fileExplorer)
 {
     m_fileExplorer = fileExplorer;
+    connect(m_fileExplorer, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(UpdateFromFileExplorer(QModelIndex)));
 }
 
 void DirectusDirExplorer::UpdateFileExplorer(QModelIndex index)
@@ -58,4 +59,11 @@ void DirectusDirExplorer::UpdateFileExplorer(QModelIndex index)
 
     if (m_fileExplorer)
         m_fileExplorer->SetRootPath(path);
+}
+
+void DirectusDirExplorer::UpdateFromFileExplorer(QModelIndex index)
+{
+    QString path = m_fileExplorer->GetFileSystemModel()->filePath(index);
+
+    this->scrollTo(m_dirModel->index(path), QAbstractItemView::PositionAtBottom);
 }

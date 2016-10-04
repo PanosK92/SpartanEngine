@@ -59,7 +59,7 @@ void Editor::InitializeEngine()
 
     // Resolve other dependencies
     ui->directusInspector->Initialize(this);
-    ui->directusDirExplorer->SetFileExplorer(ui->directusFileExplorer);
+    ui->directusDirExplorer->Initialize(ui->directusFileExplorer);
 }
 
 void Editor::on_actionAbout_Directus3D_triggered()

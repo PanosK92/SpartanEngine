@@ -33,7 +33,7 @@ class DirectusDirExplorer : public QTreeView
     Q_OBJECT
 public:
     explicit DirectusDirExplorer(QWidget *parent = 0);
-    void SetFileExplorer(DirectusFileExplorer* fileExplorer);
+    void Initialize(DirectusFileExplorer* fileExplorer);
 private:
     QFileSystemModel* m_dirModel;
     DirectusFileExplorer* m_fileExplorer;
@@ -42,4 +42,5 @@ signals:
 
 public slots:
     void UpdateFileExplorer(QModelIndex index);
+    void UpdateFromFileExplorer(QModelIndex index);
 };
