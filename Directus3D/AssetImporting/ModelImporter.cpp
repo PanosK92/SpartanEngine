@@ -368,7 +368,7 @@ void ModelImporter::AddTextureToMaterial(Material* material, TextureType texture
 	if (texture)
 	{
 		texture->SetType(textureType);
-		material->SetTexture(texture->GetID());
+		material->SetTextureByID(texture->GetID());
 	}
 }
 

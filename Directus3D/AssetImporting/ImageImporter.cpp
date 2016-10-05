@@ -121,7 +121,7 @@ ID3D11ShaderResourceView* ImageImporter::GetAsD3D11ShaderResourceView()
 	HRESULT hResult = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
 	if (FAILED(hResult))
 	{
-		LOG("Failed to create ID3D11Texture2D from imported image data while trying to load " + m_path + ".", Log::Error);
+		LOG_ERROR("Failed to create ID3D11Texture2D from imported image data while trying to load " + m_path + ".");
 		return nullptr;
 	}
 
@@ -137,7 +137,7 @@ ID3D11ShaderResourceView* ImageImporter::GetAsD3D11ShaderResourceView()
 	hResult = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &shaderResourceView);
 	if (FAILED(hResult))
 	{
-		LOG("Failed to create the shader resource view.", Log::Error);
+		LOG_ERROR("Failed to create the shader resource view.");
 		return nullptr;
 	}
 

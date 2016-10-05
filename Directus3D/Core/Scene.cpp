@@ -267,7 +267,7 @@ GameObject* Scene::CreateSkybox()
 	skybox->SetName("Skybox");
 	skybox->AddComponent<LineRenderer>();
 	skybox->AddComponent<Skybox>();
-	skybox->SetHierarchyVisibility(false);
+	skybox->SetHierarchyVisibility(true);
 
 	return skybox;
 }

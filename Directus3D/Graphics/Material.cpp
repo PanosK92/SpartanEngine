@@ -148,7 +148,7 @@ bool Material::LoadFromFile(const string& filePath)
 //==============================================================================
 
 //= TEXTURES ===================================================================
-void Material::SetTexture(string textureID)
+void Material::SetTextureByID(const std::string& textureID)
 {
 	// Get the texture from the pool
 	Texture* texture = m_texturePool->GetTextureByID(textureID);
@@ -190,7 +190,7 @@ bool Material::HasTextureOfType(TextureType type)
 	return false;
 }
 
-bool Material::HasTexture(string path)
+bool Material::HasTexture(const std::string& path)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 		if (m_textures[i]->GetFilePathTexture() == path)
@@ -221,6 +221,9 @@ vector<string> Material::GetTexturePaths()
 //= SHADER =====================================================================
 void Material::AcquireShader()
 {
+	if (!m_shaderPool)
+		return;
+
 	// Add a shader to the pool based on this material, if a 
 	// matching shader already exists, it will be returned instead.
 	m_shader = m_shaderPool->CreateShaderBasedOnMaterial(

@@ -46,6 +46,10 @@ Texture* TexturePool::Add(Texture* texture)
 	if (!texture)
 		return nullptr;
 
+	for (auto i = 0; i < m_textures.size(); i++)
+		if (m_textures[i]->GetID() == texture->GetID())
+			return m_textures[i];
+
 	m_textures.push_back(texture);
 	return m_textures.back();
 }
@@ -112,6 +116,21 @@ vector<string> TexturePool::GetAllTextureFilePaths()
 		paths.push_back(m_textures[i]->GetFilePathTexture());
 
 	return paths;
+}
+
+void TexturePool::Remove(Texture* texture)
+{
+	for (auto it = m_textures.begin(); it < m_textures.end();)
+	{
+		Texture* currentTex = *it;
+		if (currentTex->GetID() == texture->GetID())
+		{
+			delete currentTex;
+			it = m_textures.erase(it);
+			return;
+		}
+		++it;
+	}
 }
 
 void TexturePool::RemoveTextureByPath(const string&  path)
