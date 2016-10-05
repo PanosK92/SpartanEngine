@@ -41,6 +41,7 @@ public:
 	Texture* GetTextureByPath(const std::string& path);
 	std::vector<std::string> GetAllTextureFilePaths();
 
+	void Remove(Texture* texture);
 	void RemoveTextureByPath(const std::string& path);
 	void Clear();
 

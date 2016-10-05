@@ -213,7 +213,7 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 		}
 
 		// Set it to the material
-		material->SetTexture(texture->GetID());
+		material->SetTextureByID(texture->GetID());
 
 		return;
 	}

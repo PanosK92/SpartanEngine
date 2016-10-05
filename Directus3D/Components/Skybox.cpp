@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Pools/MaterialPool.h"
 #include "../Core/Scene.h"
+#include "../IO/Log.h"
 //========================================
 
 //= NAMESPACES ================
@@ -64,6 +65,7 @@ void Skybox::Initialize()
 	if (FAILED(hr))
 		return;
 
+	//g_texturePool->RemoveTextureByPath("Assets/Environment/environment.dds");
 	Texture* texture = g_texturePool->GetTextureByPath("Assets/Environment/environment.dds");
 	if (!texture)
 	{
@@ -74,10 +76,10 @@ void Skybox::Initialize()
 		texture->SetHeight(1200);
 		texture->SetGrayscale(false);
 		texture->SetID3D11ShaderResourceView(m_environmentSRV);
+		g_texturePool->Add(texture);
 	}
-	g_texturePool->Add(texture);
 
-	g_materialPool->GetMaterialStandardSkybox()->SetTexture(texture->GetID());
+	g_materialPool->GetMaterialStandardSkybox()->SetTextureByID(texture->GetID());
 
 	// Add the actual "box"
 	MeshFilter* mesh = g_gameObject->AddComponent<MeshFilter>();
@@ -88,6 +90,7 @@ void Skybox::Initialize()
 	meshRenderer->SetMaterialStandardSkybox();
 	meshRenderer->SetCastShadows(false);
 	meshRenderer->SetReceiveShadows(false);
+	meshRenderer->GetMaterial()->SetTextureByID(texture->GetID());
 
 	g_transform->SetScale(Vector3(1000, 1000, 1000));
 }

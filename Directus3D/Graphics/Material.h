@@ -58,10 +58,10 @@ public:
 	//=============================================================================
 
 	//= TEXTURES ==================================================================
-	void SetTexture(std::string textureID);
+	void SetTextureByID(const std::string& textureID);
 	Texture* GetTextureByType(TextureType type);
 	bool HasTextureOfType(TextureType type);
-	bool HasTexture(std::string path);
+	bool HasTexture(const std::string& path);
 	std::string GetTexturePathByType(TextureType type);
 	std::vector<std::string> GetTexturePaths();
 	//=============================================================================
