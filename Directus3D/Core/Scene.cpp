@@ -99,9 +99,6 @@ bool Scene::SaveToFile(string filePath)
 	Serializer::WriteVectorSTR(materialPaths);
 	Serializer::WriteVectorSTR(meshPaths);
 
-	for (auto i = 0; i < meshPaths.size(); i++)
-		LOG_INFO(meshPaths[i]);
-
 	// Save the GameObjects
 	GameObjectPool::GetInstance().Serialize();
 
@@ -129,9 +126,6 @@ bool Scene::LoadFromFile(string filePath)
 	vector<string> texturePaths = Serializer::ReadVectorSTR();
 	vector<string> materialPaths = Serializer::ReadVectorSTR();
 	vector<string> meshPaths = Serializer::ReadVectorSTR();
-
-	for (auto i = 0; i < meshPaths.size(); i++)
-		LOG_INFO(meshPaths[i]);
 
 	Serializer::StopReading();
 	//===========================================================
@@ -273,7 +267,7 @@ GameObject* Scene::CreateSkybox()
 	skybox->SetName("Skybox");
 	skybox->AddComponent<LineRenderer>();
 	skybox->AddComponent<Skybox>();
-	skybox->SetHierarchyVisibility(true);
+	skybox->SetHierarchyVisibility(false);
 
 	return skybox;
 }

@@ -68,13 +68,21 @@ void MeshFilter::Update()
 
 void MeshFilter::Serialize()
 {
-	Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : "-1");
+	Serializer::WriteBool(m_usingDefaultMesh);
+
+	if (!m_usingDefaultMesh)
+		Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : "N/A");
 }
 
 void MeshFilter::Deserialize()
 {
-	string meshDataID = Serializer::ReadSTR();
-	m_mesh = g_meshPool->GetMesh(meshDataID);
+	m_usingDefaultMesh = Serializer::ReadBool();
+
+	if (!m_usingDefaultMesh)
+	{
+		string meshDataID = Serializer::ReadSTR();
+		m_mesh = g_meshPool->GetMesh(meshDataID);
+	}
 
 	CreateBuffers();
 }
@@ -82,6 +90,8 @@ void MeshFilter::Deserialize()
 // Use this to set a default engine mesh a cube, a sphere and so on.
 void MeshFilter::SetDefaultMesh(DefaultMesh defaultMesh)
 {
+	m_usingDefaultMesh = true;
+
 	switch (defaultMesh)
 	{
 	case Cube:
@@ -101,6 +111,8 @@ void MeshFilter::SetDefaultMesh(DefaultMesh defaultMesh)
 // Use this create a new mesh, this is what you might wanna call after loading a 3d model
 void MeshFilter::Set(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
 {
+	m_usingDefaultMesh = false;
+
 	// Add the mesh data to the pool so it gets initialized properly
 	m_mesh = g_meshPool->Add(name, rootGameObjectID, vertices, indices);
 

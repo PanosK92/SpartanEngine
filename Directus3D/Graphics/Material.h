@@ -58,6 +58,7 @@ public:
 	//=============================================================================
 
 	//= TEXTURES ==================================================================
+	void SetTexture(Texture* texture);
 	void SetTextureByID(const std::string& textureID);
 	Texture* GetTextureByType(TextureType type);
 	bool HasTextureOfType(TextureType type);

@@ -148,11 +148,8 @@ bool Material::LoadFromFile(const string& filePath)
 //==============================================================================
 
 //= TEXTURES ===================================================================
-void Material::SetTextureByID(const std::string& textureID)
+void Material::SetTexture(Texture* texture)
 {
-	// Get the texture from the pool
-	Texture* texture = m_texturePool->GetTextureByID(textureID);
-
 	// Make sure this texture exists
 	if (!texture)
 		return;
@@ -168,6 +165,14 @@ void Material::SetTextureByID(const std::string& textureID)
 
 	TextureBasedMultiplierAdjustment();
 	AcquireShader();
+}
+
+void Material::SetTextureByID(const string& textureID)
+{
+	// Get the texture from the pool
+	Texture* texture = m_texturePool->GetTextureByID(textureID);
+
+	SetTexture(texture);
 }
 
 Texture* Material::GetTextureByType(TextureType type)
@@ -190,7 +195,7 @@ bool Material::HasTextureOfType(TextureType type)
 	return false;
 }
 
-bool Material::HasTexture(const std::string& path)
+bool Material::HasTexture(const string& path)
 {
 	for (auto i = 0; i < m_textures.size(); i++)
 		if (m_textures[i]->GetFilePathTexture() == path)
