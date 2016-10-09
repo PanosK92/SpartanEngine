@@ -59,16 +59,13 @@ Skybox::~Skybox()
 ------------------------------------------------------------------------------*/
 void Skybox::Initialize()
 {
-	// I had some trouble getting the FreeImage to load and create DDS textures, for now I load the .dds textures manually and then add them
-	// to a material which then get's assigned to the MeshRenderer.
-	HRESULT hr = CreateDDSTextureFromFile(g_graphicsDevice->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &m_environmentSRV);
-	if (FAILED(hr))
-		return;
-
-	//g_texturePool->RemoveTextureByPath("Assets/Environment/environment.dds");
 	Texture* texture = g_texturePool->GetTextureByPath("Assets/Environment/environment.dds");
 	if (!texture)
 	{
+		HRESULT hr = CreateDDSTextureFromFile(g_graphicsDevice->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &m_environmentSRV);
+		if (FAILED(hr))
+			return;
+
 		texture = new Texture();
 		texture->SetType(CubeMap);
 		texture->SetFilePathTexture("Assets/Environment/environment.dds");
@@ -83,7 +80,7 @@ void Skybox::Initialize()
 
 	// Add the actual "box"
 	MeshFilter* mesh = g_gameObject->AddComponent<MeshFilter>();
-	mesh->CreateCube();
+	mesh->SetDefaultMesh(Cube);
 
 	// Add a mesh renderer
 	MeshRenderer* meshRenderer = g_gameObject->AddComponent<MeshRenderer>();

@@ -37,12 +37,20 @@ public:
 										[MISC]
 	------------------------------------------------------------------------------*/
 	void Clear();
-	Mesh* Add(const std::string& name, const std::string& rootGameObjectID, const std::string& gameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices);
+	Mesh* Add(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
 	void Add(const std::vector<std::string>& filePaths);
 	Mesh* GetMesh(const std::string& ID);
 	std::vector<std::string> GetAllMeshFilePaths();
 	std::vector<Mesh*> GetModelMeshesByModelName(const std::string& modelName);
 	int GetMeshCount();
+
+	//= DEFAULT MESHES ============================================================================================
+	void GenerateDefaultMeshes();
+	void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
+	void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
+	Mesh* GetDefaultCube();
+	Mesh* GetDefaultQuad();
+	//=============================================================================================================
 
 	//= MESH PROCESSING =============================================================================
 	float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
@@ -53,4 +61,7 @@ public:
 
 private:
 	std::vector<Mesh*> m_meshes;
+
+	Mesh* m_defaultCube;
+	Mesh* m_defaultQuad;
 };

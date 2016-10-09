@@ -50,11 +50,8 @@ public:
 
 	std::string GetID() const { return m_ID; }
 
-	std::string GetGameObjectID() const { return m_gameObjectID; }
-	void SetGameObjectID(const std::string& ID) { m_gameObjectID = ID; }
-
 	std::string GetRootGameObjectID() const { return m_rootGameObjectID; }
-	void SetRootGameObjectID(const std::string& ID) { m_rootGameObjectID = ID; }
+	void SetRootGameObjectID(const std::string& rootGameObjectID) { m_rootGameObjectID = rootGameObjectID; }
 
 	std::string GetFilePath() { return m_filePath; }
 	void SetFilePath(const std::string& filepath) { m_filePath = filepath; }
@@ -105,7 +102,6 @@ private:
 
 	std::string m_name;
 	std::string m_ID;
-	std::string m_gameObjectID;
 	std::string m_rootGameObjectID;
 	std::string m_filePath;
 

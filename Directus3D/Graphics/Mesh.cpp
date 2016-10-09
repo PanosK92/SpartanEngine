@@ -36,7 +36,6 @@ using namespace Directus::Math;
 Mesh::Mesh()
 {
 	m_ID = GENERATE_GUID;
-	m_gameObjectID = "N/A";
 	m_rootGameObjectID = "N/A";
 	m_filePath = "N/A";
 	m_vertexCount = 0;
@@ -54,9 +53,8 @@ Mesh::~Mesh()
 	m_vertices.clear();
 	m_indices.clear();
 	m_name.clear();
-	m_rootGameObjectID.clear();
 	m_ID.clear();
-	m_gameObjectID.clear();
+	m_rootGameObjectID.clear();
 	m_vertexCount = 0;
 	m_indexCount = 0;
 	m_triangleCount = 0;
@@ -66,7 +64,6 @@ Mesh::~Mesh()
 void Mesh::Serialize()
 {
 	Serializer::WriteSTR(m_ID);
-	Serializer::WriteSTR(m_gameObjectID);
 	Serializer::WriteSTR(m_rootGameObjectID);
 	Serializer::WriteSTR(m_name);
 	Serializer::WriteSTR(m_filePath);
@@ -89,7 +86,6 @@ void Mesh::Serialize()
 void Mesh::Deserialize()
 {
 	m_ID = Serializer::ReadSTR();
-	m_gameObjectID = Serializer::ReadSTR();
 	m_rootGameObjectID = Serializer::ReadSTR();
 	m_name = Serializer::ReadSTR();
 	m_filePath = Serializer::ReadSTR();

@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Mesh.h"
 //========================================
 
+enum DefaultMesh { Cube, Quad };
+
 class __declspec(dllexport) MeshFilter : public IComponent
 {
 public:
@@ -43,9 +45,8 @@ public:
 	virtual void Serialize();
 	virtual void Deserialize();
 
-	void CreateCube();
-	void CreateQuad();
-	void Set(std::string name, std::string rootGameObjectID, std::vector<VertexPositionTextureNormalTangent> vertices, std::vector<unsigned int> indices);
+	void SetDefaultMesh(DefaultMesh defaultMesh);
+	void Set(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
 	bool SetBuffers() const;
 	Directus::Math::Vector3 GetCenter() const;
 	Directus::Math::Vector3 GetBoundingBox() const;
