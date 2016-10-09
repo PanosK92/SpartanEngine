@@ -54,35 +54,30 @@ void D3D11Buffer::Initialize(Graphics* graphicsDevice)
 bool D3D11Buffer::CreateConstantBuffer(unsigned int size)
 {
 	bool result = Create(
-		-1, 
+		-1,
 		size,
-		nullptr, 
+		nullptr,
 		D3D11_USAGE_DYNAMIC,
 		D3D11_BIND_CONSTANT_BUFFER,
 		D3D11_CPU_ACCESS_WRITE
 	);
 
 	if (!result)
-		LOG("Failed to create constant buffer.", Log::Error);
+		LOG_ERROR("Failed to create constant buffer.");
 
 	return result;
 }
 
 bool D3D11Buffer::CreateVertexBuffer(vector<VertexPositionTextureNormalTangent>& vertices)
 {
-	bool result = false;
-	
-	if (!vertices.empty())
-	{
-		result = Create(
-			sizeof(VertexPositionTextureNormalTangent),
-			(unsigned int)vertices.size(),
-			&vertices[0],
-			D3D11_USAGE_DEFAULT,
-			D3D11_BIND_VERTEX_BUFFER,
-			static_cast<D3D11_CPU_ACCESS_FLAG>(0)
-		);
-	}
+	bool result = Create(
+		sizeof(VertexPositionTextureNormalTangent),
+		(unsigned int)vertices.size(),
+		&vertices[0],
+		D3D11_USAGE_DEFAULT,
+		D3D11_BIND_VERTEX_BUFFER,
+		static_cast<D3D11_CPU_ACCESS_FLAG>(0)
+	);
 
 	if (!result)
 		LOG_ERROR("Failed to create vertex buffer.");
@@ -92,19 +87,14 @@ bool D3D11Buffer::CreateVertexBuffer(vector<VertexPositionTextureNormalTangent>&
 
 bool D3D11Buffer::CreateIndexBuffer(vector<unsigned int>& indices)
 {
-	bool result = false;
-
-	if (!indices.empty())
-	{
-		result = Create(
-			sizeof(unsigned int),
-			indices.size(),
-			&indices[0],
-			D3D11_USAGE_DEFAULT,
-			D3D11_BIND_INDEX_BUFFER,
-			static_cast<D3D11_CPU_ACCESS_FLAG>(0)
-		);
-	}
+	bool result = Create(
+		sizeof(unsigned int),
+		indices.size(),
+		&indices[0],
+		D3D11_USAGE_DEFAULT,
+		D3D11_BIND_INDEX_BUFFER,
+		static_cast<D3D11_CPU_ACCESS_FLAG>(0)
+	);
 
 	if (!result)
 		LOG_ERROR("Failed to create index buffer.");
@@ -173,7 +163,7 @@ void D3D11Buffer::SetPS(unsigned int startSlot)
 }
 
 void* D3D11Buffer::Map()
-{	
+{
 	if (!m_buffer)
 	{
 		LOG_ERROR("Can't map uninitialized buffer.");

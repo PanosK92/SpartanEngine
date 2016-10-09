@@ -171,7 +171,6 @@ void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* 
 		SetGameObjectTransform(parentGameObject, node->mTransformation); // apply transformation	
 	// node->mName always returns "RootNode", therefore the model name has to be extracted from the model path
 
-
 	// process all the node's meshes
 	for (auto i = 0; i < node->mNumMeshes; i++)
 	{

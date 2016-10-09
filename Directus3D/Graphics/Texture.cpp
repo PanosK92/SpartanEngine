@@ -84,7 +84,6 @@ void Texture::Deserialize()
 
 bool Texture::SaveMetadata()
 {
-	LOG_INFO(m_filePathMetadata);
 	if (!FileSystem::IsSupportedTextureMetadata(m_filePathMetadata))
 		return false;
 
