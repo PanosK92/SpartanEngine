@@ -579,7 +579,7 @@ void DirectusHierarchy::CreateCube()
 
     // Add a mesh component
     MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
-    meshComp->CreateCube();
+    meshComp->SetDefaultMesh(DefaultMesh::Cube);
 
     // Add a mesh renderer
     MeshRenderer* meshRendererComp = gameobject->AddComponent<MeshRenderer>();
@@ -597,7 +597,7 @@ void DirectusHierarchy::CreateQuad()
 
     // Add a mesh component
     MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
-    meshComp->CreateQuad();
+    meshComp->SetDefaultMesh(DefaultMesh::Quad);
 
     // Add a mesh renderer
     MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>();

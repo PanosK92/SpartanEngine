@@ -79,124 +79,32 @@ void MeshFilter::Deserialize()
 	CreateBuffers();
 }
 
-void MeshFilter::CreateCube()
+// Use this to set a default engine mesh a cube, a sphere and so on.
+void MeshFilter::SetDefaultMesh(DefaultMesh defaultMesh)
 {
-	vector<VertexPositionTextureNormalTangent> vertices;
+	switch (defaultMesh)
+	{
+	case Cube:
+		m_mesh = g_meshPool->GetDefaultCube();
+		break;
+	case Quad:
+		m_mesh = g_meshPool->GetDefaultQuad();
+		break;
+	default:
+		m_mesh = nullptr;
+		break;
+	}
 
-	// front
-	vertices.push_back({Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0)}); // 0
-	vertices.push_back({Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0)}); // 1
-	vertices.push_back({Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0)}); // 2
-	vertices.push_back({Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0)}); // 3
-
-	// bottom
-	vertices.push_back({Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0)}); // 4
-	vertices.push_back({Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0)}); // 5
-	vertices.push_back({Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0)}); // 6
-	vertices.push_back({Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0)}); // 7
-
-	// back
-	vertices.push_back({Vector3(-0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0)}); // 8
-	vertices.push_back({Vector3(-0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0)}); // 9
-	vertices.push_back({Vector3(0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0)}); // 10
-	vertices.push_back({Vector3(0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0)}); // 11
-
-	// top
-	vertices.push_back({Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0)}); // 12
-	vertices.push_back({Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)}); // 13
-	vertices.push_back({Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0)}); // 14
-	vertices.push_back({Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)}); // 15
-
-	// left
-	vertices.push_back({Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0)}); // 16
-	vertices.push_back({Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0)}); // 17
-	vertices.push_back({Vector3(-0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0)}); // 18
-	vertices.push_back({Vector3(-0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0)}); // 19
-
-	// right
-	vertices.push_back({Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0)}); // 20
-	vertices.push_back({Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0)}); // 21
-	vertices.push_back({Vector3(0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0)}); // 22
-	vertices.push_back({Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0)}); // 23
-
-	vector<unsigned int> indices;
-
-	// front
-	indices.push_back(0);
-	indices.push_back(1);
-	indices.push_back(2);
-	indices.push_back(2);
-	indices.push_back(1);
-	indices.push_back(3);
-
-	// bottom
-	indices.push_back(4);
-	indices.push_back(5);
-	indices.push_back(6);
-	indices.push_back(6);
-	indices.push_back(5);
-	indices.push_back(7);
-
-	// back
-	indices.push_back(10);
-	indices.push_back(9);
-	indices.push_back(8);
-	indices.push_back(11);
-	indices.push_back(9);
-	indices.push_back(10);
-
-	// top
-	indices.push_back(14);
-	indices.push_back(13);
-	indices.push_back(12);
-	indices.push_back(15);
-	indices.push_back(13);
-	indices.push_back(14);
-
-	// left
-	indices.push_back(16);
-	indices.push_back(17);
-	indices.push_back(18);
-	indices.push_back(18);
-	indices.push_back(17);
-	indices.push_back(19);
-
-	// left
-	indices.push_back(22);
-	indices.push_back(21);
-	indices.push_back(20);
-	indices.push_back(23);
-	indices.push_back(21);
-	indices.push_back(22);
-
-	Set("Cube", g_transform->GetRoot()->GetGameObject()->GetID(), vertices, indices);
+	CreateBuffers();
 }
 
-void MeshFilter::CreateQuad()
-{
-	vector<VertexPositionTextureNormalTangent> vertices;
-	vertices.push_back({Vector3(-0.5f, 0.0f, 0.5f),Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0)}); // 0 top-left
-	vertices.push_back({Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0)}); // 1 top-right
-	vertices.push_back({Vector3(-0.5f, 0.0f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)}); // 2 bottom-left
-	vertices.push_back({Vector3(0.5f, 0.0f, -0.5f),Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)}); // 3 bottom-right
-
-	vector<unsigned int> indices;
-	indices.push_back(3);
-	indices.push_back(2);
-	indices.push_back(0);
-	indices.push_back(3);
-	indices.push_back(0);
-	indices.push_back(1);
-
-	Set("Quad", g_transform->GetRoot()->GetGameObject()->GetID(), vertices, indices);
-}
-
-void MeshFilter::Set(string name, string rootGameObjectID, vector<VertexPositionTextureNormalTangent> vertices, vector<unsigned int> indices)
+// Use this create a new mesh, this is what you might wanna call after loading a 3d model
+void MeshFilter::Set(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
 {
 	// Add the mesh data to the pool so it gets initialized properly
-	m_mesh = g_meshPool->Add(name, rootGameObjectID, g_gameObject->GetID(), vertices, indices);
+	m_mesh = g_meshPool->Add(name, rootGameObjectID, vertices, indices);
 
-	// Make the mesh auto-update the buffers whenever it's changes.
+	// Make the mesh re-create the buffers whenever it updates.
 	m_mesh->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
 }
 
@@ -205,7 +113,12 @@ bool MeshFilter::SetBuffers() const
 {
 	if (!m_vertexBuffer || !m_indexBuffer)
 	{
-		LOG_WARNING("GameObject \"" + g_gameObject->GetName() + "\" mesh buffer haven't been initialized. They can't be set.");
+		if (!m_vertexBuffer)
+			LOG_WARNING("Can't set vertex buffer. GameObject \"" + g_gameObject->GetName() + "\" doesn't have an initialized vertex buffer.");
+
+		if (!m_indexBuffer)
+			LOG_WARNING("Can't set index buffer. GameObject \"" + g_gameObject->GetName() + "\" doesn't have an initialized index buffer.");
+
 		return false;
 	}
 

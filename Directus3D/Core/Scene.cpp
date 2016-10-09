@@ -81,12 +81,13 @@ void Scene::Update()
 //====
 // I/O
 //====
-bool Scene::SaveToFile(string path)
+bool Scene::SaveToFile(string filePath)
 {
-	if (FileSystem::GetExtensionFromPath(path) != SCENE_EXTENSION)
-		path += SCENE_EXTENSION;
+	// Add scene file extension to the filepath if it's missing
+	if (FileSystem::GetExtensionFromPath(filePath) != SCENE_EXTENSION)
+		filePath += SCENE_EXTENSION;
 
-	Serializer::StartWriting(path);
+	Serializer::StartWriting(filePath);
 
 	// Gather all the paths of any resource files used by the scene
 	vector<string> texturePaths = m_texturePool->GetAllTextureFilePaths();
@@ -98,6 +99,9 @@ bool Scene::SaveToFile(string path)
 	Serializer::WriteVectorSTR(materialPaths);
 	Serializer::WriteVectorSTR(meshPaths);
 
+	for (auto i = 0; i < meshPaths.size(); i++)
+		LOG_INFO(meshPaths[i]);
+
 	// Save the GameObjects
 	GameObjectPool::GetInstance().Serialize();
 
@@ -106,11 +110,11 @@ bool Scene::SaveToFile(string path)
 	return true;
 }
 
-bool Scene::LoadFromFile(string path)
+bool Scene::LoadFromFile(string filePath)
 {
-	if (!FileSystem::FileExists(path))
+	if (!FileSystem::FileExists(filePath))
 	{
-		LOG_ERROR(path + " was not found.");
+		LOG_ERROR(filePath + " was not found.");
 		return false;
 	}
 	Clear();
@@ -119,12 +123,15 @@ bool Scene::LoadFromFile(string path)
 	
 	// Read all the paths of any resource files used by the scene
 	//===========================================================
-	Serializer::StartReading(path);
+	Serializer::StartReading(filePath);
 
 	// Gather all the paths of any resource files used by the scene
 	vector<string> texturePaths = Serializer::ReadVectorSTR();
 	vector<string> materialPaths = Serializer::ReadVectorSTR();
 	vector<string> meshPaths = Serializer::ReadVectorSTR();
+
+	for (auto i = 0; i < meshPaths.size(); i++)
+		LOG_INFO(meshPaths[i]);
 
 	Serializer::StopReading();
 	//===========================================================
@@ -136,7 +143,7 @@ bool Scene::LoadFromFile(string path)
 		
 	// Load all the GameObjects present in the scene
 	//==============================================
-	Serializer::StartReading(path);
+	Serializer::StartReading(filePath);
 
 	// We read our way to the point where GameObject data starts.
 	// There might be a more elegant solution here, but the 
@@ -186,7 +193,6 @@ void Scene::Clear()
 	m_physics->Reset();
 	m_renderer->Clear();
 
-	m_mainCamera = nullptr;
 	CreateSkybox();
 }
 
