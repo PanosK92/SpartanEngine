@@ -46,12 +46,12 @@ using namespace std;
 //=============================
 Skybox::Skybox()
 {
-	m_environmentSRV = nullptr;
+	m_cubeMapTexture = nullptr;
 }
 
 Skybox::~Skybox()
 {
-	SafeRelease(m_environmentSRV);
+	SafeDelete(m_cubeMapTexture);
 }
 
 /*------------------------------------------------------------------------------
@@ -59,35 +59,29 @@ Skybox::~Skybox()
 ------------------------------------------------------------------------------*/
 void Skybox::Initialize()
 {
-	Texture* texture = g_texturePool->GetTextureByPath("Assets/Environment/environment.dds");
-	if (!texture)
-	{
-		HRESULT hr = CreateDDSTextureFromFile(g_graphicsDevice->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &m_environmentSRV);
-		if (FAILED(hr))
-			return;
+	ID3D11ShaderResourceView* cubeMapSRV = nullptr;
+	HRESULT hr = CreateDDSTextureFromFile(g_graphicsDevice->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &cubeMapSRV);
+	if (FAILED(hr))
+		return;
 
-		texture = new Texture();
-		texture->SetType(CubeMap);
-		texture->SetFilePathTexture("Assets/Environment/environment.dds");
-		texture->SetWidth(1200);
-		texture->SetHeight(1200);
-		texture->SetGrayscale(false);
-		texture->SetID3D11ShaderResourceView(m_environmentSRV);
-		g_texturePool->Add(texture);
-	}
-
-	g_materialPool->GetMaterialStandardSkybox()->SetTextureByID(texture->GetID());
+	m_cubeMapTexture = new Texture();
+	m_cubeMapTexture->SetType(CubeMap);
+	m_cubeMapTexture->SetFilePathTexture("Assets/Environment/environment.dds");
+	m_cubeMapTexture->SetWidth(1200);
+	m_cubeMapTexture->SetHeight(1200);
+	m_cubeMapTexture->SetGrayscale(false);
+	m_cubeMapTexture->SetID3D11ShaderResourceView(cubeMapSRV);
 
 	// Add the actual "box"
 	MeshFilter* mesh = g_gameObject->AddComponent<MeshFilter>();
 	mesh->SetDefaultMesh(Cube);
-
+	
 	// Add a mesh renderer
 	MeshRenderer* meshRenderer = g_gameObject->AddComponent<MeshRenderer>();
 	meshRenderer->SetMaterialStandardSkybox();
 	meshRenderer->SetCastShadows(false);
 	meshRenderer->SetReceiveShadows(false);
-	meshRenderer->GetMaterial()->SetTextureByID(texture->GetID());
+	meshRenderer->GetMaterial()->SetTexture(m_cubeMapTexture);
 
 	g_transform->SetScale(Vector3(1000, 1000, 1000));
 }
@@ -105,6 +99,7 @@ void Skybox::Remove()
 void Skybox::Update()
 {
 	GameObject* camera = g_scene->GetMainCamera();
+
 	if (camera)
 		g_transform->SetPosition(camera->GetTransform()->GetPosition());
 }
@@ -124,5 +119,5 @@ void Skybox::Deserialize()
 ------------------------------------------------------------------------------*/
 ID3D11ShaderResourceView* Skybox::GetEnvironmentTexture() const
 {
-	return m_environmentSRV;
+	return m_cubeMapTexture ? m_cubeMapTexture->GetID3D11ShaderResourceView() : nullptr;
 }
