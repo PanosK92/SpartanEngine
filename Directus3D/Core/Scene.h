@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/TexturePool.h"
 #include "../Pools/MaterialPool.h"
 #include "../Pools/MeshPool.h"
+#include "../Pools/ThreadPool.h"
 //================================
 
 #define SCENE_EXTENSION ".directus"
@@ -38,7 +39,15 @@ class ModelImporter;
 class Scene
 {
 public:
-	Scene(TexturePool* texturePool, MaterialPool* materialPool, MeshPool* meshPool, ScriptEngine* scriptEngine, PhysicsWorld* physics, ModelImporter* modelLoader, Renderer* renderer, ShaderPool* shaderPool);
+	Scene(TexturePool* texturePool, 
+		MaterialPool* materialPool, 
+		MeshPool* meshPool, ScriptEngine* 
+		scriptEngine, PhysicsWorld* physics, 
+		ModelImporter* modelLoader, 
+		Renderer* renderer, 
+		ShaderPool* shaderPool,
+		ThreadPool* threadPool
+	);
 	~Scene();
 
 	void Initialize();
@@ -83,5 +92,6 @@ private:
 	ModelImporter* m_modelLoader;
 	Renderer* m_renderer;
 	ShaderPool* m_shaderPool;
+	ThreadPool* m_threadPool;
 	//============================================
 };
