@@ -41,8 +41,8 @@ private:
 	void Serialize();
 	void Deserialize();
 public:
-	void SaveToFile(const std::string& filePath);
-	bool LoadFromFile(const std::string& filePath);
+	void SaveToDirectory(const std::string& directory);
+	bool LoadFromFile(const std::string& directory);
 	//==============================================================================
 
 	std::string GetName() const { return m_name; }

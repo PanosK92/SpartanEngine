@@ -375,14 +375,14 @@ Transform* Transform::GetChildByIndex(int index)
 {
 	if (!HasChildren())
 	{
-		LOG(g_gameObject->GetName() + " has no children.", Log::Warning);
+		LOG_WARNING(g_gameObject->GetName() + " has no children.");
 		return nullptr;
 	}
 
 	// prevent an out of vector bounds error
 	if (index >= GetChildrenCount())
 	{
-		LOG("There is no child with an index of \"" + to_string(index) + "\".", Log::Warning);
+		LOG_WARNING("There is no child with an index of \"" + to_string(index) + "\".");
 		return nullptr;
 	}
 

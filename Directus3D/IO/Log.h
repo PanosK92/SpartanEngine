@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define LOG_INFO(text) Log::Write(text, Log::Info)
 #define LOG_WARNING(text) Log::Write(text, Log::Warning)
 #define LOG_ERROR(text) Log::Write(text, Log::Error)
-#define LOG(text) Log::Write(text, Log::Undefined)
 
 class __declspec(dllexport) Log
 {
@@ -41,8 +40,7 @@ public:
 	{
 		Info,
 		Warning,
-		Error,
-		Undefined
+		Error
 	};
 
 	static void Initialize();
@@ -50,8 +48,8 @@ public:
 	static void SetLogger(ILogger* logger);
 
 	//= LOGGING ==========================================================================
-	static void Write(std::string text, LogType type);
-	static void WriteAsText(std::string text, LogType type);
+	static void Write(const std::string& text, LogType type);
+	static void WriteAsText(const std::string& text, LogType type);
 	static void Write(const char* text, LogType type);
 	static void Write(const Directus::Math::Vector3& vector, LogType type);
 	static void Write(const Directus::Math::Quaternion& quaternion, LogType type);

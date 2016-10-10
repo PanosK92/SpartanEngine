@@ -105,7 +105,7 @@ void Mesh::Deserialize()
 	m_boundingBox = Serializer::ReadVector3();
 }
 
-void Mesh::SaveToFile(const string& path)
+void Mesh::SaveToDirectory(const string& path)
 {
 	m_filePath = path + GetName() + MESH_EXTENSION;
 
