@@ -41,6 +41,7 @@ ThreadPool::~ThreadPool()
 	// Set termination flag to true.
 	m_stopping = true;
 
+	// Unlock the mutex
 	lock.unlock();
 
 	// Wake up all threads.

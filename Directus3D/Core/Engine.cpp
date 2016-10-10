@@ -51,6 +51,7 @@ Engine::Engine()
 	m_texturePool = nullptr;
 	m_graphics = nullptr;
 	m_shaderPool = nullptr;
+	m_threadPool = nullptr;
 }
 
 Engine::~Engine()
@@ -109,7 +110,16 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 	// 14 - RENDERER
 	m_renderer = new Renderer();
-	m_scene = new Scene(m_texturePool, m_materialPool, m_meshPool, m_scriptEngine, m_physicsWorld, m_modelLoader, m_renderer, m_shaderPool);
+	m_scene = new Scene(m_texturePool, 
+		m_materialPool, 
+		m_meshPool, 
+		m_scriptEngine,
+		m_physicsWorld, 
+		m_modelLoader,
+		m_renderer, 
+		m_shaderPool,
+		m_threadPool
+	);
 	m_renderer->Initialize(m_graphics, m_timer, m_physicsWorld, m_scene, m_shaderPool, m_materialPool);
 
 	// 15 - GAMEOBJECT POOL
