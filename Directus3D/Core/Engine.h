@@ -34,6 +34,7 @@ class MaterialPool;
 class TexturePool;
 class ShaderPool;
 class Stopwatch;
+class ThreadPool;
 
 class __declspec(dllexport) Engine
 {
@@ -63,4 +64,5 @@ private:
 	MaterialPool* m_materialPool;
 	TexturePool* m_texturePool;
 	ShaderPool* m_shaderPool;
+	ThreadPool* m_threadPool;
 };
