@@ -63,10 +63,10 @@ void Script::Remove()
 
 void Script::Update()
 {
-	if (GET_ENGINE_MODE == Editor_Idle || GET_ENGINE_MODE == Editor_Paused)
+	if (!m_scriptInstance)
 		return;
 
-	if (!m_scriptInstance)
+	if (GET_ENGINE_MODE == Editor_Idle || GET_ENGINE_MODE == Editor_Paused)
 		return;
 
 	if (m_scriptInstance->IsInstantiated())
@@ -87,22 +87,20 @@ void Script::Deserialize()
 }
 //====================================================================================
 
-bool Script::AddScript(string path)
+bool Script::AddScript(const string& filePath)
 {
 	// Instantiate the script
 	m_scriptInstance = new ScriptInstance();
-	m_scriptInstance->Instantiate(path, g_gameObject, g_scriptEngine);
+	m_scriptInstance->Instantiate(filePath, g_gameObject, g_scriptEngine);
 
-	// If the script didn't instantiate successfully, don't bother with anything
+	// Check if the script has been instantiated successfully.
 	if (!m_scriptInstance->IsInstantiated())
 	{
 		SafeDelete(m_scriptInstance);
 		return false;
 	}
 
-	if (m_scriptInstance->IsInstantiated())
-		m_scriptInstance->ExecuteStart();
-
+	m_scriptInstance->ExecuteStart();
 	return true;
 }
 

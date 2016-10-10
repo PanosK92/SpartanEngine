@@ -181,7 +181,7 @@ Vector4 Camera::GetClearColor()
 	return m_clearColor;
 }
 
-void Camera::SetClearColor(Vector4 color)
+void Camera::SetClearColor(const Vector4& color)
 {
 	m_clearColor = color;
 }
