@@ -149,6 +149,7 @@
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Core\Scene.cpp" />
     <ClCompile Include="Core\Settings.cpp" />
+    <ClCompile Include="Pools\ThreadPool.cpp" />
     <ClCompile Include="Signals\Signaling.cpp" />
     <ClCompile Include="Core\Socket.cpp" />
     <ClCompile Include="Graphics\Texture.cpp" />
