@@ -49,6 +49,9 @@ void Script::Initialize()
 
 void Script::Start()
 {
+	if (!m_scriptInstance)
+		return;
+
 	if (m_scriptInstance->IsInstantiated())
 		m_scriptInstance->ExecuteStart();
 }
@@ -61,6 +64,9 @@ void Script::Remove()
 void Script::Update()
 {
 	if (GET_ENGINE_MODE == Editor_Idle || GET_ENGINE_MODE == Editor_Paused)
+		return;
+
+	if (!m_scriptInstance)
 		return;
 
 	if (m_scriptInstance->IsInstantiated())

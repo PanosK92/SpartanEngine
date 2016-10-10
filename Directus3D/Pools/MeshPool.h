@@ -39,7 +39,10 @@ public:
 	void Clear();
 	Mesh* Add(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
 	void Add(const std::vector<std::string>& filePaths);
-	Mesh* GetMesh(const std::string& ID);
+
+	Mesh* GetMeshByID(const std::string& ID);
+	Mesh* GetMeshByPath(const std::string& path);
+
 	std::vector<std::string> GetAllMeshFilePaths();
 	std::vector<Mesh*> GetModelMeshesByModelName(const std::string& modelName);
 	int GetMeshCount();

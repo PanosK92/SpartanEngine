@@ -99,10 +99,19 @@ void MeshPool::Add(const vector<string>& filePaths)
 	}
 }
 
-Mesh* MeshPool::GetMesh(const string& ID)
+Mesh* MeshPool::GetMeshByID(const string& ID)
 {
 	for (auto i = 0; i < m_meshes.size(); i++)
 		if (m_meshes[i]->GetID() == ID)
+			return m_meshes[i];
+
+	return nullptr;
+}
+
+Mesh* MeshPool::GetMeshByPath(const string& path)
+{
+	for (auto i = 0; i < m_meshes.size(); i++)
+		if (m_meshes[i]->GetFilePath() == path)
 			return m_meshes[i];
 
 	return nullptr;

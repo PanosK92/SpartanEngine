@@ -258,7 +258,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 	meshComp->Set(mesh->mName.C_Str(), m_rootGameObject->GetID(), vertices, indices);
 
 	// Save the mesh in our custom format
-	meshComp->GetMesh()->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
+	meshComp->GetMesh()->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/", false);
 
 	// process materials
 	if (scene->HasMaterials())
@@ -276,7 +276,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material->GetID());
 
 		// Save the material in our custom format
-		material->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
+		material->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/", false);
 	}
 
 	// free memory
