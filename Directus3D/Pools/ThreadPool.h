@@ -19,10 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========
+//= INCLUDES ====
 #include <vector>
 #include <thread>
-//===================
+#include <mutex>
+#include <queue>
+//===============
 
 class ThreadPool
 {
@@ -30,6 +32,16 @@ public:
 	ThreadPool();
 	~ThreadPool();
 
+	// This function is invoked by the threads
+	void Invoke();
+
+	// This function is used to add tasks to the thread pool
+	void AddTask(std::function<void()> task);
+
 private:
-	std::vector<std::thread> workers;
+	std::vector<std::thread> m_threads;
+	std::queue<std::function<void()>> m_tasks;
+	std::mutex m_tasksMutex;
+	std::condition_variable m_conditionVar;
+	bool m_stopping;
 };
