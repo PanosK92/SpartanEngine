@@ -81,7 +81,7 @@ void Scene::Update()
 //====
 // I/O
 //====
-bool Scene::SaveToFile(string filePath)
+bool Scene::SaveToFile(string& filePath)
 {
 	// Add scene file extension to the filepath if it's missing
 	if (FileSystem::GetExtensionFromPath(filePath) != SCENE_EXTENSION)
@@ -107,7 +107,7 @@ bool Scene::SaveToFile(string filePath)
 	return true;
 }
 
-bool Scene::LoadFromFile(string filePath)
+bool Scene::LoadFromFile(const string& filePath)
 {
 	if (!FileSystem::FileExists(filePath))
 	{
@@ -193,7 +193,7 @@ void Scene::Clear()
 GameObject* Scene::GetSkybox()
 {
 	vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
-	for (int i = 0; i < gameObjects.size(); i++)
+	for (auto i = 0; i < gameObjects.size(); i++)
 	{
 		if (gameObjects[i]->HasComponent<Skybox>())
 			return gameObjects[i];
@@ -233,7 +233,7 @@ void Scene::AnalyzeGameObjects()
 	m_mainCamera = nullptr;
 
 	vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
-	for (int i = 0; i < gameObjects.size(); i++)
+	for (auto i = 0; i < gameObjects.size(); i++)
 	{
 		GameObject* gameobject = gameObjects[i];
 
@@ -276,10 +276,12 @@ GameObject* Scene::CreateCamera()
 {
 	GameObject* camera = new GameObject();
 	camera->SetName("Camera");
-	camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 	camera->AddComponent<Camera>();
-	camera->AddComponent<Script>()->AddScript("Assets/Scripts/FirstPersonController.as");
-	camera->AddComponent<Script>()->AddScript("Assets/Scripts/MouseLook.as");
+	camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
+	
+	Script* scriptComp = camera->AddComponent<Script>();
+	scriptComp->AddScript("Assets/Scripts/FirstPersonController.as");
+	scriptComp->AddScript("Assets/Scripts/MouseLook.as");
 
 	return camera;
 }
@@ -288,10 +290,11 @@ GameObject* Scene::CreateDirectionalLight()
 {
 	GameObject* light = new GameObject();
 	light->SetName("DirectionalLight");
-	light->AddComponent<Light>();
 	light->GetComponent<Transform>()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
-	light->GetComponent<Light>()->SetLightType(Directional);
-	light->GetComponent<Light>()->SetIntensity(4.0f);
+
+	Light* lightComp = light->AddComponent<Light>();
+	lightComp->SetLightType(Directional);
+	lightComp->SetIntensity(4.0f);
 
 	return light;
 }

@@ -46,7 +46,14 @@ EngineLogger::EngineLogger(QListWidget* list)
     m_list = list;
 }
 
-void EngineLogger::Log(string log, int type)
+/*
+    I have to replace your QListWidget with a QListView and implement my
+    own data model inheriting QAbstractListModel. I could pass the results
+    to the model and it will pass the items data when needed. This should
+    should help with performance & memory issues the logging currenty suffers from.
+*/
+
+void EngineLogger::Log(const string& log, int type)
 {
     if (!m_list)
         return;
@@ -54,7 +61,6 @@ void EngineLogger::Log(string log, int type)
     // 0 = Info,
     // 1 = Warning,
     // 2 = Error,
-    // 3 = Undefined
 
     QListWidgetItem* listItem = new QListWidgetItem(QString::fromStdString(log));
     m_list->addItem(listItem);
