@@ -25,8 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/D3D11/D3D11Shader.h"
 //========================================
 
-#define TEXTURE_ID_NA "-1"
-#define TEXTURE_PATH_UNKNOWN "-1"
 #define TEXTURE_METADATA_EXTENSION ".tex"
 
 enum TextureType
@@ -49,7 +47,7 @@ public:
 	~Texture();
 
 	//= IO ================================================
-	bool LoadFromFile(const std::string& path);
+	bool LoadFromFile(const std::string& filePath);
 private:
 	void Serialize();
 	void Deserialize();

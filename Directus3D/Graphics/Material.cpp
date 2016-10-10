@@ -125,9 +125,9 @@ void Material::Deserialize()
 	AcquireShader();
 }
 
-void Material::SaveAsFile(const string& path)
+void Material::SaveToDirectory(const string& directory)
 {
-	m_filePath = path + GetName() + MATERIAL_EXTENSION;
+	m_filePath = directory + GetName() + MATERIAL_EXTENSION;
 
 	Serializer::StartWriting(m_filePath);
 	Serialize();
@@ -210,7 +210,7 @@ string Material::GetTexturePathByType(TextureType type)
 	if (texture)
 		return texture->GetFilePathTexture();
 
-	return TEXTURE_PATH_UNKNOWN;
+	return PATH_UNAVAILABLE;
 }
 
 vector<string> Material::GetTexturePaths()

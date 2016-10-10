@@ -53,8 +53,8 @@ private:
 	void Serialize();
 	void Deserialize();
 public:
-	void SaveAsFile(const std::string& path);
-	bool LoadFromFile(const std::string& path);
+	void SaveToDirectory(const std::string& directory);
+	bool LoadFromFile(const std::string& filePath);
 	//=============================================================================
 
 	//= TEXTURES ==================================================================
