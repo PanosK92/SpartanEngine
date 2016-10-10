@@ -70,7 +70,7 @@ void MeshRenderer::Update()
 
 void MeshRenderer::Serialize()
 {
-	Serializer::WriteSTR(m_material ? m_material->GetID() : "-1");
+	Serializer::WriteSTR(m_material ? m_material->GetID() : "N/A");
 	Serializer::WriteBool(m_castShadows);
 	Serializer::WriteBool(m_receiveShadows);
 }

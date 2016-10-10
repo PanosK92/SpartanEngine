@@ -39,6 +39,7 @@ MeshFilter::MeshFilter()
 	m_vertexBuffer = nullptr;
 	m_indexBuffer = nullptr;
 	m_mesh = nullptr;
+	m_usingDefaultMesh = false;
 }
 
 MeshFilter::~MeshFilter()
@@ -69,20 +70,13 @@ void MeshFilter::Update()
 void MeshFilter::Serialize()
 {
 	Serializer::WriteBool(m_usingDefaultMesh);
-
-	if (!m_usingDefaultMesh)
-		Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : "N/A");
+	Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : "N/A");
 }
 
 void MeshFilter::Deserialize()
 {
 	m_usingDefaultMesh = Serializer::ReadBool();
-
-	if (!m_usingDefaultMesh)
-	{
-		string meshDataID = Serializer::ReadSTR();
-		m_mesh = g_meshPool->GetMeshByID(meshDataID);
-	}
+	m_mesh = g_meshPool->GetMeshByID(Serializer::ReadSTR());
 
 	CreateBuffers();
 }
