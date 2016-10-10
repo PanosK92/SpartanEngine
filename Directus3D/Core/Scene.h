@@ -47,8 +47,8 @@ public:
 	/*------------------------------------------------------------------------------
 										[I/O]
 	------------------------------------------------------------------------------*/
-	bool SaveToFile(std::string path);
-	bool LoadFromFile(std::string path);
+	bool SaveToFile(std::string& filePath);
+	bool LoadFromFile(const std::string& filePath);
 
 	/*------------------------------------------------------------------------------
 										[MISC]

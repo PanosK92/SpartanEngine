@@ -48,7 +48,7 @@ class EngineLogger : public ILogger
 {
 public:
     EngineLogger(QListWidget* list);
-    virtual void Log(std::string log, int type);
+    virtual void Log(const std::string& log, int type);
 private:
     QListWidget* m_list;
 };
