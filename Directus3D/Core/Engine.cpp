@@ -33,8 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Graphics.h"
 #include "Helper.h"
 #include "../Signals/Signaling.h"
-#include "Settings.h"
-
+#include "../Pools/ThreadPool.h"
 //=====================================
 
 Engine::Engine()
@@ -66,57 +65,60 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	// 1 - LOG
 	Log::Initialize();
 
-	// 2 - GRAPHICS
-	m_graphics = new Graphics();
-	m_graphics->Initialize(drawPaneHandle);
-
-	// 3 - TIMER
+	// 2 - TIMER
 	m_timer = new Timer();
 	m_timer->Initialize();
 
-	// 4 - INPUT
+	// 3 - THREAD POOL
+	m_threadPool = new ThreadPool();
+
+	// 4 - GRAPHICS
+	m_graphics = new Graphics();
+	m_graphics->Initialize(drawPaneHandle);
+
+	// 5 - INPUT
 	m_input = new Input();
 	m_input->Initialize(instance, windowHandle);
 
-	// 5 - PHYSICS ENGINE
+	// 6 - PHYSICS ENGINE
 	m_physicsWorld = new PhysicsWorld();
 	m_physicsWorld->Initialize();
 
-	// 6 - SCRIPT ENGINE
+	// 7 - SCRIPT ENGINE
 	m_scriptEngine = new ScriptEngine(m_timer, m_input);
 	m_scriptEngine->Initialize();
 
-	// 7 - SHADER POOL
+	// 8 - SHADER POOL
 	m_shaderPool = new ShaderPool(m_graphics);
 
-	// 8 - MESH POOL
+	// 9 - MESH POOL
 	m_meshPool = new MeshPool();
 
-	// 9 - IMAGE LOADER
+	// 10 - IMAGE LOADER
 	ImageImporter::GetInstance().Initialize(m_graphics);
 
-	// 10 - TEXTURE POOL
+	// 11 - TEXTURE POOL
 	m_texturePool = new TexturePool();
 
-	// 11 - MATERIAL POOL
+	// 12 - MATERIAL POOL
 	m_materialPool = new MaterialPool(m_texturePool, m_shaderPool);
 
-	// 12 - MODEL LOADER
+	// 13 - MODEL LOADER
 	m_modelLoader = new ModelImporter();
 	m_modelLoader->Initialize(m_meshPool, m_texturePool, m_shaderPool, m_materialPool);
 
-	// 13 - RENDERER
+	// 14 - RENDERER
 	m_renderer = new Renderer();
 	m_scene = new Scene(m_texturePool, m_materialPool, m_meshPool, m_scriptEngine, m_physicsWorld, m_modelLoader, m_renderer, m_shaderPool);
 	m_renderer->Initialize(m_graphics, m_timer, m_physicsWorld, m_scene, m_shaderPool, m_materialPool);
 
-	// 14 - GAMEOBJECT POOL
+	// 15 - GAMEOBJECT POOL
 	GameObjectPool::GetInstance().Initialize(m_graphics, m_scene, m_renderer, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physicsWorld, m_scriptEngine);
 
-	// 15 - SCENE	
+	// 16 - SCENE	
 	m_scene->Initialize();
 
-	// 16 - ENGINE SOCKET
+	// 17 - ENGINE SOCKET
 	m_engineSocket = new Socket(this, m_scene, m_renderer, m_input, m_timer, m_modelLoader, m_physicsWorld, m_texturePool, m_graphics);
 }
 
@@ -149,52 +151,55 @@ void Engine::Shutdown()
 {
 	EMIT_SIGNAL(SIGNAL_ENGINE_SHUTDOWN);
 
-	// 16 - ENGINE INTERFACE
+	// 17 - ENGINE INTERFACE
 	delete m_engineSocket;
 
-	// 15 - SCENE
+	// 16 - SCENE
 	delete m_scene;
 
-	// 14 - GAMEOBJECT POOL
+	// 15 - GAMEOBJECT POOL
 	GameObjectPool::GetInstance().Release();
 
-	// 13 - RENDERER
+	// 14 - RENDERER
 	SafeDelete(m_renderer);
 
-	// 12 - MODEL LOADER
+	// 13 - MODEL LOADER
 	SafeDelete(m_modelLoader);
 
-	// 11 - MATERIAL POOL
+	// 12 - MATERIAL POOL
 	SafeDelete(m_materialPool);
 
-	// 10 - TEXTURE POOL
+	// 11 - TEXTURE POOL
 	SafeDelete(m_texturePool);
 
-	// 9 - IMAGE LOADER
+	// 10 - IMAGE LOADER
 	ImageImporter::GetInstance().Clear();
 
-	// 8 - MESH POOL
+	// 9 - MESH POOL
 	SafeDelete(m_meshPool);
 
-	// 7 - SHADER POOL
+	// 8 - SHADER POOL
 	SafeDelete(m_shaderPool);
 
-	// 6 - SCRIPT ENGINE
+	// 7 - SCRIPT ENGINE
 	SafeDelete(m_scriptEngine);
 
-	// 5 - PHYSICS ENGINE
+	// 6 - PHYSICS ENGINE
 	SafeDelete(m_physicsWorld);
 
-	// 4 - INPUT
+	// 5 - INPUT
 	SafeDelete(m_input);
 
-	// 3 - TIMER
-	SafeDelete(m_timer);
-
-	//2  - GRAPHICS
+	// 4  - GRAPHICS
 	SafeDelete(m_graphics);
 
-	// 1- LOG
+	// 3 - THREAD POOL
+	SafeDelete(m_threadPool);
+
+	// 2 - TIMER
+	SafeDelete(m_timer);
+
+	// 1 - LOG
 	Log::Release();
 }
 
