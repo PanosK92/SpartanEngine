@@ -276,7 +276,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material->GetID());
 
 		// Save the material in our custom format
-		material->SaveAsFile("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
+		material->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
 	}
 
 	// free memory
@@ -353,7 +353,7 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 void ModelImporter::AddTextureToMaterial(Material* material, TextureType textureType, const string& texturePath)
 {
 	string textureSource = FindTexture(texturePath);
-	if (textureSource == TEXTURE_PATH_UNKNOWN)
+	if (textureSource == PATH_UNAVAILABLE)
 	{
 		LOG_WARNING("Failed to find \"" + texturePath + "\".");
 		return;
@@ -405,7 +405,7 @@ string ModelImporter::FindTexture(string texturePath)
 		return texturePath;
 
 	// Give up, no valid texture path was found
-	return TEXTURE_PATH_UNKNOWN;
+	return PATH_UNAVAILABLE;
 }
 
 string ModelImporter::TryPathWithMultipleExtensions(const string& fullpath)

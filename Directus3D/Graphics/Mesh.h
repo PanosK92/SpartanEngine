@@ -42,7 +42,7 @@ private:
 	void Deserialize();
 public:
 	void SaveToDirectory(const std::string& directory);
-	bool LoadFromFile(const std::string& directory);
+	bool LoadFromFile(const std::string& filePath);
 	//==============================================================================
 
 	std::string GetName() const { return m_name; }

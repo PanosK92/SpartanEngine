@@ -31,9 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-#define SCRIPT_PATH_INVALID "-1"
-#define SCRIPT_NAME_INVALID "-1"
-
 Script::Script()
 {
 	m_scriptInstance = nullptr;
@@ -47,7 +44,7 @@ Script::~Script()
 //= ICOMPONENT ==================================================================
 void Script::Initialize()
 {
-	
+
 }
 
 void Script::Start()
@@ -72,21 +69,20 @@ void Script::Update()
 
 void Script::Serialize()
 {
-	Serializer::WriteSTR(m_scriptInstance->GetScriptPath());
+	Serializer::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : PATH_UNAVAILABLE);
 }
 
 void Script::Deserialize()
 {
 	string scriptPath = Serializer::ReadSTR();
-	AddScript(scriptPath);
+
+	if (scriptPath != PATH_UNAVAILABLE)
+		AddScript(scriptPath);
 }
 //====================================================================================
 
 bool Script::AddScript(string path)
 {
-	if (path == SCRIPT_PATH_INVALID)
-		return false;
-
 	// Instantiate the script
 	m_scriptInstance = new ScriptInstance();
 	m_scriptInstance->Instantiate(path, g_gameObject, g_scriptEngine);
@@ -106,10 +102,10 @@ bool Script::AddScript(string path)
 
 string Script::GetScriptPath()
 {
-	return m_scriptInstance ? m_scriptInstance->GetScriptPath() : SCRIPT_PATH_INVALID;
+	return m_scriptInstance ? m_scriptInstance->GetScriptPath() : PATH_UNAVAILABLE;
 }
 
 string Script::GetName()
 {
-	return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromPath(GetScriptPath()) : SCRIPT_NAME_INVALID;
+	return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromPath(GetScriptPath()) : "N/A";
 }

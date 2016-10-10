@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //===============
 
+#define PATH_UNAVAILABLE "PATH_UNAVAILABLE"
+
 class __declspec(dllexport) FileSystem
 {
 public:

@@ -107,12 +107,12 @@ bool Texture::LoadMetadata()
 }
 
 // Loads a texture from an image file (.jpg, .png and so on)
-bool Texture::LoadFromFile(const string& path)
+bool Texture::LoadFromFile(const string& filePath)
 {
 	// load it
-	if (!ImageImporter::GetInstance().Load(path))
+	if (!ImageImporter::GetInstance().Load(filePath))
 	{
-		LOG_ERROR("Failed to load texture \"" + path + "\".");
+		LOG_ERROR("Failed to load texture \"" + filePath + "\".");
 		ImageImporter::GetInstance().Clear();
 		return false;
 	}
