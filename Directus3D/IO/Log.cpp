@@ -49,7 +49,7 @@ void Log::SetLogger(ILogger* logger)
 }
 
 //= LOGGING ==========================================================================
-void Log::Write(string text, LogType type) // all functions resolve to that one
+void Log::Write(const string& text, LogType type) // all functions resolve to that one
 {
 	string prefix = "";
 
@@ -61,9 +61,6 @@ void Log::Write(string text, LogType type) // all functions resolve to that one
 
 	if (type == Error)
 		prefix = "Error:";
-
-	if (type == Undefined)
-		prefix = "Undefined:";
 
 	string finalText = prefix + " " + text;
 
@@ -77,30 +74,14 @@ void Log::Write(string text, LogType type) // all functions resolve to that one
 	m_logger->Log(finalText, type);
 }
 
-void Log::WriteAsText(string text, LogType type)
+void Log::WriteAsText(const string& text, LogType type)
 {
-	string prefix = "";
-
-	if (type == Info)
-		prefix = "Info:";
-
-	if (type == Warning)
-		prefix = "Warning:";
-
-	if (type == Error)
-		prefix = "Error:";
-
-	if (type == Undefined)
-		prefix = "Undefined:";
-
-	string finalText = prefix + " " + text;
-
 	// Open a file to write the error message to.
 	ofstream fout;
 	fout.open("log.txt");
 
 	// Write out the error message.
-	fout << finalText << endl;
+	fout << text << endl;
 
 	// Close the file.
 	fout.close();

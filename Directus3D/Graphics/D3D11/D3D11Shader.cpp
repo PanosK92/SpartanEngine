@@ -118,7 +118,7 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 {
 	if (!m_compiled)
 	{
-		LOG("Can't set input layout of a non-compiled shader.", Log::Error);
+		LOG_ERROR("Can't set input layout of a non-compiled shader.");
 		return false;
 	}
 
@@ -135,7 +135,7 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 	if (m_layoutHasBeenSet)
 		SafeRelease(m_VSBlob);
 	else
-		LOG("Failed to create vertex input layout for " + FileSystem::GetFileNameFromPath(m_path) + ".", Log::Error);
+		LOG_ERROR("Failed to create vertex input layout for " + FileSystem::GetFileNameFromPath(m_path) + ".");
 
 	return m_layoutHasBeenSet;
 }
@@ -215,7 +215,7 @@ bool D3D11Shader::CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** 
 	result = m_graphics->GetDevice()->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
 	if (FAILED(result))
 	{
-		LOG("Failed to create vertex shader.", Log::Error);
+		LOG_ERROR("Failed to create vertex shader.");
 		return false;
 	}
 
@@ -233,7 +233,7 @@ bool D3D11Shader::CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pi
 	result = m_graphics->GetDevice()->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader);
 	if (FAILED(result))
 	{
-		LOG("Failed to create pixel shader.", Log::Error);
+		LOG_ERROR("Failed to create pixel shader.");
 		return false;
 	}
 

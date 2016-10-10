@@ -170,7 +170,7 @@ int GameObjectPool::GetGameObjectIndex(GameObject* gameObject)
 {
 	if (gameObject == nullptr)
 	{
-		LOG("Can't return GameObject index, the gameObject is null.", Log::Warning);
+		LOG_WARNING("Can't return GameObject index, the gameObject is null.");
 		return -1;
 	}
 

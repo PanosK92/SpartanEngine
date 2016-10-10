@@ -178,7 +178,7 @@ void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* 
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]]; // get mesh
 		string name = node->mName.C_Str(); // get name
 
-		// if this node has many meshes, then assign  a new gameobject for each one of them
+		// if this node has many meshes, then assign a new gameobject for each one of them
 		if (node->mNumMeshes > 1)
 		{
 			gameobject = new GameObject(); // create
@@ -258,7 +258,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 	meshComp->Set(mesh->mName.C_Str(), m_rootGameObject->GetID(), vertices, indices);
 
 	// Save the mesh in our custom format
-	meshComp->GetMesh()->SaveToFile("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
+	meshComp->GetMesh()->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
 
 	// process materials
 	if (scene->HasMaterials())
@@ -300,7 +300,7 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 	int r = material->Get(AI_MATKEY_TWOSIDED, isTwoSided);
 	if (r == aiReturn_SUCCESS && isTwoSided)
 	{
-		LOG("two-sided");
+		LOG_INFO("two-sided");
 		engineMaterial->SetFaceCullMode(CullNone);
 	}
 
