@@ -41,7 +41,7 @@ private:
 	void Serialize();
 	void Deserialize();
 public:
-	void SaveToDirectory(const std::string& directory);
+	void SaveToDirectory(const std::string& directory, bool overwrite);
 	bool LoadFromFile(const std::string& filePath);
 	//==============================================================================
 

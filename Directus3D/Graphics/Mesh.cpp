@@ -105,9 +105,12 @@ void Mesh::Deserialize()
 	m_boundingBox = Serializer::ReadVector3();
 }
 
-void Mesh::SaveToDirectory(const string& directory)
+void Mesh::SaveToDirectory(const string& directory, bool overwrite)
 {
 	m_filePath = directory + GetName() + MESH_EXTENSION;
+
+	if (FileSystem::FileExists(m_filePath) && !overwrite)
+		return;
 
 	Serializer::StartWriting(m_filePath);
 	Serialize();
@@ -116,8 +119,6 @@ void Mesh::SaveToDirectory(const string& directory)
 
 bool Mesh::LoadFromFile(const string& filePath)
 {
-	LOG_INFO(filePath);
-
 	if (!FileSystem::FileExists(filePath))
 		return false;
 

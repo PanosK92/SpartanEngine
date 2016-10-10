@@ -81,7 +81,7 @@ void MeshFilter::Deserialize()
 	if (!m_usingDefaultMesh)
 	{
 		string meshDataID = Serializer::ReadSTR();
-		m_mesh = g_meshPool->GetMesh(meshDataID);
+		m_mesh = g_meshPool->GetMeshByID(meshDataID);
 	}
 
 	CreateBuffers();
