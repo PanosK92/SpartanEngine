@@ -42,7 +42,7 @@ public:
 	virtual void Deserialize();
 	//==========================
 
-	bool AddScript(std::string path);
+	bool AddScript(const std::string& filePath);
 	std::string GetScriptPath();
 	std::string GetName();
 

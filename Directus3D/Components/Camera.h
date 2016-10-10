@@ -78,7 +78,7 @@ public:
 
 	//= MISC ==================================
 	Directus::Math::Vector4 GetClearColor();
-	void SetClearColor(Directus::Math::Vector4 color);
+	void SetClearColor(const Directus::Math::Vector4& color);
 
 private:
 	float m_FOV;

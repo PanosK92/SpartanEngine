@@ -55,7 +55,7 @@ ID3D11DeviceContext* Graphics::GetDeviceContext()
 	return m_d3d11Graphics->GetDeviceContext();
 }
 
-void Graphics::Clear(Vector4 color)
+void Graphics::Clear(const Vector4& color)
 {
 	m_d3d11Graphics->Clear(color);
 }

@@ -52,7 +52,7 @@ public:
 	ID3D11Device* GetDevice();
 	ID3D11DeviceContext* GetDeviceContext();
 
-	void Clear(Directus::Math::Vector4 color);
+	void Clear(const Directus::Math::Vector4& color);
 	void Present();
 	void ResetRenderTarget();
 	void ResetViewport();
