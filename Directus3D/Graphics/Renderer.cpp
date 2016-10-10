@@ -371,11 +371,11 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 				Matrix mWorld = gameObject->GetTransform()->GetWorldTransform();
 				//==========================================================================
 
-				if (currentMaterial->GetID() != material->GetID())
-					continue;
-
 				// If any rendering requirement is missing, skip this GameObject
 				if (!meshFilter || !mesh || !meshRenderer || !material)
+					continue;
+
+				if (currentMaterial->GetID() != material->GetID())
 					continue;
 
 				// Skip transparent meshes

@@ -449,7 +449,7 @@ void ScriptDefinitions::RegisterQuaternion()
 ------------------------------------------------------------------------------*/
 void ScriptDefinitions::RegisterDebug()
 {
-	m_scriptEngine->RegisterGlobalFunction("void Log(const string&, LogType)", asFUNCTIONPR(Log::Write, (const string&, Log::LogType), void), asCALL_CDECL);
+	m_scriptEngine->RegisterGlobalFunction("void Log(const string& in, LogType)", asFUNCTIONPR(Log::Write, (const string&, Log::LogType), void), asCALL_CDECL);
 	m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)", asFUNCTIONPR(Log::Write, (int, Log::LogType), void), asCALL_CDECL);
 	m_scriptEngine->RegisterGlobalFunction("void Log(float, LogType)", asFUNCTIONPR(Log::Write, (float, Log::LogType), void), asCALL_CDECL);
 	m_scriptEngine->RegisterGlobalFunction("void Log(const Vector3& in, LogType)", asFUNCTIONPR(Log::Write, (const Vector3&, Log::LogType), void), asCALL_CDECL);
