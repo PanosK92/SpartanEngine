@@ -118,13 +118,7 @@ void Material::Deserialize()
 
 	int textureCount = Serializer::ReadInt();
 	for (int i = 0; i < textureCount; i++)
-	{
-		string textureID = Serializer::ReadSTR(); // texture id
-		shared_ptr<Texture> texture = m_texturePool->GetTextureByID(textureID);
-
-		if (texture)
-			m_textures.push_back(texture);
-	}
+		m_textures.push_back(m_texturePool->GetTextureByID(Serializer::ReadSTR()));
 
 	AcquireShader();
 }
@@ -162,24 +156,22 @@ void Material::SetTexture(shared_ptr<Texture> texture)
 		return;
 
 	// Overwrite
-	if (HasTextureOfType(texture->GetType()))
-	{
-		int textureIndex = GetTextureIndexByType(texture->GetType());
-		m_textures[textureIndex] = texture;
-	}
-	else // Add
-		m_textures.push_back(texture);
+	for (auto textureTemp : m_textures)
+		if (textureTemp->GetType() == texture->GetType())
+		{
+			textureTemp = texture;
+			return;
+		}
 
+	// Add
+	m_textures.push_back(texture);
 	TextureBasedMultiplierAdjustment();
 	AcquireShader();
 }
 
 void Material::SetTextureByID(const string& textureID)
 {
-	// Get the texture from the pool
-	shared_ptr<Texture> texture = m_texturePool->GetTextureByID(textureID);
-
-	SetTexture(texture);
+	SetTexture(m_texturePool->GetTextureByID(textureID));
 }
 
 shared_ptr<Texture> Material::GetTextureByType(TextureType type)
@@ -193,18 +185,13 @@ shared_ptr<Texture> Material::GetTextureByType(TextureType type)
 
 bool Material::HasTextureOfType(TextureType type)
 {
-	shared_ptr<Texture> texture = GetTextureByType(type);
-
-	if (texture)
-		return true;
-
-	return false;
+	return GetTextureByType(type) ? true : false;
 }
 
 bool Material::HasTexture(const string& path)
 {
-	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetFilePathTexture() == path)
+	for (auto texture : m_textures)
+		if (texture->GetFilePathTexture() == path)
 			return true;
 
 	return false;
@@ -213,17 +200,15 @@ bool Material::HasTexture(const string& path)
 string Material::GetTexturePathByType(TextureType type)
 {
 	auto texture = GetTextureByType(type);
-	if (texture)
-		return texture->GetFilePathTexture();
-
-	return PATH_NOT_ASSIGNED;
+	return texture ? texture->GetFilePathTexture() : PATH_NOT_ASSIGNED;
 }
 
 vector<string> Material::GetTexturePaths()
 {
 	vector<string> paths;
-	for (auto i = 0; i < m_textures.size(); i++)
-		paths.push_back(m_textures[i]->GetFilePathTexture());
+
+	for (auto texture : m_textures)
+		paths.push_back(texture->GetFilePathTexture());
 
 	return paths;
 }
@@ -257,10 +242,7 @@ shared_ptr<ShaderVariation> Material::GetShader()
 
 bool Material::HasShader()
 {
-	if (GetShader())
-		return true;
-
-	return false;
+	return GetShader() ? true : false;
 }
 
 ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureType type)
@@ -273,16 +255,6 @@ ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureTy
 	return nullptr;
 }
 //==============================================================================
-
-//= HELPER FUNCTIONS ===========================================================
-int Material::GetTextureIndexByType(TextureType type)
-{
-	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetType() == type)
-			return i;
-
-	return -1;
-}
 
 void Material::TextureBasedMultiplierAdjustment()
 {
@@ -298,4 +270,3 @@ void Material::TextureBasedMultiplierAdjustment()
 	if (HasTextureOfType(Height))
 		SetHeightMultiplier(1.0f);
 }
-//==============================================================================

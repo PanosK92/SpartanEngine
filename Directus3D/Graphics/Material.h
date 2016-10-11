@@ -135,10 +135,7 @@ public:
 	//=============================================================================
 
 private:
-	//= HELPER FUNCTIONS =======================
-	int GetTextureIndexByType(TextureType type);
 	void TextureBasedMultiplierAdjustment();
-	//==========================================
 
 	std::vector<std::shared_ptr<Texture>> m_textures;
 	std::string m_ID;

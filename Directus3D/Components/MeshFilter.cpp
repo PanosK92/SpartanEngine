@@ -68,14 +68,12 @@ void MeshFilter::Update()
 
 void MeshFilter::Serialize()
 {
-	Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : DATA_NOT_ASSIGNED);
+	Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : (string)DATA_NOT_ASSIGNED);
 }
 
 void MeshFilter::Deserialize()
 {
-	string meshID = Serializer::ReadSTR();
-	m_mesh = g_meshPool->GetMeshByID(meshID);
-
+	m_mesh = g_meshPool->GetMeshByID(Serializer::ReadSTR());
 	CreateBuffers();
 }
 

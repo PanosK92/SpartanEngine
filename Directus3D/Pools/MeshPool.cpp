@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "MeshPool.h"
-#include "../Core/GUIDGenerator.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Components/MeshFilter.h"
@@ -57,7 +56,7 @@ void MeshPool::Clear()
 shared_ptr<Mesh> MeshPool::Add(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
 {
 	// construct the mesh
-	shared_ptr<Mesh> mesh = make_shared<Mesh>();
+	auto mesh = make_shared<Mesh>();
 	mesh->SetName(name);
 	mesh->SetRootGameObjectID(rootGameObjectID);
 	mesh->SetVertices(vertices);
@@ -84,7 +83,7 @@ void MeshPool::Add(const vector<string>& filePaths)
 		if (FileSystem::GetExtensionFromPath(filePath) != MESH_EXTENSION)
 			continue;
 
-		shared_ptr<Mesh> mesh = make_shared<Mesh>();
+		auto mesh = make_shared<Mesh>();
 		if (mesh->LoadFromFile(filePath))
 			m_meshes.push_back(mesh);
 	}
@@ -98,10 +97,14 @@ shared_ptr<Mesh> MeshPool::GetMeshByID(const string& ID)
 	if (ID == MESH_DEFAULT_QUAD_ID)
 		return m_defaultQuad;
 
-	for (shared_ptr<Mesh> mesh : m_meshes)
+	for (auto mesh : m_meshes)
+	{
+		//LOG_INFO(ID + " == " + mesh->GetID() + " ?");
+
 		if (mesh->GetID() == ID)
 			return mesh;
-
+	}
+		
 	return nullptr;
 }
 
