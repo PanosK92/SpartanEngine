@@ -53,13 +53,13 @@ public:
 	bool GetReceiveShadows() const;
 
 	//= MATERIAL ===============================
-	Material* GetMaterial() const;
-	void SetMaterial(Material* material);
+	std::shared_ptr<Material> GetMaterial() const;
+	void SetMaterial(std::shared_ptr<Material> material);
 	
 	bool HasMaterial() const;
 
 private:
-	Material* m_material;
+	std::shared_ptr<Material> m_material;
 	bool m_castShadows;
 	bool m_receiveShadows;
 };

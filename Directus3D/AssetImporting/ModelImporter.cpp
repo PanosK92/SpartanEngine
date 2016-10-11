@@ -267,7 +267,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		aiMaterial* assimpMaterial = scene->mMaterials[mesh->mMaterialIndex];
 
 		// Convert it
-		Material* material = GenerateMaterialFromAiMaterial(assimpMaterial);
+		shared_ptr<Material> material = GenerateMaterialFromAiMaterial(assimpMaterial);
 
 		// Add it to the material pool
 		material = m_materialPool->Add(material);
@@ -284,9 +284,9 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 	indices.clear();
 }
 
-Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
+shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 {
-	Material* engineMaterial = new Material(m_texturePool, m_shaderPool);
+	shared_ptr<Material> engineMaterial = make_shared<Material>(m_texturePool, m_shaderPool);
 
 	//= NAME ====================================================================
 	aiString name;
@@ -350,7 +350,7 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 /*------------------------------------------------------------------------------
 [HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
-void ModelImporter::AddTextureToMaterial(Material* material, TextureType textureType, const string& texturePath)
+void ModelImporter::AddTextureToMaterial(shared_ptr<Material> material, TextureType textureType, const string& texturePath)
 {
 	string textureSource = FindTexture(texturePath);
 	if (textureSource == PATH_NOT_ASSIGNED)

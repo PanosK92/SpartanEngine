@@ -329,7 +329,7 @@ void Renderer::GBufferPass()
 	for (ShaderVariation* currentShader : m_shaderPool->GetAllShaders()) // for each shader
 	{	
 		currentShader->Set();
-		for (Material* currentMaterial : m_materialPool->GetAllMaterials()) // for each material that uses this shader
+		for (auto currentMaterial : m_materialPool->GetAllMaterials()) // for each material that uses this shader
 		{
 			if (currentMaterial->GetShader()->GetID() != currentShader->GetID())
 				continue;	
@@ -351,14 +351,14 @@ void Renderer::GBufferPass()
 
 			currentShader->SetResources(m_textures);
 
-			for (GameObject* gameObject : m_renderables) // for each mesh that uses this material:
+			for (auto gameObject : m_renderables) // for each mesh that uses this material:
 			{
 				//= Get all that we need ===================================================
-				MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
-				shared_ptr<Mesh> mesh = meshFilter->GetMesh();
-				MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
-				Material* material = meshRenderer->GetMaterial();
-				Matrix mWorld = gameObject->GetTransform()->GetWorldTransform();
+				auto meshFilter = gameObject->GetComponent<MeshFilter>();
+				auto mesh = meshFilter->GetMesh();
+				auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
+				auto material = meshRenderer->GetMaterial();
+				auto mWorld = gameObject->GetTransform()->GetWorldTransform();
 				//==========================================================================
 
 				// If any rendering requirement is missing, skip this GameObject

@@ -154,7 +154,7 @@ void DirectusMeshRenderer::ReflectReceiveShadows()
 
 void DirectusMeshRenderer::ReflectMaterial()
 {
-    Material* material = m_inspectedMeshRenderer->GetMaterial();
+    auto material = m_inspectedMeshRenderer->GetMaterial();
     if (!material)
         return;
 

@@ -88,7 +88,7 @@ void ShaderVariation::Set()
 	m_D3D11Shader->Set();
 }
 
-void ShaderVariation::SetBuffers(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection, Material* material, Light* directionalLight, bool receiveShadows, Camera* camera)
+void ShaderVariation::SetBuffers(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection, shared_ptr<Material> material, Light* directionalLight, bool receiveShadows, Camera* camera)
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{

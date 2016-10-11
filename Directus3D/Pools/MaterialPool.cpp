@@ -49,7 +49,7 @@ MaterialPool::~MaterialPool()
 								[MISC]
 ------------------------------------------------------------------------------*/
 // Adds a material to the pool directly from memory
-Material* MaterialPool::Add(Material* materialIn)
+shared_ptr<Material> MaterialPool::Add(shared_ptr<Material> materialIn)
 {
 	if (!materialIn)
 	{
@@ -58,7 +58,7 @@ Material* MaterialPool::Add(Material* materialIn)
 	}
 
 	// check for existing material from the same model
-	for (Material* material : m_materials)
+	for (auto material : m_materials)
 	{
 		if (material->GetName() == materialIn->GetName())
 			if (material->GetModelID() == materialIn->GetModelID())
@@ -83,50 +83,20 @@ void MaterialPool::Add(const vector<string>& filePaths)
 			continue;
 
 		// Create and load the material
-		Material* material = new Material(m_texturePool, m_shaderPool);
+		shared_ptr<Material> material = make_shared<Material>(m_texturePool, m_shaderPool);
 		if (material->LoadFromFile(filePath))
 			m_materials.push_back(material);
-		else
-			delete material;
 	}
 }
 
 // Removes all the materials
 void MaterialPool::Clear()
 {
-	for (Material* material : m_materials)
-		delete material;
-
 	m_materials.clear();
 	m_materials.shrink_to_fit();
 }
 
-void MaterialPool::RemoveMaterial(Material* material)
-{
-	// make sure the material is not null
-	if (!material)
-		return;
-
-	for (auto it = m_materials.begin(); it != m_materials.end();)
-	{
-		Material* mat = *it;
-		if (mat->GetID() == material->GetID())
-		{
-			delete mat;
-			it = m_materials.erase(it);
-			return;
-		}
-		++it;
-	}
-}
-
-void MaterialPool::RemoveMaterial(const string& materialID)
-{
-	Material* material = GetMaterialByID(materialID);
-	RemoveMaterial(material);
-}
-
-Material* MaterialPool::GetMaterialByID(const string& materialID)
+shared_ptr<Material> MaterialPool::GetMaterialByID(const string& materialID)
 {
 	if (materialID == MATERIAL_DEFAULT_ID)
 		return m_materialDefault;
@@ -134,19 +104,19 @@ Material* MaterialPool::GetMaterialByID(const string& materialID)
 	if (materialID == MATERIAL_DEFAULT_SKYBOX_ID)
 		return m_materialDefaultSkybox;
 
-	for (Material* material : m_materials)
+	for (auto material : m_materials)
 		if (material->GetID() == materialID)
 			return material;
 
 	return m_materialDefault;
 }
 
-Material* MaterialPool::GetMaterialStandardDefault()
+shared_ptr<Material> MaterialPool::GetMaterialStandardDefault()
 {
 	return m_materialDefault;
 }
 
-Material* MaterialPool::GetMaterialStandardSkybox()
+shared_ptr<Material> MaterialPool::GetMaterialStandardSkybox()
 {
 	return m_materialDefaultSkybox;
 }
@@ -155,13 +125,13 @@ vector<string> MaterialPool::GetAllMaterialFilePaths()
 {
 	vector<string> paths;
 
-	for (Material* material : m_materials)
+	for (auto material : m_materials)
 		paths.push_back(material->GetFilePath());
 
 	return paths;
 }
 
-const vector<Material*>& MaterialPool::GetAllMaterials()
+const vector<shared_ptr<Material>>& MaterialPool::GetAllMaterials()
 {
 	return m_materials;
 }
@@ -171,7 +141,7 @@ const vector<Material*>& MaterialPool::GetAllMaterials()
 ------------------------------------------------------------------------------*/
 void MaterialPool::GenerateDefaultMaterials()
 {
-	m_materialDefault = new Material(m_texturePool, m_shaderPool);
+	m_materialDefault = make_shared<Material>(m_texturePool, m_shaderPool);
 	m_materialDefault->SetID(MATERIAL_DEFAULT_ID);
 	m_materialDefault->SetName("Standard_Default");
 	m_materialDefault->SetID("Standard_Material_0");
@@ -179,7 +149,7 @@ void MaterialPool::GenerateDefaultMaterials()
 
 	// A texture must be loaded for that one, if all goes smooth
 	// it's done by the skybox component
-	m_materialDefaultSkybox = new Material(m_texturePool, m_shaderPool);
+	m_materialDefaultSkybox = make_shared<Material>(m_texturePool, m_shaderPool);
 	m_materialDefaultSkybox->SetID(MATERIAL_DEFAULT_SKYBOX_ID);
 	m_materialDefaultSkybox->SetName("Standard_Skybox");
 	m_materialDefaultSkybox->SetID("Standard_Material_1");
