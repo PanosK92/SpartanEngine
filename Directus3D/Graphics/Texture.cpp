@@ -36,9 +36,9 @@ using namespace std;
 Texture::Texture()
 {
 	m_ID = GENERATE_GUID;
-	m_name = "N/A";
-	m_filePathTexture = "N/A";
-	m_filePathMetadata = "N/A";
+	m_name = DATA_NOT_ASSIGNED;
+	m_filePathTexture = DATA_NOT_ASSIGNED;
+	m_filePathMetadata = DATA_NOT_ASSIGNED;
 	m_width = 0;
 	m_height = 0;
 	m_shaderResourceView = nullptr;

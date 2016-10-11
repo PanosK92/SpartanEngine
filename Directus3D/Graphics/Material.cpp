@@ -250,7 +250,7 @@ void Material::AcquireShader()
 	);
 }
 
-ShaderVariation* Material::GetShader()
+shared_ptr<ShaderVariation> Material::GetShader()
 {
 	return m_shader;
 }

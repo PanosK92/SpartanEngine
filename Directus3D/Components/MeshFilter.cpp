@@ -76,11 +76,6 @@ void MeshFilter::Deserialize()
 	string meshID = Serializer::ReadSTR();
 	m_mesh = g_meshPool->GetMeshByID(meshID);
 
-	if (!m_mesh)
-	{
-		LOG_INFO(meshID);
-	}
-
 	CreateBuffers();
 }
 
@@ -116,14 +111,15 @@ void MeshFilter::Set(const string& name, const string& rootGameObjectID, const v
 // Set the buffers to active in the input assembler so they can be rendered.
 bool MeshFilter::SetBuffers() const
 {
-	if (!m_vertexBuffer || !m_indexBuffer)
+	if (!m_vertexBuffer)
 	{
-		if (!m_vertexBuffer)
-			LOG_WARNING("Can't set vertex buffer. GameObject \"" + g_gameObject->GetName() + "\" doesn't have an initialized vertex buffer.");
+		LOG_WARNING("Can't set vertex buffer. GameObject \"" + g_gameObject->GetName() + "\" doesn't have an initialized vertex buffer.");
+		return false;
+	}
 
-		if (!m_indexBuffer)
-			LOG_WARNING("Can't set index buffer. GameObject \"" + g_gameObject->GetName() + "\" doesn't have an initialized index buffer.");
-
+	if (!m_indexBuffer)
+	{
+		LOG_WARNING("Can't set index buffer. GameObject \"" + g_gameObject->GetName() + "\" doesn't have an initialized index buffer.");
 		return false;
 	}
 

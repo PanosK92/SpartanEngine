@@ -107,7 +107,7 @@ shared_ptr<Mesh> MeshPool::GetMeshByID(const string& ID)
 
 shared_ptr<Mesh> MeshPool::GetMeshByPath(const string& path)
 {
-	for (shared_ptr<Mesh> mesh : m_meshes)
+	for (auto mesh : m_meshes)
 		if (mesh->GetFilePath() == path)
 			return mesh;
 
@@ -129,7 +129,7 @@ vector<shared_ptr<Mesh>> MeshPool::GetModelMeshesByModelName(const string& rootG
 {
 	vector<shared_ptr<Mesh>> modelMeshes;
 
-	for (shared_ptr<Mesh> mesh : m_meshes)
+	for (auto mesh : m_meshes)
 		if (mesh->GetRootGameObjectID() == rootGameObjectID)
 			modelMeshes.push_back(mesh);
 
@@ -176,11 +176,9 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(const string& rootGame
 
 void MeshPool::SetModelScale(const string& rootGameObjectID, float scale)
 {
-	// get all the meshes related to this model
-	vector<shared_ptr<Mesh>> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
-
-	for (auto i = 0; i < modelMeshes.size(); i++)
-		modelMeshes[i]->Scale(scale);
+	// get all the meshes related to this model and scale them
+	for (auto modelMesh : GetModelMeshesByModelName(rootGameObjectID))
+		modelMesh->Scale(scale);
 }
 
 void MeshPool::NormalizeModelScale(GameObject* rootGameObject)
@@ -201,7 +199,7 @@ shared_ptr<Mesh> MeshPool::GetLargestBoundingBox(const vector<shared_ptr<Mesh>>&
 	Vector3 largestBoundingBox = Vector3::Zero;
 	shared_ptr<Mesh> largestBoundingBoxMesh = meshes.front();
 
-	for (shared_ptr<Mesh> mesh : meshes)
+	for (auto mesh : meshes)
 	{
 		if (!mesh)
 			continue;

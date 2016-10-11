@@ -217,16 +217,16 @@ vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
 	vector<string> supportedFiles;
 
 	// get supported images
-	for (int i = 0; i < imagesInDirectory.size(); i++)
-		supportedFiles.push_back(imagesInDirectory[i]);
+	for (const string& imageInDirectory : imagesInDirectory)
+		supportedFiles.push_back(imageInDirectory);
 
 	// get supported scripts
-	for (int i = 0; i < scriptsInDirectory.size(); i++)
-		supportedFiles.push_back(scriptsInDirectory[i]);
+	for (const string& scriptInDirectory : scriptsInDirectory)
+		supportedFiles.push_back(scriptInDirectory);
 
 	// get supported models
-	for (int i = 0; i < modelsInDirectory.size(); i++)
-		supportedFiles.push_back(modelsInDirectory[i]);
+	for (const string& modelInDirectory : modelsInDirectory)
+		supportedFiles.push_back(modelInDirectory);
 
 	return supportedFiles;
 }
@@ -364,12 +364,12 @@ bool FileSystem::IsSupportedModel(const string& path)
 bool FileSystem::IsSupportedShader(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
-	vector<string> supportedExt;
-	supportedExt.push_back(".hlsl");
+	vector<string> supportedExtentions;
+	supportedExtentions.push_back(".hlsl");
 
-	for (int i = 0; i < supportedExt.size(); i++)
+	for (const string& supportedExt : supportedExtentions)
 	{
-		if (fileExt == supportedExt[i] || fileExt == ConvertToUppercase(supportedExt[i]))
+		if (fileExt == supportedExt || fileExt == ConvertToUppercase(supportedExt))
 			return true;
 	}
 
