@@ -51,6 +51,7 @@ public:
 	Directus::Math::Vector3 GetCenter() const;
 	Directus::Math::Vector3 GetBoundingBox() const;
 	Mesh* GetMesh() const;
+	std::string GetMeshName();
 
 private:
 	void CreateBuffers();

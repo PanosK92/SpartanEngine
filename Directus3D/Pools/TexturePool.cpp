@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "TexturePool.h"
 #include <filesystem>
-#include "../IO/Log.h"
 #include "../IO/FileSystem.h"
 //===========================
 
@@ -41,12 +40,12 @@ TexturePool::~TexturePool()
 }
 
 // Adds a texture to the pool directly from memory
-Texture* TexturePool::Add(Texture* textureIn)
+shared_ptr<Texture> TexturePool::Add(shared_ptr<Texture> textureIn)
 {
 	if (!textureIn)
 		return nullptr;
 
-	for (Texture* texture : m_textures)
+	for (auto texture : m_textures)
 		if (textureIn->GetID() == texture->GetID())
 			return texture;
 
@@ -55,18 +54,18 @@ Texture* TexturePool::Add(Texture* textureIn)
 }
 
 // Adds a texture to the pool by loading it from an image file
-Texture* TexturePool::Add(const string& texturePath)
+shared_ptr<Texture> TexturePool::Add(const string& texturePath)
 {
 	if (!FileSystem::FileExists(texturePath) || !FileSystem::IsSupportedImage(texturePath))
 		return nullptr;
 
 	// If the texture alrady exists, return it
-	Texture* loaded = GetTextureByPath(texturePath);
-	if (loaded)
-		return loaded;
+	auto existingTexture = GetTextureByPath(texturePath);
+	if (existingTexture)
+		return existingTexture;
 
 	// If the texture doesn't exist, create and load it
-	Texture* texture = new Texture();
+	auto texture = make_shared<Texture>();
 	texture->LoadFromFile(texturePath);
 	m_textures.push_back(texture);
 
@@ -80,27 +79,27 @@ void TexturePool::Add(const vector<string>& imagePaths)
 		Add(imagePath);
 }
 
-Texture* TexturePool::GetTextureByName(const string&  name)
+shared_ptr<Texture> TexturePool::GetTextureByName(const string&  name)
 {
-	for (Texture* texture : m_textures)
+	for (auto texture : m_textures)
 		if (texture->GetName() == name)
 			return texture;
 
 	return nullptr;
 }
 
-Texture* TexturePool::GetTextureByID(const string&  ID)
+shared_ptr<Texture> TexturePool::GetTextureByID(const string&  ID)
 {
-	for (Texture* texture : m_textures)
+	for (auto texture : m_textures)
 		if (texture->GetID() == ID)
 			return texture;
 
 	return nullptr;
 }
 
-Texture* TexturePool::GetTextureByPath(const string&  path)
+shared_ptr<Texture> TexturePool::GetTextureByPath(const string&  path)
 {
-	for (Texture* texture : m_textures)
+	for (auto texture : m_textures)
 		if (texture->GetFilePathTexture() == path)
 			return texture;
 
@@ -111,47 +110,14 @@ vector<string> TexturePool::GetAllTextureFilePaths()
 {
 	vector<string> paths;
 
-	for (Texture* texture : m_textures)
+	for (auto texture : m_textures)
 		paths.push_back(texture->GetFilePathTexture());
 
 	return paths;
 }
 
-void TexturePool::Remove(Texture* texture)
-{
-	for (auto it = m_textures.begin(); it < m_textures.end();)
-	{
-		Texture* currentTex = *it;
-		if (currentTex->GetID() == texture->GetID())
-		{
-			delete currentTex;
-			it = m_textures.erase(it);
-			return;
-		}
-		++it;
-	}
-}
-
-void TexturePool::RemoveTextureByPath(const string&  path)
-{
-	for (auto it = m_textures.begin(); it < m_textures.end();)
-	{
-		Texture* texture = *it;
-		if (texture->GetFilePathTexture() == path)
-		{
-			delete texture;
-			it = m_textures.erase(it);
-			return;
-		}
-		++it;
-	}
-}
-
 void TexturePool::Clear()
 {
-	for (Texture* texture : m_textures)
-		delete texture;
-
 	m_textures.clear();
 	m_textures.shrink_to_fit();
 }
