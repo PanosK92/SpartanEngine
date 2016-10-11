@@ -42,13 +42,13 @@ MeshRenderer::MeshRenderer()
 
 MeshRenderer::~MeshRenderer()
 {
-	m_material = g_materialPool->GetMaterialStandardDefault();
+	
 }
 
 //= ICOMPONENT ===============================================================
 void MeshRenderer::Initialize()
 {
-	
+	m_material = g_materialPool->GetMaterialStandardDefault();
 }
 
 void MeshRenderer::Start()

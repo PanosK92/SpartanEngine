@@ -84,6 +84,8 @@ void Skybox::Initialize()
 	meshRenderer->GetMaterial()->SetTexture(m_cubeMapTexture);
 
 	g_transform->SetScale(Vector3(1000, 1000, 1000));
+
+	g_gameObject->SetHierarchyVisibility(true);
 }
 
 void Skybox::Start()
