@@ -137,11 +137,13 @@ bool Scene::LoadFromFile(const string& filePath)
 	vector<string> materialPaths = Serializer::ReadVectorSTR();
 	vector<string> meshPaths = Serializer::ReadVectorSTR();
 
-	for (const string& material : materialPaths)
-		LOG_INFO("Material: " + material);
+	//for (const string& material : materialPaths)
+		//LOG_INFO("Material: " + material);
 
-	for (const string& mesh : meshPaths)
-		LOG_INFO("Mesh: " + mesh);
+	//for (const string& mesh : meshPaths)
+		//LOG_INFO("Mesh: " + mesh);
+
+	// I checked, all paths are valid, the error happens somewhere below
 
 	Serializer::StopReading();
 	//===========================================================
@@ -277,7 +279,6 @@ GameObject* Scene::CreateSkybox()
 	skybox->SetName("Skybox");
 	skybox->AddComponent<LineRenderer>();
 	skybox->AddComponent<Skybox>();
-	skybox->SetHierarchyVisibility(false);
 
 	return skybox;
 }
