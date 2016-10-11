@@ -32,7 +32,7 @@ public:
 	ShaderPool(Graphics* d3d11device);
 	~ShaderPool();
 
-	ShaderVariation* CreateShaderBasedOnMaterial(
+	std::shared_ptr<ShaderVariation> CreateShaderBasedOnMaterial(
 		bool albedo,
 		bool roughness,
 		bool metallic,
@@ -43,12 +43,12 @@ public:
 		bool mask,
 		bool cubemap
 	);
-	ShaderVariation* GetShaderByID(const std::string& shaderID);
-	const std::vector<ShaderVariation*>& GetAllShaders() const;
+	std::shared_ptr<ShaderVariation> GetShaderByID(const std::string& shaderID);
+	const std::vector<std::shared_ptr<ShaderVariation>>& GetAllShaders() const;
 	void Clear();
 
 private:
-	ShaderVariation* FindMatchingShader(
+	std::shared_ptr<ShaderVariation> FindMatchingShader(
 		bool albedo,
 		bool roughness,
 		bool metallic,
@@ -60,6 +60,6 @@ private:
 		bool cubemap
 	);
 
-	std::vector<ShaderVariation*> m_shaders;
+	std::vector<std::shared_ptr<ShaderVariation>> m_shaders;
 	Graphics* m_graphics;
 };

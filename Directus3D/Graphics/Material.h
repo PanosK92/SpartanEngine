@@ -69,7 +69,7 @@ public:
 
 	//= SHADER ====================================================================
 	void AcquireShader();
-	ShaderVariation* GetShader();
+	std::shared_ptr<ShaderVariation> GetShader();
 	bool HasShader();
 	ID3D11ShaderResourceView* GetShaderResourceViewByTextureType(TextureType type);
 	//=============================================================================
@@ -158,7 +158,7 @@ private:
 	Directus::Math::Vector2 m_tilingUV;
 	Directus::Math::Vector2 m_offsetUV;
 	ShadingMode m_shadingMode;
-	ShaderVariation* m_shader;
+	std::shared_ptr<ShaderVariation> m_shader;
 	bool m_isEditable;
 
 	//= DEPENDENCIES ==========

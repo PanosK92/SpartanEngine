@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 #include "../Core/GUIDGenerator.h"
 #include "../IO/FileSystem.h"
+#include "../Core/Helper.h"
 //================================
 
 //= NAMESPACES ================
@@ -36,8 +37,8 @@ using namespace Directus::Math;
 Mesh::Mesh()
 {
 	m_ID = GENERATE_GUID;
-	m_rootGameObjectID = "N/A";
-	m_filePath = "N/A";
+	m_rootGameObjectID = DATA_NOT_ASSIGNED;
+	m_filePath = DATA_NOT_ASSIGNED;
 	m_vertexCount = 0;
 	m_indexCount = 0;
 	m_triangleCount = 0;

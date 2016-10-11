@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========
 #include "ShaderPool.h"
-#include "../IO/Log.h"
 //=====================
 
 //= NAMESPACES =====
@@ -38,7 +37,7 @@ ShaderPool::~ShaderPool()
 	Clear();
 }
 
-ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
+shared_ptr<ShaderVariation> ShaderPool::CreateShaderBasedOnMaterial(
 	bool albedo,
 	bool roughness,
 	bool metallic,
@@ -51,7 +50,7 @@ ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
 )
 {
 	// If an appropriate shader already exists, return it's ID
-	ShaderVariation* existingShader = FindMatchingShader(
+	auto existingShader = FindMatchingShader(
 		albedo,
 		roughness,
 		metallic,
@@ -67,7 +66,7 @@ ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
 		return existingShader;
 
 	// If not, create a new one
-	ShaderVariation* shader = new ShaderVariation();
+	auto shader = make_shared<ShaderVariation>();
 	shader->Initialize(
 		albedo,
 		roughness,
@@ -86,21 +85,21 @@ ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
 	return m_shaders.back();
 }
 
-ShaderVariation* ShaderPool::GetShaderByID(const string& shaderID)
+shared_ptr<ShaderVariation> ShaderPool::GetShaderByID(const string& shaderID)
 {
-	for (ShaderVariation* shader : m_shaders)
+	for (auto shader : m_shaders)
 		if (shader->GetID() == shaderID)
 			return shader;
 
 	return nullptr;
 }
 
-const vector<ShaderVariation*>& ShaderPool::GetAllShaders() const
+const vector<shared_ptr<ShaderVariation>>& ShaderPool::GetAllShaders() const
 {
 	return m_shaders;
 }
 
-ShaderVariation* ShaderPool::FindMatchingShader(
+shared_ptr<ShaderVariation> ShaderPool::FindMatchingShader(
 	bool albedo,
 	bool roughness,
 	bool metallic,
@@ -112,7 +111,7 @@ ShaderVariation* ShaderPool::FindMatchingShader(
 	bool cubemap
 )
 {
-	for (ShaderVariation* shader : m_shaders)
+	for (auto shader : m_shaders)
 	{
 		if (shader->HasAlbedoTexture() != albedo) continue;
 		if (shader->HasRoughnessTexture() != roughness) continue;
@@ -132,9 +131,6 @@ ShaderVariation* ShaderPool::FindMatchingShader(
 
 void ShaderPool::Clear()
 {
-	for (ShaderVariation* shader : m_shaders)
-		delete shader;
-
 	m_shaders.clear();
 	m_shaders.shrink_to_fit();
 }
