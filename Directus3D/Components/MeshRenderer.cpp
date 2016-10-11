@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 #include "../Core/GameObject.h"
 #include "../Pools/MaterialPool.h"
+#include "../Core/Helper.h"
 //================================
 
 //= NAMESPACES ================
@@ -68,7 +69,7 @@ void MeshRenderer::Update()
 
 void MeshRenderer::Serialize()
 {
-	Serializer::WriteSTR(m_material ? m_material->GetID() : "N/A");
+	Serializer::WriteSTR(m_material ? m_material->GetID() : DATA_NOT_ASSIGNED);
 	Serializer::WriteBool(m_castShadows);
 	Serializer::WriteBool(m_receiveShadows);
 }

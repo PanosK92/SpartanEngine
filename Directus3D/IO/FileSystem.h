@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //===============
 
-#define PATH_UNAVAILABLE "PATH_UNAVAILABLE"
+#define PATH_NOT_ASSIGNED "PATH_NOT_ASSIGNED"
 
 class __declspec(dllexport) FileSystem
 {

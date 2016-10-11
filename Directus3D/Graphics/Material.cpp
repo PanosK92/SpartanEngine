@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/ShaderPool.h"
 #include "../IO/Log.h"
 #include "../IO/FileSystem.h"
+#include "../Core/Helper.h"
 //================================
 
 //= NAMESPACES ================
@@ -37,9 +38,9 @@ using namespace Directus::Math;
 Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 {
 	m_ID = GENERATE_GUID;
-	m_name = "N/A";
-	m_modelID = "N/A";
-	m_filePath = "N/A";
+	m_name = DATA_NOT_ASSIGNED;
+	m_modelID = DATA_NOT_ASSIGNED;
+	m_filePath = PATH_NOT_ASSIGNED;
 	m_cullMode = CullBack;
 	m_opacity = 1.0f;
 	m_alphaBlending = false;
@@ -53,6 +54,7 @@ Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 	m_specularMultiplier = 0.5f;
 	m_tilingUV = Vector2(1.0f, 1.0f);
 	m_offsetUV = Vector2(0.0f, 0.0f);
+	m_isEditable = true;
 
 	m_texturePool = texturePool;
 	m_shaderPool = shaderPool;
@@ -86,6 +88,7 @@ void Material::Serialize()
 	Serializer::WriteFloat(m_specularMultiplier);
 	Serializer::WriteVector2(m_tilingUV);
 	Serializer::WriteVector2(m_offsetUV);
+	Serializer::WriteBool(m_isEditable);
 
 	Serializer::WriteInt(int(m_textures.size()));
 	for (auto i = 0; i < m_textures.size(); i++)
@@ -111,6 +114,7 @@ void Material::Deserialize()
 	m_specularMultiplier = Serializer::ReadFloat();
 	m_tilingUV = Serializer::ReadVector2();
 	m_offsetUV = Serializer::ReadVector2();
+	m_isEditable = Serializer::ReadBool();
 
 	int textureCount = Serializer::ReadInt();
 	for (int i = 0; i < textureCount; i++)
@@ -213,7 +217,7 @@ string Material::GetTexturePathByType(TextureType type)
 	if (texture)
 		return texture->GetFilePathTexture();
 
-	return PATH_UNAVAILABLE;
+	return PATH_NOT_ASSIGNED;
 }
 
 vector<string> Material::GetTexturePaths()

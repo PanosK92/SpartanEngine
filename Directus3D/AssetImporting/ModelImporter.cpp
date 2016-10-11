@@ -353,7 +353,7 @@ Material* ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 void ModelImporter::AddTextureToMaterial(Material* material, TextureType textureType, const string& texturePath)
 {
 	string textureSource = FindTexture(texturePath);
-	if (textureSource == PATH_UNAVAILABLE)
+	if (textureSource == PATH_NOT_ASSIGNED)
 	{
 		LOG_WARNING("Failed to find \"" + texturePath + "\".");
 		return;
@@ -405,7 +405,7 @@ string ModelImporter::FindTexture(string texturePath)
 		return texturePath;
 
 	// Give up, no valid texture path was found
-	return PATH_UNAVAILABLE;
+	return PATH_NOT_ASSIGNED;
 }
 
 string ModelImporter::TryPathWithMultipleExtensions(const string& fullpath)
