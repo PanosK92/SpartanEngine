@@ -202,12 +202,9 @@ void Scene::Clear()
 
 GameObject* Scene::GetSkybox()
 {
-	vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
-	for (auto i = 0; i < gameObjects.size(); i++)
-	{
-		if (gameObjects[i]->HasComponent<Skybox>())
-			return gameObjects[i];
-	}
+	for (GameObject* gameObject : GameObjectPool::GetInstance().GetAllGameObjects())
+		if (gameObject->HasComponent<Skybox>())
+			return gameObject;
 
 	return nullptr;
 }
@@ -242,26 +239,23 @@ void Scene::AnalyzeGameObjects()
 	// otherwise it can end up as a nice dangling pointer :-)
 	m_mainCamera = nullptr;
 
-	vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
-	for (auto i = 0; i < gameObjects.size(); i++)
+	for (GameObject* gameObject : GameObjectPool::GetInstance().GetAllGameObjects())
 	{
-		GameObject* gameobject = gameObjects[i];
-
 		// Find a camera
-		if (gameobject->HasComponent<Camera>())
-			m_mainCamera = gameobject;
+		if (gameObject->HasComponent<Camera>())
+			m_mainCamera = gameObject;
 
 		// Find renderables
-		if (gameobject->HasComponent<MeshRenderer>() && gameobject->HasComponent<MeshFilter>())
-			m_renderables.push_back(gameobject);
+		if (gameObject->HasComponent<MeshRenderer>() && gameObject->HasComponent<MeshFilter>())
+			m_renderables.push_back(gameObject);
 
 		// Find lights
-		if (gameobject->HasComponent<Light>())
+		if (gameObject->HasComponent<Light>())
 		{
-			if (gameobject->GetComponent<Light>()->GetLightType() == Directional)
-				m_lightsDirectional.push_back(gameobject);
-			else if (gameobject->GetComponent<Light>()->GetLightType() == Point)
-				m_lightsPoint.push_back(gameobject);
+			if (gameObject->GetComponent<Light>()->GetLightType() == Directional)
+				m_lightsDirectional.push_back(gameObject);
+			else if (gameObject->GetComponent<Light>()->GetLightType() == Point)
+				m_lightsPoint.push_back(gameObject);
 		}
 	}
 
