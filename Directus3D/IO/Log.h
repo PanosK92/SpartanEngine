@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "ILogger.h"
 #include "../Math/Quaternion.h"
-#include <map>
 //=============================
 
 #define LOG_INFO(text) Log::Write(text, Log::Info)

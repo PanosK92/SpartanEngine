@@ -76,7 +76,7 @@ void Script::Update()
 
 void Script::Serialize()
 {
-	Serializer::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : PATH_NOT_ASSIGNED);
+	Serializer::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)PATH_NOT_ASSIGNED);
 }
 
 void Script::Deserialize()
