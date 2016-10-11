@@ -21,19 +21,16 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 - Windows support.
 
 # Planned Features
-- Ability to save materials, meshes, textures in a custom format, total revamp of scene IO <- Currently working on this
-- Ability to use worker threads in the engine runtime too, not just the editor.
+- Ability to save materials, meshes, textures in a custom format, total revamp of scene IO <- Active
 - Audio source and listener components.
 - DirectX 12 Renderer
 - Draw call batching (static & dynamic).
 - Export on Windows.
 - Font loader & renderer.
+- Multi-threading. <- Active
 - SSAO, SSR, Volumetric Lighting.
 - UI components.
 - Vulkan Renderer.
-
-Note: Regarding DirectX 12 and Vulkan, these are the most high priority planned features, research is being conducted as to avoid a simple porting from DirectX 11 which can result in lower performance. 
-Most likely a new rendering approach will be written so there are actual gains in terms of performance & memory usage. I am also looking into adding dynamic resolution support, similar to iD Tech 6 (Doom)
 
 ### Download
 - [Directus v0.1.1 (Windows x64)] (https://onedrive.live.com/download?resid=96760D43099D7718%21125980&authkey=AC4fwz-Zxcv-dJo)

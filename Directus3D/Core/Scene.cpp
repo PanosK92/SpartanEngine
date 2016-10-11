@@ -144,7 +144,7 @@ bool Scene::LoadFromFile(const string& filePath)
 	m_texturePool->Add(texturePaths);
 	m_materialPool->Add(materialPaths);
 	m_meshPool->Add(meshPaths);
-		
+	
 	// Load all the GameObjects present in the scene
 	//==============================================
 	Serializer::StartReading(filePath);
@@ -190,7 +190,7 @@ void Scene::Clear()
 	m_meshPool->Clear();
 	m_materialPool->Clear();
 	m_shaderPool->DeleteAll();
-	GameObjectPool::GetInstance().DeleteAll();
+	GameObjectPool::GetInstance().Clear();
 	//========================================
 
 	m_scriptEngine->Reset();

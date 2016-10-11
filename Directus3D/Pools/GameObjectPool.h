@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========================
+//= INCLUDES =====================
 #include "MeshPool.h"
 #include "../Graphics/Graphics.h"
 #include "../Pools/MaterialPool.h"
-//=====================================
+#include "../Pools/ThreadPool.h"
+//================================
 
 class GameObject;
 #define NULL_GAMEOBJECT_ID "-1"
@@ -42,11 +43,21 @@ public:
 		return instance;
 	}
 
-	void Initialize(Graphics* d3d11Device, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
+	void Initialize(Graphics* d3d11Device,
+		Scene* scene, 
+		Renderer* renderer, 
+		MeshPool* meshPool, 
+		MaterialPool* materialPool,
+		TexturePool* texturePool, 
+		ShaderPool* shaderPool, 
+		PhysicsWorld* physics, 
+		ScriptEngine* scriptEngine,
+		ThreadPool* threadPool
+	);
 	void Start();
 	void Update();
 	void Release();
-	void DeleteAll();
+	void Clear();
 
 	/*------------------------------------------------------------------------------
 									[I/O]
@@ -62,12 +73,12 @@ public:
 	GameObject* GetGameObjectRoot(GameObject* gameObject);
 	int GetGameObjectCount();
 	int GetGameObjectIndex(GameObject* gameObject);
-	GameObject* GetGameObjectByName(std::string name);
+	GameObject* GetGameObjectByName(const std::string& name);
 	GameObject* GetGameObjectByIndex(int index);
-	GameObject* GetGameObjectByID(std::string ID);
-	const std::vector<GameObject*>& GetGameObjectsByParentID(std::string ID);
+	GameObject* GetGameObjectByID(const std::string& ID);
+	const std::vector<GameObject*>& GetGameObjectsByParentID(const std::string& ID);
 	bool GameObjectExists(GameObject* gameObject);
-	bool GameObjectExistsByName(std::string name);
+	bool GameObjectExistsByName(const std::string& name);
 	void RemoveGameObject(GameObject* gameObject);
 	void RemoveSingleGameObject(GameObject* gameObject);
 
@@ -88,4 +99,5 @@ private:
 	ShaderPool* m_shaderPool;
 	PhysicsWorld* m_physics;
 	ScriptEngine* m_scriptEngine;
+	ThreadPool* m_threadPool;
 };
