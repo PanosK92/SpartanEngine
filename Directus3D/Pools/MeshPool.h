@@ -25,6 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Mesh.h"
 //===========================
 
+#define MESH_DEFAULT_CUBE_ID "DEFAULT_MESH_CUBE"
+#define MESH_DEFAULT_QUAD_ID "DEFAULT_MESH_QUAD"
+
 class GameObject;
 
 class MeshPool
@@ -48,9 +51,6 @@ public:
 	int GetMeshCount();
 
 	//= DEFAULT MESHES ============================================================================================
-	void GenerateDefaultMeshes();
-	void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
-	void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 	Mesh* GetDefaultCube();
 	Mesh* GetDefaultQuad();
 	//=============================================================================================================
@@ -63,8 +63,11 @@ public:
 	//===============================================================================================
 
 private:
-	std::vector<Mesh*> m_meshes;
+	void GenerateDefaultMeshes();
+	void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
+	void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 
+	std::vector<Mesh*> m_meshes;
 	Mesh* m_defaultCube;
 	Mesh* m_defaultQuad;
 };

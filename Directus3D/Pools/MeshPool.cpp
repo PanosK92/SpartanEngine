@@ -36,8 +36,7 @@ using namespace Directus::Math;
 
 MeshPool::MeshPool()
 {
-	m_defaultCube = nullptr;
-	m_defaultQuad = nullptr;
+	GenerateDefaultMeshes();
 }
 
 MeshPool::~MeshPool()
@@ -98,9 +97,15 @@ void MeshPool::Add(const vector<string>& filePaths)
 
 Mesh* MeshPool::GetMeshByID(const string& ID)
 {
-	for (auto i = 0; i < m_meshes.size(); i++)
-		if (m_meshes[i]->GetID() == ID)
-			return m_meshes[i];
+	if (ID == MESH_DEFAULT_CUBE_ID)
+		return m_defaultCube;
+
+	if (ID == MESH_DEFAULT_QUAD_ID)
+		return m_defaultQuad;
+
+	for (Mesh* mesh : m_meshes)
+		if (mesh->GetID() == ID)
+			return mesh;
 
 	return nullptr;
 }
@@ -130,10 +135,8 @@ vector<Mesh*> MeshPool::GetModelMeshesByModelName(const string& rootGameObjectID
 	vector<Mesh*> modelMeshes;
 
 	for (Mesh* mesh : m_meshes)
-	{
 		if (mesh->GetRootGameObjectID() == rootGameObjectID)
 			modelMeshes.push_back(mesh);
-	}
 
 	return modelMeshes;
 }
@@ -143,150 +146,13 @@ int MeshPool::GetMeshCount()
 	return (int)m_meshes.size();
 }
 
-void MeshPool::GenerateDefaultMeshes()
-{
-	vector<VertexPositionTextureNormalTangent> vertices;
-	vector<unsigned int> indices;
-
-	CreateCube(vertices, indices);
-
-	// construct the mesh
-	m_defaultCube = new Mesh();
-	m_defaultCube->SetName("Cube");
-	m_defaultCube->SetVertices(vertices);
-	m_defaultCube->SetIndices(indices);
-	m_defaultCube->Update();
-
-	vertices.clear();
-	vertices.shrink_to_fit();
-
-	CreateQuad(vertices, indices);
-
-	m_defaultQuad = new Mesh();
-	m_defaultQuad->SetName("Quad");
-	m_defaultQuad->SetVertices(vertices);
-	m_defaultQuad->SetIndices(indices);
-	m_defaultQuad->Update();
-
-	vertices.clear();
-	vertices.shrink_to_fit();
-}
-
-void MeshPool::CreateCube(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
-{
-	// front
-	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 0
-	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 1
-	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 2
-	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 3
-
-	// bottom
-	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 4
-	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 5
-	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 6
-	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 7
-
-	// back
-	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 8
-	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 9
-	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 10
-	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 11
-
-		// top
-	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 12
-	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 13
-	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 14
-	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 15
-
-	// left
-	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 16
-	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 17
-	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 18
-	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 19
-
-	// right
-	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 20
-	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 21
-	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 22
-	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 23
-
-	// front
-	indices.push_back(0);
-	indices.push_back(1);
-	indices.push_back(2);
-	indices.push_back(2);
-	indices.push_back(1);
-	indices.push_back(3);
-
-	// bottom
-	indices.push_back(4);
-	indices.push_back(5);
-	indices.push_back(6);
-	indices.push_back(6);
-	indices.push_back(5);
-	indices.push_back(7);
-
-	// back
-	indices.push_back(10);
-	indices.push_back(9);
-	indices.push_back(8);
-	indices.push_back(11);
-	indices.push_back(9);
-	indices.push_back(10);
-
-	// top
-	indices.push_back(14);
-	indices.push_back(13);
-	indices.push_back(12);
-	indices.push_back(15);
-	indices.push_back(13);
-	indices.push_back(14);
-
-	// left
-	indices.push_back(16);
-	indices.push_back(17);
-	indices.push_back(18);
-	indices.push_back(18);
-	indices.push_back(17);
-	indices.push_back(19);
-
-	// left
-	indices.push_back(22);
-	indices.push_back(21);
-	indices.push_back(20);
-	indices.push_back(23);
-	indices.push_back(21);
-	indices.push_back(22);
-}
-
-void MeshPool::CreateQuad(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
-{
-	vertices.push_back({ Vector3(-0.5f, 0.0f, 0.5f),Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 0 top-left
-	vertices.push_back({ Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 1 top-right
-	vertices.push_back({ Vector3(-0.5f, 0.0f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 2 bottom-left
-	vertices.push_back({ Vector3(0.5f, 0.0f, -0.5f),Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 3 bottom-right
-
-	indices.push_back(3);
-	indices.push_back(2);
-	indices.push_back(0);
-	indices.push_back(3);
-	indices.push_back(0);
-	indices.push_back(1);
-}
-
 Mesh* MeshPool::GetDefaultCube()
 {
-	if (!m_defaultCube)
-		GenerateDefaultMeshes();
-
 	return m_defaultCube;
 }
 
 Mesh* MeshPool::GetDefaultQuad()
 {
-	if (!m_defaultQuad)
-		GenerateDefaultMeshes();
-
 	return m_defaultQuad;
 }
 
@@ -354,4 +220,137 @@ Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
 	}
 
 	return largestBoundingBoxMesh;
+}
+
+void MeshPool::GenerateDefaultMeshes()
+{
+	vector<VertexPositionTextureNormalTangent> vertices;
+	vector<unsigned int> indices;
+
+	CreateCube(vertices, indices);
+
+	// construct the mesh
+	m_defaultCube = new Mesh();
+	m_defaultCube->SetID(MESH_DEFAULT_CUBE_ID);
+	m_defaultCube->SetName("Cube");
+	m_defaultCube->SetVertices(vertices);
+	m_defaultCube->SetIndices(indices);	
+	m_defaultCube->Update();
+
+	vertices.clear();
+	vertices.shrink_to_fit();
+
+	CreateQuad(vertices, indices);
+
+	m_defaultQuad = new Mesh();
+	m_defaultQuad->SetID(MESH_DEFAULT_QUAD_ID);
+	m_defaultQuad->SetName("Quad");
+	m_defaultQuad->SetVertices(vertices);
+	m_defaultQuad->SetIndices(indices);
+	m_defaultQuad->Update();
+
+	vertices.clear();
+	vertices.shrink_to_fit();
+}
+
+void MeshPool::CreateCube(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
+{
+	// front
+	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 0
+	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 1
+	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 2
+	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 3
+
+																											// bottom
+	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 4
+	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 5
+	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 6
+	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 7
+
+																											 // back
+	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 8
+	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 9
+	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 10
+	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 11
+
+																										  // top
+	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 12
+	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 13
+	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 14
+	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 15
+
+																										   // left
+	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 16
+	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 17
+	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 18
+	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 19
+
+																											 // right
+	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 20
+	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 21
+	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 22
+	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 23
+
+																										   // front
+	indices.push_back(0);
+	indices.push_back(1);
+	indices.push_back(2);
+	indices.push_back(2);
+	indices.push_back(1);
+	indices.push_back(3);
+
+	// bottom
+	indices.push_back(4);
+	indices.push_back(5);
+	indices.push_back(6);
+	indices.push_back(6);
+	indices.push_back(5);
+	indices.push_back(7);
+
+	// back
+	indices.push_back(10);
+	indices.push_back(9);
+	indices.push_back(8);
+	indices.push_back(11);
+	indices.push_back(9);
+	indices.push_back(10);
+
+	// top
+	indices.push_back(14);
+	indices.push_back(13);
+	indices.push_back(12);
+	indices.push_back(15);
+	indices.push_back(13);
+	indices.push_back(14);
+
+	// left
+	indices.push_back(16);
+	indices.push_back(17);
+	indices.push_back(18);
+	indices.push_back(18);
+	indices.push_back(17);
+	indices.push_back(19);
+
+	// left
+	indices.push_back(22);
+	indices.push_back(21);
+	indices.push_back(20);
+	indices.push_back(23);
+	indices.push_back(21);
+	indices.push_back(22);
+}
+
+void MeshPool::CreateQuad(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
+{
+	vertices.push_back({ Vector3(-0.5f, 0.0f, 0.5f),Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 0 top-left
+	vertices.push_back({ Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 1 top-right
+	vertices.push_back({ Vector3(-0.5f, 0.0f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 2 bottom-left
+	vertices.push_back({ Vector3(0.5f, 0.0f, -0.5f),Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 3 bottom-right
+
+	indices.push_back(3);
+	indices.push_back(2);
+	indices.push_back(0);
+	indices.push_back(3);
+	indices.push_back(0);
+	indices.push_back(1);
 }

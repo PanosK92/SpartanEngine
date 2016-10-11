@@ -49,6 +49,7 @@ public:
 	void SetName(const std::string& name) { m_name = name; }
 
 	std::string GetID() const { return m_ID; }
+	void SetID(const std::string& ID) { m_ID = ID; }
 
 	std::string GetRootGameObjectID() const { return m_rootGameObjectID; }
 	void SetRootGameObjectID(const std::string& rootGameObjectID) { m_rootGameObjectID = rootGameObjectID; }

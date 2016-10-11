@@ -21,13 +21,13 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 - Windows support.
 
 # Planned Features
-- Ability to save materials, meshes, textures in a custom format, total revamp of scene IO <- Active
+- [ACTIVE] Ability to save materials, meshes, textures in a custom format, total revamp of scene IO.
 - Audio source and listener components.
 - DirectX 12 Renderer
 - Draw call batching (static & dynamic).
 - Export on Windows.
 - Font loader & renderer.
-- Multi-threading. <- Active
+- [ACTIVE] Multi-threading.
 - SSAO, SSR, Volumetric Lighting.
 - UI components.
 - Vulkan Renderer.
