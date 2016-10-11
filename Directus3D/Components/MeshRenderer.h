@@ -54,9 +54,8 @@ public:
 
 	//= MATERIAL ===============================
 	Material* GetMaterial() const;
-	void SetMaterial(std::string materialID);
-	void SetMaterialStandardDefault();
-	void SetMaterialStandardSkybox();
+	void SetMaterial(Material* material);
+	
 	bool HasMaterial() const;
 
 private:

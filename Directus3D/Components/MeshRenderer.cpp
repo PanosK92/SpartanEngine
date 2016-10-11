@@ -23,11 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshRenderer.h"
 #include "Transform.h"
 #include "../IO/Serializer.h"
-#include "../Math/Matrix.h"
 #include "../IO/Log.h"
 #include "../Core/GameObject.h"
 #include "../Pools/MaterialPool.h"
-#include "../Graphics/Renderer.h"
 //================================
 
 //= NAMESPACES ================
@@ -44,13 +42,13 @@ MeshRenderer::MeshRenderer()
 
 MeshRenderer::~MeshRenderer()
 {
-
+	m_material = g_materialPool->GetMaterialStandardDefault();
 }
 
 //= ICOMPONENT ===============================================================
 void MeshRenderer::Initialize()
 {
-
+	
 }
 
 void MeshRenderer::Start()
@@ -138,19 +136,9 @@ Material* MeshRenderer::GetMaterial() const
 	return m_material;
 }
 
-void MeshRenderer::SetMaterial(string materialID)
+void MeshRenderer::SetMaterial(Material* material)
 {
-	m_material = g_materialPool->GetMaterialByID(materialID);
-}
-
-void MeshRenderer::SetMaterialStandardDefault()
-{
-	m_material = g_materialPool->GetMaterialStandardDefault();
-}
-
-void MeshRenderer::SetMaterialStandardSkybox()
-{
-	m_material = g_materialPool->GetMaterialStandardSkybox();
+	m_material = material;
 }
 
 bool MeshRenderer::HasMaterial() const

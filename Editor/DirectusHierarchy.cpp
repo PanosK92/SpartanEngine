@@ -583,7 +583,6 @@ void DirectusHierarchy::CreateCube()
 
     // Add a mesh renderer
     MeshRenderer* meshRendererComp = gameobject->AddComponent<MeshRenderer>();
-    meshRendererComp->SetMaterialStandardDefault();
 
     // Refresh hierarchy
     Populate();
@@ -601,7 +600,6 @@ void DirectusHierarchy::CreateQuad()
 
     // Add a mesh renderer
     MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>();
-    meshRenderer->SetMaterialStandardDefault();
 
     // Refresh hierarchy
     Populate();

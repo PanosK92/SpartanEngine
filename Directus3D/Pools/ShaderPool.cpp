@@ -24,7 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 //=====================
 
+//= NAMESPACES =====
 using namespace std;
+//==================
 
 ShaderPool::ShaderPool(Graphics* graphicsDevice)
 {
@@ -33,7 +35,7 @@ ShaderPool::ShaderPool(Graphics* graphicsDevice)
 
 ShaderPool::~ShaderPool()
 {
-	DeleteAll();
+	Clear();
 }
 
 ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
@@ -84,11 +86,11 @@ ShaderVariation* ShaderPool::CreateShaderBasedOnMaterial(
 	return m_shaders.back();
 }
 
-ShaderVariation* ShaderPool::GetShaderByID(string shaderID)
+ShaderVariation* ShaderPool::GetShaderByID(const string& shaderID)
 {
-	for (int i = 0; i < m_shaders.size(); i++)
-		if (m_shaders[i]->GetID() == shaderID)
-			return m_shaders[i];
+	for (ShaderVariation* shader : m_shaders)
+		if (shader->GetID() == shaderID)
+			return shader;
 
 	return nullptr;
 }
@@ -110,10 +112,8 @@ ShaderVariation* ShaderPool::FindMatchingShader(
 	bool cubemap
 )
 {
-	for (int i = 0; i < m_shaders.size(); i++)
+	for (ShaderVariation* shader : m_shaders)
 	{
-		ShaderVariation* shader = m_shaders[i];
-		
 		if (shader->HasAlbedoTexture() != albedo) continue;
 		if (shader->HasRoughnessTexture() != roughness) continue;
 		if (shader->HasMetallicTexture() != metallic) continue;
@@ -130,10 +130,10 @@ ShaderVariation* ShaderPool::FindMatchingShader(
 	return nullptr;
 }
 
-void ShaderPool::DeleteAll()
+void ShaderPool::Clear()
 {
-	for (int i = 0; i < m_shaders.size(); i++)
-		delete m_shaders[i];
+	for (ShaderVariation* shader : m_shaders)
+		delete shader;
 
 	m_shaders.clear();
 	m_shaders.shrink_to_fit();

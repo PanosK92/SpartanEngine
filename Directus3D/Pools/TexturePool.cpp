@@ -41,16 +41,16 @@ TexturePool::~TexturePool()
 }
 
 // Adds a texture to the pool directly from memory
-Texture* TexturePool::Add(Texture* texture)
+Texture* TexturePool::Add(Texture* textureIn)
 {
-	if (!texture)
+	if (!textureIn)
 		return nullptr;
 
-	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetID() == texture->GetID())
-			return m_textures[i];
+	for (Texture* texture : m_textures)
+		if (textureIn->GetID() == texture->GetID())
+			return texture;
 
-	m_textures.push_back(texture);
+	m_textures.push_back(textureIn);
 	return m_textures.back();
 }
 
@@ -62,7 +62,7 @@ Texture* TexturePool::Add(const string& texturePath)
 
 	// If the texture alrady exists, return it
 	Texture* loaded = GetTextureByPath(texturePath);
-	if (loaded) 
+	if (loaded)
 		return loaded;
 
 	// If the texture doesn't exist, create and load it
@@ -76,35 +76,33 @@ Texture* TexturePool::Add(const string& texturePath)
 // Adds multiple textures to the pool by reading them from image files
 void TexturePool::Add(const vector<string>& imagePaths)
 {
-	for (auto i = 0; i < imagePaths.size(); i++)
-		Add(imagePaths[i]);
+	for (const string& imagePath : imagePaths)
+		Add(imagePath);
 }
 
 Texture* TexturePool::GetTextureByName(const string&  name)
 {
-	for (auto i = 0; i < m_textures.size(); i++)
-	{
-		if (m_textures[i]->GetName() == name)
-			return m_textures[i];
-	}
+	for (Texture* texture : m_textures)
+		if (texture->GetName() == name)
+			return texture;
 
 	return nullptr;
 }
 
 Texture* TexturePool::GetTextureByID(const string&  ID)
 {
-	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetID() == ID)
-			return m_textures[i];
+	for (Texture* texture : m_textures)
+		if (texture->GetID() == ID)
+			return texture;
 
 	return nullptr;
 }
 
 Texture* TexturePool::GetTextureByPath(const string&  path)
 {
-	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetFilePathTexture() == path)
-			return m_textures[i];
+	for (Texture* texture : m_textures)
+		if (texture->GetFilePathTexture() == path)
+			return texture;
 
 	return nullptr;
 }
@@ -112,8 +110,9 @@ Texture* TexturePool::GetTextureByPath(const string&  path)
 vector<string> TexturePool::GetAllTextureFilePaths()
 {
 	vector<string> paths;
-	for (auto i = 0; i < m_textures.size(); i++)
-		paths.push_back(m_textures[i]->GetFilePathTexture());
+
+	for (Texture* texture : m_textures)
+		paths.push_back(texture->GetFilePathTexture());
 
 	return paths;
 }
@@ -150,21 +149,9 @@ void TexturePool::RemoveTextureByPath(const string&  path)
 
 void TexturePool::Clear()
 {
-	for (auto i = 0; i < m_textures.size(); i++)
-		delete m_textures[i];
+	for (Texture* texture : m_textures)
+		delete texture;
 
 	m_textures.clear();
 	m_textures.shrink_to_fit();
-}
-
-//=================
-// HELPER FUNCTIONS
-//=================
-int TexturePool::GetTextureIndex(Texture* texture)
-{
-	for (auto i = 0; i < m_textures.size(); i++)
-		if (m_textures[i]->GetFilePathTexture() == texture->GetFilePathTexture())
-			return i;
-
-	return -1;
 }

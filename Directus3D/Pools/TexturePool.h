@@ -47,9 +47,4 @@ public:
 
 private:
 	std::vector<Texture*> m_textures;
-
-	/*------------------------------------------------------------------------------
-							[HELPER FUNCTIONS]
-	------------------------------------------------------------------------------*/
-	int GetTextureIndex(Texture* texture);
 };

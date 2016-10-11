@@ -273,7 +273,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		material = m_materialPool->Add(material);
 
 		// Set it in the mesh renderer component
-		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material->GetID());
+		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);
 
 		// Save the material in our custom format
 		material->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/", false);

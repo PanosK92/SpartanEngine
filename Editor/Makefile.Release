@@ -658,6 +658,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -952,6 +953,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -1012,8 +1014,8 @@ compiler_moc_header_clean:
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -1301,6 +1303,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -1361,8 +1364,8 @@ compiler_moc_header_clean:
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -1646,6 +1649,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -1819,6 +1823,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -1874,8 +1879,8 @@ compiler_moc_header_clean:
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -2149,6 +2154,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -2209,8 +2215,8 @@ compiler_moc_header_clean:
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -2381,6 +2387,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -2697,6 +2704,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -2881,6 +2889,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -3079,6 +3088,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -3278,6 +3288,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -3460,6 +3471,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -3655,6 +3667,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -3799,8 +3812,8 @@ compiler_moc_header_clean:
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qvalidator.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qregularexpression.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QCheckBox \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcheckbox.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
@@ -3851,6 +3864,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -4037,6 +4051,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -4198,6 +4213,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -4331,6 +4347,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -4746,6 +4763,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -4941,6 +4959,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -5525,6 +5544,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -5719,6 +5739,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -5907,6 +5928,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -5967,8 +5989,8 @@ compiler_uic_clean:
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -6252,6 +6274,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -6312,8 +6335,8 @@ compiler_uic_clean:
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -6593,6 +6616,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -6871,6 +6895,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -6931,8 +6956,8 @@ compiler_uic_clean:
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -7100,6 +7125,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -7155,8 +7181,8 @@ compiler_uic_clean:
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -7307,6 +7333,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -7815,6 +7842,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -8108,6 +8136,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -8168,8 +8197,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -8457,6 +8486,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -8517,8 +8547,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -8817,6 +8847,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -8988,6 +9019,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -9043,8 +9075,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -9321,6 +9353,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -9381,8 +9414,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -9570,6 +9603,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -9902,6 +9936,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -9929,8 +9964,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -10108,6 +10143,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -10150,8 +10186,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -10344,6 +10380,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -10545,6 +10582,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -10570,8 +10608,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\RigidBody.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -10747,6 +10785,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -10789,8 +10828,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -10966,6 +11005,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -11008,8 +11048,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -11134,8 +11174,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\5.7\msvc2015_64\include\QtGui\qvalidator.h \
 		C:\Qt\5.7\msvc2015_64\include\QtCore\qregularexpression.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\QCheckBox \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qcheckbox.h \
 		C:\Qt\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
@@ -11186,6 +11226,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -11406,6 +11447,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -11448,8 +11490,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h
 
@@ -11600,6 +11642,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -11747,6 +11790,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -12168,6 +12212,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -12240,8 +12285,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshFilter.h \
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
@@ -12428,6 +12473,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -12462,8 +12508,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
-		..\Directus3D\Scripting\ScriptEngine.h \
 		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
 		DirectusMeshCollider.h \
 		..\Directus3D\Components\MeshCollider.h
 
@@ -12731,6 +12777,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -13096,6 +13143,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Pools\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \

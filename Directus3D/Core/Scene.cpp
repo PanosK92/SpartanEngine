@@ -137,6 +137,12 @@ bool Scene::LoadFromFile(const string& filePath)
 	vector<string> materialPaths = Serializer::ReadVectorSTR();
 	vector<string> meshPaths = Serializer::ReadVectorSTR();
 
+	for (const string& material : materialPaths)
+		LOG_INFO("Material: " + material);
+
+	for (const string& mesh : meshPaths)
+		LOG_INFO("Mesh: " + mesh);
+
 	Serializer::StopReading();
 	//===========================================================
 
@@ -189,7 +195,7 @@ void Scene::Clear()
 	m_texturePool->Clear();
 	m_meshPool->Clear();
 	m_materialPool->Clear();
-	m_shaderPool->DeleteAll();
+	m_shaderPool->Clear();
 	GameObjectPool::GetInstance().Clear();
 	//========================================
 

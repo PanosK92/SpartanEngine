@@ -43,9 +43,9 @@ public:
 		bool mask,
 		bool cubemap
 	);
-	ShaderVariation* GetShaderByID(std::string shaderID);
+	ShaderVariation* GetShaderByID(const std::string& shaderID);
 	const std::vector<ShaderVariation*>& GetAllShaders() const;
-	void DeleteAll();
+	void Clear();
 
 private:
 	ShaderVariation* FindMatchingShader(
