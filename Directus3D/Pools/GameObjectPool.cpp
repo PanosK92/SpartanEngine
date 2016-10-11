@@ -47,10 +47,21 @@ GameObjectPool::GameObjectPool()
 
 GameObjectPool::~GameObjectPool()
 {
-	DeleteAll();
+	Clear();
 }
 
-void GameObjectPool::Initialize(Graphics* d3d11Device, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine)
+void GameObjectPool::Initialize(
+	Graphics* d3d11Device, 
+	Scene* scene, 
+	Renderer* renderer, 
+	MeshPool* meshPool, 
+	MaterialPool* materialPool, 
+	TexturePool* texturePool, 
+	ShaderPool* shaderPool, 
+	PhysicsWorld* physics, 
+	ScriptEngine* scriptEngine,
+	ThreadPool* threadPool
+	)
 {
 	m_graphics = d3d11Device;
 	m_scene = scene;
@@ -61,33 +72,32 @@ void GameObjectPool::Initialize(Graphics* d3d11Device, Scene* scene, Renderer* r
 	m_shaderPool = shaderPool;
 	m_physics = physics;
 	m_scriptEngine = scriptEngine;
+	m_threadPool = threadPool;
 
 	CONNECT_TO_SIGNAL(SIGNAL_ENGINE_START, std::bind(&GameObjectPool::Start, this));
 }
 
 void GameObjectPool::Start()
 {
-	// call gameobject Start()
-	for (auto it = m_gameObjectPool.begin(); it < m_gameObjectPool.end(); ++it)
-		(*it)->Start();
+	for (GameObject* gameObject : m_gameObjectPool)
+		gameObject->Start();
 }
 
 void GameObjectPool::Update()
 {
-	// call gameobject Update()
-	for (auto it = m_gameObjectPool.begin(); it < m_gameObjectPool.end(); ++it)
-		(*it)->Update();
+	for (GameObject* gameObject : m_gameObjectPool)
+		gameObject->Update();
 }
 
 void GameObjectPool::Release()
 {
-	DeleteAll();
+	Clear();
 }
 
-void GameObjectPool::DeleteAll()
+void GameObjectPool::Clear()
 {
-	for (int i = 0; i < m_gameObjectPool.size(); i++)
-		delete m_gameObjectPool[i];
+	for (GameObject* gameObject : m_gameObjectPool)
+		delete gameObject;
 
 	m_gameObjectPool.clear();
 	m_gameObjectPool.shrink_to_fit();
@@ -102,17 +112,17 @@ void GameObjectPool::Serialize()
 	Serializer::WriteInt(m_gameObjectPool.size());
 
 	// 2nd - GameObject IDs
-	for (auto i = 0; i < m_gameObjectPool.size(); i++)
-		Serializer::WriteSTR(m_gameObjectPool[i]->GetID());
+	for (GameObject* gameObject : m_gameObjectPool)
+		Serializer::WriteSTR(gameObject->GetID());
 
 	// 3rd - GameObjects
-	for (auto i = 0; i < m_gameObjectPool.size(); i++)
-		m_gameObjectPool[i]->Serialize();
+	for (GameObject* gameObject : m_gameObjectPool)
+		gameObject->Serialize();
 }
 
 void GameObjectPool::Deserialize()
 {
-	DeleteAll();
+	Clear();
 
 	// 1st - GameObject count
 	int gameObjectCount = Serializer::ReadInt();
@@ -135,8 +145,8 @@ void GameObjectPool::Deserialize()
 vector<GameObject*> GameObjectPool::GetAllGameObjects()
 {
 	vector<GameObject*> gameObjects;
-	for (auto i = 0; i < m_gameObjectPool.size(); i++)
-		gameObjects.push_back(m_gameObjectPool[i]);
+	for (GameObject* gameObject : m_gameObjectPool)
+		gameObjects.push_back(gameObject);
 
 	return gameObjects;
 }
@@ -144,10 +154,10 @@ vector<GameObject*> GameObjectPool::GetAllGameObjects()
 vector<GameObject*> GameObjectPool::GetRootGameObjects()
 {
 	vector<GameObject*> rootGameObjects;
-	for (auto i = 0; i < m_gameObjectPool.size(); i++)
+	for (GameObject* gameObject : m_gameObjectPool)
 	{
-		if (m_gameObjectPool[i]->GetTransform()->IsRoot())
-			rootGameObjects.push_back(m_gameObjectPool[i]);
+		if (gameObject->GetTransform()->IsRoot())
+			rootGameObjects.push_back(gameObject);
 	}
 
 	return rootGameObjects;
@@ -182,7 +192,7 @@ int GameObjectPool::GetGameObjectIndex(GameObject* gameObject)
 	return -1;
 }
 
-GameObject* GameObjectPool::GetGameObjectByName(string name)
+GameObject* GameObjectPool::GetGameObjectByName(const string& name)
 {
 	for (unsigned int i = 0; i < m_gameObjectPool.size(); i++)
 	{
@@ -205,7 +215,7 @@ GameObject* GameObjectPool::GetGameObjectByIndex(int index)
 	return m_gameObjectPool[index];
 }
 
-GameObject* GameObjectPool::GetGameObjectByID(string ID)
+GameObject* GameObjectPool::GetGameObjectByID(const string& ID)
 {
 	for (unsigned int i = 0; i < m_gameObjectPool.size(); i++)
 	{
@@ -216,39 +226,39 @@ GameObject* GameObjectPool::GetGameObjectByID(string ID)
 	return nullptr;
 }
 
-const vector<GameObject*>& GameObjectPool::GetGameObjectsByParentID(string ID)
+const vector<GameObject*>& GameObjectPool::GetGameObjectsByParentID(const string& ID)
 {
 	vector<GameObject*> gameObjects;
-	for (unsigned int i = 0; i < m_gameObjectPool.size(); i++)
+	for (GameObject* gameObject : m_gameObjectPool)
 	{
 		// check if the gameobject has a parent
-		if (!m_gameObjectPool[i]->GetTransform()->HasParent())
+		if (!gameObject->GetTransform()->HasParent())
 			continue;
 
 		// if it does, check it's ID
-		if (m_gameObjectPool[i]->GetTransform()->GetParent()->g_gameObject->GetID() == ID)
-			gameObjects.push_back(m_gameObjectPool[i]);
+		if (gameObject->GetTransform()->GetParent()->g_gameObject->GetID() == ID)
+			gameObjects.push_back(gameObject);
 	}
 
 	return gameObjects;
 }
 
-bool GameObjectPool::GameObjectExists(GameObject* gameObject)
+bool GameObjectPool::GameObjectExists(GameObject* gameObjectIn)
 {
-	if (!gameObject)
+	if (!gameObjectIn)
 		return false;
 
-	for (unsigned int i = 0; i < m_gameObjectPool.size(); i++)
-		if (m_gameObjectPool[i]->GetID() == gameObject->GetID())
+	for (GameObject* gameObject : m_gameObjectPool)
+		if (gameObject->GetID() == gameObjectIn->GetID())
 			return true;
 
 	return false;
 }
 
-bool GameObjectPool::GameObjectExistsByName(string name)
+bool GameObjectPool::GameObjectExistsByName(const string& name)
 {
-	for (unsigned int i = 0; i < m_gameObjectPool.size(); i++)
-		if (m_gameObjectPool[i]->GetName() == name)
+	for (GameObject* gameObject : m_gameObjectPool)
+		if (gameObject->GetName() == name)
 			return true;
 
 	return false;
@@ -257,13 +267,13 @@ bool GameObjectPool::GameObjectExistsByName(string name)
 // Removes a gameobject and all of it's children
 void GameObjectPool::RemoveGameObject(GameObject* gameObject)
 {
-	if (!gameObject) return; // make sure it's not null
+	if (!gameObject) 
+		return;
 
 	// remove any descendants
-	vector<Transform*> descendants = gameObject->GetTransform()->GetDescendants();
-	for (unsigned int i = 0; i < descendants.size(); i++)
+	for (Transform* transform : gameObject->GetTransform()->GetDescendants())
 	{
-		GameObject* descendant = descendants[i]->GetGameObject();
+		GameObject* descendant = transform->GetGameObject();
 		RemoveSingleGameObject(descendant);
 	}
 
@@ -296,17 +306,15 @@ void GameObjectPool::RemoveSingleGameObject(GameObject* gameObject)
 /*------------------------------------------------------------------------------
 							[CALLED BY GAMEOBJECTS]
 ------------------------------------------------------------------------------*/
-void GameObjectPool::AddGameObjectToPool(GameObject* gameObject)
+void GameObjectPool::AddGameObjectToPool(GameObject* gameObjectIn)
 {
 	// check if it already exists.
-	for (unsigned int i = 0; i < m_gameObjectPool.size(); i++)
-	{
-		if (gameObject->GetID() == m_gameObjectPool[i]->GetID())
+	for (GameObject* gameObject : m_gameObjectPool)
+		if (gameObjectIn->GetID() == gameObject->GetID())
 			return;
-	}
 
-	gameObject->Initialize(m_graphics, m_scene, m_renderer, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physics, m_scriptEngine);
-	m_gameObjectPool.push_back(gameObject);
+	gameObjectIn->Initialize(m_graphics, m_scene, m_renderer, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physics, m_scriptEngine);
+	m_gameObjectPool.push_back(gameObjectIn);
 	EMIT_SIGNAL(SIGNAL_HIERARCHY_CHANGED);
 
 	m_scene->AnalyzeGameObjects();

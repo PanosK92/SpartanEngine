@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "IComponent.h"
-#include "../Scripting/ScriptEngine.h"
 #include "../Scripting/ScriptInstance.h"
 //======================================
 
