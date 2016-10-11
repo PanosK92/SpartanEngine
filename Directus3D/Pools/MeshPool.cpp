@@ -78,11 +78,8 @@ Mesh* MeshPool::Add(const string& name, const string& rootGameObjectID, const ve
 // Adds multiple meshes to the pool by reading them from files
 void MeshPool::Add(const vector<string>& filePaths)
 {
-	string filePath;
-	for (auto i = 0; i < filePaths.size(); i++)
+	for (const string& filePath : filePaths)
 	{
-		filePath = filePaths[i];
-
 		// Make sure the path is valid
 		if (!FileSystem::FileExists(filePath))
 			continue;
@@ -110,9 +107,9 @@ Mesh* MeshPool::GetMeshByID(const string& ID)
 
 Mesh* MeshPool::GetMeshByPath(const string& path)
 {
-	for (auto i = 0; i < m_meshes.size(); i++)
-		if (m_meshes[i]->GetFilePath() == path)
-			return m_meshes[i];
+	for (Mesh* mesh : m_meshes)
+		if (mesh->GetFilePath() == path)
+			return mesh;
 
 	return nullptr;
 }
@@ -120,8 +117,9 @@ Mesh* MeshPool::GetMeshByPath(const string& path)
 vector<string> MeshPool::GetAllMeshFilePaths()
 {
 	vector<string> paths;
-	for (auto i = 0; i < m_meshes.size(); i++)
-		paths.push_back(m_meshes[i]->GetFilePath());
+
+	for (Mesh* mesh : m_meshes)
+		paths.push_back(mesh->GetFilePath());
 
 	return paths;
 }
@@ -130,10 +128,11 @@ vector<string> MeshPool::GetAllMeshFilePaths()
 vector<Mesh*> MeshPool::GetModelMeshesByModelName(const string& rootGameObjectID)
 {
 	vector<Mesh*> modelMeshes;
-	for (auto i = 0; i < m_meshes.size(); i++)
+
+	for (Mesh* mesh : m_meshes)
 	{
-		if (m_meshes[i]->GetRootGameObjectID() == rootGameObjectID)
-			modelMeshes.push_back(m_meshes[i]);
+		if (mesh->GetRootGameObjectID() == rootGameObjectID)
+			modelMeshes.push_back(mesh);
 	}
 
 	return modelMeshes;
@@ -339,18 +338,18 @@ Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
 		return nullptr;
 
 	Vector3 largestBoundingBox = Vector3::Zero;
-	Mesh* largestBoundingBoxMesh = meshes[0];
+	Mesh* largestBoundingBoxMesh = meshes.front();
 
-	for (auto i = 0; i < meshes.size(); i++)
+	for (Mesh* mesh : meshes)
 	{
-		if (!meshes[i])
+		if (!mesh)
 			continue;
 
-		Vector3 boundingBox = meshes[i]->GetBoundingBox();
+		Vector3 boundingBox = mesh->GetBoundingBox();
 		if (boundingBox.Volume() > largestBoundingBox.Volume())
 		{
 			largestBoundingBox = boundingBox;
-			largestBoundingBoxMesh = meshes[i];
+			largestBoundingBoxMesh = mesh;
 		}
 	}
 

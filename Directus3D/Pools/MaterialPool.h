@@ -41,9 +41,9 @@ public:
 
 	void Clear();
 	void RemoveMaterial(Material* material);
-	void RemoveMaterial(std::string materialID);
+	void RemoveMaterial(const std::string& materialID);
 
-	Material* GetMaterialByID(std::string materialID);
+	Material* GetMaterialByID(const std::string& materialID);
 	Material* GetMaterialStandardDefault();
 	Material* GetMaterialStandardSkybox();
 	std::vector<std::string> GetAllMaterialFilePaths();
@@ -56,6 +56,8 @@ private:
 	ShaderPool* m_shaderPool;
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
-	------------------------------------------------------------------------------*/	
-	void AddStandardMaterials();
+	------------------------------------------------------------------------------*/
+	Material* m_defaultMaterial;
+	Material* m_skyboxMaterial;
+	void CreateStandardMaterials();
 };
