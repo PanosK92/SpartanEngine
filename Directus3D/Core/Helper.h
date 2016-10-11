@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#define DATA_NOT_ASSIGNED "N/A"
+
 //= A COLLECTION OF SOME HELPFUL FUNCTIONS =================
 template <typename T>
 void SafeRelease(T& ptr)

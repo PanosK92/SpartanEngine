@@ -58,5 +58,4 @@ private:
 	D3D11Buffer* m_vertexBuffer;
 	D3D11Buffer* m_indexBuffer;
 	Mesh* m_mesh;
-	bool m_usingDefaultMesh;
 };
