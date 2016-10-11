@@ -52,7 +52,7 @@ public:
 		Graphics* d3d11device
 	);
 	void Set();
-	void SetBuffers(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection, Material* material, Light* directionalLight, bool receiveShadows, Camera* camera);
+	void SetBuffers(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection, std::shared_ptr<Material> material, Light* directionalLight, bool receiveShadows, Camera* camera);
 	void SetResources(const std::vector<ID3D11ShaderResourceView*>& textureArray);
 	void Draw(int indexCount);
 	std::string GetID() const;

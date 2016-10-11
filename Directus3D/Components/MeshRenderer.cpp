@@ -90,7 +90,7 @@ void MeshRenderer::SetShader() const
 
 void MeshRenderer::Render(unsigned int indexCount) const
 {
-	Material* material = GetMaterial();
+	shared_ptr<Material> material = GetMaterial();
 
 	if (!material) // Check if a material exists
 	{
@@ -132,12 +132,12 @@ bool MeshRenderer::GetReceiveShadows() const
 //==============================================================================
 
 //= MATERIAL ===================================================================
-Material* MeshRenderer::GetMaterial() const
+shared_ptr<Material> MeshRenderer::GetMaterial() const
 {
 	return m_material;
 }
 
-void MeshRenderer::SetMaterial(Material* material)
+void MeshRenderer::SetMaterial(shared_ptr<Material> material)
 {
 	m_material = material;
 }

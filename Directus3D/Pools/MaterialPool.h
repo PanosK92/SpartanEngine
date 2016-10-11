@@ -39,28 +39,26 @@ public:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/	
-	Material* Add(Material* material);
+	std::shared_ptr<Material> Add(std::shared_ptr<Material> material);
 	void Add(const std::vector<std::string>& filePaths);
 
 	void Clear();
-	void RemoveMaterial(Material* material);
-	void RemoveMaterial(const std::string& materialID);
 
-	Material* GetMaterialByID(const std::string& materialID);
-	Material* GetMaterialStandardDefault();
-	Material* GetMaterialStandardSkybox();
+	std::shared_ptr<Material> GetMaterialByID(const std::string& materialID);
+	std::shared_ptr<Material> GetMaterialStandardDefault();
+	std::shared_ptr<Material> GetMaterialStandardSkybox();
 	std::vector<std::string> GetAllMaterialFilePaths();
-	const std::vector<Material*>& GetAllMaterials();
+	const std::vector<std::shared_ptr<Material>>& GetAllMaterials();
 
 private:
-	std::vector<Material*> m_materials;
+	std::vector<std::shared_ptr<Material>> m_materials;
 
 	TexturePool* m_texturePool;
 	ShaderPool* m_shaderPool;
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	Material* m_materialDefault;
-	Material* m_materialDefaultSkybox;
+	std::shared_ptr<Material> m_materialDefault;
+	std::shared_ptr<Material> m_materialDefaultSkybox;
 	void GenerateDefaultMaterials();
 };

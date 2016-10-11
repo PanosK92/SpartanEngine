@@ -124,7 +124,7 @@ private:
 
     //= MISC ========================
     QGridLayout* m_gridLayout;
-    Material* m_inspectedMaterial;
+    std::shared_ptr<Material> m_inspectedMaterial;
     DirectusCore* m_directusCore;
     DirectusInspector* m_inspector;
     //===============================

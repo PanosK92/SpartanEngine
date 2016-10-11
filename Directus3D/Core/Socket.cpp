@@ -199,7 +199,7 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 	if (!meshRenderer)
 		return;
 
-	Material* material = meshRenderer->GetMaterial();
+	shared_ptr<Material> material = meshRenderer->GetMaterial();
 	if (material)
 	{
 		// Get the texture from the texture pool
