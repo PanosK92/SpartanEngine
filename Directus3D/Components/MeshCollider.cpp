@@ -99,12 +99,12 @@ void MeshCollider::SetConvex(bool isConvex)
 	ConstructCollisionShape();
 }
 
-Mesh* MeshCollider::GetMesh() const
+shared_ptr<Mesh> MeshCollider::GetMesh() const
 {
 	return m_mesh;
 }
 
-void MeshCollider::SetMesh(Mesh* mesh)
+void MeshCollider::SetMesh(shared_ptr<Mesh> mesh)
 {
 	m_mesh = mesh;
 	ConstructCollisionShape();
@@ -170,7 +170,7 @@ void MeshCollider::SetCollisionShapeToRigidBody(btCollisionShape* shape) const
 		rigidBody->SetCollisionShape(shape);
 }
 
-Mesh* MeshCollider::GetMeshFromAttachedMeshFilter() const
+shared_ptr<Mesh> MeshCollider::GetMeshFromAttachedMeshFilter() const
 {
 	MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
 	return meshFilter ? meshFilter->GetMesh() : nullptr;

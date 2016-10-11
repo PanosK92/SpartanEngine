@@ -49,18 +49,15 @@ MeshPool::~MeshPool()
 ------------------------------------------------------------------------------*/
 void MeshPool::Clear()
 {
-	for (auto i = 0; i < m_meshes.size(); i++)
-		delete m_meshes[i];
-
 	m_meshes.clear();
 	m_meshes.shrink_to_fit();
 }
 
 // Adds a mesh to the pool directly from memory
-Mesh* MeshPool::Add(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
+shared_ptr<Mesh> MeshPool::Add(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
 {
 	// construct the mesh
-	Mesh* mesh = new Mesh();
+	shared_ptr<Mesh> mesh = make_shared<Mesh>();
 	mesh->SetName(name);
 	mesh->SetRootGameObjectID(rootGameObjectID);
 	mesh->SetVertices(vertices);
@@ -87,15 +84,13 @@ void MeshPool::Add(const vector<string>& filePaths)
 		if (FileSystem::GetExtensionFromPath(filePath) != MESH_EXTENSION)
 			continue;
 
-		Mesh* mesh = new Mesh();
+		shared_ptr<Mesh> mesh = make_shared<Mesh>();
 		if (mesh->LoadFromFile(filePath))
 			m_meshes.push_back(mesh);
-		else
-			delete mesh;
 	}
 }
 
-Mesh* MeshPool::GetMeshByID(const string& ID)
+shared_ptr<Mesh> MeshPool::GetMeshByID(const string& ID)
 {
 	if (ID == MESH_DEFAULT_CUBE_ID)
 		return m_defaultCube;
@@ -103,16 +98,16 @@ Mesh* MeshPool::GetMeshByID(const string& ID)
 	if (ID == MESH_DEFAULT_QUAD_ID)
 		return m_defaultQuad;
 
-	for (Mesh* mesh : m_meshes)
+	for (shared_ptr<Mesh> mesh : m_meshes)
 		if (mesh->GetID() == ID)
 			return mesh;
 
 	return nullptr;
 }
 
-Mesh* MeshPool::GetMeshByPath(const string& path)
+shared_ptr<Mesh> MeshPool::GetMeshByPath(const string& path)
 {
-	for (Mesh* mesh : m_meshes)
+	for (shared_ptr<Mesh> mesh : m_meshes)
 		if (mesh->GetFilePath() == path)
 			return mesh;
 
@@ -123,18 +118,18 @@ vector<string> MeshPool::GetAllMeshFilePaths()
 {
 	vector<string> paths;
 
-	for (Mesh* mesh : m_meshes)
+	for (shared_ptr<Mesh> mesh : m_meshes)
 		paths.push_back(mesh->GetFilePath());
 
 	return paths;
 }
 
 // Returns the meshes tha belong to the same model
-vector<Mesh*> MeshPool::GetModelMeshesByModelName(const string& rootGameObjectID)
+vector<shared_ptr<Mesh>> MeshPool::GetModelMeshesByModelName(const string& rootGameObjectID)
 {
-	vector<Mesh*> modelMeshes;
+	vector<shared_ptr<Mesh>> modelMeshes;
 
-	for (Mesh* mesh : m_meshes)
+	for (shared_ptr<Mesh> mesh : m_meshes)
 		if (mesh->GetRootGameObjectID() == rootGameObjectID)
 			modelMeshes.push_back(mesh);
 
@@ -146,12 +141,12 @@ int MeshPool::GetMeshCount()
 	return (int)m_meshes.size();
 }
 
-Mesh* MeshPool::GetDefaultCube()
+shared_ptr<Mesh> MeshPool::GetDefaultCube()
 {
 	return m_defaultCube;
 }
 
-Mesh* MeshPool::GetDefaultQuad()
+shared_ptr<Mesh> MeshPool::GetDefaultQuad()
 {
 	return m_defaultQuad;
 }
@@ -164,10 +159,10 @@ Mesh* MeshPool::GetDefaultQuad()
 float MeshPool::GetNormalizedModelScaleByRootGameObjectID(const string& rootGameObjectID)
 {
 	// get all the meshes related to this model
-	vector<Mesh*> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
+	vector<shared_ptr<Mesh>> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
 
 	// find the mesh with the largest bounding box
-	Mesh* largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
+	shared_ptr<Mesh> largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
 
 	if (!largestBoundingBoxMesh)
 		return 1.0f;
@@ -182,7 +177,7 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(const string& rootGame
 void MeshPool::SetModelScale(const string& rootGameObjectID, float scale)
 {
 	// get all the meshes related to this model
-	vector<Mesh*> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
+	vector<shared_ptr<Mesh>> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
 
 	for (auto i = 0; i < modelMeshes.size(); i++)
 		modelMeshes[i]->Scale(scale);
@@ -198,15 +193,15 @@ void MeshPool::NormalizeModelScale(GameObject* rootGameObject)
 }
 
 // Returns the largest bounding box in an vector of meshes
-Mesh* MeshPool::GetLargestBoundingBox(const vector<Mesh*>& meshes)
+shared_ptr<Mesh> MeshPool::GetLargestBoundingBox(const vector<shared_ptr<Mesh>>& meshes)
 {
 	if (meshes.empty())
 		return nullptr;
 
 	Vector3 largestBoundingBox = Vector3::Zero;
-	Mesh* largestBoundingBoxMesh = meshes.front();
+	shared_ptr<Mesh> largestBoundingBoxMesh = meshes.front();
 
-	for (Mesh* mesh : meshes)
+	for (shared_ptr<Mesh> mesh : meshes)
 	{
 		if (!mesh)
 			continue;
@@ -230,7 +225,7 @@ void MeshPool::GenerateDefaultMeshes()
 	CreateCube(vertices, indices);
 
 	// construct the mesh
-	m_defaultCube = new Mesh();
+	m_defaultCube = make_shared<Mesh>();
 	m_defaultCube->SetID(MESH_DEFAULT_CUBE_ID);
 	m_defaultCube->SetName("Cube");
 	m_defaultCube->SetVertices(vertices);
@@ -242,7 +237,7 @@ void MeshPool::GenerateDefaultMeshes()
 
 	CreateQuad(vertices, indices);
 
-	m_defaultQuad = new Mesh();
+	m_defaultQuad = make_shared<Mesh>();
 	m_defaultQuad->SetID(MESH_DEFAULT_QUAD_ID);
 	m_defaultQuad->SetName("Quad");
 	m_defaultQuad->SetVertices(vertices);

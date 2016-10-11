@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "IComponent.h"
 #include "../Graphics/Mesh.h"
+#include <memory>
 //===========================
 
 class RigidBody;
@@ -47,8 +48,8 @@ public:
 
 	bool GetConvex() const;
 	void SetConvex(bool isConvex);
-	Mesh* GetMesh() const;
-	void SetMesh(Mesh* mesh);
+	std::shared_ptr<Mesh> GetMesh() const;
+	void SetMesh(std::shared_ptr<Mesh> mesh);
 	
 
 private:
@@ -56,10 +57,10 @@ private:
 	void DeleteCollisionShape();
 	void ConstructCollisionShape();
 	void SetCollisionShapeToRigidBody(btCollisionShape* shape) const;
-	Mesh* GetMeshFromAttachedMeshFilter() const;
+	std::shared_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
 	//========================================================================
 
-	Mesh* m_mesh;
+	std::shared_ptr<Mesh> m_mesh;
 	int m_vertexLimit = 100000;
 	btCollisionShape* m_collisionShape;
 	bool m_convex;
