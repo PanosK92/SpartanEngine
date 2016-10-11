@@ -51,7 +51,7 @@ Skybox::Skybox()
 
 Skybox::~Skybox()
 {
-	SafeDelete(m_cubeMapTexture);
+
 }
 
 /*------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ void Skybox::Initialize()
 	if (FAILED(hr))
 		return;
 
-	m_cubeMapTexture = new Texture();
+	m_cubeMapTexture = make_shared<Texture>();
 	m_cubeMapTexture->SetType(CubeMap);
 	m_cubeMapTexture->SetFilePathTexture("Assets/Environment/environment.dds");
 	m_cubeMapTexture->SetWidth(1200);

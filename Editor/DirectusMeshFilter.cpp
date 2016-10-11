@@ -116,8 +116,7 @@ void DirectusMeshFilter::ReflectMesh()
     if (!m_inspectedMeshFilter)
         return;
 
-    Mesh* mesh = m_inspectedMeshFilter->GetMesh();
-    QString meshName = QString::fromStdString(mesh ? mesh->GetName() : "N/A");
+    QString meshName = QString::fromStdString(m_inspectedMeshFilter->GetMeshName());
     m_mesh->setText(meshName);
 }
 

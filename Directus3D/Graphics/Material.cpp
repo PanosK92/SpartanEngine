@@ -120,7 +120,7 @@ void Material::Deserialize()
 	for (int i = 0; i < textureCount; i++)
 	{
 		string textureID = Serializer::ReadSTR(); // texture id
-		Texture* texture = m_texturePool->GetTextureByID(textureID);
+		shared_ptr<Texture> texture = m_texturePool->GetTextureByID(textureID);
 
 		if (texture)
 			m_textures.push_back(texture);
@@ -155,7 +155,7 @@ bool Material::LoadFromFile(const string& filePath)
 //==============================================================================
 
 //= TEXTURES ===================================================================
-void Material::SetTexture(Texture* texture)
+void Material::SetTexture(shared_ptr<Texture> texture)
 {
 	// Make sure this texture exists
 	if (!texture)
@@ -177,25 +177,24 @@ void Material::SetTexture(Texture* texture)
 void Material::SetTextureByID(const string& textureID)
 {
 	// Get the texture from the pool
-	Texture* texture = m_texturePool->GetTextureByID(textureID);
+	shared_ptr<Texture> texture = m_texturePool->GetTextureByID(textureID);
 
 	SetTexture(texture);
 }
 
-Texture* Material::GetTextureByType(TextureType type)
+shared_ptr<Texture> Material::GetTextureByType(TextureType type)
 {
-	for (auto i = 0; i < m_textures.size(); i++)
-	{
-		if (m_textures[i]->GetType() == type)
-			return m_textures[i];
-	}
+	for (auto texture : m_textures)
+		if (texture->GetType() == type)
+			return texture;
 
 	return nullptr;
 }
 
 bool Material::HasTextureOfType(TextureType type)
 {
-	Texture* texture = GetTextureByType(type);
+	shared_ptr<Texture> texture = GetTextureByType(type);
+
 	if (texture)
 		return true;
 
@@ -213,7 +212,7 @@ bool Material::HasTexture(const string& path)
 
 string Material::GetTexturePathByType(TextureType type)
 {
-	Texture* texture = GetTextureByType(type);
+	auto texture = GetTextureByType(type);
 	if (texture)
 		return texture->GetFilePathTexture();
 
@@ -266,7 +265,7 @@ bool Material::HasShader()
 
 ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureType type)
 {
-	Texture* texture = GetTextureByType(type);
+	auto texture = GetTextureByType(type);
 
 	if (texture)
 		return texture->GetID3D11ShaderResourceView();

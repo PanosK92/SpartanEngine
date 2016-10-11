@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include <vector>
 #include "../Graphics/Texture.h"
+#include <memory>
 ///=============================
 
 class TexturePool
@@ -32,19 +33,17 @@ public:
 	TexturePool();
 	~TexturePool();
 
-	Texture* Add(Texture* texture);
-	Texture* Add(const std::string& texturePath);
+	std::shared_ptr<Texture> Add(std::shared_ptr<Texture> texture);
+	std::shared_ptr<Texture> Add(const std::string& texturePath);
 	void Add(const std::vector<std::string>& texturePaths);
 
-	Texture* GetTextureByName(const std::string& name);
-	Texture* GetTextureByID(const std::string& ID);
-	Texture* GetTextureByPath(const std::string& path);
+	std::shared_ptr<Texture> GetTextureByName(const std::string& name);
+	std::shared_ptr<Texture> GetTextureByID(const std::string& ID);
+	std::shared_ptr<Texture> GetTextureByPath(const std::string& path);
 	std::vector<std::string> GetAllTextureFilePaths();
 
-	void Remove(Texture* texture);
-	void RemoveTextureByPath(const std::string& path);
 	void Clear();
 
 private:
-	std::vector<Texture*> m_textures;
+	std::vector<std::shared_ptr<Texture>> m_textures;
 };

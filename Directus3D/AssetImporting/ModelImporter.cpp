@@ -363,7 +363,7 @@ void ModelImporter::AddTextureToMaterial(Material* material, TextureType texture
 	string textureDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
 	FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
-	Texture* texture = m_texturePool->Add(textureDestination);
+	shared_ptr<Texture> texture = m_texturePool->Add(textureDestination);
 	if (texture)
 	{
 		texture->SetType(textureType);

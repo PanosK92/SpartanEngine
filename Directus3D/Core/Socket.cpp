@@ -203,7 +203,7 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 	if (material)
 	{
 		// Get the texture from the texture pool
-		Texture* texture = m_texturePool->GetTextureByPath(texturePath);
+		shared_ptr<Texture> texture = m_texturePool->GetTextureByPath(texturePath);
 
 		// If it's not loaded yet, load it
 		if (!texture)

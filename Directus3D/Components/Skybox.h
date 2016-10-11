@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include "../Graphics/D3D11/D3D11Shader.h"
 #include "../Graphics/Texture.h"
-
+#include <memory>
 //========================================
 
 class __declspec(dllexport) Skybox : public IComponent
@@ -50,5 +50,5 @@ public:
 	ID3D11ShaderResourceView* GetEnvironmentTexture() const;
 
 private:
-	Texture* m_cubeMapTexture;
+	std::shared_ptr<Texture> m_cubeMapTexture;
 };

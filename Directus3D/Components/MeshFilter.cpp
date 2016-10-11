@@ -73,7 +73,14 @@ void MeshFilter::Serialize()
 
 void MeshFilter::Deserialize()
 {
-	m_mesh = g_meshPool->GetMeshByID(Serializer::ReadSTR());
+	string meshID = Serializer::ReadSTR();
+	m_mesh = g_meshPool->GetMeshByID(meshID);
+
+	if (!m_mesh)
+	{
+		LOG_INFO(meshID);
+	}
+
 	CreateBuffers();
 }
 
@@ -142,6 +149,11 @@ Vector3 MeshFilter::GetBoundingBox() const
 Mesh* MeshFilter::GetMesh() const
 {
 	return m_mesh;
+}
+
+string MeshFilter::GetMeshName()
+{
+	return m_mesh ? m_mesh->GetName() : DATA_NOT_ASSIGNED;
 }
 
 void MeshFilter::CreateBuffers()
