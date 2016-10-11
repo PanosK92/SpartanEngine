@@ -172,12 +172,12 @@ void Renderer::Render()
 	// Render light depth
 	if (m_directionalLight)
 		if (m_directionalLight->GetShadowType() != No_Shadows)
-			DirectionalLightDepthPass(m_renderables, m_directionalLight);
+			DirectionalLightDepthPass();
 
 	// G-Buffer Construction
 	m_GBuffer->SetRenderTargets();
 	m_GBuffer->Clear(m_camera->GetClearColor());
-	GBufferPass(m_renderables);
+	GBufferPass();
 
 	// DISABLE Z BUFFER - SET FULLSCREEN QUAD
 	m_graphics->EnableZBuffer(false);
@@ -291,17 +291,15 @@ void Renderer::AcquirePrerequisites()
 	}
 }
 
-void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjects, Light* light) const
+void Renderer::DirectionalLightDepthPass()
 {
 	m_graphics->SetCullMode(CullFront);	
 
-	for (int cascadeIndex = 0; cascadeIndex < light->GetCascadeCount(); cascadeIndex++)
+	for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetCascadeCount(); cascadeIndex++)
 	{
-		light->SetShadowMapAsRenderTarget(cascadeIndex);
-
-		for (auto i = 0; i < renderableGameObjects.size(); i++)
+		m_directionalLight->SetShadowMapAsRenderTarget(cascadeIndex);
+		for (GameObject* gameObject : m_renderables)
 		{
-			GameObject* gameObject = renderableGameObjects[i];
 			MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
 			MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
 			Mesh* mesh = meshFilter->GetMesh();
@@ -318,28 +316,21 @@ void Renderer::DirectionalLightDepthPass(vector<GameObject*> renderableGameObjec
 				m_shaderDepth->Render(
 					mesh->GetIndexCount(),
 					gameObject->GetTransform()->GetWorldTransform(),
-					light->GetViewMatrix(),
-					light->GetOrthographicProjectionMatrix(cascadeIndex)
+					m_directionalLight->GetViewMatrix(),
+					m_directionalLight->GetOrthographicProjectionMatrix(cascadeIndex)
 				);
 			}
 		}
 	}
 }
 
-void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
+void Renderer::GBufferPass()
 {
-	vector<ShaderVariation*> shaders = m_shaderPool->GetAllShaders();
-	vector<Material*> materials = m_materialPool->GetAllMaterials();
-
-	for (auto s = 0; s < shaders.size(); s++) // for each shader
+	for (ShaderVariation* currentShader : m_shaderPool->GetAllShaders()) // for each shader
 	{	
-		ShaderVariation* currentShader = shaders[s];
 		currentShader->Set();
-	
-		for (auto m = 0; m < materials.size(); m++) // for each material that uses this shader
+		for (Material* currentMaterial : m_materialPool->GetAllMaterials()) // for each material that uses this shader
 		{
-			Material* currentMaterial = materials[m];
-
 			if (currentMaterial->GetShader()->GetID() != currentShader->GetID())
 				continue;	
 
@@ -360,10 +351,9 @@ void Renderer::GBufferPass(vector<GameObject*> renderableGameObjects)
 
 			currentShader->SetResources(m_textures);
 
-			for (auto g = 0; g < renderableGameObjects.size(); g++) // for each mesh that uses this material:
+			for (GameObject* gameObject : m_renderables) // for each mesh that uses this material:
 			{
 				//= Get all that we need ===================================================
-				GameObject* gameObject = renderableGameObjects[g];
 				MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
 				Mesh* mesh = meshFilter->GetMesh();
 				MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
