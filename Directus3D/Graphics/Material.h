@@ -75,60 +75,63 @@ public:
 	//=============================================================================
 
 	//= PROPERTIES ================================================================
-	void SetID(const std::string& ID) { m_ID = ID; }
 	std::string GetID() { return m_ID; }
-
-	void SetName(const std::string& name) { m_name = name; }
+	void SetID(const std::string& ID) { m_ID = ID; }
+	
 	std::string GetName() { return m_name; }
-
-	void SetModelID(const std::string& ID) { m_modelID = ID; }
+	void SetName(const std::string& name) { m_name = name; }
+	
 	std::string GetModelID() { return m_modelID; }
-
-	void SetFilePath(const std::string& filepath) { m_filePath = filepath; }
+	void SetModelID(const std::string& ID) { m_modelID = ID; }
+	
 	std::string GetFilePath() { return m_filePath; }
+	void SetFilePath(const std::string& filepath) { m_filePath = filepath; }
 
-	void SetFaceCullMode(CullMode cullMode) { m_cullMode = cullMode; }
 	CullMode GetFaceCullMode() { return m_cullMode; }
-
+	void SetFaceCullMode(CullMode cullMode) { m_cullMode = cullMode; }
+	
+	float GetOpacity() { return m_opacity; }
 	void SetOpacity(float opacity)
 	{
 		m_opacity = opacity;
 		m_alphaBlending = bool(opacity) ? true : false;
 	}
-	float GetOpacity() { return m_opacity; }
-
-	void SetAlphaBlending(bool alphaBlending) { m_alphaBlending = alphaBlending; }
+	
 	bool GetAlphaBlending() { return m_alphaBlending; }
-
-	void SetRoughnessMultiplier(float roughness) { m_roughnessMultiplier = roughness; }
+	void SetAlphaBlending(bool alphaBlending) { m_alphaBlending = alphaBlending; }
+	
 	float GetRoughnessMultiplier() { return m_roughnessMultiplier; }
-
-	void SetMetallicMultiplier(float metallic) { m_metallicMultiplier = metallic; }
+	void SetRoughnessMultiplier(float roughness) { m_roughnessMultiplier = roughness; }
+	
 	float GetMetallicMultiplier() { return m_metallicMultiplier; }
-
-	void SetNormalMultiplier(float normal) { m_normalMultiplier = normal; }
+	void SetMetallicMultiplier(float metallic) { m_metallicMultiplier = metallic; }
+	
 	float GetNormalMultiplier() { return m_normalMultiplier; }
-
-	void SetHeightMultiplier(float height) { m_heightMultiplier = height; }
+	void SetNormalMultiplier(float normal) { m_normalMultiplier = normal; }
+	
 	float GetHeightMultiplier() { return m_heightMultiplier; }
-
-	void SetOcclusionMultiplier(float occlusion) { m_occlusionMultiplier = occlusion; }
+	void SetHeightMultiplier(float height) { m_heightMultiplier = height; }
+	
 	float GetOcclusionMultiplier() { return m_occlusionMultiplier; }
-
-	void SetSpecularMultiplier(float specular) { m_specularMultiplier = specular; }
+	void SetOcclusionMultiplier(float occlusion) { m_occlusionMultiplier = occlusion; }
+	
 	float GetSpecularMultiplier() { return m_specularMultiplier; }
-
-	void SetShadingMode(ShadingMode shadingMode) { m_shadingMode = shadingMode; }
+	void SetSpecularMultiplier(float specular) { m_specularMultiplier = specular; }
+	
 	ShadingMode GetShadingMode() { return m_shadingMode; }
-
-	void SetColorAlbedo(const Directus::Math::Vector4& color) { m_colorAlbedo = color; }
+	void SetShadingMode(ShadingMode shadingMode) { m_shadingMode = shadingMode; }
+	
 	Directus::Math::Vector4 GetColorAlbedo() { return m_colorAlbedo; }
-
-	void SetTilingUV(const Directus::Math::Vector2& tiling) { m_tilingUV = tiling; }
+	void SetColorAlbedo(const Directus::Math::Vector4& color) { m_colorAlbedo = color; }
+	
 	Directus::Math::Vector2 GetTilingUV() { return m_tilingUV; }
-
-	void SetOffsetUV(const Directus::Math::Vector2& offset) { m_offsetUV = offset; }
+	void SetTilingUV(const Directus::Math::Vector2& tiling) { m_tilingUV = tiling; }
+	
 	Directus::Math::Vector2 GetOffsetUV() { return m_offsetUV; }
+	void SetOffsetUV(const Directus::Math::Vector2& offset) { m_offsetUV = offset; }
+
+	bool IsEditable() { return m_isEditable; }
+	void SetIsEditable(bool isEditable) { m_isEditable = isEditable; }
 	//=============================================================================
 
 private:
@@ -156,6 +159,7 @@ private:
 	Directus::Math::Vector2 m_offsetUV;
 	ShadingMode m_shadingMode;
 	ShaderVariation* m_shader;
+	bool m_isEditable;
 
 	//= DEPENDENCIES ==========
 	TexturePool* m_texturePool;

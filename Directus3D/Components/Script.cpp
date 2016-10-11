@@ -76,14 +76,14 @@ void Script::Update()
 
 void Script::Serialize()
 {
-	Serializer::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : PATH_UNAVAILABLE);
+	Serializer::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : PATH_NOT_ASSIGNED);
 }
 
 void Script::Deserialize()
 {
 	string scriptPath = Serializer::ReadSTR();
 
-	if (scriptPath != PATH_UNAVAILABLE)
+	if (scriptPath != PATH_NOT_ASSIGNED)
 		AddScript(scriptPath);
 }
 //====================================================================================
@@ -107,7 +107,7 @@ bool Script::AddScript(const string& filePath)
 
 string Script::GetScriptPath()
 {
-	return m_scriptInstance ? m_scriptInstance->GetScriptPath() : PATH_UNAVAILABLE;
+	return m_scriptInstance ? m_scriptInstance->GetScriptPath() : PATH_NOT_ASSIGNED;
 }
 
 string Script::GetName()

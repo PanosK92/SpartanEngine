@@ -27,6 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Material.h"
 //===============================
 
+#define MATERIAL_DEFAULT_ID "MATERIAL_DEFAULT_ID"
+#define MATERIAL_DEFAULT_SKYBOX_ID "MATERIAL_DEFAULT_SKYBOX_ID"
+
 class MaterialPool
 {
 public:
@@ -57,7 +60,7 @@ private:
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	Material* m_defaultMaterial;
-	Material* m_skyboxMaterial;
-	void CreateStandardMaterials();
+	Material* m_materialDefault;
+	Material* m_materialDefaultSkybox;
+	void GenerateDefaultMaterials();
 };

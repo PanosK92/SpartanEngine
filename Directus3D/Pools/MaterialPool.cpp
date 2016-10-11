@@ -37,7 +37,7 @@ MaterialPool::MaterialPool(TexturePool* texturePool, ShaderPool* shaderPool)
 	m_texturePool = texturePool;
 	m_shaderPool = shaderPool;
 
-	CreateStandardMaterials();
+	GenerateDefaultMaterials();
 }
 
 MaterialPool::~MaterialPool()
@@ -128,21 +128,27 @@ void MaterialPool::RemoveMaterial(const string& materialID)
 
 Material* MaterialPool::GetMaterialByID(const string& materialID)
 {
+	if (materialID == MATERIAL_DEFAULT_ID)
+		return m_materialDefault;
+
+	if (materialID == MATERIAL_DEFAULT_SKYBOX_ID)
+		return m_materialDefaultSkybox;
+
 	for (Material* material : m_materials)
 		if (material->GetID() == materialID)
 			return material;
 
-	return nullptr;
+	return m_materialDefault;
 }
 
 Material* MaterialPool::GetMaterialStandardDefault()
 {
-	return m_defaultMaterial;
+	return m_materialDefault;
 }
 
 Material* MaterialPool::GetMaterialStandardSkybox()
 {
-	return m_skyboxMaterial;
+	return m_materialDefaultSkybox;
 }
 
 vector<string> MaterialPool::GetAllMaterialFilePaths()
@@ -163,18 +169,20 @@ const vector<Material*>& MaterialPool::GetAllMaterials()
 /*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
-void MaterialPool::CreateStandardMaterials()
+void MaterialPool::GenerateDefaultMaterials()
 {
-	m_defaultMaterial = new Material(m_texturePool, m_shaderPool);
-	m_defaultMaterial->SetName("Standard_Default");
-	m_defaultMaterial->SetID("Standard_Material_0");
-	m_defaultMaterial->SetColorAlbedo(Vector4(1, 1, 1, 1));
+	m_materialDefault = new Material(m_texturePool, m_shaderPool);
+	m_materialDefault->SetID(MATERIAL_DEFAULT_ID);
+	m_materialDefault->SetName("Standard_Default");
+	m_materialDefault->SetID("Standard_Material_0");
+	m_materialDefault->SetColorAlbedo(Vector4(1, 1, 1, 1));
 
 	// A texture must be loaded for that one, if all goes smooth
 	// it's done by the skybox component
-	m_skyboxMaterial = new Material(m_texturePool, m_shaderPool);
-	m_skyboxMaterial->SetName("Standard_Skybox");
-	m_skyboxMaterial->SetID("Standard_Material_1");
-	m_skyboxMaterial->SetFaceCullMode(CullNone);
-	m_skyboxMaterial->SetColorAlbedo(Vector4(1, 1, 1, 1));
+	m_materialDefaultSkybox = new Material(m_texturePool, m_shaderPool);
+	m_materialDefaultSkybox->SetID(MATERIAL_DEFAULT_SKYBOX_ID);
+	m_materialDefaultSkybox->SetName("Standard_Skybox");
+	m_materialDefaultSkybox->SetID("Standard_Material_1");
+	m_materialDefaultSkybox->SetFaceCullMode(CullNone);
+	m_materialDefaultSkybox->SetColorAlbedo(Vector4(1, 1, 1, 1));
 }
