@@ -302,7 +302,7 @@ void Renderer::DirectionalLightDepthPass()
 		{
 			MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
 			MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
-			Mesh* mesh = meshFilter->GetMesh();
+			shared_ptr<Mesh> mesh = meshFilter->GetMesh();
 
 			if (!mesh)
 				continue;
@@ -355,7 +355,7 @@ void Renderer::GBufferPass()
 			{
 				//= Get all that we need ===================================================
 				MeshFilter* meshFilter = gameObject->GetComponent<MeshFilter>();
-				Mesh* mesh = meshFilter->GetMesh();
+				shared_ptr<Mesh> mesh = meshFilter->GetMesh();
 				MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
 				Material* material = meshRenderer->GetMaterial();
 				Matrix mWorld = gameObject->GetTransform()->GetWorldTransform();

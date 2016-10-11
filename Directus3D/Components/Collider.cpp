@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 Collider::Collider()
@@ -56,7 +57,7 @@ Collider::~Collider()
 //= ICOMPONENT ========================================================================
 void Collider::Initialize()
 {
-	Mesh* mesh = GetMeshFromAttachedMeshFilter();
+	shared_ptr<Mesh> mesh = GetMeshFromAttachedMeshFilter();
 	if (mesh)
 	{
 		m_boundingBox = mesh->GetBoundingBox() * g_transform->GetWorldTransform();
@@ -200,7 +201,7 @@ void Collider::SetRigidBodyCollisionShape(btCollisionShape* shape) const
 		rigidBody->SetCollisionShape(shape);
 }
 
-Mesh* Collider::GetMeshFromAttachedMeshFilter() const
+shared_ptr<Mesh> Collider::GetMeshFromAttachedMeshFilter() const
 {
 	MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
 	return meshFilter ? meshFilter->GetMesh() : nullptr;

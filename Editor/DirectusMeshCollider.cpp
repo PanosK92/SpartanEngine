@@ -136,7 +136,7 @@ void DirectusMeshCollider::ReflectMesh()
     if (!m_inspectedMeshCollider)
         return;
 
-    Mesh* mesh = m_inspectedMeshCollider->GetMesh();
+    std::shared_ptr<Mesh> mesh = m_inspectedMeshCollider->GetMesh();
     QString meshName = QString::fromStdString(mesh ? mesh->GetName() : "N/A");
     m_mesh->setText(meshName);
 }

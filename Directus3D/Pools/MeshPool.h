@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================
 #include "../Graphics/Mesh.h"
+#include <memory>
 //===========================
 
 #define MESH_DEFAULT_CUBE_ID "DEFAULT_MESH_CUBE"
@@ -40,26 +41,26 @@ public:
 										[MISC]
 	------------------------------------------------------------------------------*/
 	void Clear();
-	Mesh* Add(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
+	std::shared_ptr<Mesh> Add(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
 	void Add(const std::vector<std::string>& filePaths);
 
-	Mesh* GetMeshByID(const std::string& ID);
-	Mesh* GetMeshByPath(const std::string& path);
+	std::shared_ptr<Mesh> GetMeshByID(const std::string& ID);
+	std::shared_ptr<Mesh> GetMeshByPath(const std::string& path);
 
 	std::vector<std::string> GetAllMeshFilePaths();
-	std::vector<Mesh*> GetModelMeshesByModelName(const std::string& modelName);
+	std::vector<std::shared_ptr<Mesh>> GetModelMeshesByModelName(const std::string& modelName);
 	int GetMeshCount();
 
 	//= DEFAULT MESHES ============================================================================================
-	Mesh* GetDefaultCube();
-	Mesh* GetDefaultQuad();
+	std::shared_ptr<Mesh> GetDefaultCube();
+	std::shared_ptr<Mesh> GetDefaultQuad();
 	//=============================================================================================================
 
 	//= MESH PROCESSING =============================================================================
 	float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
 	void SetModelScale(const std::string& rootGameObjectID, float scale);
 	void NormalizeModelScale(GameObject* rootGameObject);
-	static Mesh* GetLargestBoundingBox(const std::vector<Mesh*>& meshes);
+	static std::shared_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::shared_ptr<Mesh>>& meshes);
 	//===============================================================================================
 
 private:
@@ -67,7 +68,7 @@ private:
 	void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 	void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 
-	std::vector<Mesh*> m_meshes;
-	Mesh* m_defaultCube;
-	Mesh* m_defaultQuad;
+	std::vector<std::shared_ptr<Mesh>> m_meshes;
+	std::shared_ptr<Mesh> m_defaultCube;
+	std::shared_ptr<Mesh> m_defaultQuad;
 };

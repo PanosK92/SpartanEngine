@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Vertex.h"
 #include "../Graphics/D3D11/D3D11Buffer.h"
 #include "../Graphics/Mesh.h"
+#include <memory>
 //========================================
 
 enum DefaultMesh { Cube, Quad };
@@ -50,7 +51,7 @@ public:
 	bool SetBuffers() const;
 	Directus::Math::Vector3 GetCenter() const;
 	Directus::Math::Vector3 GetBoundingBox() const;
-	Mesh* GetMesh() const;
+	std::shared_ptr<Mesh> GetMesh() const;
 	std::string GetMeshName();
 
 private:
@@ -58,5 +59,5 @@ private:
 
 	D3D11Buffer* m_vertexBuffer;
 	D3D11Buffer* m_indexBuffer;
-	Mesh* m_mesh;
+	std::shared_ptr<Mesh> m_mesh;
 };

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include "../Math/Vector3.h"
 #include "../Graphics/Mesh.h"
+#include <memory>
 //===========================
 
 class btBoxShape;
@@ -74,7 +75,7 @@ private:
 	void ConstructCollisionShape();
 	void DeleteCollisionShape();
 	void SetRigidBodyCollisionShape(btCollisionShape* shape) const;
-	Mesh* GetMeshFromAttachedMeshFilter() const;
+	std::shared_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
 	//=========================================================================
 
 	ColliderShape m_shapeType;

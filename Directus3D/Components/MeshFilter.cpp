@@ -146,7 +146,7 @@ Vector3 MeshFilter::GetBoundingBox() const
 	return m_mesh ? m_mesh->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
 }
 
-Mesh* MeshFilter::GetMesh() const
+shared_ptr<Mesh> MeshFilter::GetMesh() const
 {
 	return m_mesh;
 }
