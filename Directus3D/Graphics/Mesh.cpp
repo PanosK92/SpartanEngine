@@ -94,7 +94,10 @@ void Mesh::Deserialize()
 	m_triangleCount = Serializer::ReadInt();
 
 	for (auto i = 0; i < m_vertexCount; i++)
-		m_vertices.push_back(LoadVertex());
+	{
+		m_vertices.push_back(VertexPositionTextureNormalTangent());
+		LoadVertex(m_vertices.back());	
+	}
 
 	for (auto i = 0; i < m_indexCount; i++)
 		m_indices.push_back(Serializer::ReadInt());
@@ -178,10 +181,8 @@ void Mesh::SaveVertex(const VertexPositionTextureNormalTangent& vertex)
 	Serializer::WriteFloat(vertex.tangent.z);
 }
 
-VertexPositionTextureNormalTangent Mesh::LoadVertex()
+void Mesh::LoadVertex(VertexPositionTextureNormalTangent& vertex)
 {
-	VertexPositionTextureNormalTangent vertex;
-
 	vertex.position.x = Serializer::ReadFloat();
 	vertex.position.y = Serializer::ReadFloat();
 	vertex.position.z = Serializer::ReadFloat();
@@ -196,8 +197,6 @@ VertexPositionTextureNormalTangent Mesh::LoadVertex()
 	vertex.tangent.x = Serializer::ReadFloat();
 	vertex.tangent.y = Serializer::ReadFloat();
 	vertex.tangent.z = Serializer::ReadFloat();
-
-	return vertex;
 }
 //==============================================================================
 
