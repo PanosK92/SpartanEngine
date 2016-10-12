@@ -294,6 +294,12 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
     ReflectTiling();
     ReflectOffset();
 
+
+    if (!m_inspectedMaterial->IsEditable())
+        SetPropertiesVisible(false);
+    else
+        SetPropertiesVisible(true);
+
     // Make this widget visible
     this->show();
 }
@@ -317,6 +323,61 @@ void DirectusMaterial::ReflectFile(string filepath)
 */
     // Make this widget visible
     this->show();
+}
+
+void DirectusMaterial::SetPropertiesVisible(bool visible)
+{
+    m_shaderLabel->setVisible(visible);
+    m_shader->setVisible(visible);
+
+    m_albedoImage->setVisible(visible);
+    m_albedoLabel->setVisible(visible);
+    m_albedoColor->GetWidget()->setVisible(visible);
+
+    m_roughnessImage->setVisible(visible);
+    m_roughnessLabel->setVisible(visible);
+    m_roughness->GetSlider()->setVisible(visible);
+    m_roughness->GetLineEdit()->setVisible(visible);
+
+    m_metallicImage->setVisible(visible);
+    m_metallicLabel->setVisible(visible);
+    m_metallic->GetSlider()->setVisible(visible);
+    m_metallic->GetLineEdit()->setVisible(visible);
+
+    m_normalImage->setVisible(visible);
+    m_normalLabel->setVisible(visible);
+    m_normal->GetSlider()->setVisible(visible);
+    m_normal->GetLineEdit()->setVisible(visible);
+
+    m_heightImage->setVisible(visible);
+    m_heightLabel->setVisible(visible);
+    m_height->GetSlider()->setVisible(visible);
+    m_height->GetLineEdit()->setVisible(visible);
+
+    m_occlusionImage->setVisible(visible);
+    m_occlusionLabel->setVisible(visible);
+
+    m_emissionImage->setVisible(visible);
+    m_emissionLabel->setVisible(visible);
+
+    m_maskImage->setVisible(visible);
+    m_maskLabel->setVisible(visible);
+
+    m_specularLabel->setVisible(visible);
+    m_specular->GetSlider()->setVisible(visible);
+    m_specular->GetLineEdit()->setVisible(visible);
+
+    m_tilingLabel->setVisible(visible);
+    m_tilingX->GetLabelWidget()->setVisible(visible);
+    m_tilingX->GetTextWidget()->setVisible(visible);
+    m_tilingY->GetLabelWidget()->setVisible(visible);
+    m_tilingY->GetTextWidget()->setVisible(visible);
+
+    m_offsetLabel->setVisible(visible);
+    m_offsetX->GetLabelWidget()->setVisible(visible);
+    m_offsetX->GetTextWidget()->setVisible(visible);
+    m_offsetY->GetLabelWidget()->setVisible(visible);
+    m_offsetY->GetTextWidget()->setVisible(visible);
 }
 
 void DirectusMaterial::ReflectName()

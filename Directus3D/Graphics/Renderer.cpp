@@ -298,16 +298,17 @@ void Renderer::DirectionalLightDepthPass()
 	for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetCascadeCount(); cascadeIndex++)
 	{
 		m_directionalLight->SetShadowMapAsRenderTarget(cascadeIndex);
-		for (auto gameObject : m_renderables)
+		for (auto const &gameObject : m_renderables)
 		{
 			auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
 			auto meshFilter = gameObject->GetComponent<MeshFilter>();
 			auto mesh = meshFilter->GetMesh();
 
-			if (!mesh)
+			if (!mesh || !meshFilter || !meshRenderer)
 				continue;
 
-			// Not all gameobjects should cast shadows...
+			// The skybox might be able to cast shadows, but in the real world it doesn't, 
+			// because it doesn't exist, so skip it
 			if (gameObject->GetComponent<Skybox>() || !meshRenderer->GetCastShadows())
 				continue;
 
@@ -326,14 +327,16 @@ void Renderer::DirectionalLightDepthPass()
 
 void Renderer::GBufferPass()
 {
-	for (auto currentShader : m_shaderPool->GetAllShaders()) // for each shader
+	for (auto const &currentShader : m_shaderPool->GetAllShaders()) // for each shader
 	{	
 		currentShader->Set();
-		for (auto currentMaterial : m_materialPool->GetAllMaterials()) // for each material that uses this shader
+		for (auto const &currentMaterial : m_materialPool->GetAllMaterials()) // for each material...
 		{
+			// ... that uses the current shader
 			if (currentMaterial->GetShader()->GetID() != currentShader->GetID())
 				continue;	
 
+			//= Gather ant used textures and bind them to the GPU ===============================
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Albedo));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Roughness));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Metallic));
@@ -350,51 +353,55 @@ void Renderer::GBufferPass()
 				m_textures.push_back(nullptr);
 
 			currentShader->SetResources(m_textures);
+			//==================================================================================
 
-			for (auto gameObject : m_renderables) // for each mesh that uses this material:
+			for (auto const &gameObject : m_renderables) // for each mesh...
 			{
-				//= Get all that we need ===================================================
+				//= Get all that we need =====================================
 				auto meshFilter = gameObject->GetComponent<MeshFilter>();
 				auto mesh = meshFilter->GetMesh();
 				auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
 				auto material = meshRenderer->GetMaterial();
 				auto mWorld = gameObject->GetTransform()->GetWorldTransform();
-				//==========================================================================
+				//============================================================
 
 				// If any rendering requirement is missing, skip this GameObject
 				if (!meshFilter || !mesh || !meshRenderer || !material)
-					continue;
+					continue;		
 
+				//... that uses the current material
 				if (currentMaterial->GetID() != material->GetID())
 					continue;
 
-				// Skip transparent meshes
+				// Skip transparent meshes (for now)
 				if (material->GetOpacity() < 1.0f)
 					continue;
 
-				// Frustrum culling
+				// Make sure the mesh is actually in our view frustrum
 				if (!IsInViewFrustrum(meshFilter->GetCenter(), meshFilter->GetBoundingBox()))
 					continue;
 
+				// Set shader buffer(s)
 				currentShader->SetBuffers(mWorld, mView, mProjection, currentMaterial, m_directionalLight, meshRenderer->GetReceiveShadows(), m_camera);
 				
 				// Set mesh buffer
 				if (meshFilter->SetBuffers())
 				{
-					// Set face culling
+					// Set face culling (changes only if required)
 					m_graphics->SetCullMode(material->GetFaceCullMode());
 
-					//= Render =================================================================					
+					// Render the mesh, finally!				
 					meshRenderer->Render(mesh->GetIndexCount());
+
 					m_meshesRendered++;
-					//==========================================================================
 				}
-			}
+			} // renderable loop
 
 			m_textures.clear();
 			m_textures.shrink_to_fit();
-		}
-	}
+
+		} // material loop
+	} // shader loop
 }
 
 void Renderer::DeferredPass()
@@ -489,16 +496,16 @@ void Renderer::Ping() const
 {
 	Vector4 clearColor = m_camera ? m_camera->GetClearColor() : Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
-	m_renderTexPing->SetAsRenderTarget(); // Set the render target to be the render to texture. 
-	m_renderTexPing->Clear(clearColor); // Clear the render to texture.
+	m_renderTexPing->SetAsRenderTarget();
+	m_renderTexPing->Clear(clearColor);
 }
 
 void Renderer::Pong() const
 {
 	Vector4 clearColor = m_camera ? m_camera->GetClearColor() : Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
-	m_renderTexPong->SetAsRenderTarget(); // Set the render target to be the render to texture. 
-	m_renderTexPong->Clear(clearColor); // Clear the render to texture.
+	m_renderTexPong->SetAsRenderTarget();
+	m_renderTexPong->Clear(clearColor);
 }
 
 bool Renderer::IsInViewFrustrum(const Vector3& center, const Vector3& extent)

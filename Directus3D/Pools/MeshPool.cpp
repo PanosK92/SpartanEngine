@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Components/MeshFilter.h"
-#include "../IO/Log.h"
 #include "../IO/FileSystem.h"
 //==================================
 
@@ -97,7 +96,7 @@ shared_ptr<Mesh> MeshPool::GetMeshByID(const string& ID)
 	if (ID == MESH_DEFAULT_QUAD_ID)
 		return m_defaultQuad;
 
-	for (auto mesh : m_meshes)
+	for (auto const &mesh : m_meshes)
 	{
 		//LOG_INFO(ID + " == " + mesh->GetID() + " ?");
 
@@ -110,7 +109,7 @@ shared_ptr<Mesh> MeshPool::GetMeshByID(const string& ID)
 
 shared_ptr<Mesh> MeshPool::GetMeshByPath(const string& path)
 {
-	for (auto mesh : m_meshes)
+	for (auto const &mesh : m_meshes)
 		if (mesh->GetFilePath() == path)
 			return mesh;
 
@@ -121,7 +120,7 @@ vector<string> MeshPool::GetAllMeshFilePaths()
 {
 	vector<string> paths;
 
-	for (shared_ptr<Mesh> mesh : m_meshes)
+	for (auto const &mesh : m_meshes)
 		paths.push_back(mesh->GetFilePath());
 
 	return paths;
@@ -132,7 +131,7 @@ vector<shared_ptr<Mesh>> MeshPool::GetModelMeshesByModelName(const string& rootG
 {
 	vector<shared_ptr<Mesh>> modelMeshes;
 
-	for (auto mesh : m_meshes)
+	for (auto const &mesh : m_meshes)
 		if (mesh->GetRootGameObjectID() == rootGameObjectID)
 			modelMeshes.push_back(mesh);
 
@@ -180,7 +179,7 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(const string& rootGame
 void MeshPool::SetModelScale(const string& rootGameObjectID, float scale)
 {
 	// get all the meshes related to this model and scale them
-	for (auto modelMesh : GetModelMeshesByModelName(rootGameObjectID))
+	for (auto const &modelMesh : GetModelMeshesByModelName(rootGameObjectID))
 		modelMesh->Scale(scale);
 }
 

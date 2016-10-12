@@ -45,7 +45,7 @@ shared_ptr<Texture> TexturePool::Add(shared_ptr<Texture> textureIn)
 	if (!textureIn)
 		return nullptr;
 
-	for (auto texture : m_textures)
+	for (auto const &texture : m_textures)
 		if (textureIn->GetID() == texture->GetID())
 			return texture;
 
@@ -81,7 +81,7 @@ void TexturePool::Add(const vector<string>& imagePaths)
 
 shared_ptr<Texture> TexturePool::GetTextureByName(const string&  name)
 {
-	for (auto texture : m_textures)
+	for (auto const &texture : m_textures)
 		if (texture->GetName() == name)
 			return texture;
 
@@ -90,7 +90,7 @@ shared_ptr<Texture> TexturePool::GetTextureByName(const string&  name)
 
 shared_ptr<Texture> TexturePool::GetTextureByID(const string&  ID)
 {
-	for (auto texture : m_textures)
+	for (auto const &texture : m_textures)
 		if (texture->GetID() == ID)
 			return texture;
 
@@ -99,7 +99,7 @@ shared_ptr<Texture> TexturePool::GetTextureByID(const string&  ID)
 
 shared_ptr<Texture> TexturePool::GetTextureByPath(const string&  path)
 {
-	for (auto texture : m_textures)
+	for (auto const &texture : m_textures)
 		if (texture->GetFilePathTexture() == path)
 			return texture;
 
@@ -110,7 +110,7 @@ vector<string> TexturePool::GetAllTextureFilePaths()
 {
 	vector<string> paths;
 
-	for (auto texture : m_textures)
+	for (auto const &texture : m_textures)
 		paths.push_back(texture->GetFilePathTexture());
 
 	return paths;

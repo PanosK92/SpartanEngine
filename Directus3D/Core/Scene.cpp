@@ -239,7 +239,7 @@ void Scene::AnalyzeGameObjects()
 	// otherwise it can end up as a nice dangling pointer :-)
 	m_mainCamera = nullptr;
 
-	for (GameObject* gameObject : GameObjectPool::GetInstance().GetAllGameObjects())
+	for (auto gameObject : GameObjectPool::GetInstance().GetAllGameObjects())
 	{
 		// Find a camera
 		if (gameObject->HasComponent<Camera>())

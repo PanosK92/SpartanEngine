@@ -129,6 +129,8 @@ private:
     DirectusInspector* m_inspector;
     //===============================
 
+    void SetPropertiesVisible(bool visible);
+
     void ReflectName();
     void ReflectAlbedo();
     void ReflectRoughness();

@@ -39,6 +39,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Texture.h"
 #include "../Components/LineRenderer.h"
 #include "D3D11/D3D11RenderTexture.h"
+#include "Material.h"
+
 //====================================
 
 class Renderer

@@ -48,7 +48,7 @@ public:
 	std::shared_ptr<Material> GetMaterialStandardDefault();
 	std::shared_ptr<Material> GetMaterialStandardSkybox();
 	std::vector<std::string> GetAllMaterialFilePaths();
-	std::vector<std::shared_ptr<Material>> GetAllMaterials();
+	const std::vector<std::shared_ptr<Material>>& GetAllMaterials();
 
 private:
 	std::vector<std::shared_ptr<Material>> m_materials;
