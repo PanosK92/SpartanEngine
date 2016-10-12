@@ -49,23 +49,29 @@ MaterialPool::~MaterialPool()
 								[MISC]
 ------------------------------------------------------------------------------*/
 // Adds a material to the pool directly from memory
-shared_ptr<Material> MaterialPool::Add(shared_ptr<Material> materialIn)
+shared_ptr<Material> MaterialPool::Add(shared_ptr<Material> material)
 {
-	if (!materialIn)
+	if (!material)
 	{
 		LOG_WARNING("The material is null, it can't be added to the pool.");
 		return nullptr;
 	}
 
-	// check for existing material from the same model
-	for (auto material : m_materials)
+	
+	for (auto const &materialInPool : m_materials)
 	{
-		if (material->GetName() == materialIn->GetName())
-			if (material->GetModelID() == materialIn->GetModelID())
-				return material;
+		// Make sure the material is not already in the pool
+		if (materialInPool->GetID() == material->GetID())
+			return materialInPool;
+
+		// Make sure that the material doesn't come from the same model
+		// in which case the ID doesn't matter, if the name is the same
+		if (materialInPool->GetName() == material->GetName())
+			if (materialInPool->GetModelID() == material->GetModelID())
+				return materialInPool;
 	}
 
-	m_materials.push_back(materialIn);
+	m_materials.push_back(material);
 	return m_materials.back();
 }
 
@@ -83,7 +89,7 @@ void MaterialPool::Add(const vector<string>& filePaths)
 			continue;
 
 		// Create and load the material
-		shared_ptr<Material> material = make_shared<Material>(m_texturePool, m_shaderPool);
+		auto material = make_shared<Material>(m_texturePool, m_shaderPool);
 		if (material->LoadFromFile(filePath))
 			m_materials.push_back(material);
 	}
@@ -104,7 +110,7 @@ shared_ptr<Material> MaterialPool::GetMaterialByID(const string& materialID)
 	if (materialID == MATERIAL_DEFAULT_SKYBOX_ID)
 		return m_materialDefaultSkybox;
 
-	for (auto material : m_materials)
+	for (auto const &material : m_materials)
 		if (material->GetID() == materialID)
 			return material;
 
@@ -125,18 +131,15 @@ vector<string> MaterialPool::GetAllMaterialFilePaths()
 {
 	vector<string> paths;
 
-	for (auto material : m_materials)
+	for (auto const &material : m_materials)
 		paths.push_back(material->GetFilePath());
 
 	return paths;
 }
 
-vector<shared_ptr<Material>> MaterialPool::GetAllMaterials()
+const vector<shared_ptr<Material>>& MaterialPool::GetAllMaterials()
 {
-	vector<shared_ptr<Material>> materials = m_materials;
-	materials.push_back(m_materialDefault);
-	materials.push_back(m_materialDefaultSkybox);
-	return materials;
+	return m_materials;
 }
 
 /*------------------------------------------------------------------------------
@@ -148,9 +151,8 @@ void MaterialPool::GenerateDefaultMaterials()
 	{
 		m_materialDefault = make_shared<Material>(m_texturePool, m_shaderPool);
 		m_materialDefault->SetID(MATERIAL_DEFAULT_ID);
-		m_materialDefault->SetName("Standard_Default");
-		m_materialDefault->SetID("Standard_Material_0");
-		m_materialDefault->SetColorAlbedo(Vector4(1, 1, 1, 1));
+		m_materialDefault->SetName("Default");
+		m_materialDefault->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		m_materialDefault->SetIsEditable(false);
 	}
 
@@ -158,10 +160,9 @@ void MaterialPool::GenerateDefaultMaterials()
 	{
 		m_materialDefaultSkybox = make_shared<Material>(m_texturePool, m_shaderPool);
 		m_materialDefaultSkybox->SetID(MATERIAL_DEFAULT_SKYBOX_ID);
-		m_materialDefaultSkybox->SetName("Standard_Skybox");
-		m_materialDefaultSkybox->SetID("Standard_Material_1");
+		m_materialDefaultSkybox->SetName("Default_Skybox");
 		m_materialDefaultSkybox->SetFaceCullMode(CullNone);
-		m_materialDefaultSkybox->SetColorAlbedo(Vector4(1, 1, 1, 1));
+		m_materialDefaultSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		m_materialDefaultSkybox->SetIsEditable(false);
 	}
 }

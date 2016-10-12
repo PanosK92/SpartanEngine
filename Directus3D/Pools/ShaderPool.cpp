@@ -87,7 +87,7 @@ shared_ptr<ShaderVariation> ShaderPool::CreateShaderBasedOnMaterial(
 
 shared_ptr<ShaderVariation> ShaderPool::GetShaderByID(const string& shaderID)
 {
-	for (auto shader : m_shaders)
+	for (auto const &shader : m_shaders)
 		if (shader->GetID() == shaderID)
 			return shader;
 
