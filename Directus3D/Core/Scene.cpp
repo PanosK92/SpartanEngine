@@ -282,9 +282,8 @@ GameObject* Scene::CreateCamera()
 	camera->AddComponent<Camera>();
 	camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 	
-	Script* scriptComp = camera->AddComponent<Script>();
-	scriptComp->AddScript("Assets/Scripts/FirstPersonController.as");
-	scriptComp->AddScript("Assets/Scripts/MouseLook.as");
+	camera->AddComponent<Script>()->AddScript("Assets/Scripts/MouseLook.as");
+	camera->AddComponent<Script>()->AddScript("Assets/Scripts/FirstPersonController.as");
 
 	return camera;
 }

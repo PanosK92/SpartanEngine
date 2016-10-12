@@ -72,11 +72,10 @@ void Skybox::Initialize()
 	m_cubeMapTexture->SetID3D11ShaderResourceView(cubeMapSRV);
 
 	// Add the actual "box"
-	MeshFilter* mesh = g_gameObject->AddComponent<MeshFilter>();
-	mesh->SetDefaultMesh(Cube);
+	g_gameObject->AddComponent<MeshFilter>()->SetDefaultMesh(Cube);
 	
 	// Add a mesh renderer
-	MeshRenderer* meshRenderer = g_gameObject->AddComponent<MeshRenderer>();
+	auto meshRenderer = g_gameObject->AddComponent<MeshRenderer>();
 	meshRenderer->SetCastShadows(false);
 	meshRenderer->SetReceiveShadows(false);
 	meshRenderer->SetMaterial(g_materialPool->GetMaterialStandardSkybox());
