@@ -131,9 +131,12 @@ vector<string> MaterialPool::GetAllMaterialFilePaths()
 	return paths;
 }
 
-const vector<shared_ptr<Material>>& MaterialPool::GetAllMaterials()
+vector<shared_ptr<Material>> MaterialPool::GetAllMaterials()
 {
-	return m_materials;
+	vector<shared_ptr<Material>> materials = m_materials;
+	materials.push_back(m_materialDefault);
+	materials.push_back(m_materialDefaultSkybox);
+	return materials;
 }
 
 /*------------------------------------------------------------------------------
@@ -141,18 +144,24 @@ const vector<shared_ptr<Material>>& MaterialPool::GetAllMaterials()
 ------------------------------------------------------------------------------*/
 void MaterialPool::GenerateDefaultMaterials()
 {
-	m_materialDefault = make_shared<Material>(m_texturePool, m_shaderPool);
-	m_materialDefault->SetID(MATERIAL_DEFAULT_ID);
-	m_materialDefault->SetName("Standard_Default");
-	m_materialDefault->SetID("Standard_Material_0");
-	m_materialDefault->SetColorAlbedo(Vector4(1, 1, 1, 1));
+	if (!m_materialDefault)
+	{
+		m_materialDefault = make_shared<Material>(m_texturePool, m_shaderPool);
+		m_materialDefault->SetID(MATERIAL_DEFAULT_ID);
+		m_materialDefault->SetName("Standard_Default");
+		m_materialDefault->SetID("Standard_Material_0");
+		m_materialDefault->SetColorAlbedo(Vector4(1, 1, 1, 1));
+		m_materialDefault->SetIsEditable(false);
+	}
 
-	// A texture must be loaded for that one, if all goes smooth
-	// it's done by the skybox component
-	m_materialDefaultSkybox = make_shared<Material>(m_texturePool, m_shaderPool);
-	m_materialDefaultSkybox->SetID(MATERIAL_DEFAULT_SKYBOX_ID);
-	m_materialDefaultSkybox->SetName("Standard_Skybox");
-	m_materialDefaultSkybox->SetID("Standard_Material_1");
-	m_materialDefaultSkybox->SetFaceCullMode(CullNone);
-	m_materialDefaultSkybox->SetColorAlbedo(Vector4(1, 1, 1, 1));
+	if (!m_materialDefaultSkybox)
+	{
+		m_materialDefaultSkybox = make_shared<Material>(m_texturePool, m_shaderPool);
+		m_materialDefaultSkybox->SetID(MATERIAL_DEFAULT_SKYBOX_ID);
+		m_materialDefaultSkybox->SetName("Standard_Skybox");
+		m_materialDefaultSkybox->SetID("Standard_Material_1");
+		m_materialDefaultSkybox->SetFaceCullMode(CullNone);
+		m_materialDefaultSkybox->SetColorAlbedo(Vector4(1, 1, 1, 1));
+		m_materialDefaultSkybox->SetIsEditable(false);
+	}
 }
