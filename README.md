@@ -20,24 +20,27 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 - Scripting.
 - Windows support.
 
+# Features under development
+- Custom format resources (prefabs, materials and so on).
+- Multi-threading.
+
 # Planned Features
-- [ACTIVE] Ability to save materials, meshes, textures in a custom format, total revamp of scene IO.
 - Audio source and listener components.
 - DirectX 12 Renderer
 - Draw call batching (static & dynamic).
 - Export on Windows.
 - Font loader & renderer.
-- [ACTIVE] Multi-threading.
 - SSAO, SSR, Volumetric Lighting.
 - UI components.
 - Vulkan Renderer.
 
 ### Download
+Note: The download link will be updated whenever any features that are under development get completed.
 - [Directus v0.1.1 (Windows x64)] (https://onedrive.live.com/download?resid=96760D43099D7718%21125980&authkey=AC4fwz-Zxcv-dJo)
 
 ### Dependencies
-- Runtime: [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109), [Visual C++ 2015 (x64) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145).
-- Editor: [Qt](https://www.qt.io/).
+- [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109), 
+- [Visual C++ 2015 (x64) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145).
 
 ### License
 - Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
