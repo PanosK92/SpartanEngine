@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Transform.h"
 #include "IO/Log.h"
 #include "Core/Settings.h"
-#include "Signals/Signaling.h"
 //===============================
 
 //= NAMESPACES ================
@@ -154,8 +153,6 @@ void DirectusTransform::Initialize(DirectusCore* directusCore)
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     this->hide();
-
-    CONNECT_TO_SIGNAL(SIGNAL_TRANSFORM_UPDATED, std::bind(&DirectusTransform::Refresh, this));
 }
 
 void DirectusTransform::Reflect(GameObject* gameobject)

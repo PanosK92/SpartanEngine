@@ -34,6 +34,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Helper.h"
 #include "../Signals/Signaling.h"
 #include "../Pools/ThreadPool.h"
+#include "../Signals/Signaling.h"
+
 //=====================================
 
 Engine::Engine()

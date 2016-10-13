@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/GameObjectPool.h"
 #include "../Core/GameObject.h"
 #include "../IO/Log.h"
-#include "../Signals/Signaling.h"
 //==================================
 
 //= NAMESPACES ================
@@ -129,8 +128,6 @@ void Transform::UpdateWorldTransform()
 	// update children
 	for (auto i = 0; i < m_children.size(); i++)
 		if (m_children[i]) m_children[i]->UpdateWorldTransform();
-
-	EMIT_SIGNAL(SIGNAL_TRANSFORM_UPDATED);
 }
 
 //=========
