@@ -106,7 +106,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 	// 13 - MODEL LOADER
 	m_modelLoader = new ModelImporter();
-	m_modelLoader->Initialize(m_meshPool, m_texturePool, m_shaderPool, m_materialPool);
+	m_modelLoader->Initialize(m_meshPool, m_texturePool, m_shaderPool, m_materialPool, m_threadPool);
 
 	// 14 - RENDERER
 	m_renderer = new Renderer();

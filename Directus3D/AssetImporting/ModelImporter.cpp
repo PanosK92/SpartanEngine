@@ -66,21 +66,28 @@ ModelImporter::ModelImporter()
 	m_meshPool = nullptr;
 	m_texturePool = nullptr;
 	m_shaderPool = nullptr;
+	m_threadPool = nullptr;
 }
 
 ModelImporter::~ModelImporter()
 {
 }
 
-void ModelImporter::Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool)
+void ModelImporter::Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool, ThreadPool* threadPool)
 {
 	m_meshPool = meshPool;
 	m_texturePool = texturePool;
 	m_shaderPool = shaderPool;
 	m_materialPool = materialPool;
+	m_threadPool = threadPool;
 }
 
-bool ModelImporter::Load(string filePath, GameObject* gameObject)
+void ModelImporter::LoadAsync(GameObject* gameObject, const string& filePath)
+{
+	m_threadPool->AddTask(std::bind(&ModelImporter::Load, this, gameObject, filePath));
+}
+
+bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
 {
 	m_fullModelPath = filePath;
 	m_rootGameObject = gameObject;

@@ -45,11 +45,12 @@ public:
 	void Update() const;
 	//==============================
 
-	//= IO =========================
-	void SetLogger(ILogger* logger);
-	void LoadModel(std::string path);
-	ImageImporter* GetImageLoader();
-	//==============================
+	//= IO ==========================================
+	void LoadModel(const std::string& filePath);
+	void LoadModelAsync(const std::string& filePath);
+	bool SaveSceneToFile(const std::string& path);
+	bool LoadSceneFromFile(const std::string& path);
+	//===============================================
 
 	//= GRAPHICS =================================
 	void SetViewport(int width, int height) const;
@@ -58,6 +59,9 @@ public:
 	//= MISC =======================================================================
 	void SetPhysicsDebugDraw(bool enable);
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
+	void ClearScene();
+	ImageImporter* GetImageLoader();
+	void SetLogger(ILogger* logger);
 	//==============================================================================
 
 	//= GAMEOBJECTS ================================================================
@@ -67,12 +71,6 @@ public:
 	int GetGameObjectCount();
 	void DestroyGameObject(GameObject* gameObject);
 	bool GameObjectExists(GameObject* gameObject);
-	//==============================================================================
-
-	//= SCENE ======================================================================
-	bool SaveSceneToFile(std::string path);
-	bool LoadSceneFromFile(std::string path);
-	void ClearScene();
 	//==============================================================================
 
 	//= STATS ======================================================================

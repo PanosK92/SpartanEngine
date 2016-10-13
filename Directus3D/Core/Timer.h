@@ -50,7 +50,7 @@ public:
 
 	void RenderStart() const;
 	void RenderEnd() const;
-	float GetRenderTime() const;
+	float GetRenderTimeMs() const;
 
 	Stopwatch* GetStopwatch();
 private:
