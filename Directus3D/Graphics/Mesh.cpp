@@ -123,7 +123,12 @@ void Mesh::SaveToDirectory(const string& directory, bool overwrite)
 
 bool Mesh::LoadFromFile(const string& filePath)
 {
+	// Make sure the file exists
 	if (!FileSystem::FileExists(filePath))
+		return false;
+
+	// Make sure it's actually a mesh file
+	if (FileSystem::GetExtensionFromPath(filePath) != MESH_EXTENSION)
 		return false;
 
 	Serializer::StartReading(filePath);

@@ -52,13 +52,9 @@ MaterialPool::~MaterialPool()
 shared_ptr<Material> MaterialPool::Add(shared_ptr<Material> material)
 {
 	if (!material)
-	{
-		LOG_WARNING("The material is null, it can't be added to the pool.");
 		return nullptr;
-	}
 
-	
-	for (auto const &materialInPool : m_materials)
+	for (const auto& materialInPool : m_materials)
 	{
 		// Make sure the material is not already in the pool
 		if (materialInPool->GetID() == material->GetID())
@@ -80,14 +76,6 @@ void MaterialPool::Add(const vector<string>& filePaths)
 {
 	for (const string& filePath : filePaths)
 	{
-		// Make sure the path is valid
-		if (!FileSystem::FileExists(filePath))
-			continue;
-
-		// Make sure it's actually a material file
-		if (FileSystem::GetExtensionFromPath(filePath) != MATERIAL_EXTENSION)
-			continue;
-
 		// Create and load the material
 		auto material = make_shared<Material>(m_texturePool, m_shaderPool);
 		if (material->LoadFromFile(filePath))
@@ -100,6 +88,8 @@ void MaterialPool::Clear()
 {
 	m_materials.clear();
 	m_materials.shrink_to_fit();
+
+	GenerateDefaultMaterials();
 }
 
 shared_ptr<Material> MaterialPool::GetMaterialByID(const string& materialID)
@@ -110,7 +100,7 @@ shared_ptr<Material> MaterialPool::GetMaterialByID(const string& materialID)
 	if (materialID == MATERIAL_DEFAULT_SKYBOX_ID)
 		return m_materialDefaultSkybox;
 
-	for (auto const &material : m_materials)
+	for (const auto& material : m_materials)
 		if (material->GetID() == materialID)
 			return material;
 
@@ -131,7 +121,7 @@ vector<string> MaterialPool::GetAllMaterialFilePaths()
 {
 	vector<string> paths;
 
-	for (auto const &material : m_materials)
+	for (const auto& material : m_materials)
 		paths.push_back(material->GetFilePath());
 
 	return paths;
@@ -147,6 +137,9 @@ const vector<shared_ptr<Material>>& MaterialPool::GetAllMaterials()
 ------------------------------------------------------------------------------*/
 void MaterialPool::GenerateDefaultMaterials()
 {
+	m_materialDefault.reset();
+	m_materialDefaultSkybox.reset();
+
 	if (!m_materialDefault)
 	{
 		m_materialDefault = make_shared<Material>(m_texturePool, m_shaderPool);
@@ -165,4 +158,7 @@ void MaterialPool::GenerateDefaultMaterials()
 		m_materialDefaultSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		m_materialDefaultSkybox->SetIsEditable(false);
 	}
+
+	Add(m_materialDefault);
+	Add(m_materialDefaultSkybox);
 }

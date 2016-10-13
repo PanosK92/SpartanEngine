@@ -137,7 +137,12 @@ void Material::SaveToDirectory(const string& directory, bool overwrite)
 
 bool Material::LoadFromFile(const string& filePath)
 {
+	// Make sure the file exists
 	if (!FileSystem::FileExists(filePath))
+		return false;
+
+	// Make sure it's actually a material file
+	if (FileSystem::GetExtensionFromPath(filePath) != MATERIAL_EXTENSION)
 		return false;
 
 	Serializer::StartReading(filePath);
