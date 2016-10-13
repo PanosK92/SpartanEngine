@@ -111,7 +111,10 @@ void Mesh::Deserialize()
 
 void Mesh::SaveToDirectory(const string& directory, bool overwrite)
 {
-	m_filePath = directory + GetName() + MESH_EXTENSION;
+	// I used to use GetName() to save the mesh but when mesh duplicates are genarated
+	// upon loading a model, they also get different IDs, the file will not be overwritten
+	// of course and thus when loading the meshes, only one will be loaded properly.
+	m_filePath = directory + GetID() + MESH_EXTENSION;
 
 	if (FileSystem::FileExists(m_filePath) && !overwrite)
 		return;

@@ -103,13 +103,9 @@ shared_ptr<Mesh> MeshPool::GetMeshByID(const string& ID)
 		return m_defaultQuad;
 
 	for (const auto&  mesh : m_meshes)
-	{
-		LOG_INFO("Loaded mesh ID: " + ID + " == " + mesh->GetID() + " in pool?");
-
 		if (mesh->GetID() == ID)
 			return mesh;
-	}
-		
+
 	return nullptr;
 }
 
