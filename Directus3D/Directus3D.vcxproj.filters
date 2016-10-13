@@ -177,9 +177,6 @@
     <ClCompile Include="Physics\PhysicsWorld.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Signals\Signaling.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\D3D11\D3D11Graphics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -208,6 +205,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Pools\ThreadPool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Signals\Signaling.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

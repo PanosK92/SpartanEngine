@@ -28,6 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <queue>
 //===============
 
+//#define ADD_TASK(task) ThreadPool::AddTask(task)
+
 class Task
 {
 public:
