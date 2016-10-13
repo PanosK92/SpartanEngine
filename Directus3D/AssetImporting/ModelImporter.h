@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/MeshPool.h"
 #include "../Pools/TexturePool.h"
 #include "../Pools/ShaderPool.h"
+#include "../Pools/ThreadPool.h"
 //===============================
 
 struct aiNode;
@@ -38,8 +39,9 @@ public:
 	ModelImporter();
 	~ModelImporter();
 
-	void Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool);
-	bool Load(std::string path, GameObject* gameObject);
+	void Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool, ThreadPool* threadPool);
+	void LoadAsync(GameObject* gameObject, const std::string& filePath);
+	bool Load(GameObject* gameObject, const std::string& filePath);
 
 private:
 	std::string m_fullModelPath;
@@ -65,4 +67,5 @@ private:
 	TexturePool* m_texturePool;
 	ShaderPool* m_shaderPool;
 	MaterialPool* m_materialPool;
+	ThreadPool* m_threadPool;
 };

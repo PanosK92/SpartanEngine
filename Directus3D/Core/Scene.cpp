@@ -91,8 +91,10 @@ void Scene::Update()
 //====
 // I/O
 //====
-bool Scene::SaveToFile(string& filePath)
+bool Scene::SaveToFile(const string& filePathIn)
 {
+	string filePath = filePathIn;
+
 	// Add scene file extension to the filepath if it's missing
 	if (FileSystem::GetExtensionFromPath(filePath) != SCENE_EXTENSION)
 		filePath += SCENE_EXTENSION;

@@ -120,7 +120,7 @@ float Timer::GetTimeMs() const
 // Returns them elapsed time since the engine initialization in seconds
 float Timer::GetElapsedTime()
 {
-	return GetElapsedTimeMs() / 1000;
+	return GetElapsedTimeMs() / 1000.0f;
 }
 
 // Returns them elapsed time since the engine initialization in milliseconds
@@ -144,9 +144,9 @@ void Timer::RenderEnd() const
 	m_renderStopwatch->Stop();
 }
 
-float Timer::GetRenderTime() const
+float Timer::GetRenderTimeMs() const
 {
-	return m_renderStopwatch->GetDeltaTime();
+	return m_renderStopwatch->GetDeltaTimeMs();
 }
 
 Stopwatch* Timer::GetStopwatch()

@@ -57,7 +57,7 @@ ThreadPool::~ThreadPool()
 
 void ThreadPool::Invoke()
 {
-	function<void()> task;
+	shared_ptr<Task> task;
 	while (true)
 	{
 		// Lock tasks mutex
@@ -80,21 +80,6 @@ void ThreadPool::Invoke()
 		lock.unlock();
 
 		// Execute the task.
-		task();
+		task->Execute();
 	}
-}
-
-void ThreadPool::AddTask(function<void()> task)
-{
-	// Lock tasks mutex
-	unique_lock<mutex> lock(m_tasksMutex);
-
-	// Save the task
-	m_tasks.push(task);
-
-	// Unlock the mutex
-	lock.unlock();
-
-	// Wake up a thread
-	m_conditionVar.notify_one();
 }

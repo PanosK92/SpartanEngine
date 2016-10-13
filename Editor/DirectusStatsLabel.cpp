@@ -18,9 +18,9 @@ void DirectusStatsLabel::UpdateStats(DirectusCore* directusCore)
     Socket* socket = directusCore->GetEngineSocket();
 
     string fps = "FPS: " + BeautifyFloat(socket->GetFPS());
-    string delta = "Delta: " + BeautifyFloat(socket->GetDeltaTime());
-    string render = "Render: " + BeautifyFloat(socket->GetRenderTime());
-    string meshes = "Meshes Rendered: " +to_string(socket->GetRenderedMeshesCount());
+    string delta = "Delta: " + BeautifyFloat(socket->GetDeltaTime()) + (" ms");
+    string render = "Render: " + BeautifyFloat(socket->GetRenderTime()) + (" ms");
+    string meshes = "Meshes Rendered: " + to_string(socket->GetRenderedMeshesCount());
 
     string finalText = fps + ", " + delta + ", " + render + ", " + meshes;
     this->setText(QString::fromStdString(finalText));

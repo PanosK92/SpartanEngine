@@ -75,19 +75,25 @@ void Socket::Update() const
 //=============================================================================
 
 //= IO ========================================================================
-void Socket::SetLogger(ILogger* logger)
+void Socket::LoadModel(const string& filePath)
 {
-	Log::SetLogger(logger);
+	m_modelLoader->Load(new GameObject(), filePath);
 }
 
-void Socket::LoadModel(string path)
+void Socket::LoadModelAsync(const string& filePath)
 {
-	m_modelLoader->Load(path, new GameObject());
+	m_modelLoader->LoadAsync(new GameObject(), filePath);
 }
 
-ImageImporter* Socket::GetImageLoader()
+bool Socket::SaveSceneToFile(const string& filePath)
 {
-	return &ImageImporter::GetInstance();
+	return m_scene->SaveToFile(filePath);
+}
+
+bool Socket::LoadSceneFromFile(const string& filePath)
+{
+	m_timer->Reset();
+	return m_scene->LoadFromFile(filePath);
 }
 //==============================================================================
 
@@ -108,6 +114,22 @@ PhysicsDebugDraw* Socket::GetPhysicsDebugDraw()
 {
 	return m_physics->GetPhysicsDebugDraw();
 }
+
+void Socket::ClearScene()
+{
+	m_scene->Clear();
+}
+
+ImageImporter* Socket::GetImageLoader()
+{
+	return &ImageImporter::GetInstance();
+}
+
+void Socket::SetLogger(ILogger* logger)
+{
+	Log::SetLogger(logger);
+}
+
 //==============================================================================
 
 //= GAMEOBJECTS ================================================================
@@ -150,24 +172,6 @@ bool Socket::GameObjectExists(GameObject* gameObject)
 }
 //==============================================================================
 
-//= SCENE ======================================================================
-bool Socket::SaveSceneToFile(string path)
-{
-	return m_scene->SaveToFile(path);
-}
-
-bool Socket::LoadSceneFromFile(string path)
-{
-	m_timer->Reset();
-	return m_scene->LoadFromFile(path);
-}
-
-void Socket::ClearScene()
-{
-	m_scene->Clear();
-}
-//==============================================================================
-
 //= STATS ======================================================================
 float Socket::GetFPS() const
 {
@@ -181,12 +185,12 @@ int Socket::GetRenderedMeshesCount() const
 
 float Socket::GetDeltaTime() const
 {
-	return m_timer->GetDeltaTime();
+	return m_timer->GetDeltaTimeMs();
 }
 
 float Socket::GetRenderTime() const
 {
-	return m_timer->GetRenderTime();
+	return m_timer->GetRenderTimeMs();
 }
 //==============================================================================
 
