@@ -298,7 +298,7 @@ void Renderer::DirectionalLightDepthPass()
 	for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetCascadeCount(); cascadeIndex++)
 	{
 		m_directionalLight->SetShadowMapAsRenderTarget(cascadeIndex);
-		for (auto const &gameObject : m_renderables)
+		for (const auto& gameObject : m_renderables)
 		{
 			auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
 			auto meshFilter = gameObject->GetComponent<MeshFilter>();
@@ -327,10 +327,10 @@ void Renderer::DirectionalLightDepthPass()
 
 void Renderer::GBufferPass()
 {
-	for (auto const &currentShader : m_shaderPool->GetAllShaders()) // for each shader
+	for (const auto& currentShader : m_shaderPool->GetAllShaders()) // for each shader
 	{	
 		currentShader->Set();
-		for (auto const &currentMaterial : m_materialPool->GetAllMaterials()) // for each material...
+		for (const auto& currentMaterial : m_materialPool->GetAllMaterials()) // for each material...
 		{
 			// ... that uses the current shader
 			if (currentMaterial->GetShader()->GetID() != currentShader->GetID())
@@ -355,7 +355,7 @@ void Renderer::GBufferPass()
 			currentShader->SetResources(m_textures);
 			//==================================================================================
 
-			for (auto const &gameObject : m_renderables) // for each mesh...
+			for (auto const gameObject : m_renderables) // for each mesh...
 			{
 				//= Get all that we need =====================================
 				auto meshFilter = gameObject->GetComponent<MeshFilter>();

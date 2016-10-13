@@ -76,7 +76,7 @@ void MeshCollider::Update()
 void MeshCollider::Serialize()
 {
 	Serializer::WriteBool(m_convex);
-	Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : "-1");
+	Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : (string)DATA_NOT_ASSIGNED);
 }
 
 void MeshCollider::Deserialize()

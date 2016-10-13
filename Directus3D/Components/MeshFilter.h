@@ -57,7 +57,7 @@ public:
 private:
 	void CreateBuffers();
 
-	D3D11Buffer* m_vertexBuffer;
-	D3D11Buffer* m_indexBuffer;
+	std::shared_ptr<D3D11Buffer> m_vertexBuffer;
+	std::shared_ptr<D3D11Buffer> m_indexBuffer;
 	std::shared_ptr<Mesh> m_mesh;
 };

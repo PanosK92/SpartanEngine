@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Components/MeshFilter.h"
 #include "../IO/FileSystem.h"
+#include "../IO/Log.h"
 //==================================
 
 //= NAMESPACES ================
@@ -52,6 +53,21 @@ void MeshPool::Clear()
 }
 
 // Adds a mesh to the pool directly from memory
+shared_ptr<Mesh> MeshPool::Add(shared_ptr<Mesh> mesh)
+{
+	// Make sure the mesh isn't already inthe pool
+	for (const auto& poolMesh : m_meshes)
+		if (poolMesh->GetID() == mesh->GetID())
+			return nullptr;
+
+	// add it to the pool
+	m_meshes.push_back(mesh);
+
+	// return it
+	return m_meshes.back();
+}
+
+// Adds a mesh to the pool by creating directly from vertices and indices
 shared_ptr<Mesh> MeshPool::Add(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
 {
 	// construct the mesh
@@ -62,29 +78,19 @@ shared_ptr<Mesh> MeshPool::Add(const string& name, const string& rootGameObjectI
 	mesh->SetIndices(indices);
 	mesh->Update();
 
-	// add it to the pool
-	m_meshes.push_back(mesh);
-
-	// return it
-	return m_meshes.back();
+	return Add(mesh);
 }
 
 // Adds multiple meshes to the pool by reading them from files
 void MeshPool::Add(const vector<string>& filePaths)
 {
-	for (const string& filePath : filePaths)
+	for (const auto&  filePath : filePaths)
 	{
-		// Make sure the path is valid
-		if (!FileSystem::FileExists(filePath))
-			continue;
-
-		// Make sure it's actually a mesh file
-		if (FileSystem::GetExtensionFromPath(filePath) != MESH_EXTENSION)
-			continue;
-
 		auto mesh = make_shared<Mesh>();
+
+		// If the mesh load successfully, add it to the pool
 		if (mesh->LoadFromFile(filePath))
-			m_meshes.push_back(mesh);
+			Add(mesh);
 	}
 }
 
@@ -96,9 +102,9 @@ shared_ptr<Mesh> MeshPool::GetMeshByID(const string& ID)
 	if (ID == MESH_DEFAULT_QUAD_ID)
 		return m_defaultQuad;
 
-	for (auto const &mesh : m_meshes)
+	for (const auto&  mesh : m_meshes)
 	{
-		//LOG_INFO(ID + " == " + mesh->GetID() + " ?");
+		LOG_INFO("Loaded mesh ID: " + ID + " == " + mesh->GetID() + " in pool?");
 
 		if (mesh->GetID() == ID)
 			return mesh;
@@ -109,7 +115,7 @@ shared_ptr<Mesh> MeshPool::GetMeshByID(const string& ID)
 
 shared_ptr<Mesh> MeshPool::GetMeshByPath(const string& path)
 {
-	for (auto const &mesh : m_meshes)
+	for (const auto& mesh : m_meshes)
 		if (mesh->GetFilePath() == path)
 			return mesh;
 
@@ -120,7 +126,7 @@ vector<string> MeshPool::GetAllMeshFilePaths()
 {
 	vector<string> paths;
 
-	for (auto const &mesh : m_meshes)
+	for (const auto& mesh : m_meshes)
 		paths.push_back(mesh->GetFilePath());
 
 	return paths;
@@ -131,7 +137,7 @@ vector<shared_ptr<Mesh>> MeshPool::GetModelMeshesByModelName(const string& rootG
 {
 	vector<shared_ptr<Mesh>> modelMeshes;
 
-	for (auto const &mesh : m_meshes)
+	for (const auto& mesh : m_meshes)
 		if (mesh->GetRootGameObjectID() == rootGameObjectID)
 			modelMeshes.push_back(mesh);
 
@@ -179,7 +185,7 @@ float MeshPool::GetNormalizedModelScaleByRootGameObjectID(const string& rootGame
 void MeshPool::SetModelScale(const string& rootGameObjectID, float scale)
 {
 	// get all the meshes related to this model and scale them
-	for (auto const &modelMesh : GetModelMeshesByModelName(rootGameObjectID))
+	for (const auto& modelMesh : GetModelMeshesByModelName(rootGameObjectID))
 		modelMesh->Scale(scale);
 }
 

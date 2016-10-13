@@ -43,8 +43,8 @@ MeshFilter::MeshFilter()
 
 MeshFilter::~MeshFilter()
 {
-	SafeDelete(m_vertexBuffer);
-	SafeDelete(m_indexBuffer);
+	m_vertexBuffer.reset();
+	m_vertexBuffer.reset();
 }
 
 void MeshFilter::Initialize()
@@ -152,17 +152,17 @@ string MeshFilter::GetMeshName()
 
 void MeshFilter::CreateBuffers()
 {
-	SafeDelete(m_vertexBuffer);
-	SafeDelete(m_indexBuffer);
+	m_vertexBuffer.reset();
+	m_indexBuffer.reset();
 
 	if (!m_mesh)
 		return;
 
-	m_vertexBuffer = new D3D11Buffer();
+	m_vertexBuffer = make_shared<D3D11Buffer>();
 	m_vertexBuffer->Initialize(g_graphicsDevice);
 	m_vertexBuffer->CreateVertexBuffer(m_mesh->GetVertices());
 
-	m_indexBuffer = new D3D11Buffer();
+	m_indexBuffer = make_shared<D3D11Buffer>();
 	m_indexBuffer->Initialize(g_graphicsDevice);
 	m_indexBuffer->CreateIndexBuffer(m_mesh->GetIndices());
 }

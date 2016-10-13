@@ -41,6 +41,7 @@ public:
 										[MISC]
 	------------------------------------------------------------------------------*/
 	void Clear();
+	std::shared_ptr<Mesh> Add(std::shared_ptr<Mesh> mesh);
 	std::shared_ptr<Mesh> Add(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
 	void Add(const std::vector<std::string>& filePaths);
 
