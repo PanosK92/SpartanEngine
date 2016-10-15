@@ -40,20 +40,10 @@ public:
 	Frustrum();
 	~Frustrum();
 
-	void ConstructFrustum(float screenDepth);
+	void Construct(const Directus::Math::Matrix& mView, Directus::Math::Matrix mProjection, float screenDepth);
 	FrustrumSpace CheckCube(const Directus::Math::Vector3& center, const Directus::Math::Vector3& extent);
 	FrustrumSpace CheckSphere(const Directus::Math::Vector3& center, float radius);
 
-	void SetViewMatrix(const Directus::Math::Matrix& viewMatrix);
-	Directus::Math::Matrix GetViewMatrix();
-
-	void SetProjectionMatrix(const Directus::Math::Matrix& projectionMatrix);
-	Directus::Math::Matrix GetProjectionMatrix();
-
-
 private:
 	Directus::Math::Plane m_planes[6];
-
-	Directus::Math::Matrix m_viewMatrix;
-	Directus::Math::Matrix m_projectionMatrix;
 };

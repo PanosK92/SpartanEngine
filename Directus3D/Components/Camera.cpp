@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 Camera::Camera()
@@ -35,6 +36,7 @@ Camera::Camera()
 	m_FOV = 1.04719755f; // 60 degrees
 	m_nearPlane = 0.1f;
 	m_farPlane = 1000.0f;
+	m_frustrum = make_shared<Frustrum>();
 	m_projection = Perspective;
 	m_clearColor = Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
 	m_isDirty = false;
@@ -71,7 +73,7 @@ void Camera::Update()
 		m_isDirty = true;
 	}
 
-	// calculate the view matrix only if the transform has changed
+	// DIRTY CHECK
 	if (m_position != g_transform->GetPosition() || m_rotation != g_transform->GetRotation())
 	{
 		m_position = g_transform->GetPosition();
@@ -85,6 +87,8 @@ void Camera::Update()
 	CalculateBaseView();
 	CalculateViewMatrix();
 	CalculateProjectionMatrix();
+
+	m_frustrum->Construct(GetViewMatrix(), GetProjectionMatrix(), GetFarPlane());
 
 	m_isDirty = false;
 }
@@ -112,7 +116,7 @@ void Camera::Deserialize()
 /*------------------------------------------------------------------------------
 								[CONVERSIONS]
 ------------------------------------------------------------------------------*/
-Vector2 Camera::WorldSpaceToScreenPoint(Vector3 point)
+Vector2 Camera::WorldSpaceToScreenPoint(const Vector3& point)
 {
 	float screenWidth = RESOLUTION_WIDTH;
 	float screenHeight = RESOLUTION_HEIGHT;
@@ -136,7 +140,6 @@ float Camera::GetNearPlane()
 void Camera::SetNearPlane(float nearPlane)
 {
 	m_nearPlane = nearPlane;
-
 	m_isDirty = true;
 }
 
@@ -148,7 +151,6 @@ float Camera::GetFarPlane()
 void Camera::SetFarPlane(float farPlane)
 {
 	m_farPlane = farPlane;
-
 	m_isDirty = true;
 }
 
@@ -160,7 +162,6 @@ Projection Camera::GetProjection()
 void Camera::SetProjection(Projection projection)
 {
 	m_projection = projection;
-
 	m_isDirty = true;
 }
 
@@ -172,8 +173,12 @@ float Camera::GetFieldOfView()
 void Camera::SetFieldOfView(float fov)
 {
 	m_FOV = DegreesToRadians(fov);
-
 	m_isDirty = true;
+}
+
+const shared_ptr<Frustrum>& Camera::GetFrustrum()
+{
+	return m_frustrum;
 }
 
 Vector4 Camera::GetClearColor()
