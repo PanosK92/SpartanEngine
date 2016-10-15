@@ -82,7 +82,7 @@ public:
 	ImageImporter();
 	~ImageImporter();
 
-	void Initialize(Graphics* D3D11evice, ThreadPool* thraedPool);
+	void Initialize(std::shared_ptr<Graphics> D3D11evice, std::shared_ptr<ThreadPool> thraedPool);
 	void LoadAsync(const std::string& filePath);
 	bool Load(const std::string& filePath);
 	bool Load(const std::string& filePath, int width, int height);
@@ -120,6 +120,6 @@ private:
 	bool m_transparent;
 
 	// dependencies
-	Graphics* m_graphics;
-	ThreadPool* m_threadPool;
+	std::shared_ptr<Graphics> m_graphics;
+	std::shared_ptr<ThreadPool> m_threadPool;
 };

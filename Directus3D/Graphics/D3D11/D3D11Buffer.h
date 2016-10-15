@@ -33,7 +33,7 @@ public:
 	D3D11Buffer();
 	~D3D11Buffer();
 
-	void Initialize(Graphics* graphicsDevice);
+	void Initialize(std::shared_ptr<Graphics> graphicsDevice);
 	bool CreateConstantBuffer(unsigned int size);
 	bool CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent>& vertices);
 	bool CreateIndexBuffer(std::vector<unsigned int>& indices);
@@ -46,7 +46,7 @@ public:
 	void* Map();
 	void Unmap();
 private:
-	Graphics* m_graphics;
+	std::shared_ptr<Graphics> m_graphics;
 	ID3D11Buffer* m_buffer;
 	unsigned int m_stride;
 	unsigned int m_size;

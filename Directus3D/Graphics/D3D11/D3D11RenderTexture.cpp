@@ -51,7 +51,7 @@ D3D11RenderTexture::~D3D11RenderTexture()
 	SafeRelease(m_renderTargetTexture);
 }
 
-bool D3D11RenderTexture::Initialize(Graphics* graphicsDevice, int textureWidth, int textureHeight)
+bool D3D11RenderTexture::Initialize(std::shared_ptr<Graphics> graphicsDevice, int textureWidth, int textureHeight)
 {
 	m_graphics = graphicsDevice;
 	m_width = textureHeight;
@@ -152,7 +152,7 @@ void D3D11RenderTexture::SetAsRenderTarget() const
 	m_graphics->GetDeviceContext()->RSSetViewports(1, &m_viewport);
 }
 
-void D3D11RenderTexture::Clear(const Directus::Math::Vector4& clearColor)
+void D3D11RenderTexture::Clear(const Vector4& clearColor)
 {
 	Clear(clearColor.x, clearColor.y, clearColor.z, clearColor.z);
 }

@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "PostProcessShader.h"
-#include "../../Core/Helper.h"
 #include "../../Core/Settings.h"
 #include "../../IO/Log.h"
 //=============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 PostProcessShader::PostProcessShader()
@@ -38,16 +38,15 @@ PostProcessShader::PostProcessShader()
 
 PostProcessShader::~PostProcessShader()
 {
-	SafeDelete(m_constantBuffer);
-	SafeDelete(m_shader);
+
 }
 
-void PostProcessShader::Initialize(LPCSTR pass, Graphics* graphicsDevice)
+void PostProcessShader::Initialize(LPCSTR pass, shared_ptr<Graphics> graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 
 	// load the vertex and the pixel shader
-	m_shader = new D3D11Shader();
+	m_shader = make_shared<D3D11Shader>();
 	m_shader->Initialize(m_graphics);
 	m_shader->AddDefine(pass, true);
 	m_shader->Load("Assets/Shaders/PostProcess.hlsl");
@@ -56,7 +55,7 @@ void PostProcessShader::Initialize(LPCSTR pass, Graphics* graphicsDevice)
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// create buffer
-	m_constantBuffer = new D3D11Buffer();
+	m_constantBuffer = make_shared<D3D11Buffer>();
 	m_constantBuffer->Initialize(m_graphics);
 	m_constantBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }

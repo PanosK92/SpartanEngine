@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ===========
 #include "ColorShader.h"
-#include "../../Core/Helper.h"
-//=============================
+//======================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 ColorShader::ColorShader()
@@ -35,23 +35,22 @@ ColorShader::ColorShader()
 
 ColorShader::~ColorShader()
 {
-	SafeDelete(m_shader);
-	SafeDelete(m_miscBuffer);
+
 }
 
-void ColorShader::Initialize(Graphics* graphicsDevice)
+void ColorShader::Initialize(shared_ptr<Graphics> graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 
 	// load the vertex and the pixel shader
-	m_shader = new D3D11Shader();
+	m_shader = make_shared<D3D11Shader>();
 	m_shader->Initialize(m_graphics);
 	m_shader->Load("Assets/Shaders/Color.hlsl");
 	m_shader->SetInputLayout(PositionColor);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// create buffer
-	m_miscBuffer = new D3D11Buffer();
+	m_miscBuffer = make_shared<D3D11Buffer>();
 	m_miscBuffer->Initialize(m_graphics);
 	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
 }

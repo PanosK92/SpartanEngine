@@ -49,7 +49,7 @@ DirectusCore::~DirectusCore()
     ShutdownEngine();
 }
 
-Socket* DirectusCore::GetEngineSocket()
+std::shared_ptr<Socket> DirectusCore::GetEngineSocket()
 {
     return m_socket;
 }

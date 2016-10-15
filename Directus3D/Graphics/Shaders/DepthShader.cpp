@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "DepthShader.h"
-#include "../../Core/Helper.h"
 //=============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 DepthShader::DepthShader()
@@ -37,22 +37,21 @@ DepthShader::DepthShader()
 
 DepthShader::~DepthShader()
 {
-	SafeDelete(m_defaultBuffer);
-	SafeDelete(m_shader);
+
 }
 
-void DepthShader::Initialize(Graphics* graphicsDevice)
+void DepthShader::Initialize(shared_ptr<Graphics> graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 
 	// load the vertex and the pixel shader
-	m_shader = new D3D11Shader();
+	m_shader = make_shared<D3D11Shader>();
 	m_shader->Initialize(m_graphics);
 	m_shader->Load("Assets/Shaders/Depth.hlsl");
 	m_shader->SetInputLayout(Position);
 
 	// create a buffer
-	m_defaultBuffer = new D3D11Buffer();
+	m_defaultBuffer = make_shared<D3D11Buffer>();
 	m_defaultBuffer->Initialize(m_graphics);
 	m_defaultBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }

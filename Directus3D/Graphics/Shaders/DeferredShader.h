@@ -37,7 +37,7 @@ public:
 	DeferredShader();
 	~DeferredShader();
 
-	void Initialize(Graphics* graphicsDevice);
+	void Initialize(std::shared_ptr<Graphics> graphicsDevice);
 	void Render(
 		int indexCount, const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mBaseView,
 		const Directus::Math::Matrix& mPerspectiveProjection, const Directus::Math::Matrix& mOrthographicProjection,
@@ -67,7 +67,7 @@ private:
 		Directus::Math::Vector2 padding;
 	};
 
-	D3D11Buffer* m_constantBuffer;
-	D3D11Shader* m_shader;
-	Graphics* m_graphics;
+	std::shared_ptr<D3D11Buffer> m_constantBuffer;
+	std::shared_ptr<D3D11Shader> m_shader;
+	std::shared_ptr<Graphics> m_graphics;
 };

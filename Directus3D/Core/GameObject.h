@@ -35,7 +35,7 @@ public:
 	GameObject();
 	~GameObject();
 
-	void Initialize(Graphics* graphicsDevice, Scene* scene, Renderer* renderer, MeshPool* meshPool, MaterialPool* materialPool, TexturePool* texturePool, ShaderPool* shaderPool, PhysicsWorld* physics, ScriptEngine* scriptEngine);
+	void Initialize(std::shared_ptr<Graphics> graphicsDevice, std::shared_ptr<Scene> scene, std::shared_ptr<Renderer> renderer, std::shared_ptr<MeshPool> meshPool, std::shared_ptr<MaterialPool> materialPool, std::shared_ptr<TexturePool> texturePool, std::shared_ptr<ShaderPool> shaderPool, std::shared_ptr<PhysicsWorld> physics, std::shared_ptr<ScriptEngine> scriptEngine);
 	void Start();
 	void Update();
 
@@ -86,15 +86,15 @@ private:
 	// keep a local copy of it here and avoid any runtime searching (performance).
 	Transform* m_transform;
 
-	Graphics* m_graphics;
-	Scene* m_scene;
-	Renderer* m_renderer;
-	MeshPool* m_meshPool;
-	MaterialPool* m_materialPool;
-	TexturePool* m_texturePool;
-	ShaderPool* m_shaderPool;
-	PhysicsWorld* m_physics;
-	ScriptEngine* m_scriptEngine;
+	std::shared_ptr<Graphics> m_graphics;
+	std::shared_ptr<Scene> m_scene;
+	std::shared_ptr<Renderer> m_renderer;
+	std::shared_ptr<MeshPool> m_meshPool;
+	std::shared_ptr<MaterialPool> m_materialPool;
+	std::shared_ptr<TexturePool> m_texturePool;
+	std::shared_ptr<ShaderPool> m_shaderPool;
+	std::shared_ptr<PhysicsWorld> m_physics;
+	std::shared_ptr<ScriptEngine> m_scriptEngine;
 
 	//= HELPER FUNCTIONS ====================================
 	IComponent* AddComponentBasedOnType(const std::string& typeStr);

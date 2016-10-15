@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/FileSystem.h"
 //========================================
 
-Module::Module(string moduleName, ScriptEngine* scriptEngine)
+Module::Module(const string& moduleName, shared_ptr<ScriptEngine> scriptEngine)
 {
 	m_builder = nullptr;
 	m_moduleName = moduleName;
@@ -41,7 +41,7 @@ Module::~Module()
 	delete m_builder;
 }
 
-bool Module::LoadScript(string path)
+bool Module::LoadScript(const string& filePath)
 {
 	// start new module
 	m_builder = new CScriptBuilder();
@@ -53,10 +53,10 @@ bool Module::LoadScript(string path)
 	}
 
 	// load the script
-	result = m_builder->AddSectionFromFile(path.c_str());
+	result = m_builder->AddSectionFromFile(filePath.c_str());
 	if (result < 0)
 	{
-		LOG_ERROR("Failed to load script \"" + path + "\".");
+		LOG_ERROR("Failed to load script \"" + filePath + "\".");
 		return false;
 	}
 
@@ -64,7 +64,7 @@ bool Module::LoadScript(string path)
 	result = m_builder->BuildModule();
 	if (result < 0)
 	{
-		LOG_ERROR("Failed to compile script \"" + FileSystem::GetFileNameFromPath(path) + "\". Correct any errors and try again.");
+		LOG_ERROR("Failed to compile script \"" + FileSystem::GetFileNameFromPath(filePath) + "\". Correct any errors and try again.");
 		return false;
 	}
 

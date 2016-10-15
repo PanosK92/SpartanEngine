@@ -34,7 +34,7 @@ public:
 	PostProcessShader();
 	~PostProcessShader();
 
-	void Initialize(LPCSTR pass, Graphics* d3d11device);
+	void Initialize(LPCSTR pass, std::shared_ptr<Graphics> d3d11device);
 	void Render(int indexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* texture);
 
 private:
@@ -44,8 +44,8 @@ private:
 		Directus::Math::Vector2 viewport;
 		Directus::Math::Vector2 padding;
 	};
-	D3D11Buffer* m_constantBuffer;
 
-	Graphics* m_graphics;
-	D3D11Shader* m_shader;
+	std::shared_ptr<D3D11Buffer> m_constantBuffer;
+	std::shared_ptr<Graphics> m_graphics;
+	std::shared_ptr<D3D11Shader> m_shader;
 };

@@ -31,7 +31,7 @@ private:
 	void CreateBuffer();
 
 	//= VERTICES ===================	
-	D3D11Buffer* m_vertexBuffer;
+	std::shared_ptr<D3D11Buffer> m_vertexBuffer;
 	VertexPositionColor* m_vertices;
 	int m_maxVertices;
 	int m_vertexIndex;	

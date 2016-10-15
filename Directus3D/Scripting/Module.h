@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES ====
 #include <string>
-//=======================
+#include <memory>
+//===============
 
 class asIScriptModule;
 class CScriptBuilder;
@@ -33,14 +34,14 @@ class ScriptEngine;
 class Module
 {
 public:
-	Module(std::string moduleName, ScriptEngine* scriptEngine);
+	Module(const std::string& moduleName, std::shared_ptr<ScriptEngine> scriptEngine);
 	~Module();
 
-	bool LoadScript(std::string path);
+	bool LoadScript(const std::string& filePath);
 	asIScriptModule* GetAsIScriptModule();
 
 private:
 	std::string m_moduleName;
 	CScriptBuilder* m_builder;
-	ScriptEngine* m_scriptEngine;
+	std::shared_ptr<ScriptEngine> m_scriptEngine;
 };

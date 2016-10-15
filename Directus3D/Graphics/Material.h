@@ -45,7 +45,7 @@ enum ShadingMode
 class __declspec(dllexport) Material
 {
 public:
-	Material(TexturePool* texturePool, ShaderPool* shaderPool);
+	Material(std::shared_ptr<TexturePool> texturePool, std::shared_ptr<ShaderPool> shaderPool);
 	~Material();
 
 	//= I/O =======================================================================
@@ -159,7 +159,7 @@ private:
 	bool m_isEditable;
 
 	//= DEPENDENCIES ==========
-	TexturePool* m_texturePool;
-	ShaderPool* m_shaderPool;
+	std::shared_ptr<TexturePool> m_texturePool;
+	std::shared_ptr<ShaderPool> m_shaderPool;
 	//=========================
 };

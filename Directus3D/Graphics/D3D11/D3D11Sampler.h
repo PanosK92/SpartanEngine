@@ -31,9 +31,9 @@ public:
 	D3D11Sampler();
 	~D3D11Sampler();
 
-	bool Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, Graphics* graphicsDevice);
+	bool Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, std::shared_ptr<Graphics> graphicsDevice);
 	void Set(unsigned int startSlot);
 private:
-	Graphics* m_graphics;
+	std::shared_ptr<Graphics> m_graphics;
 	ID3D11SamplerState* m_sampler;
 };

@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class MaterialPool
 {
 public:
-	MaterialPool(TexturePool* texturePool, ShaderPool* shaderPool);
+	MaterialPool(std::shared_ptr<TexturePool> texturePool, std::shared_ptr<ShaderPool> shaderPool);
 	~MaterialPool();
 
 	/*------------------------------------------------------------------------------
@@ -53,8 +53,8 @@ public:
 private:
 	std::vector<std::shared_ptr<Material>> m_materials;
 
-	TexturePool* m_texturePool;
-	ShaderPool* m_shaderPool;
+	std::shared_ptr<TexturePool> m_texturePool;
+	std::shared_ptr<ShaderPool> m_shaderPool;
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/

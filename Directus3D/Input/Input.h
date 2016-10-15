@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "DX8Input.h"
 #include "../Math/Vector2.h"
+#include <memory>
+
 //==========================
 
 enum KeyCode
@@ -119,6 +121,6 @@ private:
 	Directus::Math::Vector2 m_mousePos;
 	Directus::Math::Vector2 m_mousePosDelta;
 
-	DX8Input* m_DX8Input;
+	std::shared_ptr<DX8Input> m_DX8Input;
 	bool m_initializedSuccessfully;
 };

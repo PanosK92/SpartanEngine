@@ -36,7 +36,7 @@ class PhysicsDebugDraw;
 class __declspec(dllexport) Socket
 {
 public:
-	Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelImporter* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, Graphics* graphicsDevice);
+	Socket(Engine* engine, std::shared_ptr<Scene> scene, std::shared_ptr<Renderer> renderer, std::shared_ptr<Input> input, std::shared_ptr<Timer> timer, std::shared_ptr<ModelImporter> modelLoader, std::shared_ptr<PhysicsWorld> physics, std::shared_ptr<TexturePool> texturePool, std::shared_ptr<Graphics> graphicsDevice);
 	~Socket();
 
 	//= STATE CONTROL ==============
@@ -85,12 +85,12 @@ public:
 	void SetMaterialTexture(GameObject* gameObject, TextureType type, std::string texturePath);
 private:
 	Engine* m_engine;
-	Scene* m_scene;
-	Renderer* m_renderer;
-	Graphics* m_graphics;
-	Timer* m_timer;
-	Input* m_input;
-	TexturePool* m_texturePool;
-	ModelImporter* m_modelLoader;
-	PhysicsWorld* m_physics;
+	std::shared_ptr<Scene> m_scene;
+	std::shared_ptr<Renderer> m_renderer;
+	std::shared_ptr<Graphics> m_graphics;
+	std::shared_ptr<Timer> m_timer;
+	std::shared_ptr<Input> m_input;
+	std::shared_ptr<TexturePool> m_texturePool;
+	std::shared_ptr<ModelImporter> m_modelLoader;
+	std::shared_ptr<PhysicsWorld> m_physics;
 };

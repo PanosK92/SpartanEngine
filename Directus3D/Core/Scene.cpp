@@ -44,15 +44,15 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Scene::Scene(TexturePool* texturePool, 
-	MaterialPool* materialPool, 
-	MeshPool* meshPool, 
-	ScriptEngine* scriptEngine, 
-	PhysicsWorld* physics, 
-	ModelImporter* modelLoader,
-	Renderer* renderer, 
-	ShaderPool* shaderPool,
-	ThreadPool* threadPool
+Scene::Scene(shared_ptr<TexturePool> texturePool, 
+	shared_ptr<MaterialPool> materialPool, 
+	shared_ptr<MeshPool> meshPool, 
+	shared_ptr<ScriptEngine> scriptEngine, 
+	shared_ptr<PhysicsWorld> physics, 
+	shared_ptr<ModelImporter> modelLoader,
+	shared_ptr<Renderer> renderer, 
+	shared_ptr<ShaderPool> shaderPool,
+	shared_ptr<ThreadPool> threadPool
 )
 {
 	m_renderer = renderer;

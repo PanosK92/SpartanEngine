@@ -39,14 +39,14 @@ class ModelImporter;
 class Scene
 {
 public:
-	Scene(TexturePool* texturePool, 
-		MaterialPool* materialPool, 
-		MeshPool* meshPool, ScriptEngine* 
-		scriptEngine, PhysicsWorld* physics, 
-		ModelImporter* modelLoader, 
-		Renderer* renderer, 
-		ShaderPool* shaderPool,
-		ThreadPool* threadPool
+	Scene(std::shared_ptr<TexturePool> texturePool, 
+		std::shared_ptr<MaterialPool> materialPool, 
+		std::shared_ptr<MeshPool> meshPool, std::shared_ptr<ScriptEngine> 
+		scriptEngine, std::shared_ptr<PhysicsWorld> physics, 
+		std::shared_ptr<ModelImporter> modelLoader, 
+		std::shared_ptr<Renderer> renderer, 
+		std::shared_ptr<ShaderPool> shaderPool,
+		std::shared_ptr<ThreadPool> threadPool
 	);
 	~Scene();
 
@@ -86,14 +86,14 @@ private:
 	Directus::Math::Vector3 m_ambientLight;
 
 	// DEPENDENCIES ==============================
-	TexturePool* m_texturePool;
-	MaterialPool* m_materialPool;
-	MeshPool* m_meshPool;
-	ScriptEngine* m_scriptEngine;
-	PhysicsWorld* m_physics;
-	ModelImporter* m_modelLoader;
-	Renderer* m_renderer;
-	ShaderPool* m_shaderPool;
-	ThreadPool* m_threadPool;
+	std::shared_ptr<TexturePool> m_texturePool;
+	std::shared_ptr<MaterialPool> m_materialPool;
+	std::shared_ptr<MeshPool> m_meshPool;
+	std::shared_ptr<ScriptEngine> m_scriptEngine;
+	std::shared_ptr<PhysicsWorld> m_physics;
+	std::shared_ptr<ModelImporter> m_modelLoader;
+	std::shared_ptr<Renderer> m_renderer;
+	std::shared_ptr<ShaderPool> m_shaderPool;
+	std::shared_ptr<ThreadPool> m_threadPool;
 	//============================================
 };

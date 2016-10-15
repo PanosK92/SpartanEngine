@@ -24,6 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 //====================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 Timer::Timer()
 {
 	m_ticksPerSec = 0.0f;
@@ -36,8 +40,6 @@ Timer::Timer()
 	m_frameCount = 0;
 	m_fpsLastKnownTime = 0;
 	m_fps = 0;
-
-	m_renderStopwatch = new Stopwatch(this);
 }
 
 Timer::~Timer()
@@ -60,6 +62,8 @@ void Timer::Initialize()
 	m_ticksPerMs = m_ticksPerSec / 1000.0f;
 	m_startTime = GetTimeMs();
 	m_lastKnownTime = m_startTime;
+
+	m_renderStopwatch = new Stopwatch(this);
 }
 
 void Timer::Update()

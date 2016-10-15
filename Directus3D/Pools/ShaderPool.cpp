@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-ShaderPool::ShaderPool(Graphics* graphicsDevice)
+ShaderPool::ShaderPool(shared_ptr<Graphics> graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 }

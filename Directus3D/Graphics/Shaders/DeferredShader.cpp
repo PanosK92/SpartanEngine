@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "DeferredShader.h"
-#include "../../Core/Helper.h"
 #include "../../IO/Log.h"
 #include "../../Components/Transform.h"
 #include "../../Components/Light.h"
@@ -42,16 +41,15 @@ DeferredShader::DeferredShader()
 
 DeferredShader::~DeferredShader()
 {
-	SafeDelete(m_constantBuffer);
-	SafeDelete(m_shader);
+
 }
 
-void DeferredShader::Initialize(Graphics* graphicsDevice)
+void DeferredShader::Initialize(shared_ptr<Graphics> graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 
 	// load the vertex and the pixel shader
-	m_shader = new D3D11Shader();
+	m_shader = make_shared<D3D11Shader>();
 	m_shader->Initialize(m_graphics);
 	m_shader->Load("Assets/Shaders/Deferred.hlsl");
 	m_shader->SetInputLayout(PositionTextureNormalTangent);
@@ -59,7 +57,7 @@ void DeferredShader::Initialize(Graphics* graphicsDevice)
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	//= CREATE DEFAULT CONSTANT BUFFER ===========================
-	m_constantBuffer = new D3D11Buffer();
+	m_constantBuffer = make_shared<D3D11Buffer>();
 	m_constantBuffer->Initialize(m_graphics);
 	m_constantBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 	//============================================================

@@ -54,7 +54,7 @@ ImageImporter::~ImageImporter()
 	FreeImage_DeInitialise();
 }
 
-void ImageImporter::Initialize(Graphics* D3D11evice, ThreadPool* threadPool)
+void ImageImporter::Initialize(shared_ptr<Graphics> D3D11evice, shared_ptr<ThreadPool> threadPool)
 {
 	m_graphics = D3D11evice;
 	m_threadPool = threadPool;

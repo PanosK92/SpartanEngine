@@ -48,7 +48,7 @@ public:
 	Renderer();
 	~Renderer();
 
-	void Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene, ShaderPool* shaderPool, MaterialPool* materialPool);
+	void Initialize(std::shared_ptr<Graphics> d3d11device, std::shared_ptr<Timer> timer, std::shared_ptr<PhysicsWorld> physics, std::shared_ptr<Scene> scene, std::shared_ptr<ShaderPool> shaderPool, std::shared_ptr<MaterialPool> materialPool);
 	void Render();
 	void SetResolution(int width, int height);
 	void Clear();
@@ -63,14 +63,14 @@ public:
 
 private:
 	//= DEPENDENCIES ================
-	Graphics* m_graphics;
-	GBuffer* m_GBuffer;
-	FullScreenQuad* m_fullScreenQuad;
-	Timer* m_timer;
-	PhysicsWorld* m_physics;
-	Scene* m_scene;
-	ShaderPool* m_shaderPool;
-	MaterialPool* m_materialPool;
+	std::shared_ptr<Graphics> m_graphics;
+	std::shared_ptr<GBuffer> m_GBuffer;
+	std::shared_ptr<FullScreenQuad> m_fullScreenQuad;
+	std::shared_ptr<Timer> m_timer;
+	std::shared_ptr<PhysicsWorld> m_physics;
+	std::shared_ptr<Scene> m_scene;
+	std::shared_ptr<ShaderPool> m_shaderPool;
+	std::shared_ptr<MaterialPool> m_materialPool;
 	//===============================
 
 	// GAMEOBJECTS ==============================
@@ -80,8 +80,8 @@ private:
 	//===========================================
 
 	//= RENDER TEXTURES ====================
-	D3D11RenderTexture* m_renderTexPing;
-	D3D11RenderTexture* m_renderTexPong;
+	std::shared_ptr<D3D11RenderTexture> m_renderTexPing;
+	std::shared_ptr<D3D11RenderTexture> m_renderTexPong;
 	//======================================
 
 	//= MISC =====================================================
@@ -91,11 +91,11 @@ private:
 	//============================================================
 
 	//= SHADERS =========================
-	DeferredShader* m_shaderDeferred;
-	DepthShader* m_shaderDepth;
-	DebugShader* m_shaderDebug;
-	PostProcessShader* m_shaderFXAA;
-	PostProcessShader* m_shaderSharpening;
+	std::shared_ptr<DeferredShader> m_shaderDeferred;
+	std::shared_ptr<DepthShader> m_shaderDepth;
+	std::shared_ptr<DebugShader> m_shaderDebug;
+	std::shared_ptr<PostProcessShader> m_shaderFXAA;
+	std::shared_ptr<PostProcessShader> m_shaderSharpening;
 	//====================================
 
 	//= STATS ================

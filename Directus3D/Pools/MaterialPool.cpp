@@ -22,9 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "MaterialPool.h"
 #include <vector>
-#include "../IO/Log.h"
 #include "../IO/Serializer.h"
-#include "../IO/FileSystem.h"
 //===========================
 
 //= NAMESPACES ================
@@ -32,7 +30,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-MaterialPool::MaterialPool(TexturePool* texturePool, ShaderPool* shaderPool)
+MaterialPool::MaterialPool(shared_ptr<TexturePool> texturePool, shared_ptr<ShaderPool> shaderPool)
 {
 	m_texturePool = texturePool;
 	m_shaderPool = shaderPool;

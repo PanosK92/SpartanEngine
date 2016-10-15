@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 Input::Input()
@@ -43,7 +44,7 @@ Input::~Input()
 
 void Input::Initialize(HINSTANCE instance, HWND handle)
 {
-	m_DX8Input = new DX8Input();
+	m_DX8Input = make_shared<DX8Input>();
 	m_initializedSuccessfully = m_DX8Input->Initialize(instance, handle);
 }
 

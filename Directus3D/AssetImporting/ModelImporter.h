@@ -39,7 +39,7 @@ public:
 	ModelImporter();
 	~ModelImporter();
 
-	void Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool, ThreadPool* threadPool);
+	void Initialize(std::shared_ptr<MeshPool> meshPool, std::shared_ptr<TexturePool> texturePool, std::shared_ptr<ShaderPool> shaderPool, std::shared_ptr<MaterialPool> materialPool, std::shared_ptr<ThreadPool> threadPool);
 	void LoadAsync(GameObject* gameObject, const std::string& filePath);
 	bool Load(GameObject* gameObject, const std::string& filePath);
 
@@ -63,9 +63,9 @@ private:
 	std::string FindTexture(std::string texturePath);
 	std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 
-	MeshPool* m_meshPool;
-	TexturePool* m_texturePool;
-	ShaderPool* m_shaderPool;
-	MaterialPool* m_materialPool;
-	ThreadPool* m_threadPool;
+	std::shared_ptr<MeshPool> m_meshPool;
+	std::shared_ptr<TexturePool> m_texturePool;
+	std::shared_ptr<ShaderPool> m_shaderPool;
+	std::shared_ptr<MaterialPool> m_materialPool;
+	std::shared_ptr<ThreadPool> m_threadPool;
 };

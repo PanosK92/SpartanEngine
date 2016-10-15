@@ -23,26 +23,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "D3D11/D3D11RenderTexture.h"
-#include "../Core/Helper.h"
-#include "../Components/Transform.h"
 #include "../Components/Light.h"
 //===================================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 class ShadowMap
 {
 public:
-	ShadowMap(Graphics* device, int cascadeNumber, Light* light, Camera* camera, int resolution, float nearPlane, float farPlane)
+	ShadowMap(shared_ptr<Graphics> device, int cascadeNumber, Light* light, Camera* camera, int resolution, float nearPlane, float farPlane)
 	{
 		m_resolution = resolution;
 		m_nearPlane = nearPlane;
 		m_farPlane = farPlane;
-		m_depthMap = new D3D11RenderTexture();
+		m_depthMap = make_shared<D3D11RenderTexture>();
 		m_depthMap->Initialize(device, resolution, resolution);
 		m_camera = camera;
 		m_light = light;
 		m_cascadeNumber = cascadeNumber;
 	}
-	~ShadowMap() { SafeDelete(m_depthMap); }
+	~ShadowMap();
 
 	void SetAsRenderTarget() const
 	{
@@ -80,7 +82,7 @@ private:
 	int m_resolution;
 	float m_nearPlane;
 	float m_farPlane;
-	D3D11RenderTexture* m_depthMap;
+	shared_ptr<D3D11RenderTexture> m_depthMap;
 	Directus::Math::Matrix m_projectionMatrix;
 	Light* m_light;
 	Camera* m_camera;

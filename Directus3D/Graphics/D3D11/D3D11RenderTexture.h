@@ -32,7 +32,7 @@ public:
 	D3D11RenderTexture();
 	~D3D11RenderTexture();
 
-	bool Initialize(Graphics* graphicsDevice, int, int);
+	bool Initialize(std::shared_ptr<Graphics> graphicsDevice, int, int);
 	void SetAsRenderTarget() const;
 	void Clear(const Directus::Math::Vector4& clearColor);
 	void Clear(float r, float g , float b, float a) const;
@@ -41,7 +41,7 @@ public:
 	Directus::Math::Matrix GetOrthographicProjectionMatrix() const;
 
 private:
-	Graphics* m_graphics;
+	std::shared_ptr<Graphics> m_graphics;
 	ID3D11Texture2D* m_renderTargetTexture;
 	ID3D11RenderTargetView* m_renderTargetView;
 	ID3D11ShaderResourceView* m_shaderResourceView;

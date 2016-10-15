@@ -18,6 +18,7 @@ DEALINGS IN THE SOFTWARE. */
 
 //= INCLUDES =======
 #include <windows.h>
+#include <memory>
 //==================
 
 class Socket;
@@ -45,24 +46,24 @@ public:
 	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
 	void Update();
 	void Shutdown();
-	Socket* GetSocket();
+	std::shared_ptr<Socket> GetSocket();
 
 private:
 	/*------------------------------------------------------------------------------
 									[COMPONENTS]
 	------------------------------------------------------------------------------*/
-	Socket* m_engineSocket;
-	ScriptEngine* m_scriptEngine;
-	Renderer* m_renderer;
-	ModelImporter* m_modelLoader;
-	Graphics* m_graphics;
-	Scene* m_scene;
-	Input* m_input;
-	Timer* m_timer;
-	PhysicsWorld* m_physicsWorld;
-	MeshPool* m_meshPool;
-	MaterialPool* m_materialPool;
-	TexturePool* m_texturePool;
-	ShaderPool* m_shaderPool;
-	ThreadPool* m_threadPool;
+	std::shared_ptr<Socket> m_engineSocket;
+	std::shared_ptr<ScriptEngine> m_scriptEngine;
+	std::shared_ptr<Renderer> m_renderer;
+	std::shared_ptr<ModelImporter> m_modelLoader;
+	std::shared_ptr<Graphics> m_graphics;
+	std::shared_ptr<Scene> m_scene;
+	std::shared_ptr<Input> m_input;
+	std::shared_ptr<Timer> m_timer;
+	std::shared_ptr<PhysicsWorld> m_physicsWorld;
+	std::shared_ptr<MeshPool> m_meshPool;
+	std::shared_ptr<MaterialPool> m_materialPool;
+	std::shared_ptr<TexturePool> m_texturePool;
+	std::shared_ptr<ShaderPool> m_shaderPool;
+	std::shared_ptr<ThreadPool> m_threadPool;
 };
