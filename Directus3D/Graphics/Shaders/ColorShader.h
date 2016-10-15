@@ -34,7 +34,7 @@ public:
 	ColorShader();
 	~ColorShader();
 
-	void Initialize(Graphics* graphicsDevice);
+	void Initialize(std::shared_ptr<Graphics> graphicsDevice);
 	void Render(int vertexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
 
 private:
@@ -45,11 +45,10 @@ private:
 		Directus::Math::Matrix projection;
 	};
 
-	D3D11Buffer* m_miscBuffer;
-
 	void SetShaderBuffers(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
 	void RenderShader(unsigned int vertexCount);
 
-	Graphics* m_graphics;
-	D3D11Shader* m_shader;
+	std::shared_ptr<D3D11Buffer> m_miscBuffer;
+	std::shared_ptr<Graphics> m_graphics;
+	std::shared_ptr<D3D11Shader> m_shader;
 };

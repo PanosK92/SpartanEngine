@@ -51,11 +51,11 @@ PhysicsWorld::PhysicsWorld()
 
 PhysicsWorld::~PhysicsWorld()
 {
-	SafeDelete(m_world);
-	SafeDelete(m_constraintSolver);
-	SafeDelete(m_broadphase);
-	SafeDelete(m_dispatcher);
-	SafeDelete(m_collisionConfiguration);
+	delete m_world;
+	delete m_constraintSolver;
+	delete m_broadphase;
+	delete m_dispatcher;
+	delete m_collisionConfiguration;
 	SafeRelease(m_debugDraw);
 }
 

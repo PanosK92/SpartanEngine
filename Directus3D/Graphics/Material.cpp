@@ -35,7 +35,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
+Material::Material(shared_ptr<TexturePool> texturePool, shared_ptr<ShaderPool> shaderPool)
 {
 	m_ID = GENERATE_GUID;
 	m_name = DATA_NOT_ASSIGNED;

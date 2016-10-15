@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ===============================
 #include "Engine.h"
 #include "Socket.h"
 #include "Scene.h"
@@ -31,10 +31,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../AssetImporting/ModelImporter.h"
 #include "../Input/Input.h"
 #include "../Graphics/Graphics.h"
-#include "Helper.h"
 #include "../Signals/Signaling.h"
 #include "../Multithreading/ThreadPool.h"
-//=====================================
+//==========================================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 Engine::Engine()
 {
@@ -67,50 +70,50 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	Log::Initialize();
 
 	// 2 - TIMER
-	m_timer = new Timer();
+	m_timer = make_shared<Timer>();
 	m_timer->Initialize();
 
 	// 3 - THREAD POOL
-	m_threadPool = new ThreadPool();
+	m_threadPool = make_shared<ThreadPool>();
 
 	// 4 - GRAPHICS
-	m_graphics = new Graphics();
+	m_graphics = make_shared<Graphics>();
 	m_graphics->Initialize(drawPaneHandle);
 
 	// 5 - INPUT
-	m_input = new Input();
+	m_input = make_shared<Input>();
 	m_input->Initialize(instance, windowHandle);
 
 	// 6 - PHYSICS ENGINE
-	m_physicsWorld = new PhysicsWorld();
+	m_physicsWorld = make_shared<PhysicsWorld>();
 	m_physicsWorld->Initialize();
 
 	// 7 - SCRIPT ENGINE
-	m_scriptEngine = new ScriptEngine(m_timer, m_input);
+	m_scriptEngine = make_shared<ScriptEngine>(m_timer, m_input);
 	m_scriptEngine->Initialize();
 
 	// 8 - SHADER POOL
-	m_shaderPool = new ShaderPool(m_graphics);
+	m_shaderPool = make_shared<ShaderPool>(m_graphics);
 
 	// 9 - MESH POOL
-	m_meshPool = new MeshPool();
+	m_meshPool = make_shared<MeshPool>();
 
 	// 10 - IMAGE LOADER
 	ImageImporter::GetInstance().Initialize(m_graphics, m_threadPool);
 
 	// 11 - TEXTURE POOL
-	m_texturePool = new TexturePool();
+	m_texturePool = make_shared<TexturePool>();
 
 	// 12 - MATERIAL POOL
-	m_materialPool = new MaterialPool(m_texturePool, m_shaderPool);
+	m_materialPool = make_shared<MaterialPool>(m_texturePool, m_shaderPool);
 
 	// 13 - MODEL LOADER
-	m_modelLoader = new ModelImporter();
+	m_modelLoader = make_shared<ModelImporter>();
 	m_modelLoader->Initialize(m_meshPool, m_texturePool, m_shaderPool, m_materialPool, m_threadPool);
 
 	// 14 - RENDERER
-	m_renderer = new Renderer();
-	m_scene = new Scene(m_texturePool, 
+	m_renderer = make_shared<Renderer>();
+	m_scene = make_shared<Scene>(m_texturePool,
 		m_materialPool, 
 		m_meshPool, 
 		m_scriptEngine,
@@ -140,7 +143,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_scene->Initialize();
 
 	// 17 - ENGINE SOCKET
-	m_engineSocket = new Socket(this, m_scene, m_renderer, m_input, m_timer, m_modelLoader, m_physicsWorld, m_texturePool, m_graphics);
+	m_engineSocket = make_shared<Socket>(this, m_scene, m_renderer, m_input, m_timer, m_modelLoader, m_physicsWorld, m_texturePool, m_graphics);
 }
 
 void Engine::Update()
@@ -172,59 +175,17 @@ void Engine::Shutdown()
 {
 	EMIT_SIGNAL(SIGNAL_ENGINE_SHUTDOWN);
 
-	// 17 - ENGINE INTERFACE
-	delete m_engineSocket;
-
-	// 16 - SCENE
-	delete m_scene;
-
 	// 15 - GAMEOBJECT POOL
 	GameObjectPool::GetInstance().Release();
 
-	// 14 - RENDERER
-	SafeDelete(m_renderer);
-
-	// 13 - MODEL LOADER
-	SafeDelete(m_modelLoader);
-
-	// 12 - MATERIAL POOL
-	SafeDelete(m_materialPool);
-
-	// 11 - TEXTURE POOL
-	SafeDelete(m_texturePool);
-
 	// 10 - IMAGE LOADER
 	ImageImporter::GetInstance().Clear();
-
-	// 9 - MESH POOL
-	SafeDelete(m_meshPool);
-
-	// 8 - SHADER POOL
-	SafeDelete(m_shaderPool);
-
-	// 7 - SCRIPT ENGINE
-	SafeDelete(m_scriptEngine);
-
-	// 6 - PHYSICS ENGINE
-	SafeDelete(m_physicsWorld);
-
-	// 5 - INPUT
-	SafeDelete(m_input);
-
-	// 4  - GRAPHICS
-	SafeDelete(m_graphics);
-
-	// 3 - THREAD POOL
-	SafeDelete(m_threadPool);
-
-	// 2 - TIMER
-	SafeDelete(m_timer);
 
 	// 1 - LOG
 	Log::Release();
 }
 
-Socket* Engine::GetSocket()
+shared_ptr<Socket> Engine::GetSocket()
 {
 	return m_engineSocket;
 }

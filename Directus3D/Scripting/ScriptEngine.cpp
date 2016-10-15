@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define AS_USE_STLNAMES = 1
 
-ScriptEngine::ScriptEngine(Timer* timer, Input* input)
+ScriptEngine::ScriptEngine(shared_ptr<Timer> timer, shared_ptr<Input> input)
 {
 	m_scriptEngine = nullptr;
 	m_timer = timer;
@@ -89,12 +89,12 @@ asIScriptEngine* ScriptEngine::GetAsIScriptEngine()
 	return m_scriptEngine;
 }
 
-Timer* ScriptEngine::GetTimer()
+shared_ptr<Timer> ScriptEngine::GetTimer()
 {
 	return m_timer;
 }
 
-Input* ScriptEngine::GetInput()
+shared_ptr<Input> ScriptEngine::GetInput()
 {
 	return m_input;
 }

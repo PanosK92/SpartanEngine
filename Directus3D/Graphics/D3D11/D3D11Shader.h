@@ -39,7 +39,7 @@ public:
 	D3D11Shader();
 	~D3D11Shader();
 
-	void Initialize(Graphics* d3d11Device);
+	void Initialize(std::shared_ptr<Graphics> d3d11Device);
 	bool Load(std::string path);
 	bool SetInputLayout(InputLayout inputLayout);
 	bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
@@ -67,7 +67,7 @@ private:
 	LPCSTR m_entrypoint;
 	LPCSTR m_profile;
 	bool m_compiled;
-	std::vector<D3D11Sampler*> m_samplers;
+	std::vector<std::shared_ptr<D3D11Sampler>> m_samplers;
 	ID3D11VertexShader* m_vertexShader;
 	ID3D11PixelShader* m_pixelShader;
 	ID3D10Blob* m_VSBlob = nullptr;
@@ -77,9 +77,9 @@ private:
 	std::set<std::string> m_definitionPool;
 
 	//= INPUT LAYOUT ======================
-	D3D11InputLayout* m_D3D11InputLayout;
+	std::shared_ptr<D3D11InputLayout> m_D3D11InputLayout;
 	bool m_layoutHasBeenSet;
 
 	//= DEPENDENCIES============
-	Graphics* m_graphics;
+	std::shared_ptr<Graphics> m_graphics;
 };

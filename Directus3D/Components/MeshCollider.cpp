@@ -144,26 +144,24 @@ void MeshCollider::ConstructCollisionShape()
 		trimesh->addTriangle(vertex0, vertex1, vertex2);
 	}
 	bool useQuantization = true;
-	m_collisionShape = new btBvhTriangleMeshShape(trimesh, useQuantization);
+	m_collisionShape = make_shared<btBvhTriangleMeshShape>(trimesh, useQuantization);
 
 	//= construct a hull approximation ===========================================================================
 	if (m_convex)
 	{
-		btConvexHullShape* shape = new btConvexHullShape((btScalar*)vertices.data(), m_mesh->GetVertexCount(), sizeof(Directus::Math::Vector3));
+		auto shape = new btConvexHullShape((btScalar*)vertices.data(), m_mesh->GetVertexCount(), sizeof(Directus::Math::Vector3));
 
 		// OPTIMIZE
-		btShapeHull* hull = new btShapeHull(shape);
+		auto hull = make_shared<btShapeHull>(shape);
 		hull->buildHull(shape->getMargin());
-		btConvexHullShape* convexShape = new btConvexHullShape((btScalar*)hull->getVertexPointer(), hull->numVertices(), sizeof(btVector3));
+		auto convexShape = make_shared<btConvexHullShape>((btScalar*)hull->getVertexPointer(), hull->numVertices(), sizeof(btVector3));
 		m_collisionShape = convexShape;
-
-		delete hull;
 	}
 
 	SetCollisionShapeToRigidBody(m_collisionShape);
 }
 
-void MeshCollider::SetCollisionShapeToRigidBody(btCollisionShape* shape) const
+void MeshCollider::SetCollisionShapeToRigidBody(shared_ptr<btCollisionShape> shape) const
 {
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 	if (rigidBody)
@@ -179,9 +177,6 @@ shared_ptr<Mesh> MeshCollider::GetMeshFromAttachedMeshFilter() const
 void MeshCollider::DeleteCollisionShape()
 {
 	if (m_collisionShape)
-	{
-		SafeDelete(m_collisionShape);
 		SetCollisionShapeToRigidBody(m_collisionShape);	
-	}
 }
 //======================================================================================================================

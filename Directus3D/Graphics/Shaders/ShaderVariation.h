@@ -49,7 +49,7 @@ public:
 		bool emission,
 		bool mask,
 		bool cubemap,
-		Graphics* d3d11device
+		std::shared_ptr<Graphics> d3d11device
 	);
 	void Set();
 	void SetBuffers(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection, std::shared_ptr<Material> material, Light* directionalLight, bool receiveShadows, Camera* camera);
@@ -88,9 +88,9 @@ private:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/
-	Graphics* m_graphics;
-	D3D11Buffer* m_befaultBuffer;
-	D3D11Shader* m_D3D11Shader;
+	std::shared_ptr<Graphics> m_graphics;
+	std::shared_ptr<D3D11Buffer> m_befaultBuffer;
+	std::shared_ptr<D3D11Shader> m_D3D11Shader;
 
 	/*------------------------------------------------------------------------------
 									[BUFFER TYPE]

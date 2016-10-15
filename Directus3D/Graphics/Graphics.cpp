@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 Graphics::Graphics()
@@ -41,7 +42,7 @@ Graphics::~Graphics()
 
 void Graphics::Initialize(HWND drawPaneHandle)
 {
-	m_d3d11Graphics = new D3D11Graphics();
+	m_d3d11Graphics = make_shared<D3D11Graphics>();
 	m_d3d11Graphics->Initialize(drawPaneHandle);
 }
 

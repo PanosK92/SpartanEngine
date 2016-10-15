@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btCylinderShape.h>
 #include <BulletCollision/CollisionShapes/btCapsuleShape.h>
-#include "../Core/Helper.h"
 #include "Transform.h"
 #include "../IO/Log.h"
 //===========================================================
@@ -141,7 +140,7 @@ void Collider::SetShapeType(ColliderShape type)
 	ConstructCollisionShape();
 }
 
-btCollisionShape* Collider::GetBtCollisionShape() const
+shared_ptr<btCollisionShape> Collider::GetBtCollisionShape() const
 {
 	return m_shape;
 }
@@ -155,7 +154,7 @@ void Collider::ConstructCollisionShape()
 	// Create BOX shape
 	if (m_shapeType == Box)
 	{
-		m_shape = new btBoxShape(ToBtVector3(m_boundingBox));
+		m_shape = make_shared<btBoxShape>(ToBtVector3(m_boundingBox));
 	}
 
 	// Create CAPSULE shape
@@ -167,13 +166,13 @@ void Collider::ConstructCollisionShape()
 		float radius = min(m_boundingBox.x, m_boundingBox.z);
 		radius = min(radius, m_boundingBox.y);
 
-		m_shape = new btCapsuleShape(radius, height);
+		m_shape = make_shared<btCapsuleShape>(radius, height);
 	}
 
 	// Create CYLINDER shape
 	else if (m_shapeType == Cylinder)
 	{
-		m_shape = new btCylinderShape(ToBtVector3(m_boundingBox));
+		m_shape = make_shared<btCylinderShape>(ToBtVector3(m_boundingBox));
 	}
 
 	// Create SPHERE shape
@@ -182,7 +181,7 @@ void Collider::ConstructCollisionShape()
 		float radius = max(m_boundingBox.x, m_boundingBox.y);
 		radius = max(radius, m_boundingBox.z);
 
-		m_shape = new btSphereShape(radius);
+		m_shape = make_shared<btSphereShape>(radius);
 	}
 
 	SetRigidBodyCollisionShape(m_shape);
@@ -191,10 +190,9 @@ void Collider::ConstructCollisionShape()
 void Collider::DeleteCollisionShape()
 {
 	SetRigidBodyCollisionShape(nullptr);
-	SafeDelete(m_shape);
 }
 
-void Collider::SetRigidBodyCollisionShape(btCollisionShape* shape) const
+void Collider::SetRigidBodyCollisionShape(shared_ptr<btCollisionShape> shape) const
 {
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
 	if (rigidBody)

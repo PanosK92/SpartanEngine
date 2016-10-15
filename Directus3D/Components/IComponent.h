@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====
 #include <string>
+#include <memory>
 //===============
 
 class GameObject;
@@ -57,14 +58,14 @@ public:
 	//= SOME USEFUL POINTERS =========
 	GameObject* g_gameObject;
 	Transform* g_transform;
-	Graphics* g_graphicsDevice;
-	Scene* g_scene;
-	Renderer* g_renderer;
-	MeshPool* g_meshPool;
-	MaterialPool* g_materialPool;
-	PhysicsWorld* g_physicsWorld;
-	ScriptEngine* g_scriptEngine;
-	TexturePool* g_texturePool;
-	ShaderPool* g_shaderPool;
+	std::shared_ptr<Graphics> g_graphicsDevice;
+	std::shared_ptr<Scene> g_scene;
+	std::shared_ptr<Renderer> g_renderer;
+	std::shared_ptr<MeshPool> g_meshPool;
+	std::shared_ptr<MaterialPool> g_materialPool;
+	std::shared_ptr<PhysicsWorld> g_physicsWorld;
+	std::shared_ptr<ScriptEngine> g_scriptEngine;
+	std::shared_ptr<TexturePool> g_texturePool;
+	std::shared_ptr<ShaderPool> g_shaderPool;
 	//================================
 };

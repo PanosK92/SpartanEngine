@@ -658,7 +658,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -953,7 +953,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -1303,7 +1303,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -1649,7 +1649,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -1823,7 +1823,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -2154,7 +2154,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -2387,7 +2387,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -2704,7 +2704,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -2889,7 +2889,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -3088,7 +3088,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -3288,7 +3288,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -3471,7 +3471,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -3667,7 +3667,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -3864,7 +3864,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -4051,7 +4051,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -4213,7 +4213,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -4347,7 +4347,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -4763,7 +4763,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -4959,7 +4959,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -5544,7 +5544,7 @@ compiler_moc_header_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -5739,7 +5739,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -5928,7 +5928,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -6274,7 +6274,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -6616,7 +6616,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -6895,7 +6895,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -7125,7 +7125,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -7333,7 +7333,7 @@ compiler_uic_clean:
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -7842,7 +7842,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -8136,7 +8136,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -8486,7 +8486,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -8847,7 +8847,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -9019,7 +9019,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -9353,7 +9353,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -9603,7 +9603,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -9936,7 +9936,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -10143,7 +10143,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -10380,7 +10380,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -10582,7 +10582,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -10785,7 +10785,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -11005,7 +11005,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -11226,7 +11226,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -11447,7 +11447,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -11642,7 +11642,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -11790,7 +11790,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -12212,7 +12212,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -12473,7 +12473,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\LineRenderer.h \
 		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
 		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -12777,7 +12777,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \
@@ -13143,7 +13143,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Pools\MeshPool.h \
 		..\Directus3D\Graphics\Mesh.h \
 		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Pools\ThreadPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
 		..\Directus3D\Input\Input.h \
 		..\Directus3D\Input\DX8Input.h \
 		..\Directus3D\Physics\PhysicsWorld.h \

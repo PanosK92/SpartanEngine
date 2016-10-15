@@ -32,12 +32,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "../IO/Log.h"
-#include "../Core/Helper.h"
 #include <LinearMath/btMotionState.h>
 //===========================================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 class MotionState : public btMotionState
@@ -388,13 +388,13 @@ void RigidBody::SetRotation(const Quaternion& rotation) const
 }
 
 //= MISC ====================================================================
-void RigidBody::SetCollisionShape(btCollisionShape* shape)
+void RigidBody::SetCollisionShape(shared_ptr<btCollisionShape> shape)
 {
 	m_shape = shape;
 	AddBodyToWorld();
 }
 
-btRigidBody* RigidBody::GetBtRigidBody() const
+shared_ptr<btRigidBody> RigidBody::GetBtRigidBody() const
 {
 	return m_rigidBody;
 }
@@ -437,18 +437,18 @@ void RigidBody::AddBodyToWorld()
 	MotionState* motionState = new MotionState(this);
 
 	// Construction Info
-	btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, m_shape, inertia);
+	btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, m_shape.get(), inertia);
 	constructionInfo.m_mass = m_mass;
 	constructionInfo.m_friction = m_drag;
 	constructionInfo.m_rollingFriction = m_angularDrag;
 	constructionInfo.m_restitution = m_restitution;
 	constructionInfo.m_startWorldTransform;
-	constructionInfo.m_collisionShape = m_shape;
+	constructionInfo.m_collisionShape = m_shape.get();
 	constructionInfo.m_localInertia = inertia;
 	constructionInfo.m_motionState = motionState;
 
 	// RigidBody
-	m_rigidBody = new btRigidBody(constructionInfo);
+	m_rigidBody = make_shared<btRigidBody>(constructionInfo);
 
 	UpdateGravity();
 
@@ -473,7 +473,7 @@ void RigidBody::AddBodyToWorld()
 	SetRotationLock(m_rotationLock);
 
 	// PHYSICS WORLD - ADD
-	g_physicsWorld->GetWorld()->addRigidBody(m_rigidBody);
+	g_physicsWorld->GetWorld()->addRigidBody(m_rigidBody.get());
 
 	if (m_mass > 0.0f)
 		Activate();
@@ -494,7 +494,7 @@ void RigidBody::RemoveBodyFromWorld()
 
 	if (m_inWorld)
 	{
-		g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody);
+		g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody.get());
 		m_inWorld = false;
 	}
 }
@@ -524,9 +524,8 @@ void RigidBody::DeleteBtRigidBody()
 	if (!m_rigidBody || !g_physicsWorld)
 		return;
 
-	g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody);
+	g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody.get());
 	delete m_rigidBody->getMotionState();
-	SafeDelete(m_rigidBody);
 }
 
 bool RigidBody::IsActivated() const

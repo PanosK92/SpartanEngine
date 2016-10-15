@@ -35,7 +35,7 @@ public:
 	ScriptInstance();
 	~ScriptInstance();
 
-	bool Instantiate(std::string path, GameObject* gameObject, ScriptEngine* scriptEngine);
+	bool Instantiate(std::string path, GameObject* gameObject, std::shared_ptr<ScriptEngine> scriptEngine);
 	bool IsInstantiated();
 	std::string GetScriptPath();
 
@@ -50,11 +50,11 @@ private:
 	std::string m_constructorDeclaration;
 	std::string m_moduleName;
 	GameObject* m_gameObject;
-	Module* m_module;
+	std::shared_ptr<Module> m_module;
 	asIScriptObject* m_scriptObject;
 	asIScriptFunction* m_constructorFunction;
 	asIScriptFunction* m_startFunction;
 	asIScriptFunction* m_updateFunction;
 	bool m_isInstantiated;
-	ScriptEngine* m_scriptEngine;
+	std::shared_ptr<ScriptEngine> m_scriptEngine;
 };

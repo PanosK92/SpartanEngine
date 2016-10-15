@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Socket::Socket(Engine* engine, Scene* scene, Renderer* renderer, Input* input, Timer* timer, ModelImporter* modelLoader, PhysicsWorld* physics, TexturePool* texturePool, Graphics* graphicsDevice)
+Socket::Socket(Engine* engine, shared_ptr<Scene> scene, shared_ptr<Renderer> renderer, shared_ptr<Input> input, shared_ptr<Timer> timer, shared_ptr<ModelImporter> modelLoader, shared_ptr<PhysicsWorld> physics, shared_ptr<TexturePool> texturePool, shared_ptr<Graphics> graphicsDevice)
 {
 	m_engine = engine;
 	m_scene = scene;
@@ -208,7 +208,7 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 	if (!gameObject)
 		return;
 
-	MeshRenderer* meshRenderer = gameObject->GetComponent<MeshRenderer>();
+	auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
 	if (!meshRenderer)
 		return;
 

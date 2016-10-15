@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Renderer.h"
-#include "../Core/Helper.h"
 #include "../Core/Settings.h"
 #include "Shaders/PostProcessShader.h"
 #include "Shaders/DebugShader.h"
@@ -74,23 +73,10 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
-	// misc
-	SafeDelete(m_fullScreenQuad);
-	SafeDelete(m_GBuffer);
 
-	// shaders
-	SafeDelete(m_shaderDeferred);
-	SafeDelete(m_shaderDepth);
-	SafeDelete(m_shaderDebug);
-	SafeDelete(m_shaderFXAA);
-	SafeDelete(m_shaderSharpening);
-
-	// textures
-	SafeDelete(m_renderTexPing);
-	SafeDelete(m_renderTexPong);
 }
 
-void Renderer::Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* physics, Scene* scene, ShaderPool* shaderPool, MaterialPool* materialPool)
+void Renderer::Initialize(shared_ptr<Graphics> d3d11device, shared_ptr<Timer> timer, shared_ptr<PhysicsWorld> physics, shared_ptr<Scene> scene, shared_ptr<ShaderPool> shaderPool, shared_ptr<MaterialPool> materialPool)
 {
 	m_timer = timer;
 	m_physics = physics;
@@ -100,37 +86,37 @@ void Renderer::Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* phy
 
 	m_graphics = d3d11device;
 
-	m_GBuffer = new GBuffer(m_graphics);
+	m_GBuffer = make_shared<GBuffer>(m_graphics);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	m_fullScreenQuad = new FullScreenQuad;
+	m_fullScreenQuad = make_shared<FullScreenQuad>();
 	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
 	/*------------------------------------------------------------------------------
 									[SHADERS]
 	------------------------------------------------------------------------------*/
-	m_shaderDeferred = new DeferredShader();
+	m_shaderDeferred = make_shared<DeferredShader>();
 	m_shaderDeferred->Initialize(m_graphics);
 
-	m_shaderDepth = new DepthShader();
+	m_shaderDepth = make_shared<DepthShader>();
 	m_shaderDepth->Initialize(m_graphics);
 
-	m_shaderDebug = new DebugShader();
+	m_shaderDebug = make_shared<DebugShader>();
 	m_shaderDebug->Initialize(m_graphics);
 
-	m_shaderFXAA = new PostProcessShader();
+	m_shaderFXAA = make_shared<PostProcessShader>();
 	m_shaderFXAA->Initialize("FXAA", m_graphics);
 
-	m_shaderSharpening = new PostProcessShader();
+	m_shaderSharpening = make_shared<PostProcessShader>();
 	m_shaderSharpening->Initialize("SHARPENING", m_graphics);
 
 	/*------------------------------------------------------------------------------
 								[RENDER TEXTURES]
 	------------------------------------------------------------------------------*/
-	m_renderTexPing = new D3D11RenderTexture;
+	m_renderTexPing = make_shared<D3D11RenderTexture>();
 	m_renderTexPing->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	m_renderTexPong = new D3D11RenderTexture;
+	m_renderTexPong = make_shared<D3D11RenderTexture>();
 	m_renderTexPong->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	/*------------------------------------------------------------------------------
@@ -209,20 +195,21 @@ void Renderer::SetResolution(int width, int height)
 
 	m_graphics->SetViewport(width, height);
 
-	SafeDelete(m_GBuffer);
-	m_GBuffer = new GBuffer(m_graphics);
-	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_GBuffer.reset();
+	m_fullScreenQuad.reset();
+	m_renderTexPing.reset();
+	m_renderTexPong.reset();
 
-	SafeDelete(m_fullScreenQuad);
-	m_fullScreenQuad = new FullScreenQuad;
+	m_GBuffer = make_shared<GBuffer>(m_graphics);
+	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	
+	m_fullScreenQuad = make_shared<FullScreenQuad>();
 	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
-	SafeDelete(m_renderTexPing);
-	m_renderTexPing = new D3D11RenderTexture;
+	m_renderTexPing = make_shared<D3D11RenderTexture>();
 	m_renderTexPing->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	SafeDelete(m_renderTexPong);
-	m_renderTexPong = new D3D11RenderTexture;
+	m_renderTexPong = make_shared<D3D11RenderTexture>();
 	m_renderTexPong->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 }
 

@@ -33,7 +33,7 @@ class DirectusAssetLoader : public QObject
     Q_OBJECT
 public:
     explicit DirectusAssetLoader(QObject* parent = nullptr);
-    void Initialize(QWidget* mainWindow, Socket* socket);
+    void Initialize(QWidget* mainWindow, std::shared_ptr<Socket> socket);
     std::string GetFilePath();
     void SetFilePath(std::string filePath); 
     void PrepareForTexture(std::string filePath, int width, int height);
@@ -49,7 +49,7 @@ private:
     int m_width;
     int m_height;
     QWidget* m_mainWindow;
-    Socket* m_socket;
+    std::shared_ptr<Socket> m_socket;
     DirectusProgressBar* m_loadingDialog;
 
 signals:

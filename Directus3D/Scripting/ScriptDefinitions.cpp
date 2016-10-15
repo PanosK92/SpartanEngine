@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Components/Transform.h"
 #include "../Math/Vector3.h"
-#include "../Math/Matrix.h"
 #include "../Math/Quaternion.h"
 #include "../Math/MathHelper.h"
 //==================================
@@ -39,7 +38,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-void ScriptDefinitions::Register(asIScriptEngine* scriptEngine, Input* input, Timer* timer)
+void ScriptDefinitions::Register(asIScriptEngine* scriptEngine, shared_ptr<Input> input, shared_ptr<Timer> timer)
 {
 	m_scriptEngine = scriptEngine;
 	m_input = input;
@@ -148,7 +147,7 @@ void ScriptDefinitions::RegisterSettings()
 ------------------------------------------------------------------------------*/
 void ScriptDefinitions::RegisterInput()
 {
-	m_scriptEngine->RegisterGlobalProperty("Input input", m_input);
+	m_scriptEngine->RegisterGlobalProperty("Input input", m_input.get());
 	m_scriptEngine->RegisterObjectMethod("Input", "Vector2 GetMousePosition()", asMETHOD(Input, GetMousePosition), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Input", "Vector2 GetMousePositionDelta()", asMETHOD(Input, GetMousePositionDelta), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Input", "bool GetKey(KeyCode key)", asMETHOD(Input, GetKey), asCALL_THISCALL);
@@ -159,7 +158,7 @@ void ScriptDefinitions::RegisterInput()
 ------------------------------------------------------------------------------*/
 void ScriptDefinitions::RegisterTime()
 {
-	m_scriptEngine->RegisterGlobalProperty("Time time", m_timer);
+	m_scriptEngine->RegisterGlobalProperty("Time time", m_timer.get());
 	m_scriptEngine->RegisterObjectMethod("Time", "float GetDeltaTime()", asMETHOD(Timer, GetDeltaTime), asCALL_THISCALL);
 	//m_scriptEngine->RegisterObjectProperty("Time", "float deltaTime", asOFFSET(Timer, GetDeltaTime));
 }

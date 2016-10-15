@@ -178,8 +178,8 @@ void Hinge::ConstructHinge()
 	}
 
 	// get the rigidbodies
-	btRigidBody* rigidBodyA = g_gameObject->GetComponent<RigidBody>()->GetBtRigidBody();
-	btRigidBody* rigidBodyB = m_connectedGameObject->GetComponent<RigidBody>()->GetBtRigidBody();
+	auto rigidBodyA = g_gameObject->GetComponent<RigidBody>()->GetBtRigidBody();
+	auto rigidBodyB = m_connectedGameObject->GetComponent<RigidBody>()->GetBtRigidBody();
 
 	CalculateConnections();
 

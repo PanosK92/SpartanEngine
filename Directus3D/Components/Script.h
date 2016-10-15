@@ -46,6 +46,6 @@ public:
 	std::string GetName();
 
 private:
-	ScriptInstance* m_scriptInstance;
+	std::shared_ptr<ScriptInstance> m_scriptInstance;
 	std::string m_name;
 };

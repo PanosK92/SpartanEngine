@@ -68,18 +68,18 @@ public:
 	ColliderShape GetShapeType() const;
 	void SetShapeType(ColliderShape type);
 
-	btCollisionShape* GetBtCollisionShape() const;
+	std::shared_ptr<btCollisionShape> GetBtCollisionShape() const;
 
 private:
 	//= HELPER FUNCTIONS ======================================================
 	void ConstructCollisionShape();
 	void DeleteCollisionShape();
-	void SetRigidBodyCollisionShape(btCollisionShape* shape) const;
+	void SetRigidBodyCollisionShape(std::shared_ptr<btCollisionShape> shape) const;
 	std::shared_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
 	//=========================================================================
 
 	ColliderShape m_shapeType;
-	btCollisionShape* m_shape;
+	std::shared_ptr<btCollisionShape> m_shape;
 	Directus::Math::Vector3 m_boundingBox;
 	Directus::Math::Vector3 m_center;
 };

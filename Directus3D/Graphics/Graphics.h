@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "D3D11/D3D11Graphics.h"
 #include "../Math/Vector4.h"
+#include <memory>
+
 //============================
 
 enum InputLayout
@@ -62,7 +64,7 @@ public:
 	void SetCullMode(CullMode cullMode);
 	void SetViewport(int width, int height);
 private:
-	D3D11Graphics* m_d3d11Graphics;
+	std::shared_ptr<D3D11Graphics> m_d3d11Graphics;
 	InputLayout m_inputLayout;
 	CullMode m_cullMode;
 };

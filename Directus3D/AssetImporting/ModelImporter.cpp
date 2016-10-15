@@ -73,7 +73,7 @@ ModelImporter::~ModelImporter()
 {
 }
 
-void ModelImporter::Initialize(MeshPool* meshPool, TexturePool* texturePool, ShaderPool* shaderPool, MaterialPool* materialPool, ThreadPool* threadPool)
+void ModelImporter::Initialize(shared_ptr<MeshPool> meshPool, shared_ptr<TexturePool> texturePool, shared_ptr<ShaderPool> shaderPool, shared_ptr<MaterialPool> materialPool, shared_ptr<ThreadPool> threadPool)
 {
 	m_meshPool = meshPool;
 	m_texturePool = texturePool;

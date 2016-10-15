@@ -48,24 +48,18 @@ D3D11Shader::~D3D11Shader()
 {
 	SafeRelease(m_vertexShader);
 	SafeRelease(m_pixelShader);
-	SafeDelete(m_D3D11InputLayout);
 
-	// delete sampler
-	vector<D3D11Sampler*>::iterator it;
-	for (it = m_samplers.begin(); it < m_samplers.end(); ++it)
-	{
-		delete *it;
-	}
+	// delete samplers
 	m_samplers.clear();
 	m_samplers.shrink_to_fit();
 }
 
-void D3D11Shader::Initialize(Graphics* graphicsDevice)
+void D3D11Shader::Initialize(shared_ptr<Graphics> graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 
 	// initialize input layout
-	m_D3D11InputLayout = new D3D11InputLayout();
+	m_D3D11InputLayout = make_shared<D3D11InputLayout>();
 	m_D3D11InputLayout->Initialize(m_graphics);
 }
 
@@ -142,11 +136,10 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 
 bool D3D11Shader::AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction)
 {
-	D3D11Sampler* sampler = new D3D11Sampler();
+	auto sampler = make_shared<D3D11Sampler>();
 	if (!sampler->Create(filter, textureAddressMode, comparisonFunction, m_graphics))
 	{
 		LOG_ERROR("Failed to create shader sampler");
-		SafeDelete(sampler);
 		return false;
 	}
 

@@ -39,7 +39,7 @@ Script::Script()
 
 Script::~Script()
 {
-	SafeDelete(m_scriptInstance);
+
 }
 
 //= ICOMPONENT ==================================================================
@@ -91,15 +91,12 @@ void Script::Deserialize()
 bool Script::AddScript(const string& filePath)
 {
 	// Instantiate the script
-	m_scriptInstance = new ScriptInstance();
+	m_scriptInstance = make_shared<ScriptInstance>();
 	m_scriptInstance->Instantiate(filePath, g_gameObject, g_scriptEngine);
 
 	// Check if the script has been instantiated successfully.
 	if (!m_scriptInstance->IsInstantiated())
-	{
-		SafeDelete(m_scriptInstance);
 		return false;
-	}
 
 	m_scriptInstance->ExecuteStart();
 	return true;

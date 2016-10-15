@@ -1,11 +1,11 @@
 //= INCLUDES ================
 #include "LineRenderer.h"
 #include "../IO/Log.h"
-#include "../Core/Helper.h"
 //===========================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 LineRenderer::LineRenderer()
@@ -18,7 +18,6 @@ LineRenderer::LineRenderer()
 
 LineRenderer::~LineRenderer()
 {
-	delete m_vertexBuffer;
 	delete[] m_vertices;
 }
 
@@ -53,7 +52,7 @@ void LineRenderer::Deserialize()
 }
 
 //= INPUT ===============================================================
-void LineRenderer::AddLineList(const std::vector<VertexPositionColor>& lineList)
+void LineRenderer::AddLineList(const vector<VertexPositionColor>& lineList)
 {
 	ClearVertices();
 
@@ -90,7 +89,6 @@ void LineRenderer::SetBuffer()
 
 void LineRenderer::CreateBuffer()
 {
-	SafeDelete(m_vertexBuffer);
 	if (m_vertices)
 	{
 		delete[] m_vertices;
@@ -101,7 +99,7 @@ void LineRenderer::CreateBuffer()
 	m_vertices = new VertexPositionColor[m_maxVertices];
 
 	// create vertex buffer
-	m_vertexBuffer = new D3D11Buffer();
+	m_vertexBuffer = make_shared<D3D11Buffer>();
 	m_vertexBuffer->Initialize(g_graphicsDevice);
 	m_vertexBuffer->Create(
 		sizeof(VertexPositionColor),

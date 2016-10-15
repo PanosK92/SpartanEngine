@@ -46,7 +46,7 @@ D3D11Buffer::~D3D11Buffer()
 	SafeRelease(m_buffer);
 }
 
-void D3D11Buffer::Initialize(Graphics* graphicsDevice)
+void D3D11Buffer::Initialize(shared_ptr<Graphics> graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 }

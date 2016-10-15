@@ -56,13 +56,13 @@ private:
 	//= HELPER FUNCTIONS ======================================================
 	void DeleteCollisionShape();
 	void ConstructCollisionShape();
-	void SetCollisionShapeToRigidBody(btCollisionShape* shape) const;
+	void SetCollisionShapeToRigidBody(std::shared_ptr<btCollisionShape> shape) const;
 	std::shared_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
 	//========================================================================
 
 	std::shared_ptr<Mesh> m_mesh;
 	int m_vertexLimit = 100000;
-	btCollisionShape* m_collisionShape;
+	std::shared_ptr<btCollisionShape> m_collisionShape;
 	bool m_convex;
 
 	

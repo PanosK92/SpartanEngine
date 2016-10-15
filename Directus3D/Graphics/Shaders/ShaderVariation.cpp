@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "ShaderVariation.h"
-#include "../../Core/Helper.h"
 #include "../../Core/GUIDGenerator.h"
 #include "../../IO/Log.h"
 #include "../../Core/Settings.h"
@@ -50,8 +49,7 @@ ShaderVariation::ShaderVariation()
 
 ShaderVariation::~ShaderVariation()
 {
-	SafeDelete(m_befaultBuffer);
-	SafeDelete(m_D3D11Shader);
+
 }
 
 void ShaderVariation::Initialize(
@@ -64,7 +62,7 @@ void ShaderVariation::Initialize(
 	bool emission,
 	bool mask,
 	bool cubemap,
-	Graphics* graphicsDevice
+	shared_ptr<Graphics> graphicsDevice
 )
 {
 	// Save the properties of the material
@@ -171,7 +169,7 @@ void ShaderVariation::AddDefinesBasedOnMaterial()
 void ShaderVariation::Load()
 {
 	// load the vertex and the pixel shader
-	m_D3D11Shader = new D3D11Shader();
+	m_D3D11Shader = make_shared<D3D11Shader>();
 	m_D3D11Shader->Initialize(m_graphics);
 	AddDefinesBasedOnMaterial();
 	m_D3D11Shader->Load("Assets/Shaders/GBuffer.hlsl");
@@ -179,7 +177,7 @@ void ShaderVariation::Load()
 	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS); // anisotropic
 
 	// material buffer
-	m_befaultBuffer = new D3D11Buffer();
+	m_befaultBuffer = make_shared<D3D11Buffer>();
 	m_befaultBuffer->Initialize(m_graphics);
 	m_befaultBuffer->CreateConstantBuffer(sizeof(DefaultBufferType));
 }

@@ -48,7 +48,6 @@ ScriptInstance::ScriptInstance()
 ScriptInstance::~ScriptInstance()
 {
 	SafeRelease(m_scriptObject);
-	SafeDelete(m_module);
 
 	m_gameObject = nullptr;
 	m_constructorFunction = nullptr;
@@ -58,7 +57,7 @@ ScriptInstance::~ScriptInstance()
 	m_isInstantiated = false;
 }
 
-bool ScriptInstance::Instantiate(string path, GameObject* gameObject, ScriptEngine* scriptEngine)
+bool ScriptInstance::Instantiate(string path, GameObject* gameObject, shared_ptr<ScriptEngine> scriptEngine)
 {
 	m_scriptEngine = scriptEngine;
 
@@ -98,7 +97,7 @@ void ScriptInstance::ExecuteUpdate()
 bool ScriptInstance::CreateScriptObject()
 {
 	// create module
-	m_module = new Module(m_moduleName, m_scriptEngine);
+	m_module = make_shared<Module>(m_moduleName, m_scriptEngine);
 	bool result = m_module->LoadScript(m_scriptPath);
 	if (!result) 
 		return false;

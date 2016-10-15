@@ -33,7 +33,7 @@ public:
 	~D3D11InputLayout();
 
 	//= MISC ====================================
-	void Initialize(Graphics* d3d11Device);
+	void Initialize(std::shared_ptr<Graphics> d3d11Device);
 	void Set();
 	InputLayout GetInputLayout();
 
@@ -48,7 +48,7 @@ private:
 	bool CreatePosTexDesc(ID3D10Blob* VSBlob);
 	bool CreatePosTexNorTanDesc(ID3D10Blob* VSBlob);
 
-	Graphics* m_graphics;
+	std::shared_ptr<Graphics> m_graphics;
 	ID3D11InputLayout* m_ID3D11InputLayout;
 	InputLayout m_inputLayout;
 	std::vector<D3D11_INPUT_ELEMENT_DESC> m_layoutDesc;

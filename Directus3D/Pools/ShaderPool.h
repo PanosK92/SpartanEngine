@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class ShaderPool
 {
 public:
-	ShaderPool(Graphics* d3d11device);
+	ShaderPool(std::shared_ptr<Graphics> d3d11device);
 	~ShaderPool();
 
 	std::shared_ptr<ShaderVariation> CreateShaderBasedOnMaterial(
@@ -61,5 +61,5 @@ private:
 	);
 
 	std::vector<std::shared_ptr<ShaderVariation>> m_shaders;
-	Graphics* m_graphics;
+	std::shared_ptr<Graphics> m_graphics;
 };

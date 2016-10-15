@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace Directus::Math;
 //=============================
 
-GBuffer::GBuffer(Graphics* graphicsDevice)
+GBuffer::GBuffer(std::shared_ptr<Graphics> graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 	m_depthStencilBuffer = nullptr;

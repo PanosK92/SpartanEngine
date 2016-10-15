@@ -51,16 +51,16 @@ GameObjectPool::~GameObjectPool()
 }
 
 void GameObjectPool::Initialize(
-	Graphics* d3d11Device, 
-	Scene* scene, 
-	Renderer* renderer, 
-	MeshPool* meshPool, 
-	MaterialPool* materialPool, 
-	TexturePool* texturePool, 
-	ShaderPool* shaderPool, 
-	PhysicsWorld* physics, 
-	ScriptEngine* scriptEngine,
-	ThreadPool* threadPool
+	shared_ptr<Graphics> d3d11Device, 
+	shared_ptr<Scene> scene, 
+	shared_ptr<Renderer> renderer, 
+	shared_ptr<MeshPool> meshPool, 
+	shared_ptr<MaterialPool> materialPool, 
+	shared_ptr<TexturePool> texturePool, 
+	shared_ptr<ShaderPool> shaderPool, 
+	shared_ptr<PhysicsWorld> physics, 
+	shared_ptr<ScriptEngine> scriptEngine,
+	shared_ptr<ThreadPool> threadPool
 	)
 {
 	m_graphics = d3d11Device;
