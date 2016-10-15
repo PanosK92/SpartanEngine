@@ -149,7 +149,7 @@
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Core\Scene.cpp" />
     <ClCompile Include="Core\Settings.cpp" />
-    <ClCompile Include="Pools\ThreadPool.cpp" />
+    <ClCompile Include="Multithreading\ThreadPool.cpp" />
     <ClCompile Include="Core\Socket.cpp" />
     <ClCompile Include="Graphics\Texture.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
@@ -268,7 +268,7 @@
     <ClInclude Include="Pools\MeshPool.h" />
     <ClInclude Include="Pools\ShaderPool.h" />
     <ClInclude Include="Pools\TexturePool.h" />
-    <ClInclude Include="Pools\ThreadPool.h" />
+    <ClInclude Include="Multithreading\ThreadPool.h" />
     <ClInclude Include="Scripting\Module.h" />
     <ClInclude Include="Scripting\ScriptDefinitions.h" />
     <ClInclude Include="Scripting\ScriptEngine.h" />

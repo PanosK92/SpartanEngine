@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/TexturePool.h"
 #include "../Pools/MaterialPool.h"
 #include "../Pools/MeshPool.h"
-#include "../Pools/ThreadPool.h"
+#include "../Multithreading/ThreadPool.h"
 //================================
 
 #define SCENE_EXTENSION ".directus"
@@ -56,6 +56,8 @@ public:
 	/*------------------------------------------------------------------------------
 										[I/O]
 	------------------------------------------------------------------------------*/
+	void SaveToFileAsync(const std::string& filePath);
+	void LoadFromFileAsync(const std::string& filePath);
 	bool SaveToFile(const std::string& filePath);
 	bool LoadFromFile(const std::string& filePath);
 

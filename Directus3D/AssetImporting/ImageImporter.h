@@ -63,6 +63,7 @@ XPM files[reading, writing]
 //= INCLUDES ==========================
 #include "../Graphics/Graphics.h"
 #include <vector>
+#include "../Multithreading/ThreadPool.h"
 //=====================================
 
 // Forward declaration to avoid dependencies
@@ -81,9 +82,11 @@ public:
 	ImageImporter();
 	~ImageImporter();
 
-	void Initialize(Graphics* D3D11evice);
-	bool Load(const std::string& path);
-	bool Load(const std::string& path, int width, int height);
+	void Initialize(Graphics* D3D11evice, ThreadPool* thraedPool);
+	void LoadAsync(const std::string& filePath);
+	bool Load(const std::string& filePath);
+	bool Load(const std::string& filePath, int width, int height);
+	bool Load(const std::string& path, int width, int height, bool scale);
 	void Clear();
 
 	/*------------------------------------------------------------------------------
@@ -102,7 +105,6 @@ public:
 	std::string GetPath();
 
 private:
-	bool Load(const std::string& path, int width, int height, bool scale);
 	bool CheckIfGrayscale();
 
 	FIBITMAP* m_bitmap;
@@ -119,4 +121,5 @@ private:
 
 	// dependencies
 	Graphics* m_graphics;
+	ThreadPool* m_threadPool;
 };

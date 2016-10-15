@@ -65,7 +65,7 @@ void DirectusAssetLoader::PrepareForTexture(std::string filePath, int width, int
 void DirectusAssetLoader::LoadSceneFromFile()
 {
     emit Started();
-    m_socket->LoadSceneFromFile(m_filePath);  
+    m_socket->LoadSceneFromFile(m_filePath);
     emit Finished();
 }
 
@@ -79,7 +79,7 @@ void DirectusAssetLoader::SaveSceneToFile()
 void DirectusAssetLoader::LoadModelFromFile()
 {
     emit Started();
-    m_socket->LoadModel(m_filePath);  
+    m_socket->LoadModel(m_filePath);
     emit Finished();
 }
 
