@@ -68,7 +68,7 @@ public:
 	bool HasCubeMapTexture() const;
 
 private:
-	void AddDefinesBasedOnMaterial();
+	void AddDefinesBasedOnMaterial(std::shared_ptr<D3D11Shader> shader);
 	void Load();
 
 	/*------------------------------------------------------------------------------

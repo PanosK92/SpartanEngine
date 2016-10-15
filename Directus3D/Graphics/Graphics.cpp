@@ -78,12 +78,12 @@ void Graphics::ResetViewport()
 
 void Graphics::EnableZBuffer(bool enable)
 {
-	enable ? m_d3d11Graphics->TurnZBufferOn() : m_d3d11Graphics->TurnZBufferOff();
+	m_d3d11Graphics->EnableZBuffer(enable);
 }
 
 void Graphics::EnableAlphaBlending(bool enable)
 {
-	enable ? m_d3d11Graphics->TurnOnAlphaBlending() : m_d3d11Graphics->TurnOffAlphaBlending();
+	m_d3d11Graphics->EnabledAlphaBlending(enable);
 }
 
 bool Graphics::SetInputLayout(InputLayout inputLayout)

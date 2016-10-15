@@ -50,14 +50,10 @@ public:
 	ID3D11Device* GetDevice();
 	ID3D11DeviceContext* GetDeviceContext();
 
-	void TurnZBufferOn();
-	void TurnZBufferOff();
-
-	void TurnOnAlphaBlending();
-	void TurnOffAlphaBlending();
+	void EnableZBuffer(bool enable);
+	void EnabledAlphaBlending(bool enable);
 
 	void SetFaceCullMode(D3D11_CULL_MODE cull);
-
 	void SetBackBufferRenderTarget();
 
 	void SetResolution(int width, int height);
@@ -85,6 +81,6 @@ private:
 	ID3D11RasterizerState* m_rasterStateCullBack;
 	ID3D11RasterizerState* m_rasterStateCullNone;
 	D3D11_VIEWPORT m_viewport;
-	ID3D11BlendState* m_alphaBlendingStateEnabled;
-	ID3D11BlendState* m_alphaBlendingStateDisabled;
+	ID3D11BlendState* m_blendStateAlphaEnabled;
+	ID3D11BlendState* m_blendStateAlphaDisabled;
 };

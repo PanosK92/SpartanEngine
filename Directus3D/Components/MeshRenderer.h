@@ -43,7 +43,6 @@ public:
 	virtual void Deserialize();
 
 	//= MISC ===================================
-	void SetShader() const;
 	void Render(unsigned int indexCount) const;
 
 	//= PROPERTIES =============================
