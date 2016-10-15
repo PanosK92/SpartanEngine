@@ -48,8 +48,10 @@ public:
 	//= IO ==========================================
 	void LoadModel(const std::string& filePath);
 	void LoadModelAsync(const std::string& filePath);
-	bool SaveSceneToFile(const std::string& path);
-	bool LoadSceneFromFile(const std::string& path);
+	void SaveSceneToFileAsync(const std::string& filePath);
+	void LoadSceneFromFileAsync(const std::string& filePath);
+	bool SaveSceneToFile(const std::string& filePath);
+	bool LoadSceneFromFile(const std::string& filePath);
 	//===============================================
 
 	//= GRAPHICS =================================

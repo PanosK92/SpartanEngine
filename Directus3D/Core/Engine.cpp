@@ -33,9 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Graphics.h"
 #include "Helper.h"
 #include "../Signals/Signaling.h"
-#include "../Pools/ThreadPool.h"
-#include "../Signals/Signaling.h"
-
+#include "../Multithreading/ThreadPool.h"
 //=====================================
 
 Engine::Engine()
@@ -98,7 +96,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	m_meshPool = new MeshPool();
 
 	// 10 - IMAGE LOADER
-	ImageImporter::GetInstance().Initialize(m_graphics);
+	ImageImporter::GetInstance().Initialize(m_graphics, m_threadPool);
 
 	// 11 - TEXTURE POOL
 	m_texturePool = new TexturePool();

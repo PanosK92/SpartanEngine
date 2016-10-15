@@ -85,6 +85,16 @@ void Socket::LoadModelAsync(const string& filePath)
 	m_modelLoader->LoadAsync(new GameObject(), filePath);
 }
 
+void Socket::SaveSceneToFileAsync(const string& filePath)
+{
+	return m_scene->SaveToFileAsync(filePath);
+}
+
+void Socket::LoadSceneFromFileAsync(const string& filePath)
+{
+	return m_scene->LoadFromFileAsync(filePath);
+}
+
 bool Socket::SaveSceneToFile(const string& filePath)
 {
 	return m_scene->SaveToFile(filePath);
@@ -92,7 +102,6 @@ bool Socket::SaveSceneToFile(const string& filePath)
 
 bool Socket::LoadSceneFromFile(const string& filePath)
 {
-	m_timer->Reset();
 	return m_scene->LoadFromFile(filePath);
 }
 //==============================================================================

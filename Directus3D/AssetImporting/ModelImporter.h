@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/MeshPool.h"
 #include "../Pools/TexturePool.h"
 #include "../Pools/ShaderPool.h"
-#include "../Pools/ThreadPool.h"
+#include "../Multithreading/ThreadPool.h"
 //===============================
 
 struct aiNode;

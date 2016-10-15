@@ -204,10 +204,10 @@
     <ClCompile Include="IO\FileSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Pools\ThreadPool.cpp">
+    <ClCompile Include="Signals\Signaling.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Signals\Signaling.cpp">
+    <ClCompile Include="Multithreading\ThreadPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -374,9 +374,6 @@
     <ClInclude Include="Pools\TexturePool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Pools\ThreadPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Scripting\Module.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -435,6 +432,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="IO\FileSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Multithreading\ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

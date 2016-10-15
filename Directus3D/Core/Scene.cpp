@@ -88,9 +88,17 @@ void Scene::Update()
 
 }
 
-//====
-// I/O
-//====
+//= I/O ===========================================================================
+void Scene::SaveToFileAsync(const string& filePath)
+{
+	m_threadPool->AddTask(std::bind(&Scene::SaveToFile, this, filePath));
+}
+
+void Scene::LoadFromFileAsync(const string& filePath)
+{
+	m_threadPool->AddTask(std::bind(&Scene::LoadFromFile, this, filePath));
+}
+
 bool Scene::SaveToFile(const string& filePathIn)
 {
 	string filePath = filePathIn;
@@ -164,12 +172,13 @@ bool Scene::LoadFromFile(const string& filePath)
 	Serializer::StopReading();
 	//==============================================
 
-	EMIT_SIGNAL(SIGNAL_SCENE_LOADING_COMPLETED);
-
 	AnalyzeGameObjects();
+
+	EMIT_SIGNAL(SIGNAL_SCENE_LOADING_COMPLETED);
 
 	return true;
 }
+//======================================================================
 
 //=====
 // MISC

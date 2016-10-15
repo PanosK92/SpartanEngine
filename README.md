@@ -14,6 +14,7 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 - D3D11 Renderer
 - Deferred rendering.
 - Frustum culling.
+- Multithreading.
 - Physically based shading.
 - Physics.
 - Post-process effects like FXAA & Sharpening.
@@ -22,7 +23,6 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 
 # Features under development
 - Custom format resources (prefabs, materials and so on).
-- Multi-threading.
 
 # Planned Features
 - Audio source and listener components.

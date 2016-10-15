@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshPool.h"
 #include "../Graphics/Graphics.h"
 #include "../Pools/MaterialPool.h"
-#include "../Pools/ThreadPool.h"
+#include "../Multithreading/ThreadPool.h"
 //================================
 
 class GameObject;
