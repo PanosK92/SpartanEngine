@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "GBuffer.h"
 #include "FullScreenQuad.h"
-#include "Frustrum.h"
 #include "../Core/GameObject.h"
 #include "../Core/Timer.h"
 #include "../Components/Camera.h"
@@ -39,9 +38,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Texture.h"
 #include "../Components/LineRenderer.h"
 #include "D3D11/D3D11RenderTexture.h"
-#include "Material.h"
-
 //====================================
+
+class MeshFilter;
 
 class Renderer
 {
@@ -66,7 +65,6 @@ private:
 	//= DEPENDENCIES ================
 	Graphics* m_graphics;
 	GBuffer* m_GBuffer;
-	Frustrum* m_frustrum;
 	FullScreenQuad* m_fullScreenQuad;
 	Timer* m_timer;
 	PhysicsWorld* m_physics;
@@ -120,6 +118,7 @@ private:
 	//=============================================
 	
 	//= HELPER FUNCTIONS ==========================
+	bool IsInViewFrustrum(const std::shared_ptr<Frustrum>& cameraFrustrum, MeshFilter* meshFilte);
 	void AcquirePrerequisites();
 	void DirectionalLightDepthPass();
 	void GBufferPass();
@@ -128,6 +127,5 @@ private:
 	void Gizmos() const;
 	void Ping() const;
 	void Pong() const;
-	bool IsInViewFrustrum(const Directus::Math::Vector3& center, const Directus::Math::Vector3& extent);
 	//=============================================
 };

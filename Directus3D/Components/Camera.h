@@ -21,14 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ====================
 #include "IComponent.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Matrix.h"
 #include "../Math/Quaternion.h"
-//=============================
+#include "../Graphics/Frustrum.h"
+#include <memory>
+
+//===============================
 
 enum Projection
 {
@@ -64,7 +67,7 @@ public:
 	/*------------------------------------------------------------------------------
 									[CONVERSIONS]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Vector2 WorldSpaceToScreenPoint(Directus::Math::Vector3 point);
+	Directus::Math::Vector2 WorldSpaceToScreenPoint(const Directus::Math::Vector3& point);
 
 	//= PLANES/PROJECTION ====================
 	float GetNearPlane();
@@ -75,6 +78,7 @@ public:
 	void SetProjection(Projection projection);
 	float GetFieldOfView();
 	void SetFieldOfView(float fov);
+	const std::shared_ptr<Frustrum>& GetFrustrum();
 
 	//= MISC ==================================
 	Directus::Math::Vector4 GetClearColor();
@@ -84,6 +88,7 @@ private:
 	float m_FOV;
 	float m_nearPlane;
 	float m_farPlane;
+	std::shared_ptr<Frustrum> m_frustrum;
 	Projection m_projection;
 	Directus::Math::Vector4 m_clearColor;
 

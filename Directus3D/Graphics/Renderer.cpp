@@ -60,7 +60,6 @@ Renderer::Renderer()
 	m_shaderFXAA = nullptr;
 	m_shaderSharpening = nullptr;
 	m_texNoiseMap = nullptr;
-	m_frustrum = nullptr;
 	m_skybox = nullptr;
 	m_physics = nullptr;
 	m_scene = nullptr;
@@ -76,7 +75,6 @@ Renderer::Renderer()
 Renderer::~Renderer()
 {
 	// misc
-	SafeDelete(m_frustrum);
 	SafeDelete(m_fullScreenQuad);
 	SafeDelete(m_GBuffer);
 
@@ -104,8 +102,6 @@ void Renderer::Initialize(Graphics* d3d11device, Timer* timer, PhysicsWorld* phy
 
 	m_GBuffer = new GBuffer(m_graphics);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-
-	m_frustrum = new Frustrum();
 
 	m_fullScreenQuad = new FullScreenQuad;
 	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
@@ -378,7 +374,7 @@ void Renderer::GBufferPass()
 					continue;
 
 				// Make sure the mesh is actually in our view frustrum
-				if (!IsInViewFrustrum(meshFilter->GetCenter(), meshFilter->GetBoundingBox()))
+				if (!IsInViewFrustrum(m_camera->GetFrustrum(), meshFilter))
 					continue;
 
 				// Set shader buffer(s)
@@ -402,6 +398,20 @@ void Renderer::GBufferPass()
 
 		} // material loop
 	} // shader loop
+}
+
+bool Renderer::IsInViewFrustrum(const shared_ptr<Frustrum>& cameraFrustrum, MeshFilter* meshFilter)
+{
+	Vector3 center = meshFilter->GetCenter();
+	Vector3 extent = meshFilter->GetBoundingBox();
+
+	float radius = max(abs(extent.x), abs(extent.y));
+	radius = max(radius, abs(extent.z));
+
+	if (cameraFrustrum->CheckSphere(center, radius) == Outside)
+		return false;
+
+	return true;
 }
 
 void Renderer::DeferredPass()
@@ -506,25 +516,6 @@ void Renderer::Pong() const
 
 	m_renderTexPong->SetAsRenderTarget();
 	m_renderTexPong->Clear(clearColor);
-}
-
-bool Renderer::IsInViewFrustrum(const Vector3& center, const Vector3& extent)
-{
-	//= Frustrum culling =======================================================
-	if (m_frustrum->GetProjectionMatrix() != mProjection || m_frustrum->GetViewMatrix() != mView)
-	{
-		m_frustrum->SetProjectionMatrix(mProjection);
-		m_frustrum->SetViewMatrix(mView);
-		m_frustrum->ConstructFrustum(m_farPlane);
-	}
-
-	float radius = max(abs(extent.x), abs(extent.y));
-	radius = max(radius, abs(extent.z));
-
-	if (m_frustrum->CheckSphere(center, radius) == Outside)
-		return false;
-
-	return true;
 }
 
 //= STATS ============================

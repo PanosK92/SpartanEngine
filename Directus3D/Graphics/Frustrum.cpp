@@ -29,8 +29,7 @@ using namespace Directus::Math;
 
 Frustrum::Frustrum()
 {
-	m_projectionMatrix = Matrix::Identity;
-	m_viewMatrix = Matrix::Identity;
+
 }
 
 Frustrum::~Frustrum()
@@ -38,60 +37,57 @@ Frustrum::~Frustrum()
 
 }
 
-void Frustrum::ConstructFrustum(float screenDepth)
+void Frustrum::Construct(const Matrix& mView, Matrix mProjection, float screenDepth)
 {
-	float zMinimum, r;
-	Matrix matrix;
-
 	// Calculate the minimum Z distance in the frustum.
-	zMinimum = -m_projectionMatrix.m32 / m_projectionMatrix.m22;
-	r = screenDepth / (screenDepth - zMinimum);
-	m_projectionMatrix.m22 = r;
-	m_projectionMatrix.m32 = -r * zMinimum;
+	float zMinimum = -mProjection.m32 / mProjection.m22;
+	float r = screenDepth / (screenDepth - zMinimum);
+	mProjection.m22 = r;
+	mProjection.m32 = -r * zMinimum;
 
 	// Create the frustum matrix from the view matrix and updated projection matrix.
-	matrix = m_viewMatrix * m_projectionMatrix;
+	Matrix viewProjection = mView * mProjection;
 
 	// Calculate near plane of frustum.
-	m_planes[0].normal.x = matrix.m03 + matrix.m02;
-	m_planes[0].normal.y = matrix.m13 + matrix.m12;
-	m_planes[0].normal.z = matrix.m23 + matrix.m22;
-	m_planes[0].d = matrix.m33 + matrix.m32;
+	m_planes[0].normal.x = viewProjection.m03 + viewProjection.m02;
+	m_planes[0].normal.y = viewProjection.m13 + viewProjection.m12;
+	m_planes[0].normal.z = viewProjection.m23 + viewProjection.m22;
+	m_planes[0].d = viewProjection.m33 + viewProjection.m32;
 	m_planes[0].Normalize();
 
 	// Calculate far plane of frustum.
-	m_planes[1].normal.x = matrix.m03 - matrix.m02;
-	m_planes[1].normal.y = matrix.m13 - matrix.m12;
-	m_planes[1].normal.z = matrix.m23 - matrix.m22;
-	m_planes[1].d = matrix.m33 - matrix.m32;
+	m_planes[1].normal.x = viewProjection.m03 - viewProjection.m02;
+	m_planes[1].normal.y = viewProjection.m13 - viewProjection.m12;
+	m_planes[1].normal.z = viewProjection.m23 - viewProjection.m22;
+	m_planes[1].d = viewProjection.m33 - viewProjection.m32;
 	m_planes[1].Normalize();
 
 	// Calculate left plane of frustum.
-	m_planes[2].normal.x = matrix.m03 + matrix.m00;
-	m_planes[2].normal.y = matrix.m13 + matrix.m10;
-	m_planes[2].normal.z = matrix.m23 + matrix.m20;
-	m_planes[2].d = matrix.m33 + matrix.m30;
+	m_planes[2].normal.x = viewProjection.m03 + viewProjection.m00;
+	m_planes[2].normal.y = viewProjection.m13 + viewProjection.m10;
+	m_planes[2].normal.z = viewProjection.m23 + viewProjection.m20;
+	m_planes[2].d = viewProjection.m33 + viewProjection.m30;
 	m_planes[2].Normalize();
 
 	// Calculate right plane of frustum.
-	m_planes[3].normal.x = matrix.m03 - matrix.m00;
-	m_planes[3].normal.y = matrix.m13 - matrix.m10;
-	m_planes[3].normal.z = matrix.m23 - matrix.m20;
-	m_planes[3].d = matrix.m33 - matrix.m30;
+	m_planes[3].normal.x = viewProjection.m03 - viewProjection.m00;
+	m_planes[3].normal.y = viewProjection.m13 - viewProjection.m10;
+	m_planes[3].normal.z = viewProjection.m23 - viewProjection.m20;
+	m_planes[3].d = viewProjection.m33 - viewProjection.m30;
 	m_planes[3].Normalize();
 
 	// Calculate top plane of frustum.
-	m_planes[4].normal.x = matrix.m03 - matrix.m01;
-	m_planes[4].normal.y = matrix.m13 - matrix.m11;
-	m_planes[4].normal.z = matrix.m23 - matrix.m21;
-	m_planes[4].d = matrix.m33 - matrix.m31;
+	m_planes[4].normal.x = viewProjection.m03 - viewProjection.m01;
+	m_planes[4].normal.y = viewProjection.m13 - viewProjection.m11;
+	m_planes[4].normal.z = viewProjection.m23 - viewProjection.m21;
+	m_planes[4].d = viewProjection.m33 - viewProjection.m31;
 	m_planes[4].Normalize();
 
 	// Calculate bottom plane of frustum.
-	m_planes[5].normal.x = matrix.m03 + matrix.m01;
-	m_planes[5].normal.y = matrix.m13 + matrix.m11;
-	m_planes[5].normal.z = matrix.m23 + matrix.m21;
-	m_planes[5].d = matrix.m33 + matrix.m31;
+	m_planes[5].normal.x = viewProjection.m03 + viewProjection.m01;
+	m_planes[5].normal.y = viewProjection.m13 + viewProjection.m11;
+	m_planes[5].normal.z = viewProjection.m23 + viewProjection.m21;
+	m_planes[5].d = viewProjection.m33 + viewProjection.m31;
 	m_planes[5].Normalize();
 }
 
@@ -145,24 +141,4 @@ FrustrumSpace Frustrum::CheckSphere(const Vector3& center, float radius)
 
 	// otherwise we are fully in view
 	return Inside;
-}
-
-void Frustrum::SetViewMatrix(const Matrix& viewMatrix)
-{
-	m_viewMatrix = viewMatrix;
-}
-
-Matrix Frustrum::GetViewMatrix()
-{
-	return m_viewMatrix;
-}
-
-void Frustrum::SetProjectionMatrix(const Matrix& projectionMatrix)
-{
-	m_projectionMatrix = projectionMatrix;
-}
-
-Matrix Frustrum::GetProjectionMatrix()
-{
-	return m_projectionMatrix;
 }

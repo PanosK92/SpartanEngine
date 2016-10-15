@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Pools/MaterialPool.h"
 #include "../Core/Helper.h"
+#include "../Graphics/Frustrum.h"
+#include "../Graphics/Mesh.h"
 //================================
 
 //= NAMESPACES ================
@@ -107,6 +109,7 @@ void MeshRenderer::Render(unsigned int indexCount) const
 	// Set the buffers and draw
 	GetMaterial()->GetShader()->Draw(indexCount);
 }
+
 //==============================================================================
 
 //= PROPERTIES =================================================================
