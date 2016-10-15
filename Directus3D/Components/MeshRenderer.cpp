@@ -85,11 +85,6 @@ void MeshRenderer::Deserialize()
 //==============================================================================
 
 //= MISC =======================================================================
-void MeshRenderer::SetShader() const
-{
-	GetMaterial()->GetShader()->Set();
-}
-
 void MeshRenderer::Render(unsigned int indexCount) const
 {
 	shared_ptr<Material> material = GetMaterial();

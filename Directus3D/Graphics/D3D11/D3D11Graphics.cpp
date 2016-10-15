@@ -44,8 +44,8 @@ D3D11Graphics::D3D11Graphics()
 	m_rasterStateCullFront = nullptr;
 	m_rasterStateCullBack = nullptr;
 	m_rasterStateCullNone = nullptr;
-	m_alphaBlendingStateEnabled = nullptr;
-	m_alphaBlendingStateDisabled = nullptr;
+	m_blendStateAlphaEnabled = nullptr;
+	m_blendStateAlphaDisabled = nullptr;
 	m_videoCardMemory = 0;
 }
 
@@ -56,54 +56,6 @@ D3D11Graphics::~D3D11Graphics()
 
 void D3D11Graphics::Initialize(HWND handle)
 {
-	//= DEFAULT RATERIZER STATE =============================================
-	m_rasterizerDesc.FillMode = D3D11_FILL_SOLID;
-	m_rasterizerDesc.CullMode = D3D11_CULL_BACK;
-	m_rasterizerDesc.FrontCounterClockwise = false;
-	m_rasterizerDesc.DepthBias = 0;
-	m_rasterizerDesc.SlopeScaledDepthBias = 0.0f;
-	m_rasterizerDesc.DepthBiasClamp = 0.0f;
-	m_rasterizerDesc.DepthClipEnable = true;
-	m_rasterizerDesc.ScissorEnable = false;
-	m_rasterizerDesc.MultisampleEnable = false;
-	m_rasterizerDesc.AntialiasedLineEnable = false;
-	//=======================================================================
-
-	//= DEFAULT DEPTH STENCIL STATE =========================================
-	// Depth test parameters
-	m_depthStencilDesc.DepthEnable = true;
-	m_depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-	m_depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
-
-	// Stencil test parameters
-	m_depthStencilDesc.StencilEnable = true;
-	m_depthStencilDesc.StencilReadMask = 0xFF;
-	m_depthStencilDesc.StencilWriteMask = 0xFF;
-
-	// Stencil operations if pixel is front-facing
-	m_depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-	m_depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-	m_depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-	m_depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-
-	// Stencil operations if pixel is back-facing
-	m_depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-	m_depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-	m_depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-	m_depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-	//=======================================================================
-
-	//= DEFAULT BLEND STATE =================================================
-	m_blendStateDesc.RenderTarget[0].BlendEnable = int(true);
-	m_blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-	m_blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-	m_blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-	m_blendStateDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-	m_blendStateDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-	m_blendStateDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-	m_blendStateDesc.RenderTarget[0].RenderTargetWriteMask = 0x0f;
-	//=======================================================================
-
 	/*------------------------------------------------------------------------------
 							[Graphics Interface Factory]
 	------------------------------------------------------------------------------*/
@@ -213,6 +165,33 @@ void D3D11Graphics::Initialize(HWND handle)
 	backBufferPtr->Release();
 	backBufferPtr = nullptr;
 
+	/*------------------------------------------------------------------------------
+								[DEPTH STENCIL STATE]
+	------------------------------------------------------------------------------*/
+	//= DEFAULT DEPTH STENCIL STATE =========================================
+	// Depth test parameters
+	m_depthStencilDesc.DepthEnable = true;
+	m_depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	m_depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+
+	// Stencil test parameters
+	m_depthStencilDesc.StencilEnable = true;
+	m_depthStencilDesc.StencilReadMask = 0xFF;
+	m_depthStencilDesc.StencilWriteMask = 0xFF;
+
+	// Stencil operations if pixel is front-facing
+	m_depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	m_depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+	m_depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	m_depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+	// Stencil operations if pixel is back-facing
+	m_depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	m_depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+	m_depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	m_depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	//=======================================================================
+
 	// Depth Stencil Buffer
 	CreateDepthStencilBuffer();
 
@@ -223,8 +202,20 @@ void D3D11Graphics::Initialize(HWND handle)
 	CreateDepthStencilView();
 
 	/*------------------------------------------------------------------------------
-							[Rasterizer Description]
+							[Rasterizer Descriptions]
 	------------------------------------------------------------------------------*/
+	//= DEFAULT RATERIZER STATE =============================================
+	m_rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+	m_rasterizerDesc.CullMode = D3D11_CULL_BACK;
+	m_rasterizerDesc.FrontCounterClockwise = false;
+	m_rasterizerDesc.DepthBias = 0;
+	m_rasterizerDesc.SlopeScaledDepthBias = 0.0f;
+	m_rasterizerDesc.DepthBiasClamp = 0.0f;
+	m_rasterizerDesc.DepthClipEnable = true;
+	m_rasterizerDesc.ScissorEnable = false;
+	m_rasterizerDesc.MultisampleEnable = false;
+	m_rasterizerDesc.AntialiasedLineEnable = false;
+	//=======================================================================
 	// Create a rasterizer state with back face CullMode
 	m_rasterizerDesc.CullMode = D3D11_CULL_BACK;
 	hResult = m_device->CreateRasterizerState(&m_rasterizerDesc, &m_rasterStateCullBack);
@@ -247,17 +238,28 @@ void D3D11Graphics::Initialize(HWND handle)
 	m_deviceContext->RSSetState(m_rasterStateCullBack);
 
 	/*------------------------------------------------------------------------------
-							[Blend State Description]
+							[Blend State Descriptions]
 	------------------------------------------------------------------------------*/
+	//= DEFAULT BLEND STATE =================================================
+	m_blendStateDesc.RenderTarget[0].BlendEnable = int(true);
+	m_blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	m_blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	m_blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	m_blendStateDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	m_blendStateDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	m_blendStateDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	m_blendStateDesc.RenderTarget[0].RenderTargetWriteMask = 0x0f;
+	//=======================================================================
+
 	// Create a blending state with alpha blending enabled
 	m_blendStateDesc.RenderTarget[0].BlendEnable = int(true);
-	HRESULT result = m_device->CreateBlendState(&m_blendStateDesc, &m_alphaBlendingStateEnabled);
+	HRESULT result = m_device->CreateBlendState(&m_blendStateDesc, &m_blendStateAlphaEnabled);
 	if (FAILED(result))
 		LOG_ERROR("Failed to create the blend state.");
 
 	// Create a blending state with alpha blending disabled
 	m_blendStateDesc.RenderTarget[0].BlendEnable = int(false);
-	result = m_device->CreateBlendState(&m_blendStateDesc, &m_alphaBlendingStateDisabled);
+	result = m_device->CreateBlendState(&m_blendStateDesc, &m_blendStateAlphaDisabled);
 	if (FAILED(result))
 		LOG_ERROR("Failed to create the blend state.");
 
@@ -351,8 +353,8 @@ void D3D11Graphics::Release()
 	if (m_swapChain)
 		m_swapChain->SetFullscreenState(false, nullptr);
 
-	m_alphaBlendingStateEnabled->Release();
-	m_alphaBlendingStateDisabled->Release();
+	m_blendStateAlphaEnabled->Release();
+	m_blendStateAlphaDisabled->Release();
 	m_rasterStateCullFront->Release();
 	m_rasterStateCullBack->Release();
 	m_rasterStateCullNone->Release();
@@ -372,8 +374,6 @@ void D3D11Graphics::Release()
 void D3D11Graphics::Clear(const Vector4& color)
 {
 	float clearColor[4];
-
-	// Setup the color to clear the buffer to.
 	clearColor[0] = color.x;
 	clearColor[1] = color.y;
 	clearColor[2] = color.z;
@@ -388,8 +388,7 @@ void D3D11Graphics::Clear(const Vector4& color)
 
 void D3D11Graphics::Present()
 {
-	VSync vSync = VSYNC;
-	m_swapChain->Present(vSync, 0);
+	m_swapChain->Present(VSYNC, 0);
 }
 
 ID3D11Device* D3D11Graphics::GetDevice()
@@ -402,42 +401,27 @@ ID3D11DeviceContext* D3D11Graphics::GetDeviceContext()
 	return m_deviceContext;
 }
 
-void D3D11Graphics::TurnZBufferOn()
+void D3D11Graphics::EnableZBuffer(bool enable)
 {
-	m_deviceContext->OMSetDepthStencilState(m_depthStencilStateEnabled, 1);
+	if (enable)
+		m_deviceContext->OMSetDepthStencilState(m_depthStencilStateEnabled, 1);
+	else
+		m_deviceContext->OMSetDepthStencilState(m_depthStencilStateDisabled, 1);
 }
 
-void D3D11Graphics::TurnZBufferOff()
+void D3D11Graphics::EnabledAlphaBlending(bool enable)
 {
-	m_deviceContext->OMSetDepthStencilState(m_depthStencilStateDisabled, 1);
-}
-
-void D3D11Graphics::TurnOnAlphaBlending()
-{
+	// Blend factor.
 	float blendFactor[4];
-
-	// Setup the blend factor.
 	blendFactor[0] = 0.0f;
 	blendFactor[1] = 0.0f;
 	blendFactor[2] = 0.0f;
 	blendFactor[3] = 0.0f;
 
-	// Turn on the alpha blending.
-	m_deviceContext->OMSetBlendState(m_alphaBlendingStateEnabled, blendFactor, 0xffffffff);
-}
-
-void D3D11Graphics::TurnOffAlphaBlending()
-{
-	float blendFactor[4];
-
-	// Setup the blend factor.
-	blendFactor[0] = 0.0f;
-	blendFactor[1] = 0.0f;
-	blendFactor[2] = 0.0f;
-	blendFactor[3] = 0.0f;
-
-	// Turn off the alpha blending.
-	m_deviceContext->OMSetBlendState(m_alphaBlendingStateDisabled, blendFactor, 0xffffffff);
+	if (enable)
+		m_deviceContext->OMSetBlendState(m_blendStateAlphaEnabled, blendFactor, 0xffffffff);
+	else
+		m_deviceContext->OMSetBlendState(m_blendStateAlphaDisabled, blendFactor, 0xffffffff);
 }
 
 void D3D11Graphics::SetBackBufferRenderTarget()

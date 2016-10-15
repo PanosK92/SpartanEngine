@@ -152,18 +152,18 @@ void ShaderVariation::Draw(int indexCount)
 	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
-void ShaderVariation::AddDefinesBasedOnMaterial()
+void ShaderVariation::AddDefinesBasedOnMaterial(shared_ptr<D3D11Shader> shader)
 {
 	// Write the properties of the material as defines
-	m_D3D11Shader->AddDefine("ALBEDO_MAP", m_hasAlbedoTexture);
-	m_D3D11Shader->AddDefine("ROUGHNESS_MAP", m_hasRoughnessTexture);
-	m_D3D11Shader->AddDefine("METALLIC_MAP", m_hasMetallicTexture);
-	m_D3D11Shader->AddDefine("NORMAL_MAP", m_hasNormalTexture);
-	m_D3D11Shader->AddDefine("HEIGHT_MAP", m_hasHeightTexture);
-	m_D3D11Shader->AddDefine("OCCLUSION_MAP", m_hasOcclusionTexture);
-	m_D3D11Shader->AddDefine("EMISSION_MAP", m_hasEmissionTexture);
-	m_D3D11Shader->AddDefine("MASK_MAP", m_hasMaskTexture);
-	m_D3D11Shader->AddDefine("CUBE_MAP", m_hasCubeMap);
+	shader->AddDefine("ALBEDO_MAP", m_hasAlbedoTexture);
+	shader->AddDefine("ROUGHNESS_MAP", m_hasRoughnessTexture);
+	shader->AddDefine("METALLIC_MAP", m_hasMetallicTexture);
+	shader->AddDefine("NORMAL_MAP", m_hasNormalTexture);
+	shader->AddDefine("HEIGHT_MAP", m_hasHeightTexture);
+	shader->AddDefine("OCCLUSION_MAP", m_hasOcclusionTexture);
+	shader->AddDefine("EMISSION_MAP", m_hasEmissionTexture);
+	shader->AddDefine("MASK_MAP", m_hasMaskTexture);
+	shader->AddDefine("CUBE_MAP", m_hasCubeMap);
 }
 
 void ShaderVariation::Load()
@@ -171,7 +171,7 @@ void ShaderVariation::Load()
 	// load the vertex and the pixel shader
 	m_D3D11Shader = make_shared<D3D11Shader>();
 	m_D3D11Shader->Initialize(m_graphics);
-	AddDefinesBasedOnMaterial();
+	AddDefinesBasedOnMaterial(m_D3D11Shader);
 	m_D3D11Shader->Load("Assets/Shaders/GBuffer.hlsl");
 	m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
 	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS); // anisotropic
