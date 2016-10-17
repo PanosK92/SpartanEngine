@@ -18,7 +18,6 @@ DEALINGS IN THE SOFTWARE. */
 
 //= INCLUDES =======
 #include <windows.h>
-#include <memory>
 #include "Context.h"
 //==================
 
@@ -33,7 +32,4 @@ public:
 	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
 	void Update();
 	void Shutdown();
-
-private:
-	Context* m_context;
 };

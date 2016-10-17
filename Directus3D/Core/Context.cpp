@@ -37,3 +37,9 @@ void Context::RegisterSubsystem(Object* subsystem)
 
 	m_subsystems.push_back(subsystem);
 }
+
+// Shutdown every subsystem (in reverse order)
+void Context::Shutdown()
+{
+
+}

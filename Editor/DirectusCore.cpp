@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IO/Log.h"
 #include <QStyleOption>
 #include "Core/Settings.h"
+#include "Core/Context.h"
 //========================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
@@ -60,7 +61,7 @@ void DirectusCore::Initialize(HWND mainWindowHandle, HINSTANCE hInstance, Direct
     m_engine = new Engine();
     m_engine->Initialize(hInstance, mainWindowHandle, (HWND)this->winId());
 
-    m_socket = m_engine->GetSocket();
+    m_socket = m_engine->GetContext()->GetSubsystem<Socket>();
     m_directusStatsLabel = directusStatsLabel;
 
     m_locked = false;
