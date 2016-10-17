@@ -48,10 +48,14 @@ using namespace Directus::Math;
 
 Scene::Scene(Context* context) : Object(context)
 {
+	GameObjectPool::GetInstance().Initialize(g_context);
+
 	m_ambientLight = Vector3::Zero;
 	m_mainCamera = CreateCamera();
 	CreateSkybox();
 	CreateDirectionalLight();
+
+	Resolve();
 }
 
 Scene::~Scene()
@@ -208,6 +212,8 @@ Vector3 Scene::GetAmbientLight()
 
 void Scene::Resolve()
 {
+	GameObjectPool::GetInstance().Update();
+
 	m_renderables.clear();
 	m_renderables.shrink_to_fit();
 

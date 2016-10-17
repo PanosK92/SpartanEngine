@@ -29,9 +29,11 @@ public:
 
 	// Register a subsystem
 	void RegisterSubsystem(Object* subsystem);
+
 	// Get a subsystem
 	template <class T> T* GetSubsystem();
 
+	void Shutdown();
 private:
 	std::vector<Object*> m_subsystems;
 };
@@ -41,8 +43,9 @@ T* Context::GetSubsystem()
 {
 	for (auto subsystem : m_subsystems)
 	{
-		// casting failure == nullptr
+		// casting failure results in nullptr
 		T* typed_cmp = dynamic_cast<T*>(subsystem);
+
 
 		if (typed_cmp)
 			return typed_cmp;

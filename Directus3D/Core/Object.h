@@ -19,7 +19,7 @@ DEALINGS IN THE SOFTWARE. */
 //= INCLUDES =======
 //==================
 
-class Object
+class __declspec(dllexport) Object
 {
 	friend class Context;
 public:
