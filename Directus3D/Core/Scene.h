@@ -36,22 +36,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Renderer;
 class ModelImporter;
 
-class Scene
+class Scene : public Object
 {
 public:
-	Scene(std::shared_ptr<TexturePool> texturePool, 
-		std::shared_ptr<MaterialPool> materialPool, 
-		std::shared_ptr<MeshPool> meshPool, std::shared_ptr<ScriptEngine> 
-		scriptEngine, std::shared_ptr<PhysicsWorld> physics, 
-		std::shared_ptr<ModelImporter> modelLoader, 
-		std::shared_ptr<Renderer> renderer, 
-		std::shared_ptr<ShaderPool> shaderPool,
-		std::shared_ptr<ThreadPool> threadPool
-	);
+	Scene(Context* context);
 	~Scene();
-
-	void Initialize();
-	void Update();
 
 	/*------------------------------------------------------------------------------
 										[I/O]
@@ -69,7 +58,7 @@ public:
 	GameObject* GetMainCamera();
 	void SetAmbientLight(float x, float y, float z);
 	Directus::Math::Vector3 GetAmbientLight();
-	void AnalyzeGameObjects();
+	void Resolve();
 
 private:
 	// GAMEOBJECT CREATION =======================
@@ -84,16 +73,4 @@ private:
 
 	GameObject* m_mainCamera;
 	Directus::Math::Vector3 m_ambientLight;
-
-	// DEPENDENCIES ==============================
-	std::shared_ptr<TexturePool> m_texturePool;
-	std::shared_ptr<MaterialPool> m_materialPool;
-	std::shared_ptr<MeshPool> m_meshPool;
-	std::shared_ptr<ScriptEngine> m_scriptEngine;
-	std::shared_ptr<PhysicsWorld> m_physics;
-	std::shared_ptr<ModelImporter> m_modelLoader;
-	std::shared_ptr<Renderer> m_renderer;
-	std::shared_ptr<ShaderPool> m_shaderPool;
-	std::shared_ptr<ThreadPool> m_threadPool;
-	//============================================
 };

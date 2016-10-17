@@ -21,35 +21,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ==============
 #include <vector>
-#include <memory>
-//===============
+#include "../Core/Object.h"
+//=========================
 
 class asIScriptObject;
 class asIScriptFunction;
-class GameObject;
 class asIScriptEngine;
 class asIScriptContext;
 class asIScriptModule;
 class CScriptBuilder;
-class Timer;
-class Input;
 struct asSFuncPtr;
 struct asSMessageInfo;
 class Module;
 
-class ScriptEngine
+class ScriptEngine : public Object
 {
 public:
-	ScriptEngine(std::shared_ptr<Timer> timer, std::shared_ptr<Input> input);
+	ScriptEngine(Context* context);
 	~ScriptEngine();
 
-	bool Initialize();
 	void Reset();
 	asIScriptEngine* GetAsIScriptEngine();
-	std::shared_ptr<Timer> GetTimer();
-	std::shared_ptr<Input> GetInput();
 
 	/*------------------------------------------------------------------------------
 									[CONTEXT]
@@ -70,8 +64,6 @@ public:
 private:
 	asIScriptEngine* m_scriptEngine;
 	std::vector<asIScriptContext*> m_contexts;
-	std::shared_ptr<Timer> m_timer;
-	std::shared_ptr<Input> m_input;
 
 	/*------------------------------------------------------------------------------
 									[PRIVATE]

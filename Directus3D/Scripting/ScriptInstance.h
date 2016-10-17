@@ -23,8 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============
 #include "ScriptEngine.h"
+#include <memory>
 //=======================
 
+class GameObject;
 class asIScriptObject;
 class asIScriptFunction;
 
@@ -35,7 +37,7 @@ public:
 	ScriptInstance();
 	~ScriptInstance();
 
-	bool Instantiate(std::string path, GameObject* gameObject, std::shared_ptr<ScriptEngine> scriptEngine);
+	bool Instantiate(std::string path, GameObject* gameObject, ScriptEngine* scriptEngine);
 	bool IsInstantiated();
 	std::string GetScriptPath();
 
@@ -56,5 +58,5 @@ private:
 	asIScriptFunction* m_startFunction;
 	asIScriptFunction* m_updateFunction;
 	bool m_isInstantiated;
-	std::shared_ptr<ScriptEngine> m_scriptEngine;
+	ScriptEngine* m_scriptEngine;
 };

@@ -43,7 +43,6 @@ ImageImporter::ImageImporter()
 	m_channels = 4;
 	m_grayscale = false;
 	m_transparent = false;
-	m_graphics = nullptr;
 
 	FreeImage_Initialise(true);
 }
@@ -52,12 +51,6 @@ ImageImporter::~ImageImporter()
 {
 	Clear();
 	FreeImage_DeInitialise();
-}
-
-void ImageImporter::Initialize(shared_ptr<Graphics> D3D11evice, shared_ptr<ThreadPool> threadPool)
-{
-	m_graphics = D3D11evice;
-	m_threadPool = threadPool;
 }
 
 void ImageImporter::LoadAsync(const string& filePath)
@@ -198,63 +191,6 @@ void ImageImporter::Clear()
 }
 
 //= PROPERTIES =====================================================
-ID3D11ShaderResourceView* ImageImporter::GetAsD3D11ShaderResourceView()
-{
-	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM; // texture format
-	unsigned int mipLevels = 7; // 0 for a full mip chain. The mip chain will extend to 1x1 at the lowest level, even if the dimensions aren't square.
-
-	// texture description
-	D3D11_TEXTURE2D_DESC textureDesc{};
-	textureDesc.Width = m_width;
-	textureDesc.Height = m_height;
-	textureDesc.MipLevels = mipLevels;
-	textureDesc.ArraySize = 1;
-	textureDesc.SampleDesc.Count = 1;
-	textureDesc.SampleDesc.Quality = 0;
-	textureDesc.Usage = D3D11_USAGE_DEFAULT;
-	textureDesc.Format = format;
-	textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-	textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
-
-	// Create 2D texture from texture description
-	ID3D11Texture2D* texture = nullptr;
-	HRESULT hResult = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
-	if (FAILED(hResult))
-	{
-		LOG_ERROR("Failed to create ID3D11Texture2D from imported image data while trying to load " + m_path + ".");
-		return nullptr;
-	}
-
-	// Resource view description
-	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	srvDesc.Format = format;
-	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Texture2D.MipLevels = textureDesc.MipLevels;
-
-	// Create shader resource view from resource view description
-	ID3D11ShaderResourceView* shaderResourceView = nullptr;
-	hResult = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &shaderResourceView);
-	if (FAILED(hResult))
-	{
-		LOG_ERROR("Failed to create the shader resource view.");
-		return nullptr;
-	}
-
-	// Resource data description
-	D3D11_SUBRESOURCE_DATA mapResource{};
-	mapResource.pSysMem = m_dataRGBA.data();
-	mapResource.SysMemPitch = sizeof(unsigned char) * m_width * m_channels;
-
-	// Copy data from memory to the subresource created in non-mappable memory
-	m_graphics->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, mapResource.pSysMem, mapResource.SysMemPitch, 0);
-
-	// Generate mip chain
-	m_graphics->GetDeviceContext()->GenerateMips(shaderResourceView);
-
-	return shaderResourceView;
-}
-
 unsigned char* ImageImporter::GetRGBA()
 {
 	return m_dataRGBA.data();

@@ -41,7 +41,7 @@ PostProcessShader::~PostProcessShader()
 
 }
 
-void PostProcessShader::Initialize(LPCSTR pass, shared_ptr<Graphics> graphicsDevice)
+void PostProcessShader::Initialize(LPCSTR pass, Graphics* graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 

@@ -111,7 +111,7 @@ LightType Light::GetLightType()
 void Light::SetLightType(LightType type)
 {
 	m_lightType = type;
-	g_scene->AnalyzeGameObjects();
+	g_scene->Resolve();
 }
 
 Vector4 Light::GetColor()

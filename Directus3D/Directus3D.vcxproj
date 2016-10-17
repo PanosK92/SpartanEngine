@@ -143,8 +143,10 @@
     <ClCompile Include="Components\Script.cpp" />
     <ClCompile Include="Components\Skybox.cpp" />
     <ClCompile Include="Components\Transform.cpp" />
+    <ClCompile Include="Core\Context.cpp" />
     <ClCompile Include="Core\Engine.cpp" />
     <ClCompile Include="Core\GameObject.cpp" />
+    <ClCompile Include="Core\Object.cpp" />
     <ClCompile Include="Graphics\Material.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Core\Scene.cpp" />
@@ -211,7 +213,9 @@
     <ClInclude Include="Components\Script.h" />
     <ClInclude Include="Components\Skybox.h" />
     <ClInclude Include="Components\Transform.h" />
+    <ClInclude Include="Core\Context.h" />
     <ClInclude Include="Core\Engine.h" />
+    <ClInclude Include="Core\Object.h" />
     <ClInclude Include="Graphics\ShadowMap.h" />
     <ClInclude Include="Signals\Signaling.h" />
     <ClInclude Include="Core\GameObject.h" />

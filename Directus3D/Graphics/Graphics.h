@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11/D3D11Graphics.h"
 #include "../Math/Vector4.h"
 #include <memory>
-
+#include "../Core/Object.h"
 //============================
 
 enum InputLayout
@@ -44,13 +44,14 @@ enum CullMode
 	CullNone,
 };
 
-class Graphics
+class Graphics : public Object
 {
 public:
-	Graphics();
+	Graphics(Context* context);
 	~Graphics();
 
 	void Initialize(HWND drawPaneHandle);
+
 	ID3D11Device* GetDevice();
 	ID3D11DeviceContext* GetDeviceContext();
 

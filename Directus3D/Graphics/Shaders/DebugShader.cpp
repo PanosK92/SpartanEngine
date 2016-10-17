@@ -39,7 +39,7 @@ DebugShader::~DebugShader()
 
 }
 
-void DebugShader::Initialize(shared_ptr<Graphics> graphicsDevice)
+void DebugShader::Initialize(Graphics* graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 

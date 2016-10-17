@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============================
 #include "Scene.h"
-#include "Timer.h"
 #include "../Input/Input.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../AssetImporting/ImageImporter.h"
@@ -33,10 +32,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class ILogger;
 class PhysicsDebugDraw;
 
-class __declspec(dllexport) Socket
+class __declspec(dllexport) Socket : public Object
 {
 public:
-	Socket(Engine* engine, std::shared_ptr<Scene> scene, std::shared_ptr<Renderer> renderer, std::shared_ptr<Input> input, std::shared_ptr<Timer> timer, std::shared_ptr<ModelImporter> modelLoader, std::shared_ptr<PhysicsWorld> physics, std::shared_ptr<TexturePool> texturePool, std::shared_ptr<Graphics> graphicsDevice);
+	Socket(Context* context);
 	~Socket();
 
 	//= STATE CONTROL ==============
@@ -83,14 +82,4 @@ public:
 	//==============================================================================
 
 	void SetMaterialTexture(GameObject* gameObject, TextureType type, std::string texturePath);
-private:
-	Engine* m_engine;
-	std::shared_ptr<Scene> m_scene;
-	std::shared_ptr<Renderer> m_renderer;
-	std::shared_ptr<Graphics> m_graphics;
-	std::shared_ptr<Timer> m_timer;
-	std::shared_ptr<Input> m_input;
-	std::shared_ptr<TexturePool> m_texturePool;
-	std::shared_ptr<ModelImporter> m_modelLoader;
-	std::shared_ptr<PhysicsWorld> m_physics;
 };

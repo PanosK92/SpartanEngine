@@ -37,6 +37,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshFilter.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../Signals/Signaling.h"
+#include "../Core/Context.h"
+#include "../Pools/ShaderPool.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -44,28 +46,12 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Scene::Scene(shared_ptr<TexturePool> texturePool, 
-	shared_ptr<MaterialPool> materialPool, 
-	shared_ptr<MeshPool> meshPool, 
-	shared_ptr<ScriptEngine> scriptEngine, 
-	shared_ptr<PhysicsWorld> physics, 
-	shared_ptr<ModelImporter> modelLoader,
-	shared_ptr<Renderer> renderer, 
-	shared_ptr<ShaderPool> shaderPool,
-	shared_ptr<ThreadPool> threadPool
-)
+Scene::Scene(Context* context) : Object(context)
 {
-	m_renderer = renderer;
-	m_texturePool = texturePool;
-	m_materialPool = materialPool;
-	m_meshPool = meshPool;
-	m_scriptEngine = scriptEngine;
-	m_physics = physics;
-	m_modelLoader = modelLoader;
-	m_shaderPool = shaderPool;
-	m_threadPool = threadPool;
-
-	m_mainCamera = nullptr;
+	m_ambientLight = Vector3::Zero;
+	m_mainCamera = CreateCamera();
+	CreateSkybox();
+	CreateDirectionalLight();
 }
 
 Scene::~Scene()
@@ -73,30 +59,15 @@ Scene::~Scene()
 	Clear();
 }
 
-void Scene::Initialize()
-{
-	m_ambientLight = Vector3::Zero;
-	m_mainCamera = CreateCamera();
-	CreateSkybox();
-	CreateDirectionalLight();
-
-	AnalyzeGameObjects();
-}
-
-void Scene::Update()
-{
-
-}
-
 //= I/O ===========================================================================
 void Scene::SaveToFileAsync(const string& filePath)
 {
-	m_threadPool->AddTask(std::bind(&Scene::SaveToFile, this, filePath));
+	g_context->GetSubsystem<ThreadPool>()->AddTask(std::bind(&Scene::SaveToFile, this, filePath));
 }
 
 void Scene::LoadFromFileAsync(const string& filePath)
 {
-	m_threadPool->AddTask(std::bind(&Scene::LoadFromFile, this, filePath));
+	g_context->GetSubsystem<ThreadPool>()->AddTask(std::bind(&Scene::LoadFromFile, this, filePath));
 }
 
 bool Scene::SaveToFile(const string& filePathIn)
@@ -110,9 +81,9 @@ bool Scene::SaveToFile(const string& filePathIn)
 	Serializer::StartWriting(filePath);
 
 	// Gather all the paths of any resource files used by the scene
-	vector<string> texturePaths = m_texturePool->GetAllTextureFilePaths();
-	vector<string> materialPaths = m_materialPool->GetAllMaterialFilePaths();
-	vector<string> meshPaths = m_meshPool->GetAllMeshFilePaths();
+	vector<string> texturePaths = g_context->GetSubsystem<TexturePool>()->GetAllTextureFilePaths();
+	vector<string> materialPaths = g_context->GetSubsystem<MaterialPool>()->GetAllMaterialFilePaths();
+	vector<string> meshPaths = g_context->GetSubsystem<MeshPool>()->GetAllMeshFilePaths();
 
 	// Save all the paths
 	Serializer::WriteVectorSTR(texturePaths);
@@ -151,9 +122,9 @@ bool Scene::LoadFromFile(const string& filePath)
 	//===========================================================
 
 	// Load all the used resources into memory
-	m_texturePool->Add(texturePaths);
-	m_materialPool->Add(materialPaths);
-	m_meshPool->Add(meshPaths);
+	g_context->GetSubsystem<TexturePool>()->Add(texturePaths);
+	g_context->GetSubsystem<MaterialPool>()->Add(materialPaths);
+	g_context->GetSubsystem<MeshPool>()->Add(meshPaths);
 	
 	// Load all the GameObjects present in the scene
 	//==============================================
@@ -172,7 +143,7 @@ bool Scene::LoadFromFile(const string& filePath)
 	Serializer::StopReading();
 	//==============================================
 
-	AnalyzeGameObjects();
+	Resolve();
 
 	EMIT_SIGNAL(SIGNAL_SCENE_LOADING_COMPLETED);
 
@@ -197,16 +168,16 @@ void Scene::Clear()
 	m_mainCamera = nullptr;
 
 	//= Clear all the pools ==================
-	m_texturePool->Clear();
-	m_meshPool->Clear();
-	m_materialPool->Clear();
-	m_shaderPool->Clear();
+	g_context->GetSubsystem<TexturePool>()->Clear();
+	g_context->GetSubsystem<MeshPool>()->Clear();
+	g_context->GetSubsystem<MaterialPool>()->Clear();
+	g_context->GetSubsystem<ShaderPool>()->Clear();
 	GameObjectPool::GetInstance().Clear();
 	//========================================
 
-	m_scriptEngine->Reset();
-	m_physics->Reset();
-	m_renderer->Clear();
+	g_context->GetSubsystem<ScriptEngine>()->Reset();
+	g_context->GetSubsystem<PhysicsWorld>()->Reset();
+	g_context->GetSubsystem<Renderer>()->Clear();
 
 	CreateSkybox();
 }
@@ -235,7 +206,7 @@ Vector3 Scene::GetAmbientLight()
 	return m_ambientLight;
 }
 
-void Scene::AnalyzeGameObjects()
+void Scene::Resolve()
 {
 	m_renderables.clear();
 	m_renderables.shrink_to_fit();
@@ -270,7 +241,7 @@ void Scene::AnalyzeGameObjects()
 		}
 	}
 
-	m_renderer->Update(m_renderables, m_lightsDirectional, m_lightsPoint);
+	g_context->GetSubsystem<Renderer>()->Update(m_renderables, m_lightsDirectional, m_lightsPoint);
 }
 
 //====================

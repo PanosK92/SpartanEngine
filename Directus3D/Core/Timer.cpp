@@ -28,26 +28,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Timer::Timer()
+Timer::Timer(Context* context) : Object(context)
 {
-	m_ticksPerSec = 0.0f;
+	m_ticksPerSec = 0;
 	m_ticksPerMs = 0.0f;
-	m_deltaTime = 0.0f;
 	m_startTime = 0.0f;
 	m_lastKnownTime = 0.0f;
-
-	//= FPS CALCULATION
+	m_deltaTime = 0.0f;
 	m_frameCount = 0;
-	m_fpsLastKnownTime = 0;
-	m_fps = 0;
-}
+	m_fpsLastKnownTime = 0.0f;
+	m_fps = 0.0f;
 
-Timer::~Timer()
-{
-}
+	m_renderStopwatch = nullptr;
 
-void Timer::Initialize()
-{
 	LARGE_INTEGER ticksPerSec;
 	if (QueryPerformanceFrequency(&ticksPerSec))
 	{
@@ -64,6 +57,11 @@ void Timer::Initialize()
 	m_lastKnownTime = m_startTime;
 
 	m_renderStopwatch = new Stopwatch(this);
+}
+
+Timer::~Timer()
+{
+	
 }
 
 void Timer::Update()

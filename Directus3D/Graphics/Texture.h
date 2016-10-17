@@ -47,12 +47,13 @@ public:
 	~Texture();
 
 	//= IO ================================================
-	bool LoadFromFile(const std::string& filePath);
+	bool LoadFromFile(const std::string& filePath, Graphics* graphics);
 private:
 	void Serialize();
 	void Deserialize();
 	bool SaveMetadata();
 	bool LoadMetadata();
+	ID3D11ShaderResourceView* CreateID3D11ShaderResourceView(Graphics* graphics);
 public:
 	//=====================================================
 

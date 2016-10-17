@@ -35,32 +35,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 //==============================================================================
 
-PhysicsWorld::PhysicsWorld()
+PhysicsWorld::PhysicsWorld(Context* context) : Object(context)
 {
 	m_internalFPS = 60.0f;
 	m_maxSubSteps = 0;
 	m_gravity = Directus::Math::Vector3(0.0f, -9.81f, 0.0f);
 
-	m_broadphase = nullptr;
-	m_dispatcher = nullptr;
-	m_constraintSolver = nullptr;
-	m_collisionConfiguration = nullptr;
-	m_world = nullptr;
-	m_debugDraw = nullptr;
-}
-
-PhysicsWorld::~PhysicsWorld()
-{
-	delete m_world;
-	delete m_constraintSolver;
-	delete m_broadphase;
-	delete m_dispatcher;
-	delete m_collisionConfiguration;
-	SafeRelease(m_debugDraw);
-}
-
-void PhysicsWorld::Initialize()
-{
 	m_broadphase = new btDbvtBroadphase();
 	m_collisionConfiguration = new btDefaultCollisionConfiguration();
 	m_dispatcher = new btCollisionDispatcher(m_collisionConfiguration);
@@ -76,6 +56,16 @@ void PhysicsWorld::Initialize()
 	m_world->getDispatchInfo().m_useContinuous = true;
 	m_world->getSolverInfo().m_splitImpulse = false;
 	m_world->setDebugDrawer(m_debugDraw);
+}
+
+PhysicsWorld::~PhysicsWorld()
+{
+	delete m_world;
+	delete m_constraintSolver;
+	delete m_broadphase;
+	delete m_dispatcher;
+	delete m_collisionConfiguration;
+	SafeRelease(m_debugDraw);
 }
 
 void PhysicsWorld::Step(float timeStep)

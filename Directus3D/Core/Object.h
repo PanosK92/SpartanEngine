@@ -17,23 +17,15 @@ DEALINGS IN THE SOFTWARE. */
 #pragma once
 
 //= INCLUDES =======
-#include <windows.h>
-#include <memory>
-#include "Context.h"
 //==================
 
-class Stopwatch;
-
-class __declspec(dllexport) Engine : public Object
+class Object
 {
+	friend class Context;
 public:
-	Engine(Context* context);
-	~Engine();
+	Object(Context* context);
+	virtual ~Object();
 
-	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
-	void Update();
-	void Shutdown();
-
-private:
-	Context* m_context;
+protected:
+	Context* g_context;
 };

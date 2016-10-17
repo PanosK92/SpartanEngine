@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include "../Components/IComponent.h"
 #include <vector>
+#include "../Core/Context.h"
 //===================================
 
 class Transform;
@@ -35,7 +36,7 @@ public:
 	GameObject();
 	~GameObject();
 
-	void Initialize(std::shared_ptr<Graphics> graphicsDevice, std::shared_ptr<Scene> scene, std::shared_ptr<Renderer> renderer, std::shared_ptr<MeshPool> meshPool, std::shared_ptr<MaterialPool> materialPool, std::shared_ptr<TexturePool> texturePool, std::shared_ptr<ShaderPool> shaderPool, std::shared_ptr<PhysicsWorld> physics, std::shared_ptr<ScriptEngine> scriptEngine);
+	void Initialize(Context* context);
 	void Start();
 	void Update();
 
@@ -86,15 +87,7 @@ private:
 	// keep a local copy of it here and avoid any runtime searching (performance).
 	Transform* m_transform;
 
-	std::shared_ptr<Graphics> m_graphics;
-	std::shared_ptr<Scene> m_scene;
-	std::shared_ptr<Renderer> m_renderer;
-	std::shared_ptr<MeshPool> m_meshPool;
-	std::shared_ptr<MaterialPool> m_materialPool;
-	std::shared_ptr<TexturePool> m_texturePool;
-	std::shared_ptr<ShaderPool> m_shaderPool;
-	std::shared_ptr<PhysicsWorld> m_physics;
-	std::shared_ptr<ScriptEngine> m_scriptEngine;
+	Context* m_context;
 
 	//= HELPER FUNCTIONS ====================================
 	IComponent* AddComponentBasedOnType(const std::string& typeStr);

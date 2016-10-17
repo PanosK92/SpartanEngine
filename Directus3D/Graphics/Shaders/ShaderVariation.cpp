@@ -62,7 +62,7 @@ void ShaderVariation::Initialize(
 	bool emission,
 	bool mask,
 	bool cubemap,
-	shared_ptr<Graphics> graphicsDevice
+	Graphics* graphicsDevice
 )
 {
 	// Save the properties of the material

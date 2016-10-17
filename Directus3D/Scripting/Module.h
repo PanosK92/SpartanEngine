@@ -34,7 +34,7 @@ class ScriptEngine;
 class Module
 {
 public:
-	Module(const std::string& moduleName, std::shared_ptr<ScriptEngine> scriptEngine);
+	Module(const std::string& moduleName, ScriptEngine* scriptEngine);
 	~Module();
 
 	bool LoadScript(const std::string& filePath);
@@ -43,5 +43,5 @@ public:
 private:
 	std::string m_moduleName;
 	CScriptBuilder* m_builder;
-	std::shared_ptr<ScriptEngine> m_scriptEngine;
+	ScriptEngine* m_scriptEngine;
 };

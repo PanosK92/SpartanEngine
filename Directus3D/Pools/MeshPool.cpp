@@ -24,8 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Components/MeshFilter.h"
-#include "../IO/FileSystem.h"
-#include "../IO/Log.h"
 //==================================
 
 //= NAMESPACES ================
@@ -33,7 +31,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-MeshPool::MeshPool()
+MeshPool::MeshPool(Context* context) : Object(context)
 {
 	GenerateDefaultMeshes();
 }

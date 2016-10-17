@@ -37,6 +37,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Log.h"
 #include "../Components/MeshFilter.h"
 #include "../Signals/Signaling.h"
+#include "../Core/Context.h"
+#include "../Pools/ShaderPool.h"
 //======================================
 
 //= NAMESPACES ================
@@ -44,9 +46,8 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Renderer::Renderer()
+Renderer::Renderer(Context* context): Object(context) 
 {
-	m_graphics = nullptr;
 	m_GBuffer = nullptr;
 	m_fullScreenQuad = nullptr;
 	m_renderedMeshesCount = 0;
@@ -60,15 +61,54 @@ Renderer::Renderer()
 	m_shaderSharpening = nullptr;
 	m_texNoiseMap = nullptr;
 	m_skybox = nullptr;
-	m_physics = nullptr;
-	m_scene = nullptr;
-	m_timer = nullptr;
 	m_camera = nullptr;
 	m_texEnvironment = nullptr;
 	m_lineRenderer = nullptr;
 	m_directionalLight = nullptr;
 	m_nearPlane = 0.0;
 	m_farPlane = 0.0f;
+
+	Graphics* graphics = g_context->GetSubsystem<Graphics>();
+
+	m_GBuffer = make_shared<GBuffer>(graphics);
+	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+
+	m_fullScreenQuad = make_shared<FullScreenQuad>();
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
+
+	/*------------------------------------------------------------------------------
+	[SHADERS]
+	------------------------------------------------------------------------------*/
+	m_shaderDeferred = make_shared<DeferredShader>();
+	m_shaderDeferred->Initialize(graphics);
+
+	m_shaderDepth = make_shared<DepthShader>();
+	m_shaderDepth->Initialize(graphics);
+
+	m_shaderDebug = make_shared<DebugShader>();
+	m_shaderDebug->Initialize(graphics);
+
+	m_shaderFXAA = make_shared<PostProcessShader>();
+	m_shaderFXAA->Initialize("FXAA", graphics);
+
+	m_shaderSharpening = make_shared<PostProcessShader>();
+	m_shaderSharpening->Initialize("SHARPENING", graphics);
+
+	/*------------------------------------------------------------------------------
+	[RENDER TEXTURES]
+	------------------------------------------------------------------------------*/
+	m_renderTexPing = make_shared<D3D11RenderTexture>();
+	m_renderTexPing->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+
+	m_renderTexPong = make_shared<D3D11RenderTexture>();
+	m_renderTexPong->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+
+	/*------------------------------------------------------------------------------
+	[MISC]
+	------------------------------------------------------------------------------*/
+	m_texNoiseMap = make_shared<Texture>();
+	m_texNoiseMap->LoadFromFile("Assets/Shaders/noise.png", graphics);
+	m_texNoiseMap->SetType(Normal);
 }
 
 Renderer::~Renderer()
@@ -76,59 +116,10 @@ Renderer::~Renderer()
 
 }
 
-void Renderer::Initialize(shared_ptr<Graphics> d3d11device, shared_ptr<Timer> timer, shared_ptr<PhysicsWorld> physics, shared_ptr<Scene> scene, shared_ptr<ShaderPool> shaderPool, shared_ptr<MaterialPool> materialPool)
-{
-	m_timer = timer;
-	m_physics = physics;
-	m_scene = scene;
-	m_shaderPool = shaderPool;
-	m_materialPool = materialPool;
-
-	m_graphics = d3d11device;
-
-	m_GBuffer = make_shared<GBuffer>(m_graphics);
-	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-
-	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
-
-	/*------------------------------------------------------------------------------
-									[SHADERS]
-	------------------------------------------------------------------------------*/
-	m_shaderDeferred = make_shared<DeferredShader>();
-	m_shaderDeferred->Initialize(m_graphics);
-
-	m_shaderDepth = make_shared<DepthShader>();
-	m_shaderDepth->Initialize(m_graphics);
-
-	m_shaderDebug = make_shared<DebugShader>();
-	m_shaderDebug->Initialize(m_graphics);
-
-	m_shaderFXAA = make_shared<PostProcessShader>();
-	m_shaderFXAA->Initialize("FXAA", m_graphics);
-
-	m_shaderSharpening = make_shared<PostProcessShader>();
-	m_shaderSharpening->Initialize("SHARPENING", m_graphics);
-
-	/*------------------------------------------------------------------------------
-								[RENDER TEXTURES]
-	------------------------------------------------------------------------------*/
-	m_renderTexPing = make_shared<D3D11RenderTexture>();
-	m_renderTexPing->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-
-	m_renderTexPong = make_shared<D3D11RenderTexture>();
-	m_renderTexPong->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-
-	/*------------------------------------------------------------------------------
-										[MISC]
-	------------------------------------------------------------------------------*/
-	m_texNoiseMap = make_shared<Texture>();
-	m_texNoiseMap->LoadFromFile("Assets/Shaders/noise.png");
-	m_texNoiseMap->SetType(Normal);
-}
-
 void Renderer::Render()
 {
+	Graphics* graphics = g_context->GetSubsystem<Graphics>();
+
 	EMIT_SIGNAL(SIGNAL_RENDER_START);
 
 	StartCalculatingStats();
@@ -136,20 +127,20 @@ void Renderer::Render()
 
 	if (!m_camera)
 	{
-		m_graphics->Clear(Vector4(0, 0, 0, 1));
-		m_graphics->Present();
+		graphics->Clear(Vector4(0, 0, 0, 1));
+		graphics->Present();
 		return;
 	}
 
 	if (m_renderables.empty())
 	{
-		m_graphics->Clear(m_camera->GetClearColor());
-		m_graphics->Present();
+		graphics->Clear(m_camera->GetClearColor());
+		graphics->Present();
 		return;
 	}
 
 	// ENABLE Z-BUFFER
-	m_graphics->EnableZBuffer(true);
+	graphics->EnableZBuffer(true);
 
 	// Render light depth
 	if (m_directionalLight)
@@ -162,7 +153,7 @@ void Renderer::Render()
 	GBufferPass();
 
 	// DISABLE Z BUFFER - SET FULLSCREEN QUAD
-	m_graphics->EnableZBuffer(false);
+	graphics->EnableZBuffer(false);
 	m_fullScreenQuad->SetBuffers();
 
 	// Deferred Pass
@@ -176,7 +167,7 @@ void Renderer::Render()
 		Gizmos();
 
 	// display frame
-	m_graphics->Present();
+	graphics->Present();
 
 	StopCalculatingStats();
 
@@ -192,25 +183,26 @@ void Renderer::SetResolution(int width, int height)
 		return;
 
 	SET_RESOLUTION(width, height);
+	Graphics* graphics = g_context->GetSubsystem<Graphics>();
 
-	m_graphics->SetViewport(width, height);
+	graphics->SetViewport(width, height);
 
 	m_GBuffer.reset();
 	m_fullScreenQuad.reset();
 	m_renderTexPing.reset();
 	m_renderTexPong.reset();
 
-	m_GBuffer = make_shared<GBuffer>(m_graphics);
+	m_GBuffer = make_shared<GBuffer>(graphics);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 	
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
 
 	m_renderTexPing = make_shared<D3D11RenderTexture>();
-	m_renderTexPing->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPing->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_renderTexPong = make_shared<D3D11RenderTexture>();
-	m_renderTexPong->Initialize(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPong->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 }
 
 void Renderer::Clear()
@@ -241,12 +233,14 @@ const vector<GameObject*>& Renderer::GetRenderables() const
 
 void Renderer::AcquirePrerequisites()
 {
-	GameObject* camera = m_scene->GetMainCamera();
+	Scene* scene = g_context->GetSubsystem<Scene>();
+
+	GameObject* camera = scene->GetMainCamera();
 	if (camera)
 	{
 		m_camera = camera->GetComponent<Camera>();
 
-		GameObject* skybox = m_scene->GetSkybox();
+		GameObject* skybox = scene->GetSkybox();
 		if (skybox)
 		{
 			m_skybox = skybox->GetComponent<Skybox>();
@@ -276,7 +270,7 @@ void Renderer::AcquirePrerequisites()
 
 void Renderer::DirectionalLightDepthPass()
 {
-	m_graphics->SetCullMode(CullFront);	
+	g_context->GetSubsystem<Graphics>()->SetCullMode(CullFront);
 
 	for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetCascadeCount(); cascadeIndex++)
 	{
@@ -310,10 +304,14 @@ void Renderer::DirectionalLightDepthPass()
 
 void Renderer::GBufferPass()
 {
-	for (const auto& currentShader : m_shaderPool->GetAllShaders()) // for each shader
+	ShaderPool* shaderPool = g_context->GetSubsystem<ShaderPool>();
+	MaterialPool* materialPool = g_context->GetSubsystem<MaterialPool>();
+	Graphics* graphics = g_context->GetSubsystem<Graphics>();
+
+	for (const auto& currentShader : shaderPool->GetAllShaders()) // for each shader
 	{	
 		currentShader->Set();
-		for (const auto& currentMaterial : m_materialPool->GetAllMaterials()) // for each material...
+		for (const auto& currentMaterial : materialPool->GetAllMaterials()) // for each material...
 		{
 			// ... that uses the current shader
 			if (currentMaterial->GetShader()->GetID() != currentShader->GetID())
@@ -371,7 +369,7 @@ void Renderer::GBufferPass()
 				if (meshFilter->SetBuffers())
 				{
 					// Set face culling (changes only if required)
-					m_graphics->SetCullMode(material->GetFaceCullMode());
+					graphics->SetCullMode(material->GetFaceCullMode());
 
 					// Render the mesh, finally!				
 					meshRenderer->Render(mesh->GetIndexCount());
@@ -451,9 +449,9 @@ void Renderer::PostProcessing() const
 		m_renderTexPing->GetShaderResourceView()
 	);
 
-	m_graphics->ResetRenderTarget();
-	m_graphics->ResetViewport();
-	m_graphics->Clear(m_camera->GetClearColor());
+	g_context->GetSubsystem<Graphics>()->ResetRenderTarget();
+	g_context->GetSubsystem<Graphics>()->ResetViewport();
+	g_context->GetSubsystem<Graphics>()->Clear(m_camera->GetClearColor());
 
 	// sharpening pass
 	m_shaderSharpening->Render(
@@ -470,11 +468,11 @@ void Renderer::Gizmos() const
 	if (!m_lineRenderer)
 		return;
 
-	if (!m_physics->GetPhysicsDebugDraw()->IsDirty())
+	if (!g_context->GetSubsystem<PhysicsWorld>()->GetPhysicsDebugDraw()->IsDirty())
 		return;
 
 	// Pass the line list from bullet to the line renderer component
-	m_lineRenderer->AddLineList(m_physics->GetPhysicsDebugDraw()->GetLines());
+	m_lineRenderer->AddLineList(g_context->GetSubsystem<PhysicsWorld>()->GetPhysicsDebugDraw()->GetLines());
 
 	// Set the buffer
 	m_lineRenderer->SetBuffer();

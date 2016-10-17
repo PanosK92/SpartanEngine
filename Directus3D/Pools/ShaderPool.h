@@ -23,13 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================
 #include "../Graphics/Shaders/ShaderVariation.h"
-#include "../Graphics/Graphics.h"
 //==============================================
 
-class ShaderPool
+class ShaderPool : public Object
 {
 public:
-	ShaderPool(std::shared_ptr<Graphics> d3d11device);
+	ShaderPool(Context* context);
 	~ShaderPool();
 
 	std::shared_ptr<ShaderVariation> CreateShaderBasedOnMaterial(
@@ -61,5 +60,4 @@ private:
 	);
 
 	std::vector<std::shared_ptr<ShaderVariation>> m_shaders;
-	std::shared_ptr<Graphics> m_graphics;
 };

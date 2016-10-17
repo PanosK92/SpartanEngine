@@ -28,5 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class __declspec(dllexport) ILogger
 {
 public:
+	virtual ~ILogger();
 	virtual void Log(const std::string& log, int type) = 0;
 };

@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshRenderer.h"
 #include "../Components/MeshFilter.h"
 #include "../Core/GameObject.h"
+#include "../Core/Context.h"
 #include "../Pools/MaterialPool.h"
 //=====================================
 
@@ -60,31 +61,19 @@ aiProcess_ConvertToLeftHanded;
 
 static int smoothAngle = 80;
 
-ModelImporter::ModelImporter()
+ModelImporter::ModelImporter(Context* context) : Object(context) 
 {
 	m_rootGameObject = nullptr;
-	m_meshPool = nullptr;
-	m_texturePool = nullptr;
-	m_shaderPool = nullptr;
-	m_threadPool = nullptr;
 }
 
 ModelImporter::~ModelImporter()
 {
 }
 
-void ModelImporter::Initialize(shared_ptr<MeshPool> meshPool, shared_ptr<TexturePool> texturePool, shared_ptr<ShaderPool> shaderPool, shared_ptr<MaterialPool> materialPool, shared_ptr<ThreadPool> threadPool)
-{
-	m_meshPool = meshPool;
-	m_texturePool = texturePool;
-	m_shaderPool = shaderPool;
-	m_materialPool = materialPool;
-	m_threadPool = threadPool;
-}
-
 void ModelImporter::LoadAsync(GameObject* gameObject, const string& filePath)
 {
-	m_threadPool->AddTask(std::bind(&ModelImporter::Load, this, gameObject, filePath));
+	ThreadPool* threadPool = g_context->GetSubsystem<ThreadPool>();
+	threadPool->AddTask(std::bind(&ModelImporter::Load, this, gameObject, filePath));
 }
 
 bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
@@ -120,7 +109,8 @@ bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
 	ProcessNode(scene->mRootNode, scene, gameObject);
 
 	// Normalize the scale of the model
-	m_meshPool->NormalizeModelScale(m_rootGameObject);
+	MeshPool* meshPool = g_context->GetSubsystem<MeshPool>();
+	meshPool->NormalizeModelScale(m_rootGameObject);
 
 	return true;
 }
@@ -277,7 +267,8 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		shared_ptr<Material> material = GenerateMaterialFromAiMaterial(assimpMaterial);
 
 		// Add it to the material pool
-		material = m_materialPool->Add(material);
+		MaterialPool* materialPool = g_context->GetSubsystem<MaterialPool>();
+		material = materialPool->Add(material);
 
 		// Set it in the mesh renderer component
 		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);
@@ -293,7 +284,10 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 
 shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 {
-	shared_ptr<Material> engineMaterial = make_shared<Material>(m_texturePool, m_shaderPool);
+	TexturePool* texturePool = g_context->GetSubsystem<TexturePool>();
+	ShaderPool* shaderPool = g_context->GetSubsystem<ShaderPool>();
+
+	shared_ptr<Material> engineMaterial = make_shared<Material>(texturePool, shaderPool);
 
 	//= NAME ====================================================================
 	aiString name;
@@ -370,7 +364,7 @@ void ModelImporter::AddTextureToMaterial(shared_ptr<Material> material, TextureT
 	string textureDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
 	FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
-	shared_ptr<Texture> texture = m_texturePool->Add(textureDestination);
+	shared_ptr<Texture> texture = g_context->GetSubsystem<TexturePool>()->Add(textureDestination);
 	if (texture)
 	{
 		texture->SetType(textureType);

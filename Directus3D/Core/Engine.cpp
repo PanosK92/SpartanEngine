@@ -39,22 +39,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Engine::Engine()
+Engine::Engine(Context* context) : Object(context) 
 {
-	m_engineSocket = nullptr;
-	m_scriptEngine = nullptr;
-	m_renderer = nullptr;
-	m_modelLoader = nullptr;
-	m_scene = nullptr;
-	m_input = nullptr;
-	m_timer = nullptr;
-	m_physicsWorld = nullptr;
-	m_meshPool = nullptr;
-	m_materialPool = nullptr;
-	m_texturePool = nullptr;
-	m_graphics = nullptr;
-	m_shaderPool = nullptr;
-	m_threadPool = nullptr;
+	m_context = context;
 }
 
 Engine::~Engine()
@@ -66,106 +53,71 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 {
 	EMIT_SIGNAL(SIGNAL_ENGINE_INITIALIZE);
 
-	// 1 - LOG
+	// Create a new context
+	m_context = new Context();
+
+	// Register self as a subsystem
+	m_context->RegisterSubsystem(this);
+
+	// Initialize Singletons
 	Log::Initialize();
+	ImageImporter::GetInstance();
 
-	// 2 - TIMER
-	m_timer = make_shared<Timer>();
-	m_timer->Initialize();
+	// Register subsystems that don't depend on any startup parameters
+	m_context->RegisterSubsystem(new Timer(m_context));
+	m_context->RegisterSubsystem(new ThreadPool(m_context));
+	m_context->RegisterSubsystem(new Graphics(m_context));
+	m_context->RegisterSubsystem(new Input(m_context));
+	m_context->RegisterSubsystem(new PhysicsWorld(m_context));
+	m_context->RegisterSubsystem(new MeshPool(m_context));
+	m_context->RegisterSubsystem(new TexturePool(m_context));
 
-	// 3 - THREAD POOL
-	m_threadPool = make_shared<ThreadPool>();
+	// Initialize subsystems that depend on external parameters
+	m_context->GetSubsystem<Graphics>()->Initialize(drawPaneHandle);
+	m_context->GetSubsystem<Input>()->Initialize(instance, windowHandle);
 
-	// 4 - GRAPHICS
-	m_graphics = make_shared<Graphics>();
-	m_graphics->Initialize(drawPaneHandle);
+	// Register subsystems dependent subsystems
+	m_context->RegisterSubsystem(new ScriptEngine(m_context)); // Depends on Input, Timer
+	m_context->RegisterSubsystem(new ShaderPool(m_context)); // Depends on Graphics
+	m_context->RegisterSubsystem(new MaterialPool(m_context));  // Depends on TexturePool, ShaderPool
+	m_context->RegisterSubsystem(new ModelImporter(m_context));  // Depends on MeshPool, TexturePool, ShaderPool, MaterialPool, ThreadPool
+	m_context->RegisterSubsystem(new Renderer(m_context)); // Depends on Graphics, Timer, PhysicsWorld, ShaderPool, MaterialPool
+	m_context->RegisterSubsystem(new Scene(m_context)); // Depends on MeshPool, TexturePool, ShaderPool, MaterialPool, ThreadPool, PhysicsWorld, Renderer
+	m_context->RegisterSubsystem(new Socket(m_context)); // Depends on everything (potentially)
 
-	// 5 - INPUT
-	m_input = make_shared<Input>();
-	m_input->Initialize(instance, windowHandle);
+	GameObjectPool::GetInstance().Initialize(m_context);
 
-	// 6 - PHYSICS ENGINE
-	m_physicsWorld = make_shared<PhysicsWorld>();
-	m_physicsWorld->Initialize();
-
-	// 7 - SCRIPT ENGINE
-	m_scriptEngine = make_shared<ScriptEngine>(m_timer, m_input);
-	m_scriptEngine->Initialize();
-
-	// 8 - SHADER POOL
-	m_shaderPool = make_shared<ShaderPool>(m_graphics);
-
-	// 9 - MESH POOL
-	m_meshPool = make_shared<MeshPool>();
-
-	// 10 - IMAGE LOADER
-	ImageImporter::GetInstance().Initialize(m_graphics, m_threadPool);
-
-	// 11 - TEXTURE POOL
-	m_texturePool = make_shared<TexturePool>();
-
-	// 12 - MATERIAL POOL
-	m_materialPool = make_shared<MaterialPool>(m_texturePool, m_shaderPool);
-
-	// 13 - MODEL LOADER
-	m_modelLoader = make_shared<ModelImporter>();
-	m_modelLoader->Initialize(m_meshPool, m_texturePool, m_shaderPool, m_materialPool, m_threadPool);
-
-	// 14 - RENDERER
-	m_renderer = make_shared<Renderer>();
-	m_scene = make_shared<Scene>(m_texturePool,
-		m_materialPool, 
-		m_meshPool, 
-		m_scriptEngine,
-		m_physicsWorld, 
-		m_modelLoader,
-		m_renderer, 
-		m_shaderPool,
-		m_threadPool
-	);
-	m_renderer->Initialize(m_graphics, m_timer, m_physicsWorld, m_scene, m_shaderPool, m_materialPool);
-
-	// 15 - GAMEOBJECT POOL
-	GameObjectPool::GetInstance().Initialize(
-		m_graphics, 
-		m_scene, 
-		m_renderer, 
-		m_meshPool, 
-		m_materialPool, 
-		m_texturePool,
-		m_shaderPool, 
-		m_physicsWorld, 
-		m_scriptEngine,
-		m_threadPool
-	);
-
-	// 16 - SCENE	
-	m_scene->Initialize();
-
-	// 17 - ENGINE SOCKET
-	m_engineSocket = make_shared<Socket>(this, m_scene, m_renderer, m_input, m_timer, m_modelLoader, m_physicsWorld, m_texturePool, m_graphics);
+	// Resolve the scene
+	m_context->GetSubsystem<Scene>()->Resolve();
 }
 
 void Engine::Update()
 {
 	EMIT_SIGNAL(SIGNAL_FRAME_START);
 
-	m_timer->Update();
+	// Get subsystems
+	Input* input = m_context->GetSubsystem<Input>();
+	Timer* timer = m_context->GetSubsystem<Timer>();
+	Renderer* renderer = m_context->GetSubsystem<Renderer>();
+	Scene* scene = m_context->GetSubsystem<Scene>();
+	PhysicsWorld* physicsWorld = m_context->GetSubsystem<PhysicsWorld>();
+
+	timer->Update();
+	input->Update();
 
 	//= PHYSICS ==================================
-	m_physicsWorld->Step(m_timer->GetDeltaTime());
+	physicsWorld->Step(timer->GetDeltaTime());
 	//============================================
 
-	//= UPDATE ===================================
-	m_input->Update();
+	//= SCENE ====================================	
 	GameObjectPool::GetInstance().Update();
-	m_scene->Update();
+	scene->Resolve();
 	//============================================
 
 	//= RENDERING ================================
-	m_timer->RenderStart();
-	m_renderer->Render();
-	m_timer->RenderEnd();
+	timer->RenderStart();
+	renderer->Render();
+	timer->RenderEnd();
 	//============================================
 
 	EMIT_SIGNAL(SIGNAL_FRAME_END);
@@ -183,9 +135,4 @@ void Engine::Shutdown()
 
 	// 1 - LOG
 	Log::Release();
-}
-
-shared_ptr<Socket> Engine::GetSocket()
-{
-	return m_engineSocket;
 }

@@ -27,10 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 ///=============================
 
-class TexturePool
+class TexturePool : public Object
 {
 public:
-	TexturePool();
+	TexturePool(Context* context);
 	~TexturePool();
 
 	std::shared_ptr<Texture> Add(std::shared_ptr<Texture> texture);

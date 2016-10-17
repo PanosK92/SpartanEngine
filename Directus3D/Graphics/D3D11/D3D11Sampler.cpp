@@ -38,7 +38,7 @@ D3D11Sampler::~D3D11Sampler()
 	SafeRelease(m_sampler);
 }
 
-bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, std::shared_ptr<Graphics> graphicsDevice)
+bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, Graphics* graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 

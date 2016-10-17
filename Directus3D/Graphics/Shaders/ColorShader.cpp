@@ -38,7 +38,7 @@ ColorShader::~ColorShader()
 
 }
 
-void ColorShader::Initialize(shared_ptr<Graphics> graphicsDevice)
+void ColorShader::Initialize(Graphics* graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 

@@ -74,17 +74,9 @@ GameObject::~GameObject()
 	m_hierarchyVisibility = true;
 }
 
-void GameObject::Initialize(shared_ptr<Graphics> graphicsDevice, shared_ptr<Scene> scene, shared_ptr<Renderer> renderer, shared_ptr<MeshPool> meshPool, shared_ptr<MaterialPool> materialPool, shared_ptr<TexturePool> texturePool, shared_ptr<ShaderPool> shaderPool, shared_ptr<PhysicsWorld> physics, shared_ptr<ScriptEngine> scriptEngine)
+void GameObject::Initialize(Context* context)
 {
-	m_graphics = graphicsDevice;
-	m_scene = scene;
-	m_renderer = renderer;
-	m_meshPool = meshPool;
-	m_materialPool = materialPool;
-	m_texturePool = texturePool;
-	m_shaderPool = shaderPool;
-	m_physics = physics;
-	m_scriptEngine = scriptEngine;
+	m_context = context;
 }
 
 void GameObject::Start()
@@ -216,21 +208,21 @@ Type* GameObject::AddComponent()
 	// Set some useful pointers.
 	component->g_gameObject = this;
 	component->g_transform = GetTransform();
-	component->g_graphicsDevice = m_graphics;
-	component->g_meshPool = m_meshPool;
-	component->g_scene = m_scene;
-	component->g_renderer = m_renderer;
-	component->g_materialPool = m_materialPool;
-	component->g_texturePool = m_texturePool;
-	component->g_shaderPool = m_shaderPool;
-	component->g_physicsWorld = m_physics;
-	component->g_scriptEngine = m_scriptEngine;
+	component->g_graphicsDevice = m_context->GetSubsystem<Graphics>();
+	component->g_meshPool = m_context->GetSubsystem<MeshPool>();
+	component->g_scene = m_context->GetSubsystem<Scene>();
+	component->g_renderer = m_context->GetSubsystem<Renderer>();
+	component->g_materialPool = m_context->GetSubsystem<MaterialPool>();
+	component->g_texturePool = m_context->GetSubsystem<TexturePool>();
+	component->g_shaderPool = m_context->GetSubsystem<ShaderPool>();
+	component->g_physicsWorld = m_context->GetSubsystem<PhysicsWorld>();
+	component->g_scriptEngine = m_context->GetSubsystem<ScriptEngine>();
 
 	// Run Initialize().
 	component->Initialize();
 
 	// Do a scene analysis
-	m_scene->AnalyzeGameObjects();
+	m_context->GetSubsystem<Scene>()->Resolve();
 
 	// Return it as a component of the requested type
 	return dynamic_cast<Type*>(component);
@@ -298,7 +290,7 @@ void GameObject::RemoveComponent()
 		++it;
 	}
 
-	m_scene->AnalyzeGameObjects();
+	m_context->GetSubsystem<Scene>()->Resolve();
 }
 
 void GameObject::RemoveComponentByID(const string& id)
@@ -316,7 +308,7 @@ void GameObject::RemoveComponentByID(const string& id)
 		++it;
 	}
 
-	m_scene->AnalyzeGameObjects();
+	m_context->GetSubsystem<Scene>()->Resolve();
 }
 
 Transform* GameObject::GetTransform()

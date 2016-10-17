@@ -21,12 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include "MeshPool.h"
-#include "../Graphics/Graphics.h"
+//= INCLUDES ============================
 #include "../Pools/MaterialPool.h"
 #include "../Multithreading/ThreadPool.h"
-//================================
+//=======================================
 
 class GameObject;
 #define NULL_GAMEOBJECT_ID "-1"
@@ -43,18 +41,7 @@ public:
 		return instance;
 	}
 
-	void Initialize(
-		std::shared_ptr<Graphics> d3d11Device,
-		std::shared_ptr<Scene> scene, 
-		std::shared_ptr<Renderer> renderer, 
-		std::shared_ptr<MeshPool> meshPool, 
-		std::shared_ptr<MaterialPool> materialPool,
-		std::shared_ptr<TexturePool> texturePool, 
-		std::shared_ptr<ShaderPool> shaderPool, 
-		std::shared_ptr<PhysicsWorld> physics, 
-		std::shared_ptr<ScriptEngine> scriptEngine,
-		std::shared_ptr<ThreadPool> threadPool
-	);
+	void Initialize(Context* context);
 	void Start();
 	void Update();
 	void Release();
@@ -90,15 +77,5 @@ public:
 
 private:
 	std::vector<GameObject*> m_gameObjectPool;
-
-	std::shared_ptr<Graphics> m_graphics;
-	std::shared_ptr<Scene> m_scene;
-	std::shared_ptr<Renderer> m_renderer;
-	std::shared_ptr<MeshPool> m_meshPool;
-	std::shared_ptr<MaterialPool> m_materialPool;
-	std::shared_ptr<TexturePool> m_texturePool;
-	std::shared_ptr<ShaderPool> m_shaderPool;
-	std::shared_ptr<PhysicsWorld> m_physics;
-	std::shared_ptr<ScriptEngine> m_scriptEngine;
-	std::shared_ptr<ThreadPool> m_threadPool;
+	Context* m_context;
 };

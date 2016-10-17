@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DX8Input.h"
 #include "../Math/Vector2.h"
 #include <memory>
-
+#include "../Core/Object.h"
 //==========================
 
 enum KeyCode
@@ -103,10 +103,10 @@ enum KeyCode
 	PageDown
 };
 
-class Input
+class Input : public Object
 {
 public:
-	Input();
+	Input(Context* context);
 	~Input();
 
 	void Initialize(HINSTANCE instance, HWND handle);

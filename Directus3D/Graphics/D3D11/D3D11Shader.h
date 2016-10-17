@@ -39,7 +39,7 @@ public:
 	D3D11Shader();
 	~D3D11Shader();
 
-	void Initialize(std::shared_ptr<Graphics> d3d11Device);
+	void Initialize(Graphics* d3d11Device);
 	bool Load(std::string path);
 	bool SetInputLayout(InputLayout inputLayout);
 	bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
@@ -81,5 +81,5 @@ private:
 	bool m_layoutHasBeenSet;
 
 	//= DEPENDENCIES============
-	std::shared_ptr<Graphics> m_graphics;
+	Graphics* m_graphics;
 };

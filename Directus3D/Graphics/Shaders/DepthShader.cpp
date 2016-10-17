@@ -40,7 +40,7 @@ DepthShader::~DepthShader()
 
 }
 
-void DepthShader::Initialize(shared_ptr<Graphics> graphicsDevice)
+void DepthShader::Initialize(Graphics* graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 

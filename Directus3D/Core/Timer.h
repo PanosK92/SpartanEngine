@@ -23,18 +23,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 #include <Windows.h>
-#include <memory>
+#include "Object.h"
 //==================
 
 class Stopwatch;
 
-class __declspec(dllexport) Timer
+class __declspec(dllexport) Timer : public Object
 {
 public:
-	Timer();
+	Timer(Context* context);
 	~Timer();
 
-	void Initialize();
 	void Update();
 	void Reset();
 

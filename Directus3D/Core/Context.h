@@ -16,24 +16,37 @@ DEALINGS IN THE SOFTWARE. */
 
 #pragma once
 
-//= INCLUDES =======
-#include <windows.h>
-#include <memory>
-#include "Context.h"
-//==================
+//= INCLUDES ======
+#include "Object.h"
+#include <vector>
+//=================
 
-class Stopwatch;
-
-class __declspec(dllexport) Engine : public Object
+class Context
 {
 public:
-	Engine(Context* context);
-	~Engine();
+	Context();
+	~Context();
 
-	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
-	void Update();
-	void Shutdown();
+	// Register a subsystem
+	void RegisterSubsystem(Object* subsystem);
+	// Get a subsystem
+	template <class T> T* GetSubsystem();
 
 private:
-	Context* m_context;
+	std::vector<Object*> m_subsystems;
 };
+
+template <class T>
+T* Context::GetSubsystem()
+{
+	for (auto subsystem : m_subsystems)
+	{
+		// casting failure == nullptr
+		T* typed_cmp = dynamic_cast<T*>(subsystem);
+
+		if (typed_cmp)
+			return typed_cmp;
+	}
+
+	return nullptr;
+}

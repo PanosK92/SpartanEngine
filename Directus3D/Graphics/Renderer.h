@@ -38,17 +38,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Texture.h"
 #include "../Components/LineRenderer.h"
 #include "D3D11/D3D11RenderTexture.h"
+#include "../Core/Object.h"
 //====================================
 
 class MeshFilter;
 
-class Renderer
+class Renderer :public Object
 {
 public:
-	Renderer();
+	Renderer(Context* context);
 	~Renderer();
 
-	void Initialize(std::shared_ptr<Graphics> d3d11device, std::shared_ptr<Timer> timer, std::shared_ptr<PhysicsWorld> physics, std::shared_ptr<Scene> scene, std::shared_ptr<ShaderPool> shaderPool, std::shared_ptr<MaterialPool> materialPool);
 	void Render();
 	void SetResolution(int width, int height);
 	void Clear();
@@ -62,16 +62,8 @@ public:
 	//=================================
 
 private:
-	//= DEPENDENCIES ================
-	std::shared_ptr<Graphics> m_graphics;
-	std::shared_ptr<GBuffer> m_GBuffer;
 	std::shared_ptr<FullScreenQuad> m_fullScreenQuad;
-	std::shared_ptr<Timer> m_timer;
-	std::shared_ptr<PhysicsWorld> m_physics;
-	std::shared_ptr<Scene> m_scene;
-	std::shared_ptr<ShaderPool> m_shaderPool;
-	std::shared_ptr<MaterialPool> m_materialPool;
-	//===============================
+	std::shared_ptr<GBuffer> m_GBuffer;
 
 	// GAMEOBJECTS ==============================
 	std::vector<GameObject*> m_renderables;
