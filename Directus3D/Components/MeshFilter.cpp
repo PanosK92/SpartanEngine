@@ -73,7 +73,7 @@ void MeshFilter::Serialize()
 
 void MeshFilter::Deserialize()
 {
-	m_mesh = g_meshPool->GetMeshByID(Serializer::ReadSTR());
+	m_mesh = g_context->GetSubsystem<MeshPool>()->GetMeshByID(Serializer::ReadSTR());
 	CreateBuffers();
 }
 
@@ -83,10 +83,10 @@ void MeshFilter::SetDefaultMesh(DefaultMesh defaultMesh)
 	switch (defaultMesh)
 	{
 	case Cube:
-		m_mesh = g_meshPool->GetDefaultCube();
+		m_mesh = g_context->GetSubsystem<MeshPool>()->GetDefaultCube();
 		break;
 	case Quad:
-		m_mesh = g_meshPool->GetDefaultQuad();
+		m_mesh = g_context->GetSubsystem<MeshPool>()->GetDefaultQuad();
 		break;
 	default:
 		m_mesh = nullptr;
@@ -100,7 +100,7 @@ void MeshFilter::SetDefaultMesh(DefaultMesh defaultMesh)
 void MeshFilter::Set(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
 {
 	// Add the mesh data to the pool so it gets initialized properly
-	m_mesh = g_meshPool->Add(name, rootGameObjectID, vertices, indices);
+	m_mesh = g_context->GetSubsystem<MeshPool>()->Add(name, rootGameObjectID, vertices, indices);
 
 	// Make the mesh re-create the buffers whenever it updates.
 	m_mesh->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
@@ -125,7 +125,7 @@ bool MeshFilter::SetBuffers() const
 	m_indexBuffer->SetIA();
 
 	// Set the type of primitive that should be rendered from this vertex buffer
-	g_graphicsDevice->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	g_context->GetSubsystem<Graphics>()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	return true;
 }
@@ -159,10 +159,10 @@ void MeshFilter::CreateBuffers()
 		return;
 
 	m_vertexBuffer = make_shared<D3D11Buffer>();
-	m_vertexBuffer->Initialize(g_graphicsDevice);
+	m_vertexBuffer->Initialize(g_context->GetSubsystem<Graphics>());
 	m_vertexBuffer->CreateVertexBuffer(m_mesh->GetVertices());
 
 	m_indexBuffer = make_shared<D3D11Buffer>();
-	m_indexBuffer->Initialize(g_graphicsDevice);
+	m_indexBuffer->Initialize(g_context->GetSubsystem<Graphics>());
 	m_indexBuffer->CreateIndexBuffer(m_mesh->GetIndices());
 }

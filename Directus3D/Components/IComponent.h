@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====
 #include <string>
-#include <memory>
 //===============
 
 class GameObject;
@@ -37,6 +36,7 @@ class MeshPool;
 class MaterialPool;
 class TexturePool;
 class ShaderPool;
+class Context;
 
 class __declspec(dllexport) IComponent
 {
@@ -55,17 +55,12 @@ public:
 	bool g_enabled;
 	//================================
 
-	//= SOME USEFUL POINTERS =========
+	// The GameObject the component is attached to
 	GameObject* g_gameObject;
+
+	// The only always existing component
 	Transform* g_transform;
-	Graphics* g_graphicsDevice;
-	Scene* g_scene;
-	Renderer* g_renderer;
-	MeshPool* g_meshPool;
-	MaterialPool* g_materialPool;
-	PhysicsWorld* g_physicsWorld;
-	ScriptEngine* g_scriptEngine;
-	TexturePool* g_texturePool;
-	ShaderPool* g_shaderPool;
-	//================================
+
+	// Engine contect
+	Context* g_context;
 };

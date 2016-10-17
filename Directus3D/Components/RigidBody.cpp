@@ -473,7 +473,7 @@ void RigidBody::AddBodyToWorld()
 	SetRotationLock(m_rotationLock);
 
 	// PHYSICS WORLD - ADD
-	g_physicsWorld->GetWorld()->addRigidBody(m_rigidBody.get());
+	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->addRigidBody(m_rigidBody.get());
 
 	if (m_mass > 0.0f)
 		Activate();
@@ -494,7 +494,7 @@ void RigidBody::RemoveBodyFromWorld()
 
 	if (m_inWorld)
 	{
-		g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody.get());
+		g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeRigidBody(m_rigidBody.get());
 		m_inWorld = false;
 	}
 }
@@ -504,7 +504,7 @@ void RigidBody::UpdateGravity() const
 	if (!m_rigidBody)
 		return;
 
-	btDiscreteDynamicsWorld* world = g_physicsWorld->GetWorld();
+	btDiscreteDynamicsWorld* world = g_context->GetSubsystem<PhysicsWorld>()->GetWorld();
 
 	int flags = m_rigidBody->getFlags();
 	if (m_useGravity)
@@ -521,10 +521,10 @@ void RigidBody::UpdateGravity() const
 
 void RigidBody::DeleteBtRigidBody()
 {
-	if (!m_rigidBody || !g_physicsWorld)
+	if (!m_rigidBody)
 		return;
 
-	g_physicsWorld->GetWorld()->removeRigidBody(m_rigidBody.get());
+	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeRigidBody(m_rigidBody.get());
 	delete m_rigidBody->getMotionState();
 }
 

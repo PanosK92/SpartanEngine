@@ -208,15 +208,7 @@ Type* GameObject::AddComponent()
 	// Set some useful pointers.
 	component->g_gameObject = this;
 	component->g_transform = GetTransform();
-	component->g_graphicsDevice = m_context->GetSubsystem<Graphics>();
-	component->g_meshPool = m_context->GetSubsystem<MeshPool>();
-	component->g_scene = m_context->GetSubsystem<Scene>();
-	component->g_renderer = m_context->GetSubsystem<Renderer>();
-	component->g_materialPool = m_context->GetSubsystem<MaterialPool>();
-	component->g_texturePool = m_context->GetSubsystem<TexturePool>();
-	component->g_shaderPool = m_context->GetSubsystem<ShaderPool>();
-	component->g_physicsWorld = m_context->GetSubsystem<PhysicsWorld>();
-	component->g_scriptEngine = m_context->GetSubsystem<ScriptEngine>();
+	component->g_context = m_context;
 
 	// Run Initialize().
 	component->Initialize();

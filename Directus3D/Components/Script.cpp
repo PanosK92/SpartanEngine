@@ -23,9 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Script.h"
 #include "../IO/Serializer.h"
 #include "../IO/FileSystem.h"
-#include "../Core/Helper.h"
+#include "../Core/Context.h"
 #include "../Core/Settings.h"
-#include "../IO/Log.h"
 //===========================
 
 //= NAMESPACES =====
@@ -92,7 +91,7 @@ bool Script::AddScript(const string& filePath)
 {
 	// Instantiate the script
 	m_scriptInstance = make_shared<ScriptInstance>();
-	m_scriptInstance->Instantiate(filePath, g_gameObject, g_scriptEngine);
+	m_scriptInstance->Instantiate(filePath, g_gameObject, g_context->GetSubsystem<ScriptEngine>());
 
 	// Check if the script has been instantiated successfully.
 	if (!m_scriptInstance->IsInstantiated())

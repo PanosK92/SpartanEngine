@@ -23,6 +23,7 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 
 # Features under development
 - Custom format resources (prefabs, materials and so on).
+- General engine architecture improvements.
 
 # Planned Features
 - Audio source and listener components.

@@ -51,7 +51,7 @@ MeshRenderer::~MeshRenderer()
 //= ICOMPONENT ===============================================================
 void MeshRenderer::Initialize()
 {
-	m_material = g_materialPool->GetMaterialStandardDefault();
+	m_material = g_context->GetSubsystem<MaterialPool>()->GetMaterialStandardDefault();
 }
 
 void MeshRenderer::Start()
@@ -78,7 +78,7 @@ void MeshRenderer::Serialize()
 
 void MeshRenderer::Deserialize()
 {
-	m_material = g_materialPool->GetMaterialByID(Serializer::ReadSTR());
+	m_material = g_context->GetSubsystem<MaterialPool>()->GetMaterialByID(Serializer::ReadSTR());
 	m_castShadows = Serializer::ReadBool();
 	m_receiveShadows = Serializer::ReadBool();
 }
