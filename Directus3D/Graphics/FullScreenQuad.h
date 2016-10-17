@@ -32,14 +32,14 @@ public:
 	FullScreenQuad();
 	~FullScreenQuad();
 
-	bool Initialize(int, int, std::shared_ptr<Graphics> graphicsDevice);
+	bool Initialize(int, int, Graphics* graphicsDevice);
 	void SetBuffers();
 	int GetIndexCount();
 
 private:
 	bool InitializeBuffers(int, int);
 
-	std::shared_ptr<Graphics> m_graphics;
+	Graphics* m_graphics;
 	ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
 	int m_vertexCount, m_indexCount;
 };

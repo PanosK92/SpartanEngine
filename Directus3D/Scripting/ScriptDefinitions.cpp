@@ -38,11 +38,9 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-void ScriptDefinitions::Register(asIScriptEngine* scriptEngine, shared_ptr<Input> input, shared_ptr<Timer> timer)
+void ScriptDefinitions::Register(asIScriptEngine* scriptEngine, Context* context)
 {
 	m_scriptEngine = scriptEngine;
-	m_input = input;
-	m_timer = timer;
 
 	RegisterEnumerations();
 	RegisterTypes();
@@ -147,7 +145,7 @@ void ScriptDefinitions::RegisterSettings()
 ------------------------------------------------------------------------------*/
 void ScriptDefinitions::RegisterInput()
 {
-	m_scriptEngine->RegisterGlobalProperty("Input input", m_input.get());
+	m_scriptEngine->RegisterGlobalProperty("Input input", m_context->GetSubsystem<Input>());
 	m_scriptEngine->RegisterObjectMethod("Input", "Vector2 GetMousePosition()", asMETHOD(Input, GetMousePosition), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Input", "Vector2 GetMousePositionDelta()", asMETHOD(Input, GetMousePositionDelta), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Input", "bool GetKey(KeyCode key)", asMETHOD(Input, GetKey), asCALL_THISCALL);
@@ -158,7 +156,7 @@ void ScriptDefinitions::RegisterInput()
 ------------------------------------------------------------------------------*/
 void ScriptDefinitions::RegisterTime()
 {
-	m_scriptEngine->RegisterGlobalProperty("Time time", m_timer.get());
+	m_scriptEngine->RegisterGlobalProperty("Time time", m_context->GetSubsystem<Timer>());
 	m_scriptEngine->RegisterObjectMethod("Time", "float GetDeltaTime()", asMETHOD(Timer, GetDeltaTime), asCALL_THISCALL);
 	//m_scriptEngine->RegisterObjectProperty("Time", "float deltaTime", asOFFSET(Timer, GetDeltaTime));
 }

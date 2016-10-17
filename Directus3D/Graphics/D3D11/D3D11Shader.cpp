@@ -54,7 +54,7 @@ D3D11Shader::~D3D11Shader()
 	m_samplers.shrink_to_fit();
 }
 
-void D3D11Shader::Initialize(shared_ptr<Graphics> graphicsDevice)
+void D3D11Shader::Initialize(Graphics*graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 

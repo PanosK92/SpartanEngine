@@ -60,11 +60,10 @@ XPM files[reading, writing]
 
 #define FREEIMAGE_LIB
 
-//= INCLUDES ==========================
-#include "../Graphics/Graphics.h"
+//= INCLUDES ============================
 #include <vector>
 #include "../Multithreading/ThreadPool.h"
-//=====================================
+//=======================================
 
 // Forward declaration to avoid dependencies
 // when used in editor mode
@@ -82,7 +81,6 @@ public:
 	ImageImporter();
 	~ImageImporter();
 
-	void Initialize(std::shared_ptr<Graphics> D3D11evice, std::shared_ptr<ThreadPool> thraedPool);
 	void LoadAsync(const std::string& filePath);
 	bool Load(const std::string& filePath);
 	bool Load(const std::string& filePath, int width, int height);
@@ -92,7 +90,6 @@ public:
 	/*------------------------------------------------------------------------------
 									[PROPERTIES]
 	------------------------------------------------------------------------------*/
-	ID3D11ShaderResourceView* GetAsD3D11ShaderResourceView();
 	unsigned char* GetRGBA();
 	unsigned char* GetRGBACopy();
 	unsigned char* GetRGBCopy();
@@ -103,6 +100,7 @@ public:
 	bool IsGrayscale();
 	bool IsTransparent();
 	std::string GetPath();
+	int GetChannels() { return m_channels; }
 
 private:
 	bool CheckIfGrayscale();
@@ -118,8 +116,4 @@ private:
 	std::string m_path;
 	bool m_grayscale;
 	bool m_transparent;
-
-	// dependencies
-	std::shared_ptr<Graphics> m_graphics;
-	std::shared_ptr<ThreadPool> m_threadPool;
 };

@@ -51,7 +51,7 @@ D3D11RenderTexture::~D3D11RenderTexture()
 	SafeRelease(m_renderTargetTexture);
 }
 
-bool D3D11RenderTexture::Initialize(std::shared_ptr<Graphics> graphicsDevice, int textureWidth, int textureHeight)
+bool D3D11RenderTexture::Initialize(Graphics* graphicsDevice, int textureWidth, int textureHeight)
 {
 	m_graphics = graphicsDevice;
 	m_width = textureHeight;

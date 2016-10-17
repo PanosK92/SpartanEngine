@@ -17,23 +17,23 @@ DEALINGS IN THE SOFTWARE. */
 #pragma once
 
 //= INCLUDES =======
-#include <windows.h>
-#include <memory>
 #include "Context.h"
 //==================
 
-class Stopwatch;
-
-class __declspec(dllexport) Engine : public Object
+Context::Context()
 {
-public:
-	Engine(Context* context);
-	~Engine();
 
-	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
-	void Update();
-	void Shutdown();
+}
 
-private:
-	Context* m_context;
-};
+Context::~Context()
+{
+
+}
+
+void Context::RegisterSubsystem(Object* subsystem)
+{
+	if (!subsystem)
+		return;
+
+	m_subsystems.push_back(subsystem);
+}

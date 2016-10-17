@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ==============
 #include <vector>
 #include <thread>
 #include <mutex>
 #include <queue>
-//===============
+#include "../Core/Object.h"
+//=========================
 
 //#define ADD_TASK(task) ThreadPool::AddTask(task)
 
@@ -42,10 +43,10 @@ private:
 	functionType m_function;
 };
 
-class ThreadPool
+class ThreadPool : public Object
 {
 public:
-	ThreadPool();
+	ThreadPool(Context* context);
 	~ThreadPool();
 
 	// This function is invoked by the threads

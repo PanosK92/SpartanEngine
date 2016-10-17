@@ -22,18 +22,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ====================
-#include "ShaderPool.h"
-#include "TexturePool.h"
 #include "../Graphics/Material.h"
 //===============================
 
 #define MATERIAL_DEFAULT_ID "MATERIAL_DEFAULT_ID"
 #define MATERIAL_DEFAULT_SKYBOX_ID "MATERIAL_DEFAULT_SKYBOX_ID"
 
-class MaterialPool
+class MaterialPool : public Object
 {
 public:
-	MaterialPool(std::shared_ptr<TexturePool> texturePool, std::shared_ptr<ShaderPool> shaderPool);
+	MaterialPool(Context* context);
 	~MaterialPool();
 
 	/*------------------------------------------------------------------------------
@@ -53,8 +51,6 @@ public:
 private:
 	std::vector<std::shared_ptr<Material>> m_materials;
 
-	std::shared_ptr<TexturePool> m_texturePool;
-	std::shared_ptr<ShaderPool> m_shaderPool;
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/

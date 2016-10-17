@@ -35,7 +35,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Material::Material(shared_ptr<TexturePool> texturePool, shared_ptr<ShaderPool> shaderPool)
+Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 {
 	m_ID = GENERATE_GUID;
 	m_name = DATA_NOT_ASSIGNED;
@@ -160,7 +160,7 @@ void Material::SetTexture(shared_ptr<Texture> texture)
 	if (!texture)
 		return;
 
-	// Overwrite
+	// If a texture of that type exists, overwrite it
 	for (auto textureTemp : m_textures)
 		if (textureTemp->GetType() == texture->GetType())
 		{

@@ -34,7 +34,7 @@ public:
 	DepthShader();
 	~DepthShader();
 
-	void Initialize(std::shared_ptr<Graphics> graphicsDevice);
+	void Initialize(Graphics* graphicsDevice);
 	void Render(int indexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
 
 private:
@@ -47,6 +47,6 @@ private:
 	void RenderShader(int indexCount);
 
 	std::shared_ptr<D3D11Buffer> m_defaultBuffer;
-	std::shared_ptr<Graphics> m_graphics;
+	Graphics* m_graphics;
 	std::shared_ptr<D3D11Shader> m_shader;
 };

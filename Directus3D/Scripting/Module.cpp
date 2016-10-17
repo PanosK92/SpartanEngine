@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/FileSystem.h"
 //========================================
 
-Module::Module(const string& moduleName, shared_ptr<ScriptEngine> scriptEngine)
+Module::Module(const string& moduleName, ScriptEngine* scriptEngine)
 {
 	m_builder = nullptr;
 	m_moduleName = moduleName;

@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Transform.h"
 #include "../Core/Scene.h"
 #include "../Signals/Signaling.h"
+#include "../Core/Context.h"
 //==================================
 
 //= NAMESPACES =====
@@ -35,14 +36,7 @@ using namespace std;
 
 GameObjectPool::GameObjectPool()
 {
-	m_graphics = nullptr;
-	m_scene = nullptr;
-	m_meshPool = nullptr;
-	m_materialPool = nullptr;
-	m_texturePool = nullptr;
-	m_shaderPool = nullptr;
-	m_physics = nullptr;
-	m_scriptEngine = nullptr;
+
 }
 
 GameObjectPool::~GameObjectPool()
@@ -50,30 +44,9 @@ GameObjectPool::~GameObjectPool()
 	Clear();
 }
 
-void GameObjectPool::Initialize(
-	shared_ptr<Graphics> d3d11Device, 
-	shared_ptr<Scene> scene, 
-	shared_ptr<Renderer> renderer, 
-	shared_ptr<MeshPool> meshPool, 
-	shared_ptr<MaterialPool> materialPool, 
-	shared_ptr<TexturePool> texturePool, 
-	shared_ptr<ShaderPool> shaderPool, 
-	shared_ptr<PhysicsWorld> physics, 
-	shared_ptr<ScriptEngine> scriptEngine,
-	shared_ptr<ThreadPool> threadPool
-	)
+void GameObjectPool::Initialize(Context* context)
 {
-	m_graphics = d3d11Device;
-	m_scene = scene;
-	m_renderer = renderer;
-	m_meshPool = meshPool;
-	m_materialPool = materialPool;
-	m_texturePool = texturePool;
-	m_shaderPool = shaderPool;
-	m_physics = physics;
-	m_scriptEngine = scriptEngine;
-	m_threadPool = threadPool;
-
+	m_context = context;
 	CONNECT_TO_SIGNAL(SIGNAL_ENGINE_START, std::bind(&GameObjectPool::Start, this));
 }
 
@@ -289,6 +262,7 @@ void GameObjectPool::RemoveGameObject(GameObject* gameObject)
 // Removes a gameobject but leaves the parent and the children as is
 void GameObjectPool::RemoveSingleGameObject(GameObject* gameObject)
 {
+	Scene* scene = m_context->GetSubsystem<Scene>();
 	for (auto it = m_gameObjectPool.begin(); it < m_gameObjectPool.end();)
 	{
 		GameObject* temp = *it;
@@ -296,7 +270,7 @@ void GameObjectPool::RemoveSingleGameObject(GameObject* gameObject)
 		{
 			delete temp;
 			it = m_gameObjectPool.erase(it);
-			m_scene->AnalyzeGameObjects();
+			scene->Resolve();
 			return;
 		}
 		++it;
@@ -313,9 +287,9 @@ void GameObjectPool::AddGameObjectToPool(GameObject* gameObjectIn)
 		if (gameObjectIn->GetID() == gameObject->GetID())
 			return;
 
-	gameObjectIn->Initialize(m_graphics, m_scene, m_renderer, m_meshPool, m_materialPool, m_texturePool, m_shaderPool, m_physics, m_scriptEngine);
+	gameObjectIn->Initialize(m_context);
 	m_gameObjectPool.push_back(gameObjectIn);
 	EMIT_SIGNAL(SIGNAL_HIERARCHY_CHANGED);
 
-	m_scene->AnalyzeGameObjects();
+	m_context->GetSubsystem<Scene>()->Resolve();
 }

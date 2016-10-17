@@ -38,7 +38,7 @@ D3D11InputLayout::~D3D11InputLayout()
 }
 
 //= MISC ==================================================
-void D3D11InputLayout::Initialize(std::shared_ptr<Graphics> graphicsDevice)
+void D3D11InputLayout::Initialize(Graphics* graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 }

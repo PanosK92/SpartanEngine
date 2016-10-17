@@ -44,7 +44,7 @@ DeferredShader::~DeferredShader()
 
 }
 
-void DeferredShader::Initialize(shared_ptr<Graphics> graphicsDevice)
+void DeferredShader::Initialize(Graphics* graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 

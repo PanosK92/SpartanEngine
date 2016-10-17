@@ -33,7 +33,7 @@ using namespace std;
 class ShadowMap
 {
 public:
-	ShadowMap(shared_ptr<Graphics> device, int cascadeNumber, Light* light, Camera* camera, int resolution, float nearPlane, float farPlane)
+	ShadowMap(Graphics* device, int cascadeNumber, Light* light, Camera* camera, int resolution, float nearPlane, float farPlane)
 	{
 		m_resolution = resolution;
 		m_nearPlane = nearPlane;

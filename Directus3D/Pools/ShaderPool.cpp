@@ -19,17 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========
+//= INCLUDES ===============
 #include "ShaderPool.h"
-//=====================
+#include "../Core/Context.h"
+//==========================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
 
-ShaderPool::ShaderPool(shared_ptr<Graphics> graphicsDevice)
+ShaderPool::ShaderPool(Context* context) : Object(context) 
 {
-	m_graphics = graphicsDevice;
+
 }
 
 ShaderPool::~ShaderPool()
@@ -77,7 +78,7 @@ shared_ptr<ShaderVariation> ShaderPool::CreateShaderBasedOnMaterial(
 		emission,
 		mask,
 		cubemap,
-		m_graphics
+		g_context->GetSubsystem<Graphics>()
 	);
 
 	// Add the shader to the pool and return it

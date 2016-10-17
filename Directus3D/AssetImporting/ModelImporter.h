@@ -33,13 +33,12 @@ struct aiScene;
 struct aiMaterial;
 struct aiMesh;
 
-class ModelImporter
+class ModelImporter : public Object
 {
 public:
-	ModelImporter();
+	ModelImporter(Context* context);
 	~ModelImporter();
 
-	void Initialize(std::shared_ptr<MeshPool> meshPool, std::shared_ptr<TexturePool> texturePool, std::shared_ptr<ShaderPool> shaderPool, std::shared_ptr<MaterialPool> materialPool, std::shared_ptr<ThreadPool> threadPool);
 	void LoadAsync(GameObject* gameObject, const std::string& filePath);
 	bool Load(GameObject* gameObject, const std::string& filePath);
 
@@ -62,10 +61,4 @@ private:
 	void AddTextureToMaterial(std::shared_ptr<Material> material, TextureType textureType, const std::string& texturePath);
 	std::string FindTexture(std::string texturePath);
 	std::string TryPathWithMultipleExtensions(const std::string& fullpath);
-
-	std::shared_ptr<MeshPool> m_meshPool;
-	std::shared_ptr<TexturePool> m_texturePool;
-	std::shared_ptr<ShaderPool> m_shaderPool;
-	std::shared_ptr<MaterialPool> m_materialPool;
-	std::shared_ptr<ThreadPool> m_threadPool;
 };

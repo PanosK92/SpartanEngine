@@ -19,35 +19,25 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ===============================
 #include "Socket.h"
-#include "Scene.h"
-#include "Timer.h"
 #include "../Pools/GameObjectPool.h"
 #include "../IO/Log.h"
 #include "../Components/MeshRenderer.h"
 #include "../Graphics/Renderer.h"
-#include "../AssetImporting/ModelImporter.h"
 #include "../IO/FileSystem.h"
 #include "Settings.h"
 #include "../Signals/Signaling.h"
-//=====================================
+#include "../AssetImporting/ModelImporter.h"
+//==========================================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
 
-Socket::Socket(Engine* engine, shared_ptr<Scene> scene, shared_ptr<Renderer> renderer, shared_ptr<Input> input, shared_ptr<Timer> timer, shared_ptr<ModelImporter> modelLoader, shared_ptr<PhysicsWorld> physics, shared_ptr<TexturePool> texturePool, shared_ptr<Graphics> graphicsDevice)
+Socket::Socket(Context* context) : Object(context)
 {
-	m_engine = engine;
-	m_scene = scene;
-	m_renderer = renderer;
-	m_timer = timer;
-	m_modelLoader = modelLoader;
-	m_physics = physics;
-	m_texturePool = texturePool;
-	m_graphics = graphicsDevice;
-	m_input = input;
+
 }
 
 Socket::~Socket()
@@ -69,7 +59,7 @@ void Socket::StopEngine()
 
 void Socket::Update() const
 {
-	m_engine->Update();
+	g_context->GetSubsystem<Engine>()->Update();
 }
 
 //=============================================================================
@@ -77,39 +67,39 @@ void Socket::Update() const
 //= IO ========================================================================
 void Socket::LoadModel(const string& filePath)
 {
-	m_modelLoader->Load(new GameObject(), filePath);
+	g_context->GetSubsystem<ModelImporter>()->Load(new GameObject(), filePath);
 }
 
 void Socket::LoadModelAsync(const string& filePath)
 {
-	m_modelLoader->LoadAsync(new GameObject(), filePath);
+	g_context->GetSubsystem<ModelImporter>()->LoadAsync(new GameObject(), filePath);
 }
 
 void Socket::SaveSceneToFileAsync(const string& filePath)
 {
-	return m_scene->SaveToFileAsync(filePath);
+	return g_context->GetSubsystem<Scene>()->SaveToFileAsync(filePath);
 }
 
 void Socket::LoadSceneFromFileAsync(const string& filePath)
 {
-	return m_scene->LoadFromFileAsync(filePath);
+	return g_context->GetSubsystem<Scene>()->LoadFromFileAsync(filePath);
 }
 
 bool Socket::SaveSceneToFile(const string& filePath)
 {
-	return m_scene->SaveToFile(filePath);
+	return g_context->GetSubsystem<Scene>()->SaveToFile(filePath);
 }
 
 bool Socket::LoadSceneFromFile(const string& filePath)
 {
-	return m_scene->LoadFromFile(filePath);
+	return g_context->GetSubsystem<Scene>()->LoadFromFile(filePath);
 }
 //==============================================================================
 
 //= GRAPHICS ===================================================================
 void Socket::SetViewport(int width, int height) const
 {
-	m_renderer->SetResolution(width, height);
+	g_context->GetSubsystem<Renderer>()->SetResolution(width, height);
 }
 //==============================================================================
 
@@ -121,12 +111,12 @@ void Socket::SetPhysicsDebugDraw(bool enable)
 
 PhysicsDebugDraw* Socket::GetPhysicsDebugDraw()
 {
-	return m_physics->GetPhysicsDebugDraw();
+	return g_context->GetSubsystem<PhysicsWorld>()->GetPhysicsDebugDraw();
 }
 
 void Socket::ClearScene()
 {
-	m_scene->Clear();
+	g_context->GetSubsystem<Scene>()->Clear();
 }
 
 ImageImporter* Socket::GetImageLoader()
@@ -184,22 +174,22 @@ bool Socket::GameObjectExists(GameObject* gameObject)
 //= STATS ======================================================================
 float Socket::GetFPS() const
 {
-	return m_timer->GetFPS();
+	return g_context->GetSubsystem<Timer>()->GetFPS();
 }
 
 int Socket::GetRenderedMeshesCount() const
 {
-	return m_renderer->GetRenderedMeshesCount();
+	return g_context->GetSubsystem<Renderer>()->GetRenderedMeshesCount();
 }
 
 float Socket::GetDeltaTime() const
 {
-	return m_timer->GetDeltaTimeMs();
+	return g_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
 }
 
 float Socket::GetRenderTime() const
 {
-	return m_timer->GetRenderTimeMs();
+	return g_context->GetSubsystem<Timer>()->GetRenderTimeMs();
 }
 //==============================================================================
 
@@ -216,12 +206,12 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 	if (material)
 	{
 		// Get the texture from the texture pool
-		shared_ptr<Texture> texture = m_texturePool->GetTextureByPath(texturePath);
+		shared_ptr<Texture> texture = g_context->GetSubsystem<TexturePool>()->GetTextureByPath(texturePath);
 
 		// If it's not loaded yet, load it
 		if (!texture)
 		{
-			texture = m_texturePool->Add(texturePath);
+			texture = g_context->GetSubsystem<TexturePool>()->Add(texturePath);
 			texture->SetType(type);
 		}
 

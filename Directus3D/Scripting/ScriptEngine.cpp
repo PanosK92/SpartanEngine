@@ -28,15 +28,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Module.h"
 #include "../IO/Log.h"
 #include "../IO/FileSystem.h"
+#include "../Core/Context.h"
 //==========================================
 
 #define AS_USE_STLNAMES = 1
 
-ScriptEngine::ScriptEngine(shared_ptr<Timer> timer, shared_ptr<Input> input)
+ScriptEngine::ScriptEngine(Context* context) : Object(context)
 {
-	m_scriptEngine = nullptr;
-	m_timer = timer;
-	m_input = input;
+	m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	if (!m_scriptEngine)
+	{
+		LOG_ERROR("Failed to create AngelScript engine.");
+		//return false;
+	}
+
+	// Register the string type
+	RegisterStdString(m_scriptEngine);
+
+	// register engine types
+	ScriptDefinitions* scriptDef = new ScriptDefinitions();
+	scriptDef->Register(m_scriptEngine, context);
+	delete scriptDef;
+
+	// Set the message callback to print the human readable messages that the engine gives in case of errors
+	m_scriptEngine->SetMessageCallback(asMETHOD(ScriptEngine, message_callback), this, asCALL_THISCALL);
+
+	m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
+
+	//return true;
 }
 
 ScriptEngine::~ScriptEngine()
@@ -48,31 +67,6 @@ ScriptEngine::~ScriptEngine()
 		m_scriptEngine->ShutDownAndRelease();
 		m_scriptEngine = nullptr;
 	}
-}
-
-bool ScriptEngine::Initialize()
-{
-	m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	if (!m_scriptEngine)
-	{
-		LOG_ERROR("Failed to create AngelScript engine.");
-		return false;
-	}
-
-	// Register the string type
-	RegisterStdString(m_scriptEngine);
-
-	// register engine types
-	ScriptDefinitions* scriptDef = new ScriptDefinitions();
-	scriptDef->Register(m_scriptEngine, m_input, m_timer);
-	delete scriptDef;
-
-	// Set the message callback to print the human readable messages that the engine gives in case of errors
-	m_scriptEngine->SetMessageCallback(asMETHOD(ScriptEngine, message_callback), this, asCALL_THISCALL);
-
-	m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
-
-	return true;
 }
 
 void ScriptEngine::Reset()
@@ -87,16 +81,6 @@ void ScriptEngine::Reset()
 asIScriptEngine* ScriptEngine::GetAsIScriptEngine()
 {
 	return m_scriptEngine;
-}
-
-shared_ptr<Timer> ScriptEngine::GetTimer()
-{
-	return m_timer;
-}
-
-shared_ptr<Input> ScriptEngine::GetInput()
-{
-	return m_input;
 }
 
 /*------------------------------------------------------------------------------

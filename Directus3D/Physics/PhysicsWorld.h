@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "../Math/Vector3.h"
+#include "../Core/Object.h"
 //==========================
 
 // Forward declarations to avoid dependencies when used in editor
@@ -36,13 +37,12 @@ class btConstraintSolver;
 class btDefaultCollisionConfiguration;
 class btDiscreteDynamicsWorld;
 
-class PhysicsWorld
+class PhysicsWorld : public Object
 {
 public:
-	PhysicsWorld();
+	PhysicsWorld(Context* context);
 	~PhysicsWorld();
 
-	void Initialize();
 	void Step(float timeStep);
 	void Reset();
 

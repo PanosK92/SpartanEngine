@@ -23,13 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TexturePool.h"
 #include <filesystem>
 #include "../IO/FileSystem.h"
+#include "../Core/Context.h"
 //===========================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
 
-TexturePool::TexturePool()
+TexturePool::TexturePool(Context* context) : Object(context)
 {
 
 }
@@ -66,7 +67,7 @@ shared_ptr<Texture> TexturePool::Add(const string& texturePath)
 
 	// If the texture doesn't exist, create and load it
 	auto texture = make_shared<Texture>();
-	texture->LoadFromFile(texturePath);
+	texture->LoadFromFile(texturePath, g_context->GetSubsystem<Graphics>());
 	m_textures.push_back(texture);
 
 	return m_textures.back();

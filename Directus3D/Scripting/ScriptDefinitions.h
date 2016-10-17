@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class ScriptDefinitions
 {
 public:
-	void Register(asIScriptEngine* scriptEngine, std::shared_ptr<Input> input, std::shared_ptr<Timer> timer);
+	void Register(asIScriptEngine* scriptEngine, Context* context);
 private:
 	void RegisterEnumerations();
 	void RegisterTypes();
@@ -48,6 +48,5 @@ private:
 	void RegisterDebug();
 
 	asIScriptEngine* m_scriptEngine;
-	std::shared_ptr<Input> m_input;
-	std::shared_ptr<Timer> m_timer;
+	Context* m_context;
 };

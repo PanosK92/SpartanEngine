@@ -42,7 +42,7 @@ FullScreenQuad::~FullScreenQuad()
 	SafeRelease(m_indexBuffer);
 }
 
-bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, std::shared_ptr<Graphics> graphicsDevice)
+bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, Graphics* graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 

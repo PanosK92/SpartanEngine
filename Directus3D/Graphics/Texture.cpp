@@ -107,7 +107,7 @@ bool Texture::LoadMetadata()
 }
 
 // Loads a texture from an image file (.jpg, .png and so on)
-bool Texture::LoadFromFile(const string& filePath)
+bool Texture::LoadFromFile(const string& filePath, Graphics* graphics)
 {
 	// load it
 	if (!ImageImporter::GetInstance().Load(filePath))
@@ -125,7 +125,7 @@ bool Texture::LoadFromFile(const string& filePath)
 	m_height = ImageImporter::GetInstance().GetHeight();
 	m_grayscale = ImageImporter::GetInstance().IsGrayscale();
 	m_transparency = ImageImporter::GetInstance().IsTransparent();
-	m_shaderResourceView = ImageImporter::GetInstance().GetAsD3D11ShaderResourceView();
+	m_shaderResourceView = CreateID3D11ShaderResourceView(graphics);
 
 	// Free any memory allocated by the image importer
 	ImageImporter::GetInstance().Clear();
@@ -135,4 +135,61 @@ bool Texture::LoadFromFile(const string& filePath)
 			return false; // if that failed too, it means the filepath is invalid
 
 	return true;
+}
+
+ID3D11ShaderResourceView* Texture::CreateID3D11ShaderResourceView(Graphics* graphics)
+{
+	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM; // texture format
+	unsigned int mipLevels = 7; // 0 for a full mip chain. The mip chain will extend to 1x1 at the lowest level, even if the dimensions aren't square.
+
+	// texture description
+	D3D11_TEXTURE2D_DESC textureDesc{};
+	textureDesc.Width = m_width;
+	textureDesc.Height = m_height;
+	textureDesc.MipLevels = mipLevels;
+	textureDesc.ArraySize = 1;
+	textureDesc.SampleDesc.Count = 1;
+	textureDesc.SampleDesc.Quality = 0;
+	textureDesc.Usage = D3D11_USAGE_DEFAULT;
+	textureDesc.Format = format;
+	textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+	textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+
+	// Create 2D texture from texture description
+	ID3D11Texture2D* texture = nullptr;
+	HRESULT hResult = graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
+	if (FAILED(hResult))
+	{
+		LOG_ERROR("Failed to create ID3D11Texture2D from imported image data while trying to load " + ImageImporter::GetInstance().GetPath() + ".");
+		return nullptr;
+	}
+
+	// Resource view description
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Format = format;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = textureDesc.MipLevels;
+
+	// Create shader resource view from resource view description
+	ID3D11ShaderResourceView* shaderResourceView = nullptr;
+	hResult = graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &shaderResourceView);
+	if (FAILED(hResult))
+	{
+		LOG_ERROR("Failed to create the shader resource view.");
+		return nullptr;
+	}
+
+	// Resource data description
+	D3D11_SUBRESOURCE_DATA mapResource{};
+	mapResource.pSysMem = ImageImporter::GetInstance().GetRGBA();
+	mapResource.SysMemPitch = sizeof(unsigned char) * m_width * ImageImporter::GetInstance().GetChannels();
+
+	// Copy data from memory to the subresource created in non-mappable memory
+	graphics->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, mapResource.pSysMem, mapResource.SysMemPitch, 0);
+
+	// Generate mip chain
+	graphics->GetDeviceContext()->GenerateMips(shaderResourceView);
+
+	return shaderResourceView;
 }
