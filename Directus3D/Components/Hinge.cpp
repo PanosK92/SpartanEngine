@@ -68,7 +68,7 @@ void Hinge::Start()
 
 void Hinge::Remove()
 {
-	g_physicsWorld->GetWorld()->removeConstraint(m_hinge);
+	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeConstraint(m_hinge);
 }
 
 void Hinge::Update()
@@ -172,7 +172,7 @@ void Hinge::ConstructHinge()
 
 	if (m_hinge)
 	{
-		g_physicsWorld->GetWorld()->removeConstraint(m_hinge);
+		g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeConstraint(m_hinge);
 		delete m_hinge;
 		m_hinge = nullptr;
 	}
@@ -194,7 +194,7 @@ void Hinge::ConstructHinge()
 	m_hinge->enableAngularMotor(true, 2, 3);
 
 	// add it to the world
-	g_physicsWorld->GetWorld()->addConstraint(m_hinge);
+	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->addConstraint(m_hinge);
 }
 
 void Hinge::CalculateConnections()

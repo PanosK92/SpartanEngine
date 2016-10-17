@@ -1,6 +1,7 @@
 //= INCLUDES ================
 #include "LineRenderer.h"
 #include "../IO/Log.h"
+#include "../Core/Context.h"
 //===========================
 
 //= NAMESPACES ================
@@ -82,7 +83,7 @@ void LineRenderer::SetBuffer()
 	m_vertexBuffer->SetIA();
 
 	// Set primitive topology
-	g_graphicsDevice->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	g_context->GetSubsystem<Graphics>()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
 	ClearVertices();
 }
@@ -100,7 +101,7 @@ void LineRenderer::CreateBuffer()
 
 	// create vertex buffer
 	m_vertexBuffer = make_shared<D3D11Buffer>();
-	m_vertexBuffer->Initialize(g_graphicsDevice);
+	m_vertexBuffer->Initialize(g_context->GetSubsystem<Graphics>());
 	m_vertexBuffer->Create(
 		sizeof(VertexPositionColor),
 		m_maxVertices,

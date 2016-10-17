@@ -64,7 +64,16 @@ void Light::Initialize()
 		float n = i + 1;
 		float farPlane = camNear * powf(camFar / camNear, n / m_cascades);
 		float nearPlane = Clamp(farPlane - (camFar / m_cascades), camNear, camFar);
-		m_shadowMaps.push_back(new ShadowMap(g_graphicsDevice, n, this, g_scene->GetMainCamera()->GetComponent<Camera>(), SHADOWMAP_RESOLUTION / n, nearPlane, farPlane));
+		m_shadowMaps.push_back(
+			new ShadowMap(
+				g_context->GetSubsystem<Graphics>(), 
+				n, 
+				this, 
+				g_context->GetSubsystem<Scene>()->GetMainCamera()->GetComponent<Camera>(), 
+				SHADOWMAP_RESOLUTION / n,
+				nearPlane, 
+				farPlane
+			));
 	}
 }
 
@@ -111,7 +120,7 @@ LightType Light::GetLightType()
 void Light::SetLightType(LightType type)
 {
 	m_lightType = type;
-	g_scene->Resolve();
+	g_context->GetSubsystem<Scene>()->Resolve();
 }
 
 Vector4 Light::GetColor()
@@ -187,7 +196,7 @@ void Light::SetIntensity(float value)
 
 Matrix Light::GetViewMatrix()
 {
-	GameObject* cameraGameObject = g_scene->GetMainCamera();
+	GameObject* cameraGameObject = g_context->GetSubsystem<Scene>()->GetMainCamera();
 	if (!cameraGameObject)
 		return Matrix::Identity;
 

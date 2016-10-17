@@ -71,7 +71,7 @@ shared_ptr<Material> MaterialPool::Add(shared_ptr<Material> material)
 void MaterialPool::Add(const vector<string>& filePaths)
 {
 	TexturePool* texturePool = g_context->GetSubsystem<TexturePool>();
-	ShaderPool* shaderPool = g_context->GetSubsystem<ShaderPool>();
+	ShaderPool* shaderPool; //g_context->GetSubsystem<ShaderPool>();
 
 	for (const string& filePath : filePaths)
 	{

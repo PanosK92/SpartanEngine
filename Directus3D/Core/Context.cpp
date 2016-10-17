@@ -27,7 +27,9 @@ Context::Context()
 
 Context::~Context()
 {
+	// implement reverse iterator that deletes everything
 
+	m_subsystems.clear();
 }
 
 void Context::RegisterSubsystem(Object* subsystem)
@@ -36,10 +38,4 @@ void Context::RegisterSubsystem(Object* subsystem)
 		return;
 
 	m_subsystems.push_back(subsystem);
-}
-
-// Shutdown every subsystem (in reverse order)
-void Context::Shutdown()
-{
-
 }

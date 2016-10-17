@@ -82,7 +82,7 @@ void MeshCollider::Serialize()
 void MeshCollider::Deserialize()
 {
 	m_convex = Serializer::ReadBool();
-	m_mesh = g_meshPool->GetMeshByID(Serializer::ReadSTR());
+	m_mesh = g_context->GetSubsystem<MeshPool>()->GetMeshByID(Serializer::ReadSTR());
 
 	ConstructCollisionShape();
 }

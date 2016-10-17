@@ -47,7 +47,6 @@ Engine::Engine(Context* context) : Object(context)
 
 	// Initialize Singletons
 	Log::Initialize();
-	ImageImporter::GetInstance();
 
 	// Register subsystems that don't depend on any startup parameters
 	g_context->RegisterSubsystem(new Timer(g_context));
@@ -115,7 +114,7 @@ void Engine::Shutdown()
 {
 	EMIT_SIGNAL(SIGNAL_ENGINE_SHUTDOWN);
 	
-	g_context->Shutdown();
+	delete g_context;
 
 	Log::Release();
 }

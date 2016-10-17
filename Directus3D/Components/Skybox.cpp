@@ -59,7 +59,7 @@ Skybox::~Skybox()
 void Skybox::Initialize()
 {
 	ID3D11ShaderResourceView* cubeMapSRV = nullptr;
-	HRESULT hr = CreateDDSTextureFromFile(g_graphicsDevice->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &cubeMapSRV);
+	HRESULT hr = CreateDDSTextureFromFile(g_context->GetSubsystem<Graphics>()->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &cubeMapSRV);
 	if (FAILED(hr))
 		return;
 
@@ -78,7 +78,7 @@ void Skybox::Initialize()
 	auto meshRenderer = g_gameObject->AddComponent<MeshRenderer>();
 	meshRenderer->SetCastShadows(false);
 	meshRenderer->SetReceiveShadows(false);
-	meshRenderer->SetMaterial(g_materialPool->GetMaterialStandardSkybox());
+	meshRenderer->SetMaterial(g_context->GetSubsystem<MaterialPool>()->GetMaterialStandardSkybox());
 	meshRenderer->GetMaterial()->SetTexture(m_cubeMapTexture);
 
 	g_transform->SetScale(Vector3(1000, 1000, 1000));
@@ -98,7 +98,7 @@ void Skybox::Remove()
 
 void Skybox::Update()
 {
-	GameObject* camera = g_scene->GetMainCamera();
+	GameObject* camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
 
 	if (camera)
 		g_transform->SetPosition(camera->GetTransform()->GetPosition());
