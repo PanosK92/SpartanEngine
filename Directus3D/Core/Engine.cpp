@@ -72,15 +72,16 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	g_context->GetSubsystem<Graphics>()->Initialize(drawPaneHandle);
 	g_context->GetSubsystem<Input>()->Initialize(instance, windowHandle);
 
-	// Register subsystem dependent subsystems
-	g_context->RegisterSubsystem(new ScriptEngine(g_context)); // Depends on Input, Timer
-	g_context->RegisterSubsystem(new ShaderPool(g_context)); // Depends on Graphics
-	g_context->RegisterSubsystem(new MaterialPool(g_context));  // Depends on TexturePool, ShaderPool
-	g_context->RegisterSubsystem(new ModelImporter(g_context));  // Depends on MeshPool, TexturePool, ShaderPool, MaterialPool, ThreadPool
-	g_context->RegisterSubsystem(new Renderer(g_context)); // Depends on Graphics, Timer, PhysicsWorld, ShaderPool, MaterialPool
-	g_context->RegisterSubsystem(new Scene(g_context)); // Depends on MeshPool, TexturePool, ShaderPool, MaterialPool, ThreadPool, PhysicsWorld, Renderer
-	g_context->RegisterSubsystem(new Socket(g_context)); // Depends on everything (potentially)
+	// Register subsystems which depend on registered subsystems
+	g_context->RegisterSubsystem(new ScriptEngine(g_context));
+	g_context->RegisterSubsystem(new ShaderPool(g_context));
+	g_context->RegisterSubsystem(new MaterialPool(g_context));
+	g_context->RegisterSubsystem(new ModelImporter(g_context)); 
+	g_context->RegisterSubsystem(new Renderer(g_context));
+	g_context->RegisterSubsystem(new Scene(g_context));
+	g_context->RegisterSubsystem(new Socket(g_context));
 
+	// Finally, initialize the scene (add a camera, a skybox and so on)
 	g_context->GetSubsystem<Scene>()->Initialize();
 }
 
