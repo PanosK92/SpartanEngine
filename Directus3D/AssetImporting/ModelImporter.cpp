@@ -258,8 +258,9 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 	MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
 	meshComp->Set(mesh->mName.C_Str(), m_rootGameObject->GetID(), vertices, indices);
 
-	// Save the mesh in our custom format
-	meshComp->GetMesh()->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/", false);
+	// No need to save the mesh as a file here, when the model importer performs a scale normalization on the entire model
+	// this will cause the mesh to update and save itself, thus I only pass the directory to do so.
+	meshComp->GetMesh()->SetDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
 
 	// process materials
 	if (scene->HasMaterials())

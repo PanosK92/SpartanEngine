@@ -90,26 +90,22 @@ void Engine::Update()
 	EMIT_SIGNAL(SIGNAL_FRAME_START);
 
 	// Get subsystems
-	Input* input = g_context->GetSubsystem<Input>();
 	Timer* timer = g_context->GetSubsystem<Timer>();
-	Renderer* renderer = g_context->GetSubsystem<Renderer>();
-	Scene* scene = g_context->GetSubsystem<Scene>();
-	PhysicsWorld* physicsWorld = g_context->GetSubsystem<PhysicsWorld>();
 
 	timer->Update();
-	input->Update();
+	g_context->GetSubsystem<Input>()->Update();
 
 	//= PHYSICS ==================================
-	physicsWorld->Step(timer->GetDeltaTime());
+	g_context->GetSubsystem<PhysicsWorld>()->Step(timer->GetDeltaTime());
 	//============================================
 
 	//= SCENE ====================================	
-	scene->Resolve();
+	g_context->GetSubsystem<Scene>()->Resolve();
 	//============================================
 
 	//= RENDERING ================================
 	timer->RenderStart();
-	renderer->Render();
+	g_context->GetSubsystem<Renderer>()->Render();
 	timer->RenderEnd();
 	//============================================
 
@@ -125,7 +121,10 @@ void Engine::Shutdown()
 {
 	EMIT_SIGNAL(SIGNAL_ENGINE_SHUTDOWN);
 	
+	// The context will deallocate the subsystems
+	// in the reverse order in which they were registered.
 	delete g_context;
 
+	// Release singletons
 	Log::Release();
 }

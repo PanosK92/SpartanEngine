@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vertex.h"
 #include "../IO/Serializer.h"
 #include <functional>
+#include "../IO/FileSystem.h"
 //===========================
 
 #define MESH_EXTENSION ".msh"
@@ -54,8 +55,9 @@ public:
 	std::string GetRootGameObjectID() const { return m_rootGameObjectID; }
 	void SetRootGameObjectID(const std::string& rootGameObjectID) { m_rootGameObjectID = rootGameObjectID; }
 
+	void SetDirectory(const std::string& directory) { m_directory = directory; }
+
 	std::string GetFilePath() { return m_filePath; }
-	void SetFilePath(const std::string& filepath) { m_filePath = filepath; }
 	
 	std::vector<VertexPositionTextureNormalTangent>& GetVertices() { return m_vertices; }
 	void SetVertices(std::vector<VertexPositionTextureNormalTangent> vertices)
@@ -85,7 +87,7 @@ public:
 	//= PROCESSING =================================================================
 	void Update();
 	void OnUpdate(std::function<void(void)> function);
-	void Scale(float scale);
+	void SetScale(float scale);
 	//==============================================================================
 
 private:
@@ -104,6 +106,7 @@ private:
 	std::string m_name;
 	std::string m_ID;
 	std::string m_rootGameObjectID;
+	std::string m_directory;
 	std::string m_filePath;
 
 	std::vector<VertexPositionTextureNormalTangent> m_vertices;

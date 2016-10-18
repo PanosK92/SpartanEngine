@@ -180,7 +180,7 @@ void MeshPool::SetModelScale(const string& rootGameObjectID, float scale)
 {
 	// get all the meshes related to this model and scale them
 	for (const auto& modelMesh : GetModelMeshesByModelName(rootGameObjectID))
-		modelMesh->Scale(scale);
+		modelMesh->SetScale(scale);
 }
 
 void MeshPool::NormalizeModelScale(GameObject* rootGameObject)
