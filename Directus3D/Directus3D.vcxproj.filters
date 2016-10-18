@@ -159,9 +159,6 @@
     <ClCompile Include="Scripting\Module.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Scripting\ScriptDefinitions.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Scripting\ScriptEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -214,6 +211,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Core\Object.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scripting\ScriptInterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -383,9 +383,6 @@
     <ClInclude Include="Scripting\Module.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Scripting\ScriptDefinitions.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Scripting\ScriptEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -447,6 +444,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Core\Object.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scripting\ScriptInterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -22,12 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============
-#include "../Core/Timer.h"
 #include "../Input/Input.h"
 #include <angelscript.h>
 //=========================
 
-class ScriptDefinitions
+class ScriptInterface
 {
 public:
 	void Register(asIScriptEngine* scriptEngine, Context* context);

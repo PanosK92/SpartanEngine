@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Signals/Signaling.h"
 #include <sstream> 
 #include <fstream>
+#include "ILogger.h"
 //===============================
 
 //= NAMESPACES ================

@@ -24,7 +24,7 @@ class __declspec(dllexport) Object
 	friend class Context;
 public:
 	Object(Context* context);
-	virtual ~Object();
+	virtual ~Object() {};
 
 protected:
 	Context* g_context;

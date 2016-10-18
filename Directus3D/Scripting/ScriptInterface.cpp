@@ -20,8 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =======================
-#include "ScriptDefinitions.h"
-#include <string>
+#include "ScriptInterface.h"
 #include "../IO/Log.h"
 #include "../Components/RigidBody.h"
 #include "../Core/Settings.h"
@@ -31,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Math/Quaternion.h"
 #include "../Math/MathHelper.h"
+#include "../Core/Timer.h"
 //==================================
 
 //= NAMESPACES ================
@@ -38,8 +38,9 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-void ScriptDefinitions::Register(asIScriptEngine* scriptEngine, Context* context)
+void ScriptInterface::Register(asIScriptEngine* scriptEngine, Context* context)
 {
+	m_context = context;
 	m_scriptEngine = scriptEngine;
 
 	RegisterEnumerations();
@@ -58,7 +59,7 @@ void ScriptDefinitions::Register(asIScriptEngine* scriptEngine, Context* context
 	RegisterDebug();
 }
 
-void ScriptDefinitions::RegisterEnumerations()
+void ScriptInterface::RegisterEnumerations()
 {
 	// Log
 	m_scriptEngine->RegisterEnum("LogType");
@@ -115,7 +116,7 @@ void ScriptDefinitions::RegisterEnumerations()
 	m_scriptEngine->RegisterEnumValue("Space", "World", int(Transform::World));
 }
 
-void ScriptDefinitions::RegisterTypes()
+void ScriptInterface::RegisterTypes()
 {
 	m_scriptEngine->RegisterInterface("ScriptBehavior");
 
@@ -135,7 +136,7 @@ void ScriptDefinitions::RegisterTypes()
 /*------------------------------------------------------------------------------
 									[SETTINGS]
 ------------------------------------------------------------------------------*/
-void ScriptDefinitions::RegisterSettings()
+void ScriptInterface::RegisterSettings()
 {
 
 }
@@ -143,9 +144,9 @@ void ScriptDefinitions::RegisterSettings()
 /*------------------------------------------------------------------------------
 									[INPUT]
 ------------------------------------------------------------------------------*/
-void ScriptDefinitions::RegisterInput()
+void ScriptInterface::RegisterInput()
 {
-	m_scriptEngine->RegisterGlobalProperty("Input input", m_context->GetSubsystem<Input>());
+    m_scriptEngine->RegisterGlobalProperty("Input input", m_context->GetSubsystem<Input>());
 	m_scriptEngine->RegisterObjectMethod("Input", "Vector2 GetMousePosition()", asMETHOD(Input, GetMousePosition), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Input", "Vector2 GetMousePositionDelta()", asMETHOD(Input, GetMousePositionDelta), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Input", "bool GetKey(KeyCode key)", asMETHOD(Input, GetKey), asCALL_THISCALL);
@@ -154,18 +155,17 @@ void ScriptDefinitions::RegisterInput()
 /*------------------------------------------------------------------------------
 									[TIMER]
 ------------------------------------------------------------------------------*/
-void ScriptDefinitions::RegisterTime()
+void ScriptInterface::RegisterTime()
 {
 	m_scriptEngine->RegisterGlobalProperty("Time time", m_context->GetSubsystem<Timer>());
 	m_scriptEngine->RegisterObjectMethod("Time", "float GetDeltaTime()", asMETHOD(Timer, GetDeltaTime), asCALL_THISCALL);
-	//m_scriptEngine->RegisterObjectProperty("Time", "float deltaTime", asOFFSET(Timer, GetDeltaTime));
 }
 
 /*------------------------------------------------------------------------------
 									[GAMEOBJECT]
 ------------------------------------------------------------------------------*/
 
-void ScriptDefinitions::RegisterGameObject()
+void ScriptInterface::RegisterGameObject()
 {
 	m_scriptEngine->RegisterObjectMethod("GameObject", "GameObject &opAssign(const GameObject &in)", asMETHODPR(GameObject, operator =, (const GameObject&), GameObject&), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("GameObject", "int GetID()", asMETHOD(GameObject, GetID), asCALL_THISCALL);
@@ -183,7 +183,7 @@ void ScriptDefinitions::RegisterGameObject()
 /*------------------------------------------------------------------------------
 									[TRANSFORM]
 ------------------------------------------------------------------------------*/
-void ScriptDefinitions::RegisterTransform()
+void ScriptInterface::RegisterTransform()
 {
 	m_scriptEngine->RegisterObjectMethod("Transform", "Transform &opAssign(const Transform &in)", asMETHODPR(Transform, operator =, (const Transform&), Transform&), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("Transform", "Vector3 GetPosition()", asMETHOD(Transform, GetPosition), asCALL_THISCALL);
@@ -213,14 +213,14 @@ void ScriptDefinitions::RegisterTransform()
 /*------------------------------------------------------------------------------
 								[CAMERA]
 ------------------------------------------------------------------------------*/
-void ScriptDefinitions::RegisterCamera()
+void ScriptInterface::RegisterCamera()
 {
 }
 
 /*------------------------------------------------------------------------------
 								[RIGIDBODY]
 ------------------------------------------------------------------------------*/
-void ScriptDefinitions::RegisterRigidBody()
+void ScriptInterface::RegisterRigidBody()
 {
 	m_scriptEngine->RegisterObjectMethod("RigidBody", "RigidBody &opAssign(const RigidBody &in)", asMETHODPR(RigidBody, operator =, (const RigidBody&), RigidBody&), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("RigidBody", "void ApplyForce(Vector3, ForceMode)", asMETHOD(RigidBody, ApplyForce), asCALL_THISCALL);
@@ -232,7 +232,7 @@ void ScriptDefinitions::RegisterRigidBody()
 /*------------------------------------------------------------------------------
 									[MATH HELPER]
 ------------------------------------------------------------------------------*/
-void ScriptDefinitions::RegisterMathHelper()
+void ScriptInterface::RegisterMathHelper()
 {
 	m_scriptEngine->RegisterGlobalFunction("float Lerp(float, float, float)", asFUNCTIONPR(Lerp, (float, float, float), float), asCALL_CDECL);
 	m_scriptEngine->RegisterGlobalFunction("float Abs(float)", asFUNCTIONPR(Abs, (float), float), asCALL_CDECL);
@@ -266,7 +266,7 @@ static Vector2& Vector2AddAssignVector2(const Vector2& other, Vector2* self)
 	return *self = *self + other;
 }
 
-void ScriptDefinitions::RegisterVector2()
+void ScriptInterface::RegisterVector2()
 {
 	m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructorVector2), asCALL_CDECL_OBJLAST);
 	m_scriptEngine->RegisterObjectBehaviour("Vector2", asBEHAVE_CONSTRUCT, "void f(const Vector2 &in)", asFUNCTION(CopyConstructorVector2), asCALL_CDECL_OBJLAST);
@@ -345,7 +345,7 @@ static Vector3 Vector3MulFloat(float value, Vector3* self)
 }
 
 //= Registration ================================================================
-void ScriptDefinitions::RegisterVector3()
+void ScriptInterface::RegisterVector3()
 {
 	// operator overloads http://www.angelcode.com/angelscript/sdk/docs/manual/doc_script_class_ops.html
 
@@ -408,7 +408,7 @@ static Quaternion QuaternionMulQuaternion(const Quaternion& other, Quaternion* s
 	return *self * other;
 }
 
-void ScriptDefinitions::RegisterQuaternion()
+void ScriptInterface::RegisterQuaternion()
 {
 	//= CONSTRUCTORS/DESTRUCTOR ==============================================================================================================================================================
 	m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructorQuaternion), asCALL_CDECL_OBJLAST);
@@ -444,7 +444,7 @@ void ScriptDefinitions::RegisterQuaternion()
 /*------------------------------------------------------------------------------
 									[DEBUG]
 ------------------------------------------------------------------------------*/
-void ScriptDefinitions::RegisterDebug()
+void ScriptInterface::RegisterDebug()
 {
 	m_scriptEngine->RegisterGlobalFunction("void Log(const string& in, LogType)", asFUNCTIONPR(Log::Write, (const string&, Log::LogType), void), asCALL_CDECL);
 	m_scriptEngine->RegisterGlobalFunction("void Log(int, LogType)", asFUNCTIONPR(Log::Write, (int, Log::LogType), void), asCALL_CDECL);

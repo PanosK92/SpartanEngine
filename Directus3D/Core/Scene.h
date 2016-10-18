@@ -25,8 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "GameObject.h"
 #include "../Math/Vector3.h"
-#include "../Pools/TexturePool.h"
-#include "../Pools/MaterialPool.h"
 #include "../Pools/MeshPool.h"
 #include "../Multithreading/ThreadPool.h"
 //================================
@@ -41,6 +39,8 @@ class Scene : public Object
 public:
 	Scene(Context* context);
 	~Scene();
+
+	void Initialize();
 
 	/*------------------------------------------------------------------------------
 										[I/O]

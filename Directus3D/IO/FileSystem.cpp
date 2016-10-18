@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "dirent.h"
 #include <locale>
 #include "../Core/Scene.h"
+#include "../Graphics/Material.h"
 //========================
 
 //= NAMESPACES =====

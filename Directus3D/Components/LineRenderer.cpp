@@ -1,8 +1,7 @@
-//= INCLUDES ================
+//= INCLUDES ===============
 #include "LineRenderer.h"
-#include "../IO/Log.h"
 #include "../Core/Context.h"
-//===========================
+//==========================
 
 //= NAMESPACES ================
 using namespace Directus::Math;

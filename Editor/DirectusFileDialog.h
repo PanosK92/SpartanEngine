@@ -47,7 +47,7 @@ private:
 
     DirectusAssetLoader* m_assetLoader;
     QWidget* m_mainWindow;
-    std::shared_ptr<Socket> m_socket;
+    Socket* m_socket;
     DirectusCore* m_directusCore;
 
 signals:

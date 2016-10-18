@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Signals/Signaling.h"
 #include "../Core/Context.h"
 #include "../Pools/ShaderPool.h"
+#include "../Pools/TexturePool.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -48,19 +49,24 @@ using namespace Directus::Math;
 
 Scene::Scene(Context* context) : Object(context)
 {
-	GameObjectPool::GetInstance().Initialize(g_context);
-
 	m_ambientLight = Vector3::Zero;
-	m_mainCamera = CreateCamera();
-	CreateSkybox();
-	CreateDirectionalLight();
-
-	Resolve();
+	m_mainCamera = nullptr;
 }
 
 Scene::~Scene()
 {
 	Clear();
+}
+
+void Scene::Initialize()
+{
+	GameObjectPool::GetInstance().Initialize(g_context);
+
+	m_mainCamera = CreateCamera();
+	CreateSkybox();
+	CreateDirectionalLight();
+
+	Resolve();
 }
 
 //= I/O ===========================================================================

@@ -37,7 +37,7 @@ public:
     void Initialize(DirectusCore* directusCore);
 
 private:
-    std::shared_ptr<Socket> m_socket;
+    Socket* m_socket;
 
 signals:
 

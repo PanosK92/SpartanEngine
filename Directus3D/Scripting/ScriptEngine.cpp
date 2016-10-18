@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <angelscript.h>
 #include <scriptstdstring/scriptstdstring.h>
 #include <scriptstdstring/scriptstdstring.cpp>
-#include "ScriptDefinitions.h"
+#include "ScriptInterface.h"
 #include "Module.h"
 #include "../IO/Log.h"
 #include "../IO/FileSystem.h"
@@ -39,23 +39,20 @@ ScriptEngine::ScriptEngine(Context* context) : Object(context)
 	if (!m_scriptEngine)
 	{
 		LOG_ERROR("Failed to create AngelScript engine.");
-		//return false;
+		return;
 	}
 
 	// Register the string type
 	RegisterStdString(m_scriptEngine);
 
-	// register engine types
-	ScriptDefinitions* scriptDef = new ScriptDefinitions();
-	scriptDef->Register(m_scriptEngine, context);
-	delete scriptDef;
+	// Register engine script interface
+	auto scriptInterface = make_shared<ScriptInterface>();
+	scriptInterface->Register(m_scriptEngine, g_context);
 
 	// Set the message callback to print the human readable messages that the engine gives in case of errors
 	m_scriptEngine->SetMessageCallback(asMETHOD(ScriptEngine, message_callback), this, asCALL_THISCALL);
 
 	m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
-
-	//return true;
 }
 
 ScriptEngine::~ScriptEngine()

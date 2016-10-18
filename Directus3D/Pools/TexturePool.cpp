@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-TexturePool::TexturePool(Context* context) : Object(context)
+TexturePool::TexturePool(Context* context) : Object(context) 
 {
 
 }

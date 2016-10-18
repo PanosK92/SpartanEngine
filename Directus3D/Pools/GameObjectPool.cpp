@@ -240,7 +240,7 @@ bool GameObjectPool::GameObjectExistsByName(const string& name)
 // Removes a gameobject and all of it's children
 void GameObjectPool::RemoveGameObject(GameObject* gameObject)
 {
-	if (!gameObject) 
+	if (!gameObject)
 		return;
 
 	// remove any descendants

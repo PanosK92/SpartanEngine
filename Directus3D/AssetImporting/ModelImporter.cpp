@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =============================
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -33,7 +33,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"
 #include "../Pools/MaterialPool.h"
-//=====================================
+#include "../Pools/MeshPool.h"
+#include "../Pools/TexturePool.h"
+#include "../Multithreading/ThreadPool.h"
+#include "../Pools/ShaderPool.h"
+//=======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -284,10 +288,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 
 shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 {
-	TexturePool* texturePool = g_context->GetSubsystem<TexturePool>();
-	ShaderPool* shaderPool = g_context->GetSubsystem<ShaderPool>();
-
-	shared_ptr<Material> engineMaterial = make_shared<Material>(texturePool, shaderPool);
+	shared_ptr<Material> engineMaterial = make_shared<Material>(g_context->GetSubsystem<TexturePool>(), g_context->GetSubsystem<ShaderPool>());
 
 	//= NAME ====================================================================
 	aiString name;
