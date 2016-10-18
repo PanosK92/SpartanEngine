@@ -38,6 +38,7 @@ Mesh::Mesh()
 {
 	m_ID = GENERATE_GUID;
 	m_rootGameObjectID = DATA_NOT_ASSIGNED;
+	m_directory = DATA_NOT_ASSIGNED;
 	m_filePath = DATA_NOT_ASSIGNED;
 	m_vertexCount = 0;
 	m_indexCount = 0;
@@ -67,6 +68,7 @@ void Mesh::Serialize()
 	Serializer::WriteSTR(m_ID);
 	Serializer::WriteSTR(m_rootGameObjectID);
 	Serializer::WriteSTR(m_name);
+	Serializer::WriteSTR(m_directory);
 	Serializer::WriteSTR(m_filePath);
 	Serializer::WriteInt(m_vertexCount);
 	Serializer::WriteInt(m_indexCount);
@@ -89,6 +91,7 @@ void Mesh::Deserialize()
 	m_ID = Serializer::ReadSTR();
 	m_rootGameObjectID = Serializer::ReadSTR();
 	m_name = Serializer::ReadSTR();
+	m_directory = Serializer::ReadSTR();
 	m_filePath = Serializer::ReadSTR();
 	m_vertexCount = Serializer::ReadInt();
 	m_indexCount = Serializer::ReadInt();
@@ -97,7 +100,7 @@ void Mesh::Deserialize()
 	for (auto i = 0; i < m_vertexCount; i++)
 	{
 		m_vertices.push_back(VertexPositionTextureNormalTangent());
-		LoadVertex(m_vertices.back());	
+		LoadVertex(m_vertices.back());
 	}
 
 	for (auto i = 0; i < m_indexCount; i++)
@@ -150,6 +153,9 @@ void Mesh::Update()
 	m_center = GetCenter(m_min, m_max);
 	m_boundingBox = GetBoundingBox(m_min, m_max);
 
+	if (m_directory != DATA_NOT_ASSIGNED)
+		SaveToDirectory(m_directory, true);
+
 	if (m_onUpdate)
 		m_onUpdate();
 }
@@ -164,7 +170,7 @@ void Mesh::OnUpdate(function<void()> function)
 		m_onUpdate();
 }
 
-void Mesh::Scale(float scale)
+void Mesh::SetScale(float scale)
 {
 	SetScale(this, scale);
 	Update();
