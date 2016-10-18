@@ -19,12 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ====================
 #include "MaterialPool.h"
 #include <vector>
 #include "../IO/Serializer.h"
 #include "../Core/Context.h"
-//===========================
+#include "../Pools/ShaderPool.h"
+#include "../Pools/TexturePool.h"
+//===============================
 
 //= NAMESPACES ================
 using namespace std;
@@ -71,7 +73,7 @@ shared_ptr<Material> MaterialPool::Add(shared_ptr<Material> material)
 void MaterialPool::Add(const vector<string>& filePaths)
 {
 	TexturePool* texturePool = g_context->GetSubsystem<TexturePool>();
-	ShaderPool* shaderPool; //g_context->GetSubsystem<ShaderPool>();
+	ShaderPool* shaderPool = g_context->GetSubsystem<ShaderPool>();
 
 	for (const string& filePath : filePaths)
 	{

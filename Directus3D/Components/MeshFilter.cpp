@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "../Core/Helper.h"
 #include "../IO/Serializer.h"
-#include "../IO/Log.h"
 #include "../Core/GameObject.h"
 #include "../Pools/MeshPool.h"
+#include "../IO/Log.h"
 //=============================
 
 //= NAMESPACES ================

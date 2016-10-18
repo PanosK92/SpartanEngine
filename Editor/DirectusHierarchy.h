@@ -59,7 +59,7 @@ private:
 
     bool IsAnyGameObjectSelected();   
   
-	std::shared_ptr<Socket> m_socket;
+	Socket* m_socket;
     DirectusInspector* m_inspector;
     DirectusCore* m_directusCore;
     QWidget* m_mainWindow;

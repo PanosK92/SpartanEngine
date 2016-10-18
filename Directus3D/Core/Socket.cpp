@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Settings.h"
 #include "../Signals/Signaling.h"
 #include "../AssetImporting/ModelImporter.h"
+#include "../Pools/TexturePool.h"
 //==========================================
 
 //= NAMESPACES =====

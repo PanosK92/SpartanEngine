@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <windows.h>
 #include "../Math/Vector3.h"
-#include "ILogger.h"
 #include "../Math/Quaternion.h"
 //=============================
 
@@ -34,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class __declspec(dllexport) Log
 {
+	friend class ILogger;
 public:
 	enum LogType
 	{

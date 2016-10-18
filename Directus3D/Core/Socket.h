@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsWorld.h"
 #include "../AssetImporting/ImageImporter.h"
 #include "Engine.h"
+#include "../Graphics/Texture.h"
 //==========================================
 
 class ILogger;

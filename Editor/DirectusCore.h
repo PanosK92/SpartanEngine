@@ -40,7 +40,7 @@ class DirectusCore : public QWidget
 public:
     DirectusCore(QWidget* parent = NULL);
     virtual ~DirectusCore();
-    std::shared_ptr<Socket> GetEngineSocket();
+    Socket* GetEngineSocket();
     void Initialize(HWND hwnd, HINSTANCE hinstance, DirectusStatsLabel* directusStatsLabel);
     bool IsRunning();
 
@@ -54,7 +54,7 @@ private:
 	void ShutdownEngine();
 	void Resize(int width, int height);
 
-    std::shared_ptr<Socket> m_socket;
+    Socket* m_socket;
 	Engine* m_engine;
     QTimer* m_timerUpdate;
     QTimer* m_timerPerSec;

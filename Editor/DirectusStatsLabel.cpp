@@ -15,7 +15,7 @@ DirectusStatsLabel::DirectusStatsLabel(QWidget *parent) : QLineEdit(parent)
 
 void DirectusStatsLabel::UpdateStats(DirectusCore* directusCore)
 {
-    std::shared_ptr<Socket> socket = directusCore->GetEngineSocket();
+    Socket* socket = directusCore->GetEngineSocket();
 
     string fps = "FPS: " + BeautifyFloat(socket->GetFPS());
     string delta = "Delta: " + BeautifyFloat(socket->GetDeltaTime()) + (" ms");

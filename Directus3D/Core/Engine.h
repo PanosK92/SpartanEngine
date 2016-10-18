@@ -31,5 +31,6 @@ public:
 
 	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
 	void Update();
+	Context* GetContext();
 	void Shutdown();
 };

@@ -21,7 +21,7 @@ DEALINGS IN THE SOFTWARE. */
 #include <vector>
 //=================
 
-class Context
+class __declspec(dllexport) Context
 {
 public:
 	Context();

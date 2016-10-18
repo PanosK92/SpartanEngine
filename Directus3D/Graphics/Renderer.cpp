@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Signals/Signaling.h"
 #include "../Core/Context.h"
 #include "../Pools/ShaderPool.h"
+#include "../Pools/MaterialPool.h"
 //======================================
 
 //= NAMESPACES ================

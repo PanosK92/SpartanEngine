@@ -50,7 +50,7 @@ DirectusCore::~DirectusCore()
     ShutdownEngine();
 }
 
-std::shared_ptr<Socket> DirectusCore::GetEngineSocket()
+Socket* DirectusCore::GetEngineSocket()
 {
     return m_socket;
 }
@@ -58,7 +58,7 @@ std::shared_ptr<Socket> DirectusCore::GetEngineSocket()
 void DirectusCore::Initialize(HWND mainWindowHandle, HINSTANCE hInstance, DirectusStatsLabel* directusStatsLabel)
 {
     // Initialize the engine
-    m_engine = new Engine();
+    m_engine = new Engine(new Context());
     m_engine->Initialize(hInstance, mainWindowHandle, (HWND)this->winId());
 
     m_socket = m_engine->GetContext()->GetSubsystem<Socket>();

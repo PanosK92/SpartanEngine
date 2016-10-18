@@ -32,7 +32,7 @@ DirectusAssetLoader::DirectusAssetLoader(QObject* parent) : QObject(parent)
 
 }
 
-void DirectusAssetLoader::Initialize(QWidget* mainWindow, std::shared_ptr<Socket> socket)
+void DirectusAssetLoader::Initialize(QWidget* mainWindow, Socket* socket)
 {
     m_mainWindow = mainWindow;
     m_socket = socket;

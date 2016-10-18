@@ -32,6 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Graphics.h"
 #include "../Signals/Signaling.h"
 #include "../Multithreading/ThreadPool.h"
+#include "../Pools/ShaderPool.h"
+#include "../Pools/MaterialPool.h"
+#include "../Pools/TexturePool.h"
 //==========================================
 
 //= NAMESPACES =====
@@ -77,6 +80,8 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	g_context->RegisterSubsystem(new Renderer(g_context)); // Depends on Graphics, Timer, PhysicsWorld, ShaderPool, MaterialPool
 	g_context->RegisterSubsystem(new Scene(g_context)); // Depends on MeshPool, TexturePool, ShaderPool, MaterialPool, ThreadPool, PhysicsWorld, Renderer
 	g_context->RegisterSubsystem(new Socket(g_context)); // Depends on everything (potentially)
+
+	g_context->GetSubsystem<Scene>()->Initialize();
 }
 
 void Engine::Update()
@@ -108,6 +113,11 @@ void Engine::Update()
 	//============================================
 
 	EMIT_SIGNAL(SIGNAL_FRAME_END);
+}
+
+Context* Engine::GetContext()
+{
+	return g_context;
 }
 
 void Engine::Shutdown()
