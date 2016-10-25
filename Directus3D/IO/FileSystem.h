@@ -41,7 +41,7 @@ public:
 	static std::string GetExtensionFromPath(const std::string& path);
 	static std::string GetRelativePathFromAbsolutePath(const std::string& path);
 
-	static std::vector<std::string> FileSystem::GetSupportedImageFormats(bool includeUppercase);
+	static std::vector<std::string> GetSupportedImageFormats(bool includeUppercase);
 	static bool IsSupportedTextureMetadata(const std::string& path);
 	static bool IsSupportedMaterial(const std::string& path);
 

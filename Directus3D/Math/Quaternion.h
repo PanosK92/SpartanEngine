@@ -139,7 +139,7 @@ namespace Directus
 
 			Quaternion operator *(float rhs) const { return Quaternion(w * rhs, x * rhs, y * rhs, z * rhs); }
 
-			bool Quaternion::operator==(const Quaternion& b) const
+			bool operator==(const Quaternion& b) const
 			{
 				if (x == b.x && y == b.y && z == b.z && w == b.w)
 					return true;
@@ -147,7 +147,7 @@ namespace Directus
 				return false;
 			}
 
-			bool Quaternion::operator!=(const Quaternion& b) const
+			bool operator!=(const Quaternion& b) const
 			{
 				if (x != b.x || y != b.y || z != b.z || w != b.w)
 					return true;
@@ -155,7 +155,7 @@ namespace Directus
 				return false;
 			}
 
-			void Quaternion::operator*=(const Quaternion& b)
+			void operator*=(const Quaternion& b)
 			{
 				this->x *= b.x;
 				this->y *= b.y;

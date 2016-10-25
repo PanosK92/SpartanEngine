@@ -92,8 +92,8 @@ public:
 
 private:
 	//= IO =========================================================================
-	static void Mesh::SaveVertex(const VertexPositionTextureNormalTangent& vertex);
-	static void Mesh::LoadVertex(VertexPositionTextureNormalTangent& vertex);
+	static void SaveVertex(const VertexPositionTextureNormalTangent& vertex);
+	static void LoadVertex(VertexPositionTextureNormalTangent& vertex);
 	//==============================================================================
 
 	//= HELPER FUNCTIONS ===========================================================
