@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============================
 #include "Engine.h"
-#include "Socket.h"
 #include "Scene.h"
 #include "Timer.h"
-#include "../IO/Log.h"
+#include "../Logging/Log.h"
 #include "../Scripting/ScriptEngine.h"
 #include "../Graphics/Renderer.h"
 #include "../AssetImporting/ModelImporter.h"
@@ -32,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Graphics.h"
 #include "../Signals/Signaling.h"
 #include "../Multithreading/ThreadPool.h"
+#include "../Socket/Socket.h"
 #include "../Pools/ShaderPool.h"
 #include "../Pools/MaterialPool.h"
 #include "../Pools/TexturePool.h"
@@ -43,8 +43,6 @@ using namespace std;
 
 Engine::Engine(Context* context) : Object(context) 
 {
-	EMIT_SIGNAL(SIGNAL_ENGINE_INITIALIZE);
-
 	// Register self as a subsystem
 	g_context->RegisterSubsystem(this);
 
@@ -87,8 +85,6 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 void Engine::Update()
 {
-	EMIT_SIGNAL(SIGNAL_FRAME_START);
-
 	// Get subsystems
 	Timer* timer = g_context->GetSubsystem<Timer>();
 
@@ -108,8 +104,6 @@ void Engine::Update()
 	g_context->GetSubsystem<Renderer>()->Render();
 	timer->RenderEnd();
 	//============================================
-
-	EMIT_SIGNAL(SIGNAL_FRAME_END);
 }
 
 Context* Engine::GetContext()
@@ -119,8 +113,6 @@ Context* Engine::GetContext()
 
 void Engine::Shutdown()
 {
-	EMIT_SIGNAL(SIGNAL_ENGINE_SHUTDOWN);
-	
 	// The context will deallocate the subsystems
 	// in the reverse order in which they were registered.
 	delete g_context;

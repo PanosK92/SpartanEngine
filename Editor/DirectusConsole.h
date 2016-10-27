@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============
 #include <QListWidget>
 #include "DirectusCore.h"
-#include "Core/Socket.h"
-#include "IO/ILogger.h"
+#include "Socket/Socket.h"
+#include "Logging/ILogger.h"
 #include <string>
 //=======================
 

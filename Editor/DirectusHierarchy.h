@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include <QTreeWidget>
 #include <QtCore>
-#include "Core/Socket.h"
+#include "Socket/Socket.h"
 #include <QVariant>
 #include <QMouseEvent>
 #include "DirectusInspector.h"

@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Texture.h"
 #include "../Core/GUIDGenerator.h"
 #include "../IO/Serializer.h"
-#include "../IO/Log.h"
+#include "../Logging/Log.h"
 #include "../AssetImporting/ImageImporter.h"
-#include "../IO/FileSystem.h"
+#include "../FileSystem/FileSystem.h"
 #include "../Core/Helper.h"
 //==========================================
 

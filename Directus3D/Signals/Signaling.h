@@ -85,7 +85,6 @@ public:
 	static void Emit(int signalID);
 	static void Clear();
 
-private:
 	static std::vector<std::shared_ptr<Signal>> m_signals;
 };
 //============================================================

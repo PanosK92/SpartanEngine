@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshRenderer.h"
 #include "Transform.h"
 #include "../IO/Serializer.h"
-#include "../IO/Log.h"
+#include "../Logging/Log.h"
 #include "../Core/GameObject.h"
 #include "../Pools/MaterialPool.h"
 #include "../Core/Helper.h"

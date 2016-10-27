@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
-#include "../IO/Log.h"
+#include "../Logging/Log.h"
 #include <LinearMath/btMotionState.h>
 //===========================================================
 

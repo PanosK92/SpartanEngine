@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <scriptbuilder/scriptbuilder.h>
 #include <scriptbuilder/scriptbuilder.cpp>
 #include "ScriptEngine.h"
-#include "../IO/Log.h"
-#include "../IO/FileSystem.h"
+#include "../Logging/Log.h"
+#include "../FileSystem/FileSystem.h"
 //========================================
 
 Module::Module(const string& moduleName, ScriptEngine* scriptEngine)

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QPaintEngine>
 #include <QResizeEvent>
 #include "Core/Engine.h"
-#include "Core/Socket.h"
+#include "Socket/Socket.h"
 #include <QTimer>
 #include "DirectusStatsLabel.h"
 //=============================

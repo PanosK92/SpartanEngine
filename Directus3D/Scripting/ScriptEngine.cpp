@@ -26,8 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <scriptstdstring/scriptstdstring.cpp>
 #include "ScriptInterface.h"
 #include "Module.h"
-#include "../IO/Log.h"
-#include "../IO/FileSystem.h"
+#include "../Logging/Log.h"
+#include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
 //==========================================
 

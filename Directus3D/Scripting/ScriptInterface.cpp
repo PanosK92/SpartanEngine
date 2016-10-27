@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "ScriptInterface.h"
-#include "../IO/Log.h"
+#include "../Logging/Log.h"
 #include "../Components/RigidBody.h"
 #include "../Core/Settings.h"
 #include "../Components/Camera.h"

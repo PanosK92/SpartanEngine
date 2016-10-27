@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <angelscript.h>
 #include "Module.h"
 #include "../Core/Helper.h"
-#include "../IO/FileSystem.h"
-#include "../IO/Log.h"
+#include "../FileSystem/FileSystem.h"
+#include "../Logging/Log.h"
 #include "../Core/GameObject.h"
 //=============================
 

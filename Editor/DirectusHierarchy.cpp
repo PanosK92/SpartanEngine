@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <QFileDialog>
 #include "Components/Transform.h"
-#include "IO/Log.h"
+#include "Logging/Log.h"
 #include "DirectusQVariantPacker.h"
 #include "DirectusAssetLoader.h"
 #include <QApplication>
@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/Hinge.h"
 #include "Components/MeshFilter.h"
-#include "IO/FileSystem.h"
+#include "FileSystem/FileSystem.h"
 #include "Signals/Signaling.h"
 //=================================
 
@@ -66,9 +66,6 @@ void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWi
 
     // UI SIGNALS
     connect(m_fileDialog, SIGNAL(AssetLoaded()), this, SLOT(Populate()));
-
-    // ENGINE SIGNALS
-    //CONNECT_TO_SIGNAL(SIGNAL_HIERARCHY_CHANGED, std::bind(&DirectusHierarchy::Populate, this));
 
     Populate();
 }

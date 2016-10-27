@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QThread>
 #include <QDragMoveEvent>
 #include <QMimeData>
-#include "IO/Log.h"
+#include "Logging/Log.h"
 #include "DirectusInspector.h"
-#include "IO/FileSystem.h"
+#include "FileSystem/FileSystem.h"
 //==============================
 
 DirectusTexture::DirectusTexture(QWidget *parent) : QLabel(parent)

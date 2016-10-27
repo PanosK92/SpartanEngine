@@ -88,8 +88,6 @@ void PhysicsWorld::Step(float timeStep)
 	// Step the physics world. 
 	m_world->stepSimulation(timeStep, maxSubSteps, internalTimeStep); 
 
-	EMIT_SIGNAL(SIGNAL_PHYSICS_STEPPED);
-
 	// Draw colliders when the editor is idle
 	if (GET_ENGINE_MODE == Editor_Idle)
 	{

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11Graphics.h"
 #include <string>
 #include "../../Core/Settings.h"
-#include "../../IO/Log.h"
+#include "../../Logging/Log.h"
 #include "../../Core/Helper.h"
 //==============================
 

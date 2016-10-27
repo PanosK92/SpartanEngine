@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //== INCLUDES ======================
 #include "DirectusMaterial.h"
 #include "Components/MeshRenderer.h"
-#include "IO/Log.h"
+#include "Logging/Log.h"
 #include <QByteArray>
 //==================================
 

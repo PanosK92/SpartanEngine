@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "TexturePool.h"
 #include <filesystem>
-#include "../IO/FileSystem.h"
+#include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
 //===========================
 

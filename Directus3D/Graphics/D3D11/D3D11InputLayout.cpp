@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11InputLayout.h"
 #include "D3D11Graphics.h"
 #include "../../Core/Helper.h"
-#include "../../IO/Log.h"
+#include "../../Logging/Log.h"
 //=============================
 
 D3D11InputLayout::D3D11InputLayout()
