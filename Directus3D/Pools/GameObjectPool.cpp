@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameObjectPool.h"
 #include "../Core/GameObject.h"
 #include "../IO/Serializer.h"
-#include "../IO/Log.h"
+#include "../Logging/Log.h"
 #include "../Components/Transform.h"
 #include "../Core/Scene.h"
 #include "../Signals/Signaling.h"
@@ -289,7 +289,6 @@ void GameObjectPool::AddGameObjectToPool(GameObject* gameObjectIn)
 
 	gameObjectIn->Initialize(m_context);
 	m_gameObjectPool.push_back(gameObjectIn);
-	EMIT_SIGNAL(SIGNAL_HIERARCHY_CHANGED);
 
 	m_context->GetSubsystem<Scene>()->Resolve();
 }

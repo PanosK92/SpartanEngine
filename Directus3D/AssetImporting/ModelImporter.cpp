@@ -25,8 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assimp/postprocess.h>
 #include <vector>
 #include "ModelImporter.h"
-#include "../IO/FileSystem.h"
-#include "../IO/Log.h"
+#include "../FileSystem/FileSystem.h"
+#include "../Logging/Log.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
 #include "../Components/MeshFilter.h"

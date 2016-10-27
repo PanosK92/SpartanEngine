@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============
 #include "DirectusCore.h"
-#include "IO/Log.h"
+#include "Logging/Log.h"
 #include <QStyleOption>
 #include "Core/Settings.h"
 #include "Core/Context.h"
@@ -43,6 +43,9 @@ DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
 
     m_timerPerSec = new QTimer(this);
     connect(m_timerPerSec, SIGNAL(timeout()), this, SLOT(UpdatePerSec()));
+
+    m_locked = false;
+    m_isRunning = false;
 }
 
 DirectusCore::~DirectusCore()
@@ -63,8 +66,6 @@ void DirectusCore::Initialize(HWND mainWindowHandle, HINSTANCE hInstance, Direct
 
     m_socket = m_engine->GetContext()->GetSubsystem<Socket>();
     m_directusStatsLabel = directusStatsLabel;
-
-    m_locked = false;
 }
 
 bool DirectusCore::IsRunning()

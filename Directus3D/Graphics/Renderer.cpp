@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsDebugDraw.h"
 #include "D3D11/D3D11RenderTexture.h"
 #include "../Core/Scene.h"
-#include "../IO/Log.h"
+#include "../Logging/Log.h"
 #include "../Components/MeshFilter.h"
 #include "../Signals/Signaling.h"
 #include "../Core/Context.h"
@@ -121,8 +121,6 @@ void Renderer::Render()
 {
 	Graphics* graphics = g_context->GetSubsystem<Graphics>();
 
-	EMIT_SIGNAL(SIGNAL_RENDER_START);
-
 	StartCalculatingStats();
 	AcquirePrerequisites();
 
@@ -171,8 +169,6 @@ void Renderer::Render()
 	graphics->Present();
 
 	StopCalculatingStats();
-
-	EMIT_SIGNAL(SIGNAL_RENDER_END);
 }
 
 void Renderer::SetResolution(int width, int height)

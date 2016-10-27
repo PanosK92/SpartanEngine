@@ -25,8 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <complex>
 #include "../IO/Serializer.h"
 #include "../Pools/GameObjectPool.h"
-#include "../IO/FileSystem.h"
-#include "../IO/Log.h"
+#include "../FileSystem/FileSystem.h"
+#include "../Logging/Log.h"
 #include "../Graphics//Renderer.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
@@ -117,8 +117,6 @@ bool Scene::LoadFromFile(const string& filePath)
 	}
 	Clear();
 
-	EMIT_SIGNAL(SIGNAL_SCENE_LOADING_STARTED);
-	
 	// Read all the paths of any resource files used by the scene
 	//===========================================================
 	Serializer::StartReading(filePath);
@@ -154,8 +152,6 @@ bool Scene::LoadFromFile(const string& filePath)
 	//==============================================
 
 	Resolve();
-
-	EMIT_SIGNAL(SIGNAL_SCENE_LOADING_COMPLETED);
 
 	return true;
 }

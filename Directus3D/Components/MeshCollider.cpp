@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
-#include "../IO/Log.h"
+#include "../Logging/Log.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Pools/MeshPool.h"
 #include "../Core/Helper.h"

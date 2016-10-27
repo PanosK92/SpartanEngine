@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "DirectusIconProvider.h"
-#include "IO/Log.h"
-#include "IO/FileSystem.h"
+#include "Logging/Log.h"
+#include "FileSystem/FileSystem.h"
 //=======================================
 
 //= NAMESPACES =====

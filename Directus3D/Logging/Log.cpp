@@ -36,7 +36,7 @@ ILogger* Log::m_logger;
 
 void Log::Initialize()
 {
-	Signaling::Connect(SIGNAL_ENGINE_SHUTDOWN, std::bind(&Log::Release));
+
 }
 
 void Log::Release()

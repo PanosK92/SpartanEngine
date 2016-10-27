@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==============================
 #include "PhysicsDebugDraw.h"
 #include "BulletPhysicsHelper.h"
-#include "../IO/Log.h"
+#include "../Logging/Log.h"
 //==============================
 
 PhysicsDebugDraw::PhysicsDebugDraw()

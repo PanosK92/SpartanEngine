@@ -1,7 +1,7 @@
 // INCLUDES ====================
 #include "DirectusAdjustLabel.h"
 #include <QMouseEvent>
-#include "IO/Log.h"
+#include "Logging/Log.h"
 #include <QApplication>
 #include <QDesktopWidget>
 //==============================

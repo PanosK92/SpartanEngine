@@ -22,14 +22,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============================
-#include "Scene.h"
+#include "../Core/Scene.h"
+#include "../Core/Engine.h"
 #include "../Input/Input.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../AssetImporting/ImageImporter.h"
-#include "Engine.h"
 #include "../Graphics/Texture.h"
 //==========================================
 
+class IPlug;
 class ILogger;
 class PhysicsDebugDraw;
 
@@ -38,6 +39,8 @@ class __declspec(dllexport) Socket : public Object
 public:
 	Socket(Context* context);
 	~Socket();
+
+	void SetPlug(IPlug* editorPlug);
 
 	//= STATE CONTROL ==============
 	void StartEngine() const;
@@ -83,4 +86,6 @@ public:
 	//==============================================================================
 
 	void SetMaterialTexture(GameObject* gameObject, TextureType type, std::string texturePath);
+
+	IPlug* g_editorPlug;
 };

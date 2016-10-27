@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11Shader.h"
 #include "D3D11Graphics.h"
 #include "../../Core/Helper.h"
-#include "../../IO/Log.h"
-#include "../../IO/FileSystem.h"
+#include "../../Logging/Log.h"
+#include "../../FileSystem/FileSystem.h"
 #include <d3dcompiler.h>
 #include <sstream> 
 #include <fstream>

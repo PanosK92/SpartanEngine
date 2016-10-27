@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vertex.h"
 #include "../IO/Serializer.h"
 #include <functional>
-#include "../IO/FileSystem.h"
+#include "../FileSystem/FileSystem.h"
 //===========================
 
 #define MESH_EXTENSION ".msh"

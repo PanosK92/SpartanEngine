@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "DirectusPlayButton.h"
-#include "IO/Log.h"
+#include "Logging/Log.h"
 //=============================
 
 DirectusPlayButton::DirectusPlayButton(QWidget *parent) : QPushButton(parent)

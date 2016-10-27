@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "Socket.h"
 #include "../Pools/GameObjectPool.h"
-#include "../IO/Log.h"
+#include "../Logging/Log.h"
 #include "../Components/MeshRenderer.h"
 #include "../Graphics/Renderer.h"
-#include "../IO/FileSystem.h"
-#include "Settings.h"
+#include "../FileSystem/FileSystem.h"
+#include "../Core/Settings.h"
 #include "../Signals/Signaling.h"
 #include "../AssetImporting/ModelImporter.h"
 #include "../Pools/TexturePool.h"
@@ -43,6 +43,11 @@ Socket::Socket(Context* context) : Object(context)
 
 Socket::~Socket()
 {
+}
+
+void Socket::SetPlug(IPlug* editorPlug)
+{
+	g_editorPlug = editorPlug;
 }
 
 //= STATE CONTROL ==============================================================

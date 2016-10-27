@@ -21,42 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
-#include <QFileDialog>
-#include "DirectusAssetLoader.h"
-#include "Socket/Socket.h"
-#include "DirectusCore.h"
-//===============================
+//= INCLUDES ====
+#include <string>
+//===============
 
-class DirectusFileDialog : public QFileDialog
+class __declspec(dllexport) IPlug
 {
-    Q_OBJECT
 public:
-    explicit DirectusFileDialog(QWidget *parent = 0);
-    void Initialize(QWidget* mainWindow, DirectusCore* directusCore);
-    void Reset();
-    void LoadModel();
-    void LoadModelDirectly(QString filePath);
-    void LoadScene();
-    void SaveScene();
-    void SaveSceneAs();
-
-private:
-    std::string m_lastSceneFilePath;
-    std::string m_assetOperation;
-
-    DirectusAssetLoader* m_assetLoader;
-    QWidget* m_mainWindow;
-    Socket* m_socket;
-    DirectusCore* m_directusCore;
-
-signals:
-    void AssetLoaded();
-
-private slots:
-    void AssetLoadedSurrogate();
-
-public slots:
-    void FileDialogAccepted(QString);
-
+	virtual ~IPlug() {}
+	virtual void OnHierarchyResolved() = 0;
+	virtual void OnComponentChange() = 0;
 };

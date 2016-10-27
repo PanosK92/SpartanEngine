@@ -40,13 +40,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -152,7 +152,7 @@
     <ClCompile Include="Core\Scene.cpp" />
     <ClCompile Include="Core\Settings.cpp" />
     <ClCompile Include="Multithreading\ThreadPool.cpp" />
-    <ClCompile Include="Core\Socket.cpp" />
+    <ClCompile Include="Socket\Socket.cpp" />
     <ClCompile Include="Graphics\Texture.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11Buffer.cpp" />
@@ -174,8 +174,8 @@
     <ClCompile Include="Graphics\Shaders\ShaderVariation.cpp" />
     <ClCompile Include="Input\DX8Input.cpp" />
     <ClCompile Include="Input\Input.cpp" />
-    <ClCompile Include="IO\FileSystem.cpp" />
-    <ClCompile Include="IO\Log.cpp" />
+    <ClCompile Include="FileSystem\FileSystem.cpp" />
+    <ClCompile Include="Logging\Log.cpp" />
     <ClCompile Include="IO\Serializer.cpp" />
     <ClCompile Include="AssetImporting\DDSTextureImporter.cpp" />
     <ClCompile Include="AssetImporting\ImageImporter.cpp" />
@@ -225,7 +225,8 @@
     <ClInclude Include="Graphics\Mesh.h" />
     <ClInclude Include="Core\Scene.h" />
     <ClInclude Include="Core\Settings.h" />
-    <ClInclude Include="Core\Socket.h" />
+    <ClInclude Include="Socket\IPlug.h" />
+    <ClInclude Include="Socket\Socket.h" />
     <ClInclude Include="Graphics\Texture.h" />
     <ClInclude Include="Core\Timer.h" />
     <ClInclude Include="Graphics\Vertex.h" />
@@ -249,10 +250,10 @@
     <ClInclude Include="Graphics\Shaders\ShaderVariation.h" />
     <ClInclude Include="Input\DX8Input.h" />
     <ClInclude Include="Input\Input.h" />
-    <ClInclude Include="IO\dirent.h" />
-    <ClInclude Include="IO\FileSystem.h" />
-    <ClInclude Include="IO\ILogger.h" />
-    <ClInclude Include="IO\Log.h" />
+    <ClInclude Include="FileSystem\dirent.h" />
+    <ClInclude Include="FileSystem\FileSystem.h" />
+    <ClInclude Include="Logging\ILogger.h" />
+    <ClInclude Include="Logging\Log.h" />
     <ClInclude Include="IO\Serializer.h" />
     <ClInclude Include="AssetImporting\DDSTextureImporter.h" />
     <ClInclude Include="AssetImporting\ImageImporter.h" />

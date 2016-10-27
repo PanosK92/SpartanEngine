@@ -1,7 +1,7 @@
 //= INCLUDES ==================
 #include "DirectusStatsLabel.h"
 #include "DirectusCore.h"
-#include "Core/Socket.h"
+#include "Socket/Socket.h"
 //=============================
 
 //= NAMESPACES ================
