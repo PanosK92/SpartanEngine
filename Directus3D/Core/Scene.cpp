@@ -174,10 +174,11 @@ void Scene::Clear()
 	m_mainCamera = nullptr;
 
 	//= Clear all the pools ==================
-	g_context->GetSubsystem<TexturePool>()->Clear();
-	g_context->GetSubsystem<MeshPool>()->Clear();
-	g_context->GetSubsystem<MaterialPool>()->Clear();
 	g_context->GetSubsystem<ShaderPool>()->Clear();
+	g_context->GetSubsystem<MaterialPool>()->Clear();
+	g_context->GetSubsystem<TexturePool>()->Clear();
+	g_context->GetSubsystem<MeshPool>()->Clear();	
+		
 	GameObjectPool::GetInstance().Clear();
 	//========================================
 

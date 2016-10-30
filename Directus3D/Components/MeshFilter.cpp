@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "MeshFilter.h"
 #include "Transform.h"
-#include "../Core/Helper.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Pools/MeshPool.h"
