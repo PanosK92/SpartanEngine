@@ -225,7 +225,6 @@
     <ClInclude Include="Graphics\Mesh.h" />
     <ClInclude Include="Core\Scene.h" />
     <ClInclude Include="Core\Settings.h" />
-    <ClInclude Include="Socket\IPlug.h" />
     <ClInclude Include="Socket\Socket.h" />
     <ClInclude Include="Graphics\Texture.h" />
     <ClInclude Include="Core\Timer.h" />

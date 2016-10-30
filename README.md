@@ -21,10 +21,11 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 - Scripting.
 - Windows support.
 
-# Features under development
-- Custom format resources (prefabs, materials and so on).
-- General engine architecture improvements.
-- More efficient memory management and lower memory usage.
+# Features under development (v0.2)
+- Bug fixes.
+- Custom format resources and improvents to existing ones (prefabs, materials, scenes and so on).
+- Engine architecture improvements.
+- Lower memory usage and more efficient memory management.
 
 # Planned Features
 - Audio source and listener components.

@@ -25,8 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/D3D11/D3D11Shader.h"
 //========================================
 
-#define TEXTURE_METADATA_EXTENSION ".tex"
-
 enum TextureType
 {
 	Albedo,

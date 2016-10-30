@@ -25,6 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //===============
 
+#define SCENE_EXTENSION ".directus"
+#define MATERIAL_EXTENSION ".mat"
+#define TEXTURE_METADATA_EXTENSION ".tex"
+#define MESH_EXTENSION ".msh"
 #define PATH_NOT_ASSIGNED "PATH_NOT_ASSIGNED"
 
 class __declspec(dllexport) FileSystem
