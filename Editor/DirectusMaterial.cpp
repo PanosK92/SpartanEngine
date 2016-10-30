@@ -304,9 +304,12 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
     this->show();
 }
 
-void DirectusMaterial::ReflectFile(string filepath)
+void DirectusMaterial::ReflectFile(string filePath)
 {
-    /*
+    shared_ptr<Material> fileMat = make_shared<Material>(m_directusCore->GetEngineSocket()->GetContext());
+    fileMat->LoadFromFile(filePath);
+    m_inspectedMaterial = fileMat;
+
     // Do the actual reflection
     ReflectName();
     ReflectAlbedo();
@@ -320,7 +323,7 @@ void DirectusMaterial::ReflectFile(string filepath)
     ReflectSpecular();
     ReflectTiling();
     ReflectOffset();
-*/
+
     // Make this widget visible
     this->show();
 }

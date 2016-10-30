@@ -31,6 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 //===============================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
 {
 
@@ -165,9 +169,17 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
         QString localPath = droppedUrls[i].toLocalFile();
         QFileInfo fileInfo(localPath);
 
-        if(fileInfo.isFile() && FileSystem::IsSupportedModel(fileInfo.filePath().toStdString()))
+        string filePath = fileInfo.filePath().toStdString();
+        if(fileInfo.isFile()) // The user dropped a file
         {
-           m_fileDialog->LoadModelDirectly(fileInfo.filePath());
+            if (FileSystem::IsSupportedModel(filePath))
+                m_fileDialog->LoadModelDirectly(filePath);
+        }
+        else if (fileInfo.isDir()) // The user dropped a folder
+        {
+            vector<string> modelFilePaths = FileSystem::GetSupportedModelsInDirectory(filePath);
+            if (modelFilePaths.size() != 0)
+                m_fileDialog->LoadModelDirectly(modelFilePaths.front());
         }
     }
 

@@ -212,9 +212,9 @@ vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
 {
 	vector<string> filesInDirectory = GetFilesInDirectory(directory);
 
-	vector<string> imagesInDirectory = GetImagesFromPaths(filesInDirectory); // get all the images
-	vector<string> scriptsInDirectory = GetScriptsFromPaths(filesInDirectory); // get all the scripts
-	vector<string> modelsInDirectory = GetModelsFromPaths(filesInDirectory); // get all the models
+	vector<string> imagesInDirectory = GetImagesFromFilePaths(filesInDirectory); // get all the images
+	vector<string> scriptsInDirectory = GetScriptsFromFilePaths(filesInDirectory); // get all the scripts
+	vector<string> modelsInDirectory = GetModelsFromFilePaths(filesInDirectory); // get all the models
 	vector<string> supportedFiles;
 
 	// get supported images
@@ -232,7 +232,7 @@ vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
 	return supportedFiles;
 }
 
-vector<string> FileSystem::GetImagesFromPaths(const vector<string>& paths)
+vector<string> FileSystem::GetImagesFromFilePaths(const vector<string>& paths)
 {
 	vector<string> images;
 	for (int i = 0; i < paths.size(); i++)
@@ -246,7 +246,7 @@ vector<string> FileSystem::GetImagesFromPaths(const vector<string>& paths)
 	return images;
 }
 
-vector<string> FileSystem::GetScriptsFromPaths(const vector<string>& paths)
+vector<string> FileSystem::GetScriptsFromFilePaths(const vector<string>& paths)
 {
 	vector<string> scripts;
 	for (int i = 0; i < paths.size(); i++)
@@ -260,7 +260,7 @@ vector<string> FileSystem::GetScriptsFromPaths(const vector<string>& paths)
 	return scripts;
 }
 
-vector<string> FileSystem::GetModelsFromPaths(const vector<string>& paths)
+vector<string> FileSystem::GetModelsFromFilePaths(const vector<string>& paths)
 {
 	vector<string> images;
 	for (int i = 0; i < paths.size(); i++)
@@ -272,6 +272,11 @@ vector<string> FileSystem::GetModelsFromPaths(const vector<string>& paths)
 	}
 
 	return images;
+}
+
+vector<string> FileSystem::GetSupportedModelsInDirectory(const string& directory)
+{
+	return GetModelsFromFilePaths(GetFilesInDirectory(directory));
 }
 
 bool FileSystem::IsSupportedImage(const string& path)

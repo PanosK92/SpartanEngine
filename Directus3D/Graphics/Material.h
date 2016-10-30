@@ -43,7 +43,7 @@ enum ShadingMode
 class __declspec(dllexport) Material
 {
 public:
-	Material(TexturePool* texturePool, ShaderPool* shaderPool);
+	Material(Context* context);
 	~Material();
 
 	//= I/O =======================================================================
@@ -158,8 +158,7 @@ private:
 	
 	bool m_isEditable;
 
-	//= DEPENDENCIES ==========
-	TexturePool* m_texturePool;
-	ShaderPool* m_shaderPool;
-	//=========================
+	//= DEPENDENCIES ==
+	Context* m_context;
+	//=================
 };
