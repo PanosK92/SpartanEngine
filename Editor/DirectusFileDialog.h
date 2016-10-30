@@ -28,12 +28,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusCore.h"
 //===============================
 
+class DirectusHierarchy;
+
 class DirectusFileDialog : public QFileDialog
 {
     Q_OBJECT
 public:
     explicit DirectusFileDialog(QWidget *parent = 0);
-    void Initialize(QWidget* mainWindow, DirectusCore* directusCore);
+    void Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusCore* directusCore);
     void Reset();
     void LoadModel();
     void LoadModelDirectly(QString filePath);
@@ -49,12 +51,7 @@ private:
     QWidget* m_mainWindow;
     Socket* m_socket;
     DirectusCore* m_directusCore;
-
-signals:
-    void AssetLoaded();
-
-private slots:
-    void AssetLoadedSurrogate();
+    DirectusHierarchy* m_hierarchy;
 
 public slots:
     void FileDialogAccepted(QString);
