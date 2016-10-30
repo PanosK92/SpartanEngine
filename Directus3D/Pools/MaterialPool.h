@@ -37,14 +37,14 @@ public:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/	
-	std::shared_ptr<Material> Add(std::shared_ptr<Material> material);
+	std::weak_ptr<Material> Add(std::shared_ptr<Material> material);
 	void Add(const std::vector<std::string>& filePaths);
 
 	void Clear();
 
-	std::shared_ptr<Material> GetMaterialByID(const std::string& materialID);
-	std::shared_ptr<Material> GetMaterialStandardDefault();
-	std::shared_ptr<Material> GetMaterialStandardSkybox();
+	std::weak_ptr<Material> GetMaterialByID(const std::string& materialID);
+	std::weak_ptr<Material> GetMaterialStandardDefault();
+	std::weak_ptr<Material> GetMaterialStandardSkybox();
 	std::vector<std::string> GetAllMaterialFilePaths();
 	const std::vector<std::shared_ptr<Material>>& GetAllMaterials();
 

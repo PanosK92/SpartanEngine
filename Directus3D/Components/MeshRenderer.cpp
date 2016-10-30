@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 #include "../Graphics/Shaders/ShaderVariation.h"
 #include "../Graphics/Mesh.h"
+#include "../FileSystem/FileSystem.h"
 //==============================================
 
 //= NAMESPACES ================
@@ -40,7 +41,6 @@ MeshRenderer::MeshRenderer()
 {
 	m_castShadows = true;
 	m_receiveShadows = true;
-	m_material = nullptr;
 }
 
 MeshRenderer::~MeshRenderer()
@@ -71,7 +71,7 @@ void MeshRenderer::Update()
 
 void MeshRenderer::Serialize()
 {
-	Serializer::WriteSTR(m_material ? m_material->GetID() : (string)DATA_NOT_ASSIGNED);
+	Serializer::WriteSTR(!m_material.expired() ? m_material.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
 	Serializer::WriteBool(m_castShadows);
 	Serializer::WriteBool(m_receiveShadows);
 }
@@ -87,22 +87,22 @@ void MeshRenderer::Deserialize()
 //= MISC =======================================================================
 void MeshRenderer::Render(unsigned int indexCount) const
 {
-	shared_ptr<Material> material = GetMaterial();
+	auto material = GetMaterial();
 
-	if (!material) // Check if a material exists
+	if (material.expired()) // Check if a material exists
 	{
 		LOG_WARNING("GameObject \"" + g_gameObject->GetName() + "\" has no material. It can't be rendered.");
 		return;
 	}
 
-	if (!material->HasShader()) // Check if the material has a shader
+	if (!material.lock()->HasShader()) // Check if the material has a shader
 	{
 		LOG_WARNING("GameObject \"" + g_gameObject->GetName() + "\" has a material but not a shader associated with it. It can't be rendered.");
 		return;
 	}
 
 	// Set the buffers and draw
-	GetMaterial()->GetShader().lock()->Draw(indexCount);
+	GetMaterial().lock()->GetShader().lock()->Draw(indexCount);
 }
 
 //==============================================================================
@@ -130,21 +130,18 @@ bool MeshRenderer::GetReceiveShadows() const
 //==============================================================================
 
 //= MATERIAL ===================================================================
-shared_ptr<Material> MeshRenderer::GetMaterial() const
+weak_ptr<Material> MeshRenderer::GetMaterial() const
 {
 	return m_material;
 }
 
-void MeshRenderer::SetMaterial(shared_ptr<Material> material)
+void MeshRenderer::SetMaterial(weak_ptr<Material> material)
 {
 	m_material = material;
 }
 
 bool MeshRenderer::HasMaterial() const
 {
-	if (!GetMaterial())
-		return false;
-
-	return true;
+	return GetMaterial().expired() ? false : true;
 }
 //==============================================================================

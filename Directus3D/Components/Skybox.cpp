@@ -79,7 +79,7 @@ void Skybox::Initialize()
 	meshRenderer->SetCastShadows(false);
 	meshRenderer->SetReceiveShadows(false);
 	meshRenderer->SetMaterial(g_context->GetSubsystem<MaterialPool>()->GetMaterialStandardSkybox());
-	meshRenderer->GetMaterial()->SetTexture(m_cubeMapTexture);
+	meshRenderer->GetMaterial().lock()->SetTexture(m_cubeMapTexture);
 
 	g_transform->SetScale(Vector3(1000, 1000, 1000));
 

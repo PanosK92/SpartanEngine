@@ -344,15 +344,15 @@ void Renderer::GBufferPass()
 				//============================================================
 
 				// If any rendering requirement is missing, skip this GameObject
-				if (!meshFilter || mesh.expired() || !meshRenderer || !material)
+				if (!meshFilter || mesh.expired() || !meshRenderer || material.expired())
 					continue;		
 
 				//... that uses the current material
-				if (currentMaterial->GetID() != material->GetID())
+				if (currentMaterial->GetID() != material.lock()->GetID())
 					continue;
 
 				// Skip transparent meshes (for now)
-				if (material->GetOpacity() < 1.0f)
+				if (material.lock()->GetOpacity() < 1.0f)
 					continue;
 
 				// Make sure the mesh is actually in our view frustrum
@@ -366,7 +366,7 @@ void Renderer::GBufferPass()
 				if (meshFilter->SetBuffers())
 				{
 					// Set face culling (changes only if required)
-					graphics->SetCullMode(material->GetFaceCullMode());
+					graphics->SetCullMode(material.lock()->GetFaceCullMode());
 
 					// Render the mesh, finally!				
 					meshRenderer->Render(mesh.lock()->GetIndexCount());

@@ -155,10 +155,10 @@ void DirectusMeshRenderer::ReflectReceiveShadows()
 void DirectusMeshRenderer::ReflectMaterial()
 {
     auto material = m_inspectedMeshRenderer->GetMaterial();
-    if (!material)
+    if (material.expired())
         return;
 
-    std::string materialName = material->GetName();
+    std::string materialName = material.lock()->GetName();
     m_material->setText(QString::fromStdString(materialName));
 }
 

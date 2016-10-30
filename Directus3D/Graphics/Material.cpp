@@ -90,8 +90,8 @@ void Material::Serialize()
 	Serializer::WriteBool(m_isEditable);
 
 	Serializer::WriteInt(int(m_textures.size()));
-	for (auto i = 0; i < m_textures.size(); i++)
-		Serializer::WriteSTR(!m_textures[i].expired() ? m_textures[i].lock()->GetID() : DATA_NOT_ASSIGNED);
+	for (auto texture : m_textures)
+		Serializer::WriteSTR(!texture.expired() ? texture.lock()->GetID() : DATA_NOT_ASSIGNED);
 }
 
 void Material::Deserialize()

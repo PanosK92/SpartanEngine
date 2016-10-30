@@ -268,18 +268,14 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		// Get assimp material
 		aiMaterial* assimpMaterial = scene->mMaterials[mesh->mMaterialIndex];
 
-		// Convert it
-		shared_ptr<Material> material = GenerateMaterialFromAiMaterial(assimpMaterial);
-
-		// Add it to the material pool
-		MaterialPool* materialPool = g_context->GetSubsystem<MaterialPool>();
-		material = materialPool->Add(material);
+		// Convert AiMaterial to Material and add it to the pool
+		auto material = g_context->GetSubsystem<MaterialPool>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
 
 		// Set it in the mesh renderer component
 		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);
 
 		// Save the material in our custom format
-		material->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/", false);
+		material.lock()->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/", false);
 	}
 
 	// free memory
@@ -353,7 +349,7 @@ shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* m
 /*------------------------------------------------------------------------------
 [HELPER FUNCTIONS]
 ------------------------------------------------------------------------------*/
-void ModelImporter::AddTextureToMaterial(shared_ptr<Material> material, TextureType textureType, const string& texturePath)
+void ModelImporter::AddTextureToMaterial(weak_ptr<Material> material, TextureType textureType, const string& texturePath)
 {
 	string textureSource = FindTexture(texturePath);
 	if (textureSource == PATH_NOT_ASSIGNED)
@@ -366,11 +362,11 @@ void ModelImporter::AddTextureToMaterial(shared_ptr<Material> material, TextureT
 	string textureDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
 	FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
-	weak_ptr<Texture> texture = g_context->GetSubsystem<TexturePool>()->Add(textureDestination);
+	auto texture = g_context->GetSubsystem<TexturePool>()->Add(textureDestination);
 	if (!texture.expired())
 	{
 		texture.lock()->SetType(textureType);
-		material->SetTextureByID(texture.lock()->GetID());
+		material.lock()->SetTexture(texture);
 	}
 }
 
