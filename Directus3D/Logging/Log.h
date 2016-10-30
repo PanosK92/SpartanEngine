@@ -23,8 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <windows.h>
+#include <memory>
 #include "../Math/Vector3.h"
-#include "../Math/Quaternion.h"
+#include "../Math/Quaternion.h" // needs to be included (it's just forward declared by Vector3)
 //=============================
 
 #define LOG_INFO(text) Log::Write(text, Log::Info)
@@ -44,7 +45,7 @@ public:
 
 	static void Initialize();
 	static void Release();
-	static void SetLogger(ILogger* logger);
+	static void SetLogger(std::weak_ptr<ILogger> logger);
 
 	//= LOGGING ==========================================================================
 	static void Write(const std::string& text, LogType type);
@@ -62,5 +63,5 @@ public:
 	static std::string WCHARPToString(WCHAR*);
 
 private:
-	static ILogger* m_logger;
+	static std::weak_ptr<ILogger> m_logger;
 };

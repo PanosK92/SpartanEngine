@@ -125,7 +125,7 @@ ImageImporter* Socket::GetImageLoader()
 	return &ImageImporter::GetInstance();
 }
 
-void Socket::SetLogger(ILogger* logger)
+void Socket::SetLogger(weak_ptr<ILogger> logger)
 {
 	Log::SetLogger(logger);
 }
