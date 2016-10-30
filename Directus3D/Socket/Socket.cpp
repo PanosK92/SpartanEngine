@@ -206,21 +206,11 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 	shared_ptr<Material> material = meshRenderer->GetMaterial();
 	if (material)
 	{
-		// Get the texture from the texture pool
-		shared_ptr<Texture> texture = g_context->GetSubsystem<TexturePool>()->GetTextureByPath(texturePath);
-
-		// If it's not loaded yet, load it
-		if (!texture)
-		{
-			texture = g_context->GetSubsystem<TexturePool>()->Add(texturePath);
-			texture->SetType(type);
-		}
+		// Load the texture, if the texture has already been loaded, the pool will return the existing one
+		weak_ptr<Texture> texture = g_context->GetSubsystem<TexturePool>()->Add(texturePath);
+		texture.lock()->SetType(type);
 
 		// Set it to the material
-		material->SetTextureByID(texture->GetID());
-
-		return;
+		material->SetTextureByID(texture.lock()->GetID());
 	}
-
-	LOG_WARNING("Unable to set texture: \"" + texturePath +"\" to material");
 }

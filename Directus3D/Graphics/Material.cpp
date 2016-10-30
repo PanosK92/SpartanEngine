@@ -92,7 +92,7 @@ void Material::Serialize()
 
 	Serializer::WriteInt(int(m_textures.size()));
 	for (auto i = 0; i < m_textures.size(); i++)
-		Serializer::WriteSTR(m_textures[i]->GetID());
+		Serializer::WriteSTR(!m_textures[i].expired() ? m_textures[i].lock()->GetID() : DATA_NOT_ASSIGNED);
 }
 
 void Material::Deserialize()
@@ -154,19 +154,21 @@ bool Material::LoadFromFile(const string& filePath)
 //==============================================================================
 
 //= TEXTURES ===================================================================
-void Material::SetTexture(shared_ptr<Texture> texture)
+void Material::SetTexture(weak_ptr<Texture> texture)
 {
 	// Make sure this texture exists
-	if (!texture)
+	if (texture.expired())
 		return;
 
 	// If a texture of that type exists, overwrite it
 	for (auto textureTemp : m_textures)
-		if (textureTemp->GetType() == texture->GetType())
+	{
+		if (textureTemp.lock()->GetType() == texture.lock()->GetType())
 		{
 			textureTemp = texture;
 			return;
 		}
+	}
 
 	// Add
 	m_textures.push_back(texture);
@@ -179,24 +181,24 @@ void Material::SetTextureByID(const string& textureID)
 	SetTexture(m_texturePool->GetTextureByID(textureID));
 }
 
-shared_ptr<Texture> Material::GetTextureByType(TextureType type)
+weak_ptr<Texture> Material::GetTextureByType(TextureType type)
 {
 	for (auto texture : m_textures)
-		if (texture->GetType() == type)
+		if (texture.lock()->GetType() == type)
 			return texture;
 
-	return nullptr;
+	return weak_ptr<Texture>();
 }
 
 bool Material::HasTextureOfType(TextureType type)
 {
-	return GetTextureByType(type) ? true : false;
+	return GetTextureByType(type).expired() ? false : true;
 }
 
 bool Material::HasTexture(const string& path)
 {
 	for (auto texture : m_textures)
-		if (texture->GetFilePathTexture() == path)
+		if (texture.lock()->GetFilePathTexture() == path)
 			return true;
 
 	return false;
@@ -205,7 +207,7 @@ bool Material::HasTexture(const string& path)
 string Material::GetTexturePathByType(TextureType type)
 {
 	auto texture = GetTextureByType(type);
-	return texture ? texture->GetFilePathTexture() : PATH_NOT_ASSIGNED;
+	return texture.expired() ? PATH_NOT_ASSIGNED : texture.lock()->GetFilePathTexture();
 }
 
 vector<string> Material::GetTexturePaths()
@@ -213,7 +215,7 @@ vector<string> Material::GetTexturePaths()
 	vector<string> paths;
 
 	for (auto texture : m_textures)
-		paths.push_back(texture->GetFilePathTexture());
+		paths.push_back(texture.lock()->GetFilePathTexture());
 
 	return paths;
 }
@@ -254,8 +256,8 @@ ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureTy
 {
 	auto texture = GetTextureByType(type);
 
-	if (texture)
-		return texture->GetID3D11ShaderResourceView();
+	if (!texture.expired())
+		return texture.lock()->GetID3D11ShaderResourceView();
 
 	return nullptr;
 }

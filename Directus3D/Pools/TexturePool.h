@@ -33,13 +33,13 @@ public:
 	TexturePool(Context* context);
 	~TexturePool();
 
-	std::shared_ptr<Texture> Add(std::shared_ptr<Texture> texture);
-	std::shared_ptr<Texture> Add(const std::string& texturePath);
+	std::weak_ptr<Texture> Add(std::shared_ptr<Texture> texture);
+	std::weak_ptr<Texture> Add(const std::string& texturePath);
 	void Add(const std::vector<std::string>& texturePaths);
 
-	std::shared_ptr<Texture> GetTextureByName(const std::string& name);
-	std::shared_ptr<Texture> GetTextureByID(const std::string& ID);
-	std::shared_ptr<Texture> GetTextureByPath(const std::string& path);
+	std::weak_ptr<Texture> GetTextureByName(const std::string& name);
+	std::weak_ptr<Texture> GetTextureByID(const std::string& ID);
+	std::weak_ptr<Texture> GetTextureByPath(const std::string& path);
 	std::vector<std::string> GetAllTextureFilePaths();
 
 	void Clear();

@@ -56,9 +56,9 @@ public:
 	//=============================================================================
 
 	//= TEXTURES ==================================================================
-	void SetTexture(std::shared_ptr<Texture> texture);
+	void SetTexture(std::weak_ptr<Texture> texture);
 	void SetTextureByID(const std::string& textureID);
-	std::shared_ptr<Texture> GetTextureByType(TextureType type);
+	std::weak_ptr<Texture> GetTextureByType(TextureType type);
 	bool HasTextureOfType(TextureType type);
 	bool HasTexture(const std::string& path);
 	std::string GetTexturePathByType(TextureType type);
@@ -135,7 +135,7 @@ public:
 private:
 	void TextureBasedMultiplierAdjustment();
 
-	std::vector<std::shared_ptr<Texture>> m_textures;
+	std::vector<std::weak_ptr<Texture>> m_textures;
 	std::string m_ID;
 	std::string m_name;
 	std::string m_modelID;
