@@ -19,10 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//===============================
+//================================
 #include "DirectusMeshCollider.h"
 #include "DirectusInspector.h"
-//===============================
+#include "FileSystem/FileSystem.h"
+//================================
 
 DirectusMeshCollider::DirectusMeshCollider(QWidget *parent) : QWidget(parent)
 {
@@ -136,8 +137,8 @@ void DirectusMeshCollider::ReflectMesh()
     if (!m_inspectedMeshCollider)
         return;
 
-    std::shared_ptr<Mesh> mesh = m_inspectedMeshCollider->GetMesh();
-    QString meshName = QString::fromStdString(mesh ? mesh->GetName() : "N/A");
+    auto mesh = m_inspectedMeshCollider->GetMesh();
+    QString meshName = QString::fromStdString(!mesh.expired() ? mesh.lock()->GetName() : DATA_NOT_ASSIGNED);
     m_mesh->setText(meshName);
 }
 

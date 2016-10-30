@@ -278,7 +278,7 @@ void Renderer::DirectionalLightDepthPass()
 			auto meshFilter = gameObject->GetComponent<MeshFilter>();
 			auto mesh = meshFilter->GetMesh();
 
-			if (!mesh || !meshFilter || !meshRenderer)
+			if (mesh.expired() || !meshFilter || !meshRenderer)
 				continue;
 
 			// The skybox might be able to cast shadows, but in the real world it doesn't, 
@@ -289,7 +289,7 @@ void Renderer::DirectionalLightDepthPass()
 			if (meshFilter->SetBuffers())
 			{
 				m_shaderDepth->Render(
-					mesh->GetIndexCount(),
+					mesh.lock()->GetIndexCount(),
 					gameObject->GetTransform()->GetWorldTransform(),
 					m_directionalLight->GetViewMatrix(),
 					m_directionalLight->GetOrthographicProjectionMatrix(cascadeIndex)
@@ -344,7 +344,7 @@ void Renderer::GBufferPass()
 				//============================================================
 
 				// If any rendering requirement is missing, skip this GameObject
-				if (!meshFilter || !mesh || !meshRenderer || !material)
+				if (!meshFilter || mesh.expired() || !meshRenderer || !material)
 					continue;		
 
 				//... that uses the current material
@@ -369,7 +369,7 @@ void Renderer::GBufferPass()
 					graphics->SetCullMode(material->GetFaceCullMode());
 
 					// Render the mesh, finally!				
-					meshRenderer->Render(mesh->GetIndexCount());
+					meshRenderer->Render(mesh.lock()->GetIndexCount());
 
 					m_meshesRendered++;
 				}

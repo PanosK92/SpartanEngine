@@ -207,7 +207,7 @@ bool Material::HasTexture(const string& path)
 string Material::GetTexturePathByType(TextureType type)
 {
 	auto texture = GetTextureByType(type);
-	return texture.expired() ? PATH_NOT_ASSIGNED : texture.lock()->GetFilePathTexture();
+	return !texture.expired() ? texture.lock()->GetFilePathTexture() : (string)PATH_NOT_ASSIGNED;
 }
 
 vector<string> Material::GetTexturePaths()

@@ -190,7 +190,7 @@ void Hinge::ConstructHinge()
 	btVector3 pivotB = ToBtVector3(m_pivotB);
 
 	// create the hinge
-	m_hinge = new btHingeConstraint(*rigidBodyA, *rigidBodyB, axisA, axisB, pivotA, pivotB);
+	m_hinge = new btHingeConstraint(*rigidBodyA.lock(), *rigidBodyB.lock(), axisA, axisB, pivotA, pivotB);
 	m_hinge->enableAngularMotor(true, 2, 3);
 
 	// add it to the world

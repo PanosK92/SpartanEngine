@@ -51,7 +51,7 @@ public:
 	bool SetBuffers() const;
 	Directus::Math::Vector3 GetCenter() const;
 	Directus::Math::Vector3 GetBoundingBox() const;
-	std::shared_ptr<Mesh> GetMesh() const;
+	std::weak_ptr<Mesh> GetMesh() const;
 	std::string GetMeshName();
 
 private:
@@ -59,5 +59,5 @@ private:
 
 	std::shared_ptr<D3D11Buffer> m_vertexBuffer;
 	std::shared_ptr<D3D11Buffer> m_indexBuffer;
-	std::shared_ptr<Mesh> m_mesh;
+	std::weak_ptr<Mesh> m_mesh;
 };

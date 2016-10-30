@@ -38,7 +38,6 @@ MeshFilter::MeshFilter()
 {
 	m_vertexBuffer = nullptr;
 	m_indexBuffer = nullptr;
-	m_mesh = nullptr;
 }
 
 MeshFilter::~MeshFilter()
@@ -68,7 +67,7 @@ void MeshFilter::Update()
 
 void MeshFilter::Serialize()
 {
-	Serializer::WriteSTR(m_mesh ? m_mesh->GetID() : (string)DATA_NOT_ASSIGNED);
+	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
 }
 
 void MeshFilter::Deserialize()
@@ -89,7 +88,7 @@ void MeshFilter::SetDefaultMesh(DefaultMesh defaultMesh)
 		m_mesh = g_context->GetSubsystem<MeshPool>()->GetDefaultQuad();
 		break;
 	default:
-		m_mesh = nullptr;
+		m_mesh = weak_ptr<Mesh>();
 		break;
 	}
 
@@ -103,7 +102,7 @@ void MeshFilter::Set(const string& name, const string& rootGameObjectID, const v
 	m_mesh = g_context->GetSubsystem<MeshPool>()->Add(name, rootGameObjectID, vertices, indices);
 
 	// Make the mesh re-create the buffers whenever it updates.
-	m_mesh->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
+	m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
 }
 
 // Set the buffers to active in the input assembler so they can be rendered.
@@ -132,22 +131,22 @@ bool MeshFilter::SetBuffers() const
 
 Vector3 MeshFilter::GetCenter() const
 {
-	return m_mesh ? m_mesh->GetCenter() * g_transform->GetWorldTransform() : Vector3::Zero;
+	return !m_mesh.expired() ? m_mesh.lock()->GetCenter() * g_transform->GetWorldTransform() : Vector3::Zero;
 }
 
 Vector3 MeshFilter::GetBoundingBox() const
 {
-	return m_mesh ? m_mesh->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
+	return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
 }
 
-shared_ptr<Mesh> MeshFilter::GetMesh() const
+weak_ptr<Mesh> MeshFilter::GetMesh() const
 {
 	return m_mesh;
 }
 
 string MeshFilter::GetMeshName()
 {
-	return m_mesh ? m_mesh->GetName() : DATA_NOT_ASSIGNED;
+	return !m_mesh.expired() ? m_mesh.lock()->GetName() : DATA_NOT_ASSIGNED;
 }
 
 void MeshFilter::CreateBuffers()
@@ -155,14 +154,14 @@ void MeshFilter::CreateBuffers()
 	m_vertexBuffer.reset();
 	m_indexBuffer.reset();
 
-	if (!m_mesh)
+	if (m_mesh.expired())
 		return;
 
 	m_vertexBuffer = make_shared<D3D11Buffer>();
 	m_vertexBuffer->Initialize(g_context->GetSubsystem<Graphics>());
-	m_vertexBuffer->CreateVertexBuffer(m_mesh->GetVertices());
+	m_vertexBuffer->CreateVertexBuffer(m_mesh.lock()->GetVertices());
 
 	m_indexBuffer = make_shared<D3D11Buffer>();
 	m_indexBuffer->Initialize(g_context->GetSubsystem<Graphics>());
-	m_indexBuffer->CreateIndexBuffer(m_mesh->GetIndices());
+	m_indexBuffer->CreateIndexBuffer(m_mesh.lock()->GetIndices());
 }
