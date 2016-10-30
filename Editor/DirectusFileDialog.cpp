@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusFileDialog.h"
 #include <QThread>
 #include "Core/Scene.h"
+#include "Logging/Log.h"
+#include "DirectusHierarchy.h"
 //=============================
 
 #define EMPTY "-1"
@@ -37,16 +39,17 @@ DirectusFileDialog::DirectusFileDialog(QWidget* parent) : QFileDialog(parent)
     connect(this, SIGNAL(fileSelected(QString)), this, SLOT(FileDialogAccepted(QString)));
 }
 
-void DirectusFileDialog::Initialize(QWidget* mainWindow, DirectusCore* directusCore)
+void DirectusFileDialog::Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusCore *directusCore)
 {
     m_mainWindow = mainWindow;
     m_directusCore = directusCore;
     m_socket = m_directusCore->GetEngineSocket();
+    m_hierarchy = hierarchy;
 
     m_assetLoader = new DirectusAssetLoader();
     m_assetLoader->Initialize(m_mainWindow, m_socket);
 
-    m_lastSceneFilePath = EMPTY;
+    Reset();
 }
 
 void DirectusFileDialog::Reset()
@@ -123,11 +126,6 @@ void DirectusFileDialog::SaveSceneAs()
     m_assetOperation = "Save Scene As";
 }
 
-void DirectusFileDialog::AssetLoadedSurrogate()
-{
-    emit AssetLoaded();
-}
-
 void DirectusFileDialog::FileDialogAccepted(QString filePath)
 {
     // Create a thread and move the asset loader to it
@@ -155,12 +153,12 @@ void DirectusFileDialog::FileDialogAccepted(QString filePath)
     {
         m_lastSceneFilePath = filePath.toStdString();
         connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(LoadScene()),              Qt::QueuedConnection);
-        connect(m_assetLoader,  SIGNAL(Finished()), this,               SLOT(AssetLoadedSurrogate()),   Qt::QueuedConnection);
+        connect(m_assetLoader,  SIGNAL(Finished()), m_hierarchy,        SLOT(Populate()),               Qt::QueuedConnection);
     }
     else if (m_assetOperation  == "Load Model")
     {
         connect(thread,         SIGNAL(started()),  m_assetLoader,      SLOT(LoadModel()),              Qt::QueuedConnection);
-        connect(m_assetLoader,  SIGNAL(Finished()), this,               SLOT(AssetLoadedSurrogate()),   Qt::QueuedConnection);
+        connect(m_assetLoader,  SIGNAL(Finished()), m_hierarchy,        SLOT(Populate()),               Qt::QueuedConnection);
     }
 
     connect(m_assetLoader,  SIGNAL(Finished()), thread,                 SLOT(quit()),                   Qt::QueuedConnection);

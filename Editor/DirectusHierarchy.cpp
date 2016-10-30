@@ -45,7 +45,7 @@ DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
 {
     m_socket= nullptr;
 
-    // QTreeWidget properties
+    // Set QTreeWidget properties
     this->setAcceptDrops(true);
     this->setContextMenuPolicy(Qt::CustomContextMenu);
 
@@ -62,10 +62,7 @@ void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWi
     m_mainWindow = mainWindow;
 
     m_fileDialog = new DirectusFileDialog(mainWindow);
-    m_fileDialog->Initialize(m_mainWindow, m_directusCore);
-
-    // UI SIGNALS
-    connect(m_fileDialog, SIGNAL(AssetLoaded()), this, SLOT(Populate()));
+    m_fileDialog->Initialize(m_mainWindow, this, m_directusCore);
 
     Populate();
 }

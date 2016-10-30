@@ -60,7 +60,7 @@ void DirectusFileExplorer::Initialize(
 
     // Create file dialog
     m_fileDialog = new DirectusFileDialog();
-    m_fileDialog->Initialize(mainWindow, directusCore);
+    m_fileDialog->Initialize(mainWindow, hierarchy, directusCore);
 
     // Set the model to the tree view
     this->setModel(m_fileModel);
