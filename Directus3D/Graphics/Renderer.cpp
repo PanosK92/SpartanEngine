@@ -311,7 +311,7 @@ void Renderer::GBufferPass()
 		for (const auto& currentMaterial : materialPool->GetAllMaterials()) // for each material...
 		{
 			// ... that uses the current shader
-			if (currentMaterial->GetShader()->GetID() != currentShader->GetID())
+			if (currentMaterial->GetShader().lock()->GetID() != currentShader->GetID())
 				continue;	
 
 			//= Gather ant used textures and bind them to the GPU ===============================

@@ -38,7 +38,7 @@ ShaderPool::~ShaderPool()
 	Clear();
 }
 
-shared_ptr<ShaderVariation> ShaderPool::CreateShaderBasedOnMaterial(
+weak_ptr<ShaderVariation> ShaderPool::CreateShaderBasedOnMaterial(
 	bool albedo,
 	bool roughness,
 	bool metallic,
@@ -63,7 +63,7 @@ shared_ptr<ShaderVariation> ShaderPool::CreateShaderBasedOnMaterial(
 		cubemap
 	);
 
-	if (existingShader)
+	if (!existingShader.expired())
 		return existingShader;
 
 	// If not, create a new one
@@ -86,13 +86,13 @@ shared_ptr<ShaderVariation> ShaderPool::CreateShaderBasedOnMaterial(
 	return m_shaders.back();
 }
 
-shared_ptr<ShaderVariation> ShaderPool::GetShaderByID(const string& shaderID)
+weak_ptr<ShaderVariation> ShaderPool::GetShaderByID(const string& shaderID)
 {
 	for (const auto& shader : m_shaders)
 		if (shader->GetID() == shaderID)
 			return shader;
 
-	return nullptr;
+	return weak_ptr<ShaderVariation>();
 }
 
 const vector<shared_ptr<ShaderVariation>>& ShaderPool::GetAllShaders() const
@@ -100,7 +100,7 @@ const vector<shared_ptr<ShaderVariation>>& ShaderPool::GetAllShaders() const
 	return m_shaders;
 }
 
-shared_ptr<ShaderVariation> ShaderPool::FindMatchingShader(
+weak_ptr<ShaderVariation> ShaderPool::FindMatchingShader(
 	bool albedo,
 	bool roughness,
 	bool metallic,
@@ -127,7 +127,7 @@ shared_ptr<ShaderVariation> ShaderPool::FindMatchingShader(
 		return shader;
 	}
 
-	return nullptr;
+	return weak_ptr<ShaderVariation>();
 }
 
 void ShaderPool::Clear()
