@@ -437,9 +437,6 @@
     <ClInclude Include="Socket\Socket.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Socket\IPlug.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="FileSystem\FileSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
