@@ -196,12 +196,8 @@ float Socket::GetRenderTime() const
 
 void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string texturePath)
 {
-	LOG_INFO("1");
-
 	if (!gameObject)
 		return;
-
-	LOG_INFO("2");
 
 	auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
 	if (!meshRenderer)
@@ -210,13 +206,11 @@ void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string
 	shared_ptr<Material> material = meshRenderer->GetMaterial();
 	if (material)
 	{
-		LOG_INFO("3");
 		// Load the texture, if the texture has already been loaded, the pool will return the existing one
 		weak_ptr<Texture> texture = g_context->GetSubsystem<TexturePool>()->Add(texturePath);
 		texture.lock()->SetType(type);
 
 		// Set it to the material
-		material->SetTextureByID(texture.lock()->GetID());
+		material->SetTexture(texture);
 	}
-	LOG_INFO("4");
 }
