@@ -62,7 +62,7 @@ public:
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
 	void ClearScene();
 	ImageImporter* GetImageLoader();
-	void SetLogger(ILogger* logger);
+	void SetLogger(std::weak_ptr<ILogger> logger);
 	//==============================================================================
 
 	//= GAMEOBJECTS ================================================================

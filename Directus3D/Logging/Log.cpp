@@ -32,7 +32,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-ILogger* Log::m_logger;
+weak_ptr<ILogger> Log::m_logger;
 
 void Log::Initialize()
 {
@@ -41,10 +41,10 @@ void Log::Initialize()
 
 void Log::Release()
 {
-	m_logger = nullptr;
+	
 }
 
-void Log::SetLogger(ILogger* logger)
+void Log::SetLogger(weak_ptr<ILogger> logger)
 {
 	m_logger = logger;
 }
@@ -65,14 +65,9 @@ void Log::Write(const string& text, LogType type) // all functions resolve to th
 
 	string finalText = prefix + " " + text;
 
-	if (!m_logger)
-	{
-		WriteAsText(finalText, type);
-		return;
-	}
-
-	// Print the log
-	m_logger->Log(finalText, type);
+	auto logger = m_logger.lock();
+	logger ? logger->Log(finalText, type) : WriteAsText(finalText, type);
+	// if a logger is available use it, if not output a text file
 }
 
 void Log::WriteAsText(const string& text, LogType type)
