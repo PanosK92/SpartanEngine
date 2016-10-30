@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //=======================================
 #include "DirectusAssetLoader.h"
-#include "AssetImporting/ImageImporter.h"
+#include "FileSystem/ImageImporter.h"
 #include "FileSystem/FileSystem.h"
 #include <QMutex>
 #include "DirectusProgressBar.h"

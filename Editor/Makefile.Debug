@@ -382,6 +382,7 @@ compiler_rcc_clean:
 		Images\collider.png \
 		Images\check.png \
 		Images\file.png \
+		Images\icon.png \
 		Images\meshFilter.png \
 		Images\componentOptions.png \
 		Images\image.png \
@@ -619,6 +620,31 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -860,9 +886,6 @@ compiler_moc_header_clean:
 		DirectusIconProvider.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\AssetImporting\ImageImporter.h \
-		..\Directus3D\Multithreading\ThreadPool.h \
-		..\Directus3D\Core\Object.h \
 		DirectusFileDialog.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfiledialog.h \
@@ -870,6 +893,33 @@ compiler_moc_header_clean:
 		DirectusAssetLoader.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPixmap \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Core\Context.h \
+		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
@@ -884,24 +934,18 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
-		..\Directus3D\Core\Context.h \
 		DirectusStatsLabel.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusInspector.h \
-		..\Directus3D\Core\GameObject.h \
-		..\Directus3D\Components\IComponent.h \
 		DirectusTransform.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		DirectusComboLabelText.h \
 		DirectusAdjustLabel.h \
@@ -911,8 +955,6 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -928,12 +970,6 @@ compiler_moc_header_clean:
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -942,7 +978,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -954,9 +989,6 @@ compiler_moc_header_clean:
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -1203,9 +1235,6 @@ compiler_moc_header_clean:
 		DirectusIconProvider.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\AssetImporting\ImageImporter.h \
-		..\Directus3D\Multithreading\ThreadPool.h \
-		..\Directus3D\Core\Object.h \
 		DirectusFileDialog.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfiledialog.h \
@@ -1213,6 +1242,33 @@ compiler_moc_header_clean:
 		DirectusAssetLoader.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPixmap \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Core\Context.h \
+		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
@@ -1227,24 +1283,18 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
-		..\Directus3D\Core\Context.h \
 		DirectusStatsLabel.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusInspector.h \
-		..\Directus3D\Core\GameObject.h \
-		..\Directus3D\Components\IComponent.h \
 		DirectusTransform.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		DirectusComboLabelText.h \
 		DirectusAdjustLabel.h \
@@ -1254,8 +1304,6 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -1271,12 +1319,6 @@ compiler_moc_header_clean:
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -1285,7 +1327,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -1297,9 +1338,6 @@ compiler_moc_header_clean:
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -1552,6 +1590,31 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -1560,6 +1623,7 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		..\Directus3D\Logging\ILogger.h \
 		DirectusConsole.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\bin\moc.exe
 	C:\Qt\Qt5.7.0\5.7\msvc2015_64\bin\moc.exe $(DEFINES) -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtGui -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtCore -IC:/Qt/Tools/mingw530_32/lib/gcc/i686-w64-mingw32/5.3.0/include -IC:/Qt/Tools/mingw530_32/lib/gcc/i686-w64-mingw32/5.3.0/include-fixed -IC:/Qt/Tools/mingw530_32/i686-w64-mingw32/include -IC:/Qt/Tools/mingw530_32/i686-w64-mingw32/include/c++ -IC:/Qt/Tools/mingw530_32/i686-w64-mingw32/include/c++/i686-w64-mingw32 -IC:/Qt/Tools/mingw530_32/i686-w64-mingw32/include/c++/backward DirectusConsole.h -o ..\..\Binaries\MOCFiles\moc_DirectusConsole.cpp
@@ -1686,6 +1750,26 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -1714,8 +1798,6 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qrubberband.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractitemmodel.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -1732,12 +1814,6 @@ compiler_moc_header_clean:
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -1746,7 +1822,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -1758,9 +1833,6 @@ compiler_moc_header_clean:
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -2001,23 +2073,43 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qversionnumber.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qxmlstream.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtcoreversion.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QVariant \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QMouseEvent \
-		DirectusInspector.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QWidget \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Core\GameObject.h \
 		..\Directus3D\Components\IComponent.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QVariant \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QMouseEvent \
+		DirectusInspector.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		DirectusTransform.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		DirectusCore.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPaintEngine \
@@ -2041,8 +2133,6 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -2059,12 +2149,6 @@ compiler_moc_header_clean:
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -2073,7 +2157,6 @@ compiler_moc_header_clean:
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -2085,9 +2168,6 @@ compiler_moc_header_clean:
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -2232,6 +2312,26 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -2516,6 +2616,24 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -2689,6 +2807,17 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -2876,6 +3005,17 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3045,6 +3185,20 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3188,6 +3342,27 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3351,6 +3526,20 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3506,6 +3695,29 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3660,6 +3872,20 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3778,6 +4004,31 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -3866,6 +4117,33 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qiodevice.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qline.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainterpath.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Core\Context.h \
+		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qdialog.h \
@@ -4237,6 +4515,31 @@ compiler_moc_header_clean:
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -4403,6 +4706,18 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -4942,6 +5257,33 @@ compiler_moc_header_clean:
 		DirectusAssetLoader.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPixmap \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Core\Context.h \
+		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
@@ -4956,8 +5298,6 @@ compiler_moc_header_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
-		..\Directus3D\Core\Context.h \
-		..\Directus3D\Core\Object.h \
 		DirectusStatsLabel.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
@@ -5095,6 +5435,31 @@ compiler_uic_clean:
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -5230,9 +5595,6 @@ compiler_uic_clean:
 		DirectusIconProvider.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\AssetImporting\ImageImporter.h \
-		..\Directus3D\Multithreading\ThreadPool.h \
-		..\Directus3D\Core\Object.h \
 		DirectusFileDialog.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfiledialog.h \
@@ -5240,6 +5602,33 @@ compiler_uic_clean:
 		DirectusAssetLoader.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPixmap \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Core\Context.h \
+		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
@@ -5254,24 +5643,18 @@ compiler_uic_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
-		..\Directus3D\Core\Context.h \
 		DirectusStatsLabel.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusInspector.h \
-		..\Directus3D\Core\GameObject.h \
-		..\Directus3D\Components\IComponent.h \
 		DirectusTransform.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		DirectusComboLabelText.h \
 		DirectusAdjustLabel.h \
@@ -5281,8 +5664,6 @@ compiler_uic_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -5298,12 +5679,6 @@ compiler_uic_clean:
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -5312,7 +5687,6 @@ compiler_uic_clean:
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -5324,9 +5698,6 @@ compiler_uic_clean:
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -5569,9 +5940,6 @@ compiler_uic_clean:
 		DirectusIconProvider.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\AssetImporting\ImageImporter.h \
-		..\Directus3D\Multithreading\ThreadPool.h \
-		..\Directus3D\Core\Object.h \
 		DirectusFileDialog.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfiledialog.h \
@@ -5579,6 +5947,33 @@ compiler_uic_clean:
 		DirectusAssetLoader.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPixmap \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Core\Context.h \
+		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
@@ -5593,24 +5988,18 @@ compiler_uic_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
-		..\Directus3D\Core\Context.h \
 		DirectusStatsLabel.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusInspector.h \
-		..\Directus3D\Core\GameObject.h \
-		..\Directus3D\Components\IComponent.h \
 		DirectusTransform.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		DirectusComboLabelText.h \
 		DirectusAdjustLabel.h \
@@ -5620,8 +6009,6 @@ compiler_uic_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -5637,12 +6024,6 @@ compiler_uic_clean:
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -5651,7 +6032,6 @@ compiler_uic_clean:
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -5663,9 +6043,6 @@ compiler_uic_clean:
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -5914,6 +6291,31 @@ compiler_uic_clean:
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -5922,6 +6324,7 @@ compiler_uic_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		..\Directus3D\Logging\ILogger.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QTreeWidget \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qtreewidget.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qtreeview.h \
@@ -6146,23 +6549,43 @@ compiler_uic_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qversionnumber.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qxmlstream.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtcoreversion.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QVariant \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QMouseEvent \
-		DirectusInspector.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QWidget \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Core\GameObject.h \
 		..\Directus3D\Components\IComponent.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QVariant \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QMouseEvent \
+		DirectusInspector.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		DirectusTransform.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		DirectusCore.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPaintEngine \
@@ -6186,8 +6609,6 @@ compiler_uic_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -6204,12 +6625,6 @@ compiler_uic_clean:
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -6218,7 +6633,6 @@ compiler_uic_clean:
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -6230,9 +6644,6 @@ compiler_uic_clean:
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -6374,6 +6785,26 @@ compiler_uic_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -6402,8 +6833,6 @@ compiler_uic_clean:
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qrubberband.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractitemmodel.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -6420,12 +6849,6 @@ compiler_uic_clean:
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -6434,7 +6857,6 @@ compiler_uic_clean:
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -6446,9 +6868,6 @@ compiler_uic_clean:
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -6568,6 +6987,31 @@ compiler_uic_clean:
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -7033,6 +7477,31 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -7041,7 +7510,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qframe.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		..\Directus3D\Logging\Log.h
 
 ..\..\Binaries\ObjFiles\AboutDialog.obj: AboutDialog.cpp AboutDialog.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
@@ -7271,9 +7741,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusIconProvider.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\AssetImporting\ImageImporter.h \
-		..\Directus3D\Multithreading\ThreadPool.h \
-		..\Directus3D\Core\Object.h \
 		DirectusFileDialog.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfiledialog.h \
@@ -7281,6 +7748,33 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusAssetLoader.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPixmap \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Core\Context.h \
+		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
@@ -7295,24 +7789,18 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
-		..\Directus3D\Core\Context.h \
 		DirectusStatsLabel.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusInspector.h \
-		..\Directus3D\Core\GameObject.h \
-		..\Directus3D\Components\IComponent.h \
 		DirectusTransform.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		DirectusComboLabelText.h \
 		DirectusAdjustLabel.h \
@@ -7322,8 +7810,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -7339,12 +7825,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -7353,7 +7833,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -7365,9 +7844,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -7486,7 +7962,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qxmlstream.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtcoreversion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QVariant \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QMouseEvent
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QMouseEvent \
+		..\Directus3D\Logging\Log.h
 
 ..\..\Binaries\ObjFiles\DirectusFileExplorer.obj: DirectusFileExplorer.cpp DirectusFileExplorer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QListView \
@@ -7612,9 +8089,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusIconProvider.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfileiconprovider.h \
-		..\Directus3D\AssetImporting\ImageImporter.h \
-		..\Directus3D\Multithreading\ThreadPool.h \
-		..\Directus3D\Core\Object.h \
 		DirectusFileDialog.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qfiledialog.h \
@@ -7622,6 +8096,33 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusAssetLoader.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPixmap \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Core\Context.h \
+		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
@@ -7636,24 +8137,18 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
-		..\Directus3D\Core\Context.h \
 		DirectusStatsLabel.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		DirectusInspector.h \
-		..\Directus3D\Core\GameObject.h \
-		..\Directus3D\Components\IComponent.h \
 		DirectusTransform.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		DirectusComboLabelText.h \
 		DirectusAdjustLabel.h \
@@ -7663,8 +8158,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -7680,12 +8173,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -7694,7 +8181,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -7706,9 +8192,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -7839,6 +8322,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDrag \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qdrag.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QMimeData \
+		..\Directus3D\Logging\Log.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QMenu \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qmenu.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qaction.h \
@@ -7973,6 +8457,31 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -7980,7 +8489,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		..\Directus3D\Logging\ILogger.h
 
 ..\..\Binaries\ObjFiles\DirectusInspector.obj: DirectusInspector.cpp DirectusInspector.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QWidget \
@@ -8105,6 +8615,26 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -8133,8 +8663,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qrubberband.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractitemmodel.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -8151,12 +8679,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -8165,7 +8687,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -8177,9 +8698,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -8192,6 +8710,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\MeshFilter.h \
 		DirectusMeshCollider.h \
 		..\Directus3D\Components\MeshCollider.h \
+		..\Directus3D\Logging\Log.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QMimeData \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qmimedata.h
 
@@ -8420,23 +8939,43 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qversionnumber.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qxmlstream.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtcoreversion.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QVariant \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QMouseEvent \
-		DirectusInspector.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QWidget \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
 		..\Directus3D\Core\GameObject.h \
 		..\Directus3D\Components\IComponent.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QVariant \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QMouseEvent \
+		DirectusInspector.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QWidget \
 		DirectusTransform.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		DirectusCore.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPaintEngine \
@@ -8460,8 +8999,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -8478,12 +9015,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -8492,7 +9023,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -8504,9 +9034,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -8527,6 +9054,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		..\Directus3D\Components\Transform.h \
+		..\Directus3D\Logging\Log.h \
 		DirectusQVariantPacker.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QApplication \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qapplication.h \
@@ -8665,6 +9193,26 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -8680,8 +9228,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
 		..\Directus3D\Components\Transform.h \
 		..\Directus3D\Math\Matrix.h \
-		..\Directus3D\Core\Settings.h \
-		..\Directus3D\Math\Vector2.h
+		..\Directus3D\Logging\Log.h \
+		..\Directus3D\Core\Settings.h
 
 ..\..\Binaries\ObjFiles\DirectusAdjustLabel.obj: DirectusAdjustLabel.cpp DirectusAdjustLabel.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLabel \
@@ -8790,6 +9338,10 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextoption.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QMouseEvent \
+		..\Directus3D\Logging\Log.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QApplication \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qapplication.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qcoreapplication.h \
@@ -8958,22 +9510,35 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
-		DirectusStatsLabel.h \
-		DirectusDropDownButton.h \
-		DirectusInspector.h \
-		DirectusTransform.h \
-		DirectusMeshRenderer.h \
-		..\Directus3D\Components\MeshRenderer.h \
-		..\Directus3D\Graphics\Material.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
 		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
 		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
 		..\Directus3D\Graphics\Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
 		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
+		DirectusStatsLabel.h \
+		DirectusDropDownButton.h \
+		..\Directus3D\Logging\Log.h \
+		DirectusInspector.h \
+		DirectusTransform.h \
+		DirectusMeshRenderer.h \
+		..\Directus3D\Components\MeshRenderer.h \
+		..\Directus3D\Graphics\Material.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -8982,7 +9547,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -8994,9 +9558,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -9175,10 +9736,22 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
 		DirectusStatsLabel.h \
+		..\Directus3D\Logging\Log.h \
 		DirectusInspector.h \
 		DirectusTransform.h \
 		DirectusComboLabelText.h \
@@ -9205,9 +9778,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -9401,12 +9971,24 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
 		DirectusStatsLabel.h \
 		DirectusTexture.h \
 		..\Directus3D\Components\MeshRenderer.h \
+		..\Directus3D\Logging\Log.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QByteArray
 
 ..\..\Binaries\ObjFiles\DirectusLight.obj: DirectusLight.cpp DirectusLight.h \
@@ -9570,6 +10152,20 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -9579,13 +10175,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusTransform.h \
 		DirectusCamera.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -9593,7 +10187,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Skybox.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -9605,9 +10198,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -9755,6 +10345,27 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -9775,13 +10386,10 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
 		DirectusInspector.h \
 		DirectusTransform.h \
-		..\Directus3D\Math\Quaternion.h \
 		DirectusCamera.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -9794,12 +10402,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -9808,7 +10410,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -9818,9 +10419,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		DirectusLight.h \
 		DirectusScript.h \
 		..\Directus3D\Components\Script.h \
@@ -9973,6 +10571,20 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -10009,12 +10621,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -10176,6 +10782,29 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -10185,9 +10814,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
 		DirectusInspector.h \
 		DirectusTransform.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		DirectusComboLabelText.h \
 		DirectusCamera.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
@@ -10203,8 +10829,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qrubberband.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractitemmodel.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -10217,12 +10841,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -10231,7 +10849,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -10241,9 +10858,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusTexture.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -10397,6 +11011,20 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -10430,12 +11058,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -10572,6 +11194,31 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -10581,6 +11228,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qframe.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextcursor.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
+		..\Directus3D\Logging\Log.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QStyleOption \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qstyleoption.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qabstractspinbox.h \
@@ -10594,8 +11242,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qtabwidget.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qrubberband.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractitemmodel.h \
-		..\Directus3D\Core\Settings.h \
-		..\Directus3D\Math\Vector2.h
+		..\Directus3D\Core\Settings.h
 
 ..\..\Binaries\ObjFiles\DirectusAssetLoader.obj: DirectusAssetLoader.cpp DirectusAssetLoader.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QObject \
@@ -10673,6 +11320,33 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qiodevice.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qline.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainterpath.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Core\Context.h \
+		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qdialog.h \
@@ -10702,9 +11376,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
-		..\Directus3D\AssetImporting\ImageImporter.h \
-		..\Directus3D\Multithreading\ThreadPool.h \
-		..\Directus3D\Core\Object.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QMutex
 
 ..\..\Binaries\ObjFiles\DirectusComboLabelText.obj: DirectusComboLabelText.cpp DirectusComboLabelText.h \
@@ -10817,7 +11488,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextoption.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qvalidator.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qregularexpression.h
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qregularexpression.h \
+		..\Directus3D\Logging\Log.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Math\Quaternion.h
 
 ..\..\Binaries\ObjFiles\DirectusComboSliderText.obj: DirectusComboSliderText.cpp DirectusComboSliderText.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QSlider \
@@ -10928,7 +11603,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextoption.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qvalidator.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qregularexpression.h
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qregularexpression.h \
+		..\Directus3D\Logging\Log.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Math\Quaternion.h
 
 ..\..\Binaries\ObjFiles\DirectusTexture.obj: DirectusTexture.cpp DirectusTexture.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLabel \
@@ -11042,6 +11721,31 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -11060,18 +11764,14 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDragMoveEvent \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QMimeData \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qmimedata.h \
+		..\Directus3D\Logging\Log.h \
 		DirectusInspector.h \
-		..\Directus3D\Core\GameObject.h \
-		..\Directus3D\Components\IComponent.h \
 		DirectusTransform.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Math\Quaternion.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qvalidator.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qregularexpression.h \
@@ -11092,8 +11792,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qrubberband.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractitemmodel.h \
 		..\Directus3D\Components\Camera.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
 		..\Directus3D\Math\Matrix.h \
 		..\Directus3D\Graphics\Frustrum.h \
 		..\Directus3D\Math\Plane.h \
@@ -11109,12 +11807,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -11123,7 +11815,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Components\Light.h \
 		..\Directus3D\Graphics\Shaders\DepthShader.h \
 		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
-		..\Directus3D\Graphics\Vertex.h \
 		..\Directus3D\Graphics\Shaders\DebugShader.h \
 		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
 		..\Directus3D\Graphics\Shaders\DeferredShader.h \
@@ -11134,9 +11825,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMaterial.h \
 		DirectusCollider.h \
 		..\Directus3D\Components\Collider.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\FileSystem\FileSystem.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Directus3D\Components\RigidBody.h \
@@ -11305,6 +11993,18 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainter.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h \
@@ -11328,10 +12028,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusMeshRenderer.h \
 		..\Directus3D\Components\MeshRenderer.h \
 		..\Directus3D\Graphics\Material.h \
-		..\Directus3D\Graphics\Texture.h \
-		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
-		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
-		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		..\Directus3D\Graphics\Renderer.h \
 		..\Directus3D\Graphics\GBuffer.h \
 		..\Directus3D\Graphics\FullScreenQuad.h \
@@ -11465,7 +12161,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Math\Vector4.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QColorDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcolordialog.h \
-		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qdialog.h
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qdialog.h \
+		..\Directus3D\Logging\Log.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Math\Quaternion.h
 
 ..\..\Binaries\ObjFiles\DirectusStatsLabel.obj: DirectusStatsLabel.cpp DirectusStatsLabel.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
@@ -11581,6 +12281,31 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		..\Directus3D\Core\Engine.h \
 		..\Directus3D\Core\Context.h \
 		..\Directus3D\Core\Object.h \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimer.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbasictimer.h
@@ -11901,6 +12626,33 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		DirectusAssetLoader.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QObject \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QPixmap \
+		..\Directus3D\Socket\Socket.h \
+		..\Directus3D\Core\Scene.h \
+		..\Directus3D\Core\GameObject.h \
+		..\Directus3D\Components\IComponent.h \
+		..\Directus3D\Core\Context.h \
+		..\Directus3D\Core\Object.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Pools\MeshPool.h \
+		..\Directus3D\Graphics\Mesh.h \
+		..\Directus3D\Graphics\Vertex.h \
+		..\Directus3D\Math\Vector2.h \
+		..\Directus3D\Math\Vector4.h \
+		..\Directus3D\IO\Serializer.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h \
+		..\Directus3D\Multithreading\ThreadPool.h \
+		..\Directus3D\Input\Input.h \
+		..\Directus3D\Input\DX8Input.h \
+		..\Directus3D\Physics\PhysicsWorld.h \
+		..\Directus3D\FileSystem\ImageImporter.h \
+		..\Directus3D\Graphics\Texture.h \
+		..\Directus3D\Graphics\D3D11\D3D11Shader.h \
+		..\Directus3D\Graphics\D3D11\D3D11InputLayout.h \
+		..\Directus3D\Graphics\Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Graphics.h \
+		..\Directus3D\Graphics\D3D11\D3D11Sampler.h \
 		DirectusProgressBar.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QDialog \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QTimer \
@@ -11915,8 +12667,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpen.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QResizeEvent \
 		..\Directus3D\Core\Engine.h \
-		..\Directus3D\Core\Context.h \
-		..\Directus3D\Core\Object.h \
 		DirectusStatsLabel.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLineEdit \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlineedit.h \
@@ -11925,20 +12675,193 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qtextformat.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QThread \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qthread.h \
-		..\Directus3D\Core\Scene.h \
-		..\Directus3D\Core\GameObject.h \
-		..\Directus3D\Components\IComponent.h \
-		..\Directus3D\Math\Vector3.h \
-		..\Directus3D\Math\MathHelper.h \
-		..\Directus3D\Pools\MeshPool.h \
-		..\Directus3D\Graphics\Mesh.h \
-		..\Directus3D\Graphics\Vertex.h \
-		..\Directus3D\Math\Vector2.h \
-		..\Directus3D\Math\Vector4.h \
-		..\Directus3D\IO\Serializer.h \
-		..\Directus3D\Math\Quaternion.h \
-		..\Directus3D\FileSystem\FileSystem.h \
-		..\Directus3D\Multithreading\ThreadPool.h
+		..\Directus3D\Logging\Log.h \
+		DirectusHierarchy.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QTreeWidget \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qtreewidget.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qtreeview.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qabstractitemview.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qabstractscrollarea.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractitemmodel.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qitemselectionmodel.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qabstractitemdelegate.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qstyleoption.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qabstractspinbox.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qvalidator.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qregularexpression.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qicon.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qslider.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qabstractslider.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qstyle.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qtabbar.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qtabwidget.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qrubberband.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qtreewidgetitemiterator.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QtCore \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QtCoreDepends \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractanimation.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qanimationgroup.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qparallelanimationgroup.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qpauseanimation.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qpropertyanimation.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qvariantanimation.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qeasingcurve.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qsequentialanimationgroup.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtextcodec.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qendian.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qlibraryinfo.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qdatetime.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbuffer.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qdiriterator.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qfileselector.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QStringList \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qfilesystemwatcher.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qlockfile.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qloggingcategory.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qprocess.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qresource.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qsavefile.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qsettings.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qstandardpaths.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qstorageinfo.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtemporarydir.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QScopedPointer \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtemporaryfile.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractproxymodel.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qidentityproxymodel.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qsortfilterproxymodel.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qstringlistmodel.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qjsonarray.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qjsonvalue.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qjsondocument.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qjsonobject.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstracteventdispatcher.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qeventloop.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractnativeeventfilter.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qcoreapplication.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qmath.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qmetaobject.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qmimedata.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qobjectcleanuphandler.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qpointer.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qsharedmemory.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qsignalmapper.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qsocketnotifier.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qsystemsemaphore.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtranslator.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qwineventnotifier.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qmimedatabase.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qmimetype.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qfactoryinterface.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qlibrary.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qplugin.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qpluginloader.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\quuid.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstractstate.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qabstracttransition.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qeventtransition.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qfinalstate.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qhistorystate.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qsignaltransition.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qstate.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qstatemachine.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qexception.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qfuture.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qfutureinterface.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qrunnable.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qresultstore.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qfuturesynchronizer.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qfuturewatcher.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qreadwritelock.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qsemaphore.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qthreadpool.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qthreadstorage.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qwaitcondition.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qarraydataops.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qarraydatapointer.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbitarray.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qbytearraymatcher.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qcache.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qcollator.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qcommandlineoption.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qcommandlineparser.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qcryptographichash.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qelapsedtimer.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qlinkedlist.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qmessageauthenticationcode.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qqueue.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qscopedvaluerollback.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qstack.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtextboundaryfinder.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimeline.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtimezone.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qversionnumber.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qxmlstream.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qtcoreversion.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\QVariant \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QMouseEvent \
+		DirectusInspector.h \
+		DirectusTransform.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QGridLayout \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qgridlayout.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayout.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlayoutitem.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qboxlayout.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\QDoubleValidator \
+		DirectusComboLabelText.h \
+		DirectusAdjustLabel.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QLabel \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qlabel.h \
+		DirectusCamera.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcombobox.h \
+		..\Directus3D\Components\Camera.h \
+		..\Directus3D\Math\Matrix.h \
+		..\Directus3D\Graphics\Frustrum.h \
+		..\Directus3D\Math\Plane.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QPushButton \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qpushbutton.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qabstractbutton.h \
+		DirectusComboSliderText.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QSlider \
+		DirectusColorPicker.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QColorDialog \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcolordialog.h \
+		DirectusDropDownButton.h \
+		DirectusMeshRenderer.h \
+		..\Directus3D\Components\MeshRenderer.h \
+		..\Directus3D\Graphics\Material.h \
+		..\Directus3D\Graphics\Renderer.h \
+		..\Directus3D\Graphics\GBuffer.h \
+		..\Directus3D\Graphics\FullScreenQuad.h \
+		..\Directus3D\Core\Timer.h \
+		..\Directus3D\Components\Skybox.h \
+		..\Directus3D\Components\Light.h \
+		..\Directus3D\Graphics\Shaders\DepthShader.h \
+		..\Directus3D\Graphics\D3D11\D3D11Buffer.h \
+		..\Directus3D\Graphics\Shaders\DebugShader.h \
+		..\Directus3D\Graphics\Shaders\PostProcessShader.h \
+		..\Directus3D\Graphics\Shaders\DeferredShader.h \
+		..\Directus3D\Components\LineRenderer.h \
+		..\Directus3D\Graphics\D3D11\D3D11RenderTexture.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QCheckBox \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\qcheckbox.h \
+		DirectusMaterial.h \
+		DirectusTexture.h \
+		DirectusCollider.h \
+		..\Directus3D\Components\Collider.h \
+		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QComboBox.h \
+		DirectusRigidBody.h \
+		..\Directus3D\Components\RigidBody.h \
+		DirectusLight.h \
+		DirectusScript.h \
+		..\Directus3D\Components\Script.h \
+		..\Directus3D\Scripting\ScriptInstance.h \
+		..\Directus3D\Scripting\ScriptEngine.h \
+		DirectusMeshFilter.h \
+		..\Directus3D\Components\MeshFilter.h \
+		DirectusMeshCollider.h \
+		..\Directus3D\Components\MeshCollider.h
 
 ..\..\Binaries\ObjFiles\DirectusIconProvider.obj: DirectusIconProvider.cpp DirectusIconProvider.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtWidgets\QFileIconProvider \
@@ -12020,9 +12943,11 @@ compiler_clean: compiler_rcc_clean compiler_moc_header_clean compiler_uic_clean
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qdatastream.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtCore\qline.h \
 		C:\Qt\Qt5.7.0\5.7\msvc2015_64\include\QtGui\qpainterpath.h \
-		..\Directus3D\AssetImporting\ImageImporter.h \
-		..\Directus3D\Multithreading\ThreadPool.h \
-		..\Directus3D\Core\Object.h
+		..\Directus3D\Logging\Log.h \
+		..\Directus3D\Math\Vector3.h \
+		..\Directus3D\Math\MathHelper.h \
+		..\Directus3D\Math\Quaternion.h \
+		..\Directus3D\FileSystem\FileSystem.h
 
 ..\..\Binaries\ObjFiles\qrc_images.obj: ..\..\Binaries\RCCFiles\qrc_images.cpp 
 

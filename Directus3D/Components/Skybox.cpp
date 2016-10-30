@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "Skybox.h"
-#include "../AssetImporting/DDSTextureImporter.h"
+#include "../FileSystem/DDSTextureImporter.h"
 #include "Transform.h"
 #include "MeshRenderer.h"
 #include "MeshFilter.h"

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Renderer.h"
 #include "../Core/Settings.h"
 #include "../Signals/Signaling.h"
-#include "../AssetImporting/ModelImporter.h"
+#include "../FileSystem/ModelImporter.h"
 #include "../Pools/TexturePool.h"
 #include "../Core/Engine.h"
 //==========================================

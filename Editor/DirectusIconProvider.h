@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include <QFileIconProvider>
-#include "AssetImporting/ImageImporter.h"
+#include "FileSystem/ImageImporter.h"
 //=======================================
 
 class DirectusIconProvider : public QFileIconProvider
