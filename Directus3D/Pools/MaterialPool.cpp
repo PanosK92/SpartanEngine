@@ -47,10 +47,10 @@ MaterialPool::~MaterialPool()
 								[MISC]
 ------------------------------------------------------------------------------*/
 // Adds a material to the pool directly from memory
-shared_ptr<Material> MaterialPool::Add(shared_ptr<Material> material)
+weak_ptr<Material> MaterialPool::Add(shared_ptr<Material> material)
 {
 	if (!material)
-		return nullptr;
+		return weak_ptr<Material>();
 
 	for (const auto& materialInPool : m_materials)
 	{
@@ -93,7 +93,7 @@ void MaterialPool::Clear()
 	GenerateDefaultMaterials();
 }
 
-shared_ptr<Material> MaterialPool::GetMaterialByID(const string& materialID)
+weak_ptr<Material> MaterialPool::GetMaterialByID(const string& materialID)
 {
 	if (materialID == MATERIAL_DEFAULT_ID)
 		return m_materialDefault;
@@ -108,12 +108,12 @@ shared_ptr<Material> MaterialPool::GetMaterialByID(const string& materialID)
 	return m_materialDefault;
 }
 
-shared_ptr<Material> MaterialPool::GetMaterialStandardDefault()
+weak_ptr<Material> MaterialPool::GetMaterialStandardDefault()
 {
 	return m_materialDefault;
 }
 
-shared_ptr<Material> MaterialPool::GetMaterialStandardSkybox()
+weak_ptr<Material> MaterialPool::GetMaterialStandardSkybox()
 {
 	return m_materialDefaultSkybox;
 }

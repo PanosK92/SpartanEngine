@@ -55,7 +55,7 @@ private:
 	/*------------------------------------------------------------------------------
 									[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	void AddTextureToMaterial(std::shared_ptr<Material> material, TextureType textureType, const std::string& texturePath);
+	void AddTextureToMaterial(std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
 	std::string FindTexture(std::string texturePath);
 	std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 };

@@ -257,7 +257,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
 
 void DirectusMaterial::Reflect(GameObject* gameobject)
 {
-    m_inspectedMaterial = nullptr;
+    m_inspectedMaterial = weak_ptr<Material>();
 
     // Catch evil case
     if (!gameobject)
@@ -274,7 +274,7 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
     }
 
     m_inspectedMaterial = meshRenderer->GetMaterial();
-    if (!m_inspectedMaterial)
+    if (m_inspectedMaterial.expired())
     {
         this->hide();
         return;
@@ -295,7 +295,7 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
     ReflectOffset();
 
 
-    if (!m_inspectedMaterial->IsEditable())
+    if (!m_inspectedMaterial.lock()->IsEditable())
         SetPropertiesVisible(false);
     else
         SetPropertiesVisible(true);
@@ -382,7 +382,7 @@ void DirectusMaterial::SetPropertiesVisible(bool visible)
 
 void DirectusMaterial::ReflectName()
 {
-    std::string name = m_inspectedMaterial->GetName();
+    std::string name = m_inspectedMaterial.lock()->GetName();
     QString text = QString::fromStdString("Material - " + name);
     m_title->setText(text);
 }
@@ -390,112 +390,112 @@ void DirectusMaterial::ReflectName()
 void DirectusMaterial::ReflectAlbedo()
 {
     // Load the albedo texture preview
-    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Albedo);
+    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Albedo);
     m_albedoImage->LoadImageAsync(texPath);
 
-    Vector4 color = m_inspectedMaterial->GetColorAlbedo();
+    Vector4 color = m_inspectedMaterial.lock()->GetColorAlbedo();
     m_albedoColor->SetColor(color);
 }
 
 void DirectusMaterial::ReflectRoughness()
 {
-    float roughness = m_inspectedMaterial->GetRoughnessMultiplier();
+    float roughness = m_inspectedMaterial.lock()->GetRoughnessMultiplier();
     m_roughness->SetValue(roughness);
 
     // Load the roughness texture preview
-    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Roughness);
+    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Roughness);
     m_roughnessImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectMetallic()
 {
-    float metallic = m_inspectedMaterial->GetMetallicMultiplier();
+    float metallic = m_inspectedMaterial.lock()->GetMetallicMultiplier();
     m_metallic->SetValue(metallic);
 
     // Load the metallic texture preview
-    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Metallic);
+    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Metallic);
     m_metallicImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectNormal()
 {
-    float normal = m_inspectedMaterial->GetNormalMultiplier();
+    float normal = m_inspectedMaterial.lock()->GetNormalMultiplier();
     m_normal->SetValue(normal);
 
     // Load the normal texture preview
-    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Normal);
+    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Normal);
     m_normalImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectHeight()
 {
-    float height = m_inspectedMaterial->GetHeightMultiplier();
+    float height = m_inspectedMaterial.lock()->GetHeightMultiplier();
     m_height->SetValue(height);
 
     // Load the height texture preview
-    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Height);
+    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Height);
     m_heightImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectOcclusion()
 {
     // Load the occlusion texture preview
-    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Occlusion);
+    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Occlusion);
     m_occlusionImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectEmission()
 {
     // Load the emission texture preview
-    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Emission);
+    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Emission);
     m_emissionImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectMask()
 {
     // Load the mask texture preview
-    string texPath = m_inspectedMaterial->GetTexturePathByType(TextureType::Mask);
+    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Mask);
     m_maskImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectSpecular()
 {
-    float specular = m_inspectedMaterial->GetSpecularMultiplier();
+    float specular = m_inspectedMaterial.lock()->GetSpecularMultiplier();
     m_specular->SetValue(specular);
 }
 
 void DirectusMaterial::ReflectTiling()
 {
-    Vector2 tiling = m_inspectedMaterial->GetTilingUV();
+    Vector2 tiling = m_inspectedMaterial.lock()->GetTilingUV();
     m_tilingX->SetFromFloat(tiling.x);
     m_tilingY->SetFromFloat(tiling.y);
 }
 
 void DirectusMaterial::ReflectOffset()
 {
-    Vector2 offset = m_inspectedMaterial->GetOffsetUV();
+    Vector2 offset = m_inspectedMaterial.lock()->GetOffsetUV();
     m_offsetX->SetFromFloat(offset.x);
     m_offsetY->SetFromFloat(offset.y);
 }
 
 void DirectusMaterial::MapAlbedo()
 {
-    if (!m_inspectedMaterial || !m_directusCore)
+    if (m_inspectedMaterial.expired() || !m_directusCore)
         return;
 
     Vector4 color =  m_albedoColor->GetColor();
-    m_inspectedMaterial->SetColorAlbedo(color);
+    m_inspectedMaterial.lock()->SetColorAlbedo(color);
 
     m_directusCore->Update();
 }
 
 void DirectusMaterial::MapRoughness()
 {
-    if (!m_inspectedMaterial || !m_directusCore)
+    if (m_inspectedMaterial.expired() || !m_directusCore)
         return;
 
     float roughness =  m_roughness->GetValue();
-    m_inspectedMaterial->SetRoughnessMultiplier(roughness);
+    m_inspectedMaterial.lock()->SetRoughnessMultiplier(roughness);
 
     m_directusCore->Update();
 }
@@ -503,33 +503,33 @@ void DirectusMaterial::MapRoughness()
 
 void DirectusMaterial::MapMetallic()
 {
-    if (!m_inspectedMaterial || !m_directusCore)
+    if (m_inspectedMaterial.expired() || !m_directusCore)
         return;
 
     float metallic =  m_metallic->GetValue();
-    m_inspectedMaterial->SetMetallicMultiplier(metallic);
+    m_inspectedMaterial.lock()->SetMetallicMultiplier(metallic);
 
     m_directusCore->Update();
 }
 
 void DirectusMaterial::MapNormal()
 {
-    if (!m_inspectedMaterial || !m_directusCore)
+    if (m_inspectedMaterial.expired() || !m_directusCore)
         return;
 
     float normal =  m_normal->GetValue();
-    m_inspectedMaterial->SetNormalMultiplier(normal);
+    m_inspectedMaterial.lock()->SetNormalMultiplier(normal);
 
     m_directusCore->Update();
 }
 
 void DirectusMaterial::MapHeight()
 {
-    if (!m_inspectedMaterial || !m_directusCore)
+    if (m_inspectedMaterial.expired() || !m_directusCore)
         return;
 
     float height =  m_height->GetValue();
-    m_inspectedMaterial->SetHeightMultiplier(height);
+    m_inspectedMaterial.lock()->SetHeightMultiplier(height);
 
     m_directusCore->Update();
 }
@@ -551,37 +551,37 @@ void DirectusMaterial::MapMask()
 
 void DirectusMaterial::MapSpecular()
 {
-    if (!m_inspectedMaterial || !m_directusCore)
+    if (m_inspectedMaterial.expired() || !m_directusCore)
         return;
 
     float specular = m_specular->GetValue();
-    m_inspectedMaterial->SetSpecularMultiplier(specular);
+    m_inspectedMaterial.lock()->SetSpecularMultiplier(specular);
 
     m_directusCore->Update();
 }
 
 void DirectusMaterial::MapTiling()
 {
-    if (!m_inspectedMaterial || !m_directusCore)
+    if (m_inspectedMaterial.expired() || !m_directusCore)
         return;
 
     Vector2 tiling;
     tiling.x = m_tilingX->GetAsFloat();
     tiling.y = m_tilingY->GetAsFloat();
-    m_inspectedMaterial->SetTilingUV(tiling);
+    m_inspectedMaterial.lock()->SetTilingUV(tiling);
 
     m_directusCore->Update();
 }
 
 void DirectusMaterial::MapOffset()
 {
-    if (!m_inspectedMaterial || !m_directusCore)
+    if (m_inspectedMaterial.expired() || !m_directusCore)
         return;
 
     Vector2 offset;
     offset.x = m_offsetX->GetAsFloat();
     offset.y = m_offsetY->GetAsFloat();
-    m_inspectedMaterial->SetOffsetUV(offset);
+    m_inspectedMaterial.lock()->SetOffsetUV(offset);
 
     m_directusCore->Update();
 }

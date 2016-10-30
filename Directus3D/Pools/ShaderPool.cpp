@@ -88,7 +88,7 @@ weak_ptr<ShaderVariation> ShaderPool::CreateShaderBasedOnMaterial(
 
 weak_ptr<ShaderVariation> ShaderPool::GetShaderByID(const string& shaderID)
 {
-	for (const auto& shader : m_shaders)
+	for (const auto shader : m_shaders)
 		if (shader->GetID() == shaderID)
 			return shader;
 
@@ -112,7 +112,7 @@ weak_ptr<ShaderVariation> ShaderPool::FindMatchingShader(
 	bool cubemap
 )
 {
-	for (auto shader : m_shaders)
+	for (const auto shader : m_shaders)
 	{
 		if (shader->HasAlbedoTexture() != albedo) continue;
 		if (shader->HasRoughnessTexture() != roughness) continue;
