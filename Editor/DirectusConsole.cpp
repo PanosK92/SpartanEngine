@@ -36,10 +36,9 @@ void DirectusConsole::Initialize(DirectusCore* directusCore)
 {
     m_socket = directusCore->GetEngineSocket();
 
-    // Create an engineLogger (implements
-    // ILogger interface)and pass it to the engine
-    auto sharedPtr = std::make_shared<EngineLogger>(this);
-    m_socket->SetLogger(sharedPtr);
+    // Pass the logger interface implemantation (this)
+    m_engineLogger = std::make_shared<EngineLogger>(this);
+    m_socket->SetLogger(m_engineLogger);
 }
 
 EngineLogger::EngineLogger(QListWidget* list)

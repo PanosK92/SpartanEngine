@@ -29,6 +29,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 //=======================
 
+class EngineLogger : public ILogger
+{
+public:
+    EngineLogger(QListWidget* list);
+    virtual void Log(const std::string& log, int type);
+private:
+    QListWidget* m_list;
+};
+
 class DirectusConsole : public QListWidget
 {
     Q_OBJECT
@@ -38,17 +47,9 @@ public:
 
 private:
     Socket* m_socket;
+    std::shared_ptr<EngineLogger> m_engineLogger;
 
 signals:
 
 public slots:
-};
-
-class EngineLogger : public ILogger
-{
-public:
-    EngineLogger(QListWidget* list);
-    virtual void Log(const std::string& log, int type);
-private:
-    QListWidget* m_list;
 };
