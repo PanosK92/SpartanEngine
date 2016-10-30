@@ -58,7 +58,6 @@ Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 
 	m_texturePool = texturePool;
 	m_shaderPool = shaderPool;
-	m_shader = nullptr;
 
 	AcquireShader();
 }
@@ -242,14 +241,14 @@ void Material::AcquireShader()
 	);
 }
 
-shared_ptr<ShaderVariation> Material::GetShader()
+weak_ptr<ShaderVariation> Material::GetShader()
 {
 	return m_shader;
 }
 
 bool Material::HasShader()
 {
-	return GetShader() ? true : false;
+	return GetShader().expired() ? false : true;
 }
 
 ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureType type)

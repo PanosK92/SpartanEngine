@@ -31,7 +31,7 @@ public:
 	ShaderPool(Context* context);
 	~ShaderPool();
 
-	std::shared_ptr<ShaderVariation> CreateShaderBasedOnMaterial(
+	std::weak_ptr<ShaderVariation> CreateShaderBasedOnMaterial(
 		bool albedo,
 		bool roughness,
 		bool metallic,
@@ -42,12 +42,12 @@ public:
 		bool mask,
 		bool cubemap
 	);
-	std::shared_ptr<ShaderVariation> GetShaderByID(const std::string& shaderID);
+	std::weak_ptr<ShaderVariation> GetShaderByID(const std::string& shaderID);
 	const std::vector<std::shared_ptr<ShaderVariation>>& GetAllShaders() const;
 	void Clear();
 
 private:
-	std::shared_ptr<ShaderVariation> FindMatchingShader(
+	std::weak_ptr<ShaderVariation> FindMatchingShader(
 		bool albedo,
 		bool roughness,
 		bool metallic,

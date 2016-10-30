@@ -67,7 +67,7 @@ public:
 
 	//= SHADER ====================================================================
 	void AcquireShader();
-	std::shared_ptr<ShaderVariation> GetShader();
+	std::weak_ptr<ShaderVariation> GetShader();
 	bool HasShader();
 	ID3D11ShaderResourceView* GetShaderResourceViewByTextureType(TextureType type);
 	//=============================================================================
@@ -135,7 +135,9 @@ public:
 private:
 	void TextureBasedMultiplierAdjustment();
 
+	std::weak_ptr<ShaderVariation> m_shader;
 	std::vector<std::weak_ptr<Texture>> m_textures;
+
 	std::string m_ID;
 	std::string m_name;
 	std::string m_modelID;
@@ -153,7 +155,7 @@ private:
 	Directus::Math::Vector2 m_tilingUV;
 	Directus::Math::Vector2 m_offsetUV;
 	ShadingMode m_shadingMode;
-	std::shared_ptr<ShaderVariation> m_shader;
+	
 	bool m_isEditable;
 
 	//= DEPENDENCIES ==========
