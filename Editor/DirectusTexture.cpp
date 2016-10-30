@@ -73,11 +73,11 @@ void DirectusTexture::LoadImageAsync(std::string filePath)
     imageLoader->moveToThread(thread);
     imageLoader->PrepareForTexture(filePath, 20, 20);
 
-    connect(thread,         SIGNAL(started()), imageLoader, SLOT(LoadTexture()));
-    connect(imageLoader,    SIGNAL(ImageReady(QPixmap)), this, SLOT(setPixmap(QPixmap)));
-    connect(imageLoader,    SIGNAL(Finished()), thread, SLOT(quit()));
-    connect(imageLoader,    SIGNAL(Finished()), imageLoader, SLOT(deleteLater()));
-    connect(thread,         SIGNAL(finished()), thread, SLOT(deleteLater()));
+    connect(thread,         SIGNAL(started()),              imageLoader,    SLOT(LoadTexture()));
+    connect(imageLoader,    SIGNAL(ImageReady(QPixmap)),    this,           SLOT(setPixmap(QPixmap)));
+    connect(imageLoader,    SIGNAL(Finished()),             thread,         SLOT(quit()));
+    connect(imageLoader,    SIGNAL(Finished()),             imageLoader,    SLOT(deleteLater()));
+    connect(thread,         SIGNAL(finished()),             thread,         SLOT(deleteLater()));
 
     thread->start(QThread::HighestPriority);
 }
