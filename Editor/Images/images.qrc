@@ -33,5 +33,6 @@
         <file>scene.png</file>
         <file>hlsl.png</file>
         <file>materialLarge.png</file>
+        <file>icon.png</file>
     </qresource>
 </RCC>
