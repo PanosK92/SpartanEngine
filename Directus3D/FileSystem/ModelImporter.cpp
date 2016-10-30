@@ -366,11 +366,11 @@ void ModelImporter::AddTextureToMaterial(shared_ptr<Material> material, TextureT
 	string textureDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
 	FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
-	shared_ptr<Texture> texture = g_context->GetSubsystem<TexturePool>()->Add(textureDestination);
-	if (texture)
+	weak_ptr<Texture> texture = g_context->GetSubsystem<TexturePool>()->Add(textureDestination);
+	if (!texture.expired())
 	{
-		texture->SetType(textureType);
-		material->SetTextureByID(texture->GetID());
+		texture.lock()->SetType(textureType);
+		material->SetTextureByID(texture.lock()->GetID());
 	}
 }
 

@@ -41,10 +41,10 @@ TexturePool::~TexturePool()
 }
 
 // Adds a texture to the pool directly from memory
-shared_ptr<Texture> TexturePool::Add(shared_ptr<Texture> textureIn)
+weak_ptr<Texture> TexturePool::Add(shared_ptr<Texture> textureIn)
 {
 	if (!textureIn)
-		return nullptr;
+		return weak_ptr<Texture>();
 
 	for (const auto& texture : m_textures)
 		if (textureIn->GetID() == texture->GetID())
@@ -55,14 +55,14 @@ shared_ptr<Texture> TexturePool::Add(shared_ptr<Texture> textureIn)
 }
 
 // Adds a texture to the pool by loading it from an image file
-shared_ptr<Texture> TexturePool::Add(const string& texturePath)
+weak_ptr<Texture> TexturePool::Add(const string& texturePath)
 {
 	if (!FileSystem::FileExists(texturePath) || !FileSystem::IsSupportedImage(texturePath))
-		return nullptr;
+		return weak_ptr<Texture>();
 
 	// If the texture alrady exists, return it
 	auto existingTexture = GetTextureByPath(texturePath);
-	if (existingTexture)
+	if (!existingTexture.expired())
 		return existingTexture;
 
 	// If the texture doesn't exist, create and load it
@@ -80,31 +80,31 @@ void TexturePool::Add(const vector<string>& imagePaths)
 		Add(imagePath);
 }
 
-shared_ptr<Texture> TexturePool::GetTextureByName(const string&  name)
+weak_ptr<Texture> TexturePool::GetTextureByName(const string&  name)
 {
 	for (const auto& texture : m_textures)
 		if (texture->GetName() == name)
 			return texture;
 
-	return nullptr;
+	return weak_ptr<Texture>();
 }
 
-shared_ptr<Texture> TexturePool::GetTextureByID(const string&  ID)
+weak_ptr<Texture> TexturePool::GetTextureByID(const string&  ID)
 {
 	for (const auto& texture : m_textures)
 		if (texture->GetID() == ID)
 			return texture;
 
-	return nullptr;
+	return weak_ptr<Texture>();
 }
 
-shared_ptr<Texture> TexturePool::GetTextureByPath(const string&  path)
+weak_ptr<Texture> TexturePool::GetTextureByPath(const string&  path)
 {
 	for (const auto& texture : m_textures)
 		if (texture->GetFilePathTexture() == path)
 			return texture;
 
-	return nullptr;
+	return weak_ptr<Texture>();
 }
 
 vector<string> TexturePool::GetAllTextureFilePaths()
