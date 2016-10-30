@@ -49,7 +49,7 @@ public:
 
 	//= LOGGING ==========================================================================
 	static void Write(const std::string& text, LogType type);
-	static void WriteAsText(const std::string& text, LogType type);
+	static void WriteAsText(const std::string& text);
 	static void Write(const char* text, LogType type);
 	static void Write(const Directus::Math::Vector3& vector, LogType type);
 	static void Write(const Directus::Math::Quaternion& quaternion, LogType type);

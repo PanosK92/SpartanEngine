@@ -66,15 +66,16 @@ void Log::Write(const string& text, LogType type) // all functions resolve to th
 	string finalText = prefix + " " + text;
 
 	auto logger = m_logger.lock();
-	logger ? logger->Log(finalText, type) : WriteAsText(finalText, type);
+	logger ? logger->Log(finalText, type) : WriteAsText(finalText);
 	// if a logger is available use it, if not output a text file
 }
 
-void Log::WriteAsText(const string& text, LogType type)
+void Log::WriteAsText(const string& text)
 {
-	// Open a file to write the error message to.
+	// Open a file and seek to the end of stream before each
+	// write (append mode), to write the error message to.
 	ofstream fout;
-	fout.open("log.txt", ofstream::out | ofstream::app);
+	fout.open("log.txt", ofstream::out | ofstream::app); 
 
 	// Write out the error message.
 	fout << text << endl;
