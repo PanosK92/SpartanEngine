@@ -52,7 +52,7 @@ weak_ptr<Material> MaterialPool::Add(shared_ptr<Material> material)
 	if (!material)
 		return weak_ptr<Material>();
 
-	for (const auto& materialInPool : m_materials)
+	for (const auto materialInPool : m_materials)
 	{
 		// Make sure the material is not already in the pool
 		if (materialInPool->GetID() == material->GetID())
@@ -101,7 +101,7 @@ weak_ptr<Material> MaterialPool::GetMaterialByID(const string& materialID)
 	if (materialID == MATERIAL_DEFAULT_SKYBOX_ID)
 		return m_materialDefaultSkybox;
 
-	for (const auto& material : m_materials)
+	for (const auto material : m_materials)
 		if (material->GetID() == materialID)
 			return material;
 
@@ -122,7 +122,7 @@ vector<string> MaterialPool::GetAllMaterialFilePaths()
 {
 	vector<string> paths;
 
-	for (const auto& material : m_materials)
+	for (const auto material : m_materials)
 		paths.push_back(material->GetFilePath());
 
 	return paths;

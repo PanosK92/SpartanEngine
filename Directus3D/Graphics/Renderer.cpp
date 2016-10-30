@@ -305,16 +305,20 @@ void Renderer::GBufferPass()
 	MaterialPool* materialPool = g_context->GetSubsystem<MaterialPool>();
 	Graphics* graphics = g_context->GetSubsystem<Graphics>();
 
-	for (const auto& currentShader : shaderPool->GetAllShaders()) // for each shader
+	for (const auto currentShader : shaderPool->GetAllShaders()) // for each shader
 	{	
 		currentShader->Set();
-		for (const auto& currentMaterial : materialPool->GetAllMaterials()) // for each material...
+		for (const auto currentMaterial : materialPool->GetAllMaterials()) // for each material...
 		{
+			
+			if (currentMaterial->GetShader().expired())
+				continue;
+
 			// ... that uses the current shader
 			if (currentMaterial->GetShader().lock()->GetID() != currentShader->GetID())
 				continue;	
 
-			//= Gather ant used textures and bind them to the GPU ===============================
+			//= Gather any used textures and bind them to the GPU ===============================
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Albedo));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Roughness));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Metallic));
