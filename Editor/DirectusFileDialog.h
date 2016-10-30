@@ -38,7 +38,7 @@ public:
     void Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusCore* directusCore);
     void Reset();
     void LoadModel();
-    void LoadModelDirectly(QString filePath);
+    void LoadModelDirectly(std::string filePath);
     void LoadScene();
     void SaveScene();
     void SaveSceneAs();

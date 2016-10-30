@@ -74,10 +74,10 @@ void DirectusFileDialog::LoadModel()
     m_assetOperation = "Load Model";
 }
 
-void DirectusFileDialog::LoadModelDirectly(QString filePath)
+void DirectusFileDialog::LoadModelDirectly(std::string filePath)
 {
      m_assetOperation = "Load Model";
-     FileDialogAccepted(filePath);
+     FileDialogAccepted(QString::fromStdString(filePath));
 }
 
 void DirectusFileDialog::LoadScene()

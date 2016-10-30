@@ -285,7 +285,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 
 shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 {
-	shared_ptr<Material> engineMaterial = make_shared<Material>(g_context->GetSubsystem<TexturePool>(), g_context->GetSubsystem<ShaderPool>());
+	shared_ptr<Material> engineMaterial = make_shared<Material>(g_context);
 
 	//= NAME ====================================================================
 	aiString name;

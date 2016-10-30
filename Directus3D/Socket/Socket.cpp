@@ -130,6 +130,27 @@ void Socket::SetLogger(weak_ptr<ILogger> logger)
 	Log::SetLogger(logger);
 }
 
+void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string texturePath)
+{
+	if (!gameObject)
+		return;
+
+	auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
+	if (!meshRenderer)
+		return;
+
+	auto material = meshRenderer->GetMaterial();
+	if (!material.expired())
+	{
+		// Load the texture, if the texture has already been loaded, the pool will return the existing one
+		weak_ptr<Texture> texture = g_context->GetSubsystem<TexturePool>()->Add(texturePath);
+		texture.lock()->SetType(type);
+
+		// Set it to the material
+		material.lock()->SetTexture(texture);
+	}
+}
+
 //==============================================================================
 
 //= GAMEOBJECTS ================================================================
@@ -193,24 +214,3 @@ float Socket::GetRenderTime() const
 	return g_context->GetSubsystem<Timer>()->GetRenderTimeMs();
 }
 //==============================================================================
-
-void Socket::SetMaterialTexture(GameObject* gameObject, TextureType type, string texturePath)
-{
-	if (!gameObject)
-		return;
-
-	auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
-	if (!meshRenderer)
-		return;
-
-	auto material = meshRenderer->GetMaterial();
-	if (!material.expired())
-	{
-		// Load the texture, if the texture has already been loaded, the pool will return the existing one
-		weak_ptr<Texture> texture = g_context->GetSubsystem<TexturePool>()->Add(texturePath);
-		texture.lock()->SetType(type);
-
-		// Set it to the material
-		material.lock()->SetTexture(texture);
-	}
-}

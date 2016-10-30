@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/ShaderPool.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
-#include "../Core/Helper.h"
 //================================
 
 //= NAMESPACES ================
@@ -35,8 +34,10 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
+Material::Material(Context* context)
 {
+	m_context = context;
+
 	m_ID = GENERATE_GUID;
 	m_name = DATA_NOT_ASSIGNED;
 	m_modelID = DATA_NOT_ASSIGNED;
@@ -55,9 +56,6 @@ Material::Material(TexturePool* texturePool, ShaderPool* shaderPool)
 	m_tilingUV = Vector2(1.0f, 1.0f);
 	m_offsetUV = Vector2(0.0f, 0.0f);
 	m_isEditable = true;
-
-	m_texturePool = texturePool;
-	m_shaderPool = shaderPool;
 
 	AcquireShader();
 }
@@ -117,7 +115,12 @@ void Material::Deserialize()
 
 	int textureCount = Serializer::ReadInt();
 	for (int i = 0; i < textureCount; i++)
-		m_textures.push_back(m_texturePool->GetTextureByID(Serializer::ReadSTR()));
+	{
+		string texID = Serializer::ReadSTR();
+
+		if (m_context)
+			m_textures.push_back(m_context->GetSubsystem<TexturePool>()->GetTextureByID(texID));
+	}
 
 	AcquireShader();
 }
@@ -177,7 +180,8 @@ void Material::SetTexture(weak_ptr<Texture> texture)
 
 void Material::SetTextureByID(const string& textureID)
 {
-	SetTexture(m_texturePool->GetTextureByID(textureID));
+	if (m_context)
+		SetTexture(m_context->GetSubsystem<TexturePool>()->GetTextureByID(textureID));
 }
 
 weak_ptr<Texture> Material::GetTextureByType(TextureType type)
@@ -223,12 +227,12 @@ vector<string> Material::GetTexturePaths()
 //= SHADER =====================================================================
 void Material::AcquireShader()
 {
-	if (!m_shaderPool)
+	if (!m_context)
 		return;
 
 	// Add a shader to the pool based on this material, if a 
 	// matching shader already exists, it will be returned instead.
-	m_shader = m_shaderPool->CreateShaderBasedOnMaterial(
+	m_shader = m_context->GetSubsystem<ShaderPool>()->CreateShaderBasedOnMaterial(
 		HasTextureOfType(Albedo),
 		HasTextureOfType(Roughness),
 		HasTextureOfType(Metallic),

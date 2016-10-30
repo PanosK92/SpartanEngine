@@ -53,9 +53,10 @@ public:
 	static std::vector<std::string> GetFoldersInDirectory(const std::string& directory);
 	static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
 	static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& directory);
-	static std::vector<std::string> GetImagesFromPaths(const std::vector<std::string>& paths);
-	static std::vector<std::string> GetScriptsFromPaths(const std::vector<std::string>& paths);
-	static std::vector<std::string> GetModelsFromPaths(const std::vector<std::string>& paths);
+	static std::vector<std::string> GetImagesFromFilePaths(const std::vector<std::string>& paths);
+	static std::vector<std::string> GetScriptsFromFilePaths(const std::vector<std::string>& paths);
+	static std::vector<std::string> GetModelsFromFilePaths(const std::vector<std::string>& paths);
+	static std::vector<std::string> GetSupportedModelsInDirectory(const std::string& directory);
 
 	static bool IsSupportedImage(const std::string& path);
 	static bool IsSupportedScript(const std::string& path);

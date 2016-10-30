@@ -72,13 +72,10 @@ weak_ptr<Material> MaterialPool::Add(shared_ptr<Material> material)
 // Adds multiple materials to the pool by reading them from files
 void MaterialPool::Add(const vector<string>& filePaths)
 {
-	TexturePool* texturePool = g_context->GetSubsystem<TexturePool>();
-	ShaderPool* shaderPool = g_context->GetSubsystem<ShaderPool>();
-
 	for (const string& filePath : filePaths)
 	{
 		// Create and load the material
-		auto material = make_shared<Material>(texturePool, shaderPool);
+		auto material = make_shared<Material>(g_context);
 		if (material->LoadFromFile(filePath))
 			m_materials.push_back(material);
 	}
@@ -138,15 +135,12 @@ const vector<shared_ptr<Material>>& MaterialPool::GetAllMaterials()
 ------------------------------------------------------------------------------*/
 void MaterialPool::GenerateDefaultMaterials()
 {
-	TexturePool* texturePool = g_context->GetSubsystem<TexturePool>();
-	ShaderPool* shaderPool = g_context->GetSubsystem<ShaderPool>();
-
 	m_materialDefault.reset();
 	m_materialDefaultSkybox.reset();
 
 	if (!m_materialDefault)
 	{
-		m_materialDefault = make_shared<Material>(texturePool, shaderPool);
+		m_materialDefault = make_shared<Material>(g_context);
 		m_materialDefault->SetID(MATERIAL_DEFAULT_ID);
 		m_materialDefault->SetName("Default");
 		m_materialDefault->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -155,7 +149,7 @@ void MaterialPool::GenerateDefaultMaterials()
 
 	if (!m_materialDefaultSkybox)
 	{
-		m_materialDefaultSkybox = make_shared<Material>(texturePool, shaderPool);
+		m_materialDefaultSkybox = make_shared<Material>(g_context);
 		m_materialDefaultSkybox->SetID(MATERIAL_DEFAULT_SKYBOX_ID);
 		m_materialDefaultSkybox->SetName("Default_Skybox");
 		m_materialDefaultSkybox->SetFaceCullMode(CullNone);
