@@ -75,7 +75,7 @@ private:
 	void ConstructCollisionShape();
 	void DeleteCollisionShape();
 	void SetRigidBodyCollisionShape(std::shared_ptr<btCollisionShape> shape) const;
-	std::shared_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
+	std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
 	//=========================================================================
 
 	ColliderShape m_shapeType;

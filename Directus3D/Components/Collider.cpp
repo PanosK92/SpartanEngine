@@ -55,11 +55,11 @@ Collider::~Collider()
 //= ICOMPONENT ========================================================================
 void Collider::Initialize()
 {
-	shared_ptr<Mesh> mesh = GetMeshFromAttachedMeshFilter();
-	if (mesh)
+	weak_ptr<Mesh> mesh = GetMeshFromAttachedMeshFilter();
+	if (!mesh.expired())
 	{
-		m_boundingBox = mesh->GetBoundingBox() * g_transform->GetWorldTransform();
-		m_center = mesh->GetCenter() * g_transform->GetWorldTransform();
+		m_boundingBox = mesh.lock()->GetBoundingBox() * g_transform->GetWorldTransform();
+		m_center = mesh.lock()->GetCenter() * g_transform->GetWorldTransform();
 	}
 
 	ConstructCollisionShape();
@@ -198,9 +198,9 @@ void Collider::SetRigidBodyCollisionShape(shared_ptr<btCollisionShape> shape) co
 		rigidBody->SetCollisionShape(shape);
 }
 
-shared_ptr<Mesh> Collider::GetMeshFromAttachedMeshFilter() const
+weak_ptr<Mesh> Collider::GetMeshFromAttachedMeshFilter() const
 {
 	MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
-	return meshFilter ? meshFilter->GetMesh() : nullptr;
+	return meshFilter ? meshFilter->GetMesh() : weak_ptr<Mesh>();
 }
 //=========================================================================

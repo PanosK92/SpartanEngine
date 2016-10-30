@@ -48,19 +48,19 @@ public:
 
 	bool GetConvex() const;
 	void SetConvex(bool isConvex);
-	std::shared_ptr<Mesh> GetMesh() const;
-	void SetMesh(std::shared_ptr<Mesh> mesh);
+	std::weak_ptr<Mesh> GetMesh() const;
+	void SetMesh(std::weak_ptr<Mesh> mesh);
 	
 
 private:
 	//= HELPER FUNCTIONS ======================================================
 	void DeleteCollisionShape();
 	void ConstructCollisionShape();
-	void SetCollisionShapeToRigidBody(std::shared_ptr<btCollisionShape> shape) const;
-	std::shared_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
+	void SetCollisionShapeToRigidBody(std::weak_ptr<btCollisionShape> shape) const;
+	std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
 	//========================================================================
 
-	std::shared_ptr<Mesh> m_mesh;
+	std::weak_ptr<Mesh> m_mesh;
 	int m_vertexLimit = 100000;
 	std::shared_ptr<btCollisionShape> m_collisionShape;
 	bool m_convex;

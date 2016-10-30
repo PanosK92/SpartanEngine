@@ -107,8 +107,8 @@ public:
 	void SetRotation(const Directus::Math::Quaternion& rotation) const;
 
 	//= MISC ================================================
-	void SetCollisionShape(std::shared_ptr<btCollisionShape> shape);
-	std::shared_ptr<btRigidBody> GetBtRigidBody() const;
+	void SetCollisionShape(std::weak_ptr<btCollisionShape> shape);
+	std::weak_ptr<btRigidBody> GetBtRigidBody() const;
 	void ClearForces() const;
 	Directus::Math::Vector3 GetColliderCenter() const;
 
@@ -123,8 +123,8 @@ private:
 	void Activate() const;
 	void Deactivate() const;
 
-	std::shared_ptr<btRigidBody> m_rigidBody;
-	std::shared_ptr<btCollisionShape> m_shape;
+	std::weak_ptr<btRigidBody> m_rigidBody;
+	std::weak_ptr<btCollisionShape> m_shape;
 	bool m_wasKinematic;
 
 	float m_mass;

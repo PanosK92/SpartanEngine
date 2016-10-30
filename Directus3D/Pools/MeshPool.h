@@ -42,27 +42,27 @@ public:
 										[MISC]
 	------------------------------------------------------------------------------*/
 	void Clear();
-	std::shared_ptr<Mesh> Add(std::shared_ptr<Mesh> mesh);
-	std::shared_ptr<Mesh> Add(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
+	std::weak_ptr<Mesh> Add(std::shared_ptr<Mesh> mesh);
+	std::weak_ptr<Mesh> Add(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
 	void Add(const std::vector<std::string>& filePaths);
 
-	std::shared_ptr<Mesh> GetMeshByID(const std::string& ID);
-	std::shared_ptr<Mesh> GetMeshByPath(const std::string& path);
+	std::weak_ptr<Mesh> GetMeshByID(const std::string& ID);
+	std::weak_ptr<Mesh> GetMeshByPath(const std::string& path);
 
 	std::vector<std::string> GetAllMeshFilePaths();
-	std::vector<std::shared_ptr<Mesh>> GetModelMeshesByModelName(const std::string& modelName);
+	std::vector<std::weak_ptr<Mesh>> GetModelMeshesByModelName(const std::string& modelName);
 	int GetMeshCount();
 
 	//= DEFAULT MESHES ============================================================================================
-	std::shared_ptr<Mesh> GetDefaultCube();
-	std::shared_ptr<Mesh> GetDefaultQuad();
+	std::weak_ptr<Mesh> GetDefaultCube();
+	std::weak_ptr<Mesh> GetDefaultQuad();
 	//=============================================================================================================
 
 	//= MESH PROCESSING =============================================================================
 	float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
 	void SetModelScale(const std::string& rootGameObjectID, float scale);
 	void NormalizeModelScale(GameObject* rootGameObject);
-	static std::shared_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::shared_ptr<Mesh>>& meshes);
+	static std::weak_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::weak_ptr<Mesh>>& meshes);
 	//===============================================================================================
 
 private:
