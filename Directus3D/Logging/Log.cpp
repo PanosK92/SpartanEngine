@@ -74,7 +74,7 @@ void Log::WriteAsText(const string& text, LogType type)
 {
 	// Open a file to write the error message to.
 	ofstream fout;
-	fout.open("log.txt");
+	fout.open("log.txt", ofstream::out | ofstream::app);
 
 	// Write out the error message.
 	fout << text << endl;
