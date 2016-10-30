@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Scripting/ScriptEngine.h"
 #include "../Graphics/Renderer.h"
-#include "../AssetImporting/ModelImporter.h"
+#include "../FileSystem/ModelImporter.h"
 #include "../Input/Input.h"
 #include "../Graphics/Graphics.h"
 #include "../Signals/Signaling.h"

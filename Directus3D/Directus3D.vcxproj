@@ -177,9 +177,9 @@
     <ClCompile Include="FileSystem\FileSystem.cpp" />
     <ClCompile Include="Logging\Log.cpp" />
     <ClCompile Include="IO\Serializer.cpp" />
-    <ClCompile Include="AssetImporting\DDSTextureImporter.cpp" />
-    <ClCompile Include="AssetImporting\ImageImporter.cpp" />
-    <ClCompile Include="AssetImporting\ModelImporter.cpp" />
+    <ClCompile Include="FileSystem\DDSTextureImporter.cpp" />
+    <ClCompile Include="FileSystem\ImageImporter.cpp" />
+    <ClCompile Include="FileSystem\ModelImporter.cpp" />
     <ClCompile Include="Math\Matrix.cpp" />
     <ClCompile Include="Math\Plane.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
@@ -254,9 +254,9 @@
     <ClInclude Include="Logging\ILogger.h" />
     <ClInclude Include="Logging\Log.h" />
     <ClInclude Include="IO\Serializer.h" />
-    <ClInclude Include="AssetImporting\DDSTextureImporter.h" />
-    <ClInclude Include="AssetImporting\ImageImporter.h" />
-    <ClInclude Include="AssetImporting\ModelImporter.h" />
+    <ClInclude Include="FileSystem\DDSTextureImporter.h" />
+    <ClInclude Include="FileSystem\ImageImporter.h" />
+    <ClInclude Include="FileSystem\ModelImporter.h" />
     <ClInclude Include="Math\MathHelper.h" />
     <ClInclude Include="Math\Matrix.h" />
     <ClInclude Include="Math\Plane.h" />
