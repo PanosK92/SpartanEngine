@@ -265,6 +265,36 @@ QLabel
 	border-style: none;
 }
 
+/*= COMBOBOX/QPUSHBUTTON  =====================================================================*/
+QComboBox, QPushButton
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(92, 92, 92, 100), stop:1 rgba(92, 92, 92, 255));
+	border-radius: 2px;
+    border-color: #575757;
+    border-width: 1px;
+    border-style: solid;
+	padding-left: 5px;
+}
+
+QPushButton::pressed
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(55, 55, 55, 255), stop:1 rgba(70, 70, 70, 255));
+}
+
+QComboBox::drop-down
+{
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 1px;
+    border-style: none;
+}
+
+QComboBox::down-arrow
+{   
+    background-image: url(:/Images/arrow.png);
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
 /*= TREES ==================================================================================*/
 /*NOTE: I am using QTreeView everywhere because even QTreeWidgets inherit from them */
 QTreeView
@@ -401,31 +431,6 @@ QCheckBox::indicator:checked
 {
 	image:  url(:/Images/check.png) contain;
  }
-
-/*= COMBOBOX ==================================================================================*/
-QComboBox
-{
-    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(92, 92, 92, 100), stop:1 rgba(92, 92, 92, 255));
-	border-radius: 2px;
-    border-color: #575757;
-    border-width: 1px;
-    border-style: solid;
-	padding-left: 5px;
-}
-
-QComboBox::drop-down
-{
-    background-color: rgba(0, 0, 0, 0);
-    border-width: 1px;
-    border-style: none;
-}
-
-QComboBox::down-arrow
-{   
-    background-image: url(:/Images/arrow.png);
-	background-repeat: no-repeat;
-	background-position: center;
-}
 
 /* PROGRESS BAR =========================================================================================*/
 QProgressBar 
