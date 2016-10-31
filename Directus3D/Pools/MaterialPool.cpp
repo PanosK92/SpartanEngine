@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Pools/ShaderPool.h"
 #include "../Pools/TexturePool.h"
+#include "GameObjectPool.h"
+#include "../Components/MeshRenderer.h"
 //===============================
 
 //= NAMESPACES ================
@@ -33,7 +35,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-MaterialPool::MaterialPool(Context* context) : Object(context) 
+MaterialPool::MaterialPool(Context* context) : Object(context)
 {
 	GenerateDefaultMaterials();
 }

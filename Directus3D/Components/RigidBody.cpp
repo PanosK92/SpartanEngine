@@ -231,20 +231,20 @@ bool RigidBody::GetKinematic() const
 //= FORCE/TORQUE ========================================================
 void RigidBody::SetLinearVelocity(const Vector3& velocity) const
 {
-	if (m_rigidBody.expired())
+	if (!m_rigidBody)
 		return;
 
-	m_rigidBody.lock()->setLinearVelocity(ToBtVector3(velocity));
+	m_rigidBody->setLinearVelocity(ToBtVector3(velocity));
 	if (velocity != Vector3::Zero)
 		Activate();
 }
 
 void RigidBody::SetAngularVelocity(const Vector3& velocity)
 {
-	if (m_rigidBody.expired())
+	if (!m_rigidBody)
 		return;
 
-	m_rigidBody.lock()->setAngularVelocity(ToBtVector3(velocity));
+	m_rigidBody->setAngularVelocity(ToBtVector3(velocity));
 	if (velocity != Vector3::Zero)
 		Activate();
 }
@@ -254,9 +254,9 @@ void RigidBody::ApplyForce(const Vector3& force, ForceMode mode) const
 	Activate();
 
 	if (mode == Force)
-		m_rigidBody.lock()->applyCentralForce(ToBtVector3(force));
+		m_rigidBody->applyCentralForce(ToBtVector3(force));
 	else if (mode == Impulse)
-		m_rigidBody.lock()->applyCentralImpulse(ToBtVector3(force));
+		m_rigidBody->applyCentralImpulse(ToBtVector3(force));
 }
 
 void RigidBody::ApplyForceAtPosition(const Vector3& force, Vector3 position, ForceMode mode) const
@@ -264,9 +264,9 @@ void RigidBody::ApplyForceAtPosition(const Vector3& force, Vector3 position, For
 	Activate();
 
 	if (mode == Force)
-		m_rigidBody.lock()->applyForce(ToBtVector3(force), ToBtVector3(position));
+		m_rigidBody->applyForce(ToBtVector3(force), ToBtVector3(position));
 	else if (mode == Impulse)
-		m_rigidBody.lock()->applyImpulse(ToBtVector3(force), ToBtVector3(position));
+		m_rigidBody->applyImpulse(ToBtVector3(force), ToBtVector3(position));
 }
 
 void RigidBody::ApplyTorque(const Vector3& torque, ForceMode mode) const
@@ -274,9 +274,9 @@ void RigidBody::ApplyTorque(const Vector3& torque, ForceMode mode) const
 	Activate();
 
 	if (mode == Force)
-		m_rigidBody.lock()->applyTorque(ToBtVector3(torque));
+		m_rigidBody->applyTorque(ToBtVector3(torque));
 	else if (mode == Impulse)
-		m_rigidBody.lock()->applyTorqueImpulse(ToBtVector3(torque));
+		m_rigidBody->applyTorqueImpulse(ToBtVector3(torque));
 }
 //=======================================================================
 
@@ -294,7 +294,7 @@ void RigidBody::SetPositionLock(const Vector3& lock)
 	m_positionLock = lock;
 
 	Vector3 translationFreedom = Vector3(!lock.x, !lock.y, !lock.z);
-	m_rigidBody.lock()->setLinearFactor(ToBtVector3(translationFreedom));
+	m_rigidBody->setLinearFactor(ToBtVector3(translationFreedom));
 }
 
 Vector3 RigidBody::GetPositionLock() const
@@ -315,7 +315,7 @@ void RigidBody::SetRotationLock(const Vector3& lock)
 	m_rotationLock = lock;
 
 	Vector3 rotationFreedom = Vector3(!lock.x, !lock.y, !lock.z);
-	m_rigidBody.lock()->setAngularFactor(ToBtVector3(rotationFreedom));
+	m_rigidBody->setAngularFactor(ToBtVector3(rotationFreedom));
 }
 
 Vector3 RigidBody::GetRotationLock() const
@@ -327,25 +327,25 @@ Vector3 RigidBody::GetRotationLock() const
 //= POSITION ============================================================
 Vector3 RigidBody::GetPosition() const
 {
-	return !m_rigidBody.expired() ? ToVector3(m_rigidBody.lock()->getWorldTransform().getOrigin()) : Vector3::Zero;
+	return m_rigidBody ? ToVector3(m_rigidBody->getWorldTransform().getOrigin()) : Vector3::Zero;
 }
 
 void RigidBody::SetPosition(const Vector3& position) const
 {
-	if (m_rigidBody.expired())
+	if (!m_rigidBody)
 		return;
 
 	// Set the position to the world transform
 	Vector3 centerOfMass = GetColliderCenter();
-	btTransform& worldTrans = m_rigidBody.lock()->getWorldTransform();
+	btTransform& worldTrans = m_rigidBody->getWorldTransform();
 	worldTrans.setOrigin(ToBtVector3(position + ToQuaternion(worldTrans.getRotation()) * centerOfMass));
 
 	// Set the interpolated position also
 	if (!m_hasSimulated)
 	{
-		btTransform interpTrans = m_rigidBody.lock()->getInterpolationWorldTransform();
+		btTransform interpTrans = m_rigidBody->getInterpolationWorldTransform();
 		interpTrans.setOrigin(worldTrans.getOrigin());
-		m_rigidBody.lock()->setInterpolationWorldTransform(interpTrans);
+		m_rigidBody->setInterpolationWorldTransform(interpTrans);
 	}
 
 	Activate();
@@ -354,18 +354,18 @@ void RigidBody::SetPosition(const Vector3& position) const
 //= ROTATION ============================================================
 Quaternion RigidBody::GetRotation() const
 {
-	return !m_rigidBody.expired() ? ToQuaternion(m_rigidBody.lock()->getWorldTransform().getRotation()) : Quaternion::Identity;
+	return m_rigidBody ? ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) : Quaternion::Identity;
 }
 
 void RigidBody::SetRotation(const Quaternion& rotation) const
 {
-	if (m_rigidBody.expired())
+	if (!m_rigidBody)
 		return;
 
 	// Set the rotation to the world transform
 	Vector3 centerOfMass = GetColliderCenter();
 	Vector3 oldPosition = GetPosition();
-	btTransform& worldTrans = m_rigidBody.lock()->getWorldTransform();
+	btTransform& worldTrans = m_rigidBody->getWorldTransform();
 	worldTrans.setRotation(ToBtQuaternion(rotation));
 	if (centerOfMass != Vector3::Zero)
 		worldTrans.setOrigin(ToBtVector3(oldPosition + rotation * centerOfMass));
@@ -373,14 +373,14 @@ void RigidBody::SetRotation(const Quaternion& rotation) const
 	// Set the interpolated rotation also
 	if (!m_hasSimulated)
 	{
-		btTransform interpTrans = m_rigidBody.lock()->getInterpolationWorldTransform();
+		btTransform interpTrans = m_rigidBody->getInterpolationWorldTransform();
 		interpTrans.setRotation(worldTrans.getRotation());
 		if (centerOfMass != Vector3::Zero)
 			interpTrans.setOrigin(worldTrans.getOrigin());
-		m_rigidBody.lock()->setInterpolationWorldTransform(interpTrans);
+		m_rigidBody->setInterpolationWorldTransform(interpTrans);
 	}
 
-	m_rigidBody.lock()->updateInertiaTensor();
+	m_rigidBody->updateInertiaTensor();
 	Activate();
 }
 
@@ -398,10 +398,10 @@ weak_ptr<btRigidBody> RigidBody::GetBtRigidBody() const
 
 void RigidBody::ClearForces() const
 {
-	if (m_rigidBody.expired())
+	if (!m_rigidBody)
 		return;
 
-	m_rigidBody.lock()->clearForces();
+	m_rigidBody->clearForces();
 }
 
 Vector3 RigidBody::GetColliderCenter() const
@@ -420,27 +420,27 @@ void RigidBody::AddBodyToWorld()
 		m_mass = 0.0f;
 
 	// in case there is an existing rigidBody, remove it
-	if (!m_rigidBody.expired())
+	if (m_rigidBody)
 	{
-		inertia = m_rigidBody.lock()->getLocalInertia(); // save the inertia
+		inertia = m_rigidBody->getLocalInertia(); // save the inertia
 		DeleteBtRigidBody();
 	}
 
-	// Colision Shape
-	if (!m_shape.lock()) // if a shape has been assigned
+	// Calculate local inertia
+	if (!m_shape.expired())
 		m_shape.lock()->calculateLocalInertia(m_mass, inertia);
 
 	// Motion state
 	MotionState* motionState = new MotionState(this);
 
 	// Construction Info
-	btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, m_shape.lock().get(), inertia);
+	btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, !m_shape.expired() ? m_shape.lock().get() : nullptr, inertia);
 	constructionInfo.m_mass = m_mass;
 	constructionInfo.m_friction = m_drag;
 	constructionInfo.m_rollingFriction = m_angularDrag;
 	constructionInfo.m_restitution = m_restitution;
 	constructionInfo.m_startWorldTransform;
-	constructionInfo.m_collisionShape = m_shape.lock().get();
+	constructionInfo.m_collisionShape = !m_shape.expired() ? m_shape.lock().get() : nullptr;
 	constructionInfo.m_localInertia = inertia;
 	constructionInfo.m_motionState = motionState;
 
@@ -450,17 +450,17 @@ void RigidBody::AddBodyToWorld()
 	UpdateGravity();
 
 	//= COLLISION FLAGS ====================================================================
-	int flags = m_rigidBody.lock()->getCollisionFlags();
+	int flags = m_rigidBody->getCollisionFlags();
 
 	if (m_isKinematic)
 		flags |= btCollisionObject::CF_KINEMATIC_OBJECT;
 	else
 		flags &= ~btCollisionObject::CF_KINEMATIC_OBJECT;
 
-	m_rigidBody.lock()->setCollisionFlags(flags);
-	m_rigidBody.lock()->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
+	m_rigidBody->setCollisionFlags(flags);
+	m_rigidBody->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
 	//======================================================================================
-	m_rigidBody.lock()->setDeactivationTime(2000);
+	m_rigidBody->setDeactivationTime(2000);
 
 	SetPosition(g_transform->GetPosition());
 	SetRotation(g_transform->GetRotation());
@@ -470,7 +470,7 @@ void RigidBody::AddBodyToWorld()
 	SetRotationLock(m_rotationLock);
 
 	// PHYSICS WORLD - ADD
-	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->addRigidBody(m_rigidBody.lock().get());
+	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->addRigidBody(m_rigidBody.get());
 
 	if (m_mass > 0.0f)
 		Activate();
@@ -486,64 +486,64 @@ void RigidBody::AddBodyToWorld()
 
 void RigidBody::RemoveBodyFromWorld()
 {
-	if (m_rigidBody.expired())
+	if (!m_rigidBody)
 		return;
 
 	if (m_inWorld)
 	{
-		g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeRigidBody(m_rigidBody.lock().get());
+		g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeRigidBody(m_rigidBody.get());
 		m_inWorld = false;
 	}
 }
 
 void RigidBody::UpdateGravity() const
 {
-	if (m_rigidBody.expired())
+	if (!m_rigidBody)
 		return;
 
 	btDiscreteDynamicsWorld* world = g_context->GetSubsystem<PhysicsWorld>()->GetWorld();
 
-	int flags = m_rigidBody.lock()->getFlags();
+	int flags = m_rigidBody->getFlags();
 	if (m_useGravity)
 		flags &= ~BT_DISABLE_WORLD_GRAVITY;
 	else
 		flags |= BT_DISABLE_WORLD_GRAVITY;
-	m_rigidBody.lock()->setFlags(flags);
+	m_rigidBody->setFlags(flags);
 
 	if (m_useGravity)
-		m_rigidBody.lock()->setGravity(world->getGravity());
+		m_rigidBody->setGravity(world->getGravity());
 	else
-		m_rigidBody.lock()->setGravity(btVector3(0.0f, 0.0f, 0.0f));
+		m_rigidBody->setGravity(btVector3(0.0f, 0.0f, 0.0f));
 }
 
 void RigidBody::DeleteBtRigidBody()
 {
-	if (m_rigidBody.expired())
+	if (!m_rigidBody)
 		return;
 
-	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeRigidBody(m_rigidBody.lock().get());
-	delete m_rigidBody.lock()->getMotionState();
+	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeRigidBody(m_rigidBody.get());
+	delete m_rigidBody->getMotionState();
 }
 
 bool RigidBody::IsActivated() const
 {
-	return m_rigidBody.lock()->isActive();
+	return m_rigidBody->isActive();
 }
 
 void RigidBody::Activate() const
 {
-	if (m_rigidBody.expired())
+	if (!m_rigidBody)
 		return;
 
 	if (m_mass > 0.0f)
-		m_rigidBody.lock()->activate(true);
+		m_rigidBody->activate(true);
 }
 
 void RigidBody::Deactivate() const
 {
-	if (m_rigidBody.expired())
+	if (!m_rigidBody)
 		return;
 
-	m_rigidBody.lock()->setActivationState(WANTS_DEACTIVATION);
+	m_rigidBody->setActivationState(WANTS_DEACTIVATION);
 }
 //===========================================================================
