@@ -27,6 +27,8 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 - Engine architecture improvements.
 - Lower memory usage and more efficient memory management.
 
+https://travis-ci.org/PanosK92/Directus3D.svg?branch=master
+
 # Planned Features
 - Audio source and listener components.
 - DirectX 12 Renderer

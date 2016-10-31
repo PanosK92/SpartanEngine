@@ -52,6 +52,7 @@ private:
 	void Deserialize();
 public:
 	void SaveToDirectory(const std::string& directory, bool overwrite);
+	void Save();
 	bool LoadFromFile(const std::string& filePath);
 	//=============================================================================
 
