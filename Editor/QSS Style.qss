@@ -43,42 +43,63 @@ QLabel
 	border-style: none;
 }
 
-QCheckBox
+/*= COMBOBOX/QPUSHBUTTON  =====================================================================*/
+QComboBox, QPushButton
 {
-	color: #909090;
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(92, 92, 92, 100), stop:1 rgba(92, 92, 92, 255));
+	border-radius: 2px;
+    border-color: #575757;
+    border-width: 1px;
+    border-style: solid;
+	padding-left: 5px;
+}
+
+QPushButton::pressed
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(55, 55, 55, 255), stop:1 rgba(70, 70, 70, 255));
+}
+
+QComboBox::drop-down
+{
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 1px;
+    border-style: none;
+}
+
+QComboBox::down-arrow
+{   
+    background-image: url(:/Images/arrow.png);
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+/*= TREES ==================================================================================*/
+/*NOTE: I am using QTreeView everywhere because even QTreeWidgets inherit from them */
+QTreeView
+{
 	background-color: #383838;
-	border-style: none;
-}
-
-/* PROGRESS BAR =========================================================================================*/
-QProgressBar 
-{
-    border: 1px solid #76797C;
-    border-radius: 5px;
-}
-
-QProgressBar::chunk 
-{
-    background-color: #05B8CC;
-	width: 1px;
-}
-
-/*= SPECIFIC ===========================================================================================*/
-#directusCore
-{
-	background-color:#383838;
-}
-
-#directusInspector
-{
-	background-color:#383838;
-}
-
-#directusDirExplorer, #directusFileExplorer, #directusHierarchy, #directusInspector
-{
-	border-width: 1px;
 	border-style: solid;
+	border-width: 1px;
 	border-top-width: 0px;
+	outline: 0px; /* removes ugly selection dashed border */
+}
+
+QTreeView::item
+{
+    background-color: rgba(0, 0, 0, 0);
+	color: #909090;
+}
+
+QTreeView::item:selected 
+{
+	background-color: rgb(62, 95, 150);
+	color: white;
+}
+
+QTreeWidget::item:hover 
+{
+	
+	
 }
 
 /*= SCENE/CONSOLE TABS TOOLBARS =============================================================================*/
@@ -107,6 +128,28 @@ QProgressBar::chunk
 	border-radius: 0px;
 	margin-top: 1px;
 	margin-bottom: 1px;
+}
+
+#buttonGizmos
+{
+	width: 40px;
+	border-left-width: 0px;
+}
+
+#buttonConsoleClearOnPlay
+{
+	width: 80px;
+	border-left-width: 0px;
+}
+
+#buttonGizmos:pressed,#buttonConsoleClear:pressed, #buttonConsoleClearOnPlay:pressed, #buttonHierarchyCreate:pressed, #buttonProjectCreate:pressed
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(43, 43, 43, 255), stop:1 rgba(62, 62, 62, 255));
+}
+
+#buttonConsoleClearOnPlay:checked 
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(43, 43, 43, 255), stop:1 rgba(62, 62, 62, 255));
 }
 
 /*= TABS ===================================================================================*/
@@ -144,7 +187,59 @@ QTabBar::tab:selected
 	border-width: 1px;
 	border-bottom-width: 0px;
 }
-/*========================================================================================*/
+
+/*= CHECKBOX ==================================================================================*/
+QCheckBox
+{
+	background-color:  rgba(0, 0, 0, 0);
+}
+
+QCheckBox::indicator
+{
+	width: 10px;
+	height: 10px;
+	border-style: solid;
+	border-width: 1px;
+	border-color: #575757;
+	border-radius: 2px;
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(92, 92, 92, 100), stop:1 rgba(92, 92, 92, 255));
+}
+
+QCheckBox::indicator:checked 
+{
+	image:  url(:/Images/check.png) contain;
+ }
+
+/* PROGRESS BAR =========================================================================================*/
+QProgressBar 
+{
+    border: 1px solid #76797C;
+    border-radius: 5px;
+}
+
+QProgressBar::chunk 
+{
+    background-color: #05B8CC;
+	width: 1px;
+}
+
+/*= SPECIFIC ===========================================================================================*/
+#directusCore
+{
+	background-color:#383838;
+}
+
+#directusInspector
+{
+	background-color:#383838;
+}
+
+#directusDirExplorer, #directusFileExplorer, #directusHierarchy, #directusInspector
+{
+	border-width: 1px;
+	border-style: solid;
+	border-top-width: 0px;
+}
 
 /*= PLAY/PAUSE BUTTONS ===================================================================================*/
 #directusPlayButton
@@ -206,6 +301,7 @@ QTabBar::tab:selected
 	border-top-right-radius: 5px;
 	border-bottom-right-radius: 5px;
 }
+
 /*= MENU ===================================================================================*/
 QMenuBar
 {
@@ -262,8 +358,6 @@ QMenu::separator
 	background:#292929;
 }
 
-/*===========================================================================================*/
-
 /*= CUSTOM ====================================================================================*/
 DirectusInspector
 {
@@ -278,33 +372,6 @@ DirectusCore
 	background-color: #383838;
 	border-width: 1px;
 }
-/*===========================================================================================*/
-
-/*= COMBOBOX ==================================================================================*/
-QComboBox
-{
-    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(57, 57, 57, 255), stop:1 rgba(68, 68, 68, 255));
-	border-radius: 5px;
-    border-color: #464646;
-    border-width: 1px;
-    border-style: solid;
-	padding-left: 5px;
-}
-
-QComboBox::drop-down
-{
-    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(57, 57, 57, 255), stop:1 rgba(68, 68, 68, 255));
-    border-width: 1px;
-    border-style: none;
-}
-
-QComboBox::down-arrow
-{   
-    background-image: url(:/Images/arrow.png);
-	background-repeat: no-repeat;
-	background-position: center;
-}
-/*===========================================================================================*/
 
 /*= SLIDER =====================================================================================*/
 QSlider
@@ -333,22 +400,6 @@ QSlider::handle:horizontal
 	margin-top: -3px;
 	margin-bottom: -3px;
 	border-radius: 5px;
-}
-/*========================================================================================*/
-
-/*= TREES ==================================================================================*/
-QTreeWidget
-{
-	background-color: #383838;
-	border-style: solid;
-	border-width: 1px;
-	border-top-width: 0px;
-}
-
-QTreeView
-{
-	background-color: #383838;
-	border-style: inset;
 }
 /*========================================================================================*/
 
