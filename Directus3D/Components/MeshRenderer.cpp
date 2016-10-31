@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Core/GameObject.h"
 #include "../Pools/MaterialPool.h"
-#include "../Core/Helper.h"
 #include "../Graphics/Shaders/ShaderVariation.h"
 #include "../Graphics/Mesh.h"
 #include "../FileSystem/FileSystem.h"
@@ -45,7 +44,7 @@ MeshRenderer::MeshRenderer()
 
 MeshRenderer::~MeshRenderer()
 {
-	
+
 }
 
 //= ICOMPONENT ===============================================================

@@ -47,7 +47,7 @@ Material::Material(Context* context)
 	m_alphaBlending = false;
 	m_shadingMode = Physically_Based;
 	m_colorAlbedo = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-	m_roughnessMultiplier = 1.0f;
+	m_roughnessMultiplier = 0.0f;
 	m_metallicMultiplier = 0.0f;
 	m_occlusionMultiplier = 0.0f;
 	m_normalMultiplier = 0.0f;

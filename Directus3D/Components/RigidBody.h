@@ -123,7 +123,7 @@ private:
 	void Activate() const;
 	void Deactivate() const;
 
-	std::weak_ptr<btRigidBody> m_rigidBody;
+	std::shared_ptr<btRigidBody> m_rigidBody;
 	std::weak_ptr<btCollisionShape> m_shape;
 	bool m_wasKinematic;
 
