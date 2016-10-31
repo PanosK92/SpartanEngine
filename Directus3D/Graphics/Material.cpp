@@ -119,12 +119,17 @@ void Material::Deserialize()
 		string texID = Serializer::ReadSTR();
 
 		if (m_context)
-			m_textures.push_back(m_context->GetSubsystem<TexturePool>()->GetTextureByID(texID));
+		{
+			auto texture = m_context->GetSubsystem<TexturePool>()->GetTextureByID(texID);
+			if (!texture.expired())
+				m_textures.push_back(texture);
+		}
 	}
 
 	AcquireShader();
 }
 
+// Saves the material to a given directory (with option overwrite)
 void Material::SaveToDirectory(const string& directory, bool overwrite)
 {
 	m_filePath = directory + GetName() + MATERIAL_EXTENSION;
@@ -132,6 +137,14 @@ void Material::SaveToDirectory(const string& directory, bool overwrite)
 	if (FileSystem::FileExists(m_filePath) && !overwrite)
 		return;
 
+	Serializer::StartWriting(m_filePath);
+	Serialize();
+	Serializer::StopWriting();
+}
+
+// Saves material to it's current filePath
+void Material::Save()
+{
 	Serializer::StartWriting(m_filePath);
 	Serialize();
 	Serializer::StopWriting();

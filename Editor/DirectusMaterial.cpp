@@ -144,6 +144,11 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_offsetY->Initialize("X");
     //=========================================================
 
+    //= SAVE BUTTON ===========================================
+    m_buttonSave = new QPushButton("Save");
+    connect(m_buttonSave, SIGNAL(clicked(bool)), this, SLOT(SaveMaterial()));
+    //=========================================================
+
     //= LINE ======================================
     m_line = new QWidget();
     m_line->setFixedHeight(1);
@@ -235,7 +240,11 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_gridLayout->addWidget(m_offsetY->GetTextWidget(),     row, 4, 1, 1);
     row++;
 
-    // Row 17 - LINE
+    // Row 17 - SAVE BUTTON
+    m_gridLayout->addWidget(m_buttonSave,                   row, 0, 1, 1);
+    row++;
+
+    // Row 18 - LINE
     m_gridLayout->addWidget(m_line, row, 0, 1, 5);
     //=========================================================
 
@@ -306,9 +315,10 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
 
 void DirectusMaterial::ReflectFile(string filePath)
 {
-    shared_ptr<Material> fileMat = make_shared<Material>(m_directusCore->GetEngineSocket()->GetContext());
-    fileMat->LoadFromFile(filePath);
-    m_inspectedMaterial = fileMat;
+    m_matFromFile.reset();
+    m_matFromFile = make_shared<Material>(m_directusCore->GetEngineSocket()->GetContext());
+    m_matFromFile->LoadFromFile(filePath);
+    m_inspectedMaterial = m_matFromFile;
 
     // Do the actual reflection
     ReflectName();
@@ -587,4 +597,12 @@ void DirectusMaterial::MapOffset()
     m_inspectedMaterial.lock()->SetOffsetUV(offset);
 
     m_directusCore->Update();
+}
+
+void DirectusMaterial::SaveMaterial()
+{
+    if (m_inspectedMaterial.expired())
+        return;
+
+    m_inspectedMaterial.lock()->Save();
 }

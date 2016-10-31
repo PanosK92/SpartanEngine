@@ -118,6 +118,11 @@ private:
     DirectusComboLabelText* m_offsetY;
     //===============================
 
+    //= SAVE BUTTON =================
+    QPushButton* m_buttonSave;
+    std::shared_ptr<Material> m_matFromFile;
+    //===============================
+
     //= LINE ========================
     QWidget* m_line;
     //===============================
@@ -156,4 +161,5 @@ public slots:
     void MapSpecular();
     void MapTiling();
     void MapOffset();
+    void SaveMaterial();
 };
