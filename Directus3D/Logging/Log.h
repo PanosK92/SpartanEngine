@@ -64,4 +64,7 @@ public:
 
 private:
 	static std::weak_ptr<ILogger> m_logger;
+	static std::ofstream m_fout;
+	static std::string m_logFileName;
+	static bool m_firstLog;
 };

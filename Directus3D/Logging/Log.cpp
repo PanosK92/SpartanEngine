@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream> 
 #include <fstream>
 #include "ILogger.h"
+#include "../FileSystem/FileSystem.h"
 //===============================
 
 //= NAMESPACES ================
@@ -33,6 +34,9 @@ using namespace Directus::Math;
 //=============================
 
 weak_ptr<ILogger> Log::m_logger;
+ofstream Log::m_fout;
+string Log::m_logFileName = "log.txt";
+bool Log::m_firstLog = true;
 
 void Log::Initialize()
 {
@@ -41,7 +45,7 @@ void Log::Initialize()
 
 void Log::Release()
 {
-	
+
 }
 
 void Log::SetLogger(weak_ptr<ILogger> logger)
@@ -72,16 +76,21 @@ void Log::Write(const string& text, LogType type) // all functions resolve to th
 
 void Log::WriteAsText(const string& text)
 {
-	// Open a file and seek to the end of stream before each
-	// write (append mode), to write the error message to.
-	ofstream fout;
-	fout.open("log.txt", ofstream::out | ofstream::app); 
+	// Delete the previous log file (if it exists)
+	if (m_firstLog)
+	{
+		FileSystem::RemoveFile(m_logFileName);
+		m_firstLog = false;
+	}
+
+	// Open/Create a log file to write the error message to.
+	m_fout.open(m_logFileName, ofstream::out | ofstream::app);
 
 	// Write out the error message.
-	fout << text << endl;
+	m_fout << text << endl;
 
 	// Close the file.
-	fout.close();
+	m_fout.close();
 }
 
 void Log::Write(const char* text, LogType type)

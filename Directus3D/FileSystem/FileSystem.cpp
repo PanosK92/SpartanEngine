@@ -37,6 +37,11 @@ bool FileSystem::FileExists(const string& path)
 	return (stat(path.c_str(), &buffer) == 0);
 }
 
+bool FileSystem::RemoveFile(const string& filePath)
+{
+	return remove(filePath.c_str()) != 0 ? false : true;
+}
+
 void FileSystem::CreateFolder(const string& path)
 {
 	if (!CreateDirectory(path.c_str(), nullptr))
