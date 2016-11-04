@@ -22,10 +22,16 @@ SamplerState samplerAniso : register(s1);
 //====================
 
 //= CONSTANT BUFFERS ===================
-cbuffer MiscBuffer : register(b0)
+// Update frequency: low
+cbuffer MatrixBuffer : register(b0)
 {
-    matrix mWorldViewProjection;
+	matrix mWorldViewProjection;
     matrix mViewProjectionInverse;
+}
+
+// Update frequency: high
+cbuffer MiscBuffer : register(b1)
+{
     float4 cameraPosWS;
     float4 dirLightDirection[MaxLights];
     float4 dirLightColor[MaxLights];

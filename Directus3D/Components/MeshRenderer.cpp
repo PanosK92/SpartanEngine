@@ -101,7 +101,7 @@ void MeshRenderer::Render(unsigned int indexCount) const
 	}
 
 	// Set the buffers and draw
-	GetMaterial().lock()->GetShader().lock()->Draw(indexCount);
+	GetMaterial().lock()->GetShader().lock()->Render(indexCount);
 }
 
 //==============================================================================

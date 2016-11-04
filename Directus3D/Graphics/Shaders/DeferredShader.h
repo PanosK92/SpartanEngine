@@ -38,19 +38,24 @@ public:
 	~DeferredShader();
 
 	void Initialize(Graphics* graphicsDevice);
-	void Render(
-		int indexCount, const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mBaseView,
-		const Directus::Math::Matrix& mPerspectiveProjection, const Directus::Math::Matrix& mOrthographicProjection,
-		std::vector<GameObject*> directionalLights, std::vector<GameObject*> pointLights, Camera* camera, 
-		std::vector<ID3D11ShaderResourceView*> textures, ID3D11ShaderResourceView* environmentTex);
+	void UpdateMatrixBuffer(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mBaseView,
+		const Directus::Math::Matrix& mPerspectiveProjection, const Directus::Math::Matrix& mOrthographicProjection);
+	void UpdateMiscBuffer(std::vector<GameObject*> directionalLights, std::vector<GameObject*> pointLights, Camera* camera);
+	void UpdateTextures(std::vector<ID3D11ShaderResourceView*> textures);
+	void Set();
+	void Render(int indexCount);
 	bool IsCompiled();
 
 private:
-	const static int maxLights = 128;
-	struct DefaultBuffer
+	struct MatrixBufferType
 	{
 		Directus::Math::Matrix worldViewProjection;
 		Directus::Math::Matrix viewProjectionInverse;
+	};
+
+	const static int maxLights = 128;
+	struct MiscBufferType
+	{	
 		Directus::Math::Vector4 cameraPosition;
 		Directus::Math::Vector4 dirLightDirection[maxLights];
 		Directus::Math::Vector4 dirLightColor[maxLights];
@@ -67,7 +72,8 @@ private:
 		Directus::Math::Vector2 padding;
 	};
 
-	std::shared_ptr<D3D11Buffer> m_constantBuffer;
+	std::shared_ptr<D3D11Buffer> m_matrixBuffer;
+	std::shared_ptr<D3D11Buffer> m_miscBuffer;
 	std::shared_ptr<D3D11Shader> m_shader;
 	Graphics* m_graphics;
 };

@@ -35,7 +35,8 @@ using namespace Directus::Math;
 DeferredShader::DeferredShader()
 {
 	m_graphics = nullptr;
-	m_constantBuffer = nullptr;
+	m_matrixBuffer = nullptr;
+	m_miscBuffer = nullptr;
 	m_shader = nullptr;
 }
 
@@ -56,39 +57,53 @@ void DeferredShader::Initialize(Graphics* graphicsDevice)
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
-	//= CREATE DEFAULT CONSTANT BUFFER ===========================
-	m_constantBuffer = make_shared<D3D11Buffer>();
-	m_constantBuffer->Initialize(m_graphics);
-	m_constantBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
-	//============================================================
+	// Create matrix buffer
+	m_matrixBuffer = make_shared<D3D11Buffer>();
+	m_matrixBuffer->Initialize(m_graphics);
+	m_matrixBuffer->CreateConstantBuffer(sizeof(MatrixBufferType));
+
+	// Create misc buffer
+	m_miscBuffer = make_shared<D3D11Buffer>();
+	m_miscBuffer->Initialize(m_graphics);
+	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
 }
 
-void DeferredShader::Render(
-	int indexCount, const Matrix& mWorld, const Matrix& mView, const Matrix& mBaseView,
-	const Matrix& mPerspectiveProjection, const Matrix& mOrthographicProjection,
-	vector<GameObject*> directionalLights, vector<GameObject*> pointLights, Camera* camera,
-	vector<ID3D11ShaderResourceView*> textures, ID3D11ShaderResourceView* environmentTex)
+void DeferredShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mBaseView, const Matrix& mPerspectiveProjection, const Matrix& mOrthographicProjection)
 {
-	if (!m_shader->IsCompiled())
+	if (!IsCompiled())
 	{
 		LOG_ERROR("Failed to compile deferred shader.");
 		return;
 	}
 
-	/*------------------------------------------------------------------------------
-								[MISC BUFFER]
-	------------------------------------------------------------------------------*/
 	// Get some stuff
 	Matrix worlBaseViewProjection = mWorld * mBaseView * mOrthographicProjection;
 	Matrix viewProjection = mView * mPerspectiveProjection;
-	Vector3 camPos = camera->g_transform->GetPosition();
 
-	// Get a pointer to the data in the constant buffer.
-	DefaultBuffer* buffer = (DefaultBuffer*)m_constantBuffer->Map();
-
-	// Fill with matrices
+	// Map/Unmap buffer
+	MatrixBufferType* buffer = (MatrixBufferType*)m_matrixBuffer->Map();
 	buffer->worldViewProjection = worlBaseViewProjection.Transposed();
 	buffer->viewProjectionInverse = viewProjection.Inverted().Transposed();
+	m_matrixBuffer->Unmap();
+
+	// Set to shader slot
+	m_matrixBuffer->SetVS(0);
+	m_matrixBuffer->SetPS(0);
+}
+
+void DeferredShader::UpdateMiscBuffer(vector<GameObject*> directionalLights, vector<GameObject*> pointLights, Camera* camera)
+{
+	if (!IsCompiled())
+	{
+		LOG_ERROR("Failed to compile deferred shader.");
+		return;
+	}
+
+	// Get a pointer to the data in the constant buffer.
+	MiscBufferType* buffer = (MiscBufferType*)m_miscBuffer->Map();
+
+	// Fill with matrices
+	Vector3 camPos = camera->g_transform->GetPosition();
 	buffer->cameraPosition = Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
 
 	// Fill with directional lights
@@ -119,24 +134,32 @@ void DeferredShader::Render(
 	buffer->viewport = GET_RESOLUTION;
 	buffer->padding = GET_RESOLUTION;
 
-	// Unlock the constant buffer
-	m_constantBuffer->Unmap();
-	m_constantBuffer->SetVS(0);
-	m_constantBuffer->SetPS(0);
+	// Unmap buffer
+	m_miscBuffer->Unmap();
 
-	//= SET TEXTURES =======================================================================================
+	// Set to shader slot
+	m_miscBuffer->SetVS(1);
+	m_miscBuffer->SetPS(1);
+}
+
+void DeferredShader::UpdateTextures(vector<ID3D11ShaderResourceView*> textures)
+{
 	m_graphics->GetDeviceContext()->PSSetShaderResources(0, UINT(textures.size()), &textures.front());
-	m_graphics->GetDeviceContext()->PSSetShaderResources(UINT(textures.size()), 1, &environmentTex);
-	//======================================================================================================
+}
 
-	//= SET SHADER ===============================================================
-	m_shader->Set();
+void DeferredShader::Set()
+{
+	if (m_shader)
+		m_shader->Set();
+}
 
-	//= DRAW =====================================================================
-	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+void DeferredShader::Render(int indexCount)
+{
+	if (m_shader)
+		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
 bool DeferredShader::IsCompiled()
 {
-	return m_shader->IsCompiled();
+	return m_shader ? m_shader->IsCompiled() : false;
 }

@@ -23,31 +23,41 @@ SamplerState samplerAniso : register (s0);
 //================
 
 //= BUFFERS ==================================
-cbuffer DefaultBuffer : register(b0)
+// Update frequency: low
+cbuffer MatrixBuffer : register(b0)
 {
-    matrix mWorld;
+	matrix mWorld;
     matrix mWorldView;
     matrix mWorldViewProjection;
-	matrix mLightViewProjection[CASCADES];
-	float4 shadowSplits;
+}
+
+// Update frequency: high
+cbuffer PerObject : register(b1)
+{		
+	// Material
     float4 materialAlbedoColor;
 	float2 materialTiling;
 	float2 materialOffset;
-	float2 viewport;
     float materialRoughness;
     float materialMetallic;
     float materialOcclusion;
     float materialNormalStrength;
     float materialSpecular;
-    float materialShadingMode;
-    float receiveShadows;
-	float shadowBias;
-	float shadowMapResolution;
-	float shadowMappingQuality;
-	float3 lightDir;
+    float materialShadingMode; 
+	float2 padding;
+
+	// Misc
+	float2 viewport;
 	float nearPlane;
 	float farPlane;
-	float3 padding;
+	matrix mLightViewProjection[CASCADES];
+	float4 shadowSplits;		
+	float3 lightDir;
+	float shadowBias;
+	float shadowMapResolution;
+	float shadowMappingQuality;	
+	float receiveShadows;
+	float padding2;
 };
 //===========================================
 
