@@ -52,20 +52,21 @@ public:
 		Graphics* d3d11device
 	);
 	void Set();
-	void SetBuffers(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection, std::shared_ptr<Material> material, Light* directionalLight, bool receiveShadows, Camera* camera);
-	void SetResources(const std::vector<ID3D11ShaderResourceView*>& textureArray);
-	void Draw(int indexCount);
-	std::string GetID() const;
+	void UpdateMatrixBuffer(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection);
+	void UpdateObjectBuffer(std::shared_ptr<Material> material, Light* directionalLight, bool receiveShadows, Camera* camera);
+	void UpdateTextures(const std::vector<ID3D11ShaderResourceView*>& textureArray);
+	void Render(int indexCount);
+	std::string GetID() { return m_ID; }
 
-	bool HasAlbedoTexture() const;
-	bool HasRoughnessTexture() const;
-	bool HasMetallicTexture() const;
-	bool HasNormalTexture() const;
-	bool HasHeightTexture() const;
-	bool HasOcclusionTexture() const;
-	bool HasEmissionTexture() const;
-	bool HasMaskTexture() const;
-	bool HasCubeMapTexture() const;
+	bool HasAlbedoTexture() { return m_hasAlbedoTexture; }
+	bool HasRoughnessTexture() { return m_hasRoughnessTexture; }
+	bool HasMetallicTexture() { return m_hasMetallicTexture; }
+	bool HasNormalTexture() { return m_hasNormalTexture; }
+	bool HasHeightTexture() { return m_hasHeightTexture; }
+	bool HasOcclusionTexture() { return m_hasOcclusionTexture; }
+	bool HasEmissionTexture() { return m_hasEmissionTexture; }
+	bool HasMaskTexture() { return m_hasMaskTexture; }
+	bool HasCubeMapTexture() { return m_hasCubeMap; }
 
 private:
 	void AddDefinesBasedOnMaterial(std::shared_ptr<D3D11Shader> shader);
@@ -89,57 +90,46 @@ private:
 									[MISC]
 	------------------------------------------------------------------------------*/
 	Graphics* m_graphics;
-	std::shared_ptr<D3D11Buffer> m_befaultBuffer;
+	std::shared_ptr<D3D11Buffer> m_matrixBuffer;
+	std::shared_ptr<D3D11Buffer> m_objectBuffer;
 	std::shared_ptr<D3D11Shader> m_D3D11Shader;
 
 	/*------------------------------------------------------------------------------
 									[BUFFER TYPE]
 	------------------------------------------------------------------------------*/
-	const static int cascades = 3;
-	struct DefaultBufferType
+	struct MatrixBufferType
 	{
 		Directus::Math::Matrix mWorld;
 		Directus::Math::Matrix mWorldView;
 		Directus::Math::Matrix mWorldViewProjection;
+	};
+
+	const static int cascades = 3;
+	struct ObjectBufferType
+	{
+		// Material
+		Directus::Math::Vector4 matAlbedo;
+		Directus::Math::Vector2 matTilingUV;
+		Directus::Math::Vector2 matOffsetUV;
+		float matRoughnessMul;
+		float matMetallicMul;
+		float matOcclusionMul;
+		float matNormalMul;
+		float matSpecularMul;
+		float matShadingMode;
+		Directus::Math::Vector2 padding;
+
+		// Misc
+		Directus::Math::Vector2 viewport;
+		float nearPlane;
+		float farPlane;
 		Directus::Math::Matrix mLightViewProjection[cascades];
 		Directus::Math::Vector4 shadowSplits;
-		Directus::Math::Vector4 albedoColor;
-		Directus::Math::Vector2 tilingUV;
-		Directus::Math::Vector2 offsetUV;
-		Directus::Math::Vector2 viewport;
-		float roughnessMultiplier;
-		float metallicMultiplier;
-		float occlusionMultiplier;
-		float normalMultiplier;
-		float specularMultiplier;
-		float shadingMode;	
-		float receiveShadows;
+		Directus::Math::Vector3 lightDir;
 		float shadowBias;
 		float shadowMapResolution;
 		float shadowMappingQuality;
-		Directus::Math::Vector3 lightDir;
-		float nearPlane;
-		float farPlane;
-		Directus::Math::Vector3 padding;
-
-		/*
-		matrix mWorld;
-		matrix mWorldView;
-		matrix mWorldViewProjection;
-		matrix mLightViewProjection;
-		float4 materialAlbedoColor;
-		float2 materialTiling;
-		float2 materialOffset;
-		float2 viewport;
-		float materialRoughness;
-		float materialMetallic;
-		float materialOcclusion;
-		float materialNormalStrength;
-		float materialSpecular;
-		float materialShadingMode;
 		float receiveShadows;
-		float shadowBias;
-		float2 padding;
-		*/
+		float padding2;
 	};
 };

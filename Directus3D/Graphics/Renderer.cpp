@@ -47,7 +47,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Renderer::Renderer(Context* context): Object(context) 
+Renderer::Renderer(Context* context) : Object(context)
 {
 	m_GBuffer = nullptr;
 	m_fullScreenQuad = nullptr;
@@ -191,7 +191,7 @@ void Renderer::SetResolution(int width, int height)
 
 	m_GBuffer = make_shared<GBuffer>(graphics);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-	
+
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
 	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
 
@@ -306,17 +306,17 @@ void Renderer::GBufferPass()
 	Graphics* graphics = g_context->GetSubsystem<Graphics>();
 
 	for (const auto currentShader : shaderPool->GetAllShaders()) // for each shader
-	{	
+	{
 		currentShader->Set();
 		for (const auto currentMaterial : materialPool->GetAllMaterials()) // for each material...
 		{
-			
+
 			if (currentMaterial->GetShader().expired())
 				continue;
 
 			// ... that uses the current shader
 			if (currentMaterial->GetShader().lock()->GetID() != currentShader->GetID())
-				continue;	
+				continue;
 
 			//= Gather any used textures and bind them to the GPU ===============================
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Albedo));
@@ -334,7 +334,7 @@ void Renderer::GBufferPass()
 			else
 				m_textures.push_back(nullptr);
 
-			currentShader->SetResources(m_textures);
+			currentShader->UpdateTextures(m_textures);
 			//==================================================================================
 
 			for (auto const gameObject : m_renderables) // for each mesh...
@@ -349,7 +349,7 @@ void Renderer::GBufferPass()
 
 				// If any rendering requirement is missing, skip this GameObject
 				if (!meshFilter || mesh.expired() || !meshRenderer || material.expired())
-					continue;		
+					continue;
 
 				//... that uses the current material
 				if (currentMaterial->GetID() != material.lock()->GetID())
@@ -364,8 +364,9 @@ void Renderer::GBufferPass()
 					continue;
 
 				// Set shader buffer(s)
-				currentShader->SetBuffers(mWorld, mView, mProjection, currentMaterial, m_directionalLight, meshRenderer->GetReceiveShadows(), m_camera);
-				
+				currentShader->UpdateMatrixBuffer(mWorld, mView, mProjection);
+				currentShader->UpdateObjectBuffer(currentMaterial, m_directionalLight, meshRenderer->GetReceiveShadows(), m_camera);
+
 				// Set mesh buffer
 				if (meshFilter->SetBuffers())
 				{
@@ -408,33 +409,34 @@ void Renderer::DeferredPass()
 	Ping();
 
 	// Setting a texture array instead of multiple textures is faster
-	m_texArrayDeferredPass.clear();
-	m_texArrayDeferredPass.shrink_to_fit();
-	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
-	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
-	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
-	m_texArrayDeferredPass.push_back(m_GBuffer->GetShaderResourceView(3)); // material
-	m_texArrayDeferredPass.push_back(m_texNoiseMap->GetID3D11ShaderResourceView());
+	m_texArray.clear();
+	m_texArray.shrink_to_fit();
+	m_texArray.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
+	m_texArray.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
+	m_texArray.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
+	m_texArray.push_back(m_GBuffer->GetShaderResourceView(3)); // material
+	m_texArray.push_back(m_texNoiseMap->GetID3D11ShaderResourceView());
+	m_texArray.push_back(m_skybox ? m_skybox->GetEnvironmentTexture() : nullptr);
 
-	if (m_skybox)
-		m_texEnvironment = m_skybox->GetEnvironmentTexture();
-	else
-		m_texEnvironment = nullptr;
-
-	// deferred rendering
-	m_shaderDeferred->Render(
-		m_fullScreenQuad->GetIndexCount(),
+	// Update matrix buffer
+	m_shaderDeferred->UpdateMatrixBuffer(
 		Matrix::Identity,
 		mView,
 		mBaseView,
 		mProjection,
-		mOrthographicProjection,
-		m_lightsDirectional,
-		m_lightsPoint,
-		m_camera,
-		m_texArrayDeferredPass,
-		m_texEnvironment
-	);
+		mOrthographicProjection);
+
+	// Update misc buffer
+	m_shaderDeferred->UpdateMiscBuffer(m_lightsDirectional, m_lightsPoint, m_camera);
+
+	// Update textures
+	m_shaderDeferred->UpdateTextures(m_texArray);
+
+	// Set
+	m_shaderDeferred->Set();
+
+	// Render
+	m_shaderDeferred->Render(m_fullScreenQuad->GetIndexCount());
 }
 
 void Renderer::PostProcessing() const
