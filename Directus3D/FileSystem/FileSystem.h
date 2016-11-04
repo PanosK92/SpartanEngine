@@ -36,6 +36,7 @@ class __declspec(dllexport) FileSystem
 {
 public:
 	static bool FileExists(const std::string& path);
+	static bool RemoveFile(const std::string& filePath);
 	static void CreateFolder(const std::string& path);
 	static void CopyFileFromTo(const std::string& source, const std::string& destination);
 

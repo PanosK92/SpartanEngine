@@ -334,6 +334,7 @@ void Renderer::GBufferPass()
 			else
 				m_textures.push_back(nullptr);
 
+			// Update textures
 			currentShader->UpdateTextures(m_textures);
 			//==================================================================================
 
@@ -395,10 +396,7 @@ bool Renderer::IsInViewFrustrum(const shared_ptr<Frustrum>& cameraFrustrum, Mesh
 	float radius = max(abs(extent.x), abs(extent.y));
 	radius = max(radius, abs(extent.z));
 
-	if (cameraFrustrum->CheckSphere(center, radius) == Outside)
-		return false;
-
-	return true;
+	return cameraFrustrum->CheckSphere(center, radius) == Outside ? false : true;
 }
 
 void Renderer::DeferredPass()
@@ -407,16 +405,6 @@ void Renderer::DeferredPass()
 		return;
 
 	Ping();
-
-	// Setting a texture array instead of multiple textures is faster
-	m_texArray.clear();
-	m_texArray.shrink_to_fit();
-	m_texArray.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
-	m_texArray.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
-	m_texArray.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
-	m_texArray.push_back(m_GBuffer->GetShaderResourceView(3)); // material
-	m_texArray.push_back(m_texNoiseMap->GetID3D11ShaderResourceView());
-	m_texArray.push_back(m_skybox ? m_skybox->GetEnvironmentTexture() : nullptr);
 
 	// Update matrix buffer
 	m_shaderDeferred->UpdateMatrixBuffer(
@@ -428,6 +416,16 @@ void Renderer::DeferredPass()
 
 	// Update misc buffer
 	m_shaderDeferred->UpdateMiscBuffer(m_lightsDirectional, m_lightsPoint, m_camera);
+
+	// Setting a texture array instead of multiple textures is faster
+	m_texArray.clear();
+	m_texArray.shrink_to_fit();
+	m_texArray.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
+	m_texArray.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
+	m_texArray.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
+	m_texArray.push_back(m_GBuffer->GetShaderResourceView(3)); // material
+	m_texArray.push_back(m_texNoiseMap->GetID3D11ShaderResourceView());
+	m_texArray.push_back(m_skybox ? m_skybox->GetEnvironmentTexture() : nullptr);
 
 	// Update textures
 	m_shaderDeferred->UpdateTextures(m_texArray);
