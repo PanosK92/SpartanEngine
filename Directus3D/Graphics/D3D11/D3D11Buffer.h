@@ -45,6 +45,7 @@ public:
 
 	void* Map();
 	void Unmap();
+
 private:
 	Graphics* m_graphics;
 	ID3D11Buffer* m_buffer;

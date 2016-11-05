@@ -40,7 +40,7 @@ public:
 	Frustrum();
 	~Frustrum();
 
-	void Construct(const Directus::Math::Matrix& mView, Directus::Math::Matrix mProjection, float screenDepth);
+	void Construct(const Directus::Math::Matrix& mView, const Directus::Math::Matrix&  mProjection, float screenDepth);
 	FrustrumSpace CheckCube(const Directus::Math::Vector3& center, const Directus::Math::Vector3& extent);
 	FrustrumSpace CheckSphere(const Directus::Math::Vector3& center, float radius);
 

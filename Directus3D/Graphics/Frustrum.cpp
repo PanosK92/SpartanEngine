@@ -37,16 +37,17 @@ Frustrum::~Frustrum()
 
 }
 
-void Frustrum::Construct(const Matrix& mView, Matrix mProjection, float screenDepth)
+void Frustrum::Construct(const Matrix& mView, const Matrix& mProjection, float screenDepth)
 {
 	// Calculate the minimum Z distance in the frustum.
 	float zMinimum = -mProjection.m32 / mProjection.m22;
 	float r = screenDepth / (screenDepth - zMinimum);
-	mProjection.m22 = r;
-	mProjection.m32 = -r * zMinimum;
+	Matrix mProjectionUpdated = mProjection;
+	mProjectionUpdated.m22 = r;
+	mProjectionUpdated.m32 = -r * zMinimum;
 
 	// Create the frustum matrix from the view matrix and updated projection matrix.
-	Matrix viewProjection = mView * mProjection;
+	Matrix viewProjection = mView * mProjectionUpdated;
 
 	// Calculate near plane of frustum.
 	m_planes[0].normal.x = viewProjection.m03 + viewProjection.m02;

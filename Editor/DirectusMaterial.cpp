@@ -54,6 +54,12 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
                 );
     //=========================================================
 
+    //= SAVE BUTTON ===========================================
+    m_buttonSave = new QPushButton("Apply");
+    m_buttonSave->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    connect(m_buttonSave, SIGNAL(clicked(bool)), this, SLOT(SaveMaterial()));
+    //=========================================================
+
     //= SHADER ================================================
     m_shaderLabel = new QLabel("Shader");
     m_shader = new QComboBox();
@@ -144,11 +150,6 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_offsetY->Initialize("X");
     //=========================================================
 
-    //= SAVE BUTTON ===========================================
-    m_buttonSave = new QPushButton("Save");
-    connect(m_buttonSave, SIGNAL(clicked(bool)), this, SLOT(SaveMaterial()));
-    //=========================================================
-
     //= LINE ======================================
     m_line = new QWidget();
     m_line->setFixedHeight(1);
@@ -156,75 +157,78 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_line->setStyleSheet(QString("background-color: #585858;"));
     //=============================================
 
-    // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     int row = 0;
 
+    // addWidget(widget, row, column, rowspan, colspan)
     // Row 0
-    m_gridLayout->addWidget(m_title, 0, 0, 1, 5);
+    m_gridLayout->addWidget(m_title,        row, 0, 1, 3);
+
+    // Row 1 - SAVE BUTTON
+    m_gridLayout->addWidget(m_buttonSave,   row, 4, 1, 1);
     row++;
 
-    // Row 5 - SHADER
+    // Row 2 - SHADER
     m_gridLayout->addWidget(m_shaderLabel,  row, 0, 1, 1);
-    m_gridLayout->addWidget(m_shader,       row, 1, 1, 5);
+    m_gridLayout->addWidget(m_shader,       row, 1, 1, 4);
     row++;
 
-    // Row 6 - ALBEDO
+    // Row 3 - ALBEDO
     m_gridLayout->addWidget(m_albedoImage, row, 0, 1, 1);
     m_gridLayout->addWidget(m_albedoLabel, row, 1, 1, 1);
     m_gridLayout->addWidget(m_albedoColor->GetWidget(), row, 2, 1, 3);
     row++;
 
-    // Row 7 - ROUGHNESS
+    // Row 4 - ROUGHNESS
     m_gridLayout->addWidget(m_roughnessImage,           row, 0, 1, 1);
     m_gridLayout->addWidget(m_roughnessLabel,           row, 1, 1, 1);
     m_gridLayout->addWidget(m_roughness->GetSlider(),   row, 2, 1, 2);
     m_gridLayout->addWidget(m_roughness->GetLineEdit(), row, 4, 1, 1);
     row++;
 
-    // Row 8 - METALLIC
+    // Row 5 - METALLIC
     m_gridLayout->addWidget(m_metallicImage,            row, 0, 1, 1);
     m_gridLayout->addWidget(m_metallicLabel,            row, 1, 1, 1);
     m_gridLayout->addWidget(m_metallic->GetSlider(),    row, 2, 1, 2);
     m_gridLayout->addWidget(m_metallic->GetLineEdit(),  row, 4, 1, 1);
     row++;
 
-    // Row 9 - NORMAL
+    // Row 6 - NORMAL
     m_gridLayout->addWidget(m_normalImage,              row, 0, 1, 1);
     m_gridLayout->addWidget(m_normalLabel,              row, 1, 1, 1);
     m_gridLayout->addWidget(m_normal->GetSlider(),      row, 2, 1, 2);
     m_gridLayout->addWidget(m_normal->GetLineEdit(),    row, 4, 1, 1);
     row++;
 
-    // Row 10 - HEIGHT
+    // Row 7 - HEIGHT
     m_gridLayout->addWidget(m_heightImage,              row, 0, 1, 1);
     m_gridLayout->addWidget(m_heightLabel,              row, 1, 1, 1);
     m_gridLayout->addWidget(m_height->GetSlider(),      row, 2, 1, 2);
     m_gridLayout->addWidget(m_height->GetLineEdit(),    row, 4, 1, 1);
     row++;
 
-    // Row 11 - OCCLUSION
+    // Row 8 - OCCLUSION
     m_gridLayout->addWidget(m_occlusionImage, row, 0, 1, 1);
     m_gridLayout->addWidget(m_occlusionLabel, row, 1, 1, 1);
     row++;
 
-    // Row 12 - EMISSION
+    // Row 9 - EMISSION
     m_gridLayout->addWidget(m_emissionImage, row, 0, 1, 1);
     m_gridLayout->addWidget(m_emissionLabel, row, 1, 1, 1);
     row++;
 
-    // Row 13 - MASK
+    // Row 10 - MASK
     m_gridLayout->addWidget(m_maskImage, row, 0, 1, 1);
     m_gridLayout->addWidget(m_maskLabel, row, 1, 1, 1);
     row++;
 
-    // Row 14 - SPECULAR
+    // Row 11 - SPECULAR
     m_gridLayout->addWidget(m_specularLabel,            row, 0, 1, 1);
     m_gridLayout->addWidget(m_specular->GetSlider(),    row, 1, 1, 3);
     m_gridLayout->addWidget(m_specular->GetLineEdit(),  row, 4, 1, 1);
     row++;
 
-    // Row 15 - TILING
+    // Row 12 - TILING
     m_gridLayout->addWidget(m_tilingLabel,                  row, 0, 1, 1);
     m_gridLayout->addWidget(m_tilingX->GetLabelWidget(),    row, 1, 1, 1, Qt::AlignRight);
     m_gridLayout->addWidget(m_tilingX->GetTextWidget(),     row, 2, 1, 1);
@@ -232,7 +236,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_gridLayout->addWidget(m_tilingY->GetTextWidget(),     row, 4, 1, 1);
     row++;
 
-    // Row 16 - OFFSET
+    // Row 13 - OFFSET
     m_gridLayout->addWidget(m_offsetLabel,                  row, 0, 1, 1);
     m_gridLayout->addWidget(m_offsetX->GetLabelWidget(),    row, 1, 1, 1, Qt::AlignRight);
     m_gridLayout->addWidget(m_offsetX->GetTextWidget(),     row, 2, 1, 1);
@@ -240,11 +244,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_gridLayout->addWidget(m_offsetY->GetTextWidget(),     row, 4, 1, 1);
     row++;
 
-    // Row 17 - SAVE BUTTON
-    m_gridLayout->addWidget(m_buttonSave,                   row, 0, 1, 1);
-    row++;
-
-    // Row 18 - LINE
+    // Row 14 - LINE
     m_gridLayout->addWidget(m_line, row, 0, 1, 5);
     //=========================================================
 

@@ -136,10 +136,7 @@ bool D3D11Buffer::Create(unsigned int stride, unsigned int size, void* data, D3D
 	else
 		result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
 
-	if (FAILED(result))
-		return false;
-
-	return true;
+	return FAILED(result) ? false : true;
 }
 
 void D3D11Buffer::SetIA()

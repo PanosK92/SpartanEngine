@@ -21,13 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include "../Graphics/Mesh.h"
 #include "../Logging/Log.h"
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
-#include "../Core/Helper.h"
-//================================
+//===================================
 
 //= NAMESPACES ================
 using namespace std;
