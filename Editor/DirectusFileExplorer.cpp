@@ -225,8 +225,8 @@ void DirectusFileExplorer::ShowContextMenu(QPoint pos)
     actionCreate.addAction(&actionCreateMaterial);
     //=============================================
 
-    QAction menuShowInExplorer("Show in Explorer", this);
-    menuShowInExplorer.setEnabled(false);
+    QAction actionShowInExplorer("Show in Explorer", this);
+    actionShowInExplorer.setEnabled(true);
 
     QAction actionOpen("Open", this);
     actionOpen.setEnabled(false);
@@ -240,14 +240,15 @@ void DirectusFileExplorer::ShowContextMenu(QPoint pos)
     QAction actionImportNewAsset("Import New Asset...", this);
     actionImportNewAsset.setEnabled(false);
 
-    //= SIGNAL - SLOT connections ==============================================================
+    //= SIGNAL - SLOT connections ==================================================================
     connect(&actionCreateFolder,        SIGNAL(triggered()), this,  SLOT(CreateDirectory_()));
     connect(&actionCreateMaterial,      SIGNAL(triggered()), this,  SLOT(CreateMaterial()));
+    connect(&actionShowInExplorer,      SIGNAL(triggered()), this,  SLOT(ShowRootPathInExplorer()));
     connect(&actionDelete,              SIGNAL(triggered()), this,  SLOT(DeleteSelectedFile()));
-    //==========================================================================================
+    //==============================================================================================
 
     contextMenu.addMenu(&actionCreate);
-    contextMenu.addAction(&menuShowInExplorer);
+    contextMenu.addAction(&actionShowInExplorer);
     contextMenu.addAction(&actionOpen);
     contextMenu.addAction(&actionDelete);
     contextMenu.addSeparator();
@@ -269,13 +270,18 @@ void DirectusFileExplorer::DoubleClick(QModelIndex modelIndex)
 
 void DirectusFileExplorer::CreateDirectory_()
 {
-    FileSystem::CreateFolder(GetRootPath().toStdString() + "/NewFolder");
+    FileSystem::CreateDirectory_(GetRootPath().toStdString() + "/NewFolder");
 }
 
 void DirectusFileExplorer::CreateMaterial()
 {
     auto material = std::make_shared<Material>(nullptr);
     material->Save(GetRootPath().toStdString() + "/NewMaterial", true);
+}
+
+void DirectusFileExplorer::ShowRootPathInExplorer()
+{
+    FileSystem::OpenDirectoryInExplorer(GetRootPath().toStdString());
 }
 
 void DirectusFileExplorer::DeleteSelectedFile()

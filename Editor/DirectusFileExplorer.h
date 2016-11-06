@@ -68,5 +68,6 @@ public slots:
     void DoubleClick(QModelIndex);
     void CreateDirectory_();
     void CreateMaterial();
+    void ShowRootPathInExplorer();
     void DeleteSelectedFile();
 };

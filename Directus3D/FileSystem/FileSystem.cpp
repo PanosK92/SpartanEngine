@@ -32,23 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-bool FileSystem::FileExists(const string& path)
-{
-	struct stat buffer;
-	return (stat(path.c_str(), &buffer) == 0);
-}
-
-bool FileSystem::DeleteDirectory(const string directory)
-{
-	return _rmdir(directory.c_str()) != 0 ? true : false;
-}
-
-bool FileSystem::DeleteFile_(const string& filePath)
-{
-	return remove(filePath.c_str()) != 0 ? false : true;
-}
-
-void FileSystem::CreateFolder(const string& path)
+//= FOLDERS ================================================================================================
+void FileSystem::CreateDirectory_(const string& path)
 {
 	if (!CreateDirectory(path.c_str(), nullptr))
 	{
@@ -58,6 +43,29 @@ void FileSystem::CreateFolder(const string& path)
 			// do whatever handling you'd like
 		}
 	}
+}
+
+bool FileSystem::OpenDirectoryInExplorer(const string& directory)
+{
+	HINSTANCE result = ShellExecute(nullptr, "open", directory.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
+	return !FAILED(result) ? true : false;
+}
+
+bool FileSystem::DeleteDirectory(const string directory)
+{
+	return _rmdir(directory.c_str()) != 0 ? true : false;
+}
+
+//= FILES ================================================================================================
+bool FileSystem::FileExists(const string& path)
+{
+	struct stat buffer;
+	return (stat(path.c_str(), &buffer) == 0);
+}
+
+bool FileSystem::DeleteFile_(const string& filePath)
+{
+	return remove(filePath.c_str()) != 0 ? false : true;
 }
 
 void FileSystem::CopyFileFromTo(const string& source, const string& destination)

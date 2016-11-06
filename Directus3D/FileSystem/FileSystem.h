@@ -35,10 +35,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class __declspec(dllexport) FileSystem
 {
 public:
-	static bool FileExists(const std::string& path);
+	//= DIRECTORIES ==================================================
+	static void CreateDirectory_(const std::string& path);
+	static bool OpenDirectoryInExplorer(const std::string& directory);
 	static bool DeleteDirectory(const std::string directory);
+
+	//= FILES ========================================================
+	static bool FileExists(const std::string& path);
 	static bool DeleteFile_(const std::string& filePath);
-	static void CreateFolder(const std::string& path);
 	static void CopyFileFromTo(const std::string& source, const std::string& destination);
 
 	static std::string GetFileNameFromPath(const std::string& path);
