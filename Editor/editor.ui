@@ -265,6 +265,37 @@ QLabel
 	border-style: none;
 }
 
+/*= TREES ==================================================================================*/
+/*NOTE: I am using QTreeView everywhere because even QTreeWidgets inherit from them */
+QTreeView
+{
+	background-color: #383838;
+	border-style: solid;
+	border-width: 1px;
+	border-top-width: 0px;
+	outline: 0px; /* removes ugly selection dashed border */
+}
+
+QTreeView::item
+{
+    background-color: rgba(0, 0, 0, 0);
+	color: #909090;
+}
+
+QTreeView::item:selected 
+{
+	background-color: rgb(62, 95, 150);
+	color: white;
+	border-style: none;
+outline:none;
+}
+
+QTreeWidget::item:hover 
+{
+	
+	
+}
+
 /*= COMBOBOX/QPUSHBUTTON  =====================================================================*/
 QComboBox, QPushButton
 {
@@ -293,35 +324,6 @@ QComboBox::down-arrow
     background-image: url(:/Images/arrow.png);
 	background-repeat: no-repeat;
 	background-position: center;
-}
-
-/*= TREES ==================================================================================*/
-/*NOTE: I am using QTreeView everywhere because even QTreeWidgets inherit from them */
-QTreeView
-{
-	background-color: #383838;
-	border-style: solid;
-	border-width: 1px;
-	border-top-width: 0px;
-	outline: 0px; /* removes ugly selection dashed border */
-}
-
-QTreeView::item
-{
-    background-color: rgba(0, 0, 0, 0);
-	color: #909090;
-}
-
-QTreeView::item:selected 
-{
-	background-color: rgb(62, 95, 150);
-	color: white;
-}
-
-QTreeWidget::item:hover 
-{
-	
-	
 }
 
 /*= SCENE/CONSOLE TABS TOOLBARS =============================================================================*/

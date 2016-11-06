@@ -93,23 +93,28 @@ QFileSystemModel* DirectusFileExplorer::GetFileSystemModel()
 //= DRAG N DROP RELATED ============================================================================
 void DirectusFileExplorer::mousePressEvent(QMouseEvent* event)
 {
-    // save the position in order to be
-    // try and determine later if that's a drag
     if (event->button() == Qt::LeftButton)
+    {
+        // save the position in order to be
+        // try and determine later if that's a drag
         m_dragStartPosition = event->pos();
 
-    if(event->button() == Qt::RightButton)
-        emit customContextMenuRequested(event->pos());
+        // Make QListView deselect any items when
+        // you click anywhere else but on an item.
+        QModelIndex item = indexAt(event->pos());
+        QListView::mousePressEvent(event);
+        if ((item.row() == -1 && item.column() == -1))
+        {
+            clearSelection();
+            const QModelIndex index;
+            selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
+        }
+    }
 
-    // I implement this myself because QListView doesn't
-    // deselect any items when you click anywhere else but on an item.
-    QModelIndex item = indexAt(event->pos());
-    QListView::mousePressEvent(event);
-    if ((item.row() == -1 && item.column() == -1))
+    if(event->button() == Qt::RightButton)
     {
-        clearSelection();
-        const QModelIndex index;
-        selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
+        selectionModel()->setCurrentIndex(indexAt(event->pos()), QItemSelectionModel::Select);
+        emit customContextMenuRequested(event->pos());
     }
 }
 
@@ -213,7 +218,7 @@ void DirectusFileExplorer::ShowContextMenu(QPoint pos)
     QMenu actionCreate("Create", this);
     actionCreate.setEnabled(true);
 
-    //= CREATE MENU ===============================
+    //= actionCreate MENU =========================
     QAction actionCreateFolder("Folder", this);
     actionCreateFolder.setEnabled(true);
 
