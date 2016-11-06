@@ -93,17 +93,24 @@ QFileSystemModel* DirectusFileExplorer::GetFileSystemModel()
 //= DRAG N DROP RELATED ============================================================================
 void DirectusFileExplorer::mousePressEvent(QMouseEvent* event)
 {
-    // In case this mouse press is the future start point of a drag n drop event,
-    // we have to keep the starting position in order to calculate the delta
-    // and determine if there has been any dragging, in mouseMoveEvent(QMouseEvent* event)
-
+    // save the position in order to be
+    // try and determine later if that's a drag
     if (event->button() == Qt::LeftButton)
         m_dragStartPosition = event->pos();
 
     if(event->button() == Qt::RightButton)
         emit customContextMenuRequested(event->pos());
 
+    // I implement this myself because QListView doesn't
+    // deselect any items when you click anywhere else but on an item.
+    QModelIndex item = indexAt(event->pos());
     QListView::mousePressEvent(event);
+    if ((item.row() == -1 && item.column() == -1))
+    {
+        clearSelection();
+        const QModelIndex index;
+        selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
+    }
 }
 
 void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
@@ -185,6 +192,17 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
 
     event->acceptProposedAction();
 }
+
+QString DirectusFileExplorer::GetRootPath()
+{
+    return m_fileModel->filePath(rootIndex());
+}
+
+QString DirectusFileExplorer::GetSelectionPath()
+{
+    auto indices = this->selectedIndexes();
+    return indices.size() != 0 ? m_fileModel->filePath(indices[0]) : "";
+}
 //===================================================================================================
 
 // CONTEXT MENU =====================================================================================
@@ -193,7 +211,19 @@ void DirectusFileExplorer::ShowContextMenu(QPoint pos)
     QMenu contextMenu(tr("Context menu"), this);
 
     QMenu actionCreate("Create", this);
-    actionCreate.setEnabled(false);
+    actionCreate.setEnabled(true);
+
+    //= CREATE MENU ===============================
+    QAction actionCreateFolder("Folder", this);
+    actionCreateFolder.setEnabled(true);
+
+    QAction actionCreateMaterial("Material", this);
+    actionCreateMaterial.setEnabled(true);
+
+    actionCreate.addAction(&actionCreateFolder);
+    actionCreate.addSeparator();
+    actionCreate.addAction(&actionCreateMaterial);
+    //=============================================
 
     QAction menuShowInExplorer("Show in Explorer", this);
     menuShowInExplorer.setEnabled(false);
@@ -202,13 +232,19 @@ void DirectusFileExplorer::ShowContextMenu(QPoint pos)
     actionOpen.setEnabled(false);
 
     QAction actionDelete("Delete", this);
-    actionDelete.setEnabled(false);
+    actionDelete.setEnabled(true);
 
     QAction actionOpenSceneAdditive("Open Scene Additive", this);
     actionOpenSceneAdditive.setEnabled(false);
 
     QAction actionImportNewAsset("Import New Asset...", this);
     actionImportNewAsset.setEnabled(false);
+
+    //= SIGNAL - SLOT connections ==============================================================
+    connect(&actionCreateFolder,        SIGNAL(triggered()), this,  SLOT(CreateDirectory_()));
+    connect(&actionCreateMaterial,      SIGNAL(triggered()), this,  SLOT(CreateMaterial()));
+    connect(&actionDelete,              SIGNAL(triggered()), this,  SLOT(DeleteSelectedFile()));
+    //==========================================================================================
 
     contextMenu.addMenu(&actionCreate);
     contextMenu.addAction(&menuShowInExplorer);
@@ -229,5 +265,22 @@ void DirectusFileExplorer::DoubleClick(QModelIndex modelIndex)
         QString path = m_fileModel->fileInfo(modelIndex).absoluteFilePath();
         this->SetRootPath(path);
     }
+}
+
+void DirectusFileExplorer::CreateDirectory_()
+{
+    FileSystem::CreateFolder(GetRootPath().toStdString() + "/NewFolder");
+}
+
+void DirectusFileExplorer::CreateMaterial()
+{
+    auto material = std::make_shared<Material>(nullptr);
+    material->Save(GetRootPath().toStdString() + "/NewMaterial", true);
+}
+
+void DirectusFileExplorer::DeleteSelectedFile()
+{
+    if(!FileSystem::DeleteFile_(GetSelectionPath().toStdString()))
+        FileSystem::DeleteDirectory(GetSelectionPath().toStdString());
 }
 //===================================================================================================

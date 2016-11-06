@@ -645,6 +645,11 @@ QListView::item
     background:  #383838;
 }
 
+QListView::item:focus
+{
+	border:none;
+}
+
 QListView::item:alternate 
 {
 	color: #909090;				
@@ -2480,6 +2485,9 @@ QTabBar::tab:last
                          <property name="movement">
                           <enum>QListView::Static</enum>
                          </property>
+                         <property name="isWrapping" stdset="0">
+                          <bool>true</bool>
+                         </property>
                          <property name="resizeMode">
                           <enum>QListView::Adjust</enum>
                          </property>
@@ -2489,8 +2497,11 @@ QTabBar::tab:last
                          <property name="uniformItemSizes">
                           <bool>true</bool>
                          </property>
+                         <property name="batchSize">
+                          <number>100</number>
+                         </property>
                          <property name="selectionRectVisible">
-                          <bool>true</bool>
+                          <bool>false</bool>
                          </property>
                         </widget>
                        </widget>
