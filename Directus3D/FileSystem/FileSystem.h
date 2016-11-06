@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define SCENE_EXTENSION ".directus"
 #define MATERIAL_EXTENSION ".mat"
-#define TEXTURE_METADATA_EXTENSION ".tex"
+#define METADATA_EXTENSION ".meta"
 #define MESH_EXTENSION ".msh"
 #define DATA_NOT_ASSIGNED "N/A"
 #define PATH_NOT_ASSIGNED "PATH_NOT_ASSIGNED"
@@ -48,8 +48,9 @@ public:
 	static std::string GetRelativePathFromAbsolutePath(const std::string& path);
 
 	static std::vector<std::string> GetSupportedImageFormats(bool includeUppercase);
-	static bool IsSupportedTextureMetadata(const std::string& path);
-	static bool IsSupportedMaterial(const std::string& path);
+	static bool IsMetadataFile(const std::string& filePath);
+	static bool IsMaterialFile(const std::string& filePath);
+	static bool IsSceneFile(const std::string& filePath);
 
 	static std::vector<std::string> GetFoldersInDirectory(const std::string& directory);
 	static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
@@ -61,7 +62,6 @@ public:
 
 	static bool IsSupportedImage(const std::string& path);
 	static bool IsSupportedScript(const std::string& path);
-	static bool IsSupportedScene(const std::string& path);
 	static bool IsSupportedModel(const std::string& path);
 	static bool IsSupportedShader(const std::string& path);
 

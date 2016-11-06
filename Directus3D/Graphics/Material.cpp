@@ -66,8 +66,18 @@ Material::~Material()
 }
 
 //= I/O ========================================================================
-void Material::Serialize()
+bool Material::Save(const string& filePath, bool overwrite)
 {
+	m_filePath = filePath + MATERIAL_EXTENSION;
+
+	// If the user doesn't want to override and a material
+	// indeed happens to exists, there is nothing to do
+	if (!overwrite && FileSystem::FileExists(m_filePath))
+		return true;
+
+	if (!Serializer::StartWriting(m_filePath))
+		return false;
+
 	Serializer::WriteSTR(m_ID);
 	Serializer::WriteSTR(m_name);
 	Serializer::WriteSTR(m_modelID);
@@ -90,10 +100,25 @@ void Material::Serialize()
 	Serializer::WriteInt(int(m_textures.size()));
 	for (auto texture : m_textures)
 		Serializer::WriteSTR(!texture.expired() ? texture.lock()->GetID() : DATA_NOT_ASSIGNED);
+
+	Serializer::StopWriting();
+
+	return true;
 }
 
-void Material::Deserialize()
+bool Material::SaveToExistingDirectory()
 {
+	if (m_filePath == PATH_NOT_ASSIGNED)
+		return false;
+
+	return Save(FileSystem::GetPathWithoutFileNameExtension(m_filePath), true);
+}
+
+bool Material::LoadFromFile(const string& filePath)
+{
+	if (!Serializer::StartReading(filePath))
+		return false;
+	
 	m_ID = Serializer::ReadSTR();
 	m_name = Serializer::ReadSTR();
 	m_modelID = Serializer::ReadSTR();
@@ -126,51 +151,9 @@ void Material::Deserialize()
 		}
 	}
 
-	AcquireShader();
-}
-
-// Saves the material to a given directory (with option overwrite)
-void Material::SaveToDirectory(const string& directory, bool overwrite)
-{
-	m_filePath = directory + GetName() + MATERIAL_EXTENSION;
-
-	// If the user doesn't want to override, make sure a material
-	// already exists, if it doesn't, save/create it.
-	if (!overwrite && FileSystem::FileExists(m_filePath))
-		return;
-
-	Serializer::StartWriting(m_filePath);
-	Serialize();
-	Serializer::StopWriting();
-}
-
-// Saves material to it's current filePath
-void Material::Save()
-{
-	if (m_filePath == PATH_NOT_ASSIGNED)
-	{
-		LOG_INFO("Material \"" + m_name + "\" can't be saved because it doesn't have a path.");
-		return;
-	}
-
-	Serializer::StartWriting(m_filePath);
-	Serialize();
-	Serializer::StopWriting();
-}
-
-bool Material::LoadFromFile(const string& filePath)
-{
-	// Make sure the file exists
-	if (!FileSystem::FileExists(filePath))
-		return false;
-
-	// Make sure it's actually a material file
-	if (FileSystem::GetExtensionFromPath(filePath) != MATERIAL_EXTENSION)
-		return false;
-
-	Serializer::StartReading(filePath);
-	Deserialize();
 	Serializer::StopReading();
+
+	AcquireShader();
 
 	return true;
 }

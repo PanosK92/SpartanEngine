@@ -87,7 +87,7 @@ string FileSystem::GetPathWithoutFileName(const string& path)
 string FileSystem::GetPathWithoutFileNameExtension(const string& path)
 {
 	string rawPath = GetPathWithoutFileName(path);
-	string fileName = GetFileNameFromPath(path);
+	string fileName = GetFileNameNoExtensionFromPath(path);
 
 	return rawPath + fileName;
 }
@@ -162,20 +162,19 @@ vector<string> FileSystem::GetSupportedImageFormats(bool includeUppercase)
 	return supportedFormats;
 }
 
-bool FileSystem::IsSupportedTextureMetadata(const string& path)
+bool FileSystem::IsMetadataFile(const string& filePath)
 {
-	if (GetExtensionFromPath(path) == TEXTURE_METADATA_EXTENSION)
-		return true;
-
-	return false;
+	return GetExtensionFromPath(filePath) == METADATA_EXTENSION ? true : false;
 }
 
-bool FileSystem::IsSupportedMaterial(const string& path)
+bool FileSystem::IsMaterialFile(const string& filePath)
 {
-	if (GetExtensionFromPath(path) == MATERIAL_EXTENSION)
-		return true;
+	return GetExtensionFromPath(filePath) == MATERIAL_EXTENSION ? true : false;
+}
 
-	return false;
+bool FileSystem::IsSceneFile(const string& filePath)
+{
+	return GetExtensionFromPath(filePath) == SCENE_EXTENSION ? true : false;
 }
 
 vector<string> FileSystem::GetFoldersInDirectory(const string& directory)
@@ -301,21 +300,6 @@ bool FileSystem::IsSupportedScript(const string& path)
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
 	supportedExt.push_back(".as");
-
-	for (int i = 0; i < supportedExt.size(); i++)
-	{
-		if (fileExt == supportedExt[i] || fileExt == ConvertToUppercase(supportedExt[i]))
-			return true;
-	}
-
-	return false;
-}
-
-bool FileSystem::IsSupportedScene(const string& path)
-{
-	string fileExt = GetExtensionFromPath(path);
-	vector<string> supportedExt;
-	supportedExt.push_back(SCENE_EXTENSION);
 
 	for (int i = 0; i < supportedExt.size(); i++)
 	{

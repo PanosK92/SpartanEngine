@@ -33,9 +33,9 @@ class Serializer
 {
 public:
 	//= STREAMS ======================================
-	static void StartWriting(const std::string& path);
+	static bool StartWriting(const std::string& path);
 	static void StopWriting();
-	static void StartReading(const std::string& path);
+	static bool StartReading(const std::string& path);
 	static void StopReading();
 	//================================================
 	
