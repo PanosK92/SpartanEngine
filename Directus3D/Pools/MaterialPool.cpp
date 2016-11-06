@@ -83,6 +83,12 @@ void MaterialPool::Add(const vector<string>& filePaths)
 	}
 }
 
+void MaterialPool::SaveMaterialMetadata()
+{
+	for (const auto material : m_materials)
+		material->Save();
+}
+
 // Removes all the materials
 void MaterialPool::Clear()
 {

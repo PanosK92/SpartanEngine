@@ -134,7 +134,9 @@ void Material::SaveToDirectory(const string& directory, bool overwrite)
 {
 	m_filePath = directory + GetName() + MATERIAL_EXTENSION;
 
-	if (FileSystem::FileExists(m_filePath) && !overwrite)
+	// If the user doesn't want to override, make sure a material
+	// already exists, if it doesn't, save/create it.
+	if (!overwrite && FileSystem::FileExists(m_filePath))
 		return;
 
 	Serializer::StartWriting(m_filePath);
@@ -145,6 +147,12 @@ void Material::SaveToDirectory(const string& directory, bool overwrite)
 // Saves material to it's current filePath
 void Material::Save()
 {
+	if (m_filePath == PATH_NOT_ASSIGNED)
+	{
+		LOG_INFO("Material \"" + m_name + "\" can't be saved because it doesn't have a path.");
+		return;
+	}
+
 	Serializer::StartWriting(m_filePath);
 	Serialize();
 	Serializer::StopWriting();
@@ -177,18 +185,22 @@ void Material::SetTexture(weak_ptr<Texture> texture)
 
 	// If a texture of that type exists, overwrite it
 	for (auto &textureTemp : m_textures)
-	{
 		if (textureTemp.lock()->GetType() == texture.lock()->GetType())
 		{
 			textureTemp = texture;
 			return;
 		}
-	}
 
-	// Add
+	//= The texture is new and has to be added =
+	// Add it
 	m_textures.push_back(texture);
+
+	// Adjust texture multipliers
 	TextureBasedMultiplierAdjustment();
+
+	// Acquire and appropriate shader
 	AcquireShader();
+	//==========================================
 }
 
 void Material::SetTextureByID(const string& textureID)

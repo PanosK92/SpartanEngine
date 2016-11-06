@@ -40,6 +40,7 @@ public:
 	std::weak_ptr<Material> Add(std::shared_ptr<Material> material);
 	void Add(const std::vector<std::string>& filePaths);
 
+	void SaveMaterialMetadata();
 	void Clear();
 
 	std::weak_ptr<Material> GetMaterialByID(const std::string& materialID);

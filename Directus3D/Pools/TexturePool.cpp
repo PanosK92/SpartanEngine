@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <filesystem>
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
+#include "../Logging/Log.h"
 //===========================
 
 //= NAMESPACES =====
@@ -78,6 +79,12 @@ void TexturePool::Add(const vector<string>& imagePaths)
 {
 	for (const string& imagePath : imagePaths)
 		Add(imagePath);
+}
+
+void TexturePool::SaveTextureMetadata()
+{
+	for (const auto texture : m_textures)
+		texture->SaveMetadata();
 }
 
 weak_ptr<Texture> TexturePool::GetTextureByName(const string&  name)
