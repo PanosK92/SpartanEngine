@@ -64,8 +64,8 @@ void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspec
 
     //= MATERIAL ==============================================
     m_materialLabel = new QLabel("Material");
-    m_material = new QLineEdit();
-    m_material->setReadOnly(true);
+    m_material = new DirectusQLineEditDropTarget();
+    m_material->Initialize(m_directusCore, m_inspector);
     //=========================================================
 
     //= LINE ======================================

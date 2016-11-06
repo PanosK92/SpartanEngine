@@ -34,7 +34,7 @@ class DirectusTexture : public QLabel
 {
     Q_OBJECT
 public:
-    explicit DirectusTexture(QWidget *parent = 0);
+    explicit DirectusTexture(QWidget* parent = 0);
     void Initialize(DirectusCore* socket, DirectusInspector* inspector, TextureType textureType);
     void LoadImageAsync(std::string filePath);
     virtual void dragEnterEvent(QDragEnterEvent* event);

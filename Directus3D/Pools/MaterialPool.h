@@ -38,6 +38,7 @@ public:
 									[MISC]
 	------------------------------------------------------------------------------*/	
 	std::weak_ptr<Material> Add(std::shared_ptr<Material> material);
+	std::weak_ptr<Material> Add(const std::string& filePath);
 	void Add(const std::vector<std::string>& filePaths);
 
 	void SaveMaterialMetadata();

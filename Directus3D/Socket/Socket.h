@@ -63,7 +63,6 @@ public:
 	void ClearScene();
 	ImageImporter* GetImageLoader();
 	void SetLogger(std::weak_ptr<ILogger> logger);
-	void SetMaterialTexture(GameObject* gameObject, TextureType type, std::string texturePath);
 	Context* GetContext() { return g_context; }
 	//==============================================================================
 

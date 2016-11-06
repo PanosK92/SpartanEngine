@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//==============================
+//==================================
 #include "DirectusTexture.h"
 #include "DirectusAssetLoader.h"
 #include <QThread>
@@ -28,7 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logging/Log.h"
 #include "DirectusInspector.h"
 #include "FileSystem/FileSystem.h"
-//==============================
+#include "Components/MeshRenderer.h"
+//==================================
 
 DirectusTexture::DirectusTexture(QWidget *parent) : QLabel(parent)
 {
@@ -129,12 +130,20 @@ void DirectusTexture::dropEvent(QDropEvent* event)
         // This is essential to avoid an absolute path mess. Everything is relative.
         imagePath = FileSystem::GetRelativePathFromAbsolutePath(imagePath);
 
-        // Load the image
-        LoadImageAsync(imagePath);
+        // Set the texture to the material
+        auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
+        if (meshRenderer)
+        {
+            auto material = meshRenderer->GetMaterial();
+            if (!material.expired())
+                material.lock()->SetTexture(imagePath, m_textureType);
+        }
 
         // Update the engine
-        m_directusCore->GetEngineSocket()->SetMaterialTexture(gameObject, m_textureType, imagePath);
         m_directusCore->Update();
+
+        // Load the image for the slot
+        LoadImageAsync(imagePath);
     }
 }
 //=========================================================================================
