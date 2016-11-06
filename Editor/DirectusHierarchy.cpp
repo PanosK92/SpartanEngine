@@ -69,21 +69,22 @@ void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWi
 
 void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
 {
-    // In case this mouse press evolves into a drag and drop
-    // we have to keep the starting position in order to determine
-    // if it's indeed one, in mouseMoveEvent(QMouseEvent* event)
     if (event->button() == Qt::LeftButton)
-              m_dragStartPosition = event->pos();
-
-    // I implement this myself because the QTreeWidget doesn't
-    // deselect any items when you click anywhere else but on an item.
-    QModelIndex item = indexAt(event->pos());
-    QTreeWidget::mousePressEvent(event);
-    if ((item.row() == -1 && item.column() == -1))
     {
-        clearSelection();
-        const QModelIndex index;
-        selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
+        // save the position in order to be
+        // try and determine later if that's a drag
+        m_dragStartPosition = event->pos();
+
+        // Make QTreeWidget deselect any items when
+        // you click anywhere else but on an item.
+        QModelIndex item = indexAt(event->pos());
+        QTreeWidget::mousePressEvent(event);
+        if ((item.row() == -1 && item.column() == -1))
+        {
+            clearSelection();
+            const QModelIndex index;
+            selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
+        }
     }
 }
 
