@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==================================
+//======================================
 #include <QWidget>
 #include <QGridLayout>
 #include "DirectusAdjustLabel.h"
@@ -32,7 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QCheckBox>
 #include "DirectusDropDownButton.h"
 #include "DirectusCore.h"
-//==================================
+#include "DirectusQLineEditDropTarget.h"
+//=====================================
 
 class DirectusInspector;
 
@@ -62,7 +63,7 @@ private:
 
     //= MATERIAL =========================
     QLabel* m_materialLabel;
-    QLineEdit* m_material;
+    DirectusQLineEditDropTarget* m_material;
     //====================================
 
     //= LINE ========================

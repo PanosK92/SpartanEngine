@@ -44,7 +44,8 @@ SOURCES += main.cpp\
     DirectusDropDownButton.cpp \
     DirectusProgressBar.cpp \
     DirectusFileDialog.cpp \
-    DirectusIconProvider.cpp
+    DirectusIconProvider.cpp \
+    DirectusQLineEditDropTarget.cpp
 
 HEADERS  += editor.h \
     DirectusPlayButton.h \
@@ -76,7 +77,8 @@ HEADERS  += editor.h \
     DirectusDropDownButton.h \
     DirectusProgressBar.h \
     DirectusFileDialog.h \
-    DirectusIconProvider.h
+    DirectusIconProvider.h \
+    DirectusQLineEditDropTarget.h
 
 FORMS    += editor.ui \
     AboutDialog.ui \

@@ -362,12 +362,8 @@ void ModelImporter::AddTextureToMaterial(weak_ptr<Material> material, TextureTyp
 	string textureDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
 	FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
-	auto texture = g_context->GetSubsystem<TexturePool>()->Add(textureDestination);
-	if (!texture.expired())
-	{
-		texture.lock()->SetType(textureType);
-		material.lock()->SetTexture(texture);
-	}
+	// Set the texture to the material
+	material.lock()->SetTexture(textureDestination, textureType);
 }
 
 string ModelImporter::FindTexture(string texturePath)

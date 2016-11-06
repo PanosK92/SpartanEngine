@@ -57,9 +57,7 @@ void FileSystem::CreateFolder(const string& path)
 void FileSystem::CopyFileFromTo(const string& source, const string& destination)
 {
 	if(!CopyFile(source.c_str(), destination.c_str(), true))
-	{
 		DWORD err = GetLastError();
-	}
 }
 
 string FileSystem::GetFileNameFromPath(const string& path)

@@ -71,16 +71,28 @@ weak_ptr<Material> MaterialPool::Add(shared_ptr<Material> material)
 	return m_materials.back();
 }
 
+weak_ptr<Material> MaterialPool::Add(const string& filePath)
+{
+	// if the material already exists, return it
+	for (const auto material : m_materials)
+		if (material->GetFilePath() == filePath)
+			return material;
+
+	auto material = make_shared<Material>(g_context);
+	if (material->LoadFromFile(filePath))
+	{
+		m_materials.push_back(material);
+		return m_materials.back();
+	}
+
+	return weak_ptr<Material>();
+}
+
 // Adds multiple materials to the pool by reading them from files
 void MaterialPool::Add(const vector<string>& filePaths)
 {
 	for (const string& filePath : filePaths)
-	{
-		// Create and load the material
-		auto material = make_shared<Material>(g_context);
-		if (material->LoadFromFile(filePath))
-			m_materials.push_back(material);
-	}
+		Add(filePath);
 }
 
 void MaterialPool::SaveMaterialMetadata()

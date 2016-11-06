@@ -118,7 +118,7 @@ bool Material::LoadFromFile(const string& filePath)
 {
 	if (!Serializer::StartReading(filePath))
 		return false;
-	
+
 	m_ID = Serializer::ReadSTR();
 	m_name = Serializer::ReadSTR();
 	m_modelID = Serializer::ReadSTR();
@@ -160,6 +160,7 @@ bool Material::LoadFromFile(const string& filePath)
 //==============================================================================
 
 //= TEXTURES ===================================================================
+// Set texture from an existing texture
 void Material::SetTexture(weak_ptr<Texture> texture)
 {
 	// Make sure this texture exists
@@ -186,10 +187,27 @@ void Material::SetTexture(weak_ptr<Texture> texture)
 	//==========================================
 }
 
-void Material::SetTextureByID(const string& textureID)
+// Set texture by searching it by it's ID
+void Material::SetTexture(const string& textureID)
 {
-	if (m_context)
-		SetTexture(m_context->GetSubsystem<TexturePool>()->GetTextureByID(textureID));
+	if (!m_context)
+		return;
+
+	SetTexture(m_context->GetSubsystem<TexturePool>()->GetTextureByID(textureID));
+}
+
+// Set texture by loading it from a file
+void Material::SetTexture(const string& filePath, TextureType type)
+{
+	if (!m_context)
+		return;
+
+	auto texture = m_context->GetSubsystem<TexturePool>()->Add(filePath);
+	if (!texture.expired())
+	{
+		texture.lock()->SetType(type);
+		SetTexture(texture);
+	}
 }
 
 weak_ptr<Texture> Material::GetTextureByType(TextureType type)
