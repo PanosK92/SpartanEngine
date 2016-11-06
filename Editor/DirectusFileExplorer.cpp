@@ -146,7 +146,7 @@ void DirectusFileExplorer::mouseReleaseEvent(QMouseEvent* event)
     QString filePath = m_fileModel->fileInfo(selectedItems[0]).filePath();
 
     // If so, determine what type of file that was, and display it in the inspector (if possible).
-    if (FileSystem::IsSupportedMaterial(filePath.toStdString()))
+    if (FileSystem::IsMaterialFile(filePath.toStdString()))
         m_inspector->InspectMaterialFile(filePath.toStdString());
 }
 

@@ -35,9 +35,10 @@ ofstream out;
 ifstream in;
 //===========
 
-void Serializer::StartWriting(const string& path)
+bool Serializer::StartWriting(const string& path)
 {
 	out.open(path, ios::out | ios::binary);
+	return !out.fail();
 }
 
 void Serializer::StopWriting()
@@ -46,12 +47,10 @@ void Serializer::StopWriting()
 	out.close();
 }
 
-void Serializer::StartReading(const string& path)
+bool Serializer::StartReading(const string& path)
 {
 	in.open(path, ios::in | ios::binary);
-
-	if (in.fail())
-		LOG_ERROR("Can't open " + path);
+	return !in.fail();
 }
 
 void Serializer::StopReading()

@@ -275,7 +275,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);
 
 		// Save the material in our custom format
-		material.lock()->SaveToDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/", false);
+		material.lock()->Save("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/" + material.lock()->GetName(), false);
 	}
 
 	// free memory

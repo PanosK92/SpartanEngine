@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "../Graphics/D3D11/D3D11Shader.h"
+#include "../FileSystem/FileSystem.h"
 //========================================
 
 enum TextureType
@@ -46,15 +47,9 @@ public:
 
 	//= IO ================================================
 	bool LoadFromFile(const std::string& filePath, Graphics* graphics);
-private:
-	void Serialize();
-	void Deserialize();
-public:
 	bool SaveMetadata();
-private:
 	bool LoadMetadata();
 	ID3D11ShaderResourceView* CreateID3D11ShaderResourceView(Graphics* graphics);
-public:
 	//=====================================================
 
 	//= PROPERTIES ===============================================================================
@@ -63,11 +58,10 @@ public:
 	std::string GetName() { return m_name; }
 	void SetName(const std::string& name) { m_name = name; }
 
-	std::string GetFilePathTexture() { return m_filePathTexture; }
-	void SetFilePathTexture(const std::string& filepath) { m_filePathTexture = filepath; }
+	std::string GetFilePathTexture() { return m_filePath; }
+	void SetFilePathTexture(const std::string& filepath) { m_filePath = filepath; }
 
-	std::string GetFilePathMetadata() { return m_filePathMetadata; }
-	void SetFilePathMetadata(const std::string& filepath) { m_filePathMetadata = filepath; }
+	std::string GetFilePathMetadata() { return m_filePath + METADATA_EXTENSION; }
 
 	int GetWidth() { return m_width; }
 	void SetWidth(int width) { m_width = width; }
@@ -100,8 +94,7 @@ public:
 private:
 	std::string m_ID;
 	std::string m_name;
-	std::string m_filePathTexture;
-	std::string m_filePathMetadata;
+	std::string m_filePath;
 	int m_width;
 	int m_height;
 	TextureType m_type;

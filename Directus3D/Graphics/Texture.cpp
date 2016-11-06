@@ -19,15 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ===========================
 #include "Texture.h"
 #include "../Core/GUIDGenerator.h"
 #include "../IO/Serializer.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/ImageImporter.h"
-#include "../FileSystem/FileSystem.h"
 #include "../Core/Helper.h"
-//==========================================
+//======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -37,8 +36,7 @@ Texture::Texture()
 {
 	m_ID = GENERATE_GUID;
 	m_name = DATA_NOT_ASSIGNED;
-	m_filePathTexture = DATA_NOT_ASSIGNED;
-	m_filePathMetadata = DATA_NOT_ASSIGNED;
+	m_filePath = PATH_NOT_ASSIGNED;
 	m_width = 0;
 	m_height = 0;
 	m_shaderResourceView = nullptr;
@@ -53,42 +51,21 @@ Texture::~Texture()
 	SafeRelease(m_shaderResourceView);
 }
 
-//===
-// IO
-//===
-void Texture::Serialize()
+//= IO ========================================================
+bool Texture::SaveMetadata()
 {
+	if (!Serializer::StartWriting(GetFilePathMetadata()))
+		return false;
+
 	Serializer::WriteSTR(m_ID);
 	Serializer::WriteSTR(m_name);
-	Serializer::WriteSTR(m_filePathTexture);
-	Serializer::WriteSTR(m_filePathMetadata);
+	Serializer::WriteSTR(m_filePath);
 	Serializer::WriteInt(m_width);
 	Serializer::WriteInt(m_height);
 	Serializer::WriteInt(int(m_type));
 	Serializer::WriteBool(m_grayscale);
 	Serializer::WriteBool(m_transparency);
-}
 
-void Texture::Deserialize()
-{
-	m_ID = Serializer::ReadSTR();
-	m_name = Serializer::ReadSTR();
-	m_filePathTexture = Serializer::ReadSTR();
-	m_filePathMetadata = Serializer::ReadSTR();
-	m_width = Serializer::ReadInt();
-	m_height = Serializer::ReadInt();
-	m_type = TextureType(Serializer::ReadInt());
-	m_grayscale = Serializer::ReadBool();
-	m_transparency = Serializer::ReadBool();
-}
-
-bool Texture::SaveMetadata()
-{
-	if (!FileSystem::IsSupportedTextureMetadata(m_filePathMetadata))
-		return false;
-
-	Serializer::StartWriting(m_filePathMetadata);
-	Serialize();
 	Serializer::StopWriting();
 
 	return true;
@@ -96,20 +73,27 @@ bool Texture::SaveMetadata()
 
 bool Texture::LoadMetadata()
 {
-	if (!FileSystem::FileExists(m_filePathMetadata) || !FileSystem::IsSupportedTextureMetadata(m_filePathMetadata))
+	if (!Serializer::StartReading(GetFilePathMetadata()))
 		return false;
 
-	Serializer::StartReading(m_filePathMetadata);
-	Deserialize();
+	m_ID = Serializer::ReadSTR();
+	m_name = Serializer::ReadSTR();
+	m_filePath = Serializer::ReadSTR();
+	m_width = Serializer::ReadInt();
+	m_height = Serializer::ReadInt();
+	m_type = TextureType(Serializer::ReadInt());
+	m_grayscale = Serializer::ReadBool();
+	m_transparency = Serializer::ReadBool();
+
 	Serializer::StopReading();
 
 	return true;
 }
 
-// Loads a texture from an image file (.jpg, .png and so on)
+// Loads a texture (not it's metadata) from an image file
 bool Texture::LoadFromFile(const string& filePath, Graphics* graphics)
 {
-	// load it
+	// Load it
 	if (!ImageImporter::GetInstance().Load(filePath))
 	{
 		LOG_ERROR("Failed to load texture \"" + filePath + "\".");
@@ -117,22 +101,21 @@ bool Texture::LoadFromFile(const string& filePath, Graphics* graphics)
 		return false;
 	}
 
-	// Get metadata from texture
-	m_filePathTexture = ImageImporter::GetInstance().GetPath();
+	// Extract any metadata we can from the ImageImporter
+	m_filePath = ImageImporter::GetInstance().GetPath();
 	m_name = FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture());
-	m_filePathMetadata = FileSystem::GetPathWithoutFileNameExtension(m_filePathTexture) + TEXTURE_METADATA_EXTENSION;
 	m_width = ImageImporter::GetInstance().GetWidth();
 	m_height = ImageImporter::GetInstance().GetHeight();
 	m_grayscale = ImageImporter::GetInstance().IsGrayscale();
 	m_transparency = ImageImporter::GetInstance().IsTransparent();
 	m_shaderResourceView = CreateID3D11ShaderResourceView(graphics);
 
-	// Free any memory allocated by the image importer
+	// Free any memory allocated by the ImageImporter
 	ImageImporter::GetInstance().Clear();
 
-	if (!LoadMetadata()) // load metadata file
-		if (!SaveMetadata()) // if a metadata file doesn't exist, create one
-			return false; // if that failed too, it means the filepath is invalid
+	if (!LoadMetadata()) // Load metadata file
+		if (!SaveMetadata()) // If a metadata file doesn't exist, create one
+			return false; // if that failed too, well at least get the file path right mate
 
 	return true;
 }

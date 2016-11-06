@@ -47,12 +47,8 @@ public:
 	~Material();
 
 	//= I/O =======================================================================
-private:
-	void Serialize();
-	void Deserialize();
-public:
-	void SaveToDirectory(const std::string& directory, bool overwrite);
-	void Save();
+	bool Save(const std::string& filePath, bool overwrite);
+	bool SaveToExistingDirectory();
 	bool LoadFromFile(const std::string& filePath);
 	//=============================================================================
 

@@ -604,5 +604,5 @@ void DirectusMaterial::SaveMaterial()
     if (m_inspectedMaterial.expired())
         return;
 
-    m_inspectedMaterial.lock()->Save();
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }

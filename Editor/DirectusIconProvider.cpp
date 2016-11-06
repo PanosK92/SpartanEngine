@@ -87,7 +87,7 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     }
 
     // Scene
-    if (FileSystem::IsSupportedScene(filePath))
+    if (FileSystem::IsSceneFile(filePath))
     {
         return m_sceneIcon;
     }
@@ -98,8 +98,8 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
         return m_shaderIcon;
     }
 
-    // Shader
-    if (FileSystem::IsSupportedMaterial(filePath))
+    // Material
+    if (FileSystem::IsMaterialFile(filePath))
     {
         return m_materialIcon;
     }
