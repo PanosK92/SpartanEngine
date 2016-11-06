@@ -88,6 +88,10 @@ bool Scene::SaveToFile(const string& filePathIn)
 	if (FileSystem::GetExtensionFromPath(filePath) != SCENE_EXTENSION)
 		filePath += SCENE_EXTENSION;
 
+	// Any in-memory changes done to resources while running, must be saved...
+	g_context->GetSubsystem<TexturePool>()->SaveTextureMetadata();
+	g_context->GetSubsystem<MaterialPool>()->SaveMaterialMetadata();
+
 	Serializer::StartWriting(filePath);
 
 	// Gather all the paths of any resource files used by the scene
@@ -175,10 +179,9 @@ void Scene::Clear()
 
 	//= Clear all the pools ==================
 	g_context->GetSubsystem<ShaderPool>()->Clear();
-	g_context->GetSubsystem<MaterialPool>()->Clear();
 	g_context->GetSubsystem<TexturePool>()->Clear();
-	g_context->GetSubsystem<MeshPool>()->Clear();	
-		
+	g_context->GetSubsystem<MaterialPool>()->Clear();
+	g_context->GetSubsystem<MeshPool>()->Clear();			
 	GameObjectPool::GetInstance().Clear();
 	//========================================
 

@@ -49,7 +49,9 @@ public:
 private:
 	void Serialize();
 	void Deserialize();
+public:
 	bool SaveMetadata();
+private:
 	bool LoadMetadata();
 	ID3D11ShaderResourceView* CreateID3D11ShaderResourceView(Graphics* graphics);
 public:
@@ -83,7 +85,7 @@ public:
 		if (m_type == Height && !GetGrayscale())
 			m_type = Normal;
 		if (m_type == Normal && GetGrayscale())
-			m_type = Height;		
+			m_type = Height;
 	}
 
 	bool GetGrayscale() { return m_grayscale; }

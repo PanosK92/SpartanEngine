@@ -37,6 +37,9 @@ public:
 	std::weak_ptr<Texture> Add(const std::string& texturePath);
 	void Add(const std::vector<std::string>& texturePaths);
 
+	// Saves all texture metadata (maps memory to disk)
+	void SaveTextureMetadata();
+
 	std::weak_ptr<Texture> GetTextureByName(const std::string& name);
 	std::weak_ptr<Texture> GetTextureByID(const std::string& ID);
 	std::weak_ptr<Texture> GetTextureByPath(const std::string& path);

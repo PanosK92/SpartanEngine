@@ -100,11 +100,13 @@ bool ImageImporter::Load(const string& path, int width, int height, bool scale)
 	if (format == FIF_UNKNOWN)
 	{
 		// Try getting the format from the file extension
-		LOG_WARNING("Couldn't determine image format, attempting to get from file extension...");
+		LOG_WARNING("Failed to determine image format for \"" + path + "\", attempting to detect it from the file's extension...");
 		format = FreeImage_GetFIFFromFilename(path.c_str());
 
 		if (!FreeImage_FIFSupportsReading(format))
-			LOG_WARNING("Detected image format cannot be read.");
+			LOG_WARNING("Failed to detect the image format.");
+		else
+			LOG_WARNING("The image format has been detected succesfully.");
 	}
 
 	// Get image format, format == -1 means the file was not found
