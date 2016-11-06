@@ -100,11 +100,11 @@ bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
 		return false;
 	}
 
-	FileSystem::CreateFolder("Assets/Models/");
-	FileSystem::CreateFolder("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
-	FileSystem::CreateFolder("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
-	FileSystem::CreateFolder("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
-	FileSystem::CreateFolder("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/");
+	FileSystem::CreateDirectory_("Assets/Models/");
+	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
+	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
+	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
+	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/");
 
 	string name = FileSystem::GetFileNameNoExtensionFromPath(filePath);
 	gameObject->SetName(name);
