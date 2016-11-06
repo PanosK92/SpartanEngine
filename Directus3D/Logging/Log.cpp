@@ -79,7 +79,7 @@ void Log::WriteAsText(const string& text)
 	// Delete the previous log file (if it exists)
 	if (m_firstLog)
 	{
-		FileSystem::RemoveFile(m_logFileName);
+		FileSystem::DeleteFile_(m_logFileName);
 		m_firstLog = false;
 	}
 

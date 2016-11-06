@@ -36,7 +36,8 @@ class __declspec(dllexport) FileSystem
 {
 public:
 	static bool FileExists(const std::string& path);
-	static bool RemoveFile(const std::string& filePath);
+	static bool DeleteDirectory(const std::string directory);
+	static bool DeleteFile_(const std::string& filePath);
 	static void CreateFolder(const std::string& path);
 	static void CopyFileFromTo(const std::string& source, const std::string& destination);
 
@@ -59,6 +60,7 @@ public:
 	static std::vector<std::string> GetScriptsFromFilePaths(const std::vector<std::string>& paths);
 	static std::vector<std::string> GetModelsFromFilePaths(const std::vector<std::string>& paths);
 	static std::vector<std::string> GetSupportedModelsInDirectory(const std::string& directory);
+	static std::vector<std::string> GetScenesInDirectory(const std::string& directory);
 
 	static bool IsSupportedImage(const std::string& path);
 	static bool IsSupportedScript(const std::string& path);

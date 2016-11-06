@@ -51,6 +51,9 @@ public:
     virtual void dropEvent(QDropEvent* event);
 
 private:
+    QString GetRootPath();
+    QString GetSelectionPath();
+
     QFileSystemModel* m_fileModel;
     QPoint m_dragStartPosition;
     DirectusIconProvider* m_directusIconProvider;
@@ -63,4 +66,7 @@ signals:
 public slots:
     void ShowContextMenu(QPoint pos);
     void DoubleClick(QModelIndex);
+    void CreateDirectory_();
+    void CreateMaterial();
+    void DeleteSelectedFile();
 };

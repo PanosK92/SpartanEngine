@@ -65,7 +65,6 @@ void Scene::Initialize()
 	m_mainCamera = CreateCamera();
 	CreateSkybox();
 	CreateDirectionalLight();
-
 	Resolve();
 }
 

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <locale>
 #include "../Core/Scene.h"
 #include "../Graphics/Material.h"
+#include <direct.h>
 //========================
 
 //= NAMESPACES =====
@@ -37,7 +38,12 @@ bool FileSystem::FileExists(const string& path)
 	return (stat(path.c_str(), &buffer) == 0);
 }
 
-bool FileSystem::RemoveFile(const string& filePath)
+bool FileSystem::DeleteDirectory(const string directory)
+{
+	return _rmdir(directory.c_str()) != 0 ? true : false;
+}
+
+bool FileSystem::DeleteFile_(const string& filePath)
 {
 	return remove(filePath.c_str()) != 0 ? false : true;
 }
@@ -279,6 +285,18 @@ vector<string> FileSystem::GetModelsFromFilePaths(const vector<string>& paths)
 vector<string> FileSystem::GetSupportedModelsInDirectory(const string& directory)
 {
 	return GetModelsFromFilePaths(GetFilesInDirectory(directory));
+}
+
+vector<string> FileSystem::GetScenesInDirectory(const string& directory)
+{
+	vector<string> sceneFiles;
+
+	auto files = GetFilesInDirectory(directory);
+	for (auto file : files)
+		if (IsSceneFile(file))
+			sceneFiles.push_back(file);
+
+	return sceneFiles;
 }
 
 bool FileSystem::IsSupportedImage(const string& path)
