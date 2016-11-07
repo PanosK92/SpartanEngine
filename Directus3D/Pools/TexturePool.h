@@ -33,7 +33,7 @@ public:
 	TexturePool(Context* context);
 	~TexturePool();
 
-	std::weak_ptr<Texture> Add(std::shared_ptr<Texture> texture);
+	std::weak_ptr<Texture> Add(std::weak_ptr<Texture> texture);
 	std::weak_ptr<Texture> Add(const std::string& texturePath);
 	void Add(const std::vector<std::string>& texturePaths);
 

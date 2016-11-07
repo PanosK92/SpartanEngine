@@ -42,16 +42,18 @@ TexturePool::~TexturePool()
 }
 
 // Adds a texture to the pool directly from memory
-weak_ptr<Texture> TexturePool::Add(shared_ptr<Texture> textureIn)
+weak_ptr<Texture> TexturePool::Add(weak_ptr<Texture> textureIn)
 {
-	if (!textureIn)
+	if (textureIn.expired())
 		return weak_ptr<Texture>();
 
+	// If the texture already exists, return the existing one
 	for (const auto texture : m_textures)
-		if (textureIn->GetID() == texture->GetID())
+		if (textureIn.lock()->GetID() == texture->GetID())
 			return texture;
 
-	m_textures.push_back(textureIn);
+	// If the texture doesn't exist, add it
+	m_textures.push_back(textureIn.lock());
 	return m_textures.back();
 }
 
@@ -77,7 +79,7 @@ weak_ptr<Texture> TexturePool::Add(const string& texturePath)
 // Adds multiple textures to the pool by reading them from image files
 void TexturePool::Add(const vector<string>& imagePaths)
 {
-	for (const string& imagePath : imagePaths)
+	for (const auto& imagePath : imagePaths)
 		Add(imagePath);
 }
 

@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= FORWARD DECLARATIONS =
 class DirectusCore;
 class DirectusInspector;
+class DirectusMaterial;
 //========================
 
 class DirectusMaterialDropTarget : public QLineEdit
@@ -36,7 +37,7 @@ class DirectusMaterialDropTarget : public QLineEdit
     Q_OBJECT
 public:
     explicit DirectusMaterialDropTarget(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, DirectusMaterial* materialInspComp);
 
     // drop support
     virtual void dragEnterEvent(QDragEnterEvent* event);
@@ -46,6 +47,7 @@ public:
 private:
     DirectusCore* m_directusCore;
     DirectusInspector* m_inspector;
+    DirectusMaterial* m_materialInspComp;
 
 signals:
     void MaterialDropped(std::weak_ptr<Material> material);

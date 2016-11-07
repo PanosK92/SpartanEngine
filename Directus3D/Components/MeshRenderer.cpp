@@ -136,7 +136,7 @@ weak_ptr<Material> MeshRenderer::GetMaterial() const
 
 void MeshRenderer::SetMaterial(weak_ptr<Material> material)
 {
-	m_material = material;
+	m_material = g_context->GetSubsystem<MaterialPool>()->Add(material);
 }
 
 weak_ptr<Material> MeshRenderer::SetMaterial(const string& filePath)

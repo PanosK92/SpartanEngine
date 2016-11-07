@@ -265,6 +265,8 @@ Vector3 Camera::ScreenToWorldPoint(const Vector2& screenPoint)
 
 	return rayDirection;
 	*/
+
+	return Vector3::Zero;
 }
 
 /*------------------------------------------------------------------------------

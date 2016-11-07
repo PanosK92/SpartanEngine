@@ -315,8 +315,9 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
 
 void DirectusMaterial::ReflectFile(string filePath)
 {
+    Context* context = m_directusCore->GetEngineSocket()->GetContext();
     m_matFromFile.reset();
-    m_matFromFile = make_shared<Material>(m_directusCore->GetEngineSocket()->GetContext());
+    m_matFromFile = make_shared<Material>(context);
     m_matFromFile->LoadFromFile(filePath);
 
     m_inspectedMaterial = m_matFromFile;
@@ -539,7 +540,6 @@ void DirectusMaterial::MapRoughness()
 
     m_directusCore->Update();
 }
-
 
 void DirectusMaterial::MapMetallic()
 {
