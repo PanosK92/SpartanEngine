@@ -41,8 +41,8 @@ Light::Light()
 	m_intensity = 5.0f;
 	m_color = Vector4(
 		255.0f / 255.0f,
-		244.0f / 255.0f,
-		214.0f / 255.0f,
+		196.0f / 255.0f,
+		147.0f / 255.0f,
 		1.0f
 	);
 	m_bias = 0.0003f;

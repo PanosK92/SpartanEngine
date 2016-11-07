@@ -56,19 +56,17 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     if(FileSystem::IsSupportedImage(filePath))
     {
         int width = 100;
-        int heigh = 100;
-        QPixmap pixmap;
-        m_imageLoader->Load(filePath, width, heigh);
+        int height = 100;
+        m_imageLoader->Load(filePath, width, height);
 
-        QImage image;
-        image =  QImage(
+        auto image =  QImage(
                     (const uchar*)m_imageLoader->GetRGBA(),
                     width,
-                    heigh,
+                    height,
                     QImage::Format_RGBA8888
                     );
 
-        pixmap = QPixmap::fromImage(image);
+        auto pixmap = QPixmap::fromImage(image);
 
         m_imageLoader->Clear();
         return pixmap;
@@ -76,33 +74,23 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
 
     // Model
     if (FileSystem::IsSupportedModel(filePath))
-    {
         return m_modelIcon;
-    }
 
     // Script
     if (FileSystem::IsSupportedScript(filePath))
-    {
         return m_scriptIcon;
-    }
 
     // Scene
     if (FileSystem::IsSceneFile(filePath))
-    {
         return m_sceneIcon;
-    }
 
     // Shader
     if (FileSystem::IsSupportedShader(filePath))
-    {
         return m_shaderIcon;
-    }
 
     // Material
     if (FileSystem::IsMaterialFile(filePath))
-    {
         return m_materialIcon;
-    }
 
     // Unknown
     return m_unknownIcon;

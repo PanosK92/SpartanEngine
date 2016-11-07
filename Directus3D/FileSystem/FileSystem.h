@@ -36,14 +36,14 @@ class __declspec(dllexport) FileSystem
 {
 public:
 	//= DIRECTORIES ==================================================
-	static void CreateDirectory_(const std::string& path);
+	static bool CreateDirectory_(const std::string& path);
 	static bool OpenDirectoryInExplorer(const std::string& directory);
-	static bool DeleteDirectory(const std::string directory);
+	static bool DeleteDirectory(const std::string& directory);
 
 	//= FILES ========================================================
 	static bool FileExists(const std::string& path);
 	static bool DeleteFile_(const std::string& filePath);
-	static void CopyFileFromTo(const std::string& source, const std::string& destination);
+	static bool CopyFileFromTo(const std::string& source, const std::string& destination);
 
 	static std::string GetFileNameFromPath(const std::string& path);
 	static std::string GetFileNameNoExtensionFromPath(const std::string& path);
@@ -57,7 +57,7 @@ public:
 	static bool IsMaterialFile(const std::string& filePath);
 	static bool IsSceneFile(const std::string& filePath);
 
-	static std::vector<std::string> GetFoldersInDirectory(const std::string& directory);
+	static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
 	static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
 	static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& directory);
 	static std::vector<std::string> GetImagesFromFilePaths(const std::vector<std::string>& paths);

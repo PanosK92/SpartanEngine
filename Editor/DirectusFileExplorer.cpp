@@ -49,6 +49,7 @@ void DirectusFileExplorer::Initialize(
 {
     QString root = "Assets";
     setAcceptDrops(true);
+    setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     m_fileModel = new QFileSystemModel(this);
     m_fileModel->setFilter(QDir::Files | QDir::AllDirs | QDir::NoDotAndDotDot); // Set a filter that displays only folders
@@ -77,6 +78,9 @@ void DirectusFileExplorer::Initialize(
 
     // Context menu
     connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ShowContextMenu(QPoint)));
+
+    // Rename
+    connect(this, SIGNAL(objectNameChanged(QString)), this, SLOT(RenameItem(QString)));
 
     // Double click
     connect(this, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(DoubleClick(QModelIndex)));
@@ -265,6 +269,11 @@ void DirectusFileExplorer::ShowContextMenu(QPoint pos)
     contextMenu.addAction(&actionImportNewAsset);
 
     contextMenu.exec(QCursor::pos());
+}
+
+void DirectusFileExplorer::RenameItem(QString name)
+{
+    LOG_INFO("Triggered");
 }
 
 void DirectusFileExplorer::DoubleClick(QModelIndex modelIndex)
