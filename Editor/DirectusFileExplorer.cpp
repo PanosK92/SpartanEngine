@@ -54,6 +54,7 @@ void DirectusFileExplorer::Initialize(
     m_fileModel->setFilter(QDir::Files | QDir::AllDirs | QDir::NoDotAndDotDot); // Set a filter that displays only folders
     m_fileModel->setRootPath(root);  // Set the root path
 
+    m_directusCore = directusCore;
     m_hierarchy = hierarchy;
     m_inspector = inspector;
 
@@ -76,6 +77,7 @@ void DirectusFileExplorer::Initialize(
 
     // Context menu
     connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ShowContextMenu(QPoint)));
+
     // Double click
     connect(this, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(DoubleClick(QModelIndex)));
 }
@@ -113,6 +115,7 @@ void DirectusFileExplorer::mousePressEvent(QMouseEvent* event)
 
     if(event->button() == Qt::RightButton)
     {
+        clearSelection();
         selectionModel()->setCurrentIndex(indexAt(event->pos()), QItemSelectionModel::Select);
         emit customContextMenuRequested(event->pos());
     }
@@ -280,7 +283,7 @@ void DirectusFileExplorer::CreateDirectory_()
 
 void DirectusFileExplorer::CreateMaterial()
 {
-    auto material = std::make_shared<Material>(nullptr);
+    auto material = std::make_shared<Material>(m_directusCore->GetEngineSocket()->GetContext());
     material->Save(GetRootPath().toStdString() + "/NewMaterial", true);
 }
 

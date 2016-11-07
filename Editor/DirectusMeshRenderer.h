@@ -32,17 +32,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QCheckBox>
 #include "DirectusDropDownButton.h"
 #include "DirectusCore.h"
-#include "DirectusQLineEditDropTarget.h"
+#include "DirectusMaterialDropTarget.h"
 //=====================================
 
 class DirectusInspector;
+class DirectusMaterial;
 
 class DirectusMeshRenderer : public QWidget
 {
     Q_OBJECT
 public:
     explicit DirectusMeshRenderer(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
+    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, DirectusMaterial* materialUIComp, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
 
 private:
@@ -63,7 +64,7 @@ private:
 
     //= MATERIAL =========================
     QLabel* m_materialLabel;
-    DirectusQLineEditDropTarget* m_material;
+    DirectusMaterialDropTarget* m_material;
     //====================================
 
     //= LINE ========================
@@ -76,11 +77,15 @@ private:
     MeshRenderer* m_inspectedMeshRenderer;
     DirectusCore* m_directusCore;
     DirectusInspector* m_inspector;
+    DirectusMaterial* m_materialUIComp;
     //====================================
 
     void ReflectCastShadows();
     void ReflectReceiveShadows();
     void ReflectMaterial();
+
+ public slots:
+    void DoMaterialInspCompReflection();
 
 public slots:
     void MapCastShadows();

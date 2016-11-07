@@ -30,10 +30,11 @@ DirectusMeshRenderer::DirectusMeshRenderer(QWidget *parent) : QWidget(parent)
 
 }
 
-void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
+void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, DirectusMaterial* materialUIComp, QWidget* mainWindow)
 {
     m_directusCore = directusCore;
     m_inspector = inspector;
+    m_materialUIComp = materialUIComp;
 
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
@@ -64,7 +65,7 @@ void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspec
 
     //= MATERIAL ==============================================
     m_materialLabel = new QLabel("Material");
-    m_material = new DirectusQLineEditDropTarget();
+    m_material = new DirectusMaterialDropTarget();
     m_material->Initialize(m_directusCore, m_inspector);
     //=========================================================
 
@@ -97,9 +98,14 @@ void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspec
     m_gridLayout->addWidget(m_line, 4, 0, 1, 3);
     //============================================================
 
+    // Gear button on the top left
     connect(m_optionsButton,            SIGNAL(Remove()),       this, SLOT(Remove()));
+    // Cast shadows check box
     connect(m_castShadowsCheckBox,      SIGNAL(clicked(bool)),  this, SLOT(MapCastShadows()));
+    // Receive shadows check box
     connect(m_receiveShadowsCheckBox,   SIGNAL(clicked(bool)),  this, SLOT(MapReceiveShadows()));
+    // DirectusQLineEditDropTarget
+    connect(m_material,   SIGNAL(MaterialDropped(std::weak_ptr<Material>)),  this, SLOT(DoMaterialInspCompReflection()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -160,6 +166,18 @@ void DirectusMeshRenderer::ReflectMaterial()
 
     std::string materialName = material.lock()->GetName();
     m_material->setText(QString::fromStdString(materialName));
+}
+
+// This makes the material component of the inspector to reflect
+// a material. It has little to do with DirectusMaterialDropTarget.
+void DirectusMeshRenderer::DoMaterialInspCompReflection()
+{
+    auto material = m_inspectedMeshRenderer->GetMaterial();
+
+    if (!m_materialUIComp || material.expired())
+        return;
+
+    m_materialUIComp->Reflect(m_inspectedMeshRenderer->g_gameObject);
 }
 
 void DirectusMeshRenderer::MapCastShadows()

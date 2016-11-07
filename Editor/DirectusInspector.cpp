@@ -53,8 +53,11 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_meshFilter = new DirectusMeshFilter();
     m_meshFilter->Initialize(m_directusCore, this, mainWindow);
 
+    m_material = new DirectusMaterial();
+    m_material->Initialize(m_directusCore, this, mainWindow);
+
     m_meshRenderer = new DirectusMeshRenderer();
-    m_meshRenderer->Initialize(m_directusCore, this, mainWindow);
+    m_meshRenderer->Initialize(m_directusCore, this, m_material, mainWindow);
 
     m_rigidBody = new DirectusRigidBody();
     m_rigidBody->Initialize(m_directusCore, this, mainWindow);
@@ -70,9 +73,6 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
 
     m_scripts.push_back(new DirectusScript());
     m_scripts[0]->Initialize(m_directusCore, this, mainWindow);
-
-    m_material = new DirectusMaterial();
-    m_material->Initialize(m_directusCore, this, mainWindow);
 
     // Make the components to stack nicely below each other
     // instead of spreading to fill the entire space.

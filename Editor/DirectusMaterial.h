@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QComboBox>
 #include "Math/Vector2.h"
 #include "DirectusCore.h"
-#include "DirectusTexture.h"
+#include "DirectusMaterialTextureDropTarget.h"
 //====================================
 
 class DirectusMaterial : public QWidget
@@ -44,6 +44,7 @@ public:
     void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
     void Reflect(GameObject* gameobject);
     void ReflectFile(std::string filepath);
+    std::weak_ptr<Material> GetInspectedMaterial();
 
 private:
 
@@ -57,47 +58,47 @@ private:
     //===============================
 
     //= ALBEDO ======================
-    DirectusTexture* m_albedoImage;
+    DirectusMaterialTextureDropTarget* m_albedoImage;
     QLabel* m_albedoLabel;
     DirectusColorPicker* m_albedoColor;
     //===============================
 
     //= ROUGHNESS ===================
-    DirectusTexture* m_roughnessImage;
+    DirectusMaterialTextureDropTarget* m_roughnessImage;
     QLabel* m_roughnessLabel;
     DirectusComboSliderText* m_roughness;
     //===============================
 
     //= METALLIC ====================
-    DirectusTexture* m_metallicImage;
+    DirectusMaterialTextureDropTarget* m_metallicImage;
     QLabel* m_metallicLabel;
     DirectusComboSliderText* m_metallic;
     //===============================
 
     //= NORMAL ======================
-    DirectusTexture* m_normalImage;
+    DirectusMaterialTextureDropTarget* m_normalImage;
     QLabel* m_normalLabel;
     DirectusComboSliderText* m_normal;
     //===============================
 
     //= HEIGHT ======================
-    DirectusTexture* m_heightImage;
+    DirectusMaterialTextureDropTarget* m_heightImage;
     QLabel* m_heightLabel;
     DirectusComboSliderText* m_height;
     //===============================
 
     //= OCCLUSION ===================
-    DirectusTexture* m_occlusionImage;
+    DirectusMaterialTextureDropTarget* m_occlusionImage;
     QLabel* m_occlusionLabel;
     //===============================
 
     //= EMISSION ====================
-    DirectusTexture* m_emissionImage;
+    DirectusMaterialTextureDropTarget* m_emissionImage;
     QLabel* m_emissionLabel;
     //===============================
 
     //= MASK ========================
-    DirectusTexture* m_maskImage;
+    DirectusMaterialTextureDropTarget* m_maskImage;
     QLabel* m_maskLabel;
     //===============================
 

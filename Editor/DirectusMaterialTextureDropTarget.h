@@ -24,18 +24,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include <QLabel>
 #include "DirectusCore.h"
+#include "Graphics/Material.h"
 //============================
 
 //= FORWARD DECLARATIONS =
 class DirectusInspector;
 //========================
 
-class DirectusTexture : public QLabel
+class DirectusMaterialTextureDropTarget : public QLabel
 {
     Q_OBJECT
 public:
-    explicit DirectusTexture(QWidget* parent = 0);
+    explicit DirectusMaterialTextureDropTarget(QWidget* parent = 0);
     void Initialize(DirectusCore* socket, DirectusInspector* inspector, TextureType textureType);
+    void SetMaterial(std::weak_ptr<Material> material);
     void LoadImageAsync(std::string filePath);
     virtual void dragEnterEvent(QDragEnterEvent* event);
     virtual void dragMoveEvent (QDragMoveEvent* event);
@@ -45,5 +47,6 @@ private:
     std::string m_currentFilePath;
     DirectusCore* m_directusCore;
     DirectusInspector* m_inspector;
+    std::weak_ptr<Material> m_material;
     TextureType m_textureType;
 };

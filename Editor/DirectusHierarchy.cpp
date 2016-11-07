@@ -86,6 +86,13 @@ void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
             selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
         }
     }
+
+    if(event->button() == Qt::RightButton)
+    {
+        clearSelection();
+        selectionModel()->setCurrentIndex(indexAt(event->pos()), QItemSelectionModel::Select);
+        emit customContextMenuRequested(event->pos());
+    }
 }
 
 void DirectusHierarchy::selectionChanged(const QItemSelection &selected, const QItemSelection &deselected)

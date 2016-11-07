@@ -54,7 +54,7 @@ public:
 	//= MATERIAL ===============================
 	std::weak_ptr<Material> GetMaterial() const;
 	void SetMaterial(std::weak_ptr<Material> material);
-	void SetMaterial(const std::string& filePath);
+	std::weak_ptr<Material> SetMaterial(const std::string& filePath);
 	
 	bool HasMaterial() const;
 

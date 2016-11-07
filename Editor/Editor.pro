@@ -37,7 +37,6 @@ SOURCES += main.cpp\
     DirectusAssetLoader.cpp \
     DirectusComboLabelText.cpp \
     DirectusComboSliderText.cpp \
-    DirectusTexture.cpp \
     DirectusMeshFilter.cpp \
     DirectusColorPicker.cpp \
     DirectusStatsLabel.cpp \
@@ -45,7 +44,8 @@ SOURCES += main.cpp\
     DirectusProgressBar.cpp \
     DirectusFileDialog.cpp \
     DirectusIconProvider.cpp \
-    DirectusQLineEditDropTarget.cpp
+    DirectusMaterialDropTarget.cpp \
+    DirectusMaterialTextureDropTarget.cpp
 
 HEADERS  += editor.h \
     DirectusPlayButton.h \
@@ -70,7 +70,6 @@ HEADERS  += editor.h \
     DirectusAssetLoader.h \
     DirectusComboLabelText.h \
     DirectusComboSliderText.h \
-    DirectusTexture.h \
     DirectusMeshFilter.h \
     DirectusColorPicker.h \
     DirectusStatsLabel.h \
@@ -78,7 +77,8 @@ HEADERS  += editor.h \
     DirectusProgressBar.h \
     DirectusFileDialog.h \
     DirectusIconProvider.h \
-    DirectusQLineEditDropTarget.h
+    DirectusMaterialDropTarget.h \
+    DirectusMaterialTextureDropTarget.h
 
 FORMS    += editor.ui \
     AboutDialog.ui \
