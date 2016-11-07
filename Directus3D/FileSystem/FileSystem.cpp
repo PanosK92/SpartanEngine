@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../Graphics/Material.h"
 #include <direct.h>
+#include "../Logging/Log.h"
 //========================
 
 //= NAMESPACES =====
@@ -33,27 +34,48 @@ using namespace std;
 //==================
 
 //= FOLDERS ================================================================================================
-void FileSystem::CreateDirectory_(const string& path)
+bool FileSystem::CreateDirectory_(const string& path)
 {
 	if (!CreateDirectory(path.c_str(), nullptr))
 	{
-		DWORD err = GetLastError();
-		if (err != ERROR_ALREADY_EXISTS)
-		{
-			// do whatever handling you'd like
-		}
+		//DWORD err = GetLastError();
+		//if (err != ERROR_ALREADY_EXISTS)
+		return false;
 	}
+
+	return true;
 }
 
 bool FileSystem::OpenDirectoryInExplorer(const string& directory)
 {
 	HINSTANCE result = ShellExecute(nullptr, "open", directory.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
-	return !FAILED(result) ? true : false;
+	return FAILED(result) ? false : true;
 }
 
-bool FileSystem::DeleteDirectory(const string directory)
+bool FileSystem::DeleteDirectory(const string& directory)
 {
-	return _rmdir(directory.c_str()) != 0 ? true : false;
+	bool deleted = _rmdir(directory.c_str()) != 0 ? false : true;
+
+	// Deletion failure is usually caused by the fact 
+	// that the directory to be deleted must be empty.
+	if (!deleted)
+	{
+		// Delete all the files contained in the directory
+		auto files = GetFilesInDirectory(directory);
+		for (const auto& file : files)
+			DeleteFile_(file);
+
+		// Delete all the directories contained in the directory
+		//auto directories = GetDirectoriesInDirectory(directory);
+		//for (const auto& dir : directories)
+			//DeleteDirectory(dir);
+		// MUST FIX THIS
+
+		// Try deleting now
+		deleted = _rmdir(directory.c_str()) != 0 ? false : true;
+	}
+
+	return deleted;
 }
 
 //= FILES ================================================================================================
@@ -68,10 +90,10 @@ bool FileSystem::DeleteFile_(const string& filePath)
 	return remove(filePath.c_str()) != 0 ? false : true;
 }
 
-void FileSystem::CopyFileFromTo(const string& source, const string& destination)
+bool FileSystem::CopyFileFromTo(const string& source, const string& destination)
 {
-	if(!CopyFile(source.c_str(), destination.c_str(), true))
-		DWORD err = GetLastError();
+	//DWORD err = GetLastError();
+	return !CopyFile(source.c_str(), destination.c_str(), true);
 }
 
 string FileSystem::GetFileNameFromPath(const string& path)
@@ -189,22 +211,25 @@ bool FileSystem::IsSceneFile(const string& filePath)
 	return GetExtensionFromPath(filePath) == SCENE_EXTENSION ? true : false;
 }
 
-vector<string> FileSystem::GetFoldersInDirectory(const string& directory)
+vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)
 {
-	vector<string> folderPaths;
+	vector<string> directoryPaths;
 
 	DIR* dir = opendir(directory.c_str());
 	struct dirent* entry = readdir(dir);
 	while (entry != nullptr)
 	{
 		if (entry->d_type == DT_DIR)
-			folderPaths.push_back(entry->d_name);
+			directoryPaths.push_back(entry->d_name);
 
 		entry = readdir(dir);
 	}
 	closedir(dir);
 
-	return folderPaths;
+	// erase the first 2 elements which are "." and ".."
+	directoryPaths.erase(directoryPaths.begin(), directoryPaths.begin() + 2);
+
+	return directoryPaths;
 }
 
 vector<string> FileSystem::GetFilesInDirectory(const string& directory)

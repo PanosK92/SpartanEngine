@@ -66,6 +66,7 @@ signals:
 
 public slots:
     void ShowContextMenu(QPoint pos);
+    void RenameItem(QString);
     void DoubleClick(QModelIndex);
     void CreateDirectory_();
     void CreateMaterial();

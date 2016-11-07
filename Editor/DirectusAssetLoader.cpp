@@ -93,8 +93,7 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
     {
         imageLoader->Load(m_filePath, m_width, m_height);
 
-        QImage image;
-        image =  QImage(
+        auto image =  QImage(
                     (const uchar*)imageLoader->GetRGBA(),
                     m_width,
                     m_height,

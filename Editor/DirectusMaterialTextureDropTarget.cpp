@@ -72,7 +72,7 @@ void DirectusMaterialTextureDropTarget::LoadImageAsync(std::string filePath)
     if (m_currentFilePath == filePath)
         return;
 
-    m_currentFilePath= filePath;
+    m_currentFilePath = filePath;
     QThread* thread = new QThread();
     DirectusAssetLoader* imageLoader = new DirectusAssetLoader();
 

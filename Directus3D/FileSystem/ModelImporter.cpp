@@ -323,15 +323,25 @@ shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* m
 		if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			AddTextureToMaterial(engineMaterial, Albedo, texturePath.data);
 
-	//= OCCLUSION TEXTURE ====================================================================================================
-	if (material->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
-		if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			AddTextureToMaterial(engineMaterial, Occlusion, texturePath.data);
+	//= SPECULAR (used as ROUGHNESS) TEXTURE =================================================================================
+	if (material->GetTextureCount(aiTextureType_SHININESS) > 0)
+		if (material->GetTexture(aiTextureType_SHININESS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			AddTextureToMaterial(engineMaterial, Roughness, texturePath.data);
+
+	//= AMBIENT (used as METALLIC) TEXTURE ===================================================================================
+	if (material->GetTextureCount(aiTextureType_AMBIENT) > 0)
+		if (material->GetTexture(aiTextureType_AMBIENT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			AddTextureToMaterial(engineMaterial, Metallic, texturePath.data);
 
 	//= NORMAL TEXTURE ======================================================================================================
 	if (material->GetTextureCount(aiTextureType_NORMALS) > 0)
 		if (material->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			AddTextureToMaterial(engineMaterial, Normal, texturePath.data);
+
+	//= OCCLUSION TEXTURE ====================================================================================================
+	if (material->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
+		if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			AddTextureToMaterial(engineMaterial, Occlusion, texturePath.data);
 
 	//= HEIGHT TEXTURE =====================================================================================================
 	if (material->GetTextureCount(aiTextureType_HEIGHT) > 0)

@@ -2469,7 +2469,7 @@ QTabBar::tab:last
                           <enum>Qt::DefaultContextMenu</enum>
                          </property>
                          <property name="editTriggers">
-                          <set>QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                          <set>QAbstractItemView::DoubleClicked</set>
                          </property>
                          <property name="dragEnabled">
                           <bool>true</bool>
