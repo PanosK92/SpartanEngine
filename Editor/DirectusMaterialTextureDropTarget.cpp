@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //==================================
-#include "DirectusTexture.h"
+#include "DirectusMaterialTextureDropTarget.h"
 #include "DirectusAssetLoader.h"
 #include <QThread>
 #include <QDragMoveEvent>
@@ -31,12 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/MeshRenderer.h"
 //==================================
 
-DirectusTexture::DirectusTexture(QWidget *parent) : QLabel(parent)
+DirectusMaterialTextureDropTarget::DirectusMaterialTextureDropTarget(QWidget *parent) : QLabel(parent)
 {
     setAcceptDrops(true);
 }
 
-void DirectusTexture::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, TextureType textureType)
+void DirectusMaterialTextureDropTarget::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, TextureType textureType)
 {
     m_directusCore = directusCore;
     m_inspector = inspector;
@@ -62,7 +62,12 @@ void DirectusTexture::Initialize(DirectusCore* directusCore, DirectusInspector* 
                 );
 }
 
-void DirectusTexture::LoadImageAsync(std::string filePath)
+void DirectusMaterialTextureDropTarget::SetMaterial(std::weak_ptr<Material> material)
+{
+    m_material = material;
+}
+
+void DirectusMaterialTextureDropTarget::LoadImageAsync(std::string filePath)
 {
     if (m_currentFilePath == filePath)
         return;
@@ -84,7 +89,7 @@ void DirectusTexture::LoadImageAsync(std::string filePath)
 }
 
 //= DROP ============================================================================
-void DirectusTexture::dragEnterEvent(QDragEnterEvent* event)
+void DirectusMaterialTextureDropTarget::dragEnterEvent(QDragEnterEvent* event)
 {
     if (!event->mimeData()->hasText())
     {
@@ -96,7 +101,7 @@ void DirectusTexture::dragEnterEvent(QDragEnterEvent* event)
     event->accept();
 }
 
-void DirectusTexture::dragMoveEvent(QDragMoveEvent* event)
+void DirectusMaterialTextureDropTarget::dragMoveEvent(QDragMoveEvent* event)
 {
     if (!event->mimeData()->hasText())
     {
@@ -108,11 +113,9 @@ void DirectusTexture::dragMoveEvent(QDragMoveEvent* event)
     event->accept();
 }
 
-void DirectusTexture::dropEvent(QDropEvent* event)
+void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
 {
-    GameObject* gameObject = m_inspector->GetInspectedGameObject();
-
-    if (!gameObject || !event->mimeData()->hasText())
+    if (!event->mimeData()->hasText() || m_material.expired())
     {
         event->ignore();
         return;
@@ -131,13 +134,9 @@ void DirectusTexture::dropEvent(QDropEvent* event)
         imagePath = FileSystem::GetRelativePathFromAbsolutePath(imagePath);
 
         // Set the texture to the material
-        auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
-        if (meshRenderer)
-        {
-            auto material = meshRenderer->GetMaterial();
-            if (!material.expired())
-                material.lock()->SetTexture(imagePath, m_textureType);
-        }
+        m_material.lock()->SetTexture(imagePath, m_textureType);
+
+        m_material.lock()->SaveToExistingDirectory();
 
         // Update the engine
         m_directusCore->Update();

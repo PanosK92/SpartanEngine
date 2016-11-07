@@ -21,20 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-// INCLUDES ========
+// INCLUDES ==================
 #include <QLineEdit>
-//==================
+#include "Graphics/Material.h"
+//============================
 
 //= FORWARD DECLARATIONS =
 class DirectusCore;
 class DirectusInspector;
 //========================
 
-class DirectusQLineEditDropTarget : public QLineEdit
+class DirectusMaterialDropTarget : public QLineEdit
 {
     Q_OBJECT
 public:
-    explicit DirectusQLineEditDropTarget(QWidget *parent = 0);
+    explicit DirectusMaterialDropTarget(QWidget *parent = 0);
     void Initialize(DirectusCore* directusCore, DirectusInspector* inspector);
 
     // drop support
@@ -47,6 +48,7 @@ private:
     DirectusInspector* m_inspector;
 
 signals:
+    void MaterialDropped(std::weak_ptr<Material> material);
 
 public slots:
 };

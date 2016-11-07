@@ -58,6 +58,7 @@ private:
     QPoint m_dragStartPosition;
     DirectusIconProvider* m_directusIconProvider;
     DirectusFileDialog* m_fileDialog;
+    DirectusCore* m_directusCore;
     DirectusHierarchy* m_hierarchy;
     DirectusInspector* m_inspector;
 

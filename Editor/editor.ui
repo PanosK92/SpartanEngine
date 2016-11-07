@@ -287,7 +287,6 @@ QTreeView::item:selected
 	background-color: rgb(62, 95, 150);
 	color: white;
 	border-style: none;
-outline:none;
 }
 
 QTreeWidget::item:hover 

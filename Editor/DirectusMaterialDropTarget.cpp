@@ -20,29 +20,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // INCLUDES ============================
-#include "DirectusQLineEditDropTarget.h"
+#include "DirectusMaterialDropTarget.h"
 #include "DirectusCore.h"
 #include "DirectusInspector.h"
 #include <QDragMoveEvent>
 #include <QMimeData>
 #include "Components/MeshRenderer.h"
+#include "Graphics/Material.h"
 //======================================
 
-DirectusQLineEditDropTarget::DirectusQLineEditDropTarget(QWidget* parent) : QLineEdit(parent)
+DirectusMaterialDropTarget::DirectusMaterialDropTarget(QWidget* parent) : QLineEdit(parent)
 {
     setAcceptDrops(true);
     setReadOnly(true);
     //setEnabled(false);
 }
 
-void DirectusQLineEditDropTarget::Initialize(DirectusCore* directusCore, DirectusInspector* inspector)
+void DirectusMaterialDropTarget::Initialize(DirectusCore* directusCore, DirectusInspector* inspector)
 {
     m_directusCore = directusCore;
     m_inspector = inspector;
 }
 
 //= DROP ============================================================================
-void DirectusQLineEditDropTarget::dragEnterEvent(QDragEnterEvent* event)
+void DirectusMaterialDropTarget::dragEnterEvent(QDragEnterEvent* event)
 {
     // All data is passed around via text, so check if it's there
     if (!event->mimeData()->hasText())
@@ -61,7 +62,7 @@ void DirectusQLineEditDropTarget::dragEnterEvent(QDragEnterEvent* event)
     event->accept();
 }
 
-void DirectusQLineEditDropTarget::dragMoveEvent(QDragMoveEvent* event)
+void DirectusMaterialDropTarget::dragMoveEvent(QDragMoveEvent* event)
 {
     // All data is passed around via text, so check if it's there
     if (!event->mimeData()->hasText())
@@ -80,7 +81,7 @@ void DirectusQLineEditDropTarget::dragMoveEvent(QDragMoveEvent* event)
     event->accept();
 }
 
-void DirectusQLineEditDropTarget::dropEvent(QDropEvent* event)
+void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
 {
     GameObject* gameObject = m_inspector->GetInspectedGameObject();
 
@@ -107,7 +108,13 @@ void DirectusQLineEditDropTarget::dropEvent(QDropEvent* event)
     materialPath = FileSystem::GetRelativePathFromAbsolutePath(materialPath);
 
     // Set the material to the mesh renderer
-    gameObject->GetComponent<MeshRenderer>()->SetMaterial(materialPath);
+    auto material = gameObject->GetComponent<MeshRenderer>()->SetMaterial(materialPath);
+
+    // Set the text of the QLineEdit
+    this->setText(QString::fromStdString(material.lock()->GetName()));
+
+    // Emit a signal with the material
+    emit MaterialDropped(material);
 
     // Update the engine
     m_directusCore->Update();
