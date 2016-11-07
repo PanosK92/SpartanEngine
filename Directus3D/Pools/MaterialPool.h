@@ -37,7 +37,7 @@ public:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/	
-	std::weak_ptr<Material> Add(std::shared_ptr<Material> material);
+	std::weak_ptr<Material> Add(std::weak_ptr<Material> material);
 	std::weak_ptr<Material> Add(const std::string& filePath);
 	void Add(const std::vector<std::string>& filePaths);
 
@@ -51,12 +51,9 @@ public:
 	const std::vector<std::shared_ptr<Material>>& GetAllMaterials();
 
 private:
-	std::vector<std::shared_ptr<Material>> m_materials;
-
-	/*------------------------------------------------------------------------------
-							[HELPER FUNCTIONS]
-	------------------------------------------------------------------------------*/
-	std::shared_ptr<Material> m_materialDefault;
-	std::shared_ptr<Material> m_materialDefaultSkybox;
 	void GenerateDefaultMaterials();
+
+	std::vector<std::shared_ptr<Material>> m_materials;
+	std::shared_ptr<Material> m_materialDefault;
+	std::shared_ptr<Material> m_materialDefaultSkybox;	
 };

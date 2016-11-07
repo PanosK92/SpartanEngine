@@ -59,6 +59,8 @@ public:
 	bool HasMaterial() const;
 
 private:
+	void LoadMaterialTextures();
+
 	std::weak_ptr<Material> m_material;
 	bool m_castShadows;
 	bool m_receiveShadows;

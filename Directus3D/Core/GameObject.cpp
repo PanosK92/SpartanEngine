@@ -82,8 +82,8 @@ void GameObject::Initialize(Context* context)
 void GameObject::Start()
 {
 	// call component Start()
-	for (auto it = m_components.begin(); it != m_components.end(); ++it)
-		it->second->Start();
+	for (auto const it : m_components)
+		it.second->Start();
 }
 
 void GameObject::Update()
@@ -92,8 +92,8 @@ void GameObject::Update()
 		return;
 
 	// call component Update()
-	for (auto it = m_components.begin(); it != m_components.end(); ++it)
-		it->second->Update();
+	for (auto const it : m_components)
+		it.second->Update();
 }
 
 string GameObject::GetName()
@@ -144,10 +144,10 @@ void GameObject::Serialize()
 	Serializer::WriteBool(m_hierarchyVisibility);
 
 	Serializer::WriteInt(m_components.size());
-	for (auto it = m_components.begin(); it != m_components.end(); ++it)
+	for (auto const it : m_components)
 	{
-		Serializer::WriteSTR(it->first); // save component's type
-		Serializer::WriteSTR(it->second->g_ID); // save component's id
+		Serializer::WriteSTR(it.first); // save component's type
+		Serializer::WriteSTR(it.second->g_ID); // save component's id
 	}
 
 	for (auto it = m_components.begin(); it != m_components.end(); ++it)
@@ -223,12 +223,10 @@ Type* GameObject::AddComponent()
 template <class Type>
 Type* GameObject::GetComponent()
 {
-	for (auto it = m_components.begin(); it != m_components.end(); ++it)
+	for (auto const& it : m_components)
 	{
-		IComponent* component = it->second;
-
 		// casting failure == nullptr
-		Type* typed_cmp = dynamic_cast<Type*>(component);
+		Type* typed_cmp = dynamic_cast<Type*>(it.second);
 		if (typed_cmp)
 			return typed_cmp;
 	}
@@ -241,12 +239,10 @@ vector<Type*> GameObject::GetComponents()
 {
 	vector<Type*> components;
 
-	for (auto it = m_components.begin(); it != m_components.end(); ++it)
+	for (auto const& it : m_components)
 	{
-		IComponent* component = it->second;
-
 		// casting failure == nullptr
-		Type* typed_cmp = dynamic_cast<Type*>(component);
+		Type* typed_cmp = dynamic_cast<Type*>(it.second);
 		if (typed_cmp)
 			components.push_back(typed_cmp);
 	}

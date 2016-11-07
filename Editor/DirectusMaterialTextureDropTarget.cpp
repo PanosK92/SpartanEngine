@@ -125,8 +125,7 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
     event->accept();
 
     // Get the ID of the texture being dragged
-    const QMimeData *mime = event->mimeData();
-    std::string imagePath = mime->text().toStdString();
+    std::string imagePath = event->mimeData()->text().toStdString();
 
     if (FileSystem::IsSupportedImage(imagePath))
     {
@@ -136,10 +135,11 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
         // Set the texture to the material
         m_material.lock()->SetTexture(imagePath, m_textureType);
 
-        m_material.lock()->SaveToExistingDirectory();
-
         // Update the engine
         m_directusCore->Update();
+
+        // Save the changes
+        m_material.lock()->SaveToExistingDirectory();
 
         // Load the image for the slot
         LoadImageAsync(imagePath);

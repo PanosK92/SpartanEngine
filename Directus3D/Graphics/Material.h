@@ -53,6 +53,7 @@ public:
 	//=============================================================================
 
 	//= TEXTURES ==================================================================
+	void LoadUnloadedTextures();
 	void SetTexture(std::weak_ptr<Texture> texture);
 	void SetTexture(const std::string& textureID);
 	void SetTexture(const std::string& texturePath, TextureType type);
@@ -131,10 +132,14 @@ public:
 	//=============================================================================
 
 private:
+	void DeleteTexture(std::weak_ptr<Texture> texture);
 	void TextureBasedMultiplierAdjustment();
 
 	std::weak_ptr<ShaderVariation> m_shader;
-	std::vector<std::weak_ptr<Texture>> m_textures;
+	// The reason behind this mess it that materials can exists alone as a file, yet
+	// they support some editing via the inspector, so some data must always be known
+	// even if the actual textures haven't been loaded yet.
+	std::multimap<std::pair<std::string, TextureType>, std::weak_ptr<Texture>> m_textures;
 
 	std::string m_ID;
 	std::string m_name;

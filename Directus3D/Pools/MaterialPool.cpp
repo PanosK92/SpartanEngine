@@ -48,44 +48,39 @@ MaterialPool::~MaterialPool()
 /*------------------------------------------------------------------------------
 								[MISC]
 ------------------------------------------------------------------------------*/
-// Adds a material to the pool directly from memory
-weak_ptr<Material> MaterialPool::Add(shared_ptr<Material> material)
+// Adds a material to the pool directly from memory, all overloads result to this
+weak_ptr<Material> MaterialPool::Add(weak_ptr<Material> material)
 {
-	if (!material)
-		return weak_ptr<Material>();
+	shared_ptr<Material> materialShared = material.lock();
 
+	if (!materialShared)
+		return weak_ptr<Material>();
+	
 	for (const auto materialInPool : m_materials)
 	{
 		// Make sure the material is not already in the pool
-		if (materialInPool->GetID() == material->GetID())
+		if (materialInPool->GetID() == materialShared->GetID())
 			return materialInPool;
 
 		// Make sure that the material doesn't come from the same model
 		// in which case the ID doesn't matter, if the name is the same
-		if (materialInPool->GetName() == material->GetName())
-			if (materialInPool->GetModelID() == material->GetModelID())
+		if (materialInPool->GetName() == materialShared->GetName())
+			if (materialInPool->GetModelID() == materialShared->GetModelID())
 				return materialInPool;
 	}
 
-	m_materials.push_back(material);
+	// Make sure that any material textures are loaded
+	materialShared->LoadUnloadedTextures();
+
+	m_materials.push_back(materialShared);
 	return m_materials.back();
 }
 
 weak_ptr<Material> MaterialPool::Add(const string& filePath)
 {
-	// if the material already exists, return it
-	for (const auto material : m_materials)
-		if (material->GetFilePath() == filePath)
-			return material;
-
 	auto material = make_shared<Material>(g_context);
-	if (material->LoadFromFile(filePath))
-	{
-		m_materials.push_back(material);
-		return m_materials.back();
-	}
-
-	return weak_ptr<Material>();
+	material->LoadFromFile(filePath);
+	return Add(material);
 }
 
 // Adds multiple materials to the pool by reading them from files
@@ -150,9 +145,6 @@ const vector<shared_ptr<Material>>& MaterialPool::GetAllMaterials()
 	return m_materials;
 }
 
-/*------------------------------------------------------------------------------
-							[HELPER FUNCTIONS]
-------------------------------------------------------------------------------*/
 void MaterialPool::GenerateDefaultMaterials()
 {
 	m_materialDefault.reset();
