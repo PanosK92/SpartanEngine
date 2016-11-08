@@ -58,8 +58,8 @@ void Collider::Initialize()
 	weak_ptr<Mesh> mesh = GetMeshFromAttachedMeshFilter();
 	if (!mesh.expired())
 	{
-		m_boundingBox = mesh.lock()->GetBoundingBox() * g_transform->GetWorldTransform();
-		m_center = mesh.lock()->GetCenter() * g_transform->GetWorldTransform();
+		m_boundingBox = mesh.lock()->GetBoundingBox() * g_transform->GetTransformMatrix();
+		m_center = mesh.lock()->GetCenter() * g_transform->GetTransformMatrix();
 	}
 
 	ConstructCollisionShape();

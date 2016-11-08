@@ -222,53 +222,6 @@ Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
 	return Vector2(screenX, screenY);
 }
 
-Vector3 Camera::ScreenToWorldPoint(const Vector2& screenPoint)
-{
-	/*
-	float sceenWidth = RESOLUTION_WIDTH;
-	float sceenHeight = RESOLUTION_HEIGHT;
-
-	// Move the mouse cursor coordinates into the -1 to +1 range.
-	float pointX = ((2.0f * (float)screenPoint.x) / (float)sceenWidth) - 1.0f;
-	float pointY = (((2.0f * (float)screenPoint.y) / (float)sceenHeight) - 1.0f) * -1.0f;
-
-	// Adjust the points using the projection matrix to account for the aspect ratio of the viewport.
-	pointX = pointX / GetProjectionMatrix().m00;
-	pointY = pointY / GetProjectionMatrix().m11;
-
-	// Calculate the direction of the picking ray in view space.
-	Matrix viewInverse = GetViewMatrix().Inverted();
-	Vector3 direction;
-	direction.x = (pointX * viewInverse.m00) + (pointY * viewInverse.m10) + viewInverse.m20;
-	direction.y = (pointX * viewInverse.m01) + (pointY * viewInverse.m11) + viewInverse.m21;
-	direction.z = (pointX * viewInverse.m02) + (pointY * viewInverse.m12) + viewInverse.m22;
-
-	// Get the origin of the picking ray which is the position of the camera.
-	Vector3 origin = g_transform->GetPosition();
-
-	// Get the world matrix and translate to the location of the sphere.
-	Matrix worldMatrix = Matrix::Identity;
-	D3DXMatrixTranslation(&translateMatrix, -5.0f, 1.0f, 5.0f);
-	D3DXMatrixMultiply(&worldMatrix, &worldMatrix, &translateMatrix);
-
-	// Now get the inverse of the translated world matrix.
-	Matrix worldMatrixInverse = worldMatrix.Inverted();
-
-	// Now transform the ray origin and the ray direction from view space to world space.
-	Vector3 rayOrigin;
-	Vector3 rayDirection;
-	D3DXVec3TransformCoord(&rayOrigin, &origin, &inverseWorldMatrix);
-	D3DXVec3TransformNormal(&rayDirection, &direction, &inverseWorldMatrix);
-
-	// Normalize the ray direction.
-	rayDirection.Normalize();
-
-	return rayDirection;
-	*/
-
-	return Vector3::Zero;
-}
-
 /*------------------------------------------------------------------------------
 								[PRIVATE]
 ------------------------------------------------------------------------------*/

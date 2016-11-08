@@ -56,8 +56,10 @@ Light::~Light()
 
 void Light::Initialize()
 {
-	float camNear = 0.1f;
-	float camFar = 1000.0f;
+	Camera* camera = g_context->GetSubsystem<Scene>()->GetMainCamera()->GetComponent<Camera>();
+	
+	float camNear = camera->GetNearPlane();
+	float camFar = camera->GetFarPlane();
 	for (int i = 0; i < m_cascades; i++)
 	{
 		float n = i + 1;
@@ -68,7 +70,7 @@ void Light::Initialize()
 				g_context->GetSubsystem<Graphics>(), 
 				n, 
 				this, 
-				g_context->GetSubsystem<Scene>()->GetMainCamera()->GetComponent<Camera>(), 
+				camera,
 				SHADOWMAP_RESOLUTION / n,
 				nearPlane, 
 				farPlane

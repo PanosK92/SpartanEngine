@@ -40,6 +40,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Pools/ShaderPool.h"
 #include "../Pools/TexturePool.h"
+#include "../Input/Input.h"
+#include "Settings.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -253,6 +255,76 @@ void Scene::Resolve()
 	}
 
 	g_context->GetSubsystem<Renderer>()->Update(m_renderables, m_lightsDirectional, m_lightsPoint);
+}
+
+GameObject* Scene::MousePick(Vector2& mousePos)
+{
+	Camera* camera = GetMainCamera()->GetComponent<Camera>();
+	Matrix mViewProjectionInv = (camera->GetViewMatrix() * camera->GetProjectionMatrix()).Inverted();
+
+	// Transform mouse coordinates from [0,1] to [-1,+1]
+	mousePos.x = ((2.0f * mousePos.x) / (float)RESOLUTION_WIDTH - 1.0f);
+	mousePos.y = (((2.0f * mousePos.y) / (float)RESOLUTION_HEIGHT) - 1.0f) * -1.0f;
+
+	// Calculate the origin and the end of the ray
+	Vector3 rayOrigin = Vector3(mousePos.x, mousePos.y, camera->GetNearPlane());
+	Vector3 rayEnd = Vector3(mousePos.x, mousePos.y, camera->GetFarPlane());
+
+	// Transform it from projection space to world space
+	rayOrigin = Vector3::Transform(rayOrigin, mViewProjectionInv);
+	rayEnd = Vector3::Transform(rayEnd, mViewProjectionInv);
+
+	// Get the ray direction
+	Vector3 rayDirection = (rayEnd - rayOrigin).Normalized();
+
+	vector<GameObject*> intersectedGameObjects;
+	//= Intersection test ===============================
+	for (auto gameObject : m_renderables)
+	{
+		Vector3 extent = gameObject->GetComponent<MeshFilter>()->GetBoundingBox();
+
+		float radius = max(abs(extent.x), abs(extent.y));
+		radius = max(radius, abs(extent.z));
+
+		if (RaySphereIntersect(rayOrigin, rayDirection, radius))
+			intersectedGameObjects.push_back(gameObject);
+	}
+	//====================================================
+
+	//= Find the gameobject closest to the camera ==
+	float minDistance = 1000;
+	GameObject* clostestGameObject = nullptr;
+	for (auto gameObject : intersectedGameObjects)
+	{
+		Vector3 posA = gameObject->GetTransform()->GetPosition();
+		Vector3 posB = camera->g_transform->GetPosition();
+
+		float distance = sqrt(pow((posB.x - posA.x), 2.0f) + pow((posB.y - posA.y), 2.0f) + pow((posB.z - posA.z), 2.0f));
+
+		if (distance < minDistance)
+		{
+			minDistance = distance;
+			clostestGameObject = gameObject;
+		}
+	}
+	//==============================================
+
+	return clostestGameObject;
+}
+
+bool Scene::RaySphereIntersect(const Vector3& rayOrigin, const Vector3& rayDirection, float radius)
+{
+	// Calculate the a, b, and c coefficients.
+	float a = (rayDirection.x * rayDirection.x) + (rayDirection.y * rayDirection.y) + (rayDirection.z * rayDirection.z);
+	float b = ((rayDirection.x * rayOrigin.x) + (rayDirection.y * rayOrigin.y) + (rayDirection.z * rayOrigin.z)) * 2.0f;
+	float c = ((rayOrigin.x * rayOrigin.x) + (rayOrigin.y * rayOrigin.y) + (rayOrigin.z * rayOrigin.z)) - (radius * radius);
+
+	// Find the discriminant.
+	float discriminant = pow(b, 2.0f) - (4 * a * c);
+
+	// if discriminant is negative the picking ray 
+	// missed the sphere, otherwise it intersected the sphere.
+	return discriminant < 0.0f ? false : true;
 }
 
 //====================

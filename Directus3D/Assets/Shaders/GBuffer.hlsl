@@ -7,11 +7,12 @@
 Texture2D texAlbedo 		: register (t0);
 Texture2D texRoughness 		: register (t1);
 Texture2D texMetallic 		: register (t2);
-Texture2D texOcclusion 		: register (t3);
-Texture2D texNormal 		: register (t4);
-Texture2D texHeight 		: register (t5);
-Texture2D texMask 			: register (t6);
-Texture2D lightDepthTex[3] 	: register (t7);
+Texture2D texNormal 		: register (t3);
+Texture2D texHeight 		: register (t4);
+Texture2D texOcclusion 		: register (t5);
+Texture2D texEmission 		: register (t6);
+Texture2D texMask 			: register (t7);
+Texture2D lightDepthTex[3] 	: register (t8);
 //==========================================
 
 //= SAMPLERS =============================
@@ -116,6 +117,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float roughness 		= materialRoughness;
 	float metallic 			= materialMetallic;
 	float specular 			= clamp(materialSpecular, 0.03f, 1.0f);
+	float emission			= 0.0f;
 	float flippedOcclusion	= 1.0f - materialOcclusion;
 	float4 normal			= float4(PackNormal(input.normal.xyz), flippedOcclusion);
 	float type				= 0.0f; // pbr mesh
@@ -152,11 +154,6 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 		metallic *= texMetallic.Sample(samplerAniso, texCoord).r;
 #endif
 	
-	//= OCCLUSION ================================================================================
-#if OCCLUSION_MAP
-		flippedOcclusion = clamp(texOcclusion.Sample(samplerAniso, texCoord).r * (1.0f / (flippedOcclusion)), 0.0f, 1.0f);
-#endif
-	
 	//= NORMAL ==================================================================================
 #if NORMAL_MAP
 		normal 	= texNormal.Sample(samplerAniso, texCoord); // sample
@@ -164,6 +161,16 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 		normal 	= float4(PackNormal(normal), 1.0f);
 #endif
 	//============================================================================================
+	
+	//= OCCLUSION ================================================================================
+#if OCCLUSION_MAP
+		flippedOcclusion = clamp(texOcclusion.Sample(samplerAniso, texCoord).r * (1.0f / (flippedOcclusion)), 0.0f, 1.0f);
+#endif
+	
+	//= EMISSION ================================================================================
+#if EMISSION_MAP
+		emission = texEmission.Sample(samplerAniso, texCoord).r;
+#endif
 		
 	//= CUBEMAP ==================================================================================
 #if CUBE_MAP
@@ -201,7 +208,13 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	//============================================================================================
 	
 	float totalShadowing = clamp(flippedOcclusion * shadowing, 0.0f, 1.0f);
-	
+
+	// Write to G-Buffer
+	output.albedo		= albedo;	
+	output.normal 		= float4(normal.rgb, totalShadowing);
+	output.depth 		= float4(depth1, depth2, emission, 0.0f);
+	output.material		= float4(roughness, metallic, specular, type);
+		
 	// Uncomment to vizualize cascade splits 
 	/*if (cascadeIndex == 0)
 		output.albedo		= float4(1,0,0,1);
@@ -209,12 +222,6 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 		output.albedo		= float4(0,1,0,1);
 	if (cascadeIndex == 2)
 		output.albedo		= float4(0,0,1,1);*/
-
-	// Write to G-Buffer
-	output.albedo		= albedo;	
-	output.normal 		= float4(normal.rgb, totalShadowing);
-	output.depth 		= float4(depth1, depth2, 0.0f, 0.0f);
-	output.material		= float4(roughness, metallic, specular, type);
 		
     return output;
 }

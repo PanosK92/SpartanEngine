@@ -68,7 +68,6 @@ public:
 									[CONVERSIONS]
 	------------------------------------------------------------------------------*/
 	Directus::Math::Vector2 WorldToScreenPoint(const Directus::Math::Vector3& worldPoint);
-	Directus::Math::Vector3 ScreenToWorldPoint(const Directus::Math::Vector2& screenPoint);
 
 	//= PLANES/PROJECTION ====================
 	float GetNearPlane();

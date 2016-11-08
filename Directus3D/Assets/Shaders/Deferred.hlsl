@@ -89,6 +89,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// Extract any values out of those samples
     float3 normal = normalize(UnpackNormal(normalSample.rgb));
     float depth = depthSample.g;
+	float emission = depthSample.b * 100.0f;
     float3 worldPos = ReconstructPosition(depth, input.uv, mViewProjectionInverse);
     float shadowing = clamp(normalSample.a, 0.1f, 1.0f);
     float roughness = materialSample.r;
@@ -127,9 +128,10 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 
         ambientLightIntensity = clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
         lightIntensity *= shadowing;
+		lightIntensity += emission;
         envColor *= clamp(lightIntensity, 0.0f, 1.0f);
         irradiance *= clamp(lightIntensity, 0.0f, 1.0f);
-		
+			
         finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);
     }
 		
@@ -145,6 +147,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
         float dist = length(worldPos - lightPos);
         float attunation = clamp(1.0f - dist / radius, 0.0f, 1.0f); attunation *= attunation;
 		lightIntensity *= attunation;
+		lightIntensity += emission;
 
 		// Do expensive lighting
         if (dist < radius)

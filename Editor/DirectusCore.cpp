@@ -19,13 +19,22 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============
+//= INCLUDES =================
 #include "DirectusCore.h"
 #include "Logging/Log.h"
 #include <QStyleOption>
 #include "Core/Settings.h"
 #include "Core/Context.h"
-//========================
+#include "Core/Scene.h"
+#include "Components/Camera.h"
+#include "Math/Vector3.h"
+#include "Math/Vector2.h"
+#include "DirectusInspector.h"
+//============================
+
+//= NAMESPACES ================
+using namespace Directus::Math;
+//=============================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
 DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
@@ -66,6 +75,11 @@ void DirectusCore::Initialize(HWND mainWindowHandle, HINSTANCE hInstance, Direct
 
     m_socket = m_engine->GetContext()->GetSubsystem<Socket>();
     m_directusStatsLabel = directusStatsLabel;
+}
+
+void DirectusCore::SetInspector(DirectusInspector* inspector)
+{
+    m_inspector = inspector;
 }
 
 bool DirectusCore::IsRunning()
@@ -150,6 +164,17 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
 void DirectusCore::paintEvent(QPaintEvent* evt)
 {
     Update();
+}
+
+void DirectusCore::mousePressEvent(QMouseEvent* event)
+{
+    QPoint mousePos = event->pos();
+    auto picked = m_socket->GetContext()->GetSubsystem<Scene>()->MousePick(Vector2(mousePos.x(), mousePos.y()));
+
+    if (picked)
+        LOG_INFO(picked->GetName());
+
+    m_inspector->Inspect(picked);
 }
 //===================================================
 

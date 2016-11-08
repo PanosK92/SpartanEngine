@@ -37,7 +37,7 @@ Transform::Transform()
 	m_positionLocal = Vector3::Zero;
 	m_rotationLocal = Quaternion::Identity;
 	m_scaleLocal = Vector3::One;
-	m_worldMatrix = Matrix::Identity;
+	m_mTransform = Matrix::Identity;
 	m_parent = nullptr;
 }
 
@@ -113,7 +113,7 @@ void Transform::UpdateWorldTransform()
 
 	// Calculate the world matrix
 	Matrix localMatrix = scaleLocalMatrix * rotationLocalMatrix * translationLocalMatrix;
-	m_worldMatrix = localMatrix * GetParentWorldTransform();
+	m_mTransform = localMatrix * GetParentTransformMatrix();
 
 	// If there is no parent, local space equals world space
 	if (!HasParent())
@@ -123,7 +123,7 @@ void Transform::UpdateWorldTransform()
 		m_scale = m_scaleLocal;
 	}
 	else // ... decompose world matrix to get world position, rotation and scale
-		m_worldMatrix.Decompose(m_scale, m_rotation, m_position);
+		m_mTransform.Decompose(m_scale, m_rotation, m_position);
 
 	// update children
 	for (auto i = 0; i < m_children.size(); i++)
@@ -145,7 +145,7 @@ Vector3 Transform::GetPositionLocal() const
 
 void Transform::SetPosition(const Vector3& position)
 {
-	SetPositionLocal(!HasParent() ? position : GetParent()->GetWorldTransform().Inverted() * position);
+	SetPositionLocal(!HasParent() ? position : GetParent()->GetTransformMatrix().Inverted() * position);
 }
 
 void Transform::SetPositionLocal(const Vector3& position)
@@ -226,7 +226,7 @@ void Transform::Translate(const Vector3& delta)
 	if (!HasParent())
 		SetPositionLocal(m_positionLocal + delta);
 	else
-		SetPositionLocal(m_positionLocal + GetParent()->GetWorldTransform().Inverted() * delta);
+		SetPositionLocal(m_positionLocal + GetParent()->GetTransformMatrix().Inverted() * delta);
 }
 
 void Transform::Rotate(const Quaternion& delta, Space space)
@@ -501,9 +501,9 @@ bool Transform::HasParent() const
 //================
 // MISC PROPERTIES
 //================
-Matrix Transform::GetWorldTransform() const
+Matrix Transform::GetTransformMatrix() const
 {
-	return m_worldMatrix;
+	return m_mTransform;
 }
 
 GameObject* Transform::GetGameObject() const
@@ -528,10 +528,10 @@ void Transform::GetDescendants(vector<Transform*>& descendants)
 	}
 }
 
-Matrix Transform::GetParentWorldTransform() const
+Matrix Transform::GetParentTransformMatrix() const
 {
 	if (!HasParent())
 		return Matrix::Identity;
 
-	return GetParent()->GetWorldTransform();
+	return GetParent()->GetTransformMatrix();
 }

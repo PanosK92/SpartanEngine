@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Renderer;
 class ModelImporter;
 
-class Scene : public Object
+class __declspec(dllexport) Scene : public Object
 {
 public:
 	Scene(Context* context);
@@ -57,6 +57,8 @@ public:
 	void SetAmbientLight(float x, float y, float z);
 	Directus::Math::Vector3 GetAmbientLight();
 	void Resolve();
+	GameObject* MousePick(Directus::Math::Vector2& mousePos);
+	bool RaySphereIntersect(const Directus::Math::Vector3& rayOrigin, const Directus::Math::Vector3& rayDirection, float radius);
 
 private:
 	// GAMEOBJECT CREATION =======================

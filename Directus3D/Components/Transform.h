@@ -112,7 +112,7 @@ public:
 									[MISC]
 	------------------------------------------------------------------------------*/
 	void LookAt(const Directus::Math::Vector3& v);
-	Directus::Math::Matrix GetWorldTransform() const;
+	Directus::Math::Matrix GetTransformMatrix() const;
 	GameObject* GetGameObject() const;
 	std::string GetName() const;
 
@@ -128,7 +128,7 @@ private:
 	Directus::Math::Quaternion m_rotation;
 	Directus::Math::Vector3 m_scale;
 
-	Directus::Math::Matrix m_worldMatrix;
+	Directus::Math::Matrix m_mTransform;
 	Directus::Math::Vector3 m_lookAt;
 
 	Transform* m_parent; // the parent of this transform
@@ -138,5 +138,5 @@ private:
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
 	void GetDescendants(std::vector<Transform*>& descendants);
-	Directus::Math::Matrix GetParentWorldTransform() const;
+	Directus::Math::Matrix GetParentTransformMatrix() const;
 };
