@@ -36,7 +36,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Hinge.h"
 #include "../Components/Script.h"
 #include "../Components/LineRenderer.h"
-#include "../Logging/Log.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -92,48 +91,8 @@ void GameObject::Update()
 		return;
 
 	// call component Update()
-	for (auto const it : m_components)
+	for (auto const& it : m_components)
 		it.second->Update();
-}
-
-string GameObject::GetName()
-{
-	return m_name;
-}
-
-void GameObject::SetName(const string& name)
-{
-	m_name = name;
-}
-
-string GameObject::GetID()
-{
-	return m_ID;
-}
-
-void GameObject::SetID(const string& ID)
-{
-	m_ID = ID;
-}
-
-void GameObject::SetActive(bool active)
-{
-	m_isActive = active;
-}
-
-bool GameObject::IsActive()
-{
-	return m_isActive;
-}
-
-void GameObject::SetHierarchyVisibility(bool value)
-{
-	m_hierarchyVisibility = value;
-}
-
-bool GameObject::IsVisibleInHierarchy()
-{
-	return m_hierarchyVisibility;
 }
 
 void GameObject::Serialize()
@@ -144,14 +103,14 @@ void GameObject::Serialize()
 	Serializer::WriteBool(m_hierarchyVisibility);
 
 	Serializer::WriteInt(m_components.size());
-	for (auto const it : m_components)
+	for (auto const& it : m_components)
 	{
 		Serializer::WriteSTR(it.first); // save component's type
 		Serializer::WriteSTR(it.second->g_ID); // save component's id
 	}
 
-	for (auto it = m_components.begin(); it != m_components.end(); ++it)
-		it->second->Serialize();
+	for (auto const& it : m_components)
+		it.second->Serialize();
 }
 
 void GameObject::Deserialize()
