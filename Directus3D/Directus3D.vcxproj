@@ -146,6 +146,7 @@
     <ClCompile Include="Core\Context.cpp" />
     <ClCompile Include="Core\Engine.cpp" />
     <ClCompile Include="Core\GameObject.cpp" />
+    <ClCompile Include="Core\GUIDGenerator.cpp" />
     <ClCompile Include="Core\Object.cpp" />
     <ClCompile Include="Graphics\Material.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
