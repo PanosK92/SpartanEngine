@@ -42,41 +42,42 @@ public:
 	void Start();
 	void Update();
 
-	std::string GetName();
-	void SetName(const std::string& name);
+	std::string GetName() { return m_name; }
+	void SetName(const std::string& name) { m_name = name; }
 
-	std::string GetID();
-	void SetID(const std::string& ID);
+	std::string GetID() { return m_ID; }
+	void SetID(const std::string& ID) { m_ID = ID; }
 
-	void SetActive(bool active);
-	bool IsActive();
-
-	void SetHierarchyVisibility(bool value);
-	bool IsVisibleInHierarchy();
+	bool IsActive() { return m_isActive; }
+	void SetActive(bool active) { m_isActive = active; }
+	
+	bool IsVisibleInHierarchy() { return m_hierarchyVisibility; }
+	void SetHierarchyVisibility(bool hierarchyVisibility) { m_hierarchyVisibility = hierarchyVisibility; }
 
 	void Serialize();
 	void Deserialize();
 
 	//= Components ============================================
-	template <class Type>
-	Type* AddComponent()
+	// Adds a component of type T
+	template <class T>
+	T* AddComponent()
 	{
 		// Convert class Type to a string.
-		std::string typeStr(typeid(Type).name());
+		std::string typeStr(typeid(T).name());
 		typeStr = typeStr.substr(typeStr.find_first_of(" \t") + 1); // remove word "class".
 
 		// Check if a component of that type already exists
-		IComponent* existingComp = GetComponent<Type>();
+		IComponent* existingComp = GetComponent<T>();
 		if (existingComp)
 		{
 			// If it's anything but a script, it can't have multiple
-			// instances return the existing component.
+			// instances, return the existing component.
 			if (typeStr != "Script")
-				return dynamic_cast<Type*>(existingComp);
+				return dynamic_cast<T*>(existingComp);
 		}
 
 		// Get the created component.
-		IComponent* component = new Type;
+		IComponent* component = new T;
 
 		// Add the component.
 		m_components.insert(std::pair<std::string, IComponent*>(typeStr, component));
@@ -97,7 +98,7 @@ public:
 		m_context->GetSubsystem<Scene>()->Resolve();
 
 		// Return it as a component of the requested type
-		return dynamic_cast<Type*>(component);
+		return dynamic_cast<T*>(component);
 	}
 
 	// Returns a component of type T (if it exists)
