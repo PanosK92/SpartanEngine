@@ -42,7 +42,7 @@ MeshFilter::MeshFilter()
 MeshFilter::~MeshFilter()
 {
 	m_vertexBuffer.reset();
-	m_vertexBuffer.reset();
+	m_indexBuffer.reset();
 }
 
 void MeshFilter::Initialize()
@@ -130,12 +130,12 @@ bool MeshFilter::SetBuffers() const
 
 Vector3 MeshFilter::GetCenter() const
 {
-	return !m_mesh.expired() ? m_mesh.lock()->GetCenter() * g_transform->GetWorldTransform() : Vector3::Zero;
+	return !m_mesh.expired() ? m_mesh.lock()->GetCenter() * g_transform->GetTransformMatrix() : Vector3::Zero;
 }
 
 Vector3 MeshFilter::GetBoundingBox() const
 {
-	return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
+	return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() * g_transform->GetTransformMatrix() : Vector3::One;
 }
 
 weak_ptr<Mesh> MeshFilter::GetMesh() const

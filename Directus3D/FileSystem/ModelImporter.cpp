@@ -343,6 +343,11 @@ shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* m
 		if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			AddTextureToMaterial(engineMaterial, Occlusion, texturePath.data);
 
+	//= EMISSIVE TEXTURE ====================================================================================================
+	if (material->GetTextureCount(aiTextureType_EMISSIVE) > 0)
+		if (material->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			AddTextureToMaterial(engineMaterial, Emission, texturePath.data);
+
 	//= HEIGHT TEXTURE =====================================================================================================
 	if (material->GetTextureCount(aiTextureType_HEIGHT) > 0)
 		if (material->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)

@@ -290,7 +290,7 @@ void Renderer::DirectionalLightDepthPass()
 			{
 				m_shaderDepth->Render(
 					mesh.lock()->GetIndexCount(),
-					gameObject->GetTransform()->GetWorldTransform(),
+					gameObject->GetTransform()->GetTransformMatrix(),
 					m_directionalLight->GetViewMatrix(),
 					m_directionalLight->GetOrthographicProjectionMatrix(cascadeIndex)
 				);
@@ -322,9 +322,10 @@ void Renderer::GBufferPass()
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Albedo));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Roughness));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Metallic));
-			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Occlusion));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Normal));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Height));
+			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Occlusion));
+			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Emission));		
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Mask));
 			if (m_directionalLight)
 			{
@@ -345,7 +346,7 @@ void Renderer::GBufferPass()
 				auto mesh = meshFilter->GetMesh();
 				auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
 				auto material = meshRenderer->GetMaterial();
-				auto mWorld = gameObject->GetTransform()->GetWorldTransform();
+				auto mWorld = gameObject->GetTransform()->GetTransformMatrix();
 				//============================================================
 
 				// If any rendering requirement is missing, skip this GameObject

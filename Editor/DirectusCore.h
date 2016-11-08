@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusStatsLabel.h"
 //=============================
 
+class DirectusInspector;
+
 class DirectusCore : public QWidget
 {
 	Q_OBJECT
@@ -42,6 +44,7 @@ public:
     virtual ~DirectusCore();
     Socket* GetEngineSocket();
     void Initialize(HWND hwnd, HINSTANCE hinstance, DirectusStatsLabel* directusStatsLabel);
+    void SetInspector(DirectusInspector* inspector);
     bool IsRunning();
 
 protected:
@@ -49,6 +52,7 @@ protected:
     virtual QPaintEngine* paintEngine() const { return NULL; }
 	virtual void resizeEvent(QResizeEvent* evt);
 	virtual void paintEvent(QPaintEvent* evt);
+    virtual void mousePressEvent(QMouseEvent* event);
 
 private:
 	void ShutdownEngine();
@@ -61,6 +65,7 @@ private:
     bool m_isRunning;
     bool m_locked;
     DirectusStatsLabel* m_directusStatsLabel;
+    DirectusInspector* m_inspector;
 
 signals:
     void EngineStarting();

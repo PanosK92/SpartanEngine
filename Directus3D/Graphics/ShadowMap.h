@@ -56,13 +56,13 @@ public:
 	Directus::Math::Matrix GetProjectionMatrix() const
 	{
 		// This is an ad hoc approach, but for know it should do, no time.
-		Directus::Math::Vector3 center = Directus::Math::Vector3::Zero;
+		Directus::Math::Vector3 center = m_camera->g_transform->GetPosition();
 
-		float radius = 40;
+		float radius = 20;
 		if (m_cascadeNumber == 2)
-			radius = 100;
+			radius = 50;
 		else if (m_cascadeNumber == 3)
-			radius = 400;
+			radius = 200;
 
 		Directus::Math::Vector3 min = center - Directus::Math::Vector3(radius, radius, radius);
 		Directus::Math::Vector3 max = center + Directus::Math::Vector3(radius, radius, radius);
