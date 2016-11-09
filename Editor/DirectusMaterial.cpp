@@ -110,6 +110,8 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_occlusionLabel = new QLabel("Occlusion");
     m_occlusionImage = new DirectusMaterialTextureDropTarget();
     m_occlusionImage->Initialize(m_directusCore, inspector, Occlusion);
+    m_occlusion = new DirectusComboSliderText();
+    m_occlusion->Initialize(0, 1);
     //=========================================================
 
     //= EMISSION ==============================================
@@ -208,8 +210,10 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     row++;
 
     // Row 8 - OCCLUSION
-    m_gridLayout->addWidget(m_occlusionImage, row, 0, 1, 1);
-    m_gridLayout->addWidget(m_occlusionLabel, row, 1, 1, 1);
+    m_gridLayout->addWidget(m_occlusionImage,           row, 0, 1, 1);
+    m_gridLayout->addWidget(m_occlusionLabel,           row, 1, 1, 1);
+    m_gridLayout->addWidget(m_occlusion->GetSlider(),   row, 2, 1, 2);
+    m_gridLayout->addWidget(m_occlusion->GetLineEdit(), row, 4, 1, 1);
     row++;
 
     // Row 9 - EMISSION
@@ -381,6 +385,8 @@ void DirectusMaterial::SetPropertiesVisible(bool visible)
 
     m_occlusionImage->setVisible(visible);
     m_occlusionLabel->setVisible(visible);
+    m_occlusion->GetSlider()->setVisible(visible);
+    m_occlusion->GetLineEdit()->setVisible(visible);
 
     m_emissionImage->setVisible(visible);
     m_emissionLabel->setVisible(visible);
@@ -475,6 +481,9 @@ void DirectusMaterial::ReflectHeight()
 void DirectusMaterial::ReflectOcclusion()
 {
     m_occlusionImage->SetMaterial(m_inspectedMaterial);
+
+    float occlusion = m_inspectedMaterial.lock()->GetOcclusionMultiplier();
+    m_occlusion->SetValue(occlusion);
 
     // Load the occlusion texture preview
     string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Occlusion);
@@ -576,7 +585,13 @@ void DirectusMaterial::MapHeight()
 
 void DirectusMaterial::MapOcclusion()
 {
+    if (m_inspectedMaterial.expired() || !m_directusCore)
+        return;
 
+    float occlusion =  m_occlusion->GetValue();
+    m_inspectedMaterial.lock()->SetOcclusionMultiplier(occlusion);
+
+    m_directusCore->LightUpdate();
 }
 
 void DirectusMaterial::MapEmission()
