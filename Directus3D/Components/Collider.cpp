@@ -55,14 +55,9 @@ Collider::~Collider()
 //= ICOMPONENT ========================================================================
 void Collider::Initialize()
 {
-	weak_ptr<Mesh> mesh = GetMeshFromAttachedMeshFilter();
-	if (!mesh.expired())
-	{
-		m_boundingBox = mesh.lock()->GetBoundingBox() * g_transform->GetTransformMatrix();
-		m_center = mesh.lock()->GetCenter() * g_transform->GetTransformMatrix();
-	}
-
-	ConstructCollisionShape();
+	m_lastKnownScale = g_transform->GetScale();
+	UpdateBoundingBox();
+	Build();
 }
 
 void Collider::Start()
@@ -77,7 +72,13 @@ void Collider::Remove()
 
 void Collider::Update()
 {
-
+	// Ensure that the collider scales with the transform
+	if (m_lastKnownScale != g_transform->GetScale())
+	{
+		UpdateBoundingBox();
+		Build();
+		m_lastKnownScale = g_transform->GetScale();
+	}
 }
 
 void Collider::Serialize()
@@ -93,7 +94,7 @@ void Collider::Deserialize()
 	m_boundingBox = Serializer::ReadVector3();
 	m_center = Serializer::ReadVector3();
 
-	ConstructCollisionShape();
+	Build();
 }
 
 //= BOUNDING BOX =============================================
@@ -102,15 +103,15 @@ const Vector3& Collider::GetBoundingBox() const
 	return m_boundingBox;
 }
 
-void Collider::SetBoundingBox(Vector3& boundingBox)
+void Collider::SetBoundingBox(const Vector3& boundingBox)
 {
-	boundingBox.x = Clamp(boundingBox.x, M_EPSILON, INFINITY);
-	boundingBox.y = Clamp(boundingBox.y, M_EPSILON, INFINITY);
-	boundingBox.z = Clamp(boundingBox.z, M_EPSILON, INFINITY);
+	Vector3 clampedBoundingBox = boundingBox;
 
-	m_boundingBox = boundingBox;
+	clampedBoundingBox.x = Clamp(boundingBox.x, M_EPSILON, INFINITY);
+	clampedBoundingBox.y = Clamp(boundingBox.y, M_EPSILON, INFINITY);
+	clampedBoundingBox.z = Clamp(boundingBox.z, M_EPSILON, INFINITY);
 
-	ConstructCollisionShape();
+	m_boundingBox = clampedBoundingBox;
 }
 
 //= CENTER ========================================================
@@ -122,8 +123,6 @@ const Vector3& Collider::GetCenter() const
 void Collider::SetCenter(const Vector3& center)
 {
 	m_center = center;
-
-	ConstructCollisionShape();
 }
 
 //= COLLISION SHAPE ================================================
@@ -135,8 +134,6 @@ ColliderShape Collider::GetShapeType() const
 void Collider::SetShapeType(ColliderShape type)
 {
 	m_shapeType = type;
-
-	ConstructCollisionShape();
 }
 
 shared_ptr<btCollisionShape> Collider::GetBtCollisionShape() const
@@ -144,8 +141,7 @@ shared_ptr<btCollisionShape> Collider::GetBtCollisionShape() const
 	return m_shape;
 }
 
-//= HELPER FUNCTIONS ======================================================
-void Collider::ConstructCollisionShape()
+void Collider::Build()
 {
 	// delete old shape (if it exists)
 	DeleteCollisionShape();
@@ -184,6 +180,21 @@ void Collider::ConstructCollisionShape()
 	}
 
 	SetRigidBodyCollisionShape(m_shape);
+}
+
+//= HELPER FUNCTIONS ======================================================
+void Collider::UpdateBoundingBox()
+{
+	// Info
+	// - MeshFilter returns pretransformed data
+	// - Mesh returns raw untouched data
+
+	MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
+	if (meshFilter)
+	{
+		SetCenter(meshFilter->GetCenter());
+		SetBoundingBox(meshFilter->GetBoundingBox());
+	}
 }
 
 void Collider::DeleteCollisionShape()

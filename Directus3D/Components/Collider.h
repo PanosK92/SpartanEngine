@@ -45,7 +45,7 @@ class __declspec(dllexport) Collider : public IComponent
 public:
 	Collider();
 	~Collider();
-
+	
 	/*------------------------------------------------------------------------------
 										[INTERFACE]
 	------------------------------------------------------------------------------*/
@@ -60,7 +60,7 @@ public:
 									[PROPERTIES]
 	------------------------------------------------------------------------------*/
 	const Directus::Math::Vector3& GetBoundingBox() const;
-	void SetBoundingBox(Directus::Math::Vector3& boundingBox);
+	void SetBoundingBox(const Directus::Math::Vector3& boundingBox);
 
 	const Directus::Math::Vector3& GetCenter() const;
 	void SetCenter(const Directus::Math::Vector3& center);
@@ -70,9 +70,11 @@ public:
 
 	std::shared_ptr<btCollisionShape> GetBtCollisionShape() const;
 
+	void Build();
+
 private:
 	//= HELPER FUNCTIONS ======================================================
-	void ConstructCollisionShape();
+	void UpdateBoundingBox();
 	void DeleteCollisionShape();
 	void SetRigidBodyCollisionShape(std::shared_ptr<btCollisionShape> shape) const;
 	std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
@@ -82,4 +84,5 @@ private:
 	std::shared_ptr<btCollisionShape> m_shape;
 	Directus::Math::Vector3 m_boundingBox;
 	Directus::Math::Vector3 m_center;
+	Directus::Math::Vector3 m_lastKnownScale;
 };
