@@ -53,17 +53,11 @@ public:
 		m_depthMap->SetAsRenderTarget();
 	}
 
-	Directus::Math::Matrix GetProjectionMatrix() const
+	Directus::Math::Matrix GetProjectionMatrix()
 	{
 		// This is an ad hoc approach, but for know it should do, no time.
 		Directus::Math::Vector3 center = m_camera->g_transform->GetPosition();
-
-		float radius = 20;
-		if (m_cascadeNumber == 2)
-			radius = 50;
-		else if (m_cascadeNumber == 3)
-			radius = 200;
-
+		float radius = GetRadius();
 		Directus::Math::Vector3 min = center - Directus::Math::Vector3(radius, radius, radius);
 		Directus::Math::Vector3 max = center + Directus::Math::Vector3(radius, radius, radius);
 
@@ -77,7 +71,22 @@ public:
 		);
 	}
 	ID3D11ShaderResourceView* GetShaderResourceView() const { return m_depthMap->GetShaderResourceView(); }
-	float GetSplit() const { return m_farPlane / 1000; } // divaded by camera far
+
+	float GetSplit()
+	{
+		return GetRadius() / m_camera->GetFarPlane();
+	}
+
+	float GetRadius()
+	{
+		float radius = 40;
+		if (m_cascadeNumber == 2)
+			radius = 100;
+		else if (m_cascadeNumber == 3)
+			radius = 300;
+
+		return radius;
+	}
 
 private:
 	int m_resolution;

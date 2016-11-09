@@ -60,11 +60,13 @@ void Light::Initialize()
 	
 	float camNear = camera->GetNearPlane();
 	float camFar = camera->GetFarPlane();
+
 	for (int i = 0; i < m_cascades; i++)
 	{
 		float n = i + 1;
 		float farPlane = camNear * powf(camFar / camNear, n / m_cascades);
 		float nearPlane = Clamp(farPlane - (camFar / m_cascades), camNear, camFar);
+		
 		m_shadowMaps.push_back(
 			new ShadowMap(
 				g_context->GetSubsystem<Graphics>(), 
@@ -72,7 +74,7 @@ void Light::Initialize()
 				this, 
 				camera,
 				SHADOWMAP_RESOLUTION / n,
-				nearPlane, 
+				nearPlane,
 				farPlane
 			));
 	}
