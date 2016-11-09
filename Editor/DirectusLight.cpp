@@ -237,7 +237,7 @@ void DirectusLight::MapLightType()
     // a new field called Range.
     ReflectRange();
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 
 void DirectusLight::MapRange()
@@ -248,7 +248,7 @@ void DirectusLight::MapRange()
     float range = m_range->GetAsFloat();
     m_inspectedLight->SetRange(range);
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 
 void DirectusLight::MapColor()
@@ -259,7 +259,7 @@ void DirectusLight::MapColor()
     Vector4 color = m_color->GetColor();
     m_inspectedLight->SetColor(color);
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 
 void DirectusLight::MapIntensity()
@@ -270,7 +270,7 @@ void DirectusLight::MapIntensity()
     float intensity = m_intensity->GetValue();
     m_inspectedLight->SetIntensity(intensity);
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 
 void DirectusLight::MapShadowType()
@@ -281,7 +281,7 @@ void DirectusLight::MapShadowType()
     ShadowType type = (ShadowType)(m_shadowType->currentIndex());
     m_inspectedLight->SetShadowType(type);
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 
 void DirectusLight::Remove()
@@ -291,7 +291,7 @@ void DirectusLight::Remove()
 
     GameObject* gameObject = m_inspectedLight->g_gameObject;
     gameObject->RemoveComponent<Light>();
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 
     m_inspector->Inspect(gameObject);
 }

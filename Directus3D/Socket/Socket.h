@@ -26,11 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../FileSystem/ImageImporter.h"
-#include "../Graphics/Texture.h"
 //==========================================
 
 class ILogger;
 class PhysicsDebugDraw;
+class Engine;
 
 class __declspec(dllexport) Socket : public Object
 {
@@ -38,11 +38,12 @@ public:
 	Socket(Context* context);
 	~Socket();
 
-	//= STATE CONTROL ==============
-	void StartEngine() const;
-	static void StopEngine();
-	void Update() const;
-	//==============================
+	void Initialize();
+
+	//= UPDATE ======================================
+	void Update();
+	void LightUpdate();
+	//===============================================
 
 	//= IO ==========================================
 	void LoadModel(const std::string& filePath);
@@ -81,4 +82,7 @@ public:
 	float GetDeltaTime() const;
 	float GetRenderTime() const;
 	//==============================================================================
+
+private:
+	Engine* m_engine;
 };

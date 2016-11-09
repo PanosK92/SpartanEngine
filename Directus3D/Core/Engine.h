@@ -21,6 +21,11 @@ DEALINGS IN THE SOFTWARE. */
 #include "Context.h"
 //==================
 
+class Timer;
+class Input;
+class PhysicsWorld;
+class Scene;
+class Renderer;
 class Stopwatch;
 
 class __declspec(dllexport) Engine : public Object
@@ -29,8 +34,21 @@ public:
 	Engine(Context* context);
 	~Engine();
 
+	// Initializes the engine with a draw handle, an input handle and window instance
 	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
+	// Performs a complete simulation cycle (used to run your game)
 	void Update();
+	// Updates and propagates data through the engine's subsystems (used for standalone updates by the editor)
+	void LightUpdate();
+	// Returns the current context
 	Context* GetContext();
+	// Shuts down the engine
 	void Shutdown();
+
+private:
+	Timer* m_timer;
+	Input* m_input;
+	PhysicsWorld* m_physicsWorld;
+	Scene* m_scene;
+	Renderer* m_renderer;
 };

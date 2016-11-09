@@ -105,19 +105,7 @@ void RigidBody::Remove()
 
 void RigidBody::Update()
 {
-	if (GET_ENGINE_MODE == Editor_Idle)
-	{
-		if (!m_isKinematic)
-		{
-			m_wasKinematic = m_isKinematic;
-			SetKinematic(true);
-		}
-	}
-	else
-	{
-		if (!m_wasKinematic && m_isKinematic)
-			SetKinematic(false);
-	}
+
 }
 
 void RigidBody::Serialize()

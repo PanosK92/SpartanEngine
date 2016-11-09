@@ -185,10 +185,6 @@ void DirectusTransform::Reflect(GameObject* gameobject)
 
 void DirectusTransform::Refresh()
 {
-    // Only live refresh when we are in play mode
-    if (GET_ENGINE_MODE != Editor_Playing)
-        return;
-
     // Do the actual reflection
     ReflectPosition();
     ReflectRotation();
@@ -238,7 +234,7 @@ void DirectusTransform::MapPosition()
     float z = m_posZ->GetAsFloat();
     m_inspectedTransform->SetPositionLocal(Vector3(x,y,z));
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 
 void DirectusTransform::MapRotation()
@@ -248,7 +244,7 @@ void DirectusTransform::MapRotation()
     Vector3 editorRot = Vector3(m_rotX->GetAsFloat(), m_rotY->GetAsFloat(), m_rotZ->GetAsFloat());
     m_inspectedTransform->SetRotationLocal(Quaternion::FromEulerAngles(editorRot));
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 
 void DirectusTransform::MapScale()
@@ -261,5 +257,5 @@ void DirectusTransform::MapScale()
     float z = m_scaZ->GetAsFloat();
     m_inspectedTransform->SetScaleLocal(Vector3(x,y,z));
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }

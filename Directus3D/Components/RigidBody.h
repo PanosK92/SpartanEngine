@@ -125,7 +125,6 @@ private:
 
 	std::shared_ptr<btRigidBody> m_rigidBody;
 	std::weak_ptr<btCollisionShape> m_shape;
-	bool m_wasKinematic;
 
 	float m_mass;
 	float m_drag;

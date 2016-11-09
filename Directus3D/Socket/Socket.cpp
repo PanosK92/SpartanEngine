@@ -23,12 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Socket.h"
 #include "../Pools/GameObjectPool.h"
 #include "../Logging/Log.h"
-#include "../Components/MeshRenderer.h"
 #include "../Graphics/Renderer.h"
-#include "../Core/Settings.h"
 #include "../Signals/Signaling.h"
 #include "../FileSystem/ModelImporter.h"
-#include "../Pools/TexturePool.h"
 #include "../Core/Engine.h"
 //==========================================
 
@@ -45,25 +42,28 @@ Socket::~Socket()
 {
 }
 
+void Socket::Initialize()
+{
+	m_engine = g_context->GetSubsystem<Engine>();
+}
+
 //= STATE CONTROL ==============================================================
-void Socket::StartEngine() const
+void Socket::Update()
 {
-	SET_ENGINE_MODE(Editor_Playing);
-	EMIT_SIGNAL(SIGNAL_ENGINE_START);
+	if (!m_engine)
+		return;
+
+	m_engine->Update();
 }
 
-void Socket::StopEngine()
+void Socket::LightUpdate()
 {
-	SET_ENGINE_MODE(Editor_Idle);
-	EMIT_SIGNAL(SIGNAL_ENGINE_STOP);
+	if (!m_engine)
+		return;
+	m_engine->Update();
 }
-
-void Socket::Update() const
-{
-	g_context->GetSubsystem<Engine>()->Update();
-}
-
 //=============================================================================
+
 
 //= IO ========================================================================
 void Socket::LoadModel(const string& filePath)
@@ -162,7 +162,7 @@ void Socket::DestroyGameObject(GameObject* gameObject)
 
 bool Socket::GameObjectExists(GameObject* gameObject)
 {
-	if (!gameObject) 
+	if (!gameObject)
 		return false;
 
 	bool exists = GameObjectPool::GetInstance().GameObjectExists(gameObject);

@@ -121,6 +121,6 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
     emit MaterialDropped(material);
 
     // Update the engine
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 //=========================================================================================

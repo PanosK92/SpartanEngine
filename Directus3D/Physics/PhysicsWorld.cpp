@@ -87,13 +87,6 @@ void PhysicsWorld::Step(float timeStep)
 
 	// Step the physics world. 
 	m_world->stepSimulation(timeStep, maxSubSteps, internalTimeStep); 
-
-	// Draw colliders when the editor is idle
-	if (GET_ENGINE_MODE == Editor_Idle)
-	{
-		m_debugDraw->ClearLines();
-		m_world->debugDrawWorld();
-	}
 }
 
 void PhysicsWorld::Reset()
@@ -121,6 +114,12 @@ void PhysicsWorld::Reset()
 		m_world->removeCollisionObject(obj);
 		delete obj;
 	}
+}
+
+void PhysicsWorld::DebugDraw()
+{
+	m_debugDraw->ClearLines();
+	m_world->debugDrawWorld();
 }
 
 btDiscreteDynamicsWorld* PhysicsWorld::GetWorld()

@@ -81,29 +81,54 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 	// Finally, initialize the scene (add a camera, a skybox and so on)
 	g_context->GetSubsystem<Scene>()->Initialize();
+	g_context->GetSubsystem<Socket>()->Initialize();
+
+	// Get frequently used subsystems
+	m_timer = g_context->GetSubsystem<Timer>();
+	m_input = g_context->GetSubsystem<Input>();
+	m_physicsWorld = g_context->GetSubsystem<PhysicsWorld>();
+	m_scene = g_context->GetSubsystem<Scene>();
+	m_renderer = g_context->GetSubsystem<Renderer>();
 }
 
 void Engine::Update()
 {
-	// Get subsystems
-	Timer* timer = g_context->GetSubsystem<Timer>();
+	//= TIME =====================================
+	m_timer->Update();
+	//============================================
 
-	timer->Update();
-	g_context->GetSubsystem<Input>()->Update();
+	//= INPUT ====================================
+	m_input->Update();
+	//============================================
 
 	//= PHYSICS ==================================
-	g_context->GetSubsystem<PhysicsWorld>()->Step(timer->GetDeltaTime());
+	m_physicsWorld->Step(m_timer->GetDeltaTime());
 	//============================================
 
 	//= SCENE ====================================	
-	g_context->GetSubsystem<Scene>()->Resolve();
+	m_scene->Resolve();
 	//============================================
 
 	//= RENDERING ================================
-	timer->RenderStart();
-	g_context->GetSubsystem<Renderer>()->Render();
-	timer->RenderEnd();
+	m_timer->RenderStart();
+	m_renderer->Render();
+	m_timer->RenderEnd();
 	//============================================
+}
+
+void Engine::LightUpdate()
+{
+	//= INPUT ===========
+	m_input->Update();
+	//===================
+
+	//= SCENE ===========
+	m_scene->Resolve();
+	//===================
+
+	//= RENDERING =======
+	m_renderer->Render();
+	//===================
 }
 
 Context* Engine::GetContext()
