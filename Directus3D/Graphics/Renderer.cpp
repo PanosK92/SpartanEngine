@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../Logging/Log.h"
 #include "../Components/MeshFilter.h"
-#include "../Signals/Signaling.h"
+#include "../Events/EventHandler.h"
 #include "../Core/Context.h"
 #include "../Pools/ShaderPool.h"
 #include "../Pools/MaterialPool.h"

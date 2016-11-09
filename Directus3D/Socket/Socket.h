@@ -41,6 +41,7 @@ public:
 	void Initialize();
 
 	//= UPDATE ======================================
+	void FireStartEvent();
 	void Update();
 	void LightUpdate();
 	//===============================================

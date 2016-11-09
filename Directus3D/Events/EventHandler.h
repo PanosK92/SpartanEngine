@@ -22,23 +22,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ========
-#include "Signals.h"
+#include "Events.h"
 #include <vector>
 #include <functional>
 #include <memory>
 //===================
 
-#define CONNECT_TO_SIGNAL(signalID, function)		Signaling::Connect(signalID, function)
-#define DISCONNECT_FROM_SIGNAL(signalID, function)	Signaling::Disconnect(signalID, function)
-#define EMIT_SIGNAL(signalID)						Signaling::Emit(signalID)
+#define SUBSCRIBE_TO_EVENT(signalID, function)		EventHandler::Subscribe(signalID, function)
+#define UNSUBSCRIBE_FROM_EVENT(signalID, function)	EventHandler::Unsubscribe(signalID, function)
+#define FIRE_EVENT(signalID)						EventHandler::Fire(signalID)
 
 /*
 HOW TO USE
 ==========
-CONNECT_TO_SIGNAL		(SIGNAL_FRAME_START, std::bind(&Class::Function, arguments));
-CONNECT_TO_SIGNAL		(SIGNAL_FRAME_START, std::bind(&Class::Function, this, arguments));
-DISCONNECT_FROM_SIGNAL	(SIGNAL_FRAME_START, std::bind(&Class::Function, this));
-EMIT_SIGNAL				(SIGNAL_FRAME_START);
+SUBSCRIBE_TO_EVENT		(SOME_EVENT, std::bind(&Class::Func, args));
+SUBSCRIBE_TO_EVENT		(SOME_EVENT, std::bind(&Class::Func, this, args));
+UNSUBSCRIBE_FROM_EVENT	(SOME_EVENT, std::bind(&Class::Func, this));
+FIRE_EVENT				(SOME_EVENT);
 */
 
 //= HELPER FUNCTION ==========================================
@@ -51,59 +51,59 @@ size_t getAddress(std::function<FunctionType(ARGS...)> function)
 }
 //============================================================
 
-//= SIGNAL ===================================================
-class __declspec(dllexport) Signal
+//= EVENT ===================================================
+class __declspec(dllexport) Event
 {
 public:
 	using functionType = std::function<void()>;
 
-	Signal(int signalID, functionType&& arguments)
+	Event(int eventID, functionType&& arguments)
 	{
-		m_signalID = signalID;
+		m_eventID = eventID;
 		m_function = std::forward<functionType>(arguments);
 	}
-	int GetSignalID() { return m_signalID; }
+	int GetEventID() { return m_eventID; }
 	size_t GetAddress() { return getAddress(m_function); }
-	void Emit() { m_function(); }
+	void Fire() { m_function(); }
 
 private:
-	int m_signalID;
+	int m_eventID;
 	functionType m_function;
 };
 //============================================================
 
-//= SIGNALING ================================================
-class __declspec(dllexport) Signaling
+//= EVENT HANDLER ============================================
+class __declspec(dllexport) EventHandler
 {
 public:
 	template <typename Function>
-	static void Connect(int signalID, Function&& function);
+	static void Subscribe(int eventID, Function&& function);
 
 	template <typename Function>
-	static void Disconnect(int signalID, Function&& function);
+	static void Unsubscribe(int eventID, Function&& function);
 
-	static void Emit(int signalID);
+	static void Fire(int eventID);
 	static void Clear();
 
-	static std::vector<std::shared_ptr<Signal>> m_signals;
+	static std::vector<std::shared_ptr<Event>> m_events;
 };
 //============================================================
 
 template <typename Function>
-void Signaling::Connect(int signalID, Function&& function)
+void EventHandler::Subscribe(int eventID, Function&& function)
 {
-	m_signals.push_back(std::make_shared<Signal>(signalID, std::bind(std::forward<Function>(function))));
+	m_events.push_back(std::make_shared<Event>(eventID, std::bind(std::forward<Function>(function))));
 }
 
 template <typename Function>
-void Signaling::Disconnect(int signalID, Function&& function)
+void EventHandler::Unsubscribe(int eventID, Function&& function)
 {
-	for (auto it = m_signals.begin(); it != m_signals.end();)
+	for (auto it = m_events.begin(); it != m_events.end();)
 	{
 		auto slot = *it;
-		if (slot->GetSignalID() == signalID && slot->GetAddress() == getAddress(function))
+		if (slot->GetEventID() == eventID && slot->GetAddress() == getAddress(function))
 		{
-			it = m_signals.erase(it);
+			it = m_events.erase(it);
 			return;
 		}
 		++it;

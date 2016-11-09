@@ -198,7 +198,7 @@
     <ClCompile Include="Scripting\ScriptInterface.cpp" />
     <ClCompile Include="Scripting\ScriptEngine.cpp" />
     <ClCompile Include="Scripting\ScriptInstance.cpp" />
-    <ClCompile Include="Signals\Signaling.cpp" />
+    <ClCompile Include="Events\EventHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components\Camera.h" />
@@ -218,7 +218,7 @@
     <ClInclude Include="Core\Engine.h" />
     <ClInclude Include="Core\Object.h" />
     <ClInclude Include="Graphics\ShadowMap.h" />
-    <ClInclude Include="Signals\Signaling.h" />
+    <ClInclude Include="Events\EventHandler.h" />
     <ClInclude Include="Core\GameObject.h" />
     <ClInclude Include="Core\Helper.h" />
     <ClInclude Include="Core\GUIDGenerator.h" />
@@ -230,7 +230,7 @@
     <ClInclude Include="Graphics\Texture.h" />
     <ClInclude Include="Core\Timer.h" />
     <ClInclude Include="Graphics\Vertex.h" />
-    <ClInclude Include="Signals\Signals.h" />
+    <ClInclude Include="Events\Events.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Buffer.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Graphics.h" />
     <ClInclude Include="Graphics\D3D11\D3D11InputLayout.h" />

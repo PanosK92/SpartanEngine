@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileSystem/ModelImporter.h"
 #include "../Input/Input.h"
 #include "../Graphics/Graphics.h"
-#include "../Signals/Signaling.h"
+#include "../Events/EventHandler.h"
 #include "../Multithreading/ThreadPool.h"
 #include "../Socket/Socket.h"
 #include "../Pools/ShaderPool.h"

@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Quaternion.h"
 #include "../Graphics/Frustrum.h"
 #include <memory>
-
 //===============================
 
 enum Projection

@@ -87,11 +87,13 @@ bool DirectusCore::IsRunning()
     return m_isRunning;
 }
 
+// Runs when the play button is pressed
 void DirectusCore::Start()
 {
     if (m_locked)
         return;
 
+    m_socket->FireStartEvent();
     m_timerUpdate->start(0);
     m_timerPerSec->start(1000);
     m_isRunning = true;
@@ -99,6 +101,7 @@ void DirectusCore::Start()
     emit EngineStarting();
 }
 
+// Runs when the play button is released
 void DirectusCore::Stop()
 {
     if (m_locked)

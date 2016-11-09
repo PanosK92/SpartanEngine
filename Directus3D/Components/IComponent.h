@@ -43,11 +43,17 @@ class __declspec(dllexport) IComponent
 public:
 	virtual ~IComponent(){}
 
+	// Runs when the component get added
 	virtual void Initialize() = 0;
+	// Runs everytime the simulation starts
 	virtual void Start() = 0;
+	// Runs when the component is removed
 	virtual void Remove() = 0;
+	// Runs every frame
 	virtual void Update() = 0;
+	// Runs when the GameObject is being saved
 	virtual void Serialize() = 0;
+	// Runs when the GameObject is being loaded
 	virtual void Deserialize() = 0;
 
 	//= PROPERTIES ===================
