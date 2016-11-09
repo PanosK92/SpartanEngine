@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RigidBody.h"
 #include "Transform.h"
 #include "Collider.h"
-#include "../Core/Settings.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Physics/PhysicsWorld.h"
@@ -33,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #include "../Logging/Log.h"
 #include <LinearMath/btMotionState.h>
+#include "../Core/Engine.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -51,7 +51,6 @@ public:
 	{
 		Vector3 enginePositon = m_rigidBody->g_transform->GetPosition();
 		Quaternion engineRotation = m_rigidBody->g_transform->GetRotation();
-
 		worldTransform.setOrigin(ToBtVector3(enginePositon + engineRotation * m_rigidBody->GetColliderCenter()));
 		worldTransform.setRotation(ToBtQuaternion(engineRotation));
 
@@ -63,9 +62,10 @@ public:
 	{
 		Quaternion bulletRot = ToQuaternion(worldTransform.getRotation());
 		Vector3 bulletPos = ToVector3(worldTransform.getOrigin()) - bulletRot *  m_rigidBody->GetColliderCenter();
-
 		m_rigidBody->g_transform->SetPosition(bulletPos);
 		m_rigidBody->g_transform->SetRotation(bulletRot);
+
+		m_rigidBody->m_hasSimulated = true;
 	}
 };
 
@@ -73,11 +73,12 @@ RigidBody::RigidBody()
 {
 	m_inWorld = false;
 	m_mass = 0.0f;
-	m_restitution = 0.5f;
-	m_drag = 0.0f;
+	m_restitution = 0.2f;
+	m_drag = 0.5f;
 	m_angularDrag = 0.0f;
 	m_useGravity = true;
 	m_isKinematic = false;
+	m_hasSimulated = false;
 	m_positionLock = Vector3::Zero;
 	m_rotationLock = Vector3::Zero;
 }
@@ -105,7 +106,21 @@ void RigidBody::Remove()
 
 void RigidBody::Update()
 {
-
+	// To make the body able to get positioned directly by the use without worrying about Bullet 
+	// reseting it's state, we secretly set is as kinematic when the engine is not simulating (e.g. Editor Mode)
+	if (m_rigidBody)
+	{
+		// Not simulating, make it kinematic
+		if (!g_context->GetSubsystem<Engine>()->IsSimulating() && !m_rigidBody->isKinematicObject())
+			AddBodyToWorld();
+		
+		// Simulating, if body was not originaly kinematic, make it dynamic
+		if (g_context->GetSubsystem<Engine>()->IsSimulating())
+		{
+			if (!m_isKinematic && m_rigidBody->isKinematicObject())
+				AddBodyToWorld();
+		}
+	}
 }
 
 void RigidBody::Serialize()
@@ -135,23 +150,12 @@ void RigidBody::Deserialize()
 
 	AddBodyToWorld();
 }
-//=======================================================================
 
 // = PROPERTIES =========================================================
-float RigidBody::GetMass() const
-{
-	return m_mass;
-}
-
 void RigidBody::SetMass(float mass)
 {
 	m_mass = max(mass, 0.0f);
 	AddBodyToWorld();
-}
-
-float RigidBody::GetDrag() const
-{
-	return m_drag;
 }
 
 void RigidBody::SetDrag(float drag)
@@ -160,20 +164,10 @@ void RigidBody::SetDrag(float drag)
 	AddBodyToWorld();
 }
 
-float RigidBody::GetAngularDrag() const
-{
-	return m_angularDrag;
-}
-
 void RigidBody::SetAngularDrag(float angularDrag)
 {
 	m_angularDrag = angularDrag;
 	AddBodyToWorld();
-}
-
-float RigidBody::GetRestitution() const
-{
-	return m_restitution;
 }
 
 void RigidBody::SetRestitution(float restitution)
@@ -182,20 +176,13 @@ void RigidBody::SetRestitution(float restitution)
 	AddBodyToWorld();
 }
 
-bool RigidBody::GetUseGravity() const
+void RigidBody::SetUseGravity(bool gravity)
 {
-	return m_useGravity;
-}
+	if (gravity == m_useGravity)
+		return;
 
-void RigidBody::SetUseGravity(bool use)
-{
-	m_useGravity = use;
+	m_useGravity = gravity;
 	AddBodyToWorld();
-}
-
-Vector3 RigidBody::GetGravity() const
-{
-	return m_gravity;
 }
 
 void RigidBody::SetGravity(const Vector3& acceleration)
@@ -206,15 +193,12 @@ void RigidBody::SetGravity(const Vector3& acceleration)
 
 void RigidBody::SetKinematic(bool kinematic)
 {
+	if (kinematic == m_isKinematic)
+		return;
+
 	m_isKinematic = kinematic;
 	AddBodyToWorld();
 }
-
-bool RigidBody::GetKinematic() const
-{
-	return m_isKinematic;
-}
-//=======================================================================
 
 //= FORCE/TORQUE ========================================================
 void RigidBody::SetLinearVelocity(const Vector3& velocity) const
@@ -266,7 +250,6 @@ void RigidBody::ApplyTorque(const Vector3& torque, ForceMode mode) const
 	else if (mode == Impulse)
 		m_rigidBody->applyTorqueImpulse(ToBtVector3(torque));
 }
-//=======================================================================
 
 //= CONSTRAINTS =========================================================
 void RigidBody::SetPositionLock(bool lock)
@@ -285,11 +268,6 @@ void RigidBody::SetPositionLock(const Vector3& lock)
 	m_rigidBody->setLinearFactor(ToBtVector3(translationFreedom));
 }
 
-Vector3 RigidBody::GetPositionLock() const
-{
-	return m_positionLock;
-}
-
 void RigidBody::SetRotationLock(bool lock)
 {
 	if (lock)
@@ -306,37 +284,18 @@ void RigidBody::SetRotationLock(const Vector3& lock)
 	m_rigidBody->setAngularFactor(ToBtVector3(rotationFreedom));
 }
 
-Vector3 RigidBody::GetRotationLock() const
-{
-	return m_rotationLock;
-}
-//=======================================================================
-
 //= POSITION ============================================================
 Vector3 RigidBody::GetPosition() const
 {
 	return m_rigidBody ? ToVector3(m_rigidBody->getWorldTransform().getOrigin()) : Vector3::Zero;
 }
 
-void RigidBody::SetPosition(const Vector3& position) const
+void RigidBody::SetPosition(const Vector3& position)
 {
 	if (!m_rigidBody)
 		return;
 
-	// Set the position to the world transform
-	Vector3 centerOfMass = GetColliderCenter();
-	btTransform& worldTrans = m_rigidBody->getWorldTransform();
-	worldTrans.setOrigin(ToBtVector3(position + ToQuaternion(worldTrans.getRotation()) * centerOfMass));
-
-	// Set the interpolated position also
-	if (!m_hasSimulated)
-	{
-		btTransform interpTrans = m_rigidBody->getInterpolationWorldTransform();
-		interpTrans.setOrigin(worldTrans.getOrigin());
-		m_rigidBody->setInterpolationWorldTransform(interpTrans);
-	}
-
-	Activate();
+	m_rigidBody->getWorldTransform().setOrigin(ToBtVector3(position + ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) * GetColliderCenter()));
 }
 
 //= ROTATION ============================================================
@@ -345,31 +304,12 @@ Quaternion RigidBody::GetRotation() const
 	return m_rigidBody ? ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) : Quaternion::Identity;
 }
 
-void RigidBody::SetRotation(const Quaternion& rotation) const
+void RigidBody::SetRotation(const Quaternion& rotation)
 {
 	if (!m_rigidBody)
 		return;
 
-	// Set the rotation to the world transform
-	Vector3 centerOfMass = GetColliderCenter();
-	Vector3 oldPosition = GetPosition();
-	btTransform& worldTrans = m_rigidBody->getWorldTransform();
-	worldTrans.setRotation(ToBtQuaternion(rotation));
-	if (centerOfMass != Vector3::Zero)
-		worldTrans.setOrigin(ToBtVector3(oldPosition + rotation * centerOfMass));
-
-	// Set the interpolated rotation also
-	if (!m_hasSimulated)
-	{
-		btTransform interpTrans = m_rigidBody->getInterpolationWorldTransform();
-		interpTrans.setRotation(worldTrans.getRotation());
-		if (centerOfMass != Vector3::Zero)
-			interpTrans.setOrigin(worldTrans.getOrigin());
-		m_rigidBody->setInterpolationWorldTransform(interpTrans);
-	}
-
-	m_rigidBody->updateInertiaTensor();
-	Activate();
+	m_rigidBody->getWorldTransform().setRotation(ToBtQuaternion(rotation));
 }
 
 //= MISC ====================================================================
@@ -377,11 +317,6 @@ void RigidBody::SetCollisionShape(weak_ptr<btCollisionShape> shape)
 {
 	m_shape = shape;
 	AddBodyToWorld();
-}
-
-weak_ptr<btRigidBody> RigidBody::GetBtRigidBody() const
-{
-	return m_rigidBody;
 }
 
 void RigidBody::ClearForces() const
@@ -440,6 +375,12 @@ void RigidBody::AddBodyToWorld()
 	//= COLLISION FLAGS ====================================================================
 	int flags = m_rigidBody->getCollisionFlags();
 
+	// If the engine is not simulating (e.g editor mode), the body has to be kinematic
+	// so it can be positioned by the user. The original kinematic state is not lost.
+	bool originalKinematicState = m_isKinematic;
+	if (!g_context->GetSubsystem<Engine>()->IsSimulating())
+		m_isKinematic = true;
+
 	if (m_isKinematic)
 		flags |= btCollisionObject::CF_KINEMATIC_OBJECT;
 	else
@@ -447,6 +388,8 @@ void RigidBody::AddBodyToWorld()
 
 	m_rigidBody->setCollisionFlags(flags);
 	m_rigidBody->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
+
+	m_isKinematic = originalKinematicState;
 	//======================================================================================
 	m_rigidBody->setDeactivationTime(2000);
 

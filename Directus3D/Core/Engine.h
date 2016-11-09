@@ -40,6 +40,8 @@ public:
 	void Update();
 	// Updates and propagates data through the engine's subsystems (used for standalone updates by the editor)
 	void LightUpdate();
+	// Returns whether the engine is running a full simulation (Update) or not (LightUpdate)
+	bool IsSimulating() { return m_isSimulating; }
 	// Returns the current context
 	Context* GetContext();
 	// Shuts down the engine
@@ -51,4 +53,5 @@ private:
 	PhysicsWorld* m_physicsWorld;
 	Scene* m_scene;
 	Renderer* m_renderer;
+	bool m_isSimulating;
 };
