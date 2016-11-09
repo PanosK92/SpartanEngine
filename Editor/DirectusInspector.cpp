@@ -45,7 +45,7 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_mainWindow = mainWindow;
 
     m_transform = new DirectusTransform();
-    m_transform->Initialize(m_directusCore);
+    m_transform->Initialize();
 
     m_camera = new DirectusCamera();
     m_camera->Initialize(m_directusCore, this, mainWindow);
@@ -210,8 +210,7 @@ void DirectusInspector::dropEvent(QDropEvent* event)
         Script* scriptComp = m_inspectedGameObject->AddComponent<Script>();
         scriptComp->AddScript(scriptPath);
 
-        // Update the engine and the inspector (to reflect the changes)
-        m_directusCore->LightUpdate();
+        // Update the inspector
         Inspect(m_inspectedGameObject);
     }
 }

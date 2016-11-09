@@ -66,7 +66,7 @@ void Socket::LightUpdate()
 	if (!m_engine)
 		return;
 
-	m_engine->Update();
+	m_engine->LightUpdate();
 }
 //=============================================================================
 

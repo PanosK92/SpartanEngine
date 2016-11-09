@@ -150,8 +150,6 @@ void DirectusMeshCollider::MapConvex()
     bool convex = m_convex->isChecked();
     m_inspectedMeshCollider->SetConvex(convex);
     m_inspectedMeshCollider->Build();
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusMeshCollider::MapMesh()
@@ -166,7 +164,6 @@ void DirectusMeshCollider::Remove()
 
     GameObject* gameObject = m_inspectedMeshCollider->g_gameObject;
     gameObject->RemoveComponent<MeshCollider>();
-    m_directusCore->LightUpdate();
 
     m_inspector->Inspect(gameObject);
 }

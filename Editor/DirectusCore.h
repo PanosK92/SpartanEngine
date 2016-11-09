@@ -60,7 +60,8 @@ private:
     Socket* m_socket;
 	Engine* m_engine;
     QTimer* m_timerUpdate;
-    QTimer* m_timerPerSec;
+    QTimer* m_timer1FPS;
+    QTimer* m_timer60FPS;
     bool m_isRunning;
     bool m_locked;
     DirectusStatsLabel* m_directusStatsLabel;
@@ -74,8 +75,8 @@ public slots:
     void Start();
     void Stop();
     void Update();
-    void LightUpdate();
-    void UpdatePerSec();
+    void Update1FPS();
+    void Update60FPS();
 
     void LockUpdate();
     void UnlockUpdate();

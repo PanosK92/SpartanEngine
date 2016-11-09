@@ -173,7 +173,7 @@ void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* 
 	// node->mName always returns "RootNode", therefore the model name has to be extracted from the model path
 
 	// process all the node's meshes
-	for (auto i = 0; i < node->mNumMeshes; i++)
+	for (unsigned int i = 0; i < node->mNumMeshes; i++)
 	{
 		GameObject* gameobject = parentGameObject; // set the current gameobject
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]]; // get mesh
@@ -196,7 +196,7 @@ void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* 
 	}
 
 	// process child nodes (if any)
-	for (auto i = 0; i < node->mNumChildren; i++)
+	for (unsigned int i = 0; i < node->mNumChildren; i++)
 	{
 		aiNode* childNode = node->mChildren[i]; // get  node
 
@@ -216,7 +216,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 	vector<unsigned int> indices;
 
 	VertexPositionTextureNormalTangent vertex;
-	for (auto vertexIndex = 0; vertexIndex < mesh->mNumVertices; vertexIndex++)
+	for (unsigned int vertexIndex = 0; vertexIndex < mesh->mNumVertices; vertexIndex++)
 	{
 		// get the position
 		vertex.position = ToVector3(mesh->mVertices[vertexIndex]);
@@ -243,14 +243,14 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 	}
 
 	// get the indices by iterating through each face of the mesh.
-	for (auto i = 0; i < mesh->mNumFaces; i++)
+	for (unsigned int i = 0; i < mesh->mNumFaces; i++)
 	{
 		aiFace face = mesh->mFaces[i];
 
 		if (face.mNumIndices < 3)
 			continue;
 
-		for (auto j = 0; j < face.mNumIndices; j++)
+		for (unsigned int j = 0; j < face.mNumIndices; j++)
 			indices.push_back(face.mIndices[j]);
 	}
 

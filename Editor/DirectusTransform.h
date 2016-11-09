@@ -37,7 +37,7 @@ class DirectusTransform : public QWidget
     Q_OBJECT
 public:
     explicit DirectusTransform(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore);
+    void Initialize();
 
     void Reflect(GameObject* gameobject);
     void Refresh();
@@ -83,7 +83,6 @@ private:
     //===============================
 
     Transform* m_inspectedTransform;
-    DirectusCore* m_directusCore;
 
 public slots:
     void MapPosition();

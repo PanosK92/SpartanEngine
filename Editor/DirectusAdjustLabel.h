@@ -21,17 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-// INCLUDES ========
+// INCLUDES ==============
 #include <QLabel>
 #include <QLineEdit>
-//==================
+#include "Socket/Socket.h"
+//========================
 
 class DirectusAdjustLabel : public QLabel
 {
     Q_OBJECT
 public:
     explicit DirectusAdjustLabel(QWidget* parent = 0);
-    void AdjustQLineEdit(QLineEdit* lineEdit);
+    void Initialize(QLineEdit* lineEdit);
 protected:
     // mouseMoveEvent() is called whenever the
     // mouse moves while a mouse button is held down.
