@@ -50,12 +50,11 @@ public:
 	void SetConvex(bool isConvex);
 	std::weak_ptr<Mesh> GetMesh() const;
 	void SetMesh(std::weak_ptr<Mesh> mesh);
-	
+	void Build();
 
 private:
 	//= HELPER FUNCTIONS ======================================================
-	void DeleteCollisionShape();
-	void ConstructCollisionShape();
+	void DeleteCollisionShape();	
 	void SetCollisionShapeToRigidBody(std::weak_ptr<btCollisionShape> shape) const;
 	std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
 	//========================================================================

@@ -149,6 +149,7 @@ void DirectusMeshCollider::MapConvex()
 
     bool convex = m_convex->isChecked();
     m_inspectedMeshCollider->SetConvex(convex);
+    m_inspectedMeshCollider->Build();
 
     m_directusCore->Update();
 }

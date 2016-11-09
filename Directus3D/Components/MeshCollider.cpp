@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Pools/MeshPool.h"
-#include "../Core/Helper.h"
 //====================================================================
 
 //= NAMESPACES =====
@@ -54,7 +53,7 @@ MeshCollider::~MeshCollider()
 void MeshCollider::Initialize()
 {
 	SetMesh(GetMeshFromAttachedMeshFilter());
-	ConstructCollisionShape();
+	Build();
 }
 
 void MeshCollider::Start()
@@ -83,7 +82,7 @@ void MeshCollider::Deserialize()
 	m_convex = Serializer::ReadBool();
 	m_mesh = g_context->GetSubsystem<MeshPool>()->GetMeshByID(Serializer::ReadSTR());
 
-	ConstructCollisionShape();
+	Build();
 }
 //======================================================================================================================
 
@@ -95,7 +94,6 @@ bool MeshCollider::GetConvex() const
 void MeshCollider::SetConvex(bool isConvex)
 {
 	m_convex = isConvex;
-	ConstructCollisionShape();
 }
 
 weak_ptr<Mesh> MeshCollider::GetMesh() const
@@ -106,11 +104,9 @@ weak_ptr<Mesh> MeshCollider::GetMesh() const
 void MeshCollider::SetMesh(weak_ptr<Mesh> mesh)
 {
 	m_mesh = mesh;
-	ConstructCollisionShape();
 }
 
-//= HELPER FUNCTIONS ================================================================================================
-void MeshCollider::ConstructCollisionShape()
+void MeshCollider::Build()
 {
 	if (m_mesh.expired())
 		return;
@@ -127,7 +123,7 @@ void MeshCollider::ConstructCollisionShape()
 	vector<Directus::Math::Vector3> vertices;
 	for (auto i = 0; i < m_mesh.lock()->GetTriangleCount(); i++)
 	{
-		
+
 		int index0 = m_mesh.lock()->GetIndices()[i * 3];
 		int index1 = m_mesh.lock()->GetIndices()[i * 3 + 1];
 		int index2 = m_mesh.lock()->GetIndices()[i * 3 + 2];
@@ -160,6 +156,7 @@ void MeshCollider::ConstructCollisionShape()
 	SetCollisionShapeToRigidBody(m_collisionShape);
 }
 
+//= HELPER FUNCTIONS ================================================================================================
 void MeshCollider::SetCollisionShapeToRigidBody(weak_ptr<btCollisionShape> shape) const
 {
 	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
@@ -175,7 +172,6 @@ weak_ptr<Mesh> MeshCollider::GetMeshFromAttachedMeshFilter() const
 
 void MeshCollider::DeleteCollisionShape()
 {
-	if (m_collisionShape)
-		SetCollisionShapeToRigidBody(m_collisionShape);	
+	SetCollisionShapeToRigidBody(weak_ptr<btCollisionShape>());
 }
 //======================================================================================================================
