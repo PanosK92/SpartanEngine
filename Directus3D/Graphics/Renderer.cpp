@@ -162,8 +162,7 @@ void Renderer::Render()
 	PostProcessing();
 
 	// Gizmos
-	if (GET_ENGINE_MODE == Editor_Idle)
-		Gizmos();
+	Gizmos();
 
 	// display frame
 	graphics->Present();
@@ -325,7 +324,7 @@ void Renderer::GBufferPass()
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Normal));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Height));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Occlusion));
-			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Emission));		
+			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Emission));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Mask));
 			if (m_directionalLight)
 			{
@@ -467,6 +466,8 @@ void Renderer::PostProcessing() const
 
 void Renderer::Gizmos() const
 {
+	g_context->GetSubsystem<PhysicsWorld>()->DebugDraw();
+
 	if (!m_lineRenderer)
 		return;
 

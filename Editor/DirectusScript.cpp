@@ -114,6 +114,6 @@ void DirectusScript::Remove()
     GameObject* gameObject = m_inspectedScript->g_gameObject;
     gameObject->RemoveComponentByID(m_inspectedScript->g_ID);
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
     m_inspector->Inspect(gameObject);
 }

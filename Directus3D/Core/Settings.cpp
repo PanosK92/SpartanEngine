@@ -3,7 +3,6 @@
 //===================
 
 // Initialize static members
-EngineMode Settings::m_engineMode = Editor_Idle;
 bool Settings::m_fullScreen = false;
 VSync Settings::m_vsync = Off;
 bool Settings::m_mouseVisible = true;
@@ -12,16 +11,6 @@ int Settings::m_resolutionHeight = 1080;
 float Settings::m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
 int Settings::m_shadowMapResolution = 2048;
 unsigned int Settings::m_anisotropy = 16;
-
-void Settings::SetEngineMode(EngineMode mode)
-{
-	m_engineMode = mode;
-}
-
-EngineMode Settings::GetEngineMode()
-{
-	return m_engineMode;
-}
 
 bool Settings::IsFullScreen()
 {

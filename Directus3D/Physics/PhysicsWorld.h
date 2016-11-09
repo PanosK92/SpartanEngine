@@ -45,6 +45,7 @@ public:
 
 	void Step(float timeStep);
 	void Reset();
+	void DebugDraw();
 
 	btDiscreteDynamicsWorld* GetWorld();
 	PhysicsDebugDraw* GetPhysicsDebugDraw();

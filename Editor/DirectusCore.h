@@ -48,7 +48,6 @@ public:
     bool IsRunning();
 
 protected:
-    // I will take care of the drawing
     virtual QPaintEngine* paintEngine() const { return NULL; }
 	virtual void resizeEvent(QResizeEvent* evt);
 	virtual void paintEvent(QPaintEvent* evt);
@@ -56,7 +55,7 @@ protected:
 
 private:
 	void ShutdownEngine();
-	void Resize(int width, int height);
+    void SetResolution(int width, int height);
 
     Socket* m_socket;
 	Engine* m_engine;
@@ -75,6 +74,7 @@ public slots:
     void Start();
     void Stop();
     void Update();
+    void LightUpdate();
     void UpdatePerSec();
 
     void LockUpdate();

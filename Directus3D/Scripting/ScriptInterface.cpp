@@ -102,14 +102,6 @@ void ScriptInterface::RegisterEnumerations()
 	m_scriptEngine->RegisterEnumValue("ForceMode", "Force", int(Force));
 	m_scriptEngine->RegisterEnumValue("ForceMode", "Impulse", int(Impulse));
 
-	// EngineMode
-	m_scriptEngine->RegisterEnum("EngineMode");
-	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Play", int(Editor_Playing));
-	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Stop", int(Editor_Idle));
-	m_scriptEngine->RegisterEnumValue("EngineMode", "Editor_Pause", int(Editor_Paused));
-	m_scriptEngine->RegisterEnumValue("EngineMode", "Build_Developer", int(Build_Developer));
-	m_scriptEngine->RegisterEnumValue("EngineMode", "Build_Release", int(Build_Release));
-
 	// Space
 	m_scriptEngine->RegisterEnum("Space");
 	m_scriptEngine->RegisterEnumValue("Space", "Local", int(Transform::Local));

@@ -64,6 +64,8 @@ void PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const 
 {
 	//= Fill the constant buffer ===============================================
 	DefaultBuffer* defaultBuffer = (DefaultBuffer*)m_constantBuffer->Map();
+	if (!defaultBuffer)
+		return;
 
 	defaultBuffer->worldViewProjection = Matrix::Transposed(worldMatrix * viewMatrix * Matrix::Transposed(projectionMatrix));
 	defaultBuffer->viewport = GET_RESOLUTION;

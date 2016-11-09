@@ -208,7 +208,7 @@ void DirectusCollider::MapType()
     m_inspectedCollider->SetShapeType((ColliderShape)index);
     m_inspectedCollider->Build();
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 
 void DirectusCollider::MapCenter()
@@ -222,7 +222,7 @@ void DirectusCollider::MapCenter()
     m_inspectedCollider->SetCenter(center);
     m_inspectedCollider->Build();
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 
 void DirectusCollider::MapSize()
@@ -236,7 +236,7 @@ void DirectusCollider::MapSize()
     m_inspectedCollider->SetBoundingBox(size);
     m_inspectedCollider->Build();
 
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 }
 
 void DirectusCollider::Remove()
@@ -246,7 +246,7 @@ void DirectusCollider::Remove()
 
     GameObject* gameObject = m_inspectedCollider->g_gameObject;
     gameObject->RemoveComponent<Collider>();
-    m_directusCore->Update();
+    m_directusCore->LightUpdate();
 
     m_inspector->Inspect(gameObject);
 }

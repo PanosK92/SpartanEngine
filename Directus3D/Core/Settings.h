@@ -25,8 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector2.h"
 //==========================
 
-#define GET_ENGINE_MODE Settings::GetEngineMode()
-#define SET_ENGINE_MODE(mode) Settings::SetEngineMode(mode)
 #define SET_RESOLUTION(x,y) Settings::SetResolution(x,y)
 #define GET_RESOLUTION Settings::GetResolution()
 #define RESOLUTION_WIDTH Settings::GetResolutionWidth()
@@ -36,16 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define VSYNC Settings::GetVSync()
 #define FULLSCREEN Settings::IsFullScreen()
 #define ANISOTROPY Settings::GetAnisotropy()
-
-enum EngineMode
-{
-	Editor_Playing,
-	Editor_Idle,
-	Editor_Paused,
-	Build_Developer,
-	Build_Release,
-	Shutdown
-};
 
 enum VSync
 {
@@ -57,8 +45,6 @@ enum VSync
 class __declspec(dllexport) Settings
 {
 public:
-	static void SetEngineMode(EngineMode mode);
-	static EngineMode GetEngineMode();
 	static bool IsFullScreen();
 	static bool IsMouseVisible();
 	static VSync GetVSync();
@@ -71,7 +57,6 @@ public:
 	static unsigned int GetAnisotropy();
 
 private:
-	static EngineMode m_engineMode;
 	static bool m_fullScreen;
 	static VSync m_vsync;
 	static bool m_mouseVisible;

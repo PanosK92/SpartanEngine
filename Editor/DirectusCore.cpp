@@ -92,7 +92,6 @@ void DirectusCore::Start()
     if (m_locked)
         return;
 
-    m_socket->StartEngine();
     m_timerUpdate->start(0);
     m_timerPerSec->start(1000);
     m_isRunning = true;
@@ -105,7 +104,6 @@ void DirectusCore::Stop()
     if (m_locked)
         return;
 
-    m_socket->StopEngine();
     m_timerUpdate->stop();
     m_timerPerSec->stop();
     m_isRunning = false;
@@ -113,14 +111,22 @@ void DirectusCore::Stop()
     emit EngineStopping();
 }
 
+// Runs as fast as possible, performs a full simulation cycle.
 void DirectusCore::Update()
 {
     if (m_locked)
         return;
 
-    m_socket->Update();  
+    m_socket->Update();
 }
 
+// Updates engine's subsystems and propagates data, it doesn't simulate
+void DirectusCore::LightUpdate()
+{
+    m_socket->LightUpdate();
+}
+
+// A function that runs every second
 void DirectusCore::UpdatePerSec()
 {
     if (m_locked)
@@ -129,11 +135,13 @@ void DirectusCore::UpdatePerSec()
     m_directusStatsLabel->UpdateStats(this);
 }
 
+// Locks the Update() function
 void DirectusCore::LockUpdate()
 {
     m_locked = true;
 }
 
+// Unlocks the Update() function
 void DirectusCore::UnlockUpdate()
 {
     m_locked = false;
@@ -149,6 +157,7 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
     int width = this->size().width();
     int height = this->size().height();
 
+    //float aspectRatio = m_socket->
     height = width / (16.0f/9.0f);
 
     if (width % 2 != 0)
@@ -157,15 +166,20 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
     if (height % 2 != 0)
         height++;
 
+    // Change the size of the widget
     setGeometry(QRect(0, 0, width, height));
-    Resize(width, height);
+
+    // Change the rendering resolution of the engine
+    SetResolution(width, height);
 }
 
+// Invoked by QT itself, Update() let's the engine do the rendering
 void DirectusCore::paintEvent(QPaintEvent* evt)
 {
     Update();
 }
 
+// Temporary
 void DirectusCore::mousePressEvent(QMouseEvent* event)
 {
     QPoint mousePos = event->pos();
@@ -179,13 +193,15 @@ void DirectusCore::mousePressEvent(QMouseEvent* event)
 //===================================================
 
 //= Engine functions ================================
+// Shuts down the engine
 void DirectusCore::ShutdownEngine()
 {
 	m_engine->Shutdown();
 	delete m_engine;
 }
 
-void DirectusCore::Resize(int width, int height)
+// Changes the rendering resolution of the engine
+void DirectusCore::SetResolution(int width, int height)
 {
     if (!m_socket)
         return;

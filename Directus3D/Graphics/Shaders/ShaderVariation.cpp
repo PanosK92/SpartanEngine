@@ -133,6 +133,8 @@ void ShaderVariation::UpdateObjectBuffer(shared_ptr<Material> material, Light* d
 	------------------------------------------------------------------------------*/
 	{ // this can be done only when needed - tested
 		ObjectBufferType* defaultBufferType = (ObjectBufferType*)m_objectBuffer->Map();
+		if (!defaultBufferType)
+			return;
 
 		// Material
 		defaultBufferType->matAlbedo = material->GetColorAlbedo();
