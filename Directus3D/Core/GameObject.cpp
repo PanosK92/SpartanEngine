@@ -95,6 +95,17 @@ void GameObject::Update()
 		it.second->Update();
 }
 
+bool GameObject::Save(const string& filePath)
+{
+	if (!Serializer::StartWriting(filePath))
+		return false;
+
+	Serialize();
+	Serializer::StopReading();
+
+	return true;
+}
+
 void GameObject::Serialize()
 {
 	Serializer::WriteSTR(m_ID);
