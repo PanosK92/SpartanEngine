@@ -90,6 +90,7 @@ private:
     //= OCCLUSION ===================
     DirectusMaterialTextureDropTarget* m_occlusionImage;
     QLabel* m_occlusionLabel;
+    DirectusComboSliderText* m_occlusion;
     //===============================
 
     //= EMISSION ====================
