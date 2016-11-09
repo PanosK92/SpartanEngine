@@ -49,6 +49,7 @@ public:
 
 	btDiscreteDynamicsWorld* GetWorld();
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
+	bool IsSimulating() { return m_simulating; }
 
 private:
 	btBroadphaseInterface* m_broadphase;
@@ -62,5 +63,6 @@ private:
 	float m_internalFPS;
 	int m_maxSubSteps;
 	Directus::Math::Vector3 m_gravity;
+	bool m_simulating;
 	//=================================
 };

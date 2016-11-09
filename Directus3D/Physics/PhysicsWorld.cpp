@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletPhysicsHelper.h"
 #include "../Events/EventHandler.h"
 #include <algorithm>
+#include "../Logging/Log.h"
 //==============================================================================
 
 PhysicsWorld::PhysicsWorld(Context* context) : Object(context)
@@ -39,6 +40,7 @@ PhysicsWorld::PhysicsWorld(Context* context) : Object(context)
 	m_internalFPS = 60.0f;
 	m_maxSubSteps = 0;
 	m_gravity = Directus::Math::Vector3(0.0f, -9.81f, 0.0f);
+	m_simulating = false;
 
 	m_broadphase = new btDbvtBroadphase();
 	m_collisionConfiguration = new btDefaultCollisionConfiguration();
@@ -82,10 +84,14 @@ void PhysicsWorld::Step(float timeStep)
 		maxSubSteps = 1;
 	}
 	else if (m_maxSubSteps > 0)
-		maxSubSteps = std::min(maxSubSteps, m_maxSubSteps);
+		maxSubSteps = min(maxSubSteps, m_maxSubSteps);
+
+	m_simulating = true;
 
 	// Step the physics world. 
 	m_world->stepSimulation(timeStep, maxSubSteps, internalTimeStep); 
+
+	m_simulating = false;
 }
 
 void PhysicsWorld::Reset()

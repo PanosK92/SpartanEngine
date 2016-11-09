@@ -53,31 +53,31 @@ public:
 	//=======================================================
 
 	//= MASS ================================================
-	float GetMass() const;
+	float GetMass() { return m_mass; }
 	void SetMass(float mass);
 
 	//= DRAG ===============================================
-	float GetDrag() const;
+	float GetDrag() { return m_drag; }
 	void SetDrag(float drag);
 
 	//= ANGULAR DRAG =======================================
-	float GetAngularDrag() const;
+	float GetAngularDrag() { return m_angularDrag; }
 	void SetAngularDrag(float angularDrag);
 
 	//= RESTITUTION ========================================
-	float GetRestitution() const;
+	float GetRestitution() { return m_restitution; }
 	void SetRestitution(float restitution);
 
 	//= GRAVITY ============================================
-	void SetUseGravity(bool use);
-	bool GetUseGravity() const;
-	Directus::Math::Vector3 GetGravity() const;
+	void SetUseGravity(bool gravity);
+	bool GetUseGravity() { return m_useGravity; };
+	Directus::Math::Vector3 GetGravity() { return m_gravity; }
 	void SetGravity(const Directus::Math::Vector3& acceleration);
 	//======================================================
 
 	//= KINEMATIC ==========================================
 	void SetKinematic(bool kinematic);
-	bool GetKinematic() const;
+	bool GetKinematic() { return m_isKinematic; }
 
 	//= VELOCITY/FORCE/TORQUE =======================================
 	void SetLinearVelocity(const Directus::Math::Vector3& velocity) const;
@@ -89,26 +89,26 @@ public:
 	//= POSITION LOCK =================================
 	void SetPositionLock(bool lock);
 	void SetPositionLock(const Directus::Math::Vector3& lock);
-	Directus::Math::Vector3 GetPositionLock() const;
+	Directus::Math::Vector3 GetPositionLock() { return m_positionLock; }
 	//=================================================
 
 	//= ROTATION LOCK =================================
 	void SetRotationLock(bool lock);
 	void SetRotationLock(const Directus::Math::Vector3& lock);
-	Directus::Math::Vector3 GetRotationLock() const;
+	Directus::Math::Vector3 GetRotationLock() { return m_rotationLock; }
 	//=================================================
 
 	//= POSITION ============================================
 	Directus::Math::Vector3 GetPosition() const;
-	void SetPosition(const Directus::Math::Vector3& position) const;
+	void SetPosition(const Directus::Math::Vector3& position);
 
 	//= ROTATION ============================================
 	Directus::Math::Quaternion GetRotation() const;
-	void SetRotation(const Directus::Math::Quaternion& rotation) const;
+	void SetRotation(const Directus::Math::Quaternion& rotation);
 
 	//= MISC ================================================
 	void SetCollisionShape(std::weak_ptr<btCollisionShape> shape);
-	std::weak_ptr<btRigidBody> GetBtRigidBody() const;
+	std::weak_ptr<btRigidBody> GetBtRigidBody() { return m_rigidBody; }
 	void ClearForces() const;
 	Directus::Math::Vector3 GetColliderCenter() const;
 

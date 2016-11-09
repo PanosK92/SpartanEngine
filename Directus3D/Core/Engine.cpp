@@ -93,6 +93,8 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 void Engine::Update()
 {
+	m_isSimulating = true;
+
 	//= TIME =====================================
 	m_timer->Update();
 	//============================================
@@ -113,11 +115,13 @@ void Engine::Update()
 	m_timer->RenderStart();
 	m_renderer->Render();
 	m_timer->RenderEnd();
-	//============================================
+	//============================================	
 }
 
 void Engine::LightUpdate()
 {
+	m_isSimulating = false;
+
 	//= INPUT ===========
 	m_input->Update();
 	//===================

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Transform.h"
 #include "Logging/Log.h"
 #include "Core/Settings.h"
+#include "Components/RigidBody.h"
 //===============================
 
 //= NAMESPACES ================
@@ -229,15 +230,34 @@ void DirectusTransform::MapPosition()
     float x = m_posX->GetAsFloat();
     float y = m_posY->GetAsFloat();
     float z = m_posZ->GetAsFloat();
-    m_inspectedTransform->SetPositionLocal(Vector3(x,y,z));
+    Vector3 pos(x,y,z);
+
+    // Update the transform
+    m_inspectedTransform->SetPositionLocal(pos);
+
+    // Update the rigidBody (if it exists)
+    auto rigidBody = m_inspectedTransform->g_gameObject->GetComponent<RigidBody>();
+    if (rigidBody)
+        rigidBody->SetPosition(pos);
 }
 
 void DirectusTransform::MapRotation()
 {
     if (!m_inspectedTransform)
         return;
-    Vector3 editorRot = Vector3(m_rotX->GetAsFloat(), m_rotY->GetAsFloat(), m_rotZ->GetAsFloat());
-    m_inspectedTransform->SetRotationLocal(Quaternion::FromEulerAngles(editorRot));
+
+    float x = m_rotX->GetAsFloat();
+    float y = m_rotY->GetAsFloat();
+    float z = m_rotZ->GetAsFloat();
+    Quaternion rot = Quaternion::FromEulerAngles(Vector3(x,y,z));
+
+    // Update the transform
+    m_inspectedTransform->SetRotationLocal(rot);
+
+    // Update the rigidBody (if it exists)
+    auto rigidBody = m_inspectedTransform->g_gameObject->GetComponent<RigidBody>();
+    if (rigidBody)
+        rigidBody->SetRotation(rot);
 }
 
 void DirectusTransform::MapScale()
