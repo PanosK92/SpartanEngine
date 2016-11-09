@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Components/Transform.h"
 #include "../Core/Scene.h"
-#include "../Signals/Signaling.h"
+#include "../Events/EventHandler.h"
 #include "../Core/Context.h"
 //==================================
 
@@ -47,18 +47,18 @@ GameObjectPool::~GameObjectPool()
 void GameObjectPool::Initialize(Context* context)
 {
 	m_context = context;
-	CONNECT_TO_SIGNAL(SIGNAL_ENGINE_START, std::bind(&GameObjectPool::Start, this));
+	SUBSCRIBE_TO_EVENT(EVENT_ENGINE_START, std::bind(&GameObjectPool::Start, this));
 }
 
 void GameObjectPool::Start()
 {
-	for (auto gameObject : m_gameObjectPool)
+	for (const auto& gameObject : m_gameObjectPool)
 		gameObject->Start();
 }
 
 void GameObjectPool::Update()
 {
-	for (auto gameObject : m_gameObjectPool)
+	for (const auto& gameObject : m_gameObjectPool)
 		gameObject->Update();
 }
 
@@ -69,7 +69,7 @@ void GameObjectPool::Release()
 
 void GameObjectPool::Clear()
 {
-	for (auto gameObject : m_gameObjectPool)
+	for (auto& gameObject : m_gameObjectPool)
 		delete gameObject;
 
 	m_gameObjectPool.clear();
@@ -151,7 +151,7 @@ int GameObjectPool::GetGameObjectCount()
 
 int GameObjectPool::GetGameObjectIndex(GameObject* gameObject)
 {
-	if (gameObject == nullptr)
+	if (!gameObject)
 	{
 		LOG_WARNING("Can't return GameObject index, the gameObject is null.");
 		return -1;

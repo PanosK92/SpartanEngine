@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= SIGNAL IDs ======================
-#define SIGNAL_ENGINE_START			0	// Emmited each time the engine starts (play button in the editor)
-#define SIGNAL_ENGINE_STOP			1	// Emitted each time the engine stops (stop button in the editor)
+//= EVENT IDs ======================
+#define EVENT_ENGINE_START			0	// Emmited each time the engine starts (play button in the editor)
 //===================================

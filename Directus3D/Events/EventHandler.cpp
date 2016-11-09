@@ -22,22 +22,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =========
-#include "Signaling.h"
+#include "EventHandler.h"
 //====================
 
-std::vector<std::shared_ptr<Signal>> Signaling::m_signals;
+std::vector<std::shared_ptr<Event>> EventHandler::m_events;
 
-void Signaling::Emit(int signalID)
+void EventHandler::Fire(int signalID)
 {
-	for (auto signal : m_signals)
+	for (auto signal : m_events)
 	{
-		if (signal->GetSignalID() == signalID)
-			signal->Emit();
+		if (signal->GetEventID() == signalID)
+			signal->Fire();
 	}
 }
 
-void Signaling::Clear()
+void EventHandler::Clear()
 {
-	m_signals.clear();
-	m_signals.shrink_to_fit();
+	m_events.clear();
+	m_events.shrink_to_fit();
 }

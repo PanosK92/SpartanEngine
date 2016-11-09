@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/GameObjectPool.h"
 #include "../Logging/Log.h"
 #include "../Graphics/Renderer.h"
-#include "../Signals/Signaling.h"
+#include "../Events/EventHandler.h"
 #include "../FileSystem/ModelImporter.h"
 #include "../Core/Engine.h"
 //==========================================
@@ -35,7 +35,7 @@ using namespace std;
 
 Socket::Socket(Context* context) : Object(context)
 {
-
+	m_engine = nullptr;
 }
 
 Socket::~Socket()
@@ -48,6 +48,11 @@ void Socket::Initialize()
 }
 
 //= STATE CONTROL ==============================================================
+void Socket::FireStartEvent()
+{
+	FIRE_EVENT(EVENT_ENGINE_START);
+}
+
 void Socket::Update()
 {
 	if (!m_engine)
@@ -60,6 +65,7 @@ void Socket::LightUpdate()
 {
 	if (!m_engine)
 		return;
+
 	m_engine->Update();
 }
 //=============================================================================
