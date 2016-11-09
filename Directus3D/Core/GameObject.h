@@ -54,6 +54,7 @@ public:
 	bool IsVisibleInHierarchy() { return m_hierarchyVisibility; }
 	void SetHierarchyVisibility(bool hierarchyVisibility) { m_hierarchyVisibility = hierarchyVisibility; }
 
+	bool Save(const std::string& filePath);
 	void Serialize();
 	void Deserialize();
 

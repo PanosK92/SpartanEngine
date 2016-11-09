@@ -129,7 +129,6 @@ void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
 {
     // Determine whether a drag should begin, and
     // construct a drag object to handle the operation.
-
     if (!(event->buttons() & Qt::LeftButton))
         return;
 
@@ -181,11 +180,23 @@ void DirectusFileExplorer::dragMoveEvent(QDragMoveEvent* event)
 
 void DirectusFileExplorer::dropEvent(QDropEvent* event)
 {
-    QList<QUrl> droppedUrls = event->mimeData()->urls();
-    int droppedUrlCnt = droppedUrls.size();
-    for(int i = 0; i < droppedUrlCnt; i++)
+    const QMimeData* mimeData = event->mimeData();
+
+    // Check if in case a GameObject was dropped
+    std::string gameObjectID = mimeData->text().toStdString();
+    GameObject* gameObject = m_directusCore->GetEngineSocket()->GetGameObjectByID(gameObjectID);
+    if (gameObject)
     {
-        QString localPath = droppedUrls[i].toLocalFile();
+        // Save the dropped GameObject as a prefab
+        gameObject->Save(GetRootPath().toStdString() + "/" + gameObject->GetName() + METADATA_EXTENSION);
+        event->acceptProposedAction();
+        return;
+    }
+
+    QList<QUrl> droppedUrls = mimeData->urls();
+    for(const auto& droppedURL : droppedUrls)
+    {
+        QString localPath = droppedURL.toLocalFile();
         QFileInfo fileInfo(localPath);
 
         string filePath = fileInfo.filePath().toStdString();
@@ -292,8 +303,10 @@ void DirectusFileExplorer::CreateDirectory_()
 
 void DirectusFileExplorer::CreateMaterial()
 {
+    std::string materialName = "NewMaterial";
     auto material = std::make_shared<Material>(m_directusCore->GetEngineSocket()->GetContext());
-    material->Save(GetRootPath().toStdString() + "/NewMaterial", true);
+    material->SetName(materialName);
+    material->Save(GetRootPath().toStdString() + "/" + materialName, true);
 }
 
 void DirectusFileExplorer::ShowRootPathInExplorer()
