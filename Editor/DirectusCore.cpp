@@ -142,16 +142,19 @@ void DirectusCore::Update1FPS()
 // Updates engine's subsystems and propagates data, it doesn't simulate
 void DirectusCore::Update60FPS()
 {
+    if (m_locked)
+        return;
+
     m_socket->LightUpdate();
 }
 
-// Locks the Update() function
+// Prevents any engine update to execute
 void DirectusCore::LockUpdate()
 {
     m_locked = true;
 }
 
-// Unlocks the Update() function
+// Allows any engine update function to execute
 void DirectusCore::UnlockUpdate()
 {
     m_locked = false;
