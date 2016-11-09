@@ -67,7 +67,7 @@ Timer::~Timer()
 void Timer::Update()
 {
 	// Get current time
-	INT64 currentTime = GetTimeMs();
+	float currentTime = GetTimeMs();
 
 	// Calculate delta time
 	m_deltaTime = currentTime - m_lastKnownTime;

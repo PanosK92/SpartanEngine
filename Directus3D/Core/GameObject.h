@@ -50,7 +50,7 @@ public:
 
 	bool IsActive() { return m_isActive; }
 	void SetActive(bool active) { m_isActive = active; }
-	
+
 	bool IsVisibleInHierarchy() { return m_hierarchyVisibility; }
 	void SetHierarchyVisibility(bool hierarchyVisibility) { m_hierarchyVisibility = hierarchyVisibility; }
 
@@ -68,13 +68,8 @@ public:
 
 		// Check if a component of that type already exists
 		IComponent* existingComp = GetComponent<T>();
-		if (existingComp)
-		{
-			// If it's anything but a script, it can't have multiple
-			// instances, return the existing component.
-			if (typeStr != "Script")
-				return dynamic_cast<T*>(existingComp);
-		}
+		if (existingComp && typeStr != "Script") // If it's anything but a script, it can't have multiple instances,
+				return dynamic_cast<T*>(existingComp); // return the existing component.
 
 		// Get the created component.
 		IComponent* component = new T;
@@ -109,7 +104,7 @@ public:
 		{
 			// casting failure == nullptr
 			T* typed_cmp = dynamic_cast<T*>(it.second);
-			if (dynamic_cast<T*>(it.second))
+			if (typed_cmp)
 				return typed_cmp;
 		}
 
@@ -134,13 +129,7 @@ public:
 
 	// Checks if a component of type T exists
 	template <class T>
-	bool HasComponent()
-	{
-		if (GetComponent<T>())
-			return true;
-
-		return false;
-	}
+	bool HasComponent() { return GetComponent<T>() ? true : false; }
 
 	// Removes a component of type T (if it exists)
 	template <class T>
@@ -148,14 +137,11 @@ public:
 	{
 		for (auto it = m_components.begin(); it != m_components.end();)
 		{
-			IComponent* component = it->second;
-
 			// casting failure == nullptr
-			T* typed_cmp = dynamic_cast<T*>(component);
-			if (typed_cmp)
+			if (dynamic_cast<T*>(it->second))
 			{
-				component->Remove();
-				delete component;
+				it->second->Remove();
+				delete it->second;
 				it = m_components.erase(it);
 				continue;
 			}
