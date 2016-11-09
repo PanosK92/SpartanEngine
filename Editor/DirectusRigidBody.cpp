@@ -335,8 +335,6 @@ void DirectusRigidBody::MapMass()
 
     float mass = m_mass->GetAsFloat();
     m_inspectedRigidBody->SetMass(mass);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusRigidBody::MapDrag()
@@ -346,8 +344,6 @@ void DirectusRigidBody::MapDrag()
 
     float drag = m_drag->GetAsFloat();
     m_inspectedRigidBody->SetDrag(drag);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusRigidBody::MapAngularDrag()
@@ -357,8 +353,6 @@ void DirectusRigidBody::MapAngularDrag()
 
     float angularDrag = m_angularDrag->GetAsFloat();
     m_inspectedRigidBody->SetAngularDrag(angularDrag);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusRigidBody::MapRestitution()
@@ -368,8 +362,6 @@ void DirectusRigidBody::MapRestitution()
 
     float restitution = m_restitution->GetAsFloat();
     m_inspectedRigidBody->SetRestitution(restitution);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusRigidBody::MapUseGravity()
@@ -379,8 +371,6 @@ void DirectusRigidBody::MapUseGravity()
 
     bool useGravity = m_useGravity->isChecked();
     m_inspectedRigidBody->SetUseGravity(useGravity);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusRigidBody::MapIsKinematic()
@@ -390,8 +380,6 @@ void DirectusRigidBody::MapIsKinematic()
 
     bool isKinematic = m_isKinematic->isChecked();
     m_inspectedRigidBody->SetKinematic(isKinematic);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusRigidBody::MapFreezePosition()
@@ -403,8 +391,6 @@ void DirectusRigidBody::MapFreezePosition()
     bool lockY = m_freezePosY->isChecked();
     bool lockZ = m_freezePosZ->isChecked();
     m_inspectedRigidBody->SetPositionLock(Vector3(lockX, lockY, lockZ));
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusRigidBody::MapFreezeRotation()
@@ -416,8 +402,6 @@ void DirectusRigidBody::MapFreezeRotation()
     bool lockY = m_freezeRotY->isChecked();
     bool lockZ = m_freezeRotZ->isChecked();
     m_inspectedRigidBody->SetRotationLock(Vector3(lockX, lockY, lockZ));
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusRigidBody::Remove()
@@ -427,7 +411,6 @@ void DirectusRigidBody::Remove()
 
     GameObject* gameObject = m_inspectedRigidBody->g_gameObject;
     gameObject->RemoveComponent<RigidBody>();
-    m_directusCore->LightUpdate();
 
     m_inspector->Inspect(gameObject);
 }

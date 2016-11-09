@@ -339,8 +339,6 @@ void DirectusHierarchy::Populate()
     vector<GameObject*> gameObjects = m_socket->GetRootGameObjects();
     for (int i = 0; i < gameObjects.size(); i++)
             AddGameObject(gameObjects[i], nullptr);
-
-     m_directusCore->LightUpdate();
 }
 
 void DirectusHierarchy::NewScene()
@@ -659,7 +657,6 @@ void DirectusHierarchy::AddCameraComponent()
     gameobject->AddComponent<Camera>();
 
     // Update the engine and the inspector
-    m_directusCore->LightUpdate();
     m_inspector->Inspect(gameobject);
 }
 
@@ -673,7 +670,6 @@ void DirectusHierarchy::AddMeshFilterComponent()
     gameobject->AddComponent<MeshFilter>();
 
     // Update the engine and the inspector
-    m_directusCore->LightUpdate();
     m_inspector->Inspect(gameobject);
 }
 
@@ -687,7 +683,6 @@ void DirectusHierarchy::AddMeshRendererComponent()
     gameobject->AddComponent<MeshRenderer>();
 
     // Update the engine and the inspector
-    m_directusCore->LightUpdate();
     m_inspector->Inspect(gameobject);
 }
 
@@ -701,7 +696,6 @@ void DirectusHierarchy::AddLightComponent()
     gameobject->AddComponent<Light>();
 
     // Update the engine and the inspector
-    m_directusCore->LightUpdate();
     m_inspector->Inspect(gameobject);
 }
 
@@ -715,7 +709,6 @@ void DirectusHierarchy::AddRigidBodyComponent()
     gameobject->AddComponent<RigidBody>();
 
     // Update the engine and the inspector
-    m_directusCore->LightUpdate();
     m_inspector->Inspect(gameobject);
 }
 
@@ -729,7 +722,6 @@ void DirectusHierarchy::AddColliderComponent()
     gameobject->AddComponent<Collider>();
 
     // Update the engine and the inspector
-    m_directusCore->LightUpdate();
     m_inspector->Inspect(gameobject);
 }
 
@@ -743,7 +735,6 @@ void DirectusHierarchy::AddMeshColliderComponent()
     gameobject->AddComponent<MeshCollider>();
 
     // Update the engine and the inspector
-    m_directusCore->LightUpdate();
     m_inspector->Inspect(gameobject);
 }
 
@@ -757,7 +748,6 @@ void DirectusHierarchy::AddHingeComponent()
     gameobject->AddComponent<Hinge>();
 
     // Update the engine and the inspector
-    m_directusCore->LightUpdate();
     m_inspector->Inspect(gameobject);
 }
 
@@ -771,7 +761,6 @@ void DirectusHierarchy::AddSkyboxComponent()
     gameobject->AddComponent<Skybox>();
 
     // Update the engine and the inspector
-    m_directusCore->LightUpdate();
     m_inspector->Inspect(gameobject);
 }
 //========================================================

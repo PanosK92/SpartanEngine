@@ -197,8 +197,6 @@ void DirectusCamera::MapBackground()
 
     Vector4 clearColor = m_background->GetColor();
     m_inspectedCamera->SetClearColor(clearColor);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusCamera::MapProjection()
@@ -208,8 +206,6 @@ void DirectusCamera::MapProjection()
 
     Projection projection = (Projection)(m_projectionComboBox->currentIndex());
     m_inspectedCamera->SetProjection(projection);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusCamera::MapFOV()
@@ -219,8 +215,6 @@ void DirectusCamera::MapFOV()
 
     float fov = m_fov->GetValue();
     m_inspectedCamera->SetFieldOfView(fov);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusCamera::MapNearPlane()
@@ -230,8 +224,6 @@ void DirectusCamera::MapNearPlane()
 
     float nearPlane = m_nearPlane->GetAsFloat();
     m_inspectedCamera->SetNearPlane(nearPlane);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusCamera::MapFarPlane()
@@ -241,8 +233,6 @@ void DirectusCamera::MapFarPlane()
 
     float farPlane = m_farPlane->GetAsFloat();
     m_inspectedCamera->SetFarPlane(farPlane);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusCamera::Remove()
@@ -252,7 +242,6 @@ void DirectusCamera::Remove()
 
     GameObject* gameObject = m_inspectedCamera->g_gameObject;
     gameObject->RemoveComponent<Camera>();
-    m_directusCore->LightUpdate();
 
     m_inspector->Inspect(gameObject);
 }

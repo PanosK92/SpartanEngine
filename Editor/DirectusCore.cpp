@@ -50,8 +50,12 @@ DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
     m_timerUpdate = new QTimer(this);
     connect(m_timerUpdate, SIGNAL(timeout()), this, SLOT(update()));
 
-    m_timerPerSec = new QTimer(this);
-    connect(m_timerPerSec, SIGNAL(timeout()), this, SLOT(UpdatePerSec()));
+    m_timer1FPS = new QTimer(this);
+    connect(m_timer1FPS, SIGNAL(timeout()), this, SLOT(Update1FPS()));
+
+    m_timer60FPS = new QTimer(this);
+    connect(m_timer60FPS, SIGNAL(timeout()), this, SLOT(Update60FPS()));
+    m_timer60FPS->start(16);
 
     m_locked = false;
     m_isRunning = false;
@@ -95,7 +99,8 @@ void DirectusCore::Start()
 
     m_socket->FireStartEvent();
     m_timerUpdate->start(0);
-    m_timerPerSec->start(1000);
+    m_timer1FPS->start(1000);
+    m_timer60FPS->stop();
     m_isRunning = true;
 
     emit EngineStarting();
@@ -108,7 +113,8 @@ void DirectusCore::Stop()
         return;
 
     m_timerUpdate->stop();
-    m_timerPerSec->stop();
+    m_timer1FPS->stop();
+    m_timer60FPS->start(16);
     m_isRunning = false;
 
     emit EngineStopping();
@@ -123,19 +129,20 @@ void DirectusCore::Update()
     m_socket->Update();
 }
 
-// Updates engine's subsystems and propagates data, it doesn't simulate
-void DirectusCore::LightUpdate()
-{
-    m_socket->LightUpdate();
-}
-
-// A function that runs every second
-void DirectusCore::UpdatePerSec()
+// Runs every second
+void DirectusCore::Update1FPS()
 {
     if (m_locked)
         return;
 
     m_directusStatsLabel->UpdateStats(this);
+}
+
+// Runs 30 times per second
+// Updates engine's subsystems and propagates data, it doesn't simulate
+void DirectusCore::Update60FPS()
+{
+    m_socket->LightUpdate();
 }
 
 // Locks the Update() function

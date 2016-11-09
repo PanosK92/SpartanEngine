@@ -32,16 +32,13 @@ using namespace Directus::Math;
 
 DirectusTransform::DirectusTransform(QWidget* parent) : QWidget(parent)
 {
-    m_directusCore = nullptr;
     m_inspectedTransform = nullptr;
     m_gridLayout = nullptr;
     m_validator = nullptr;
 }
 
-void DirectusTransform::Initialize(DirectusCore* directusCore)
+void DirectusTransform::Initialize()
 {
-    m_directusCore = directusCore;
-
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
 
@@ -226,36 +223,30 @@ void DirectusTransform::ReflectScale()
 
 void DirectusTransform::MapPosition()
 {
-    if (!m_inspectedTransform || !m_directusCore)
+    if (!m_inspectedTransform)
         return;
 
     float x = m_posX->GetAsFloat();
     float y = m_posY->GetAsFloat();
     float z = m_posZ->GetAsFloat();
     m_inspectedTransform->SetPositionLocal(Vector3(x,y,z));
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusTransform::MapRotation()
 {
-    if (!m_inspectedTransform || !m_directusCore)
+    if (!m_inspectedTransform)
         return;
     Vector3 editorRot = Vector3(m_rotX->GetAsFloat(), m_rotY->GetAsFloat(), m_rotZ->GetAsFloat());
     m_inspectedTransform->SetRotationLocal(Quaternion::FromEulerAngles(editorRot));
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusTransform::MapScale()
 {
-    if (!m_inspectedTransform || !m_directusCore)
+    if (!m_inspectedTransform)
         return;
 
     float x = m_scaX->GetAsFloat();
     float y = m_scaY->GetAsFloat();
     float z = m_scaZ->GetAsFloat();
     m_inspectedTransform->SetScaleLocal(Vector3(x,y,z));
-
-    m_directusCore->LightUpdate();
 }

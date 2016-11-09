@@ -17,7 +17,7 @@ DirectusAdjustLabel::DirectusAdjustLabel(QWidget *parent) : QLabel(parent)
     this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 }
 
-void DirectusAdjustLabel::AdjustQLineEdit(QLineEdit* lineEdit)
+void DirectusAdjustLabel::Initialize(QLineEdit* lineEdit)
 {
     m_lineEdit = lineEdit;
 }

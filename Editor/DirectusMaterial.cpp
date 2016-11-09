@@ -139,7 +139,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_tilingX->Initialize("X");
 
     m_tilingY = new DirectusComboLabelText();
-    m_tilingY->Initialize("X");
+    m_tilingY->Initialize("Y");
     //=========================================================
 
     //= OFFSET ================================================
@@ -149,7 +149,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     m_offsetX->Initialize("X");
 
     m_offsetY = new DirectusComboLabelText();
-    m_offsetY->Initialize("X");
+    m_offsetY->Initialize("Y");
     //=========================================================
 
     //= LINE ======================================
@@ -535,8 +535,6 @@ void DirectusMaterial::MapAlbedo()
 
     Vector4 color =  m_albedoColor->GetColor();
     m_inspectedMaterial.lock()->SetColorAlbedo(color);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusMaterial::MapRoughness()
@@ -546,8 +544,6 @@ void DirectusMaterial::MapRoughness()
 
     float roughness =  m_roughness->GetValue();
     m_inspectedMaterial.lock()->SetRoughnessMultiplier(roughness);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusMaterial::MapMetallic()
@@ -557,8 +553,6 @@ void DirectusMaterial::MapMetallic()
 
     float metallic =  m_metallic->GetValue();
     m_inspectedMaterial.lock()->SetMetallicMultiplier(metallic);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusMaterial::MapNormal()
@@ -568,8 +562,6 @@ void DirectusMaterial::MapNormal()
 
     float normal =  m_normal->GetValue();
     m_inspectedMaterial.lock()->SetNormalMultiplier(normal);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusMaterial::MapHeight()
@@ -579,8 +571,6 @@ void DirectusMaterial::MapHeight()
 
     float height =  m_height->GetValue();
     m_inspectedMaterial.lock()->SetHeightMultiplier(height);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusMaterial::MapOcclusion()
@@ -590,8 +580,6 @@ void DirectusMaterial::MapOcclusion()
 
     float occlusion =  m_occlusion->GetValue();
     m_inspectedMaterial.lock()->SetOcclusionMultiplier(occlusion);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusMaterial::MapEmission()
@@ -611,8 +599,6 @@ void DirectusMaterial::MapSpecular()
 
     float specular = m_specular->GetValue();
     m_inspectedMaterial.lock()->SetSpecularMultiplier(specular);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusMaterial::MapTiling()
@@ -624,8 +610,6 @@ void DirectusMaterial::MapTiling()
     tiling.x = m_tilingX->GetAsFloat();
     tiling.y = m_tilingY->GetAsFloat();
     m_inspectedMaterial.lock()->SetTilingUV(tiling);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusMaterial::MapOffset()
@@ -637,8 +621,6 @@ void DirectusMaterial::MapOffset()
     offset.x = m_offsetX->GetAsFloat();
     offset.y = m_offsetY->GetAsFloat();
     m_inspectedMaterial.lock()->SetOffsetUV(offset);
-
-    m_directusCore->LightUpdate();
 }
 
 void DirectusMaterial::SaveMaterial()

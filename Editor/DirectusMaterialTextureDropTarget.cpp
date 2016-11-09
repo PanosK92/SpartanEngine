@@ -135,9 +135,6 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
         // Set the texture to the material
         m_material.lock()->SetTexture(imagePath, m_textureType);
 
-        // Update the engine
-        m_directusCore->LightUpdate();
-
         // Save the changes
         m_material.lock()->SaveToExistingDirectory();
 

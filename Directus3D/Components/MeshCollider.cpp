@@ -34,9 +34,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/MeshPool.h"
 //====================================================================
 
-//= NAMESPACES =====
+//= NAMESPACES ================
 using namespace std;
-//==================
+using namespace Directus::Math;
+//=============================
 
 MeshCollider::MeshCollider()
 {
@@ -120,8 +121,8 @@ void MeshCollider::Build()
 	DeleteCollisionShape();
 	//= contruct collider ========================================================================================
 	btTriangleMesh* trimesh = new btTriangleMesh();
-	vector<Directus::Math::Vector3> vertices;
-	for (auto i = 0; i < m_mesh.lock()->GetTriangleCount(); i++)
+	vector<Vector3> vertices;
+	for (unsigned int i = 0; i < m_mesh.lock()->GetTriangleCount(); i++)
 	{
 
 		int index0 = m_mesh.lock()->GetIndices()[i * 3];
@@ -144,7 +145,7 @@ void MeshCollider::Build()
 	//= construct a hull approximation ===========================================================================
 	if (m_convex)
 	{
-		auto shape = new btConvexHullShape((btScalar*)vertices.data(), m_mesh.lock()->GetVertexCount(), sizeof(Directus::Math::Vector3));
+		auto shape = new btConvexHullShape((btScalar*)vertices.data(), m_mesh.lock()->GetVertexCount(), sizeof(Vector3));
 
 		// OPTIMIZE
 		auto hull = make_shared<btShapeHull>(shape);
