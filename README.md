@@ -24,7 +24,7 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 - Windows support.
 
 # Features under development (v0.2)
-- Bug fixes.
+- A lot of bug fixes.
 - Custom format resources and improvents to existing ones (prefabs, materials, scenes and so on).
 - Engine architecture improvements.
 - Lower memory usage and more efficient memory management.
