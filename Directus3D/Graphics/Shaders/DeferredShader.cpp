@@ -84,6 +84,7 @@ void DeferredShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mVie
 	MatrixBufferType* buffer = (MatrixBufferType*)m_matrixBuffer->Map();
 	buffer->worldViewProjection = worlBaseViewProjection.Transposed();
 	buffer->viewProjectionInverse = viewProjection.Inverted().Transposed();
+	buffer->mView = mView;
 	m_matrixBuffer->Unmap();
 
 	// Set to shader slot

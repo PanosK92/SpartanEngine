@@ -266,7 +266,7 @@ void Renderer::AcquirePrerequisites()
 
 void Renderer::DirectionalLightDepthPass()
 {
-	g_context->GetSubsystem<Graphics>()->SetCullMode(CullFront);
+	//g_context->GetSubsystem<Graphics>()->SetCullMode(CullFront);
 
 	for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetCascadeCount(); cascadeIndex++)
 	{
@@ -274,6 +274,7 @@ void Renderer::DirectionalLightDepthPass()
 		for (const auto& gameObject : m_renderables)
 		{
 			auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
+			auto material = meshRenderer->GetMaterial();
 			auto meshFilter = gameObject->GetComponent<MeshFilter>();
 			auto mesh = meshFilter->GetMesh();
 
@@ -283,6 +284,10 @@ void Renderer::DirectionalLightDepthPass()
 			// The skybox might be able to cast shadows, but in the real world it doesn't, 
 			// because it doesn't exist, so skip it
 			if (gameObject->GetComponent<Skybox>() || !meshRenderer->GetCastShadows())
+				continue;
+
+			// Skip transparent meshes (for now)
+			if (material.lock()->GetOpacity() < 1.0f)
 				continue;
 
 			if (meshFilter->SetBuffers())

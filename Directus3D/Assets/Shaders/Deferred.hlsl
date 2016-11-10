@@ -16,17 +16,13 @@ SamplerState samplerAniso : register(s1);
 #define MaxLights 128
 //===================
 
-// = INCLUDES ========
-#include "Helper.hlsl"
-#include "PBR.hlsl"
-//====================
-
 //= CONSTANT BUFFERS ===================
 // Update frequency: low
 cbuffer MatrixBuffer : register(b0)
 {
 	matrix mWorldViewProjection;
     matrix mViewProjectionInverse;
+	matrix mView;
 }
 
 // Update frequency: high
@@ -48,6 +44,12 @@ cbuffer MiscBuffer : register(b1)
     float2 padding;
 };
 //=====================================
+
+// = INCLUDES ========
+#include "Helper.hlsl"
+#include "PBR.hlsl"
+#include "SSAO.hlsl"
+//====================
 
 //= INPUT LAYOUT ======================
 struct VertexInputType
@@ -158,5 +160,6 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     finalColor = ToGamma(finalColor); // gamma correction
     float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
 	
+	// Temporary SSAO appraoch for testing purposes
     return float4(finalColor, luma);
 }

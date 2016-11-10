@@ -61,6 +61,16 @@ public:
 		Directus::Math::Vector3 min = center - Directus::Math::Vector3(radius, radius, radius);
 		Directus::Math::Vector3 max = center + Directus::Math::Vector3(radius, radius, radius);
 
+		float fCascadeBound = max.z;
+		float fWorldUnitsPerTexel = fCascadeBound / (float)m_resolution;
+
+		min /= fWorldUnitsPerTexel;
+		min.Floor();
+		min *= fWorldUnitsPerTexel;
+		max /= fWorldUnitsPerTexel;
+		max.Floor();
+		max *= fWorldUnitsPerTexel;
+
 		return Directus::Math::Matrix::CreateOrthoOffCenterLH(
 			min.x, // left
 			max.x, // right
