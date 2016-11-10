@@ -45,7 +45,7 @@ Light::Light()
 		147.0f / 255.0f,
 		1.0f
 	);
-	m_bias = 0.0003f;
+	m_bias = 0.03f;
 	m_cascades = 3;
 }
 

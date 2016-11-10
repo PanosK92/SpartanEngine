@@ -90,6 +90,13 @@ namespace Directus
 				return Vector3(x, y, z);
 			}
 
+			void Floor()
+			{
+				x = floorf(x);
+				y = floorf(y);
+				z = floorf(z);
+			}
+
 			//= NORMALIZATION ========================================================================================
 			Vector3 Normalized() const
 			{

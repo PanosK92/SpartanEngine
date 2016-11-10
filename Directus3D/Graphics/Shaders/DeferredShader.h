@@ -51,6 +51,7 @@ private:
 	{
 		Directus::Math::Matrix worldViewProjection;
 		Directus::Math::Matrix viewProjectionInverse;
+		Directus::Math::Matrix mView;
 	};
 
 	const static int maxLights = 128;

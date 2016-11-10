@@ -51,15 +51,15 @@ class MouseLook
 		Vector2 mouseDelta = Vector2(input.GetMousePositionDelta().x, input.GetMousePositionDelta().y);
 	
 		// Scale input against the sensitivity setting and multiply that against the smoothing value.
-		mouseDelta.x *= sensitivity * smoothing * time.GetDeltaTime();
-		mouseDelta.y *= sensitivity * smoothing * time.GetDeltaTime();
+		mouseDelta.x *= sensitivity * smoothing;
+		mouseDelta.y *= sensitivity * smoothing;
 		
         // Interpolate mouse movement over time to apply smoothing delta.
 		smoothMouse.x = Lerp(smoothMouse.x, mouseDelta.x, 1.0f / smoothing);
         smoothMouse.y = Lerp(smoothMouse.y, mouseDelta.y, 1.0f / smoothing);
 		
-		currentRotation.x += smoothMouse.x;
-		currentRotation.y += smoothMouse.y;
+		currentRotation.x += smoothMouse.x * time.GetDeltaTime();
+		currentRotation.y += smoothMouse.y * time.GetDeltaTime();
 		
 		currentRotation.y = ClampRotation(currentRotation.y);
 		
