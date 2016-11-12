@@ -24,13 +24,15 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 - Windows support.
 
 # Features under development (v0.2)
-- A lot of bug fixes.
+Version 0.2 is a complete overhaul in many ways.
+- Audio source component.
+- Audio listener component.
+- Bug fixes, lot's of them
 - Custom format resources and improvents to existing ones (prefabs, materials, scenes and so on).
 - Engine architecture improvements.
 - Lower memory usage and more efficient memory management.
 
 # Planned Features
-- Audio source and listener components.
 - DirectX 12 Renderer
 - Draw call batching (static & dynamic).
 - Export on Windows.

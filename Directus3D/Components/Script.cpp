@@ -42,7 +42,7 @@ Script::~Script()
 }
 
 //= ICOMPONENT ==================================================================
-void Script::Initialize()
+void Script::Awake()
 {
 
 }

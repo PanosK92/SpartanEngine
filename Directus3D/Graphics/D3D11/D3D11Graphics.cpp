@@ -255,13 +255,13 @@ void D3D11Graphics::Initialize(HWND handle)
 	m_blendStateDesc.RenderTarget[0].BlendEnable = int(true);
 	HRESULT result = m_device->CreateBlendState(&m_blendStateDesc, &m_blendStateAlphaEnabled);
 	if (FAILED(result))
-		LOG_ERROR("Failed to create the blend state.");
+		LOG_ERROR("Failed to create blend state.");
 
 	// Create a blending state with alpha blending disabled
 	m_blendStateDesc.RenderTarget[0].BlendEnable = int(false);
 	result = m_device->CreateBlendState(&m_blendStateDesc, &m_blendStateAlphaDisabled);
 	if (FAILED(result))
-		LOG_ERROR("Failed to create the blend state.");
+		LOG_ERROR("Failed to create blend state.");
 
 	SetViewport(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 }

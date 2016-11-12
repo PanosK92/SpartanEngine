@@ -36,6 +36,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Hinge.h"
 #include "../Components/Script.h"
 #include "../Components/LineRenderer.h"
+#include "../Components/AudioSource.h"
+#include "../Components/AudioListener.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -211,6 +213,12 @@ IComponent* GameObject::AddComponentBasedOnType(const string& typeStr)
 
 	if (typeStr == "LineRenderer")
 		component = AddComponent<LineRenderer>();
+
+	if (typeStr == "AudioSource")
+		component = AddComponent<AudioSource>();
+
+	if (typeStr == "AudioListener")
+		component = AddComponent<AudioListener>();
 
 	return component;
 }

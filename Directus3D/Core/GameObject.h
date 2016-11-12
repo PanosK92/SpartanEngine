@@ -88,7 +88,7 @@ public:
 		component->g_context = m_context;
 
 		// Run Initialize().
-		component->Initialize();
+		component->Awake();
 
 		// Do a scene analysis
 		m_context->GetSubsystem<Scene>()->Resolve();

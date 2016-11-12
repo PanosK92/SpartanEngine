@@ -69,13 +69,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.83.7;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\AngelScript 2.31.1;$(IncludePath)</IncludePath>
+    <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.83.7;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\AngelScript 2.31.1;..\ThirdParty\FMOD 1.08.14;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
     <LibraryPath>..\ThirdParty\Compiled x64;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.83.7;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\AngelScript 2.31.1;$(IncludePath)</IncludePath>
+    <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.83.7;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\AngelScript 2.31.1;..\ThirdParty\FMOD 1.08.14;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
     <LibraryPath>..\ThirdParty\Compiled x64;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
@@ -131,6 +131,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Audio\Audio.cpp" />
+    <ClCompile Include="Components\AudioListener.cpp" />
+    <ClCompile Include="Components\AudioSource.cpp" />
     <ClCompile Include="Components\Camera.cpp" />
     <ClCompile Include="Components\Collider.cpp" />
     <ClCompile Include="Components\Hinge.cpp" />
@@ -202,6 +205,9 @@
     <ClCompile Include="Events\EventHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Audio\Audio.h" />
+    <ClInclude Include="Components\AudioListener.h" />
+    <ClInclude Include="Components\AudioSource.h" />
     <ClInclude Include="Components\Camera.h" />
     <ClInclude Include="Components\Collider.h" />
     <ClInclude Include="Components\Hinge.h" />

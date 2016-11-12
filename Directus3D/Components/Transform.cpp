@@ -49,7 +49,7 @@ Transform::~Transform()
 //==========
 // INTERFACE
 //==========
-void Transform::Initialize()
+void Transform::Awake()
 {
 	UpdateWorldTransform();
 }

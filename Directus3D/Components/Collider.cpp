@@ -53,7 +53,7 @@ Collider::~Collider()
 }
 
 //= ICOMPONENT ========================================================================
-void Collider::Initialize()
+void Collider::Awake()
 {
 	m_lastKnownScale = g_transform->GetScale();
 	UpdateBoundingBox();
