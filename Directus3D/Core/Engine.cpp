@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/ShaderPool.h"
 #include "../Pools/MaterialPool.h"
 #include "../Pools/TexturePool.h"
+#include "../Audio/Audio.h"
 //==========================================
 
 //= NAMESPACES =====
@@ -51,9 +52,10 @@ Engine::Engine(Context* context) : Object(context)
 
 	// Register subsystems that don't depend on any startup parameters
 	g_context->RegisterSubsystem(new Timer(g_context));
-	g_context->RegisterSubsystem(new ThreadPool(g_context));
-	g_context->RegisterSubsystem(new Graphics(g_context));
 	g_context->RegisterSubsystem(new Input(g_context));
+	g_context->RegisterSubsystem(new Audio(g_context));
+	g_context->RegisterSubsystem(new ThreadPool(g_context));
+	g_context->RegisterSubsystem(new Graphics(g_context));	
 	g_context->RegisterSubsystem(new PhysicsWorld(g_context));
 	g_context->RegisterSubsystem(new MeshPool(g_context));
 	g_context->RegisterSubsystem(new TexturePool(g_context));
@@ -66,9 +68,11 @@ Engine::~Engine()
 
 void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
 {
-	// Initialize subsystems that depend on external parameters
-	g_context->GetSubsystem<Graphics>()->Initialize(drawPaneHandle);
+	// Initialize any subsystems that require initialization
+	g_context->GetSubsystem<Audio>()->Initialize();
 	g_context->GetSubsystem<Input>()->Initialize(instance, windowHandle);
+	g_context->GetSubsystem<Graphics>()->Initialize(drawPaneHandle);
+	
 
 	// Register subsystems which depend on registered subsystems
 	g_context->RegisterSubsystem(new ScriptEngine(g_context));
@@ -86,6 +90,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	// Get frequently used subsystems
 	m_timer = g_context->GetSubsystem<Timer>();
 	m_input = g_context->GetSubsystem<Input>();
+	m_audio = g_context->GetSubsystem<Audio>();
 	m_physicsWorld = g_context->GetSubsystem<PhysicsWorld>();
 	m_scene = g_context->GetSubsystem<Scene>();
 	m_renderer = g_context->GetSubsystem<Renderer>();
@@ -97,6 +102,10 @@ void Engine::Update()
 
 	//= TIME =====================================
 	m_timer->Update();
+	//============================================
+
+	//= AUDIO ====================================
+	m_audio->Update();
 	//============================================
 
 	//= INPUT ====================================

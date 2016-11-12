@@ -43,7 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class MeshFilter;
 
-class Renderer :public Object
+class Renderer : public Object
 {
 public:
 	Renderer(Context* context);

@@ -48,7 +48,7 @@ MeshRenderer::~MeshRenderer()
 }
 
 //= ICOMPONENT ===============================================================
-void MeshRenderer::Initialize()
+void MeshRenderer::Awake()
 {
 	m_material = g_context->GetSubsystem<MaterialPool>()->GetMaterialStandardDefault();
 }

@@ -21,21 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ==========
 #include "IComponent.h"
-#include "../Graphics/D3D11/D3D11Shader.h"
-#include "../Graphics/Texture.h"
-#include <memory>
-//========================================
+//=====================
 
-class __declspec(dllexport) Skybox : public IComponent
+class AudioSource : public IComponent
 {
 public:
-	Skybox();
-	~Skybox();
+	AudioSource();
+	~AudioSource();
 
 	/*------------------------------------------------------------------------------
-									[INTERFACE]
+	[INTERFACE]
 	------------------------------------------------------------------------------*/
 	virtual void Awake();
 	virtual void Start();
@@ -44,11 +41,9 @@ public:
 	virtual void Serialize();
 	virtual void Deserialize();
 
-	/*------------------------------------------------------------------------------
-									[MISC]
-	------------------------------------------------------------------------------*/
-	ID3D11ShaderResourceView* GetEnvironmentTexture() const;
-
 private:
-	std::shared_ptr<Texture> m_cubeMapTexture;
+	bool m_mute;
+	float m_volume;
+	bool m_playOnAwake;
+	bool m_loop;
 };

@@ -23,6 +23,7 @@ DEALINGS IN THE SOFTWARE. */
 
 class Timer;
 class Input;
+class Audio;
 class PhysicsWorld;
 class Scene;
 class Renderer;
@@ -50,6 +51,7 @@ public:
 private:
 	Timer* m_timer;
 	Input* m_input;
+	Audio* m_audio;
 	PhysicsWorld* m_physicsWorld;
 	Scene* m_scene;
 	Renderer* m_renderer;

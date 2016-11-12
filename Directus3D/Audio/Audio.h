@@ -21,34 +21,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
-#include "IComponent.h"
-#include "../Graphics/D3D11/D3D11Shader.h"
-#include "../Graphics/Texture.h"
-#include <memory>
-//========================================
+//= LINKING =========================
+#pragma comment(lib, "fmod64_vc.lib")
+//===================================
 
-class __declspec(dllexport) Skybox : public IComponent
+//= INCLUDES ==============
+#include "../Core/Object.h"
+#include "fmod.hpp"
+//=========================
+
+class Audio : public Object
 {
 public:
-	Skybox();
-	~Skybox();
+	Audio(Context* context);
+	~Audio();
 
-	/*------------------------------------------------------------------------------
-									[INTERFACE]
-	------------------------------------------------------------------------------*/
-	virtual void Awake();
-	virtual void Start();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
-
-	/*------------------------------------------------------------------------------
-									[MISC]
-	------------------------------------------------------------------------------*/
-	ID3D11ShaderResourceView* GetEnvironmentTexture() const;
+	bool Initialize();
+	void Update();
 
 private:
-	std::shared_ptr<Texture> m_cubeMapTexture;
+	FMOD_RESULT m_result;
+	FMOD::System* m_fmodSystem;
+
+	int m_maxChannels;
 };

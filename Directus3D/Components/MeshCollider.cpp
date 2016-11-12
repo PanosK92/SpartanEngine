@@ -51,7 +51,7 @@ MeshCollider::~MeshCollider()
 }
 
 //= ICOMPONENT ========================================
-void MeshCollider::Initialize()
+void MeshCollider::Awake()
 {
 	SetMesh(GetMeshFromAttachedMeshFilter());
 	Build();

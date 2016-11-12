@@ -21,34 +21,46 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
-#include "IComponent.h"
-#include "../Graphics/D3D11/D3D11Shader.h"
-#include "../Graphics/Texture.h"
-#include <memory>
-//========================================
+//= INCLUDES =============
+#include "AudioListener.h"
+//========================
 
-class __declspec(dllexport) Skybox : public IComponent
+AudioListener::AudioListener()
 {
-public:
-	Skybox();
-	~Skybox();
 
-	/*------------------------------------------------------------------------------
-									[INTERFACE]
-	------------------------------------------------------------------------------*/
-	virtual void Awake();
-	virtual void Start();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
+}
 
-	/*------------------------------------------------------------------------------
-									[MISC]
-	------------------------------------------------------------------------------*/
-	ID3D11ShaderResourceView* GetEnvironmentTexture() const;
+AudioListener::~AudioListener()
+{
 
-private:
-	std::shared_ptr<Texture> m_cubeMapTexture;
-};
+}
+
+void AudioListener::Awake()
+{
+
+}
+
+void AudioListener::Start()
+{
+
+}
+
+void AudioListener::Remove()
+{
+
+}
+
+void AudioListener::Update()
+{
+
+}
+
+void AudioListener::Serialize()
+{
+
+}
+
+void AudioListener::Deserialize()
+{
+
+}

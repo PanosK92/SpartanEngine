@@ -43,8 +43,8 @@ class __declspec(dllexport) IComponent
 public:
 	virtual ~IComponent(){}
 
-	// Runs when the component get added
-	virtual void Initialize() = 0;
+	// Runs when the component gets added
+	virtual void Awake() = 0;
 	// Runs everytime the simulation starts
 	virtual void Start() = 0;
 	// Runs when the component is removed

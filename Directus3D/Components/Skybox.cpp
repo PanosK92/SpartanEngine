@@ -56,7 +56,7 @@ Skybox::~Skybox()
 /*------------------------------------------------------------------------------
 								[INTERFACE]
 ------------------------------------------------------------------------------*/
-void Skybox::Initialize()
+void Skybox::Awake()
 {
 	ID3D11ShaderResourceView* cubeMapSRV = nullptr;
 	HRESULT hr = CreateDDSTextureFromFile(g_context->GetSubsystem<Graphics>()->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &cubeMapSRV);

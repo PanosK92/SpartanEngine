@@ -19,36 +19,40 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES ==============
+#include "Audio.h"
+#include "fmod_errors.h"
+#include "../Logging/Log.h"
+//=========================
 
-//= INCLUDES =============================
-#include "IComponent.h"
-#include "../Graphics/D3D11/D3D11Shader.h"
-#include "../Graphics/Texture.h"
-#include <memory>
-//========================================
-
-class __declspec(dllexport) Skybox : public IComponent
+Audio::Audio(Context* context) : Object(context)
 {
-public:
-	Skybox();
-	~Skybox();
+	m_fmodSystem = nullptr;
+	m_maxChannels = 32;
+}
 
-	/*------------------------------------------------------------------------------
-									[INTERFACE]
-	------------------------------------------------------------------------------*/
-	virtual void Awake();
-	virtual void Start();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
+Audio::~Audio()
+{
 
-	/*------------------------------------------------------------------------------
-									[MISC]
-	------------------------------------------------------------------------------*/
-	ID3D11ShaderResourceView* GetEnvironmentTexture() const;
+}
 
-private:
-	std::shared_ptr<Texture> m_cubeMapTexture;
-};
+bool Audio::Initialize()
+{
+	m_result = m_fmodSystem->init(m_maxChannels, FMOD_INIT_NORMAL, nullptr);
+
+	if (m_result != FMOD_OK)
+		LOG_ERROR(FMOD_ErrorString(m_result));
+
+	return true;
+}
+
+void Audio::Update()
+{
+	if (!m_fmodSystem)
+		return;
+
+	m_result = m_fmodSystem->update();
+
+	if (m_result != FMOD_OK)
+		LOG_ERROR(FMOD_ErrorString(m_result));
+}
