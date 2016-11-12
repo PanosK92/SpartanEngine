@@ -56,31 +56,32 @@ void DepthShader::Initialize(Graphics* graphicsDevice)
 	m_defaultBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 
-void DepthShader::Render(int indexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
+void DepthShader::UpdateMatrixBuffer(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
 {
-	// Set the shader parameters that it will use for rendering.
-	SetShaderBuffers(worldMatrix, viewMatrix, projectionMatrix);
+	if (m_defaultBuffer)
+		return;
 
-	// Now render the prepared buffers with the shader.
-	RenderShader(indexCount);
-}
-
-void DepthShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
-{
-	// get a pointer to the data in the constant buffer.
+	// Get buffer pointer
 	DefaultBuffer* miscBufferType = static_cast<DefaultBuffer*>(m_defaultBuffer->Map());
 
-	// fill buffer
+	// Fill buffer
 	miscBufferType->worldViewProjection = Matrix::Transposed(worldMatrix * viewMatrix * projectionMatrix);
 
-	m_defaultBuffer->Unmap(); // unlock the buffer
-	m_defaultBuffer->SetVS(0); // set the buffer in the vertex shader
+	// Unlock the buffer
+	m_defaultBuffer->Unmap();
+
+	// Set the buffer to the vertex shader
+	m_defaultBuffer->SetVS(0);
 }
 
-void DepthShader::RenderShader(int indexCount)
+void DepthShader::Set()
 {
-	m_shader->Set();
+	if (m_shader)
+		m_shader->Set();
+}
 
-	// render
-	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+void DepthShader::Render(unsigned int indexCount)
+{
+	if (m_graphics)
+		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }

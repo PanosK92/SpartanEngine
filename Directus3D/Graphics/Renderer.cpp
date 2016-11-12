@@ -268,6 +268,9 @@ void Renderer::DirectionalLightDepthPass()
 {
 	//g_context->GetSubsystem<Graphics>()->SetCullMode(CullFront);
 
+	// Set the depth shader
+	m_shaderDepth->Set();
+
 	for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetCascadeCount(); cascadeIndex++)
 	{
 		m_directionalLight->SetShadowMapAsRenderTarget(cascadeIndex);
@@ -281,9 +284,7 @@ void Renderer::DirectionalLightDepthPass()
 			if (mesh.expired() || !meshFilter || !meshRenderer)
 				continue;
 
-			// The skybox might be able to cast shadows, but in the real world it doesn't, 
-			// because it doesn't exist, so skip it
-			if (gameObject->GetComponent<Skybox>() || !meshRenderer->GetCastShadows())
+			if (!meshRenderer->GetCastShadows())
 				continue;
 
 			// Skip transparent meshes (for now)
@@ -292,12 +293,15 @@ void Renderer::DirectionalLightDepthPass()
 
 			if (meshFilter->SetBuffers())
 			{
-				m_shaderDepth->Render(
-					mesh.lock()->GetIndexCount(),
+				// Set shader's buffer
+				m_shaderDepth->UpdateMatrixBuffer(
 					gameObject->GetTransform()->GetTransformMatrix(),
 					m_directionalLight->GetViewMatrix(),
 					m_directionalLight->GetOrthographicProjectionMatrix(cascadeIndex)
 				);
+
+				// Render
+				m_shaderDepth->Render(mesh.lock()->GetIndexCount());
 			}
 		}
 	}
@@ -309,12 +313,11 @@ void Renderer::GBufferPass()
 	MaterialPool* materialPool = g_context->GetSubsystem<MaterialPool>();
 	Graphics* graphics = g_context->GetSubsystem<Graphics>();
 
-	for (const auto currentShader : shaderPool->GetAllShaders()) // for each shader
+	for (const auto& currentShader : shaderPool->GetAllShaders()) // for each shader
 	{
 		currentShader->Set();
 		for (const auto currentMaterial : materialPool->GetAllMaterials()) // for each material...
 		{
-
 			if (currentMaterial->GetShader().expired())
 				continue;
 
@@ -343,7 +346,7 @@ void Renderer::GBufferPass()
 			currentShader->UpdateTextures(m_textures);
 			//==================================================================================
 
-			for (auto const gameObject : m_renderables) // for each mesh...
+			for (auto const& gameObject : m_renderables) // for each mesh...
 			{
 				//= Get all that we need =====================================
 				auto meshFilter = gameObject->GetComponent<MeshFilter>();
