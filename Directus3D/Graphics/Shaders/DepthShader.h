@@ -35,16 +35,15 @@ public:
 	~DepthShader();
 
 	void Initialize(Graphics* graphicsDevice);
-	void Render(int indexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
+	void UpdateMatrixBuffer(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
+	void Set();
+	void Render(unsigned int indexCount);
 
 private:
 	struct DefaultBuffer
 	{
 		Directus::Math::Matrix worldViewProjection;
 	};
-
-	void SetShaderBuffers(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
-	void RenderShader(int indexCount);
 
 	std::shared_ptr<D3D11Buffer> m_defaultBuffer;
 	Graphics* m_graphics;

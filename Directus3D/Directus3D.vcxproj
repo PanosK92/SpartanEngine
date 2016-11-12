@@ -152,6 +152,7 @@
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Core\Scene.cpp" />
     <ClCompile Include="Core\Settings.cpp" />
+    <ClCompile Include="Graphics\Shaders\ShadowMappingShader.cpp" />
     <ClCompile Include="Multithreading\ThreadPool.cpp" />
     <ClCompile Include="Socket\Socket.cpp" />
     <ClCompile Include="Graphics\Texture.cpp" />
@@ -217,6 +218,7 @@
     <ClInclude Include="Core\Context.h" />
     <ClInclude Include="Core\Engine.h" />
     <ClInclude Include="Core\Object.h" />
+    <ClInclude Include="Graphics\Shaders\ShadowMappingShader.h" />
     <ClInclude Include="Graphics\ShadowMap.h" />
     <ClInclude Include="Events\EventHandler.h" />
     <ClInclude Include="Core\GameObject.h" />
