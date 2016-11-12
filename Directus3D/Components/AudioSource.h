@@ -42,6 +42,7 @@ public:
 	virtual void Deserialize();
 
 private:
+	std::string m_filePath;
 	bool m_mute;
 	float m_volume;
 	bool m_playOnAwake;

@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "../Core/Object.h"
 #include "fmod.hpp"
+#include <map>
 //=========================
 
 class Audio : public Object
@@ -39,9 +40,14 @@ public:
 	bool Initialize();
 	void Update();
 
+	FMOD::Sound* LoadSound(const std::string& filePath);
+	bool Play(const std::string& filePath);
+
 private:
 	FMOD_RESULT m_result;
 	FMOD::System* m_fmodSystem;
-
 	int m_maxChannels;
+	std::map<std::string, FMOD::Sound*> m_sounds;
+
+	FMOD::Sound* GetSoundByPath(std::string filePath);
 };

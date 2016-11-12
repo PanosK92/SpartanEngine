@@ -241,7 +241,7 @@ void D3D11Graphics::Initialize(HWND handle)
 							[Blend State Descriptions]
 	------------------------------------------------------------------------------*/
 	//= DEFAULT BLEND STATE =================================================
-	m_blendStateDesc.RenderTarget[0].BlendEnable = int(true);
+	m_blendStateDesc.RenderTarget[0].BlendEnable = true;
 	m_blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
 	m_blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
 	m_blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
@@ -252,13 +252,13 @@ void D3D11Graphics::Initialize(HWND handle)
 	//=======================================================================
 
 	// Create a blending state with alpha blending enabled
-	m_blendStateDesc.RenderTarget[0].BlendEnable = int(true);
+	m_blendStateDesc.RenderTarget[0].BlendEnable = true;
 	HRESULT result = m_device->CreateBlendState(&m_blendStateDesc, &m_blendStateAlphaEnabled);
 	if (FAILED(result))
 		LOG_ERROR("Failed to create blend state.");
 
 	// Create a blending state with alpha blending disabled
-	m_blendStateDesc.RenderTarget[0].BlendEnable = int(false);
+	m_blendStateDesc.RenderTarget[0].BlendEnable = false;
 	result = m_device->CreateBlendState(&m_blendStateDesc, &m_blendStateAlphaDisabled);
 	if (FAILED(result))
 		LOG_ERROR("Failed to create blend state.");

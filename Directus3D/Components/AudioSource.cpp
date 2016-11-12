@@ -21,14 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES ===============
 #include "AudioSource.h"
-//======================
+#include "../Core/Context.h"
+#include "../Audio/Audio.h"
+//==========================
 
 AudioSource::AudioSource()
 {
 	m_mute = false;
 	m_volume = 1.0f;
+	m_playOnAwake = true;
 	m_loop = false;
 }
 
@@ -39,7 +42,9 @@ AudioSource::~AudioSource()
 
 void AudioSource::Awake()
 {
-
+	m_filePath = "Assets/Sounds/music.mp3";
+	g_context->GetSubsystem<Audio>()->LoadSound(m_filePath);
+	g_context->GetSubsystem<Audio>()->Play(m_filePath);
 }
 
 void AudioSource::Start()
