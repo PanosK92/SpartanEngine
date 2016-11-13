@@ -53,7 +53,7 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     string filePath = info.absoluteFilePath().toStdString();
 
     // Icon
-    if(FileSystem::IsSupportedImage(filePath))
+    if(FileSystem::IsSupportedImageFile(filePath))
     {
         int width = 100;
         int height = 100;
@@ -73,11 +73,11 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     }
 
     // Model
-    if (FileSystem::IsSupportedModel(filePath))
+    if (FileSystem::IsSupportedModelFile(filePath))
         return m_modelIcon;
 
     // Script
-    if (FileSystem::IsSupportedScript(filePath))
+    if (FileSystem::IsSupportedScriptFile(filePath))
         return m_scriptIcon;
 
     // Scene
@@ -85,7 +85,7 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
         return m_sceneIcon;
 
     // Shader
-    if (FileSystem::IsSupportedShader(filePath))
+    if (FileSystem::IsSupportedShaderFile(filePath))
         return m_shaderIcon;
 
     // Material

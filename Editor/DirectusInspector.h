@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =====================
 #include <QWidget>
 #include "Core/GameObject.h"
 #include "DirectusTransform.h"
@@ -35,7 +35,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusMeshFilter.h"
 #include "DirectusMeshCollider.h"
 #include "DirectusCore.h"
-//===============================
+#include "DirectusAudioSource.h"
+#include "DirectusAudioListener.h"
+//================================
 
 class DirectusInspector : public QWidget
 {
@@ -70,6 +72,8 @@ private:
     std::vector<DirectusScript*> m_scripts;
     DirectusMeshFilter* m_meshFilter;
     DirectusMeshCollider* m_meshCollider;
+    DirectusAudioSource* m_audioSource;
+    DirectusAudioListener* m_audioListener;
 
     DirectusCore* m_directusCore;
     GameObject* m_inspectedGameObject;

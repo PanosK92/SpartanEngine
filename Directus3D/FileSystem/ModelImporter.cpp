@@ -425,7 +425,7 @@ string ModelImporter::TryPathWithMultipleExtensions(const string& fullpath)
 	string fileName = fullpath.substr(0, lastindex);
 
 	// create path for a couple of different extensions
-	vector<string> supportedImageExtensions = FileSystem::GetSupportedImageFormats(true);
+	vector<string> supportedImageExtensions = FileSystem::GetSupportedImageFileFormats(true);
 
 	for (auto i = 0; i < supportedImageExtensions.size(); i++)
 		if (FileSystem::FileExists(fileName + supportedImageExtensions[i]))

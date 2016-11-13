@@ -127,7 +127,7 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
     // Get the ID of the texture being dragged
     std::string imagePath = event->mimeData()->text().toStdString();
 
-    if (FileSystem::IsSupportedImage(imagePath))
+    if (FileSystem::IsSupportedImageFile(imagePath))
     {
         // This is essential to avoid an absolute path mess. Everything is relative.
         imagePath = FileSystem::GetRelativePathFromAbsolutePath(imagePath);

@@ -4,9 +4,8 @@ The editor is greatly inspired by Unity, it should make the engine feel familiar
 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/screenshot.jpg)
 
-![Travis](https://travis-ci.org/PanosK92/Directus3D.svg?branch=master)
-
 # Features
+- 20+ audio file formats support.
 - 30+ image file formats support.
 - 40+ 3D file formats support.
 - Build as single static or dynamic library.

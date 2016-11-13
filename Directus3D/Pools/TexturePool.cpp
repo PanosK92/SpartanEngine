@@ -60,7 +60,7 @@ weak_ptr<Texture> TexturePool::Add(weak_ptr<Texture> textureIn)
 // Adds a texture to the pool by loading it from an image file
 weak_ptr<Texture> TexturePool::Add(const string& texturePath)
 {
-	if (!FileSystem::FileExists(texturePath) || !FileSystem::IsSupportedImage(texturePath))
+	if (!FileSystem::FileExists(texturePath) || !FileSystem::IsSupportedImageFile(texturePath))
 		return weak_ptr<Texture>();
 
 	// If the texture alrady exists, return it

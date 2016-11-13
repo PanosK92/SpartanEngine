@@ -31,6 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 //=========================
 
+struct SoundHandle
+{
+	FMOD::Sound* sound;
+	FMOD::Channel* channel;
+};
+
 class Audio : public Object
 {
 public:
@@ -40,14 +46,17 @@ public:
 	bool Initialize();
 	void Update();
 
-	FMOD::Sound* LoadSound(const std::string& filePath);
+	void AddSound(const std::string& filePath);
 	bool Play(const std::string& filePath);
+	bool Stop(const std::string& filePath);
+	bool SetVolume(float volume, const std::string& filePath);
 
 private:
 	FMOD_RESULT m_result;
 	FMOD::System* m_fmodSystem;
 	int m_maxChannels;
-	std::map<std::string, FMOD::Sound*> m_sounds;
-
-	FMOD::Sound* GetSoundByPath(std::string filePath);
+	bool m_initialized;
+	
+	std::map<std::string, SoundHandle*> m_sounds;
+	SoundHandle* GetSoundByPath(const std::string& filePath);
 };

@@ -74,6 +74,12 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_scripts.push_back(new DirectusScript());
     m_scripts[0]->Initialize(m_directusCore, this, mainWindow);
 
+    m_audioSource = new DirectusAudioSource();
+    m_audioSource->Initialize(m_directusCore, this, mainWindow);
+
+    m_audioListener = new DirectusAudioListener();
+    m_audioListener->Initialize(m_directusCore, this, mainWindow);
+
     // Make the components to stack nicely below each other
     // instead of spreading to fill the entire space.
     this->layout()->setAlignment(Qt::AlignTop);
@@ -88,6 +94,8 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     this->layout()->addWidget(m_light);
     this->layout()->addWidget(m_scripts[0]);
     this->layout()->addWidget(m_material);
+    this->layout()->addWidget(m_audioSource);
+    this->layout()->addWidget(m_audioListener);
 
     m_initialized = true;
 }
@@ -139,6 +147,8 @@ void DirectusInspector::Inspect(GameObject* gameobject)
         m_meshCollider->Reflect(gameobject);
         m_light->Reflect(gameobject);
         m_material->Reflect(gameobject);
+        m_audioSource->Reflect(gameobject);
+        m_audioListener->Reflect(gameobject);
 
         for (int i = 0; i < m_scripts.size(); i++)
             m_scripts[i]->Reflect(engineScripts[i]);
@@ -155,6 +165,8 @@ void DirectusInspector::Inspect(GameObject* gameobject)
         m_meshCollider->hide();
         m_light->hide();     
         m_material->hide();
+        m_audioSource->hide();
+        m_audioListener->hide();
 
         for (int i = 0; i < m_scripts.size(); i++)
              m_scripts[i]->hide();
@@ -201,7 +213,7 @@ void DirectusInspector::dropEvent(QDropEvent* event)
     const QMimeData *mime = event->mimeData();
     std::string scriptPath = mime->text().toStdString();
 
-    if (FileSystem::IsSupportedScript(scriptPath) && m_inspectedGameObject)
+    if (FileSystem::IsSupportedScriptFile(scriptPath) && m_inspectedGameObject)
     {
         // Make the absolute path, relative
         scriptPath = FileSystem::GetRelativePathFromAbsolutePath(scriptPath);
