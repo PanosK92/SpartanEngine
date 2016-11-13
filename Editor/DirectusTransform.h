@@ -30,16 +30,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QDoubleValidator>
 #include "DirectusCore.h"
 #include "DirectusComboLabelText.h"
+#include "DirectusIComponent.h"
 //=================================
 
-class DirectusTransform : public QWidget
+class DirectusTransform : public DirectusIComponent
 {
     Q_OBJECT
 public:
-    explicit DirectusTransform(QWidget *parent = 0);
-    void Initialize();
+    DirectusTransform();
 
-    void Reflect(GameObject* gameobject);
+    virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
+    virtual void Reflect(GameObject* gameobject);
+
     void Refresh();
 
     void ReflectPosition();
@@ -47,11 +49,6 @@ public:
     void ReflectScale();
 
 private:
-
-    //= TITLE =======================
-    QLabel* m_title;
-    //===============================
-
     // = POSITION ===================
     QLabel* m_posLabel;
     DirectusComboLabelText* m_posX;
@@ -73,14 +70,9 @@ private:
     DirectusComboLabelText* m_scaZ;
     //===============================
 
-    //= LINE ========================
-    QWidget* m_line;
-    //===============================
-
-    //= MISC ========================
-    QGridLayout* m_gridLayout;
+    //= MISC ===============
     QValidator* m_validator;
-    //===============================
+    //======================
 
     Transform* m_inspectedTransform;
 
@@ -88,4 +80,5 @@ public slots:
     void MapPosition();
     void MapRotation();
     void MapScale();
+    virtual void Remove(){}
 };

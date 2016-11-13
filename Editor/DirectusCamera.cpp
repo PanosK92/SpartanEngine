@@ -29,14 +29,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace Directus::Math;
 //=============================
 
-DirectusCamera::DirectusCamera(QWidget *parent) : QWidget(parent)
+DirectusCamera::DirectusCamera()
 {
-    m_directusCore = nullptr;
+
 }
 
-void DirectusCamera::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
+void DirectusCamera::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
+
     m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();
@@ -163,6 +163,7 @@ void DirectusCamera::Reflect(GameObject* gameobject)
 
     // Make this widget visible
     this->show();
+
 }
 
 void DirectusCamera::ReflectBackground(Directus::Math::Vector4 color)
@@ -192,7 +193,7 @@ void DirectusCamera::ReflectFOV(float fov)
 
 void DirectusCamera::MapBackground()
 {
-    if(!m_inspectedCamera || !m_directusCore)
+    if(!m_inspectedCamera)
         return;
 
     Vector4 clearColor = m_background->GetColor();
@@ -201,7 +202,7 @@ void DirectusCamera::MapBackground()
 
 void DirectusCamera::MapProjection()
 {
-    if(!m_inspectedCamera || !m_directusCore)
+    if(!m_inspectedCamera)
         return;
 
     Projection projection = (Projection)(m_projectionComboBox->currentIndex());
@@ -210,7 +211,7 @@ void DirectusCamera::MapProjection()
 
 void DirectusCamera::MapFOV()
 {
-    if(!m_inspectedCamera || !m_directusCore)
+    if(!m_inspectedCamera)
         return;
 
     float fov = m_fov->GetValue();
@@ -219,7 +220,7 @@ void DirectusCamera::MapFOV()
 
 void DirectusCamera::MapNearPlane()
 {
-    if(!m_inspectedCamera || !m_directusCore)
+    if(!m_inspectedCamera)
         return;
 
     float nearPlane = m_nearPlane->GetAsFloat();
@@ -228,7 +229,7 @@ void DirectusCamera::MapNearPlane()
 
 void DirectusCamera::MapFarPlane()
 {
-    if(!m_inspectedCamera || !m_directusCore)
+    if(!m_inspectedCamera)
         return;
 
     float farPlane = m_farPlane->GetAsFloat();

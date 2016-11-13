@@ -25,14 +25,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 //================================
 
-DirectusMeshCollider::DirectusMeshCollider(QWidget *parent) : QWidget(parent)
+DirectusMeshCollider::DirectusMeshCollider()
 {
 
 }
 
-void DirectusMeshCollider::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
+void DirectusMeshCollider::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();
@@ -144,7 +143,7 @@ void DirectusMeshCollider::ReflectMesh()
 
 void DirectusMeshCollider::MapConvex()
 {
-    if (!m_inspectedMeshCollider || !m_directusCore)
+    if (!m_inspectedMeshCollider)
         return;
 
     bool convex = m_convex->isChecked();

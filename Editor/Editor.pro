@@ -82,7 +82,8 @@ HEADERS  += editor.h \
     DirectusMaterialDropTarget.h \
     DirectusMaterialTextureDropTarget.h \
     DirectusAudioSource.h \
-    DirectusAudioListener.h
+    DirectusAudioListener.h \
+    DirectusIComponent.h
 
 FORMS    += editor.ui \
     AboutDialog.ui \

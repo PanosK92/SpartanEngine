@@ -33,25 +33,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusDropDownButton.h"
 #include "DirectusCore.h"
 #include "DirectusMaterialDropTarget.h"
+#include "DirectusIComponent.h"
 //=====================================
 
 class DirectusInspector;
 class DirectusMaterial;
 
-class DirectusMeshRenderer : public QWidget
+class DirectusMeshRenderer : public DirectusIComponent
 {
     Q_OBJECT
 public:
-    explicit DirectusMeshRenderer(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, DirectusMaterial* materialUIComp, QWidget* mainWindow);
-    void Reflect(GameObject* gameobject);
+    DirectusMeshRenderer();
+
+    virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
+    virtual void Reflect(GameObject* gameobject);
 
 private:
-    //= TITLE ======================================
-    QLabel* m_title;
-    DirectusDropDownButton* m_optionsButton;
-    //==============================================
-
     //= CAST SHADOWS =====================
     QLabel* m_castShadowsLabel;
     QCheckBox* m_castShadowsCheckBox;
@@ -67,16 +64,9 @@ private:
     DirectusMaterialDropTarget* m_material;
     //====================================
 
-    //= LINE ========================
-    QWidget* m_line;
-    //===============================
-
     //= MISC =============================
-    QGridLayout* m_gridLayout;
     QValidator* m_validator;
     MeshRenderer* m_inspectedMeshRenderer;
-    DirectusCore* m_directusCore;
-    DirectusInspector* m_inspector;
     DirectusMaterial* m_materialUIComp;
     //====================================
 
@@ -90,5 +80,5 @@ private:
 public slots:
     void MapCastShadows();
     void MapReceiveShadows();
-    void Remove();
+    virtual void Remove();
 };

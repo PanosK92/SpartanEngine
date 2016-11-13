@@ -36,9 +36,8 @@ DirectusMaterialTextureDropTarget::DirectusMaterialTextureDropTarget(QWidget *pa
     setAcceptDrops(true);
 }
 
-void DirectusMaterialTextureDropTarget::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, TextureType textureType)
+void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector, TextureType textureType)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
     m_textureType = textureType;
 

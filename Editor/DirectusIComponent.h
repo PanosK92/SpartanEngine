@@ -21,47 +21,44 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==================================
+//=================================
 #include <QWidget>
-#include <QGridLayout>
-#include "DirectusComboSliderText.h"
-#include <QPushButton>
-#include "Core/GameObject.h"
-#include <QDoubleValidator>
-#include "Components/MeshFilter.h"
-#include <QComboBox>
-#include "DirectusCore.h"
 #include <QLabel>
-#include "Math/Vector4.h"
+#include <QGridLayout>
+#include "Core/GameObject.h"
 #include "DirectusDropDownButton.h"
-#include "DirectusIComponent.h"
-//==================================
+//=================================
 
 class DirectusInspector;
 
-class DirectusMeshFilter : public DirectusIComponent
+class DirectusIComponent : public QWidget
 {
     Q_OBJECT
 public:
-    DirectusMeshFilter();
+    explicit DirectusIComponent(QWidget* parent = 0) : QWidget(parent){}
 
-    virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow) = 0;
+    virtual void Reflect(GameObject* gameObject) = 0;
 
-private:
-    //= MESH =============================
-    QLabel* m_meshLabel;
-    QLineEdit* m_mesh;
-    //====================================
+protected:
+    //= TITLE ==============================
+    QLabel* m_title;
+    DirectusDropDownButton* m_optionsButton;
+    //======================================
 
-    //= MISC =========================
-    QValidator* m_validator;
-    MeshFilter* m_inspectedMeshFilter;
-    //================================
+    //= LINE =======
+    QWidget* m_line;
+    //==============
 
-    void ReflectMesh();
+    //= MISC ======================
+    QGridLayout* m_gridLayout;
+    DirectusInspector* m_inspector;
+    GameObject* m_gameObject;
+    //=============================
+
+signals:
+    //void IStorageSignal1(const QString &par1);
 
 public slots:
-    void MapMesh();
-    virtual void Remove();
+    virtual void Remove() = 0;
 };

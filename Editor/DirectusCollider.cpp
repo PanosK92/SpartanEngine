@@ -28,15 +28,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace Directus::Math;
 //=============================
 
-DirectusCollider::DirectusCollider(QWidget *parent) : QWidget(parent)
+DirectusCollider::DirectusCollider()
 {
-    m_directusCore = nullptr;
-    m_inspector = nullptr;
+
 }
 
-void DirectusCollider::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
+void DirectusCollider::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();

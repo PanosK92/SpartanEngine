@@ -24,14 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 //==============================
 
-DirectusAudioSource::DirectusAudioSource(QWidget *parent) : QWidget(parent)
+DirectusAudioSource::DirectusAudioSource()
 {
 
 }
 
-void DirectusAudioSource::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
+void DirectusAudioSource::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();
@@ -131,7 +130,7 @@ void DirectusAudioSource::ReflectVolume()
 
 void DirectusAudioSource::MapVolume()
 {
-    if(!m_inspectedAudioSource || !m_directusCore)
+    if(!m_inspectedAudioSource)
         return;
 
     float volume = m_volume->GetValue();

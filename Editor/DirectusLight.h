@@ -36,24 +36,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QLabel>
 #include "Math/Vector4.h"
 #include "DirectusDropDownButton.h"
+#include "DirectusIComponent.h"
 //==================================
 
-class DirectusInspector;
-
-class DirectusLight : public QWidget
+class DirectusLight : public DirectusIComponent
 {
     Q_OBJECT
 public:
-    explicit DirectusLight(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
-    void Reflect(GameObject* gameobject);
+    DirectusLight();
+
+    virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
+    virtual void Reflect(GameObject* gameobject);
 
 private:
-    //= TITLE ======================================
-    QLabel* m_title;
-    DirectusDropDownButton* m_optionsButton;
-    //==============================================
-
     //= LIGHT TYPE =======================
     QLabel* m_lightTypeLabel;
     QComboBox* m_lightType;
@@ -78,16 +73,9 @@ private:
     QComboBox* m_shadowType;
     //====================================
 
-    //= LINE ========================
-    QWidget* m_line;
-    //===============================
-
     //= MISC =============================
-    QGridLayout* m_gridLayout;
     QValidator* m_validator;
     Light* m_inspectedLight;
-    DirectusCore* m_directusCore;
-    DirectusInspector* m_inspector;
     //====================================
 
     void ReflectLightType();
@@ -102,5 +90,5 @@ public slots:
     void MapColor();
     void MapIntensity();
     void MapShadowType();
-    void Remove();
+    virtual void Remove();
 };

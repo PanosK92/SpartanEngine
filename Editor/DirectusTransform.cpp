@@ -31,14 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace Directus::Math;
 //=============================
 
-DirectusTransform::DirectusTransform(QWidget* parent) : QWidget(parent)
+DirectusTransform::DirectusTransform()
 {
-    m_inspectedTransform = nullptr;
-    m_gridLayout = nullptr;
-    m_validator = nullptr;
+
 }
 
-void DirectusTransform::Initialize()
+void DirectusTransform::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);

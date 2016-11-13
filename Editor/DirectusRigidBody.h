@@ -31,24 +31,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusCore.h"
 #include "QComboBox.h"
 #include "DirectusDropDownButton.h"
+#include "DirectusIComponent.h"
 //==================================
 
 class DirectusInspector;
 
-class DirectusRigidBody : public QWidget
+class DirectusRigidBody : public DirectusIComponent
 {
     Q_OBJECT
 public:
-    explicit DirectusRigidBody(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
-    void Reflect(GameObject* gameobject);
+    DirectusRigidBody();
+
+    virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
+    virtual void Reflect(GameObject* gameobject);
 
 private:
-    //= TITLE ======================================
-    QLabel* m_title;
-    DirectusDropDownButton* m_optionsButton;
-    //==============================================
-
     //= MASS =============================
     DirectusComboLabelText* m_mass;
     //====================================
@@ -93,17 +90,10 @@ private:
     QCheckBox* m_freezeRotZ;
     //====================================
 
-    //= LINE =============================
-    QWidget* m_line;
-    //====================================
-
-    //= MISC =============================
-    QGridLayout* m_gridLayout;
+    //= MISC =======================
     QValidator* m_validator;
     RigidBody* m_inspectedRigidBody;
-    DirectusCore* m_directusCore;
-    DirectusInspector* m_inspector;
-    //====================================
+    //==============================
 
     //= REFLECTION =======================
     void ReflectMass();
@@ -129,6 +119,6 @@ public slots:
     void MapIsKinematic();
     void MapFreezePosition();
     void MapFreezeRotation();
-    void Remove();
+    virtual void Remove();
     //=======================
 };

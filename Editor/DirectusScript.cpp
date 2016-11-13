@@ -24,14 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 //============================
 
-DirectusScript::DirectusScript(QWidget *parent) : QWidget(parent)
+DirectusScript::DirectusScript()
 {
 
 }
 
-void DirectusScript::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
+void DirectusScript::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();
@@ -75,10 +74,14 @@ void DirectusScript::Initialize(DirectusCore* directusCore, DirectusInspector* i
     this->hide();
 }
 
+void DirectusScript::Reflect(GameObject* gameObject)
+{
+
+}
+
 void DirectusScript::Reflect(Script* script)
 {
     m_inspectedScript = script;
-
     if (!m_inspectedScript)
     {
         this->hide();

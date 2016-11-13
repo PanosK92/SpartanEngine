@@ -24,14 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 //=============================
 
-DirectusMeshFilter::DirectusMeshFilter(QWidget *parent) : QWidget(parent)
+DirectusMeshFilter::DirectusMeshFilter()
 {
 
 }
 
-void DirectusMeshFilter::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
+void DirectusMeshFilter::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();

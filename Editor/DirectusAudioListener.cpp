@@ -24,14 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 //================================
 
-DirectusAudioListener::DirectusAudioListener(QWidget *parent) : QWidget(parent)
+DirectusAudioListener::DirectusAudioListener()
 {
 
 }
 
-void DirectusAudioListener::Initialize(DirectusCore *directusCore, DirectusInspector *inspector, QWidget *mainWindow)
+void DirectusAudioListener::Initialize(DirectusInspector *inspector, QWidget *mainWindow)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();

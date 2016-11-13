@@ -45,40 +45,40 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_mainWindow = mainWindow;
 
     m_transform = new DirectusTransform();
-    m_transform->Initialize();
+    m_transform->Initialize(this, mainWindow);
 
     m_camera = new DirectusCamera();
-    m_camera->Initialize(m_directusCore, this, mainWindow);
+    m_camera->Initialize(this, mainWindow);
 
     m_meshFilter = new DirectusMeshFilter();
-    m_meshFilter->Initialize(m_directusCore, this, mainWindow);
+    m_meshFilter->Initialize(this, mainWindow);
 
     m_material = new DirectusMaterial();
-    m_material->Initialize(m_directusCore, this, mainWindow);
+    m_material->Initialize(this, mainWindow);
 
     m_meshRenderer = new DirectusMeshRenderer();
-    m_meshRenderer->Initialize(m_directusCore, this, m_material, mainWindow);
+    m_meshRenderer->Initialize(this, mainWindow);
 
     m_rigidBody = new DirectusRigidBody();
-    m_rigidBody->Initialize(m_directusCore, this, mainWindow);
+    m_rigidBody->Initialize(this, mainWindow);
 
     m_collider = new DirectusCollider();
-    m_collider->Initialize(m_directusCore, this, mainWindow);
+    m_collider->Initialize(this, mainWindow);
 
     m_meshCollider = new DirectusMeshCollider();
-    m_meshCollider->Initialize(m_directusCore, this, mainWindow);
+    m_meshCollider->Initialize(this, mainWindow);
 
     m_light = new DirectusLight();
-    m_light->Initialize(m_directusCore, this, mainWindow);
+    m_light->Initialize(this, mainWindow);
 
     m_scripts.push_back(new DirectusScript());
-    m_scripts[0]->Initialize(m_directusCore, this, mainWindow);
+    m_scripts[0]->Initialize(this, mainWindow);
 
     m_audioSource = new DirectusAudioSource();
-    m_audioSource->Initialize(m_directusCore, this, mainWindow);
+    m_audioSource->Initialize(this, mainWindow);
 
     m_audioListener = new DirectusAudioListener();
-    m_audioListener->Initialize(m_directusCore, this, mainWindow);
+    m_audioListener->Initialize(this, mainWindow);
 
     // Make the components to stack nicely below each other
     // instead of spreading to fill the entire space.
@@ -110,10 +110,12 @@ void DirectusInspector::Clear()
     Inspect(nullptr);
 }
 
-void DirectusInspector::InspectMaterialFile(string filepath)
+void DirectusInspector::InspectMaterialFile(const string& filepath)
 {
     Clear();
-    m_material->ReflectFile(filepath);
+
+    DirectusMaterial* material = (DirectusMaterial*)m_material;
+    material->ReflectFile(filepath);
 }
 
 void DirectusInspector::paintEvent(QPaintEvent* evt)
@@ -151,7 +153,10 @@ void DirectusInspector::Inspect(GameObject* gameobject)
         m_audioListener->Reflect(gameobject);
 
         for (int i = 0; i < m_scripts.size(); i++)
-            m_scripts[i]->Reflect(engineScripts[i]);
+        {
+            DirectusScript* scriptComp = (DirectusScript*)m_scripts[i];
+            scriptComp->Reflect(engineScripts[i]);
+        }
 
     }
     else // NOTE: If no item is selected, the gameobject will be null
@@ -253,7 +258,7 @@ vector<Script*> DirectusInspector::FitScriptVectorToGameObject()
     for (int i = 0; i < scriptCount; i++)
     {
         m_scripts.push_back(new DirectusScript());
-        m_scripts.back()->Initialize(m_directusCore, this, m_mainWindow);
+        m_scripts.back()->Initialize(this, m_mainWindow);
         this->layout()->addWidget(m_scripts.back());
     }
 

@@ -37,7 +37,7 @@ class DirectusMaterialDropTarget : public QLineEdit
     Q_OBJECT
 public:
     explicit DirectusMaterialDropTarget(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, DirectusMaterial* materialInspComp);
+    void Initialize(DirectusInspector* inspector, DirectusMaterial* materialInspComp);
 
     // drop support
     virtual void dragEnterEvent(QDragEnterEvent* event);
@@ -45,7 +45,6 @@ public:
     virtual void dropEvent(QDropEvent* event);
 
 private:
-    DirectusCore* m_directusCore;
     DirectusInspector* m_inspector;
     DirectusMaterial* m_materialInspComp;
 

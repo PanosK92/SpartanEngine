@@ -25,16 +25,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 //===============================
 
-DirectusMeshRenderer::DirectusMeshRenderer(QWidget *parent) : QWidget(parent)
+DirectusMeshRenderer::DirectusMeshRenderer()
 {
 
 }
 
-void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, DirectusMaterial* materialUIComp, QWidget* mainWindow)
+void DirectusMeshRenderer::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
-    m_materialUIComp = materialUIComp;
 
     m_gridLayout = new QGridLayout();
     m_gridLayout->setMargin(4);
@@ -66,7 +64,7 @@ void DirectusMeshRenderer::Initialize(DirectusCore* directusCore, DirectusInspec
     //= MATERIAL ==============================================
     m_materialLabel = new QLabel("Material");
     m_material = new DirectusMaterialDropTarget();
-    m_material->Initialize(m_directusCore, m_inspector, m_materialUIComp);
+    m_material->Initialize(m_inspector, m_materialUIComp);
     //=========================================================
 
     //= LINE ======================================
