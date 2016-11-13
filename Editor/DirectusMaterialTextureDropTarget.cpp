@@ -61,11 +61,6 @@ void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector,
                 );
 }
 
-void DirectusMaterialTextureDropTarget::SetMaterial(std::weak_ptr<Material> material)
-{
-    m_material = material;
-}
-
 void DirectusMaterialTextureDropTarget::LoadImageAsync(std::string filePath)
 {
     if (m_currentFilePath == filePath)
@@ -114,7 +109,7 @@ void DirectusMaterialTextureDropTarget::dragMoveEvent(QDragMoveEvent* event)
 
 void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
 {
-    if (!event->mimeData()->hasText() || m_material.expired())
+    if (!event->mimeData()->hasText())
     {
         event->ignore();
         return;
@@ -131,11 +126,16 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
         // This is essential to avoid an absolute path mess. Everything is relative.
         imagePath = FileSystem::GetRelativePathFromAbsolutePath(imagePath);
 
+        // Get the currently inspected material
+        auto material = m_inspector->GetMaterialComponent()->GetInspectedMaterial();
+        if (material.expired())
+            return;
+
         // Set the texture to the material
-        m_material.lock()->SetTexture(imagePath, m_textureType);
+        material.lock()->SetTexture(imagePath, m_textureType);
 
         // Save the changes
-        m_material.lock()->SaveToExistingDirectory();
+        material.lock()->SaveToExistingDirectory();
 
         // Load the image for the slot
         LoadImageAsync(imagePath);

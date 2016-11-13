@@ -64,7 +64,7 @@ void DirectusMeshRenderer::Initialize(DirectusInspector* inspector, QWidget* mai
     //= MATERIAL ==============================================
     m_materialLabel = new QLabel("Material");
     m_material = new DirectusMaterialDropTarget();
-    m_material->Initialize(m_inspector, m_materialUIComp);
+    m_material->Initialize(m_inspector);
     //=========================================================
 
     //= LINE ======================================
