@@ -25,11 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "fmod64_vc.lib")
 //===================================
 
-//= INCLUDES ==============
+//= INCLUDES =======================
 #include "../Core/Object.h"
 #include "fmod.hpp"
 #include <map>
-//=========================
+#include "../Components/Transform.h"
+//==================================
 
 struct SoundHandle
 {
@@ -47,11 +48,13 @@ public:
 	bool Initialize();
 	void Update();
 
-	void CreateSound(const std::string& filePath);
-	void CreateStream(const std::string& filePath);
+	bool CreateSound(const std::string& filePath);
+	bool CreateStream(const std::string& filePath);
 	bool Play(const std::string& filePath);
 	bool Stop(const std::string& filePath);
 	bool SetVolume(float volume, const std::string& filePath);
+	bool SetAudioSourceTransform(const std::string& filePath, Transform* transform);
+	bool SetListenerTransform(Transform* transform);
 
 private:
 	FMOD_RESULT m_result;
@@ -59,6 +62,14 @@ private:
 	int m_maxChannels;
 	float m_distanceFactor;
 	bool m_initialized;
+
+	//= LISTENER =============================================
+	Transform* m_listener;
+	FMOD_VECTOR m_pos;
+	FMOD_VECTOR m_vel;
+	FMOD_VECTOR m_for;
+	FMOD_VECTOR m_up;
+	//========================================================
 	
 	std::map<std::string, SoundHandle*> m_sounds;
 	SoundHandle* GetSoundByPath(const std::string& filePath);

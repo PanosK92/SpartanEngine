@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========
 #include "IComponent.h"
-#include "../Math/MathHelper.h"
-
 //=====================
+
+class Audio;
 
 class __declspec(dllexport) AudioSource : public IComponent
 {
@@ -57,6 +57,7 @@ public:
 	//===================================================================================
 
 private:
+	Audio* m_audio;
 	std::string m_filePath;
 	bool m_mute;
 	float m_volume;

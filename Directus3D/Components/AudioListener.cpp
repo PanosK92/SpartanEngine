@@ -21,13 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============
+//= INCLUDES ===============
 #include "AudioListener.h"
-//========================
+#include "../Audio/Audio.h"
+#include "../Core/Context.h"
+//==========================
 
 AudioListener::AudioListener()
 {
-
+	m_audio = nullptr;
 }
 
 AudioListener::~AudioListener()
@@ -37,7 +39,7 @@ AudioListener::~AudioListener()
 
 void AudioListener::Awake()
 {
-
+	m_audio = g_context->GetSubsystem<Audio>();
 }
 
 void AudioListener::Start()
@@ -52,7 +54,10 @@ void AudioListener::Remove()
 
 void AudioListener::Update()
 {
+	if (!m_audio)
+		return;
 
+	m_audio->SetListenerTransform(g_transform);
 }
 
 void AudioListener::Serialize()

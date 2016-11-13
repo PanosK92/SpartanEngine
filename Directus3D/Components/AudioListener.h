@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 //=====================
 
+class Audio;
+
 class __declspec(dllexport) AudioListener : public IComponent
 {
 public:
@@ -42,4 +44,5 @@ public:
 	virtual void Deserialize();
 
 private:
+	Audio* m_audio;
 };
