@@ -42,7 +42,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/TexturePool.h"
 #include "../Input/Input.h"
 #include "Settings.h"
-#include "../Components/AudioSource.h"
 //=====================================
 
 //= NAMESPACES ================
@@ -351,7 +350,6 @@ GameObject* Scene::CreateCamera()
 	
 	camera->AddComponent<Script>()->AddScript("Assets/Scripts/MouseLook.as");
 	camera->AddComponent<Script>()->AddScript("Assets/Scripts/FirstPersonController.as");
-	camera->AddComponent<AudioSource>();
 
 	return camera;
 }

@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AudioSource.h"
 #include "../Core/Context.h"
 #include "../Audio/Audio.h"
-#include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 #include "../IO/Serializer.h"
 //===================================
@@ -36,6 +35,7 @@ using namespace Directus::Math;
 
 AudioSource::AudioSource()
 {
+	m_audio = nullptr;
 	m_filePath = PATH_NOT_ASSIGNED;
 	m_mute = false;
 	m_volume = 1.0f;
@@ -50,6 +50,7 @@ AudioSource::~AudioSource()
 
 void AudioSource::Awake()
 {
+	m_audio = g_context->GetSubsystem<Audio>();
 	m_filePath = "Assets/Sounds/music.mp3";
 	g_context->GetSubsystem<Audio>()->CreateStream(m_filePath);
 	g_context->GetSubsystem<Audio>()->Play(m_filePath);
@@ -67,7 +68,10 @@ void AudioSource::Remove()
 
 void AudioSource::Update()
 {
+	if (!m_audio)
+		return;
 
+	m_audio->SetAudioSourceTransform(m_filePath, g_transform);
 }
 
 void AudioSource::Serialize()
