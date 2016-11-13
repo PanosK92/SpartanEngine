@@ -202,12 +202,12 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
         string filePath = fileInfo.filePath().toStdString();
         if(fileInfo.isFile()) // The user dropped a file
         {
-            if (FileSystem::IsSupportedModel(filePath))
+            if (FileSystem::IsSupportedModelFile(filePath))
                 m_fileDialog->LoadModelDirectly(filePath);
         }
         else if (fileInfo.isDir()) // The user dropped a folder
         {
-            vector<string> modelFilePaths = FileSystem::GetSupportedModelsInDirectory(filePath);
+            vector<string> modelFilePaths = FileSystem::GetSupportedModelFilesInDirectory(filePath);
             if (modelFilePaths.size() != 0)
                 m_fileDialog->LoadModelDirectly(modelFilePaths.front());
         }

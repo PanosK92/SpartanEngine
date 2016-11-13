@@ -23,23 +23,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========
 #include "IComponent.h"
+#include "../Math/MathHelper.h"
+
 //=====================
 
-class AudioSource : public IComponent
+class __declspec(dllexport) AudioSource : public IComponent
 {
 public:
 	AudioSource();
 	~AudioSource();
 
-	/*------------------------------------------------------------------------------
-	[INTERFACE]
-	------------------------------------------------------------------------------*/
+	//= INTERFACE =============
 	virtual void Awake();
 	virtual void Start();
 	virtual void Remove();
 	virtual void Update();
 	virtual void Serialize();
 	virtual void Deserialize();
+	//=========================
+
+	//= PROPERTIES ======================================================================
+	float GetVolume() { return m_volume; }
+	void SetVolume(float volume);
+
+	bool GetMute() { return m_mute; }
+	void SetMute(bool mute) { m_mute = mute; }
+
+	bool GetPlayOnAwake() { return m_playOnAwake; }
+	void SetPlayOnAwake(bool playOnAwake) { m_playOnAwake = playOnAwake; }
+
+	bool GetLoop() { return m_loop; }
+	void SetLoop(bool loop) { m_loop = loop; }
+	//===================================================================================
 
 private:
 	std::string m_filePath;

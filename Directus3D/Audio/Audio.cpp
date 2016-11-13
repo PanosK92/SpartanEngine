@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=========================
 
 //= NAMESPACES ======
+using namespace std;
 using namespace FMOD;
 //===================
 
@@ -34,6 +35,7 @@ Audio::Audio(Context* context) : Object(context)
 	m_result = FMOD_OK;
 	m_fmodSystem = nullptr;
 	m_maxChannels = 32;
+	m_initialized = false;
 }
 
 Audio::~Audio()
@@ -43,7 +45,10 @@ Audio::~Audio()
 
 	// Release all sounds
 	for (const auto& sound : m_sounds)
-		sound.second->release();
+	{
+		sound.second->sound->release();
+		delete sound.second;
+	}
 
 	// Close FMOD
 	m_result = m_fmodSystem->close();
@@ -86,12 +91,13 @@ bool Audio::Initialize()
 		return false;
 	}
 
+	m_initialized = true;
 	return true;
 }
 
 void Audio::Update()
 {
-	if (!m_fmodSystem)
+	if (!m_initialized)
 		return;
 
 	// Update FMOD
@@ -100,30 +106,31 @@ void Audio::Update()
 		LOG_ERROR(FMOD_ErrorString(m_result));
 }
 
-Sound* Audio::LoadSound(const std::string& path)
+void Audio::AddSound(const string& path)
 {
-	if (!m_fmodSystem)
-		return nullptr;
+	if (!m_initialized)
+		return;
 
-	Sound* sound;
-	m_result = m_fmodSystem->createSound(path.c_str(), FMOD_DEFAULT, nullptr, &sound);
+	SoundHandle* soundHandle = new SoundHandle();
+	
+	m_result = m_fmodSystem->createSound(path.c_str(), FMOD_DEFAULT, nullptr, &soundHandle->sound);
 	if (m_result != FMOD_OK)
-	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
-		return nullptr;
-	}
 
-	m_sounds.insert(make_pair(path, sound));
-	return sound;
+	m_sounds.insert(make_pair(path, soundHandle));
 }
 
-bool Audio::Play(const std::string& filePath)
+bool Audio::Play(const string& filePath)
 {
-	if (!m_fmodSystem)
+	if (!m_initialized)
+		return false;
+	
+	// Get sound handle
+	SoundHandle* soundHandle = GetSoundByPath(filePath);
+	if (!soundHandle)
 		return false;
 
-	Channel* channel = nullptr;
-	m_result = m_fmodSystem->playSound(GetSoundByPath(filePath), nullptr, false, &channel);
+	m_result = m_fmodSystem->playSound(soundHandle->sound, nullptr, false, &soundHandle->channel);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -132,13 +139,53 @@ bool Audio::Play(const std::string& filePath)
 	return true;
 }
 
-Sound* Audio::GetSoundByPath(std::string filePath)
+bool Audio::Stop(const string& filePath)
+{
+	if (!m_initialized)
+		return false;
+
+	// Get sound handle
+	SoundHandle* soundHandle = GetSoundByPath(filePath);
+	if (!soundHandle)
+		return false;
+	
+	// Check if the sound is playing
+	bool isPlaying;
+	m_result = soundHandle->channel->isPlaying(&isPlaying);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	// If it's playing, then stop it
+	if (isPlaying)
+		soundHandle->channel->stop();
+
+	return true;
+}
+
+bool Audio::SetVolume(float volume, const string& filePath)
+{
+	SoundHandle* soundHandle = GetSoundByPath(filePath);
+	if (!soundHandle)
+		return false;
+
+	m_result = soundHandle->channel->setVolume(volume);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	return true;
+}
+
+SoundHandle* Audio::GetSoundByPath(const string& filePath)
 {
 	for (const auto& sound : m_sounds)
-	{
 		if (sound.first == filePath)
 			return sound.second;
-	}
 
 	return nullptr;
 }

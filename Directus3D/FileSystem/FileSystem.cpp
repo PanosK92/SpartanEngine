@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-//= FOLDERS ================================================================================================
+//= DIRECTORIES ================================================================================================
 bool FileSystem::CreateDirectory_(const string& path)
 {
 	if (!CreateDirectory(path.c_str(), nullptr))
@@ -77,6 +77,7 @@ bool FileSystem::DeleteDirectory(const string& directory)
 
 	return deleted;
 }
+//========================================================================================================
 
 //= FILES ================================================================================================
 bool FileSystem::FileExists(const string& path)
@@ -151,7 +152,7 @@ string FileSystem::GetRelativePathFromAbsolutePath(const string& filePath)
 	return filePath.substr(position);
 }
 
-vector<string> FileSystem::GetSupportedImageFormats(bool includeUppercase)
+vector<string> FileSystem::GetSupportedImageFileFormats(bool includeUppercase)
 {
 	vector<string> supportedFormats;
 	supportedFormats.push_back(".jpg");
@@ -185,6 +186,41 @@ vector<string> FileSystem::GetSupportedImageFormats(bool includeUppercase)
 	supportedFormats.push_back(".webp");
 	supportedFormats.push_back(".xbm");
 	supportedFormats.push_back(".xpm");
+
+	if (includeUppercase)
+	{
+		int extCount = supportedFormats.size();
+		for (auto i = 0; i < extCount; i++)
+			supportedFormats.push_back(ConvertToUppercase(supportedFormats[i]));
+	}
+
+	return supportedFormats;
+}
+
+vector<string> FileSystem::GetSupportedAudioFileFormats(bool includeUppercase)
+{
+	vector<string> supportedFormats;
+	supportedFormats.push_back(".aiff");
+	supportedFormats.push_back(".asf");
+	supportedFormats.push_back(".asx");
+	supportedFormats.push_back(".dls");
+	supportedFormats.push_back(".flac");
+	supportedFormats.push_back(".fsb");
+	supportedFormats.push_back(".it");
+	supportedFormats.push_back(".m3u");
+	supportedFormats.push_back(".midi");
+	supportedFormats.push_back(".mod");
+	supportedFormats.push_back(".mp2");
+	supportedFormats.push_back(".mp3");
+	supportedFormats.push_back(".ogg");
+	supportedFormats.push_back(".pls");
+	supportedFormats.push_back(".s3m");
+	supportedFormats.push_back(".vag"); // PS2/PSP
+	supportedFormats.push_back(".wav");
+	supportedFormats.push_back(".wax");
+	supportedFormats.push_back(".wma");
+	supportedFormats.push_back(".xm");
+	supportedFormats.push_back(".xma"); // XBOX 360
 
 	if (includeUppercase)
 	{
@@ -249,13 +285,14 @@ vector<string> FileSystem::GetFilesInDirectory(const string& directory)
 	return filePaths;
 }
 
+//= SUPPORTED FILES IN DIRECTORY ========================================================================================
 vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
 {
 	vector<string> filesInDirectory = GetFilesInDirectory(directory);
 
-	vector<string> imagesInDirectory = GetImagesFromFilePaths(filesInDirectory); // get all the images
-	vector<string> scriptsInDirectory = GetScriptsFromFilePaths(filesInDirectory); // get all the scripts
-	vector<string> modelsInDirectory = GetModelsFromFilePaths(filesInDirectory); // get all the models
+	vector<string> imagesInDirectory = GetSupportedImageFilesFromPaths(filesInDirectory); // get all the images
+	vector<string> scriptsInDirectory = GetSupportedScriptFilesFromPaths(filesInDirectory); // get all the scripts
+	vector<string> modelsInDirectory = GetSupportedModelFilesFromPaths(filesInDirectory); // get all the models
 	vector<string> supportedFiles;
 
 	// get supported images
@@ -273,54 +310,68 @@ vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
 	return supportedFiles;
 }
 
-vector<string> FileSystem::GetImagesFromFilePaths(const vector<string>& paths)
+vector<string> FileSystem::GetSupportedImageFilesFromPaths(const vector<string>& paths)
 {
-	vector<string> images;
+	vector<string> imageFiles;
 	for (int i = 0; i < paths.size(); i++)
 	{
 		string filePath = paths[i];
 
-		if (IsSupportedImage(filePath))
-			images.push_back(filePath);
+		if (IsSupportedImageFile(filePath))
+			imageFiles.push_back(filePath);
 	}
 
-	return images;
+	return imageFiles;
 }
 
-vector<string> FileSystem::GetScriptsFromFilePaths(const vector<string>& paths)
+vector<string> FileSystem::GetSupportedAudioFilesFromPaths(const vector<string>& paths)
+{
+	vector<string> audioFiles;
+	for (int i = 0; i < paths.size(); i++)
+	{
+		string filePath = paths[i];
+
+		if (IsSupportedAudioFile(filePath))
+			audioFiles.push_back(filePath);
+	}
+
+	return audioFiles;
+}
+
+vector<string> FileSystem::GetSupportedScriptFilesFromPaths(const vector<string>& paths)
 {
 	vector<string> scripts;
 	for (int i = 0; i < paths.size(); i++)
 	{
 		string filePath = paths[i];
 
-		if (IsSupportedScript(filePath))
+		if (IsSupportedScriptFile(filePath))
 			scripts.push_back(filePath);
 	}
 
 	return scripts;
 }
 
-vector<string> FileSystem::GetModelsFromFilePaths(const vector<string>& paths)
+vector<string> FileSystem::GetSupportedModelFilesFromPaths(const vector<string>& paths)
 {
 	vector<string> images;
 	for (int i = 0; i < paths.size(); i++)
 	{
 		string filePath = paths[i];
 
-		if (IsSupportedModel(filePath))
+		if (IsSupportedModelFile(filePath))
 			images.push_back(filePath);
 	}
 
 	return images;
 }
 
-vector<string> FileSystem::GetSupportedModelsInDirectory(const string& directory)
+vector<string> FileSystem::GetSupportedModelFilesInDirectory(const string& directory)
 {
-	return GetModelsFromFilePaths(GetFilesInDirectory(directory));
+	return GetSupportedModelFilesFromPaths(GetFilesInDirectory(directory));
 }
 
-vector<string> FileSystem::GetScenesInDirectory(const string& directory)
+vector<string> FileSystem::GetSupportedSceneFilesInDirectory(const string& directory)
 {
 	vector<string> sceneFiles;
 
@@ -331,11 +382,24 @@ vector<string> FileSystem::GetScenesInDirectory(const string& directory)
 
 	return sceneFiles;
 }
+//===========================================================================================
 
-bool FileSystem::IsSupportedImage(const string& path)
+//= SUPPORTED FILE CHECKS ===================================================================
+bool FileSystem::IsSupportedAudioFile(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
-	vector<string> supportedImageExt = GetSupportedImageFormats(true);
+	vector<string> supportedImageExt = GetSupportedAudioFileFormats(true);
+	for (int i = 0; i < supportedImageExt.size(); i++)
+		if (fileExt == supportedImageExt[i])
+			return true;
+
+	return false;
+}
+
+bool FileSystem::IsSupportedImageFile(const string& path)
+{
+	string fileExt = GetExtensionFromPath(path);
+	vector<string> supportedImageExt = GetSupportedImageFileFormats(true);
 
 	for (int i = 0; i < supportedImageExt.size(); i++)
 		if (fileExt == supportedImageExt[i])
@@ -344,7 +408,7 @@ bool FileSystem::IsSupportedImage(const string& path)
 	return false;
 }
 
-bool FileSystem::IsSupportedScript(const string& path)
+bool FileSystem::IsSupportedScriptFile(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -359,7 +423,7 @@ bool FileSystem::IsSupportedScript(const string& path)
 	return false;
 }
 
-bool FileSystem::IsSupportedModel(const string& path)
+bool FileSystem::IsSupportedModelFile(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExt;
@@ -405,7 +469,7 @@ bool FileSystem::IsSupportedModel(const string& path)
 	return false;
 }
 
-bool FileSystem::IsSupportedShader(const string& path)
+bool FileSystem::IsSupportedShaderFile(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
 	vector<string> supportedExtentions;
@@ -419,6 +483,7 @@ bool FileSystem::IsSupportedShader(const string& path)
 
 	return false;
 }
+//============================================================================================
 
 string FileSystem::ConvertToUppercase(const string& lower)
 {

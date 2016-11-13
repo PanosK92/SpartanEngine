@@ -39,6 +39,7 @@ public:
 	static bool CreateDirectory_(const std::string& path);
 	static bool OpenDirectoryInExplorer(const std::string& directory);
 	static bool DeleteDirectory(const std::string& directory);
+	//================================================================
 
 	//= FILES ========================================================
 	static bool FileExists(const std::string& path);
@@ -52,24 +53,32 @@ public:
 	static std::string GetExtensionFromPath(const std::string& path);
 	static std::string GetRelativePathFromAbsolutePath(const std::string& path);
 
-	static std::vector<std::string> GetSupportedImageFormats(bool includeUppercase);
+	static std::vector<std::string> GetSupportedImageFileFormats(bool includeUppercase);
+	static std::vector<std::string> GetSupportedAudioFileFormats(bool includeUppercase);
 	static bool IsMetadataFile(const std::string& filePath);
 	static bool IsMaterialFile(const std::string& filePath);
 	static bool IsSceneFile(const std::string& filePath);
 
 	static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
 	static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
-	static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& directory);
-	static std::vector<std::string> GetImagesFromFilePaths(const std::vector<std::string>& paths);
-	static std::vector<std::string> GetScriptsFromFilePaths(const std::vector<std::string>& paths);
-	static std::vector<std::string> GetModelsFromFilePaths(const std::vector<std::string>& paths);
-	static std::vector<std::string> GetSupportedModelsInDirectory(const std::string& directory);
-	static std::vector<std::string> GetScenesInDirectory(const std::string& directory);
 
-	static bool IsSupportedImage(const std::string& path);
-	static bool IsSupportedScript(const std::string& path);
-	static bool IsSupportedModel(const std::string& path);
-	static bool IsSupportedShader(const std::string& path);
+	//= SUPPORTED FILES IN DIRECTORY ======================================================================
+	static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& directory);
+	static std::vector<std::string> GetSupportedImageFilesFromPaths(const std::vector<std::string>& paths);
+	static std::vector<std::string> GetSupportedAudioFilesFromPaths(const std::vector<std::string>& paths);
+	static std::vector<std::string> GetSupportedScriptFilesFromPaths(const std::vector<std::string>& paths);
+	static std::vector<std::string> GetSupportedModelFilesFromPaths(const std::vector<std::string>& paths);
+	static std::vector<std::string> GetSupportedModelFilesInDirectory(const std::string& directory);
+	static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& directory);
+	//======================================================================================================
+
+	//= SUPPORTED FILE CHECKS ==================================
+	static bool IsSupportedAudioFile(const std::string& path);
+	static bool IsSupportedImageFile(const std::string& path);
+	static bool IsSupportedScriptFile(const std::string& path);
+	static bool IsSupportedModelFile(const std::string& path);
+	static bool IsSupportedShaderFile(const std::string& path);
+	//==========================================================
 
 	// string
 	static std::string ConvertToUppercase(const std::string& lower);

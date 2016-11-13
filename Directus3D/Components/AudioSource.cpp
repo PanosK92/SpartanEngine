@@ -21,14 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ========================
 #include "AudioSource.h"
 #include "../Core/Context.h"
 #include "../Audio/Audio.h"
-//==========================
+#include "../Logging/Log.h"
+#include "../FileSystem/FileSystem.h"
+//===================================
+
+//= NAMESPACES ================
+using namespace Directus::Math;
+//=============================
 
 AudioSource::AudioSource()
 {
+	m_filePath = PATH_NOT_ASSIGNED;
 	m_mute = false;
 	m_volume = 1.0f;
 	m_playOnAwake = true;
@@ -43,7 +50,7 @@ AudioSource::~AudioSource()
 void AudioSource::Awake()
 {
 	m_filePath = "Assets/Sounds/music.mp3";
-	g_context->GetSubsystem<Audio>()->LoadSound(m_filePath);
+	g_context->GetSubsystem<Audio>()->AddSound(m_filePath);
 	g_context->GetSubsystem<Audio>()->Play(m_filePath);
 }
 
@@ -54,7 +61,7 @@ void AudioSource::Start()
 
 void AudioSource::Remove()
 {
-
+	g_context->GetSubsystem<Audio>()->Stop(m_filePath);
 }
 
 void AudioSource::Update()
@@ -70,4 +77,10 @@ void AudioSource::Serialize()
 void AudioSource::Deserialize()
 {
 
+}
+
+void AudioSource::SetVolume(float volume)
+{
+	m_volume = Clamp(volume, 0.0, 1.0f);
+	g_context->GetSubsystem<Audio>()->SetVolume(m_volume, m_filePath);
 }
