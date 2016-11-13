@@ -34,5 +34,7 @@
         <file>hlsl.png</file>
         <file>materialLarge.png</file>
         <file>icon.png</file>
+        <file>audioListener.png</file>
+        <file>audioSource.png</file>
     </qresource>
 </RCC>

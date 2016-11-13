@@ -87,6 +87,7 @@ public slots:
     void CreateDirectionalLight();
     void CreatePointLight();
     void CreateCamera();
+    void CreateAudioSource();
     //============================
 
     //= COMPONENT ADDITIONS ======
@@ -99,5 +100,7 @@ public slots:
     void AddMeshColliderComponent();
     void AddHingeComponent();
     void AddSkyboxComponent();
+    void AddAudioListenerComponent();
+    void AddAudioSourceComponent();
     //============================
 };
