@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusMaterial.h"
 #include "Components/MeshRenderer.h"
 #include "Logging/Log.h"
+#include "DirectusInspector.h"
 #include <QByteArray>
 //==================================
 
@@ -318,8 +319,7 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
 
 void DirectusMaterial::ReflectFile(string filePath)
 {
-    m_matFromFile.reset();
-    m_matFromFile = make_shared<Material>(nullptr);
+    m_matFromFile = make_shared<Material>(m_inspector->GetSocket()->GetContext());
     m_matFromFile->LoadFromFile(filePath);
 
     m_inspectedMaterial = m_matFromFile;
@@ -418,8 +418,6 @@ void DirectusMaterial::ReflectName()
 
 void DirectusMaterial::ReflectAlbedo()
 {
-    m_albedoImage->SetMaterial(m_inspectedMaterial);
-
     // Load the albedo texture preview
     string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Albedo);
     m_albedoImage->LoadImageAsync(texPath);
@@ -430,8 +428,6 @@ void DirectusMaterial::ReflectAlbedo()
 
 void DirectusMaterial::ReflectRoughness()
 {
-     m_roughnessImage->SetMaterial(m_inspectedMaterial);
-
     float roughness = m_inspectedMaterial.lock()->GetRoughnessMultiplier();
     m_roughness->SetValue(roughness);
 
@@ -442,8 +438,6 @@ void DirectusMaterial::ReflectRoughness()
 
 void DirectusMaterial::ReflectMetallic()
 {
-    m_metallicImage->SetMaterial(m_inspectedMaterial);
-
     float metallic = m_inspectedMaterial.lock()->GetMetallicMultiplier();
     m_metallic->SetValue(metallic);
 
@@ -454,8 +448,6 @@ void DirectusMaterial::ReflectMetallic()
 
 void DirectusMaterial::ReflectNormal()
 {
-    m_normalImage->SetMaterial(m_inspectedMaterial);
-
     float normal = m_inspectedMaterial.lock()->GetNormalMultiplier();
     m_normal->SetValue(normal);
 
@@ -466,8 +458,6 @@ void DirectusMaterial::ReflectNormal()
 
 void DirectusMaterial::ReflectHeight()
 {
-    m_heightImage->SetMaterial(m_inspectedMaterial);
-
     float height = m_inspectedMaterial.lock()->GetHeightMultiplier();
     m_height->SetValue(height);
 
@@ -478,8 +468,6 @@ void DirectusMaterial::ReflectHeight()
 
 void DirectusMaterial::ReflectOcclusion()
 {
-    m_occlusionImage->SetMaterial(m_inspectedMaterial);
-
     float occlusion = m_inspectedMaterial.lock()->GetOcclusionMultiplier();
     m_occlusion->SetValue(occlusion);
 
@@ -490,8 +478,6 @@ void DirectusMaterial::ReflectOcclusion()
 
 void DirectusMaterial::ReflectEmission()
 {
-    m_emissionImage->SetMaterial(m_inspectedMaterial);
-
     // Load the emission texture preview
     string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Emission);
     m_emissionImage->LoadImageAsync(texPath);
@@ -499,8 +485,6 @@ void DirectusMaterial::ReflectEmission()
 
 void DirectusMaterial::ReflectMask()
 {
-    m_maskImage->SetMaterial(m_inspectedMaterial);
-
     // Load the mask texture preview
     string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Mask);
     m_maskImage->LoadImageAsync(texPath);

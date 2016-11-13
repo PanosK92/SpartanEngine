@@ -29,16 +29,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusMaterial.h"
 //======================================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 DirectusMaterialDropTarget::DirectusMaterialDropTarget(QWidget* parent) : QLineEdit(parent)
 {
     setAcceptDrops(true);
     setReadOnly(true);
 }
 
-void DirectusMaterialDropTarget::Initialize(DirectusInspector* inspector, DirectusMaterial *materialInspComp)
+void DirectusMaterialDropTarget::Initialize(DirectusInspector* inspector)
 {
     m_inspector = inspector;
-    m_materialInspComp = materialInspComp;
 }
 
 //= DROP ============================================================================
@@ -82,9 +85,6 @@ void DirectusMaterialDropTarget::dragMoveEvent(QDragMoveEvent* event)
 
 void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
 {
-    // Material acquisition
-    auto material = m_materialInspComp->GetInspectedMaterial();
-
     if (!event->mimeData()->hasText())
     {
         event->ignore();
@@ -106,11 +106,21 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
     // This is essential to avoid an absolute path mess. Everything is relative.
     materialPath = FileSystem::GetRelativePathFromAbsolutePath(materialPath);
 
-    // If a GameObject happens to be currently inspected, set the material
-    // to it's mesh renderer. Otherwise the inspected material is just a file.
+    // ATTENTION, we could be inspecting a material from a mesh renderer or we could
+    // be ispecting a material which is just a file. Both cases have to be handled here
+
+    // We get the currently inspected material in the material component in the editor
+    weak_ptr<Material> material = m_inspector->GetMaterialComponent()->GetInspectedMaterial();
+    if (material.expired())
+        return;
+
+    // We get the currently inspected GameObject
     GameObject* gameObject = m_inspector->GetInspectedGameObject();
+
+    // If a GameObject is indeed inspected, we set the material to the mesh renderer
     if (gameObject)
         material = gameObject->GetComponent<MeshRenderer>()->SetMaterial(materialPath);
+    // else... no GameObject is being inspected, a material that is only a file is being inspected
 
     // Set the text of the QLineEdit
     this->setText(QString::fromStdString(material.lock()->GetName()));

@@ -118,6 +118,19 @@ void DirectusInspector::InspectMaterialFile(const string& filepath)
     material->ReflectFile(filepath);
 }
 
+Socket* DirectusInspector::GetSocket()
+{
+    if (!m_directusCore)
+        return nullptr;
+
+    return m_directusCore->GetEngineSocket();
+}
+
+DirectusMaterial* DirectusInspector::GetMaterialComponent()
+{
+    return (DirectusMaterial*)m_material;
+}
+
 void DirectusInspector::paintEvent(QPaintEvent* evt)
 {
     // Has to be overriden for QSS to take affect

@@ -51,6 +51,8 @@ public:
 
     void Clear();
     void InspectMaterialFile(const std::string &filepath);
+    Socket* GetSocket();
+    DirectusMaterial* GetMaterialComponent();
 
     //= DROP ===========================================
     virtual void dragEnterEvent(QDragEnterEvent* event);
