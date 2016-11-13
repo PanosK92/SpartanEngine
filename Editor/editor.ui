@@ -3240,9 +3240,17 @@ QTabBar::tab:last
      <addaction name="separator"/>
      <addaction name="actionMesh_Renderer_Component"/>
     </widget>
+    <widget class="QMenu" name="menuAudio">
+     <property name="title">
+      <string>Audio</string>
+     </property>
+     <addaction name="actionAudio_Listener_Component"/>
+     <addaction name="actionAudio_Source_Component"/>
+    </widget>
     <addaction name="menuMesh"/>
     <addaction name="actionEffects"/>
     <addaction name="menuPhysics"/>
+    <addaction name="menuAudio"/>
     <addaction name="menuRendering"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
@@ -3446,6 +3454,16 @@ QTabBar::tab:last
     <string>Point</string>
    </property>
   </action>
+  <action name="actionAudio_Listener_Component">
+   <property name="text">
+    <string>Audio Listener</string>
+   </property>
+  </action>
+  <action name="actionAudio_Source_Component">
+   <property name="text">
+    <string>Audio Source</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -3500,6 +3518,8 @@ QTabBar::tab:last
     <slot>AddMeshColliderComponent()</slot>
     <slot>AddSkyboxComponent()</slot>
     <slot>ShowContextMenuLight()</slot>
+    <slot>AddAudioListenerComponent()</slot>
+    <slot>AddAudioSourceComponent()</slot>
    </slots>
   </customwidget>
   <customwidget>
@@ -3874,6 +3894,38 @@ QTabBar::tab:last
     <hint type="destinationlabel">
      <x>76</x>
      <y>181</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionAudio_Listener_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddAudioListenerComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>132</x>
+     <y>295</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionAudio_Source_Component</sender>
+   <signal>triggered()</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>AddAudioSourceComponent()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>132</x>
+     <y>295</y>
     </hint>
    </hints>
   </connection>

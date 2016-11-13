@@ -35,6 +35,7 @@ Audio::Audio(Context* context) : Object(context)
 	m_result = FMOD_OK;
 	m_fmodSystem = nullptr;
 	m_maxChannels = 32;
+	m_distanceFactor = 1.0f;
 	m_initialized = false;
 }
 
@@ -91,6 +92,14 @@ bool Audio::Initialize()
 		return false;
 	}
 
+	// Set 3D settings
+	m_result = m_fmodSystem->set3DSettings(1.0, m_distanceFactor, 0.0f);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
 	m_initialized = true;
 	return true;
 }
@@ -110,11 +119,21 @@ void Audio::CreateSound(const string& filePath)
 {
 	if (!m_initialized)
 		return;
-
+	
+	// Get sound handle
 	SoundHandle* soundHandle = new SoundHandle();
 	soundHandle->isSound = true;
 
-	m_result = m_fmodSystem->createSound(filePath.c_str(), FMOD_DEFAULT, nullptr, &soundHandle->sound);
+	// Create sound
+	m_result = m_fmodSystem->createSound(filePath.c_str(), FMOD_3D, nullptr, &soundHandle->sound);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return;
+	}
+
+	// Set 3D min max disance
+	m_result = soundHandle->sound->set3DMinMaxDistance(0.5f * m_distanceFactor, 5000.0f * m_distanceFactor);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -129,10 +148,20 @@ void Audio::CreateStream(const string& filePath)
 	if (!m_initialized)
 		return;
 
+	// Get sound handle
 	SoundHandle* soundHandle = new SoundHandle();
 	soundHandle->isSound = false;
 
-	m_result = m_fmodSystem->createStream(filePath.c_str(), FMOD_DEFAULT, nullptr, &soundHandle->sound);
+	// Create sound
+	m_result = m_fmodSystem->createStream(filePath.c_str(), FMOD_3D, nullptr, &soundHandle->sound);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return;
+	}
+
+	// Set 3D min max disance
+	m_result = soundHandle->sound->set3DMinMaxDistance(0.5f * m_distanceFactor, 5000.0f * m_distanceFactor);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -157,7 +186,12 @@ bool Audio::Play(const string& filePath)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
 		return false;
-	}
+	}	
+
+	FMOD_VECTOR pos = { -10.0f * m_distanceFactor, 0.0f, 0.0f };
+	FMOD_VECTOR vel = { 0.0f, 0.0f, 0.0f };
+	soundHandle->channel->set3DAttributes(&pos, &vel);
+
 	return true;
 }
 

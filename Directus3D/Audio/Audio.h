@@ -57,6 +57,7 @@ private:
 	FMOD_RESULT m_result;
 	FMOD::System* m_fmodSystem;
 	int m_maxChannels;
+	float m_distanceFactor;
 	bool m_initialized;
 	
 	std::map<std::string, SoundHandle*> m_sounds;

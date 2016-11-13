@@ -420,11 +420,22 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     menuLight.addAction(&actionPointLight);
     //====================================================
 
+    //= AUDIO ============================================
+    QMenu menuAudio("Audio", this);
+    menuAudio.setEnabled(true);
+
+    QAction actionAudioSource("Audio Source", this);
+    actionAudioSource.setEnabled(true);
+
+    menuAudio.addAction(&actionAudioSource);
+    //====================================================
+
+    //= CAMERA ===========================================
     QAction actionCamera("Camera", this);
     actionCamera.setEnabled(true);
-    //=================================================
+    //====================================================
 
-    //= SIGNAL - SLOT connections =========================================================
+    //= SIGNAL - SLOT connections ==================================================================
     connect(&actionRename,              SIGNAL(triggered()), this,  SLOT(RenameSelected()));
     connect(&actionDelete,              SIGNAL(triggered()), this,  SLOT(DeleteSelected()));
     connect(&actionCreateEmpty,         SIGNAL(triggered()), this,  SLOT(CreateEmptyGameObject()));
@@ -432,8 +443,10 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     connect(&actionQuad,                SIGNAL(triggered()), this,  SLOT(CreateQuad()));
     connect(&actionDirectionalLight,    SIGNAL(triggered()), this,  SLOT(CreateDirectionalLight()));
     connect(&actionPointLight,          SIGNAL(triggered()), this,  SLOT(CreatePointLight()));
+    connect(&actionPointLight,          SIGNAL(triggered()), this,  SLOT(CreatePointLight()));
+    connect(&actionAudioSource,         SIGNAL(triggered()), this,  SLOT(CreateAudioSource()));
     connect(&actionCamera,              SIGNAL(triggered()), this,  SLOT(CreateCamera()));
-    //=====================================================================================
+    //==============================================================================================
 
     contextMenu.addAction(&actionCopy);
     contextMenu.addAction(&actionPaste);
@@ -446,6 +459,7 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     contextMenu.addSeparator();
     contextMenu.addMenu(&menu3DObject);
     contextMenu.addMenu(&menuLight);
+    contextMenu.addMenu(&menuAudio);
     contextMenu.addAction(&actionCamera);
 
     contextMenu.exec(mapToGlobal(pos));
@@ -474,7 +488,7 @@ void DirectusHierarchy::ShowContextMenuLight()
     menu3DObject.addAction(&actionQuad);
     //====================================================
 
-     //= LIGHT ===========================================
+    //= LIGHT ============================================
     QMenu menuLight("Light", this);
     menuLight.setEnabled(true);
 
@@ -488,18 +502,19 @@ void DirectusHierarchy::ShowContextMenuLight()
     menuLight.addAction(&actionPointLight);
     //====================================================
 
+    //= CAMERA ===========================================
     QAction actionCamera("Camera", this);
     actionCamera.setEnabled(true);
-    //=================================================
+    //====================================================
 
-    //= SIGNAL - SLOT connections =========================================================
+    //= SIGNAL - SLOT connections ==================================================================
     connect(&actionCreateEmpty,         SIGNAL(triggered()), this,  SLOT(CreateEmptyGameObject()));
     connect(&actionCube,                SIGNAL(triggered()), this,  SLOT(CreateCube()));
     connect(&actionQuad,                SIGNAL(triggered()), this,  SLOT(CreateQuad()));
     connect(&actionDirectionalLight,    SIGNAL(triggered()), this,  SLOT(CreateDirectionalLight()));
     connect(&actionPointLight,          SIGNAL(triggered()), this,  SLOT(CreatePointLight()));
     connect(&actionCamera,              SIGNAL(triggered()), this,  SLOT(CreateCamera()));
-    //=====================================================================================
+    //==============================================================================================
 
     contextMenu.addAction(&actionCreateEmpty);
     contextMenu.addMenu(&menu3DObject);
@@ -644,6 +659,19 @@ void DirectusHierarchy::CreateCamera()
     // Refresh hierarchy
     Populate();
 }
+
+void DirectusHierarchy::CreateAudioSource()
+{
+    // Create GameObject
+    GameObject* gameobject = new GameObject();
+    gameobject->SetName("Audio source");
+
+    // Add component
+    gameobject->AddComponent<AudioSource>();
+
+    // Refresh hierarchy
+    Populate();
+}
 //========================================================
 
 //= COMPONENT ADDITIONS ==================================
@@ -759,6 +787,32 @@ void DirectusHierarchy::AddSkyboxComponent()
         return;
 
     gameobject->AddComponent<Skybox>();
+
+    // Update the engine and the inspector
+    m_inspector->Inspect(gameobject);
+}
+
+void DirectusHierarchy::AddAudioListenerComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<AudioListener>();
+
+    // Update the engine and the inspector
+    m_inspector->Inspect(gameobject);
+}
+
+void DirectusHierarchy::AddAudioSourceComponent()
+{
+    // Get the currently selected GameObject
+    GameObject* gameobject = GetSelectedGameObject();
+    if (!gameobject)
+        return;
+
+    gameobject->AddComponent<AudioSource>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
