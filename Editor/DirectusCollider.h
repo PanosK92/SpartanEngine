@@ -33,24 +33,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusCore.h"
 #include "QComboBox.h"
 #include "DirectusDropDownButton.h"
+#include "DirectusIComponent.h"
 //==================================
 
-class DirectusInspector;
-
-class DirectusCollider : public QWidget
+class DirectusCollider : public DirectusIComponent
 {
     Q_OBJECT
 public:
-    explicit DirectusCollider(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
-    void Reflect(GameObject* gameobject);
+    DirectusCollider();
+
+    virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
+    virtual void Reflect(GameObject* gameobject);
+
 private:
-
-    //= TITLE ======================================
-    QLabel* m_title;
-    DirectusDropDownButton* m_optionsButton;
-    //==============================================
-
     //= SHAPE TYPE =======================
     QLabel* m_shapeTypeLabel;
     QComboBox* m_shapeType;
@@ -70,17 +65,10 @@ private:
     DirectusComboLabelText* m_sizeZ;
     //====================================
 
-    //= LINE ========================
-    QWidget* m_line;
-    //===============================
-
-    //= MISC =============================
-    QGridLayout* m_gridLayout;
+    //= MISC =====================
     QValidator* m_validator;
     Collider* m_inspectedCollider;
-    DirectusCore* m_directusCore;
-    DirectusInspector* m_inspector;
-    //====================================
+    //============================
 
     void ReflectType();
     void ReflectCenter();
@@ -90,5 +78,5 @@ public slots:
     void MapType();
     void MapCenter();
     void MapSize();
-    void Remove();
+    virtual void Remove();
 };

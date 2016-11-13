@@ -33,12 +33,10 @@ DirectusMaterialDropTarget::DirectusMaterialDropTarget(QWidget* parent) : QLineE
 {
     setAcceptDrops(true);
     setReadOnly(true);
-    //setEnabled(false);
 }
 
-void DirectusMaterialDropTarget::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, DirectusMaterial *materialInspComp)
+void DirectusMaterialDropTarget::Initialize(DirectusInspector* inspector, DirectusMaterial *materialInspComp)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
     m_materialInspComp = materialInspComp;
 }

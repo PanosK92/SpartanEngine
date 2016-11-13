@@ -28,15 +28,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace Directus::Math;
 //=============================
 
-DirectusRigidBody::DirectusRigidBody(QWidget* parent): QWidget(parent)
+DirectusRigidBody::DirectusRigidBody()
 {
-    m_directusCore = nullptr;
-    m_inspector = nullptr;
+
 }
 
-void DirectusRigidBody::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
+void DirectusRigidBody::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();
@@ -330,7 +328,7 @@ void DirectusRigidBody::SetSizeMinAlignmentRight(QLabel* label, QCheckBox* check
 //= MAPPING ========================================================================
 void DirectusRigidBody::MapMass()
 {
-    if (!m_inspectedRigidBody || !m_directusCore)
+    if (!m_inspectedRigidBody)
         return;
 
     float mass = m_mass->GetAsFloat();
@@ -339,7 +337,7 @@ void DirectusRigidBody::MapMass()
 
 void DirectusRigidBody::MapDrag()
 {
-    if (!m_inspectedRigidBody || !m_directusCore)
+    if (!m_inspectedRigidBody)
         return;
 
     float drag = m_drag->GetAsFloat();
@@ -348,7 +346,7 @@ void DirectusRigidBody::MapDrag()
 
 void DirectusRigidBody::MapAngularDrag()
 {
-    if (!m_inspectedRigidBody || !m_directusCore)
+    if (!m_inspectedRigidBody)
         return;
 
     float angularDrag = m_angularDrag->GetAsFloat();
@@ -357,7 +355,7 @@ void DirectusRigidBody::MapAngularDrag()
 
 void DirectusRigidBody::MapRestitution()
 {
-    if (!m_inspectedRigidBody || !m_directusCore)
+    if (!m_inspectedRigidBody)
         return;
 
     float restitution = m_restitution->GetAsFloat();
@@ -366,7 +364,7 @@ void DirectusRigidBody::MapRestitution()
 
 void DirectusRigidBody::MapUseGravity()
 {
-    if (!m_inspectedRigidBody || !m_directusCore)
+    if (!m_inspectedRigidBody)
         return;
 
     bool useGravity = m_useGravity->isChecked();
@@ -375,7 +373,7 @@ void DirectusRigidBody::MapUseGravity()
 
 void DirectusRigidBody::MapIsKinematic()
 {
-    if (!m_inspectedRigidBody || !m_directusCore)
+    if (!m_inspectedRigidBody)
         return;
 
     bool isKinematic = m_isKinematic->isChecked();
@@ -384,7 +382,7 @@ void DirectusRigidBody::MapIsKinematic()
 
 void DirectusRigidBody::MapFreezePosition()
 {
-    if (!m_inspectedRigidBody || !m_directusCore)
+    if (!m_inspectedRigidBody)
         return;
 
     bool lockX = m_freezePosX->isChecked();
@@ -395,7 +393,7 @@ void DirectusRigidBody::MapFreezePosition()
 
 void DirectusRigidBody::MapFreezeRotation()
 {
-    if (!m_inspectedRigidBody || !m_directusCore)
+    if (!m_inspectedRigidBody)
         return;
 
     bool lockX = m_freezeRotX->isChecked();

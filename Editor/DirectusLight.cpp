@@ -28,14 +28,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace Directus::Math;
 //=============================
 
-DirectusLight::DirectusLight(QWidget *parent) : QWidget(parent)
+DirectusLight::DirectusLight()
 {
-    m_directusCore = nullptr;
+
 }
 
-void DirectusLight::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
+void DirectusLight::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();
@@ -226,7 +225,7 @@ void DirectusLight::ReflectShadowType()
 
 void DirectusLight::MapLightType()
 {
-    if(!m_inspectedLight || !m_directusCore)
+    if(!m_inspectedLight)
         return;
 
     LightType type = (LightType)(m_lightType->currentIndex());
@@ -240,7 +239,7 @@ void DirectusLight::MapLightType()
 
 void DirectusLight::MapRange()
 {
-    if(!m_inspectedLight || !m_directusCore)
+    if(!m_inspectedLight)
         return;
 
     float range = m_range->GetAsFloat();
@@ -249,7 +248,7 @@ void DirectusLight::MapRange()
 
 void DirectusLight::MapColor()
 {
-    if(!m_inspectedLight || !m_directusCore)
+    if(!m_inspectedLight)
         return;
 
     Vector4 color = m_color->GetColor();
@@ -258,7 +257,7 @@ void DirectusLight::MapColor()
 
 void DirectusLight::MapIntensity()
 {
-    if(!m_inspectedLight || !m_directusCore)
+    if(!m_inspectedLight)
         return;
 
     float intensity = m_intensity->GetValue();
@@ -267,7 +266,7 @@ void DirectusLight::MapIntensity()
 
 void DirectusLight::MapShadowType()
 {
-    if(!m_inspectedLight || !m_directusCore)
+    if(!m_inspectedLight)
         return;
 
     ShadowType type = (ShadowType)(m_shadowType->currentIndex());

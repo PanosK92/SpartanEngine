@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//====================================
+//============================================
 #include <QWidget>
 #include <QGridLayout>
 #include <QLineEdit>
@@ -34,24 +34,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Math/Vector2.h"
 #include "DirectusCore.h"
 #include "DirectusMaterialTextureDropTarget.h"
-//====================================
+#include "DirectusIComponent.h"
+//============================================
 
-class DirectusMaterial : public QWidget
+class DirectusMaterial : public DirectusIComponent
 {
     Q_OBJECT
 public:
-    explicit DirectusMaterial(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow);
-    void Reflect(GameObject* gameobject);
+    DirectusMaterial();
+
+    virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
+    virtual void Reflect(GameObject* gameobject);
+
     void ReflectFile(std::string filepath);
     std::weak_ptr<Material> GetInspectedMaterial();
 
 private:
-
-    //= TITLE =======================
-    QLabel* m_title;
-    //===============================
-
     //= SHADER ======================
     QLabel* m_shaderLabel;
     QComboBox* m_shader;
@@ -125,15 +123,9 @@ private:
     std::shared_ptr<Material> m_matFromFile;
     //===============================
 
-    //= LINE ========================
-    QWidget* m_line;
-    //===============================
-
     //= MISC ========================
     QGridLayout* m_gridLayout;
     std::weak_ptr<Material> m_inspectedMaterial;
-    DirectusCore* m_directusCore;
-    DirectusInspector* m_inspector;
     //===============================
 
     void SetPropertiesVisible(bool visible);
@@ -164,4 +156,5 @@ public slots:
     void MapTiling();
     void MapOffset();
     void SaveMaterial();
+    virtual void Remove(){};
 };

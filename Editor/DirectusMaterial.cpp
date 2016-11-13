@@ -31,14 +31,13 @@ using namespace Directus::Math;
 using namespace std;
 //==================================
 
-DirectusMaterial::DirectusMaterial(QWidget *parent) : QWidget(parent)
+DirectusMaterial::DirectusMaterial()
 {
-    m_directusCore = nullptr;
+
 }
 
-void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector* inspector, QWidget* mainWindow)
+void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWindow)
 {
-    m_directusCore = directusCore;
     m_inspector = inspector;
 
     m_gridLayout = new QGridLayout();
@@ -69,7 +68,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= ALBEDO ================================================
     m_albedoLabel = new QLabel("Albedo");
     m_albedoImage = new DirectusMaterialTextureDropTarget();
-    m_albedoImage->Initialize(m_directusCore, inspector, Albedo);
+    m_albedoImage->Initialize(inspector, Albedo);
     m_albedoColor = new DirectusColorPicker();
     m_albedoColor->Initialize(mainWindow);
     //=========================================================
@@ -77,7 +76,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= ROUGHNESS =============================================
     m_roughnessLabel = new QLabel("Roughness");
     m_roughnessImage = new DirectusMaterialTextureDropTarget();
-    m_roughnessImage->Initialize(m_directusCore, inspector, Roughness);
+    m_roughnessImage->Initialize(inspector, Roughness);
     m_roughness = new DirectusComboSliderText();
     m_roughness->Initialize(0, 1);
     //=========================================================
@@ -85,7 +84,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= METALLIC ==============================================
     m_metallicLabel = new QLabel("Metallic");
     m_metallicImage = new DirectusMaterialTextureDropTarget();
-    m_metallicImage->Initialize(m_directusCore, inspector, Metallic);
+    m_metallicImage->Initialize(inspector, Metallic);
     m_metallic = new DirectusComboSliderText();
     m_metallic->Initialize(0, 1);
     //=========================================================
@@ -93,7 +92,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= NORMAL ================================================
     m_normalLabel = new QLabel("Normal");
     m_normalImage = new DirectusMaterialTextureDropTarget();
-    m_normalImage->Initialize(m_directusCore, inspector, Normal);
+    m_normalImage->Initialize(inspector, Normal);
     m_normal = new DirectusComboSliderText();
     m_normal->Initialize(0, 1);
     //=========================================================
@@ -101,7 +100,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= HEIGHT ================================================
     m_heightLabel = new QLabel("Height");
     m_heightImage = new DirectusMaterialTextureDropTarget();
-    m_heightImage->Initialize(m_directusCore, inspector, Height);
+    m_heightImage->Initialize(inspector, Height);
     m_height = new DirectusComboSliderText();
     m_height->Initialize(0, 1);
     //=========================================================
@@ -109,7 +108,7 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= OCCLUSION =============================================
     m_occlusionLabel = new QLabel("Occlusion");
     m_occlusionImage = new DirectusMaterialTextureDropTarget();
-    m_occlusionImage->Initialize(m_directusCore, inspector, Occlusion);
+    m_occlusionImage->Initialize(inspector, Occlusion);
     m_occlusion = new DirectusComboSliderText();
     m_occlusion->Initialize(0, 1);
     //=========================================================
@@ -117,13 +116,13 @@ void DirectusMaterial::Initialize(DirectusCore* directusCore, DirectusInspector*
     //= EMISSION ==============================================
     m_emissionLabel = new QLabel("Emission");
     m_emissionImage = new DirectusMaterialTextureDropTarget();
-    m_emissionImage->Initialize(m_directusCore, inspector, Emission);
+    m_emissionImage->Initialize(inspector, Emission);
     //=========================================================
 
     //= MASK ==================================================
     m_maskLabel = new QLabel("Mask");
     m_maskImage = new DirectusMaterialTextureDropTarget();
-    m_maskImage->Initialize(m_directusCore, inspector, Mask);
+    m_maskImage->Initialize(inspector, Mask);
     //=========================================================
 
     //= REFLECTIVITY  =========================================
@@ -319,9 +318,8 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
 
 void DirectusMaterial::ReflectFile(string filePath)
 {
-    Context* context = m_directusCore->GetEngineSocket()->GetContext();
     m_matFromFile.reset();
-    m_matFromFile = make_shared<Material>(context);
+    m_matFromFile = make_shared<Material>(nullptr);
     m_matFromFile->LoadFromFile(filePath);
 
     m_inspectedMaterial = m_matFromFile;
@@ -530,7 +528,7 @@ void DirectusMaterial::ReflectOffset()
 
 void DirectusMaterial::MapAlbedo()
 {
-    if (m_inspectedMaterial.expired() || !m_directusCore)
+    if (m_inspectedMaterial.expired())
         return;
 
     Vector4 color =  m_albedoColor->GetColor();
@@ -539,7 +537,7 @@ void DirectusMaterial::MapAlbedo()
 
 void DirectusMaterial::MapRoughness()
 {
-    if (m_inspectedMaterial.expired() || !m_directusCore)
+    if (m_inspectedMaterial.expired())
         return;
 
     float roughness =  m_roughness->GetValue();
@@ -548,7 +546,7 @@ void DirectusMaterial::MapRoughness()
 
 void DirectusMaterial::MapMetallic()
 {
-    if (m_inspectedMaterial.expired() || !m_directusCore)
+    if (m_inspectedMaterial.expired())
         return;
 
     float metallic =  m_metallic->GetValue();
@@ -557,7 +555,7 @@ void DirectusMaterial::MapMetallic()
 
 void DirectusMaterial::MapNormal()
 {
-    if (m_inspectedMaterial.expired() || !m_directusCore)
+    if (m_inspectedMaterial.expired())
         return;
 
     float normal =  m_normal->GetValue();
@@ -566,7 +564,7 @@ void DirectusMaterial::MapNormal()
 
 void DirectusMaterial::MapHeight()
 {
-    if (m_inspectedMaterial.expired() || !m_directusCore)
+    if (m_inspectedMaterial.expired())
         return;
 
     float height =  m_height->GetValue();
@@ -575,7 +573,7 @@ void DirectusMaterial::MapHeight()
 
 void DirectusMaterial::MapOcclusion()
 {
-    if (m_inspectedMaterial.expired() || !m_directusCore)
+    if (m_inspectedMaterial.expired())
         return;
 
     float occlusion =  m_occlusion->GetValue();
@@ -594,7 +592,7 @@ void DirectusMaterial::MapMask()
 
 void DirectusMaterial::MapSpecular()
 {
-    if (m_inspectedMaterial.expired() || !m_directusCore)
+    if (m_inspectedMaterial.expired())
         return;
 
     float specular = m_specular->GetValue();
@@ -603,7 +601,7 @@ void DirectusMaterial::MapSpecular()
 
 void DirectusMaterial::MapTiling()
 {
-    if (m_inspectedMaterial.expired() || !m_directusCore)
+    if (m_inspectedMaterial.expired())
         return;
 
     Vector2 tiling;
@@ -614,7 +612,7 @@ void DirectusMaterial::MapTiling()
 
 void DirectusMaterial::MapOffset()
 {
-    if (m_inspectedMaterial.expired() || !m_directusCore)
+    if (m_inspectedMaterial.expired())
         return;
 
     Vector2 offset;

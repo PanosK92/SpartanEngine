@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusCore.h"
 #include "DirectusAudioSource.h"
 #include "DirectusAudioListener.h"
+#include "DirectusIComponent.h"
 //================================
 
 class DirectusInspector : public QWidget
@@ -49,7 +50,7 @@ public:
     GameObject* GetInspectedGameObject();
 
     void Clear();
-    void InspectMaterialFile(std::string filepath);
+    void InspectMaterialFile(const std::string &filepath);
 
     //= DROP ===========================================
     virtual void dragEnterEvent(QDragEnterEvent* event);
@@ -62,18 +63,18 @@ protected:
 private:
     std::vector<Script*> FitScriptVectorToGameObject();
 
-    DirectusTransform* m_transform;
-    DirectusCamera* m_camera;
-    DirectusMeshRenderer* m_meshRenderer;
-    DirectusMaterial* m_material; 
-    DirectusCollider* m_collider;
-    DirectusRigidBody* m_rigidBody;
-    DirectusLight* m_light;
-    std::vector<DirectusScript*> m_scripts;
-    DirectusMeshFilter* m_meshFilter;
-    DirectusMeshCollider* m_meshCollider;
-    DirectusAudioSource* m_audioSource;
-    DirectusAudioListener* m_audioListener;
+    DirectusIComponent* m_transform;
+    DirectusIComponent* m_camera;
+    DirectusIComponent* m_meshRenderer;
+    DirectusIComponent* m_material;
+    DirectusIComponent* m_collider;
+    DirectusIComponent* m_rigidBody;
+    DirectusIComponent* m_light;
+    std::vector<DirectusIComponent*> m_scripts;
+    DirectusIComponent* m_meshFilter;
+    DirectusIComponent* m_meshCollider;
+    DirectusIComponent* m_audioSource;
+    DirectusIComponent* m_audioListener;
 
     DirectusCore* m_directusCore;
     GameObject* m_inspectedGameObject;
