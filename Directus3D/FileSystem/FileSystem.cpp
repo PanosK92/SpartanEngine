@@ -388,9 +388,9 @@ vector<string> FileSystem::GetSupportedSceneFilesInDirectory(const string& direc
 bool FileSystem::IsSupportedAudioFile(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);
-	vector<string> supportedImageExt = GetSupportedAudioFileFormats(true);
-	for (int i = 0; i < supportedImageExt.size(); i++)
-		if (fileExt == supportedImageExt[i])
+	vector<string> supportedAudioFilesExt = GetSupportedAudioFileFormats(true);
+	for (int i = 0; i < supportedAudioFilesExt.size(); i++)
+		if (fileExt == supportedAudioFilesExt[i])
 			return true;
 
 	return false;

@@ -35,7 +35,6 @@ using namespace Directus::Math;
 
 AudioSource::AudioSource()
 {
-	m_audio = nullptr;
 	m_filePath = PATH_NOT_ASSIGNED;
 	m_mute = false;
 	m_volume = 1.0f;
@@ -50,28 +49,39 @@ AudioSource::~AudioSource()
 
 void AudioSource::Awake()
 {
-	m_audio = g_context->GetSubsystem<Audio>();
+	// Get an audio handle (if there isn't one)
+	if (m_audioHandle.expired())
+		m_audioHandle = g_context->GetSubsystem<Audio>()->CreateAudioHandle();
+
+	// TEMPORARY
 	m_filePath = "Assets/Sounds/music.mp3";
-	g_context->GetSubsystem<Audio>()->CreateStream(m_filePath);
-	g_context->GetSubsystem<Audio>()->Play(m_filePath);
+
+	if (FileSystem::IsSupportedAudioFile(m_filePath))
+	{
+		m_audioHandle.lock()->Load(m_filePath, Memory);
+		m_audioHandle.lock()->SetTransform(g_transform);
+	}
 }
 
 void AudioSource::Start()
 {
+	if (!m_playOnAwake)
+		return;
 
+	m_audioHandle.lock()->Play();
 }
 
 void AudioSource::Remove()
 {
-	g_context->GetSubsystem<Audio>()->Stop(m_filePath);
+	m_audioHandle.lock()->Stop();
 }
 
 void AudioSource::Update()
 {
-	if (!m_audio)
+	if (m_audioHandle.expired())
 		return;
 
-	m_audio->SetAudioSourceTransform(m_filePath, g_transform);
+	m_audioHandle.lock()->Update();
 }
 
 void AudioSource::Serialize()
@@ -94,6 +104,9 @@ void AudioSource::Deserialize()
 
 void AudioSource::SetVolume(float volume)
 {
+	if (m_audioHandle.expired())
+		return;
+
 	m_volume = Clamp(volume, 0.0, 1.0f);
-	g_context->GetSubsystem<Audio>()->SetVolume(m_volume, m_filePath);
+	m_audioHandle.lock()->SetVolume(m_volume);
 }

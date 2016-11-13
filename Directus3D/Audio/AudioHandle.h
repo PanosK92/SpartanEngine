@@ -21,44 +21,43 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= LINKING =========================
-#pragma comment(lib, "fmod64_vc.lib")
-//===================================
-
 //= INCLUDES =======================
-#include "../Core/Object.h"
-#include "fmod.hpp"
+#include <fmod.hpp>
 #include "../Components/Transform.h"
-#include "AudioHandle.h"
-#include <memory>
 //==================================
 
-class Audio : public Object
+enum PlayMode
+{
+	Memory,
+	Stream
+};
+
+class AudioHandle
 {
 public:
-	Audio(Context* context);
-	~Audio();
+	AudioHandle(FMOD::System* fModSystem);
+	~AudioHandle();
 
-	bool Initialize();
+	bool Load(const std::string& filePath, PlayMode mode);
+	bool Play();
+	bool Stop();
+	bool SetVolume(float volume);
+	// Makes the audio use the 3D attributes of the transform
+	void SetTransform(Transform* transform);
+	// Should be called per frame to update the 3D attributes of the sound
 	bool Update();
 
-	std::weak_ptr<AudioHandle> CreateAudioHandle();
-	void SetListenerTransform(Transform* transform);
-
 private:
-	FMOD_RESULT m_result;
-	FMOD::System* m_fmodSystem;
-	int m_maxChannels;
-	float m_distanceFactor;
-	bool m_initialized;
+	//= CREATION ==================================
+	bool CreateSound(const std::string& filePath);
+	bool CreateStream(const std::string& filePath);
+	//=============================================
 
-	//= LISTENER =========
-	Transform* m_listener;
-	FMOD_VECTOR m_pos;
-	FMOD_VECTOR m_vel;
-	FMOD_VECTOR m_for;
-	FMOD_VECTOR m_up;
-	//====================
-	
-	std::vector<std::shared_ptr<AudioHandle>> m_audioHandles;
+	Transform* m_transform;
+	FMOD::System* m_fModSystem;
+	FMOD_RESULT m_result;
+	FMOD::Sound* m_sound;
+	FMOD::Channel* m_channel;
+	float m_distanceFactor;
+	PlayMode m_mode;
 };

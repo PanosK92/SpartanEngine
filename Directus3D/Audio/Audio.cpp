@@ -50,13 +50,6 @@ Audio::~Audio()
 	if (!m_fmodSystem)
 		return;
 
-	// Release all sounds
-	for (const auto& sound : m_sounds)
-	{
-		sound.second->sound->release();
-		delete sound.second;
-	}
-
 	// Close FMOD
 	m_result = m_fmodSystem->close();
 	if (m_result != FMOD_OK)
@@ -110,196 +103,56 @@ bool Audio::Initialize()
 	return true;
 }
 
-void Audio::Update()
+bool Audio::Update()
 {
 	if (!m_initialized)
-		return;
+		return false;
 
 	// Update FMOD
 	m_result = m_fmodSystem->update();
 	if (m_result != FMOD_OK)
-		LOG_ERROR(FMOD_ErrorString(m_result));
-}
-
-bool Audio::CreateSound(const string& filePath)
-{
-	if (!m_initialized)
-		return false;
-	
-	// Get sound handle
-	SoundHandle* soundHandle = new SoundHandle();
-	soundHandle->isSound = true;
-
-	// Create sound
-	m_result = m_fmodSystem->createSound(filePath.c_str(), FMOD_3D, nullptr, &soundHandle->sound);
-	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
 		return false;
 	}
 
-	// Set 3D min max disance
-	m_result = soundHandle->sound->set3DMinMaxDistance(0.5f * m_distanceFactor, 5000.0f * m_distanceFactor);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	m_sounds.insert(make_pair(filePath, soundHandle));
-	return true;
-}
-
-bool Audio::CreateStream(const string& filePath)
-{
-	if (!m_initialized)
-		return false;
-
-	// Get sound handle
-	SoundHandle* soundHandle = new SoundHandle();
-	soundHandle->isSound = false;
-
-	// Create sound
-	m_result = m_fmodSystem->createStream(filePath.c_str(), FMOD_3D, nullptr, &soundHandle->sound);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	// Set 3D min max disance
-	m_result = soundHandle->sound->set3DMinMaxDistance(0.5f * m_distanceFactor, 5000.0f * m_distanceFactor);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	m_sounds.insert(make_pair(filePath, soundHandle));
-	return true;
-}
-
-bool Audio::Play(const string& filePath)
-{
-	if (!m_initialized)
-		return false;
-	
-	// Get sound handle
-	SoundHandle* soundHandle = GetSoundByPath(filePath);
-	if (!soundHandle)
-		return false;
-
-	// Start playing the sound
-	m_result = m_fmodSystem->playSound(soundHandle->sound, nullptr, false, &soundHandle->channel);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}	
-
-	return true;
-}
-
-bool Audio::Stop(const string& filePath)
-{
-	if (!m_initialized)
-		return false;
-
-	// Get sound handle
-	SoundHandle* soundHandle = GetSoundByPath(filePath);
-	if (!soundHandle)
-		return false;
-	
-	// Check if the sound is playing
-	bool isPlaying;
-	m_result = soundHandle->channel->isPlaying(&isPlaying);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-	
-	// If it's playing, then stop it
-	if (isPlaying)
-		soundHandle->channel->stop();
-
-	return true;
-}
-
-bool Audio::SetVolume(float volume, const string& filePath)
-{
-	SoundHandle* soundHandle = GetSoundByPath(filePath);
-	if (!soundHandle)
-		return false;
-
-	m_result = soundHandle->channel->setVolume(volume);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	return true;
-}
-
-bool Audio::SetAudioSourceTransform(const string& filePath, Transform* transform)
-{
-	// Get sound handle
-	SoundHandle* soundHandle = GetSoundByPath(filePath);
-	if (!soundHandle)
-		return false;
-
-	Directus::Math::Vector3 pos = transform->GetPosition();
-
-	FMOD_VECTOR fModPos = { pos.x, pos.y, pos.z };
-	FMOD_VECTOR fModVel = { 0, 0, 0 };
-
-	// Set 3D attributes
-	m_result = soundHandle->channel->set3DAttributes(&fModPos, &fModVel);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	return true;
-}
-
-bool Audio::SetListenerTransform(Transform* transform)
-{
-	if (!m_initialized || !transform)
-		return false;
-
-	// Make sure the listener is not already set
+	//= 3D Attributes =================================================================
 	if (m_listener)
-		if (m_listener->GetID() == transform->GetID())
-			return true;
-
-	Directus::Math::Vector3 pos = transform->GetPosition();
-	Directus::Math::Vector3 forward = transform->GetForward();
-	Directus::Math::Vector3 up = transform->GetUp();
-
-	m_pos = { pos.x, pos.y, pos.z };
-	m_vel = { 0, 0, 0 };
-	m_for = { forward.x, forward.y, forward.z };
-	m_up = { up.x, up.y, up.z };
-
-	// Set 3D attributes
-	m_result = m_fmodSystem->set3DListenerAttributes(0, &m_pos, &m_vel, &m_for, &m_up);
-	if (m_result != FMOD_OK)
 	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
+		Directus::Math::Vector3 pos = m_listener->GetPosition();
+		Directus::Math::Vector3 forward = m_listener->GetForward();
+		Directus::Math::Vector3 up = m_listener->GetUp();
+
+		m_pos = { pos.x, pos.y, pos.z };
+		m_vel = { 0, 0, 0 };
+		m_for = { forward.x, forward.y, forward.z };
+		m_up = { up.x, up.y, up.z };
+
+		// Set 3D attributes
+		m_result = m_fmodSystem->set3DListenerAttributes(0, &m_pos, &m_vel, &m_for, &m_up);
+		if (m_result != FMOD_OK)
+		{
+			LOG_ERROR(FMOD_ErrorString(m_result));
+			return false;
+		}
 	}
+	//==================================================================================
 
 	return true;
 }
 
-SoundHandle* Audio::GetSoundByPath(const string& filePath)
+weak_ptr<AudioHandle> Audio::CreateAudioHandle()
 {
-	for (const auto& sound : m_sounds)
-		if (sound.first == filePath)
-			return sound.second;
+	if (!m_initialized)
+		return weak_ptr<AudioHandle>();
 
-	return nullptr;
+	shared_ptr<AudioHandle> audioHandle = make_shared<AudioHandle>(m_fmodSystem);
+	m_audioHandles.push_back(audioHandle);
+
+	return audioHandle;
+}
+
+void Audio::SetListenerTransform(Transform* transform)
+{
+	m_listener = transform;
 }

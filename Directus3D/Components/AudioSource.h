@@ -23,9 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========
 #include "IComponent.h"
+#include <memory>
 //=====================
 
-class Audio;
+class AudioHandle;
 
 class __declspec(dllexport) AudioSource : public IComponent
 {
@@ -57,7 +58,7 @@ public:
 	//===================================================================================
 
 private:
-	Audio* m_audio;
+	std::weak_ptr<AudioHandle> m_audioHandle;
 	std::string m_filePath;
 	bool m_mute;
 	float m_volume;
