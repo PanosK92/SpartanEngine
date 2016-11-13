@@ -35,6 +35,7 @@ struct SoundHandle
 {
 	FMOD::Sound* sound;
 	FMOD::Channel* channel;
+	bool isSound;
 };
 
 class Audio : public Object
@@ -46,7 +47,8 @@ public:
 	bool Initialize();
 	void Update();
 
-	void AddSound(const std::string& filePath);
+	void CreateSound(const std::string& filePath);
+	void CreateStream(const std::string& filePath);
 	bool Play(const std::string& filePath);
 	bool Stop(const std::string& filePath);
 	bool SetVolume(float volume, const std::string& filePath);

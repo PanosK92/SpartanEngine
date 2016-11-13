@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Audio/Audio.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
+#include "../IO/Serializer.h"
 //===================================
 
 //= NAMESPACES ================
@@ -50,7 +51,7 @@ AudioSource::~AudioSource()
 void AudioSource::Awake()
 {
 	m_filePath = "Assets/Sounds/music.mp3";
-	g_context->GetSubsystem<Audio>()->AddSound(m_filePath);
+	g_context->GetSubsystem<Audio>()->CreateStream(m_filePath);
 	g_context->GetSubsystem<Audio>()->Play(m_filePath);
 }
 
@@ -71,12 +72,20 @@ void AudioSource::Update()
 
 void AudioSource::Serialize()
 {
-
+	Serializer::WriteSTR(m_filePath);
+	Serializer::WriteBool(m_mute);
+	Serializer::WriteFloat(m_volume);
+	Serializer::WriteBool(m_playOnAwake);
+	Serializer::WriteBool(m_loop);
 }
 
 void AudioSource::Deserialize()
 {
-
+	m_filePath = Serializer::ReadSTR();
+	m_mute = Serializer::ReadBool();
+	m_volume = Serializer::ReadFloat();
+	m_playOnAwake = Serializer::ReadBool();
+	m_loop = Serializer::ReadBool();
 }
 
 void AudioSource::SetVolume(float volume)

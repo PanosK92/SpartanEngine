@@ -106,18 +106,40 @@ void Audio::Update()
 		LOG_ERROR(FMOD_ErrorString(m_result));
 }
 
-void Audio::AddSound(const string& path)
+void Audio::CreateSound(const string& filePath)
 {
 	if (!m_initialized)
 		return;
 
 	SoundHandle* soundHandle = new SoundHandle();
-	
-	m_result = m_fmodSystem->createSound(path.c_str(), FMOD_DEFAULT, nullptr, &soundHandle->sound);
-	if (m_result != FMOD_OK)
-		LOG_ERROR(FMOD_ErrorString(m_result));
+	soundHandle->isSound = true;
 
-	m_sounds.insert(make_pair(path, soundHandle));
+	m_result = m_fmodSystem->createSound(filePath.c_str(), FMOD_DEFAULT, nullptr, &soundHandle->sound);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return;
+	}
+
+	m_sounds.insert(make_pair(filePath, soundHandle));
+}
+
+void Audio::CreateStream(const string& filePath)
+{
+	if (!m_initialized)
+		return;
+
+	SoundHandle* soundHandle = new SoundHandle();
+	soundHandle->isSound = false;
+
+	m_result = m_fmodSystem->createStream(filePath.c_str(), FMOD_DEFAULT, nullptr, &soundHandle->sound);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return;
+	}
+
+	m_sounds.insert(make_pair(filePath, soundHandle));
 }
 
 bool Audio::Play(const string& filePath)
