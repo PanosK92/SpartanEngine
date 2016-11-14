@@ -46,7 +46,8 @@ namespace Directus
 		inline __declspec(dllexport) float CotF(float x) { return cosf(x) / sinf(x); }
 		inline __declspec(dllexport) float DegreesToRadians(float degrees){ return degrees * DEG_TO_RAD; }
 		inline __declspec(dllexport) float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
-		inline __declspec(dllexport) float Clamp(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
+		template <typename T>
+		inline __declspec(dllexport) float Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
 
 		// Lerp linearly between to values
 		template <class T, class U>

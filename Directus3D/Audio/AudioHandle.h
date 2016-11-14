@@ -40,10 +40,23 @@ public:
 
 	bool Load(const std::string& filePath, PlayMode mode);
 	bool Play();
+	bool Pause();
 	bool Stop();
+
+	bool SetLoop(bool loop);
+
+	// Set's the volume [0.0f, 1.0f]
 	bool SetVolume(float volume);
+
+	// Sets the mute state effectively silencing it or returning it to its normal volume.
+	bool SetMute(bool mute);
+
+	// Set's the priority for the channel [0, 255]
+	bool SetPriority(int priority);
+
 	// Makes the audio use the 3D attributes of the transform
 	void SetTransform(Transform* transform);
+
 	// Should be called per frame to update the 3D attributes of the sound
 	bool Update();
 

@@ -2292,16 +2292,18 @@ text edit background:					414141
 QTabBar::tab:first
 {
 	background-image: url(:/Images/tabProject.png);
+	padding-left: 25px;
 }
 
 /* Console */
 QTabBar::tab:last
 {
 	background-image: url(:/Images/tabConsole.png);
+	padding-left: 25px;
 }</string>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <property name="iconSize">
                <size>

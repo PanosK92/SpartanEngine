@@ -47,9 +47,34 @@ public:
     virtual void Reflect(GameObject* gameobject);
 
 private:
+    //= MUTE ===========================
+    QLabel* m_muteLabel;
+    QCheckBox* m_muteCheckBox;
+    //==================================
+
+    //= PLAY ON AWAKE ==================
+    QLabel* m_playOnAwakeLabel;
+    QCheckBox* m_playOnAwakeCheckBox;
+    //==================================
+
+    //= LOOP ===========================
+    QLabel* m_loopLabel;
+    QCheckBox* m_loopCheckBox;
+    //==================================
+
+    //= PROPRITY =======================
+    QLabel* m_priorityLabel;
+    DirectusComboSliderText* m_priority;
+    //==================================
+
     //= VOLUME =======================
     QLabel* m_volumeLabel;
     DirectusComboSliderText* m_volume;
+    //================================
+
+    //= PITCH ========================
+    QLabel* m_pitchLabel;
+    DirectusComboSliderText* m_pitch;
     //================================
 
     //= MISC ===============

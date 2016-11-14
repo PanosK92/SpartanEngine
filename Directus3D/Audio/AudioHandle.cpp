@@ -27,6 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 //=========================
 
+//= NAMESPACES ================
+using namespace Directus::Math;
+//=============================
+
 AudioHandle::AudioHandle(FMOD::System* fModSystem)
 {
 	m_transform = nullptr;
@@ -86,6 +90,35 @@ bool AudioHandle::Play()
 	return true;
 }
 
+bool AudioHandle::Pause()
+{
+	// Check if the sound is playing
+	bool isPaused = false;
+	if (m_channel)
+	{
+		m_result = m_channel->getPaused(&isPaused);
+		if (m_result != FMOD_OK)
+		{
+			LOG_ERROR(FMOD_ErrorString(m_result));
+			return false;
+		}
+	}
+
+	// If it's already stopped, don't bother
+	if (!isPaused)
+		return true;
+
+	// Stop the sound
+	m_result = m_channel->setPaused(true);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	return true;
+}
+
 bool AudioHandle::Stop()
 {
 	// Check if the sound is playing
@@ -115,6 +148,37 @@ bool AudioHandle::Stop()
 	return true;
 }
 
+bool AudioHandle::SetLoop(bool loop)
+{
+	if (!m_channel)
+		return true;
+
+	// Get current mode
+	FMOD_MODE mode;
+	m_result = m_channel->getMode(&mode);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	// Adjust current mode based on loop variable
+	if (loop)
+		mode |= FMOD_LOOP_NORMAL;
+	else
+		mode &= ~FMOD_LOOP_OFF;
+
+	// Se the new mode to the channel
+	m_result = m_channel->setMode(mode);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	return true;
+}
+
 bool AudioHandle::SetVolume(float volume)
 {
 	if (!m_channel)
@@ -130,12 +194,45 @@ bool AudioHandle::SetVolume(float volume)
 	return true;
 }
 
+bool AudioHandle::SetMute(bool mute)
+{
+	if (!m_channel)
+		return true;
+
+	m_result = m_channel->setMute(mute);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	return true;
+}
+
+bool AudioHandle::SetPriority(int priority)
+{
+	if (!m_channel)
+		return true;
+
+	// Clamp priority between 0 (most important) and 255 (least important)
+	priority = Clamp(priority, 0, 255);
+
+	m_result = m_channel->setPriority(priority);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	return true;
+}
+
 bool AudioHandle::Update()
 {
 	if (!m_transform || !m_channel)
 		return true;
 
-	Directus::Math::Vector3 pos = m_transform->GetPosition();
+	Vector3 pos = m_transform->GetPosition();
 
 	FMOD_VECTOR fModPos = { pos.x, pos.y, pos.z };
 	FMOD_VECTOR fModVel = { 0, 0, 0 };
