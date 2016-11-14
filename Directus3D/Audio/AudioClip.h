@@ -32,11 +32,11 @@ enum PlayMode
 	Stream
 };
 
-class AudioHandle
+class AudioClip
 {
 public:
-	AudioHandle(FMOD::System* fModSystem);
-	~AudioHandle();
+	AudioClip(FMOD::System* fModSystem);
+	~AudioClip();
 
 	bool Load(const std::string& filePath, PlayMode mode);
 	bool Play();

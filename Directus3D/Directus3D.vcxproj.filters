@@ -231,7 +231,7 @@
     <ClCompile Include="Components\AudioListener.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Audio\AudioHandle.cpp">
+    <ClCompile Include="Audio\AudioClip.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -479,7 +479,7 @@
     <ClInclude Include="Components\AudioListener.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Audio\AudioHandle.h">
+    <ClInclude Include="Audio\AudioClip.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Object.h"
 #include "fmod.hpp"
 #include "../Components/Transform.h"
-#include "AudioHandle.h"
+#include "AudioClip.h"
 #include <memory>
 //==================================
 
@@ -42,7 +42,7 @@ public:
 	bool Initialize();
 	bool Update();
 
-	std::weak_ptr<AudioHandle> CreateAudioHandle();
+	std::weak_ptr<AudioClip> CreateAudioHandle();
 	void SetListenerTransform(Transform* transform);
 
 private:
@@ -60,5 +60,5 @@ private:
 	FMOD_VECTOR m_up;
 	//====================
 	
-	std::vector<std::shared_ptr<AudioHandle>> m_audioHandles;
+	std::vector<std::shared_ptr<AudioClip>> m_audioHandles;
 };

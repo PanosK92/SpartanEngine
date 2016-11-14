@@ -182,7 +182,7 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
 {
     const QMimeData* mimeData = event->mimeData();
 
-    // Check if in case a GameObject was dropped
+    //= DROP CASE: GAMEOBJECT ===========================================================================
     std::string gameObjectID = mimeData->text().toStdString();
     GameObject* gameObject = m_directusCore->GetEngineSocket()->GetGameObjectByID(gameObjectID);
     if (gameObject)
@@ -192,7 +192,9 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
         event->acceptProposedAction();
         return;
     }
+    //===================================================================================================
 
+     //= DROP CASE: FILE/DIRECTORY ======================================================================
     QList<QUrl> droppedUrls = mimeData->urls();
     for(const auto& droppedURL : droppedUrls)
     {
@@ -200,18 +202,42 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
         QFileInfo fileInfo(localPath);
 
         string filePath = fileInfo.filePath().toStdString();
-        if(fileInfo.isFile()) // The user dropped a file
-        {
-            if (FileSystem::IsSupportedModelFile(filePath))
-                m_fileDialog->LoadModelDirectly(filePath);
-        }
-        else if (fileInfo.isDir()) // The user dropped a folder
+
+        //= DROP CASE: DIRECTORY ==========================
+        if (fileInfo.isDir()) // The user dropped a folder
         {
             vector<string> modelFilePaths = FileSystem::GetSupportedModelFilesInDirectory(filePath);
             if (modelFilePaths.size() != 0)
                 m_fileDialog->LoadModelDirectly(modelFilePaths.front());
         }
+        //= DROP CASE: FILE ==================================
+        else if(fileInfo.isFile()) // The user dropped a file
+        {
+            // Model ?
+            if (FileSystem::IsSupportedModelFile(filePath))
+                m_fileDialog->LoadModelDirectly(filePath);
+
+            // Audio ?
+            if (FileSystem::IsSupportedAudioFile(filePath))
+            {
+                std::string fileName = FileSystem::GetFileNameFromPath(filePath);
+                std::string destinationPath = GetRootPath().toStdString() + "/" + fileName;
+                FileSystem::CopyFileFromTo(filePath, destinationPath);
+                return;
+            }
+
+            // Image ?
+            if (FileSystem::IsSupportedImageFile(filePath))
+            {
+                std::string fileName = FileSystem::GetFileNameFromPath(filePath);
+                std::string destinationPath = GetRootPath().toStdString() + "/" + fileName;
+                FileSystem::CopyFileFromTo(filePath, destinationPath);
+            }
+        }
+        //===================================================
+
     }
+    //===================================================================================================
 
     event->acceptProposedAction();
 }

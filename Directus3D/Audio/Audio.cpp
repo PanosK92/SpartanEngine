@@ -141,12 +141,12 @@ bool Audio::Update()
 	return true;
 }
 
-weak_ptr<AudioHandle> Audio::CreateAudioHandle()
+weak_ptr<AudioClip> Audio::CreateAudioHandle()
 {
 	if (!m_initialized)
-		return weak_ptr<AudioHandle>();
+		return weak_ptr<AudioClip>();
 
-	shared_ptr<AudioHandle> audioHandle = make_shared<AudioHandle>(m_fmodSystem);
+	shared_ptr<AudioClip> audioHandle = make_shared<AudioClip>(m_fmodSystem);
 	m_audioHandles.push_back(audioHandle);
 
 	return audioHandle;

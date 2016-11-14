@@ -58,7 +58,7 @@ void AudioSource::Awake()
 		m_audioHandle = g_context->GetSubsystem<Audio>()->CreateAudioHandle();
 
 	// TEMPORARY
-	m_filePath = "Assets/Sounds/music.mp3";
+	m_filePath = "Assets/Sounds/car.wav";
 
 	if (FileSystem::IsSupportedAudioFile(m_filePath))
 	{

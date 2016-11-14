@@ -57,6 +57,7 @@ bool Texture::SaveMetadata()
 	if (!Serializer::StartWriting(GetFilePathMetadata()))
 		return false;
 
+	Serializer::WriteSTR(METADATA_TYPE_TEXTURE);
 	Serializer::WriteSTR(m_ID);
 	Serializer::WriteSTR(m_name);
 	Serializer::WriteSTR(m_filePath);
@@ -76,14 +77,17 @@ bool Texture::LoadMetadata()
 	if (!Serializer::StartReading(GetFilePathMetadata()))
 		return false;
 
-	m_ID = Serializer::ReadSTR();
-	m_name = Serializer::ReadSTR();
-	m_filePath = Serializer::ReadSTR();
-	m_width = Serializer::ReadInt();
-	m_height = Serializer::ReadInt();
-	m_type = TextureType(Serializer::ReadInt());
-	m_grayscale = Serializer::ReadBool();
-	m_transparency = Serializer::ReadBool();
+	if (Serializer::ReadSTR() == METADATA_TYPE_TEXTURE)
+	{
+		m_ID = Serializer::ReadSTR();
+		m_name = Serializer::ReadSTR();
+		m_filePath = Serializer::ReadSTR();
+		m_width = Serializer::ReadInt();
+		m_height = Serializer::ReadInt();
+		m_type = TextureType(Serializer::ReadInt());
+		m_grayscale = Serializer::ReadBool();
+		m_transparency = Serializer::ReadBool();
+	}
 
 	Serializer::StopReading();
 

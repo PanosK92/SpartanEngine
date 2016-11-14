@@ -132,7 +132,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Audio\Audio.cpp" />
-    <ClCompile Include="Audio\AudioHandle.cpp" />
+    <ClCompile Include="Audio\AudioClip.cpp" />
     <ClCompile Include="Components\AudioListener.cpp" />
     <ClCompile Include="Components\AudioSource.cpp" />
     <ClCompile Include="Components\Camera.cpp" />
@@ -207,7 +207,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Audio\Audio.h" />
-    <ClInclude Include="Audio\AudioHandle.h" />
+    <ClInclude Include="Audio\AudioClip.h" />
     <ClInclude Include="Components\AudioListener.h" />
     <ClInclude Include="Components\AudioSource.h" />
     <ClInclude Include="Components\Camera.h" />
