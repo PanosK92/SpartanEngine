@@ -37,73 +37,26 @@ public:
 	void Update();
 	void Reset();
 
-	float GetDeltaTime() const;
-	float GetDeltaTimeMs() const;
+	float GetDeltaTime();
+	float GetDeltaTimeMs();
 
 	float GetTime();
-	float GetTimeMs() const;
+	float GetTimeMs();
 
 	float GetElapsedTime();
-	float GetElapsedTimeMs() const;
+	float GetElapsedTimeMs();
 
-	float GetFPS() const;
+	float GetFPS();
 
-	void RenderStart() const;
-	void RenderEnd() const;
-	float GetRenderTimeMs() const;
-
-	Stopwatch* GetStopwatch();
 private:
 	INT64 m_ticksPerSec;
 	float m_ticksPerMs;
 	float m_deltaTime;
 	float m_startTime;
-	float m_lastKnownTime;
+	double m_lastKnownTime;
 
 	//= FPS CALCULATION
 	int m_frameCount;
 	float m_fpsLastKnownTime;
 	float m_fps;
-
-	//= STATS ===================
-	Stopwatch* m_renderStopwatch;
-	//===========================
-};
-
-class Stopwatch
-{
-public:
-	Stopwatch(Timer* timer)
-	{
-		m_timer = timer;
-
-		m_startTime = 0.0f;
-		m_endTime = 0.0f;
-		m_deltaTime = 0.0f;
-	}
-
-	void Start()
-	{
-		m_startTime = m_timer->GetTime();
-	}
-
-	void Stop()
-	{
-		m_endTime = m_timer->GetTime();
-	}
-
-	float GetDeltaTime() const
-	{
-		return m_endTime - m_startTime;
-	}
-
-	float GetDeltaTimeMs() const
-	{
-		return GetDeltaTime() / 1000.0f;
-	}
-
-	float m_startTime;
-	float m_endTime;
-	float m_deltaTime;
-	Timer* m_timer;
 };

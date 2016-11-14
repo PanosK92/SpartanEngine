@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input.h"
 #include "../Core/Settings.h"
 #include "../Logging/Log.h"
+#include "../Events/EventHandler.h"
 //===========================
 
 //= NAMESPACES ================
@@ -34,6 +35,9 @@ Input::Input(Context* context): Object(context)
 {
 	m_DX8Input = nullptr;
 	m_initializedSuccessfully = false;
+
+	// Subcribe to update event
+	SUBSCRIBE_TO_EVENT(UPDATE, std::bind(&Input::Update, this));
 }
 
 Input::~Input()

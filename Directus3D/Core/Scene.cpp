@@ -53,6 +53,9 @@ Scene::Scene(Context* context) : Object(context)
 {
 	m_ambientLight = Vector3::Zero;
 	m_mainCamera = nullptr;
+
+	// Subcribe to update event
+	SUBSCRIBE_TO_EVENT(UPDATE, std::bind(&Scene::Resolve, this));
 }
 
 Scene::~Scene()

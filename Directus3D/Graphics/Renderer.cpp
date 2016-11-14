@@ -110,6 +110,9 @@ Renderer::Renderer(Context* context) : Object(context)
 	m_texNoiseMap = make_shared<Texture>();
 	m_texNoiseMap->LoadFromFile("Assets/Shaders/noise.png", graphics);
 	m_texNoiseMap->SetType(Normal);
+
+	// Subcribe to render event
+	SUBSCRIBE_TO_EVENT(RENDER_UPDATE, std::bind(&Renderer::Render, this));
 }
 
 Renderer::~Renderer()

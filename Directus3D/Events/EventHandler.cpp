@@ -27,13 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 std::vector<std::shared_ptr<Event>> EventHandler::m_events;
 
-void EventHandler::Fire(int signalID)
+void EventHandler::Fire(int eventID)
 {
-	for (auto signal : m_events)
-	{
-		if (signal->GetEventID() == signalID)
-			signal->Fire();
-	}
+	for (auto event : m_events)
+		if (event->GetEventID() == eventID)
+			event->Fire();
 }
 
 void EventHandler::Clear()

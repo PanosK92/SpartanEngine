@@ -78,10 +78,9 @@ public:
 	//==============================================================================
 
 	//= STATS ======================================================================
-	float GetFPS() const;
-	int GetRenderedMeshesCount() const;
-	float GetDeltaTime() const;
-	float GetRenderTime() const;
+	float GetFPS();
+	int GetRenderedMeshesCount();
+	float GetDeltaTime();
 	//==============================================================================
 
 private:
