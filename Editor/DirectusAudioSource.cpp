@@ -50,6 +50,12 @@ void DirectusAudioSource::Initialize(DirectusInspector* inspector, QWidget* main
     m_optionsButton->Initialize(mainWindow);
     //=========================================================
 
+    //= AUDIO CLIP ============================================
+    m_audioClipLabel = new QLabel("Audio Clip");
+    m_audioClip = new DirectusAudioClipDropTarget();
+    m_audioClip->Initialize(m_inspector);
+    //=========================================================
+
     //= MUTE ==================================================
     m_muteLabel = new QLabel("Mute");
     m_muteCheckBox = new QCheckBox();
@@ -105,46 +111,51 @@ void DirectusAudioSource::Initialize(DirectusInspector* inspector, QWidget* main
     m_gridLayout->addWidget(m_optionsButton, row, 2, 1, 1, Qt::AlignRight);
     row++;
 
-    // Row 1 - MUTE
+    // Row 1 - MATERIAL
+    m_gridLayout->addWidget(m_audioClipLabel, row, 0, 1, 1);
+    m_gridLayout->addWidget(m_audioClip, row, 1, 1, 2);
+    row++;
+
+    // Row 2 - MUTE
     m_gridLayout->addWidget(m_muteLabel, row, 0, 1, 1);
     m_gridLayout->addWidget(m_muteCheckBox, row, 1, 1, 1);
     row++;
 
-    // Row 2 - PLAY ON AWAKE
+    // Row 3 - PLAY ON AWAKE
     m_gridLayout->addWidget(m_playOnAwakeLabel, row, 0, 1, 1);
     m_gridLayout->addWidget(m_playOnAwakeCheckBox, row, 1, 1, 1);
     row++;
 
-    // Row 3 - LOOP
+    // Row 4 - LOOP
     m_gridLayout->addWidget(m_loopLabel, row, 0, 1, 1);
     m_gridLayout->addWidget(m_loopCheckBox, row, 1, 1, 1);
     row++;
 
-    // Row 4 - PRIORITY
+    // Row 5 - PRIORITY
     m_gridLayout->addWidget(m_priorityLabel,               row, 0, 1, 1);
     m_gridLayout->addWidget(m_priority->GetSlider(),       row, 1, 1, 1);
     m_gridLayout->addWidget(m_priority->GetLineEdit(),     row, 2, 1, 1);
     row++;
 
-    // Row 5 - VOLUME
+    // Row 6 - VOLUME
     m_gridLayout->addWidget(m_volumeLabel,               row, 0, 1, 1);
     m_gridLayout->addWidget(m_volume->GetSlider(),       row, 1, 1, 1);
     m_gridLayout->addWidget(m_volume->GetLineEdit(),     row, 2, 1, 1);
     row++;
 
-    // Row 6 - PITCH
+    // Row 7 - PITCH
     m_gridLayout->addWidget(m_pitchLabel,              row, 0, 1, 1);
     m_gridLayout->addWidget(m_pitch->GetSlider(),       row, 1, 1, 1);
     m_gridLayout->addWidget(m_pitch->GetLineEdit(),     row, 2, 1, 1);
     row++;
 
-    // Row 7 - PAN
+    // Row 8 - PAN
     m_gridLayout->addWidget(m_panLabel,                 row, 0, 1, 1);
     m_gridLayout->addWidget(m_pan->GetSlider(),       row, 1, 1, 1);
     m_gridLayout->addWidget(m_pan->GetLineEdit(),     row, 2, 1, 1);
     row++;
 
-    // Row 8 - LINE
+    // Row 9 - LINE
     m_gridLayout->addWidget(m_line, row, 0, 1, 3);
     //============================================================
 

@@ -45,6 +45,9 @@ public:
 	//=========================
 
 	//= PROPERTIES ======================================================================
+	bool LoadAudioClip(const std::string& filePath);
+	std::string GetAudioClipName();
+
 	bool GetMute() { return m_mute; }
 	void SetMute(bool mute);
 
@@ -68,7 +71,7 @@ public:
 	//===================================================================================
 
 private:
-	std::weak_ptr<AudioClip> m_audioHandle;
+	std::weak_ptr<AudioClip> m_audioClip;
 	std::string m_filePath;
 	bool m_mute;
 	bool m_playOnAwake;

@@ -36,5 +36,6 @@
         <file>icon.png</file>
         <file>audioListener.png</file>
         <file>audioSource.png</file>
+        <file>audioFile.png</file>
     </qresource>
 </RCC>

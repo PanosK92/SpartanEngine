@@ -141,15 +141,15 @@ bool Audio::Update()
 	return true;
 }
 
-weak_ptr<AudioClip> Audio::CreateAudioHandle()
+weak_ptr<AudioClip> Audio::CreateAudioClip()
 {
 	if (!m_initialized)
 		return weak_ptr<AudioClip>();
 
-	shared_ptr<AudioClip> audioHandle = make_shared<AudioClip>(m_fmodSystem);
-	m_audioHandles.push_back(audioHandle);
+	shared_ptr<AudioClip> audioClip = make_shared<AudioClip>(m_fmodSystem);
+	m_audioHandles.push_back(audioClip);
 
-	return audioHandle;
+	return audioClip;
 }
 
 void Audio::SetListenerTransform(Transform* transform)
