@@ -104,7 +104,10 @@ void Engine::Update()
 	m_timer->Update();
 	//================
 
+	// LOGIC UPDATE
 	FIRE_EVENT(UPDATE);
+
+	// RENDER UPDATE
 	FIRE_EVENT(RENDER_UPDATE);
 }
 

@@ -60,7 +60,7 @@ private:
     Socket* m_socket;
 	Engine* m_engine;
     QTimer* m_timerUpdate;
-    QTimer* m_timer1FPS;
+    QTimer* m_timer500Mil;
     QTimer* m_timer60FPS;
     bool m_isRunning;
     bool m_locked;
@@ -75,7 +75,7 @@ public slots:
     void Start();
     void Stop();
     void Update();
-    void Update1FPS();
+    void Update500Mil();
     void Update60FPS();
 
     void LockUpdate();

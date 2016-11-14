@@ -35,9 +35,6 @@ Timer::Timer(Context* context) : Object(context)
 	m_startTime = 0.0f;
 	m_lastKnownTime = 0.0f;
 	m_deltaTime = 0.0f;
-	m_frameCount = 0;
-	m_fpsLastKnownTime = 0.0f;
-	m_fps = 0.0f;
 
 	LARGE_INTEGER ticksPerSec;
 	if (QueryPerformanceFrequency(&ticksPerSec))
@@ -70,15 +67,6 @@ void Timer::Update()
 
 	// Save current time
 	m_lastKnownTime = currentTime;
-
-	// fps
-	m_frameCount++;
-	if (currentTime >= m_fpsLastKnownTime + 1000)
-	{
-		m_fps = m_frameCount;
-		m_frameCount = 0;
-		m_fpsLastKnownTime = currentTime;
-	}
 }
 
 void Timer::Reset()
@@ -125,9 +113,4 @@ float Timer::GetElapsedTime()
 float Timer::GetElapsedTimeMs()
 {
 	return GetTimeMs() - m_startTime;
-}
-
-float Timer::GetFPS()
-{
-	return m_fps;
 }

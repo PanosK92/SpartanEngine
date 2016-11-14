@@ -51,8 +51,8 @@ Renderer::Renderer(Context* context) : Object(context)
 {
 	m_GBuffer = nullptr;
 	m_fullScreenQuad = nullptr;
-	m_renderedMeshesCount = 0;
-	m_meshesRendered = 0;
+	m_renderedMeshesPerFrame = 0;
+	m_renderedMeshesTempCounter = 0;
 	m_renderTexPing = nullptr;
 	m_renderTexPong = nullptr;
 	m_shaderDeferred = nullptr;
@@ -388,7 +388,7 @@ void Renderer::GBufferPass()
 					// Render the mesh, finally!				
 					meshRenderer->Render(mesh.lock()->GetIndexCount());
 
-					m_meshesRendered++;
+					m_renderedMeshesTempCounter++;
 				}
 			} // renderable loop
 
@@ -518,19 +518,40 @@ void Renderer::Pong() const
 }
 
 //= STATS ============================
+// Called in the beginning of the rendering
 void Renderer::StartCalculatingStats()
 {
-	m_meshesRendered = 0;
+	m_renderedMeshesTempCounter = 0;
 }
 
+// Called in the end of the rendering
 void Renderer::StopCalculatingStats()
 {
+	// update counters
+	m_frameCount++;
+	m_timePassed += g_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
+
+	if (m_timePassed >= 1000)
+	{
+		// calculate fps
+		m_fps = (float)m_frameCount / (m_timePassed / 1000.0f);
+
+		// reset counters
+		m_frameCount = 0;
+		m_timePassed = 0;
+	}
+
 	// meshes rendered
-	m_renderedMeshesCount = m_meshesRendered;
+	m_renderedMeshesPerFrame = m_renderedMeshesTempCounter;
 }
 
-int Renderer::GetRenderedMeshesCount() const
+float Renderer::GetFPS()
 {
-	return m_renderedMeshesCount;
+	return m_fps;
+}
+
+int Renderer::GetRenderedMeshesCount()
+{
+	return m_renderedMeshesPerFrame;
 }
 //====================================
