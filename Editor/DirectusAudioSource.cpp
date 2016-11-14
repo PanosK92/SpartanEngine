@@ -80,7 +80,13 @@ void DirectusAudioSource::Initialize(DirectusInspector* inspector, QWidget* main
     //= PITCH ==================================
     m_pitchLabel = new QLabel("Pitch");
     m_pitch = new DirectusComboSliderText();
-    m_pitch->Initialize(0, 1);
+    m_pitch->Initialize(0, 3);
+    //==========================================
+
+    //= PAN ====================================
+    m_panLabel = new QLabel("Pan");
+    m_pan = new DirectusComboSliderText();
+    m_pan->Initialize(-1.0f, 1.0f);
     //==========================================
 
     //= LINE ======================================
@@ -132,16 +138,27 @@ void DirectusAudioSource::Initialize(DirectusInspector* inspector, QWidget* main
     m_gridLayout->addWidget(m_pitch->GetLineEdit(),     row, 2, 1, 1);
     row++;
 
-    // Row 7 - LINE
+    // Row 7 - PAN
+    m_gridLayout->addWidget(m_panLabel,                 row, 0, 1, 1);
+    m_gridLayout->addWidget(m_pan->GetSlider(),       row, 1, 1, 1);
+    m_gridLayout->addWidget(m_pan->GetLineEdit(),     row, 2, 1, 1);
+    row++;
+
+    // Row 8 - LINE
     m_gridLayout->addWidget(m_line, row, 0, 1, 3);
     //============================================================
 
-    //= SIGNALS ==================================================
+    //= SIGNALS ==========================================================================
     // Gear button on the top left
-    connect(m_optionsButton,            SIGNAL(Remove()),                   this, SLOT(Remove()));
-    // Connect volume control
-    connect(m_volume,                   SIGNAL(ValueChanged()),             this, SLOT(MapVolume()));
-    //============================================================
+    connect(m_optionsButton,        SIGNAL(Remove()),       this, SLOT(Remove()));
+    connect(m_muteCheckBox,         SIGNAL(clicked(bool)),  this, SLOT(MapMute()));
+    connect(m_playOnAwakeCheckBox,  SIGNAL(clicked(bool)),  this, SLOT(MapPlayOnAwake()));
+    connect(m_loopCheckBox,         SIGNAL(clicked(bool)),  this, SLOT(MapLoop()));
+    connect(m_priority,             SIGNAL(ValueChanged()), this, SLOT(MapPriority()));
+    connect(m_volume,               SIGNAL(ValueChanged()), this, SLOT(MapVolume()));
+    connect(m_pitch,                SIGNAL(ValueChanged()), this, SLOT(MapPitch()));
+    connect(m_pan,                  SIGNAL(ValueChanged()), this, SLOT(MapPan()));
+    //====================================================================================
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -168,10 +185,52 @@ void DirectusAudioSource::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
+    ReflectMute();
+    ReflectPlayOnAwake();
+    ReflectLoop();
+    ReflectPriority();
     ReflectVolume();
+    ReflectPitch();
+    ReflectPan();
 
     // Make this widget visible
     this->show();
+}
+
+void DirectusAudioSource::ReflectMute()
+{
+    if (!m_inspectedAudioSource)
+        return;
+
+    bool mute = m_inspectedAudioSource->GetMute();
+    m_muteCheckBox->setChecked(mute);
+}
+
+void DirectusAudioSource::ReflectPlayOnAwake()
+{
+    if (!m_inspectedAudioSource)
+        return;
+
+    bool playOnAwake = m_inspectedAudioSource->GetPlayOnAwake();
+    m_playOnAwakeCheckBox->setChecked(playOnAwake);
+}
+
+void DirectusAudioSource::ReflectLoop()
+{
+    if (!m_inspectedAudioSource)
+        return;
+
+    bool loop = m_inspectedAudioSource->GetLoop();
+    m_loopCheckBox->setChecked(loop);
+}
+
+void DirectusAudioSource::ReflectPriority()
+{
+    if (!m_inspectedAudioSource)
+        return;
+
+    int priority = m_inspectedAudioSource->GetPriority();
+    m_priority->SetValue(priority);
 }
 
 void DirectusAudioSource::ReflectVolume()
@@ -183,6 +242,60 @@ void DirectusAudioSource::ReflectVolume()
     m_volume->SetValue(volume);
 }
 
+void DirectusAudioSource::ReflectPitch()
+{
+    if (!m_inspectedAudioSource)
+        return;
+
+    float pitch = m_inspectedAudioSource->GetPitch();
+    m_pitch->SetValue(pitch);
+}
+
+void DirectusAudioSource::ReflectPan()
+{
+    if (!m_inspectedAudioSource)
+        return;
+
+    float pan = m_inspectedAudioSource->GetPan();
+    m_pan->SetValue(pan);
+}
+
+void DirectusAudioSource::MapMute()
+{
+    if (!m_inspectedAudioSource)
+        return;
+
+    bool mute = m_muteCheckBox->isChecked();
+    m_inspectedAudioSource->SetMute(mute);
+}
+
+void DirectusAudioSource::MapPlayOnAwake()
+{
+    if (!m_inspectedAudioSource)
+        return;
+
+    bool playOnAwake = m_playOnAwakeCheckBox->isChecked();
+    m_inspectedAudioSource->SetPlayOnAwake(playOnAwake);
+}
+
+void DirectusAudioSource::MapLoop()
+{
+    if (!m_inspectedAudioSource)
+        return;
+
+    bool loop = m_loopCheckBox->isChecked();
+    m_inspectedAudioSource->SetLoop(loop);
+}
+
+void DirectusAudioSource::MapPriority()
+{
+    if(!m_inspectedAudioSource)
+        return;
+
+    int priority = m_priority->GetValue();
+    m_inspectedAudioSource->SetPriority(priority);
+}
+
 void DirectusAudioSource::MapVolume()
 {
     if(!m_inspectedAudioSource)
@@ -190,6 +303,24 @@ void DirectusAudioSource::MapVolume()
 
     float volume = m_volume->GetValue();
     m_inspectedAudioSource->SetVolume(volume);
+}
+
+void DirectusAudioSource::MapPitch()
+{
+    if(!m_inspectedAudioSource)
+        return;
+
+    float pitch = m_pitch->GetValue();
+    m_inspectedAudioSource->SetPitch(pitch);
+}
+
+void DirectusAudioSource::MapPan()
+{
+    if(!m_inspectedAudioSource)
+        return;
+
+    float pan = m_pan->GetValue();
+    m_inspectedAudioSource->SetPan(pan);
 }
 
 void DirectusAudioSource::Remove()
