@@ -60,9 +60,10 @@ void DirectusAudioListener::Initialize(DirectusInspector *inspector, QWidget *ma
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     int row = 0;
+
     // Row 0 - TITLE
     m_gridLayout->addWidget(m_title, row, 0, 1, 1);
-    m_gridLayout->addWidget(m_optionsButton, row, 1, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_optionsButton, row, 2, 1, 1, Qt::AlignRight);
     row++;
 
     // Row 4 - LINE

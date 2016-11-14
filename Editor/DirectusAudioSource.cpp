@@ -50,10 +50,37 @@ void DirectusAudioSource::Initialize(DirectusInspector* inspector, QWidget* main
     m_optionsButton->Initialize(mainWindow);
     //=========================================================
 
+    //= MUTE ==================================================
+    m_muteLabel = new QLabel("Mute");
+    m_muteCheckBox = new QCheckBox();
+    //=========================================================
+
+    //= PLAY ON AWAKE =========================================
+    m_playOnAwakeLabel = new QLabel("Play On Awake");
+    m_playOnAwakeCheckBox = new QCheckBox();
+    //=========================================================
+
+    //= LOOP ==================================================
+    m_loopLabel = new QLabel("Loop");
+    m_loopCheckBox = new QCheckBox();
+    //=========================================================
+
+    //= PRIORITY ===============================
+    m_priorityLabel = new QLabel("Priority");
+    m_priority = new DirectusComboSliderText();
+    m_priority->Initialize(0, 255);
+    //==========================================
+
     //= VOLUME =================================
     m_volumeLabel = new QLabel("Volume");
     m_volume = new DirectusComboSliderText();
     m_volume->Initialize(0, 1);
+    //==========================================
+
+    //= PITCH ==================================
+    m_pitchLabel = new QLabel("Pitch");
+    m_pitch = new DirectusComboSliderText();
+    m_pitch->Initialize(0, 1);
     //==========================================
 
     //= LINE ======================================
@@ -66,18 +93,46 @@ void DirectusAudioSource::Initialize(DirectusInspector* inspector, QWidget* main
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
     int row = 0;
+
     // Row 0 - TITLE
     m_gridLayout->addWidget(m_title, row, 0, 1, 1);
-    m_gridLayout->addWidget(m_optionsButton, row, 1, 1, 1, Qt::AlignRight);
+    m_gridLayout->addWidget(m_optionsButton, row, 2, 1, 1, Qt::AlignRight);
     row++;
 
-    // Row 1 - VOLUME
-    m_gridLayout->addWidget(m_volumeLabel,               4, 0, 1, 1);
-    m_gridLayout->addWidget(m_volume->GetSlider(),       4, 1, 1, 1);
-    m_gridLayout->addWidget(m_volume->GetLineEdit(),     4, 2, 1, 1);
+    // Row 1 - MUTE
+    m_gridLayout->addWidget(m_muteLabel, row, 0, 1, 1);
+    m_gridLayout->addWidget(m_muteCheckBox, row, 1, 1, 1);
     row++;
 
-    // Row 2 - LINE
+    // Row 2 - PLAY ON AWAKE
+    m_gridLayout->addWidget(m_playOnAwakeLabel, row, 0, 1, 1);
+    m_gridLayout->addWidget(m_playOnAwakeCheckBox, row, 1, 1, 1);
+    row++;
+
+    // Row 3 - LOOP
+    m_gridLayout->addWidget(m_loopLabel, row, 0, 1, 1);
+    m_gridLayout->addWidget(m_loopCheckBox, row, 1, 1, 1);
+    row++;
+
+    // Row 4 - PRIORITY
+    m_gridLayout->addWidget(m_priorityLabel,               row, 0, 1, 1);
+    m_gridLayout->addWidget(m_priority->GetSlider(),       row, 1, 1, 1);
+    m_gridLayout->addWidget(m_priority->GetLineEdit(),     row, 2, 1, 1);
+    row++;
+
+    // Row 5 - VOLUME
+    m_gridLayout->addWidget(m_volumeLabel,               row, 0, 1, 1);
+    m_gridLayout->addWidget(m_volume->GetSlider(),       row, 1, 1, 1);
+    m_gridLayout->addWidget(m_volume->GetLineEdit(),     row, 2, 1, 1);
+    row++;
+
+    // Row 6 - PITCH
+    m_gridLayout->addWidget(m_pitchLabel,              row, 0, 1, 1);
+    m_gridLayout->addWidget(m_pitch->GetSlider(),       row, 1, 1, 1);
+    m_gridLayout->addWidget(m_pitch->GetLineEdit(),     row, 2, 1, 1);
+    row++;
+
+    // Row 7 - LINE
     m_gridLayout->addWidget(m_line, row, 0, 1, 3);
     //============================================================
 

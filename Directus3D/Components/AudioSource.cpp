@@ -65,10 +65,12 @@ void AudioSource::Awake()
 
 void AudioSource::Start()
 {
-	if (!m_playOnAwake)
-		return;
+	if (m_playOnAwake)
+		m_audioHandle.lock()->Play();
 
-	m_audioHandle.lock()->Play();
+	m_audioHandle.lock()->SetMute(m_mute);
+	m_audioHandle.lock()->SetVolume(m_volume);
+	m_audioHandle.lock()->SetLoop(m_loop);
 }
 
 void AudioSource::Remove()
@@ -107,6 +109,6 @@ void AudioSource::SetVolume(float volume)
 	if (m_audioHandle.expired())
 		return;
 
-	m_volume = Clamp(volume, 0.0, 1.0f);
+	m_volume = Clamp(volume, 0.0f, 1.0f);
 	m_audioHandle.lock()->SetVolume(m_volume);
 }
