@@ -54,6 +54,12 @@ public:
 	// Set's the priority for the channel [0, 255]
 	bool SetPriority(int priority);
 
+	// Sets the pitch value
+	bool SetPitch(float pitch);
+
+	// Sets the pan level
+	bool SetPan(float pan);
+
 	// Makes the audio use the 3D attributes of the transform
 	void SetTransform(Transform* transform);
 

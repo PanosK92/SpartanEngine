@@ -62,7 +62,7 @@ private:
     QCheckBox* m_loopCheckBox;
     //==================================
 
-    //= PROPRITY =======================
+    //= PRIORITY =======================
     QLabel* m_priorityLabel;
     DirectusComboSliderText* m_priority;
     //==================================
@@ -77,6 +77,11 @@ private:
     DirectusComboSliderText* m_pitch;
     //================================
 
+    //= PITCH ========================
+    QLabel* m_panLabel;
+    DirectusComboSliderText* m_pan;
+    //================================
+
     //= MISC ===============
     QValidator* m_validator;
     //======================
@@ -85,9 +90,22 @@ private:
     AudioSource* m_inspectedAudioSource;
     //==================================
 
+    void ReflectMute();
+    void ReflectPlayOnAwake();
+    void ReflectLoop();
+    void ReflectPriority();
     void ReflectVolume();
+    void ReflectPitch();
+    void ReflectPan();
 
 public slots:
+    void MapMute();
+    void MapPlayOnAwake();
+    void MapLoop();
+    void MapPriority();
     void MapVolume();
+    void MapPitch();
+    void MapPan();
+
     virtual void Remove();
 };

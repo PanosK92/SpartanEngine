@@ -214,10 +214,37 @@ bool AudioHandle::SetPriority(int priority)
 	if (!m_channel)
 		return true;
 
-	// Clamp priority between 0 (most important) and 255 (least important)
-	priority = Clamp(priority, 0, 255);
-
 	m_result = m_channel->setPriority(priority);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	return true;
+}
+
+bool AudioHandle::SetPitch(float pitch)
+{
+	if (!m_channel)
+		return true;
+
+	m_result = m_channel->setPitch(pitch);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	return true;
+}
+
+bool AudioHandle::SetPan(float pan)
+{
+	if (!m_channel)
+		return true;
+
+	m_result = m_channel->setPan(pan);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));

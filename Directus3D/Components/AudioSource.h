@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========
 #include "IComponent.h"
 #include <memory>
+#include "../Math/MathHelper.h"
 //=====================
 
 class AudioHandle;
@@ -44,24 +45,36 @@ public:
 	//=========================
 
 	//= PROPERTIES ======================================================================
-	float GetVolume() { return m_volume; }
-	void SetVolume(float volume);
-
 	bool GetMute() { return m_mute; }
-	void SetMute(bool mute) { m_mute = mute; }
+	void SetMute(bool mute);
 
 	bool GetPlayOnAwake() { return m_playOnAwake; }
 	void SetPlayOnAwake(bool playOnAwake) { m_playOnAwake = playOnAwake; }
 
 	bool GetLoop() { return m_loop; }
 	void SetLoop(bool loop) { m_loop = loop; }
+
+	int GetPriority() { return m_priority; }
+	void SetPriority(int priority);
+
+	float GetVolume() { return m_volume; }
+	void SetVolume(float volume);
+
+	float GetPitch() { return m_pitch; }
+	void SetPitch(float pitch);
+
+	float GetPan() { return m_pan; }
+	void SetPan(float pan);
 	//===================================================================================
 
 private:
 	std::weak_ptr<AudioHandle> m_audioHandle;
 	std::string m_filePath;
 	bool m_mute;
-	float m_volume;
 	bool m_playOnAwake;
 	bool m_loop;
+	int m_priority;
+	float m_volume;
+	float m_pitch;
+	float m_pan;
 };
