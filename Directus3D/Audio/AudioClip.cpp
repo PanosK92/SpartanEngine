@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============
-#include "AudioHandle.h"
+#include "AudioClip.h"
 #include <fmod_errors.h>
 #include "../Logging/Log.h"
 //=========================
@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace Directus::Math;
 //=============================
 
-AudioHandle::AudioHandle(FMOD::System* fModSystem)
+AudioClip::AudioClip(FMOD::System* fModSystem)
 {
 	m_transform = nullptr;
 	m_fModSystem = fModSystem;
@@ -42,7 +42,7 @@ AudioHandle::AudioHandle(FMOD::System* fModSystem)
 	m_mode = Memory;
 }
 
-AudioHandle::~AudioHandle()
+AudioClip::~AudioClip()
 {
 	if (!m_sound)
 		return;
@@ -52,7 +52,7 @@ AudioHandle::~AudioHandle()
 		LOG_ERROR(FMOD_ErrorString(m_result));
 }
 
-bool AudioHandle::Load(const std::string& filePath, PlayMode mode)
+bool AudioClip::Load(const std::string& filePath, PlayMode mode)
 {
 	m_sound = nullptr;
 	m_channel = nullptr;
@@ -61,7 +61,7 @@ bool AudioHandle::Load(const std::string& filePath, PlayMode mode)
 	return mode == Memory ? CreateSound(filePath) : CreateStream(filePath);
 }
 
-bool AudioHandle::Play()
+bool AudioClip::Play()
 {
 	// Check if the sound is playing
 	bool isPlaying = false;
@@ -90,7 +90,7 @@ bool AudioHandle::Play()
 	return true;
 }
 
-bool AudioHandle::Pause()
+bool AudioClip::Pause()
 {
 	// Check if the sound is playing
 	bool isPaused = false;
@@ -119,7 +119,7 @@ bool AudioHandle::Pause()
 	return true;
 }
 
-bool AudioHandle::Stop()
+bool AudioClip::Stop()
 {
 	// Check if the sound is playing
 	bool isPlaying = false;
@@ -148,7 +148,7 @@ bool AudioHandle::Stop()
 	return true;
 }
 
-bool AudioHandle::SetLoop(bool loop)
+bool AudioClip::SetLoop(bool loop)
 {
 	if (!m_channel)
 		return true;
@@ -179,7 +179,7 @@ bool AudioHandle::SetLoop(bool loop)
 	return true;
 }
 
-bool AudioHandle::SetVolume(float volume)
+bool AudioClip::SetVolume(float volume)
 {
 	if (!m_channel)
 		return true;
@@ -194,7 +194,7 @@ bool AudioHandle::SetVolume(float volume)
 	return true;
 }
 
-bool AudioHandle::SetMute(bool mute)
+bool AudioClip::SetMute(bool mute)
 {
 	if (!m_channel)
 		return true;
@@ -209,7 +209,7 @@ bool AudioHandle::SetMute(bool mute)
 	return true;
 }
 
-bool AudioHandle::SetPriority(int priority)
+bool AudioClip::SetPriority(int priority)
 {
 	if (!m_channel)
 		return true;
@@ -224,7 +224,7 @@ bool AudioHandle::SetPriority(int priority)
 	return true;
 }
 
-bool AudioHandle::SetPitch(float pitch)
+bool AudioClip::SetPitch(float pitch)
 {
 	if (!m_channel)
 		return true;
@@ -239,7 +239,7 @@ bool AudioHandle::SetPitch(float pitch)
 	return true;
 }
 
-bool AudioHandle::SetPan(float pan)
+bool AudioClip::SetPan(float pan)
 {
 	if (!m_channel)
 		return true;
@@ -254,7 +254,7 @@ bool AudioHandle::SetPan(float pan)
 	return true;
 }
 
-bool AudioHandle::Update()
+bool AudioClip::Update()
 {
 	if (!m_transform || !m_channel)
 		return true;
@@ -275,13 +275,13 @@ bool AudioHandle::Update()
 	return true;
 }
 
-void AudioHandle::SetTransform(Transform* transform)
+void AudioClip::SetTransform(Transform* transform)
 {
 	m_transform = transform;
 }
 
 //= CREATION =====================================================================================
-bool AudioHandle::CreateSound(const std::string& filePath)
+bool AudioClip::CreateSound(const std::string& filePath)
 {
 	// Create sound
 	m_result = m_fModSystem->createSound(filePath.c_str(), FMOD_3D, nullptr, &m_sound);
@@ -302,7 +302,7 @@ bool AudioHandle::CreateSound(const std::string& filePath)
 	return true;
 }
 
-bool AudioHandle::CreateStream(const std::string& filePath)
+bool AudioClip::CreateStream(const std::string& filePath)
 {
 	// Create sound
 	m_result = m_fModSystem->createStream(filePath.c_str(), FMOD_3D, nullptr, &m_sound);
