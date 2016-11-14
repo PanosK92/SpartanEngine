@@ -15,9 +15,9 @@
             <Keywords name="Numbers, range"></Keywords>
             <Keywords name="Operators1">( ) : ; { } + - = , &lt; &gt; &lt;= &gt;= == [ ] / * *= /= += -= %=</Keywords>
             <Keywords name="Operators2"></Keywords>
-            <Keywords name="Folders in code1, open"></Keywords>
+            <Keywords name="Folders in code1, open">{</Keywords>
             <Keywords name="Folders in code1, middle"></Keywords>
-            <Keywords name="Folders in code1, close"></Keywords>
+            <Keywords name="Folders in code1, close">}; }</Keywords>
             <Keywords name="Folders in code2, open"></Keywords>
             <Keywords name="Folders in code2, middle"></Keywords>
             <Keywords name="Folders in code2, close"></Keywords>

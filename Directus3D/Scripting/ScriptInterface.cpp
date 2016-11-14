@@ -434,6 +434,14 @@ void ScriptInterface::RegisterQuaternion()
 }
 
 /*------------------------------------------------------------------------------
+											[MATH]
+------------------------------------------------------------------------------*/
+void ScriptInterface::RegisterMath()
+{
+	//m_scriptEngine->RegisterGlobalFunction("float Clamp(float, float)", asFUNCTIONPR(Clamp, (float, float), float), asCALL_CDECL);
+}
+
+/*------------------------------------------------------------------------------
 									[DEBUG]
 ------------------------------------------------------------------------------*/
 void ScriptInterface::RegisterDebug()

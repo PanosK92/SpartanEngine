@@ -529,7 +529,7 @@ void Renderer::StopCalculatingStats()
 {
 	// update counters
 	m_frameCount++;
-	m_timePassed += g_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
+	m_timePassed += g_context->GetSubsystem<Timer>()->GetDeltaTime();
 
 	if (m_timePassed >= 1000)
 	{

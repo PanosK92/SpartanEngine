@@ -44,6 +44,7 @@ private:
 	void RegisterVector2();
 	void RegisterVector3();
 	void RegisterQuaternion();
+	void RegisterMath();
 	void RegisterDebug();
 
 	asIScriptEngine* m_scriptEngine;

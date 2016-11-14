@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =======
-#include <Windows.h>
 #include "Object.h"
 //==================
 
@@ -33,18 +32,15 @@ public:
 	~Timer();
 
 	void Update();
-	void Reset();
 
-	float GetDeltaTime();
-	float GetDeltaTimeMs();
-	float GetTime();
-	float GetTimeMs();
-	float GetElapsedTime();
-	float GetElapsedTimeMs();
+	int GetDeltaTime();
+	int GetTime();
+	int GetElapsedTime();
+
 private:
-	INT64 m_ticksPerSec;
-	float m_ticksPerMs;
-	float m_deltaTime;
-	float m_startTime;
-	double m_lastKnownTime;
+	int m_ticksPerSec;
+	int m_ticksPerMs;
+	int m_deltaTime;
+	int m_startTime;
+	int m_previousTime;
 };
