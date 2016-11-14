@@ -190,6 +190,6 @@ int Socket::GetRenderedMeshesCount()
 
 float Socket::GetDeltaTime()
 {
-	return g_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
+	return g_context->GetSubsystem<Timer>()->GetDeltaTime();
 }
 //==============================================================================

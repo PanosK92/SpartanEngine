@@ -4,12 +4,9 @@ class MouseLook
 	Transform @transform;
 	
 	// mouse look settings
-	float sensitivity = 3.0f;
-	float smoothing = 20.0f;
-
-	// mouse look variables
-	Vector2 smoothMouse = Vector2(0.0f, 0.0f);
-	Vector3 currentRotation;
+	float sensitivity = 0.1f;
+	float yaw;
+	float pitch;
 	
 	// misc
 	bool control = false;
@@ -25,7 +22,8 @@ class MouseLook
 	// Use this for initialization
 	void Start()
 	{
-		currentRotation = transform.GetRotation().ToEulerAngles();
+		yaw = transform.GetRotation().ToEulerAngles().x;
+		pitch = transform.GetRotation().ToEulerAngles().y;
 	}
 
 	// Update is called once per frame
@@ -47,34 +45,24 @@ class MouseLook
 	
 	void FreeLook()
 	{
-		// Get raw mouse input
-		Vector2 mouseDelta = Vector2(input.GetMousePositionDelta().x, input.GetMousePositionDelta().y);
-	
-		// Scale input against the sensitivity setting and multiply that against the smoothing value.
-		mouseDelta.x *= sensitivity * smoothing;
-		mouseDelta.y *= sensitivity * smoothing;
-		
-        // Interpolate mouse movement over time to apply smoothing delta.
-		smoothMouse.x = Lerp(smoothMouse.x, mouseDelta.x, 1.0f / smoothing);
-        smoothMouse.y = Lerp(smoothMouse.y, mouseDelta.y, 1.0f / smoothing);
-		
-		currentRotation.x += smoothMouse.x * time.GetDeltaTime();
-		currentRotation.y += smoothMouse.y * time.GetDeltaTime();
-		
-		currentRotation.y = ClampRotation(currentRotation.y);
-		
-		Quaternion newRot = QuaternionFromEuler(currentRotation.y, currentRotation.x, 0.0f);
-		
-		transform.SetRotationLocal(newRot);
+		// Increment rotation by mouse delta
+		yaw += input.GetMousePositionDelta().x * sensitivity;
+		pitch += input.GetMousePositionDelta().y * sensitivity;
+
+		// Clamp the top/bottom rotation freedom (and to avoid gimbal lock hehe)
+		pitch = ClampRotation(pitch, 90);
+
+		// Set the new rotation to the transform
+		transform.SetRotationLocal(QuaternionFromEuler(pitch, yaw, 0.0f));
 	}
 
-	float ClampRotation(float rotation)
+	float ClampRotation(float rotation, float freedomAngles)
 	{
-		if (rotation > 90)
-			rotation = 90;
+		if (rotation > freedomAngles)
+			rotation = freedomAngles;
 		
-		if (rotation < -90)
-			rotation = -90;
+		if (rotation < -freedomAngles)
+			rotation = -freedomAngles;
 			
 		return rotation;
 	}

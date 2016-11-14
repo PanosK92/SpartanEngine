@@ -33,7 +33,7 @@ Timer::Timer(Context* context) : Object(context)
 	m_ticksPerSec = 0;
 	m_ticksPerMs = 0.0f;
 	m_startTime = 0.0f;
-	m_lastKnownTime = 0.0f;
+	m_previousTime = 0.0f;
 	m_deltaTime = 0.0f;
 
 	LARGE_INTEGER ticksPerSec;
@@ -47,9 +47,9 @@ Timer::Timer(Context* context) : Object(context)
 		m_ticksPerSec = 1000000;
 	}
 
-	m_ticksPerMs = m_ticksPerSec / 1000.0f;
-	m_startTime = GetTimeMs();
-	m_lastKnownTime = m_startTime;
+	m_ticksPerMs = m_ticksPerSec / 1000;
+	m_startTime = GetTime();
+	m_previousTime = m_startTime;
 }
 
 Timer::~Timer()
@@ -60,42 +60,23 @@ Timer::~Timer()
 void Timer::Update()
 {
 	// Get current time
-	float currentTime = GetTimeMs();
+	int currentTime = GetTime();
 	
 	// Calculate delta time
-	m_deltaTime = currentTime - m_lastKnownTime;
+	m_deltaTime = currentTime - m_previousTime;
 
 	// Save current time
-	m_lastKnownTime = currentTime;
-}
-
-void Timer::Reset()
-{
-	m_startTime = GetTimeMs();
-	m_lastKnownTime = m_startTime;
-	m_deltaTime = 0;
-}
-
-// Returns them time it took to complete the last frame in seconds 
-float Timer::GetDeltaTime()
-{
-	return GetDeltaTimeMs() / 1000.0f;
+	m_previousTime = currentTime;
 }
 
 // Returns them time it took to complete the last frame in milliseconds
-float Timer::GetDeltaTimeMs()
+int Timer::GetDeltaTime()
 {
 	return m_deltaTime;
 }
 
-// Returns current time in seconds
-float Timer::GetTime()
-{
-	return GetTimeMs() / 1000.0f;
-}
-
 // Returns current time in milliseconds
-float Timer::GetTimeMs()
+int Timer::GetTime()
 {
 	INT64 currentTime;
 	QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
@@ -103,14 +84,8 @@ float Timer::GetTimeMs()
 	return currentTime / m_ticksPerMs;
 }
 
-// Returns them elapsed time since the engine initialization in seconds
-float Timer::GetElapsedTime()
-{
-	return GetElapsedTimeMs() / 1000.0f;
-}
-
 // Returns them elapsed time since the engine initialization in milliseconds
-float Timer::GetElapsedTimeMs()
+int Timer::GetElapsedTime()
 {
-	return GetTimeMs() - m_startTime;
+	return GetTime() - m_startTime;
 }
