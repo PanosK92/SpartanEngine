@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//==================================
+//=====================================
 #include <QWidget>
 #include <QLabel>
 #include <QGridLayout>
@@ -33,7 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusDropDownButton.h"
 #include "Components/AudioSource.h"
 #include "DirectusIComponent.h"
-//==================================
+#include "DirectusAudioClipDropTarget.h"
+//======================================
 
 class DirectusInspector;
 
@@ -47,6 +48,11 @@ public:
     virtual void Reflect(GameObject* gameobject);
 
 private:
+    //= AUDIO CLIP ==========================
+    QLabel* m_audioClipLabel;
+    DirectusAudioClipDropTarget* m_audioClip;
+    //=======================================
+
     //= MUTE ===========================
     QLabel* m_muteLabel;
     QCheckBox* m_muteCheckBox;

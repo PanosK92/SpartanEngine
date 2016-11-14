@@ -41,6 +41,7 @@ void DirectusIconProvider::Initialize()
     m_sceneIcon = QIcon(":/Images/scene.png");
     m_shaderIcon = QIcon(":/Images/hlsl.png");
     m_materialIcon = QIcon(":/Images/materialLarge.png");
+    m_audioFileIcon = QIcon(":/Images/audioFile.png");
 }
 
 // Returns an icon for the file described by info.
@@ -91,6 +92,10 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     // Material
     if (FileSystem::IsMaterialFile(filePath))
         return m_materialIcon;
+
+    // Audio File
+    if (FileSystem::IsSupportedAudioFile(filePath))
+        return m_audioFileIcon;
 
     // Unknown
     return m_unknownIcon;

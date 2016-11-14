@@ -103,9 +103,6 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
     // Get the path of the material being dragged
     std::string materialPath = event->mimeData()->text().toStdString();
 
-    // This is essential to avoid an absolute path mess. Everything is relative.
-    materialPath = FileSystem::GetRelativePathFromAbsolutePath(materialPath);
-
     // ATTENTION, we could be inspecting a material from a mesh renderer or we could
     // be ispecting a material which is just a file. Both cases have to be handled here
 

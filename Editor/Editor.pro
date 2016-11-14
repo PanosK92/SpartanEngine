@@ -47,7 +47,8 @@ SOURCES += main.cpp\
     DirectusMaterialDropTarget.cpp \
     DirectusMaterialTextureDropTarget.cpp \
     DirectusAudioSource.cpp \
-    DirectusAudioListener.cpp
+    DirectusAudioListener.cpp \
+    DirectusAudioClipDropTarget.cpp
 
 HEADERS  += editor.h \
     DirectusPlayButton.h \
@@ -83,7 +84,8 @@ HEADERS  += editor.h \
     DirectusMaterialTextureDropTarget.h \
     DirectusAudioSource.h \
     DirectusAudioListener.h \
-    DirectusIComponent.h
+    DirectusIComponent.h \
+    DirectusAudioClipDropTarget.h
 
 FORMS    += editor.ui \
     AboutDialog.ui \

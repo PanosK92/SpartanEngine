@@ -42,7 +42,7 @@ public:
 	bool Initialize();
 	bool Update();
 
-	std::weak_ptr<AudioClip> CreateAudioHandle();
+	std::weak_ptr<AudioClip> CreateAudioClip();
 	void SetListenerTransform(Transform* transform);
 
 private:

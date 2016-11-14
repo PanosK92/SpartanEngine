@@ -143,6 +143,7 @@ void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
     QMimeData* mimeData = new QMimeData;
 
     QString filePath = m_fileModel->fileInfo(selectedItems[0]).absoluteFilePath();
+    filePath = QString::fromStdString(FileSystem::GetRelativePathFromAbsolutePath(filePath.toStdString()));
     mimeData->setText(filePath);
     drag->setMimeData(mimeData);
 
@@ -151,7 +152,7 @@ void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
 
 void DirectusFileExplorer::mouseReleaseEvent(QMouseEvent* event)
 {
-    // Clear the inspector.
+    // Clear the hierarchy and the inspector
     m_hierarchy->clearSelection();
     m_inspector->Clear();
 
@@ -163,7 +164,7 @@ void DirectusFileExplorer::mouseReleaseEvent(QMouseEvent* event)
     // If something was indeed clicked, get it's path.
     QString filePath = m_fileModel->fileInfo(selectedItems[0]).filePath();
 
-    // If so, determine what type of file that was, and display it in the inspector (if possible).
+    // Determine what type of file that was, and display it in the inspector (if possible).
     if (FileSystem::IsMaterialFile(filePath.toStdString()))
         m_inspector->InspectMaterialFile(filePath.toStdString());
 }
