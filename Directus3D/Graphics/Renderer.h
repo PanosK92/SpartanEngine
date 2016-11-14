@@ -58,7 +58,8 @@ public:
 	//= STATS =========================
 	void StartCalculatingStats();
 	void StopCalculatingStats();
-	int GetRenderedMeshesCount() const;
+	float GetFPS();
+	int GetRenderedMeshesCount();
 	//=================================
 
 private:
@@ -90,10 +91,13 @@ private:
 	std::shared_ptr<PostProcessShader> m_shaderSharpening;
 	//====================================
 
-	//= STATS ================
-	int m_renderedMeshesCount;
-	int m_meshesRendered;
-	//========================
+	//= STATS ======================
+	float m_fps;
+	float m_timePassed;
+	int m_frameCount;
+	int m_renderedMeshesPerFrame;
+	int m_renderedMeshesTempCounter;
+	//==============================
 
 	//= PREREQUISITES =============================
 	Camera* m_camera;

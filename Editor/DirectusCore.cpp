@@ -50,8 +50,8 @@ DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
     m_timerUpdate = new QTimer(this);
     connect(m_timerUpdate, SIGNAL(timeout()), this, SLOT(update()));
 
-    m_timer1FPS = new QTimer(this);
-    connect(m_timer1FPS, SIGNAL(timeout()), this, SLOT(Update1FPS()));
+    m_timer500Mil = new QTimer(this);
+    connect(m_timer500Mil, SIGNAL(timeout()), this, SLOT(Update500Mil()));
 
     m_timer60FPS = new QTimer(this);
     connect(m_timer60FPS, SIGNAL(timeout()), this, SLOT(Update60FPS()));
@@ -99,7 +99,7 @@ void DirectusCore::Start()
 
     m_socket->FireStartEvent();
     m_timerUpdate->start(0);
-    m_timer1FPS->start(1000);
+    m_timer500Mil->start(500);
     m_timer60FPS->stop();
     m_isRunning = true;
 
@@ -113,7 +113,7 @@ void DirectusCore::Stop()
         return;
 
     m_timerUpdate->stop();
-    m_timer1FPS->stop();
+    m_timer500Mil->stop();
     m_timer60FPS->start(16);
     m_isRunning = false;
 
@@ -130,7 +130,7 @@ void DirectusCore::Update()
 }
 
 // Runs every second
-void DirectusCore::Update1FPS()
+void DirectusCore::Update500Mil()
 {
     if (m_locked)
         return;

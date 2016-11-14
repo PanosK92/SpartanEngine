@@ -26,8 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Object.h"
 //==================
 
-class Stopwatch;
-
 class __declspec(dllexport) Timer : public Object
 {
 public:
@@ -39,24 +37,14 @@ public:
 
 	float GetDeltaTime();
 	float GetDeltaTimeMs();
-
 	float GetTime();
 	float GetTimeMs();
-
 	float GetElapsedTime();
 	float GetElapsedTimeMs();
-
-	float GetFPS();
-
 private:
 	INT64 m_ticksPerSec;
 	float m_ticksPerMs;
 	float m_deltaTime;
 	float m_startTime;
 	double m_lastKnownTime;
-
-	//= FPS CALCULATION
-	int m_frameCount;
-	float m_fpsLastKnownTime;
-	float m_fps;
 };
