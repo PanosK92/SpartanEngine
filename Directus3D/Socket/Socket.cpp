@@ -178,23 +178,18 @@ bool Socket::GameObjectExists(GameObject* gameObject)
 //==============================================================================
 
 //= STATS ======================================================================
-float Socket::GetFPS() const
+float Socket::GetFPS()
 {
 	return g_context->GetSubsystem<Timer>()->GetFPS();
 }
 
-int Socket::GetRenderedMeshesCount() const
+int Socket::GetRenderedMeshesCount()
 {
 	return g_context->GetSubsystem<Renderer>()->GetRenderedMeshesCount();
 }
 
-float Socket::GetDeltaTime() const
+float Socket::GetDeltaTime()
 {
 	return g_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
-}
-
-float Socket::GetRenderTime() const
-{
-	return g_context->GetSubsystem<Timer>()->GetRenderTimeMs();
 }
 //==============================================================================

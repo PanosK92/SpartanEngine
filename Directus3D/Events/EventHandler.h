@@ -59,15 +59,15 @@ public:
 
 	Event(int eventID, functionType&& arguments)
 	{
-		m_eventID = eventID;
+		m_ID = eventID;
 		m_function = std::forward<functionType>(arguments);
 	}
-	int GetEventID() { return m_eventID; }
+	int GetEventID() { return m_ID; }
 	size_t GetAddress() { return getAddress(m_function); }
 	void Fire() { m_function(); }
 
 private:
-	int m_eventID;
+	int m_ID;
 	functionType m_function;
 };
 //============================================================

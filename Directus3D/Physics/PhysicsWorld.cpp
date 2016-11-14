@@ -33,6 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Events/EventHandler.h"
 #include <algorithm>
 #include "../Logging/Log.h"
+#include "../Core/Context.h"
+#include "../Core/Timer.h"
 //==============================================================================
 
 PhysicsWorld::PhysicsWorld(Context* context) : Object(context)
@@ -57,6 +59,9 @@ PhysicsWorld::PhysicsWorld(Context* context) : Object(context)
 	m_world->getDispatchInfo().m_useContinuous = true;
 	m_world->getSolverInfo().m_splitImpulse = false;
 	m_world->setDebugDrawer(m_debugDraw);
+
+	// Subcribe to update event
+	SUBSCRIBE_TO_EVENT(UPDATE, std::bind(&PhysicsWorld::Step, this));
 }
 
 PhysicsWorld::~PhysicsWorld()
@@ -69,11 +74,13 @@ PhysicsWorld::~PhysicsWorld()
 	SafeRelease(m_debugDraw);
 }
 
-void PhysicsWorld::Step(float timeStep)
+void PhysicsWorld::Step()
 {
 	if (!m_world)
 		return;
 	
+	float timeStep = g_context->GetSubsystem<Timer>()->GetDeltaTime();
+
 	// Note from the bullet guy: timeStep < maxSubSteps * fixedTimeStep
 
 	float internalTimeStep = 1.0f / m_internalFPS;

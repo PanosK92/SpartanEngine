@@ -43,7 +43,7 @@ public:
 	PhysicsWorld(Context* context);
 	~PhysicsWorld();
 
-	void Step(float timeStep);
+	void Step();
 	void Reset();
 	void DebugDraw();
 

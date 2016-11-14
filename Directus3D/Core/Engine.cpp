@@ -100,48 +100,23 @@ void Engine::Update()
 {
 	m_isSimulating = true;
 
-	//= TIME =====================================
+	//= TIMER ========
 	m_timer->Update();
-	//============================================
+	//================
 
-	//= AUDIO ====================================
-	m_audio->Update();
-	//============================================
-
-	//= INPUT ====================================
-	m_input->Update();
-	//============================================
-
-	//= PHYSICS ==================================
-	m_physicsWorld->Step(m_timer->GetDeltaTime());
-	//============================================
-
-	//= SCENE ====================================	
-	m_scene->Resolve();
-	//============================================
-
-	//= RENDERING ================================
-	m_timer->RenderStart();
-	m_renderer->Render();
-	m_timer->RenderEnd();
-	//============================================	
+	FIRE_EVENT(UPDATE);
+	FIRE_EVENT(RENDER_UPDATE);
 }
 
 void Engine::LightUpdate()
 {
 	m_isSimulating = false;
 
-	//= INPUT ===========
+	// Manually update as few subsystems as possible
+	// This is used by the inspector when not in game mode.
 	m_input->Update();
-	//===================
-
-	//= SCENE ===========
 	m_scene->Resolve();
-	//===================
-
-	//= RENDERING =======
 	m_renderer->Render();
-	//===================
 }
 
 Context* Engine::GetContext()

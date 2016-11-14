@@ -39,8 +39,6 @@ Timer::Timer(Context* context) : Object(context)
 	m_fpsLastKnownTime = 0.0f;
 	m_fps = 0.0f;
 
-	m_renderStopwatch = nullptr;
-
 	LARGE_INTEGER ticksPerSec;
 	if (QueryPerformanceFrequency(&ticksPerSec))
 	{
@@ -55,8 +53,6 @@ Timer::Timer(Context* context) : Object(context)
 	m_ticksPerMs = m_ticksPerSec / 1000.0f;
 	m_startTime = GetTimeMs();
 	m_lastKnownTime = m_startTime;
-
-	m_renderStopwatch = new Stopwatch(this);
 }
 
 Timer::~Timer()
@@ -68,7 +64,7 @@ void Timer::Update()
 {
 	// Get current time
 	float currentTime = GetTimeMs();
-
+	
 	// Calculate delta time
 	m_deltaTime = currentTime - m_lastKnownTime;
 
@@ -93,13 +89,13 @@ void Timer::Reset()
 }
 
 // Returns them time it took to complete the last frame in seconds 
-float Timer::GetDeltaTime() const
+float Timer::GetDeltaTime()
 {
 	return GetDeltaTimeMs() / 1000.0f;
 }
 
 // Returns them time it took to complete the last frame in milliseconds
-float Timer::GetDeltaTimeMs() const
+float Timer::GetDeltaTimeMs()
 {
 	return m_deltaTime;
 }
@@ -111,7 +107,7 @@ float Timer::GetTime()
 }
 
 // Returns current time in milliseconds
-float Timer::GetTimeMs() const
+float Timer::GetTimeMs()
 {
 	INT64 currentTime;
 	QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
@@ -126,32 +122,12 @@ float Timer::GetElapsedTime()
 }
 
 // Returns them elapsed time since the engine initialization in milliseconds
-float Timer::GetElapsedTimeMs() const
+float Timer::GetElapsedTimeMs()
 {
 	return GetTimeMs() - m_startTime;
 }
 
-float Timer::GetFPS() const
+float Timer::GetFPS()
 {
 	return m_fps;
-}
-
-void Timer::RenderStart() const
-{
-	m_renderStopwatch->Start();
-}
-
-void Timer::RenderEnd() const
-{
-	m_renderStopwatch->Stop();
-}
-
-float Timer::GetRenderTimeMs() const
-{
-	return m_renderStopwatch->GetDeltaTimeMs();
-}
-
-Stopwatch* Timer::GetStopwatch()
-{
-	return new Stopwatch(this);
 }

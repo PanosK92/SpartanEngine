@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= EVENT IDs ======================
-#define EVENT_ENGINE_START			0	// Emmited each time the engine starts (play button in the editor)
+//= EVENT IDs =======================
+#define UPDATE						0	// Fired when it's time to update the engine
+#define RENDER_UPDATE				1	// Fired when it's time to do rendering
+#define EVENT_ENGINE_START			3	// Fired each time the simulation starts (play button in the editor)
 //===================================
