@@ -150,7 +150,7 @@ void ScriptInterface::RegisterInput()
 void ScriptInterface::RegisterTime()
 {
 	m_scriptEngine->RegisterGlobalProperty("Time time", m_context->GetSubsystem<Timer>());
-	m_scriptEngine->RegisterObjectMethod("Time", "float GetDeltaTime()", asMETHOD(Timer, GetDeltaTime), asCALL_THISCALL);
+	m_scriptEngine->RegisterObjectMethod("Time", "float GetDeltaTime()", asMETHOD(Timer, GetDeltaTimeSec), asCALL_THISCALL);
 }
 
 /*------------------------------------------------------------------------------
