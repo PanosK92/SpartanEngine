@@ -42,7 +42,7 @@ using namespace std;
 
 DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
 {
-    m_socket= nullptr;
+    m_socket = nullptr;
 
     // Set QTreeWidget properties
     this->setAcceptDrops(true);
@@ -113,7 +113,7 @@ void DirectusHierarchy::mouseMoveEvent(QMouseEvent* event)
     if ((event->pos() - m_dragStartPosition).manhattanLength() < QApplication::startDragDistance())
             return;
 
-    // Make sure the guy actually clicked on something
+    // Make sure the user actually clicked on something
     GameObject* draggedGameObject = GetSelectedGameObject();
     if (!draggedGameObject)
         return;
@@ -132,7 +132,7 @@ void DirectusHierarchy::mouseMoveEvent(QMouseEvent* event)
 // inform Qt about the types of data that the widget accepts.
 void DirectusHierarchy::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (event->source() != this || !event->mimeData()->hasText())
+    if (!event->mimeData()->hasText())
     {
         event->ignore();
         return;
@@ -144,7 +144,7 @@ void DirectusHierarchy::dragEnterEvent(QDragEnterEvent* event)
 
 void DirectusHierarchy::dragMoveEvent(QDragMoveEvent* event)
 {
-    if (event->source() != this || !event->mimeData()->hasText())
+    if (!event->mimeData()->hasText())
     {
         event->ignore();
         return;
@@ -152,17 +152,9 @@ void DirectusHierarchy::dragMoveEvent(QDragMoveEvent* event)
 
     event->setDropAction(Qt::MoveAction);
     event->accept();
-
-    // Change the color of the hovered item
-    /*QTreeWidgetItem* item = this->itemAt(event->pos());
-    if (item)
-        item->setBackgroundColor(0, QColor(0, 0, 200, 150));*/
-    // NOTE: I need to find an efficient way to clear the color
-    // from any previously hovered items.
 }
 
-// The dropEvent() is used to unpack dropped data and
-// handle them however I want.
+// The dropEvent() is used to unpack dropped data
 void DirectusHierarchy::dropEvent(QDropEvent* event)
 {
     if (!event->mimeData()->hasText())
@@ -179,29 +171,36 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     else
         event->acceptProposedAction();
 
-    // Get the ID of the GameObject being dragged
-    const QMimeData *mime = event->mimeData();
-    std::string gameObjectID = mime->text().toStdString();
+    // Get mime data and convert it's text to std::string
+    const QMimeData* mime = event->mimeData();
+    std::string text = mime->text().toStdString();
 
-    // Get the dragged and the hovered GameObject
-    GameObject* dragged = m_socket->GetGameObjectByID(gameObjectID);
+    //= DROP CASE: PREFAB (Assume text is a file path) ===============
+    if (FileSystem::IsSupportedPrefabFile(text))
+    {
+        GameObject* gameObject = new GameObject();
+        gameObject->LoadFromPrefab(text);
+        Populate();
+        return;
+    }
+    //================================================================
+
+    //= DROP CASE: GAMEOBJECT (Assume text is a GameObject ID) =======
+    GameObject* dragged = m_socket->GetGameObjectByID(text);
     GameObject* hovered = ToGameObject(this->itemAt(event->pos()));
 
-    // It was dropped on a gameobject
-    if (dragged && hovered)
+    if (dragged && hovered) // It was dropped on a gameobject
     {
         if (dragged->GetID() != hovered->GetID())
             dragged->GetTransform()->SetParent(hovered->GetTransform());
 
     }
-    // It was dropped on nothing
-    else if (dragged && !hovered)
+    else if (dragged && !hovered) // It was dropped on nothing
     {
         dragged->GetTransform()->SetParent(nullptr);
     }
-
-    Populate();
-    return;
+     Populate();
+    //================================================================
 }
 
 //===================================================================================================

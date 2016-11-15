@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Pools/MeshPool.h"
 #include "../Logging/Log.h"
+#include "../FileSystem/FileSystem.h"
 //=============================
 
 //= NAMESPACES ================

@@ -25,14 +25,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //===============
 
+#define DATA_NOT_ASSIGNED "N/A"
+#define PATH_NOT_ASSIGNED "PATH_NOT_ASSIGNED"
+
+#define PREFAB_EXTENSION ".prefab"
+
+#define METADATA_EXTENSION ".meta"
+#define METADATA_TYPE_TEXTURE "Texture"
+#define METADATA_TYPE_AUDIOCLIP "Audio_Clip"
+
 #define SCENE_EXTENSION ".directus"
 #define MATERIAL_EXTENSION ".mat"
 #define MESH_EXTENSION ".msh"
-#define METADATA_EXTENSION ".meta"
-#define METADATA_TYPE_TEXTURE "Texture"
-#define METADATA_TYPE_AUDIOCLIP "Audio Clip"
-#define DATA_NOT_ASSIGNED "N/A"
-#define PATH_NOT_ASSIGNED "PATH_NOT_ASSIGNED"
 
 class __declspec(dllexport) FileSystem
 {
@@ -74,13 +78,14 @@ public:
 	static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& directory);
 	//======================================================================================================
 
-	//= SUPPORTED FILE CHECKS ==================================
-	static bool IsSupportedAudioFile(const std::string& path);
-	static bool IsSupportedImageFile(const std::string& path);
-	static bool IsSupportedScriptFile(const std::string& path);
-	static bool IsSupportedModelFile(const std::string& path);
-	static bool IsSupportedShaderFile(const std::string& path);
-	//==========================================================
+	//= SUPPORTED FILE CHECKS =====================================
+	static bool IsSupportedPrefabFile(const std::string& filePath);
+	static bool IsSupportedAudioFile(const std::string& filePath);
+	static bool IsSupportedImageFile(const std::string& filePath);
+	static bool IsSupportedScriptFile(const std::string& filePath);
+	static bool IsSupportedModelFile(const std::string& filePath);
+	static bool IsSupportedShaderFile(const std::string& filePath);
+	//=============================================================
 
 	// string
 	static std::string ConvertToUppercase(const std::string& lower);

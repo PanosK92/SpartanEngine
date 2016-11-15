@@ -56,24 +56,24 @@ public:
 	/*------------------------------------------------------------------------------
 									[POSITION]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetPosition() const;
-	Directus::Math::Vector3 GetPositionLocal() const;
+	Directus::Math::Vector3 GetPosition() { return m_position; }
+	Directus::Math::Vector3 GetPositionLocal() { return m_positionLocal; }
 	void SetPosition(const Directus::Math::Vector3& position);
 	void SetPositionLocal(const Directus::Math::Vector3& position);
 
 	/*------------------------------------------------------------------------------
 									[ROTATION]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Quaternion GetRotation() const;
-	Directus::Math::Quaternion GetRotationLocal() const;
+	Directus::Math::Quaternion GetRotation() { return m_rotation; }
+	Directus::Math::Quaternion GetRotationLocal() { return m_rotationLocal; }
 	void SetRotation(const Directus::Math::Quaternion& rotation);
 	void SetRotationLocal(const Directus::Math::Quaternion& rotation);
 
 	/*------------------------------------------------------------------------------
 									[SCALE]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetScale() const;
-	Directus::Math::Vector3 GetScaleLocal() const;
+	Directus::Math::Vector3 GetScale() { return m_scale; }
+	Directus::Math::Vector3 GetScaleLocal() { return m_scaleLocal; }
 	void SetScale(const Directus::Math::Vector3& scale);
 	void SetScaleLocal(const Directus::Math::Vector3& scale);
 
@@ -82,28 +82,29 @@ public:
 	void Rotate(const Directus::Math::Quaternion& delta, Space space);
 
 	/*------------------------------------------------------------------------------
-									[DIRECTION]
+									[DIRECTIONS]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetUp() const;
-	Directus::Math::Vector3 GetForward() const;
-	Directus::Math::Vector3 GetRight() const;
+	Directus::Math::Vector3 GetUp();
+	Directus::Math::Vector3 GetForward();
+	Directus::Math::Vector3 GetRight();
 
 	/*------------------------------------------------------------------------------
 								[HIERARCHY]
 	------------------------------------------------------------------------------*/
-	bool IsRoot();
-	bool HasParent() const;
+	bool IsRoot() { return !HasParent(); }
+	bool HasParent() { return m_parent ? true : false; }
 	void SetParent(Transform* parent);
 	void BecomeOrphan();
-	bool HasChildren() const;
+	bool HasChildren() { return GetChildrenCount() > 0 ? true : false; }
 	void AddChild(Transform* child);
-	Transform* GetRoot();
-	Transform* GetParent() const;
+	Transform* GetRoot() { return HasParent() ? GetParent()->GetRoot() : this; }
+	Transform* GetParent() { return m_parent; }
 	Transform* GetChildByIndex(int index);
 	Transform* GetChildByName(const std::string& name);
-	std::vector<Transform*> GetChildren() const;
-	int GetChildrenCount() const;
-	void FindChildren();
+	std::vector<Transform*> GetChildren() { return m_children; }
+	std::vector<GameObject*> GetChildrenAsGameObjects();
+	int GetChildrenCount() { return (int)m_children.size(); }
+	void ResolveChildrenRecursively();
 	bool IsDescendantOf(Transform* transform) const;
 	std::vector<Transform*> GetDescendants();
 	std::string GetID() const;
@@ -111,10 +112,10 @@ public:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/
-	void LookAt(const Directus::Math::Vector3& v);
-	Directus::Math::Matrix GetTransformMatrix() const;
-	GameObject* GetGameObject() const;
-	std::string GetName() const;
+	void LookAt(const Directus::Math::Vector3& v) { m_lookAt = v; }
+	Directus::Math::Matrix GetTransformMatrix() { return m_mTransform; }
+	GameObject* GetGameObject() { return g_gameObject; }
+	std::string GetName();
 
 private:
 
@@ -138,5 +139,5 @@ private:
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
 	void GetDescendants(std::vector<Transform*>& descendants);
-	Directus::Math::Matrix GetParentTransformMatrix() const;
+	Directus::Math::Matrix GetParentTransformMatrix();
 };

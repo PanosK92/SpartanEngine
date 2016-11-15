@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ===================
 #include "Serializer.h"
 #include <fstream>
 #include "../Logging/Log.h"
-//=========================
+#include "../Core/GameObject.h"
+//=============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -86,6 +87,20 @@ void Serializer::WriteVectorSTR(vector<string>& vector)
 	WriteInt(int(vector.size()));
 	for (auto i = 0; i < vector.size(); i++)
 		WriteSTR(vector[i]);
+}
+
+void Serializer::WriteVectorGameObject(vector<GameObject*>& vector)
+{
+	// Save the GameObject count
+	WriteInt(int(vector.size()));
+
+	// Save the GameObject IDs
+	for (const auto& gameObject : vector)
+		WriteSTR(gameObject->GetID());
+
+	// Save the GameObjects
+	for (const auto& gameObject : vector)
+		gameObject->Serialize();
 }
 
 void Serializer::WriteVector2(Vector2& vector)
@@ -170,6 +185,27 @@ vector<string> Serializer::ReadVectorSTR()
 		vector.push_back(ReadSTR());
 
 	return vector;
+}
+
+vector<GameObject*> Serializer::ReadVectorGameObject()
+{
+	vector<GameObject*> gameObjects;
+
+	// Load the GameObject count
+	int gameObjectCount = ReadInt();
+
+	// Load the GameObject IDs
+	for (int i = 0; i < gameObjectCount; i++)
+	{
+		gameObjects.push_back(new GameObject());
+		gameObjects.back()->SetID(ReadSTR());
+	}
+
+	// Load the GameObjects
+	for (const auto& gameObject : gameObjects)
+		gameObject->Deserialize();
+
+	return gameObjects;
 }
 
 Vector2 Serializer::ReadVector2()

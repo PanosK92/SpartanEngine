@@ -36,7 +36,7 @@ using namespace std;
 
 GameObjectPool::GameObjectPool()
 {
-
+	m_context = nullptr;
 }
 
 GameObjectPool::~GameObjectPool()
@@ -81,35 +81,14 @@ void GameObjectPool::Clear()
 ------------------------------------------------------------------------------*/
 void GameObjectPool::Serialize()
 {
-	// 1st - GameObject count
-	Serializer::WriteInt(m_gameObjectPool.size());
-
-	// 2nd - GameObject IDs
-	for (auto gameObject : m_gameObjectPool)
-		Serializer::WriteSTR(gameObject->GetID());
-
-	// 3rd - GameObjects
-	for (auto gameObject : m_gameObjectPool)
-		gameObject->Serialize();
+	auto rootGameObjects = GetRootGameObjects();
+	Serializer::WriteVectorGameObject(rootGameObjects);
 }
 
 void GameObjectPool::Deserialize()
 {
 	Clear();
-
-	// 1st - GameObject count
-	int gameObjectCount = Serializer::ReadInt();
-
-	// 2nd - GameObject IDs
-	for (auto i = 0; i < gameObjectCount; i++)
-	{
-		GameObject* gameObject = new GameObject();
-		gameObject->SetID(Serializer::ReadSTR());
-	}
-
-	// 3rd - GameObjects
-	for (auto i = 0; i < gameObjectCount; i++)
-		m_gameObjectPool[i]->Deserialize();
+	m_gameObjectPool = Serializer::ReadVectorGameObject();
 }
 
 /*------------------------------------------------------------------------------
@@ -127,7 +106,7 @@ vector<GameObject*> GameObjectPool::GetAllGameObjects()
 vector<GameObject*> GameObjectPool::GetRootGameObjects()
 {
 	vector<GameObject*> rootGameObjects;
-	for (auto gameObject : m_gameObjectPool)
+	for (const auto& gameObject : m_gameObjectPool)
 	{
 		if (gameObject->GetTransform()->IsRoot())
 			rootGameObjects.push_back(gameObject);
@@ -256,7 +235,7 @@ void GameObjectPool::RemoveGameObject(GameObject* gameObject)
 
 	// if there is a parent, update it's children pool
 	if (parent)
-		parent->FindChildren();
+		parent->ResolveChildrenRecursively();
 }
 
 // Removes a gameobject but leaves the parent and the children as is

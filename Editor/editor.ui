@@ -1526,7 +1526,7 @@ text edit background:					414141
                         <bool>true</bool>
                        </property>
                        <property name="dragDropMode">
-                        <enum>QAbstractItemView::InternalMove</enum>
+                        <enum>QAbstractItemView::DragDrop</enum>
                        </property>
                        <property name="textElideMode">
                         <enum>Qt::ElideRight</enum>

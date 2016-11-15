@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Pools/MeshPool.h"
+#include "../FileSystem/FileSystem.h"
 //====================================================================
 
 //= NAMESPACES ================
