@@ -2,7 +2,7 @@
 Directus3D is a game engine that aims to be powerful yet simple. This is achieved by prioriziting a coherent and modern design and a minimalistic approach when it comes to adding new features. 
 The UI design is greatly inspired by Unity, it should make the engine feel familiar and pleasurable to use.
 
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/screenshot.jpg)
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/screenshot_v0.2.jpg)
 
 # Features
 - 20+ audio file formats support.
