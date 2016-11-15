@@ -4,7 +4,7 @@ class FirstPersonController
 	Transform @transform;
 	
 	// wasd movement
-	float movementAcceleration = 0.005f;
+	float movementAcceleration = 0.5f;
 	float movementDeacceleration = 0.97f;
 	Vector3 movementSpeed = Vector3(0,0,0);
 
