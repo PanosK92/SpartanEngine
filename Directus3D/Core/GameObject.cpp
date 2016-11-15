@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/LineRenderer.h"
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
+#include "../Logging/Log.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -107,7 +108,7 @@ bool GameObject::SaveAsPrefab(const string& filePath)
 	Serialize();
 
 	// Close it
-	Serializer::StopReading();
+	Serializer::StopWriting();
 
 	return true;
 }
@@ -130,9 +131,9 @@ bool GameObject::LoadFromPrefab(const string& filePath)
 
 	// Assign new IDs because multiple GameObjects coming
 	// from the same prefab can end up as exact duplicates
-	m_ID = GENERATE_GUID;
-	for (const auto& component : m_components)
-		component.second->g_ID = GENERATE_GUID;
+	//m_ID = GENERATE_GUID;
+	//for (const auto& component : m_components)
+		//component.second->g_ID = GENERATE_GUID;
 
 	return true;
 }
@@ -147,7 +148,7 @@ void GameObject::Serialize()
 	//===========================================
 
 	//= COMPONENTS ==============================
-	Serializer::WriteInt(m_components.size());
+	Serializer::WriteInt((int)m_components.size());
 	for (auto const& it : m_components)
 	{
 		Serializer::WriteSTR(it.first); // save component's type
@@ -176,7 +177,7 @@ void GameObject::Deserialize()
 	for (int i = 0; i < componentCount; i++)
 	{
 		string type = Serializer::ReadSTR(); // load component's type
-		string id = Serializer::ReadSTR(); // laad component's id
+		string id = Serializer::ReadSTR(); // load component's id
 
 		IComponent* component = AddComponentBasedOnType(type);
 		component->g_ID = id;
@@ -189,7 +190,7 @@ void GameObject::Deserialize()
 
 	//= CHILDREN GAMEOBJECTS =======================
 	auto children = Serializer::ReadVectorGameObject();
-	GetTransform()->ResolveChildrenRecursively();
+	//GetTransform()->ResolveChildrenRecursively();
 	//==============================================
 }
 

@@ -53,10 +53,10 @@ void MeshPool::Clear()
 // Adds a mesh to the pool directly from memory
 weak_ptr<Mesh> MeshPool::Add(shared_ptr<Mesh> mesh)
 {
-	// Make sure the mesh isn't already inthe pool
+	// Make sure the mesh isn't already int he pool
 	for (const auto& poolMesh : m_meshes)
 		if (poolMesh->GetID() == mesh->GetID())
-			return weak_ptr<Mesh>();
+			return poolMesh;
 
 	// add it to the pool
 	m_meshes.push_back(mesh);
@@ -79,17 +79,21 @@ weak_ptr<Mesh> MeshPool::Add(const string& name, const string& rootGameObjectID,
 	return Add(mesh);
 }
 
+// Adds a single mesh to the pool by reading it from a file
+weak_ptr<Mesh> MeshPool::Add(const string& filePath)
+{
+	auto mesh = make_shared<Mesh>();
+	if (mesh->LoadFromFile(filePath))
+		return Add(mesh);
+
+	return weak_ptr<Mesh>();
+}
+
 // Adds multiple meshes to the pool by reading them from files
 void MeshPool::Add(const vector<string>& filePaths)
 {
-	for (const auto&  filePath : filePaths)
-	{
-		auto mesh = make_shared<Mesh>();
-
-		// If the mesh load successfully, add it to the pool
-		if (mesh->LoadFromFile(filePath))
-			Add(mesh);
-	}
+	for (const auto& filePath : filePaths)
+		Add(filePath);
 }
 
 weak_ptr<Mesh> MeshPool::GetMeshByID(const string& ID)

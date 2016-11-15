@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ========================
 #include "MeshFilter.h"
 #include "Transform.h"
 #include "../IO/Serializer.h"
@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/MeshPool.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
-//=============================
+//===================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -67,7 +67,7 @@ void MeshFilter::Update()
 
 void MeshFilter::Serialize()
 {
-	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
+	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)PATH_NOT_ASSIGNED);
 }
 
 void MeshFilter::Deserialize()
