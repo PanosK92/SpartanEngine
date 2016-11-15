@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Quaternion.h"
 //=============================
 
+class GameObject;
+
 class Serializer
 {
 public:
@@ -45,6 +47,7 @@ public:
 	static void WriteInt(int value);
 	static void WriteFloat(float value);
 	static void WriteVectorSTR(std::vector<std::string>& vector);
+	static void WriteVectorGameObject(std::vector<GameObject*>& vector);
 	static void WriteVector2(Directus::Math::Vector2& vector);
 	static void WriteVector3(Directus::Math::Vector3& vector);
 	static void WriteVector4(Directus::Math::Vector4& vector);
@@ -58,6 +61,7 @@ public:
 	static int ReadInt();
 	static float ReadFloat();
 	static std::vector<std::string> ReadVectorSTR();
+	static std::vector<GameObject*> ReadVectorGameObject();
 	static Directus::Math::Vector2 ReadVector2();
 	static Directus::Math::Vector3 ReadVector3();
 	static Directus::Math::Vector4 ReadVector4();

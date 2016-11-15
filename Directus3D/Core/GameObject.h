@@ -42,6 +42,13 @@ public:
 	void Start();
 	void Update();
 
+	bool SaveAsPrefab(const std::string& filePath);
+	bool LoadFromPrefab(const std::string& filePath);
+
+	void Serialize();
+	void Deserialize();
+
+	//= PROPERTIES =========================================================================================
 	std::string GetName() { return m_name; }
 	void SetName(const std::string& name) { m_name = name; }
 
@@ -53,12 +60,9 @@ public:
 
 	bool IsVisibleInHierarchy() { return m_hierarchyVisibility; }
 	void SetHierarchyVisibility(bool hierarchyVisibility) { m_hierarchyVisibility = hierarchyVisibility; }
+	//======================================================================================================
 
-	bool Save(const std::string& filePath);
-	void Serialize();
-	void Deserialize();
-
-	//= Components ============================================
+	//= COMPONENTS =========================================================================================
 	// Adds a component of type T
 	template <class T>
 	T* AddComponent()
@@ -153,9 +157,10 @@ public:
 	}
 
 	void RemoveComponentByID(const std::string& id);
-	//=========================================================
+	//======================================================================================================
 
-	Transform* GetTransform();
+	Transform* GetTransform() { return m_transform; }
+
 private:
 	std::string m_ID;
 	std::string m_name;

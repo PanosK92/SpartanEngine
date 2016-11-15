@@ -97,42 +97,81 @@ void GameObject::Update()
 		it.second->Update();
 }
 
-bool GameObject::Save(const string& filePath)
+bool GameObject::SaveAsPrefab(const string& filePath)
 {
-	if (!Serializer::StartWriting(filePath))
+	// Try to create a prefab file
+	if (!Serializer::StartWriting(filePath + PREFAB_EXTENSION))
 		return false;
 
+	// Write data to it
 	Serialize();
+
+	// Close it
 	Serializer::StopReading();
+
+	return true;
+}
+
+bool GameObject::LoadFromPrefab(const string& filePath)
+{
+	// Make sure that this is a prefab file
+	if (!FileSystem::IsSupportedPrefabFile(filePath))
+		return false;
+
+	// Try to open it
+	if (!Serializer::StartReading(filePath))
+		return false;
+
+	// Read data from it
+	Deserialize();
+
+	// Close it
+	Serializer::StopReading();
+
+	// Assign new IDs because multiple GameObjects coming
+	// from the same prefab can end up as exact duplicates
+	m_ID = GENERATE_GUID;
+	for (const auto& component : m_components)
+		component.second->g_ID = GENERATE_GUID;
 
 	return true;
 }
 
 void GameObject::Serialize()
 {
+	//= BASIC DATA ==============================
 	Serializer::WriteSTR(m_ID);
 	Serializer::WriteSTR(m_name);
 	Serializer::WriteBool(m_isActive);
 	Serializer::WriteBool(m_hierarchyVisibility);
+	//===========================================
 
+	//= COMPONENTS ==============================
 	Serializer::WriteInt(m_components.size());
 	for (auto const& it : m_components)
 	{
 		Serializer::WriteSTR(it.first); // save component's type
 		Serializer::WriteSTR(it.second->g_ID); // save component's id
 	}
-
 	for (auto const& it : m_components)
 		it.second->Serialize();
+	//===========================================
+
+	//= CHILDREN GAMEOBJECTS ====================
+	auto children = m_transform->GetChildrenAsGameObjects();
+	Serializer::WriteVectorGameObject(children);
+	//===========================================
 }
 
 void GameObject::Deserialize()
 {
+	// Load basic data
 	m_ID = Serializer::ReadSTR();
 	m_name = Serializer::ReadSTR();
 	m_isActive = Serializer::ReadBool();
 	m_hierarchyVisibility = Serializer::ReadBool();
 
+	// Load any components
 	int componentCount = Serializer::ReadInt();
 	for (int i = 0; i < componentCount; i++)
 	{
@@ -142,12 +181,16 @@ void GameObject::Deserialize()
 		IComponent* component = AddComponentBasedOnType(type);
 		component->g_ID = id;
 	}
-
 	// Sometimes there are component dependencies, e.g. a collider that needs
 	// to set it's shape to a rigibody. So, it's important to first create all 
 	// the components (like above) and then deserialize them (like here).
-	for (auto it = m_components.begin(); it != m_components.end(); ++it)
-		it->second->Deserialize();
+	for (const auto& component : m_components)
+		component.second->Deserialize();
+
+	//= CHILDREN GAMEOBJECTS =======================
+	auto children = Serializer::ReadVectorGameObject();
+	GetTransform()->ResolveChildrenRecursively();
+	//==============================================
 }
 
 void GameObject::RemoveComponentByID(const string& id)
@@ -166,11 +209,6 @@ void GameObject::RemoveComponentByID(const string& id)
 	}
 
 	m_context->GetSubsystem<Scene>()->Resolve();
-}
-
-Transform* GameObject::GetTransform()
-{
-	return m_transform;
 }
 
 //= HELPER FUNCTIONS ===========================================

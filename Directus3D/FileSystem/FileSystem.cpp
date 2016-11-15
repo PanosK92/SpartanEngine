@@ -385,6 +385,11 @@ vector<string> FileSystem::GetSupportedSceneFilesInDirectory(const string& direc
 //===========================================================================================
 
 //= SUPPORTED FILE CHECKS ===================================================================
+bool FileSystem::IsSupportedPrefabFile(const string& filePath)
+{
+	return GetExtensionFromPath(filePath) == PREFAB_EXTENSION ? true : false;
+}
+
 bool FileSystem::IsSupportedAudioFile(const string& path)
 {
 	string fileExt = GetExtensionFromPath(path);

@@ -189,7 +189,7 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
     if (gameObject)
     {
         // Save the dropped GameObject as a prefab
-        gameObject->Save(GetRootPath().toStdString() + "/" + gameObject->GetName() + METADATA_EXTENSION);
+        gameObject->SaveAsPrefab(GetRootPath().toStdString() + "/" + gameObject->GetName());
         event->acceptProposedAction();
         return;
     }

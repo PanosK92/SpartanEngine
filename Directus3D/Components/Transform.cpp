@@ -133,16 +133,6 @@ void Transform::UpdateWorldTransform()
 //=========
 // POSITION
 //=========
-Vector3 Transform::GetPosition() const
-{
-	return m_position;
-}
-
-Vector3 Transform::GetPositionLocal() const
-{
-	return m_positionLocal;
-}
-
 void Transform::SetPosition(const Vector3& position)
 {
 	SetPositionLocal(!HasParent() ? position : GetParent()->GetTransformMatrix().Inverted() * position);
@@ -160,16 +150,6 @@ void Transform::SetPositionLocal(const Vector3& position)
 //=========
 // ROTATION
 //=========
-Quaternion Transform::GetRotation() const
-{
-	return m_rotation;
-}
-
-Quaternion Transform::GetRotationLocal() const
-{
-	return m_rotationLocal;
-}
-
 void Transform::SetRotation(const Quaternion& rotation)
 {
 	SetRotationLocal(!HasParent() ? rotation : GetParent()->GetRotation().Inverse() * rotation);
@@ -187,16 +167,6 @@ void Transform::SetRotationLocal(const Quaternion& rotation)
 //======
 // SCALE
 //======
-Vector3 Transform::GetScale() const
-{
-	return m_scale;
-}
-
-Vector3 Transform::GetScaleLocal() const
-{
-	return m_scaleLocal;
-}
-
 void Transform::SetScale(const Vector3& scale)
 {
 	SetScaleLocal(!HasParent() ? scale : scale / GetParent()->GetScale());
@@ -248,27 +218,19 @@ void Transform::Rotate(const Quaternion& delta, Space space)
 	}
 }
 
-//===========
-// DIRECTIONS
-//===========
-Vector3 Transform::GetUp() const
+Vector3 Transform::GetUp()
 {
 	return GetRotation() * Vector3::Up;
 }
 
-Vector3 Transform::GetForward() const
+Vector3 Transform::GetForward()
 {
 	return GetRotation() * Vector3::Forward;
 }
 
-Vector3 Transform::GetRight() const
+Vector3 Transform::GetRight()
 {
 	return GetRotation() * Vector3::Right;
-}
-
-bool Transform::IsRoot()
-{
-	return !HasParent();
 }
 
 //==========
@@ -320,7 +282,7 @@ void Transform::SetParent(Transform* newParent)
 	// parent to "forget" about this transform/child
 	if (HasParent())
 	{
-		m_parent->FindChildren();
+		m_parent->ResolveChildrenRecursively();
 	}
 
 	// save the new parent as the current parent
@@ -328,18 +290,9 @@ void Transform::SetParent(Transform* newParent)
 
 	// make the new parent "aware" of this transform/child
 	if (m_parent)
-		m_parent->FindChildren();
+		m_parent->ResolveChildrenRecursively();
 
 	UpdateWorldTransform();
-}
-
-// Checks whether this transform has any children
-bool Transform::HasChildren() const
-{
-	if (GetChildrenCount() > 0)
-		return true;
-
-	return false;
 }
 
 void Transform::AddChild(Transform* child)
@@ -351,20 +304,6 @@ void Transform::AddChild(Transform* child)
 		return;
 
 	child->SetParent(this);
-}
-
-Transform* Transform::GetRoot()
-{
-	if (HasParent())
-		return GetParent()->GetRoot();
-
-	return this;
-}
-
-// Returns the parent of this transform
-Transform* Transform::GetParent() const
-{
-	return m_parent;
 }
 
 // Returns a child with the given index
@@ -395,29 +334,29 @@ Transform* Transform::GetChildByName(const string& name)
 	return nullptr;
 }
 
-vector<Transform*> Transform::GetChildren() const
+vector<GameObject*> Transform::GetChildrenAsGameObjects()
 {
-	return m_children;
-}
+	vector<GameObject*> childreGameObjects;
 
-// Returns the number of children
-int Transform::GetChildrenCount() const
-{
-	return m_children.size();
+	auto childrenTransforms = GetChildren();
+	for (const auto& transform : childrenTransforms)
+		childreGameObjects.push_back(transform->GetGameObject());
+
+	return childreGameObjects;
 }
 
 // Searches the entiry hierarchy, finds any children and saves them in m_children.
 // This is a recursive function, the children will also find their own children and so on...
-void Transform::FindChildren()
+void Transform::ResolveChildrenRecursively()
 {
 	m_children.clear();
 	m_children.shrink_to_fit();
 
-	vector<GameObject*> gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
-	for (auto i = 0; i < gameObjects.size(); i++)
+	auto gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
+	for (const auto& gameObject : gameObjects)
 	{
 		// get the possible child
-		Transform* possibleChild = gameObjects[i]->GetTransform();
+		Transform* possibleChild = gameObject->GetTransform();
 
 		// if it doesn't have a parent, forget about it.
 		if (!possibleChild->HasParent())
@@ -431,7 +370,7 @@ void Transform::FindChildren()
 
 			// make the child do the same thing all over, essentialy
 			// resolving the entire hierarchy.
-			possibleChild->FindChildren();
+			possibleChild->ResolveChildrenRecursively();
 		}
 	}
 }
@@ -465,9 +404,9 @@ string Transform::GetID() const
 	return g_gameObject->GetID();
 }
 
-void Transform::LookAt(const Vector3& v)
+string Transform::GetName()
 {
-	m_lookAt = v;
+	return GetGameObject()->GetName();
 }
 
 // Makes this transform have no parent
@@ -486,34 +425,7 @@ void Transform::BecomeOrphan()
 	// that's indirect way of making tha parent "forget"
 	// about this child, since it won't be able to find it
 	if (tempRef)
-		tempRef->FindChildren();
-}
-
-// Checks whether this transform has a parent
-bool Transform::HasParent() const
-{
-	if (m_parent == nullptr)
-		return false;
-
-	return true;
-}
-
-//================
-// MISC PROPERTIES
-//================
-Matrix Transform::GetTransformMatrix() const
-{
-	return m_mTransform;
-}
-
-GameObject* Transform::GetGameObject() const
-{
-	return g_gameObject;
-}
-
-string Transform::GetName() const
-{
-	return GetGameObject()->GetName();
+		tempRef->ResolveChildrenRecursively();
 }
 
 //=================
@@ -528,7 +440,7 @@ void Transform::GetDescendants(vector<Transform*>& descendants)
 	}
 }
 
-Matrix Transform::GetParentTransformMatrix() const
+Matrix Transform::GetParentTransformMatrix()
 {
 	if (!HasParent())
 		return Matrix::Identity;

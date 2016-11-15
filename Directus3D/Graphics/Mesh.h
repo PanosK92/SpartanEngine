@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vertex.h"
 #include "../IO/Serializer.h"
 #include <functional>
-#include "../FileSystem/FileSystem.h"
 //===========================
 
 class Mesh
