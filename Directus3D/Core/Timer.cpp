@@ -89,3 +89,8 @@ int Timer::GetElapsedTime()
 {
 	return GetTime() - m_startTime;
 }
+
+float Timer::GetDeltaTimeSec()
+{
+	return (float)GetDeltaTime() / 1000.0f;
+}

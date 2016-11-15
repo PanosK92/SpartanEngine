@@ -37,6 +37,8 @@ public:
 	int GetTime();
 	int GetElapsedTime();
 
+	float GetDeltaTimeSec();
+
 private:
 	int m_ticksPerSec;
 	int m_ticksPerMs;

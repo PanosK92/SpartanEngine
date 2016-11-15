@@ -35,12 +35,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Core/Context.h"
 #include "../Core/Timer.h"
+#include "../Core/Engine.h"
 //==============================================================================
 
 PhysicsWorld::PhysicsWorld(Context* context) : Object(context)
 {
 	m_internalFPS = 60.0f;
-	m_maxSubSteps = 0;
+	m_maxSubSteps = 1;
 	m_gravity = Directus::Math::Vector3(0.0f, -9.81f, 0.0f);
 	m_simulating = false;
 
@@ -78,25 +79,16 @@ void PhysicsWorld::Step()
 {
 	if (!m_world)
 		return;
-	
-	float timeStep = g_context->GetSubsystem<Timer>()->GetDeltaTime();
 
-	// Note from the bullet guy: timeStep < maxSubSteps * fixedTimeStep
+	// timeStep < maxSubSteps * fixedTimeStep
 
-	float internalTimeStep = 1.0f / m_internalFPS;
-	int maxSubSteps = timeStep * m_internalFPS + 1;
-	if (m_maxSubSteps < 0)
-	{
-		internalTimeStep = timeStep;
-		maxSubSteps = 1;
-	}
-	else if (m_maxSubSteps > 0)
-		maxSubSteps = min(maxSubSteps, m_maxSubSteps);
+	float timeStep = g_context->GetSubsystem<Timer>()->GetDeltaTimeSec();
+	float fixedTimeStep = 1.0f / m_internalFPS;
 
 	m_simulating = true;
 
 	// Step the physics world. 
-	m_world->stepSimulation(timeStep, maxSubSteps, internalTimeStep); 
+	m_world->stepSimulation(timeStep, m_maxSubSteps, fixedTimeStep);
 
 	m_simulating = false;
 }
