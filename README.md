@@ -23,7 +23,7 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 - Windows support.
 
 # Features under development (v0.2)
-Version 0.2 is a major overhaul in many ways.
+Version 0.2 is a major overhaul.
 - Audio source component.
 - Audio listener component.
 - Bug fixes, lot's of them
