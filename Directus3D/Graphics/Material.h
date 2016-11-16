@@ -128,7 +128,6 @@ public:
 	//=============================================================================
 
 private:
-	void DeleteTexture(std::weak_ptr<Texture> texture);
 	void TextureBasedMultiplierAdjustment();
 
 	std::weak_ptr<ShaderVariation> m_shader;

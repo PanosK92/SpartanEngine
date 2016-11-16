@@ -36,9 +36,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 //=======================================
 
-//= NAMESPACES =====
+//= NAMESPACES ====================
 using namespace std;
-//==================
+using namespace Directus::Resource;
+//=================================
 
 Engine::Engine(Context* context) : Subsystem(context) 
 {
@@ -55,6 +56,7 @@ Engine::Engine(Context* context) : Subsystem(context)
 	g_context->RegisterSubsystem(new ThreadPool(g_context));
 	g_context->RegisterSubsystem(new Graphics(g_context));	
 	g_context->RegisterSubsystem(new PhysicsWorld(g_context));
+	g_context->RegisterSubsystem(new ResourceCache(g_context));
 }
 
 Engine::~Engine()
@@ -68,8 +70,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	g_context->GetSubsystem<Audio>()->Initialize();
 	g_context->GetSubsystem<Input>()->Initialize(instance, windowHandle);
 	g_context->GetSubsystem<Graphics>()->Initialize(drawPaneHandle);
-
-	g_context->RegisterSubsystem(new Directus::Resource::ResourceCache(g_context));
+	g_context->GetSubsystem<ResourceCache>()->Initialize();
 
 	// Register subsystems which depend on registered subsystems
 	g_context->RegisterSubsystem(new ScriptEngine(g_context));
