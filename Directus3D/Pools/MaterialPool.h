@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MATERIAL_DEFAULT_ID "MATERIAL_DEFAULT_ID"
 #define MATERIAL_DEFAULT_SKYBOX_ID "MATERIAL_DEFAULT_SKYBOX_ID"
 
-class MaterialPool : public Object
+class MaterialPool : public Subsystem
 {
 public:
 	MaterialPool(Context* context);

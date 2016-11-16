@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace  std;
 //===================
 
-ThreadPool::ThreadPool(Context* context) : Object(context)
+ThreadPool::ThreadPool(Context* context) : Subsystem(context)
 {
 	for (int i = 0; i < 5; i++)
 		m_threads.emplace_back(thread(&ThreadPool::Invoke, this));

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include <vector>
-#include "../Core/Object.h"
+#include "../Core/Subsystem.h"
 //=========================
 
 class asIScriptObject;
@@ -36,7 +36,7 @@ struct asSFuncPtr;
 struct asSMessageInfo;
 class Module;
 
-class ScriptEngine : public Object
+class ScriptEngine : public Subsystem
 {
 public:
 	ScriptEngine(Context* context);

@@ -17,7 +17,7 @@ DEALINGS IN THE SOFTWARE. */
 #pragma once
 
 //= INCLUDES ======
-#include "Object.h"
+#include "Subsystem.h"
 #include <vector>
 //=================
 
@@ -28,12 +28,12 @@ public:
 	~Context();
 
 	// Register a subsystem
-	void RegisterSubsystem(Object* subsystem);
+	void RegisterSubsystem(Subsystem* subsystem);
 
 	// Get a subsystem
 	template <class T> T* GetSubsystem();
 private:
-	std::vector<Object*> m_subsystems;
+	std::vector<Subsystem*> m_subsystems;
 };
 
 template <class T>

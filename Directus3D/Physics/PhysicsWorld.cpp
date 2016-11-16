@@ -38,7 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Engine.h"
 //==============================================================================
 
-PhysicsWorld::PhysicsWorld(Context* context) : Object(context)
+PhysicsWorld::PhysicsWorld(Context* context) : Subsystem(context)
 {
 	m_internalFPS = 60.0f;
 	m_maxSubSteps = 1;

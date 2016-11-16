@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11/D3D11Graphics.h"
 #include "../Math/Vector4.h"
 #include <memory>
-#include "../Core/Object.h"
+#include "../Core/Subsystem.h"
 //============================
 
 enum InputLayout
@@ -44,7 +44,7 @@ enum CullMode
 	CullNone,
 };
 
-class Graphics : public Object
+class Graphics : public Subsystem
 {
 public:
 	Graphics(Context* context);

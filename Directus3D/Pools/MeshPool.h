@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "../Graphics/Mesh.h"
 #include <memory>
-#include "../Core/Object.h"
+#include "../Core/Subsystem.h"
 //===========================
 
 #define MESH_DEFAULT_CUBE_ID "DEFAULT_MESH_CUBE"
@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class GameObject;
 
-class MeshPool : public Object
+class MeshPool : public Subsystem
 {
 public:
 	MeshPool(Context* context);

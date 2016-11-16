@@ -49,7 +49,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Scene::Scene(Context* context) : Object(context)
+Scene::Scene(Context* context) : Subsystem(context)
 {
 	m_ambientLight = Vector3::Zero;
 	m_mainCamera = nullptr;

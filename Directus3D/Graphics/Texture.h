@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include "../Graphics/D3D11/D3D11Shader.h"
 #include "../FileSystem/FileSystem.h"
+#include "../Resource/IResource.h"
 //========================================
 
 enum TextureType
@@ -39,7 +40,7 @@ enum TextureType
 	CubeMap,
 };
 
-class Texture
+class Texture : public Directus::Resource::IResource
 {
 public:
 	Texture();
@@ -53,8 +54,6 @@ public:
 	//=====================================================
 
 	//= PROPERTIES ===============================================================================
-	std::string GetID() { return m_ID; };
-
 	std::string GetName() { return m_name; }
 	void SetName(const std::string& name) { m_name = name; }
 
@@ -92,7 +91,6 @@ public:
 	void SetID3D11ShaderResourceView(ID3D11ShaderResourceView* srv) { m_shaderResourceView = srv; }
 	//=============================================================================================
 private:
-	std::string m_ID;
 	std::string m_name;
 	std::string m_filePath;
 	int m_width;

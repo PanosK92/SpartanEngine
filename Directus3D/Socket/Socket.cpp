@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Socket::Socket(Context* context) : Object(context)
+Socket::Socket(Context* context) : Subsystem(context)
 {
 	m_engine = nullptr;
 }

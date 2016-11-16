@@ -30,7 +30,7 @@ struct aiScene;
 struct aiMaterial;
 struct aiMesh;
 
-class ModelImporter : public Object
+class ModelImporter : public Subsystem
 {
 public:
 	ModelImporter(Context* context);

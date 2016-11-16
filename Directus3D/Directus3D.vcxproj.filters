@@ -189,9 +189,6 @@
     <ClCompile Include="Core\Context.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Core\Object.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Scripting\ScriptInterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -232,6 +229,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Audio\AudioClip.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Resource\ResourceCache.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\SubSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -431,9 +434,6 @@
     <ClInclude Include="Core\Context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Core\Object.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Scripting\ScriptInterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -480,6 +480,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Audio\AudioClip.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource\IResource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource\ResourceCache.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\SubSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

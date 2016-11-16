@@ -29,7 +29,7 @@ class Scene;
 class Renderer;
 class Stopwatch;
 
-class __declspec(dllexport) Engine : public Object
+class __declspec(dllexport) Engine : public Subsystem
 {
 public:
 	Engine(Context* context);

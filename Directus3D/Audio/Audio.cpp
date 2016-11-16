@@ -31,7 +31,7 @@ using namespace std;
 using namespace FMOD;
 //===================
 
-Audio::Audio(Context* context) : Object(context)
+Audio::Audio(Context* context) : Subsystem(context)
 {
 	m_result = FMOD_OK;
 	m_fmodSystem = nullptr;

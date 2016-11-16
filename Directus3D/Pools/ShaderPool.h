@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Shaders/ShaderVariation.h"
 //==============================================
 
-class ShaderPool : public Object
+class ShaderPool : public Subsystem
 {
 public:
 	ShaderPool(Context* context);

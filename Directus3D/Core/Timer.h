@@ -22,10 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =======
-#include "Object.h"
+#include "Subsystem.h"
 //==================
 
-class __declspec(dllexport) Timer : public Object
+class __declspec(dllexport) Timer : public Subsystem
 {
 public:
 	Timer(Context* context);

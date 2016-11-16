@@ -31,7 +31,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-MeshPool::MeshPool(Context* context) : Object(context)
+MeshPool::MeshPool(Context* context) : Subsystem(context)
 {
 	GenerateDefaultMeshes();
 }

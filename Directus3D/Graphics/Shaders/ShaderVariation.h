@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define NULL_SHADER_ID "-1";
 
-class ShaderVariation
+class ShaderVariation : public Directus::Resource::IResource
 {
 public:
 	ShaderVariation();
@@ -56,7 +56,6 @@ public:
 	void UpdateObjectBuffer(std::shared_ptr<Material> material, Light* directionalLight, bool receiveShadows, Camera* camera);
 	void UpdateTextures(const std::vector<ID3D11ShaderResourceView*>& textureArray);
 	void Render(int indexCount);
-	std::string GetID() { return m_ID; }
 
 	bool HasAlbedoTexture() { return m_hasAlbedoTexture; }
 	bool HasRoughnessTexture() { return m_hasRoughnessTexture; }
@@ -75,7 +74,6 @@ private:
 	/*------------------------------------------------------------------------------
 									[PROPERTIES]
 	------------------------------------------------------------------------------*/
-	std::string m_ID;
 	bool m_hasAlbedoTexture;
 	bool m_hasRoughnessTexture;
 	bool m_hasMetallicTexture;
