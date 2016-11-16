@@ -53,6 +53,8 @@ namespace Directus
 			ResourceCache(Context* context);
 			~ResourceCache();
 
+			void Initialize();
+
 			// Releases all the resources
 			void Clear();
 

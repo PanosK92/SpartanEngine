@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"
 #include "../Multithreading/ThreadPool.h"
-#include "../Pools/ShaderPool.h"
 #include "../Resource/ResourceCache.h"
 //=======================================
 
@@ -64,7 +63,7 @@ aiProcess_ConvertToLeftHanded;
 
 static int smoothAngle = 80;
 
-ModelImporter::ModelImporter(Context* context) : Subsystem(context) 
+ModelImporter::ModelImporter(Context* context) : Subsystem(context)
 {
 	m_rootGameObject = nullptr;
 }
@@ -125,7 +124,8 @@ Matrix aiMatrix4x4ToMatrix(const aiMatrix4x4& transform)
 		transform.a1, transform.b1, transform.c1, transform.d1,
 		transform.a2, transform.b2, transform.c2, transform.d2,
 		transform.a3, transform.b3, transform.c3, transform.d3,
-		transform.a4, transform.b4, transform.c4, transform.d4);
+		transform.a4, transform.b4, transform.c4, transform.d4
+	);
 }
 
 void SetGameObjectTransform(GameObject* gameObject, const aiMatrix4x4& assimpTransformation)

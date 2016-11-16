@@ -38,15 +38,20 @@ using namespace Directus::Resource;
 
 ResourceCache::ResourceCache(Context* context) : Subsystem(context)
 {
-	//= TEMPORARY =============
-	GenerateDefaultMeshes();
-	GenerateDefaultMaterials();
-	//=========================
+	
 }
 
 ResourceCache::~ResourceCache()
 {
 	Clear();
+}
+
+void ResourceCache::Initialize()
+{
+	//= TEMPORARY =============
+	GenerateDefaultMeshes();
+	GenerateDefaultMaterials();
+	//=========================
 }
 
 void ResourceCache::Clear()

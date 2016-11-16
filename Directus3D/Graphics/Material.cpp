@@ -183,9 +183,6 @@ void Material::SetTexture(weak_ptr<Texture> texture)
 	if (texture.expired())
 		return;
 
-	// Delete texture of same type in case it exists
-	DeleteTexture(texture);
-
 	// Add it
 	m_textures.insert(make_pair(make_pair(texture.lock()->GetFilePathTexture(), texture.lock()->GetType()), texture));
 
@@ -307,22 +304,6 @@ ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureTy
 	return nullptr;
 }
 //==============================================================================
-
-void Material::DeleteTexture(weak_ptr<Texture> texture)
-{
-	if (texture.expired())
-		return;
-
-	for (auto it = m_textures.begin(); it != m_textures.end();)
-	{
-		if (it->first.second == texture.lock()->GetType())
-		{
-			it = m_textures.erase(it);
-			break;
-		}
-		++it;
-	}
-}
 
 void Material::TextureBasedMultiplierAdjustment()
 {
