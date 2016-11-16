@@ -38,8 +38,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshFilter.h"
 #include "../Events/EventHandler.h"
 #include "../Core/Context.h"
-#include "../Pools/ShaderPool.h"
 #include "../Resource/ResourceCache.h"
+#include "Shaders/ShaderVariation.h"
 //======================================
 
 //= NAMESPACES ====================
@@ -313,12 +313,14 @@ void Renderer::DirectionalLightDepthPass()
 
 void Renderer::GBufferPass()
 {
-	ShaderPool* shaderPool = g_context->GetSubsystem<ShaderPool>();
 	Graphics* graphics = g_context->GetSubsystem<Graphics>();
 	auto materials = g_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<Material>();
+	auto shaders = g_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<ShaderVariation>();
 
-	for (const auto& currentShader : shaderPool->GetAllShaders()) // for each shader
+	for (const auto& tempShader : shaders) // for each shader
 	{
+		auto currentShader = tempShader.lock();
+
 		currentShader->Set();
 		for (const auto tempMaterial : materials) // for each material...
 		{

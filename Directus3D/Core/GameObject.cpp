@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ============================
 #include "GameObject.h"
 #include "Scene.h"
-#include "../Core/GUIDGenerator.h"
-#include "../Pools/GameObjectPool.h"
+#include "GUIDGenerator.h"
+#include "GameObjectPool.h"
 #include "../IO/Serializer.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshFilter.h"
@@ -38,8 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/LineRenderer.h"
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
-#include "../Logging/Log.h"
-//=====================================
+//======================================
 
 //= NAMESPACES =====
 using namespace std;

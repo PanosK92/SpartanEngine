@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene.h"
 #include <complex>
 #include "../IO/Serializer.h"
-#include "../Pools/GameObjectPool.h"
+#include "GameObjectPool.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 #include "../Graphics//Renderer.h"
@@ -38,8 +38,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsWorld.h"
 #include "../Events/EventHandler.h"
 #include "../Core/Context.h"
-#include "../Pools/ShaderPool.h"
-#include "../Input/Input.h"
 #include "Settings.h"
 #include "../Resource/ResourceCache.h"
 //=====================================
@@ -167,7 +165,6 @@ void Scene::Clear()
 	m_mainCamera = nullptr;
 
 	//= Clear all the pools ==================
-	g_context->GetSubsystem<ShaderPool>()->Clear();
 	g_context->GetSubsystem<ResourceCache>()->Clear();	
 	GameObjectPool::GetInstance().Clear();
 	//========================================

@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "../IO/Serializer.h"
 #include "../Core/GUIDGenerator.h"
-#include "../Pools/ShaderPool.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/ResourceCache.h"
 //====================================
@@ -275,7 +274,7 @@ void Material::AcquireShader()
 
 	// Add a shader to the pool based on this material, if a 
 	// matching shader already exists, it will be returned instead.
-	m_shader = m_context->GetSubsystem<ShaderPool>()->CreateShaderBasedOnMaterial(
+	m_shader = m_context->GetSubsystem<ResourceCache>()->CreateShaderBasedOnMaterial(
 		HasTextureOfType(Albedo),
 		HasTextureOfType(Roughness),
 		HasTextureOfType(Metallic),

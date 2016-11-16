@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============================
 #include "Socket.h"
-#include "../Pools/GameObjectPool.h"
+#include "../Core/GameObjectPool.h"
 #include "../Logging/Log.h"
 #include "../Graphics/Renderer.h"
 #include "../Events/EventHandler.h"

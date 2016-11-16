@@ -173,13 +173,35 @@ namespace Directus
 			// Makes the resources save their metadata
 			void SaveResourceMetadata();
 
-			//= TEMPORARY =======================
+			//= TEMPORARY ===================================================
+			std::weak_ptr<ShaderVariation> CreateShaderBasedOnMaterial(
+				bool albedo,
+				bool roughness,
+				bool metallic,
+				bool normal,
+				bool height,
+				bool occlusion,
+				bool emission,
+				bool mask,
+				bool cubemap
+			);
+			std::weak_ptr<ShaderVariation> FindMatchingShader(
+				bool albedo,
+				bool roughness,
+				bool metallic,
+				bool normal,
+				bool height,
+				bool occlusion,
+				bool emission,
+				bool mask,
+				bool cubemap
+			);
 			std::weak_ptr<Mesh> GetDefaultCube();
 			std::weak_ptr<Mesh> GetDefaultQuad();
 			std::weak_ptr<Material> GetMaterialStandardDefault();
 			std::weak_ptr<Material> GetMaterialStandardSkybox();
 			void NormalizeModelScale(GameObject* rootGameObject);
-			//===================================
+			//======================================================
 
 		private:
 			std::vector<std::shared_ptr<IResource>> m_resources;
