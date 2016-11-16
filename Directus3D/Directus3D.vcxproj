@@ -151,13 +151,14 @@
     <ClCompile Include="Core\Engine.cpp" />
     <ClCompile Include="Core\GameObject.cpp" />
     <ClCompile Include="Core\GUIDGenerator.cpp" />
-    <ClCompile Include="Core\Object.cpp" />
+    <ClCompile Include="Core\SubSystem.cpp" />
     <ClCompile Include="Graphics\Material.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Core\Scene.cpp" />
     <ClCompile Include="Core\Settings.cpp" />
     <ClCompile Include="Graphics\Shaders\ShadowMappingShader.cpp" />
     <ClCompile Include="Multithreading\ThreadPool.cpp" />
+    <ClCompile Include="Resource\ResourceCache.cpp" />
     <ClCompile Include="Socket\Socket.cpp" />
     <ClCompile Include="Graphics\Texture.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
@@ -225,7 +226,7 @@
     <ClInclude Include="Components\Transform.h" />
     <ClInclude Include="Core\Context.h" />
     <ClInclude Include="Core\Engine.h" />
-    <ClInclude Include="Core\Object.h" />
+    <ClInclude Include="Core\SubSystem.h" />
     <ClInclude Include="Graphics\Shaders\ShadowMappingShader.h" />
     <ClInclude Include="Graphics\ShadowMap.h" />
     <ClInclude Include="Events\EventHandler.h" />
@@ -236,6 +237,8 @@
     <ClInclude Include="Graphics\Mesh.h" />
     <ClInclude Include="Core\Scene.h" />
     <ClInclude Include="Core\Settings.h" />
+    <ClInclude Include="Resource\IResource.h" />
+    <ClInclude Include="Resource\ResourceCache.h" />
     <ClInclude Include="Socket\Socket.h" />
     <ClInclude Include="Graphics\Texture.h" />
     <ClInclude Include="Core\Timer.h" />

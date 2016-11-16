@@ -28,7 +28,7 @@ using namespace Directus::Math;
 using namespace std;
 //=============================
 
-Graphics::Graphics(Context* context): Object(context) 
+Graphics::Graphics(Context* context): Subsystem(context) 
 {
 	m_d3d11Graphics = nullptr;
 	m_cullMode = CullBack;

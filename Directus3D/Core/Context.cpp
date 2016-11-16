@@ -35,7 +35,7 @@ Context::~Context()
 	// will result in a crash.
 }
 
-void Context::RegisterSubsystem(Object* subsystem)
+void Context::RegisterSubsystem(Subsystem* subsystem)
 {
 	if (!subsystem)
 		return;

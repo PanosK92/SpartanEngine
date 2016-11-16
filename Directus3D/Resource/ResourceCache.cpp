@@ -19,46 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =============
+#include "ResourceCache.h"
+//========================
 
-//= LINKING =========================
-#pragma comment(lib, "fmod64_vc.lib")
-//===================================
-
-//= INCLUDES =======================
-#include "../Core/Subsystem.h"
-#include "fmod.hpp"
-#include "../Components/Transform.h"
-#include "AudioClip.h"
-#include <memory>
+//= NAMESPACES =====================
+using namespace  Directus::Resource;
 //==================================
 
-class Audio : public Subsystem
+ResourceCache::ResourceCache(Context* context) : Subsystem(context)
 {
-public:
-	Audio(Context* context);
-	~Audio();
 
-	bool Initialize();
-	bool Update();
+}
 
-	std::weak_ptr<AudioClip> CreateAudioClip();
-	void SetListenerTransform(Transform* transform);
+ResourceCache::~ResourceCache()
+{
 
-private:
-	FMOD_RESULT m_result;
-	FMOD::System* m_fmodSystem;
-	int m_maxChannels;
-	float m_distanceFactor;
-	bool m_initialized;
-
-	//= LISTENER =========
-	Transform* m_listener;
-	FMOD_VECTOR m_pos;
-	FMOD_VECTOR m_vel;
-	FMOD_VECTOR m_for;
-	FMOD_VECTOR m_up;
-	//====================
-	
-	std::vector<std::shared_ptr<AudioClip>> m_audioHandles;
-};
+}

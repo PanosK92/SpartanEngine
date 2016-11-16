@@ -16,16 +16,11 @@ DEALINGS IN THE SOFTWARE. */
 
 #pragma once
 
-//= INCLUDES =======
-//==================
+//= INCLUDES ======
+#include "Subsystem.h"
+//=================
 
-class __declspec(dllexport) Object
+Subsystem::Subsystem(Context* context)
 {
-	friend class Context;
-public:
-	Object(Context* context);
-	virtual ~Object() {};
-
-protected:
-	Context* g_context;
-};
+	g_context = context;
+}

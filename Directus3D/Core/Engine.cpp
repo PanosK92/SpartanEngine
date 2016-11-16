@@ -36,13 +36,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Pools/MaterialPool.h"
 #include "../Pools/TexturePool.h"
 #include "../Audio/Audio.h"
+#include "../Resource/ResourceCache.h"
 //==========================================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
 
-Engine::Engine(Context* context) : Object(context) 
+Engine::Engine(Context* context) : Subsystem(context) 
 {
 	// Register self as a subsystem
 	g_context->RegisterSubsystem(this);
@@ -59,6 +60,7 @@ Engine::Engine(Context* context) : Object(context)
 	g_context->RegisterSubsystem(new PhysicsWorld(g_context));
 	g_context->RegisterSubsystem(new MeshPool(g_context));
 	g_context->RegisterSubsystem(new TexturePool(g_context));
+	g_context->RegisterSubsystem(new Directus::Resource::ResourceCache(g_context));
 }
 
 Engine::~Engine()

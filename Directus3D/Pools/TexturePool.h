@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Texture.h"
 ///=============================
 
-class TexturePool : public Object
+class TexturePool : public Subsystem
 {
 public:
 	TexturePool(Context* context);

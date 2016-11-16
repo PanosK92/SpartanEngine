@@ -35,7 +35,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-MaterialPool::MaterialPool(Context* context) : Object(context)
+MaterialPool::MaterialPool(Context* context) : Subsystem(context)
 {
 	GenerateDefaultMaterials();
 }

@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define AS_USE_STLNAMES = 1
 
-ScriptEngine::ScriptEngine(Context* context) : Object(context)
+ScriptEngine::ScriptEngine(Context* context) : Subsystem(context)
 {
 	m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	if (!m_scriptEngine)

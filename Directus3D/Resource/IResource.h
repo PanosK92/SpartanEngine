@@ -21,44 +21,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= LINKING =========================
-#pragma comment(lib, "fmod64_vc.lib")
-//===================================
+//= INCLUDES ====
+#include <string>
+//===============
 
-//= INCLUDES =======================
-#include "../Core/Subsystem.h"
-#include "fmod.hpp"
-#include "../Components/Transform.h"
-#include "AudioClip.h"
-#include <memory>
-//==================================
-
-class Audio : public Subsystem
+namespace Directus
 {
-public:
-	Audio(Context* context);
-	~Audio();
+	namespace Resource
+	{
+		enum ResourceType
+		{
+			Texture,
+			Audio,
+			Material,
+			Mesh,
+			Shader
+		};
 
-	bool Initialize();
-	bool Update();
+		class IResource
+		{
+		public:
+			virtual ~IResource() {}
 
-	std::weak_ptr<AudioClip> CreateAudioClip();
-	void SetListenerTransform(Transform* transform);
+			std::string GetID() { return m_ID; }
+			void SetID(const std::string& ID) { m_ID = ID; }
 
-private:
-	FMOD_RESULT m_result;
-	FMOD::System* m_fmodSystem;
-	int m_maxChannels;
-	float m_distanceFactor;
-	bool m_initialized;
-
-	//= LISTENER =========
-	Transform* m_listener;
-	FMOD_VECTOR m_pos;
-	FMOD_VECTOR m_vel;
-	FMOD_VECTOR m_for;
-	FMOD_VECTOR m_up;
-	//====================
-	
-	std::vector<std::shared_ptr<AudioClip>> m_audioHandles;
-};
+		protected:
+			ResourceType m_type;
+			std::string m_ID;
+			std::string m_filePath;
+		};
+	}
+}

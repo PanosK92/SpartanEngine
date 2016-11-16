@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Timer::Timer(Context* context) : Object(context)
+Timer::Timer(Context* context) : Subsystem(context)
 {
 	m_ticksPerSec = 0;
 	m_ticksPerMs = 0.0f;

@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-ShaderPool::ShaderPool(Context* context) : Object(context) 
+ShaderPool::ShaderPool(Context* context) : Subsystem(context) 
 {
 
 }
@@ -88,7 +88,7 @@ weak_ptr<ShaderVariation> ShaderPool::CreateShaderBasedOnMaterial(
 
 weak_ptr<ShaderVariation> ShaderPool::GetShaderByID(const string& shaderID)
 {
-	for (const auto shader : m_shaders)
+	for (const auto& shader : m_shaders)
 		if (shader->GetID() == shaderID)
 			return shader;
 

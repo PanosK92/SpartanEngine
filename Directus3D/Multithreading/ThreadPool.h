@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <thread>
 #include <mutex>
 #include <queue>
-#include "../Core/Object.h"
+#include "../Core/Subsystem.h"
 //=========================
 
 //#define ADD_TASK(task) ThreadPool::AddTask(task)
@@ -43,7 +43,7 @@ private:
 	functionType m_function;
 };
 
-class ThreadPool : public Object
+class ThreadPool : public Subsystem
 {
 public:
 	ThreadPool(Context* context);

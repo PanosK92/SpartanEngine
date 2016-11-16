@@ -21,14 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================
+//= INCLUDES =====================
 #include <vector>
 #include "Vertex.h"
 #include "../IO/Serializer.h"
 #include <functional>
-//===========================
+#include "../Resource/IResource.h"
+//================================
 
-class Mesh
+class Mesh : public Directus::Resource::IResource
 {
 public:
 	Mesh();
@@ -45,9 +46,6 @@ public:
 
 	std::string GetName() const { return m_name; }
 	void SetName(const std::string& name) { m_name = name; }
-
-	std::string GetID() const { return m_ID; }
-	void SetID(const std::string& ID) { m_ID = ID; }
 
 	std::string GetRootGameObjectID() const { return m_rootGameObjectID; }
 	void SetRootGameObjectID(const std::string& rootGameObjectID) { m_rootGameObjectID = rootGameObjectID; }
@@ -101,7 +99,6 @@ private:
 	//==============================================================================
 
 	std::string m_name;
-	std::string m_ID;
 	std::string m_rootGameObjectID;
 	std::string m_directory;
 	std::string m_filePath;

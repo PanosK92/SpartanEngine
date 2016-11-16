@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
 #include "../Graphics/Renderer.h"
+#include "../Resource/IResource.h"
 //===============================
 
 class ShaderVariation;
@@ -40,7 +41,7 @@ enum ShadingMode
 	Skysphere
 };
 
-class __declspec(dllexport) Material
+class __declspec(dllexport) Material : public Directus::Resource::IResource
 {
 public:
 	Material(Context* context);
@@ -71,10 +72,7 @@ public:
 	ID3D11ShaderResourceView* GetShaderResourceViewByTextureType(TextureType type);
 	//=============================================================================
 
-	//= PROPERTIES ================================================================
-	std::string GetID() { return m_ID; }
-	void SetID(const std::string& ID) { m_ID = ID; }
-	
+	//= PROPERTIES ================================================================	
 	std::string GetName() { return m_name; }
 	void SetName(const std::string& name) { m_name = name; }
 	
@@ -141,7 +139,6 @@ private:
 	// even if the actual textures haven't been loaded yet.
 	std::multimap<std::pair<std::string, TextureType>, std::weak_ptr<Texture>> m_textures;
 
-	std::string m_ID;
 	std::string m_name;
 	std::string m_modelID;
 	std::string m_filePath;

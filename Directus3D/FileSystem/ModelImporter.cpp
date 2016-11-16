@@ -65,7 +65,7 @@ aiProcess_ConvertToLeftHanded;
 
 static int smoothAngle = 80;
 
-ModelImporter::ModelImporter(Context* context) : Object(context) 
+ModelImporter::ModelImporter(Context* context) : Subsystem(context) 
 {
 	m_rootGameObject = nullptr;
 }

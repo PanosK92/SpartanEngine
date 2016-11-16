@@ -31,7 +31,7 @@ using namespace Directus::Math;
 using namespace std;
 //=============================
 
-Input::Input(Context* context): Object(context)
+Input::Input(Context* context): Subsystem(context)
 {
 	m_DX8Input = nullptr;
 	m_initializedSuccessfully = false;

@@ -47,7 +47,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Renderer::Renderer(Context* context) : Object(context)
+Renderer::Renderer(Context* context) : Subsystem(context)
 {
 	m_GBuffer = nullptr;
 	m_fullScreenQuad = nullptr;
