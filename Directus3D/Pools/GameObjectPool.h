@@ -22,12 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ============================
-#include "../Pools/MaterialPool.h"
 #include "../Multithreading/ThreadPool.h"
 //=======================================
 
 class GameObject;
-#define NULL_GAMEOBJECT_ID "-1"
 
 class GameObjectPool
 {

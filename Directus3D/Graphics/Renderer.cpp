@@ -39,13 +39,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Events/EventHandler.h"
 #include "../Core/Context.h"
 #include "../Pools/ShaderPool.h"
-#include "../Pools/MaterialPool.h"
+#include "../Resource/ResourceCache.h"
 //======================================
 
-//= NAMESPACES ================
+//= NAMESPACES ====================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Resource;
+//=================================
 
 Renderer::Renderer(Context* context) : Subsystem(context)
 {
@@ -313,15 +314,16 @@ void Renderer::DirectionalLightDepthPass()
 void Renderer::GBufferPass()
 {
 	ShaderPool* shaderPool = g_context->GetSubsystem<ShaderPool>();
-	MaterialPool* materialPool = g_context->GetSubsystem<MaterialPool>();
 	Graphics* graphics = g_context->GetSubsystem<Graphics>();
+	auto materials = g_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<Material>();
 
 	for (const auto& currentShader : shaderPool->GetAllShaders()) // for each shader
 	{
 		currentShader->Set();
-		for (const auto currentMaterial : materialPool->GetAllMaterials()) // for each material...
+		for (const auto tempMaterial : materials) // for each material...
 		{
-			if (currentMaterial->GetShader().expired())
+			auto currentMaterial = tempMaterial.lock();
+			if (!currentMaterial)
 				continue;
 
 			// ... that uses the current shader

@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ============================
 #include "Engine.h"
 #include "Scene.h"
 #include "Timer.h"
@@ -33,10 +33,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Multithreading/ThreadPool.h"
 #include "../Socket/Socket.h"
 #include "../Pools/ShaderPool.h"
-#include "../Pools/MaterialPool.h"
 #include "../Audio/Audio.h"
 #include "../Resource/ResourceCache.h"
-//==========================================
+//=======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -76,7 +75,6 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	// Register subsystems which depend on registered subsystems
 	g_context->RegisterSubsystem(new ScriptEngine(g_context));
 	g_context->RegisterSubsystem(new ShaderPool(g_context));
-	g_context->RegisterSubsystem(new MaterialPool(g_context));
 	g_context->RegisterSubsystem(new ModelImporter(g_context)); 
 	g_context->RegisterSubsystem(new Renderer(g_context));
 	g_context->RegisterSubsystem(new Scene(g_context));
