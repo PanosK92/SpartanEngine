@@ -100,14 +100,12 @@ bool Scene::SaveToFile(const string& filePathIn)
 	Serializer::StartWriting(filePath);
 
 	// Gather all the paths of any resource files used by the scene
-	vector<string> texturePaths = g_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths();
+	vector<string> resourcePaths = g_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths();
 	vector<string> materialPaths = g_context->GetSubsystem<MaterialPool>()->GetAllMaterialFilePaths();
-	vector<string> meshPaths = g_context->GetSubsystem<MeshPool>()->GetAllMeshFilePaths();
 
 	// Save all the paths
-	Serializer::WriteVectorSTR(texturePaths);
+	Serializer::WriteVectorSTR(resourcePaths);
 	Serializer::WriteVectorSTR(materialPaths);
-	Serializer::WriteVectorSTR(meshPaths);
 
 	// Save the GameObjects
 	GameObjectPool::GetInstance().Serialize();
@@ -131,7 +129,7 @@ bool Scene::LoadFromFile(const string& filePath)
 	Serializer::StartReading(filePath);
 
 	// Gather all the paths of any resource files used by the scene
-	vector<string> texturePaths = Serializer::ReadVectorSTR();
+	vector<string> resourcePaths = Serializer::ReadVectorSTR();
 	vector<string> materialPaths = Serializer::ReadVectorSTR();
 	vector<string> meshPaths = Serializer::ReadVectorSTR();
 
@@ -139,9 +137,8 @@ bool Scene::LoadFromFile(const string& filePath)
 	//===========================================================
 
 	// Load all the used resources into memory
-	g_context->GetSubsystem<ResourceCache>()->LoadResources(texturePaths);
+	g_context->GetSubsystem<ResourceCache>()->LoadResources(resourcePaths);
 	g_context->GetSubsystem<MaterialPool>()->Add(materialPaths);
-	g_context->GetSubsystem<MeshPool>()->Add(meshPaths);
 	
 	// Load all the GameObjects present in the scene
 	//==============================================
@@ -185,8 +182,7 @@ void Scene::Clear()
 	//= Clear all the pools ==================
 	g_context->GetSubsystem<ShaderPool>()->Clear();
 	g_context->GetSubsystem<ResourceCache>()->Clear();
-	g_context->GetSubsystem<MaterialPool>()->Clear();
-	g_context->GetSubsystem<MeshPool>()->Clear();			
+	g_context->GetSubsystem<MaterialPool>()->Clear();		
 	GameObjectPool::GetInstance().Clear();
 	//========================================
 

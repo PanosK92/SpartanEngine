@@ -24,15 +24,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
-#include "../Pools/MeshPool.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
+#include "../Resource/ResourceCache.h"
 //===================================
 
-//= NAMESPACES ================
+//= NAMESPACES ====================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Resource;
+//=================================
 
 MeshFilter::MeshFilter()
 {
@@ -72,7 +73,7 @@ void MeshFilter::Serialize()
 
 void MeshFilter::Deserialize()
 {
-	m_mesh = g_context->GetSubsystem<MeshPool>()->GetMeshByID(Serializer::ReadSTR());
+	m_mesh = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
 	CreateBuffers();
 }
 
@@ -82,10 +83,10 @@ void MeshFilter::SetDefaultMesh(DefaultMesh defaultMesh)
 	switch (defaultMesh)
 	{
 	case Cube:
-		m_mesh = g_context->GetSubsystem<MeshPool>()->GetDefaultCube();
+		m_mesh = g_context->GetSubsystem<ResourceCache>()->GetDefaultCube();
 		break;
 	case Quad:
-		m_mesh = g_context->GetSubsystem<MeshPool>()->GetDefaultQuad();
+		m_mesh = g_context->GetSubsystem<ResourceCache>()->GetDefaultQuad();
 		break;
 	default:
 		m_mesh = weak_ptr<Mesh>();
@@ -98,8 +99,15 @@ void MeshFilter::SetDefaultMesh(DefaultMesh defaultMesh)
 // Use this create a new mesh, this is what you might wanna call after loading a 3d model
 void MeshFilter::Set(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
 {
-	// Add the mesh data to the pool so it gets initialized properly
-	m_mesh = g_context->GetSubsystem<MeshPool>()->Add(name, rootGameObjectID, vertices, indices);
+	// Load a mesh
+	auto tempMesh = make_shared<Mesh>();
+	tempMesh->SetName(name);
+	tempMesh->SetRootGameObjectID(rootGameObjectID);
+	tempMesh->SetVertices(vertices);
+	tempMesh->SetIndices(indices);
+	tempMesh->Update();
+
+	m_mesh = g_context->GetSubsystem<ResourceCache>()->AddResource(tempMesh);
 
 	// Make the mesh re-create the buffers whenever it updates.
 	m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));

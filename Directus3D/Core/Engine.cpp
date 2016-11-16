@@ -57,7 +57,6 @@ Engine::Engine(Context* context) : Subsystem(context)
 	g_context->RegisterSubsystem(new ThreadPool(g_context));
 	g_context->RegisterSubsystem(new Graphics(g_context));	
 	g_context->RegisterSubsystem(new PhysicsWorld(g_context));
-	g_context->RegisterSubsystem(new MeshPool(g_context));
 	g_context->RegisterSubsystem(new Directus::Resource::ResourceCache(g_context));
 }
 

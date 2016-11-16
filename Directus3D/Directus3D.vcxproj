@@ -197,7 +197,6 @@
     <ClCompile Include="Physics\PhysicsWorld.cpp" />
     <ClCompile Include="Pools\GameObjectPool.cpp" />
     <ClCompile Include="Pools\MaterialPool.cpp" />
-    <ClCompile Include="Pools\MeshPool.cpp" />
     <ClCompile Include="Pools\ShaderPool.cpp" />
     <ClCompile Include="Scripting\Module.cpp" />
     <ClCompile Include="Scripting\ScriptInterface.cpp" />
@@ -282,7 +281,6 @@
     <ClInclude Include="Physics\PhysicsWorld.h" />
     <ClInclude Include="Pools\GameObjectPool.h" />
     <ClInclude Include="Pools\MaterialPool.h" />
-    <ClInclude Include="Pools\MeshPool.h" />
     <ClInclude Include="Pools\ShaderPool.h" />
     <ClInclude Include="Multithreading\ThreadPool.h" />
     <ClInclude Include="Scripting\Module.h" />
