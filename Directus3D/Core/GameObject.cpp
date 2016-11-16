@@ -129,12 +129,6 @@ bool GameObject::LoadFromPrefab(const string& filePath)
 	// Close it
 	Serializer::StopReading();
 
-	// Assign new IDs because multiple GameObjects coming
-	// from the same prefab can end up as exact duplicates
-	//m_ID = GENERATE_GUID;
-	//for (const auto& component : m_components)
-		//component.second->g_ID = GENERATE_GUID;
-
 	return true;
 }
 
@@ -159,8 +153,8 @@ void GameObject::Serialize()
 	//===========================================
 
 	//= CHILDREN GAMEOBJECTS ====================
-	auto children = m_transform->GetChildrenAsGameObjects();
-	Serializer::WriteVectorGameObject(children);
+	//auto children = m_transform->GetChildrenAsGameObjects();
+	//Serializer::WriteVectorGameObject(children);
 	//===========================================
 }
 
@@ -189,7 +183,7 @@ void GameObject::Deserialize()
 		component.second->Deserialize();
 
 	//= CHILDREN GAMEOBJECTS =======================
-	auto children = Serializer::ReadVectorGameObject();
+	//auto children = Serializer::ReadVectorGameObject();
 	//GetTransform()->ResolveChildrenRecursively();
 	//==============================================
 }

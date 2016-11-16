@@ -51,6 +51,8 @@ public:
 		bool cubemap,
 		Graphics* d3d11device
 	);
+	bool SaveMetadata();
+
 	void Set();
 	void UpdateMatrixBuffer(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection);
 	void UpdateObjectBuffer(std::shared_ptr<Material> material, Light* directionalLight, bool receiveShadows, Camera* camera);

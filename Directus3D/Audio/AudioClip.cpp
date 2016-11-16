@@ -52,6 +52,11 @@ AudioClip::~AudioClip()
 		LOG_ERROR(FMOD_ErrorString(m_result));
 }
 
+bool AudioClip::SaveMetadata()
+{
+	return true;
+}
+
 bool AudioClip::Load(const std::string& filePath, PlayMode mode)
 {
 	m_sound = nullptr;

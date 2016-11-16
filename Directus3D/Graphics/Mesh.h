@@ -40,6 +40,7 @@ private:
 	void Serialize();
 	void Deserialize();
 public:
+	bool SaveMetadata();
 	void SaveToDirectory(const std::string& directory, bool overwrite);
 	bool LoadFromFile(const std::string& filePath);
 	//==============================================================================
@@ -52,8 +53,6 @@ public:
 
 	void SetDirectory(const std::string& directory) { m_directory = directory; }
 
-	std::string GetFilePath() { return m_filePath; }
-	
 	std::vector<VertexPositionTextureNormalTangent>& GetVertices() { return m_vertices; }
 	void SetVertices(std::vector<VertexPositionTextureNormalTangent> vertices)
 	{
@@ -101,7 +100,6 @@ private:
 	std::string m_name;
 	std::string m_rootGameObjectID;
 	std::string m_directory;
-	std::string m_filePath;
 
 	std::vector<VertexPositionTextureNormalTangent> m_vertices;
 	std::vector<unsigned int> m_indices;

@@ -111,6 +111,11 @@ void Mesh::Deserialize()
 	m_boundingBox = Serializer::ReadVector3();
 }
 
+bool Mesh::SaveMetadata()
+{
+	return true;
+}
+
 void Mesh::SaveToDirectory(const string& directory, bool overwrite)
 {
 	// I used to use GetName() to save the mesh but when mesh duplicates are genarated
