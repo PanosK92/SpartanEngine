@@ -29,15 +29,6 @@ namespace Directus
 {
 	namespace Resource
 	{
-		enum ResourceType
-		{
-			Texture,
-			Audio,
-			Material,
-			Mesh,
-			Shader
-		};
-
 		class IResource
 		{
 		public:
@@ -46,8 +37,12 @@ namespace Directus
 			std::string GetID() { return m_ID; }
 			void SetID(const std::string& ID) { m_ID = ID; }
 
+			std::string GetFilePath() { return m_filePath; }
+			void SetFilePath(const std::string& filePath) { m_filePath = filePath; }
+
+			virtual bool SaveMetadata() = 0;
+
 		protected:
-			ResourceType m_type;
 			std::string m_ID;
 			std::string m_filePath;
 		};

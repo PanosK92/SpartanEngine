@@ -39,15 +39,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Events/EventHandler.h"
 #include "../Core/Context.h"
 #include "../Pools/ShaderPool.h"
-#include "../Pools/TexturePool.h"
 #include "../Input/Input.h"
 #include "Settings.h"
+#include "../Resource/ResourceCache.h"
 //=====================================
 
-//= NAMESPACES ================
+//= NAMESPACES =====================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Resource;
+//=================================
 
 Scene::Scene(Context* context) : Subsystem(context)
 {
@@ -93,13 +94,13 @@ bool Scene::SaveToFile(const string& filePathIn)
 		filePath += SCENE_EXTENSION;
 
 	// Any in-memory changes done to resources while running, must be saved...
-	g_context->GetSubsystem<TexturePool>()->SaveTextureMetadata();
+	g_context->GetSubsystem<ResourceCache>()->SaveResourceMetadata();
 	g_context->GetSubsystem<MaterialPool>()->SaveMaterialMetadata();
 
 	Serializer::StartWriting(filePath);
 
 	// Gather all the paths of any resource files used by the scene
-	vector<string> texturePaths = g_context->GetSubsystem<TexturePool>()->GetAllTextureFilePaths();
+	vector<string> texturePaths = g_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths();
 	vector<string> materialPaths = g_context->GetSubsystem<MaterialPool>()->GetAllMaterialFilePaths();
 	vector<string> meshPaths = g_context->GetSubsystem<MeshPool>()->GetAllMeshFilePaths();
 
@@ -138,7 +139,7 @@ bool Scene::LoadFromFile(const string& filePath)
 	//===========================================================
 
 	// Load all the used resources into memory
-	g_context->GetSubsystem<TexturePool>()->Add(texturePaths);
+	g_context->GetSubsystem<ResourceCache>()->LoadResources(texturePaths);
 	g_context->GetSubsystem<MaterialPool>()->Add(materialPaths);
 	g_context->GetSubsystem<MeshPool>()->Add(meshPaths);
 	
@@ -183,7 +184,7 @@ void Scene::Clear()
 
 	//= Clear all the pools ==================
 	g_context->GetSubsystem<ShaderPool>()->Clear();
-	g_context->GetSubsystem<TexturePool>()->Clear();
+	g_context->GetSubsystem<ResourceCache>()->Clear();
 	g_context->GetSubsystem<MaterialPool>()->Clear();
 	g_context->GetSubsystem<MeshPool>()->Clear();			
 	GameObjectPool::GetInstance().Clear();

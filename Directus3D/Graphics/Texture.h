@@ -92,7 +92,6 @@ public:
 	//=============================================================================================
 private:
 	std::string m_name;
-	std::string m_filePath;
 	int m_width;
 	int m_height;
 	TextureType m_type;

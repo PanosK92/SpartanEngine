@@ -34,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Socket/Socket.h"
 #include "../Pools/ShaderPool.h"
 #include "../Pools/MaterialPool.h"
-#include "../Pools/TexturePool.h"
 #include "../Audio/Audio.h"
 #include "../Resource/ResourceCache.h"
 //==========================================
@@ -59,7 +58,6 @@ Engine::Engine(Context* context) : Subsystem(context)
 	g_context->RegisterSubsystem(new Graphics(g_context));	
 	g_context->RegisterSubsystem(new PhysicsWorld(g_context));
 	g_context->RegisterSubsystem(new MeshPool(g_context));
-	g_context->RegisterSubsystem(new TexturePool(g_context));
 	g_context->RegisterSubsystem(new Directus::Resource::ResourceCache(g_context));
 }
 

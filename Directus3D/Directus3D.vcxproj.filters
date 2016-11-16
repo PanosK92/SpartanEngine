@@ -147,9 +147,6 @@
     <ClCompile Include="Pools\ShaderPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Pools\TexturePool.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Scripting\Module.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -384,9 +381,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Pools\ShaderPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Pools\TexturePool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Scripting\Module.h">

@@ -39,6 +39,8 @@ public:
 	AudioClip(FMOD::System* fModSystem);
 	~AudioClip();
 
+	bool SaveMetadata();
+
 	bool Load(const std::string& filePath, PlayMode mode);
 	bool Play();
 	bool Pause();

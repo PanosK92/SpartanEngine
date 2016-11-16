@@ -48,6 +48,7 @@ public:
 	~Material();
 
 	//= I/O =======================================================================
+	bool SaveMetadata();
 	bool Save(const std::string& filePath, bool overwrite);
 	bool SaveToExistingDirectory();
 	bool LoadFromFile(const std::string& filePath);
@@ -78,9 +79,6 @@ public:
 	
 	std::string GetModelID() { return m_modelID; }
 	void SetModelID(const std::string& ID) { m_modelID = ID; }
-	
-	std::string GetFilePath() { return m_filePath; }
-	void SetFilePath(const std::string& filepath) { m_filePath = filepath; }
 
 	CullMode GetFaceCullMode() { return m_cullMode; }
 	void SetFaceCullMode(CullMode cullMode) { m_cullMode = cullMode; }
@@ -141,7 +139,6 @@ private:
 
 	std::string m_name;
 	std::string m_modelID;
-	std::string m_filePath;
 	CullMode m_cullMode;
 	float m_opacity;
 	bool m_alphaBlending;

@@ -19,19 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES =========================
 #include "Material.h"
-#include "../Pools/TexturePool.h"
 #include "../IO/Serializer.h"
 #include "../Core/GUIDGenerator.h"
 #include "../Pools/ShaderPool.h"
 #include "../FileSystem/FileSystem.h"
-//================================
+#include "../Resource/ResourceCache.h"
+//====================================
 
-//= NAMESPACES ================
+//= NAMESPACES ====================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Resource;
+//=================================
 
 Material::Material(Context* context)
 {
@@ -65,6 +66,11 @@ Material::~Material()
 }
 
 //= I/O ========================================================================
+bool Material::SaveMetadata()
+{
+	return true;
+}
+
 bool Material::Save(const string& filePath, bool overwrite)
 {
 	m_filePath = filePath + MATERIAL_EXTENSION;
@@ -149,7 +155,7 @@ bool Material::LoadFromFile(const string& filePath)
 
 		// If the texture happens to be loaded, we might as well get a reference to it
 		if (m_context)
-			texture = m_context->GetSubsystem<TexturePool>()->GetTextureByPath(texPath);
+			texture = m_context->GetSubsystem<ResourceCache>()->GetResourceByPath<Texture>(texPath);
 
 		m_textures.insert(make_pair(make_pair(texPath, texType), texture));
 	}
@@ -165,7 +171,7 @@ void Material::LoadUnloadedTextures()
 {
 	for (auto& it : m_textures)
 		if (it.second.expired())
-			it.second = m_context->GetSubsystem<TexturePool>()->Add(it.first.first);
+			it.second = m_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(it.first.first);
 }
 
 //==============================================================================
@@ -197,7 +203,7 @@ void Material::SetTexture(const string& textureID)
 	if (!m_context)
 		return;
 
-	SetTexture(m_context->GetSubsystem<TexturePool>()->GetTextureByID(textureID));
+	SetTexture(m_context->GetSubsystem<ResourceCache>()->GetResourceByID<Texture>(textureID));
 }
 
 // Set texture by loading it from a file
@@ -206,7 +212,7 @@ void Material::SetTexture(const string& filePath, TextureType type)
 	if (!m_context)
 		return;
 
-	auto texture = m_context->GetSubsystem<TexturePool>()->Add(filePath);
+	auto texture = m_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(filePath);
 	if (!texture.expired())
 	{
 		texture.lock()->SetType(type);
