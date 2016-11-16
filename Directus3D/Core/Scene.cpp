@@ -95,17 +95,12 @@ bool Scene::SaveToFile(const string& filePathIn)
 
 	// Any in-memory changes done to resources while running, must be saved...
 	g_context->GetSubsystem<ResourceCache>()->SaveResourceMetadata();
-	g_context->GetSubsystem<MaterialPool>()->SaveMaterialMetadata();
 
 	Serializer::StartWriting(filePath);
 
-	// Gather all the paths of any resource files used by the scene
+	// Save the paths of all the currently loaded resources
 	vector<string> resourcePaths = g_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths();
-	vector<string> materialPaths = g_context->GetSubsystem<MaterialPool>()->GetAllMaterialFilePaths();
-
-	// Save all the paths
 	Serializer::WriteVectorSTR(resourcePaths);
-	Serializer::WriteVectorSTR(materialPaths);
 
 	// Save the GameObjects
 	GameObjectPool::GetInstance().Serialize();
@@ -124,21 +119,13 @@ bool Scene::LoadFromFile(const string& filePath)
 	}
 	Clear();
 
-	// Read all the paths of any resource files used by the scene
-	//===========================================================
+	// Read all the resource file paths
 	Serializer::StartReading(filePath);
-
-	// Gather all the paths of any resource files used by the scene
 	vector<string> resourcePaths = Serializer::ReadVectorSTR();
-	vector<string> materialPaths = Serializer::ReadVectorSTR();
-	vector<string> meshPaths = Serializer::ReadVectorSTR();
-
 	Serializer::StopReading();
-	//===========================================================
 
-	// Load all the used resources into memory
+	// Load all all these resources
 	g_context->GetSubsystem<ResourceCache>()->LoadResources(resourcePaths);
-	g_context->GetSubsystem<MaterialPool>()->Add(materialPaths);
 	
 	// Load all the GameObjects present in the scene
 	//==============================================
@@ -181,8 +168,7 @@ void Scene::Clear()
 
 	//= Clear all the pools ==================
 	g_context->GetSubsystem<ShaderPool>()->Clear();
-	g_context->GetSubsystem<ResourceCache>()->Clear();
-	g_context->GetSubsystem<MaterialPool>()->Clear();		
+	g_context->GetSubsystem<ResourceCache>()->Clear();	
 	GameObjectPool::GetInstance().Clear();
 	//========================================
 

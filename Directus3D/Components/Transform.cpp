@@ -19,13 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ========================
 #include "Transform.h"
 #include "../IO/Serializer.h"
 #include "../Pools/GameObjectPool.h"
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
-//==================================
+#include "../FileSystem/FileSystem.h"
+//===================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -79,7 +80,7 @@ void Transform::Serialize()
 	if (m_parent)
 		Serializer::WriteSTR(m_parent->g_gameObject->GetID());
 	else
-		Serializer::WriteSTR(NULL_GAMEOBJECT_ID);
+		Serializer::WriteSTR(DATA_NOT_ASSIGNED);
 }
 
 void Transform::Deserialize()
@@ -91,7 +92,7 @@ void Transform::Deserialize()
 
 	// get parent transform
 	string parentGameObjectID = Serializer::ReadSTR();
-	if (parentGameObjectID != NULL_GAMEOBJECT_ID)
+	if (parentGameObjectID != DATA_NOT_ASSIGNED)
 	{
 		GameObject* parent = GameObjectPool::GetInstance().GetGameObjectByID(parentGameObjectID);
 		if (parent)

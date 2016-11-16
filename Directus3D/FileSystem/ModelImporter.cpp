@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES ============================
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshFilter.h"
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"
-#include "../Pools/MaterialPool.h"
 #include "../Multithreading/ThreadPool.h"
 #include "../Pools/ShaderPool.h"
 #include "../Resource/ResourceCache.h"
@@ -268,7 +267,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		aiMaterial* assimpMaterial = scene->mMaterials[mesh->mMaterialIndex];
 
 		// Convert AiMaterial to Material and add it to the pool
-		auto material = g_context->GetSubsystem<MaterialPool>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
+		auto material = g_context->GetSubsystem<ResourceCache>()->AddResource(GenerateMaterialFromAiMaterial(assimpMaterial));
 
 		// Set it in the mesh renderer component
 		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);

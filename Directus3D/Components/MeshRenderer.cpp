@@ -25,16 +25,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Logging/Log.h"
 #include "../Core/GameObject.h"
-#include "../Pools/MaterialPool.h"
 #include "../Graphics/Shaders/ShaderVariation.h"
 #include "../Graphics/Mesh.h"
 #include "../FileSystem/FileSystem.h"
+#include "../Resource/ResourceCache.h"
 //==============================================
 
-//= NAMESPACES ================
+//= NAMESPACES ====================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Resource;
+//=================================
 
 MeshRenderer::MeshRenderer()
 {
@@ -50,7 +51,7 @@ MeshRenderer::~MeshRenderer()
 //= ICOMPONENT ===============================================================
 void MeshRenderer::Awake()
 {
-	m_material = g_context->GetSubsystem<MaterialPool>()->GetMaterialStandardDefault();
+	m_material = g_context->GetSubsystem<ResourceCache>()->GetMaterialStandardDefault();
 }
 
 void MeshRenderer::Start()
@@ -77,7 +78,7 @@ void MeshRenderer::Serialize()
 
 void MeshRenderer::Deserialize()
 {
-	m_material = g_context->GetSubsystem<MaterialPool>()->GetMaterialByID(Serializer::ReadSTR());
+	m_material = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Material>(Serializer::ReadSTR());
 	m_castShadows = Serializer::ReadBool();
 	m_receiveShadows = Serializer::ReadBool();
 }
@@ -136,12 +137,12 @@ weak_ptr<Material> MeshRenderer::GetMaterial() const
 
 void MeshRenderer::SetMaterial(weak_ptr<Material> material)
 {
-	m_material = g_context->GetSubsystem<MaterialPool>()->Add(material);
+	m_material = g_context->GetSubsystem<ResourceCache>()->AddResource(material.lock());
 }
 
 weak_ptr<Material> MeshRenderer::SetMaterial(const string& filePath)
 {
-	m_material = g_context->GetSubsystem<MaterialPool>()->Add(filePath);
+	m_material = g_context->GetSubsystem<ResourceCache>()->LoadResource<Material>(filePath);
 	return m_material;
 }
 

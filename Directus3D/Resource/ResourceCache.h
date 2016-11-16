@@ -30,8 +30,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Texture.h"
 #include "../Core/Context.h"
 #include "../Graphics/Mesh.h"
-
+#include "../Graphics/Material.h"
 //===================================
+
+//= TEMPORARY =================================================
+#define MATERIAL_DEFAULT_ID "MATERIAL_DEFAULT_ID"
+#define MATERIAL_DEFAULT_SKYBOX_ID "MATERIAL_DEFAULT_SKYBOX_ID"
+//=============================================================
 
 namespace Directus
 {
@@ -58,11 +63,16 @@ namespace Directus
 				// Check if the resource already exists
 				for (auto const& resource : m_resources)
 				{
+					// Check
 					if (resource->GetID() == resource->GetID())
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
+					// Double check
 					if (resource->GetFilePath() == resource->GetFilePath())
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
+
+					// Note: The material can very well be a material with a different ID but basically
+					// the same material because it comes from the same model. This is not caught here.
 				}
 
 				m_resources.push_back(resourceIn);
@@ -78,13 +88,21 @@ namespace Directus
 					if (resource->GetFilePath() == filePath)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
-				std::shared_ptr<T> resource;
 				// Texture
 				if (FileSystem::IsSupportedImageFile(filePath))
 				{
-					resource = std::make_shared<Texture>();
-					resource->LoadFromFile(filePath, g_context->GetSubsystem<Graphics>());
-					m_resources.push_back(resource);
+					auto texture = std::make_shared<Texture>();
+					texture->LoadFromFile(filePath, g_context->GetSubsystem<Graphics>());
+					m_resources.push_back(texture);
+					return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
+				}
+				// Material
+				if (FileSystem::IsMaterialFile(filePath))
+				{
+					auto material = std::make_shared<Material>(g_context);
+					material->LoadFromFile(filePath);
+					material->LoadUnloadedTextures();
+					m_resources.push_back(material);
 					return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
 				}
 				
@@ -109,8 +127,19 @@ namespace Directus
 			std::weak_ptr<T> GetResourceByID(const std::string& ID)
 			{
 				for (auto const& resource : m_resources)
+				{
+
+					//= TEMPORARY CANCEROUS CHECKS ======
+					if (ID == MATERIAL_DEFAULT_ID)
+						std::weak_ptr<T>(dynamic_pointer_cast<T>(m_materialDefault));
+
+					if (ID == MATERIAL_DEFAULT_SKYBOX_ID)
+						std::weak_ptr<T>(dynamic_pointer_cast<T>(m_materialDefaultSkybox));
+					//===================================
+
 					if (resource->GetID() == ID)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
+				}
 
 				return std::weak_ptr<T>();
 			}
@@ -147,6 +176,8 @@ namespace Directus
 			//= TEMPORARY =======================
 			std::weak_ptr<Mesh> GetDefaultCube();
 			std::weak_ptr<Mesh> GetDefaultQuad();
+			std::weak_ptr<Material> GetMaterialStandardDefault();
+			std::weak_ptr<Material> GetMaterialStandardSkybox();
 			void NormalizeModelScale(GameObject* rootGameObject);
 			//===================================
 
@@ -165,6 +196,13 @@ namespace Directus
 			float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
 			void SetModelScale(const std::string& rootGameObjectID, float scale);
 			static std::weak_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::weak_ptr<Mesh>>& meshes);
+			//===============================================================================================
+
+			//= MATERIAL POOL ===============================================================================
+			void GenerateDefaultMaterials();
+			std::vector<std::shared_ptr<Material>> m_materials;
+			std::shared_ptr<Material> m_materialDefault;
+			std::shared_ptr<Material> m_materialDefaultSkybox;
 			//===============================================================================================
 			//=============================================================================================================
 		};

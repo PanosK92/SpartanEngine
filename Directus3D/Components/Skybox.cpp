@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //#pragma comment(lib, "WindowsApp.lib")
 //====================================
 
-//= INCLUDES =============================
+//= INCLUDES ================================
 #include "Skybox.h"
 #include "../FileSystem/DDSTextureImporter.h"
 #include "Transform.h"
@@ -33,16 +33,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Graphics/Texture.h"
 #include "../Math/Vector3.h"
-#include "../Pools/MaterialPool.h"
 #include "../Core/Scene.h"
 #include "../Logging/Log.h"
-//========================================
+#include "../Resource/ResourceCache.h"
+//===========================================
 
-//= NAMESPACES ================
+//= NAMESPACES ====================
 using namespace DirectX;
 using namespace Directus::Math;
 using namespace std;
-//=============================
+using namespace Directus::Resource;
+//=================================
 Skybox::Skybox()
 {
 	m_cubeMapTexture = nullptr;
@@ -78,7 +79,7 @@ void Skybox::Awake()
 	auto meshRenderer = g_gameObject->AddComponent<MeshRenderer>();
 	meshRenderer->SetCastShadows(false);
 	meshRenderer->SetReceiveShadows(false);
-	meshRenderer->SetMaterial(g_context->GetSubsystem<MaterialPool>()->GetMaterialStandardSkybox());
+	meshRenderer->SetMaterial(g_context->GetSubsystem<ResourceCache>()->GetMaterialStandardSkybox());
 	meshRenderer->GetMaterial().lock()->SetTexture(m_cubeMapTexture);
 
 	g_transform->SetScale(Vector3(1000, 1000, 1000));

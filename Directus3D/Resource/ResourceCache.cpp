@@ -37,7 +37,10 @@ using namespace Directus::Resource;
 
 ResourceCache::ResourceCache(Context* context) : Subsystem(context)
 {
+	//= TEMPORARY =============
 	GenerateDefaultMeshes();
+	GenerateDefaultMaterials();
+	//=========================
 }
 
 ResourceCache::~ResourceCache()
@@ -49,6 +52,11 @@ void ResourceCache::Clear()
 {
 	m_resources.clear();
 	m_resources.shrink_to_fit();
+
+	//= TEMPORARY =============
+	GenerateDefaultMeshes();
+	GenerateDefaultMaterials();
+	//=========================
 }
 
 void ResourceCache::LoadResources(const vector<string>& filePaths)
@@ -72,6 +80,16 @@ weak_ptr<Mesh> ResourceCache::GetDefaultCube()
 weak_ptr<Mesh> ResourceCache::GetDefaultQuad()
 {
 	return m_defaultQuad;
+}
+
+weak_ptr<Material> ResourceCache::GetMaterialStandardDefault()
+{
+	return m_materialDefault;
+}
+
+weak_ptr<Material> ResourceCache::GetMaterialStandardSkybox()
+{
+	return m_materialDefaultSkybox;
 }
 
 void ResourceCache::GenerateDefaultMeshes()
@@ -282,4 +300,32 @@ weak_ptr<Mesh> ResourceCache::GetLargestBoundingBox(const vector<weak_ptr<Mesh>>
 	}
 
 	return largestBoundingBoxMesh;
+}
+
+void ResourceCache::GenerateDefaultMaterials()
+{
+	m_materialDefault.reset();
+	m_materialDefaultSkybox.reset();
+
+	if (!m_materialDefault)
+	{
+		m_materialDefault = make_shared<Material>(g_context);
+		m_materialDefault->SetID(MATERIAL_DEFAULT_ID);
+		m_materialDefault->SetName("Default");
+		m_materialDefault->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+		m_materialDefault->SetIsEditable(false);
+	}
+
+	if (!m_materialDefaultSkybox)
+	{
+		m_materialDefaultSkybox = make_shared<Material>(g_context);
+		m_materialDefaultSkybox->SetID(MATERIAL_DEFAULT_SKYBOX_ID);
+		m_materialDefaultSkybox->SetName("Default_Skybox");
+		m_materialDefaultSkybox->SetFaceCullMode(CullNone);
+		m_materialDefaultSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+		m_materialDefaultSkybox->SetIsEditable(false);
+	}
+
+	AddResource(m_materialDefault);
+	AddResource(m_materialDefaultSkybox);
 }
