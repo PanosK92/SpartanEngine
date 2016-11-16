@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Transform.h"
 #include "../IO/Serializer.h"
-#include "../Pools/GameObjectPool.h"
+#include "../Core/GameObjectPool.h"
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"

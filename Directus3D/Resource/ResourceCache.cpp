@@ -19,10 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ===================================
 #include "ResourceCache.h"
 #include "../Core/GameObject.h"
-//=============================
+#include "../Graphics/Shaders/ShaderVariation.h"
+//==============================================
 
 //= NAMESPACES ====================
 using namespace std;
@@ -72,6 +73,65 @@ void ResourceCache::SaveResourceMetadata()
 }
 
 //= TEMPORARY ===============================================================
+weak_ptr<ShaderVariation> ResourceCache::CreateShaderBasedOnMaterial(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
+{
+	// If an appropriate shader already exists, return it's ID
+	auto existingShader = FindMatchingShader(
+		albedo,
+		roughness,
+		metallic,
+		normal,
+		height,
+		occlusion,
+		emission,
+		mask,
+		cubemap
+	);
+
+	if (!existingShader.expired())
+		return existingShader;
+
+	// If not, create a new one
+	auto shader = make_shared<ShaderVariation>();
+	shader->Initialize(
+		albedo,
+		roughness,
+		metallic,
+		normal,
+		height,
+		occlusion,
+		emission,
+		mask,
+		cubemap,
+		g_context->GetSubsystem<Graphics>()
+	);
+
+	// Add the shader to the pool and return it
+	return AddResource(shader);
+}
+
+weak_ptr<ShaderVariation> ResourceCache::FindMatchingShader(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
+{
+	auto shaders = GetResourcesOfType<ShaderVariation>();
+	for (const auto shaderTemp : shaders)
+	{
+		auto shader = shaderTemp.lock();
+		if (shader->HasAlbedoTexture() != albedo) continue;
+		if (shader->HasRoughnessTexture() != roughness) continue;
+		if (shader->HasMetallicTexture() != metallic) continue;
+		if (shader->HasNormalTexture() != normal) continue;
+		if (shader->HasHeightTexture() != height) continue;
+		if (shader->HasOcclusionTexture() != occlusion) continue;
+		if (shader->HasEmissionTexture() != emission) continue;
+		if (shader->HasMaskTexture() != mask) continue;
+		if (shader->HasCubeMapTexture() != cubemap) continue;
+
+		return shader;
+	}
+
+	return weak_ptr<ShaderVariation>();
+}
+
 weak_ptr<Mesh> ResourceCache::GetDefaultCube()
 {
 	return m_defaultCube;

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Hinge.h"
 #include "RigidBody.h"
 #include "../IO/Serializer.h"
-#include "../Pools/GameObjectPool.h"
+#include "../Core/GameObjectPool.h"
 #include "../Core/GameObject.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../Physics/BulletPhysicsHelper.h"
