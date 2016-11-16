@@ -33,15 +33,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"
 #include "../Pools/MaterialPool.h"
-#include "../Pools/MeshPool.h"
 #include "../Multithreading/ThreadPool.h"
 #include "../Pools/ShaderPool.h"
+#include "../Resource/ResourceCache.h"
 //=======================================
 
-//= NAMESPACES ================
+//= NAMESPACES ====================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Resource;
+//=================================
 
 // default pp steps
 static auto ppsteps =
@@ -112,8 +113,7 @@ bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
 	ProcessNode(scene->mRootNode, scene, gameObject);
 
 	// Normalize the scale of the model
-	MeshPool* meshPool = g_context->GetSubsystem<MeshPool>();
-	meshPool->NormalizeModelScale(m_rootGameObject);
+	g_context->GetSubsystem<ResourceCache>()->NormalizeModelScale(m_rootGameObject);
 
 	return true;
 }

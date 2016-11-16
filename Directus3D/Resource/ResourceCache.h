@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileSystem/FileSystem.h"
 #include "../Graphics/Texture.h"
 #include "../Core/Context.h"
+#include "../Graphics/Mesh.h"
+
 //===================================
 
 namespace Directus
@@ -47,10 +49,24 @@ namespace Directus
 			~ResourceCache();
 
 			// Releases all the resources
-			void Clear()
+			void Clear();
+
+			// Adds a resource to the pool
+			template <class T>
+			std::weak_ptr<T> AddResource(std::shared_ptr<T> resourceIn)
 			{
-				m_resources.clear();
-				m_resources.shrink_to_fit();
+				// Check if the resource already exists
+				for (auto const& resource : m_resources)
+				{
+					if (resource->GetID() == resource->GetID())
+						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
+
+					if (resource->GetFilePath() == resource->GetFilePath())
+						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
+				}
+
+				m_resources.push_back(resourceIn);
+				return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
 			}
 
 			// Loads a resource given the file path
@@ -75,12 +91,8 @@ namespace Directus
 				return std::weak_ptr<T>();
 			}
 
-			// Loads resources given the file paths from a vector
-			void LoadResources(const std::vector<std::string>& filePaths)
-			{
-				for (const auto& filePath : filePaths)
-					LoadResource<Texture>(filePath);
-			}
+			// Loads resources given the file paths from a vector;
+			void LoadResources(const std::vector<std::string>& filePaths);
 
 			// Returns the file paths of all the resources
 			std::vector<std::string> GetResourceFilePaths()
@@ -114,14 +126,47 @@ namespace Directus
 				return std::weak_ptr<T>();
 			}
 
-			void SaveResourceMetadata()
+			// Returns a vector of a specific type of resources
+			template <class T>
+			std::vector<std::weak_ptr<T>> GetResourcesOfType()
 			{
-				for (auto const& resource : m_resources)
-					resource->SaveMetadata();
+				std::vector<std::weak_ptr<T>> typedResources;
+				for (const auto& resource : m_resources)
+				{
+					auto typeResource = std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
+
+					if (!typeResource.expired())
+						typedResources.push_back(typeResource);
+				}
+				return typedResources;
 			}
+
+			// Makes the resources save their metadata
+			void SaveResourceMetadata();
+
+			//= TEMPORARY =======================
+			std::weak_ptr<Mesh> GetDefaultCube();
+			std::weak_ptr<Mesh> GetDefaultQuad();
+			void NormalizeModelScale(GameObject* rootGameObject);
+			//===================================
 
 		private:
 			std::vector<std::shared_ptr<IResource>> m_resources;
+
+			//= TEMPORARY =================================================================================================
+			void GenerateDefaultMeshes();
+			void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
+			void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
+			std::shared_ptr<Mesh> m_defaultCube;
+			std::shared_ptr<Mesh> m_defaultQuad;
+
+			//= MESH PROCESSING =============================================================================
+			std::vector<std::weak_ptr<Mesh>> GetModelMeshesByModelName(const std::string& rootGameObjectID);
+			float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
+			void SetModelScale(const std::string& rootGameObjectID, float scale);
+			static std::weak_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::weak_ptr<Mesh>>& meshes);
+			//===============================================================================================
+			//=============================================================================================================
 		};
 	}
 }

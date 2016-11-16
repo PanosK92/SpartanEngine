@@ -31,14 +31,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
 #include "../Physics/BulletPhysicsHelper.h"
-#include "../Pools/MeshPool.h"
 #include "../FileSystem/FileSystem.h"
+#include "../Resource/ResourceCache.h"
 //====================================================================
 
-//= NAMESPACES ================
+//= NAMESPACES ====================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Resource;
+//=================================
 
 MeshCollider::MeshCollider()
 {
@@ -82,7 +83,7 @@ void MeshCollider::Serialize()
 void MeshCollider::Deserialize()
 {
 	m_convex = Serializer::ReadBool();
-	m_mesh = g_context->GetSubsystem<MeshPool>()->GetMeshByID(Serializer::ReadSTR());
+	m_mesh = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
 
 	Build();
 }

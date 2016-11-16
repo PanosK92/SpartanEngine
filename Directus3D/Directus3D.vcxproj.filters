@@ -141,9 +141,6 @@
     <ClCompile Include="Pools\MaterialPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Pools\MeshPool.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Pools\ShaderPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -375,9 +372,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Pools\MaterialPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Pools\MeshPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Pools\ShaderPool.h">
