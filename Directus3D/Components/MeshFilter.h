@@ -51,7 +51,8 @@ public:
 	bool SetBuffers() const;
 	Directus::Math::Vector3 GetCenter() const;
 	Directus::Math::Vector3 GetBoundingBox() const;
-	std::weak_ptr<Mesh> GetMesh() const;
+	std::weak_ptr<Mesh> GetMesh();
+	bool HasMesh();
 	std::string GetMeshName();
 
 private:

@@ -73,7 +73,10 @@ void MeshFilter::Serialize()
 
 void MeshFilter::Deserialize()
 {
+	// Try to get the mesh
 	m_mesh = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
+
+	// Create mesh buffers
 	CreateBuffers();
 }
 
@@ -110,7 +113,8 @@ void MeshFilter::Set(const string& name, const string& rootGameObjectID, const v
 	m_mesh = g_context->GetSubsystem<ResourceCache>()->AddResource(tempMesh);
 
 	// Make the mesh re-create the buffers whenever it updates.
-	m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
+	if (!m_mesh.expired())
+		m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
 }
 
 // Set the buffers to active in the input assembler so they can be rendered.
@@ -147,9 +151,14 @@ Vector3 MeshFilter::GetBoundingBox() const
 	return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() * g_transform->GetTransformMatrix() : Vector3::One;
 }
 
-weak_ptr<Mesh> MeshFilter::GetMesh() const
+weak_ptr<Mesh> MeshFilter::GetMesh()
 {
 	return m_mesh;
+}
+
+bool MeshFilter::HasMesh()
+{
+	return m_mesh.expired() ? false : true;
 }
 
 string MeshFilter::GetMeshName()

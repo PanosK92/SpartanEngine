@@ -128,9 +128,6 @@
     <ClCompile Include="DirectusStatsLabel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DirectusTexture.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DirectusTransform.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -313,9 +310,6 @@
       <Filter>Generated Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Binaries\MOCFiles\moc_DirectusStatsLabel.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Binaries\MOCFiles\moc_DirectusTexture.cpp">
       <Filter>Generated Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Binaries\MOCFiles\moc_DirectusTransform.cpp">

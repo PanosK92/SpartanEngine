@@ -152,8 +152,8 @@ void GameObject::Serialize()
 	//===========================================
 
 	//= CHILDREN GAMEOBJECTS ====================
-	//auto children = m_transform->GetChildrenAsGameObjects();
-	//Serializer::WriteVectorGameObject(children);
+	auto children = m_transform->GetChildrenAsGameObjects();
+	Serializer::WriteVectorGameObject(children);
 	//===========================================
 }
 
@@ -182,8 +182,8 @@ void GameObject::Deserialize()
 		component.second->Deserialize();
 
 	//= CHILDREN GAMEOBJECTS =======================
-	//auto children = Serializer::ReadVectorGameObject();
-	//GetTransform()->ResolveChildrenRecursively();
+	auto children = Serializer::ReadVectorGameObject();
+	GetTransform()->ResolveChildrenRecursively();
 	//==============================================
 }
 

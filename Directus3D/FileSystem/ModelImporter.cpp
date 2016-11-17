@@ -62,6 +62,7 @@ aiProcess_Debone |
 aiProcess_ConvertToLeftHanded;
 
 static int smoothAngle = 80;
+vector<string> materialNames;
 
 ModelImporter::ModelImporter(Context* context) : Subsystem(context)
 {
@@ -258,7 +259,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 
 	// No need to save the mesh as a file here, when the model importer performs a scale normalization on the entire model
 	// this will cause the mesh to update and save itself, thus I only pass the directory to do so.
-	meshComp->GetMesh().lock()->SetDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
+	if (meshComp->HasMesh()) meshComp->GetMesh().lock()->SetDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
 
 	// process materials
 	if (scene->HasMaterials())
@@ -273,7 +274,8 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);
 
 		// Save the material in our custom format
-		material.lock()->Save("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/" + material.lock()->GetName(), false);
+		if (!material.expired())
+			material.lock()->Save("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/" + material.lock()->GetName(), false);
 	}
 
 	// free memory

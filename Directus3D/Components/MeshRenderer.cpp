@@ -150,4 +150,9 @@ bool MeshRenderer::HasMaterial() const
 {
 	return GetMaterial().expired() ? false : true;
 }
+
+string MeshRenderer::GetMaterialName()
+{
+	return !GetMaterial().expired() ? GetMaterial().lock()->GetName() : DATA_NOT_ASSIGNED;
+}
 //==============================================================================
