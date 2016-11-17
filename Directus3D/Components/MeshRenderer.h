@@ -54,13 +54,11 @@ public:
 	//= MATERIAL ===============================
 	std::weak_ptr<Material> GetMaterial() const;
 	void SetMaterial(std::weak_ptr<Material> material);
-	std::weak_ptr<Material> SetMaterial(const std::string& filePath);
-	
+	std::weak_ptr<Material> SetMaterial(const std::string& filePath);	
 	bool HasMaterial() const;
+	std::string GetMaterialName();
 
 private:
-	void LoadMaterialTextures();
-
 	std::weak_ptr<Material> m_material;
 	bool m_castShadows;
 	bool m_receiveShadows;

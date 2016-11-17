@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Graphics/Mesh.h"
 #include "../Graphics/Material.h"
+#include "../Logging/Log.h"
 //===================================
 
 //= TEMPORARY =================================================
@@ -64,18 +65,8 @@ namespace Directus
 			{
 				// Check if the resource already exists
 				for (auto const& resource : m_resources)
-				{
-					// Check
-					if (resource->GetID() == resource->GetID())
+					if (resource->GetID() == resourceIn->GetID())
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
-
-					// Double check
-					if (resource->GetFilePath() == resource->GetFilePath())
-						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
-
-					// Note: The material can very well be a material with a different ID but basically
-					// the same material because it comes from the same model. This is not caught here.
-				}
 
 				m_resources.push_back(resourceIn);
 				return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
@@ -107,6 +98,14 @@ namespace Directus
 					m_resources.push_back(material);
 					return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
 				}
+				// Mesh
+				if (FileSystem::IsSupportedMeshFile(filePath))
+				{
+					auto mesh = std::make_shared<Mesh>();
+					mesh->LoadFromFile(filePath);
+					m_resources.push_back(mesh);
+					return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
+				}
 				
 				return std::weak_ptr<T>();
 			}
@@ -130,7 +129,6 @@ namespace Directus
 			{
 				for (auto const& resource : m_resources)
 				{
-
 					//= TEMPORARY CANCEROUS CHECKS ======
 					if (ID == MATERIAL_DEFAULT_ID)
 						std::weak_ptr<T>(dynamic_pointer_cast<T>(m_materialDefault));
@@ -164,10 +162,10 @@ namespace Directus
 				std::vector<std::weak_ptr<T>> typedResources;
 				for (const auto& resource : m_resources)
 				{
-					auto typeResource = std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
+					auto typedResource = std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
-					if (!typeResource.expired())
-						typedResources.push_back(typeResource);
+					if (!typedResource.expired())
+						typedResources.push_back(typedResource);
 				}
 				return typedResources;
 			}

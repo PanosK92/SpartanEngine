@@ -91,7 +91,7 @@ bool Scene::SaveToFile(const string& filePathIn)
 	if (FileSystem::GetExtensionFromPath(filePath) != SCENE_EXTENSION)
 		filePath += SCENE_EXTENSION;
 
-	// Any in-memory changes done to resources while running, must be saved...
+	// Save any in-memory changes done to resources while running.
 	g_context->GetSubsystem<ResourceCache>()->SaveResourceMetadata();
 
 	Serializer::StartWriting(filePath);
@@ -132,8 +132,6 @@ bool Scene::LoadFromFile(const string& filePath)
 	// We read our way to the point where GameObject data starts.
 	// There might be a more elegant solution here, but the 
 	// brute force approach should do too.
-	Serializer::ReadVectorSTR();
-	Serializer::ReadVectorSTR();
 	Serializer::ReadVectorSTR();
 
 	// Load the GameObjects

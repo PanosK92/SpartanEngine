@@ -164,7 +164,6 @@
     <ClCompile Include="DirectusRigidBody.cpp" />
     <ClCompile Include="DirectusScript.cpp" />
     <ClCompile Include="DirectusStatsLabel.cpp" />
-    <ClCompile Include="DirectusTexture.cpp" />
     <ClCompile Include="DirectusTransform.cpp" />
     <ClCompile Include="editor.cpp" />
     <ClCompile Include="main.cpp" />
@@ -432,16 +431,6 @@
       <Message Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Debug|x64&apos;">MOC DirectusStatsLabel.h</Message>
       <Outputs Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Debug|x64&apos;">C:\Users\Panos\Desktop\Binaries\MOCFiles\moc_DirectusStatsLabel.cpp;%(Outputs)</Outputs>
     </CustomBuild>
-    <CustomBuild Include="DirectusTexture.h">
-      <AdditionalInputs Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Release|x64&apos;">DirectusTexture.h;C:\Qt\Qt5.7.0\5.7\msvc2015_64\bin\moc.exe;%(AdditionalInputs)</AdditionalInputs>
-      <Command Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Release|x64&apos;">C:\Qt\Qt5.7.0\5.7\msvc2015_64\bin\moc.exe  -DUNICODE -DWIN32 -DWIN64 -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtGui -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtCore DirectusTexture.h -o C:\Users\Panos\Desktop\Binaries\MOCFiles\moc_DirectusTexture.cpp</Command>
-      <Message Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Release|x64&apos;">MOC DirectusTexture.h</Message>
-      <Outputs Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Release|x64&apos;">C:\Users\Panos\Desktop\Binaries\MOCFiles\moc_DirectusTexture.cpp;%(Outputs)</Outputs>
-      <AdditionalInputs Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Debug|x64&apos;">DirectusTexture.h;C:\Qt\Qt5.7.0\5.7\msvc2015_64\bin\moc.exe;%(AdditionalInputs)</AdditionalInputs>
-      <Command Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Debug|x64&apos;">C:\Qt\Qt5.7.0\5.7\msvc2015_64\bin\moc.exe  -DUNICODE -DWIN32 -DWIN64 -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtGui -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtCore DirectusTexture.h -o C:\Users\Panos\Desktop\Binaries\MOCFiles\moc_DirectusTexture.cpp</Command>
-      <Message Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Debug|x64&apos;">MOC DirectusTexture.h</Message>
-      <Outputs Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Debug|x64&apos;">C:\Users\Panos\Desktop\Binaries\MOCFiles\moc_DirectusTexture.cpp;%(Outputs)</Outputs>
-    </CustomBuild>
     <CustomBuild Include="DirectusTransform.h">
       <AdditionalInputs Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Release|x64&apos;">DirectusTransform.h;C:\Qt\Qt5.7.0\5.7\msvc2015_64\bin\moc.exe;%(AdditionalInputs)</AdditionalInputs>
       <Command Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Release|x64&apos;">C:\Qt\Qt5.7.0\5.7\msvc2015_64\bin\moc.exe  -DUNICODE -DWIN32 -DWIN64 -DQT_NO_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_CORE_LIB -D_MSC_VER=1900 -D_WIN32 -D_WIN64 -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/mkspecs/win32-msvc2015 -IC:/Users/Panos/Desktop/Directus3D/Editor -IC:/Users/Panos/Desktop/Directus3D/Directus3D -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtWidgets -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtGui -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtANGLE -IC:/Qt/Qt5.7.0/5.7/msvc2015_64/include/QtCore DirectusTransform.h -o C:\Users\Panos\Desktop\Binaries\MOCFiles\moc_DirectusTransform.cpp</Command>
@@ -490,7 +479,6 @@
     <ClCompile Include="..\..\Binaries\MOCFiles\moc_DirectusRigidBody.cpp" />
     <ClCompile Include="..\..\Binaries\MOCFiles\moc_DirectusScript.cpp" />
     <ClCompile Include="..\..\Binaries\MOCFiles\moc_DirectusStatsLabel.cpp" />
-    <ClCompile Include="..\..\Binaries\MOCFiles\moc_DirectusTexture.cpp" />
     <ClCompile Include="..\..\Binaries\MOCFiles\moc_DirectusTransform.cpp" />
     <ClCompile Include="..\..\Binaries\MOCFiles\moc_editor.cpp" />
     <ClCompile Include="..\..\Binaries\RCCFiles\qrc_images.cpp" />

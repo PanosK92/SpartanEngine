@@ -38,7 +38,7 @@ using namespace Directus::Resource;
 
 ResourceCache::ResourceCache(Context* context) : Subsystem(context)
 {
-	
+
 }
 
 ResourceCache::~ResourceCache()
@@ -81,35 +81,14 @@ void ResourceCache::SaveResourceMetadata()
 weak_ptr<ShaderVariation> ResourceCache::CreateShaderBasedOnMaterial(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
 {
 	// If an appropriate shader already exists, return it's ID
-	auto existingShader = FindMatchingShader(
-		albedo,
-		roughness,
-		metallic,
-		normal,
-		height,
-		occlusion,
-		emission,
-		mask,
-		cubemap
-	);
+	auto existingShader = FindMatchingShader(albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap);
 
 	if (!existingShader.expired())
 		return existingShader;
 
 	// If not, create a new one
 	auto shader = make_shared<ShaderVariation>();
-	shader->Initialize(
-		albedo,
-		roughness,
-		metallic,
-		normal,
-		height,
-		occlusion,
-		emission,
-		mask,
-		cubemap,
-		g_context->GetSubsystem<Graphics>()
-	);
+	shader->Initialize(albedo,roughness,metallic,normal,height,occlusion,emission,mask,cubemap,g_context->GetSubsystem<Graphics>());
 
 	// Add the shader to the pool and return it
 	return AddResource(shader);
@@ -196,37 +175,37 @@ void ResourceCache::CreateCube(vector<VertexPositionTextureNormalTangent>& verti
 	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 2
 	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 3
 
-																											// bottom
+	// bottom
 	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 4
 	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 5
 	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 6
 	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 7
 
-																											 // back
+	// back
 	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 8
 	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 9
 	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 10
 	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 11
 
-																										  // top
+	// top
 	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 12
 	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 13
 	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 14
 	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 15
 
-																										   // left
+	// left
 	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 16
 	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 17
 	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 18
 	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 19
 
-																											 // right
+	// right
 	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 20
 	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 21
 	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 22
 	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 23
 
-																										   // front
+	// front
 	indices.push_back(0);
 	indices.push_back(1);
 	indices.push_back(2);
@@ -291,7 +270,7 @@ void ResourceCache::CreateQuad(vector<VertexPositionTextureNormalTangent>& verti
 }
 
 /*------------------------------------------------------------------------------
-[MESH PROCESSING]
+						[MESH PROCESSING]
 ------------------------------------------------------------------------------*/
 // Returns the meshes tha belong to the same model
 vector<weak_ptr<Mesh>> ResourceCache::GetModelMeshesByModelName(const string& rootGameObjectID)

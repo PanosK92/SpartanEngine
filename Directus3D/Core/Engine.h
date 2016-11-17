@@ -49,11 +49,5 @@ public:
 	void Shutdown();
 
 private:
-	Timer* m_timer;
-	Input* m_input;
-	Audio* m_audio;
-	PhysicsWorld* m_physicsWorld;
-	Scene* m_scene;
-	Renderer* m_renderer;
 	bool m_isSimulating;
 };

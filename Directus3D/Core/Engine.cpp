@@ -41,7 +41,7 @@ using namespace std;
 using namespace Directus::Resource;
 //=================================
 
-Engine::Engine(Context* context) : Subsystem(context) 
+Engine::Engine(Context* context) : Subsystem(context)
 {
 	// Register self as a subsystem
 	g_context->RegisterSubsystem(this);
@@ -54,19 +54,19 @@ Engine::Engine(Context* context) : Subsystem(context)
 	g_context->RegisterSubsystem(new Input(g_context));
 	g_context->RegisterSubsystem(new Audio(g_context));
 	g_context->RegisterSubsystem(new ThreadPool(g_context));
-	g_context->RegisterSubsystem(new Graphics(g_context));	
+	g_context->RegisterSubsystem(new Graphics(g_context));
 	g_context->RegisterSubsystem(new PhysicsWorld(g_context));
 	g_context->RegisterSubsystem(new ResourceCache(g_context));
 }
 
 Engine::~Engine()
 {
-
+	Shutdown();
 }
 
 void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
 {
-	// Initialize any subsystems that require initialization
+	// Initialize any subsystems that require it
 	g_context->GetSubsystem<Audio>()->Initialize();
 	g_context->GetSubsystem<Input>()->Initialize(instance, windowHandle);
 	g_context->GetSubsystem<Graphics>()->Initialize(drawPaneHandle);
@@ -74,7 +74,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 
 	// Register subsystems which depend on registered subsystems
 	g_context->RegisterSubsystem(new ScriptEngine(g_context));
-	g_context->RegisterSubsystem(new ModelImporter(g_context)); 
+	g_context->RegisterSubsystem(new ModelImporter(g_context));
 	g_context->RegisterSubsystem(new Renderer(g_context));
 	g_context->RegisterSubsystem(new Scene(g_context));
 	g_context->RegisterSubsystem(new Socket(g_context));
@@ -82,23 +82,15 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	// Finally, initialize the scene (add a camera, a skybox and so on)
 	g_context->GetSubsystem<Scene>()->Initialize();
 	g_context->GetSubsystem<Socket>()->Initialize();
-
-	// Get frequently used subsystems
-	m_timer = g_context->GetSubsystem<Timer>();
-	m_input = g_context->GetSubsystem<Input>();
-	m_audio = g_context->GetSubsystem<Audio>();
-	m_physicsWorld = g_context->GetSubsystem<PhysicsWorld>();
-	m_scene = g_context->GetSubsystem<Scene>();
-	m_renderer = g_context->GetSubsystem<Renderer>();
 }
 
 void Engine::Update()
 {
+	// This is a full simulation loop
 	m_isSimulating = true;
 
-	//= TIMER ========
-	m_timer->Update();
-	//================
+	// TIMER UPDATE
+	g_context->GetSubsystem<Timer>()->Update();
 
 	// LOGIC UPDATE
 	FIRE_EVENT(UPDATE);
@@ -109,13 +101,14 @@ void Engine::Update()
 
 void Engine::LightUpdate()
 {
+	// This is a minimal simulation loop (editor)
 	m_isSimulating = false;
 
 	// Manually update as few subsystems as possible
 	// This is used by the inspector when not in game mode.
-	m_input->Update();
-	m_scene->Resolve();
-	m_renderer->Render();
+	g_context->GetSubsystem<Input>()->Update();
+	g_context->GetSubsystem<Scene>()->Resolve();
+	g_context->GetSubsystem<Renderer>()->Render();
 }
 
 Context* Engine::GetContext()
@@ -127,7 +120,8 @@ void Engine::Shutdown()
 {
 	// The context will deallocate the subsystems
 	// in the reverse order in which they were registered.
-	delete g_context;
+	if (g_context)
+		delete g_context;
 
 	// Release singletons
 	Log::Release();

@@ -85,6 +85,7 @@ public:
 	static bool IsSupportedScriptFile(const std::string& filePath);
 	static bool IsSupportedModelFile(const std::string& filePath);
 	static bool IsSupportedShaderFile(const std::string& filePath);
+	static bool IsSupportedMeshFile(const std::string& filePath);
 	//=============================================================
 
 	// string

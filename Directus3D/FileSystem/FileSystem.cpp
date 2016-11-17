@@ -488,6 +488,12 @@ bool FileSystem::IsSupportedShaderFile(const string& path)
 
 	return false;
 }
+
+bool FileSystem::IsSupportedMeshFile(const string& filePath)
+{
+	return GetExtensionFromPath(filePath) == MESH_EXTENSION ? true : false;
+}
+
 //============================================================================================
 
 string FileSystem::ConvertToUppercase(const string& lower)
