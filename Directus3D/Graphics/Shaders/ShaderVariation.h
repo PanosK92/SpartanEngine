@@ -51,6 +51,7 @@ public:
 		bool cubemap,
 		Graphics* d3d11device
 	);
+	bool LoadFromFile(const std::string& filePath) { return true; }
 	bool SaveMetadata();
 
 	void Set();

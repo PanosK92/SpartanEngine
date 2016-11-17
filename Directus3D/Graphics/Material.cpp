@@ -36,7 +36,6 @@ using namespace Directus::Resource;
 Material::Material(Context* context)
 {
 	m_context = context;
-
 	m_ID = GENERATE_GUID;
 	m_name = DATA_NOT_ASSIGNED;
 	m_modelID = DATA_NOT_ASSIGNED;
@@ -161,18 +160,15 @@ bool Material::LoadFromFile(const string& filePath)
 
 	Serializer::StopReading();
 
+	// Load unloaded textures
+	for (auto& it : m_textures)
+		if (it.second.expired())
+			it.second = m_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(it.first.first);
+
 	AcquireShader();
 
 	return true;
 }
-
-void Material::LoadUnloadedTextures()
-{
-	for (auto& it : m_textures)
-		if (it.second.expired())
-			it.second = m_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(it.first.first);
-}
-
 //==============================================================================
 
 //= TEXTURES ===================================================================

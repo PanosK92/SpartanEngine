@@ -43,14 +43,14 @@ enum TextureType
 class Texture : public Directus::Resource::IResource
 {
 public:
-	Texture();
+	Texture(Context* context);
 	~Texture();
 
 	//= IO ================================================
-	bool LoadFromFile(const std::string& filePath, Graphics* graphics);
+	bool LoadFromFile(const std::string& filePath);
 	bool SaveMetadata();
 	bool LoadMetadata();
-	ID3D11ShaderResourceView* CreateID3D11ShaderResourceView(Graphics* graphics);
+	ID3D11ShaderResourceView* CreateID3D11ShaderResourceView();
 	//=====================================================
 
 	//= PROPERTIES ===============================================================================

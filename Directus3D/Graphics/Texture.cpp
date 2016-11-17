@@ -32,8 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Texture::Texture()
+Texture::Texture(Context* context)
 {
+	m_context = context;
 	m_ID = GENERATE_GUID;
 	m_name = DATA_NOT_ASSIGNED;
 	m_filePath = PATH_NOT_ASSIGNED;
@@ -95,7 +96,7 @@ bool Texture::LoadMetadata()
 }
 
 // Loads a texture (not it's metadata) from an image file
-bool Texture::LoadFromFile(const string& filePath, Graphics* graphics)
+bool Texture::LoadFromFile(const string& filePath)
 {
 	// Load it
 	if (!ImageImporter::GetInstance().Load(filePath))
@@ -112,7 +113,7 @@ bool Texture::LoadFromFile(const string& filePath, Graphics* graphics)
 	m_height = ImageImporter::GetInstance().GetHeight();
 	m_grayscale = ImageImporter::GetInstance().IsGrayscale();
 	m_transparency = ImageImporter::GetInstance().IsTransparent();
-	m_shaderResourceView = CreateID3D11ShaderResourceView(graphics);
+	m_shaderResourceView = CreateID3D11ShaderResourceView();
 
 	// Free any memory allocated by the ImageImporter
 	ImageImporter::GetInstance().Clear();
@@ -124,8 +125,11 @@ bool Texture::LoadFromFile(const string& filePath, Graphics* graphics)
 	return true;
 }
 
-ID3D11ShaderResourceView* Texture::CreateID3D11ShaderResourceView(Graphics* graphics)
+ID3D11ShaderResourceView* Texture::CreateID3D11ShaderResourceView()
 {
+	if (!m_context)
+		return nullptr;
+
 	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM; // texture format
 	unsigned int mipLevels = 7; // 0 for a full mip chain. The mip chain will extend to 1x1 at the lowest level, even if the dimensions aren't square.
 
@@ -144,7 +148,7 @@ ID3D11ShaderResourceView* Texture::CreateID3D11ShaderResourceView(Graphics* grap
 
 	// Create 2D texture from texture description
 	ID3D11Texture2D* texture = nullptr;
-	HRESULT hResult = graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
+	HRESULT hResult = m_context->GetSubsystem<Graphics>()->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
 	if (FAILED(hResult))
 	{
 		LOG_ERROR("Failed to create ID3D11Texture2D from imported image data while trying to load " + ImageImporter::GetInstance().GetPath() + ".");
@@ -160,7 +164,7 @@ ID3D11ShaderResourceView* Texture::CreateID3D11ShaderResourceView(Graphics* grap
 
 	// Create shader resource view from resource view description
 	ID3D11ShaderResourceView* shaderResourceView = nullptr;
-	hResult = graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &shaderResourceView);
+	hResult = m_context->GetSubsystem<Graphics>()->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &shaderResourceView);
 	if (FAILED(hResult))
 	{
 		LOG_ERROR("Failed to create the shader resource view.");
@@ -173,10 +177,10 @@ ID3D11ShaderResourceView* Texture::CreateID3D11ShaderResourceView(Graphics* grap
 	mapResource.SysMemPitch = sizeof(unsigned char) * m_width * ImageImporter::GetInstance().GetChannels();
 
 	// Copy data from memory to the subresource created in non-mappable memory
-	graphics->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, mapResource.pSysMem, mapResource.SysMemPitch, 0);
+	m_context->GetSubsystem<Graphics>()->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, mapResource.pSysMem, mapResource.SysMemPitch, 0);
 
 	// Generate mip chain
-	graphics->GetDeviceContext()->GenerateMips(shaderResourceView);
+	m_context->GetSubsystem<Graphics>()->GetDeviceContext()->GenerateMips(shaderResourceView);
 
 	return shaderResourceView;
 }

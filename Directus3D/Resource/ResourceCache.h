@@ -21,18 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ====================
 #include <vector>
 #include <memory>
 #include "IResource.h"
 #include "../Core/Subsystem.h"
-#include "../FileSystem/FileSystem.h"
-#include "../Graphics/Texture.h"
-#include "../Core/Context.h"
 #include "../Graphics/Mesh.h"
 #include "../Graphics/Material.h"
-#include "../Logging/Log.h"
-//===================================
+//===============================
 
 //= TEMPORARY =================================================
 #define MATERIAL_DEFAULT_ID "MATERIAL_DEFAULT_ID"
@@ -81,33 +77,13 @@ namespace Directus
 					if (resource->GetFilePath() == filePath)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
-				// Texture
-				if (FileSystem::IsSupportedImageFile(filePath))
-				{
-					auto texture = std::make_shared<Texture>();
-					texture->LoadFromFile(filePath, g_context->GetSubsystem<Graphics>());
-					m_resources.push_back(texture);
-					return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
-				}
-				// Material
-				if (FileSystem::IsMaterialFile(filePath))
-				{
-					auto material = std::make_shared<Material>(g_context);
-					material->LoadFromFile(filePath);
-					material->LoadUnloadedTextures();
-					m_resources.push_back(material);
-					return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
-				}
-				// Mesh
-				if (FileSystem::IsSupportedMeshFile(filePath))
-				{
-					auto mesh = std::make_shared<Mesh>();
-					mesh->LoadFromFile(filePath);
-					m_resources.push_back(mesh);
-					return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
-				}
+				std::shared_ptr<T> typedResource = std::make_shared<T>(g_context);
+				std::shared_ptr<IResource> resource = std::shared_ptr<IResource>(dynamic_pointer_cast<T>(typedResource));
+
+				if (resource->LoadFromFile(filePath))
+					m_resources.push_back(resource);
 				
-				return std::weak_ptr<T>();
+				return typedResource;
 			}
 
 			// Loads resources given the file paths from a vector;
@@ -207,25 +183,22 @@ namespace Directus
 			std::vector<std::shared_ptr<IResource>> m_resources;
 
 			//= TEMPORARY =================================================================================================
+			// MESH POOL leftovers
 			void GenerateDefaultMeshes();
 			void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 			void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 			std::shared_ptr<Mesh> m_defaultCube;
-			std::shared_ptr<Mesh> m_defaultQuad;
-
-			//= MESH PROCESSING =============================================================================
+			std::shared_ptr<Mesh> m_defaultQuad;		
 			std::vector<std::weak_ptr<Mesh>> GetModelMeshesByModelName(const std::string& rootGameObjectID);
 			float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
 			void SetModelScale(const std::string& rootGameObjectID, float scale);
 			static std::weak_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::weak_ptr<Mesh>>& meshes);
-			//===============================================================================================
 
-			//= MATERIAL POOL ===============================================================================
+			// MATERIAL POOL leftovers
 			void GenerateDefaultMaterials();
 			std::vector<std::shared_ptr<Material>> m_materials;
 			std::shared_ptr<Material> m_materialDefault;
 			std::shared_ptr<Material> m_materialDefaultSkybox;
-			//===============================================================================================
 			//=============================================================================================================
 		};
 	}

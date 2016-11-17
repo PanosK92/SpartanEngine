@@ -121,7 +121,10 @@ void Engine::Shutdown()
 	// The context will deallocate the subsystems
 	// in the reverse order in which they were registered.
 	if (g_context)
+	{
 		delete g_context;
+		g_context = nullptr;
+	}
 
 	// Release singletons
 	Log::Release();

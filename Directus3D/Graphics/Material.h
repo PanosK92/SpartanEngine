@@ -55,7 +55,6 @@ public:
 	//=============================================================================
 
 	//= TEXTURES ==================================================================
-	void LoadUnloadedTextures();
 	void SetTexture(std::weak_ptr<Texture> texture);
 	void SetTexture(const std::string& textureID);
 	void SetTexture(const std::string& texturePath, TextureType type);

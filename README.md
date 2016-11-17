@@ -24,19 +24,20 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 
 # Features under development (v0.2)
 Version 0.2 is a major overhaul.
-- Audio source component.
-- Audio listener component.
-- Bug fixes, lot's of them
-- Custom format resources and improvents to existing ones (prefabs, materials, scenes and so on).
-- Engine architecture improvements.
-- Lower memory usage and more efficient memory management.
+- Audio source component [Done].
+- Audio listener component [Done].
+- Bug fixes, lot's of them [Active]
+- Custom format resources and improvents to existing ones (prefabs, materials, scenes and so on) [Done].
+- Engine architecture improvements [Done].
+- Lower memory usage and more efficient memory management [Done].
+- SSAO [Active].
 
 # Planned Features
 - DirectX 12 Renderer
 - Draw call batching (static & dynamic).
 - Export on Windows.
 - Font loader & renderer.
-- SSAO, SSR, Volumetric Lighting.
+- SSR, Volumetric Lighting.
 - UI components.
 - Vulkan Renderer.
 
