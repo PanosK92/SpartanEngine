@@ -138,7 +138,7 @@ bool Mesh::LoadFromFile(const string& filePath)
 		return false;
 
 	// Make sure it's actually a mesh file
-	if (FileSystem::IsSupportedMeshFile(filePath))
+	if (!FileSystem::IsSupportedMeshFile(filePath))
 		return false;
 
 	Serializer::StartReading(filePath);

@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ===============
 #include <string>
-//===============
+#include "../Core/Context.h"
+//==========================
 
 namespace Directus
 {
@@ -40,9 +41,13 @@ namespace Directus
 			std::string GetFilePath() { return m_filePath; }
 			void SetFilePath(const std::string& filePath) { m_filePath = filePath; }
 
+			virtual bool LoadFromFile(const std::string& filePath) = 0;
+
+			// Metadata
 			virtual bool SaveMetadata() = 0;
 
 		protected:
+			Context* m_context;
 			std::string m_ID;
 			std::string m_filePath;
 		};

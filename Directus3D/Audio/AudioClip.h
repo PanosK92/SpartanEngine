@@ -39,6 +39,7 @@ public:
 	AudioClip(FMOD::System* fModSystem);
 	~AudioClip();
 
+	bool LoadFromFile(const std::string& filePath) { return true; }
 	bool SaveMetadata();
 
 	bool Load(const std::string& filePath, PlayMode mode);
