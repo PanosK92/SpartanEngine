@@ -82,7 +82,7 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
         return m_scriptIcon;
 
     // Scene
-    if (FileSystem::IsSceneFile(filePath))
+    if (FileSystem::IsSupportedSceneFile(filePath))
         return m_sceneIcon;
 
     // Shader
@@ -90,7 +90,7 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
         return m_shaderIcon;
 
     // Material
-    if (FileSystem::IsMaterialFile(filePath))
+    if (FileSystem::IsSupportedMaterialFile(filePath))
         return m_materialIcon;
 
     // Audio File

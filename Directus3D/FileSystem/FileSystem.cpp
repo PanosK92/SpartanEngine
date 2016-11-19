@@ -232,21 +232,6 @@ vector<string> FileSystem::GetSupportedAudioFileFormats(bool includeUppercase)
 	return supportedFormats;
 }
 
-bool FileSystem::IsMetadataFile(const string& filePath)
-{
-	return GetExtensionFromPath(filePath) == METADATA_EXTENSION ? true : false;
-}
-
-bool FileSystem::IsMaterialFile(const string& filePath)
-{
-	return GetExtensionFromPath(filePath) == MATERIAL_EXTENSION ? true : false;
-}
-
-bool FileSystem::IsSceneFile(const string& filePath)
-{
-	return GetExtensionFromPath(filePath) == SCENE_EXTENSION ? true : false;
-}
-
 vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)
 {
 	vector<string> directoryPaths;
@@ -377,7 +362,7 @@ vector<string> FileSystem::GetSupportedSceneFilesInDirectory(const string& direc
 
 	auto files = GetFilesInDirectory(directory);
 	for (auto file : files)
-		if (IsSceneFile(file))
+		if (IsSupportedSceneFile(file))
 			sceneFiles.push_back(file);
 
 	return sceneFiles;
@@ -494,6 +479,20 @@ bool FileSystem::IsSupportedMeshFile(const string& filePath)
 	return GetExtensionFromPath(filePath) == MESH_EXTENSION ? true : false;
 }
 
+bool FileSystem::IsSupportedMaterialFile(const string& filePath)
+{
+	return GetExtensionFromPath(filePath) == MATERIAL_EXTENSION ? true : false;
+}
+
+bool FileSystem::IsSupportedSceneFile(const string& filePath)
+{
+	return GetExtensionFromPath(filePath) == SCENE_EXTENSION ? true : false;
+}
+
+bool FileSystem::IsMetadataFile(const string& filePath)
+{
+	return GetExtensionFromPath(filePath) == METADATA_EXTENSION ? true : false;
+}
 //============================================================================================
 
 string FileSystem::ConvertToUppercase(const string& lower)

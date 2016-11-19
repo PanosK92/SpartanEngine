@@ -65,18 +65,6 @@ void ResourceCache::Clear()
 	//=========================
 }
 
-void ResourceCache::LoadResources(const vector<string>& filePaths)
-{
-	for (const auto& filePath : filePaths)
-		LoadResource<Texture>(filePath);
-}
-
-void ResourceCache::SaveResourceMetadata()
-{
-	for (auto const& resource : m_resources)
-		resource->SaveMetadata();
-}
-
 //= TEMPORARY ===============================================================
 weak_ptr<ShaderVariation> ResourceCache::CreateShaderBasedOnMaterial(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
 {
@@ -144,7 +132,7 @@ void ResourceCache::GenerateDefaultMeshes()
 	CreateCube(vertices, indices);
 
 	// construct the mesh
-	m_defaultCube = make_shared<Mesh>();
+	m_defaultCube = make_shared<Mesh>(g_context);
 	m_defaultCube->SetID(MESH_DEFAULT_CUBE_ID);
 	m_defaultCube->SetName("Cube");
 	m_defaultCube->SetVertices(vertices);
@@ -156,7 +144,7 @@ void ResourceCache::GenerateDefaultMeshes()
 
 	CreateQuad(vertices, indices);
 
-	m_defaultQuad = make_shared<Mesh>();
+	m_defaultQuad = make_shared<Mesh>(g_context);
 	m_defaultQuad->SetID(MESH_DEFAULT_QUAD_ID);
 	m_defaultQuad->SetName("Quad");
 	m_defaultQuad->SetVertices(vertices);

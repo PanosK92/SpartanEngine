@@ -82,12 +82,9 @@ namespace Directus
 
 				if (resource->LoadFromFile(filePath))
 					m_resources.push_back(resource);
-				
+
 				return typedResource;
 			}
-
-			// Loads resources given the file paths from a vector;
-			void LoadResources(const std::vector<std::string>& filePaths);
 
 			// Returns the file paths of all the resources
 			std::vector<std::string> GetResourceFilePaths()
@@ -147,7 +144,11 @@ namespace Directus
 			}
 
 			// Makes the resources save their metadata
-			void SaveResourceMetadata();
+			void SaveResourceMetadata()
+			{
+				for (const auto& resource : m_resources)
+					resource->SaveMetadata();
+			}
 
 			//= TEMPORARY ===================================================
 			std::weak_ptr<ShaderVariation> CreateShaderBasedOnMaterial(
@@ -188,7 +189,7 @@ namespace Directus
 			void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 			void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 			std::shared_ptr<Mesh> m_defaultCube;
-			std::shared_ptr<Mesh> m_defaultQuad;		
+			std::shared_ptr<Mesh> m_defaultQuad;
 			std::vector<std::weak_ptr<Mesh>> GetModelMeshesByModelName(const std::string& rootGameObjectID);
 			float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
 			void SetModelScale(const std::string& rootGameObjectID, float scale);

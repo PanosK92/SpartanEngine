@@ -33,7 +33,7 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-Mesh::Mesh()
+Mesh::Mesh(Context* context)
 {
 	m_ID = GENERATE_GUID;
 	m_rootGameObjectID = DATA_NOT_ASSIGNED;

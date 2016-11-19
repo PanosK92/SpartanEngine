@@ -61,9 +61,6 @@ public:
 
 	static std::vector<std::string> GetSupportedImageFileFormats(bool includeUppercase);
 	static std::vector<std::string> GetSupportedAudioFileFormats(bool includeUppercase);
-	static bool IsMetadataFile(const std::string& filePath);
-	static bool IsMaterialFile(const std::string& filePath);
-	static bool IsSceneFile(const std::string& filePath);
 
 	static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
 	static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
@@ -86,6 +83,9 @@ public:
 	static bool IsSupportedModelFile(const std::string& filePath);
 	static bool IsSupportedShaderFile(const std::string& filePath);
 	static bool IsSupportedMeshFile(const std::string& filePath);
+	static bool IsSupportedMaterialFile(const std::string& filePath);
+	static bool IsSupportedSceneFile(const std::string& filePath);
+	static bool IsMetadataFile(const std::string& filePath);
 	//=============================================================
 
 	// string
