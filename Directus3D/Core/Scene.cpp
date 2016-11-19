@@ -123,7 +123,26 @@ bool Scene::LoadFromFile(const string& filePath)
 	Serializer::StopReading();
 
 	// Load all all these resources
-	g_context->GetSubsystem<ResourceCache>()->LoadResources(resourcePaths);
+	for (const auto& resourcePath : resourcePaths)
+	{
+		if (FileSystem::IsSupportedMeshFile(resourcePath))
+		{
+			g_context->GetSubsystem<ResourceCache>()->LoadResource<Mesh>(resourcePath);
+			continue;
+		}
+
+		if (FileSystem::IsSupportedMaterialFile(resourcePath))
+		{
+			g_context->GetSubsystem<ResourceCache>()->LoadResource<Material>(resourcePath);
+			continue;
+		}
+
+		if (FileSystem::IsSupportedImageFile(resourcePath))
+		{
+			g_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(resourcePath);
+			continue;
+		}	
+	}
 	
 	// Load all the GameObjects present in the scene
 	//==============================================
@@ -146,9 +165,7 @@ bool Scene::LoadFromFile(const string& filePath)
 }
 //======================================================================
 
-//=====
-// MISC
-//=====
+//= MISC ===============================================================
 void Scene::Clear()
 {
 	m_renderables.clear();
@@ -307,10 +324,9 @@ bool Scene::RaySphereIntersect(const Vector3& rayOrigin, const Vector3& rayDirec
 	// missed the sphere, otherwise it intersected the sphere.
 	return discriminant < 0.0f ? false : true;
 }
+//======================================================================================================
 
-//====================
-// GAMEOBJECT CREATION
-//====================
+//= GAMEOBJECT CREATION ================================================================================
 GameObject* Scene::CreateSkybox()
 {
 	GameObject* skybox = new GameObject();
@@ -347,3 +363,4 @@ GameObject* Scene::CreateDirectionalLight()
 
 	return light;
 }
+//======================================================================================================

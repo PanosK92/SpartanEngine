@@ -103,7 +103,7 @@ void MeshFilter::SetDefaultMesh(DefaultMesh defaultMesh)
 void MeshFilter::Set(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
 {
 	// Load a mesh
-	auto tempMesh = make_shared<Mesh>();
+	auto tempMesh = make_shared<Mesh>(g_context);
 	tempMesh->SetName(name);
 	tempMesh->SetRootGameObjectID(rootGameObjectID);
 	tempMesh->SetVertices(vertices);

@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Mesh : public Directus::Resource::IResource
 {
 public:
-	Mesh();
+	Mesh(Context* context);
 	~Mesh();
 
 	//= IO =========================================================================
