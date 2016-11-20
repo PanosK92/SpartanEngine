@@ -116,7 +116,7 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
 
     // If a GameObject is indeed inspected, we set the material to the mesh renderer
     if (gameObject)
-        material = gameObject->GetComponent<MeshRenderer>()->SetMaterial(materialPath);
+        material = gameObject->GetComponent<MeshRenderer>()->LoadMaterial(materialPath);
     // else... no GameObject is being inspected, a material that is only a file is being inspected
 
     // Set the text of the QLineEdit

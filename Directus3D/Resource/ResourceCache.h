@@ -43,7 +43,7 @@ namespace Directus
 		{
 		public:
 			ResourceCache(Context* context);
-			~ResourceCache();
+			~ResourceCache() { Clear(); }
 
 			void Initialize();
 
@@ -54,6 +54,9 @@ namespace Directus
 			template <class T>
 			std::weak_ptr<T> AddResource(std::shared_ptr<T> resourceIn)
 			{
+				if (!resourceIn)
+					return std::weak_ptr<T>();
+
 				// Check if the resource already exists, if so, return the existing one
 				for (auto const& resource : m_resources)
 					if (resource->GetID() == resourceIn->GetID())

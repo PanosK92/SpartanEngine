@@ -52,7 +52,7 @@ MeshRenderer::~MeshRenderer()
 //= ICOMPONENT ===============================================================
 void MeshRenderer::Awake()
 {
-	SetMaterial(Basic);
+	
 }
 
 void MeshRenderer::Start()
@@ -85,37 +85,41 @@ void MeshRenderer::Deserialize()
 	m_castShadows = Serializer::ReadBool();
 	m_receiveShadows = Serializer::ReadBool();
 
-	if (m_materialType == Imported)
-		m_material = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Material>(materialID);	
-	else
-		SetMaterial(m_materialType);
+	m_materialType == Imported ? SetMaterial(materialID) : SetMaterial(m_materialType);
 }
 //==============================================================================
 
 //= MISC =======================================================================
 void MeshRenderer::Render(unsigned int indexCount)
 {
-	auto material = GetMaterial();
+	auto materialWeakPTr = GetMaterial();
+	auto materialSharedPtr = materialWeakPTr.lock();
 
-	if (material.expired()) // Check if a material exists
+	if (!materialSharedPtr) // Check if a material exists
 	{
 		LOG_WARNING("GameObject \"" + g_gameObject->GetName() + "\" has no material. It can't be rendered.");
 		return;
 	}
 
-	if (!material.lock()->HasShader()) // Check if the material has a shader
+	if (!materialSharedPtr->HasShader()) // Check if the material has a shader
 	{
 		LOG_WARNING("GameObject \"" + g_gameObject->GetName() + "\" has a material but not a shader associated with it. It can't be rendered.");
 		return;
 	}
 
 	// Set the buffers and draw
-	GetMaterial().lock()->GetShader().lock()->Render(indexCount);
+	materialSharedPtr->GetShader().lock()->Render(indexCount);
 }
 
 //==============================================================================
 
 //= MATERIAL ===================================================================
+// All functions (set/load) resolve to this
+void MeshRenderer::SetMaterial(weak_ptr<Material> material)
+{
+	m_material = g_context->GetSubsystem<ResourceCache>()->AddResource(material.lock());
+}
+
 void MeshRenderer::SetMaterial(MaterialType type)
 {
 	shared_ptr<Material> material;
@@ -146,14 +150,15 @@ void MeshRenderer::SetMaterial(MaterialType type)
 	SetMaterial(material);
 }
 
-void MeshRenderer::SetMaterial(weak_ptr<Material> material)
+weak_ptr<Material> MeshRenderer::SetMaterial(const string& ID)
 {
-	m_material = g_context->GetSubsystem<ResourceCache>()->AddResource(material.lock());
+	SetMaterial(g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Material>(ID));
+	return GetMaterial();
 }
 
-weak_ptr<Material> MeshRenderer::SetMaterial(const string& filePath)
+weak_ptr<Material> MeshRenderer::LoadMaterial(const string& filePath)
 {
-	m_material = g_context->GetSubsystem<ResourceCache>()->LoadResource<Material>(filePath);
-	return m_material;
+	SetMaterial(g_context->GetSubsystem<ResourceCache>()->LoadResource<Material>(filePath));
+	return GetMaterial();
 }
 //==============================================================================
