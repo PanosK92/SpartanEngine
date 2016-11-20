@@ -39,7 +39,7 @@ Material::Material(Context* context)
 	m_ID = GENERATE_GUID;
 	m_name = DATA_NOT_ASSIGNED;
 	m_modelID = DATA_NOT_ASSIGNED;
-	m_filePath = PATH_NOT_ASSIGNED;
+	m_filePath = DATA_NOT_ASSIGNED;
 	m_cullMode = CullBack;
 	m_opacity = 1.0f;
 	m_alphaBlending = false;
@@ -114,7 +114,7 @@ bool Material::Save(const string& filePath, bool overwrite)
 
 bool Material::SaveToExistingDirectory()
 {
-	if (m_filePath == PATH_NOT_ASSIGNED)
+	if (m_filePath == DATA_NOT_ASSIGNED)
 		return false;
 
 	return Save(FileSystem::GetPathWithoutFileNameExtension(m_filePath), true);
@@ -245,7 +245,7 @@ string Material::GetTexturePathByType(TextureType type)
 		if (it.first.second == type)
 			return it.first.first;
 
-	return (string)PATH_NOT_ASSIGNED;
+	return (string)DATA_NOT_ASSIGNED;
 }
 
 vector<string> Material::GetTexturePaths()

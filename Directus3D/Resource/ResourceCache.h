@@ -21,19 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ===================================
 #include <vector>
 #include <memory>
 #include "IResource.h"
 #include "../Core/Subsystem.h"
+#include "../Graphics/Shaders/ShaderVariation.h"
 #include "../Graphics/Mesh.h"
-#include "../Graphics/Material.h"
-//===============================
-
-//= TEMPORARY =================================================
-#define MATERIAL_DEFAULT_ID "MATERIAL_DEFAULT_ID"
-#define MATERIAL_DEFAULT_SKYBOX_ID "MATERIAL_DEFAULT_SKYBOX_ID"
-//=============================================================
+//==============================================
 
 namespace Directus
 {
@@ -59,11 +54,12 @@ namespace Directus
 			template <class T>
 			std::weak_ptr<T> AddResource(std::shared_ptr<T> resourceIn)
 			{
-				// Check if the resource already exists
+				// Check if the resource already exists, if so, return the existing one
 				for (auto const& resource : m_resources)
 					if (resource->GetID() == resourceIn->GetID())
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
+				// Add the resource and return it
 				m_resources.push_back(resourceIn);
 				return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
 			}
@@ -74,8 +70,10 @@ namespace Directus
 			{
 				// Check if the resource is already loaded
 				for (auto const& resource : m_resources)
+				{
 					if (resource->GetFilePath() == filePath)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
+				}
 
 				std::shared_ptr<T> typedResource = std::make_shared<T>(g_context);
 				std::shared_ptr<IResource> resource = std::shared_ptr<IResource>(dynamic_pointer_cast<T>(typedResource));
@@ -102,14 +100,6 @@ namespace Directus
 			{
 				for (auto const& resource : m_resources)
 				{
-					//= TEMPORARY CANCEROUS CHECKS ======
-					if (ID == MATERIAL_DEFAULT_ID)
-						std::weak_ptr<T>(dynamic_pointer_cast<T>(m_materialDefault));
-
-					if (ID == MATERIAL_DEFAULT_SKYBOX_ID)
-						std::weak_ptr<T>(dynamic_pointer_cast<T>(m_materialDefaultSkybox));
-					//===================================
-
 					if (resource->GetID() == ID)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 				}
@@ -173,10 +163,7 @@ namespace Directus
 				bool mask,
 				bool cubemap
 			);
-			std::weak_ptr<Mesh> GetDefaultCube();
-			std::weak_ptr<Mesh> GetDefaultQuad();
-			std::weak_ptr<Material> GetMaterialStandardDefault();
-			std::weak_ptr<Material> GetMaterialStandardSkybox();
+
 			void NormalizeModelScale(GameObject* rootGameObject);
 			//======================================================
 
@@ -184,22 +171,10 @@ namespace Directus
 			std::vector<std::shared_ptr<IResource>> m_resources;
 
 			//= TEMPORARY =================================================================================================
-			// MESH POOL leftovers
-			void GenerateDefaultMeshes();
-			void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
-			void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
-			std::shared_ptr<Mesh> m_defaultCube;
-			std::shared_ptr<Mesh> m_defaultQuad;
 			std::vector<std::weak_ptr<Mesh>> GetModelMeshesByModelName(const std::string& rootGameObjectID);
 			float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
 			void SetModelScale(const std::string& rootGameObjectID, float scale);
 			static std::weak_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::weak_ptr<Mesh>>& meshes);
-
-			// MATERIAL POOL leftovers
-			void GenerateDefaultMaterials();
-			std::vector<std::shared_ptr<Material>> m_materials;
-			std::shared_ptr<Material> m_materialDefault;
-			std::shared_ptr<Material> m_materialDefaultSkybox;
 			//=============================================================================================================
 		};
 	}

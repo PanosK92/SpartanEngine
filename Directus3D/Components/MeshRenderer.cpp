@@ -41,6 +41,7 @@ MeshRenderer::MeshRenderer()
 {
 	m_castShadows = true;
 	m_receiveShadows = true;
+	m_materialType = Imported;
 }
 
 MeshRenderer::~MeshRenderer()
@@ -51,7 +52,7 @@ MeshRenderer::~MeshRenderer()
 //= ICOMPONENT ===============================================================
 void MeshRenderer::Awake()
 {
-	m_material = g_context->GetSubsystem<ResourceCache>()->GetMaterialStandardDefault();
+	SetMaterial(Basic);
 }
 
 void MeshRenderer::Start()
@@ -71,6 +72,7 @@ void MeshRenderer::Update()
 
 void MeshRenderer::Serialize()
 {
+	Serializer::WriteInt((int)m_materialType);
 	Serializer::WriteSTR(!m_material.expired() ? m_material.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
 	Serializer::WriteBool(m_castShadows);
 	Serializer::WriteBool(m_receiveShadows);
@@ -78,14 +80,20 @@ void MeshRenderer::Serialize()
 
 void MeshRenderer::Deserialize()
 {
-	m_material = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Material>(Serializer::ReadSTR());
+	m_materialType = (MaterialType)Serializer::ReadInt();
+	string materialID = Serializer::ReadSTR();
 	m_castShadows = Serializer::ReadBool();
 	m_receiveShadows = Serializer::ReadBool();
+
+	if (m_materialType == Imported)
+		m_material = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Material>(materialID);	
+	else
+		SetMaterial(m_materialType);
 }
 //==============================================================================
 
 //= MISC =======================================================================
-void MeshRenderer::Render(unsigned int indexCount) const
+void MeshRenderer::Render(unsigned int indexCount)
 {
 	auto material = GetMaterial();
 
@@ -107,32 +115,35 @@ void MeshRenderer::Render(unsigned int indexCount) const
 
 //==============================================================================
 
-//= PROPERTIES =================================================================
-void MeshRenderer::SetCastShadows(bool castShadows)
-{
-	m_castShadows = castShadows;
-}
-
-bool MeshRenderer::GetCastShadows() const
-{
-	return m_castShadows;
-}
-
-void MeshRenderer::SetReceiveShadows(bool receiveShadows)
-{
-	m_receiveShadows = receiveShadows;
-}
-
-bool MeshRenderer::GetReceiveShadows() const
-{
-	return m_receiveShadows;
-}
-//==============================================================================
-
 //= MATERIAL ===================================================================
-weak_ptr<Material> MeshRenderer::GetMaterial() const
+void MeshRenderer::SetMaterial(MaterialType type)
 {
-	return m_material;
+	shared_ptr<Material> material;
+
+	switch (type)
+	{
+	case Basic:
+		material = make_shared<Material>(g_context);
+		material->SetName("Basic");
+		material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+		material->SetIsEditable(false);
+		m_materialType = Basic;
+		break;
+
+	case Skybox:
+		material = make_shared<Material>(g_context);
+		material->SetName("Skybox");
+		material->SetFaceCullMode(CullNone);
+		material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+		material->SetIsEditable(false);
+		m_materialType = Skybox;	
+		break;
+
+	default:
+		break;
+	}
+
+	SetMaterial(material);
 }
 
 void MeshRenderer::SetMaterial(weak_ptr<Material> material)
@@ -144,15 +155,5 @@ weak_ptr<Material> MeshRenderer::SetMaterial(const string& filePath)
 {
 	m_material = g_context->GetSubsystem<ResourceCache>()->LoadResource<Material>(filePath);
 	return m_material;
-}
-
-bool MeshRenderer::HasMaterial() const
-{
-	return GetMaterial().expired() ? false : true;
-}
-
-string MeshRenderer::GetMaterialName()
-{
-	return !GetMaterial().expired() ? GetMaterial().lock()->GetName() : DATA_NOT_ASSIGNED;
 }
 //==============================================================================

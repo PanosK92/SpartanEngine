@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES =========================
 #include "MeshFilter.h"
 #include "Transform.h"
 #include "../IO/Serializer.h"
@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/ResourceCache.h"
-//===================================
+//====================================
 
 //= NAMESPACES ====================
 using namespace std;
@@ -39,6 +39,7 @@ MeshFilter::MeshFilter()
 {
 	m_vertexBuffer = nullptr;
 	m_indexBuffer = nullptr;
+	m_meshType = Imported;
 }
 
 MeshFilter::~MeshFilter()
@@ -68,67 +69,104 @@ void MeshFilter::Update()
 
 void MeshFilter::Serialize()
 {
-	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)PATH_NOT_ASSIGNED);
+	Serializer::WriteInt((int)m_meshType);
+	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
 }
 
 void MeshFilter::Deserialize()
 {
-	// Try to get the mesh
-	m_mesh = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
+	m_meshType = (MeshType)Serializer::ReadInt();
+	string meshID = Serializer::ReadSTR();
 
-	// Create mesh buffers
+	if (m_meshType == Imported) // Get the already loaded mesh
+	{
+		auto mesh = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Mesh>(meshID);
+		SetMesh(mesh);
+	}
+	else // Construct the mesh
+		SetMesh(m_meshType);
+}
+
+// Sets a mesh from memory (all other set/create functions resolve to this one)
+void MeshFilter::SetMesh(weak_ptr<Mesh> mesh)
+{
+	m_mesh = mesh;
+
+	// Make the mesh re-create the buffers whenever it updates.
+	if (!m_mesh.expired())
+		m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
+
 	CreateBuffers();
 }
 
-// Use this to set a default engine mesh a cube, a sphere and so on.
-void MeshFilter::SetDefaultMesh(DefaultMesh defaultMesh)
+// Sets a default mesh (cube, quad)
+void MeshFilter::SetMesh(MeshType defaultMesh)
 {
+	auto meshSharedPtr = make_shared<Mesh>(g_context);
+	vector<VertexPositionTextureNormalTangent> vertices;
+	vector<unsigned int> indices;
+
 	switch (defaultMesh)
 	{
 	case Cube:
-		m_mesh = g_context->GetSubsystem<ResourceCache>()->GetDefaultCube();
+		CreateCube(vertices, indices);
+		meshSharedPtr = make_shared<Mesh>(g_context);
+		meshSharedPtr->SetName("Cube");
+		meshSharedPtr->SetVertices(vertices);
+		meshSharedPtr->SetIndices(indices);
+		meshSharedPtr->Update();
+		m_meshType = Cube;
 		break;
+
 	case Quad:
-		m_mesh = g_context->GetSubsystem<ResourceCache>()->GetDefaultQuad();
+		CreateQuad(vertices, indices);
+		meshSharedPtr = make_shared<Mesh>(g_context);
+		meshSharedPtr->SetName("Quad");
+		meshSharedPtr->SetVertices(vertices);
+		meshSharedPtr->SetIndices(indices);
+		meshSharedPtr->Update();
+		m_meshType = Quad;
 		break;
+
 	default:
 		m_mesh = weak_ptr<Mesh>();
 		break;
 	}
 
-	CreateBuffers();
+	auto meshWeakPtr = g_context->GetSubsystem<ResourceCache>()->AddResource(move(meshSharedPtr));
+	SetMesh(meshWeakPtr);
+
+	vertices.clear();
+	indices.clear();
 }
 
-// Use this create a new mesh, this is what you might wanna call after loading a 3d model
-void MeshFilter::Set(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
+// Creates a mesh from raw vertex/index data and sets it
+void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
 {
-	// Load a mesh
-	auto tempMesh = make_shared<Mesh>(g_context);
-	tempMesh->SetName(name);
-	tempMesh->SetRootGameObjectID(rootGameObjectID);
-	tempMesh->SetVertices(vertices);
-	tempMesh->SetIndices(indices);
-	tempMesh->Update();
+	// Create a mesh
+	auto mesh = make_shared<Mesh>(g_context);
+	mesh->SetName(name);
+	mesh->SetRootGameObjectID(rootGameObjectID);
+	mesh->SetVertices(vertices);
+	mesh->SetIndices(indices);
+	mesh->Update();
 
-	m_mesh = g_context->GetSubsystem<ResourceCache>()->AddResource(tempMesh);
-
-	// Make the mesh re-create the buffers whenever it updates.
-	if (!m_mesh.expired())
-		m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
+	// Save it and set it
+	SetMesh(g_context->GetSubsystem<ResourceCache>()->AddResource(mesh));
 }
 
 // Set the buffers to active in the input assembler so they can be rendered.
-bool MeshFilter::SetBuffers() const
+bool MeshFilter::SetBuffers()
 {
 	if (!m_vertexBuffer)
 	{
-		LOG_WARNING("Can't set vertex buffer. GameObject \"" + g_gameObject->GetName() + "\" doesn't have an initialized vertex buffer.");
+		LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer.");
 		return false;
 	}
 
 	if (!m_indexBuffer)
 	{
-		LOG_WARNING("Can't set index buffer. GameObject \"" + g_gameObject->GetName() + "\" doesn't have an initialized index buffer.");
+		LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer.");
 		return false;
 	}
 
@@ -141,12 +179,12 @@ bool MeshFilter::SetBuffers() const
 	return true;
 }
 
-Vector3 MeshFilter::GetCenter() const
+Vector3 MeshFilter::GetCenter()
 {
 	return !m_mesh.expired() ? m_mesh.lock()->GetCenter() * g_transform->GetTransformMatrix() : Vector3::Zero;
 }
 
-Vector3 MeshFilter::GetBoundingBox() const
+Vector3 MeshFilter::GetBoundingBox()
 {
 	return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() * g_transform->GetTransformMatrix() : Vector3::One;
 }
@@ -181,4 +219,106 @@ void MeshFilter::CreateBuffers()
 	m_indexBuffer = make_shared<D3D11Buffer>();
 	m_indexBuffer->Initialize(g_context->GetSubsystem<Graphics>());
 	m_indexBuffer->CreateIndexBuffer(m_mesh.lock()->GetIndices());
+}
+
+void MeshFilter::CreateCube(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
+{
+	// front
+	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 0
+	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 1
+	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 2
+	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 3
+
+	// bottom
+	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 4
+	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 5
+	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 6
+	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 7
+
+	// back
+	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 8
+	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 9
+	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 10
+	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 11
+
+	// top
+	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 12
+	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 13
+	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 14
+	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 15
+
+	// left
+	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 16
+	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 17
+	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 18
+	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 19
+
+	// right
+	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 20
+	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 21
+	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 22
+	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 23
+
+	// front
+	indices.push_back(0);
+	indices.push_back(1);
+	indices.push_back(2);
+	indices.push_back(2);
+	indices.push_back(1);
+	indices.push_back(3);
+
+	// bottom
+	indices.push_back(4);
+	indices.push_back(5);
+	indices.push_back(6);
+	indices.push_back(6);
+	indices.push_back(5);
+	indices.push_back(7);
+
+	// back
+	indices.push_back(10);
+	indices.push_back(9);
+	indices.push_back(8);
+	indices.push_back(11);
+	indices.push_back(9);
+	indices.push_back(10);
+
+	// top
+	indices.push_back(14);
+	indices.push_back(13);
+	indices.push_back(12);
+	indices.push_back(15);
+	indices.push_back(13);
+	indices.push_back(14);
+
+	// left
+	indices.push_back(16);
+	indices.push_back(17);
+	indices.push_back(18);
+	indices.push_back(18);
+	indices.push_back(17);
+	indices.push_back(19);
+
+	// left
+	indices.push_back(22);
+	indices.push_back(21);
+	indices.push_back(20);
+	indices.push_back(23);
+	indices.push_back(21);
+	indices.push_back(22);
+}
+
+void MeshFilter::CreateQuad(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
+{
+	vertices.push_back({ Vector3(-0.5f, 0.0f, 0.5f),Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 0 top-left
+	vertices.push_back({ Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 1 top-right
+	vertices.push_back({ Vector3(-0.5f, 0.0f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 2 bottom-left
+	vertices.push_back({ Vector3(0.5f, 0.0f, -0.5f),Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 3 bottom-right
+
+	indices.push_back(3);
+	indices.push_back(2);
+	indices.push_back(0);
+	indices.push_back(3);
+	indices.push_back(0);
+	indices.push_back(1);
 }
