@@ -31,6 +31,8 @@ class Light;
 class __declspec(dllexport) MeshRenderer : public IComponent
 {
 public:
+	enum MaterialType { Imported, Basic, Skybox };
+
 	MeshRenderer();
 	~MeshRenderer();
 
@@ -43,23 +45,29 @@ public:
 	virtual void Deserialize();
 
 	//= MISC ===================================
-	void Render(unsigned int indexCount) const;
+	void Render(unsigned int indexCount);
 
 	//= PROPERTIES =============================
-	void SetCastShadows(bool castShadows);
-	bool GetCastShadows() const;
-	void SetReceiveShadows(bool receiveShadows);
-	bool GetReceiveShadows() const;
+	void SetCastShadows(bool castShadows) { m_castShadows = castShadows; }
+	bool GetCastShadows() { return m_castShadows; }
+	void SetReceiveShadows(bool receiveShadows) { m_receiveShadows = receiveShadows; }
+	bool GetReceiveShadows() { return m_receiveShadows; }
 
 	//= MATERIAL ===============================
-	std::weak_ptr<Material> GetMaterial() const;
+	// Sets a default material (basic, skybox)
+	void SetMaterial(MaterialType type);
+	// Sets a mesh from memory
 	void SetMaterial(std::weak_ptr<Material> material);
+	// Loads a material and the sets it
 	std::weak_ptr<Material> SetMaterial(const std::string& filePath);	
-	bool HasMaterial() const;
-	std::string GetMaterialName();
+	std::weak_ptr<Material> GetMaterial() { return  m_material; }
+	bool HasMaterial() { return GetMaterial().expired() ? false : true; }
+	std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial().lock()->GetName() : DATA_NOT_ASSIGNED; }
+	MaterialType GetMaterialType() { return m_materialType; }
 
 private:
 	std::weak_ptr<Material> m_material;
 	bool m_castShadows;
 	bool m_receiveShadows;
+	MaterialType m_materialType;
 };

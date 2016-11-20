@@ -138,10 +138,7 @@ bool Scene::LoadFromFile(const string& filePath)
 		}
 
 		if (FileSystem::IsSupportedImageFile(resourcePath))
-		{
 			g_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(resourcePath);
-			continue;
-		}	
 	}
 	
 	// Load all the GameObjects present in the scene
@@ -333,7 +330,7 @@ GameObject* Scene::CreateSkybox()
 	skybox->SetName("Skybox");
 	skybox->AddComponent<LineRenderer>();
 	skybox->AddComponent<Skybox>();
-	skybox->SetHierarchyVisibility(false);
+	//skybox->SetHierarchyVisibility(false);
 
 	return skybox;
 }

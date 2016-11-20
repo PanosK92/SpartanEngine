@@ -73,11 +73,11 @@ void Mesh::Serialize()
 	Serializer::WriteInt(m_indexCount);
 	Serializer::WriteInt(m_triangleCount);
 
-	for (auto i = 0; i < m_vertexCount; i++)
-		SaveVertex(m_vertices[i]);
+	for (const auto& vertex : m_vertices)
+		SaveVertex(vertex);
 
-	for (auto i = 0; i < m_indexCount; i++)
-		Serializer::WriteInt(m_indices[i]);
+	for (const auto& index : m_indices)
+		Serializer::WriteInt(index);
 
 	Serializer::WriteVector3(m_min);
 	Serializer::WriteVector3(m_max);

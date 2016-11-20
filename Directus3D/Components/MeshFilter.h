@@ -31,11 +31,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //========================================
 
-enum DefaultMesh { Cube, Quad };
-
 class __declspec(dllexport) MeshFilter : public IComponent
 {
 public:
+	enum MeshType { Imported, Cube, Quad };
+
 	MeshFilter();
 	~MeshFilter();
 
@@ -46,19 +46,27 @@ public:
 	virtual void Serialize();
 	virtual void Deserialize();
 
-	void SetDefaultMesh(DefaultMesh defaultMesh);
-	void Set(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
-	bool SetBuffers() const;
-	Directus::Math::Vector3 GetCenter() const;
-	Directus::Math::Vector3 GetBoundingBox() const;
+	// Sets a mesh from memory
+	void SetMesh(std::weak_ptr<Mesh> mesh);
+	// Sets a default mesh (cube, quad)
+	void SetMesh(MeshType defaultMesh);	
+	// Creates a mesh from raw vertex/index data and sets it
+	void CreateAndSet(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
+	// Sets the meshe's buffers
+	bool SetBuffers();
+	Directus::Math::Vector3 GetCenter();
+	Directus::Math::Vector3 GetBoundingBox();
 	std::weak_ptr<Mesh> GetMesh();
 	bool HasMesh();
 	std::string GetMeshName();
 
-private:
+private:	
 	void CreateBuffers();
+	void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
+	void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 
 	std::shared_ptr<D3D11Buffer> m_vertexBuffer;
 	std::shared_ptr<D3D11Buffer> m_indexBuffer;
 	std::weak_ptr<Mesh> m_mesh;
+	MeshType m_meshType;
 };

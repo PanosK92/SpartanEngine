@@ -37,7 +37,7 @@ Texture::Texture(Context* context)
 	m_context = context;
 	m_ID = GENERATE_GUID;
 	m_name = DATA_NOT_ASSIGNED;
-	m_filePath = PATH_NOT_ASSIGNED;
+	m_filePath = DATA_NOT_ASSIGNED;
 	m_width = 0;
 	m_height = 0;
 	m_shaderResourceView = nullptr;

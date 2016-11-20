@@ -255,7 +255,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 
 	// Add a mesh component and pass the data
 	MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
-	meshComp->Set(mesh->mName.C_Str(), m_rootGameObject->GetID(), vertices, indices);
+	meshComp->CreateAndSet(mesh->mName.C_Str(), m_rootGameObject->GetID(), vertices, indices);
 
 	// No need to save the mesh as a file here, when the model importer performs a scale normalization on the entire model
 	// this will cause the mesh to update and save itself, thus I only pass the directory to do so.
@@ -367,7 +367,7 @@ shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* m
 void ModelImporter::AddTextureToMaterial(weak_ptr<Material> material, TextureType textureType, const string& texturePath)
 {
 	string textureSource = FindTexture(texturePath);
-	if (textureSource == PATH_NOT_ASSIGNED)
+	if (textureSource == DATA_NOT_ASSIGNED)
 	{
 		LOG_WARNING("Failed to find \"" + texturePath + "\".");
 		return;
@@ -415,7 +415,7 @@ string ModelImporter::FindTexture(string texturePath)
 		return texturePath;
 
 	// Give up, no valid texture path was found
-	return PATH_NOT_ASSIGNED;
+	return DATA_NOT_ASSIGNED;
 }
 
 string ModelImporter::TryPathWithMultipleExtensions(const string& fullpath)
