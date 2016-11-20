@@ -36,11 +36,6 @@ ResourceCache::ResourceCache(Context* context) : Subsystem(context)
 
 }
 
-ResourceCache::~ResourceCache()
-{
-	Clear();
-}
-
 void ResourceCache::Initialize()
 {
 

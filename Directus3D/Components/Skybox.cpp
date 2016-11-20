@@ -44,6 +44,7 @@ using namespace Directus::Math;
 using namespace std;
 using namespace Directus::Resource;
 //=================================
+
 Skybox::Skybox()
 {
 	m_cubeMapTexture = nullptr;

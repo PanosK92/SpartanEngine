@@ -54,12 +54,14 @@ public:
 	bool GetReceiveShadows() { return m_receiveShadows; }
 
 	//= MATERIAL ===============================
+	// Sets a material from memory
+	void SetMaterial(std::weak_ptr<Material> material);
 	// Sets a default material (basic, skybox)
 	void SetMaterial(MaterialType type);
-	// Sets a mesh from memory
-	void SetMaterial(std::weak_ptr<Material> material);
+	// Sets a material based on it's ID
+	std::weak_ptr<Material> SetMaterial(const std::string& ID);
 	// Loads a material and the sets it
-	std::weak_ptr<Material> SetMaterial(const std::string& filePath);	
+	std::weak_ptr<Material> LoadMaterial(const std::string& filePath);	
 	std::weak_ptr<Material> GetMaterial() { return  m_material; }
 	bool HasMaterial() { return GetMaterial().expired() ? false : true; }
 	std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial().lock()->GetName() : DATA_NOT_ASSIGNED; }
