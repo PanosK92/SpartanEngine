@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GBuffer.h"
 #include "FullScreenQuad.h"
 #include "../Core/GameObject.h"
-#include "../Core/Timer.h"
 #include "../Components/Camera.h"
 #include "../Components/Skybox.h"
 #include "../Components/Light.h"
@@ -52,7 +51,6 @@ public:
 	void Render();
 	void SetResolution(int width, int height);
 	void Clear();
-	void Update(const std::vector<GameObject*>& renderables, const std::vector<GameObject*>& lightsDirectional, const std::vector<GameObject*>& lightsPoint);
 	const std::vector<GameObject*>& GetRenderables() const;
 
 	//= STATS =========================

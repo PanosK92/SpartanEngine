@@ -60,6 +60,10 @@ public:
 	GameObject* MousePick(Directus::Math::Vector2& mousePos);
 	bool RaySphereIntersect(const Directus::Math::Vector3& rayOrigin, const Directus::Math::Vector3& rayDirection, float radius);
 
+	std::vector<GameObject*> GetRenderables() { return m_renderables; }
+	std::vector<GameObject*> GetLightsDirectional() { return m_lightsDirectional; }
+	std::vector<GameObject*> GetLightsPoint() { return m_lightsPoint; }
+
 private:
 	// GAMEOBJECT CREATION =======================
 	GameObject* CreateSkybox();

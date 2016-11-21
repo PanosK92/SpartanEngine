@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../Math/MathHelper.h"
 #include "../Graphics/ShadowMap.h"
+#include "../Events/EventHandler.h"
 //================================
 
 //= NAMESPACES ================
@@ -118,7 +119,7 @@ void Light::Deserialize()
 void Light::SetLightType(LightType type)
 {
 	m_lightType = type;
-	g_context->GetSubsystem<Scene>()->Resolve();
+	FIRE_EVENT(RESOLVE_HIERARCHY);
 }
 
 float Light::GetShadowTypeAsFloat() const

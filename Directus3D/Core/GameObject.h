@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../Core/Context.h"
 #include "GUIDGenerator.h"
-#include "Scene.h"
+#include "../Events/EventHandler.h"
 //===================================
 
 class Transform;
@@ -95,7 +95,7 @@ public:
 		component->Awake();
 
 		// Do a scene analysis
-		m_context->GetSubsystem<Scene>()->Resolve();
+		FIRE_EVENT(RESOLVE_HIERARCHY);
 
 		// Return it as a component of the requested type
 		return dynamic_cast<T*>(component);
@@ -153,7 +153,7 @@ public:
 			++it;
 		}
 
-		m_context->GetSubsystem<Scene>()->Resolve();
+		FIRE_EVENT(RESOLVE_HIERARCHY);
 	}
 
 	void RemoveComponentByID(const std::string& id);

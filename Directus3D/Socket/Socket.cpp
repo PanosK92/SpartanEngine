@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Events/EventHandler.h"
 #include "../FileSystem/ModelImporter.h"
 #include "../Core/Engine.h"
+#include "../Core/Timer.h"
 //==========================================
 
 //= NAMESPACES =====
