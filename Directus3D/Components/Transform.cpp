@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
+#include "../Events/EventHandler.h"
 //===================================
 
 //= NAMESPACES ================
@@ -293,6 +294,7 @@ void Transform::SetParent(Transform* newParent)
 	if (m_parent)
 		m_parent->ResolveChildrenRecursively();
 
+	FIRE_EVENT(RESOLVE_HIERARCHY);
 	UpdateWorldTransform();
 }
 
@@ -414,7 +416,8 @@ string Transform::GetName()
 void Transform::BecomeOrphan()
 {
 	// if there is no parent, no need to do anything
-	if (!m_parent) return;
+	if (!m_parent)
+		return;
 
 	// create a temporary reference to the parent
 	Transform* tempRef = m_parent;

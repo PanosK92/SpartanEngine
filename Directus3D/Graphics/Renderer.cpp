@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Resource/ResourceCache.h"
 #include "Shaders/ShaderVariation.h"
+#include "../Core/Timer.h"
 //======================================
 
 //= NAMESPACES ====================
@@ -217,15 +218,6 @@ void Renderer::Clear()
 	m_lightsPoint.shrink_to_fit();
 }
 
-void Renderer::Update(const vector<GameObject*>& renderables, const vector<GameObject*>& lightsDirectional, const vector<GameObject*>& lightsPoint)
-{
-	Clear();
-
-	m_renderables = renderables;
-	m_lightsDirectional = lightsDirectional;
-	m_lightsPoint = lightsPoint;
-}
-
 const vector<GameObject*>& Renderer::GetRenderables() const
 {
 	return m_renderables;
@@ -233,7 +225,11 @@ const vector<GameObject*>& Renderer::GetRenderables() const
 
 void Renderer::AcquirePrerequisites()
 {
+	Clear();
 	Scene* scene = g_context->GetSubsystem<Scene>();
+	m_renderables = scene->GetRenderables();
+	m_lightsDirectional = scene->GetLightsDirectional();
+	m_lightsPoint = scene->GetLightsPoint();
 
 	GameObject* camera = scene->GetMainCamera();
 	if (camera)

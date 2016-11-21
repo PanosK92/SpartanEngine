@@ -16,10 +16,10 @@ DEALINGS IN THE SOFTWARE. */
 
 #pragma once
 
-//= INCLUDES ======
+//= INCLUDES =========
 #include "Subsystem.h"
 #include <vector>
-//=================
+//====================
 
 class DllExport Context
 {

@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "GameObject.h"
-#include "Scene.h"
 #include "GUIDGenerator.h"
 #include "GameObjectPool.h"
 #include "../IO/Serializer.h"
@@ -39,6 +38,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/LineRenderer.h"
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
+#include "../Events/Events.h"
+#include "../Events/EventHandler.h"
 //======================================
 
 //= NAMESPACES =====
@@ -226,7 +227,7 @@ void GameObject::RemoveComponentByID(const string& id)
 		++it;
 	}
 
-	m_context->GetSubsystem<Scene>()->Resolve();
+	FIRE_EVENT(RESOLVE_HIERARCHY);
 }
 
 //= HELPER FUNCTIONS ===========================================

@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Logging/Log.h"
 #include "../Components/Transform.h"
-#include "../Core/Scene.h"
 #include "../Events/EventHandler.h"
 #include "../Core/Context.h"
 //==================================
@@ -37,6 +36,10 @@ using namespace std;
 GameObjectPool::GameObjectPool()
 {
 	m_context = nullptr;
+
+	// Subcribe to render events
+	SUBSCRIBE_TO_EVENT(EVENT_ENGINE_START, std::bind(&GameObjectPool::Start, this));	
+	SUBSCRIBE_TO_EVENT(RENDER_UPDATE, std::bind(&GameObjectPool::Update, this));
 }
 
 GameObjectPool::~GameObjectPool()
@@ -47,7 +50,6 @@ GameObjectPool::~GameObjectPool()
 void GameObjectPool::Initialize(Context* context)
 {
 	m_context = context;
-	SUBSCRIBE_TO_EVENT(EVENT_ENGINE_START, std::bind(&GameObjectPool::Start, this));
 }
 
 void GameObjectPool::Start()
@@ -264,7 +266,6 @@ void GameObjectPool::RemoveGameObject(GameObject* gameObject)
 // Removes a gameobject but leaves the parent and the children as is
 void GameObjectPool::RemoveSingleGameObject(GameObject* gameObject)
 {
-	Scene* scene = m_context->GetSubsystem<Scene>();
 	for (auto it = m_gameObjects.begin(); it < m_gameObjects.end();)
 	{
 		GameObject* temp = *it;
@@ -272,7 +273,7 @@ void GameObjectPool::RemoveSingleGameObject(GameObject* gameObject)
 		{
 			delete temp;
 			it = m_gameObjects.erase(it);
-			scene->Resolve();
+			FIRE_EVENT(RESOLVE_HIERARCHY);
 			return;
 		}
 		++it;
@@ -292,5 +293,5 @@ void GameObjectPool::AddGameObjectToPool(GameObject* gameObjectIn)
 	gameObjectIn->Initialize(m_context);
 	m_gameObjects.push_back(gameObjectIn);
 
-	m_context->GetSubsystem<Scene>()->Resolve();
+	FIRE_EVENT(RESOLVE_HIERARCHY);
 }

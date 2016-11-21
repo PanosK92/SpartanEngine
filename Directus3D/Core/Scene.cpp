@@ -20,7 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==========================
-#include <fstream>
 #include "Scene.h"
 #include <complex>
 #include "../IO/Serializer.h"
@@ -53,8 +52,8 @@ Scene::Scene(Context* context) : Subsystem(context)
 	m_ambientLight = Vector3::Zero;
 	m_mainCamera = nullptr;
 
-	// Subcribe to update event
-	SUBSCRIBE_TO_EVENT(UPDATE, std::bind(&Scene::Resolve, this));
+	// Subcribe to update events
+	SUBSCRIBE_TO_EVENT(RESOLVE_HIERARCHY, std::bind(&Scene::Resolve, this));
 }
 
 Scene::~Scene()
@@ -214,8 +213,6 @@ Vector3 Scene::GetAmbientLight()
 
 void Scene::Resolve()
 {
-	GameObjectPool::GetInstance().Update();
-
 	m_renderables.clear();
 	m_renderables.shrink_to_fit();
 
@@ -248,8 +245,6 @@ void Scene::Resolve()
 				m_lightsPoint.push_back(gameObject);
 		}
 	}
-
-	g_context->GetSubsystem<Renderer>()->Update(m_renderables, m_lightsDirectional, m_lightsPoint);
 }
 
 GameObject* Scene::MousePick(Vector2& mousePos)

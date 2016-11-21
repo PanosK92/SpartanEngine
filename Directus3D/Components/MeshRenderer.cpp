@@ -73,7 +73,7 @@ void MeshRenderer::Update()
 void MeshRenderer::Serialize()
 {
 	Serializer::WriteInt((int)m_materialType);
-	Serializer::WriteSTR(!m_material.expired() ? m_material.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
+	Serializer::WriteSTR(!m_material.expired() ? m_material.lock()->GetFilePath() : (string)DATA_NOT_ASSIGNED);
 	Serializer::WriteBool(m_castShadows);
 	Serializer::WriteBool(m_receiveShadows);
 }
@@ -81,11 +81,11 @@ void MeshRenderer::Serialize()
 void MeshRenderer::Deserialize()
 {
 	m_materialType = (MaterialType)Serializer::ReadInt();
-	string materialID = Serializer::ReadSTR();
+	string filePath = Serializer::ReadSTR();
 	m_castShadows = Serializer::ReadBool();
 	m_receiveShadows = Serializer::ReadBool();
 
-	m_materialType == Imported ? SetMaterial(materialID) : SetMaterial(m_materialType);
+	m_materialType == Imported ? LoadMaterial(filePath) : SetMaterial(m_materialType);
 }
 //==============================================================================
 
