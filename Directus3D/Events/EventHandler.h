@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========
+//= INCLUDES ==============
 #include "Events.h"
 #include <vector>
 #include <functional>
 #include <memory>
-//===================
+#include "../Core/Helper.h"
+//=========================
 
 #define SUBSCRIBE_TO_EVENT(signalID, function)		EventHandler::Subscribe(signalID, function)
 #define UNSUBSCRIBE_FROM_EVENT(signalID, function)	EventHandler::Unsubscribe(signalID, function)
@@ -52,7 +53,7 @@ size_t getAddress(std::function<FunctionType(ARGS...)> function)
 //============================================================
 
 //= EVENT ===================================================
-class __declspec(dllexport) Event
+class DllExport Event
 {
 public:
 	using functionType = std::function<void()>;
@@ -73,7 +74,7 @@ private:
 //============================================================
 
 //= EVENT HANDLER ============================================
-class __declspec(dllexport) EventHandler
+class DllExport EventHandler
 {
 public:
 	template <typename Function>

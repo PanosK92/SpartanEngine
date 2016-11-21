@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class Audio;
 
-class __declspec(dllexport) AudioListener : public IComponent
+class DllExport AudioListener : public IComponent
 {
 public:
 	AudioListener();

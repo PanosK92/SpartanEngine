@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/ResourceCache.h"
+#include "../Core/Context.h"
 //====================================
 
 //= NAMESPACES ====================
@@ -267,7 +268,7 @@ void Material::AcquireShader()
 
 	// Add a shader to the pool based on this material, if a 
 	// matching shader already exists, it will be returned instead.
-	m_shader = m_context->GetSubsystem<ResourceCache>()->CreateShaderBasedOnMaterial(
+	m_shader = CreateShaderBasedOnMaterial(
 		HasTextureOfType(Albedo),
 		HasTextureOfType(Roughness),
 		HasTextureOfType(Metallic),
@@ -280,14 +281,42 @@ void Material::AcquireShader()
 	);
 }
 
-weak_ptr<ShaderVariation> Material::GetShader()
+weak_ptr<ShaderVariation> Material::FindMatchingShader(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
 {
-	return m_shader;
+	auto shaders = m_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<ShaderVariation>();
+	for (const auto shaderTemp : shaders)
+	{
+		auto shader = shaderTemp.lock();
+		if (shader->HasAlbedoTexture() != albedo) continue;
+		if (shader->HasRoughnessTexture() != roughness) continue;
+		if (shader->HasMetallicTexture() != metallic) continue;
+		if (shader->HasNormalTexture() != normal) continue;
+		if (shader->HasHeightTexture() != height) continue;
+		if (shader->HasOcclusionTexture() != occlusion) continue;
+		if (shader->HasEmissionTexture() != emission) continue;
+		if (shader->HasMaskTexture() != mask) continue;
+		if (shader->HasCubeMapTexture() != cubemap) continue;
+
+		return shader;
+	}
+
+	return weak_ptr<ShaderVariation>();
 }
 
-bool Material::HasShader()
+weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
 {
-	return GetShader().expired() ? false : true;
+	// If an appropriate shader already exists, return it's ID
+	auto existingShader = FindMatchingShader(albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap);
+
+	if (!existingShader.expired())
+		return existingShader;
+
+	// If not, create a new one
+	auto shader = make_shared<ShaderVariation>();
+	shader->Initialize(albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<Graphics>());
+
+	// Add the shader to the pool and return it
+	return m_context->GetSubsystem<ResourceCache>()->AddResource(shader);
 }
 
 ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureType type)

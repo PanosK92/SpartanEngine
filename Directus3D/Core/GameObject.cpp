@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshCollider.h"
 #include "../Components/Hinge.h"
 #include "../Components/Script.h"
+#include "../Components/Light.h"
 #include "../Components/LineRenderer.h"
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
@@ -103,8 +104,22 @@ bool GameObject::SaveAsPrefab(const string& filePath)
 	if (!Serializer::StartWriting(filePath + PREFAB_EXTENSION))
 		return false;
 
-	// Write data to it
+	// Serialize as usual...
 	Serialize();
+
+	// ... but also save any descendants
+	auto descendants = GetTransform()->GetDescendants();
+
+	// 1st - descendant count
+	Serializer::WriteInt((int)descendants.size());
+
+	// 2nd - descendant IDs
+	for (const auto& descendant : descendants)
+		Serializer::WriteSTR(descendant->GetID());
+
+	// 3rd - descendants
+	for (const auto& descendant : descendants)
+		descendant->Serialize();
 
 	// Close it
 	Serializer::StopWriting();
@@ -122,8 +137,27 @@ bool GameObject::LoadFromPrefab(const string& filePath)
 	if (!Serializer::StartReading(filePath))
 		return false;
 
-	// Read data from it
+	// Deserialize as usual...
 	Deserialize();
+
+	// ... but aslso load any descendants
+	// 1st - descendant count
+	int descendantCount = Serializer::ReadInt();
+
+	// 2nd - descendant IDs
+	vector<GameObject*> descendants;
+	for (int i = 0; i < descendantCount; i++)
+	{
+		GameObject* descendant = new GameObject();
+		descendant->SetID(Serializer::ReadSTR());
+		descendants.push_back(descendant);
+	}
+
+	// 3rd - descendants
+	for (const auto& descendant : descendants)
+		descendant->Deserialize();
+
+	GetTransform()->ResolveChildrenRecursively();
 
 	// Close it
 	Serializer::StopReading();
@@ -150,11 +184,6 @@ void GameObject::Serialize()
 	for (auto const& it : m_components)
 		it.second->Serialize();
 	//===========================================
-
-	//= CHILDREN GAMEOBJECTS ====================
-	auto children = m_transform->GetChildrenAsGameObjects();
-	Serializer::WriteVectorGameObject(children);
-	//===========================================
 }
 
 void GameObject::Deserialize()
@@ -180,11 +209,6 @@ void GameObject::Deserialize()
 	// the components (like above) and then deserialize them (like here).
 	for (const auto& component : m_components)
 		component.second->Deserialize();
-
-	//= CHILDREN GAMEOBJECTS =======================
-	auto children = Serializer::ReadVectorGameObject();
-	GetTransform()->ResolveChildrenRecursively();
-	//==============================================
 }
 
 void GameObject::RemoveComponentByID(const string& id)

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 //===============
 
-class __declspec(dllexport) ILogger
+class DllExport ILogger
 {
 public:
 	virtual ~ILogger() {}

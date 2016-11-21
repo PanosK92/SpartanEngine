@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Subsystem.h"
 //==================
 
-class __declspec(dllexport) Timer : public Subsystem
+class DllExport Timer : public Subsystem
 {
 public:
 	Timer(Context* context);

@@ -115,45 +115,10 @@ void Light::Deserialize()
 	m_bias = Serializer::ReadFloat();
 }
 
-LightType Light::GetLightType()
-{
-	return m_lightType;
-}
-
 void Light::SetLightType(LightType type)
 {
 	m_lightType = type;
 	g_context->GetSubsystem<Scene>()->Resolve();
-}
-
-Vector4 Light::GetColor()
-{
-	return m_color;
-}
-
-void Light::SetColor(float r, float g, float b, float a)
-{
-	m_color = Vector4(r, g, b, a);
-}
-
-void Light::SetColor(Vector4 color)
-{
-	m_color = color;
-}
-
-float Light::GetIntensity()
-{
-	return m_intensity;
-}
-
-ShadowType Light::GetShadowType()
-{
-	return m_shadowType;
-}
-
-void Light::SetShadowType(ShadowType shadowType)
-{
-	m_shadowType = shadowType;
 }
 
 float Light::GetShadowTypeAsFloat() const
@@ -167,34 +132,9 @@ float Light::GetShadowTypeAsFloat() const
 	return 0.0f;
 }
 
-void Light::SetRange(float value)
-{
-	m_range = value;
-}
-
-float Light::GetRange()
-{
-	return m_range;
-}
-
-void Light::SetBias(float value)
-{
-	m_bias = value;
-}
-
-float Light::GetBias()
-{
-	return m_bias;
-}
-
 Vector3 Light::GetDirection()
 {
 	return g_transform->GetForward();
-}
-
-void Light::SetIntensity(float value)
-{
-	m_intensity = value;
 }
 
 Matrix Light::GetViewMatrix()
@@ -240,15 +180,6 @@ ID3D11ShaderResourceView* Light::GetDepthMap(int cascade)
 	return m_shadowMaps[cascade]->GetShaderResourceView();
 }
 
-float Light::GetShadowMapResolution()
-{
-	return SHADOWMAP_RESOLUTION;
-}
-
-int Light::GetCascadeCount()
-{
-	return m_cascades;
-}
 
 float Light::GetCascadeSplit(int cascade)
 {

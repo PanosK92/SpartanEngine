@@ -73,10 +73,8 @@ namespace Directus
 			{
 				// Check if the resource is already loaded
 				for (auto const& resource : m_resources)
-				{
 					if (resource->GetFilePath() == filePath)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
-				}
 
 				std::shared_ptr<T> typedResource = std::make_shared<T>(g_context);
 				std::shared_ptr<IResource> resource = std::shared_ptr<IResource>(dynamic_pointer_cast<T>(typedResource));
@@ -92,7 +90,8 @@ namespace Directus
 			{
 				std::vector<std::string> filePaths;
 				for (auto const& resource : m_resources)
-					filePaths.push_back(resource->GetFilePath());
+					if (resource->GetFilePath() != DATA_NOT_ASSIGNED)
+						filePaths.push_back(resource->GetFilePath());
 
 				return filePaths;
 			}
@@ -102,10 +101,8 @@ namespace Directus
 			std::weak_ptr<T> GetResourceByID(const std::string& ID)
 			{
 				for (auto const& resource : m_resources)
-				{
 					if (resource->GetID() == ID)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
-				}
 
 				return std::weak_ptr<T>();
 			}
@@ -143,32 +140,9 @@ namespace Directus
 					resource->SaveMetadata();
 			}
 
-			//= TEMPORARY ===================================================
-			std::weak_ptr<ShaderVariation> CreateShaderBasedOnMaterial(
-				bool albedo,
-				bool roughness,
-				bool metallic,
-				bool normal,
-				bool height,
-				bool occlusion,
-				bool emission,
-				bool mask,
-				bool cubemap
-			);
-			std::weak_ptr<ShaderVariation> FindMatchingShader(
-				bool albedo,
-				bool roughness,
-				bool metallic,
-				bool normal,
-				bool height,
-				bool occlusion,
-				bool emission,
-				bool mask,
-				bool cubemap
-			);
-
+			//= TEMPORARY =======================================
 			void NormalizeModelScale(GameObject* rootGameObject);
-			//======================================================
+			//===================================================
 
 		private:
 			std::vector<std::shared_ptr<IResource>> m_resources;

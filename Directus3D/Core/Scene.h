@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Renderer;
 class ModelImporter;
 
-class __declspec(dllexport) Scene : public Subsystem
+class DllExport Scene : public Subsystem
 {
 public:
 	Scene(Context* context);

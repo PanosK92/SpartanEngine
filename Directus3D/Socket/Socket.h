@@ -32,7 +32,7 @@ class ILogger;
 class PhysicsDebugDraw;
 class Engine;
 
-class __declspec(dllexport) Socket : public Subsystem
+class DllExport Socket : public Subsystem
 {
 public:
 	Socket(Context* context);

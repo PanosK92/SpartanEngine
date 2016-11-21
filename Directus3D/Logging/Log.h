@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define LOG_WARNING(text) Log::Write(text, Log::Warning)
 #define LOG_ERROR(text) Log::Write(text, Log::Error)
 
-class __declspec(dllexport) Log
+class DllExport Log
 {
 	friend class ILogger;
 public:

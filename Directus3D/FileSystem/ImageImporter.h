@@ -69,7 +69,7 @@ XPM files[reading, writing]
 // when used in editor mode
 class FIBITMAP;
 
-class __declspec(dllexport) ImageImporter
+class DllExport ImageImporter
 {
 public:
 	static ImageImporter& GetInstance()

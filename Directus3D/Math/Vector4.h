@@ -21,11 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= INCLUDES ==============
+#include "../Core/Helper.h"
+//=========================
+
 namespace Directus
 {
 	namespace Math
 	{
-		class __declspec(dllexport) Vector4
+		class DllExport Vector4
 		{
 		public:
 			Vector4();

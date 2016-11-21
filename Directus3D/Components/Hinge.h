@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class btHingeConstraint;
 
-class __declspec(dllexport) Hinge : public IComponent
+class DllExport Hinge : public IComponent
 {
 public:
 	Hinge();

@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ========================
 #include "../Core/Context.h"
-//==========================
+#include "../FileSystem/FileSystem.h"
+//===================================
 
 namespace Directus
 {
@@ -48,8 +49,8 @@ namespace Directus
 
 		protected:
 			Context* m_context;
-			std::string m_ID;
-			std::string m_filePath;
+			std::string m_ID = DATA_NOT_ASSIGNED;
+			std::string m_filePath = DATA_NOT_ASSIGNED;
 		};
 	}
 }

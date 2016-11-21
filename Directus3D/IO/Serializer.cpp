@@ -89,20 +89,6 @@ void Serializer::WriteVectorSTR(vector<string>& vector)
 		WriteSTR(vector[i]);
 }
 
-void Serializer::WriteVectorGameObject(vector<GameObject*>& vector)
-{
-	// Save the GameObject count
-	WriteInt(int(vector.size()));
-
-	// Save the GameObject IDs
-	for (const auto& gameObject : vector)
-		WriteSTR(gameObject->GetID());
-
-	// Save the GameObjects
-	for (const auto& gameObject : vector)
-		gameObject->Serialize();
-}
-
 void Serializer::WriteVector2(Vector2& vector)
 {
 	out.write(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
@@ -185,27 +171,6 @@ vector<string> Serializer::ReadVectorSTR()
 		vector.push_back(ReadSTR());
 
 	return vector;
-}
-
-vector<GameObject*> Serializer::ReadVectorGameObject()
-{
-	vector<GameObject*> gameObjects;
-
-	// Load the GameObject count
-	int gameObjectCount = ReadInt();
-
-	// Load the GameObject IDs
-	for (int i = 0; i < gameObjectCount; i++)
-	{
-		gameObjects.push_back(new GameObject());
-		gameObjects.back()->SetID(ReadSTR());
-	}
-
-	// Load the GameObjects
-	for (const auto& gameObject : gameObjects)
-		gameObject->Deserialize();
-
-	return gameObjects;
 }
 
 Vector2 Serializer::ReadVector2()

@@ -33,7 +33,7 @@ namespace Directus
 		class Matrix;
 		class Vector3;
 
-		class __declspec(dllexport) Quaternion
+		class DllExport Quaternion
 		{
 		public:
 			float x;
@@ -166,7 +166,7 @@ namespace Directus
 			static const Quaternion Identity;
 		};
 
-		inline __declspec(dllexport) Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
-		inline __declspec(dllexport) Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
+		inline DllExport Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
+		inline DllExport Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
 	}
 }

@@ -33,7 +33,7 @@ namespace Directus
 	{
 		class Quaternion;
 
-		class __declspec(dllexport) Matrix
+		class DllExport Matrix
 		{
 		public:
 			Matrix()

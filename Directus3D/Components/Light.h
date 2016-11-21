@@ -21,16 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ========================
+#include <vector>
 #include "../Components/IComponent.h"
 #include "../Math/Vector4.h"
 #include "../Math/Vector3.h"
-#include <vector>
-#include "../Graphics/D3D11/D3D11Shader.h"
 #include "../Math/Matrix.h"
-//========================================
+#include "../Core/Settings.h"
+//===================================
 
 class ShadowMap;
+class ID3D11ShaderResourceView;
 
 enum LightType
 {
@@ -45,7 +46,7 @@ enum ShadowType
 	Soft_Shadows
 };
 
-class __declspec(dllexport) Light : public IComponent
+class DllExport Light : public IComponent
 {
 public:
 	Light();
@@ -58,25 +59,25 @@ public:
 	virtual void Serialize();
 	virtual void Deserialize();
 	
-	LightType GetLightType();
+	LightType GetLightType() { return m_lightType; }
 	void SetLightType(LightType type);
 
-	void SetColor(float r, float g, float b, float a);
-	void SetColor(Directus::Math::Vector4 color);
-	Directus::Math::Vector4 GetColor();
+	void SetColor(float r, float g, float b, float a) { m_color = Directus::Math::Vector4(r, g, b, a); }
+	void SetColor(Directus::Math::Vector4 color) { m_color = color; }
+	Directus::Math::Vector4 GetColor() { return m_color; }
 
-	void SetIntensity(float value);
-	float GetIntensity();
+	void SetIntensity(float value) { m_intensity = value; }
+	float GetIntensity() { return m_intensity; }
 
-	ShadowType GetShadowType();
-	void SetShadowType(ShadowType shadowType);
+	ShadowType GetShadowType() { return m_shadowType; }
+	void SetShadowType(ShadowType shadowType) { m_shadowType = shadowType; }
 	float GetShadowTypeAsFloat() const;
 
-	void SetRange(float value);
-	float GetRange();
+	void SetRange(float value) { m_range = value; }
+	float GetRange() { return m_range; }
 
-	void SetBias(float value);
-	float GetBias();
+	void SetBias(float value) { m_bias = value; }
+	float GetBias() { return m_bias; }
 
 	Directus::Math::Vector3 GetDirection();
 
@@ -84,8 +85,8 @@ public:
 	Directus::Math::Matrix GetOrthographicProjectionMatrix(int cascade);
 	void SetShadowMapAsRenderTarget(int cascade);
 	ID3D11ShaderResourceView* GetDepthMap(int cascade);
-	float GetShadowMapResolution();
-	int GetCascadeCount();
+	int GetShadowMapResolution() { return SHADOWMAP_RESOLUTION; }
+	int GetCascadeCount() { return m_cascades; }
 	float GetCascadeSplit(int cascade);
 
 private:
