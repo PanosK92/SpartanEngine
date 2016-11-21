@@ -42,7 +42,7 @@ enum VSync
 	Every_Second_VBlank
 };
 
-class __declspec(dllexport) Settings
+class DllExport Settings
 {
 public:
 	static bool IsFullScreen();

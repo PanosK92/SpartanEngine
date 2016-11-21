@@ -40,7 +40,7 @@ enum ColliderShape
 	Sphere
 };
 
-class __declspec(dllexport) Collider : public IComponent
+class DllExport Collider : public IComponent
 {
 public:
 	Collider();

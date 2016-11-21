@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class AudioClip;
 
-class __declspec(dllexport) AudioSource : public IComponent
+class DllExport AudioSource : public IComponent
 {
 public:
 	AudioSource();

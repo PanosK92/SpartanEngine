@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class Transform;
 
-class __declspec(dllexport) GameObject
+class DllExport GameObject
 {
 public:
 	GameObject();

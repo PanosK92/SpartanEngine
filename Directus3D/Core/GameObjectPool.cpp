@@ -52,13 +52,13 @@ void GameObjectPool::Initialize(Context* context)
 
 void GameObjectPool::Start()
 {
-	for (const auto& gameObject : m_gameObjectPool)
+	for (const auto& gameObject : m_gameObjects)
 		gameObject->Start();
 }
 
 void GameObjectPool::Update()
 {
-	for (const auto& gameObject : m_gameObjectPool)
+	for (const auto& gameObject : m_gameObjects)
 		gameObject->Update();
 }
 
@@ -69,11 +69,11 @@ void GameObjectPool::Release()
 
 void GameObjectPool::Clear()
 {
-	for (auto& gameObject : m_gameObjectPool)
+	for (auto& gameObject : m_gameObjects)
 		delete gameObject;
 
-	m_gameObjectPool.clear();
-	m_gameObjectPool.shrink_to_fit();
+	m_gameObjects.clear();
+	m_gameObjects.shrink_to_fit();
 }
 
 /*------------------------------------------------------------------------------
@@ -81,14 +81,37 @@ void GameObjectPool::Clear()
 ------------------------------------------------------------------------------*/
 void GameObjectPool::Serialize()
 {
-	auto rootGameObjects = GetRootGameObjects();
-	Serializer::WriteVectorGameObject(rootGameObjects);
+	auto gameObjects = GetAllGameObjects();
+
+	// 1st - GameObject count
+	Serializer::WriteInt((int)gameObjects.size());
+
+	// 2nd - GameObject IDs
+	for (const auto& gameObject : gameObjects)
+		Serializer::WriteSTR(gameObject->GetID());
+
+	// 3rd - GameObjects
+	for (const auto& gameObject : gameObjects)
+		gameObject->Serialize();
 }
 
 void GameObjectPool::Deserialize()
 {
 	Clear();
-	m_gameObjectPool = Serializer::ReadVectorGameObject();
+
+	// 1st - GameObject count
+	int gameObjectCount = Serializer::ReadInt();
+
+	// 2nd - GameObject IDs
+	for (int i = 0; i < gameObjectCount; i++)
+	{
+		GameObject* gameObject = new GameObject();
+		gameObject->SetID(Serializer::ReadSTR());
+	}
+
+	// 3rd - GameObjects
+	for (const auto& gameObject : m_gameObjects)
+		gameObject->Deserialize();
 }
 
 /*------------------------------------------------------------------------------
@@ -97,7 +120,7 @@ void GameObjectPool::Deserialize()
 vector<GameObject*> GameObjectPool::GetAllGameObjects()
 {
 	vector<GameObject*> gameObjects;
-	for (auto gameObject : m_gameObjectPool)
+	for (auto gameObject : m_gameObjects)
 		gameObjects.push_back(gameObject);
 
 	return gameObjects;
@@ -106,7 +129,7 @@ vector<GameObject*> GameObjectPool::GetAllGameObjects()
 vector<GameObject*> GameObjectPool::GetRootGameObjects()
 {
 	vector<GameObject*> rootGameObjects;
-	for (const auto& gameObject : m_gameObjectPool)
+	for (const auto& gameObject : m_gameObjects)
 	{
 		if (gameObject->GetTransform()->IsRoot())
 			rootGameObjects.push_back(gameObject);
@@ -125,7 +148,7 @@ GameObject* GameObjectPool::GetGameObjectRoot(GameObject* gameObject)
 
 int GameObjectPool::GetGameObjectCount()
 {
-	return m_gameObjectPool.size();
+	return m_gameObjects.size();
 }
 
 int GameObjectPool::GetGameObjectIndex(GameObject* gameObject)
@@ -136,8 +159,8 @@ int GameObjectPool::GetGameObjectIndex(GameObject* gameObject)
 		return -1;
 	}
 
-	for (auto i = 0; i < m_gameObjectPool.size(); i++)
-		if (gameObject->GetID() == m_gameObjectPool[i]->GetID())
+	for (auto i = 0; i < m_gameObjects.size(); i++)
+		if (gameObject->GetID() == m_gameObjects[i]->GetID())
 			return i;
 
 	LOG_WARNING("Can't return GameObject index, the gameObject is not contained in the pool.");
@@ -146,10 +169,10 @@ int GameObjectPool::GetGameObjectIndex(GameObject* gameObject)
 
 GameObject* GameObjectPool::GetGameObjectByName(const string& name)
 {
-	for (auto i = 0; i < m_gameObjectPool.size(); i++)
+	for (auto i = 0; i < m_gameObjects.size(); i++)
 	{
-		if (m_gameObjectPool[i]->GetName() == name)
-			return m_gameObjectPool[i];
+		if (m_gameObjects[i]->GetName() == name)
+			return m_gameObjects[i];
 	}
 
 	LOG_WARNING("Can't return GameObject. No gameObject with name (" + name + ") exists.");
@@ -158,21 +181,21 @@ GameObject* GameObjectPool::GetGameObjectByName(const string& name)
 
 GameObject* GameObjectPool::GetGameObjectByIndex(int index)
 {
-	if (index >= int(m_gameObjectPool.size()))
+	if (index >= int(m_gameObjects.size()))
 	{
 		LOG_WARNING("Can't return GameObject, index out of range.");
 		return nullptr;
 	}
 
-	return m_gameObjectPool[index];
+	return m_gameObjects[index];
 }
 
 GameObject* GameObjectPool::GetGameObjectByID(const string& ID)
 {
-	for (auto i = 0; i < m_gameObjectPool.size(); i++)
+	for (auto i = 0; i < m_gameObjects.size(); i++)
 	{
-		if (m_gameObjectPool[i]->GetID() == ID)
-			return m_gameObjectPool[i];
+		if (m_gameObjects[i]->GetID() == ID)
+			return m_gameObjects[i];
 	}
 
 	return nullptr;
@@ -181,7 +204,7 @@ GameObject* GameObjectPool::GetGameObjectByID(const string& ID)
 const vector<GameObject*>& GameObjectPool::GetGameObjectsByParentID(const string& ID)
 {
 	vector<GameObject*> gameObjects;
-	for (auto gameObject : m_gameObjectPool)
+	for (auto gameObject : m_gameObjects)
 	{
 		// check if the gameobject has a parent
 		if (!gameObject->GetTransform()->HasParent())
@@ -200,7 +223,7 @@ bool GameObjectPool::GameObjectExists(GameObject* gameObjectIn)
 	if (!gameObjectIn)
 		return false;
 
-	for (auto gameObject : m_gameObjectPool)
+	for (auto gameObject : m_gameObjects)
 		if (gameObject->GetID() == gameObjectIn->GetID())
 			return true;
 
@@ -209,7 +232,7 @@ bool GameObjectPool::GameObjectExists(GameObject* gameObjectIn)
 
 bool GameObjectPool::GameObjectExistsByName(const string& name)
 {
-	for (auto gameObject : m_gameObjectPool)
+	for (auto gameObject : m_gameObjects)
 		if (gameObject->GetName() == name)
 			return true;
 
@@ -242,13 +265,13 @@ void GameObjectPool::RemoveGameObject(GameObject* gameObject)
 void GameObjectPool::RemoveSingleGameObject(GameObject* gameObject)
 {
 	Scene* scene = m_context->GetSubsystem<Scene>();
-	for (auto it = m_gameObjectPool.begin(); it < m_gameObjectPool.end();)
+	for (auto it = m_gameObjects.begin(); it < m_gameObjects.end();)
 	{
 		GameObject* temp = *it;
 		if (temp->GetID() == gameObject->GetID())
 		{
 			delete temp;
-			it = m_gameObjectPool.erase(it);
+			it = m_gameObjects.erase(it);
 			scene->Resolve();
 			return;
 		}
@@ -262,12 +285,12 @@ void GameObjectPool::RemoveSingleGameObject(GameObject* gameObject)
 void GameObjectPool::AddGameObjectToPool(GameObject* gameObjectIn)
 {
 	// check if it already exists.
-	for (auto gameObject : m_gameObjectPool)
+	for (auto gameObject : m_gameObjects)
 		if (gameObjectIn->GetID() == gameObject->GetID())
 			return;
 
 	gameObjectIn->Initialize(m_context);
-	m_gameObjectPool.push_back(gameObjectIn);
+	m_gameObjects.push_back(gameObjectIn);
 
 	m_context->GetSubsystem<Scene>()->Resolve();
 }

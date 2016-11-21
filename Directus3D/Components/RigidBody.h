@@ -37,7 +37,7 @@ enum ForceMode
 	Impulse
 };
 
-class __declspec(dllexport) RigidBody : public IComponent
+class DllExport RigidBody : public IComponent
 {
 public:
 	RigidBody();

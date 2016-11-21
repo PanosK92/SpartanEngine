@@ -21,13 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ======
 #include <string>
-//===============
+#include "Helper.h"
+//=================
 
 #define GENERATE_GUID GUIDGenerator::Generate()
 
-class __declspec(dllexport) GUIDGenerator
+class DllExport GUIDGenerator
 {
 public:
 	static std::string Generate();

@@ -31,7 +31,7 @@ class RigidBody;
 class MeshFilter;
 class btCollisionShape;
 
-class __declspec(dllexport) MeshCollider : public IComponent
+class DllExport MeshCollider : public IComponent
 {
 public:
 	MeshCollider();

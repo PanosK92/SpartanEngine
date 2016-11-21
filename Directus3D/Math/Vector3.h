@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ==============
 #include <string>
 #include "MathHelper.h"
-//=====================
+#include "../Core/Helper.h"
+//=========================
 
 namespace Directus
 {
@@ -33,7 +34,7 @@ namespace Directus
 		class Matrix;
 		class Quaternion;
 
-		class __declspec(dllexport) Vector3
+		class DllExport Vector3
 		{
 		public:
 			// Constructor
@@ -327,7 +328,7 @@ namespace Directus
 			static const Vector3 InfinityNeg;
 		};
 
-		inline __declspec(dllexport) Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
-		inline __declspec(dllexport) Vector3 operator*(const Matrix& lhs, const Vector3& rhs) { return rhs * lhs; }
+		inline DllExport Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
+		inline DllExport Vector3 operator*(const Matrix& lhs, const Vector3& rhs) { return rhs * lhs; }
 	}
 }

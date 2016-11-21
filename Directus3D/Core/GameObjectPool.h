@@ -74,6 +74,6 @@ public:
 	void AddGameObjectToPool(GameObject* gameObject);
 
 private:
-	std::vector<GameObject*> m_gameObjectPool;
+	std::vector<GameObject*> m_gameObjects;
 	Context* m_context;
 };

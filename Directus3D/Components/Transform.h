@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Quaternion.h"
 //=============================
 
-class __declspec(dllexport) Transform : public IComponent
+class DllExport Transform : public IComponent
 {
 public:
 	enum Space

@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ==============
 #include <vector>
-//===============
+#include "../Core/Helper.h"
+//=========================
 
 #define DATA_NOT_ASSIGNED "N/A"
 
@@ -37,7 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MATERIAL_EXTENSION ".mat"
 #define MESH_EXTENSION ".msh"
 
-class __declspec(dllexport) FileSystem
+class DllExport FileSystem
 {
 public:
 	//= DIRECTORIES ==================================================

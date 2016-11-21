@@ -38,7 +38,7 @@ enum Projection
 	Orthographic,
 };
 
-class __declspec(dllexport) Camera : public IComponent
+class DllExport Camera : public IComponent
 {
 public:
 	Camera();

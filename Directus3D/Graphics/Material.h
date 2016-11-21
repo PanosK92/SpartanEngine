@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =====================
 #include <vector>
+#include <map>
 #include "Texture.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
-#include "../Graphics/Renderer.h"
 #include "../Resource/IResource.h"
-//===============================
+//================================
 
 class ShaderVariation;
 class ShaderPool;
@@ -41,7 +41,7 @@ enum ShadingMode
 	Skysphere
 };
 
-class __declspec(dllexport) Material : public Directus::Resource::IResource
+class DllExport Material : public Directus::Resource::IResource
 {
 public:
 	Material(Context* context);
@@ -67,8 +67,10 @@ public:
 
 	//= SHADER ====================================================================
 	void AcquireShader();
-	std::weak_ptr<ShaderVariation> GetShader();
-	bool HasShader();
+	std::weak_ptr<ShaderVariation> Material::FindMatchingShader(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap);
+	std::weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap);
+	std::weak_ptr<ShaderVariation> GetShader() { return m_shader; }
+	bool HasShader() { return GetShader().expired() ? false : true; }
 	ID3D11ShaderResourceView* GetShaderResourceViewByTextureType(TextureType type);
 	//=============================================================================
 

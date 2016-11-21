@@ -6,7 +6,7 @@
 #include "../Graphics/Vertex.h"
 //========================================
 
-class __declspec(dllexport) LineRenderer : public IComponent
+class DllExport LineRenderer : public IComponent
 {
 public:
 	LineRenderer();

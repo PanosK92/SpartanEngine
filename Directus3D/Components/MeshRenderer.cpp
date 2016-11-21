@@ -52,7 +52,7 @@ MeshRenderer::~MeshRenderer()
 //= ICOMPONENT ===============================================================
 void MeshRenderer::Awake()
 {
-	
+
 }
 
 void MeshRenderer::Start()
@@ -117,6 +117,9 @@ void MeshRenderer::Render(unsigned int indexCount)
 // All functions (set/load) resolve to this
 void MeshRenderer::SetMaterial(weak_ptr<Material> material)
 {
+	if (material.expired())
+		return;
+
 	m_material = g_context->GetSubsystem<ResourceCache>()->AddResource(material.lock());
 }
 
@@ -140,7 +143,7 @@ void MeshRenderer::SetMaterial(MaterialType type)
 		material->SetFaceCullMode(CullNone);
 		material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		material->SetIsEditable(false);
-		m_materialType = Skybox;	
+		m_materialType = Skybox;
 		break;
 
 	default:
@@ -152,13 +155,15 @@ void MeshRenderer::SetMaterial(MaterialType type)
 
 weak_ptr<Material> MeshRenderer::SetMaterial(const string& ID)
 {
-	SetMaterial(g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Material>(ID));
+	auto material = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Material>(ID);
+	SetMaterial(material);
 	return GetMaterial();
 }
 
 weak_ptr<Material> MeshRenderer::LoadMaterial(const string& filePath)
 {
-	SetMaterial(g_context->GetSubsystem<ResourceCache>()->LoadResource<Material>(filePath));
+	auto material = g_context->GetSubsystem<ResourceCache>()->LoadResource<Material>(filePath);
+	SetMaterial(material);
 	return GetMaterial();
 }
 //==============================================================================

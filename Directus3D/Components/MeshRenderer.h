@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class Light;
 
-class __declspec(dllexport) MeshRenderer : public IComponent
+class DllExport MeshRenderer : public IComponent
 {
 public:
 	enum MaterialType { Imported, Basic, Skybox };

@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ==============
 #include <string>
-//===============
+#include "../Core/Helper.h"
+//=========================
 
 class GameObject;
 class Transform;
@@ -38,7 +39,7 @@ class TexturePool;
 class ShaderPool;
 class Context;
 
-class __declspec(dllexport) IComponent
+class DllExport IComponent
 {
 public:
 	virtual ~IComponent(){}

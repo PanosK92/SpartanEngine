@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //========================================
 
-class __declspec(dllexport) Skybox : public IComponent
+class DllExport Skybox : public IComponent
 {
 public:
 	Skybox();

@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =======================
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../../Math/Matrix.h"
@@ -29,7 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector4.h"
 #include "../Material.h"
 #include "../Graphics.h"
-//===============================
+#include "../../Components/Light.h"
+#include "../../Components/Camera.h"
+//==================================
 
 #define NULL_SHADER_ID "-1";
 

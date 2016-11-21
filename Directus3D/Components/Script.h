@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scripting/ScriptInstance.h"
 //======================================
 
-class __declspec(dllexport) Script : public IComponent
+class DllExport Script : public IComponent
 {
 public:
 	Script();

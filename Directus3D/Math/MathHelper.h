@@ -23,10 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // It's not used here but it will provide functionality
 // to any code that includes this header.
-//= INCLUDES =====
+//= INCLUDES ==============
 #include <cmath>
 #include <limits>
-//================
+#include "../Core/Helper.h"
+//=========================
 
 namespace Directus
 {
@@ -42,12 +43,12 @@ namespace Directus
 		static const float DEG_TO_RAD_2 = PI / 360.0f;
 		static const float RAD_TO_DEG = 180.0f / PI;
 
-		inline __declspec(dllexport) double Cot(float x) { return cos(x) / sin(x); }
-		inline __declspec(dllexport) float CotF(float x) { return cosf(x) / sinf(x); }
-		inline __declspec(dllexport) float DegreesToRadians(float degrees){ return degrees * DEG_TO_RAD; }
-		inline __declspec(dllexport) float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
+		inline DllExport double Cot(float x) { return cos(x) / sin(x); }
+		inline DllExport float CotF(float x) { return cosf(x) / sinf(x); }
+		inline DllExport float DegreesToRadians(float degrees){ return degrees * DEG_TO_RAD; }
+		inline DllExport float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
 		template <typename T>
-		inline __declspec(dllexport) float Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
+		inline DllExport float Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
 
 		// Lerp linearly between to values
 		template <class T, class U>
