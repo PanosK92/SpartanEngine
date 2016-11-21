@@ -245,3 +245,4 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
+/ThirdParty/Compiled x64d

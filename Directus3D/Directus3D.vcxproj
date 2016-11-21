@@ -69,9 +69,9 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.83.7;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\AngelScript 2.31.1;..\ThirdParty\FMOD 1.08.14;$(IncludePath)</IncludePath>
+    <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.85.1;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\AngelScript 2.31.1;..\ThirdParty\FMOD 1.08.14;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
-    <LibraryPath>..\ThirdParty\Compiled x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\ThirdParty\Compiled x64d;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
