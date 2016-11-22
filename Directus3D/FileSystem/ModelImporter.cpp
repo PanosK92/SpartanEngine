@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <vector>
+#include "../Core/Scene.h"
 #include "ModelImporter.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
@@ -181,7 +182,7 @@ void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* 
 		// if this node has many meshes, then assign a new gameobject for each one of them
 		if (node->mNumMeshes > 1)
 		{
-			gameobject = new GameObject(); // create
+			gameobject = g_context->GetSubsystem<Scene>()->CreateGameObject(); // create
 			gameobject->GetTransform()->SetParent(parentGameObject->GetTransform()); // set parent
 			name += "_" + to_string(i + 1); // set name
 		}
@@ -199,7 +200,7 @@ void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* 
 	{
 		aiNode* childNode = node->mChildren[i]; // get  node
 
-		GameObject* gameobject = new GameObject(); // create
+		GameObject* gameobject = g_context->GetSubsystem<Scene>()->CreateGameObject(); // create
 		gameobject->GetTransform()->SetParent(parentGameObject->GetTransform()); // set parent
 		gameobject->SetName(childNode->mName.C_Str()); // set name
 		SetGameObjectTransform(gameobject, childNode->mTransformation);

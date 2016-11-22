@@ -107,6 +107,7 @@ void Engine::LightUpdate()
 	// Manually update as few subsystems as possible
 	// This is used by the inspector when not in game mode.
 	g_context->GetSubsystem<Input>()->Update();
+	g_context->GetSubsystem<Scene>()->Update();
 	g_context->GetSubsystem<Scene>()->Resolve();
 	g_context->GetSubsystem<Renderer>()->Render();
 }

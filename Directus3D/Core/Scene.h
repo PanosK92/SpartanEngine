@@ -29,9 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Multithreading/ThreadPool.h"
 //=======================================
 
-class Renderer;
-class ModelImporter;
-
 class DllExport Scene : public Subsystem
 {
 public:
@@ -39,42 +36,54 @@ public:
 	~Scene();
 
 	void Initialize();
+	void Start();
+	void Update();
+	void Clear();
 
-	/*------------------------------------------------------------------------------
-										[I/O]
-	------------------------------------------------------------------------------*/
+	//= IO ========================================================================
 	void SaveToFileAsync(const std::string& filePath);
 	void LoadFromFileAsync(const std::string& filePath);
 	bool SaveToFile(const std::string& filePath);
 	bool LoadFromFile(const std::string& filePath);
 
-	/*------------------------------------------------------------------------------
-										[MISC]
-	------------------------------------------------------------------------------*/
-	void Clear();
-	GameObject* GetSkybox();
-	GameObject* GetMainCamera();
-	void SetAmbientLight(float x, float y, float z);
-	Directus::Math::Vector3 GetAmbientLight();
-	void Resolve();
-	GameObject* MousePick(Directus::Math::Vector2& mousePos);
-	bool RaySphereIntersect(const Directus::Math::Vector3& rayOrigin, const Directus::Math::Vector3& rayDirection, float radius);
+	//= GAMEOBJECT HELPER FUNCTIONS ===============================================
+	GameObject* CreateGameObject();
+	int GetGameObjectCount() { return (int)m_gameObjects.size(); }
+	std::vector<GameObject*> GetAllGameObjects() { return m_gameObjects; }
+	std::vector<GameObject*> GetRootGameObjects();
+	GameObject* GetGameObjectRoot(GameObject* gameObject);
+	GameObject* GetGameObjectByName(const std::string& name);
+	GameObject* GetGameObjectByID(const std::string& ID);
+	bool GameObjectExists(GameObject* gameObject);
+	void RemoveGameObject(GameObject* gameObject);
+	void RemoveSingleGameObject(GameObject* gameObject);
 
+	//= SCENE RESOLUTION  =========================================================
+	void Resolve();
 	std::vector<GameObject*> GetRenderables() { return m_renderables; }
 	std::vector<GameObject*> GetLightsDirectional() { return m_lightsDirectional; }
 	std::vector<GameObject*> GetLightsPoint() { return m_lightsPoint; }
+	GameObject* GetSkybox() { return m_skybox; }
+	GameObject* GetMainCamera() { return m_mainCamera; }
+
+	//= MISC ======================================================================
+	void SetAmbientLight(float x, float y, float z);
+	Directus::Math::Vector3 GetAmbientLight();
+	GameObject* MousePick(Directus::Math::Vector2& mousePos);
+	bool RaySphereIntersect(const Directus::Math::Vector3& rayOrigin, const Directus::Math::Vector3& rayDirection, float radius);
 
 private:
-	// GAMEOBJECT CREATION =======================
+	//= COMMON GAMEOBJECT CREATION ======
 	GameObject* CreateSkybox();
 	GameObject* CreateCamera();
 	GameObject* CreateDirectionalLight();
-	//============================================
+	//===================================
 
+	std::vector<GameObject*> m_gameObjects;
 	std::vector<GameObject*> m_renderables;
 	std::vector<GameObject*> m_lightsDirectional;
 	std::vector<GameObject*> m_lightsPoint;
-
 	GameObject* m_mainCamera;
+	GameObject* m_skybox;
 	Directus::Math::Vector3 m_ambientLight;
 };

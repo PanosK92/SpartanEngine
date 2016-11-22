@@ -222,9 +222,6 @@
     <ClCompile Include="Core\SubSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Core\GameObjectPool.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components\Camera.h">
@@ -462,9 +459,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Core\SubSystem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\GameObjectPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

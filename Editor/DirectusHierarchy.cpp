@@ -179,7 +179,7 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     //= DROP CASE: PREFAB (Assume text is a file path) ===============
     if (FileSystem::IsSupportedPrefabFile(text))
     {
-        GameObject* gameObject = new GameObject();
+		GameObject* gameObject = m_socket->CreateGameObject();
         gameObject->LoadFromPrefab(text);
         Populate();
         return;
@@ -563,7 +563,7 @@ void DirectusHierarchy::DeleteSelected()
 void DirectusHierarchy::CreateEmptyGameObject()
 {
     // Create an empty GameObject and get it's Transform
-    GameObject* gameobject = new GameObject();
+    GameObject* gameobject = m_socket->CreateGameObject();
     Transform* transform = gameobject->GetTransform();
 
     // Make it a child of the selected GameObject (if there is one)
@@ -579,7 +579,7 @@ void DirectusHierarchy::CreateEmptyGameObjectRoot()
 {
     // No worries about memory leaks, all GameObjects
     // are managed by the engine.
-    new GameObject();
+    m_socket->CreateGameObject();
 
     // Refresh the hierarchy
     Populate();
@@ -588,7 +588,7 @@ void DirectusHierarchy::CreateEmptyGameObjectRoot()
 void DirectusHierarchy::CreateCube()
 {
     // Create GameObject
-    GameObject* gameobject = new GameObject();
+    GameObject* gameobject = m_socket->CreateGameObject();
     gameobject->SetName("Cube");
 
     // Add a mesh component
@@ -606,7 +606,7 @@ void DirectusHierarchy::CreateCube()
 void DirectusHierarchy::CreateQuad()
 {
     // Create GameObject
-    GameObject* gameobject = new GameObject();
+    GameObject* gameobject = m_socket->CreateGameObject();
     gameobject->SetName("Quad");
 
     // Add a mesh component
@@ -624,7 +624,7 @@ void DirectusHierarchy::CreateQuad()
 void DirectusHierarchy::CreateDirectionalLight()
 {
     // Create GameObject
-    GameObject* gameobject = new GameObject();
+    GameObject* gameobject = m_socket->CreateGameObject();
     gameobject->SetName("Directional light");
 
     // Add component
@@ -638,7 +638,7 @@ void DirectusHierarchy::CreateDirectionalLight()
 void DirectusHierarchy::CreatePointLight()
 {
     // Create GameObject
-    GameObject* gameobject = new GameObject();
+    GameObject* gameobject = m_socket->CreateGameObject();
     gameobject->SetName("Point light");
 
     // Add component
@@ -652,7 +652,7 @@ void DirectusHierarchy::CreatePointLight()
 void DirectusHierarchy::CreateCamera()
 {
     // Create GameObject
-    GameObject* gameobject = new GameObject();
+    GameObject* gameobject = m_socket->CreateGameObject();
     gameobject->SetName("Camera");
 
     // Add component
@@ -665,7 +665,7 @@ void DirectusHierarchy::CreateCamera()
 void DirectusHierarchy::CreateAudioSource()
 {
     // Create GameObject
-    GameObject* gameobject = new GameObject();
+    GameObject* gameobject = m_socket->CreateGameObject();
     gameobject->SetName("Audio source");
 
     // Add component

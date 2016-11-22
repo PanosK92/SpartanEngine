@@ -61,7 +61,7 @@ public:
 	std::string GetMeshName();
 
 private:	
-	void CreateBuffers();
+	bool CreateBuffers();
 	void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 	void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 

@@ -195,7 +195,6 @@
     <ClCompile Include="Math\Vector4.cpp" />
     <ClCompile Include="Physics\PhysicsDebugDraw.cpp" />
     <ClCompile Include="Physics\PhysicsWorld.cpp" />
-    <ClCompile Include="Core\GameObjectPool.cpp" />
     <ClCompile Include="Scripting\Module.cpp" />
     <ClCompile Include="Scripting\ScriptInterface.cpp" />
     <ClCompile Include="Scripting\ScriptEngine.cpp" />
@@ -277,7 +276,6 @@
     <ClInclude Include="Physics\BulletPhysicsHelper.h" />
     <ClInclude Include="Physics\PhysicsDebugDraw.h" />
     <ClInclude Include="Physics\PhysicsWorld.h" />
-    <ClInclude Include="Core\GameObjectPool.h" />
     <ClInclude Include="Multithreading\ThreadPool.h" />
     <ClInclude Include="Scripting\Module.h" />
     <ClInclude Include="Scripting\ScriptInterface.h" />

@@ -19,16 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ===========================
 #include "Socket.h"
-#include "../Core/GameObjectPool.h"
 #include "../Logging/Log.h"
 #include "../Graphics/Renderer.h"
 #include "../Events/EventHandler.h"
 #include "../FileSystem/ModelImporter.h"
 #include "../Core/Engine.h"
 #include "../Core/Timer.h"
-//==========================================
+//======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -75,12 +74,12 @@ void Socket::LightUpdate()
 //= IO ========================================================================
 void Socket::LoadModel(const string& filePath)
 {
-	g_context->GetSubsystem<ModelImporter>()->Load(new GameObject(), filePath);
+	g_context->GetSubsystem<ModelImporter>()->Load(g_context->GetSubsystem<Scene>()->CreateGameObject(), filePath);
 }
 
 void Socket::LoadModelAsync(const string& filePath)
 {
-	g_context->GetSubsystem<ModelImporter>()->LoadAsync(new GameObject(), filePath);
+	g_context->GetSubsystem<ModelImporter>()->LoadAsync(g_context->GetSubsystem<Scene>()->CreateGameObject(), filePath);
 }
 
 void Socket::SaveSceneToFileAsync(const string& filePath)
@@ -139,24 +138,29 @@ void Socket::SetLogger(weak_ptr<ILogger> logger)
 //==============================================================================
 
 //= GAMEOBJECTS ================================================================
+GameObject* Socket::CreateGameObject()
+{
+	return g_context->GetSubsystem<Scene>()->CreateGameObject();
+}
+
 vector<GameObject*> Socket::GetAllGameObjects()
 {
-	return GameObjectPool::GetInstance().GetAllGameObjects();
+	return g_context->GetSubsystem<Scene>()->GetAllGameObjects();
 }
 
 vector<GameObject*> Socket::GetRootGameObjects()
 {
-	return GameObjectPool::GetInstance().GetRootGameObjects();
+	return g_context->GetSubsystem<Scene>()->GetRootGameObjects();
 }
 
 GameObject* Socket::GetGameObjectByID(string gameObjectID)
 {
-	return GameObjectPool::GetInstance().GetGameObjectByID(gameObjectID);
+	return g_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
 }
 
 int Socket::GetGameObjectCount()
 {
-	return GameObjectPool::GetInstance().GetGameObjectCount();
+	return g_context->GetSubsystem<Scene>()->GetGameObjectCount();
 }
 
 void Socket::DestroyGameObject(GameObject* gameObject)
@@ -164,7 +168,7 @@ void Socket::DestroyGameObject(GameObject* gameObject)
 	if (!gameObject)
 		return;
 
-	GameObjectPool::GetInstance().RemoveGameObject(gameObject);
+	g_context->GetSubsystem<Scene>()->RemoveGameObject(gameObject);
 }
 
 bool Socket::GameObjectExists(GameObject* gameObject)
@@ -172,7 +176,7 @@ bool Socket::GameObjectExists(GameObject* gameObject)
 	if (!gameObject)
 		return false;
 
-	bool exists = GameObjectPool::GetInstance().GameObjectExists(gameObject);
+	bool exists = g_context->GetSubsystem<Scene>()->GameObjectExists(gameObject);
 
 	return exists;
 }
