@@ -11,9 +11,6 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = "Directus3D"
 TEMPLATE = app
 
-# Generates VS files - DISABLED FOR VS 15 PREVIEW
-# TEMPLATE=vcapp
-
 SOURCES += main.cpp\
         editor.cpp \
     DirectusPlayButton.cpp \

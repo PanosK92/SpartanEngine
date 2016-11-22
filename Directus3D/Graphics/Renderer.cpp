@@ -129,6 +129,7 @@ void Renderer::Render()
 	StartCalculatingStats();
 	AcquirePrerequisites();
 
+	// If there is not camera, clear to black and present
 	if (!m_camera)
 	{
 		graphics->Clear(Vector4(0, 0, 0, 1));
@@ -136,6 +137,7 @@ void Renderer::Render()
 		return;
 	}
 
+	// If there is nothing to render clear to camera's color and present
 	if (m_renderables.empty())
 	{
 		graphics->Clear(m_camera->GetClearColor());
@@ -266,14 +268,16 @@ void Renderer::AcquirePrerequisites()
 
 void Renderer::DirectionalLightDepthPass()
 {
-	//g_context->GetSubsystem<Graphics>()->SetCullMode(CullFront);
+	g_context->GetSubsystem<Graphics>()->SetCullMode(CullFront);
 
 	// Set the depth shader
 	m_shaderDepth->Set();
 
 	for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetCascadeCount(); cascadeIndex++)
 	{
+		// Set appropriate shadow map as render target
 		m_directionalLight->SetShadowMapAsRenderTarget(cascadeIndex);
+
 		for (const auto& gameObject : m_renderables)
 		{
 			auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
@@ -281,9 +285,11 @@ void Renderer::DirectionalLightDepthPass()
 			auto meshFilter = gameObject->GetComponent<MeshFilter>();
 			auto mesh = meshFilter->GetMesh();
 
+			// Make sure we have everything
 			if (mesh.expired() || !meshFilter || !meshRenderer)
 				continue;
 
+			// Skip meshes that don't cast shadows
 			if (!meshRenderer->GetCastShadows())
 				continue;
 
@@ -337,13 +343,18 @@ void Renderer::GBufferPass()
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Occlusion));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Emission));
 			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Mask));
+
 			if (m_directionalLight)
 			{
 				for (int i = 0; i < m_directionalLight->GetCascadeCount(); i++)
 					m_textures.push_back(m_directionalLight->GetDepthMap(i));
 			}
 			else
+			{
 				m_textures.push_back(nullptr);
+				m_textures.push_back(nullptr);
+				m_textures.push_back(nullptr);
+			}
 
 			// Update textures
 			currentShader->UpdateTextures(m_textures);

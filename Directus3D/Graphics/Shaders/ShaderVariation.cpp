@@ -179,7 +179,7 @@ void ShaderVariation::UpdateObjectBuffer(shared_ptr<Material> material, Light* d
 void ShaderVariation::UpdateTextures(const vector<ID3D11ShaderResourceView*>& textureArray)
 {
 	if (m_graphics)
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, textureArray.size(), &textureArray.front());
+		m_graphics->GetDeviceContext()->PSSetShaderResources(0, (UINT)textureArray.size(), &textureArray.front());
 }
 
 void ShaderVariation::Render(int indexCount)
