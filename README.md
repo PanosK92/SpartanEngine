@@ -29,7 +29,7 @@ This will allow the evolution of the engine to happen elegantly while remaining 
 - [Done] Audio listener component.
 - [Done] Custom format resources and improvents to existing ones (prefabs, materials, scenes and so on).
 - [Done] Improved engine architecture.
-- [Done] Improved rendering speeds, lower cpu usage.
+- [Done] Improved rendering speeds.
 - [Done] Lower cpu usage.
 - [Done] Lower memory usage and more efficient memory management.
 - [Active] Bug fixes, lot's of them.
