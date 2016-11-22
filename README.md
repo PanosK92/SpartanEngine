@@ -23,14 +23,18 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 - Windows support.
 
 # Features under development (v0.2)
-Version 0.2 is a major overhaul.
-- Audio source component [Done].
-- Audio listener component [Done].
-- Bug fixes, lot's of them [Active]
-- Custom format resources and improvents to existing ones (prefabs, materials, scenes and so on) [Done].
-- Engine architecture improvements [Done].
-- Lower memory usage and more efficient memory management [Done].
-- SSAO [Active].
+While version 0.2 introduces new features, it's main focus is to perform a major overhaul when it comes to performance, memory management and overall code architecture.
+This will allow the evolution of the engine to happen elegantly while remaining continuous.
+- [Done] Audio source component.
+- [Done] Audio listener component.
+- [Done] Custom format resources and improvents to existing ones (prefabs, materials, scenes and so on).
+- [Done] Improved engine architecture.
+- [Done] Improved rendering speeds, lower cpu usage.
+- [Done] Lower cpu usage.
+- [Done] Lower memory usage and more efficient memory management.
+- [Active] Bug fixes, lot's of them.
+- [Active] Improved shadow quality.
+- [Active] SSAO.
 
 # Planned Features
 - DirectX 12 Renderer
