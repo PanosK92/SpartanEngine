@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "DepthShader.h"
+#include "../../Logging/Log.h"
 //=============================
 
 //= NAMESPACES ================
@@ -58,7 +59,7 @@ void DepthShader::Initialize(Graphics* graphicsDevice)
 
 void DepthShader::UpdateMatrixBuffer(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
 {
-	if (m_defaultBuffer)
+	if (!m_defaultBuffer)
 		return;
 
 	// Get buffer pointer

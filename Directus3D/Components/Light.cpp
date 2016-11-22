@@ -39,7 +39,7 @@ Light::Light()
 	m_lightType = Point;
 	m_shadowType = Hard_Shadows;
 	m_range = 1.0f;
-	m_intensity = 5.0f;
+	m_intensity = 4.0f;
 	m_color = Vector4(
 		255.0f / 255.0f,
 		196.0f / 255.0f,
@@ -159,28 +159,18 @@ Matrix Light::GetViewMatrix()
 
 Matrix Light::GetOrthographicProjectionMatrix(int cascade)
 {
-	if (m_shadowMaps.empty())
-		return Matrix::Identity;
-
 	return m_shadowMaps[cascade]->GetProjectionMatrix();
 }
 
 void Light::SetShadowMapAsRenderTarget(int cascade)
 {
-	if (m_shadowMaps.empty())
-		return;
-
 	m_shadowMaps[cascade]->SetAsRenderTarget();
 }
 
 ID3D11ShaderResourceView* Light::GetDepthMap(int cascade)
 {
-	if (m_shadowMaps.empty())
-		return nullptr;
-
 	return m_shadowMaps[cascade]->GetShaderResourceView();
 }
-
 
 float Light::GetCascadeSplit(int cascade)
 {
