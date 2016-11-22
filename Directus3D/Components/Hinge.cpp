@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Hinge.h"
 #include "RigidBody.h"
 #include "../IO/Serializer.h"
-#include "../Core/GameObjectPool.h"
+#include "../Core/Scene.h"
 #include "../Core/GameObject.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../Physics/BulletPhysicsHelper.h"
@@ -105,7 +105,7 @@ void Hinge::Deserialize()
 	{
 		// load gameobject
 		std::string gameObjectID = Serializer::ReadSTR();
-		m_connectedGameObject = GameObjectPool::GetInstance().GetGameObjectByID(gameObjectID);
+		m_connectedGameObject = g_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
 	}
 
 	m_axisA = Serializer::ReadVector3();

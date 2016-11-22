@@ -37,7 +37,7 @@ public:
 	ScriptInstance();
 	~ScriptInstance();
 
-	bool Instantiate(std::string path, GameObject* gameObject, ScriptEngine* scriptEngine);
+	bool Instantiate(const std::string& path, GameObject* gameObject, ScriptEngine* scriptEngine);
 	bool IsInstantiated();
 	std::string GetScriptPath();
 

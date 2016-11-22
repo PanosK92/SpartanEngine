@@ -79,9 +79,6 @@ bool D3D11Buffer::CreateVertexBuffer(vector<VertexPositionTextureNormalTangent>&
 		static_cast<D3D11_CPU_ACCESS_FLAG>(0)
 	);
 
-	if (!result)
-		LOG_ERROR("Failed to create vertex buffer.");
-
 	return result;
 }
 
@@ -95,9 +92,6 @@ bool D3D11Buffer::CreateIndexBuffer(vector<unsigned int>& indices)
 		D3D11_BIND_INDEX_BUFFER,
 		static_cast<D3D11_CPU_ACCESS_FLAG>(0)
 	);
-
-	if (!result)
-		LOG_ERROR("Failed to create index buffer.");
 
 	return result;
 }

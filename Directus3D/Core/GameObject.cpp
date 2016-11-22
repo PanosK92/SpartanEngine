@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "GameObject.h"
+#include "Scene.h"
 #include "GUIDGenerator.h"
-#include "GameObjectPool.h"
 #include "../IO/Serializer.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshFilter.h"
@@ -38,7 +38,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/LineRenderer.h"
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
-#include "../Events/Events.h"
 #include "../Events/EventHandler.h"
 //======================================
 
@@ -46,17 +45,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-GameObject::GameObject()
+GameObject::GameObject(Context* context)
 {
+	m_context = context;
+	m_transform = nullptr;
 	m_ID = GENERATE_GUID;
 	m_name = "GameObject";
 	m_isActive = true;
 	m_hierarchyVisibility = true;
-
-	GameObjectPool::GetInstance().AddGameObjectToPool(this);
-
-	// add transform component
-	m_transform = AddComponent<Transform>();
 }
 
 GameObject::~GameObject()
@@ -77,9 +73,9 @@ GameObject::~GameObject()
 	m_hierarchyVisibility = true;
 }
 
-void GameObject::Initialize(Context* context)
+void GameObject::Initialize()
 {
-	m_context = context;
+	m_transform = AddComponent<Transform>();
 }
 
 void GameObject::Start()
@@ -149,7 +145,7 @@ bool GameObject::LoadFromPrefab(const string& filePath)
 	vector<GameObject*> descendants;
 	for (int i = 0; i < descendantCount; i++)
 	{
-		GameObject* descendant = new GameObject();
+		GameObject* descendant = m_context->GetSubsystem<Scene>()->CreateGameObject();
 		descendant->SetID(Serializer::ReadSTR());
 		descendants.push_back(descendant);
 	}

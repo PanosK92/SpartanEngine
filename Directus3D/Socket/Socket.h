@@ -69,6 +69,7 @@ public:
 	//==============================================================================
 
 	//= GAMEOBJECTS ================================================================
+	GameObject* CreateGameObject();
 	std::vector<GameObject*> GetAllGameObjects();
 	std::vector<GameObject*> GetRootGameObjects();
 	GameObject* GetGameObjectByID(std::string gameObjectID);

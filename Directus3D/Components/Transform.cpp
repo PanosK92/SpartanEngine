@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Transform.h"
 #include "../IO/Serializer.h"
-#include "../Core/GameObjectPool.h"
+#include "../Core/Scene.h"
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
@@ -95,7 +95,7 @@ void Transform::Deserialize()
 	string parentGameObjectID = Serializer::ReadSTR();
 	if (parentGameObjectID != DATA_NOT_ASSIGNED)
 	{
-		GameObject* parent = GameObjectPool::GetInstance().GetGameObjectByID(parentGameObjectID);
+		GameObject* parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
 		if (parent)
 			parent->GetTransform()->AddChild(this);
 	}
@@ -355,7 +355,7 @@ void Transform::ResolveChildrenRecursively()
 	m_children.clear();
 	m_children.shrink_to_fit();
 
-	auto gameObjects = GameObjectPool::GetInstance().GetAllGameObjects();
+	auto gameObjects = g_context->GetSubsystem<Scene>()->GetAllGameObjects();
 	for (const auto& gameObject : gameObjects)
 	{
 		// get the possible child

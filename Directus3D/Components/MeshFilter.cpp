@@ -159,16 +159,13 @@ void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID
 bool MeshFilter::SetBuffers()
 {
 	if (!m_vertexBuffer)
-	{
-		LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer.");
-		return false;
-	}
+		LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer [" + g_gameObject->GetName() + "].");
 
 	if (!m_indexBuffer)
-	{
-		LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer.");
+		LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer [" + g_gameObject->GetName() + "].");
+
+	if (!m_vertexBuffer || !m_indexBuffer)
 		return false;
-	}
 
 	m_vertexBuffer->SetIA();
 	m_indexBuffer->SetIA();
@@ -204,21 +201,31 @@ string MeshFilter::GetMeshName()
 	return !m_mesh.expired() ? m_mesh.lock()->GetName() : DATA_NOT_ASSIGNED;
 }
 
-void MeshFilter::CreateBuffers()
+bool MeshFilter::CreateBuffers()
 {
 	m_vertexBuffer.reset();
 	m_indexBuffer.reset();
 
 	if (m_mesh.expired())
-		return;
+		return false;
 
 	m_vertexBuffer = make_shared<D3D11Buffer>();
 	m_vertexBuffer->Initialize(g_context->GetSubsystem<Graphics>());
-	m_vertexBuffer->CreateVertexBuffer(m_mesh.lock()->GetVertices());
+	if (!m_vertexBuffer->CreateVertexBuffer(m_mesh.lock()->GetVertices()))
+	{
+		LOG_ERROR("Failed to create vertex buffer [" + g_gameObject->GetName() + "].");
+		return false;
+	}
 
 	m_indexBuffer = make_shared<D3D11Buffer>();
 	m_indexBuffer->Initialize(g_context->GetSubsystem<Graphics>());
-	m_indexBuffer->CreateIndexBuffer(m_mesh.lock()->GetIndices());
+	if (!m_indexBuffer->CreateIndexBuffer(m_mesh.lock()->GetIndices()))
+	{
+		LOG_ERROR("Failed to create index buffer [" + g_gameObject->GetName() + "].");
+		return false;
+	}
+
+	return true;
 }
 
 void MeshFilter::CreateCube(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)

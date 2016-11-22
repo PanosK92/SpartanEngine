@@ -35,10 +35,10 @@ class Transform;
 class DllExport GameObject
 {
 public:
-	GameObject();
+	GameObject(Context* context);
 	~GameObject();
 
-	void Initialize(Context* context);
+	void Initialize();
 	void Start();
 	void Update();
 
