@@ -79,21 +79,28 @@ void Graphics::ResetViewport()
 
 void Graphics::EnableZBuffer(bool enable)
 {
+	if (m_zBufferEnabled == enable)
+		return;
+
 	m_d3d11Graphics->EnableZBuffer(enable);
+	m_zBufferEnabled = enable;
 }
 
 void Graphics::EnableAlphaBlending(bool enable)
 {
+	if (m_alphaBlendingEnabled == enable)
+		return;
+
 	m_d3d11Graphics->EnabledAlphaBlending(enable);
+	m_alphaBlendingEnabled = enable;
 }
 
-bool Graphics::SetInputLayout(InputLayout inputLayout)
+void Graphics::SetInputLayout(InputLayout inputLayout)
 {
 	if (m_inputLayout == inputLayout)
-		return false;
+		return;
 
 	m_inputLayout = inputLayout;
-	return true;
 }
 
 void Graphics::SetCullMode(CullMode cullMode)

@@ -67,6 +67,4 @@ public:
 	// The engine contect
 	Context* g_context;
 	//=============================================
-
-
 };

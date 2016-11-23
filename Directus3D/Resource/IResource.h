@@ -35,10 +35,10 @@ namespace Directus
 		public:
 			virtual ~IResource() {}
 
-			std::string GetID() { return m_ID; }
+			const std::string& GetID() { return m_ID; }
 			void SetID(const std::string& ID) { m_ID = ID; }
 
-			std::string GetFilePath() { return m_filePath; }
+			const std::string& GetFilePath() { return m_filePath; }
 			void SetFilePath(const std::string& filePath) { m_filePath = filePath; }
 
 			// Resource Save/Load

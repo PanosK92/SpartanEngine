@@ -154,8 +154,8 @@ void D3D11Shader::Set()
 		return;
 
 	// set the vertex input layout.
-	if (m_graphics->SetInputLayout(m_D3D11InputLayout->GetInputLayout()))
-		m_D3D11InputLayout->Set();
+	m_graphics->SetInputLayout(m_D3D11InputLayout->GetInputLayout());
+	m_D3D11InputLayout->Set();
 
 	// set the vertex and pixel shaders
 	m_graphics->GetDeviceContext()->VSSetShader(m_vertexShader, nullptr, 0);
@@ -275,7 +275,7 @@ HRESULT D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LP
 		string shaderName = FileSystem::GetFileNameFromPath(filePath);
 		if (errorBlob)
 		{
-			ExportErrorDebugLog(errorBlob);	
+			ExportErrorDebugLog(errorBlob);
 			SafeRelease(errorBlob);
 		}
 		else if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))

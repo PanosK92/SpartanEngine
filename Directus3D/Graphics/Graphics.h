@@ -67,7 +67,7 @@ public:
 	void ResetViewport();
 	void EnableZBuffer(bool enable);
 	void EnableAlphaBlending(bool enable);
-	bool SetInputLayout(InputLayout inputLayout);
+	void SetInputLayout(InputLayout inputLayout);
 	void SetCullMode(CullMode cullMode);
 	void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
 	void SetViewport(int width, int height);
@@ -76,4 +76,6 @@ private:
 	InputLayout m_inputLayout;
 	CullMode m_cullMode;
 	PrimitiveTopology m_primitiveTopology;
+	bool m_zBufferEnabled;
+	bool m_alphaBlendingEnabled;
 };
