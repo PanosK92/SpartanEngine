@@ -34,11 +34,9 @@ using namespace std;
 class ShadowMap
 {
 public:
-	ShadowMap(Graphics* device, int cascadeNumber, Light* light, Camera* camera, int resolution, float nearPlane, float farPlane)
+	ShadowMap(Graphics* device, int cascadeNumber, Light* light, Camera* camera, int resolution)
 	{
 		m_resolution = resolution;
-		m_nearPlane = nearPlane;
-		m_farPlane = farPlane;
 		m_depthMap = make_shared<D3D11RenderTexture>();
 		m_depthMap->Initialize(device, resolution, resolution);
 		m_camera = camera;
@@ -49,59 +47,52 @@ public:
 
 	void SetAsRenderTarget() const
 	{
-		m_depthMap->Clear(0, 0, 0, 0);
+		m_depthMap->Clear(0.0f, 0.0f, 0.0f, 1.0f);
 		m_depthMap->SetAsRenderTarget();
 	}
 
-	Directus::Math::Matrix GetProjectionMatrix()
+	Directus::Math::Matrix CalculateProjectionMatrix(Directus::Math::Matrix viewMatrix)
 	{
-		// This is an ad hoc approach, but for know it should do, no time.
-		Directus::Math::Vector3 center = m_camera->g_transform->GetPosition();
 		float radius = GetRadius();
+		Directus::Math::Vector3 center = Directus::Math::Vector3::Transform(m_camera->g_transform->GetPosition(), viewMatrix);		
 		Directus::Math::Vector3 min = center - Directus::Math::Vector3(radius, radius, radius);
 		Directus::Math::Vector3 max = center + Directus::Math::Vector3(radius, radius, radius);
 
-		float fCascadeBound = max.z;
-		float fWorldUnitsPerTexel = fCascadeBound / (float)m_resolution;
-
-		min /= fWorldUnitsPerTexel;
-		min.Floor();
-		min *= fWorldUnitsPerTexel;
-		max /= fWorldUnitsPerTexel;
-		max.Floor();
-		max *= fWorldUnitsPerTexel;
-
-		return Directus::Math::Matrix::CreateOrthoOffCenterLH(
-			min.x, // left
-			max.x, // right
-			min.y, // bottom
-			max.y, // top
-			min.z, // near
-			max.z // far
-		);
+		return Directus::Math::Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, -max.z, -min.z);
 	}
 	ID3D11ShaderResourceView* GetShaderResourceView() const { return m_depthMap->GetShaderResourceView(); }
 
 	float GetSplit()
 	{
-		return GetRadius() / m_camera->GetFarPlane();
+		float split = 0;
+
+		if (m_cascadeNumber == 1)
+			split = 980;
+
+		if (m_cascadeNumber == 2)
+			split = 995;
+
+		return split / 1000.0f;
 	}
 
 	float GetRadius()
 	{
-		float radius = 40;
-		if (m_cascadeNumber == 2)
+		float radius = m_camera->GetFarPlane() * 0.5f;
+
+		if (m_cascadeNumber == 1)
+			radius = 25;
+
+		else if (m_cascadeNumber == 2)
+			radius = 40;
+
+		if (m_cascadeNumber == 3)
 			radius = 100;
-		else if (m_cascadeNumber == 3)
-			radius = 300;
 
 		return radius;
 	}
 
 private:
 	int m_resolution;
-	float m_nearPlane;
-	float m_farPlane;
 	shared_ptr<D3D11RenderTexture> m_depthMap;
 	Directus::Math::Matrix m_projectionMatrix;
 	Light* m_light;
