@@ -97,7 +97,7 @@ private:
 	int m_renderedMeshesTempCounter;
 	//==============================
 
-	//= PREREQUISITES =============================
+	//= PREREQUISITES =================================
 	Camera* m_camera;
 	Skybox* m_skybox;
 	LineRenderer* m_lineRenderer;
@@ -109,7 +109,7 @@ private:
 	float m_nearPlane;
 	float m_farPlane;
 	std::vector<ID3D11ShaderResourceView*> m_textures;
-	//=============================================
+	//================================================
 	
 	//= HELPER FUNCTIONS ==========================
 	bool IsInViewFrustrum(const std::shared_ptr<Frustrum>& cameraFrustrum, MeshFilter* meshFilte);

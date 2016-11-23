@@ -319,30 +319,34 @@ void Renderer::GBufferPass()
 	auto materials = g_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<Material>();
 	auto shaders = g_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<ShaderVariation>();
 
-	for (const auto& tempShader : shaders) // for each shader
+	for (const auto& tempShader : shaders) // iterate through the shaders
 	{
-		auto currentShader = tempShader.lock();
+		// Set the shader
+		auto renderShader = tempShader.lock();
+		renderShader->Set();
 
-		currentShader->Set();
-		for (const auto tempMaterial : materials) // for each material...
-		{
-			auto currentMaterial = tempMaterial.lock();
-			if (!currentMaterial)
+		// UPDATE PER FRAME BUFFER
+		renderShader->UpdatePerFrameBuffer(m_directionalLight, m_camera);
+
+		for (const auto& tempMaterial : materials) // iterate through the materials
+		{		
+			// Continue only if the material at hand happens to use the already set shader
+			auto renderMaterial = tempMaterial.lock();
+			if (renderMaterial->GetShader().lock()->GetID() != renderShader->GetID())
 				continue;
-
-			// ... that uses the current shader
-			if (currentMaterial->GetShader().lock()->GetID() != currentShader->GetID())
-				continue;
-
+		
+			// UPDATE PER MATERIAL BUFFER
+			renderShader->UpdatePerMaterialBuffer(renderMaterial);
+			
 			//= Gather any used textures and bind them to the GPU ===============================
-			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Albedo));
-			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Roughness));
-			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Metallic));
-			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Normal));
-			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Height));
-			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Occlusion));
-			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Emission));
-			m_textures.push_back(currentMaterial->GetShaderResourceViewByTextureType(Mask));
+			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Albedo));
+			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Roughness));
+			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Metallic));
+			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Normal));
+			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Height));
+			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Occlusion));
+			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Emission));
+			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Mask));
 
 			if (m_directionalLight)
 			{
@@ -356,11 +360,11 @@ void Renderer::GBufferPass()
 				m_textures.push_back(nullptr);
 			}
 
-			// Update textures
-			currentShader->UpdateTextures(m_textures);
+			// UPDATE TEXTURE BUFFER
+			renderShader->UpdateTextures(m_textures);
 			//==================================================================================
 
-			for (const auto& gameObject : m_renderables) // for each mesh...
+			for (const auto& gameObject : m_renderables) // render GameObject that use the renderMaterial
 			{
 				//= Get all that we need =====================================
 				auto meshFilter = gameObject->GetComponent<MeshFilter>();
@@ -375,7 +379,7 @@ void Renderer::GBufferPass()
 					continue;
 
 				//... that uses the current material
-				if (currentMaterial->GetID() != material.lock()->GetID())
+				if (renderMaterial->GetID() != material.lock()->GetID())
 					continue;
 
 				// Skip transparent meshes (for now)
@@ -386,9 +390,8 @@ void Renderer::GBufferPass()
 				if (!IsInViewFrustrum(m_camera->GetFrustrum(), meshFilter))
 					continue;
 
-				// Set shader buffer(s)
-				currentShader->UpdateMatrixBuffer(mWorld, mView, mProjection);
-				currentShader->UpdateObjectBuffer(currentMaterial, m_directionalLight, meshRenderer->GetReceiveShadows(), m_camera);
+				// UPDATE PER OBJECT BUFFER
+				renderShader->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
 
 				// Set mesh buffer
 				if (meshFilter->SetBuffers())
