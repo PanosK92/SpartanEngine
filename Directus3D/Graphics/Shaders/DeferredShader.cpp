@@ -92,7 +92,7 @@ void DeferredShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mVie
 	m_matrixBuffer->SetPS(0);
 }
 
-void DeferredShader::UpdateMiscBuffer(vector<GameObject*> directionalLights, vector<GameObject*> pointLights, Camera* camera)
+void DeferredShader::UpdateMiscBuffer(Light* directionalLight, vector<GameObject*> pointLights, Camera* camera)
 {
 	if (!IsCompiled())
 	{
@@ -103,18 +103,17 @@ void DeferredShader::UpdateMiscBuffer(vector<GameObject*> directionalLights, vec
 	// Get a pointer to the data in the constant buffer.
 	MiscBufferType* buffer = (MiscBufferType*)m_miscBuffer->Map();
 
-	// Fill with matrices
 	Vector3 camPos = camera->g_transform->GetPosition();
 	buffer->cameraPosition = Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
 
 	// Fill with directional lights
-	for (unsigned int i = 0; i < directionalLights.size(); i++)
+	if (directionalLight)
 	{
-		Light* light = directionalLights[i]->GetComponent<Light>();
-		Vector3 direction = light->GetDirection();
-		buffer->dirLightColor[i] = light->GetColor();
-		buffer->dirLightDirection[i] = Vector4(direction.x, direction.y, direction.z, 1.0f);
-		buffer->dirLightIntensity[i] = Vector4(light->GetIntensity());
+		Vector3 direction = directionalLight->GetDirection();
+		buffer->dirLightColor = directionalLight->GetColor();
+		buffer->dirLightDirection = Vector4(direction.x, direction.y, direction.z, 1.0f);
+		buffer->dirLightIntensity = Vector4(directionalLight->GetIntensity());
+		buffer->softShadows = directionalLight->GetShadowType() == Soft_Shadows ? (float)true : (float)false;
 	}
 
 	// Fill with point lights
@@ -127,13 +126,11 @@ void DeferredShader::UpdateMiscBuffer(vector<GameObject*> directionalLights, vec
 		buffer->pointLightRange[i] = Vector4(pointLights[i]->GetComponent<Light>()->GetRange());
 	}
 
-	// Fill with misc data
-	buffer->dirLightCount = directionalLights.size();
-	buffer->pointLightCount = pointLights.size();
+	buffer->pointLightCount = (float)pointLights.size();
 	buffer->nearPlane = camera->GetNearPlane();
 	buffer->farPlane = camera->GetFarPlane();
 	buffer->viewport = GET_RESOLUTION;
-	buffer->padding = GET_RESOLUTION;
+	buffer->padding = Vector2::Zero;
 
 	// Unmap buffer
 	m_miscBuffer->Unmap();
