@@ -58,7 +58,7 @@ namespace Directus
 					return std::weak_ptr<T>();
 
 				// Check if the resource already exists, if so, return the existing one
-				for (auto const& resource : m_resources)
+				for (const auto& resource : m_resources)
 					if (resource->GetID() == resourceIn->GetID())
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
@@ -72,7 +72,7 @@ namespace Directus
 			std::weak_ptr<T> LoadResource(const std::string& filePath)
 			{
 				// Check if the resource is already loaded
-				for (auto const& resource : m_resources)
+				for (const auto& resource : m_resources)
 					if (resource->GetFilePath() == filePath)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
@@ -89,7 +89,7 @@ namespace Directus
 			std::vector<std::string> GetResourceFilePaths()
 			{
 				std::vector<std::string> filePaths;
-				for (auto const& resource : m_resources)
+				for (const auto& resource : m_resources)
 					if (resource->GetFilePath() != DATA_NOT_ASSIGNED)
 						filePaths.push_back(resource->GetFilePath());
 
@@ -100,7 +100,7 @@ namespace Directus
 			template <class T>
 			std::weak_ptr<T> GetResourceByID(const std::string& ID)
 			{
-				for (auto const& resource : m_resources)
+				for (const auto& resource : m_resources)
 					if (resource->GetID() == ID)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
@@ -111,7 +111,7 @@ namespace Directus
 			template <class T>
 			std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
 			{
-				for (auto const& resource : m_resources)
+				for (const auto& resource : m_resources)
 					if (resource->GetFilePath() == filePath)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 

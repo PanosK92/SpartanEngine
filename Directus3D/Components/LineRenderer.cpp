@@ -21,7 +21,7 @@ LineRenderer::~LineRenderer()
 	delete[] m_vertices;
 }
 
-void LineRenderer::Awake()
+void LineRenderer::Initialize()
 {
 
 }

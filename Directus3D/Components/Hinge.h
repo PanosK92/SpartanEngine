@@ -37,7 +37,7 @@ public:
 	/*------------------------------------------------------------------------------
 								[INTERFACE]
 	------------------------------------------------------------------------------*/
-	virtual void Awake();
+	virtual void Initialize();
 	virtual void Start();
 	virtual void Remove();
 	virtual void Update();

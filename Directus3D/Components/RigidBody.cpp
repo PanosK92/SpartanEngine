@@ -89,7 +89,7 @@ RigidBody::~RigidBody()
 }
 
 //= ICOMPONENT ==========================================================
-void RigidBody::Awake()
+void RigidBody::Initialize()
 {
 	AddBodyToWorld();
 }

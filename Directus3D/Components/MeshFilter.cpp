@@ -48,7 +48,7 @@ MeshFilter::~MeshFilter()
 	m_indexBuffer.reset();
 }
 
-void MeshFilter::Awake()
+void MeshFilter::Initialize()
 {
 }
 

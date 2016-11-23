@@ -360,7 +360,7 @@ void Renderer::GBufferPass()
 			currentShader->UpdateTextures(m_textures);
 			//==================================================================================
 
-			for (auto const& gameObject : m_renderables) // for each mesh...
+			for (const auto& gameObject : m_renderables) // for each mesh...
 			{
 				//= Get all that we need =====================================
 				auto meshFilter = gameObject->GetComponent<MeshFilter>();

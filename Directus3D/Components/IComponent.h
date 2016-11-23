@@ -45,7 +45,7 @@ public:
 	virtual ~IComponent(){}
 
 	// Runs when the component gets added
-	virtual void Awake() = 0;
+	virtual void Initialize() = 0;
 	// Runs everytime the simulation starts
 	virtual void Start() = 0;
 	// Runs when the component is removed
@@ -57,17 +57,16 @@ public:
 	// Runs when the GameObject is being loaded
 	virtual void Deserialize() = 0;
 
-	//= PROPERTIES ===================
+	//= PROPERTIES ================================
 	std::string g_ID;
 	bool g_enabled;
-	//================================
-
 	// The GameObject the component is attached to
 	GameObject* g_gameObject;
-
 	// The only always existing component
 	Transform* g_transform;
-
-	// Engine contect
+	// The engine contect
 	Context* g_context;
+	//=============================================
+
+
 };

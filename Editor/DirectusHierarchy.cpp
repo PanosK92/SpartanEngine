@@ -443,7 +443,6 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     connect(&actionQuad,                SIGNAL(triggered()), this,  SLOT(CreateQuad()));
     connect(&actionDirectionalLight,    SIGNAL(triggered()), this,  SLOT(CreateDirectionalLight()));
     connect(&actionPointLight,          SIGNAL(triggered()), this,  SLOT(CreatePointLight()));
-    connect(&actionPointLight,          SIGNAL(triggered()), this,  SLOT(CreatePointLight()));
     connect(&actionAudioSource,         SIGNAL(triggered()), this,  SLOT(CreateAudioSource()));
     connect(&actionCamera,              SIGNAL(triggered()), this,  SLOT(CreateCamera()));
     //==============================================================================================
