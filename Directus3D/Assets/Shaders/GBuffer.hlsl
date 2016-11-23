@@ -24,30 +24,8 @@ SamplerState samplerAniso : register (s0);
 //================
 
 //= BUFFERS ==================================
-// Update frequency: low
-cbuffer MatrixBuffer : register(b0)
-{
-	matrix mWorld;
-    matrix mWorldView;
-    matrix mWorldViewProjection;
-}
-
-// Update frequency: high
-cbuffer PerObject : register(b1)
+cbuffer PerFrameBuffer : register(b0)
 {		
-	// Material
-    float4 materialAlbedoColor;
-	float2 materialTiling;
-	float2 materialOffset;
-    float materialRoughness;
-    float materialMetallic;
-    float materialOcclusion;
-    float materialNormalStrength;
-    float materialSpecular;
-    float materialShadingMode; 
-	float2 padding;
-
-	// Misc
 	float2 viewport;
 	float nearPlane;
 	float farPlane;
@@ -57,9 +35,31 @@ cbuffer PerObject : register(b1)
 	float shadowBias;
 	float shadowMapResolution;
 	float shadowMappingQuality;	
-	float receiveShadows;
-	float padding2;
+	float2 padding3;
 };
+
+cbuffer PerMaterialBuffer : register(b1)
+{		
+    float4 materialAlbedoColor;
+	float2 materialTiling;
+	float2 materialOffset;
+    float materialRoughness;
+    float materialMetallic;
+    float materialOcclusion;
+    float materialNormalStrength;
+    float materialSpecular;
+    float materialShadingMode; 
+	float2 padding2;
+};
+
+cbuffer PerObjectBuffer : register(b2)
+{
+	matrix mWorld;
+    matrix mWorldView;
+    matrix mWorldViewProjection;
+	float receiveShadows;
+	float3 padding1;
+}
 //===========================================
 
 //= STRUCTS =================================

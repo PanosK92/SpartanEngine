@@ -57,8 +57,9 @@ public:
 	bool SaveMetadata();
 
 	void Set();
-	void UpdateMatrixBuffer(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection);
-	void UpdateObjectBuffer(std::shared_ptr<Material> material, Light* directionalLight, bool receiveShadows, Camera* camera);
+	void UpdatePerFrameBuffer(Light* directionalLight, Camera* camera);
+	void UpdatePerMaterialBuffer(std::shared_ptr<Material> material);
+	void UpdatePerObjectBuffer(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mProjection, bool receiveShadows);
 	void UpdateTextures(const std::vector<ID3D11ShaderResourceView*>& textureArray);
 	void Render(int indexCount);
 
@@ -93,22 +94,28 @@ private:
 									[MISC]
 	------------------------------------------------------------------------------*/
 	Graphics* m_graphics;
-	std::shared_ptr<D3D11Buffer> m_matrixBuffer;
-	std::shared_ptr<D3D11Buffer> m_objectBuffer;
+	std::shared_ptr<D3D11Buffer> m_perObjectBuffer;
+	std::shared_ptr<D3D11Buffer> m_materialBuffer;
+	std::shared_ptr<D3D11Buffer> m_miscBuffer;
 	std::shared_ptr<D3D11Shader> m_D3D11Shader;
 
-	/*------------------------------------------------------------------------------
-									[BUFFER TYPE]
-	------------------------------------------------------------------------------*/
-	struct MatrixBufferType
+	//= BUFFERS ===============================================
+	const static int cascades = 3;
+	struct PerFrameBufferType
 	{
-		Directus::Math::Matrix mWorld;
-		Directus::Math::Matrix mWorldView;
-		Directus::Math::Matrix mWorldViewProjection;
+		Directus::Math::Vector2 viewport;
+		float nearPlane;
+		float farPlane;
+		Directus::Math::Matrix mLightViewProjection[cascades];
+		Directus::Math::Vector4 shadowSplits;
+		Directus::Math::Vector3 lightDir;
+		float shadowBias;
+		float shadowMapResolution;
+		float shadowMappingQuality;
+		Directus::Math::Vector2 padding;
 	};
 
-	const static int cascades = 3;
-	struct ObjectBufferType
+	struct PerMaterialBufferType
 	{
 		// Material
 		Directus::Math::Vector4 matAlbedo;
@@ -121,18 +128,15 @@ private:
 		float matSpecularMul;
 		float matShadingMode;
 		Directus::Math::Vector2 padding;
-
-		// Misc
-		Directus::Math::Vector2 viewport;
-		float nearPlane;
-		float farPlane;
-		Directus::Math::Matrix mLightViewProjection[cascades];
-		Directus::Math::Vector4 shadowSplits;
-		Directus::Math::Vector3 lightDir;
-		float shadowBias;
-		float shadowMapResolution;
-		float shadowMappingQuality;
-		float receiveShadows;
-		float padding2;
 	};
+
+	struct PerObjectBufferType
+	{
+		Directus::Math::Matrix mWorld;
+		Directus::Math::Matrix mWorldView;
+		Directus::Math::Matrix mWorldViewProjection;
+		float receiveShadows;
+		Directus::Math::Vector3 padding;
+	};
+	//==========================================================
 };

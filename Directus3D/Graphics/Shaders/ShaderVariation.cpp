@@ -35,8 +35,9 @@ ShaderVariation::ShaderVariation()
 {
 	m_graphics = nullptr;
 	m_D3D11Shader = nullptr;
-	m_matrixBuffer = nullptr;
-	m_objectBuffer = nullptr;
+	m_perObjectBuffer = nullptr;
+	m_materialBuffer = nullptr;
+	m_miscBuffer = nullptr;
 
 	m_hasAlbedoTexture = false;
 	m_hasRoughnessTexture = false;
@@ -94,31 +95,7 @@ void ShaderVariation::Set()
 		m_D3D11Shader->Set();
 }
 
-void ShaderVariation::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
-{
-	if (!m_D3D11Shader->IsCompiled())
-	{
-		LOG_ERROR("Can't render using a shader variation that hasn't been loaded or failed to compile.");
-		return;
-	}
-
-	Matrix world = mWorld;
-	Matrix worldView = world * mView;
-	Matrix worldViewProjection = worldView * mProjection;
-
-	// Map/Unmap the buffer
-	MatrixBufferType* buffer = (MatrixBufferType*)m_matrixBuffer->Map();
-	buffer->mWorld = world.Transposed();
-	buffer->mWorldView = worldView.Transposed();
-	buffer->mWorldViewProjection = worldViewProjection.Transposed();
-	m_matrixBuffer->Unmap();
-
-	// Set to shader slot
-	m_matrixBuffer->SetVS(0);
-	m_matrixBuffer->SetPS(0);
-}
-
-void ShaderVariation::UpdateObjectBuffer(shared_ptr<Material> material, Light* directionalLight, bool receiveShadows, Camera* camera)
+void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* camera)
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{
@@ -133,47 +110,89 @@ void ShaderVariation::UpdateObjectBuffer(shared_ptr<Material> material, Light* d
 	Matrix lightViewProjection2 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(1);
 	Matrix lightViewProjection3 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
 
-	/*------------------------------------------------------------------------------
-	[FILL THE BUFFER]
-	------------------------------------------------------------------------------*/
-	{ // this can be done only when needed - tested
-		ObjectBufferType* defaultBufferType = (ObjectBufferType*)m_objectBuffer->Map();
-		if (!defaultBufferType)
-			return;
+	//= BUFFER UPDATE ========================================================================
+	PerFrameBufferType* buffer = (PerFrameBufferType*)m_miscBuffer->Map();
+	if (!buffer)
+		return;
 
-		// Material
-		defaultBufferType->matAlbedo = material->GetColorAlbedo();
-		defaultBufferType->matTilingUV = material->GetTilingUV();
-		defaultBufferType->matOffsetUV = material->GetOffsetUV();
-		defaultBufferType->matRoughnessMul = material->GetRoughnessMultiplier();
-		defaultBufferType->matMetallicMul = material->GetMetallicMultiplier();
-		defaultBufferType->matOcclusionMul = material->GetOcclusionMultiplier();
-		defaultBufferType->matNormalMul = material->GetNormalMultiplier();
-		defaultBufferType->matSpecularMul = material->GetSpecularMultiplier();
-		defaultBufferType->matShadingMode = float(material->GetShadingMode());
-		defaultBufferType->padding = Vector2::Zero;
+	buffer->viewport = GET_RESOLUTION;
+	buffer->nearPlane = camera->GetNearPlane();
+	buffer->farPlane = camera->GetFarPlane();
+	buffer->mLightViewProjection[0] = lightViewProjection1.Transposed();
+	buffer->mLightViewProjection[1] = lightViewProjection2.Transposed();
+	buffer->mLightViewProjection[2] = lightViewProjection3.Transposed();
+	buffer->shadowSplits = Vector4(directionalLight->GetCascadeSplit(0), directionalLight->GetCascadeSplit(1), directionalLight->GetCascadeSplit(2), directionalLight->GetCascadeSplit(2));
+	buffer->lightDir = directionalLight->GetDirection();
+	buffer->shadowBias = directionalLight->GetBias();
+	buffer->shadowMapResolution = directionalLight->GetShadowMapResolution();
+	buffer->shadowMappingQuality = directionalLight->GetShadowTypeAsFloat();
+	buffer->padding = Vector2::Zero;
 
-		// Misc
-		defaultBufferType->viewport = GET_RESOLUTION;
-		defaultBufferType->nearPlane = camera->GetNearPlane();
-		defaultBufferType->farPlane = camera->GetFarPlane();
-		defaultBufferType->mLightViewProjection[0] = lightViewProjection1.Transposed();
-		defaultBufferType->mLightViewProjection[1] = lightViewProjection2.Transposed();
-		defaultBufferType->mLightViewProjection[2] = lightViewProjection3.Transposed();
-		defaultBufferType->shadowSplits = Vector4(directionalLight->GetCascadeSplit(0), directionalLight->GetCascadeSplit(1), directionalLight->GetCascadeSplit(2), directionalLight->GetCascadeSplit(2));
-		defaultBufferType->lightDir = directionalLight->GetDirection();
-		defaultBufferType->shadowBias = directionalLight->GetBias();
-		defaultBufferType->shadowMapResolution = directionalLight->GetShadowMapResolution();
-		defaultBufferType->shadowMappingQuality = directionalLight->GetShadowTypeAsFloat();
-		defaultBufferType->receiveShadows = float(receiveShadows);
-		defaultBufferType->padding2 = 0.0f;
-
-		m_objectBuffer->Unmap();
-	}
+	m_miscBuffer->Unmap();
+	//========================================================================================
 
 	// Set to shader slot
-	m_objectBuffer->SetVS(1);
-	m_objectBuffer->SetPS(1);
+	m_miscBuffer->SetVS(0);
+	m_miscBuffer->SetPS(0);
+}
+
+void ShaderVariation::UpdatePerMaterialBuffer(std::shared_ptr<Material> material)
+{
+	if (!m_D3D11Shader->IsCompiled())
+	{
+		LOG_ERROR("Can't render using a shader variation that hasn't been loaded or failed to compile.");
+		return;
+	}
+
+	//= BUFFER UPDATE =========================================================================
+	PerMaterialBufferType* buffer = (PerMaterialBufferType*)m_materialBuffer->Map();
+	if (!buffer)
+		return;
+
+	buffer->matAlbedo = material->GetColorAlbedo();
+	buffer->matTilingUV = material->GetTilingUV();
+	buffer->matOffsetUV = material->GetOffsetUV();
+	buffer->matRoughnessMul = material->GetRoughnessMultiplier();
+	buffer->matMetallicMul = material->GetMetallicMultiplier();
+	buffer->matOcclusionMul = material->GetOcclusionMultiplier();
+	buffer->matNormalMul = material->GetNormalMultiplier();
+	buffer->matSpecularMul = material->GetSpecularMultiplier();
+	buffer->matShadingMode = float(material->GetShadingMode());
+	buffer->padding = Vector2::Zero;
+
+	m_materialBuffer->Unmap();
+	//========================================================================================
+
+	// Set to shader slot
+	m_materialBuffer->SetVS(1);
+	m_materialBuffer->SetPS(1);
+}
+
+void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection, bool receiveShadows)
+{
+	if (!m_D3D11Shader->IsCompiled())
+	{
+		LOG_ERROR("Can't render using a shader variation that hasn't been loaded or failed to compile.");
+		return;
+	}
+
+	Matrix world = mWorld;
+	Matrix worldView = world * mView;
+	Matrix worldViewProjection = worldView * mProjection;
+
+	//= BUFFER UPDATE =======================================================================
+	PerObjectBufferType* buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
+	buffer->mWorld = world.Transposed();
+	buffer->mWorldView = worldView.Transposed();
+	buffer->mWorldViewProjection = worldViewProjection.Transposed();
+	buffer->receiveShadows = (float)receiveShadows;
+	buffer->padding = Vector3::Zero;
+	m_perObjectBuffer->Unmap();
+	//=======================================================================================
+
+	// Set to shader slot
+	m_perObjectBuffer->SetVS(2);
+	m_perObjectBuffer->SetPS(2);
 }
 
 void ShaderVariation::UpdateTextures(const vector<ID3D11ShaderResourceView*>& textureArray)
@@ -216,12 +235,17 @@ void ShaderVariation::Load()
 	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS); // anisotropic
 
 	// Matrix Buffer
-	m_matrixBuffer = make_shared<D3D11Buffer>();
-	m_matrixBuffer->Initialize(m_graphics);
-	m_matrixBuffer->CreateConstantBuffer(sizeof(MatrixBufferType));
+	m_perObjectBuffer = make_shared<D3D11Buffer>();
+	m_perObjectBuffer->Initialize(m_graphics);
+	m_perObjectBuffer->CreateConstantBuffer(sizeof(PerObjectBufferType));
 
 	// Object Buffer
-	m_objectBuffer = make_shared<D3D11Buffer>();
-	m_objectBuffer->Initialize(m_graphics);
-	m_objectBuffer->CreateConstantBuffer(sizeof(ObjectBufferType));
+	m_materialBuffer = make_shared<D3D11Buffer>();
+	m_materialBuffer->Initialize(m_graphics);
+	m_materialBuffer->CreateConstantBuffer(sizeof(PerMaterialBufferType));
+
+	// Object Buffer
+	m_miscBuffer = make_shared<D3D11Buffer>();
+	m_miscBuffer->Initialize(m_graphics);
+	m_miscBuffer->CreateConstantBuffer(sizeof(PerFrameBufferType));
 }
