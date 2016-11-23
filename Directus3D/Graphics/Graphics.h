@@ -44,6 +44,12 @@ enum CullMode
 	CullNone,
 };
 
+enum PrimitiveTopology
+{
+	TriangleList,
+	LineList
+};
+
 class Graphics : public Subsystem
 {
 public:
@@ -63,9 +69,11 @@ public:
 	void EnableAlphaBlending(bool enable);
 	bool SetInputLayout(InputLayout inputLayout);
 	void SetCullMode(CullMode cullMode);
+	void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
 	void SetViewport(int width, int height);
 private:
 	std::shared_ptr<D3D11Graphics> m_d3d11Graphics;
 	InputLayout m_inputLayout;
 	CullMode m_cullMode;
+	PrimitiveTopology m_primitiveTopology;
 };

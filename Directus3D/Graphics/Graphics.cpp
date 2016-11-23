@@ -31,8 +31,9 @@ using namespace std;
 Graphics::Graphics(Context* context): Subsystem(context) 
 {
 	m_d3d11Graphics = nullptr;
-	m_cullMode = CullBack;
 	m_inputLayout = PositionTextureNormalTangent;
+	m_cullMode = CullBack;
+	m_primitiveTopology = TriangleList;
 }
 
 Graphics::~Graphics()
@@ -111,6 +112,22 @@ void Graphics::SetCullMode(CullMode cullMode)
 
 	// Save the current CullMode mode
 	m_cullMode = cullMode;
+}
+
+void Graphics::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
+{
+	// Set PrimitiveTopology only if not already set
+	if (m_primitiveTopology == primitiveTopology)
+		return;
+
+	// Set PrimitiveTopology
+	if (primitiveTopology == TriangleList)
+		m_d3d11Graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	else if (primitiveTopology == LineList)
+		m_d3d11Graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+	// Save the current PrimitiveTopology mode
+	m_primitiveTopology = primitiveTopology;
 }
 
 void Graphics::SetViewport(int width, int height)

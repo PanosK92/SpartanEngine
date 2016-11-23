@@ -82,7 +82,7 @@ void LineRenderer::SetBuffer()
 	m_vertexBuffer->SetIA();
 
 	// Set primitive topology
-	g_context->GetSubsystem<Graphics>()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(LineList);
 
 	ClearVertices();
 }

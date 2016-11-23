@@ -171,7 +171,7 @@ bool MeshFilter::SetBuffers()
 	m_indexBuffer->SetIA();
 
 	// Set the type of primitive that should be rendered from this vertex buffer
-	g_context->GetSubsystem<Graphics>()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(TriangleList);
 
 	return true;
 }
