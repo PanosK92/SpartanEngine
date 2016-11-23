@@ -51,7 +51,7 @@ AudioSource::~AudioSource()
 
 }
 
-void AudioSource::Awake()
+void AudioSource::Initialize()
 {
 	// Get an audio handle (in case there isn't one yet)
 	if (m_audioClip.expired())

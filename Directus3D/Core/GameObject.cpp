@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
 #include "../Events/EventHandler.h"
+#include "../Logging/Log.h"
 //======================================
 
 //= NAMESPACES =====
@@ -48,7 +49,7 @@ using namespace std;
 GameObject::GameObject(Context* context)
 {
 	m_context = context;
-	m_transform = nullptr;
+	m_transform = AddComponent<Transform>();
 	m_ID = GENERATE_GUID;
 	m_name = "GameObject";
 	m_isActive = true;
@@ -73,11 +74,6 @@ GameObject::~GameObject()
 	m_hierarchyVisibility = true;
 }
 
-void GameObject::Initialize()
-{
-	m_transform = AddComponent<Transform>();
-}
-
 void GameObject::Start()
 {
 	// call component Start()
@@ -91,7 +87,7 @@ void GameObject::Update()
 		return;
 
 	// call component Update()
-	for (auto const& it : m_components)
+	for (const auto& it : m_components)
 		it.second->Update();
 }
 
@@ -154,58 +150,60 @@ bool GameObject::LoadFromPrefab(const string& filePath)
 	for (const auto& descendant : descendants)
 		descendant->Deserialize();
 
-	GetTransform()->ResolveChildrenRecursively();
-
 	// Close it
 	Serializer::StopReading();
+
+	GetTransform()->ResolveChildrenRecursively();
 
 	return true;
 }
 
 void GameObject::Serialize()
 {
-	//= BASIC DATA ==============================
+	//= BASIC DATA ================================
 	Serializer::WriteSTR(m_ID);
 	Serializer::WriteSTR(m_name);
 	Serializer::WriteBool(m_isActive);
 	Serializer::WriteBool(m_hierarchyVisibility);
-	//===========================================
+	//=============================================
 
-	//= COMPONENTS ==============================
+	//= COMPONENTS ================================
 	Serializer::WriteInt((int)m_components.size());
-	for (auto const& it : m_components)
+	for (const auto& component : m_components)
 	{
-		Serializer::WriteSTR(it.first); // save component's type
-		Serializer::WriteSTR(it.second->g_ID); // save component's id
+		Serializer::WriteSTR(component.first); // type
+		Serializer::WriteSTR(component.second->g_ID); // id
 	}
-	for (auto const& it : m_components)
+	for (const auto& it : m_components)
 		it.second->Serialize();
-	//===========================================
+	//=============================================
 }
 
 void GameObject::Deserialize()
 {
-	// Load basic data
+	//= BASIC DATA ================================
 	m_ID = Serializer::ReadSTR();
 	m_name = Serializer::ReadSTR();
 	m_isActive = Serializer::ReadBool();
 	m_hierarchyVisibility = Serializer::ReadBool();
+	//=============================================
 
-	// Load any components
+	//= COMPONENTS ================================
 	int componentCount = Serializer::ReadInt();
 	for (int i = 0; i < componentCount; i++)
 	{
 		string type = Serializer::ReadSTR(); // load component's type
 		string id = Serializer::ReadSTR(); // load component's id
-
+		
 		IComponent* component = AddComponentBasedOnType(type);
 		component->g_ID = id;
-	}
+	}	
 	// Sometimes there are component dependencies, e.g. a collider that needs
 	// to set it's shape to a rigibody. So, it's important to first create all 
 	// the components (like above) and then deserialize them (like here).
 	for (const auto& component : m_components)
 		component.second->Deserialize();
+	//=============================================
 }
 
 void GameObject::RemoveComponentByID(const string& id)
@@ -229,6 +227,10 @@ void GameObject::RemoveComponentByID(const string& id)
 //= HELPER FUNCTIONS ===========================================
 IComponent* GameObject::AddComponentBasedOnType(const string& typeStr)
 {
+	// Note: this is the only hardcoded part regarding
+	// components. It's one function but it would be
+	// nice if that get's automated too.
+
 	IComponent* component = nullptr;
 
 	if (typeStr == "Transform")

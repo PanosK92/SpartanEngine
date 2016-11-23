@@ -38,7 +38,6 @@ public:
 	GameObject(Context* context);
 	~GameObject();
 
-	void Initialize();
 	void Start();
 	void Update();
 
@@ -85,14 +84,12 @@ public:
 		// Set default properties.
 		component->g_ID = GENERATE_GUID;
 		component->g_enabled = true;
-
-		// Set some useful pointers.
 		component->g_gameObject = this;
 		component->g_transform = GetTransform();
 		component->g_context = m_context;
 
 		// Run Initialize().
-		component->Awake();
+		component->Initialize();
 
 		// Do a scene analysis
 		FIRE_EVENT(RESOLVE_HIERARCHY);
@@ -105,7 +102,7 @@ public:
 	template <class T>
 	T* GetComponent()
 	{
-		for (auto const& it : m_components)
+		for (const auto& it : m_components)
 		{
 			// casting failure == nullptr
 			T* typed_cmp = dynamic_cast<T*>(it.second);
@@ -121,7 +118,7 @@ public:
 	std::vector<T*> GetComponents()
 	{
 		std::vector<T*> components;
-		for (auto const& it : m_components)
+		for (const auto& it : m_components)
 		{
 			// casting failure == nullptr
 			T* typed_cmp = dynamic_cast<T*>(it.second);

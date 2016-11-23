@@ -37,7 +37,7 @@ AudioListener::~AudioListener()
 
 }
 
-void AudioListener::Awake()
+void AudioListener::Initialize()
 {
 	m_audio = g_context->GetSubsystem<Audio>();
 }

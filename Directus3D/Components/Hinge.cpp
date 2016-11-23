@@ -52,7 +52,7 @@ Hinge::~Hinge()
 /*------------------------------------------------------------------------------
 									[INTERFACE]
 ------------------------------------------------------------------------------*/
-void Hinge::Awake()
+void Hinge::Initialize()
 {
 	// A is the chassis and B is the tyre.
 	m_axisA = Vector3(0.f, 1.f, 0.f); // The axis in A should be equal to to the axis in B and point away from the car off to the side.

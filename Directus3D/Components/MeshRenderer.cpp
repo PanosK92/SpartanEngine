@@ -50,7 +50,7 @@ MeshRenderer::~MeshRenderer()
 }
 
 //= ICOMPONENT ===============================================================
-void MeshRenderer::Awake()
+void MeshRenderer::Initialize()
 {
 
 }

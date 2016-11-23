@@ -110,8 +110,6 @@ void Scene::Clear()
 	g_context->GetSubsystem<ScriptEngine>()->Reset();
 	g_context->GetSubsystem<PhysicsWorld>()->Reset();
 	g_context->GetSubsystem<Renderer>()->Clear();
-
-	CreateSkybox();
 }
 //=========================================================================================================
 
@@ -128,16 +126,16 @@ void Scene::LoadFromFileAsync(const string& filePath)
 
 bool Scene::SaveToFile(const string& filePathIn)
 {
-	string filePath = filePathIn;
-
 	// Add scene file extension to the filepath if it's missing
+	string filePath = filePathIn;
 	if (FileSystem::GetExtensionFromPath(filePath) != SCENE_EXTENSION)
 		filePath += SCENE_EXTENSION;
 
 	// Save any in-memory changes done to resources while running.
 	g_context->GetSubsystem<ResourceCache>()->SaveResourceMetadata();
 
-	Serializer::StartWriting(filePath);
+	if (!Serializer::StartWriting(filePath))
+		return false;
 
 	// Save the paths of all the currently loaded resources
 	vector<string> resourcePaths = g_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths();
@@ -145,9 +143,9 @@ bool Scene::SaveToFile(const string& filePathIn)
 
 	//= Save GameObjects ===========================
 	Serializer::WriteInt((int)m_gameObjects.size());	// 2nd - GameObject count
-	
+
 	for (const auto& gameObject : m_gameObjects)		// 3rd - GameObject IDs
-		Serializer::WriteSTR(gameObject->GetID()); 
+		Serializer::WriteSTR(gameObject->GetID());
 
 	for (const auto& gameObject : m_gameObjects)		// 4th - GameObjects
 		gameObject->Serialize();
@@ -169,7 +167,9 @@ bool Scene::LoadFromFile(const string& filePath)
 	Clear();
 
 	// Read all the resource file paths
-	Serializer::StartReading(filePath);
+	if (!Serializer::StartReading(filePath))
+		return false;
+
 	vector<string> resourcePaths = Serializer::ReadVectorSTR();
 	Serializer::StopReading();
 
@@ -191,9 +191,10 @@ bool Scene::LoadFromFile(const string& filePath)
 		if (FileSystem::IsSupportedImageFile(resourcePath))
 			g_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(resourcePath);
 	}
-		
+
 	//= Load GameObjects ============================
-	Serializer::StartReading(filePath);
+	if (!Serializer::StartReading(filePath))
+		return false;
 
 	// 1st - Read the resource paths
 	Serializer::ReadVectorSTR();
@@ -204,8 +205,8 @@ bool Scene::LoadFromFile(const string& filePath)
 	// 3rd - GameObject IDs
 	for (int i = 0; i < gameObjectCount; i++)
 	{
-		GameObject* gameObject = CreateGameObject();
-		gameObject->SetID(Serializer::ReadSTR());
+		m_gameObjects.push_back(new GameObject(g_context));
+		m_gameObjects.back()->SetID(Serializer::ReadSTR());
 	}
 
 	// 4th - GameObjects
@@ -214,7 +215,7 @@ bool Scene::LoadFromFile(const string& filePath)
 
 	Serializer::StopReading();
 	//==============================================
-	
+
 	Resolve();
 
 	return true;
@@ -226,7 +227,7 @@ GameObject* Scene::CreateGameObject()
 {
 	GameObject* gameObject = new GameObject(g_context);
 	m_gameObjects.push_back(gameObject);
-	gameObject->Initialize(); // also resolves scene
+	Resolve();
 
 	return gameObject;
 }
@@ -250,7 +251,7 @@ GameObject* Scene::GetGameObjectRoot(GameObject* gameObject)
 	return gameObject->GetTransform()->GetRoot()->GetGameObject();
 }
 
-GameObject* Scene::GetGameObjectByName(const std::string& name)
+GameObject* Scene::GetGameObjectByName(const string& name)
 {
 	for (const auto& gameObject : m_gameObjects)
 		if (gameObject->GetName() == name)
@@ -394,13 +395,19 @@ GameObject* Scene::MousePick(Vector2& mousePos)
 	//= Intersection test ===============================
 	for (auto gameObject : m_renderables)
 	{
+		if (gameObject->HasComponent<Skybox>())
+			continue;
+
 		Vector3 extent = gameObject->GetComponent<MeshFilter>()->GetBoundingBox();
 
 		float radius = max(abs(extent.x), abs(extent.y));
 		radius = max(radius, abs(extent.z));
 
 		if (RaySphereIntersect(rayOrigin, rayDirection, radius))
-			intersectedGameObjects.push_back(gameObject);
+		{
+			if (!RaySphereIntersect(m_mainCamera->GetTransform()->GetPosition(), m_mainCamera->GetTransform()->GetForward(), radius))
+				intersectedGameObjects.push_back(gameObject);
+		}
 	}
 	//====================================================
 
@@ -412,7 +419,7 @@ GameObject* Scene::MousePick(Vector2& mousePos)
 		Vector3 posA = gameObject->GetTransform()->GetPosition();
 		Vector3 posB = camera->g_transform->GetPosition();
 
-		float distance = sqrt(pow((posB.x - posA.x), 2.0f) + pow((posB.y - posA.y), 2.0f) + pow((posB.z - posA.z), 2.0f));
+		float distance = sqrt(pow(posB.x - posA.x, 2.0f) + pow(posB.y - posA.y, 2.0f) + pow(posB.z - posA.z, 2.0f));
 
 		if (distance < minDistance)
 		{

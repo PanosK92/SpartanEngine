@@ -51,7 +51,7 @@ Transform::~Transform()
 //==========
 // INTERFACE
 //==========
-void Transform::Awake()
+void Transform::Initialize()
 {
 	UpdateWorldTransform();
 }

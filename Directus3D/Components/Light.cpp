@@ -55,7 +55,7 @@ Light::~Light()
 
 }
 
-void Light::Awake()
+void Light::Initialize()
 {
 	Camera* camera = g_context->GetSubsystem<Scene>()->GetMainCamera()->GetComponent<Camera>();
 	
