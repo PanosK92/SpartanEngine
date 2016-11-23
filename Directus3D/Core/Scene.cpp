@@ -330,9 +330,9 @@ void Scene::Resolve()
 	m_lightsPoint.clear();
 	m_lightsPoint.shrink_to_fit();
 
-	// It's necessery not to forget to set this to nullptr,
-	// otherwise it can end up as a nice dangling pointer :-)
+	// Dodge dangling pointers
 	m_mainCamera = nullptr;
+	m_skybox = nullptr;
 
 	for (const auto& gameObject : m_gameObjects)
 	{
@@ -455,7 +455,7 @@ GameObject* Scene::CreateSkybox()
 	skybox->SetName("Skybox");
 	skybox->AddComponent<LineRenderer>();
 	skybox->AddComponent<Skybox>();
-	//skybox->SetHierarchyVisibility(false);
+	skybox->SetHierarchyVisibility(false);
 
 	return skybox;
 }
