@@ -62,6 +62,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_shaderDebug = nullptr;
 	m_shaderFXAA = nullptr;
 	m_shaderSharpening = nullptr;
+	m_shaderBlur = nullptr;
 	m_texNoiseMap = nullptr;
 	m_skybox = nullptr;
 	m_camera = nullptr;
@@ -96,6 +97,9 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 
 	m_shaderSharpening = make_shared<PostProcessShader>();
 	m_shaderSharpening->Initialize("SHARPENING", graphics);
+	
+	m_shaderBlur = make_shared<PostProcessShader>();
+	m_shaderBlur->Initialize("BLUR", graphics);
 
 	/*------------------------------------------------------------------------------
 	[RENDER TEXTURES]
@@ -220,11 +224,6 @@ void Renderer::Clear()
 	m_lightsPoint.shrink_to_fit();
 }
 
-const vector<GameObject*>& Renderer::GetRenderables() const
-{
-	return m_renderables;
-}
-
 void Renderer::AcquirePrerequisites()
 {
 	Clear();
@@ -329,15 +328,15 @@ void Renderer::GBufferPass()
 		renderShader->UpdatePerFrameBuffer(m_directionalLight, m_camera);
 
 		for (const auto& tempMaterial : materials) // iterate through the materials
-		{		
+		{
 			// Continue only if the material at hand happens to use the already set shader
 			auto renderMaterial = tempMaterial.lock();
 			if (renderMaterial->GetShader().lock()->GetID() != renderShader->GetID())
 				continue;
-		
+
 			// UPDATE PER MATERIAL BUFFER
 			renderShader->UpdatePerMaterialBuffer(renderMaterial);
-			
+
 			//= Gather any used textures and bind them to the GPU ===============================
 			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Albedo));
 			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Roughness));
@@ -426,23 +425,38 @@ bool Renderer::IsInViewFrustrum(const shared_ptr<Frustrum>& cameraFrustrum, Mesh
 
 void Renderer::DeferredPass()
 {
+	//= SHADOW BLUR ========================================
+	if (m_directionalLight->GetShadowType() == Soft_Shadows)
+	{
+		// Set render target
+		m_renderTexPong->SetAsRenderTarget();
+		m_renderTexPong->Clear(GetClearColor());
+
+		m_shaderBlur->Render(
+			m_fullScreenQuad->GetIndexCount(),
+			Matrix::Identity,
+			mBaseView,
+			mOrthographicProjection,
+			m_GBuffer->GetShaderResourceView(1) // Normal tex but shadows are in alpha channel
+		);
+	}
+	//=====================================================
+
 	if (!m_shaderDeferred->IsCompiled())
 		return;
 
-	Ping();
+	// Set the deferred shader
+	m_shaderDeferred->Set();
 
-	// Update matrix buffer
-	m_shaderDeferred->UpdateMatrixBuffer(
-		Matrix::Identity,
-		mView,
-		mBaseView,
-		mProjection,
-		mOrthographicProjection);
+	// Set render target
+	m_renderTexPing->SetAsRenderTarget();
+	m_renderTexPing->Clear(GetClearColor());
 
-	// Update misc buffer
-	m_shaderDeferred->UpdateMiscBuffer(m_lightsDirectional, m_lightsPoint, m_camera);
+	// Update buffers
+	m_shaderDeferred->UpdateMatrixBuffer(Matrix::Identity, mView, mBaseView, mProjection, mOrthographicProjection);
+	m_shaderDeferred->UpdateMiscBuffer(m_directionalLight, m_lightsPoint, m_camera);
 
-	// Setting a texture array instead of multiple textures is faster
+	//= Update textures ===========================================================
 	m_texArray.clear();
 	m_texArray.shrink_to_fit();
 	m_texArray.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
@@ -450,21 +464,20 @@ void Renderer::DeferredPass()
 	m_texArray.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
 	m_texArray.push_back(m_GBuffer->GetShaderResourceView(3)); // material
 	m_texArray.push_back(m_texNoiseMap->GetID3D11ShaderResourceView());
+	m_texArray.push_back(m_renderTexPong->GetShaderResourceView());
 	m_texArray.push_back(m_skybox ? m_skybox->GetEnvironmentTexture() : nullptr);
 
-	// Update textures
 	m_shaderDeferred->UpdateTextures(m_texArray);
+	//=============================================================================
 
-	// Set
-	m_shaderDeferred->Set();
-
-	// Render
 	m_shaderDeferred->Render(m_fullScreenQuad->GetIndexCount());
 }
 
-void Renderer::PostProcessing() const
+void Renderer::PostProcessing()
 {
-	Pong();
+	// Set Ping texture as render target
+	m_renderTexPong->SetAsRenderTarget();
+	m_renderTexPong->Clear(GetClearColor());
 
 	// fxaa pass
 	m_shaderFXAA->Render(
@@ -515,20 +528,9 @@ void Renderer::Gizmos() const
 	);
 }
 
-void Renderer::Ping() const
+const Vector4& Renderer::GetClearColor()
 {
-	Vector4 clearColor = m_camera ? m_camera->GetClearColor() : Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-
-	m_renderTexPing->SetAsRenderTarget();
-	m_renderTexPing->Clear(clearColor);
-}
-
-void Renderer::Pong() const
-{
-	Vector4 clearColor = m_camera ? m_camera->GetClearColor() : Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-
-	m_renderTexPong->SetAsRenderTarget();
-	m_renderTexPong->Clear(clearColor);
+	return m_camera ? m_camera->GetClearColor() : Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 //= STATS ============================
@@ -557,15 +559,5 @@ void Renderer::StopCalculatingStats()
 
 	// meshes rendered
 	m_renderedMeshesPerFrame = m_renderedMeshesTempCounter;
-}
-
-float Renderer::GetFPS()
-{
-	return m_fps;
-}
-
-int Renderer::GetRenderedMeshesCount()
-{
-	return m_renderedMeshesPerFrame;
 }
 //====================================

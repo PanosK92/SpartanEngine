@@ -219,12 +219,12 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	output.material		= float4(roughness, metallic, specular, type);
 		
 	// Uncomment to vizualize cascade splits 
-	/*if (cascadeIndex == 0)
+	if (cascadeIndex == 0)
 		output.albedo		= float4(1,0,0,1);
 	if (cascadeIndex == 1)
 		output.albedo		= float4(0,1,0,1);
 	if (cascadeIndex == 2)
-		output.albedo		= float4(0,0,1,1);*/
+		output.albedo		= float4(0,0,1,1);
 		
     return output;
 }

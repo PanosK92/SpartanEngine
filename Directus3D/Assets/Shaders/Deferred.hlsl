@@ -1,10 +1,11 @@
 //= TEXTURES ==============================
-Texture2D texAlbedo : register(t0);
-Texture2D texNormal : register(t1);
-Texture2D texDepth : register(t2);
-Texture2D texMaterial : register(t3);
-Texture2D texNoise : register(t4);
-TextureCube environmentTex : register(t5);
+Texture2D texAlbedo 		: register(t0);
+Texture2D texNormal 		: register(t1);
+Texture2D texDepth 			: register(t2);
+Texture2D texMaterial 		: register(t3);
+Texture2D texNoise			: register(t4);
+Texture2D texShadows 		: register(t5);
+TextureCube environmentTex 	: register(t6);
 //=========================================
 
 //= SAMPLERS ==============================
@@ -12,12 +13,7 @@ SamplerState samplerPoint : register(s0);
 SamplerState samplerAniso : register(s1);
 //=========================================
 
-//= DEFINES =========
-#define MaxLights 128
-//===================
-
 //= CONSTANT BUFFERS ===================
-// Update frequency: low
 cbuffer MatrixBuffer : register(b0)
 {
 	matrix mWorldViewProjection;
@@ -25,21 +21,21 @@ cbuffer MatrixBuffer : register(b0)
 	matrix mView;
 }
 
-// Update frequency: high
+#define MaxLights 128
 cbuffer MiscBuffer : register(b1)
 {
     float4 cameraPosWS;
-    float4 dirLightDirection[MaxLights];
-    float4 dirLightColor[MaxLights];
-    float4 dirLightIntensity[MaxLights];
+    float4 dirLightDirection;
+    float4 dirLightColor;
+    float4 dirLightIntensity;
     float4 pointLightPosition[MaxLights];
     float4 pointLightColor[MaxLights];
     float4 pointLightRange[MaxLights];
     float4 pointLightIntensity[MaxLights];
-    float dirLightCount;
     float pointlightCount;
     float nearPlane;
     float farPlane;
+	float softShadows;
     float2 viewport;
     float2 padding;
 };
@@ -93,7 +89,8 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float depth = depthSample.g;
 	float emission = depthSample.b * 100.0f;
     float3 worldPos = ReconstructPosition(depth, input.uv, mViewProjectionInverse);
-    float shadowing = clamp(normalSample.a, 0.1f, 1.0f);
+	float shadowing = softShadows ? texShadows.Sample(samplerAniso, input.uv).a : normalSample.a;
+    shadowing = clamp(shadowing, 0.1f, 1.0f);
     float roughness = materialSample.r;
     float metallic = materialSample.g;
     float specular = materialSample.b;
@@ -121,23 +118,21 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
     float ambientLightIntensity = 0.3f;
 
-	// directional lights
-    for (int i = 0; i < dirLightCount; i++)
-    {
-        float3 lightColor = dirLightColor[i];
-        float lightIntensity = dirLightIntensity[i];
-        float3 lightDir = normalize(-dirLightDirection[i]);
+	//= DIRECTIONAL LIGHT ========================================================================================================================================
+	float3 lightColor = dirLightColor;
+	float lightIntensity = dirLightIntensity;
+	float3 lightDir = normalize(-dirLightDirection);
 
-        ambientLightIntensity = clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
-        lightIntensity *= shadowing;
-		lightIntensity += emission;
-        envColor *= clamp(lightIntensity, 0.0f, 1.0f);
-        irradiance *= clamp(lightIntensity, 0.0f, 1.0f);
+	ambientLightIntensity = clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
+	lightIntensity *= shadowing;
+	lightIntensity += emission;
+	envColor *= clamp(lightIntensity, 0.0f, 1.0f);
+	irradiance *= clamp(lightIntensity, 0.0f, 1.0f);
 			
-        finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);
-    }
-		
-	// point lights
+	finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);
+	//============================================================================================================================================================
+	
+	//= POINT LIGHTS =============================================================================================================================================
     for (int i = 0; i < pointlightCount; i++)
     {
         float3 lightColor = pointLightColor[i];
@@ -155,11 +150,11 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
         if (dist < radius)
             finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, 0.0f, envColor, irradiance);
     }
+	//============================================================================================================================================================
 	
     finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
     finalColor = ToGamma(finalColor); // gamma correction
     float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
-	
-	// Temporary SSAO appraoch for testing purposes
+
     return float4(finalColor, luma);
 }

@@ -34,6 +34,7 @@ PostProcessShader::PostProcessShader()
 {
 	m_shader = nullptr;
 	m_constantBuffer = nullptr;
+	m_graphics = nullptr;
 }
 
 PostProcessShader::~PostProcessShader()
@@ -62,26 +63,26 @@ void PostProcessShader::Initialize(LPCSTR pass, Graphics* graphicsDevice)
 
 void PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* texture)
 {
-	//= Fill the constant buffer ===============================================
-	DefaultBuffer* defaultBuffer = (DefaultBuffer*)m_constantBuffer->Map();
-	if (!defaultBuffer)
-		return;
-
-	defaultBuffer->worldViewProjection = Matrix::Transposed(worldMatrix * viewMatrix * Matrix::Transposed(projectionMatrix));
-	defaultBuffer->viewport = GET_RESOLUTION;
-	defaultBuffer->padding = GET_RESOLUTION;
-
-	m_constantBuffer->Unmap();
-	m_constantBuffer->SetPS(0);
-	m_constantBuffer->SetVS(0);
-	//==========================================================================
-
-	//= SET TEXTURE ============================================================
-	m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
-
-	//= SET SHADER =============================================================
+	// Set shader
 	m_shader->Set();
 
-	//= DRAW ===================================================================
+	// Set texture
+	m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
+
+	//= UPDATE BUFFER ==========================================================
+	DefaultBuffer* buffer = (DefaultBuffer*)m_constantBuffer->Map();
+
+	buffer->worldViewProjection = Matrix::Transposed(worldMatrix * viewMatrix * Matrix::Transposed(projectionMatrix));
+	buffer->viewport = GET_RESOLUTION;
+	buffer->padding = GET_RESOLUTION;
+
+	m_constantBuffer->Unmap();
+	//==========================================================================
+	
+	// Set constant buffer
+	m_constantBuffer->SetPS(0);
+	m_constantBuffer->SetVS(0);
+
+	// Render
 	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }

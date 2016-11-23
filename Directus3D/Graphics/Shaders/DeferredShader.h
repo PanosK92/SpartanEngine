@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics.h"
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
+#include "../../Components/Light.h"
 //==================================
 
 class DeferredShader
@@ -40,7 +41,7 @@ public:
 	void Initialize(Graphics* graphicsDevice);
 	void UpdateMatrixBuffer(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mBaseView,
 		const Directus::Math::Matrix& mPerspectiveProjection, const Directus::Math::Matrix& mOrthographicProjection);
-	void UpdateMiscBuffer(std::vector<GameObject*> directionalLights, std::vector<GameObject*> pointLights, Camera* camera);
+	void UpdateMiscBuffer(Light*, std::vector<GameObject*> pointLights, Camera* camera);
 	void UpdateTextures(std::vector<ID3D11ShaderResourceView*> textures);
 	void Set();
 	void Render(int indexCount);
@@ -54,21 +55,21 @@ private:
 		Directus::Math::Matrix mView;
 	};
 
-	const static int maxLights = 128;
+	const static int maxPointLights = 128;
 	struct MiscBufferType
 	{	
 		Directus::Math::Vector4 cameraPosition;
-		Directus::Math::Vector4 dirLightDirection[maxLights];
-		Directus::Math::Vector4 dirLightColor[maxLights];
-		Directus::Math::Vector4 dirLightIntensity[maxLights];
-		Directus::Math::Vector4 pointLightPosition[maxLights];
-		Directus::Math::Vector4 pointLightColor[maxLights];
-		Directus::Math::Vector4 pointLightRange[maxLights];
-		Directus::Math::Vector4 pointLightIntensity[maxLights];
-		float dirLightCount;
+		Directus::Math::Vector4 dirLightDirection;
+		Directus::Math::Vector4 dirLightColor;
+		Directus::Math::Vector4 dirLightIntensity;
+		Directus::Math::Vector4 pointLightPosition[maxPointLights];
+		Directus::Math::Vector4 pointLightColor[maxPointLights];
+		Directus::Math::Vector4 pointLightRange[maxPointLights];
+		Directus::Math::Vector4 pointLightIntensity[maxPointLights];
 		float pointLightCount;
 		float nearPlane;
 		float farPlane;
+		float softShadows;
 		Directus::Math::Vector2 viewport;
 		Directus::Math::Vector2 padding;
 	};

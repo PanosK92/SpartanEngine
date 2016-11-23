@@ -51,13 +51,13 @@ public:
 	void Render();
 	void SetResolution(int width, int height);
 	void Clear();
-	const std::vector<GameObject*>& GetRenderables() const;
+	const std::vector<GameObject*>& GetRenderables() { return m_renderables; }
 
 	//= STATS =========================
 	void StartCalculatingStats();
 	void StopCalculatingStats();
-	float GetFPS();
-	int GetRenderedMeshesCount();
+	float GetFPS() { return m_fps; }
+	int GetRenderedMeshesCount() { return m_renderedMeshesPerFrame; }
 	//=================================
 
 private:
@@ -81,13 +81,14 @@ private:
 	std::shared_ptr<Texture> m_texNoiseMap;
 	//============================================================
 
-	//= SHADERS =========================
+	//= SHADERS ==========================================
 	std::shared_ptr<DeferredShader> m_shaderDeferred;
 	std::shared_ptr<DepthShader> m_shaderDepth;
 	std::shared_ptr<DebugShader> m_shaderDebug;
 	std::shared_ptr<PostProcessShader> m_shaderFXAA;
 	std::shared_ptr<PostProcessShader> m_shaderSharpening;
-	//====================================
+	std::shared_ptr<PostProcessShader> m_shaderBlur;
+	//====================================================
 
 	//= STATS ======================
 	float m_fps;
@@ -110,16 +111,15 @@ private:
 	float m_farPlane;
 	std::vector<ID3D11ShaderResourceView*> m_textures;
 	//================================================
-	
+
 	//= HELPER FUNCTIONS ==========================
 	bool IsInViewFrustrum(const std::shared_ptr<Frustrum>& cameraFrustrum, MeshFilter* meshFilte);
 	void AcquirePrerequisites();
 	void DirectionalLightDepthPass();
 	void GBufferPass();
 	void DeferredPass();
-	void PostProcessing() const;
+	void PostProcessing();
 	void Gizmos() const;
-	void Ping() const;
-	void Pong() const;
+	const Directus::Math::Vector4& GetClearColor();
 	//=============================================
 };

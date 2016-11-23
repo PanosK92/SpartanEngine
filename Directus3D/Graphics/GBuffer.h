@@ -29,10 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 const int BUFFER_COUNT = 4;
 //==========================
 
-//= INCLUDES =============================
+//= INCLUDES ===============================
 #include "../Graphics/D3D11/D3D11Graphics.h"
 #include "Graphics.h"
-//========================================
+//==========================================
 
 class GBuffer
 {

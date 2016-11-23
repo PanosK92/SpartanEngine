@@ -1,6 +1,6 @@
-Texture2D sourceTexture : register(t0);
+Texture2D sourceTexture 		: register(t0);
 SamplerState anisotropicSampler : register(s0);
-SamplerState bilinearSampler : register(s1);
+SamplerState bilinearSampler 	: register(s1);
 
 #if FXAA
 #define FXAA_PC 1
@@ -9,16 +9,13 @@ SamplerState bilinearSampler : register(s1);
 #include "FXAA.hlsl"
 #endif
 
-//= CONSTANT BUFFERS ===============
 cbuffer DefaultBuffer : register(b0)
 {
     matrix mWorldViewProjection;
     float2 viewport;
     float2 padding;
 };
-//==================================
 
-//= STRUCTS ========================
 struct VertexInputType
 {
     float4 position : POSITION;
@@ -30,7 +27,6 @@ struct PixelInputType
     float4 position : SV_POSITION;
     float2 uv : TEXCOORD;
 };
-//==================================
 
 PixelInputType DirectusVertexShader(VertexInputType input)
 {
@@ -43,9 +39,8 @@ PixelInputType DirectusVertexShader(VertexInputType input)
     return output;
 }
 
-
 /*------------------------------------------------------------------------------
-                          [FXAA CODE SECTION]
+									[FXAA]
 ------------------------------------------------------------------------------*/
 #if FXAA
 float4 FXAAPass(float2 texCoord, float2 texelSize)
@@ -71,7 +66,7 @@ float4 FXAAPass(float2 texCoord, float2 texelSize)
 #endif
 
 /*------------------------------------------------------------------------------
-						[SHARPENING CODE SECTION]
+							[SHARPENING]
 ------------------------------------------------------------------------------*/
 #if SHARPENING
 float4 SharpeningPass(float2 texCoord)
@@ -97,21 +92,21 @@ float4 SharpeningPass(float2 texCoord)
 #endif
 
 /*------------------------------------------------------------------------------
-						[BLUR]
+								[BLUR]
 ------------------------------------------------------------------------------*/
 #if BLUR
 float4 BlurPass(float2 texCoord, float2 texelSize)
 {
-	int uBlurSize = 5; // use size of noise texture
+	int uBlurSize = 6; // use size of noise texture
 	
-	float result = 0.0f;
+	float4 result = 0.0f;
 	float temp = float(-uBlurSize) * 0.5f + 0.5f;
 	float2 hlim = float2(temp, temp);
 	for (int i = 0; i < uBlurSize; ++i) 
 		for (int j = 0; j < uBlurSize; ++j) 
 		{
 			float2 offset = (hlim + float2(float(i), float(j))) * texelSize;
-			result += sourceTexture.Sample(anisotropicSampler, texCoord + offset).r;
+			result += sourceTexture.Sample(anisotropicSampler, texCoord + offset);
 		}
 		
 	result = result / float(uBlurSize * uBlurSize);
@@ -140,6 +135,6 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 #if BLUR
 	color = BlurPass(texCoord, texelSize);
 #endif
-	
+
     return color;
 }

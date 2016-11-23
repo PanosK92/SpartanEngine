@@ -67,10 +67,10 @@ public:
 		float split = 0;
 
 		if (m_cascadeNumber == 1)
-			split = 980;
+			split = 990;
 
 		if (m_cascadeNumber == 2)
-			split = 995;
+			split = 998;
 
 		return split / 1000.0f;
 	}
@@ -80,13 +80,13 @@ public:
 		float radius = m_camera->GetFarPlane() * 0.5f;
 
 		if (m_cascadeNumber == 1)
-			radius = 25;
-
-		else if (m_cascadeNumber == 2)
 			radius = 40;
 
+		else if (m_cascadeNumber == 2)
+			radius = 75;
+
 		if (m_cascadeNumber == 3)
-			radius = 100;
+			radius = 200;
 
 		return radius;
 	}
