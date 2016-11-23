@@ -302,7 +302,7 @@ void Renderer::DirectionalLightDepthPass()
 				// Set shader's buffer
 				m_shaderDepth->UpdateMatrixBuffer(
 					gameObject->GetTransform()->GetTransformMatrix(),
-					m_directionalLight->GetViewMatrix(),
+					m_directionalLight->CalculateViewMatrix(),
 					m_directionalLight->GetOrthographicProjectionMatrix(cascadeIndex)
 				);
 

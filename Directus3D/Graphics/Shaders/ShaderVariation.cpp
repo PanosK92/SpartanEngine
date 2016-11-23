@@ -106,9 +106,9 @@ void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* came
 	if (!directionalLight || !camera)
 		return;
 
-	Matrix lightViewProjection1 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(0);
-	Matrix lightViewProjection2 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(1);
-	Matrix lightViewProjection3 = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
+	Matrix lightViewProjection1 = directionalLight->CalculateViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(0);
+	Matrix lightViewProjection2 = directionalLight->CalculateViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(1);
+	Matrix lightViewProjection3 = directionalLight->CalculateViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
 
 	//= BUFFER UPDATE ========================================================================
 	PerFrameBufferType* buffer = (PerFrameBufferType*)m_miscBuffer->Map();
@@ -136,7 +136,7 @@ void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* came
 	m_miscBuffer->SetPS(0);
 }
 
-void ShaderVariation::UpdatePerMaterialBuffer(std::shared_ptr<Material> material)
+void ShaderVariation::UpdatePerMaterialBuffer(shared_ptr<Material> material)
 {
 	if (!m_D3D11Shader->IsCompiled())
 	{
@@ -144,20 +144,33 @@ void ShaderVariation::UpdatePerMaterialBuffer(std::shared_ptr<Material> material
 		return;
 	}
 
+	// Determine if the buffer actually needs to update
+	bool update = false;
+	update = perMaterialBufferCPU.matAlbedo != material->GetColorAlbedo() ? true : update;
+	update = perMaterialBufferCPU.matTilingUV != material->GetTilingUV() ? true : update;
+	update = perMaterialBufferCPU.matOffsetUV != material->GetOffsetUV() ? true : update;
+	update = perMaterialBufferCPU.matRoughnessMul != material->GetRoughnessMultiplier() ? true : update;
+	update = perMaterialBufferCPU.matMetallicMul != material->GetMetallicMultiplier() ? true : update;
+	update = perMaterialBufferCPU.matOcclusionMul != material->GetOcclusionMultiplier() ? true : update;
+	update = perMaterialBufferCPU.matNormalMul != material->GetNormalMultiplier() ? true : update;
+	update = perMaterialBufferCPU.matSpecularMul != material->GetSpecularMultiplier() ? true : update;
+	update = perMaterialBufferCPU.matShadingMode != float(material->GetShadingMode()) ? true : update;
+
+	//if (!update)
+		//return;
+
 	//= BUFFER UPDATE =========================================================================
 	PerMaterialBufferType* buffer = (PerMaterialBufferType*)m_materialBuffer->Map();
-	if (!buffer)
-		return;
 
-	buffer->matAlbedo = material->GetColorAlbedo();
-	buffer->matTilingUV = material->GetTilingUV();
-	buffer->matOffsetUV = material->GetOffsetUV();
-	buffer->matRoughnessMul = material->GetRoughnessMultiplier();
-	buffer->matMetallicMul = material->GetMetallicMultiplier();
-	buffer->matOcclusionMul = material->GetOcclusionMultiplier();
-	buffer->matNormalMul = material->GetNormalMultiplier();
-	buffer->matSpecularMul = material->GetSpecularMultiplier();
-	buffer->matShadingMode = float(material->GetShadingMode());
+	buffer->matAlbedo = perMaterialBufferCPU.matAlbedo = material->GetColorAlbedo();
+	buffer->matTilingUV = perMaterialBufferCPU.matTilingUV = material->GetTilingUV();
+	buffer->matOffsetUV = perMaterialBufferCPU.matOffsetUV = material->GetOffsetUV();
+	buffer->matRoughnessMul = perMaterialBufferCPU.matRoughnessMul = material->GetRoughnessMultiplier();
+	buffer->matMetallicMul = perMaterialBufferCPU.matMetallicMul = material->GetMetallicMultiplier();
+	buffer->matOcclusionMul = perMaterialBufferCPU.matOcclusionMul = material->GetOcclusionMultiplier();
+	buffer->matNormalMul = perMaterialBufferCPU.matNormalMul = material->GetNormalMultiplier();
+	buffer->matSpecularMul = perMaterialBufferCPU.matSpecularMul = material->GetSpecularMultiplier();
+	buffer->matShadingMode = perMaterialBufferCPU.matShadingMode = float(material->GetShadingMode());
 	buffer->padding = Vector2::Zero;
 
 	m_materialBuffer->Unmap();
@@ -180,13 +193,29 @@ void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& 
 	Matrix worldView = world * mView;
 	Matrix worldViewProjection = worldView * mProjection;
 
+	world = world.Transposed();
+	worldView = worldView.Transposed();
+	worldViewProjection = worldViewProjection.Transposed();
+
+	// Determine if the buffer actually needs to update
+	bool update = false;
+	update = perObjectBufferCPU.mWorld != world ? true : update;
+	update = perObjectBufferCPU.mWorldView != worldView ? true : update;
+	update = perObjectBufferCPU.mWorldViewProjection != worldViewProjection ? true : update;
+	update = perObjectBufferCPU.receiveShadows != (float)receiveShadows ? true : update;
+
+	if (!update)
+		return;
+
 	//= BUFFER UPDATE =======================================================================
 	PerObjectBufferType* buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
-	buffer->mWorld = world.Transposed();
-	buffer->mWorldView = worldView.Transposed();
-	buffer->mWorldViewProjection = worldViewProjection.Transposed();
-	buffer->receiveShadows = (float)receiveShadows;
+
+	buffer->mWorld = perObjectBufferCPU.mWorld = world;
+	buffer->mWorldView = perObjectBufferCPU.mWorldView = worldView;
+	buffer->mWorldViewProjection = perObjectBufferCPU.mWorldViewProjection = worldViewProjection;
+	buffer->receiveShadows = perObjectBufferCPU.receiveShadows = (float)receiveShadows;
 	buffer->padding = Vector3::Zero;
+
 	m_perObjectBuffer->Unmap();
 	//=======================================================================================
 
@@ -197,14 +226,18 @@ void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& 
 
 void ShaderVariation::UpdateTextures(const vector<ID3D11ShaderResourceView*>& textureArray)
 {
-	if (m_graphics)
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, (UINT)textureArray.size(), &textureArray.front());
+	if (!m_graphics)
+		return;
+
+	m_graphics->GetDeviceContext()->PSSetShaderResources(0, (UINT)textureArray.size(), &textureArray.front());
 }
 
 void ShaderVariation::Render(int indexCount)
 {
-	if (m_graphics)
-		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	if (!m_graphics)
+		return;
+
+	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
 void ShaderVariation::AddDefinesBasedOnMaterial(shared_ptr<D3D11Shader> shader)

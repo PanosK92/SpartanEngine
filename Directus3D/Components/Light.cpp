@@ -57,28 +57,11 @@ Light::~Light()
 
 void Light::Initialize()
 {
+	Graphics* graphics = g_context->GetSubsystem<Graphics>();
 	Camera* camera = g_context->GetSubsystem<Scene>()->GetMainCamera()->GetComponent<Camera>();
-	
-	float camNear = camera->GetNearPlane();
-	float camFar = camera->GetFarPlane();
 
 	for (int i = 0; i < m_cascades; i++)
-	{
-		float n = i + 1;
-		float farPlane = camNear * powf(camFar / camNear, n / m_cascades);
-		float nearPlane = Clamp(farPlane - (camFar / m_cascades), camNear, camFar);
-		
-		m_shadowMaps.push_back(
-			new ShadowMap(
-				g_context->GetSubsystem<Graphics>(), 
-				n, 
-				this, 
-				camera,
-				SHADOWMAP_RESOLUTION / n,
-				nearPlane,
-				farPlane
-			));
-	}
+		m_shadowMaps.push_back(new ShadowMap(graphics, i + 1, this, camera, SHADOWMAP_RESOLUTION));
 }
 
 void Light::Start()
@@ -138,20 +121,14 @@ Vector3 Light::GetDirection()
 	return g_transform->GetForward();
 }
 
-Matrix Light::GetViewMatrix()
+Matrix Light::CalculateViewMatrix()
 {
-	GameObject* cameraGameObject = g_context->GetSubsystem<Scene>()->GetMainCamera();
-	if (!cameraGameObject)
-		return Matrix::Identity;
-
-	Transform* camera = cameraGameObject->GetTransform();
 	Vector3 lightDirection = GetDirection();
-
-	Vector3 position = camera->GetPosition(); //- lightDirection * m_shadowMaps[cascade]->GetFarPlane();
-	Vector3 lookAt = camera->GetPosition() + lightDirection;
+	Vector3 position = lightDirection;
+	Vector3 lookAt = position + lightDirection;
 	Vector3 up = Vector3::Up;
 
-	// Create the view matrix from the three vectors.
+	// Create the view matrix
 	m_viewMatrix = Matrix::CreateLookAtLH(position, lookAt, up);
 
 	return m_viewMatrix;
@@ -159,7 +136,7 @@ Matrix Light::GetViewMatrix()
 
 Matrix Light::GetOrthographicProjectionMatrix(int cascade)
 {
-	return m_shadowMaps[cascade]->GetProjectionMatrix();
+	return m_shadowMaps[cascade]->CalculateProjectionMatrix(CalculateViewMatrix());
 }
 
 void Light::SetShadowMapAsRenderTarget(int cascade)

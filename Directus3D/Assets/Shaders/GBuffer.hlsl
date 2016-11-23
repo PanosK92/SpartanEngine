@@ -180,14 +180,17 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 
 	//= SHADOW MAPPING ===========================================================================	
 	float shadowing = 1.0f;
-	int cascadeIndex = 0;	
+	int cascadeIndex;	
 	if (receiveShadows == 1.0f && shadowMappingQuality != 0.0f)
 	{
-		float z = depth1;
-		if (z < shadowSplits.x)
+		float z = depth2;
+		
+		if (z <= shadowSplits.x)
+			cascadeIndex = 0;		
+		else if (z <= shadowSplits.y)
+			cascadeIndex = 1;	
+		else
 			cascadeIndex = 2;		
-		else if (z < shadowSplits.y)
-			cascadeIndex = 1;		
 		
 		if (cascadeIndex == 0)
 		{
@@ -210,7 +213,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float totalShadowing = clamp(flippedOcclusion * shadowing, 0.0f, 1.0f);
 
 	// Write to G-Buffer
-	output.albedo		= albedo;	
+	output.albedo		= albedo;
 	output.normal 		= float4(normal.rgb, totalShadowing);
 	output.depth 		= float4(depth1, depth2, emission, 0.0f);
 	output.material		= float4(roughness, metallic, specular, type);

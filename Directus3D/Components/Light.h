@@ -81,7 +81,7 @@ public:
 
 	Directus::Math::Vector3 GetDirection();
 
-	Directus::Math::Matrix GetViewMatrix();
+	Directus::Math::Matrix CalculateViewMatrix();
 	Directus::Math::Matrix GetOrthographicProjectionMatrix(int cascade);
 	void SetShadowMapAsRenderTarget(int cascade);
 	ID3D11ShaderResourceView* GetDepthMap(int cascade);

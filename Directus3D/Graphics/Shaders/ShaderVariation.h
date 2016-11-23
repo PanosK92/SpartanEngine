@@ -129,6 +129,7 @@ private:
 		float matShadingMode;
 		Directus::Math::Vector2 padding;
 	};
+	PerMaterialBufferType perMaterialBufferCPU;
 
 	struct PerObjectBufferType
 	{
@@ -138,5 +139,6 @@ private:
 		float receiveShadows;
 		Directus::Math::Vector3 padding;
 	};
+	PerObjectBufferType perObjectBufferCPU;
 	//==========================================================
 };
