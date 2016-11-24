@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "../Math/Vector2.h"
+#include <fstream>
 //==========================
 
 #define SET_RESOLUTION(x,y) Settings::SetResolution(x,y)
@@ -45,9 +46,10 @@ enum VSync
 class DllExport Settings
 {
 public:
+	static void Initialize();
 	static bool IsFullScreen() { return m_isFullScreen; }
 	static bool IsMouseVisible() { return m_isMouseVisible; }
-	static VSync GetVSync() { return m_vsync; }
+	static VSync GetVSync() { return (VSync)m_vsync; }
 	static void SetResolution(int width, int height);
 	static Directus::Math::Vector2 GetResolution() { return Directus::Math::Vector2(m_resolutionWidth, m_resolutionHeight); }
 	static int GetResolutionWidth() { return m_resolutionWidth; }
@@ -57,8 +59,12 @@ public:
 	static unsigned int GetAnisotropy() { return m_anisotropy; }
 
 private:
+	static std::ofstream m_fout;
+	static std::ifstream m_fin;
+	static std::string m_settingsFileName;
+
 	static bool m_isFullScreen;
-	static VSync m_vsync;
+	static int m_vsync;
 	static bool m_isMouseVisible;
 	static int m_resolutionWidth;
 	static int m_resolutionHeight;
