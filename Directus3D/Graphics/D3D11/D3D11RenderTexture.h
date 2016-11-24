@@ -36,9 +36,9 @@ public:
 	void SetAsRenderTarget() const;
 	void Clear(const Directus::Math::Vector4& clearColor);
 	void Clear(float r, float g , float b, float a) const;
-	ID3D11ShaderResourceView* GetShaderResourceView() const;
+	ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
 	void CreateOrthographicProjectionMatrix(float nearPlane, float farPlane);
-	Directus::Math::Matrix GetOrthographicProjectionMatrix() const;
+	const Directus::Math::Matrix& GetOrthographicProjectionMatrix() { return m_orthographicProjectionMatrix; }
 
 private:
 	Graphics* m_graphics;

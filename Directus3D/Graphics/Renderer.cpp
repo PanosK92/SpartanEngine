@@ -97,7 +97,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 
 	m_shaderSharpening = make_shared<PostProcessShader>();
 	m_shaderSharpening->Initialize("SHARPENING", graphics);
-	
+
 	m_shaderBlur = make_shared<PostProcessShader>();
 	m_shaderBlur->Initialize("BLUR", graphics);
 
@@ -412,6 +412,7 @@ void Renderer::GBufferPass()
 	} // shader loop
 }
 
+//= HELPER FUNCTIONS ==============================================================================================
 bool Renderer::IsInViewFrustrum(const shared_ptr<Frustrum>& cameraFrustrum, MeshFilter* meshFilter)
 {
 	Vector3 center = meshFilter->GetCenter();
@@ -426,20 +427,21 @@ bool Renderer::IsInViewFrustrum(const shared_ptr<Frustrum>& cameraFrustrum, Mesh
 void Renderer::DeferredPass()
 {
 	//= SHADOW BLUR ========================================
-	if (m_directionalLight->GetShadowType() == Soft_Shadows)
-	{
-		// Set render target
-		m_renderTexPong->SetAsRenderTarget();
-		m_renderTexPong->Clear(GetClearColor());
+	if (m_directionalLight)
+		if (m_directionalLight->GetShadowType() == Soft_Shadows)
+		{
+			// Set render target
+			m_renderTexPong->SetAsRenderTarget();
+			m_renderTexPong->Clear(GetClearColor());
 
-		m_shaderBlur->Render(
-			m_fullScreenQuad->GetIndexCount(),
-			Matrix::Identity,
-			mBaseView,
-			mOrthographicProjection,
-			m_GBuffer->GetShaderResourceView(1) // Normal tex but shadows are in alpha channel
-		);
-	}
+			m_shaderBlur->Render(
+				m_fullScreenQuad->GetIndexCount(),
+				Matrix::Identity,
+				mBaseView,
+				mOrthographicProjection,
+				m_GBuffer->GetShaderResourceView(1) // Normal tex but shadows are in alpha channel
+			);
+		}
 	//=====================================================
 
 	if (!m_shaderDeferred->IsCompiled())
@@ -561,3 +563,4 @@ void Renderer::StopCalculatingStats()
 	m_renderedMeshesPerFrame = m_renderedMeshesTempCounter;
 }
 //====================================
+//===============================================================================================================

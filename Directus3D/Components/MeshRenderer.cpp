@@ -85,7 +85,10 @@ void MeshRenderer::Deserialize()
 	m_castShadows = Serializer::ReadBool();
 	m_receiveShadows = Serializer::ReadBool();
 
-	m_materialType == Imported ? LoadMaterial(filePath) : SetMaterial(m_materialType);
+	// The Skybox material and texture is managed by the skybox component.
+	// No need to load anything as it will overwrite what the skybox component did.
+	if (m_materialType != Skybox)
+		m_materialType == Imported ? LoadMaterial(filePath) : SetMaterial(m_materialType);
 }
 //==============================================================================
 
