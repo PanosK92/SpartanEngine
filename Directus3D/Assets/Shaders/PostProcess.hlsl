@@ -97,16 +97,16 @@ float4 SharpeningPass(float2 texCoord)
 #if BLUR
 float4 BlurPass(float2 texCoord, float2 texelSize)
 {
-	int uBlurSize = 6; // use size of noise texture
+	int uBlurSize = 4; // use size of noise texture
 	
-	float4 result = 0.0f;
+	float result = 0.0f;
 	float temp = float(-uBlurSize) * 0.5f + 0.5f;
 	float2 hlim = float2(temp, temp);
 	for (int i = 0; i < uBlurSize; ++i) 
 		for (int j = 0; j < uBlurSize; ++j) 
 		{
 			float2 offset = (hlim + float2(float(i), float(j))) * texelSize;
-			result += sourceTexture.Sample(anisotropicSampler, texCoord + offset);
+			result += sourceTexture.Sample(anisotropicSampler, texCoord + offset).r;
 		}
 		
 	result = result / float(uBlurSize * uBlurSize);

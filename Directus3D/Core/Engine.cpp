@@ -46,8 +46,9 @@ Engine::Engine(Context* context) : Subsystem(context)
 	// Register self as a subsystem
 	g_context->RegisterSubsystem(this);
 
-	// Initialize Singletons
+	// Initialize static subsystems
 	Log::Initialize();
+	Settings::Initialize();
 
 	// Register subsystems that don't depend on any startup parameters
 	g_context->RegisterSubsystem(new Timer(g_context));
