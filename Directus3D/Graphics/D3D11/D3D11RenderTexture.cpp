@@ -133,8 +133,8 @@ bool D3D11RenderTexture::Initialize(Graphics* graphicsDevice, int textureWidth, 
 	//=================================================================================================================================
 
 	// Setup the viewport for rendering.
-	m_viewport.Width = float(textureWidth);
-	m_viewport.Height = float(textureHeight);
+	m_viewport.Width = (FLOAT)textureWidth;
+	m_viewport.Height = (FLOAT)textureHeight;
 	m_viewport.MinDepth = 0.0f;
 	m_viewport.MaxDepth = 1.0f;
 	m_viewport.TopLeftX = 0.0f;
@@ -171,17 +171,7 @@ void D3D11RenderTexture::Clear(float red, float green, float blue, float alpha) 
 	m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0); // Clear the depth buffer.
 }
 
-ID3D11ShaderResourceView* D3D11RenderTexture::GetShaderResourceView() const
-{
-	return m_shaderResourceView;
-}
-
 void D3D11RenderTexture::CreateOrthographicProjectionMatrix(float nearPlane, float farPlane)
 {
 	m_orthographicProjectionMatrix = Matrix::CreateOrthographicLH(float(m_width), float(m_height), nearPlane, farPlane);
-}
-
-Matrix D3D11RenderTexture::GetOrthographicProjectionMatrix() const
-{
-	return m_orthographicProjectionMatrix;
 }
