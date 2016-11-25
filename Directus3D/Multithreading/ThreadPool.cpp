@@ -29,7 +29,7 @@ using namespace  std;
 
 ThreadPool::ThreadPool(Context* context) : Subsystem(context)
 {
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < m_threadCount; i++)
 		m_threads.emplace_back(thread(&ThreadPool::Invoke, this));
 }
 

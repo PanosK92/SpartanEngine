@@ -101,8 +101,8 @@ void EventHandler::Unsubscribe(int eventID, Function&& function)
 {
 	for (auto it = m_events.begin(); it != m_events.end();)
 	{
-		auto slot = *it;
-		if (slot->GetEventID() == eventID && slot->GetAddress() == getAddress(function))
+		auto event = *it;
+		if (event->GetEventID() == eventID && event->GetAddress() == getAddress(function))
 		{
 			it = m_events.erase(it);
 			return;

@@ -21,16 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES =================
 #include <vector>
 #include <thread>
 #include <mutex>
 #include <queue>
 #include "../Core/Subsystem.h"
-//=========================
+//============================
 
-//#define ADD_TASK(task) ThreadPool::AddTask(task)
-
+//= TASK =================================================================================
 class Task
 {
 public:
@@ -42,6 +41,7 @@ public:
 private:
 	functionType m_function;
 };
+//=========================================================================================
 
 class ThreadPool : public Subsystem
 {
@@ -70,6 +70,7 @@ public:
 	}
 
 private:
+	int m_threadCount = 5;
 	std::vector<std::thread> m_threads;
 	std::queue<std::shared_ptr<Task>> m_tasks;
 	std::mutex m_tasksMutex;

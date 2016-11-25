@@ -47,16 +47,16 @@ class DllExport Settings
 {
 public:
 	static void Initialize();
-	static bool IsFullScreen() { return m_isFullScreen; }
-	static bool IsMouseVisible() { return m_isMouseVisible; }
-	static VSync GetVSync() { return (VSync)m_vsync; }
+	static bool IsFullScreen();
+	static bool IsMouseVisible();
+	static VSync GetVSync();
 	static void SetResolution(int width, int height);
-	static Directus::Math::Vector2 GetResolution() { return Directus::Math::Vector2(m_resolutionWidth, m_resolutionHeight); }
-	static int GetResolutionWidth() { return m_resolutionWidth; }
-	static int GetResolutionHeight() { return m_resolutionHeight; }
-	static float GetScreenAspect() { return m_screenAspect; }
-	static int GetShadowMapResolution() { return m_shadowMapResolution; }
-	static unsigned int GetAnisotropy() { return m_anisotropy; }
+	static Directus::Math::Vector2 GetResolution();
+	static int GetResolutionWidth();
+	static int GetResolutionHeight();
+	static float GetScreenAspect();
+	static int GetShadowMapResolution();
+	static unsigned int GetAnisotropy();
 
 private:
 	static std::ofstream m_fout;
