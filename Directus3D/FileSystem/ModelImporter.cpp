@@ -82,6 +82,10 @@ void ModelImporter::LoadAsync(GameObject* gameObject, const string& filePath)
 
 bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
 {
+	if (!gameObject)
+		return false;
+
+	m_isLoading = true;
 	m_fullModelPath = filePath;
 	m_rootGameObject = gameObject;
 	m_modelName = FileSystem::GetFileNameFromPath(m_fullModelPath);
@@ -114,6 +118,10 @@ bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
 
 	// Normalize the scale of the model
 	g_context->GetSubsystem<ResourceCache>()->NormalizeModelScale(m_rootGameObject);
+
+	// Set the loading flag, fire the completion event
+	m_isLoading = false;
+	FIRE_EVENT(MODEL_LOADING_COMPLETED);
 
 	return true;
 }

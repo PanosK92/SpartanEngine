@@ -41,6 +41,7 @@ public:
 	bool Load(GameObject* gameObject, const std::string& filePath);
 
 private:
+	bool m_isLoading;
 	std::string m_fullModelPath;
 	std::string m_fullTexturePath;
 	std::string m_modelName;
