@@ -91,9 +91,6 @@ public:
 		// Run Initialize().
 		component->Initialize();
 
-		// Do a scene analysis
-		FIRE_EVENT(RESOLVE_HIERARCHY);
-
 		// Return it as a component of the requested type
 		return dynamic_cast<T*>(component);
 	}

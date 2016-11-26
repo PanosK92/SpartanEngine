@@ -65,13 +65,9 @@ void Scene::Initialize()
 	CreateDirectionalLight();
 	Resolve();
 
-	// Subcribe to events that will resolve the scene
-	SUBSCRIBE_TO_EVENT(RESOLVE_HIERARCHY, std::bind(&Scene::Resolve, this));
-	SUBSCRIBE_TO_EVENT(MODEL_LOADING_COMPLETED, std::bind(&Scene::Resolve, this));
-	// Subscribe to events that will call Start() on the GameObjects
+	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, std::bind(&Scene::Resolve, this));
+	SUBSCRIBE_TO_EVENT(EVENT_RENDER, std::bind(&Scene::Update, this));
 	SUBSCRIBE_TO_EVENT(EVENT_ENGINE_START, std::bind(&Scene::Start, this));
-	// Subscribe to events that will call Update() on the GameObjects
-	SUBSCRIBE_TO_EVENT(RENDER_UPDATE, std::bind(&Scene::Update, this));
 }
 
 void Scene::Start()

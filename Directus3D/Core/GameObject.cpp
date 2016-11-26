@@ -220,8 +220,6 @@ void GameObject::RemoveComponentByID(const string& id)
 		}
 		++it;
 	}
-
-	FIRE_EVENT(RESOLVE_HIERARCHY);
 }
 
 //= HELPER FUNCTIONS ===========================================

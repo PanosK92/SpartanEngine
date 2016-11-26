@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========
+//= INCLUDES ============
 #include "EventHandler.h"
-//====================
+//=======================
 
 std::vector<std::shared_ptr<Event>> EventHandler::m_events;
 
 void EventHandler::Fire(int eventID)
 {
-	for (auto event : m_events)
+	for (const auto& event : m_events)
 		if (event->GetEventID() == eventID)
 			event->Fire();
 }
@@ -38,4 +38,23 @@ void EventHandler::Clear()
 {
 	m_events.clear();
 	m_events.shrink_to_fit();
+}
+
+void EventHandler::AddEvent(std::shared_ptr<Event> event)
+{
+	m_events.push_back(event);
+}
+
+void EventHandler::RemoveEvent(int eventID, size_t functionAddress)
+{
+	for (auto it = m_events.begin(); it != m_events.end();)
+	{
+		auto event = *it;
+		if (event->GetEventID() == eventID && event->GetAddress() == functionAddress)
+		{
+			it = m_events.erase(it);
+			return;
+		}
+		++it;
+	}
 }

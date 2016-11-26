@@ -62,7 +62,7 @@ PhysicsWorld::PhysicsWorld(Context* context) : Subsystem(context)
 	m_world->setDebugDrawer(m_debugDraw);
 
 	// Subcribe to update event
-	SUBSCRIBE_TO_EVENT(UPDATE, std::bind(&PhysicsWorld::Step, this));
+	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, std::bind(&PhysicsWorld::Step, this));
 }
 
 PhysicsWorld::~PhysicsWorld()

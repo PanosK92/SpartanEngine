@@ -86,6 +86,7 @@ bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
 		return false;
 
 	m_isLoading = true;
+
 	m_fullModelPath = filePath;
 	m_rootGameObject = gameObject;
 	m_modelName = FileSystem::GetFileNameFromPath(m_fullModelPath);
@@ -121,7 +122,6 @@ bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
 
 	// Set the loading flag, fire the completion event
 	m_isLoading = false;
-	FIRE_EVENT(MODEL_LOADING_COMPLETED);
 
 	return true;
 }

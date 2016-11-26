@@ -294,7 +294,6 @@ void Transform::SetParent(Transform* newParent)
 	if (m_parent)
 		m_parent->ResolveChildrenRecursively();
 
-	FIRE_EVENT(RESOLVE_HIERARCHY);
 	UpdateWorldTransform();
 }
 
