@@ -46,10 +46,10 @@ public:
 	virtual void Deserialize();
 	//===========================
 
-	bool GetConvex() const;
-	void SetConvex(bool isConvex);
-	std::weak_ptr<Mesh> GetMesh() const;
-	void SetMesh(std::weak_ptr<Mesh> mesh);
+	bool GetConvex() { return m_isConvex; }
+	void SetConvex(bool isConvex) { m_isConvex = isConvex; }
+	std::weak_ptr<Mesh> GetMesh() { return m_mesh; }
+	void SetMesh(std::weak_ptr<Mesh> mesh) { m_mesh = mesh; }
 	void Build();
 
 private:
@@ -62,7 +62,7 @@ private:
 	std::weak_ptr<Mesh> m_mesh;
 	int m_vertexLimit = 100000;
 	std::shared_ptr<btCollisionShape> m_collisionShape;
-	bool m_convex;
+	bool m_isConvex;
 
 	
 };

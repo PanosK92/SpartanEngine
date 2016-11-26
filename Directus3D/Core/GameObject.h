@@ -146,8 +146,6 @@ public:
 			}
 			++it;
 		}
-
-		FIRE_EVENT(RESOLVE_HIERARCHY);
 	}
 
 	void RemoveComponentByID(const std::string& id);
