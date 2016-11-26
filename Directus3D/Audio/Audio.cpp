@@ -46,7 +46,7 @@ Audio::Audio(Context* context) : Subsystem(context)
 	m_up = { 0, 1, 0 };
 
 	// Subcribe to update event
-	SUBSCRIBE_TO_EVENT(UPDATE, std::bind(&Audio::Update, this));
+	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, std::bind(&Audio::Update, this));
 }
 
 Audio::~Audio()

@@ -22,9 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= EVENT IDs =======================
-#define UPDATE						0	// Fired when it's time to update the engine
-#define RENDER_UPDATE				1	// Fired when it's time to do rendering
+#define EVENT_UPDATE				0	// Fired when it's time to update the engine
+#define EVENT_RENDER				1	// Fired when it's time to do rendering
 #define EVENT_ENGINE_START			3	// Fired each time the simulation starts (play button in the editor)
-#define RESOLVE_HIERARCHY			4
-#define MODEL_LOADING_COMPLETED		5
 //===================================

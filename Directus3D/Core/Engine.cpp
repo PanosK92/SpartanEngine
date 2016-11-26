@@ -94,10 +94,10 @@ void Engine::Update()
 	g_context->GetSubsystem<Timer>()->Update();
 
 	// LOGIC UPDATE
-	FIRE_EVENT(UPDATE);
+	FIRE_EVENT(EVENT_UPDATE);
 
 	// RENDER UPDATE
-	FIRE_EVENT(RENDER_UPDATE);
+	FIRE_EVENT(EVENT_RENDER);
 }
 
 void Engine::LightUpdate()

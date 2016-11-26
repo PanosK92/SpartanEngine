@@ -102,7 +102,6 @@ void Light::Deserialize()
 void Light::SetLightType(LightType type)
 {
 	m_lightType = type;
-	FIRE_EVENT(RESOLVE_HIERARCHY);
 }
 
 float Light::GetShadowTypeAsFloat() const

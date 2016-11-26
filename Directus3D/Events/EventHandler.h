@@ -29,18 +29,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 //=========================
 
-#define SUBSCRIBE_TO_EVENT(signalID, function)		EventHandler::Subscribe(signalID, function)
-#define UNSUBSCRIBE_FROM_EVENT(signalID, function)	EventHandler::Unsubscribe(signalID, function)
-#define FIRE_EVENT(signalID)						EventHandler::Fire(signalID)
-
 /*
 HOW TO USE
 ==========
-SUBSCRIBE_TO_EVENT		(SOME_EVENT, std::bind(&Class::Func, args));
-SUBSCRIBE_TO_EVENT		(SOME_EVENT, std::bind(&Class::Func, this, args));
-UNSUBSCRIBE_FROM_EVENT	(SOME_EVENT, std::bind(&Class::Func, this));
-FIRE_EVENT				(SOME_EVENT);
+To subscribe a function to an event						-> SUBSCRIBE_TO_EVENT(SOME_EVENT, std::bind(&Class::Func, this));
+To subscribe a function (with parameters) to an event	-> SUBSCRIBE_TO_EVENT(SOME_EVENT, std::bind(&Class::Func, this, args));
+To unsubscribe a function from an event					-> UNSUBSCRIBE_FROM_EVENT(SOME_EVENT, std::bind(&Class::Func, this));
+To fire an event										-> FIRE_EVENT(SOME_EVENT); // todo: allow data to be passed as this will decouple most substystems of the engine
 */
+
+#define SUBSCRIBE_TO_EVENT(signalID, function)		EventHandler::Subscribe(signalID, function)
+#define UNSUBSCRIBE_FROM_EVENT(signalID, function)	EventHandler::Unsubscribe(signalID, function)
+#define FIRE_EVENT(signalID)						EventHandler::Fire(signalID)
 
 //= HELPER FUNCTION ==========================================
 template<typename FunctionType, typename... ARGS>
@@ -78,35 +78,26 @@ class DllExport EventHandler
 {
 public:
 	template <typename Function>
-	static void Subscribe(int eventID, Function&& function);
+	static void Subscribe(int eventID, Function&& function)
+	{
+		// Hiding implementation on purpose to allow cross-dll usage without linking errors
+		AddEvent(std::make_shared<Event>(eventID, std::bind(std::forward<Function>(function))));
+	}
 
 	template <typename Function>
-	static void Unsubscribe(int eventID, Function&& function);
+	static void Unsubscribe(int eventID, Function&& function)
+	{
+		// Hiding implementation on purpose to allow cross-dll usage without linking errors
+		RemoveEvent(eventID, getAddress(function));
+	}
 
 	static void Fire(int eventID);
 	static void Clear();
 
+private:
+	static void AddEvent(std::shared_ptr<Event> event);
+	static void RemoveEvent(int eventID, size_t functionAddress);
+
 	static std::vector<std::shared_ptr<Event>> m_events;
 };
 //============================================================
-
-template <typename Function>
-void EventHandler::Subscribe(int eventID, Function&& function)
-{
-	m_events.push_back(std::make_shared<Event>(eventID, std::bind(std::forward<Function>(function))));
-}
-
-template <typename Function>
-void EventHandler::Unsubscribe(int eventID, Function&& function)
-{
-	for (auto it = m_events.begin(); it != m_events.end();)
-	{
-		auto event = *it;
-		if (event->GetEventID() == eventID && event->GetAddress() == getAddress(function))
-		{
-			it = m_events.erase(it);
-			return;
-		}
-		++it;
-	}
-}
