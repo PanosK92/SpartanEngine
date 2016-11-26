@@ -98,49 +98,16 @@ void Collider::Deserialize()
 }
 
 //= BOUNDING BOX =============================================
-const Vector3& Collider::GetBoundingBox() const
-{
-	return m_boundingBox;
-}
-
 void Collider::SetBoundingBox(const Vector3& boundingBox)
 {
-	Vector3 clampedBoundingBox = boundingBox;
+	m_boundingBox = boundingBox;
 
-	clampedBoundingBox.x = Clamp(boundingBox.x, M_EPSILON, INFINITY);
-	clampedBoundingBox.y = Clamp(boundingBox.y, M_EPSILON, INFINITY);
-	clampedBoundingBox.z = Clamp(boundingBox.z, M_EPSILON, INFINITY);
-
-	m_boundingBox = clampedBoundingBox;
+	m_boundingBox.x = Clamp(m_boundingBox.x, M_EPSILON, INFINITY);
+	m_boundingBox.y = Clamp(m_boundingBox.y, M_EPSILON, INFINITY);
+	m_boundingBox.z = Clamp(m_boundingBox.z, M_EPSILON, INFINITY);
 }
 
-//= CENTER ========================================================
-const Vector3& Collider::GetCenter() const
-{
-	return m_center;
-}
-
-void Collider::SetCenter(const Vector3& center)
-{
-	m_center = center;
-}
-
-//= COLLISION SHAPE ================================================
-ColliderShape Collider::GetShapeType() const
-{
-	return m_shapeType;
-}
-
-void Collider::SetShapeType(ColliderShape type)
-{
-	m_shapeType = type;
-}
-
-shared_ptr<btCollisionShape> Collider::GetBtCollisionShape() const
-{
-	return m_shape;
-}
-
+//= COLLISION SHAPE =======================================================
 void Collider::Build()
 {
 	// delete old shape (if it exists)
@@ -181,25 +148,28 @@ void Collider::Build()
 
 	SetRigidBodyCollisionShape(m_shape);
 }
+//=========================================================================
 
 //= HELPER FUNCTIONS ======================================================
 void Collider::UpdateBoundingBox()
 {
 	// Info
-	// - MeshFilter returns pretransformed data
-	// - Mesh returns raw untouched data
+	// Mesh returns raw untouched data
+	// MeshFilter returns pretransformed data
 
-	MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
-	if (meshFilter)
+	auto mesh = GetMeshFromAttachedMeshFilter();
+	auto meshFilter = g_gameObject->GetComponent<MeshFilter>();	
+	if (!mesh.expired() && meshFilter)
 	{
 		SetCenter(meshFilter->GetCenter());
-		SetBoundingBox(meshFilter->GetBoundingBox());
+		SetBoundingBox(mesh.lock()->GetBoundingBox() * g_transform->GetScale());
 	}
 }
 
 void Collider::DeleteCollisionShape()
 {
 	SetRigidBodyCollisionShape(nullptr);
+	m_shape.reset();
 }
 
 void Collider::SetRigidBodyCollisionShape(shared_ptr<btCollisionShape> shape) const

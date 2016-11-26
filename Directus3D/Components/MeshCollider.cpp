@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================================================
+//= INCLUDES ========================================================
 #include "MeshCollider.h"
 #include "MeshFilter.h"
 #include "RigidBody.h"
@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/ResourceCache.h"
-//====================================================================
+//===================================================================
 
 //= NAMESPACES ====================
 using namespace std;
@@ -44,7 +44,7 @@ using namespace Directus::Resource;
 MeshCollider::MeshCollider()
 {
 	m_collisionShape = nullptr;
-	m_convex = false;
+	m_isConvex = false;
 }
 
 MeshCollider::~MeshCollider()
@@ -76,39 +76,18 @@ void MeshCollider::Update()
 
 void MeshCollider::Serialize()
 {
-	Serializer::WriteBool(m_convex);
+	Serializer::WriteBool(m_isConvex);
 	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
 }
 
 void MeshCollider::Deserialize()
 {
-	m_convex = Serializer::ReadBool();
+	m_isConvex = Serializer::ReadBool();
 	m_mesh = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
 
 	Build();
 }
 //======================================================================================================================
-
-bool MeshCollider::GetConvex() const
-{
-	return m_convex;
-}
-
-void MeshCollider::SetConvex(bool isConvex)
-{
-	m_convex = isConvex;
-}
-
-weak_ptr<Mesh> MeshCollider::GetMesh() const
-{
-	return m_mesh;
-}
-
-void MeshCollider::SetMesh(weak_ptr<Mesh> mesh)
-{
-	m_mesh = mesh;
-}
-
 void MeshCollider::Build()
 {
 	if (m_mesh.expired())
@@ -145,7 +124,7 @@ void MeshCollider::Build()
 	m_collisionShape = make_shared<btBvhTriangleMeshShape>(trimesh, useQuantization);
 
 	//= construct a hull approximation ===========================================================================
-	if (m_convex)
+	if (m_isConvex)
 	{
 		auto shape = new btConvexHullShape((btScalar*)vertices.data(), m_mesh.lock()->GetVertexCount(), sizeof(Vector3));
 

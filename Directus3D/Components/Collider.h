@@ -59,16 +59,16 @@ public:
 	/*------------------------------------------------------------------------------
 									[PROPERTIES]
 	------------------------------------------------------------------------------*/
-	const Directus::Math::Vector3& GetBoundingBox() const;
+	const Directus::Math::Vector3& GetBoundingBox() { return m_boundingBox; }
 	void SetBoundingBox(const Directus::Math::Vector3& boundingBox);
 
-	const Directus::Math::Vector3& GetCenter() const;
-	void SetCenter(const Directus::Math::Vector3& center);
+	const Directus::Math::Vector3& GetCenter() { return m_center; }
+	void SetCenter(const Directus::Math::Vector3& center) { m_center = center; }
 
-	ColliderShape GetShapeType() const;
-	void SetShapeType(ColliderShape type);
+	ColliderShape GetShapeType() { return m_shapeType; }
+	void SetShapeType(ColliderShape type) { m_shapeType = type; }
 
-	std::shared_ptr<btCollisionShape> GetBtCollisionShape() const;
+	std::shared_ptr<btCollisionShape> GetBtCollisionShape() { return m_shape; }
 
 	void Build();
 
