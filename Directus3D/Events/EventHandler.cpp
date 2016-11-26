@@ -25,34 +25,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "EventHandler.h"
 //=======================
 
-std::vector<std::shared_ptr<Event>> EventHandler::m_events;
+std::vector<std::shared_ptr<Subscriber>> EventHandler::m_subscribers;
 
 void EventHandler::Fire(int eventID)
 {
-	for (const auto& event : m_events)
-		if (event->GetEventID() == eventID)
-			event->Fire();
+	for (const auto& subscriber : m_subscribers)
+		if (subscriber->GetEventID() == eventID)
+			subscriber->Call();
 }
 
 void EventHandler::Clear()
 {
-	m_events.clear();
-	m_events.shrink_to_fit();
+	m_subscribers.clear();
+	m_subscribers.shrink_to_fit();
 }
 
-void EventHandler::AddEvent(std::shared_ptr<Event> event)
+void EventHandler::AddSubscriber(std::shared_ptr<Subscriber> subscriber)
 {
-	m_events.push_back(event);
+	m_subscribers.push_back(subscriber);
 }
 
-void EventHandler::RemoveEvent(int eventID, size_t functionAddress)
+void EventHandler::RemoveSubscriber(int eventID, size_t functionAddress)
 {
-	for (auto it = m_events.begin(); it != m_events.end();)
+	for (auto it = m_subscribers.begin(); it != m_subscribers.end();)
 	{
-		auto event = *it;
-		if (event->GetEventID() == eventID && event->GetAddress() == functionAddress)
+		auto subscriber = *it;
+		if (subscriber->GetEventID() == eventID && subscriber->GetAddress() == functionAddress)
 		{
-			it = m_events.erase(it);
+			it = m_subscribers.erase(it);
 			return;
 		}
 		++it;

@@ -52,20 +52,20 @@ size_t getAddress(std::function<FunctionType(ARGS...)> function)
 }
 //============================================================
 
-//= EVENT ===================================================
-class DllExport Event
+//= SUBSCRIBER ===============================================
+class DllExport Subscriber
 {
 public:
 	using functionType = std::function<void()>;
 
-	Event(int eventID, functionType&& arguments)
+	Subscriber(int eventID, functionType&& arguments)
 	{
 		m_ID = eventID;
 		m_function = std::forward<functionType>(arguments);
 	}
 	int GetEventID() { return m_ID; }
 	size_t GetAddress() { return getAddress(m_function); }
-	void Fire() { m_function(); }
+	void Call() { m_function(); }
 
 private:
 	int m_ID;
@@ -78,26 +78,26 @@ class DllExport EventHandler
 {
 public:
 	template <typename Function>
-	static void Subscribe(int eventID, Function&& function)
+	static void Subscribe(int eventID, Function&& subscriber)
 	{
 		// Hiding implementation on purpose to allow cross-dll usage without linking errors
-		AddEvent(std::make_shared<Event>(eventID, std::bind(std::forward<Function>(function))));
+		AddSubscriber(std::make_shared<Subscriber>(eventID, std::bind(std::forward<Function>(subscriber))));
 	}
 
 	template <typename Function>
-	static void Unsubscribe(int eventID, Function&& function)
+	static void Unsubscribe(int eventID, Function&& subscriber)
 	{
 		// Hiding implementation on purpose to allow cross-dll usage without linking errors
-		RemoveEvent(eventID, getAddress(function));
+		RemoveSubscriber(eventID, getAddress(subscriber));
 	}
 
 	static void Fire(int eventID);
 	static void Clear();
 
 private:
-	static void AddEvent(std::shared_ptr<Event> event);
-	static void RemoveEvent(int eventID, size_t functionAddress);
+	static void AddSubscriber(std::shared_ptr<Subscriber> subscriber);
+	static void RemoveSubscriber(int eventID, size_t functionAddress);
 
-	static std::vector<std::shared_ptr<Event>> m_events;
+	static std::vector<std::shared_ptr<Subscriber>> m_subscribers;
 };
 //============================================================
