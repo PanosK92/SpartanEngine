@@ -95,23 +95,11 @@ bool GameObject::SaveAsPrefab(const string& filePath)
 	if (!Serializer::StartWriting(filePath + PREFAB_EXTENSION))
 		return false;
 
+	// Make this GameObject a prefab
+	m_isPrefab = true;
+
 	// Serialize as usual...
 	Serialize();
-
-	// ... but also save any descendants
-	vector<Transform*> descendants;
-	GetTransform()->GetDescendants(descendants);
-
-	// 1st - descendant count
-	Serializer::WriteInt((int)descendants.size());
-
-	// 2nd - descendant IDs
-	for (const auto& descendant : descendants)
-		Serializer::WriteSTR(descendant->GetID());
-
-	// 3rd - descendants
-	for (const auto& descendant : descendants)
-		descendant->g_gameObject->Serialize();
 
 	// Close it
 	Serializer::StopWriting();
@@ -132,27 +120,8 @@ bool GameObject::LoadFromPrefab(const string& filePath)
 	// Deserialize as usual...
 	Deserialize();
 
-	// ... but aslso load any descendants
-	// 1st - descendant count
-	int descendantCount = Serializer::ReadInt();
-
-	// 2nd - descendant IDs
-	vector<GameObject*> descendants;
-	for (int i = 0; i < descendantCount; i++)
-	{
-		GameObject* descendant = m_context->GetSubsystem<Scene>()->CreateGameObject();
-		descendant->SetID(Serializer::ReadSTR());
-		descendants.push_back(descendant);
-	}
-
-	// 3rd - descendants
-	for (const auto& descendant : descendants)
-		descendant->Deserialize();
-
 	// Close it
 	Serializer::StopReading();
-
-	GetTransform()->ResolveChildrenRecursively();
 
 	return true;
 }
@@ -160,6 +129,7 @@ bool GameObject::LoadFromPrefab(const string& filePath)
 void GameObject::Serialize()
 {
 	//= BASIC DATA ================================
+	Serializer::WriteBool(m_isPrefab);
 	Serializer::WriteSTR(m_ID);
 	Serializer::WriteSTR(m_name);
 	Serializer::WriteBool(m_isActive);
@@ -176,11 +146,25 @@ void GameObject::Serialize()
 	for (const auto& it : m_components)
 		it.second->Serialize();
 	//=============================================
+
+	//= DESCENDANTS ===============================
+	vector<Transform*> descendants;
+	GetTransform()->GetDescendants(descendants);
+
+	Serializer::WriteInt((int)descendants.size());	// 1st - descendant count
+	
+	for (const auto& descendant : descendants)
+		Serializer::WriteSTR(descendant->GetID());	// 2nd - descendant IDs
+
+	for (const auto& descendant : descendants)
+		descendant->g_gameObject->Serialize();		// 3rd - descendants
+	//=============================================
 }
 
 void GameObject::Deserialize()
 {
 	//= BASIC DATA ================================
+	m_isPrefab = Serializer::ReadBool();
 	m_ID = Serializer::ReadSTR();
 	m_name = Serializer::ReadSTR();
 	m_isActive = Serializer::ReadBool();
@@ -202,6 +186,21 @@ void GameObject::Deserialize()
 	// the components (like above) and then deserialize them (like here).
 	for (const auto& component : m_components)
 		component.second->Deserialize();
+	//=============================================
+
+	//= DESCENDANTS ===============================
+	int descendantCount = Serializer::ReadInt();	// 1st - descendant count
+
+	vector<GameObject*> descendants;
+	for (int i = 0; i < descendantCount; i++)
+	{
+		GameObject* descendant = m_context->GetSubsystem<Scene>()->CreateGameObject();
+		descendant->SetID(Serializer::ReadSTR());	// 2nd - descendant IDs
+		descendants.push_back(descendant);
+	}
+
+	for (const auto& descendant : descendants)
+		descendant->Deserialize();					// 3rd - descendants
 	//=============================================
 }
 

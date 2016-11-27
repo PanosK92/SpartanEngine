@@ -71,7 +71,7 @@ namespace Directus
 			template <class T>
 			std::weak_ptr<T> LoadResource(const std::string& filePath)
 			{
-				// Check if the resource is already loaded
+				// Check if the resource is already loaded, if so, return it.
 				for (const auto& resource : m_resources)
 					if (resource->GetFilePath() == filePath)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));

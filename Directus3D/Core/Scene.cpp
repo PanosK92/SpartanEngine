@@ -136,18 +136,20 @@ bool Scene::SaveToFile(const string& filePathIn)
 	if (!Serializer::StartWriting(filePath))
 		return false;
 
-	// Save the paths of all the currently loaded resources
+	//= Save currently loaded resource paths =======================================================
 	vector<string> resourcePaths = g_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths();
-	Serializer::WriteVectorSTR(resourcePaths);			// 1st - Resource paths
+	Serializer::WriteVectorSTR(resourcePaths);
+	//==============================================================================================
 
 	//= Save GameObjects ===========================
-	Serializer::WriteInt((int)m_gameObjects.size());	// 2nd - GameObject count
+	vector<GameObject*> rootGameObjects = GetRootGameObjects();
+	Serializer::WriteInt((int)rootGameObjects.size());	// 1st - GameObject count
 
-	for (const auto& gameObject : m_gameObjects)		// 3rd - GameObject IDs
-		Serializer::WriteSTR(gameObject->GetID());
+	for (const auto& root : rootGameObjects)
+		Serializer::WriteSTR(root->GetID());			// 2nd - GameObject IDs
 
-	for (const auto& gameObject : m_gameObjects)		// 4th - GameObjects
-		gameObject->Serialize();
+	for (const auto& root : rootGameObjects) 
+		root->Serialize();								// 3rd - GameObjects
 	//==============================================
 
 	Serializer::StopWriting();
@@ -191,26 +193,24 @@ bool Scene::LoadFromFile(const string& filePath)
 			g_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(resourcePath);
 	}
 
-	//= Load GameObjects ============================
+	
 	if (!Serializer::StartReading(filePath))
 		return false;
 
-	// 1st - Read the resource paths
+	// Read our way through the resource paths
 	Serializer::ReadVectorSTR();
 
-	// 2nd - GameObject count
-	int gameObjectCount = Serializer::ReadInt();
-
-	// 3rd - GameObject IDs
-	for (int i = 0; i < gameObjectCount; i++)
+	//= Load GameObjects ============================	
+	int rootGameObjectCount = Serializer::ReadInt();		// 1st - GameObject count
+	
+	for (int i = 0; i < rootGameObjectCount; i++)
 	{
 		m_gameObjects.push_back(new GameObject(g_context));
-		m_gameObjects.back()->SetID(Serializer::ReadSTR());
+		m_gameObjects.back()->SetID(Serializer::ReadSTR()); // 2nd - GameObject IDs
 	}
-
-	// 4th - GameObjects
-	for (const auto& gameObject : m_gameObjects)
-		gameObject->Deserialize();
+	
+	for (int i = 0; i < rootGameObjectCount; i++)
+		m_gameObjects[i]->Deserialize();					// 3rd - GameObjects
 
 	Serializer::StopReading();
 	//==============================================
