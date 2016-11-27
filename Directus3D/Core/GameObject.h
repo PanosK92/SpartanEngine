@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../Core/Context.h"
 #include "GUIDGenerator.h"
-#include "../Events/EventHandler.h"
+#include "../EventSystem/EventHandler.h"
 //===================================
 
 class Transform;

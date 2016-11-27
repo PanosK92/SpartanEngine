@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../Logging/Log.h"
 #include "../Components/MeshFilter.h"
-#include "../Events/EventHandler.h"
+#include "../EventSystem/EventHandler.h"
 #include "../Core/Context.h"
 #include "../Resource/ResourceCache.h"
 #include "Shaders/ShaderVariation.h"
@@ -118,7 +118,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_texNoiseMap->SetType(Normal);
 
 	// Subcribe to render event
-	SUBSCRIBE_TO_EVENT(EVENT_RENDER, std::bind(&Renderer::Render, this));
+	SUBSCRIBE_TO_EVENT(EVENT_RENDER, Renderer::Render, this);
 }
 
 Renderer::~Renderer()

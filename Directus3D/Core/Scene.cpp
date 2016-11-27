@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Script.h"
 #include "../Components/MeshFilter.h"
 #include "../Physics/PhysicsWorld.h"
-#include "../Events/EventHandler.h"
+#include "../EventSystem/EventHandler.h"
 #include "../Core/Context.h"
 #include "Settings.h"
 #include "../Resource/ResourceCache.h"
@@ -65,9 +65,9 @@ void Scene::Initialize()
 	CreateDirectionalLight();
 	Resolve();
 
-	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, std::bind(&Scene::Resolve, this));
-	SUBSCRIBE_TO_EVENT(EVENT_RENDER, std::bind(&Scene::Update, this));
-	SUBSCRIBE_TO_EVENT(EVENT_ENGINE_START, std::bind(&Scene::Start, this));
+	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, Scene::Resolve, this);
+	SUBSCRIBE_TO_EVENT(EVENT_RENDER, Scene::Update, this);
+	SUBSCRIBE_TO_EVENT(EVENT_ENGINE_START, Scene::Start, this);
 }
 
 void Scene::Start()
