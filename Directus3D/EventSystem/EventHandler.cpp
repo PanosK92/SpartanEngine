@@ -70,3 +70,10 @@ void EventHandler::RemoveSubscriber(int eventID, size_t functionAddress)
 		++it;
 	}
 }
+
+void EventHandler::CallSubscriber(int eventID)
+{
+	for (const auto& subscriber : m_subscribers)
+		if (subscriber->GetEventID() == eventID)
+			subscriber->Call();
+}
