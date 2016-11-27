@@ -105,12 +105,26 @@ bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
 		return false;
 	}
 
+	// Create all the appropriate directories
 	FileSystem::CreateDirectory_("Assets/Models/");
 	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
 	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
 	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
 	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/");
 
+	// Copy the source model file to an appropriate directory
+	string modelDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(m_modelName);
+	FileSystem::CopyFileFromTo(m_fullModelPath, modelDestination);
+
+	// Copy any material files (used be obj models)
+	auto files = FileSystem::GetFilesInDirectory(FileSystem::GetPathWithoutFileName(m_fullModelPath));
+	for (const auto& file : files)
+	{
+		if (FileSystem::GetExtensionFromPath(file) == ".mtl")
+			FileSystem::CopyFileFromTo(m_fullModelPath, "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(file));
+	}
+
+	// Set the name of the root GameObject
 	string name = FileSystem::GetFileNameNoExtensionFromPath(filePath);
 	gameObject->SetName(name);
 
@@ -169,10 +183,7 @@ Vector2 ToVector2(const aiVector2D& aiVector)
 }
 //============================================================================================
 
-/*------------------------------------------------------------------------------
-								[PROCESSING]
-------------------------------------------------------------------------------*/
-
+//= PROCESSING ===============================================================================
 void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* parentGameObject)
 {
 	// process root node
@@ -369,10 +380,9 @@ shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* m
 
 	return engineMaterial;
 }
+//============================================================================================
 
-/*------------------------------------------------------------------------------
-[HELPER FUNCTIONS]
-------------------------------------------------------------------------------*/
+//= HELPER FUNCTIONS =========================================================================
 void ModelImporter::AddTextureToMaterial(weak_ptr<Material> material, TextureType textureType, const string& texturePath)
 {
 	string textureSource = FindTexture(texturePath);

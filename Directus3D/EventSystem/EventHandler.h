@@ -94,18 +94,17 @@ public:
 
 	static void Fire(int eventID)
 	{
-		for (const auto& subscriber : m_subscribers)
-			if (subscriber->GetEventID() == eventID)
-				subscriber->Call();
+		CallSubscriber(eventID);
 	}
 
 	static void Clear();
 
 private:
-	// Hiding implementation on purpose to allow cross-dll usage without linking errors
+	static std::vector<std::shared_ptr<Subscriber>> m_subscribers;
+private:
+	// Hiding implementations on purpose to allow cross-dll usage without linking errors
 	static void AddSubscriber(std::shared_ptr<Subscriber> subscriber);
 	static void RemoveSubscriber(int eventID, size_t functionAddress);
-
-	static std::vector<std::shared_ptr<Subscriber>> m_subscribers;
+	static void CallSubscriber(int eventID);	
 };
 //===============================================================
