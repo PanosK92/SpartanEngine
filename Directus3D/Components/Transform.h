@@ -106,7 +106,7 @@ public:
 	int GetChildrenCount() { return (int)m_children.size(); }
 	void ResolveChildrenRecursively();
 	bool IsDescendantOf(Transform* transform) const;
-	std::vector<Transform*> GetDescendants();
+	void GetDescendants(std::vector<Transform*>& descendants);
 	std::string GetID() const;
 
 	/*------------------------------------------------------------------------------
@@ -138,6 +138,5 @@ private:
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	void GetDescendants(std::vector<Transform*>& descendants);
-	Directus::Math::Matrix GetParentTransformMatrix();
+	Directus::Math::Matrix GetParentTransformMatrix() { return HasParent() ? GetParent()->GetTransformMatrix() : Directus::Math::Matrix::Identity; }
 };
