@@ -283,7 +283,8 @@ void Scene::RemoveGameObject(GameObject* gameObject)
 		return;
 
 	// remove any descendants
-	auto descendants = gameObject->GetTransform()->GetDescendants();
+	vector<Transform*> descendants;
+	gameObject->GetTransform()->GetDescendants(descendants);
 	for (const auto& descendant : descendants)
 		RemoveSingleGameObject(descendant->GetGameObject());
 

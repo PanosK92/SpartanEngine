@@ -252,7 +252,7 @@ void Transform::SetParent(Transform* newParent)
 	}
 
 	// make sure the new parent is not this transform
-	if (GetID() == newParent->GetID()) 
+	if (GetID() == newParent->GetID())
 		return;
 
 	// make sure the new parent is different from the existing parent
@@ -379,26 +379,24 @@ void Transform::ResolveChildrenRecursively()
 
 bool Transform::IsDescendantOf(Transform* transform) const
 {
-	vector<Transform*> descendants = transform->GetDescendants();
+	vector<Transform*> descendants;
+	transform->GetDescendants(descendants);
 
-	for (auto i = 0; i < descendants.size(); i++)
-	{
-		if (GetID() == descendants[i]->GetID())
+	for (const auto& descendant : descendants)
+		if (descendant->GetID() == GetID())
 			return true;
-	}
 
 	return false;
 }
 
-vector<Transform*> Transform::GetDescendants()
+void Transform::GetDescendants(vector<Transform*>& descendants)
 {
-	vector<Transform*> descendants;
-
-	// the recursion happens in another private function (it has the same name)
-	// so we can keep our vector<Transform*> descendants intact and return it
-	GetDescendants(descendants);
-
-	return descendants;
+	// Depth first acquisition of descendants
+	for (const auto& child : m_children)
+	{
+		descendants.push_back(child);
+		child->GetDescendants(descendants);
+	}
 }
 
 string Transform::GetID() const
@@ -429,24 +427,4 @@ void Transform::BecomeOrphan()
 	// about this child, since it won't be able to find it
 	if (tempRef)
 		tempRef->ResolveChildrenRecursively();
-}
-
-//=================
-// HELPER FUNCTIONS
-//=================
-void Transform::GetDescendants(vector<Transform*>& descendants)
-{
-	for (int i = 0; i < m_children.size(); i++)
-	{
-		descendants.push_back(m_children[i]);
-		m_children[i]->GetDescendants(descendants);
-	}
-}
-
-Matrix Transform::GetParentTransformMatrix()
-{
-	if (!HasParent())
-		return Matrix::Identity;
-
-	return GetParent()->GetTransformMatrix();
 }

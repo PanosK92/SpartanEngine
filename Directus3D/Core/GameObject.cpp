@@ -38,8 +38,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/LineRenderer.h"
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
-#include "../EventSystem/EventHandler.h"
-#include "../Logging/Log.h"
 //======================================
 
 //= NAMESPACES =====
@@ -101,7 +99,8 @@ bool GameObject::SaveAsPrefab(const string& filePath)
 	Serialize();
 
 	// ... but also save any descendants
-	auto descendants = GetTransform()->GetDescendants();
+	vector<Transform*> descendants;
+	GetTransform()->GetDescendants(descendants);
 
 	// 1st - descendant count
 	Serializer::WriteInt((int)descendants.size());
@@ -112,7 +111,7 @@ bool GameObject::SaveAsPrefab(const string& filePath)
 
 	// 3rd - descendants
 	for (const auto& descendant : descendants)
-		descendant->Serialize();
+		descendant->g_gameObject->Serialize();
 
 	// Close it
 	Serializer::StopWriting();
