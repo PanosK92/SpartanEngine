@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PhysicsDebugDraw.h"
 #include "../Core/Helper.h"
 #include "BulletPhysicsHelper.h"
-#include "../Events/EventHandler.h"
+#include "../EventSystem/EventHandler.h"
 #include <algorithm>
 #include "../Logging/Log.h"
 #include "../Core/Context.h"
@@ -62,7 +62,7 @@ PhysicsWorld::PhysicsWorld(Context* context) : Subsystem(context)
 	m_world->setDebugDrawer(m_debugDraw);
 
 	// Subcribe to update event
-	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, std::bind(&PhysicsWorld::Step, this));
+	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, PhysicsWorld::Step, this);
 }
 
 PhysicsWorld::~PhysicsWorld()

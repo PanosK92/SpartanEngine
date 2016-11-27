@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Log.h"
-#include "../Events/EventHandler.h"
+#include "../EventSystem/EventHandler.h"
 #include <sstream> 
 #include <fstream>
 #include "ILogger.h"

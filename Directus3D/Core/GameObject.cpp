@@ -38,7 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/LineRenderer.h"
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
-#include "../Events/EventHandler.h"
+#include "../EventSystem/EventHandler.h"
 #include "../Logging/Log.h"
 //======================================
 

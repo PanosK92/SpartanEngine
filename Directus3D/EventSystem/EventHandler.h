@@ -22,12 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============
-#include "Events.h"
 #include <vector>
 #include <functional>
 #include <memory>
 #include "../Core/Helper.h"
 //=========================
+
+//= EVENT IDs =======================
+#define EVENT_UPDATE				0	// Fired when it's time to update the engine
+#define EVENT_RENDER				1	// Fired when it's time to do rendering
+#define EVENT_ENGINE_START			3	// Fired each time the simulation starts (play button in the editor)
+//===================================
 
 /*
 HOW TO USE
@@ -38,9 +43,9 @@ To unsubscribe a function from an event					-> UNSUBSCRIBE_FROM_EVENT(SOME_EVENT
 To fire an event										-> FIRE_EVENT(SOME_EVENT); // todo: allow data to be passed as this will decouple most substystems of the engine
 */
 
-#define SUBSCRIBE_TO_EVENT(signalID, function)		EventHandler::Subscribe(signalID, function)
-#define UNSUBSCRIBE_FROM_EVENT(signalID, function)	EventHandler::Unsubscribe(signalID, function)
-#define FIRE_EVENT(signalID)						EventHandler::Fire(signalID)
+#define SUBSCRIBE_TO_EVENT(signalID, function, context)		EventHandler::Subscribe(signalID, std::bind(&function, context))
+#define UNSUBSCRIBE_FROM_EVENT(signalID, function, contex)	EventHandler::Unsubscribe(signalID, std::bind(&function, context))
+#define FIRE_EVENT(signalID)								EventHandler::Fire(signalID)
 
 //= HELPER FUNCTION ==========================================
 template<typename FunctionType, typename... ARGS>
@@ -60,16 +65,16 @@ public:
 
 	Subscriber(int eventID, functionType&& arguments)
 	{
-		m_ID = eventID;
-		m_function = std::forward<functionType>(arguments);
+		m_eventID = eventID;
+		m_callbackFunc = std::forward<functionType>(arguments);
 	}
-	int GetEventID() { return m_ID; }
-	size_t GetAddress() { return getAddress(m_function); }
-	void Call() { m_function(); }
+	int GetEventID() { return m_eventID; }
+	size_t GetAddress() { return getAddress(m_callbackFunc); }
+	void Call() { m_callbackFunc(); }
 
 private:
-	int m_ID;
-	functionType m_function;
+	int m_eventID;
+	functionType m_callbackFunc;
 };
 //============================================================
 
@@ -80,14 +85,12 @@ public:
 	template <typename Function>
 	static void Subscribe(int eventID, Function&& subscriber)
 	{
-		// Hiding implementation on purpose to allow cross-dll usage without linking errors
 		AddSubscriber(std::make_shared<Subscriber>(eventID, std::bind(std::forward<Function>(subscriber))));
 	}
 
 	template <typename Function>
 	static void Unsubscribe(int eventID, Function&& subscriber)
 	{
-		// Hiding implementation on purpose to allow cross-dll usage without linking errors
 		RemoveSubscriber(eventID, getAddress(subscriber));
 	}
 
@@ -95,6 +98,7 @@ public:
 	static void Clear();
 
 private:
+	// Hiding implementation on purpose to allow cross-dll usage without linking errors
 	static void AddSubscriber(std::shared_ptr<Subscriber> subscriber);
 	static void RemoveSubscriber(int eventID, size_t functionAddress);
 

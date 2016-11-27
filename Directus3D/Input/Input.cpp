@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input.h"
 #include "../Core/Settings.h"
 #include "../Logging/Log.h"
-#include "../Events/EventHandler.h"
+#include "../EventSystem/EventHandler.h"
 //===========================
 
 //= NAMESPACES ================
@@ -37,7 +37,7 @@ Input::Input(Context* context): Subsystem(context)
 	m_initializedSuccessfully = false;
 
 	// Subcribe to update event
-	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, std::bind(&Input::Update, this));
+	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, Input::Update, this);
 }
 
 Input::~Input()

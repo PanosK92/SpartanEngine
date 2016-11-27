@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Socket.h"
 #include "../Logging/Log.h"
 #include "../Graphics/Renderer.h"
-#include "../Events/EventHandler.h"
+#include "../EventSystem/EventHandler.h"
 #include "../FileSystem/ModelImporter.h"
 #include "../Core/Engine.h"
 #include "../Core/Timer.h"

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Audio.h"
 #include "fmod_errors.h"
 #include "../Logging/Log.h"
-#include "../Events/EventHandler.h"
+#include "../EventSystem/EventHandler.h"
 //=========================
 
 //= NAMESPACES ======
@@ -46,7 +46,7 @@ Audio::Audio(Context* context) : Subsystem(context)
 	m_up = { 0, 1, 0 };
 
 	// Subcribe to update event
-	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, std::bind(&Audio::Update, this));
+	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, Audio::Update, this);
 }
 
 Audio::~Audio()
