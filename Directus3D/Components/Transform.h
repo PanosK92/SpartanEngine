@@ -138,5 +138,5 @@ private:
 	/*------------------------------------------------------------------------------
 							[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Matrix GetParentTransformMatrix() { return HasParent() ? GetParent()->GetTransformMatrix() : Directus::Math::Matrix::Identity; }
+	Directus::Math::Matrix GetParentTransformMatrix();
 };

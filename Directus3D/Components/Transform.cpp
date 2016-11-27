@@ -409,6 +409,11 @@ string Transform::GetName()
 	return GetGameObject()->GetName();
 }
 
+Matrix Transform::GetParentTransformMatrix()
+{
+	return HasParent() ? GetParent()->GetTransformMatrix() : Matrix::Identity;
+}
+
 // Makes this transform have no parent
 void Transform::BecomeOrphan()
 {

@@ -157,6 +157,7 @@ private:
 	std::string m_ID;
 	std::string m_name;
 	bool m_isActive;
+	bool m_isPrefab;
 	bool m_hierarchyVisibility;
 	std::multimap<std::string, IComponent*> m_components;
 
