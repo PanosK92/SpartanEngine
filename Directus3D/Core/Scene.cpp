@@ -106,6 +106,7 @@ void Scene::Clear()
 	// Clear the resource cache
 	g_context->GetSubsystem<ResourceCache>()->Clear();
 
+	// Clear/Reset subsystems that allocate some things
 	g_context->GetSubsystem<ScriptEngine>()->Reset();
 	g_context->GetSubsystem<PhysicsWorld>()->Reset();
 	g_context->GetSubsystem<Renderer>()->Clear();
@@ -141,15 +142,20 @@ bool Scene::SaveToFile(const string& filePathIn)
 	Serializer::WriteVectorSTR(resourcePaths);
 	//==============================================================================================
 
-	//= Save GameObjects ===========================
+	//= Save GameObjects ============================
+	// Only save root GameObjects as they will also save their descendants
 	vector<GameObject*> rootGameObjects = GetRootGameObjects();
-	Serializer::WriteInt((int)rootGameObjects.size());	// 1st - GameObject count
 
+	// 1st - GameObject count
+	Serializer::WriteInt((int)rootGameObjects.size());
+	
+	// 2nd - GameObject IDs
 	for (const auto& root : rootGameObjects)
-		Serializer::WriteSTR(root->GetID());			// 2nd - GameObject IDs
-
+		Serializer::WriteSTR(root->GetID());	
+	
+	// 3rd - GameObjects
 	for (const auto& root : rootGameObjects) 
-		root->Serialize();								// 3rd - GameObjects
+		root->Serialize();								
 	//==============================================
 
 	Serializer::StopWriting();
@@ -201,16 +207,24 @@ bool Scene::LoadFromFile(const string& filePath)
 	Serializer::ReadVectorSTR();
 
 	//= Load GameObjects ============================	
-	int rootGameObjectCount = Serializer::ReadInt();		// 1st - GameObject count
+	// 1st - GameObject count
+	int rootGameObjectCount = Serializer::ReadInt();		
 	
+	// 2nd - GameObject IDs
 	for (int i = 0; i < rootGameObjectCount; i++)
 	{
+		
 		m_gameObjects.push_back(new GameObject(g_context));
-		m_gameObjects.back()->SetID(Serializer::ReadSTR()); // 2nd - GameObject IDs
+		m_gameObjects.back()->SetID(Serializer::ReadSTR()); 
 	}
 	
+	// 3rd - GameObjects
+	// It's important to loop with rootGameObjectCount
+	// as the vector size will increase as we deserialize
+	// GameObjects. This is because a GameObject will also
+	// deserialize it's descendants.
 	for (int i = 0; i < rootGameObjectCount; i++)
-		m_gameObjects[i]->Deserialize();					// 3rd - GameObjects
+		m_gameObjects[i]->Deserialize();					
 
 	Serializer::StopReading();
 	//==============================================
@@ -244,10 +258,7 @@ vector<GameObject*> Scene::GetRootGameObjects()
 
 GameObject* Scene::GetGameObjectRoot(GameObject* gameObject)
 {
-	if (!gameObject)
-		return nullptr;
-
-	return gameObject->GetTransform()->GetRoot()->GetGameObject();
+	return gameObject ? gameObject->GetTransform()->GetRoot()->GetGameObject() : nullptr;
 }
 
 GameObject* Scene::GetGameObjectByName(const string& name)
@@ -360,7 +371,7 @@ void Scene::Resolve()
 }
 //===================================================================================================
 
-//= MISC ============================================================================================
+//= TEMPORARY EXPERIMENTS  ==========================================================================
 void Scene::SetAmbientLight(float x, float y, float z)
 {
 	m_ambientLight = Vector3(x, y, z);

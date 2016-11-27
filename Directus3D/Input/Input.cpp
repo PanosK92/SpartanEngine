@@ -31,10 +31,10 @@ using namespace Directus::Math;
 using namespace std;
 //=============================
 
-Input::Input(Context* context): Subsystem(context)
+Input::Input(Context* context) : Subsystem(context)
 {
 	m_DX8Input = nullptr;
-	m_initializedSuccessfully = false;
+	m_initialized = false;
 
 	// Subcribe to update event
 	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Input::Update);
@@ -49,12 +49,12 @@ Input::~Input()
 void Input::Initialize(HINSTANCE instance, HWND handle)
 {
 	m_DX8Input = make_shared<DX8Input>();
-	m_initializedSuccessfully = m_DX8Input->Initialize(instance, handle);
+	m_initialized = m_DX8Input->Initialize(instance, handle);
 }
 
 void Input::Update()
 {
-	if (!m_initializedSuccessfully)
+	if (!m_initialized)
 		return;
 
 	m_DX8Input->Update();
@@ -67,18 +67,16 @@ void Input::Update()
 	m_mousePos.y += m_mousePosDelta.y;
 
 	// keep mouse position in screen
-	if (m_mousePos.x < 0) m_mousePos.x = 0;
-	if (m_mousePos.y < 0) m_mousePos.y = 0;
-	if (m_mousePos.x > RESOLUTION_WIDTH) m_mousePos.x = RESOLUTION_WIDTH;
-	if (m_mousePos.y > RESOLUTION_HEIGHT) m_mousePos.y = RESOLUTION_HEIGHT;
+	m_mousePos.x = m_mousePos.x < 0 ? 0 : m_mousePos.x > RESOLUTION_WIDTH ? RESOLUTION_WIDTH : m_mousePos.x;
+	m_mousePos.y = m_mousePos.y < 0 ? 0 : m_mousePos.y > RESOLUTION_HEIGHT ? RESOLUTION_HEIGHT : m_mousePos.y;
 }
 
 bool Input::GetKey(KeyCode key)
 {
-	if (!m_initializedSuccessfully)
+	if (!m_initialized)
 		return false;
-
-	// FUNCTION
+	
+	// FUNCTION KEYS
 	if (key == F1) return m_DX8Input->IsKeyboardKeyDown(DIK_F1);
 	if (key == F2) return m_DX8Input->IsKeyboardKeyDown(DIK_F2);
 	if (key == F3) return m_DX8Input->IsKeyboardKeyDown(DIK_F3);
@@ -95,19 +93,29 @@ bool Input::GetKey(KeyCode key)
 	if (key == F14) return m_DX8Input->IsKeyboardKeyDown(DIK_F14);
 	if (key == F15) return m_DX8Input->IsKeyboardKeyDown(DIK_F15);
 
-	// ALPHANUMERIC
-	//if (key == Alpha0) return m_DX8Input->IsKeyboardKeyDown(DIK_F1);
-	//if (key == Alpha1) return m_DX8Input->IsKeyboardKeyDown(DIK_F2);
-	//if (key == Alpha2) return m_DX8Input->IsKeyboardKeyDown(DIK_F3);
-	//if (key == Alpha3) return m_DX8Input->IsKeyboardKeyDown(DIK_F4);
-	//if (key == Alpha4) return m_DX8Input->IsKeyboardKeyDown(DIK_F5);
-	//if (key == Alpha5) return m_DX8Input->IsKeyboardKeyDown(DIK_F6);
-	//if (key == Alpha6) return m_DX8Input->IsKeyboardKeyDown(DIK_F7);
-	//if (key == Alpha7) return m_DX8Input->IsKeyboardKeyDown(DIK_F8);
-	//if (key == Alpha8) return m_DX8Input->IsKeyboardKeyDown(DIK_F9);
-	//if (key == Alpha9) return m_DX8Input->IsKeyboardKeyDown(DIK_F10);
+	// NUMERIC KEYPAD
+	if (key == Keypad0) return m_DX8Input->IsKeyboardKeyDown(DIK_NUMPAD0);
+	if (key == Keypad1) return m_DX8Input->IsKeyboardKeyDown(DIK_NUMPAD1);
+	if (key == Keypad2) return m_DX8Input->IsKeyboardKeyDown(DIK_NUMPAD2);
+	if (key == Keypad3) return m_DX8Input->IsKeyboardKeyDown(DIK_NUMPAD3);
+	if (key == Keypad4) return m_DX8Input->IsKeyboardKeyDown(DIK_NUMPAD4);
+	if (key == Keypad5) return m_DX8Input->IsKeyboardKeyDown(DIK_NUMPAD5);
+	if (key == Keypad6) return m_DX8Input->IsKeyboardKeyDown(DIK_NUMPAD6);
+	if (key == Keypad7) return m_DX8Input->IsKeyboardKeyDown(DIK_NUMPAD7);
+	if (key == Keypad8) return m_DX8Input->IsKeyboardKeyDown(DIK_NUMPAD8);
+	if (key == Keypad9) return m_DX8Input->IsKeyboardKeyDown(DIK_NUMPAD9);
 
-	// LETTERS
+	// ALPHANUMERIC KEYS
+	if (key == Alpha0) return m_DX8Input->IsKeyboardKeyDown(DIK_0);
+	if (key == Alpha1) return m_DX8Input->IsKeyboardKeyDown(DIK_1);
+	if (key == Alpha2) return m_DX8Input->IsKeyboardKeyDown(DIK_2);
+	if (key == Alpha3) return m_DX8Input->IsKeyboardKeyDown(DIK_3);
+	if (key == Alpha4) return m_DX8Input->IsKeyboardKeyDown(DIK_4);
+	if (key == Alpha5) return m_DX8Input->IsKeyboardKeyDown(DIK_5);
+	if (key == Alpha6) return m_DX8Input->IsKeyboardKeyDown(DIK_6);
+	if (key == Alpha7) return m_DX8Input->IsKeyboardKeyDown(DIK_7);
+	if (key == Alpha8) return m_DX8Input->IsKeyboardKeyDown(DIK_8);
+	if (key == Alpha9) return m_DX8Input->IsKeyboardKeyDown(DIK_9);
 	if (key == Q) return m_DX8Input->IsKeyboardKeyDown(DIK_Q);
 	if (key == W) return m_DX8Input->IsKeyboardKeyDown(DIK_W);
 	if (key == E) return m_DX8Input->IsKeyboardKeyDown(DIK_E);
@@ -134,25 +142,25 @@ bool Input::GetKey(KeyCode key)
 	if (key == B) return m_DX8Input->IsKeyboardKeyDown(DIK_B);
 	if (key == N) return m_DX8Input->IsKeyboardKeyDown(DIK_N);
 	if (key == M) return m_DX8Input->IsKeyboardKeyDown(DIK_M);
-	if (key == Space) return m_DX8Input->IsKeyboardKeyDown(DIK_SPACE);
+
+	// CONTROLS
+	if (key == Esc)				return m_DX8Input->IsKeyboardKeyDown(DIK_ESCAPE);
+	if (key == Tab)				return m_DX8Input->IsKeyboardKeyDown(DIK_TAB);
+	if (key == LeftShift)		return m_DX8Input->IsKeyboardKeyDown(DIK_LSHIFT);
+	if (key == RightShift)		return m_DX8Input->IsKeyboardKeyDown(DIK_RSHIFT);
+	if (key == LeftControl)		return m_DX8Input->IsKeyboardKeyDown(DIK_LCONTROL);
+	if (key == RightControl)	return m_DX8Input->IsKeyboardKeyDown(DIK_RCONTROL);
+	if (key == LeftAlt)			return m_DX8Input->IsKeyboardKeyDown(DIK_LALT);
+	if (key == RightAlt)		return m_DX8Input->IsKeyboardKeyDown(DIK_RALT);
+	if (key == Space)			return m_DX8Input->IsKeyboardKeyDown(DIK_SPACE);
+	if (key == CapsLock)		return m_DX8Input->IsKeyboardKeyDown(DIK_CAPSLOCK);
+	if (key == Backspace)		return m_DX8Input->IsKeyboardKeyDown(DIK_BACKSPACE);
+	if (key == Return)			return m_DX8Input->IsKeyboardKeyDown(DIK_RETURN);
 
 	return false;
 }
 
 bool Input::GetMouseButton(int button)
 {
-	if (!m_initializedSuccessfully)
-		return false;
-
-	return m_DX8Input->IsMouseKeyDown(button);
-}
-
-Vector2 Input::GetMousePosition()
-{
-	return m_mousePos;
-}
-
-Vector2 Input::GetMousePositionDelta()
-{
-	return m_mousePosDelta;
+	return m_initialized ? m_DX8Input->IsMouseKeyDown(button) : false;
 }
