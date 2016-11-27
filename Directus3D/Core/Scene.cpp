@@ -65,9 +65,9 @@ void Scene::Initialize()
 	CreateDirectionalLight();
 	Resolve();
 
-	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, Scene::Resolve, this);
-	SUBSCRIBE_TO_EVENT(EVENT_RENDER, Scene::Update, this);
-	SUBSCRIBE_TO_EVENT(EVENT_ENGINE_START, Scene::Start, this);
+	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Scene::Resolve);
+	SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Scene::Update);
+	SUBSCRIBE_TO_EVENT(EVENT_GAMEOBJECT_START, this, Scene::Start);
 }
 
 void Scene::Start()

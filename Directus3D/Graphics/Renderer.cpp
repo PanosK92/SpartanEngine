@@ -118,7 +118,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_texNoiseMap->SetType(Normal);
 
 	// Subcribe to render event
-	SUBSCRIBE_TO_EVENT(EVENT_RENDER, Renderer::Render, this);
+	SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
 }
 
 Renderer::~Renderer()

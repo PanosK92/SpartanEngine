@@ -25,13 +25,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "EventHandler.h"
 //=======================
 
-std::vector<std::shared_ptr<Subscriber>> EventHandler::m_subscribers;
+//= NAMESPACES =====
+using namespace std;
+//==================
 
-void EventHandler::Fire(int eventID)
+//= HELPER FUNCTION ============================================
+template<typename FunctionType, typename... ARGS>
+size_t getAddress(std::function<FunctionType(ARGS...)> function)
 {
-	for (const auto& subscriber : m_subscribers)
-		if (subscriber->GetEventID() == eventID)
-			subscriber->Call();
+	typedef FunctionType(fnType)(ARGS...);
+	fnType** fptr = function.template target<fnType*>();
+	return size_t(*fptr);
+}
+//==============================================================
+
+vector<shared_ptr<Subscriber>> EventHandler::m_subscribers;
+
+size_t Subscriber::GetAddress()
+{
+	return getAddress(m_subscribedFunction);
 }
 
 void EventHandler::Clear()
@@ -40,7 +52,7 @@ void EventHandler::Clear()
 	m_subscribers.shrink_to_fit();
 }
 
-void EventHandler::AddSubscriber(std::shared_ptr<Subscriber> subscriber)
+void EventHandler::AddSubscriber(shared_ptr<Subscriber> subscriber)
 {
 	m_subscribers.push_back(subscriber);
 }

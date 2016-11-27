@@ -48,7 +48,7 @@ ThreadPool::~ThreadPool()
 	m_conditionVar.notify_all();
 
 	// Join all threads.
-	for (thread &thread : m_threads)
+	for (auto& thread : m_threads)
 		thread.join();
 
 	// Empty workers vector.

@@ -28,57 +28,55 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 //=========================
 
-//= EVENT IDs =======================
-#define EVENT_UPDATE				0	// Fired when it's time to update the engine
-#define EVENT_RENDER				1	// Fired when it's time to do rendering
-#define EVENT_ENGINE_START			3	// Fired each time the simulation starts (play button in the editor)
-//===================================
-
 /*
 HOW TO USE
-==========
-To subscribe a function to an event						-> SUBSCRIBE_TO_EVENT(SOME_EVENT, std::bind(&Class::Func, this));
-To subscribe a function (with parameters) to an event	-> SUBSCRIBE_TO_EVENT(SOME_EVENT, std::bind(&Class::Func, this, args));
-To unsubscribe a function from an event					-> UNSUBSCRIBE_FROM_EVENT(SOME_EVENT, std::bind(&Class::Func, this));
-To fire an event										-> FIRE_EVENT(SOME_EVENT); // todo: allow data to be passed as this will decouple most substystems of the engine
+===================================================================================================================
+To subscribe a function to an event						-> SUBSCRIBE_TO_EVENT(SOME_EVENT, Class::Func, this);
+To subscribe a function (with parameters) to an event	-> SUBSCRIBE_TO_EVENT(SOME_EVENT, Class::Func, this, args);
+To unsubscribe a function from an event					-> UNSUBSCRIBE_FROM_EVENT(SOME_EVENT, Class::Func, this);
+To fire an event										-> FIRE_EVENT(SOME_EVENT);
+===================================================================================================================
 */
 
-#define SUBSCRIBE_TO_EVENT(signalID, function, context)		EventHandler::Subscribe(signalID, std::bind(&function, context))
-#define UNSUBSCRIBE_FROM_EVENT(signalID, function, contex)	EventHandler::Unsubscribe(signalID, std::bind(&function, context))
-#define FIRE_EVENT(signalID)								EventHandler::Fire(signalID)
+//= EVENTS =================================================================================================
+#define EVENT_UPDATE				0	// Fired when it's time to update the engine
+#define EVENT_RENDER				1	// Fired when it's time to do rendering
+#define EVENT_GAMEOBJECT_START		2	// Fired each time the simulation starts (play button in the editor)
+//==========================================================================================================
 
-//= HELPER FUNCTION ==========================================
-template<typename FunctionType, typename... ARGS>
-size_t getAddress(std::function<FunctionType(ARGS...)> function)
-{
-	typedef FunctionType(fnType)(ARGS...);
-	fnType** fptr = function.template target<fnType*>();
-	return size_t(*fptr);
-}
-//============================================================
+//= MACROS ========================================================================================================================
+#define SUBSCRIBE_TO_EVENT(signalID, instance, function)		EventHandler::Subscribe(signalID, std::bind(&function, instance))
+#define UNSUBSCRIBE_FROM_EVENT(signalID, instance, function)	EventHandler::Unsubscribe(signalID, std::bind(&function, instance))
+#define FIRE_EVENT(signalID)									EventHandler::Fire(signalID)
+//=================================================================================================================================
 
-//= SUBSCRIBER ===============================================
+//= SUBSCRIBER ====================================================
 class DllExport Subscriber
 {
 public:
-	using functionType = std::function<void()>;
+	typedef std::function<void()> functionType;
 
-	Subscriber(int eventID, functionType&& arguments)
+	Subscriber(int eventID, functionType&& subFunc)
 	{
 		m_eventID = eventID;
-		m_callbackFunc = std::forward<functionType>(arguments);
+		m_subscribedFunction = std::forward<functionType>(subFunc);
 	}
+
+	void Call()
+	{
+		m_subscribedFunction();
+	}
+
 	int GetEventID() { return m_eventID; }
-	size_t GetAddress() { return getAddress(m_callbackFunc); }
-	void Call() { m_callbackFunc(); }
+	size_t GetAddress();
 
 private:
 	int m_eventID;
-	functionType m_callbackFunc;
+	functionType m_subscribedFunction;
 };
-//============================================================
+//================================================================
 
-//= EVENT HANDLER ============================================
+//= EVENT HANDLER ================================================
 class DllExport EventHandler
 {
 public:
@@ -94,7 +92,13 @@ public:
 		RemoveSubscriber(eventID, getAddress(subscriber));
 	}
 
-	static void Fire(int eventID);
+	static void Fire(int eventID)
+	{
+		for (const auto& subscriber : m_subscribers)
+			if (subscriber->GetEventID() == eventID)
+				subscriber->Call();
+	}
+
 	static void Clear();
 
 private:
@@ -104,4 +108,4 @@ private:
 
 	static std::vector<std::shared_ptr<Subscriber>> m_subscribers;
 };
-//============================================================
+//===============================================================
