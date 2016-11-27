@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum KeyCode
 {
+	// Function keys
 	F1,
 	F2,
 	F3,
@@ -45,16 +46,7 @@ enum KeyCode
 	F13,
 	F14,
 	F15,
-	Alpha0,
-	Alpha1,
-	Alpha2,
-	Alpha3,
-	Alpha4,
-	Alpha5,
-	Alpha6,
-	Alpha7,
-	Alpha8,
-	Alpha9, // 	Alphanumeric keyboard
+	// Numeric keypad
 	Keypad0,
 	Keypad1,
 	Keypad2,
@@ -64,7 +56,18 @@ enum KeyCode
 	Keypad6,
 	Keypad7,
 	Keypad8,
-	Keypad9, // Numeric keypad
+	Keypad9, 
+	// Alphanumeric keys
+	Alpha0,
+	Alpha1,
+	Alpha2,
+	Alpha3,
+	Alpha4,
+	Alpha5,
+	Alpha6,
+	Alpha7,
+	Alpha8,
+	Alpha9,
 	Q,
 	W,
 	E,
@@ -91,16 +94,19 @@ enum KeyCode
 	B,
 	N,
 	M,
+	// Controls
 	Esc,
+	Tab,
+	LeftShift,
+	RightShift,
+	LeftControl,
+	RightControl,
+	LeftAlt,
+	RightAlt,
 	Space,
-	Return,
+	CapsLock,
 	Backspace,
-	Delete,
-	Insert,
-	Home,
-	Present,
-	PageUp,
-	PageDown
+	Return,
 };
 
 class Input : public Subsystem
@@ -114,13 +120,12 @@ public:
 
 	bool GetKey(KeyCode key);
 	bool GetMouseButton(int button);
-	Directus::Math::Vector2 GetMousePosition();
-	Directus::Math::Vector2 GetMousePositionDelta();
+	Directus::Math::Vector2 GetMousePosition() { return m_mousePos; }
+	Directus::Math::Vector2 GetMousePositionDelta() { return m_mousePosDelta; }
 
 private:
 	Directus::Math::Vector2 m_mousePos;
 	Directus::Math::Vector2 m_mousePosDelta;
-
 	std::shared_ptr<DX8Input> m_DX8Input;
-	bool m_initializedSuccessfully;
+	bool m_initialized;
 };
