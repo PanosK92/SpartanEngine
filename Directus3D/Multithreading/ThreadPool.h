@@ -29,13 +29,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Subsystem.h"
 //============================
 
-//= TASK =================================================================================
+//= TASK ==================================================================================
 class Task
 {
 public:
-	using functionType = std::function<void()>;
+	typedef std::function<void()> functionType;
 
-	Task(functionType&& arguments) { m_function = std::forward<functionType>(arguments); }
+	Task(functionType&& function) { m_function = std::forward<functionType>(function); }
 	void Execute() { m_function(); }
 
 private:

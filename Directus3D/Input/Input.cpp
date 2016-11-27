@@ -37,7 +37,7 @@ Input::Input(Context* context): Subsystem(context)
 	m_initializedSuccessfully = false;
 
 	// Subcribe to update event
-	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, Input::Update, this);
+	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Input::Update);
 }
 
 Input::~Input()

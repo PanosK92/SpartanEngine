@@ -50,7 +50,7 @@ void Socket::Initialize()
 //= STATE CONTROL ==============================================================
 void Socket::FireStartEvent()
 {
-	FIRE_EVENT(EVENT_ENGINE_START);
+	FIRE_EVENT(EVENT_GAMEOBJECT_START);
 }
 
 void Socket::Update()
