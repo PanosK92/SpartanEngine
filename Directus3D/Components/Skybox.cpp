@@ -68,8 +68,8 @@ void Skybox::Initialize()
 	m_cubeMapTexture = make_shared<Texture>(g_context);
 	m_cubeMapTexture->SetType(CubeMap);
 	m_cubeMapTexture->SetFilePathTexture("Assets/Environment/environment.dds");
-	m_cubeMapTexture->SetWidth(1200);
-	m_cubeMapTexture->SetHeight(1200);
+	m_cubeMapTexture->SetWidth(1024);
+	m_cubeMapTexture->SetHeight(1024);
 	m_cubeMapTexture->SetGrayscale(false);
 	m_cubeMapTexture->SetID3D11ShaderResourceView(cubeMapSRV);
 
