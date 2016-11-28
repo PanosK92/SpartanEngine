@@ -159,8 +159,3 @@ bool Input::GetKey(KeyCode key)
 
 	return false;
 }
-
-bool Input::GetMouseButton(int button)
-{
-	return m_initialized ? m_DX8Input->IsMouseKeyDown(button) : false;
-}

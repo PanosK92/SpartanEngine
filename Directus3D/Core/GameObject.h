@@ -45,7 +45,7 @@ public:
 	bool LoadFromPrefab(const std::string& filePath);
 
 	void Serialize();
-	void Deserialize();
+	void Deserialize(Transform* parent);
 
 	//= PROPERTIES =========================================================================================
 	std::string GetName() { return m_name; }

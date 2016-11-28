@@ -224,7 +224,7 @@ bool Scene::LoadFromFile(const string& filePath)
 	// GameObjects. This is because a GameObject will also
 	// deserialize it's descendants.
 	for (int i = 0; i < rootGameObjectCount; i++)
-		m_gameObjects[i]->Deserialize();					
+		m_gameObjects[i]->Deserialize(nullptr);					
 
 	Serializer::StopReading();
 	//==============================================

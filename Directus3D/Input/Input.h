@@ -119,7 +119,7 @@ public:
 	void Update();
 
 	bool GetKey(KeyCode key);
-	bool GetMouseButton(int button);
+	bool GetMouseButton(int button) { return m_initialized ? m_DX8Input->IsMouseKeyDown(button) : false; }
 	Directus::Math::Vector2 GetMousePosition() { return m_mousePos; }
 	Directus::Math::Vector2 GetMousePositionDelta() { return m_mousePosDelta; }
 
