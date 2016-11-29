@@ -307,11 +307,7 @@ void DirectusMaterial::Reflect(GameObject* gameobject)
     ReflectTiling();
     ReflectOffset();
 
-
-    if (!m_inspectedMaterial.lock()->IsEditable())
-        SetPropertiesVisible(false);
-    else
-        SetPropertiesVisible(true);
+    SetPropertiesVisible(m_inspectedMaterial.lock()->IsEditable() ? true : false);
 
     // Make this widget visible
     this->show();
@@ -338,10 +334,7 @@ void DirectusMaterial::ReflectFile(string filePath)
     ReflectTiling();
     ReflectOffset();
 
-    if (!m_inspectedMaterial.lock()->IsEditable())
-        SetPropertiesVisible(false);
-    else
-        SetPropertiesVisible(true);
+    SetPropertiesVisible(m_inspectedMaterial.lock()->IsEditable() ? true : false);
 
     // Make this widget visible
     this->show();

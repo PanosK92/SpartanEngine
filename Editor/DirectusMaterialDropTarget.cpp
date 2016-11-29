@@ -103,24 +103,21 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
     // Get the path of the material being dragged
     std::string materialPath = event->mimeData()->text().toStdString();
 
-    // ATTENTION, we could be inspecting a material from a mesh renderer or we could
-    // be ispecting a material which is just a file. Both cases have to be handled here
-
-    // We get the currently inspected material in the material component in the editor
-    weak_ptr<Material> material = m_inspector->GetMaterialComponent()->GetInspectedMaterial();
-    if (material.expired())
-        return;
-
-    // We get the currently inspected GameObject
+    // Get currently inspected GameObject
     GameObject* gameObject = m_inspector->GetInspectedGameObject();
 
-    // If a GameObject is indeed inspected, we set the material to the mesh renderer
-    if (gameObject)
-        material = gameObject->GetComponent<MeshRenderer>()->LoadMaterial(materialPath);
-    // else... no GameObject is being inspected, a material that is only a file is being inspected
+    // If a GameObject is indeed inspected, set the material to the mesh renderer
+    if (!gameObject)
+        return;
+
+    // Load the material
+    std::weak_ptr<Material> material = gameObject->GetComponent<MeshRenderer>()->LoadMaterial(materialPath);
+
+    // Set the material editor component to reflect thew newly loaded material
+    m_inspector->GetMaterialComponent()->Reflect(gameObject);
 
     // Set the text of the QLineEdit
-    this->setText(QString::fromStdString(material.lock()->GetName()));
+    this->setText(QString::fromStdString(!material.expired() ? material.lock()->GetName() : DATA_NOT_ASSIGNED));
 
     // Emit a signal with the material
     emit MaterialDropped(material);
