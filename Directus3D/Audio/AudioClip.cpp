@@ -69,20 +69,20 @@ bool AudioClip::Load(const std::string& filePath, PlayMode mode)
 bool AudioClip::Play()
 {
 	// Check if the sound is playing
-	bool isPlaying = false;
 	if (m_channel)
 	{
+		bool isPlaying = false;
 		m_result = m_channel->isPlaying(&isPlaying);
 		if (m_result != FMOD_OK)
 		{
 			LOG_ERROR(FMOD_ErrorString(m_result));
 			return false;
 		}
-	}
 
-	// If it's already playing, don't bother
-	if (isPlaying)
-		return true;
+		// If it's already playing, don't bother
+		if (isPlaying)
+			return true;
+	}
 
 	// Start playing the sound
 	m_result = m_fModSystem->playSound(m_sound, nullptr, false, &m_channel);
@@ -98,20 +98,20 @@ bool AudioClip::Play()
 bool AudioClip::Pause()
 {
 	// Check if the sound is playing
-	bool isPaused = false;
 	if (m_channel)
 	{
+		bool isPaused = false;
 		m_result = m_channel->getPaused(&isPaused);
 		if (m_result != FMOD_OK)
 		{
 			LOG_ERROR(FMOD_ErrorString(m_result));
 			return false;
 		}
-	}
 
-	// If it's already stopped, don't bother
-	if (!isPaused)
-		return true;
+		// If it's already stopped, don't bother
+		if (!isPaused)
+			return true;
+	}
 
 	// Stop the sound
 	m_result = m_channel->setPaused(true);
@@ -127,23 +127,24 @@ bool AudioClip::Pause()
 bool AudioClip::Stop()
 {
 	// Check if the sound is playing
-	bool isPlaying = false;
 	if (m_channel)
 	{
+		bool isPlaying = false;
 		m_result = m_channel->isPlaying(&isPlaying);
 		if (m_result != FMOD_OK)
 		{
 			LOG_ERROR(FMOD_ErrorString(m_result));
 			return false;
 		}
-	}
 
-	// If it's already stopped, don't bother
-	if (!isPlaying)
-		return true;
+		// If it's already stopped, don't bother
+		if (!isPlaying)
+			return true;
+	}
 
 	// Stop the sound
 	m_result = m_channel->stop();
+	m_channel = nullptr;
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -156,7 +157,7 @@ bool AudioClip::Stop()
 bool AudioClip::SetLoop(bool loop)
 {
 	if (!m_channel)
-		return true;
+		return false;
 
 	// Get current mode
 	FMOD_MODE mode;
@@ -187,7 +188,7 @@ bool AudioClip::SetLoop(bool loop)
 bool AudioClip::SetVolume(float volume)
 {
 	if (!m_channel)
-		return true;
+		return false;
 
 	m_result = m_channel->setVolume(volume);
 	if (m_result != FMOD_OK)
@@ -202,7 +203,7 @@ bool AudioClip::SetVolume(float volume)
 bool AudioClip::SetMute(bool mute)
 {
 	if (!m_channel)
-		return true;
+		return false;
 
 	m_result = m_channel->setMute(mute);
 	if (m_result != FMOD_OK)
@@ -217,7 +218,7 @@ bool AudioClip::SetMute(bool mute)
 bool AudioClip::SetPriority(int priority)
 {
 	if (!m_channel)
-		return true;
+		return false;
 
 	m_result = m_channel->setPriority(priority);
 	if (m_result != FMOD_OK)
@@ -232,7 +233,7 @@ bool AudioClip::SetPriority(int priority)
 bool AudioClip::SetPitch(float pitch)
 {
 	if (!m_channel)
-		return true;
+		return false;
 
 	m_result = m_channel->setPitch(pitch);
 	if (m_result != FMOD_OK)
@@ -247,8 +248,8 @@ bool AudioClip::SetPitch(float pitch)
 bool AudioClip::SetPan(float pan)
 {
 	if (!m_channel)
-		return true;
-	LOG_INFO("pan right?");
+		return false;
+
 	m_result = m_channel->setPan(pan);
 	if (m_result != FMOD_OK)
 	{
@@ -262,7 +263,7 @@ bool AudioClip::SetPan(float pan)
 bool AudioClip::Update()
 {
 	if (!m_transform || !m_channel)
-		return true;
+		return false;
 
 	Vector3 pos = m_transform->GetPosition();
 

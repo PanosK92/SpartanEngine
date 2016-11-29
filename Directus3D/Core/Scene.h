@@ -37,6 +37,7 @@ public:
 
 	void Initialize();
 	void Start();
+	void OnDisable();
 	void Update();
 	void Clear();
 

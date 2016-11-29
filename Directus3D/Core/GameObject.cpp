@@ -80,6 +80,13 @@ void GameObject::Start()
 		it.second->Start();
 }
 
+void GameObject::OnDisable()
+{
+	// call component OnDisable()
+	for (auto const it : m_components)
+		it.second->OnDisable();
+}
+
 void GameObject::Update()
 {
 	if (!m_isActive)

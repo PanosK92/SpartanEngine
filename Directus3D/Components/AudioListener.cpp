@@ -37,12 +37,17 @@ AudioListener::~AudioListener()
 
 }
 
-void AudioListener::Initialize()
+void AudioListener::Reset()
 {
 	m_audio = g_context->GetSubsystem<Audio>();
 }
 
 void AudioListener::Start()
+{
+
+}
+
+void AudioListener::OnDisable()
 {
 
 }

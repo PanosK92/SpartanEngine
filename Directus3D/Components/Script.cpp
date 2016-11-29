@@ -41,7 +41,7 @@ Script::~Script()
 }
 
 //= ICOMPONENT ==================================================================
-void Script::Initialize()
+void Script::Reset()
 {
 
 }
@@ -53,6 +53,11 @@ void Script::Start()
 
 	if (m_scriptInstance->IsInstantiated())
 		m_scriptInstance->ExecuteStart();
+}
+
+void Script::OnDisable()
+{
+
 }
 
 void Script::Remove()

@@ -21,12 +21,17 @@ LineRenderer::~LineRenderer()
 	delete[] m_vertices;
 }
 
-void LineRenderer::Initialize()
+void LineRenderer::Reset()
 {
 
 }
 
 void LineRenderer::Start()
+{
+
+}
+
+void LineRenderer::OnDisable()
 {
 
 }

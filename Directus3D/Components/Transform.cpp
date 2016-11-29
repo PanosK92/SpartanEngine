@@ -50,12 +50,17 @@ Transform::~Transform()
 //==========
 // INTERFACE
 //==========
-void Transform::Initialize()
+void Transform::Reset()
 {
 	UpdateWorldTransform();
 }
 
 void Transform::Start()
+{
+
+}
+
+void Transform::OnDisable()
 {
 
 }

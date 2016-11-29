@@ -36,8 +36,9 @@ public:
 	~AudioSource();
 
 	//= INTERFACE =============
-	virtual void Initialize();
+	virtual void Reset();
 	virtual void Start();
+	virtual void OnDisable();
 	virtual void Remove();
 	virtual void Update();
 	virtual void Serialize();
@@ -47,6 +48,9 @@ public:
 	//= PROPERTIES ======================================================================
 	bool LoadAudioClip(const std::string& filePath);
 	std::string GetAudioClipName();
+
+	bool PlayAudioClip();
+	bool StopPlayingAudioClip();
 
 	bool GetMute() { return m_mute; }
 	void SetMute(bool mute);

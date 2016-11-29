@@ -38,11 +38,10 @@ To fire an event										-> FIRE_EVENT(SOME_EVENT);
 ===================================================================================================================
 */
 
-//= EVENTS =================================================================================================
+//= EVENTS =========================================================================
 #define EVENT_UPDATE				0	// Fired when it's time to update the engine
 #define EVENT_RENDER				1	// Fired when it's time to do rendering
-#define EVENT_GAMEOBJECT_START		2	// Fired each time the simulation starts (play button in the editor)
-//==========================================================================================================
+//==================================================================================
 
 //= MACROS ========================================================================================================================
 #define SUBSCRIBE_TO_EVENT(signalID, instance, function)		EventHandler::Subscribe(signalID, std::bind(&function, instance))

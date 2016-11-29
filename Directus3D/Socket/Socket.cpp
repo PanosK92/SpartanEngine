@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Socket.h"
 #include "../Logging/Log.h"
 #include "../Graphics/Renderer.h"
-#include "../EventSystem/EventHandler.h"
+#include "../Core/Scene.h"
 #include "../FileSystem/ModelImporter.h"
 #include "../Core/Engine.h"
 #include "../Core/Timer.h"
@@ -48,9 +48,14 @@ void Socket::Initialize()
 }
 
 //= STATE CONTROL ==============================================================
-void Socket::FireStartEvent()
+void Socket::Start()
 {
-	FIRE_EVENT(EVENT_GAMEOBJECT_START);
+	g_context->GetSubsystem<Scene>()->Start();
+}
+
+void Socket::OnDisable()
+{
+	g_context->GetSubsystem<Scene>()->OnDisable();
 }
 
 void Socket::Update()

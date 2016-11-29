@@ -48,11 +48,16 @@ MeshFilter::~MeshFilter()
 	m_indexBuffer.reset();
 }
 
-void MeshFilter::Initialize()
+void MeshFilter::Reset()
 {
 }
 
 void MeshFilter::Start()
+{
+
+}
+
+void MeshFilter::OnDisable()
 {
 
 }
