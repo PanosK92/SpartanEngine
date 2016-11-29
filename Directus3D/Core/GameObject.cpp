@@ -169,7 +169,7 @@ void GameObject::Deserialize(Transform* parent)
 	// Check if a GameObject of the same ID exists (instantiated prefab).
 	// If it does, mentain the new ID and discard the original one.
 	string oldID = Serializer::ReadSTR();
-	//m_ID = m_context->GetSubsystem<Scene>()->GetGameObjectByID(oldID) ? m_ID : oldID;
+	m_ID = m_context->GetSubsystem<Scene>()->GetGameObjectByID(oldID) ? m_ID : oldID;
 
 	m_name = Serializer::ReadSTR();
 	m_isActive = Serializer::ReadBool();
@@ -185,8 +185,7 @@ void GameObject::Deserialize(Transform* parent)
 		string id = Serializer::ReadSTR(); // load component's id
 
 		IComponent* component = AddComponentBasedOnType(type);
-		//component->g_ID = id;
-		component->g_ID = GENERATE_GUID;
+		component->g_ID = id;
 	}
 	// Sometimes there are component dependencies, e.g. a collider that needs
 	// to set it's shape to a rigibody. So, it's important to first create all 

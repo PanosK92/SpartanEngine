@@ -222,6 +222,9 @@
     <ClCompile Include="EventSystem\EventHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\D3D12\D3D12Graphics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components\Camera.h">
@@ -456,6 +459,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EventSystem\EventHandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D12\D3D12Graphics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
