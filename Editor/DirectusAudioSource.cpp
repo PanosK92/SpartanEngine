@@ -196,6 +196,7 @@ void DirectusAudioSource::Reflect(GameObject* gameobject)
     }
 
     // Do the actual reflection
+    ReflectName();
     ReflectMute();
     ReflectPlayOnAwake();
     ReflectLoop();
@@ -206,6 +207,15 @@ void DirectusAudioSource::Reflect(GameObject* gameobject)
 
     // Make this widget visible
     this->show();
+}
+
+void DirectusAudioSource::ReflectName()
+{
+    if (!m_inspectedAudioSource)
+        return;
+
+    std::string name = m_inspectedAudioSource->GetAudioClipName();
+    m_audioClip->setText(QString::fromStdString(name));
 }
 
 void DirectusAudioSource::ReflectMute()
