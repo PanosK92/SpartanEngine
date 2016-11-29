@@ -248,7 +248,7 @@ bool AudioClip::SetPan(float pan)
 {
 	if (!m_channel)
 		return true;
-
+	LOG_INFO("pan right?");
 	m_result = m_channel->setPan(pan);
 	if (m_result != FMOD_OK)
 	{

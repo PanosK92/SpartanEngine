@@ -80,4 +80,6 @@ private:
 	float m_volume;
 	float m_pitch;
 	float m_pan;
+
+	bool m_audioClipLoaded;
 };

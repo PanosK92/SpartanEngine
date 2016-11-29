@@ -44,6 +44,7 @@ AudioSource::AudioSource()
 	m_volume = 1.0f;
 	m_pitch = 1.0f;
 	m_pan = 0.0f;
+	m_audioClipLoaded = false;
 }
 
 AudioSource::~AudioSource()
@@ -63,26 +64,36 @@ void AudioSource::Initialize()
 
 void AudioSource::Start()
 {
+	auto audioClip = m_audioClip.lock();
+
 	// Make sure there is an audio clip
-	if (m_audioClip.expired())
+	if (!audioClip)
 		return;
 
 	// Make sure it's an actual playble audio file
 	if (!FileSystem::IsSupportedAudioFile(m_filePath))
 		return;
 
+	if (!m_audioClipLoaded)
+		return;
+
 	// Start playing the audio file
 	if (m_playOnAwake)
-		m_audioClip.lock()->Play();
+		audioClip->Play();
 
 	// Set mute, volume, loop
-	m_audioClip.lock()->SetMute(m_mute);
-	m_audioClip.lock()->SetVolume(m_volume);
-	m_audioClip.lock()->SetLoop(m_loop);
+	audioClip->SetMute(m_mute);
+	audioClip->SetVolume(m_volume);
+	audioClip->SetLoop(m_loop);
+	audioClip->SetPriority(m_priority);
+	audioClip->SetPan(m_pan);
 }
 
 void AudioSource::Remove()
 {
+	if (m_audioClip.expired())
+		return;
+
 	m_audioClip.lock()->Stop();
 }
 
@@ -116,6 +127,8 @@ void AudioSource::Deserialize()
 	m_volume = Serializer::ReadFloat();
 	m_pitch = Serializer::ReadFloat();
 	m_pan = Serializer::ReadFloat();
+
+	LoadAudioClip(m_filePath);
 }
 
 bool AudioSource::LoadAudioClip(const string& filePath)
@@ -131,7 +144,9 @@ bool AudioSource::LoadAudioClip(const string& filePath)
 		m_audioClip = g_context->GetSubsystem<Audio>()->CreateAudioClip();
 
 	// Load the audio (for now it's always in memory)
-	return m_audioClip.lock()->Load(m_filePath, Memory);
+	m_audioClipLoaded = m_audioClip.lock()->Load(m_filePath, Memory);
+
+	return m_audioClipLoaded;
 }
 
 string AudioSource::GetAudioClipName()

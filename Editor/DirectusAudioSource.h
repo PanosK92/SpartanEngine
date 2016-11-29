@@ -96,6 +96,7 @@ private:
     AudioSource* m_inspectedAudioSource;
     //==================================
 
+    void ReflectName();
     void ReflectMute();
     void ReflectPlayOnAwake();
     void ReflectLoop();
