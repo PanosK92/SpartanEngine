@@ -50,12 +50,17 @@ MeshRenderer::~MeshRenderer()
 }
 
 //= ICOMPONENT ===============================================================
-void MeshRenderer::Initialize()
+void MeshRenderer::Reset()
 {
 
 }
 
 void MeshRenderer::Start()
+{
+
+}
+
+void MeshRenderer::OnDisable()
 {
 
 }

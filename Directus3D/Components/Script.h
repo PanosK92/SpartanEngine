@@ -33,8 +33,9 @@ public:
 	~Script();
 
 	//= ICOMPONENT =============
-	virtual void Initialize();
+	virtual void Reset();
 	virtual void Start();
+	virtual void OnDisable();
 	virtual void Remove();
 	virtual void Update();
 	virtual void Serialize();

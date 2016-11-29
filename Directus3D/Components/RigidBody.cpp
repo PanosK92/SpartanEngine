@@ -89,12 +89,17 @@ RigidBody::~RigidBody()
 }
 
 //= ICOMPONENT ==========================================================
-void RigidBody::Initialize()
+void RigidBody::Reset()
 {
 	AddBodyToWorld();
 }
 
 void RigidBody::Start()
+{
+
+}
+
+void RigidBody::OnDisable()
 {
 
 }

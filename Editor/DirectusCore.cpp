@@ -97,7 +97,7 @@ void DirectusCore::Start()
     if (m_locked)
         return;
 
-    m_socket->FireStartEvent();
+    m_socket->Start();
     m_timerUpdate->start(0);
     m_timer500Mil->start(500);
     m_timer60FPS->stop();
@@ -112,6 +112,7 @@ void DirectusCore::Stop()
     if (m_locked)
         return;
 
+    m_socket->OnDisable();
     m_timerUpdate->stop();
     m_timer500Mil->stop();
     m_timer60FPS->start(16);

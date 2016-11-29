@@ -52,7 +52,7 @@ AudioSource::~AudioSource()
 
 }
 
-void AudioSource::Initialize()
+void AudioSource::Reset()
 {
 	// Get an audio handle (in case there isn't one yet)
 	if (m_audioClip.expired())
@@ -87,6 +87,11 @@ void AudioSource::Start()
 	audioClip->SetLoop(m_loop);
 	audioClip->SetPriority(m_priority);
 	audioClip->SetPan(m_pan);
+}
+
+void AudioSource::OnDisable()
+{
+	StopPlayingAudioClip();
 }
 
 void AudioSource::Remove()
@@ -152,6 +157,22 @@ bool AudioSource::LoadAudioClip(const string& filePath)
 string AudioSource::GetAudioClipName()
 {
 	return FileSystem::GetFileNameFromPath(m_filePath);
+}
+
+bool AudioSource::PlayAudioClip()
+{
+	if (m_audioClip.expired())
+		return false;
+
+	return m_audioClip.lock()->Play();
+}
+
+bool AudioSource::StopPlayingAudioClip()
+{
+	if (m_audioClip.expired())
+		return false;
+
+	return m_audioClip.lock()->Stop();
 }
 
 void AudioSource::SetMute(bool mute)

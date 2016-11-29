@@ -50,12 +50,17 @@ Camera::~Camera()
 /*------------------------------------------------------------------------------
 								[INTERFACE]
 ------------------------------------------------------------------------------*/
-void Camera::Initialize()
+void Camera::Reset()
 {
 	CalculateProjectionMatrix();
 }
 
 void Camera::Start()
+{
+
+}
+
+void Camera::OnDisable()
 {
 
 }

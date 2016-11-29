@@ -55,12 +55,17 @@ Light::~Light()
 
 }
 
-void Light::Initialize()
+void Light::Reset()
 {
 
 }
 
 void Light::Start()
+{
+
+}
+
+void Light::OnDisable()
 {
 
 }

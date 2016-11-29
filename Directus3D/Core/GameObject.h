@@ -39,6 +39,7 @@ public:
 	~GameObject();
 
 	void Start();
+	void OnDisable();
 	void Update();
 
 	bool SaveAsPrefab(const std::string& filePath);
@@ -89,7 +90,7 @@ public:
 		component->g_context = m_context;
 
 		// Run Initialize().
-		component->Initialize();
+		component->Reset();
 
 		// Return it as a component of the requested type
 		return dynamic_cast<T*>(component);

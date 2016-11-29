@@ -45,9 +45,13 @@ public:
 	virtual ~IComponent(){}
 
 	// Runs when the component gets added
-	virtual void Initialize() = 0;
+	virtual void Reset() = 0;
+	//virtual void Awake() = 0; // todo
+	//virtual void OnEnable() = 0; // todo
 	// Runs everytime the simulation starts
 	virtual void Start() = 0;
+	// Runs everytime the simulation stops
+	virtual void OnDisable() = 0;
 	// Runs when the component is removed
 	virtual void Remove() = 0;
 	// Runs every frame

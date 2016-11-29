@@ -53,13 +53,18 @@ MeshCollider::~MeshCollider()
 }
 
 //= ICOMPONENT ========================================
-void MeshCollider::Initialize()
+void MeshCollider::Reset()
 {
 	SetMesh(GetMeshFromAttachedMeshFilter());
 	Build();
 }
 
 void MeshCollider::Start()
+{
+
+}
+
+void MeshCollider::OnDisable()
 {
 
 }

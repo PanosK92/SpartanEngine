@@ -67,13 +67,18 @@ void Scene::Initialize()
 
 	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Scene::Resolve);
 	SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Scene::Update);
-	SUBSCRIBE_TO_EVENT(EVENT_GAMEOBJECT_START, this, Scene::Start);
 }
 
 void Scene::Start()
 {
 	for (const auto& gameObject : m_gameObjects)
 		gameObject->Start();
+}
+
+void Scene::OnDisable()
+{
+	for (const auto& gameObject : m_gameObjects)
+		gameObject->OnDisable();
 }
 
 void Scene::Update()
