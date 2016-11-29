@@ -22,66 +22,71 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= LINKING =====================
-#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 //===============================
 
 //= INCLUDES ===================
-#include <d3d11.h>
+#include <d3d12.h>
+#include <DXGI1_4.h>
 #include "../../Math/Vector4.h"
 #include <string>
 #include "../../Core/Settings.h"
 //==============================
 
-class D3D11Graphics
+class D3D12Graphics
 {
 public:
-	D3D11Graphics();
-	~D3D11Graphics();
+	D3D12Graphics();
+	~D3D12Graphics();
 
-	void Initialize(HWND handle);
+	bool Initialize(HWND handle);
 	void Release();
 
 	void Clear(const Directus::Math::Vector4& color);
 	void Present() { m_swapChain->Present(VSYNC, 0); }
 
-	ID3D11Device* GetDevice() { return m_device; }
-	ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
+	ID3D12Device* GetDevice() { return m_device; }
+	//ID3D12DeviceContext* GetDeviceContext() { return m_deviceContext; }
 
 	void EnableZBuffer(bool enable);
 	void EnabledAlphaBlending(bool enable);
 
-	void SetFaceCullMode(D3D11_CULL_MODE cull);
-	void SetBackBufferRenderTarget(){ m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView); }
+	//void SetFaceCullMode(D3D11_CULL_MODE cull);
+	//void SetBackBufferRenderTarget() { m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView); }
 
 	void SetResolution(int width, int height);
 	void SetViewport(int width, int height);
-	void ResetViewport() { m_deviceContext->RSSetViewports(1, &m_viewport); }
+	//void ResetViewport() { m_deviceContext->RSSetViewports(1, &m_viewport); }
 
 private:
-	ID3D11Device* m_device;
-	ID3D11DeviceContext* m_deviceContext;
-	IDXGISwapChain* m_swapChain;
-	ID3D11RenderTargetView* m_renderTargetView;
+	ID3D12Device* m_device;
+	ID3D12CommandQueue* m_commandQueue;
+	IDXGISwapChain3* m_swapChain;
+	ID3D12DescriptorHeap* m_renderTargetViewHeap;
+	ID3D12Resource* m_backBufferRenderTarget[2];
+	unsigned int m_bufferIndex;
+	ID3D12CommandAllocator* m_commandAllocator;
 	D3D_DRIVER_TYPE m_driverType;
 	D3D_FEATURE_LEVEL m_featureLevel;
-	D3D11_VIEWPORT m_viewport;
+	D3D12_VIEWPORT m_viewport;
 
 	DXGI_MODE_DESC* m_displayModeList;
 	int m_videoCardMemory;
-	std::string m_videoCardDescription;		
+	std::string m_videoCardDescription;
 
-	ID3D11Texture2D* m_depthStencilBuffer;
-	ID3D11DepthStencilState* m_depthStencilStateEnabled;
-	ID3D11DepthStencilState* m_depthStencilStateDisabled;
-	ID3D11DepthStencilView* m_depthStencilView;
+	/*ID3D12Texture2D* m_depthStencilBuffer;
+	ID3D12DepthStencilState* m_depthStencilStateEnabled;
+	ID3D12DepthStencilState* m_depthStencilStateDisabled;
+	ID3D12DepthStencilView* m_depthStencilView;
 
-	ID3D11RasterizerState* m_rasterStateCullFront;
-	ID3D11RasterizerState* m_rasterStateCullBack;
-	ID3D11RasterizerState* m_rasterStateCullNone;
+	ID3D12RasterizerState* m_rasterStateCullFront;
+	ID3D12RasterizerState* m_rasterStateCullBack;
+	ID3D12RasterizerState* m_rasterStateCullNone;
 
-	ID3D11BlendState* m_blendStateAlphaEnabled;
-	ID3D11BlendState* m_blendStateAlphaDisabled;
+	ID3D12BlendState* m_blendStateAlphaEnabled;
+	ID3D12BlendState* m_blendStateAlphaDisabled;
+	*/
 
 private:
 	bool CreateDepthStencilBuffer();

@@ -19,13 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES ===========================
 #include "D3D11Graphics.h"
-#include <string>
-#include "../../Core/Settings.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Helper.h"
-//==============================
+#include "../../FileSystem/FileSystem.h"
+//======================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -36,25 +35,47 @@ D3D11Graphics::D3D11Graphics()
 	m_device = nullptr;
 	m_deviceContext = nullptr;
 	m_swapChain = nullptr;
+	m_renderTargetView = nullptr;
 	m_driverType = D3D_DRIVER_TYPE_HARDWARE;
 	m_featureLevel = D3D_FEATURE_LEVEL_11_0;
-	m_renderTargetView = nullptr;
+
+	m_displayModeList = nullptr;
+	m_videoCardMemory = 0;
+	m_videoCardDescription = DATA_NOT_ASSIGNED;
+
 	m_depthStencilBuffer = nullptr;
 	m_depthStencilStateEnabled = nullptr;
 	m_depthStencilStateDisabled = nullptr;
 	m_depthStencilView = nullptr;
+
 	m_rasterStateCullFront = nullptr;
 	m_rasterStateCullBack = nullptr;
 	m_rasterStateCullNone = nullptr;
+
 	m_blendStateAlphaEnabled = nullptr;
 	m_blendStateAlphaDisabled = nullptr;
-	m_displayModeList = nullptr;
-	m_videoCardMemory = 0;
 }
 
 D3D11Graphics::~D3D11Graphics()
 {
+	SafeRelease(m_device);
+	SafeRelease(m_deviceContext);
+	SafeRelease(m_swapChain);
+	SafeRelease(m_renderTargetView);
 
+	SafeDelete(m_displayModeList);
+
+	SafeRelease(m_depthStencilBuffer);
+	SafeRelease(m_depthStencilStateEnabled);
+	SafeRelease(m_depthStencilStateDisabled);
+	SafeRelease(m_depthStencilView);
+
+	SafeRelease(m_rasterStateCullFront);
+	SafeRelease(m_rasterStateCullBack);
+	SafeRelease(m_rasterStateCullNone);
+
+	SafeRelease(m_blendStateAlphaEnabled);
+	SafeRelease(m_blendStateAlphaDisabled);
 }
 
 void D3D11Graphics::Initialize(HWND handle)
@@ -75,7 +96,7 @@ void D3D11Graphics::Initialize(HWND handle)
 	factory->Release();
 	//==============================================================================
 
-	//= ADAPTER OUTPUT =============================================================
+	//= ADAPTER OUTPUT / DISPLAY MODE ==============================================
 	IDXGIOutput* adapterOutput;
 	unsigned int numModes;
 
@@ -88,9 +109,8 @@ void D3D11Graphics::Initialize(HWND handle)
 	hResult = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, nullptr);
 	if (FAILED(hResult))
 		LOG_ERROR("Failed to get adapter's display modes.");
-	//==============================================================================
 
-	//= DISPLAY MODE DESCRIPTION ===================================================
+	// Create display mode list
 	DXGI_MODE_DESC* m_displayModeList = new DXGI_MODE_DESC[numModes];
 	if (!m_displayModeList)
 		LOG_ERROR("Failed to create a display mode list.");
@@ -106,13 +126,12 @@ void D3D11Graphics::Initialize(HWND handle)
 	// Go through all the display modes and find the one that matches the screen width and height.
 	unsigned int numerator = 0, denominator = 1;
 	for (auto i = 0; i < numModes; i++)
-	{
 		if (m_displayModeList[i].Width == (unsigned int)RESOLUTION_WIDTH && m_displayModeList[i].Height == (unsigned int)RESOLUTION_HEIGHT)
 		{
 			numerator = m_displayModeList[i].RefreshRate.Numerator;
 			denominator = m_displayModeList[i].RefreshRate.Denominator;
+			break;
 		}
-	}
 	//==============================================================================
 
 	//= ADAPTER DESCRIPTION ========================================================
@@ -133,7 +152,7 @@ void D3D11Graphics::Initialize(HWND handle)
 	DXGI_SWAP_CHAIN_DESC swapChainDesc;
 	ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
 
-	swapChainDesc.BufferCount = 2;
+	swapChainDesc.BufferCount = 1;
 	swapChainDesc.BufferDesc.Width = RESOLUTION_WIDTH;
 	swapChainDesc.BufferDesc.Height = RESOLUTION_HEIGHT;
 	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -152,7 +171,10 @@ void D3D11Graphics::Initialize(HWND handle)
 	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // alt + enter fullscreen
 
 	// Create the swap chain, Direct3D device, and Direct3D device context.
-	hResult = D3D11CreateDeviceAndSwapChain(nullptr, m_driverType, nullptr, 0, &m_featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc, &m_swapChain, &m_device, nullptr, &m_deviceContext);
+	hResult = D3D11CreateDeviceAndSwapChain(nullptr, m_driverType, nullptr, 0, 
+		&m_featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc, 
+		&m_swapChain, &m_device, nullptr, &m_deviceContext);
+
 	if (FAILED(hResult))
 		LOG_ERROR("Failed to create the swap chain, Direct3D device, and Direct3D device context.");
 	//==============================================================================
@@ -343,7 +365,8 @@ bool D3D11Graphics::CreateDepthStencil()
 
 void D3D11Graphics::Release()
 {
-	// Before shutting down set to windowed mode or when you release the swap chain it will throw an exception.
+	// Before shutting down set to windowed mode or 
+	// upon releasing the swap chain it will throw an exception.
 	if (m_swapChain)
 		m_swapChain->SetFullscreenState(false, nullptr);
 
@@ -380,21 +403,6 @@ void D3D11Graphics::Clear(const Vector4& color)
 	m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
-void D3D11Graphics::Present()
-{
-	m_swapChain->Present(VSYNC, 0);
-}
-
-ID3D11Device* D3D11Graphics::GetDevice()
-{
-	return m_device;
-}
-
-ID3D11DeviceContext* D3D11Graphics::GetDeviceContext()
-{
-	return m_deviceContext;
-}
-
 void D3D11Graphics::EnableZBuffer(bool enable)
 {
 	if (enable)
@@ -416,12 +424,6 @@ void D3D11Graphics::EnabledAlphaBlending(bool enable)
 		m_deviceContext->OMSetBlendState(m_blendStateAlphaEnabled, blendFactor, 0xffffffff);
 	else
 		m_deviceContext->OMSetBlendState(m_blendStateAlphaDisabled, blendFactor, 0xffffffff);
-}
-
-void D3D11Graphics::SetBackBufferRenderTarget()
-{
-	// Bind the render target view and depth stencil buffer to the output render pipeline.
-	m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
 }
 
 void D3D11Graphics::SetResolution(int width, int height)
@@ -462,11 +464,6 @@ void D3D11Graphics::SetViewport(int width, int height)
 	m_viewport.TopLeftX = 0.0f;
 	m_viewport.TopLeftY = 0.0f;
 
-	m_deviceContext->RSSetViewports(1, &m_viewport);
-}
-
-void D3D11Graphics::ResetViewport()
-{
 	m_deviceContext->RSSetViewports(1, &m_viewport);
 }
 
