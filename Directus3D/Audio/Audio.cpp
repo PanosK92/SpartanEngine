@@ -78,6 +78,21 @@ bool Audio::Initialize()
 		return false;
 	}
 
+	// Check FMOD version
+	unsigned int version;
+	m_result = m_fmodSystem->getVersion(&version);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	if (version < FMOD_VERSION)
+	{
+		LOG_ERROR("Lib version doesn't match header version.");
+		return false;
+	}
+
 	// Make sure there is a soundcard devices on the machine
 	int driverCount = 0;
 	m_result = m_fmodSystem->getNumDrivers(&driverCount);
