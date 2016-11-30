@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 AudioClip::AudioClip(FMOD::System* fModSystem)
@@ -38,8 +39,11 @@ AudioClip::AudioClip(FMOD::System* fModSystem)
 	m_result = FMOD_OK;
 	m_sound = nullptr;
 	m_channel = nullptr;
-	m_distanceFactor = 1.0f;
-	m_mode = Memory;
+	m_playMode = Memory;
+	m_minDistance = 1.0f;
+	m_maxDistance = 10000.0f;
+	m_modeRolloff = FMOD_3D_LINEARROLLOFF;
+	m_modeLoop = FMOD_LOOP_OFF;
 }
 
 AudioClip::~AudioClip()
@@ -57,11 +61,11 @@ bool AudioClip::SaveMetadata()
 	return true;
 }
 
-bool AudioClip::Load(const std::string& filePath, PlayMode mode)
+bool AudioClip::Load(const string& filePath, PlayMode mode)
 {
 	m_sound = nullptr;
 	m_channel = nullptr;
-	m_mode = mode;
+	m_playMode = mode;
 
 	return mode == Memory ? CreateSound(filePath) : CreateStream(filePath);
 }
@@ -86,14 +90,6 @@ bool AudioClip::Play()
 
 	// Start playing the sound
 	m_result = m_fModSystem->playSound(m_sound, nullptr, false, &m_channel);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	// Set 3D attributes
-	m_result = m_channel->set3DAttributes(&m_pos, &m_vel);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -159,34 +155,24 @@ bool AudioClip::Stop()
 		return false;
 	}
 
+	m_channel = nullptr;
+
 	return true;
 }
 
 bool AudioClip::SetLoop(bool loop)
 {
+	m_modeLoop = loop ? FMOD_LOOP_NORMAL : FMOD_LOOP_OFF;
+
 	if (!m_sound)
 		return false;
 
-	// Get current mode
-	FMOD_MODE mode;
-	m_result = m_sound->getMode(&mode);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	// Adjust current mode based on loop variable
+	// Infite loops
 	if (loop)
-	{
-		mode |= FMOD_LOOP_NORMAL;
 		m_sound->setLoopCount(-1);
-	}
-	else
-		mode &= ~FMOD_LOOP_OFF;
 
-	// Se the new mode to the channel
-	m_result = m_sound->setMode(mode);
+	// Set the channel with the new mode
+	m_result = m_sound->setMode(BuildSoundMode());
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -271,11 +257,61 @@ bool AudioClip::SetPan(float pan)
 	return true;
 }
 
-void AudioClip::Update()
+bool AudioClip::SetRolloff(vector<Vector3> curvePoints)
 {
+	SetRolloff(Custom);
+
+	// Convert Vector3 to FMOD_VECTOR
+	vector<FMOD_VECTOR> fmodCurve;
+	for (const auto& point : curvePoints)
+		fmodCurve.push_back(FMOD_VECTOR{ point.x, point.y, point.z });
+
+	m_result = m_channel->set3DCustomRolloff(&fmodCurve.front(), (int)fmodCurve.size());
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	return true;
+}
+
+bool AudioClip::SetRolloff(Rolloff rolloff)
+{
+	switch (rolloff)
+	{
+	case Linear: m_modeRolloff = FMOD_3D_LINEARROLLOFF;
+		break;
+
+	case Custom: m_modeRolloff = FMOD_3D_CUSTOMROLLOFF;
+		break;
+
+	default:
+		break;
+	}
+
+	return true;
+}
+
+bool AudioClip::Update()
+{
+	if (!m_transform || !m_channel)
+		return false;
+
 	Vector3 pos = m_transform->GetPosition();
-	m_pos = { pos.x, pos.y, pos.z };
-	m_vel = { 0, 0, 0 };
+
+	FMOD_VECTOR fModPos = { pos.x, pos.y, pos.z };
+	FMOD_VECTOR fModVel = { 0, 0, 0 };
+
+	// Set 3D attributes
+	m_result = m_channel->set3DAttributes(&fModPos, &fModVel);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
+	return true;
 }
 
 void AudioClip::SetTransform(Transform* transform)
@@ -284,10 +320,10 @@ void AudioClip::SetTransform(Transform* transform)
 }
 
 //= CREATION =====================================================================================
-bool AudioClip::CreateSound(const std::string& filePath)
+bool AudioClip::CreateSound(const string& filePath)
 {
 	// Create sound
-	m_result = m_fModSystem->createSound(filePath.c_str(), FMOD_3D, nullptr, &m_sound);
+	m_result = m_fModSystem->createSound(filePath.c_str(), BuildSoundMode(), nullptr, &m_sound);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -295,7 +331,7 @@ bool AudioClip::CreateSound(const std::string& filePath)
 	}
 
 	// Set 3D min max disance
-	m_result = m_sound->set3DMinMaxDistance(0.5f * m_distanceFactor, 5000.0f * m_distanceFactor);
+	m_result = m_sound->set3DMinMaxDistance(m_minDistance, m_maxDistance);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -305,10 +341,10 @@ bool AudioClip::CreateSound(const std::string& filePath)
 	return true;
 }
 
-bool AudioClip::CreateStream(const std::string& filePath)
+bool AudioClip::CreateStream(const string& filePath)
 {
 	// Create sound
-	m_result = m_fModSystem->createStream(filePath.c_str(), FMOD_3D, nullptr, &m_sound);
+	m_result = m_fModSystem->createStream(filePath.c_str(), BuildSoundMode(), nullptr, &m_sound);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -316,7 +352,7 @@ bool AudioClip::CreateStream(const std::string& filePath)
 	}
 
 	// Set 3D min max disance
-	m_result = m_sound->set3DMinMaxDistance(0.5f * m_distanceFactor, 5000.0f * m_distanceFactor);
+	m_result = m_sound->set3DMinMaxDistance(m_minDistance, m_maxDistance);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -325,4 +361,4 @@ bool AudioClip::CreateStream(const std::string& filePath)
 
 	return true;
 }
-//=============================================================================================
+//=========================================================================================

@@ -33,6 +33,12 @@ enum PlayMode
 	Stream
 };
 
+enum Rolloff
+{
+	Linear,
+	Custom
+};
+
 class AudioClip : Directus::Resource::IResource
 {
 public:
@@ -64,25 +70,31 @@ public:
 	// Sets the pan level
 	bool SetPan(float pan);
 
+	// Sets the rolloff
+	bool SetRolloff(std::vector<Directus::Math::Vector3> curvePoints);
+	bool SetRolloff(Rolloff rolloff);
+
 	// Makes the audio use the 3D attributes of the transform
 	void SetTransform(Transform* transform);
 
 	// Should be called per frame to update the 3D attributes of the sound
-	void Update();
+	bool Update();
 
 private:
 	//= CREATION ==================================
 	bool CreateSound(const std::string& filePath);
 	bool CreateStream(const std::string& filePath);
 	//=============================================
+	FMOD_MODE BuildSoundMode() { return FMOD_3D | m_modeLoop | m_modeRolloff; }
 
 	Transform* m_transform;
 	FMOD::System* m_fModSystem;
 	FMOD_RESULT m_result;
 	FMOD::Sound* m_sound;
 	FMOD::Channel* m_channel;
-	float m_distanceFactor;
-	PlayMode m_mode;
-	FMOD_VECTOR m_pos;
-	FMOD_VECTOR m_vel;
+	PlayMode m_playMode;
+	FMOD_MODE m_modeLoop;
+	float m_minDistance;
+	float m_maxDistance;
+	FMOD_MODE m_modeRolloff;
 };
