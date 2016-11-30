@@ -40,7 +40,7 @@ This version will focus on delivering a new standard when it comes to graphics q
 
 ### Download
 Note: The download link will be updated whenever any features that are under development get completed.
-- [Directus v0.2 (Windows x64)] (https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc)
+- [Directus v0.2 (Windows x64)] (https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc) - 65.8 MB.
 
 ### Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109), 
