@@ -26,12 +26,12 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 This version will focus on delivering a new standard when it comes to graphics quality and overall reliability.
 - [Active] Bug fixes, lot's of them.
 - [Active] DirectX 12 Renderer
+- [Active] Dynamic resolution scaling.
 - [Active] Improved shadow quality.
 - [Active] SSAO.
 
 # Planned Features
 - Draw call batching (static & dynamic).
-- Dynamic resolution scaling.
 - Export on Windows.
 - Font loader & renderer.
 - SSR, Volumetric Lighting.
