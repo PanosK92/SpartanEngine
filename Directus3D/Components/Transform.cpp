@@ -117,28 +117,29 @@ void Transform::UpdateWorldTransform()
 	Matrix rotationLocalMatrix = m_rotationLocal.RotationMatrix();
 	Matrix scaleLocalMatrix = Matrix::CreateScale(m_scaleLocal);
 
-	// Calculate the world matrix
-	Matrix localMatrix = scaleLocalMatrix * rotationLocalMatrix * translationLocalMatrix;
-	m_mTransform = localMatrix * GetParentTransformMatrix();
-
-	// If there is no parent, local space equals world space
+	// Calculate the local matrix
+	m_mTransform = scaleLocalMatrix * rotationLocalMatrix * translationLocalMatrix;
+	
+	// Get world data
 	if (!HasParent())
 	{
 		m_position = m_positionLocal;
 		m_rotation = m_rotationLocal;
 		m_scale = m_scaleLocal;
 	}
-	else // ... decompose world matrix to get world position, rotation and scale
+	else
+	{
+		m_mTransform = m_mTransform * GetParentTransformMatrix();
+		// decompose world matrix to get world position, rotation and scale
 		m_mTransform.Decompose(m_scale, m_rotation, m_position);
+	}
 
 	// update children
-	for (auto i = 0; i < m_children.size(); i++)
-		if (m_children[i]) m_children[i]->UpdateWorldTransform();
+	for (const auto& child : m_children)
+		child->UpdateWorldTransform();
 }
 
-//=========
-// POSITION
-//=========
+//= TRANSLATION ==================================================================================
 void Transform::SetPosition(const Vector3& position)
 {
 	SetPositionLocal(!HasParent() ? position : GetParent()->GetTransformMatrix().Inverted() * position);
@@ -152,10 +153,9 @@ void Transform::SetPositionLocal(const Vector3& position)
 	m_positionLocal = position;
 	UpdateWorldTransform();
 }
+//================================================================================================
 
-//=========
-// ROTATION
-//=========
+//= ROTATION =====================================================================================
 void Transform::SetRotation(const Quaternion& rotation)
 {
 	SetRotationLocal(!HasParent() ? rotation : GetParent()->GetRotation().Inverse() * rotation);
@@ -169,10 +169,9 @@ void Transform::SetRotationLocal(const Quaternion& rotation)
 	m_rotationLocal = rotation;
 	UpdateWorldTransform();
 }
+//================================================================================================
 
-//======
-// SCALE
-//======
+//= SCALE ========================================================================================
 void Transform::SetScale(const Vector3& scale)
 {
 	SetScaleLocal(!HasParent() ? scale : scale / GetParent()->GetScale());
@@ -193,10 +192,9 @@ void Transform::SetScaleLocal(const Vector3& scale)
 
 	UpdateWorldTransform();
 }
+//================================================================================================
 
-//=====================
-// TRANSLATION/ROTATION
-//=====================
+//= TRANSLATION/ROTATION =========================================================================
 void Transform::Translate(const Vector3& delta)
 {
 	if (!HasParent())
@@ -238,6 +236,7 @@ Vector3 Transform::GetRight()
 {
 	return GetRotation() * Vector3::Right;
 }
+//================================================================================================
 
 //==========
 // HIERARCHY

@@ -38,6 +38,8 @@ private:
 	void RegisterTime();
 	void RegisterGameObject();
 	void RegisterTransform();
+	void RegisterMeshRenderer();
+	void RegisterMaterial();
 	void RegisterCamera();
 	void RegisterRigidBody();
 	void RegisterMathHelper();

@@ -166,8 +166,8 @@ void Collider::UpdateBoundingBox()
 	auto meshFilter = g_gameObject->GetComponent<MeshFilter>();	
 	if (!mesh.expired() && meshFilter)
 	{
-		SetCenter(meshFilter->GetCenter());
-		SetBoundingBox(mesh.lock()->GetBoundingBox() * g_transform->GetScale());
+		//SetCenter(meshFilter->GetCenter());
+		//SetBoundingBox(meshFilter->GetBoundingBox());
 	}
 }
 

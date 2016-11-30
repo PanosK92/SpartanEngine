@@ -68,7 +68,7 @@ public:
 	void SetTransform(Transform* transform);
 
 	// Should be called per frame to update the 3D attributes of the sound
-	bool Update();
+	void Update();
 
 private:
 	//= CREATION ==================================
@@ -83,4 +83,6 @@ private:
 	FMOD::Channel* m_channel;
 	float m_distanceFactor;
 	PlayMode m_mode;
+	FMOD_VECTOR m_pos;
+	FMOD_VECTOR m_vel;
 };

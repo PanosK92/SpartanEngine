@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "Shaders/ShaderVariation.h"
 #include "../Core/Timer.h"
+#include "../Core/Engine.h"
 //======================================
 
 //= NAMESPACES ====================
@@ -506,6 +507,9 @@ void Renderer::PostProcessing()
 
 void Renderer::Gizmos() const
 {
+	if (g_context->GetSubsystem<Engine>()->IsSimulating())
+		return;
+
 	g_context->GetSubsystem<PhysicsWorld>()->DebugDraw();
 
 	if (!m_lineRenderer)

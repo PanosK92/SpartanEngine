@@ -79,14 +79,7 @@ void AudioSource::Start()
 
 	// Start playing the audio file
 	if (m_playOnAwake)
-		audioClip->Play();
-
-	// Set mute, volume, loop
-	audioClip->SetMute(m_mute);
-	audioClip->SetVolume(m_volume);
-	audioClip->SetLoop(m_loop);
-	audioClip->SetPriority(m_priority);
-	audioClip->SetPan(m_pan);
+		PlayAudioClip();
 }
 
 void AudioSource::OnDisable()
@@ -164,7 +157,16 @@ bool AudioSource::PlayAudioClip()
 	if (m_audioClip.expired())
 		return false;
 
-	return m_audioClip.lock()->Play();
+	auto audioClip = m_audioClip.lock();
+
+	audioClip->Play();
+	audioClip->SetMute(m_mute);
+	audioClip->SetVolume(m_volume);
+	audioClip->SetLoop(m_loop);
+	audioClip->SetPriority(m_priority);
+	audioClip->SetPan(m_pan);
+
+	return true;
 }
 
 bool AudioSource::StopPlayingAudioClip()

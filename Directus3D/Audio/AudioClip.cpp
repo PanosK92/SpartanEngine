@@ -92,6 +92,14 @@ bool AudioClip::Play()
 		return false;
 	}
 
+	// Set 3D attributes
+	m_result = m_channel->set3DAttributes(&m_pos, &m_vel);
+	if (m_result != FMOD_OK)
+	{
+		LOG_ERROR(FMOD_ErrorString(m_result));
+		return false;
+	}
+
 	return true;
 }
 
@@ -156,12 +164,12 @@ bool AudioClip::Stop()
 
 bool AudioClip::SetLoop(bool loop)
 {
-	if (!m_channel)
+	if (!m_sound)
 		return false;
 
 	// Get current mode
 	FMOD_MODE mode;
-	m_result = m_channel->getMode(&mode);
+	m_result = m_sound->getMode(&mode);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -170,12 +178,15 @@ bool AudioClip::SetLoop(bool loop)
 
 	// Adjust current mode based on loop variable
 	if (loop)
+	{
 		mode |= FMOD_LOOP_NORMAL;
+		m_sound->setLoopCount(-1);
+	}
 	else
 		mode &= ~FMOD_LOOP_OFF;
 
 	// Se the new mode to the channel
-	m_result = m_channel->setMode(mode);
+	m_result = m_sound->setMode(mode);
 	if (m_result != FMOD_OK)
 	{
 		LOG_ERROR(FMOD_ErrorString(m_result));
@@ -260,25 +271,11 @@ bool AudioClip::SetPan(float pan)
 	return true;
 }
 
-bool AudioClip::Update()
+void AudioClip::Update()
 {
-	if (!m_transform || !m_channel)
-		return false;
-
 	Vector3 pos = m_transform->GetPosition();
-
-	FMOD_VECTOR fModPos = { pos.x, pos.y, pos.z };
-	FMOD_VECTOR fModVel = { 0, 0, 0 };
-
-	// Set 3D attributes
-	m_result = m_channel->set3DAttributes(&fModPos, &fModVel);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	return true;
+	m_pos = { pos.x, pos.y, pos.z };
+	m_vel = { 0, 0, 0 };
 }
 
 void AudioClip::SetTransform(Transform* transform)
