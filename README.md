@@ -39,6 +39,7 @@ This will allow the evolution of the engine to happen elegantly while remaining 
 # Planned Features
 - DirectX 12 Renderer
 - Draw call batching (static & dynamic).
+- Dynamic resolution scaling.
 - Export on Windows.
 - Font loader & renderer.
 - SSR, Volumetric Lighting.

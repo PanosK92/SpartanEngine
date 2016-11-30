@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Quaternion.h"
 #include "../Math/MathHelper.h"
 #include "../Core/Timer.h"
+#include "../Components/MeshRenderer.h"
 //==================================
 
 //= NAMESPACES ================
@@ -53,6 +54,8 @@ void ScriptInterface::Register(asIScriptEngine* scriptEngine, Context* context)
 	RegisterVector3();
 	RegisterQuaternion();
 	RegisterTransform();
+	RegisterMaterial();
+	RegisterMeshRenderer();
 	RegisterCamera();
 	RegisterRigidBody();
 	RegisterGameObject();
@@ -117,6 +120,8 @@ void ScriptInterface::RegisterTypes()
 	m_scriptEngine->RegisterObjectType("Time", 0, asOBJ_REF | asOBJ_NOCOUNT);
 	m_scriptEngine->RegisterObjectType("GameObject", 0, asOBJ_REF | asOBJ_NOCOUNT);
 	m_scriptEngine->RegisterObjectType("Transform", 0, asOBJ_REF | asOBJ_NOCOUNT);
+	m_scriptEngine->RegisterObjectType("MeshRenderer", 0, asOBJ_REF | asOBJ_NOCOUNT);
+	m_scriptEngine->RegisterObjectType("Material", 0, asOBJ_REF | asOBJ_NOCOUNT);
 	m_scriptEngine->RegisterObjectType("Camera", 0, asOBJ_REF | asOBJ_NOCOUNT);
 	m_scriptEngine->RegisterObjectType("RigidBody", 0, asOBJ_REF | asOBJ_NOCOUNT);
 	m_scriptEngine->RegisterObjectType("MathHelper", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -170,6 +175,7 @@ void ScriptInterface::RegisterGameObject()
 	m_scriptEngine->RegisterObjectMethod("GameObject", "Camera &GetCamera()", asMETHOD(GameObject, GetComponent<Camera>), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("GameObject", "bool HasRigidBody()", asMETHOD(GameObject, HasComponent<RigidBody>), asCALL_THISCALL);
 	m_scriptEngine->RegisterObjectMethod("GameObject", "RigidBody &GetRigidBody()", asMETHOD(GameObject, GetComponent<RigidBody>), asCALL_THISCALL);
+	m_scriptEngine->RegisterObjectMethod("GameObject", "MeshRenderer &GetMeshRenderer()", asMETHOD(GameObject, GetComponent<MeshRenderer>), asCALL_THISCALL);
 }
 
 /*------------------------------------------------------------------------------
@@ -202,12 +208,27 @@ void ScriptInterface::RegisterTransform()
 	m_scriptEngine->RegisterObjectMethod("Transform", "void Rotate(const Quaternion& in, Space)", asMETHOD(Transform, Rotate), asCALL_THISCALL);
 }
 
-/*------------------------------------------------------------------------------
-								[CAMERA]
-------------------------------------------------------------------------------*/
+//= MATERIAL ====================================================================
+void ScriptInterface::RegisterMaterial()
+{
+	m_scriptEngine->RegisterObjectMethod("Material", "void SetOffsetUV(Vector2)", asMETHOD(Material, SetOffsetUV), asCALL_THISCALL);
+}
+//===============================================================================
+
+
+//= MESH RENDERER ===============================================================
+void ScriptInterface::RegisterMeshRenderer()
+{
+	m_scriptEngine->RegisterObjectMethod("MeshRenderer", "Material &GetMaterial()", asMETHOD(MeshRenderer, GetMaterial), asCALL_THISCALL);
+}
+//===============================================================================
+
+//= CAMERA ======================================================================
 void ScriptInterface::RegisterCamera()
 {
+
 }
+//===============================================================================
 
 /*------------------------------------------------------------------------------
 								[RIGIDBODY]
