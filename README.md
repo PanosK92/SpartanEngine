@@ -22,8 +22,8 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 - Scripting.
 - Windows support.
 
-# Features under development - v0.3 (Da Vinci)
-This version will focus on introducing higher graphics quality and on fixing most known bugs.
+# Features under development - v0.3 (Codename: Da Vinci)
+This version will focus on introducing a new standard of graphics quality and on fixing most known bugs.
 - [Active] Bug fixes, lot's of them.
 - [Active] DirectX 12 Renderer
 - [Active] Improved shadow quality.
