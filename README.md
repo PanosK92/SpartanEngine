@@ -2,7 +2,7 @@
 Directus3D is a game engine that aims to be powerful yet simple. This is achieved by prioriziting a coherent and modern design and a minimalistic approach when it comes to adding new features. 
 The UI design is greatly inspired by Unity, it should make the engine feel familiar and pleasurable to use.
 
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/screenshot_v0.2.jpg)
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Directus3D/Assets/screenshot-v0.2.jpg)
 
 # Features
 - 20+ audio file formats support.
@@ -22,22 +22,14 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 - Scripting.
 - Windows support.
 
-# Features under development (v0.2)
-While version 0.2 introduces new features, it's main focus is to perform a major overhaul when it comes to performance, memory management and overall code architecture.
-This will allow the evolution of the engine to happen elegantly while remaining continuous.
-- [Done] Audio source component.
-- [Done] Audio listener component.
-- [Done] Custom format resources and improvents to existing ones (prefabs, materials, scenes and so on).
-- [Done] Improved engine architecture.
-- [Done] Improved rendering speed.
-- [Done] Lower cpu usage.
-- [Done] Lower memory usage and more efficient memory management.
+# Features under development - v0.3 (Da Vinci)
+This version will focus on introducing higher graphics quality and on fixing most known bugs.
 - [Active] Bug fixes, lot's of them.
+- [Active] DirectX 12 Renderer
 - [Active] Improved shadow quality.
 - [Active] SSAO.
 
 # Planned Features
-- DirectX 12 Renderer
 - Draw call batching (static & dynamic).
 - Dynamic resolution scaling.
 - Export on Windows.
@@ -48,7 +40,7 @@ This will allow the evolution of the engine to happen elegantly while remaining 
 
 ### Download
 Note: The download link will be updated whenever any features that are under development get completed.
-- [Directus v0.1.1 (Windows x64)] (https://onedrive.live.com/download?resid=96760D43099D7718%21125980&authkey=AC4fwz-Zxcv-dJo)
+- [Directus v0.2 (Windows x64)] (https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc)
 
 ### Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109), 
