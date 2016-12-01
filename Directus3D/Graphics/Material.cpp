@@ -319,12 +319,12 @@ weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(bool albedo, boo
 	return m_context->GetSubsystem<ResourceCache>()->AddResource(shader);
 }
 
-ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureType type)
+void** Material::GetShaderResourceViewByTextureType(TextureType type)
 {
 	auto texture = GetTextureByType(type);
 
 	if (!texture.expired())
-		return texture.lock()->GetID3D11ShaderResourceView();
+		return texture.lock()->GetShaderResourceView();
 
 	return nullptr;
 }

@@ -32,6 +32,7 @@ using namespace std;
 
 //= Initialize with default values ===================================================
 bool Settings::m_isFullScreen = false;
+int Settings::m_graphicsAPI = (int)D3D11;
 int Settings::m_vsync = (int)Off;
 bool Settings::m_isMouseVisible = true;
 int Settings::m_resolutionWidth = 1920;
@@ -75,6 +76,7 @@ void Settings::Initialize()
 
 		// Read the settings
 		ReadSetting(m_fin, "FullScreen", m_isFullScreen);
+		ReadSetting(m_fin, "GraphicsAPI", m_graphicsAPI);
 		ReadSetting(m_fin, "VSync", m_vsync);
 		ReadSetting(m_fin, "IsMouseVisible", m_isMouseVisible);
 		ReadSetting(m_fin, "ResolutionWidth", m_resolutionWidth);
@@ -94,6 +96,7 @@ void Settings::Initialize()
 
 		// Write the settings
 		WriteSetting(m_fout, "FullScreen", m_isFullScreen);
+		WriteSetting(m_fout, "GraphicsAPI", m_graphicsAPI);
 		WriteSetting(m_fout, "VSync", m_vsync);
 		WriteSetting(m_fout, "IsMouseVisible", m_isMouseVisible);
 		WriteSetting(m_fout, "ResolutionWidth", m_resolutionWidth);

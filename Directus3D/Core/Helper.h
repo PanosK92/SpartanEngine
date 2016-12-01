@@ -33,7 +33,6 @@ void SafeRelease(T& ptr)
 		ptr = nullptr;
 	}
 }
-//===
 
 template <typename T>
 void SafeDelete(T& ptr)

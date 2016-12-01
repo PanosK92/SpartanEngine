@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../FileSystem/ImageImporter.h"
 #include "../Core/Helper.h"
+#include "D3D11/D3D11Buffer.h"
 //======================================
 
 //= NAMESPACES =====
@@ -49,7 +50,8 @@ Texture::Texture(Context* context)
 
 Texture::~Texture()
 {
-	SafeRelease(m_shaderResourceView);
+	auto shaderResource = (ID3D11ShaderResourceView*)m_shaderResourceView;
+	SafeRelease(shaderResource);
 }
 
 //= IO ========================================================
@@ -95,37 +97,7 @@ bool Texture::LoadMetadata()
 	return true;
 }
 
-// Loads a texture (not it's metadata) from an image file
-bool Texture::LoadFromFile(const string& filePath)
-{
-	// Load it
-	if (!ImageImporter::GetInstance().Load(filePath))
-	{
-		LOG_ERROR("Failed to load texture \"" + filePath + "\".");
-		ImageImporter::GetInstance().Clear();
-		return false;
-	}
-
-	// Extract any metadata we can from the ImageImporter
-	m_filePath = ImageImporter::GetInstance().GetPath();
-	m_name = FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture());
-	m_width = ImageImporter::GetInstance().GetWidth();
-	m_height = ImageImporter::GetInstance().GetHeight();
-	m_grayscale = ImageImporter::GetInstance().IsGrayscale();
-	m_transparency = ImageImporter::GetInstance().IsTransparent();
-	m_shaderResourceView = CreateID3D11ShaderResourceView();
-
-	// Free any memory allocated by the ImageImporter
-	ImageImporter::GetInstance().Clear();
-
-	if (!LoadMetadata()) // Load metadata file
-		if (!SaveMetadata()) // If a metadata file doesn't exist, create one
-			return false; // if that failed too, well at least get the file path right mate
-
-	return true;
-}
-
-ID3D11ShaderResourceView* Texture::CreateID3D11ShaderResourceView()
+void** Texture::CreateShaderResourceView()
 {
 	if (!m_context)
 		return nullptr;
@@ -182,5 +154,35 @@ ID3D11ShaderResourceView* Texture::CreateID3D11ShaderResourceView()
 	// Generate mip chain
 	m_context->GetSubsystem<Graphics>()->GetDeviceContext()->GenerateMips(shaderResourceView);
 
-	return shaderResourceView;
+	return (void**)shaderResourceView;
+}
+
+// Loads a texture (not it's metadata) from an image file
+bool Texture::LoadFromFile(const string& filePath)
+{
+	// Load it
+	if (!ImageImporter::GetInstance().Load(filePath))
+	{
+		LOG_ERROR("Failed to load texture \"" + filePath + "\".");
+		ImageImporter::GetInstance().Clear();
+		return false;
+	}
+
+	// Extract any metadata we can from the ImageImporter
+	m_filePath = ImageImporter::GetInstance().GetPath();
+	m_name = FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture());
+	m_width = ImageImporter::GetInstance().GetWidth();
+	m_height = ImageImporter::GetInstance().GetHeight();
+	m_grayscale = ImageImporter::GetInstance().IsGrayscale();
+	m_transparency = ImageImporter::GetInstance().IsTransparent();
+	m_shaderResourceView = CreateShaderResourceView();
+
+	// Free any memory allocated by the ImageImporter
+	ImageImporter::GetInstance().Clear();
+
+	if (!LoadMetadata()) // Load metadata file
+		if (!SaveMetadata()) // If a metadata file doesn't exist, create one
+			return false; // if that failed too, well at least get the file path right mate
+
+	return true;
 }

@@ -21,11 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
-#include "../Graphics/D3D11/D3D11Shader.h"
+//= INCLUDES ========================
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/IResource.h"
-//========================================
+//===================================
 
 enum TextureType
 {
@@ -46,12 +45,12 @@ public:
 	Texture(Context* context);
 	~Texture();
 
-	//= IO ================================================
+	//= IO ====================================================
 	bool LoadFromFile(const std::string& filePath);
 	bool SaveMetadata();
 	bool LoadMetadata();
-	ID3D11ShaderResourceView* CreateID3D11ShaderResourceView();
-	//=====================================================
+	void** CreateShaderResourceView();
+	//=========================================================
 
 	//= PROPERTIES ===============================================================================
 	std::string GetName() { return m_name; }
@@ -87,8 +86,8 @@ public:
 	bool GetTransparency() { return m_transparency; }
 	void SetTransparency(bool transparency) { m_transparency = transparency; }
 
-	ID3D11ShaderResourceView* GetID3D11ShaderResourceView() { return m_shaderResourceView; }
-	void SetID3D11ShaderResourceView(ID3D11ShaderResourceView* srv) { m_shaderResourceView = srv; }
+	void** GetShaderResourceView() { return m_shaderResourceView; }
+	void SetShaderResourceView(void** srv) { m_shaderResourceView = srv; }
 	//=============================================================================================
 private:
 	std::string m_name;
@@ -98,5 +97,5 @@ private:
 	bool m_grayscale;
 	bool m_transparency;
 	bool m_alphaIsTransparency;
-	ID3D11ShaderResourceView* m_shaderResourceView;
+	void** m_shaderResourceView;
 };
