@@ -87,24 +87,18 @@ public:
 	bool Load(const std::string& path, int width, int height, bool scale);
 	void Clear();
 
-	/*------------------------------------------------------------------------------
-									[PROPERTIES]
-	------------------------------------------------------------------------------*/
-	unsigned char* GetRGBA();
-	unsigned char* GetRGBACopy();
-	unsigned char* GetRGBCopy();
-	unsigned char* GetAlphaCopy();
-	unsigned int GetBPP();
-	unsigned int GetWidth();
-	unsigned int GetHeight();
-	bool IsGrayscale();
-	bool IsTransparent();
-	std::string GetPath();
+	//= PROPERTIES =======================================
+	unsigned char* GetRGBA() { return m_dataRGBA.data(); }
+	unsigned int GetBPP() { return m_bpp; }
+	unsigned int GetWidth() { return m_width; }
+	unsigned int GetHeight() { return m_height; }
+	bool IsGrayscale() { return m_grayscale; }
+	bool IsTransparent() { return m_transparent; }
+	const std::string& GetPath() { return m_path; }
 	int GetChannels() { return m_channels; }
+	//====================================================
 
 private:
-	bool CheckIfGrayscale();
-
 	FIBITMAP* m_bitmap;
 	FIBITMAP* m_bitmap32;
 	FIBITMAP* m_bitmapScaled;
@@ -116,4 +110,6 @@ private:
 	std::string m_path;
 	bool m_grayscale;
 	bool m_transparent;
+
+	bool GrayscaleCheck();
 };

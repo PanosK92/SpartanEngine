@@ -27,9 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 //=============================
 
-D3D11Sampler::D3D11Sampler()
+D3D11Sampler::D3D11Sampler(Graphics* graphics)
 {
-	m_graphics = nullptr;
+	m_graphics = graphics;
 	m_sampler = nullptr;
 }
 
@@ -38,10 +38,8 @@ D3D11Sampler::~D3D11Sampler()
 	SafeRelease(m_sampler);
 }
 
-bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction, Graphics* graphicsDevice)
+bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction)
 {
-	m_graphics = graphicsDevice;
-
 	D3D11_SAMPLER_DESC samplerDesc;
 	samplerDesc.Filter = filter;
 	samplerDesc.AddressU = textureAddressMode;
@@ -54,13 +52,16 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 	samplerDesc.BorderColor[1] = 0;
 	samplerDesc.BorderColor[2] = 0;
 	samplerDesc.BorderColor[3] = 0;
-	samplerDesc.MinLOD = 0.0f;
-	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	samplerDesc.MinLOD = FLT_MIN;
+	samplerDesc.MaxLOD = FLT_MAX;
 
 	// create sampler state.
 	HRESULT result = m_graphics->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
-	if (FAILED(result))
+	if(FAILED(result))
+	{
+		LOG_INFO("Failed to create sampler.");
 		return false;
+	}
 
 	return true;
 }

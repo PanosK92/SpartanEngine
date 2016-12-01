@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
-#include "D3D11/D3D11Graphics.h"
+//= INCLUDES =================
+#include <Windows.h>
 #include "../Math/Vector4.h"
 #include <memory>
 #include "../Core/Subsystem.h"
-//==============================
+#include "D3D11/D3D11Graphics.h"
+//============================
 
 enum InputLayout
 {

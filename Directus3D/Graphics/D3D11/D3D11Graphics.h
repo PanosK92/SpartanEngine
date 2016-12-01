@@ -28,8 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include <d3d11.h>
-#include "../../Math/Vector4.h"
 #include <string>
+#include "../../Math/Vector4.h"
 #include "../../Core/Settings.h"
 //==============================
 
