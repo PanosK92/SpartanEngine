@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include <d3d12.h>
-#include <DXGI1_4.h>
+#include <dxgi1_4.h>
 #include "../../Math/Vector4.h"
 #include <string>
 #include "../../Core/Settings.h"
@@ -67,6 +67,12 @@ private:
 	ID3D12Resource* m_backBufferRenderTarget[2];
 	unsigned int m_bufferIndex;
 	ID3D12CommandAllocator* m_commandAllocator;
+	ID3D12GraphicsCommandList* m_commandList;
+	ID3D12PipelineState* m_pipelineState;
+	ID3D12Fence* m_fence;
+	HANDLE m_fenceEvent;
+	unsigned long long m_fenceValue;
+
 	D3D_DRIVER_TYPE m_driverType;
 	D3D_FEATURE_LEVEL m_featureLevel;
 	D3D12_VIEWPORT m_viewport;

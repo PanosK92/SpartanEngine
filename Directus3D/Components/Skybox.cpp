@@ -71,7 +71,7 @@ void Skybox::Reset()
 	m_cubeMapTexture->SetWidth(1024);
 	m_cubeMapTexture->SetHeight(1024);
 	m_cubeMapTexture->SetGrayscale(false);
-	m_cubeMapTexture->SetID3D11ShaderResourceView(cubeMapSRV);
+	m_cubeMapTexture->SetShaderResourceView((void**)cubeMapSRV);
 
 	// Add the actual "box"
 	g_gameObject->AddComponent<MeshFilter>()->SetMesh(MeshFilter::Cube);
@@ -123,7 +123,7 @@ void Skybox::Deserialize()
 /*------------------------------------------------------------------------------
 								[MISC]
 ------------------------------------------------------------------------------*/
-ID3D11ShaderResourceView* Skybox::GetEnvironmentTexture() const
+void** Skybox::GetEnvironmentTexture()
 {
-	return m_cubeMapTexture ? m_cubeMapTexture->GetID3D11ShaderResourceView() : nullptr;
+	return m_cubeMapTexture ? m_cubeMapTexture->GetShaderResourceView() : nullptr;
 }

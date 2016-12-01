@@ -39,7 +39,25 @@ D3D12Graphics::D3D12Graphics()
 
 D3D12Graphics::~D3D12Graphics()
 {
+	// Windowed mode before shutdown or crash
+	if (m_swapChain)
+		m_swapChain->SetFullscreenState(false, nullptr);
 
+	// Close the object handle to the fence event.
+	auto error = CloseHandle(m_fenceEvent);
+	if (error == 0)
+		LOG_INFO("Failed to close handle.");
+
+	SafeRelease(m_fence);
+	SafeRelease(m_pipelineState);
+	SafeRelease(m_commandList);
+	SafeRelease(m_commandAllocator);
+	SafeRelease(m_backBufferRenderTarget[0]);
+	SafeRelease(m_backBufferRenderTarget[1]);
+	SafeRelease(m_renderTargetViewHeap);
+	SafeRelease(m_swapChain);
+	SafeRelease(m_commandQueue);
+	SafeRelease(m_device);
 }
 
 bool D3D12Graphics::Initialize(HWND handle)
@@ -264,4 +282,41 @@ bool D3D12Graphics::Initialize(HWND handle)
 		return false;
 	}
 	//=====================================================================================================
+
+	//= COMMAND LIST ======================================================================================
+	result = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator, nullptr, __uuidof(ID3D12CommandList), (void**)&m_commandList);
+	if(FAILED(result))
+	{
+		LOG_ERROR("Failed to create command list.");
+		return false;
+	}
+
+	// Close the command list as it is created in a recording state.
+	result = m_commandList->Close();
+	if (FAILED(result))
+	{
+		return false;
+	}
+	//=====================================================================================================
+
+	//= FENCE =============================================================================================
+	// MSDN: Fence, an object used for synchronization of the CPU and one or more GPUs. 
+	result = m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&m_fence);
+	if (FAILED(result))
+	{
+		LOG_ERROR("Failed to create fence.");
+		return false;
+	}
+
+	// Event for the fence object
+	m_fenceEvent = CreateEventEx(nullptr, nullptr, FALSE, EVENT_ALL_ACCESS);
+	if (m_fenceEvent == nullptr)
+	{
+		return false;
+	}
+
+	m_fenceValue = 1;
+	//=====================================================================================================
+
+	return true;
 }

@@ -339,14 +339,14 @@ void Renderer::GBufferPass()
 			renderShader->UpdatePerMaterialBuffer(renderMaterial);
 
 			//= Gather any used textures and bind them to the GPU ===============================
-			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Albedo));
-			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Roughness));
-			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Metallic));
-			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Normal));
-			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Height));
-			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Occlusion));
-			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Emission));
-			m_textures.push_back(renderMaterial->GetShaderResourceViewByTextureType(Mask));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Albedo));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Roughness));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Metallic));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Normal));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Height));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Occlusion));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Emission));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Mask));
 
 			if (m_directionalLight)
 			{
@@ -466,9 +466,9 @@ void Renderer::DeferredPass()
 	m_texArray.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
 	m_texArray.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
 	m_texArray.push_back(m_GBuffer->GetShaderResourceView(3)); // material
-	m_texArray.push_back(m_texNoiseMap->GetID3D11ShaderResourceView());
+	m_texArray.push_back((ID3D11ShaderResourceView*)m_texNoiseMap->GetShaderResourceView());
 	m_texArray.push_back(m_renderTexPong->GetShaderResourceView());
-	m_texArray.push_back(m_skybox ? m_skybox->GetEnvironmentTexture() : nullptr);
+	m_texArray.push_back(m_skybox ? (ID3D11ShaderResourceView*)m_skybox->GetEnvironmentTexture() : nullptr);
 
 	m_shaderDeferred->UpdateTextures(m_texArray);
 	//=============================================================================
