@@ -136,8 +136,8 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 
 bool D3D11Shader::AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction)
 {
-	auto sampler = make_shared<D3D11Sampler>();
-	if (!sampler->Create(filter, textureAddressMode, comparisonFunction, m_graphics))
+	auto sampler = make_shared<D3D11Sampler>(m_graphics);
+	if (!sampler->Create(filter, textureAddressMode, comparisonFunction))
 	{
 		LOG_ERROR("Failed to create shader sampler");
 		return false;

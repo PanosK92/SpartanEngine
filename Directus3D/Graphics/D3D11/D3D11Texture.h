@@ -21,19 +21,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES =============
+#include "D3D11Graphics.h"
 #include "../Graphics.h"
-//======================
+//========================
 
-class D3D11Sampler
+class D3D11Texture
 {
 public:
-	D3D11Sampler(Graphics* graphics);
-	~D3D11Sampler();
+	D3D11Texture(Graphics* context);
+	~D3D11Texture();
 
-	bool Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
-	void Set(unsigned int startSlot);
+	bool Create(int width, int height, int channels, unsigned char* data);
+	ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
+	void SetShaderResourceView(ID3D11ShaderResourceView* srv) { m_shaderResourceView = srv; }
+
 private:
+	DXGI_FORMAT m_format;
+	UINT m_mipLevels;
+	ID3D11ShaderResourceView* m_shaderResourceView;
 	Graphics* m_graphics;
-	ID3D11SamplerState* m_sampler;
+
+	void GenerateMipChain();
 };
+

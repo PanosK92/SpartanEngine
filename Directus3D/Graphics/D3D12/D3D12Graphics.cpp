@@ -315,7 +315,7 @@ bool D3D12Graphics::Initialize(HWND handle)
 		return false;
 	}
 
-	m_fenceValue = 1;
+	m_fenceValue = m_swapChain->GetCurrentBackBufferIndex();
 	//=====================================================================================================
 
 	return true;

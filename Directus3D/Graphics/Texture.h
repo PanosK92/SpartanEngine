@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/IResource.h"
+#include "D3D11/D3D11Texture.h"
 //===================================
 
 enum TextureType
@@ -49,7 +50,6 @@ public:
 	bool LoadFromFile(const std::string& filePath);
 	bool SaveMetadata();
 	bool LoadMetadata();
-	void** CreateShaderResourceView();
 	//=========================================================
 
 	//= PROPERTIES ===============================================================================
@@ -86,8 +86,8 @@ public:
 	bool GetTransparency() { return m_transparency; }
 	void SetTransparency(bool transparency) { m_transparency = transparency; }
 
-	void** GetShaderResourceView() { return m_shaderResourceView; }
-	void SetShaderResourceView(void** srv) { m_shaderResourceView = srv; }
+	void** GetShaderResourceView() { return (void**)m_texture->GetShaderResourceView(); }
+	void SetShaderResourceView(void** srv);
 	//=============================================================================================
 private:
 	std::string m_name;
@@ -97,5 +97,8 @@ private:
 	bool m_grayscale;
 	bool m_transparency;
 	bool m_alphaIsTransparency;
-	void** m_shaderResourceView;
+	bool m_generateMipMaps;
+	std::unique_ptr<D3D11Texture> m_texture;
+
+	bool CreateShaderResourceView();
 };

@@ -152,7 +152,9 @@
     <ClCompile Include="Core\GameObject.cpp" />
     <ClCompile Include="Core\GUIDGenerator.cpp" />
     <ClCompile Include="Core\SubSystem.cpp" />
+    <ClCompile Include="Graphics\D3D11\D3D11Texture.cpp" />
     <ClCompile Include="Graphics\D3D12\D3D12Graphics.cpp" />
+    <ClCompile Include="Graphics\D3D12\D3D12Sampler.cpp" />
     <ClCompile Include="Graphics\Material.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Core\Scene.cpp" />
@@ -223,7 +225,9 @@
     <ClInclude Include="Core\Context.h" />
     <ClInclude Include="Core\Engine.h" />
     <ClInclude Include="Core\SubSystem.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11Texture.h" />
     <ClInclude Include="Graphics\D3D12\D3D12Graphics.h" />
+    <ClInclude Include="Graphics\D3D12\D3D12Sampler.h" />
     <ClInclude Include="Graphics\Shaders\ShadowMappingShader.h" />
     <ClInclude Include="Graphics\ShadowMap.h" />
     <ClInclude Include="EventSystem\EventHandler.h" />

@@ -159,7 +159,7 @@ bool ImageImporter::Load(const string& path, int width, int height, bool scale)
 	}
 
 	// Store some useful data that require m_dataRGBA to be filled
-	m_grayscale = CheckIfGrayscale();
+	m_grayscale = GrayscaleCheck();
 
 	//= Free memory =====================================
 	// unload the 32-bit bitmap
@@ -187,104 +187,12 @@ void ImageImporter::Clear()
 	m_bpp = 0;
 	m_width = 0;
 	m_height = 0;
-	m_path = "";
+	m_path.clear();
 	m_grayscale = false;
 	m_transparent = false;
 }
 
-//= PROPERTIES =====================================================
-unsigned char* ImageImporter::GetRGBA()
-{
-	return m_dataRGBA.data();
-}
-
-unsigned char* ImageImporter::GetRGBACopy()
-{
-	unsigned char* dataRGBA = new unsigned char[m_width * m_height * 4];
-
-	for (int i = 0; i < m_height; i++)
-		for (int j = 0; j < m_width; j++)
-		{
-			int red = m_dataRGBA[(i * m_width + j) * 4 + 0];
-			int green = m_dataRGBA[(i * m_width + j) * 4 + 1];
-			int blue = m_dataRGBA[(i * m_width + j) * 4 + 2];
-			int alpha = m_dataRGBA[(i * m_width + j) * 4 + 3];
-
-			dataRGBA[(i * m_width + j) * 3 + 0] = red;
-			dataRGBA[(i * m_width + j) * 3 + 1] = green;
-			dataRGBA[(i * m_width + j) * 3 + 2] = blue;
-			dataRGBA[(i * m_width + j) * 3 + 3] = alpha;
-		}
-
-	
-
-	return dataRGBA;
-}
-
-unsigned char* ImageImporter::GetRGBCopy()
-{
-	unsigned char* m_dataRGB = new unsigned char[m_width * m_height * 3];
-
-	for (int i = 0; i < m_height; i++)
-		for (int j = 0; j < m_width; j++)
-		{
-			int red = m_dataRGBA[(i * m_width + j) * 4 + 0];
-			int green = m_dataRGBA[(i * m_width + j) * 4 + 1];
-			int blue = m_dataRGBA[(i * m_width + j) * 4 + 2];
-
-			m_dataRGB[(i * m_width + j) * 3 + 0] = red;
-			m_dataRGB[(i * m_width + j) * 3 + 1] = green;
-			m_dataRGB[(i * m_width + j) * 3 + 2] = blue;
-		}
-
-	return m_dataRGB;
-}
-
-unsigned char* ImageImporter::GetAlphaCopy()
-{
-	unsigned char* m_dataAlpha = new unsigned char[m_width * m_height];
-
-	for (int i = 0; i < m_height; i++)
-		for (int j = 0; j < m_width; j++)
-		{
-			int alpha = m_dataRGBA[(i * m_width + j) * 4 + 3];
-			m_dataAlpha[(i * m_width + j)] = alpha;
-		}
-
-	return m_dataAlpha;
-}
-
-unsigned ImageImporter::GetBPP()
-{
-	return m_bpp;
-}
-
-unsigned ImageImporter::GetWidth()
-{
-	return m_width;
-}
-
-unsigned ImageImporter::GetHeight()
-{
-	return m_height;
-}
-
-bool ImageImporter::IsGrayscale()
-{
-	return m_grayscale;
-}
-
-bool ImageImporter::IsTransparent()
-{
-	return m_transparent;
-}
-
-string ImageImporter::GetPath()
-{
-	return m_path;
-}
-
-bool ImageImporter::CheckIfGrayscale()
+bool ImageImporter::GrayscaleCheck()
 {
 	int grayPixels = 0;
 	int scannedPixels = 0;

@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../FileSystem/ImageImporter.h"
 #include "../Core/Helper.h"
-#include "D3D11/D3D11Buffer.h"
 //======================================
 
 //= NAMESPACES =====
@@ -41,17 +40,16 @@ Texture::Texture(Context* context)
 	m_filePath = DATA_NOT_ASSIGNED;
 	m_width = 0;
 	m_height = 0;
-	m_shaderResourceView = nullptr;
 	m_type = Albedo;
 	m_grayscale = false;
 	m_transparency = false;
 	m_alphaIsTransparency = false;
+	m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 }
 
 Texture::~Texture()
 {
-	auto shaderResource = (ID3D11ShaderResourceView*)m_shaderResourceView;
-	SafeRelease(shaderResource);
+
 }
 
 //= IO ========================================================
@@ -69,6 +67,7 @@ bool Texture::SaveMetadata()
 	Serializer::WriteInt(int(m_type));
 	Serializer::WriteBool(m_grayscale);
 	Serializer::WriteBool(m_transparency);
+	Serializer::WriteBool(m_generateMipMaps);
 
 	Serializer::StopWriting();
 
@@ -90,71 +89,12 @@ bool Texture::LoadMetadata()
 		m_type = TextureType(Serializer::ReadInt());
 		m_grayscale = Serializer::ReadBool();
 		m_transparency = Serializer::ReadBool();
+		m_generateMipMaps = Serializer::ReadBool();
 	}
 
 	Serializer::StopReading();
 
 	return true;
-}
-
-void** Texture::CreateShaderResourceView()
-{
-	if (!m_context)
-		return nullptr;
-
-	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM; // texture format
-	unsigned int mipLevels = 7; // 0 for a full mip chain. The mip chain will extend to 1x1 at the lowest level, even if the dimensions aren't square.
-
-	// texture description
-	D3D11_TEXTURE2D_DESC textureDesc{};
-	textureDesc.Width = m_width;
-	textureDesc.Height = m_height;
-	textureDesc.MipLevels = mipLevels;
-	textureDesc.ArraySize = 1;
-	textureDesc.SampleDesc.Count = 1;
-	textureDesc.SampleDesc.Quality = 0;
-	textureDesc.Usage = D3D11_USAGE_DEFAULT;
-	textureDesc.Format = format;
-	textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-	textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
-
-	// Create 2D texture from texture description
-	ID3D11Texture2D* texture = nullptr;
-	HRESULT hResult = m_context->GetSubsystem<Graphics>()->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
-	if (FAILED(hResult))
-	{
-		LOG_ERROR("Failed to create ID3D11Texture2D from imported image data while trying to load " + ImageImporter::GetInstance().GetPath() + ".");
-		return nullptr;
-	}
-
-	// Resource view description
-	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	srvDesc.Format = format;
-	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Texture2D.MipLevels = textureDesc.MipLevels;
-
-	// Create shader resource view from resource view description
-	ID3D11ShaderResourceView* shaderResourceView = nullptr;
-	hResult = m_context->GetSubsystem<Graphics>()->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &shaderResourceView);
-	if (FAILED(hResult))
-	{
-		LOG_ERROR("Failed to create the shader resource view.");
-		return nullptr;
-	}
-
-	// Resource data description
-	D3D11_SUBRESOURCE_DATA mapResource{};
-	mapResource.pSysMem = ImageImporter::GetInstance().GetRGBA();
-	mapResource.SysMemPitch = sizeof(unsigned char) * m_width * ImageImporter::GetInstance().GetChannels();
-
-	// Copy data from memory to the subresource created in non-mappable memory
-	m_context->GetSubsystem<Graphics>()->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, mapResource.pSysMem, mapResource.SysMemPitch, 0);
-
-	// Generate mip chain
-	m_context->GetSubsystem<Graphics>()->GetDeviceContext()->GenerateMips(shaderResourceView);
-
-	return (void**)shaderResourceView;
 }
 
 // Loads a texture (not it's metadata) from an image file
@@ -175,7 +115,9 @@ bool Texture::LoadFromFile(const string& filePath)
 	m_height = ImageImporter::GetInstance().GetHeight();
 	m_grayscale = ImageImporter::GetInstance().IsGrayscale();
 	m_transparency = ImageImporter::GetInstance().IsTransparent();
-	m_shaderResourceView = CreateShaderResourceView();
+
+	if (!CreateShaderResourceView())
+		return false;
 
 	// Free any memory allocated by the ImageImporter
 	ImageImporter::GetInstance().Clear();
@@ -183,6 +125,31 @@ bool Texture::LoadFromFile(const string& filePath)
 	if (!LoadMetadata()) // Load metadata file
 		if (!SaveMetadata()) // If a metadata file doesn't exist, create one
 			return false; // if that failed too, well at least get the file path right mate
+
+	return true;
+}
+
+void Texture::SetShaderResourceView(void** srv)
+{
+	m_texture->SetShaderResourceView((ID3D11ShaderResourceView*)srv);
+}
+
+bool Texture::CreateShaderResourceView()
+{
+	if (!m_context)
+		return false;
+
+	if (m_generateMipMaps)
+	{
+		
+	}
+
+	// Create D3D11Texture
+	if (!m_texture->Create(m_width, m_height, ImageImporter::GetInstance().GetChannels(), ImageImporter::GetInstance().GetRGBA()))
+	{
+		LOG_ERROR("Failed to create texture from loaded image \"" + ImageImporter::GetInstance().GetPath() + "\".");
+		return false;
+	}
 
 	return true;
 }
