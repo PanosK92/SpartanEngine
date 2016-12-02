@@ -81,7 +81,7 @@ bool D3D11Texture::Create(int width, int height, int channels, unsigned char* da
 	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, &subresource, &texture);
 	if (FAILED(result))
 	{
-		LOG_ERROR("Failed to create ID3D11Texture2D.");
+		LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 		return false;
 	}
 	//=========================================================================================
@@ -131,7 +131,7 @@ bool D3D11Texture::CreateAndGenerateMipchain(int width, int height, int channels
 	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
 	if (FAILED(result))
 	{
-		LOG_ERROR("Failed to create ID3D11Texture2D.");
+		LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 		return false;
 	}
 	//=========================================================================================
@@ -175,20 +175,29 @@ bool D3D11Texture::CreateFromMipchain(int width, int height, int channels, const
 {
 	m_mipLevels = (UINT)mipchain.size();
 
-	//= SUBRESOURCE DATA ========================================================================
-	// Resource data description
+	//= SUBRESOURCE DATA & TEXTURE DESCRIPTIONS ==============================================
 	vector<D3D11_SUBRESOURCE_DATA> subresourceData;
+	vector<D3D11_TEXTURE2D_DESC> textureDescs;
 	for (const auto& mipLevel : mipchain)
 	{
-		// Craete subresource
-		D3D11_SUBRESOURCE_DATA subresource;
-		ZeroMemory(&subresource, sizeof(subresource));
-		subresource.pSysMem = mipLevel.data();
-		subresource.SysMemPitch = (width * channels) * sizeof(unsigned char);
-		subresource.SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
+		// Create subresource
+		subresourceData.push_back(D3D11_SUBRESOURCE_DATA{});
+		subresourceData.back().pSysMem = mipLevel.data();
+		subresourceData.back().SysMemPitch = (width * channels) * sizeof(unsigned char);
+		subresourceData.back().SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
 
-		// Save subresource
-		subresourceData.push_back(subresource);
+		textureDescs.push_back(D3D11_TEXTURE2D_DESC{});
+		textureDescs.back().Width = (UINT)width;
+		textureDescs.back().Height = (UINT)height;
+		textureDescs.back().MipLevels = m_mipLevels;
+		textureDescs.back().ArraySize = (UINT)1;
+		textureDescs.back().Format = m_format;
+		textureDescs.back().SampleDesc.Count = (UINT)1;
+		textureDescs.back().SampleDesc.Quality = (UINT)0;
+		textureDescs.back().Usage = D3D11_USAGE_IMMUTABLE;
+		textureDescs.back().BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		textureDescs.back().MiscFlags = 0;
+		textureDescs.back().CPUAccessFlags = 0;
 
 		width = max(width / 2, 1);
 		height = max(height / 2, 1);
@@ -196,26 +205,12 @@ bool D3D11Texture::CreateFromMipchain(int width, int height, int channels, const
 	//==========================================================================================
 
 	//= ID3D11Texture2D ========================================================================
-	D3D11_TEXTURE2D_DESC textureDesc;
-	ZeroMemory(&textureDesc, sizeof(textureDesc));
-	textureDesc.Width = (UINT)width;
-	textureDesc.Height = (UINT)height;
-	textureDesc.MipLevels = m_mipLevels;
-	textureDesc.ArraySize = (UINT)1;
-	textureDesc.Format = m_format;
-	textureDesc.SampleDesc.Count = (UINT)1;
-	textureDesc.SampleDesc.Quality = (UINT)0;
-	textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
-	textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	textureDesc.MiscFlags = 0;
-	textureDesc.CPUAccessFlags = 0;
-
 	// Create texture from description
 	ID3D11Texture2D* texture = nullptr;
-	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, &subresourceData[0], &texture);
+	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDescs[0], &subresourceData[0], &texture);
 	if (FAILED(result))
 	{
-		LOG_ERROR("Failed to create ID3D11Texture2D.");
+		LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 		return false;
 	}
 	//=========================================================================================
