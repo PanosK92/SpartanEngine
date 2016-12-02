@@ -25,7 +25,7 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 # Features under development - v0.3 (Codename: Da Vinci)
 This version will focus on delivering a new standard when it comes to graphics quality and overall reliability.
 - [Active] Bug fixes, lot's of them.
-- [Done] Engine mipchain generation support (instead of API/hardware based). (Resulted in ~15-20% memory usage reduction and slightly sharper textures).
+- [Done] Engine mipchain generation (resulted in a ~15-20% memory usage drop and an increase in texture quality).
 - [Active] DirectX 12 Renderer
 - [Active] Dynamic resolution scaling.
 - [Active] Improved shadow quality.
