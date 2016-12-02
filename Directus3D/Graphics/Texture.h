@@ -97,7 +97,7 @@ private:
 	bool m_grayscale;
 	bool m_transparency;
 	bool m_alphaIsTransparency;
-	bool m_generateMipMaps;
+	bool m_generateMipchain;
 	std::unique_ptr<D3D11Texture> m_texture;
 
 	bool CreateShaderResourceView();

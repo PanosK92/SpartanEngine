@@ -25,14 +25,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 //============================
 
+//= NAMESPAECES ====
+using namespace std;
+//==================
+
 D3D11Texture::D3D11Texture(Graphics* graphics)
 {
 	m_shaderResourceView = nullptr;
 	m_graphics = graphics;
 
 	m_format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	// 0 for a full mip chain. The mip chain will extend to 1x1 
-	// at the lowest level, even if the dimensions aren't square.
 	m_mipLevels = 7;
 }
 
@@ -46,7 +48,9 @@ D3D11Texture::~D3D11Texture()
 	}
 }
 
-bool D3D11Texture::Create(int width, int height, int channels, unsigned char* data)
+// Good for when you mipmap support with little trouble. However, it won't 
+// perform as fast as a static texture that has been created with existing mipmaps
+bool D3D11Texture::CreateAndGenerateMipchain(int width, int height, int channels, unsigned char* data)
 {
 	//= ID3D11Texture2D ========================================================================
 	D3D11_TEXTURE2D_DESC textureDesc;
@@ -89,6 +93,7 @@ bool D3D11Texture::Create(int width, int height, int channels, unsigned char* da
 	}
 	//========================================================================================
 
+	//= MIPCHAIN GENERATION ==================================================================
 	// Resource data description
 	D3D11_SUBRESOURCE_DATA mapResource;
 	ZeroMemory(&mapResource, sizeof(mapResource));
@@ -98,15 +103,75 @@ bool D3D11Texture::Create(int width, int height, int channels, unsigned char* da
 	// Copy data from memory to the subresource created in non-mappable memory
 	m_graphics->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, mapResource.pSysMem, mapResource.SysMemPitch, 0);
 
-	GenerateMipChain();
+	// Create mipchain based on ID3D11ShaderResourveView
+	m_graphics->GetDeviceContext()->GenerateMips(m_shaderResourceView);
+	//========================================================================================
 
 	return true;
 }
 
-void D3D11Texture::GenerateMipChain()
+bool D3D11Texture::CreateFromMipchain(int width, int height, int channels, const vector<unsigned char*>& data)
 {
-	if (!m_shaderResourceView)
-		return;
+	m_mipLevels = (int)data.size();
+	
+	//= SUBRESOURCE DATA ========================================================================
+	UINT memPitch = (width * channels) * sizeof(unsigned char);
 
-	m_graphics->GetDeviceContext()->GenerateMips(m_shaderResourceView);
+	// Resource data description
+	vector<D3D11_SUBRESOURCE_DATA> subresourceData;
+	for (int i = 0; i < m_mipLevels; i++)
+	{
+		// Craete subresource
+		D3D11_SUBRESOURCE_DATA mapResource;
+		ZeroMemory(&mapResource, sizeof(mapResource));
+		mapResource.pSysMem = data[i];
+		mapResource.SysMemPitch = memPitch;
+
+		// Save subresource
+		subresourceData.push_back(mapResource);
+	}
+	//==========================================================================================
+
+	//= ID3D11Texture2D ========================================================================
+	D3D11_TEXTURE2D_DESC textureDesc;
+	ZeroMemory(&textureDesc, sizeof(textureDesc));
+	textureDesc.Width = (UINT)width;
+	textureDesc.Height = (UINT)height;
+	textureDesc.MipLevels = m_mipLevels;
+	textureDesc.ArraySize = (UINT)1;
+	textureDesc.Format = m_format;
+	textureDesc.SampleDesc.Count = (UINT)1;
+	textureDesc.SampleDesc.Quality = (UINT)0;
+	textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
+	textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	textureDesc.MiscFlags = 0;
+	textureDesc.CPUAccessFlags = 0;
+
+	// Create texture from description
+	ID3D11Texture2D* texture = nullptr;
+	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, &subresourceData[0], &texture);
+	if (FAILED(result))
+	{
+		LOG_ERROR("Failed to create ID3D11Texture2D.");
+		return false;
+	}
+	//=========================================================================================
+
+	//= SHADER RESOURCE VIEW ==================================================================
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+	srvDesc.Format = m_format;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = m_mipLevels;
+
+	// Create shader resource view from description
+	result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
+	if (FAILED(result))
+	{
+		LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
+		return false;
+	}
+	//========================================================================================
+
+	return true;
 }

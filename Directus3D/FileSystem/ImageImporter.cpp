@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================
+//= INCLUDES ============================
 #include "ImageImporter.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 #include "FreeImagePlus.h"
 #include "../Multithreading/ThreadPool.h"
-//===========================
+//=======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -33,13 +33,10 @@ using namespace std;
 
 ImageImporter::ImageImporter()
 {
-	m_bitmap = nullptr;
-	m_bitmap32 = nullptr;
-	m_bitmapScaled = nullptr;
 	m_bpp = 0;
 	m_width = 0;
 	m_height = 0;
-	m_path = "";
+	m_path.clear();
 	m_channels = 4;
 	m_grayscale = false;
 	m_transparent = false;
@@ -58,132 +55,12 @@ void ImageImporter::LoadAsync(const string& filePath)
 	//m_threadPool->AddTask(std::bind(&ImageImporter::Load, this, filePath));
 }
 
-bool ImageImporter::Load(const string& filePath)
-{
-	// keep the path
-	m_path = filePath;
-
-	// clear memory in case there are leftovers from last call
-	Clear();
-
-	// try to load the image
-	return Load(filePath, 0, 0, false);
-}
-
-bool ImageImporter::Load(const string& path, int width, int height)
-{
-	// keep the path
-	m_path = path;
-
-	// clear memory in case there are leftovers from last call
-	Clear();
-
-	// try to load the image
-	return Load(path, width, height, true);
-}
-
-bool ImageImporter::Load(const string& path, int width, int height, bool scale)
-{
-	// Clear any data left from a previous image loading (if necessary)
-	Clear();
-
-	if (!FileSystem::FileExists(path))
-	{
-		LOG_WARNING("Failed to load image \"" + path + "\", it doesn't exist.");
-		return false;
-	}
-
-	// Get the format of the image
-	FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
-
-	// If the image format couldn't be determined
-	if (format == FIF_UNKNOWN)
-	{
-		// Try getting the format from the file extension
-		LOG_WARNING("Failed to determine image format for \"" + path + "\", attempting to detect it from the file's extension...");
-		format = FreeImage_GetFIFFromFilename(path.c_str());
-
-		if (!FreeImage_FIFSupportsReading(format))
-			LOG_WARNING("Failed to detect the image format.");
-		else
-			LOG_WARNING("The image format has been detected succesfully.");
-	}
-
-	// Get image format, format == -1 means the file was not found
-	// but I am checking against it also, just in case.
-	if (format == -1 || format == FIF_UNKNOWN)
-		return false;
-
-	// Load the image as a FIBITMAP*
-	m_bitmap = FreeImage_Load(format, path.c_str());
-
-	// Flip it vertically
-	FreeImage_FlipVertical(m_bitmap);
-
-	// Perform any scaling (if necessary)
-	if (scale)
-		m_bitmapScaled = FreeImage_Rescale(m_bitmap, width, height, FILTER_LANCZOS3);
-	else
-		m_bitmapScaled = m_bitmap;
-
-	// Convert it to 32 bits (if necessery)
-	m_bpp = FreeImage_GetBPP(m_bitmap); // get bits per pixel
-	if (m_bpp != 32)
-		m_bitmap32 = FreeImage_ConvertTo32Bits(m_bitmapScaled);
-	else
-		m_bitmap32 = m_bitmapScaled;
-
-	// Store some useful data	
-	m_transparent = bool(FreeImage_IsTransparent(m_bitmap32));
-	m_path = path;
-	m_width = FreeImage_GetWidth(m_bitmap32);
-	m_height = FreeImage_GetHeight(m_bitmap32);
-	unsigned int bytespp = m_width != 0 ? FreeImage_GetLine(m_bitmap32) / m_width : -1;
-	if (bytespp == -1)
-		return false;
-
-	// Construct an RGBA array
-	for (unsigned int y = 0; y < m_height; y++)
-	{
-		unsigned char* bits = (unsigned char*)FreeImage_GetScanLine(m_bitmap32, y);
-		for (unsigned int x = 0; x < m_width; x++)
-		{
-			m_dataRGBA.push_back(bits[FI_RGBA_RED]);
-			m_dataRGBA.push_back(bits[FI_RGBA_GREEN]);
-			m_dataRGBA.push_back(bits[FI_RGBA_BLUE]);
-			m_dataRGBA.push_back(bits[FI_RGBA_ALPHA]);
-
-			// jump to next pixel
-			bits += bytespp;
-		}
-	}
-
-	// Store some useful data that require m_dataRGBA to be filled
-	m_grayscale = GrayscaleCheck();
-
-	//= Free memory =====================================
-	// unload the 32-bit bitmap
-	FreeImage_Unload(m_bitmap32);
-
-	// unload the scaled bitmap only if it was converted
-	if (m_bpp != 32)
-		FreeImage_Unload(m_bitmapScaled);
-
-	// unload the non 32-bit bitmap only if it was scaled
-	if (scale)
-		FreeImage_Unload(m_bitmap);
-	//====================================================
-
-	return true;
-}
-
 void ImageImporter::Clear()
 {
 	m_dataRGBA.clear();
 	m_dataRGBA.shrink_to_fit();
-	m_bitmap = nullptr;
-	m_bitmap32 = nullptr;
-	m_bitmapScaled = nullptr;
+	m_mipchainDataRGBA.clear();
+	m_mipchainDataRGBA.shrink_to_fit();
 	m_bpp = 0;
 	m_width = 0;
 	m_height = 0;
@@ -192,19 +69,153 @@ void ImageImporter::Clear()
 	m_transparent = false;
 }
 
-bool ImageImporter::GrayscaleCheck()
+const vector<unsigned char*>& ImageImporter::GetRGBAMipchain()
+{
+	return m_mipchainDataRGBA;
+}
+
+bool ImageImporter::Load(const string& path, int width, int height, bool scale, bool generateMipmap)
+{
+	Clear();
+
+	if (!FileSystem::FileExists(path))
+	{
+		LOG_WARNING("Failed to load image \"" + path + "\", it doesn't exist.");
+		return false;
+	}
+
+	// Get image format
+	FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
+
+	// If the format is unknown
+	if (format == FIF_UNKNOWN)
+	{
+		// Try getting the format from the file extension
+		LOG_WARNING("Failed to determine image format for \"" + path + "\", attempting to detect it from the file's extension...");
+		format = FreeImage_GetFIFFromFilename(path.c_str());
+
+		// If the format is still unknown, give up
+		if (!FreeImage_FIFSupportsReading(format))
+		{
+			LOG_WARNING("Failed to detect the image format.");
+			return false;
+		}
+
+		LOG_WARNING("The image format has been detected succesfully.");
+	}
+
+	// Get image format, format == -1 means the file was not found
+	// but I am checking against it also, just in case.
+	if (format == -1 || format == FIF_UNKNOWN)
+		return false;
+
+	// Create FIBITMAP pointers that will be used below
+	FIBITMAP* bitmapOriginal;
+	FIBITMAP* bitmapScaled;
+	FIBITMAP* bitmap32;
+
+	// Load the image as a FIBITMAP*
+	bitmapOriginal = FreeImage_Load(format, path.c_str());
+
+	// Flip it vertically
+	FreeImage_FlipVertical(bitmapOriginal);
+
+	// Perform any scaling (if necessary)
+	bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, width, height, FILTER_LANCZOS3) : bitmapOriginal;
+
+	// Convert it to 32 bits (if necessery)
+	m_bpp = FreeImage_GetBPP(bitmapOriginal);
+	bitmap32 = m_bpp != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
+
+	// Store some useful data	
+	m_transparent = bool(FreeImage_IsTransparent(bitmap32));
+	m_path = path;
+	m_width = FreeImage_GetWidth(bitmap32);
+	m_height = FreeImage_GetHeight(bitmap32);
+
+	// Fill RGBA vector with the data from the FIBITMAP
+	GetDataRGBAFromFIBITMAP(bitmap32, &m_dataRGBA);
+
+	// Check if the image is grayscale
+	m_grayscale = GrayscaleCheck(m_dataRGBA, m_width, m_height);
+
+	if (generateMipmap)
+		GenerateMipChainFromFIBITMAP(bitmap32, &m_mipchainDataRGBA);
+
+	//= Free memory =====================================
+	// unload the 32-bit bitmap
+	FreeImage_Unload(bitmap32);
+
+	// unload the scaled bitmap only if it was converted
+	if (m_bpp != 32)
+		FreeImage_Unload(bitmapScaled);
+
+	// unload the non 32-bit bitmap only if it was scaled
+	if (scale)
+		FreeImage_Unload(bitmapOriginal);
+	//====================================================
+
+	return true;
+}
+
+bool ImageImporter::GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, vector<unsigned char>* data)
+{
+	int width = FreeImage_GetWidth(fibtimap);
+	int height = FreeImage_GetHeight(fibtimap);
+
+	unsigned int bytespp = width != 0 ? FreeImage_GetLine(fibtimap) / width : -1;
+	if (bytespp == -1)
+		return false;
+
+	// Construct an RGBA array
+	for (unsigned int y = 0; y < height; y++)
+	{
+		unsigned char* bits = (unsigned char*)FreeImage_GetScanLine(fibtimap, y);
+		for (unsigned int x = 0; x < width; x++)
+		{
+			data->push_back(bits[FI_RGBA_RED]);
+			data->push_back(bits[FI_RGBA_GREEN]);
+			data->push_back(bits[FI_RGBA_BLUE]);
+			data->push_back(bits[FI_RGBA_ALPHA]);
+
+			// jump to next pixel
+			bits += bytespp;
+		}
+	}
+
+	return true;
+}
+
+void ImageImporter::GenerateMipChainFromFIBITMAP(FIBITMAP* previous, vector<unsigned char*>* mipchain)
+{
+	// Downscale the previous FIBITMAP
+	int width = FreeImage_GetWidth(previous) / 2;
+	int height = FreeImage_GetHeight(previous) / 2;
+	FIBITMAP* downscaled = FreeImage_Rescale(previous, width, height, FILTER_LANCZOS3);
+
+	// Extract RGBA data from it and save it into the mipchain
+	vector<unsigned char> mipLevel;
+	GetDataRGBAFromFIBITMAP(downscaled, &mipLevel);
+	mipchain->push_back(mipLevel.data());
+
+	// Keep downscaling if we haven't reached the smallest possible mip level
+	if (width > 1 || height > 1)
+		GenerateMipChainFromFIBITMAP(downscaled, mipchain);
+}
+
+bool ImageImporter::GrayscaleCheck(const vector<unsigned char>& dataRGBA, int width, int height)
 {
 	int grayPixels = 0;
 	int scannedPixels = 0;
 
-	for (int i = 0; i < m_height; i++)
-		for (int j = 0; j < m_width; j++)
+	for (int i = 0; i < height; i++)
+		for (int j = 0; j < width; j++)
 		{
 			scannedPixels++;
 
-			int red = m_dataRGBA[(i * m_width + j) * 4 + 0];
-			int green = m_dataRGBA[(i * m_width + j) * 4 + 1];
-			int blue = m_dataRGBA[(i * m_width + j) * 4 + 2];
+			int red = dataRGBA[(i * width + j) * 4 + 0];
+			int green = dataRGBA[(i * width + j) * 4 + 1];
+			int blue = dataRGBA[(i * width + j) * 4 + 2];
 
 			if (red == green && red == blue)
 				grayPixels++;
