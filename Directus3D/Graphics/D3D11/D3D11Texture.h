@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============
 #include "D3D11Graphics.h"
 #include "../Graphics.h"
+#include <vector>
 //========================
 
 class D3D11Texture
@@ -32,7 +33,9 @@ public:
 	D3D11Texture(Graphics* context);
 	~D3D11Texture();
 
-	bool Create(int width, int height, int channels, unsigned char* data);
+	bool CreateAndGenerateMipchain(int width, int height, int channels, unsigned char* data);
+	bool CreateFromMipchain(int width, int height, int channels, const std::vector<unsigned char*>& data);
+
 	ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
 	void SetShaderResourceView(ID3D11ShaderResourceView* srv) { m_shaderResourceView = srv; }
 
@@ -41,7 +44,5 @@ private:
 	UINT m_mipLevels;
 	ID3D11ShaderResourceView* m_shaderResourceView;
 	Graphics* m_graphics;
-
-	void GenerateMipChain();
 };
 

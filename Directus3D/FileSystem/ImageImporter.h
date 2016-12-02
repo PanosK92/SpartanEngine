@@ -65,8 +65,6 @@ XPM files[reading, writing]
 #include "../Multithreading/ThreadPool.h"
 //=======================================
 
-// Forward declaration to avoid dependencies
-// when used in editor mode
 class FIBITMAP;
 
 class DllExport ImageImporter
@@ -82,13 +80,15 @@ public:
 	~ImageImporter();
 
 	void LoadAsync(const std::string& filePath);
-	bool Load(const std::string& filePath);
-	bool Load(const std::string& filePath, int width, int height);
-	bool Load(const std::string& path, int width, int height, bool scale);
+	bool Load(const std::string& filePath) { return Load(filePath, 0, 0, false, false); }
+	bool Load(const std::string& filePath, int width, int height) { return Load(filePath, width, height, true, false); }
+	bool LoadAndCreateMipchain(const std::string& filePath) { return Load(filePath, 0, 0, false, true); }
+	
 	void Clear();
 
 	//= PROPERTIES =======================================
 	unsigned char* GetRGBA() { return m_dataRGBA.data(); }
+	const std::vector<unsigned char*>& GetRGBAMipchain();
 	unsigned int GetBPP() { return m_bpp; }
 	unsigned int GetWidth() { return m_width; }
 	unsigned int GetHeight() { return m_height; }
@@ -99,10 +99,8 @@ public:
 	//====================================================
 
 private:
-	FIBITMAP* m_bitmap;
-	FIBITMAP* m_bitmap32;
-	FIBITMAP* m_bitmapScaled;
 	std::vector<unsigned char> m_dataRGBA;
+	std::vector<unsigned char*> m_mipchainDataRGBA;
 	unsigned int m_bpp;
 	unsigned int m_width;
 	unsigned int m_height;
@@ -111,5 +109,8 @@ private:
 	bool m_grayscale;
 	bool m_transparent;
 
-	bool GrayscaleCheck();
+	bool Load(const std::string& path, int width, int height, bool scale, bool generateMipmap);
+	bool GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, std::vector<unsigned char>* data);
+	void GenerateMipChainFromFIBITMAP(FIBITMAP* original, std::vector<unsigned char*>* mipchain);
+	bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
 };

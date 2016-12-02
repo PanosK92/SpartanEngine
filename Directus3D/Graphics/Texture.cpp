@@ -44,6 +44,7 @@ Texture::Texture(Context* context)
 	m_grayscale = false;
 	m_transparency = false;
 	m_alphaIsTransparency = false;
+	m_generateMipchain = true;
 	m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 }
 
@@ -67,7 +68,7 @@ bool Texture::SaveMetadata()
 	Serializer::WriteInt(int(m_type));
 	Serializer::WriteBool(m_grayscale);
 	Serializer::WriteBool(m_transparency);
-	Serializer::WriteBool(m_generateMipMaps);
+	Serializer::WriteBool(m_generateMipchain);
 
 	Serializer::StopWriting();
 
@@ -89,7 +90,7 @@ bool Texture::LoadMetadata()
 		m_type = TextureType(Serializer::ReadInt());
 		m_grayscale = Serializer::ReadBool();
 		m_transparency = Serializer::ReadBool();
-		m_generateMipMaps = Serializer::ReadBool();
+		m_generateMipchain = Serializer::ReadBool();
 	}
 
 	Serializer::StopReading();
@@ -101,7 +102,8 @@ bool Texture::LoadMetadata()
 bool Texture::LoadFromFile(const string& filePath)
 {
 	// Load it
-	if (!ImageImporter::GetInstance().Load(filePath))
+	bool loaded = m_generateMipchain ? ImageImporter::GetInstance().LoadAndCreateMipchain(filePath) : ImageImporter::GetInstance().Load(filePath);
+	if (!loaded)
 	{
 		LOG_ERROR("Failed to load texture \"" + filePath + "\".");
 		ImageImporter::GetInstance().Clear();
@@ -139,16 +141,21 @@ bool Texture::CreateShaderResourceView()
 	if (!m_context)
 		return false;
 
-	if (m_generateMipMaps)
+	if (m_generateMipchain)
 	{
-		
+		if (!m_texture->CreateFromMipchain(m_width, m_height, ImageImporter::GetInstance().GetChannels(), ImageImporter::GetInstance().GetRGBAMipchain()))
+		{
+			LOG_ERROR("Failed to create texture from loaded image \"" + ImageImporter::GetInstance().GetPath() + "\".");
+			return false;
+		}
 	}
-
-	// Create D3D11Texture
-	if (!m_texture->Create(m_width, m_height, ImageImporter::GetInstance().GetChannels(), ImageImporter::GetInstance().GetRGBA()))
+	else
 	{
-		LOG_ERROR("Failed to create texture from loaded image \"" + ImageImporter::GetInstance().GetPath() + "\".");
-		return false;
+		if (!m_texture->CreateAndGenerateMipchain(m_width, m_height, ImageImporter::GetInstance().GetChannels(), ImageImporter::GetInstance().GetRGBA()))
+		{
+			LOG_ERROR("Failed to create texture from loaded image \"" + ImageImporter::GetInstance().GetPath() + "\".");
+			return false;
+		}
 	}
 
 	return true;
