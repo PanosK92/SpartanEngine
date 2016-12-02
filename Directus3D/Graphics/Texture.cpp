@@ -151,7 +151,7 @@ bool Texture::CreateShaderResourceView()
 	}
 	else
 	{
-		if (!m_texture->CreateAndGenerateMipchain(m_width, m_height, ImageImporter::GetInstance().GetChannels(), ImageImporter::GetInstance().GetRGBA()))
+		if (!m_texture->Create(m_width, m_height, ImageImporter::GetInstance().GetChannels(), ImageImporter::GetInstance().GetRGBA()))
 		{
 			LOG_ERROR("Failed to create texture from loaded image \"" + ImageImporter::GetInstance().GetPath() + "\".");
 			return false;

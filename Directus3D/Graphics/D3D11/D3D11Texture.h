@@ -33,8 +33,9 @@ public:
 	D3D11Texture(Graphics* context);
 	~D3D11Texture();
 
+	bool Create(int width, int height, int channels, unsigned char* data);
 	bool CreateAndGenerateMipchain(int width, int height, int channels, unsigned char* data);
-	bool CreateFromMipchain(int width, int height, int channels, const std::vector<unsigned char*>& data);
+	bool CreateFromMipchain(int width, int height, int channels, const std::vector<std::vector<unsigned char>>& mipchain);
 
 	ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
 	void SetShaderResourceView(ID3D11ShaderResourceView* srv) { m_shaderResourceView = srv; }

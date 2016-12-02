@@ -69,7 +69,7 @@ void ImageImporter::Clear()
 	m_transparent = false;
 }
 
-const vector<unsigned char*>& ImageImporter::GetRGBAMipchain()
+const vector<vector<unsigned char>>& ImageImporter::GetRGBAMipchain()
 {
 	return m_mipchainDataRGBA;
 }
@@ -186,21 +186,29 @@ bool ImageImporter::GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, vector<unsigned 
 	return true;
 }
 
-void ImageImporter::GenerateMipChainFromFIBITMAP(FIBITMAP* previous, vector<unsigned char*>* mipchain)
+void ImageImporter::GenerateMipChainFromFIBITMAP(FIBITMAP* original, vector<vector<unsigned char>>* mipchain)
 {
-	// Downscale the previous FIBITMAP
-	int width = FreeImage_GetWidth(previous) / 2;
-	int height = FreeImage_GetHeight(previous) / 2;
-	FIBITMAP* downscaled = FreeImage_Rescale(previous, width, height, FILTER_LANCZOS3);
+	mipchain->push_back(m_dataRGBA);
+	int width = FreeImage_GetWidth(original);
+	int height = FreeImage_GetHeight(original);
+	int levels = 1;
 
-	// Extract RGBA data from it and save it into the mipchain
-	vector<unsigned char> mipLevel;
-	GetDataRGBAFromFIBITMAP(downscaled, &mipLevel);
-	mipchain->push_back(mipLevel.data());
+	while (width > 1 && height > 1)
+	{
+		// Downscale the original FIBITMAP
+		width = max(width / 2, 1);
+		height = max(height / 2, 1);
+		FIBITMAP* downscaled = FreeImage_Rescale(original, width, height, FILTER_LANCZOS3);
 
-	// Keep downscaling if we haven't reached the smallest possible mip level
-	if (width > 1 || height > 1)
-		GenerateMipChainFromFIBITMAP(downscaled, mipchain);
+		// Extract RGBA data from it and save it into the mipchain
+		mipchain->push_back(vector<unsigned char>());
+		GetDataRGBAFromFIBITMAP(downscaled, &mipchain->back());
+
+		// Unload the downscaled FIBITMAP
+		FreeImage_Unload(downscaled);
+
+		levels++;
+	}
 }
 
 bool ImageImporter::GrayscaleCheck(const vector<unsigned char>& dataRGBA, int width, int height)

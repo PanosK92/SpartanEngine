@@ -88,7 +88,7 @@ public:
 
 	//= PROPERTIES =======================================
 	unsigned char* GetRGBA() { return m_dataRGBA.data(); }
-	const std::vector<unsigned char*>& GetRGBAMipchain();
+	const std::vector<std::vector<unsigned char>>& GetRGBAMipchain();
 	unsigned int GetBPP() { return m_bpp; }
 	unsigned int GetWidth() { return m_width; }
 	unsigned int GetHeight() { return m_height; }
@@ -100,7 +100,7 @@ public:
 
 private:
 	std::vector<unsigned char> m_dataRGBA;
-	std::vector<unsigned char*> m_mipchainDataRGBA;
+	std::vector<std::vector<unsigned char>> m_mipchainDataRGBA;
 	unsigned int m_bpp;
 	unsigned int m_width;
 	unsigned int m_height;
@@ -111,6 +111,6 @@ private:
 
 	bool Load(const std::string& path, int width, int height, bool scale, bool generateMipmap);
 	bool GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, std::vector<unsigned char>* data);
-	void GenerateMipChainFromFIBITMAP(FIBITMAP* original, std::vector<unsigned char*>* mipchain);
+	void GenerateMipChainFromFIBITMAP(FIBITMAP* original, std::vector<std::vector<unsigned char>>*);
 	bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
 };
