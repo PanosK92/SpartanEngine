@@ -21,28 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#if defined(D3D12)
-
-class ID3D12Device;
-class ID3D12DeviceContext;
-class D3D12Graphics;
-
-typedef ID3D12Device Device;
-typedef ID3D12DeviceContext DeviceContext;
-typedef D3D12Graphics GraphicsAPI;
-
-#elif defined(D3D11)
-
-class ID3D11Device;
-class ID3D11DeviceContext;
-class D3D11Graphics;
-
-typedef ID3D11Device Device;
-typedef ID3D11DeviceContext DeviceContext;
-typedef D3D11Graphics GraphicsAPI;
-
-#endif
-
 enum InputLayout
 {
 	Auto,
@@ -54,9 +32,9 @@ enum InputLayout
 
 enum CullMode
 {
-	CullBack,
-	CullFront,
 	CullNone,
+	CullBack,
+	CullFront
 };
 
 enum PrimitiveTopology

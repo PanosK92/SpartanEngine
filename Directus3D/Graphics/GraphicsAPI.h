@@ -21,32 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
-#include <memory>
-#include "IComponent.h"
-#include "../Graphics/Texture.h"
-//==============================
+// The following headers implement everything 
+// unimplemented about Graphics (including the GraphicsAPI member)
 
-class ID3D11ShaderResourceView;
+//= INCLUDES ==============
+#if defined(D3D11)
+#include "D3D11/D3D11API.h"
+#elif defined(D3D12)
+#include "D3D12/D3D12API.h"
+#endif
+//=========================
 
-class DllExport Skybox : public IComponent
-{
-public:
-	Skybox();
-	~Skybox();
-
-	//= Interface =================
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
-
-	//= MISC ======================
-	ID3D11ShaderResourceView* GetEnvironmentTexture();
-
-private:
-	std::shared_ptr<Texture> m_cubeMapTexture;
-};

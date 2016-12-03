@@ -19,34 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+
 #pragma once
 
-//= INCLUDES ===================
-#include <memory>
-#include "IComponent.h"
-#include "../Graphics/Texture.h"
-//==============================
-
-class ID3D11ShaderResourceView;
-
-class DllExport Skybox : public IComponent
+class IndexBuffer
 {
 public:
-	Skybox();
-	~Skybox();
-
-	//= Interface =================
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
-
-	//= MISC ======================
-	ID3D11ShaderResourceView* GetEnvironmentTexture();
-
 private:
-	std::shared_ptr<Texture> m_cubeMapTexture;
 };

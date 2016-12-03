@@ -84,5 +84,5 @@ void DepthShader::Set()
 void DepthShader::Render(unsigned int indexCount)
 {
 	if (m_graphics)
-		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+		m_graphics->GetAPI()->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }

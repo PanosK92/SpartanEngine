@@ -73,7 +73,7 @@ public:
 	std::weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap);
 	std::weak_ptr<ShaderVariation> GetShader() { return m_shader; }
 	bool HasShader() { return GetShader().expired() ? false : true; }
-	void** GetShaderResourceViewByTextureType(TextureType type);
+	ID3D11ShaderResourceView* GetShaderResourceViewByTextureType(TextureType type);
 	//=============================================================================
 
 	//= PROPERTIES ================================================================	

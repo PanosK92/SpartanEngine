@@ -1,6 +1,7 @@
 //= INCLUDES ===============
 #include "LineRenderer.h"
 #include "../Core/Context.h"
+#include "../Graphics/D3D11/D3D11Buffer.h"
 //==========================
 
 //= NAMESPACES ================

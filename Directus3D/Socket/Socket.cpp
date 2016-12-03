@@ -109,10 +109,16 @@ bool Socket::LoadSceneFromFile(const string& filePath)
 //==============================================================================
 
 //= GRAPHICS ===================================================================
-void Socket::SetViewport(int width, int height) const
+void Socket::SetViewport(int width, int height)
+{
+	g_context->GetSubsystem<Graphics>()->SetViewport(width, height);	
+}
+
+void Socket::SetResolution(int width, int height)
 {
 	g_context->GetSubsystem<Renderer>()->SetResolution(width, height);
 }
+
 //==============================================================================
 
 //= MISC =======================================================================

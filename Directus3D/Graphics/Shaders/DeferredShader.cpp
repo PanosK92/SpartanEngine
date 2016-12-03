@@ -143,7 +143,7 @@ void DeferredShader::UpdateMiscBuffer(Light* directionalLight, vector<GameObject
 
 void DeferredShader::UpdateTextures(vector<ID3D11ShaderResourceView*> textures)
 {
-	m_graphics->GetDeviceContext()->PSSetShaderResources(0, UINT(textures.size()), &textures.front());
+	m_graphics->GetAPI()->GetDeviceContext()->PSSetShaderResources(0, UINT(textures.size()), &textures.front());
 }
 
 void DeferredShader::Set()
@@ -155,7 +155,7 @@ void DeferredShader::Set()
 void DeferredShader::Render(int indexCount)
 {
 	if (m_shader)
-		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+		m_graphics->GetAPI()->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
 bool DeferredShader::IsCompiled()

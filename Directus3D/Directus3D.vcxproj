@@ -155,11 +155,14 @@
     <ClCompile Include="Graphics\D3D11\D3D11Texture.cpp" />
     <ClCompile Include="Graphics\D3D12\D3D12Graphics.cpp" />
     <ClCompile Include="Graphics\D3D12\D3D12Sampler.cpp" />
+    <ClCompile Include="Graphics\D3D12\D3D12Texture.cpp" />
+    <ClCompile Include="Graphics\IndexBuffer.cpp" />
     <ClCompile Include="Graphics\Material.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Core\Scene.cpp" />
     <ClCompile Include="Core\Settings.cpp" />
     <ClCompile Include="Graphics\Shaders\ShadowMappingShader.cpp" />
+    <ClCompile Include="Graphics\VertexBuffer.cpp" />
     <ClCompile Include="Multithreading\ThreadPool.cpp" />
     <ClCompile Include="Resource\ResourceCache.cpp" />
     <ClCompile Include="Socket\Socket.cpp" />
@@ -225,10 +228,15 @@
     <ClInclude Include="Core\Context.h" />
     <ClInclude Include="Core\Engine.h" />
     <ClInclude Include="Core\SubSystem.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11API.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Texture.h" />
     <ClInclude Include="Graphics\D3D12\D3D12Graphics.h" />
     <ClInclude Include="Graphics\D3D12\D3D12Sampler.h" />
+    <ClInclude Include="Graphics\D3D12\D3D12Texture.h" />
+    <ClInclude Include="Graphics\D3D12\d3dx12.h" />
+    <ClInclude Include="Graphics\GraphicsAPI.h" />
     <ClInclude Include="Graphics\GraphicsDefinitions.h" />
+    <ClInclude Include="Graphics\IndexBuffer.h" />
     <ClInclude Include="Graphics\Shaders\ShadowMappingShader.h" />
     <ClInclude Include="Graphics\ShadowMap.h" />
     <ClInclude Include="EventSystem\EventHandler.h" />
@@ -239,6 +247,7 @@
     <ClInclude Include="Graphics\Mesh.h" />
     <ClInclude Include="Core\Scene.h" />
     <ClInclude Include="Core\Settings.h" />
+    <ClInclude Include="Graphics\VertexBuffer.h" />
     <ClInclude Include="Resource\IResource.h" />
     <ClInclude Include="Resource\ResourceCache.h" />
     <ClInclude Include="Socket\Socket.h" />
@@ -246,7 +255,6 @@
     <ClInclude Include="Core\Timer.h" />
     <ClInclude Include="Graphics\Vertex.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Buffer.h" />
-    <ClInclude Include="Graphics\D3D11\D3D11Graphics.h" />
     <ClInclude Include="Graphics\D3D11\D3D11InputLayout.h" />
     <ClInclude Include="Graphics\D3D11\D3D11RenderTexture.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Sampler.h" />

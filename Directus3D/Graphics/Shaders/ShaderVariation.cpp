@@ -229,7 +229,7 @@ void ShaderVariation::UpdateTextures(const vector<ID3D11ShaderResourceView*>& te
 	if (!m_graphics)
 		return;
 
-	m_graphics->GetDeviceContext()->PSSetShaderResources(0, (UINT)textureArray.size(), &textureArray.front());
+	m_graphics->GetAPI()->GetDeviceContext()->PSSetShaderResources(0, (UINT)textureArray.size(), &textureArray.front());
 }
 
 void ShaderVariation::Render(int indexCount)
@@ -237,7 +237,7 @@ void ShaderVariation::Render(int indexCount)
 	if (!m_graphics)
 		return;
 
-	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	m_graphics->GetAPI()->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
 void ShaderVariation::AddDefinesBasedOnMaterial(shared_ptr<D3D11Shader> shader)

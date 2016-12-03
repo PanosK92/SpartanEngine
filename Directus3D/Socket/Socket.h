@@ -57,7 +57,8 @@ public:
 	//===============================================
 
 	//= GRAPHICS =================================
-	void SetViewport(int width, int height) const;
+	void SetViewport(int width, int height);
+	void SetResolution(int width, int height);
 	//============================================
 
 	//= MISC =======================================================================

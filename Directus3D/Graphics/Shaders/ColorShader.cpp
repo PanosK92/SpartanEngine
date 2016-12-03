@@ -84,5 +84,5 @@ void ColorShader::RenderShader(unsigned int vertexCount)
 {
 	m_shader->Set();
 	// render
-	m_graphics->GetDeviceContext()->Draw(vertexCount, 0);
+	m_graphics->GetAPI()->GetDeviceContext()->Draw(vertexCount, 0);
 }
