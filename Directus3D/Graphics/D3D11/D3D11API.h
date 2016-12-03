@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====
 #include <d3d11.h>
 #include <string>
+#include <vector>
+
 //================
 
 class GraphicsAPI
@@ -50,7 +52,11 @@ private:
 	D3D_FEATURE_LEVEL m_featureLevel;
 	D3D11_VIEWPORT m_viewport;
 
+	UINT m_displayModeCount;
+	UINT m_refreshRateNumerator;
+	UINT m_refreshRateDenominator;
 	DXGI_MODE_DESC* m_displayModeList;
+
 	int m_videoCardMemory;
 	std::string m_videoCardDescription;
 

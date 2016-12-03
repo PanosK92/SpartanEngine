@@ -115,7 +115,7 @@ void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* came
 	if (!buffer)
 		return;
 
-	buffer->viewport = GET_RESOLUTION;
+	buffer->m_resolution = GET_RESOLUTION;
 	buffer->nearPlane = camera->GetNearPlane();
 	buffer->farPlane = camera->GetFarPlane();
 	buffer->mLightViewProjection[0] = lightViewProjection1.Transposed();

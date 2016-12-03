@@ -57,7 +57,7 @@ public:
 	//===============================================
 
 	//= GRAPHICS =================================
-	void SetViewport(int width, int height);
+	void SetViewport(float width, float height);
 	void SetResolution(int width, int height);
 	//============================================
 

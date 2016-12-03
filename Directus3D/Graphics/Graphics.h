@@ -39,14 +39,15 @@ public:
 	Graphics(Context* context);
 	~Graphics();
 
-	void Initialize(HWND windowHandle);
+	bool Initialize(HWND windowHandle);
 	void Clear(const Directus::Math::Vector4& color);
 	void Present();
 	void SetBackBufferAsRenderTarget();
 
 	//= DEPTH ======================
-	bool CreateDepthStencilBuffer();
 	bool CreateDepthStencil();
+	bool CreateDepthStencilBuffer();	
+	bool CreateDepthStencilView();
 	void EnableZBuffer(bool enable);
 	//==============================
 	
@@ -56,8 +57,8 @@ public:
 	void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
 
 	//= VIEWPORT ===========================
-	void SetResolution(int width, int height);
-	void SetViewport(int width, int height);
+	bool SetResolution(int width, int height);
+	void SetViewport(float width, float height);
 	void ResetViewport();
 	//======================================
 

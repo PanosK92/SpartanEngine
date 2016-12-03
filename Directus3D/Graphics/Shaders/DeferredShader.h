@@ -70,7 +70,7 @@ private:
 		float nearPlane;
 		float farPlane;
 		float softShadows;
-		Directus::Math::Vector2 viewport;
+		Directus::Math::Vector2 resolution;
 		Directus::Math::Vector2 padding;
 	};
 
