@@ -19,9 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ===========
 #include "DebugShader.h"
-//=============================
+#include <d3d11.h>
+//======================
 
 //= NAMESPACES ================
 using namespace Directus::Math;

@@ -228,6 +228,7 @@
     <ClInclude Include="Graphics\D3D11\D3D11Texture.h" />
     <ClInclude Include="Graphics\D3D12\D3D12Graphics.h" />
     <ClInclude Include="Graphics\D3D12\D3D12Sampler.h" />
+    <ClInclude Include="Graphics\GraphicsDefinitions.h" />
     <ClInclude Include="Graphics\Shaders\ShadowMappingShader.h" />
     <ClInclude Include="Graphics\ShadowMap.h" />
     <ClInclude Include="EventSystem\EventHandler.h" />

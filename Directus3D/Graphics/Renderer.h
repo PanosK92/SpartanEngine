@@ -22,25 +22,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =========================
-#include "GBuffer.h"
-#include "FullScreenQuad.h"
+#include <memory>
 #include "../Core/GameObject.h"
+#include "../Core/Subsystem.h"
 #include "../Components/Camera.h"
 #include "../Components/Skybox.h"
 #include "../Components/Light.h"
-#include "Graphics.h"
+#include "../Components/LineRenderer.h"
 #include "Shaders/DepthShader.h"
 #include "Shaders/DebugShader.h"
 #include "Shaders/PostProcessShader.h"
 #include "Shaders/DeferredShader.h"
-#include <memory>
 #include "../Graphics/Texture.h"
-#include "../Components/LineRenderer.h"
-#include "D3D11/D3D11RenderTexture.h"
-#include "../Core/Subsystem.h"
+#include "GBuffer.h"
+#include "FullScreenQuad.h"
 //====================================
 
 class MeshFilter;
+class D3D11RenderTexture;
 
 class Renderer : public Subsystem
 {

@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "GBuffer.h"
+#include <d3d11.h>
 #include "../Core/Helper.h"
 //==========================
 
@@ -157,12 +158,13 @@ bool GBuffer::Initialize(int width, int height)
 		return false;
 
 	// Setup the viewport for rendering.
-	m_viewport.Width = static_cast<float>(width);
-	m_viewport.Height = static_cast<float>(height);
-	m_viewport.MinDepth = 0.0f;
-	m_viewport.MaxDepth = 1.0f;
-	m_viewport.TopLeftX = 0.0f;
-	m_viewport.TopLeftY = 0.0f;
+	m_viewport = new D3D11_VIEWPORT;
+	m_viewport->Width = static_cast<float>(width);
+	m_viewport->Height = static_cast<float>(height);
+	m_viewport->MinDepth = 0.0f;
+	m_viewport->MaxDepth = 1.0f;
+	m_viewport->TopLeftX = 0.0f;
+	m_viewport->TopLeftY = 0.0f;
 
 	return true;
 }
@@ -173,7 +175,7 @@ void GBuffer::SetRenderTargets()
 	m_graphics->GetDeviceContext()->OMSetRenderTargets(BUFFER_COUNT, &m_renderTargetViewArray[0], m_depthStencilView);
 
 	// Set the viewport.
-	m_graphics->GetDeviceContext()->RSSetViewports(1, &m_viewport);
+	m_graphics->GetDeviceContext()->RSSetViewports(1, m_viewport);
 }
 
 void GBuffer::Clear(const Vector4& color)

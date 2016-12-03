@@ -19,9 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ========
 #include "Graphics.h"
-//=========================
+#if defined(D3D12)
+#include "D3D12/D3D12Graphics.h"
+#elif defined(D3D11)
+#include "D3D11/D3D11Graphics.h"
+#endif
+//===================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -30,10 +35,12 @@ using namespace std;
 
 Graphics::Graphics(Context* context): Subsystem(context) 
 {
-	m_d3d11Graphics = nullptr;
+	m_graphicsAPI = nullptr;
 	m_inputLayout = PositionTextureNormalTangent;
 	m_cullMode = CullBack;
 	m_primitiveTopology = TriangleList;
+	m_zBufferEnabled = true;
+	m_alphaBlendingEnabled = false;
 }
 
 Graphics::~Graphics()
@@ -43,38 +50,38 @@ Graphics::~Graphics()
 
 void Graphics::Initialize(HWND drawPaneHandle)
 {
-	m_d3d11Graphics = make_shared<D3D11Graphics>();
-	m_d3d11Graphics->Initialize(drawPaneHandle);
+	m_graphicsAPI = make_shared<D3D11Graphics>();
+	m_graphicsAPI->Initialize(drawPaneHandle);
 }
 
-ID3D11Device* Graphics::GetDevice()
+Device* Graphics::GetDevice()
 {
-	return m_d3d11Graphics->GetDevice();
+	return m_graphicsAPI->GetDevice();
 }
 
-ID3D11DeviceContext* Graphics::GetDeviceContext()
+DeviceContext* Graphics::GetDeviceContext()
 {
-	return m_d3d11Graphics->GetDeviceContext();
+	return m_graphicsAPI->GetDeviceContext();
 }
 
 void Graphics::Clear(const Vector4& color)
 {
-	m_d3d11Graphics->Clear(color);
+	m_graphicsAPI->Clear(color);
 }
 
 void Graphics::Present()
 {
-	m_d3d11Graphics->Present();
+	m_graphicsAPI->Present();
 }
 
 void Graphics::ResetRenderTarget()
 {
-	m_d3d11Graphics->SetBackBufferRenderTarget();
+	m_graphicsAPI->SetBackBufferRenderTarget();
 }
 
 void Graphics::ResetViewport()
 {
-	m_d3d11Graphics->ResetViewport();
+	m_graphicsAPI->ResetViewport();
 }
 
 void Graphics::EnableZBuffer(bool enable)
@@ -82,7 +89,7 @@ void Graphics::EnableZBuffer(bool enable)
 	if (m_zBufferEnabled == enable)
 		return;
 
-	m_d3d11Graphics->EnableZBuffer(enable);
+	m_graphicsAPI->EnableZBuffer(enable);
 	m_zBufferEnabled = enable;
 }
 
@@ -91,7 +98,7 @@ void Graphics::EnableAlphaBlending(bool enable)
 	if (m_alphaBlendingEnabled == enable)
 		return;
 
-	m_d3d11Graphics->EnabledAlphaBlending(enable);
+	m_graphicsAPI->EnabledAlphaBlending(enable);
 	m_alphaBlendingEnabled = enable;
 }
 
@@ -111,11 +118,11 @@ void Graphics::SetCullMode(CullMode cullMode)
 
 	// Set CullMode mode
 	if (cullMode == CullBack)
-		m_d3d11Graphics->SetFaceCullMode(D3D11_CULL_BACK);
+		m_graphicsAPI->SetFaceCullMode(D3D11_CULL_BACK);
 	else if (cullMode == CullFront)
-		m_d3d11Graphics->SetFaceCullMode(D3D11_CULL_FRONT);
+		m_graphicsAPI->SetFaceCullMode(D3D11_CULL_FRONT);
 	else if (cullMode == CullNone)
-		m_d3d11Graphics->SetFaceCullMode(D3D11_CULL_NONE);
+		m_graphicsAPI->SetFaceCullMode(D3D11_CULL_NONE);
 
 	// Save the current CullMode mode
 	m_cullMode = cullMode;
@@ -129,9 +136,9 @@ void Graphics::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
 
 	// Set PrimitiveTopology
 	if (primitiveTopology == TriangleList)
-		m_d3d11Graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_graphicsAPI->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	else if (primitiveTopology == LineList)
-		m_d3d11Graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+		m_graphicsAPI->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
 	// Save the current PrimitiveTopology mode
 	m_primitiveTopology = primitiveTopology;
@@ -139,5 +146,5 @@ void Graphics::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
 
 void Graphics::SetViewport(int width, int height)
 {
-	m_d3d11Graphics->SetResolution(width, height);
+	m_graphicsAPI->SetResolution(width, height);
 }

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Components/Transform.h"
 #include "../../Components/Light.h"
 #include "../../Core/Settings.h"
+#include <d3d11.h>
 //=====================================
 
 //= NAMESPACES ================

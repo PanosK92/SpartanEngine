@@ -92,8 +92,8 @@ public:
 	unsigned int GetBPP() { return m_bpp; }
 	unsigned int GetWidth() { return m_width; }
 	unsigned int GetHeight() { return m_height; }
-	bool IsGrayscale() { return m_grayscale; }
-	bool IsTransparent() { return m_transparent; }
+	bool IsGrayscale() { return m_isGrayscale; }
+	bool IsTransparent() { return m_isTransparent; }
 	const std::string& GetPath() { return m_path; }
 	int GetChannels() { return m_channels; }
 	//====================================================
@@ -106,11 +106,10 @@ private:
 	unsigned int m_height;
 	int m_channels;
 	std::string m_path;
-	bool m_grayscale;
-	bool m_transparent;
+	bool m_isGrayscale;
+	bool m_isTransparent;
 
 	bool Load(const std::string& path, int width, int height, bool scale, bool generateMipmap);
 	bool GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, std::vector<unsigned char>* data);
 	void GenerateMipChainFromFIBITMAP(FIBITMAP* original, std::vector<std::vector<unsigned char>>*);
-	bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
 };

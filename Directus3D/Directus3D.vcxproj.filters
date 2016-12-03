@@ -476,6 +476,9 @@
     <ClInclude Include="Graphics\D3D11\D3D11Texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\GraphicsDefinitions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Xml Include="Assets\Shaders\HLSL.xml" />
