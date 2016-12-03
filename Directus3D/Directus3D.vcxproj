@@ -156,6 +156,7 @@
     <ClCompile Include="Graphics\D3D12\D3D12Graphics.cpp" />
     <ClCompile Include="Graphics\D3D12\D3D12Sampler.cpp" />
     <ClCompile Include="Graphics\D3D12\D3D12Texture.cpp" />
+    <ClCompile Include="Graphics\Graphics.cpp" />
     <ClCompile Include="Graphics\IndexBuffer.cpp" />
     <ClCompile Include="Graphics\Material.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
@@ -177,7 +178,6 @@
     <ClCompile Include="Graphics\Frustrum.cpp" />
     <ClCompile Include="Graphics\FullScreenQuad.cpp" />
     <ClCompile Include="Graphics\GBuffer.cpp" />
-    <ClCompile Include="Graphics\Graphics.cpp" />
     <ClCompile Include="Graphics\Renderer.cpp" />
     <ClCompile Include="Graphics\Shaders\ColorShader.cpp" />
     <ClCompile Include="Graphics\Shaders\DebugShader.cpp" />
@@ -228,13 +228,13 @@
     <ClInclude Include="Core\Context.h" />
     <ClInclude Include="Core\Engine.h" />
     <ClInclude Include="Core\SubSystem.h" />
-    <ClInclude Include="Graphics\D3D11\D3D11API.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11Implementation.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Texture.h" />
     <ClInclude Include="Graphics\D3D12\D3D12Graphics.h" />
     <ClInclude Include="Graphics\D3D12\D3D12Sampler.h" />
     <ClInclude Include="Graphics\D3D12\D3D12Texture.h" />
     <ClInclude Include="Graphics\D3D12\d3dx12.h" />
-    <ClInclude Include="Graphics\GraphicsAPI.h" />
+    <ClInclude Include="Graphics\GraphicsImplementation.h" />
     <ClInclude Include="Graphics\GraphicsDefinitions.h" />
     <ClInclude Include="Graphics\IndexBuffer.h" />
     <ClInclude Include="Graphics\Shaders\ShadowMappingShader.h" />

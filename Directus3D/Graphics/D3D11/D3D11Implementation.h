@@ -26,19 +26,41 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "dxgi.lib")
 //===============================
 
-//= INCLUDES =====
+//= INCLUDES ===========================
 #include <d3d11.h>
-#include <string>
 #include <vector>
-
-//================
+#include "../../FileSystem/FileSystem.h"
+//======================================
 
 class GraphicsAPI
 {
 	friend class Graphics;
 
 public:
-	GraphicsAPI() {};
+	GraphicsAPI()
+	{
+		m_device = nullptr;
+		m_deviceContext = nullptr;
+		m_swapChain = nullptr;
+		m_renderTargetView = nullptr;
+		m_driverType = D3D_DRIVER_TYPE_HARDWARE;
+		m_featureLevel = D3D_FEATURE_LEVEL_11_0;
+		m_displayModeList = nullptr;
+		m_displayModeCount = 0;
+		m_refreshRateNumerator = 0;
+		m_refreshRateDenominator = 0;
+		m_videoCardMemory = 0;
+		m_videoCardDescription = DATA_NOT_ASSIGNED;
+		m_depthStencilBuffer = nullptr;
+		m_depthStencilStateEnabled = nullptr;
+		m_depthStencilStateDisabled = nullptr;
+		m_depthStencilView = nullptr;
+		m_rasterStateCullFront = nullptr;
+		m_rasterStateCullBack = nullptr;
+		m_rasterStateCullNone = nullptr;
+		m_blendStateAlphaEnabled = nullptr;
+		m_blendStateAlphaDisabled = nullptr;
+	};
 
 	ID3D11Device* GetDevice() { return m_device; }
 	ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
