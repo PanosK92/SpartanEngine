@@ -179,7 +179,6 @@
     <ClCompile Include="Graphics\FullScreenQuad.cpp" />
     <ClCompile Include="Graphics\GBuffer.cpp" />
     <ClCompile Include="Graphics\Renderer.cpp" />
-    <ClCompile Include="Graphics\Shaders\ColorShader.cpp" />
     <ClCompile Include="Graphics\Shaders\DebugShader.cpp" />
     <ClCompile Include="Graphics\Shaders\DeferredShader.cpp" />
     <ClCompile Include="Graphics\Shaders\DepthShader.cpp" />
@@ -264,7 +263,6 @@
     <ClInclude Include="Graphics\GBuffer.h" />
     <ClInclude Include="Graphics\Graphics.h" />
     <ClInclude Include="Graphics\Renderer.h" />
-    <ClInclude Include="Graphics\Shaders\ColorShader.h" />
     <ClInclude Include="Graphics\Shaders\DebugShader.h" />
     <ClInclude Include="Graphics\Shaders\DeferredShader.h" />
     <ClInclude Include="Graphics\Shaders\DepthShader.h" />
