@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #if defined(D3D11)
-#include "D3D11/D3D11API.h"
+#include "D3D11/D3D11Implementation.h"
 #elif defined(D3D12)
-#include "D3D12/D3D12API.h"
+#include "D3D12/D3D12Implementation.h"
 #endif
 //=========================
 

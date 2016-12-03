@@ -23,13 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define D3D11
 
-//= INCLUDES ===================
+//= INCLUDES ======================
 #include <Windows.h>
 #include "../Math/Vector4.h"
 #include "../Core/Subsystem.h"
 #include "GraphicsDefinitions.h"
-#include "GraphicsAPI.h"
-//==============================
+#include "GraphicsImplementation.h"
+//=================================
 
 class GraphicsAPI;
 
@@ -46,23 +46,23 @@ public:
 
 	//= DEPTH ======================
 	bool CreateDepthStencil();
-	bool CreateDepthStencilBuffer();	
+	bool CreateDepthStencilBuffer();
 	bool CreateDepthStencilView();
 	void EnableZBuffer(bool enable);
 	//==============================
-	
+
 	void EnableAlphaBlending(bool enable);
 	void SetInputLayout(InputLayout inputLayout);
 	void SetCullMode(CullMode cullMode);
 	void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
 
-	//= VIEWPORT ===========================
+	//= VIEWPORT ===============================
 	bool SetResolution(int width, int height);
 	void SetViewport(float width, float height);
 	void ResetViewport();
-	//======================================
+	//==========================================
 
-	GraphicsAPI* GetAPI() { return m_api; }
+	auto GetAPI() { return m_api; }
 
 private:
 	GraphicsAPI* m_api;
