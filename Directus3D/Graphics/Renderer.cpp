@@ -79,7 +79,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
+	m_fullScreenQuad->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	/*------------------------------------------------------------------------------
 	[SHADERS]
@@ -204,7 +204,7 @@ void Renderer::SetResolution(int width, int height)
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
+	m_fullScreenQuad->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_renderTexPing = make_shared<D3D11RenderTexture>();
 	m_renderTexPing->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);

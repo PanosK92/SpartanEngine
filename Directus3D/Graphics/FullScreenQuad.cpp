@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============
+//= INCLUDES ==============
 #include "FullScreenQuad.h"
-#include "../Core/Helper.h"
-#include "../Graphics/Vertex.h"
-//==========================
+#include "Vertex.h"
+#include <d3d11.h>
+//=========================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -34,6 +34,8 @@ FullScreenQuad::FullScreenQuad()
 	m_graphics = nullptr;
 	m_vertexBuffer = nullptr;
 	m_indexBuffer = nullptr;
+	m_vertexCount = 0;
+	m_indexCount = 0;
 }
 
 FullScreenQuad::~FullScreenQuad()
@@ -42,9 +44,9 @@ FullScreenQuad::~FullScreenQuad()
 	SafeRelease(m_indexBuffer);
 }
 
-bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, Graphics* graphicsDevice)
+bool FullScreenQuad::Initialize(Graphics* graphics, int windowWidth, int windowHeight)
 {
-	m_graphics = graphicsDevice;
+	m_graphics = graphics;
 
 	// Initialize the vertex and index buffer that hold the geometry for the ortho window model.
 	bool result = InitializeBuffers(windowWidth, windowHeight);
@@ -179,12 +181,8 @@ bool FullScreenQuad::InitializeBuffers(int windowWidth, int windowHeight)
 	if (FAILED(result))
 		return false;
 
-	// Release the arrays now that the vertex and index buffers have been created and loaded.
 	delete[] vertices;
-	vertices = nullptr;
-
 	delete[] indices;
-	indices = nullptr;
 
 	return true;
 }

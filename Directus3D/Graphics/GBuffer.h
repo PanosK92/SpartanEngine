@@ -21,18 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ========
 #include <vector>
-//===============
+#include "Graphics.h"
+//===================
+
+class ID3D11ShaderResourceView;
+class ID3D11Texture2D;
+class ID3D11RenderTargetView;
+class ID3D11DepthStencilView;
+class D3D11_VIEWPORT;
 
 //==========================
 const int BUFFER_COUNT = 4;
 //==========================
-
-//= INCLUDES ===============================
-#include "../Graphics/D3D11/D3D11Graphics.h"
-#include "Graphics.h"
-//==========================================
 
 class GBuffer
 {
@@ -56,5 +58,5 @@ private:
 	std::vector<ID3D11ShaderResourceView*> m_shaderResourceViewArray;
 	ID3D11Texture2D* m_depthStencilBuffer;
 	ID3D11DepthStencilView* m_depthStencilView;
-	D3D11_VIEWPORT m_viewport;
+	D3D11_VIEWPORT* m_viewport;
 };

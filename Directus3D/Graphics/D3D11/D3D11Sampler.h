@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========
 #include "../Graphics.h"
+#include <d3d11.h>
 //======================
 
 class D3D11Sampler

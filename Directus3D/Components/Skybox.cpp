@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../Logging/Log.h"
 #include "../Resource/ResourceCache.h"
+#include <d3d11.h>
 //===========================================
 
 //= NAMESPACES ====================

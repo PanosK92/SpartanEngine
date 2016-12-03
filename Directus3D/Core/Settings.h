@@ -43,12 +43,6 @@ enum VSync
 	Every_Second_VBlank
 };
 
-enum GraphicsAPI
-{
-	D3D11,
-	D3D12
-};
-
 class DllExport Settings
 {
 public:
@@ -70,7 +64,6 @@ private:
 	static std::string m_settingsFileName;
 
 	static bool m_isFullScreen;
-	static int m_graphicsAPI;
 	static int m_vsync;
 	static bool m_isMouseVisible;
 	static int m_resolutionWidth;

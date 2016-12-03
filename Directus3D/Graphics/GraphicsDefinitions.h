@@ -21,29 +21,46 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============
-#include "../Graphics.h"
-#include <vector>
-#include <d3d11.h>
-//========================
+#if defined(D3D12)
 
-class D3D11Texture
+class ID3D12Device;
+class ID3D12DeviceContext;
+class D3D12Graphics;
+
+typedef ID3D12Device Device;
+typedef ID3D12DeviceContext DeviceContext;
+typedef D3D12Graphics GraphicsAPI;
+
+#elif defined(D3D11)
+
+class ID3D11Device;
+class ID3D11DeviceContext;
+class D3D11Graphics;
+
+typedef ID3D11Device Device;
+typedef ID3D11DeviceContext DeviceContext;
+typedef D3D11Graphics GraphicsAPI;
+
+#endif
+
+enum InputLayout
 {
-public:
-	D3D11Texture(Graphics* context);
-	~D3D11Texture();
-
-	bool Create(int width, int height, int channels, unsigned char* data);
-	bool CreateAndGenerateMipchain(int width, int height, int channels, unsigned char* data);
-	bool CreateFromMipchain(int width, int height, int channels, const std::vector<std::vector<unsigned char>>& mipchain);
-
-	ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
-	void SetShaderResourceView(ID3D11ShaderResourceView* srv) { m_shaderResourceView = srv; }
-
-private:
-	DXGI_FORMAT m_format;
-	UINT m_mipLevels;
-	ID3D11ShaderResourceView* m_shaderResourceView;
-	Graphics* m_graphics;
+	Auto,
+	Position,
+	PositionColor,
+	PositionTexture,
+	PositionTextureNormalTangent
 };
 
+enum CullMode
+{
+	CullBack,
+	CullFront,
+	CullNone,
+};
+
+enum PrimitiveTopology
+{
+	TriangleList,
+	LineList
+};

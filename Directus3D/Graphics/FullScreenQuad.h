@@ -26,20 +26,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Graphics.h"
 //===================
 
+class ID3D11Buffer;
+
 class FullScreenQuad
 {
 public:
 	FullScreenQuad();
 	~FullScreenQuad();
 
-	bool Initialize(int, int, Graphics* graphicsDevice);
+	bool Initialize(Graphics* graphics, int width, int height);
 	void SetBuffers();
 	int GetIndexCount();
 
 private:
-	bool InitializeBuffers(int, int);
-
 	Graphics* m_graphics;
-	ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
+	ID3D11Buffer* m_vertexBuffer;
+	ID3D11Buffer* m_indexBuffer;
 	int m_vertexCount, m_indexCount;
+
+	bool InitializeBuffers(int, int);
 };

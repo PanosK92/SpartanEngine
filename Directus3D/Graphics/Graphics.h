@@ -21,35 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+#define D3D11
+
+//= INCLUDES ===================
 #include <Windows.h>
-#include "../Math/Vector4.h"
 #include <memory>
+#include "../Math/Vector4.h"
 #include "../Core/Subsystem.h"
-#include "D3D11/D3D11Graphics.h"
-//============================
-
-enum InputLayout
-{
-	Auto,
-	Position,
-	PositionColor,
-	PositionTexture,
-	PositionTextureNormalTangent
-};
-
-enum CullMode
-{
-	CullBack,
-	CullFront,
-	CullNone,
-};
-
-enum PrimitiveTopology
-{
-	TriangleList,
-	LineList
-};
+#include "GraphicsDefinitions.h"
+//==============================
 
 class Graphics : public Subsystem
 {
@@ -59,8 +39,8 @@ public:
 
 	void Initialize(HWND drawPaneHandle);
 
-	ID3D11Device* GetDevice();
-	ID3D11DeviceContext* GetDeviceContext();
+	Device* GetDevice();
+	DeviceContext* GetDeviceContext();
 
 	void Clear(const Directus::Math::Vector4& color);
 	void Present();
@@ -72,8 +52,9 @@ public:
 	void SetCullMode(CullMode cullMode);
 	void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
 	void SetViewport(int width, int height);
+
 private:
-	std::shared_ptr<D3D11Graphics> m_d3d11Graphics;
+	std::shared_ptr<GraphicsAPI> m_graphicsAPI;
 	InputLayout m_inputLayout;
 	CullMode m_cullMode;
 	PrimitiveTopology m_primitiveTopology;
