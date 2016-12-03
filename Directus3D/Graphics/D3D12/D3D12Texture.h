@@ -21,32 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
-#include <memory>
-#include "IComponent.h"
-#include "../Graphics/Texture.h"
-//==============================
+//= INCLUDES ===========
+#include "../Graphics.h"
+#include <d3d12.h>
+#include <vector>
+//======================
 
-class ID3D11ShaderResourceView;
-
-class DllExport Skybox : public IComponent
+class D3D12Texture
 {
 public:
-	Skybox();
-	~Skybox();
+	D3D12Texture(Graphics* graphics);
+	~D3D12Texture();
 
-	//= Interface =================
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
-
-	//= MISC ======================
-	ID3D11ShaderResourceView* GetEnvironmentTexture();
+	bool Create(int width, int height, int channels, unsigned char* data);
+	bool CreateAndGenerateMipchain(int width, int height, int channels, unsigned char* data);
+	bool CreateFromMipchain(int width, int height, int channels, const std::vector<std::vector<unsigned char>>& mipchain);
 
 private:
-	std::shared_ptr<Texture> m_cubeMapTexture;
+	ID3D12Resource* m_resourceView;
+	Graphics* m_graphics;
 };
+

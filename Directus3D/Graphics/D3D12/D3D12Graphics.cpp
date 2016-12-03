@@ -39,25 +39,7 @@ D3D12Graphics::D3D12Graphics()
 
 D3D12Graphics::~D3D12Graphics()
 {
-	// Windowed mode before shutdown or crash
-	if (m_swapChain)
-		m_swapChain->SetFullscreenState(false, nullptr);
-
-	// Close the object handle to the fence event.
-	auto error = CloseHandle(m_fenceEvent);
-	if (error == 0)
-		LOG_INFO("Failed to close handle.");
-
-	SafeRelease(m_fence);
-	SafeRelease(m_pipelineState);
-	SafeRelease(m_commandList);
-	SafeRelease(m_commandAllocator);
-	SafeRelease(m_backBufferRenderTarget[0]);
-	SafeRelease(m_backBufferRenderTarget[1]);
-	SafeRelease(m_renderTargetViewHeap);
-	SafeRelease(m_swapChain);
-	SafeRelease(m_commandQueue);
-	SafeRelease(m_device);
+	Release();
 }
 
 bool D3D12Graphics::Initialize(HWND handle)
@@ -193,7 +175,7 @@ bool D3D12Graphics::Initialize(HWND handle)
 	swapChainDesc.SampleDesc.Quality = 0;
 
 	// Set to full screen or windowed mode.
-	swapChainDesc.Windowed = (BOOL)!FULLSCREEN;
+	swapChainDesc.Windowed = (BOOL)!FULLSCREEN_ENABLED;
 
 	// Set the scan line ordering and scaling to unspecified.
 	swapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
@@ -319,4 +301,125 @@ bool D3D12Graphics::Initialize(HWND handle)
 	//=====================================================================================================
 
 	return true;
+}
+
+void D3D12Graphics::Release()
+{
+	// Windowed mode before shutdown or crash
+	if (m_swapChain)
+		m_swapChain->SetFullscreenState(false, nullptr);
+
+	// Close the object handle to the fence event.
+	auto error = CloseHandle(m_fenceEvent);
+	if (error == 0)
+		LOG_INFO("Failed to close handle.");
+
+	SafeRelease(m_fence);
+	SafeRelease(m_pipelineState);
+	SafeRelease(m_commandList);
+	SafeRelease(m_commandAllocator);
+	SafeRelease(m_backBufferRenderTarget[0]);
+	SafeRelease(m_backBufferRenderTarget[1]);
+	SafeRelease(m_renderTargetViewHeap);
+	SafeRelease(m_swapChain);
+	SafeRelease(m_commandQueue);
+	SafeRelease(m_device);
+}
+
+void D3D12Graphics::Clear(const Directus::Math::Vector4& color)
+{
+	// Reset (re-use) the memory associated command allocator.
+	HRESULT result = m_commandAllocator->Reset();
+	if (FAILED(result))
+	{
+		LOG_INFO("Failed to reset command allocator.");
+	}
+
+	// Reset the command list, use empty pipeline state for now since there are no shaders and we are just clearing the screen.
+	result = m_commandList->Reset(m_commandAllocator, m_pipelineState);
+	if (FAILED(result))
+	{
+		LOG_INFO("Failed to reset command list.");
+	}
+
+	// Record commands in the command list now.
+	// Start by setting the resource barrier.
+	D3D12_RESOURCE_BARRIER barrier;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.pResource = m_backBufferRenderTarget[m_bufferIndex];
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	m_commandList->ResourceBarrier(1, &barrier);
+
+	// Get the render target view handle for the current back buffer.
+	D3D12_CPU_DESCRIPTOR_HANDLE renderTargetViewHandle;
+	renderTargetViewHandle = m_renderTargetViewHeap->GetCPUDescriptorHandleForHeapStart();
+	unsigned int renderTargetViewDescriptorSize;
+	renderTargetViewDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	if (m_bufferIndex == 1)
+	{
+		renderTargetViewHandle.ptr += renderTargetViewDescriptorSize;
+	}
+
+	// Set the back buffer as the render target.
+	m_commandList->OMSetRenderTargets(1, &renderTargetViewHandle, FALSE, nullptr);
+
+	// Then set the color to clear the window to.
+	float clearColor[4] = { color.x, color.y, color.y, color.w };
+	m_commandList->ClearRenderTargetView(renderTargetViewHandle, clearColor, 0, nullptr);
+
+	// Indicate that the back buffer will now be used to present.
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+	m_commandList->ResourceBarrier(1, &barrier);
+
+	// Close the list of commands.
+	result = m_commandList->Close();
+	if (FAILED(result))
+	{
+		LOG_INFO("Failed to close command list.");
+	}
+}
+
+void D3D12Graphics::Present()
+{
+	// Load the command list array (only one command list for now).
+	ID3D12CommandList* ppCommandLists[1];
+	ppCommandLists[0] = m_commandList;
+
+	// Execute the list of commands.
+	m_commandQueue->ExecuteCommandLists(1, ppCommandLists);
+
+	// Finally present the back buffer to the screen since rendering is complete.
+	HRESULT result = m_swapChain->Present(VSYNC, 0);
+	if (FAILED(result))
+	{
+		LOG_INFO("Failed to present using the swapchain.");
+	}
+
+	// Signal and increment the fence value.
+	unsigned long long fenceToWaitFor;
+	fenceToWaitFor = m_fenceValue;
+	result = m_commandQueue->Signal(m_fence, fenceToWaitFor);
+	if (FAILED(result))
+	{
+		LOG_INFO("Failed to signal.");
+	}
+	m_fenceValue++;
+
+	// Wait until the GPU is done rendering.
+	if (m_fence->GetCompletedValue() < fenceToWaitFor)
+	{
+		result = m_fence->SetEventOnCompletion(fenceToWaitFor, m_fenceEvent);
+		if (FAILED(result))
+		{
+			LOG_INFO("Failed to to set event on completion.");
+		}
+		WaitForSingleObject(m_fenceEvent, INFINITE);
+	}
+
+	// Alternate the back buffer index back and forth between 0 and 1 each frame.
+	m_bufferIndex == 0 ? m_bufferIndex = 1 : m_bufferIndex = 0;
 }

@@ -33,8 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ASPECT_RATIO Settings::GetScreenAspect()
 #define SHADOWMAP_RESOLUTION Settings::GetShadowMapResolution()
 #define VSYNC Settings::GetVSync()
-#define FULLSCREEN Settings::IsFullScreen()
-#define ANISOTROPY Settings::GetAnisotropy()
+#define FULLSCREEN_ENABLED Settings::IsFullScreen()
+#define ANISOTROPY_LEVEL Settings::GetAnisotropy()
 
 enum VSync
 {

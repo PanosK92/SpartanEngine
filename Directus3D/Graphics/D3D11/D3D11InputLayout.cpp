@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES =================
 #include "D3D11InputLayout.h"
-#include "D3D11Graphics.h"
 #include "../../Core/Helper.h"
 #include "../../Logging/Log.h"
-//=============================
+//============================
 
 D3D11InputLayout::D3D11InputLayout()
 {
 	m_ID3D11InputLayout = nullptr;
+	m_inputLayout = PositionTextureNormalTangent;
 	m_graphics = nullptr;
 }
 
@@ -45,7 +45,7 @@ void D3D11InputLayout::Initialize(Graphics* graphicsDevice)
 
 void D3D11InputLayout::Set()
 {
-	m_graphics->GetDeviceContext()->IASetInputLayout(m_ID3D11InputLayout);
+	m_graphics->GetAPI()->GetDeviceContext()->IASetInputLayout(m_ID3D11InputLayout);
 }
 
 InputLayout D3D11InputLayout::GetInputLayout()
@@ -56,7 +56,7 @@ InputLayout D3D11InputLayout::GetInputLayout()
 //= LAYOUT CREATION ==================================================
 bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount)
 {
-	HRESULT result = m_graphics->GetDevice()->CreateInputLayout(
+	HRESULT result = m_graphics->GetAPI()->GetDevice()->CreateInputLayout(
 		vertexInputLayout,
 		elementCount,
 		VSBlob->GetBufferPointer(),

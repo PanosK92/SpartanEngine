@@ -25,11 +25,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include <Windows.h>
-#include <memory>
 #include "../Math/Vector4.h"
 #include "../Core/Subsystem.h"
 #include "GraphicsDefinitions.h"
+#include "GraphicsAPI.h"
 //==============================
+
+class GraphicsAPI;
 
 class Graphics : public Subsystem
 {
@@ -37,24 +39,32 @@ public:
 	Graphics(Context* context);
 	~Graphics();
 
-	void Initialize(HWND drawPaneHandle);
-
-	Device* GetDevice();
-	DeviceContext* GetDeviceContext();
-
+	void Initialize(HWND windowHandle);
 	void Clear(const Directus::Math::Vector4& color);
 	void Present();
-	void ResetRenderTarget();
-	void ResetViewport();
+	void SetBackBufferAsRenderTarget();
+
+	//= DEPTH ======================
+	bool CreateDepthStencilBuffer();
+	bool CreateDepthStencil();
 	void EnableZBuffer(bool enable);
+	//==============================
+	
 	void EnableAlphaBlending(bool enable);
 	void SetInputLayout(InputLayout inputLayout);
 	void SetCullMode(CullMode cullMode);
 	void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
+
+	//= VIEWPORT ===========================
+	void SetResolution(int width, int height);
 	void SetViewport(int width, int height);
+	void ResetViewport();
+	//======================================
+
+	GraphicsAPI* GetAPI() { return m_api; }
 
 private:
-	std::shared_ptr<GraphicsAPI> m_graphicsAPI;
+	GraphicsAPI* m_api;
 	InputLayout m_inputLayout;
 	CullMode m_cullMode;
 	PrimitiveTopology m_primitiveTopology;

@@ -26,37 +26,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "dxgi.lib")
 //===============================
 
-//= INCLUDES ===================
+//= INCLUDES =====
 #include <d3d11.h>
 #include <string>
-#include "../../Math/Vector4.h"
-#include "../../Core/Settings.h"
-//==============================
+//================
 
-class D3D11Graphics
+class GraphicsAPI
 {
+	friend class Graphics;
+
 public:
-	D3D11Graphics();
-	~D3D11Graphics();
-
-	void Initialize(HWND handle);
-	void Release();
-
-	void Clear(const Directus::Math::Vector4& color);
-	void Present() { m_swapChain->Present(VSYNC, 0); }
+	GraphicsAPI() {};
 
 	ID3D11Device* GetDevice() { return m_device; }
 	ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
-
-	void EnableZBuffer(bool enable);
-	void EnabledAlphaBlending(bool enable);
-
-	void SetFaceCullMode(D3D11_CULL_MODE cull);
-	void SetBackBufferRenderTarget(){ m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView); }
-
-	void SetResolution(int width, int height);
-	void SetViewport(int width, int height);
-	void ResetViewport() { m_deviceContext->RSSetViewports(1, &m_viewport); }
 
 private:
 	ID3D11Device* m_device;
@@ -69,7 +52,7 @@ private:
 
 	DXGI_MODE_DESC* m_displayModeList;
 	int m_videoCardMemory;
-	std::string m_videoCardDescription;		
+	std::string m_videoCardDescription;
 
 	ID3D11Texture2D* m_depthStencilBuffer;
 	ID3D11DepthStencilState* m_depthStencilStateEnabled;
@@ -82,8 +65,4 @@ private:
 
 	ID3D11BlendState* m_blendStateAlphaEnabled;
 	ID3D11BlendState* m_blendStateAlphaDisabled;
-
-private:
-	bool CreateDepthStencilBuffer();
-	bool CreateDepthStencil();
 };

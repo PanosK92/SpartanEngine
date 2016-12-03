@@ -67,7 +67,7 @@ void PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const 
 	m_shader->Set();
 
 	// Set texture
-	m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
+	m_graphics->GetAPI()->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
 
 	//= UPDATE BUFFER ==========================================================
 	DefaultBuffer* buffer = (DefaultBuffer*)m_constantBuffer->Map();
@@ -84,5 +84,5 @@ void PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const 
 	m_constantBuffer->SetVS(0);
 
 	// Render
-	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	m_graphics->GetAPI()->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }

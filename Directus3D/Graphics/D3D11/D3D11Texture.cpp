@@ -78,7 +78,7 @@ bool D3D11Texture::Create(int width, int height, int channels, unsigned char* da
 
 	// Create texture from description
 	ID3D11Texture2D* texture = nullptr;
-	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, &subresource, &texture);
+	HRESULT result = m_graphics->GetAPI()->GetDevice()->CreateTexture2D(&textureDesc, &subresource, &texture);
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
@@ -94,7 +94,7 @@ bool D3D11Texture::Create(int width, int height, int channels, unsigned char* da
 	srvDesc.Texture2D.MipLevels = m_mipLevels;
 
 	// Create shader resource view from description
-	result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
+	result = m_graphics->GetAPI()->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
@@ -128,7 +128,7 @@ bool D3D11Texture::CreateAndGenerateMipchain(int width, int height, int channels
 
 	// Create texture from description
 	ID3D11Texture2D* texture = nullptr;
-	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
+	HRESULT result = m_graphics->GetAPI()->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
@@ -144,7 +144,7 @@ bool D3D11Texture::CreateAndGenerateMipchain(int width, int height, int channels
 	srvDesc.Texture2D.MipLevels = m_mipLevels;
 
 	// Create shader resource view from description
-	result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
+	result = m_graphics->GetAPI()->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
@@ -161,10 +161,10 @@ bool D3D11Texture::CreateAndGenerateMipchain(int width, int height, int channels
 	subresource.SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
 
 	// Copy data from memory to the subresource created in non-mappable memory
-	m_graphics->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, subresource.pSysMem, subresource.SysMemPitch, 0);
+	m_graphics->GetAPI()->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, subresource.pSysMem, subresource.SysMemPitch, 0);
 
 	// Create mipchain based on ID3D11ShaderResourveView
-	m_graphics->GetDeviceContext()->GenerateMips(m_shaderResourceView);
+	m_graphics->GetAPI()->GetDeviceContext()->GenerateMips(m_shaderResourceView);
 	//========================================================================================
 
 	return true;
@@ -207,7 +207,7 @@ bool D3D11Texture::CreateFromMipchain(int width, int height, int channels, const
 	//= ID3D11Texture2D ========================================================================
 	// Create texture from description
 	ID3D11Texture2D* texture = nullptr;
-	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDescs[0], &subresourceData[0], &texture);
+	HRESULT result = m_graphics->GetAPI()->GetDevice()->CreateTexture2D(&textureDescs[0], &subresourceData[0], &texture);
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
@@ -223,7 +223,7 @@ bool D3D11Texture::CreateFromMipchain(int width, int height, int channels, const
 	srvDesc.Texture2D.MipLevels = m_mipLevels;
 
 	// Create shader resource view from description
-	result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
+	result = m_graphics->GetAPI()->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
