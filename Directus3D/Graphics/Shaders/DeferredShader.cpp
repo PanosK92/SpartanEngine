@@ -130,7 +130,7 @@ void DeferredShader::UpdateMiscBuffer(Light* directionalLight, vector<GameObject
 	buffer->pointLightCount = (float)pointLights.size();
 	buffer->nearPlane = camera->GetNearPlane();
 	buffer->farPlane = camera->GetFarPlane();
-	buffer->viewport = GET_RESOLUTION;
+	buffer->resolution = GET_RESOLUTION;
 	buffer->padding = Vector2::Zero;
 
 	// Unmap buffer

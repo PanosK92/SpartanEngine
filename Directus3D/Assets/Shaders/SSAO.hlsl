@@ -1,5 +1,5 @@
 static const float strength = 5.0f;
-static const float2 offset  = float2(viewport.x / 64.0f, viewport.y / 64.0f);
+static const float2 offset  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
 static const float falloff  = 0.0000000f;
 static const float radius = 0.007f;
 static const float discardDistance = 0.0001f;

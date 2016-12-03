@@ -36,7 +36,7 @@ cbuffer MiscBuffer : register(b1)
     float nearPlane;
     float farPlane;
 	float softShadows;
-    float2 viewport;
+    float2 resolution;
     float2 padding;
 };
 //=====================================
@@ -101,7 +101,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float3 reflectionVector = reflect(-viewDir, normal);
 	
 	// Sample the skybox and the irradiance texture
-    float mipIndex = roughness * 10.0f;
+    float mipIndex = roughness * roughness * 10.0f;
     float3 envColor = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, mipIndex));
     float3 irradiance = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, 10.0f));
 	
