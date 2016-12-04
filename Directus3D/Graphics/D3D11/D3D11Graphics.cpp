@@ -19,117 +19,145 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
-#include "D3D11Graphics.h"
+//= INCLUDES ====================
+#include "../Graphics.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Helper.h"
-#include "../../FileSystem/FileSystem.h"
-//======================================
+#include "../../Core/Settings.h"
+//===============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
 //=============================
 
-D3D11Graphics::D3D11Graphics()
-{	
-	m_device = nullptr;
-	m_deviceContext = nullptr;
-	m_swapChain = nullptr;
-	m_renderTargetView = nullptr;
-	m_driverType = D3D_DRIVER_TYPE_HARDWARE;
-	m_featureLevel = D3D_FEATURE_LEVEL_11_0;
-
-	m_displayModeList = nullptr;
-	m_videoCardMemory = 0;
-	m_videoCardDescription = DATA_NOT_ASSIGNED;
-
-	m_depthStencilBuffer = nullptr;
-	m_depthStencilStateEnabled = nullptr;
-	m_depthStencilStateDisabled = nullptr;
-	m_depthStencilView = nullptr;
-
-	m_rasterStateCullFront = nullptr;
-	m_rasterStateCullBack = nullptr;
-	m_rasterStateCullNone = nullptr;
-
-	m_blendStateAlphaEnabled = nullptr;
-	m_blendStateAlphaDisabled = nullptr;
-}
-
-D3D11Graphics::~D3D11Graphics()
+//= ENUMERATIONS ===============================================
+// This help convert engine enumerations to d3d11 specific
+// enumerations, however the order of the d3d11 enumerations
+// must match the order of the engine's enumerations.
+static const D3D11_CULL_MODE d3dCullMode[] =
 {
-	SafeRelease(m_device);
-	SafeRelease(m_deviceContext);
-	SafeRelease(m_swapChain);
-	SafeRelease(m_renderTargetView);
+	D3D11_CULL_NONE,
+	D3D11_CULL_BACK,
+	D3D11_CULL_FRONT
+};
 
-	SafeDelete(m_displayModeList);
+static const D3D11_PRIMITIVE_TOPOLOGY d3dPrimitiveTopology[] =
+{
+	D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+	D3D11_PRIMITIVE_TOPOLOGY_LINELIST
+};
+//===============================================================
 
-	SafeRelease(m_depthStencilBuffer);
-	SafeRelease(m_depthStencilStateEnabled);
-	SafeRelease(m_depthStencilStateDisabled);
-	SafeRelease(m_depthStencilView);
+Graphics::Graphics(Context* context) : Subsystem(context)
+{
+	m_inputLayout = PositionTextureNormalTangent;
+	m_cullMode = CullBack;
+	m_primitiveTopology = TriangleList;
+	m_zBufferEnabled = true;
+	m_alphaBlendingEnabled = false;
 
-	SafeRelease(m_rasterStateCullFront);
-	SafeRelease(m_rasterStateCullBack);
-	SafeRelease(m_rasterStateCullNone);
-
-	SafeRelease(m_blendStateAlphaEnabled);
-	SafeRelease(m_blendStateAlphaDisabled);
+	m_api = new GraphicsAPI();
 }
 
-void D3D11Graphics::Initialize(HWND handle)
+Graphics::~Graphics()
+{
+	// Before shutting down set to windowed mode or 
+	// upon releasing the swap chain it will throw an exception.
+	if (m_api->m_swapChain)
+		m_api->m_swapChain->SetFullscreenState(false, nullptr);
+
+	SafeRelease(m_api->m_blendStateAlphaEnabled);
+	SafeRelease(m_api->m_blendStateAlphaDisabled);
+	SafeRelease(m_api->m_rasterStateCullFront);
+	SafeRelease(m_api->m_rasterStateCullBack);
+	SafeRelease(m_api->m_rasterStateCullNone);
+	SafeRelease(m_api->m_depthStencilView);
+	SafeRelease(m_api->m_depthStencilStateEnabled);
+	SafeRelease(m_api->m_depthStencilStateDisabled);
+	SafeRelease(m_api->m_depthStencilBuffer);
+	SafeRelease(m_api->m_renderTargetView);
+	SafeRelease(m_api->m_deviceContext);
+	SafeRelease(m_api->m_device);
+	SafeRelease(m_api->m_swapChain);
+
+	if (m_api->m_displayModeList)
+	{
+		delete[] m_api->m_displayModeList;
+		m_api->m_displayModeList = nullptr;
+	}
+
+	if (m_api)
+	{
+		delete m_api;
+		m_api = nullptr;
+	}
+}
+
+bool Graphics::Initialize(HWND windowHandle)
 {
 	//= GRAPHICS INTERFACE FACTORY =================================================
 	IDXGIFactory* factory;
-	HRESULT hResult = CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)(&factory));
-	if (FAILED(hResult))
+	HRESULT result = CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)(&factory));
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to create a DirectX graphics interface factory.");
+		return false;
+	}
 	//==============================================================================
 
 	//= ADAPTER ====================================================================
 	IDXGIAdapter* adapter;
-	hResult = factory->EnumAdapters(0, &adapter);
-	if (FAILED(hResult))
+	result = factory->EnumAdapters(0, &adapter);
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to create a primary graphics interface adapter.");
-
+		return false;
+	}
 	factory->Release();
 	//==============================================================================
 
 	//= ADAPTER OUTPUT / DISPLAY MODE ==============================================
 	IDXGIOutput* adapterOutput;
-	unsigned int numModes;
 
 	// Enumerate the primary adapter output (monitor).
-	hResult = adapter->EnumOutputs(0, &adapterOutput);
-	if (FAILED(hResult))
+	result = adapter->EnumOutputs(0, &adapterOutput);
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to enumerate the primary adapter output.");
-
+		return false;
+	}
 	// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the adapter output (monitor).
-	hResult = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, nullptr);
-	if (FAILED(hResult))
+	result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &m_api->m_displayModeCount, nullptr);
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to get adapter's display modes.");
+		return false;
+	}
 
 	// Create display mode list
-	DXGI_MODE_DESC* m_displayModeList = new DXGI_MODE_DESC[numModes];
-	if (!m_displayModeList)
+	m_api->m_displayModeList = new DXGI_MODE_DESC[m_api->m_displayModeCount];
+	if (!m_api->m_displayModeList)
+	{
 		LOG_ERROR("Failed to create a display mode list.");
+		return false;
+	}
 
 	// Now fill the display mode list structures.
-	hResult = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, m_displayModeList);
-	if (FAILED(hResult))
+	result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &m_api->m_displayModeCount, m_api->m_displayModeList);
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to fill the display mode list structures.");
-
+		return false;
+	}
 	// Release the adapter output.
 	adapterOutput->Release();
 
 	// Go through all the display modes and find the one that matches the screen width and height.
-	unsigned int numerator = 0, denominator = 1;
-	for (auto i = 0; i < numModes; i++)
-		if (m_displayModeList[i].Width == (unsigned int)RESOLUTION_WIDTH && m_displayModeList[i].Height == (unsigned int)RESOLUTION_HEIGHT)
+	for (auto i = 0; i < m_api->m_displayModeCount; i++)
+		if (m_api->m_displayModeList[i].Width == (UINT)RESOLUTION_WIDTH && m_api->m_displayModeList[i].Height == (UINT)RESOLUTION_HEIGHT)
 		{
-			numerator = m_displayModeList[i].RefreshRate.Numerator;
-			denominator = m_displayModeList[i].RefreshRate.Denominator;
+			m_api->m_refreshRateNumerator = (UINT)m_api->m_displayModeList[i].RefreshRate.Numerator;
+			m_api->m_refreshRateDenominator = (UINT)m_api->m_displayModeList[i].RefreshRate.Denominator;
 			break;
 		}
 	//==============================================================================
@@ -137,88 +165,74 @@ void D3D11Graphics::Initialize(HWND handle)
 	//= ADAPTER DESCRIPTION ========================================================
 	DXGI_ADAPTER_DESC adapterDesc;
 	// Get the adapter (video card) description.
-	hResult = adapter->GetDesc(&adapterDesc);
-	if (FAILED(hResult))
+	result = adapter->GetDesc(&adapterDesc);
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to get the adapter's description.");
-
+		return false;
+	}
 	// Release the adapter.
 	adapter->Release();
 
 	// Store the dedicated video card memory in megabytes.
-	m_videoCardMemory = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
+	m_api->m_videoCardMemory = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
 	//==============================================================================
-	
+
 	//= SWAP CHAIN =================================================================
 	DXGI_SWAP_CHAIN_DESC swapChainDesc;
 	ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
-
 	swapChainDesc.BufferCount = 1;
 	swapChainDesc.BufferDesc.Width = RESOLUTION_WIDTH;
 	swapChainDesc.BufferDesc.Height = RESOLUTION_HEIGHT;
 	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.OutputWindow = handle;
+	swapChainDesc.OutputWindow = windowHandle;
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.SampleDesc.Quality = 0;
-
-	// Set to full screen or windowed mode.
-	swapChainDesc.Windowed = (BOOL)!FULLSCREEN;
-
-	// Set the scan line ordering and scaling to unspecified.
+	swapChainDesc.Windowed = (BOOL)!FULLSCREEN_ENABLED;
 	swapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 	swapChainDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // alt + enter fullscreen
 
 	// Create the swap chain, Direct3D device, and Direct3D device context.
-	hResult = D3D11CreateDeviceAndSwapChain(nullptr, m_driverType, nullptr, 0, 
-		&m_featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc, 
-		&m_swapChain, &m_device, nullptr, &m_deviceContext);
+	result = D3D11CreateDeviceAndSwapChain(nullptr, m_api->m_driverType, nullptr, 0,
+		&m_api->m_featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc,
+		&m_api->m_swapChain, &m_api->m_device, nullptr, &m_api->m_deviceContext);
 
-	if (FAILED(hResult))
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to create the swap chain, Direct3D device, and Direct3D device context.");
+		return false;
+	}
 	//==============================================================================
 
 	//= RENDER TARGET VIEW =========================================================
 	ID3D11Texture2D* backBufferPtr;
 	// Get the pointer to the back buffer.
-	hResult = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)(&backBufferPtr));
-	if (FAILED(hResult))
+	result = m_api->m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)(&backBufferPtr));
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to get the pointer to the back buffer.");
-
+		return false;
+	}
 	// Create the render target view with the back buffer pointer.
-	hResult = m_device->CreateRenderTargetView(backBufferPtr, nullptr, &m_renderTargetView);
-	if (FAILED(hResult))
+	result = m_api->m_device->CreateRenderTargetView(backBufferPtr, nullptr, &m_api->m_renderTargetView);
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to create the render target view.");
-
+		return false;
+	}
 	// Release pointer to the back buffer
 	backBufferPtr->Release();
 	backBufferPtr = nullptr;
 	//==============================================================================
 
-	// Depth Stencil Buffer
-	CreateDepthStencilBuffer();
-
-	// Depth-Stencil
+	//= DEPTH =================
 	CreateDepthStencil();
-
-	// DEPTH-STENCIL VIEW ==========================================================
-	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-
-	// Set up the depth stencil view description.
-	depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-	depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-	// Create the depth stencil view.
-	hResult = m_device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
-	if (FAILED(hResult))
-		LOG_ERROR("Failed to create the depth stencil view.");
-
-	// Bind the render target view and depth stencil buffer to the output render pipeline.
-	m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
-	//==============================================================================
+	CreateDepthStencilBuffer();
+	CreateDepthStencilView();
+	//=========================
 
 	//= RASTERIZER =================================================================
 	D3D11_RASTERIZER_DESC rasterizerDesc;
@@ -235,26 +249,32 @@ void D3D11Graphics::Initialize(HWND handle)
 
 	// Create a rasterizer state with back face CullMode
 	rasterizerDesc.CullMode = D3D11_CULL_BACK;
-	hResult = m_device->CreateRasterizerState(&rasterizerDesc, &m_rasterStateCullBack);
-	if (FAILED(hResult))
+	result = m_api->m_device->CreateRasterizerState(&rasterizerDesc, &m_api->m_rasterStateCullBack);
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to create the rasterizer cull back state.");
-
+		return false;
+	}
 	// Create a rasterizer state with front face CullMode
 	rasterizerDesc.CullMode = D3D11_CULL_FRONT;
-	hResult = m_device->CreateRasterizerState(&rasterizerDesc, &m_rasterStateCullFront);
-	if (FAILED(hResult))
+	result = m_api->m_device->CreateRasterizerState(&rasterizerDesc, &m_api->m_rasterStateCullFront);
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to create the rasterizer cull front state.");
-
+		return false;
+	}
 	// Create a rasterizer state with no face CullMode
 	rasterizerDesc.CullMode = D3D11_CULL_NONE;
-	hResult = m_device->CreateRasterizerState(&rasterizerDesc, &m_rasterStateCullNone);
-	if (FAILED(hResult))
+	result = m_api->m_device->CreateRasterizerState(&rasterizerDesc, &m_api->m_rasterStateCullNone);
+	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to create rasterizer cull none state.");
-
+		return false;
+	}
 	// set the default rasterizer state
-	m_deviceContext->RSSetState(m_rasterStateCullBack);
+	m_api->m_deviceContext->RSSetState(m_api->m_rasterStateCullBack);
 	//==============================================================================
-	
+
 	//= BLEND STATE ================================================================
 	D3D11_BLEND_DESC blendStateDesc;
 	ZeroMemory(&blendStateDesc, sizeof(blendStateDesc));
@@ -269,26 +289,88 @@ void D3D11Graphics::Initialize(HWND handle)
 
 	// Create a blending state with alpha blending enabled
 	blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
-	HRESULT result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaEnabled);
+	result = m_api->m_device->CreateBlendState(&blendStateDesc, &m_api->m_blendStateAlphaEnabled);
 	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to create blend state.");
-
+		return false;
+	}
 	// Create a blending state with alpha blending disabled
 	blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)false;
-	result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaDisabled);
+	result = m_api->m_device->CreateBlendState(&blendStateDesc, &m_api->m_blendStateAlphaDisabled);
 	if (FAILED(result))
+	{
 		LOG_ERROR("Failed to create blend state.");
+		return false;
+	}
 	//==============================================================================
 
-	SetViewport(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	return true;
 }
 
-bool D3D11Graphics::CreateDepthStencilBuffer()
+//= DEPTH ======================================================================================================
+void Graphics::EnableZBuffer(bool enable)
+{
+	if (m_zBufferEnabled == enable)
+		return;
+
+	// Set depth stencil state
+	m_api->m_deviceContext->OMSetDepthStencilState(enable ? m_api->m_depthStencilStateEnabled : m_api->m_depthStencilStateDisabled, 1);
+
+	m_zBufferEnabled = enable;
+}
+
+bool Graphics::CreateDepthStencil()
+{
+	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
+	ZeroMemory(&depthStencilDesc, sizeof(depthStencilDesc));
+	// Depth test parameters
+	depthStencilDesc.DepthEnable = true;
+	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+	// Stencil test parameters
+	depthStencilDesc.StencilEnable = true;
+	depthStencilDesc.StencilReadMask = 0xFF;
+	depthStencilDesc.StencilWriteMask = 0xFF;
+	// Stencil operations if pixel is front-facing
+	depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+	depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	// Stencil operations if pixel is back-facing
+	depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+	depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+	// Create a depth stencil state with depth enabled
+	depthStencilDesc.DepthEnable = true;
+	HRESULT result = m_api->m_device->CreateDepthStencilState(&depthStencilDesc, &m_api->m_depthStencilStateEnabled);
+	if (FAILED(result))
+	{
+		LOG_ERROR("Failed to create depth stencil enabled state.");
+		return false;
+	}
+
+	// Create a depth stencil state with depth disabled
+	depthStencilDesc.DepthEnable = false;
+	result = m_api->m_device->CreateDepthStencilState(&depthStencilDesc, &m_api->m_depthStencilStateDisabled);
+	if (FAILED(result))
+	{
+		LOG_ERROR("Failed to create depth stencil disabled state.");
+		return false;
+	}
+
+	// Set the default depth stencil state
+	m_api->m_deviceContext->OMSetDepthStencilState(m_api->m_depthStencilStateEnabled, 1);
+
+	return true;
+}
+
+bool Graphics::CreateDepthStencilBuffer()
 {
 	D3D11_TEXTURE2D_DESC depthBufferDesc;
 	ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-
-	// Set up the description of the depth buffer.
 	depthBufferDesc.Width = RESOLUTION_WIDTH;
 	depthBufferDesc.Height = RESOLUTION_HEIGHT;
 	depthBufferDesc.MipLevels = 1;
@@ -302,8 +384,8 @@ bool D3D11Graphics::CreateDepthStencilBuffer()
 	depthBufferDesc.MiscFlags = 0;
 
 	// Create the texture for the depth buffer using the filled out description.
-	HRESULT hResult = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
-	if (FAILED(hResult))
+	HRESULT result = m_api->m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_api->m_depthStencilBuffer);
+	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create the texture for the depth buffer.");
 		return false;
@@ -312,167 +394,177 @@ bool D3D11Graphics::CreateDepthStencilBuffer()
 	return true;
 }
 
-bool D3D11Graphics::CreateDepthStencil()
+bool Graphics::CreateDepthStencilView()
 {
-	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
-	ZeroMemory(&depthStencilDesc, sizeof(depthStencilDesc));
+	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
+	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
+	depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	depthStencilViewDesc.Texture2D.MipSlice = 0;
 
-	// Depth test parameters
-	depthStencilDesc.DepthEnable = true;
-	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-	depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
-
-	// Stencil test parameters
-	depthStencilDesc.StencilEnable = true;
-	depthStencilDesc.StencilReadMask = 0xFF;
-	depthStencilDesc.StencilWriteMask = 0xFF;
-
-	// Stencil operations if pixel is front-facing
-	depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-	depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-
-	// Stencil operations if pixel is back-facing
-	depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-	depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-	depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-
-	// Create a depth stencil state with depth enabled
-	depthStencilDesc.DepthEnable = true;
-	HRESULT hResult = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateEnabled);
-	if (FAILED(hResult))
-	{
-		LOG_ERROR("Failed to create depth stencil enabled state.");
-		return false;
-	}
-
-	// Create a depth stencil state with depth disabled
-	depthStencilDesc.DepthEnable = false;
-	HRESULT result = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateDisabled);
+	// Create the depth stencil view.
+	HRESULT result = m_api->m_device->CreateDepthStencilView(m_api->m_depthStencilBuffer, &depthStencilViewDesc, &m_api->m_depthStencilView);
 	if (FAILED(result))
 	{
-		LOG_ERROR("Failed to create depth stencil disabled state.");
+		LOG_ERROR("Failed to create the depth stencil view.");
 		return false;
 	}
 
-	// Set the default depth stencil state
-	m_deviceContext->OMSetDepthStencilState(m_depthStencilStateEnabled, 1);
+	// Bind the render target view and depth stencil buffer to the output render pipeline.
+	m_api->m_deviceContext->OMSetRenderTargets(1, &m_api->m_renderTargetView, m_api->m_depthStencilView);
+
+	return true;
+}
+//========================================================================================================================
+
+void Graphics::Clear(const Vector4& color)
+{
+	// Clear the back buffer.
+	float clearColor[4] = { color.x, color.y, color.z, color.w };
+	m_api->m_deviceContext->ClearRenderTargetView(m_api->m_renderTargetView, clearColor);
+
+	// Clear the depth buffer.
+	m_api->m_deviceContext->ClearDepthStencilView(m_api->m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+}
+
+void Graphics::Present()
+{
+	m_api->m_swapChain->Present(VSYNC, 0);
+}
+
+void Graphics::EnableAlphaBlending(bool enable)
+{
+	if (m_alphaBlendingEnabled == enable)
+		return;
+
+	// Set blend state
+	float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	m_api->m_deviceContext->OMSetBlendState(enable ? m_api->m_blendStateAlphaEnabled : m_api->m_blendStateAlphaDisabled, blendFactor, 0xffffffff);
+
+	m_alphaBlendingEnabled = enable;
+}
+
+bool Graphics::SetResolution(int width, int height)
+{
+	//= RELEASE RESLUTION BASED STUFF =======
+	SafeRelease(m_api->m_renderTargetView);
+	SafeRelease(m_api->m_depthStencilBuffer);
+	SafeRelease(m_api->m_depthStencilView);
+	//=======================================
+
+	//= RESIZE TARGET ==================================================
+	DXGI_MODE_DESC dxgiModeDesc;
+	ZeroMemory(&dxgiModeDesc, sizeof(dxgiModeDesc));
+	dxgiModeDesc.Width = (UINT)width;
+	dxgiModeDesc.Height = (UINT)height;
+	dxgiModeDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	dxgiModeDesc.RefreshRate = DXGI_RATIONAL{ m_api->m_refreshRateNumerator, m_api->m_refreshRateDenominator };
+	dxgiModeDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+	dxgiModeDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+
+	HRESULT result = m_api->m_swapChain->ResizeTarget(&dxgiModeDesc);
+	if (FAILED(result))
+	{
+		LOG_ERROR("Failed to resize swapchain target.");
+		return false;
+	}
+	//==================================================================
+
+	//= RESIZE BUFFERS =================================================
+	// Resize the swap chain and recreate the render target views. 
+	result = m_api->m_swapChain->ResizeBuffers(1, (UINT)width, (UINT)height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+	if (FAILED(result))
+	{
+		LOG_ERROR("Failed to resize swapchain buffers.");
+		return false;
+	}
+	//==================================================================
+
+	//= RENDER TARGET VIEW =============================================
+	ID3D11Texture2D* backBuffer = nullptr;
+	result = m_api->m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&backBuffer));
+	if (FAILED(result))
+	{
+		LOG_ERROR("Failed to get pointer to the swapchain's back buffer.");
+		return false;
+	}
+
+	result = m_api->m_device->CreateRenderTargetView(backBuffer, nullptr, &m_api->m_renderTargetView);
+	SafeRelease(backBuffer);
+	if (FAILED(result))
+	{
+		LOG_ERROR("Failed to create render target view.");
+		return false;
+	}
+	//====================================================================
+
+	//= RECREATE RESOLUTION BASED STUFF =
+	CreateDepthStencilBuffer();
+	CreateDepthStencilView();
+	//===================================
 
 	return true;
 }
 
-void D3D11Graphics::Release()
+//= VIEWPORT =====================================================
+void Graphics::SetViewport(float width, float height)
 {
-	// Before shutting down set to windowed mode or 
-	// upon releasing the swap chain it will throw an exception.
-	if (m_swapChain)
-		m_swapChain->SetFullscreenState(false, nullptr);
+	m_api->m_viewport.Width = width;
+	m_api->m_viewport.Height = height;
+	m_api->m_viewport.MinDepth = 0.0f;
+	m_api->m_viewport.MaxDepth = 1.0f;
+	m_api->m_viewport.TopLeftX = 0.0f;
+	m_api->m_viewport.TopLeftY = 0.0f;
 
-	m_blendStateAlphaEnabled->Release();
-	m_blendStateAlphaDisabled->Release();
-	m_rasterStateCullFront->Release();
-	m_rasterStateCullBack->Release();
-	m_rasterStateCullNone->Release();
-	m_depthStencilView->Release();
-	m_depthStencilStateEnabled->Release();
-	m_depthStencilStateDisabled->Release();
-	m_depthStencilBuffer->Release();
-	m_renderTargetView->Release();
-	m_deviceContext->Release();
-	m_device->Release();
-	m_swapChain->Release();
-
-	delete[] m_displayModeList;
-	m_displayModeList = nullptr;
+	m_api->m_deviceContext->RSSetViewports(1, &m_api->m_viewport);
 }
 
-void D3D11Graphics::Clear(const Vector4& color)
+void Graphics::ResetViewport()
 {
-	float clearColor[4];
-	clearColor[0] = color.x;
-	clearColor[1] = color.y;
-	clearColor[2] = color.z;
-	clearColor[3] = color.w;
+	m_api->m_deviceContext->RSSetViewports(1, &m_api->m_viewport);
+}
+//================================================================
 
-	// Clear the back buffer.
-	m_deviceContext->ClearRenderTargetView(m_renderTargetView, clearColor);
+void Graphics::SetCullMode(CullMode cullMode)
+{
+	// Set face CullMode only if not already set
+	if (m_cullMode == cullMode)
+		return;
 
-	// Clear the depth buffer.
-	m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+	auto mode = d3dCullMode[cullMode];
+
+	if (mode == D3D11_CULL_FRONT)
+		m_api->m_deviceContext->RSSetState(m_api->m_rasterStateCullFront);
+	else if (mode == D3D11_CULL_BACK)
+		m_api->m_deviceContext->RSSetState(m_api->m_rasterStateCullBack);
+	else if (mode == D3D11_CULL_NONE)
+		m_api->m_deviceContext->RSSetState(m_api->m_rasterStateCullNone);
+
+	// Save the current CullMode mode
+	m_cullMode = cullMode;
 }
 
-void D3D11Graphics::EnableZBuffer(bool enable)
+void Graphics::SetBackBufferAsRenderTarget()
 {
-	if (enable)
-		m_deviceContext->OMSetDepthStencilState(m_depthStencilStateEnabled, 1);
-	else
-		m_deviceContext->OMSetDepthStencilState(m_depthStencilStateDisabled, 1);
+	m_api->m_deviceContext->OMSetRenderTargets(1, &m_api->m_renderTargetView, m_api->m_depthStencilView);
 }
 
-void D3D11Graphics::EnabledAlphaBlending(bool enable)
+void Graphics::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
 {
-	// Blend factor.
-	float blendFactor[4];
-	blendFactor[0] = 0.0f;
-	blendFactor[1] = 0.0f;
-	blendFactor[2] = 0.0f;
-	blendFactor[3] = 0.0f;
+	// Set PrimitiveTopology only if not already set
+	if (m_primitiveTopology == primitiveTopology)
+		return;
 
-	if (enable)
-		m_deviceContext->OMSetBlendState(m_blendStateAlphaEnabled, blendFactor, 0xffffffff);
-	else
-		m_deviceContext->OMSetBlendState(m_blendStateAlphaDisabled, blendFactor, 0xffffffff);
+	// Ser primitive topology
+	m_api->m_deviceContext->IASetPrimitiveTopology(d3dPrimitiveTopology[primitiveTopology]);
+
+	// Save the current PrimitiveTopology mode
+	m_primitiveTopology = primitiveTopology;
 }
-
-void D3D11Graphics::SetResolution(int width, int height)
+void Graphics::SetInputLayout(InputLayout inputLayout)
 {
-	//Release old views and the old depth/stencil buffer.
-	SafeRelease(m_renderTargetView);
-	SafeRelease(m_depthStencilView);
-	SafeRelease(m_depthStencilBuffer);
+	if (m_inputLayout == inputLayout)
+		return;
 
-	//Resize the swap chain and recreate the render target views. 
-	HRESULT result = m_swapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
-	if (FAILED(result))
-		LOG_ERROR("Failed to resize swap chain buffers.");
-
-	ID3D11Texture2D* backBuffer;
-	result = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&backBuffer));
-	if (FAILED(result))
-		LOG_ERROR("Failed to get pointer to the swap chain's back buffer.");
-
-	result = m_device->CreateRenderTargetView(backBuffer, nullptr, &m_renderTargetView);
-	if (FAILED(result))
-		LOG_ERROR("Failed to create render target view.");
-
-	SafeRelease(backBuffer);
-
-	CreateDepthStencilBuffer();
-	CreateDepthStencil();
-
-	SetViewport(width, height);
-}
-
-void D3D11Graphics::SetViewport(int width, int height)
-{
-	m_viewport.Width = float(width);
-	m_viewport.Height = float(height);
-	m_viewport.MinDepth = 0.0f;
-	m_viewport.MaxDepth = 1.0f;
-	m_viewport.TopLeftX = 0.0f;
-	m_viewport.TopLeftY = 0.0f;
-
-	m_deviceContext->RSSetViewports(1, &m_viewport);
-}
-
-void D3D11Graphics::SetFaceCullMode(D3D11_CULL_MODE cull)
-{
-	if (cull == D3D11_CULL_FRONT)
-		m_deviceContext->RSSetState(m_rasterStateCullFront);
-	else if (cull == D3D11_CULL_BACK)
-		m_deviceContext->RSSetState(m_rasterStateCullBack);
-	else if (cull == D3D11_CULL_NONE)
-		m_deviceContext->RSSetState(m_rasterStateCullNone);
+	m_inputLayout = inputLayout;
 }

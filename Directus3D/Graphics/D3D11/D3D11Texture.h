@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =============
-#include "D3D11Graphics.h"
 #include "../Graphics.h"
 #include <vector>
+#include <d3d11.h>
 //========================
 
 class D3D11Texture

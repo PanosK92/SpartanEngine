@@ -19,9 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ===========
 #include "DebugShader.h"
-//=============================
+#include <d3d11.h>
+//======================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -78,7 +79,7 @@ void DebugShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& view
 	m_miscBuffer->Unmap();
 	m_miscBuffer->SetVS(0);
 
-	m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &depthMap);
+	m_graphics->GetAPI()->GetDeviceContext()->PSSetShaderResources(0, 1, &depthMap);
 }
 
 void DebugShader::RenderShader(unsigned int vertexCount)
@@ -86,5 +87,5 @@ void DebugShader::RenderShader(unsigned int vertexCount)
 	m_shader->Set();
 
 	// render
-	m_graphics->GetDeviceContext()->Draw(vertexCount, 0);
+	m_graphics->GetAPI()->GetDeviceContext()->Draw(vertexCount, 0);
 }

@@ -103,7 +103,7 @@ private:
 	const static int cascades = 3;
 	struct PerFrameBufferType
 	{
-		Directus::Math::Vector2 viewport;
+		Directus::Math::Vector2 m_resolution;
 		float nearPlane;
 		float farPlane;
 		Directus::Math::Matrix mLightViewProjection[cascades];

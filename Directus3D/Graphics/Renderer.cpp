@@ -79,7 +79,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
+	m_fullScreenQuad->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	/*------------------------------------------------------------------------------
 	[SHADERS]
@@ -193,7 +193,7 @@ void Renderer::SetResolution(int width, int height)
 	SET_RESOLUTION(width, height);
 	Graphics* graphics = g_context->GetSubsystem<Graphics>();
 
-	graphics->SetViewport(width, height);
+	graphics->SetResolution(width, height);
 
 	m_GBuffer.reset();
 	m_fullScreenQuad.reset();
@@ -204,7 +204,7 @@ void Renderer::SetResolution(int width, int height)
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
+	m_fullScreenQuad->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_renderTexPing = make_shared<D3D11RenderTexture>();
 	m_renderTexPing->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
@@ -491,7 +491,7 @@ void Renderer::PostProcessing()
 		m_renderTexPing->GetShaderResourceView()
 	);
 
-	g_context->GetSubsystem<Graphics>()->ResetRenderTarget();
+	g_context->GetSubsystem<Graphics>()->SetBackBufferAsRenderTarget();
 	g_context->GetSubsystem<Graphics>()->ResetViewport();
 	g_context->GetSubsystem<Graphics>()->Clear(m_camera->GetClearColor());
 

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "../../Math/Matrix.h"
 #include "../Graphics.h"
+#include <d3d11.h>
 //============================
 
 class D3D11RenderTexture
@@ -32,7 +33,7 @@ public:
 	D3D11RenderTexture();
 	~D3D11RenderTexture();
 
-	bool Initialize(Graphics* graphicsDevice, int, int);
+	bool Initialize(Graphics* graphicsDevice, int width, int height);
 	void SetAsRenderTarget() const;
 	void Clear(const Directus::Math::Vector4& clearColor);
 	void Clear(float r, float g , float b, float a) const;

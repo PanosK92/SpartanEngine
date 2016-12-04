@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../Logging/Log.h"
 #include "../Resource/ResourceCache.h"
+#include <d3d11.h>
 //===========================================
 
 //= NAMESPACES ====================
@@ -61,7 +62,7 @@ Skybox::~Skybox()
 void Skybox::Reset()
 {
 	ID3D11ShaderResourceView* cubeMapSRV = nullptr;
-	HRESULT hr = CreateDDSTextureFromFile(g_context->GetSubsystem<Graphics>()->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &cubeMapSRV);
+	HRESULT hr = CreateDDSTextureFromFile(g_context->GetSubsystem<Graphics>()->GetAPI()->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &cubeMapSRV);
 	if (FAILED(hr))
 		return;
 
@@ -71,7 +72,7 @@ void Skybox::Reset()
 	m_cubeMapTexture->SetWidth(1024);
 	m_cubeMapTexture->SetHeight(1024);
 	m_cubeMapTexture->SetGrayscale(false);
-	m_cubeMapTexture->SetShaderResourceView((void**)cubeMapSRV);
+	m_cubeMapTexture->SetShaderResourceView(cubeMapSRV);
 
 	// Add the actual "box"
 	g_gameObject->AddComponent<MeshFilter>()->SetMesh(MeshFilter::Cube);
@@ -123,7 +124,7 @@ void Skybox::Deserialize()
 /*------------------------------------------------------------------------------
 								[MISC]
 ------------------------------------------------------------------------------*/
-void** Skybox::GetEnvironmentTexture()
+ID3D11ShaderResourceView* Skybox::GetEnvironmentTexture()
 {
 	return m_cubeMapTexture ? m_cubeMapTexture->GetShaderResourceView() : nullptr;
 }

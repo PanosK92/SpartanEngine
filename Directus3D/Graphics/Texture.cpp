@@ -26,13 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../FileSystem/ImageImporter.h"
 #include "../Core/Helper.h"
+#include "D3D11/D3D11Texture.h"
 //======================================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
 
-Texture::Texture(Context* context)
+Texture::Texture(Context* context) : GPUObject(m_context->GetSubsystem<Graphics>())
 {
 	m_context = context;
 	m_ID = GENERATE_GUID;
@@ -131,9 +132,14 @@ bool Texture::LoadFromFile(const string& filePath)
 	return true;
 }
 
-void Texture::SetShaderResourceView(void** srv)
+ID3D11ShaderResourceView* Texture::GetShaderResourceView()
 {
-	m_texture->SetShaderResourceView((ID3D11ShaderResourceView*)srv);
+	return m_texture->GetShaderResourceView();
+}
+
+void Texture::SetShaderResourceView(ID3D11ShaderResourceView* srv)
+{
+	m_texture->SetShaderResourceView(srv);
 }
 
 bool Texture::CreateShaderResourceView()

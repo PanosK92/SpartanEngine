@@ -21,34 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
-#include "../../Math/Matrix.h"
-#include "../Graphics.h"
-#include "../D3D11/D3D11Buffer.h"
-#include "../D3D11/D3D11Shader.h"
-//===============================
+//= INCLUDES ===============
+#include "GPUObject.h"
+#include "../Core/Context.h"
+//==========================
 
-class ColorShader
+class ConstantBuffer : public GPUObject
 {
 public:
-	ColorShader();
-	~ColorShader();
-
-	void Initialize(Graphics* graphicsDevice);
-	void Render(int vertexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
-
+	ConstantBuffer(Context* context);
+	virtual ~ConstantBuffer();
 private:
-	struct MiscBufferType
-	{
-		Directus::Math::Matrix world;
-		Directus::Math::Matrix view;
-		Directus::Math::Matrix projection;
-	};
-
-	void SetShaderBuffers(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
-	void RenderShader(unsigned int vertexCount);
-
-	std::shared_ptr<D3D11Buffer> m_miscBuffer;
-	Graphics* m_graphics;
-	std::shared_ptr<D3D11Shader> m_shader;
 };

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Components/Transform.h"
 #include "../../Components/Light.h"
 #include "../../Core/Settings.h"
+#include <d3d11.h>
 //=====================================
 
 //= NAMESPACES ================
@@ -129,7 +130,7 @@ void DeferredShader::UpdateMiscBuffer(Light* directionalLight, vector<GameObject
 	buffer->pointLightCount = (float)pointLights.size();
 	buffer->nearPlane = camera->GetNearPlane();
 	buffer->farPlane = camera->GetFarPlane();
-	buffer->viewport = GET_RESOLUTION;
+	buffer->resolution = GET_RESOLUTION;
 	buffer->padding = Vector2::Zero;
 
 	// Unmap buffer
@@ -142,7 +143,7 @@ void DeferredShader::UpdateMiscBuffer(Light* directionalLight, vector<GameObject
 
 void DeferredShader::UpdateTextures(vector<ID3D11ShaderResourceView*> textures)
 {
-	m_graphics->GetDeviceContext()->PSSetShaderResources(0, UINT(textures.size()), &textures.front());
+	m_graphics->GetAPI()->GetDeviceContext()->PSSetShaderResources(0, UINT(textures.size()), &textures.front());
 }
 
 void DeferredShader::Set()
@@ -154,7 +155,7 @@ void DeferredShader::Set()
 void DeferredShader::Render(int indexCount)
 {
 	if (m_shader)
-		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+		m_graphics->GetAPI()->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }
 
 bool DeferredShader::IsCompiled()
