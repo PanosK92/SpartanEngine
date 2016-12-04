@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 #include "../../Math/Vector4.h"
 #include "../Material.h"
-#include "../Graphics.h"
+#include "../D3D11/D3D11GraphicsDevice.h"
 #include "../../Components/Light.h"
 #include "../../Components/Camera.h"
 //==================================
@@ -51,7 +51,7 @@ public:
 		bool emission,
 		bool mask,
 		bool cubemap,
-		Graphics* d3d11device
+		D3D11GraphicsDevice* d3d11device
 	);
 	bool LoadFromFile(const std::string& filePath) { return true; }
 	bool SaveMetadata();
@@ -93,7 +93,7 @@ private:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/
-	Graphics* m_graphics;
+	D3D11GraphicsDevice* m_graphics;
 	std::shared_ptr<D3D11Buffer> m_perObjectBuffer;
 	std::shared_ptr<D3D11Buffer> m_materialBuffer;
 	std::shared_ptr<D3D11Buffer> m_miscBuffer;
@@ -103,7 +103,7 @@ private:
 	const static int cascades = 3;
 	struct PerFrameBufferType
 	{
-		Directus::Math::Vector2 m_resolution;
+		Directus::Math::Vector2 viewport;
 		float nearPlane;
 		float farPlane;
 		Directus::Math::Matrix mLightViewProjection[cascades];

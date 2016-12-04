@@ -21,25 +21,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========
+//= INCLUDES ====
 #include <vector>
-#include "Graphics.h"
-//===================
-
-class ID3D11ShaderResourceView;
-class ID3D11Texture2D;
-class ID3D11RenderTargetView;
-class ID3D11DepthStencilView;
-class D3D11_VIEWPORT;
+#include "../Math/Vector4.h"
+//===============
 
 //==========================
 const int BUFFER_COUNT = 4;
 //==========================
 
+//= INCLUDES =====================================
+#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
+//================================================
+
 class GBuffer
 {
 public:
-	GBuffer(Graphics* graphicsDevice);
+	GBuffer(D3D11GraphicsDevice* graphicsDevice);
 	~GBuffer();
 
 	bool Initialize(int width, int height);
@@ -51,12 +49,12 @@ public:
 	ID3D11ShaderResourceView* GetShaderResourceView(int index);
 
 private:
-	Graphics* m_graphics;
+	D3D11GraphicsDevice* m_graphics;
 	int m_textureWidth, m_textureHeight;
 	std::vector<ID3D11Texture2D*> m_renderTargetTextureArray;
 	std::vector<ID3D11RenderTargetView*> m_renderTargetViewArray;
 	std::vector<ID3D11ShaderResourceView*> m_shaderResourceViewArray;
 	ID3D11Texture2D* m_depthStencilBuffer;
 	ID3D11DepthStencilView* m_depthStencilView;
-	D3D11_VIEWPORT* m_viewport;
+	D3D11_VIEWPORT m_viewport;
 };

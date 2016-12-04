@@ -27,8 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Texture.h"
 //==============================
 
-class ID3D11ShaderResourceView;
-
 class DllExport Skybox : public IComponent
 {
 public:
@@ -45,7 +43,7 @@ public:
 	virtual void Deserialize();
 
 	//= MISC ======================
-	ID3D11ShaderResourceView* GetEnvironmentTexture();
+	void** GetEnvironmentTexture();
 
 private:
 	std::shared_ptr<Texture> m_cubeMapTexture;

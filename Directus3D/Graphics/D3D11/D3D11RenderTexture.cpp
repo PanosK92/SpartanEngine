@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "D3D11RenderTexture.h"
+#include "D3D11GraphicsDevice.h"
 #include "../../Core/Settings.h"
 #include "../../Core/Helper.h"
 //==============================
@@ -50,7 +51,7 @@ D3D11RenderTexture::~D3D11RenderTexture()
 	SafeRelease(m_renderTargetTexture);
 }
 
-bool D3D11RenderTexture::Initialize(Graphics* graphicsDevice, int textureWidth, int textureHeight)
+bool D3D11RenderTexture::Initialize(D3D11GraphicsDevice* graphicsDevice, int textureWidth, int textureHeight)
 {
 	m_graphics = graphicsDevice;
 	m_width = textureHeight;
@@ -71,7 +72,7 @@ bool D3D11RenderTexture::Initialize(Graphics* graphicsDevice, int textureWidth, 
 	textureDesc.CPUAccessFlags = 0;
 	textureDesc.MiscFlags = 0;
 
-	HRESULT result = m_graphics->GetAPI()->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTexture);
+	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTexture);
 	if (FAILED(result))
 		return false;
 	//=================================================================================================================================
@@ -82,7 +83,7 @@ bool D3D11RenderTexture::Initialize(Graphics* graphicsDevice, int textureWidth, 
 	renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 	renderTargetViewDesc.Texture2D.MipSlice = 0;
 
-	result = m_graphics->GetAPI()->GetDevice()->CreateRenderTargetView(m_renderTargetTexture, &renderTargetViewDesc, &m_renderTargetView);
+	result = m_graphics->GetDevice()->CreateRenderTargetView(m_renderTargetTexture, &renderTargetViewDesc, &m_renderTargetView);
 	if (FAILED(result))
 		return false;
 	//=================================================================================================================================
@@ -94,7 +95,7 @@ bool D3D11RenderTexture::Initialize(Graphics* graphicsDevice, int textureWidth, 
 	shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
 	shaderResourceViewDesc.Texture2D.MipLevels = 1;
 
-	result = m_graphics->GetAPI()->GetDevice()->CreateShaderResourceView(m_renderTargetTexture, &shaderResourceViewDesc, &m_shaderResourceView);
+	result = m_graphics->GetDevice()->CreateShaderResourceView(m_renderTargetTexture, &shaderResourceViewDesc, &m_shaderResourceView);
 	if (FAILED(result))
 		return false;
 	//=================================================================================================================================
@@ -114,7 +115,7 @@ bool D3D11RenderTexture::Initialize(Graphics* graphicsDevice, int textureWidth, 
 	depthBufferDesc.CPUAccessFlags = 0;
 	depthBufferDesc.MiscFlags = 0;
 
-	result = m_graphics->GetAPI()->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
+	result = m_graphics->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
 	if (FAILED(result))
 		return false;
 	//=================================================================================================================================
@@ -126,7 +127,7 @@ bool D3D11RenderTexture::Initialize(Graphics* graphicsDevice, int textureWidth, 
 	depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 	depthStencilViewDesc.Texture2D.MipSlice = 0;
 
-	result = m_graphics->GetAPI()->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
+	result = m_graphics->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
 	if (FAILED(result))
 		return false;
 	//=================================================================================================================================
@@ -145,10 +146,10 @@ bool D3D11RenderTexture::Initialize(Graphics* graphicsDevice, int textureWidth, 
 void D3D11RenderTexture::SetAsRenderTarget() const
 {
 	// Bind the render target view and depth stencil buffer to the output render pipeline.
-	m_graphics->GetAPI()->GetDeviceContext()->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
+	m_graphics->GetDeviceContext()->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
 
 	// Set the viewport.
-	m_graphics->GetAPI()->GetDeviceContext()->RSSetViewports(1, &m_viewport);
+	m_graphics->GetDeviceContext()->RSSetViewports(1, &m_viewport);
 }
 
 void D3D11RenderTexture::Clear(const Vector4& clearColor)
@@ -166,8 +167,8 @@ void D3D11RenderTexture::Clear(float red, float green, float blue, float alpha) 
 	clearColor[2] = blue;
 	clearColor[3] = alpha;
 
-	m_graphics->GetAPI()->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor); // Clear the back buffer.
-	m_graphics->GetAPI()->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0); // Clear the depth buffer.
+	m_graphics->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor); // Clear the back buffer.
+	m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0); // Clear the depth buffer.
 }
 
 void D3D11RenderTexture::CreateOrthographicProjectionMatrix(float nearPlane, float farPlane)

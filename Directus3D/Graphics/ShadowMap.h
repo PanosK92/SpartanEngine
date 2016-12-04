@@ -34,7 +34,7 @@ using namespace std;
 class ShadowMap
 {
 public:
-	ShadowMap(Graphics* device, int cascadeNumber, Light* light, Camera* camera, int resolution)
+	ShadowMap(D3D11GraphicsDevice* device, int cascadeNumber, Light* light, Camera* camera, int resolution)
 	{
 		m_resolution = resolution;
 		m_depthMap = make_shared<D3D11RenderTexture>();

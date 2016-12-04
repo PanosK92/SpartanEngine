@@ -41,7 +41,7 @@ DepthShader::~DepthShader()
 
 }
 
-void DepthShader::Initialize(Graphics* graphicsDevice)
+void DepthShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 {
 	m_graphics = graphicsDevice;
 
@@ -84,5 +84,5 @@ void DepthShader::Set()
 void DepthShader::Render(unsigned int indexCount)
 {
 	if (m_graphics)
-		m_graphics->GetAPI()->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 }

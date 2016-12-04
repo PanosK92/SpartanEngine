@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "D3D11Sampler.h"
+#include "D3D11GraphicsDevice.h"
 #include "../../Core/Helper.h"
 #include "../../Core/Settings.h"
 #include "../../Logging/Log.h"
 //=============================
 
-D3D11Sampler::D3D11Sampler(Graphics* graphics)
+D3D11Sampler::D3D11Sampler(D3D11GraphicsDevice* graphics)
 {
 	m_graphics = graphics;
 	m_sampler = nullptr;
@@ -55,7 +56,7 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 	samplerDesc.MaxLOD = FLT_MAX;
 
 	// create sampler state.
-	HRESULT result = m_graphics->GetAPI()->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
+	HRESULT result = m_graphics->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
 	if(FAILED(result))
 	{
 		LOG_INFO("Failed to create sampler.");
@@ -67,5 +68,5 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 
 void D3D11Sampler::Set(unsigned int startSlot)
 {
-	m_graphics->GetAPI()->GetDeviceContext()->PSSetSamplers(startSlot, 1, &m_sampler);
+	m_graphics->GetDeviceContext()->PSSetSamplers(startSlot, 1, &m_sampler);
 }

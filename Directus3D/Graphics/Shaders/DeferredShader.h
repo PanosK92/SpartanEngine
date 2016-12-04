@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/GameObject.h"
 #include "../../Math/Vector4.h"
 #include "../../Components/Camera.h"
-#include "../Graphics.h"
+#include "../D3D11/D3D11GraphicsDevice.h"
 #include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../../Components/Light.h"
@@ -38,7 +38,7 @@ public:
 	DeferredShader();
 	~DeferredShader();
 
-	void Initialize(Graphics* graphicsDevice);
+	void Initialize(D3D11GraphicsDevice* graphicsDevice);
 	void UpdateMatrixBuffer(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mBaseView,
 		const Directus::Math::Matrix& mPerspectiveProjection, const Directus::Math::Matrix& mOrthographicProjection);
 	void UpdateMiscBuffer(Light*, std::vector<GameObject*> pointLights, Camera* camera);
@@ -70,12 +70,12 @@ private:
 		float nearPlane;
 		float farPlane;
 		float softShadows;
-		Directus::Math::Vector2 resolution;
+		Directus::Math::Vector2 viewport;
 		Directus::Math::Vector2 padding;
 	};
 
 	std::shared_ptr<D3D11Buffer> m_matrixBuffer;
 	std::shared_ptr<D3D11Buffer> m_miscBuffer;
 	std::shared_ptr<D3D11Shader> m_shader;
-	Graphics* m_graphics;
+	D3D11GraphicsDevice* m_graphics;
 };

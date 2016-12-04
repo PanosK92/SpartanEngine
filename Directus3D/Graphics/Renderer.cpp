@@ -73,13 +73,13 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_nearPlane = 0.0;
 	m_farPlane = 0.0f;
 
-	Graphics* graphics = g_context->GetSubsystem<Graphics>();
+	D3D11GraphicsDevice* graphics = g_context->GetSubsystem<D3D11GraphicsDevice>();
 
 	m_GBuffer = make_shared<GBuffer>(graphics);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
 
 	/*------------------------------------------------------------------------------
 	[SHADERS]
@@ -129,7 +129,7 @@ Renderer::~Renderer()
 
 void Renderer::Render()
 {
-	Graphics* graphics = g_context->GetSubsystem<Graphics>();
+	D3D11GraphicsDevice* graphics = g_context->GetSubsystem<D3D11GraphicsDevice>();
 
 	StartCalculatingStats();
 	AcquirePrerequisites();
@@ -191,9 +191,9 @@ void Renderer::SetResolution(int width, int height)
 		return;
 
 	SET_RESOLUTION(width, height);
-	Graphics* graphics = g_context->GetSubsystem<Graphics>();
+	D3D11GraphicsDevice* graphics = g_context->GetSubsystem<D3D11GraphicsDevice>();
 
-	graphics->SetResolution(width, height);
+	graphics->SetViewport(width, height);
 
 	m_GBuffer.reset();
 	m_fullScreenQuad.reset();
@@ -204,7 +204,7 @@ void Renderer::SetResolution(int width, int height)
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
 
 	m_renderTexPing = make_shared<D3D11RenderTexture>();
 	m_renderTexPing->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
@@ -268,7 +268,7 @@ void Renderer::AcquirePrerequisites()
 
 void Renderer::DirectionalLightDepthPass()
 {
-	g_context->GetSubsystem<Graphics>()->SetCullMode(CullFront);
+	g_context->GetSubsystem<D3D11GraphicsDevice>()->SetCullMode(CullFront);
 
 	// Set the depth shader
 	m_shaderDepth->Set();
@@ -315,7 +315,7 @@ void Renderer::DirectionalLightDepthPass()
 
 void Renderer::GBufferPass()
 {
-	Graphics* graphics = g_context->GetSubsystem<Graphics>();
+	D3D11GraphicsDevice* graphics = g_context->GetSubsystem<D3D11GraphicsDevice>();
 	auto materials = g_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<Material>();
 	auto shaders = g_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<ShaderVariation>();
 
@@ -491,9 +491,9 @@ void Renderer::PostProcessing()
 		m_renderTexPing->GetShaderResourceView()
 	);
 
-	g_context->GetSubsystem<Graphics>()->SetBackBufferAsRenderTarget();
-	g_context->GetSubsystem<Graphics>()->ResetViewport();
-	g_context->GetSubsystem<Graphics>()->Clear(m_camera->GetClearColor());
+	g_context->GetSubsystem<D3D11GraphicsDevice>()->SetBackBufferAsRenderTarget();
+	g_context->GetSubsystem<D3D11GraphicsDevice>()->ResetViewport();
+	g_context->GetSubsystem<D3D11GraphicsDevice>()->Clear(m_camera->GetClearColor());
 
 	// sharpening pass
 	m_shaderSharpening->Render(
