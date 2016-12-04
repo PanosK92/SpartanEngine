@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/IResource.h"
 #include "D3D11/D3D11Texture.h"
 #include <memory>
-
 //===================================
 
 enum TextureType
@@ -48,11 +47,11 @@ public:
 	Texture(Context* context);
 	~Texture();
 
-	//= IO ====================================================
+	//= IO ========================================
 	bool LoadFromFile(const std::string& filePath);
 	bool SaveMetadata();
 	bool LoadMetadata();
-	//=========================================================
+	//=============================================
 
 	//= PROPERTIES ===============================================================================
 	std::string GetName() { return m_name; }
@@ -70,17 +69,7 @@ public:
 	void SetHeight(int height) { m_height = height; }
 
 	TextureType GetType() { return m_type; }
-	void SetType(TextureType type)
-	{
-		m_type = type;
-
-		// FIX: some models pass a normal map as a height map
-		// and others pass a height map as a normal map...
-		if (m_type == Height && !GetGrayscale())
-			m_type = Normal;
-		if (m_type == Normal && GetGrayscale())
-			m_type = Height;
-	}
+	void SetType(TextureType type);
 
 	bool GetGrayscale() { return m_grayscale; }
 	void SetGrayscale(bool grayscale) { m_grayscale = grayscale; }
@@ -89,8 +78,8 @@ public:
 	void SetTransparency(bool transparency) { m_transparency = transparency; }
 
 	void** GetShaderResourceView() { return (void**)m_texture->GetShaderResourceView(); }
-	void SetShaderResourceView(void** srv);
 	//=============================================================================================
+
 private:
 	std::string m_name;
 	int m_width;

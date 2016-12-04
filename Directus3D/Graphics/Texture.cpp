@@ -19,6 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= LINKING ==========================
+// Required by DDSTextureLoader when using Windows 10 SDK
+//#pragma comment(lib, "WindowsApp.lib")
+//====================================
+
+
 //= INCLUDES ===========================
 #include "Texture.h"
 #include "../Core/GUIDGenerator.h"
@@ -26,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../FileSystem/ImageImporter.h"
 #include "../Core/Helper.h"
+#include "../FileSystem/DDSTextureImporter.h"
 //======================================
 
 //= NAMESPACES =====
@@ -101,7 +108,19 @@ bool Texture::LoadMetadata()
 // Loads a texture (not it's metadata) from an image file
 bool Texture::LoadFromFile(const string& filePath)
 {
-	// Load it
+	// Load DDS (too bored to implement dds cubemap support in the ImageImporter)
+	if (FileSystem::GetExtensionFromPath(filePath) == ".dds")
+	{
+		ID3D11ShaderResourceView* ddsTex = nullptr;
+		HRESULT hr = DirectX::CreateDDSTextureFromFile(m_context->GetSubsystem<D3D11GraphicsDevice>()->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &ddsTex);
+		if (FAILED(hr))
+			return false;
+
+		m_texture->SetShaderResourceView(ddsTex);
+		return true;
+	}
+
+	// Load texture
 	bool loaded = m_generateMipchain ? ImageImporter::GetInstance().LoadAndCreateMipchain(filePath) : ImageImporter::GetInstance().Load(filePath);
 	if (!loaded)
 	{
@@ -131,9 +150,16 @@ bool Texture::LoadFromFile(const string& filePath)
 	return true;
 }
 
-void Texture::SetShaderResourceView(void** srv)
+void Texture::SetType(TextureType type)
 {
-	m_texture->SetShaderResourceView((ID3D11ShaderResourceView*)srv);
+	m_type = type;
+
+	// FIX: some models pass a normal map as a height map
+	// and others pass a height map as a normal map...
+	if (m_type == Height && !GetGrayscale())
+		m_type = Normal;
+	if (m_type == Normal && GetGrayscale())
+		m_type = Height;
 }
 
 bool Texture::CreateShaderResourceView()

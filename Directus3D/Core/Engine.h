@@ -21,14 +21,6 @@ DEALINGS IN THE SOFTWARE. */
 #include "Context.h"
 //==================
 
-class Timer;
-class Input;
-class Audio;
-class PhysicsWorld;
-class Scene;
-class Renderer;
-class Stopwatch;
-
 class DllExport Engine : public Subsystem
 {
 public:

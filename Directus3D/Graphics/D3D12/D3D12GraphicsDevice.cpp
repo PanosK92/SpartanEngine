@@ -20,12 +20,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =================
-#include "D3D12Graphics.h"
+#include "D3D12GraphicsDevice.h"
 #include <DXGI1_4.h>
 #include "../../Logging/Log.h"
 //============================
 
-D3D12Graphics::D3D12Graphics()
+D3D12GraphicsDevice::D3D12GraphicsDevice()
 {
 	m_device = nullptr;
 	m_commandQueue = nullptr;
@@ -37,7 +37,7 @@ D3D12Graphics::D3D12Graphics()
 	m_featureLevel = D3D_FEATURE_LEVEL_12_0;
 }
 
-D3D12Graphics::~D3D12Graphics()
+D3D12GraphicsDevice::~D3D12GraphicsDevice()
 {
 	// Windowed mode before shutdown or crash
 	if (m_swapChain)
@@ -60,7 +60,7 @@ D3D12Graphics::~D3D12Graphics()
 	SafeRelease(m_device);
 }
 
-bool D3D12Graphics::Initialize(HWND handle)
+bool D3D12GraphicsDevice::Initialize(HWND handle)
 {
 	//= D3D12 DEVICE ======================================================================================
 	HRESULT result = D3D12CreateDevice(nullptr, m_featureLevel, __uuidof(ID3D12Device), (void**)&m_device);
