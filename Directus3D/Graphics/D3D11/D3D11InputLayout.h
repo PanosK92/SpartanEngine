@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ===========
 #include <vector>
 #include "../Graphics.h"
-//============================
+#include <d3d11.h>
+//======================
 
 class D3D11InputLayout
 {

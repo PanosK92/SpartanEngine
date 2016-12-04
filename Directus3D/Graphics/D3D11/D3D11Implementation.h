@@ -26,37 +26,44 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "dxgi.lib")
 //===============================
 
-//= INCLUDES ===================
+//= INCLUDES ===========================
 #include <d3d11.h>
-#include <string>
-#include "../../Math/Vector4.h"
-#include "../../Core/Settings.h"
-//==============================
+#include <vector>
+#include "../../FileSystem/FileSystem.h"
+//======================================
 
-class D3D11Graphics
+class GraphicsAPI
 {
+	friend class Graphics;
+
 public:
-	D3D11Graphics();
-	~D3D11Graphics();
-
-	void Initialize(HWND handle);
-	void Release();
-
-	void Clear(const Directus::Math::Vector4& color);
-	void Present() { m_swapChain->Present(VSYNC, 0); }
+	GraphicsAPI()
+	{
+		m_device = nullptr;
+		m_deviceContext = nullptr;
+		m_swapChain = nullptr;
+		m_renderTargetView = nullptr;
+		m_driverType = D3D_DRIVER_TYPE_HARDWARE;
+		m_featureLevel = D3D_FEATURE_LEVEL_11_0;
+		m_displayModeList = nullptr;
+		m_displayModeCount = 0;
+		m_refreshRateNumerator = 0;
+		m_refreshRateDenominator = 0;
+		m_videoCardMemory = 0;
+		m_videoCardDescription = DATA_NOT_ASSIGNED;
+		m_depthStencilBuffer = nullptr;
+		m_depthStencilStateEnabled = nullptr;
+		m_depthStencilStateDisabled = nullptr;
+		m_depthStencilView = nullptr;
+		m_rasterStateCullFront = nullptr;
+		m_rasterStateCullBack = nullptr;
+		m_rasterStateCullNone = nullptr;
+		m_blendStateAlphaEnabled = nullptr;
+		m_blendStateAlphaDisabled = nullptr;
+	};
 
 	ID3D11Device* GetDevice() { return m_device; }
 	ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
-
-	void EnableZBuffer(bool enable);
-	void EnabledAlphaBlending(bool enable);
-
-	void SetFaceCullMode(D3D11_CULL_MODE cull);
-	void SetBackBufferRenderTarget(){ m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView); }
-
-	void SetResolution(int width, int height);
-	void SetViewport(int width, int height);
-	void ResetViewport() { m_deviceContext->RSSetViewports(1, &m_viewport); }
 
 private:
 	ID3D11Device* m_device;
@@ -67,9 +74,13 @@ private:
 	D3D_FEATURE_LEVEL m_featureLevel;
 	D3D11_VIEWPORT m_viewport;
 
+	UINT m_displayModeCount;
+	UINT m_refreshRateNumerator;
+	UINT m_refreshRateDenominator;
 	DXGI_MODE_DESC* m_displayModeList;
+
 	int m_videoCardMemory;
-	std::string m_videoCardDescription;		
+	std::string m_videoCardDescription;
 
 	ID3D11Texture2D* m_depthStencilBuffer;
 	ID3D11DepthStencilState* m_depthStencilStateEnabled;
@@ -82,8 +93,4 @@ private:
 
 	ID3D11BlendState* m_blendStateAlphaEnabled;
 	ID3D11BlendState* m_blendStateAlphaDisabled;
-
-private:
-	bool CreateDepthStencilBuffer();
-	bool CreateDepthStencil();
 };

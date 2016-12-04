@@ -19,125 +19,30 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ========
 #include "Graphics.h"
-//=========================
+//===================
 
-//= NAMESPACES ================
-using namespace Directus::Math;
+//= NAMESPACES =====
 using namespace std;
-//=============================
+//==================
 
-Graphics::Graphics(Context* context): Subsystem(context) 
+void Graphics::AddGPUObject(GPUObject* gpuObject)
 {
-	m_d3d11Graphics = nullptr;
-	m_inputLayout = PositionTextureNormalTangent;
-	m_cullMode = CullBack;
-	m_primitiveTopology = TriangleList;
+	m_gpuObjects.push_back(gpuObject);
 }
 
-Graphics::~Graphics()
+void Graphics::RemoveGPUObject(GPUObject* gpuObjectIn)
 {
-
-}
-
-void Graphics::Initialize(HWND drawPaneHandle)
-{
-	m_d3d11Graphics = make_shared<D3D11Graphics>();
-	m_d3d11Graphics->Initialize(drawPaneHandle);
-}
-
-ID3D11Device* Graphics::GetDevice()
-{
-	return m_d3d11Graphics->GetDevice();
-}
-
-ID3D11DeviceContext* Graphics::GetDeviceContext()
-{
-	return m_d3d11Graphics->GetDeviceContext();
-}
-
-void Graphics::Clear(const Vector4& color)
-{
-	m_d3d11Graphics->Clear(color);
-}
-
-void Graphics::Present()
-{
-	m_d3d11Graphics->Present();
-}
-
-void Graphics::ResetRenderTarget()
-{
-	m_d3d11Graphics->SetBackBufferRenderTarget();
-}
-
-void Graphics::ResetViewport()
-{
-	m_d3d11Graphics->ResetViewport();
-}
-
-void Graphics::EnableZBuffer(bool enable)
-{
-	if (m_zBufferEnabled == enable)
-		return;
-
-	m_d3d11Graphics->EnableZBuffer(enable);
-	m_zBufferEnabled = enable;
-}
-
-void Graphics::EnableAlphaBlending(bool enable)
-{
-	if (m_alphaBlendingEnabled == enable)
-		return;
-
-	m_d3d11Graphics->EnabledAlphaBlending(enable);
-	m_alphaBlendingEnabled = enable;
-}
-
-void Graphics::SetInputLayout(InputLayout inputLayout)
-{
-	if (m_inputLayout == inputLayout)
-		return;
-
-	m_inputLayout = inputLayout;
-}
-
-void Graphics::SetCullMode(CullMode cullMode)
-{
-	// Set face CullMode only if not already set
-	if (m_cullMode == cullMode)
-		return;
-
-	// Set CullMode mode
-	if (cullMode == CullBack)
-		m_d3d11Graphics->SetFaceCullMode(D3D11_CULL_BACK);
-	else if (cullMode == CullFront)
-		m_d3d11Graphics->SetFaceCullMode(D3D11_CULL_FRONT);
-	else if (cullMode == CullNone)
-		m_d3d11Graphics->SetFaceCullMode(D3D11_CULL_NONE);
-
-	// Save the current CullMode mode
-	m_cullMode = cullMode;
-}
-
-void Graphics::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
-{
-	// Set PrimitiveTopology only if not already set
-	if (m_primitiveTopology == primitiveTopology)
-		return;
-
-	// Set PrimitiveTopology
-	if (primitiveTopology == TriangleList)
-		m_d3d11Graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	else if (primitiveTopology == LineList)
-		m_d3d11Graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-
-	// Save the current PrimitiveTopology mode
-	m_primitiveTopology = primitiveTopology;
-}
-
-void Graphics::SetViewport(int width, int height)
-{
-	m_d3d11Graphics->SetResolution(width, height);
+	for (auto it = m_gpuObjects.begin(); it != m_gpuObjects.end();)
+	{
+		auto gpuObject = *it;
+		if (gpuObject->GetID() == gpuObjectIn->GetID())
+		{
+			delete gpuObject;
+			it = m_gpuObjects.erase(it);
+			return;
+		}
+		++it;
+	}
 }

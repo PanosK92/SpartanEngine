@@ -33,20 +33,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ASPECT_RATIO Settings::GetScreenAspect()
 #define SHADOWMAP_RESOLUTION Settings::GetShadowMapResolution()
 #define VSYNC Settings::GetVSync()
-#define FULLSCREEN Settings::IsFullScreen()
-#define ANISOTROPY Settings::GetAnisotropy()
+#define FULLSCREEN_ENABLED Settings::IsFullScreen()
+#define ANISOTROPY_LEVEL Settings::GetAnisotropy()
 
 enum VSync
 {
 	Off,
 	Every_VBlank,
 	Every_Second_VBlank
-};
-
-enum GraphicsAPI
-{
-	D3D11,
-	D3D12
 };
 
 class DllExport Settings
@@ -70,7 +64,6 @@ private:
 	static std::string m_settingsFileName;
 
 	static bool m_isFullScreen;
-	static int m_graphicsAPI;
 	static int m_vsync;
 	static bool m_isMouseVisible;
 	static int m_resolutionWidth;

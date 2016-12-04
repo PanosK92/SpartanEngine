@@ -1,10 +1,13 @@
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ==================
 #include "IComponent.h"
-#include "../Graphics/D3D11/D3D11Buffer.h"
 #include "../Graphics/Vertex.h"
-//========================================
+#include <vector>
+#include <memory>
+//=============================
+
+class D3D11Buffer;
 
 class DllExport LineRenderer : public IComponent
 {

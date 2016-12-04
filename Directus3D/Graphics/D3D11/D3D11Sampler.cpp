@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "D3D11Sampler.h"
-#include "D3D11Graphics.h"
 #include "../../Core/Helper.h"
 #include "../../Core/Settings.h"
 #include "../../Logging/Log.h"
@@ -46,7 +45,7 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 	samplerDesc.AddressV = textureAddressMode;
 	samplerDesc.AddressW = textureAddressMode;
 	samplerDesc.MipLODBias = 0.0f;
-	samplerDesc.MaxAnisotropy = ANISOTROPY;
+	samplerDesc.MaxAnisotropy = ANISOTROPY_LEVEL;
 	samplerDesc.ComparisonFunc = comparisonFunction;
 	samplerDesc.BorderColor[0] = 0;
 	samplerDesc.BorderColor[1] = 0;
@@ -56,7 +55,7 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 	samplerDesc.MaxLOD = FLT_MAX;
 
 	// create sampler state.
-	HRESULT result = m_graphics->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
+	HRESULT result = m_graphics->GetAPI()->GetDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
 	if(FAILED(result))
 	{
 		LOG_INFO("Failed to create sampler.");
@@ -68,5 +67,5 @@ bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textur
 
 void D3D11Sampler::Set(unsigned int startSlot)
 {
-	m_graphics->GetDeviceContext()->PSSetSamplers(startSlot, 1, &m_sampler);
+	m_graphics->GetAPI()->GetDeviceContext()->PSSetSamplers(startSlot, 1, &m_sampler);
 }

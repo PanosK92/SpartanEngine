@@ -21,35 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+#define D3D11
+
+//= INCLUDES ======================
 #include <Windows.h>
-#include "../Math/Vector4.h"
 #include <memory>
+#include "../Math/Vector4.h"
 #include "../Core/Subsystem.h"
-#include "D3D11/D3D11Graphics.h"
-//============================
+#include "GraphicsDefinitions.h"
+#include "GraphicsImplementation.h"
+#include "GPUObject.h"
+//=================================
 
-enum InputLayout
-{
-	Auto,
-	Position,
-	PositionColor,
-	PositionTexture,
-	PositionTextureNormalTangent
-};
-
-enum CullMode
-{
-	CullBack,
-	CullFront,
-	CullNone,
-};
-
-enum PrimitiveTopology
-{
-	TriangleList,
-	LineList
-};
+class GraphicsAPI;
 
 class Graphics : public Subsystem
 {
@@ -57,23 +41,37 @@ public:
 	Graphics(Context* context);
 	~Graphics();
 
-	void Initialize(HWND drawPaneHandle);
-
-	ID3D11Device* GetDevice();
-	ID3D11DeviceContext* GetDeviceContext();
-
+	bool Initialize(HWND windowHandle);
 	void Clear(const Directus::Math::Vector4& color);
 	void Present();
-	void ResetRenderTarget();
-	void ResetViewport();
+	void SetBackBufferAsRenderTarget();
+
+	//= DEPTH ======================
+	bool CreateDepthStencil();
+	bool CreateDepthStencilBuffer();
+	bool CreateDepthStencilView();
 	void EnableZBuffer(bool enable);
+	//==============================
+
 	void EnableAlphaBlending(bool enable);
 	void SetInputLayout(InputLayout inputLayout);
 	void SetCullMode(CullMode cullMode);
 	void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
-	void SetViewport(int width, int height);
+
+	//= VIEWPORT ===============================
+	bool SetResolution(int width, int height);
+	void SetViewport(float width, float height);
+	void ResetViewport();
+	//==========================================
+
+	auto GetAPI() { return m_api; }
+
+	void AddGPUObject(GPUObject* gpuObject);
+	void RemoveGPUObject(GPUObject* gpuObject);
+
 private:
-	std::shared_ptr<D3D11Graphics> m_d3d11Graphics;
+	std::vector<GPUObject*> m_gpuObjects;
+	GraphicsAPI* m_api;
 	InputLayout m_inputLayout;
 	CullMode m_cullMode;
 	PrimitiveTopology m_primitiveTopology;

@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "D3D11Buffer.h"
-#include "D3D11Graphics.h"
 #include "../../Core/Helper.h"
 #include "../../Logging/Log.h"
 //=============================
@@ -126,9 +125,9 @@ bool D3D11Buffer::Create(unsigned int stride, unsigned int size, void* data, D3D
 
 	HRESULT result;
 	if ((bindFlag == D3D11_BIND_VERTEX_BUFFER || bindFlag == D3D11_BIND_INDEX_BUFFER) && data)
-		result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
+		result = m_graphics->GetAPI()->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 	else
-		result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
+		result = m_graphics->GetAPI()->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
 
 	return FAILED(result) ? false : true;
 }
@@ -138,19 +137,19 @@ void D3D11Buffer::SetIA()
 	unsigned int offset = 0;
 
 	if (m_bindFlag == D3D11_BIND_VERTEX_BUFFER)
-		m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_buffer, &m_stride, &offset);
+		m_graphics->GetAPI()->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_buffer, &m_stride, &offset);
 	else if (m_bindFlag == D3D11_BIND_INDEX_BUFFER)
-		m_graphics->GetDeviceContext()->IASetIndexBuffer(m_buffer, DXGI_FORMAT_R32_UINT, 0);
+		m_graphics->GetAPI()->GetDeviceContext()->IASetIndexBuffer(m_buffer, DXGI_FORMAT_R32_UINT, 0);
 }
 
 void D3D11Buffer::SetVS(unsigned int startSlot)
 {
-	m_graphics->GetDeviceContext()->VSSetConstantBuffers(startSlot, 1, &m_buffer);
+	m_graphics->GetAPI()->GetDeviceContext()->VSSetConstantBuffers(startSlot, 1, &m_buffer);
 }
 
 void D3D11Buffer::SetPS(unsigned int startSlot)
 {
-	m_graphics->GetDeviceContext()->PSSetConstantBuffers(startSlot, 1, &m_buffer);
+	m_graphics->GetAPI()->GetDeviceContext()->PSSetConstantBuffers(startSlot, 1, &m_buffer);
 }
 
 void* D3D11Buffer::Map()
@@ -163,7 +162,7 @@ void* D3D11Buffer::Map()
 
 	// disable GPU access to the vertex buffer data.
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	HRESULT result = m_graphics->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	HRESULT result = m_graphics->GetAPI()->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to map buffer.");
@@ -176,5 +175,5 @@ void* D3D11Buffer::Map()
 void D3D11Buffer::Unmap()
 {
 	// re-enable GPU access to the vertex buffer data.
-	m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
+	m_graphics->GetAPI()->GetDeviceContext()->Unmap(m_buffer, 0);
 }

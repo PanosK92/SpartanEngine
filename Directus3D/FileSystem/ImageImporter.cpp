@@ -38,8 +38,8 @@ ImageImporter::ImageImporter()
 	m_height = 0;
 	m_path.clear();
 	m_channels = 4;
-	m_grayscale = false;
-	m_transparent = false;
+	m_isGrayscale = false;
+	m_isTransparent = false;
 
 	FreeImage_Initialise(true);
 }
@@ -65,8 +65,8 @@ void ImageImporter::Clear()
 	m_width = 0;
 	m_height = 0;
 	m_path.clear();
-	m_grayscale = false;
-	m_transparent = false;
+	m_isGrayscale = false;
+	m_isTransparent = false;
 }
 
 const vector<vector<unsigned char>>& ImageImporter::GetRGBAMipchain()
@@ -128,16 +128,13 @@ bool ImageImporter::Load(const string& path, int width, int height, bool scale, 
 	bitmap32 = m_bpp != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
 
 	// Store some useful data	
-	m_transparent = bool(FreeImage_IsTransparent(bitmap32));
+	m_isTransparent = bool(FreeImage_IsTransparent(bitmap32));
 	m_path = path;
 	m_width = FreeImage_GetWidth(bitmap32);
 	m_height = FreeImage_GetHeight(bitmap32);
 
 	// Fill RGBA vector with the data from the FIBITMAP
 	GetDataRGBAFromFIBITMAP(bitmap32, &m_dataRGBA);
-
-	// Check if the image is grayscale
-	m_grayscale = GrayscaleCheck(m_dataRGBA, m_width, m_height);
 
 	if (generateMipmap)
 		GenerateMipChainFromFIBITMAP(bitmap32, &m_mipchainDataRGBA);
@@ -162,6 +159,8 @@ bool ImageImporter::GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, vector<unsigned 
 {
 	int width = FreeImage_GetWidth(fibtimap);
 	int height = FreeImage_GetHeight(fibtimap);
+	int grayPixels = 0;
+	int scannedPixels = 0;
 
 	unsigned int bytespp = width != 0 ? FreeImage_GetLine(fibtimap) / width : -1;
 	if (bytespp == -1)
@@ -180,8 +179,15 @@ bool ImageImporter::GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, vector<unsigned 
 
 			// jump to next pixel
 			bits += bytespp;
+
+			// Check if the pixels are the same
+			if (bits[FI_RGBA_RED] == bits[FI_RGBA_GREEN] && bits[FI_RGBA_RED] == bits[FI_RGBA_BLUE])
+				grayPixels++;
 		}
 	}
+
+	// Determine if the image is grayscale (crammed it in this function to save CPU time)
+	m_isGrayscale = grayPixels != scannedPixels ? false : true;
 
 	return true;
 }
@@ -191,8 +197,6 @@ void ImageImporter::GenerateMipChainFromFIBITMAP(FIBITMAP* original, vector<vect
 	mipchain->push_back(m_dataRGBA);
 	int width = FreeImage_GetWidth(original);
 	int height = FreeImage_GetHeight(original);
-	int levels = 1;
-
 	while (width > 1 && height > 1)
 	{
 		// Downscale the original FIBITMAP
@@ -206,31 +210,5 @@ void ImageImporter::GenerateMipChainFromFIBITMAP(FIBITMAP* original, vector<vect
 
 		// Unload the downscaled FIBITMAP
 		FreeImage_Unload(downscaled);
-
-		levels++;
 	}
-}
-
-bool ImageImporter::GrayscaleCheck(const vector<unsigned char>& dataRGBA, int width, int height)
-{
-	int grayPixels = 0;
-	int scannedPixels = 0;
-
-	for (int i = 0; i < height; i++)
-		for (int j = 0; j < width; j++)
-		{
-			scannedPixels++;
-
-			int red = dataRGBA[(i * width + j) * 4 + 0];
-			int green = dataRGBA[(i * width + j) * 4 + 1];
-			int blue = dataRGBA[(i * width + j) * 4 + 2];
-
-			if (red == green && red == blue)
-				grayPixels++;
-		}
-
-	if (grayPixels == scannedPixels)
-		return true;
-
-	return false;
 }

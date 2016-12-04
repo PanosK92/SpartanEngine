@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11Sampler.h"
 #include <set>
 #include "../Graphics.h"
+#include <memory>
 //===========================
 
 class D3D11Shader

@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ===========
 #include "../Graphics.h"
 #include <vector>
 #include "../Vertex.h"
-//============================
+#include <d3d11.h>
+//======================
 
 class D3D11Buffer
 {
