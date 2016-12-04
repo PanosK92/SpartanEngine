@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Camera.h"
 #include "../Components/Skybox.h"
 #include "../Components/Light.h"
-#include "D3D11/D3D11GraphicsDevice.h"
 #include "Shaders/DepthShader.h"
 #include "Shaders/DebugShader.h"
 #include "Shaders/PostProcessShader.h"

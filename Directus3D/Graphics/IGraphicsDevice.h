@@ -30,11 +30,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GraphicsDefinitions.h"
 //==============================
 
-class GraphicsDevice : public Subsystem
+class IGraphicsDevice : public Subsystem
 {
 public:
-	GraphicsDevice(Context* context) : Subsystem(context){}
-	virtual ~GraphicsDevice() {}
+	IGraphicsDevice(Context* context) : Subsystem(context){}
+	virtual ~IGraphicsDevice() {}
 
 	//==========================================================================
 	virtual bool Initialize(HWND windowHandle) = 0;

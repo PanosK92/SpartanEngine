@@ -50,21 +50,18 @@ void DeferredShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 	m_graphics = graphicsDevice;
 
 	// load the vertex and the pixel shader
-	m_shader = make_shared<D3D11Shader>();
-	m_shader->Initialize(m_graphics);
+	m_shader = make_shared<D3D11Shader>(m_graphics);
 	m_shader->Load("Assets/Shaders/Deferred.hlsl");
 	m_shader->SetInputLayout(PositionTextureNormalTangent);
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// Create matrix buffer
-	m_matrixBuffer = make_shared<D3D11Buffer>();
-	m_matrixBuffer->Initialize(m_graphics);
+	m_matrixBuffer = make_shared<D3D11Buffer>(m_graphics);
 	m_matrixBuffer->CreateConstantBuffer(sizeof(MatrixBufferType));
 
 	// Create misc buffer
-	m_miscBuffer = make_shared<D3D11Buffer>();
-	m_miscBuffer->Initialize(m_graphics);
+	m_miscBuffer = make_shared<D3D11Buffer>(m_graphics);
 	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
 }
 

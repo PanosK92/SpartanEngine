@@ -30,9 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace Directus::Math;
 //=============================
 
-D3D11RenderTexture::D3D11RenderTexture()
+D3D11RenderTexture::D3D11RenderTexture(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
 {
-	m_graphics = nullptr;
 	m_renderTargetTexture = nullptr;
 	m_renderTargetView = nullptr;
 	m_shaderResourceView = nullptr;
@@ -51,9 +50,8 @@ D3D11RenderTexture::~D3D11RenderTexture()
 	SafeRelease(m_renderTargetTexture);
 }
 
-bool D3D11RenderTexture::Initialize(D3D11GraphicsDevice* graphicsDevice, int textureWidth, int textureHeight)
+bool D3D11RenderTexture::Initialize(int textureWidth, int textureHeight)
 {
-	m_graphics = graphicsDevice;
 	m_width = textureHeight;
 	m_height = textureHeight;
 

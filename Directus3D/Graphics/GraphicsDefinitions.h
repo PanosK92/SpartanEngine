@@ -18,6 +18,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= INCLUDES ==============================
+#if defined(D3D11)
+#include "D3D11/D3D11GraphicsDevice.h"
+class D3D11GraphicsDevice;
+typedef D3D11GraphicsDevice GraphicsDevice;
+#elif defined(D3D12)
+#include "D3D12/D3D12GraphicsDevice.h"
+#endif
+//========================================
+
 enum InputLayout
 {
 	Auto,

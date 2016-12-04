@@ -47,8 +47,7 @@ void PostProcessShader::Initialize(LPCSTR pass, D3D11GraphicsDevice* graphicsDev
 	m_graphics = graphicsDevice;
 
 	// load the vertex and the pixel shader
-	m_shader = make_shared<D3D11Shader>();
-	m_shader->Initialize(m_graphics);
+	m_shader = make_shared<D3D11Shader>(m_graphics);
 	m_shader->AddDefine(pass, true);
 	m_shader->Load("Assets/Shaders/PostProcess.hlsl");
 	m_shader->SetInputLayout(PositionTexture);
@@ -56,8 +55,7 @@ void PostProcessShader::Initialize(LPCSTR pass, D3D11GraphicsDevice* graphicsDev
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// create buffer
-	m_constantBuffer = make_shared<D3D11Buffer>();
-	m_constantBuffer->Initialize(m_graphics);
+	m_constantBuffer = make_shared<D3D11Buffer>(m_graphics);
 	m_constantBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 

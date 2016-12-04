@@ -105,11 +105,11 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	/*------------------------------------------------------------------------------
 	[RENDER TEXTURES]
 	------------------------------------------------------------------------------*/
-	m_renderTexPing = make_shared<D3D11RenderTexture>();
-	m_renderTexPing->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPing = make_shared<D3D11RenderTexture>(graphics);
+	m_renderTexPing->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	m_renderTexPong = make_shared<D3D11RenderTexture>();
-	m_renderTexPong->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPong = make_shared<D3D11RenderTexture>(graphics);
+	m_renderTexPong->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	/*------------------------------------------------------------------------------
 	[MISC]
@@ -191,26 +191,26 @@ void Renderer::SetResolution(int width, int height)
 		return;
 
 	SET_RESOLUTION(width, height);
-	D3D11GraphicsDevice* graphics = g_context->GetSubsystem<D3D11GraphicsDevice>();
+	auto graphicsDevice = g_context->GetSubsystem<GraphicsDevice>();
 
-	graphics->SetViewport(width, height);
+	graphicsDevice->SetViewport(width, height);
 
 	m_GBuffer.reset();
 	m_fullScreenQuad.reset();
 	m_renderTexPing.reset();
 	m_renderTexPong.reset();
 
-	m_GBuffer = make_shared<GBuffer>(graphics);
+	m_GBuffer = make_shared<GBuffer>(graphicsDevice);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphicsDevice);
 
-	m_renderTexPing = make_shared<D3D11RenderTexture>();
-	m_renderTexPing->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPing = make_shared<D3D11RenderTexture>(graphicsDevice);
+	m_renderTexPing->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	m_renderTexPong = make_shared<D3D11RenderTexture>();
-	m_renderTexPong->Initialize(graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPong = make_shared<D3D11RenderTexture>(graphicsDevice);
+	m_renderTexPong->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 }
 
 void Renderer::Clear()

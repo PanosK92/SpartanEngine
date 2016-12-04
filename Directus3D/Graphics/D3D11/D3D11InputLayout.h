@@ -29,13 +29,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class D3D11InputLayout
 {
 public:
-	D3D11InputLayout();
+	D3D11InputLayout(D3D11GraphicsDevice* d3d11Device);
 	~D3D11InputLayout();
 
 	//= MISC ====================================
-	void Initialize(D3D11GraphicsDevice* d3d11Device);
 	void Set();
-	InputLayout GetInputLayout();
+	InputLayout GetInputLayout() { return m_inputLayout; }
 
 	//= LAYOUT CREATION ============================================================================
 	bool Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount);

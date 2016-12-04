@@ -44,15 +44,13 @@ void DebugShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 	m_graphics = graphicsDevice;
 
 	// load the vertex and the pixel shader
-	m_shader = make_shared<D3D11Shader>();
-	m_shader->Initialize(m_graphics);
+	m_shader = make_shared<D3D11Shader>(m_graphics);
 	m_shader->Load("Assets/Shaders/Debug.hlsl");
 	m_shader->SetInputLayout(PositionColor);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// create buffer
-	m_miscBuffer = make_shared<D3D11Buffer>();
-	m_miscBuffer->Initialize(m_graphics);
+	m_miscBuffer = make_shared<D3D11Buffer>(m_graphics);
 	m_miscBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 

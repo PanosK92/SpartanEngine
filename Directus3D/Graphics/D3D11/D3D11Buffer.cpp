@@ -30,9 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-D3D11Buffer::D3D11Buffer()
+D3D11Buffer::D3D11Buffer(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
 {
-	m_graphics = nullptr;
 	m_buffer = nullptr;
 	m_stride = -1;
 	m_size = -1;
@@ -44,11 +43,6 @@ D3D11Buffer::D3D11Buffer()
 D3D11Buffer::~D3D11Buffer()
 {
 	SafeRelease(m_buffer);
-}
-
-void D3D11Buffer::Initialize(D3D11GraphicsDevice* graphicsDevice)
-{
-	m_graphics = graphicsDevice;
 }
 
 bool D3D11Buffer::CreateConstantBuffer(unsigned int size)
