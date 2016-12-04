@@ -29,10 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include <d3d11.h>
 #include <vector>
-#include "../GraphicsDevice.h"
+#include "../IGraphicsDevice.h"
 //============================
 
-class D3D11GraphicsDevice : public GraphicsDevice
+class D3D11GraphicsDevice : public IGraphicsDevice
 {
 public:
 	D3D11GraphicsDevice(Context* context);

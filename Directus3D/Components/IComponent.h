@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class GameObject;
 class Transform;
-class GraphicsDevice;
+class IGraphicsDevice;
 class Scene;
 class Renderer;
 class PhysicsWorld;

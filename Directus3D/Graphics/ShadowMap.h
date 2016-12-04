@@ -37,8 +37,8 @@ public:
 	ShadowMap(D3D11GraphicsDevice* device, int cascadeNumber, Light* light, Camera* camera, int resolution)
 	{
 		m_resolution = resolution;
-		m_depthMap = make_shared<D3D11RenderTexture>();
-		m_depthMap->Initialize(device, resolution, resolution);
+		m_depthMap = make_shared<D3D11RenderTexture>(device);
+		m_depthMap->Initialize(resolution, resolution);
 		m_camera = camera;
 		m_light = light;
 		m_cascadeNumber = cascadeNumber;

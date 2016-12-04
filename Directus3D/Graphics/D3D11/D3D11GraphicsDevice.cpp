@@ -49,7 +49,7 @@ static const D3D11_PRIMITIVE_TOPOLOGY d3dPrimitiveTopology[] =
 };
 //===============================================================
 
-D3D11GraphicsDevice::D3D11GraphicsDevice(Context* context) : GraphicsDevice(context)
+D3D11GraphicsDevice::D3D11GraphicsDevice(Context* context) : IGraphicsDevice(context)
 {
 	m_inputLayout = PositionTextureNormalTangent;
 	m_cullMode = CullBack;

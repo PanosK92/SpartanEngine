@@ -260,25 +260,21 @@ void ShaderVariation::AddDefinesBasedOnMaterial(shared_ptr<D3D11Shader> shader)
 void ShaderVariation::Load()
 {
 	// load the vertex and the pixel shader
-	m_D3D11Shader = make_shared<D3D11Shader>();
-	m_D3D11Shader->Initialize(m_graphics);
+	m_D3D11Shader = make_shared<D3D11Shader>(m_graphics);
 	AddDefinesBasedOnMaterial(m_D3D11Shader);
 	m_D3D11Shader->Load("Assets/Shaders/GBuffer.hlsl");
 	m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
 	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS); // anisotropic
 
 	// Matrix Buffer
-	m_perObjectBuffer = make_shared<D3D11Buffer>();
-	m_perObjectBuffer->Initialize(m_graphics);
+	m_perObjectBuffer = make_shared<D3D11Buffer>(m_graphics);
 	m_perObjectBuffer->CreateConstantBuffer(sizeof(PerObjectBufferType));
 
 	// Object Buffer
-	m_materialBuffer = make_shared<D3D11Buffer>();
-	m_materialBuffer->Initialize(m_graphics);
+	m_materialBuffer = make_shared<D3D11Buffer>(m_graphics);
 	m_materialBuffer->CreateConstantBuffer(sizeof(PerMaterialBufferType));
 
 	// Object Buffer
-	m_miscBuffer = make_shared<D3D11Buffer>();
-	m_miscBuffer->Initialize(m_graphics);
+	m_miscBuffer = make_shared<D3D11Buffer>(m_graphics);
 	m_miscBuffer->CreateConstantBuffer(sizeof(PerFrameBufferType));
 }

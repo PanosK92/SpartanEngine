@@ -38,10 +38,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class D3D11Shader
 {
 public:
-	D3D11Shader();
+	D3D11Shader(D3D11GraphicsDevice* graphicsDevice);
 	~D3D11Shader();
 
-	void Initialize(D3D11GraphicsDevice* d3d11Device);
 	bool Load(std::string path);
 	bool SetInputLayout(InputLayout inputLayout);
 	bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);

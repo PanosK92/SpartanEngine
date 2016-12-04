@@ -29,13 +29,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class D3D11RenderTexture
 {
 public:
-	D3D11RenderTexture();
+	D3D11RenderTexture(D3D11GraphicsDevice* graphicsDevice);
 	~D3D11RenderTexture();
 
-	bool Initialize(D3D11GraphicsDevice* graphicsDevice, int, int);
+	bool Initialize(int, int);
 	void SetAsRenderTarget() const;
 	void Clear(const Directus::Math::Vector4& clearColor);
-	void Clear(float r, float g , float b, float a) const;
+	void Clear(float r, float g, float b, float a) const;
 	ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
 	void CreateOrthographicProjectionMatrix(float nearPlane, float farPlane);
 	const Directus::Math::Matrix& GetOrthographicProjectionMatrix() { return m_orthographicProjectionMatrix; }

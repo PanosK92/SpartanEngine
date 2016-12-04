@@ -104,8 +104,7 @@ void LineRenderer::CreateBuffer()
 	m_vertices = new VertexPositionColor[m_maxVertices];
 
 	// create vertex buffer
-	m_vertexBuffer = make_shared<D3D11Buffer>();
-	m_vertexBuffer->Initialize(g_context->GetSubsystem<D3D11GraphicsDevice>());
+	m_vertexBuffer = make_shared<D3D11Buffer>(g_context->GetSubsystem<D3D11GraphicsDevice>());
 	m_vertexBuffer->Create(
 		sizeof(VertexPositionColor),
 		m_maxVertices,

@@ -46,14 +46,12 @@ void DepthShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 	m_graphics = graphicsDevice;
 
 	// load the vertex and the pixel shader
-	m_shader = make_shared<D3D11Shader>();
-	m_shader->Initialize(m_graphics);
+	m_shader = make_shared<D3D11Shader>(m_graphics);
 	m_shader->Load("Assets/Shaders/Depth.hlsl");
 	m_shader->SetInputLayout(Position);
 
 	// create a buffer
-	m_defaultBuffer = make_shared<D3D11Buffer>();
-	m_defaultBuffer->Initialize(m_graphics);
+	m_defaultBuffer = make_shared<D3D11Buffer>(m_graphics);
 	m_defaultBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
 }
 

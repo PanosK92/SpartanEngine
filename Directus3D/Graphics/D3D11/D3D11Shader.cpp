@@ -33,14 +33,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-D3D11Shader::D3D11Shader()
+D3D11Shader::D3D11Shader(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
 {
 	m_vertexShader = nullptr;
 	m_pixelShader = nullptr;
 	m_D3D11InputLayout = nullptr;
 	m_VSBlob = nullptr;
 	m_compiled = false;
-	m_graphics = nullptr;
+	m_entrypoint = DATA_NOT_ASSIGNED;
+	m_profile = DATA_NOT_ASSIGNED;
+	m_layoutHasBeenSet = false;
+
+	// Create input layout
+	m_D3D11InputLayout = make_shared<D3D11InputLayout>(m_graphics);
 }
 
 D3D11Shader::~D3D11Shader()
@@ -51,15 +56,6 @@ D3D11Shader::~D3D11Shader()
 	// delete samplers
 	m_samplers.clear();
 	m_samplers.shrink_to_fit();
-}
-
-void D3D11Shader::Initialize(D3D11GraphicsDevice*graphicsDevice)
-{
-	m_graphics = graphicsDevice;
-
-	// initialize input layout
-	m_D3D11InputLayout = make_shared<D3D11InputLayout>();
-	m_D3D11InputLayout->Initialize(m_graphics);
 }
 
 bool D3D11Shader::Load(string path)

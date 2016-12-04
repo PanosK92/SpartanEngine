@@ -30,10 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class D3D11Buffer
 {
 public:
-	D3D11Buffer();
+	D3D11Buffer(D3D11GraphicsDevice* graphicsDevice);
 	~D3D11Buffer();
 
-	void Initialize(D3D11GraphicsDevice* graphicsDevice);
 	bool CreateConstantBuffer(unsigned int size);
 	bool CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent>& vertices);
 	bool CreateIndexBuffer(std::vector<unsigned int>& indices);

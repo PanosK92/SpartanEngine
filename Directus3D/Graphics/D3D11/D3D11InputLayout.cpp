@@ -26,10 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 //=============================
 
-D3D11InputLayout::D3D11InputLayout()
+D3D11InputLayout::D3D11InputLayout(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
 {
 	m_ID3D11InputLayout = nullptr;
-	m_graphics = nullptr;
+	m_inputLayout = PositionTextureNormalTangent;
 }
 
 D3D11InputLayout::~D3D11InputLayout()
@@ -38,19 +38,9 @@ D3D11InputLayout::~D3D11InputLayout()
 }
 
 //= MISC ==================================================
-void D3D11InputLayout::Initialize(D3D11GraphicsDevice* graphicsDevice)
-{
-	m_graphics = graphicsDevice;
-}
-
 void D3D11InputLayout::Set()
 {
 	m_graphics->GetDeviceContext()->IASetInputLayout(m_ID3D11InputLayout);
-}
-
-InputLayout D3D11InputLayout::GetInputLayout()
-{
-	return m_inputLayout;
 }
 
 //= LAYOUT CREATION ==================================================

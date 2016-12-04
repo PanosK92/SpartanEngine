@@ -214,16 +214,16 @@ bool MeshFilter::CreateBuffers()
 	if (m_mesh.expired())
 		return false;
 
-	m_vertexBuffer = make_shared<D3D11Buffer>();
-	m_vertexBuffer->Initialize(g_context->GetSubsystem<D3D11GraphicsDevice>());
+	auto graphicsDevice = g_context->GetSubsystem<D3D11GraphicsDevice>();
+
+	m_vertexBuffer = make_shared<D3D11Buffer>(graphicsDevice);
 	if (!m_vertexBuffer->CreateVertexBuffer(m_mesh.lock()->GetVertices()))
 	{
 		LOG_ERROR("Failed to create vertex buffer [" + g_gameObject->GetName() + "].");
 		return false;
 	}
 
-	m_indexBuffer = make_shared<D3D11Buffer>();
-	m_indexBuffer->Initialize(g_context->GetSubsystem<D3D11GraphicsDevice>());
+	m_indexBuffer = make_shared<D3D11Buffer>(graphicsDevice);
 	if (!m_indexBuffer->CreateIndexBuffer(m_mesh.lock()->GetIndices()))
 	{
 		LOG_ERROR("Failed to create index buffer [" + g_gameObject->GetName() + "].");
