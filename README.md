@@ -26,7 +26,7 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 This version will focus on delivering a new standard when it comes to graphics quality and overall reliability.
 - [Active] Bug fixes, lot's of them.
 - [Done] Custom mipchain generation (resulted in a ~15-20% memory usage drop and an increase in texture quality).
-- [Active] DirectX 12 Renderer
+- [Active] DirectX 12 Renderer (It's gonna take a while because I want to do it right, not just swap the API calls)
 - [Active] Dynamic resolution scaling.
 - [Active] Improved shadow quality.
 - [Active] SSAO.

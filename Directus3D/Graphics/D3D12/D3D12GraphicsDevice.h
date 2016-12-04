@@ -34,11 +34,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Settings.h"
 //==============================
 
-class D3D12Graphics
+class D3D12GraphicsDevice
 {
 public:
-	D3D12Graphics();
-	~D3D12Graphics();
+	D3D12GraphicsDevice();
+	~D3D12GraphicsDevice();
 
 	bool Initialize(HWND handle);
 	void Release();

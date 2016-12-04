@@ -19,14 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= LINKING ==========================
-// Required by DDSTextureLoader when using Windows 10 SDK
-//#pragma comment(lib, "WindowsApp.lib")
-//====================================
-
-//= INCLUDES ================================
+//= INCLUDES =========================
 #include "Skybox.h"
-#include "../FileSystem/DDSTextureImporter.h"
 #include "Transform.h"
 #include "MeshRenderer.h"
 #include "MeshFilter.h"
@@ -34,14 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Texture.h"
 #include "../Math/Vector3.h"
 #include "../Core/Scene.h"
-#include "../Logging/Log.h"
 #include "../Resource/ResourceCache.h"
-//===========================================
+//====================================
 
 //= NAMESPACES ====================
-using namespace DirectX;
-using namespace Directus::Math;
 using namespace std;
+using namespace Directus::Math;
 using namespace Directus::Resource;
 //=================================
 
@@ -60,18 +52,12 @@ Skybox::~Skybox()
 ------------------------------------------------------------------------------*/
 void Skybox::Reset()
 {
-	ID3D11ShaderResourceView* cubeMapSRV = nullptr;
-	HRESULT hr = CreateDDSTextureFromFile(g_context->GetSubsystem<D3D11GraphicsDevice>()->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &cubeMapSRV);
-	if (FAILED(hr))
-		return;
-
 	m_cubeMapTexture = make_shared<Texture>(g_context);
+	m_cubeMapTexture->LoadFromFile("Assets/Environment/environment.dds");
 	m_cubeMapTexture->SetType(CubeMap);
-	m_cubeMapTexture->SetFilePathTexture("Assets/Environment/environment.dds");
 	m_cubeMapTexture->SetWidth(1024);
 	m_cubeMapTexture->SetHeight(1024);
 	m_cubeMapTexture->SetGrayscale(false);
-	m_cubeMapTexture->SetShaderResourceView((void**)cubeMapSRV);
 
 	// Add the actual "box"
 	g_gameObject->AddComponent<MeshFilter>()->SetMesh(MeshFilter::Cube);
