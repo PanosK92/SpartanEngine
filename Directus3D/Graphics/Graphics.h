@@ -25,10 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include <Windows.h>
+#include <memory>
 #include "../Math/Vector4.h"
 #include "../Core/Subsystem.h"
 #include "GraphicsDefinitions.h"
 #include "GraphicsImplementation.h"
+#include "GPUObject.h"
 //=================================
 
 class GraphicsAPI;
@@ -64,7 +66,11 @@ public:
 
 	auto GetAPI() { return m_api; }
 
+	void AddGPUObject(GPUObject* gpuObject);
+	void RemoveGPUObject(GPUObject* gpuObject);
+
 private:
+	std::vector<GPUObject*> m_gpuObjects;
 	GraphicsAPI* m_api;
 	InputLayout m_inputLayout;
 	CullMode m_cullMode;

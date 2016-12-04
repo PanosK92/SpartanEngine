@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Texture::Texture(Context* context)
+Texture::Texture(Context* context) : GPUObject(m_context->GetSubsystem<Graphics>())
 {
 	m_context = context;
 	m_ID = GENERATE_GUID;

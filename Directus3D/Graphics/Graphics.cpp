@@ -22,3 +22,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========
 #include "Graphics.h"
 //===================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
+
+void Graphics::AddGPUObject(GPUObject* gpuObject)
+{
+	m_gpuObjects.push_back(gpuObject);
+}
+
+void Graphics::RemoveGPUObject(GPUObject* gpuObjectIn)
+{
+	for (auto it = m_gpuObjects.begin(); it != m_gpuObjects.end();)
+	{
+		auto gpuObject = *it;
+		if (gpuObject->GetID() == gpuObjectIn->GetID())
+		{
+			delete gpuObject;
+			it = m_gpuObjects.erase(it);
+			return;
+		}
+		++it;
+	}
+}
