@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ===============
 #include "FullScreenQuad.h"
-#include "Vertex.h"
-#include <d3d11.h>
-//=========================
+#include "../Core/Helper.h"
+#include "../Graphics/Vertex.h"
+//==========================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -34,8 +34,6 @@ FullScreenQuad::FullScreenQuad()
 	m_graphics = nullptr;
 	m_vertexBuffer = nullptr;
 	m_indexBuffer = nullptr;
-	m_vertexCount = 0;
-	m_indexCount = 0;
 }
 
 FullScreenQuad::~FullScreenQuad()
@@ -44,9 +42,9 @@ FullScreenQuad::~FullScreenQuad()
 	SafeRelease(m_indexBuffer);
 }
 
-bool FullScreenQuad::Initialize(Graphics* graphics, int windowWidth, int windowHeight)
+bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, D3D11GraphicsDevice* graphicsDevice)
 {
-	m_graphics = graphics;
+	m_graphics = graphicsDevice;
 
 	// Initialize the vertex and index buffer that hold the geometry for the ortho window model.
 	bool result = InitializeBuffers(windowWidth, windowHeight);
@@ -67,13 +65,13 @@ void FullScreenQuad::SetBuffers()
 	offset = 0;
 
 	// Set the vertex buffer to active in the input assembler so it can be rendered.
-	m_graphics->GetAPI()->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
+	m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
 
 	// Set the index buffer to active in the input assembler so it can be rendered.
-	m_graphics->GetAPI()->GetDeviceContext()->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+	m_graphics->GetDeviceContext()->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
 	// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
-	m_graphics->GetAPI()->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	m_graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 
@@ -159,7 +157,7 @@ bool FullScreenQuad::InitializeBuffers(int windowWidth, int windowHeight)
 	vertexData.SysMemSlicePitch = 0;
 
 	// Now finally create the vertex buffer.
-	result = m_graphics->GetAPI()->GetDevice()->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
+	result = m_graphics->GetDevice()->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
 	if (FAILED(result))
 		return false;
 
@@ -177,12 +175,16 @@ bool FullScreenQuad::InitializeBuffers(int windowWidth, int windowHeight)
 	indexData.SysMemSlicePitch = 0;
 
 	// Create the index buffer.
-	result = m_graphics->GetAPI()->GetDevice()->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
+	result = m_graphics->GetDevice()->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
 	if (FAILED(result))
 		return false;
 
+	// Release the arrays now that the vertex and index buffers have been created and loaded.
 	delete[] vertices;
+	vertices = nullptr;
+
 	delete[] indices;
+	indices = nullptr;
 
 	return true;
 }

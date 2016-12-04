@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <map>
 #include "Texture.h"
-#include "Graphics.h"
+#include "D3D11/D3D11GraphicsDevice.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
 #include "../Resource/IResource.h"
@@ -73,7 +73,7 @@ public:
 	std::weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap);
 	std::weak_ptr<ShaderVariation> GetShader() { return m_shader; }
 	bool HasShader() { return GetShader().expired() ? false : true; }
-	ID3D11ShaderResourceView* GetShaderResourceViewByTextureType(TextureType type);
+	void** GetShaderResourceViewByTextureType(TextureType type);
 	//=============================================================================
 
 	//= PROPERTIES ================================================================	

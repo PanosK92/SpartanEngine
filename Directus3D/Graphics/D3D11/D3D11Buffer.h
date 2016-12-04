@@ -21,12 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
-#include "../Graphics.h"
+//= INCLUDES ===================
+#include "D3D11GraphicsDevice.h"
 #include <vector>
 #include "../Vertex.h"
-#include <d3d11.h>
-//======================
+//==============================
 
 class D3D11Buffer
 {
@@ -34,7 +33,7 @@ public:
 	D3D11Buffer();
 	~D3D11Buffer();
 
-	void Initialize(Graphics* graphicsDevice);
+	void Initialize(D3D11GraphicsDevice* graphicsDevice);
 	bool CreateConstantBuffer(unsigned int size);
 	bool CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent>& vertices);
 	bool CreateIndexBuffer(std::vector<unsigned int>& indices);
@@ -48,7 +47,7 @@ public:
 	void Unmap();
 
 private:
-	Graphics* m_graphics;
+	D3D11GraphicsDevice* m_graphics;
 	ID3D11Buffer* m_buffer;
 	unsigned int m_stride;
 	unsigned int m_size;

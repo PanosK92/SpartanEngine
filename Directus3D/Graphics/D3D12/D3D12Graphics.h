@@ -28,9 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include <d3d12.h>
-#include "d3dx12.h"
 #include <dxgi1_4.h>
 #include "../../Math/Vector4.h"
+#include <string>
 #include "../../Core/Settings.h"
 //==============================
 
@@ -44,7 +44,7 @@ public:
 	void Release();
 
 	void Clear(const Directus::Math::Vector4& color);
-	void Present();
+	void Present() { m_swapChain->Present(VSYNC, 0); }
 
 	ID3D12Device* GetDevice() { return m_device; }
 	//ID3D12DeviceContext* GetDeviceContext() { return m_deviceContext; }

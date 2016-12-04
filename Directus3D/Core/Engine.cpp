@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Renderer.h"
 #include "../FileSystem/ModelImporter.h"
 #include "../Input/Input.h"
-#include "../Graphics/Graphics.h"
+#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
 #include "../EventSystem/EventHandler.h"
 #include "../Multithreading/ThreadPool.h"
 #include "../Socket/Socket.h"
@@ -55,7 +55,7 @@ Engine::Engine(Context* context) : Subsystem(context)
 	g_context->RegisterSubsystem(new Input(g_context));
 	g_context->RegisterSubsystem(new Audio(g_context));
 	g_context->RegisterSubsystem(new ThreadPool(g_context));
-	g_context->RegisterSubsystem(new Graphics(g_context));
+	g_context->RegisterSubsystem(new D3D11GraphicsDevice(g_context));
 	g_context->RegisterSubsystem(new PhysicsWorld(g_context));
 	g_context->RegisterSubsystem(new ResourceCache(g_context));
 }
@@ -70,7 +70,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	// Initialize any subsystems that require it
 	g_context->GetSubsystem<Audio>()->Initialize();
 	g_context->GetSubsystem<Input>()->Initialize(instance, windowHandle);
-	g_context->GetSubsystem<Graphics>()->Initialize(drawPaneHandle);
+	g_context->GetSubsystem<D3D11GraphicsDevice>()->Initialize(drawPaneHandle);
 	g_context->GetSubsystem<ResourceCache>()->Initialize();
 
 	// Register subsystems which depend on registered subsystems

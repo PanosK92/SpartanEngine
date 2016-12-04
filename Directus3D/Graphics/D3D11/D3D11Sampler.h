@@ -21,20 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
-#include "../Graphics.h"
-#include <d3d11.h>
-//======================
+//= INCLUDES ===================
+#include "D3D11GraphicsDevice.h"
+//==============================
 
 class D3D11Sampler
 {
 public:
-	D3D11Sampler(Graphics* graphics);
+	D3D11Sampler(D3D11GraphicsDevice* graphics);
 	~D3D11Sampler();
 
 	bool Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
 	void Set(unsigned int startSlot);
 private:
-	Graphics* m_graphics;
+	D3D11GraphicsDevice* m_graphics;
 	ID3D11SamplerState* m_sampler;
 };

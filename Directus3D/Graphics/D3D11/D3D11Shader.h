@@ -25,14 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "d3dcompiler.lib")
 //=====================================
 
-//= INCLUDES ================
+//= INCLUDES ===================
 #include <vector>
 #include "D3D11InputLayout.h"
 #include "D3D11Sampler.h"
 #include <set>
-#include "../Graphics.h"
+#include "D3D11GraphicsDevice.h"
 #include <memory>
-//===========================
+
+//==============================
 
 class D3D11Shader
 {
@@ -40,7 +41,7 @@ public:
 	D3D11Shader();
 	~D3D11Shader();
 
-	void Initialize(Graphics* d3d11Device);
+	void Initialize(D3D11GraphicsDevice* d3d11Device);
 	bool Load(std::string path);
 	bool SetInputLayout(InputLayout inputLayout);
 	bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
@@ -82,5 +83,5 @@ private:
 	bool m_layoutHasBeenSet;
 
 	//= DEPENDENCIES============
-	Graphics* m_graphics;
+	D3D11GraphicsDevice* m_graphics;
 };

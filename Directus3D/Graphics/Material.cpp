@@ -313,13 +313,13 @@ weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(bool albedo, boo
 
 	// If not, create a new one
 	auto shader = make_shared<ShaderVariation>();
-	shader->Initialize(albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<Graphics>());
+	shader->Initialize(albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<D3D11GraphicsDevice>());
 
 	// Add the shader to the pool and return it
 	return m_context->GetSubsystem<ResourceCache>()->AddResource(shader);
 }
 
-ID3D11ShaderResourceView* Material::GetShaderResourceViewByTextureType(TextureType type)
+void** Material::GetShaderResourceViewByTextureType(TextureType type)
 {
 	auto texture = GetTextureByType(type);
 

@@ -21,16 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============
-#include "../Graphics.h"
+//= INCLUDES ===================
+#include "D3D11GraphicsDevice.h"
 #include <vector>
-#include <d3d11.h>
-//========================
+//==============================
 
 class D3D11Texture
 {
 public:
-	D3D11Texture(Graphics* context);
+	D3D11Texture(D3D11GraphicsDevice* context);
 	~D3D11Texture();
 
 	bool Create(int width, int height, int channels, unsigned char* data);
@@ -44,6 +43,6 @@ private:
 	DXGI_FORMAT m_format;
 	UINT m_mipLevels;
 	ID3D11ShaderResourceView* m_shaderResourceView;
-	Graphics* m_graphics;
+	D3D11GraphicsDevice* m_graphics;
 };
 

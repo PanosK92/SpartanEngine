@@ -176,7 +176,7 @@ bool MeshFilter::SetBuffers()
 	m_indexBuffer->SetIA();
 
 	// Set the type of primitive that should be rendered from this vertex buffer
-	g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(TriangleList);
+	g_context->GetSubsystem<D3D11GraphicsDevice>()->SetPrimitiveTopology(TriangleList);
 
 	return true;
 }
@@ -215,7 +215,7 @@ bool MeshFilter::CreateBuffers()
 		return false;
 
 	m_vertexBuffer = make_shared<D3D11Buffer>();
-	m_vertexBuffer->Initialize(g_context->GetSubsystem<Graphics>());
+	m_vertexBuffer->Initialize(g_context->GetSubsystem<D3D11GraphicsDevice>());
 	if (!m_vertexBuffer->CreateVertexBuffer(m_mesh.lock()->GetVertices()))
 	{
 		LOG_ERROR("Failed to create vertex buffer [" + g_gameObject->GetName() + "].");
@@ -223,7 +223,7 @@ bool MeshFilter::CreateBuffers()
 	}
 
 	m_indexBuffer = make_shared<D3D11Buffer>();
-	m_indexBuffer->Initialize(g_context->GetSubsystem<Graphics>());
+	m_indexBuffer->Initialize(g_context->GetSubsystem<D3D11GraphicsDevice>());
 	if (!m_indexBuffer->CreateIndexBuffer(m_mesh.lock()->GetIndices()))
 	{
 		LOG_ERROR("Failed to create index buffer [" + g_gameObject->GetName() + "].");

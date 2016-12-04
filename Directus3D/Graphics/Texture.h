@@ -22,10 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ========================
-#include <memory>
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/IResource.h"
-#include "Graphics.h"
+#include "D3D11/D3D11Texture.h"
+#include <memory>
+
 //===================================
 
 enum TextureType
@@ -41,14 +42,11 @@ enum TextureType
 	CubeMap,
 };
 
-class D3D11Texture;
-class ID3D11ShaderResourceView;
-
-class Texture : public Directus::Resource::IResource, public GPUObject
+class Texture : public Directus::Resource::IResource
 {
 public:
 	Texture(Context* context);
-	virtual ~Texture();
+	~Texture();
 
 	//= IO ====================================================
 	bool LoadFromFile(const std::string& filePath);
@@ -90,8 +88,8 @@ public:
 	bool GetTransparency() { return m_transparency; }
 	void SetTransparency(bool transparency) { m_transparency = transparency; }
 
-	ID3D11ShaderResourceView* GetShaderResourceView();
-	void SetShaderResourceView(ID3D11ShaderResourceView* srv);
+	void** GetShaderResourceView() { return (void**)m_texture->GetShaderResourceView(); }
+	void SetShaderResourceView(void** srv);
 	//=============================================================================================
 private:
 	std::string m_name;
