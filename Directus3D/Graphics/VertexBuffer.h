@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-
 #pragma once
 
-//= INCLUDES ========
-#include "Graphics.h"
-//===================
+//= INCLUDES ===============
+#include "GPUObject.h"
+#include "../Core/Context.h"
+//==========================
 
-class VertexBuffer
+class VertexBuffer : public GPUObject
 {
 public:
-	VertexBuffer(Graphics* graphics);
-	~VertexBuffer();
+	VertexBuffer(Context* context);
+	virtual ~VertexBuffer();
 private:
 };

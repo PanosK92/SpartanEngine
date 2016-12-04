@@ -19,16 +19,25 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============
-#include "VertexBuffer.h"
-//=======================
+#pragma once
 
-VertexBuffer::VertexBuffer(Context* context) : GPUObject(context->GetSubsystem<Graphics>())
+//= INCLUDES =====================
+#include "Graphics.h"
+#include "GPUObject.h"
+#include "../Core/GUIDGenerator.h"
+//================================
+
+GPUObject::GPUObject(Graphics* graphics)
 {
+	m_graphics = graphics;
+	m_id = GENERATE_GUID;
 
+	if (m_graphics)
+		m_graphics->AddGPUObject(this);
 }
 
-VertexBuffer::~VertexBuffer()
+GPUObject::~GPUObject()
 {
-
+	if (m_graphics)
+		m_graphics->RemoveGPUObject(this);
 }

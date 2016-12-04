@@ -19,16 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============
-#include "VertexBuffer.h"
-//=======================
+#pragma once
 
-VertexBuffer::VertexBuffer(Context* context) : GPUObject(context->GetSubsystem<Graphics>())
+//= INCLUDES ===============
+#include "GPUObject.h"
+#include "../Core/Context.h"
+//==========================
+
+class ConstantBuffer : public GPUObject
 {
-
-}
-
-VertexBuffer::~VertexBuffer()
-{
-
-}
+public:
+	ConstantBuffer(Context* context);
+	virtual ~ConstantBuffer();
+private:
+};

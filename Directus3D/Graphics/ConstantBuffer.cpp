@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============
-#include "VertexBuffer.h"
-//=======================
+//= INCLUDES ==============
+#include "ConstantBuffer.h"
+//=========================
 
-VertexBuffer::VertexBuffer(Context* context) : GPUObject(context->GetSubsystem<Graphics>())
+ConstantBuffer::ConstantBuffer(Context* context) : GPUObject(context->GetSubsystem<Graphics>())
 {
-
+	
 }
 
-VertexBuffer::~VertexBuffer()
+ConstantBuffer::~ConstantBuffer()
 {
 
 }

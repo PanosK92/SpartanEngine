@@ -44,11 +44,11 @@ enum TextureType
 class D3D11Texture;
 class ID3D11ShaderResourceView;
 
-class Texture : public Directus::Resource::IResource
+class Texture : public Directus::Resource::IResource, public GPUObject
 {
 public:
 	Texture(Context* context);
-	~Texture();
+	virtual ~Texture();
 
 	//= IO ====================================================
 	bool LoadFromFile(const std::string& filePath);
