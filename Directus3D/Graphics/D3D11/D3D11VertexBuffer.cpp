@@ -42,7 +42,7 @@ D3D11VertexBuffer::~D3D11VertexBuffer()
 
 bool D3D11VertexBuffer::Create(const vector<VertexPositionTextureNormalTangent>& vertices)
 {
-	if (vertices.size() == 0)
+	if (vertices.empty())
 		return false;
 
 	m_stride = sizeof(VertexPositionTextureNormalTangent);
@@ -53,9 +53,9 @@ bool D3D11VertexBuffer::Create(const vector<VertexPositionTextureNormalTangent>&
 	D3D11_BUFFER_DESC bufferDesc;
 	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
 	bufferDesc.ByteWidth = byteWidth;
-	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
 	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bufferDesc.CPUAccessFlags = static_cast<D3D11_CPU_ACCESS_FLAG>(0);
+	bufferDesc.CPUAccessFlags = 0;
 	bufferDesc.MiscFlags = 0;
 	bufferDesc.StructureByteStride = 0;
 

@@ -39,19 +39,22 @@ D3D11IndexBuffer::~D3D11IndexBuffer()
 	SafeRelease(m_buffer);
 }
 
-bool D3D11IndexBuffer::Create(const vector<unsigned>& indices)
+bool D3D11IndexBuffer::Create(const vector<UINT>& indices)
 {
+	if (indices.empty())
+		return false;
+
 	UINT stride = sizeof(UINT);
-	float size = (unsigned int)indices.size();
+	float size = (UINT)indices.size();
 	unsigned int finalSize = stride * size;
 
 	// fill in a buffer description.
 	D3D11_BUFFER_DESC bufferDesc;
 	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
 	bufferDesc.ByteWidth = finalSize;
+	bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
 	bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	bufferDesc.CPUAccessFlags = static_cast<D3D11_CPU_ACCESS_FLAG>(0);
+	bufferDesc.CPUAccessFlags = 0;
 	bufferDesc.MiscFlags = 0;
 	bufferDesc.StructureByteStride = 0;
 

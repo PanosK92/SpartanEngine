@@ -31,7 +31,7 @@ public:
 	D3D11IndexBuffer(D3D11GraphicsDevice* graphicsDevice);
 	~D3D11IndexBuffer();
 
-	bool Create(const std::vector<unsigned int>& indices);
+	bool Create(const std::vector<UINT>& indices);
 	void SetIA();
 
 private:
