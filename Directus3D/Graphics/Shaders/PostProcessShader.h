@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ============================
 #include "../D3D11/D3D11GraphicsDevice.h"
-#include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../../Math/Matrix.h"
-//===============================
+#include "../D3D11/D3D11ConstantBuffer.h"
+#include "../../Math/Vector2.h"
+//=======================================
 
 class PostProcessShader
 {
@@ -45,7 +46,7 @@ private:
 		Directus::Math::Vector2 padding;
 	};
 
-	std::shared_ptr<D3D11Buffer> m_constantBuffer;
+	std::shared_ptr<D3D11ConstantBuffer> m_constantBuffer;
 	D3D11GraphicsDevice* m_graphics;
 	std::shared_ptr<D3D11Shader> m_shader;
 };

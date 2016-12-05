@@ -21,15 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ===================================
 #include "IComponent.h"
 #include "../Math/Vector3.h"
 #include <vector>
 #include "../Graphics/Vertex.h"
-#include "../Graphics/D3D11/D3D11Buffer.h"
 #include "../Graphics/Mesh.h"
 #include <memory>
-//========================================
+#include "../Graphics/D3D11/D3D11VertexBuffer.h"
+#include "../Graphics/D3D11/D3D11IndexBuffer.h"
+//==============================================
 
 class DllExport MeshFilter : public IComponent
 {
@@ -66,8 +67,8 @@ private:
 	void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 	void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
 
-	std::shared_ptr<D3D11Buffer> m_vertexBuffer;
-	std::shared_ptr<D3D11Buffer> m_indexBuffer;
+	std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
+	std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
 	std::weak_ptr<Mesh> m_mesh;
 	MeshType m_meshType;
 };

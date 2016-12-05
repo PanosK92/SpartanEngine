@@ -23,34 +23,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "D3D11GraphicsDevice.h"
-#include <vector>
-#include "../Vertex.h"
 //==============================
 
-class D3D11Buffer
+class D3D11IndexBuffer
 {
 public:
-	D3D11Buffer(D3D11GraphicsDevice* graphicsDevice);
-	~D3D11Buffer();
+	D3D11IndexBuffer(D3D11GraphicsDevice* graphicsDevice);
+	~D3D11IndexBuffer();
 
-	bool CreateConstantBuffer(unsigned int size);
-	bool CreateVertexBuffer(std::vector<VertexPositionTextureNormalTangent>& vertices);
-	bool CreateIndexBuffer(std::vector<unsigned int>& indices);
-	bool Create(unsigned int stride, unsigned int size, void* data, D3D11_USAGE usage, D3D11_BIND_FLAG bindFlag, D3D11_CPU_ACCESS_FLAG cpuAccessFlag);
-	
+	bool Create(const std::vector<unsigned int>& indices);
 	void SetIA();
-	void SetVS(unsigned int startSlot);
-	void SetPS(unsigned int startSlot);
-
-	void* Map();
-	void Unmap();
 
 private:
 	D3D11GraphicsDevice* m_graphics;
 	ID3D11Buffer* m_buffer;
-	unsigned int m_stride;
-	unsigned int m_size;
-	D3D11_USAGE m_usage;
-	D3D11_BIND_FLAG m_bindFlag;
-	D3D11_CPU_ACCESS_FLAG m_cpuAccessFlag;
 };

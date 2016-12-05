@@ -152,8 +152,11 @@
     <ClCompile Include="Core\GameObject.cpp" />
     <ClCompile Include="Core\GUIDGenerator.cpp" />
     <ClCompile Include="Core\SubSystem.cpp" />
+    <ClCompile Include="Graphics\D3D11\D3D11ConstantBuffer.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11GraphicsDevice.cpp" />
+    <ClCompile Include="Graphics\D3D11\D3D11IndexBuffer.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11Texture.cpp" />
+    <ClCompile Include="Graphics\D3D11\D3D11VertexBuffer.cpp" />
     <ClCompile Include="Graphics\D3D12\D3D12GraphicsDevice.cpp" />
     <ClCompile Include="Graphics\Material.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
@@ -165,7 +168,6 @@
     <ClCompile Include="Socket\Socket.cpp" />
     <ClCompile Include="Graphics\Texture.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
-    <ClCompile Include="Graphics\D3D11\D3D11Buffer.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11InputLayout.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11RenderTexture.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11Sampler.cpp" />
@@ -222,7 +224,10 @@
     <ClInclude Include="Core\Context.h" />
     <ClInclude Include="Core\Engine.h" />
     <ClInclude Include="Core\SubSystem.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11ConstantBuffer.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11IndexBuffer.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Texture.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11VertexBuffer.h" />
     <ClInclude Include="Graphics\D3D12\D3D12GraphicsDevice.h" />
     <ClInclude Include="Graphics\GraphicsDefinitions.h" />
     <ClInclude Include="Graphics\Shaders\ShadowMappingShader.h" />
@@ -241,7 +246,6 @@
     <ClInclude Include="Graphics\Texture.h" />
     <ClInclude Include="Core\Timer.h" />
     <ClInclude Include="Graphics\Vertex.h" />
-    <ClInclude Include="Graphics\D3D11\D3D11Buffer.h" />
     <ClInclude Include="Graphics\D3D11\D3D11GraphicsDevice.h" />
     <ClInclude Include="Graphics\D3D11\D3D11InputLayout.h" />
     <ClInclude Include="Graphics\D3D11\D3D11RenderTexture.h" />
