@@ -51,8 +51,8 @@ void DepthShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 	m_shader->SetInputLayout(Position);
 
 	// create a buffer
-	m_defaultBuffer = make_shared<D3D11Buffer>(m_graphics);
-	m_defaultBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
+	m_defaultBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+	m_defaultBuffer->Create(sizeof(DefaultBuffer));
 }
 
 void DepthShader::UpdateMatrixBuffer(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)

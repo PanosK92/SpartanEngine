@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES ============================
 #include "../../Math/Matrix.h"
 #include "../../Core/GameObject.h"
 #include "../../Math/Vector4.h"
 #include "../../Components/Camera.h"
 #include "../D3D11/D3D11GraphicsDevice.h"
-#include "../D3D11/D3D11Buffer.h"
-#include "../D3D11/D3D11Shader.h"
 #include "../../Components/Light.h"
-//==================================
+#include "../D3D11/D3D11ConstantBuffer.h"
+#include "../D3D11/D3D11Shader.h"
+//=======================================
 
 class DeferredShader
 {
@@ -74,8 +74,8 @@ private:
 		Directus::Math::Vector2 padding;
 	};
 
-	std::shared_ptr<D3D11Buffer> m_matrixBuffer;
-	std::shared_ptr<D3D11Buffer> m_miscBuffer;
+	std::shared_ptr<D3D11ConstantBuffer> m_matrixBuffer;
+	std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
 	std::shared_ptr<D3D11Shader> m_shader;
 	D3D11GraphicsDevice* m_graphics;
 };

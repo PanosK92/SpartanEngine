@@ -55,8 +55,8 @@ void PostProcessShader::Initialize(LPCSTR pass, D3D11GraphicsDevice* graphicsDev
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// create buffer
-	m_constantBuffer = make_shared<D3D11Buffer>(m_graphics);
-	m_constantBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
+	m_constantBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+	m_constantBuffer->Create(sizeof(DefaultBuffer));
 }
 
 void PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* texture)

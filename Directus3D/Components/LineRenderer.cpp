@@ -104,20 +104,16 @@ void LineRenderer::CreateBuffer()
 	m_vertices = new VertexPositionColor[m_maxVertices];
 
 	// create vertex buffer
-	m_vertexBuffer = make_shared<D3D11Buffer>(g_context->GetSubsystem<D3D11GraphicsDevice>());
-	m_vertexBuffer->Create(
-		sizeof(VertexPositionColor),
-		m_maxVertices,
-		nullptr,
-		D3D11_USAGE_DYNAMIC,
-		D3D11_BIND_VERTEX_BUFFER,
-		D3D11_CPU_ACCESS_WRITE
-	);
+	m_vertexBuffer = make_shared<D3D11VertexBuffer>(g_context->GetSubsystem<D3D11GraphicsDevice>());
+	m_vertexBuffer->CreateDynamic(sizeof(VertexPositionColor), m_maxVertices);
 }
 
 //= MISC ================================================================
 void LineRenderer::UpdateVertexBuffer()
 {
+	if (!m_vertexBuffer)
+		return;
+
 	// disable GPU access to the vertex buffer data.	
 	void* data = m_vertexBuffer->Map();
 

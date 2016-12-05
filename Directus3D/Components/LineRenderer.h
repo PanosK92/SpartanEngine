@@ -1,12 +1,11 @@
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ===================================
 #include "IComponent.h"
-#include "../Graphics/D3D11/D3D11Buffer.h"
 #include "../Graphics/Vertex.h"
 #include <memory>
-
-//========================================
+#include "../Graphics/D3D11/D3D11VertexBuffer.h"
+//=============================================
 
 class DllExport LineRenderer : public IComponent
 {
@@ -34,7 +33,7 @@ private:
 	void CreateBuffer();
 
 	//= VERTICES ===================	
-	std::shared_ptr<D3D11Buffer> m_vertexBuffer;
+	std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
 	VertexPositionColor* m_vertices;
 	int m_maxVertices;
 	int m_vertexIndex;	

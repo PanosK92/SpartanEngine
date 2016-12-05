@@ -50,8 +50,8 @@ void DebugShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// create buffer
-	m_miscBuffer = make_shared<D3D11Buffer>(m_graphics);
-	m_miscBuffer->CreateConstantBuffer(sizeof(DefaultBuffer));
+	m_miscBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+	m_miscBuffer->Create(sizeof(DefaultBuffer));
 }
 
 void DebugShader::Render(int vertexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap)

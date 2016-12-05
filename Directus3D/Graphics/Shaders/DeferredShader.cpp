@@ -57,12 +57,12 @@ void DeferredShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 	// Create matrix buffer
-	m_matrixBuffer = make_shared<D3D11Buffer>(m_graphics);
-	m_matrixBuffer->CreateConstantBuffer(sizeof(MatrixBufferType));
+	m_matrixBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+	m_matrixBuffer->Create(sizeof(MatrixBufferType));
 
 	// Create misc buffer
-	m_miscBuffer = make_shared<D3D11Buffer>(m_graphics);
-	m_miscBuffer->CreateConstantBuffer(sizeof(MiscBufferType));
+	m_miscBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+	m_miscBuffer->Create(sizeof(MiscBufferType));
 }
 
 void DeferredShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mBaseView, const Matrix& mPerspectiveProjection, const Matrix& mOrthographicProjection)

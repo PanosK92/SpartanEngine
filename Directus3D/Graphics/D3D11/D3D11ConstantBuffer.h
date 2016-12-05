@@ -21,32 +21,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
-#include "../../Math/Matrix.h"
-#include "../D3D11/D3D11GraphicsDevice.h"
-#include "../D3D11/D3D11Shader.h"
-#include <memory>
-#include "../D3D11/D3D11ConstantBuffer.h"
-//=======================================
+//= INCLUDES ===================
+#include "D3D11GraphicsDevice.h"
+//==============================
 
-class DepthShader
+class D3D11ConstantBuffer
 {
 public:
-	DepthShader();
-	~DepthShader();
+	D3D11ConstantBuffer(D3D11GraphicsDevice* graphicsDevice);
+	~D3D11ConstantBuffer();
 
-	void Initialize(D3D11GraphicsDevice* graphicsDevice);
-	void UpdateMatrixBuffer(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix);
-	void Set();
-	void Render(unsigned int indexCount);
+	bool Create(unsigned int size);
+
+	void* Map();
+	void Unmap();
+
+	void SetVS(unsigned int startSlot);
+	void SetPS(unsigned int startSlot);
 
 private:
-	struct DefaultBuffer
-	{
-		Directus::Math::Matrix worldViewProjection;
-	};
-
-	std::shared_ptr<D3D11ConstantBuffer> m_defaultBuffer;
 	D3D11GraphicsDevice* m_graphics;
-	std::shared_ptr<D3D11Shader> m_shader;
+	ID3D11Buffer* m_buffer;
 };

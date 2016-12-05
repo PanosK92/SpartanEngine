@@ -267,14 +267,14 @@ void ShaderVariation::Load()
 	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS); // anisotropic
 
 	// Matrix Buffer
-	m_perObjectBuffer = make_shared<D3D11Buffer>(m_graphics);
-	m_perObjectBuffer->CreateConstantBuffer(sizeof(PerObjectBufferType));
+	m_perObjectBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+	m_perObjectBuffer->Create(sizeof(PerObjectBufferType));
 
 	// Object Buffer
-	m_materialBuffer = make_shared<D3D11Buffer>(m_graphics);
-	m_materialBuffer->CreateConstantBuffer(sizeof(PerMaterialBufferType));
+	m_materialBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+	m_materialBuffer->Create(sizeof(PerMaterialBufferType));
 
 	// Object Buffer
-	m_miscBuffer = make_shared<D3D11Buffer>(m_graphics);
-	m_miscBuffer->CreateConstantBuffer(sizeof(PerFrameBufferType));
+	m_miscBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+	m_miscBuffer->Create(sizeof(PerFrameBufferType));
 }

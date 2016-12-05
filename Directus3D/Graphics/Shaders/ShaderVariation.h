@@ -21,8 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
-#include "../D3D11/D3D11Buffer.h"
+//= INCLUDES =============================
 #include "../D3D11/D3D11Shader.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Vector2.h"
@@ -31,7 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../D3D11/D3D11GraphicsDevice.h"
 #include "../../Components/Light.h"
 #include "../../Components/Camera.h"
-//==================================
+#include "../D3D11/D3D11ConstantBuffer.h"
+//=======================================
 
 #define NULL_SHADER_ID "-1";
 
@@ -94,9 +94,9 @@ private:
 									[MISC]
 	------------------------------------------------------------------------------*/
 	D3D11GraphicsDevice* m_graphics;
-	std::shared_ptr<D3D11Buffer> m_perObjectBuffer;
-	std::shared_ptr<D3D11Buffer> m_materialBuffer;
-	std::shared_ptr<D3D11Buffer> m_miscBuffer;
+	std::shared_ptr<D3D11ConstantBuffer> m_perObjectBuffer;
+	std::shared_ptr<D3D11ConstantBuffer> m_materialBuffer;
+	std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
 	std::shared_ptr<D3D11Shader> m_D3D11Shader;
 
 	//= BUFFERS ===============================================

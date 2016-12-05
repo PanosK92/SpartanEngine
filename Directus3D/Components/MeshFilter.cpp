@@ -216,15 +216,15 @@ bool MeshFilter::CreateBuffers()
 
 	auto graphicsDevice = g_context->GetSubsystem<D3D11GraphicsDevice>();
 
-	m_vertexBuffer = make_shared<D3D11Buffer>(graphicsDevice);
-	if (!m_vertexBuffer->CreateVertexBuffer(m_mesh.lock()->GetVertices()))
+	m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphicsDevice);
+	if (!m_vertexBuffer->Create(m_mesh.lock()->GetVertices()))
 	{
 		LOG_ERROR("Failed to create vertex buffer [" + g_gameObject->GetName() + "].");
 		return false;
 	}
 
-	m_indexBuffer = make_shared<D3D11Buffer>(graphicsDevice);
-	if (!m_indexBuffer->CreateIndexBuffer(m_mesh.lock()->GetIndices()))
+	m_indexBuffer = make_shared<D3D11IndexBuffer>(graphicsDevice);
+	if (!m_indexBuffer->Create(m_mesh.lock()->GetIndices()))
 	{
 		LOG_ERROR("Failed to create index buffer [" + g_gameObject->GetName() + "].");
 		return false;

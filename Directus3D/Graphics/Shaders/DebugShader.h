@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ============================
 #include "../D3D11/D3D11GraphicsDevice.h"
-#include "../D3D11/D3D11Buffer.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../../Math/Matrix.h"
-//===============================
+#include "../D3D11/D3D11ConstantBuffer.h"
+//=======================================
 
 class DebugShader
 {
@@ -47,7 +47,7 @@ private:
 	void SetShaderBuffers(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
 	void RenderShader(unsigned int vertexCount);
 
-	std::shared_ptr<D3D11Buffer> m_miscBuffer;
+	std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
 	D3D11GraphicsDevice* m_graphics;
 	std::shared_ptr<D3D11Shader> m_shader;
 };
