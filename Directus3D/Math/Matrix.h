@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========
 #include "MathHelper.h"
 #include "Vector3.h"
-#include "Quaternion.h"
 //=====================
 
 namespace Directus
@@ -44,111 +43,29 @@ namespace Directus
 				m30 = 0; m31 = 0; m32 = 0; m33 = 1;
 			}
 
-			Matrix(float m11, float m12, float m13, float m14, float m21, float m22, float m23, float m24, float m31, float m32, float m33, float m34, float m41, float m42, float m43, float m44)
+			Matrix(
+				float m00, float m01, float m02, float m03,
+				float m10, float m11, float m12, float m13,
+				float m20, float m21, float m22, float m23,
+				float m30, float m31, float m32, float m33)
 			{
-				this->m00 = m11; this->m01 = m12; this->m02 = m13; this->m03 = m14;
-				this->m10 = m21; this->m11 = m22; this->m12 = m23; this->m13 = m24;
-				this->m20 = m31; this->m21 = m32; this->m22 = m33; this->m23 = m34;
-				this->m30 = m41; this->m31 = m42; this->m32 = m43; this->m33 = m44;
+				this->m00 = m00; this->m01 = m01; this->m02 = m02; this->m03 = m03;
+				this->m10 = m10; this->m11 = m11; this->m12 = m12; this->m13 = m13;
+				this->m20 = m20; this->m21 = m21; this->m22 = m22; this->m23 = m23;
+				this->m30 = m30; this->m31 = m31; this->m32 = m32; this->m33 = m33;
 			}
 
 			~Matrix() {}
 
+			//= TRANSPOSE =========================================
 			Matrix Transposed() const { return Transposed(*this); }
-
-			static Matrix Transposed(const Matrix& matrix)
-			{
-				Matrix result;
-
-				result.m00 = matrix.m00;
-				result.m01 = matrix.m10;
-				result.m02 = matrix.m20;
-				result.m03 = matrix.m30;
-
-				result.m10 = matrix.m01;
-				result.m11 = matrix.m11;
-				result.m12 = matrix.m21;
-				result.m13 = matrix.m31;
-
-				result.m20 = matrix.m02;
-				result.m21 = matrix.m12;
-				result.m22 = matrix.m22;
-				result.m23 = matrix.m32;
-
-				result.m30 = matrix.m03;
-				result.m31 = matrix.m13;
-				result.m32 = matrix.m23;
-				result.m33 = matrix.m33;
-
-				return result;
-			}
-
-
+			//=====================================================
+		
+			//= INVERT ======================================
 			Matrix Inverted() const { return Invert(*this); }
+			//===============================================
 
-			static Matrix Invert(const Matrix& matrix)
-			{
-				float num1 = matrix.m00;
-				float num2 = matrix.m01;
-				float num3 = matrix.m02;
-				float num4 = matrix.m03;
-				float num5 = matrix.m10;
-				float num6 = matrix.m11;
-				float num7 = matrix.m12;
-				float num8 = matrix.m13;
-				float num9 = matrix.m20;
-				float num10 = matrix.m21;
-				float num11 = matrix.m22;
-				float num12 = matrix.m23;
-				float num13 = matrix.m30;
-				float num14 = matrix.m31;
-				float num15 = matrix.m32;
-				float num16 = matrix.m33;
-				float num17 = (float)((double)num11 * (double)num16 - (double)num12 * (double)num15);
-				float num18 = (float)((double)num10 * (double)num16 - (double)num12 * (double)num14);
-				float num19 = (float)((double)num10 * (double)num15 - (double)num11 * (double)num14);
-				float num20 = (float)((double)num9 * (double)num16 - (double)num12 * (double)num13);
-				float num21 = (float)((double)num9 * (double)num15 - (double)num11 * (double)num13);
-				float num22 = (float)((double)num9 * (double)num14 - (double)num10 * (double)num13);
-				float num23 = (float)((double)num6 * (double)num17 - (double)num7 * (double)num18 + (double)num8 * (double)num19);
-				float num24 = (float)-((double)num5 * (double)num17 - (double)num7 * (double)num20 + (double)num8 * (double)num21);
-				float num25 = (float)((double)num5 * (double)num18 - (double)num6 * (double)num20 + (double)num8 * (double)num22);
-				float num26 = (float)-((double)num5 * (double)num19 - (double)num6 * (double)num21 + (double)num7 * (double)num22);
-				float num27 = (float)(1.0 / ((double)num1 * (double)num23 + (double)num2 * (double)num24 + (double)num3 * (double)num25 + (double)num4 * (double)num26));
-
-				Matrix result;
-				result.m00 = num23 * num27;
-				result.m10 = num24 * num27;
-				result.m20 = num25 * num27;
-				result.m30 = num26 * num27;
-				result.m01 = (float)-((double)num2 * (double)num17 - (double)num3 * (double)num18 + (double)num4 * (double)num19) * num27;
-				result.m11 = (float)((double)num1 * (double)num17 - (double)num3 * (double)num20 + (double)num4 * (double)num21) * num27;
-				result.m21 = (float)-((double)num1 * (double)num18 - (double)num2 * (double)num20 + (double)num4 * (double)num22) * num27;
-				result.m31 = (float)((double)num1 * (double)num19 - (double)num2 * (double)num21 + (double)num3 * (double)num22) * num27;
-				float num28 = (float)((double)num7 * (double)num16 - (double)num8 * (double)num15);
-				float num29 = (float)((double)num6 * (double)num16 - (double)num8 * (double)num14);
-				float num30 = (float)((double)num6 * (double)num15 - (double)num7 * (double)num14);
-				float num31 = (float)((double)num5 * (double)num16 - (double)num8 * (double)num13);
-				float num32 = (float)((double)num5 * (double)num15 - (double)num7 * (double)num13);
-				float num33 = (float)((double)num5 * (double)num14 - (double)num6 * (double)num13);
-				result.m02 = (float)((double)num2 * (double)num28 - (double)num3 * (double)num29 + (double)num4 * (double)num30) * num27;
-				result.m12 = (float)-((double)num1 * (double)num28 - (double)num3 * (double)num31 + (double)num4 * (double)num32) * num27;
-				result.m22 = (float)((double)num1 * (double)num29 - (double)num2 * (double)num31 + (double)num4 * (double)num33) * num27;
-				result.m32 = (float)-((double)num1 * (double)num30 - (double)num2 * (double)num32 + (double)num3 * (double)num33) * num27;
-				float num34 = (float)((double)num7 * (double)num12 - (double)num8 * (double)num11);
-				float num35 = (float)((double)num6 * (double)num12 - (double)num8 * (double)num10);
-				float num36 = (float)((double)num6 * (double)num11 - (double)num7 * (double)num10);
-				float num37 = (float)((double)num5 * (double)num12 - (double)num8 * (double)num9);
-				float num38 = (float)((double)num5 * (double)num11 - (double)num7 * (double)num9);
-				float num39 = (float)((double)num5 * (double)num10 - (double)num6 * (double)num9);
-				result.m03 = (float)-((double)num2 * (double)num34 - (double)num3 * (double)num35 + (double)num4 * (double)num36) * num27;
-				result.m13 = (float)((double)num1 * (double)num34 - (double)num3 * (double)num37 + (double)num4 * (double)num38) * num27;
-				result.m23 = (float)-((double)num1 * (double)num35 - (double)num2 * (double)num37 + (double)num4 * (double)num39) * num27;
-				result.m33 = (float)((double)num1 * (double)num36 - (double)num2 * (double)num38 + (double)num3 * (double)num39) * num27;
-
-				return result;
-			}
-
+			//= SCALE ========================================================================================
 			static Matrix CreateScale(float scale) { return CreateScale(scale, scale, scale); }
 			static Matrix CreateScale(const Vector3& scale) { return CreateScale(scale.x, scale.y, scale.z); }
 			static Matrix CreateScale(float scaleX, float scaleY, float ScaleZ)
@@ -160,9 +77,13 @@ namespace Directus
 					0, 0, 0, 1
 				);
 			}
+			//================================================================================================
 
+			//= TRANSLATION ==================================================================================
 			static Matrix CreateTranslation(const Vector3& position);
+			//================================================================================================
 
+			//= MISC ===========================================================================================================================
 			static Matrix CreateLookAtLH(const Vector3& cameraPosition, const Vector3& cameraTarget, const Vector3& cameraUpVector);
 
 			static Matrix CreateOrthographicLH(float width, float height, float zNearPlane, float zFarPlane)
@@ -174,7 +95,7 @@ namespace Directus
 					0, 0, zNearPlane / (zNearPlane - zFarPlane), 1
 				);
 			}
-
+			
 			static Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float zNearPlane, float zFarPlane)
 			{
 				return Matrix(
@@ -199,6 +120,7 @@ namespace Directus
 					0, 0, -zn * zf / (zf - zn), 0
 				);
 			}
+			//=================================================================================================================================
 
 			void Decompose(Vector3& scale, Quaternion& rotation, Vector3& translation);
 
@@ -269,7 +191,96 @@ namespace Directus
 
 			static const Matrix Identity;
 
-		private:
+			static Matrix Transposed(const Matrix& matrix)
+			{
+				Matrix result;
+
+				result.m00 = matrix.m00;
+				result.m01 = matrix.m10;
+				result.m02 = matrix.m20;
+				result.m03 = matrix.m30;
+
+				result.m10 = matrix.m01;
+				result.m11 = matrix.m11;
+				result.m12 = matrix.m21;
+				result.m13 = matrix.m31;
+
+				result.m20 = matrix.m02;
+				result.m21 = matrix.m12;
+				result.m22 = matrix.m22;
+				result.m23 = matrix.m32;
+
+				result.m30 = matrix.m03;
+				result.m31 = matrix.m13;
+				result.m32 = matrix.m23;
+				result.m33 = matrix.m33;
+
+				return result;
+			}
+
+			static Matrix Invert(const Matrix& matrix)
+			{
+				float num1 = matrix.m00;
+				float num2 = matrix.m01;
+				float num3 = matrix.m02;
+				float num4 = matrix.m03;
+				float num5 = matrix.m10;
+				float num6 = matrix.m11;
+				float num7 = matrix.m12;
+				float num8 = matrix.m13;
+				float num9 = matrix.m20;
+				float num10 = matrix.m21;
+				float num11 = matrix.m22;
+				float num12 = matrix.m23;
+				float num13 = matrix.m30;
+				float num14 = matrix.m31;
+				float num15 = matrix.m32;
+				float num16 = matrix.m33;
+				float num17 = (float)((double)num11 * (double)num16 - (double)num12 * (double)num15);
+				float num18 = (float)((double)num10 * (double)num16 - (double)num12 * (double)num14);
+				float num19 = (float)((double)num10 * (double)num15 - (double)num11 * (double)num14);
+				float num20 = (float)((double)num9 * (double)num16 - (double)num12 * (double)num13);
+				float num21 = (float)((double)num9 * (double)num15 - (double)num11 * (double)num13);
+				float num22 = (float)((double)num9 * (double)num14 - (double)num10 * (double)num13);
+				float num23 = (float)((double)num6 * (double)num17 - (double)num7 * (double)num18 + (double)num8 * (double)num19);
+				float num24 = (float)-((double)num5 * (double)num17 - (double)num7 * (double)num20 + (double)num8 * (double)num21);
+				float num25 = (float)((double)num5 * (double)num18 - (double)num6 * (double)num20 + (double)num8 * (double)num22);
+				float num26 = (float)-((double)num5 * (double)num19 - (double)num6 * (double)num21 + (double)num7 * (double)num22);
+				float num27 = (float)(1.0 / ((double)num1 * (double)num23 + (double)num2 * (double)num24 + (double)num3 * (double)num25 + (double)num4 * (double)num26));
+
+				Matrix result;
+				result.m00 = num23 * num27;
+				result.m10 = num24 * num27;
+				result.m20 = num25 * num27;
+				result.m30 = num26 * num27;
+				result.m01 = (float)-((double)num2 * (double)num17 - (double)num3 * (double)num18 + (double)num4 * (double)num19) * num27;
+				result.m11 = (float)((double)num1 * (double)num17 - (double)num3 * (double)num20 + (double)num4 * (double)num21) * num27;
+				result.m21 = (float)-((double)num1 * (double)num18 - (double)num2 * (double)num20 + (double)num4 * (double)num22) * num27;
+				result.m31 = (float)((double)num1 * (double)num19 - (double)num2 * (double)num21 + (double)num3 * (double)num22) * num27;
+				float num28 = (float)((double)num7 * (double)num16 - (double)num8 * (double)num15);
+				float num29 = (float)((double)num6 * (double)num16 - (double)num8 * (double)num14);
+				float num30 = (float)((double)num6 * (double)num15 - (double)num7 * (double)num14);
+				float num31 = (float)((double)num5 * (double)num16 - (double)num8 * (double)num13);
+				float num32 = (float)((double)num5 * (double)num15 - (double)num7 * (double)num13);
+				float num33 = (float)((double)num5 * (double)num14 - (double)num6 * (double)num13);
+				result.m02 = (float)((double)num2 * (double)num28 - (double)num3 * (double)num29 + (double)num4 * (double)num30) * num27;
+				result.m12 = (float)-((double)num1 * (double)num28 - (double)num3 * (double)num31 + (double)num4 * (double)num32) * num27;
+				result.m22 = (float)((double)num1 * (double)num29 - (double)num2 * (double)num31 + (double)num4 * (double)num33) * num27;
+				result.m32 = (float)-((double)num1 * (double)num30 - (double)num2 * (double)num32 + (double)num3 * (double)num33) * num27;
+				float num34 = (float)((double)num7 * (double)num12 - (double)num8 * (double)num11);
+				float num35 = (float)((double)num6 * (double)num12 - (double)num8 * (double)num10);
+				float num36 = (float)((double)num6 * (double)num11 - (double)num7 * (double)num10);
+				float num37 = (float)((double)num5 * (double)num12 - (double)num8 * (double)num9);
+				float num38 = (float)((double)num5 * (double)num11 - (double)num7 * (double)num9);
+				float num39 = (float)((double)num5 * (double)num10 - (double)num6 * (double)num9);
+				result.m03 = (float)-((double)num2 * (double)num34 - (double)num3 * (double)num35 + (double)num4 * (double)num36) * num27;
+				result.m13 = (float)((double)num1 * (double)num34 - (double)num3 * (double)num37 + (double)num4 * (double)num38) * num27;
+				result.m23 = (float)-((double)num1 * (double)num35 - (double)num2 * (double)num37 + (double)num4 * (double)num39) * num27;
+				result.m33 = (float)((double)num1 * (double)num36 - (double)num2 * (double)num38 + (double)num3 * (double)num39) * num27;
+
+				return result;
+			}
+
 			static Matrix Multiply(const Matrix& matrix1, const Matrix&  matrix2)
 			{
 				float m11 = (((matrix1.m00 * matrix2.m00) + (matrix1.m01 * matrix2.m10)) + (matrix1.m02 * matrix2.m20)) + (matrix1.m03 * matrix2.m30);

@@ -208,8 +208,7 @@ void ModelImporter::ProcessNode(const aiScene* scene, aiNode* assimpNode, GameOb
 		if (assimpNode->mNumMeshes > 1)
 		{
 			gameobject = g_context->GetSubsystem<Scene>()->CreateGameObject(); // create
-			Transform* parentTransB = parentNode ? parentNode->GetTransform() : nullptr;
-			gameobject->GetTransform()->SetParent(parentTransB); // set parent
+			gameobject->GetTransform()->SetParent(newNode->GetTransform()); // set parent
 			name += "_" + to_string(i + 1); // set name
 		}
 
