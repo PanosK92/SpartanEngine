@@ -63,11 +63,6 @@ namespace Directus
 			this->w = w;
 		}
 
-		Quaternion::~Quaternion()
-		{
-
-		}
-
 		//= FROM =========================================================================================
 		Quaternion Quaternion::FromAngleAxis(float angle, const Vector3& axis)
 		{
