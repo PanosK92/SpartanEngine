@@ -300,11 +300,6 @@ void Transform::SetParent(Transform* newParent)
 	UpdateWorldTransform();
 }
 
-void Transform::SetParent(GameObject* parent)
-{
-	return parent ? SetParent(parent->GetTransform()) : nullptr;
-}
-
 void Transform::AddChild(Transform* child)
 {
 	if (!child)
