@@ -19,11 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ===================
 #include "D3D12GraphicsDevice.h"
-#include <DXGI1_4.h>
 #include "../../Logging/Log.h"
-//============================
+//==============================
 
 D3D12GraphicsDevice::D3D12GraphicsDevice()
 {

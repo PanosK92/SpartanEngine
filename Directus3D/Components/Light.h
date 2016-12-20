@@ -21,17 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES ====================================
 #include <vector>
 #include "../Components/IComponent.h"
 #include "../Math/Vector4.h"
 #include "../Math/Vector3.h"
 #include "../Math/Matrix.h"
 #include "../Core/Settings.h"
-//===================================
-
-class ShadowMap;
-class ID3D11ShaderResourceView;
+#include <memory>
+#include "../Graphics/D3D11/D3D11RenderTexture.h"
+//===============================================
 
 enum LightType
 {
@@ -44,6 +43,69 @@ enum ShadowType
 	No_Shadows,
 	Hard_Shadows,
 	Soft_Shadows
+};
+
+class Cascade
+{
+public:
+	Cascade(int cascade, int resolution, GraphicsDevice* device)
+	{
+		m_cascade = cascade;
+		m_depthMap = std::make_unique<D3D11RenderTexture>(device);
+		m_depthMap->Initialize(resolution, resolution);
+	}
+	~Cascade() {}
+
+	void SetAsRenderTarget()
+	{
+		m_depthMap->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+		m_depthMap->SetAsRenderTarget();
+	}
+	ID3D11ShaderResourceView* GetShaderResourceView() { return m_depthMap ? m_depthMap->GetShaderResourceView() : nullptr; }
+
+	Directus::Math::Matrix CalculateProjectionMatrix(const Directus::Math::Vector3 centerPos, const Directus::Math::Matrix& viewMatrix)
+	{
+		float radius = GetRadius();
+		Directus::Math::Vector3 center = Directus::Math::Vector3::Transform(centerPos, viewMatrix);
+		Directus::Math::Vector3 min = center - Directus::Math::Vector3(radius, radius, radius);
+		Directus::Math::Vector3 max = center + Directus::Math::Vector3(radius, radius, radius);
+
+		return Directus::Math::Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, -max.z, -min.z);
+	}
+
+	float GetSplit()
+	{
+		float split = 0;
+
+		if (m_cascade == 1)
+			split = 990;
+
+		if (m_cascade == 2)
+			split = 998;
+
+		return split / 1000.0f;
+	}
+
+	float GetRadius()
+	{
+		float cameraFar = 1024;
+		float radius = cameraFar * 0.5f;
+
+		if (m_cascade == 1)
+			radius = 40;
+
+		else if (m_cascade == 2)
+			radius = 75;
+
+		if (m_cascade == 3)
+			radius = 200;
+
+		return radius;
+	}
+
+private:
+	int m_cascade;
+	std::unique_ptr<D3D11RenderTexture> m_depthMap;
 };
 
 class DllExport Light : public IComponent
@@ -83,12 +145,14 @@ public:
 	Directus::Math::Vector3 GetDirection();
 
 	Directus::Math::Matrix CalculateViewMatrix();
-	Directus::Math::Matrix GetOrthographicProjectionMatrix(int cascade);
-	void SetShadowMapAsRenderTarget(int cascade);
-	ID3D11ShaderResourceView* GetDepthMap(int cascade);
-	int GetShadowMapResolution() { return SHADOWMAP_RESOLUTION; }
-	int GetCascadeCount() { return m_cascades; }
-	float GetCascadeSplit(int cascade);
+	Directus::Math::Matrix CalculateOrthographicProjectionMatrix(int cascade);
+
+	// Cascaded shadow mapping
+	void SetShadowCascadeAsRenderTarget(int cascade);
+	std::weak_ptr<Cascade> GetShadowCascade(int cascade);
+	int GetShadowCascadeResolution() { return SHADOWMAP_RESOLUTION; }
+	int GetShadowCascadeCount() { return m_cascades; }
+	float GetShadowCascadeSplit(int cascade);
 
 private:
 	LightType m_lightType;
@@ -101,5 +165,5 @@ private:
 	Directus::Math::Matrix m_viewMatrix;
 
 	int m_cascades;
-	std::vector<ShadowMap*> m_shadowMaps;
+	std::vector<std::shared_ptr<Cascade>> m_shadowMaps;
 };

@@ -119,7 +119,7 @@ void Transform::UpdateWorldTransform()
 
 	// Calculate the local matrix
 	m_mTransform = scaleLocalMatrix * rotationLocalMatrix * translationLocalMatrix;
-	
+
 	// Get world data
 	if (!HasParent())
 	{
@@ -298,6 +298,11 @@ void Transform::SetParent(Transform* newParent)
 		m_parent->ResolveChildrenRecursively();
 
 	UpdateWorldTransform();
+}
+
+void Transform::SetParent(GameObject* parent)
+{
+	return parent ? SetParent(parent->GetTransform()) : nullptr;
 }
 
 void Transform::AddChild(Transform* child)

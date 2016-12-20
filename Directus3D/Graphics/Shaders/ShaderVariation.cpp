@@ -106,9 +106,9 @@ void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* came
 	if (!directionalLight || !camera)
 		return;
 
-	Matrix lightViewProjection1 = directionalLight->CalculateViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(0);
-	Matrix lightViewProjection2 = directionalLight->CalculateViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(1);
-	Matrix lightViewProjection3 = directionalLight->CalculateViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
+	Matrix lightViewProjection1 = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(0);
+	Matrix lightViewProjection2 = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(1);
+	Matrix lightViewProjection3 = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(2);
 
 	//= BUFFER UPDATE ========================================================================
 	PerFrameBufferType* buffer = (PerFrameBufferType*)m_miscBuffer->Map();
@@ -121,10 +121,10 @@ void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* came
 	buffer->mLightViewProjection[0] = lightViewProjection1.Transposed();
 	buffer->mLightViewProjection[1] = lightViewProjection2.Transposed();
 	buffer->mLightViewProjection[2] = lightViewProjection3.Transposed();
-	buffer->shadowSplits = Vector4(directionalLight->GetCascadeSplit(0), directionalLight->GetCascadeSplit(1), directionalLight->GetCascadeSplit(2), directionalLight->GetCascadeSplit(2));
+	buffer->shadowSplits = Vector4(directionalLight->GetShadowCascadeSplit(0), directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), directionalLight->GetShadowCascadeSplit(2));
 	buffer->lightDir = directionalLight->GetDirection();
 	buffer->shadowBias = directionalLight->GetBias();
-	buffer->shadowMapResolution = directionalLight->GetShadowMapResolution();
+	buffer->shadowMapResolution = directionalLight->GetShadowCascadeResolution();
 	buffer->shadowMappingQuality = directionalLight->GetShadowTypeAsFloat();
 	buffer->padding = Vector2::Zero;
 
