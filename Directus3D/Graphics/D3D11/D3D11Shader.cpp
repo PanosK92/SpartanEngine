@@ -58,9 +58,9 @@ D3D11Shader::~D3D11Shader()
 	m_samplers.shrink_to_fit();
 }
 
-bool D3D11Shader::Load(string path)
+bool D3D11Shader::Load(const string& filePath)
 {
-	m_path = path;
+	m_filePath = filePath;
 
 	//= Vertex shader =================================================
 	vector<D3D_SHADER_MACRO> vsMacros = m_macros;
@@ -71,7 +71,7 @@ bool D3D11Shader::Load(string path)
 	m_compiled = CompileVertexShader(
 		&m_VSBlob,
 		&m_vertexShader,
-		m_path,
+		m_filePath,
 		"DirectusVertexShader",
 		"vs_5_0",
 		&vsMacros.front()
@@ -91,7 +91,7 @@ bool D3D11Shader::Load(string path)
 	m_compiled = CompilePixelShader(
 		&PSBlob,
 		&m_pixelShader,
-		path,
+		m_filePath,
 		"DirectusPixelShader",
 		"ps_5_0",
 		&psMacros.front()
@@ -124,7 +124,7 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 	if (m_layoutHasBeenSet)
 		SafeRelease(m_VSBlob);
 	else
-		LOG_ERROR("Failed to create vertex input layout for " + FileSystem::GetFileNameFromPath(m_path) + ".");
+		LOG_ERROR("Failed to create vertex input layout for " + FileSystem::GetFileNameFromPath(m_filePath) + ".");
 
 	return m_layoutHasBeenSet;
 }
@@ -161,7 +161,7 @@ void D3D11Shader::Set()
 		m_samplers[i]->Set(i);
 }
 
-void D3D11Shader::SetName(string name)
+void D3D11Shader::SetName(const std::string& name)
 {
 	m_name = name;
 }
@@ -174,21 +174,6 @@ void D3D11Shader::AddDefine(LPCSTR name, LPCSTR definition) // All overloads res
 	newMacro.Definition = definition;
 
 	m_macros.push_back(newMacro);
-}
-
-void D3D11Shader::AddDefine(LPCSTR name, int definition)
-{
-	AddDefine(name, m_definitionPool.insert(to_string(definition)).first->c_str());
-}
-
-void D3D11Shader::AddDefine(LPCSTR name, bool definition)
-{
-	AddDefine(name, static_cast<int>(definition));
-}
-
-bool D3D11Shader::IsCompiled() const
-{
-	return m_compiled;
 }
 
 //= COMPILATION ================================================================================================================================================================================

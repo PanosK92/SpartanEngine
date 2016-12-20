@@ -19,19 +19,19 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES =================
 #include "Light.h"
 #include "Transform.h"
 #include "../Core/Settings.h"
 #include "../IO/Serializer.h"
 #include "../Core/Scene.h"
-#include "../Math/MathHelper.h"
-#include "../Graphics/ShadowMap.h"
-#include "../EventSystem/EventHandler.h"
-//================================
+#include "Camera.h"
+#include "Transform.h"
+//===========================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 Light::Light()
@@ -52,12 +52,12 @@ Light::Light()
 
 Light::~Light()
 {
-
+	m_shadowMaps.clear();
 }
 
 void Light::Reset()
 {
-
+	
 }
 
 void Light::Start()
@@ -80,15 +80,17 @@ void Light::Update()
 	if (!m_shadowMaps.empty())
 		return;
 
-	D3D11GraphicsDevice* graphics = g_context->GetSubsystem<D3D11GraphicsDevice>();
+	GraphicsDevice* graphics = g_context->GetSubsystem<GraphicsDevice>();
 	GameObject* camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
+	Camera* cameraComp = camera ? camera->GetComponent<Camera>() : nullptr;
 
-	if (graphics && camera)
+	if (graphics && cameraComp)
+		return;
+
+	for (int i = 0; i < m_cascades; i++)
 	{
-		Camera* cameraComp = camera->GetComponent<Camera>();
-
-		for (int i = 0; i < m_cascades; i++)
-			m_shadowMaps.push_back(new ShadowMap(graphics, i + 1, this, cameraComp, SHADOWMAP_RESOLUTION));
+		auto shadowMap = make_shared<Cascade>(i + 1, SHADOWMAP_RESOLUTION, graphics);
+		m_shadowMaps.push_back(shadowMap);
 	}
 }
 
@@ -146,29 +148,29 @@ Matrix Light::CalculateViewMatrix()
 	return m_viewMatrix;
 }
 
-Matrix Light::GetOrthographicProjectionMatrix(int cascade)
+Matrix Light::CalculateOrthographicProjectionMatrix(int cascade)
 {
-	if (cascade < m_shadowMaps.size())
-		return m_shadowMaps[cascade]->CalculateProjectionMatrix(CalculateViewMatrix());
+	if (cascade >= m_shadowMaps.size())
+		return Matrix::Identity;
 
-	return Matrix::Identity;
+	return m_shadowMaps[cascade]->CalculateProjectionMatrix(g_context->GetSubsystem<Scene>()->GetMainCamera()->GetTransform()->GetPosition(), CalculateViewMatrix());
 }
 
-void Light::SetShadowMapAsRenderTarget(int cascade)
+void Light::SetShadowCascadeAsRenderTarget(int cascade)
 {
 	if (cascade < m_shadowMaps.size())
 		m_shadowMaps[cascade]->SetAsRenderTarget();
 }
 
-ID3D11ShaderResourceView* Light::GetDepthMap(int cascade)
+weak_ptr<Cascade> Light::GetShadowCascade(int cascade)
 {
 	if (cascade < m_shadowMaps.size())
-		return m_shadowMaps[cascade]->GetShaderResourceView();
+		return m_shadowMaps[cascade];
 
-	return nullptr;
+	return weak_ptr<Cascade>();
 }
 
-float Light::GetCascadeSplit(int cascade)
+float Light::GetShadowCascadeSplit(int cascade)
 {
 	if (cascade < m_shadowMaps.size())
 		return m_shadowMaps[cascade]->GetSplit();

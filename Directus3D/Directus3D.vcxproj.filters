@@ -228,6 +228,9 @@
     <ClCompile Include="Graphics\D3D11\D3D11ConstantBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\D3D12\D3D12Texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components\Camera.h">
@@ -374,9 +377,6 @@
     <ClInclude Include="Physics\PhysicsWorld.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\ShadowMap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -476,10 +476,15 @@
     <ClInclude Include="Graphics\D3D11\D3D11ConstantBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\D3D12\d3dx12.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D12\D3D12Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Xml Include="Assets\Shaders\HLSL.xml" />
-    <Xml Include="Assets\Scripts\dss.xml" />
     <Xml Include="Assets\Scripts\notepad++.xml" />
   </ItemGroup>
   <ItemGroup>
@@ -490,26 +495,18 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="Assets\Environment\environment.dds" />
-    <Image Include="Assets\Environment\irradiance.dds" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Assets\Scripts\FirstPersonController.dss" />
-    <None Include="Assets\Scripts\FirstPersonControllerPhysics.dss" />
-    <None Include="Assets\Scripts\MouseLook.dss" />
-    <None Include="Assets\Shaders\Color.hlsl" />
     <None Include="Assets\Shaders\Debug.hlsl" />
     <None Include="Assets\Shaders\Deferred.hlsl" />
     <None Include="Assets\Shaders\Depth.hlsl" />
     <None Include="Assets\Shaders\FXAA.hlsl" />
     <None Include="Assets\Shaders\GBuffer.hlsl" />
-    <None Include="Assets\Shaders\Godrays.hlsl" />
     <None Include="Assets\Shaders\Helper.hlsl" />
-    <None Include="Assets\Shaders\Normal.hlsl" />
     <None Include="Assets\Shaders\PBR.hlsl" />
     <None Include="Assets\Shaders\PostProcess.hlsl" />
     <None Include="Assets\Shaders\ShadowMapping.hlsl" />
     <None Include="Assets\Shaders\SSAO.hlsl" />
-    <None Include="Assets\Shaders\ToneMapping.hlsl" />
     <None Include="Assets\Shaders\VolumetricLighting.hlsl" />
     <None Include="Assets\Scripts\FirstPersonController.as" />
     <None Include="Assets\Scripts\FirstPersonControllerPhysics.as" />

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -21,32 +21,32 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4545C2DD-3842-4B31-B566-8A7F738C924E}</ProjectGuid>
     <RootNamespace>Directus3D</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.10586.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -158,6 +158,7 @@
     <ClCompile Include="Graphics\D3D11\D3D11Texture.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11VertexBuffer.cpp" />
     <ClCompile Include="Graphics\D3D12\D3D12GraphicsDevice.cpp" />
+    <ClCompile Include="Graphics\D3D12\D3D12Texture.cpp" />
     <ClCompile Include="Graphics\Material.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
     <ClCompile Include="Core\Scene.cpp" />
@@ -229,9 +230,10 @@
     <ClInclude Include="Graphics\D3D11\D3D11Texture.h" />
     <ClInclude Include="Graphics\D3D11\D3D11VertexBuffer.h" />
     <ClInclude Include="Graphics\D3D12\D3D12GraphicsDevice.h" />
+    <ClInclude Include="Graphics\D3D12\D3D12Texture.h" />
+    <ClInclude Include="Graphics\D3D12\d3dx12.h" />
     <ClInclude Include="Graphics\GraphicsDefinitions.h" />
     <ClInclude Include="Graphics\Shaders\ShadowMappingShader.h" />
-    <ClInclude Include="Graphics\ShadowMap.h" />
     <ClInclude Include="EventSystem\EventHandler.h" />
     <ClInclude Include="Core\GameObject.h" />
     <ClInclude Include="Core\Helper.h" />
@@ -293,10 +295,6 @@
     <None Include="Assets\Scripts\MouseLook.as" />
     <None Include="Assets\Scripts\PingPongAlongX.as" />
     <None Include="Assets\Scripts\RotateAroundSelf.as" />
-    <None Include="Assets\Shaders\Color.hlsl">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
-      <FileType>Document</FileType>
-    </None>
     <None Include="Assets\Shaders\Debug.hlsl">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
       <FileType>Document</FileType>
@@ -317,15 +315,7 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
       <FileType>Document</FileType>
     </None>
-    <None Include="Assets\Shaders\Godrays.hlsl">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
-      <FileType>Document</FileType>
-    </None>
     <None Include="Assets\Shaders\Helper.hlsl">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
-      <FileType>Document</FileType>
-    </None>
-    <None Include="Assets\Shaders\Normal.hlsl">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
       <FileType>Document</FileType>
     </None>
@@ -345,30 +335,19 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
       <FileType>Document</FileType>
     </None>
-    <None Include="Assets\Shaders\ToneMapping.hlsl">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
-      <FileType>Document</FileType>
-    </None>
     <None Include="Assets\Shaders\VolumetricLighting.hlsl">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Xml Include="Assets\Scripts\dss.xml" />
     <Xml Include="Assets\Scripts\notepad++.xml" />
     <Xml Include="Assets\Shaders\HLSL.xml" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\Environment\environment.dds" />
-    <Image Include="Assets\Environment\irradiance.dds" />
     <Image Include="Assets\screenshot.jpg" />
     <Image Include="Assets\Shaders\noise.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Assets\Scripts\FirstPersonController.dss" />
-    <None Include="Assets\Scripts\FirstPersonControllerPhysics.dss" />
-    <None Include="Assets\Scripts\MouseLook.dss" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -76,12 +76,12 @@ void Socket::LightUpdate()
 //= IO ========================================================================
 void Socket::LoadModel(const string& filePath)
 {
-	g_context->GetSubsystem<ModelImporter>()->Load(g_context->GetSubsystem<Scene>()->CreateGameObject(), filePath);
+	g_context->GetSubsystem<ModelImporter>()->Load(filePath);
 }
 
 void Socket::LoadModelAsync(const string& filePath)
 {
-	g_context->GetSubsystem<ModelImporter>()->LoadAsync(g_context->GetSubsystem<Scene>()->CreateGameObject(), filePath);
+	g_context->GetSubsystem<ModelImporter>()->LoadAsync(filePath);
 }
 
 void Socket::SaveSceneToFileAsync(const string& filePath)

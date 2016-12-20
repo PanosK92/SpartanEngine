@@ -183,7 +183,7 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
     setGeometry(QRect(0, 0, width, height));
 
     // Change the rendering resolution of the engine
-    SetViewport(width, height);
+    SetResolution(width, height);
 }
 
 // Invoked by QT itself, Update() let's the engine do the rendering
@@ -214,12 +214,12 @@ void DirectusCore::ShutdownEngine()
 }
 
 // Changes the rendering resolution of the engine
-void DirectusCore::SetViewport(float width, float height)
+void DirectusCore::SetResolution(float width, float height)
 {
     if (!m_socket)
         return;
 
-	m_socket->SetViewport(width, height);
     m_socket->SetResolution(width, height);
+    m_socket->SetViewport(width, height);
 }
 //===================================================

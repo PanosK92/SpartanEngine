@@ -21,8 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#define D3D11
-
 //= INCLUDES ===================
 #include <Windows.h>
 #include "../Math/Vector4.h"

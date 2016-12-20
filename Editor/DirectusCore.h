@@ -55,7 +55,7 @@ protected:
 
 private:
 	void ShutdownEngine();
-    void SetViewport(float width, float height);
+    void SetResolution(float width, float height);
 
     Socket* m_socket;
 	Engine* m_engine;

@@ -37,12 +37,13 @@ public:
 	ModelImporter(Context* context);
 	~ModelImporter();
 
-	void LoadAsync(GameObject* gameObject, const std::string& filePath);
-	bool Load(GameObject* gameObject, const std::string& filePath);
+	void LoadAsync(const std::string& filePath);
+	bool Load(const std::string& filePath);
+	GameObject* GetModelRoot() { return !m_isLoading ? m_rootGameObject : nullptr; }
 
 private:
 	bool m_isLoading;
-	std::string m_fullModelPath;
+	std::string m_filePath;
 	std::string m_fullTexturePath;
 	std::string m_modelName;
 	GameObject* m_rootGameObject;
@@ -50,7 +51,7 @@ private:
 	/*------------------------------------------------------------------------------
 									[PROCESSING]
 	------------------------------------------------------------------------------*/
-	void ProcessNode(aiNode* assimpNode, const aiScene* assimpScene, GameObject* rootGameObject);
+	void ProcessNode(const aiScene* assimpScene, aiNode* assimpNode, GameObject* parentNode, GameObject* newNode);
 	void ProcessMesh(aiMesh* assimpMesh, const aiScene* assimpScene, GameObject* parentGameObject);
 	std::shared_ptr<Material> GenerateMaterialFromAiMaterial(aiMaterial* assimpMaterial);
 	

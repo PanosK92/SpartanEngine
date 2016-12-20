@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <set>
 #include "D3D11GraphicsDevice.h"
 #include <memory>
-
+#include <string>
 //==============================
 
 class D3D11Shader
@@ -41,16 +41,18 @@ public:
 	D3D11Shader(D3D11GraphicsDevice* graphicsDevice);
 	~D3D11Shader();
 
-	bool Load(std::string path);
+	bool Load(const std::string& filePath);
 	bool SetInputLayout(InputLayout inputLayout);
 	bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
 	void Set();
 
-	void SetName(std::string name);
+	void SetName(const std::string& name);
 	void AddDefine(LPCSTR name, LPCSTR definition);
-	void AddDefine(LPCSTR name, int definition);
-	void AddDefine(LPCSTR name, bool definition);
-	bool IsCompiled() const;
+	void D3D11Shader::AddDefine(LPCSTR name, int definition) { AddDefine(name, m_definitionPool.insert(std::to_string(definition)).first->c_str()); }
+
+	void D3D11Shader::AddDefine(LPCSTR name, bool definition) { AddDefine(name, static_cast<int>(definition)); }
+
+	bool D3D11Shader::IsCompiled() { return m_compiled; }
 
 private:
 	//= COMPILATION ================================================================================================================================================================================
@@ -64,7 +66,7 @@ private:
 
 	//= MISC ===========
 	std::string m_name;
-	std::string m_path;
+	std::string m_filePath;
 	LPCSTR m_entrypoint;
 	LPCSTR m_profile;
 	bool m_compiled;
@@ -72,7 +74,7 @@ private:
 	ID3D11VertexShader* m_vertexShader;
 	ID3D11PixelShader* m_pixelShader;
 	ID3D10Blob* m_VSBlob = nullptr;
-	
+
 	//= MACROS ============================
 	std::vector<D3D_SHADER_MACRO> m_macros;
 	std::set<std::string> m_definitionPool;

@@ -21,25 +21,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Renderer.h"
-#include "../Core/Settings.h"
+#include "Shaders/ShaderVariation.h"
 #include "Shaders/PostProcessShader.h"
 #include "Shaders/DebugShader.h"
 #include "Shaders/DepthShader.h"
 #include "Shaders/DeferredShader.h"
-#include "../Core/GameObject.h"
+#include "D3D11/D3D11RenderTexture.h"
+#include "../Components/MeshFilter.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
 #include "../Components/LineRenderer.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../Physics/PhysicsDebugDraw.h"
-#include "D3D11/D3D11RenderTexture.h"
-#include "../Core/Scene.h"
 #include "../Logging/Log.h"
-#include "../Components/MeshFilter.h"
 #include "../EventSystem/EventHandler.h"
-#include "../Core/Context.h"
 #include "../Resource/ResourceCache.h"
-#include "Shaders/ShaderVariation.h"
+#include "../Core/Scene.h"
+#include "../Core/GameObject.h"
+#include "../Core/Context.h"
+#include "../Core/Settings.h"
 #include "../Core/Timer.h"
 #include "../Core/Engine.h"
 //======================================
@@ -184,16 +184,14 @@ void Renderer::Render()
 
 void Renderer::SetResolution(int width, int height)
 {
-	// A resolution of 0 won'tcause a crash or anything crazy,
+	// A resolution of 0 won't cause a crash or anything crazy,
 	// but it will cause the depth stancil buffer creation to fail,
 	// various error messages to be displayed. I silently prevent that.
-	if (width == 0 || height == 0)
+	if (width <= 0 || height <= 0)
 		return;
 
 	SET_RESOLUTION(width, height);
 	auto graphicsDevice = g_context->GetSubsystem<GraphicsDevice>();
-
-	graphicsDevice->SetViewport(width, height);
 
 	m_GBuffer.reset();
 	m_fullScreenQuad.reset();
@@ -211,6 +209,8 @@ void Renderer::SetResolution(int width, int height)
 
 	m_renderTexPong = make_shared<D3D11RenderTexture>(graphicsDevice);
 	m_renderTexPong->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+
+	graphicsDevice->SetResolution(width, height);
 }
 
 void Renderer::Clear()
@@ -273,10 +273,10 @@ void Renderer::DirectionalLightDepthPass()
 	// Set the depth shader
 	m_shaderDepth->Set();
 
-	for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetCascadeCount(); cascadeIndex++)
+	for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetShadowCascadeCount(); cascadeIndex++)
 	{
 		// Set appropriate shadow map as render target
-		m_directionalLight->SetShadowMapAsRenderTarget(cascadeIndex);
+		m_directionalLight->SetShadowCascadeAsRenderTarget(cascadeIndex);
 
 		for (const auto& gameObject : m_renderables)
 		{
@@ -303,7 +303,7 @@ void Renderer::DirectionalLightDepthPass()
 				m_shaderDepth->UpdateMatrixBuffer(
 					gameObject->GetTransform()->GetTransformMatrix(),
 					m_directionalLight->CalculateViewMatrix(),
-					m_directionalLight->GetOrthographicProjectionMatrix(cascadeIndex)
+					m_directionalLight->CalculateOrthographicProjectionMatrix(cascadeIndex)
 				);
 
 				// Render
@@ -350,8 +350,11 @@ void Renderer::GBufferPass()
 
 			if (m_directionalLight)
 			{
-				for (int i = 0; i < m_directionalLight->GetCascadeCount(); i++)
-					m_textures.push_back(m_directionalLight->GetDepthMap(i));
+				for (int i = 0; i < m_directionalLight->GetShadowCascadeCount(); i++)
+				{
+					auto shadowMap = m_directionalLight->GetShadowCascade(i).lock();
+					m_textures.push_back(shadowMap ? shadowMap->GetShaderResourceView() : nullptr);
+				}
 			}
 			else
 			{

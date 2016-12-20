@@ -175,6 +175,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 			m_refreshRateDenominator = (UINT)m_displayModeList[i].RefreshRate.Denominator;
 			break;
 		}
+
 	//==============================================================================
 
 	//= ADAPTER DESCRIPTION ========================================================
@@ -242,6 +243,8 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	backBufferPtr->Release();
 	backBufferPtr = nullptr;
 	//==============================================================================
+
+	SetViewport(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	//= DEPTH =================
 	CreateDepthStencil();

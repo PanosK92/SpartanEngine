@@ -74,34 +74,31 @@ ModelImporter::~ModelImporter()
 {
 }
 
-void ModelImporter::LoadAsync(GameObject* gameObject, const string& filePath)
+void ModelImporter::LoadAsync(const string& filePath)
 {
 	ThreadPool* threadPool = g_context->GetSubsystem<ThreadPool>();
-	threadPool->AddTask(std::bind(&ModelImporter::Load, this, gameObject, filePath));
+	threadPool->AddTask(std::bind(&ModelImporter::Load, this, filePath));
 }
 
-bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
+bool ModelImporter::Load(const string& filePath)
 {
-	if (!gameObject)
-		return false;
-
 	m_isLoading = true;
+	m_filePath = filePath;
+	m_rootGameObject = nullptr;
+	m_modelName = FileSystem::GetFileNameFromPath(m_filePath);
 
-	m_fullModelPath = filePath;
-	m_rootGameObject = gameObject;
-	m_modelName = FileSystem::GetFileNameFromPath(m_fullModelPath);
-	gameObject->SetName(FileSystem::GetFileNameNoExtensionFromPath(m_fullModelPath));
-
+	// Set up Assimp importer
 	Assimp::Importer importer;
 	importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64); // Optimize mesh
 	importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT); // Remove points and lines.
 	importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS); // Remove cameras and lights
 	importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, smoothAngle);
 
-	const aiScene* scene = importer.ReadFile(m_fullModelPath, ppsteps);
+	// Read the 3D model file
+	const aiScene* scene = importer.ReadFile(m_filePath, ppsteps);
 	if (!scene) // Someting went wrong. Print it.
 	{
-		LOG_ERROR("Failed to load \"" + FileSystem::GetFileNameNoExtensionFromPath(m_fullModelPath) + "\". " + importer.GetErrorString());
+		LOG_ERROR("Failed to load \"" + FileSystem::GetFileNameNoExtensionFromPath(m_filePath) + "\". " + importer.GetErrorString());
 		return false;
 	}
 
@@ -114,29 +111,21 @@ bool ModelImporter::Load(GameObject* gameObject, const string& filePath)
 
 	// Copy the source model file to an appropriate directory
 	string modelDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(m_modelName);
-	FileSystem::CopyFileFromTo(m_fullModelPath, modelDestination);
+	FileSystem::CopyFileFromTo(m_filePath, modelDestination);
 
 	// Copy any material files (used be obj models)
-	auto files = FileSystem::GetFilesInDirectory(FileSystem::GetPathWithoutFileName(m_fullModelPath));
+	auto files = FileSystem::GetFilesInDirectory(FileSystem::GetPathWithoutFileName(m_filePath));
 	for (const auto& file : files)
-	{
 		if (FileSystem::GetExtensionFromPath(file) == ".mtl")
-			FileSystem::CopyFileFromTo(m_fullModelPath, "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(file));
-	}
-
-	// Set the name of the root GameObject
-	string name = FileSystem::GetFileNameNoExtensionFromPath(filePath);
-	gameObject->SetName(name);
+			FileSystem::CopyFileFromTo(m_filePath, "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(file));
 
 	// This function will recursively process the entire model
-	ProcessNode(scene->mRootNode, scene, gameObject);
+	ProcessNode(scene, scene->mRootNode, nullptr, nullptr);
 
 	// Normalize the scale of the model
 	g_context->GetSubsystem<ResourceCache>()->NormalizeModelScale(m_rootGameObject);
 
-	// Set the loading flag, fire the completion event
 	m_isLoading = false;
-
 	return true;
 }
 
@@ -184,48 +173,56 @@ Vector2 ToVector2(const aiVector2D& aiVector)
 //============================================================================================
 
 //= PROCESSING ===============================================================================
-void ModelImporter::ProcessNode(aiNode* node, const aiScene* scene, GameObject* parentGameObject)
+void ModelImporter::ProcessNode(const aiScene* scene, aiNode* assimpNode, GameObject* parentNode, GameObject* newNode)
 {
-	// process root node
-	if (!node->mParent)
-		SetGameObjectTransform(parentGameObject, node->mTransformation); // apply transformation	
-	// node->mName always returns "RootNode", therefore the model name has to be extracted from the model path
+	if (!newNode)
+		newNode = g_context->GetSubsystem<Scene>()->CreateGameObject();;
 
-	// process all the node's meshes
-	for (unsigned int i = 0; i < node->mNumMeshes; i++)
+	if (!assimpNode->mParent)
+		m_rootGameObject = newNode;
+
+	//= GET NODE NAME ===========================================================
+	// Note: In case this is the root node, aiNode.mName will be "RootNode". 
+	// To get a more descriptive name we instead get the name from the file path.
+	if (assimpNode->mParent)
+		newNode->SetName(assimpNode->mName.C_Str());
+	else
+		newNode->SetName(FileSystem::GetFileNameNoExtensionFromPath(m_filePath));
+	//===========================================================================
+
+	// Set parent node to the new node
+	newNode->GetTransform()->SetParent(parentNode);
+
+	// Set the transform matrix of the assimp node to the new node
+	SetGameObjectTransform(newNode, assimpNode->mTransformation);
+
+	// Process all the node's meshes
+	for (unsigned int i = 0; i < assimpNode->mNumMeshes; i++)
 	{
-		GameObject* gameobject = parentGameObject; // set the current gameobject
-		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]]; // get mesh
-		string name = node->mName.C_Str(); // get name
+		GameObject* gameobject = newNode; // set the current gameobject
+		aiMesh* mesh = scene->mMeshes[assimpNode->mMeshes[i]]; // get mesh
+		string name = assimpNode->mName.C_Str(); // get name
 
 		// if this node has many meshes, then assign a new gameobject for each one of them
-		if (node->mNumMeshes > 1)
+		if (assimpNode->mNumMeshes > 1)
 		{
 			gameobject = g_context->GetSubsystem<Scene>()->CreateGameObject(); // create
-			gameobject->GetTransform()->SetParent(parentGameObject->GetTransform()); // set parent
+			gameobject->GetTransform()->SetParent(parentNode); // set parent
 			name += "_" + to_string(i + 1); // set name
 		}
 
-		// set gameobject's name
+		// Set gameobject's name
 		gameobject->SetName(name);
 
-		// process mesh
-		//aiMatrix4x4 transformation = node->mTransformation;
+		// Process mesh
 		ProcessMesh(mesh, scene, gameobject);
 	}
 
-	// process child nodes (if any)
-	for (unsigned int i = 0; i < node->mNumChildren; i++)
+	// Process children
+	for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 	{
-		aiNode* childNode = node->mChildren[i]; // get  node
-
-		GameObject* gameobject = g_context->GetSubsystem<Scene>()->CreateGameObject(); // create
-		gameobject->GetTransform()->SetParent(parentGameObject->GetTransform()); // set parent
-		gameobject->SetName(childNode->mName.C_Str()); // set name
-		SetGameObjectTransform(gameobject, childNode->mTransformation);
-
-		// continue processing recursively
-		ProcessNode(childNode, scene, gameobject);
+		GameObject* child = g_context->GetSubsystem<Scene>()->CreateGameObject();
+		ProcessNode(scene, assimpNode->mChildren[i], newNode, child);
 	}
 }
 
@@ -404,7 +401,7 @@ string ModelImporter::FindTexture(string texturePath)
 {
 	// The texture path is relative to the model, something like "Textures\Alan_Wake_Jacket.jpg" which is too 
 	// arbitrary to load a texture from it. This is why we get the model's directory (which is relative to the engine)...
-	string modelRootDirectory = FileSystem::GetPathWithoutFileName(m_fullModelPath);
+	string modelRootDirectory = FileSystem::GetPathWithoutFileName(m_filePath);
 
 	// ... and marge it with the texture path, Assets\Models\Alan_Wake\" + "Textures\Alan_Wake_Jacket.jpg".
 	texturePath = modelRootDirectory + texturePath;
