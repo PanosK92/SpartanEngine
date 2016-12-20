@@ -43,7 +43,7 @@ namespace Directus
 
 			Quaternion();
 			Quaternion(float x, float y, float z, float w);
-			~Quaternion();
+			~Quaternion() {}
 
 			//= FROM ====================================================================
 			static Quaternion FromAngleAxis(float angle, const Vector3& axis);
