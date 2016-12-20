@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4545C2DD-3842-4B31-B566-8A7F738C924E}</ProjectGuid>
     <RootNamespace>Directus3D</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.10586.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -40,13 +40,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -173,7 +173,7 @@
     <ClCompile Include="Graphics\D3D11\D3D11RenderTexture.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11Sampler.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11Shader.cpp" />
-    <ClCompile Include="Graphics\Frustrum.cpp" />
+    <ClCompile Include="Math\Frustrum.cpp" />
     <ClCompile Include="Graphics\FullScreenQuad.cpp" />
     <ClCompile Include="Graphics\GBuffer.cpp" />
     <ClCompile Include="Graphics\Renderer.cpp" />
@@ -253,7 +253,7 @@
     <ClInclude Include="Graphics\D3D11\D3D11RenderTexture.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Sampler.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Shader.h" />
-    <ClInclude Include="Graphics\Frustrum.h" />
+    <ClInclude Include="Math\Frustrum.h" />
     <ClInclude Include="Graphics\FullScreenQuad.h" />
     <ClInclude Include="Graphics\GBuffer.h" />
     <ClInclude Include="Graphics\IGraphicsDevice.h" />

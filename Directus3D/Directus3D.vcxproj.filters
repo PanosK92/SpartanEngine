@@ -87,9 +87,6 @@
     <ClCompile Include="Graphics\Shaders\ShaderVariation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\Frustrum.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\FullScreenQuad.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -231,6 +228,9 @@
     <ClCompile Include="Graphics\D3D12\D3D12Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Math\Frustrum.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Components\Camera.h">
@@ -312,9 +312,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Shaders\ShaderVariation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\Frustrum.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\FullScreenQuad.h">
@@ -480,6 +477,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\D3D12\D3D12Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Frustrum.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
