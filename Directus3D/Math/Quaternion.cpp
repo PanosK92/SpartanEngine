@@ -82,16 +82,19 @@ namespace Directus
 
 		void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis)
 		{
-			Matrix matrix(
-				xAxis.x, yAxis.x, zAxis.x, 0,
-				xAxis.y, yAxis.y, zAxis.y, 0,
-				xAxis.z, yAxis.z, zAxis.z, 0,
-				0, 0, 0, 1
+			Matrix matrix = Matrix(
+				xAxis.x, yAxis.x, zAxis.x, 0.0f,
+				xAxis.y, yAxis.y, zAxis.y, 0.0f,
+				xAxis.z, yAxis.z, zAxis.z, 0.0f,
+				0.0f, 0.0f, 0.0f, 1.0f
 			);
 
-			FromRotationMatrix(matrix);
+			Quaternion q = FromRotationMatrix(matrix);
+			x = q.x;
+			y = q.y;
+			z = q.z;
+			w = q.w;
 		}
-
 
 		Quaternion Quaternion::FromEulerAngles(const Vector3& eulerAngles)
 		{
@@ -122,48 +125,46 @@ namespace Directus
 
 		Quaternion Quaternion::FromRotationMatrix(const Matrix& matrix)
 		{
-			Matrix mTransposed = matrix.Transposed();
 			Quaternion q;
-
-			float t = mTransposed.m00 + mTransposed.m11 + mTransposed.m22;
+			float t = matrix.m00 + matrix.m11 + matrix.m22;
 
 			if (t > 0.0f)
 			{
 				float invS = 0.5f / sqrtf(1.0f + t);
 
-				q.x = (mTransposed.m21 - mTransposed.m12) * invS;
-				q.y = (mTransposed.m02 - mTransposed.m20) * invS;
-				q.z = (mTransposed.m10 - mTransposed.m01) * invS;
+				q.x = (matrix.m21 - matrix.m12) * invS;
+				q.y = (matrix.m02 - matrix.m20) * invS;
+				q.z = (matrix.m10 - matrix.m01) * invS;
 				q.w = 0.25f / invS;
 			}
 			else
 			{
-				if (mTransposed.m00 > mTransposed.m11 && mTransposed.m00 > mTransposed.m22)
+				if (matrix.m00 > matrix.m11 && matrix.m00 > matrix.m22)
 				{
-					float invS = 0.5f / sqrtf(1.0f + mTransposed.m00 - mTransposed.m11 - mTransposed.m22);
+					float invS = 0.5f / sqrtf(1.0f + matrix.m00 - matrix.m11 - matrix.m22);
 
 					q.x = 0.25f / invS;
-					q.y = (mTransposed.m01 + mTransposed.m10) * invS;
-					q.z = (mTransposed.m20 + mTransposed.m02) * invS;
-					q.w = (mTransposed.m21 - mTransposed.m12) * invS;
+					q.y = (matrix.m01 + matrix.m10) * invS;
+					q.z = (matrix.m20 + matrix.m02) * invS;
+					q.w = (matrix.m21 - matrix.m12) * invS;
 				}
-				else if (mTransposed.m11 > mTransposed.m22)
+				else if (matrix.m11 > matrix.m22)
 				{
-					float invS = 0.5f / sqrtf(1.0f + mTransposed.m11 - mTransposed.m00 - mTransposed.m22);
+					float invS = 0.5f / sqrtf(1.0f + matrix.m11 - matrix.m00 - matrix.m22);
 
-					q.x = (mTransposed.m01 + mTransposed.m10) * invS;
+					q.x = (matrix.m01 + matrix.m10) * invS;
 					q.y = 0.25f / invS;
-					q.z = (mTransposed.m12 + mTransposed.m21) * invS;
-					q.w = (mTransposed.m02 - mTransposed.m20) * invS;
+					q.z = (matrix.m12 + matrix.m21) * invS;
+					q.w = (matrix.m02 - matrix.m20) * invS;
 				}
 				else
 				{
-					float invS = 0.5f / sqrtf(1.0f + mTransposed.m22 - mTransposed.m00 - mTransposed.m11);
+					float invS = 0.5f / sqrtf(1.0f + matrix.m22 - matrix.m00 - matrix.m11);
 
-					q.x = (mTransposed.m02 + mTransposed.m20) * invS;
-					q.y = (mTransposed.m12 + mTransposed.m21) * invS;
+					q.x = (matrix.m02 + matrix.m20) * invS;
+					q.y = (matrix.m12 + matrix.m21) * invS;
 					q.z = 0.25f / invS;
-					q.w = (mTransposed.m10 - mTransposed.m01) * invS;
+					q.w = (matrix.m10 - matrix.m01) * invS;
 				}
 			}
 
@@ -204,28 +205,6 @@ namespace Directus
 				asinf(check) * RAD_TO_DEG,
 				atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * RAD_TO_DEG,
 				atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * RAD_TO_DEG
-			);
-		}
-
-		Matrix Quaternion::RotationMatrix() const
-		{
-			return Matrix(
-				1.0f - 2.0f * y * y - 2.0f * z * z,
-				2.0f * x * y + 2.0f * w * z,
-				2.0f * x * z - 2.0f * w * y,
-				0.0f,
-				2.0f * x * y - 2.0f * w * z,
-				1.0f - 2.0f * x * x - 2.0f * z * z,
-				2.0f * y * z + 2.0f * w * x,
-				0.0f,
-				2.0f * x * z + 2.0f * w * y,
-				2.0f * y * z - 2.0f * w * x,
-				1.0f - 2.0f * x * x - 2.0f * y * y,
-				0.0f,
-				0.0f,
-				0.0f,
-				0.0f,
-				1.0f
 			);
 		}
 		//================================================================================

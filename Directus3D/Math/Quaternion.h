@@ -47,7 +47,7 @@ namespace Directus
 
 			//= FROM ====================================================================
 			static Quaternion FromAngleAxis(float angle, const Vector3& axis);
-			void FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
+			void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
 			static Quaternion FromEulerAngles(const Vector3& eulerAngles);
 			static Quaternion FromEulerAngles(float x, float y, float z);
 			static Quaternion FromRotationMatrix(const Matrix& matrix);
@@ -55,7 +55,6 @@ namespace Directus
 
 			//= TO ======================================================================
 			Vector3 ToEulerAngles() const;
-			Matrix RotationMatrix() const;
 
 			float Yaw() const { return ToEulerAngles().y; }
 			float Pitch() const { return ToEulerAngles().x; }

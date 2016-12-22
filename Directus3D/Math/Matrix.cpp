@@ -47,6 +47,28 @@ namespace Directus
 			);
 		}
 
+		Matrix Matrix::CreateRotation(const Quaternion& rotation)
+		{
+			return Matrix(
+				1.0f - 2.0f * rotation.y * rotation.y - 2.0f * rotation.z * rotation.z,
+				2.0f * rotation.x * rotation.y + 2.0f * rotation.w * rotation.z,
+				2.0f * rotation.x * rotation.z - 2.0f * rotation.w * rotation.y,
+				0.0f,
+				2.0f * rotation.x * rotation.y - 2.0f * rotation.w * rotation.z,
+				1.0f - 2.0f * rotation.x * rotation.x - 2.0f * rotation.z * rotation.z,
+				2.0f * rotation.y * rotation.z + 2.0f * rotation.w * rotation.x,
+				0.0f,
+				2.0f * rotation.x * rotation.z + 2.0f * rotation.w * rotation.y,
+				2.0f * rotation.y * rotation.z - 2.0f * rotation.w * rotation.x,
+				1.0f - 2.0f * rotation.x * rotation.x - 2.0f *rotation.y * rotation.y,
+				0.0f,
+				0.0f,
+				0.0f,
+				0.0f,
+				1.0f
+			);
+		}
+
 		Matrix Matrix::CreateLookAtLH(const Vector3& eye, const Vector3& at, const Vector3& up)
 		{
 			Vector3 zaxis = Vector3::Normalize(at - eye);
