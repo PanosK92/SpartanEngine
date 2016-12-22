@@ -69,8 +69,8 @@ void DebugShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& view
 	DefaultBuffer* buffer = static_cast<DefaultBuffer*>(m_miscBuffer->Map());
 
 	// fill the buffer with the matrices
-	buffer->worldViewProjection = Matrix::Transposed(worldMatrix * viewMatrix * projectionMatrix);
-	buffer->viewProjection = Matrix::Transposed(viewMatrix * projectionMatrix);
+	buffer->viewProjection = viewMatrix * projectionMatrix;
+	buffer->worldViewProjection = worldMatrix * buffer->viewProjection;
 
 	// unmap the buffer and set it in the vertex shader
 	m_miscBuffer->Unmap();

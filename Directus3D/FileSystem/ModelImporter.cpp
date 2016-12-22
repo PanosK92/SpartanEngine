@@ -132,25 +132,27 @@ bool ModelImporter::Load(const string& filePath)
 //= HELPER FUNCTIONS ========================================================================
 Matrix aiMatrix4x4ToMatrix(const aiMatrix4x4& transform)
 {
-	// row major to column major
+	// both the engine and assimp use row major matrices
 	return Matrix(
-		transform.a1, transform.b1, transform.c1, transform.d1,
-		transform.a2, transform.b2, transform.c2, transform.d2,
-		transform.a3, transform.b3, transform.c3, transform.d3,
-		transform.a4, transform.b4, transform.c4, transform.d4
+		transform.a1, transform.a2, transform.a3, transform.a4,
+		transform.b1, transform.b2, transform.b3, transform.b4,
+		transform.c1, transform.c2, transform.c3, transform.c4,
+		transform.d1, transform.d2, transform.d3, transform.d4
 	);
 }
 
-void SetGameObjectTransform(GameObject* gameObject, const aiMatrix4x4& assimpTransformation)
+void SetGameObjectTransform(GameObject* gameObject, aiNode* node)
 {
+	aiMatrix4x4 mAssimp = node->mTransformation;
 	Vector3 position;
 	Quaternion rotation;
 	Vector3 scale;
 
-	Matrix matrix = aiMatrix4x4ToMatrix(assimpTransformation);
-	matrix.Decompose(scale, rotation, position);
+	// Decompose the transformation matrix
+	Matrix mEngine = aiMatrix4x4ToMatrix(mAssimp);
+	mEngine.Decompose(scale, rotation, position);
 
-	// apply transformation
+	// Apply position, rotation and scale
 	gameObject->GetTransform()->SetPositionLocal(position);
 	gameObject->GetTransform()->SetRotationLocal(rotation);
 	gameObject->GetTransform()->SetScaleLocal(scale);
@@ -190,12 +192,12 @@ void ModelImporter::ProcessNode(const aiScene* scene, aiNode* assimpNode, GameOb
 		newNode->SetName(FileSystem::GetFileNameNoExtensionFromPath(m_filePath));
 	//===========================================================================
 
-	// Set parent node to the new node
+	// Set the transform of parentNode as the parent of the newNode's transform
 	Transform* parentTrans = parentNode ? parentNode->GetTransform() : nullptr;
 	newNode->GetTransform()->SetParent(parentTrans);
 
-	// Set the transform matrix of the assimp node to the new node
-	SetGameObjectTransform(newNode, assimpNode->mTransformation);
+	// Set the transformation matrix of the assimp node to the new node
+	SetGameObjectTransform(newNode, assimpNode);
 
 	// Process all the node's meshes
 	for (unsigned int i = 0; i < assimpNode->mNumMeshes; i++)

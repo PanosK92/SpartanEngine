@@ -60,10 +60,18 @@ namespace Directus
 			//= TRANSPOSE =========================================
 			Matrix Transposed() const { return Transposed(*this); }
 			//=====================================================
-		
+
 			//= INVERT ======================================
 			Matrix Inverted() const { return Invert(*this); }
 			//===============================================
+
+			//= TRANSLATION ==================================================================================
+			static Matrix CreateTranslation(const Vector3& position);
+			//================================================================================================
+
+			//= ROTATION ==================================================================================
+			static Matrix CreateRotation(const Quaternion& rotation);
+			//================================================================================================
 
 			//= SCALE ========================================================================================
 			static Matrix CreateScale(float scale) { return CreateScale(scale, scale, scale); }
@@ -77,11 +85,7 @@ namespace Directus
 					0, 0, 0, 1
 				);
 			}
-			//================================================================================================
-
-			//= TRANSLATION ==================================================================================
-			static Matrix CreateTranslation(const Vector3& position);
-			//================================================================================================
+			//================================================================================================		
 
 			//= MISC ===========================================================================================================================
 			static Matrix CreateLookAtLH(const Vector3& cameraPosition, const Vector3& cameraTarget, const Vector3& cameraUpVector);
@@ -95,7 +99,7 @@ namespace Directus
 					0, 0, zNearPlane / (zNearPlane - zFarPlane), 1
 				);
 			}
-			
+
 			static Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float zNearPlane, float zFarPlane)
 			{
 				return Matrix(
@@ -184,38 +188,24 @@ namespace Directus
 			bool operator!=(const Matrix& b) const { return !(*this == b); }
 			//==================================================
 
-			float m00, m01, m02, m03;
-			float m10, m11, m12, m13;
-			float m20, m21, m22, m23;
-			float m30, m31, m32, m33;
+			// Column-major memory representation 
+			float m00, m10, m20, m30;
+			float m01, m11, m21, m31;
+			float m02, m12, m22, m32;
+			float m03, m13, m23, m33;
+
+			// Note: HLSL expects column-major
 
 			static const Matrix Identity;
 
 			static Matrix Transposed(const Matrix& matrix)
 			{
-				Matrix result;
-
-				result.m00 = matrix.m00;
-				result.m01 = matrix.m10;
-				result.m02 = matrix.m20;
-				result.m03 = matrix.m30;
-
-				result.m10 = matrix.m01;
-				result.m11 = matrix.m11;
-				result.m12 = matrix.m21;
-				result.m13 = matrix.m31;
-
-				result.m20 = matrix.m02;
-				result.m21 = matrix.m12;
-				result.m22 = matrix.m22;
-				result.m23 = matrix.m32;
-
-				result.m30 = matrix.m03;
-				result.m31 = matrix.m13;
-				result.m32 = matrix.m23;
-				result.m33 = matrix.m33;
-
-				return result;
+				return Matrix(
+					matrix.m00, matrix.m10, matrix.m20, matrix.m30,
+					matrix.m01, matrix.m11, matrix.m21, matrix.m31,
+					matrix.m02, matrix.m12, matrix.m22, matrix.m32,
+					matrix.m03, matrix.m13, matrix.m23, matrix.m33
+				);
 			}
 
 			static Matrix Invert(const Matrix& matrix)

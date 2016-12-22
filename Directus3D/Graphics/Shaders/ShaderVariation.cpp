@@ -106,10 +106,6 @@ void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* came
 	if (!directionalLight || !camera)
 		return;
 
-	Matrix lightViewProjection1 = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(0);
-	Matrix lightViewProjection2 = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(1);
-	Matrix lightViewProjection3 = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(2);
-
 	//= BUFFER UPDATE ========================================================================
 	PerFrameBufferType* buffer = (PerFrameBufferType*)m_miscBuffer->Map();
 	if (!buffer)
@@ -118,9 +114,9 @@ void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* came
 	buffer->viewport = GET_RESOLUTION;
 	buffer->nearPlane = camera->GetNearPlane();
 	buffer->farPlane = camera->GetFarPlane();
-	buffer->mLightViewProjection[0] = lightViewProjection1.Transposed();
-	buffer->mLightViewProjection[1] = lightViewProjection2.Transposed();
-	buffer->mLightViewProjection[2] = lightViewProjection3.Transposed();
+	buffer->mLightViewProjection[0] = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(0);
+	buffer->mLightViewProjection[1] = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(1);
+	buffer->mLightViewProjection[2] = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(2);
 	buffer->shadowSplits = Vector4(directionalLight->GetShadowCascadeSplit(0), directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), directionalLight->GetShadowCascadeSplit(2));
 	buffer->lightDir = directionalLight->GetDirection();
 	buffer->shadowBias = directionalLight->GetBias();
@@ -192,10 +188,6 @@ void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& 
 	Matrix world = mWorld;
 	Matrix worldView = world * mView;
 	Matrix worldViewProjection = worldView * mProjection;
-
-	world = world.Transposed();
-	worldView = worldView.Transposed();
-	worldViewProjection = worldViewProjection.Transposed();
 
 	// Determine if the buffer actually needs to update
 	bool update = false;

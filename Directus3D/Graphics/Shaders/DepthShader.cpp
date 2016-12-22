@@ -19,10 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ===========
 #include "DepthShader.h"
-#include "../../Logging/Log.h"
-//=============================
+//======================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -64,7 +63,7 @@ void DepthShader::UpdateMatrixBuffer(const Matrix& worldMatrix, const Matrix& vi
 	DefaultBuffer* miscBufferType = static_cast<DefaultBuffer*>(m_defaultBuffer->Map());
 
 	// Fill buffer
-	miscBufferType->worldViewProjection = Matrix::Transposed(worldMatrix * viewMatrix * projectionMatrix);
+	miscBufferType->worldViewProjection = worldMatrix * viewMatrix * projectionMatrix;
 
 	// Unlock the buffer
 	m_defaultBuffer->Unmap();

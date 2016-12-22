@@ -114,7 +114,7 @@ void Transform::UpdateWorldTransform()
 {
 	// Create local translation, rotation and scale matrices
 	Matrix translationLocalMatrix = Matrix::CreateTranslation(m_positionLocal);
-	Matrix rotationLocalMatrix = m_rotationLocal.RotationMatrix();
+	Matrix rotationLocalMatrix = Matrix::CreateRotation(m_rotationLocal);
 	Matrix scaleLocalMatrix = Matrix::CreateScale(m_scaleLocal);
 
 	// Calculate the local matrix
