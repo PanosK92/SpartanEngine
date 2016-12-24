@@ -401,8 +401,8 @@ GameObject* Scene::MousePick(Vector2& mousePos)
 	Vector3 rayEnd = Vector3(mousePos.x, mousePos.y, camera->GetFarPlane());
 
 	// Transform it from projection space to world space
-	rayOrigin = Vector3::Transform(rayOrigin, mViewProjectionInv);
-	rayEnd = Vector3::Transform(rayEnd, mViewProjectionInv);
+	rayOrigin = rayOrigin * mViewProjectionInv;
+	rayEnd = rayEnd * mViewProjectionInv;
 
 	// Get the ray direction
 	Vector3 rayDirection = (rayEnd - rayOrigin).Normalized();

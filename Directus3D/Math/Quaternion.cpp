@@ -71,29 +71,23 @@ namespace Directus
 			float sinAngle = sinf(angle);
 			float cosAngle = cosf(angle);
 
-			Quaternion q;
-			q.w = cosAngle;
-			q.x = normAxis.x * sinAngle;
-			q.y = normAxis.y * sinAngle;
-			q.z = normAxis.z * sinAngle;
+			return Quaternion(
+				normAxis.x * sinAngle,
+				normAxis.y * sinAngle,
+				normAxis.z * sinAngle,
+				cosAngle
+			);
 
-			return q;
 		}
 
-		void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis)
+		Quaternion Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis)
 		{
-			Matrix matrix = Matrix(
+			return Matrix(
 				xAxis.x, yAxis.x, zAxis.x, 0.0f,
 				xAxis.y, yAxis.y, zAxis.y, 0.0f,
 				xAxis.z, yAxis.z, zAxis.z, 0.0f,
 				0.0f, 0.0f, 0.0f, 1.0f
-			);
-
-			Quaternion q = FromRotationMatrix(matrix);
-			x = q.x;
-			y = q.y;
-			z = q.z;
-			w = q.w;
+			).GetRotation();
 		}
 
 		Quaternion Quaternion::FromEulerAngles(const Vector3& eulerAngles)
@@ -114,61 +108,12 @@ namespace Directus
 			float sinZ = sinf(z);
 			float cosZ = cosf(z);
 
-			Quaternion q;
-			q.w = cosY * cosX * cosZ + sinY * sinX * sinZ;
-			q.x = cosY * sinX * cosZ + sinY * cosX * sinZ;
-			q.y = sinY * cosX * cosZ - cosY * sinX * sinZ;
-			q.z = cosY * cosX * sinZ - sinY * sinX * cosZ;
-
-			return q;
-		}
-
-		Quaternion Quaternion::FromRotationMatrix(const Matrix& matrix)
-		{
-			Quaternion q;
-			float t = matrix.m00 + matrix.m11 + matrix.m22;
-
-			if (t > 0.0f)
-			{
-				float invS = 0.5f / sqrtf(1.0f + t);
-
-				q.x = (matrix.m21 - matrix.m12) * invS;
-				q.y = (matrix.m02 - matrix.m20) * invS;
-				q.z = (matrix.m10 - matrix.m01) * invS;
-				q.w = 0.25f / invS;
-			}
-			else
-			{
-				if (matrix.m00 > matrix.m11 && matrix.m00 > matrix.m22)
-				{
-					float invS = 0.5f / sqrtf(1.0f + matrix.m00 - matrix.m11 - matrix.m22);
-
-					q.x = 0.25f / invS;
-					q.y = (matrix.m01 + matrix.m10) * invS;
-					q.z = (matrix.m20 + matrix.m02) * invS;
-					q.w = (matrix.m21 - matrix.m12) * invS;
-				}
-				else if (matrix.m11 > matrix.m22)
-				{
-					float invS = 0.5f / sqrtf(1.0f + matrix.m11 - matrix.m00 - matrix.m22);
-
-					q.x = (matrix.m01 + matrix.m10) * invS;
-					q.y = 0.25f / invS;
-					q.z = (matrix.m12 + matrix.m21) * invS;
-					q.w = (matrix.m02 - matrix.m20) * invS;
-				}
-				else
-				{
-					float invS = 0.5f / sqrtf(1.0f + matrix.m22 - matrix.m00 - matrix.m11);
-
-					q.x = (matrix.m02 + matrix.m20) * invS;
-					q.y = (matrix.m12 + matrix.m21) * invS;
-					q.z = 0.25f / invS;
-					q.w = (matrix.m10 - matrix.m01) * invS;
-				}
-			}
-
-			return q;
+			return Quaternion(
+				cosY * sinX * cosZ + sinY * cosX * sinZ,
+				sinY * cosX * cosZ - cosY * sinX * sinZ,
+				cosY * cosX * sinZ - sinY * sinX * cosZ,
+				cosY * cosX * cosZ + sinY * sinX * sinZ
+			);
 		}
 		//================================================================================
 
@@ -263,7 +208,7 @@ namespace Directus
 				return Conjugate();
 
 			if (lenSquared >= M_EPSILON)
-				return Conjugate() * (1.0f / lenSquared);
+				return (1.0f / lenSquared) * Conjugate();
 
 			// impemented this here because Identity (static)
 			// doesnt play well with dllexport

@@ -114,9 +114,9 @@ void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* came
 	buffer->viewport = GET_RESOLUTION;
 	buffer->nearPlane = camera->GetNearPlane();
 	buffer->farPlane = camera->GetFarPlane();
-	buffer->mLightViewProjection[0] = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(0);
-	buffer->mLightViewProjection[1] = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(1);
-	buffer->mLightViewProjection[2] = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(2);
+	buffer->mLightViewProjection[0] = directionalLight->CalculateOrthographicProjectionMatrix(0) * directionalLight->CalculateViewMatrix();
+	buffer->mLightViewProjection[1] = directionalLight->CalculateOrthographicProjectionMatrix(1) * directionalLight->CalculateViewMatrix();
+	buffer->mLightViewProjection[2] = directionalLight->CalculateOrthographicProjectionMatrix(2) * directionalLight->CalculateViewMatrix();
 	buffer->shadowSplits = Vector4(directionalLight->GetShadowCascadeSplit(0), directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), directionalLight->GetShadowCascadeSplit(2));
 	buffer->lightDir = directionalLight->GetDirection();
 	buffer->shadowBias = directionalLight->GetBias();
@@ -186,8 +186,8 @@ void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& 
 	}
 
 	Matrix world = mWorld;
-	Matrix worldView = world * mView;
-	Matrix worldViewProjection = worldView * mProjection;
+	Matrix worldView = mView * mWorld;
+	Matrix worldViewProjection = mProjection * worldView;
 
 	// Determine if the buffer actually needs to update
 	bool update = false;

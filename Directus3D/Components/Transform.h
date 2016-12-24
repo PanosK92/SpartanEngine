@@ -57,7 +57,7 @@ public:
 	/*------------------------------------------------------------------------------
 									[POSITION]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetPosition() { return m_position; }
+	Directus::Math::Vector3 GetPosition() { return m_worldTransform.GetTranslation(); }
 	Directus::Math::Vector3 GetPositionLocal() { return m_positionLocal; }
 	void SetPosition(const Directus::Math::Vector3& position);
 	void SetPositionLocal(const Directus::Math::Vector3& position);
@@ -65,7 +65,7 @@ public:
 	/*------------------------------------------------------------------------------
 									[ROTATION]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Quaternion GetRotation() { return m_rotation; }
+	Directus::Math::Quaternion GetRotation() { return m_worldTransform.GetRotation(); }
 	Directus::Math::Quaternion GetRotationLocal() { return m_rotationLocal; }
 	void SetRotation(const Directus::Math::Quaternion& rotation);
 	void SetRotationLocal(const Directus::Math::Quaternion& rotation);
@@ -73,7 +73,7 @@ public:
 	/*------------------------------------------------------------------------------
 									[SCALE]
 	------------------------------------------------------------------------------*/
-	Directus::Math::Vector3 GetScale() { return m_scale; }
+	Directus::Math::Vector3 GetScale() { return m_worldTransform.GetScale(); }
 	Directus::Math::Vector3 GetScaleLocal() { return m_scaleLocal; }
 	void SetScale(const Directus::Math::Vector3& scale);
 	void SetScaleLocal(const Directus::Math::Vector3& scale);
@@ -114,7 +114,7 @@ public:
 									[MISC]
 	------------------------------------------------------------------------------*/
 	void LookAt(const Directus::Math::Vector3& v) { m_lookAt = v; }
-	Directus::Math::Matrix GetTransformMatrix() { return m_mTransform; }
+	Directus::Math::Matrix GetWorldTransform() { return m_worldTransform; }
 	GameObject* GetGameObject() { return g_gameObject; }
 	std::string GetName();
 
@@ -125,12 +125,7 @@ private:
 	Directus::Math::Quaternion m_rotationLocal;
 	Directus::Math::Vector3 m_scaleLocal;
 
-	// world 
-	Directus::Math::Vector3 m_position;
-	Directus::Math::Quaternion m_rotation;
-	Directus::Math::Vector3 m_scale;
-
-	Directus::Math::Matrix m_mTransform;
+	Directus::Math::Matrix m_worldTransform;
 	Directus::Math::Vector3 m_lookAt;
 
 	Transform* m_parent; // the parent of this transform

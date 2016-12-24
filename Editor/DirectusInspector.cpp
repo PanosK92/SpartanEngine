@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logging/Log.h"
 #include "FileSystem/FileSystem.h"
 #include <QMimeData>
+#include "Components/Transform.h"
 //============================
 
 //= NAMESPACES =====

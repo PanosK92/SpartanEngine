@@ -36,30 +36,25 @@ namespace Directus
 		class DllExport Quaternion
 		{
 		public:
-			float x;
-			float y;
-			float z;
-			float w;
+			float x, y, z, w;
 
 			Quaternion();
 			Quaternion(float x, float y, float z, float w);
 			~Quaternion() {}
 
-			//= FROM ====================================================================
+			//= FROM ====================================================================================
 			static Quaternion FromAngleAxis(float angle, const Vector3& axis);
-			void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
+			static Quaternion FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
 			static Quaternion FromEulerAngles(const Vector3& eulerAngles);
 			static Quaternion FromEulerAngles(float x, float y, float z);
-			static Quaternion FromRotationMatrix(const Matrix& matrix);
-			//===========================================================================
+			//===========================================================================================
 
-			//= TO ======================================================================
+			//= TO ======================================================================================
 			Vector3 ToEulerAngles() const;
-
 			float Yaw() const { return ToEulerAngles().y; }
 			float Pitch() const { return ToEulerAngles().x; }
 			float Roll() const { return ToEulerAngles().z; }
-			//===========================================================================
+			//===========================================================================================
 
 			void FromRotationTo(const Vector3& start, const Vector3& end);
 			bool FromLookRotation(const Vector3& direction, const Vector3& upDirection) const;
@@ -94,6 +89,8 @@ namespace Directus
 
 			Quaternion Inverse() const;
 
+			std::string Quaternion::ToString() { return ToEulerAngles().ToString(); }
+
 			/*------------------------------------------------------------------------------
 										[OPERATORS]
 			------------------------------------------------------------------------------*/
@@ -123,7 +120,7 @@ namespace Directus
 				Vector3 cross1(qVec.Cross(rhs));
 				Vector3 cross2(qVec.Cross(cross1));
 
-				return rhs + 2.0f * (cross1 * w + cross2);
+				return (cross1 * w + cross2) * rhs + 2.0f;
 			}
 
 			Quaternion& operator *=(float rhs)
@@ -146,25 +143,20 @@ namespace Directus
 				return false;
 			}
 
-			bool operator!=(const Quaternion& b) const
-			{
-				if (x != b.x || y != b.y || z != b.z || w != b.w)
-					return true;
-
-				return false;
-			}
+			bool operator!=(const Quaternion& b) const { return (x != b.x || y != b.y || z != b.z || w != b.w) ? true : false; }
 
 			void operator*=(const Quaternion& b)
 			{
-				this->x *= b.x;
-				this->y *= b.y;
-				this->z *= b.z;
-				this->w *= b.w;
+				x *= b.x;
+				y *= b.y;
+				z *= b.z;
+				w *= b.w;
 			}
 
 			static const Quaternion Identity;
 		};
 
+		// Reverse order operators
 		inline DllExport Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
 		inline DllExport Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
 	}

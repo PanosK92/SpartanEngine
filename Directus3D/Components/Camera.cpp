@@ -52,7 +52,9 @@ Camera::~Camera()
 ------------------------------------------------------------------------------*/
 void Camera::Reset()
 {
-	CalculateProjectionMatrix();
+	CalculateBaseView();
+	CalculateViewMatrix();
+	CalculateProjection();
 }
 
 void Camera::Start()
@@ -91,7 +93,7 @@ void Camera::Update()
 
 	CalculateBaseView();
 	CalculateViewMatrix();
-	CalculateProjectionMatrix();
+	CalculateProjection();
 
 	m_frustrum->Construct(GetViewMatrix(), GetProjectionMatrix(), GetFarPlane());
 
@@ -115,26 +117,19 @@ void Camera::Deserialize()
 	m_nearPlane = Serializer::ReadFloat();
 	m_farPlane = Serializer::ReadFloat();
 
+	CalculateBaseView();
 	CalculateViewMatrix();
+	CalculateProjection();
 }
 
 /*------------------------------------------------------------------------------
 							[PLANES/PROJECTION]
 ------------------------------------------------------------------------------*/
-float Camera::GetNearPlane()
-{
-	return m_nearPlane;
-}
 
 void Camera::SetNearPlane(float nearPlane)
 {
 	m_nearPlane = nearPlane;
 	m_isDirty = true;
-}
-
-float Camera::GetFarPlane()
-{
-	return m_farPlane;
 }
 
 void Camera::SetFarPlane(float farPlane)
@@ -143,72 +138,16 @@ void Camera::SetFarPlane(float farPlane)
 	m_isDirty = true;
 }
 
-Projection Camera::GetProjection()
-{
-	return m_projection;
-}
-
 void Camera::SetProjection(Projection projection)
 {
 	m_projection = projection;
 	m_isDirty = true;
 }
 
-float Camera::GetFieldOfView()
-{
-	return RadiansToDegrees(m_FOV);
-}
-
 void Camera::SetFieldOfView(float fov)
 {
 	m_FOV = DegreesToRadians(fov);
 	m_isDirty = true;
-}
-
-const shared_ptr<Frustrum>& Camera::GetFrustrum()
-{
-	return m_frustrum;
-}
-
-Vector4 Camera::GetClearColor()
-{
-	return m_clearColor;
-}
-
-void Camera::SetClearColor(const Vector4& color)
-{
-	m_clearColor = color;
-}
-
-/*------------------------------------------------------------------------------
-									[MATRICES]
-------------------------------------------------------------------------------*/
-Matrix Camera::GetViewMatrix()
-{
-	return m_viewMatrix;
-}
-
-Matrix Camera::GetProjectionMatrix()
-{
-	if (m_projection == Perspective)
-		return m_perspectiveProjectionMatrix;
-
-	return m_orthographicProjectionMatrix;
-}
-
-Matrix Camera::GetPerspectiveProjectionMatrix()
-{
-	return m_perspectiveProjectionMatrix;
-}
-
-Matrix Camera::GetOrthographicProjectionMatrix()
-{
-	return m_orthographicProjectionMatrix;
-}
-
-Matrix Camera::GetBaseViewMatrix()
-{
-	return m_baseViewMatrix;
 }
 
 /*------------------------------------------------------------------------------
@@ -219,7 +158,7 @@ Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
 	float screenWidth = RESOLUTION_WIDTH;
 	float screenHeight = RESOLUTION_HEIGHT;
 
-	Vector3 localSpace = Vector3::Transform(worldPoint, GetViewMatrix());
+	Vector3 localSpace = worldPoint * GetViewMatrix();
 
 	int screenX = ((localSpace.x / localSpace.z) * (screenWidth * 0.5f)) + (screenWidth * 0.5f);
 	int screenY = -((localSpace.y / localSpace.z) * (screenHeight * 0.5f)) + (screenHeight * 0.5f);
@@ -240,17 +179,19 @@ void Camera::CalculateViewMatrix()
 	lookAt = position + lookAt;
 
 	// calculate view matrix
-	m_viewMatrix = Matrix::CreateLookAtLH(position, lookAt, up);
+	m_mView = Matrix::CreateLookAtLH(position, lookAt, up);
 }
 
 void Camera::CalculateBaseView()
 {
-	Vector3 lookAt = Vector3::Transform(Vector3::Forward, Matrix::Identity).Normalized();
-	m_baseViewMatrix = Matrix::CreateLookAtLH(Vector3(0, 0, -0.3f), lookAt, Vector3::Up);
+	Vector3 lookAt = (Vector3::Forward * Matrix::Identity).Normalized();
+	m_mBaseView = Matrix::CreateLookAtLH(Vector3::Zero, lookAt, Vector3::Up);
 }
 
-void Camera::CalculateProjectionMatrix()
+void Camera::CalculateProjection()
 {
-	m_perspectiveProjectionMatrix = Matrix::CreatePerspectiveFieldOfViewLH(m_FOV, ASPECT_RATIO, m_nearPlane, m_farPlane);
-	m_orthographicProjectionMatrix = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
+	if (m_projection == Perspective)
+		m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(m_FOV, ASPECT_RATIO, m_nearPlane, m_farPlane);
+	else if (m_projection == Orthographic)
+		m_mProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
 }
