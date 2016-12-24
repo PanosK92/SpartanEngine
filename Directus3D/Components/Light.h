@@ -66,7 +66,7 @@ public:
 	Directus::Math::Matrix CalculateProjectionMatrix(const Directus::Math::Vector3 centerPos, const Directus::Math::Matrix& viewMatrix)
 	{
 		float radius = GetRadius();
-		Directus::Math::Vector3 center = Directus::Math::Vector3::Transform(centerPos, viewMatrix);
+		Directus::Math::Vector3 center = centerPos * viewMatrix;
 		Directus::Math::Vector3 min = center - Directus::Math::Vector3(radius, radius, radius);
 		Directus::Math::Vector3 max = center + Directus::Math::Vector3(radius, radius, radius);
 

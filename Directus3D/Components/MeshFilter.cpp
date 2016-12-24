@@ -183,12 +183,12 @@ bool MeshFilter::SetBuffers()
 
 Vector3 MeshFilter::GetCenter()
 {
-	return !m_mesh.expired() ? m_mesh.lock()->GetCenter() * g_transform->GetTransformMatrix() : Vector3::Zero;
+	return !m_mesh.expired() ? m_mesh.lock()->GetCenter() * g_transform->GetWorldTransform(): Vector3::Zero;
 }
 
 Vector3 MeshFilter::GetBoundingBox()
 {
-	return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() * g_transform->GetTransformMatrix() : Vector3::One;
+	return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
 }
 
 weak_ptr<Mesh> MeshFilter::GetMesh()

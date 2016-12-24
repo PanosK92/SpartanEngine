@@ -69,8 +69,8 @@ void DebugShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& view
 	DefaultBuffer* buffer = static_cast<DefaultBuffer*>(m_miscBuffer->Map());
 
 	// fill the buffer with the matrices
-	buffer->viewProjection = viewMatrix * projectionMatrix;
-	buffer->worldViewProjection = worldMatrix * buffer->viewProjection;
+	buffer->viewProjection = projectionMatrix * viewMatrix;
+	buffer->worldViewProjection = buffer->viewProjection * worldMatrix;
 
 	// unmap the buffer and set it in the vertex shader
 	m_miscBuffer->Unmap();
@@ -81,8 +81,6 @@ void DebugShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& view
 
 void DebugShader::RenderShader(unsigned int vertexCount)
 {
-	m_shader->Set();
-
-	// render
-	m_graphics->GetDeviceContext()->Draw(vertexCount, 0);
+	m_shader->Set(); // set shader
+	m_graphics->GetDeviceContext()->Draw(vertexCount, 0); // render stuff
 }

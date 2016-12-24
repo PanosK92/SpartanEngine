@@ -63,7 +63,7 @@ void DepthShader::UpdateMatrixBuffer(const Matrix& worldMatrix, const Matrix& vi
 	DefaultBuffer* miscBufferType = static_cast<DefaultBuffer*>(m_defaultBuffer->Map());
 
 	// Fill buffer
-	miscBufferType->worldViewProjection = worldMatrix * viewMatrix * projectionMatrix;
+	miscBufferType->worldViewProjection = projectionMatrix * viewMatrix * worldMatrix;
 
 	// Unlock the buffer
 	m_defaultBuffer->Unmap();

@@ -249,13 +249,13 @@ void Renderer::AcquirePrerequisites()
 			m_directionalLight = m_lightsDirectional[0]->GetComponent<Light>();
 		else
 			m_directionalLight = nullptr;
-
-		mProjection = m_camera->GetProjectionMatrix();
-		mOrthographicProjection = m_camera->GetOrthographicProjectionMatrix();
+		
 		mView = m_camera->GetViewMatrix();
 		mBaseView = m_camera->GetBaseViewMatrix();
+		mProjection = m_camera->GetProjectionMatrix();
 		m_nearPlane = m_camera->GetNearPlane();
 		m_farPlane = m_camera->GetFarPlane();
+		mOrthographicProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
 	}
 	else
 	{
@@ -301,7 +301,7 @@ void Renderer::DirectionalLightDepthPass()
 			{
 				// Set shader's buffer
 				m_shaderDepth->UpdateMatrixBuffer(
-					gameObject->GetTransform()->GetTransformMatrix(),
+					gameObject->GetTransform()->GetWorldTransform(),
 					m_directionalLight->CalculateViewMatrix(),
 					m_directionalLight->CalculateOrthographicProjectionMatrix(cascadeIndex)
 				);
@@ -374,7 +374,7 @@ void Renderer::GBufferPass()
 				auto mesh = meshFilter->GetMesh();
 				auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
 				auto material = meshRenderer->GetMaterial();
-				auto mWorld = gameObject->GetTransform()->GetTransformMatrix();
+				auto mWorld = gameObject->GetTransform()->GetWorldTransform();
 				//============================================================
 
 				// If any rendering requirement is missing, skip this GameObject
