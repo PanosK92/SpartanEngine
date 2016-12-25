@@ -31,9 +31,6 @@ namespace Directus
 {
 	namespace Math
 	{
-		class Matrix;
-		class Quaternion;
-
 		class DllExport Vector3
 		{
 		public:
@@ -62,40 +59,11 @@ namespace Directus
 			}
 
 			// Construct from single value.
-			Vector3(float v)
+			Vector3(float f)
 			{
-				this->x = v;
-				this->y = v;
-				this->z = v;
-			}
-
-			Vector3 DegreesToRadians(const Vector3& v) const { return DegreesToRadians(v.x, v.y, v.z); }
-
-			static Vector3 DegreesToRadians(float x, float y, float z)
-			{
-				x *= DEG_TO_RAD;
-				y *= DEG_TO_RAD;
-				z *= DEG_TO_RAD;
-
-				return Vector3(x, y, z);
-			}
-
-			static Vector3 RadiansToDegrees(const Vector3& v) { return RadiansToDegrees(v.x, v.y, v.z); }
-
-			static Vector3 RadiansToDegrees(float x, float y, float z)
-			{
-				x *= RAD_TO_DEG;
-				y *= RAD_TO_DEG;
-				z *= RAD_TO_DEG;
-
-				return Vector3(x, y, z);
-			}
-
-			void Floor()
-			{
-				x = floorf(x);
-				y = floorf(y);
-				z = floorf(z);
+				x = f;
+				y = f;
+				z = f;
 			}
 
 			//= NORMALIZATION ========================================================================================
@@ -144,12 +112,18 @@ namespace Directus
 			float LengthSquared() const { return x * x + y * y + z * z; }
 			//========================================================================================================
 
-			static Vector3 Transform(const Vector3& vector, const Matrix& matrix);
+			//= MISC =================================================================================================
+			void Floor()
+			{
+				x = floorf(x);
+				y = floorf(y);
+				z = floorf(z);
+			}
 			Vector3 Absolute() const { return Vector3(abs(x), abs(y), abs(z)); }
 			float Volume() const { return x * y * z; }
-			std::string ToString() const;
+			//========================================================================================================
 
-			//= MULTIPLICATION =============================================================
+			//= MULTIPLICATION =======================================================================================
 			Vector3 operator*(const Vector3& b) const
 			{
 				return Vector3(
@@ -157,11 +131,6 @@ namespace Directus
 					y * b.y,
 					z * b.z
 				);
-			}
-
-			Vector3 operator*(const Matrix& matrix) const
-			{
-				return Transform(*this, matrix);
 			}
 
 			void operator*=(const Vector3& b)
@@ -187,130 +156,67 @@ namespace Directus
 				z *= value;
 			}
 
-			void operator*=(const Quaternion& q);
-			//==============================================================================
+			//=======================================================================================================
 
-			//= ADDITION ===================================================================
-			Vector3 operator+(const Vector3& b) const
-			{
-				return Vector3(
-					this->x + b.x,
-					this->y + b.y,
-					this->z + b.z
-				);
-			}
-
-			Vector3 operator+(const float value) const
-			{
-				return Vector3(
-					this->x + value,
-					this->y + value,
-					this->z + value
-				);
-			}
+			//= ADDITION ============================================================================================
+			Vector3 operator+(const Vector3& b) const { return Vector3(x + b.x, y + b.y, z + b.z); }
+			Vector3 operator+(const float value) const { return Vector3(x + value, y + value, z + value); }
 
 			void operator+=(const Vector3& b)
 			{
-				this->x += b.x;
-				this->y += b.y;
-				this->z += b.z;
+				x += b.x;
+				y += b.y;
+				z += b.z;
 			}
 
 			void operator+=(const float value)
 			{
-				this->x += value;
-				this->y += value;
-				this->z += value;
+				x += value;
+				y += value;
+				z += value;
 			}
-			//==============================================================================
+			//======================================================================================================
 
-			//= SUBTRACTION =============================================================
-			Vector3 operator-(const Vector3& b) const
+			//= SUBTRACTION ========================================================================================
+			Vector3 operator-(const Vector3& b) const { return Vector3(x - b.x, y - b.y, z - b.z); }
+			Vector3 operator-(const float value) { return Vector3(x - value, y - value, z - value); }
+
+			void operator-=(const Vector3& rhs)
 			{
-				return Vector3(
-					this->x - b.x,
-					this->y - b.y,
-					this->z - b.z
-				);
+				x -= rhs.x;
+				y -= rhs.y;
+				z -= rhs.z;
 			}
+			//=======================================================================================================
 
-			Vector3 operator-(const float value)
+			//= DIVISION ============================================================================================
+			Vector3 operator/(const Vector3& rhs) const { return Vector3(x / rhs.x, y / rhs.y, z / rhs.z); }
+			Vector3 operator/(const float rhs) { return Vector3(x / rhs, y / rhs, z / rhs); }
+
+			void operator/=(const Vector3& rhs)
 			{
-				return Vector3(
-					this->x - value,
-					this->y - value,
-					this->z - value
-				);
+				x /= rhs.x;
+				y /= rhs.y;
+				z /= rhs.z;
 			}
+			//========================================================================================================
 
-			void operator-=(const Vector3& b)
+			//= COMPARISON ===========================================================================================
+			bool operator==(const Vector3& rhs) const
 			{
-				this->x -= b.x;
-				this->y -= b.y;
-				this->z -= b.z;
-			}
-			//==============================================================================
-
-			//= DIVISION =============================================================
-			Vector3 operator/(const Vector3& b) const
-			{
-				return Vector3(
-					this->x / b.x,
-					this->y / b.y,
-					this->z / b.z
-				);
-			}
-
-			Vector3 operator/(const float value)
-			{
-				return Vector3(
-					this->x / value,
-					this->y / value,
-					this->z / value
-				);
-			}
-
-			void operator/=(const Vector3& b)
-			{
-				this->x /= b.x;
-				this->y /= b.y;
-				this->z /= b.z;
-			}
-			//==============================================================================
-
-			//= COMPARISON =============================================================
-			bool operator==(const Vector3& b)
-			{
-				if (x == b.x && y == b.y && z == b.z)
+				if (x == rhs.x && y == rhs.y && z == rhs.z)
 					return true;
 
 				return false;
 			}
 
-			bool operator==(const Vector3& b) const
+			bool operator!=(const Vector3& rhs) const
 			{
-				if (x == b.x && y == b.y && z == b.z)
-					return true;
-
-				return false;
+				return !(*this == rhs);
 			}
+			//========================================================================================================
 
-			bool operator!=(const Vector3& b)
-			{
-				if (x != b.x || y != b.y || z != b.z)
-					return true;
-
-				return false;
-			}
-
-			bool operator!=(const Vector3& b) const
-			{
-				if (x != b.x || y != b.y || z != b.z)
-					return true;
-
-				return false;
-			}
-			//==============================================================================
+			std::string ToString() const;
 
 			float x;
 			float y;
@@ -328,7 +234,7 @@ namespace Directus
 			static const Vector3 InfinityNeg;
 		};
 
+		// Reverse order operators
 		inline DllExport Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
-		inline DllExport Vector3 operator*(const Matrix& lhs, const Vector3& rhs) { return rhs * lhs; }
 	}
 }

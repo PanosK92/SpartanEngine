@@ -118,7 +118,7 @@ void RigidBody::Update()
 		// Not simulating, make it kinematic
 		if (!g_context->GetSubsystem<Engine>()->IsSimulating() && !m_rigidBody->isKinematicObject())
 			AddBodyToWorld();
-		
+
 		// Simulating, if body was not originaly kinematic, make it dynamic
 		if (g_context->GetSubsystem<Engine>()->IsSimulating())
 		{
@@ -306,7 +306,7 @@ void RigidBody::SetPosition(const Vector3& position)
 //= ROTATION ============================================================
 Quaternion RigidBody::GetRotation() const
 {
-	return m_rigidBody ? ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) : Quaternion::Identity;
+	return m_rigidBody ? ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) : Quaternion(0, 0, 0, 1);
 }
 
 void RigidBody::SetRotation(const Quaternion& rotation)

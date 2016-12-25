@@ -30,43 +30,162 @@ namespace Directus
 {
 	namespace Math
 	{
-		class Matrix;
-		class Vector3;
-
 		class DllExport Quaternion
 		{
 		public:
-			float x;
-			float y;
-			float z;
-			float w;
+			// Constructs an identity quaternion
+			Quaternion::Quaternion()
+			{
+				x = 0;
+				y = 0;
+				z = 0;
+				w = 1;
+			}
 
-			Quaternion();
-			Quaternion(float x, float y, float z, float w);
+			// Constructs a new quaternion with the given components
+			Quaternion::Quaternion(float x, float y, float z, float w)
+			{
+				this->x = x;
+				this->y = y;
+				this->z = z;
+				this->w = w;
+			}
+
 			~Quaternion() {}
 
 			//= FROM ====================================================================
-			static Quaternion FromAngleAxis(float angle, const Vector3& axis);
+			static Quaternion FromAngleAxis(float angle, const Vector3& axis)
+			{
+				Vector3 normAxis = axis.Normalized();
+				angle *= DEG_TO_RAD_2;
+				float sinAngle = sinf(angle);
+				float cosAngle = cosf(angle);
+
+				Quaternion q;
+				q.w = cosAngle;
+				q.x = normAxis.x * sinAngle;
+				q.y = normAxis.y * sinAngle;
+				q.z = normAxis.z * sinAngle;
+
+				return q;
+			}
+
 			void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
-			static Quaternion FromEulerAngles(const Vector3& eulerAngles);
-			static Quaternion FromEulerAngles(float x, float y, float z);
-			static Quaternion FromRotationMatrix(const Matrix& matrix);
+			static Quaternion FromEulerAngles(const Vector3& eulerAngles) { return FromEulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z); }
+
+			static Quaternion FromEulerAngles(float x, float y, float z)
+			{
+				x *= DEG_TO_RAD_2;
+				y *= DEG_TO_RAD_2;
+				z *= DEG_TO_RAD_2;
+
+				float sinX = sinf(x);
+				float cosX = cosf(x);
+				float sinY = sinf(y);
+				float cosY = cosf(y);
+				float sinZ = sinf(z);
+				float cosZ = cosf(z);
+
+				Quaternion q;
+				q.w = cosY * cosX * cosZ + sinY * sinX * sinZ;
+				q.x = cosY * sinX * cosZ + sinY * cosX * sinZ;
+				q.y = sinY * cosX * cosZ - cosY * sinX * sinZ;
+				q.z = cosY * cosX * sinZ - sinY * sinX * cosZ;
+
+				return q;
+			}
 			//===========================================================================
 
 			//= TO ======================================================================
-			Vector3 ToEulerAngles() const;
+			Vector3 ToEulerAngles() const
+			{
+				// Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
+				// Order of rotations: Z first, then X, then Y
+				float check = 2.0f * (-y * z + w * x);
+
+				if (check < -0.995f)
+				{
+					return Vector3
+					(
+						-90.0f,
+						0.0f,
+						-atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
+					);
+				}
+
+				if (check > 0.995f)
+				{
+					return Vector3
+					(
+						90.0f,
+						0.0f,
+						atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
+					);
+				}
+
+				return Vector3
+				(
+					asinf(check) * RAD_TO_DEG,
+					atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * RAD_TO_DEG,
+					atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * RAD_TO_DEG
+				);
+			}
 
 			float Yaw() const { return ToEulerAngles().y; }
 			float Pitch() const { return ToEulerAngles().x; }
 			float Roll() const { return ToEulerAngles().z; }
 			//===========================================================================
 
-			void FromRotationTo(const Vector3& start, const Vector3& end);
-			bool FromLookRotation(const Vector3& direction, const Vector3& upDirection) const;
+			void FromRotationTo(const Vector3& start, const Vector3& end)
+			{
+				Vector3 normStart = start.Normalized();
+				Vector3 normEnd = end.Normalized();
+				float d = normStart.Dot(normEnd);
+
+				if (d > -1.0f + M_EPSILON)
+				{
+					Vector3 c = normStart.Cross(normEnd);
+					float s = sqrtf((1.0f + d) * 2.0f);
+					float invS = 1.0f / s;
+
+					x = c.x * invS;
+					y = c.y * invS;
+					z = c.z * invS;
+					w = 0.5f * s;
+				}
+				else
+				{
+					Vector3 axis = Vector3::Right.Cross(normStart);
+					if (axis.Length() < M_EPSILON)
+						axis = Vector3::Up.Cross(normStart);
+
+					FromAngleAxis(180.0f, axis);
+				}
+			}
+
+			bool FromLookRotation(const Vector3& direction, const Vector3& upDirection) const
+			{
+				Quaternion ret;
+				Vector3 forward = direction.Normalized();
+
+				Vector3 v = forward.Cross(upDirection);
+				if (v.LengthSquared() >= M_EPSILON)
+				{
+					v.Normalize();
+					Vector3 up = v.Cross(forward);
+					Vector3 right = up.Cross(forward);
+					ret.FromAxes(right, up, forward);
+				}
+				else
+					ret.FromRotationTo(Vector3::Forward, forward);
+
+				return true;
+			}
 
 			Quaternion Conjugate() const { return Quaternion(w, -x, -y, -z); }
 			float LengthSquared() const { return w * w + x * x + y * y + z * z; }
 
+			//= NORMALIZATION ============================================================================
 			void Normalize()
 			{
 				float lenSquared = LengthSquared();
@@ -93,10 +212,9 @@ namespace Directus
 			}
 
 			Quaternion Inverse() const;
+			//============================================================================================
 
-			/*------------------------------------------------------------------------------
-										[OPERATORS]
-			------------------------------------------------------------------------------*/
+			//= ASSIGNMENT ===============================================================================
 			Quaternion& operator =(const Quaternion& rhs)
 			{
 				w = rhs.w;
@@ -106,7 +224,9 @@ namespace Directus
 
 				return *this;
 			}
+			//============================================================================================
 
+			//= MULTIPLICATION ===========================================================================
 			Quaternion operator*(const Quaternion& rhs) const
 			{
 				return Quaternion(
@@ -115,6 +235,14 @@ namespace Directus
 					w * rhs.y + y * rhs.w + z * rhs.x - x* rhs.z,
 					w * rhs.z + z * rhs.w + x * rhs.y - y * rhs.x
 				);
+			}
+
+			void operator*=(const Quaternion& rhs)
+			{
+				x *= rhs.x;
+				y *= rhs.y;
+				z *= rhs.z;
+				w *= rhs.w;
 			}
 
 			Vector3 operator*(const Vector3& rhs) const
@@ -137,34 +265,19 @@ namespace Directus
 			}
 
 			Quaternion operator *(float rhs) const { return Quaternion(w * rhs, x * rhs, y * rhs, z * rhs); }
+			//===============================================================================================================
 
-			bool operator==(const Quaternion& b) const
-			{
-				if (x == b.x && y == b.y && z == b.z && w == b.w)
-					return true;
+			//= COMPARISON ==================================================================================================
+			bool operator==(const Quaternion& b) const{return (x == b.x && y == b.y && z == b.z && w == b.w) ? true : false;}
+			bool operator!=(const Quaternion& b) const { return !(*this == b); }
+			//===============================================================================================================
 
-				return false;
-			}
+			std::string ToString() const;
 
-			bool operator!=(const Quaternion& b) const
-			{
-				if (x != b.x || y != b.y || z != b.z || w != b.w)
-					return true;
-
-				return false;
-			}
-
-			void operator*=(const Quaternion& b)
-			{
-				this->x *= b.x;
-				this->y *= b.y;
-				this->z *= b.z;
-				this->w *= b.w;
-			}
-
-			static const Quaternion Identity;
+			float x, y, z, w;
 		};
 
+		// Reverse order operators
 		inline DllExport Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
 		inline DllExport Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
 	}

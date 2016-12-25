@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include "../Math/Vector3.h"
 #include <memory>
+#include "../Math/Quaternion.h"
 //==========================
 
 class GameObject;
