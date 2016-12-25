@@ -36,9 +36,9 @@ using namespace Directus::Math;
 Transform::Transform()
 {
 	m_positionLocal = Vector3::Zero;
-	m_rotationLocal = Quaternion::Identity;
+	m_rotationLocal = Quaternion(0, 0, 0, 1);
 	m_scaleLocal = Vector3::One;
-	m_mTransform = Matrix::Identity;
+	m_worldTransform = Matrix::Identity;
 	m_parent = nullptr;
 }
 
@@ -47,9 +47,7 @@ Transform::~Transform()
 
 }
 
-//==========
-// INTERFACE
-//==========
+//= ICOMPONENT ====================================================================
 void Transform::Reset()
 {
 	UpdateWorldTransform();
@@ -112,27 +110,11 @@ void Transform::Deserialize()
 //=====================
 void Transform::UpdateWorldTransform()
 {
-	// Create local translation, rotation and scale matrices
-	Matrix translationLocalMatrix = Matrix::CreateTranslation(m_positionLocal);
-	Matrix rotationLocalMatrix = Matrix::CreateRotation(m_rotationLocal);
-	Matrix scaleLocalMatrix = Matrix::CreateScale(m_scaleLocal);
+	// Calculate transform
+	Matrix transform = Matrix(m_positionLocal, m_rotationLocal, m_scaleLocal);
 
-	// Calculate the local matrix
-	m_mTransform = scaleLocalMatrix * rotationLocalMatrix * translationLocalMatrix;
-
-	// Get world data
-	if (!HasParent())
-	{
-		m_position = m_positionLocal;
-		m_rotation = m_rotationLocal;
-		m_scale = m_scaleLocal;
-	}
-	else
-	{
-		m_mTransform = m_mTransform * GetParentTransformMatrix();
-		// decompose world matrix to get world position, rotation and scale
-		m_mTransform.Decompose(m_scale, m_rotation, m_position);
-	}
+	// Calculate global transformation
+	m_worldTransform = HasParent() ? transform * GetParentTransformMatrix(): transform;
 
 	// update children
 	for (const auto& child : m_children)
@@ -142,7 +124,7 @@ void Transform::UpdateWorldTransform()
 //= TRANSLATION ==================================================================================
 void Transform::SetPosition(const Vector3& position)
 {
-	SetPositionLocal(!HasParent() ? position : GetParent()->GetTransformMatrix().Inverted() * position);
+	SetPositionLocal(!HasParent() ? position : GetParent()->GetWorldTransform().Inverted() * position);
 }
 
 void Transform::SetPositionLocal(const Vector3& position)
@@ -200,13 +182,11 @@ void Transform::Translate(const Vector3& delta)
 	if (!HasParent())
 		SetPositionLocal(m_positionLocal + delta);
 	else
-		SetPositionLocal(m_positionLocal + GetParent()->GetTransformMatrix().Inverted() * delta);
+		SetPositionLocal(m_positionLocal + GetParent()->GetWorldTransform().Inverted() * delta);
 }
 
 void Transform::Rotate(const Quaternion& delta, Space space)
 {
-	Quaternion rotation;
-
 	switch (space)
 	{
 	case Local:
@@ -238,9 +218,7 @@ Vector3 Transform::GetRight()
 }
 //================================================================================================
 
-//==========
-// HIERARCHY
-//==========
+//= HIERARCHY ====================================================================================
 // Sets a parent for this transform
 void Transform::SetParent(Transform* newParent)
 {
@@ -272,14 +250,14 @@ void Transform::SetParent(Transform* newParent)
 		if (this->HasParent())
 		{
 			// assign the parent of this transform to the children
-			for (auto i = 0; i < m_children.size(); i++)
-				m_children[i]->SetParent(GetParent());
+			for (const auto& child : m_children)
+				child->SetParent(GetParent());
 		}
 		else // if this transform doesn't have a parent
 		{
 			// make the children orphans
-			for (auto i = 0; i < m_children.size(); i++)
-				m_children[i]->BecomeOrphan();
+			for (const auto& child : m_children)
+				child->BecomeOrphan();
 		}
 	}
 
@@ -332,9 +310,9 @@ Transform* Transform::GetChildByIndex(int index)
 
 Transform* Transform::GetChildByName(const string& name)
 {
-	for (auto i = 0; i < m_children.size(); i++)
-		if (m_children[i]->GetName() == name)
-			return m_children[i];
+	for (const auto& child : m_children)
+		if (child->GetName() == name)
+			return child;
 
 	return nullptr;
 }
@@ -414,7 +392,7 @@ string Transform::GetName()
 
 Matrix Transform::GetParentTransformMatrix()
 {
-	return HasParent() ? GetParent()->GetTransformMatrix() : Matrix::Identity;
+	return HasParent() ? GetParent()->GetWorldTransform() : Matrix::Identity;
 }
 
 // Makes this transform have no parent

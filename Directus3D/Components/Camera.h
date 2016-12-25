@@ -44,9 +44,7 @@ public:
 	Camera();
 	~Camera();
 
-	/*------------------------------------------------------------------------------
-									[INTERFACE]
-	------------------------------------------------------------------------------*/
+	//= ICOMPONENT ============
 	virtual void Reset();
 	virtual void Start();
 	virtual void OnDisable();
@@ -54,35 +52,34 @@ public:
 	virtual void Update();
 	virtual void Serialize();
 	virtual void Deserialize();
+	//=========================
 
-	/*------------------------------------------------------------------------------
-									[MATRICES]
-	------------------------------------------------------------------------------*/
-	Directus::Math::Matrix GetViewMatrix();
-	Directus::Math::Matrix GetProjectionMatrix();
-	Directus::Math::Matrix GetPerspectiveProjectionMatrix();
-	Directus::Math::Matrix GetOrthographicProjectionMatrix();
-	Directus::Math::Matrix GetBaseViewMatrix();
+	//= MATRICES =========================================================
+	Directus::Math::Matrix GetViewMatrix() { return m_mView; }
+	Directus::Math::Matrix GetProjectionMatrix() { return m_mProjection; }
+	Directus::Math::Matrix GetBaseViewMatrix() { return m_mBaseView; }
+	//====================================================================
 
-	/*------------------------------------------------------------------------------
-									[CONVERSIONS]
-	------------------------------------------------------------------------------*/
+	//= RAYCASTING =======================================================================
 	Directus::Math::Vector2 WorldToScreenPoint(const Directus::Math::Vector3& worldPoint);
+	//====================================================================================
 
-	//= PLANES/PROJECTION ====================
-	float GetNearPlane();
+	//= PLANES/PROJECTION =====================================================
+	float GetNearPlane() { return m_nearPlane; }
 	void SetNearPlane(float nearPlane);
-	float GetFarPlane();
+	float GetFarPlane() { return m_farPlane; }
 	void SetFarPlane(float farPlane);
-	Projection GetProjection();
+	Projection GetProjection() { CalculateProjection();  return m_projection; }
 	void SetProjection(Projection projection);
-	float GetFieldOfView();
+	float GetFieldOfView() { return Directus::Math::RadiansToDegrees(m_FOV); }
 	void SetFieldOfView(float fov);
-	const std::shared_ptr<Frustrum>& GetFrustrum();
+	const std::shared_ptr<Frustrum>& GetFrustrum() { return m_frustrum; }
+	//=========================================================================
 
-	//= MISC ==================================
-	Directus::Math::Vector4 GetClearColor();
-	void SetClearColor(const Directus::Math::Vector4& color);
+	//= MISC =========================================================================
+	Directus::Math::Vector4 GetClearColor() { return m_clearColor; }
+	void SetClearColor(const Directus::Math::Vector4& color) { m_clearColor = color; }
+	//================================================================================
 
 private:
 	float m_FOV;
@@ -92,10 +89,9 @@ private:
 	Projection m_projection;
 	Directus::Math::Vector4 m_clearColor;
 
-	Directus::Math::Matrix m_viewMatrix;
-	Directus::Math::Matrix m_perspectiveProjectionMatrix;
-	Directus::Math::Matrix m_orthographicProjectionMatrix;
-	Directus::Math::Matrix m_baseViewMatrix;
+	Directus::Math::Matrix m_mView;
+	Directus::Math::Matrix m_mProjection;
+	Directus::Math::Matrix m_mBaseView;
 
 	Directus::Math::Vector3 m_position;
 	Directus::Math::Quaternion m_rotation;
@@ -104,9 +100,9 @@ private:
 	Directus::Math::Vector2 m_lastKnownResolution;
 
 	/*------------------------------------------------------------------------------
-									[PRIVATE]
+	[PRIVATE]
 	------------------------------------------------------------------------------*/
 	void CalculateViewMatrix();
 	void CalculateBaseView();
-	void CalculateProjectionMatrix();
+	void CalculateProjection();
 };

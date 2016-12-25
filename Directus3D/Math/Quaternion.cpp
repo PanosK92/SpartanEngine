@@ -22,8 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "Quaternion.h"
 #include "MathHelper.h"
-#include <math.h>
-#include "Vector3.h"
 #include "../Math/Matrix.h"
 //=========================
 
@@ -31,229 +29,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-//= Based on Urho3D
-//= Based also on =====================================================================//
+//= Based on ==========================================================================//
 // http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/index.htm //
 // Heading	-> Yaw		-> Y-axis													   //
 // Attitude	-> Pitch	-> X-axis													   //
 // Bank		-> Roll		-> Z-axis													   //
 //=====================================================================================//
 
-
 namespace Directus
 {
 	namespace Math
 	{
-		const Quaternion Quaternion::Identity(0, 0, 0, 1);
-
-		Quaternion::Quaternion()
-		{
-			this->x = 0;
-			this->y = 0;
-			this->z = 0;
-			this->w = 1;
-		}
-
-		// Constructs new Quaternion with given x,y,z,w components.
-		Quaternion::Quaternion(float x, float y, float z, float w)
-		{
-			this->x = x;
-			this->y = y;
-			this->z = z;
-			this->w = w;
-		}
-
-		//= FROM =========================================================================================
-		Quaternion Quaternion::FromAngleAxis(float angle, const Vector3& axis)
-		{
-			Vector3 normAxis = axis.Normalized();
-			angle *= DEG_TO_RAD_2;
-			float sinAngle = sinf(angle);
-			float cosAngle = cosf(angle);
-
-			Quaternion q;
-			q.w = cosAngle;
-			q.x = normAxis.x * sinAngle;
-			q.y = normAxis.y * sinAngle;
-			q.z = normAxis.z * sinAngle;
-
-			return q;
-		}
-
+		//= FROM ==================================================================================
 		void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis)
 		{
-			Matrix matrix = Matrix(
+			*this = Matrix(
 				xAxis.x, yAxis.x, zAxis.x, 0.0f,
 				xAxis.y, yAxis.y, zAxis.y, 0.0f,
 				xAxis.z, yAxis.z, zAxis.z, 0.0f,
 				0.0f, 0.0f, 0.0f, 1.0f
-			);
-
-			Quaternion q = FromRotationMatrix(matrix);
-			x = q.x;
-			y = q.y;
-			z = q.z;
-			w = q.w;
+			).GetRotation();
 		}
-
-		Quaternion Quaternion::FromEulerAngles(const Vector3& eulerAngles)
-		{
-			return FromEulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z);
-		}
-
-		Quaternion Quaternion::FromEulerAngles(float x, float y, float z)
-		{
-			x *= DEG_TO_RAD_2;
-			y *= DEG_TO_RAD_2;
-			z *= DEG_TO_RAD_2;
-
-			float sinX = sinf(x);
-			float cosX = cosf(x);
-			float sinY = sinf(y);
-			float cosY = cosf(y);
-			float sinZ = sinf(z);
-			float cosZ = cosf(z);
-
-			Quaternion q;
-			q.w = cosY * cosX * cosZ + sinY * sinX * sinZ;
-			q.x = cosY * sinX * cosZ + sinY * cosX * sinZ;
-			q.y = sinY * cosX * cosZ - cosY * sinX * sinZ;
-			q.z = cosY * cosX * sinZ - sinY * sinX * cosZ;
-
-			return q;
-		}
-
-		Quaternion Quaternion::FromRotationMatrix(const Matrix& matrix)
-		{
-			Quaternion q;
-			float t = matrix.m00 + matrix.m11 + matrix.m22;
-
-			if (t > 0.0f)
-			{
-				float invS = 0.5f / sqrtf(1.0f + t);
-
-				q.x = (matrix.m21 - matrix.m12) * invS;
-				q.y = (matrix.m02 - matrix.m20) * invS;
-				q.z = (matrix.m10 - matrix.m01) * invS;
-				q.w = 0.25f / invS;
-			}
-			else
-			{
-				if (matrix.m00 > matrix.m11 && matrix.m00 > matrix.m22)
-				{
-					float invS = 0.5f / sqrtf(1.0f + matrix.m00 - matrix.m11 - matrix.m22);
-
-					q.x = 0.25f / invS;
-					q.y = (matrix.m01 + matrix.m10) * invS;
-					q.z = (matrix.m20 + matrix.m02) * invS;
-					q.w = (matrix.m21 - matrix.m12) * invS;
-				}
-				else if (matrix.m11 > matrix.m22)
-				{
-					float invS = 0.5f / sqrtf(1.0f + matrix.m11 - matrix.m00 - matrix.m22);
-
-					q.x = (matrix.m01 + matrix.m10) * invS;
-					q.y = 0.25f / invS;
-					q.z = (matrix.m12 + matrix.m21) * invS;
-					q.w = (matrix.m02 - matrix.m20) * invS;
-				}
-				else
-				{
-					float invS = 0.5f / sqrtf(1.0f + matrix.m22 - matrix.m00 - matrix.m11);
-
-					q.x = (matrix.m02 + matrix.m20) * invS;
-					q.y = (matrix.m12 + matrix.m21) * invS;
-					q.z = 0.25f / invS;
-					q.w = (matrix.m10 - matrix.m01) * invS;
-				}
-			}
-
-			return q;
-		}
-		//================================================================================
-
-		//= TO ===========================================================================
-		// Returns the euler angle representation of the rotation.
-		Vector3 Quaternion::ToEulerAngles() const
-		{
-			// Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
-			// Order of rotations: Z first, then X, then Y
-			float check = 2.0f * (-y * z + w * x);
-
-			if (check < -0.995f)
-			{
-				return Vector3
-				(
-					-90.0f,
-					0.0f,
-					-atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
-				);
-			}
-
-			if (check > 0.995f)
-			{
-				return Vector3
-				(
-					90.0f,
-					0.0f,
-					atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * RAD_TO_DEG
-				);
-			}
-
-			return Vector3
-			(
-				asinf(check) * RAD_TO_DEG,
-				atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * RAD_TO_DEG,
-				atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * RAD_TO_DEG
-			);
-		}
-		//================================================================================
-
-		void Quaternion::FromRotationTo(const Vector3& start, const Vector3& end)
-		{
-			Vector3 normStart = start.Normalized();
-			Vector3 normEnd = end.Normalized();
-			float d = normStart.Dot(normEnd);
-
-			if (d > -1.0f + M_EPSILON)
-			{
-				Vector3 c = normStart.Cross(normEnd);
-				float s = sqrtf((1.0f + d) * 2.0f);
-				float invS = 1.0f / s;
-
-				x = c.x * invS;
-				y = c.y * invS;
-				z = c.z * invS;
-				w = 0.5f * s;
-			}
-			else
-			{
-				Vector3 axis = Vector3::Right.Cross(normStart);
-				if (axis.Length() < M_EPSILON)
-					axis = Vector3::Up.Cross(normStart);
-
-				FromAngleAxis(180.0f, axis);
-			}
-		}
-
-		bool Quaternion::FromLookRotation(const Vector3& direction, const Vector3& upDirection) const
-		{
-			Quaternion ret;
-			Vector3 forward = direction.Normalized();
-
-			Vector3 v = forward.Cross(upDirection);
-			if (v.LengthSquared() >= M_EPSILON)
-			{
-				v.Normalize();
-				Vector3 up = v.Cross(forward);
-				Vector3 right = up.Cross(forward);
-				ret.FromAxes(right, up, forward);
-			}
-			else
-				ret.FromRotationTo(Vector3::Forward, forward);
-
-			return true;
-		}
+		//========================================================================================
 
 		Quaternion Quaternion::Inverse() const
 		{
@@ -267,7 +64,14 @@ namespace Directus
 
 			// impemented this here because Identity (static)
 			// doesnt play well with dllexport
-			return Identity;
+			return Quaternion(0, 0, 0, 1);
+		}
+
+		string Quaternion::ToString() const
+		{
+			char tempBuffer[200];
+			sprintf(tempBuffer, "X: %f Y: %f Z: %f W: %f", x, y, z, w);
+			return string(tempBuffer);
 		}
 	}
 }

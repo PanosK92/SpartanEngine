@@ -205,7 +205,7 @@ Vector4 Serializer::ReadVector4()
 
 Quaternion Serializer::ReadQuaternion()
 {
-	Quaternion quaternion = Quaternion::Identity;
+	Quaternion quaternion = Quaternion(0, 0, 0, 1);
 	in.read(reinterpret_cast<char*>(&quaternion.x), sizeof(quaternion.x));
 	in.read(reinterpret_cast<char*>(&quaternion.y), sizeof(quaternion.y));
 	in.read(reinterpret_cast<char*>(&quaternion.z), sizeof(quaternion.z));

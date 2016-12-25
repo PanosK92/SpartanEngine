@@ -19,11 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========
+//= INCLUDES ======
 #include "Matrix.h"
-#include "Vector3.h"
-#include "Quaternion.h"
-//======================
+//=================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Directus
 {
@@ -37,99 +39,11 @@ namespace Directus
 			0, 0, 0, 1
 		);
 
-		Matrix Matrix::CreateTranslation(const Vector3& position)
+		string Matrix::ToString() const
 		{
-			return Matrix(
-				1, 0, 0, 0,
-				0, 1, 0, 0,
-				0, 0, 1, 0,
-				position.x, position.y, position.z, 1
-			);
-		}
-
-		Matrix Matrix::CreateRotation(const Quaternion& rotation)
-		{
-			return Matrix(
-				1.0f - 2.0f * rotation.y * rotation.y - 2.0f * rotation.z * rotation.z,
-				2.0f * rotation.x * rotation.y + 2.0f * rotation.w * rotation.z,
-				2.0f * rotation.x * rotation.z - 2.0f * rotation.w * rotation.y,
-				0.0f,
-				2.0f * rotation.x * rotation.y - 2.0f * rotation.w * rotation.z,
-				1.0f - 2.0f * rotation.x * rotation.x - 2.0f * rotation.z * rotation.z,
-				2.0f * rotation.y * rotation.z + 2.0f * rotation.w * rotation.x,
-				0.0f,
-				2.0f * rotation.x * rotation.z + 2.0f * rotation.w * rotation.y,
-				2.0f * rotation.y * rotation.z - 2.0f * rotation.w * rotation.x,
-				1.0f - 2.0f * rotation.x * rotation.x - 2.0f *rotation.y * rotation.y,
-				0.0f,
-				0.0f,
-				0.0f,
-				0.0f,
-				1.0f
-			);
-		}
-
-		Matrix Matrix::CreateLookAtLH(const Vector3& eye, const Vector3& at, const Vector3& up)
-		{
-			Vector3 zaxis = Vector3::Normalize(at - eye);
-			Vector3 xaxis = Vector3::Normalize(Vector3::Cross(up, zaxis));
-			Vector3 yaxis = Vector3::Cross(zaxis, xaxis);
-
-			return Matrix(
-				xaxis.x, yaxis.x, zaxis.x, 0,
-				xaxis.y, yaxis.y, zaxis.y, 0,
-				xaxis.z, yaxis.z, zaxis.z, 0,
-				-Vector3::Dot(xaxis, eye), -Vector3::Dot(yaxis, eye), -Vector3::Dot(zaxis, eye), 1.0f
-			);
-		}
-
-		// based on D3DXMatrixDecompose
-		void Matrix::Decompose(Vector3& scale, Quaternion& rotation, Vector3& translation)
-		{
-			Matrix pm = *this;
-
-			Matrix normalized;
-			Vector3 vec;
-
-			// compute the scaling part
-			vec.x = pm.m00;
-			vec.y = pm.m01;
-			vec.z = pm.m02;
-			scale.x = vec.Length();
-
-			vec.x = pm.m10;
-			vec.y = pm.m11;
-			vec.z = pm.m12;
-			scale.y = vec.Length();
-
-			vec.x = pm.m20;
-			vec.y = pm.m21;
-			vec.z = pm.m22;
-			scale.z = vec.Length();
-
-			// compute the translation part
-			translation.x = pm.m30;
-			translation.y = pm.m31;
-			translation.z = pm.m32;
-
-			// let's calculate the rotation now
-			if ((scale.x == 0.0f) || (scale.y == 0.0f) || (scale.z == 0.0f))
-			{
-				rotation = Quaternion::Identity;
-				return;
-			}
-
-			normalized.m00 = pm.m00 / scale.x;
-			normalized.m01 = pm.m01 / scale.x;
-			normalized.m02 = pm.m02 / scale.x;
-			normalized.m10 = pm.m10 / scale.y;
-			normalized.m11 = pm.m11 / scale.y;
-			normalized.m12 = pm.m12 / scale.y;
-			normalized.m20 = pm.m20 / scale.z;
-			normalized.m21 = pm.m21 / scale.z;
-			normalized.m22 = pm.m22 / scale.z;
-
-			rotation = Quaternion::FromRotationMatrix(normalized);
+			char tempBuffer[200];
+			sprintf(tempBuffer, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33);
+			return string(tempBuffer);
 		}
 	}
 }
