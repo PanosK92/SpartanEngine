@@ -59,10 +59,10 @@ namespace Directus
 			{
 				Matrix mRotation = CreateRotation(rotation);
 
-				m00 = scale.x * mRotation.m00; m01 = scale.x * mRotation.m01; m02 = scale.x * mRotation.m02; m03 = 0;
-				m10 = scale.y * mRotation.m10; m11 = scale.y * mRotation.m11; m12 = scale.y * mRotation.m12; m13 = 0;
-				m20 = scale.z * mRotation.m20; m21 = scale.z * mRotation.m21; m22 = scale.z * mRotation.m22; m23 = 0;
-				m30 = translation.x; m31 = translation.y; m32 = translation.z; m33 = 1;
+				m00 = scale.x * mRotation.m00; m01 = scale.x * mRotation.m01; m02 = scale.x * mRotation.m02; m03 = 0.0f;
+				m10 = scale.y * mRotation.m10; m11 = scale.y * mRotation.m11; m12 = scale.y * mRotation.m12; m13 = 0.0f;
+				m20 = scale.z * mRotation.m20; m21 = scale.z * mRotation.m21; m22 = scale.z * mRotation.m22; m23 = 0.0f;
+				m30 = translation.x; m31 = translation.y; m32 = translation.z; m33 = 1.0f;
 			}
 			
 			~Matrix() {}
