@@ -96,9 +96,8 @@ FrustrumSpace Frustrum::CheckCube(const Vector3& center, const Vector3& extent)
 {
 	// Check if any one point of the cube is in the view frustum.
 	FrustrumSpace result = Inside;
-	for (int i = 0; i < 6; i++)
+	for (const auto& plane : m_planes)
 	{
-		Plane plane = m_planes[i];
 		Plane absolutePlane = Plane(plane.normal.Absolute(), plane.d);
 
 		float d = center.x * plane.normal.x + center.y * plane.normal.y + center.z * plane.normal.z;
@@ -126,10 +125,10 @@ FrustrumSpace Frustrum::CheckSphere(const Vector3& center, float radius)
 	float fDistance;
 
 	// calculate our distances to each of the planes
-	for (int i = 0; i < 6; ++i)
+	for (const auto& plane : m_planes)
 	{
 		// find the distance to this plane
-		fDistance = Vector3::Dot(m_planes[i].normal, center) + m_planes[i].d;
+		fDistance = Vector3::Dot(plane.normal, center) + plane.d;
 
 		// if this distance is < -sphere.radius, we are outside
 		if (fDistance < -radius)
