@@ -64,7 +64,7 @@ namespace Directus
 				m20 = scale.z * mRotation.m20; m21 = scale.z * mRotation.m21; m22 = scale.z * mRotation.m22; m23 = 0;
 				m30 = translation.x; m31 = translation.y; m32 = translation.z; m33 = 1;
 			}
-
+			
 			~Matrix() {}
 
 			//= TRANSLATION ==================================================================================

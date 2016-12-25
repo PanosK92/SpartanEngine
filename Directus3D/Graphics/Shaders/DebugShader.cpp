@@ -81,8 +81,6 @@ void DebugShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& view
 
 void DebugShader::RenderShader(unsigned int vertexCount)
 {
-	m_shader->Set();
-
-	// render
-	m_graphics->GetDeviceContext()->Draw(vertexCount, 0);
+	m_shader->Set(); // set shader
+	m_graphics->GetDeviceContext()->Draw(vertexCount, 0); // render stuff
 }

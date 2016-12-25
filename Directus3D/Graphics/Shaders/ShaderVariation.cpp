@@ -186,7 +186,7 @@ void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& 
 	}
 
 	Matrix world = mWorld;
-	Matrix worldView = world * mView;
+	Matrix worldView = mWorld * mView;
 	Matrix worldViewProjection = worldView * mProjection;
 
 	// Determine if the buffer actually needs to update
