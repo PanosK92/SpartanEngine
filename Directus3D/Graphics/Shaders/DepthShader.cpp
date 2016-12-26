@@ -54,7 +54,7 @@ void DepthShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 	m_defaultBuffer->Create(sizeof(DefaultBuffer));
 }
 
-void DepthShader::UpdateMatrixBuffer(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
+void DepthShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mViewProjection)
 {
 	if (!m_defaultBuffer)
 		return;
@@ -63,7 +63,7 @@ void DepthShader::UpdateMatrixBuffer(const Matrix& worldMatrix, const Matrix& vi
 	DefaultBuffer* miscBufferType = static_cast<DefaultBuffer*>(m_defaultBuffer->Map());
 
 	// Fill buffer
-	miscBufferType->worldViewProjection = worldMatrix * viewMatrix * projectionMatrix;
+	miscBufferType->worldViewProjection = mWorld * mViewProjection;
 
 	// Unlock the buffer
 	m_defaultBuffer->Unmap();

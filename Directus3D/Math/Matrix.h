@@ -37,10 +37,7 @@ namespace Directus
 		public:
 			Matrix()
 			{
-				m00 = 1; m01 = 0; m02 = 0; m03 = 0;
-				m10 = 0; m11 = 1; m12 = 0; m13 = 0;
-				m20 = 0; m21 = 0; m22 = 1; m23 = 0;
-				m30 = 0; m31 = 0; m32 = 0; m33 = 1;
+				SetIdentity();
 			}
 
 			Matrix(
@@ -64,7 +61,7 @@ namespace Directus
 				m20 = scale.z * mRotation.m20; m21 = scale.z * mRotation.m21; m22 = scale.z * mRotation.m22; m23 = 0.0f;
 				m30 = translation.x; m31 = translation.y; m32 = translation.z; m33 = 1.0f;
 			}
-			
+
 			~Matrix() {}
 
 			//= TRANSLATION ==================================================================================
@@ -104,47 +101,63 @@ namespace Directus
 
 			Quaternion GetRotation()
 			{
-				Matrix matrix = *this;
+				Vector3 scale = GetScale();
+
+				// Avoid division by zero (we'll divide to remove scaling)
+				if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f) { return Quaternion(0, 0, 0, 1); }
+
+				// Extract rotation and remove scaling
+				Matrix normalized;
+				normalized.m00 = m00 / scale.x; normalized.m01 = m01 / scale.x; normalized.m02 = m02 / scale.x; normalized.m03 = 0.0f;
+				normalized.m10 = m10 / scale.y; normalized.m11 = m11 / scale.y; normalized.m12 = m12 / scale.y; normalized.m13 = 0.0f;
+				normalized.m20 = m20 / scale.z; normalized.m21 = m21 / scale.z; normalized.m22 = m22 / scale.z; normalized.m23 = 0.0f;
+				normalized.m30 = 0; normalized.m31 = 0; normalized.m32 = 0; normalized.m33 = 1.0f;
+
+				return RotationMatrixToQuaternion(normalized);
+			}
+
+			static Quaternion RotationMatrixToQuaternion(Matrix& mRotation)
+			{
 				Quaternion q;
-				float t = matrix.m00 + matrix.m11 + matrix.m22;
+				float t = mRotation.m00 + mRotation.m11 + mRotation.m22;
 
 				if (t > 0.0f)
 				{
 					float invS = 0.5f / sqrtf(1.0f + t);
 
-					q.x = (matrix.m21 - matrix.m12) * invS;
-					q.y = (matrix.m02 - matrix.m20) * invS;
-					q.z = (matrix.m10 - matrix.m01) * invS;
+					q.x = (mRotation.m21 - mRotation.m12) * invS;
+					q.y = (mRotation.m02 - mRotation.m20) * invS;
+					q.z = (mRotation.m10 - mRotation.m01) * invS;
 					q.w = 0.25f / invS;
 				}
 				else
 				{
-					if (matrix.m00 > matrix.m11 && matrix.m00 > matrix.m22)
+					if (mRotation.m00 > mRotation.m11 && mRotation.m00 > mRotation.m22)
 					{
-						float invS = 0.5f / sqrtf(1.0f + matrix.m00 - matrix.m11 - matrix.m22);
+						float invS = 0.5f / sqrtf(1.0f + mRotation.m00 - mRotation.m11 - mRotation.m22);
 
 						q.x = 0.25f / invS;
-						q.y = (matrix.m01 + matrix.m10) * invS;
-						q.z = (matrix.m20 + matrix.m02) * invS;
-						q.w = (matrix.m21 - matrix.m12) * invS;
+						q.y = (mRotation.m01 + mRotation.m10) * invS;
+						q.z = (mRotation.m20 + mRotation.m02) * invS;
+						q.w = (mRotation.m21 - mRotation.m12) * invS;
 					}
-					else if (matrix.m11 > matrix.m22)
+					else if (mRotation.m11 > mRotation.m22)
 					{
-						float invS = 0.5f / sqrtf(1.0f + matrix.m11 - matrix.m00 - matrix.m22);
+						float invS = 0.5f / sqrtf(1.0f + mRotation.m11 - mRotation.m00 - mRotation.m22);
 
-						q.x = (matrix.m01 + matrix.m10) * invS;
+						q.x = (mRotation.m01 + mRotation.m10) * invS;
 						q.y = 0.25f / invS;
-						q.z = (matrix.m12 + matrix.m21) * invS;
-						q.w = (matrix.m02 - matrix.m20) * invS;
+						q.z = (mRotation.m12 + mRotation.m21) * invS;
+						q.w = (mRotation.m02 - mRotation.m20) * invS;
 					}
 					else
 					{
-						float invS = 0.5f / sqrtf(1.0f + matrix.m22 - matrix.m00 - matrix.m11);
+						float invS = 0.5f / sqrtf(1.0f + mRotation.m22 - mRotation.m00 - mRotation.m11);
 
-						q.x = (matrix.m02 + matrix.m20) * invS;
-						q.y = (matrix.m12 + matrix.m21) * invS;
+						q.x = (mRotation.m02 + mRotation.m20) * invS;
+						q.y = (mRotation.m12 + mRotation.m21) * invS;
 						q.z = 0.25f / invS;
-						q.w = (matrix.m10 - matrix.m01) * invS;
+						q.w = (mRotation.m10 - mRotation.m01) * invS;
 					}
 				}
 
@@ -228,6 +241,7 @@ namespace Directus
 
 			//= TRANSPOSE ====================================================================================
 			Matrix Transposed() const { return Transpose(*this); }
+			void Transpose() { *this = Transpose(*this); }
 			static Matrix Transpose(const Matrix& matrix)
 			{
 				return Matrix(
@@ -303,26 +317,15 @@ namespace Directus
 			{
 				translation = GetTranslation();
 				scale = GetScale();
+				rotation = GetRotation();
+			}
 
-				// let's calculate the rotation now
-				if ((scale.x == 0.0f) || (scale.y == 0.0f) || (scale.z == 0.0f))
-				{
-					rotation = Quaternion(0, 0, 0, 1);
-					return;
-				}
-
-				Matrix normalized;
-				normalized.m00 = m00 / scale.x;
-				normalized.m01 = m01 / scale.x;
-				normalized.m02 = m02 / scale.x;
-				normalized.m10 = m10 / scale.y;
-				normalized.m11 = m11 / scale.y;
-				normalized.m12 = m12 / scale.y;
-				normalized.m20 = m20 / scale.z;
-				normalized.m21 = m21 / scale.z;
-				normalized.m22 = m22 / scale.z;
-
-				rotation = normalized.GetRotation();
+			void SetIdentity()
+			{
+				m00 = 1; m01 = 0; m02 = 0; m03 = 0;
+				m10 = 0; m11 = 1; m12 = 0; m13 = 0;
+				m20 = 0; m21 = 0; m22 = 1; m23 = 0;
+				m30 = 0; m31 = 0; m32 = 0; m33 = 1;
 			}
 
 			//= MULTIPLICATION ================================================================================================================
