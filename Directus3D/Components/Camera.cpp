@@ -33,7 +33,7 @@ using namespace std;
 
 Camera::Camera()
 {
-	m_FOV = 90 * DEG_TO_RAD;
+	m_FOV = 75 * DEG_TO_RAD;
 	m_nearPlane = 0.1f;
 	m_farPlane = 1000.0f;
 	m_frustrum = make_shared<Frustrum>();

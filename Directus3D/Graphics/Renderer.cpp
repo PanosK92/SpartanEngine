@@ -250,9 +250,10 @@ void Renderer::AcquirePrerequisites()
 		else
 			m_directionalLight = nullptr;
 
-		mProjection = m_camera->GetProjectionMatrix();
-		mOrthographicProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
 		mView = m_camera->GetViewMatrix();
+		mProjection = m_camera->GetProjectionMatrix();
+		mViewProjection = mView * mProjection;
+		mOrthographicProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);	
 		mBaseView = m_camera->GetBaseViewMatrix();
 		m_nearPlane = m_camera->GetNearPlane();
 		m_farPlane = m_camera->GetFarPlane();
@@ -278,6 +279,10 @@ void Renderer::DirectionalLightDepthPass()
 		// Set appropriate shadow map as render target
 		m_directionalLight->SetShadowCascadeAsRenderTarget(cascadeIndex);
 
+		Matrix mViewLight = m_directionalLight->CalculateViewMatrix();
+		Matrix mProjectionLight = m_directionalLight->CalculateOrthographicProjectionMatrix(cascadeIndex);
+		Matrix mViewProjectionLight = mViewLight * mProjectionLight;
+
 		for (const auto& gameObject : m_renderables)
 		{
 			auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
@@ -302,8 +307,7 @@ void Renderer::DirectionalLightDepthPass()
 				// Set shader's buffer
 				m_shaderDepth->UpdateMatrixBuffer(
 					gameObject->GetTransform()->GetWorldTransform(),
-					m_directionalLight->CalculateViewMatrix(),
-					m_directionalLight->CalculateOrthographicProjectionMatrix(cascadeIndex)
+					mViewProjectionLight
 				);
 
 				// Render

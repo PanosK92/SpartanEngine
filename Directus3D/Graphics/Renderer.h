@@ -102,9 +102,10 @@ private:
 	Skybox* m_skybox;
 	LineRenderer* m_lineRenderer;
 	Light* m_directionalLight;
-	Directus::Math::Matrix mProjection;
-	Directus::Math::Matrix mOrthographicProjection;
 	Directus::Math::Matrix mView;
+	Directus::Math::Matrix mProjection;
+	Directus::Math::Matrix mViewProjection;
+	Directus::Math::Matrix mOrthographicProjection;
 	Directus::Math::Matrix mBaseView;
 	float m_nearPlane;
 	float m_farPlane;
