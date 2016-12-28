@@ -8,7 +8,6 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 - 20+ audio file formats support.
 - 30+ image file formats support.
 - 40+ 3D file formats support.
-- Build as a single static or dynamic library.
 - Cascaded shadow mapping.
 - Component-based game object system.
 - Cross-Platform state of the art editor.

@@ -71,13 +71,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.85.1;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\FMOD 1.08.14;..\ThirdParty\Mono 4.6;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
-    <LibraryPath>..\ThirdParty\mvcs140d x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\ThirdParty\mvsc140d x64;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.85.1;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\FMOD 1.08.14;..\ThirdParty\Mono 4.6;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
-    <LibraryPath>..\ThirdParty\mvcs140 x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\ThirdParty\mvsc140 x64;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
