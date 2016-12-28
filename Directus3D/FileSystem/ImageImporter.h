@@ -60,6 +60,10 @@ XPM files[reading, writing]
 
 #define FREEIMAGE_LIB
 
+//= LINKING ============================
+#pragma comment(lib, "FreeImageLib.lib")
+//======================================
+
 //= INCLUDES ============================
 #include <vector>
 #include "../Multithreading/ThreadPool.h"

@@ -21,6 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= LINKING ===============================
+#pragma comment(lib, "BulletDynamics.lib")
+#pragma comment(lib, "BulletCollision.lib")
+#pragma comment(lib, "BulletSoftBody.lib")
+#pragma comment(lib, "LinearMath.lib")
+//=========================================
+
 //= INCLUDES ===============
 #include "../Math/Vector3.h"
 #include "../Core/Subsystem.h"

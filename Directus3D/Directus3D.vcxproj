@@ -71,13 +71,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.85.1;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\FMOD 1.08.14;..\ThirdParty\Mono 4.6;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
-    <LibraryPath>..\ThirdParty\Compiled x64d;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\ThirdParty\mvcs140d x64;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.85.1;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\FMOD 1.08.14;..\ThirdParty\Mono 4.6;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
-    <LibraryPath>..\ThirdParty\Compiled x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\ThirdParty\mvcs140 x64;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -96,7 +96,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>assimp-vc140-mt.lib;BulletCollision.lib;BulletDynamics.lib;FreeImageLib.lib;LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions> /machine:x64 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
@@ -126,7 +126,7 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>assimp-vc140-mt.lib;BulletCollision.lib;BulletDynamics.lib;FreeImageLib.lib;LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions> /machine:x64 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
