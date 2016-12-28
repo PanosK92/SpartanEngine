@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "IComponent.h"
-#include "../Scripting/ScriptInstance.h"
 //======================================
 
 class DllExport Script : public IComponent
@@ -47,6 +46,6 @@ public:
 	std::string GetName();
 
 private:
-	std::shared_ptr<ScriptInstance> m_scriptInstance;
+	//std::shared_ptr<ScriptInstance> m_scriptInstance;
 	std::string m_name;
 };

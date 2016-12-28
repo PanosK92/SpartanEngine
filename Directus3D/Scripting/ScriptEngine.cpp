@@ -19,156 +19,45 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES =======================
 #include "ScriptEngine.h"
-#include <angelscript.h>
-#include <scriptstdstring/scriptstdstring.h>
-#include <scriptstdstring/scriptstdstring.cpp>
-#include "ScriptInterface.h"
-#include "Module.h"
-#include "../Logging/Log.h"
-#include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
-//==========================================
+#include "../Logging/Log.h"
+#include <mono/jit/jit.h>
+#include <mono/metadata/assembly.h>
+#include <mono/metadata/loader.h>
+#include <mono/metadata/metadata.h>
+#include <mono/metadata/mono-config.h>
+//=================================
 
-#define AS_USE_STLNAMES = 1
+//= NAMESPACES =====
+using namespace std;
+//==================
+
+MonoDomain* domain;
+const char* monoAssemblyPath = "Data\\Mono\\lib";
+const char* monoConfigurationPath = "Data\\Mono\\etc";
+const char* domainName = "Directus3DMono";
+const char* RUNTIME_VERSION = "v4.0.30319";
 
 ScriptEngine::ScriptEngine(Context* context) : Subsystem(context)
 {
-	m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	if (!m_scriptEngine)
-	{
-		LOG_ERROR("Failed to create AngelScript engine.");
-		return;
-	}
+	// Tell Mono where to find its brain
+	mono_set_dirs(monoAssemblyPath, monoConfigurationPath);
 
-	// Register the string type
-	RegisterStdString(m_scriptEngine);
+	// Initialize the JIT runtime 
+	domain = mono_jit_init_version(domainName, RUNTIME_VERSION);
 
-	// Register engine script interface
-	auto scriptInterface = make_shared<ScriptInterface>();
-	scriptInterface->Register(m_scriptEngine, g_context);
-
-	// Set the message callback to print the human readable messages that the engine gives in case of errors
-	m_scriptEngine->SetMessageCallback(asMETHOD(ScriptEngine, message_callback), this, asCALL_THISCALL);
-
-	m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
+	if (!domain)
+		LOG_ERROR("Failed to initialize JIT runtime");
 }
 
 ScriptEngine::~ScriptEngine()
 {
-	Reset();
-
-	if (m_scriptEngine)
-	{
-		m_scriptEngine->ShutDownAndRelease();
-		m_scriptEngine = nullptr;
-	}
+	mono_jit_cleanup(domain);
 }
 
 void ScriptEngine::Reset()
 {
-	for (auto n = 0; n < m_contexts.size(); n++)
-		m_contexts[n]->Release();
 
-	m_contexts.clear();
-	m_contexts.shrink_to_fit();
-}
-
-asIScriptEngine* ScriptEngine::GetAsIScriptEngine()
-{
-	return m_scriptEngine;
-}
-
-/*------------------------------------------------------------------------------
-								[CONTEXT]
-------------------------------------------------------------------------------*/
-// Contexts is what you use to call AngelScript functions and methods.
-// They say you must pool them to avoid overhead. So I do as they say.
-asIScriptContext* ScriptEngine::RequestContext()
-{
-	asIScriptContext* context = nullptr;
-	if (m_contexts.size())
-	{
-		context = *m_contexts.rbegin();
-		m_contexts.pop_back();
-	}
-	else
-	{
-		context = m_scriptEngine->CreateContext();
-	}
-
-	return context;
-}
-
-// A context should be returned after calling an AngelScript function, 
-// it will be inserted back in the pool for re-use
-void ScriptEngine::ReturnContext(asIScriptContext* context)
-{
-	m_contexts.push_back(context);
-	context->Unprepare();
-}
-
-/*------------------------------------------------------------------------------
-							[CALLS]
-------------------------------------------------------------------------------*/
-bool ScriptEngine::ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj)
-{
-	asIScriptContext* ctx = RequestContext();
-
-	ctx->Prepare(scriptFunc); // prepare the context for calling the method
-	ctx->SetObject(obj); // set the object pointer
-	int r = ctx->Execute(); // execute the call
-
-	// output any exceptions
-	if (r == asEXECUTION_EXCEPTION)
-	{
-		LogExceptionInfo(ctx);
-		ReturnContext(ctx);
-		return false;
-	}
-	ReturnContext(ctx);
-
-	return true;
-}
-
-/*------------------------------------------------------------------------------
-									[MODULE]
-------------------------------------------------------------------------------*/
-void ScriptEngine::DiscardModule(string moduleName)
-{
-	m_scriptEngine->DiscardModule(moduleName.c_str());
-}
-
-/*------------------------------------------------------------------------------
-								[PRIVATE]
-------------------------------------------------------------------------------*/
-// This is used for script exception messages
-void ScriptEngine::LogExceptionInfo(asIScriptContext* ctx)
-{
-	string exceptionDescription = ctx->GetExceptionString(); // get the exception that occurred
-	const asIScriptFunction* function = ctx->GetExceptionFunction(); // get the function where the exception occured
-
-	string functionDecleration = function->GetDeclaration();
-	string moduleName = function->GetModuleName();
-	string scriptPath = function->GetScriptSectionName();
-	string scriptFile = FileSystem::GetFileNameFromPath(scriptPath);
-	string exceptionLine = to_string(ctx->GetExceptionLineNumber());
-
-	LOG_ERROR(exceptionDescription + ", at line " + exceptionLine + ", in function " + functionDecleration + ", in script " + scriptFile);
-}
-
-// This is used for AngelScript error messages
-void ScriptEngine::message_callback(const asSMessageInfo& msg)
-{
-	string filename = FileSystem::GetFileNameFromPath(msg.section);
-	string message = msg.message;
-
-	string finalMessage;
-	if (filename != "")
-		finalMessage = filename + " " + message;
-	else
-		finalMessage = message;
-
-	LOG_ERROR(finalMessage);
 }

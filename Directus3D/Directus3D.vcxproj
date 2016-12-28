@@ -69,13 +69,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.85.1;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\AngelScript 2.31.1;..\ThirdParty\FMOD 1.08.14;$(IncludePath)</IncludePath>
+    <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.85.1;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\FMOD 1.08.14;..\ThirdParty\Mono 4.6;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
     <LibraryPath>..\ThirdParty\Compiled x64d;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.85.1;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\AngelScript 2.31.1;..\ThirdParty\FMOD 1.08.14;$(IncludePath)</IncludePath>
+    <IncludePath>..\ThirdParty\FreeImage 3.17.0;..\ThirdParty\Bullet 2.85.1;..\ThirdParty\Assimp 3.3.1;..\ThirdParty\FMOD 1.08.14;..\ThirdParty\Mono 4.6;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)..\Binaries</OutDir>
     <LibraryPath>..\ThirdParty\Compiled x64;$(LibraryPath)</LibraryPath>
     <TargetName>Directus3DRuntime</TargetName>
@@ -96,7 +96,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>angelscript64.lib;assimp-vc140-mt.lib;BulletCollision.lib;BulletDynamics.lib;FreeImageLib.lib;LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>assimp-vc140-mt.lib;BulletCollision.lib;BulletDynamics.lib;FreeImageLib.lib;LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions> /machine:x64 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
@@ -126,7 +126,7 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>angelscript64.lib;assimp-vc140-mt.lib;BulletCollision.lib;BulletDynamics.lib;FreeImageLib.lib;LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>assimp-vc140-mt.lib;BulletCollision.lib;BulletDynamics.lib;FreeImageLib.lib;LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions> /machine:x64 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
@@ -198,10 +198,7 @@
     <ClCompile Include="Math\Vector4.cpp" />
     <ClCompile Include="Physics\PhysicsDebugDraw.cpp" />
     <ClCompile Include="Physics\PhysicsWorld.cpp" />
-    <ClCompile Include="Scripting\Module.cpp" />
-    <ClCompile Include="Scripting\ScriptInterface.cpp" />
     <ClCompile Include="Scripting\ScriptEngine.cpp" />
-    <ClCompile Include="Scripting\ScriptInstance.cpp" />
     <ClCompile Include="EventSystem\EventHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -284,10 +281,7 @@
     <ClInclude Include="Physics\PhysicsDebugDraw.h" />
     <ClInclude Include="Physics\PhysicsWorld.h" />
     <ClInclude Include="Multithreading\ThreadPool.h" />
-    <ClInclude Include="Scripting\Module.h" />
-    <ClInclude Include="Scripting\ScriptInterface.h" />
     <ClInclude Include="Scripting\ScriptEngine.h" />
-    <ClInclude Include="Scripting\ScriptInstance.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Scripts\FirstPersonController.as" />

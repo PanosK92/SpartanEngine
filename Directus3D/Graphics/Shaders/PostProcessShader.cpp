@@ -49,7 +49,7 @@ void PostProcessShader::Initialize(LPCSTR pass, D3D11GraphicsDevice* graphicsDev
 	// load the vertex and the pixel shader
 	m_shader = make_shared<D3D11Shader>(m_graphics);
 	m_shader->AddDefine(pass, true);
-	m_shader->Load("Assets/Shaders/PostProcess.hlsl");
+	m_shader->Load("Data/Shaders/PostProcess.hlsl");
 	m_shader->SetInputLayout(PositionTexture);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);

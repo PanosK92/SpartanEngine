@@ -115,7 +115,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	[MISC]
 	------------------------------------------------------------------------------*/
 	m_texNoiseMap = make_shared<Texture>(g_context);
-	m_texNoiseMap->LoadFromFile("Assets/Shaders/noise.png");
+	m_texNoiseMap->LoadFromFile("Data/Shaders/noise.png");
 	m_texNoiseMap->SetType(Normal);
 
 	// Subcribe to render event
