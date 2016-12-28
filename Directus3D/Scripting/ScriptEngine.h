@@ -21,20 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= LINKING ============================
+#pragma comment(lib, "monosgen-2.0.lib")
+//======================================
+
 //= INCLUDES =================
-#include <vector>
 #include "../Core/Subsystem.h"
 //============================
-
-class asIScriptObject;
-class asIScriptFunction;
-class asIScriptEngine;
-class asIScriptContext;
-class asIScriptModule;
-class CScriptBuilder;
-struct asSFuncPtr;
-struct asSMessageInfo;
-class Module;
 
 class ScriptEngine : public Subsystem
 {
@@ -43,31 +36,4 @@ public:
 	~ScriptEngine();
 
 	void Reset();
-	asIScriptEngine* GetAsIScriptEngine();
-
-	/*------------------------------------------------------------------------------
-									[CONTEXT]
-	------------------------------------------------------------------------------*/
-	asIScriptContext* RequestContext();
-	void ReturnContext(asIScriptContext* ctx);
-
-	/*------------------------------------------------------------------------------
-									[CALLS]
-	------------------------------------------------------------------------------*/
-	bool ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj);
-
-	/*------------------------------------------------------------------------------
-								[MODULE]
-	------------------------------------------------------------------------------*/
-	void DiscardModule(std::string moduleName);
-
-private:
-	asIScriptEngine* m_scriptEngine;
-	std::vector<asIScriptContext*> m_contexts;
-
-	/*------------------------------------------------------------------------------
-									[PRIVATE]
-	------------------------------------------------------------------------------*/
-	void LogExceptionInfo(asIScriptContext* ctx);
-	void message_callback(const asSMessageInfo& msg);
 };

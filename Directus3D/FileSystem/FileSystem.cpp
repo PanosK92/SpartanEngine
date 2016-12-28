@@ -144,7 +144,7 @@ string FileSystem::GetRelativePathFromAbsolutePath(const string& filePath)
 	// D:\Projects\Directus3D\Build\Assets\Models\cube\tex.jpg --> Assets\Models\cube\tex.jpg
 	// It removes everything before the folder "Assets", making the path relative to the engine
 
-	size_t position = filePath.find("Assets");
+	size_t position = filePath.find("Data");
 
 	if (position == string::npos)
 		return filePath;

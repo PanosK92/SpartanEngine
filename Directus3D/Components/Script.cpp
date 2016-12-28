@@ -32,7 +32,7 @@ using namespace std;
 
 Script::Script()
 {
-	m_scriptInstance = nullptr;
+	//m_scriptInstance = nullptr;
 }
 
 Script::~Script()
@@ -48,11 +48,11 @@ void Script::Reset()
 
 void Script::Start()
 {
-	if (!m_scriptInstance)
+	/*if (!m_scriptInstance)
 		return;
 
 	if (m_scriptInstance->IsInstantiated())
-		m_scriptInstance->ExecuteStart();
+		m_scriptInstance->ExecuteStart();*/
 }
 
 void Script::OnDisable()
@@ -67,16 +67,16 @@ void Script::Remove()
 
 void Script::Update()
 {
-	if (!m_scriptInstance)
+	/*if (!m_scriptInstance)
 		return;
 
 	if (m_scriptInstance->IsInstantiated())
-		m_scriptInstance->ExecuteUpdate();
+		m_scriptInstance->ExecuteUpdate();*/
 }
 
 void Script::Serialize()
 {
-	Serializer::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)DATA_NOT_ASSIGNED);
+	//Serializer::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)DATA_NOT_ASSIGNED);
 }
 
 void Script::Deserialize()
@@ -90,24 +90,27 @@ void Script::Deserialize()
 
 bool Script::AddScript(const string& filePath)
 {
-	// Instantiate the script
-	m_scriptInstance = make_shared<ScriptInstance>();
-	m_scriptInstance->Instantiate(filePath, g_gameObject, g_context->GetSubsystem<ScriptEngine>());
+	//// Instantiate the script
+	//m_scriptInstance = make_shared<ScriptInstance>();
+	//m_scriptInstance->Instantiate(filePath, g_gameObject, g_context->GetSubsystem<ScriptEngine>());
 
-	// Check if the script has been instantiated successfully.
-	if (!m_scriptInstance->IsInstantiated())
-		return false;
+	//// Check if the script has been instantiated successfully.
+	//if (!m_scriptInstance->IsInstantiated())
+	//	return false;
 
-	m_scriptInstance->ExecuteStart();
+	//m_scriptInstance->ExecuteStart();
 	return true;
 }
 
 string Script::GetScriptPath()
 {
-	return m_scriptInstance ? m_scriptInstance->GetScriptPath() : DATA_NOT_ASSIGNED;
+	//return m_scriptInstance ? m_scriptInstance->GetScriptPath() : DATA_NOT_ASSIGNED;
+	return DATA_NOT_ASSIGNED;
 }
 
 string Script::GetName()
 {
-	return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromPath(GetScriptPath()) : "N/A";
+	//return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromPath(GetScriptPath()) : "N/A";
+
+	return DATA_NOT_ASSIGNED;
 }

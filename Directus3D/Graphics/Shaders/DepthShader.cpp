@@ -46,7 +46,7 @@ void DepthShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 
 	// load the vertex and the pixel shader
 	m_shader = make_shared<D3D11Shader>(m_graphics);
-	m_shader->Load("Assets/Shaders/Depth.hlsl");
+	m_shader->Load("Data/Shaders/Depth.hlsl");
 	m_shader->SetInputLayout(Position);
 
 	// create a buffer

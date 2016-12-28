@@ -40,20 +40,15 @@ DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
 
 }
 
-void DirectusFileExplorer::Initialize(
-        QWidget* mainWindow,
-        DirectusCore* directusCore,
-        DirectusHierarchy* hierarchy,
-        DirectusInspector* inspector
-        )
+void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusCore* directusCore, DirectusHierarchy* hierarchy, DirectusInspector* inspector)
 {
-    QString root = "Assets";
+    QString rootFolder = "Standard Assets";
     setAcceptDrops(true);
     setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     m_fileModel = new QFileSystemModel(this);
     m_fileModel->setFilter(QDir::Files | QDir::AllDirs | QDir::NoDotAndDotDot); // Set a filter that displays only folders
-    m_fileModel->setRootPath(root);  // Set the root path
+    m_fileModel->setRootPath(rootFolder);
 
     m_directusCore = directusCore;
     m_hierarchy = hierarchy;
@@ -73,7 +68,7 @@ void DirectusFileExplorer::Initialize(
 
     // I must set the path manually as the tree view
     // (at least visually) refuses to change anything.
-    QModelIndex index = m_fileModel->index("Assets");
+    QModelIndex index = m_fileModel->index(rootFolder);
     this->setRootIndex(index);
 
     // Context menu

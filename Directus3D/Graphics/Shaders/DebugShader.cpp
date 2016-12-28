@@ -45,7 +45,7 @@ void DebugShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 
 	// load the vertex and the pixel shader
 	m_shader = make_shared<D3D11Shader>(m_graphics);
-	m_shader->Load("Assets/Shaders/Debug.hlsl");
+	m_shader->Load("Data/Shaders/Debug.hlsl");
 	m_shader->SetInputLayout(PositionColor);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
