@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016 Panos Karabelas
+Copyright(c) 2016-2017 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES =========================
 #include "ScriptEngine.h"
 #include "../Core/Context.h"
 #include "../Logging/Log.h"
@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mono/metadata/loader.h>
 #include <mono/metadata/metadata.h>
 #include <mono/metadata/mono-config.h>
-//=================================
+//====================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -38,18 +38,36 @@ MonoDomain* domain;
 const char* monoAssemblyPath = "Data\\Mono\\lib";
 const char* monoConfigurationPath = "Data\\Mono\\etc";
 const char* domainName = "Directus3DMono";
-const char* RUNTIME_VERSION = "v4.0.30319";
+const char* runtimeVersion = "v4.0.30319";
+
+void PrintHello()
+{
+	LOG_INFO("Hello");
+}
 
 ScriptEngine::ScriptEngine(Context* context) : Subsystem(context)
 {
-	// Tell Mono where to find its brain
+	// Tell Mono where to find it's assembly and configuration files
 	mono_set_dirs(monoAssemblyPath, monoConfigurationPath);
 
 	// Initialize the JIT runtime 
-	domain = mono_jit_init_version(domainName, RUNTIME_VERSION);
+	domain = mono_jit_init_version(domainName, runtimeVersion);
 
 	if (!domain)
 		LOG_ERROR("Failed to initialize JIT runtime");
+
+	//= TEST/EXPERIMENT ===========================================================================
+	MonoAssembly* assembly = mono_domain_assembly_open(mono_domain_get(), "Directus3DRuntime.dll");
+	if (!assembly)
+		LOG_ERROR("Failed to load assembly.");
+
+	MonoImage* image = mono_assembly_get_image(assembly);
+
+	mono_add_internal_call("ClassName::FunctionName", PrintHello);
+
+	MonoClass* mclass = mono_class_from_name(image, "", "");
+	MonoMethod* method = mono_class_get_method_from_name(mclass, "Print", 0);
+	//=============================================================================================
 }
 
 ScriptEngine::~ScriptEngine()
