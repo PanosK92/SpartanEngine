@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2017 Panos Karabelas
+Copyright(c) 2016 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -144,7 +144,7 @@ string FileSystem::GetRelativePathFromAbsolutePath(const string& filePath)
 	// D:\Projects\Directus3D\Build\Assets\Models\cube\tex.jpg --> Assets\Models\cube\tex.jpg
 	// It removes everything before the folder "Assets", making the path relative to the engine
 
-	size_t position = filePath.find("Data");
+	size_t position = filePath.find("Assets");
 
 	if (position == string::npos)
 		return filePath;

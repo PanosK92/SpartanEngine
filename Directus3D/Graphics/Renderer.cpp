@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2017 Panos Karabelas
+Copyright(c) 2016 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -115,7 +115,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	[MISC]
 	------------------------------------------------------------------------------*/
 	m_texNoiseMap = make_shared<Texture>(g_context);
-	m_texNoiseMap->LoadFromFile("Data/Shaders/noise.png");
+	m_texNoiseMap->LoadFromFile("Assets/Shaders/noise.png");
 	m_texNoiseMap->SetType(Normal);
 
 	// Subcribe to render event

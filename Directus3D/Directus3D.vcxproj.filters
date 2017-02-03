@@ -126,7 +126,13 @@
     <ClCompile Include="Physics\PhysicsDebugDraw.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Scripting\Module.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Scripting\ScriptEngine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scripting\ScriptInstance.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Components\MeshFilter.cpp">
@@ -151,6 +157,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Core\Context.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scripting\ScriptInterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Socket\Socket.cpp">
@@ -350,7 +359,13 @@
     <ClInclude Include="Physics\PhysicsDebugDraw.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Scripting\Module.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Scripting\ScriptEngine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scripting\ScriptInstance.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Components\MeshFilter.h">
@@ -378,6 +393,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Core\Context.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scripting\ScriptInterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Socket\Socket.h">
