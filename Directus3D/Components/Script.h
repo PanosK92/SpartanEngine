@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2017 Panos Karabelas
+Copyright(c) 2016 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "IComponent.h"
+#include "../Scripting/ScriptInstance.h"
 //======================================
 
 class DllExport Script : public IComponent
@@ -46,6 +47,6 @@ public:
 	std::string GetName();
 
 private:
-	//std::shared_ptr<ScriptInstance> m_scriptInstance;
+	std::shared_ptr<ScriptInstance> m_scriptInstance;
 	std::string m_name;
 };

@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2017 Panos Karabelas
+Copyright(c) 2016 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -112,7 +112,7 @@ bool Texture::LoadFromFile(const string& filePath)
 	if (FileSystem::GetExtensionFromPath(filePath) == ".dds")
 	{
 		ID3D11ShaderResourceView* ddsTex = nullptr;
-		HRESULT hr = DirectX::CreateDDSTextureFromFile(m_context->GetSubsystem<D3D11GraphicsDevice>()->GetDevice(), L"Data/Environment/environment.dds", nullptr, &ddsTex);
+		HRESULT hr = DirectX::CreateDDSTextureFromFile(m_context->GetSubsystem<D3D11GraphicsDevice>()->GetDevice(), L"Assets/Environment/environment.dds", nullptr, &ddsTex);
 		if (FAILED(hr))
 			return false;
 

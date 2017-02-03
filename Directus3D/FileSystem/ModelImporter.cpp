@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2017 Panos Karabelas
+Copyright(c) 2016 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -103,21 +103,21 @@ bool ModelImporter::Load(const string& filePath)
 	}
 
 	// Create all the appropriate directories
-	FileSystem::CreateDirectory_("Standard Assets/Models/");
-	FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
-	FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
-	FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
-	FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/");
+	FileSystem::CreateDirectory_("Assets/Models/");
+	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
+	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
+	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
+	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/");
 
 	// Copy the source model file to an appropriate directory
-	string modelDestination = "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(m_modelName);
+	string modelDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(m_modelName);
 	FileSystem::CopyFileFromTo(m_filePath, modelDestination);
 
 	// Copy any material files (used be obj models)
 	auto files = FileSystem::GetFilesInDirectory(FileSystem::GetPathWithoutFileName(m_filePath));
 	for (const auto& file : files)
 		if (FileSystem::GetExtensionFromPath(file) == ".mtl")
-			FileSystem::CopyFileFromTo(m_filePath, "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(file));
+			FileSystem::CopyFileFromTo(m_filePath, "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(file));
 
 	// This function will recursively process the entire model
 	ProcessNode(scene, scene->mRootNode, nullptr, nullptr);
@@ -278,7 +278,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 
 	// No need to save the mesh as a file here, when the model importer performs a scale normalization on the entire model
 	// this will cause the mesh to update and save itself, thus I only pass the directory to do so.
-	if (meshComp->HasMesh()) meshComp->GetMesh().lock()->SetDirectory("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
+	if (meshComp->HasMesh()) meshComp->GetMesh().lock()->SetDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
 
 	// process materials
 	if (scene->HasMaterials())
@@ -294,7 +294,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 
 		// Save the material in our custom format
 		if (!material.expired())
-			material.lock()->Save("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/" + material.lock()->GetName(), false);
+			material.lock()->Save("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/" + material.lock()->GetName(), false);
 	}
 
 	// free memory
@@ -392,7 +392,7 @@ void ModelImporter::AddTextureToMaterial(weak_ptr<Material> material, TextureTyp
 	}
 
 	// Copy the source texture to an appropriate directory
-	string textureDestination = "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
+	string textureDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
 	FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
 	// Set the texture to the material
