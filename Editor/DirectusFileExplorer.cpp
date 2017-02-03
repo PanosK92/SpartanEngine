@@ -47,7 +47,7 @@ void DirectusFileExplorer::Initialize(
         DirectusInspector* inspector
         )
 {
-    QString root = "Assets";
+    QString root = "Standard Assets";
     setAcceptDrops(true);
     setEditTriggers(QAbstractItemView::NoEditTriggers);
 
@@ -73,7 +73,7 @@ void DirectusFileExplorer::Initialize(
 
     // I must set the path manually as the tree view
     // (at least visually) refuses to change anything.
-    QModelIndex index = m_fileModel->index("Assets");
+    QModelIndex index = m_fileModel->index(root);
     this->setRootIndex(index);
 
     // Context menu

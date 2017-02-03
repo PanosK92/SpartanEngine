@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016 Panos Karabelas
+Copyright(c) 2016-2017 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,15 +28,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DATA_NOT_ASSIGNED "N/A"
 
-#define PREFAB_EXTENSION ".prefab"
+//= ENGINE DATA PATHS ==========================
+#define DEFAULT_PATH_CUBEMAPS "Assets/Cubemaps/"
+#define DEFAULT_PATH_SHADERS "Assets/Shaders/"
+//==============================================
 
+//= METADATA ===================================
 #define METADATA_EXTENSION ".meta"
 #define METADATA_TYPE_TEXTURE "Texture"
 #define METADATA_TYPE_AUDIOCLIP "Audio_Clip"
+//==============================================
 
+//= CUSTOM EXTENSIONS ==========================
 #define SCENE_EXTENSION ".directus"
 #define MATERIAL_EXTENSION ".mat"
 #define MESH_EXTENSION ".msh"
+#define PREFAB_EXTENSION ".prefab"
+//==============================================
 
 class DllExport FileSystem
 {

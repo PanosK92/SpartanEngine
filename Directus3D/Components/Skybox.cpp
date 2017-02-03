@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016 Panos Karabelas
+Copyright(c) 2016-2017 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Core/Scene.h"
 #include "../Resource/ResourceCache.h"
+#include "../Logging/Log.h"
 //====================================
 
 //= NAMESPACES ====================
@@ -53,7 +54,7 @@ Skybox::~Skybox()
 void Skybox::Reset()
 {
 	m_cubeMapTexture = make_shared<Texture>(g_context);
-	m_cubeMapTexture->LoadFromFile("Assets/Environment/environment.dds");
+	m_cubeMapTexture->LoadFromFile("Data/Cubemaps/environment.dds");
 	m_cubeMapTexture->SetType(CubeMap);
 	m_cubeMapTexture->SetWidth(1024);
 	m_cubeMapTexture->SetHeight(1024);
