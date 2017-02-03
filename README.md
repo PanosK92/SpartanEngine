@@ -18,7 +18,7 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 - Physically based shading.
 - Physics.
 - Post-process effects like FXAA & Sharpening.
-- Scripting (AngelScript).
+- Scripting.
 - Windows support.
 
 # Features under development - v0.3 (Codename: Da Vinci)
