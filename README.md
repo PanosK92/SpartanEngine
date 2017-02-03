@@ -24,7 +24,7 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 # Features under development - v0.3 (Codename: Da Vinci)
 This version will focus on delivering a new standard when it comes to graphics quality and overall reliability.
 - [Active] Bug fixes, lot's of them.
-- [Active] C# 6.0 scripting (replace AngelScript with Mono).
+- [Active] Replace AngelScript with Lua(a modern and well known scripting language).
 - [Active] DirectX 12 Renderer (It's gonna take a while because I want to do it right, not just swap the API calls)
 - [Active] Dynamic resolution scaling.
 - [Active] Improved shadow quality.
