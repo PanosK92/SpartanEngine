@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016 Panos Karabelas
+Copyright(c) 2016-2017 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@ void DebugShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
 
 	// load the vertex and the pixel shader
 	m_shader = make_shared<D3D11Shader>(m_graphics);
-	m_shader->Load("Assets/Shaders/Debug.hlsl");
+	m_shader->Load("Data/Shaders/Debug.hlsl");
 	m_shader->SetInputLayout(PositionColor);
 	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 

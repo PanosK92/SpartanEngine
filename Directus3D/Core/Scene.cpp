@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016 Panos Karabelas
+Copyright(c) 2016-2017 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -482,8 +482,8 @@ GameObject* Scene::CreateCamera()
 	camera->SetName("Camera");
 	camera->AddComponent<Camera>();
 	camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
-	camera->AddComponent<Script>()->AddScript("Assets/Scripts/MouseLook.as");
-	camera->AddComponent<Script>()->AddScript("Assets/Scripts/FirstPersonController.as");
+	camera->AddComponent<Script>()->AddScript("Standard Assets/Scripts/MouseLook.as");
+	camera->AddComponent<Script>()->AddScript("Standard Assets/Scripts/FirstPersonController.as");
 
 	return camera;
 }
