@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ============================
 #include "Material.h"
 #include "../IO/Serializer.h"
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
-#include "../Resource/ResourceCache.h"
 #include "../Core/Context.h"
-//====================================
+#include "../Resource/ResourceManager.h"
+//======================================
 
 //= NAMESPACES ====================
 using namespace std;
@@ -154,7 +154,7 @@ bool Material::LoadFromFile(const string& filePath)
 
 		// If the texture happens to be loaded, we might as well get a reference to it
 		if (m_context)
-			texture = m_context->GetSubsystem<ResourceCache>()->GetResourceByPath<Texture>(texPath);
+			texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByPath<Texture>(texPath);
 
 		m_textures.insert(make_pair(make_pair(texPath, texType), texture));
 	}
@@ -164,7 +164,7 @@ bool Material::LoadFromFile(const string& filePath)
 	// Load unloaded textures
 	for (auto& it : m_textures)
 		if (it.second.expired())
-			it.second = m_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(it.first.first);
+			it.second = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(it.first.first);
 
 	AcquireShader();
 
@@ -196,7 +196,7 @@ void Material::SetTexture(const string& textureID)
 	if (!m_context)
 		return;
 
-	SetTexture(m_context->GetSubsystem<ResourceCache>()->GetResourceByID<Texture>(textureID));
+	SetTexture(m_context->GetSubsystem<ResourceManager>()->GetResourceByID<Texture>(textureID));
 }
 
 // Set texture by loading it from a file
@@ -205,7 +205,7 @@ void Material::SetTexture(const string& filePath, TextureType type)
 	if (!m_context)
 		return;
 
-	auto texture = m_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(filePath);
+	auto texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(filePath);
 	if (!texture.expired())
 	{
 		texture.lock()->SetType(type);
@@ -283,7 +283,7 @@ void Material::AcquireShader()
 
 weak_ptr<ShaderVariation> Material::FindMatchingShader(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
 {
-	auto shaders = m_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<ShaderVariation>();
+	auto shaders = m_context->GetSubsystem<ResourceManager>()->GetAllByType<ShaderVariation>();
 	for (const auto shaderTemp : shaders)
 	{
 		auto shader = shaderTemp.lock();
@@ -316,7 +316,7 @@ weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(bool albedo, boo
 	shader->Initialize(albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<D3D11GraphicsDevice>());
 
 	// Add the shader to the pool and return it
-	return m_context->GetSubsystem<ResourceCache>()->AddResource(shader);
+	return m_context->GetSubsystem<ResourceManager>()->Add(shader);
 }
 
 void** Material::GetShaderResourceViewByTextureType(TextureType type)

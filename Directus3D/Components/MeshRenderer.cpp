@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Shaders/ShaderVariation.h"
 #include "../Graphics/Mesh.h"
 #include "../FileSystem/FileSystem.h"
-#include "../Resource/ResourceCache.h"
+#include "../Resource/ResourceManager.h"
 //==============================================
 
 //= NAMESPACES ====================
@@ -128,7 +128,7 @@ void MeshRenderer::SetMaterial(weak_ptr<Material> material)
 	if (material.expired())
 		return;
 
-	m_material = g_context->GetSubsystem<ResourceCache>()->AddResource(material.lock());
+	m_material = g_context->GetSubsystem<ResourceManager>()->Add(material.lock());
 }
 
 void MeshRenderer::SetMaterial(MaterialType type)
@@ -163,14 +163,14 @@ void MeshRenderer::SetMaterial(MaterialType type)
 
 weak_ptr<Material> MeshRenderer::SetMaterial(const string& ID)
 {
-	auto material = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Material>(ID);
+	auto material = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Material>(ID);
 	SetMaterial(material);
 	return GetMaterial();
 }
 
 weak_ptr<Material> MeshRenderer::LoadMaterial(const string& filePath)
 {
-	auto material = g_context->GetSubsystem<ResourceCache>()->LoadResource<Material>(filePath);
+	auto material = g_context->GetSubsystem<ResourceManager>()->Load<Material>(filePath);
 	SetMaterial(material);
 	return GetMaterial();
 }

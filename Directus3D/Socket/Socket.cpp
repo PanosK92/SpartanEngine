@@ -16,15 +16,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =========================
 #include "Socket.h"
 #include "../Logging/Log.h"
 #include "../Graphics/Renderer.h"
 #include "../Core/Scene.h"
-#include "../FileSystem/ModelImporter.h"
+#include "../Resource/ModelImporter.h"
 #include "../Core/Engine.h"
 #include "../Core/Timer.h"
-//======================================
+//====================================
 
 //= NAMESPACES =====
 using namespace std;

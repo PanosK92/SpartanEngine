@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ===========================
 #include "Scene.h"
 #include <complex>
 #include "../IO/Serializer.h"
@@ -37,8 +37,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EventSystem/EventHandler.h"
 #include "../Core/Context.h"
 #include "Settings.h"
-#include "../Resource/ResourceCache.h"
-//=====================================
+#include "../Resource/ResourceManager.h"
+//======================================
 
 //= NAMESPACES ====================
 using namespace std;
@@ -109,7 +109,7 @@ void Scene::Clear()
 	m_skybox = nullptr;
 
 	// Clear the resource cache
-	g_context->GetSubsystem<ResourceCache>()->Clear();
+	g_context->GetSubsystem<ResourceManager>()->Unload();
 
 	// Clear/Reset subsystems that allocate some things
 	g_context->GetSubsystem<ScriptEngine>()->Reset();
@@ -190,18 +190,18 @@ bool Scene::LoadFromFile(const string& filePath)
 	{
 		if (FileSystem::IsSupportedMeshFile(resourcePath))
 		{
-			g_context->GetSubsystem<ResourceCache>()->LoadResource<Mesh>(resourcePath);
+			g_context->GetSubsystem<ResourceManager>()->Load<Mesh>(resourcePath);
 			continue;
 		}
 
 		if (FileSystem::IsSupportedMaterialFile(resourcePath))
 		{
-			g_context->GetSubsystem<ResourceCache>()->LoadResource<Material>(resourcePath);
+			g_context->GetSubsystem<ResourceManager>()->Load<Material>(resourcePath);
 			continue;
 		}
 
 		if (FileSystem::IsSupportedImageFile(resourcePath))
-			g_context->GetSubsystem<ResourceCache>()->LoadResource<Texture>(resourcePath);
+			g_context->GetSubsystem<ResourceManager>()->Load<Texture>(resourcePath);
 	}
 
 	

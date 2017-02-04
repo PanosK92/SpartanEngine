@@ -165,7 +165,7 @@
     <ClCompile Include="Core\Settings.cpp" />
     <ClCompile Include="Graphics\Shaders\ShadowMappingShader.cpp" />
     <ClCompile Include="Multithreading\ThreadPool.cpp" />
-    <ClCompile Include="Resource\ResourceCache.cpp" />
+    <ClCompile Include="Resource\ResourceManager.cpp" />
     <ClCompile Include="Socket\Socket.cpp" />
     <ClCompile Include="Graphics\Texture.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
@@ -187,9 +187,9 @@
     <ClCompile Include="FileSystem\FileSystem.cpp" />
     <ClCompile Include="Logging\Log.cpp" />
     <ClCompile Include="IO\Serializer.cpp" />
-    <ClCompile Include="FileSystem\DDSTextureImporter.cpp" />
-    <ClCompile Include="FileSystem\ImageImporter.cpp" />
-    <ClCompile Include="FileSystem\ModelImporter.cpp" />
+    <ClCompile Include="Resource\DDSTextureImporter.cpp" />
+    <ClCompile Include="Resource\ImageImporter.cpp" />
+    <ClCompile Include="Resource\ModelImporter.cpp" />
     <ClCompile Include="Math\Matrix.cpp" />
     <ClCompile Include="Math\Plane.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
@@ -242,6 +242,7 @@
     <ClInclude Include="Graphics\Mesh.h" />
     <ClInclude Include="Core\Scene.h" />
     <ClInclude Include="Core\Settings.h" />
+    <ClInclude Include="Resource\ResourceManager.h" />
     <ClInclude Include="Resource\IResource.h" />
     <ClInclude Include="Resource\ResourceCache.h" />
     <ClInclude Include="Socket\Socket.h" />
@@ -270,9 +271,9 @@
     <ClInclude Include="Logging\ILogger.h" />
     <ClInclude Include="Logging\Log.h" />
     <ClInclude Include="IO\Serializer.h" />
-    <ClInclude Include="FileSystem\DDSTextureImporter.h" />
-    <ClInclude Include="FileSystem\ImageImporter.h" />
-    <ClInclude Include="FileSystem\ModelImporter.h" />
+    <ClInclude Include="Resource\DDSTextureImporter.h" />
+    <ClInclude Include="Resource\ImageImporter.h" />
+    <ClInclude Include="Resource\ModelImporter.h" />
     <ClInclude Include="Math\MathHelper.h" />
     <ClInclude Include="Math\Matrix.h" />
     <ClInclude Include="Math\Plane.h" />

@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <memory>
 #include "IResource.h"
-#include "../Core/Subsystem.h"
 #include "../Graphics/Shaders/ShaderVariation.h"
 #include "../Graphics/Mesh.h"
 //==============================================
@@ -39,20 +38,22 @@ namespace Directus
 		template<int>
 		void dynamic_pointer_cast();
 
-		class ResourceCache : public Subsystem
+		class ResourceCache
 		{
 		public:
-			ResourceCache(Context* context);
+			ResourceCache(Context* context) { m_context = context; }
 			~ResourceCache() { Clear(); }
 
-			void Initialize();
-
 			// Releases all the resources
-			void Clear();
+			void Clear()
+			{
+				m_resources.clear();
+				m_resources.shrink_to_fit();
+			}
 
 			// Adds a resource to the pool
 			template <class T>
-			std::weak_ptr<T> AddResource(std::shared_ptr<T> resourceIn)
+			std::weak_ptr<T> Add(std::shared_ptr<T> resourceIn)
 			{
 				if (!resourceIn)
 					return std::weak_ptr<T>();
@@ -69,14 +70,14 @@ namespace Directus
 
 			// Loads a resource given the file path
 			template <class T>
-			std::weak_ptr<T> LoadResource(const std::string& filePath)
+			std::weak_ptr<T> Load(const std::string& filePath)
 			{
 				// Check if the resource is already loaded, if so, return it.
 				for (const auto& resource : m_resources)
 					if (resource->GetFilePath() == filePath)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
-				std::shared_ptr<T> typedResource = std::make_shared<T>(g_context);
+				std::shared_ptr<T> typedResource = std::make_shared<T>(m_context);
 				std::shared_ptr<IResource> resource = std::shared_ptr<IResource>(dynamic_pointer_cast<T>(typedResource));
 
 				if (resource->LoadFromFile(filePath))
@@ -98,7 +99,7 @@ namespace Directus
 
 			// Returns a resource by ID
 			template <class T>
-			std::weak_ptr<T> GetResourceByID(const std::string& ID)
+			std::weak_ptr<T> GetByID(const std::string& ID)
 			{
 				for (const auto& resource : m_resources)
 					if (resource->GetID() == ID)
@@ -109,7 +110,7 @@ namespace Directus
 
 			// Returns a resource by file path
 			template <class T>
-			std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
+			std::weak_ptr<T> GetByPath(const std::string& filePath)
 			{
 				for (const auto& resource : m_resources)
 					if (resource->GetFilePath() == filePath)
@@ -120,7 +121,7 @@ namespace Directus
 
 			// Returns a vector of a specific type of resources
 			template <class T>
-			std::vector<std::weak_ptr<T>> GetResourcesOfType()
+			std::vector<std::weak_ptr<T>> GetAllByType()
 			{
 				std::vector<std::weak_ptr<T>> typedResources;
 				for (const auto& resource : m_resources)
@@ -139,20 +140,9 @@ namespace Directus
 				for (const auto& resource : m_resources)
 					resource->SaveMetadata();
 			}
-
-			//= TEMPORARY =======================================
-			void NormalizeModelScale(GameObject* rootGameObject);
-			//===================================================
-
 		private:
+			Context* m_context;
 			std::vector<std::shared_ptr<IResource>> m_resources;
-
-			//= TEMPORARY =================================================================================================
-			std::vector<std::weak_ptr<Mesh>> GetModelMeshesByModelName(const std::string& rootGameObjectID);
-			float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
-			void SetModelScale(const std::string& rootGameObjectID, float scale);
-			static std::weak_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::weak_ptr<Mesh>>& meshes);
-			//=============================================================================================================
 		};
 	}
 }

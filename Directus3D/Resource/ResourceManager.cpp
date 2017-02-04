@@ -19,43 +19,31 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
-#include "ResourceCache.h"
+//= INCLUDES ==================
+#include "ResourceManager.h"
 #include "../Core/GameObject.h"
-#include "../Graphics/Shaders/ShaderVariation.h"
-//==============================================
+//=============================
 
 //= NAMESPACES ====================
 using namespace std;
-using namespace Directus::Math;
 using namespace Directus::Resource;
+using namespace Directus::Math;
 //=================================
 
-ResourceCache::ResourceCache(Context* context) : Subsystem(context)
+ResourceManager::ResourceManager(Context* context) : Subsystem(context)
 {
-
-}
-
-void ResourceCache::Initialize()
-{
-
-}
-
-void ResourceCache::Clear()
-{
-	m_resources.clear();
-	m_resources.shrink_to_fit();
+	m_resourceCache = make_unique<ResourceCache>(g_context);
 }
 
 /*------------------------------------------------------------------------------
-						[MESH PROCESSING]
+[MESH PROCESSING]
 ------------------------------------------------------------------------------*/
 // Returns the meshes tha belong to the same model
-vector<weak_ptr<Mesh>> ResourceCache::GetModelMeshesByModelName(const string& rootGameObjectID)
+vector<weak_ptr<Mesh>> ResourceManager::GetModelMeshesByModelName(const string& rootGameObjectID)
 {
 	vector<weak_ptr<Mesh>> modelMeshes;
 
-	auto meshes = GetResourcesOfType<Mesh>();
+	auto meshes = GetAllByType<Mesh>();
 	for (const auto& mesh : meshes)
 		if (mesh.lock()->GetRootGameObjectID() == rootGameObjectID)
 			modelMeshes.push_back(mesh);
@@ -65,7 +53,7 @@ vector<weak_ptr<Mesh>> ResourceCache::GetModelMeshesByModelName(const string& ro
 
 // Returns a value that can be used (by multiplying against the original scale)
 // to normalize the scale of a transform
-float ResourceCache::GetNormalizedModelScaleByRootGameObjectID(const string& rootGameObjectID)
+float ResourceManager::GetNormalizedModelScaleByRootGameObjectID(const string& rootGameObjectID)
 {
 	// get all the meshes related to this model
 	vector<weak_ptr<Mesh>> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
@@ -83,14 +71,14 @@ float ResourceCache::GetNormalizedModelScaleByRootGameObjectID(const string& roo
 	return 1.0f / scaleOffset;
 }
 
-void ResourceCache::SetModelScale(const string& rootGameObjectID, float scale)
+void ResourceManager::SetModelScale(const string& rootGameObjectID, float scale)
 {
 	// get all the meshes related to this model and scale them
 	for (const auto& modelMesh : GetModelMeshesByModelName(rootGameObjectID))
 		modelMesh.lock()->SetScale(scale);
 }
 
-void ResourceCache::NormalizeModelScale(GameObject* rootGameObject)
+void ResourceManager::NormalizeModelScale(GameObject* rootGameObject)
 {
 	if (!rootGameObject)
 		return;
@@ -100,7 +88,7 @@ void ResourceCache::NormalizeModelScale(GameObject* rootGameObject)
 }
 
 // Returns the largest bounding box in an vector of meshes
-weak_ptr<Mesh> ResourceCache::GetLargestBoundingBox(const vector<weak_ptr<Mesh>>& meshes)
+weak_ptr<Mesh> ResourceManager::GetLargestBoundingBox(const vector<weak_ptr<Mesh>>& meshes)
 {
 	if (meshes.empty())
 		return weak_ptr<Mesh>();

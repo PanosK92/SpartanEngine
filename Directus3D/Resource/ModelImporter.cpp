@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"
 #include "../Multithreading/ThreadPool.h"
-#include "../Resource/ResourceCache.h"
+#include "../Resource/ResourceManager.h"
 //=======================================
 
 //= NAMESPACES ====================
@@ -103,27 +103,27 @@ bool ModelImporter::Load(const string& filePath)
 	}
 
 	// Create all the appropriate directories
-	FileSystem::CreateDirectory_("Assets/Models/");
-	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
-	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
-	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
-	FileSystem::CreateDirectory_("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/");
+	FileSystem::CreateDirectory_("Standard Assets/Models/");
+	FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
+	FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
+	FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
+	FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/");
 
 	// Copy the source model file to an appropriate directory
-	string modelDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(m_modelName);
+	string modelDestination = "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(m_modelName);
 	FileSystem::CopyFileFromTo(m_filePath, modelDestination);
 
 	// Copy any material files (used be obj models)
 	auto files = FileSystem::GetFilesInDirectory(FileSystem::GetPathWithoutFileName(m_filePath));
 	for (const auto& file : files)
 		if (FileSystem::GetExtensionFromPath(file) == ".mtl")
-			FileSystem::CopyFileFromTo(m_filePath, "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(file));
+			FileSystem::CopyFileFromTo(m_filePath, "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(file));
 
 	// This function will recursively process the entire model
 	ProcessNode(scene, scene->mRootNode, nullptr, nullptr);
 
 	// Normalize the scale of the model
-	g_context->GetSubsystem<ResourceCache>()->NormalizeModelScale(m_rootGameObject);
+	g_context->GetSubsystem<ResourceManager>()->NormalizeModelScale(m_rootGameObject);
 
 	m_isLoading = false;
 	return true;
@@ -278,7 +278,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 
 	// No need to save the mesh as a file here, when the model importer performs a scale normalization on the entire model
 	// this will cause the mesh to update and save itself, thus I only pass the directory to do so.
-	if (meshComp->HasMesh()) meshComp->GetMesh().lock()->SetDirectory("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
+	if (meshComp->HasMesh()) meshComp->GetMesh().lock()->SetDirectory("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
 
 	// process materials
 	if (scene->HasMaterials())
@@ -287,14 +287,14 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 		aiMaterial* assimpMaterial = scene->mMaterials[mesh->mMaterialIndex];
 
 		// Convert AiMaterial to Material and add it to the pool
-		auto material = g_context->GetSubsystem<ResourceCache>()->AddResource(GenerateMaterialFromAiMaterial(assimpMaterial));
+		auto material = g_context->GetSubsystem<ResourceManager>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
 
 		// Set it in the mesh renderer component
 		gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);
 
 		// Save the material in our custom format
 		if (!material.expired())
-			material.lock()->Save("Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/" + material.lock()->GetName(), false);
+			material.lock()->Save("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/" + material.lock()->GetName(), false);
 	}
 
 	// free memory
@@ -392,7 +392,7 @@ void ModelImporter::AddTextureToMaterial(weak_ptr<Material> material, TextureTyp
 	}
 
 	// Copy the source texture to an appropriate directory
-	string textureDestination = "Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
+	string textureDestination = "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
 	FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
 	// Set the texture to the material

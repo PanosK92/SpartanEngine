@@ -25,15 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================================
 
 
-//= INCLUDES ===========================
+//= INCLUDES ===============================
 #include "Texture.h"
 #include "../Core/GUIDGenerator.h"
 #include "../IO/Serializer.h"
 #include "../Logging/Log.h"
-#include "../FileSystem/ImageImporter.h"
+#include "../Resource/ImageImporter.h"
 #include "../Core/Helper.h"
-#include "../FileSystem/DDSTextureImporter.h"
-//======================================
+#include "../Resource/DDSTextureImporter.h"
+//=========================================
 
 //= NAMESPACES =====
 using namespace std;
