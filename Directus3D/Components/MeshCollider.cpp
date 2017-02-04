@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../FileSystem/FileSystem.h"
-#include "../Resource/ResourceCache.h"
+#include "../Resource/ResourceManager.h"
 //===================================================================
 
 //= NAMESPACES ====================
@@ -88,7 +88,7 @@ void MeshCollider::Serialize()
 void MeshCollider::Deserialize()
 {
 	m_isConvex = Serializer::ReadBool();
-	m_mesh = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
+	m_mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
 
 	Build();
 }

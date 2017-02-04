@@ -19,15 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ===========================
 #include "MeshFilter.h"
 #include "Transform.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
-#include "../Resource/ResourceCache.h"
-//====================================
+#include "../Resource/ResourceManager.h"
+//======================================
 
 //= NAMESPACES ====================
 using namespace std;
@@ -85,7 +85,7 @@ void MeshFilter::Deserialize()
 
 	if (m_meshType == Imported) // Get the already loaded mesh
 	{
-		auto mesh = g_context->GetSubsystem<ResourceCache>()->GetResourceByID<Mesh>(meshID);
+		auto mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(meshID);
 		SetMesh(mesh);
 	}
 	else // Construct the mesh
@@ -138,7 +138,7 @@ void MeshFilter::SetMesh(MeshType defaultMesh)
 		break;
 	}
 
-	auto meshWeakPtr = g_context->GetSubsystem<ResourceCache>()->AddResource(move(meshSharedPtr));
+	auto meshWeakPtr = g_context->GetSubsystem<ResourceManager>()->Add(move(meshSharedPtr));
 	SetMesh(meshWeakPtr);
 
 	vertices.clear();
@@ -157,7 +157,7 @@ void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID
 	mesh->Update();
 
 	// Save it and set it
-	SetMesh(g_context->GetSubsystem<ResourceCache>()->AddResource(mesh));
+	SetMesh(g_context->GetSubsystem<ResourceManager>()->Add(mesh));
 }
 
 // Set the buffers to active in the input assembler so they can be rendered.

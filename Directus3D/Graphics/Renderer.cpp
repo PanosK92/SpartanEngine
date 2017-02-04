@@ -35,13 +35,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsDebugDraw.h"
 #include "../Logging/Log.h"
 #include "../EventSystem/EventHandler.h"
-#include "../Resource/ResourceCache.h"
 #include "../Core/Scene.h"
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"
 #include "../Core/Settings.h"
 #include "../Core/Timer.h"
 #include "../Core/Engine.h"
+#include "../Resource/ResourceManager.h"
 //======================================
 
 //= NAMESPACES ====================
@@ -320,8 +320,8 @@ void Renderer::DirectionalLightDepthPass()
 void Renderer::GBufferPass()
 {
 	D3D11GraphicsDevice* graphics = g_context->GetSubsystem<D3D11GraphicsDevice>();
-	auto materials = g_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<Material>();
-	auto shaders = g_context->GetSubsystem<ResourceCache>()->GetResourcesOfType<ShaderVariation>();
+	auto materials = g_context->GetSubsystem<ResourceManager>()->GetAllByType<Material>();
+	auto shaders = g_context->GetSubsystem<ResourceManager>()->GetAllByType<ShaderVariation>();
 
 	for (const auto& tempShader : shaders) // iterate through the shaders
 	{

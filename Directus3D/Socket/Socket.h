@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../Input/Input.h"
 #include "../Physics/PhysicsWorld.h"
-#include "../FileSystem/ImageImporter.h"
+#include "../Resource/ImageImporter.h"
 //==========================================
 
 class ILogger;
