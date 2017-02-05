@@ -54,13 +54,10 @@ public:
 	//=============================================
 
 	//= PROPERTIES ===============================================================================
-	std::string GetName() { return m_name; }
-	void SetName(const std::string& name) { m_name = name; }
+	std::string GetFilePathTexture() { return m_resourceFilePath; }
+	void SetFilePathTexture(const std::string& filepath) { m_resourceFilePath = filepath; }
 
-	std::string GetFilePathTexture() { return m_filePath; }
-	void SetFilePathTexture(const std::string& filepath) { m_filePath = filepath; }
-
-	std::string GetFilePathMetadata() { return m_filePath + METADATA_EXTENSION; }
+	std::string GetFilePathMetadata() { return m_resourceFilePath + METADATA_EXTENSION; }
 
 	int GetWidth() { return m_width; }
 	void SetWidth(int width) { m_width = width; }
@@ -68,8 +65,8 @@ public:
 	int GetHeight() { return m_height; }
 	void SetHeight(int height) { m_height = height; }
 
-	TextureType GetType() { return m_type; }
-	void SetType(TextureType type);
+	TextureType GetTextureType() { return m_textureType; }
+	void SetTextureType(TextureType type);
 
 	bool GetGrayscale() { return m_grayscale; }
 	void SetGrayscale(bool grayscale) { m_grayscale = grayscale; }
@@ -81,10 +78,9 @@ public:
 	//=============================================================================================
 
 private:
-	std::string m_name;
 	int m_width;
 	int m_height;
-	TextureType m_type;
+	TextureType m_textureType;
 	bool m_grayscale;
 	bool m_transparency;
 	bool m_alphaIsTransparency;

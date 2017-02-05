@@ -26,13 +26,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Settings.h"
 //===================================
 
-//= NAMESPACES ================
-using namespace Directus::Math;
+//= NAMESPACES ====================
 using namespace std;
-//=============================
+using namespace Directus::Math;
+using namespace Directus::Resource;
+//=================================
 
 ShaderVariation::ShaderVariation()
 {
+	// Resource
+	m_resourceType = Shader_Resource;
+
+	// Shader
 	m_graphics = nullptr;
 	m_D3D11Shader = nullptr;
 	m_perObjectBuffer = nullptr;
@@ -80,7 +85,7 @@ void ShaderVariation::Initialize(
 	m_hasCubeMap = cubemap;
 
 	m_graphics = graphicsDevice;
-	m_ID = GENERATE_GUID; // generate an ID for this shader
+	m_resourceID = GENERATE_GUID; // generate an ID for this shader
 	Load(); // load the shader
 }
 

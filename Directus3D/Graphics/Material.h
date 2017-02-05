@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES =========================
 #include <vector>
 #include <map>
 #include "Texture.h"
@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 #include "../Resource/IResource.h"
 #include <memory>
-//================================
+//====================================
 
 class ShaderVariation;
 class ShaderPool;
@@ -77,9 +77,6 @@ public:
 	//=============================================================================
 
 	//= PROPERTIES ================================================================	
-	std::string GetName() { return m_name; }
-	void SetName(const std::string& name) { m_name = name; }
-	
 	std::string GetModelID() { return m_modelID; }
 	void SetModelID(const std::string& ID) { m_modelID = ID; }
 
@@ -139,7 +136,6 @@ private:
 	// even if the actual textures haven't been loaded yet.
 	std::multimap<std::pair<std::string, TextureType>, std::weak_ptr<Texture>> m_textures;
 
-	std::string m_name;
 	std::string m_modelID;
 	CullMode m_cullMode;
 	float m_opacity;

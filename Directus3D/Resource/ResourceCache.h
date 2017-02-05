@@ -21,13 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================================
+//= INCLUDES =========
 #include <vector>
 #include <memory>
 #include "IResource.h"
-#include "../Graphics/Shaders/ShaderVariation.h"
-#include "../Graphics/Mesh.h"
-//==============================================
+//====================
 
 namespace Directus
 {
@@ -42,48 +40,23 @@ namespace Directus
 		{
 		public:
 			ResourceCache(Context* context) { m_context = context; }
-			~ResourceCache() { Clear(); }
+			~ResourceCache() { Unload(); }
 
-			// Releases all the resources
-			void Clear()
+			// Unloads all resources
+			void Unload()
 			{
 				m_resources.clear();
 				m_resources.shrink_to_fit();
 			}
 
-			// Adds a resource to the pool
-			template <class T>
-			std::weak_ptr<T> Add(std::shared_ptr<T> resourceIn)
+			// Adds a resource
+			void Add(std::shared_ptr<IResource> resource)
 			{
-				if (!resourceIn)
-					return std::weak_ptr<T>();
+				if (!resource)
+					return;
 
-				// Check if the resource already exists, if so, return the existing one
-				for (const auto& resource : m_resources)
-					if (resource->GetID() == resourceIn->GetID())
-						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
-
-				// Add the resource and return it
-				m_resources.push_back(resourceIn);
-				return std::weak_ptr<T>(dynamic_pointer_cast<T>(m_resources.back()));
-			}
-
-			// Loads a resource given the file path
-			template <class T>
-			std::weak_ptr<T> Load(const std::string& filePath)
-			{
-				// Check if the resource is already loaded, if so, return it.
-				for (const auto& resource : m_resources)
-					if (resource->GetFilePath() == filePath)
-						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
-
-				std::shared_ptr<T> typedResource = std::make_shared<T>(m_context);
-				std::shared_ptr<IResource> resource = std::shared_ptr<IResource>(dynamic_pointer_cast<T>(typedResource));
-
-				if (resource->LoadFromFile(filePath))
-					m_resources.push_back(resource);
-
-				return typedResource;
+				// Add the resource
+				m_resources.push_back(resource);
 			}
 
 			// Returns the file paths of all the resources
@@ -91,8 +64,8 @@ namespace Directus
 			{
 				std::vector<std::string> filePaths;
 				for (const auto& resource : m_resources)
-					if (resource->GetFilePath() != DATA_NOT_ASSIGNED)
-						filePaths.push_back(resource->GetFilePath());
+					if (resource->GetResourceFilePath() != DATA_NOT_ASSIGNED)
+						filePaths.push_back(resource->GetResourceFilePath());
 
 				return filePaths;
 			}
@@ -102,7 +75,7 @@ namespace Directus
 			std::weak_ptr<T> GetByID(const std::string& ID)
 			{
 				for (const auto& resource : m_resources)
-					if (resource->GetID() == ID)
+					if (resource->GetResourceID() == ID)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
 				return std::weak_ptr<T>();
@@ -113,7 +86,7 @@ namespace Directus
 			std::weak_ptr<T> GetByPath(const std::string& filePath)
 			{
 				for (const auto& resource : m_resources)
-					if (resource->GetFilePath() == filePath)
+					if (resource->GetResourceFilePath() == filePath)
 						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
 
 				return std::weak_ptr<T>();
@@ -140,6 +113,45 @@ namespace Directus
 				for (const auto& resource : m_resources)
 					resource->SaveMetadata();
 			}
+
+			// Returns all the resources
+			std::vector<std::weak_ptr<IResource>> GetAll()
+			{
+				std::vector<std::weak_ptr<IResource>> weakResources;
+
+				for (const auto& resource : m_resources)
+					weakResources.push_back(resource);
+
+				return weakResources;
+			}
+
+			// Checks whether a resource is already in the cache
+			bool Cached(const std::string& filePath)
+			{
+				if (filePath.empty())
+					return false;
+
+				for (const auto& resource : m_resources)
+					if (resource->GetResourceFilePath() == filePath)
+						return true;
+
+				return false;
+			}
+
+			// Checks whether a resource is already in the cache
+			template <class T>
+			bool Cached(std::weak_ptr<IResource> resourceIn)
+			{
+				if (resourceIn.expired())
+					return false;
+
+				for (const auto& resource : m_resources)
+					if (resource->GetResourceID() == resourceIn.lock()->GetResourceID())
+						return true;
+
+				return false;
+			}
+
 		private:
 			Context* m_context;
 			std::vector<std::shared_ptr<IResource>> m_resources;

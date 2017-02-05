@@ -45,9 +45,6 @@ public:
 	bool LoadFromFile(const std::string& filePath);
 	//==============================================================================
 
-	std::string GetName() const { return m_name; }
-	void SetName(const std::string& name) { m_name = name; }
-
 	std::string GetRootGameObjectID() const { return m_rootGameObjectID; }
 	void SetRootGameObjectID(const std::string& rootGameObjectID) { m_rootGameObjectID = rootGameObjectID; }
 
@@ -97,7 +94,6 @@ private:
 	static void GetMinMax(Mesh* mesh, Directus::Math::Vector3& min, Directus::Math::Vector3& max);
 	//==============================================================================
 
-	std::string m_name;
 	std::string m_rootGameObjectID;
 	std::string m_directory;
 

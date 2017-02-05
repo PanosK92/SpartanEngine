@@ -55,7 +55,7 @@ void Skybox::Reset()
 {
 	m_cubeMapTexture = make_shared<Texture>(g_context);
 	m_cubeMapTexture->LoadFromFile("Data/Cubemaps/environment.dds");
-	m_cubeMapTexture->SetType(CubeMap);
+	m_cubeMapTexture->SetTextureType(CubeMap);
 	m_cubeMapTexture->SetWidth(1024);
 	m_cubeMapTexture->SetHeight(1024);
 	m_cubeMapTexture->SetGrayscale(false);

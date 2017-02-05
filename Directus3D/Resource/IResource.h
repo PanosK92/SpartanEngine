@@ -30,16 +30,32 @@ namespace Directus
 {
 	namespace Resource
 	{
+		enum ResourceType
+		{
+			Unknown_Resource,
+			Texture_Resource,
+			Audio_Resource,
+			Material_Resource,
+			Shader_Resource,
+			Mesh_Resource
+		};
+
 		class IResource
 		{
 		public:
 			virtual ~IResource() {}
 
-			const std::string& GetID() { return m_ID; }
-			void SetID(const std::string& ID) { m_ID = ID; }
+			const std::string& GetResourceID() { return m_resourceID; }
+			void SetResourceID(const std::string& ID) { m_resourceID = ID; }
 
-			const std::string& GetFilePath() { return m_filePath; }
-			void SetFilePath(const std::string& filePath) { m_filePath = filePath; }
+			ResourceType GetResourceType() { return m_resourceType; }
+			void SetResourceType(ResourceType type) { m_resourceType = type; }
+
+			const std::string& GetResourceName() { return m_resourceName; }
+			void SetResourceName(const std::string& name) { m_resourceName = name; }
+
+			const std::string& GetResourceFilePath() { return m_resourceFilePath; }
+			void SetResourceFilePath(const std::string& filePath) { m_resourceFilePath = filePath; }
 
 			// Resource Save/Load
 			virtual bool LoadFromFile(const std::string& filePath) = 0;
@@ -48,9 +64,12 @@ namespace Directus
 			virtual bool SaveMetadata() = 0;
 
 		protected:
-			Context* m_context;
-			std::string m_ID = DATA_NOT_ASSIGNED;
-			std::string m_filePath = DATA_NOT_ASSIGNED;
+			Context* m_context = nullptr;
+
+			std::string m_resourceID = DATA_NOT_ASSIGNED;
+			ResourceType m_resourceType = Unknown_Resource;
+			std::string m_resourceName = DATA_NOT_ASSIGNED;
+			std::string m_resourceFilePath = DATA_NOT_ASSIGNED;
 		};
 	}
 }

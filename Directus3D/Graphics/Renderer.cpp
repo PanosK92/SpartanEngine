@@ -116,7 +116,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	------------------------------------------------------------------------------*/
 	m_texNoiseMap = make_shared<Texture>(g_context);
 	m_texNoiseMap->LoadFromFile("Data/Shaders/noise.png");
-	m_texNoiseMap->SetType(Normal);
+	m_texNoiseMap->SetTextureType(Normal);
 
 	// Subcribe to render event
 	SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
@@ -336,7 +336,7 @@ void Renderer::GBufferPass()
 		{
 			// Continue only if the material at hand happens to use the already set shader
 			auto renderMaterial = tempMaterial.lock();
-			if (renderMaterial->GetShader().lock()->GetID() != renderShader->GetID())
+			if (renderMaterial->GetShader().lock()->GetResourceID() != renderShader->GetResourceID())
 				continue;
 
 			// UPDATE PER MATERIAL BUFFER
@@ -386,7 +386,7 @@ void Renderer::GBufferPass()
 					continue;
 
 				//... that uses the current material
-				if (renderMaterial->GetID() != material.lock()->GetID())
+				if (renderMaterial->GetResourceID() != material.lock()->GetResourceID())
 					continue;
 
 				// Skip transparent meshes (for now)

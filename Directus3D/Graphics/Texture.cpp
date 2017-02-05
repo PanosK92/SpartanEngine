@@ -35,19 +35,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/DDSTextureImporter.h"
 //=========================================
 
-//= NAMESPACES =====
+//= NAMESPACES ====================
 using namespace std;
-//==================
+using namespace Directus::Resource;
+//=================================
 
 Texture::Texture(Context* context)
 {
+	// IResource
+	m_resourceID = GENERATE_GUID;
+	m_resourceType = Texture_Resource;
+
+	// Texture
 	m_context = context;
-	m_ID = GENERATE_GUID;
-	m_name = DATA_NOT_ASSIGNED;
-	m_filePath = DATA_NOT_ASSIGNED;
 	m_width = 0;
 	m_height = 0;
-	m_type = Albedo;
+	m_textureType = Albedo;
 	m_grayscale = false;
 	m_transparency = false;
 	m_alphaIsTransparency = false;
@@ -67,12 +70,12 @@ bool Texture::SaveMetadata()
 		return false;
 
 	Serializer::WriteSTR(METADATA_TYPE_TEXTURE);
-	Serializer::WriteSTR(m_ID);
-	Serializer::WriteSTR(m_name);
-	Serializer::WriteSTR(m_filePath);
+	Serializer::WriteSTR(m_resourceID);
+	Serializer::WriteSTR(m_resourceName);
+	Serializer::WriteSTR(m_resourceFilePath);
 	Serializer::WriteInt(m_width);
 	Serializer::WriteInt(m_height);
-	Serializer::WriteInt(int(m_type));
+	Serializer::WriteInt(int(m_textureType));
 	Serializer::WriteBool(m_grayscale);
 	Serializer::WriteBool(m_transparency);
 	Serializer::WriteBool(m_generateMipchain);
@@ -89,12 +92,12 @@ bool Texture::LoadMetadata()
 
 	if (Serializer::ReadSTR() == METADATA_TYPE_TEXTURE)
 	{
-		m_ID = Serializer::ReadSTR();
-		m_name = Serializer::ReadSTR();
-		m_filePath = Serializer::ReadSTR();
+		m_resourceID = Serializer::ReadSTR();
+		m_resourceName = Serializer::ReadSTR();
+		m_resourceFilePath = Serializer::ReadSTR();
 		m_width = Serializer::ReadInt();
 		m_height = Serializer::ReadInt();
-		m_type = TextureType(Serializer::ReadInt());
+		m_textureType = TextureType(Serializer::ReadInt());
 		m_grayscale = Serializer::ReadBool();
 		m_transparency = Serializer::ReadBool();
 		m_generateMipchain = Serializer::ReadBool();
@@ -134,8 +137,8 @@ bool Texture::LoadFromFile(const string& filePath)
 	}
 
 	// Extract any metadata we can from the ImageImporter
-	m_filePath = ImageImporter::GetInstance().GetPath();
-	m_name = FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture());
+	m_resourceFilePath = ImageImporter::GetInstance().GetPath();
+	m_resourceName = FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture());
 	m_width = ImageImporter::GetInstance().GetWidth();
 	m_height = ImageImporter::GetInstance().GetHeight();
 	m_grayscale = ImageImporter::GetInstance().IsGrayscale();
@@ -154,16 +157,16 @@ bool Texture::LoadFromFile(const string& filePath)
 	return true;
 }
 
-void Texture::SetType(TextureType type)
+void Texture::SetTextureType(TextureType type)
 {
-	m_type = type;
+	m_textureType = type;
 
 	// FIX: some models pass a normal map as a height map
 	// and others pass a height map as a normal map...
-	if (m_type == Height && !GetGrayscale())
-		m_type = Normal;
-	if (m_type == Normal && GetGrayscale())
-		m_type = Height;
+	if (m_textureType == Height && !GetGrayscale())
+		m_textureType = Normal;
+	if (m_textureType == Normal && GetGrayscale())
+		m_textureType = Height;
 }
 
 bool Texture::CreateShaderResourceView()
