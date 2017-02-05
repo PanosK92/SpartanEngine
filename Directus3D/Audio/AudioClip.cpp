@@ -21,19 +21,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES =====================
 #include "AudioClip.h"
 #include <fmod_errors.h>
 #include "../Logging/Log.h"
-//=========================
+#include "../Core/GUIDGenerator.h"
+//================================
 
-//= NAMESPACES ================
-using namespace Directus::Math;
+//= NAMESPACES ====================
 using namespace std;
-//=============================
+using namespace Directus::Math;
+using namespace Directus::Resource;
+//=================================
 
 AudioClip::AudioClip(FMOD::System* fModSystem)
 {
+	// Resource
+	m_resourceID = GENERATE_GUID;
+	m_resourceType = Audio_Resource;
+
+	// AudioClip
 	m_transform = nullptr;
 	m_fModSystem = fModSystem;
 	m_result = FMOD_OK;

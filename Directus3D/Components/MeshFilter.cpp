@@ -75,7 +75,7 @@ void MeshFilter::Update()
 void MeshFilter::Serialize()
 {
 	Serializer::WriteInt((int)m_meshType);
-	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
+	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetResourceID() : (string)DATA_NOT_ASSIGNED);
 }
 
 void MeshFilter::Deserialize()
@@ -116,7 +116,7 @@ void MeshFilter::SetMesh(MeshType defaultMesh)
 	case Cube:
 		CreateCube(vertices, indices);
 		meshSharedPtr = make_shared<Mesh>(g_context);
-		meshSharedPtr->SetName("Cube");
+		meshSharedPtr->SetResourceName("Cube");
 		meshSharedPtr->SetVertices(vertices);
 		meshSharedPtr->SetIndices(indices);
 		meshSharedPtr->Update();
@@ -126,7 +126,7 @@ void MeshFilter::SetMesh(MeshType defaultMesh)
 	case Quad:
 		CreateQuad(vertices, indices);
 		meshSharedPtr = make_shared<Mesh>(g_context);
-		meshSharedPtr->SetName("Quad");
+		meshSharedPtr->SetResourceName("Quad");
 		meshSharedPtr->SetVertices(vertices);
 		meshSharedPtr->SetIndices(indices);
 		meshSharedPtr->Update();
@@ -150,7 +150,7 @@ void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID
 {
 	// Create a mesh
 	auto mesh = make_shared<Mesh>(g_context);
-	mesh->SetName(name);
+	mesh->SetResourceName(name);
 	mesh->SetRootGameObjectID(rootGameObjectID);
 	mesh->SetVertices(vertices);
 	mesh->SetIndices(indices);
@@ -203,7 +203,7 @@ bool MeshFilter::HasMesh()
 
 string MeshFilter::GetMeshName()
 {
-	return !m_mesh.expired() ? m_mesh.lock()->GetName() : DATA_NOT_ASSIGNED;
+	return !m_mesh.expired() ? m_mesh.lock()->GetResourceName() : DATA_NOT_ASSIGNED;
 }
 
 bool MeshFilter::CreateBuffers()

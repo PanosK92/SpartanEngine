@@ -82,7 +82,7 @@ void MeshCollider::Update()
 void MeshCollider::Serialize()
 {
 	Serializer::WriteBool(m_isConvex);
-	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
+	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetResourceID() : (string)DATA_NOT_ASSIGNED);
 }
 
 void MeshCollider::Deserialize()

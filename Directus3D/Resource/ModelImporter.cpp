@@ -294,7 +294,7 @@ void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* 
 
 		// Save the material in our custom format
 		if (!material.expired())
-			material.lock()->Save("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/" + material.lock()->GetName(), false);
+			material.lock()->Save("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/" + material.lock()->GetResourceName(), false);
 	}
 
 	// free memory
@@ -309,7 +309,7 @@ shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* m
 	//= NAME ====================================================================
 	aiString name;
 	aiGetMaterialString(material, AI_MATKEY_NAME, &name);
-	engineMaterial->SetName(name.C_Str());
+	engineMaterial->SetResourceName(name.C_Str());
 	engineMaterial->SetModelID(m_modelName);
 
 	//= CullMode ===============================================================================================

@@ -25,58 +25,89 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "../Core/SubSystem.h"
 #include "ResourceCache.h"
+#include "../Graphics/Mesh.h"
 //============================
 
-class ResourceManager : public Subsystem
+namespace Directus
 {
-public:
-	ResourceManager(Context* context);
-	~ResourceManager() { Unload(); }
-
-	// Unloads all resources
-	void Unload() { m_resourceCache->Clear(); }
-
-	template <class T>
-	std::weak_ptr<T> Load(const std::string& filePath)
+	namespace Resource
 	{
-		return m_resourceCache->Load<T>(filePath);
+		class ResourceManager : public Subsystem
+		{
+		public:
+			ResourceManager(Context* context);
+			~ResourceManager() { Unload(); }
+
+			// Unloads all resources
+			void Unload() { m_resourceCache->Unload(); }
+
+			// Loads a resource and adds it to the resource cache
+			template <class T>
+			std::weak_ptr<T> Load(const std::string& filePath)
+			{
+				// Check if the resource is already loaded
+				if (m_resourceCache->Cached(filePath))
+					return GetResourceByPath<T>(filePath);
+
+				std::shared_ptr<T> typedResource = std::make_shared<T>(g_context);
+				std::shared_ptr<IResource> resource = std::shared_ptr<IResource>(dynamic_pointer_cast<T>(typedResource));
+
+				if (resource->LoadFromFile(filePath))
+					m_resourceCache->Add(resource);
+
+				return GetResourceByPath<T>(filePath);
+			}
+
+			// Adds a resource directly into the resource cache. This function 
+			// should be used in case you have done the loading yourself.
+			template <class T>
+			std::weak_ptr<T> Add(std::shared_ptr<T> resourceIn)
+			{
+				// Add the resource only if it's not already there
+				if (!m_resourceCache->Cached<T>(resourceIn))
+					m_resourceCache->Add(ToResource<T>(resourceIn));
+
+				return resourceIn;
+			}
+
+			template <class T>
+			std::weak_ptr<T> GetResourceByID(const std::string& ID)
+			{
+				return m_resourceCache->GetByID<T>(ID);
+			}
+
+			template <class T>
+			std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
+			{
+				return m_resourceCache->GetByPath<T>(filePath);
+			}
+
+			template <class T>
+			std::vector<std::weak_ptr<T>> GetAllByType()
+			{
+				return m_resourceCache->GetAllByType<T>();
+			}
+
+			//= TEMPORARY =======================================
+			void NormalizeModelScale(GameObject* rootGameObject);
+			//===================================================
+
+		private:
+			std::unique_ptr<ResourceCache> m_resourceCache;
+
+			// Upcasts any typed resource to an IResource
+			template <class T>
+			std::shared_ptr<IResource> ToResource(std::shared_ptr<T> resourceIn)
+			{
+				return std::shared_ptr<IResource>(dynamic_pointer_cast<T>(resourceIn));
+			}
+
+			//= TEMPORARY =================================================================================================
+			std::vector<std::weak_ptr<Mesh>> GetModelMeshesByModelName(const std::string& rootGameObjectID);
+			float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
+			void SetModelScale(const std::string& rootGameObjectID, float scale);
+			static std::weak_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::weak_ptr<Mesh>>& meshes);
+			//=============================================================================================================
+		};
 	}
-
-	template <class T>
-	std::weak_ptr<T> Add(std::shared_ptr<T> resource)
-	{
-		return m_resourceCache->Add<T>(resource);
-	}
-
-	template <class T>
-	std::weak_ptr<T> GetResourceByID(const std::string& ID)
-	{
-		return m_resourceCache->GetByID<T>(ID);
-	}
-
-	template <class T>
-	std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
-	{
-		return m_resourceCache->GetByPath<T>(filePath);
-	}
-
-	template <class T>
-	std::vector<std::weak_ptr<T>> GetAllByType()
-	{
-		return m_resourceCache->GetAllByType<T>();
-	}
-
-	//= TEMPORARY =======================================
-	void NormalizeModelScale(GameObject* rootGameObject);
-	//===================================================
-
-private:
-	std::unique_ptr<Directus::Resource::ResourceCache> m_resourceCache;
-
-	//= TEMPORARY =================================================================================================
-	std::vector<std::weak_ptr<Mesh>> GetModelMeshesByModelName(const std::string& rootGameObjectID);
-	float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
-	void SetModelScale(const std::string& rootGameObjectID, float scale);
-	static std::weak_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::weak_ptr<Mesh>>& meshes);
-	//=============================================================================================================
-};
+}

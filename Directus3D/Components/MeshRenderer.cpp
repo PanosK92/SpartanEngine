@@ -78,7 +78,7 @@ void MeshRenderer::Update()
 void MeshRenderer::Serialize()
 {
 	Serializer::WriteInt((int)m_materialType);
-	Serializer::WriteSTR(!m_material.expired() ? m_material.lock()->GetFilePath() : (string)DATA_NOT_ASSIGNED);
+	Serializer::WriteSTR(!m_material.expired() ? m_material.lock()->GetResourceFilePath() : (string)DATA_NOT_ASSIGNED);
 	Serializer::WriteBool(m_castShadows);
 	Serializer::WriteBool(m_receiveShadows);
 }
@@ -139,7 +139,7 @@ void MeshRenderer::SetMaterial(MaterialType type)
 	{
 	case Basic:
 		material = make_shared<Material>(g_context);
-		material->SetName("Basic");
+		material->SetResourceName("Basic");
 		material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		material->SetIsEditable(false);
 		m_materialType = Basic;
@@ -147,7 +147,7 @@ void MeshRenderer::SetMaterial(MaterialType type)
 
 	case Skybox:
 		material = make_shared<Material>(g_context);
-		material->SetName("Skybox");
+		material->SetResourceName("Skybox");
 		material->SetFaceCullMode(CullNone);
 		material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		material->SetIsEditable(false);

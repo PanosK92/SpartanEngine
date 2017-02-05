@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
 #include "../Resource/ResourceManager.h"
+#include "Shaders/ShaderVariation.h"
 //======================================
 
 //= NAMESPACES ====================
@@ -36,11 +37,13 @@ using namespace Directus::Resource;
 
 Material::Material(Context* context)
 {
+	// Resource
+	m_resourceID = GENERATE_GUID;
+	m_resourceType = Texture_Resource;
+
+	// Material
 	m_context = context;
-	m_ID = GENERATE_GUID;
-	m_name = DATA_NOT_ASSIGNED;
 	m_modelID = DATA_NOT_ASSIGNED;
-	m_filePath = DATA_NOT_ASSIGNED;
 	m_cullMode = CullBack;
 	m_opacity = 1.0f;
 	m_alphaBlending = false;
@@ -72,20 +75,20 @@ bool Material::SaveMetadata()
 
 bool Material::Save(const string& filePath, bool overwrite)
 {
-	m_filePath = filePath + MATERIAL_EXTENSION;
+	m_resourceFilePath = filePath + MATERIAL_EXTENSION;
 
 	// If the user doesn't want to override and a material
 	// indeed happens to exists, there is nothing to do
-	if (!overwrite && FileSystem::FileExists(m_filePath))
+	if (!overwrite && FileSystem::FileExists(m_resourceFilePath))
 		return true;
 
-	if (!Serializer::StartWriting(m_filePath))
+	if (!Serializer::StartWriting(m_resourceFilePath))
 		return false;
 
-	Serializer::WriteSTR(m_ID);
-	Serializer::WriteSTR(m_name);
+	Serializer::WriteSTR(m_resourceID);
+	Serializer::WriteSTR(m_resourceName);
 	Serializer::WriteSTR(m_modelID);
-	Serializer::WriteSTR(m_filePath);
+	Serializer::WriteSTR(m_resourceFilePath);
 	Serializer::WriteInt(m_cullMode);
 	Serializer::WriteFloat(m_opacity);
 	Serializer::WriteBool(m_alphaBlending);
@@ -115,10 +118,10 @@ bool Material::Save(const string& filePath, bool overwrite)
 
 bool Material::SaveToExistingDirectory()
 {
-	if (m_filePath == DATA_NOT_ASSIGNED)
+	if (m_resourceFilePath == DATA_NOT_ASSIGNED)
 		return false;
 
-	return Save(FileSystem::GetPathWithoutFileNameExtension(m_filePath), true);
+	return Save(FileSystem::GetPathWithoutFileNameExtension(m_resourceFilePath), true);
 }
 
 bool Material::LoadFromFile(const string& filePath)
@@ -126,10 +129,10 @@ bool Material::LoadFromFile(const string& filePath)
 	if (!Serializer::StartReading(filePath))
 		return false;
 
-	m_ID = Serializer::ReadSTR();
-	m_name = Serializer::ReadSTR();
+	m_resourceID = Serializer::ReadSTR();
+	m_resourceName = Serializer::ReadSTR();
 	m_modelID = Serializer::ReadSTR();
-	m_filePath = Serializer::ReadSTR();
+	m_resourceFilePath = Serializer::ReadSTR();
 	m_cullMode = CullMode(Serializer::ReadInt());
 	m_opacity = Serializer::ReadFloat();
 	m_alphaBlending = Serializer::ReadBool();
@@ -181,7 +184,7 @@ void Material::SetTexture(weak_ptr<Texture> texture)
 		return;
 
 	// Add it
-	m_textures.insert(make_pair(make_pair(texture.lock()->GetFilePathTexture(), texture.lock()->GetType()), texture));
+	m_textures.insert(make_pair(make_pair(texture.lock()->GetFilePathTexture(), texture.lock()->GetTextureType()), texture));
 
 	// Adjust texture multipliers
 	TextureBasedMultiplierAdjustment();
@@ -208,7 +211,7 @@ void Material::SetTexture(const string& filePath, TextureType type)
 	auto texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(filePath);
 	if (!texture.expired())
 	{
-		texture.lock()->SetType(type);
+		texture.lock()->SetTextureType(type);
 		SetTexture(texture);
 	}
 }

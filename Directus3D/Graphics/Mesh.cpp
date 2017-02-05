@@ -28,17 +28,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileSystem/FileSystem.h"
 //===================================
 
-//= NAMESPACES ================
+//= NAMESPACES ====================
 using namespace std;
 using namespace Directus::Math;
-//=============================
+using namespace Directus::Resource;
+//=================================
 
 Mesh::Mesh(Context* context)
 {
-	m_ID = GENERATE_GUID;
+	// Resource
+	m_resourceID = GENERATE_GUID;
+	m_resourceType = Mesh_Resource;
+
+	// Mesh	
 	m_rootGameObjectID = DATA_NOT_ASSIGNED;
-	m_directory = DATA_NOT_ASSIGNED;
-	m_filePath = DATA_NOT_ASSIGNED;
+	m_directory = DATA_NOT_ASSIGNED;	
 	m_vertexCount = 0;
 	m_indexCount = 0;
 	m_triangleCount = 0;
@@ -53,8 +57,8 @@ Mesh::~Mesh()
 {
 	m_vertices.clear();
 	m_indices.clear();
-	m_name.clear();
-	m_ID.clear();
+	m_resourceName.clear();
+	m_resourceID.clear();
 	m_rootGameObjectID.clear();
 	m_vertexCount = 0;
 	m_indexCount = 0;
@@ -64,11 +68,11 @@ Mesh::~Mesh()
 //= IO =========================================================================
 void Mesh::Serialize()
 {
-	Serializer::WriteSTR(m_ID);
+	Serializer::WriteSTR(m_resourceID);
 	Serializer::WriteSTR(m_rootGameObjectID);
-	Serializer::WriteSTR(m_name);
+	Serializer::WriteSTR(m_resourceName);
 	Serializer::WriteSTR(m_directory);
-	Serializer::WriteSTR(m_filePath);
+	Serializer::WriteSTR(m_resourceFilePath);
 	Serializer::WriteInt(m_vertexCount);
 	Serializer::WriteInt(m_indexCount);
 	Serializer::WriteInt(m_triangleCount);
@@ -87,11 +91,11 @@ void Mesh::Serialize()
 
 void Mesh::Deserialize()
 {
-	m_ID = Serializer::ReadSTR();
+	m_resourceID = Serializer::ReadSTR();
 	m_rootGameObjectID = Serializer::ReadSTR();
-	m_name = Serializer::ReadSTR();
+	m_resourceName = Serializer::ReadSTR();
 	m_directory = Serializer::ReadSTR();
-	m_filePath = Serializer::ReadSTR();
+	m_resourceFilePath = Serializer::ReadSTR();
 	m_vertexCount = Serializer::ReadInt();
 	m_indexCount = Serializer::ReadInt();
 	m_triangleCount = Serializer::ReadInt();
@@ -121,12 +125,12 @@ void Mesh::SaveToDirectory(const string& directory, bool overwrite)
 	// I used to use GetName() to save the mesh but when mesh duplicates are genarated
 	// upon loading a model, they also get different IDs, the file will be overwritten
 	// thus when loading the meshes only one will be loaded properly.
-	m_filePath = directory + GetID() + MESH_EXTENSION;
+	m_resourceFilePath = directory + GetResourceID() + MESH_EXTENSION;
 
-	if (FileSystem::FileExists(m_filePath) && !overwrite)
+	if (FileSystem::FileExists(m_resourceFilePath) && !overwrite)
 		return;
 
-	Serializer::StartWriting(m_filePath);
+	Serializer::StartWriting(m_resourceFilePath);
 	Serialize();
 	Serializer::StopWriting();
 }

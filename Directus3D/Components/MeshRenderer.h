@@ -65,7 +65,7 @@ public:
 	std::weak_ptr<Material> LoadMaterial(const std::string& filePath);	
 	std::weak_ptr<Material> GetMaterial() { return  m_material; }
 	bool HasMaterial() { return GetMaterial().expired() ? false : true; }
-	std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial().lock()->GetName() : DATA_NOT_ASSIGNED; }
+	std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial().lock()->GetResourceName() : DATA_NOT_ASSIGNED; }
 	MaterialType GetMaterialType() { return m_materialType; }
 
 private:
