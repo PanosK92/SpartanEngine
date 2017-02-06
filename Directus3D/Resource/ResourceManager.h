@@ -48,8 +48,8 @@ namespace Directus
 				if (m_resourceCache->Cached(filePath))
 					return GetResourceByPath<T>(filePath);
 
-				std::shared_ptr<T> typedResource = std::make_shared<T>(g_context);
-				std::shared_ptr<Resource> resource = ToResource(typedResource);
+				std::shared_ptr<T> derivedResource = std::make_shared<T>(g_context);
+				std::shared_ptr<Resource> resource = ToBaseResourceShared(derivedResource);
 
 				if (resource->LoadFromFile(filePath))
 					m_resourceCache->Add(resource);
@@ -57,23 +57,32 @@ namespace Directus
 				return GetResourceByPath<T>(filePath);
 			}
 
-			// Adds a typed and already loaded resource into the resource cache
+			// Adds an already loaded resource into the resource cache
 			template <class T>
-			std::weak_ptr<T> Add(std::shared_ptr<T> resourceIn)
+			std::weak_ptr<T> Add(std::shared_ptr<T> resource)
 			{
-				// Add the resource only if it's not already there
-				if (!m_resourceCache->Cached(resourceIn))
-					m_resourceCache->Add(ToResource<T>(resourceIn));
+				if (!resource)
+					return std::weak_ptr<T>();
 
-				return resourceIn;
+				std::shared_ptr<Resource> baseResource = ToBaseResourceShared(resource);
+
+				// If the resource is already loaded, return the existing one
+				if (m_resourceCache->Cached(baseResource))
+					return ToDerivedResourceWeak<T>(m_resourceCache->GetByID(baseResource->GetResourceID()));
+
+				// Else, add the resource and return it
+				m_resourceCache->Add(baseResource);
+				return resource;
 			}
 
 			// Returns cached resource by ID
 			template <class T>
 			std::weak_ptr<T> GetResourceByID(const std::string& ID)
 			{
-				std::shared_ptr<Resource> resource = m_resourceCache->GetByID(ID);
-				return ToDerived<T>(resource);
+				std::shared_ptr<Resource> baseResource = m_resourceCache->GetByID(ID);
+				std::weak_ptr<T> derivedResource = ToDerivedResourceWeak<T>(baseResource);
+
+				return derivedResource;
 			}
 
 			// Returns cached resource by Path
@@ -81,7 +90,7 @@ namespace Directus
 			std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
 			{
 				std::shared_ptr<Resource> resource = m_resourceCache->GetByPath(filePath);
-				return ToDerived<T>(resource);
+				return ToDerivedResourceWeak<T>(resource);
 			}
 
 			// Returns cached resource by Type
@@ -91,7 +100,7 @@ namespace Directus
 				std::vector<std::weak_ptr<T>> typedResources;
 				for (const auto& resource : m_resourceCache->GetAll())
 				{
-					std::weak_ptr<T> typedResource = ToDerived<T>(resource);
+					std::weak_ptr<T> typedResource = ToDerivedResourceWeak<T>(resource);
 					bool validCasting = !typedResource.expired();
 
 					if (validCasting)
@@ -109,7 +118,7 @@ namespace Directus
 
 			// Derived -> Resource (as a shared pointer)
 			template <class T>
-			std::shared_ptr<Resource> ToResource(std::shared_ptr<T> resource)
+			std::shared_ptr<Resource> ToBaseResourceShared(std::shared_ptr<T> resource)
 			{
 				std::shared_ptr<Resource> sharedPtr = dynamic_pointer_cast<T>(resource);
 
@@ -118,7 +127,7 @@ namespace Directus
 
 			// Resource -> Derived (as a weak pointer)
 			template <class T>
-			std::weak_ptr<T> ToDerived(std::shared_ptr<Resource> resource)
+			std::weak_ptr<T> ToDerivedResourceWeak(std::shared_ptr<Resource> resource)
 			{		
 				std::shared_ptr<T> sharedPtr = dynamic_pointer_cast<T>(resource);
 				std::weak_ptr<T> weakPtr = std::weak_ptr<T>(sharedPtr);
