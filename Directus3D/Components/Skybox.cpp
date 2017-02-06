@@ -29,14 +29,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Core/Scene.h"
 #include "../Resource/ResourceCache.h"
-#include "../Logging/Log.h"
 //====================================
 
-//= NAMESPACES ====================
+//= NAMESPACES ================
 using namespace std;
+using namespace Directus;
 using namespace Directus::Math;
-using namespace Directus::Resource;
-//=================================
+//=============================
 
 Skybox::Skybox()
 {

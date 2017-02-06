@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11/D3D11GraphicsDevice.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector4.h"
-#include "../Resource/IResource.h"
+#include "../Resource/Resource.h"
 #include <memory>
 //====================================
 
@@ -43,7 +43,7 @@ enum ShadingMode
 	Skysphere
 };
 
-class DllExport Material : public Directus::Resource::IResource
+class DllExport Material : public Directus::Resource
 {
 public:
 	Material(Context* context);

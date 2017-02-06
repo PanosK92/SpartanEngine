@@ -222,13 +222,13 @@
     <ClCompile Include="Resource\ResourceManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Resource\ModelImporter.cpp">
+    <ClCompile Include="Resource\Import\DDSTextureImporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Resource\ImageImporter.cpp">
+    <ClCompile Include="Resource\Import\ImageImporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Resource\DDSTextureImporter.cpp">
+    <ClCompile Include="Resource\Import\ModelImporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -428,9 +428,6 @@
     <ClInclude Include="Audio\AudioClip.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Resource\IResource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Resource\ResourceCache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -476,13 +473,16 @@
     <ClInclude Include="Resource\ResourceManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Resource\ModelImporter.h">
+    <ClInclude Include="Resource\Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Resource\ImageImporter.h">
+    <ClInclude Include="Resource\Import\DDSTextureImporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Resource\DDSTextureImporter.h">
+    <ClInclude Include="Resource\Import\ImageImporter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource\Import\ModelImporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

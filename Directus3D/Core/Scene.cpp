@@ -40,11 +40,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 //======================================
 
-//= NAMESPACES ====================
+//= NAMESPACES ================
 using namespace std;
+using namespace Directus;
 using namespace Directus::Math;
-using namespace Directus::Resource;
-//=================================
+//=============================
 
 Scene::Scene(Context* context) : Subsystem(context)
 {

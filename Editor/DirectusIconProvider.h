@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
+//= INCLUDES =============================
 #include <QFileIconProvider>
-#include "Resource/ImageImporter.h"
-//=======================================
+#include "Resource/Import/ImageImporter.h"
+//========================================
 
 class DirectusIconProvider : public QFileIconProvider
 {
@@ -33,7 +33,7 @@ public:
     QIcon icon(const QFileInfo& info) const;
 
 private:
-    ImageImporter* m_imageLoader;
+    Directus::ImageImporter* m_imageLoader;
 
     QIcon m_unknownIcon;
     QIcon m_folderIcon;

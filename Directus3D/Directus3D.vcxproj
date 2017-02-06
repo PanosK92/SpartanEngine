@@ -187,9 +187,9 @@
     <ClCompile Include="FileSystem\FileSystem.cpp" />
     <ClCompile Include="Logging\Log.cpp" />
     <ClCompile Include="IO\Serializer.cpp" />
-    <ClCompile Include="Resource\DDSTextureImporter.cpp" />
-    <ClCompile Include="Resource\ImageImporter.cpp" />
-    <ClCompile Include="Resource\ModelImporter.cpp" />
+    <ClCompile Include="Resource\Import\DDSTextureImporter.cpp" />
+    <ClCompile Include="Resource\Import\ImageImporter.cpp" />
+    <ClCompile Include="Resource\Import\ModelImporter.cpp" />
     <ClCompile Include="Math\Matrix.cpp" />
     <ClCompile Include="Math\Plane.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
@@ -243,7 +243,7 @@
     <ClInclude Include="Core\Scene.h" />
     <ClInclude Include="Core\Settings.h" />
     <ClInclude Include="Resource\ResourceManager.h" />
-    <ClInclude Include="Resource\IResource.h" />
+    <ClInclude Include="Resource\Resource.h" />
     <ClInclude Include="Resource\ResourceCache.h" />
     <ClInclude Include="Socket\Socket.h" />
     <ClInclude Include="Graphics\Texture.h" />
@@ -271,9 +271,9 @@
     <ClInclude Include="Logging\ILogger.h" />
     <ClInclude Include="Logging\Log.h" />
     <ClInclude Include="IO\Serializer.h" />
-    <ClInclude Include="Resource\DDSTextureImporter.h" />
-    <ClInclude Include="Resource\ImageImporter.h" />
-    <ClInclude Include="Resource\ModelImporter.h" />
+    <ClInclude Include="Resource\Import\DDSTextureImporter.h" />
+    <ClInclude Include="Resource\Import\ImageImporter.h" />
+    <ClInclude Include="Resource\Import\ModelImporter.h" />
     <ClInclude Include="Math\MathHelper.h" />
     <ClInclude Include="Math\Matrix.h" />
     <ClInclude Include="Math\Plane.h" />

@@ -19,13 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//=======================================
+//========================================
 #include "DirectusAssetLoader.h"
-#include "Resource/ImageImporter.h"
+#include "Resource/Import/ImageImporter.h"
 #include "FileSystem/FileSystem.h"
 #include <QMutex>
 #include "DirectusProgressBar.h"
-//=======================================
+//========================================
+
+//= NAMESPACES ==========
+using namespace Directus;
+//=======================
 
 DirectusAssetLoader::DirectusAssetLoader(QObject* parent) : QObject(parent)
 {

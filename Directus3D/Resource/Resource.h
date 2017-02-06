@@ -28,48 +28,45 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	namespace Resource
+	enum ResourceType
 	{
-		enum ResourceType
-		{
-			Unknown_Resource,
-			Texture_Resource,
-			Audio_Resource,
-			Material_Resource,
-			Shader_Resource,
-			Mesh_Resource
-		};
+		Unknown_Resource,
+		Texture_Resource,
+		Audio_Resource,
+		Material_Resource,
+		Shader_Resource,
+		Mesh_Resource
+	};
 
-		class IResource
-		{
-		public:
-			virtual ~IResource() {}
+	class Resource
+	{
+	public:
+		virtual ~Resource() {}
 
-			const std::string& GetResourceID() { return m_resourceID; }
-			void SetResourceID(const std::string& ID) { m_resourceID = ID; }
+		const std::string& GetResourceID() { return m_resourceID; }
+		void SetResourceID(const std::string& ID) { m_resourceID = ID; }
 
-			ResourceType GetResourceType() { return m_resourceType; }
-			void SetResourceType(ResourceType type) { m_resourceType = type; }
+		ResourceType GetResourceType() { return m_resourceType; }
+		void SetResourceType(ResourceType type) { m_resourceType = type; }
 
-			const std::string& GetResourceName() { return m_resourceName; }
-			void SetResourceName(const std::string& name) { m_resourceName = name; }
+		const std::string& GetResourceName() { return m_resourceName; }
+		void SetResourceName(const std::string& name) { m_resourceName = name; }
 
-			const std::string& GetResourceFilePath() { return m_resourceFilePath; }
-			void SetResourceFilePath(const std::string& filePath) { m_resourceFilePath = filePath; }
+		const std::string& GetResourceFilePath() { return m_resourceFilePath; }
+		void SetResourceFilePath(const std::string& filePath) { m_resourceFilePath = filePath; }
 
-			// Resource Save/Load
-			virtual bool LoadFromFile(const std::string& filePath) = 0;
+		// Resource Save/Load
+		virtual bool LoadFromFile(const std::string& filePath) = 0;
 
-			// Metadata Save/Load
-			virtual bool SaveMetadata() = 0;
+		// Metadata Save/Load
+		virtual bool SaveMetadata() = 0;
 
-		protected:
-			Context* m_context = nullptr;
+	protected:
+		Context* m_context = nullptr;
 
-			std::string m_resourceID = DATA_NOT_ASSIGNED;
-			ResourceType m_resourceType = Unknown_Resource;
-			std::string m_resourceName = DATA_NOT_ASSIGNED;
-			std::string m_resourceFilePath = DATA_NOT_ASSIGNED;
-		};
-	}
+		std::string m_resourceID = DATA_NOT_ASSIGNED;
+		ResourceType m_resourceType = Unknown_Resource;
+		std::string m_resourceName = DATA_NOT_ASSIGNED;
+		std::string m_resourceFilePath = DATA_NOT_ASSIGNED;
+	};
 }

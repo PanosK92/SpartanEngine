@@ -21,17 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ==================
 #include <memory>
 #include "../Core/SubSystem.h"
 #include "ResourceCache.h"
 #include "../Graphics/Mesh.h"
-//============================
+#include "../Core/GameObject.h"
+//=============================
 
 namespace Directus
 {
-	namespace Resource
-	{
 		class ResourceManager : public Subsystem
 		{
 		public:
@@ -50,7 +49,7 @@ namespace Directus
 					return GetResourceByPath<T>(filePath);
 
 				std::shared_ptr<T> typedResource = std::make_shared<T>(g_context);
-				std::shared_ptr<IResource> resource = std::shared_ptr<IResource>(dynamic_pointer_cast<T>(typedResource));
+				std::shared_ptr<Resource> resource = ToResource(typedResource);
 
 				if (resource->LoadFromFile(filePath))
 					m_resourceCache->Add(resource);
@@ -58,34 +57,47 @@ namespace Directus
 				return GetResourceByPath<T>(filePath);
 			}
 
-			// Adds a resource directly into the resource cache. This function 
-			// should be used in case you have done the loading yourself.
+			// Adds a typed and already loaded resource into the resource cache
 			template <class T>
 			std::weak_ptr<T> Add(std::shared_ptr<T> resourceIn)
 			{
 				// Add the resource only if it's not already there
-				if (!m_resourceCache->Cached<T>(resourceIn))
+				if (!m_resourceCache->Cached(resourceIn))
 					m_resourceCache->Add(ToResource<T>(resourceIn));
 
 				return resourceIn;
 			}
 
+			// Returns cached resource by ID
 			template <class T>
 			std::weak_ptr<T> GetResourceByID(const std::string& ID)
 			{
-				return m_resourceCache->GetByID<T>(ID);
+				std::shared_ptr<Resource> resource = m_resourceCache->GetByID(ID);
+				return ToDerived<T>(resource);
 			}
 
+			// Returns cached resource by Path
 			template <class T>
 			std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
 			{
-				return m_resourceCache->GetByPath<T>(filePath);
+				std::shared_ptr<Resource> resource = m_resourceCache->GetByPath(filePath);
+				return ToDerived<T>(resource);
 			}
 
+			// Returns cached resource by Type
 			template <class T>
 			std::vector<std::weak_ptr<T>> GetAllByType()
 			{
-				return m_resourceCache->GetAllByType<T>();
+				std::vector<std::weak_ptr<T>> typedResources;
+				for (const auto& resource : m_resourceCache->GetAll())
+				{
+					std::weak_ptr<T> typedResource = ToDerived<T>(resource);
+					bool validCasting = !typedResource.expired();
+
+					if (validCasting)
+						typedResources.push_back(typedResource);
+				}
+				return typedResources;
 			}
 
 			//= TEMPORARY =======================================
@@ -95,11 +107,23 @@ namespace Directus
 		private:
 			std::unique_ptr<ResourceCache> m_resourceCache;
 
-			// Upcasts any typed resource to an IResource
+			// Derived -> Resource (as a shared pointer)
 			template <class T>
-			std::shared_ptr<IResource> ToResource(std::shared_ptr<T> resourceIn)
+			std::shared_ptr<Resource> ToResource(std::shared_ptr<T> resource)
 			{
-				return std::shared_ptr<IResource>(dynamic_pointer_cast<T>(resourceIn));
+				std::shared_ptr<Resource> sharedPtr = dynamic_pointer_cast<T>(resource);
+
+				return sharedPtr;
+			}
+
+			// Resource -> Derived (as a weak pointer)
+			template <class T>
+			std::weak_ptr<T> ToDerived(std::shared_ptr<Resource> resource)
+			{		
+				std::shared_ptr<T> sharedPtr = dynamic_pointer_cast<T>(resource);
+				std::weak_ptr<T> weakPtr = std::weak_ptr<T>(sharedPtr);
+
+				return weakPtr;
 			}
 
 			//= TEMPORARY =================================================================================================
@@ -109,5 +133,4 @@ namespace Directus
 			static std::weak_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::weak_ptr<Mesh>>& meshes);
 			//=============================================================================================================
 		};
-	}
 }

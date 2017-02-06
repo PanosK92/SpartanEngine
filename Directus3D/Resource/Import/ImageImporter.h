@@ -60,57 +60,60 @@ XPM files[reading, writing]
 
 #define FREEIMAGE_LIB
 
-//= INCLUDES ============================
+//= INCLUDES ===============================
 #include <vector>
-#include "../Multithreading/ThreadPool.h"
-//=======================================
+#include "../../Multithreading/ThreadPool.h"
+//==========================================
 
 class FIBITMAP;
 
-class DllExport ImageImporter
+namespace Directus
 {
-public:
-	static ImageImporter& GetInstance()
+	class DllExport ImageImporter
 	{
-		static ImageImporter instance;
-		return instance;
-	}
+	public:
+		static ImageImporter& GetInstance()
+		{
+			static ImageImporter instance;
+			return instance;
+		}
 
-	ImageImporter();
-	~ImageImporter();
+		ImageImporter();
+		~ImageImporter();
 
-	void LoadAsync(const std::string& filePath);
-	bool Load(const std::string& filePath) { return Load(filePath, 0, 0, false, false); }
-	bool Load(const std::string& filePath, int width, int height) { return Load(filePath, width, height, true, false); }
-	bool LoadAndCreateMipchain(const std::string& filePath) { return Load(filePath, 0, 0, false, true); }
-	
-	void Clear();
+		void LoadAsync(const std::string& filePath);
+		bool Load(const std::string& filePath) { return Load(filePath, 0, 0, false, false); }
+		bool Load(const std::string& filePath, int width, int height) { return Load(filePath, width, height, true, false); }
+		bool LoadAndCreateMipchain(const std::string& filePath) { return Load(filePath, 0, 0, false, true); }
 
-	//= PROPERTIES =======================================
-	unsigned char* GetRGBA() { return m_dataRGBA.data(); }
-	const std::vector<std::vector<unsigned char>>& GetRGBAMipchain();
-	unsigned int GetBPP() { return m_bpp; }
-	unsigned int GetWidth() { return m_width; }
-	unsigned int GetHeight() { return m_height; }
-	bool IsGrayscale() { return m_grayscale; }
-	bool IsTransparent() { return m_transparent; }
-	const std::string& GetPath() { return m_path; }
-	int GetChannels() { return m_channels; }
-	//====================================================
+		void Clear();
 
-private:
-	std::vector<unsigned char> m_dataRGBA;
-	std::vector<std::vector<unsigned char>> m_mipchainDataRGBA;
-	unsigned int m_bpp;
-	unsigned int m_width;
-	unsigned int m_height;
-	int m_channels;
-	std::string m_path;
-	bool m_grayscale;
-	bool m_transparent;
+		//= PROPERTIES =======================================
+		unsigned char* GetRGBA() { return m_dataRGBA.data(); }
+		const std::vector<std::vector<unsigned char>>& GetRGBAMipchain();
+		unsigned int GetBPP() { return m_bpp; }
+		unsigned int GetWidth() { return m_width; }
+		unsigned int GetHeight() { return m_height; }
+		bool IsGrayscale() { return m_grayscale; }
+		bool IsTransparent() { return m_transparent; }
+		const std::string& GetPath() { return m_path; }
+		int GetChannels() { return m_channels; }
+		//====================================================
 
-	bool Load(const std::string& path, int width, int height, bool scale, bool generateMipmap);
-	bool GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, std::vector<unsigned char>* data);
-	void GenerateMipChainFromFIBITMAP(FIBITMAP* original, std::vector<std::vector<unsigned char>>*);
-	bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
-};
+	private:
+		std::vector<unsigned char> m_dataRGBA;
+		std::vector<std::vector<unsigned char>> m_mipchainDataRGBA;
+		unsigned int m_bpp;
+		unsigned int m_width;
+		unsigned int m_height;
+		int m_channels;
+		std::string m_path;
+		bool m_grayscale;
+		bool m_transparent;
+
+		bool Load(const std::string& path, int width, int height, bool scale, bool generateMipmap);
+		bool GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, std::vector<unsigned char>* data);
+		void GenerateMipChainFromFIBITMAP(FIBITMAP* original, std::vector<std::vector<unsigned char>>*);
+		bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
+	};
+}

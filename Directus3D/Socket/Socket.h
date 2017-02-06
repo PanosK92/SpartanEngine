@@ -18,12 +18,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============================
+//= INCLUDES ================================
 #include "../Core/Scene.h"
 #include "../Input/Input.h"
 #include "../Physics/PhysicsWorld.h"
-#include "../Resource/ImageImporter.h"
-//==========================================
+#include "../Resource/Import/ImageImporter.h"
+//===========================================
 
 class ILogger;
 class PhysicsDebugDraw;
@@ -62,7 +62,7 @@ public:
 	void SetPhysicsDebugDraw(bool enable);
 	PhysicsDebugDraw* GetPhysicsDebugDraw();
 	void ClearScene();
-	ImageImporter* GetImageLoader();
+	Directus::ImageImporter* GetImageLoader();
 	void SetLogger(std::weak_ptr<ILogger> logger);
 	Context* GetContext() { return g_context; }
 	//==============================================================================

@@ -25,18 +25,23 @@ class DllExport Engine : public Subsystem
 {
 public:
 	Engine(Context* context);
-	~Engine();
+	~Engine() { Shutdown(); }
 
 	// Initializes the engine with a draw handle, an input handle and window instance
 	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
+
 	// Performs a complete simulation cycle (used to run your game)
 	void Update();
+
 	// Updates and propagates data through the engine's subsystems (used for standalone updates by the editor)
 	void LightUpdate();
+
 	// Returns whether the engine is running a full simulation (Update) or not (LightUpdate)
 	bool IsSimulating() { return m_isSimulating; }
+
 	// Returns the current context
-	Context* GetContext();
+	Context* GetContext() { return g_context; }
+
 	// Shuts down the engine
 	void Shutdown();
 

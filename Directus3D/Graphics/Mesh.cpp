@@ -26,13 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
+#include "../IO/Serializer.h"
 //===================================
 
-//= NAMESPACES ====================
+//= NAMESPACES ================
 using namespace std;
+using namespace Directus;
 using namespace Directus::Math;
-using namespace Directus::Resource;
-//=================================
+//=============================
 
 Mesh::Mesh(Context* context)
 {

@@ -24,22 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========
 #include <vector>
 #include <memory>
-#include "IResource.h"
+#include "Resource.h"
 //====================
 
 namespace Directus
 {
-	namespace Resource
-	{
-		// dynamic_pointer_cast complains
-		// so I made it shut it up like this.
-		template<int>
-		void dynamic_pointer_cast();
-
 		class ResourceCache
 		{
 		public:
-			ResourceCache(Context* context) { m_context = context; }
+			ResourceCache() {}
 			~ResourceCache() { Unload(); }
 
 			// Unloads all resources
@@ -50,12 +43,11 @@ namespace Directus
 			}
 
 			// Adds a resource
-			void Add(std::shared_ptr<IResource> resource)
+			void Add(std::shared_ptr<Resource> resource)
 			{
 				if (!resource)
 					return;
 
-				// Add the resource
 				m_resources.push_back(resource);
 			}
 
@@ -64,47 +56,29 @@ namespace Directus
 			{
 				std::vector<std::string> filePaths;
 				for (const auto& resource : m_resources)
-					if (resource->GetResourceFilePath() != DATA_NOT_ASSIGNED)
-						filePaths.push_back(resource->GetResourceFilePath());
+					filePaths.push_back(resource->GetResourceFilePath());
 
 				return filePaths;
 			}
 
 			// Returns a resource by ID
-			template <class T>
-			std::weak_ptr<T> GetByID(const std::string& ID)
+			std::shared_ptr<Resource> GetByID(const std::string& ID)
 			{
 				for (const auto& resource : m_resources)
 					if (resource->GetResourceID() == ID)
-						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
+						return resource;
 
-				return std::weak_ptr<T>();
+				return std::shared_ptr<Resource>();
 			}
 
 			// Returns a resource by file path
-			template <class T>
-			std::weak_ptr<T> GetByPath(const std::string& filePath)
+			std::shared_ptr<Resource> GetByPath(const std::string& filePath)
 			{
 				for (const auto& resource : m_resources)
 					if (resource->GetResourceFilePath() == filePath)
-						return std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
+						return resource;
 
-				return std::weak_ptr<T>();
-			}
-
-			// Returns a vector of a specific type of resources
-			template <class T>
-			std::vector<std::weak_ptr<T>> GetAllByType()
-			{
-				std::vector<std::weak_ptr<T>> typedResources;
-				for (const auto& resource : m_resources)
-				{
-					auto typedResource = std::weak_ptr<T>(dynamic_pointer_cast<T>(resource));
-
-					if (!typedResource.expired())
-						typedResources.push_back(typedResource);
-				}
-				return typedResources;
+				return std::shared_ptr<Resource>();
 			}
 
 			// Makes the resources save their metadata
@@ -115,14 +89,9 @@ namespace Directus
 			}
 
 			// Returns all the resources
-			std::vector<std::weak_ptr<IResource>> GetAll()
+			std::vector<std::shared_ptr<Resource>> GetAll()
 			{
-				std::vector<std::weak_ptr<IResource>> weakResources;
-
-				for (const auto& resource : m_resources)
-					weakResources.push_back(resource);
-
-				return weakResources;
+				return m_resources;
 			}
 
 			// Checks whether a resource is already in the cache
@@ -139,22 +108,19 @@ namespace Directus
 			}
 
 			// Checks whether a resource is already in the cache
-			template <class T>
-			bool Cached(std::weak_ptr<IResource> resourceIn)
+			bool Cached(std::shared_ptr<Resource> resourceIn)
 			{
-				if (resourceIn.expired())
+				if (!resourceIn)
 					return false;
 
 				for (const auto& resource : m_resources)
-					if (resource->GetResourceID() == resourceIn.lock()->GetResourceID())
+					if (resource->GetResourceID() == resourceIn->GetResourceID())
 						return true;
 
 				return false;
 			}
 
 		private:
-			Context* m_context;
-			std::vector<std::shared_ptr<IResource>> m_resources;
+			std::vector<std::shared_ptr<Resource>> m_resources;
 		};
-	}
 }

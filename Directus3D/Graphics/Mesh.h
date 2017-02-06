@@ -24,12 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include "Vertex.h"
-#include "../IO/Serializer.h"
 #include <functional>
-#include "../Resource/IResource.h"
+#include "../Resource/Resource.h"
 //================================
 
-class Mesh : public Directus::Resource::IResource
+class Mesh : public Directus::Resource
 {
 public:
 	Mesh(Context* context);
