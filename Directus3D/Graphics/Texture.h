@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "../FileSystem/FileSystem.h"
-#include "../Resource/IResource.h"
+#include "../Resource/Resource.h"
 #include "D3D11/D3D11Texture.h"
 #include <memory>
 //===================================
@@ -41,7 +41,7 @@ enum TextureType
 	CubeMap,
 };
 
-class Texture : public Directus::Resource::IResource
+class Texture : public Directus::Resource
 {
 public:
 	Texture(Context* context);

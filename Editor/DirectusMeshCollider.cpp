@@ -137,7 +137,7 @@ void DirectusMeshCollider::ReflectMesh()
         return;
 
     auto mesh = m_inspectedMeshCollider->GetMesh();
-    QString meshName = QString::fromStdString(!mesh.expired() ? mesh.lock()->GetName() : DATA_NOT_ASSIGNED);
+    QString meshName = QString::fromStdString(!mesh.expired() ? mesh.lock()->GetResourceName() : DATA_NOT_ASSIGNED);
     m_mesh->setText(meshName);
 }
 

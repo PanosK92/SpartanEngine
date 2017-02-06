@@ -117,7 +117,7 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
     m_inspector->GetMaterialComponent()->Reflect(gameObject);
 
     // Set the text of the QLineEdit
-    this->setText(QString::fromStdString(!material.expired() ? material.lock()->GetName() : DATA_NOT_ASSIGNED));
+    this->setText(QString::fromStdString(!material.expired() ? material.lock()->GetResourceName() : DATA_NOT_ASSIGNED));
 
     // Emit a signal with the material
     emit MaterialDropped(material);

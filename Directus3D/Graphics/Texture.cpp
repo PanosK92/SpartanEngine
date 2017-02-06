@@ -25,20 +25,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================================
 
 
-//= INCLUDES ===============================
+//= INCLUDES ======================================
 #include "Texture.h"
 #include "../Core/GUIDGenerator.h"
 #include "../IO/Serializer.h"
 #include "../Logging/Log.h"
-#include "../Resource/ImageImporter.h"
 #include "../Core/Helper.h"
-#include "../Resource/DDSTextureImporter.h"
-//=========================================
+#include "../Resource/Import/ImageImporter.h"
+#include "../Resource/Import/DDSTextureImporter.h"
+//================================================
 
-//= NAMESPACES ====================
+//= NAMESPACES ==========
 using namespace std;
-using namespace Directus::Resource;
-//=================================
+using namespace Directus;
+//=======================
 
 Texture::Texture(Context* context)
 {

@@ -162,7 +162,7 @@ void DirectusMeshRenderer::ReflectMaterial()
     if (material.expired())
         return;
 
-    std::string materialName = material.lock()->GetName();
+    std::string materialName = material.lock()->GetResourceName();
     m_material->setText(QString::fromStdString(materialName));
 }
 

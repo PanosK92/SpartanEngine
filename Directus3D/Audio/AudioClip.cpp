@@ -28,11 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GUIDGenerator.h"
 //================================
 
-//= NAMESPACES ====================
+//= NAMESPACES ================
 using namespace std;
+using namespace Directus;
 using namespace Directus::Math;
-using namespace Directus::Resource;
-//=================================
+//=============================
 
 AudioClip::AudioClip(FMOD::System* fModSystem)
 {

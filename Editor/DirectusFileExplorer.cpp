@@ -332,7 +332,7 @@ void DirectusFileExplorer::CreateMaterial()
 {
     std::string materialName = "NewMaterial";
     auto material = std::make_shared<Material>(m_directusCore->GetEngineSocket()->GetContext());
-    material->SetName(materialName);
+    material->SetResourceName(materialName);
     material->Save(GetRootPath().toStdString() + "/" + materialName, true);
 }
 

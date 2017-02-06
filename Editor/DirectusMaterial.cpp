@@ -404,7 +404,7 @@ void DirectusMaterial::SetPropertiesVisible(bool visible)
 
 void DirectusMaterial::ReflectName()
 {
-    std::string name = m_inspectedMaterial.lock()->GetName();
+    std::string name = m_inspectedMaterial.lock()->GetResourceName();
     QString text = QString::fromStdString("Material - " + name);
     m_title->setText(text);
 }

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include <fmod.hpp>
 #include "../Components/Transform.h"
-#include "../Resource/IResource.h"
+#include "../Resource/Resource.h"
 //==================================
 
 enum PlayMode
@@ -39,7 +39,7 @@ enum Rolloff
 	Custom
 };
 
-class AudioClip : Directus::Resource::IResource
+class AudioClip : Directus::Resource
 {
 public:
 	AudioClip(FMOD::System* fModSystem);

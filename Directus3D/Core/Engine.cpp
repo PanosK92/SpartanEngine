@@ -19,24 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES =================================
 #include "Engine.h"
 #include "Timer.h"
 #include "Settings.h"
 #include "../Logging/Log.h"
 #include "../Multithreading/ThreadPool.h"
 #include "../Resource/ResourceManager.h"
-#include "../Resource/ModelImporter.h"
+#include "../Resource/Import/ModelImporter.h"
 #include "../Socket/Socket.h"
 #include "../Scripting/ScriptEngine.h"
 #include "../Graphics/Renderer.h"
 #include "../Audio/Audio.h"
-//=======================================
+//===========================================
 
-//= NAMESPACES ====================
+//= NAMESPACES ==========
 using namespace std;
-using namespace Directus::Resource;
-//=================================
+using namespace Directus;
+//=======================
 
 Engine::Engine(Context* context) : Subsystem(context)
 {
@@ -55,11 +55,6 @@ Engine::Engine(Context* context) : Subsystem(context)
 	g_context->RegisterSubsystem(new GraphicsDevice(g_context));
 	g_context->RegisterSubsystem(new PhysicsWorld(g_context));
 	g_context->RegisterSubsystem(new ResourceManager(g_context));
-}
-
-Engine::~Engine()
-{
-	Shutdown();
 }
 
 void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
@@ -102,28 +97,19 @@ void Engine::LightUpdate()
 	m_isSimulating = false;
 
 	// Manually update as few subsystems as possible
-	// This is used by the inspector when not in game mode.
+	// This is used by the editor when not in game mode.
 	g_context->GetSubsystem<Input>()->Update();
 	g_context->GetSubsystem<Scene>()->Update();
 	g_context->GetSubsystem<Scene>()->Resolve();
 	g_context->GetSubsystem<Renderer>()->Render();
 }
 
-Context* Engine::GetContext()
-{
-	return g_context;
-}
-
 void Engine::Shutdown()
 {
 	// The context will deallocate the subsystems
 	// in the reverse order in which they were registered.
-	if (g_context)
-	{
-		delete g_context;
-		g_context = nullptr;
-	}
+	SafeDelete(g_context);
 
-	// Release singletons
+	// Release Log singleton
 	Log::Release();
 }

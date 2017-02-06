@@ -26,88 +26,90 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ====================
 using namespace std;
-using namespace Directus::Resource;
 using namespace Directus::Math;
 //=================================
 
-ResourceManager::ResourceManager(Context* context) : Subsystem(context)
+namespace Directus
 {
-	m_resourceCache = make_unique<ResourceCache>(g_context);
-}
-
-/*------------------------------------------------------------------------------
-[MESH PROCESSING]
-------------------------------------------------------------------------------*/
-// Returns the meshes tha belong to the same model
-vector<weak_ptr<Mesh>> ResourceManager::GetModelMeshesByModelName(const string& rootGameObjectID)
-{
-	vector<weak_ptr<Mesh>> modelMeshes;
-
-	auto meshes = GetAllByType<Mesh>();
-	for (const auto& mesh : meshes)
-		if (mesh.lock()->GetRootGameObjectID() == rootGameObjectID)
-			modelMeshes.push_back(mesh);
-
-	return modelMeshes;
-}
-
-// Returns a value that can be used (by multiplying against the original scale)
-// to normalize the scale of a transform
-float ResourceManager::GetNormalizedModelScaleByRootGameObjectID(const string& rootGameObjectID)
-{
-	// get all the meshes related to this model
-	vector<weak_ptr<Mesh>> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
-
-	// find the mesh with the largest bounding box
-	weak_ptr<Mesh> largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
-
-	if (largestBoundingBoxMesh.expired())
-		return 1.0f;
-
-	// calculate the scale
-	Vector3 boundingBox = largestBoundingBoxMesh.lock()->GetBoundingBox();
-	float scaleOffset = boundingBox.Length();
-
-	return 1.0f / scaleOffset;
-}
-
-void ResourceManager::SetModelScale(const string& rootGameObjectID, float scale)
-{
-	// get all the meshes related to this model and scale them
-	for (const auto& modelMesh : GetModelMeshesByModelName(rootGameObjectID))
-		modelMesh.lock()->SetScale(scale);
-}
-
-void ResourceManager::NormalizeModelScale(GameObject* rootGameObject)
-{
-	if (!rootGameObject)
-		return;
-
-	float normalizedScale = GetNormalizedModelScaleByRootGameObjectID(rootGameObject->GetID());
-	SetModelScale(rootGameObject->GetID(), normalizedScale);
-}
-
-// Returns the largest bounding box in an vector of meshes
-weak_ptr<Mesh> ResourceManager::GetLargestBoundingBox(const vector<weak_ptr<Mesh>>& meshes)
-{
-	if (meshes.empty())
-		return weak_ptr<Mesh>();
-
-	Vector3 largestBoundingBox = Vector3::Zero;
-	weak_ptr<Mesh> largestBoundingBoxMesh = meshes.front();
-
-	for (auto mesh : meshes)
+	ResourceManager::ResourceManager(Context* context) : Subsystem(context)
 	{
-		if (mesh.expired())
-			continue;
-
-		Vector3 boundingBox = mesh.lock()->GetBoundingBox();
-		if (boundingBox.Volume() > largestBoundingBox.Volume())
-		{
-			largestBoundingBox = boundingBox;
-			largestBoundingBoxMesh = mesh;
-		}
+		m_resourceCache = make_unique<ResourceCache>();
 	}
 
-	return largestBoundingBoxMesh;
+	/*------------------------------------------------------------------------------
+	[MESH PROCESSING]
+	------------------------------------------------------------------------------*/
+	// Returns the meshes tha belong to the same model
+	vector<weak_ptr<Mesh>> ResourceManager::GetModelMeshesByModelName(const string& rootGameObjectID)
+	{
+		vector<weak_ptr<Mesh>> modelMeshes;
+
+		auto meshes = GetAllByType<Mesh>();
+		for (const auto& mesh : meshes)
+			if (mesh.lock()->GetRootGameObjectID() == rootGameObjectID)
+				modelMeshes.push_back(mesh);
+
+		return modelMeshes;
+	}
+
+	// Returns a value that can be used (by multiplying against the original scale)
+	// to normalize the scale of a transform
+	float ResourceManager::GetNormalizedModelScaleByRootGameObjectID(const string& rootGameObjectID)
+	{
+		// get all the meshes related to this model
+		vector<weak_ptr<Mesh>> modelMeshes = GetModelMeshesByModelName(rootGameObjectID);
+
+		// find the mesh with the largest bounding box
+		weak_ptr<Mesh> largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
+
+		if (largestBoundingBoxMesh.expired())
+			return 1.0f;
+
+		// calculate the scale
+		Vector3 boundingBox = largestBoundingBoxMesh.lock()->GetBoundingBox();
+		float scaleOffset = boundingBox.Length();
+
+		return 1.0f / scaleOffset;
+	}
+
+	void ResourceManager::SetModelScale(const string& rootGameObjectID, float scale)
+	{
+		// get all the meshes related to this model and scale them
+		for (const auto& modelMesh : GetModelMeshesByModelName(rootGameObjectID))
+			modelMesh.lock()->SetScale(scale);
+	}
+
+	void ResourceManager::NormalizeModelScale(GameObject* rootGameObject)
+	{
+		if (!rootGameObject)
+			return;
+
+		float normalizedScale = GetNormalizedModelScaleByRootGameObjectID(rootGameObject->GetID());
+		SetModelScale(rootGameObject->GetID(), normalizedScale);
+	}
+
+	// Returns the largest bounding box in an vector of meshes
+	weak_ptr<Mesh> ResourceManager::GetLargestBoundingBox(const vector<weak_ptr<Mesh>>& meshes)
+	{
+		if (meshes.empty())
+			return weak_ptr<Mesh>();
+
+		Vector3 largestBoundingBox = Vector3::Zero;
+		weak_ptr<Mesh> largestBoundingBoxMesh = meshes.front();
+
+		for (auto mesh : meshes)
+		{
+			if (mesh.expired())
+				continue;
+
+			Vector3 boundingBox = mesh.lock()->GetBoundingBox();
+			if (boundingBox.Volume() > largestBoundingBox.Volume())
+			{
+				largestBoundingBox = boundingBox;
+				largestBoundingBoxMesh = mesh;
+			}
+		}
+
+		return largestBoundingBoxMesh;
+	}
 }
