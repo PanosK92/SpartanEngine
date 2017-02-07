@@ -17,7 +17,7 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 - Multithreading.
 - Physically based shading.
 - Physics.
-- Post-process effects like FXAA & Sharpening.
+- Post-process effects like FXAA & LumaSharpen.
 - Scripting.
 - Windows support.
 

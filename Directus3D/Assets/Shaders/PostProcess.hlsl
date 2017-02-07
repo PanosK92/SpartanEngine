@@ -2,6 +2,10 @@ Texture2D sourceTexture 		: register(t0);
 SamplerState anisotropicSampler : register(s0);
 SamplerState bilinearSampler 	: register(s1);
 
+#if SHARPENING
+#include "LumaSharpen.hlsl"
+#endif
+
 #if FXAA
 #define FXAA_PC 1
 #define FXAA_HLSL_5 1
@@ -71,23 +75,7 @@ float4 FXAAPass(float2 texCoord, float2 texelSize)
 #if SHARPENING
 float4 SharpeningPass(float2 texCoord)
 {
-  	float val0 = 2.0f;
-	float val1 = -0.125f;
-	float effect_width = 0.6f;
-	float dx = effect_width / viewport.x;
-	float dy = effect_width / viewport.y;
-
-	float4 c1 = sourceTexture.Sample(anisotropicSampler, texCoord + float2(-dx, -dy)) * val1;
-	float4 c2 = sourceTexture.Sample(anisotropicSampler, texCoord + float2(  0, -dy)) * val1;
-	float4 c3 = sourceTexture.Sample(anisotropicSampler, texCoord + float2(-dx,   0)) * val1;
-	float4 c4 = sourceTexture.Sample(anisotropicSampler, texCoord + float2( dx,   0)) * val1;
-	float4 c5 = sourceTexture.Sample(anisotropicSampler, texCoord + float2(  0,  dy)) * val1;
-	float4 c6 = sourceTexture.Sample(anisotropicSampler, texCoord + float2( dx,  dy)) * val1;
-	float4 c7 = sourceTexture.Sample(anisotropicSampler, texCoord + float2(-dx, +dy)) * val1;
-	float4 c8 = sourceTexture.Sample(anisotropicSampler, texCoord + float2(+dx, -dy)) * val1;
-	float4 c9 = sourceTexture.Sample(anisotropicSampler, texCoord) * val0;
-
-	return (c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9);
+	return LumaSharpen(sourceTexture, anisotropicSampler, texCoord, viewport);
 }
 #endif
 
