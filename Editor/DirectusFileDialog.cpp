@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusHierarchy.h"
 //=============================
 
-#define EMPTY "-1"
+#define EMPTY "N/A"
 
 DirectusFileDialog::DirectusFileDialog(QWidget* parent) : QFileDialog(parent)
 {
