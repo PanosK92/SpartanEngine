@@ -363,6 +363,7 @@ bool D3D11GraphicsDevice::CreateDepthStencil()
 
 	// Create a depth stencil state with depth enabled
 	depthStencilDesc.DepthEnable = true;
+	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 	HRESULT result = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateEnabled);
 	if (FAILED(result))
 	{
@@ -372,6 +373,7 @@ bool D3D11GraphicsDevice::CreateDepthStencil()
 
 	// Create a depth stencil state with depth disabled
 	depthStencilDesc.DepthEnable = false;
+	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 	result = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateDisabled);
 	if (FAILED(result))
 	{

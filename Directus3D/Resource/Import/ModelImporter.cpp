@@ -396,8 +396,14 @@ namespace Directus
 		string textureDestination = "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
 		FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
-		// Set the texture to the material
-		material.lock()->SetTexture(textureDestination, textureType);
+		// Load the texture
+		auto texture = g_context->GetSubsystem<ResourceManager>()->Load<Texture>(textureDestination);
+		// If it was loaded successfuly, set it to the material
+		if (!texture.expired())
+		{
+			texture.lock()->SetTextureType(textureType);
+			material.lock()->SetTexture(texture);
+		}
 	}
 
 	string ModelImporter::FindTexture(string texturePath)

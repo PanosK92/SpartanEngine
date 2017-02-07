@@ -329,6 +329,7 @@ void AudioClip::SetTransform(Transform* transform)
 //= CREATION =====================================================================================
 bool AudioClip::CreateSound(const string& filePath)
 {
+	LOG_INFO(filePath);
 	// Create sound
 	m_result = m_fModSystem->createSound(filePath.c_str(), BuildSoundMode(), nullptr, &m_sound);
 	if (m_result != FMOD_OK)

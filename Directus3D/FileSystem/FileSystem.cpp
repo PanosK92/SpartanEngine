@@ -140,11 +140,11 @@ string FileSystem::GetExtensionFromPath(const string& path)
 string FileSystem::GetRelativePathFromAbsolutePath(const string& filePath)
 {
 	// NOTE: This function assumes that the path resolves somewhere 
-	// inside the folder "Assets" (The default engine folder).
-	// D:\Projects\Directus3D\Build\Assets\Models\cube\tex.jpg --> Assets\Models\cube\tex.jpg
-	// It removes everything before the folder "Assets", making the path relative to the engine
+	// inside the folder "Standard Assets" (The default engine folder).
+	// D:\Projects\Directus3D\Build\Standard Assets\Models\cube\tex.jpg --> Standard Assets\Models\cube\tex.jpg
+	// It removes everything before the folder "Standard Assets", making the path relative to the engine
 
-	size_t position = filePath.find("Assets");
+	size_t position = filePath.find("Standard Assets");
 
 	if (position == string::npos)
 		return filePath;

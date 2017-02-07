@@ -58,8 +58,6 @@ public:
 
 	//= TEXTURES ==================================================================
 	void SetTexture(std::weak_ptr<Texture> texture);
-	void SetTexture(const std::string& textureID);
-	void SetTexture(const std::string& texturePath, TextureType type);
 	std::weak_ptr<Texture> GetTextureByType(TextureType type);
 	bool HasTextureOfType(TextureType type);
 	bool HasTexture(const std::string& path);
