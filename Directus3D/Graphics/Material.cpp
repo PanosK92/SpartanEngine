@@ -193,29 +193,6 @@ void Material::SetTexture(weak_ptr<Texture> texture)
 	AcquireShader();
 }
 
-// Set texture by searching it by it's ID
-void Material::SetTexture(const string& textureID)
-{
-	if (!m_context)
-		return;
-
-	SetTexture(m_context->GetSubsystem<ResourceManager>()->GetResourceByID<Texture>(textureID));
-}
-
-// Set texture by loading it from a file
-void Material::SetTexture(const string& filePath, TextureType type)
-{
-	if (!m_context)
-		return;
-
-	auto texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(filePath);
-	if (!texture.expired())
-	{
-		texture.lock()->SetTextureType(type);
-		SetTexture(texture);
-	}
-}
-
 weak_ptr<Texture> Material::GetTextureByType(TextureType type)
 {
 	for (const auto& it : m_textures)
