@@ -137,13 +137,13 @@ bool Scene::SaveToFile(const string& filePathIn)
 		filePath += SCENE_EXTENSION;
 
 	// Save any in-memory changes done to resources while running.
-	g_context->GetSubsystem<ResourceCache>()->SaveResourceMetadata();
+	g_context->GetSubsystem<ResourceManager>()->SaveResourceMetadata();
 
 	if (!Serializer::StartWriting(filePath))
 		return false;
 
 	//= Save currently loaded resource paths =======================================================
-	vector<string> resourcePaths = g_context->GetSubsystem<ResourceCache>()->GetResourceFilePaths();
+	vector<string> resourcePaths = g_context->GetSubsystem<ResourceManager>()->GetResourceFilePaths();
 	Serializer::WriteVectorSTR(resourcePaths);
 	//==============================================================================================
 
@@ -153,14 +153,14 @@ bool Scene::SaveToFile(const string& filePathIn)
 
 	// 1st - GameObject count
 	Serializer::WriteInt((int)rootGameObjects.size());
-	
+
 	// 2nd - GameObject IDs
 	for (const auto& root : rootGameObjects)
-		Serializer::WriteSTR(root->GetID());	
-	
+		Serializer::WriteSTR(root->GetID());
+
 	// 3rd - GameObjects
-	for (const auto& root : rootGameObjects) 
-		root->Serialize();								
+	for (const auto& root : rootGameObjects)
+		root->Serialize();
 	//==============================================
 
 	Serializer::StopWriting();
@@ -204,7 +204,7 @@ bool Scene::LoadFromFile(const string& filePath)
 			g_context->GetSubsystem<ResourceManager>()->Load<Texture>(resourcePath);
 	}
 
-	
+
 	if (!Serializer::StartReading(filePath))
 		return false;
 
@@ -213,23 +213,23 @@ bool Scene::LoadFromFile(const string& filePath)
 
 	//= Load GameObjects ============================	
 	// 1st - GameObject count
-	int rootGameObjectCount = Serializer::ReadInt();		
-	
+	int rootGameObjectCount = Serializer::ReadInt();
+
 	// 2nd - GameObject IDs
 	for (int i = 0; i < rootGameObjectCount; i++)
 	{
-		
+
 		m_gameObjects.push_back(new GameObject(g_context));
-		m_gameObjects.back()->SetID(Serializer::ReadSTR()); 
+		m_gameObjects.back()->SetID(Serializer::ReadSTR());
 	}
-	
+
 	// 3rd - GameObjects
 	// It's important to loop with rootGameObjectCount
 	// as the vector size will increase as we deserialize
 	// GameObjects. This is because a GameObject will also
 	// deserialize it's descendants.
 	for (int i = 0; i < rootGameObjectCount; i++)
-		m_gameObjects[i]->Deserialize(nullptr);					
+		m_gameObjects[i]->Deserialize(nullptr);
 
 	Serializer::StopReading();
 	//==============================================

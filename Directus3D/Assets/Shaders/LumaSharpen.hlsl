@@ -4,6 +4,7 @@
 	LumaSharpen 1.4.1
 	original hlsl by Christian Cann Schuldt Jensen ~ CeeJay.dk
 	port to glsl by Anon
+	ported back to hlsl and modified by Panos karabelas
 	It blurs the original pixel with the surrounding pixels and then subtracts this blur to sharpen the image.
 	It does this in luma to avoid color artifacts and allows limiting the maximum sharpning to avoid or lessen halo artifacts.
 	This is similar to using Unsharp Mask in Photoshop.
@@ -11,9 +12,9 @@
 
 
 // -- Sharpening --
-#define sharp_strength 0.65   //[0.10 to 3.00] Strength of the sharpening
+#define sharp_strength 1.0   //[0.10 to 3.00] Strength of the sharpening
 
-#define sharp_clamp    0.035  //[0.000 to 1.000] Limits maximum amount of sharpening a pixel recieves - Default is 0.035
+#define sharp_clamp    0.35  //[0.000 to 1.000] Limits maximum amount of sharpening a pixel recieves - Default is 0.035
 
 // -- Advanced sharpening settings --
 
