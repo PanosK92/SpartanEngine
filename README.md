@@ -1,5 +1,3 @@
-Update: I recently moved from Greece to the UK, a lot of changes are taking place. However when all things are set, I will get back to it. Until then, happy coding!
-
 # About Directus3D
 Directus3D is a game engine that aims to be powerful yet simple. This is achieved by prioriziting a coherent and modern design and a minimalistic approach when it comes to adding new features. 
 The UI design is greatly inspired by Unity, it should make the engine feel familiar and pleasurable to use.
@@ -41,7 +39,7 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 
 ### Download
 Note: The download link will be updated whenever any features that are under development get completed.
-- [Directus v0.2 (Windows x64)] (https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc) - 65.8 MB.
+- [Directus v0.2 (Windows x64)](https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc) - 65.8 MB.
 
 ### Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109), 
@@ -51,3 +49,5 @@ Note: The download link will be updated whenever any features that are under dev
 - Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
 
 This project is devoted to my father.
+
+Note: I recently moved from Greece to the UK, a lot of changes are taking place. However when all things are set, I will get back to it. Until then, happy coding!
