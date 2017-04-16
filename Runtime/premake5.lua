@@ -16,7 +16,7 @@ project (PROJECT_NAME)
 	language "C++"
 	files { "**.h", "**.cpp" }
 	targetdir "../Binaries/%{cfg.buildcfg}"	
-	objdir "../Binaries/Obj/%{cfg.buildcfg}"
+	objdir "../Binaries/MetaData/VS_Obj/%{cfg.buildcfg}"
 	
 -- Libraries
 libdirs { "../ThirdParty/mvsc141_x64" }
