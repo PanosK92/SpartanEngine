@@ -168,7 +168,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	adapterOutput->Release();
 
 	// Go through all the display modes and find the one that matches the screen width and height.
-	for (auto i = 0; i < m_displayModeCount; i++)
+	for (unsigned int i = 0; i < m_displayModeCount; i++)
 		if (m_displayModeList[i].Width == (UINT)RESOLUTION_WIDTH && m_displayModeList[i].Height == (UINT)RESOLUTION_HEIGHT)
 		{
 			m_refreshRateNumerator = (UINT)m_displayModeList[i].RefreshRate.Numerator;

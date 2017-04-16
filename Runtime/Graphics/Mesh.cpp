@@ -101,13 +101,13 @@ void Mesh::Deserialize()
 	m_indexCount = Serializer::ReadInt();
 	m_triangleCount = Serializer::ReadInt();
 
-	for (auto i = 0; i < m_vertexCount; i++)
+	for (unsigned int i = 0; i < m_vertexCount; i++)
 	{
 		m_vertices.push_back(VertexPositionTextureNormalTangent());
 		LoadVertex(m_vertices.back());
 	}
 
-	for (auto i = 0; i < m_indexCount; i++)
+	for (unsigned int i = 0; i < m_indexCount; i++)
 		m_indices.push_back(Serializer::ReadInt());
 
 	m_min = Serializer::ReadVector3();
@@ -227,7 +227,7 @@ void Mesh::LoadVertex(VertexPositionTextureNormalTangent& vertex)
 //= HELPER FUNCTIONS ===========================================================
 void Mesh::SetScale(Mesh* meshData, float scale)
 {
-	for (auto i = 0; i < meshData->GetVertexCount(); i++)
+	for (unsigned int i = 0; i < meshData->GetVertexCount(); i++)
 		meshData->GetVertices()[i].position *= scale;
 }
 

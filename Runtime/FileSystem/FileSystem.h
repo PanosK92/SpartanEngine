@@ -98,4 +98,5 @@ public:
 
 	// string
 	static std::string ConvertToUppercase(const std::string& lower);
+	static std::wstring ToWString(const std::string& str);
 };

@@ -192,7 +192,7 @@ void AudioSource::SetPriority(int priority)
 
 	// Priority for the channel, from 0 (most important) 
 	// to 256 (least important), default = 128.
-	m_priority = Clamp(priority, 0, 255);
+	m_priority = (int)Clamp(priority, 0, 255);
 	m_audioClip.lock()->SetPriority(m_priority);
 }
 

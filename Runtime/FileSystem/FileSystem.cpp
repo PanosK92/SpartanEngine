@@ -36,7 +36,7 @@ using namespace std;
 //= DIRECTORIES ================================================================================================
 bool FileSystem::CreateDirectory_(const string& path)
 {
-	if (!CreateDirectory(path.c_str(), nullptr))
+	if (!CreateDirectory(ToWString(path).c_str(), nullptr))
 	{
 		//DWORD err = GetLastError();
 		//if (err != ERROR_ALREADY_EXISTS)
@@ -48,7 +48,7 @@ bool FileSystem::CreateDirectory_(const string& path)
 
 bool FileSystem::OpenDirectoryInExplorer(const string& directory)
 {
-	HINSTANCE result = ShellExecute(nullptr, "open", directory.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
+	HINSTANCE result = ShellExecute(nullptr, L"open", ToWString(directory).c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
 	return FAILED(result) ? false : true;
 }
 
@@ -94,7 +94,7 @@ bool FileSystem::DeleteFile_(const string& filePath)
 bool FileSystem::CopyFileFromTo(const string& source, const string& destination)
 {
 	//DWORD err = GetLastError();
-	return !CopyFile(source.c_str(), destination.c_str(), true);
+	return !CopyFile(ToWString(source).c_str(), ToWString(destination).c_str(), true);
 }
 
 string FileSystem::GetFileNameFromPath(const string& path)
@@ -503,4 +503,9 @@ string FileSystem::ConvertToUppercase(const string& lower)
 		upper += std::toupper(lower[i], loc);
 
 	return upper;
+}
+
+std::wstring FileSystem::ToWString(const std::string& str)
+{
+	return std::wstring(str.begin(), str.end());
 }
