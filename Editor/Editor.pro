@@ -11,6 +11,12 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = "Directus3D"
 TEMPLATE = app
 
+# The following define makes your compiler emit warnings if you use
+# any feature of Qt which as been marked as deprecated (the exact warnings
+# depend on your compiler). Please consult the documentation of the
+# deprecated API in order to know how to port your code away from it.
+DEFINES += QT_DEPRECATED_WARNINGS
+
 SOURCES += main.cpp\
         editor.cpp \
     DirectusPlayButton.cpp \
@@ -88,21 +94,21 @@ FORMS    += editor.ui \
     AboutDialog.ui \
     AssetLoadingDialog.ui
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirectus3DRuntime
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Binaries/ -lDirectus3DRuntime
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../Binaries/ -lRuntime
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../Binaries/ -lRuntime
 
-INCLUDEPATH += $$PWD/../Directus3D
-DEPENDPATH += $$PWD/../Directus3D
+INCLUDEPATH += $$PWD/../Runtime
+DEPENDPATH += $$PWD/../Runtime
 
 DISTFILES +=
 
-ParentDirectory = $$PWD/../../Binaries/
+DEST_DIR = $$PWD/../Binaries/
 
-DESTDIR = "$$ParentDirectory"
-RCC_DIR = "$$ParentDirectory\RCCFiles"
-UI_DIR = "$$ParentDirectory\UICFiles"
-MOC_DIR = "$$ParentDirectory\MOCFiles"
-OBJECTS_DIR = "$$ParentDirectory\ObjFiles"
+DESTDIR = "$$DEST_DIR"
+RCC_DIR = "$$DEST_DIR/MetaData/Qt_RCCFiles"
+UI_DIR = "$$DEST_DIR/MetaData/Qt_UICFiles"
+MOC_DIR = "$$DEST_DIR/MetaData/Qt_MOCFiles"
+OBJECTS_DIR = "$$DEST_DIR/MetaData/Qt_ObjFiles"
 
 RESOURCES += \
     Images/images.qrc
