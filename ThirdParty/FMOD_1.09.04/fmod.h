@@ -2,7 +2,7 @@
 
 /* ======================================================================================== */
 /* FMOD Studio Low Level API - C header file.                                               */
-/* Copyright (c), Firelight Technologies Pty, Ltd. 2012-2016.                               */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2012-2017.                               */
 /*                                                                                          */
 /* Use this header in conjunction with fmod_common.h (which contains all the constants /    */
 /* callbacks) to develop using C interface.                                                 */
@@ -233,7 +233,7 @@ FMOD_RESULT F_API FMOD_Sound_GetNumSubSounds            (FMOD_SOUND *sound, int 
 FMOD_RESULT F_API FMOD_Sound_GetNumTags                 (FMOD_SOUND *sound, int *numtags, int *numtagsupdated);
 FMOD_RESULT F_API FMOD_Sound_GetTag                     (FMOD_SOUND *sound, const char *name, int index, FMOD_TAG *tag);
 FMOD_RESULT F_API FMOD_Sound_GetOpenState               (FMOD_SOUND *sound, FMOD_OPENSTATE *openstate, unsigned int *percentbuffered, FMOD_BOOL *starving, FMOD_BOOL *diskbusy);
-FMOD_RESULT F_API FMOD_Sound_ReadData                   (FMOD_SOUND *sound, void *buffer, unsigned int lenbytes, unsigned int *read);
+FMOD_RESULT F_API FMOD_Sound_ReadData                   (FMOD_SOUND *sound, void *buffer, unsigned int length, unsigned int *read);
 FMOD_RESULT F_API FMOD_Sound_SeekData                   (FMOD_SOUND *sound, unsigned int pcm);
 
 FMOD_RESULT F_API FMOD_Sound_SetSoundGroup              (FMOD_SOUND *sound, FMOD_SOUNDGROUP *soundgroup);
@@ -340,7 +340,6 @@ FMOD_RESULT F_API FMOD_Channel_RemoveDSP                (FMOD_CHANNEL *channel, 
 FMOD_RESULT F_API FMOD_Channel_GetNumDSPs               (FMOD_CHANNEL *channel, int *numdsps);
 FMOD_RESULT F_API FMOD_Channel_SetDSPIndex              (FMOD_CHANNEL *channel, FMOD_DSP *dsp, int index);
 FMOD_RESULT F_API FMOD_Channel_GetDSPIndex              (FMOD_CHANNEL *channel, FMOD_DSP *dsp, int *index);
-FMOD_RESULT F_API FMOD_Channel_OverridePanDSP           (FMOD_CHANNEL *channel, FMOD_DSP *pan);
 
 /*
      3D functionality.
@@ -462,7 +461,6 @@ FMOD_RESULT F_API FMOD_ChannelGroup_RemoveDSP           (FMOD_CHANNELGROUP *chan
 FMOD_RESULT F_API FMOD_ChannelGroup_GetNumDSPs          (FMOD_CHANNELGROUP *channelgroup, int *numdsps);
 FMOD_RESULT F_API FMOD_ChannelGroup_SetDSPIndex         (FMOD_CHANNELGROUP *channelgroup, FMOD_DSP *dsp, int index);
 FMOD_RESULT F_API FMOD_ChannelGroup_GetDSPIndex         (FMOD_CHANNELGROUP *channelgroup, FMOD_DSP *dsp, int *index);
-FMOD_RESULT F_API FMOD_ChannelGroup_OverridePanDSP      (FMOD_CHANNELGROUP *channelgroup, FMOD_DSP *pan);
 
 /*
      3D functionality.

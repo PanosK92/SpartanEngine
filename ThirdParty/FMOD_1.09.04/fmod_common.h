@@ -1,7 +1,7 @@
 /*$ preserve start $*/
 
 /* ================================================================================================== */
-/* FMOD Studio - Common C/C++ header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2016. */
+/* FMOD Studio - Common C/C++ header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2017. */
 /*                                                                                                    */
 /* This header is included by fmod.hpp (C++ interface) and fmod.h (C interface) therefore is the      */
 /* base header for all FMOD headers.                                                                  */
@@ -15,7 +15,7 @@
     0xaaaabbcc -> aaaa = major version number.  bb = minor version number.  cc = development version number.
 */
 
-#define FMOD_VERSION    0x00010814
+#define FMOD_VERSION    0x00010904
 
 /*
     Compiler specific settings.
@@ -254,10 +254,10 @@ typedef struct
 */
 typedef struct FMOD_3D_ATTRIBUTES
 {
-    FMOD_VECTOR position;
-    FMOD_VECTOR velocity;
-    FMOD_VECTOR forward;
-    FMOD_VECTOR up;
+    FMOD_VECTOR position;       /* The position of the object in world space, measured in distance units.  */
+    FMOD_VECTOR velocity;       /* The velocity of the object measured in distance units **per second**.  */
+    FMOD_VECTOR forward;        /* The forwards orientation of the object.  This vector must be of unit length (1.0) and perpendicular to the up vector. */
+    FMOD_VECTOR up;             /* The upwards orientation of the object.  This vector must be of unit length (1.0) and perpendicular to the forward vector. */
 } FMOD_3D_ATTRIBUTES;
 
 
@@ -273,7 +273,7 @@ typedef struct FMOD_3D_ATTRIBUTES
     System::getDriverInfo
 ]
 */
-typedef struct
+typedef struct FMOD_GUID
 {
     unsigned int   Data1;       /* Specifies the first 8 hexadecimal digits of the GUID */
     unsigned short Data2;       /* Specifies the first group of 4 hexadecimal digits.   */
@@ -281,7 +281,7 @@ typedef struct
     unsigned char  Data4[8];    /* Array of 8 bytes. The first 2 bytes contain the third group of 4 hexadecimal digits. The remaining 6 bytes contain the final 12 hexadecimal digits. */
 } FMOD_GUID;
 
-typedef void (F_CALLBACK *FMOD_FILE_ASYNCDONE)           (FMOD_ASYNCREADINFO *info, FMOD_RESULT result);
+typedef void (F_CALLBACK *FMOD_FILE_ASYNCDONE_FUNC)           (FMOD_ASYNCREADINFO *info, FMOD_RESULT result);
 
 /*
 [STRUCTURE] 
@@ -305,22 +305,22 @@ typedef void (F_CALLBACK *FMOD_FILE_ASYNCDONE)           (FMOD_ASYNCREADINFO *in
     [SEE_ALSO]
     FMOD_FILE_ASYNCREAD_CALLBACK
     FMOD_FILE_ASYNCCANCEL_CALLBACK
-    FMOD_FILE_ASYNCDONE
+    FMOD_FILE_ASYNCDONE_FUNC
 ]
 */
 struct FMOD_ASYNCREADINFO
 {
-    void                 *handle;    /* [r] The file handle that was filled out in the open callback. */
-    unsigned int          offset;    /* [r] Seek position, make sure you read from this file offset. */
-    unsigned int          sizebytes; /* [r] how many bytes requested for read. */
-    int                   priority;  /* [r] 0 = low importance.  100 = extremely important (ie 'must read now or stuttering may occur') */
+    void                     *handle;    /* [r] The file handle that was filled out in the open callback. */
+    unsigned int              offset;    /* [r] Seek position, make sure you read from this file offset. */
+    unsigned int              sizebytes; /* [r] how many bytes requested for read. */
+    int                       priority;  /* [r] 0 = low importance.  100 = extremely important (ie 'must read now or stuttering may occur') */
 
-    void                 *userdata;  /* [r/w] User data pointer specific to this request.  Initially 0, can be ignored or set by the user.  Not related to the file's main userdata member.  */
+    void                     *userdata;  /* [r/w] User data pointer specific to this request.  Initially 0, can be ignored or set by the user.  Not related to the file's main userdata member.  */
 
-    void                 *buffer;    /* [w] Buffer to read file data into. */
-    unsigned int          bytesread; /* [w] Fill this in before setting result code to tell FMOD how many bytes were read. */
+    void                     *buffer;    /* [w] Buffer to read file data into. */
+    unsigned int              bytesread; /* [w] Fill this in before setting result code to tell FMOD how many bytes were read. */
 
-    FMOD_FILE_ASYNCDONE   done;      /* [r] FMOD file system wake up function.  Call this when user file read is finished.  Pass result of file read as a parameter. */
+    FMOD_FILE_ASYNCDONE_FUNC  done;      /* [r] FMOD file system wake up function.  Call this when user file read is finished.  Pass result of file read as a parameter. */
 };
 
 
@@ -380,6 +380,8 @@ typedef enum
     FMOD_OUTPUTTYPE_AUDIOOUT,        /* PS4/PSVita           - Audio Out.                           (Default on PS4 and PS Vita) */
     FMOD_OUTPUTTYPE_AUDIO3D,         /* PS4                  - Audio3D. */
     FMOD_OUTPUTTYPE_ATMOS,           /* Win                  - Dolby Atmos (WASAPI). */
+    FMOD_OUTPUTTYPE_WEBAUDIO,        /* Web Browser          - JavaScript webaudio output.          (Default on JavaScript) */
+    FMOD_OUTPUTTYPE_NNAUDIO,         /* NX                   - NX nn::audio.                        (Default on NX)*/
 
     FMOD_OUTPUTTYPE_MAX,             /* Maximum number of output types supported. */
     FMOD_OUTPUTTYPE_FORCEINT = 65536 /* Makes sure this enum is signed 32bit. */
@@ -635,14 +637,14 @@ typedef enum
 */
 typedef enum
 {
-    FMOD_SPEAKER_FRONT_LEFT,
-    FMOD_SPEAKER_FRONT_RIGHT,
-    FMOD_SPEAKER_FRONT_CENTER,
-    FMOD_SPEAKER_LOW_FREQUENCY,
-    FMOD_SPEAKER_SURROUND_LEFT,
-    FMOD_SPEAKER_SURROUND_RIGHT,
-    FMOD_SPEAKER_BACK_LEFT,
-    FMOD_SPEAKER_BACK_RIGHT,
+    FMOD_SPEAKER_FRONT_LEFT,        /* The front left speaker */
+    FMOD_SPEAKER_FRONT_RIGHT,       /* The front right speaker */
+    FMOD_SPEAKER_FRONT_CENTER,      /* The front center speaker */
+    FMOD_SPEAKER_LOW_FREQUENCY,     /* The LFE or 'subwoofer' speaker */
+    FMOD_SPEAKER_SURROUND_LEFT,     /* The surround left (usually to the side) speaker */
+    FMOD_SPEAKER_SURROUND_RIGHT,    /* The surround right (usually to the side) speaker */
+    FMOD_SPEAKER_BACK_LEFT,         /* The back left speaker */
+    FMOD_SPEAKER_BACK_RIGHT,        /* The back right speaker */
 
     FMOD_SPEAKER_MAX,               /* Maximum number of speaker types supported. */
     FMOD_SPEAKER_FORCEINT = 65536   /* Makes sure this enum is signed 32bit. */
@@ -789,7 +791,7 @@ typedef struct FMOD_PLUGINLIST
 */
 #define FMOD_INIT_NORMAL                     0x00000000 /* Initialize normally */
 #define FMOD_INIT_STREAM_FROM_UPDATE         0x00000001 /* No stream thread is created internally.  Streams are driven from System::update.  Mainly used with non-realtime outputs. */
-#define FMOD_INIT_MIX_FROM_UPDATE            0x00000002 /* Win/PS3/Xbox 360 Only - FMOD Mixer thread is woken up to do a mix when System::update is called rather than waking periodically on its own timer. */
+#define FMOD_INIT_MIX_FROM_UPDATE            0x00000002 /* No mixer thread is created internally. Mixing is driven from System::update. Only applies to polling based output modes such as FMOD_OUTPUTTYPE_NOSOUND, FMOD_OUTPUTTYPE_WAVWRITER, FMOD_OUTPUTTYPE_DSOUND, FMOD_OUTPUTTYPE_WINMM,FMOD_OUTPUTTYPE_XAUDIO. */
 #define FMOD_INIT_3D_RIGHTHANDED             0x00000004 /* FMOD will treat +X as right, +Y as up and +Z as backwards (towards you). */
 #define FMOD_INIT_CHANNEL_LOWPASS            0x00000100 /* All FMOD_3D based voices will add a software lowpass filter effect into the DSP chain which is automatically used when Channel::set3DOcclusion is used or the geometry API.   This also causes sounds to sound duller when the sound goes behind the listener, as a fake HRTF style effect.  Use System::setAdvancedSettings to disable or adjust cutoff frequency for this feature. */
 #define FMOD_INIT_CHANNEL_DISTANCEFILTER     0x00000200 /* All FMOD_3D based voices will add a software lowpass and highpass filter effect into the DSP chain which will act as a distance-automated bandpass filter. Use System::setAdvancedSettings to adjust the center frequency. */
@@ -799,6 +801,7 @@ typedef struct FMOD_PLUGINLIST
 #define FMOD_INIT_PREFER_DOLBY_DOWNMIX       0x00080000 /* When using FMOD_SPEAKERMODE_5POINT1 with a stereo output device, use the Dolby Pro Logic II downmix algorithm instead of the SRS Circle Surround algorithm. */
 #define FMOD_INIT_THREAD_UNSAFE              0x00100000 /* Disables thread safety for API calls. Only use this if FMOD low level is being called from a single thread, and if Studio API is not being used! */
 #define FMOD_INIT_PROFILE_METER_ALL          0x00200000 /* Slower, but adds level metering for every single DSP unit in the graph.  Use DSP::setMeteringEnabled to turn meters off individually. */
+#define FMOD_INIT_DISABLE_SRS_HIGHPASSFILTER 0x00400000 /* Using FMOD_SPEAKERMODE_5POINT1 with a stereo output device will enable the SRS Circle Surround downmixer. By default the SRS downmixer applies a high pass filter with a cutoff frequency of 80Hz. Use this flag to diable the high pass fitler, or use FMOD_INIT_PREFER_DOLBY_DOWNMIX to use the Dolby Pro Logic II downmix algorithm instead. */
 /* [DEFINE_END] */
 
 
@@ -1048,19 +1051,20 @@ typedef enum
     These enums denote special types of node within a DSP chain.
 
     [REMARKS]
+    By default there is 1 fader for a ChannelGroup or Channel, and it is the head.
 
     [SEE_ALSO]
     Channel::getDSP
     ChannelGroup::getDSP
     ChannelControl::getNumDSPs
+    ChannelControl::setDSPIndex
 ]
 */
 typedef enum
 {
     FMOD_CHANNELCONTROL_DSP_HEAD = -1,          /* Head of the DSP chain.   Equivalent of index 0. */
     FMOD_CHANNELCONTROL_DSP_FADER = -2,         /* Built in fader DSP. */
-    FMOD_CHANNELCONTROL_DSP_PANNER = -3,        /* Built in panner DSP. */
-    FMOD_CHANNELCONTROL_DSP_TAIL = -4,          /* Tail of the DSP chain.  Equivalent of the number of dsps minus 1. */
+    FMOD_CHANNELCONTROL_DSP_TAIL = -3,          /* Tail of the DSP chain.  Equivalent of the number of dsps minus 1. */
 
     FMOD_CHANNELCONTROL_DSP_FORCEINT = 65536    /* Makes sure this enum is signed 32bit. */
 } FMOD_CHANNELCONTROL_DSP_INDEX;
@@ -1527,26 +1531,37 @@ typedef struct FMOD_CREATESOUNDEXINFO
 
 
 /*
+[DEFINE]
+[
+    [NAME]
+    FMOD_REVERB_MAXINSTANCES
+
+    [DESCRIPTION]
+    The maximum number of global reverb instances.
+
+    [REMARKS]
+
+    [SEE_ALSO]
+    ChannelControl::setReverbProperties
+    ChannelControl::setReverbProperties
+    System::setReverbProperties
+    System::getReverbProperties
+]
+*/
+#define FMOD_REVERB_MAXINSTANCES 4
+/* [DEFINE_END] */
+
+
+/*
 [STRUCTURE] 
 [
     [DESCRIPTION]
-    Structure defining a reverb environment.<br>
+    Structure defining a reverb environment.
 
     [REMARKS]
-    Note the default reverb properties are the same as the FMOD_PRESET_GENERIC preset.<br>
-    Note that integer values that typically range from -10,000 to 1000 are represented in decibels, 
-    and are of a logarithmic scale, not linear, wheras float values are always linear.<br>
-    <br>
-    The numerical values listed below are the maximum, minimum and default values for each variable respectively.<br>
-    <br>
-    Hardware voice / Platform Specific reverb support.<br>
-    WII   See FMODWII.H for hardware specific reverb functionality.<br>
-    3DS   See FMOD3DS.H for hardware specific reverb functionality.<br>
-    PSP   See FMODWII.H for hardware specific reverb functionality.<br>
-    <br>
-    Members marked with [r] mean the variable is modified by FMOD and is for reading purposes only.  Do not change this value.<br>
-    Members marked with [w] mean the variable can be written to.  The user can set the value.<br>
-    Members marked with [r/w] are either read or write depending on if you are using System::setReverbProperties (w) or System::getReverbProperties (r).
+    Note the default reverb properties are the same as the FMOD_PRESET_GENERIC preset.
+
+    All members are read/write [r/w], written to by FMOD when queried with System::getReverbProperties and read by FMOD when set with System::setReverbProperties.
 
     [SEE_ALSO]
     System::setReverbProperties
@@ -1555,19 +1570,19 @@ typedef struct FMOD_CREATESOUNDEXINFO
 ]
 */
 typedef struct FMOD_REVERB_PROPERTIES
-{                                   /*       MIN    MAX     DEFAULT DESCRIPTION */
-    float        DecayTime;         /* [r/w] 0.0    20000.0 1500.0  Reverberation decay time in ms                                        */
-    float        EarlyDelay;        /* [r/w] 0.0    300.0   7.0     Initial reflection delay time                                         */
-    float        LateDelay;         /* [r/w] 0.0    100     11.0    Late reverberation delay time relative to initial reflection          */
-    float        HFReference;       /* [r/w] 20.0   20000.0 5000    Reference high frequency (hz)                                         */
-    float        HFDecayRatio;      /* [r/w] 10.0   100.0   50.0    High-frequency to mid-frequency decay time ratio                      */
-    float        Diffusion;         /* [r/w] 0.0    100.0   100.0   Value that controls the echo density in the late reverberation decay. */
-    float        Density;           /* [r/w] 0.0    100.0   100.0   Value that controls the modal density in the late reverberation decay */
-    float        LowShelfFrequency; /* [r/w] 20.0   1000.0  250.0   Reference low frequency (hz)                                          */
-    float        LowShelfGain;      /* [r/w] -36.0  12.0    0.0     Relative room effect level at low frequencies                         */
-    float        HighCut;           /* [r/w] 20.0   20000.0 20000.0 Relative room effect level at high frequencies                        */
-    float        EarlyLateMix;      /* [r/w] 0.0    100.0   50.0    Early reflections level relative to room effect                       */
-    float        WetLevel;          /* [r/w] -80.0  20.0    -6.0    Room effect level (at mid frequencies)                                */
+{                            /*       MIN    MAX     DEFAULT DESCRIPTION */
+    float DecayTime;         /* [r/w] 0.0    20000.0 1500.0  Reverberation decay time (ms)                                             */
+    float EarlyDelay;        /* [r/w] 0.0    300.0   7.0     Initial reflection delay time (ms)                                        */
+    float LateDelay;         /* [r/w] 0.0    100     11.0    Late reverberation delay time relative to initial reflection (ms)         */
+    float HFReference;       /* [r/w] 20.0   20000.0 5000    Reference high frequency (Hz)                                             */
+    float HFDecayRatio;      /* [r/w] 10.0   100.0   50.0    High-frequency to mid-frequency decay time ratio (%)                      */
+    float Diffusion;         /* [r/w] 0.0    100.0   100.0   Value that controls the echo density in the late reverberation decay (%)  */
+    float Density;           /* [r/w] 0.0    100.0   100.0   Value that controls the modal density in the late reverberation decay (%) */
+    float LowShelfFrequency; /* [r/w] 20.0   1000.0  250.0   Reference low frequency (Hz)                                              */
+    float LowShelfGain;      /* [r/w] -36.0  12.0    0.0     Relative room effect level at low frequencies (dB)                        */
+    float HighCut;           /* [r/w] 20.0   20000.0 20000.0 Relative room effect level at high frequencies (Hz)                       */
+    float EarlyLateMix;      /* [r/w] 0.0    100.0   50.0    Early reflections level relative to room effect (%)                       */
+    float WetLevel;          /* [r/w] -80.0  20.0    -6.0    Room effect level at mid frequencies (dB)                                 */
 } FMOD_REVERB_PROPERTIES;
 
 
@@ -1577,11 +1592,10 @@ typedef struct FMOD_REVERB_PROPERTIES
     [NAME] 
     FMOD_REVERB_PRESETS
 
-    [DESCRIPTION]   
-    A set of predefined environment PARAMETERS.<br>
-    These are used to initialize an FMOD_REVERB_PROPERTIES structure statically.<br>
-    i.e.<br>
-    FMOD_REVERB_PROPERTIES prop = FMOD_PRESET_GENERIC;
+    [DESCRIPTION]
+    Sets of predefined reverb properties used to initialize an FMOD_REVERB_PROPERTIES structure statically.
+
+    i.e. FMOD_REVERB_PROPERTIES prop = FMOD_PRESET_GENERIC;
 
     [REMARKS]
 
@@ -1592,30 +1606,30 @@ typedef struct FMOD_REVERB_PROPERTIES
 */
 /*                                      Decay     LateDly    HFDecay    Densty   LoGain    E/L-Mix
                                              EarlyDly    HFRef     Diffus   LoFreq     HiCut      WetLvl */
-#define FMOD_PRESET_OFF              {  1000,    7,  11, 5000, 100, 100, 100, 250, 0,    20,  96, -80.0f }
-#define FMOD_PRESET_GENERIC          {  1500,    7,  11, 5000,  83, 100, 100, 250, 0, 14500,  96,  -8.0f }
-#define FMOD_PRESET_PADDEDCELL       {   170,    1,   2, 5000,  10, 100, 100, 250, 0,   160,  84,  -7.8f }
-#define FMOD_PRESET_ROOM             {   400,    2,   3, 5000,  83, 100, 100, 250, 0,  6050,  88,  -9.4f }
-#define FMOD_PRESET_BATHROOM         {  1500,    7,  11, 5000,  54, 100,  60, 250, 0,  2900,  83,   0.5f }
-#define FMOD_PRESET_LIVINGROOM       {   500,    3,   4, 5000,  10, 100, 100, 250, 0,   160,  58, -19.0f }
-#define FMOD_PRESET_STONEROOM        {  2300,   12,  17, 5000,  64, 100, 100, 250, 0,  7800,  71,  -8.5f }
-#define FMOD_PRESET_AUDITORIUM       {  4300,   20,  30, 5000,  59, 100, 100, 250, 0,  5850,  64, -11.7f }
-#define FMOD_PRESET_CONCERTHALL      {  3900,   20,  29, 5000,  70, 100, 100, 250, 0,  5650,  80,  -9.8f }
-#define FMOD_PRESET_CAVE             {  2900,   15,  22, 5000, 100, 100, 100, 250, 0, 20000,  59, -11.3f }
-#define FMOD_PRESET_ARENA            {  7200,   20,  30, 5000,  33, 100, 100, 250, 0,  4500,  80,  -9.6f }
-#define FMOD_PRESET_HANGAR           { 10000,   20,  30, 5000,  23, 100, 100, 250, 0,  3400,  72,  -7.4f }
-#define FMOD_PRESET_CARPETTEDHALLWAY {   300,    2,  30, 5000,  10, 100, 100, 250, 0,   500,  56, -24.0f }
-#define FMOD_PRESET_HALLWAY          {  1500,    7,  11, 5000,  59, 100, 100, 250, 0,  7800,  87,  -5.5f }
-#define FMOD_PRESET_STONECORRIDOR    {   270,   13,  20, 5000,  79, 100, 100, 250, 0,  9000,  86,  -6.0f }
-#define FMOD_PRESET_ALLEY            {  1500,    7,  11, 5000,  86, 100, 100, 250, 0,  8300,  80,  -9.8f }
-#define FMOD_PRESET_FOREST           {  1500,  162,  88, 5000,  54,  79, 100, 250, 0,   760,  94, -12.3f }
-#define FMOD_PRESET_CITY             {  1500,    7,  11, 5000,  67,  50, 100, 250, 0,  4050,  66, -26.0f }
-#define FMOD_PRESET_MOUNTAINS        {  1500,  300, 100, 5000,  21,  27, 100, 250, 0,  1220,  82, -24.0f }
-#define FMOD_PRESET_QUARRY           {  1500,   61,  25, 5000,  83, 100, 100, 250, 0,  3400, 100,  -5.0f }
-#define FMOD_PRESET_PLAIN            {  1500,  179, 100, 5000,  50,  21, 100, 250, 0,  1670,  65, -28.0f }
-#define FMOD_PRESET_PARKINGLOT       {  1700,    8,  12, 5000, 100, 100, 100, 250, 0, 20000,  56, -19.5f }
-#define FMOD_PRESET_SEWERPIPE        {  2800,   14,  21, 5000,  14,  80,  60, 250, 0,  3400,  66,   1.2f }
-#define FMOD_PRESET_UNDERWATER       {  1500,    7,  11, 5000,  10, 100, 100, 250, 0,   500,  92,   7.0f }
+#define FMOD_PRESET_OFF              {  1000,    7,  11, 5000, 100, 100, 100, 250, 0,    20,  96, -80.0f } /* Off / disabled */
+#define FMOD_PRESET_GENERIC          {  1500,    7,  11, 5000,  83, 100, 100, 250, 0, 14500,  96,  -8.0f } /* Generic / default */
+#define FMOD_PRESET_PADDEDCELL       {   170,    1,   2, 5000,  10, 100, 100, 250, 0,   160,  84,  -7.8f } /* Padded cell */
+#define FMOD_PRESET_ROOM             {   400,    2,   3, 5000,  83, 100, 100, 250, 0,  6050,  88,  -9.4f } /* Room */
+#define FMOD_PRESET_BATHROOM         {  1500,    7,  11, 5000,  54, 100,  60, 250, 0,  2900,  83,   0.5f } /* Bathroom */
+#define FMOD_PRESET_LIVINGROOM       {   500,    3,   4, 5000,  10, 100, 100, 250, 0,   160,  58, -19.0f } /* Living room */
+#define FMOD_PRESET_STONEROOM        {  2300,   12,  17, 5000,  64, 100, 100, 250, 0,  7800,  71,  -8.5f } /* Stone room */
+#define FMOD_PRESET_AUDITORIUM       {  4300,   20,  30, 5000,  59, 100, 100, 250, 0,  5850,  64, -11.7f } /* Auditorium */
+#define FMOD_PRESET_CONCERTHALL      {  3900,   20,  29, 5000,  70, 100, 100, 250, 0,  5650,  80,  -9.8f } /* Convert hall */
+#define FMOD_PRESET_CAVE             {  2900,   15,  22, 5000, 100, 100, 100, 250, 0, 20000,  59, -11.3f } /* Cave */
+#define FMOD_PRESET_ARENA            {  7200,   20,  30, 5000,  33, 100, 100, 250, 0,  4500,  80,  -9.6f } /* Arena */
+#define FMOD_PRESET_HANGAR           { 10000,   20,  30, 5000,  23, 100, 100, 250, 0,  3400,  72,  -7.4f } /* Hangar */
+#define FMOD_PRESET_CARPETTEDHALLWAY {   300,    2,  30, 5000,  10, 100, 100, 250, 0,   500,  56, -24.0f } /* Carpeted hallway */
+#define FMOD_PRESET_HALLWAY          {  1500,    7,  11, 5000,  59, 100, 100, 250, 0,  7800,  87,  -5.5f } /* Hallway */
+#define FMOD_PRESET_STONECORRIDOR    {   270,   13,  20, 5000,  79, 100, 100, 250, 0,  9000,  86,  -6.0f } /* Stone corridor */
+#define FMOD_PRESET_ALLEY            {  1500,    7,  11, 5000,  86, 100, 100, 250, 0,  8300,  80,  -9.8f } /* Alley */
+#define FMOD_PRESET_FOREST           {  1500,  162,  88, 5000,  54,  79, 100, 250, 0,   760,  94, -12.3f } /* Forest */
+#define FMOD_PRESET_CITY             {  1500,    7,  11, 5000,  67,  50, 100, 250, 0,  4050,  66, -26.0f } /* City */
+#define FMOD_PRESET_MOUNTAINS        {  1500,  300, 100, 5000,  21,  27, 100, 250, 0,  1220,  82, -24.0f } /* Mountains */
+#define FMOD_PRESET_QUARRY           {  1500,   61,  25, 5000,  83, 100, 100, 250, 0,  3400, 100,  -5.0f } /* Quarry */
+#define FMOD_PRESET_PLAIN            {  1500,  179, 100, 5000,  50,  21, 100, 250, 0,  1670,  65, -28.0f } /* Plain */
+#define FMOD_PRESET_PARKINGLOT       {  1700,    8,  12, 5000, 100, 100, 100, 250, 0, 20000,  56, -19.5f } /* Parking lot */
+#define FMOD_PRESET_SEWERPIPE        {  2800,   14,  21, 5000,  14,  80,  60, 250, 0,  3400,  66,   1.2f } /* Sewer pipe */
+#define FMOD_PRESET_UNDERWATER       {  1500,    7,  11, 5000,  10, 100, 100, 250, 0,   500,  92,   7.0f } /* Underwater */
 /* [DEFINE_END] */
 
 

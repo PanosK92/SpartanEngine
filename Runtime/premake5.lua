@@ -18,12 +18,10 @@ project (PROJECT_NAME)
 	targetdir "../Binaries/%{cfg.buildcfg}"	
 	objdir "../Binaries/Obj/%{cfg.buildcfg}"
 	
-	--windowstarget (WIN_SDK_VERSION)
-
 -- Libraries
-libdirs { "../ThirdParty/mvsc150_x64" }
+libdirs { "../ThirdParty/mvsc141_x64" }
 links { "angelscript64" }
-links { "assimp-vc140-mt" }
+links { "assimp" }
 links { "fmod64_vc" }
 links { "FreeImageLib" }
 links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
@@ -32,7 +30,7 @@ links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
 includedirs { "../ThirdParty/AngelScript_2.31.2" }
 includedirs { "../ThirdParty/Assimp_3.3.1" }
 includedirs { "../ThirdParty/Bullet_2.85.1" }
-includedirs { "../ThirdParty/FMOD_1.08.14" }
+includedirs { "../ThirdParty/FMOD_1.09.04" }
 includedirs { "../ThirdParty/FreeImage_3.17.0" }
 
 filter "configurations:Debug"

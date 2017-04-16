@@ -1,5 +1,5 @@
 /* ======================================================================================================== */
-/* FMOD Studio - codec development header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2016.  */
+/* FMOD Studio - codec development header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2017.  */
 /*                                                                                                          */
 /* Use this header if you are wanting to develop your own file format plugin to use with                    */
 /* FMOD's codec system.  With this header you can make your own fileformat plugin that FMOD                 */
@@ -90,7 +90,7 @@ typedef struct FMOD_CODEC_DESCRIPTION
 */
 struct FMOD_CODEC_WAVEFORMAT
 {
-    char               name[256];     /* [w] Name of sound.  Optional. */
+    const char*        name;          /* [w] Name of sound.  Optional. If used, the codec must own the lifetime of the string memory until the codec is destroyed. */
     FMOD_SOUND_FORMAT  format;        /* [w] Format for (decompressed) codec output, ie FMOD_SOUND_FORMAT_PCM8, FMOD_SOUND_FORMAT_PCM16.  Mandantory - Must be supplied. */
     int                channels;      /* [w] Number of channels used by codec, ie mono = 1, stereo = 2.  Mandantory - Must be supplied.  */
     int                frequency;     /* [w] Default frequency in hz of the codec, ie 44100.  Mandantory - Must be supplied.  */
@@ -124,7 +124,7 @@ struct FMOD_CODEC_WAVEFORMAT
     FMOD_CODEC_OPEN_CALLBACK
 ]
 */
-#define FMOD_CODEC_WAVEFORMAT_VERSION 2
+#define FMOD_CODEC_WAVEFORMAT_VERSION 3
 /* [DEFINE_END] */
 
 

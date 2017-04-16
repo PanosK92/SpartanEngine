@@ -1,5 +1,5 @@
 /* ========================================================================================== */
-/* FMOD Studio - C++ header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2016.  */
+/* FMOD Studio - C++ header file. Copyright (c), Firelight Technologies Pty, Ltd. 2004-2017.  */
 /*                                                                                            */
 /* Use this header in conjunction with fmod_common.h (which contains all the constants /      */
 /* callbacks) to develop using C++ classes.                                                   */
@@ -216,7 +216,7 @@ namespace FMOD
         FMOD_RESULT F_API getNumTags             (int *numtags, int *numtagsupdated);
         FMOD_RESULT F_API getTag                 (const char *name, int index, FMOD_TAG *tag);
         FMOD_RESULT F_API getOpenState           (FMOD_OPENSTATE *openstate, unsigned int *percentbuffered, bool *starving, bool *diskbusy);
-        FMOD_RESULT F_API readData               (void *buffer, unsigned int lenbytes, unsigned int *read);
+        FMOD_RESULT F_API readData               (void *buffer, unsigned int length, unsigned int *read);
         FMOD_RESULT F_API seekData               (unsigned int pcm);
 
         FMOD_RESULT F_API setSoundGroup          (SoundGroup *soundgroup);
@@ -311,7 +311,6 @@ namespace FMOD
         FMOD_RESULT F_API getNumDSPs             (int *numdsps);
         FMOD_RESULT F_API setDSPIndex            (DSP *dsp, int index);
         FMOD_RESULT F_API getDSPIndex            (DSP *dsp, int *index);
-        FMOD_RESULT F_API overridePanDSP         (DSP *pan);
 
         // 3D functionality.
         FMOD_RESULT F_API set3DAttributes        (const FMOD_VECTOR *pos, const FMOD_VECTOR *vel, const FMOD_VECTOR *alt_pan_pos = 0);
