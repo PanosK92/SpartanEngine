@@ -29,7 +29,7 @@ links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
 -- Includes
 includedirs { "../ThirdParty/AngelScript_2.31.2" }
 includedirs { "../ThirdParty/Assimp_3.3.1" }
-includedirs { "../ThirdParty/Bullet_2.85.1" }
+includedirs { "../ThirdParty/Bullet_2.86.1" }
 includedirs { "../ThirdParty/FMOD_1.09.04" }
 includedirs { "../ThirdParty/FreeImage_3.17.0" }
 
