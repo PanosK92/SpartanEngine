@@ -38,7 +38,8 @@ namespace Directus
 			Material,
 			Shader,
 			Mesh,
-			Cubemap
+			Cubemap,
+			Script
 		};
 
 		class Resource
