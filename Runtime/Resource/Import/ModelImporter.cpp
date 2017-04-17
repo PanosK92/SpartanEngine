@@ -97,7 +97,7 @@ namespace Directus
 
 		// Read the 3D model file
 		const aiScene* scene = importer.ReadFile(m_filePath, ppsteps);
-		if (!scene) // Someting went wrong. Print it.
+		if (!scene)
 		{
 			LOG_ERROR("Failed to load \"" + FileSystem::GetFileNameNoExtensionFromPath(m_filePath) + "\". " + importer.GetErrorString());
 			return false;
@@ -124,7 +124,17 @@ namespace Directus
 		ProcessNode(scene, scene->mRootNode, nullptr, nullptr);
 
 		// Normalize the scale of the model
-		g_context->GetSubsystem<ResourceManager>()->NormalizeModelScale(m_rootGameObject);
+		vector<Transform*> descendants;
+		m_rootGameObject->GetTransform()->GetDescendants(descendants);
+		for (auto& descendant : descendants)
+		{
+			auto meshFilter = descendant->GetGameObject()->GetComponent<MeshFilter>();
+			if (!meshFilter)
+				continue;
+
+			meshFilter->NormalizeModelScale();
+			break;
+		}
 
 		m_isLoading = false;
 		return true;

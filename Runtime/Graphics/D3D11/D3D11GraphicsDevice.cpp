@@ -113,6 +113,13 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	// assume all will go well
 	m_initializedSuccessfully = true;
 
+	if (!IsWindow(windowHandle))
+	{
+		LOG_ERROR("Aborting D3D11 initialization. Invalid window handle.");
+		m_initializedSuccessfully = false;
+		return false;
+	}
+
 	//= GRAPHICS INTERFACE FACTORY =================================================
 	IDXGIFactory* factory;
 	HRESULT result = CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)(&factory));
@@ -228,7 +235,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 
 	if (FAILED(result))
 	{
-		LOG_ERROR("Failed to create the swap chain, Direct3D device, and Direct3D device context.");
+		LOG_ERROR("Failed to create the D3D11 swap chain, device, and device context.");
 		m_initializedSuccessfully = false;
 		return false;
 	}

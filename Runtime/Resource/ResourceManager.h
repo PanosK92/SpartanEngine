@@ -119,10 +119,6 @@ namespace Directus
 			return m_resourceCache->GetResourceFilePaths();
 		}
 
-		//= TEMPORARY =======================================
-		void NormalizeModelScale(GameObject* rootGameObject);
-		//===================================================
-
 	private:
 		std::unique_ptr<ResourceCache> m_resourceCache;
 
@@ -144,12 +140,5 @@ namespace Directus
 
 			return weakPtr;
 		}
-
-		//= TEMPORARY =================================================================================================
-		std::vector<std::weak_ptr<Mesh>> GetModelMeshesByModelName(const std::string& rootGameObjectID);
-		float GetNormalizedModelScaleByRootGameObjectID(const std::string& modelName);
-		void SetModelScale(const std::string& rootGameObjectID, float scale);
-		static std::weak_ptr<Mesh> GetLargestBoundingBox(const std::vector<std::weak_ptr<Mesh>>& meshes);
-		//=============================================================================================================
 	};
 }
