@@ -481,12 +481,15 @@ GameObject* Scene::CreateSkybox()
 
 GameObject* Scene::CreateCamera()
 {
+	auto resourceMng = g_context->GetSubsystem<Resource::ResourceManager>();
+	std::string scriptDirectory = resourceMng->GetResourceDirectory(Directus::Resource::Script);
+
 	GameObject* camera = CreateGameObject();
 	camera->SetName("Camera");
 	camera->AddComponent<Camera>();
 	camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
-	camera->AddComponent<Script>()->AddScript("Standard Assets/Scripts/MouseLook.as");
-	camera->AddComponent<Script>()->AddScript("Standard Assets/Scripts/FirstPersonController.as");
+	camera->AddComponent<Script>()->AddScript(scriptDirectory + "MouseLook.as");
+	camera->AddComponent<Script>()->AddScript(scriptDirectory + "FirstPersonController.as");
 
 	return camera;
 }
