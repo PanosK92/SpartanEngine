@@ -73,6 +73,10 @@ public:
 	GameObject* MousePick(Directus::Math::Vector2& mousePos);
 	bool RaySphereIntersect(const Directus::Math::Vector3& rayOrigin, const Directus::Math::Vector3& rayDirection, float radius);
 
+	//= STATS ======================	
+	float GetFPS() { return m_fps; }
+	//==============================
+
 private:
 	//= COMMON GAMEOBJECT CREATION ======
 	GameObject* CreateSkybox();
@@ -87,4 +91,14 @@ private:
 	GameObject* m_mainCamera;
 	GameObject* m_skybox;
 	Directus::Math::Vector3 m_ambientLight;
+
+	//= STATS =========
+	float m_fps;
+	float m_timePassed;
+	int m_frameCount;
+	//=================
+
+	//= HELPER FUNCTIONS =
+	void CalculateFPS();
+	//====================
 };

@@ -194,7 +194,12 @@ bool Socket::GameObjectExists(GameObject* gameObject)
 //= STATS ======================================================================
 float Socket::GetFPS()
 {
-	return g_context->GetSubsystem<Renderer>()->GetFPS();
+	return g_context->GetSubsystem<Scene>()->GetFPS();
+}
+
+int Socket::GetRenderTime()
+{
+	return g_context->GetSubsystem<Renderer>()->GetRenderTime();
 }
 
 int Socket::GetRenderedMeshesCount()

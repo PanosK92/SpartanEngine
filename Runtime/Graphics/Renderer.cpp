@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Timer.h"
 #include "../Core/Engine.h"
 #include "../Resource/ResourceManager.h"
+#include "../Stopwatch.h"
 //======================================
 
 //= NAMESPACES ================
@@ -550,28 +551,14 @@ const Vector4& Renderer::GetClearColor()
 // Called in the beginning of the rendering
 void Renderer::StartCalculatingStats()
 {
+	Stopwatch::Start();
 	m_renderedMeshesTempCounter = 0;
 }
 
 // Called in the end of the rendering
 void Renderer::StopCalculatingStats()
 {
-	// update counters
-	m_frameCount++;
-	m_timePassed += g_context->GetSubsystem<Timer>()->GetDeltaTime();
-
-	if (m_timePassed >= 1000)
-	{
-		// calculate fps
-		m_fps = (float)m_frameCount / (m_timePassed / 1000.0f);
-
-		// reset counters
-		m_frameCount = 0;
-		m_timePassed = 0;
-	}
-
-	// meshes rendered
+	m_renderTimeMs = Stopwatch::End();
 	m_renderedMeshesPerFrame = m_renderedMeshesTempCounter;
 }
-//====================================
 //===============================================================================================================

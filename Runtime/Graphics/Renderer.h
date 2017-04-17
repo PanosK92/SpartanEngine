@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =========================
+#include <memory>
 #include "GBuffer.h"
 #include "FullScreenQuad.h"
 #include "../Core/GameObject.h"
@@ -32,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Shaders/DebugShader.h"
 #include "Shaders/PostProcessShader.h"
 #include "Shaders/DeferredShader.h"
-#include <memory>
 #include "../Graphics/Texture.h"
 #include "../Components/LineRenderer.h"
 #include "D3D11/D3D11RenderTexture.h"
@@ -52,12 +52,12 @@ public:
 	void Clear();
 	const std::vector<GameObject*>& GetRenderables() { return m_renderables; }
 
-	//= STATS =========================
+	//= STATS =======================================================
 	void StartCalculatingStats();
 	void StopCalculatingStats();
-	float GetFPS() { return m_fps; }
 	int GetRenderedMeshesCount() { return m_renderedMeshesPerFrame; }
-	//=================================
+	int GetRenderTime() { return m_renderTimeMs; }
+	//===============================================================
 
 private:
 	std::shared_ptr<FullScreenQuad> m_fullScreenQuad;
@@ -69,16 +69,16 @@ private:
 	std::vector<GameObject*> m_lightsPoint;
 	//===========================================
 
-	//= RENDER TEXTURES ====================
+	//= RENDER TEXTURES ================================
 	std::shared_ptr<D3D11RenderTexture> m_renderTexPing;
 	std::shared_ptr<D3D11RenderTexture> m_renderTexPong;
-	//======================================
+	//==================================================
 
-	//= MISC =====================================================
+	//= MISC =========================================
 	std::vector<ID3D11ShaderResourceView*> m_texArray;
 	ID3D11ShaderResourceView* m_texEnvironment;
 	std::shared_ptr<Texture> m_texNoiseMap;
-	//============================================================
+	//================================================
 
 	//= SHADERS ==========================================
 	std::shared_ptr<DeferredShader> m_shaderDeferred;
@@ -90,14 +90,12 @@ private:
 	//====================================================
 
 	//= STATS ======================
-	float m_fps;
-	float m_timePassed;
-	int m_frameCount;
 	int m_renderedMeshesPerFrame;
 	int m_renderedMeshesTempCounter;
+	int m_renderTimeMs;
 	//==============================
 
-	//= PREREQUISITES =================================
+	//= PREREQUISITES ================================
 	Camera* m_camera;
 	Skybox* m_skybox;
 	LineRenderer* m_lineRenderer;
@@ -112,8 +110,8 @@ private:
 	std::vector<ID3D11ShaderResourceView*> m_textures;
 	//================================================
 
-	//= HELPER FUNCTIONS ==========================
-	bool IsInViewFrustrum(const std::shared_ptr<Frustrum>& cameraFrustrum, MeshFilter* meshFilte);
+	//= HELPER FUNCTIONS =========================================================================
+	bool IsInViewFrustrum(const std::shared_ptr<Frustrum>& cameraFrustrum, MeshFilter* meshFilter);
 	void AcquirePrerequisites();
 	void DirectionalLightDepthPass();
 	void GBufferPass();
@@ -121,5 +119,5 @@ private:
 	void PostProcessing();
 	void Gizmos() const;
 	const Directus::Math::Vector4& GetClearColor();
-	//=============================================
+	//============================================================================================
 };
