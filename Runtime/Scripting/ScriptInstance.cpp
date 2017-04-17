@@ -47,7 +47,10 @@ ScriptInstance::ScriptInstance()
 
 ScriptInstance::~ScriptInstance()
 {
-	SafeRelease(m_scriptObject);
+	// For some weird reason, it only
+	// get's released when called twice...
+	m_scriptObject->Release();
+	m_scriptObject->Release();
 
 	m_gameObject = nullptr;
 	m_constructorFunction = nullptr;
@@ -96,17 +99,19 @@ void ScriptInstance::ExecuteUpdate()
 
 bool ScriptInstance::CreateScriptObject()
 {
-	// create module
+	// Create module
 	m_module = make_shared<Module>(m_moduleName, m_scriptEngine);
 	bool result = m_module->LoadScript(m_scriptPath);
 	if (!result) 
 		return false;
 
+	// Get type
 	auto type_id = m_module->GetAsIScriptModule()->GetTypeIdByDecl(m_className.c_str());
 	asITypeInfo* type = m_scriptEngine->GetAsIScriptEngine()->GetTypeInfoById(type_id);
 	if (!type) 
 		return false;
 
+	// Get functions in the script
 	m_startFunction = type->GetMethodByDecl("void Start()"); // Get the Start function from the script
 	m_updateFunction = type->GetMethodByDecl("void Update()"); // Get the Update function from the script
 	m_constructorFunction = type->GetFactoryByDecl(m_constructorDeclaration.c_str()); // Get the constructor function from the script
@@ -125,14 +130,14 @@ bool ScriptInstance::CreateScriptObject()
 
 	r = context->Execute(); // execute the call
 	if (r < 0) return false;
-
+	
 	// get the object that was created
 	m_scriptObject = *static_cast<asIScriptObject**>(context->GetAddressOfReturnValue());
 
 	// if you're going to store the object you must increase the reference,
 	// otherwise it will be destroyed when the context is reused or destroyed.
 	m_scriptObject->AddRef();
-
+	
 	// return context
 	m_scriptEngine->ReturnContext(context);
 
