@@ -40,6 +40,7 @@ public:
 	MeshFilter();
 	~MeshFilter();
 
+	// Resource Interface
 	virtual void Reset();
 	virtual void Start();
 	virtual void OnDisable();
@@ -56,6 +57,20 @@ public:
 	void CreateAndSet(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
 	// Sets the meshe's buffers
 	bool SetBuffers();
+	
+	// Normalizes the scale of the entire model's hierarchy
+	void NormalizeModelScale();
+	// Returns all meshes that belong to the model the mesh filter is part of
+	std::vector<std::weak_ptr<Mesh>> GetAllModelMeshes();
+	// Returns a value that can be used (by multiplying against the original scale)
+	// to normalize the scale of a transform
+	float GetNormalizedModelScale();
+	// Sets the scale for the entire model's hierarchy
+	void SetModelScale(float scale);
+	// Returns the mesh with the largest bounding box
+	static std::weak_ptr<Mesh> GetLargestBoundingBox(std::vector<std::weak_ptr<Mesh>> meshes);
+
+	// Properties
 	Directus::Math::Vector3 GetCenter();
 	Directus::Math::Vector3 GetBoundingBox();
 	std::weak_ptr<Mesh> GetMesh();

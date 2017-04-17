@@ -163,22 +163,95 @@ void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID
 // Set the buffers to active in the input assembler so they can be rendered.
 bool MeshFilter::SetBuffers()
 {
-	if (!m_vertexBuffer)
+	if (!m_vertexBuffer) {
 		LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + g_gameObject->GetName() + "\".");
+	}
 
-	if (!m_indexBuffer)
+	if (!m_indexBuffer) {
 		LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + g_gameObject->GetName() + "\".");
+	}
 
-	if (!m_vertexBuffer || !m_indexBuffer)
+	if (!m_vertexBuffer || !m_indexBuffer) {
 		return false;
+	}
 
 	m_vertexBuffer->SetIA();
 	m_indexBuffer->SetIA();
 
 	// Set the type of primitive that should be rendered from this vertex buffer
-	g_context->GetSubsystem<D3D11GraphicsDevice>()->SetPrimitiveTopology(TriangleList);
+	g_context->GetSubsystem<GraphicsDevice>()->SetPrimitiveTopology(TriangleList);
 
 	return true;
+}
+
+void MeshFilter::NormalizeModelScale()
+{
+	float normalizedScale = GetNormalizedModelScale();
+	SetModelScale(normalizedScale);
+}
+
+std::vector<std::weak_ptr<Mesh>> MeshFilter::GetAllModelMeshes()
+{
+	vector<weak_ptr<Mesh>> modelMeshes;
+
+	auto meshes = g_context->GetSubsystem<ResourceManager>()->GetAllByType<Mesh>();
+	for (const auto& mesh : meshes)
+		if (m_mesh.lock()->GetRootGameObjectID() == mesh.lock()->GetRootGameObjectID())
+			modelMeshes.push_back(mesh);
+
+	return modelMeshes;
+}
+
+float MeshFilter::GetNormalizedModelScale()
+{
+	// get all the meshes related to this model
+	vector<weak_ptr<Mesh>> modelMeshes = GetAllModelMeshes();
+
+	// find the mesh with the largest bounding box
+	weak_ptr<Mesh> largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
+
+	if (largestBoundingBoxMesh.expired())
+		return 1.0f;
+
+	// calculate the scale
+	Vector3 boundingBox = largestBoundingBoxMesh.lock()->GetBoundingBox();
+	float scaleOffset = boundingBox.Length();
+
+	return 1.0f / scaleOffset;
+}
+
+void MeshFilter::SetModelScale(float scale)
+{
+	// get all the meshes related to this model
+	vector<weak_ptr<Mesh>> meshes = GetAllModelMeshes();
+
+	// scale them
+	for (const auto& modelMesh : meshes)
+		modelMesh.lock()->SetScale(scale);
+}
+
+std::weak_ptr<Mesh> MeshFilter::GetLargestBoundingBox(vector<weak_ptr<Mesh>> meshes)
+{
+	if (meshes.empty())
+		return weak_ptr<Mesh>();
+
+	Vector3 largestBoundingBox = Vector3::Zero;
+	weak_ptr<Mesh> largestBoundingBoxMesh = meshes.front();
+
+	for (auto mesh : meshes)
+	{
+		if (mesh.expired())
+			continue;
+
+		Vector3 boundingBox = mesh.lock()->GetBoundingBox();
+		if (boundingBox.Volume() > largestBoundingBox.Volume())
+		{
+			largestBoundingBox = boundingBox;
+			largestBoundingBoxMesh = mesh;
+		}
+	}
+
+	return largestBoundingBoxMesh;
 }
 
 Vector3 MeshFilter::GetCenter()
@@ -209,13 +282,13 @@ string MeshFilter::GetMeshName()
 bool MeshFilter::CreateBuffers()
 {
 	auto graphicsDevice = g_context->GetSubsystem<GraphicsDevice>();
-	if (!graphicsDevice->GetDevice()) 
+	if (!graphicsDevice->GetDevice())
 	{
-		LOG_ERROR("Aborting vertex buffer creation for. Graphics device is not present.");
+		LOG_ERROR("Aborting vertex buffer creation. Graphics device is not present.");
 		return false;
 	}
 
-	if (m_mesh.expired()) 
+	if (m_mesh.expired())
 	{
 		LOG_ERROR(
 			"Aborting vertex buffer creation for \"" + g_gameObject->GetName() + "\"."
