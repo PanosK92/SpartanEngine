@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "D3D11GraphicsDevice.h"
+#include <vector>
 //==============================
 
 class D3D11IndexBuffer
@@ -32,7 +33,7 @@ public:
 	~D3D11IndexBuffer();
 
 	bool Create(const std::vector<UINT>& indices);
-	void SetIA();
+	bool SetIA();
 
 private:
 	D3D11GraphicsDevice* m_graphics;

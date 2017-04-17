@@ -33,9 +33,9 @@ public:
 	~D3D11RenderTexture();
 
 	bool Initialize(int, int);
-	void SetAsRenderTarget() const;
-	void Clear(const Directus::Math::Vector4& clearColor);
-	void Clear(float r, float g, float b, float a) const;
+	bool SetAsRenderTarget() const;
+	bool Clear(const Directus::Math::Vector4& clearColor);
+	bool Clear(float r, float g, float b, float a) const;
 	ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
 	void CreateOrthographicProjectionMatrix(float nearPlane, float farPlane);
 	const Directus::Math::Matrix& GetOrthographicProjectionMatrix() { return m_orthographicProjectionMatrix; }

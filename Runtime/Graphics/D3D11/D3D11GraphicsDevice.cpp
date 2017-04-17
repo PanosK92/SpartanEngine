@@ -110,12 +110,16 @@ D3D11GraphicsDevice::~D3D11GraphicsDevice()
 
 bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 {
+	// assume all will go well
+	m_initializedSuccessfully = true;
+
 	//= GRAPHICS INTERFACE FACTORY =================================================
 	IDXGIFactory* factory;
 	HRESULT result = CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)(&factory));
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create a DirectX graphics interface factory.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	//==============================================================================
@@ -126,6 +130,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create a primary graphics interface adapter.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	factory->Release();
@@ -139,6 +144,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to enumerate the primary adapter output.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the adapter output (monitor).
@@ -146,6 +152,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to get adapter's display modes.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 
@@ -154,6 +161,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (!m_displayModeList)
 	{
 		LOG_ERROR("Failed to create a display mode list.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 
@@ -162,6 +170,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to fill the display mode list structures.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	// Release the adapter output.
@@ -185,6 +194,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to get the adapter's description.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	// Release the adapter.
@@ -219,6 +229,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create the swap chain, Direct3D device, and Direct3D device context.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	//==============================================================================
@@ -230,6 +241,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to get the pointer to the back buffer.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	// Create the render target view with the back buffer pointer.
@@ -237,6 +249,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create the render target view.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	// Release pointer to the back buffer
@@ -271,6 +284,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create the rasterizer cull back state.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	// Create a rasterizer state with front face CullMode
@@ -279,6 +293,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create the rasterizer cull front state.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	// Create a rasterizer state with no face CullMode
@@ -287,6 +302,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create rasterizer cull none state.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	// set the default rasterizer state
@@ -311,6 +327,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create blend state.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	// Create a blending state with alpha blending disabled
@@ -319,18 +336,20 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create blend state.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 	//==============================================================================
 
-	return true;
+	return m_initializedSuccessfully;
 }
 
 //= DEPTH ======================================================================================================
 void D3D11GraphicsDevice::EnableZBuffer(bool enable)
 {
-	if (m_zBufferEnabled == enable)
+	if (!m_deviceContext || m_zBufferEnabled == enable) {
 		return;
+	}
 
 	// Set depth stencil state
 	m_deviceContext->OMSetDepthStencilState(enable ? m_depthStencilStateEnabled : m_depthStencilStateDisabled, 1);
@@ -340,6 +359,10 @@ void D3D11GraphicsDevice::EnableZBuffer(bool enable)
 
 bool D3D11GraphicsDevice::CreateDepthStencil()
 {
+	if (!m_device) {
+		return false;
+	}
+
 	D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
 	ZeroMemory(&depthStencilDesc, sizeof(depthStencilDesc));
 	// Depth test parameters
@@ -368,6 +391,7 @@ bool D3D11GraphicsDevice::CreateDepthStencil()
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create depth stencil enabled state.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 
@@ -378,6 +402,7 @@ bool D3D11GraphicsDevice::CreateDepthStencil()
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create depth stencil disabled state.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 
@@ -389,6 +414,10 @@ bool D3D11GraphicsDevice::CreateDepthStencil()
 
 bool D3D11GraphicsDevice::CreateDepthStencilBuffer()
 {
+	if (!m_device) {
+		return false;
+	}
+
 	D3D11_TEXTURE2D_DESC depthBufferDesc;
 	ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
 	depthBufferDesc.Width = RESOLUTION_WIDTH;
@@ -408,6 +437,7 @@ bool D3D11GraphicsDevice::CreateDepthStencilBuffer()
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create the texture for the depth buffer.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 
@@ -416,6 +446,10 @@ bool D3D11GraphicsDevice::CreateDepthStencilBuffer()
 
 bool D3D11GraphicsDevice::CreateDepthStencilView()
 {
+	if (!m_device) {
+		return false;
+	}
+
 	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
 	depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -427,6 +461,7 @@ bool D3D11GraphicsDevice::CreateDepthStencilView()
 	if (FAILED(result))
 	{
 		LOG_ERROR("Failed to create the depth stencil view.");
+		m_initializedSuccessfully = false;
 		return false;
 	}
 
@@ -439,6 +474,10 @@ bool D3D11GraphicsDevice::CreateDepthStencilView()
 
 void D3D11GraphicsDevice::Clear(const Vector4& color)
 {
+	if (!m_deviceContext) {
+		return;
+	}
+
 	// Clear the back buffer.
 	float clearColor[4] = { color.x, color.y, color.z, color.w };
 	m_deviceContext->ClearRenderTargetView(m_renderTargetView, clearColor);
@@ -449,12 +488,16 @@ void D3D11GraphicsDevice::Clear(const Vector4& color)
 
 void D3D11GraphicsDevice::Present()
 {
+	if (!m_swapChain) {
+		return;
+	}
+
 	m_swapChain->Present(VSYNC, 0);
 }
 
 void D3D11GraphicsDevice::EnableAlphaBlending(bool enable)
 {
-	if (m_alphaBlendingEnabled == enable)
+	if (!m_deviceContext || m_alphaBlendingEnabled == enable)
 		return;
 
 	// Set blend state
@@ -466,6 +509,10 @@ void D3D11GraphicsDevice::EnableAlphaBlending(bool enable)
 
 bool D3D11GraphicsDevice::SetResolution(int width, int height)
 {
+	if (!m_swapChain) {
+		return false;
+	}
+
 	//= RELEASE RESLUTION BASED STUFF =======
 	SafeRelease(m_renderTargetView);
 	SafeRelease(m_depthStencilBuffer);
@@ -529,6 +576,10 @@ bool D3D11GraphicsDevice::SetResolution(int width, int height)
 //= VIEWPORT =====================================================
 void D3D11GraphicsDevice::SetViewport(float width, float height)
 {
+	if (!m_deviceContext) {
+		return;
+	}
+
 	m_viewport.Width = width;
 	m_viewport.Height = height;
 	m_viewport.MinDepth = 0.0f;
@@ -541,6 +592,10 @@ void D3D11GraphicsDevice::SetViewport(float width, float height)
 
 void D3D11GraphicsDevice::ResetViewport()
 {
+	if (!m_deviceContext) {
+		return;
+	}
+
 	m_deviceContext->RSSetViewports(1, &m_viewport);
 }
 //================================================================
@@ -548,7 +603,7 @@ void D3D11GraphicsDevice::ResetViewport()
 void D3D11GraphicsDevice::SetCullMode(CullMode cullMode)
 {
 	// Set face CullMode only if not already set
-	if (m_cullMode == cullMode)
+	if (!m_deviceContext || m_cullMode == cullMode)
 		return;
 
 	auto mode = d3dCullMode[cullMode];
@@ -566,13 +621,17 @@ void D3D11GraphicsDevice::SetCullMode(CullMode cullMode)
 
 void D3D11GraphicsDevice::SetBackBufferAsRenderTarget()
 {
+	if (!m_deviceContext) {
+		return;
+	}
+
 	m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
 }
 
 void D3D11GraphicsDevice::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
 {
 	// Set PrimitiveTopology only if not already set
-	if (m_primitiveTopology == primitiveTopology)
+	if (!m_deviceContext || m_primitiveTopology == primitiveTopology)
 		return;
 
 	// Ser primitive topology

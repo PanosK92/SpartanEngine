@@ -208,13 +208,24 @@ string MeshFilter::GetMeshName()
 
 bool MeshFilter::CreateBuffers()
 {
+	auto graphicsDevice = g_context->GetSubsystem<GraphicsDevice>();
+	if (!graphicsDevice->GetDevice()) 
+	{
+		LOG_ERROR("Aborting vertex buffer creation for. Graphics device is not present.");
+		return false;
+	}
+
+	if (m_mesh.expired()) 
+	{
+		LOG_ERROR(
+			"Aborting vertex buffer creation for \"" + g_gameObject->GetName() + "\"."
+			" The mesh has expired."
+		);
+		return false;
+	}
+
 	m_vertexBuffer.reset();
 	m_indexBuffer.reset();
-
-	if (m_mesh.expired())
-		return false;
-
-	auto graphicsDevice = g_context->GetSubsystem<D3D11GraphicsDevice>();
 
 	m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphicsDevice);
 	if (!m_vertexBuffer->Create(m_mesh.lock()->GetVertices()))

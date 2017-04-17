@@ -55,7 +55,7 @@ Texture::Texture(Context* context)
 	m_transparency = false;
 	m_alphaIsTransparency = false;
 	m_generateMipchain = true;
-	m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<D3D11GraphicsDevice>());
+	m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<GraphicsDevice>());
 }
 
 Texture::~Texture()
@@ -111,12 +111,17 @@ bool Texture::LoadMetadata()
 // Loads a texture (not it's metadata) from an image file
 bool Texture::LoadFromFile(const string& filePath)
 {
+	auto graphicsDevice = m_context->GetSubsystem<GraphicsDevice>()->GetDevice();
+	if (!graphicsDevice) {
+		return false;
+	}
+
 	// Load DDS (too bored to implement dds cubemap support in the ImageImporter)
 	if (FileSystem::GetExtensionFromPath(filePath) == ".dds")
 	{
 		ID3D11ShaderResourceView* ddsTex = nullptr;
 		wstring widestr = wstring(filePath.begin(), filePath.end());
-		HRESULT hr = DirectX::CreateDDSTextureFromFile(m_context->GetSubsystem<D3D11GraphicsDevice>()->GetDevice(), widestr.c_str(), nullptr, &ddsTex);
+		HRESULT hr = DirectX::CreateDDSTextureFromFile(graphicsDevice, widestr.c_str(), nullptr, &ddsTex);
 		if (FAILED(hr))
 		{
 			LOG_ERROR("Failed to load texture \"" + filePath + "\".");

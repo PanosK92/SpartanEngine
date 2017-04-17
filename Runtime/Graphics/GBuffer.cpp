@@ -171,22 +171,32 @@ bool GBuffer::Initialize(int width, int height)
 	return true;
 }
 
-void GBuffer::SetRenderTargets()
+bool GBuffer::SetRenderTargets()
 {
+	if (!m_graphics->GetDeviceContext()) {
+		return false;
+	}
+
 	// Bind the render target view array and depth stencil buffer to the output render pipeline.
 	m_graphics->GetDeviceContext()->OMSetRenderTargets(BUFFER_COUNT, &m_renderTargetViewArray[0], m_depthStencilView);
 
 	// Set the viewport.
 	m_graphics->GetDeviceContext()->RSSetViewports(1, &m_viewport);
+
+	return true;
 }
 
-void GBuffer::Clear(const Vector4& color)
+bool GBuffer::Clear(const Vector4& color)
 {
-	Clear(color.x, color.y, color.z, color.w);
+	return Clear(color.x, color.y, color.z, color.w);
 }
 
-void GBuffer::Clear(float red, float green, float blue, float alpha)
+bool GBuffer::Clear(float red, float green, float blue, float alpha)
 {
+	if (!m_graphics->GetDeviceContext()) {
+		return false;
+	}
+
 	float color[4];
 	color[0] = red;
 	color[1] = green;
@@ -199,6 +209,8 @@ void GBuffer::Clear(float red, float green, float blue, float alpha)
 
 	// Clear the depth buffer.
 	m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+	return true;
 }
 
 ID3D11ShaderResourceView* GBuffer::GetShaderResourceView(int index)

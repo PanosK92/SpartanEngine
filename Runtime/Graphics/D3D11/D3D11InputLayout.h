@@ -33,7 +33,7 @@ public:
 	~D3D11InputLayout();
 
 	//= MISC ====================================
-	void Set();
+	bool Set();
 	InputLayout GetInputLayout() { return m_inputLayout; }
 
 	//= LAYOUT CREATION ============================================================================

@@ -61,7 +61,7 @@ private:
 	//========================================================================
 
 	std::weak_ptr<Mesh> m_mesh;
-	int m_vertexLimit = 100000;
+	unsigned int m_vertexLimit = 100000;
 	std::shared_ptr<btCollisionShape> m_collisionShape;
 	bool m_isConvex;
 

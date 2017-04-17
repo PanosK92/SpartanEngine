@@ -41,7 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 #include "../Core/Timer.h"
 #include "../Core/Engine.h"
-#include "../Resource/ResourceManager.h
+#include "../Resource/ResourceManager.h"
 #include "../Core/Stopwatch.h"
 //======================================
 
@@ -74,42 +74,46 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_nearPlane = 0.0;
 	m_farPlane = 0.0f;
 
-	D3D11GraphicsDevice* graphics = g_context->GetSubsystem<D3D11GraphicsDevice>();
+	// Get the garphics subsystem
+	m_graphics = g_context->GetSubsystem<GraphicsDevice>();
+	if (!m_graphics->IsInitialized()){
+		return;
+	}
 
-	m_GBuffer = make_shared<GBuffer>(graphics);
+	m_GBuffer = make_shared<GBuffer>(m_graphics);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphics);
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
 	/*------------------------------------------------------------------------------
 	[SHADERS]
 	------------------------------------------------------------------------------*/
 	m_shaderDeferred = make_shared<DeferredShader>();
-	m_shaderDeferred->Initialize(graphics);
+	m_shaderDeferred->Initialize(m_graphics);
 
 	m_shaderDepth = make_shared<DepthShader>();
-	m_shaderDepth->Initialize(graphics);
+	m_shaderDepth->Initialize(m_graphics);
 
 	m_shaderDebug = make_shared<DebugShader>();
-	m_shaderDebug->Initialize(graphics);
+	m_shaderDebug->Initialize(m_graphics);
 
 	m_shaderFXAA = make_shared<PostProcessShader>();
-	m_shaderFXAA->Initialize("FXAA", graphics);
+	m_shaderFXAA->Initialize("FXAA", m_graphics);
 
 	m_shaderSharpening = make_shared<PostProcessShader>();
-	m_shaderSharpening->Initialize("SHARPENING", graphics);
+	m_shaderSharpening->Initialize("SHARPENING", m_graphics);
 
 	m_shaderBlur = make_shared<PostProcessShader>();
-	m_shaderBlur->Initialize("BLUR", graphics);
+	m_shaderBlur->Initialize("BLUR", m_graphics);
 
 	/*------------------------------------------------------------------------------
 	[RENDER TEXTURES]
 	------------------------------------------------------------------------------*/
-	m_renderTexPing = make_shared<D3D11RenderTexture>(graphics);
+	m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
 	m_renderTexPing->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	m_renderTexPong = make_shared<D3D11RenderTexture>(graphics);
+	m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics);
 	m_renderTexPong->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	/*------------------------------------------------------------------------------
@@ -130,7 +134,8 @@ Renderer::~Renderer()
 
 void Renderer::Render()
 {
-	D3D11GraphicsDevice* graphics = g_context->GetSubsystem<D3D11GraphicsDevice>();
+	if (!m_graphics->IsInitialized())
+		return;
 
 	StartCalculatingStats();
 	AcquirePrerequisites();
@@ -138,21 +143,21 @@ void Renderer::Render()
 	// If there is not camera, clear to black and present
 	if (!m_camera)
 	{
-		graphics->Clear(Vector4(0, 0, 0, 1));
-		graphics->Present();
+		m_graphics->Clear(Vector4(0, 0, 0, 1));
+		m_graphics->Present();
 		return;
 	}
 
 	// If there is nothing to render clear to camera's color and present
 	if (m_renderables.empty())
 	{
-		graphics->Clear(m_camera->GetClearColor());
-		graphics->Present();
+		m_graphics->Clear(m_camera->GetClearColor());
+		m_graphics->Present();
 		return;
 	}
 
 	// ENABLE Z-BUFFER
-	graphics->EnableZBuffer(true);
+	m_graphics->EnableZBuffer(true);
 
 	// Render light depth
 	if (m_directionalLight)
@@ -165,7 +170,7 @@ void Renderer::Render()
 	GBufferPass();
 
 	// DISABLE Z BUFFER - SET FULLSCREEN QUAD
-	graphics->EnableZBuffer(false);
+	m_graphics->EnableZBuffer(false);
 	m_fullScreenQuad->SetBuffers();
 
 	// Deferred Pass
@@ -178,7 +183,7 @@ void Renderer::Render()
 	Gizmos();
 
 	// display frame
-	graphics->Present();
+	m_graphics->Present();
 
 	StopCalculatingStats();
 }
@@ -192,26 +197,25 @@ void Renderer::SetResolution(int width, int height)
 		return;
 
 	SET_RESOLUTION(width, height);
-	auto graphicsDevice = g_context->GetSubsystem<GraphicsDevice>();
 
 	m_GBuffer.reset();
 	m_fullScreenQuad.reset();
 	m_renderTexPing.reset();
 	m_renderTexPong.reset();
 
-	m_GBuffer = make_shared<GBuffer>(graphicsDevice);
+	m_GBuffer = make_shared<GBuffer>(m_graphics);
 	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
-	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, graphicsDevice);
+	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
-	m_renderTexPing = make_shared<D3D11RenderTexture>(graphicsDevice);
+	m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
 	m_renderTexPing->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	m_renderTexPong = make_shared<D3D11RenderTexture>(graphicsDevice);
+	m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics);
 	m_renderTexPong->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	graphicsDevice->SetResolution(width, height);
+	m_graphics->SetResolution(width, height);
 }
 
 void Renderer::Clear()
@@ -270,7 +274,7 @@ void Renderer::AcquirePrerequisites()
 
 void Renderer::DirectionalLightDepthPass()
 {
-	g_context->GetSubsystem<D3D11GraphicsDevice>()->SetCullMode(CullFront);
+	m_graphics->SetCullMode(CullFront);
 
 	// Set the depth shader
 	m_shaderDepth->Set();
@@ -499,9 +503,9 @@ void Renderer::PostProcessing()
 		m_renderTexPing->GetShaderResourceView()
 	);
 
-	g_context->GetSubsystem<D3D11GraphicsDevice>()->SetBackBufferAsRenderTarget();
-	g_context->GetSubsystem<D3D11GraphicsDevice>()->ResetViewport();
-	g_context->GetSubsystem<D3D11GraphicsDevice>()->Clear(m_camera->GetClearColor());
+	m_graphics->SetBackBufferAsRenderTarget();
+	m_graphics->ResetViewport();
+	m_graphics->Clear(m_camera->GetClearColor());
 
 	// sharpening pass
 	m_shaderSharpening->Render(

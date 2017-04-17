@@ -38,14 +38,26 @@ D3D11InputLayout::~D3D11InputLayout()
 }
 
 //= MISC ==================================================
-void D3D11InputLayout::Set()
+bool D3D11InputLayout::Set()
 {
+	if (!m_graphics->GetDeviceContext()) {
+		return false;
+	}
+
 	m_graphics->GetDeviceContext()->IASetInputLayout(m_ID3D11InputLayout);
+
+	return true;
 }
 
 //= LAYOUT CREATION ==================================================
 bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount)
 {
+	if (!m_graphics->GetDevice())
+	{
+		LOG_ERROR("Aborting input layout creation. Graphics device is not present.");
+		return false;
+	}
+
 	HRESULT result = m_graphics->GetDevice()->CreateInputLayout(
 		vertexInputLayout,
 		elementCount,

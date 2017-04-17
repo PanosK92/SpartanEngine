@@ -34,10 +34,10 @@ public:
 	bool Create(unsigned int size);
 
 	void* Map();
-	void Unmap();
+	bool Unmap();
 
-	void SetVS(unsigned int startSlot);
-	void SetPS(unsigned int startSlot);
+	bool SetVS(unsigned int startSlot);
+	bool SetPS(unsigned int startSlot);
 
 private:
 	D3D11GraphicsDevice* m_graphics;

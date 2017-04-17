@@ -22,12 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===========================
-#include <map>
 #include "../Components/IComponent.h"
-#include <vector>
 #include "../Core/Context.h"
 #include "GUIDGenerator.h"
 #include "../EventSystem/EventHandler.h"
+#include <map>
+#include <vector>
 //======================================
 
 class Transform;

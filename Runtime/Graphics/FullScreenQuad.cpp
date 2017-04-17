@@ -82,6 +82,10 @@ int FullScreenQuad::GetIndexCount()
 
 bool FullScreenQuad::InitializeBuffers(int windowWidth, int windowHeight)
 {
+	if (!m_graphics->GetDevice()) {
+		return false;
+	}
+
 	float left, right, top, bottom;
 	VertexPositionTexture* vertices;
 	unsigned long* indices;

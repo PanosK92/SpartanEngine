@@ -108,6 +108,7 @@ private:
 	float m_nearPlane;
 	float m_farPlane;
 	std::vector<ID3D11ShaderResourceView*> m_textures;
+	GraphicsDevice* m_graphics;
 	//================================================
 
 	//= HELPER FUNCTIONS =========================================================================
