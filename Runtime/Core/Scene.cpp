@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "Settings.h"
 #include "../Resource/ResourceManager.h"
+#include "Timer.h"
 //======================================
 
 //= NAMESPACES ================
@@ -85,6 +86,8 @@ void Scene::Update()
 {
 	for (const auto& gameObject : m_gameObjects)
 		gameObject->Update();
+
+	CalculateFPS();
 }
 
 void Scene::Clear()
@@ -499,5 +502,24 @@ GameObject* Scene::CreateDirectionalLight()
 	lightComp->SetIntensity(4.0f);
 
 	return light;
+}
+//======================================================================================================
+
+//= HELPER FUNCTIONS ===================================================================================
+void Scene::CalculateFPS()
+{
+	// update counters
+	m_frameCount++;
+	m_timePassed += g_context->GetSubsystem<Timer>()->GetDeltaTime();
+
+	if (m_timePassed >= 1000)
+	{
+		// calculate fps
+		m_fps = (float)m_frameCount / (m_timePassed / 1000.0f);
+
+		// reset counters
+		m_frameCount = 0;
+		m_timePassed = 0;
+	}
 }
 //======================================================================================================

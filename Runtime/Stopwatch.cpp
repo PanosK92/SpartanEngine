@@ -19,42 +19,23 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES =========
+#include "Stopwatch.h"
+#include <chrono>
+//====================
 
-//= INCLUDES ===============
-#include <vector>
-#include "../Math/Vector4.h"
-//==========================
+int Stopwatch::m_milliseconds;
+static std::chrono::time_point<std::chrono::system_clock> m_start;
+static std::chrono::time_point<std::chrono::system_clock> m_end;
 
-//==========================
-const int BUFFER_COUNT = 4;
-//==========================
-
-//= INCLUDES =====================================
-#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
-//================================================
-
-class GBuffer
+void Stopwatch::Start()
 {
-public:
-	GBuffer(D3D11GraphicsDevice* graphicsDevice);
-	~GBuffer();
+	m_start = std::chrono::system_clock::now();
+}
 
-	bool Initialize(int width, int height);
-	void SetRenderTargets();
-
-	void Clear(const Directus::Math::Vector4& color);
-	void Clear(float, float, float, float);
-
-	ID3D11ShaderResourceView* GetShaderResourceView(int index);
-
-private:
-	D3D11GraphicsDevice* m_graphics;
-	int m_textureWidth, m_textureHeight;
-	std::vector<ID3D11Texture2D*> m_renderTargetTextureArray;
-	std::vector<ID3D11RenderTargetView*> m_renderTargetViewArray;
-	std::vector<ID3D11ShaderResourceView*> m_shaderResourceViewArray;
-	ID3D11Texture2D* m_depthStencilBuffer;
-	ID3D11DepthStencilView* m_depthStencilView;
-	D3D11_VIEWPORT m_viewport;
-};
+int Stopwatch::End()
+{
+	m_end = std::chrono::system_clock::now();
+	m_milliseconds = (int)std::chrono::duration_cast<std::chrono::milliseconds>(m_end - m_start).count();
+	return m_milliseconds;
+}

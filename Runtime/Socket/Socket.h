@@ -79,6 +79,7 @@ public:
 
 	//= STATS ======================================================================
 	float GetFPS();
+	int GetRenderTime();
 	int GetRenderedMeshesCount();
 	float GetDeltaTime();
 	//==============================================================================
