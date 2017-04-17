@@ -59,8 +59,12 @@ void PostProcessShader::Initialize(LPCSTR pass, D3D11GraphicsDevice* graphicsDev
 	m_constantBuffer->Create(sizeof(DefaultBuffer));
 }
 
-void PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* texture)
+bool PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* texture)
 {
+	if (!m_graphics->GetDeviceContext()) {
+		return false;
+	}
+
 	// Set shader
 	m_shader->Set();
 
@@ -83,4 +87,6 @@ void PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const 
 
 	// Render
 	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+
+	return true;
 }

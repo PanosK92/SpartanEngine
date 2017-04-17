@@ -26,11 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "dxgi.lib")
 //===============================
 
-//= INCLUDES =================
-#include <d3d11.h>
-#include <vector>
+//= INCLUDES ==================
 #include "../IGraphicsDevice.h"
-//============================
+#include <d3d11.h>
+//=============================
 
 class D3D11GraphicsDevice : public IGraphicsDevice
 {
@@ -65,10 +64,13 @@ public:
 	virtual void ResetViewport();
 	//=========================================================================
 
+	virtual bool IsInitialized() { return m_initializedSuccessfully; }
+
 	ID3D11Device* GetDevice() { return m_device; }
 	ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
 
 private:
+	bool m_initializedSuccessfully;
 	ID3D11Device* m_device;
 	ID3D11DeviceContext* m_deviceContext;
 	IDXGISwapChain* m_swapChain;
@@ -83,7 +85,7 @@ private:
 	DXGI_MODE_DESC* m_displayModeList;
 
 	int m_videoCardMemory;
-	std::string m_videoCardDescription;
+	char* m_videoCardDescription;
 
 	ID3D11Texture2D* m_depthStencilBuffer;
 	ID3D11DepthStencilState* m_depthStencilStateEnabled;

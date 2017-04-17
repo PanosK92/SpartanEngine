@@ -105,6 +105,10 @@ bool D3D11Shader::Load(const string& filePath)
 
 bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 {
+	if (!m_graphics->GetDevice()) {
+		return false;
+	}
+
 	if (!m_compiled)
 	{
 		LOG_ERROR("Can't set input layout of a non-compiled shader.");
@@ -112,8 +116,9 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 	}
 
 	// Create vertex input layout
-	if (inputLayout != Auto)
+	if (inputLayout != Auto) {
 		m_layoutHasBeenSet = m_D3D11InputLayout->Create(m_VSBlob, inputLayout);
+	}
 	else
 	{
 		vector<D3D11_INPUT_ELEMENT_DESC> inputLayoutDesc = Reflect(m_VSBlob);
@@ -131,10 +136,14 @@ bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 
 bool D3D11Shader::AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction)
 {
-	auto sampler = make_shared<D3D11Sampler>(m_graphics);
-	if (!sampler->Create(filter, textureAddressMode, comparisonFunction))
+	if (!m_graphics->GetDevice()) 
 	{
-		LOG_ERROR("Failed to create shader sampler");
+		LOG_ERROR("Aborting sampler creation. Graphics device is not present.");
+		return false;
+	}
+
+	auto sampler = make_shared<D3D11Sampler>(m_graphics);
+	if (!sampler->Create(filter, textureAddressMode, comparisonFunction)){
 		return false;
 	}
 
@@ -179,6 +188,10 @@ void D3D11Shader::AddDefine(LPCSTR name, LPCSTR definition) // All overloads res
 //= COMPILATION ================================================================================================================================================================================
 bool D3D11Shader::CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros)
 {
+	if (!m_graphics->GetDevice()) {
+		return false;
+	}
+
 	HRESULT result = CompileShader(path, macros, entrypoint, profile, vsBlob);
 	if (FAILED(result))
 		return false;
@@ -197,6 +210,10 @@ bool D3D11Shader::CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** 
 
 bool D3D11Shader::CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros)
 {
+	if (!m_graphics->GetDevice()) {
+		return false;
+	}
+
 	HRESULT result = CompileShader(path, macros, entrypoint, profile, psBlob);
 	if (FAILED(result))
 		return false;

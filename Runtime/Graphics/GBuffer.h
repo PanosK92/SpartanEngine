@@ -21,18 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES =====================================
 #include <vector>
 #include "../Math/Vector4.h"
-//==========================
+#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
+//================================================
 
 //==========================
 const int BUFFER_COUNT = 4;
 //==========================
-
-//= INCLUDES =====================================
-#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
-//================================================
 
 class GBuffer
 {
@@ -41,10 +38,10 @@ public:
 	~GBuffer();
 
 	bool Initialize(int width, int height);
-	void SetRenderTargets();
+	bool SetRenderTargets();
 
-	void Clear(const Directus::Math::Vector4& color);
-	void Clear(float, float, float, float);
+	bool Clear(const Directus::Math::Vector4& color);
+	bool Clear(float, float, float, float);
 
 	ID3D11ShaderResourceView* GetShaderResourceView(int index);
 

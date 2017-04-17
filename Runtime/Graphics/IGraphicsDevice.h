@@ -61,6 +61,8 @@ public:
 	virtual void ResetViewport() = 0;
 	//=========================================================================
 
+	virtual bool IsInitialized() = 0;
+
 protected:
 	InputLayout m_inputLayout;
 	CullMode m_cullMode;

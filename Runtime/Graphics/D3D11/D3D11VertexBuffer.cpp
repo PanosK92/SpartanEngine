@@ -42,8 +42,9 @@ D3D11VertexBuffer::~D3D11VertexBuffer()
 
 bool D3D11VertexBuffer::Create(const vector<VertexPositionTextureNormalTangent>& vertices)
 {
-	if (vertices.empty())
+	if (!m_graphics->GetDevice() || vertices.empty()) {
 		return false;
+	}
 
 	m_stride = sizeof(VertexPositionTextureNormalTangent);
 	float size = (unsigned int)vertices.size();
@@ -77,6 +78,10 @@ bool D3D11VertexBuffer::Create(const vector<VertexPositionTextureNormalTangent>&
 
 bool D3D11VertexBuffer::CreateDynamic(UINT stride, UINT initialSize)
 {
+	if (!m_graphics->GetDevice()) {
+		return false;
+	}
+
 	m_stride = stride;
 	UINT byteWidth = m_stride * initialSize;
 
@@ -102,6 +107,10 @@ bool D3D11VertexBuffer::CreateDynamic(UINT stride, UINT initialSize)
 
 void* D3D11VertexBuffer::Map()
 {
+	if (!m_graphics->GetDeviceContext()) {
+		return nullptr;
+	}
+
 	if (!m_buffer)
 	{
 		LOG_ERROR("Can't map uninitialized vertex buffer.");
@@ -120,20 +129,26 @@ void* D3D11VertexBuffer::Map()
 	return mappedResource.pData;
 }
 
-void D3D11VertexBuffer::Unmap()
+bool D3D11VertexBuffer::Unmap()
 {
-	if (!m_buffer)
-		return;
+	if (!m_graphics->GetDeviceContext() || !m_buffer) {
+		return false;
+	}
 
 	// re-enable GPU access to the vertex buffer data.
 	m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
+
+	return true;
 }
 
-void D3D11VertexBuffer::SetIA()
+bool D3D11VertexBuffer::SetIA()
 {
-	if (!m_buffer)
-		return;
+	if (!m_graphics->GetDeviceContext() || !m_buffer) {
+		return false;
+	}
 
 	unsigned int offset = 0;
 	m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_buffer, &m_stride, &offset);
+
+	return true;
 }

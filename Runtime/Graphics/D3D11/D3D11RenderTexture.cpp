@@ -52,6 +52,10 @@ D3D11RenderTexture::~D3D11RenderTexture()
 
 bool D3D11RenderTexture::Initialize(int textureWidth, int textureHeight)
 {
+	if (!m_graphics->GetDevice()) {
+		return false;
+	}
+
 	m_width = textureHeight;
 	m_height = textureHeight;
 
@@ -141,22 +145,32 @@ bool D3D11RenderTexture::Initialize(int textureWidth, int textureHeight)
 	return true;
 }
 
-void D3D11RenderTexture::SetAsRenderTarget() const
+bool D3D11RenderTexture::SetAsRenderTarget() const
 {
+	if (!m_graphics->GetDeviceContext()) {
+		return false;
+	}
+
 	// Bind the render target view and depth stencil buffer to the output render pipeline.
 	m_graphics->GetDeviceContext()->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
 
 	// Set the viewport.
 	m_graphics->GetDeviceContext()->RSSetViewports(1, &m_viewport);
+
+	return true;
 }
 
-void D3D11RenderTexture::Clear(const Vector4& clearColor)
+bool D3D11RenderTexture::Clear(const Vector4& clearColor)
 {
-	Clear(clearColor.x, clearColor.y, clearColor.z, clearColor.z);
+	return Clear(clearColor.x, clearColor.y, clearColor.z, clearColor.z);
 }
 
-void D3D11RenderTexture::Clear(float red, float green, float blue, float alpha) const
+bool D3D11RenderTexture::Clear(float red, float green, float blue, float alpha) const
 {
+	if (!m_graphics->GetDeviceContext()) {
+		return false;
+	}
+
 	float clearColor[4];
 
 	// Setup the color to clear the buffer to.
@@ -167,6 +181,8 @@ void D3D11RenderTexture::Clear(float red, float green, float blue, float alpha) 
 
 	m_graphics->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor); // Clear the back buffer.
 	m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0); // Clear the depth buffer.
+
+	return true;
 }
 
 void D3D11RenderTexture::CreateOrthographicProjectionMatrix(float nearPlane, float farPlane)

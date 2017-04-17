@@ -41,8 +41,9 @@ D3D11IndexBuffer::~D3D11IndexBuffer()
 
 bool D3D11IndexBuffer::Create(const vector<UINT>& indices)
 {
-	if (indices.empty())
+	if (!m_graphics->GetDevice() || indices.empty()) {
 		return false;
+	}
 
 	UINT stride = sizeof(UINT);
 	float size = (UINT)indices.size();
@@ -74,10 +75,13 @@ bool D3D11IndexBuffer::Create(const vector<UINT>& indices)
 	return true;
 }
 
-void D3D11IndexBuffer::SetIA()
+bool D3D11IndexBuffer::SetIA()
 {
-	if (!m_buffer)
-		return;
+	if (!m_graphics->GetDeviceContext() || !m_buffer) {
+		return false;
+	}
 
 	m_graphics->GetDeviceContext()->IASetIndexBuffer(m_buffer, DXGI_FORMAT_R32_UINT, 0);
+
+	return true;
 }

@@ -36,7 +36,7 @@ public:
 	~PostProcessShader();
 
 	void Initialize(LPCSTR pass, D3D11GraphicsDevice* d3d11device);
-	void Render(int indexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* texture);
+	bool Render(int indexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* texture);
 
 private:
 	struct DefaultBuffer

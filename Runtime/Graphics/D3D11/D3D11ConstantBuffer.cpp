@@ -41,6 +41,10 @@ D3D11ConstantBuffer::~D3D11ConstantBuffer()
 
 bool D3D11ConstantBuffer::Create(unsigned int size)
 {
+	if (!m_graphics->GetDevice()) {
+		return false;
+	}
+
 	D3D11_BUFFER_DESC bufferDesc;
 	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
 	bufferDesc.ByteWidth = size;
@@ -62,6 +66,10 @@ bool D3D11ConstantBuffer::Create(unsigned int size)
 
 void* D3D11ConstantBuffer::Map()
 {
+	if (!m_graphics->GetDeviceContext()) {
+		return nullptr;
+	}
+
 	if (!m_buffer)
 	{
 		LOG_ERROR("Can't map uninitialized constant buffer.");
@@ -80,27 +88,36 @@ void* D3D11ConstantBuffer::Map()
 	return mappedResource.pData;
 }
 
-void D3D11ConstantBuffer::Unmap()
+bool D3D11ConstantBuffer::Unmap()
 {
-	if (!m_buffer)
-		return;
+	if (!m_buffer || !m_graphics->GetDeviceContext()) {
+		return false;
+	}
 
 	// re-enable GPU access to the vertex buffer data.
 	m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
+
+	return true;
 }
 
-void D3D11ConstantBuffer::SetVS(unsigned int startSlot)
+bool D3D11ConstantBuffer::SetVS(unsigned int startSlot)
 {
-	if (!m_buffer)
-		return;
+	if (!m_buffer || !m_graphics->GetDeviceContext()) {
+		return false;
+	}
 
 	m_graphics->GetDeviceContext()->VSSetConstantBuffers(startSlot, 1, &m_buffer);
+
+	return true;
 }
 
-void D3D11ConstantBuffer::SetPS(unsigned int startSlot)
+bool D3D11ConstantBuffer::SetPS(unsigned int startSlot)
 {
-	if (!m_buffer)
-		return;
+	if (!m_buffer || !m_graphics->GetDeviceContext()) {
+		return false;
+	}
 
 	m_graphics->GetDeviceContext()->PSSetConstantBuffers(startSlot, 1, &m_buffer);
+
+	return true;
 }
