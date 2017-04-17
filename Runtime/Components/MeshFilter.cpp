@@ -85,7 +85,7 @@ void MeshFilter::Deserialize()
 
 	if (m_meshType == Imported) // Get the already loaded mesh
 	{
-		auto mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(meshID);
+		auto mesh = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetResourceByID<Mesh>(meshID);
 		SetMesh(mesh);
 	}
 	else // Construct the mesh
@@ -138,7 +138,7 @@ void MeshFilter::SetMesh(MeshType defaultMesh)
 		break;
 	}
 
-	auto meshWeakPtr = g_context->GetSubsystem<ResourceManager>()->Add(move(meshSharedPtr));
+	auto meshWeakPtr = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Add(move(meshSharedPtr));
 	SetMesh(meshWeakPtr);
 
 	vertices.clear();
@@ -157,7 +157,7 @@ void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID
 	mesh->Update();
 
 	// Save it and set it
-	SetMesh(g_context->GetSubsystem<ResourceManager>()->Add(mesh));
+	SetMesh(g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Add(mesh));
 }
 
 // Set the buffers to active in the input assembler so they can be rendered.
@@ -179,7 +179,7 @@ bool MeshFilter::SetBuffers()
 	m_indexBuffer->SetIA();
 
 	// Set the type of primitive that should be rendered from this vertex buffer
-	g_context->GetSubsystem<GraphicsDevice>()->SetPrimitiveTopology(TriangleList);
+	g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(TriangleList);
 
 	return true;
 }
@@ -194,7 +194,7 @@ std::vector<std::weak_ptr<Mesh>> MeshFilter::GetAllModelMeshes()
 {
 	vector<weak_ptr<Mesh>> modelMeshes;
 
-	auto meshes = g_context->GetSubsystem<ResourceManager>()->GetAllByType<Mesh>();
+	auto meshes = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetAllByType<Mesh>();
 	for (const auto& mesh : meshes)
 		if (m_mesh.lock()->GetRootGameObjectID() == mesh.lock()->GetRootGameObjectID())
 			modelMeshes.push_back(mesh);
@@ -281,7 +281,7 @@ string MeshFilter::GetMeshName()
 
 bool MeshFilter::CreateBuffers()
 {
-	auto graphicsDevice = g_context->GetSubsystem<GraphicsDevice>();
+	auto graphicsDevice = g_context->GetSubsystem<Graphics>();
 	if (!graphicsDevice->GetDevice())
 	{
 		LOG_ERROR("Aborting vertex buffer creation. Graphics device is not present.");

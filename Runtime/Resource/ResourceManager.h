@@ -31,114 +31,121 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ResourceManager : public Subsystem
+	namespace Resource
 	{
-	public:
-		ResourceManager(Context* context);
-		~ResourceManager() { Unload(); }
-
-		// Unloads all resources
-		void Unload() { m_resourceCache->Unload(); }
-
-		// Loads a resource and adds it to the resource cache
-		template <class T>
-		std::weak_ptr<T> Load(const std::string& filePath)
+		class ResourceManager : public Subsystem
 		{
-			// Check if the resource is already loaded
-			if (m_resourceCache->Cached(filePath))
-				return GetResourceByPath<T>(filePath);
+		public:
+			ResourceManager(Context* context);
+			~ResourceManager() { Unload(); }
 
-			std::shared_ptr<T> derivedResource = std::make_shared<T>(g_context);
-			std::shared_ptr<Resource> resource = ToBaseResourceShared(derivedResource);
+			// Unloads all resources
+			void Unload() { m_resourceCache->Unload(); }
 
-			if (resource->LoadFromFile(filePath))
-				m_resourceCache->Add(resource);
-
-			return GetResourceByPath<T>(filePath);
-		}
-
-		// Adds an already loaded resource into the resource cache
-		template <class T>
-		std::weak_ptr<T> Add(std::shared_ptr<T> resource)
-		{
-			if (!resource)
-				return std::weak_ptr<T>();
-
-			std::shared_ptr<Resource> baseResource = ToBaseResourceShared(resource);
-
-			// If the resource is already loaded, return the existing one
-			if (m_resourceCache->Cached(baseResource))
-				return ToDerivedResourceWeak<T>(m_resourceCache->GetByID(baseResource->GetResourceID()));
-
-			// Else, add the resource and return it
-			m_resourceCache->Add(baseResource);
-			return resource;
-		}
-
-		// Returns cached resource by ID
-		template <class T>
-		std::weak_ptr<T> GetResourceByID(const std::string& ID)
-		{
-			std::shared_ptr<Resource> baseResource = m_resourceCache->GetByID(ID);
-			std::weak_ptr<T> derivedResource = ToDerivedResourceWeak<T>(baseResource);
-
-			return derivedResource;
-		}
-
-		// Returns cached resource by Path
-		template <class T>
-		std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
-		{
-			std::shared_ptr<Resource> resource = m_resourceCache->GetByPath(filePath);
-			return ToDerivedResourceWeak<T>(resource);
-		}
-
-		// Returns cached resource by Type
-		template <class T>
-		std::vector<std::weak_ptr<T>> GetAllByType()
-		{
-			std::vector<std::weak_ptr<T>> typedResources;
-			for (const auto& resource : m_resourceCache->GetAll())
+			// Loads a resource and adds it to the resource cache
+			template <class T>
+			std::weak_ptr<T> Load(const std::string& filePath)
 			{
-				std::weak_ptr<T> typedResource = ToDerivedResourceWeak<T>(resource);
-				bool validCasting = !typedResource.expired();
+				// Check if the resource is already loaded
+				if (m_resourceCache->Cached(filePath))
+					return GetResourceByPath<T>(filePath);
 
-				if (validCasting)
-					typedResources.push_back(typedResource);
+				std::shared_ptr<T> derivedResource = std::make_shared<T>(g_context);
+				std::shared_ptr<Resource> resource = ToBaseResourceShared(derivedResource);
+
+				if (resource->LoadFromFile(filePath))
+					m_resourceCache->Add(resource);
+
+				return GetResourceByPath<T>(filePath);
 			}
-			return typedResources;
-		}
 
-		void SaveResourceMetadata()
-		{
-			m_resourceCache->SaveResourceMetadata();
-		}
+			// Adds an already loaded resource into the resource cache
+			template <class T>
+			std::weak_ptr<T> Add(std::shared_ptr<T> resource)
+			{
+				if (!resource)
+					return std::weak_ptr<T>();
 
-		std::vector<std::string> GetResourceFilePaths()
-		{
-			return m_resourceCache->GetResourceFilePaths();
-		}
+				std::shared_ptr<Resource> baseResource = ToBaseResourceShared(resource);
 
-	private:
-		std::unique_ptr<ResourceCache> m_resourceCache;
+				// If the resource is already loaded, return the existing one
+				if (m_resourceCache->Cached(baseResource))
+					return ToDerivedResourceWeak<T>(m_resourceCache->GetByID(baseResource->GetResourceID()));
 
-		// Derived -> Resource (as a shared pointer)
-		template <class T>
-		std::shared_ptr<Resource> ToBaseResourceShared(std::shared_ptr<T> resource)
-		{
-			std::shared_ptr<Resource> sharedPtr = dynamic_pointer_cast<T>(resource);
+				// Else, add the resource and return it
+				m_resourceCache->Add(baseResource);
+				return resource;
+			}
 
-			return sharedPtr;
-		}
+			// Returns cached resource by ID
+			template <class T>
+			std::weak_ptr<T> GetResourceByID(const std::string& ID)
+			{
+				std::shared_ptr<Resource> baseResource = m_resourceCache->GetByID(ID);
+				std::weak_ptr<T> derivedResource = ToDerivedResourceWeak<T>(baseResource);
 
-		// Resource -> Derived (as a weak pointer)
-		template <class T>
-		std::weak_ptr<T> ToDerivedResourceWeak(std::shared_ptr<Resource> resource)
-		{
-			std::shared_ptr<T> sharedPtr = dynamic_pointer_cast<T>(resource);
-			std::weak_ptr<T> weakPtr = std::weak_ptr<T>(sharedPtr);
+				return derivedResource;
+			}
 
-			return weakPtr;
-		}
-	};
+			// Returns cached resource by Path
+			template <class T>
+			std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
+			{
+				std::shared_ptr<Resource> resource = m_resourceCache->GetByPath(filePath);
+				return ToDerivedResourceWeak<T>(resource);
+			}
+
+			// Returns cached resource by Type
+			template <class T>
+			std::vector<std::weak_ptr<T>> GetAllByType()
+			{
+				std::vector<std::weak_ptr<T>> typedResources;
+				for (const auto& resource : m_resourceCache->GetAll())
+				{
+					std::weak_ptr<T> typedResource = ToDerivedResourceWeak<T>(resource);
+					bool validCasting = !typedResource.expired();
+
+					if (validCasting)
+						typedResources.push_back(typedResource);
+				}
+				return typedResources;
+			}
+
+			void SaveResourceMetadata()
+			{
+				m_resourceCache->SaveResourceMetadata();
+			}
+
+			std::vector<std::string> GetResourceFilePaths()
+			{
+				return m_resourceCache->GetResourceFilePaths();
+			}
+
+			void AddResourceDirectory(ResourceType type, const std::string& directory);
+			std::string GetResourceDirectory(ResourceType type);
+
+		private:
+			std::unique_ptr<ResourceCache> m_resourceCache;
+			std::map<ResourceType, std::string> m_resourceDirectories;
+
+			// Derived -> Resource (as a shared pointer)
+			template <class T>
+			std::shared_ptr<Resource> ToBaseResourceShared(std::shared_ptr<T> resource)
+			{
+				std::shared_ptr<Resource> sharedPtr = dynamic_pointer_cast<T>(resource);
+
+				return sharedPtr;
+			}
+
+			// Resource -> Derived (as a weak pointer)
+			template <class T>
+			std::weak_ptr<T> ToDerivedResourceWeak(std::shared_ptr<Resource> resource)
+			{
+				std::shared_ptr<T> sharedPtr = dynamic_pointer_cast<T>(resource);
+				std::weak_ptr<T> weakPtr = std::weak_ptr<T>(sharedPtr);
+
+				return weakPtr;
+			}
+		};
+	}
 }

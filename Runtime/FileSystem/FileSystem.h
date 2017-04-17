@@ -28,11 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DATA_NOT_ASSIGNED "N/A"
 
-//= ENGINE DATA PATHS ==========================
-#define DEFAULT_PATH_CUBEMAPS "Assets/Cubemaps/"
-#define DEFAULT_PATH_SHADERS "Assets/Shaders/"
-//==============================================
-
 //= METADATA ===================================
 #define METADATA_EXTENSION ".meta"
 #define METADATA_TYPE_TEXTURE "Texture"

@@ -35,7 +35,7 @@ public:
 	PostProcessShader();
 	~PostProcessShader();
 
-	void Initialize(LPCSTR pass, D3D11GraphicsDevice* d3d11device);
+	void Load(const std::string& filePath, const std::string& pass, Graphics* graphics);
 	bool Render(int indexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* texture);
 
 private:
@@ -47,6 +47,6 @@ private:
 	};
 
 	std::shared_ptr<D3D11ConstantBuffer> m_constantBuffer;
-	D3D11GraphicsDevice* m_graphics;
+	Graphics* m_graphics;
 	std::shared_ptr<D3D11Shader> m_shader;
 };

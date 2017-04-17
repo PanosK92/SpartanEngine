@@ -80,7 +80,7 @@ void Light::Update()
 	if (!m_shadowMaps.empty())
 		return;
 
-	GraphicsDevice* graphics = g_context->GetSubsystem<GraphicsDevice>();
+	Graphics* graphics = g_context->GetSubsystem<Graphics>();
 	GameObject* camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
 	Camera* cameraComp = camera ? camera->GetComponent<Camera>() : nullptr;
 

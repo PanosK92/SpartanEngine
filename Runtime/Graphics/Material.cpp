@@ -39,7 +39,7 @@ Material::Material(Context* context)
 {
 	// Resource
 	m_resourceID = GENERATE_GUID;
-	m_resourceType = Texture_Resource;
+	m_resourceType = Directus::Resource::Texture;
 
 	// Material
 	m_context = context;
@@ -157,7 +157,7 @@ bool Material::LoadFromFile(const string& filePath)
 
 		// If the texture happens to be loaded, we might as well get a reference to it
 		if (m_context)
-			texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByPath<Texture>(texPath);
+			texture = m_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetResourceByPath<Texture>(texPath);
 
 		m_textures.insert(make_pair(make_pair(texPath, texType), texture));
 	}
@@ -167,7 +167,7 @@ bool Material::LoadFromFile(const string& filePath)
 	// Load unloaded textures
 	for (auto& it : m_textures)
 		if (it.second.expired())
-			it.second = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(it.first.first);
+			it.second = m_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Texture>(it.first.first);
 
 	AcquireShader();
 
@@ -263,7 +263,7 @@ void Material::AcquireShader()
 
 weak_ptr<ShaderVariation> Material::FindMatchingShader(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
 {
-	auto shaders = m_context->GetSubsystem<ResourceManager>()->GetAllByType<ShaderVariation>();
+	auto shaders = m_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetAllByType<ShaderVariation>();
 	for (const auto shaderTemp : shaders)
 	{
 		auto shader = shaderTemp.lock();
@@ -291,12 +291,14 @@ weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(bool albedo, boo
 	if (!existingShader.expired())
 		return existingShader;
 
-	// If not, create a new one
+	// If not, create a new one 
+	auto resourceMng = m_context->GetSubsystem<Directus::Resource::ResourceManager>(); 
+	std::string shaderDirectory = resourceMng->GetResourceDirectory(Directus::Resource::Shader); // Get standard shader directory
 	auto shader = make_shared<ShaderVariation>();
-	shader->Initialize(albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<D3D11GraphicsDevice>());
+	shader->Initialize(shaderDirectory + "GBuffer.hlsl", albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<D3D11GraphicsDevice>());
 
 	// Add the shader to the pool and return it
-	return m_context->GetSubsystem<ResourceManager>()->Add(shader);
+	return m_context->GetSubsystem<Directus::Resource::ResourceManager>()->Add(shader);
 }
 
 void** Material::GetShaderResourceViewByTextureType(TextureType type)

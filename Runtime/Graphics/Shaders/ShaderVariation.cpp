@@ -35,7 +35,7 @@ using namespace Directus::Math;
 ShaderVariation::ShaderVariation()
 {
 	// Resource
-	m_resourceType = Shader_Resource;
+	m_resourceType = Directus::Resource::Shader;
 
 	// Shader
 	m_graphics = nullptr;
@@ -61,6 +61,7 @@ ShaderVariation::~ShaderVariation()
 }
 
 void ShaderVariation::Initialize(
+	const std::string& filePath,
 	bool albedo,
 	bool roughness,
 	bool metallic,
@@ -70,7 +71,7 @@ void ShaderVariation::Initialize(
 	bool emission,
 	bool mask,
 	bool cubemap,
-	D3D11GraphicsDevice* graphicsDevice
+	Graphics* graphics
 )
 {
 	// Save the properties of the material
@@ -84,9 +85,9 @@ void ShaderVariation::Initialize(
 	m_hasMaskTexture = mask;
 	m_hasCubeMap = cubemap;
 
-	m_graphics = graphicsDevice;
+	m_graphics = graphics;
 	m_resourceID = GENERATE_GUID; // generate an ID for this shader
-	Load(); // load the shader
+	Load(filePath); // load the shader
 }
 
 bool ShaderVariation::SaveMetadata()
@@ -254,12 +255,12 @@ void ShaderVariation::AddDefinesBasedOnMaterial(shared_ptr<D3D11Shader> shader)
 	shader->AddDefine("CUBE_MAP", m_hasCubeMap);
 }
 
-void ShaderVariation::Load()
+void ShaderVariation::Load(const string& filePath)
 {
 	// load the vertex and the pixel shader
 	m_D3D11Shader = make_shared<D3D11Shader>(m_graphics);
 	AddDefinesBasedOnMaterial(m_D3D11Shader);
-	m_D3D11Shader->Load("Data/Shaders/GBuffer.hlsl");
+	m_D3D11Shader->Load(filePath);
 	m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
 	m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS); // anisotropic
 

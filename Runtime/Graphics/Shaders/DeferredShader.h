@@ -38,7 +38,7 @@ public:
 	DeferredShader();
 	~DeferredShader();
 
-	void Initialize(D3D11GraphicsDevice* graphicsDevice);
+	void Load(const std::string& filePath, Graphics* graphics);
 	void UpdateMatrixBuffer(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mBaseView,
 		const Directus::Math::Matrix& mPerspectiveProjection, const Directus::Math::Matrix& mOrthographicProjection);
 	void UpdateMiscBuffer(Light*, std::vector<GameObject*> pointLights, Camera* camera);
@@ -77,5 +77,5 @@ private:
 	std::shared_ptr<D3D11ConstantBuffer> m_matrixBuffer;
 	std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
 	std::shared_ptr<D3D11Shader> m_shader;
-	D3D11GraphicsDevice* m_graphics;
+	Graphics* m_graphics;
 };

@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Core/Scene.h"
 #include "../Resource/ResourceCache.h"
+#include "../Resource/ResourceManager.h"
 //====================================
 
 //= NAMESPACES ================
@@ -52,8 +53,12 @@ Skybox::~Skybox()
 ------------------------------------------------------------------------------*/
 void Skybox::Reset()
 {
+	// Get cubemap directory
+	auto resourceMng = g_context->GetSubsystem<Directus::Resource::ResourceManager>();
+	std::string cubamapDirectory = resourceMng->GetResourceDirectory(Directus::Resource::Cubemap);
+
 	m_cubeMapTexture = make_shared<Texture>(g_context);
-	m_cubeMapTexture->LoadFromFile("Data/Cubemaps/environment.dds");
+	m_cubeMapTexture->LoadFromFile(cubamapDirectory + "environment.dds");
 	m_cubeMapTexture->SetTextureType(CubeMap);
 	m_cubeMapTexture->SetWidth(1024);
 	m_cubeMapTexture->SetHeight(1024);
@@ -92,8 +97,9 @@ void Skybox::Update()
 {
 	GameObject* camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
 
-	if (camera)
+	if (camera) {
 		g_transform->SetPosition(camera->GetTransform()->GetPosition());
+	}
 }
 
 void Skybox::Serialize()

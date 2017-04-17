@@ -35,16 +35,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/DDSTextureImporter.h"
 //================================================
 
-//= NAMESPACES ==========
+//= NAMESPACES ====================
 using namespace std;
 using namespace Directus;
-//=======================
+using namespace Directus::Resource;
+//=================================
 
 Texture::Texture(Context* context)
 {
 	// IResource
 	m_resourceID = GENERATE_GUID;
-	m_resourceType = Texture_Resource;
+	m_resourceType = Directus::Resource::Texture;
 
 	// Texture
 	m_context = context;
@@ -55,7 +56,7 @@ Texture::Texture(Context* context)
 	m_transparency = false;
 	m_alphaIsTransparency = false;
 	m_generateMipchain = true;
-	m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<GraphicsDevice>());
+	m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 }
 
 Texture::~Texture()
@@ -111,7 +112,7 @@ bool Texture::LoadMetadata()
 // Loads a texture (not it's metadata) from an image file
 bool Texture::LoadFromFile(const string& filePath)
 {
-	auto graphicsDevice = m_context->GetSubsystem<GraphicsDevice>()->GetDevice();
+	auto graphicsDevice = m_context->GetSubsystem<Graphics>()->GetDevice();
 	if (!graphicsDevice) {
 		return false;
 	}
