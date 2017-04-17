@@ -34,7 +34,7 @@ public:
 	DebugShader();
 	~DebugShader();
 
-	void Initialize(D3D11GraphicsDevice* graphicsDevice);
+	void Load(const std::string& filePath, Graphics* graphics);
 	void Render(int vertexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
 
 private:
@@ -47,7 +47,7 @@ private:
 	void SetShaderBuffers(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
 	void RenderShader(unsigned int vertexCount);
 
-	std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
-	D3D11GraphicsDevice* m_graphics;
+	std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;	
 	std::shared_ptr<D3D11Shader> m_shader;
+	Graphics* m_graphics;
 };

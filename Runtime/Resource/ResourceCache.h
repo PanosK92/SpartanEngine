@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	namespace Resource
+	{
 		class ResourceCache
 		{
 		public:
@@ -123,4 +125,5 @@ namespace Directus
 		private:
 			std::vector<std::shared_ptr<Resource>> m_resources;
 		};
+	}
 }

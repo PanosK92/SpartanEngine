@@ -48,7 +48,7 @@ enum ShadowType
 class Cascade
 {
 public:
-	Cascade(int cascade, int resolution, GraphicsDevice* device)
+	Cascade(int cascade, int resolution, Graphics* device)
 	{
 		m_cascade = cascade;
 		m_depthMap = std::make_unique<D3D11RenderTexture>(device);

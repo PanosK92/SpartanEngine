@@ -298,7 +298,7 @@ namespace Directus
 			aiMaterial* assimpMaterial = scene->mMaterials[mesh->mMaterialIndex];
 
 			// Convert AiMaterial to Material and add it to the pool
-			auto material = g_context->GetSubsystem<ResourceManager>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
+			auto material = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
 
 			// Set it in the mesh renderer component
 			gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);
@@ -407,7 +407,7 @@ namespace Directus
 		FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
 		// Load the texture
-		auto texture = g_context->GetSubsystem<ResourceManager>()->Load<Texture>(textureDestination);
+		auto texture = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Texture>(textureDestination);
 		// If it was loaded successfuly, set it to the material
 		if (!texture.expired())
 		{

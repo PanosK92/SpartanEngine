@@ -24,11 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined(API_D3D11)
 #include "D3D11/D3D11GraphicsDevice.h"
 class D3D11GraphicsDevice;
-typedef D3D11GraphicsDevice GraphicsDevice;
+typedef D3D11GraphicsDevice Graphics;
 #elif defined(API_D3D12)
 #include "D3D12/D3D12GraphicsDevice.h"
 class D3D12GraphicsDevice;
-typedef D3D12GraphicsDevice GraphicsDevice;
+typedef D3D12GraphicsDevice Graphics;
 #endif
 //========================================
 

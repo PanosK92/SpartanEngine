@@ -24,15 +24,39 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 //=============================
 
-//= NAMESPACES ====================
+//= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
-//=================================
+//=============================
 
 namespace Directus
 {
-	ResourceManager::ResourceManager(Context* context) : Subsystem(context)
+	namespace Resource
 	{
-		m_resourceCache = make_unique<ResourceCache>();
+		ResourceManager::ResourceManager(Context* context) : Subsystem(context)
+		{
+			m_resourceCache = make_unique<ResourceCache>();
+
+			// Add engine standard resource directories
+			AddResourceDirectory(Texture, "Standard Assets//Textures//");
+			AddResourceDirectory(Shader, "Standard Assets//Shaders//");
+			AddResourceDirectory(Cubemap, "Standard Assets//Cubemaps//");		
+		}
+
+		void ResourceManager::AddResourceDirectory(ResourceType type, const string& directory)
+		{
+			m_resourceDirectories[type] = directory;
+		}
+
+		std::string ResourceManager::GetResourceDirectory(ResourceType type)
+		{
+			for (auto& directory : m_resourceDirectories)
+			{
+				if (directory.first == type)
+					return directory.second;
+			}
+
+			return DATA_NOT_ASSIGNED;
+		}
 	}
 }

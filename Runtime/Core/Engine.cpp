@@ -52,9 +52,9 @@ Engine::Engine(Context* context) : Subsystem(context)
 	g_context->RegisterSubsystem(new Input(g_context));
 	g_context->RegisterSubsystem(new Audio(g_context));
 	g_context->RegisterSubsystem(new ThreadPool(g_context));
-	g_context->RegisterSubsystem(new GraphicsDevice(g_context));
+	g_context->RegisterSubsystem(new Graphics(g_context));
 	g_context->RegisterSubsystem(new PhysicsWorld(g_context));
-	g_context->RegisterSubsystem(new ResourceManager(g_context));
+	g_context->RegisterSubsystem(new Directus::Resource::ResourceManager(g_context));
 }
 
 void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHandle)
@@ -62,7 +62,7 @@ void Engine::Initialize(HINSTANCE instance, HWND windowHandle, HWND drawPaneHand
 	// Initialize any subsystems that require it
 	g_context->GetSubsystem<Audio>()->Initialize();
 	g_context->GetSubsystem<Input>()->Initialize(instance, windowHandle);
-	g_context->GetSubsystem<GraphicsDevice>()->Initialize(drawPaneHandle);
+	g_context->GetSubsystem<Graphics>()->Initialize(drawPaneHandle);
 
 	// Register subsystems which depend on registered subsystems
 	g_context->RegisterSubsystem(new ScriptEngine(g_context));

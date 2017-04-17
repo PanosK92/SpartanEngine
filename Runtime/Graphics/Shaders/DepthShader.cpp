@@ -40,13 +40,13 @@ DepthShader::~DepthShader()
 
 }
 
-void DepthShader::Initialize(D3D11GraphicsDevice* graphicsDevice)
+void DepthShader::Load(const std::string& filePath, Graphics* graphics)
 {
-	m_graphics = graphicsDevice;
+	m_graphics = graphics;
 
 	// load the vertex and the pixel shader
 	m_shader = make_shared<D3D11Shader>(m_graphics);
-	m_shader->Load("Data/Shaders/Depth.hlsl");
+	m_shader->Load(filePath);
 	m_shader->SetInputLayout(Position);
 
 	// create a buffer

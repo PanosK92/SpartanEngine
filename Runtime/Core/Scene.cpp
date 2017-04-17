@@ -112,7 +112,7 @@ void Scene::Clear()
 	m_skybox = nullptr;
 
 	// Clear the resource cache
-	g_context->GetSubsystem<ResourceManager>()->Unload();
+	g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Unload();
 
 	// Clear/Reset subsystems that allocate some things
 	g_context->GetSubsystem<ScriptEngine>()->Reset();
@@ -140,13 +140,13 @@ bool Scene::SaveToFile(const string& filePathIn)
 		filePath += SCENE_EXTENSION;
 
 	// Save any in-memory changes done to resources while running.
-	g_context->GetSubsystem<ResourceManager>()->SaveResourceMetadata();
+	g_context->GetSubsystem<Directus::Resource::ResourceManager>()->SaveResourceMetadata();
 
 	if (!Serializer::StartWriting(filePath))
 		return false;
 
 	//= Save currently loaded resource paths =======================================================
-	vector<string> resourcePaths = g_context->GetSubsystem<ResourceManager>()->GetResourceFilePaths();
+	vector<string> resourcePaths = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetResourceFilePaths();
 	Serializer::WriteVectorSTR(resourcePaths);
 	//==============================================================================================
 
@@ -193,18 +193,18 @@ bool Scene::LoadFromFile(const string& filePath)
 	{
 		if (FileSystem::IsSupportedMeshFile(resourcePath))
 		{
-			g_context->GetSubsystem<ResourceManager>()->Load<Mesh>(resourcePath);
+			g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Mesh>(resourcePath);
 			continue;
 		}
 
 		if (FileSystem::IsSupportedMaterialFile(resourcePath))
 		{
-			g_context->GetSubsystem<ResourceManager>()->Load<Material>(resourcePath);
+			g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Material>(resourcePath);
 			continue;
 		}
 
 		if (FileSystem::IsSupportedImageFile(resourcePath))
-			g_context->GetSubsystem<ResourceManager>()->Load<Texture>(resourcePath);
+			g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Texture>(resourcePath);
 	}
 
 

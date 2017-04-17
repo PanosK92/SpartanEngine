@@ -43,7 +43,7 @@ enum ShadingMode
 	Skysphere
 };
 
-class DllExport Material : public Directus::Resource
+class DllExport Material : public Directus::Resource::Resource
 {
 public:
 	Material(Context* context);

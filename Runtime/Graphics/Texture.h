@@ -41,7 +41,7 @@ enum TextureType
 	CubeMap,
 };
 
-class Texture : public Directus::Resource
+class Texture : public Directus::Resource::Resource
 {
 public:
 	Texture(Context* context);

@@ -35,13 +35,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define NULL_SHADER_ID "-1";
 
-class ShaderVariation : public Directus::Resource
+class ShaderVariation : public Directus::Resource::Resource
 {
 public:
 	ShaderVariation();
 	~ShaderVariation();
 
 	void Initialize(
+		const std::string& filePath,
 		bool albedo,
 		bool roughness,
 		bool metallic,
@@ -51,7 +52,7 @@ public:
 		bool emission,
 		bool mask,
 		bool cubemap,
-		D3D11GraphicsDevice* d3d11device
+		Graphics* graphics
 	);
 	bool LoadFromFile(const std::string& filePath) { return true; }
 	bool SaveMetadata();
@@ -75,7 +76,7 @@ public:
 
 private:
 	void AddDefinesBasedOnMaterial(std::shared_ptr<D3D11Shader> shader);
-	void Load();
+	void Load(const std::string& filePath);
 
 	/*------------------------------------------------------------------------------
 									[PROPERTIES]
@@ -93,7 +94,7 @@ private:
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/
-	D3D11GraphicsDevice* m_graphics;
+	Graphics* m_graphics;
 	std::shared_ptr<D3D11ConstantBuffer> m_perObjectBuffer;
 	std::shared_ptr<D3D11ConstantBuffer> m_materialBuffer;
 	std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;

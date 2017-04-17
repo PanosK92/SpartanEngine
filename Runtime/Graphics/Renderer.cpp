@@ -75,7 +75,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_farPlane = 0.0f;
 
 	// Get the garphics subsystem
-	m_graphics = g_context->GetSubsystem<GraphicsDevice>();
+	m_graphics = g_context->GetSubsystem<Graphics>();
 	if (!m_graphics->IsInitialized()){
 		return;
 	}
@@ -86,26 +86,30 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
 	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
+	auto resourceMng = g_context->GetSubsystem<Directus::Resource::ResourceManager>();
+	std::string shaderDirectory = resourceMng->GetResourceDirectory(Directus::Resource::Shader);
+	std::string textureDirectory = resourceMng->GetResourceDirectory(Directus::Resource::Texture);
+
 	/*------------------------------------------------------------------------------
 	[SHADERS]
 	------------------------------------------------------------------------------*/
 	m_shaderDeferred = make_shared<DeferredShader>();
-	m_shaderDeferred->Initialize(m_graphics);
+	m_shaderDeferred->Load(shaderDirectory + "Deferred.hlsl", m_graphics);
 
 	m_shaderDepth = make_shared<DepthShader>();
-	m_shaderDepth->Initialize(m_graphics);
+	m_shaderDepth->Load(shaderDirectory + "Depth.hlsl", m_graphics);
 
 	m_shaderDebug = make_shared<DebugShader>();
-	m_shaderDebug->Initialize(m_graphics);
+	m_shaderDebug->Load(shaderDirectory + "Debug.hlsl", m_graphics);
 
 	m_shaderFXAA = make_shared<PostProcessShader>();
-	m_shaderFXAA->Initialize("FXAA", m_graphics);
+	m_shaderFXAA->Load(shaderDirectory + "PostProcess.hlsl", "FXAA", m_graphics);
 
 	m_shaderSharpening = make_shared<PostProcessShader>();
-	m_shaderSharpening->Initialize("SHARPENING", m_graphics);
+	m_shaderSharpening->Load(shaderDirectory + "PostProcess.hlsl", "SHARPENING", m_graphics);
 
 	m_shaderBlur = make_shared<PostProcessShader>();
-	m_shaderBlur->Initialize("BLUR", m_graphics);
+	m_shaderBlur->Load(shaderDirectory + "PostProcess.hlsl", "BLUR", m_graphics);
 
 	/*------------------------------------------------------------------------------
 	[RENDER TEXTURES]
@@ -120,7 +124,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	[MISC]
 	------------------------------------------------------------------------------*/
 	m_texNoiseMap = make_shared<Texture>(g_context);
-	m_texNoiseMap->LoadFromFile("Data/Shaders/noise.png");
+	m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
 	m_texNoiseMap->SetTextureType(Normal);
 
 	// Subcribe to render event
@@ -324,9 +328,9 @@ void Renderer::DirectionalLightDepthPass()
 
 void Renderer::GBufferPass()
 {
-	D3D11GraphicsDevice* graphics = g_context->GetSubsystem<D3D11GraphicsDevice>();
-	auto materials = g_context->GetSubsystem<ResourceManager>()->GetAllByType<Material>();
-	auto shaders = g_context->GetSubsystem<ResourceManager>()->GetAllByType<ShaderVariation>();
+	Graphics* graphics = g_context->GetSubsystem<Graphics>();
+	auto materials = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetAllByType<Material>();
+	auto shaders = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetAllByType<ShaderVariation>();
 
 	for (const auto& tempShader : shaders) // iterate through the shaders
 	{
