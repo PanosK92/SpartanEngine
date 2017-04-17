@@ -59,6 +59,10 @@ GBuffer::~GBuffer()
 
 bool GBuffer::Initialize(int width, int height)
 {
+	if (!m_graphics->GetDevice()) {
+		return false;
+	}
+
 	// Store the width and height of the render texture.
 	m_textureWidth = width;
 	m_textureHeight = height;
