@@ -41,8 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 #include "../Core/Timer.h"
 #include "../Core/Engine.h"
-#include "../Resource/ResourceManager.h"
-#include "../Stopwatch.h"
+#include "../Resource/ResourceManager.h
+#include "../Core/Stopwatch.h"
 //======================================
 
 //= NAMESPACES ================
