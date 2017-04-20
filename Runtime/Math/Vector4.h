@@ -40,10 +40,9 @@ namespace Directus
 			bool operator==(const Vector4& b);
 			bool operator!=(const Vector4& b);
 
-			float x;
-			float y;
-			float z;
-			float w;
+			float x, y, z, w;
+
+			const float* Data() const { return &x; }
 
 			static const Vector4 Zero;
 		};

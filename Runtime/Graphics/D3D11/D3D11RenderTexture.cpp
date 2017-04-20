@@ -50,20 +50,20 @@ D3D11RenderTexture::~D3D11RenderTexture()
 	SafeRelease(m_renderTargetTexture);
 }
 
-bool D3D11RenderTexture::Initialize(int textureWidth, int textureHeight)
+bool D3D11RenderTexture::Create(int width, int height)
 {
 	if (!m_graphics->GetDevice()) {
 		return false;
 	}
 
-	m_width = textureHeight;
-	m_height = textureHeight;
+	m_width = height;
+	m_height = height;
 
 	//= RENDER TARGET TEXTURE ========================================================================================================
 	D3D11_TEXTURE2D_DESC textureDesc;
 	ZeroMemory(&textureDesc, sizeof(textureDesc));
-	textureDesc.Width = textureWidth;
-	textureDesc.Height = textureHeight;
+	textureDesc.Width = width;
+	textureDesc.Height = height;
 	textureDesc.MipLevels = 1;
 	textureDesc.ArraySize = 1;
 	textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
@@ -75,8 +75,9 @@ bool D3D11RenderTexture::Initialize(int textureWidth, int textureHeight)
 	textureDesc.MiscFlags = 0;
 
 	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTexture);
-	if (FAILED(result))
+	if (FAILED(result)) {
 		return false;
+	}
 	//=================================================================================================================================
 
 	//= RENDER TARGET VIEW ============================================================================================================
@@ -102,11 +103,20 @@ bool D3D11RenderTexture::Initialize(int textureWidth, int textureHeight)
 		return false;
 	//=================================================================================================================================
 
+	//= VIEWPORT =====================
+	m_viewport.Width = (FLOAT)width;
+	m_viewport.Height = (FLOAT)height;
+	m_viewport.MinDepth = 0.0f;
+	m_viewport.MaxDepth = m_maxDepth;
+	m_viewport.TopLeftX = 0.0f;
+	m_viewport.TopLeftY = 0.0f;
+	//================================
+
 	//= DEPTH BUFFER ==================================================================================================================
 	D3D11_TEXTURE2D_DESC depthBufferDesc;
 	ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-	depthBufferDesc.Width = textureWidth;
-	depthBufferDesc.Height = textureHeight;
+	depthBufferDesc.Width = width;
+	depthBufferDesc.Height = height;
 	depthBufferDesc.MipLevels = 1;
 	depthBufferDesc.ArraySize = 1;
 	depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -134,18 +144,10 @@ bool D3D11RenderTexture::Initialize(int textureWidth, int textureHeight)
 		return false;
 	//=================================================================================================================================
 
-	// Setup the viewport for rendering.
-	m_viewport.Width = (FLOAT)textureWidth;
-	m_viewport.Height = (FLOAT)textureHeight;
-	m_viewport.MinDepth = 0.0f;
-	m_viewport.MaxDepth = 1.0f;
-	m_viewport.TopLeftX = 0.0f;
-	m_viewport.TopLeftY = 0.0f;
-
 	return true;
 }
 
-bool D3D11RenderTexture::SetAsRenderTarget() const
+bool D3D11RenderTexture::SetAsRenderTarget()
 {
 	if (!m_graphics->GetDeviceContext()) {
 		return false;
@@ -162,30 +164,28 @@ bool D3D11RenderTexture::SetAsRenderTarget() const
 
 bool D3D11RenderTexture::Clear(const Vector4& clearColor)
 {
-	return Clear(clearColor.x, clearColor.y, clearColor.z, clearColor.z);
-}
-
-bool D3D11RenderTexture::Clear(float red, float green, float blue, float alpha) const
-{
 	if (!m_graphics->GetDeviceContext()) {
 		return false;
 	}
 
-	float clearColor[4];
-
-	// Setup the color to clear the buffer to.
-	clearColor[0] = red;
-	clearColor[1] = green;
-	clearColor[2] = blue;
-	clearColor[3] = alpha;
-
-	m_graphics->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor); // Clear the back buffer.
-	m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0); // Clear the depth buffer.
+	m_graphics->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor.Data()); // Clear back buffer.
+	m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_maxDepth, 0); // Clear depth buffer.
 
 	return true;
 }
 
-void D3D11RenderTexture::CreateOrthographicProjectionMatrix(float nearPlane, float farPlane)
+bool D3D11RenderTexture::Clear(float red, float green, float blue, float alpha)
 {
+	return Clear(Vector4(red, green, blue, alpha));
+}
+
+void D3D11RenderTexture::CalculateOrthographicProjectionMatrix(float nearPlane, float farPlane)
+{
+	if (m_nearPlane == nearPlane && m_farPlane == farPlane) {
+		return;
+	}
+
+	m_nearPlane = nearPlane;
+	m_farPlane = farPlane;
 	m_orthographicProjectionMatrix = Matrix::CreateOrthographicLH(float(m_width), float(m_height), nearPlane, farPlane);
 }

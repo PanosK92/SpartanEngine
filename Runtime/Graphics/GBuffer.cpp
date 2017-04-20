@@ -33,15 +33,14 @@ GBuffer::GBuffer(D3D11GraphicsDevice* graphicsDevice)
 	m_graphics = graphicsDevice;
 	m_depthStencilBuffer = nullptr;
 	m_depthStencilView = nullptr;
-	m_textureWidth = 1;
-	m_textureHeight = 1;
+	m_width = 1;
+	m_height = 1;
 
-	for (auto i = 0; i < BUFFER_COUNT; i++)
-	{
-		m_shaderResourceViewArray.push_back(nullptr);
-		m_renderTargetViewArray.push_back(nullptr);
-		m_renderTargetTextureArray.push_back(nullptr);
-	}
+	// Construct the skeleton of the G-Buffer
+	m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // albedo
+	m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // normal
+	m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // depth
+	m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // normal
 }
 
 GBuffer::~GBuffer()
@@ -49,81 +48,91 @@ GBuffer::~GBuffer()
 	SafeRelease(m_depthStencilView);
 	SafeRelease(m_depthStencilBuffer);
 
-	for (auto i = 0; i < BUFFER_COUNT; i++)
+	for (auto& renderTarget : m_renderTargets)
 	{
-		SafeRelease(m_shaderResourceViewArray[i]);
-		SafeRelease(m_renderTargetViewArray[i]);
-		SafeRelease(m_renderTargetTextureArray[i]);
+		SafeRelease(renderTarget.shaderResourceView);
+		SafeRelease(renderTarget.renderTargetView);
+		SafeRelease(renderTarget.renderTexture);
 	}
 }
 
-bool GBuffer::Initialize(int width, int height)
+bool GBuffer::Create(int width, int height)
 {
 	if (!m_graphics->GetDevice()) {
 		return false;
 	}
 
 	// Store the width and height of the render texture.
-	m_textureWidth = width;
-	m_textureHeight = height;
+	m_width = width;
+	m_height = height;
 
-	// Initialize the render target texture description.
-	D3D11_TEXTURE2D_DESC textureDesc;
-	ZeroMemory(&textureDesc, sizeof(textureDesc));
-
-	// Setup the render target texture description.
-	textureDesc.Width = width;
-	textureDesc.Height = height;
-	textureDesc.MipLevels = 1;
-	textureDesc.ArraySize = 1;
-	textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	textureDesc.SampleDesc.Count = 1;
-	textureDesc.SampleDesc.Quality = 0;
-	textureDesc.Usage = D3D11_USAGE_DEFAULT;
-	textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-	textureDesc.CPUAccessFlags = 0;
-	textureDesc.MiscFlags = 0;
-
-	// Create the render target textures.
-	HRESULT result;
-	for (int i = 0; i < BUFFER_COUNT; i++)
+	for (auto& renderTarget : m_renderTargets)
 	{
-		result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTextureArray[i]);
-		if (FAILED(result))
-		{
+		// Initialize the render target texture description.
+		D3D11_TEXTURE2D_DESC textureDesc;
+		ZeroMemory(&textureDesc, sizeof(textureDesc));
+
+		// Setup the render target texture description.
+		textureDesc.Width = width;
+		textureDesc.Height = height;
+		textureDesc.MipLevels = 1;
+		textureDesc.ArraySize = 1;
+		textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		textureDesc.SampleDesc.Count = 1;
+		textureDesc.SampleDesc.Quality = 0;
+		textureDesc.Usage = D3D11_USAGE_DEFAULT;
+		textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		textureDesc.CPUAccessFlags = 0;
+		textureDesc.MiscFlags = 0;
+
+		// Create the render target textures.
+		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(
+			&textureDesc, 
+			nullptr, 
+			&renderTarget.renderTexture
+		);
+
+		if (FAILED(result)){
+			return false;
+		}
+
+		// Setup the description of the render target view.
+		D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
+		renderTargetViewDesc.Format = textureDesc.Format;
+		renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		renderTargetViewDesc.Texture2D.MipSlice = 0;
+
+		// Create the render target views.
+		result = m_graphics->GetDevice()->CreateRenderTargetView(
+			renderTarget.renderTexture, 
+			&renderTargetViewDesc, 
+			&renderTarget.renderTargetView
+		);
+
+		if (FAILED(result)) {
+			return false;
+		}
+
+		// Setup the description of the shader resource view.
+		D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
+		shaderResourceViewDesc.Format = textureDesc.Format;
+		shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
+		shaderResourceViewDesc.Texture2D.MipLevels = 1;
+
+		// Create the shader resource views.
+		result = m_graphics->GetDevice()->CreateShaderResourceView(
+			renderTarget.renderTexture, 
+			&shaderResourceViewDesc, 
+			&renderTarget.shaderResourceView
+		);
+
+		if (FAILED(result)) {
 			return false;
 		}
 	}
 
-	// Setup the description of the render target view.
-	D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
-	renderTargetViewDesc.Format = textureDesc.Format;
-	renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-	renderTargetViewDesc.Texture2D.MipSlice = 0;
-
-	// Create the render target views.
-	for (int i = 0; i < BUFFER_COUNT; i++)
-	{
-		result = m_graphics->GetDevice()->CreateRenderTargetView(m_renderTargetTextureArray[i], &renderTargetViewDesc, &m_renderTargetViewArray[i]);
-		if (FAILED(result))
-			return false;
-	}
-
-	// Setup the description of the shader resource view.
-	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-	shaderResourceViewDesc.Format = textureDesc.Format;
-	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
-	shaderResourceViewDesc.Texture2D.MipLevels = 1;
-
-	// Create the shader resource views.
-	for (int i = 0; i < BUFFER_COUNT; i++)
-	{
-		result = m_graphics->GetDevice()->CreateShaderResourceView(m_renderTargetTextureArray[i], &shaderResourceViewDesc, &m_shaderResourceViewArray[i]);
-		if (FAILED(result))
-			return false;
-	}
-
+	//= DEPTH =================================================================
 	// Initialize the description of the depth buffer.
 	D3D11_TEXTURE2D_DESC depthBufferDesc;
 	ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
@@ -142,9 +151,15 @@ bool GBuffer::Initialize(int width, int height)
 	depthBufferDesc.MiscFlags = 0;
 
 	// Create the texture for the depth buffer using the filled out description.
-	result = m_graphics->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
-	if (FAILED(result))
+	HRESULT result = m_graphics->GetDevice()->CreateTexture2D(
+		&depthBufferDesc, 
+		nullptr, 
+		&m_depthStencilBuffer
+	);
+
+	if (FAILED(result)) {
 		return false;
+	}
 
 	// Initailze the depth stencil view description.
 	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
@@ -156,29 +171,45 @@ bool GBuffer::Initialize(int width, int height)
 	depthStencilViewDesc.Texture2D.MipSlice = 0;
 
 	// Create the depth stencil view.
-	result = m_graphics->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
-	if (FAILED(result))
-		return false;
+	result = m_graphics->GetDevice()->CreateDepthStencilView(
+		m_depthStencilBuffer, 
+		&depthStencilViewDesc, 
+		&m_depthStencilView
+	);
 
-	// Setup the viewport for rendering.
+	if (FAILED(result)) {
+		return false;
+	}
+	//==================================================================================
+
+	//= VIEWPORT ==================================
 	m_viewport.Width = static_cast<float>(width);
 	m_viewport.Height = static_cast<float>(height);
 	m_viewport.MinDepth = 0.0f;
-	m_viewport.MaxDepth = 1.0f;
+	m_viewport.MaxDepth = m_maxDepth;
 	m_viewport.TopLeftX = 0.0f;
 	m_viewport.TopLeftY = 0.0f;
+	//=============================================
 
 	return true;
 }
 
-bool GBuffer::SetRenderTargets()
+bool GBuffer::SetAsRenderTarget()
 {
 	if (!m_graphics->GetDeviceContext()) {
 		return false;
 	}
 
 	// Bind the render target view array and depth stencil buffer to the output render pipeline.
-	m_graphics->GetDeviceContext()->OMSetRenderTargets(BUFFER_COUNT, &m_renderTargetViewArray[0], m_depthStencilView);
+	ID3D11RenderTargetView* views[4]{
+		m_renderTargets[0].renderTargetView,
+		m_renderTargets[1].renderTargetView,
+		m_renderTargets[2].renderTargetView,
+		m_renderTargets[3].renderTargetView
+	};
+	ID3D11RenderTargetView** renderTargetViews = views;
+
+	m_graphics->GetDeviceContext()->OMSetRenderTargets(UINT(m_renderTargets.size()), &renderTargetViews[0], m_depthStencilView);
 
 	// Set the viewport.
 	m_graphics->GetDeviceContext()->RSSetViewports(1, &m_viewport);
@@ -188,32 +219,30 @@ bool GBuffer::SetRenderTargets()
 
 bool GBuffer::Clear(const Vector4& color)
 {
-	return Clear(color.x, color.y, color.z, color.w);
-}
-
-bool GBuffer::Clear(float red, float green, float blue, float alpha)
-{
 	if (!m_graphics->GetDeviceContext()) {
 		return false;
 	}
 
-	float color[4];
-	color[0] = red;
-	color[1] = green;
-	color[2] = blue;
-	color[3] = alpha;
-
 	// Clear the render target buffers.
-	for (int i = 0; i < BUFFER_COUNT; i++)
-		m_graphics->GetDeviceContext()->ClearRenderTargetView(m_renderTargetViewArray[i], color);
+	for (auto& renderTarget : m_renderTargets) {
+		m_graphics->GetDeviceContext()->ClearRenderTargetView(renderTarget.renderTargetView, color.Data());
+	}
 
 	// Clear the depth buffer.
-	m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+	m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_maxDepth, 0);
 
 	return true;
 }
 
+bool GBuffer::Clear(float red, float green, float blue, float alpha)
+{
+	return Clear(Vector4(red, green, blue, alpha));
+}
+
 ID3D11ShaderResourceView* GBuffer::GetShaderResourceView(int index)
 {
-	return m_shaderResourceViewArray[index];
+	if (index < 0 || index > m_renderTargets.size())
+		return nullptr;
+
+	return m_renderTargets[index].shaderResourceView;
 }

@@ -78,8 +78,8 @@ public:
 	std::string GetModelID() { return m_modelID; }
 	void SetModelID(const std::string& ID) { m_modelID = ID; }
 
-	CullMode GetFaceCullMode() { return m_cullMode; }
-	void SetFaceCullMode(CullMode cullMode) { m_cullMode = cullMode; }
+	CullMode GetCullMode() { return m_cullMode; }
+	void SetCullMode(CullMode cullMode) { m_cullMode = cullMode; }
 	
 	float GetOpacity() { return m_opacity; }
 	void SetOpacity(float opacity)

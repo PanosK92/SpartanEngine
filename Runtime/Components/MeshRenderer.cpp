@@ -148,7 +148,7 @@ void MeshRenderer::SetMaterial(MaterialType type)
 	case Skybox:
 		material = make_shared<Material>(g_context);
 		material->SetResourceName("Skybox");
-		material->SetFaceCullMode(CullNone);
+		material->SetCullMode(CullNone);
 		material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		material->SetIsEditable(false);
 		m_materialType = Skybox;
