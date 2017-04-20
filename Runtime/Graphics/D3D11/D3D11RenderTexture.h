@@ -32,23 +32,33 @@ public:
 	D3D11RenderTexture(D3D11GraphicsDevice* graphicsDevice);
 	~D3D11RenderTexture();
 
-	bool Initialize(int, int);
-	bool SetAsRenderTarget() const;
+	bool Create(int width, int height);
+	bool SetAsRenderTarget();
 	bool Clear(const Directus::Math::Vector4& clearColor);
-	bool Clear(float r, float g, float b, float a) const;
+	bool Clear(float red, float green, float blue, float alpha);
 	ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
-	void CreateOrthographicProjectionMatrix(float nearPlane, float farPlane);
+	void CalculateOrthographicProjectionMatrix(float nearPlane, float farPlane);
 	const Directus::Math::Matrix& GetOrthographicProjectionMatrix() { return m_orthographicProjectionMatrix; }
 
 private:
-	D3D11GraphicsDevice* m_graphics;
+	// Texture
 	ID3D11Texture2D* m_renderTargetTexture;
 	ID3D11RenderTargetView* m_renderTargetView;
 	ID3D11ShaderResourceView* m_shaderResourceView;
+
+	// Depth texture
 	ID3D11Texture2D* m_depthStencilBuffer;
 	ID3D11DepthStencilView* m_depthStencilView;
-	D3D11_VIEWPORT m_viewport;
+	float m_maxDepth = 1.0f;
+
+	// Projection matrix
+	float m_nearPlane, m_farPlane;
 	Directus::Math::Matrix m_orthographicProjectionMatrix;
+
+	// Dimensions
+	D3D11_VIEWPORT m_viewport;
 	int m_width;
 	int m_height;
+
+	D3D11GraphicsDevice* m_graphics;
 };

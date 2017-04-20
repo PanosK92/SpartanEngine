@@ -81,7 +81,7 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	}
 
 	m_GBuffer = make_shared<GBuffer>(m_graphics);
-	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_GBuffer->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
 	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
@@ -115,10 +115,10 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	[RENDER TEXTURES]
 	------------------------------------------------------------------------------*/
 	m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
-	m_renderTexPing->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics);
-	m_renderTexPong->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	/*------------------------------------------------------------------------------
 	[MISC]
@@ -169,7 +169,7 @@ void Renderer::Render()
 			DirectionalLightDepthPass();
 
 	// G-Buffer Construction
-	m_GBuffer->SetRenderTargets();
+	m_GBuffer->SetAsRenderTarget();
 	m_GBuffer->Clear(m_camera->GetClearColor());
 	GBufferPass();
 
@@ -208,16 +208,16 @@ void Renderer::SetResolution(int width, int height)
 	m_renderTexPong.reset();
 
 	m_GBuffer = make_shared<GBuffer>(m_graphics);
-	m_GBuffer->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_GBuffer->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
 	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
 	m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
-	m_renderTexPing->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics);
-	m_renderTexPong->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_graphics->SetResolution(width, height);
 }
@@ -413,7 +413,7 @@ void Renderer::GBufferPass()
 				if (meshFilter->SetBuffers())
 				{
 					// Set face culling (changes only if required)
-					graphics->SetCullMode(material.lock()->GetFaceCullMode());
+					graphics->SetCullMode(material.lock()->GetCullMode());
 
 					// Render the mesh, finally!				
 					meshRenderer->Render(mesh.lock()->GetIndexCount());

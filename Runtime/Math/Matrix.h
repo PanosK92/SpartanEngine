@@ -421,6 +421,7 @@ namespace Directus
 			bool operator!=(const Matrix& b) const { return !(*this == b); }
 			//===========================================================================================================================
 
+			const float* Data() const { return &m00; }
 			std::string ToString() const;
 
 			// Column-major memory representation 

@@ -32,7 +32,7 @@ using namespace Directus::Math;
 //=============================
 
 //= ENUMERATIONS ===============================================
-// This help convert engine enumerations to d3d11 specific
+// This helps convert engine enumerations to d3d11 specific
 // enumerations, however the order of the d3d11 enumerations
 // must match the order of the engine's enumerations.
 static const D3D11_CULL_MODE d3dCullMode[] =
@@ -84,8 +84,9 @@ D3D11GraphicsDevice::~D3D11GraphicsDevice()
 {
 	// Before shutting down set to windowed mode or 
 	// upon releasing the swap chain it will throw an exception.
-	if (m_swapChain)
+	if (m_swapChain) {
 		m_swapChain->SetFullscreenState(false, nullptr);
+	}
 
 	SafeRelease(m_blendStateAlphaEnabled);
 	SafeRelease(m_blendStateAlphaDisabled);

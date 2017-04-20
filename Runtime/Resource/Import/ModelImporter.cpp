@@ -330,7 +330,7 @@ namespace Directus
 		if (r == aiReturn_SUCCESS && isTwoSided)
 		{
 			LOG_INFO("two-sided");
-			engineMaterial->SetFaceCullMode(CullNone);
+			engineMaterial->SetCullMode(CullNone);
 		}
 
 		//= DIFFUSE COLOR ======================================================================================

@@ -27,9 +27,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/D3D11/D3D11GraphicsDevice.h"
 //================================================
 
-//==========================
-const int BUFFER_COUNT = 4;
-//==========================
+struct GBufferTex
+{
+	DXGI_FORMAT format;
+	ID3D11Texture2D* renderTexture;
+	ID3D11RenderTargetView* renderTargetView;
+	ID3D11ShaderResourceView* shaderResourceView;
+};
 
 class GBuffer
 {
@@ -37,21 +41,26 @@ public:
 	GBuffer(D3D11GraphicsDevice* graphicsDevice);
 	~GBuffer();
 
-	bool Initialize(int width, int height);
-	bool SetRenderTargets();
+	bool Create(int width, int height);
+	bool SetAsRenderTarget();
 
 	bool Clear(const Directus::Math::Vector4& color);
-	bool Clear(float, float, float, float);
+	bool Clear(float red, float green, float blue, float alpha);
 
 	ID3D11ShaderResourceView* GetShaderResourceView(int index);
 
 private:
-	D3D11GraphicsDevice* m_graphics;
-	int m_textureWidth, m_textureHeight;
-	std::vector<ID3D11Texture2D*> m_renderTargetTextureArray;
-	std::vector<ID3D11RenderTargetView*> m_renderTargetViewArray;
-	std::vector<ID3D11ShaderResourceView*> m_shaderResourceViewArray;
+	std::vector<GBufferTex> m_renderTargets;
+
+	// Depth buffer
 	ID3D11Texture2D* m_depthStencilBuffer;
 	ID3D11DepthStencilView* m_depthStencilView;
+	float m_maxDepth = 1.0f;
+
+	// Dimensions
 	D3D11_VIEWPORT m_viewport;
+	int m_width, m_height;
+
+	// Dependencies
+	D3D11GraphicsDevice* m_graphics;
 };

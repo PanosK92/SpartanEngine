@@ -356,52 +356,28 @@ void MeshFilter::CreateCube(vector<VertexPositionTextureNormalTangent>& vertices
 	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 23
 
 	// front
-	indices.push_back(0);
-	indices.push_back(1);
-	indices.push_back(2);
-	indices.push_back(2);
-	indices.push_back(1);
-	indices.push_back(3);
+	indices.push_back(0); indices.push_back(1); indices.push_back(2);
+	indices.push_back(2); indices.push_back(1); indices.push_back(3);
 
 	// bottom
-	indices.push_back(4);
-	indices.push_back(5);
-	indices.push_back(6);
-	indices.push_back(6);
-	indices.push_back(5);
-	indices.push_back(7);
+	indices.push_back(4); indices.push_back(5); indices.push_back(6);
+	indices.push_back(6); indices.push_back(5); indices.push_back(7);
 
 	// back
-	indices.push_back(10);
-	indices.push_back(9);
-	indices.push_back(8);
-	indices.push_back(11);
-	indices.push_back(9);
-	indices.push_back(10);
+	indices.push_back(10); indices.push_back(9); indices.push_back(8);
+	indices.push_back(11); indices.push_back(9); indices.push_back(10);
 
 	// top
-	indices.push_back(14);
-	indices.push_back(13);
-	indices.push_back(12);
-	indices.push_back(15);
-	indices.push_back(13);
-	indices.push_back(14);
+	indices.push_back(14); indices.push_back(13); indices.push_back(12);
+	indices.push_back(15); indices.push_back(13); indices.push_back(14);
 
 	// left
-	indices.push_back(16);
-	indices.push_back(17);
-	indices.push_back(18);
-	indices.push_back(18);
-	indices.push_back(17);
-	indices.push_back(19);
+	indices.push_back(16); indices.push_back(17); indices.push_back(18);
+	indices.push_back(18); indices.push_back(17); indices.push_back(19);
 
-	// left
-	indices.push_back(22);
-	indices.push_back(21);
-	indices.push_back(20);
-	indices.push_back(23);
-	indices.push_back(21);
-	indices.push_back(22);
+	// right
+	indices.push_back(22); indices.push_back(21); indices.push_back(20);
+	indices.push_back(23); indices.push_back(21); indices.push_back(22);
 }
 
 void MeshFilter::CreateQuad(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)

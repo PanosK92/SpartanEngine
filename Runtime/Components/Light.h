@@ -52,7 +52,7 @@ public:
 	{
 		m_cascade = cascade;
 		m_depthMap = std::make_unique<D3D11RenderTexture>(device);
-		m_depthMap->Initialize(resolution, resolution);
+		m_depthMap->Create(resolution, resolution);
 	}
 	~Cascade() {}
 
