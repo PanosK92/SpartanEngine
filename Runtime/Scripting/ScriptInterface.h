@@ -26,29 +26,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <angelscript.h>
 //=========================
 
-class ScriptInterface
+namespace Directus
 {
-public:
-	void Register(asIScriptEngine* scriptEngine, Context* context);
-private:
-	void RegisterEnumerations();
-	void RegisterTypes();
-	void RegisterSettings();
-	void RegisterInput();
-	void RegisterTime();
-	void RegisterGameObject();
-	void RegisterTransform();
-	void RegisterMeshRenderer();
-	void RegisterMaterial();
-	void RegisterCamera();
-	void RegisterRigidBody();
-	void RegisterMathHelper();
-	void RegisterVector2();
-	void RegisterVector3();
-	void RegisterQuaternion();
-	void RegisterMath();
-	void RegisterDebug();
+	class ScriptInterface
+	{
+	public:
+		void Register(asIScriptEngine* scriptEngine, Context* context);
+	private:
+		void RegisterEnumerations();
+		void RegisterTypes();
+		void RegisterSettings();
+		void RegisterInput();
+		void RegisterTime();
+		void RegisterGameObject();
+		void RegisterTransform();
+		void RegisterMeshRenderer();
+		void RegisterMaterial();
+		void RegisterCamera();
+		void RegisterRigidBody();
+		void RegisterMathHelper();
+		void RegisterVector2();
+		void RegisterVector3();
+		void RegisterQuaternion();
+		void RegisterMath();
+		void RegisterDebug();
 
-	asIScriptEngine* m_scriptEngine;
-	Context* m_context;
-};
+		asIScriptEngine* m_scriptEngine;
+		Context* m_context;
+	};
+}

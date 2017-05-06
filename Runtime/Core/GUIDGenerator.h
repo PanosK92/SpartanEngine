@@ -26,10 +26,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Helper.h"
 //=================
 
-#define GENERATE_GUID GUIDGenerator::Generate()
+#define GENERATE_GUID Directus::GUIDGenerator::Generate()
 
-class DllExport GUIDGenerator
+namespace Directus
 {
-public:
-	static std::string Generate();
-};
+	class DllExport GUIDGenerator
+	{
+	public:
+		static std::string Generate();
+	};
+}

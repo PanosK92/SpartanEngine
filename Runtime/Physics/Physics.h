@@ -21,14 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES =================
 #include "../Math/Vector3.h"
 #include "../Core/Subsystem.h"
-//==========================
+//============================
 
-// Forward declarations to avoid dependencies when used in editor
 class btVector3;
-class PhysicsDebugDraw;
 class btBroadphaseInterface;
 class btRigidBody;
 class btTypedConstraint;
@@ -37,36 +35,41 @@ class btConstraintSolver;
 class btDefaultCollisionConfiguration;
 class btDiscreteDynamicsWorld;
 
-class Physics : public Subsystem
+namespace Directus
 {
-public:
-	Physics(Context* context);
-	~Physics();
+	class PhysicsDebugDraw;
 
-	//= Subsystem ============
-	virtual bool Initialize();
-	//========================
+	class Physics : public Subsystem
+	{
+	public:
+		Physics(Context* context);
+		~Physics();
 
-	void Step();
-	void Reset();
-	void DebugDraw();
+		//= Subsystem ============
+		virtual bool Initialize();
+		//========================
 
-	btDiscreteDynamicsWorld* GetWorld();
-	PhysicsDebugDraw* GetPhysicsDebugDraw();
-	bool IsSimulating() { return m_simulating; }
+		void Step();
+		void Reset();
+		void DebugDraw();
 
-private:
-	btBroadphaseInterface* m_broadphase;
-	btCollisionDispatcher* m_dispatcher;
-	btConstraintSolver* m_constraintSolver;
-	btDefaultCollisionConfiguration* m_collisionConfiguration;
-	btDiscreteDynamicsWorld* m_world;
-	PhysicsDebugDraw* m_debugDraw;
+		btDiscreteDynamicsWorld* GetWorld();
+		PhysicsDebugDraw* GetPhysicsDebugDraw();
+		bool IsSimulating() { return m_simulating; }
 
-	//= PROPERTIES ====================
-	float m_internalFPS;
-	int m_maxSubSteps;
-	Directus::Math::Vector3 m_gravity;
-	bool m_simulating;
-	//=================================
-};
+	private:
+		btBroadphaseInterface* m_broadphase;
+		btCollisionDispatcher* m_dispatcher;
+		btConstraintSolver* m_constraintSolver;
+		btDefaultCollisionConfiguration* m_collisionConfiguration;
+		btDiscreteDynamicsWorld* m_world;
+		PhysicsDebugDraw* m_debugDraw;
+
+		//= PROPERTIES ====================
+		float m_internalFPS;
+		int m_maxSubSteps;
+		Directus::Math::Vector3 m_gravity;
+		bool m_simulating;
+		//=================================
+	};
+}

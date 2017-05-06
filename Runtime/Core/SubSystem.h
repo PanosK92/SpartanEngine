@@ -20,15 +20,18 @@ DEALINGS IN THE SOFTWARE. */
 #include "Helper.h"
 //=================
 
-class DllExport Subsystem
+namespace Directus
 {
-	friend class Context;
-public:
-	Subsystem(Context* context);
-	virtual ~Subsystem() {}
+	class DllExport Subsystem
+	{
+		friend class Context;
+	public:
+		Subsystem(Context* context);
+		virtual ~Subsystem() {}
 
-	virtual bool Initialize() = 0;
+		virtual bool Initialize() = 0;
 
-protected:
-	Context* g_context;
-};
+	protected:
+		Context* m_context;
+	};
+}

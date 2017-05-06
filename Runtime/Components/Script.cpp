@@ -30,84 +30,87 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Script::Script()
+namespace Directus
 {
-	m_scriptInstance = nullptr;
-}
+	Script::Script()
+	{
+		m_scriptInstance = nullptr;
+	}
 
-Script::~Script()
-{
+	Script::~Script()
+	{
 
-}
+	}
 
-//= ICOMPONENT ==================================================================
-void Script::Reset()
-{
+	//= ICOMPONENT ==================================================================
+	void Script::Reset()
+	{
 
-}
+	}
 
-void Script::Start()
-{
-	if (!m_scriptInstance)
-		return;
+	void Script::Start()
+	{
+		if (!m_scriptInstance)
+			return;
 
-	if (m_scriptInstance->IsInstantiated())
+		if (m_scriptInstance->IsInstantiated())
+			m_scriptInstance->ExecuteStart();
+	}
+
+	void Script::OnDisable()
+	{
+
+	}
+
+	void Script::Remove()
+	{
+
+	}
+
+	void Script::Update()
+	{
+		if (!m_scriptInstance)
+			return;
+
+		if (m_scriptInstance->IsInstantiated())
+			m_scriptInstance->ExecuteUpdate();
+	}
+
+	void Script::Serialize()
+	{
+		Serializer::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)DATA_NOT_ASSIGNED);
+	}
+
+	void Script::Deserialize()
+	{
+		string scriptPath = Serializer::ReadSTR();
+
+		if (scriptPath != DATA_NOT_ASSIGNED)
+			AddScript(scriptPath);
+	}
+	//====================================================================================
+
+	bool Script::AddScript(const string& filePath)
+	{
+		// Instantiate the script
+		m_scriptInstance = make_shared<ScriptInstance>();
+		m_scriptInstance->Instantiate(filePath, g_gameObject, g_context->GetSubsystem<Scripting>());
+
+		// Check if the script has been instantiated successfully.
+		if (!m_scriptInstance->IsInstantiated())
+			return false;
+
 		m_scriptInstance->ExecuteStart();
-}
+		return true;
+	}
 
-void Script::OnDisable()
-{
+	string Script::GetScriptPath()
+	{
+		return m_scriptInstance ? m_scriptInstance->GetScriptPath() : DATA_NOT_ASSIGNED;
+	}
 
-}
-
-void Script::Remove()
-{
-
-}
-
-void Script::Update()
-{
-	if (!m_scriptInstance)
-		return;
-
-	if (m_scriptInstance->IsInstantiated())
-		m_scriptInstance->ExecuteUpdate();
-}
-
-void Script::Serialize()
-{
-	Serializer::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)DATA_NOT_ASSIGNED);
-}
-
-void Script::Deserialize()
-{
-	string scriptPath = Serializer::ReadSTR();
-
-	if (scriptPath != DATA_NOT_ASSIGNED)
-		AddScript(scriptPath);
-}
-//====================================================================================
-
-bool Script::AddScript(const string& filePath)
-{
-	// Instantiate the script
-	m_scriptInstance = make_shared<ScriptInstance>();
-	m_scriptInstance->Instantiate(filePath, g_gameObject, g_context->GetSubsystem<Scripting>());
-
-	// Check if the script has been instantiated successfully.
-	if (!m_scriptInstance->IsInstantiated())
-		return false;
-
-	m_scriptInstance->ExecuteStart();
-	return true;
-}
-
-string Script::GetScriptPath()
-{
-	return m_scriptInstance ? m_scriptInstance->GetScriptPath() : DATA_NOT_ASSIGNED;
-}
-
-string Script::GetName()
-{
-	return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromPath(GetScriptPath()) : "N/A";
+	string Script::GetName()
+	{
+		return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromPath(GetScriptPath()) : "N/A";
+	}
 }

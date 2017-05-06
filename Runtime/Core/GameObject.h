@@ -22,153 +22,156 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===========================
-#include "../Components/IComponent.h"
-#include "../Core/Context.h"
-#include "GUIDGenerator.h"
-#include "../EventSystem/EventHandler.h"
 #include <map>
 #include <vector>
+#include "GUIDGenerator.h"
+#include "../Components/IComponent.h"
+#include "../Core/Context.h"
+#include "../EventSystem/EventHandler.h"
 //======================================
 
-class Transform;
-
-class DllExport GameObject
+namespace Directus
 {
-public:
-	GameObject(Context* context);
-	~GameObject();
+	class Transform;
 
-	void Start();
-	void OnDisable();
-	void Update();
-
-	bool SaveAsPrefab(const std::string& filePath);
-	bool LoadFromPrefab(const std::string& filePath);
-
-	void Serialize();
-	void Deserialize(Transform* parent);
-
-	//= PROPERTIES =========================================================================================
-	std::string GetName() { return m_name; }
-	void SetName(const std::string& name) { m_name = name; }
-
-	std::string GetID() { return m_ID; }
-	void SetID(const std::string& ID) { m_ID = ID; }
-
-	bool IsActive() { return m_isActive; }
-	void SetActive(bool active) { m_isActive = active; }
-
-	bool IsVisibleInHierarchy() { return m_hierarchyVisibility; }
-	void SetHierarchyVisibility(bool hierarchyVisibility) { m_hierarchyVisibility = hierarchyVisibility; }
-	//======================================================================================================
-
-	//= COMPONENTS =========================================================================================
-	// Adds a component of type T
-	template <class T>
-	T* AddComponent()
+	class DllExport GameObject
 	{
-		// Convert class Type to a string.
-		std::string typeStr(typeid(T).name());
-		typeStr = typeStr.substr(typeStr.find_first_of(" \t") + 1); // remove word "class".
+	public:
+		GameObject(Context* context);
+		~GameObject();
 
-		// Check if a component of that type already exists
-		IComponent* existingComp = GetComponent<T>();
-		if (existingComp && typeStr != "Script") // If it's anything but a script, it can't have multiple instances,
+		void Start();
+		void OnDisable();
+		void Update();
+
+		bool SaveAsPrefab(const std::string& filePath);
+		bool LoadFromPrefab(const std::string& filePath);
+
+		void Serialize();
+		void Deserialize(Transform* parent);
+
+		//= PROPERTIES =========================================================================================
+		std::string GetName() { return m_name; }
+		void SetName(const std::string& name) { m_name = name; }
+
+		std::string GetID() { return m_ID; }
+		void SetID(const std::string& ID) { m_ID = ID; }
+
+		bool IsActive() { return m_isActive; }
+		void SetActive(bool active) { m_isActive = active; }
+
+		bool IsVisibleInHierarchy() { return m_hierarchyVisibility; }
+		void SetHierarchyVisibility(bool hierarchyVisibility) { m_hierarchyVisibility = hierarchyVisibility; }
+		//======================================================================================================
+
+		//= COMPONENTS =========================================================================================
+		// Adds a component of type T
+		template <class T>
+		T* AddComponent()
+		{
+			// Convert class Type to a string.
+			std::string typeStr(typeid(T).name());
+			typeStr = typeStr.substr(typeStr.find_first_of(" \t") + 1); // remove word "class".
+
+			// Check if a component of that type already exists
+			IComponent* existingComp = GetComponent<T>();
+			if (existingComp && typeStr != "Script") // If it's anything but a script, it can't have multiple instances,
 				return dynamic_cast<T*>(existingComp); // return the existing component.
 
 		// Get the created component.
-		IComponent* component = new T;
+			IComponent* component = new T;
 
-		// Add the component.
-		m_components.insert(std::pair<std::string, IComponent*>(typeStr, component));
+			// Add the component.
+			m_components.insert(std::pair<std::string, IComponent*>(typeStr, component));
 
-		// Set default properties.
-		component->g_ID = GENERATE_GUID;
-		component->g_enabled = true;
-		component->g_gameObject = this;
-		component->g_transform = GetTransform();
-		component->g_context = m_context;
+			// Set default properties.
+			component->g_ID = GENERATE_GUID;
+			component->g_enabled = true;
+			component->g_gameObject = this;
+			component->g_transform = GetTransform();
+			component->g_context = m_context;
 
-		// Run Initialize().
-		component->Reset();
+			// Run Initialize().
+			component->Reset();
 
-		// Return it as a component of the requested type
-		return dynamic_cast<T*>(component);
-	}
-
-	// Returns a component of type T (if it exists)
-	template <class T>
-	T* GetComponent()
-	{
-		for (const auto& it : m_components)
-		{
-			// casting failure == nullptr
-			T* typed_cmp = dynamic_cast<T*>(it.second);
-			if (typed_cmp)
-				return typed_cmp;
+			// Return it as a component of the requested type
+			return dynamic_cast<T*>(component);
 		}
 
-		return nullptr;
-	}
-
-	// Returns any components of type T (if they exist)
-	template <class T>
-	std::vector<T*> GetComponents()
-	{
-		std::vector<T*> components;
-		for (const auto& it : m_components)
+		// Returns a component of type T (if it exists)
+		template <class T>
+		T* GetComponent()
 		{
-			// casting failure == nullptr
-			T* typed_cmp = dynamic_cast<T*>(it.second);
-			if (typed_cmp)
-				components.push_back(typed_cmp);
-		}
-
-		return components;
-	}
-
-	// Checks if a component of type T exists
-	template <class T>
-	bool HasComponent() { return GetComponent<T>() ? true : false; }
-
-	// Removes a component of type T (if it exists)
-	template <class T>
-	void RemoveComponent()
-	{
-		for (auto it = m_components.begin(); it != m_components.end();)
-		{
-			// casting failure == nullptr
-			if (dynamic_cast<T*>(it->second))
+			for (const auto& it : m_components)
 			{
-				it->second->Remove();
-				delete it->second;
-				it = m_components.erase(it);
-				continue;
+				// casting failure == nullptr
+				T* typed_cmp = dynamic_cast<T*>(it.second);
+				if (typed_cmp)
+					return typed_cmp;
 			}
-			++it;
+
+			return nullptr;
 		}
-	}
 
-	void RemoveComponentByID(const std::string& id);
-	//======================================================================================================
+		// Returns any components of type T (if they exist)
+		template <class T>
+		std::vector<T*> GetComponents()
+		{
+			std::vector<T*> components;
+			for (const auto& it : m_components)
+			{
+				// casting failure == nullptr
+				T* typed_cmp = dynamic_cast<T*>(it.second);
+				if (typed_cmp)
+					components.push_back(typed_cmp);
+			}
 
-	Transform* GetTransform() { return m_transform; }
+			return components;
+		}
 
-private:
-	std::string m_ID;
-	std::string m_name;
-	bool m_isActive;
-	bool m_isPrefab;
-	bool m_hierarchyVisibility;
-	std::multimap<std::string, IComponent*> m_components;
+		// Checks if a component of type T exists
+		template <class T>
+		bool HasComponent() { return GetComponent<T>() ? true : false; }
 
-	// This is the only component that is guaranteed to be always attached,
-	// it also is required by most systems in the engine, it's important to
-	// keep a local copy of it here and avoid any runtime searching (performance).
-	Transform* m_transform;
+		// Removes a component of type T (if it exists)
+		template <class T>
+		void RemoveComponent()
+		{
+			for (auto it = m_components.begin(); it != m_components.end();)
+			{
+				// casting failure == nullptr
+				if (dynamic_cast<T*>(it->second))
+				{
+					it->second->Remove();
+					delete it->second;
+					it = m_components.erase(it);
+					continue;
+				}
+				++it;
+			}
+		}
 
-	Context* m_context;
+		void RemoveComponentByID(const std::string& id);
+		//======================================================================================================
 
-	//= HELPER FUNCTIONS ====================================
-	IComponent* AddComponentBasedOnType(const std::string& typeStr);
-};
+		Transform* GetTransform() { return m_transform; }
+
+	private:
+		std::string m_ID;
+		std::string m_name;
+		bool m_isActive;
+		bool m_isPrefab;
+		bool m_hierarchyVisibility;
+		std::multimap<std::string, IComponent*> m_components;
+
+		// This is the only component that is guaranteed to be always attached,
+		// it also is required by most systems in the engine, it's important to
+		// keep a local copy of it here and avoid any runtime searching (performance).
+		Transform* m_transform;
+
+		Context* m_context;
+
+		//= HELPER FUNCTIONS ====================================
+		IComponent* AddComponentBasedOnType(const std::string& typeStr);
+	};
+}

@@ -24,18 +24,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <chrono>
 //====================
 
-int Stopwatch::m_milliseconds;
-static std::chrono::time_point<std::chrono::system_clock> m_start;
-static std::chrono::time_point<std::chrono::system_clock> m_end;
-
-void Stopwatch::Start()
+namespace Directus
 {
-	m_start = std::chrono::system_clock::now();
-}
+	int Stopwatch::m_milliseconds;
+	static std::chrono::time_point<std::chrono::system_clock> m_start;
+	static std::chrono::time_point<std::chrono::system_clock> m_end;
 
-int Stopwatch::End()
-{
-	m_end = std::chrono::system_clock::now();
-	m_milliseconds = (int)std::chrono::duration_cast<std::chrono::milliseconds>(m_end - m_start).count();
-	return m_milliseconds;
+	void Stopwatch::Start()
+	{
+		m_start = std::chrono::system_clock::now();
+	}
+
+	int Stopwatch::End()
+	{
+		m_end = std::chrono::system_clock::now();
+		m_milliseconds = (int)std::chrono::duration_cast<std::chrono::milliseconds>(m_end - m_start).count();
+		return m_milliseconds;
+	}
 }

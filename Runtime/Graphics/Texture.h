@@ -21,71 +21,73 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
-#include "../FileSystem/FileSystem.h"
+//= INCLUDES ====================
 #include "../Resource/Resource.h"
 #include "D3D11/D3D11Texture.h"
 #include <memory>
-//===================================
+//===============================
 
-enum TextureType
+namespace Directus
 {
-	Albedo_Texture,
-	Roughness_Texture,
-	Metallic_Texture,
-	Normal_Texture,
-	Height_Texture,
-	Occlusion_Texture,
-	Emission_Texture,
-	Mask_Texture,
-	CubeMap_Texture,
-};
+	enum TextureType
+	{
+		Albedo_Texture,
+		Roughness_Texture,
+		Metallic_Texture,
+		Normal_Texture,
+		Height_Texture,
+		Occlusion_Texture,
+		Emission_Texture,
+		Mask_Texture,
+		CubeMap_Texture,
+	};
 
-class Texture : public Directus::Resource
-{
-public:
-	Texture(Context* context);
-	~Texture();
+	class Texture : public Resource
+	{
+	public:
+		Texture(Context* context);
+		~Texture();
 
-	//= IO ========================================
-	bool LoadFromFile(const std::string& filePath);
-	bool SaveMetadata();
-	bool LoadMetadata();
-	//=============================================
+		//= IO ========================================
+		bool LoadFromFile(const std::string& filePath);
+		bool SaveMetadata();
+		bool LoadMetadata();
+		//=============================================
 
-	//= PROPERTIES ===============================================================================
-	std::string GetFilePathTexture() { return m_resourceFilePath; }
-	void SetFilePathTexture(const std::string& filepath) { m_resourceFilePath = filepath; }
+		//= PROPERTIES ===============================================================================
+		std::string GetFilePathTexture() { return m_resourceFilePath; }
+		void SetFilePathTexture(const std::string& filepath) { m_resourceFilePath = filepath; }
 
-	std::string GetFilePathMetadata() { return m_resourceFilePath + METADATA_EXTENSION; }
+		std::string GetFilePathMetadata() { return m_resourceFilePath + METADATA_EXTENSION; }
 
-	int GetWidth() { return m_width; }
-	void SetWidth(int width) { m_width = width; }
+		int GetWidth() { return m_width; }
+		void SetWidth(int width) { m_width = width; }
 
-	int GetHeight() { return m_height; }
-	void SetHeight(int height) { m_height = height; }
+		int GetHeight() { return m_height; }
+		void SetHeight(int height) { m_height = height; }
 
-	TextureType GetTextureType() { return m_textureType; }
-	void SetTextureType(TextureType type);
+		TextureType GetTextureType() { return m_textureType; }
+		void SetTextureType(TextureType type);
 
-	bool GetGrayscale() { return m_grayscale; }
-	void SetGrayscale(bool grayscale) { m_grayscale = grayscale; }
+		bool GetGrayscale() { return m_grayscale; }
+		void SetGrayscale(bool grayscale) { m_grayscale = grayscale; }
 
-	bool GetTransparency() { return m_transparency; }
-	void SetTransparency(bool transparency) { m_transparency = transparency; }
+		bool GetTransparency() { return m_transparency; }
+		void SetTransparency(bool transparency) { m_transparency = transparency; }
 
-	void** GetShaderResourceView() { return (void**)m_texture->GetShaderResourceView(); }
-	//=============================================================================================
+		void** GetShaderResourceView() { return (void**)m_texture->GetShaderResourceView(); }
+		//=============================================================================================
 
-private:
-	int m_width;
-	int m_height;
-	TextureType m_textureType;
-	bool m_grayscale;
-	bool m_transparency;
-	bool m_alphaIsTransparency;
-	bool m_generateMipchain;
-	std::unique_ptr<D3D11Texture> m_texture;
+	private:
+		int m_width;
+		int m_height;
+		TextureType m_textureType;
+		bool m_grayscale;
+		bool m_transparency;
+		bool m_alphaIsTransparency;
+		bool m_generateMipchain;
+		std::unique_ptr<D3D11Texture> m_texture;
 
-	bool CreateShaderResourceView();
-};
+		bool CreateShaderResourceView();
+	};
+}

@@ -29,93 +29,96 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 //=============================
 
-class DllExport Transform : public IComponent
+namespace Directus
 {
-public:
-	enum Space
+	class DllExport Transform : public IComponent
 	{
-		Local,
-		World
+	public:
+		enum Space
+		{
+			Local,
+			World
+		};
+
+		Transform();
+		~Transform();
+
+		//= ICOMPONENT ====================================================================
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
+
+		void UpdateWorldTransform();
+
+		//= POSITION ======================================================================
+		Directus::Math::Vector3 GetPosition() { return m_worldTransform.GetTranslation(); }
+		Directus::Math::Vector3 GetPositionLocal() { return m_positionLocal; }
+		void SetPosition(const Directus::Math::Vector3& position);
+		void SetPositionLocal(const Directus::Math::Vector3& position);
+
+		//= ROTATION ======================================================================
+		Directus::Math::Quaternion GetRotation() { return m_worldTransform.GetRotation(); }
+		Directus::Math::Quaternion GetRotationLocal() { return m_rotationLocal; }
+		void SetRotation(const Directus::Math::Quaternion& rotation);
+		void SetRotationLocal(const Directus::Math::Quaternion& rotation);
+
+		//= SCALE =========================================================================
+		Directus::Math::Vector3 GetScale() { return m_worldTransform.GetScale(); }
+		Directus::Math::Vector3 GetScaleLocal() { return m_scaleLocal; }
+		void SetScale(const Directus::Math::Vector3& scale);
+		void SetScaleLocal(const Directus::Math::Vector3& scale);
+
+		//= TRANSLATION/ROTATION =========================================================
+		void Translate(const Directus::Math::Vector3& delta);
+		void Rotate(const Directus::Math::Quaternion& delta, Space space);
+
+		//= DIRECTIONS ===================================================================
+		Directus::Math::Vector3 GetUp();
+		Directus::Math::Vector3 GetForward();
+		Directus::Math::Vector3 GetRight();
+
+		//= HIERARCHY ====================================================================
+		bool IsRoot() { return !HasParent(); }
+		bool HasParent() { return m_parent ? true : false; }
+		void SetParent(Transform* parent);
+		void BecomeOrphan();
+		bool HasChildren() { return GetChildrenCount() > 0 ? true : false; }
+		void AddChild(Transform* child);
+		Transform* GetRoot() { return HasParent() ? GetParent()->GetRoot() : this; }
+		Transform* GetParent() { return m_parent; }
+		Transform* GetChildByIndex(int index);
+		Transform* GetChildByName(const std::string& name);
+		std::vector<Transform*> GetChildren() { return m_children; }
+		std::vector<GameObject*> GetChildrenAsGameObjects();
+		int GetChildrenCount() { return (int)m_children.size(); }
+		void ResolveChildrenRecursively();
+		bool IsDescendantOf(Transform* transform) const;
+		void GetDescendants(std::vector<Transform*>& descendants);
+		std::string GetID() const;
+
+		//= ICOMPONENT ====================================================================
+		void LookAt(const Directus::Math::Vector3& v) { m_lookAt = v; }
+		Directus::Math::Matrix GetWorldTransform() { return m_worldTransform; }
+		GameObject* GetGameObject() { return g_gameObject; }
+		std::string GetName();
+
+	private:
+		// local
+		Directus::Math::Vector3 m_positionLocal;
+		Directus::Math::Quaternion m_rotationLocal;
+		Directus::Math::Vector3 m_scaleLocal;
+
+		Directus::Math::Matrix m_worldTransform;
+		Directus::Math::Vector3 m_lookAt;
+
+		Transform* m_parent; // the parent of this transform
+		std::vector<Transform*> m_children; // the children of this transform
+
+		//= HELPER FUNCTIONS ================================================================
+		Directus::Math::Matrix GetParentTransformMatrix();
 	};
-
-	Transform();
-	~Transform();
-
-	//= ICOMPONENT ====================================================================
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
-
-	void UpdateWorldTransform();
-
-	//= POSITION ======================================================================
-	Directus::Math::Vector3 GetPosition() { return m_worldTransform.GetTranslation(); }
-	Directus::Math::Vector3 GetPositionLocal() { return m_positionLocal; }
-	void SetPosition(const Directus::Math::Vector3& position);
-	void SetPositionLocal(const Directus::Math::Vector3& position);
-
-	//= ROTATION ======================================================================
-	Directus::Math::Quaternion GetRotation() { return m_worldTransform.GetRotation(); }
-	Directus::Math::Quaternion GetRotationLocal() { return m_rotationLocal; }
-	void SetRotation(const Directus::Math::Quaternion& rotation);
-	void SetRotationLocal(const Directus::Math::Quaternion& rotation);
-
-	//= SCALE =========================================================================
-	Directus::Math::Vector3 GetScale() { return m_worldTransform.GetScale(); }
-	Directus::Math::Vector3 GetScaleLocal() { return m_scaleLocal; }
-	void SetScale(const Directus::Math::Vector3& scale);
-	void SetScaleLocal(const Directus::Math::Vector3& scale);
-
-	//= TRANSLATION/ROTATION =========================================================
-	void Translate(const Directus::Math::Vector3& delta);
-	void Rotate(const Directus::Math::Quaternion& delta, Space space);
-
-	//= DIRECTIONS ===================================================================
-	Directus::Math::Vector3 GetUp();
-	Directus::Math::Vector3 GetForward();
-	Directus::Math::Vector3 GetRight();
-
-	//= HIERARCHY ====================================================================
-	bool IsRoot() { return !HasParent(); }
-	bool HasParent() { return m_parent ? true : false; }
-	void SetParent(Transform* parent);
-	void BecomeOrphan();
-	bool HasChildren() { return GetChildrenCount() > 0 ? true : false; }
-	void AddChild(Transform* child);
-	Transform* GetRoot() { return HasParent() ? GetParent()->GetRoot() : this; }
-	Transform* GetParent() { return m_parent; }
-	Transform* GetChildByIndex(int index);
-	Transform* GetChildByName(const std::string& name);
-	std::vector<Transform*> GetChildren() { return m_children; }
-	std::vector<GameObject*> GetChildrenAsGameObjects();
-	int GetChildrenCount() { return (int)m_children.size(); }
-	void ResolveChildrenRecursively();
-	bool IsDescendantOf(Transform* transform) const;
-	void GetDescendants(std::vector<Transform*>& descendants);
-	std::string GetID() const;
-
-	//= ICOMPONENT ====================================================================
-	void LookAt(const Directus::Math::Vector3& v) { m_lookAt = v; }
-	Directus::Math::Matrix GetWorldTransform() { return m_worldTransform; }
-	GameObject* GetGameObject() { return g_gameObject; }
-	std::string GetName();
-
-private:
-	// local
-	Directus::Math::Vector3 m_positionLocal;
-	Directus::Math::Quaternion m_rotationLocal;
-	Directus::Math::Vector3 m_scaleLocal;
-
-	Directus::Math::Matrix m_worldTransform;
-	Directus::Math::Vector3 m_lookAt;
-
-	Transform* m_parent; // the parent of this transform
-	std::vector<Transform*> m_children; // the children of this transform
-
-	//= HELPER FUNCTIONS ================================================================
-	Directus::Math::Matrix GetParentTransformMatrix();
-};
+}

@@ -23,24 +23,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DllExport __declspec(dllexport)  
 
-//= A COLLECTION OF SOME HELPFUL FUNCTIONS =================
-template <typename T>
-void SafeRelease(T& ptr)
+namespace Directus
 {
-	if (ptr)
+	//= A COLLECTION OF SOME HELPFUL FUNCTIONS =================
+	template <typename T>
+	void SafeRelease(T& ptr)
 	{
-		ptr->Release();
-		ptr = nullptr;
+		if (ptr)
+		{
+			ptr->Release();
+			ptr = nullptr;
+		}
 	}
-}
 
-template <typename T>
-void SafeDelete(T& ptr)
-{
-	if (ptr)
+	template <typename T>
+	void SafeDelete(T& ptr)
 	{
-		delete ptr;
-		ptr = nullptr;
+		if (ptr)
+		{
+			delete ptr;
+			ptr = nullptr;
+		}
 	}
+	//=========================================================
 }
-//=========================================================

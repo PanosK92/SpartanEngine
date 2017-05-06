@@ -31,161 +31,164 @@ using namespace Directus::Math;
 using namespace std;
 //=============================
 
-Camera::Camera()
+namespace Directus
 {
-	m_FOV = 75 * DEG_TO_RAD;
-	m_nearPlane = 0.1f;
-	m_farPlane = 1000.0f;
-	m_frustrum = make_shared<Frustrum>();
-	m_projection = Perspective;
-	m_clearColor = Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
-	m_isDirty = false;
-}
-
-Camera::~Camera()
-{
-
-}
-
-//= ICOMPONENT ============
-void Camera::Reset()
-{
-	CalculateBaseView();
-	CalculateViewMatrix();
-	CalculateProjection();
-}
-
-void Camera::Start()
-{
-
-}
-
-void Camera::OnDisable()
-{
-
-}
-
-void Camera::Remove()
-{
-
-}
-
-void Camera::Update()
-{
-	if (m_lastKnownResolution != GET_RESOLUTION)
+	Camera::Camera()
 	{
-		m_lastKnownResolution = GET_RESOLUTION;
+		m_FOV = 75 * DEG_TO_RAD;
+		m_nearPlane = 0.1f;
+		m_farPlane = 1000.0f;
+		m_frustrum = make_shared<Frustrum>();
+		m_projection = Perspective;
+		m_clearColor = Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
+		m_isDirty = false;
+	}
+
+	Camera::~Camera()
+	{
+
+	}
+
+	//= ICOMPONENT ============
+	void Camera::Reset()
+	{
+		CalculateBaseView();
+		CalculateViewMatrix();
+		CalculateProjection();
+	}
+
+	void Camera::Start()
+	{
+
+	}
+
+	void Camera::OnDisable()
+	{
+
+	}
+
+	void Camera::Remove()
+	{
+
+	}
+
+	void Camera::Update()
+	{
+		if (m_lastKnownResolution != GET_RESOLUTION)
+		{
+			m_lastKnownResolution = GET_RESOLUTION;
+			m_isDirty = true;
+		}
+
+		// DIRTY CHECK
+		if (m_position != g_transform->GetPosition() || m_rotation != g_transform->GetRotation())
+		{
+			m_position = g_transform->GetPosition();
+			m_rotation = g_transform->GetRotation();
+			m_isDirty = true;
+		}
+
+		if (!m_isDirty)
+			return;
+
+		CalculateBaseView();
+		CalculateViewMatrix();
+		CalculateProjection();
+
+		m_frustrum->Construct(GetViewMatrix(), GetProjectionMatrix(), GetFarPlane());
+
+		m_isDirty = false;
+	}
+
+	void Camera::Serialize()
+	{
+		Serializer::WriteVector4(m_clearColor);
+		Serializer::WriteInt(int(m_projection));
+		Serializer::WriteFloat(m_FOV);
+		Serializer::WriteFloat(m_nearPlane);
+		Serializer::WriteFloat(m_farPlane);
+	}
+
+	void Camera::Deserialize()
+	{
+		m_clearColor = Serializer::ReadVector4();
+		m_projection = Projection(Serializer::ReadInt());
+		m_FOV = Serializer::ReadFloat();
+		m_nearPlane = Serializer::ReadFloat();
+		m_farPlane = Serializer::ReadFloat();
+
+		CalculateBaseView();
+		CalculateViewMatrix();
+		CalculateProjection();
+	}
+
+	//= PLANES/PROJECTION =====================================================
+	void Camera::SetNearPlane(float nearPlane)
+	{
+		m_nearPlane = nearPlane;
 		m_isDirty = true;
 	}
 
-	// DIRTY CHECK
-	if (m_position != g_transform->GetPosition() || m_rotation != g_transform->GetRotation())
+	void Camera::SetFarPlane(float farPlane)
 	{
-		m_position = g_transform->GetPosition();
-		m_rotation = g_transform->GetRotation();
+		m_farPlane = farPlane;
 		m_isDirty = true;
 	}
 
-	if (!m_isDirty)
-		return;
+	void Camera::SetProjection(Projection projection)
+	{
+		m_projection = projection;
+		m_isDirty = true;
+	}
 
-	CalculateBaseView();
-	CalculateViewMatrix();
-	CalculateProjection();
+	void Camera::SetFieldOfView(float fov)
+	{
+		m_FOV = DegreesToRadians(fov);
+		m_isDirty = true;
+	}
 
-	m_frustrum->Construct(GetViewMatrix(), GetProjectionMatrix(), GetFarPlane());
+	//= RAYCASTING =======================================================================
+	Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
+	{
+		float screenWidth = RESOLUTION_WIDTH;
+		float screenHeight = RESOLUTION_HEIGHT;
 
-	m_isDirty = false;
-}
+		Vector3 localSpace = worldPoint * GetViewMatrix();
 
-void Camera::Serialize()
-{
-	Serializer::WriteVector4(m_clearColor);
-	Serializer::WriteInt(int(m_projection));
-	Serializer::WriteFloat(m_FOV);
-	Serializer::WriteFloat(m_nearPlane);
-	Serializer::WriteFloat(m_farPlane);
-}
+		int screenX = ((localSpace.x / localSpace.z) * (screenWidth * 0.5f)) + (screenWidth * 0.5f);
+		int screenY = -((localSpace.y / localSpace.z) * (screenHeight * 0.5f)) + (screenHeight * 0.5f);
 
-void Camera::Deserialize()
-{
-	m_clearColor = Serializer::ReadVector4();
-	m_projection = Projection(Serializer::ReadInt());
-	m_FOV = Serializer::ReadFloat();
-	m_nearPlane = Serializer::ReadFloat();
-	m_farPlane = Serializer::ReadFloat();
+		return Vector2(screenX, screenY);
+	}
 
-	CalculateBaseView();
-	CalculateViewMatrix();
-	CalculateProjection();
-}
+	/*------------------------------------------------------------------------------
+	[PRIVATE]
+	------------------------------------------------------------------------------*/
+	void Camera::CalculateViewMatrix()
+	{
+		Vector3 position = g_transform->GetPosition();
+		Vector3 lookAt = g_transform->GetRotation() * Vector3::Forward;
+		Vector3 up = g_transform->GetRotation() * Vector3::Up;
 
-//= PLANES/PROJECTION =====================================================
-void Camera::SetNearPlane(float nearPlane)
-{
-	m_nearPlane = nearPlane;
-	m_isDirty = true;
-}
+		// offset lookAt by current position
+		lookAt = position + lookAt;
 
-void Camera::SetFarPlane(float farPlane)
-{
-	m_farPlane = farPlane;
-	m_isDirty = true;
-}
+		// calculate view matrix
+		m_mView = Matrix::CreateLookAtLH(position, lookAt, up);
+	}
 
-void Camera::SetProjection(Projection projection)
-{
-	m_projection = projection;
-	m_isDirty = true;
-}
+	void Camera::CalculateBaseView()
+	{
+		Vector3 cameraPos = Vector3(0, 0, -0.3f);
+		Vector3 lookAt = (Vector3::Forward * Matrix::Identity).Normalized();
+		m_mBaseView = Matrix::CreateLookAtLH(cameraPos, lookAt, Vector3::Up);
+	}
 
-void Camera::SetFieldOfView(float fov)
-{
-	m_FOV = DegreesToRadians(fov);
-	m_isDirty = true;
-}
-
-//= RAYCASTING =======================================================================
-Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
-{
-	float screenWidth = RESOLUTION_WIDTH;
-	float screenHeight = RESOLUTION_HEIGHT;
-
-	Vector3 localSpace = worldPoint * GetViewMatrix();
-
-	int screenX = ((localSpace.x / localSpace.z) * (screenWidth * 0.5f)) + (screenWidth * 0.5f);
-	int screenY = -((localSpace.y / localSpace.z) * (screenHeight * 0.5f)) + (screenHeight * 0.5f);
-
-	return Vector2(screenX, screenY);
-}
-
-/*------------------------------------------------------------------------------
-[PRIVATE]
-------------------------------------------------------------------------------*/
-void Camera::CalculateViewMatrix()
-{
-	Vector3 position = g_transform->GetPosition();
-	Vector3 lookAt = g_transform->GetRotation() * Vector3::Forward;
-	Vector3 up = g_transform->GetRotation() * Vector3::Up;
-
-	// offset lookAt by current position
-	lookAt = position + lookAt;
-
-	// calculate view matrix
-	m_mView = Matrix::CreateLookAtLH(position, lookAt, up);
-}
-
-void Camera::CalculateBaseView()
-{
-	Vector3 cameraPos = Vector3(0, 0, -0.3f);
-	Vector3 lookAt = (Vector3::Forward * Matrix::Identity).Normalized();
-	m_mBaseView = Matrix::CreateLookAtLH(cameraPos, lookAt, Vector3::Up);
-}
-
-void Camera::CalculateProjection()
-{
-	if (m_projection == Perspective)
-		m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(m_FOV, ASPECT_RATIO, m_nearPlane, m_farPlane);
-	else if (m_projection == Orthographic)
-		m_mProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
+	void Camera::CalculateProjection()
+	{
+		if (m_projection == Perspective)
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(m_FOV, ASPECT_RATIO, m_nearPlane, m_farPlane);
+		else if (m_projection == Orthographic)
+			m_mProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
+	}
 }

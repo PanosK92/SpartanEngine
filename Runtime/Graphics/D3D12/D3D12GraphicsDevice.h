@@ -34,67 +34,70 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Settings.h"
 //==============================
 
-class D3D12GraphicsDevice
+namespace Directus
 {
-public:
-	D3D12GraphicsDevice();
-	~D3D12GraphicsDevice();
+	class D3D12GraphicsDevice
+	{
+	public:
+		D3D12GraphicsDevice();
+		~D3D12GraphicsDevice();
 
-	bool Initialize(HWND handle);
-	void Release();
+		bool Initialize(HWND handle);
+		void Release();
 
-	void Clear(const Directus::Math::Vector4& color);
-	void Present() { m_swapChain->Present(VSYNC, 0); }
+		void Clear(const Directus::Math::Vector4& color);
+		void Present() { m_swapChain->Present(VSYNC, 0); }
 
-	ID3D12Device* GetDevice() { return m_device; }
-	//ID3D12DeviceContext* GetDeviceContext() { return m_deviceContext; }
+		ID3D12Device* GetDevice() { return m_device; }
+		//ID3D12DeviceContext* GetDeviceContext() { return m_deviceContext; }
 
-	void EnableZBuffer(bool enable);
-	void EnabledAlphaBlending(bool enable);
+		void EnableZBuffer(bool enable);
+		void EnabledAlphaBlending(bool enable);
 
-	//void SetFaceCullMode(D3D11_CULL_MODE cull);
-	//void SetBackBufferRenderTarget() { m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView); }
+		//void SetFaceCullMode(D3D11_CULL_MODE cull);
+		//void SetBackBufferRenderTarget() { m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView); }
 
-	void SetResolution(int width, int height);
-	void SetViewport(int width, int height);
-	//void ResetViewport() { m_deviceContext->RSSetViewports(1, &m_viewport); }
+		void SetResolution(int width, int height);
+		void SetViewport(int width, int height);
+		//void ResetViewport() { m_deviceContext->RSSetViewports(1, &m_viewport); }
 
-private:
-	ID3D12Device* m_device;
-	ID3D12CommandQueue* m_commandQueue;
-	IDXGISwapChain3* m_swapChain;
-	ID3D12DescriptorHeap* m_renderTargetViewHeap;
-	ID3D12Resource* m_backBufferRenderTarget[2];
-	unsigned int m_bufferIndex;
-	ID3D12CommandAllocator* m_commandAllocator;
-	ID3D12GraphicsCommandList* m_commandList;
-	ID3D12PipelineState* m_pipelineState;
-	ID3D12Fence* m_fence;
-	HANDLE m_fenceEvent;
-	unsigned long long m_fenceValue;
+	private:
+		ID3D12Device* m_device;
+		ID3D12CommandQueue* m_commandQueue;
+		IDXGISwapChain3* m_swapChain;
+		ID3D12DescriptorHeap* m_renderTargetViewHeap;
+		ID3D12Resource* m_backBufferRenderTarget[2];
+		unsigned int m_bufferIndex;
+		ID3D12CommandAllocator* m_commandAllocator;
+		ID3D12GraphicsCommandList* m_commandList;
+		ID3D12PipelineState* m_pipelineState;
+		ID3D12Fence* m_fence;
+		HANDLE m_fenceEvent;
+		unsigned long long m_fenceValue;
 
-	D3D_DRIVER_TYPE m_driverType;
-	D3D_FEATURE_LEVEL m_featureLevel;
-	D3D12_VIEWPORT m_viewport;
+		D3D_DRIVER_TYPE m_driverType;
+		D3D_FEATURE_LEVEL m_featureLevel;
+		D3D12_VIEWPORT m_viewport;
 
-	DXGI_MODE_DESC* m_displayModeList;
-	int m_videoCardMemory;
-	std::string m_videoCardDescription;
+		DXGI_MODE_DESC* m_displayModeList;
+		int m_videoCardMemory;
+		std::string m_videoCardDescription;
 
-	/*ID3D12Texture2D* m_depthStencilBuffer;
-	ID3D12DepthStencilState* m_depthStencilStateEnabled;
-	ID3D12DepthStencilState* m_depthStencilStateDisabled;
-	ID3D12DepthStencilView* m_depthStencilView;
+		/*ID3D12Texture2D* m_depthStencilBuffer;
+		ID3D12DepthStencilState* m_depthStencilStateEnabled;
+		ID3D12DepthStencilState* m_depthStencilStateDisabled;
+		ID3D12DepthStencilView* m_depthStencilView;
 
-	ID3D12RasterizerState* m_rasterStateCullFront;
-	ID3D12RasterizerState* m_rasterStateCullBack;
-	ID3D12RasterizerState* m_rasterStateCullNone;
+		ID3D12RasterizerState* m_rasterStateCullFront;
+		ID3D12RasterizerState* m_rasterStateCullBack;
+		ID3D12RasterizerState* m_rasterStateCullNone;
 
-	ID3D12BlendState* m_blendStateAlphaEnabled;
-	ID3D12BlendState* m_blendStateAlphaDisabled;
-	*/
+		ID3D12BlendState* m_blendStateAlphaEnabled;
+		ID3D12BlendState* m_blendStateAlphaDisabled;
+		*/
 
-private:
-	bool CreateDepthStencilBuffer();
-	bool CreateDepthStencil();
-};
+	private:
+		bool CreateDepthStencilBuffer();
+		bool CreateDepthStencil();
+	};
+}

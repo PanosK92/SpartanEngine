@@ -33,125 +33,128 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-weak_ptr<ILogger> Log::m_logger;
-ofstream Log::m_fout;
-string Log::m_logFileName = "log.txt";
-bool Log::m_firstLog = true;
-
-void Log::Initialize()
+namespace Directus
 {
+	weak_ptr<ILogger> Log::m_logger;
+	ofstream Log::m_fout;
+	string Log::m_logFileName = "log.txt";
+	bool Log::m_firstLog = true;
 
-}
-
-void Log::Release()
-{
-
-}
-
-void Log::SetLogger(weak_ptr<ILogger> logger)
-{
-	m_logger = logger;
-}
-
-//= LOGGING ==========================================================================
-void Log::Write(const string& text, LogType type) // all functions resolve to that one
-{
-	string prefix = "";
-
-	if (type == Info)
-		prefix = "Info:";
-
-	if (type == Warning)
-		prefix = "Warning:";
-
-	if (type == Error)
-		prefix = "Error:";
-
-	string finalText = prefix + " " + text;
-
-	auto logger = m_logger.lock();
-	logger ? logger->Log(finalText, type) : WriteAsText(finalText);
-	// if a logger is available use it, if not output a text file
-}
-
-void Log::WriteAsText(const string& text)
-{
-	// Delete the previous log file (if it exists)
-	if (m_firstLog)
+	void Log::Initialize()
 	{
-		FileSystem::DeleteFile_(m_logFileName);
-		m_firstLog = false;
+
 	}
 
-	// Open/Create a log file to write the error message to.
-	m_fout.open(m_logFileName, ofstream::out | ofstream::app);
+	void Log::Release()
+	{
 
-	// Write out the error message.
-	m_fout << text << endl;
+	}
 
-	// Close the file.
-	m_fout.close();
-}
+	void Log::SetLogger(weak_ptr<ILogger> logger)
+	{
+		m_logger = logger;
+	}
 
-void Log::Write(const char* text, LogType type)
-{
-	string str = text;
-	Write(str, type);
-}
+	//= LOGGING ==========================================================================
+	void Log::Write(const string& text, LogType type) // all functions resolve to that one
+	{
+		string prefix = "";
 
-void Log::Write(const Vector3& vector, LogType type)
-{
-	string x = "X: " + to_string(vector.x);
-	string y = "Y: " + to_string(vector.y);
-	string z = "Z: " + to_string(vector.z);
+		if (type == Info)
+			prefix = "Info:";
 
-	Write(x + ", " + y + ", " + z, type);
-}
+		if (type == Warning)
+			prefix = "Warning:";
 
-void Log::Write(const Quaternion& quaternion, LogType type)
-{
-	string x = "X: " + to_string(quaternion.x);
-	string y = "Y: " + to_string(quaternion.y);
-	string z = "Z: " + to_string(quaternion.z);
-	string w = "W: " + to_string(quaternion.w);
+		if (type == Error)
+			prefix = "Error:";
 
-	Write(x + ", " + y + ", " + z + ", " + w, type);
-}
+		string finalText = prefix + " " + text;
 
-void Log::Write(float value, LogType type)
-{
-	Write(to_string(value), type);
-}
+		auto logger = m_logger.lock();
+		logger ? logger->Log(finalText, type) : WriteAsText(finalText);
+		// if a logger is available use it, if not output a text file
+	}
 
-void Log::Write(int value, LogType type)
-{
-	Write(to_string(value), type);
-}
+	void Log::WriteAsText(const string& text)
+	{
+		// Delete the previous log file (if it exists)
+		if (m_firstLog)
+		{
+			FileSystem::DeleteFile_(m_logFileName);
+			m_firstLog = false;
+		}
 
-void Log::Write(unsigned int value, LogType type)
-{
-	Write(int(value), type);
-}
+		// Open/Create a log file to write the error message to.
+		m_fout.open(m_logFileName, ofstream::out | ofstream::app);
 
-void Log::Write(bool value, LogType type)
-{
-	if (value)
-		Write("True", type);
-	else
-		Write("False", type);
-}
+		// Write out the error message.
+		m_fout << text << endl;
 
-void Log::Write(size_t value, LogType type)
-{
-	Write(int(value), type);
-}
-//=================================================================================
+		// Close the file.
+		m_fout.close();
+	}
 
-//= HELPER FUNCTIONS ==============================================================
-string Log::WCHARPToString(WCHAR* text)
-{
-	wstring ws(text);
-	string str(ws.begin(), ws.end());
+	void Log::Write(const char* text, LogType type)
+	{
+		string str = text;
+		Write(str, type);
+	}
 
-	return str;
+	void Log::Write(const Vector3& vector, LogType type)
+	{
+		string x = "X: " + to_string(vector.x);
+		string y = "Y: " + to_string(vector.y);
+		string z = "Z: " + to_string(vector.z);
+
+		Write(x + ", " + y + ", " + z, type);
+	}
+
+	void Log::Write(const Quaternion& quaternion, LogType type)
+	{
+		string x = "X: " + to_string(quaternion.x);
+		string y = "Y: " + to_string(quaternion.y);
+		string z = "Z: " + to_string(quaternion.z);
+		string w = "W: " + to_string(quaternion.w);
+
+		Write(x + ", " + y + ", " + z + ", " + w, type);
+	}
+
+	void Log::Write(float value, LogType type)
+	{
+		Write(to_string(value), type);
+	}
+
+	void Log::Write(int value, LogType type)
+	{
+		Write(to_string(value), type);
+	}
+
+	void Log::Write(unsigned int value, LogType type)
+	{
+		Write(int(value), type);
+	}
+
+	void Log::Write(bool value, LogType type)
+	{
+		if (value)
+			Write("True", type);
+		else
+			Write("False", type);
+	}
+
+	void Log::Write(size_t value, LogType type)
+	{
+		Write(int(value), type);
+	}
+	//=================================================================================
+
+	//= HELPER FUNCTIONS ==============================================================
+	string Log::WCHARPToString(WCHAR* text)
+	{
+		wstring ws(text);
+		string str(ws.begin(), ws.end());
+
+		return str;
+	}
 }

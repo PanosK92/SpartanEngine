@@ -27,43 +27,47 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //===========================
 
-class RigidBody;
-class MeshFilter;
 class btCollisionShape;
 
-class DllExport MeshCollider : public IComponent
+namespace Directus
 {
-public:
-	MeshCollider();
-	~MeshCollider();
+	class RigidBody;
+	class MeshFilter;	
 
-	//= ICOMPONENT ==============
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
-	//===========================
+	class DllExport MeshCollider : public IComponent
+	{
+	public:
+		MeshCollider();
+		~MeshCollider();
 
-	bool GetConvex() { return m_isConvex; }
-	void SetConvex(bool isConvex) { m_isConvex = isConvex; }
-	std::weak_ptr<Mesh> GetMesh() { return m_mesh; }
-	void SetMesh(std::weak_ptr<Mesh> mesh) { m_mesh = mesh; }
-	void Build();
+		//= ICOMPONENT ==============
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
+		//===========================
 
-private:
-	//= HELPER FUNCTIONS ======================================================
-	void DeleteCollisionShape();	
-	void SetCollisionShapeToRigidBody(std::weak_ptr<btCollisionShape> shape) const;
-	std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
-	//========================================================================
+		bool GetConvex() { return m_isConvex; }
+		void SetConvex(bool isConvex) { m_isConvex = isConvex; }
+		std::weak_ptr<Mesh> GetMesh() { return m_mesh; }
+		void SetMesh(std::weak_ptr<Mesh> mesh) { m_mesh = mesh; }
+		void Build();
 
-	std::weak_ptr<Mesh> m_mesh;
-	unsigned int m_vertexLimit = 100000;
-	std::shared_ptr<btCollisionShape> m_collisionShape;
-	bool m_isConvex;
+	private:
+		//= HELPER FUNCTIONS ======================================================
+		void DeleteCollisionShape();
+		void SetCollisionShapeToRigidBody(std::weak_ptr<btCollisionShape> shape) const;
+		std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
+		//========================================================================
 
-	
-};
+		std::weak_ptr<Mesh> m_mesh;
+		unsigned int m_vertexLimit = 100000;
+		std::shared_ptr<btCollisionShape> m_collisionShape;
+		bool m_isConvex;
+
+
+	};
+}

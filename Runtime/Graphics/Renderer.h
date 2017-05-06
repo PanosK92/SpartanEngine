@@ -39,90 +39,93 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Subsystem.h"
 //====================================
 
-class MeshFilter;
-
-class Renderer : public Subsystem
+namespace Directus
 {
-public:
-	Renderer(Context* context);
-	~Renderer();
+	class MeshFilter;
 
-	//= Subsystem ============
-	virtual bool Initialize();
-	//========================
+	class Renderer : public Subsystem
+	{
+	public:
+		Renderer(Context* context);
+		~Renderer();
 
-	void Render();
-	void SetResolution(int width, int height);
-	void Clear();
-	const std::vector<GameObject*>& GetRenderables() { return m_renderables; }
+		//= Subsystem ============
+		virtual bool Initialize();
+		//========================
 
-	//= STATS =======================================================
-	void StartCalculatingStats();
-	void StopCalculatingStats();
-	int GetRenderedMeshesCount() { return m_renderedMeshesPerFrame; }
-	int GetRenderTime() { return m_renderTimeMs; }
-	//===============================================================
+		void Render();
+		void SetResolution(int width, int height);
+		void Clear();
+		const std::vector<GameObject*>& GetRenderables() { return m_renderables; }
 
-private:
-	std::shared_ptr<FullScreenQuad> m_fullScreenQuad;
-	std::shared_ptr<GBuffer> m_GBuffer;
+		//= STATS =======================================================
+		void StartCalculatingStats();
+		void StopCalculatingStats();
+		int GetRenderedMeshesCount() { return m_renderedMeshesPerFrame; }
+		int GetRenderTime() { return m_renderTimeMs; }
+		//===============================================================
 
-	// GAMEOBJECTS ==============================
-	std::vector<GameObject*> m_renderables;
-	std::vector<GameObject*> m_lightsDirectional;
-	std::vector<GameObject*> m_lightsPoint;
-	//===========================================
+	private:
+		std::shared_ptr<FullScreenQuad> m_fullScreenQuad;
+		std::shared_ptr<GBuffer> m_GBuffer;
 
-	//= RENDER TEXTURES ================================
-	std::shared_ptr<D3D11RenderTexture> m_renderTexPing;
-	std::shared_ptr<D3D11RenderTexture> m_renderTexPong;
-	//==================================================
+		// GAMEOBJECTS ==============================
+		std::vector<GameObject*> m_renderables;
+		std::vector<GameObject*> m_lightsDirectional;
+		std::vector<GameObject*> m_lightsPoint;
+		//===========================================
 
-	//= MISC =========================================
-	std::vector<ID3D11ShaderResourceView*> m_texArray;
-	ID3D11ShaderResourceView* m_texEnvironment;
-	std::shared_ptr<Texture> m_texNoiseMap;
-	//================================================
+		//= RENDER TEXTURES ================================
+		std::shared_ptr<D3D11RenderTexture> m_renderTexPing;
+		std::shared_ptr<D3D11RenderTexture> m_renderTexPong;
+		//==================================================
 
-	//= SHADERS ==========================================
-	std::shared_ptr<DeferredShader> m_shaderDeferred;
-	std::shared_ptr<DepthShader> m_shaderDepth;
-	std::shared_ptr<DebugShader> m_shaderDebug;
-	std::shared_ptr<PostProcessShader> m_shaderFXAA;
-	std::shared_ptr<PostProcessShader> m_shaderSharpening;
-	std::shared_ptr<PostProcessShader> m_shaderBlur;
-	//====================================================
+		//= MISC =========================================
+		std::vector<ID3D11ShaderResourceView*> m_texArray;
+		ID3D11ShaderResourceView* m_texEnvironment;
+		std::shared_ptr<Texture> m_texNoiseMap;
+		//================================================
 
-	//= STATS ======================
-	int m_renderedMeshesPerFrame;
-	int m_renderedMeshesTempCounter;
-	int m_renderTimeMs;
-	//==============================
+		//= SHADERS ==========================================
+		std::shared_ptr<DeferredShader> m_shaderDeferred;
+		std::shared_ptr<DepthShader> m_shaderDepth;
+		std::shared_ptr<DebugShader> m_shaderDebug;
+		std::shared_ptr<PostProcessShader> m_shaderFXAA;
+		std::shared_ptr<PostProcessShader> m_shaderSharpening;
+		std::shared_ptr<PostProcessShader> m_shaderBlur;
+		//====================================================
 
-	//= PREREQUISITES ================================
-	Camera* m_camera;
-	Skybox* m_skybox;
-	LineRenderer* m_lineRenderer;
-	Light* m_directionalLight;
-	Directus::Math::Matrix mView;
-	Directus::Math::Matrix mProjection;
-	Directus::Math::Matrix mViewProjection;
-	Directus::Math::Matrix mOrthographicProjection;
-	Directus::Math::Matrix mBaseView;
-	float m_nearPlane;
-	float m_farPlane;
-	std::vector<ID3D11ShaderResourceView*> m_textures;
-	Graphics* m_graphics;
-	//================================================
+		//= STATS ======================
+		int m_renderedMeshesPerFrame;
+		int m_renderedMeshesTempCounter;
+		int m_renderTimeMs;
+		//==============================
 
-	//= HELPER FUNCTIONS =========================================================================
-	bool IsInViewFrustrum(const std::shared_ptr<Frustrum>& cameraFrustrum, MeshFilter* meshFilter);
-	void AcquirePrerequisites();
-	void DirectionalLightDepthPass();
-	void GBufferPass();
-	void DeferredPass();
-	void PostProcessing();
-	void Gizmos() const;
-	const Directus::Math::Vector4& GetClearColor();
-	//============================================================================================
-};
+		//= PREREQUISITES ================================
+		Camera* m_camera;
+		Skybox* m_skybox;
+		LineRenderer* m_lineRenderer;
+		Light* m_directionalLight;
+		Directus::Math::Matrix mView;
+		Directus::Math::Matrix mProjection;
+		Directus::Math::Matrix mViewProjection;
+		Directus::Math::Matrix mOrthographicProjection;
+		Directus::Math::Matrix mBaseView;
+		float m_nearPlane;
+		float m_farPlane;
+		std::vector<ID3D11ShaderResourceView*> m_textures;
+		Graphics* m_graphics;
+		//================================================
+
+		//= HELPER FUNCTIONS =========================================================================
+		bool IsInViewFrustrum(const std::shared_ptr<Frustrum>& cameraFrustrum, MeshFilter* meshFilter);
+		void AcquirePrerequisites();
+		void DirectionalLightDepthPass();
+		void GBufferPass();
+		void DeferredPass();
+		void PostProcessing();
+		void Gizmos() const;
+		const Directus::Math::Vector4& GetClearColor();
+		//============================================================================================
+	};
+}

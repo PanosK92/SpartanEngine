@@ -33,29 +33,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <dinput.h>
 //==========================
 
-class DX8Input
+namespace Directus
 {
-public:
-	DX8Input();
-	~DX8Input();
+	class DX8Input
+	{
+	public:
+		DX8Input();
+		~DX8Input();
 
-	bool Initialize(HINSTANCE instance, HWND handle);
-	void Update();
-	void Release();
+		bool Initialize(HINSTANCE instance, HWND handle);
+		void Update();
+		void Release();
 
-	bool IsKeyboardKeyDown(byte key);
-	bool IsMouseKeyDown(int key);
+		bool IsKeyboardKeyDown(byte key);
+		bool IsMouseKeyDown(int key);
 
-	Directus::Math::Vector3 GetMouseDelta();
+		Directus::Math::Vector3 GetMouseDelta();
 
-private:
-	bool ReadKeyboard();
-	bool ReadMouse();
+	private:
+		bool ReadKeyboard();
+		bool ReadMouse();
 
-	IDirectInput8* m_directInput;
-	IDirectInputDevice8* m_keyboard;
-	IDirectInputDevice8* m_mouse;
+		IDirectInput8* m_directInput;
+		IDirectInputDevice8* m_keyboard;
+		IDirectInputDevice8* m_mouse;
 
-	unsigned char m_keyboardState[256];
-	DIMOUSESTATE m_mouseState;
-};
+		unsigned char m_keyboardState[256];
+		DIMOUSESTATE m_mouseState;
+	};
+}

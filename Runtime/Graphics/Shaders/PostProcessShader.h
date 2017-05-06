@@ -29,24 +29,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 //=======================================
 
-class PostProcessShader
+namespace Directus
 {
-public:
-	PostProcessShader();
-	~PostProcessShader();
-
-	void Load(const std::string& filePath, const std::string& pass, Graphics* graphics);
-	bool Render(int indexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* texture);
-
-private:
-	struct DefaultBuffer
+	class PostProcessShader
 	{
-		Directus::Math::Matrix worldViewProjection;
-		Directus::Math::Vector2 viewport;
-		Directus::Math::Vector2 padding;
-	};
+	public:
+		PostProcessShader();
+		~PostProcessShader();
 
-	std::shared_ptr<D3D11ConstantBuffer> m_constantBuffer;
-	Graphics* m_graphics;
-	std::shared_ptr<D3D11Shader> m_shader;
-};
+		void Load(const std::string& filePath, const std::string& pass, Graphics* graphics);
+		bool Render(int indexCount, const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* texture);
+
+	private:
+		struct DefaultBuffer
+		{
+			Math::Matrix worldViewProjection;
+			Math::Vector2 viewport;
+			Math::Vector2 padding;
+		};
+
+		std::shared_ptr<D3D11ConstantBuffer> m_constantBuffer;
+		Graphics* m_graphics;
+		std::shared_ptr<D3D11Shader> m_shader;
+	};
+}

@@ -41,57 +41,60 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PREFAB_EXTENSION ".prefab"
 //==============================================
 
-class DllExport FileSystem
+namespace Directus
 {
-public:
-	//= DIRECTORIES ==================================================
-	static bool CreateDirectory_(const std::string& path);
-	static bool OpenDirectoryInExplorer(const std::string& directory);
-	static bool DeleteDirectory(const std::string& directory);
-	//================================================================
+	class DllExport FileSystem
+	{
+	public:
+		//= DIRECTORIES ==================================================
+		static bool CreateDirectory_(const std::string& path);
+		static bool OpenDirectoryInExplorer(const std::string& directory);
+		static bool DeleteDirectory(const std::string& directory);
+		//================================================================
 
-	//= FILES ========================================================
-	static bool FileExists(const std::string& path);
-	static bool DeleteFile_(const std::string& filePath);
-	static bool CopyFileFromTo(const std::string& source, const std::string& destination);
+		//= FILES ========================================================
+		static bool FileExists(const std::string& path);
+		static bool DeleteFile_(const std::string& filePath);
+		static bool CopyFileFromTo(const std::string& source, const std::string& destination);
 
-	static std::string GetFileNameFromPath(const std::string& path);
-	static std::string GetFileNameNoExtensionFromPath(const std::string& path);
-	static std::string GetPathWithoutFileName(const std::string& path);
-	static std::string GetPathWithoutFileNameExtension(const std::string& path);
-	static std::string GetExtensionFromPath(const std::string& path);
-	static std::string GetRelativePathFromAbsolutePath(const std::string& path);
+		static std::string GetFileNameFromPath(const std::string& path);
+		static std::string GetFileNameNoExtensionFromPath(const std::string& path);
+		static std::string GetPathWithoutFileName(const std::string& path);
+		static std::string GetPathWithoutFileNameExtension(const std::string& path);
+		static std::string GetExtensionFromPath(const std::string& path);
+		static std::string GetRelativePathFromAbsolutePath(const std::string& path);
 
-	static std::vector<std::string> GetSupportedImageFileFormats(bool includeUppercase);
-	static std::vector<std::string> GetSupportedAudioFileFormats(bool includeUppercase);
+		static std::vector<std::string> GetSupportedImageFileFormats(bool includeUppercase);
+		static std::vector<std::string> GetSupportedAudioFileFormats(bool includeUppercase);
 
-	static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
-	static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
+		static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
+		static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
 
-	//= SUPPORTED FILES IN DIRECTORY ======================================================================
-	static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& directory);
-	static std::vector<std::string> GetSupportedImageFilesFromPaths(const std::vector<std::string>& paths);
-	static std::vector<std::string> GetSupportedAudioFilesFromPaths(const std::vector<std::string>& paths);
-	static std::vector<std::string> GetSupportedScriptFilesFromPaths(const std::vector<std::string>& paths);
-	static std::vector<std::string> GetSupportedModelFilesFromPaths(const std::vector<std::string>& paths);
-	static std::vector<std::string> GetSupportedModelFilesInDirectory(const std::string& directory);
-	static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& directory);
-	//======================================================================================================
+		//= SUPPORTED FILES IN DIRECTORY ======================================================================
+		static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& directory);
+		static std::vector<std::string> GetSupportedImageFilesFromPaths(const std::vector<std::string>& paths);
+		static std::vector<std::string> GetSupportedAudioFilesFromPaths(const std::vector<std::string>& paths);
+		static std::vector<std::string> GetSupportedScriptFilesFromPaths(const std::vector<std::string>& paths);
+		static std::vector<std::string> GetSupportedModelFilesFromPaths(const std::vector<std::string>& paths);
+		static std::vector<std::string> GetSupportedModelFilesInDirectory(const std::string& directory);
+		static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& directory);
+		//======================================================================================================
 
-	//= SUPPORTED FILE CHECKS =====================================
-	static bool IsSupportedPrefabFile(const std::string& filePath);
-	static bool IsSupportedAudioFile(const std::string& filePath);
-	static bool IsSupportedImageFile(const std::string& filePath);
-	static bool IsSupportedScriptFile(const std::string& filePath);
-	static bool IsSupportedModelFile(const std::string& filePath);
-	static bool IsSupportedShaderFile(const std::string& filePath);
-	static bool IsSupportedMeshFile(const std::string& filePath);
-	static bool IsSupportedMaterialFile(const std::string& filePath);
-	static bool IsSupportedSceneFile(const std::string& filePath);
-	static bool IsMetadataFile(const std::string& filePath);
-	//=============================================================
+		//= SUPPORTED FILE CHECKS =====================================
+		static bool IsSupportedPrefabFile(const std::string& filePath);
+		static bool IsSupportedAudioFile(const std::string& filePath);
+		static bool IsSupportedImageFile(const std::string& filePath);
+		static bool IsSupportedScriptFile(const std::string& filePath);
+		static bool IsSupportedModelFile(const std::string& filePath);
+		static bool IsSupportedShaderFile(const std::string& filePath);
+		static bool IsSupportedMeshFile(const std::string& filePath);
+		static bool IsSupportedMaterialFile(const std::string& filePath);
+		static bool IsSupportedSceneFile(const std::string& filePath);
+		static bool IsMetadataFile(const std::string& filePath);
+		//=============================================================
 
-	// string
-	static std::string ConvertToUppercase(const std::string& lower);
-	static std::wstring ToWString(const std::string& str);
-};
+		// string
+		static std::string ConvertToUppercase(const std::string& lower);
+		static std::wstring ToWString(const std::string& str);
+	};
+}

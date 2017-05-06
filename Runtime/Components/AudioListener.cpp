@@ -27,50 +27,53 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 //==========================
 
-AudioListener::AudioListener()
+namespace Directus
 {
-	m_audio = nullptr;
-}
+	AudioListener::AudioListener()
+	{
+		m_audio = nullptr;
+	}
 
-AudioListener::~AudioListener()
-{
+	AudioListener::~AudioListener()
+	{
 
-}
+	}
 
-void AudioListener::Reset()
-{
-	m_audio = g_context->GetSubsystem<Audio>();
-}
+	void AudioListener::Reset()
+	{
+		m_audio = g_context->GetSubsystem<Audio>();
+	}
 
-void AudioListener::Start()
-{
+	void AudioListener::Start()
+	{
 
-}
+	}
 
-void AudioListener::OnDisable()
-{
+	void AudioListener::OnDisable()
+	{
 
-}
+	}
 
-void AudioListener::Remove()
-{
+	void AudioListener::Remove()
+	{
 
-}
+	}
 
-void AudioListener::Update()
-{
-	if (!m_audio)
-		return;
+	void AudioListener::Update()
+	{
+		if (!m_audio)
+			return;
 
-	m_audio->SetListenerTransform(g_transform);
-}
+		m_audio->SetListenerTransform(g_transform);
+	}
 
-void AudioListener::Serialize()
-{
+	void AudioListener::Serialize()
+	{
 
-}
+	}
 
-void AudioListener::Deserialize()
-{
+	void AudioListener::Deserialize()
+	{
 
+	}
 }

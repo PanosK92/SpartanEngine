@@ -32,58 +32,61 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/D3D11/D3D11IndexBuffer.h"
 //==============================================
 
-class DllExport MeshFilter : public IComponent
+namespace Directus
 {
-public:
-	enum MeshType { Imported, Cube, Quad };
+	class DllExport MeshFilter : public IComponent
+	{
+	public:
+		enum MeshType { Imported, Cube, Quad };
 
-	MeshFilter();
-	~MeshFilter();
+		MeshFilter();
+		~MeshFilter();
 
-	// Resource Interface
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
+		// Resource Interface
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
 
-	// Sets a mesh from memory
-	void SetMesh(std::weak_ptr<Mesh> mesh);
-	// Sets a default mesh (cube, quad)
-	void SetMesh(MeshType defaultMesh);	
-	// Creates a mesh from raw vertex/index data and sets it
-	void CreateAndSet(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
-	// Sets the meshe's buffers
-	bool SetBuffers();
-	
-	// Normalizes the scale of the entire model's hierarchy
-	void NormalizeModelScale();
-	// Returns all meshes that belong to the model the mesh filter is part of
-	std::vector<std::weak_ptr<Mesh>> GetAllModelMeshes();
-	// Returns a value that can be used (by multiplying against the original scale)
-	// to normalize the scale of a transform
-	float GetNormalizedModelScale();
-	// Sets the scale for the entire model's hierarchy
-	void SetModelScale(float scale);
-	// Returns the mesh with the largest bounding box
-	static std::weak_ptr<Mesh> GetLargestBoundingBox(std::vector<std::weak_ptr<Mesh>> meshes);
+		// Sets a mesh from memory
+		void SetMesh(std::weak_ptr<Mesh> mesh);
+		// Sets a default mesh (cube, quad)
+		void SetMesh(MeshType defaultMesh);
+		// Creates a mesh from raw vertex/index data and sets it
+		void CreateAndSet(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
+		// Sets the meshe's buffers
+		bool SetBuffers();
 
-	// Properties
-	Directus::Math::Vector3 GetCenter();
-	Directus::Math::Vector3 GetBoundingBox();
-	std::weak_ptr<Mesh> GetMesh();
-	bool HasMesh();
-	std::string GetMeshName();
+		// Normalizes the scale of the entire model's hierarchy
+		void NormalizeModelScale();
+		// Returns all meshes that belong to the model the mesh filter is part of
+		std::vector<std::weak_ptr<Mesh>> GetAllModelMeshes();
+		// Returns a value that can be used (by multiplying against the original scale)
+		// to normalize the scale of a transform
+		float GetNormalizedModelScale();
+		// Sets the scale for the entire model's hierarchy
+		void SetModelScale(float scale);
+		// Returns the mesh with the largest bounding box
+		static std::weak_ptr<Mesh> GetLargestBoundingBox(std::vector<std::weak_ptr<Mesh>> meshes);
 
-private:	
-	bool CreateBuffers();
-	void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
-	void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
+		// Properties
+		Directus::Math::Vector3 GetCenter();
+		Directus::Math::Vector3 GetBoundingBox();
+		std::weak_ptr<Mesh> GetMesh();
+		bool HasMesh();
+		std::string GetMeshName();
 
-	std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
-	std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
-	std::weak_ptr<Mesh> m_mesh;
-	MeshType m_meshType;
-};
+	private:
+		bool CreateBuffers();
+		void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
+		void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
+
+		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
+		std::weak_ptr<Mesh> m_mesh;
+		MeshType m_meshType;
+	};
+}

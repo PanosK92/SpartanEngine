@@ -28,110 +28,113 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Subsystem.h"
 //==========================
 
-enum KeyCode
+namespace Directus
 {
-	// Function keys
-	F1,
-	F2,
-	F3,
-	F4,
-	F5,
-	F6,
-	F7,
-	F8,
-	F9,
-	F10,
-	F11,
-	F12,
-	F13,
-	F14,
-	F15,
-	// Numeric keypad
-	Keypad0,
-	Keypad1,
-	Keypad2,
-	Keypad3,
-	Keypad4,
-	Keypad5,
-	Keypad6,
-	Keypad7,
-	Keypad8,
-	Keypad9, 
-	// Alphanumeric keys
-	Alpha0,
-	Alpha1,
-	Alpha2,
-	Alpha3,
-	Alpha4,
-	Alpha5,
-	Alpha6,
-	Alpha7,
-	Alpha8,
-	Alpha9,
-	Q,
-	W,
-	E,
-	R,
-	T,
-	Y,
-	U,
-	I,
-	O,
-	P,
-	A,
-	S,
-	D,
-	F,
-	G,
-	H,
-	J,
-	K,
-	L,
-	Z,
-	X,
-	C,
-	V,
-	B,
-	N,
-	M,
-	// Controls
-	Esc,
-	Tab,
-	LeftShift,
-	RightShift,
-	LeftControl,
-	RightControl,
-	LeftAlt,
-	RightAlt,
-	Space,
-	CapsLock,
-	Backspace,
-	Return,
-};
+	enum KeyCode
+	{
+		// Function keys
+		F1,
+		F2,
+		F3,
+		F4,
+		F5,
+		F6,
+		F7,
+		F8,
+		F9,
+		F10,
+		F11,
+		F12,
+		F13,
+		F14,
+		F15,
+		// Numeric keypad
+		Keypad0,
+		Keypad1,
+		Keypad2,
+		Keypad3,
+		Keypad4,
+		Keypad5,
+		Keypad6,
+		Keypad7,
+		Keypad8,
+		Keypad9,
+		// Alphanumeric keys
+		Alpha0,
+		Alpha1,
+		Alpha2,
+		Alpha3,
+		Alpha4,
+		Alpha5,
+		Alpha6,
+		Alpha7,
+		Alpha8,
+		Alpha9,
+		Q,
+		W,
+		E,
+		R,
+		T,
+		Y,
+		U,
+		I,
+		O,
+		P,
+		A,
+		S,
+		D,
+		F,
+		G,
+		H,
+		J,
+		K,
+		L,
+		Z,
+		X,
+		C,
+		V,
+		B,
+		N,
+		M,
+		// Controls
+		Esc,
+		Tab,
+		LeftShift,
+		RightShift,
+		LeftControl,
+		RightControl,
+		LeftAlt,
+		RightAlt,
+		Space,
+		CapsLock,
+		Backspace,
+		Return,
+	};
 
-class Input : public Subsystem
-{
-public:
-	Input(Context* context);
-	~Input();
+	class Input : public Subsystem
+	{
+	public:
+		Input(Context* context);
+		~Input();
 
-	// SUBSYSTEM =============
-	virtual bool Initialize();
-	//========================
+		// SUBSYSTEM =============
+		virtual bool Initialize();
+		//========================
 
-	void SetHandle(HWND handle, HINSTANCE instance);
-	void Update();
+		void SetHandle(HWND handle, HINSTANCE instance);
+		void Update();
 
-	bool GetKey(KeyCode key);
-	bool GetMouseButton(int button) { return m_initialized ? m_DX8Input->IsMouseKeyDown(button) : false; }
-	Directus::Math::Vector2 GetMousePosition() { return m_mousePos; }
-	Directus::Math::Vector2 GetMousePositionDelta() { return m_mousePosDelta; }
+		bool GetKey(KeyCode key);
+		bool GetMouseButton(int button) { return m_initialized ? m_DX8Input->IsMouseKeyDown(button) : false; }
+		Directus::Math::Vector2 GetMousePosition() { return m_mousePos; }
+		Directus::Math::Vector2 GetMousePositionDelta() { return m_mousePosDelta; }
 
-private:
-	Directus::Math::Vector2 m_mousePos;
-	Directus::Math::Vector2 m_mousePosDelta;
-	std::shared_ptr<DX8Input> m_DX8Input;
-	HWND m_handle;
-	HINSTANCE m_hinstance;
-	bool m_initialized;
-};
+	private:
+		Directus::Math::Vector2 m_mousePos;
+		Directus::Math::Vector2 m_mousePosDelta;
+		std::shared_ptr<DX8Input> m_DX8Input;
+		HWND m_handle;
+		HINSTANCE m_hinstance;
+		bool m_initialized;
+	};
+}

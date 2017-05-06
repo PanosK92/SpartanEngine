@@ -21,36 +21,39 @@ DEALINGS IN THE SOFTWARE. */
 #include "Context.h"
 //==================
 
-class DllExport Engine : public Subsystem
+namespace Directus
 {
-public:
-	Engine(Context* context);
-	~Engine() { Shutdown(); }
+	class DllExport Engine : public Subsystem
+	{
+	public:
+		Engine(Context* context);
+		~Engine() { Shutdown(); }
 
-	// Sets a draw handle, input handle and a window instance for the engine to use
-	void SetHandles(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
+		// Sets a draw handle, input handle and a window instance for the engine to use
+		void SetHandles(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
 
-	// Initializes the engine 
-	bool Initialize();
+		// Initializes the engine 
+		bool Initialize();
 
-	// Performs a complete simulation cycle (used to run your game)
-	void Update();
+		// Performs a complete simulation cycle (used to run your game)
+		void Update();
 
-	// Updates and propagates data through the engine's subsystems (used for standalone updates by the editor)
-	void LightUpdate();
+		// Updates and propagates data through the engine's subsystems (used for standalone updates by the editor)
+		void LightUpdate();
 
-	// Returns whether the engine is running a full simulation (Update) or not (LightUpdate)
-	bool IsSimulating() { return m_isSimulating; }
+		// Returns whether the engine is running a full simulation (Update) or not (LightUpdate)
+		bool IsSimulating() { return m_isSimulating; }
 
-	// Returns the current context
-	Context* GetContext() { return g_context; }
+		// Returns the current context
+		Context* GetContext() { return m_context; }
 
-	// Shuts down the engine
-	void Shutdown();
+		// Shuts down the engine
+		void Shutdown();
 
-private:
-	HINSTANCE m_hinstance;
-	HWND m_windowHandle;;
-	HWND m_drawHandle;
-	bool m_isSimulating;
-};
+	private:
+		HINSTANCE m_hinstance;
+		HWND m_windowHandle;;
+		HWND m_drawHandle;
+		bool m_isSimulating;
+	};
+}

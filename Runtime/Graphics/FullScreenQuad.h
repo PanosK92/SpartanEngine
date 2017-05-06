@@ -26,20 +26,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11/D3D11GraphicsDevice.h"
 //====================================
 
-class FullScreenQuad
+namespace Directus
 {
-public:
-	FullScreenQuad();
-	~FullScreenQuad();
+	class FullScreenQuad
+	{
+	public:
+		FullScreenQuad();
+		~FullScreenQuad();
 
-	bool Initialize(int, int, D3D11GraphicsDevice* graphicsDevice);
-	void SetBuffers();
-	int GetIndexCount();
+		bool Initialize(int, int, D3D11GraphicsDevice* graphicsDevice);
+		void SetBuffers();
+		int GetIndexCount();
 
-private:
-	bool InitializeBuffers(int, int);
+	private:
+		bool InitializeBuffers(int, int);
 
-	D3D11GraphicsDevice* m_graphics;
-	ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
-	int m_vertexCount, m_indexCount;
-};
+		D3D11GraphicsDevice* m_graphics;
+		ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
+		int m_vertexCount, m_indexCount;
+	};
+}

@@ -26,27 +26,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scripting/ScriptInstance.h"
 //======================================
 
-class DllExport Script : public IComponent
+namespace Directus
 {
-public:
-	Script();
-	~Script();
+	class DllExport Script : public IComponent
+	{
+	public:
+		Script();
+		~Script();
 
-	//= ICOMPONENT =============
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
-	//==========================
+		//= ICOMPONENT =============
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
+		//==========================
 
-	bool AddScript(const std::string& filePath);
-	std::string GetScriptPath();
-	std::string GetName();
+		bool AddScript(const std::string& filePath);
+		std::string GetScriptPath();
+		std::string GetName();
 
-private:
-	std::shared_ptr<ScriptInstance> m_scriptInstance;
-	std::string m_name;
-};
+	private:
+		std::shared_ptr<ScriptInstance> m_scriptInstance;
+		std::string m_name;
+	};
+}

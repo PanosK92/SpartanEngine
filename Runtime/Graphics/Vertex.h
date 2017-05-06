@@ -27,29 +27,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 //==========================
 
-struct VertexPositionTextureNormalTangent
+namespace Directus
 {
-	Directus::Math::Vector3 position;
-	Directus::Math::Vector2 uv;
-	Directus::Math::Vector3 normal;
-	Directus::Math::Vector3 tangent;
-};
+	struct VertexPositionTextureNormalTangent
+	{
+		Math::Vector3 position;
+		Math::Vector2 uv;
+		Math::Vector3 normal;
+		Math::Vector3 tangent;
+	};
 
-struct VertexPositionTextureNormal
-{
-	Directus::Math::Vector3 position;
-	Directus::Math::Vector2 uv;
-	Directus::Math::Vector3 normal;
-};
+	struct VertexPositionTextureNormal
+	{
+		Math::Vector3 position;
+		Math::Vector2 uv;
+		Math::Vector3 normal;
+	};
 
-struct VertexPositionTexture
-{
-	Directus::Math::Vector3 position;
-	Directus::Math::Vector2 uv;
-};
+	struct VertexPositionTexture
+	{
+		Math::Vector3 position;
+		Math::Vector2 uv;
+	};
 
-struct VertexPositionColor
-{
-	Directus::Math::Vector3 position;
-	Directus::Math::Vector4 color;
-};
+	struct VertexPositionColor
+	{
+		Math::Vector3 position;
+		Math::Vector4 color;
+	};
+}

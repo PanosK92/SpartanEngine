@@ -26,39 +26,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11GraphicsDevice.h"
 //==============================
 
-class D3D11RenderTexture
+namespace Directus
 {
-public:
-	D3D11RenderTexture(D3D11GraphicsDevice* graphicsDevice);
-	~D3D11RenderTexture();
+	class D3D11RenderTexture
+	{
+	public:
+		D3D11RenderTexture(D3D11GraphicsDevice* graphicsDevice);
+		~D3D11RenderTexture();
 
-	bool Create(int width, int height);
-	bool SetAsRenderTarget();
-	bool Clear(const Directus::Math::Vector4& clearColor);
-	bool Clear(float red, float green, float blue, float alpha);
-	ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
-	void CalculateOrthographicProjectionMatrix(float nearPlane, float farPlane);
-	const Directus::Math::Matrix& GetOrthographicProjectionMatrix() { return m_orthographicProjectionMatrix; }
+		bool Create(int width, int height);
+		bool SetAsRenderTarget();
+		bool Clear(const Math::Vector4& clearColor);
+		bool Clear(float red, float green, float blue, float alpha);
+		ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
+		void CalculateOrthographicProjectionMatrix(float nearPlane, float farPlane);
+		const Math::Matrix& GetOrthographicProjectionMatrix() { return m_orthographicProjectionMatrix; }
 
-private:
-	// Texture
-	ID3D11Texture2D* m_renderTargetTexture;
-	ID3D11RenderTargetView* m_renderTargetView;
-	ID3D11ShaderResourceView* m_shaderResourceView;
+	private:
+		// Texture
+		ID3D11Texture2D* m_renderTargetTexture;
+		ID3D11RenderTargetView* m_renderTargetView;
+		ID3D11ShaderResourceView* m_shaderResourceView;
 
-	// Depth texture
-	ID3D11Texture2D* m_depthStencilBuffer;
-	ID3D11DepthStencilView* m_depthStencilView;
-	float m_maxDepth = 1.0f;
+		// Depth texture
+		ID3D11Texture2D* m_depthStencilBuffer;
+		ID3D11DepthStencilView* m_depthStencilView;
+		float m_maxDepth = 1.0f;
 
-	// Projection matrix
-	float m_nearPlane, m_farPlane;
-	Directus::Math::Matrix m_orthographicProjectionMatrix;
+		// Projection matrix
+		float m_nearPlane, m_farPlane;
+		Directus::Math::Matrix m_orthographicProjectionMatrix;
 
-	// Dimensions
-	D3D11_VIEWPORT m_viewport;
-	int m_width;
-	int m_height;
+		// Dimensions
+		D3D11_VIEWPORT m_viewport;
+		int m_width;
+		int m_height;
 
-	D3D11GraphicsDevice* m_graphics;
-};
+		D3D11GraphicsDevice* m_graphics;
+	};
+}

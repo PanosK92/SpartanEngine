@@ -26,51 +26,54 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Material.h"
 //==============================
 
-class Light;
-
-class DllExport MeshRenderer : public IComponent
+namespace Directus
 {
-public:
-	enum MaterialType { Imported, Basic, Skybox };
+	class Light;
 
-	MeshRenderer();
-	~MeshRenderer();
+	class DllExport MeshRenderer : public IComponent
+	{
+	public:
+		enum MaterialType { Imported, Basic, Skybox };
 
-	//= ICOMPONENT =============================
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
+		MeshRenderer();
+		~MeshRenderer();
 
-	//= MISC ===================================
-	void Render(unsigned int indexCount);
+		//= ICOMPONENT =============================
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
 
-	//= PROPERTIES =============================
-	void SetCastShadows(bool castShadows) { m_castShadows = castShadows; }
-	bool GetCastShadows() { return m_castShadows; }
-	void SetReceiveShadows(bool receiveShadows) { m_receiveShadows = receiveShadows; }
-	bool GetReceiveShadows() { return m_receiveShadows; }
+		//= MISC ===================================
+		void Render(unsigned int indexCount);
 
-	//= MATERIAL ===============================
-	// Sets a material from memory
-	void SetMaterial(std::weak_ptr<Material> material);
-	// Sets a default material (basic, skybox)
-	void SetMaterial(MaterialType type);
-	// Sets a material based on it's ID
-	std::weak_ptr<Material> SetMaterial(const std::string& ID);
-	// Loads a material and the sets it
-	std::weak_ptr<Material> LoadMaterial(const std::string& filePath);	
-	std::weak_ptr<Material> GetMaterial() { return  m_material; }
-	bool HasMaterial() { return GetMaterial().expired() ? false : true; }
-	std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial().lock()->GetResourceName() : DATA_NOT_ASSIGNED; }
-	MaterialType GetMaterialType() { return m_materialType; }
+		//= PROPERTIES =============================
+		void SetCastShadows(bool castShadows) { m_castShadows = castShadows; }
+		bool GetCastShadows() { return m_castShadows; }
+		void SetReceiveShadows(bool receiveShadows) { m_receiveShadows = receiveShadows; }
+		bool GetReceiveShadows() { return m_receiveShadows; }
 
-private:
-	std::weak_ptr<Material> m_material;
-	bool m_castShadows;
-	bool m_receiveShadows;
-	MaterialType m_materialType;
-};
+		//= MATERIAL ===============================
+		// Sets a material from memory
+		void SetMaterial(std::weak_ptr<Material> material);
+		// Sets a default material (basic, skybox)
+		void SetMaterial(MaterialType type);
+		// Sets a material based on it's ID
+		std::weak_ptr<Material> SetMaterial(const std::string& ID);
+		// Loads a material and the sets it
+		std::weak_ptr<Material> LoadMaterial(const std::string& filePath);
+		std::weak_ptr<Material> GetMaterial() { return  m_material; }
+		bool HasMaterial() { return GetMaterial().expired() ? false : true; }
+		std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial().lock()->GetResourceName() : DATA_NOT_ASSIGNED; }
+		MaterialType GetMaterialType() { return m_materialType; }
+
+	private:
+		std::weak_ptr<Material> m_material;
+		bool m_castShadows;
+		bool m_receiveShadows;
+		MaterialType m_materialType;
+	};
+}

@@ -34,146 +34,149 @@ using namespace Directus::Math;
 using namespace std;
 //=============================
 
-Light::Light()
+namespace Directus
 {
-	m_lightType = Point;
-	m_shadowType = Hard_Shadows;
-	m_range = 1.0f;
-	m_intensity = 4.0f;
-	m_color = Vector4(
-		255.0f / 255.0f,
-		196.0f / 255.0f,
-		147.0f / 255.0f,
-		1.0f
-	);
-	m_bias = 0.03f;
-	m_cascades = 3;
-}
-
-Light::~Light()
-{
-	m_shadowMaps.clear();
-}
-
-void Light::Reset()
-{
-	
-}
-
-void Light::Start()
-{
-
-}
-
-void Light::OnDisable()
-{
-
-}
-
-void Light::Remove()
-{
-
-}
-
-void Light::Update()
-{
-	if (!m_shadowMaps.empty())
-		return;
-
-	Graphics* graphics = g_context->GetSubsystem<Graphics>();
-	GameObject* camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
-	Camera* cameraComp = camera ? camera->GetComponent<Camera>() : nullptr;
-
-	if (graphics && cameraComp)
-		return;
-
-	for (int i = 0; i < m_cascades; i++)
+	Light::Light()
 	{
-		auto shadowMap = make_shared<Cascade>(i + 1, SHADOWMAP_RESOLUTION, graphics);
-		m_shadowMaps.push_back(shadowMap);
+		m_lightType = Point;
+		m_shadowType = Hard_Shadows;
+		m_range = 1.0f;
+		m_intensity = 4.0f;
+		m_color = Vector4(
+			255.0f / 255.0f,
+			196.0f / 255.0f,
+			147.0f / 255.0f,
+			1.0f
+		);
+		m_bias = 0.03f;
+		m_cascades = 3;
 	}
-}
 
-void Light::Serialize()
-{
-	Serializer::WriteInt(int(m_lightType));
-	Serializer::WriteInt(int(m_shadowType));
-	Serializer::WriteVector4(m_color);
-	Serializer::WriteFloat(m_range);
-	Serializer::WriteFloat(m_intensity);
-	Serializer::WriteFloat(m_bias);
-}
+	Light::~Light()
+	{
+		m_shadowMaps.clear();
+	}
 
-void Light::Deserialize()
-{
-	m_lightType = LightType(Serializer::ReadInt());
-	m_shadowType = ShadowType(Serializer::ReadInt());
-	m_color = Serializer::ReadVector4();
-	m_range = Serializer::ReadFloat();
-	m_intensity = Serializer::ReadFloat();
-	m_bias = Serializer::ReadFloat();
-}
+	void Light::Reset()
+	{
 
-void Light::SetLightType(LightType type)
-{
-	m_lightType = type;
-}
+	}
 
-float Light::GetShadowTypeAsFloat() const
-{
-	if (m_shadowType == Hard_Shadows)
-		return 0.5f;
+	void Light::Start()
+	{
 
-	if (m_shadowType == Soft_Shadows)
-		return 1.0f;
+	}
 
-	return 0.0f;
-}
+	void Light::OnDisable()
+	{
 
-Vector3 Light::GetDirection()
-{
-	return g_transform->GetForward();
-}
+	}
 
-Matrix Light::CalculateViewMatrix()
-{
-	Vector3 lightDirection = GetDirection();
-	Vector3 position = lightDirection;
-	Vector3 lookAt = position + lightDirection;
-	Vector3 up = Vector3::Up;
+	void Light::Remove()
+	{
 
-	// Create the view matrix
-	m_viewMatrix = Matrix::CreateLookAtLH(position, lookAt, up);
+	}
 
-	return m_viewMatrix;
-}
+	void Light::Update()
+	{
+		if (!m_shadowMaps.empty())
+			return;
 
-Matrix Light::CalculateOrthographicProjectionMatrix(int cascade)
-{
-	if (cascade >= m_shadowMaps.size())
-		return Matrix::Identity;
+		Graphics* graphics = g_context->GetSubsystem<Graphics>();
+		GameObject* camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
+		Camera* cameraComp = camera ? camera->GetComponent<Camera>() : nullptr;
 
-	return m_shadowMaps[cascade]->CalculateProjectionMatrix(g_context->GetSubsystem<Scene>()->GetMainCamera()->GetTransform()->GetPosition(), CalculateViewMatrix());
-}
+		if (graphics && cameraComp)
+			return;
 
-void Light::SetShadowCascadeAsRenderTarget(int cascade)
-{
-	if (cascade < m_shadowMaps.size())
-		m_shadowMaps[cascade]->SetAsRenderTarget();
-}
+		for (int i = 0; i < m_cascades; i++)
+		{
+			auto shadowMap = make_shared<Cascade>(i + 1, SHADOWMAP_RESOLUTION, graphics);
+			m_shadowMaps.push_back(shadowMap);
+		}
+	}
 
-weak_ptr<Cascade> Light::GetShadowCascade(int cascade)
-{
-	if (cascade < m_shadowMaps.size())
-		return m_shadowMaps[cascade];
+	void Light::Serialize()
+	{
+		Serializer::WriteInt(int(m_lightType));
+		Serializer::WriteInt(int(m_shadowType));
+		Serializer::WriteVector4(m_color);
+		Serializer::WriteFloat(m_range);
+		Serializer::WriteFloat(m_intensity);
+		Serializer::WriteFloat(m_bias);
+	}
 
-	return weak_ptr<Cascade>();
-}
+	void Light::Deserialize()
+	{
+		m_lightType = LightType(Serializer::ReadInt());
+		m_shadowType = ShadowType(Serializer::ReadInt());
+		m_color = Serializer::ReadVector4();
+		m_range = Serializer::ReadFloat();
+		m_intensity = Serializer::ReadFloat();
+		m_bias = Serializer::ReadFloat();
+	}
 
-float Light::GetShadowCascadeSplit(int cascade)
-{
-	if (cascade < m_shadowMaps.size())
-		return m_shadowMaps[cascade]->GetSplit();
+	void Light::SetLightType(LightType type)
+	{
+		m_lightType = type;
+	}
 
-	return 0.0f;
+	float Light::GetShadowTypeAsFloat() const
+	{
+		if (m_shadowType == Hard_Shadows)
+			return 0.5f;
+
+		if (m_shadowType == Soft_Shadows)
+			return 1.0f;
+
+		return 0.0f;
+	}
+
+	Vector3 Light::GetDirection()
+	{
+		return g_transform->GetForward();
+	}
+
+	Matrix Light::CalculateViewMatrix()
+	{
+		Vector3 lightDirection = GetDirection();
+		Vector3 position = lightDirection;
+		Vector3 lookAt = position + lightDirection;
+		Vector3 up = Vector3::Up;
+
+		// Create the view matrix
+		m_viewMatrix = Matrix::CreateLookAtLH(position, lookAt, up);
+
+		return m_viewMatrix;
+	}
+
+	Matrix Light::CalculateOrthographicProjectionMatrix(int cascade)
+	{
+		if (cascade >= m_shadowMaps.size())
+			return Matrix::Identity;
+
+		return m_shadowMaps[cascade]->CalculateProjectionMatrix(g_context->GetSubsystem<Scene>()->GetMainCamera()->GetTransform()->GetPosition(), CalculateViewMatrix());
+	}
+
+	void Light::SetShadowCascadeAsRenderTarget(int cascade)
+	{
+		if (cascade < m_shadowMaps.size())
+			m_shadowMaps[cascade]->SetAsRenderTarget();
+	}
+
+	weak_ptr<Cascade> Light::GetShadowCascade(int cascade)
+	{
+		if (cascade < m_shadowMaps.size())
+			return m_shadowMaps[cascade];
+
+		return weak_ptr<Cascade>();
+	}
+
+	float Light::GetShadowCascadeSplit(int cascade)
+	{
+		if (cascade < m_shadowMaps.size())
+			return m_shadowMaps[cascade]->GetSplit();
+
+		return 0.0f;
+	}
 }

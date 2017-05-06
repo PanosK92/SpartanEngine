@@ -28,50 +28,53 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class btHingeConstraint;
 
-class DllExport Hinge : public IComponent
+namespace Directus
 {
-public:
-	Hinge();
-	~Hinge();
+	class DllExport Hinge : public IComponent
+	{
+	public:
+		Hinge();
+		~Hinge();
 
-	/*------------------------------------------------------------------------------
-								[INTERFACE]
-	------------------------------------------------------------------------------*/
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
+		/*------------------------------------------------------------------------------
+									[INTERFACE]
+		------------------------------------------------------------------------------*/
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
 
-	void SetConnectedGameObject(GameObject* connectedRigidBody);
-	GameObject* GetConnectedGameObject();
+		void SetConnectedGameObject(GameObject* connectedRigidBody);
+		GameObject* GetConnectedGameObject();
 
-	void SetAxis(Directus::Math::Vector3 axis);
-	Directus::Math::Vector3 GetAxis();
+		void SetAxis(Directus::Math::Vector3 axis);
+		Directus::Math::Vector3 GetAxis();
 
-	void SetPivot(Directus::Math::Vector3 pivot);
-	Directus::Math::Vector3 GetPivot();
+		void SetPivot(Directus::Math::Vector3 pivot);
+		Directus::Math::Vector3 GetPivot();
 
-	void SetPivotConnected(Directus::Math::Vector3 pivot);
-	Directus::Math::Vector3 GetPivotConnected();
+		void SetPivotConnected(Directus::Math::Vector3 pivot);
+		Directus::Math::Vector3 GetPivotConnected();
 
-private:
-	btHingeConstraint* m_hinge;
-	GameObject* m_connectedGameObject;
-	bool m_isConnected;
-	Directus::Math::Vector3 m_pivotA;
-	Directus::Math::Vector3 m_pivotB;
-	Directus::Math::Vector3 m_axisA;
-	Directus::Math::Vector3 m_axisB;
+	private:
+		btHingeConstraint* m_hinge;
+		GameObject* m_connectedGameObject;
+		bool m_isConnected;
+		Directus::Math::Vector3 m_pivotA;
+		Directus::Math::Vector3 m_pivotB;
+		Directus::Math::Vector3 m_axisA;
+		Directus::Math::Vector3 m_axisB;
 
-	bool m_isDirty;
+		bool m_isDirty;
 
-	/*------------------------------------------------------------------------------
-							[HELPER FUNCTIONS]
-	------------------------------------------------------------------------------*/
-	void ConstructHinge();
-	void CalculateConnections();
-	void ComponentCheck();
-};
+		/*------------------------------------------------------------------------------
+								[HELPER FUNCTIONS]
+		------------------------------------------------------------------------------*/
+		void ConstructHinge();
+		void CalculateConnections();
+		void ComponentCheck();
+	};
+}

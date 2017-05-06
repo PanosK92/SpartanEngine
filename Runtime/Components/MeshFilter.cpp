@@ -31,366 +31,368 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus;
 using namespace Directus::Math;
 //=============================
 
-MeshFilter::MeshFilter()
+namespace Directus
 {
-	m_vertexBuffer = nullptr;
-	m_indexBuffer = nullptr;
-	m_meshType = Imported;
-}
-
-MeshFilter::~MeshFilter()
-{
-	m_vertexBuffer.reset();
-	m_indexBuffer.reset();
-}
-
-void MeshFilter::Reset()
-{
-}
-
-void MeshFilter::Start()
-{
-
-}
-
-void MeshFilter::OnDisable()
-{
-
-}
-
-void MeshFilter::Remove()
-{
-
-}
-
-void MeshFilter::Update()
-{
-
-}
-
-void MeshFilter::Serialize()
-{
-	Serializer::WriteInt((int)m_meshType);
-	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetResourceID() : (string)DATA_NOT_ASSIGNED);
-}
-
-void MeshFilter::Deserialize()
-{
-	m_meshType = (MeshType)Serializer::ReadInt();
-	string meshID = Serializer::ReadSTR();
-
-	if (m_meshType == Imported) // Get the already loaded mesh
+	MeshFilter::MeshFilter()
 	{
-		auto mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(meshID);
-		SetMesh(mesh);
+		m_vertexBuffer = nullptr;
+		m_indexBuffer = nullptr;
+		m_meshType = Imported;
 	}
-	else // Construct the mesh
-		SetMesh(m_meshType);
-}
 
-// Sets a mesh from memory (all other set/create functions resolve to this one)
-void MeshFilter::SetMesh(weak_ptr<Mesh> mesh)
-{
-	m_mesh = mesh;
-
-	// Make the mesh re-create the buffers whenever it updates.
-	if (!m_mesh.expired())
-		m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
-
-	CreateBuffers();
-}
-
-// Sets a default mesh (cube, quad)
-void MeshFilter::SetMesh(MeshType defaultMesh)
-{
-	auto meshSharedPtr = make_shared<Mesh>(g_context);
-	vector<VertexPositionTextureNormalTangent> vertices;
-	vector<unsigned int> indices;
-
-	switch (defaultMesh)
+	MeshFilter::~MeshFilter()
 	{
-	case Cube:
-		CreateCube(vertices, indices);
-		meshSharedPtr = make_shared<Mesh>(g_context);
-		meshSharedPtr->SetResourceName("Cube");
-		meshSharedPtr->SetVertices(vertices);
-		meshSharedPtr->SetIndices(indices);
-		meshSharedPtr->Update();
-		m_meshType = Cube;
-		break;
-
-	case Quad:
-		CreateQuad(vertices, indices);
-		meshSharedPtr = make_shared<Mesh>(g_context);
-		meshSharedPtr->SetResourceName("Quad");
-		meshSharedPtr->SetVertices(vertices);
-		meshSharedPtr->SetIndices(indices);
-		meshSharedPtr->Update();
-		m_meshType = Quad;
-		break;
-
-	default:
-		m_mesh = weak_ptr<Mesh>();
-		break;
+		m_vertexBuffer.reset();
+		m_indexBuffer.reset();
 	}
 
-	auto meshWeakPtr = g_context->GetSubsystem<ResourceManager>()->Add(move(meshSharedPtr));
-	SetMesh(meshWeakPtr);
-
-	vertices.clear();
-	indices.clear();
-}
-
-// Creates a mesh from raw vertex/index data and sets it
-void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
-{
-	// Create a mesh
-	auto mesh = make_shared<Mesh>(g_context);
-	mesh->SetResourceName(name);
-	mesh->SetRootGameObjectID(rootGameObjectID);
-	mesh->SetVertices(vertices);
-	mesh->SetIndices(indices);
-	mesh->Update();
-
-	// Save it and set it
-	SetMesh(g_context->GetSubsystem<ResourceManager>()->Add(mesh));
-}
-
-// Set the buffers to active in the input assembler so they can be rendered.
-bool MeshFilter::SetBuffers()
-{
-	if (!m_vertexBuffer) {
-		LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + g_gameObject->GetName() + "\".");
-	}
-
-	if (!m_indexBuffer) {
-		LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + g_gameObject->GetName() + "\".");
-	}
-
-	if (!m_vertexBuffer || !m_indexBuffer) {
-		return false;
-	}
-
-	m_vertexBuffer->SetIA();
-	m_indexBuffer->SetIA();
-
-	// Set the type of primitive that should be rendered from this vertex buffer
-	g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(TriangleList);
-
-	return true;
-}
-
-void MeshFilter::NormalizeModelScale()
-{
-	float normalizedScale = GetNormalizedModelScale();
-	SetModelScale(normalizedScale);
-}
-
-std::vector<std::weak_ptr<Mesh>> MeshFilter::GetAllModelMeshes()
-{
-	vector<weak_ptr<Mesh>> modelMeshes;
-
-	auto meshes = g_context->GetSubsystem<ResourceManager>()->GetAllByType<Mesh>();
-	for (const auto& mesh : meshes)
-		if (m_mesh.lock()->GetRootGameObjectID() == mesh.lock()->GetRootGameObjectID())
-			modelMeshes.push_back(mesh);
-
-	return modelMeshes;
-}
-
-float MeshFilter::GetNormalizedModelScale()
-{
-	// get all the meshes related to this model
-	vector<weak_ptr<Mesh>> modelMeshes = GetAllModelMeshes();
-
-	// find the mesh with the largest bounding box
-	weak_ptr<Mesh> largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
-
-	if (largestBoundingBoxMesh.expired())
-		return 1.0f;
-
-	// calculate the scale
-	Vector3 boundingBox = largestBoundingBoxMesh.lock()->GetBoundingBox();
-	float scaleOffset = boundingBox.Length();
-
-	return 1.0f / scaleOffset;
-}
-
-void MeshFilter::SetModelScale(float scale)
-{
-	// get all the meshes related to this model
-	vector<weak_ptr<Mesh>> meshes = GetAllModelMeshes();
-
-	// scale them
-	for (const auto& modelMesh : meshes)
-		modelMesh.lock()->SetScale(scale);
-}
-
-std::weak_ptr<Mesh> MeshFilter::GetLargestBoundingBox(vector<weak_ptr<Mesh>> meshes)
-{
-	if (meshes.empty())
-		return weak_ptr<Mesh>();
-
-	Vector3 largestBoundingBox = Vector3::Zero;
-	weak_ptr<Mesh> largestBoundingBoxMesh = meshes.front();
-
-	for (auto mesh : meshes)
+	void MeshFilter::Reset()
 	{
-		if (mesh.expired())
-			continue;
+	}
 
-		Vector3 boundingBox = mesh.lock()->GetBoundingBox();
-		if (boundingBox.Volume() > largestBoundingBox.Volume())
+	void MeshFilter::Start()
+	{
+
+	}
+
+	void MeshFilter::OnDisable()
+	{
+
+	}
+
+	void MeshFilter::Remove()
+	{
+
+	}
+
+	void MeshFilter::Update()
+	{
+
+	}
+
+	void MeshFilter::Serialize()
+	{
+		Serializer::WriteInt((int)m_meshType);
+		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetResourceID() : (string)DATA_NOT_ASSIGNED);
+	}
+
+	void MeshFilter::Deserialize()
+	{
+		m_meshType = (MeshType)Serializer::ReadInt();
+		string meshID = Serializer::ReadSTR();
+
+		if (m_meshType == Imported) // Get the already loaded mesh
 		{
-			largestBoundingBox = boundingBox;
-			largestBoundingBoxMesh = mesh;
+			auto mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(meshID);
+			SetMesh(mesh);
 		}
+		else // Construct the mesh
+			SetMesh(m_meshType);
 	}
 
-	return largestBoundingBoxMesh;
-}
-
-Vector3 MeshFilter::GetCenter()
-{
-	return !m_mesh.expired() ? m_mesh.lock()->GetCenter() * g_transform->GetWorldTransform() : Vector3::Zero;
-}
-
-Vector3 MeshFilter::GetBoundingBox()
-{
-	return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
-}
-
-weak_ptr<Mesh> MeshFilter::GetMesh()
-{
-	return m_mesh;
-}
-
-bool MeshFilter::HasMesh()
-{
-	return m_mesh.expired() ? false : true;
-}
-
-string MeshFilter::GetMeshName()
-{
-	return !m_mesh.expired() ? m_mesh.lock()->GetResourceName() : DATA_NOT_ASSIGNED;
-}
-
-bool MeshFilter::CreateBuffers()
-{
-	auto graphicsDevice = g_context->GetSubsystem<Graphics>();
-	if (!graphicsDevice->GetDevice())
+	// Sets a mesh from memory (all other set/create functions resolve to this one)
+	void MeshFilter::SetMesh(weak_ptr<Mesh> mesh)
 	{
-		LOG_ERROR("Aborting vertex buffer creation. Graphics device is not present.");
-		return false;
+		m_mesh = mesh;
+
+		// Make the mesh re-create the buffers whenever it updates.
+		if (!m_mesh.expired())
+			m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
+
+		CreateBuffers();
 	}
 
-	if (m_mesh.expired())
+	// Sets a default mesh (cube, quad)
+	void MeshFilter::SetMesh(MeshType defaultMesh)
 	{
-		LOG_ERROR(
-			"Aborting vertex buffer creation for \"" + g_gameObject->GetName() + "\"."
-			" The mesh has expired."
-		);
-		return false;
+		auto meshSharedPtr = make_shared<Mesh>(g_context);
+		vector<VertexPositionTextureNormalTangent> vertices;
+		vector<unsigned int> indices;
+
+		switch (defaultMesh)
+		{
+		case Cube:
+			CreateCube(vertices, indices);
+			meshSharedPtr = make_shared<Mesh>(g_context);
+			meshSharedPtr->SetResourceName("Cube");
+			meshSharedPtr->SetVertices(vertices);
+			meshSharedPtr->SetIndices(indices);
+			meshSharedPtr->Update();
+			m_meshType = Cube;
+			break;
+
+		case Quad:
+			CreateQuad(vertices, indices);
+			meshSharedPtr = make_shared<Mesh>(g_context);
+			meshSharedPtr->SetResourceName("Quad");
+			meshSharedPtr->SetVertices(vertices);
+			meshSharedPtr->SetIndices(indices);
+			meshSharedPtr->Update();
+			m_meshType = Quad;
+			break;
+
+		default:
+			m_mesh = weak_ptr<Mesh>();
+			break;
+		}
+
+		auto meshWeakPtr = g_context->GetSubsystem<ResourceManager>()->Add(move(meshSharedPtr));
+		SetMesh(meshWeakPtr);
+
+		vertices.clear();
+		indices.clear();
 	}
 
-	m_vertexBuffer.reset();
-	m_indexBuffer.reset();
-
-	m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphicsDevice);
-	if (!m_vertexBuffer->Create(m_mesh.lock()->GetVertices()))
+	// Creates a mesh from raw vertex/index data and sets it
+	void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
 	{
-		LOG_ERROR("Failed to create vertex buffer [" + g_gameObject->GetName() + "].");
-		return false;
+		// Create a mesh
+		auto mesh = make_shared<Mesh>(g_context);
+		mesh->SetResourceName(name);
+		mesh->SetRootGameObjectID(rootGameObjectID);
+		mesh->SetVertices(vertices);
+		mesh->SetIndices(indices);
+		mesh->Update();
+
+		// Save it and set it
+		SetMesh(g_context->GetSubsystem<ResourceManager>()->Add(mesh));
 	}
 
-	m_indexBuffer = make_shared<D3D11IndexBuffer>(graphicsDevice);
-	if (!m_indexBuffer->Create(m_mesh.lock()->GetIndices()))
+	// Set the buffers to active in the input assembler so they can be rendered.
+	bool MeshFilter::SetBuffers()
 	{
-		LOG_ERROR("Failed to create index buffer [" + g_gameObject->GetName() + "].");
-		return false;
+		if (!m_vertexBuffer) {
+			LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + g_gameObject->GetName() + "\".");
+		}
+
+		if (!m_indexBuffer) {
+			LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + g_gameObject->GetName() + "\".");
+		}
+
+		if (!m_vertexBuffer || !m_indexBuffer) {
+			return false;
+		}
+
+		m_vertexBuffer->SetIA();
+		m_indexBuffer->SetIA();
+
+		// Set the type of primitive that should be rendered from this vertex buffer
+		g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(TriangleList);
+
+		return true;
 	}
 
-	return true;
-}
+	void MeshFilter::NormalizeModelScale()
+	{
+		float normalizedScale = GetNormalizedModelScale();
+		SetModelScale(normalizedScale);
+	}
 
-void MeshFilter::CreateCube(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
-{
-	// front
-	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 0
-	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 1
-	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 2
-	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 3
+	std::vector<std::weak_ptr<Mesh>> MeshFilter::GetAllModelMeshes()
+	{
+		vector<weak_ptr<Mesh>> modelMeshes;
 
-	// bottom
-	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 4
-	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 5
-	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 6
-	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 7
+		auto meshes = g_context->GetSubsystem<ResourceManager>()->GetAllByType<Mesh>();
+		for (const auto& mesh : meshes)
+			if (m_mesh.lock()->GetRootGameObjectID() == mesh.lock()->GetRootGameObjectID())
+				modelMeshes.push_back(mesh);
 
-	// back
-	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 8
-	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 9
-	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 10
-	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 11
+		return modelMeshes;
+	}
 
-	// top
-	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 12
-	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 13
-	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 14
-	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 15
+	float MeshFilter::GetNormalizedModelScale()
+	{
+		// get all the meshes related to this model
+		vector<weak_ptr<Mesh>> modelMeshes = GetAllModelMeshes();
 
-	// left
-	vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 16
-	vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 17
-	vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 18
-	vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 19
+		// find the mesh with the largest bounding box
+		weak_ptr<Mesh> largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
 
-	// right
-	vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 20
-	vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 21
-	vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 22
-	vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 23
+		if (largestBoundingBoxMesh.expired())
+			return 1.0f;
 
-	// front
-	indices.push_back(0); indices.push_back(1); indices.push_back(2);
-	indices.push_back(2); indices.push_back(1); indices.push_back(3);
+		// calculate the scale
+		Vector3 boundingBox = largestBoundingBoxMesh.lock()->GetBoundingBox();
+		float scaleOffset = boundingBox.Length();
 
-	// bottom
-	indices.push_back(4); indices.push_back(5); indices.push_back(6);
-	indices.push_back(6); indices.push_back(5); indices.push_back(7);
+		return 1.0f / scaleOffset;
+	}
 
-	// back
-	indices.push_back(10); indices.push_back(9); indices.push_back(8);
-	indices.push_back(11); indices.push_back(9); indices.push_back(10);
+	void MeshFilter::SetModelScale(float scale)
+	{
+		// get all the meshes related to this model
+		vector<weak_ptr<Mesh>> meshes = GetAllModelMeshes();
 
-	// top
-	indices.push_back(14); indices.push_back(13); indices.push_back(12);
-	indices.push_back(15); indices.push_back(13); indices.push_back(14);
+		// scale them
+		for (const auto& modelMesh : meshes)
+			modelMesh.lock()->SetScale(scale);
+	}
 
-	// left
-	indices.push_back(16); indices.push_back(17); indices.push_back(18);
-	indices.push_back(18); indices.push_back(17); indices.push_back(19);
+	std::weak_ptr<Mesh> MeshFilter::GetLargestBoundingBox(vector<weak_ptr<Mesh>> meshes)
+	{
+		if (meshes.empty())
+			return weak_ptr<Mesh>();
 
-	// right
-	indices.push_back(22); indices.push_back(21); indices.push_back(20);
-	indices.push_back(23); indices.push_back(21); indices.push_back(22);
-}
+		Vector3 largestBoundingBox = Vector3::Zero;
+		weak_ptr<Mesh> largestBoundingBoxMesh = meshes.front();
 
-void MeshFilter::CreateQuad(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
-{
-	vertices.push_back({ Vector3(-0.5f, 0.0f, 0.5f),Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 0 top-left
-	vertices.push_back({ Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 1 top-right
-	vertices.push_back({ Vector3(-0.5f, 0.0f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 2 bottom-left
-	vertices.push_back({ Vector3(0.5f, 0.0f, -0.5f),Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 3 bottom-right
+		for (auto mesh : meshes)
+		{
+			if (mesh.expired())
+				continue;
 
-	indices.push_back(3);
-	indices.push_back(2);
-	indices.push_back(0);
-	indices.push_back(3);
-	indices.push_back(0);
-	indices.push_back(1);
+			Vector3 boundingBox = mesh.lock()->GetBoundingBox();
+			if (boundingBox.Volume() > largestBoundingBox.Volume())
+			{
+				largestBoundingBox = boundingBox;
+				largestBoundingBoxMesh = mesh;
+			}
+		}
+
+		return largestBoundingBoxMesh;
+	}
+
+	Vector3 MeshFilter::GetCenter()
+	{
+		return !m_mesh.expired() ? m_mesh.lock()->GetCenter() * g_transform->GetWorldTransform() : Vector3::Zero;
+	}
+
+	Vector3 MeshFilter::GetBoundingBox()
+	{
+		return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
+	}
+
+	weak_ptr<Mesh> MeshFilter::GetMesh()
+	{
+		return m_mesh;
+	}
+
+	bool MeshFilter::HasMesh()
+	{
+		return m_mesh.expired() ? false : true;
+	}
+
+	string MeshFilter::GetMeshName()
+	{
+		return !m_mesh.expired() ? m_mesh.lock()->GetResourceName() : DATA_NOT_ASSIGNED;
+	}
+
+	bool MeshFilter::CreateBuffers()
+	{
+		auto graphicsDevice = g_context->GetSubsystem<Graphics>();
+		if (!graphicsDevice->GetDevice())
+		{
+			LOG_ERROR("Aborting vertex buffer creation. Graphics device is not present.");
+			return false;
+		}
+
+		if (m_mesh.expired())
+		{
+			LOG_ERROR(
+				"Aborting vertex buffer creation for \"" + g_gameObject->GetName() + "\"."
+				" The mesh has expired."
+			);
+			return false;
+		}
+
+		m_vertexBuffer.reset();
+		m_indexBuffer.reset();
+
+		m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphicsDevice);
+		if (!m_vertexBuffer->Create(m_mesh.lock()->GetVertices()))
+		{
+			LOG_ERROR("Failed to create vertex buffer [" + g_gameObject->GetName() + "].");
+			return false;
+		}
+
+		m_indexBuffer = make_shared<D3D11IndexBuffer>(graphicsDevice);
+		if (!m_indexBuffer->Create(m_mesh.lock()->GetIndices()))
+		{
+			LOG_ERROR("Failed to create index buffer [" + g_gameObject->GetName() + "].");
+			return false;
+		}
+
+		return true;
+	}
+
+	void MeshFilter::CreateCube(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
+	{
+		// front
+		vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 0
+		vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 1
+		vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 2
+		vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 3
+
+		// bottom
+		vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 4
+		vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 5
+		vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 6
+		vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0) }); // 7
+
+		// back
+		vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 8
+		vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 9
+		vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 10
+		vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) }); // 11
+
+		// top
+		vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 12
+		vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 13
+		vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 14
+		vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 15
+
+		// left
+		vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 16
+		vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 17
+		vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 18
+		vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0) }); // 19
+
+		// right
+		vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 20
+		vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 21
+		vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 22
+		vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) }); // 23
+
+		// front
+		indices.push_back(0); indices.push_back(1); indices.push_back(2);
+		indices.push_back(2); indices.push_back(1); indices.push_back(3);
+
+		// bottom
+		indices.push_back(4); indices.push_back(5); indices.push_back(6);
+		indices.push_back(6); indices.push_back(5); indices.push_back(7);
+
+		// back
+		indices.push_back(10); indices.push_back(9); indices.push_back(8);
+		indices.push_back(11); indices.push_back(9); indices.push_back(10);
+
+		// top
+		indices.push_back(14); indices.push_back(13); indices.push_back(12);
+		indices.push_back(15); indices.push_back(13); indices.push_back(14);
+
+		// left
+		indices.push_back(16); indices.push_back(17); indices.push_back(18);
+		indices.push_back(18); indices.push_back(17); indices.push_back(19);
+
+		// right
+		indices.push_back(22); indices.push_back(21); indices.push_back(20);
+		indices.push_back(23); indices.push_back(21); indices.push_back(22);
+	}
+
+	void MeshFilter::CreateQuad(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
+	{
+		vertices.push_back({ Vector3(-0.5f, 0.0f, 0.5f),Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 0 top-left
+		vertices.push_back({ Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 1 top-right
+		vertices.push_back({ Vector3(-0.5f, 0.0f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 2 bottom-left
+		vertices.push_back({ Vector3(0.5f, 0.0f, -0.5f),Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 3 bottom-right
+
+		indices.push_back(3);
+		indices.push_back(2);
+		indices.push_back(0);
+		indices.push_back(3);
+		indices.push_back(0);
+		indices.push_back(1);
+	}
 }

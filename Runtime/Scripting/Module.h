@@ -29,19 +29,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class asIScriptModule;
 class CScriptBuilder;
 class asIScriptEngine;
-class Scripting;
 
-class Module
+namespace Directus
 {
-public:
-	Module(const std::string& moduleName, Scripting* scriptEngine);
-	~Module();
+	class Scripting;
 
-	bool LoadScript(const std::string& filePath);
-	asIScriptModule* GetAsIScriptModule();
+	class Module
+	{
+	public:
+		Module(const std::string& moduleName, Scripting* scriptEngine);
+		~Module();
 
-private:
-	std::string m_moduleName;
-	CScriptBuilder* m_builder;
-	Scripting* m_scriptEngine;
-};
+		bool LoadScript(const std::string& filePath);
+		asIScriptModule* GetAsIScriptModule();
+
+	private:
+		std::string m_moduleName;
+		CScriptBuilder* m_builder;
+		Scripting* m_scriptEngine;
+	};
+}

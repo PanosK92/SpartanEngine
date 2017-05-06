@@ -37,128 +37,130 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus;
 using namespace Directus::Math;
 //=============================
 
-MeshCollider::MeshCollider()
+namespace Directus
 {
-	m_collisionShape = nullptr;
-	m_isConvex = false;
-}
-
-MeshCollider::~MeshCollider()
-{
-
-}
-
-//= ICOMPONENT ========================================
-void MeshCollider::Reset()
-{
-	SetMesh(GetMeshFromAttachedMeshFilter());
-	Build();
-}
-
-void MeshCollider::Start()
-{
-
-}
-
-void MeshCollider::OnDisable()
-{
-
-}
-
-void MeshCollider::Remove()
-{
-	DeleteCollisionShape();
-}
-
-void MeshCollider::Update()
-{
-
-}
-
-void MeshCollider::Serialize()
-{
-	Serializer::WriteBool(m_isConvex);
-	Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetResourceID() : (string)DATA_NOT_ASSIGNED);
-}
-
-void MeshCollider::Deserialize()
-{
-	m_isConvex = Serializer::ReadBool();
-	m_mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
-
-	Build();
-}
-//======================================================================================================================
-void MeshCollider::Build()
-{
-	if (m_mesh.expired())
-		return;
-
-	if (m_mesh.lock()->GetVertexCount() >= m_vertexLimit)
+	MeshCollider::MeshCollider()
 	{
-		LOG_WARNING("No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
-		return;
+		m_collisionShape = nullptr;
+		m_isConvex = false;
 	}
 
-	DeleteCollisionShape();
-	//= contruct collider ========================================================================================
-	btTriangleMesh* trimesh = new btTriangleMesh();
-	vector<Vector3> vertices;
-	for (unsigned int i = 0; i < m_mesh.lock()->GetTriangleCount(); i++)
+	MeshCollider::~MeshCollider()
 	{
 
-		int index0 = m_mesh.lock()->GetIndices()[i * 3];
-		int index1 = m_mesh.lock()->GetIndices()[i * 3 + 1];
-		int index2 = m_mesh.lock()->GetIndices()[i * 3 + 2];
-
-		vertices.push_back(m_mesh.lock()->GetVertices()[index0].position);
-		vertices.push_back(m_mesh.lock()->GetVertices()[index0].position);
-		vertices.push_back(m_mesh.lock()->GetVertices()[index0].position);
-
-		btVector3 vertex0 = ToBtVector3(m_mesh.lock()->GetVertices()[index0].position);
-		btVector3 vertex1 = ToBtVector3(m_mesh.lock()->GetVertices()[index1].position);
-		btVector3 vertex2 = ToBtVector3(m_mesh.lock()->GetVertices()[index2].position);
-
-		trimesh->addTriangle(vertex0, vertex1, vertex2);
 	}
-	bool useQuantization = true;
-	m_collisionShape = make_shared<btBvhTriangleMeshShape>(trimesh, useQuantization);
 
-	//= construct a hull approximation ===========================================================================
-	if (m_isConvex)
+	//= ICOMPONENT ========================================
+	void MeshCollider::Reset()
 	{
-		auto shape = new btConvexHullShape((btScalar*)vertices.data(), m_mesh.lock()->GetVertexCount(), sizeof(Vector3));
-
-		// OPTIMIZE
-		auto hull = make_shared<btShapeHull>(shape);
-		hull->buildHull(shape->getMargin());
-		auto convexShape = make_shared<btConvexHullShape>((btScalar*)hull->getVertexPointer(), hull->numVertices(), sizeof(btVector3));
-		m_collisionShape = convexShape;
+		SetMesh(GetMeshFromAttachedMeshFilter());
+		Build();
 	}
 
-	SetCollisionShapeToRigidBody(m_collisionShape);
-}
+	void MeshCollider::Start()
+	{
 
-//= HELPER FUNCTIONS ================================================================================================
-void MeshCollider::SetCollisionShapeToRigidBody(weak_ptr<btCollisionShape> shape) const
-{
-	RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
-	if (rigidBody)
-		rigidBody->SetCollisionShape(shape);
-}
+	}
 
-weak_ptr<Mesh> MeshCollider::GetMeshFromAttachedMeshFilter() const
-{
-	MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
-	return meshFilter ? meshFilter->GetMesh() : weak_ptr<Mesh>();
-}
+	void MeshCollider::OnDisable()
+	{
 
-void MeshCollider::DeleteCollisionShape()
-{
-	SetCollisionShapeToRigidBody(weak_ptr<btCollisionShape>());
+	}
+
+	void MeshCollider::Remove()
+	{
+		DeleteCollisionShape();
+	}
+
+	void MeshCollider::Update()
+	{
+
+	}
+
+	void MeshCollider::Serialize()
+	{
+		Serializer::WriteBool(m_isConvex);
+		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetResourceID() : (string)DATA_NOT_ASSIGNED);
+	}
+
+	void MeshCollider::Deserialize()
+	{
+		m_isConvex = Serializer::ReadBool();
+		m_mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
+
+		Build();
+	}
+	//======================================================================================================================
+	void MeshCollider::Build()
+	{
+		if (m_mesh.expired())
+			return;
+
+		if (m_mesh.lock()->GetVertexCount() >= m_vertexLimit)
+		{
+			LOG_WARNING("No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
+			return;
+		}
+
+		DeleteCollisionShape();
+		//= contruct collider ========================================================================================
+		btTriangleMesh* trimesh = new btTriangleMesh();
+		vector<Vector3> vertices;
+		for (unsigned int i = 0; i < m_mesh.lock()->GetTriangleCount(); i++)
+		{
+
+			int index0 = m_mesh.lock()->GetIndices()[i * 3];
+			int index1 = m_mesh.lock()->GetIndices()[i * 3 + 1];
+			int index2 = m_mesh.lock()->GetIndices()[i * 3 + 2];
+
+			vertices.push_back(m_mesh.lock()->GetVertices()[index0].position);
+			vertices.push_back(m_mesh.lock()->GetVertices()[index0].position);
+			vertices.push_back(m_mesh.lock()->GetVertices()[index0].position);
+
+			btVector3 vertex0 = ToBtVector3(m_mesh.lock()->GetVertices()[index0].position);
+			btVector3 vertex1 = ToBtVector3(m_mesh.lock()->GetVertices()[index1].position);
+			btVector3 vertex2 = ToBtVector3(m_mesh.lock()->GetVertices()[index2].position);
+
+			trimesh->addTriangle(vertex0, vertex1, vertex2);
+		}
+		bool useQuantization = true;
+		m_collisionShape = make_shared<btBvhTriangleMeshShape>(trimesh, useQuantization);
+
+		//= construct a hull approximation ===========================================================================
+		if (m_isConvex)
+		{
+			auto shape = new btConvexHullShape((btScalar*)vertices.data(), m_mesh.lock()->GetVertexCount(), sizeof(Vector3));
+
+			// OPTIMIZE
+			auto hull = make_shared<btShapeHull>(shape);
+			hull->buildHull(shape->getMargin());
+			auto convexShape = make_shared<btConvexHullShape>((btScalar*)hull->getVertexPointer(), hull->numVertices(), sizeof(btVector3));
+			m_collisionShape = convexShape;
+		}
+
+		SetCollisionShapeToRigidBody(m_collisionShape);
+	}
+
+	//= HELPER FUNCTIONS ================================================================================================
+	void MeshCollider::SetCollisionShapeToRigidBody(weak_ptr<btCollisionShape> shape) const
+	{
+		RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
+		if (rigidBody)
+			rigidBody->SetCollisionShape(shape);
+	}
+
+	weak_ptr<Mesh> MeshCollider::GetMeshFromAttachedMeshFilter() const
+	{
+		MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
+		return meshFilter ? meshFilter->GetMesh() : weak_ptr<Mesh>();
+	}
+
+	void MeshCollider::DeleteCollisionShape()
+	{
+		SetCollisionShapeToRigidBody(weak_ptr<btCollisionShape>());
+	}
+	//======================================================================================================================
 }
-//======================================================================================================================

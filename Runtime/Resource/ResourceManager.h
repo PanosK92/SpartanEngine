@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceCache.h"
 #include "../Graphics/Mesh.h"
 #include "../Core/GameObject.h"
+#include "Import/ModelImporter.h"
+#include "Import/ImageImporter.h"
 //=============================
 
 namespace Directus
@@ -52,7 +54,7 @@ namespace Directus
 			if (m_resourceCache->Cached(filePath))
 				return GetResourceByPath<T>(filePath);
 
-			std::shared_ptr<T> derivedResource = std::make_shared<T>(g_context);
+			std::shared_ptr<T> derivedResource = std::make_shared<T>(m_context);
 			std::shared_ptr<Resource> resource = ToBaseResourceShared(derivedResource);
 
 			if (resource->LoadFromFile(filePath))
@@ -61,7 +63,7 @@ namespace Directus
 			return GetResourceByPath<T>(filePath);
 		}
 
-		// Adds an already loaded resource into the resource cache
+		// Adds a resource into the resource cache
 		template <class T>
 		std::weak_ptr<T> Add(std::shared_ptr<T> resource)
 		{
@@ -126,9 +128,17 @@ namespace Directus
 		void AddResourceDirectory(ResourceType type, const std::string& directory);
 		std::string GetResourceDirectory(ResourceType type);
 
+		// Importers
+		std::weak_ptr<ModelImporter> GetModelImporter() { return m_modelImporter; }
+		std::weak_ptr<ImageImporter> GetImageImporter() { return m_imageImporter; }
+
 	private:
 		std::unique_ptr<ResourceCache> m_resourceCache;
 		std::map<ResourceType, std::string> m_resourceDirectories;
+
+		// Importers
+		std::shared_ptr<ModelImporter> m_modelImporter;
+		std::shared_ptr<ImageImporter> m_imageImporter;
 
 		// Derived -> Resource (as a shared pointer)
 		template <class T>

@@ -28,85 +28,88 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Resource.h"
 //================================
 
-class Mesh : public Directus::Resource
+namespace Directus
 {
-public:
-	Mesh(Context* context);
-	~Mesh();
-
-	//= IO =========================================================================
-private:
-	void Serialize();
-	void Deserialize();
-public:
-	bool SaveMetadata();
-	void SaveToDirectory(const std::string& directory, bool overwrite);
-	bool LoadFromFile(const std::string& filePath);
-	//==============================================================================
-
-	std::string GetRootGameObjectID() const { return m_rootGameObjectID; }
-	void SetRootGameObjectID(const std::string& rootGameObjectID) { m_rootGameObjectID = rootGameObjectID; }
-
-	void SetDirectory(const std::string& directory) { m_directory = directory; }
-
-	std::vector<VertexPositionTextureNormalTangent>& GetVertices() { return m_vertices; }
-	void SetVertices(std::vector<VertexPositionTextureNormalTangent> vertices)
+	class Mesh : public Resource
 	{
-		m_vertices = vertices;
-		m_vertexCount = (unsigned int)vertices.size();
-	}
+	public:
+		Mesh(Context* context);
+		~Mesh();
 
-	std::vector<unsigned int>& GetIndices() { return m_indices; }
-	void SetIndices(std::vector<unsigned int> indices)
-	{
-		m_indices = indices;
-		m_indexCount = (unsigned int)indices.size();
-		m_triangleCount = m_indexCount / 3;
-	}
+		//= IO =========================================================================
+	private:
+		void Serialize();
+		void Deserialize();
+	public:
+		bool SaveMetadata();
+		void SaveToDirectory(const std::string& directory, bool overwrite);
+		bool LoadFromFile(const std::string& filePath);
+		//==============================================================================
 
-	unsigned int GetVertexCount() const { return m_vertexCount; }
-	unsigned int GetIndexCount() const { return m_indexCount; }
-	unsigned int GetTriangleCount() const { return m_triangleCount; }
-	unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
+		std::string GetRootGameObjectID() const { return m_rootGameObjectID; }
+		void SetRootGameObjectID(const std::string& rootGameObjectID) { m_rootGameObjectID = rootGameObjectID; }
 
-	const Directus::Math::Vector3& GetMin() const { return m_min; }
-	const Directus::Math::Vector3& GetMax() const { return m_max; }
-	const Directus::Math::Vector3& GetCenter() const { return m_center; }
-	const Directus::Math::Vector3& GetBoundingBox() const { return m_boundingBox; }
+		void SetDirectory(const std::string& directory) { m_directory = directory; }
 
-	//= PROCESSING =================================================================
-	void Update();
-	void OnUpdate(std::function<void(void)> function);
-	void SetScale(float scale);
-	//==============================================================================
+		std::vector<VertexPositionTextureNormalTangent>& GetVertices() { return m_vertices; }
+		void SetVertices(std::vector<VertexPositionTextureNormalTangent> vertices)
+		{
+			m_vertices = vertices;
+			m_vertexCount = (unsigned int)vertices.size();
+		}
 
-private:
-	//= IO =========================================================================
-	static void SaveVertex(const VertexPositionTextureNormalTangent& vertex);
-	static void LoadVertex(VertexPositionTextureNormalTangent& vertex);
-	//==============================================================================
+		std::vector<unsigned int>& GetIndices() { return m_indices; }
+		void SetIndices(std::vector<unsigned int> indices)
+		{
+			m_indices = indices;
+			m_indexCount = (unsigned int)indices.size();
+			m_triangleCount = m_indexCount / 3;
+		}
 
-	//= HELPER FUNCTIONS ===========================================================
-	static void SetScale(Mesh* meshData, float scale);
-	static Directus::Math::Vector3 GetBoundingBox(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
-	static Directus::Math::Vector3 GetCenter(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
-	static void GetMinMax(Mesh* mesh, Directus::Math::Vector3& min, Directus::Math::Vector3& max);
-	//==============================================================================
+		unsigned int GetVertexCount() const { return m_vertexCount; }
+		unsigned int GetIndexCount() const { return m_indexCount; }
+		unsigned int GetTriangleCount() const { return m_triangleCount; }
+		unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
 
-	std::string m_rootGameObjectID;
-	std::string m_directory;
+		const Directus::Math::Vector3& GetMin() const { return m_min; }
+		const Directus::Math::Vector3& GetMax() const { return m_max; }
+		const Directus::Math::Vector3& GetCenter() const { return m_center; }
+		const Directus::Math::Vector3& GetBoundingBox() const { return m_boundingBox; }
 
-	std::vector<VertexPositionTextureNormalTangent> m_vertices;
-	std::vector<unsigned int> m_indices;
+		//= PROCESSING =================================================================
+		void Update();
+		void OnUpdate(std::function<void(void)> function);
+		void SetScale(float scale);
+		//==============================================================================
 
-	unsigned int m_vertexCount;
-	unsigned int m_indexCount;
-	unsigned int m_triangleCount;
+	private:
+		//= IO =========================================================================
+		static void SaveVertex(const VertexPositionTextureNormalTangent& vertex);
+		static void LoadVertex(VertexPositionTextureNormalTangent& vertex);
+		//==============================================================================
 
-	Directus::Math::Vector3 m_min;
-	Directus::Math::Vector3 m_max;
-	Directus::Math::Vector3 m_center;
-	Directus::Math::Vector3 m_boundingBox;
+		//= HELPER FUNCTIONS ===========================================================
+		static void SetScale(Mesh* meshData, float scale);
+		static Directus::Math::Vector3 GetBoundingBox(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
+		static Directus::Math::Vector3 GetCenter(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
+		static void GetMinMax(Mesh* mesh, Directus::Math::Vector3& min, Directus::Math::Vector3& max);
+		//==============================================================================
 
-	std::function<void(void)> m_onUpdate;
-};
+		std::string m_rootGameObjectID;
+		std::string m_directory;
+
+		std::vector<VertexPositionTextureNormalTangent> m_vertices;
+		std::vector<unsigned int> m_indices;
+
+		unsigned int m_vertexCount;
+		unsigned int m_indexCount;
+		unsigned int m_triangleCount;
+
+		Directus::Math::Vector3 m_min;
+		Directus::Math::Vector3 m_max;
+		Directus::Math::Vector3 m_center;
+		Directus::Math::Vector3 m_boundingBox;
+
+		std::function<void(void)> m_onUpdate;
+	};
+}

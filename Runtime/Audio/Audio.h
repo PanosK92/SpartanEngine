@@ -33,35 +33,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //==================================
 
-class Audio : public Subsystem
+namespace Directus
 {
-public:
-	Audio(Context* context);
-	~Audio();
+	class Audio : public Subsystem
+	{
+	public:
+		Audio(Context* context);
+		~Audio();
 
-	// SUBSYSTEM =============
-	virtual bool Initialize();
-	//========================
+		// SUBSYSTEM =============
+		virtual bool Initialize();
+		//========================
 
-	bool Update();
+		bool Update();
 
-	std::weak_ptr<AudioClip> CreateAudioClip();
-	void SetListenerTransform(Transform* transform);
+		std::weak_ptr<AudioClip> CreateAudioClip();
+		void SetListenerTransform(Transform* transform);
 
-private:
-	FMOD_RESULT m_result;
-	FMOD::System* m_fmodSystem;
-	int m_maxChannels;
-	float m_distanceFactor;
-	bool m_initialized;
+	private:
+		FMOD_RESULT m_result;
+		FMOD::System* m_fmodSystem;
+		int m_maxChannels;
+		float m_distanceFactor;
+		bool m_initialized;
 
-	//= LISTENER =========
-	Transform* m_listener;
-	FMOD_VECTOR m_pos;
-	FMOD_VECTOR m_vel;
-	FMOD_VECTOR m_for;
-	FMOD_VECTOR m_up;
-	//====================
-	
-	std::vector<std::shared_ptr<AudioClip>> m_audioHandles;
-};
+		//= LISTENER =========
+		Transform* m_listener;
+		FMOD_VECTOR m_pos;
+		FMOD_VECTOR m_vel;
+		FMOD_VECTOR m_for;
+		FMOD_VECTOR m_up;
+		//====================
+
+		std::vector<std::shared_ptr<AudioClip>> m_audioHandles;
+	};
+}

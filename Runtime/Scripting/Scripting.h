@@ -34,35 +34,39 @@ class asIScriptModule;
 class CScriptBuilder;
 struct asSFuncPtr;
 struct asSMessageInfo;
-class Module;
 
-class Scripting : public Subsystem
+namespace Directus
 {
-public:
-	Scripting(Context* context);
-	~Scripting();
+	class Module;
 
-	// SUBSYSTEM =============
-	virtual bool Initialize();
-	//========================
+	class Scripting : public Subsystem
+	{
+	public:
+		Scripting(Context* context);
+		~Scripting();
 
-	void Reset();
-	asIScriptEngine* GetAsIScriptEngine();
+		// SUBSYSTEM =============
+		virtual bool Initialize();
+		//========================
 
-	// Contexts
-	asIScriptContext* RequestContext();
-	void ReturnContext(asIScriptContext* ctx);
+		void Reset();
+		asIScriptEngine* GetAsIScriptEngine();
 
-	// Calls
-	bool ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj);
+		// Contexts
+		asIScriptContext* RequestContext();
+		void ReturnContext(asIScriptContext* ctx);
 
-	// Modules
-	void DiscardModule(std::string moduleName);
+		// Calls
+		bool ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj);
 
-private:
-	asIScriptEngine* m_scriptEngine;
-	std::vector<asIScriptContext*> m_contexts;
+		// Modules
+		void DiscardModule(std::string moduleName);
 
-	void LogExceptionInfo(asIScriptContext* ctx);
-	void message_callback(const asSMessageInfo& msg);
-};
+	private:
+		asIScriptEngine* m_scriptEngine;
+		std::vector<asIScriptContext*> m_contexts;
+
+		void LogExceptionInfo(asIScriptContext* ctx);
+		void message_callback(const asSMessageInfo& msg);
+	};
+}

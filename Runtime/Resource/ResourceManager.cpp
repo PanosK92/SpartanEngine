@@ -34,12 +34,19 @@ namespace Directus
 	ResourceManager::ResourceManager(Context* context) : Subsystem(context)
 	{
 		m_resourceCache = nullptr;
+		m_modelImporter = nullptr;
 	}
 
 	bool ResourceManager::Initialize()
 	{
+		// Cache
 		m_resourceCache = make_unique<ResourceCache>();
 
+		// Importers
+		m_imageImporter = make_shared<ImageImporter>();
+		m_modelImporter = make_shared<ModelImporter>();
+		m_modelImporter->Initialize(m_context);
+		
 		// Add engine standard resource directories
 		AddResourceDirectory(Texture_Resource, "Standard Assets//Textures//");
 		AddResourceDirectory(Shader_Resource, "Standard Assets//Shaders//");

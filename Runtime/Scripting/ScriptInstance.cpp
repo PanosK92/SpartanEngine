@@ -33,113 +33,119 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-ScriptInstance::ScriptInstance()
+namespace Directus
 {
-	m_gameObject = nullptr;
-	m_constructorFunction = nullptr;
-	m_startFunction = nullptr;
-	m_updateFunction = nullptr;
-	m_scriptObject = nullptr;
-	m_module = nullptr;
-	m_scriptEngine = nullptr;
-	m_isInstantiated = false;
-}
-
-ScriptInstance::~ScriptInstance()
-{
-	// For some weird reason, it only
-	// get's released when called twice...
-	m_scriptObject->Release();
-	m_scriptObject->Release();
-
-	m_gameObject = nullptr;
-	m_constructorFunction = nullptr;
-	m_startFunction = nullptr;
-	m_updateFunction = nullptr;
-	m_scriptEngine = nullptr;
-	m_isInstantiated = false;
-}
-
-bool ScriptInstance::Instantiate(const string& path, GameObject* gameObject, Scripting* scriptEngine)
-{
-	m_scriptEngine = scriptEngine;
-
-	// Extract properties from path
-	m_scriptPath = path;
-	m_gameObject = gameObject;
-	m_className = FileSystem::GetFileNameNoExtensionFromPath(m_scriptPath);
-	m_moduleName = m_className + m_gameObject->GetID();
-	m_constructorDeclaration = m_className + " @" + m_className + "(GameObject @)";
-
-	// Instantiate the script
-	m_isInstantiated = CreateScriptObject();
-
-	return m_isInstantiated;
-}
-
-bool ScriptInstance::IsInstantiated()
-{
-	return m_isInstantiated;
-}
-
-string ScriptInstance::GetScriptPath()
-{
-	return m_scriptPath;
-}
-
-void ScriptInstance::ExecuteStart()
-{
-	m_scriptEngine->ExecuteCall(m_startFunction, m_scriptObject);
-}
-
-void ScriptInstance::ExecuteUpdate()
-{
-	m_scriptEngine->ExecuteCall(m_updateFunction, m_scriptObject);
-}
-
-bool ScriptInstance::CreateScriptObject()
-{
-	// Create module
-	m_module = make_shared<Module>(m_moduleName, m_scriptEngine);
-	bool result = m_module->LoadScript(m_scriptPath);
-	if (!result) 
-		return false;
-
-	// Get type
-	auto type_id = m_module->GetAsIScriptModule()->GetTypeIdByDecl(m_className.c_str());
-	asITypeInfo* type = m_scriptEngine->GetAsIScriptEngine()->GetTypeInfoById(type_id);
-	if (!type) 
-		return false;
-
-	// Get functions in the script
-	m_startFunction = type->GetMethodByDecl("void Start()"); // Get the Start function from the script
-	m_updateFunction = type->GetMethodByDecl("void Update()"); // Get the Update function from the script
-	m_constructorFunction = type->GetFactoryByDecl(m_constructorDeclaration.c_str()); // Get the constructor function from the script
-	if (!m_constructorFunction)
+	ScriptInstance::ScriptInstance()
 	{
-		LOG_ERROR("Couldn't find the appropriate factory for the type '" + m_className + "'");
-		return false;
+		m_gameObject = nullptr;
+		m_constructorFunction = nullptr;
+		m_startFunction = nullptr;
+		m_updateFunction = nullptr;
+		m_scriptObject = nullptr;
+		m_module = nullptr;
+		m_scriptEngine = nullptr;
+		m_isInstantiated = false;
 	}
 
-	asIScriptContext* context = m_scriptEngine->RequestContext(); // request a context
-	int r = context->Prepare(m_constructorFunction); // prepare the context to call the factory function
-	if (r < 0) return false;
+	ScriptInstance::~ScriptInstance()
+	{
+		if (m_scriptObject)
+		{
+			// For some weird reason, it only
+			// get's released when called twice...
+			m_scriptObject->Release();
+			m_scriptObject->Release();
+		}
 
-	r = context->SetArgObject(0, m_gameObject); // Pass the gameobject as the constructor's parameter
-	if (r < 0) return false;
+		m_gameObject = nullptr;
+		m_constructorFunction = nullptr;
+		m_startFunction = nullptr;
+		m_updateFunction = nullptr;
+		m_scriptEngine = nullptr;
+		m_isInstantiated = false;
+	}
 
-	r = context->Execute(); // execute the call
-	if (r < 0) return false;
-	
-	// get the object that was created
-	m_scriptObject = *static_cast<asIScriptObject**>(context->GetAddressOfReturnValue());
+	bool ScriptInstance::Instantiate(const string& path, GameObject* gameObject, Scripting* scriptEngine)
+	{
+		m_scriptEngine = scriptEngine;
 
-	// if you're going to store the object you must increase the reference,
-	// otherwise it will be destroyed when the context is reused or destroyed.
-	m_scriptObject->AddRef();
-	
-	// return context
-	m_scriptEngine->ReturnContext(context);
+		// Extract properties from path
+		m_scriptPath = path;
+		m_gameObject = gameObject;
+		m_className = FileSystem::GetFileNameNoExtensionFromPath(m_scriptPath);
+		m_moduleName = m_className + m_gameObject->GetID();
+		m_constructorDeclaration = m_className + " @" + m_className + "(GameObject @)";
 
-	return true;
+		// Instantiate the script
+		m_isInstantiated = CreateScriptObject();
+
+		return m_isInstantiated;
+	}
+
+	bool ScriptInstance::IsInstantiated()
+	{
+		return m_isInstantiated;
+	}
+
+	string ScriptInstance::GetScriptPath()
+	{
+		return m_scriptPath;
+	}
+
+	void ScriptInstance::ExecuteStart()
+	{
+		m_scriptEngine->ExecuteCall(m_startFunction, m_scriptObject);
+	}
+
+	void ScriptInstance::ExecuteUpdate()
+	{
+		m_scriptEngine->ExecuteCall(m_updateFunction, m_scriptObject);
+	}
+
+	bool ScriptInstance::CreateScriptObject()
+	{
+		// Create module
+		m_module = make_shared<Module>(m_moduleName, m_scriptEngine);
+		bool result = m_module->LoadScript(m_scriptPath);
+		if (!result)
+			return false;
+
+		// Get type
+		auto type_id = m_module->GetAsIScriptModule()->GetTypeIdByDecl(m_className.c_str());
+		asITypeInfo* type = m_scriptEngine->GetAsIScriptEngine()->GetTypeInfoById(type_id);
+		if (!type)
+			return false;
+
+		// Get functions in the script
+		m_startFunction = type->GetMethodByDecl("void Start()"); // Get the Start function from the script
+		m_updateFunction = type->GetMethodByDecl("void Update()"); // Get the Update function from the script
+		m_constructorFunction = type->GetFactoryByDecl(m_constructorDeclaration.c_str()); // Get the constructor function from the script
+		if (!m_constructorFunction)
+		{
+			LOG_ERROR("Couldn't find the appropriate factory for the type '" + m_className + "'");
+			return false;
+		}
+
+		asIScriptContext* context = m_scriptEngine->RequestContext(); // request a context
+		int r = context->Prepare(m_constructorFunction); // prepare the context to call the factory function
+		if (r < 0) return false;
+
+		r = context->SetArgObject(0, m_gameObject); // Pass the gameobject as the constructor's parameter
+		if (r < 0) return false;
+
+		r = context->Execute(); // execute the call
+		if (r < 0) return false;
+
+		// get the object that was created
+		m_scriptObject = *static_cast<asIScriptObject**>(context->GetAddressOfReturnValue());
+
+		// if you're going to store the object you must increase the reference,
+		// otherwise it will be destroyed when the context is reused or destroyed.
+		m_scriptObject->AddRef();
+
+		// return context
+		m_scriptEngine->ReturnContext(context);
+
+		return true;
+	}
 }

@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
-#include "../../Graphics/Material.h"
-#include "../../Core/GameObject.h"
-//==================================
+//= INCLUDES ======================
+#include "../../Graphics/Texture.h"
+//=================================
 
 struct aiNode;
 struct aiScene;
@@ -33,16 +32,16 @@ struct aiMesh;
 
 namespace Directus
 {
-	class ModelImporter : public Subsystem
+	class Material;
+	class GameObject;
+
+	class ModelImporter
 	{
 	public:
-		ModelImporter(Context* context);
+		ModelImporter();
 		~ModelImporter();
 
-		//= Subsystem ============
-		virtual bool Initialize() { return true; }
-		//========================
-
+		bool Initialize(Context* context);
 		void LoadAsync(const std::string& filePath);
 		bool Load(const std::string& filePath);
 		GameObject* GetModelRoot() { return !m_isLoading ? m_rootGameObject : nullptr; }
@@ -53,6 +52,7 @@ namespace Directus
 		std::string m_fullTexturePath;
 		std::string m_modelName;
 		GameObject* m_rootGameObject;
+		Context* m_context;
 
 		/*------------------------------------------------------------------------------
 										[PROCESSING]

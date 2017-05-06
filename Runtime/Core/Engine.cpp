@@ -33,162 +33,161 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Audio/Audio.h"
 //===========================================
 
-//= NAMESPACES ==========
+//= NAMESPACES =====
 using namespace std;
-using namespace Directus;
-//=======================
+//==================
 
-Engine::Engine(Context* context) : Subsystem(context)
+namespace Directus
 {
-	// Register self as a subsystem
-	g_context->RegisterSubsystem(this);
-
-	// Initialize global/static modules 
-	Log::Initialize();
-	Settings::Initialize();
-
-	// Register subsystems
-	g_context->RegisterSubsystem(new Timer(g_context));
-	g_context->RegisterSubsystem(new Input(g_context));
-	g_context->RegisterSubsystem(new Multithreading(g_context));
-	g_context->RegisterSubsystem(new ResourceManager(g_context));
-	g_context->RegisterSubsystem(new Graphics(g_context));
-	g_context->RegisterSubsystem(new Renderer(g_context));
-	g_context->RegisterSubsystem(new Audio(g_context));	
-	g_context->RegisterSubsystem(new Physics(g_context));
-	g_context->RegisterSubsystem(new Scripting(g_context));
-	g_context->RegisterSubsystem(new Scene(g_context));
-	g_context->RegisterSubsystem(new Socket(g_context));
-}
-
-void Engine::SetHandles(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle)
-{
-	m_drawHandle = drawPaneHandle;
-	m_windowHandle = mainWindowHandle;
-	m_hinstance = instance;
-}
-
-bool Engine::Initialize()
-{
-	// Timer
-	if (!g_context->GetSubsystem<Timer>()->Initialize())
+	Engine::Engine(Context* context) : Subsystem(context)
 	{
-		LOG_ERROR("Failed to initialize Timer subsystem");
-		return false;
+		// Register self as a subsystem
+		m_context->RegisterSubsystem(this);
+
+		// Initialize global/static modules 
+		Log::Initialize();
+		Settings::Initialize();
+
+		// Register subsystems
+		m_context->RegisterSubsystem(new Timer(m_context));
+		m_context->RegisterSubsystem(new Input(m_context));
+		m_context->RegisterSubsystem(new Multithreading(m_context));
+		m_context->RegisterSubsystem(new ResourceManager(m_context));
+		m_context->RegisterSubsystem(new Graphics(m_context));
+		m_context->RegisterSubsystem(new Renderer(m_context));
+		m_context->RegisterSubsystem(new Audio(m_context));
+		m_context->RegisterSubsystem(new Physics(m_context));
+		m_context->RegisterSubsystem(new Scripting(m_context));
+		m_context->RegisterSubsystem(new Scene(m_context));
+		m_context->RegisterSubsystem(new Socket(m_context));
 	}
 
-	// Input
-	g_context->GetSubsystem<Input>()->SetHandle(m_windowHandle, m_hinstance);
-	if (!g_context->GetSubsystem<Input>()->Initialize())
+	void Engine::SetHandles(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle)
 	{
-		LOG_ERROR("Failed to initialize Input subsystem");
-		return false;
+		m_drawHandle = drawPaneHandle;
+		m_windowHandle = mainWindowHandle;
+		m_hinstance = instance;
 	}
 
-	// Multithreading
-	if (!g_context->GetSubsystem<Multithreading>()->Initialize())
+	bool Engine::Initialize()
 	{
-		LOG_ERROR("Failed to initialize Multithreading subsystem");
-		return false;
+		// Timer
+		if (!m_context->GetSubsystem<Timer>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize Timer subsystem");
+			return false;
+		}
+
+		// Input
+		m_context->GetSubsystem<Input>()->SetHandle(m_windowHandle, m_hinstance);
+		if (!m_context->GetSubsystem<Input>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize Input subsystem");
+			return false;
+		}
+
+		// Multithreading
+		if (!m_context->GetSubsystem<Multithreading>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize Multithreading subsystem");
+			return false;
+		}
+
+		// ResourceManager
+		if (!m_context->GetSubsystem<ResourceManager>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize ResourceManager subsystem");
+			return false;
+		}
+
+		// Graphics
+		m_context->GetSubsystem<Graphics>()->SetHandle(m_drawHandle);
+		if (!m_context->GetSubsystem<Graphics>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize Graphics subsystem");
+			return false;
+		}
+
+		// Renderer
+		if (!m_context->GetSubsystem<Renderer>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize Renderer subsystem");
+			return false;
+		}
+
+		// Audio
+		if (!m_context->GetSubsystem<Audio>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize Audio subsystem");
+			return false;
+		}
+
+		// Physics
+		if (!m_context->GetSubsystem<Physics>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize Physics subsystem");
+			return false;
+		}
+
+		// Scripting
+		if (!m_context->GetSubsystem<Scripting>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize Scripting subsystem");
+			return false;
+		}
+
+		// Scene
+		if (!m_context->GetSubsystem<Scene>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize Scene subsystem");
+			return false;
+		}
+
+		// Socket
+		if (!m_context->GetSubsystem<Socket>()->Initialize())
+		{
+			LOG_ERROR("Failed to initialize Socket subsystem");
+			return false;
+		}
+
+		return true;
 	}
 
-	// ResourceManager
-	if (!g_context->GetSubsystem<ResourceManager>()->Initialize())
+	void Engine::Update()
 	{
-		LOG_ERROR("Failed to initialize ResourceManager subsystem");
-		return false;
+		// This is a full simulation loop
+		m_isSimulating = true;
+
+		// TIMER UPDATE
+		m_context->GetSubsystem<Timer>()->Update();
+
+		// LOGIC UPDATE
+		FIRE_EVENT(EVENT_UPDATE);
+
+		// RENDER UPDATE
+		FIRE_EVENT(EVENT_RENDER);
 	}
 
-	// Graphics
-	g_context->GetSubsystem<Graphics>()->SetHandle(m_drawHandle);
-	if (!g_context->GetSubsystem<Graphics>()->Initialize())
+	void Engine::LightUpdate()
 	{
-		LOG_ERROR("Failed to initialize Graphics subsystem");
-		return false;
+		// This is a minimal simulation loop (editor)
+		m_isSimulating = false;
+
+		// Manually update as few subsystems as possible
+		// This is used by the editor when not in game mode.
+		m_context->GetSubsystem<Input>()->Update();
+		m_context->GetSubsystem<Scene>()->Update();
+		m_context->GetSubsystem<Scene>()->Resolve();
+		m_context->GetSubsystem<Renderer>()->Render();
 	}
 
-	// Renderer
-	if (!g_context->GetSubsystem<Renderer>()->Initialize())
+	void Engine::Shutdown()
 	{
-		LOG_ERROR("Failed to initialize Renderer subsystem");
-		return false;
+		// The context will deallocate the subsystems
+		// in the reverse order in which they were registered.
+		SafeDelete(m_context);
+
+		// Release Log singleton
+		Log::Release();
 	}
-
-	// Audio
-	if (!g_context->GetSubsystem<Audio>()->Initialize())
-	{
-		LOG_ERROR("Failed to initialize Audio subsystem");
-		return false;
-	}
-
-	// Physics
-	if (!g_context->GetSubsystem<Physics>()->Initialize())
-	{
-		LOG_ERROR("Failed to initialize Physics subsystem");
-		return false;
-	}
-
-	// Scripting
-	if (!g_context->GetSubsystem<Scripting>()->Initialize())
-	{
-		LOG_ERROR("Failed to initialize Scripting subsystem");
-		return false;
-	}
-
-	// Scene
-	if (!g_context->GetSubsystem<Scene>()->Initialize())
-	{
-		LOG_ERROR("Failed to initialize Scene subsystem");
-		return false;
-	}
-
-	// Socket
-	if (!g_context->GetSubsystem<Socket>()->Initialize())
-	{
-		LOG_ERROR("Failed to initialize Socket subsystem");
-		return false;
-	}
-
-	// Temp
-	g_context->RegisterSubsystem(new ModelImporter(g_context));
-
-	return true;
-}
-
-void Engine::Update()
-{
-	// This is a full simulation loop
-	m_isSimulating = true;
-
-	// TIMER UPDATE
-	g_context->GetSubsystem<Timer>()->Update();
-
-	// LOGIC UPDATE
-	FIRE_EVENT(EVENT_UPDATE);
-
-	// RENDER UPDATE
-	FIRE_EVENT(EVENT_RENDER);
-}
-
-void Engine::LightUpdate()
-{
-	// This is a minimal simulation loop (editor)
-	m_isSimulating = false;
-
-	// Manually update as few subsystems as possible
-	// This is used by the editor when not in game mode.
-	g_context->GetSubsystem<Input>()->Update();
-	g_context->GetSubsystem<Scene>()->Update();
-	g_context->GetSubsystem<Scene>()->Resolve();
-	g_context->GetSubsystem<Renderer>()->Render();
-}
-
-void Engine::Shutdown()
-{
-	// The context will deallocate the subsystems
-	// in the reverse order in which they were registered.
-	SafeDelete(g_context);
-
-	// Release Log singleton
-	Log::Release();
 }

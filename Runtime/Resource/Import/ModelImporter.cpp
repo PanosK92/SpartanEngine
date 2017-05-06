@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================================
+//= INCLUDES ====================================
 #include "ModelImporter.h"
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Multithreading/Multithreading.h"
 #include "../../Resource/ResourceManager.h"
-//==========================================
+//==============================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -44,51 +44,45 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	// default pp steps
-	static auto ppsteps =
-		aiProcess_CalcTangentSpace |
-		aiProcess_GenSmoothNormals |
-		aiProcess_JoinIdenticalVertices |
-		aiProcess_ImproveCacheLocality |
-		aiProcess_LimitBoneWeights |
-		aiProcess_SplitLargeMeshes |
-		aiProcess_Triangulate |
-		aiProcess_GenUVCoords |
-		aiProcess_SortByPType |
-		aiProcess_FindDegenerates |
-		aiProcess_FindInvalidData |
-		aiProcess_FindInstances |
-		aiProcess_ValidateDataStructure |
-		aiProcess_OptimizeMeshes |
-		aiProcess_Debone |
-		aiProcess_ConvertToLeftHanded;
-
-	static int smoothAngle = 80;
 	vector<string> materialNames;
 
-	ModelImporter::ModelImporter(Context* context) : Subsystem(context)
+	ModelImporter::ModelImporter()
 	{
 		m_rootGameObject = nullptr;
+		m_context = nullptr;
 	}
 
 	ModelImporter::~ModelImporter()
 	{
 	}
 
+	bool ModelImporter::Initialize(Context* context)
+	{
+		m_context = context;
+		return true;
+	}
+
 	void ModelImporter::LoadAsync(const string& filePath)
 	{
-		Multithreading* threadPool = g_context->GetSubsystem<Multithreading>();
+		Multithreading* threadPool = m_context->GetSubsystem<Multithreading>();
 		threadPool->AddTask(std::bind(&ModelImporter::Load, this, filePath));
 	}
 
 	bool ModelImporter::Load(const string& filePath)
 	{
+		if (!m_context)
+		{
+			LOG_ERROR("Aborting loading. ModelImporter requires an initialized Context");
+			return false;
+		}
+
 		m_isLoading = true;
 		m_filePath = filePath;
 		m_rootGameObject = nullptr;
 		m_modelName = FileSystem::GetFileNameFromPath(m_filePath);
 
 		// Set up Assimp importer
+		static int smoothAngle = 80;
 		Assimp::Importer importer;
 		importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64); // Optimize mesh
 		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT); // Remove points and lines.
@@ -96,6 +90,24 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, smoothAngle);
 
 		// Read the 3D model file
+		static auto ppsteps =
+			aiProcess_CalcTangentSpace |
+			aiProcess_GenSmoothNormals |
+			aiProcess_JoinIdenticalVertices |
+			aiProcess_ImproveCacheLocality |
+			aiProcess_LimitBoneWeights |
+			aiProcess_SplitLargeMeshes |
+			aiProcess_Triangulate |
+			aiProcess_GenUVCoords |
+			aiProcess_SortByPType |
+			aiProcess_FindDegenerates |
+			aiProcess_FindInvalidData |
+			aiProcess_FindInstances |
+			aiProcess_ValidateDataStructure |
+			aiProcess_OptimizeMeshes |
+			aiProcess_Debone |
+			aiProcess_ConvertToLeftHanded;
+
 		const aiScene* scene = importer.ReadFile(m_filePath, ppsteps);
 		if (!scene)
 		{
@@ -188,7 +200,7 @@ namespace Directus
 	void ModelImporter::ProcessNode(const aiScene* scene, aiNode* assimpNode, GameObject* parentNode, GameObject* newNode)
 	{
 		if (!newNode)
-			newNode = g_context->GetSubsystem<Scene>()->CreateGameObject();;
+			newNode = m_context->GetSubsystem<Scene>()->CreateGameObject();;
 
 		if (!assimpNode->mParent)
 			m_rootGameObject = newNode;
@@ -219,7 +231,7 @@ namespace Directus
 			// if this node has many meshes, then assign a new gameobject for each one of them
 			if (assimpNode->mNumMeshes > 1)
 			{
-				gameobject = g_context->GetSubsystem<Scene>()->CreateGameObject(); // create
+				gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject(); // create
 				gameobject->GetTransform()->SetParent(newNode->GetTransform()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
@@ -234,7 +246,7 @@ namespace Directus
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
-			GameObject* child = g_context->GetSubsystem<Scene>()->CreateGameObject();
+			GameObject* child = m_context->GetSubsystem<Scene>()->CreateGameObject();
 			ProcessNode(scene, assimpNode->mChildren[i], newNode, child);
 		}
 	}
@@ -298,7 +310,7 @@ namespace Directus
 			aiMaterial* assimpMaterial = scene->mMaterials[mesh->mMaterialIndex];
 
 			// Convert AiMaterial to Material and add it to the pool
-			auto material = g_context->GetSubsystem<ResourceManager>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
+			auto material = m_context->GetSubsystem<ResourceManager>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
 
 			// Set it in the mesh renderer component
 			gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);
@@ -315,7 +327,7 @@ namespace Directus
 
 	shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
 	{
-		shared_ptr<Material> engineMaterial = make_shared<Material>(g_context);
+		shared_ptr<Material> engineMaterial = make_shared<Material>(m_context);
 
 		//= NAME ====================================================================
 		aiString name;
@@ -407,7 +419,7 @@ namespace Directus
 		FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
 		// Load the texture
-		auto texture = g_context->GetSubsystem<ResourceManager>()->Load<Texture>(textureDestination);
+		auto texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(textureDestination);
 		// If it was loaded successfuly, set it to the material
 		if (!texture.expired())
 		{

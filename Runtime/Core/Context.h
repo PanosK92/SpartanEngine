@@ -21,33 +21,36 @@ DEALINGS IN THE SOFTWARE. */
 #include <vector>
 //====================
 
-class DllExport Context
+namespace Directus
 {
-public:
-	Context();
-	~Context();
-
-	// Register a subsystem
-	void RegisterSubsystem(Subsystem* subsystem);
-
-	// Get a subsystem
-	template <class T> T* GetSubsystem();
-private:
-	std::vector<Subsystem*> m_subsystems;
-};
-
-template <class T>
-T* Context::GetSubsystem()
-{
-	for (auto subsystem : m_subsystems)
+	class DllExport Context
 	{
-		// casting failure results in nullptr
-		T* typedSubsystem = dynamic_cast<T*>(subsystem);
+	public:
+		Context();
+		~Context();
+
+		// Register a subsystem
+		void RegisterSubsystem(Subsystem* subsystem);
+
+		// Get a subsystem
+		template <class T> T* GetSubsystem();
+	private:
+		std::vector<Subsystem*> m_subsystems;
+	};
+
+	template <class T>
+	T* Context::GetSubsystem()
+	{
+		for (auto subsystem : m_subsystems)
+		{
+			// casting failure results in nullptr
+			T* typedSubsystem = dynamic_cast<T*>(subsystem);
 
 
-		if (typedSubsystem)
-			return typedSubsystem;
+			if (typedSubsystem)
+				return typedSubsystem;
+		}
+
+		return nullptr;
 	}
-
-	return nullptr;
 }
