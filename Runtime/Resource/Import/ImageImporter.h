@@ -62,7 +62,7 @@ XPM files[reading, writing]
 
 //= INCLUDES ===============================
 #include <vector>
-#include "../../Multithreading/ThreadPool.h"
+#include "../../Multithreading/Multithreading.h"
 //==========================================
 
 class FIBITMAP;

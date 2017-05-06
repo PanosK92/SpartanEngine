@@ -128,7 +128,7 @@ void MeshRenderer::SetMaterial(weak_ptr<Material> material)
 	if (material.expired())
 		return;
 
-	m_material = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Add(material.lock());
+	m_material = g_context->GetSubsystem<ResourceManager>()->Add(material.lock());
 }
 
 void MeshRenderer::SetMaterial(MaterialType type)
@@ -163,14 +163,14 @@ void MeshRenderer::SetMaterial(MaterialType type)
 
 weak_ptr<Material> MeshRenderer::SetMaterial(const string& ID)
 {
-	auto material = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetResourceByID<Material>(ID);
+	auto material = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Material>(ID);
 	SetMaterial(material);
 	return GetMaterial();
 }
 
 weak_ptr<Material> MeshRenderer::LoadMaterial(const string& filePath)
 {
-	auto material = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Material>(filePath);
+	auto material = g_context->GetSubsystem<ResourceManager>()->Load<Material>(filePath);
 	SetMaterial(material);
 	return GetMaterial();
 }

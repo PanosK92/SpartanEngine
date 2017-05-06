@@ -29,101 +29,98 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	namespace Resource
+	class ResourceCache
 	{
-		class ResourceCache
+	public:
+		ResourceCache() {}
+		~ResourceCache() { Unload(); }
+
+		// Unloads all resources
+		void Unload()
 		{
-		public:
-			ResourceCache() {}
-			~ResourceCache() { Unload(); }
+			m_resources.clear();
+			m_resources.shrink_to_fit();
+		}
 
-			// Unloads all resources
-			void Unload()
-			{
-				m_resources.clear();
-				m_resources.shrink_to_fit();
-			}
+		// Adds a resource
+		void Add(std::shared_ptr<Resource> resource)
+		{
+			if (!resource)
+				return;
 
-			// Adds a resource
-			void Add(std::shared_ptr<Resource> resource)
-			{
-				if (!resource)
-					return;
+			m_resources.push_back(resource);
+		}
 
-				m_resources.push_back(resource);
-			}
+		// Returns the file paths of all the resources
+		std::vector<std::string> GetResourceFilePaths()
+		{
+			std::vector<std::string> filePaths;
+			for (const auto& resource : m_resources)
+				filePaths.push_back(resource->GetResourceFilePath());
 
-			// Returns the file paths of all the resources
-			std::vector<std::string> GetResourceFilePaths()
-			{
-				std::vector<std::string> filePaths;
-				for (const auto& resource : m_resources)
-					filePaths.push_back(resource->GetResourceFilePath());
+			return filePaths;
+		}
 
-				return filePaths;
-			}
+		// Returns a resource by ID
+		std::shared_ptr<Resource> GetByID(const std::string& ID)
+		{
+			for (const auto& resource : m_resources)
+				if (resource->GetResourceID() == ID)
+					return resource;
 
-			// Returns a resource by ID
-			std::shared_ptr<Resource> GetByID(const std::string& ID)
-			{
-				for (const auto& resource : m_resources)
-					if (resource->GetResourceID() == ID)
-						return resource;
+			return std::shared_ptr<Resource>();
+		}
 
-				return std::shared_ptr<Resource>();
-			}
+		// Returns a resource by file path
+		std::shared_ptr<Resource> GetByPath(const std::string& filePath)
+		{
+			for (const auto& resource : m_resources)
+				if (resource->GetResourceFilePath() == filePath)
+					return resource;
 
-			// Returns a resource by file path
-			std::shared_ptr<Resource> GetByPath(const std::string& filePath)
-			{
-				for (const auto& resource : m_resources)
-					if (resource->GetResourceFilePath() == filePath)
-						return resource;
+			return std::shared_ptr<Resource>();
+		}
 
-				return std::shared_ptr<Resource>();
-			}
+		// Makes the resources save their metadata
+		void SaveResourceMetadata()
+		{
+			for (const auto& resource : m_resources)
+				resource->SaveMetadata();
+		}
 
-			// Makes the resources save their metadata
-			void SaveResourceMetadata()
-			{
-				for (const auto& resource : m_resources)
-					resource->SaveMetadata();
-			}
+		// Returns all the resources
+		std::vector<std::shared_ptr<Resource>> GetAll()
+		{
+			return m_resources;
+		}
 
-			// Returns all the resources
-			std::vector<std::shared_ptr<Resource>> GetAll()
-			{
-				return m_resources;
-			}
-
-			// Checks whether a resource is already in the cache
-			bool Cached(const std::string& filePath)
-			{
-				if (filePath.empty())
-					return false;
-
-				for (const auto& resource : m_resources)
-					if (resource->GetResourceFilePath() == filePath)
-						return true;
-
+		// Checks whether a resource is already in the cache
+		bool Cached(const std::string& filePath)
+		{
+			if (filePath.empty())
 				return false;
-			}
 
-			// Checks whether a resource is already in the cache
-			bool Cached(std::shared_ptr<Resource> resourceIn)
-			{
-				if (!resourceIn)
-					return false;
+			for (const auto& resource : m_resources)
+				if (resource->GetResourceFilePath() == filePath)
+					return true;
 
-				for (const auto& resource : m_resources)
-					if (resource->GetResourceID() == resourceIn->GetResourceID())
-						return true;
+			return false;
+		}
 
+		// Checks whether a resource is already in the cache
+		bool Cached(std::shared_ptr<Resource> resourceIn)
+		{
+			if (!resourceIn)
 				return false;
-			}
 
-		private:
-			std::vector<std::shared_ptr<Resource>> m_resources;
-		};
-	}
+			for (const auto& resource : m_resources)
+				if (resource->GetResourceID() == resourceIn->GetResourceID())
+					return true;
+
+			return false;
+		}
+
+	private:
+		std::vector<std::shared_ptr<Resource>> m_resources;
+	};
 }

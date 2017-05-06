@@ -47,6 +47,10 @@ public:
 	Renderer(Context* context);
 	~Renderer();
 
+	//= Subsystem ============
+	virtual bool Initialize();
+	//========================
+
 	void Render();
 	void SetResolution(int width, int height);
 	void Clear();

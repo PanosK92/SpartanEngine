@@ -39,6 +39,10 @@ namespace Directus
 		ModelImporter(Context* context);
 		~ModelImporter();
 
+		//= Subsystem ============
+		virtual bool Initialize() { return true; }
+		//========================
+
 		void LoadAsync(const std::string& filePath);
 		bool Load(const std::string& filePath);
 		GameObject* GetModelRoot() { return !m_isLoading ? m_rootGameObject : nullptr; }

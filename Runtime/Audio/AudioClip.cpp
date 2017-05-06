@@ -28,18 +28,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GUIDGenerator.h"
 //================================
 
-//= NAMESPACES ====================
+//= NAMESPACES ================
 using namespace std;
 using namespace Directus;
 using namespace Directus::Math;
-using namespace Directus::Resource;
-//=================================
+//=============================
 
 AudioClip::AudioClip(FMOD::System* fModSystem)
 {
 	// Resource
 	m_resourceID = GENERATE_GUID;
-	m_resourceType = Audio;
+	m_resourceType = Audio_Resource;
 
 	// AudioClip
 	m_transform = nullptr;

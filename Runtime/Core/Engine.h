@@ -27,8 +27,11 @@ public:
 	Engine(Context* context);
 	~Engine() { Shutdown(); }
 
-	// Initializes the engine with a draw handle, an input handle and window instance
-	void Initialize(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
+	// Sets a draw handle, input handle and a window instance for the engine to use
+	void SetHandles(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
+
+	// Initializes the engine 
+	bool Initialize();
 
 	// Performs a complete simulation cycle (used to run your game)
 	void Update();
@@ -46,5 +49,8 @@ public:
 	void Shutdown();
 
 private:
+	HINSTANCE m_hinstance;
+	HWND m_windowHandle;;
+	HWND m_drawHandle;
 	bool m_isSimulating;
 };

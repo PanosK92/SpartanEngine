@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Skybox.h"
 #include "../Components/Script.h"
 #include "../Components/MeshFilter.h"
-#include "../Physics/PhysicsWorld.h"
+#include "../Physics/Physics.h"
 #include "../EventSystem/EventHandler.h"
 #include "../Core/Context.h"
 #include "Settings.h"
@@ -59,7 +59,7 @@ Scene::~Scene()
 	Clear();
 }
 
-void Scene::Initialize()
+bool Scene::Initialize()
 {
 	m_mainCamera = CreateCamera();
 	CreateSkybox();
@@ -68,6 +68,8 @@ void Scene::Initialize()
 
 	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Scene::Resolve);
 	SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Scene::Update);
+
+	return true;
 }
 
 void Scene::Start()
@@ -112,11 +114,11 @@ void Scene::Clear()
 	m_skybox = nullptr;
 
 	// Clear the resource cache
-	g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Unload();
+	g_context->GetSubsystem<ResourceManager>()->Unload();
 
 	// Clear/Reset subsystems that allocate some things
-	g_context->GetSubsystem<ScriptEngine>()->Reset();
-	g_context->GetSubsystem<PhysicsWorld>()->Reset();
+	g_context->GetSubsystem<Scripting>()->Reset();
+	g_context->GetSubsystem<Physics>()->Reset();
 	g_context->GetSubsystem<Renderer>()->Clear();
 }
 //=========================================================================================================
@@ -124,12 +126,12 @@ void Scene::Clear()
 //= I/O ===================================================================================================
 void Scene::SaveToFileAsync(const string& filePath)
 {
-	g_context->GetSubsystem<ThreadPool>()->AddTask(std::bind(&Scene::SaveToFile, this, filePath));
+	g_context->GetSubsystem<Multithreading>()->AddTask(std::bind(&Scene::SaveToFile, this, filePath));
 }
 
 void Scene::LoadFromFileAsync(const string& filePath)
 {
-	g_context->GetSubsystem<ThreadPool>()->AddTask(std::bind(&Scene::LoadFromFile, this, filePath));
+	g_context->GetSubsystem<Multithreading>()->AddTask(std::bind(&Scene::LoadFromFile, this, filePath));
 }
 
 bool Scene::SaveToFile(const string& filePathIn)
@@ -140,13 +142,13 @@ bool Scene::SaveToFile(const string& filePathIn)
 		filePath += SCENE_EXTENSION;
 
 	// Save any in-memory changes done to resources while running.
-	g_context->GetSubsystem<Directus::Resource::ResourceManager>()->SaveResourceMetadata();
+	g_context->GetSubsystem<ResourceManager>()->SaveResourceMetadata();
 
 	if (!Serializer::StartWriting(filePath))
 		return false;
 
 	//= Save currently loaded resource paths =======================================================
-	vector<string> resourcePaths = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetResourceFilePaths();
+	vector<string> resourcePaths = g_context->GetSubsystem<ResourceManager>()->GetResourceFilePaths();
 	Serializer::WriteVectorSTR(resourcePaths);
 	//==============================================================================================
 
@@ -193,18 +195,18 @@ bool Scene::LoadFromFile(const string& filePath)
 	{
 		if (FileSystem::IsSupportedMeshFile(resourcePath))
 		{
-			g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Mesh>(resourcePath);
+			g_context->GetSubsystem<ResourceManager>()->Load<Mesh>(resourcePath);
 			continue;
 		}
 
 		if (FileSystem::IsSupportedMaterialFile(resourcePath))
 		{
-			g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Material>(resourcePath);
+			g_context->GetSubsystem<ResourceManager>()->Load<Material>(resourcePath);
 			continue;
 		}
 
 		if (FileSystem::IsSupportedImageFile(resourcePath))
-			g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Texture>(resourcePath);
+			g_context->GetSubsystem<ResourceManager>()->Load<Texture>(resourcePath);
 	}
 
 
@@ -481,8 +483,8 @@ GameObject* Scene::CreateSkybox()
 
 GameObject* Scene::CreateCamera()
 {
-	auto resourceMng = g_context->GetSubsystem<Resource::ResourceManager>();
-	std::string scriptDirectory = resourceMng->GetResourceDirectory(Directus::Resource::Script);
+	auto resourceMng = g_context->GetSubsystem<ResourceManager>();
+	std::string scriptDirectory = resourceMng->GetResourceDirectory(Script_Resource);
 
 	GameObject* camera = CreateGameObject();
 	camera->SetName("Camera");

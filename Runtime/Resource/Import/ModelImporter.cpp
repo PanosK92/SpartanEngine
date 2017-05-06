@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Components/MeshFilter.h"
 #include "../../Core/GameObject.h"
 #include "../../Core/Context.h"
-#include "../../Multithreading/ThreadPool.h"
+#include "../../Multithreading/Multithreading.h"
 #include "../../Resource/ResourceManager.h"
 //==========================================
 
@@ -77,7 +77,7 @@ namespace Directus
 
 	void ModelImporter::LoadAsync(const string& filePath)
 	{
-		ThreadPool* threadPool = g_context->GetSubsystem<ThreadPool>();
+		Multithreading* threadPool = g_context->GetSubsystem<Multithreading>();
 		threadPool->AddTask(std::bind(&ModelImporter::Load, this, filePath));
 	}
 
@@ -298,7 +298,7 @@ namespace Directus
 			aiMaterial* assimpMaterial = scene->mMaterials[mesh->mMaterialIndex];
 
 			// Convert AiMaterial to Material and add it to the pool
-			auto material = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
+			auto material = g_context->GetSubsystem<ResourceManager>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
 
 			// Set it in the mesh renderer component
 			gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);
@@ -351,42 +351,42 @@ namespace Directus
 		aiString texturePath;
 		if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
 			if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Albedo, texturePath.data);
+				AddTextureToMaterial(engineMaterial, Albedo_Texture, texturePath.data);
 
 		//= SPECULAR (used as ROUGHNESS) TEXTURE =================================================================================
 		if (material->GetTextureCount(aiTextureType_SHININESS) > 0)
 			if (material->GetTexture(aiTextureType_SHININESS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Roughness, texturePath.data);
+				AddTextureToMaterial(engineMaterial, Roughness_Texture, texturePath.data);
 
 		//= AMBIENT (used as METALLIC) TEXTURE ===================================================================================
 		if (material->GetTextureCount(aiTextureType_AMBIENT) > 0)
 			if (material->GetTexture(aiTextureType_AMBIENT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Metallic, texturePath.data);
+				AddTextureToMaterial(engineMaterial, Metallic_Texture, texturePath.data);
 
 		//= NORMAL TEXTURE ======================================================================================================
 		if (material->GetTextureCount(aiTextureType_NORMALS) > 0)
 			if (material->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Normal, texturePath.data);
+				AddTextureToMaterial(engineMaterial, Normal_Texture, texturePath.data);
 
 		//= OCCLUSION TEXTURE ====================================================================================================
 		if (material->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
 			if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Occlusion, texturePath.data);
+				AddTextureToMaterial(engineMaterial, Occlusion_Texture, texturePath.data);
 
 		//= EMISSIVE TEXTURE ====================================================================================================
 		if (material->GetTextureCount(aiTextureType_EMISSIVE) > 0)
 			if (material->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Emission, texturePath.data);
+				AddTextureToMaterial(engineMaterial, Emission_Texture, texturePath.data);
 
 		//= HEIGHT TEXTURE =====================================================================================================
 		if (material->GetTextureCount(aiTextureType_HEIGHT) > 0)
 			if (material->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Height, texturePath.data);
+				AddTextureToMaterial(engineMaterial, Height_Texture, texturePath.data);
 
 		//= MASK TEXTURE ========================================================================================================
 		if (material->GetTextureCount(aiTextureType_OPACITY) > 0)
 			if (material->GetTexture(aiTextureType_OPACITY, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Mask, texturePath.data);
+				AddTextureToMaterial(engineMaterial, Mask_Texture, texturePath.data);
 
 		return engineMaterial;
 	}
@@ -407,7 +407,7 @@ namespace Directus
 		FileSystem::CopyFileFromTo(textureSource, textureDestination);
 
 		// Load the texture
-		auto texture = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Texture>(textureDestination);
+		auto texture = g_context->GetSubsystem<ResourceManager>()->Load<Texture>(textureDestination);
 		// If it was loaded successfuly, set it to the material
 		if (!texture.expired())
 		{
@@ -422,7 +422,7 @@ namespace Directus
 		// arbitrary to load a texture from it. This is why we get the model's directory (which is relative to the engine)...
 		string modelRootDirectory = FileSystem::GetPathWithoutFileName(m_filePath);
 
-		// ... and marge it with the texture path, Assets\Models\Alan_Wake\" + "Textures\Alan_Wake_Jacket.jpg".
+		// ... and merge it with the texture path, Assets\Models\Alan_Wake\" + "Textures\Alan_Wake_Jacket.jpg".
 		texturePath = modelRootDirectory + texturePath;
 
 		// 1. Check if the texture path is valid

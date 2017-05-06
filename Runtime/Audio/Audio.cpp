@@ -45,7 +45,7 @@ Audio::Audio(Context* context) : Subsystem(context)
 	m_for = { 0, 0, -1 };
 	m_up = { 0, 1, 0 };
 
-	// Subcribe to update event
+	// Subscribe to update event
 	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Audio::Update);
 }
 
@@ -93,7 +93,7 @@ bool Audio::Initialize()
 		return false;
 	}
 
-	// Make sure there is a soundcard devices on the machine
+	// Make sure there is a sound card devices on the machine
 	int driverCount = 0;
 	m_result = m_fmodSystem->getNumDrivers(&driverCount);
 	if (m_result != FMOD_OK)

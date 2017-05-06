@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===================================================================
-#include "PhysicsWorld.h"
+#include "Physics.h"
 #include "BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
 #include "BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h"
 #include "BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
@@ -38,13 +38,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Engine.h"
 //==============================================================================
 
-PhysicsWorld::PhysicsWorld(Context* context) : Subsystem(context)
+Physics::Physics(Context* context) : Subsystem(context)
 {
 	m_internalFPS = 60.0f;
 	m_maxSubSteps = 1;
 	m_gravity = Directus::Math::Vector3(0.0f, -9.81f, 0.0f);
 	m_simulating = false;
 
+	// Subscribe to update event
+	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Physics::Step);
+}
+
+Physics::~Physics()
+{
+	delete m_world;
+	delete m_constraintSolver;
+	delete m_broadphase;
+	delete m_dispatcher;
+	delete m_collisionConfiguration;
+	SafeRelease(m_debugDraw);
+}
+
+bool Physics::Initialize()
+{
 	m_broadphase = new btDbvtBroadphase();
 	m_collisionConfiguration = new btDefaultCollisionConfiguration();
 	m_dispatcher = new btCollisionDispatcher(m_collisionConfiguration);
@@ -61,21 +77,10 @@ PhysicsWorld::PhysicsWorld(Context* context) : Subsystem(context)
 	m_world->getSolverInfo().m_splitImpulse = false;
 	m_world->setDebugDrawer(m_debugDraw);
 
-	// Subcribe to update event
-	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, PhysicsWorld::Step);
+	return true;
 }
 
-PhysicsWorld::~PhysicsWorld()
-{
-	delete m_world;
-	delete m_constraintSolver;
-	delete m_broadphase;
-	delete m_dispatcher;
-	delete m_collisionConfiguration;
-	SafeRelease(m_debugDraw);
-}
-
-void PhysicsWorld::Step()
+void Physics::Step()
 {
 	if (!m_world)
 		return;
@@ -93,7 +98,7 @@ void PhysicsWorld::Step()
 	m_simulating = false;
 }
 
-void PhysicsWorld::Reset()
+void Physics::Reset()
 {
 	if (!m_world)
 		return;
@@ -120,18 +125,18 @@ void PhysicsWorld::Reset()
 	}
 }
 
-void PhysicsWorld::DebugDraw()
+void Physics::DebugDraw()
 {
 	m_debugDraw->ClearLines();
 	m_world->debugDrawWorld();
 }
 
-btDiscreteDynamicsWorld* PhysicsWorld::GetWorld()
+btDiscreteDynamicsWorld* Physics::GetWorld()
 {
 	return m_world;
 }
 
-PhysicsDebugDraw* PhysicsWorld::GetPhysicsDebugDraw()
+PhysicsDebugDraw* Physics::GetPhysicsDebugDraw()
 {
 	return m_debugDraw;
 }

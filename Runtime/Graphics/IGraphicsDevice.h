@@ -35,7 +35,7 @@ public:
 	virtual ~IGraphicsDevice() {}
 
 	//==========================================================================
-	virtual bool Initialize(HWND windowHandle) = 0;
+	virtual void SetHandle(HWND drawHandle) = 0;
 	virtual void Clear(const Directus::Math::Vector4& color) = 0;
 	virtual void Present() = 0;
 	virtual void SetBackBufferAsRenderTarget() = 0;

@@ -39,7 +39,10 @@ public:
 	Audio(Context* context);
 	~Audio();
 
-	bool Initialize();
+	// SUBSYSTEM =============
+	virtual bool Initialize();
+	//========================
+
 	bool Update();
 
 	std::weak_ptr<AudioClip> CreateAudioClip();

@@ -115,7 +115,11 @@ public:
 	Input(Context* context);
 	~Input();
 
-	void Initialize(HINSTANCE instance, HWND handle);
+	// SUBSYSTEM =============
+	virtual bool Initialize();
+	//========================
+
+	void SetHandle(HWND handle, HINSTANCE instance);
 	void Update();
 
 	bool GetKey(KeyCode key);
@@ -127,5 +131,7 @@ private:
 	Directus::Math::Vector2 m_mousePos;
 	Directus::Math::Vector2 m_mousePosDelta;
 	std::shared_ptr<DX8Input> m_DX8Input;
+	HWND m_handle;
+	HINSTANCE m_hinstance;
 	bool m_initialized;
 };

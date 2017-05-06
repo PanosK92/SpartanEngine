@@ -43,11 +43,15 @@ private:
 };
 //=========================================================================================
 
-class ThreadPool : public Subsystem
+class Multithreading : public Subsystem
 {
 public:
-	ThreadPool(Context* context);
-	~ThreadPool();
+	Multithreading(Context* context);
+	~Multithreading();
+
+	//= Subsystem ============
+	virtual bool Initialize();
+	//========================
 
 	// This function is invoked by the threads
 	void Invoke();

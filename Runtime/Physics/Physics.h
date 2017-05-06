@@ -37,11 +37,15 @@ class btConstraintSolver;
 class btDefaultCollisionConfiguration;
 class btDiscreteDynamicsWorld;
 
-class PhysicsWorld : public Subsystem
+class Physics : public Subsystem
 {
 public:
-	PhysicsWorld(Context* context);
-	~PhysicsWorld();
+	Physics(Context* context);
+	~Physics();
+
+	//= Subsystem ============
+	virtual bool Initialize();
+	//========================
 
 	void Step();
 	void Reset();

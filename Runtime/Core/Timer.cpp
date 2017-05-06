@@ -35,7 +35,15 @@ Timer::Timer(Context* context) : Subsystem(context)
 	m_startTime = 0.0f;
 	m_previousTime = 0.0f;
 	m_deltaTime = 0.0f;
+}
 
+Timer::~Timer()
+{
+	
+}
+
+bool Timer::Initialize()
+{
 	LARGE_INTEGER ticksPerSec;
 	if (QueryPerformanceFrequency(&ticksPerSec))
 	{
@@ -45,16 +53,14 @@ Timer::Timer(Context* context) : Subsystem(context)
 	{
 		LOG_ERROR("The system does not support high performance timers.");
 		m_ticksPerSec = 1000000;
+		return false;
 	}
 
 	m_ticksPerMs = m_ticksPerSec / 1000;
 	m_startTime = GetTime();
 	m_previousTime = m_startTime;
-}
 
-Timer::~Timer()
-{
-	
+	return true;
 }
 
 void Timer::Update()

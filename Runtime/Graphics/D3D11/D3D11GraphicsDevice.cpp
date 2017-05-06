@@ -109,14 +109,14 @@ D3D11GraphicsDevice::~D3D11GraphicsDevice()
 	}
 }
 
-bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
+bool D3D11GraphicsDevice::Initialize()
 {
 	// assume all will go well
 	m_initializedSuccessfully = true;
 
-	if (!IsWindow(windowHandle))
+	if (!IsWindow(m_drawHandle))
 	{
-		LOG_ERROR("Aborting D3D11 initialization. Invalid window handle.");
+		LOG_ERROR("Aborting D3D11 initialization. Invalid draw handle.");
 		m_initializedSuccessfully = false;
 		return false;
 	}
@@ -220,7 +220,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	swapChainDesc.BufferDesc.Height = RESOLUTION_HEIGHT;
 	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.OutputWindow = windowHandle;
+	swapChainDesc.OutputWindow = m_drawHandle;
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.SampleDesc.Quality = 0;
 	swapChainDesc.Windowed = (BOOL)!FULLSCREEN_ENABLED;
@@ -229,7 +229,7 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // alt + enter fullscreen
 
-	// Create the swap chain, Direct3D device, and Direct3D device context.
+																  // Create the swap chain, Direct3D device, and Direct3D device context.
 	result = D3D11CreateDeviceAndSwapChain(nullptr, m_driverType, nullptr, 0,
 		&m_featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc,
 		&m_swapChain, &m_device, nullptr, &m_deviceContext);
@@ -350,6 +350,11 @@ bool D3D11GraphicsDevice::Initialize(HWND windowHandle)
 	//==============================================================================
 
 	return m_initializedSuccessfully;
+}
+
+void D3D11GraphicsDevice::SetHandle(HWND drawHandle)
+{
+	m_drawHandle = drawHandle;
 }
 
 //= DEPTH ======================================================================================================

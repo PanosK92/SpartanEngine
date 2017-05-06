@@ -39,7 +39,7 @@ Mesh::Mesh(Context* context)
 {
 	// Resource
 	m_resourceID = GENERATE_GUID;
-	m_resourceType = Directus::Resource::Mesh;
+	m_resourceType = Mesh_Resource;
 
 	// Mesh	
 	m_rootGameObjectID = DATA_NOT_ASSIGNED;

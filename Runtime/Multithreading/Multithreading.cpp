@@ -20,20 +20,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==========
-#include "ThreadPool.h"
+#include "Multithreading.h"
 //=====================
 
 //= NAMESPACES ======
 using namespace  std;
 //===================
 
-ThreadPool::ThreadPool(Context* context) : Subsystem(context)
+Multithreading::Multithreading(Context* context) : Subsystem(context)
 {
-	for (int i = 0; i < m_threadCount; i++)
-		m_threads.emplace_back(thread(&ThreadPool::Invoke, this));
+
 }
 
-ThreadPool::~ThreadPool()
+Multithreading::~Multithreading()
 {
 	// Put unique lock on task mutex.
 	unique_lock<mutex> lock(m_tasksMutex);
@@ -55,7 +54,15 @@ ThreadPool::~ThreadPool()
 	m_threads.empty();
 }
 
-void ThreadPool::Invoke()
+bool Multithreading::Initialize()
+{
+	for (int i = 0; i < m_threadCount; i++)
+		m_threads.emplace_back(thread(&Multithreading::Invoke, this));
+
+	return true;
+}
+
+void Multithreading::Invoke()
 {
 	shared_ptr<Task> task;
 	while (true)

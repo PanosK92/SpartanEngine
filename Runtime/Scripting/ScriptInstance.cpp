@@ -60,7 +60,7 @@ ScriptInstance::~ScriptInstance()
 	m_isInstantiated = false;
 }
 
-bool ScriptInstance::Instantiate(const string& path, GameObject* gameObject, ScriptEngine* scriptEngine)
+bool ScriptInstance::Instantiate(const string& path, GameObject* gameObject, Scripting* scriptEngine)
 {
 	m_scriptEngine = scriptEngine;
 

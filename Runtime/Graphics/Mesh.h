@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Resource.h"
 //================================
 
-class Mesh : public Directus::Resource::Resource
+class Mesh : public Directus::Resource
 {
 public:
 	Mesh(Context* context);

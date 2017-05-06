@@ -36,38 +36,33 @@ struct asSFuncPtr;
 struct asSMessageInfo;
 class Module;
 
-class ScriptEngine : public Subsystem
+class Scripting : public Subsystem
 {
 public:
-	ScriptEngine(Context* context);
-	~ScriptEngine();
+	Scripting(Context* context);
+	~Scripting();
+
+	// SUBSYSTEM =============
+	virtual bool Initialize();
+	//========================
 
 	void Reset();
 	asIScriptEngine* GetAsIScriptEngine();
 
-	/*------------------------------------------------------------------------------
-									[CONTEXT]
-	------------------------------------------------------------------------------*/
+	// Contexts
 	asIScriptContext* RequestContext();
 	void ReturnContext(asIScriptContext* ctx);
 
-	/*------------------------------------------------------------------------------
-									[CALLS]
-	------------------------------------------------------------------------------*/
+	// Calls
 	bool ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj);
 
-	/*------------------------------------------------------------------------------
-								[MODULE]
-	------------------------------------------------------------------------------*/
+	// Modules
 	void DiscardModule(std::string moduleName);
 
 private:
 	asIScriptEngine* m_scriptEngine;
 	std::vector<asIScriptContext*> m_contexts;
 
-	/*------------------------------------------------------------------------------
-									[PRIVATE]
-	------------------------------------------------------------------------------*/
 	void LogExceptionInfo(asIScriptContext* ctx);
 	void message_callback(const asSMessageInfo& msg);
 };

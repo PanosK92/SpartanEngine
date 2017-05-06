@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Core/Scene.h"
 #include "../Core/GameObject.h"
-#include "../Physics/PhysicsWorld.h"
+#include "../Physics/Physics.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
@@ -73,7 +73,7 @@ void Hinge::OnDisable()
 
 void Hinge::Remove()
 {
-	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeConstraint(m_hinge);
+	g_context->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_hinge);
 }
 
 void Hinge::Update()
@@ -177,7 +177,7 @@ void Hinge::ConstructHinge()
 
 	if (m_hinge)
 	{
-		g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeConstraint(m_hinge);
+		g_context->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_hinge);
 		delete m_hinge;
 		m_hinge = nullptr;
 	}
@@ -199,7 +199,7 @@ void Hinge::ConstructHinge()
 	m_hinge->enableAngularMotor(true, 2, 3);
 
 	// add it to the world
-	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->addConstraint(m_hinge);
+	g_context->GetSubsystem<Physics>()->GetWorld()->addConstraint(m_hinge);
 }
 
 void Hinge::CalculateConnections()
