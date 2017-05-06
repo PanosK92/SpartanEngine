@@ -31,73 +31,76 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <d3d11.h>
 //=============================
 
-class D3D11GraphicsDevice : public IGraphicsDevice
+namespace Directus
 {
-public:
-	D3D11GraphicsDevice(Context* context);
-	~D3D11GraphicsDevice();
+	class D3D11GraphicsDevice : public IGraphicsDevice
+	{
+	public:
+		D3D11GraphicsDevice(Context* context);
+		~D3D11GraphicsDevice();
 
-	//= Sybsystem ============
-	virtual bool Initialize();
-	//========================
+		//= Sybsystem ============
+		virtual bool Initialize();
+		//========================
 
-	//= IGraphicsDevice ========================================================
-	virtual void SetHandle(HWND drawHandle);
-	virtual void Clear(const Directus::Math::Vector4& color);
-	virtual void Present();
-	virtual void SetBackBufferAsRenderTarget();
+		//= IGraphicsDevice ========================================================
+		virtual void SetHandle(HWND drawHandle);
+		virtual void Clear(const Directus::Math::Vector4& color);
+		virtual void Present();
+		virtual void SetBackBufferAsRenderTarget();
 
-	// Depth
-	virtual bool CreateDepthStencil();
-	virtual bool CreateDepthStencilBuffer();
-	virtual bool CreateDepthStencilView();
-	virtual void EnableZBuffer(bool enable);
+		// Depth
+		virtual bool CreateDepthStencil();
+		virtual bool CreateDepthStencilBuffer();
+		virtual bool CreateDepthStencilView();
+		virtual void EnableZBuffer(bool enable);
 
-	virtual void EnableAlphaBlending(bool enable);
-	virtual void SetInputLayout(InputLayout inputLayout);
-	virtual void SetCullMode(CullMode cullMode);
-	virtual void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
+		virtual void EnableAlphaBlending(bool enable);
+		virtual void SetInputLayout(InputLayout inputLayout);
+		virtual void SetCullMode(CullMode cullMode);
+		virtual void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
 
-	// Viewport
-	virtual bool SetResolution(int width, int height);
-	virtual void SetViewport(float width, float height);
-	virtual void ResetViewport();
+		// Viewport
+		virtual bool SetResolution(int width, int height);
+		virtual void SetViewport(float width, float height);
+		virtual void ResetViewport();
 
-	virtual bool IsInitialized() { return m_initializedSuccessfully; }
-	//======================================================================
+		virtual bool IsInitialized() { return m_initializedSuccessfully; }
+		//======================================================================
 
-	ID3D11Device* GetDevice() { return m_device; }
-	ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
+		ID3D11Device* GetDevice() { return m_device; }
+		ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
 
-private:
-	bool m_initializedSuccessfully;
-	ID3D11Device* m_device;
-	ID3D11DeviceContext* m_deviceContext;
-	IDXGISwapChain* m_swapChain;
-	ID3D11RenderTargetView* m_renderTargetView;
-	D3D_DRIVER_TYPE m_driverType;
-	D3D_FEATURE_LEVEL m_featureLevel;
-	D3D11_VIEWPORT m_viewport;
+	private:
+		bool m_initializedSuccessfully;
+		ID3D11Device* m_device;
+		ID3D11DeviceContext* m_deviceContext;
+		IDXGISwapChain* m_swapChain;
+		ID3D11RenderTargetView* m_renderTargetView;
+		D3D_DRIVER_TYPE m_driverType;
+		D3D_FEATURE_LEVEL m_featureLevel;
+		D3D11_VIEWPORT m_viewport;
 
-	UINT m_displayModeCount;
-	UINT m_refreshRateNumerator;
-	UINT m_refreshRateDenominator;
-	DXGI_MODE_DESC* m_displayModeList;
+		UINT m_displayModeCount;
+		UINT m_refreshRateNumerator;
+		UINT m_refreshRateDenominator;
+		DXGI_MODE_DESC* m_displayModeList;
 
-	int m_videoCardMemory;
-	char* m_videoCardDescription;
+		int m_videoCardMemory;
+		char* m_videoCardDescription;
 
-	ID3D11Texture2D* m_depthStencilBuffer;
-	ID3D11DepthStencilState* m_depthStencilStateEnabled;
-	ID3D11DepthStencilState* m_depthStencilStateDisabled;
-	ID3D11DepthStencilView* m_depthStencilView;
+		ID3D11Texture2D* m_depthStencilBuffer;
+		ID3D11DepthStencilState* m_depthStencilStateEnabled;
+		ID3D11DepthStencilState* m_depthStencilStateDisabled;
+		ID3D11DepthStencilView* m_depthStencilView;
 
-	ID3D11RasterizerState* m_rasterStateCullFront;
-	ID3D11RasterizerState* m_rasterStateCullBack;
-	ID3D11RasterizerState* m_rasterStateCullNone;
+		ID3D11RasterizerState* m_rasterStateCullFront;
+		ID3D11RasterizerState* m_rasterStateCullBack;
+		ID3D11RasterizerState* m_rasterStateCullNone;
 
-	ID3D11BlendState* m_blendStateAlphaEnabled;
-	ID3D11BlendState* m_blendStateAlphaDisabled;
+		ID3D11BlendState* m_blendStateAlphaEnabled;
+		ID3D11BlendState* m_blendStateAlphaDisabled;
 
-	HWND m_drawHandle;
-};
+		HWND m_drawHandle;
+	};
+}

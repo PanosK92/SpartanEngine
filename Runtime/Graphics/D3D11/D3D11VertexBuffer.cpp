@@ -29,126 +29,129 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-D3D11VertexBuffer::D3D11VertexBuffer(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
+namespace Directus
 {
-	m_buffer = nullptr;
-	m_stride = 0;
-}
-
-D3D11VertexBuffer::~D3D11VertexBuffer()
-{
-	SafeRelease(m_buffer);
-}
-
-bool D3D11VertexBuffer::Create(const vector<VertexPositionTextureNormalTangent>& vertices)
-{
-	if (!m_graphics->GetDevice() || vertices.empty()) {
-		return false;
-	}
-
-	m_stride = sizeof(VertexPositionTextureNormalTangent);
-	float size = (unsigned int)vertices.size();
-	UINT byteWidth = m_stride * size;
-
-	// fill in a buffer description.
-	D3D11_BUFFER_DESC bufferDesc;
-	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-	bufferDesc.ByteWidth = byteWidth;
-	bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bufferDesc.CPUAccessFlags = 0;
-	bufferDesc.MiscFlags = 0;
-	bufferDesc.StructureByteStride = 0;
-
-	// fill in the subresource data.
-	D3D11_SUBRESOURCE_DATA initData;
-	initData.pSysMem = vertices.data();
-	initData.SysMemPitch = 0;
-	initData.SysMemSlicePitch = 0;
-
-	HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
-	if FAILED(result)
+	D3D11VertexBuffer::D3D11VertexBuffer(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
 	{
-		LOG_ERROR("Failed to create vertex buffer");
-		return false;
+		m_buffer = nullptr;
+		m_stride = 0;
 	}
 
-	return true;
-}
-
-bool D3D11VertexBuffer::CreateDynamic(UINT stride, UINT initialSize)
-{
-	if (!m_graphics->GetDevice()) {
-		return false;
-	}
-
-	m_stride = stride;
-	UINT byteWidth = m_stride * initialSize;
-
-	// fill in a buffer description.
-	D3D11_BUFFER_DESC bufferDesc;
-	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
-	bufferDesc.ByteWidth = byteWidth;
-	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;	
-	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	bufferDesc.MiscFlags = 0;
-	bufferDesc.StructureByteStride = 0;
-
-	HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
-	if FAILED(result)
+	D3D11VertexBuffer::~D3D11VertexBuffer()
 	{
-		LOG_ERROR("Failed to create vertex buffer");
-		return false;
+		SafeRelease(m_buffer);
 	}
 
-	return true;
-}
-
-void* D3D11VertexBuffer::Map()
-{
-	if (!m_graphics->GetDeviceContext()) {
-		return nullptr;
-	}
-
-	if (!m_buffer)
+	bool D3D11VertexBuffer::Create(const vector<VertexPositionTextureNormalTangent>& vertices)
 	{
-		LOG_ERROR("Can't map uninitialized vertex buffer.");
-		return nullptr;
+		if (!m_graphics->GetDevice() || vertices.empty()) {
+			return false;
+		}
+
+		m_stride = sizeof(VertexPositionTextureNormalTangent);
+		float size = (unsigned int)vertices.size();
+		UINT byteWidth = m_stride * size;
+
+		// fill in a buffer description.
+		D3D11_BUFFER_DESC bufferDesc;
+		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
+		bufferDesc.ByteWidth = byteWidth;
+		bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+		bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		bufferDesc.CPUAccessFlags = 0;
+		bufferDesc.MiscFlags = 0;
+		bufferDesc.StructureByteStride = 0;
+
+		// fill in the subresource data.
+		D3D11_SUBRESOURCE_DATA initData;
+		initData.pSysMem = vertices.data();
+		initData.SysMemPitch = 0;
+		initData.SysMemSlicePitch = 0;
+
+		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
+		if FAILED(result)
+		{
+			LOG_ERROR("Failed to create vertex buffer");
+			return false;
+		}
+
+		return true;
 	}
 
-	// disable GPU access to the vertex buffer data.
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	HRESULT result = m_graphics->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	if (FAILED(result))
+	bool D3D11VertexBuffer::CreateDynamic(UINT stride, UINT initialSize)
 	{
-		LOG_ERROR("Failed to map vertex buffer.");
-		return nullptr;
+		if (!m_graphics->GetDevice()) {
+			return false;
+		}
+
+		m_stride = stride;
+		UINT byteWidth = m_stride * initialSize;
+
+		// fill in a buffer description.
+		D3D11_BUFFER_DESC bufferDesc;
+		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
+		bufferDesc.ByteWidth = byteWidth;
+		bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+		bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		bufferDesc.MiscFlags = 0;
+		bufferDesc.StructureByteStride = 0;
+
+		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
+		if FAILED(result)
+		{
+			LOG_ERROR("Failed to create vertex buffer");
+			return false;
+		}
+
+		return true;
 	}
 
-	return mappedResource.pData;
-}
+	void* D3D11VertexBuffer::Map()
+	{
+		if (!m_graphics->GetDeviceContext()) {
+			return nullptr;
+		}
 
-bool D3D11VertexBuffer::Unmap()
-{
-	if (!m_graphics->GetDeviceContext() || !m_buffer) {
-		return false;
+		if (!m_buffer)
+		{
+			LOG_ERROR("Can't map uninitialized vertex buffer.");
+			return nullptr;
+		}
+
+		// disable GPU access to the vertex buffer data.
+		D3D11_MAPPED_SUBRESOURCE mappedResource;
+		HRESULT result = m_graphics->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to map vertex buffer.");
+			return nullptr;
+		}
+
+		return mappedResource.pData;
 	}
 
-	// re-enable GPU access to the vertex buffer data.
-	m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
+	bool D3D11VertexBuffer::Unmap()
+	{
+		if (!m_graphics->GetDeviceContext() || !m_buffer) {
+			return false;
+		}
 
-	return true;
-}
+		// re-enable GPU access to the vertex buffer data.
+		m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
 
-bool D3D11VertexBuffer::SetIA()
-{
-	if (!m_graphics->GetDeviceContext() || !m_buffer) {
-		return false;
+		return true;
 	}
 
-	unsigned int offset = 0;
-	m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_buffer, &m_stride, &offset);
+	bool D3D11VertexBuffer::SetIA()
+	{
+		if (!m_graphics->GetDeviceContext() || !m_buffer) {
+			return false;
+		}
 
-	return true;
+		unsigned int offset = 0;
+		m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_buffer, &m_stride, &offset);
+
+		return true;
+	}
 }

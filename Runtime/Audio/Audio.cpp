@@ -31,147 +31,150 @@ using namespace std;
 using namespace FMOD;
 //===================
 
-Audio::Audio(Context* context) : Subsystem(context)
+namespace Directus
 {
-	m_result = FMOD_OK;
-	m_fmodSystem = nullptr;
-	m_maxChannels = 32;
-	m_distanceFactor = 1.0f;
-	m_initialized = false;
-
-	m_listener = nullptr;
-	m_pos = { 0, 0, 0 };
-	m_vel = { 0, 0, 0 };
-	m_for = { 0, 0, -1 };
-	m_up = { 0, 1, 0 };
-
-	// Subscribe to update event
-	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Audio::Update);
-}
-
-Audio::~Audio()
-{
-	if (!m_fmodSystem)
-		return;
-
-	// Close FMOD
-	m_result = m_fmodSystem->close();
-	if (m_result != FMOD_OK)
+	Audio::Audio(Context* context) : Subsystem(context)
 	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return;
-	}
+		m_result = FMOD_OK;
+		m_fmodSystem = nullptr;
+		m_maxChannels = 32;
+		m_distanceFactor = 1.0f;
+		m_initialized = false;
 
-	// Release FMOD
-	m_result = m_fmodSystem->release();
-	if (m_result != FMOD_OK)
-		LOG_ERROR(FMOD_ErrorString(m_result));
-}
-
-bool Audio::Initialize()
-{
-	// Create FMOD instance
-	m_result = System_Create(&m_fmodSystem);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	// Check FMOD version
-	unsigned int version;
-	m_result = m_fmodSystem->getVersion(&version);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	if (version < FMOD_VERSION)
-	{
-		LOG_ERROR("Lib version doesn't match header version.");
-		return false;
-	}
-
-	// Make sure there is a sound card devices on the machine
-	int driverCount = 0;
-	m_result = m_fmodSystem->getNumDrivers(&driverCount);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	// Initialize FMOD
-	m_result = m_fmodSystem->init(m_maxChannels, FMOD_INIT_NORMAL, nullptr);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	// Set 3D settings
-	m_result = m_fmodSystem->set3DSettings(1.0, m_distanceFactor, 0.0f);
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	m_initialized = true;
-	return true;
-}
-
-bool Audio::Update()
-{
-	if (!m_initialized)
-		return false;
-
-	// Update FMOD
-	m_result = m_fmodSystem->update();
-	if (m_result != FMOD_OK)
-	{
-		LOG_ERROR(FMOD_ErrorString(m_result));
-		return false;
-	}
-
-	//= 3D Attributes =================================================================
-	if (m_listener)
-	{
-		Directus::Math::Vector3 pos = m_listener->GetPosition();
-		Directus::Math::Vector3 forward = m_listener->GetForward();
-		Directus::Math::Vector3 up = m_listener->GetUp();
-
-		m_pos = { pos.x, pos.y, pos.z };
+		m_listener = nullptr;
+		m_pos = { 0, 0, 0 };
 		m_vel = { 0, 0, 0 };
-		m_for = { forward.x, forward.y, forward.z };
-		m_up = { up.x, up.y, up.z };
+		m_for = { 0, 0, -1 };
+		m_up = { 0, 1, 0 };
 
-		// Set 3D attributes
-		m_result = m_fmodSystem->set3DListenerAttributes(0, &m_pos, &m_vel, &m_for, &m_up);
+		// Subscribe to update event
+		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Audio::Update);
+	}
+
+	Audio::~Audio()
+	{
+		if (!m_fmodSystem)
+			return;
+
+		// Close FMOD
+		m_result = m_fmodSystem->close();
+		if (m_result != FMOD_OK)
+		{
+			LOG_ERROR(FMOD_ErrorString(m_result));
+			return;
+		}
+
+		// Release FMOD
+		m_result = m_fmodSystem->release();
+		if (m_result != FMOD_OK)
+			LOG_ERROR(FMOD_ErrorString(m_result));
+	}
+
+	bool Audio::Initialize()
+	{
+		// Create FMOD instance
+		m_result = System_Create(&m_fmodSystem);
 		if (m_result != FMOD_OK)
 		{
 			LOG_ERROR(FMOD_ErrorString(m_result));
 			return false;
 		}
+
+		// Check FMOD version
+		unsigned int version;
+		m_result = m_fmodSystem->getVersion(&version);
+		if (m_result != FMOD_OK)
+		{
+			LOG_ERROR(FMOD_ErrorString(m_result));
+			return false;
+		}
+
+		if (version < FMOD_VERSION)
+		{
+			LOG_ERROR("Lib version doesn't match header version.");
+			return false;
+		}
+
+		// Make sure there is a sound card devices on the machine
+		int driverCount = 0;
+		m_result = m_fmodSystem->getNumDrivers(&driverCount);
+		if (m_result != FMOD_OK)
+		{
+			LOG_ERROR(FMOD_ErrorString(m_result));
+			return false;
+		}
+
+		// Initialize FMOD
+		m_result = m_fmodSystem->init(m_maxChannels, FMOD_INIT_NORMAL, nullptr);
+		if (m_result != FMOD_OK)
+		{
+			LOG_ERROR(FMOD_ErrorString(m_result));
+			return false;
+		}
+
+		// Set 3D settings
+		m_result = m_fmodSystem->set3DSettings(1.0, m_distanceFactor, 0.0f);
+		if (m_result != FMOD_OK)
+		{
+			LOG_ERROR(FMOD_ErrorString(m_result));
+			return false;
+		}
+
+		m_initialized = true;
+		return true;
 	}
-	//==================================================================================
 
-	return true;
-}
+	bool Audio::Update()
+	{
+		if (!m_initialized)
+			return false;
 
-weak_ptr<AudioClip> Audio::CreateAudioClip()
-{
-	if (!m_initialized)
-		return weak_ptr<AudioClip>();
+		// Update FMOD
+		m_result = m_fmodSystem->update();
+		if (m_result != FMOD_OK)
+		{
+			LOG_ERROR(FMOD_ErrorString(m_result));
+			return false;
+		}
 
-	shared_ptr<AudioClip> audioClip = make_shared<AudioClip>(m_fmodSystem);
-	m_audioHandles.push_back(audioClip);
+		//= 3D Attributes =================================================================
+		if (m_listener)
+		{
+			Directus::Math::Vector3 pos = m_listener->GetPosition();
+			Directus::Math::Vector3 forward = m_listener->GetForward();
+			Directus::Math::Vector3 up = m_listener->GetUp();
 
-	return audioClip;
-}
+			m_pos = { pos.x, pos.y, pos.z };
+			m_vel = { 0, 0, 0 };
+			m_for = { forward.x, forward.y, forward.z };
+			m_up = { up.x, up.y, up.z };
 
-void Audio::SetListenerTransform(Transform* transform)
-{
-	m_listener = transform;
+			// Set 3D attributes
+			m_result = m_fmodSystem->set3DListenerAttributes(0, &m_pos, &m_vel, &m_for, &m_up);
+			if (m_result != FMOD_OK)
+			{
+				LOG_ERROR(FMOD_ErrorString(m_result));
+				return false;
+			}
+		}
+		//==================================================================================
+
+		return true;
+	}
+
+	weak_ptr<AudioClip> Audio::CreateAudioClip()
+	{
+		if (!m_initialized)
+			return weak_ptr<AudioClip>();
+
+		shared_ptr<AudioClip> audioClip = make_shared<AudioClip>(m_fmodSystem);
+		m_audioHandles.push_back(audioClip);
+
+		return audioClip;
+	}
+
+	void Audio::SetListenerTransform(Transform* transform)
+	{
+		m_listener = transform;
+	}
 }

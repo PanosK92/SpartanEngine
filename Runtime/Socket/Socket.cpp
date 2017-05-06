@@ -24,193 +24,199 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/ModelImporter.h"
 #include "../Core/Engine.h"
 #include "../Core/Timer.h"
+#include "../Resource/ResourceManager.h"
+#include "../Resource/Import/ImageImporter.h"
 //===========================================
 
-//= NAMESPACES ==========
+//= NAMESPACES =====
 using namespace std;
-using namespace Directus;
-//=======================
+//==================
 
-Socket::Socket(Context* context) : Subsystem(context)
+namespace Directus
 {
-	m_engine = nullptr;
+	Socket::Socket(Context* context) : Subsystem(context)
+	{
+		m_engine = nullptr;
+	}
+
+	Socket::~Socket()
+	{
+
+	}
+
+	bool Socket::Initialize()
+	{
+		m_engine = m_context->GetSubsystem<Engine>();
+		return true;
+	}
+
+	//= STATE CONTROL ==============================================================
+	void Socket::Start()
+	{
+		m_context->GetSubsystem<Scene>()->Start();
+	}
+
+	void Socket::OnDisable()
+	{
+		m_context->GetSubsystem<Scene>()->OnDisable();
+	}
+
+	void Socket::Update()
+	{
+		if (!m_engine)
+			return;
+
+		m_engine->Update();
+	}
+
+	void Socket::LightUpdate()
+	{
+		if (!m_engine)
+			return;
+
+		m_engine->LightUpdate();
+	}
+	//=============================================================================
+
+	//= RESOURCE IO ===============================================================
+	void Socket::LoadModel(const string& filePath)
+	{
+		ResourceManager* resourceMng = m_context->GetSubsystem<ResourceManager>();
+		resourceMng->GetModelImporter().lock()->Load(filePath);
+	}
+
+	void Socket::LoadModelAsync(const string& filePath)
+	{
+		ResourceManager* resourceMng = m_context->GetSubsystem<ResourceManager>();
+		resourceMng->GetModelImporter().lock()->LoadAsync(filePath);
+	}
+
+	void Socket::SaveSceneToFileAsync(const string& filePath)
+	{
+		return m_context->GetSubsystem<Scene>()->SaveToFileAsync(filePath);
+	}
+
+	void Socket::LoadSceneFromFileAsync(const string& filePath)
+	{
+		return m_context->GetSubsystem<Scene>()->LoadFromFileAsync(filePath);
+	}
+
+	bool Socket::SaveSceneToFile(const string& filePath)
+	{
+		return m_context->GetSubsystem<Scene>()->SaveToFile(filePath);
+	}
+
+	bool Socket::LoadSceneFromFile(const string& filePath)
+	{
+		return m_context->GetSubsystem<Scene>()->LoadFromFile(filePath);
+	}
+	//==============================================================================
+
+	//= GRAPHICS ===================================================================
+	void Socket::SetViewport(float width, float height)
+	{
+		m_context->GetSubsystem<D3D11GraphicsDevice>()->SetViewport(width, height);
+	}
+
+	void Socket::SetResolution(int width, int height)
+	{
+		m_context->GetSubsystem<Renderer>()->SetResolution(width, height);
+	}
+
+	//==============================================================================
+
+	//= MISC =======================================================================
+	void Socket::SetPhysicsDebugDraw(bool enable)
+	{
+		//m_renderer->SetPhysicsDebugDraw(enable);
+	}
+
+	PhysicsDebugDraw* Socket::GetPhysicsDebugDraw()
+	{
+		return m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw();
+	}
+
+	void Socket::ClearScene()
+	{
+		m_context->GetSubsystem<Scene>()->Clear();
+	}
+
+	weak_ptr<ImageImporter> Socket::GetImageImporter()
+	{
+		ResourceManager* resourceMng = m_context->GetSubsystem<ResourceManager>();
+		return resourceMng->GetImageImporter();
+	}
+
+	void Socket::SetLogger(weak_ptr<ILogger> logger)
+	{
+		Log::SetLogger(logger);
+	}
+	//==============================================================================
+
+	//= GAMEOBJECTS ================================================================
+	GameObject* Socket::CreateGameObject()
+	{
+		return m_context->GetSubsystem<Scene>()->CreateGameObject();
+	}
+
+	vector<GameObject*> Socket::GetAllGameObjects()
+	{
+		return m_context->GetSubsystem<Scene>()->GetAllGameObjects();
+	}
+
+	vector<GameObject*> Socket::GetRootGameObjects()
+	{
+		return m_context->GetSubsystem<Scene>()->GetRootGameObjects();
+	}
+
+	GameObject* Socket::GetGameObjectByID(string gameObjectID)
+	{
+		return m_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
+	}
+
+	int Socket::GetGameObjectCount()
+	{
+		return m_context->GetSubsystem<Scene>()->GetGameObjectCount();
+	}
+
+	void Socket::DestroyGameObject(GameObject* gameObject)
+	{
+		if (!gameObject)
+			return;
+
+		m_context->GetSubsystem<Scene>()->RemoveGameObject(gameObject);
+	}
+
+	bool Socket::GameObjectExists(GameObject* gameObject)
+	{
+		if (!gameObject)
+			return false;
+
+		bool exists = m_context->GetSubsystem<Scene>()->GameObjectExists(gameObject);
+
+		return exists;
+	}
+	//==============================================================================
+
+	//= STATS ======================================================================
+	float Socket::GetFPS()
+	{
+		return m_context->GetSubsystem<Scene>()->GetFPS();
+	}
+
+	int Socket::GetRenderTime()
+	{
+		return m_context->GetSubsystem<Renderer>()->GetRenderTime();
+	}
+
+	int Socket::GetRenderedMeshesCount()
+	{
+		return m_context->GetSubsystem<Renderer>()->GetRenderedMeshesCount();
+	}
+
+	float Socket::GetDeltaTime()
+	{
+		return m_context->GetSubsystem<Timer>()->GetDeltaTime();
+	}
+	//==============================================================================
 }
-
-Socket::~Socket()
-{
-
-}
-
-bool Socket::Initialize()
-{
-	m_engine = g_context->GetSubsystem<Engine>();
-	return true;
-}
-
-//= STATE CONTROL ==============================================================
-void Socket::Start()
-{
-	g_context->GetSubsystem<Scene>()->Start();
-}
-
-void Socket::OnDisable()
-{
-	g_context->GetSubsystem<Scene>()->OnDisable();
-}
-
-void Socket::Update()
-{
-	if (!m_engine)
-		return;
-
-	m_engine->Update();
-}
-
-void Socket::LightUpdate()
-{
-	if (!m_engine)
-		return;
-
-	m_engine->LightUpdate();
-}
-//=============================================================================
-
-
-//= IO ========================================================================
-void Socket::LoadModel(const string& filePath)
-{
-	g_context->GetSubsystem<ModelImporter>()->Load(filePath);
-}
-
-void Socket::LoadModelAsync(const string& filePath)
-{
-	g_context->GetSubsystem<ModelImporter>()->LoadAsync(filePath);
-}
-
-void Socket::SaveSceneToFileAsync(const string& filePath)
-{
-	return g_context->GetSubsystem<Scene>()->SaveToFileAsync(filePath);
-}
-
-void Socket::LoadSceneFromFileAsync(const string& filePath)
-{
-	return g_context->GetSubsystem<Scene>()->LoadFromFileAsync(filePath);
-}
-
-bool Socket::SaveSceneToFile(const string& filePath)
-{
-	return g_context->GetSubsystem<Scene>()->SaveToFile(filePath);
-}
-
-bool Socket::LoadSceneFromFile(const string& filePath)
-{
-	return g_context->GetSubsystem<Scene>()->LoadFromFile(filePath);
-}
-//==============================================================================
-
-//= GRAPHICS ===================================================================
-void Socket::SetViewport(float width, float height)
-{
-	g_context->GetSubsystem<D3D11GraphicsDevice>()->SetViewport(width, height);
-}
-
-void Socket::SetResolution(int width, int height)
-{
-	g_context->GetSubsystem<Renderer>()->SetResolution(width, height);
-}
-
-//==============================================================================
-
-//= MISC =======================================================================
-void Socket::SetPhysicsDebugDraw(bool enable)
-{
-	//m_renderer->SetPhysicsDebugDraw(enable);
-}
-
-PhysicsDebugDraw* Socket::GetPhysicsDebugDraw()
-{
-	return g_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw();
-}
-
-void Socket::ClearScene()
-{
-	g_context->GetSubsystem<Scene>()->Clear();
-}
-
-ImageImporter* Socket::GetImageLoader()
-{
-	return &ImageImporter::GetInstance();
-}
-
-void Socket::SetLogger(weak_ptr<ILogger> logger)
-{
-	Log::SetLogger(logger);
-}
-//==============================================================================
-
-//= GAMEOBJECTS ================================================================
-GameObject* Socket::CreateGameObject()
-{
-	return g_context->GetSubsystem<Scene>()->CreateGameObject();
-}
-
-vector<GameObject*> Socket::GetAllGameObjects()
-{
-	return g_context->GetSubsystem<Scene>()->GetAllGameObjects();
-}
-
-vector<GameObject*> Socket::GetRootGameObjects()
-{
-	return g_context->GetSubsystem<Scene>()->GetRootGameObjects();
-}
-
-GameObject* Socket::GetGameObjectByID(string gameObjectID)
-{
-	return g_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
-}
-
-int Socket::GetGameObjectCount()
-{
-	return g_context->GetSubsystem<Scene>()->GetGameObjectCount();
-}
-
-void Socket::DestroyGameObject(GameObject* gameObject)
-{
-	if (!gameObject)
-		return;
-
-	g_context->GetSubsystem<Scene>()->RemoveGameObject(gameObject);
-}
-
-bool Socket::GameObjectExists(GameObject* gameObject)
-{
-	if (!gameObject)
-		return false;
-
-	bool exists = g_context->GetSubsystem<Scene>()->GameObjectExists(gameObject);
-
-	return exists;
-}
-//==============================================================================
-
-//= STATS ======================================================================
-float Socket::GetFPS()
-{
-	return g_context->GetSubsystem<Scene>()->GetFPS();
-}
-
-int Socket::GetRenderTime()
-{
-	return g_context->GetSubsystem<Renderer>()->GetRenderTime();
-}
-
-int Socket::GetRenderedMeshesCount()
-{
-	return g_context->GetSubsystem<Renderer>()->GetRenderedMeshesCount();
-}
-
-float Socket::GetDeltaTime()
-{
-	return g_context->GetSubsystem<Timer>()->GetDeltaTime();
-}
-//==============================================================================

@@ -27,24 +27,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Texture.h"
 //==============================
 
-class DllExport Skybox : public IComponent
+namespace Directus
 {
-public:
-	Skybox();
-	~Skybox();
+	class DllExport Skybox : public IComponent
+	{
+	public:
+		Skybox();
+		~Skybox();
 
-	//= Interface =================
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
+		//= Interface =================
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
 
-	//= MISC ======================
-	void** GetEnvironmentTexture();
+		//= MISC ======================
+		void** GetEnvironmentTexture();
 
-private:
-	std::shared_ptr<Texture> m_cubeMapTexture;
-};
+	private:
+		std::shared_ptr<Texture> m_cubeMapTexture;
+	};
+}

@@ -30,63 +30,66 @@ using namespace Directus::Math;
 using namespace std;
 //=============================
 
-PostProcessShader::PostProcessShader()
+namespace Directus
 {
-	m_shader = nullptr;
-	m_constantBuffer = nullptr;
-	m_graphics = nullptr;
-}
-
-PostProcessShader::~PostProcessShader()
-{
-
-}
-
-void PostProcessShader::Load(const string& filePath, const string& pass, Graphics* graphics)
-{
-	m_graphics = graphics;
-
-	// load the vertex and the pixel shader
-	m_shader = make_shared<D3D11Shader>(m_graphics);
-	m_shader->AddDefine(pass.c_str(), true);
-	m_shader->Load(filePath);
-	m_shader->SetInputLayout(PositionTexture);
-	m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-	m_shader->AddSampler(D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-
-	// create buffer
-	m_constantBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
-	m_constantBuffer->Create(sizeof(DefaultBuffer));
-}
-
-bool PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* texture)
-{
-	if (!m_graphics->GetDeviceContext()) {
-		return false;
+	PostProcessShader::PostProcessShader()
+	{
+		m_shader = nullptr;
+		m_constantBuffer = nullptr;
+		m_graphics = nullptr;
 	}
 
-	// Set shader
-	m_shader->Set();
+	PostProcessShader::~PostProcessShader()
+	{
 
-	// Set texture
-	m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
+	}
 
-	//= UPDATE BUFFER ==========================================================
-	DefaultBuffer* buffer = (DefaultBuffer*)m_constantBuffer->Map();
+	void PostProcessShader::Load(const string& filePath, const string& pass, Graphics* graphics)
+	{
+		m_graphics = graphics;
 
-	buffer->worldViewProjection = worldMatrix * viewMatrix * projectionMatrix;
-	buffer->viewport = GET_RESOLUTION;
-	buffer->padding = GET_RESOLUTION;
+		// load the vertex and the pixel shader
+		m_shader = make_shared<D3D11Shader>(m_graphics);
+		m_shader->AddDefine(pass.c_str(), true);
+		m_shader->Load(filePath);
+		m_shader->SetInputLayout(PositionTexture);
+		m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+		m_shader->AddSampler(D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
-	m_constantBuffer->Unmap();
-	//==========================================================================
-	
-	// Set constant buffer
-	m_constantBuffer->SetPS(0);
-	m_constantBuffer->SetVS(0);
+		// create buffer
+		m_constantBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+		m_constantBuffer->Create(sizeof(DefaultBuffer));
+	}
 
-	// Render
-	m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	bool PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* texture)
+	{
+		if (!m_graphics->GetDeviceContext()) {
+			return false;
+		}
 
-	return true;
+		// Set shader
+		m_shader->Set();
+
+		// Set texture
+		m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
+
+		//= UPDATE BUFFER ==========================================================
+		DefaultBuffer* buffer = (DefaultBuffer*)m_constantBuffer->Map();
+
+		buffer->worldViewProjection = worldMatrix * viewMatrix * projectionMatrix;
+		buffer->viewport = GET_RESOLUTION;
+		buffer->padding = GET_RESOLUTION;
+
+		m_constantBuffer->Unmap();
+		//==========================================================================
+
+		// Set constant buffer
+		m_constantBuffer->SetPS(0);
+		m_constantBuffer->SetVS(0);
+
+		// Render
+		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+
+		return true;
+	}
 }

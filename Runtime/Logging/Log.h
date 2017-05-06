@@ -28,43 +28,46 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Quaternion.h" // needs to be included (it's just forward declared by Vector3)
 //=============================
 
+namespace Directus
+{
 #define LOG_INFO(text) Log::Write(text, Log::Info)
 #define LOG_WARNING(text) Log::Write(text, Log::Warning)
 #define LOG_ERROR(text) Log::Write(text, Log::Error)
 
-class DllExport Log
-{
-	friend class ILogger;
-public:
-	enum LogType
+	class DllExport Log
 	{
-		Info,
-		Warning,
-		Error
+		friend class ILogger;
+	public:
+		enum LogType
+		{
+			Info,
+			Warning,
+			Error
+		};
+
+		static void Initialize();
+		static void Release();
+		static void SetLogger(std::weak_ptr<ILogger> logger);
+
+		//= LOGGING ==========================================================================
+		static void Write(const std::string& text, LogType type);
+		static void WriteAsText(const std::string& text);
+		static void Write(const char* text, LogType type);
+		static void Write(const Math::Vector3& vector, LogType type);
+		static void Write(const Math::Quaternion& quaternion, LogType type);
+		static void Write(float value, LogType type);
+		static void Write(int value, LogType type);
+		static void Write(unsigned int value, LogType type);
+		static void Write(bool value, LogType type);
+		static void Write(size_t value, LogType type);
+
+		//= HELPER FUNCTIONS ==============================================================
+		static std::string WCHARPToString(WCHAR*);
+
+	private:
+		static std::weak_ptr<ILogger> m_logger;
+		static std::ofstream m_fout;
+		static std::string m_logFileName;
+		static bool m_firstLog;
 	};
-
-	static void Initialize();
-	static void Release();
-	static void SetLogger(std::weak_ptr<ILogger> logger);
-
-	//= LOGGING ==========================================================================
-	static void Write(const std::string& text, LogType type);
-	static void WriteAsText(const std::string& text);
-	static void Write(const char* text, LogType type);
-	static void Write(const Directus::Math::Vector3& vector, LogType type);
-	static void Write(const Directus::Math::Quaternion& quaternion, LogType type);
-	static void Write(float value, LogType type);
-	static void Write(int value, LogType type);
-	static void Write(unsigned int value, LogType type);
-	static void Write(bool value, LogType type);
-	static void Write(size_t value, LogType type);
-
-	//= HELPER FUNCTIONS ==============================================================
-	static std::string WCHARPToString(WCHAR*);
-
-private:
-	static std::weak_ptr<ILogger> m_logger;
-	static std::ofstream m_fout;
-	static std::string m_logFileName;
-	static bool m_firstLog;
-};
+}

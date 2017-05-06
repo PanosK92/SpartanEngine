@@ -33,168 +33,174 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Resource/Import/DDSTextureImporter.h"
+#include "../Resource/ResourceManager.h"
+#include "D3D11/D3D11Texture.h"
 //================================================
 
-//= NAMESPACES ==========
+//= NAMESPACES =====
 using namespace std;
-using namespace Directus;
-//=======================
+//==================
 
-Texture::Texture(Context* context)
+namespace Directus
 {
-	// IResource
-	m_resourceID = GENERATE_GUID;
-	m_resourceType = Texture_Resource;
-
-	// Texture
-	m_context = context;
-	m_width = 0;
-	m_height = 0;
-	m_textureType = Albedo_Texture;
-	m_grayscale = false;
-	m_transparency = false;
-	m_alphaIsTransparency = false;
-	m_generateMipchain = true;
-	m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<Graphics>());
-}
-
-Texture::~Texture()
-{
-
-}
-
-//= IO ========================================================
-bool Texture::SaveMetadata()
-{
-	if (!Serializer::StartWriting(GetFilePathMetadata()))
-		return false;
-
-	Serializer::WriteSTR(METADATA_TYPE_TEXTURE);
-	Serializer::WriteSTR(m_resourceID);
-	Serializer::WriteSTR(m_resourceName);
-	Serializer::WriteSTR(m_resourceFilePath);
-	Serializer::WriteInt(m_width);
-	Serializer::WriteInt(m_height);
-	Serializer::WriteInt(int(m_textureType));
-	Serializer::WriteBool(m_grayscale);
-	Serializer::WriteBool(m_transparency);
-	Serializer::WriteBool(m_generateMipchain);
-
-	Serializer::StopWriting();
-
-	return true;
-}
-
-bool Texture::LoadMetadata()
-{
-	if (!Serializer::StartReading(GetFilePathMetadata()))
-		return false;
-
-	if (Serializer::ReadSTR() == METADATA_TYPE_TEXTURE)
+	Texture::Texture(Context* context)
 	{
-		m_resourceID = Serializer::ReadSTR();
-		m_resourceName = Serializer::ReadSTR();
-		m_resourceFilePath = Serializer::ReadSTR();
-		m_width = Serializer::ReadInt();
-		m_height = Serializer::ReadInt();
-		m_textureType = TextureType(Serializer::ReadInt());
-		m_grayscale = Serializer::ReadBool();
-		m_transparency = Serializer::ReadBool();
-		m_generateMipchain = Serializer::ReadBool();
+		// IResource
+		m_resourceID = GENERATE_GUID;
+		m_resourceType = Texture_Resource;
+
+		// Texture
+		m_context = context;
+		m_width = 0;
+		m_height = 0;
+		m_textureType = Albedo_Texture;
+		m_grayscale = false;
+		m_transparency = false;
+		m_alphaIsTransparency = false;
+		m_generateMipchain = true;
+		m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 	}
 
-	Serializer::StopReading();
+	Texture::~Texture()
+	{
 
-	return true;
-}
-
-// Loads a texture (not it's metadata) from an image file
-bool Texture::LoadFromFile(const string& filePath)
-{
-	auto graphicsDevice = m_context->GetSubsystem<Graphics>()->GetDevice();
-	if (!graphicsDevice) {
-		return false;
 	}
 
-	// Load DDS (too bored to implement dds cubemap support in the ImageImporter)
-	if (FileSystem::GetExtensionFromPath(filePath) == ".dds")
+	//= IO ========================================================
+	bool Texture::SaveMetadata()
 	{
-		ID3D11ShaderResourceView* ddsTex = nullptr;
-		wstring widestr = wstring(filePath.begin(), filePath.end());
-		HRESULT hr = DirectX::CreateDDSTextureFromFile(graphicsDevice, widestr.c_str(), nullptr, &ddsTex);
-		if (FAILED(hr))
-		{
-			LOG_ERROR("Failed to load texture \"" + filePath + "\".");
+		if (!Serializer::StartWriting(GetFilePathMetadata()))
 			return false;
-		}
 
-		m_texture->SetShaderResourceView(ddsTex);
+		Serializer::WriteSTR(METADATA_TYPE_TEXTURE);
+		Serializer::WriteSTR(m_resourceID);
+		Serializer::WriteSTR(m_resourceName);
+		Serializer::WriteSTR(m_resourceFilePath);
+		Serializer::WriteInt(m_width);
+		Serializer::WriteInt(m_height);
+		Serializer::WriteInt(int(m_textureType));
+		Serializer::WriteBool(m_grayscale);
+		Serializer::WriteBool(m_transparency);
+		Serializer::WriteBool(m_generateMipchain);
+
+		Serializer::StopWriting();
+
 		return true;
 	}
 
-	// Load texture
-	bool loaded = m_generateMipchain ? ImageImporter::GetInstance().LoadAndCreateMipchain(filePath) : ImageImporter::GetInstance().Load(filePath);
-	if (!loaded)
+	bool Texture::LoadMetadata()
 	{
-		LOG_ERROR("Failed to load texture \"" + filePath + "\".");
-		ImageImporter::GetInstance().Clear();
-		return false;
+		if (!Serializer::StartReading(GetFilePathMetadata()))
+			return false;
+
+		if (Serializer::ReadSTR() == METADATA_TYPE_TEXTURE)
+		{
+			m_resourceID = Serializer::ReadSTR();
+			m_resourceName = Serializer::ReadSTR();
+			m_resourceFilePath = Serializer::ReadSTR();
+			m_width = Serializer::ReadInt();
+			m_height = Serializer::ReadInt();
+			m_textureType = TextureType(Serializer::ReadInt());
+			m_grayscale = Serializer::ReadBool();
+			m_transparency = Serializer::ReadBool();
+			m_generateMipchain = Serializer::ReadBool();
+		}
+
+		Serializer::StopReading();
+
+		return true;
 	}
 
-	// Extract any metadata we can from the ImageImporter
-	m_resourceFilePath = ImageImporter::GetInstance().GetPath();
-	m_resourceName = FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture());
-	m_width = ImageImporter::GetInstance().GetWidth();
-	m_height = ImageImporter::GetInstance().GetHeight();
-	m_grayscale = ImageImporter::GetInstance().IsGrayscale();
-	m_transparency = ImageImporter::GetInstance().IsTransparent();
-
-	if (!CreateShaderResourceView())
-		return false;
-
-	// Free any memory allocated by the ImageImporter
-	ImageImporter::GetInstance().Clear();
-
-	if (!LoadMetadata()) // Load metadata file
-		if (!SaveMetadata()) // If a metadata file doesn't exist, create one
-			return false; // if that failed too, well at least get the file path right mate
-
-	return true;
-}
-
-void Texture::SetTextureType(TextureType type)
-{
-	m_textureType = type;
-
-	// FIX: some models pass a normal map as a height map
-	// and others pass a height map as a normal map...
-	if (m_textureType == Height_Texture && !GetGrayscale())
-		m_textureType = Normal_Texture;
-	if (m_textureType == Normal_Texture && GetGrayscale())
-		m_textureType = Height_Texture;
-}
-
-bool Texture::CreateShaderResourceView()
-{
-	if (!m_context)
-		return false;
-
-	if (m_generateMipchain)
+	// Loads a texture (not it's metadata) from an image file
+	bool Texture::LoadFromFile(const string& filePath)
 	{
-		if (!m_texture->CreateFromMipchain(m_width, m_height, ImageImporter::GetInstance().GetChannels(), ImageImporter::GetInstance().GetRGBAMipchain()))
-		{
-			LOG_ERROR("Failed to create texture from loaded image \"" + ImageImporter::GetInstance().GetPath() + "\".");
+		auto graphicsDevice = m_context->GetSubsystem<Graphics>()->GetDevice();
+		if (!graphicsDevice) {
 			return false;
 		}
-	}
-	else
-	{
-		if (!m_texture->Create(m_width, m_height, ImageImporter::GetInstance().GetChannels(), ImageImporter::GetInstance().GetRGBA()))
+
+		// Load DDS (too bored to implement dds cubemap support in the ImageImporter)
+		if (FileSystem::GetExtensionFromPath(filePath) == ".dds")
 		{
-			LOG_ERROR("Failed to create texture from loaded image \"" + ImageImporter::GetInstance().GetPath() + "\".");
+			ID3D11ShaderResourceView* ddsTex = nullptr;
+			wstring widestr = wstring(filePath.begin(), filePath.end());
+			HRESULT hr = DirectX::CreateDDSTextureFromFile(graphicsDevice, widestr.c_str(), nullptr, &ddsTex);
+			if (FAILED(hr))
+			{
+				LOG_ERROR("Failed to load texture \"" + filePath + "\".");
+				return false;
+			}
+
+			m_texture->SetShaderResourceView(ddsTex);
+			return true;
+		}
+
+		// Load texture
+		std::weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
+		bool loaded = m_generateMipchain ? imageImp.lock()->LoadAndCreateMipchain(filePath) : imageImp.lock()->Load(filePath);
+		if (!loaded)
+		{
+			LOG_ERROR("Failed to load texture \"" + filePath + "\".");
+			imageImp.lock()->Clear();
 			return false;
 		}
+
+		// Extract any metadata we can from the ImageImporter
+		m_resourceFilePath = imageImp.lock()->GetPath();
+		m_resourceName = FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture());
+		m_width = imageImp.lock()->GetWidth();
+		m_height = imageImp.lock()->GetHeight();
+		m_grayscale = imageImp.lock()->IsGrayscale();
+		m_transparency = imageImp.lock()->IsTransparent();
+
+		if (!CreateShaderResourceView())
+			return false;
+
+		// Free any memory allocated by the ImageImporter
+		imageImp.lock()->Clear();
+
+		if (!LoadMetadata()) // Load metadata file
+			if (!SaveMetadata()) // If a metadata file doesn't exist, create one
+				return false; // if that failed too, well at least get the file path right mate
+
+		return true;
 	}
 
-	return true;
+	void Texture::SetTextureType(TextureType type)
+	{
+		m_textureType = type;
+
+		// FIX: some models pass a normal map as a height map
+		// and others pass a height map as a normal map...
+		if (m_textureType == Height_Texture && !GetGrayscale())
+			m_textureType = Normal_Texture;
+		if (m_textureType == Normal_Texture && GetGrayscale())
+			m_textureType = Height_Texture;
+	}
+
+	bool Texture::CreateShaderResourceView()
+	{
+		if (!m_context)
+			return false;
+
+		std::weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
+		if (m_generateMipchain)
+		{
+			if (!m_texture->CreateFromMipchain(m_width, m_height, imageImp.lock()->GetChannels(), imageImp.lock()->GetRGBAMipchain()))
+			{
+				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp.lock()->GetPath() + "\".");
+				return false;
+			}
+		}
+		else
+		{
+			if (!m_texture->Create(m_width, m_height, imageImp.lock()->GetChannels(), imageImp.lock()->GetRGBA()))
+			{
+				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp.lock()->GetPath() + "\".");
+				return false;
+			}
+		}
+
+		return true;
+	}
 }

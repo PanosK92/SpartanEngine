@@ -28,58 +28,61 @@ using namespace Directus::Math;
 using namespace std;
 //=============================
 
-DepthShader::DepthShader()
+namespace Directus
 {
-	m_graphics = nullptr;
-	m_shader = nullptr;
-	m_defaultBuffer = nullptr;
-}
+	DepthShader::DepthShader()
+	{
+		m_graphics = nullptr;
+		m_shader = nullptr;
+		m_defaultBuffer = nullptr;
+	}
 
-DepthShader::~DepthShader()
-{
+	DepthShader::~DepthShader()
+	{
 
-}
+	}
 
-void DepthShader::Load(const std::string& filePath, Graphics* graphics)
-{
-	m_graphics = graphics;
+	void DepthShader::Load(const std::string& filePath, Graphics* graphics)
+	{
+		m_graphics = graphics;
 
-	// load the vertex and the pixel shader
-	m_shader = make_shared<D3D11Shader>(m_graphics);
-	m_shader->Load(filePath);
-	m_shader->SetInputLayout(Position);
+		// load the vertex and the pixel shader
+		m_shader = make_shared<D3D11Shader>(m_graphics);
+		m_shader->Load(filePath);
+		m_shader->SetInputLayout(Position);
 
-	// create a buffer
-	m_defaultBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
-	m_defaultBuffer->Create(sizeof(DefaultBuffer));
-}
+		// create a buffer
+		m_defaultBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+		m_defaultBuffer->Create(sizeof(DefaultBuffer));
+	}
 
-void DepthShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mViewProjection)
-{
-	if (!m_defaultBuffer)
-		return;
+	void DepthShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mViewProjection)
+	{
+		if (!m_defaultBuffer)
+			return;
 
-	// Get buffer pointer
-	DefaultBuffer* miscBufferType = static_cast<DefaultBuffer*>(m_defaultBuffer->Map());
+		// Get buffer pointer
+		DefaultBuffer* miscBufferType = static_cast<DefaultBuffer*>(m_defaultBuffer->Map());
 
-	// Fill buffer
-	miscBufferType->worldViewProjection = mWorld * mViewProjection;
+		// Fill buffer
+		miscBufferType->worldViewProjection = mWorld * mViewProjection;
 
-	// Unlock the buffer
-	m_defaultBuffer->Unmap();
+		// Unlock the buffer
+		m_defaultBuffer->Unmap();
 
-	// Set the buffer to the vertex shader
-	m_defaultBuffer->SetVS(0);
-}
+		// Set the buffer to the vertex shader
+		m_defaultBuffer->SetVS(0);
+	}
 
-void DepthShader::Set()
-{
-	if (m_shader)
-		m_shader->Set();
-}
+	void DepthShader::Set()
+	{
+		if (m_shader)
+			m_shader->Set();
+	}
 
-void DepthShader::Render(unsigned int indexCount)
-{
-	if (m_graphics)
-		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	void DepthShader::Render(unsigned int indexCount)
+	{
+		if (m_graphics)
+			m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+	}
 }

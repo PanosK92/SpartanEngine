@@ -35,54 +35,57 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 //==============================
 
-class D3D11Shader
+namespace Directus
 {
-public:
-	D3D11Shader(D3D11GraphicsDevice* graphicsDevice);
-	~D3D11Shader();
+	class D3D11Shader
+	{
+	public:
+		D3D11Shader(D3D11GraphicsDevice* graphicsDevice);
+		~D3D11Shader();
 
-	bool Load(const std::string& filePath);
-	bool SetInputLayout(InputLayout inputLayout);
-	bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
-	void Set();
+		bool Load(const std::string& filePath);
+		bool SetInputLayout(InputLayout inputLayout);
+		bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
+		void Set();
 
-	void SetName(const std::string& name);
-	void AddDefine(LPCSTR name, LPCSTR definition);
-	void D3D11Shader::AddDefine(LPCSTR name, int definition) { AddDefine(name, m_definitionPool.insert(std::to_string(definition)).first->c_str()); }
+		void SetName(const std::string& name);
+		void AddDefine(LPCSTR name, LPCSTR definition);
+		void D3D11Shader::AddDefine(LPCSTR name, int definition) { AddDefine(name, m_definitionPool.insert(std::to_string(definition)).first->c_str()); }
 
-	void D3D11Shader::AddDefine(LPCSTR name, bool definition) { AddDefine(name, static_cast<int>(definition)); }
+		void D3D11Shader::AddDefine(LPCSTR name, bool definition) { AddDefine(name, static_cast<int>(definition)); }
 
-	bool D3D11Shader::IsCompiled() { return m_compiled; }
+		bool D3D11Shader::IsCompiled() { return m_compiled; }
 
-private:
-	//= COMPILATION ================================================================================================================================================================================
-	bool CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, std::string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
-	bool CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, std::string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
-	HRESULT CompileShader(std::string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut);
-	void ExportErrorDebugLog(ID3D10Blob* errorMessage);
+	private:
+		//= COMPILATION ================================================================================================================================================================================
+		bool CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, std::string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
+		bool CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, std::string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
+		HRESULT CompileShader(std::string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut);
+		void ExportErrorDebugLog(ID3D10Blob* errorMessage);
 
-	//= REFLECTION ============================
-	std::vector<D3D11_INPUT_ELEMENT_DESC> Reflect(ID3D10Blob* shaderBlob) const;
+		//= REFLECTION ============================
+		std::vector<D3D11_INPUT_ELEMENT_DESC> Reflect(ID3D10Blob* shaderBlob) const;
 
-	//= MISC ===========
-	std::string m_name;
-	std::string m_filePath;
-	LPCSTR m_entrypoint;
-	LPCSTR m_profile;
-	bool m_compiled;
-	std::vector<std::shared_ptr<D3D11Sampler>> m_samplers;
-	ID3D11VertexShader* m_vertexShader;
-	ID3D11PixelShader* m_pixelShader;
-	ID3D10Blob* m_VSBlob = nullptr;
+		//= MISC ===========
+		std::string m_name;
+		std::string m_filePath;
+		LPCSTR m_entrypoint;
+		LPCSTR m_profile;
+		bool m_compiled;
+		std::vector<std::shared_ptr<D3D11Sampler>> m_samplers;
+		ID3D11VertexShader* m_vertexShader;
+		ID3D11PixelShader* m_pixelShader;
+		ID3D10Blob* m_VSBlob = nullptr;
 
-	//= MACROS ============================
-	std::vector<D3D_SHADER_MACRO> m_macros;
-	std::set<std::string> m_definitionPool;
+		//= MACROS ============================
+		std::vector<D3D_SHADER_MACRO> m_macros;
+		std::set<std::string> m_definitionPool;
 
-	//= INPUT LAYOUT ======================
-	std::shared_ptr<D3D11InputLayout> m_D3D11InputLayout;
-	bool m_layoutHasBeenSet;
+		//= INPUT LAYOUT ======================
+		std::shared_ptr<D3D11InputLayout> m_D3D11InputLayout;
+		bool m_layoutHasBeenSet;
 
-	//= DEPENDENCIES============
-	D3D11GraphicsDevice* m_graphics;
-};
+		//= DEPENDENCIES============
+		D3D11GraphicsDevice* m_graphics;
+	};
+}

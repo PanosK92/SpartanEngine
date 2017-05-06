@@ -21,69 +21,72 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ==================
 #include "IComponent.h"
 #include <memory>
 #include "../Math/MathHelper.h"
-//=====================
+//=============================
 
-class AudioClip;
-
-class DllExport AudioSource : public IComponent
+namespace Directus
 {
-public:
-	AudioSource();
-	~AudioSource();
+	class AudioClip;
 
-	//= INTERFACE =============
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
-	//=========================
+	class DllExport AudioSource : public IComponent
+	{
+	public:
+		AudioSource();
+		~AudioSource();
 
-	//= PROPERTIES ======================================================================
-	bool LoadAudioClip(const std::string& filePath);
-	std::string GetAudioClipName();
+		//= INTERFACE =============
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
+		//=========================
 
-	bool PlayAudioClip();
-	bool StopPlayingAudioClip();
+		//= PROPERTIES ======================================================================
+		bool LoadAudioClip(const std::string& filePath);
+		std::string GetAudioClipName();
 
-	bool GetMute() { return m_mute; }
-	void SetMute(bool mute);
+		bool PlayAudioClip();
+		bool StopPlayingAudioClip();
 
-	bool GetPlayOnAwake() { return m_playOnAwake; }
-	void SetPlayOnAwake(bool playOnAwake) { m_playOnAwake = playOnAwake; }
+		bool GetMute() { return m_mute; }
+		void SetMute(bool mute);
 
-	bool GetLoop() { return m_loop; }
-	void SetLoop(bool loop) { m_loop = loop; }
+		bool GetPlayOnAwake() { return m_playOnAwake; }
+		void SetPlayOnAwake(bool playOnAwake) { m_playOnAwake = playOnAwake; }
 
-	int GetPriority() { return m_priority; }
-	void SetPriority(int priority);
+		bool GetLoop() { return m_loop; }
+		void SetLoop(bool loop) { m_loop = loop; }
 
-	float GetVolume() { return m_volume; }
-	void SetVolume(float volume);
+		int GetPriority() { return m_priority; }
+		void SetPriority(int priority);
 
-	float GetPitch() { return m_pitch; }
-	void SetPitch(float pitch);
+		float GetVolume() { return m_volume; }
+		void SetVolume(float volume);
 
-	float GetPan() { return m_pan; }
-	void SetPan(float pan);
-	//===================================================================================
+		float GetPitch() { return m_pitch; }
+		void SetPitch(float pitch);
 
-private:
-	std::weak_ptr<AudioClip> m_audioClip;
-	std::string m_filePath;
-	bool m_mute;
-	bool m_playOnAwake;
-	bool m_loop;
-	int m_priority;
-	float m_volume;
-	float m_pitch;
-	float m_pan;
+		float GetPan() { return m_pan; }
+		void SetPan(float pan);
+		//===================================================================================
 
-	bool m_audioClipLoaded;
-};
+	private:
+		std::weak_ptr<AudioClip> m_audioClip;
+		std::string m_filePath;
+		bool m_mute;
+		bool m_playOnAwake;
+		bool m_loop;
+		int m_priority;
+		float m_volume;
+		float m_pitch;
+		float m_pan;
+
+		bool m_audioClipLoaded;
+	};
+}

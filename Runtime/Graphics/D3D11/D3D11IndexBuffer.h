@@ -26,16 +26,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //==============================
 
-class D3D11IndexBuffer
+namespace Directus
 {
-public:
-	D3D11IndexBuffer(D3D11GraphicsDevice* graphicsDevice);
-	~D3D11IndexBuffer();
+	class D3D11IndexBuffer
+	{
+	public:
+		D3D11IndexBuffer(D3D11GraphicsDevice* graphicsDevice);
+		~D3D11IndexBuffer();
 
-	bool Create(const std::vector<UINT>& indices);
-	bool SetIA();
+		bool Create(const std::vector<UINT>& indices);
+		bool SetIA();
 
-private:
-	D3D11GraphicsDevice* m_graphics;
-	ID3D11Buffer* m_buffer;
-};
+	private:
+		D3D11GraphicsDevice* m_graphics;
+		ID3D11Buffer* m_buffer;
+	};
+}

@@ -27,22 +27,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //==============================
 
-class D3D11VertexBuffer
+namespace Directus
 {
-public:
-	D3D11VertexBuffer(D3D11GraphicsDevice* graphicsDevice);
-	~D3D11VertexBuffer();
+	class D3D11VertexBuffer
+	{
+	public:
+		D3D11VertexBuffer(D3D11GraphicsDevice* graphicsDevice);
+		~D3D11VertexBuffer();
 
-	bool Create(const std::vector<VertexPositionTextureNormalTangent>& vertices);
-	bool CreateDynamic(UINT stride, UINT initialSize);
+		bool Create(const std::vector<VertexPositionTextureNormalTangent>& vertices);
+		bool CreateDynamic(UINT stride, UINT initialSize);
 
-	void* Map();
-	bool Unmap();
+		void* Map();
+		bool Unmap();
 
-	bool SetIA();
-	
-private:
-	D3D11GraphicsDevice* m_graphics;
-	ID3D11Buffer* m_buffer;
-	UINT m_stride;
-};
+		bool SetIA();
+
+	private:
+		D3D11GraphicsDevice* m_graphics;
+		ID3D11Buffer* m_buffer;
+		UINT m_stride;
+	};
+}

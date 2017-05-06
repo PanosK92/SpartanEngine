@@ -25,67 +25,70 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/ImageImporter.h"
 //===========================================
 
-class ILogger;
-class PhysicsDebugDraw;
-class Engine;
-
-class DllExport Socket : public Subsystem
+namespace Directus
 {
-public:
-	Socket(Context* context);
-	~Socket();
+	class ILogger;
+	class PhysicsDebugDraw;
+	class Engine;
 
-	//= Subsystem ============
-	virtual bool Initialize();
-	//========================
+	class DllExport Socket : public Subsystem
+	{
+	public:
+		Socket(Context* context);
+		~Socket();
 
-	//= UPDATE ======================================
-	void Start();
-	void OnDisable();
-	void Update();
-	void LightUpdate();
-	//===============================================
+		//= Subsystem ============
+		virtual bool Initialize();
+		//========================
 
-	//= IO ==========================================
-	void LoadModel(const std::string& filePath);
-	void LoadModelAsync(const std::string& filePath);
-	void SaveSceneToFileAsync(const std::string& filePath);
-	void LoadSceneFromFileAsync(const std::string& filePath);
-	bool SaveSceneToFile(const std::string& filePath);
-	bool LoadSceneFromFile(const std::string& filePath);
-	//===============================================
+		//= UPDATE ========
+		void Start();
+		void OnDisable();
+		void Update();
+		void LightUpdate();
+		//=================
 
-	//= GRAPHICS =================================
-	void SetViewport(float width, float height);
-	void SetResolution(int width, int height);
-	//============================================
+		//= RESOURCE IO =========================================
+		void LoadModel(const std::string& filePath);
+		void LoadModelAsync(const std::string& filePath);
+		void SaveSceneToFileAsync(const std::string& filePath);
+		void LoadSceneFromFileAsync(const std::string& filePath);
+		bool SaveSceneToFile(const std::string& filePath);
+		bool LoadSceneFromFile(const std::string& filePath);
+		//=======================================================
 
-	//= MISC =======================================================================
-	void SetPhysicsDebugDraw(bool enable);
-	PhysicsDebugDraw* GetPhysicsDebugDraw();
-	void ClearScene();
-	Directus::ImageImporter* GetImageLoader();
-	void SetLogger(std::weak_ptr<ILogger> logger);
-	Context* GetContext() { return g_context; }
-	//==============================================================================
+		//= GRAPHICS ===============================
+		void SetViewport(float width, float height);
+		void SetResolution(int width, int height);
+		//==========================================
 
-	//= GAMEOBJECTS ================================================================
-	GameObject* CreateGameObject();
-	std::vector<GameObject*> GetAllGameObjects();
-	std::vector<GameObject*> GetRootGameObjects();
-	GameObject* GetGameObjectByID(std::string gameObjectID);
-	int GetGameObjectCount();
-	void DestroyGameObject(GameObject* gameObject);
-	bool GameObjectExists(GameObject* gameObject);
-	//==============================================================================
+		//= MISC =====================================
+		void SetPhysicsDebugDraw(bool enable);
+		PhysicsDebugDraw* GetPhysicsDebugDraw();
+		void ClearScene();
+		std::weak_ptr<ImageImporter> GetImageImporter();
+		void SetLogger(std::weak_ptr<ILogger> logger);
+		Context* GetContext() { return m_context; }
+		//============================================
 
-	//= STATS ======================================================================
-	float GetFPS();
-	int GetRenderTime();
-	int GetRenderedMeshesCount();
-	float GetDeltaTime();
-	//==============================================================================
+		//= GAMEOBJECTS ========================================
+		GameObject* CreateGameObject();
+		std::vector<GameObject*> GetAllGameObjects();
+		std::vector<GameObject*> GetRootGameObjects();
+		GameObject* GetGameObjectByID(std::string gameObjectID);
+		int GetGameObjectCount();
+		void DestroyGameObject(GameObject* gameObject);
+		bool GameObjectExists(GameObject* gameObject);
+		//======================================================
 
-private:
-	Engine* m_engine;
-};
+		//= STATS ==============================================
+		float GetFPS();
+		int GetRenderTime();
+		int GetRenderedMeshesCount();
+		float GetDeltaTime();
+		//======================================================
+
+	private:
+		Engine* m_engine;
+	};
+}

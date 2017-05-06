@@ -26,49 +26,52 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 //=========================
 
-class GameObject;
-class Transform;
-class IGraphicsDevice;
-class Scene;
-class Renderer;
-class Physics;
-class Scripting;
-class MeshPool;
-class MaterialPool;
-class TexturePool;
-class ShaderPool;
-class Context;
-
-class DllExport IComponent
+namespace Directus
 {
-public:
-	virtual ~IComponent(){}
+	class GameObject;
+	class Transform;
+	class IGraphicsDevice;
+	class Scene;
+	class Renderer;
+	class Physics;
+	class Scripting;
+	class MeshPool;
+	class MaterialPool;
+	class TexturePool;
+	class ShaderPool;
+	class Context;
 
-	// Runs when the component gets added
-	virtual void Reset() = 0;
-	//virtual void Awake() = 0; // todo
-	//virtual void OnEnable() = 0; // todo
-	// Runs everytime the simulation starts
-	virtual void Start() = 0;
-	// Runs everytime the simulation stops
-	virtual void OnDisable() = 0;
-	// Runs when the component is removed
-	virtual void Remove() = 0;
-	// Runs every frame
-	virtual void Update() = 0;
-	// Runs when the GameObject is being saved
-	virtual void Serialize() = 0;
-	// Runs when the GameObject is being loaded
-	virtual void Deserialize() = 0;
+	class DllExport IComponent
+	{
+	public:
+		virtual ~IComponent() {}
 
-	//= PROPERTIES ================================
-	std::string g_ID;
-	bool g_enabled;
-	// The GameObject the component is attached to
-	GameObject* g_gameObject;
-	// The only always existing component
-	Transform* g_transform;
-	// The engine contect
-	Context* g_context;
-	//=============================================
-};
+		// Runs when the component gets added
+		virtual void Reset() = 0;
+		//virtual void Awake() = 0; // todo
+		//virtual void OnEnable() = 0; // todo
+		// Runs every time the simulation starts
+		virtual void Start() = 0;
+		// Runs every time the simulation stops
+		virtual void OnDisable() = 0;
+		// Runs when the component is removed
+		virtual void Remove() = 0;
+		// Runs every frame
+		virtual void Update() = 0;
+		// Runs when the GameObject is being saved
+		virtual void Serialize() = 0;
+		// Runs when the GameObject is being loaded
+		virtual void Deserialize() = 0;
+
+		//= PROPERTIES ================================
+		std::string g_ID;
+		bool g_enabled;
+		// The GameObject the component is attached to
+		GameObject* g_gameObject;
+		// The only always existing component
+		Transform* g_transform;
+		// The engine context
+		Context* g_context;
+		//=============================================
+	};
+}

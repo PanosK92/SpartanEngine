@@ -28,26 +28,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../D3D11/D3D11ConstantBuffer.h"
 //=======================================
 
-class DebugShader
+namespace Directus
 {
-public:
-	DebugShader();
-	~DebugShader();
-
-	void Load(const std::string& filePath, Graphics* graphics);
-	void Render(int vertexCount, const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
-
-private:
-	struct DefaultBuffer
+	class DebugShader
 	{
-		Directus::Math::Matrix worldViewProjection;
-		Directus::Math::Matrix viewProjection;
+	public:
+		DebugShader();
+		~DebugShader();
+
+		void Load(const std::string& filePath, Graphics* graphics);
+		void Render(int vertexCount, const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
+
+	private:
+		struct DefaultBuffer
+		{
+			Math::Matrix worldViewProjection;
+			Math::Matrix viewProjection;
+		};
+
+		void SetShaderBuffers(const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
+		void RenderShader(unsigned int vertexCount);
+
+		std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
+		std::shared_ptr<D3D11Shader> m_shader;
+		Graphics* m_graphics;
 	};
-
-	void SetShaderBuffers(const Directus::Math::Matrix& worldMatrix, const Directus::Math::Matrix& viewMatrix, const Directus::Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
-	void RenderShader(unsigned int vertexCount);
-
-	std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;	
-	std::shared_ptr<D3D11Shader> m_shader;
-	Graphics* m_graphics;
-};
+}

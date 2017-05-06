@@ -16,11 +16,14 @@ DEALINGS IN THE SOFTWARE. */
 
 #pragma once
 
-//= INCLUDES ======
+//= INCLUDES =========
 #include "Subsystem.h"
-//=================
+//====================
 
-Subsystem::Subsystem(Context* context)
+namespace Directus
 {
-	g_context = context;
+	Subsystem::Subsystem(Context* context)
+	{
+		m_context = context;
+	}
 }

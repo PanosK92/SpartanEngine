@@ -26,37 +26,41 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //=======================
 
-class GameObject;
 class asIScriptObject;
 class asIScriptFunction;
 
-// Allows creation of a script instance and execution of it's class functions.
-class ScriptInstance
+namespace Directus
 {
-public:
-	ScriptInstance();
-	~ScriptInstance();
+	class GameObject;
 
-	bool Instantiate(const std::string& path, GameObject* gameObject, Scripting* scriptEngine);
-	bool IsInstantiated();
-	std::string GetScriptPath();
+	// Allows creation of a script instance and execution of it's class functions.
+	class ScriptInstance
+	{
+	public:
+		ScriptInstance();
+		~ScriptInstance();
 
-	void ExecuteStart();
-	void ExecuteUpdate();
+		bool Instantiate(const std::string& path, GameObject* gameObject, Scripting* scriptEngine);
+		bool IsInstantiated();
+		std::string GetScriptPath();
 
-private:
-	bool CreateScriptObject();
+		void ExecuteStart();
+		void ExecuteUpdate();
 
-	std::string m_scriptPath;
-	std::string m_className;
-	std::string m_constructorDeclaration;
-	std::string m_moduleName;
-	GameObject* m_gameObject;
-	std::shared_ptr<Module> m_module;
-	asIScriptObject* m_scriptObject;
-	asIScriptFunction* m_constructorFunction;
-	asIScriptFunction* m_startFunction;
-	asIScriptFunction* m_updateFunction;
-	bool m_isInstantiated;
-	Scripting* m_scriptEngine;
-};
+	private:
+		bool CreateScriptObject();
+
+		std::string m_scriptPath;
+		std::string m_className;
+		std::string m_constructorDeclaration;
+		std::string m_moduleName;
+		GameObject* m_gameObject;
+		std::shared_ptr<Module> m_module;
+		asIScriptObject* m_scriptObject;
+		asIScriptFunction* m_constructorFunction;
+		asIScriptFunction* m_startFunction;
+		asIScriptFunction* m_updateFunction;
+		bool m_isInstantiated;
+		Scripting* m_scriptEngine;
+	};
+}

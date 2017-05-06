@@ -29,61 +29,65 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===========================
 
 class btBoxShape;
-class MeshFilter;
 class btCollisionShape;
 
-enum ColliderShape
+namespace Directus
 {
-	Box,
-	Capsule,
-	Cylinder,
-	Sphere
-};
+	class MeshFilter;
 
-class DllExport Collider : public IComponent
-{
-public:
-	Collider();
-	~Collider();
-	
-	/*------------------------------------------------------------------------------
-										[INTERFACE]
-	------------------------------------------------------------------------------*/
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
+	enum ColliderShape
+	{
+		Box,
+		Capsule,
+		Cylinder,
+		Sphere
+	};
 
-	/*------------------------------------------------------------------------------
-									[PROPERTIES]
-	------------------------------------------------------------------------------*/
-	const Directus::Math::Vector3& GetBoundingBox() { return m_boundingBox; }
-	void SetBoundingBox(const Directus::Math::Vector3& boundingBox);
+	class DllExport Collider : public IComponent
+	{
+	public:
+		Collider();
+		~Collider();
 
-	const Directus::Math::Vector3& GetCenter() { return m_center; }
-	void SetCenter(const Directus::Math::Vector3& center) { m_center = center; }
+		/*------------------------------------------------------------------------------
+											[INTERFACE]
+		------------------------------------------------------------------------------*/
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
 
-	ColliderShape GetShapeType() { return m_shapeType; }
-	void SetShapeType(ColliderShape type) { m_shapeType = type; }
+		/*------------------------------------------------------------------------------
+										[PROPERTIES]
+		------------------------------------------------------------------------------*/
+		const Directus::Math::Vector3& GetBoundingBox() { return m_boundingBox; }
+		void SetBoundingBox(const Directus::Math::Vector3& boundingBox);
 
-	std::shared_ptr<btCollisionShape> GetBtCollisionShape() { return m_shape; }
+		const Directus::Math::Vector3& GetCenter() { return m_center; }
+		void SetCenter(const Directus::Math::Vector3& center) { m_center = center; }
 
-	void Build();
+		ColliderShape GetShapeType() { return m_shapeType; }
+		void SetShapeType(ColliderShape type) { m_shapeType = type; }
 
-private:
-	//= HELPER FUNCTIONS ======================================================
-	void UpdateBoundingBox();
-	void DeleteCollisionShape();
-	void SetRigidBodyCollisionShape(std::shared_ptr<btCollisionShape> shape) const;
-	std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
-	//=========================================================================
+		std::shared_ptr<btCollisionShape> GetBtCollisionShape() { return m_shape; }
 
-	ColliderShape m_shapeType;
-	std::shared_ptr<btCollisionShape> m_shape;
-	Directus::Math::Vector3 m_boundingBox;
-	Directus::Math::Vector3 m_center;
-	Directus::Math::Vector3 m_lastKnownScale;
-};
+		void Build();
+
+	private:
+		//= HELPER FUNCTIONS ======================================================
+		void UpdateBoundingBox();
+		void DeleteCollisionShape();
+		void SetRigidBodyCollisionShape(std::shared_ptr<btCollisionShape> shape) const;
+		std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
+		//=========================================================================
+
+		ColliderShape m_shapeType;
+		std::shared_ptr<btCollisionShape> m_shape;
+		Directus::Math::Vector3 m_boundingBox;
+		Directus::Math::Vector3 m_center;
+		Directus::Math::Vector3 m_lastKnownScale;
+	};
+}

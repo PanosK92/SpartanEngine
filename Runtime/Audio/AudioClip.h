@@ -27,74 +27,77 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Resource.h"
 //==================================
 
-enum PlayMode
+namespace Directus
 {
-	Memory,
-	Stream
-};
+	enum PlayMode
+	{
+		Memory,
+		Stream
+	};
 
-enum Rolloff
-{
-	Linear,
-	Custom
-};
+	enum Rolloff
+	{
+		Linear,
+		Custom
+	};
 
-class AudioClip : Directus::Resource
-{
-public:
-	AudioClip(FMOD::System* fModSystem);
-	~AudioClip();
+	class AudioClip : Directus::Resource
+	{
+	public:
+		AudioClip(FMOD::System* fModSystem);
+		~AudioClip();
 
-	bool LoadFromFile(const std::string& filePath) { return true; }
-	bool SaveMetadata();
+		bool LoadFromFile(const std::string& filePath) { return true; }
+		bool SaveMetadata();
 
-	bool Load(const std::string& filePath, PlayMode mode);
-	bool Play();
-	bool Pause();
-	bool Stop();
+		bool Load(const std::string& filePath, PlayMode mode);
+		bool Play();
+		bool Pause();
+		bool Stop();
 
-	bool SetLoop(bool loop);
+		bool SetLoop(bool loop);
 
-	// Set's the volume [0.0f, 1.0f]
-	bool SetVolume(float volume);
+		// Set's the volume [0.0f, 1.0f]
+		bool SetVolume(float volume);
 
-	// Sets the mute state effectively silencing it or returning it to its normal volume.
-	bool SetMute(bool mute);
+		// Sets the mute state effectively silencing it or returning it to its normal volume.
+		bool SetMute(bool mute);
 
-	// Set's the priority for the channel [0, 255]
-	bool SetPriority(int priority);
+		// Set's the priority for the channel [0, 255]
+		bool SetPriority(int priority);
 
-	// Sets the pitch value
-	bool SetPitch(float pitch);
+		// Sets the pitch value
+		bool SetPitch(float pitch);
 
-	// Sets the pan level
-	bool SetPan(float pan);
+		// Sets the pan level
+		bool SetPan(float pan);
 
-	// Sets the rolloff
-	bool SetRolloff(std::vector<Directus::Math::Vector3> curvePoints);
-	bool SetRolloff(Rolloff rolloff);
+		// Sets the rolloff
+		bool SetRolloff(std::vector<Directus::Math::Vector3> curvePoints);
+		bool SetRolloff(Rolloff rolloff);
 
-	// Makes the audio use the 3D attributes of the transform
-	void SetTransform(Transform* transform);
+		// Makes the audio use the 3D attributes of the transform
+		void SetTransform(Transform* transform);
 
-	// Should be called per frame to update the 3D attributes of the sound
-	bool Update();
+		// Should be called per frame to update the 3D attributes of the sound
+		bool Update();
 
-private:
-	//= CREATION ==================================
-	bool CreateSound(const std::string& filePath);
-	bool CreateStream(const std::string& filePath);
-	//=============================================
-	FMOD_MODE BuildSoundMode() { return FMOD_3D | m_modeLoop | m_modeRolloff; }
+	private:
+		//= CREATION ==================================
+		bool CreateSound(const std::string& filePath);
+		bool CreateStream(const std::string& filePath);
+		//=============================================
+		FMOD_MODE BuildSoundMode() { return FMOD_3D | m_modeLoop | m_modeRolloff; }
 
-	Transform* m_transform;
-	FMOD::System* m_fModSystem;
-	FMOD_RESULT m_result;
-	FMOD::Sound* m_sound;
-	FMOD::Channel* m_channel;
-	PlayMode m_playMode;
-	FMOD_MODE m_modeLoop;
-	float m_minDistance;
-	float m_maxDistance;
-	FMOD_MODE m_modeRolloff;
-};
+		Transform* m_transform;
+		FMOD::System* m_fModSystem;
+		FMOD_RESULT m_result;
+		FMOD::Sound* m_sound;
+		FMOD::Channel* m_channel;
+		PlayMode m_playMode;
+		FMOD_MODE m_modeLoop;
+		float m_minDistance;
+		float m_maxDistance;
+		FMOD_MODE m_modeRolloff;
+	};
+}

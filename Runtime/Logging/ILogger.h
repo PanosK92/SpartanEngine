@@ -21,13 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ==============
 #include <string>
-//===============
+#include "../Core/Helper.h"
+//=========================
 
-class DllExport ILogger
+namespace Directus
 {
-public:
-	virtual ~ILogger() {}
-	virtual void Log(const std::string& log, int type) = 0;
-};
+	class DllExport ILogger
+	{
+	public:
+		virtual ~ILogger() {}
+		virtual void Log(const std::string& log, int type) = 0;
+	};
+}

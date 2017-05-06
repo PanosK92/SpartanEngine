@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 //==========================
 
+namespace Directus
+{
 #define SET_RESOLUTION(x,y) Settings::SetResolution(x,y)
 #define GET_RESOLUTION Settings::GetResolution()
 #define RESOLUTION_WIDTH Settings::GetResolutionWidth()
@@ -36,39 +38,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FULLSCREEN_ENABLED Settings::IsFullScreen()
 #define ANISOTROPY_LEVEL Settings::GetAnisotropy()
 
-enum VSync
-{
-	Off,
-	Every_VBlank,
-	Every_Second_VBlank
-};
+	enum VSync
+	{
+		Off,
+		Every_VBlank,
+		Every_Second_VBlank
+	};
 
-class DllExport Settings
-{
-public:
-	static void Initialize();
-	static bool IsFullScreen();
-	static bool IsMouseVisible();
-	static VSync GetVSync();
-	static void SetResolution(int width, int height);
-	static Directus::Math::Vector2 GetResolution();
-	static int GetResolutionWidth();
-	static int GetResolutionHeight();
-	static float GetScreenAspect();
-	static int GetShadowMapResolution();
-	static unsigned int GetAnisotropy();
+	class DllExport Settings
+	{
+	public:
+		static void Initialize();
+		static bool IsFullScreen();
+		static bool IsMouseVisible();
+		static VSync GetVSync();
+		static void SetResolution(int width, int height);
+		static Directus::Math::Vector2 GetResolution();
+		static int GetResolutionWidth();
+		static int GetResolutionHeight();
+		static float GetScreenAspect();
+		static int GetShadowMapResolution();
+		static unsigned int GetAnisotropy();
 
-private:
-	static std::ofstream m_fout;
-	static std::ifstream m_fin;
-	static std::string m_settingsFileName;
+	private:
+		static std::ofstream m_fout;
+		static std::ifstream m_fin;
+		static std::string m_settingsFileName;
 
-	static bool m_isFullScreen;
-	static int m_vsync;
-	static bool m_isMouseVisible;
-	static int m_resolutionWidth;
-	static int m_resolutionHeight;
-	static float m_screenAspect;
-	static int m_shadowMapResolution;
-	static unsigned int m_anisotropy;
-};
+		static bool m_isFullScreen;
+		static int m_vsync;
+		static bool m_isMouseVisible;
+		static int m_resolutionWidth;
+		static int m_resolutionHeight;
+		static float m_screenAspect;
+		static int m_shadowMapResolution;
+		static unsigned int m_anisotropy;
+	};
+}

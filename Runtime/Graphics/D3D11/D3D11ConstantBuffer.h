@@ -25,21 +25,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11GraphicsDevice.h"
 //==============================
 
-class D3D11ConstantBuffer
+namespace Directus
 {
-public:
-	D3D11ConstantBuffer(D3D11GraphicsDevice* graphicsDevice);
-	~D3D11ConstantBuffer();
+	class D3D11ConstantBuffer
+	{
+	public:
+		D3D11ConstantBuffer(D3D11GraphicsDevice* graphicsDevice);
+		~D3D11ConstantBuffer();
 
-	bool Create(unsigned int size);
+		bool Create(unsigned int size);
 
-	void* Map();
-	bool Unmap();
+		void* Map();
+		bool Unmap();
 
-	bool SetVS(unsigned int startSlot);
-	bool SetPS(unsigned int startSlot);
+		bool SetVS(unsigned int startSlot);
+		bool SetPS(unsigned int startSlot);
 
-private:
-	D3D11GraphicsDevice* m_graphics;
-	ID3D11Buffer* m_buffer;
-};
+	private:
+		D3D11GraphicsDevice* m_graphics;
+		ID3D11Buffer* m_buffer;
+	};
+}

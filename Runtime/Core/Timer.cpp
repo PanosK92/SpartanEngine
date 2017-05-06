@@ -28,75 +28,78 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-Timer::Timer(Context* context) : Subsystem(context)
+namespace Directus
 {
-	m_ticksPerSec = 0;
-	m_ticksPerMs = 0.0f;
-	m_startTime = 0.0f;
-	m_previousTime = 0.0f;
-	m_deltaTime = 0.0f;
-}
-
-Timer::~Timer()
-{
-	
-}
-
-bool Timer::Initialize()
-{
-	LARGE_INTEGER ticksPerSec;
-	if (QueryPerformanceFrequency(&ticksPerSec))
+	Timer::Timer(Context* context) : Subsystem(context)
 	{
-		m_ticksPerSec = ticksPerSec.QuadPart;
-	}
-	else
-	{
-		LOG_ERROR("The system does not support high performance timers.");
-		m_ticksPerSec = 1000000;
-		return false;
+		m_ticksPerSec = 0;
+		m_ticksPerMs = 0.0f;
+		m_startTime = 0.0f;
+		m_previousTime = 0.0f;
+		m_deltaTime = 0.0f;
 	}
 
-	m_ticksPerMs = m_ticksPerSec / 1000;
-	m_startTime = GetTime();
-	m_previousTime = m_startTime;
+	Timer::~Timer()
+	{
 
-	return true;
-}
+	}
 
-void Timer::Update()
-{
-	// Get current time
-	int currentTime = GetTime();
-	
-	// Calculate delta time
-	m_deltaTime = currentTime - m_previousTime;
+	bool Timer::Initialize()
+	{
+		LARGE_INTEGER ticksPerSec;
+		if (QueryPerformanceFrequency(&ticksPerSec))
+		{
+			m_ticksPerSec = ticksPerSec.QuadPart;
+		}
+		else
+		{
+			LOG_ERROR("The system does not support high performance timers.");
+			m_ticksPerSec = 1000000;
+			return false;
+		}
 
-	// Save current time
-	m_previousTime = currentTime;
-}
+		m_ticksPerMs = m_ticksPerSec / 1000;
+		m_startTime = GetTime();
+		m_previousTime = m_startTime;
 
-// Returns them time it took to complete the last frame in milliseconds
-int Timer::GetDeltaTime()
-{
-	return m_deltaTime;
-}
+		return true;
+	}
 
-// Returns current time in milliseconds
-int Timer::GetTime()
-{
-	INT64 currentTime;
-	QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
+	void Timer::Update()
+	{
+		// Get current time
+		int currentTime = GetTime();
 
-	return currentTime / m_ticksPerMs;
-}
+		// Calculate delta time
+		m_deltaTime = currentTime - m_previousTime;
 
-// Returns them elapsed time since the engine initialization in milliseconds
-int Timer::GetElapsedTime()
-{
-	return GetTime() - m_startTime;
-}
+		// Save current time
+		m_previousTime = currentTime;
+	}
 
-float Timer::GetDeltaTimeSec()
-{
-	return (float)GetDeltaTime() / 1000.0f;
+	// Returns them time it took to complete the last frame in milliseconds
+	int Timer::GetDeltaTime()
+	{
+		return m_deltaTime;
+	}
+
+	// Returns current time in milliseconds
+	int Timer::GetTime()
+	{
+		INT64 currentTime;
+		QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
+
+		return currentTime / m_ticksPerMs;
+	}
+
+	// Returns them elapsed time since the engine initialization in milliseconds
+	int Timer::GetElapsedTime()
+	{
+		return GetTime() - m_startTime;
+	}
+
+	float Timer::GetDeltaTimeSec()
+	{
+		return (float)GetDeltaTime() / 1000.0f;
+	}
 }

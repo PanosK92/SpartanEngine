@@ -25,26 +25,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Subsystem.h"
 //==================
 
-class DllExport Timer : public Subsystem
+namespace Directus
 {
-public:
-	Timer(Context* context);
-	~Timer();
+	class DllExport Timer : public Subsystem
+	{
+	public:
+		Timer(Context* context);
+		~Timer();
 
-	//= Subsystem ============
-	virtual bool Initialize();
-	//========================
+		//= Subsystem ============
+		virtual bool Initialize();
+		//========================
 
-	void Update();
-	int GetDeltaTime();
-	int GetTime();
-	int GetElapsedTime();
-	float GetDeltaTimeSec();
+		void Update();
+		int GetDeltaTime();
+		int GetTime();
+		int GetElapsedTime();
+		float GetDeltaTimeSec();
 
-private:
-	int m_ticksPerSec;
-	int m_ticksPerMs;
-	int m_deltaTime;
-	int m_startTime;
-	int m_previousTime;
-};
+	private:
+		int m_ticksPerSec;
+		int m_ticksPerMs;
+		int m_deltaTime;
+		int m_startTime;
+		int m_previousTime;
+	};
+}

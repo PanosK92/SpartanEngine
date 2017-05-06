@@ -25,25 +25,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 //=====================
 
-class Audio;
-
-class DllExport AudioListener : public IComponent
+namespace Directus
 {
-public:
-	AudioListener();
-	~AudioListener();
+	class Audio;
 
-	/*------------------------------------------------------------------------------
-	[INTERFACE]
-	------------------------------------------------------------------------------*/
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
+	class DllExport AudioListener : public IComponent
+	{
+	public:
+		AudioListener();
+		~AudioListener();
 
-private:
-	Audio* m_audio;
-};
+		/*------------------------------------------------------------------------------
+		[INTERFACE]
+		------------------------------------------------------------------------------*/
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
+
+	private:
+		Audio* m_audio;
+	};
+}

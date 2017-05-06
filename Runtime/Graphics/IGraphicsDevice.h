@@ -28,45 +28,48 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GraphicsDefinitions.h"
 //==============================
 
-class IGraphicsDevice : public Subsystem
+namespace Directus
 {
-public:
-	IGraphicsDevice(Context* context) : Subsystem(context){}
-	virtual ~IGraphicsDevice() {}
+	class IGraphicsDevice : public Subsystem
+	{
+	public:
+		IGraphicsDevice(Context* context) : Subsystem(context) {}
+		virtual ~IGraphicsDevice() {}
 
-	//==========================================================================
-	virtual void SetHandle(HWND drawHandle) = 0;
-	virtual void Clear(const Directus::Math::Vector4& color) = 0;
-	virtual void Present() = 0;
-	virtual void SetBackBufferAsRenderTarget() = 0;
-	//==========================================================================
+		//==========================================================================
+		virtual void SetHandle(HWND drawHandle) = 0;
+		virtual void Clear(const Math::Vector4& color) = 0;
+		virtual void Present() = 0;
+		virtual void SetBackBufferAsRenderTarget() = 0;
+		//==========================================================================
 
-	//= DEPTH =================================================================
-	virtual bool CreateDepthStencil() = 0;
-	virtual bool CreateDepthStencilBuffer() = 0;
-	virtual bool CreateDepthStencilView() = 0;
-	virtual void EnableZBuffer(bool enable) = 0;
-	//=========================================================================
+		//= DEPTH =================================================================
+		virtual bool CreateDepthStencil() = 0;
+		virtual bool CreateDepthStencilBuffer() = 0;
+		virtual bool CreateDepthStencilView() = 0;
+		virtual void EnableZBuffer(bool enable) = 0;
+		//=========================================================================
 
-	//=========================================================================
-	virtual void EnableAlphaBlending(bool enable) = 0;
-	virtual void SetInputLayout(InputLayout inputLayout) = 0;
-	virtual void SetCullMode(CullMode cullMode) = 0;
-	virtual void SetPrimitiveTopology(PrimitiveTopology primitiveTopology) = 0;
-	//=========================================================================
+		//=========================================================================
+		virtual void EnableAlphaBlending(bool enable) = 0;
+		virtual void SetInputLayout(InputLayout inputLayout) = 0;
+		virtual void SetCullMode(CullMode cullMode) = 0;
+		virtual void SetPrimitiveTopology(PrimitiveTopology primitiveTopology) = 0;
+		//=========================================================================
 
-	//= VIEWPORT ==============================================================
-	virtual bool SetResolution(int width, int height) = 0;
-	virtual void SetViewport(float width, float height) = 0;
-	virtual void ResetViewport() = 0;
-	//=========================================================================
+		//= VIEWPORT ==============================================================
+		virtual bool SetResolution(int width, int height) = 0;
+		virtual void SetViewport(float width, float height) = 0;
+		virtual void ResetViewport() = 0;
+		//=========================================================================
 
-	virtual bool IsInitialized() = 0;
+		virtual bool IsInitialized() = 0;
 
-protected:
-	InputLayout m_inputLayout;
-	CullMode m_cullMode;
-	PrimitiveTopology m_primitiveTopology;
-	bool m_zBufferEnabled;
-	bool m_alphaBlendingEnabled;
-};
+	protected:
+		InputLayout m_inputLayout;
+		CullMode m_cullMode;
+		PrimitiveTopology m_primitiveTopology;
+		bool m_zBufferEnabled;
+		bool m_alphaBlendingEnabled;
+	};
+}

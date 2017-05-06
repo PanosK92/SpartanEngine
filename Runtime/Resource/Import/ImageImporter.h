@@ -60,10 +60,10 @@ XPM files[reading, writing]
 
 #define FREEIMAGE_LIB
 
-//= INCLUDES ===============================
+//= INCLUDES =================
 #include <vector>
-#include "../../Multithreading/Multithreading.h"
-//==========================================
+#include "../../Core/Helper.h"
+//============================
 
 class FIBITMAP;
 
@@ -72,12 +72,6 @@ namespace Directus
 	class DllExport ImageImporter
 	{
 	public:
-		static ImageImporter& GetInstance()
-		{
-			static ImageImporter instance;
-			return instance;
-		}
-
 		ImageImporter();
 		~ImageImporter();
 
@@ -88,7 +82,7 @@ namespace Directus
 
 		void Clear();
 
-		//= PROPERTIES =======================================
+		//= PROPERTIES ==================================================
 		unsigned char* GetRGBA() { return m_dataRGBA.data(); }
 		const std::vector<std::vector<unsigned char>>& GetRGBAMipchain();
 		unsigned int GetBPP() { return m_bpp; }
@@ -98,7 +92,7 @@ namespace Directus
 		bool IsTransparent() { return m_transparent; }
 		const std::string& GetPath() { return m_path; }
 		int GetChannels() { return m_channels; }
-		//====================================================
+		//===============================================================
 
 	private:
 		std::vector<unsigned char> m_dataRGBA;

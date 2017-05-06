@@ -34,28 +34,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-string GUIDGenerator::Generate()
+namespace Directus
 {
-	string guidString = "N/A";
-	GUID guid;	
-	HRESULT hr = CoCreateGuid(&guid);
-	if (SUCCEEDED(hr))
+	string GUIDGenerator::Generate()
 	{
-		stringstream stream;
-		stream << hex << uppercase
-			<< setw(8) << setfill('0') << guid.Data1
-			<< "-" << setw(4) << setfill('0') << guid.Data2
-			<< "-" << setw(4) << setfill('0') << guid.Data3
-			<< "-";
-
-		for (int i = 0; i < sizeof(guid.Data4); ++i)
+		string guidString = "N/A";
+		GUID guid;
+		HRESULT hr = CoCreateGuid(&guid);
+		if (SUCCEEDED(hr))
 		{
-			if (i == 2)
-				stream << "-";
-			stream << hex << setw(2) << setfill('0') << int(guid.Data4[i]);
-		}
-		guidString = stream.str();
-	}
+			stringstream stream;
+			stream << hex << uppercase
+				<< setw(8) << setfill('0') << guid.Data1
+				<< "-" << setw(4) << setfill('0') << guid.Data2
+				<< "-" << setw(4) << setfill('0') << guid.Data3
+				<< "-";
 
-	return guidString;
+			for (int i = 0; i < sizeof(guid.Data4); ++i)
+			{
+				if (i == 2)
+					stream << "-";
+				stream << hex << setw(2) << setfill('0') << int(guid.Data4[i]);
+			}
+			guidString = stream.str();
+		}
+
+		return guidString;
+	}
 }

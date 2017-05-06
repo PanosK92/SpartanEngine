@@ -32,50 +32,53 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../D3D11/D3D11Shader.h"
 //=======================================
 
-class DeferredShader
+namespace Directus
 {
-public:
-	DeferredShader();
-	~DeferredShader();
-
-	void Load(const std::string& filePath, Graphics* graphics);
-	void UpdateMatrixBuffer(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mBaseView,
-		const Directus::Math::Matrix& mPerspectiveProjection, const Directus::Math::Matrix& mOrthographicProjection);
-	void UpdateMiscBuffer(Light*, std::vector<GameObject*> pointLights, Camera* camera);
-	void UpdateTextures(std::vector<ID3D11ShaderResourceView*> textures);
-	void Set();
-	void Render(int indexCount);
-	bool IsCompiled();
-
-private:
-	struct MatrixBufferType
+	class DeferredShader
 	{
-		Directus::Math::Matrix worldViewProjection;
-		Directus::Math::Matrix viewProjectionInverse;
-		Directus::Math::Matrix mView;
-	};
+	public:
+		DeferredShader();
+		~DeferredShader();
 
-	const static int maxPointLights = 128;
-	struct MiscBufferType
-	{	
-		Directus::Math::Vector4 cameraPosition;
-		Directus::Math::Vector4 dirLightDirection;
-		Directus::Math::Vector4 dirLightColor;
-		Directus::Math::Vector4 dirLightIntensity;
-		Directus::Math::Vector4 pointLightPosition[maxPointLights];
-		Directus::Math::Vector4 pointLightColor[maxPointLights];
-		Directus::Math::Vector4 pointLightRange[maxPointLights];
-		Directus::Math::Vector4 pointLightIntensity[maxPointLights];
-		float pointLightCount;
-		float nearPlane;
-		float farPlane;
-		float softShadows;
-		Directus::Math::Vector2 viewport;
-		Directus::Math::Vector2 padding;
-	};
+		void Load(const std::string& filePath, Graphics* graphics);
+		void UpdateMatrixBuffer(const Directus::Math::Matrix& mWorld, const Directus::Math::Matrix& mView, const Directus::Math::Matrix& mBaseView,
+			const Directus::Math::Matrix& mPerspectiveProjection, const Directus::Math::Matrix& mOrthographicProjection);
+		void UpdateMiscBuffer(Light*, std::vector<GameObject*> pointLights, Camera* camera);
+		void UpdateTextures(std::vector<ID3D11ShaderResourceView*> textures);
+		void Set();
+		void Render(int indexCount);
+		bool IsCompiled();
 
-	std::shared_ptr<D3D11ConstantBuffer> m_matrixBuffer;
-	std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
-	std::shared_ptr<D3D11Shader> m_shader;
-	Graphics* m_graphics;
-};
+	private:
+		struct MatrixBufferType
+		{
+			Directus::Math::Matrix worldViewProjection;
+			Directus::Math::Matrix viewProjectionInverse;
+			Directus::Math::Matrix mView;
+		};
+
+		const static int maxPointLights = 128;
+		struct MiscBufferType
+		{
+			Directus::Math::Vector4 cameraPosition;
+			Directus::Math::Vector4 dirLightDirection;
+			Directus::Math::Vector4 dirLightColor;
+			Directus::Math::Vector4 dirLightIntensity;
+			Directus::Math::Vector4 pointLightPosition[maxPointLights];
+			Directus::Math::Vector4 pointLightColor[maxPointLights];
+			Directus::Math::Vector4 pointLightRange[maxPointLights];
+			Directus::Math::Vector4 pointLightIntensity[maxPointLights];
+			float pointLightCount;
+			float nearPlane;
+			float farPlane;
+			float softShadows;
+			Directus::Math::Vector2 viewport;
+			Directus::Math::Vector2 padding;
+		};
+
+		std::shared_ptr<D3D11ConstantBuffer> m_matrixBuffer;
+		std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
+		std::shared_ptr<D3D11Shader> m_shader;
+		Graphics* m_graphics;
+	};
+}

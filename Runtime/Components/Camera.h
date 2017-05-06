@@ -32,77 +32,80 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //=============================
 
-enum Projection
+namespace Directus
 {
-	Perspective,
-	Orthographic,
-};
+	enum Projection
+	{
+		Perspective,
+		Orthographic,
+	};
 
-class DllExport Camera : public IComponent
-{
-public:
-	Camera();
-	~Camera();
+	class DllExport Camera : public IComponent
+	{
+	public:
+		Camera();
+		~Camera();
 
-	//= ICOMPONENT ============
-	virtual void Reset();
-	virtual void Start();
-	virtual void OnDisable();
-	virtual void Remove();
-	virtual void Update();
-	virtual void Serialize();
-	virtual void Deserialize();
-	//=========================
+		//= ICOMPONENT ============
+		virtual void Reset();
+		virtual void Start();
+		virtual void OnDisable();
+		virtual void Remove();
+		virtual void Update();
+		virtual void Serialize();
+		virtual void Deserialize();
+		//=========================
 
-	//= MATRICES =========================================================
-	Directus::Math::Matrix GetViewMatrix() { return m_mView; }
-	Directus::Math::Matrix GetProjectionMatrix() { return m_mProjection; }
-	Directus::Math::Matrix GetBaseViewMatrix() { return m_mBaseView; }
-	//====================================================================
+		//= MATRICES =========================================================
+		Directus::Math::Matrix GetViewMatrix() { return m_mView; }
+		Directus::Math::Matrix GetProjectionMatrix() { return m_mProjection; }
+		Directus::Math::Matrix GetBaseViewMatrix() { return m_mBaseView; }
+		//====================================================================
 
-	//= RAYCASTING =======================================================================
-	Directus::Math::Vector2 WorldToScreenPoint(const Directus::Math::Vector3& worldPoint);
-	//====================================================================================
+		//= RAYCASTING =======================================================================
+		Directus::Math::Vector2 WorldToScreenPoint(const Directus::Math::Vector3& worldPoint);
+		//====================================================================================
 
-	//= PLANES/PROJECTION =====================================================
-	float GetNearPlane() { return m_nearPlane; }
-	void SetNearPlane(float nearPlane);
-	float GetFarPlane() { return m_farPlane; }
-	void SetFarPlane(float farPlane);
-	Projection GetProjection() { CalculateProjection();  return m_projection; }
-	void SetProjection(Projection projection);
-	float GetFieldOfView() { return Directus::Math::RadiansToDegrees(m_FOV); }
-	void SetFieldOfView(float fov);
-	const std::shared_ptr<Frustrum>& GetFrustrum() { return m_frustrum; }
-	//=========================================================================
+		//= PLANES/PROJECTION =====================================================
+		float GetNearPlane() { return m_nearPlane; }
+		void SetNearPlane(float nearPlane);
+		float GetFarPlane() { return m_farPlane; }
+		void SetFarPlane(float farPlane);
+		Projection GetProjection() { CalculateProjection();  return m_projection; }
+		void SetProjection(Projection projection);
+		float GetFieldOfView() { return Directus::Math::RadiansToDegrees(m_FOV); }
+		void SetFieldOfView(float fov);
+		const std::shared_ptr<Frustrum>& GetFrustrum() { return m_frustrum; }
+		//=========================================================================
 
-	//= MISC =========================================================================
-	Directus::Math::Vector4 GetClearColor() { return m_clearColor; }
-	void SetClearColor(const Directus::Math::Vector4& color) { m_clearColor = color; }
-	//================================================================================
+		//= MISC =========================================================================
+		Directus::Math::Vector4 GetClearColor() { return m_clearColor; }
+		void SetClearColor(const Directus::Math::Vector4& color) { m_clearColor = color; }
+		//================================================================================
 
-private:
-	float m_FOV;
-	float m_nearPlane;
-	float m_farPlane;
-	std::shared_ptr<Frustrum> m_frustrum;
-	Projection m_projection;
-	Directus::Math::Vector4 m_clearColor;
+	private:
+		float m_FOV;
+		float m_nearPlane;
+		float m_farPlane;
+		std::shared_ptr<Frustrum> m_frustrum;
+		Projection m_projection;
+		Directus::Math::Vector4 m_clearColor;
 
-	Directus::Math::Matrix m_mView;
-	Directus::Math::Matrix m_mProjection;
-	Directus::Math::Matrix m_mBaseView;
+		Directus::Math::Matrix m_mView;
+		Directus::Math::Matrix m_mProjection;
+		Directus::Math::Matrix m_mBaseView;
 
-	Directus::Math::Vector3 m_position;
-	Directus::Math::Quaternion m_rotation;
-	bool m_isDirty;
+		Directus::Math::Vector3 m_position;
+		Directus::Math::Quaternion m_rotation;
+		bool m_isDirty;
 
-	Directus::Math::Vector2 m_lastKnownResolution;
+		Directus::Math::Vector2 m_lastKnownResolution;
 
-	/*------------------------------------------------------------------------------
-	[PRIVATE]
-	------------------------------------------------------------------------------*/
-	void CalculateViewMatrix();
-	void CalculateBaseView();
-	void CalculateProjection();
-};
+		/*------------------------------------------------------------------------------
+		[PRIVATE]
+		------------------------------------------------------------------------------*/
+		void CalculateViewMatrix();
+		void CalculateBaseView();
+		void CalculateProjection();
+	};
+}

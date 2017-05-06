@@ -26,19 +26,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //==============================
 
-class D3D12Texture
+namespace Directus
 {
-public:
-	D3D12Texture(D3D12GraphicsDevice* context);
-	~D3D12Texture();
+	class D3D12Texture
+	{
+	public:
+		D3D12Texture(D3D12GraphicsDevice* context);
+		~D3D12Texture();
 
-	bool Create(int width, int height, int channels, unsigned char* data);
-	bool CreateAndGenerateMipchain(int width, int height, int channels, unsigned char* data);
-	bool CreateFromMipchain(int width, int height, int channels, const std::vector<std::vector<unsigned char>>& mipchain);
+		bool Create(int width, int height, int channels, unsigned char* data);
+		bool CreateAndGenerateMipchain(int width, int height, int channels, unsigned char* data);
+		bool CreateFromMipchain(int width, int height, int channels, const std::vector<std::vector<unsigned char>>& mipchain);
 
-private:
-	DXGI_FORMAT m_format;
-	UINT m_mipLevels;
-	D3D12GraphicsDevice* m_graphics;
-};
-
+	private:
+		DXGI_FORMAT m_format;
+		UINT m_mipLevels;
+		D3D12GraphicsDevice* m_graphics;
+	};
+}

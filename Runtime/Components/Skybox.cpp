@@ -34,88 +34,90 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Directus;
 using namespace Directus::Math;
 //=============================
 
-Skybox::Skybox()
+namespace Directus
 {
-	m_cubeMapTexture = nullptr;
-}
-
-Skybox::~Skybox()
-{
-
-}
-
-/*------------------------------------------------------------------------------
-								[INTERFACE]
-------------------------------------------------------------------------------*/
-void Skybox::Reset()
-{
-	// Get cubemap directory
-	auto resourceMng = g_context->GetSubsystem<Directus::ResourceManager>();
-	std::string cubamapDirectory = resourceMng->GetResourceDirectory(Cubemap_Resource);
-
-	m_cubeMapTexture = make_shared<Texture>(g_context);
-	m_cubeMapTexture->LoadFromFile(cubamapDirectory + "environment.dds");
-	m_cubeMapTexture->SetTextureType(CubeMap_Texture);
-	m_cubeMapTexture->SetWidth(1024);
-	m_cubeMapTexture->SetHeight(1024);
-	m_cubeMapTexture->SetGrayscale(false);
-
-	// Add the actual "box"
-	g_gameObject->AddComponent<MeshFilter>()->SetMesh(MeshFilter::Cube);
-
-	// Add a mesh renderer
-	auto meshRenderer = g_gameObject->AddComponent<MeshRenderer>();
-	meshRenderer->SetCastShadows(false);
-	meshRenderer->SetReceiveShadows(false);
-	meshRenderer->SetMaterial(MeshRenderer::Skybox);
-	meshRenderer->GetMaterial().lock()->SetTexture(m_cubeMapTexture);
-	g_transform->SetScale(Vector3(1000, 1000, 1000));
-
-	g_gameObject->SetHierarchyVisibility(false);
-}
-
-void Skybox::Start()
-{
-
-}
-
-void Skybox::OnDisable()
-{
-
-}
-
-void Skybox::Remove()
-{
-
-}
-
-void Skybox::Update()
-{
-	GameObject* camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
-
-	if (camera) {
-		g_transform->SetPosition(camera->GetTransform()->GetPosition());
+	Skybox::Skybox()
+	{
+		m_cubeMapTexture = nullptr;
 	}
-}
 
-void Skybox::Serialize()
-{
+	Skybox::~Skybox()
+	{
 
-}
+	}
 
-void Skybox::Deserialize()
-{
+	/*------------------------------------------------------------------------------
+									[INTERFACE]
+	------------------------------------------------------------------------------*/
+	void Skybox::Reset()
+	{
+		// Get cubemap directory
+		auto resourceMng = g_context->GetSubsystem<Directus::ResourceManager>();
+		std::string cubamapDirectory = resourceMng->GetResourceDirectory(Cubemap_Resource);
 
-}
+		m_cubeMapTexture = make_shared<Texture>(g_context);
+		m_cubeMapTexture->LoadFromFile(cubamapDirectory + "environment.dds");
+		m_cubeMapTexture->SetTextureType(CubeMap_Texture);
+		m_cubeMapTexture->SetWidth(1024);
+		m_cubeMapTexture->SetHeight(1024);
+		m_cubeMapTexture->SetGrayscale(false);
 
-/*------------------------------------------------------------------------------
-								[MISC]
-------------------------------------------------------------------------------*/
-void** Skybox::GetEnvironmentTexture()
-{
-	return m_cubeMapTexture ? m_cubeMapTexture->GetShaderResourceView() : nullptr;
+		// Add the actual "box"
+		g_gameObject->AddComponent<MeshFilter>()->SetMesh(MeshFilter::Cube);
+
+		// Add a mesh renderer
+		auto meshRenderer = g_gameObject->AddComponent<MeshRenderer>();
+		meshRenderer->SetCastShadows(false);
+		meshRenderer->SetReceiveShadows(false);
+		meshRenderer->SetMaterial(MeshRenderer::Skybox);
+		meshRenderer->GetMaterial().lock()->SetTexture(m_cubeMapTexture);
+		g_transform->SetScale(Vector3(1000, 1000, 1000));
+
+		g_gameObject->SetHierarchyVisibility(false);
+	}
+
+	void Skybox::Start()
+	{
+
+	}
+
+	void Skybox::OnDisable()
+	{
+
+	}
+
+	void Skybox::Remove()
+	{
+
+	}
+
+	void Skybox::Update()
+	{
+		GameObject* camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
+
+		if (camera) {
+			g_transform->SetPosition(camera->GetTransform()->GetPosition());
+		}
+	}
+
+	void Skybox::Serialize()
+	{
+
+	}
+
+	void Skybox::Deserialize()
+	{
+
+	}
+
+	/*------------------------------------------------------------------------------
+									[MISC]
+	------------------------------------------------------------------------------*/
+	void** Skybox::GetEnvironmentTexture()
+	{
+		return m_cubeMapTexture ? m_cubeMapTexture->GetShaderResourceView() : nullptr;
+	}
 }

@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES ===================================
 #include "ImageImporter.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
 #include "FreeImagePlus.h"
 #include "../../Multithreading/Multithreading.h"
-//==========================================
+//==============================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -125,7 +125,7 @@ namespace Directus
 		// Perform any scaling (if necessary)
 		bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, width, height, FILTER_LANCZOS3) : bitmapOriginal;
 
-		// Convert it to 32 bits (if necessery)
+		// Convert it to 32 bits (if neccessery)
 		m_bpp = FreeImage_GetBPP(bitmapOriginal);
 		bitmap32 = m_bpp != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
 

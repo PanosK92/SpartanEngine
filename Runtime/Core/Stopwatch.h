@@ -21,12 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-class Stopwatch
+namespace Directus
 {
-public:
-	static void Start();
-	static int End();
+	class Stopwatch
+	{
+	public:
+		static void Start();
+		static int End();
 
-private:
-	static int m_milliseconds;
-};
+	private:
+		static int m_milliseconds;
+	};
+}
