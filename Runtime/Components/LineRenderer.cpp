@@ -59,7 +59,7 @@ namespace Directus
 	}
 
 	//= INPUT ===============================================================
-	void LineRenderer::AddLineList(const vector<VertexPositionColor>& lineList)
+	void LineRenderer::AddLineList(const vector<VertexPosCol>& lineList)
 	{
 		ClearVertices();
 
@@ -74,7 +74,7 @@ namespace Directus
 			AddVertex(lineList[i]);
 	}
 
-	void LineRenderer::AddVertex(const VertexPositionColor& vertex)
+	void LineRenderer::AddVertex(const VertexPosCol& vertex)
 	{
 		m_vertices[m_vertexIndex] = vertex;
 		m_vertexIndex++;
@@ -103,11 +103,11 @@ namespace Directus
 		}
 
 		// create vertex array
-		m_vertices = new VertexPositionColor[m_maxVertices];
+		m_vertices = new VertexPosCol[m_maxVertices];
 
 		// create vertex buffer
 		m_vertexBuffer = make_shared<D3D11VertexBuffer>(g_context->GetSubsystem<D3D11GraphicsDevice>());
-		m_vertexBuffer->CreateDynamic(sizeof(VertexPositionColor), m_maxVertices);
+		m_vertexBuffer->CreateDynamic(sizeof(VertexPosCol), m_maxVertices);
 	}
 
 	//= MISC ================================================================
@@ -120,7 +120,7 @@ namespace Directus
 		void* data = m_vertexBuffer->Map();
 
 		// update the vertex buffer.
-		memcpy(data, &m_vertices[0], sizeof(VertexPositionColor) * m_maxVertices);
+		memcpy(data, &m_vertices[0], sizeof(VertexPosCol) * m_maxVertices);
 
 		// re-enable GPU access to the vertex buffer data.
 		m_vertexBuffer->Unmap();

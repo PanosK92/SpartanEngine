@@ -104,7 +104,7 @@ namespace Directus
 
 		for (unsigned int i = 0; i < m_vertexCount; i++)
 		{
-			m_vertices.push_back(VertexPositionTextureNormalTangent());
+			m_vertices.push_back(VertexPosTexNorTan());
 			LoadVertex(m_vertices.back());
 		}
 
@@ -188,7 +188,7 @@ namespace Directus
 	//==============================================================================
 
 	//= IO =========================================================================
-	void Mesh::SaveVertex(const VertexPositionTextureNormalTangent& vertex)
+	void Mesh::SaveVertex(const VertexPosTexNorTan& vertex)
 	{
 		Serializer::WriteFloat(vertex.position.x);
 		Serializer::WriteFloat(vertex.position.y);
@@ -206,7 +206,7 @@ namespace Directus
 		Serializer::WriteFloat(vertex.tangent.z);
 	}
 
-	void Mesh::LoadVertex(VertexPositionTextureNormalTangent& vertex)
+	void Mesh::LoadVertex(VertexPosTexNorTan& vertex)
 	{
 		vertex.position.x = Serializer::ReadFloat();
 		vertex.position.y = Serializer::ReadFloat();

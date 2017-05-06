@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scripting/Scripting.h"
 #include "../Graphics/Renderer.h"
 #include "../Audio/Audio.h"
+#include "../Graphics/GraphicsDefinitions.h"
 //===========================================
 
 //= NAMESPACES =====

@@ -51,8 +51,8 @@ namespace Directus
 
 		void SetDirectory(const std::string& directory) { m_directory = directory; }
 
-		std::vector<VertexPositionTextureNormalTangent>& GetVertices() { return m_vertices; }
-		void SetVertices(std::vector<VertexPositionTextureNormalTangent> vertices)
+		std::vector<VertexPosTexNorTan>& GetVertices() { return m_vertices; }
+		void SetVertices(std::vector<VertexPosTexNorTan> vertices)
 		{
 			m_vertices = vertices;
 			m_vertexCount = (unsigned int)vertices.size();
@@ -71,10 +71,10 @@ namespace Directus
 		unsigned int GetTriangleCount() const { return m_triangleCount; }
 		unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
 
-		const Directus::Math::Vector3& GetMin() const { return m_min; }
-		const Directus::Math::Vector3& GetMax() const { return m_max; }
-		const Directus::Math::Vector3& GetCenter() const { return m_center; }
-		const Directus::Math::Vector3& GetBoundingBox() const { return m_boundingBox; }
+		const Math::Vector3& GetMin() const { return m_min; }
+		const Math::Vector3& GetMax() const { return m_max; }
+		const Math::Vector3& GetCenter() const { return m_center; }
+		const Math::Vector3& GetBoundingBox() const { return m_boundingBox; }
 
 		//= PROCESSING =================================================================
 		void Update();
@@ -84,8 +84,8 @@ namespace Directus
 
 	private:
 		//= IO =========================================================================
-		static void SaveVertex(const VertexPositionTextureNormalTangent& vertex);
-		static void LoadVertex(VertexPositionTextureNormalTangent& vertex);
+		static void SaveVertex(const VertexPosTexNorTan& vertex);
+		static void LoadVertex(VertexPosTexNorTan& vertex);
 		//==============================================================================
 
 		//= HELPER FUNCTIONS ===========================================================
@@ -98,7 +98,7 @@ namespace Directus
 		std::string m_rootGameObjectID;
 		std::string m_directory;
 
-		std::vector<VertexPositionTextureNormalTangent> m_vertices;
+		std::vector<VertexPosTexNorTan> m_vertices;
 		std::vector<unsigned int> m_indices;
 
 		unsigned int m_vertexCount;
