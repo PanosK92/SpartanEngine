@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ============
-#include "ScriptEngine.h"
+#include "Scripting.h"
 #include <memory>
 //=======================
 
@@ -37,7 +37,7 @@ public:
 	ScriptInstance();
 	~ScriptInstance();
 
-	bool Instantiate(const std::string& path, GameObject* gameObject, ScriptEngine* scriptEngine);
+	bool Instantiate(const std::string& path, GameObject* gameObject, Scripting* scriptEngine);
 	bool IsInstantiated();
 	std::string GetScriptPath();
 
@@ -58,5 +58,5 @@ private:
 	asIScriptFunction* m_startFunction;
 	asIScriptFunction* m_updateFunction;
 	bool m_isInstantiated;
-	ScriptEngine* m_scriptEngine;
+	Scripting* m_scriptEngine;
 };

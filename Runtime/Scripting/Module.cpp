@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Module.h"
 #include <scriptbuilder/scriptbuilder.h>
 #include <scriptbuilder/scriptbuilder.cpp>
-#include "ScriptEngine.h"
+#include "Scripting.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 //========================================
 
-Module::Module(const string& moduleName, ScriptEngine* scriptEngine)
+Module::Module(const string& moduleName, Scripting* scriptEngine)
 {
 	m_builder = nullptr;
 	m_moduleName = moduleName;

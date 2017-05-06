@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define NULL_SHADER_ID "-1";
 
-class ShaderVariation : public Directus::Resource::Resource
+class ShaderVariation : public Directus::Resource
 {
 public:
 	ShaderVariation();

@@ -39,7 +39,7 @@ enum Rolloff
 	Custom
 };
 
-class AudioClip : Directus::Resource::Resource
+class AudioClip : Directus::Resource
 {
 public:
 	AudioClip(FMOD::System* fModSystem);

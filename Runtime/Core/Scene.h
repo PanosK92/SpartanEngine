@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameObject.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
-#include "../Multithreading/ThreadPool.h"
+#include "../Multithreading/Multithreading.h"
 //=======================================
 
 class DllExport Scene : public Subsystem
@@ -35,7 +35,10 @@ public:
 	Scene(Context* context);
 	~Scene();
 
-	void Initialize();
+	//= Subsystem ============
+	virtual bool Initialize();
+	//========================
+
 	void Start();
 	void OnDisable();
 	void Update();

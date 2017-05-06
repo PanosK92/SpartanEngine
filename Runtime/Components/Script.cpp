@@ -92,7 +92,7 @@ bool Script::AddScript(const string& filePath)
 {
 	// Instantiate the script
 	m_scriptInstance = make_shared<ScriptInstance>();
-	m_scriptInstance->Instantiate(filePath, g_gameObject, g_context->GetSubsystem<ScriptEngine>());
+	m_scriptInstance->Instantiate(filePath, g_gameObject, g_context->GetSubsystem<Scripting>());
 
 	// Check if the script has been instantiated successfully.
 	if (!m_scriptInstance->IsInstantiated())

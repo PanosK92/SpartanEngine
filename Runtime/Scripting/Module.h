@@ -29,12 +29,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class asIScriptModule;
 class CScriptBuilder;
 class asIScriptEngine;
-class ScriptEngine;
+class Scripting;
 
 class Module
 {
 public:
-	Module(const std::string& moduleName, ScriptEngine* scriptEngine);
+	Module(const std::string& moduleName, Scripting* scriptEngine);
 	~Module();
 
 	bool LoadScript(const std::string& filePath);
@@ -43,5 +43,5 @@ public:
 private:
 	std::string m_moduleName;
 	CScriptBuilder* m_builder;
-	ScriptEngine* m_scriptEngine;
+	Scripting* m_scriptEngine;
 };

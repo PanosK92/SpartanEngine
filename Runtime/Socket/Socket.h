@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "../Core/Scene.h"
 #include "../Input/Input.h"
-#include "../Physics/PhysicsWorld.h"
+#include "../Physics/Physics.h"
 #include "../Resource/Import/ImageImporter.h"
 //===========================================
 
@@ -35,7 +35,9 @@ public:
 	Socket(Context* context);
 	~Socket();
 
-	void Initialize();
+	//= Subsystem ============
+	virtual bool Initialize();
+	//========================
 
 	//= UPDATE ======================================
 	void Start();

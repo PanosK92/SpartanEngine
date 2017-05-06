@@ -35,23 +35,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/DDSTextureImporter.h"
 //================================================
 
-//= NAMESPACES ====================
+//= NAMESPACES ==========
 using namespace std;
 using namespace Directus;
-using namespace Directus::Resource;
-//=================================
+//=======================
 
 Texture::Texture(Context* context)
 {
 	// IResource
 	m_resourceID = GENERATE_GUID;
-	m_resourceType = Directus::Resource::Texture;
+	m_resourceType = Texture_Resource;
 
 	// Texture
 	m_context = context;
 	m_width = 0;
 	m_height = 0;
-	m_textureType = Albedo;
+	m_textureType = Albedo_Texture;
 	m_grayscale = false;
 	m_transparency = false;
 	m_alphaIsTransparency = false;
@@ -169,10 +168,10 @@ void Texture::SetTextureType(TextureType type)
 
 	// FIX: some models pass a normal map as a height map
 	// and others pass a height map as a normal map...
-	if (m_textureType == Height && !GetGrayscale())
-		m_textureType = Normal;
-	if (m_textureType == Normal && GetGrayscale())
-		m_textureType = Height;
+	if (m_textureType == Height_Texture && !GetGrayscale())
+		m_textureType = Normal_Texture;
+	if (m_textureType == Normal_Texture && GetGrayscale())
+		m_textureType = Height_Texture;
 }
 
 bool Texture::CreateShaderResourceView()

@@ -38,11 +38,13 @@ Socket::Socket(Context* context) : Subsystem(context)
 
 Socket::~Socket()
 {
+
 }
 
-void Socket::Initialize()
+bool Socket::Initialize()
 {
 	m_engine = g_context->GetSubsystem<Engine>();
+	return true;
 }
 
 //= STATE CONTROL ==============================================================
@@ -127,7 +129,7 @@ void Socket::SetPhysicsDebugDraw(bool enable)
 
 PhysicsDebugDraw* Socket::GetPhysicsDebugDraw()
 {
-	return g_context->GetSubsystem<PhysicsWorld>()->GetPhysicsDebugDraw();
+	return g_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw();
 }
 
 void Socket::ClearScene()

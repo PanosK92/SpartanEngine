@@ -31,12 +31,14 @@ public:
 	Timer(Context* context);
 	~Timer();
 
-	void Update();
+	//= Subsystem ============
+	virtual bool Initialize();
+	//========================
 
+	void Update();
 	int GetDeltaTime();
 	int GetTime();
 	int GetElapsedTime();
-
 	float GetDeltaTimeSec();
 
 private:

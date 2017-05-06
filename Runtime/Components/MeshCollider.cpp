@@ -88,7 +88,7 @@ void MeshCollider::Serialize()
 void MeshCollider::Deserialize()
 {
 	m_isConvex = Serializer::ReadBool();
-	m_mesh = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
+	m_mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
 
 	Build();
 }

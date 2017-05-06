@@ -31,33 +31,37 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	namespace Resource
+	ResourceManager::ResourceManager(Context* context) : Subsystem(context)
 	{
-		ResourceManager::ResourceManager(Context* context) : Subsystem(context)
-		{
-			m_resourceCache = make_unique<ResourceCache>();
+		m_resourceCache = nullptr;
+	}
 
-			// Add engine standard resource directories
-			AddResourceDirectory(Texture, "Standard Assets//Textures//");
-			AddResourceDirectory(Shader, "Standard Assets//Shaders//");
-			AddResourceDirectory(Cubemap, "Standard Assets//Cubemaps//");
-			AddResourceDirectory(Script, "Standard Assets//Scripts//");
+	bool ResourceManager::Initialize()
+	{
+		m_resourceCache = make_unique<ResourceCache>();
+
+		// Add engine standard resource directories
+		AddResourceDirectory(Texture_Resource, "Standard Assets//Textures//");
+		AddResourceDirectory(Shader_Resource, "Standard Assets//Shaders//");
+		AddResourceDirectory(Cubemap_Resource, "Standard Assets//Cubemaps//");
+		AddResourceDirectory(Script_Resource, "Standard Assets//Scripts//");
+
+		return true;
+	}
+
+	void ResourceManager::AddResourceDirectory(ResourceType type, const string& directory)
+	{
+		m_resourceDirectories[type] = directory;
+	}
+
+	std::string ResourceManager::GetResourceDirectory(ResourceType type)
+	{
+		for (auto& directory : m_resourceDirectories)
+		{
+			if (directory.first == type)
+				return directory.second;
 		}
 
-		void ResourceManager::AddResourceDirectory(ResourceType type, const string& directory)
-		{
-			m_resourceDirectories[type] = directory;
-		}
-
-		std::string ResourceManager::GetResourceDirectory(ResourceType type)
-		{
-			for (auto& directory : m_resourceDirectories)
-			{
-				if (directory.first == type)
-					return directory.second;
-			}
-
-			return DATA_NOT_ASSIGNED;
-		}
+		return DATA_NOT_ASSIGNED;
 	}
 }

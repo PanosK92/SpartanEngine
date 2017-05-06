@@ -37,34 +37,34 @@ public:
 	D3D11GraphicsDevice(Context* context);
 	~D3D11GraphicsDevice();
 
-	//==========================================================================
-	virtual bool Initialize(HWND windowHandle);
+	//= Sybsystem ============
+	virtual bool Initialize();
+	//========================
+
+	//= IGraphicsDevice ========================================================
+	virtual void SetHandle(HWND drawHandle);
 	virtual void Clear(const Directus::Math::Vector4& color);
 	virtual void Present();
 	virtual void SetBackBufferAsRenderTarget();
-	//==========================================================================
 
-	//= DEPTH =================================================================
+	// Depth
 	virtual bool CreateDepthStencil();
 	virtual bool CreateDepthStencilBuffer();
 	virtual bool CreateDepthStencilView();
 	virtual void EnableZBuffer(bool enable);
-	//=========================================================================
 
-	//=========================================================================
 	virtual void EnableAlphaBlending(bool enable);
 	virtual void SetInputLayout(InputLayout inputLayout);
 	virtual void SetCullMode(CullMode cullMode);
 	virtual void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
-	//=========================================================================
 
-	//= VIEWPORT ==============================================================
+	// Viewport
 	virtual bool SetResolution(int width, int height);
 	virtual void SetViewport(float width, float height);
 	virtual void ResetViewport();
-	//=========================================================================
 
 	virtual bool IsInitialized() { return m_initializedSuccessfully; }
+	//======================================================================
 
 	ID3D11Device* GetDevice() { return m_device; }
 	ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
@@ -98,4 +98,6 @@ private:
 
 	ID3D11BlendState* m_blendStateAlphaEnabled;
 	ID3D11BlendState* m_blendStateAlphaDisabled;
+
+	HWND m_drawHandle;
 };

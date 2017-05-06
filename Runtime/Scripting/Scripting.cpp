@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ================================
-#include "ScriptEngine.h"
+#include "Scripting.h"
 #include <angelscript.h>
 #include <scriptstdstring/scriptstdstring.h>
 #include <scriptstdstring/scriptstdstring.cpp>
@@ -33,29 +33,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define AS_USE_STLNAMES = 1
 
-ScriptEngine::ScriptEngine(Context* context) : Subsystem(context)
+Scripting::Scripting(Context* context) : Subsystem(context)
 {
-	m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	if (!m_scriptEngine)
-	{
-		LOG_ERROR("Failed to create AngelScript engine.");
-		return;
-	}
-
-	// Register the string type
-	RegisterStdString(m_scriptEngine);
-
-	// Register engine script interface
-	auto scriptInterface = make_shared<ScriptInterface>();
-	scriptInterface->Register(m_scriptEngine, g_context);
-
-	// Set the message callback to print the human readable messages that the engine gives in case of errors
-	m_scriptEngine->SetMessageCallback(asMETHOD(ScriptEngine, message_callback), this, asCALL_THISCALL);
-
-	m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
+	m_scriptEngine = nullptr;
 }
 
-ScriptEngine::~ScriptEngine()
+Scripting::~Scripting()
 {
 	Reset();
 
@@ -66,7 +49,31 @@ ScriptEngine::~ScriptEngine()
 	}
 }
 
-void ScriptEngine::Reset()
+bool Scripting::Initialize()
+{
+	m_scriptEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	if (!m_scriptEngine)
+	{
+		LOG_ERROR("Failed to create AngelScript engine.");
+		return false;
+	}
+
+	// Register the string type
+	RegisterStdString(m_scriptEngine);
+
+	// Register engine script interface
+	auto scriptInterface = make_shared<ScriptInterface>();
+	scriptInterface->Register(m_scriptEngine, g_context);
+
+	// Set the message callback to print the human readable messages that the engine gives in case of errors
+	m_scriptEngine->SetMessageCallback(asMETHOD(Scripting, message_callback), this, asCALL_THISCALL);
+
+	m_scriptEngine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true);
+
+	return true;
+}
+
+void Scripting::Reset()
 {
 	for (auto n = 0; n < m_contexts.size(); n++)
 		m_contexts[n]->Release();
@@ -75,7 +82,7 @@ void ScriptEngine::Reset()
 	m_contexts.shrink_to_fit();
 }
 
-asIScriptEngine* ScriptEngine::GetAsIScriptEngine()
+asIScriptEngine* Scripting::GetAsIScriptEngine()
 {
 	return m_scriptEngine;
 }
@@ -85,7 +92,7 @@ asIScriptEngine* ScriptEngine::GetAsIScriptEngine()
 ------------------------------------------------------------------------------*/
 // Contexts is what you use to call AngelScript functions and methods.
 // They say you must pool them to avoid overhead. So I do as they say.
-asIScriptContext* ScriptEngine::RequestContext()
+asIScriptContext* Scripting::RequestContext()
 {
 	asIScriptContext* context = nullptr;
 	if (m_contexts.size())
@@ -103,7 +110,7 @@ asIScriptContext* ScriptEngine::RequestContext()
 
 // A context should be returned after calling an AngelScript function, 
 // it will be inserted back in the pool for re-use
-void ScriptEngine::ReturnContext(asIScriptContext* context)
+void Scripting::ReturnContext(asIScriptContext* context)
 {
 	m_contexts.push_back(context);
 	context->Unprepare();
@@ -112,7 +119,7 @@ void ScriptEngine::ReturnContext(asIScriptContext* context)
 /*------------------------------------------------------------------------------
 							[CALLS]
 ------------------------------------------------------------------------------*/
-bool ScriptEngine::ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj)
+bool Scripting::ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* obj)
 {
 	asIScriptContext* ctx = RequestContext();
 
@@ -135,7 +142,7 @@ bool ScriptEngine::ExecuteCall(asIScriptFunction* scriptFunc, asIScriptObject* o
 /*------------------------------------------------------------------------------
 									[MODULE]
 ------------------------------------------------------------------------------*/
-void ScriptEngine::DiscardModule(string moduleName)
+void Scripting::DiscardModule(string moduleName)
 {
 	m_scriptEngine->DiscardModule(moduleName.c_str());
 }
@@ -144,7 +151,7 @@ void ScriptEngine::DiscardModule(string moduleName)
 								[PRIVATE]
 ------------------------------------------------------------------------------*/
 // This is used for script exception messages
-void ScriptEngine::LogExceptionInfo(asIScriptContext* ctx)
+void Scripting::LogExceptionInfo(asIScriptContext* ctx)
 {
 	string exceptionDescription = ctx->GetExceptionString(); // get the exception that occurred
 	const asIScriptFunction* function = ctx->GetExceptionFunction(); // get the function where the exception occured
@@ -159,7 +166,7 @@ void ScriptEngine::LogExceptionInfo(asIScriptContext* ctx)
 }
 
 // This is used for AngelScript error messages
-void ScriptEngine::message_callback(const asSMessageInfo& msg)
+void Scripting::message_callback(const asSMessageInfo& msg)
 {
 	string filename = FileSystem::GetFileNameFromPath(msg.section);
 	string message = msg.message;

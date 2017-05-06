@@ -27,6 +27,8 @@ public:
 	Subsystem(Context* context);
 	virtual ~Subsystem() {}
 
+	virtual bool Initialize() = 0;
+
 protected:
 	Context* g_context;
 };

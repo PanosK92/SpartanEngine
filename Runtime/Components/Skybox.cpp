@@ -54,12 +54,12 @@ Skybox::~Skybox()
 void Skybox::Reset()
 {
 	// Get cubemap directory
-	auto resourceMng = g_context->GetSubsystem<Directus::Resource::ResourceManager>();
-	std::string cubamapDirectory = resourceMng->GetResourceDirectory(Directus::Resource::Cubemap);
+	auto resourceMng = g_context->GetSubsystem<Directus::ResourceManager>();
+	std::string cubamapDirectory = resourceMng->GetResourceDirectory(Cubemap_Resource);
 
 	m_cubeMapTexture = make_shared<Texture>(g_context);
 	m_cubeMapTexture->LoadFromFile(cubamapDirectory + "environment.dds");
-	m_cubeMapTexture->SetTextureType(CubeMap);
+	m_cubeMapTexture->SetTextureType(CubeMap_Texture);
 	m_cubeMapTexture->SetWidth(1024);
 	m_cubeMapTexture->SetHeight(1024);
 	m_cubeMapTexture->SetGrayscale(false);

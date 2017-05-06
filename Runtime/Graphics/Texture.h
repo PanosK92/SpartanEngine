@@ -30,18 +30,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum TextureType
 {
-	Albedo,
-	Roughness,
-	Metallic,
-	Normal,
-	Height,
-	Occlusion,
-	Emission,
-	Mask,
-	CubeMap,
+	Albedo_Texture,
+	Roughness_Texture,
+	Metallic_Texture,
+	Normal_Texture,
+	Height_Texture,
+	Occlusion_Texture,
+	Emission_Texture,
+	Mask_Texture,
+	CubeMap_Texture,
 };
 
-class Texture : public Directus::Resource::Resource
+class Texture : public Directus::Resource
 {
 public:
 	Texture(Context* context);

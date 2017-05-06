@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Collider.h"
 #include "../IO/Serializer.h"
 #include "../Core/GameObject.h"
-#include "../Physics/PhysicsWorld.h"
+#include "../Physics/Physics.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
@@ -406,7 +406,7 @@ void RigidBody::AddBodyToWorld()
 	SetRotationLock(m_rotationLock);
 
 	// PHYSICS WORLD - ADD
-	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->addRigidBody(m_rigidBody.get());
+	g_context->GetSubsystem<Physics>()->GetWorld()->addRigidBody(m_rigidBody.get());
 
 	if (m_mass > 0.0f)
 		Activate();
@@ -427,7 +427,7 @@ void RigidBody::RemoveBodyFromWorld()
 
 	if (m_inWorld)
 	{
-		g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeRigidBody(m_rigidBody.get());
+		g_context->GetSubsystem<Physics>()->GetWorld()->removeRigidBody(m_rigidBody.get());
 		m_inWorld = false;
 	}
 }
@@ -437,7 +437,7 @@ void RigidBody::UpdateGravity() const
 	if (!m_rigidBody)
 		return;
 
-	btDiscreteDynamicsWorld* world = g_context->GetSubsystem<PhysicsWorld>()->GetWorld();
+	btDiscreteDynamicsWorld* world = g_context->GetSubsystem<Physics>()->GetWorld();
 
 	int flags = m_rigidBody->getFlags();
 	if (m_useGravity)
@@ -457,7 +457,7 @@ void RigidBody::DeleteBtRigidBody()
 	if (!m_rigidBody)
 		return;
 
-	g_context->GetSubsystem<PhysicsWorld>()->GetWorld()->removeRigidBody(m_rigidBody.get());
+	g_context->GetSubsystem<Physics>()->GetWorld()->removeRigidBody(m_rigidBody.get());
 	delete m_rigidBody->getMotionState();
 }
 

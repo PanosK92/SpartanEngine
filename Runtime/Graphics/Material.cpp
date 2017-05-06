@@ -39,7 +39,7 @@ Material::Material(Context* context)
 {
 	// Resource
 	m_resourceID = GENERATE_GUID;
-	m_resourceType = Directus::Resource::Texture;
+	m_resourceType = Material_Resource;
 
 	// Material
 	m_context = context;
@@ -157,7 +157,7 @@ bool Material::LoadFromFile(const string& filePath)
 
 		// If the texture happens to be loaded, we might as well get a reference to it
 		if (m_context)
-			texture = m_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetResourceByPath<Texture>(texPath);
+			texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByPath<Texture>(texPath);
 
 		m_textures.insert(make_pair(make_pair(texPath, texType), texture));
 	}
@@ -167,7 +167,7 @@ bool Material::LoadFromFile(const string& filePath)
 	// Load unloaded textures
 	for (auto& it : m_textures)
 		if (it.second.expired())
-			it.second = m_context->GetSubsystem<Directus::Resource::ResourceManager>()->Load<Texture>(it.first.first);
+			it.second = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(it.first.first);
 
 	AcquireShader();
 
@@ -249,21 +249,21 @@ void Material::AcquireShader()
 	// Add a shader to the pool based on this material, if a 
 	// matching shader already exists, it will be returned instead.
 	m_shader = CreateShaderBasedOnMaterial(
-		HasTextureOfType(Albedo),
-		HasTextureOfType(Roughness),
-		HasTextureOfType(Metallic),
-		HasTextureOfType(Normal),
-		HasTextureOfType(Height),
-		HasTextureOfType(Occlusion),
-		HasTextureOfType(Emission),
-		HasTextureOfType(Mask),
-		HasTextureOfType(CubeMap)
+		HasTextureOfType(Albedo_Texture),
+		HasTextureOfType(Roughness_Texture),
+		HasTextureOfType(Metallic_Texture),
+		HasTextureOfType(Normal_Texture),
+		HasTextureOfType(Height_Texture),
+		HasTextureOfType(Occlusion_Texture),
+		HasTextureOfType(Emission_Texture),
+		HasTextureOfType(Mask_Texture),
+		HasTextureOfType(CubeMap_Texture)
 	);
 }
 
 weak_ptr<ShaderVariation> Material::FindMatchingShader(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
 {
-	auto shaders = m_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetAllByType<ShaderVariation>();
+	auto shaders = m_context->GetSubsystem<ResourceManager>()->GetAllByType<ShaderVariation>();
 	for (const auto shaderTemp : shaders)
 	{
 		auto shader = shaderTemp.lock();
@@ -292,13 +292,13 @@ weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(bool albedo, boo
 		return existingShader;
 
 	// If not, create a new one 
-	auto resourceMng = m_context->GetSubsystem<Directus::Resource::ResourceManager>(); 
-	std::string shaderDirectory = resourceMng->GetResourceDirectory(Directus::Resource::Shader); // Get standard shader directory
+	auto resourceMng = m_context->GetSubsystem<ResourceManager>(); 
+	std::string shaderDirectory = resourceMng->GetResourceDirectory(Shader_Resource); // Get standard shader directory
 	auto shader = make_shared<ShaderVariation>();
 	shader->Initialize(shaderDirectory + "GBuffer.hlsl", albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<D3D11GraphicsDevice>());
 
 	// Add the shader to the pool and return it
-	return m_context->GetSubsystem<Directus::Resource::ResourceManager>()->Add(shader);
+	return m_context->GetSubsystem<ResourceManager>()->Add(shader);
 }
 
 void** Material::GetShaderResourceViewByTextureType(TextureType type)
@@ -314,15 +314,15 @@ void** Material::GetShaderResourceViewByTextureType(TextureType type)
 
 void Material::TextureBasedMultiplierAdjustment()
 {
-	if (HasTextureOfType(Roughness))
+	if (HasTextureOfType(Roughness_Texture))
 		SetRoughnessMultiplier(1.0f);
 
-	if (HasTextureOfType(Metallic))
+	if (HasTextureOfType(Metallic_Texture))
 		SetMetallicMultiplier(1.0f);
 
-	if (HasTextureOfType(Normal))
+	if (HasTextureOfType(Normal_Texture))
 		SetNormalMultiplier(1.0f);
 
-	if (HasTextureOfType(Height))
+	if (HasTextureOfType(Height_Texture))
 		SetHeightMultiplier(1.0f);
 }

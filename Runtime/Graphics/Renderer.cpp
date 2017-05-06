@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
 #include "../Components/LineRenderer.h"
-#include "../Physics/PhysicsWorld.h"
+#include "../Physics/Physics.h"
 #include "../Physics/PhysicsDebugDraw.h"
 #include "../Logging/Log.h"
 #include "../EventSystem/EventHandler.h"
@@ -74,10 +74,23 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_nearPlane = 0.0;
 	m_farPlane = 0.0f;
 
-	// Get the garphics subsystem
+	// Subscribe to render event
+	SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
+}
+
+Renderer::~Renderer()
+{
+
+}
+
+bool Renderer::Initialize()
+{
+	// Get the graphics subsystem
 	m_graphics = g_context->GetSubsystem<Graphics>();
-	if (!m_graphics->IsInitialized()){
-		return;
+	if (!m_graphics->IsInitialized())
+	{
+		LOG_ERROR("Rendere: Failed to initialize, an initialized Graphics subsystem is required.");
+		return false;
 	}
 
 	m_GBuffer = make_shared<GBuffer>(m_graphics);
@@ -86,13 +99,11 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_fullScreenQuad = make_shared<FullScreenQuad>();
 	m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
-	auto resourceMng = g_context->GetSubsystem<Directus::Resource::ResourceManager>();
-	std::string shaderDirectory = resourceMng->GetResourceDirectory(Directus::Resource::Shader);
-	std::string textureDirectory = resourceMng->GetResourceDirectory(Directus::Resource::Texture);
+	auto resourceMng = g_context->GetSubsystem<ResourceManager>();
+	std::string shaderDirectory = resourceMng->GetResourceDirectory(Shader_Resource);
+	std::string textureDirectory = resourceMng->GetResourceDirectory(Texture_Resource);
 
-	/*------------------------------------------------------------------------------
-	[SHADERS]
-	------------------------------------------------------------------------------*/
+	// Shaders
 	m_shaderDeferred = make_shared<DeferredShader>();
 	m_shaderDeferred->Load(shaderDirectory + "Deferred.hlsl", m_graphics);
 
@@ -111,29 +122,19 @@ Renderer::Renderer(Context* context) : Subsystem(context)
 	m_shaderBlur = make_shared<PostProcessShader>();
 	m_shaderBlur->Load(shaderDirectory + "PostProcess.hlsl", "BLUR", m_graphics);
 
-	/*------------------------------------------------------------------------------
-	[RENDER TEXTURES]
-	------------------------------------------------------------------------------*/
+	// Render textures
 	m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
 	m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 	m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics);
 	m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-	/*------------------------------------------------------------------------------
-	[MISC]
-	------------------------------------------------------------------------------*/
+	// Misc
 	m_texNoiseMap = make_shared<Texture>(g_context);
 	m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
-	m_texNoiseMap->SetTextureType(Normal);
+	m_texNoiseMap->SetTextureType(Normal_Texture);
 
-	// Subcribe to render event
-	SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
-}
-
-Renderer::~Renderer()
-{
-
+	return true;
 }
 
 void Renderer::Render()
@@ -195,7 +196,7 @@ void Renderer::Render()
 void Renderer::SetResolution(int width, int height)
 {
 	// A resolution of 0 won't cause a crash or anything crazy,
-	// but it will cause the depth stancil buffer creation to fail,
+	// but it will cause the depth stencil buffer creation to fail,
 	// various error messages to be displayed. I silently prevent that.
 	if (width <= 0 || height <= 0)
 		return;
@@ -329,8 +330,8 @@ void Renderer::DirectionalLightDepthPass()
 void Renderer::GBufferPass()
 {
 	Graphics* graphics = g_context->GetSubsystem<Graphics>();
-	auto materials = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetAllByType<Material>();
-	auto shaders = g_context->GetSubsystem<Directus::Resource::ResourceManager>()->GetAllByType<ShaderVariation>();
+	auto materials = g_context->GetSubsystem<ResourceManager>()->GetAllByType<Material>();
+	auto shaders = g_context->GetSubsystem<ResourceManager>()->GetAllByType<ShaderVariation>();
 
 	for (const auto& tempShader : shaders) // iterate through the shaders
 	{
@@ -352,14 +353,14 @@ void Renderer::GBufferPass()
 			renderShader->UpdatePerMaterialBuffer(renderMaterial);
 
 			//= Gather any used textures and bind them to the GPU ===============================
-			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Albedo));
-			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Roughness));
-			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Metallic));
-			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Normal));
-			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Height));
-			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Occlusion));
-			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Emission));
-			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Mask));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Albedo_Texture));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Roughness_Texture));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Metallic_Texture));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Normal_Texture));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Height_Texture));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Occlusion_Texture));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Emission_Texture));
+			m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Mask_Texture));
 
 			if (m_directionalLight)
 			{
@@ -526,16 +527,16 @@ void Renderer::Gizmos() const
 	if (g_context->GetSubsystem<Engine>()->IsSimulating())
 		return;
 
-	g_context->GetSubsystem<PhysicsWorld>()->DebugDraw();
+	g_context->GetSubsystem<Physics>()->DebugDraw();
 
 	if (!m_lineRenderer)
 		return;
 
-	if (!g_context->GetSubsystem<PhysicsWorld>()->GetPhysicsDebugDraw()->IsDirty())
+	if (!g_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->IsDirty())
 		return;
 
 	// Pass the line list from bullet to the line renderer component
-	m_lineRenderer->AddLineList(g_context->GetSubsystem<PhysicsWorld>()->GetPhysicsDebugDraw()->GetLines());
+	m_lineRenderer->AddLineList(g_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->GetLines());
 
 	// Set the buffer
 	m_lineRenderer->SetBuffer();

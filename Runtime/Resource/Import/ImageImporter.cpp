@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
 #include "FreeImagePlus.h"
-#include "../../Multithreading/ThreadPool.h"
+#include "../../Multithreading/Multithreading.h"
 //==========================================
 
 //= NAMESPACES =====

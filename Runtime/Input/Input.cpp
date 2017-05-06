@@ -36,7 +36,7 @@ Input::Input(Context* context) : Subsystem(context)
 	m_DX8Input = nullptr;
 	m_initialized = false;
 
-	// Subcribe to update event
+	// Subscribe to update event
 	SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Input::Update);
 }
 
@@ -46,10 +46,18 @@ Input::~Input()
 	m_DX8Input = nullptr;
 }
 
-void Input::Initialize(HINSTANCE instance, HWND handle)
+bool Input::Initialize()
 {
 	m_DX8Input = make_shared<DX8Input>();
-	m_initialized = m_DX8Input->Initialize(instance, handle);
+	m_initialized = m_DX8Input->Initialize(m_hinstance, m_handle);
+
+	return m_initialized;
+}
+
+void Input::SetHandle(HWND handle, HINSTANCE hinstance)
+{
+	m_handle = handle;
+	m_hinstance = hinstance;
 }
 
 void Input::Update()

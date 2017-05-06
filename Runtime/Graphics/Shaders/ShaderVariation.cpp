@@ -35,7 +35,7 @@ using namespace Directus::Math;
 ShaderVariation::ShaderVariation()
 {
 	// Resource
-	m_resourceType = Directus::Resource::Shader;
+	m_resourceType = Shader_Resource;
 
 	// Shader
 	m_graphics = nullptr;
