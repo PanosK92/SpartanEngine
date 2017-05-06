@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============
+//= INCLUDES ==================
 #include "FullScreenQuad.h"
 #include "../Core/Helper.h"
 #include "../Graphics/Vertex.h"
-//==========================
+//=============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -44,52 +44,16 @@ namespace Directus
 		SafeRelease(m_indexBuffer);
 	}
 
-	bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, D3D11GraphicsDevice* graphicsDevice)
+	bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, Graphics* graphics)
 	{
-		m_graphics = graphicsDevice;
-
-		// Initialize the vertex and index buffer that hold the geometry for the ortho window model.
-		bool result = InitializeBuffers(windowWidth, windowHeight);
-		if (!result)
-			return false;
-
-		return true;
-	}
-
-	void FullScreenQuad::SetBuffers()
-	{
-		// Put the vertex and index buffers on the graphics pipeline to prepare them for drawing.
-		unsigned int stride;
-		unsigned int offset;
-
-		// Set vertex buffer stride and offset.
-		stride = sizeof(VertexPositionTexture);
-		offset = 0;
-
-		// Set the vertex buffer to active in the input assembler so it can be rendered.
-		m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
-
-		// Set the index buffer to active in the input assembler so it can be rendered.
-		m_graphics->GetDeviceContext()->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
-
-		// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
-		m_graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	}
-
-
-	int FullScreenQuad::GetIndexCount()
-	{
-		return m_indexCount;
-	}
-
-	bool FullScreenQuad::InitializeBuffers(int windowWidth, int windowHeight)
-	{
-		if (!m_graphics->GetDevice()) {
+		m_graphics = graphics;
+		if (!m_graphics->GetDevice()) 
+		{
 			return false;
 		}
 
 		float left, right, top, bottom;
-		VertexPositionTexture* vertices;
+		VertexPosTex* vertices;
 		unsigned long* indices;
 		D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
 		D3D11_SUBRESOURCE_DATA vertexData, indexData;
@@ -115,14 +79,18 @@ namespace Directus
 		m_indexCount = m_vertexCount;
 
 		// Create the vertex array.
-		vertices = new VertexPositionTexture[m_vertexCount];
+		vertices = new VertexPosTex[m_vertexCount];
 		if (!vertices)
+		{
 			return false;
+		}
 
 		// Create the index array.
 		indices = new unsigned long[m_indexCount];
 		if (!indices)
+		{
 			return false;
+		}
 
 		// Load the vertex array with data.
 		// First triangle.
@@ -151,7 +119,7 @@ namespace Directus
 
 		// Set up the description of the vertex buffer.
 		vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		vertexBufferDesc.ByteWidth = sizeof(VertexPositionTexture) * m_vertexCount;
+		vertexBufferDesc.ByteWidth = sizeof(VertexPosTex) * m_vertexCount;
 		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		vertexBufferDesc.CPUAccessFlags = 0;
 		vertexBufferDesc.MiscFlags = 0;
@@ -165,7 +133,9 @@ namespace Directus
 		// Now finally create the vertex buffer.
 		result = m_graphics->GetDevice()->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
 		if (FAILED(result))
+		{
 			return false;
+		}
 
 		// Set up the description of the index buffer.
 		indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -183,7 +153,9 @@ namespace Directus
 		// Create the index buffer.
 		result = m_graphics->GetDevice()->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
 		if (FAILED(result))
+		{
 			return false;
+		}
 
 		// Release the arrays now that the vertex and index buffers have been created and loaded.
 		delete[] vertices;
@@ -193,5 +165,25 @@ namespace Directus
 		indices = nullptr;
 
 		return true;
+	}
+
+	void FullScreenQuad::SetBuffers()
+	{
+		// Put the vertex and index buffers on the graphics pipeline to prepare them for drawing.
+		unsigned int stride;
+		unsigned int offset;
+
+		// Set vertex buffer stride and offset.
+		stride = sizeof(VertexPosTex);
+		offset = 0;
+
+		// Set the vertex buffer to active in the input assembler so it can be rendered.
+		m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
+
+		// Set the index buffer to active in the input assembler so it can be rendered.
+		m_graphics->GetDeviceContext()->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+		// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
+		m_graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	}
 }

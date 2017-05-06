@@ -27,23 +27,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 //==========================
 
-enum FrustrumSpace
+namespace Directus
 {
-	Outside,
-	Inside,
-	Intersects
-};
+	enum FrustrumSpace
+	{
+		Outside,
+		Inside,
+		Intersects
+	};
 
-class Frustrum
-{
-public:
-	Frustrum();
-	~Frustrum();
+	class Frustrum
+	{
+	public:
+		Frustrum();
+		~Frustrum();
 
-	void Construct(const Directus::Math::Matrix& mView, const Directus::Math::Matrix&  mProjection, float screenDepth);
-	FrustrumSpace CheckCube(const Directus::Math::Vector3& center, const Directus::Math::Vector3& extent);
-	FrustrumSpace CheckSphere(const Directus::Math::Vector3& center, float radius);
+		void Construct(const Directus::Math::Matrix& mView, const Directus::Math::Matrix&  mProjection, float screenDepth);
+		FrustrumSpace CheckCube(const Directus::Math::Vector3& center, const Directus::Math::Vector3& extent);
+		FrustrumSpace CheckSphere(const Directus::Math::Vector3& center, float radius);
 
-private:
-	Directus::Math::Plane m_planes[6];
-};
+	private:
+		Directus::Math::Plane m_planes[6];
+	};
+}

@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Renderer.h"
+#include "Gbuffer.h"
+#include "FullScreenQuad.h"
 #include "Shaders/ShaderVariation.h"
 #include "Shaders/PostProcessShader.h"
 #include "Shaders/DebugShader.h"
@@ -30,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshFilter.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
+#include "../Components/Skybox.h"
 #include "../Components/LineRenderer.h"
 #include "../Physics/Physics.h"
 #include "../Physics/PhysicsDebugDraw.h"
@@ -43,6 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Engine.h"
 #include "../Resource/ResourceManager.h"
 #include "../Core/Stopwatch.h"
+#include "../Math/Frustrum.h"
 //======================================
 
 //= NAMESPACES ================

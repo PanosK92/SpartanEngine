@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	struct VertexPositionTextureNormalTangent
+	struct VertexPosTexNorTan
 	{
 		Math::Vector3 position;
 		Math::Vector2 uv;
@@ -37,20 +37,20 @@ namespace Directus
 		Math::Vector3 tangent;
 	};
 
-	struct VertexPositionTextureNormal
+	struct VertexPosTexNor
 	{
 		Math::Vector3 position;
 		Math::Vector2 uv;
 		Math::Vector3 normal;
 	};
 
-	struct VertexPositionTexture
+	struct VertexPosTex
 	{
 		Math::Vector3 position;
 		Math::Vector2 uv;
 	};
 
-	struct VertexPositionColor
+	struct VertexPosCol
 	{
 		Math::Vector3 position;
 		Math::Vector4 color;

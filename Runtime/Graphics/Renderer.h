@@ -23,25 +23,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include <memory>
-#include "GBuffer.h"
-#include "FullScreenQuad.h"
-#include "../Core/GameObject.h"
-#include "../Components/Camera.h"
-#include "../Components/Skybox.h"
-#include "../Components/Light.h"
-#include "Shaders/DepthShader.h"
-#include "Shaders/DebugShader.h"
-#include "Shaders/PostProcessShader.h"
-#include "Shaders/DeferredShader.h"
-#include "../Graphics/Texture.h"
-#include "../Components/LineRenderer.h"
-#include "D3D11/D3D11RenderTexture.h"
-#include "../Core/Subsystem.h"
+#include <vector>
+#include "D3D11/D3D11GraphicsDevice.h"
+#include "../Core/SubSystem.h"
+#include "../Math/Matrix.h"
 //====================================
+
+class ID3D11ShaderResourceView;
 
 namespace Directus
 {
+	class GameObject;
 	class MeshFilter;
+	class Camera;
+	class Skybox;
+	class LineRenderer;
+	class Light;
+	class MeshFilter;
+	class D3D11GraphicsDevice;
+	class GBuffer;
+	class FullScreenQuad;
+	class DeferredShader;
+	class DepthShader;
+	class DebugShader;
+	class PostProcessShader;
+	class Texture;
+	class Frustrum;
+	class D3D11RenderTexture;
 
 	class Renderer : public Subsystem
 	{
@@ -106,11 +114,11 @@ namespace Directus
 		Skybox* m_skybox;
 		LineRenderer* m_lineRenderer;
 		Light* m_directionalLight;
-		Directus::Math::Matrix mView;
-		Directus::Math::Matrix mProjection;
-		Directus::Math::Matrix mViewProjection;
-		Directus::Math::Matrix mOrthographicProjection;
-		Directus::Math::Matrix mBaseView;
+		Math::Matrix mView;
+		Math::Matrix mProjection;
+		Math::Matrix mViewProjection;
+		Math::Matrix mOrthographicProjection;
+		Math::Matrix mBaseView;
 		float m_nearPlane;
 		float m_farPlane;
 		std::vector<ID3D11ShaderResourceView*> m_textures;
@@ -125,7 +133,7 @@ namespace Directus
 		void DeferredPass();
 		void PostProcessing();
 		void Gizmos() const;
-		const Directus::Math::Vector4& GetClearColor();
+		const Math::Vector4& GetClearColor();
 		//============================================================================================
 	};
 }

@@ -109,7 +109,7 @@ namespace Directus
 	void MeshFilter::SetMesh(MeshType defaultMesh)
 	{
 		auto meshSharedPtr = make_shared<Mesh>(g_context);
-		vector<VertexPositionTextureNormalTangent> vertices;
+		vector<VertexPosTexNorTan> vertices;
 		vector<unsigned int> indices;
 
 		switch (defaultMesh)
@@ -147,7 +147,7 @@ namespace Directus
 	}
 
 	// Creates a mesh from raw vertex/index data and sets it
-	void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID, const vector<VertexPositionTextureNormalTangent>& vertices, const vector<unsigned int>& indices)
+	void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID, const vector<VertexPosTexNorTan>& vertices, const vector<unsigned int>& indices)
 	{
 		// Create a mesh
 		auto mesh = make_shared<Mesh>(g_context);
@@ -318,7 +318,7 @@ namespace Directus
 		return true;
 	}
 
-	void MeshFilter::CreateCube(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
+	void MeshFilter::CreateCube(vector<VertexPosTexNorTan>& vertices, vector<unsigned int>& indices)
 	{
 		// front
 		vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 0
@@ -381,7 +381,7 @@ namespace Directus
 		indices.push_back(23); indices.push_back(21); indices.push_back(22);
 	}
 
-	void MeshFilter::CreateQuad(vector<VertexPositionTextureNormalTangent>& vertices, vector<unsigned int>& indices)
+	void MeshFilter::CreateQuad(vector<VertexPosTexNorTan>& vertices, vector<unsigned int>& indices)
 	{
 		vertices.push_back({ Vector3(-0.5f, 0.0f, 0.5f),Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 0 top-left
 		vertices.push_back({ Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 1 top-right

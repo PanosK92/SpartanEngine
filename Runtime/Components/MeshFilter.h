@@ -56,7 +56,7 @@ namespace Directus
 		// Sets a default mesh (cube, quad)
 		void SetMesh(MeshType defaultMesh);
 		// Creates a mesh from raw vertex/index data and sets it
-		void CreateAndSet(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPositionTextureNormalTangent>& vertices, const std::vector<unsigned int>& indices);
+		void CreateAndSet(const std::string& name, const std::string& rootGameObjectID, const std::vector<VertexPosTexNorTan>& vertices, const std::vector<unsigned int>& indices);
 		// Sets the meshe's buffers
 		bool SetBuffers();
 
@@ -81,8 +81,8 @@ namespace Directus
 
 	private:
 		bool CreateBuffers();
-		void CreateCube(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
-		void CreateQuad(std::vector<VertexPositionTextureNormalTangent>& vertices, std::vector<unsigned int>& indices);
+		void CreateCube(std::vector<VertexPosTexNorTan>& vertices, std::vector<unsigned int>& indices);
+		void CreateQuad(std::vector<VertexPosTexNorTan>& vertices, std::vector<unsigned int>& indices);
 
 		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;

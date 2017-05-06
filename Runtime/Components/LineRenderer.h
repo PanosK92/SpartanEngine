@@ -25,8 +25,8 @@ namespace Directus
 		virtual void Deserialize();
 
 		//= INPUT ==================================================
-		void AddLineList(const std::vector<VertexPositionColor>& lineList);
-		void AddVertex(const VertexPositionColor& vertex);
+		void AddLineList(const std::vector<VertexPosCol>& lineList);
+		void AddVertex(const VertexPosCol& vertex);
 
 		//= MISC ===================================================
 		void SetBuffer();
@@ -37,7 +37,7 @@ namespace Directus
 
 		//= VERTICES ===================	
 		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
-		VertexPositionColor* m_vertices;
+		VertexPosCol* m_vertices;
 		int m_maxVertices;
 		int m_vertexIndex;
 		//==============================

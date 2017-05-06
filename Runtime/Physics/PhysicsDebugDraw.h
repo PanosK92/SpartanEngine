@@ -49,10 +49,10 @@ namespace Directus
 		virtual int getDebugMode() const;
 
 		bool IsDirty();
-		std::vector<VertexPositionColor> GetLines();
+		std::vector<VertexPosCol> GetLines();
 		void ClearLines();
 	private:
-		std::vector<VertexPositionColor> m_lines;
+		std::vector<VertexPosCol> m_lines;
 		bool m_isDirty;
 	};
 }

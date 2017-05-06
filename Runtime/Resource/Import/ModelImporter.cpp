@@ -253,10 +253,10 @@ namespace Directus
 
 	void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* gameobject)
 	{
-		vector<VertexPositionTextureNormalTangent> vertices;
+		vector<VertexPosTexNorTan> vertices;
 		vector<unsigned int> indices;
 
-		VertexPositionTextureNormalTangent vertex;
+		VertexPosTexNorTan vertex;
 		for (unsigned int vertexIndex = 0; vertexIndex < mesh->mNumVertices; vertexIndex++)
 		{
 			// get the position

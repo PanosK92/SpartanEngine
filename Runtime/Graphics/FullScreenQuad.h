@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-
 //= INCLUDES =========================
 #include "D3D11/D3D11GraphicsDevice.h"
 //====================================
@@ -34,15 +33,15 @@ namespace Directus
 		FullScreenQuad();
 		~FullScreenQuad();
 
-		bool Initialize(int, int, D3D11GraphicsDevice* graphicsDevice);
+		bool Initialize(int width, int height, Graphics* graphics);
 		void SetBuffers();
-		int GetIndexCount();
+		int GetIndexCount() { return m_indexCount; }
 
 	private:
-		bool InitializeBuffers(int, int);
-
-		D3D11GraphicsDevice* m_graphics;
-		ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
-		int m_vertexCount, m_indexCount;
+		Graphics* m_graphics;
+		ID3D11Buffer* m_vertexBuffer;
+		ID3D11Buffer* m_indexBuffer;
+		int m_vertexCount;
+		int m_indexCount;
 	};
 }
