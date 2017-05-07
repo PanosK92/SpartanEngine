@@ -1,6 +1,6 @@
 # About Directus3D
-Directus3D is a game engine that aims to be powerful yet simple. This is achieved by prioriziting a coherent and modern design and a minimalistic approach when it comes to adding new features. 
-The UI design is greatly inspired by Unity, it should make the engine feel familiar and pleasurable to use.
+Directus3D is a game engine that started as a hobby project and evolved into something greater.
+The source code is simple, modern and tackles a lot of aspects of engine development. Have fun!
 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Runtime/Assets/screenshot-v0.2.jpg)
 
@@ -26,8 +26,8 @@ The UI design is greatly inspired by Unity, it should make the engine feel famil
 - [Active] DirectX 12 Renderer (It's gonna take a while because I want to do it right, not just swap the API calls)
 - [Active] Dynamic resolution scaling.
 - [Active] Improved shadow quality.
-- [Done] Manual mipchain generation (resulted in a ~15-20% memory usage drop and an increase in texture quality).
-- [Active] SSAO.
+- [Done] Custom mipchain generation (resulted in a ~15-20% memory usage drop and an increase in texture quality).
+- [80%] SSAO.
 
 # Planned Features
 - Draw call batching (static & dynamic).
@@ -48,6 +48,4 @@ Note: The download link will be updated whenever any features that are under dev
 ### License
 - Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
 
-This project is devoted to my father.
-
-Note: I recently moved from Greece to the UK, a lot of changes are taking place. However when all things are set, I will get back to it. Until then, happy coding!
+Devoted to my father.
