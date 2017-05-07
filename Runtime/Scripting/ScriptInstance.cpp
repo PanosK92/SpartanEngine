@@ -49,13 +49,10 @@ namespace Directus
 
 	ScriptInstance::~ScriptInstance()
 	{
-		if (m_scriptObject)
-		{
-			// For some weird reason, it only
-			// get's released when called twice...
-			m_scriptObject->Release();
-			m_scriptObject->Release();
-		}
+		// For some weird reason, it only 
+		// gets released when called twice.
+		m_scriptObject->Release();
+		m_scriptObject->Release();
 
 		m_gameObject = nullptr;
 		m_constructorFunction = nullptr;

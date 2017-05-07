@@ -44,7 +44,7 @@ namespace Directus
 		//========================
 
 		//= IGraphicsDevice ========================================================
-		virtual void SetHandle(HWND drawHandle);
+		virtual void SetHandle(HWND drawHandle) { m_drawHandle = drawHandle; }
 		virtual void Clear(const Math::Vector4& color);
 		virtual void Present();
 		virtual void SetBackBufferAsRenderTarget();
@@ -65,42 +65,44 @@ namespace Directus
 		virtual void SetViewport(float width, float height);
 		virtual void ResetViewport();
 
-		virtual bool IsInitialized() { return m_initializedSuccessfully; }
+		virtual bool IsInitialized() { return m_initialized; }
 		//======================================================================
 
 		ID3D11Device* GetDevice() { return m_device; }
 		ID3D11DeviceContext* GetDeviceContext() { return m_deviceContext; }
 
 	private:
-		bool m_initializedSuccessfully;
+		//= HELPER FUNCTIONS =================================================================================================
+		bool CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain);
+		bool CreateRasterizerState(D3D11_CULL_MODE cullMode, D3D11_FILL_MODE fillMode, ID3D11RasterizerState** rasterizer);
+		//====================================================================================================================
+
+		D3D_DRIVER_TYPE m_driverType;
+		D3D_FEATURE_LEVEL m_featureLevel;
+		UINT m_sdkVersion;
+
 		ID3D11Device* m_device;
 		ID3D11DeviceContext* m_deviceContext;
 		IDXGISwapChain* m_swapChain;
 		ID3D11RenderTargetView* m_renderTargetView;
-		D3D_DRIVER_TYPE m_driverType;
-		D3D_FEATURE_LEVEL m_featureLevel;
 		D3D11_VIEWPORT m_viewport;
-
 		UINT m_displayModeCount;
 		UINT m_refreshRateNumerator;
 		UINT m_refreshRateDenominator;
 		DXGI_MODE_DESC* m_displayModeList;
-
-		int m_videoCardMemory;
-		char* m_videoCardDescription;
-
+		int m_VRAM;
+		char* m_GPUDesc;
 		ID3D11Texture2D* m_depthStencilBuffer;
 		ID3D11DepthStencilState* m_depthStencilStateEnabled;
 		ID3D11DepthStencilState* m_depthStencilStateDisabled;
 		ID3D11DepthStencilView* m_depthStencilView;
-
 		ID3D11RasterizerState* m_rasterStateCullFront;
 		ID3D11RasterizerState* m_rasterStateCullBack;
 		ID3D11RasterizerState* m_rasterStateCullNone;
-
 		ID3D11BlendState* m_blendStateAlphaEnabled;
 		ID3D11BlendState* m_blendStateAlphaDisabled;
-
 		HWND m_drawHandle;
+
+		bool m_initialized;
 	};
 }

@@ -191,6 +191,10 @@ namespace Directus
 
 		// Gizmos
 		Gizmos();
+		
+		//ID3D11CommandList* m_commandList;
+		//m_graphics->GetDeviceDeferredContext()->FinishCommandList(true, &m_commandList);
+		//m_graphics->GetDeviceDeferredContext()->ExecuteCommandList(m_commandList, true);
 
 		// display frame
 		m_graphics->Present();

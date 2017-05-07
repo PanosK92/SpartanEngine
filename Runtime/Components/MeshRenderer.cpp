@@ -149,7 +149,7 @@ namespace Directus
 		case Skybox:
 			material = make_shared<Material>(g_context);
 			material->SetResourceName("Skybox");
-			material->SetCullMode(CullNone);
+			material->SetCullMode(CullFront);
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);
 			m_materialType = Skybox;
