@@ -53,24 +53,25 @@ namespace Directus
 
 	D3D11GraphicsDevice::D3D11GraphicsDevice(Context* context) : IGraphicsDevice(context)
 	{
+		m_driverType = D3D_DRIVER_TYPE_HARDWARE;
+		m_featureLevel = D3D_FEATURE_LEVEL_11_0;
+		m_sdkVersion = D3D11_SDK_VERSION;
+
 		m_inputLayout = PositionTextureNormalTangent;
 		m_cullMode = CullBack;
 		m_primitiveTopology = TriangleList;
 		m_zBufferEnabled = true;
 		m_alphaBlendingEnabled = false;
-
 		m_device = nullptr;
 		m_deviceContext = nullptr;
 		m_swapChain = nullptr;
-		m_renderTargetView = nullptr;
-		m_driverType = D3D_DRIVER_TYPE_HARDWARE;
-		m_featureLevel = D3D_FEATURE_LEVEL_11_0;
+		m_renderTargetView = nullptr;	
 		m_displayModeList = nullptr;
 		m_displayModeCount = 0;
 		m_refreshRateNumerator = 0;
 		m_refreshRateDenominator = 0;
-		m_videoCardMemory = 0;
-		m_videoCardDescription = DATA_NOT_ASSIGNED;
+		m_VRAM = 0;
+		m_GPUDesc = DATA_NOT_ASSIGNED;
 		m_depthStencilBuffer = nullptr;
 		m_depthStencilStateEnabled = nullptr;
 		m_depthStencilStateDisabled = nullptr;
@@ -113,13 +114,11 @@ namespace Directus
 
 	bool D3D11GraphicsDevice::Initialize()
 	{
-		// assume all will go well
-		m_initializedSuccessfully = true;
+		m_initialized = false;
 
 		if (!IsWindow(m_drawHandle))
 		{
 			LOG_ERROR("Aborting D3D11 initialization. Invalid draw handle.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
 
@@ -129,7 +128,6 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create a DirectX graphics interface factory.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
 		//==============================================================================
@@ -140,7 +138,6 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create a primary graphics interface adapter.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
 		factory->Release();
@@ -154,7 +151,6 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to enumerate the primary adapter output.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
 		// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the adapter output (monitor).
@@ -162,7 +158,6 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to get adapter's display modes.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
 
@@ -171,7 +166,6 @@ namespace Directus
 		if (!m_displayModeList)
 		{
 			LOG_ERROR("Failed to create a display mode list.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
 
@@ -180,7 +174,6 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to fill the display mode list structures.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
 		// Release the adapter output.
@@ -199,50 +192,25 @@ namespace Directus
 
 		//= ADAPTER DESCRIPTION ========================================================
 		DXGI_ADAPTER_DESC adapterDesc;
-		// Get the adapter (video card) description.
-		result = adapter->GetDesc(&adapterDesc);
+		
+		result = adapter->GetDesc(&adapterDesc); // Get adapter description
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to get the adapter's description.");
-			m_initializedSuccessfully = false;
+			LOG_ERROR("Failed to get adapter description.");
 			return false;
 		}
-		// Release the adapter.
-		adapter->Release();
+		
+		adapter->Release(); // Release the adapter
 
-		// Store the dedicated video card memory in megabytes.
-		m_videoCardMemory = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
+		// Store the dedicated video card memory in MB.
+		m_VRAM = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
 		//==============================================================================
 
-		//= SWAP CHAIN =================================================================
-		DXGI_SWAP_CHAIN_DESC swapChainDesc;
-		ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
-		swapChainDesc.BufferCount = 1;
-		swapChainDesc.BufferDesc.Width = RESOLUTION_WIDTH;
-		swapChainDesc.BufferDesc.Height = RESOLUTION_HEIGHT;
-		swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.OutputWindow = m_drawHandle;
-		swapChainDesc.SampleDesc.Count = 1;
-		swapChainDesc.SampleDesc.Quality = 0;
-		swapChainDesc.Windowed = (BOOL)!FULLSCREEN_ENABLED;
-		swapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-		swapChainDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-		swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // alt + enter fullscreen
-
-																	  // Create the swap chain, Direct3D device, and Direct3D device context.
-		result = D3D11CreateDeviceAndSwapChain(nullptr, m_driverType, nullptr, 0,
-			&m_featureLevel, 1, D3D11_SDK_VERSION, &swapChainDesc,
-			&m_swapChain, &m_device, nullptr, &m_deviceContext);
-
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create the D3D11 swap chain, device, and device context.");
-			m_initializedSuccessfully = false;
+		// Create swap chain
+		if (!CreateDeviceAndSwapChain(&m_device, &m_deviceContext, &m_swapChain))
+		{	
 			return false;
 		}
-		//==============================================================================
 
 		//= RENDER TARGET VIEW =========================================================
 		ID3D11Texture2D* backBufferPtr;
@@ -251,15 +219,14 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to get the pointer to the back buffer.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
+
 		// Create the render target view with the back buffer pointer.
 		result = m_device->CreateRenderTargetView(backBufferPtr, nullptr, &m_renderTargetView);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create the render target view.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
 		// Release pointer to the back buffer
@@ -275,49 +242,28 @@ namespace Directus
 		CreateDepthStencilView();
 		//=========================
 
-		//= RASTERIZER =================================================================
-		D3D11_RASTERIZER_DESC rasterizerDesc;
-		rasterizerDesc.FillMode = D3D11_FILL_SOLID;
-		rasterizerDesc.CullMode = D3D11_CULL_BACK;
-		rasterizerDesc.FrontCounterClockwise = false;
-		rasterizerDesc.DepthBias = 0;
-		rasterizerDesc.SlopeScaledDepthBias = 0.0f;
-		rasterizerDesc.DepthBiasClamp = 0.0f;
-		rasterizerDesc.DepthClipEnable = true;
-		rasterizerDesc.ScissorEnable = false;
-		rasterizerDesc.MultisampleEnable = false;
-		rasterizerDesc.AntialiasedLineEnable = false;
+		//= RASTERIZERS ========================================================================
+		if (!CreateRasterizerState(D3D11_CULL_BACK, D3D11_FILL_SOLID, &m_rasterStateCullBack))
+		{
+			LOG_ERROR("Failed to create the rasterizer state.");
+			return false;
+		}
 
-		// Create a rasterizer state with back face CullMode
-		rasterizerDesc.CullMode = D3D11_CULL_BACK;
-		result = m_device->CreateRasterizerState(&rasterizerDesc, &m_rasterStateCullBack);
-		if (FAILED(result))
+		if (!CreateRasterizerState(D3D11_CULL_FRONT, D3D11_FILL_SOLID, &m_rasterStateCullFront))
 		{
-			LOG_ERROR("Failed to create the rasterizer cull back state.");
-			m_initializedSuccessfully = false;
+			LOG_ERROR("Failed to create the rasterizer state.");
 			return false;
 		}
-		// Create a rasterizer state with front face CullMode
-		rasterizerDesc.CullMode = D3D11_CULL_FRONT;
-		result = m_device->CreateRasterizerState(&rasterizerDesc, &m_rasterStateCullFront);
-		if (FAILED(result))
+
+		if (!CreateRasterizerState(D3D11_CULL_NONE, D3D11_FILL_SOLID, &m_rasterStateCullNone))
 		{
-			LOG_ERROR("Failed to create the rasterizer cull front state.");
-			m_initializedSuccessfully = false;
+			LOG_ERROR("Failed to create the rasterizer state.");
 			return false;
 		}
-		// Create a rasterizer state with no face CullMode
-		rasterizerDesc.CullMode = D3D11_CULL_NONE;
-		result = m_device->CreateRasterizerState(&rasterizerDesc, &m_rasterStateCullNone);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create rasterizer cull none state.");
-			m_initializedSuccessfully = false;
-			return false;
-		}
-		// set the default rasterizer state
+		
+		// Set default rasterizer state
 		m_deviceContext->RSSetState(m_rasterStateCullBack);
-		//==============================================================================
+		//=======================================================================================
 
 		//= BLEND STATE ================================================================
 		D3D11_BLEND_DESC blendStateDesc;
@@ -337,7 +283,6 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create blend state.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
 		// Create a blending state with alpha blending disabled
@@ -346,23 +291,18 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create blend state.");
-			m_initializedSuccessfully = false;
 			return false;
 		}
 		//==============================================================================
 
-		return m_initializedSuccessfully;
-	}
-
-	void D3D11GraphicsDevice::SetHandle(HWND drawHandle)
-	{
-		m_drawHandle = drawHandle;
+		return m_initialized = true;
 	}
 
 	//= DEPTH ======================================================================================================
 	void D3D11GraphicsDevice::EnableZBuffer(bool enable)
 	{
-		if (!m_deviceContext || m_zBufferEnabled == enable) {
+		if (!m_deviceContext || m_zBufferEnabled == enable) 
+		{
 			return;
 		}
 
@@ -374,7 +314,8 @@ namespace Directus
 
 	bool D3D11GraphicsDevice::CreateDepthStencil()
 	{
-		if (!m_device) {
+		if (!m_device)
+		{
 			return false;
 		}
 
@@ -406,7 +347,7 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create depth stencil enabled state.");
-			m_initializedSuccessfully = false;
+			m_initialized = false;
 			return false;
 		}
 
@@ -417,7 +358,7 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create depth stencil disabled state.");
-			m_initializedSuccessfully = false;
+			m_initialized = false;
 			return false;
 		}
 
@@ -429,7 +370,8 @@ namespace Directus
 
 	bool D3D11GraphicsDevice::CreateDepthStencilBuffer()
 	{
-		if (!m_device) {
+		if (!m_device) 
+		{
 			return false;
 		}
 
@@ -452,7 +394,7 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create the texture for the depth buffer.");
-			m_initializedSuccessfully = false;
+			m_initialized = false;
 			return false;
 		}
 
@@ -461,7 +403,8 @@ namespace Directus
 
 	bool D3D11GraphicsDevice::CreateDepthStencilView()
 	{
-		if (!m_device) {
+		if (!m_device) 
+		{
 			return false;
 		}
 
@@ -476,7 +419,7 @@ namespace Directus
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create the depth stencil view.");
-			m_initializedSuccessfully = false;
+			m_initialized = false;
 			return false;
 		}
 
@@ -489,7 +432,8 @@ namespace Directus
 
 	void D3D11GraphicsDevice::Clear(const Vector4& color)
 	{
-		if (!m_deviceContext) {
+		if (!m_deviceContext) 
+		{
 			return;
 		}
 
@@ -503,7 +447,8 @@ namespace Directus
 
 	void D3D11GraphicsDevice::Present()
 	{
-		if (!m_swapChain) {
+		if (!m_swapChain)
+		{
 			return;
 		}
 
@@ -524,7 +469,8 @@ namespace Directus
 
 	bool D3D11GraphicsDevice::SetResolution(int width, int height)
 	{
-		if (!m_swapChain) {
+		if (!m_swapChain) 
+		{
 			return false;
 		}
 
@@ -591,7 +537,8 @@ namespace Directus
 	//= VIEWPORT =====================================================
 	void D3D11GraphicsDevice::SetViewport(float width, float height)
 	{
-		if (!m_deviceContext) {
+		if (!m_deviceContext) 
+		{
 			return;
 		}
 
@@ -607,12 +554,13 @@ namespace Directus
 
 	void D3D11GraphicsDevice::ResetViewport()
 	{
-		if (!m_deviceContext) {
+		if (!m_deviceContext) 
+		{
 			return;
 		}
 
 		m_deviceContext->RSSetViewports(1, &m_viewport);
-	}
+	}	
 	//================================================================
 
 	void D3D11GraphicsDevice::SetCullMode(CullMode cullMode)
@@ -662,5 +610,74 @@ namespace Directus
 			return;
 
 		m_inputLayout = inputLayout;
+	}
+
+	//= HELPER FUNCTIONS ================================================================================
+	bool D3D11GraphicsDevice::CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain)
+	{
+		DXGI_SWAP_CHAIN_DESC swapChainDesc;
+		ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
+		swapChainDesc.BufferCount = 1;
+		swapChainDesc.BufferDesc.Width = RESOLUTION_WIDTH;
+		swapChainDesc.BufferDesc.Height = RESOLUTION_HEIGHT;
+		swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.OutputWindow = m_drawHandle;
+		swapChainDesc.SampleDesc.Count = 1;
+		swapChainDesc.SampleDesc.Quality = 0;
+		swapChainDesc.Windowed = (BOOL)!FULLSCREEN_ENABLED;
+		swapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		swapChainDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+		swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // alt + enter fullscreen
+
+		// Create the swap chain, Direct3D device, and Direct3D device context.
+		HRESULT result = D3D11CreateDeviceAndSwapChain(
+			nullptr, 
+			m_driverType, 
+			nullptr, 
+			0,
+			&m_featureLevel, 
+			1, 
+			m_sdkVersion, 
+			&swapChainDesc,
+			swapchain,
+			device,
+			nullptr, 
+			deviceContext
+		);
+
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to create swap chain, device and device context.");
+			return false;
+		}
+
+		return true;
+	}
+	bool D3D11GraphicsDevice::CreateRasterizerState(D3D11_CULL_MODE cullMode, D3D11_FILL_MODE fillMode, ID3D11RasterizerState** rasterizer)
+	{
+		if (!m_device)
+		{
+			LOG_ERROR("Aborting rasterizer state creation, device is not present");
+			return false;
+		}
+
+		D3D11_RASTERIZER_DESC desc = {};
+
+		desc.CullMode = cullMode;
+		desc.FillMode = fillMode;
+		desc.DepthClipEnable = true;
+		desc.MultisampleEnable = true;
+
+		HRESULT result = m_device->CreateRasterizerState(&desc, rasterizer);
+
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to rasterizer state.");
+			return false;
+		}
+
+		return true;
 	}
 }
