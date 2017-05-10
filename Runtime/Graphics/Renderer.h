@@ -21,13 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
+//= INCLUDES ===========================
 #include <memory>
 #include <vector>
 #include "D3D11/D3D11GraphicsDevice.h"
 #include "../Core/SubSystem.h"
 #include "../Math/Matrix.h"
-//====================================
+#include "../Resource/ResourceManager.h"
+//======================================
 
 class ID3D11ShaderResourceView;
 
@@ -39,8 +40,7 @@ namespace Directus
 	class Skybox;
 	class LineRenderer;
 	class Light;
-	class MeshFilter;
-	class D3D11GraphicsDevice;
+	class MeshFilter;	
 	class GBuffer;
 	class FullScreenQuad;
 	class DeferredShader;
@@ -49,7 +49,9 @@ namespace Directus
 	class PostProcessShader;
 	class Texture;
 	class Frustrum;
+	class ResourceManager;
 	class D3D11RenderTexture;
+	class D3D11GraphicsDevice;
 
 	class Renderer : public Subsystem
 	{
@@ -64,7 +66,7 @@ namespace Directus
 		void Render();
 		void SetResolution(int width, int height);
 		void Clear();
-		const std::vector<GameObject*>& GetRenderables() { return m_renderables; }
+		const std::vector<weakGameObj>& GetRenderables() { return m_renderables; }
 
 		//= STATS =======================================================
 		void StartCalculatingStats();
@@ -78,9 +80,9 @@ namespace Directus
 		std::shared_ptr<GBuffer> m_GBuffer;
 
 		// GAMEOBJECTS ==============================
-		std::vector<GameObject*> m_renderables;
-		std::vector<GameObject*> m_lightsDirectional;
-		std::vector<GameObject*> m_lightsPoint;
+		std::vector<weakGameObj> m_renderables;
+		std::vector<weakGameObj> m_lightsDirectional;
+		std::vector<weakGameObj> m_lightsPoint;
 		//===========================================
 
 		//= RENDER TEXTURES ================================
@@ -123,6 +125,7 @@ namespace Directus
 		float m_farPlane;
 		std::vector<ID3D11ShaderResourceView*> m_textures;
 		Graphics* m_graphics;
+		ResourceManager* m_resourceMng;
 		//================================================
 
 		//= HELPER FUNCTIONS =========================================================================

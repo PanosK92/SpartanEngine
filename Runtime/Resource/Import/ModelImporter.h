@@ -44,21 +44,21 @@ namespace Directus
 		bool Initialize(Context* context);
 		void LoadAsync(const std::string& filePath);
 		bool Load(const std::string& filePath);
-		GameObject* GetModelRoot() { return !m_isLoading ? m_rootGameObject : nullptr; }
+		std::weak_ptr<GameObject> GetModelRoot();
 
 	private:
 		bool m_isLoading;
 		std::string m_filePath;
 		std::string m_fullTexturePath;
 		std::string m_modelName;
-		GameObject* m_rootGameObject;
+		std::weak_ptr<GameObject> m_rootGameObject;
 		Context* m_context;
 
 		/*------------------------------------------------------------------------------
 										[PROCESSING]
 		------------------------------------------------------------------------------*/
-		void ProcessNode(const aiScene* assimpScene, aiNode* assimpNode, GameObject* parentNode, GameObject* newNode);
-		void ProcessMesh(aiMesh* assimpMesh, const aiScene* assimpScene, GameObject* parentGameObject);
+		void ProcessNode(const aiScene* assimpScene, aiNode* assimpNode, std::weak_ptr<GameObject> parentNode, std::weak_ptr<GameObject> newNode);
+		void ProcessMesh(aiMesh* assimpMesh, const aiScene* assimpScene, std::weak_ptr<GameObject> parentGameObject);
 		std::shared_ptr<Material> GenerateMaterialFromAiMaterial(aiMaterial* assimpMaterial);
 
 		/*------------------------------------------------------------------------------

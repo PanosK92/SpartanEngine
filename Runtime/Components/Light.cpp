@@ -19,15 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ===================
 #include "Light.h"
 #include "Transform.h"
-#include "../Core/Settings.h"
+#include "Camera.h"
 #include "../IO/Serializer.h"
 #include "../Core/Scene.h"
-#include "Camera.h"
-#include "Transform.h"
-//===========================
+#include "../Core/Settings.h"
+#include "../Core/Context.h"
+#include "../Core/GameObject.h"
+//=============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -83,8 +84,8 @@ namespace Directus
 			return;
 
 		Graphics* graphics = g_context->GetSubsystem<Graphics>();
-		GameObject* camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
-		Camera* cameraComp = camera ? camera->GetComponent<Camera>() : nullptr;
+		weakGameObj camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
+		Camera* cameraComp = !camera.expired() ? camera.lock()->GetComponent<Camera>() : nullptr;
 
 		if (graphics && cameraComp)
 			return;
@@ -155,7 +156,9 @@ namespace Directus
 		if (cascade >= m_shadowMaps.size())
 			return Matrix::Identity;
 
-		return m_shadowMaps[cascade]->CalculateProjectionMatrix(g_context->GetSubsystem<Scene>()->GetMainCamera()->GetTransform()->GetPosition(), CalculateViewMatrix());
+		sharedGameObj mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera().lock();
+		Vector3 centerPos = mainCamera ? mainCamera->GetTransform()->GetPosition() : Vector3::Zero;
+		return m_shadowMaps[cascade]->CalculateProjectionMatrix(centerPos, CalculateViewMatrix());
 	}
 
 	void Light::SetShadowCascadeAsRenderTarget(int cascade)

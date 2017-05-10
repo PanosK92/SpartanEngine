@@ -55,7 +55,7 @@ namespace Directus
 
 		// Projection matrix
 		float m_nearPlane, m_farPlane;
-		Directus::Math::Matrix m_orthographicProjectionMatrix;
+		Math::Matrix m_orthographicProjectionMatrix;
 
 		// Dimensions
 		D3D11_VIEWPORT m_viewport;

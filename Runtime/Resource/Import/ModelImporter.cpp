@@ -48,7 +48,6 @@ namespace Directus
 
 	ModelImporter::ModelImporter()
 	{
-		m_rootGameObject = nullptr;
 		m_context = nullptr;
 	}
 
@@ -78,7 +77,7 @@ namespace Directus
 
 		m_isLoading = true;
 		m_filePath = filePath;
-		m_rootGameObject = nullptr;
+		m_rootGameObject = weakGameObj();
 		m_modelName = FileSystem::GetFileNameFromPath(m_filePath);
 
 		// Set up Assimp importer
@@ -133,23 +132,35 @@ namespace Directus
 				FileSystem::CopyFileFromTo(m_filePath, "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(file));
 
 		// This function will recursively process the entire model
-		ProcessNode(scene, scene->mRootNode, nullptr, nullptr);
+		ProcessNode(scene, scene->mRootNode, weakGameObj(), weakGameObj());
 
 		// Normalize the scale of the model
 		vector<Transform*> descendants;
-		m_rootGameObject->GetTransform()->GetDescendants(descendants);
-		for (auto& descendant : descendants)
+		if (!m_rootGameObject.expired())
 		{
-			auto meshFilter = descendant->GetGameObject()->GetComponent<MeshFilter>();
-			if (!meshFilter)
-				continue;
-
-			meshFilter->NormalizeModelScale();
-			break;
+			m_rootGameObject.lock()->GetTransform()->GetDescendants(descendants);
+			for (auto& descendant : descendants)
+			{
+				auto descendantGameObj = descendant->GetGameObject();
+				if (!descendantGameObj.expired())
+				{
+					auto meshFilter = descendantGameObj.lock()->GetComponent<MeshFilter>();
+					if (meshFilter)
+					{
+						meshFilter->NormalizeModelScale();
+						break;
+					}
+				}
+			}
 		}
 
 		m_isLoading = false;
 		return true;
+	}
+
+	weakGameObj ModelImporter::GetModelRoot()
+	{
+		return !m_isLoading ? m_rootGameObject : weakGameObj();
 	}
 
 	//= HELPER FUNCTIONS ========================================================================
@@ -163,8 +174,13 @@ namespace Directus
 		);
 	}
 
-	void SetGameObjectTransform(GameObject* gameObject, aiNode* node)
+	void SetGameObjectTransform(weakGameObj gameObject, aiNode* node)
 	{
+		if (gameObject.expired())
+		{
+			return;
+		}
+
 		aiMatrix4x4 mAssimp = node->mTransformation;
 		Vector3 position;
 		Quaternion rotation;
@@ -175,9 +191,9 @@ namespace Directus
 		mEngine.Decompose(scale, rotation, position);
 
 		// Apply position, rotation and scale
-		gameObject->GetTransform()->SetPositionLocal(position);
-		gameObject->GetTransform()->SetRotationLocal(rotation);
-		gameObject->GetTransform()->SetScaleLocal(scale);
+		gameObject.lock()->GetTransform()->SetPositionLocal(position);
+		gameObject.lock()->GetTransform()->SetRotationLocal(rotation);
+		gameObject.lock()->GetTransform()->SetScaleLocal(scale);
 	}
 
 	Vector4 ToVector4(const aiColor4D& aiColor)
@@ -197,10 +213,10 @@ namespace Directus
 	//============================================================================================
 
 	//= PROCESSING ===============================================================================
-	void ModelImporter::ProcessNode(const aiScene* scene, aiNode* assimpNode, GameObject* parentNode, GameObject* newNode)
+	void ModelImporter::ProcessNode(const aiScene* scene, aiNode* assimpNode, weakGameObj parentNode, weakGameObj newNode)
 	{
-		if (!newNode)
-			newNode = m_context->GetSubsystem<Scene>()->CreateGameObject();;
+		if (newNode.expired())
+			newNode = m_context->GetSubsystem<Scene>()->CreateGameObject();
 
 		if (!assimpNode->mParent)
 			m_rootGameObject = newNode;
@@ -209,14 +225,14 @@ namespace Directus
 		// Note: In case this is the root node, aiNode.mName will be "RootNode". 
 		// To get a more descriptive name we instead get the name from the file path.
 		if (assimpNode->mParent)
-			newNode->SetName(assimpNode->mName.C_Str());
+			newNode.lock()->SetName(assimpNode->mName.C_Str());
 		else
-			newNode->SetName(FileSystem::GetFileNameNoExtensionFromPath(m_filePath));
+			newNode.lock()->SetName(FileSystem::GetFileNameNoExtensionFromPath(m_filePath));
 		//===========================================================================
 
 		// Set the transform of parentNode as the parent of the newNode's transform
-		Transform* parentTrans = parentNode ? parentNode->GetTransform() : nullptr;
-		newNode->GetTransform()->SetParent(parentTrans);
+		Transform* parentTrans = !parentNode.expired() ? parentNode.lock()->GetTransform() : nullptr;
+		newNode.lock()->GetTransform()->SetParent(parentTrans);
 
 		// Set the transformation matrix of the assimp node to the new node
 		SetGameObjectTransform(newNode, assimpNode);
@@ -224,7 +240,7 @@ namespace Directus
 		// Process all the node's meshes
 		for (unsigned int i = 0; i < assimpNode->mNumMeshes; i++)
 		{
-			GameObject* gameobject = newNode; // set the current gameobject
+			weakGameObj gameobject = newNode; // set the current gameobject
 			aiMesh* mesh = scene->mMeshes[assimpNode->mMeshes[i]]; // get mesh
 			string name = assimpNode->mName.C_Str(); // get name
 
@@ -232,12 +248,12 @@ namespace Directus
 			if (assimpNode->mNumMeshes > 1)
 			{
 				gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject(); // create
-				gameobject->GetTransform()->SetParent(newNode->GetTransform()); // set parent
+				gameobject.lock()->GetTransform()->SetParent(newNode.lock()->GetTransform()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
 
 			// Set gameobject's name
-			gameobject->SetName(name);
+			gameobject.lock()->SetName(name);
 
 			// Process mesh
 			ProcessMesh(mesh, scene, gameobject);
@@ -246,13 +262,18 @@ namespace Directus
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
-			GameObject* child = m_context->GetSubsystem<Scene>()->CreateGameObject();
+			weakGameObj child = m_context->GetSubsystem<Scene>()->CreateGameObject();
 			ProcessNode(scene, assimpNode->mChildren[i], newNode, child);
 		}
 	}
 
-	void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, GameObject* gameobject)
+	void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, weakGameObj gameobject)
 	{
+		if (gameobject.expired())
+		{
+			return;
+		}
+
 		vector<VertexPosTexNorTan> vertices;
 		vector<unsigned int> indices;
 
@@ -296,8 +317,9 @@ namespace Directus
 		}
 
 		// Add a mesh component and pass the data
-		MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
-		meshComp->CreateAndSet(mesh->mName.C_Str(), m_rootGameObject->GetID(), vertices, indices);
+		MeshFilter* meshComp = gameobject.lock()->AddComponent<MeshFilter>();
+		string rootGameObjID = !m_rootGameObject.expired() ? m_rootGameObject.lock()->GetID() : DATA_NOT_ASSIGNED;
+		meshComp->CreateAndSet(mesh->mName.C_Str(), rootGameObjID, vertices, indices);
 
 		// No need to save the mesh as a file here, when the model importer performs a scale normalization on the entire model
 		// this will cause the mesh to update and save itself, thus I only pass the directory to do so.
@@ -313,7 +335,7 @@ namespace Directus
 			auto material = m_context->GetSubsystem<ResourceManager>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
 
 			// Set it in the mesh renderer component
-			gameobject->AddComponent<MeshRenderer>()->SetMaterial(material);
+			gameobject.lock()->AddComponent<MeshRenderer>()->SetMaterial(material);
 
 			// Save the material in our custom format
 			if (!material.expired())

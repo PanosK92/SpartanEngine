@@ -42,11 +42,11 @@ namespace Directus
 		Frustrum();
 		~Frustrum();
 
-		void Construct(const Directus::Math::Matrix& mView, const Directus::Math::Matrix&  mProjection, float screenDepth);
-		FrustrumSpace CheckCube(const Directus::Math::Vector3& center, const Directus::Math::Vector3& extent);
-		FrustrumSpace CheckSphere(const Directus::Math::Vector3& center, float radius);
+		void Construct(const Math::Matrix& mView, const Math::Matrix&  mProjection, float screenDepth);
+		FrustrumSpace CheckCube(const Math::Vector3& center, const Math::Vector3& extent);
+		FrustrumSpace CheckSphere(const Math::Vector3& center, float radius);
 
 	private:
-		Directus::Math::Plane m_planes[6];
+		Math::Plane m_planes[6];
 	};
 }

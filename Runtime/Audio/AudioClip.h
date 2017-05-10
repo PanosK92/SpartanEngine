@@ -41,7 +41,7 @@ namespace Directus
 		Custom
 	};
 
-	class AudioClip : Directus::Resource
+	class AudioClip : Resource
 	{
 	public:
 		AudioClip(FMOD::System* fModSystem);
@@ -73,7 +73,7 @@ namespace Directus
 		bool SetPan(float pan);
 
 		// Sets the rolloff
-		bool SetRolloff(std::vector<Directus::Math::Vector3> curvePoints);
+		bool SetRolloff(std::vector<Math::Vector3> curvePoints);
 		bool SetRolloff(Rolloff rolloff);
 
 		// Makes the audio use the 3D attributes of the transform

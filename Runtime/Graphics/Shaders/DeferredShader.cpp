@@ -47,7 +47,7 @@ namespace Directus
 
 	}
 
-	void DeferredShader::Load(const std::string& filePath, Graphics* graphics)
+	void DeferredShader::Load(const string& filePath, Graphics* graphics)
 	{
 		m_graphics = graphics;
 
@@ -93,7 +93,7 @@ namespace Directus
 		m_matrixBuffer->SetPS(0);
 	}
 
-	void DeferredShader::UpdateMiscBuffer(Light* directionalLight, vector<GameObject*> pointLights, Camera* camera)
+	void DeferredShader::UpdateMiscBuffer(Light* directionalLight, vector<weakGameObj> pointLights, Camera* camera)
 	{
 		if (!IsCompiled())
 		{
@@ -120,11 +120,16 @@ namespace Directus
 		// Fill with point lights
 		for (unsigned int i = 0; i < pointLights.size(); i++)
 		{
-			Vector3 pos = pointLights[i]->GetTransform()->GetPosition();
+			if (pointLights[i].expired())
+			{
+				continue;
+			}
+
+			Vector3 pos = pointLights[i].lock()->GetTransform()->GetPosition();
 			buffer->pointLightPosition[i] = Vector4(pos.x, pos.y, pos.z, 1.0f);
-			buffer->pointLightColor[i] = pointLights[i]->GetComponent<Light>()->GetColor();
-			buffer->pointLightIntensity[i] = Vector4(pointLights[i]->GetComponent<Light>()->GetIntensity());
-			buffer->pointLightRange[i] = Vector4(pointLights[i]->GetComponent<Light>()->GetRange());
+			buffer->pointLightColor[i] = pointLights[i].lock()->GetComponent<Light>()->GetColor();
+			buffer->pointLightIntensity[i] = Vector4(pointLights[i].lock()->GetComponent<Light>()->GetIntensity());
+			buffer->pointLightRange[i] = Vector4(pointLights[i].lock()->GetComponent<Light>()->GetRange());
 		}
 
 		buffer->pointLightCount = (float)pointLights.size();

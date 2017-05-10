@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ShaderVariation : public Directus::Resource
+	class ShaderVariation : public Resource
 	{
 	public:
 		ShaderVariation();
@@ -106,41 +106,41 @@ namespace Directus
 		const static int cascades = 3;
 		struct PerFrameBufferType
 		{
-			Directus::Math::Vector2 viewport;
+			Math::Vector2 viewport;
 			float nearPlane;
 			float farPlane;
-			Directus::Math::Matrix mLightViewProjection[cascades];
-			Directus::Math::Vector4 shadowSplits;
-			Directus::Math::Vector3 lightDir;
+			Math::Matrix mLightViewProjection[cascades];
+			Math::Vector4 shadowSplits;
+			Math::Vector3 lightDir;
 			float shadowBias;
 			float shadowMapResolution;
 			float shadowMappingQuality;
-			Directus::Math::Vector2 padding;
+			Math::Vector2 padding;
 		};
 
 		struct PerMaterialBufferType
 		{
 			// Material
-			Directus::Math::Vector4 matAlbedo;
-			Directus::Math::Vector2 matTilingUV;
-			Directus::Math::Vector2 matOffsetUV;
+			Math::Vector4 matAlbedo;
+			Math::Vector2 matTilingUV;
+			Math::Vector2 matOffsetUV;
 			float matRoughnessMul;
 			float matMetallicMul;
 			float matOcclusionMul;
 			float matNormalMul;
 			float matSpecularMul;
 			float matShadingMode;
-			Directus::Math::Vector2 padding;
+			Math::Vector2 padding;
 		};
 		PerMaterialBufferType perMaterialBufferCPU;
 
 		struct PerObjectBufferType
 		{
-			Directus::Math::Matrix mWorld;
-			Directus::Math::Matrix mWorldView;
-			Directus::Math::Matrix mWorldViewProjection;
+			Math::Matrix mWorld;
+			Math::Matrix mWorldView;
+			Math::Matrix mWorldViewProjection;
 			float receiveShadows;
-			Directus::Math::Vector3 padding;
+			Math::Vector3 padding;
 		};
 		PerObjectBufferType perObjectBufferCPU;
 		//==========================================================

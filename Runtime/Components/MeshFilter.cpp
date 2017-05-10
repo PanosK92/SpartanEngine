@@ -164,12 +164,13 @@ namespace Directus
 	// Set the buffers to active in the input assembler so they can be rendered.
 	bool MeshFilter::SetBuffers()
 	{
+		string gameObjName = !g_gameObject.expired() ? g_gameObject.lock()->GetName() : DATA_NOT_ASSIGNED;
 		if (!m_vertexBuffer) {
-			LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + g_gameObject->GetName() + "\".");
+			LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + gameObjName + "\".");
 		}
 
 		if (!m_indexBuffer) {
-			LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + g_gameObject->GetName() + "\".");
+			LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + gameObjName + "\".");
 		}
 
 		if (!m_vertexBuffer || !m_indexBuffer) {
@@ -191,7 +192,7 @@ namespace Directus
 		SetModelScale(normalizedScale);
 	}
 
-	std::vector<std::weak_ptr<Mesh>> MeshFilter::GetAllModelMeshes()
+	vector<weak_ptr<Mesh>> MeshFilter::GetAllModelMeshes()
 	{
 		vector<weak_ptr<Mesh>> modelMeshes;
 
@@ -231,7 +232,7 @@ namespace Directus
 			modelMesh.lock()->SetScale(scale);
 	}
 
-	std::weak_ptr<Mesh> MeshFilter::GetLargestBoundingBox(vector<weak_ptr<Mesh>> meshes)
+	weak_ptr<Mesh> MeshFilter::GetLargestBoundingBox(vector<weak_ptr<Mesh>> meshes)
 	{
 		if (meshes.empty())
 			return weak_ptr<Mesh>();
@@ -289,10 +290,11 @@ namespace Directus
 			return false;
 		}
 
+		string gameObjName = !g_gameObject.expired() ? g_gameObject.lock()->GetName() : DATA_NOT_ASSIGNED;
 		if (m_mesh.expired())
 		{
 			LOG_ERROR(
-				"Aborting vertex buffer creation for \"" + g_gameObject->GetName() + "\"."
+				"Aborting vertex buffer creation for \"" + gameObjName + "\"."
 				" The mesh has expired."
 			);
 			return false;
@@ -304,14 +306,14 @@ namespace Directus
 		m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphicsDevice);
 		if (!m_vertexBuffer->Create(m_mesh.lock()->GetVertices()))
 		{
-			LOG_ERROR("Failed to create vertex buffer [" + g_gameObject->GetName() + "].");
+			LOG_ERROR("Failed to create vertex buffer \"" + gameObjName + "\".");
 			return false;
 		}
 
 		m_indexBuffer = make_shared<D3D11IndexBuffer>(graphicsDevice);
 		if (!m_indexBuffer->Create(m_mesh.lock()->GetIndices()))
 		{
-			LOG_ERROR("Failed to create index buffer [" + g_gameObject->GetName() + "].");
+			LOG_ERROR("Failed to create index buffer \"" + gameObjName + "\".");
 			return false;
 		}
 

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "IComponent.h"
 #include "../Math/Vector3.h"
+#include "../Audio/AudioClip.h"
 //==========================
 
 class btHingeConstraint;
@@ -47,26 +48,26 @@ namespace Directus
 		virtual void Serialize();
 		virtual void Deserialize();
 
-		void SetConnectedGameObject(GameObject* connectedRigidBody);
-		GameObject* GetConnectedGameObject();
+		void SetConnectedGameObject(weakGameObj connectedRigidBody);
+		weakGameObj GetConnectedGameObject();
 
-		void SetAxis(Directus::Math::Vector3 axis);
-		Directus::Math::Vector3 GetAxis();
+		void SetAxis(Math::Vector3 axis);
+		Math::Vector3 GetAxis();
 
-		void SetPivot(Directus::Math::Vector3 pivot);
-		Directus::Math::Vector3 GetPivot();
+		void SetPivot(Math::Vector3 pivot);
+		Math::Vector3 GetPivot();
 
-		void SetPivotConnected(Directus::Math::Vector3 pivot);
-		Directus::Math::Vector3 GetPivotConnected();
+		void SetPivotConnected(Math::Vector3 pivot);
+		Math::Vector3 GetPivotConnected();
 
 	private:
 		btHingeConstraint* m_hinge;
-		GameObject* m_connectedGameObject;
+		weakGameObj m_connectedGameObject;
 		bool m_isConnected;
-		Directus::Math::Vector3 m_pivotA;
-		Directus::Math::Vector3 m_pivotB;
-		Directus::Math::Vector3 m_axisA;
-		Directus::Math::Vector3 m_axisB;
+		Math::Vector3 m_pivotA;
+		Math::Vector3 m_pivotB;
+		Math::Vector3 m_axisA;
+		Math::Vector3 m_axisB;
 
 		bool m_isDirty;
 

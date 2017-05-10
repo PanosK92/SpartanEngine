@@ -45,7 +45,7 @@ namespace Directus
 		bool Initialize(HWND handle);
 		void Release();
 
-		void Clear(const Directus::Math::Vector4& color);
+		void Clear(const Math::Vector4& color);
 		void Present() { m_swapChain->Present(VSYNC, 0); }
 
 		ID3D12Device* GetDevice() { return m_device; }

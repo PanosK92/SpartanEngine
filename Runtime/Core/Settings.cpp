@@ -131,9 +131,9 @@ namespace Directus
 		m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
 	}
 
-	Directus::Math::Vector2 Settings::GetResolution()
+	Math::Vector2 Settings::GetResolution()
 	{
-		return Directus::Math::Vector2(m_resolutionWidth, m_resolutionHeight);
+		return Math::Vector2(m_resolutionWidth, m_resolutionHeight);
 	}
 
 	int Settings::GetResolutionWidth()

@@ -53,7 +53,7 @@ namespace Directus
 		static bool IsMouseVisible();
 		static VSync GetVSync();
 		static void SetResolution(int width, int height);
-		static Directus::Math::Vector2 GetResolution();
+		static Math::Vector2 GetResolution();
 		static int GetResolutionWidth();
 		static int GetResolutionHeight();
 		static float GetScreenAspect();

@@ -23,14 +23,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include <vector>
-#include "GameObject.h"
-#include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Multithreading/Multithreading.h"
 //===========================================
 
 namespace Directus
 {
+	class GameObject;
+	typedef std::weak_ptr<GameObject> weakGameObj;
+	typedef std::shared_ptr<GameObject> sharedGameObj;
+
 	class DllExport Scene : public Subsystem
 	{
 	public:
@@ -53,30 +55,32 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 
 		//= GAMEOBJECT HELPER FUNCTIONS ===============================================
-		GameObject* CreateGameObject();
+		weakGameObj CreateGameObject();
 		int GetGameObjectCount() { return (int)m_gameObjects.size(); }
-		std::vector<GameObject*> GetAllGameObjects() { return m_gameObjects; }
-		std::vector<GameObject*> GetRootGameObjects();
-		GameObject* GetGameObjectRoot(GameObject* gameObject);
-		GameObject* GetGameObjectByName(const std::string& name);
-		GameObject* GetGameObjectByID(const std::string& ID);
-		bool GameObjectExists(GameObject* gameObject);
-		void RemoveGameObject(GameObject* gameObject);
-		void RemoveSingleGameObject(GameObject* gameObject);
+		std::vector<weakGameObj> GetAllGameObjects();
+		std::vector<weakGameObj> GetRootGameObjects();
+		weakGameObj GetGameObjectRoot(weakGameObj gameObject);
+		weakGameObj GetGameObjectByName(const std::string& name);
+		weakGameObj GetGameObjectByID(const std::string& ID);
+		bool GameObjectExists(weakGameObj gameObject);
+		void RemoveGameObject(weakGameObj gameObject);
+		void RemoveSingleGameObject(weakGameObj gameObject);
 
 		//= SCENE RESOLUTION  =========================================================
 		void Resolve();
-		std::vector<GameObject*> GetRenderables() { return m_renderables; }
-		std::vector<GameObject*> GetLightsDirectional() { return m_lightsDirectional; }
-		std::vector<GameObject*> GetLightsPoint() { return m_lightsPoint; }
-		GameObject* GetSkybox() { return m_skybox; }
-		GameObject* GetMainCamera() { return m_mainCamera; }
+		std::vector<weakGameObj> GetRenderables() { return m_renderables; }
+		std::vector<weakGameObj> GetLightsDirectional() { return m_lightsDirectional; }
+		std::vector<weakGameObj> GetLightsPoint() { return m_lightsPoint; }
+		weakGameObj GetSkybox() { return m_skybox; }
+		weakGameObj GetMainCamera() { return m_mainCamera; }
 
 		//= MISC ======================================================================
 		void SetAmbientLight(float x, float y, float z);
-		Directus::Math::Vector3 GetAmbientLight();
-		GameObject* MousePick(Directus::Math::Vector2& mousePos);
-		bool RaySphereIntersect(const Directus::Math::Vector3& rayOrigin, const Directus::Math::Vector3& rayDirection, float radius);
+		Math::Vector3 GetAmbientLight();
+
+		//= CALLED BY GAMEOBJECTS ==============
+		void AddGameObject(GameObject* gameObj);
+		//======================================
 
 		//= STATS ======================	
 		float GetFPS() { return m_fps; }
@@ -84,18 +88,19 @@ namespace Directus
 
 	private:
 		//= COMMON GAMEOBJECT CREATION ======
-		GameObject* CreateSkybox();
-		GameObject* CreateCamera();
-		GameObject* CreateDirectionalLight();
+		weakGameObj CreateSkybox();
+		weakGameObj CreateCamera();
+		weakGameObj CreateDirectionalLight();
 		//===================================
 
-		std::vector<GameObject*> m_gameObjects;
-		std::vector<GameObject*> m_renderables;
-		std::vector<GameObject*> m_lightsDirectional;
-		std::vector<GameObject*> m_lightsPoint;
-		GameObject* m_mainCamera;
-		GameObject* m_skybox;
-		Directus::Math::Vector3 m_ambientLight;
+		std::vector<sharedGameObj> m_gameObjects;
+		std::vector<weakGameObj> m_renderables;
+		std::vector<weakGameObj> m_lightsDirectional;
+		std::vector<weakGameObj> m_lightsPoint;
+
+		weakGameObj m_mainCamera;
+		weakGameObj m_skybox;
+		Math::Vector3 m_ambientLight;
 
 		//= STATS =========
 		float m_fps;

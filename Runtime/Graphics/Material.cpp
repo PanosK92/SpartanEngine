@@ -48,7 +48,7 @@ namespace Directus
 		m_cullMode = CullBack;
 		m_opacity = 1.0f;
 		m_alphaBlending = false;
-		m_shadingMode = Physically_Based;
+		m_shadingMode = Shading_PBR;
 		m_colorAlbedo = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 		m_roughnessMultiplier = 1.0f;
 		m_metallicMultiplier = 0.0f;
@@ -245,10 +245,12 @@ namespace Directus
 	void Material::AcquireShader()
 	{
 		if (!m_context)
+		{
 			return;
+		}
 
 		// Add a shader to the pool based on this material, if a 
-		// matching shader already exists, it will be returned instead.
+		// matching shader already exists, it will be returned.
 		m_shader = CreateShaderBasedOnMaterial(
 			HasTextureOfType(Albedo_Texture),
 			HasTextureOfType(Roughness_Texture),
@@ -294,7 +296,7 @@ namespace Directus
 
 		// If not, create a new one 
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		std::string shaderDirectory = resourceMng->GetResourceDirectory(Shader_Resource); // Get standard shader directory
+		string shaderDirectory = resourceMng->GetResourceDirectory(Shader_Resource); // Get standard shader directory
 		auto shader = make_shared<ShaderVariation>();
 		shader->Initialize(shaderDirectory + "GBuffer.hlsl", albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<D3D11GraphicsDevice>());
 
@@ -302,7 +304,7 @@ namespace Directus
 		return m_context->GetSubsystem<ResourceManager>()->Add(shader);
 	}
 
-	void** Material::GetShaderResourceViewByTextureType(TextureType type)
+	void** Material::GetShaderResource(TextureType type)
 	{
 		auto texture = GetTextureByType(type);
 

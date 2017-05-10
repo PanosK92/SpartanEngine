@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene.h"
 #include "GUIDGenerator.h"
 #include "../IO/Serializer.h"
+#include "../Logging/Log.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshFilter.h"
 #include "../Components/MeshRenderer.h"
@@ -49,12 +50,16 @@ namespace Directus
 	GameObject::GameObject(Context* context)
 	{
 		m_context = context;
-		m_transform = AddComponent<Transform>();
 		m_ID = GENERATE_GUID;
 		m_name = "GameObject";
 		m_isActive = true;
 		m_isPrefab = false;
 		m_hierarchyVisibility = true;
+		m_transform = AddComponent<Transform>();
+
+		// Add self to scene. shared_from_this won't work
+		// as there needs to be at least one shared_ptr before calling it.
+		m_context->GetSubsystem<Scene>()->AddGameObject(this);
 	}
 
 	GameObject::~GameObject()
@@ -168,7 +173,17 @@ namespace Directus
 
 		// 3rd - children
 		for (const auto& child : children)
-			child->g_gameObject->Serialize();
+		{
+			if (!child->g_gameObject.expired())
+			{
+				child->g_gameObject.lock()->Serialize();
+			}
+			else
+			{
+				LOG_ERROR("Aborting GameObject serialization, child GameObject is nullptr.");
+				break;
+			}
+		}
 		//=============================================
 	}
 
@@ -178,7 +193,7 @@ namespace Directus
 		// Check if a GameObject of the same ID exists (instantiated prefab).
 		// If it does, mentain the new ID and discard the original one.
 		string oldID = Serializer::ReadSTR();
-		m_ID = m_context->GetSubsystem<Scene>()->GetGameObjectByID(oldID) ? m_ID : oldID;
+		m_ID = m_context->GetSubsystem<Scene>()->GetGameObjectByID(oldID).lock() ? m_ID : oldID;
 
 		m_name = Serializer::ReadSTR();
 		m_isActive = Serializer::ReadBool();
@@ -210,17 +225,17 @@ namespace Directus
 		int childrenCount = Serializer::ReadInt();
 
 		// 2nd - children IDs
-		vector<GameObject*> children;
+		vector<weakGameObj> children;
 		for (int i = 0; i < childrenCount; i++)
 		{
-			GameObject* child = m_context->GetSubsystem<Scene>()->CreateGameObject();
-			child->SetID(Serializer::ReadSTR());
+			weakGameObj child = m_context->GetSubsystem<Scene>()->CreateGameObject();
+			child.lock()->SetID(Serializer::ReadSTR());
 			children.push_back(child);
 		}
 
 		// 3rd - children
 		for (const auto& child : children)
-			child->Deserialize(GetTransform());
+			child.lock()->Deserialize(GetTransform());
 		//=============================================
 
 		GetTransform()->ResolveChildrenRecursively();

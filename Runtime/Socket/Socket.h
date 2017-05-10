@@ -72,13 +72,12 @@ namespace Directus
 		//============================================
 
 		//= GAMEOBJECTS ========================================
-		GameObject* CreateGameObject();
-		std::vector<GameObject*> GetAllGameObjects();
-		std::vector<GameObject*> GetRootGameObjects();
-		GameObject* GetGameObjectByID(std::string gameObjectID);
+		std::vector<weakGameObj> GetAllGameObjects();
+		std::vector<weakGameObj> GetRootGameObjects();
+		weakGameObj GetGameObjectByID(std::string gameObjectID);
 		int GetGameObjectCount();
-		void DestroyGameObject(GameObject* gameObject);
-		bool GameObjectExists(GameObject* gameObject);
+		void DestroyGameObject(weakGameObj gameObject);
+		bool GameObjectExists(weakGameObj gameObject);
 		//======================================================
 
 		//= STATS ==============================================

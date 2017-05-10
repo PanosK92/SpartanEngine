@@ -154,22 +154,17 @@ namespace Directus
 	//==============================================================================
 
 	//= GAMEOBJECTS ================================================================
-	GameObject* Socket::CreateGameObject()
-	{
-		return m_context->GetSubsystem<Scene>()->CreateGameObject();
-	}
-
-	vector<GameObject*> Socket::GetAllGameObjects()
+	vector<weakGameObj> Socket::GetAllGameObjects()
 	{
 		return m_context->GetSubsystem<Scene>()->GetAllGameObjects();
 	}
 
-	vector<GameObject*> Socket::GetRootGameObjects()
+	vector<weakGameObj> Socket::GetRootGameObjects()
 	{
 		return m_context->GetSubsystem<Scene>()->GetRootGameObjects();
 	}
 
-	GameObject* Socket::GetGameObjectByID(string gameObjectID)
+	weakGameObj Socket::GetGameObjectByID(string gameObjectID)
 	{
 		return m_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
 	}
@@ -179,22 +174,24 @@ namespace Directus
 		return m_context->GetSubsystem<Scene>()->GetGameObjectCount();
 	}
 
-	void Socket::DestroyGameObject(GameObject* gameObject)
+	void Socket::DestroyGameObject(weakGameObj gameObject)
 	{
-		if (!gameObject)
+		if (gameObject.expired())
+		{
 			return;
+		}
 
 		m_context->GetSubsystem<Scene>()->RemoveGameObject(gameObject);
 	}
 
-	bool Socket::GameObjectExists(GameObject* gameObject)
+	bool Socket::GameObjectExists(weakGameObj gameObject)
 	{
-		if (!gameObject)
+		if (gameObject.expired())
+		{
 			return false;
+		}
 
-		bool exists = m_context->GetSubsystem<Scene>()->GameObjectExists(gameObject);
-
-		return exists;
+		return m_context->GetSubsystem<Scene>()->GameObjectExists(gameObject);
 	}
 	//==============================================================================
 

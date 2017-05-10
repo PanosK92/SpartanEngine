@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========================
+//= INCLUDES ========================
 #include <map>
 #include <vector>
 #include "GUIDGenerator.h"
 #include "../Components/IComponent.h"
 #include "../Core/Context.h"
-#include "../EventSystem/EventHandler.h"
-//======================================
+#include "Scene.h"
+//===================================
 
 namespace Directus
 {
@@ -78,7 +78,7 @@ namespace Directus
 			if (existingComp && typeStr != "Script") // If it's anything but a script, it can't have multiple instances,
 				return dynamic_cast<T*>(existingComp); // return the existing component.
 
-		// Get the created component.
+			// Get the created component.
 			IComponent* component = new T;
 
 			// Add the component.
@@ -87,7 +87,7 @@ namespace Directus
 			// Set default properties.
 			component->g_ID = GENERATE_GUID;
 			component->g_enabled = true;
-			component->g_gameObject = this;
+			component->g_gameObject = m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID());
 			component->g_transform = GetTransform();
 			component->g_context = m_context;
 

@@ -82,8 +82,11 @@ namespace Directus
 		Serializer::WriteVector3(m_scaleLocal);
 		Serializer::WriteVector3(m_lookAt);
 
-		if (m_parent)
-			Serializer::WriteSTR(m_parent->g_gameObject->GetID());
+		if (!m_parent)
+		{
+			sharedGameObj parentGameObj = m_parent->g_gameObject.lock();
+			Serializer::WriteSTR(parentGameObj ? parentGameObj->GetID() : DATA_NOT_ASSIGNED);
+		}
 		else
 			Serializer::WriteSTR(DATA_NOT_ASSIGNED);
 	}
@@ -99,9 +102,11 @@ namespace Directus
 		string parentGameObjectID = Serializer::ReadSTR();
 		if (parentGameObjectID != DATA_NOT_ASSIGNED)
 		{
-			GameObject* parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
-			if (parent)
-				parent->GetTransform()->AddChild(this);
+			weakGameObj parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
+			if (!parent.expired())
+			{
+				parent.lock()->GetTransform()->AddChild(this);
+			}
 		}
 
 		UpdateWorldTransform();
@@ -296,7 +301,9 @@ namespace Directus
 	{
 		if (!HasChildren())
 		{
-			LOG_WARNING(g_gameObject->GetName() + " has no children.");
+			sharedGameObj gameObj = g_gameObject.lock();
+			string gameObjName = gameObj ? gameObj->GetName() : DATA_NOT_ASSIGNED;
+			LOG_WARNING(gameObjName + " has no children.");
 			return nullptr;
 		}
 
@@ -319,9 +326,9 @@ namespace Directus
 		return nullptr;
 	}
 
-	vector<GameObject*> Transform::GetChildrenAsGameObjects()
+	vector<weakGameObj> Transform::GetChildrenAsGameObjects()
 	{
-		vector<GameObject*> childreGameObjects;
+		vector<weakGameObj> childreGameObjects;
 
 		auto childrenTransforms = GetChildren();
 		for (const auto& transform : childrenTransforms)
@@ -340,8 +347,11 @@ namespace Directus
 		auto gameObjects = g_context->GetSubsystem<Scene>()->GetAllGameObjects();
 		for (const auto& gameObject : gameObjects)
 		{
+			if (gameObject.expired())
+				continue;
+
 			// get the possible child
-			Transform* possibleChild = gameObject->GetTransform();
+			Transform* possibleChild = gameObject.lock()->GetTransform();
 
 			// if it doesn't have a parent, forget about it.
 			if (!possibleChild->HasParent())
@@ -384,12 +394,12 @@ namespace Directus
 
 	string Transform::GetID() const
 	{
-		return g_gameObject->GetID();
+		return !g_gameObject.expired() ? g_gameObject.lock()->GetID() : DATA_NOT_ASSIGNED;
 	}
 
 	string Transform::GetName()
 	{
-		return GetGameObject()->GetName();
+		return !g_gameObject.expired() ? g_gameObject.lock()->GetName() : DATA_NOT_ASSIGNED;
 	}
 
 	Matrix Transform::GetParentTransformMatrix()

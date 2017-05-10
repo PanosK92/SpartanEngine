@@ -42,7 +42,7 @@ namespace Directus
 
 	}
 
-	void DepthShader::Load(const std::string& filePath, Graphics* graphics)
+	void DepthShader::Load(const string& filePath, Graphics* graphics)
 	{
 		m_graphics = graphics;
 

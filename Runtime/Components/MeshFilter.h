@@ -73,8 +73,8 @@ namespace Directus
 		static std::weak_ptr<Mesh> GetLargestBoundingBox(std::vector<std::weak_ptr<Mesh>> meshes);
 
 		// Properties
-		Directus::Math::Vector3 GetCenter();
-		Directus::Math::Vector3 GetBoundingBox();
+		Math::Vector3 GetCenter();
+		Math::Vector3 GetBoundingBox();
 		std::weak_ptr<Mesh> GetMesh();
 		bool HasMesh();
 		std::string GetMeshName();

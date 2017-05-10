@@ -90,9 +90,9 @@ namespace Directus
 
 		//= HELPER FUNCTIONS ===========================================================
 		static void SetScale(Mesh* meshData, float scale);
-		static Directus::Math::Vector3 GetBoundingBox(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
-		static Directus::Math::Vector3 GetCenter(const Directus::Math::Vector3& min, const Directus::Math::Vector3& max);
-		static void GetMinMax(Mesh* mesh, Directus::Math::Vector3& min, Directus::Math::Vector3& max);
+		static Math::Vector3 GetBoundingBox(const Math::Vector3& min, const Math::Vector3& max);
+		static Math::Vector3 GetCenter(const Math::Vector3& min, const Math::Vector3& max);
+		static void GetMinMax(Mesh* mesh, Math::Vector3& min, Math::Vector3& max);
 		//==============================================================================
 
 		std::string m_rootGameObjectID;
@@ -105,10 +105,10 @@ namespace Directus
 		unsigned int m_indexCount;
 		unsigned int m_triangleCount;
 
-		Directus::Math::Vector3 m_min;
-		Directus::Math::Vector3 m_max;
-		Directus::Math::Vector3 m_center;
-		Directus::Math::Vector3 m_boundingBox;
+		Math::Vector3 m_min;
+		Math::Vector3 m_max;
+		Math::Vector3 m_center;
+		Math::Vector3 m_boundingBox;
 
 		std::function<void(void)> m_onUpdate;
 	};

@@ -42,7 +42,7 @@ namespace Directus
 	{
 		m_castShadows = true;
 		m_receiveShadows = true;
-		m_materialType = Imported;
+		m_materialType = Material_Imported;
 	}
 
 	MeshRenderer::~MeshRenderer()
@@ -93,8 +93,8 @@ namespace Directus
 
 		// The Skybox material and texture is managed by the skybox component.
 		// No need to load anything as it will overwrite what the skybox component did.
-		if (m_materialType != Skybox)
-			m_materialType == Imported ? LoadMaterial(filePath) : SetMaterial(m_materialType);
+		if (m_materialType != Material_Skybox)
+			m_materialType == Material_Imported ? LoadMaterial(filePath) : SetMaterial(m_materialType);
 	}
 	//==============================================================================
 
@@ -104,15 +104,16 @@ namespace Directus
 		auto materialWeakPTr = GetMaterial();
 		auto materialSharedPtr = materialWeakPTr.lock();
 
+		string gameObjName = !g_gameObject.expired() ? g_gameObject.lock()->GetName() : DATA_NOT_ASSIGNED;
 		if (!materialSharedPtr) // Check if a material exists
 		{
-			LOG_WARNING("GameObject \"" + g_gameObject->GetName() + "\" has no material. It can't be rendered.");
+			LOG_WARNING("GameObject \"" + gameObjName + "\" has no material. It can't be rendered.");
 			return;
 		}
 
 		if (!materialSharedPtr->HasShader()) // Check if the material has a shader
 		{
-			LOG_WARNING("GameObject \"" + g_gameObject->GetName() + "\" has a material but not a shader associated with it. It can't be rendered.");
+			LOG_WARNING("GameObject \"" + gameObjName + "\" has a material but not a shader associated with it. It can't be rendered.");
 			return;
 		}
 
@@ -138,21 +139,21 @@ namespace Directus
 
 		switch (type)
 		{
-		case Basic:
+		case Material_Basic:
 			material = make_shared<Material>(g_context);
 			material->SetResourceName("Basic");
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);
-			m_materialType = Basic;
+			m_materialType = Material_Basic;
 			break;
 
-		case Skybox:
+		case Material_Skybox:
 			material = make_shared<Material>(g_context);
 			material->SetResourceName("Skybox");
 			material->SetCullMode(CullFront);
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);
-			m_materialType = Skybox;
+			m_materialType = Material_Skybox;
 			break;
 
 		default:

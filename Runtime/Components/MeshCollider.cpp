@@ -145,16 +145,28 @@ namespace Directus
 	}
 
 	//= HELPER FUNCTIONS ================================================================================================
-	void MeshCollider::SetCollisionShapeToRigidBody(weak_ptr<btCollisionShape> shape) const
+	void MeshCollider::SetCollisionShapeToRigidBody(weak_ptr<btCollisionShape> shape)
 	{
-		RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
+		if (g_gameObject.expired())
+		{
+			return;
+		}
+
+		RigidBody* rigidBody = g_gameObject.lock()->GetComponent<RigidBody>();
 		if (rigidBody)
+		{
 			rigidBody->SetCollisionShape(shape);
+		}
 	}
 
-	weak_ptr<Mesh> MeshCollider::GetMeshFromAttachedMeshFilter() const
+	weak_ptr<Mesh> MeshCollider::GetMeshFromAttachedMeshFilter()
 	{
-		MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
+		if (g_gameObject.expired())
+		{
+			return weak_ptr<Mesh>();
+		}
+
+		MeshFilter* meshFilter = g_gameObject.lock()->GetComponent<MeshFilter>();
 		return meshFilter ? meshFilter->GetMesh() : weak_ptr<Mesh>();
 	}
 

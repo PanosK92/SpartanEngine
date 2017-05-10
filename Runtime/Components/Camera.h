@@ -57,13 +57,13 @@ namespace Directus
 		//=========================
 
 		//= MATRICES =========================================================
-		Directus::Math::Matrix GetViewMatrix() { return m_mView; }
-		Directus::Math::Matrix GetProjectionMatrix() { return m_mProjection; }
-		Directus::Math::Matrix GetBaseViewMatrix() { return m_mBaseView; }
+		Math::Matrix GetViewMatrix() { return m_mView; }
+		Math::Matrix GetProjectionMatrix() { return m_mProjection; }
+		Math::Matrix GetBaseViewMatrix() { return m_mBaseView; }
 		//====================================================================
 
 		//= RAYCASTING =======================================================================
-		Directus::Math::Vector2 WorldToScreenPoint(const Directus::Math::Vector3& worldPoint);
+		Math::Vector2 WorldToScreenPoint(const Math::Vector3& worldPoint);
 		//====================================================================================
 
 		//= PLANES/PROJECTION =====================================================
@@ -73,14 +73,14 @@ namespace Directus
 		void SetFarPlane(float farPlane);
 		Projection GetProjection() { CalculateProjection();  return m_projection; }
 		void SetProjection(Projection projection);
-		float GetFieldOfView() { return Directus::Math::RadiansToDegrees(m_FOV); }
+		float GetFieldOfView() { return Math::RadiansToDegrees(m_FOV); }
 		void SetFieldOfView(float fov);
 		const std::shared_ptr<Frustrum>& GetFrustrum() { return m_frustrum; }
 		//=========================================================================
 
 		//= MISC =========================================================================
-		Directus::Math::Vector4 GetClearColor() { return m_clearColor; }
-		void SetClearColor(const Directus::Math::Vector4& color) { m_clearColor = color; }
+		Math::Vector4 GetClearColor() { return m_clearColor; }
+		void SetClearColor(const Math::Vector4& color) { m_clearColor = color; }
 		//================================================================================
 
 	private:
@@ -89,17 +89,17 @@ namespace Directus
 		float m_farPlane;
 		std::shared_ptr<Frustrum> m_frustrum;
 		Projection m_projection;
-		Directus::Math::Vector4 m_clearColor;
+		Math::Vector4 m_clearColor;
 
-		Directus::Math::Matrix m_mView;
-		Directus::Math::Matrix m_mProjection;
-		Directus::Math::Matrix m_mBaseView;
+		Math::Matrix m_mView;
+		Math::Matrix m_mProjection;
+		Math::Matrix m_mBaseView;
 
-		Directus::Math::Vector3 m_position;
-		Directus::Math::Quaternion m_rotation;
+		Math::Vector3 m_position;
+		Math::Quaternion m_rotation;
 		bool m_isDirty;
 
-		Directus::Math::Vector2 m_lastKnownResolution;
+		Math::Vector2 m_lastKnownResolution;
 
 		/*------------------------------------------------------------------------------
 		[PRIVATE]

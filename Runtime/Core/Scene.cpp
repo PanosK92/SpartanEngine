@@ -52,13 +52,17 @@ namespace Directus
 	Scene::Scene(Context* context) : Subsystem(context)
 	{
 		m_ambientLight = Vector3::Zero;
-		m_mainCamera = nullptr;
-		m_skybox = nullptr;
 	}
 
 	Scene::~Scene()
 	{
 		Clear();
+	}
+
+	void Scene::AddGameObject(GameObject* gameObj)
+	{
+		sharedGameObj smartGameObj = sharedGameObj(gameObj);
+		m_gameObjects.push_back(smartGameObj);
 	}
 
 	bool Scene::Initialize()
@@ -96,9 +100,6 @@ namespace Directus
 
 	void Scene::Clear()
 	{
-		for (auto& gameObject : m_gameObjects)
-			delete gameObject;
-
 		m_gameObjects.clear();
 		m_gameObjects.shrink_to_fit();
 
@@ -110,10 +111,6 @@ namespace Directus
 
 		m_lightsPoint.clear();
 		m_lightsPoint.shrink_to_fit();
-
-		// dodge dangling pointers
-		m_mainCamera = nullptr;
-		m_skybox = nullptr;
 
 		// Clear the resource cache
 		m_context->GetSubsystem<ResourceManager>()->Unload();
@@ -156,18 +153,18 @@ namespace Directus
 
 		//= Save GameObjects ============================
 		// Only save root GameObjects as they will also save their descendants
-		vector<GameObject*> rootGameObjects = GetRootGameObjects();
+		vector<weakGameObj> rootGameObjects = GetRootGameObjects();
 
 		// 1st - GameObject count
 		Serializer::WriteInt((int)rootGameObjects.size());
 
 		// 2nd - GameObject IDs
 		for (const auto& root : rootGameObjects)
-			Serializer::WriteSTR(root->GetID());
+			Serializer::WriteSTR(root.lock()->GetID());
 
 		// 3rd - GameObjects
 		for (const auto& root : rootGameObjects)
-			root->Serialize();
+			root.lock()->Serialize();
 		//==============================================
 
 		Serializer::StopWriting();
@@ -226,7 +223,7 @@ namespace Directus
 		for (int i = 0; i < rootGameObjectCount; i++)
 		{
 
-			m_gameObjects.push_back(new GameObject(m_context));
+			m_gameObjects.push_back(make_shared<GameObject>(m_context));
 			m_gameObjects.back()->SetID(Serializer::ReadSTR());
 		}
 
@@ -236,7 +233,9 @@ namespace Directus
 		// GameObjects. This is because a GameObject will also
 		// deserialize it's descendants.
 		for (int i = 0; i < rootGameObjectCount; i++)
+		{
 			m_gameObjects[i]->Deserialize(nullptr);
+		}
 
 		Serializer::StopReading();
 		//==============================================
@@ -248,71 +247,86 @@ namespace Directus
 	//===================================================================================================
 
 	//= GAMEOBJECT HELPER FUNCTIONS  ====================================================================
-	GameObject* Scene::CreateGameObject()
+	vector<weakGameObj> Scene::GetAllGameObjects()
 	{
-		GameObject* gameObject = new GameObject(m_context);
-		m_gameObjects.push_back(gameObject);
-		Resolve();
+		vector<weakGameObj> allGameObj;
+		for (const auto& gameObject : m_gameObjects)
+		{
+			allGameObj.push_back(gameObject);
+		}
 
-		return gameObject;
+		return allGameObj;
 	}
 
-	vector<GameObject*> Scene::GetRootGameObjects()
+	vector<weakGameObj> Scene::GetRootGameObjects()
 	{
-		vector<GameObject*> rootGameObjects;
-
+		vector<weakGameObj> rootGameObjects;
 		for (const auto& gameObject : m_gameObjects)
+		{
 			if (gameObject->GetTransform()->IsRoot())
+			{
 				rootGameObjects.push_back(gameObject);
+			}
+		}
 
 		return rootGameObjects;
 	}
 
-	GameObject* Scene::GetGameObjectRoot(GameObject* gameObject)
+	weakGameObj Scene::GetGameObjectRoot(weakGameObj gameObject)
 	{
-		return gameObject ? gameObject->GetTransform()->GetRoot()->GetGameObject() : nullptr;
+		return !gameObject.expired() ? gameObject.lock()->GetTransform()->GetRoot()->GetGameObject() : weakGameObj();
 	}
 
-	GameObject* Scene::GetGameObjectByName(const string& name)
+	weakGameObj Scene::GetGameObjectByName(const string& name)
 	{
 		for (const auto& gameObject : m_gameObjects)
+		{
 			if (gameObject->GetName() == name)
+			{
 				return gameObject;
+			}
+		}
 
-		return nullptr;
+		return weakGameObj();
 	}
 
-	GameObject* Scene::GetGameObjectByID(const string& ID)
+	weakGameObj Scene::GetGameObjectByID(const string& ID)
 	{
 		for (const auto& gameObject : m_gameObjects)
+		{
 			if (gameObject->GetID() == ID)
+			{
 				return gameObject;
+			}
+		}
 
-		return nullptr;
+		return weakGameObj();
 	}
 
-	bool Scene::GameObjectExists(GameObject* gameObject)
+	bool Scene::GameObjectExists(weakGameObj gameObject)
 	{
-		if (!gameObject)
+		if (gameObject.expired())
+		{
 			return false;
+		}
 
-		return GetGameObjectByID(gameObject->GetID()) ? true : false;
+		return !GetGameObjectByID(gameObject.lock()->GetID()).expired() ? true : false;
 	}
 
 	// Removes a GameObject and all of it's children
-	void Scene::RemoveGameObject(GameObject* gameObject)
+	void Scene::RemoveGameObject(weakGameObj gameObject)
 	{
-		if (!gameObject)
+		if (gameObject.expired())
 			return;
 
 		// remove any descendants
 		vector<Transform*> descendants;
-		gameObject->GetTransform()->GetDescendants(descendants);
+		gameObject.lock()->GetTransform()->GetDescendants(descendants);
 		for (const auto& descendant : descendants)
 			RemoveSingleGameObject(descendant->GetGameObject());
 
 		// remove this gameobject but keep it's parent
-		Transform* parent = gameObject->GetTransform()->GetParent();
+		Transform* parent = gameObject.lock()->GetTransform()->GetParent();
 		RemoveSingleGameObject(gameObject);
 
 		// if there is a parent, update it's children pool
@@ -321,22 +335,27 @@ namespace Directus
 	}
 
 	// Removes a GameObject but leaves the parent and the children as is
-	void Scene::RemoveSingleGameObject(GameObject* gameObject)
+	void Scene::RemoveSingleGameObject(weakGameObj gameObject)
 	{
-		if (!gameObject)
+		if (gameObject.expired())
 			return;
 
+		bool dirty = false;
 		for (auto it = m_gameObjects.begin(); it < m_gameObjects.end();)
 		{
-			GameObject* temp = *it;
-			if (temp->GetID() == gameObject->GetID())
+			sharedGameObj temp = *it;
+			if (temp->GetID() == gameObject.lock()->GetID())
 			{
-				delete temp;
 				it = m_gameObjects.erase(it);
-				Resolve();
+				dirty = true;
 				return;
 			}
 			++it;
+		}
+
+		if (dirty)
+		{
+			Resolve();
 		}
 	}
 	//===================================================================================================
@@ -352,10 +371,6 @@ namespace Directus
 
 		m_lightsPoint.clear();
 		m_lightsPoint.shrink_to_fit();
-
-		// Dodge dangling pointers
-		m_mainCamera = nullptr;
-		m_skybox = nullptr;
 
 		for (const auto& gameObject : m_gameObjects)
 		{
@@ -394,87 +409,12 @@ namespace Directus
 		return m_ambientLight;
 	}
 
-	GameObject* Scene::MousePick(Vector2& mousePos)
-	{
-		Camera* camera = GetMainCamera()->GetComponent<Camera>();
-		Matrix mViewProjectionInv = (camera->GetViewMatrix() * camera->GetProjectionMatrix()).Inverted();
-
-		// Transform mouse coordinates from [0,1] to [-1,+1]
-		mousePos.x = ((2.0f * mousePos.x) / (float)RESOLUTION_WIDTH - 1.0f);
-		mousePos.y = (((2.0f * mousePos.y) / (float)RESOLUTION_HEIGHT) - 1.0f) * -1.0f;
-
-		// Calculate the origin and the end of the ray
-		Vector3 rayOrigin = Vector3(mousePos.x, mousePos.y, camera->GetNearPlane());
-		Vector3 rayEnd = Vector3(mousePos.x, mousePos.y, camera->GetFarPlane());
-
-		// Transform it from projection space to world space
-		rayOrigin = rayOrigin * mViewProjectionInv;
-		rayEnd = rayEnd * mViewProjectionInv;
-
-		// Get the ray direction
-		Vector3 rayDirection = (rayEnd - rayOrigin).Normalized();
-
-		vector<GameObject*> intersectedGameObjects;
-		//= Intersection test ===============================
-		for (auto gameObject : m_renderables)
-		{
-			if (gameObject->HasComponent<Skybox>())
-				continue;
-
-			Vector3 extent = gameObject->GetComponent<MeshFilter>()->GetBoundingBox();
-
-			float radius = max(abs(extent.x), abs(extent.y));
-			radius = max(radius, abs(extent.z));
-
-			if (RaySphereIntersect(rayOrigin, rayDirection, radius))
-			{
-				if (!RaySphereIntersect(m_mainCamera->GetTransform()->GetPosition(), m_mainCamera->GetTransform()->GetForward(), radius))
-					intersectedGameObjects.push_back(gameObject);
-			}
-		}
-		//====================================================
-
-		//= Find the gameobject closest to the camera ==
-		float minDistance = 1000;
-		GameObject* clostestGameObject = nullptr;
-		for (auto gameObject : intersectedGameObjects)
-		{
-			Vector3 posA = gameObject->GetTransform()->GetPosition();
-			Vector3 posB = camera->g_transform->GetPosition();
-
-			float distance = sqrt(pow(posB.x - posA.x, 2.0f) + pow(posB.y - posA.y, 2.0f) + pow(posB.z - posA.z, 2.0f));
-
-			if (distance < minDistance)
-			{
-				minDistance = distance;
-				clostestGameObject = gameObject;
-			}
-		}
-		//==============================================
-
-		return clostestGameObject;
-	}
-
-	bool Scene::RaySphereIntersect(const Vector3& rayOrigin, const Vector3& rayDirection, float radius)
-	{
-		// Calculate the a, b, and c coefficients.
-		float a = (rayDirection.x * rayDirection.x) + (rayDirection.y * rayDirection.y) + (rayDirection.z * rayDirection.z);
-		float b = ((rayDirection.x * rayOrigin.x) + (rayDirection.y * rayOrigin.y) + (rayDirection.z * rayOrigin.z)) * 2.0f;
-		float c = ((rayOrigin.x * rayOrigin.x) + (rayOrigin.y * rayOrigin.y) + (rayOrigin.z * rayOrigin.z)) - (radius * radius);
-
-		// Find the discriminant.
-		float discriminant = pow(b, 2.0f) - (4 * a * c);
-
-		// if discriminant is negative the picking ray 
-		// missed the sphere, otherwise it intersected the sphere.
-		return discriminant < 0.0f ? false : true;
-	}
 	//======================================================================================================
 
 	//= COMMON GAMEOBJECT CREATION =========================================================================
-	GameObject* Scene::CreateSkybox()
+	weak_ptr<GameObject> Scene::CreateSkybox()
 	{
-		GameObject* skybox = CreateGameObject();
+		sharedGameObj skybox = CreateGameObject().lock();
 		skybox->SetName("Skybox");
 		skybox->AddComponent<LineRenderer>();
 		skybox->AddComponent<Skybox>();
@@ -483,12 +423,12 @@ namespace Directus
 		return skybox;
 	}
 
-	GameObject* Scene::CreateCamera()
+	weak_ptr<GameObject> Scene::CreateCamera()
 	{
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		std::string scriptDirectory = resourceMng->GetResourceDirectory(Script_Resource);
+		string scriptDirectory = resourceMng->GetResourceDirectory(Script_Resource);
 
-		GameObject* camera = CreateGameObject();
+		sharedGameObj camera = CreateGameObject().lock();
 		camera->SetName("Camera");
 		camera->AddComponent<Camera>();
 		camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
@@ -498,9 +438,9 @@ namespace Directus
 		return camera;
 	}
 
-	GameObject* Scene::CreateDirectionalLight()
+	weak_ptr<GameObject> Scene::CreateDirectionalLight()
 	{
-		GameObject* light = CreateGameObject();
+		sharedGameObj light = CreateGameObject().lock();
 		light->SetName("DirectionalLight");
 		light->GetComponent<Transform>()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
 
@@ -530,4 +470,9 @@ namespace Directus
 		}
 	}
 	//======================================================================================================
+	weakGameObj Scene::CreateGameObject()
+	{
+		m_gameObjects.push_back(make_shared<GameObject>(m_context));
+		return m_gameObjects.back();
+	}
 }

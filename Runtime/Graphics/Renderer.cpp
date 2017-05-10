@@ -42,11 +42,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"
 #include "../Core/Settings.h"
-#include "../Core/Timer.h"
 #include "../Core/Engine.h"
 #include "../Resource/ResourceManager.h"
 #include "../Core/Stopwatch.h"
 #include "../Math/Frustrum.h"
+#include "Material.h"
 //======================================
 
 //= NAMESPACES ================
@@ -78,6 +78,8 @@ namespace Directus
 		m_directionalLight = nullptr;
 		m_nearPlane = 0.0;
 		m_farPlane = 0.0f;
+		m_resourceMng = nullptr;
+		m_graphics = nullptr;
 
 		// Subscribe to render event
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
@@ -90,7 +92,7 @@ namespace Directus
 
 	bool Renderer::Initialize()
 	{
-		// Get the graphics subsystem
+		// Get Graphics subsystem
 		m_graphics = m_context->GetSubsystem<Graphics>();
 		if (!m_graphics->IsInitialized())
 		{
@@ -98,17 +100,21 @@ namespace Directus
 			return false;
 		}
 
+		// Get ResourceManager subsystem
+		m_resourceMng = m_context->GetSubsystem<ResourceManager>();
+
+		// Create G-Buffer
 		m_GBuffer = make_shared<GBuffer>(m_graphics);
 		m_GBuffer->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
+		// Create fullscreen quad
 		m_fullScreenQuad = make_shared<FullScreenQuad>();
 		m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
-		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		std::string shaderDirectory = resourceMng->GetResourceDirectory(Shader_Resource);
-		std::string textureDirectory = resourceMng->GetResourceDirectory(Texture_Resource);
+		// Load and compile shaders
+		string shaderDirectory = m_resourceMng->GetResourceDirectory(Shader_Resource);
+		string textureDirectory = m_resourceMng->GetResourceDirectory(Texture_Resource);
 
-		// Shaders
 		m_shaderDeferred = make_shared<DeferredShader>();
 		m_shaderDeferred->Load(shaderDirectory + "Deferred.hlsl", m_graphics);
 
@@ -127,7 +133,7 @@ namespace Directus
 		m_shaderBlur = make_shared<PostProcessShader>();
 		m_shaderBlur->Load(shaderDirectory + "PostProcess.hlsl", "BLUR", m_graphics);
 
-		// Render textures
+		// Create render textures (used for post processing)
 		m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
 		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
@@ -144,8 +150,15 @@ namespace Directus
 
 	void Renderer::Render()
 	{
-		if (!m_graphics->IsInitialized())
+		if (!m_graphics)
+		{
 			return;
+		}
+
+		if (!m_graphics->IsInitialized())
+		{
+			return;
+		}
 
 		StartCalculatingStats();
 		AcquirePrerequisites();
@@ -171,8 +184,13 @@ namespace Directus
 
 		// Render light depth
 		if (m_directionalLight)
+		{
 			if (m_directionalLight->GetShadowType() != No_Shadows)
+			{
+				m_graphics->SetCullMode(CullFront);
 				DirectionalLightDepthPass();
+			}
+		}
 
 		// G-Buffer Construction
 		m_GBuffer->SetAsRenderTarget();
@@ -186,15 +204,11 @@ namespace Directus
 		// Deferred Pass
 		DeferredPass();
 
-		// Post Proessing
+		// Post Processing
 		PostProcessing();
 
 		// Gizmos
 		Gizmos();
-		
-		//ID3D11CommandList* m_commandList;
-		//m_graphics->GetDeviceDeferredContext()->FinishCommandList(true, &m_commandList);
-		//m_graphics->GetDeviceDeferredContext()->ExecuteCommandList(m_commandList, true);
 
 		// display frame
 		m_graphics->Present();
@@ -204,9 +218,8 @@ namespace Directus
 
 	void Renderer::SetResolution(int width, int height)
 	{
-		// A resolution of 0 won't cause a crash or anything crazy,
-		// but it will cause the depth stencil buffer creation to fail,
-		// various error messages to be displayed. I silently prevent that.
+		// A resolution of 0 will cause the depth stencil 
+		// buffer creation to fail, let's prevent that.
 		if (width <= 0 || height <= 0)
 			return;
 
@@ -252,20 +265,20 @@ namespace Directus
 		m_lightsDirectional = scene->GetLightsDirectional();
 		m_lightsPoint = scene->GetLightsPoint();
 
-		GameObject* camera = scene->GetMainCamera();
-		if (camera)
+		weakGameObj camera = scene->GetMainCamera();
+		if (!camera.expired())
 		{
-			m_camera = camera->GetComponent<Camera>();
+			m_camera = camera.lock()->GetComponent<Camera>();
 
-			GameObject* skybox = scene->GetSkybox();
-			if (skybox)
+			weakGameObj skybox = scene->GetSkybox();
+			if (!skybox.expired())
 			{
-				m_skybox = skybox->GetComponent<Skybox>();
-				m_lineRenderer = skybox->GetComponent<LineRenderer>(); // Hush hush...
+				m_skybox = skybox.lock()->GetComponent<Skybox>();
+				m_lineRenderer = skybox.lock()->GetComponent<LineRenderer>(); // Hush hush...
 			}
 
 			if (m_lightsDirectional.size() != 0)
-				m_directionalLight = m_lightsDirectional[0]->GetComponent<Light>();
+				m_directionalLight = m_lightsDirectional[0].lock()->GetComponent<Light>();
 			else
 				m_directionalLight = nullptr;
 
@@ -288,9 +301,6 @@ namespace Directus
 
 	void Renderer::DirectionalLightDepthPass()
 	{
-		m_graphics->SetCullMode(CullFront);
-
-		// Set the depth shader
 		m_shaderDepth->Set();
 
 		for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetShadowCascadeCount(); cascadeIndex++)
@@ -304,9 +314,14 @@ namespace Directus
 
 			for (const auto& gameObject : m_renderables)
 			{
-				auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
+				if (gameObject.expired())
+				{
+					continue;
+				}
+
+				auto meshRenderer = gameObject.lock()->GetComponent<MeshRenderer>();
 				auto material = meshRenderer->GetMaterial();
-				auto meshFilter = gameObject->GetComponent<MeshFilter>();
+				auto meshFilter = gameObject.lock()->GetComponent<MeshFilter>();
 				auto mesh = meshFilter->GetMesh();
 
 				// Make sure we have everything
@@ -325,7 +340,7 @@ namespace Directus
 				{
 					// Set shader's buffer
 					m_shaderDepth->UpdateMatrixBuffer(
-						gameObject->GetTransform()->GetWorldTransform(),
+						gameObject.lock()->GetTransform()->GetWorldTransform(),
 						mViewProjectionLight
 					);
 
@@ -338,38 +353,42 @@ namespace Directus
 
 	void Renderer::GBufferPass()
 	{
-		Graphics* graphics = m_context->GetSubsystem<Graphics>();
-		auto materials = m_context->GetSubsystem<ResourceManager>()->GetAllByType<Material>();
-		auto shaders = m_context->GetSubsystem<ResourceManager>()->GetAllByType<ShaderVariation>();
+		if (!m_graphics)
+		{
+			return;
+		}
 
-		for (const auto& tempShader : shaders) // iterate through the shaders
+		auto materials = m_resourceMng->GetAllByType<Material>();
+		auto shaders = m_resourceMng->GetAllByType<ShaderVariation>();
+
+		for (const auto& tempShader : shaders) // SHADER ITERATION
 		{
 			// Set the shader
-			auto renderShader = tempShader.lock();
-			renderShader->Set();
+			auto shader = tempShader.lock();
+			shader->Set();
 
 			// UPDATE PER FRAME BUFFER
-			renderShader->UpdatePerFrameBuffer(m_directionalLight, m_camera);
+			shader->UpdatePerFrameBuffer(m_directionalLight, m_camera);
 
-			for (const auto& tempMaterial : materials) // iterate through the materials
+			for (const auto& tempMaterial : materials) // MATERIAL ITERATION
 			{
 				// Continue only if the material at hand happens to use the already set shader
-				auto renderMaterial = tempMaterial.lock();
-				if (renderMaterial->GetShader().lock()->GetResourceID() != renderShader->GetResourceID())
+				auto material = tempMaterial.lock();
+				if (material->GetShader().lock()->GetResourceID() != shader->GetResourceID())
 					continue;
 
 				// UPDATE PER MATERIAL BUFFER
-				renderShader->UpdatePerMaterialBuffer(renderMaterial);
+				shader->UpdatePerMaterialBuffer(material);
 
-				//= Gather any used textures and bind them to the GPU ===============================
-				m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Albedo_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Roughness_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Metallic_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Normal_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Height_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Occlusion_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Emission_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)renderMaterial->GetShaderResourceViewByTextureType(Mask_Texture));
+				// Order the textures they way the shader expects them
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(Albedo_Texture));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(Roughness_Texture));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(Metallic_Texture));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(Normal_Texture));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(Height_Texture));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(Occlusion_Texture));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(Emission_Texture));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(Mask_Texture));
 
 				if (m_directionalLight)
 				{
@@ -387,56 +406,61 @@ namespace Directus
 				}
 
 				// UPDATE TEXTURE BUFFER
-				renderShader->UpdateTextures(m_textures);
+				shader->UpdateTextures(m_textures);
 				//==================================================================================
 
-				for (const auto& gameObject : m_renderables) // render GameObject that use the renderMaterial
+				for (const auto& gameObject : m_renderables) // GAMEOBJECT/MESH ITERATION
 				{
+					if (gameObject.expired())
+					{
+						continue;
+					}
+
 					//= Get all that we need =====================================
-					auto meshFilter = gameObject->GetComponent<MeshFilter>();
-					auto mesh = meshFilter->GetMesh();
-					auto meshRenderer = gameObject->GetComponent<MeshRenderer>();
-					auto material = meshRenderer->GetMaterial();
-					auto mWorld = gameObject->GetTransform()->GetWorldTransform();
+					auto meshFilter = gameObject.lock()->GetComponent<MeshFilter>();
+					auto meshRenderer = gameObject.lock()->GetComponent<MeshRenderer>();
+					auto objMesh = meshFilter->GetMesh().lock();
+					auto objMaterial = meshRenderer->GetMaterial().lock();
+					auto mWorld = gameObject.lock()->GetTransform()->GetWorldTransform();
 					//============================================================
 
-					// If any rendering requirement is missing, skip this GameObject
-					if (!meshFilter || mesh.expired() || !meshRenderer || material.expired())
+					// skip objects that are missing essential components
+					if (!meshFilter || !objMesh || !meshRenderer || !objMaterial)
 						continue;
 
-					//... that uses the current material
-					if (renderMaterial->GetResourceID() != material.lock()->GetResourceID())
+					// skip objects that use a different material
+					if (material->GetResourceID() != objMaterial->GetResourceID())
 						continue;
 
-					// Skip transparent meshes (for now)
-					if (material.lock()->GetOpacity() < 1.0f)
+					// skip objects transparent objects (for now)
+					if (objMaterial->GetOpacity() < 1.0f)
 						continue;
 
-					// Make sure the mesh is actually in our view frustrum
+					// skip objects outside of the view frustrum
 					if (!IsInViewFrustrum(m_camera->GetFrustrum(), meshFilter))
 						continue;
 
 					// UPDATE PER OBJECT BUFFER
-					renderShader->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
+					shader->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
 
 					// Set mesh buffer
 					if (meshFilter->SetBuffers())
 					{
 						// Set face culling (changes only if required)
-						graphics->SetCullMode(material.lock()->GetCullMode());
+						m_graphics->SetCullMode(objMaterial->GetCullMode());
 
 						// Render the mesh, finally!				
-						meshRenderer->Render(mesh.lock()->GetIndexCount());
+						meshRenderer->Render(objMesh->GetIndexCount());
 
 						m_renderedMeshesTempCounter++;
 					}
-				} // renderable loop
+				} // GAMEOBJECT/MESH ITERATION
 
 				m_textures.clear();
 				m_textures.shrink_to_fit();
 
-			} // material loop
-		} // shader loop
+			} // MATERIAL ITERATION
+		} // SHADER ITERATION
 	}
 
 	//= HELPER FUNCTIONS ==============================================================================================
@@ -466,7 +490,7 @@ namespace Directus
 					Matrix::Identity,
 					mBaseView,
 					mOrthographicProjection,
-					m_GBuffer->GetShaderResourceView(1) // Normal tex but shadows are in alpha channel
+					m_GBuffer->GetShaderResource(1) // Normal tex but shadows are in alpha channel
 				);
 			}
 		//=====================================================
@@ -488,10 +512,10 @@ namespace Directus
 		//= Update textures ===========================================================
 		m_texArray.clear();
 		m_texArray.shrink_to_fit();
-		m_texArray.push_back(m_GBuffer->GetShaderResourceView(0)); // albedo
-		m_texArray.push_back(m_GBuffer->GetShaderResourceView(1)); // normal
-		m_texArray.push_back(m_GBuffer->GetShaderResourceView(2)); // depth
-		m_texArray.push_back(m_GBuffer->GetShaderResourceView(3)); // material
+		m_texArray.push_back(m_GBuffer->GetShaderResource(0)); // albedo
+		m_texArray.push_back(m_GBuffer->GetShaderResource(1)); // normal
+		m_texArray.push_back(m_GBuffer->GetShaderResource(2)); // depth
+		m_texArray.push_back(m_GBuffer->GetShaderResource(3)); // material
 		m_texArray.push_back((ID3D11ShaderResourceView*)m_texNoiseMap->GetShaderResourceView());
 		m_texArray.push_back(m_renderTexPong->GetShaderResourceView());
 		m_texArray.push_back(m_skybox ? (ID3D11ShaderResourceView*)m_skybox->GetEnvironmentTexture() : nullptr);
@@ -556,7 +580,7 @@ namespace Directus
 			Matrix::Identity,
 			m_camera->GetViewMatrix(),
 			m_camera->GetProjectionMatrix(),
-			m_GBuffer->GetShaderResourceView(2) // depth
+			m_GBuffer->GetShaderResource(2) // depth
 		);
 	}
 

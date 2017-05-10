@@ -165,7 +165,7 @@ namespace Directus
 		// MeshFilter returns pretransformed data
 
 		auto mesh = GetMeshFromAttachedMeshFilter();
-		auto meshFilter = g_gameObject->GetComponent<MeshFilter>();
+		auto meshFilter = g_gameObject.lock()->GetComponent<MeshFilter>();
 		if (!mesh.expired() && meshFilter)
 		{
 			//SetCenter(meshFilter->GetCenter());
@@ -181,14 +181,14 @@ namespace Directus
 
 	void Collider::SetRigidBodyCollisionShape(shared_ptr<btCollisionShape> shape) const
 	{
-		RigidBody* rigidBody = g_gameObject->GetComponent<RigidBody>();
+		RigidBody* rigidBody = g_gameObject.lock()->GetComponent<RigidBody>();
 		if (rigidBody)
 			rigidBody->SetCollisionShape(shape);
 	}
 
 	weak_ptr<Mesh> Collider::GetMeshFromAttachedMeshFilter() const
 	{
-		MeshFilter* meshFilter = g_gameObject->GetComponent<MeshFilter>();
+		MeshFilter* meshFilter = g_gameObject.lock()->GetComponent<MeshFilter>();
 		return meshFilter ? meshFilter->GetMesh() : weak_ptr<Mesh>();
 	}
 	//=========================================================================
