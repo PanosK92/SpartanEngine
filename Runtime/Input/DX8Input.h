@@ -48,7 +48,7 @@ namespace Directus
 		bool IsKeyboardKeyDown(byte key);
 		bool IsMouseKeyDown(int key);
 
-		Directus::Math::Vector3 GetMouseDelta();
+		Math::Vector3 GetMouseDelta();
 
 	private:
 		bool ReadKeyboard();

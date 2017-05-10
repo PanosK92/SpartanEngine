@@ -44,7 +44,7 @@ namespace Directus
 	{
 		m_internalFPS = 60.0f;
 		m_maxSubSteps = 1;
-		m_gravity = Directus::Math::Vector3(0.0f, -9.81f, 0.0f);
+		m_gravity = Math::Vector3(0.0f, -9.81f, 0.0f);
 		m_simulating = false;
 
 		// Subscribe to update event

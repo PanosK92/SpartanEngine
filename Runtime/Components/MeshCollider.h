@@ -59,8 +59,8 @@ namespace Directus
 	private:
 		//= HELPER FUNCTIONS ======================================================
 		void DeleteCollisionShape();
-		void SetCollisionShapeToRigidBody(std::weak_ptr<btCollisionShape> shape) const;
-		std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
+		void SetCollisionShapeToRigidBody(std::weak_ptr<btCollisionShape> shape);
+		std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter();
 		//========================================================================
 
 		std::weak_ptr<Mesh> m_mesh;

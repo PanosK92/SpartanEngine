@@ -41,7 +41,7 @@ namespace Directus
 
 	}
 
-	void DebugShader::Load(const std::string& filePath, Graphics* graphics)
+	void DebugShader::Load(const string& filePath, Graphics* graphics)
 	{
 		m_graphics = graphics;
 

@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ========================
 #include "ScriptInstance.h"
 #include <angelscript.h>
 #include "Module.h"
@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 #include "../Core/GameObject.h"
-//=============================
+#include "../Graphics/Shaders/DeferredShader.h"
+//===================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -37,7 +38,6 @@ namespace Directus
 {
 	ScriptInstance::ScriptInstance()
 	{
-		m_gameObject = nullptr;
 		m_constructorFunction = nullptr;
 		m_startFunction = nullptr;
 		m_updateFunction = nullptr;
@@ -54,7 +54,6 @@ namespace Directus
 		m_scriptObject->Release();
 		m_scriptObject->Release();
 
-		m_gameObject = nullptr;
 		m_constructorFunction = nullptr;
 		m_startFunction = nullptr;
 		m_updateFunction = nullptr;
@@ -62,15 +61,20 @@ namespace Directus
 		m_isInstantiated = false;
 	}
 
-	bool ScriptInstance::Instantiate(const string& path, GameObject* gameObject, Scripting* scriptEngine)
+	bool ScriptInstance::Instantiate(const string& path, weakGameObj gameObject, Scripting* scriptEngine)
 	{
+		if (gameObject.expired())
+		{
+			return false;
+		}
+
 		m_scriptEngine = scriptEngine;
 
 		// Extract properties from path
 		m_scriptPath = path;
 		m_gameObject = gameObject;
 		m_className = FileSystem::GetFileNameNoExtensionFromPath(m_scriptPath);
-		m_moduleName = m_className + m_gameObject->GetID();
+		m_moduleName = m_className + m_gameObject.lock()->GetID();
 		m_constructorDeclaration = m_className + " @" + m_className + "(GameObject @)";
 
 		// Instantiate the script
@@ -127,7 +131,7 @@ namespace Directus
 		int r = context->Prepare(m_constructorFunction); // prepare the context to call the factory function
 		if (r < 0) return false;
 
-		r = context->SetArgObject(0, m_gameObject); // Pass the gameobject as the constructor's parameter
+		r = context->SetArgObject(0, m_gameObject.lock().get()); // Pass the gameobject as the constructor's parameter
 		if (r < 0) return false;
 
 		r = context->Execute(); // execute the call

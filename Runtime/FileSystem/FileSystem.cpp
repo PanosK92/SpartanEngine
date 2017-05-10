@@ -507,8 +507,8 @@ namespace Directus
 		return upper;
 	}
 
-	std::wstring FileSystem::ToWString(const std::string& str)
+	wstring FileSystem::ToWString(const string& str)
 	{
-		return std::wstring(str.begin(), str.end());
+		return wstring(str.begin(), str.end());
 	}
 }

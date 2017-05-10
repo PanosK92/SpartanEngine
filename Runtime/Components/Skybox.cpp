@@ -54,9 +54,14 @@ namespace Directus
 	------------------------------------------------------------------------------*/
 	void Skybox::Reset()
 	{
+		if (g_gameObject.expired())
+		{
+			return;
+		}
+
 		// Get cubemap directory
-		auto resourceMng = g_context->GetSubsystem<Directus::ResourceManager>();
-		std::string cubamapDirectory = resourceMng->GetResourceDirectory(Cubemap_Resource);
+		auto resourceMng = g_context->GetSubsystem<ResourceManager>();
+		string cubamapDirectory = resourceMng->GetResourceDirectory(Cubemap_Resource);
 
 		m_cubeMapTexture = make_shared<Texture>(g_context);
 		m_cubeMapTexture->LoadFromFile(cubamapDirectory + "environment.dds");
@@ -66,17 +71,17 @@ namespace Directus
 		m_cubeMapTexture->SetGrayscale(false);
 
 		// Add the actual "box"
-		g_gameObject->AddComponent<MeshFilter>()->SetMesh(MeshFilter::Cube);
+		g_gameObject.lock()->AddComponent<MeshFilter>()->SetMesh(MeshFilter::Cube);
 
 		// Add a mesh renderer
-		auto meshRenderer = g_gameObject->AddComponent<MeshRenderer>();
+		auto meshRenderer = g_gameObject.lock()->AddComponent<MeshRenderer>();
 		meshRenderer->SetCastShadows(false);
 		meshRenderer->SetReceiveShadows(false);
-		meshRenderer->SetMaterial(MeshRenderer::Skybox);
+		meshRenderer->SetMaterial(Material_Skybox);
 		meshRenderer->GetMaterial().lock()->SetTexture(m_cubeMapTexture);
 		g_transform->SetScale(Vector3(1000, 1000, 1000));
 
-		g_gameObject->SetHierarchyVisibility(false);
+		g_gameObject.lock()->SetHierarchyVisibility(false);
 	}
 
 	void Skybox::Start()
@@ -96,10 +101,11 @@ namespace Directus
 
 	void Skybox::Update()
 	{
-		GameObject* camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
+		weakGameObj camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
 
-		if (camera) {
-			g_transform->SetPosition(camera->GetTransform()->GetPosition());
+		if (!camera.expired()) 
+		{
+			g_transform->SetPosition(camera.lock()->GetTransform()->GetPosition());
 		}
 	}
 

@@ -61,7 +61,7 @@ namespace Directus
 		m_resourceDirectories[type] = directory;
 	}
 
-	std::string ResourceManager::GetResourceDirectory(ResourceType type)
+	string ResourceManager::GetResourceDirectory(ResourceType type)
 	{
 		for (auto& directory : m_resourceDirectories)
 		{

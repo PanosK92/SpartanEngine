@@ -40,16 +40,16 @@ namespace Directus
 	class GBuffer
 	{
 	public:
-		GBuffer(D3D11GraphicsDevice* graphicsDevice);
+		GBuffer(Graphics* graphics);
 		~GBuffer();
 
 		bool Create(int width, int height);
 		bool SetAsRenderTarget();
 
-		bool Clear(const Directus::Math::Vector4& color);
+		bool Clear(const Math::Vector4& color);
 		bool Clear(float red, float green, float blue, float alpha);
 
-		ID3D11ShaderResourceView* GetShaderResourceView(int index);
+		ID3D11ShaderResourceView* GetShaderResource(int index);
 
 	private:
 		std::vector<GBufferTex> m_renderTargets;
@@ -64,6 +64,6 @@ namespace Directus
 		int m_width, m_height;
 
 		// Dependencies
-		D3D11GraphicsDevice* m_graphics;
+		Graphics* m_graphics;
 	};
 }

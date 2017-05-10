@@ -40,7 +40,7 @@ namespace Directus
 		ScriptInstance();
 		~ScriptInstance();
 
-		bool Instantiate(const std::string& path, GameObject* gameObject, Scripting* scriptEngine);
+		bool Instantiate(const std::string& path, std::weak_ptr<GameObject> gameObject, Scripting* scriptEngine);
 		bool IsInstantiated();
 		std::string GetScriptPath();
 
@@ -54,7 +54,7 @@ namespace Directus
 		std::string m_className;
 		std::string m_constructorDeclaration;
 		std::string m_moduleName;
-		GameObject* m_gameObject;
+		std::weak_ptr<GameObject> m_gameObject;
 		std::shared_ptr<Module> m_module;
 		asIScriptObject* m_scriptObject;
 		asIScriptFunction* m_constructorFunction;

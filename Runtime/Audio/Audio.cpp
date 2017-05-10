@@ -140,9 +140,9 @@ namespace Directus
 		//= 3D Attributes =================================================================
 		if (m_listener)
 		{
-			Directus::Math::Vector3 pos = m_listener->GetPosition();
-			Directus::Math::Vector3 forward = m_listener->GetForward();
-			Directus::Math::Vector3 up = m_listener->GetUp();
+			Math::Vector3 pos = m_listener->GetPosition();
+			Math::Vector3 forward = m_listener->GetForward();
+			Math::Vector3 up = m_listener->GetUp();
 
 			m_pos = { pos.x, pos.y, pos.z };
 			m_vel = { 0, 0, 0 };

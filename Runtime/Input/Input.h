@@ -126,12 +126,12 @@ namespace Directus
 
 		bool GetKey(KeyCode key);
 		bool GetMouseButton(int button) { return m_initialized ? m_DX8Input->IsMouseKeyDown(button) : false; }
-		Directus::Math::Vector2 GetMousePosition() { return m_mousePos; }
-		Directus::Math::Vector2 GetMousePositionDelta() { return m_mousePosDelta; }
+		Math::Vector2 GetMousePosition() { return m_mousePos; }
+		Math::Vector2 GetMousePositionDelta() { return m_mousePosDelta; }
 
 	private:
-		Directus::Math::Vector2 m_mousePos;
-		Directus::Math::Vector2 m_mousePosDelta;
+		Math::Vector2 m_mousePos;
+		Math::Vector2 m_mousePosDelta;
 		std::shared_ptr<DX8Input> m_DX8Input;
 		HWND m_handle;
 		HINSTANCE m_hinstance;

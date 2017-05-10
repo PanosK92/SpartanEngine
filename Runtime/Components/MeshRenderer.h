@@ -33,8 +33,6 @@ namespace Directus
 	class DllExport MeshRenderer : public IComponent
 	{
 	public:
-		enum MaterialType { Imported, Basic, Skybox };
-
 		MeshRenderer();
 		~MeshRenderer();
 

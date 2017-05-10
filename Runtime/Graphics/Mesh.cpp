@@ -170,7 +170,7 @@ namespace Directus
 			m_onUpdate();
 	}
 
-	// This is usually attached CreateBuffers function of the MeshFilter component.
+	// This is attached to CreateBuffers() which is part of the MeshFilter component.
 	// Whenever something changes, the buffers are auto-updated.
 	void Mesh::OnUpdate(function<void()> function)
 	{

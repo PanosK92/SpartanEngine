@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include <string>
+#include <memory>
 #include "../Core/Helper.h"
 //=========================
 
@@ -67,7 +68,7 @@ namespace Directus
 		std::string g_ID;
 		bool g_enabled;
 		// The GameObject the component is attached to
-		GameObject* g_gameObject;
+		std::weak_ptr<GameObject> g_gameObject;
 		// The only always existing component
 		Transform* g_transform;
 		// The engine context

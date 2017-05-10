@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Multithreading/Multithreading.h"
 #include "../Resource/ResourceManager.h"
-#include "../Resource/Import/ModelImporter.h"
 #include "../Socket/Socket.h"
 #include "../Scripting/Scripting.h"
 #include "../Graphics/Renderer.h"
 #include "../Audio/Audio.h"
 #include "../Graphics/GraphicsDefinitions.h"
+#include "../EventSystem/EventHandler.h"
 //===========================================
 
 //= NAMESPACES =====

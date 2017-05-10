@@ -31,7 +31,7 @@ using namespace std;
 
 //= HELPER FUNCTION ============================================
 template<typename FunctionType, typename... ARGS>
-size_t getAddress(std::function<FunctionType(ARGS...)> function)
+size_t getAddress(function<FunctionType(ARGS...)> function)
 {
 	typedef FunctionType(fnType)(ARGS...);
 	fnType** fptr = function.template target<fnType*>();

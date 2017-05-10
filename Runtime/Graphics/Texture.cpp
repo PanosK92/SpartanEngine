@@ -136,7 +136,7 @@ namespace Directus
 		}
 
 		// Load texture
-		std::weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
+		weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
 		bool loaded = m_generateMipchain ? imageImp.lock()->LoadAndCreateMipchain(filePath) : imageImp.lock()->Load(filePath);
 		if (!loaded)
 		{
@@ -183,7 +183,7 @@ namespace Directus
 		if (!m_context)
 			return false;
 
-		std::weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
+		weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
 		if (m_generateMipchain)
 		{
 			if (!m_texture->CreateFromMipchain(m_width, m_height, imageImp.lock()->GetChannels(), imageImp.lock()->GetRGBAMipchain()))

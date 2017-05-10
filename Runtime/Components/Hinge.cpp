@@ -40,9 +40,7 @@ namespace Directus
 	Hinge::Hinge()
 	{
 		m_hinge = nullptr;
-		m_connectedGameObject = nullptr;
 		m_isConnected = false;
-
 		m_isDirty = false;
 	}
 
@@ -95,8 +93,10 @@ namespace Directus
 		Serializer::WriteBool(m_isConnected);
 		if (m_isConnected)
 		{
-			// save gameobject
-			Serializer::WriteSTR(m_connectedGameObject->GetID());
+			if (!m_connectedGameObject.expired())
+			{
+				Serializer::WriteSTR(m_connectedGameObject.lock()->GetID());
+			}
 		}
 
 		Serializer::WriteVector3(m_axisA);
@@ -123,7 +123,7 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	void Hinge::SetConnectedGameObject(GameObject* connectedRigidBody)
+	void Hinge::SetConnectedGameObject(weakGameObj connectedRigidBody)
 	{
 		m_connectedGameObject = connectedRigidBody;
 		m_isConnected = true;
@@ -131,7 +131,7 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	GameObject* Hinge::GetConnectedGameObject()
+	weakGameObj Hinge::GetConnectedGameObject()
 	{
 		return m_connectedGameObject;
 	}
@@ -174,7 +174,7 @@ namespace Directus
 	------------------------------------------------------------------------------*/
 	void Hinge::ConstructHinge()
 	{
-		if (!m_connectedGameObject)
+		if (m_connectedGameObject.expired())
 			return;
 
 		if (m_hinge)
@@ -185,8 +185,8 @@ namespace Directus
 		}
 
 		// get the rigidbodies
-		auto rigidBodyA = g_gameObject->GetComponent<RigidBody>()->GetBtRigidBody();
-		auto rigidBodyB = m_connectedGameObject->GetComponent<RigidBody>()->GetBtRigidBody();
+		auto rigidBodyA = g_gameObject.lock()->GetComponent<RigidBody>()->GetBtRigidBody();
+		auto rigidBodyB = m_connectedGameObject.lock()->GetComponent<RigidBody>()->GetBtRigidBody();
 
 		CalculateConnections();
 
@@ -211,7 +211,7 @@ namespace Directus
 
 	void Hinge::ComponentCheck()
 	{
-		if (!g_gameObject->HasComponent<RigidBody>())
-			g_gameObject->AddComponent<RigidBody>();
+		if (!g_gameObject.lock()->HasComponent<RigidBody>())
+			g_gameObject.lock()->AddComponent<RigidBody>();
 	}
 }

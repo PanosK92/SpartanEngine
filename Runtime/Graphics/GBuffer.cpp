@@ -30,9 +30,9 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	GBuffer::GBuffer(D3D11GraphicsDevice* graphicsDevice)
+	GBuffer::GBuffer(Graphics* graphics)
 	{
-		m_graphics = graphicsDevice;
+		m_graphics = graphics;
 		m_depthStencilBuffer = nullptr;
 		m_depthStencilView = nullptr;
 		m_width = 1;
@@ -41,8 +41,8 @@ namespace Directus
 		// Construct the skeleton of the G-Buffer
 		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // albedo
 		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // normal
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // depth
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // normal
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32_UINT, nullptr, nullptr, nullptr }); // depth
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // material
 	}
 
 	GBuffer::~GBuffer()
@@ -60,7 +60,8 @@ namespace Directus
 
 	bool GBuffer::Create(int width, int height)
 	{
-		if (!m_graphics->GetDevice()) {
+		if (!m_graphics->GetDevice()) 
+		{
 			return false;
 		}
 
@@ -79,7 +80,7 @@ namespace Directus
 			textureDesc.Height = height;
 			textureDesc.MipLevels = 1;
 			textureDesc.ArraySize = 1;
-			textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+			textureDesc.Format = renderTarget.format;
 			textureDesc.SampleDesc.Count = 1;
 			textureDesc.SampleDesc.Quality = 0;
 			textureDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -94,7 +95,8 @@ namespace Directus
 				&renderTarget.renderTexture
 			);
 
-			if (FAILED(result)) {
+			if (FAILED(result)) 
+			{
 				return false;
 			}
 
@@ -111,7 +113,8 @@ namespace Directus
 				&renderTarget.renderTargetView
 			);
 
-			if (FAILED(result)) {
+			if (FAILED(result))
+			{
 				return false;
 			}
 
@@ -129,7 +132,8 @@ namespace Directus
 				&renderTarget.shaderResourceView
 			);
 
-			if (FAILED(result)) {
+			if (FAILED(result)) 
+			{
 				return false;
 			}
 		}
@@ -159,7 +163,8 @@ namespace Directus
 			&m_depthStencilBuffer
 		);
 
-		if (FAILED(result)) {
+		if (FAILED(result)) 
+		{
 			return false;
 		}
 
@@ -179,7 +184,8 @@ namespace Directus
 			&m_depthStencilView
 		);
 
-		if (FAILED(result)) {
+		if (FAILED(result)) 
+		{
 			return false;
 		}
 		//==================================================================================
@@ -198,12 +204,14 @@ namespace Directus
 
 	bool GBuffer::SetAsRenderTarget()
 	{
-		if (!m_graphics->GetDeviceContext()) {
+		if (!m_graphics->GetDeviceContext()) 
+		{
 			return false;
 		}
 
 		// Bind the render target view array and depth stencil buffer to the output render pipeline.
-		ID3D11RenderTargetView* views[4]{
+		ID3D11RenderTargetView* views[4]
+		{
 			m_renderTargets[0].renderTargetView,
 			m_renderTargets[1].renderTargetView,
 			m_renderTargets[2].renderTargetView,
@@ -221,12 +229,14 @@ namespace Directus
 
 	bool GBuffer::Clear(const Vector4& color)
 	{
-		if (!m_graphics->GetDeviceContext()) {
+		if (!m_graphics->GetDeviceContext()) 
+		{
 			return false;
 		}
 
 		// Clear the render target buffers.
-		for (auto& renderTarget : m_renderTargets) {
+		for (auto& renderTarget : m_renderTargets) 
+		{
 			m_graphics->GetDeviceContext()->ClearRenderTargetView(renderTarget.renderTargetView, color.Data());
 		}
 
@@ -241,7 +251,7 @@ namespace Directus
 		return Clear(Vector4(red, green, blue, alpha));
 	}
 
-	ID3D11ShaderResourceView* GBuffer::GetShaderResourceView(int index)
+	ID3D11ShaderResourceView* GBuffer::GetShaderResource(int index)
 	{
 		if (index < 0 || index > m_renderTargets.size())
 			return nullptr;

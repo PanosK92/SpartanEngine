@@ -68,7 +68,7 @@ namespace Directus
 		//= PROPERTIES ====================
 		float m_internalFPS;
 		int m_maxSubSteps;
-		Directus::Math::Vector3 m_gravity;
+		Math::Vector3 m_gravity;
 		bool m_simulating;
 		//=================================
 	};

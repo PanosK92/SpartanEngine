@@ -39,9 +39,16 @@ namespace Directus
 
 	enum ShadingMode
 	{
-		Physically_Based,
-		Unlit,
-		Skysphere
+		Shading_PBR,
+		Shading_Unlit,
+		Shading_Skybox
+	};
+
+	enum MaterialType
+	{
+		Material_Imported,
+		Material_Basic,
+		Material_Skybox
 	};
 
 	class DllExport Material : public Resource
@@ -72,7 +79,7 @@ namespace Directus
 		std::weak_ptr<ShaderVariation> CreateShaderBasedOnMaterial(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap);
 		std::weak_ptr<ShaderVariation> GetShader() { return m_shader; }
 		bool HasShader() { return GetShader().expired() ? false : true; }
-		void** GetShaderResourceViewByTextureType(TextureType type);
+		void** GetShaderResource(TextureType type);
 		//=============================================================================
 
 		//= PROPERTIES ================================================================	

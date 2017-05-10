@@ -172,7 +172,7 @@ namespace Directus
 			m_samplers[i]->Set(i);
 	}
 
-	void D3D11Shader::SetName(const std::string& name)
+	void D3D11Shader::SetName(const string& name)
 	{
 		m_name = name;
 	}

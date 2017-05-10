@@ -65,14 +65,14 @@ namespace Directus
 		}
 		ID3D11ShaderResourceView* GetShaderResourceView() { return m_depthMap ? m_depthMap->GetShaderResourceView() : nullptr; }
 
-		Directus::Math::Matrix CalculateProjectionMatrix(const Directus::Math::Vector3 centerPos, const Directus::Math::Matrix& viewMatrix)
+		Math::Matrix CalculateProjectionMatrix(const Math::Vector3 centerPos, const Math::Matrix& viewMatrix)
 		{
 			float radius = GetRadius();
-			Directus::Math::Vector3 center = centerPos * viewMatrix;
-			Directus::Math::Vector3 min = center - Directus::Math::Vector3(radius, radius, radius);
-			Directus::Math::Vector3 max = center + Directus::Math::Vector3(radius, radius, radius);
+			Math::Vector3 center = centerPos * viewMatrix;
+			Math::Vector3 min = center - Math::Vector3(radius, radius, radius);
+			Math::Vector3 max = center + Math::Vector3(radius, radius, radius);
 
-			return Directus::Math::Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, -max.z, -min.z);
+			return Math::Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, -max.z, -min.z);
 		}
 
 		float GetSplit()
@@ -127,9 +127,9 @@ namespace Directus
 		LightType GetLightType() { return m_lightType; }
 		void SetLightType(LightType type);
 
-		void SetColor(float r, float g, float b, float a) { m_color = Directus::Math::Vector4(r, g, b, a); }
-		void SetColor(Directus::Math::Vector4 color) { m_color = color; }
-		Directus::Math::Vector4 GetColor() { return m_color; }
+		void SetColor(float r, float g, float b, float a) { m_color = Math::Vector4(r, g, b, a); }
+		void SetColor(Math::Vector4 color) { m_color = color; }
+		Math::Vector4 GetColor() { return m_color; }
 
 		void SetIntensity(float value) { m_intensity = value; }
 		float GetIntensity() { return m_intensity; }
@@ -144,10 +144,10 @@ namespace Directus
 		void SetBias(float value) { m_bias = value; }
 		float GetBias() { return m_bias; }
 
-		Directus::Math::Vector3 GetDirection();
+		Math::Vector3 GetDirection();
 
-		Directus::Math::Matrix CalculateViewMatrix();
-		Directus::Math::Matrix CalculateOrthographicProjectionMatrix(int cascade);
+		Math::Matrix CalculateViewMatrix();
+		Math::Matrix CalculateOrthographicProjectionMatrix(int cascade);
 
 		// Cascaded shadow mapping
 		void SetShadowCascadeAsRenderTarget(int cascade);
@@ -159,12 +159,12 @@ namespace Directus
 	private:
 		LightType m_lightType;
 		ShadowType m_shadowType;
-		Directus::Math::Vector4 m_color;
+		Math::Vector4 m_color;
 		float m_range;
 		float m_intensity;
 		float m_bias;
 
-		Directus::Math::Matrix m_viewMatrix;
+		Math::Matrix m_viewMatrix;
 
 		int m_cascades;
 		std::vector<std::shared_ptr<Cascade>> m_shadowMaps;
