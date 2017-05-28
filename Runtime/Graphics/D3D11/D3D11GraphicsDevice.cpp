@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //======================================
 
 //= NAMESPACES ================
+using namespace std;
 using namespace Directus::Math;
 //=============================
 
@@ -65,13 +66,13 @@ namespace Directus
 		m_device = nullptr;
 		m_deviceContext = nullptr;
 		m_swapChain = nullptr;
-		m_renderTargetView = nullptr;	
+		m_renderTargetView = nullptr;
 		m_displayModeList = nullptr;
 		m_displayModeCount = 0;
 		m_refreshRateNumerator = 0;
 		m_refreshRateDenominator = 0;
-		m_VRAM = 0;
-		m_GPUDesc = DATA_NOT_ASSIGNED;
+		m_adapterVRAM = 0;
+		m_adapterDesc = DATA_NOT_ASSIGNED;
 		m_depthStencilBuffer = nullptr;
 		m_depthStencilStateEnabled = nullptr;
 		m_depthStencilStateDisabled = nullptr;
@@ -133,14 +134,20 @@ namespace Directus
 		//==============================================================================
 
 		//= ADAPTER ====================================================================
+		vector<IDXGIAdapter*> adapters;
 		IDXGIAdapter* adapter;
-		result = factory->EnumAdapters(0, &adapter);
-		if (FAILED(result))
+		for (int i = 0; factory->EnumAdapters(0, &adapter) != DXGI_ERROR_NOT_FOUND; i++)
 		{
-			LOG_ERROR("Failed to create a primary graphics interface adapter.");
-			return false;
+			adapters.push_back(adapter);
 		}
 		factory->Release();
+
+		if (adapters.empty())
+		{
+			LOG_ERROR("Failed to create graphics interface adapter.");
+			return false;
+		}
+		adapter = adapters.back();
 		//==============================================================================
 
 		//= ADAPTER OUTPUT / DISPLAY MODE ==============================================
@@ -192,23 +199,26 @@ namespace Directus
 
 		//= ADAPTER DESCRIPTION ========================================================
 		DXGI_ADAPTER_DESC adapterDesc;
-		
-		result = adapter->GetDesc(&adapterDesc); // Get adapter description
+		result = adapter->GetDesc(&adapterDesc);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to get adapter description.");
 			return false;
 		}
-		
-		adapter->Release(); // Release the adapter
+		adapter->Release();
 
-		// Store the dedicated video card memory in MB.
-		m_VRAM = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
-		//==============================================================================
+		m_adapterVRAM = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024); // MB
+
+		char ch[128];
+		char DefChar = ' ';
+		WideCharToMultiByte(CP_ACP, 0, adapterDesc.Description, -1, ch, 128, &DefChar, nullptr);
+		m_adapterDesc = ch;
+		LOG_INFO("Primary adapter: " + m_adapterDesc + " " + to_string(m_adapterVRAM) + " MB");
+		//====================================================================================
 
 		// Create swap chain
 		if (!CreateDeviceAndSwapChain(&m_device, &m_deviceContext, &m_swapChain))
-		{	
+		{
 			return false;
 		}
 
@@ -260,7 +270,7 @@ namespace Directus
 			LOG_ERROR("Failed to create the rasterizer state.");
 			return false;
 		}
-		
+
 		// Set default rasterizer state
 		m_deviceContext->RSSetState(m_rasterStateCullBack);
 		//=======================================================================================
@@ -301,7 +311,7 @@ namespace Directus
 	//= DEPTH ======================================================================================================
 	void D3D11GraphicsDevice::EnableZBuffer(bool enable)
 	{
-		if (!m_deviceContext || m_zBufferEnabled == enable) 
+		if (!m_deviceContext || m_zBufferEnabled == enable)
 		{
 			return;
 		}
@@ -370,7 +380,7 @@ namespace Directus
 
 	bool D3D11GraphicsDevice::CreateDepthStencilBuffer()
 	{
-		if (!m_device) 
+		if (!m_device)
 		{
 			return false;
 		}
@@ -403,7 +413,7 @@ namespace Directus
 
 	bool D3D11GraphicsDevice::CreateDepthStencilView()
 	{
-		if (!m_device) 
+		if (!m_device)
 		{
 			return false;
 		}
@@ -432,7 +442,7 @@ namespace Directus
 
 	void D3D11GraphicsDevice::Clear(const Vector4& color)
 	{
-		if (!m_deviceContext) 
+		if (!m_deviceContext)
 		{
 			return;
 		}
@@ -469,7 +479,7 @@ namespace Directus
 
 	bool D3D11GraphicsDevice::SetResolution(int width, int height)
 	{
-		if (!m_swapChain) 
+		if (!m_swapChain)
 		{
 			return false;
 		}
@@ -537,7 +547,7 @@ namespace Directus
 	//= VIEWPORT =====================================================
 	void D3D11GraphicsDevice::SetViewport(float width, float height)
 	{
-		if (!m_deviceContext) 
+		if (!m_deviceContext)
 		{
 			return;
 		}
@@ -554,13 +564,13 @@ namespace Directus
 
 	void D3D11GraphicsDevice::ResetViewport()
 	{
-		if (!m_deviceContext) 
+		if (!m_deviceContext)
 		{
 			return;
 		}
 
 		m_deviceContext->RSSetViewports(1, &m_viewport);
-	}	
+	}
 	//================================================================
 
 	void D3D11GraphicsDevice::SetCullMode(CullMode cullMode)
@@ -633,17 +643,17 @@ namespace Directus
 
 		// Create the swap chain, Direct3D device, and Direct3D device context.
 		HRESULT result = D3D11CreateDeviceAndSwapChain(
-			nullptr, 
-			m_driverType, 
-			nullptr, 
+			nullptr,
+			m_driverType,
+			nullptr,
 			0,
-			&m_featureLevel, 
-			1, 
-			m_sdkVersion, 
+			&m_featureLevel,
+			1,
+			m_sdkVersion,
 			&swapChainDesc,
 			swapchain,
 			device,
-			nullptr, 
+			nullptr,
 			deviceContext
 		);
 

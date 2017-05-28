@@ -18,14 +18,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "Socket.h"
-#include "../Logging/Log.h"
-#include "../Graphics/Renderer.h"
 #include "../Core/Scene.h"
-#include "../Resource/Import/ModelImporter.h"
 #include "../Core/Engine.h"
 #include "../Core/Timer.h"
+#include "../Input/Input.h"
+#include "../Physics/Physics.h"
+#include "../Logging/Log.h"
+#include "../Graphics/Renderer.h"
 #include "../Resource/ResourceManager.h"
 #include "../Resource/Import/ImageImporter.h"
+#include "../Resource/Import/ModelImporter.h"
 //===========================================
 
 //= NAMESPACES =====

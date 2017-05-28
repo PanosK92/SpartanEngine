@@ -373,7 +373,7 @@ namespace Directus
 	bool Transform::IsDescendantOf(Transform* transform) const
 	{
 		vector<Transform*> descendants;
-		transform->GetDescendants(descendants);
+		transform->GetDescendants(&descendants);
 
 		for (const auto& descendant : descendants)
 			if (descendant->GetID() == GetID())
@@ -382,12 +382,12 @@ namespace Directus
 		return false;
 	}
 
-	void Transform::GetDescendants(vector<Transform*>& descendants)
+	void Transform::GetDescendants(vector<Transform*>* descendants)
 	{
 		// Depth first acquisition of descendants
 		for (const auto& child : m_children)
 		{
-			descendants.push_back(child);
+			descendants->push_back(child);
 			child->GetDescendants(descendants);
 		}
 	}

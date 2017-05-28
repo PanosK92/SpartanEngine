@@ -262,3 +262,7 @@ ModelManifest.xml
 /Runtime/Runtime.vcxproj.filters
 /Runtime/Runtime.vcxproj
 /Runtime/Runtime.sln
+/Binaries/MetaData
+/Binaries/MetaData
+/Binaries/MetaData/Qt_ObjFiles/Directus3D_resource.res
+/Binaries/MetaData/Qt_MOCFiles/moc_AboutDialog.cpp

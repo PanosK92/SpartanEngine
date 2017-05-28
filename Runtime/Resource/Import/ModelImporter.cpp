@@ -136,17 +136,23 @@ namespace Directus
 
 		// Normalize the scale of the model
 		vector<Transform*> descendants;
+		LOG_WARNING(m_rootGameObject.lock()->GetName());
+		LOG_WARNING(m_rootGameObject.lock()->GetTransform()->GetChildrenCount());
 		if (!m_rootGameObject.expired())
 		{
-			m_rootGameObject.lock()->GetTransform()->GetDescendants(descendants);
+			LOG_WARNING("1");
+			m_rootGameObject.lock()->GetTransform()->GetDescendants(&descendants);
 			for (auto& descendant : descendants)
 			{
+				LOG_WARNING("2");
 				auto descendantGameObj = descendant->GetGameObject();
 				if (!descendantGameObj.expired())
 				{
+					LOG_WARNING("3");
 					auto meshFilter = descendantGameObj.lock()->GetComponent<MeshFilter>();
 					if (meshFilter)
 					{
+						LOG_WARNING("Entered");
 						meshFilter->NormalizeModelScale();
 						break;
 					}
