@@ -100,7 +100,7 @@ namespace Directus
 		int GetChildrenCount() { return (int)m_children.size(); }
 		void ResolveChildrenRecursively();
 		bool IsDescendantOf(Transform* transform) const;
-		void GetDescendants(std::vector<Transform*>& descendants);
+		void GetDescendants(std::vector<Transform*>* descendants);
 		std::string GetID() const;
 
 		//= ICOMPONENT ====================================================================

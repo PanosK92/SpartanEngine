@@ -58,7 +58,7 @@ private:
     void SetResolution(float width, float height);
 
     Socket* m_socket;
-	Engine* m_engine;
+    Engine* m_engine;
     QTimer* m_timerUpdate;
     QTimer* m_timer500Mil;
     QTimer* m_timer60FPS;

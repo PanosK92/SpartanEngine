@@ -321,7 +321,7 @@ namespace Directus
 
 		// remove any descendants
 		vector<Transform*> descendants;
-		gameObject.lock()->GetTransform()->GetDescendants(descendants);
+		gameObject.lock()->GetTransform()->GetDescendants(&descendants);
 		for (const auto& descendant : descendants)
 			RemoveSingleGameObject(descendant->GetGameObject());
 
@@ -331,7 +331,9 @@ namespace Directus
 
 		// if there is a parent, update it's children pool
 		if (parent)
+		{
 			parent->ResolveChildrenRecursively();
+		}
 	}
 
 	// Removes a GameObject but leaves the parent and the children as is

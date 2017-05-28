@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Audio/Audio.h"
 #include "../Graphics/GraphicsDefinitions.h"
 #include "../EventSystem/EventHandler.h"
+#include "../Input/Input.h"
+#include "../Physics/Physics.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -63,7 +65,7 @@ namespace Directus
 		m_context->RegisterSubsystem(new Socket(m_context));
 	}
 
-	void Engine::SetHandles(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle)
+	void Engine::SetHandles(void* instance, void* mainWindowHandle, void* drawPaneHandle)
 	{
 		m_drawHandle = drawPaneHandle;
 		m_windowHandle = mainWindowHandle;
@@ -80,7 +82,7 @@ namespace Directus
 		}
 
 		// Input
-		m_context->GetSubsystem<Input>()->SetHandle(m_windowHandle, m_hinstance);
+		m_context->GetSubsystem<Input>()->SetHandle((HWND)m_windowHandle, (HINSTANCE)m_hinstance);
 		if (!m_context->GetSubsystem<Input>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Input subsystem");
@@ -102,7 +104,7 @@ namespace Directus
 		}
 
 		// Graphics
-		m_context->GetSubsystem<Graphics>()->SetHandle(m_drawHandle);
+		m_context->GetSubsystem<Graphics>()->SetHandle((HWND)m_drawHandle);
 		if (!m_context->GetSubsystem<Graphics>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Graphics subsystem");

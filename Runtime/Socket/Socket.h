@@ -18,18 +18,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================================
-#include "../Core/Scene.h"
-#include "../Input/Input.h"
-#include "../Physics/Physics.h"
-#include "../Resource/Import/ImageImporter.h"
-//===========================================
+//= INCLUDES =================
+#include "../Core/Subsystem.h"
+#include <memory>
+#include <vector>
+//============================
 
 namespace Directus
 {
 	class ILogger;
 	class PhysicsDebugDraw;
 	class Engine;
+	class GameObject;
+	class ImageImporter;
 
 	class DllExport Socket : public Subsystem
 	{
@@ -62,23 +63,23 @@ namespace Directus
 		void SetResolution(int width, int height);
 		//==========================================
 
-		//= MISC =====================================
+		//= MISC =======================================
 		void SetPhysicsDebugDraw(bool enable);
 		PhysicsDebugDraw* GetPhysicsDebugDraw();
 		void ClearScene();
 		std::weak_ptr<ImageImporter> GetImageImporter();
 		void SetLogger(std::weak_ptr<ILogger> logger);
 		Context* GetContext() { return m_context; }
-		//============================================
+		//==============================================
 
-		//= GAMEOBJECTS ========================================
-		std::vector<weakGameObj> GetAllGameObjects();
-		std::vector<weakGameObj> GetRootGameObjects();
-		weakGameObj GetGameObjectByID(std::string gameObjectID);
+		//= GAMEOBJECTS ======================================================
+		std::vector<std::weak_ptr<GameObject>> GetAllGameObjects();
+		std::vector<std::weak_ptr<GameObject>> GetRootGameObjects();
+		std::weak_ptr<GameObject> GetGameObjectByID(std::string gameObjectID);
 		int GetGameObjectCount();
-		void DestroyGameObject(weakGameObj gameObject);
-		bool GameObjectExists(weakGameObj gameObject);
-		//======================================================
+		void DestroyGameObject(std::weak_ptr<GameObject> gameObject);
+		bool GameObjectExists(std::weak_ptr<GameObject> gameObject);
+		//====================================================================
 
 		//= STATS ==============================================
 		float GetFPS();

@@ -17,7 +17,6 @@ DEALINGS IN THE SOFTWARE. */
 #pragma once
 
 //= INCLUDES =======
-#include <windows.h>
 #include "Context.h"
 //==================
 
@@ -30,7 +29,7 @@ namespace Directus
 		~Engine() { Shutdown(); }
 
 		// Sets a draw handle, input handle and a window instance for the engine to use
-		void SetHandles(HINSTANCE instance, HWND mainWindowHandle, HWND drawPaneHandle);
+		void SetHandles(void* instance, void* mainWindowHandle, void* drawPaneHandle);
 
 		// Initializes the engine 
 		bool Initialize();
@@ -51,9 +50,9 @@ namespace Directus
 		void Shutdown();
 
 	private:
-		HINSTANCE m_hinstance;
-		HWND m_windowHandle;;
-		HWND m_drawHandle;
+		void* m_hinstance;
+		void* m_windowHandle;;
+		void* m_drawHandle;
 		bool m_isSimulating;
 	};
 }

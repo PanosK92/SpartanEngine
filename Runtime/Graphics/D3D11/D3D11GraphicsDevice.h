@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "../IGraphicsDevice.h"
 #include <d3d11.h>
+#include <string>
 //=============================
 
 namespace Directus
@@ -90,8 +91,7 @@ namespace Directus
 		UINT m_refreshRateNumerator;
 		UINT m_refreshRateDenominator;
 		DXGI_MODE_DESC* m_displayModeList;
-		int m_VRAM;
-		char* m_GPUDesc;
+		
 		ID3D11Texture2D* m_depthStencilBuffer;
 		ID3D11DepthStencilState* m_depthStencilStateEnabled;
 		ID3D11DepthStencilState* m_depthStencilStateDisabled;
@@ -102,7 +102,11 @@ namespace Directus
 		ID3D11BlendState* m_blendStateAlphaEnabled;
 		ID3D11BlendState* m_blendStateAlphaDisabled;
 		HWND m_drawHandle;
-
 		bool m_initialized;
+
+		//= ADAPTER ==============
+		int m_adapterVRAM;
+		std::string m_adapterDesc;
+		//========================
 	};
 }
