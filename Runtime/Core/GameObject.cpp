@@ -25,20 +25,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GUIDGenerator.h"
 #include "../IO/Serializer.h"
 #include "../Logging/Log.h"
-#include "../Components/Transform.h"
-#include "../Components/MeshFilter.h"
-#include "../Components/MeshRenderer.h"
-#include "../Components/Camera.h"
-#include "../Components/Skybox.h"
-#include "../Components/RigidBody.h"
-#include "../Components/Collider.h"
-#include "../Components/MeshCollider.h"
-#include "../Components/Hinge.h"
-#include "../Components/Script.h"
-#include "../Components/Light.h"
-#include "../Components/LineRenderer.h"
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
+#include "../Components/Camera.h"
+#include "../Components/Collider.h"
+#include "../Components/Transform.h"
+#include "../Components/Hinge.h"
+#include "../Components/Light.h"
+#include "../Components/LineRenderer.h"
+#include "../Components/MeshFilter.h"
+#include "../Components/MeshRenderer.h"
+#include "../Components/MeshCollider.h"
+#include "../Components/RigidBody.h"
+#include "../Components/Skybox.h"
+#include "../Components/Script.h"
 //======================================
 
 //= NAMESPACES =====
@@ -54,12 +54,7 @@ namespace Directus
 		m_name = "GameObject";
 		m_isActive = true;
 		m_isPrefab = false;
-		m_hierarchyVisibility = true;
-		m_transform = AddComponent<Transform>();
-
-		// Add self to scene. shared_from_this won't work
-		// as there needs to be at least one shared_ptr before calling it.
-		m_context->GetSubsystem<Scene>()->AddGameObject(this);
+		m_hierarchyVisibility = true;	
 	}
 
 	GameObject::~GameObject()
@@ -78,6 +73,11 @@ namespace Directus
 		m_name.clear();
 		m_isActive = true;
 		m_hierarchyVisibility = true;
+	}
+
+	void GameObject::Initialize(Transform* transform)
+	{
+		m_transform = transform;
 	}
 
 	void GameObject::Start()

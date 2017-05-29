@@ -386,7 +386,7 @@ namespace Directus
 	{
 		// Depth first acquisition of descendants
 		for (const auto& child : m_children)
-		{
+		{			 
 			descendants->push_back(child);
 			child->GetDescendants(descendants);
 		}

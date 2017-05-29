@@ -52,6 +52,7 @@ namespace Directus
 		AddResourceDirectory(Shader_Resource, "Standard Assets//Shaders//");
 		AddResourceDirectory(Cubemap_Resource, "Standard Assets//Cubemaps//");
 		AddResourceDirectory(Script_Resource, "Standard Assets//Scripts//");
+		AddResourceDirectory(Material_Resource, "Standard Assets//Materials//");
 
 		return true;
 	}

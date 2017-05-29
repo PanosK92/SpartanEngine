@@ -42,6 +42,7 @@ namespace Directus
 	Skybox::Skybox()
 	{
 		m_cubeMapTexture = nullptr;
+		m_anchorTrans = nullptr;
 	}
 
 	Skybox::~Skybox()
@@ -101,12 +102,16 @@ namespace Directus
 
 	void Skybox::Update()
 	{
-		weakGameObj camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
-
-		if (!camera.expired()) 
+		if (m_anchor.expired())
 		{
-			g_transform->SetPosition(camera.lock()->GetTransform()->GetPosition());
+			m_anchor = g_context->GetSubsystem<Scene>()->GetMainCamera();
+			m_anchorTrans = m_anchor.lock()->GetTransform();
 		}
+
+		if (!m_anchorTrans)
+			return;
+
+		g_transform->SetPosition(m_anchorTrans->GetPosition());
 	}
 
 	void Skybox::Serialize()
