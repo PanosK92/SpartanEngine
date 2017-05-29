@@ -61,7 +61,7 @@ namespace Directus
 		SafeRelease(m_device);
 	}
 
-	bool D3D12GraphicsDevice::Initialize(HWND handle)
+	bool D3D12GraphicsDevice::Initialize(void* handle)
 	{
 		//= D3D12 DEVICE ======================================================================================
 		HRESULT result = D3D12CreateDevice(nullptr, m_featureLevel, __uuidof(ID3D12Device), (void**)&m_device);
@@ -189,7 +189,7 @@ namespace Directus
 		swapChainDesc.BufferDesc.Height = RESOLUTION_HEIGHT;
 		swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.OutputWindow = handle;
+		swapChainDesc.OutputWindow = (HWND)handle;
 		swapChainDesc.SampleDesc.Count = 1;
 		swapChainDesc.SampleDesc.Quality = 0;
 

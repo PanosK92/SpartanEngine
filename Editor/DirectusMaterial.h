@@ -44,10 +44,10 @@ public:
     DirectusMaterial();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
     void ReflectFile(std::string filepath);
-    std::weak_ptr<Material> GetInspectedMaterial();
+    std::weak_ptr<Directus::Material> GetInspectedMaterial();
 
 private:
     //= SHADER ======================
@@ -120,12 +120,12 @@ private:
 
     //= SAVE BUTTON =================
     QPushButton* m_buttonSave;
-    std::shared_ptr<Material> m_matFromFile;
+    std::shared_ptr<Directus::Material> m_matFromFile;
     //===============================
 
     //= MISC ========================
     QGridLayout* m_gridLayout;
-    std::weak_ptr<Material> m_inspectedMaterial;
+    std::weak_ptr<Directus::Material> m_inspectedMaterial;
     //===============================
 
     void SetPropertiesVisible(bool visible);

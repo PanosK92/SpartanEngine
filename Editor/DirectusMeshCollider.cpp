@@ -23,7 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusMeshCollider.h"
 #include "DirectusInspector.h"
 #include "FileSystem/FileSystem.h"
+#include "Core/GameObject.h"
 //================================
+
+//= NAMESPACES ==========
+using namespace std;
+using namespace Directus;
+//=======================
 
 DirectusMeshCollider::DirectusMeshCollider()
 {
@@ -95,19 +101,19 @@ void DirectusMeshCollider::Initialize(DirectusInspector* inspector, QWidget* mai
     this->hide();
 }
 
-void DirectusMeshCollider::Reflect(GameObject* gameobject)
+void DirectusMeshCollider::Reflect(weak_ptr<GameObject> gameobject)
 {
     m_inspectedMeshCollider = nullptr;
 
-    // Catch evil case
-    if (!gameobject)
+    // Catch the evil case
+    if (gameobject.expired())
     {
         this->hide();
         return;
     }
 
     // Catch the seed of the evil
-    m_inspectedMeshCollider = gameobject->GetComponent<MeshCollider>();
+    m_inspectedMeshCollider = gameobject.lock()->GetComponent<MeshCollider>();
     if (!m_inspectedMeshCollider)
     {
         this->hide();
@@ -161,8 +167,11 @@ void DirectusMeshCollider::Remove()
     if (!m_inspectedMeshCollider)
         return;
 
-    GameObject* gameObject = m_inspectedMeshCollider->g_gameObject;
-    gameObject->RemoveComponent<MeshCollider>();
+    auto gameObject = m_inspectedMeshCollider->g_gameObject;
+    if (!gameObject.expired())
+    {
+        gameObject.lock()->RemoveComponent<MeshCollider>();
+    }
 
     m_inspector->Inspect(gameObject);
 }

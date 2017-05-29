@@ -94,26 +94,25 @@ FORMS += editor.ui \
     AboutDialog.ui \
     AssetLoadingDialog.ui
 
-win64:CONFIG(release, debug|release): LIBS += -L$$PWD/../Binaries/ -lRuntime
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../Binaries/ -lRuntime
+# DESTINATION
+release:DESTDIR = $$PWD/../Binaries/Release
+#debug:DESTDIR = $$PWD/../Binaries/Debug
+
+# LIBRARY
+LIBS += "$$DESTDIR/Runtime.lib"
 
 # INCLUDE
 INCLUDEPATH += $$PWD/../Runtime/
-DEPENDPATH += $$PWD/../Runtime/
 
-DISTFILES +=
-
-# DESTINATION
-DEST_DIR = $$PWD/../Binaries/
-DESTDIR = "$$DEST_DIR"
-RCC_DIR = "$$DEST_DIR/MetaData/Qt_RCCFiles"
-UI_DIR = "$$DEST_DIR/MetaData/Qt_UICFiles"
-MOC_DIR = "$$DEST_DIR/MetaData/Qt_MOCFiles"
-OBJECTS_DIR = "$$DEST_DIR/MetaData/Qt_ObjFiles"
+# QT METADATA
+RCC_DIR = "$$DESTDIR/MetaData/Qt_RCCFiles"
+UI_DIR = "$$DESTDIR/MetaData/Qt_UICFiles"
+MOC_DIR = "$$DESTDIR/MetaData/Qt_MOCFiles"
+OBJECTS_DIR = "$$DESTDIR/MetaData/Qt_ObjFiles"
 
 # RESOURCES
 RESOURCES += \
     Images/images.qrc
 
 # Set .exe icon
-win32:RC_ICONS += Images/icon.ico
+RC_ICONS += Images/icon.ico

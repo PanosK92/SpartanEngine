@@ -24,13 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "IComponent.h"
 #include "../Math/Vector3.h"
-#include "../Audio/AudioClip.h"
 //==========================
 
 class btHingeConstraint;
 
 namespace Directus
 {
+	class GameObject;
+
 	class DllExport Hinge : public IComponent
 	{
 	public:
@@ -48,8 +49,8 @@ namespace Directus
 		virtual void Serialize();
 		virtual void Deserialize();
 
-		void SetConnectedGameObject(weakGameObj connectedRigidBody);
-		weakGameObj GetConnectedGameObject();
+		void SetConnectedGameObject(std::weak_ptr<GameObject> connectedRigidBody);
+		std::weak_ptr<GameObject> GetConnectedGameObject();
 
 		void SetAxis(Math::Vector3 axis);
 		Math::Vector3 GetAxis();
@@ -62,7 +63,7 @@ namespace Directus
 
 	private:
 		btHingeConstraint* m_hinge;
-		weakGameObj m_connectedGameObject;
+		std::weak_ptr<GameObject> m_connectedGameObject;
 		bool m_isConnected;
 		Math::Vector3 m_pivotA;
 		Math::Vector3 m_pivotB;

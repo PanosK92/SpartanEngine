@@ -28,6 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===============================
 
 //= NAMESPACES ================
+using namespace std;
+using namespace Directus;
 using namespace Directus::Math;
 //=============================
 
@@ -151,19 +153,19 @@ void DirectusTransform::Initialize(DirectusInspector* inspector, QWidget* mainWi
     this->hide();
 }
 
-void DirectusTransform::Reflect(GameObject* gameobject)
+void DirectusTransform::Reflect(weak_ptr<GameObject> gameobject)
 {
     m_inspectedTransform = nullptr;
 
-    // Catch evil case
-    if (!gameobject)
+    // Catch the evil case
+    if (gameobject.expired())
     {
         this->hide();
         return;
     }
 
-    // Catch the seed of the evil
-    m_inspectedTransform = gameobject->GetTransform();
+    // Catch the seed of the evil case
+    m_inspectedTransform = gameobject.lock()->GetTransform();
     if (!m_inspectedTransform)
     {
         this->hide();
@@ -233,10 +235,17 @@ void DirectusTransform::MapPosition()
     // Update the transform
     m_inspectedTransform->SetPositionLocal(pos);
 
-    // Update the rigidBody (if it exists)
-    auto rigidBody = m_inspectedTransform->g_gameObject->GetComponent<RigidBody>();
+    // Get the GameObject this transform is attached to
+    auto gameObj = m_inspectedTransform->g_gameObject;
+    if (gameObj.expired())
+        return;
+
+    // Update the rigidBody
+    auto rigidBody = gameObj.lock()->GetComponent<RigidBody>();
     if (rigidBody)
+    {
         rigidBody->SetPosition(pos);
+    }
 }
 
 void DirectusTransform::MapRotation()
@@ -252,10 +261,17 @@ void DirectusTransform::MapRotation()
     // Update the transform
     m_inspectedTransform->SetRotationLocal(rot);
 
+    // Get the GameObject this transform is attached to
+    auto gameObj = m_inspectedTransform->g_gameObject;
+    if (gameObj.expired())
+        return;
+
     // Update the rigidBody (if it exists)
-    auto rigidBody = m_inspectedTransform->g_gameObject->GetComponent<RigidBody>();
+    auto rigidBody = gameObj.lock()->GetComponent<RigidBody>();
     if (rigidBody)
+    {
         rigidBody->SetRotation(rot);
+    }
 }
 
 void DirectusTransform::MapScale()

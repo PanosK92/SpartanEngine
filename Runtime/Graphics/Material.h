@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Texture.h"
 #include "../Resource/Resource.h"
 #include "../Math/Vector2.h"
-#include "../Math/Vector4.h"
+#include "FullScreenQuad.h"
 //===============================
 
 namespace Directus

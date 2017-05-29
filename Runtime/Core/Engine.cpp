@@ -104,7 +104,7 @@ namespace Directus
 		}
 
 		// Graphics
-		m_context->GetSubsystem<Graphics>()->SetHandle((HWND)m_drawHandle);
+		m_context->GetSubsystem<Graphics>()->SetHandle(m_drawHandle);
 		if (!m_context->GetSubsystem<Graphics>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Graphics subsystem");

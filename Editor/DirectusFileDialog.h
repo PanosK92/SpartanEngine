@@ -49,7 +49,7 @@ private:
 
     DirectusAssetLoader* m_assetLoader;
     QWidget* m_mainWindow;
-    Socket* m_socket;
+    Directus::Socket* m_socket;
     DirectusCore* m_directusCore;
     DirectusHierarchy* m_hierarchy;
 

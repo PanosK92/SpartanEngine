@@ -43,14 +43,14 @@ public:
     DirectusAudioListener();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
 private:
     //= MISC ===============
     QValidator* m_validator;
     //======================
 
-    AudioListener* m_inspectedAudioListener;
+    Directus::AudioListener* m_inspectedAudioListener;
 
 public slots:
     virtual void Remove();

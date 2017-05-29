@@ -43,7 +43,7 @@ public:
     DirectusCollider();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
 private:
     //= SHAPE TYPE =======================
@@ -67,7 +67,7 @@ private:
 
     //= MISC =====================
     QValidator* m_validator;
-    Collider* m_inspectedCollider;
+    Directus::Collider* m_inspectedCollider;
     //============================
 
     void ReflectType();

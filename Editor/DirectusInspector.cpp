@@ -19,17 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES =====================
 #include "DirectusInspector.h"
 #include "Logging/Log.h"
 #include "FileSystem/FileSystem.h"
 #include <QMimeData>
 #include "Components/Transform.h"
-//============================
+//================================
 
-//= NAMESPACES =====
+//= NAMESPACES ==========
 using namespace std;
-//==================
+using namespace Directus;
+//=======================
 
 DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
 {
@@ -101,14 +102,14 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_initialized = true;
 }
 
-GameObject* DirectusInspector::GetInspectedGameObject()
+weak_ptr<GameObject> DirectusInspector::GetInspectedGameObject()
 {
     return m_inspectedGameObject;
 }
 
 void DirectusInspector::Clear()
 {
-    Inspect(nullptr);
+    Inspect(weak_ptr<GameObject>());
 }
 
 void DirectusInspector::InspectMaterialFile(const string& filepath)
@@ -141,7 +142,7 @@ void DirectusInspector::paintEvent(QPaintEvent* evt)
     style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
-void DirectusInspector::Inspect(GameObject* gameobject)
+void DirectusInspector::Inspect(weak_ptr<GameObject> gameobject)
 {
     if (!m_initialized)
         return;
@@ -152,7 +153,7 @@ void DirectusInspector::Inspect(GameObject* gameobject)
     // as the GameObject has script components.
     vector<Script*> engineScripts = FitScriptVectorToGameObject();
 
-    if (gameobject)
+    if (!gameobject.expired())
     {    
         m_transform->Reflect(gameobject);
         m_camera->Reflect(gameobject);
@@ -230,15 +231,15 @@ void DirectusInspector::dropEvent(QDropEvent* event)
 
     // Get the ID of the file being dragged
     const QMimeData *mime = event->mimeData();
-    std::string scriptPath = mime->text().toStdString();
+    string scriptPath = mime->text().toStdString();
 
-    if (FileSystem::IsSupportedScriptFile(scriptPath) && m_inspectedGameObject)
+    if (FileSystem::IsSupportedScriptFile(scriptPath) && !m_inspectedGameObject.expired())
     {
         // Make the absolute path, relative
         scriptPath = FileSystem::GetRelativePathFromAbsolutePath(scriptPath);
 
         // Add a script component and load the script
-        Script* scriptComp = m_inspectedGameObject->AddComponent<Script>();
+        Script* scriptComp = m_inspectedGameObject.lock()->AddComponent<Script>();
         scriptComp->AddScript(scriptPath);
 
         // Update the inspector
@@ -252,7 +253,7 @@ vector<Script*> DirectusInspector::FitScriptVectorToGameObject()
 {
     vector<Script*> engineScripts;
 
-    if (!m_inspectedGameObject)
+    if (m_inspectedGameObject.expired())
         return engineScripts;
 
     // Clear current script vector
@@ -267,7 +268,7 @@ vector<Script*> DirectusInspector::FitScriptVectorToGameObject()
     m_scripts.shrink_to_fit();
 
     // Reflect back to the script vector
-    engineScripts = m_inspectedGameObject->GetComponents<Script>();
+    engineScripts = m_inspectedGameObject.lock()->GetComponents<Script>();
     scriptCount = (int)engineScripts.size();
     for (int i = 0; i < scriptCount; i++)
     {

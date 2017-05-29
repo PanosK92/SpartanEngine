@@ -124,6 +124,6 @@ namespace Directus
 	------------------------------------------------------------------------------*/
 	void** Skybox::GetEnvironmentTexture()
 	{
-		return m_cubeMapTexture ? m_cubeMapTexture->GetShaderResourceView() : nullptr;
+		return m_cubeMapTexture ? m_cubeMapTexture->GetShaderResource() : nullptr;
 	}
 }

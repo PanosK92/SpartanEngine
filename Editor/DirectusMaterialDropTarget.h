@@ -47,7 +47,7 @@ private:
     DirectusInspector* m_inspector;
 
 signals:
-    void MaterialDropped(std::weak_ptr<Material> material);
+    void MaterialDropped(std::weak_ptr<Directus::Material> material);
 
 public slots:
 };

@@ -24,17 +24,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusComboSliderText.h"
 #include <QPushButton>
-#include "Core/GameObject.h"
 #include <QDoubleValidator>
-#include "Components/MeshCollider.h"
 #include <QCheckBox>
-#include "DirectusCore.h"
 #include <QLabel>
-#include "Math/Vector4.h"
+#include "DirectusComboSliderText.h"
 #include "DirectusDropDownButton.h"
 #include "DirectusIComponent.h"
+#include "DirectusCore.h"
+#include "Components/MeshCollider.h"
+#include "Math/Vector4.h"
+#include "Core/GameObject.h"
 //==================================
 
 class DirectusInspector;
@@ -46,7 +46,7 @@ public:
     DirectusMeshCollider();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
 private:
     //= CONVEX ===========================
@@ -59,10 +59,10 @@ private:
     QLineEdit* m_mesh;
     //====================================
 
-    //= MISC =============================
+    //= MISC =======================================
     QValidator* m_validator;
-    MeshCollider* m_inspectedMeshCollider;
-    //====================================
+    Directus::MeshCollider* m_inspectedMeshCollider;
+    //==============================================
 
     void ReflectConvex();
     void ReflectMesh();

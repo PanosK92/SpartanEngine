@@ -29,6 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logging/Log.h"
 //======================================
 
+//= INCLUDES ============
+using namespace std;
+using namespace Directus;
+//=======================
+
 DirectusAudioClipDropTarget::DirectusAudioClipDropTarget(QWidget* parent)
 {
     setAcceptDrops(true);
@@ -96,12 +101,18 @@ void DirectusAudioClipDropTarget::dropEvent(QDropEvent *event)
     event->accept();
 
     // Get the path of the material being dragged
-    std::string audioClipPath = event->mimeData()->text().toStdString();
+    string audioClipPath = event->mimeData()->text().toStdString();
 
     // Set the audio clip to the audio source component
-    AudioSource* audioSource = m_inspector->GetInspectedGameObject()->GetComponent<AudioSource>();
-    audioSource->LoadAudioClip(audioClipPath);
+    string clipName =" N/A";
+    auto inspectedGameObj = m_inspector->GetInspectedGameObject();
+    if (!inspectedGameObj.expired())
+    {
+        AudioSource* audioSource = inspectedGameObj.lock()->GetComponent<AudioSource>();
+        audioSource->LoadAudioClip(audioClipPath);
+        clipName = audioSource->GetAudioClipName();
+    }
 
     // Set the text of the QLineEdit
-    this->setText(QString::fromStdString(audioSource->GetAudioClipName()));
+    this->setText(QString::fromStdString(clipName));
 }

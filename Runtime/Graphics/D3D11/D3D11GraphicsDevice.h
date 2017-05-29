@@ -45,7 +45,7 @@ namespace Directus
 		//========================
 
 		//= IGraphicsDevice ========================================================
-		virtual void SetHandle(HWND drawHandle) { m_drawHandle = drawHandle; }
+		virtual void SetHandle(void* drawHandle);
 		virtual void Clear(const Math::Vector4& color);
 		virtual void Present();
 		virtual void SetBackBufferAsRenderTarget();

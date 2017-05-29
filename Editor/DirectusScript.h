@@ -42,14 +42,14 @@ public:
     DirectusScript();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameObject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameObject);
 
-    void Reflect(Script* script);
+    void Reflect(Directus::Script* script);
 
 private:
     //= MISC ===============================
     QValidator* m_validator;
-    Script* m_inspectedScript;
+    Directus::Script* m_inspectedScript;
     //======================================
 
     void ReflectName();

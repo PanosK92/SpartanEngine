@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //============================
 
 //= NAMESPACES ================
+using namespace Directus;
 using namespace Directus::Math;
 //=============================
 
@@ -63,7 +64,8 @@ DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
 
 DirectusCore::~DirectusCore()
 {
-    ShutdownEngine();
+    m_engine->Shutdown();
+    delete m_engine;
 }
 
 Socket* DirectusCore::GetEngineSocket()
@@ -71,11 +73,12 @@ Socket* DirectusCore::GetEngineSocket()
     return m_socket;
 }
 
-void DirectusCore::Initialize(HWND mainWindowHandle, HINSTANCE hInstance, DirectusStatsLabel* directusStatsLabel)
+void DirectusCore::Initialize(void* mainWindowHandle, void* hInstance, DirectusStatsLabel* directusStatsLabel)
 {
     // Initialize the engine
     m_engine = new Engine(new Context());
-    m_engine->Initialize(hInstance, mainWindowHandle, (HWND)this->winId());
+    m_engine->SetHandles(hInstance, mainWindowHandle, (void*)this->winId());
+    m_engine->Initialize();
 
     m_socket = m_engine->GetContext()->GetSubsystem<Socket>();
     m_directusStatsLabel = directusStatsLabel;
@@ -195,24 +198,17 @@ void DirectusCore::paintEvent(QPaintEvent* evt)
 // Temporary
 void DirectusCore::mousePressEvent(QMouseEvent* event)
 {
-    QPoint mousePos = event->pos();
+    /*QPoint mousePos = event->pos();
     auto picked = m_socket->GetContext()->GetSubsystem<Scene>()->MousePick(Vector2(mousePos.x(), mousePos.y()));
 
     if (picked)
         LOG_INFO(picked->GetName());
 
-    m_inspector->Inspect(picked);
+    m_inspector->Inspect(picked);*/
 }
 //===================================================
 
 //= Engine functions ================================
-// Shuts down the engine
-void DirectusCore::ShutdownEngine()
-{
-	m_engine->Shutdown();
-	delete m_engine;
-}
-
 // Changes the rendering resolution of the engine
 void DirectusCore::SetResolution(float width, float height)
 {

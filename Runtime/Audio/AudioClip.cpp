@@ -21,21 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES =======================
 #include "AudioClip.h"
+#include <fmod.hpp>
 #include <fmod_errors.h>
 #include "../Logging/Log.h"
 #include "../Core/GUIDGenerator.h"
-//================================
+#include "../Components/Transform.h"
+//==================================
 
 //= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
+using namespace FMOD;
 //=============================
 
 namespace Directus
 {
-	AudioClip::AudioClip(FMOD::System* fModSystem)
+	AudioClip::AudioClip(System* fModSystem)
 	{
 		// Resource
 		m_resourceID = GENERATE_GUID;
@@ -61,7 +64,7 @@ namespace Directus
 
 		m_result = m_sound->release();
 		if (m_result != FMOD_OK)
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 	}
 
 	bool AudioClip::SaveMetadata()
@@ -87,7 +90,7 @@ namespace Directus
 			m_result = m_channel->isPlaying(&isPlaying);
 			if (m_result != FMOD_OK)
 			{
-				LOG_ERROR(FMOD_ErrorString(m_result));
+				LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 				return false;
 			}
 
@@ -100,7 +103,7 @@ namespace Directus
 		m_result = m_fModSystem->playSound(m_sound, nullptr, false, &m_channel);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -116,7 +119,7 @@ namespace Directus
 			m_result = m_channel->getPaused(&isPaused);
 			if (m_result != FMOD_OK)
 			{
-				LOG_ERROR(FMOD_ErrorString(m_result));
+				LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 				return false;
 			}
 
@@ -129,7 +132,7 @@ namespace Directus
 		m_result = m_channel->setPaused(true);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -145,7 +148,7 @@ namespace Directus
 			m_result = m_channel->isPlaying(&isPlaying);
 			if (m_result != FMOD_OK)
 			{
-				LOG_ERROR(FMOD_ErrorString(m_result));
+				LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 				return false;
 			}
 
@@ -159,7 +162,7 @@ namespace Directus
 		m_channel = nullptr;
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -183,7 +186,7 @@ namespace Directus
 		m_result = m_sound->setMode(BuildSoundMode());
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -198,7 +201,7 @@ namespace Directus
 		m_result = m_channel->setVolume(volume);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -213,7 +216,7 @@ namespace Directus
 		m_result = m_channel->setMute(mute);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -228,7 +231,7 @@ namespace Directus
 		m_result = m_channel->setPriority(priority);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -243,7 +246,7 @@ namespace Directus
 		m_result = m_channel->setPitch(pitch);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -258,7 +261,7 @@ namespace Directus
 		m_result = m_channel->setPan(pan);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -277,7 +280,7 @@ namespace Directus
 		m_result = m_channel->set3DCustomRolloff(&fmodCurve.front(), (int)fmodCurve.size());
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -315,7 +318,7 @@ namespace Directus
 		m_result = m_channel->set3DAttributes(&fModPos, &fModVel);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -335,7 +338,7 @@ namespace Directus
 		m_result = m_fModSystem->createSound(filePath.c_str(), BuildSoundMode(), nullptr, &m_sound);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -343,7 +346,7 @@ namespace Directus
 		m_result = m_sound->set3DMinMaxDistance(m_minDistance, m_maxDistance);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -356,7 +359,7 @@ namespace Directus
 		m_result = m_fModSystem->createStream(filePath.c_str(), BuildSoundMode(), nullptr, &m_sound);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
@@ -364,11 +367,16 @@ namespace Directus
 		m_result = m_sound->set3DMinMaxDistance(m_minDistance, m_maxDistance);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString(m_result));
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 			return false;
 		}
 
 		return true;
+	}
+
+	int AudioClip::BuildSoundMode()
+	{
+		return FMOD_3D | m_modeLoop | m_modeRolloff;
 	}
 	//=========================================================================================
 }

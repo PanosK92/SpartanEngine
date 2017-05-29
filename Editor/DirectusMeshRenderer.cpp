@@ -25,6 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 //===============================
 
+//= NAMESPACES ==========
+using namespace std;
+using namespace Directus;
+//=======================
+
 DirectusMeshRenderer::DirectusMeshRenderer()
 {
 
@@ -110,19 +115,19 @@ void DirectusMeshRenderer::Initialize(DirectusInspector* inspector, QWidget* mai
     this->hide();
 }
 
-void DirectusMeshRenderer::Reflect(GameObject* gameobject)
+void DirectusMeshRenderer::Reflect(weak_ptr<GameObject> gameobject)
 {
     m_inspectedMeshRenderer = nullptr;
 
-    // Catch evil case
-    if (!gameobject)
+    // Catch the evil case
+    if (gameobject.expired())
     {
         this->hide();
         return;
     }
 
     // Catch the seed of the evil
-    m_inspectedMeshRenderer = gameobject->GetComponent<MeshRenderer>();
+    m_inspectedMeshRenderer = gameobject.lock()->GetComponent<MeshRenderer>();
     if (!m_inspectedMeshRenderer)
     {
         this->hide();
@@ -201,8 +206,10 @@ void DirectusMeshRenderer::Remove()
     if (!m_inspectedMeshRenderer)
         return;
 
-    GameObject* gameObject = m_inspectedMeshRenderer->g_gameObject;
-    gameObject->RemoveComponent<MeshRenderer>();
-
+    auto gameObject = m_inspectedMeshRenderer->g_gameObject;
+    if (!gameObject.expired())
+    {
+        gameObject.lock()->RemoveComponent<MeshRenderer>();
+    }
     m_inspector->Inspect(gameObject);
 }

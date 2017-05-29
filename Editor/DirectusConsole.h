@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 //=======================
 
-class EngineLogger : public ILogger
+class EngineLogger : public Directus::ILogger
 {
 public:
     EngineLogger(QListWidget* list);
@@ -46,7 +46,7 @@ public:
     void Initialize(DirectusCore* directusCore);
 
 private:
-    Socket* m_socket;
+    Directus::Socket* m_socket;
     std::shared_ptr<EngineLogger> m_engineLogger;
 
 signals:

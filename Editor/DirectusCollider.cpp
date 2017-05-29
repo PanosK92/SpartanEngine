@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //============================
 
 //= NAMESPACES ================
+using namespace std;
+using namespace Directus;
 using namespace Directus::Math;
 //=============================
 
@@ -141,18 +143,18 @@ void DirectusCollider::Initialize(DirectusInspector* inspector, QWidget* mainWin
     this->hide();
 }
 
-void DirectusCollider::Reflect(GameObject* gameobject)
+void DirectusCollider::Reflect(weak_ptr<GameObject> gameobject)
 {
     m_inspectedCollider = nullptr;
 
-    // Catch evil case
-    if (!gameobject)
+    // Catch the evil case
+    if (gameobject.expired())
     {
         this->hide();
         return;
     }
 
-    m_inspectedCollider = gameobject->GetComponent<Collider>();
+    m_inspectedCollider = gameobject.lock()->GetComponent<Collider>();
     if (!m_inspectedCollider)
     {
         this->hide();
@@ -236,8 +238,11 @@ void DirectusCollider::Remove()
     if (!m_inspectedCollider)
         return;
 
-    GameObject* gameObject = m_inspectedCollider->g_gameObject;
-    gameObject->RemoveComponent<Collider>();
+    auto gameObject = m_inspectedCollider->g_gameObject;
+    if (!gameObject.expired())
+    {
+        gameObject.lock()->RemoveComponent<Collider>();
+    }
 
     m_inspector->Inspect(gameObject);
 }

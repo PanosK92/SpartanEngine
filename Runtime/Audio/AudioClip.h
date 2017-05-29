@@ -21,14 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
-#include <fmod.hpp>
-#include "../Components/Transform.h"
+//= INCLUDES ====================
 #include "../Resource/Resource.h"
-//==================================
+#include "../Math/Vector3.h"
+//===============================
+
+//= FMOD FORWARD DECLARATIONS =
+namespace FMOD
+{
+	class System;
+	class Sound;
+	class Channel;
+}
+//=============================
 
 namespace Directus
 {
+	class Transform;
+
 	enum PlayMode
 	{
 		Memory,
@@ -87,17 +97,17 @@ namespace Directus
 		bool CreateSound(const std::string& filePath);
 		bool CreateStream(const std::string& filePath);
 		//=============================================
-		FMOD_MODE BuildSoundMode() { return FMOD_3D | m_modeLoop | m_modeRolloff; }
+		int BuildSoundMode();
 
 		Transform* m_transform;
 		FMOD::System* m_fModSystem;
-		FMOD_RESULT m_result;
+		int m_result;
 		FMOD::Sound* m_sound;
 		FMOD::Channel* m_channel;
 		PlayMode m_playMode;
-		FMOD_MODE m_modeLoop;
+		int m_modeLoop;
 		float m_minDistance;
 		float m_maxDistance;
-		FMOD_MODE m_modeRolloff;
+		int m_modeRolloff;
 	};
 }

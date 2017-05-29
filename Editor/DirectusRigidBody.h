@@ -43,7 +43,7 @@ public:
     DirectusRigidBody();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
 private:
     //= MASS =============================
@@ -92,7 +92,7 @@ private:
 
     //= MISC =======================
     QValidator* m_validator;
-    RigidBody* m_inspectedRigidBody;
+    Directus::RigidBody* m_inspectedRigidBody;
     //==============================
 
     //= REFLECTION =======================

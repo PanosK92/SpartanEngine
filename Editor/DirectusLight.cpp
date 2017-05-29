@@ -24,7 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 //============================
 
-//=============================
+//= NAMESPACES ================
+using namespace std;
+using namespace Directus;
 using namespace Directus::Math;
 //=============================
 
@@ -137,19 +139,19 @@ void DirectusLight::Initialize(DirectusInspector* inspector, QWidget* mainWindow
     this->hide();
 }
 
-void DirectusLight::Reflect(GameObject* gameobject)
+void DirectusLight::Reflect(std::weak_ptr<Directus::GameObject> gameobject)
 {
     m_inspectedLight = nullptr;
 
-    // Catch evil case
-    if (!gameobject)
+    // Catch the evil case
+    if (gameobject.expired())
     {
         this->hide();
         return;
     }
 
     // Catch the seed of the evil
-    m_inspectedLight = gameobject->GetComponent<Light>();
+    m_inspectedLight = gameobject.lock()->GetComponent<Light>();
     if (!m_inspectedLight)
     {
         this->hide();
@@ -278,8 +280,11 @@ void DirectusLight::Remove()
     if (!m_inspectedLight)
         return;
 
-    GameObject* gameObject = m_inspectedLight->g_gameObject;
-    gameObject->RemoveComponent<Light>();
+    auto gameObject = m_inspectedLight->g_gameObject;
+    if (!gameObject.expired())
+    {
+        gameObject.lock()->RemoveComponent<Light>();
+    }
 
     m_inspector->Inspect(gameObject);
 }

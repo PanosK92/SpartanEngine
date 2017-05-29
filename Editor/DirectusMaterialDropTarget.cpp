@@ -29,9 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusMaterial.h"
 //======================================
 
-//= NAMESPACES =====
+//= NAMESPACES ==========
+using namespace Directus;
 using namespace std;
-//==================
+//=======================
 
 DirectusMaterialDropTarget::DirectusMaterialDropTarget(QWidget* parent) : QLineEdit(parent)
 {
@@ -104,14 +105,12 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
     std::string materialPath = event->mimeData()->text().toStdString();
 
     // Get currently inspected GameObject
-    GameObject* gameObject = m_inspector->GetInspectedGameObject();
-
-    // If a GameObject is indeed inspected, set the material to the mesh renderer
-    if (!gameObject)
+    auto gameObject = m_inspector->GetInspectedGameObject();
+    if (gameObject.expired())
         return;
 
     // Load the material
-    std::weak_ptr<Material> material = gameObject->GetComponent<MeshRenderer>()->LoadMaterial(materialPath);
+    std::weak_ptr<Material> material = gameObject.lock()->GetComponent<MeshRenderer>()->LoadMaterial(materialPath);
 
     // Set the material editor component to reflect thew newly loaded material
     m_inspector->GetMaterialComponent()->Reflect(gameObject);

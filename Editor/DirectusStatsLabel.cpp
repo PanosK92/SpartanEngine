@@ -4,9 +4,10 @@
 #include "Socket/Socket.h"
 //=============================
 
-//= NAMESPACES ================
+//= NAMESPACES ==========
 using namespace std;
-//=============================
+using namespace Directus;
+//=======================
 
 DirectusStatsLabel::DirectusStatsLabel(QWidget *parent) : QLineEdit(parent)
 {

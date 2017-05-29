@@ -24,6 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 //============================
 
+//= INLUDES =============
+using namespace std;
+using namespace Directus;
+//=======================
+
 DirectusScript::DirectusScript()
 {
 
@@ -74,7 +79,7 @@ void DirectusScript::Initialize(DirectusInspector* inspector, QWidget* mainWindo
     this->hide();
 }
 
-void DirectusScript::Reflect(GameObject* gameObject)
+void DirectusScript::Reflect(weak_ptr<GameObject> gameObject)
 {
 
 }
@@ -114,8 +119,11 @@ void DirectusScript::Remove()
     if (!m_inspectedScript)
         return;
 
-    GameObject* gameObject = m_inspectedScript->g_gameObject;
-    gameObject->RemoveComponentByID(m_inspectedScript->g_ID);
+    auto gameObject = m_inspectedScript->g_gameObject;
+    if (!gameObject.expired())
+    {
+        gameObject.lock()->RemoveComponentByID(m_inspectedScript->g_ID);
+    }
 
     m_inspector->Inspect(gameObject);
 }

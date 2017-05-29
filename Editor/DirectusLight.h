@@ -46,7 +46,7 @@ public:
     DirectusLight();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
 private:
     //= LIGHT TYPE =======================
@@ -75,7 +75,7 @@ private:
 
     //= MISC =============================
     QValidator* m_validator;
-    Light* m_inspectedLight;
+    Directus::Light* m_inspectedLight;
     //====================================
 
     void ReflectLightType();

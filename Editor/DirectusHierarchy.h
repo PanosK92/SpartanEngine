@@ -50,16 +50,16 @@ protected:
 private:
     void AddRoot(QTreeWidgetItem* item);
     void AddChild(QTreeWidgetItem* parent, QTreeWidgetItem* child);
-    void AddGameObject(GameObject* gameobject, QTreeWidgetItem *parent);
+    void AddGameObject(std::weak_ptr<Directus::GameObject> gameobject, QTreeWidgetItem *parent);
 
-    QTreeWidgetItem* ToQTreeWidgetItem(GameObject* gameobject);
-    GameObject* ToGameObject(QTreeWidgetItem* treeItem);
+    QTreeWidgetItem* ToQTreeWidgetItem(std::weak_ptr<Directus::GameObject> gameobject);
+    std::weak_ptr<Directus::GameObject> ToGameObject(QTreeWidgetItem* treeItem);
     QTreeWidgetItem* GetSelectedQTreeWidgetItem();
-    GameObject* GetSelectedGameObject();
+    std::weak_ptr<Directus::GameObject> GetSelectedGameObject();
 
     bool IsAnyGameObjectSelected();   
   
-	Socket* m_socket;
+    Directus::Socket* m_socket;
     DirectusInspector* m_inspector;
     DirectusCore* m_directusCore;
     QWidget* m_mainWindow;

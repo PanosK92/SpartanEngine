@@ -24,6 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 //==============================
 
+// = NAMESPACES =========
+using namespace std;
+using namespace Directus;
+//=======================
+
 DirectusAudioSource::DirectusAudioSource()
 {
 
@@ -176,19 +181,19 @@ void DirectusAudioSource::Initialize(DirectusInspector* inspector, QWidget* main
     this->hide();
 }
 
-void DirectusAudioSource::Reflect(GameObject* gameobject)
+void DirectusAudioSource::Reflect(std::weak_ptr<Directus::GameObject> gameobject)
 {
     m_inspectedAudioSource = nullptr;
 
-    // Catch evil case
-    if (!gameobject)
+    // Catch the evil case
+    if (gameobject.expired())
     {
         this->hide();
         return;
     }
 
     // Catch the seed of the evil
-    m_inspectedAudioSource = gameobject->GetComponent<AudioSource>();
+    m_inspectedAudioSource = gameobject.lock()->GetComponent<AudioSource>();
     if (!m_inspectedAudioSource)
     {
         this->hide();
@@ -349,8 +354,11 @@ void DirectusAudioSource::Remove()
     if (!m_inspectedAudioSource)
         return;
 
-    GameObject* gameObject = m_inspectedAudioSource->g_gameObject;
-    gameObject->RemoveComponent<AudioSource>();
+    auto gameObject = m_inspectedAudioSource->g_gameObject;
+    if (!gameObject.expired())
+    {
+        gameObject.lock()->RemoveComponent<AudioSource>();
+    }
 
     m_inspector->Inspect(gameObject);
 }

@@ -26,14 +26,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QGridLayout>
 #include "DirectusAdjustLabel.h"
 #include <QLineEdit>
-#include "Core/GameObject.h"
 #include <QDoubleValidator>
-#include "Components/MeshRenderer.h"
 #include <QCheckBox>
 #include "DirectusDropDownButton.h"
 #include "DirectusCore.h"
 #include "DirectusMaterialDropTarget.h"
 #include "DirectusIComponent.h"
+#include "DirectusMaterial.h"
+#include "Components/MeshRenderer.h"
+#include "Core/GameObject.h"
 //=====================================
 
 class DirectusInspector;
@@ -46,7 +47,7 @@ public:
     DirectusMeshRenderer();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
 private:
     //= CAST SHADOWS =====================
@@ -64,11 +65,11 @@ private:
     DirectusMaterialDropTarget* m_material;
     //====================================
 
-    //= MISC =============================
+    //= MISC =======================================
     QValidator* m_validator;
-    MeshRenderer* m_inspectedMeshRenderer;
+    Directus::MeshRenderer* m_inspectedMeshRenderer;
     DirectusMaterial* m_materialUIComp;
-    //====================================
+    //=============================================
 
     void ReflectCastShadows();
     void ReflectReceiveShadows();

@@ -22,16 +22,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-template <class T> class VPtr
+template <class T> class QVariantHelper
 {
 public:
     static T* asPtr(QVariant v)
     {
-    return  (T *) v.value<void *>();
+        return (T*)v.value<void*>();
     }
 
     static QVariant asQVariant(T* ptr)
     {
-    return qVariantFromValue((void *) ptr);
+        return qVariantFromValue((void*) ptr);
     }
 };

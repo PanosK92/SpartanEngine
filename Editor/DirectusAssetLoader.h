@@ -21,19 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ===================
 #include <QObject>
 #include <QPixmap>
 #include "Socket/Socket.h"
 #include "DirectusProgressBar.h"
-//=============================
+//==============================
 
 class DirectusAssetLoader : public QObject
 {
     Q_OBJECT
 public:
     explicit DirectusAssetLoader(QObject* parent = nullptr);
-    void Initialize(QWidget* mainWindow, Socket* socket);
+    void Initialize(QWidget* mainWindow, Directus::Socket* socket);
     std::string GetFilePath();
     void SetFilePath(std::string filePath); 
     void PrepareForTexture(std::string filePath, int width, int height);
@@ -49,7 +49,7 @@ private:
     int m_width;
     int m_height;
     QWidget* m_mainWindow;
-    Socket* m_socket;
+    Directus::Socket* m_socket;
     DirectusProgressBar* m_loadingDialog;
 
 signals:
