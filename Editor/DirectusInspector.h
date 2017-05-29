@@ -47,11 +47,11 @@ public:
     explicit DirectusInspector(QWidget *parent = 0);
     void SetDirectusCore(DirectusCore* directusCore);
     void Initialize(QWidget* mainWindow);
-    GameObject* GetInspectedGameObject();
+    std::weak_ptr<Directus::GameObject>GetInspectedGameObject();
 
     void Clear();
     void InspectMaterialFile(const std::string &filepath);
-    Socket* GetSocket();
+    Directus::Socket* GetSocket();
     DirectusMaterial* GetMaterialComponent();
 
     //= DROP ===========================================
@@ -63,7 +63,7 @@ protected:
     virtual void paintEvent(QPaintEvent* evt);
 
 private:
-    std::vector<Script*> FitScriptVectorToGameObject();
+    std::vector<Directus::Script*> FitScriptVectorToGameObject();
 
     DirectusIComponent* m_transform;
     DirectusIComponent* m_camera;
@@ -79,10 +79,10 @@ private:
     DirectusIComponent* m_audioListener;
 
     DirectusCore* m_directusCore;
-    GameObject* m_inspectedGameObject;
+    std::weak_ptr<Directus::GameObject> m_inspectedGameObject;
     QWidget* m_mainWindow;
     bool m_initialized;
 
 public slots:
-    void Inspect(GameObject* gameobject);
+    void Inspect(std::weak_ptr<Directus::GameObject> gameobject);
 };

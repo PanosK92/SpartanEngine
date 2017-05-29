@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//==================================
+//============================================
 #include "DirectusMaterialTextureDropTarget.h"
 #include "DirectusAssetLoader.h"
 #include <QThread>
@@ -27,9 +27,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QMimeData>
 #include "Logging/Log.h"
 #include "DirectusInspector.h"
+#include "Resource/ResourceManager.h"
 #include "FileSystem/FileSystem.h"
 #include "Components/MeshRenderer.h"
-//==================================
+#include "Graphics/Texture.h"
+//=============================================
+
+//= NAMESPACES ==========
+using namespace std;
+using namespace Directus;
+//=======================
 
 DirectusMaterialTextureDropTarget::DirectusMaterialTextureDropTarget(QWidget *parent) : QLabel(parent)
 {
@@ -132,7 +139,9 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
             return;
 
         // Set the texture to the material
-        material.lock()->SetTexture(imagePath, m_textureType);
+        auto context = m_inspector->GetSocket()->GetContext();
+        auto texture = context->GetSubsystem<ResourceManager>()->Load<Texture>(imagePath);
+        material.lock()->SetTexture(texture);
 
         // Save the changes
         material.lock()->SaveToExistingDirectory();

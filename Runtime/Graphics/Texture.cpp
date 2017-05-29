@@ -178,25 +178,30 @@ namespace Directus
 			m_textureType = Height_Texture;
 	}
 
+	void** Texture::GetShaderResource()
+	{
+		return (void**)m_texture->GetShaderResourceView();
+	}
+
 	bool Texture::CreateShaderResourceView()
 	{
 		if (!m_context)
 			return false;
 
-		weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
+		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter().lock();
 		if (m_generateMipchain)
 		{
-			if (!m_texture->CreateFromMipchain(m_width, m_height, imageImp.lock()->GetChannels(), imageImp.lock()->GetRGBAMipchain()))
+			if (!m_texture->CreateFromMipchain(m_width, m_height, imageImp->GetChannels(), imageImp->GetRGBAMipchain()))
 			{
-				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp.lock()->GetPath() + "\".");
+				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp->GetPath() + "\".");
 				return false;
 			}
 		}
 		else
 		{
-			if (!m_texture->Create(m_width, m_height, imageImp.lock()->GetChannels(), imageImp.lock()->GetRGBA()))
+			if (!m_texture->Create(m_width, m_height, imageImp->GetChannels(), imageImp->GetRGBA()))
 			{
-				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp.lock()->GetPath() + "\".");
+				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp->GetPath() + "\".");
 				return false;
 			}
 		}

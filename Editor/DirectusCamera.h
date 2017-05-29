@@ -46,7 +46,7 @@ public:
     explicit DirectusCamera();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
 private:
     //= BACKGROUND =================================
@@ -70,10 +70,10 @@ private:
     DirectusComboLabelText* m_farPlane;
     //==============================================
 
-    Camera* m_inspectedCamera;
+    Directus::Camera* m_inspectedCamera;
 
     void ReflectBackground(Directus::Math::Vector4 color);
-    void ReflectProjection(Projection projection);
+    void ReflectProjection(Directus::Projection projection);
     void ReflectNearPlane(float nearPlane);
     void ReflectFarPlane(float farPlane);
     void ReflectFOV(float fov);

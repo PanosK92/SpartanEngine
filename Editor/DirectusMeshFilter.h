@@ -46,7 +46,7 @@ public:
     DirectusMeshFilter();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
 private:
     //= MESH =============================
@@ -56,7 +56,7 @@ private:
 
     //= MISC =========================
     QValidator* m_validator;
-    MeshFilter* m_inspectedMeshFilter;
+    Directus::MeshFilter* m_inspectedMeshFilter;
     //================================
 
     void ReflectMesh();

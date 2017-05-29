@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //============================
 
 //= NAMESPACES ================
+using namespace std;
+using namespace Directus;
 using namespace Directus::Math;
 //=============================
 
@@ -135,19 +137,19 @@ void DirectusCamera::Initialize(DirectusInspector* inspector, QWidget* mainWindo
     this->hide();
 }
 
-void DirectusCamera::Reflect(GameObject* gameobject)
+void DirectusCamera::Reflect(std::weak_ptr<Directus::GameObject> gameobject)
 {
     m_inspectedCamera = nullptr;
 
-    // Catch evil case
-    if (!gameobject)
+    // Catch the evil case
+    if (gameobject.expired())
     {
         this->hide();
         return;
     }
 
     // Catch the seed of the evil
-    m_inspectedCamera = gameobject->GetComponent<Camera>();
+    m_inspectedCamera = gameobject.lock()->GetComponent<Camera>();
     if (!m_inspectedCamera)
     {
         this->hide();
@@ -241,8 +243,11 @@ void DirectusCamera::Remove()
     if (!m_inspectedCamera)
         return;
 
-    GameObject* gameObject = m_inspectedCamera->g_gameObject;
-    gameObject->RemoveComponent<Camera>();
+    auto gameObject = m_inspectedCamera->g_gameObject;
+    if (!gameObject.expired())
+    {
+        gameObject.lock()->RemoveComponent<Camera>();
+    }
 
     m_inspector->Inspect(gameObject);
 }

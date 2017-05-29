@@ -40,7 +40,7 @@ public:
     DirectusTransform();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
     void Refresh();
 
@@ -74,7 +74,7 @@ private:
     QValidator* m_validator;
     //======================
 
-    Transform* m_inspectedTransform;
+    Directus::Transform* m_inspectedTransform;
 
 public slots:
     void MapPosition();

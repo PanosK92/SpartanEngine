@@ -308,6 +308,11 @@ namespace Directus
 		return m_initialized = true;
 	}
 
+	void D3D11GraphicsDevice::SetHandle(void* drawHandle)
+	{
+		m_drawHandle = (HWND)drawHandle;
+	}
+
 	//= DEPTH ======================================================================================================
 	void D3D11GraphicsDevice::EnableZBuffer(bool enable)
 	{
@@ -623,6 +628,7 @@ namespace Directus
 	}
 
 	//= HELPER FUNCTIONS ================================================================================
+	
 	bool D3D11GraphicsDevice::CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain)
 	{
 		DXGI_SWAP_CHAIN_DESC swapChainDesc;

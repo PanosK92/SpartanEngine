@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===================
-#include <Windows.h>
 #include "../Math/Vector4.h"
 #include "../Core/Subsystem.h"
 #include "GraphicsDefinitions.h"
@@ -37,7 +36,7 @@ namespace Directus
 		virtual ~IGraphicsDevice() {}
 
 		//==========================================================================
-		virtual void SetHandle(HWND drawHandle) = 0;
+		virtual void SetHandle(void* drawHandle) = 0;
 		virtual void Clear(const Math::Vector4& color) = 0;
 		virtual void Present() = 0;
 		virtual void SetBackBufferAsRenderTarget() = 0;

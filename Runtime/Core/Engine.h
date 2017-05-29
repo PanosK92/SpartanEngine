@@ -31,8 +31,9 @@ namespace Directus
 		// Sets a draw handle, input handle and a window instance for the engine to use
 		void SetHandles(void* instance, void* mainWindowHandle, void* drawPaneHandle);
 
-		// Initializes the engine 
+		//= SUBSYSTEM ====
 		bool Initialize();
+		//================
 
 		// Performs a complete simulation cycle (used to run your game)
 		void Update();

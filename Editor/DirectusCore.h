@@ -42,8 +42,8 @@ class DirectusCore : public QWidget
 public:
     DirectusCore(QWidget* parent = NULL);
     virtual ~DirectusCore();
-    Socket* GetEngineSocket();
-    void Initialize(HWND hwnd, HINSTANCE hinstance, DirectusStatsLabel* directusStatsLabel);
+    Directus::Socket* GetEngineSocket();
+    void Initialize(void* hwnd, void* hinstance, DirectusStatsLabel* directusStatsLabel);
     void SetInspector(DirectusInspector* inspector);
     bool IsRunning();
 
@@ -54,11 +54,10 @@ protected:
     virtual void mousePressEvent(QMouseEvent* event);
 
 private:
-	void ShutdownEngine();
     void SetResolution(float width, float height);
 
-    Socket* m_socket;
-    Engine* m_engine;
+    Directus::Socket* m_socket;
+    Directus::Engine* m_engine;
     QTimer* m_timerUpdate;
     QTimer* m_timer500Mil;
     QTimer* m_timer60FPS;

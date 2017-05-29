@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //============================
 
 //= NAMESPACES ================
+using namespace std;
+using namespace Directus;
 using namespace Directus::Math;
 //=============================
 
@@ -205,18 +207,18 @@ void DirectusRigidBody::Initialize(DirectusInspector* inspector, QWidget* mainWi
     this->hide();
 }
 
-void DirectusRigidBody::Reflect(GameObject* gameobject)
+void DirectusRigidBody::Reflect(weak_ptr<GameObject> gameobject)
 {
     m_inspectedRigidBody = nullptr;
 
-    // Catch evil case
-    if (!gameobject)
+    // Catch the evil case
+    if (gameobject.expired())
     {
         this->hide();
         return;
     }
 
-    m_inspectedRigidBody = gameobject->GetComponent<RigidBody>();
+    m_inspectedRigidBody = gameobject.lock()->GetComponent<RigidBody>();
     if (!m_inspectedRigidBody)
     {
         this->hide();
@@ -407,8 +409,11 @@ void DirectusRigidBody::Remove()
     if (!m_inspectedRigidBody)
         return;
 
-    GameObject* gameObject = m_inspectedRigidBody->g_gameObject;
-    gameObject->RemoveComponent<RigidBody>();
+    auto gameObject = m_inspectedRigidBody->g_gameObject;
+    if (!gameObject.expired())
+    {
+        gameObject.lock()->RemoveComponent<RigidBody>();
+    }
 
     m_inspector->Inspect(gameObject);
 }

@@ -23,12 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "../Resource/Resource.h"
-#include "D3D11/D3D11Texture.h"
+#include "../Core/Helper.h"
 #include <memory>
 //===============================
 
 namespace Directus
 {
+	class D3D11Texture;
+
 	enum TextureType
 	{
 		Albedo_Texture,
@@ -42,7 +44,7 @@ namespace Directus
 		CubeMap_Texture,
 	};
 
-	class Texture : public Resource
+	class DllExport Texture : public Resource
 	{
 	public:
 		Texture(Context* context);
@@ -75,7 +77,7 @@ namespace Directus
 		bool GetTransparency() { return m_transparency; }
 		void SetTransparency(bool transparency) { m_transparency = transparency; }
 
-		void** GetShaderResourceView() { return (void**)m_texture->GetShaderResourceView(); }
+		void** GetShaderResource();
 		//=============================================================================================
 
 	private:

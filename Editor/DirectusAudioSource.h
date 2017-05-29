@@ -31,9 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusCore.h"
 #include "DirectusComboSliderText.h"
 #include "DirectusDropDownButton.h"
-#include "Components/AudioSource.h"
 #include "DirectusIComponent.h"
 #include "DirectusAudioClipDropTarget.h"
+#include "Components/AudioSource.h"
 //======================================
 
 class DirectusInspector;
@@ -45,7 +45,7 @@ public:
     DirectusAudioSource();
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow);
-    virtual void Reflect(GameObject* gameobject);
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameobject);
 
 private:
     //= AUDIO CLIP ==========================
@@ -92,9 +92,9 @@ private:
     QValidator* m_validator;
     //======================
 
-    //= MISC ===========================
-    AudioSource* m_inspectedAudioSource;
-    //==================================
+    //= MISC =====================================
+    Directus::AudioSource* m_inspectedAudioSource;
+    //============================================
 
     void ReflectName();
     void ReflectMute();

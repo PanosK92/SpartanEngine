@@ -23,9 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusConsole.h"
 //=============================
 
-//= NAMESPACES =====
+//= NAMESPACES ==========
 using namespace std;
-//==================
+using namespace Directus;
+//=======================
 
 DirectusConsole::DirectusConsole(QWidget *parent) : QListWidget(parent)
 {

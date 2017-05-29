@@ -38,7 +38,7 @@ public:
     explicit DirectusIComponent(QWidget* parent = 0) : QWidget(parent){}
 
     virtual void Initialize(DirectusInspector* inspector, QWidget* mainWindow) = 0;
-    virtual void Reflect(GameObject* gameObject) = 0;
+    virtual void Reflect(std::weak_ptr<Directus::GameObject> gameObject) = 0;
 
 protected:
     //= TITLE ==============================
@@ -50,11 +50,11 @@ protected:
     QWidget* m_line;
     //==============
 
-    //= MISC ======================
+    //= MISC ========================================
     QGridLayout* m_gridLayout;
     DirectusInspector* m_inspector;
-    GameObject* m_gameObject;
-    //=============================
+    std::weak_ptr<Directus::GameObject> m_gameObject;
+    //===============================================
 
 signals:
     //void IStorageSignal1(const QString &par1);

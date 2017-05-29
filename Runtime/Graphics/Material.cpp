@@ -309,7 +309,7 @@ namespace Directus
 		auto texture = GetTextureByType(type);
 
 		if (!texture.expired())
-			return texture.lock()->GetShaderResourceView();
+			return texture.lock()->GetShaderResource();
 
 		return nullptr;
 	}

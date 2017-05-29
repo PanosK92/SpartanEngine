@@ -42,7 +42,7 @@ namespace Directus
 		D3D12GraphicsDevice();
 		~D3D12GraphicsDevice();
 
-		bool Initialize(HWND handle);
+		bool Initialize(void* handle);
 		void Release();
 
 		void Clear(const Math::Vector4& color);

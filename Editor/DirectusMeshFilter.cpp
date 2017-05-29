@@ -19,10 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//=============================
+//= INCLUDES ==================
 #include "DirectusMeshFilter.h"
 #include "DirectusInspector.h"
 //=============================
+
+//= NAMESPACES ==========
+using namespace std;
+using namespace Directus;
+//=======================
 
 DirectusMeshFilter::DirectusMeshFilter()
 {
@@ -84,19 +89,19 @@ void DirectusMeshFilter::Initialize(DirectusInspector* inspector, QWidget* mainW
     this->hide();
 }
 
-void DirectusMeshFilter::Reflect(GameObject* gameobject)
+void DirectusMeshFilter::Reflect(weak_ptr<GameObject> gameobject)
 {
     m_inspectedMeshFilter = nullptr;
 
-    // Catch evil case
-    if (!gameobject)
+    // Catch the evil case
+    if (gameobject.expired())
     {
         this->hide();
         return;
     }
 
     // Catch the seed of the evil
-    m_inspectedMeshFilter = gameobject->GetComponent<MeshFilter>();
+    m_inspectedMeshFilter = gameobject.lock()->GetComponent<MeshFilter>();
     if (!m_inspectedMeshFilter)
     {
         this->hide();
@@ -129,8 +134,11 @@ void DirectusMeshFilter::Remove()
     if (!m_inspectedMeshFilter)
         return;
 
-    GameObject* gameObject = m_inspectedMeshFilter->g_gameObject;
-    gameObject->RemoveComponent<MeshFilter>();
+    auto gameObject = m_inspectedMeshFilter->g_gameObject;
+    if (!gameObject.expired())
+    {
+        gameObject.lock()->RemoveComponent<MeshFilter>();
+    }
 
     m_inspector->Inspect(gameObject);
 }

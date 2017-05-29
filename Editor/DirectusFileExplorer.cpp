@@ -31,9 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 //===============================
 
-//= NAMESPACES =====
+//= NAMESPACES ==========
 using namespace std;
-//==================
+using namespace Directus;
+//=======================
 
 DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
 {
@@ -185,11 +186,13 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
 
     //= DROP CASE: GAMEOBJECT ===========================================================================
     std::string gameObjectID = mimeData->text().toStdString();
-    GameObject* gameObject = m_directusCore->GetEngineSocket()->GetGameObjectByID(gameObjectID);
-    if (gameObject)
+    auto gameObject = m_directusCore->GetEngineSocket()->GetGameObjectByID(gameObjectID);
+    if (!gameObject.expired())
     {
+        auto gameObj = gameObject.lock();
+
         // Save the dropped GameObject as a prefab
-        gameObject->SaveAsPrefab(GetRootPath().toStdString() + "/" + gameObject->GetName());
+        gameObj->SaveAsPrefab(GetRootPath().toStdString() + "/" + gameObj->GetName());
         event->acceptProposedAction();
         return;
     }
