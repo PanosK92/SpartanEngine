@@ -51,9 +51,11 @@ DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
     m_timerUpdate = new QTimer(this);
     connect(m_timerUpdate, SIGNAL(timeout()), this, SLOT(update()));
 
+    // stats
     m_timer500Mil = new QTimer(this);
     connect(m_timer500Mil, SIGNAL(timeout()), this, SLOT(Update500Mil()));
 
+    // light update
     m_timer60FPS = new QTimer(this);
     connect(m_timer60FPS, SIGNAL(timeout()), this, SLOT(Update60FPS()));
     m_timer60FPS->start(16);
