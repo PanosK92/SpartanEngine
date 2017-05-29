@@ -59,12 +59,6 @@ namespace Directus
 		Clear();
 	}
 
-	void Scene::AddGameObject(GameObject* gameObj)
-	{
-		sharedGameObj smartGameObj = sharedGameObj(gameObj);
-		m_gameObjects.push_back(smartGameObj);
-	}
-
 	bool Scene::Initialize()
 	{
 		m_mainCamera = CreateCamera();
@@ -306,9 +300,7 @@ namespace Directus
 	bool Scene::GameObjectExists(weakGameObj gameObject)
 	{
 		if (gameObject.expired())
-		{
 			return false;
-		}
 
 		return !GetGameObjectByID(gameObject.lock()->GetID()).expired() ? true : false;
 	}
@@ -421,6 +413,7 @@ namespace Directus
 		skybox->AddComponent<LineRenderer>();
 		skybox->AddComponent<Skybox>();
 		skybox->SetHierarchyVisibility(false);
+		skybox->GetTransform()->SetParent(m_mainCamera.lock()->GetTransform());
 
 		return skybox;
 	}
@@ -474,7 +467,14 @@ namespace Directus
 	//======================================================================================================
 	weakGameObj Scene::CreateGameObject()
 	{
-		m_gameObjects.push_back(make_shared<GameObject>(m_context));
-		return m_gameObjects.back();
+		auto gameObj = make_shared<GameObject>(m_context);
+
+		// First save the GameObject because the Transform (added below)
+		// will call the scene to get the GameObject it's attached to
+		m_gameObjects.push_back(gameObj);
+
+		gameObj->Initialize(gameObj->AddComponent<Transform>());
+
+		return gameObj;
 	}
 }

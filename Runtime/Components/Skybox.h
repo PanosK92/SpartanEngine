@@ -48,6 +48,8 @@ namespace Directus
 		void** GetEnvironmentTexture();
 
 	private:
+		std::weak_ptr<GameObject> m_anchor;
+		Transform* m_anchorTrans;
 		std::shared_ptr<Texture> m_cubeMapTexture;
 	};
 }

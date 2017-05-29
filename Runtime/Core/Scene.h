@@ -78,10 +78,6 @@ namespace Directus
 		void SetAmbientLight(float x, float y, float z);
 		Math::Vector3 GetAmbientLight();
 
-		//= CALLED BY GAMEOBJECTS ==============
-		void AddGameObject(GameObject* gameObj);
-		//======================================
-
 		//= STATS ======================	
 		float GetFPS() { return m_fps; }
 		//==============================

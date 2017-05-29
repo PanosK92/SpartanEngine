@@ -40,6 +40,8 @@ namespace Directus
 		GameObject(Context* context);
 		~GameObject();
 
+		void Initialize(Transform* transform);
+
 		void Start();
 		void OnDisable();
 		void Update();

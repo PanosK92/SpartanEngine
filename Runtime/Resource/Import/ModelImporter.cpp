@@ -136,23 +136,17 @@ namespace Directus
 
 		// Normalize the scale of the model
 		vector<Transform*> descendants;
-		LOG_WARNING(m_rootGameObject.lock()->GetName());
-		LOG_WARNING(m_rootGameObject.lock()->GetTransform()->GetChildrenCount());
 		if (!m_rootGameObject.expired())
 		{
-			LOG_WARNING("1");
 			m_rootGameObject.lock()->GetTransform()->GetDescendants(&descendants);
 			for (auto& descendant : descendants)
 			{
-				LOG_WARNING("2");
 				auto descendantGameObj = descendant->GetGameObject();
 				if (!descendantGameObj.expired())
 				{
-					LOG_WARNING("3");
 					auto meshFilter = descendantGameObj.lock()->GetComponent<MeshFilter>();
 					if (meshFilter)
 					{
-						LOG_WARNING("Entered");
 						meshFilter->NormalizeModelScale();
 						break;
 					}
@@ -183,9 +177,7 @@ namespace Directus
 	void SetGameObjectTransform(weakGameObj gameObject, aiNode* node)
 	{
 		if (gameObject.expired())
-		{
 			return;
-		}
 
 		aiMatrix4x4 mAssimp = node->mTransformation;
 		Vector3 position;
@@ -231,9 +223,13 @@ namespace Directus
 		// Note: In case this is the root node, aiNode.mName will be "RootNode". 
 		// To get a more descriptive name we instead get the name from the file path.
 		if (assimpNode->mParent)
+		{
 			newNode.lock()->SetName(assimpNode->mName.C_Str());
+		}
 		else
+		{
 			newNode.lock()->SetName(FileSystem::GetFileNameNoExtensionFromPath(m_filePath));
+		}
 		//===========================================================================
 
 		// Set the transform of parentNode as the parent of the newNode's transform
@@ -276,9 +272,7 @@ namespace Directus
 	void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, weakGameObj gameobject)
 	{
 		if (gameobject.expired())
-		{
 			return;
-		}
 
 		vector<VertexPosTexNorTan> vertices;
 		vector<unsigned int> indices;
@@ -290,11 +284,11 @@ namespace Directus
 			vertex.position = ToVector3(mesh->mVertices[vertexIndex]);
 
 			// get the normal
-			if (NULL != mesh->mNormals)
+			if (nullptr != mesh->mNormals)
 				vertex.normal = ToVector3(mesh->mNormals[vertexIndex]);
 
 			// get the tangent
-			if (NULL != mesh->mTangents)
+			if (nullptr != mesh->mTangents)
 				vertex.tangent = ToVector3(mesh->mTangents[vertexIndex]);
 
 			// get the texture coordinates
