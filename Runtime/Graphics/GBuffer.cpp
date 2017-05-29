@@ -60,10 +60,11 @@ namespace Directus
 
 	bool GBuffer::Create(int width, int height)
 	{
-		if (!m_graphics->GetDevice()) 
-		{
+		if (!m_graphics)
 			return false;
-		}
+
+		if (!m_graphics->GetDevice()) 
+			return false;
 
 		// Store the width and height of the render texture.
 		m_width = width;

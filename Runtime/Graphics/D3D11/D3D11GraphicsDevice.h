@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "../IGraphicsDevice.h"
 #include <d3d11.h>
-#include <string>
+#include <vector>
 //=============================
 
 namespace Directus
@@ -76,6 +76,10 @@ namespace Directus
 		//= HELPER FUNCTIONS =================================================================================================
 		bool CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain);
 		bool CreateRasterizerState(D3D11_CULL_MODE cullMode, D3D11_FILL_MODE fillMode, ID3D11RasterizerState** rasterizer);
+		std::vector<IDXGIAdapter*> GetAvailableAdapters(IDXGIFactory* factory);	
+		IDXGIAdapter* GetAdapterWithTheHighestVRAM(IDXGIFactory* factory);
+		IDXGIAdapter* GetAdapterByVendorID(IDXGIFactory* factory, unsigned int vendorID);
+		std::string GetAdapterDescription(IDXGIAdapter* adapter);
 		//====================================================================================================================
 
 		D3D_DRIVER_TYPE m_driverType;
@@ -103,10 +107,5 @@ namespace Directus
 		ID3D11BlendState* m_blendStateAlphaDisabled;
 		HWND m_drawHandle;
 		bool m_initialized;
-
-		//= ADAPTER ==============
-		int m_adapterVRAM;
-		std::string m_adapterDesc;
-		//========================
 	};
 }

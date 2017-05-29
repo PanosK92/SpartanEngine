@@ -71,8 +71,6 @@ namespace Directus
 		m_displayModeCount = 0;
 		m_refreshRateNumerator = 0;
 		m_refreshRateDenominator = 0;
-		m_adapterVRAM = 0;
-		m_adapterDesc = DATA_NOT_ASSIGNED;
 		m_depthStencilBuffer = nullptr;
 		m_depthStencilStateEnabled = nullptr;
 		m_depthStencilStateDisabled = nullptr;
@@ -134,87 +132,65 @@ namespace Directus
 		//==============================================================================
 
 		//= ADAPTER ====================================================================
-		vector<IDXGIAdapter*> adapters;
-		IDXGIAdapter* adapter;
-		for (int i = 0; factory->EnumAdapters(0, &adapter) != DXGI_ERROR_NOT_FOUND; i++)
-		{
-			adapters.push_back(adapter);
-		}
+		IDXGIAdapter* adapter = GetAdapterWithTheHighestVRAM(factory); // usually the dedicaded one
 		factory->Release();
-
-		if (adapters.empty())
+		if (!adapter)
 		{
-			LOG_ERROR("Failed to create graphics interface adapter.");
+			LOG_ERROR("Couldn't find any adapters.");
 			return false;
 		}
-		adapter = adapters.back();
+		LOG_INFO("Primary adapter: " + GetAdapterDescription(adapter));
 		//==============================================================================
 
 		//= ADAPTER OUTPUT / DISPLAY MODE ==============================================
-		IDXGIOutput* adapterOutput;
-
-		// Enumerate the primary adapter output (monitor).
-		result = adapter->EnumOutputs(0, &adapterOutput);
-		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to enumerate the primary adapter output.");
-			return false;
-		}
-		// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the adapter output (monitor).
-		result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, nullptr);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to get adapter's display modes.");
-			return false;
-		}
-
-		// Create display mode list
-		m_displayModeList = new DXGI_MODE_DESC[m_displayModeCount];
-		if (!m_displayModeList)
-		{
-			LOG_ERROR("Failed to create a display mode list.");
-			return false;
-		}
-
-		// Now fill the display mode list structures.
-		result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, m_displayModeList);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to fill the display mode list structures.");
-			return false;
-		}
-		// Release the adapter output.
-		adapterOutput->Release();
-
-		// Go through all the display modes and find the one that matches the screen width and height.
-		for (unsigned int i = 0; i < m_displayModeCount; i++)
-			if (m_displayModeList[i].Width == (UINT)RESOLUTION_WIDTH && m_displayModeList[i].Height == (UINT)RESOLUTION_HEIGHT)
+			// Enumerate the primary adapter output (monitor).
+			IDXGIOutput* adapterOutput;
+			result = adapter->EnumOutputs(0, &adapterOutput);
+			if (FAILED(result))
 			{
-				m_refreshRateNumerator = (UINT)m_displayModeList[i].RefreshRate.Numerator;
-				m_refreshRateDenominator = (UINT)m_displayModeList[i].RefreshRate.Denominator;
-				break;
+				LOG_ERROR("Failed to enumerate the primary adapter output.");
+				return false;
 			}
 
-		//==============================================================================
+			// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the adapter output (monitor).
+			result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, nullptr);
+			if (FAILED(result))
+			{
+				LOG_ERROR("Failed to get adapter's display modes.");
+				return false;
+			}
 
-		//= ADAPTER DESCRIPTION ========================================================
-		DXGI_ADAPTER_DESC adapterDesc;
-		result = adapter->GetDesc(&adapterDesc);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to get adapter description.");
-			return false;
+			// Create display mode list
+			m_displayModeList = new DXGI_MODE_DESC[m_displayModeCount];
+			if (!m_displayModeList)
+			{
+				LOG_ERROR("Failed to create a display mode list.");
+				return false;
+			}
+
+			// Now fill the display mode list structures.
+			result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &m_displayModeCount, m_displayModeList);
+			if (FAILED(result))
+			{
+				LOG_ERROR("Failed to fill the display mode list structures.");
+				return false;
+			}
+			// Release the adapter output.
+			adapterOutput->Release();
+
+			// Go through all the display modes and find the one that matches the screen width and height.
+			for (unsigned int i = 0; i < m_displayModeCount; i++)
+			{
+				if (m_displayModeList[i].Width == (UINT)RESOLUTION_WIDTH && m_displayModeList[i].Height == (UINT)RESOLUTION_HEIGHT)
+				{
+					m_refreshRateNumerator = (UINT)m_displayModeList[i].RefreshRate.Numerator;
+					m_refreshRateDenominator = (UINT)m_displayModeList[i].RefreshRate.Denominator;
+					break;
+				}
+			}
 		}
-		adapter->Release();
-
-		m_adapterVRAM = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024); // MB
-
-		char ch[128];
-		char DefChar = ' ';
-		WideCharToMultiByte(CP_ACP, 0, adapterDesc.Description, -1, ch, 128, &DefChar, nullptr);
-		m_adapterDesc = ch;
-		LOG_INFO("Primary adapter: " + m_adapterDesc + " " + to_string(m_adapterVRAM) + " MB");
-		//====================================================================================
+		//==============================================================================
 
 		// Create swap chain
 		if (!CreateDeviceAndSwapChain(&m_device, &m_deviceContext, &m_swapChain))
@@ -223,25 +199,28 @@ namespace Directus
 		}
 
 		//= RENDER TARGET VIEW =========================================================
-		ID3D11Texture2D* backBufferPtr;
-		// Get the pointer to the back buffer.
-		result = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)(&backBufferPtr));
-		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to get the pointer to the back buffer.");
-			return false;
-		}
+			ID3D11Texture2D* backBufferPtr;
+			// Get the pointer to the back buffer.
+			result = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)(&backBufferPtr));
+			if (FAILED(result))
+			{
+				LOG_ERROR("Failed to get the pointer to the back buffer.");
+				return false;
+			}
 
-		// Create the render target view with the back buffer pointer.
-		result = m_device->CreateRenderTargetView(backBufferPtr, nullptr, &m_renderTargetView);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create the render target view.");
-			return false;
+			// Create the render target view with the back buffer pointer.
+			result = m_device->CreateRenderTargetView(backBufferPtr, nullptr, &m_renderTargetView);
+			if (FAILED(result))
+			{
+				LOG_ERROR("Failed to create the render target view.");
+				return false;
+			}
+
+			// Release pointer to the back buffer
+			backBufferPtr->Release();
+			backBufferPtr = nullptr;
 		}
-		// Release pointer to the back buffer
-		backBufferPtr->Release();
-		backBufferPtr = nullptr;
 		//==============================================================================
 
 		SetViewport(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
@@ -253,55 +232,59 @@ namespace Directus
 		//=========================
 
 		//= RASTERIZERS ========================================================================
-		if (!CreateRasterizerState(D3D11_CULL_BACK, D3D11_FILL_SOLID, &m_rasterStateCullBack))
 		{
-			LOG_ERROR("Failed to create the rasterizer state.");
-			return false;
-		}
+			if (!CreateRasterizerState(D3D11_CULL_BACK, D3D11_FILL_SOLID, &m_rasterStateCullBack))
+			{
+				LOG_ERROR("Failed to create the rasterizer state.");
+				return false;
+			}
 
-		if (!CreateRasterizerState(D3D11_CULL_FRONT, D3D11_FILL_SOLID, &m_rasterStateCullFront))
-		{
-			LOG_ERROR("Failed to create the rasterizer state.");
-			return false;
-		}
+			if (!CreateRasterizerState(D3D11_CULL_FRONT, D3D11_FILL_SOLID, &m_rasterStateCullFront))
+			{
+				LOG_ERROR("Failed to create the rasterizer state.");
+				return false;
+			}
 
-		if (!CreateRasterizerState(D3D11_CULL_NONE, D3D11_FILL_SOLID, &m_rasterStateCullNone))
-		{
-			LOG_ERROR("Failed to create the rasterizer state.");
-			return false;
-		}
+			if (!CreateRasterizerState(D3D11_CULL_NONE, D3D11_FILL_SOLID, &m_rasterStateCullNone))
+			{
+				LOG_ERROR("Failed to create the rasterizer state.");
+				return false;
+			}
 
-		// Set default rasterizer state
-		m_deviceContext->RSSetState(m_rasterStateCullBack);
+			// Set default rasterizer state
+			m_deviceContext->RSSetState(m_rasterStateCullBack);
+		}
 		//=======================================================================================
 
 		//= BLEND STATE ================================================================
 		D3D11_BLEND_DESC blendStateDesc;
-		ZeroMemory(&blendStateDesc, sizeof(blendStateDesc));
-		blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
-		blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-		blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-		blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-		blendStateDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-		blendStateDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-		blendStateDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-		blendStateDesc.RenderTarget[0].RenderTargetWriteMask = 0x0f;
+		{
+			ZeroMemory(&blendStateDesc, sizeof(blendStateDesc));
+			blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
+			blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+			blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+			blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+			blendStateDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+			blendStateDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+			blendStateDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+			blendStateDesc.RenderTarget[0].RenderTargetWriteMask = 0x0f;
 
-		// Create a blending state with alpha blending enabled
-		blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
-		result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaEnabled);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create blend state.");
-			return false;
-		}
-		// Create a blending state with alpha blending disabled
-		blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)false;
-		result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaDisabled);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create blend state.");
-			return false;
+			// Create a blending state with alpha blending enabled
+			blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
+			result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaEnabled);
+			if (FAILED(result))
+			{
+				LOG_ERROR("Failed to create blend state.");
+				return false;
+			}
+			// Create a blending state with alpha blending disabled
+			blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)false;
+			result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaDisabled);
+			if (FAILED(result))
+			{
+				LOG_ERROR("Failed to create blend state.");
+				return false;
+			}
 		}
 		//==============================================================================
 
@@ -628,11 +611,12 @@ namespace Directus
 	}
 
 	//= HELPER FUNCTIONS ================================================================================
-	
+
 	bool D3D11GraphicsDevice::CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain)
 	{
 		DXGI_SWAP_CHAIN_DESC swapChainDesc;
 		ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
+
 		swapChainDesc.BufferCount = 1;
 		swapChainDesc.BufferDesc.Width = RESOLUTION_WIDTH;
 		swapChainDesc.BufferDesc.Height = RESOLUTION_HEIGHT;
@@ -695,5 +679,80 @@ namespace Directus
 		}
 
 		return true;
+	}
+
+	vector<IDXGIAdapter*> D3D11GraphicsDevice::GetAvailableAdapters(IDXGIFactory* factory)
+	{
+		UINT i = 0;
+		IDXGIAdapter* pAdapter;
+		vector <IDXGIAdapter*> adapters;
+		while (factory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND)
+		{
+			adapters.push_back(pAdapter);
+			++i;
+		}
+
+		return adapters;
+	}
+
+	IDXGIAdapter* D3D11GraphicsDevice::GetAdapterWithTheHighestVRAM(IDXGIFactory* factory)
+	{
+		IDXGIAdapter* maxAdapter = nullptr;
+		size_t maxVRAM = -INFINITY;
+
+		auto adapters = GetAvailableAdapters(factory);
+		DXGI_ADAPTER_DESC adapterDesc;
+		for (const auto& adapter : adapters)
+		{
+			adapter->GetDesc(&adapterDesc);
+
+			if (adapterDesc.DedicatedVideoMemory > maxVRAM)
+			{
+				maxVRAM = adapterDesc.DedicatedVideoMemory;
+				maxAdapter = adapter;
+			}
+		}
+
+		return maxAdapter;
+	}
+
+	IDXGIAdapter* D3D11GraphicsDevice::GetAdapterByVendorID(IDXGIFactory* factory, unsigned vendorID)
+	{
+		// Nvidia: 0x10DE
+		// AMD: 0x1002, 0x1022
+		// Intel: 0x163C, 0x8086, 0x8087
+
+		auto adapters = GetAvailableAdapters(factory);
+
+		DXGI_ADAPTER_DESC adapterDesc;
+		for (const auto& adapter : adapters)
+		{
+			adapter->GetDesc(&adapterDesc);
+			if (vendorID == adapterDesc.VendorId)
+				return adapter;
+		}
+
+		return nullptr;
+	}
+
+	string D3D11GraphicsDevice::GetAdapterDescription(IDXGIAdapter* adapter)
+	{
+		if (!adapter)
+			return DATA_NOT_ASSIGNED;
+
+		DXGI_ADAPTER_DESC adapterDesc;
+		HRESULT result = adapter->GetDesc(&adapterDesc);
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to get adapter description.");
+			return DATA_NOT_ASSIGNED;
+		}
+
+		int adapterVRAM = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024); // MB
+		char adapterName[128];
+		char DefChar = ' ';
+		WideCharToMultiByte(CP_ACP, 0, adapterDesc.Description, -1, adapterName, 128, &DefChar, nullptr);
+
+		return string(adapterName) + " (" + to_string(adapterVRAM) + " MB)";
 	}
 }

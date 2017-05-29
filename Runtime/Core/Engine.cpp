@@ -153,6 +153,7 @@ namespace Directus
 			return false;
 		}
 
+		LOG_INFO("Initialized successfully");
 		return true;
 	}
 

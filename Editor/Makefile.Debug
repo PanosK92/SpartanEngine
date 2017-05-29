@@ -1002,7 +1002,7 @@ compiler_moc_header_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -1356,7 +1356,7 @@ compiler_moc_header_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -1836,7 +1836,7 @@ compiler_moc_header_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -2175,7 +2175,7 @@ compiler_moc_header_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -2812,14 +2812,14 @@ compiler_moc_header_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Math\Vector2.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Math\Vector4.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
 		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
 		..\Runtime\Core\Settings.h \
-		..\Runtime\Math\Vector2.h \
 		DirectusIComponent.h \
 		..\Runtime\Core\GameObject.h \
 		..\Runtime\Core\GUIDGenerator.h \
@@ -2981,14 +2981,14 @@ compiler_moc_header_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Math\Vector2.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Math\Vector4.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
 		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
 		..\Runtime\Core\Settings.h \
-		..\Runtime\Math\Vector2.h \
 		DirectusComboSliderText.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QSlider \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qslider.h \
@@ -5224,14 +5224,14 @@ compiler_moc_header_clean:
 		..\Runtime\Core\Subsystem.h \
 		..\Runtime\Core\Helper.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Math\Vector2.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Math\Vector4.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
 		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
 		..\Runtime\Core\Settings.h \
-		..\Runtime\Math\Vector2.h \
 		DirectusMaterialDropTarget.h \
 		..\Binaries\Release\MetaData\Qt_MOCFiles\moc_predefs.h \
 		C:\Qt\5.9\msvc2017_64\bin\moc.exe
@@ -5365,14 +5365,14 @@ compiler_moc_header_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Math\Vector2.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Math\Vector4.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
 		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
 		..\Runtime\Core\Settings.h \
-		..\Runtime\Math\Vector2.h \
 		DirectusMaterialTextureDropTarget.h \
 		..\Binaries\Release\MetaData\Qt_MOCFiles\moc_predefs.h \
 		C:\Qt\5.9\msvc2017_64\bin\moc.exe
@@ -6276,7 +6276,7 @@ compiler_uic_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -6625,7 +6625,7 @@ compiler_uic_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -7213,7 +7213,7 @@ compiler_uic_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -7436,7 +7436,7 @@ compiler_uic_clean:
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -7941,287 +7941,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		AboutDialog.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QDialog \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qdialog.h \
-		..\Binaries\Release\MetaData\Qt_UICFiles\ui_editor.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QLocale \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QVariant \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QAction \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qaction.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qactiongroup.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QApplication \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qapplication.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qcoreapplication.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qeventloop.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qdesktopwidget.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qguiapplication.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qinputmethod.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QButtonGroup \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qbuttongroup.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QGridLayout \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qgridlayout.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlayout.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlayoutitem.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qboxlayout.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QHBoxLayout \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QHeaderView \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qheaderview.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractitemview.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractscrollarea.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qframe.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qabstractitemmodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qitemselectionmodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractitemdelegate.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qstyleoption.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractspinbox.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qvalidator.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qregularexpression.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qslider.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractslider.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qstyle.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qtabbar.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qrubberband.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QMenu \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qmenu.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QMenuBar \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qmenubar.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QPushButton \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qpushbutton.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractbutton.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QSpacerItem \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QSplitter \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qsplitter.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QStatusBar \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qstatusbar.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QTabWidget \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QVBoxLayout \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QWidget \
-		DirectusConsole.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QListWidget \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlistwidget.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlistview.h \
-		DirectusCore.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QObject \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\QPaintEngine \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qpaintengine.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qpainter.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qtextoption.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qpen.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\QResizeEvent \
-		..\Runtime\Core\Engine.h \
-		..\Runtime\Core\Context.h \
-		..\Runtime\Core\Subsystem.h \
-		..\Runtime\Core\Helper.h \
-		..\Runtime\Socket\Socket.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QTimer \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qtimer.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qbasictimer.h \
-		DirectusStatsLabel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QLineEdit \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlineedit.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qtextcursor.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qtextformat.h \
-		..\Runtime\Logging\ILogger.h \
-		DirectusDirExplorer.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QTreeView \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qtreeview.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QFileSystemModel \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qfilesystemmodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qdir.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qfileinfo.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qdiriterator.h \
-		DirectusFileExplorer.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QListView \
-		DirectusIconProvider.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QFileIconProvider \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qfileiconprovider.h \
-		..\Runtime\Resource\Import\ImageImporter.h \
-		DirectusFileDialog.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QFileDialog \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qfiledialog.h \
-		DirectusAssetLoader.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\QPixmap \
-		DirectusProgressBar.h \
-		DirectusInspector.h \
-		..\Runtime\Core\GameObject.h \
-		..\Runtime\Core\GUIDGenerator.h \
-		..\Runtime\Components\IComponent.h \
-		..\Runtime\Core\Scene.h \
-		..\Runtime\Math\Vector3.h \
-		..\Runtime\Math\MathHelper.h \
-		..\Runtime\Multithreading\Multithreading.h \
-		DirectusTransform.h \
-		..\Runtime\Math\Quaternion.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\QDoubleValidator \
-		DirectusComboLabelText.h \
-		DirectusAdjustLabel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QLabel \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlabel.h \
-		DirectusIComponent.h \
-		DirectusDropDownButton.h \
-		DirectusCamera.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QComboBox \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qcombobox.h \
-		..\Runtime\Components\Camera.h \
-		..\Runtime\Math\Vector2.h \
-		..\Runtime\Math\Vector4.h \
-		..\Runtime\Math\Matrix.h \
-		..\Runtime\Math\Frustrum.h \
-		..\Runtime\Math\Plane.h \
-		DirectusComboSliderText.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QSlider \
-		DirectusColorPicker.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QColorDialog \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qcolordialog.h \
-		DirectusMeshRenderer.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QCheckBox \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qcheckbox.h \
-		DirectusMaterialDropTarget.h \
-		..\Runtime\Graphics\Material.h \
-		..\Runtime\Graphics\Texture.h \
-		..\Runtime\Resource\Resource.h \
-		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
-		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
-		..\Runtime\Graphics\IGraphicsDevice.h \
-		..\Runtime\Graphics\GraphicsDefinitions.h \
-		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
-		..\Runtime\Core\Settings.h \
-		DirectusMaterial.h \
-		DirectusMaterialTextureDropTarget.h \
-		..\Runtime\Components\MeshRenderer.h \
-		DirectusCollider.h \
-		..\Runtime\Components\Collider.h \
-		..\Runtime\Graphics\Mesh.h \
-		..\Runtime\Graphics\Vertex.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QComboBox.h \
-		DirectusRigidBody.h \
-		..\Runtime\Components\RigidBody.h \
-		DirectusLight.h \
-		..\Runtime\Components\Light.h \
-		..\Runtime\Graphics\D3D11\D3D11RenderTexture.h \
-		DirectusScript.h \
-		..\Runtime\Components\Script.h \
-		..\Runtime\Scripting\ScriptInstance.h \
-		..\Runtime\Scripting\Scripting.h \
-		DirectusMeshFilter.h \
-		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
-		DirectusMeshCollider.h \
-		..\Runtime\Components\MeshCollider.h \
-		DirectusAudioSource.h \
-		DirectusAudioClipDropTarget.h \
-		..\Runtime\Components\AudioSource.h \
-		DirectusAudioListener.h \
-		..\Runtime\Components\AudioListener.h \
-		DirectusHierarchy.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QTreeWidget \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qtreewidget.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qtreewidgetitemiterator.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QtCore \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QtCoreDepends \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qabstractanimation.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qabstracteventdispatcher.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qabstractnativeeventfilter.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qabstractproxymodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qabstractstate.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qabstracttransition.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qanimationgroup.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qarraydataops.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qarraydatapointer.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qbitarray.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qbuffer.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qbytearraymatcher.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qcache.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qcollator.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qcommandlineoption.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qcommandlineparser.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qcryptographichash.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qdatetime.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qdeadlinetimer.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qelapsedtimer.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qeasingcurve.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qendian.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qeventtransition.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qexception.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qfactoryinterface.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qfileselector.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QStringList \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qfilesystemwatcher.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qfinalstate.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qfuture.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qfutureinterface.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qrunnable.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qresultstore.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qfuturesynchronizer.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qfuturewatcher.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qhistorystate.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qidentityproxymodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qisenum.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qjsonarray.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qjsonvalue.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qjsondocument.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qjsonobject.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qlibrary.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qlibraryinfo.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qversionnumber.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qlinkedlist.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qlockfile.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qloggingcategory.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qmath.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qmessageauthenticationcode.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qmetaobject.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qmimedata.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qmimedatabase.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qmimetype.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qobjectcleanuphandler.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qoperatingsystemversion.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qparallelanimationgroup.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qpauseanimation.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qplugin.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qpointer.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qpluginloader.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qprocess.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qpropertyanimation.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qvariantanimation.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qqueue.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qreadwritelock.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qresource.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qsavefile.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qscopedvaluerollback.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qsemaphore.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qsequentialanimationgroup.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qsettings.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qsharedmemory.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qsignalmapper.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qsignaltransition.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qsocketnotifier.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qsortfilterproxymodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qstack.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qstandardpaths.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qstate.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qstatemachine.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qstorageinfo.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qstringlistmodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qsystemsemaphore.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qtemporarydir.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QScopedPointer \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qtemporaryfile.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qtextboundaryfinder.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qtextcodec.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qthread.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qthreadpool.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qthreadstorage.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qtimeline.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qtimezone.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qtranslator.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qtypetraits.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\quuid.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qwaitcondition.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qwineventnotifier.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qxmlstream.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qtcoreversion.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\QMouseEvent \
-		DirectusPlayButton.h
+		..\Binaries\Release\MetaData\Qt_UICFiles\ui_editor.h
 
 ..\Binaries\Release\MetaData\Qt_ObjFiles\DirectusPlayButton.obj: DirectusPlayButton.cpp DirectusPlayButton.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QPushButton \
@@ -8457,47 +8177,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		C:\Qt\5.9\msvc2017_64\include\QtCore\qfiledevice.h \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\qvector2d.h \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\qtouchdevice.h \
-		..\Binaries\Release\MetaData\Qt_UICFiles\ui_AboutDialog.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QLocale \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QVariant \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QAction \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qaction.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qicon.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qactiongroup.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QApplication \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qapplication.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qcoreapplication.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qeventloop.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qdesktopwidget.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qguiapplication.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qinputmethod.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QButtonGroup \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qbuttongroup.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QHeaderView \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qheaderview.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractitemview.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractscrollarea.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qframe.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qabstractitemmodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qitemselectionmodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractitemdelegate.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qstyleoption.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractspinbox.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qvalidator.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qregularexpression.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qslider.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractslider.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qstyle.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qtabbar.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qtabwidget.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qrubberband.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QLabel \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlabel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QVBoxLayout \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qboxlayout.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlayout.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlayoutitem.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qgridlayout.h
+		..\Binaries\Release\MetaData\Qt_UICFiles\ui_AboutDialog.h
 
 ..\Binaries\Release\MetaData\Qt_ObjFiles\DirectusDirExplorer.obj: DirectusDirExplorer.cpp DirectusDirExplorer.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QTreeView \
@@ -8707,7 +8387,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -9059,7 +8739,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -9548,7 +9228,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -9888,7 +9568,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -10413,7 +10093,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -10594,14 +10274,14 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Math\Vector2.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Math\Vector4.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
 		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
 		..\Runtime\Core\Settings.h \
-		..\Runtime\Math\Vector2.h \
 		DirectusIComponent.h \
 		..\Runtime\Core\GameObject.h \
 		..\Runtime\Core\GUIDGenerator.h \
@@ -10794,14 +10474,14 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Math\Vector2.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Math\Vector4.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
 		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
 		..\Runtime\Core\Settings.h \
-		..\Runtime\Math\Vector2.h \
 		DirectusComboSliderText.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QSlider \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qslider.h \
@@ -11078,7 +10758,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		DirectusMaterial.h \
 		DirectusMaterialTextureDropTarget.h \
 		..\Runtime\Components\MeshRenderer.h \
@@ -11291,7 +10971,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -11511,7 +11191,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		DirectusMaterialDropTarget.h \
 		..\Runtime\Graphics\Material.h \
 		..\Runtime\Graphics\Texture.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -11728,7 +11408,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -11946,7 +11626,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		DirectusMaterialDropTarget.h \
 		..\Runtime\Graphics\Material.h \
 		..\Runtime\Graphics\Texture.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -12163,7 +11843,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -12747,7 +12427,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		DirectusMaterialDropTarget.h \
 		..\Runtime\Graphics\Material.h \
 		..\Runtime\Graphics\Texture.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		DirectusMaterial.h \
 		DirectusMaterialTextureDropTarget.h \
 		..\Runtime\Components\MeshRenderer.h \
@@ -13223,47 +12903,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		C:\Qt\5.9\msvc2017_64\include\QtCore\QTimer \
 		C:\Qt\5.9\msvc2017_64\include\QtCore\qtimer.h \
 		C:\Qt\5.9\msvc2017_64\include\QtCore\qbasictimer.h \
-		..\Binaries\Release\MetaData\Qt_UICFiles\ui_AssetLoadingDialog.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QLocale \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\QVariant \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QAction \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qaction.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qicon.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qactiongroup.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QApplication \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qapplication.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qcoreapplication.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qeventloop.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qdesktopwidget.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qguiapplication.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qinputmethod.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QButtonGroup \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qbuttongroup.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QHBoxLayout \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qboxlayout.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlayout.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlayoutitem.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qgridlayout.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QHeaderView \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qheaderview.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractitemview.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractscrollarea.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qframe.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qabstractitemmodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qitemselectionmodel.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractitemdelegate.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qstyleoption.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractspinbox.h \
-		C:\Qt\5.9\msvc2017_64\include\QtGui\qvalidator.h \
-		C:\Qt\5.9\msvc2017_64\include\QtCore\qregularexpression.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qslider.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractslider.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qstyle.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qtabbar.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qtabwidget.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qrubberband.h \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QProgressBar \
-		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qprogressbar.h
+		..\Binaries\Release\MetaData\Qt_UICFiles\ui_AssetLoadingDialog.h
 
 ..\Binaries\Release\MetaData\Qt_ObjFiles\DirectusFileDialog.obj: DirectusFileDialog.cpp DirectusFileDialog.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QFileDialog \
@@ -13575,7 +13215,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -13815,14 +13455,14 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Core\Subsystem.h \
 		..\Runtime\Core\Helper.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Math\Vector2.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Math\Vector4.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
 		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
 		..\Runtime\Core\Settings.h \
-		..\Runtime\Math\Vector2.h \
 		DirectusCore.h \
 		C:\Qt\5.9\msvc2017_64\include\QtCore\QObject \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QWidget \
@@ -14051,14 +13691,14 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Math\Vector2.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Math\Vector4.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
 		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
 		..\Runtime\Core\Settings.h \
-		..\Runtime\Math\Vector2.h \
 		DirectusAssetLoader.h \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\QPixmap \
 		DirectusProgressBar.h \
@@ -14341,7 +13981,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -14558,7 +14198,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
 		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
@@ -14775,7 +14415,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Material.h \
 		..\Runtime\Graphics\Texture.h \
 		..\Runtime\Resource\Resource.h \
-		..\Runtime\Graphics\D3D11\D3D11Texture.h \
+		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
 		..\Runtime\Graphics\GraphicsDefinitions.h \
