@@ -125,8 +125,9 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
     event->setDropAction(Qt::MoveAction);
     event->accept();
 
-    // Get the ID of the texture being dragged
-    std::string imagePath = event->mimeData()->text().toStdString();
+    // Get the path of the texture being dragged
+    QString absolutePath = event->mimeData()->text();
+    std::string imagePath = FileSystem::GetRelativeFilePath(absolutePath.toStdString());
 
     if (FileSystem::IsSupportedImageFile(imagePath))
     {
@@ -135,20 +136,16 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
         if (!material)
             return;
 
-        // This is essential to avoid an absolute path mess,
-        // everything must relative to the engine directory
-        imagePath = FileSystem::GetRelativeFilePath(imagePath);
-
         // Set the texture to the material
         auto context = m_inspector->GetSocket()->GetContext();
         auto texture = context->GetSubsystem<ResourceManager>()->Load<Texture>(imagePath);
-        material->SetTexture(texture);
 
-        // Save the changes
-        material->SaveToExistingDirectory();
-
-        // Load the image for the slot
-        LoadImageAsync(imagePath);
+        if (!texture.expired())
+        {
+            material->SetTexture(texture);
+            material->SaveToExistingDirectory();
+            LoadImageAsync(imagePath);
+        }
     }
 }
 //=========================================================================================

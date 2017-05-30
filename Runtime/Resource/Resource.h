@@ -40,7 +40,7 @@ namespace Directus
 		Script_Resource
 	};
 
-	class Resource
+	class DllExport Resource
 	{
 	public:
 		virtual ~Resource() {}
