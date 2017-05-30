@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ====================
 #include <memory>
 #include "../Core/SubSystem.h"
 #include "ResourceCache.h"
@@ -29,11 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "Import/ModelImporter.h"
 #include "Import/ImageImporter.h"
-//=============================
+//===============================
 
 namespace Directus
 {
-	class ResourceManager : public Subsystem
+	class DllExport ResourceManager : public Subsystem
 	{
 	public:
 		ResourceManager(Context* context);
@@ -58,9 +58,12 @@ namespace Directus
 			std::shared_ptr<Resource> resource = ToBaseResourceShared(derivedResource);
 
 			if (resource->LoadFromFile(filePath))
+			{
 				m_resourceCache->Add(resource);
-
-			return GetResourceByPath<T>(filePath);
+			}
+			
+			auto typedResource = GetResourceByPath<T>(filePath);
+			return typedResource;
 		}
 
 		// Adds a resource into the resource cache
@@ -96,6 +99,8 @@ namespace Directus
 		std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
 		{
 			std::shared_ptr<Resource> resource = m_resourceCache->GetByPath(filePath);
+			auto typedResource = ToDerivedResourceWeak<T>(resource);
+
 			return ToDerivedResourceWeak<T>(resource);
 		}
 
@@ -110,7 +115,9 @@ namespace Directus
 				bool validCasting = !typedResource.expired();
 
 				if (validCasting)
+				{
 					typedResources.push_back(typedResource);
+				}
 			}
 			return typedResources;
 		}

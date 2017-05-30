@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ResourceCache
+	class DllExport ResourceCache
 	{
 	public:
 		ResourceCache() {}
@@ -75,8 +75,10 @@ namespace Directus
 		std::shared_ptr<Resource> GetByPath(const std::string& filePath)
 		{
 			for (const auto& resource : m_resources)
+			{
 				if (resource->GetResourceFilePath() == filePath)
 					return resource;
+			}
 
 			return std::shared_ptr<Resource>();
 		}

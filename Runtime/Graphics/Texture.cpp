@@ -115,9 +115,8 @@ namespace Directus
 	bool Texture::LoadFromFile(const string& filePath)
 	{
 		auto graphicsDevice = m_context->GetSubsystem<Graphics>()->GetDevice();
-		if (!graphicsDevice) {
+		if (!graphicsDevice)
 			return false;
-		}
 
 		// Load DDS (too bored to implement dds cubemap support in the ImageImporter)
 		if (FileSystem::GetExtensionFromPath(filePath) == ".dds")
@@ -160,8 +159,12 @@ namespace Directus
 		imageImp->Clear();
 
 		if (!LoadMetadata()) // Load metadata file
+		{
 			if (!SaveMetadata()) // If a metadata file doesn't exist, create one
+			{
 				return false; // if that failed too, well at least get the file path right mate
+			}
+		}
 
 		return true;
 	}
