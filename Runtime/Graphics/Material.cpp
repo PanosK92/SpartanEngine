@@ -181,7 +181,6 @@ namespace Directus
 	// Set texture from an existing texture
 	void Material::SetTexture(weak_ptr<Texture> texture)
 	{
-		LOG_INFO("1");
 		auto texShared = texture.lock();
 
 		// Make sure this texture exists
@@ -191,8 +190,6 @@ namespace Directus
 			return;
 		}
 
-		LOG_INFO("2");
-
 		// Add it
 		m_textures.insert(make_pair(make_pair(texShared->GetFilePathTexture(), texShared->GetTextureType()), texture));
 
@@ -201,8 +198,6 @@ namespace Directus
 
 		// Acquire and appropriate shader
 		AcquireShader();
-
-		LOG_INFO("3");
 	}
 
 	weak_ptr<Texture> Material::GetTextureByType(TextureType type)
