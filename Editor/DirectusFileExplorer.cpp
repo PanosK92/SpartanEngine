@@ -144,7 +144,7 @@ void DirectusFileExplorer::mouseMoveEvent(QMouseEvent* event)
     QMimeData* mimeData = new QMimeData;
 
     QString filePath = m_fileModel->fileInfo(selectedItems[0]).absoluteFilePath();
-    filePath = QString::fromStdString(FileSystem::GetRelativePathFromAbsolutePath(filePath.toStdString()));
+    filePath = QString::fromStdString(FileSystem::GetRelativeFilePath(filePath.toStdString()));
     mimeData->setText(filePath);
     drag->setMimeData(mimeData);
 

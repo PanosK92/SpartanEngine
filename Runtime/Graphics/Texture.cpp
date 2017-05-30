@@ -136,28 +136,28 @@ namespace Directus
 		}
 
 		// Load texture
-		weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
-		bool loaded = m_generateMipchain ? imageImp.lock()->LoadAndCreateMipchain(filePath) : imageImp.lock()->Load(filePath);
+		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter().lock();
+		bool loaded = m_generateMipchain ? imageImp->LoadAndCreateMipchain(filePath) : imageImp->Load(filePath);
 		if (!loaded)
 		{
 			LOG_ERROR("Failed to load texture \"" + filePath + "\".");
-			imageImp.lock()->Clear();
+			imageImp->Clear();
 			return false;
 		}
 
 		// Extract any metadata we can from the ImageImporter
-		m_resourceFilePath = imageImp.lock()->GetPath();
+		m_resourceFilePath = imageImp->GetPath();
 		m_resourceName = FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture());
-		m_width = imageImp.lock()->GetWidth();
-		m_height = imageImp.lock()->GetHeight();
-		m_grayscale = imageImp.lock()->IsGrayscale();
-		m_transparency = imageImp.lock()->IsTransparent();
+		m_width = imageImp->GetWidth();
+		m_height = imageImp->GetHeight();
+		m_grayscale = imageImp->IsGrayscale();
+		m_transparency = imageImp->IsTransparent();
 
-		if (!CreateShaderResourceView())
+		if (!CreateShaderResource())
 			return false;
 
 		// Free any memory allocated by the ImageImporter
-		imageImp.lock()->Clear();
+		imageImp->Clear();
 
 		if (!LoadMetadata()) // Load metadata file
 			if (!SaveMetadata()) // If a metadata file doesn't exist, create one
@@ -183,7 +183,7 @@ namespace Directus
 		return (void**)m_texture->GetShaderResourceView();
 	}
 
-	bool Texture::CreateShaderResourceView()
+	bool Texture::CreateShaderResource()
 	{
 		if (!m_context)
 			return false;

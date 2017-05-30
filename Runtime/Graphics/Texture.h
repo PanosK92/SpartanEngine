@@ -90,6 +90,6 @@ namespace Directus
 		bool m_generateMipchain;
 		std::unique_ptr<D3D11Texture> m_texture;
 
-		bool CreateShaderResourceView();
+		bool CreateShaderResource();
 	};
 }

@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Resource/ResourceManager.h"
 #include "Shaders/ShaderVariation.h"
+#include "../Logging/Log.h"
 //======================================
 
 //= NAMESPACES ================
@@ -180,12 +181,17 @@ namespace Directus
 	// Set texture from an existing texture
 	void Material::SetTexture(weak_ptr<Texture> texture)
 	{
+		auto texShared = texture.lock();
+
 		// Make sure this texture exists
-		if (texture.expired())
+		if (!texShared)
+		{
+			LOG_ERROR("Can't set uninitialized material texture.");
 			return;
+		}
 
 		// Add it
-		m_textures.insert(make_pair(make_pair(texture.lock()->GetFilePathTexture(), texture.lock()->GetTextureType()), texture));
+		m_textures.insert(make_pair(make_pair(texShared->GetFilePathTexture(), texShared->GetTextureType()), texture));
 
 		// Adjust texture multipliers
 		TextureBasedMultiplierAdjustment();
@@ -197,8 +203,10 @@ namespace Directus
 	weak_ptr<Texture> Material::GetTextureByType(TextureType type)
 	{
 		for (const auto& it : m_textures)
+		{
 			if (it.first.second == type)
 				return it.second;
+		}
 
 		return weak_ptr<Texture>();
 	}
@@ -206,8 +214,10 @@ namespace Directus
 	bool Material::HasTextureOfType(TextureType type)
 	{
 		for (const auto& it : m_textures)
+		{
 			if (it.first.second == type)
 				return true;
+		}
 
 		return false;
 	}
@@ -215,8 +225,10 @@ namespace Directus
 	bool Material::HasTexture(const string& path)
 	{
 		for (const auto& it : m_textures)
+		{
 			if (it.first.first == path)
 				return true;
+		}
 
 		return false;
 	}
@@ -224,8 +236,10 @@ namespace Directus
 	string Material::GetTexturePathByType(TextureType type)
 	{
 		for (const auto& it : m_textures)
+		{
 			if (it.first.second == type)
 				return it.first.first;
+		}
 
 		return (string)DATA_NOT_ASSIGNED;
 	}
@@ -235,7 +249,9 @@ namespace Directus
 		vector<string> paths;
 
 		for (auto it : m_textures)
+		{
 			paths.push_back(it.first.first);
+		}
 
 		return paths;
 	}
@@ -245,9 +261,7 @@ namespace Directus
 	void Material::AcquireShader()
 	{
 		if (!m_context)
-		{
 			return;
-		}
 
 		// Add a shader to the pool based on this material, if a 
 		// matching shader already exists, it will be returned.

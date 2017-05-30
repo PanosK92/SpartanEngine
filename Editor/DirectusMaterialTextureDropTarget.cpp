@@ -130,21 +130,22 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
 
     if (FileSystem::IsSupportedImageFile(imagePath))
     {
-        // This is essential to avoid an absolute path mess. Everything is relative.
-        imagePath = FileSystem::GetRelativePathFromAbsolutePath(imagePath);
-
         // Get the currently inspected material
-        auto material = m_inspector->GetMaterialComponent()->GetInspectedMaterial();
-        if (material.expired())
+        auto material = m_inspector->GetMaterialComponent()->GetInspectedMaterial().lock();
+        if (!material)
             return;
+
+        // This is essential to avoid an absolute path mess,
+        // everything must relative to the engine directory
+        imagePath = FileSystem::GetRelativeFilePath(imagePath);
 
         // Set the texture to the material
         auto context = m_inspector->GetSocket()->GetContext();
         auto texture = context->GetSubsystem<ResourceManager>()->Load<Texture>(imagePath);
-        material.lock()->SetTexture(texture);
+        material->SetTexture(texture);
 
         // Save the changes
-        material.lock()->SaveToExistingDirectory();
+        material->SaveToExistingDirectory();
 
         // Load the image for the slot
         LoadImageAsync(imagePath);
