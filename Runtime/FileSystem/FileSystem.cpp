@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============
+//= INCLUDES ====================
 #include "FileSystem.h"
 #include "dirent.h"
 #include <locale>
@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Material.h"
 #include <direct.h>
 #include "../Logging/Log.h"
-//========================
+#include <regex>
+//===============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -137,21 +138,6 @@ namespace Directus
 
 		// returns extension with dot
 		return path;
-	}
-
-	string FileSystem::GetRelativePathFromAbsolutePath(const string& filePath)
-	{
-		// NOTE: This function assumes that the path resolves somewhere 
-		// inside the folder "Assets" (The default engine folder).
-		// D:\Projects\Directus3D\Build\Assets\Models\cube\tex.jpg --> Assets\Models\cube\tex.jpg
-		// It removes everything before the folder "Assets", making the path relative to the engine
-
-		size_t position = filePath.find("Assets");
-
-		if (position == string::npos)
-			return filePath;
-
-		return filePath.substr(position);
 	}
 
 	vector<string> FileSystem::GetSupportedImageFileFormats(bool includeUppercase)
@@ -495,7 +481,144 @@ namespace Directus
 	{
 		return GetExtensionFromPath(filePath) == METADATA_EXTENSION ? true : false;
 	}
+
 	//============================================================================================
+
+	//= STRING PARSING =====================================================================
+	string ToString(WCHAR* txt)
+	{
+		wstring ws(txt);
+		return string(ws.begin(), ws.end());
+	}
+
+	string FileSystem::GetRelativeFilePath(const string& absoluteFilePath)
+	{
+		string currentDir = GetEngineDirectory();
+		string absoluteDir = absoluteFilePath;
+
+		currentDir = ReplaceSequence(currentDir, "\"", "\\");
+		absoluteDir = ReplaceSequence(absoluteDir, "\"", "\\");
+
+		currentDir = ReplaceSequence(currentDir, "/", "\\");
+		absoluteDir = ReplaceSequence(absoluteDir, "/", "\\");	
+
+#define MAX_FILENAME_LEN 512
+#define ABSOLUTE_NAME_START 3
+#define SLASH '\\'
+
+		int afMarker = 0, rfMarker = 0;
+		int cdLen = 0, afLen = 0;
+		int i = 0;
+		int levels = 0;
+		static char relativeFilename[MAX_FILENAME_LEN + 1];
+		cdLen = strlen(currentDir.c_str());
+		afLen = strlen(absoluteDir.c_str());
+
+		// Make sure the paths are not too long or too short
+		if (cdLen > MAX_FILENAME_LEN || cdLen < ABSOLUTE_NAME_START + 1 ||
+			afLen > MAX_FILENAME_LEN || afLen < ABSOLUTE_NAME_START + 1)
+		{
+			return DATA_NOT_ASSIGNED;
+		}
+
+		// Make sure the paths are not on different drives
+		if (currentDir[0] != absoluteDir[0])
+		{
+			return absoluteDir;
+		}
+
+		// Find out how much of the current directory is in the absolute filename
+		i = ABSOLUTE_NAME_START;
+		while (i < afLen && i < cdLen && currentDir[i] == absoluteDir[i])
+		{
+			i++;
+		}
+		if (i == cdLen && (absoluteDir[i] == SLASH || absoluteDir[i - 1] == SLASH))
+		{
+			// the whole current directory name is in the file name,
+			// so we just trim off the current directory name to get the
+			// current file name.
+			if (absoluteDir[i] == SLASH)
+			{
+				// a directory name might have a trailing slash but a relative
+				// file name should not have a leading one...
+				i++;
+			}
+
+			strcpy(relativeFilename, &absoluteDir[i]);
+			return relativeFilename;
+		}
+
+		// The file is not in a child directory of the current directory, so we
+		// need to step back the appropriate number of parent directories by
+		// using "..\"s.  First find out how many levels deeper we are than the
+		// common directory
+		afMarker = i;
+		levels = 1;
+		// count the number of directory levels we have to go up to get to the
+		// common directory
+		while (i < cdLen)
+		{
+			i++;
+			if (currentDir[i] == SLASH)
+			{
+				// make sure it's not a trailing slash
+				i++;
+				if (currentDir[i] != '\0')
+				{
+					levels++;
+				}
+			}
+		}
+
+		// Move the absolute filename marker back to the 
+		// start of the directory name that it has stopped in.
+		while (afMarker > 0 && absoluteDir[afMarker - 1] != SLASH)
+		{
+			afMarker--;
+		}
+
+		// Check that the result will not be too long
+		if (levels * 3 + afLen - afMarker > MAX_FILENAME_LEN)
+		{
+			return DATA_NOT_ASSIGNED;
+		}
+
+		// Add the appropriate number of "..\"s.
+		rfMarker = 0;
+		for (i = 0; i < levels; i++)
+		{
+			relativeFilename[rfMarker++] = '.';
+			relativeFilename[rfMarker++] = '.';
+			relativeFilename[rfMarker++] = SLASH;
+		}
+
+		// Copy the rest of the filename into the result string
+		strcpy(&relativeFilename[rfMarker], &absoluteDir[afMarker]);
+	
+		return relativeFilename;
+	}
+
+	string FileSystem::GetEngineDirectory() // Windows only
+	{
+		HMODULE hModule = GetModuleHandleW(nullptr);
+		WCHAR path[MAX_PATH];
+		GetModuleFileNameW(hModule, path, MAX_PATH);
+
+		string filePath = ToString(path);
+
+		// Remove Directus3D.exe from the filePath, we are only interested in the directory
+		string directory = GetPathWithoutFileName(filePath);
+
+		return directory;
+	}
+
+	string FileSystem::GetStringAfterSequence(const string& str, const string& sequence)
+	{
+		// Func("The quick brown fox", "brown") -> "brown fox"
+		size_t position = str.find(sequence);
+		return position != string::npos ? str.substr(position) : str;
+	}
 
 	string FileSystem::ConvertToUppercase(const string& lower)
 	{
@@ -507,8 +630,14 @@ namespace Directus
 		return upper;
 	}
 
+	string FileSystem::ReplaceSequence(const string& str, const string& from, const string to)
+	{
+		return regex_replace(str, regex(from), to);
+	}
+
 	wstring FileSystem::ToWString(const string& str)
 	{
 		return wstring(str.begin(), str.end());
 	}
+	//=====================================================================================
 }

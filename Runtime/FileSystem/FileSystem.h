@@ -62,7 +62,6 @@ namespace Directus
 		static std::string GetPathWithoutFileName(const std::string& path);
 		static std::string GetPathWithoutFileNameExtension(const std::string& path);
 		static std::string GetExtensionFromPath(const std::string& path);
-		static std::string GetRelativePathFromAbsolutePath(const std::string& path);
 
 		static std::vector<std::string> GetSupportedImageFileFormats(bool includeUppercase);
 		static std::vector<std::string> GetSupportedAudioFileFormats(bool includeUppercase);
@@ -93,8 +92,13 @@ namespace Directus
 		static bool IsMetadataFile(const std::string& filePath);
 		//=============================================================
 
-		// string
+		//= STRING PARSING =======================================================================================
+		static std::string GetRelativeFilePath(const std::string& filePath);
+		static std::string GetEngineDirectory();
+		static std::string GetStringAfterSequence(const std::string& str, const std::string& expression);
 		static std::string ConvertToUppercase(const std::string& lower);
 		static std::wstring ToWString(const std::string& str);
+		static std::string ReplaceSequence(const std::string& str, const std::string& from, const std::string to);
+		//========================================================================================================
 	};
 }

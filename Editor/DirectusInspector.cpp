@@ -236,7 +236,7 @@ void DirectusInspector::dropEvent(QDropEvent* event)
     if (FileSystem::IsSupportedScriptFile(scriptPath) && !m_inspectedGameObject.expired())
     {
         // Make the absolute path, relative
-        scriptPath = FileSystem::GetRelativePathFromAbsolutePath(scriptPath);
+        scriptPath = FileSystem::GetRelativeFilePath(scriptPath);
 
         // Add a script component and load the script
         Script* scriptComp = m_inspectedGameObject.lock()->AddComponent<Script>();
