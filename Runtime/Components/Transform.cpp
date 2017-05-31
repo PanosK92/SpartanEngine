@@ -81,14 +81,7 @@ namespace Directus
 		Serializer::WriteQuaternion(m_rotationLocal);
 		Serializer::WriteVector3(m_scaleLocal);
 		Serializer::WriteVector3(m_lookAt);
-
-		if (!m_parent)
-		{
-			sharedGameObj parentGameObj = m_parent->g_gameObject.lock();
-			Serializer::WriteSTR(parentGameObj ? parentGameObj->GetID() : DATA_NOT_ASSIGNED);
-		}
-		else
-			Serializer::WriteSTR(DATA_NOT_ASSIGNED);
+		Serializer::WriteSTR(m_parent ? m_parent->GetID() : DATA_NOT_ASSIGNED);
 	}
 
 	void Transform::Deserialize()
@@ -102,10 +95,10 @@ namespace Directus
 		string parentGameObjectID = Serializer::ReadSTR();
 		if (parentGameObjectID != DATA_NOT_ASSIGNED)
 		{
-			weakGameObj parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
-			if (!parent.expired())
+			sharedGameObj parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID).lock();
+			if (parent)
 			{
-				parent.lock()->GetTransform()->AddChild(this);
+				parent->GetTransform()->AddChild(this);
 			}
 		}
 

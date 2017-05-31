@@ -132,7 +132,9 @@ namespace Directus
 		// Add scene file extension to the filepath if it's missing
 		string filePath = filePathIn;
 		if (FileSystem::GetExtensionFromPath(filePath) != SCENE_EXTENSION)
+		{
 			filePath += SCENE_EXTENSION;
+		}
 
 		// Save any in-memory changes done to resources while running.
 		m_context->GetSubsystem<ResourceManager>()->SaveResourceMetadata();
@@ -154,11 +156,15 @@ namespace Directus
 
 		// 2nd - GameObject IDs
 		for (const auto& root : rootGameObjects)
+		{
 			Serializer::WriteSTR(root.lock()->GetID());
+		}
 
 		// 3rd - GameObjects
 		for (const auto& root : rootGameObjects)
+		{
 			root.lock()->Serialize();
+		}
 		//==============================================
 
 		Serializer::StopWriting();
@@ -255,11 +261,11 @@ namespace Directus
 	vector<weakGameObj> Scene::GetRootGameObjects()
 	{
 		vector<weakGameObj> rootGameObjects;
-		for (const auto& gameObject : m_gameObjects)
+		for (const auto& gameObj : m_gameObjects)
 		{
-			if (gameObject->GetTransform()->IsRoot())
+			if (gameObj->GetTransform()->IsRoot())
 			{
-				rootGameObjects.push_back(gameObject);
+				rootGameObjects.push_back(gameObj);
 			}
 		}
 
