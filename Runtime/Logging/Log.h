@@ -21,18 +21,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include <windows.h>
+//= INCLUDES ==============
+#include "../Core/Helper.h"
+#include <string>
 #include <memory>
-#include "../Math/Vector3.h"
-#include "../Math/Quaternion.h" // needs to be included (it's just forward declared by Vector3)
-//=============================
+//=========================
 
 namespace Directus
 {
 #define LOG_INFO(text) Log::Write(text, Log::Info)
 #define LOG_WARNING(text) Log::Write(text, Log::Warning)
 #define LOG_ERROR(text) Log::Write(text, Log::Error)
+
+	namespace Math
+	{
+		class Quaternion;
+		class Vector3;
+	}
 
 	class DllExport Log
 	{
@@ -51,7 +56,6 @@ namespace Directus
 
 		//= LOGGING ==========================================================================
 		static void Write(const std::string& text, LogType type);
-		static void WriteAsText(const std::string& text);
 		static void Write(const char* text, LogType type);
 		static void Write(const Math::Vector3& vector, LogType type);
 		static void Write(const Math::Quaternion& quaternion, LogType type);
@@ -60,9 +64,7 @@ namespace Directus
 		static void Write(unsigned int value, LogType type);
 		static void Write(bool value, LogType type);
 		static void Write(size_t value, LogType type);
-
-		//= HELPER FUNCTIONS ==============================================================
-		static std::string WCHARPToString(WCHAR*);
+		static void WriteToFile(const std::string& text);
 
 	private:
 		static std::weak_ptr<ILogger> m_logger;

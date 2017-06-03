@@ -190,22 +190,25 @@ namespace Directus
 		Serializer::StopReading();
 
 		// Load all all these resources
+		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
 		for (const auto& resourcePath : resourcePaths)
 		{
 			if (FileSystem::IsSupportedMeshFile(resourcePath))
 			{
-				m_context->GetSubsystem<ResourceManager>()->Load<Mesh>(resourcePath);
+				resourceMng->Load<Mesh>(resourcePath);
 				continue;
 			}
 
 			if (FileSystem::IsSupportedMaterialFile(resourcePath))
 			{
-				m_context->GetSubsystem<ResourceManager>()->Load<Material>(resourcePath);
+				resourceMng->Load<Material>(resourcePath);
 				continue;
 			}
 
 			if (FileSystem::IsSupportedImageFile(resourcePath))
-				m_context->GetSubsystem<ResourceManager>()->Load<Texture>(resourcePath);
+			{
+				resourceMng->Load<Texture>(resourcePath);
+			}
 		}
 
 
@@ -223,15 +226,15 @@ namespace Directus
 		for (int i = 0; i < rootGameObjectCount; i++)
 		{
 
-			m_gameObjects.push_back(make_shared<GameObject>(m_context));
-			m_gameObjects.back()->SetID(Serializer::ReadSTR());
+			auto gameObj = CreateGameObject().lock();
+			gameObj->SetID(Serializer::ReadSTR());
 		}
 
 		// 3rd - GameObjects
 		// It's important to loop with rootGameObjectCount
 		// as the vector size will increase as we deserialize
 		// GameObjects. This is because a GameObject will also
-		// deserialize it's descendants.
+		// deserialize their descendants.
 		for (int i = 0; i < rootGameObjectCount; i++)
 		{
 			m_gameObjects[i]->Deserialize(nullptr);

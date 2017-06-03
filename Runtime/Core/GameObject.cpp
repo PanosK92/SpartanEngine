@@ -189,11 +189,12 @@ namespace Directus
 
 	void GameObject::Deserialize(Transform* parent)
 	{
+		auto scene = m_context->GetSubsystem<Scene>();
 		//= BASIC DATA ================================
 		// Check if a GameObject of the same ID exists (instantiated prefab).
 		// If it does, mentain the new ID and discard the original one.
 		string oldID = Serializer::ReadSTR();
-		m_ID = m_context->GetSubsystem<Scene>()->GetGameObjectByID(oldID).lock() ? m_ID : oldID;
+		m_ID = scene->GetGameObjectByID(oldID).lock() ? m_ID : oldID;
 
 		m_name = Serializer::ReadSTR();
 		m_isActive = Serializer::ReadBool();
@@ -209,16 +210,27 @@ namespace Directus
 			string id = Serializer::ReadSTR(); // load component's id
 
 			IComponent* component = AddComponentBasedOnType(type);
+			if (!component)
+			{
+				LOG_ERROR("Failed to add component \"" + type + "\"");
+				continue;
+			}
 			component->g_ID = id;
 		}
 		// Sometimes there are component dependencies, e.g. a collider that needs
 		// to set it's shape to a rigibody. So, it's important to first create all 
 		// the components (like above) and then deserialize them (like here).
 		for (const auto& component : m_components)
+		{
 			component.second->Deserialize();
+		}
 		//=============================================
 
-		GetTransform()->SetParent(parent);
+		// Set the transform's parent
+		if (m_transform)
+		{
+			m_transform->SetParent(parent);
+		}
 
 		//= CHILDREN ===================================
 		// 1st - children count
@@ -228,17 +240,22 @@ namespace Directus
 		vector<weakGameObj> children;
 		for (int i = 0; i < childrenCount; i++)
 		{
-			weakGameObj child = m_context->GetSubsystem<Scene>()->CreateGameObject();
+			weakGameObj child = scene->CreateGameObject();
 			child.lock()->SetID(Serializer::ReadSTR());
 			children.push_back(child);
 		}
 
 		// 3rd - children
 		for (const auto& child : children)
+		{
 			child.lock()->Deserialize(GetTransform());
+		}
 		//=============================================
 
-		GetTransform()->ResolveChildrenRecursively();
+		if (m_transform)
+		{
+			m_transform->ResolveChildrenRecursively();
+		}
 	}
 
 	void GameObject::RemoveComponentByID(const string& id)
@@ -266,46 +283,46 @@ namespace Directus
 
 		IComponent* component = nullptr;
 
-		if (typeStr == "Transform")
+		if (typeStr == "Directus::Transform")
 			component = AddComponent<Transform>();
 
-		if (typeStr == "MeshFilter")
+		if (typeStr == "Directus::MeshFilter")
 			component = AddComponent<MeshFilter>();
 
-		if (typeStr == "MeshRenderer")
+		if (typeStr == "Directus::MeshRenderer")
 			component = AddComponent<MeshRenderer>();
 
-		if (typeStr == "Light")
+		if (typeStr == "Directus::Light")
 			component = AddComponent<Light>();
 
-		if (typeStr == "Camera")
+		if (typeStr == "Directus::Camera")
 			component = AddComponent<Camera>();
 
-		if (typeStr == "Skybox")
+		if (typeStr == "Directus::Skybox")
 			component = AddComponent<Skybox>();
 
-		if (typeStr == "RigidBody")
+		if (typeStr == "Directus::RigidBody")
 			component = AddComponent<RigidBody>();
 
-		if (typeStr == "Collider")
+		if (typeStr == "Directus::Collider")
 			component = AddComponent<Collider>();
 
-		if (typeStr == "MeshCollider")
+		if (typeStr == "Directus::MeshCollider")
 			component = AddComponent<MeshCollider>();
 
-		if (typeStr == "Hinge")
+		if (typeStr == "Directus::Hinge")
 			component = AddComponent<Hinge>();
 
-		if (typeStr == "Script")
+		if (typeStr == "Directus::Script")
 			component = AddComponent<Script>();
 
-		if (typeStr == "LineRenderer")
+		if (typeStr == "Directus::LineRenderer")
 			component = AddComponent<LineRenderer>();
 
-		if (typeStr == "AudioSource")
+		if (typeStr == "Directus::AudioSource")
 			component = AddComponent<AudioSource>();
 
-		if (typeStr == "AudioListener")
+		if (typeStr == "Directus::AudioListener")
 			component = AddComponent<AudioListener>();
 
 		return component;
