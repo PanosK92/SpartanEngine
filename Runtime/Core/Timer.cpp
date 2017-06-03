@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "Timer.h"
+#include "Windows.h"
 #include "../Logging/Log.h"
 //=========================
 

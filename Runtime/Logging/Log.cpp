@@ -19,26 +19,39 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ============================
 #include "Log.h"
-#include "../EventSystem/EventHandler.h"
 #include <sstream> 
 #include <fstream>
 #include "ILogger.h"
+#include "../EventSystem/EventHandler.h"
 #include "../FileSystem/FileSystem.h"
-//===================================
+#include "../Math/Vector3.h"
+#include "../Math/Quaternion.h"
+//======================================
 
 //= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
 //=============================
 
+#define LOG_FILE "log.txt"
+
 namespace Directus
 {
 	weak_ptr<ILogger> Log::m_logger;
 	ofstream Log::m_fout;
-	string Log::m_logFileName = "log.txt";
 	bool Log::m_firstLog = true;
+
+	//= HELPER FUNCTIONS ===================
+	//string WCHARPToString(WCHAR* text)
+	//{
+	//	wstring ws(text);
+	//	string str(ws.begin(), ws.end());
+
+	//	return str;
+	//}
+	//====================================
 
 	void Log::Initialize()
 	{
@@ -72,27 +85,8 @@ namespace Directus
 		string finalText = prefix + " " + text;
 
 		auto logger = m_logger.lock();
-		logger ? logger->Log(finalText, type) : WriteAsText(finalText);
+		logger ? logger->Log(finalText, type) : WriteToFile(finalText);
 		// if a logger is available use it, if not output a text file
-	}
-
-	void Log::WriteAsText(const string& text)
-	{
-		// Delete the previous log file (if it exists)
-		if (m_firstLog)
-		{
-			FileSystem::DeleteFile_(m_logFileName);
-			m_firstLog = false;
-		}
-
-		// Open/Create a log file to write the error message to.
-		m_fout.open(m_logFileName, ofstream::out | ofstream::app);
-
-		// Write out the error message.
-		m_fout << text << endl;
-
-		// Close the file.
-		m_fout.close();
 	}
 
 	void Log::Write(const char* text, LogType type)
@@ -147,14 +141,25 @@ namespace Directus
 	{
 		Write(int(value), type);
 	}
-	//=================================================================================
 
-	//= HELPER FUNCTIONS ==============================================================
-	string Log::WCHARPToString(WCHAR* text)
+	void Log::WriteToFile(const string& text)
 	{
-		wstring ws(text);
-		string str(ws.begin(), ws.end());
+		// Delete the previous log file (if it exists)
+		if (m_firstLog)
+		{
+			FileSystem::DeleteFile_(LOG_FILE);
+			m_firstLog = false;
+		}
 
-		return str;
+		// Open/Create a log file to write the error message to.
+		m_fout.open(LOG_FILE, ofstream::out | ofstream::app);
+
+		// Write out the error message.
+		m_fout << text << endl;
+
+		// Close the file.
+		m_fout.close();
 	}
+
+	//=================================================================================
 }
