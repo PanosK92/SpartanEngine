@@ -118,14 +118,10 @@ private:
     DirectusComboLabelText* m_offsetY;
     //===============================
 
-    //= SAVE BUTTON =================
-    QPushButton* m_buttonSave;
-    std::shared_ptr<Directus::Material> m_matFromFile;
-    //===============================
-
     //= MISC ========================
     QGridLayout* m_gridLayout;
     std::weak_ptr<Directus::Material> m_inspectedMaterial;
+    std::shared_ptr<Directus::Material> m_matFromFile;
     //===============================
 
     void SetPropertiesVisible(bool visible);
@@ -155,6 +151,5 @@ public slots:
     void MapSpecular();
     void MapTiling();
     void MapOffset();
-    void SaveMaterial();
     virtual void Remove(){};
 };

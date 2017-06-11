@@ -55,12 +55,6 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
                 );
     //=========================================================
 
-    //= SAVE BUTTON ===========================================
-    m_buttonSave = new QPushButton("Apply");
-    m_buttonSave->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    connect(m_buttonSave, SIGNAL(clicked(bool)), this, SLOT(SaveMaterial()));
-    //=========================================================
-
     //= SHADER ================================================
     m_shaderLabel = new QLabel("Shader");
     m_shader = new QComboBox();
@@ -166,9 +160,6 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     // addWidget(widget, row, column, rowspan, colspan)
     // Row 0
     m_gridLayout->addWidget(m_title,        row, 0, 1, 3);
-
-    // Row 1 - SAVE BUTTON
-    m_gridLayout->addWidget(m_buttonSave,   row, 4, 1, 1);
     row++;
 
     // Row 2 - SHADER
@@ -335,7 +326,7 @@ void DirectusMaterial::ReflectFile(string filePath)
     ReflectTiling();
     ReflectOffset();
 
-    SetPropertiesVisible(m_inspectedMaterial.lock()->IsEditable() ? true : false);
+    SetPropertiesVisible(m_inspectedMaterial.lock()->IsEditable());
 
     // Make this widget visible
     this->show();
@@ -495,6 +486,8 @@ void DirectusMaterial::ReflectTiling()
     Vector2 tiling = m_inspectedMaterial.lock()->GetTilingUV();
     m_tilingX->SetFromFloat(tiling.x);
     m_tilingY->SetFromFloat(tiling.y);
+
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::ReflectOffset()
@@ -502,6 +495,8 @@ void DirectusMaterial::ReflectOffset()
     Vector2 offset = m_inspectedMaterial.lock()->GetOffsetUV();
     m_offsetX->SetFromFloat(offset.x);
     m_offsetY->SetFromFloat(offset.y);
+
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapAlbedo()
@@ -511,6 +506,8 @@ void DirectusMaterial::MapAlbedo()
 
     Vector4 color =  m_albedoColor->GetColor();
     m_inspectedMaterial.lock()->SetColorAlbedo(color);
+
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapRoughness()
@@ -520,6 +517,8 @@ void DirectusMaterial::MapRoughness()
 
     float roughness =  m_roughness->GetValue();
     m_inspectedMaterial.lock()->SetRoughnessMultiplier(roughness);
+
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapMetallic()
@@ -529,6 +528,8 @@ void DirectusMaterial::MapMetallic()
 
     float metallic =  m_metallic->GetValue();
     m_inspectedMaterial.lock()->SetMetallicMultiplier(metallic);
+
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapNormal()
@@ -538,6 +539,8 @@ void DirectusMaterial::MapNormal()
 
     float normal =  m_normal->GetValue();
     m_inspectedMaterial.lock()->SetNormalMultiplier(normal);
+
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapHeight()
@@ -547,6 +550,8 @@ void DirectusMaterial::MapHeight()
 
     float height =  m_height->GetValue();
     m_inspectedMaterial.lock()->SetHeightMultiplier(height);
+
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapOcclusion()
@@ -556,6 +561,8 @@ void DirectusMaterial::MapOcclusion()
 
     float occlusion =  m_occlusion->GetValue();
     m_inspectedMaterial.lock()->SetOcclusionMultiplier(occlusion);
+
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapEmission()
@@ -575,6 +582,8 @@ void DirectusMaterial::MapSpecular()
 
     float specular = m_specular->GetValue();
     m_inspectedMaterial.lock()->SetSpecularMultiplier(specular);
+
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapTiling()
@@ -586,6 +595,8 @@ void DirectusMaterial::MapTiling()
     tiling.x = m_tilingX->GetAsFloat();
     tiling.y = m_tilingY->GetAsFloat();
     m_inspectedMaterial.lock()->SetTilingUV(tiling);
+
+    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapOffset()
@@ -597,12 +608,4 @@ void DirectusMaterial::MapOffset()
     offset.x = m_offsetX->GetAsFloat();
     offset.y = m_offsetY->GetAsFloat();
     m_inspectedMaterial.lock()->SetOffsetUV(offset);
-}
-
-void DirectusMaterial::SaveMaterial()
-{
-    if (m_inspectedMaterial.expired())
-        return;
-
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
 }

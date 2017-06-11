@@ -108,7 +108,7 @@ void DirectusMeshRenderer::Initialize(DirectusInspector* inspector, QWidget* mai
     // Receive shadows check box
     connect(m_receiveShadowsCheckBox,   SIGNAL(clicked(bool)),  this, SLOT(MapReceiveShadows()));
     // DirectusQLineEditDropTarget
-    connect(m_material,   SIGNAL(MaterialDropped(std::weak_ptr<Material>)),  this, SLOT(DoMaterialInspCompReflection()));
+    connect(m_material,   SIGNAL(MaterialDropped(std::weak_ptr<Directus::Material>)),  this, SLOT(DoMaterialInspCompReflection()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);

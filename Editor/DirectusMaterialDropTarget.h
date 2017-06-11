@@ -21,14 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-// INCLUDES ==================
+// INCLUDES ========
 #include <QLineEdit>
-#include "Graphics/Material.h"
-//============================
+#include <memory>
+//==================
 
 //= FORWARD DECLARATIONS =
 class DirectusInspector;
 class DirectusMaterial;
+namespace Directus
+{
+    class Material;
+}
 //========================
 
 class DirectusMaterialDropTarget : public QLineEdit

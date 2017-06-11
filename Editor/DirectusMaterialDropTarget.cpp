@@ -110,7 +110,7 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
         return;
 
     // Load the material
-    std::weak_ptr<Material> material = gameObject.lock()->GetComponent<MeshRenderer>()->LoadMaterial(materialPath);
+    auto material = gameObject.lock()->GetComponent<MeshRenderer>()->LoadMaterial(materialPath);
 
     // Set the material editor component to reflect thew newly loaded material
     m_inspector->GetMaterialComponent()->Reflect(gameObject);
