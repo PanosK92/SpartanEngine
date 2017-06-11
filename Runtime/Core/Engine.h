@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE. */
 
 namespace Directus
 {
-	class DllExport Engine : public Subsystem
+	class DLL_API Engine : public Subsystem
 	{
 	public:
 		Engine(Context* context);

@@ -26,15 +26,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assimp/postprocess.h>
 #include <vector>
 #include "../../Core/Scene.h"
-#include "../../FileSystem/FileSystem.h"
-#include "../../Logging/Log.h"
+#include "../../Core/GameObject.h"
+#include "../../Core/Context.h"
 #include "../../Components/Transform.h"
 #include "../../Components/MeshRenderer.h"
 #include "../../Components/MeshFilter.h"
-#include "../../Core/GameObject.h"
-#include "../../Core/Context.h"
+#include "../../FileSystem/FileSystem.h"
+#include "../../Logging/Log.h"
 #include "../../Multithreading/Multithreading.h"
 #include "../../Resource/ResourceManager.h"
+#include "../../Graphics/Model.h"
 //==============================================
 
 //= NAMESPACES ================
@@ -61,13 +62,13 @@ namespace Directus
 		return true;
 	}
 
-	void ModelImporter::LoadAsync(const string& filePath)
+	void ModelImporter::LoadAsync(Model* model)
 	{
-		Multithreading* threadPool = m_context->GetSubsystem<Multithreading>();
-		threadPool->AddTask(std::bind(&ModelImporter::Load, this, filePath));
+		//Multithreading* threadPool = m_context->GetSubsystem<Multithreading>();
+		//threadPool->AddTask(std::bind(&ModelImporter::Load, this, model, filePath));
 	}
 
-	bool ModelImporter::Load(const string& filePath)
+	bool ModelImporter::Load(Model* model)
 	{
 		if (!m_context)
 		{
@@ -76,9 +77,6 @@ namespace Directus
 		}
 
 		m_isLoading = true;
-		m_filePath = filePath;
-		m_rootGameObject = weakGameObj();
-		m_modelName = FileSystem::GetFileNameFromPath(m_filePath);
 
 		// Set up Assimp importer
 		static int smoothAngle = 80;
@@ -107,60 +105,18 @@ namespace Directus
 			aiProcess_Debone |
 			aiProcess_ConvertToLeftHanded;
 
-		const aiScene* scene = importer.ReadFile(m_filePath, ppsteps);
+		const aiScene* scene = importer.ReadFile(model->GetOriginalFilePath(), ppsteps);
 		if (!scene)
 		{
-			LOG_ERROR("Failed to load \"" + FileSystem::GetFileNameNoExtensionFromPath(m_filePath) + "\". " + importer.GetErrorString());
+			LOG_ERROR("Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
 			return false;
 		}
 
-		// Create all the appropriate directories
-		FileSystem::CreateDirectory_("Standard Assets/Models/");
-		FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName));
-		FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
-		FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/");
-		FileSystem::CreateDirectory_("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/");
-
-		// Copy the source model file to an appropriate directory
-		string modelDestination = "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(m_modelName);
-		FileSystem::CopyFileFromTo(m_filePath, modelDestination);
-
-		// Copy any material files (used be obj models)
-		auto files = FileSystem::GetFilesInDirectory(FileSystem::GetPathWithoutFileName(m_filePath));
-		for (const auto& file : files)
-			if (FileSystem::GetExtensionFromPath(file) == ".mtl")
-				FileSystem::CopyFileFromTo(m_filePath, "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/" + FileSystem::GetFileNameFromPath(file));
-
 		// This function will recursively process the entire model
-		ProcessNode(scene, scene->mRootNode, weakGameObj(), weakGameObj());
-
-		// Normalize the scale of the model
-		vector<Transform*> descendants;
-		if (!m_rootGameObject.expired())
-		{
-			m_rootGameObject.lock()->GetTransform()->GetDescendants(&descendants);
-			for (auto& descendant : descendants)
-			{
-				auto descendantGameObj = descendant->GetGameObject();
-				if (!descendantGameObj.expired())
-				{
-					auto meshFilter = descendantGameObj.lock()->GetComponent<MeshFilter>();
-					if (meshFilter)
-					{
-						meshFilter->NormalizeModelScale();
-						break;
-					}
-				}
-			}
-		}
+		ProcessNode(model, scene, scene->mRootNode, weakGameObj(), weakGameObj());
 
 		m_isLoading = false;
 		return true;
-	}
-
-	weakGameObj ModelImporter::GetModelRoot()
-	{
-		return !m_isLoading ? m_rootGameObject : weakGameObj();
 	}
 
 	//= HELPER FUNCTIONS ========================================================================
@@ -211,13 +167,13 @@ namespace Directus
 	//============================================================================================
 
 	//= PROCESSING ===============================================================================
-	void ModelImporter::ProcessNode(const aiScene* scene, aiNode* assimpNode, weakGameObj parentNode, weakGameObj newNode)
+	void ModelImporter::ProcessNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, std::weak_ptr<GameObject> parentNode, std::weak_ptr<GameObject> newNode)
 	{
 		if (newNode.expired())
 			newNode = m_context->GetSubsystem<Scene>()->CreateGameObject();
 
 		if (!assimpNode->mParent)
-			m_rootGameObject = newNode;
+			model->SetRootGameObject(newNode.lock());
 
 		//= GET NODE NAME ===========================================================
 		// Note: In case this is the root node, aiNode.mName will be "RootNode". 
@@ -228,7 +184,7 @@ namespace Directus
 		}
 		else
 		{
-			newNode.lock()->SetName(FileSystem::GetFileNameNoExtensionFromPath(m_filePath));
+			newNode.lock()->SetName(FileSystem::GetFileNameNoExtensionFromFilePath(model->GetResourceFilePath()));
 		}
 		//===========================================================================
 
@@ -243,7 +199,7 @@ namespace Directus
 		for (unsigned int i = 0; i < assimpNode->mNumMeshes; i++)
 		{
 			weakGameObj gameobject = newNode; // set the current gameobject
-			aiMesh* mesh = scene->mMeshes[assimpNode->mMeshes[i]]; // get mesh
+			aiMesh* mesh = assimpScene->mMeshes[assimpNode->mMeshes[i]]; // get mesh
 			string name = assimpNode->mName.C_Str(); // get name
 
 			// if this node has many meshes, then assign a new gameobject for each one of them
@@ -254,22 +210,22 @@ namespace Directus
 				name += "_" + to_string(i + 1); // set name
 			}
 
-			// Set gameobject's name
+			// Set gameobject name
 			gameobject.lock()->SetName(name);
 
 			// Process mesh
-			ProcessMesh(mesh, scene, gameobject);
+			ProcessMesh(model, mesh, assimpScene, gameobject);
 		}
 
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
 			weakGameObj child = m_context->GetSubsystem<Scene>()->CreateGameObject();
-			ProcessNode(scene, assimpNode->mChildren[i], newNode, child);
+			ProcessNode(model, assimpScene, assimpNode->mChildren[i], newNode, child);
 		}
 	}
 
-	void ModelImporter::ProcessMesh(aiMesh* mesh, const aiScene* scene, weakGameObj gameobject)
+	void ModelImporter::ProcessMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, std::weak_ptr<GameObject> gameobject)
 	{
 		if (gameobject.expired())
 			return;
@@ -278,22 +234,22 @@ namespace Directus
 		vector<unsigned int> indices;
 
 		VertexPosTexNorTan vertex;
-		for (unsigned int vertexIndex = 0; vertexIndex < mesh->mNumVertices; vertexIndex++)
+		for (unsigned int vertexIndex = 0; vertexIndex < assimpMesh->mNumVertices; vertexIndex++)
 		{
 			// get the position
-			vertex.position = ToVector3(mesh->mVertices[vertexIndex]);
+			vertex.position = ToVector3(assimpMesh->mVertices[vertexIndex]);
 
 			// get the normal
-			if (nullptr != mesh->mNormals)
-				vertex.normal = ToVector3(mesh->mNormals[vertexIndex]);
+			if (assimpMesh->mNormals)
+				vertex.normal = ToVector3(assimpMesh->mNormals[vertexIndex]);
 
 			// get the tangent
-			if (nullptr != mesh->mTangents)
-				vertex.tangent = ToVector3(mesh->mTangents[vertexIndex]);
+			if (assimpMesh->mTangents)
+				vertex.tangent = ToVector3(assimpMesh->mTangents[vertexIndex]);
 
 			// get the texture coordinates
-			if (mesh->HasTextureCoords(0))
-				vertex.uv = ToVector2(aiVector2D(mesh->mTextureCoords[0][vertexIndex].x, mesh->mTextureCoords[0][vertexIndex].y));
+			if (assimpMesh->HasTextureCoords(0))
+				vertex.uv = ToVector2(aiVector2D(assimpMesh->mTextureCoords[0][vertexIndex].x, assimpMesh->mTextureCoords[0][vertexIndex].y));
 
 			// save the vertex
 			vertices.push_back(vertex);
@@ -305,9 +261,9 @@ namespace Directus
 		}
 
 		// get the indices by iterating through each face of the mesh.
-		for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+		for (unsigned int i = 0; i < assimpMesh->mNumFaces; i++)
 		{
-			aiFace face = mesh->mFaces[i];
+			aiFace face = assimpMesh->mFaces[i];
 
 			if (face.mNumIndices < 3)
 				continue;
@@ -317,48 +273,44 @@ namespace Directus
 		}
 
 		// Add a mesh component and pass the data
-		MeshFilter* meshComp = gameobject.lock()->AddComponent<MeshFilter>();
-		string rootGameObjID = !m_rootGameObject.expired() ? m_rootGameObject.lock()->GetID() : DATA_NOT_ASSIGNED;
-		meshComp->CreateAndSet(mesh->mName.C_Str(), rootGameObjID, vertices, indices);
-
-		// No need to save the mesh as a file here, when the model importer performs a scale normalization on the entire model
-		// this will cause the mesh to update and save itself, thus I only pass the directory to do so.
-		if (meshComp->HasMesh()) meshComp->GetMesh().lock()->SetDirectory("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Meshes/");
-
-		// process materials
-		if (scene->HasMaterials())
-		{
-			// Get assimp material
-			aiMaterial* assimpMaterial = scene->mMaterials[mesh->mMaterialIndex];
-
-			// Convert AiMaterial to Material and add it to the pool
-			auto material = m_context->GetSubsystem<ResourceManager>()->Add(GenerateMaterialFromAiMaterial(assimpMaterial));
-
-			// Set it in the mesh renderer component
-			gameobject.lock()->AddComponent<MeshRenderer>()->SetMaterial(material);
-
-			// Save the material in our custom format
-			if (!material.expired())
-				material.lock()->Save("Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Materials/" + material.lock()->GetResourceName(), false);
-		}
+		model->AddMesh(gameobject, assimpMesh->mName.C_Str(), vertices, indices);
 
 		// free memory
 		vertices.clear();
 		indices.clear();
+
+		// process materials
+		if (!assimpScene->HasMaterials())
+			return;
+
+		// Get assimp material
+		aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
+
+		// Convert AiMaterial to Material and add it to the pool
+		auto material = m_context->GetSubsystem<ResourceManager>()->Add(GenerateMaterialFromAiMaterial(model, assimpMaterial));
+
+		// Set it in the mesh renderer component
+		gameobject.lock()->AddComponent<MeshRenderer>()->SetMaterial(material);
+
+		// Save the material in our custom format
+		if (!material.expired())
+		{
+			material.lock()->Save(model->GetResourceDirectory() + "Materials//" + material.lock()->GetResourceName(), false);
+		}
 	}
 
-	shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(aiMaterial* material)
+	shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(Model* model, aiMaterial* material)
 	{
-		shared_ptr<Material> engineMaterial = make_shared<Material>(m_context);
+		auto engineMaterial = make_shared<Material>(m_context);
 
 		//= NAME ====================================================================
 		aiString name;
 		aiGetMaterialString(material, AI_MATKEY_NAME, &name);
 		engineMaterial->SetResourceName(name.C_Str());
-		engineMaterial->SetModelID(m_modelName);
+		engineMaterial->SetModelID(model->GetResourceName());
 
 		//= CullMode ===============================================================================================
-		// Specifies whether meshes using this material must be rendered without backface CullMode. 0 for false, !0 for true.
+		// Specifies whether meshes using this material must be rendered without back face CullMode. 0 for false, !0 for true.
 		bool isTwoSided = false;
 		int r = material->Get(AI_MATKEY_TWOSIDED, isTwoSided);
 		if (r == aiReturn_SUCCESS && isTwoSided)
@@ -385,64 +337,64 @@ namespace Directus
 		aiString texturePath;
 		if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
 			if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Albedo_Texture, texturePath.data);
+				AddTextureToMaterial(model, engineMaterial, Albedo_Texture, texturePath.data);
 
 		//= SPECULAR (used as ROUGHNESS) TEXTURE =================================================================================
 		if (material->GetTextureCount(aiTextureType_SHININESS) > 0)
 			if (material->GetTexture(aiTextureType_SHININESS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Roughness_Texture, texturePath.data);
+				AddTextureToMaterial(model, engineMaterial, Roughness_Texture, texturePath.data);
 
 		//= AMBIENT (used as METALLIC) TEXTURE ===================================================================================
 		if (material->GetTextureCount(aiTextureType_AMBIENT) > 0)
 			if (material->GetTexture(aiTextureType_AMBIENT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Metallic_Texture, texturePath.data);
+				AddTextureToMaterial(model, engineMaterial, Metallic_Texture, texturePath.data);
 
 		//= NORMAL TEXTURE ======================================================================================================
 		if (material->GetTextureCount(aiTextureType_NORMALS) > 0)
 			if (material->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Normal_Texture, texturePath.data);
+				AddTextureToMaterial(model, engineMaterial, Normal_Texture, texturePath.data);
 
 		//= OCCLUSION TEXTURE ====================================================================================================
 		if (material->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
 			if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Occlusion_Texture, texturePath.data);
+				AddTextureToMaterial(model, engineMaterial, Occlusion_Texture, texturePath.data);
 
 		//= EMISSIVE TEXTURE ====================================================================================================
 		if (material->GetTextureCount(aiTextureType_EMISSIVE) > 0)
 			if (material->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Emission_Texture, texturePath.data);
+				AddTextureToMaterial(model, engineMaterial, Emission_Texture, texturePath.data);
 
 		//= HEIGHT TEXTURE =====================================================================================================
 		if (material->GetTextureCount(aiTextureType_HEIGHT) > 0)
 			if (material->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Height_Texture, texturePath.data);
+				AddTextureToMaterial(model, engineMaterial, Height_Texture, texturePath.data);
 
 		//= MASK TEXTURE ========================================================================================================
 		if (material->GetTextureCount(aiTextureType_OPACITY) > 0)
 			if (material->GetTexture(aiTextureType_OPACITY, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-				AddTextureToMaterial(engineMaterial, Mask_Texture, texturePath.data);
+				AddTextureToMaterial(model, engineMaterial, Mask_Texture, texturePath.data);
 
 		return engineMaterial;
 	}
 	//============================================================================================
 
 	//= HELPER FUNCTIONS =========================================================================
-	void ModelImporter::AddTextureToMaterial(weak_ptr<Material> material, TextureType textureType, const string& texturePath)
+	void ModelImporter::AddTextureToMaterial(Model* model, weak_ptr<Material> material, TextureType textureType, const string& originalTexturePath)
 	{
-		string textureSource = FindTexture(texturePath);
-		if (textureSource == DATA_NOT_ASSIGNED)
+		string texturePath = FindTexture(model, originalTexturePath);
+		if (texturePath == DATA_NOT_ASSIGNED)
 		{
-			LOG_WARNING("Failed to find \"" + texturePath + "\".");
+			LOG_WARNING("Failed to find model requested texture \"" + originalTexturePath + "\".");
 			return;
 		}
 
-		// Copy the source texture to an appropriate directory
-		string textureDestination = "Standard Assets/Models/" + FileSystem::GetFileNameNoExtensionFromPath(m_modelName) + "/Textures/" + FileSystem::GetFileNameFromPath(textureSource);
-		FileSystem::CopyFileFromTo(textureSource, textureDestination);
+		// Copy the source texture a directory which will be relative to the model
+		string relativeFilePath = model->CopyFileToLocalDirectory(texturePath);
 
-		// Load the texture
-		auto texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(textureDestination);
-		// If it was loaded successfuly, set it to the material
+		// Load the texture from the relative directory
+		auto texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(relativeFilePath);
+		
+		// Set the texture to the material (if it was loaded successfully)
 		if (!texture.expired())
 		{
 			texture.lock()->SetTextureType(textureType);
@@ -450,38 +402,35 @@ namespace Directus
 		}
 	}
 
-	string ModelImporter::FindTexture(string texturePath)
+	string ModelImporter::FindTexture(Model* model, const string& originalTexturePath)
 	{
-		// The texture path is relative to the model, something like "Textures\Alan_Wake_Jacket.jpg" which is too 
-		// arbitrary to load a texture from it. This is why we get the model's directory (which is relative to the engine)...
-		string modelRootDirectory = FileSystem::GetPathWithoutFileName(m_filePath);
-
-		// ... and merge it with the texture path, Assets\Models\Alan_Wake\" + "Textures\Alan_Wake_Jacket.jpg".
-		texturePath = modelRootDirectory + texturePath;
+		// Models usually return a texture path which is relative to the model's directory.
+		// However, to load anything, we'll need an absolute path, so we construct it here.
+		string fullTexturePath = model->GetOriginalDirectory() + originalTexturePath;
 
 		// 1. Check if the texture path is valid
-		if (FileSystem::FileExists(texturePath))
-			return texturePath;
+		if (FileSystem::FileExists(fullTexturePath))
+			return fullTexturePath;
 
 		// 2. Check the same texture path as previously but 
 		// this time with different file extensions (jpg, png and so on).
-		texturePath = TryPathWithMultipleExtensions(texturePath);
-		if (FileSystem::FileExists(texturePath))
-			return texturePath;
+		fullTexturePath = TryPathWithMultipleExtensions(fullTexturePath);
+		if (FileSystem::FileExists(fullTexturePath))
+			return fullTexturePath;
 
 		// At this point we know the provided path is wrong, we will make a few guesses.
 		// The most common mistake is that the artist provided a path which is absolute to his computer.
 
 		// 3. Check if the texture is in the same folder as the model
-		texturePath = FileSystem::GetFileNameFromPath(texturePath);
-		if (FileSystem::FileExists(texturePath))
-			return texturePath;
+		fullTexturePath = FileSystem::GetFileNameFromFilePath(fullTexturePath);
+		if (FileSystem::FileExists(fullTexturePath))
+			return fullTexturePath;
 
 		// 4. Check the same texture path as previously but 
 		// this time with different file extensions (jpg, png and so on).
-		texturePath = TryPathWithMultipleExtensions(texturePath);
-		if (FileSystem::FileExists(texturePath))
-			return texturePath;
+		fullTexturePath = TryPathWithMultipleExtensions(fullTexturePath);
+		if (FileSystem::FileExists(fullTexturePath))
+			return fullTexturePath;
 
 		// Give up, no valid texture path was found
 		return DATA_NOT_ASSIGNED;
@@ -490,15 +439,25 @@ namespace Directus
 	string ModelImporter::TryPathWithMultipleExtensions(const string& fullpath)
 	{
 		// Remove extension
-		int lastindex = fullpath.find_last_of(".");
-		string fileName = fullpath.substr(0, lastindex);
+		string fileName = FileSystem::GetFileNameNoExtensionFromFilePath(m_fullTexturePath);
 
-		// create path for a couple of different extensions
-		vector<string> supportedImageExtensions = FileSystem::GetSupportedImageFileFormats(true);
+		// Check if the file exists using all engine supported extensions
+		auto supportedFormats = FileSystem::GetSupportedImageFormats();
+		for (unsigned int i = 0; i < supportedFormats.size(); i++)
+		{
+			string fileFormat = supportedFormats[i];
+			string fileFormatUppercase = FileSystem::ConvertToUppercase(fileFormat);
 
-		for (auto i = 0; i < supportedImageExtensions.size(); i++)
-			if (FileSystem::FileExists(fileName + supportedImageExtensions[i]))
-				return fileName + supportedImageExtensions[i];
+			if (FileSystem::FileExists(fileName + fileFormat))
+			{
+				return fileName + fileFormat;
+			}
+
+			if (FileSystem::FileExists(fileName + fileFormatUppercase))
+			{
+				return fileName + fileFormatUppercase;
+			}
+		}
 
 		return fullpath;
 	}

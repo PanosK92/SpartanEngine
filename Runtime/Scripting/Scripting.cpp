@@ -161,7 +161,7 @@ namespace Directus
 		string functionDecleration = function->GetDeclaration();
 		string moduleName = function->GetModuleName();
 		string scriptPath = function->GetScriptSectionName();
-		string scriptFile = FileSystem::GetFileNameFromPath(scriptPath);
+		string scriptFile = FileSystem::GetFileNameFromFilePath(scriptPath);
 		string exceptionLine = to_string(ctx->GetExceptionLineNumber());
 
 		LOG_ERROR(exceptionDescription + ", at line " + exceptionLine + ", in function " + functionDecleration + ", in script " + scriptFile);
@@ -170,7 +170,7 @@ namespace Directus
 	// This is used for AngelScript error messages
 	void Scripting::message_callback(const asSMessageInfo& msg)
 	{
-		string filename = FileSystem::GetFileNameFromPath(msg.section);
+		string filename = FileSystem::GetFileNameFromFilePath(msg.section);
 		string message = msg.message;
 
 		string finalMessage;

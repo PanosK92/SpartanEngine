@@ -49,6 +49,7 @@ namespace Directus
 
 		// Initialize global/static modules 
 		Log::Initialize();
+		FileSystem::Initialize();
 		Settings::Initialize();
 
 		// Register subsystems

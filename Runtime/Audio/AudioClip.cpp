@@ -67,11 +67,6 @@ namespace Directus
 			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
 	}
 
-	bool AudioClip::SaveMetadata()
-	{
-		return true;
-	}
-
 	bool AudioClip::Load(const string& filePath, PlayMode mode)
 	{
 		m_sound = nullptr;

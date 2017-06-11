@@ -45,7 +45,7 @@ namespace Directus
 		Every_Second_VBlank
 	};
 
-	class DllExport Settings
+	class DLL_API Settings
 	{
 	public:
 		static void Initialize();

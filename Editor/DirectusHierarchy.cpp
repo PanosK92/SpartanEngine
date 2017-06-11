@@ -178,7 +178,7 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     std::string text = mime->text().toStdString();
 
     //= DROP CASE: PREFAB (Assume text is a file path) ===============
-    if (FileSystem::IsSupportedPrefabFile(text))
+    if (FileSystem::IsEnginePrefabFile(text))
     {
         auto gameObj = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
         gameObj->LoadFromPrefab(text);

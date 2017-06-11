@@ -21,22 +21,51 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ====================
 #include <memory>
-#include "Mesh.h"
-//===============
+#include <vector>
+#include "../Resource/Resource.h"
+//===============================
 
 namespace Directus
 {
-	class Model
+	class ResourceManager;
+	class GameObject;
+	class Mesh;
+	struct VertexPosTexNorTan;
+
+	class Model : public Resource
 	{
 	public:
-		Model();
+		Model(Context* context);
 		~Model();
 
-		bool Load(const std::string& filePath);
+		//= RESOURCE INTERFACE ================================
+		virtual bool LoadFromFile(const std::string& filePath);
+		virtual bool SaveToFile(const std::string& filePath);
+		//======================================================
+
+		void SetRootGameObject(std::shared_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
+		void AddMesh(std::weak_ptr<GameObject> gameObj, const std::string& name, std::vector<VertexPosTexNorTan> vertices, std::vector<unsigned int> indices);
+		std::weak_ptr<Mesh> GetMeshByID(const std::string id);
+
+		std::string CopyFileToLocalDirectory(const std::string& filePath);
+		std::string GetOriginalFilePath() { return m_originalFilePath; }
+		std::string GetOriginalDirectory() { return FileSystem::GetDirectoryFromFilePath(m_originalFilePath); }
+
+		void NormalizeScale();
+		void SetScale(float scale);
 
 	private:
-		std::weak_ptr<Mesh> m_meshes;
+		bool LoadFromEngineFormat(const std::string& filePath);
+		bool LoadFromForeignFormat(const std::string& filePath);
+
+		float GetNormalizedScale();
+		std::weak_ptr<Mesh> GetLargestBoundingBox();
+
+		std::weak_ptr<GameObject> m_rootGameObj;
+		std::vector<std::shared_ptr<Mesh>> m_meshes;
+		ResourceManager* m_resourceManager;	
+		std::string m_originalFilePath;
 	};
 }

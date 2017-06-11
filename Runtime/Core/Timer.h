@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DllExport Timer : public Subsystem
+	class DLL_API Timer : public Subsystem
 	{
 	public:
 		Timer(Context* context);

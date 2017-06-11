@@ -49,10 +49,8 @@ namespace Directus
 
 	ScriptInstance::~ScriptInstance()
 	{
-		// For some weird reason, it only 
-		// gets released when called twice.
 		m_scriptObject->Release();
-		m_scriptObject->Release();
+		m_scriptObject = nullptr;
 
 		m_constructorFunction = nullptr;
 		m_startFunction = nullptr;
@@ -64,16 +62,14 @@ namespace Directus
 	bool ScriptInstance::Instantiate(const string& path, weakGameObj gameObject, Scripting* scriptEngine)
 	{
 		if (gameObject.expired())
-		{
 			return false;
-		}
 
 		m_scriptEngine = scriptEngine;
 
 		// Extract properties from path
 		m_scriptPath = path;
 		m_gameObject = gameObject;
-		m_className = FileSystem::GetFileNameNoExtensionFromPath(m_scriptPath);
+		m_className = FileSystem::GetFileNameNoExtensionFromFilePath(m_scriptPath);
 		m_moduleName = m_className + m_gameObject.lock()->GetID();
 		m_constructorDeclaration = m_className + " @" + m_className + "(GameObject @)";
 
@@ -81,16 +77,6 @@ namespace Directus
 		m_isInstantiated = CreateScriptObject();
 
 		return m_isInstantiated;
-	}
-
-	bool ScriptInstance::IsInstantiated()
-	{
-		return m_isInstantiated;
-	}
-
-	string ScriptInstance::GetScriptPath()
-	{
-		return m_scriptPath;
 	}
 
 	void ScriptInstance::ExecuteStart()

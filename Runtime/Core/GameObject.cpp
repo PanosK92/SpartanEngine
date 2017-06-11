@@ -84,14 +84,18 @@ namespace Directus
 	{
 		// call component Start()
 		for (auto const it : m_components)
+		{
 			it.second->Start();
+		}
 	}
 
 	void GameObject::OnDisable()
 	{
 		// call component OnDisable()
 		for (auto const it : m_components)
+		{
 			it.second->OnDisable();
+		}
 	}
 
 	void GameObject::Update()
@@ -101,7 +105,9 @@ namespace Directus
 
 		// call component Update()
 		for (const auto& it : m_components)
+		{
 			it.second->Update();
+		}
 	}
 
 	bool GameObject::SaveAsPrefab(const string& filePath)
@@ -124,7 +130,7 @@ namespace Directus
 	bool GameObject::LoadFromPrefab(const string& filePath)
 	{
 		// Make sure that this is a prefab file
-		if (!FileSystem::IsSupportedPrefabFile(filePath))
+		if (!FileSystem::IsEnginePrefabFile(filePath))
 			return false;
 
 		// Try to open it
@@ -157,8 +163,11 @@ namespace Directus
 			Serializer::WriteSTR(component.first); // type
 			Serializer::WriteSTR(component.second->g_ID); // id
 		}
+
 		for (const auto& it : m_components)
+		{
 			it.second->Serialize();
+		}
 		//=============================================
 
 		//= CHILDREN ==================================
@@ -210,11 +219,6 @@ namespace Directus
 			string id = Serializer::ReadSTR(); // load component's id
 
 			IComponent* component = AddComponentBasedOnType(type);
-			if (!component)
-			{
-				LOG_ERROR("Failed to add component \"" + type + "\"");
-				continue;
-			}
 			component->g_ID = id;
 		}
 		// Sometimes there are component dependencies, e.g. a collider that needs
@@ -283,46 +287,46 @@ namespace Directus
 
 		IComponent* component = nullptr;
 
-		if (typeStr == "Directus::Transform")
+		if (typeStr == "Transform")
 			component = AddComponent<Transform>();
 
-		if (typeStr == "Directus::MeshFilter")
+		if (typeStr == "MeshFilter")
 			component = AddComponent<MeshFilter>();
 
-		if (typeStr == "Directus::MeshRenderer")
+		if (typeStr == "MeshRenderer")
 			component = AddComponent<MeshRenderer>();
 
-		if (typeStr == "Directus::Light")
+		if (typeStr == "Light")
 			component = AddComponent<Light>();
 
-		if (typeStr == "Directus::Camera")
+		if (typeStr == "Camera")
 			component = AddComponent<Camera>();
 
-		if (typeStr == "Directus::Skybox")
+		if (typeStr == "Skybox")
 			component = AddComponent<Skybox>();
 
-		if (typeStr == "Directus::RigidBody")
+		if (typeStr == "RigidBody")
 			component = AddComponent<RigidBody>();
 
-		if (typeStr == "Directus::Collider")
+		if (typeStr == "Collider")
 			component = AddComponent<Collider>();
 
-		if (typeStr == "Directus::MeshCollider")
+		if (typeStr == "MeshCollider")
 			component = AddComponent<MeshCollider>();
 
-		if (typeStr == "Directus::Hinge")
+		if (typeStr == "Hinge")
 			component = AddComponent<Hinge>();
 
-		if (typeStr == "Directus::Script")
+		if (typeStr == "Script")
 			component = AddComponent<Script>();
 
-		if (typeStr == "Directus::LineRenderer")
+		if (typeStr == "LineRenderer")
 			component = AddComponent<LineRenderer>();
 
-		if (typeStr == "Directus::AudioSource")
+		if (typeStr == "AudioSource")
 			component = AddComponent<AudioSource>();
 
-		if (typeStr == "Directus::AudioListener")
+		if (typeStr == "AudioListener")
 			component = AddComponent<AudioListener>();
 
 		return component;

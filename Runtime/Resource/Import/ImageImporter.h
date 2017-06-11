@@ -69,7 +69,7 @@ class FIBITMAP;
 
 namespace Directus
 {
-	class DllExport ImageImporter
+	class DLL_API ImageImporter
 	{
 	public:
 		ImageImporter();

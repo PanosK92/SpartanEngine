@@ -44,16 +44,15 @@ namespace Directus
 		CubeMap_Texture,
 	};
 
-	class DllExport Texture : public Resource
+	class DLL_API Texture : public Resource
 	{
 	public:
 		Texture(Context* context);
 		~Texture();
 
-		//= IO ========================================
+		//= RESOURCE INTERFACE ========================
+		bool SaveToFile(const std::string& filePath);
 		bool LoadFromFile(const std::string& filePath);
-		bool SaveMetadata();
-		bool LoadMetadata();
 		//=============================================
 
 		//= PROPERTIES ===============================================================================
@@ -81,6 +80,10 @@ namespace Directus
 		//=============================================================================================
 
 	private:
+		bool LoadFromForeignFormat(const std::string& filePath);
+		bool LoadMetadata(const std::string& filePath);
+		bool CreateShaderResource();
+
 		int m_width;
 		int m_height;
 		TextureType m_textureType;
@@ -89,7 +92,5 @@ namespace Directus
 		bool m_alphaIsTransparency;
 		bool m_generateMipchain;
 		std::unique_ptr<D3D11Texture> m_texture;
-
-		bool CreateShaderResource();
 	};
 }

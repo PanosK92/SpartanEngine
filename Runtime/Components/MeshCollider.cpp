@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/ResourceManager.h"
+#include "../Graphics/Model.h"
 //===================================================================
 
 //= NAMESPACES ================
@@ -83,13 +84,24 @@ namespace Directus
 	void MeshCollider::Serialize()
 	{
 		Serializer::WriteBool(m_isConvex);
-		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetResourceID() : (string)DATA_NOT_ASSIGNED);
+		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
 	}
 
 	void MeshCollider::Deserialize()
 	{
 		m_isConvex = Serializer::ReadBool();
-		m_mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(Serializer::ReadSTR());
+		string meshID = Serializer::ReadSTR();
+
+		auto models = g_context->GetSubsystem<ResourceManager>()->GetResourcesByType<Model>();
+		for (const auto& model : models)
+		{
+			auto mesh = model.lock()->GetMeshByID(meshID);
+			if (!mesh.expired())
+			{
+				m_mesh = mesh;
+				break;
+			}
+		}
 
 		Build();
 	}

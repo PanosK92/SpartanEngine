@@ -10,7 +10,7 @@
 
 namespace Directus
 {
-	class DllExport LineRenderer : public IComponent
+	class DLL_API LineRenderer : public IComponent
 	{
 	public:
 		LineRenderer();

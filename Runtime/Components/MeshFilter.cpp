@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ===================================
 #include "MeshFilter.h"
 #include "Transform.h"
 #include "../IO/Serializer.h"
@@ -27,7 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/ResourceManager.h"
-//======================================
+#include "../Math/Vector3.h"
+#include "../Graphics/Model.h"
+#include "../Graphics/Mesh.h"
+#include "../Graphics/D3D11/D3D11VertexBuffer.h"
+#include "../Graphics/D3D11/D3D11IndexBuffer.h"
+//==============================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -51,6 +56,7 @@ namespace Directus
 
 	void MeshFilter::Reset()
 	{
+
 	}
 
 	void MeshFilter::Start()
@@ -76,7 +82,7 @@ namespace Directus
 	void MeshFilter::Serialize()
 	{
 		Serializer::WriteInt((int)m_meshType);
-		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetResourceID() : (string)DATA_NOT_ASSIGNED);
+		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
 	}
 
 	void MeshFilter::Deserialize()
@@ -86,21 +92,36 @@ namespace Directus
 
 		if (m_meshType == Imported) // Get the already loaded mesh
 		{
-			auto mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(meshID);
-			SetMesh(mesh);
+			auto models = g_context->GetSubsystem<ResourceManager>()->GetResourcesByType<Model>();
+			for (const auto& model : models)
+			{
+				auto mesh = model.lock()->GetMeshByID(meshID);
+				if (!mesh.expired())
+				{
+					m_mesh = mesh;
+					break;
+				}
+			}
+
+			SetMesh(m_mesh);
 		}
-		else // Construct the mesh
+		else
+		{
+			// Construct the mesh
 			SetMesh(m_meshType);
+		}
 	}
 
-	// Sets a mesh from memory (all other set/create functions resolve to this one)
+	// Sets a mesh from memory
 	void MeshFilter::SetMesh(weak_ptr<Mesh> mesh)
 	{
 		m_mesh = mesh;
 
 		// Make the mesh re-create the buffers whenever it updates.
 		if (!m_mesh.expired())
+		{
 			m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
+		}
 
 		CreateBuffers();
 	}
@@ -108,7 +129,7 @@ namespace Directus
 	// Sets a default mesh (cube, quad)
 	void MeshFilter::SetMesh(MeshType defaultMesh)
 	{
-		auto meshSharedPtr = make_shared<Mesh>(g_context);
+		auto meshSharedPtr = make_shared<Mesh>();
 		vector<VertexPosTexNorTan> vertices;
 		vector<unsigned int> indices;
 
@@ -116,8 +137,8 @@ namespace Directus
 		{
 		case Cube:
 			CreateCube(vertices, indices);
-			meshSharedPtr = make_shared<Mesh>(g_context);
-			meshSharedPtr->SetResourceName("Cube");
+			meshSharedPtr = make_shared<Mesh>();
+			meshSharedPtr->SetName("Cube");
 			meshSharedPtr->SetVertices(vertices);
 			meshSharedPtr->SetIndices(indices);
 			meshSharedPtr->Update();
@@ -126,8 +147,8 @@ namespace Directus
 
 		case Quad:
 			CreateQuad(vertices, indices);
-			meshSharedPtr = make_shared<Mesh>(g_context);
-			meshSharedPtr->SetResourceName("Quad");
+			meshSharedPtr = make_shared<Mesh>();
+			meshSharedPtr->SetName("Quad");
 			meshSharedPtr->SetVertices(vertices);
 			meshSharedPtr->SetIndices(indices);
 			meshSharedPtr->Update();
@@ -139,43 +160,30 @@ namespace Directus
 			break;
 		}
 
-		auto meshWeakPtr = g_context->GetSubsystem<ResourceManager>()->Add(move(meshSharedPtr));
-		SetMesh(meshWeakPtr);
+		// This has to be fixed, default meshes should become default models instead
+		//auto meshWeakPtr = g_context->GetSubsystem<ResourceManager>()->Add(move(meshSharedPtr));
+		//SetMesh(meshWeakPtr);
 
 		vertices.clear();
 		indices.clear();
-	}
-
-	// Creates a mesh from raw vertex/index data and sets it
-	void MeshFilter::CreateAndSet(const string& name, const string& rootGameObjectID, const vector<VertexPosTexNorTan>& vertices, const vector<unsigned int>& indices)
-	{
-		// Create a mesh
-		auto mesh = make_shared<Mesh>(g_context);
-		mesh->SetResourceName(name);
-		mesh->SetRootGameObjectID(rootGameObjectID);
-		mesh->SetVertices(vertices);
-		mesh->SetIndices(indices);
-		mesh->Update();
-
-		// Save it and set it
-		SetMesh(g_context->GetSubsystem<ResourceManager>()->Add(mesh));
 	}
 
 	// Set the buffers to active in the input assembler so they can be rendered.
 	bool MeshFilter::SetBuffers()
 	{
 		string gameObjName = !g_gameObject.expired() ? g_gameObject.lock()->GetName() : DATA_NOT_ASSIGNED;
-		if (!m_vertexBuffer) {
+		if (!m_vertexBuffer) 
+		{
 			LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + gameObjName + "\".");
 		}
 
-		if (!m_indexBuffer) {
+		if (!m_indexBuffer) 
+		{
 			LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + gameObjName + "\".");
 		}
 
-		if (!m_vertexBuffer || !m_indexBuffer) {
+		if (!m_vertexBuffer || !m_indexBuffer) 
 			return false;
-		}
 
 		m_vertexBuffer->SetIA();
 		m_indexBuffer->SetIA();
@@ -184,76 +192,6 @@ namespace Directus
 		g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(TriangleList);
 
 		return true;
-	}
-
-	void MeshFilter::NormalizeModelScale()
-	{
-		float normalizedScale = GetNormalizedModelScale();
-		SetModelScale(normalizedScale);
-	}
-
-	vector<weak_ptr<Mesh>> MeshFilter::GetAllModelMeshes()
-	{
-		vector<weak_ptr<Mesh>> modelMeshes;
-
-		auto meshes = g_context->GetSubsystem<ResourceManager>()->GetAllByType<Mesh>();
-		for (const auto& mesh : meshes)
-			if (m_mesh.lock()->GetRootGameObjectID() == mesh.lock()->GetRootGameObjectID())
-				modelMeshes.push_back(mesh);
-
-		return modelMeshes;
-	}
-
-	float MeshFilter::GetNormalizedModelScale()
-	{
-		// get all the meshes related to this model
-		vector<weak_ptr<Mesh>> modelMeshes = GetAllModelMeshes();
-
-		// find the mesh with the largest bounding box
-		weak_ptr<Mesh> largestBoundingBoxMesh = GetLargestBoundingBox(modelMeshes);
-
-		if (largestBoundingBoxMesh.expired())
-			return 1.0f;
-
-		// calculate the scale
-		Vector3 boundingBox = largestBoundingBoxMesh.lock()->GetBoundingBox();
-		float scaleOffset = boundingBox.Length();
-
-		return 1.0f / scaleOffset;
-	}
-
-	void MeshFilter::SetModelScale(float scale)
-	{
-		// get all the meshes related to this model
-		vector<weak_ptr<Mesh>> meshes = GetAllModelMeshes();
-
-		// scale them
-		for (const auto& modelMesh : meshes)
-			modelMesh.lock()->SetScale(scale);
-	}
-
-	weak_ptr<Mesh> MeshFilter::GetLargestBoundingBox(vector<weak_ptr<Mesh>> meshes)
-	{
-		if (meshes.empty())
-			return weak_ptr<Mesh>();
-
-		Vector3 largestBoundingBox = Vector3::Zero;
-		weak_ptr<Mesh> largestBoundingBoxMesh = meshes.front();
-
-		for (auto mesh : meshes)
-		{
-			if (mesh.expired())
-				continue;
-
-			Vector3 boundingBox = mesh.lock()->GetBoundingBox();
-			if (boundingBox.Volume() > largestBoundingBox.Volume())
-			{
-				largestBoundingBox = boundingBox;
-				largestBoundingBoxMesh = mesh;
-			}
-		}
-
-		return largestBoundingBoxMesh;
 	}
 
 	Vector3 MeshFilter::GetCenter()
@@ -278,7 +216,7 @@ namespace Directus
 
 	string MeshFilter::GetMeshName()
 	{
-		return !m_mesh.expired() ? m_mesh.lock()->GetResourceName() : DATA_NOT_ASSIGNED;
+		return !m_mesh.expired() ? m_mesh.lock()->GetName() : DATA_NOT_ASSIGNED;
 	}
 
 	bool MeshFilter::CreateBuffers()

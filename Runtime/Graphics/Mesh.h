@@ -21,35 +21,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ========
 #include <vector>
-#include "Vertex.h"
 #include <functional>
-#include "../Resource/Resource.h"
-//================================
+#include "Vertex.h"
+//===================
 
 namespace Directus
 {
-	class Mesh : public Resource
+	class Mesh
 	{
 	public:
-		Mesh(Context* context);
+		Mesh();
 		~Mesh();
 
-		//= IO =========================================================================
-	private:
 		void Serialize();
 		void Deserialize();
-	public:
-		bool SaveMetadata();
-		void SaveToDirectory(const std::string& directory, bool overwrite);
-		bool LoadFromFile(const std::string& filePath);
-		//==============================================================================
 
-		std::string GetRootGameObjectID() const { return m_rootGameObjectID; }
-		void SetRootGameObjectID(const std::string& rootGameObjectID) { m_rootGameObjectID = rootGameObjectID; }
+		std::string GetID() { return m_id; }
 
-		void SetDirectory(const std::string& directory) { m_directory = directory; }
+		std::string GetName() { return m_name; }
+		void SetName(const std::string& name) { m_name = name; }
 
 		std::vector<VertexPosTexNorTan>& GetVertices() { return m_vertices; }
 		void SetVertices(std::vector<VertexPosTexNorTan> vertices)
@@ -95,8 +87,8 @@ namespace Directus
 		static void GetMinMax(Mesh* mesh, Math::Vector3& min, Math::Vector3& max);
 		//==============================================================================
 
-		std::string m_rootGameObjectID;
-		std::string m_directory;
+		std::string m_id;
+		std::string m_name;
 
 		std::vector<VertexPosTexNorTan> m_vertices;
 		std::vector<unsigned int> m_indices;

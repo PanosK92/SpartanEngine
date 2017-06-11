@@ -28,9 +28,9 @@ int main(int argc, char *argv[])
 {
     QCoreApplication::addLibraryPath("./");
     QApplication a(argc, argv);
-    Editor window;
+    Editor window;   
     window.InitializeEngine();
-    window.show();
+    window.show(); 
 
     return a.exec();
 }

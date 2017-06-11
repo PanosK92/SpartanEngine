@@ -32,7 +32,7 @@ namespace Directus
 {
 	namespace Math
 	{
-		class DllExport Matrix
+		class DLL_API Matrix
 		{
 		public:
 			Matrix()
@@ -435,6 +435,6 @@ namespace Directus
 		};
 
 		// Reverse order operators
-		inline DllExport Vector3 operator*(const Vector3& lhs, const Matrix& rhs) { return rhs * lhs; }
+		inline DLL_API Vector3 operator*(const Vector3& lhs, const Matrix& rhs) { return rhs * lhs; }
 	}
 }

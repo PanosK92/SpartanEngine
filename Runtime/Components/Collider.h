@@ -43,7 +43,7 @@ namespace Directus
 		Sphere
 	};
 
-	class DllExport Collider : public IComponent
+	class DLL_API Collider : public IComponent
 	{
 	public:
 		Collider();

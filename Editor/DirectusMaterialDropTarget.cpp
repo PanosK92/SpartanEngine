@@ -55,7 +55,7 @@ void DirectusMaterialDropTarget::dragEnterEvent(QDragEnterEvent* event)
         return;
     }
 
-    if (!FileSystem::IsSupportedMaterialFile(event->mimeData()->text().toStdString()))
+    if (!FileSystem::IsEngineMaterialFile(event->mimeData()->text().toStdString()))
     {
         event->ignore();
         return;
@@ -74,7 +74,7 @@ void DirectusMaterialDropTarget::dragMoveEvent(QDragMoveEvent* event)
         return;
     }
 
-    if (!FileSystem::IsSupportedMaterialFile(event->mimeData()->text().toStdString()))
+    if (!FileSystem::IsEngineMaterialFile(event->mimeData()->text().toStdString()))
     {
         event->ignore();
         return;
@@ -92,7 +92,7 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
         return;
     }
 
-    if (!FileSystem::IsSupportedMaterialFile(event->mimeData()->text().toStdString()))
+    if (!FileSystem::IsEngineMaterialFile(event->mimeData()->text().toStdString()))
     {
         event->ignore();
         return;

@@ -53,8 +53,10 @@ namespace Directus
 		if (!m_scriptInstance)
 			return;
 
-		if (m_scriptInstance->IsInstantiated())
-			m_scriptInstance->ExecuteStart();
+		if (!m_scriptInstance->IsInstantiated())
+			return;
+
+		m_scriptInstance->ExecuteStart();
 	}
 
 	void Script::OnDisable()
@@ -72,8 +74,10 @@ namespace Directus
 		if (!m_scriptInstance)
 			return;
 
-		if (m_scriptInstance->IsInstantiated())
-			m_scriptInstance->ExecuteUpdate();
+		if (!m_scriptInstance->IsInstantiated())
+			return;
+
+		m_scriptInstance->ExecuteUpdate();
 	}
 
 	void Script::Serialize()
@@ -111,6 +115,6 @@ namespace Directus
 
 	string Script::GetName()
 	{
-		return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromPath(GetScriptPath()) : "N/A";
+		return m_scriptInstance ? FileSystem::GetFileNameNoExtensionFromFilePath(GetScriptPath()) : "N/A";
 	}
 }

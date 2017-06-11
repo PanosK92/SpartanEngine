@@ -39,7 +39,7 @@ namespace Directus
 		class Vector3;
 	}
 
-	class DllExport Log
+	class DLL_API Log
 	{
 		friend class ILogger;
 	public:

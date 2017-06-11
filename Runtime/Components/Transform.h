@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DllExport Transform : public IComponent
+	class DLL_API Transform : public IComponent
 	{
 	public:
 		enum Space

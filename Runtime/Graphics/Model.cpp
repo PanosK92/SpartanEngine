@@ -19,6 +19,211 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====
+//= INCLUDES ===========================
 #include "Model.h"
-//================
+#include "Mesh.h"
+#include "../Core/GameObject.h"
+#include "../Core/GUIDGenerator.h"
+#include "../Resource/ResourceManager.h"
+#include "../Components/MeshFilter.h"
+#include "../Components/Transform.h"
+#include "../Graphics/Vertex.h"
+#include "../IO/Serializer.h"
+//======================================
+
+//= NAMESPACES ================
+using namespace std;
+using namespace Directus::Math;
+//=============================
+
+namespace Directus
+{
+	Model::Model(Context* context)
+	{
+		m_context = context;
+
+		//= RESOURCE INTERFACE ===========
+		m_resourceID = GENERATE_GUID;
+		m_resourceType = Model_Resource;
+		//================================
+
+		if (!m_context)
+			return;
+
+		m_resourceManager = m_context->GetSubsystem<ResourceManager>();
+	}
+
+	Model::~Model()
+	{
+
+	}
+
+	//= RESOURCE INTERFACE ====================================================================
+	bool Model::LoadFromFile(const string& filePath)
+	{
+		bool engineFormat = FileSystem::GetExtensionFromFilePath(filePath) == MODEL_EXTENSION;
+		return engineFormat ? LoadFromEngineFormat(filePath) : LoadFromForeignFormat(filePath);
+	}
+
+	bool Model::SaveToFile(const string& filePath)
+	{
+		string savePath = filePath;
+		if (filePath == RESOURCE_SAVE)
+		{
+			savePath = m_resourceFilePath;
+		}
+
+		if (!Serializer::StartWriting(savePath))
+			return false;
+
+		Serializer::WriteSTR(m_resourceID);
+		Serializer::WriteSTR(m_resourceName);
+		Serializer::WriteSTR(m_resourceFilePath);
+		Serializer::WriteInt((int)m_meshes.size());
+
+		for (const auto& mesh : m_meshes)
+		{
+			mesh->Serialize();
+		}
+
+		Serializer::StopWriting();
+
+		return true;
+	}
+	//============================================================================================
+
+	void Model::AddMesh(weak_ptr<GameObject> gameObj, const string& name, vector<VertexPosTexNorTan> vertices, vector<unsigned int> indices)
+	{
+		// Create a mesh
+		auto mesh = make_shared<Mesh>();
+		mesh->SetName(name);
+		mesh->SetVertices(vertices);
+		mesh->SetIndices(indices);
+		mesh->Update();
+
+		// Save it
+		m_meshes.push_back(mesh);
+
+		// Add a mesh filter to the GameObject and set the mesh
+		MeshFilter* meshFilter = gameObj.lock()->AddComponent<MeshFilter>();
+		meshFilter->SetMesh(mesh);
+	}
+
+	weak_ptr<Mesh> Model::GetMeshByID(const string id)
+	{
+		for (const auto& mesh : m_meshes)
+		{
+			if (mesh->GetID() == id)
+			{
+				return mesh;
+			}
+		}
+
+		return weak_ptr<Mesh>();
+	}
+
+	string Model::CopyFileToLocalDirectory(const string& filePath)
+	{
+		string textureDestination = m_resourceDirectory + FileSystem::GetFileNameFromFilePath(filePath);
+		FileSystem::CopyFileFromTo(filePath, textureDestination);
+
+		return textureDestination;
+	}
+
+	void Model::NormalizeScale()
+	{
+		float normalizedScale = GetNormalizedScale();
+		SetScale(normalizedScale);
+	}
+
+	void Model::SetScale(float scale) // WHEN THAT HAPPENS I SHOULD ALSO SAVE THE MODEL AGAIN
+	{
+		for (const auto& mesh : m_meshes)
+		{
+			mesh->SetScale(scale);
+		}
+	}
+
+	bool Model::LoadFromEngineFormat(const string& filePath)
+	{
+		// Deserialize
+		if (!Serializer::StartReading(filePath))
+			return false;
+
+		m_resourceID = Serializer::ReadSTR();
+		m_resourceName = Serializer::ReadSTR();
+		m_resourceFilePath = Serializer::ReadSTR();
+		int meshCount = Serializer::ReadInt();
+
+		for (int i = 0; i < meshCount; i++)
+		{
+			auto mesh = make_shared<Mesh>();
+			mesh->Deserialize();
+			m_meshes.push_back(mesh);
+		}
+
+		Serializer::StopReading();
+
+		return true;
+	}
+
+	bool Model::LoadFromForeignFormat(const string& filePath)
+	{
+		// Set some crucial data (Required by ModelImporter)
+		m_originalFilePath = filePath;
+		m_resourceDirectory = "Assets//" + FileSystem::GetFileNameNoExtensionFromFilePath(m_originalFilePath) + "//"; // Assets/Sponza/
+		m_resourceName = FileSystem::GetFileNameFromFilePath(m_originalFilePath); // Sponza.obj
+		m_resourceFilePath = m_resourceDirectory + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION; // Assets/Sponza/Sponza.model
+
+		// Create asset directory (if it doesn't exist)
+		FileSystem::CreateDirectory_("Assets");
+		FileSystem::CreateDirectory_(m_resourceDirectory);
+		FileSystem::CreateDirectory_(m_resourceDirectory + "Materials//");
+
+		// Load the model
+		if (m_resourceManager->GetModelImporter().lock()->Load(this))
+		{
+			// Save the model as custom/binary format
+			SaveToFile(m_resourceFilePath);
+			return true;
+		}
+
+		return false;
+	}
+
+	float Model::GetNormalizedScale()
+	{
+		// Find the mesh with the largest bounding box
+		auto largestBoundingBoxMesh = GetLargestBoundingBox().lock();
+
+		// Calculate the scale offset
+		float scaleOffset = !largestBoundingBoxMesh ? 1.0f : largestBoundingBoxMesh->GetBoundingBox().Length();
+
+		// Return the scale
+		return 1.0f / scaleOffset;
+	}
+
+	weak_ptr<Mesh> Model::GetLargestBoundingBox()
+	{
+		if (m_meshes.empty())
+			return weak_ptr<Mesh>();
+
+		Vector3 largestBoundingBox = Vector3::Zero;
+		weak_ptr<Mesh> largestBoundingBoxMesh = m_meshes.front();
+
+		for (auto mesh : m_meshes)
+		{
+			if (!mesh)
+				continue;
+
+			Vector3 boundingBox = mesh->GetBoundingBox();
+			if (boundingBox.Volume() > largestBoundingBox.Volume())
+			{
+				largestBoundingBox = boundingBox;
+				largestBoundingBoxMesh = mesh;
+			}
+		}
+
+		return largestBoundingBoxMesh;
+	}
+}

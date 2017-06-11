@@ -40,7 +40,7 @@ namespace Directus
 		Orthographic,
 	};
 
-	class DllExport Camera : public IComponent
+	class DLL_API Camera : public IComponent
 	{
 	public:
 		Camera();

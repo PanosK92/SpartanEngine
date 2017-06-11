@@ -36,20 +36,16 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Mesh::Mesh(Context* context)
+	Mesh::Mesh()
 	{
-		// Resource
-		m_resourceID = GENERATE_GUID;
-		m_resourceType = Mesh_Resource;
-
 		// Mesh	
-		m_rootGameObjectID = DATA_NOT_ASSIGNED;
-		m_directory = DATA_NOT_ASSIGNED;
+		m_id = GENERATE_GUID;
+		m_name = DATA_NOT_ASSIGNED;
 		m_vertexCount = 0;
 		m_indexCount = 0;
 		m_triangleCount = 0;
-		m_min = Vector3::InfinityNeg;
-		m_min = Vector3::Infinity;
+		m_min = Vector3::Zero;
+		m_max = Vector3::Zero;
 		m_center = Vector3::Zero;
 		m_boundingBox = Vector3::One;
 		m_onUpdate = nullptr;
@@ -59,9 +55,7 @@ namespace Directus
 	{
 		m_vertices.clear();
 		m_indices.clear();
-		m_resourceName.clear();
-		m_resourceID.clear();
-		m_rootGameObjectID.clear();
+		m_name.clear();
 		m_vertexCount = 0;
 		m_indexCount = 0;
 		m_triangleCount = 0;
@@ -70,20 +64,21 @@ namespace Directus
 	//= IO =========================================================================
 	void Mesh::Serialize()
 	{
-		Serializer::WriteSTR(m_resourceID);
-		Serializer::WriteSTR(m_rootGameObjectID);
-		Serializer::WriteSTR(m_resourceName);
-		Serializer::WriteSTR(m_directory);
-		Serializer::WriteSTR(m_resourceFilePath);
+		Serializer::WriteSTR(m_id);
+		Serializer::WriteSTR(m_name);
 		Serializer::WriteInt(m_vertexCount);
 		Serializer::WriteInt(m_indexCount);
 		Serializer::WriteInt(m_triangleCount);
 
 		for (const auto& vertex : m_vertices)
+		{
 			SaveVertex(vertex);
+		}
 
 		for (const auto& index : m_indices)
+		{
 			Serializer::WriteInt(index);
+		}
 
 		Serializer::WriteVector3(m_min);
 		Serializer::WriteVector3(m_max);
@@ -93,11 +88,8 @@ namespace Directus
 
 	void Mesh::Deserialize()
 	{
-		m_resourceID = Serializer::ReadSTR();
-		m_rootGameObjectID = Serializer::ReadSTR();
-		m_resourceName = Serializer::ReadSTR();
-		m_directory = Serializer::ReadSTR();
-		m_resourceFilePath = Serializer::ReadSTR();
+		m_id = Serializer::ReadSTR();
+		m_name = Serializer::ReadSTR();
 		m_vertexCount = Serializer::ReadInt();
 		m_indexCount = Serializer::ReadInt();
 		m_triangleCount = Serializer::ReadInt();
@@ -109,49 +101,14 @@ namespace Directus
 		}
 
 		for (unsigned int i = 0; i < m_indexCount; i++)
+		{
 			m_indices.push_back(Serializer::ReadInt());
+		}
 
 		m_min = Serializer::ReadVector3();
 		m_max = Serializer::ReadVector3();
 		m_center = Serializer::ReadVector3();
 		m_boundingBox = Serializer::ReadVector3();
-	}
-
-	bool Mesh::SaveMetadata()
-	{
-		return true;
-	}
-
-	void Mesh::SaveToDirectory(const string& directory, bool overwrite)
-	{
-		// I used to use GetName() to save the mesh but when mesh duplicates are genarated
-		// upon loading a model, they also get different IDs, the file will be overwritten
-		// thus when loading the meshes only one will be loaded properly.
-		m_resourceFilePath = directory + GetResourceID() + MESH_EXTENSION;
-
-		if (FileSystem::FileExists(m_resourceFilePath) && !overwrite)
-			return;
-
-		Serializer::StartWriting(m_resourceFilePath);
-		Serialize();
-		Serializer::StopWriting();
-	}
-
-	bool Mesh::LoadFromFile(const string& filePath)
-	{
-		// Make sure the file exists
-		if (!FileSystem::FileExists(filePath))
-			return false;
-
-		// Make sure it's actually a mesh file
-		if (!FileSystem::IsSupportedMeshFile(filePath))
-			return false;
-
-		Serializer::StartReading(filePath);
-		Deserialize();
-		Serializer::StopReading();
-
-		return true;
 	}
 
 	//==============================================================================
@@ -163,11 +120,10 @@ namespace Directus
 		m_center = GetCenter(m_min, m_max);
 		m_boundingBox = GetBoundingBox(m_min, m_max);
 
-		if (m_directory != DATA_NOT_ASSIGNED)
-			SaveToDirectory(m_directory, true);
-
 		if (m_onUpdate)
+		{
 			m_onUpdate();
+		}
 	}
 
 	// This is attached to CreateBuffers() which is part of the MeshFilter component.
@@ -177,7 +133,9 @@ namespace Directus
 		m_onUpdate = function;
 
 		if (m_onUpdate)
+		{
 			m_onUpdate();
+		}
 	}
 
 	void Mesh::SetScale(float scale)
@@ -229,7 +187,9 @@ namespace Directus
 	void Mesh::SetScale(Mesh* meshData, float scale)
 	{
 		for (unsigned int i = 0; i < meshData->GetVertexCount(); i++)
+		{
 			meshData->GetVertices()[i].position *= scale;
+		}
 	}
 
 	// Returns the bounding box of a mesh

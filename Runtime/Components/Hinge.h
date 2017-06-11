@@ -32,7 +32,7 @@ namespace Directus
 {
 	class GameObject;
 
-	class DllExport Hinge : public IComponent
+	class DLL_API Hinge : public IComponent
 	{
 	public:
 		Hinge();

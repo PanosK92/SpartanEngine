@@ -160,6 +160,9 @@ namespace Directus
 	//= HELPER FUNCTIONS ======================================================
 	void Collider::UpdateBoundingBox()
 	{
+		if (g_gameObject.expired())
+			return;
+
 		// Info
 		// Mesh returns raw untouched data
 		// MeshFilter returns pretransformed data
@@ -181,13 +184,21 @@ namespace Directus
 
 	void Collider::SetRigidBodyCollisionShape(shared_ptr<btCollisionShape> shape) const
 	{
+		if (g_gameObject.expired())
+			return;
+
 		RigidBody* rigidBody = g_gameObject.lock()->GetComponent<RigidBody>();
 		if (rigidBody)
+		{
 			rigidBody->SetCollisionShape(shape);
+		}
 	}
 
 	weak_ptr<Mesh> Collider::GetMeshFromAttachedMeshFilter() const
 	{
+		if (g_gameObject.expired())
+			return weak_ptr<Mesh>();
+
 		MeshFilter* meshFilter = g_gameObject.lock()->GetComponent<MeshFilter>();
 		return meshFilter ? meshFilter->GetMesh() : weak_ptr<Mesh>();
 	}

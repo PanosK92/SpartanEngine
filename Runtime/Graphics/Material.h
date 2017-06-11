@@ -51,18 +51,21 @@ namespace Directus
 		Material_Skybox
 	};
 
-	class DllExport Material : public Resource
+	class DLL_API Material : public Resource
 	{
 	public:
 		Material(Context* context);
 		~Material();
 
-		//= I/O =======================================================================
-		bool SaveMetadata();
+		//= I/O ===============================================
 		bool Save(const std::string& filePath, bool overwrite);
 		bool SaveToExistingDirectory();
+		//=====================================================
+
+		//= RESOURCE INTERFACE ======================================
 		bool LoadFromFile(const std::string& filePath);
-		//=============================================================================
+		bool SaveToFile(const std::string& filePath) { return true; }
+		//===========================================================
 
 		//= TEXTURES ==================================================================
 		void SetTexture(std::weak_ptr<Texture> texture);

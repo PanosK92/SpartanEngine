@@ -41,8 +41,8 @@ namespace Directus
 		~ScriptInstance();
 
 		bool Instantiate(const std::string& path, std::weak_ptr<GameObject> gameObject, Scripting* scriptEngine);
-		bool IsInstantiated();
-		std::string GetScriptPath();
+		bool IsInstantiated() { return m_isInstantiated; }
+		std::string GetScriptPath() { return m_scriptPath; }
 
 		void ExecuteStart();
 		void ExecuteUpdate();

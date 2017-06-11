@@ -48,7 +48,7 @@ void DirectusFileExplorer::Initialize(
         DirectusInspector* inspector
         )
 {
-    QString root = "Standard Assets";
+    QString root = "Assets";
     setAcceptDrops(true);
     setEditTriggers(QAbstractItemView::NoEditTriggers);
 
@@ -166,7 +166,7 @@ void DirectusFileExplorer::mouseReleaseEvent(QMouseEvent* event)
     QString filePath = m_fileModel->fileInfo(selectedItems[0]).filePath();
 
     // Determine what type of file that was, and display it in the inspector (if possible).
-    if (FileSystem::IsSupportedMaterialFile(filePath.toStdString()))
+    if (FileSystem::IsEngineMaterialFile(filePath.toStdString()))
         m_inspector->InspectMaterialFile(filePath.toStdString());
 }
 
@@ -224,7 +224,7 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
             // Audio ?
             if (FileSystem::IsSupportedAudioFile(filePath))
             {
-                std::string fileName = FileSystem::GetFileNameFromPath(filePath);
+                std::string fileName = FileSystem::GetFileNameFromFilePath(filePath);
                 std::string destinationPath = GetRootPath().toStdString() + "/" + fileName;
                 FileSystem::CopyFileFromTo(filePath, destinationPath);
                 return;
@@ -233,7 +233,7 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
             // Image ?
             if (FileSystem::IsSupportedImageFile(filePath))
             {
-                std::string fileName = FileSystem::GetFileNameFromPath(filePath);
+                std::string fileName = FileSystem::GetFileNameFromFilePath(filePath);
                 std::string destinationPath = GetRootPath().toStdString() + "/" + fileName;
                 FileSystem::CopyFileFromTo(filePath, destinationPath);
             }

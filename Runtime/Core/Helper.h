@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#define DllExport __declspec(dllexport)  
+#define DLL_API __declspec(dllexport)
 
 namespace Directus
 {
