@@ -151,7 +151,7 @@ namespace Directus
 	
 	string AudioSource::GetAudioClipName()
 	{
-		return FileSystem::GetFileNameFromPath(m_filePath);
+		return FileSystem::GetFileNameFromFilePath(m_filePath);
 	}
 	
 	bool AudioSource::PlayAudioClip()

@@ -131,7 +131,7 @@ namespace Directus
 		if (m_layoutHasBeenSet)
 			SafeRelease(m_VSBlob);
 		else
-			LOG_ERROR("Failed to create vertex input layout for " + FileSystem::GetFileNameFromPath(m_filePath) + ".");
+			LOG_ERROR("Failed to create vertex input layout for " + FileSystem::GetFileNameFromFilePath(m_filePath) + ".");
 
 		return m_layoutHasBeenSet;
 	}
@@ -271,7 +271,7 @@ namespace Directus
 		// Handle any errors
 		if (FAILED(hr))
 		{
-			string shaderName = FileSystem::GetFileNameFromPath(filePath);
+			string shaderName = FileSystem::GetFileNameFromFilePath(filePath);
 			if (errorBlob)
 			{
 				ExportErrorDebugLog(errorBlob);

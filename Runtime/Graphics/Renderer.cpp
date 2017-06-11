@@ -315,9 +315,7 @@ namespace Directus
 			for (const auto& gameObject : m_renderables)
 			{
 				if (gameObject.expired())
-				{
 					continue;
-				}
 
 				auto meshRenderer = gameObject.lock()->GetComponent<MeshRenderer>();
 				auto material = meshRenderer->GetMaterial();
@@ -354,12 +352,10 @@ namespace Directus
 	void Renderer::GBufferPass()
 	{
 		if (!m_graphics)
-		{
 			return;
-		}
 
-		auto materials = m_resourceMng->GetAllByType<Material>();
-		auto shaders = m_resourceMng->GetAllByType<ShaderVariation>();
+		auto materials = m_resourceMng->GetResourcesByType<Material>();
+		auto shaders = m_resourceMng->GetResourcesByType<ShaderVariation>();
 
 		for (const auto& tempShader : shaders) // SHADER ITERATION
 		{

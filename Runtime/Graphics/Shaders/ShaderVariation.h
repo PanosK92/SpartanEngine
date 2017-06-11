@@ -56,8 +56,11 @@ namespace Directus
 			bool cubemap,
 			Graphics* graphics
 		);
+
+		//= RESOURCE INTERFACE ========================================
 		bool LoadFromFile(const std::string& filePath) { return true; }
-		bool SaveMetadata();
+		bool SaveToFile(const std::string& filePath) { return true; }
+		//=============================================================
 
 		void Set();
 		void UpdatePerFrameBuffer(Light* directionalLight, Camera* camera);

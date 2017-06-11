@@ -1027,8 +1027,6 @@ compiler_moc_header_clean:
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -1381,8 +1379,6 @@ compiler_moc_header_clean:
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -1861,8 +1857,6 @@ compiler_moc_header_clean:
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -2200,8 +2194,6 @@ compiler_moc_header_clean:
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -3521,8 +3513,6 @@ compiler_moc_header_clean:
 		..\Runtime\Graphics\Vertex.h \
 		..\Runtime\Math\Vector2.h \
 		..\Runtime\Math\Vector4.h \
-		..\Runtime\Resource\Resource.h \
-		..\Runtime\FileSystem\FileSystem.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QCheckBox \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qcheckbox.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractbutton.h \
@@ -3870,8 +3860,6 @@ compiler_moc_header_clean:
 		..\Runtime\Graphics\Vertex.h \
 		..\Runtime\Math\Vector2.h \
 		..\Runtime\Math\Vector4.h \
-		..\Runtime\Resource\Resource.h \
-		..\Runtime\FileSystem\FileSystem.h \
 		DirectusMeshCollider.h \
 		..\Binaries\Release\MetaData\Qt_MOCFiles\moc_predefs.h \
 		C:\Qt\5.9\msvc2017_64\bin\moc.exe
@@ -4490,19 +4478,6 @@ compiler_moc_header_clean:
 		..\Runtime\Math\MathHelper.h \
 		..\Runtime\Multithreading\Multithreading.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\Vertex.h \
-		..\Runtime\Math\Vector2.h \
-		..\Runtime\Math\Vector4.h \
-		..\Runtime\Graphics\Mesh.h \
-		..\Runtime\Resource\Resource.h \
-		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
-		..\Runtime\Graphics\IGraphicsDevice.h \
-		..\Runtime\Graphics\GraphicsDefinitions.h \
-		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
-		..\Runtime\Core\Settings.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QComboBox \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qcombobox.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractitemdelegate.h \
@@ -4527,6 +4502,7 @@ compiler_moc_header_clean:
 		DirectusStatsLabel.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QLabel \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlabel.h \
+		..\Runtime\Math\Vector4.h \
 		DirectusDropDownButton.h \
 		DirectusIComponent.h \
 		DirectusMeshFilter.h \
@@ -6301,8 +6277,6 @@ compiler_uic_clean:
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -6650,8 +6624,6 @@ compiler_uic_clean:
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -7238,8 +7210,6 @@ compiler_uic_clean:
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -7461,8 +7431,6 @@ compiler_uic_clean:
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -8070,10 +8038,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qframe.h \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\qtextcursor.h \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\qtextformat.h \
-		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Vector3.h \
-		..\Runtime\Math\MathHelper.h \
-		..\Runtime\Math\Quaternion.h
+		..\Runtime\Logging\Log.h
 
 ..\Binaries\Release\MetaData\Qt_ObjFiles\AboutDialog.obj: AboutDialog.cpp AboutDialog.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QDialog \
@@ -8412,8 +8377,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -8764,8 +8727,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -9253,8 +9214,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -9593,8 +9552,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -9897,9 +9854,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Core\Helper.h \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\QMouseEvent \
 		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Vector3.h \
-		..\Runtime\Math\MathHelper.h \
-		..\Runtime\Math\Quaternion.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QApplication \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qapplication.h \
 		C:\Qt\5.9\msvc2017_64\include\QtCore\qcoreapplication.h \
@@ -10118,8 +10072,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -10313,9 +10265,9 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		DirectusMaterialTextureDropTarget.h \
 		..\Runtime\Components\MeshRenderer.h \
 		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Quaternion.h \
 		DirectusInspector.h \
 		DirectusTransform.h \
+		..\Runtime\Math\Quaternion.h \
 		DirectusCamera.h \
 		..\Runtime\Components\Camera.h \
 		..\Runtime\Math\Matrix.h \
@@ -10337,8 +10289,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -10528,9 +10478,9 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		DirectusDropDownButton.h \
 		..\Runtime\Components\MeshRenderer.h \
 		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Quaternion.h \
 		DirectusInspector.h \
 		DirectusTransform.h \
+		..\Runtime\Math\Quaternion.h \
 		DirectusCamera.h \
 		..\Runtime\Components\Camera.h \
 		..\Runtime\Math\Matrix.h \
@@ -10556,8 +10506,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -10775,8 +10723,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -10993,8 +10939,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -11139,8 +11083,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Vertex.h \
 		..\Runtime\Math\Vector2.h \
 		..\Runtime\Math\Vector4.h \
-		..\Runtime\Resource\Resource.h \
-		..\Runtime\FileSystem\FileSystem.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QCheckBox \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qcheckbox.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractbutton.h \
@@ -11191,6 +11133,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		DirectusMaterialDropTarget.h \
 		..\Runtime\Graphics\Material.h \
 		..\Runtime\Graphics\Texture.h \
+		..\Runtime\Resource\Resource.h \
+		..\Runtime\FileSystem\FileSystem.h \
 		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
@@ -11211,8 +11155,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -11429,8 +11371,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\D3D11\D3D11RenderTexture.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -11596,8 +11536,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Graphics\Vertex.h \
 		..\Runtime\Math\Vector2.h \
 		..\Runtime\Math\Vector4.h \
-		..\Runtime\Resource\Resource.h \
-		..\Runtime\FileSystem\FileSystem.h \
 		DirectusInspector.h \
 		DirectusTransform.h \
 		..\Runtime\Math\Quaternion.h \
@@ -11626,6 +11564,8 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		DirectusMaterialDropTarget.h \
 		..\Runtime\Graphics\Material.h \
 		..\Runtime\Graphics\Texture.h \
+		..\Runtime\Resource\Resource.h \
+		..\Runtime\FileSystem\FileSystem.h \
 		..\Runtime\Graphics\FullScreenQuad.h \
 		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
 		..\Runtime\Graphics\IGraphicsDevice.h \
@@ -11649,8 +11589,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusAudioSource.h \
 		DirectusAudioClipDropTarget.h \
 		..\Runtime\Components\AudioSource.h \
@@ -11780,9 +11718,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		C:\Qt\5.9\msvc2017_64\include\QtGui\qtextcursor.h \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\qtextformat.h \
 		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Vector3.h \
-		..\Runtime\Math\MathHelper.h \
-		..\Runtime\Math\Quaternion.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QStyleOption \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qstyleoption.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractspinbox.h \
@@ -11799,11 +11734,14 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Core\Settings.h \
 		..\Runtime\Math\Vector2.h \
 		..\Runtime\Core\Scene.h \
+		..\Runtime\Math\Vector3.h \
+		..\Runtime\Math\MathHelper.h \
 		..\Runtime\Multithreading\Multithreading.h \
 		..\Runtime\Components\Camera.h \
 		..\Runtime\Components\IComponent.h \
 		..\Runtime\Math\Vector4.h \
 		..\Runtime\Math\Matrix.h \
+		..\Runtime\Math\Quaternion.h \
 		..\Runtime\Math\Frustrum.h \
 		..\Runtime\Math\Plane.h \
 		DirectusInspector.h \
@@ -11867,8 +11805,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -12109,10 +12045,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		C:\Qt\5.9\msvc2017_64\include\QtGui\QDoubleValidator \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\qvalidator.h \
 		C:\Qt\5.9\msvc2017_64\include\QtCore\qregularexpression.h \
-		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Vector3.h \
-		..\Runtime\Math\MathHelper.h \
-		..\Runtime\Math\Quaternion.h
+		..\Runtime\Logging\Log.h
 
 ..\Binaries\Release\MetaData\Qt_ObjFiles\DirectusComboSliderText.obj: DirectusComboSliderText.cpp DirectusComboSliderText.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QSlider \
@@ -12228,10 +12161,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		C:\Qt\5.9\msvc2017_64\include\QtGui\qvalidator.h \
 		C:\Qt\5.9\msvc2017_64\include\QtCore\qregularexpression.h \
 		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Vector3.h \
-		..\Runtime\Math\MathHelper.h \
-		..\Runtime\Core\Helper.h \
-		..\Runtime\Math\Quaternion.h
+		..\Runtime\Core\Helper.h
 
 ..\Binaries\Release\MetaData\Qt_ObjFiles\DirectusMeshFilter.obj: DirectusMeshFilter.cpp DirectusMeshFilter.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QWidget \
@@ -12368,19 +12298,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Math\MathHelper.h \
 		..\Runtime\Multithreading\Multithreading.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\Vertex.h \
-		..\Runtime\Math\Vector2.h \
-		..\Runtime\Math\Vector4.h \
-		..\Runtime\Graphics\Mesh.h \
-		..\Runtime\Resource\Resource.h \
-		..\Runtime\FileSystem\FileSystem.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
-		..\Runtime\Graphics\IGraphicsDevice.h \
-		..\Runtime\Graphics\GraphicsDefinitions.h \
-		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
-		..\Runtime\Core\Settings.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QComboBox \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qcombobox.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qabstractitemdelegate.h \
@@ -12405,6 +12322,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		DirectusStatsLabel.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QLabel \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlabel.h \
+		..\Runtime\Math\Vector4.h \
 		DirectusDropDownButton.h \
 		DirectusIComponent.h \
 		DirectusInspector.h \
@@ -12414,6 +12332,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		DirectusAdjustLabel.h \
 		DirectusCamera.h \
 		..\Runtime\Components\Camera.h \
+		..\Runtime\Math\Vector2.h \
 		..\Runtime\Math\Matrix.h \
 		..\Runtime\Math\Frustrum.h \
 		..\Runtime\Math\Plane.h \
@@ -12427,12 +12346,21 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		DirectusMaterialDropTarget.h \
 		..\Runtime\Graphics\Material.h \
 		..\Runtime\Graphics\Texture.h \
+		..\Runtime\Resource\Resource.h \
+		..\Runtime\FileSystem\FileSystem.h \
 		..\Runtime\Graphics\FullScreenQuad.h \
+		..\Runtime\Graphics\D3D11\D3D11GraphicsDevice.h \
+		..\Runtime\Graphics\IGraphicsDevice.h \
+		..\Runtime\Graphics\GraphicsDefinitions.h \
+		..\Runtime\Graphics\D3D12\D3D12GraphicsDevice.h \
+		..\Runtime\Core\Settings.h \
 		DirectusMaterial.h \
 		DirectusMaterialTextureDropTarget.h \
 		..\Runtime\Components\MeshRenderer.h \
 		DirectusCollider.h \
 		..\Runtime\Components\Collider.h \
+		..\Runtime\Graphics\Mesh.h \
+		..\Runtime\Graphics\Vertex.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QComboBox.h \
 		DirectusRigidBody.h \
 		..\Runtime\Components\RigidBody.h \
@@ -12560,10 +12488,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QColorDialog \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qcolordialog.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qdialog.h \
-		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Vector3.h \
-		..\Runtime\Math\MathHelper.h \
-		..\Runtime\Math\Quaternion.h
+		..\Runtime\Logging\Log.h
 
 ..\Binaries\Release\MetaData\Qt_ObjFiles\DirectusStatsLabel.obj: DirectusStatsLabel.cpp DirectusStatsLabel.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QLineEdit \
@@ -13044,7 +12969,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Math\MathHelper.h \
 		..\Runtime\Multithreading\Multithreading.h \
 		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Quaternion.h \
 		DirectusHierarchy.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QTreeWidget \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qtreewidget.h \
@@ -13183,6 +13107,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlayout.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qboxlayout.h \
+		..\Runtime\Math\Quaternion.h \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\QDoubleValidator \
 		DirectusComboLabelText.h \
 		DirectusAdjustLabel.h \
@@ -13240,8 +13165,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -13336,9 +13259,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Resource\Import\ImageImporter.h \
 		..\Runtime\Core\Helper.h \
 		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Vector3.h \
-		..\Runtime\Math\MathHelper.h \
-		..\Runtime\Math\Quaternion.h \
 		..\Runtime\FileSystem\FileSystem.h
 
 ..\Binaries\Release\MetaData\Qt_ObjFiles\DirectusMaterialDropTarget.obj: DirectusMaterialDropTarget.cpp DirectusMaterialDropTarget.h \
@@ -13549,8 +13469,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -13710,14 +13628,13 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		C:\Qt\5.9\msvc2017_64\include\QtCore\QMimeData \
 		C:\Qt\5.9\msvc2017_64\include\QtCore\qmimedata.h \
 		..\Runtime\Logging\Log.h \
-		..\Runtime\Math\Vector3.h \
-		..\Runtime\Math\MathHelper.h \
-		..\Runtime\Math\Quaternion.h \
 		DirectusInspector.h \
 		..\Runtime\Core\GameObject.h \
 		..\Runtime\Core\GUIDGenerator.h \
 		..\Runtime\Components\IComponent.h \
 		..\Runtime\Core\Scene.h \
+		..\Runtime\Math\Vector3.h \
+		..\Runtime\Math\MathHelper.h \
 		..\Runtime\Multithreading\Multithreading.h \
 		DirectusTransform.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\QGridLayout \
@@ -13725,6 +13642,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlayout.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qlayoutitem.h \
 		C:\Qt\5.9\msvc2017_64\include\QtWidgets\qboxlayout.h \
+		..\Runtime\Math\Quaternion.h \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\QDoubleValidator \
 		C:\Qt\5.9\msvc2017_64\include\QtGui\qvalidator.h \
 		C:\Qt\5.9\msvc2017_64\include\QtCore\qregularexpression.h \
@@ -13780,8 +13698,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -13793,6 +13709,7 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Core\SubSystem.h \
 		..\Runtime\Resource\ResourceCache.h \
 		..\Runtime\Resource\Import\ModelImporter.h \
+		..\Runtime\Graphics\Model.h \
 		..\Runtime\Resource\Import\ImageImporter.h
 
 ..\Binaries\Release\MetaData\Qt_ObjFiles\DirectusAudioSource.obj: DirectusAudioSource.cpp DirectusAudioSource.h \
@@ -14006,8 +13923,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioListener.h \
@@ -14223,8 +14138,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \
@@ -14440,8 +14353,6 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 		..\Runtime\Scripting\Scripting.h \
 		DirectusMeshFilter.h \
 		..\Runtime\Components\MeshFilter.h \
-		..\Runtime\Graphics\D3D11\D3D11VertexBuffer.h \
-		..\Runtime\Graphics\D3D11\D3D11IndexBuffer.h \
 		DirectusMeshCollider.h \
 		..\Runtime\Components\MeshCollider.h \
 		DirectusAudioSource.h \

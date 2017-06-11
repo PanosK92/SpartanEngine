@@ -50,7 +50,7 @@ To fire an event										-> FIRE_EVENT(SOME_EVENT);
 //=================================================================================================================================
 
 //= SUBSCRIBER ====================================================
-class DllExport Subscriber
+class DLL_API Subscriber
 {
 public:
 	typedef std::function<void()> functionType;
@@ -76,7 +76,7 @@ private:
 //================================================================
 
 //= EVENT HANDLER ================================================
-class DllExport EventHandler
+class DLL_API EventHandler
 {
 public:
 	template <typename Function>

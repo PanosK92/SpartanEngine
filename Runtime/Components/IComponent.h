@@ -42,7 +42,7 @@ namespace Directus
 	class ShaderPool;
 	class Context;
 
-	class DllExport IComponent
+	class DLL_API IComponent
 	{
 	public:
 		virtual ~IComponent() {}

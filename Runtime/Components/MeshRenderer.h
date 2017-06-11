@@ -30,7 +30,7 @@ namespace Directus
 {
 	class Light;
 
-	class DllExport MeshRenderer : public IComponent
+	class DLL_API MeshRenderer : public IComponent
 	{
 	public:
 		MeshRenderer();

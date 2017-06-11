@@ -233,7 +233,7 @@ void DirectusInspector::dropEvent(QDropEvent* event)
     const QMimeData *mime = event->mimeData();
     string scriptPath = mime->text().toStdString();
 
-    if (FileSystem::IsSupportedScriptFile(scriptPath) && !m_inspectedGameObject.expired())
+    if (FileSystem::IsEngineScriptFile(scriptPath) && !m_inspectedGameObject.expired())
     {
         // Make the absolute path, relative
         scriptPath = FileSystem::GetRelativeFilePath(scriptPath);

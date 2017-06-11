@@ -32,7 +32,7 @@ namespace Directus
 	class GameObject;
 	class ImageImporter;
 
-	class DllExport Socket : public Subsystem
+	class DLL_API Socket : public Subsystem
 	{
 	public:
 		Socket(Context* context);

@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DllExport ResourceManager : public Subsystem
+	class DLL_API ResourceManager : public Subsystem
 	{
 	public:
 		ResourceManager(Context* context);
@@ -106,7 +106,7 @@ namespace Directus
 
 		// Returns cached resource by Type
 		template <class T>
-		std::vector<std::weak_ptr<T>> GetAllByType()
+		std::vector<std::weak_ptr<T>> GetResourcesByType()
 		{
 			std::vector<std::weak_ptr<T>> typedResources;
 			for (const auto& resource : m_resourceCache->GetAll())

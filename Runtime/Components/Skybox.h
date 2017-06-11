@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DllExport Skybox : public IComponent
+	class DLL_API Skybox : public IComponent
 	{
 	public:
 		Skybox();

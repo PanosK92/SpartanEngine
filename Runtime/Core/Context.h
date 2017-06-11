@@ -23,7 +23,7 @@ DEALINGS IN THE SOFTWARE. */
 
 namespace Directus
 {
-	class DllExport Context
+	class DLL_API Context
 	{
 	public:
 		Context();

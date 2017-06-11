@@ -110,7 +110,7 @@ namespace Directus
 		std::unique_ptr<D3D11RenderTexture> m_depthMap;
 	};
 
-	class DllExport Light : public IComponent
+	class DLL_API Light : public IComponent
 	{
 	public:
 		Light();

@@ -29,7 +29,7 @@ namespace Directus
 {
 	class Audio;
 
-	class DllExport AudioListener : public IComponent
+	class DLL_API AudioListener : public IComponent
 	{
 	public:
 		AudioListener();

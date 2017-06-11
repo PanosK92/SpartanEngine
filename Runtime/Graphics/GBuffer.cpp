@@ -39,10 +39,10 @@ namespace Directus
 		m_height = 1;
 
 		// Construct the skeleton of the G-Buffer
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // albedo
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // normal
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32_UINT, nullptr, nullptr, nullptr }); // depth
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // material
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R16G16B16A16_FLOAT, nullptr, nullptr, nullptr }); // albedo
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R16G16B16A16_FLOAT, nullptr, nullptr, nullptr }); // normal
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R16G16B16A16_FLOAT, nullptr, nullptr, nullptr }); // depth
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R16G16B16A16_FLOAT, nullptr, nullptr, nullptr }); // material
 	}
 
 	GBuffer::~GBuffer()

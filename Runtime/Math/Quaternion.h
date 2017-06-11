@@ -30,7 +30,7 @@ namespace Directus
 {
 	namespace Math
 	{
-		class DllExport Quaternion
+		class DLL_API Quaternion
 		{
 		public:
 			// Constructs an identity quaternion
@@ -278,7 +278,7 @@ namespace Directus
 		};
 
 		// Reverse order operators
-		inline DllExport Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
-		inline DllExport Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
+		inline DLL_API Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
+		inline DLL_API Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
 	}
 }

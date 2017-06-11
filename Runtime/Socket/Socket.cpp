@@ -34,6 +34,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
+class Model;
+
 namespace Directus
 {
 	Socket::Socket(Context* context) : Subsystem(context)
@@ -83,14 +85,14 @@ namespace Directus
 	//= RESOURCE IO ===============================================================
 	void Socket::LoadModel(const string& filePath)
 	{
-		ResourceManager* resourceMng = m_context->GetSubsystem<ResourceManager>();
-		resourceMng->GetModelImporter().lock()->Load(filePath);
+		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
+		resourceMng->Load<Model>(filePath);
 	}
 
 	void Socket::LoadModelAsync(const string& filePath)
 	{
-		ResourceManager* resourceMng = m_context->GetSubsystem<ResourceManager>();
-		resourceMng->GetModelImporter().lock()->LoadAsync(filePath);
+		//ResourceManager* resourceMng = m_context->GetSubsystem<ResourceManager>();
+		//resourceMng->Load<Model>(filePath);
 	}
 
 	void Socket::SaveSceneToFileAsync(const string& filePath)

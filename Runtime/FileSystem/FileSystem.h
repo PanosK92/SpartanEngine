@@ -28,46 +28,49 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DATA_NOT_ASSIGNED "N/A"
 
-//= METADATA ===================================
+//= METADATA ===============================
 #define METADATA_EXTENSION ".meta"
 #define METADATA_TYPE_TEXTURE "Texture"
 #define METADATA_TYPE_AUDIOCLIP "Audio_Clip"
-//==============================================
+//==========================================
 
-//= CUSTOM EXTENSIONS ==========================
+//= CUSTOM EXTENSIONS =============
 #define SCENE_EXTENSION ".directus"
 #define MATERIAL_EXTENSION ".mat"
-#define MESH_EXTENSION ".msh"
+#define MODEL_EXTENSION ".model"
 #define PREFAB_EXTENSION ".prefab"
-//==============================================
+//=================================
 
 namespace Directus
 {
-	class DllExport FileSystem
+	class DLL_API FileSystem
 	{
 	public:
-		//= DIRECTORIES ==================================================
+		static void Initialize();
+
+		//= DIRECTORY MANAGEMENT ==========================================
 		static bool CreateDirectory_(const std::string& path);
 		static bool OpenDirectoryInExplorer(const std::string& directory);
 		static bool DeleteDirectory(const std::string& directory);
-		//================================================================
+		//=================================================================
 
-		//= FILES ========================================================
+		//= FILES ============================================================================
 		static bool FileExists(const std::string& path);
 		static bool DeleteFile_(const std::string& filePath);
 		static bool CopyFileFromTo(const std::string& source, const std::string& destination);
+		//====================================================================================
 
-		static std::string GetFileNameFromPath(const std::string& path);
-		static std::string GetFileNameNoExtensionFromPath(const std::string& path);
-		static std::string GetPathWithoutFileName(const std::string& path);
-		static std::string GetPathWithoutFileNameExtension(const std::string& path);
-		static std::string GetExtensionFromPath(const std::string& path);
-
-		static std::vector<std::string> GetSupportedImageFileFormats(bool includeUppercase);
-		static std::vector<std::string> GetSupportedAudioFileFormats(bool includeUppercase);
-
+		//= DIRECTORY PARSING  =================================================================
+		static std::string GetFileNameFromFilePath(const std::string& path);
+		static std::string GetFileNameNoExtensionFromFilePath(const std::string& path);
+		static std::string GetDirectoryFromFilePath(const std::string& path);
+		static std::string GetFilePathWithoutExtension(const std::string& path);
+		static std::string GetExtensionFromFilePath(const std::string& path);
+		static std::string GetRelativeFilePath(const std::string& filePath);
+		static std::string GetEngineDirectory();
 		static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
 		static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
+		//======================================================================================
 
 		//= SUPPORTED FILES IN DIRECTORY ======================================================================
 		static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& directory);
@@ -79,26 +82,39 @@ namespace Directus
 		static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& directory);
 		//======================================================================================================
 
-		//= SUPPORTED FILE CHECKS =====================================
-		static bool IsSupportedPrefabFile(const std::string& filePath);
+		//= SUPPORTED FILE CHECKS =====================================	
 		static bool IsSupportedAudioFile(const std::string& filePath);
-		static bool IsSupportedImageFile(const std::string& filePath);
-		static bool IsSupportedScriptFile(const std::string& filePath);
+		static bool IsSupportedImageFile(const std::string& filePath);	
 		static bool IsSupportedModelFile(const std::string& filePath);
 		static bool IsSupportedShaderFile(const std::string& filePath);
-		static bool IsSupportedMeshFile(const std::string& filePath);
-		static bool IsSupportedMaterialFile(const std::string& filePath);
-		static bool IsSupportedSceneFile(const std::string& filePath);
-		static bool IsMetadataFile(const std::string& filePath);
+		static bool IsEngineScriptFile(const std::string& filePath);
+		static bool IsEnginePrefabFile(const std::string& filePath);		
+		static bool IsEngineMaterialFile(const std::string& filePath);
+		static bool IsEngineModelFile(const std::string& filePath);
+		static bool IsEngineSceneFile(const std::string& filePath);
+		static bool IsEngineMetadataFile(const std::string& filePath);
 		//=============================================================
 
-		//= STRING PARSING =======================================================================================
-		static std::string GetRelativeFilePath(const std::string& filePath);
-		static std::string GetEngineDirectory();
-		static std::string GetStringAfterSequence(const std::string& str, const std::string& expression);
+		//= STRING PARSING =========================================================================================
+		static std::string GetStringAfterExpression(const std::string& str, const std::string& expression);
 		static std::string ConvertToUppercase(const std::string& lower);
 		static std::wstring ToWString(const std::string& str);
-		static std::string ReplaceSequence(const std::string& str, const std::string& from, const std::string to);
-		//========================================================================================================
+		static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string to);
+		//==========================================================================================================
+
+		//= SUPPORTED ASSET FILE FORMATS ===========================
+		static std::vector<std::string> GetSupportedImageFormats();
+		static std::vector<std::string> GetSupportedAudioFormats();
+		static std::vector<std::string> GetSupportedModelFormats();
+		static std::vector<std::string> GetSupportedShaderFormats();
+		static std::vector<std::string> GetSupportedScriptFormats();
+		//==========================================================
+
+	private:
+		static std::vector<std::string> m_supportedImageFormats;
+		static std::vector<std::string> m_supportedAudioFormats;
+		static std::vector<std::string> m_supportedModelFormats;
+		static std::vector<std::string> m_supportedShaderFormats;
+		static std::vector<std::string> m_supportedScriptFormats;
 	};
 }

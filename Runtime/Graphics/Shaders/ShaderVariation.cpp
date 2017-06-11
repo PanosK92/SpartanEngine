@@ -91,11 +91,6 @@ namespace Directus
 		Load(filePath); // load the shader
 	}
 
-	bool ShaderVariation::SaveMetadata()
-	{
-		return true;
-	}
-
 	void ShaderVariation::Set()
 	{
 		if (m_D3D11Shader)

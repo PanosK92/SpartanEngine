@@ -24,17 +24,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include <map>
 #include <vector>
+#include "Scene.h"
 #include "GUIDGenerator.h"
 #include "../Components/IComponent.h"
 #include "../Core/Context.h"
-#include "Scene.h"
 //===================================
 
 namespace Directus
 {
 	class Transform;
 
-	class DllExport GameObject
+	class DLL_API GameObject
 	{
 	public:
 		GameObject(Context* context);
@@ -73,7 +73,9 @@ namespace Directus
 		{
 			// Convert class Type to a string.
 			std::string typeStr(typeid(T).name());
-			typeStr = typeStr.substr(typeStr.find_first_of(" \t") + 1); // remove word "class".
+
+			// E.g. the type looks like this: class Directus::Transform but we will simplify it to Transform
+			typeStr = typeStr.substr(typeStr.find_last_of(":") + 1);
 
 			// Check if a component of that type already exists
 			IComponent* existingComp = GetComponent<T>();

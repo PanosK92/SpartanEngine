@@ -48,11 +48,12 @@ namespace Directus
 		m_modelImporter->Initialize(m_context);
 		
 		// Add engine standard resource directories
-		AddResourceDirectory(Texture_Resource, "Standard Assets//Textures//");
-		AddResourceDirectory(Shader_Resource, "Standard Assets//Shaders//");
-		AddResourceDirectory(Cubemap_Resource, "Standard Assets//Cubemaps//");
-		AddResourceDirectory(Script_Resource, "Standard Assets//Scripts//");
-		AddResourceDirectory(Material_Resource, "Standard Assets//Materials//");
+		AddResourceDirectory(Texture_Resource, "Assets//Standard Assets//Textures//");
+		AddResourceDirectory(Shader_Resource, "Assets//Standard Assets//Shaders//");
+		AddResourceDirectory(Cubemap_Resource, "Assets//Standard Assets//Cubemaps//");
+		AddResourceDirectory(Script_Resource, "Assets//Standard Assets//Scripts//");
+		AddResourceDirectory(Model_Resource, "Assets//Standard Assets//Models//");
+		AddResourceDirectory(Material_Resource, "Assets//Standard Assets//Materials//");
 
 		return true;
 	}

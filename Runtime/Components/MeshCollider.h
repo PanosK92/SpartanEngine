@@ -34,7 +34,7 @@ namespace Directus
 	class RigidBody;
 	class MeshFilter;	
 
-	class DllExport MeshCollider : public IComponent
+	class DLL_API MeshCollider : public IComponent
 	{
 	public:
 		MeshCollider();

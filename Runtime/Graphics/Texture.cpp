@@ -45,9 +45,10 @@ namespace Directus
 {
 	Texture::Texture(Context* context)
 	{
-		// IResource
+		//= RESOURCE INTERFACE ===========
 		m_resourceID = GENERATE_GUID;
 		m_resourceType = Texture_Resource;
+		//================================
 
 		// Texture
 		m_context = context;
@@ -66,10 +67,16 @@ namespace Directus
 
 	}
 
-	//= IO ========================================================
-	bool Texture::SaveMetadata()
+	//= RESOURCE INTERFACE =======================================================================
+	bool Texture::SaveToFile(const string& filePath)
 	{
-		if (!Serializer::StartWriting(GetFilePathMetadata()))
+		string savePath = filePath;
+		if (filePath == RESOURCE_SAVE)
+		{
+			savePath = GetFilePathMetadata();
+		}
+
+		if (!Serializer::StartWriting(savePath))
 			return false;
 
 		Serializer::WriteSTR(METADATA_TYPE_TEXTURE);
@@ -88,38 +95,43 @@ namespace Directus
 		return true;
 	}
 
-	bool Texture::LoadMetadata()
+	bool Texture::LoadFromFile(const string& filePath)
 	{
-		if (!Serializer::StartReading(GetFilePathMetadata()))
-			return false;
+		bool engineFormat = FileSystem::GetExtensionFromFilePath(filePath) == METADATA_EXTENSION;
+		return engineFormat ? LoadMetadata(filePath) : LoadFromForeignFormat(filePath);	
+	}
+	//==============================================================================================
 
-		if (Serializer::ReadSTR() == METADATA_TYPE_TEXTURE)
+	void Texture::SetTextureType(TextureType type)
+	{
+		m_textureType = type;
+
+		// Some models (or Assimp) pass a normal map as a height map
+		// and others pass a height map as a normal map, we try to fix that.
+		if (m_textureType == Height_Texture && !GetGrayscale())
 		{
-			m_resourceID = Serializer::ReadSTR();
-			m_resourceName = Serializer::ReadSTR();
-			m_resourceFilePath = Serializer::ReadSTR();
-			m_width = Serializer::ReadInt();
-			m_height = Serializer::ReadInt();
-			m_textureType = TextureType(Serializer::ReadInt());
-			m_grayscale = Serializer::ReadBool();
-			m_transparency = Serializer::ReadBool();
-			m_generateMipchain = Serializer::ReadBool();
+			m_textureType = Normal_Texture;
 		}
 
-		Serializer::StopReading();
-
-		return true;
+		if (m_textureType == Normal_Texture && GetGrayscale())
+		{
+			m_textureType = Height_Texture;
+		}
 	}
 
-	// Loads a texture (not it's metadata) from an image file
-	bool Texture::LoadFromFile(const string& filePath)
+	void** Texture::GetShaderResource()
+	{
+		return (void**)m_texture->GetShaderResourceView();
+	}
+
+	bool Texture::LoadFromForeignFormat(const std::string& filePath)
 	{
 		auto graphicsDevice = m_context->GetSubsystem<Graphics>()->GetDevice();
 		if (!graphicsDevice)
 			return false;
 
 		// Load DDS (too bored to implement dds cubemap support in the ImageImporter)
-		if (FileSystem::GetExtensionFromPath(filePath) == ".dds")
+		if (FileSystem::GetExtensionFromFilePath(filePath) == ".dds")
 		{
 			ID3D11ShaderResourceView* ddsTex = nullptr;
 			wstring widestr = wstring(filePath.begin(), filePath.end());
@@ -146,7 +158,7 @@ namespace Directus
 
 		// Extract any metadata we can from the ImageImporter
 		m_resourceFilePath = imageImp->GetPath();
-		m_resourceName = FileSystem::GetFileNameNoExtensionFromPath(GetFilePathTexture());
+		m_resourceName = FileSystem::GetFileNameNoExtensionFromFilePath(GetFilePathTexture());
 		m_width = imageImp->GetWidth();
 		m_height = imageImp->GetHeight();
 		m_grayscale = imageImp->IsGrayscale();
@@ -158,9 +170,9 @@ namespace Directus
 		// Free any memory allocated by the ImageImporter
 		imageImp->Clear();
 
-		if (!LoadMetadata()) // Load metadata file
+		if (!LoadFromFile(GetFilePathMetadata())) // Load metadata file
 		{
-			if (!SaveMetadata()) // If a metadata file doesn't exist, create one
+			if (!SaveToFile(GetFilePathMetadata())) // If a metadata file doesn't exist, create one
 			{
 				return false; // if that failed too, well at least get the file path right mate
 			}
@@ -169,21 +181,27 @@ namespace Directus
 		return true;
 	}
 
-	void Texture::SetTextureType(TextureType type)
+	bool Texture::LoadMetadata(const std::string& filePath)
 	{
-		m_textureType = type;
+		if (!Serializer::StartReading(filePath))
+			return false;
 
-		// FIX: some models pass a normal map as a height map
-		// and others pass a height map as a normal map...
-		if (m_textureType == Height_Texture && !GetGrayscale())
-			m_textureType = Normal_Texture;
-		if (m_textureType == Normal_Texture && GetGrayscale())
-			m_textureType = Height_Texture;
-	}
+		if (Serializer::ReadSTR() == METADATA_TYPE_TEXTURE)
+		{
+			m_resourceID = Serializer::ReadSTR();
+			m_resourceName = Serializer::ReadSTR();
+			m_resourceFilePath = Serializer::ReadSTR();
+			m_width = Serializer::ReadInt();
+			m_height = Serializer::ReadInt();
+			m_textureType = TextureType(Serializer::ReadInt());
+			m_grayscale = Serializer::ReadBool();
+			m_transparency = Serializer::ReadBool();
+			m_generateMipchain = Serializer::ReadBool();
+		}
 
-	void** Texture::GetShaderResource()
-	{
-		return (void**)m_texture->GetShaderResourceView();
+		Serializer::StopReading();
+
+		return true;
 	}
 
 	bool Texture::CreateShaderResource()

@@ -66,7 +66,7 @@ namespace Directus
 		result = m_builder->BuildModule();
 		if (result < 0)
 		{
-			LOG_ERROR("Failed to compile script \"" + FileSystem::GetFileNameFromPath(filePath) + "\". Correct any errors and try again.");
+			LOG_ERROR("Failed to compile script \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\". Correct any errors and try again.");
 			return false;
 		}
 

@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========
 #include "editor.h"
 #include "ui_editor.h"
-#include <windows.h>
 //====================
 
 Editor::Editor(QWidget* parent) : QMainWindow(parent), ui(new Ui::Editor)
@@ -44,8 +43,8 @@ void Editor::InitializeEngine()
     DirectusCore* directusCore = ui->directusCore;
 
     // Aqcuire HWND and HINSTANCE
-    HWND hWnd = (HWND)this->winId();
-    HINSTANCE hInstance = (HINSTANCE)::GetModuleHandle(NULL);
+    void* hWnd = (void*)this->winId();
+    void* hInstance = (void*)::GetModuleHandle(NULL);
 
     // Initialize the engine
     directusCore->Initialize(hWnd, hInstance, ui->directusStatsLabel);

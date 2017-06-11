@@ -69,12 +69,7 @@ namespace Directus
 
 	}
 
-	//= I/O ========================================================================
-	bool Material::SaveMetadata()
-	{
-		return true;
-	}
-
+	//= I/O ============================================================
 	bool Material::Save(const string& filePath, bool overwrite)
 	{
 		m_resourceFilePath = filePath + MATERIAL_EXTENSION;
@@ -123,9 +118,11 @@ namespace Directus
 		if (m_resourceFilePath == DATA_NOT_ASSIGNED)
 			return false;
 
-		return Save(FileSystem::GetPathWithoutFileNameExtension(m_resourceFilePath), true);
+		return Save(FileSystem::GetFilePathWithoutExtension(m_resourceFilePath), true);
 	}
+	//==================================================================
 
+	//= RESOURCE INTERFACE =====================================
 	bool Material::LoadFromFile(const string& filePath)
 	{
 		if (!Serializer::StartReading(filePath))
@@ -175,7 +172,7 @@ namespace Directus
 
 		return true;
 	}
-	//==============================================================================
+	//==========================================================
 
 	//= TEXTURES ===================================================================
 	// Set texture from an existing texture
@@ -280,7 +277,7 @@ namespace Directus
 
 	weak_ptr<ShaderVariation> Material::FindMatchingShader(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
 	{
-		auto shaders = m_context->GetSubsystem<ResourceManager>()->GetAllByType<ShaderVariation>();
+		auto shaders = m_context->GetSubsystem<ResourceManager>()->GetResourcesByType<ShaderVariation>();
 		for (const auto shaderTemp : shaders)
 		{
 			auto shader = shaderTemp.lock();

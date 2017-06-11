@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DllExport GUIDGenerator
+	class DLL_API GUIDGenerator
 	{
 	public:
 		static std::string Generate();

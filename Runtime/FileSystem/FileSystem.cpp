@@ -22,12 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "FileSystem.h"
 #include "dirent.h"
+#include <direct.h>
 #include <locale>
+#include <regex>
 #include "../Core/Scene.h"
 #include "../Graphics/Material.h"
-#include <direct.h>
 #include "../Logging/Log.h"
-#include <regex>
 //===============================
 
 //= NAMESPACES =====
@@ -36,7 +36,122 @@ using namespace std;
 
 namespace Directus
 {
-	//= DIRECTORIES ================================================================================================
+	vector<string> FileSystem::m_supportedImageFormats;
+	vector<string> FileSystem::m_supportedAudioFormats;
+	vector<string> FileSystem::m_supportedModelFormats;
+	vector<string> FileSystem::m_supportedShaderFormats;
+	vector<string> FileSystem::m_supportedScriptFormats;
+
+	void FileSystem::Initialize()
+	{
+		// Set supported image formats
+		{
+			m_supportedImageFormats.push_back(".jpg");
+			m_supportedImageFormats.push_back(".png");
+			m_supportedImageFormats.push_back(".bmp");
+			m_supportedImageFormats.push_back(".tga");
+			m_supportedImageFormats.push_back(".dds");
+			m_supportedImageFormats.push_back(".exr");
+			m_supportedImageFormats.push_back(".raw");
+			m_supportedImageFormats.push_back(".gif");
+			m_supportedImageFormats.push_back(".hdr");
+			m_supportedImageFormats.push_back(".ico");
+			m_supportedImageFormats.push_back(".iff");
+			m_supportedImageFormats.push_back(".jng");
+			m_supportedImageFormats.push_back(".jpeg");
+			m_supportedImageFormats.push_back(".koala");
+			m_supportedImageFormats.push_back(".kodak");
+			m_supportedImageFormats.push_back(".mng");
+			m_supportedImageFormats.push_back(".pcx");
+			m_supportedImageFormats.push_back(".pbm");
+			m_supportedImageFormats.push_back(".pgm");
+			m_supportedImageFormats.push_back(".ppm");
+			m_supportedImageFormats.push_back(".pfm");
+			m_supportedImageFormats.push_back(".pict");
+			m_supportedImageFormats.push_back(".psd");
+			m_supportedImageFormats.push_back(".raw");
+			m_supportedImageFormats.push_back(".sgi");
+			m_supportedImageFormats.push_back(".targa");
+			m_supportedImageFormats.push_back(".tiff");
+			m_supportedImageFormats.push_back(".wbmp");
+			m_supportedImageFormats.push_back(".webp");
+			m_supportedImageFormats.push_back(".xbm");
+			m_supportedImageFormats.push_back(".xpm");
+		}
+
+		// Set supported audio formats
+		{
+			m_supportedAudioFormats.push_back(".aiff");
+			m_supportedAudioFormats.push_back(".asf");
+			m_supportedAudioFormats.push_back(".asx");
+			m_supportedAudioFormats.push_back(".dls");
+			m_supportedAudioFormats.push_back(".flac");
+			m_supportedAudioFormats.push_back(".fsb");
+			m_supportedAudioFormats.push_back(".it");
+			m_supportedAudioFormats.push_back(".m3u");
+			m_supportedAudioFormats.push_back(".midi");
+			m_supportedAudioFormats.push_back(".mod");
+			m_supportedAudioFormats.push_back(".mp2");
+			m_supportedAudioFormats.push_back(".mp3");
+			m_supportedAudioFormats.push_back(".ogg");
+			m_supportedAudioFormats.push_back(".pls");
+			m_supportedAudioFormats.push_back(".s3m");
+			m_supportedAudioFormats.push_back(".vag"); // PS2/PSP
+			m_supportedAudioFormats.push_back(".wav");
+			m_supportedAudioFormats.push_back(".wax");
+			m_supportedAudioFormats.push_back(".wma");
+			m_supportedAudioFormats.push_back(".xm");
+			m_supportedAudioFormats.push_back(".xma"); // XBOX 360
+		}
+
+		// Set supported model formats
+		{
+			m_supportedModelFormats.push_back(".3ds");
+			m_supportedModelFormats.push_back(".obj");
+			m_supportedModelFormats.push_back(".fbx");
+			m_supportedModelFormats.push_back(".blend");
+			m_supportedModelFormats.push_back(".dae");
+			m_supportedModelFormats.push_back(".lwo");
+			m_supportedModelFormats.push_back(".c4d");
+			m_supportedModelFormats.push_back(".ase");
+			m_supportedModelFormats.push_back(".dxf");
+			m_supportedModelFormats.push_back(".hmp");
+			m_supportedModelFormats.push_back(".md2");
+			m_supportedModelFormats.push_back(".md3");
+			m_supportedModelFormats.push_back(".md5");
+			m_supportedModelFormats.push_back(".mdc");
+			m_supportedModelFormats.push_back(".mdl");
+			m_supportedModelFormats.push_back(".nff");
+			m_supportedModelFormats.push_back(".ply");
+			m_supportedModelFormats.push_back(".stl");
+			m_supportedModelFormats.push_back(".x");
+			m_supportedModelFormats.push_back(".smd");
+			m_supportedModelFormats.push_back(".lxo");
+			m_supportedModelFormats.push_back(".lws");
+			m_supportedModelFormats.push_back(".ter");
+			m_supportedModelFormats.push_back(".ac3d");
+			m_supportedModelFormats.push_back(".ms3d");
+			m_supportedModelFormats.push_back(".cob");
+			m_supportedModelFormats.push_back(".q3bsp");
+			m_supportedModelFormats.push_back(".xgl");
+			m_supportedModelFormats.push_back(".csm");
+			m_supportedModelFormats.push_back(".bvh");
+			m_supportedModelFormats.push_back(".b3d");
+			m_supportedModelFormats.push_back(".ndo");
+		}
+
+		// Set supported shader formats
+		{
+			m_supportedShaderFormats.push_back(".hlsl");
+		}
+
+		// Set supported script formats
+		{
+			m_supportedScriptFormats.push_back(".as");
+		}
+	}
+
+	//= DIRECTORY MANAEMENT ==============================================================
 	bool FileSystem::CreateDirectory_(const string& path)
 	{
 		if (!CreateDirectory(ToWString(path).c_str(), nullptr))
@@ -52,7 +167,7 @@ namespace Directus
 	bool FileSystem::OpenDirectoryInExplorer(const string& directory)
 	{
 		HINSTANCE result = ShellExecute(nullptr, L"open", ToWString(directory).c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
-		return FAILED(result) ? false : true;
+		return !FAILED(result);
 	}
 
 	bool FileSystem::DeleteDirectory(const string& directory)
@@ -60,7 +175,7 @@ namespace Directus
 		bool deleted = _rmdir(directory.c_str()) != 0 ? false : true;
 
 		// Deletion failure is usually caused by the fact 
-		// that the directory to be deleted must be empty.
+		// that the directory contains other directories/files.
 		if (!deleted)
 		{
 			// Delete all the files contained in the directory
@@ -80,9 +195,9 @@ namespace Directus
 
 		return deleted;
 	}
-	//========================================================================================================
+	//====================================================================================
 
-	//= FILES ================================================================================================
+	//= FILES ============================================================================
 	bool FileSystem::FileExists(const string& path)
 	{
 		struct stat buffer;
@@ -99,125 +214,59 @@ namespace Directus
 		//DWORD err = GetLastError();
 		return !CopyFile(ToWString(source).c_str(), ToWString(destination).c_str(), true);
 	}
+	//====================================================================================
 
-	string FileSystem::GetFileNameFromPath(const string& path)
+	//= DIRECTORY PARSING ================================================================
+	string FileSystem::GetFileNameFromFilePath(const string& path)
 	{
-		int lastindex = path.find_last_of("\\/");
-		return path.substr(lastindex + 1, path.length());
+		size_t lastindex = path.find_last_of("\\/");
+		string fileName = path.substr(lastindex + 1, path.length());
+
+		return fileName;
 	}
 
-	string FileSystem::GetFileNameNoExtensionFromPath(const string& path)
+	string FileSystem::GetFileNameNoExtensionFromFilePath(const string& filepath)
 	{
-		string fileName = GetFileNameFromPath(path);
+		string fileName = GetFileNameFromFilePath(filepath);
 
-		int lastindex = fileName.find_last_of(".");
-		string rawName = fileName.substr(0, lastindex);
+		size_t lastindex = fileName.find_last_of(".");
+		string fileNameNoExt = fileName.substr(0, lastindex);
 
-		return rawName;
+		return fileNameNoExt;
 	}
 
-	string FileSystem::GetPathWithoutFileName(const string& path)
+	string FileSystem::GetDirectoryFromFilePath(const string& filePath)
 	{
-		int lastindex = path.find_last_of("\\/");
-		return path.substr(0, lastindex + 1);
+		size_t lastindex = filePath.find_last_of("\\/");
+		string directory = filePath.substr(0, lastindex + 1);
+
+		return directory;
 	}
 
-	string FileSystem::GetPathWithoutFileNameExtension(const string& path)
+	string FileSystem::GetFilePathWithoutExtension(const string& filePath)
 	{
-		string rawPath = GetPathWithoutFileName(path);
-		string fileName = GetFileNameNoExtensionFromPath(path);
+		string directory = GetDirectoryFromFilePath(filePath);
+		string fileNameNoExt = GetFileNameNoExtensionFromFilePath(filePath);
 
-		return rawPath + fileName;
+		return directory + fileNameNoExt;
 	}
 
-	string FileSystem::GetExtensionFromPath(const string& path)
+	string FileSystem::GetExtensionFromFilePath(const string& filePath)
 	{
-		size_t lastindex = path.find_last_of(".");
+		string extension = DATA_NOT_ASSIGNED;
+
+		size_t lastindex = filePath.find_last_of(".");
 		if (string::npos != lastindex)
-			return path.substr(lastindex, path.length());
-
-		// returns extension with dot
-		return path;
-	}
-
-	vector<string> FileSystem::GetSupportedImageFileFormats(bool includeUppercase)
-	{
-		vector<string> supportedFormats;
-		supportedFormats.push_back(".jpg");
-		supportedFormats.push_back(".png");
-		supportedFormats.push_back(".bmp");
-		supportedFormats.push_back(".tga");
-		supportedFormats.push_back(".dds");
-		supportedFormats.push_back(".exr");
-		supportedFormats.push_back(".raw");
-		supportedFormats.push_back(".gif");
-		supportedFormats.push_back(".hdr");
-		supportedFormats.push_back(".ico");
-		supportedFormats.push_back(".iff");
-		supportedFormats.push_back(".jng");
-		supportedFormats.push_back(".jpeg");
-		supportedFormats.push_back(".koala");
-		supportedFormats.push_back(".kodak");
-		supportedFormats.push_back(".mng");
-		supportedFormats.push_back(".pcx");
-		supportedFormats.push_back(".pbm");
-		supportedFormats.push_back(".pgm");
-		supportedFormats.push_back(".ppm");
-		supportedFormats.push_back(".pfm");
-		supportedFormats.push_back(".pict");
-		supportedFormats.push_back(".psd");
-		supportedFormats.push_back(".raw");
-		supportedFormats.push_back(".sgi");
-		supportedFormats.push_back(".targa");
-		supportedFormats.push_back(".tiff");
-		supportedFormats.push_back(".wbmp");
-		supportedFormats.push_back(".webp");
-		supportedFormats.push_back(".xbm");
-		supportedFormats.push_back(".xpm");
-
-		if (includeUppercase)
 		{
-			int extCount = supportedFormats.size();
-			for (auto i = 0; i < extCount; i++)
-				supportedFormats.push_back(ConvertToUppercase(supportedFormats[i]));
+			// extension with dot included
+			extension = filePath.substr(lastindex, filePath.length());
+		}
+		else
+		{
+			LOG_WARNING("Could not extract file extension from \"" + filePath + "\"");
 		}
 
-		return supportedFormats;
-	}
-
-	vector<string> FileSystem::GetSupportedAudioFileFormats(bool includeUppercase)
-	{
-		vector<string> supportedFormats;
-		supportedFormats.push_back(".aiff");
-		supportedFormats.push_back(".asf");
-		supportedFormats.push_back(".asx");
-		supportedFormats.push_back(".dls");
-		supportedFormats.push_back(".flac");
-		supportedFormats.push_back(".fsb");
-		supportedFormats.push_back(".it");
-		supportedFormats.push_back(".m3u");
-		supportedFormats.push_back(".midi");
-		supportedFormats.push_back(".mod");
-		supportedFormats.push_back(".mp2");
-		supportedFormats.push_back(".mp3");
-		supportedFormats.push_back(".ogg");
-		supportedFormats.push_back(".pls");
-		supportedFormats.push_back(".s3m");
-		supportedFormats.push_back(".vag"); // PS2/PSP
-		supportedFormats.push_back(".wav");
-		supportedFormats.push_back(".wax");
-		supportedFormats.push_back(".wma");
-		supportedFormats.push_back(".xm");
-		supportedFormats.push_back(".xma"); // XBOX 360
-
-		if (includeUppercase)
-		{
-			int extCount = supportedFormats.size();
-			for (auto i = 0; i < extCount; i++)
-				supportedFormats.push_back(ConvertToUppercase(supportedFormats[i]));
-		}
-
-		return supportedFormats;
+		return extension;
 	}
 
 	vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)
@@ -229,7 +278,9 @@ namespace Directus
 		while (entry != nullptr)
 		{
 			if (entry->d_type == DT_DIR)
+			{
 				directoryPaths.push_back(entry->d_name);
+			}
 
 			entry = readdir(dir);
 		}
@@ -251,12 +302,15 @@ namespace Directus
 			return filePaths;
 
 		while ((ent = readdir(dir)) != nullptr)
+		{
 			filePaths.push_back(directory + "\\" + ent->d_name);
+		}
 
 		closedir(dir);
 
 		return filePaths;
 	}
+	//====================================================================================
 
 	//= SUPPORTED FILES IN DIRECTORY ========================================================================================
 	vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
@@ -270,15 +324,21 @@ namespace Directus
 
 		// get supported images
 		for (const string& imageInDirectory : imagesInDirectory)
+		{
 			supportedFiles.push_back(imageInDirectory);
+		}
 
 		// get supported scripts
 		for (const string& scriptInDirectory : scriptsInDirectory)
+		{
 			supportedFiles.push_back(scriptInDirectory);
+		}
 
 		// get supported models
 		for (const string& modelInDirectory : modelsInDirectory)
+		{
 			supportedFiles.push_back(modelInDirectory);
+		}
 
 		return supportedFiles;
 	}
@@ -291,7 +351,9 @@ namespace Directus
 			string filePath = paths[i];
 
 			if (IsSupportedImageFile(filePath))
+			{
 				imageFiles.push_back(filePath);
+			}
 		}
 
 		return imageFiles;
@@ -305,7 +367,9 @@ namespace Directus
 			string filePath = paths[i];
 
 			if (IsSupportedAudioFile(filePath))
+			{
 				audioFiles.push_back(filePath);
+			}
 		}
 
 		return audioFiles;
@@ -318,8 +382,10 @@ namespace Directus
 		{
 			string filePath = paths[i];
 
-			if (IsSupportedScriptFile(filePath))
+			if (IsEngineScriptFile(filePath))
+			{
 				scripts.push_back(filePath);
+			}
 		}
 
 		return scripts;
@@ -333,7 +399,9 @@ namespace Directus
 			string filePath = paths[i];
 
 			if (IsSupportedModelFile(filePath))
+			{
 				images.push_back(filePath);
+			}
 		}
 
 		return images;
@@ -350,7 +418,7 @@ namespace Directus
 
 		auto files = GetFilesInDirectory(directory);
 		for (auto file : files)
-			if (IsSupportedSceneFile(file))
+			if (IsEngineSceneFile(file))
 				sceneFiles.push_back(file);
 
 		return sceneFiles;
@@ -358,43 +426,28 @@ namespace Directus
 	//===========================================================================================
 
 	//= SUPPORTED FILE CHECKS ===================================================================
-	bool FileSystem::IsSupportedPrefabFile(const string& filePath)
-	{
-		return GetExtensionFromPath(filePath) == PREFAB_EXTENSION ? true : false;
-	}
-
 	bool FileSystem::IsSupportedAudioFile(const string& path)
 	{
-		string fileExt = GetExtensionFromPath(path);
-		vector<string> supportedAudioFilesExt = GetSupportedAudioFileFormats(true);
-		for (int i = 0; i < supportedAudioFilesExt.size(); i++)
-			if (fileExt == supportedAudioFilesExt[i])
+		string fileExt = GetExtensionFromFilePath(path);
+
+		auto supportedFormats = GetSupportedAudioFormats();
+		for (int i = 0; i < supportedFormats.size(); i++)
+		{
+			if (fileExt == supportedFormats[i] || fileExt == ConvertToUppercase(supportedFormats[i]))
 				return true;
+		}
 
 		return false;
 	}
 
 	bool FileSystem::IsSupportedImageFile(const string& path)
 	{
-		string fileExt = GetExtensionFromPath(path);
-		vector<string> supportedImageExt = GetSupportedImageFileFormats(true);
+		string fileExt = GetExtensionFromFilePath(path);
 
-		for (int i = 0; i < supportedImageExt.size(); i++)
-			if (fileExt == supportedImageExt[i])
-				return true;
-
-		return false;
-	}
-
-	bool FileSystem::IsSupportedScriptFile(const string& path)
-	{
-		string fileExt = GetExtensionFromPath(path);
-		vector<string> supportedExt;
-		supportedExt.push_back(".as");
-
-		for (int i = 0; i < supportedExt.size(); i++)
+		auto supportedFormats = GetSupportedImageFormats();
+		for (int i = 0; i < supportedFormats.size(); i++)
 		{
-			if (fileExt == supportedExt[i] || fileExt == ConvertToUppercase(supportedExt[i]))
+			if (fileExt == supportedFormats[i] || fileExt == ConvertToUppercase(supportedFormats[i]))
 				return true;
 		}
 
@@ -403,44 +456,12 @@ namespace Directus
 
 	bool FileSystem::IsSupportedModelFile(const string& path)
 	{
-		string fileExt = GetExtensionFromPath(path);
-		vector<string> supportedExt;
-		supportedExt.push_back(".3ds");
-		supportedExt.push_back(".obj");
-		supportedExt.push_back(".fbx");
-		supportedExt.push_back(".blend");
-		supportedExt.push_back(".dae");
-		supportedExt.push_back(".lwo");
-		supportedExt.push_back(".c4d");
-		supportedExt.push_back(".ase");
-		supportedExt.push_back(".dxf");
-		supportedExt.push_back(".hmp");
-		supportedExt.push_back(".md2");
-		supportedExt.push_back(".md3");
-		supportedExt.push_back(".md5");
-		supportedExt.push_back(".mdc");
-		supportedExt.push_back(".mdl");
-		supportedExt.push_back(".nff");
-		supportedExt.push_back(".ply");
-		supportedExt.push_back(".stl");
-		supportedExt.push_back(".x");
-		supportedExt.push_back(".smd");
-		supportedExt.push_back(".lxo");
-		supportedExt.push_back(".lws");
-		supportedExt.push_back(".ter");
-		supportedExt.push_back(".ac3d");
-		supportedExt.push_back(".ms3d");
-		supportedExt.push_back(".cob");
-		supportedExt.push_back(".q3bsp");
-		supportedExt.push_back(".xgl");
-		supportedExt.push_back(".csm");
-		supportedExt.push_back(".bvh");
-		supportedExt.push_back(".b3d");
-		supportedExt.push_back(".ndo");
+		string fileExt = GetExtensionFromFilePath(path);
 
-		for (int i = 0; i < supportedExt.size(); i++)
+		auto supportedFormats = GetSupportedModelFormats();
+		for (int i = 0; i < supportedFormats.size(); i++)
 		{
-			if (fileExt == supportedExt[i] || fileExt == ConvertToUppercase(supportedExt[i]))
+			if (fileExt == supportedFormats[i] || fileExt == ConvertToUppercase(supportedFormats[i]))
 				return true;
 		}
 
@@ -449,39 +470,56 @@ namespace Directus
 
 	bool FileSystem::IsSupportedShaderFile(const string& path)
 	{
-		string fileExt = GetExtensionFromPath(path);
-		vector<string> supportedExtentions;
-		supportedExtentions.push_back(".hlsl");
+		string fileExt = GetExtensionFromFilePath(path);
 
-		for (const string& supportedExt : supportedExtentions)
+		auto supportedFormats = GetSupportedShaderFormats();
+		for (int i = 0; i < supportedFormats.size(); i++)
 		{
-			if (fileExt == supportedExt || fileExt == ConvertToUppercase(supportedExt))
+			if (fileExt == supportedFormats[i] || fileExt == ConvertToUppercase(supportedFormats[i]))
 				return true;
 		}
 
 		return false;
 	}
 
-	bool FileSystem::IsSupportedMeshFile(const string& filePath)
+	bool FileSystem::IsEngineScriptFile(const string& path)
 	{
-		return GetExtensionFromPath(filePath) == MESH_EXTENSION ? true : false;
+		string fileExt = GetExtensionFromFilePath(path);
+
+		auto supportedFormats = GetSupportedScriptFormats();
+		for (int i = 0; i < supportedFormats.size(); i++)
+		{
+			if (fileExt == supportedFormats[i] || fileExt == ConvertToUppercase(supportedFormats[i]))
+				return true;
+		}
+
+		return false;
 	}
 
-	bool FileSystem::IsSupportedMaterialFile(const string& filePath)
+	bool FileSystem::IsEnginePrefabFile(const string& filePath)
 	{
-		return GetExtensionFromPath(filePath) == MATERIAL_EXTENSION ? true : false;
+		return GetExtensionFromFilePath(filePath) == PREFAB_EXTENSION;
 	}
 
-	bool FileSystem::IsSupportedSceneFile(const string& filePath)
+	bool FileSystem::IsEngineModelFile(const string& filePath)
 	{
-		return GetExtensionFromPath(filePath) == SCENE_EXTENSION ? true : false;
+		return GetExtensionFromFilePath(filePath) == MODEL_EXTENSION;
 	}
 
-	bool FileSystem::IsMetadataFile(const string& filePath)
+	bool FileSystem::IsEngineMaterialFile(const string& filePath)
 	{
-		return GetExtensionFromPath(filePath) == METADATA_EXTENSION ? true : false;
+		return GetExtensionFromFilePath(filePath) == MATERIAL_EXTENSION;
 	}
 
+	bool FileSystem::IsEngineSceneFile(const string& filePath)
+	{
+		return GetExtensionFromFilePath(filePath) == SCENE_EXTENSION;
+	}
+
+	bool FileSystem::IsEngineMetadataFile(const string& filePath)
+	{
+		return GetExtensionFromFilePath(filePath) == METADATA_EXTENSION;
+	}
 	//============================================================================================
 
 	//= STRING PARSING =====================================================================
@@ -496,11 +534,11 @@ namespace Directus
 		string currentDir = GetEngineDirectory();
 		string absoluteDir = absoluteFilePath;
 
-		currentDir = ReplaceSequence(currentDir, "\"", "\\");
-		absoluteDir = ReplaceSequence(absoluteDir, "\"", "\\");
+		currentDir = ReplaceExpression(currentDir, "\"", "\\");
+		absoluteDir = ReplaceExpression(absoluteDir, "\"", "\\");
 
-		currentDir = ReplaceSequence(currentDir, "/", "\\");
-		absoluteDir = ReplaceSequence(absoluteDir, "/", "\\");	
+		currentDir = ReplaceExpression(currentDir, "/", "\\");
+		absoluteDir = ReplaceExpression(absoluteDir, "/", "\\");
 
 #define MAX_FILENAME_LEN 512
 #define ABSOLUTE_NAME_START 3
@@ -533,6 +571,7 @@ namespace Directus
 		{
 			i++;
 		}
+
 		if (i == cdLen && (absoluteDir[i] == SLASH || absoluteDir[i - 1] == SLASH))
 		{
 			// the whole current directory name is in the file name,
@@ -595,7 +634,7 @@ namespace Directus
 
 		// Copy the rest of the filename into the result string
 		strcpy(&relativeFilename[rfMarker], &absoluteDir[afMarker]);
-	
+
 		return relativeFilename;
 	}
 
@@ -608,16 +647,18 @@ namespace Directus
 		string filePath = ToString(path);
 
 		// Remove Directus3D.exe from the filePath, we are only interested in the directory
-		string directory = GetPathWithoutFileName(filePath);
+		string directory = GetDirectoryFromFilePath(filePath);
 
 		return directory;
 	}
 
-	string FileSystem::GetStringAfterSequence(const string& str, const string& sequence)
+	string FileSystem::GetStringAfterExpression(const string& str, const string& expression)
 	{
-		// Func("The quick brown fox", "brown") -> "brown fox"
-		size_t position = str.find(sequence);
-		return position != string::npos ? str.substr(position) : str;
+		// ("The quick brown fox", "brown") -> "brown fox"
+		size_t position = str.find(expression);
+		string remaining = position != string::npos ? str.substr(position) : str;
+
+		return remaining;
 	}
 
 	string FileSystem::ConvertToUppercase(const string& lower)
@@ -625,12 +666,14 @@ namespace Directus
 		locale loc;
 		string upper;
 		for (string::size_type i = 0; i < lower.length(); ++i)
+		{
 			upper += std::toupper(lower[i], loc);
+		}
 
 		return upper;
 	}
 
-	string FileSystem::ReplaceSequence(const string& str, const string& from, const string to)
+	string FileSystem::ReplaceExpression(const string& str, const string& from, const string to)
 	{
 		return regex_replace(str, regex(from), to);
 	}
@@ -640,4 +683,12 @@ namespace Directus
 		return wstring(str.begin(), str.end());
 	}
 	//=====================================================================================
+
+	//= SUPPORTED ASSET FILE FORMATS ==========================================================
+	vector<string> FileSystem::GetSupportedImageFormats() { return m_supportedImageFormats; }
+	vector<string> FileSystem::GetSupportedAudioFormats() { return m_supportedAudioFormats; }
+	vector<string> FileSystem::GetSupportedModelFormats() { return m_supportedModelFormats; }
+	vector<string> FileSystem::GetSupportedShaderFormats() { return m_supportedShaderFormats; }
+	vector<string> FileSystem::GetSupportedScriptFormats() { return m_supportedScriptFormats; }
+	//=========================================================================================
 }

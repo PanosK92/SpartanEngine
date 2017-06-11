@@ -29,7 +29,7 @@ namespace Directus
 {
 	namespace Math
 	{
-		class DllExport Vector4
+		class DLL_API Vector4
 		{
 		public:
 			Vector4();

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "../../Graphics/Texture.h"
+#include "../../Graphics/Model.h"
 //=================================
 
 struct aiNode;
@@ -34,6 +35,7 @@ namespace Directus
 {
 	class Material;
 	class GameObject;
+	class Model;
 
 	class ModelImporter
 	{
@@ -42,30 +44,26 @@ namespace Directus
 		~ModelImporter();
 
 		bool Initialize(Context* context);
-		void LoadAsync(const std::string& filePath);
-		bool Load(const std::string& filePath);
-		std::weak_ptr<GameObject> GetModelRoot();
+		void LoadAsync(Model* model);
+		bool Load(Model* model);
 
 	private:
 		bool m_isLoading;
-		std::string m_filePath;
 		std::string m_fullTexturePath;
-		std::string m_modelName;
-		std::weak_ptr<GameObject> m_rootGameObject;
 		Context* m_context;
 
 		/*------------------------------------------------------------------------------
 										[PROCESSING]
 		------------------------------------------------------------------------------*/
-		void ProcessNode(const aiScene* assimpScene, aiNode* assimpNode, std::weak_ptr<GameObject> parentNode, std::weak_ptr<GameObject> newNode);
-		void ProcessMesh(aiMesh* assimpMesh, const aiScene* assimpScene, std::weak_ptr<GameObject> parentGameObject);
-		std::shared_ptr<Material> GenerateMaterialFromAiMaterial(aiMaterial* assimpMaterial);
+		void ProcessNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, std::weak_ptr<GameObject> parentNode, std::weak_ptr<GameObject> newNode);
+		void ProcessMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, std::weak_ptr<GameObject> parentGameObject);
+		std::shared_ptr<Material> GenerateMaterialFromAiMaterial(Model* model, aiMaterial* assimpMaterial);
 
 		/*------------------------------------------------------------------------------
 										[HELPER FUNCTIONS]
 		------------------------------------------------------------------------------*/
-		void AddTextureToMaterial(std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
-		std::string FindTexture(std::string texturePath);
+		void AddTextureToMaterial(Model* model, std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
+		std::string FindTexture(Model* model, const std::string& texturePath);
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 	};
 }

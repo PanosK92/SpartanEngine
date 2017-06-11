@@ -57,8 +57,10 @@ namespace Directus
 		AudioClip(FMOD::System* fModSystem);
 		~AudioClip();
 
+		//= RESOURCE INTERFACE ========================================
 		bool LoadFromFile(const std::string& filePath) { return true; }
-		bool SaveMetadata();
+		bool SaveToFile(const std::string& filePath) { return true; }
+		//=============================================================
 
 		bool Load(const std::string& filePath, PlayMode mode);
 		bool Play();

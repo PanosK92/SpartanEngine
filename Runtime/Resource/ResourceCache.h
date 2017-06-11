@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DllExport ResourceCache
+	class DLL_API ResourceCache
 	{
 	public:
 		ResourceCache() {}
@@ -87,7 +87,9 @@ namespace Directus
 		void SaveResourceMetadata()
 		{
 			for (const auto& resource : m_resources)
-				resource->SaveMetadata();
+			{
+				resource->SaveToFile(RESOURCE_SAVE);
+			}
 		}
 
 		// Returns all the resources

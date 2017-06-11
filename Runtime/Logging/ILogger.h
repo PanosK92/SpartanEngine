@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DllExport ILogger
+	class DLL_API ILogger
 	{
 	public:
 		virtual ~ILogger() {}

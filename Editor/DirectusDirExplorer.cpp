@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 DirectusDirExplorer::DirectusDirExplorer(QWidget *parent) : QTreeView(parent)
 {
-    QString rootPath = "Standard Assets";
+    QString rootPath = "Assets";
     m_fileExplorer = nullptr;
 
     m_dirModel = new QFileSystemModel(this);

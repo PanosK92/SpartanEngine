@@ -131,7 +131,7 @@ namespace Directus
 	{
 		// Add scene file extension to the filepath if it's missing
 		string filePath = filePathIn;
-		if (FileSystem::GetExtensionFromPath(filePath) != SCENE_EXTENSION)
+		if (FileSystem::GetExtensionFromFilePath(filePath) != SCENE_EXTENSION)
 		{
 			filePath += SCENE_EXTENSION;
 		}
@@ -193,13 +193,13 @@ namespace Directus
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
 		for (const auto& resourcePath : resourcePaths)
 		{
-			if (FileSystem::IsSupportedMeshFile(resourcePath))
+			if (FileSystem::IsEngineModelFile(resourcePath))
 			{
-				resourceMng->Load<Mesh>(resourcePath);
+				resourceMng->Load<Model>(resourcePath);
 				continue;
 			}
 
-			if (FileSystem::IsSupportedMaterialFile(resourcePath))
+			if (FileSystem::IsEngineMaterialFile(resourcePath))
 			{
 				resourceMng->Load<Material>(resourcePath);
 				continue;

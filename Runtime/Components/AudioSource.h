@@ -31,7 +31,7 @@ namespace Directus
 {
 	class AudioClip;
 
-	class DllExport AudioSource : public IComponent
+	class DLL_API AudioSource : public IComponent
 	{
 	public:
 		AudioSource();
