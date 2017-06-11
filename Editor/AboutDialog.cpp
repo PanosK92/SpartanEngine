@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "AboutDialog.h"
 #include "ui_AboutDialog.h"
+#include "Core/Engine.h"
 //=========================
 
 AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui(new Ui::AboutDialog)
@@ -31,7 +32,11 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui(new Ui::AboutDia
     Qt::WindowFlags flags = windowFlags() | Qt::MSWindowsFixedSizeDialogHint;
     Qt::WindowFlags helpFlag = Qt::WindowContextHelpButtonHint;
     flags = flags & (~helpFlag);
-       setWindowFlags(flags);
+    setWindowFlags(flags);
+
+    QString text = ui->versionLabel->text();
+    text.replace("%ENGINE_VERSION%", ENGINE_VERSION);
+    ui->versionLabel->setText(text);
 }
 
 AboutDialog::~AboutDialog()

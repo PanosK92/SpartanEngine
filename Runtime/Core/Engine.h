@@ -20,6 +20,8 @@ DEALINGS IN THE SOFTWARE. */
 #include "Context.h"
 //==================
 
+#define ENGINE_VERSION "v0.3 (alpha)"
+
 namespace Directus
 {
 	class DLL_API Engine : public Subsystem
