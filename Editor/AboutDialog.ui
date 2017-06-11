@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>550</width>
-    <height>324</height>
+    <width>483</width>
+    <height>435</height>
    </rect>
   </property>
   <property name="maximumSize">
@@ -26,13 +26,31 @@
    <locale language="English" country="UnitedStates"/>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="sizeConstraint">
+    <enum>QLayout::SetNoConstraint</enum>
+   </property>
    <item>
-    <widget class="QLabel" name="label">
+    <widget class="QLabel" name="versionLabel">
      <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>120</height>
+      </size>
      </property>
      <property name="contextMenuPolicy">
       <enum>Qt::NoContextMenu</enum>
@@ -41,33 +59,142 @@
       <string notr="true">background-color: #292929;</string>
      </property>
      <property name="text">
-      <string>&lt;html&gt;
-&lt;head/&gt;
-&lt;body&gt;
-
-&lt;img src=&quot;:/Images/icon.png&quot; align=&quot;left&quot; width=&quot;100&quot; height=&quot;100&quot;&gt;
-
-&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Copyright(c) 2016-2017 &lt;/span&gt;&lt;a href=&quot;https://panoskarabelas.com/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#6DB8FF;&quot;&gt;Panos Karabelas&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; color:#b4b4b4;&quot;/&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Directus3D is licensed under the MIT License.&lt;/span&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Permission is hereby granted, free of charge, to any person obtaining a copy&lt;br/&gt;of this software and associated documentation files (the &amp;quot;Software&amp;quot;), to deal&lt;br/&gt;in the Software without restriction, including without limitation the rights&lt;br/&gt;to use, copy, modify, merge, publish, distribute, sublicense, and / or sell&lt;br/&gt;copies of the Software, and to permit persons to whom the Software is furnished&lt;br/&gt;to do so, subject to the following conditions :&lt;/span&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;The above copyright notice and this permission notice shall be included in&lt;br/&gt;all copies or substantial portions of the Software. &lt;/span&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;THE SOFTWARE IS PROVIDED &amp;quot;AS IS&amp;quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR&lt;br/&gt;IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS&lt;br/&gt;FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR&lt;br/&gt;COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER&lt;br/&gt;IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN&lt;br/&gt;CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. &lt;/span&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;span style=&quot; color:#b4b4b4;&quot;&gt;Source code: &lt;/span&gt;&lt;a href=&quot;https://github.com/PanosK92/Directus3D&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#6DB8FF;&quot;&gt;GitHub&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; color:#b4b4b4;&quot;/&gt;&lt;/p&gt;
-
-&lt;/body&gt;
-&lt;/html&gt;</string>
+      <string>&lt;p&gt;&lt;img style=&quot;float: left;&quot; src=&quot;:/Images/icon.png\&quot; alt=&quot;&quot; width=&quot;45&quot; height=&quot;45&quot; /&gt;&lt;br /&gt;&amp;nbsp;Directus3D %ENGINE_VERSION%&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p&gt;Author: &lt;a href=&quot;https://panoskarabelas.com/&quot;&gt;&lt;span style=&quot;text-decoration: underline; color: #6db8ff;&quot;&gt;Panos Karabelas&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Home Page: &lt;a href=&quot;https://github.com/PanosK92/Directus3D&quot;&gt;&lt;span style=&quot;text-decoration: underline; color: #6db8ff;&quot;&gt;https://github.com/PanosK92/Directus3D&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;</string>
      </property>
      <property name="scaledContents">
       <bool>false</bool>
      </property>
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+     </property>
      <property name="openExternalLinks">
       <bool>true</bool>
      </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="licenseGroupBox">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="baseSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="layoutDirection">
+      <enum>Qt::LeftToRight</enum>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QGroupBox { 
+     border: 2px solid gray; 
+     border-radius: 3px; 
+ } </string>
+     </property>
+     <property name="title">
+      <string>MIT License</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="flat">
+      <bool>false</bool>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <layout class="QVBoxLayout" name="contentMargin">
+        <property name="leftMargin">
+         <number>10</number>
+        </property>
+        <property name="topMargin">
+         <number>15</number>
+        </property>
+        <property name="rightMargin">
+         <number>10</number>
+        </property>
+        <property name="bottomMargin">
+         <number>10</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="licenseLabel">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="contextMenuPolicy">
+           <enum>Qt::NoContextMenu</enum>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: #292929;</string>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::Box</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Plain</enum>
+          </property>
+          <property name="text">
+           <string>&lt;p&gt;Copyright(c) 2016-2017 Panos Karabelas&lt;/p&gt;
+&lt;p&gt;Permission is hereby granted, free of charge, to any person obtaining a copy&lt;br /&gt;of this software and associated documentation files (the &quot;Software&quot;), to deal&lt;br /&gt;in the Software without restriction, including without limitation the rights&lt;br /&gt;to use, copy, modify, merge, publish, distribute, sublicense, and / or sell&lt;br /&gt;copies of the Software, and to permit persons to whom the Software is furnished&lt;br /&gt;to do so, subject to the following conditions :&lt;/p&gt;
+&lt;p&gt;The above copyright notice and this permission notice shall be included in&lt;br /&gt;all copies or substantial portions of the Software.&lt;/p&gt;
+&lt;p&gt;THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR&lt;br /&gt;IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS&lt;br /&gt;FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR&lt;br /&gt;COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER&lt;br /&gt;IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN&lt;br /&gt;CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.&lt;/p&gt;</string>
+          </property>
+          <property name="textFormat">
+           <enum>Qt::RichText</enum>
+          </property>
+          <property name="scaledContents">
+           <bool>false</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+          <property name="wordWrap">
+           <bool>false</bool>
+          </property>
+          <property name="margin">
+           <number>0</number>
+          </property>
+          <property name="openExternalLinks">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>
