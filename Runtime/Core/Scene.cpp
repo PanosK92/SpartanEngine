@@ -437,7 +437,7 @@ namespace Directus
 		camera->AddComponent<Camera>();
 		camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 		camera->AddComponent<Script>()->AddScript(scriptDirectory + "MouseLook.as");
-		//camera->AddComponent<Script>()->AddScript(scriptDirectory + "FirstPersonController.as");
+		camera->AddComponent<Script>()->AddScript(scriptDirectory + "FirstPersonController.as");
 
 		return camera;
 	}

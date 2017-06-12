@@ -261,10 +261,6 @@ namespace Directus
 			// extension with dot included
 			extension = filePath.substr(lastindex, filePath.length());
 		}
-		else
-		{
-			LOG_WARNING("Could not extract file extension from \"" + filePath + "\"");
-		}
 
 		return extension;
 	}
