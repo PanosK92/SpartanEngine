@@ -176,8 +176,6 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
     int width = this->size().width();
     int height = this->size().height();
 
-    height = width / (16.0f/9.0f);
-
     if (width % 2 != 0)
         width++;
 
@@ -187,7 +185,7 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
     // Change the size of the widget
     setGeometry(QRect(0, 0, width, height));
 
-    // Change the rendering resolution of the engine
+    // Change the resolution of the engine
     SetResolution(width, height);
 }
 
