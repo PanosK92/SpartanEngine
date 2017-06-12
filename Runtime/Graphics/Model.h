@@ -45,8 +45,8 @@ namespace Directus
 		virtual bool SaveToFile(const std::string& filePath);
 		//======================================================
 
-		void SetRootGameObject(std::shared_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
-		void AddMesh(std::weak_ptr<GameObject> gameObj, const std::string& name, std::vector<VertexPosTexNorTan> vertices, std::vector<unsigned int> indices);
+		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
+		std::weak_ptr<Mesh> AddMesh(const std::string& gameObjID, const std::string& name, std::vector<VertexPosTexNorTan> vertices, std::vector<unsigned int> indices);
 		std::weak_ptr<Mesh> GetMeshByID(const std::string id);
 
 		std::string CopyFileToLocalDirectory(const std::string& filePath);

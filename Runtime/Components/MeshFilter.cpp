@@ -129,7 +129,9 @@ namespace Directus
 	// Sets a default mesh (cube, quad)
 	void MeshFilter::SetMesh(MeshType defaultMesh)
 	{
-		auto meshSharedPtr = make_shared<Mesh>();
+		shared_ptr<Model> model = make_shared<Model>(g_context);
+		model->SetRootGameObject(g_gameObject);
+		weak_ptr<Mesh> weakMesh;
 		vector<VertexPosTexNorTan> vertices;
 		vector<unsigned int> indices;
 
@@ -137,21 +139,13 @@ namespace Directus
 		{
 		case Cube:
 			CreateCube(vertices, indices);
-			meshSharedPtr = make_shared<Mesh>();
-			meshSharedPtr->SetName("Cube");
-			meshSharedPtr->SetVertices(vertices);
-			meshSharedPtr->SetIndices(indices);
-			meshSharedPtr->Update();
+			weakMesh = model->AddMesh(g_gameObject.lock()->GetID(), "Cube", vertices, indices);
 			m_meshType = Cube;
 			break;
 
 		case Quad:
 			CreateQuad(vertices, indices);
-			meshSharedPtr = make_shared<Mesh>();
-			meshSharedPtr->SetName("Quad");
-			meshSharedPtr->SetVertices(vertices);
-			meshSharedPtr->SetIndices(indices);
-			meshSharedPtr->Update();
+			weakMesh = model->AddMesh(g_gameObject.lock()->GetID(), "Quad", vertices, indices);
 			m_meshType = Quad;
 			break;
 
@@ -160,12 +154,9 @@ namespace Directus
 			break;
 		}
 
-		// This has to be fixed, default meshes should become default models instead
-		//auto meshWeakPtr = g_context->GetSubsystem<ResourceManager>()->Add(move(meshSharedPtr));
-		//SetMesh(meshWeakPtr);
-
-		vertices.clear();
-		indices.clear();
+		// Add the model to the resource manager and set it to the mesh filter
+		g_context->GetSubsystem<ResourceManager>()->Add<Model>(model);
+		SetMesh(weakMesh);
 	}
 
 	// Set the buffers to active in the input assembler so they can be rendered.

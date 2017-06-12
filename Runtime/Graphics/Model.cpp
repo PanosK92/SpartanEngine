@@ -92,10 +92,11 @@ namespace Directus
 	}
 	//============================================================================================
 
-	void Model::AddMesh(weak_ptr<GameObject> gameObj, const string& name, vector<VertexPosTexNorTan> vertices, vector<unsigned int> indices)
+	std::weak_ptr<Mesh> Model::AddMesh(const std::string& gameObjID, const string& name, vector<VertexPosTexNorTan> vertices, vector<unsigned int> indices)
 	{
 		// Create a mesh
 		auto mesh = make_shared<Mesh>();
+		mesh->SetGameObjectID(gameObjID);
 		mesh->SetName(name);
 		mesh->SetVertices(vertices);
 		mesh->SetIndices(indices);
@@ -104,9 +105,7 @@ namespace Directus
 		// Save it
 		m_meshes.push_back(mesh);
 
-		// Add a mesh filter to the GameObject and set the mesh
-		MeshFilter* meshFilter = gameObj.lock()->AddComponent<MeshFilter>();
-		meshFilter->SetMesh(mesh);
+		return mesh;
 	}
 
 	weak_ptr<Mesh> Model::GetMeshByID(const string id)

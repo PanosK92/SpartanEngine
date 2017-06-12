@@ -40,6 +40,9 @@ namespace Directus
 
 		std::string GetID() { return m_id; }
 
+		std::string GetGameObjectID() { return m_gameObjID; }
+		void SetGameObjectID(const std::string& gameObjID) { m_gameObjID = gameObjID; }
+
 		std::string GetName() { return m_name; }
 		void SetName(const std::string& name) { m_name = name; }
 
@@ -88,7 +91,8 @@ namespace Directus
 		//==============================================================================
 
 		std::string m_id;
-		std::string m_name;
+		std::string m_gameObjID;
+		std::string m_name;	
 
 		std::vector<VertexPosTexNorTan> m_vertices;
 		std::vector<unsigned int> m_indices;

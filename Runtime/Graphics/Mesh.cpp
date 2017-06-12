@@ -65,6 +65,7 @@ namespace Directus
 	void Mesh::Serialize()
 	{
 		Serializer::WriteSTR(m_id);
+		Serializer::WriteSTR(m_gameObjID);
 		Serializer::WriteSTR(m_name);
 		Serializer::WriteInt(m_vertexCount);
 		Serializer::WriteInt(m_indexCount);
@@ -89,6 +90,7 @@ namespace Directus
 	void Mesh::Deserialize()
 	{
 		m_id = Serializer::ReadSTR();
+		m_gameObjID = Serializer::ReadSTR();
 		m_name = Serializer::ReadSTR();
 		m_vertexCount = Serializer::ReadInt();
 		m_indexCount = Serializer::ReadInt();
