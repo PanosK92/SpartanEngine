@@ -435,7 +435,7 @@ namespace Directus
 					// skip objects outside of the view frustrum
 					if (!IsInViewFrustrum(m_camera->GetFrustrum(), meshFilter))
 						continue;
-
+	
 					// UPDATE PER OBJECT BUFFER
 					shader->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
 

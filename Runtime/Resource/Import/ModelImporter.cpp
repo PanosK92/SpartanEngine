@@ -273,7 +273,9 @@ namespace Directus
 		}
 
 		// Add a mesh component and pass the data
-		model->AddMesh(gameobject, assimpMesh->mName.C_Str(), vertices, indices);
+		auto mesh = model->AddMesh(gameobject.lock()->GetID(), assimpMesh->mName.C_Str(), vertices, indices);
+		auto meshFilter = gameobject.lock()->AddComponent<MeshFilter>();
+		meshFilter->SetMesh(mesh);
 
 		// free memory
 		vertices.clear();

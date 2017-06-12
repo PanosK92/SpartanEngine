@@ -150,7 +150,7 @@ namespace Directus
 		case Material_Skybox:
 			material = make_shared<Material>(g_context);
 			material->SetResourceName("Skybox");
-			material->SetCullMode(CullFront);
+			material->SetCullMode(CullBack);
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);
 			m_materialType = Material_Skybox;
