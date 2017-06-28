@@ -19,24 +19,30 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES =====================
 #include "DirectusFileExplorer.h"
+#include "DirectusIconProvider.h"
+#include "DirectusFileDialog.h"
+#include "DirectusInspector.h"
+#include "DirectusHierarchy.h"
 #include <QStandardItem>
-#include <QMouseEvent>
 #include <QApplication>
-#include <QDrag>
+#include <QMouseEvent>
 #include <QMimeData>
-#include "Logging/Log.h"
 #include <QMenu>
+#include <QDrag>
+#include "Logging/Log.h"
 #include "FileSystem/FileSystem.h"
-//===============================
+#include "Core/GameObject.h"
+#include "Graphics/Material.h"
+//================================
 
 //= NAMESPACES ==========
 using namespace std;
 using namespace Directus;
 //=======================
 
-DirectusFileExplorer::DirectusFileExplorer(QWidget *parent) : QListView(parent)
+DirectusFileExplorer::DirectusFileExplorer(QWidget* parent) : QListView(parent)
 {
 
 }
@@ -167,7 +173,9 @@ void DirectusFileExplorer::mouseReleaseEvent(QMouseEvent* event)
 
     // Determine what type of file that was, and display it in the inspector (if possible).
     if (FileSystem::IsEngineMaterialFile(filePath.toStdString()))
+    {
         m_inspector->InspectMaterialFile(filePath.toStdString());
+    }
 }
 
 void DirectusFileExplorer::dragEnterEvent(QDragEnterEvent* event)
@@ -212,7 +220,9 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
         {
             vector<string> modelFilePaths = FileSystem::GetSupportedModelFilesInDirectory(filePath);
             if (modelFilePaths.size() != 0)
+            {
                 m_fileDialog->LoadModelDirectly(modelFilePaths.front());
+            }
         }
         //= DROP CASE: FILE ==================================
         else if(fileInfo.isFile()) // The user dropped a file
@@ -224,8 +234,8 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
             // Audio ?
             if (FileSystem::IsSupportedAudioFile(filePath))
             {
-                std::string fileName = FileSystem::GetFileNameFromFilePath(filePath);
-                std::string destinationPath = GetRootPath().toStdString() + "/" + fileName;
+                string fileName = FileSystem::GetFileNameFromFilePath(filePath);
+                string destinationPath = GetRootPath().toStdString() + "/" + fileName;
                 FileSystem::CopyFileFromTo(filePath, destinationPath);
                 return;
             }
@@ -233,8 +243,8 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
             // Image ?
             if (FileSystem::IsSupportedImageFile(filePath))
             {
-                std::string fileName = FileSystem::GetFileNameFromFilePath(filePath);
-                std::string destinationPath = GetRootPath().toStdString() + "/" + fileName;
+                string fileName = FileSystem::GetFileNameFromFilePath(filePath);
+                string destinationPath = GetRootPath().toStdString() + "/" + fileName;
                 FileSystem::CopyFileFromTo(filePath, destinationPath);
             }
         }
@@ -314,7 +324,7 @@ void DirectusFileExplorer::ShowContextMenu(QPoint pos)
 
 void DirectusFileExplorer::RenameItem(QString name)
 {
-    LOG_INFO("Triggered");
+    LOG_INFO("RenameItem() called");
 }
 
 void DirectusFileExplorer::DoubleClick(QModelIndex modelIndex)
@@ -333,8 +343,8 @@ void DirectusFileExplorer::CreateDirectory_()
 
 void DirectusFileExplorer::CreateMaterial()
 {
-    std::string materialName = "NewMaterial";
-    auto material = std::make_shared<Material>(m_directusCore->GetEngineSocket()->GetContext());
+    string materialName = "NewMaterial";
+    auto material = make_shared<Material>(m_directusCore->GetEngineSocket()->GetContext());
     material->SetResourceName(materialName);
     material->Save(GetRootPath().toStdString() + "/" + materialName, true);
 }
@@ -347,6 +357,8 @@ void DirectusFileExplorer::ShowRootPathInExplorer()
 void DirectusFileExplorer::DeleteSelectedFile()
 {
     if(!FileSystem::DeleteFile_(GetSelectionPath().toStdString()))
+    {
         FileSystem::DeleteDirectory(GetSelectionPath().toStdString());
+    }
 }
 //===================================================================================================

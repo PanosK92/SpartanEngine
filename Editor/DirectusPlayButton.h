@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//===========================
+//====================
 #include <QPushButton>
-#include "DirectusCore.h"
-//===========================
+//====================
+
+class DirectusCore;
 
 class DirectusPlayButton : public QPushButton
 {

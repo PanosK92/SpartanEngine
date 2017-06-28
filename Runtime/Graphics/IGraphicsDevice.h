@@ -52,6 +52,7 @@ namespace Directus
 		//=========================================================================
 		virtual void EnableAlphaBlending(bool enable) = 0;
 		virtual void SetInputLayout(InputLayout inputLayout) = 0;
+		virtual CullMode GetCullMode() = 0;
 		virtual void SetCullMode(CullMode cullMode) = 0;
 		virtual void SetPrimitiveTopology(PrimitiveTopology primitiveTopology) = 0;
 		//=========================================================================

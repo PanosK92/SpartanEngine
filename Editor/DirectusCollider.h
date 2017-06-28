@@ -21,20 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//=================================
+//=============================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusComboLabelText.h"
 #include <QLineEdit>
-#include "Core/GameObject.h"
 #include <QDoubleValidator>
-#include "Components/Collider.h"
 #include <QCheckBox>
-#include "DirectusCore.h"
-#include "QComboBox.h"
-#include "DirectusDropDownButton.h"
+#include <QComboBox.h>
 #include "DirectusIComponent.h"
-//==================================
+//=============================
+
+class DirectusComboLabelText;
+namespace Directus
+{
+    class Collider;
+}
 
 class DirectusCollider : public DirectusIComponent
 {
@@ -65,10 +66,10 @@ private:
     DirectusComboLabelText* m_sizeZ;
     //====================================
 
-    //= MISC =====================
+    //= MISC ===============================
     QValidator* m_validator;
     Directus::Collider* m_inspectedCollider;
-    //============================
+    //======================================
 
     void ReflectType();
     void ReflectCenter();

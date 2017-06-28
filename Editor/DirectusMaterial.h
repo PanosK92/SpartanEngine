@@ -21,21 +21,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//============================================
+//=============================
 #include <QWidget>
 #include <QGridLayout>
 #include <QLineEdit>
-#include "Core/GameObject.h"
-#include "Graphics/Material.h"
-#include "DirectusComboSliderText.h"
-#include "DirectusComboLabelText.h"
-#include "DirectusColorPicker.h"
 #include <QComboBox>
-#include "Math/Vector2.h"
-#include "DirectusCore.h"
-#include "DirectusMaterialTextureDropTarget.h"
 #include "DirectusIComponent.h"
-//============================================
+//=============================
+
+class DirectusColorPicker;
+class DirectusComboSliderText;
+class DirectusMaterialTextureDropTarget;
+class DirectusComboLabelText;
+namespace Directus
+{
+    class Material;
+}
 
 class DirectusMaterial : public DirectusIComponent
 {

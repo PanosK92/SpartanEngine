@@ -19,13 +19,21 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//== INCLUDES ======================
+//== INCLUDES =================================
 #include "DirectusMaterial.h"
-#include "Components/MeshRenderer.h"
-#include "Logging/Log.h"
 #include "DirectusInspector.h"
+#include "DirectusAdjustLabel.h"
+#include "DirectusComboSliderText.h"
+#include "DirectusComboLabelText.h"
+#include "DirectusColorPicker.h"
 #include <QByteArray>
-//==================================
+#include "Core/GameObject.h"
+#include "Logging/Log.h"
+#include "Components/MeshRenderer.h"
+#include "Math/Vector2.h"
+#include "DirectusCore.h"
+#include "DirectusMaterialTextureDropTarget.h"
+//============================================
 
 //= NAMESPACES =====================
 using namespace Directus;

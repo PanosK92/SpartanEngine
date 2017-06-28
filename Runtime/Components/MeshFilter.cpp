@@ -81,7 +81,9 @@ namespace Directus
 
 	void MeshFilter::Serialize()
 	{
-		Serializer::WriteInt((int)m_meshType);
+		// FIX THIS: SAVE THE MODELS ID SO WE CAN DESRIALIZE EASIER
+		//Serializer::WriteInt((int)m_meshType);
+		//Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetGameObjectID : (string)DATA_NOT_ASSIGNED);
 		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
 	}
 
@@ -90,44 +92,49 @@ namespace Directus
 		m_meshType = (MeshType)Serializer::ReadInt();
 		string meshID = Serializer::ReadSTR();
 
-		if (m_meshType == Imported) // Get the already loaded mesh
+		// If the mesh is a engine constructed primitive
+		if (m_meshType != Imported)
 		{
-			auto models = g_context->GetSubsystem<ResourceManager>()->GetResourcesByType<Model>();
-			for (const auto& model : models)
-			{
-				auto mesh = model.lock()->GetMeshByID(meshID);
-				if (!mesh.expired())
-				{
-					m_mesh = mesh;
-					break;
-				}
-			}
-
-			SetMesh(m_mesh);
-		}
-		else
-		{
-			// Construct the mesh
+			// Construct it now
 			SetMesh(m_meshType);
+			return;
+		}
+
+		// ... else load the actual model and try to find the corresponding mesh
+		auto model = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Model>();
+		auto mesh = model.lock
+		for (const auto& model : models)
+		{
+			auto mesh = model.lock()->GetMeshByID(meshID);
+			if (!mesh.expired())
+			{
+				m_mesh = mesh;
+				SetMesh(m_mesh);
+			}
 		}
 	}
 
 	// Sets a mesh from memory
-	void MeshFilter::SetMesh(weak_ptr<Mesh> mesh)
+	bool MeshFilter::SetMesh(weak_ptr<Mesh> mesh)
 	{
 		m_mesh = mesh;
-
-		// Make the mesh re-create the buffers whenever it updates.
-		if (!m_mesh.expired())
+		if (m_mesh.expired())
 		{
-			m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
+			LOG_WARNING("Can't create vertex and index buffers for an expired mesh");
+			return false;
 		}
 
+		// Make the mesh re-create the buffers whenever it updates.
+		m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
+
+		// Create buffers
 		CreateBuffers();
+
+		return true;
 	}
 
 	// Sets a default mesh (cube, quad)
-	void MeshFilter::SetMesh(MeshType defaultMesh)
+	bool MeshFilter::SetMesh(MeshType defaultMesh)
 	{
 		shared_ptr<Model> model = make_shared<Model>(g_context);
 		model->SetRootGameObject(g_gameObject);
@@ -156,7 +163,9 @@ namespace Directus
 
 		// Add the model to the resource manager and set it to the mesh filter
 		g_context->GetSubsystem<ResourceManager>()->Add<Model>(model);
-		SetMesh(weakMesh);
+		bool result = SetMesh(weakMesh);
+
+		return result;
 	}
 
 	// Set the buffers to active in the input assembler so they can be rendered.

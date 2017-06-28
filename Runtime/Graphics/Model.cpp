@@ -108,7 +108,7 @@ namespace Directus
 		return mesh;
 	}
 
-	weak_ptr<Mesh> Model::GetMeshByID(const string id)
+	weak_ptr<Mesh> Model::GetMeshByID(const string& id)
 	{
 		for (const auto& mesh : m_meshes)
 		{
@@ -135,7 +135,7 @@ namespace Directus
 		SetScale(normalizedScale);
 	}
 
-	void Model::SetScale(float scale) // WHEN THAT HAPPENS I SHOULD ALSO SAVE THE MODEL AGAIN
+	void Model::SetScale(float scale)
 	{
 		for (const auto& mesh : m_meshes)
 		{

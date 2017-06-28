@@ -91,8 +91,8 @@ namespace Directus
 
 	void Socket::LoadModelAsync(const string& filePath)
 	{
-		//ResourceManager* resourceMng = m_context->GetSubsystem<ResourceManager>();
-		//resourceMng->Load<Model>(filePath);
+		ResourceManager* resourceMng = m_context->GetSubsystem<ResourceManager>();
+		resourceMng->Load<Model>(filePath);
 	}
 
 	void Socket::SaveSceneToFileAsync(const string& filePath)

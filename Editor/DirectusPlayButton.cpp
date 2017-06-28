@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "DirectusPlayButton.h"
+#include "DirectusCore.h"
 #include "Logging/Log.h"
 //=============================
 

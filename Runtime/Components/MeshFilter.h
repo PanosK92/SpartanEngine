@@ -55,10 +55,10 @@ namespace Directus
 		//=========================
 
 		// Sets a mesh from memory
-		void SetMesh(std::weak_ptr<Mesh> mesh);
+		bool SetMesh(std::weak_ptr<Mesh> mesh);
 
 		// Sets a default mesh (cube, quad)
-		void SetMesh(MeshType defaultMesh);
+		bool SetMesh(MeshType defaultMesh);
 
 		// Sets the meshe's buffers
 		bool SetBuffers();

@@ -45,6 +45,11 @@ DirectusDirExplorer::DirectusDirExplorer(QWidget *parent) : QTreeView(parent)
     // (at least visually) refuses to change anything.
     QModelIndex index = m_dirModel->index(rootPath);
     this->setRootIndex(index);
+
+    // Hide Size, Type, Date Modified columns
+    this->setColumnHidden(1, true);
+    this->setColumnHidden(2, true);
+    this->setColumnHidden(3, true);
 }
 
 void DirectusDirExplorer::Initialize(DirectusFileExplorer* fileExplorer)
@@ -58,7 +63,9 @@ void DirectusDirExplorer::UpdateFileExplorer(QModelIndex index)
     QString path = m_dirModel->fileInfo(index).absoluteFilePath();
 
     if (m_fileExplorer)
+    {
         m_fileExplorer->SetRootPath(path);
+    }
 }
 
 void DirectusDirExplorer::UpdateFromFileExplorer(QModelIndex index)

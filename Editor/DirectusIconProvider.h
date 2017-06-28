@@ -21,10 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ===============
 #include <QFileIconProvider>
-#include "Resource/Import/ImageImporter.h"
-//========================================
+//==========================
+
+namespace Directus
+{
+    class ImageImporter;
+}
 
 class DirectusIconProvider : public QFileIconProvider
 {

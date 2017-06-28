@@ -111,11 +111,12 @@ namespace Directus
 			LOG_ERROR("Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
 			return false;
 		}
-
+		
 		// This function will recursively process the entire model
 		ProcessNode(model, scene, scene->mRootNode, weakGameObj(), weakGameObj());
-
+		importer.FreeScene();
 		m_isLoading = false;
+
 		return true;
 	}
 

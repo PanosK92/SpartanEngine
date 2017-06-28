@@ -21,10 +21,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "DirectusInspector.h"
+#include <QMimeData>
 #include "Logging/Log.h"
 #include "FileSystem/FileSystem.h"
-#include <QMimeData>
 #include "Components/Transform.h"
+#include "Core/GameObject.h"
+#include "DirectusTransform.h"
+#include "DirectusCamera.h"
+#include "DirectusMeshRenderer.h"
+#include "DirectusMaterial.h"
+#include "DirectusCollider.h"
+#include "DirectusRigidBody.h"
+#include "DirectusLight.h"
+#include "DirectusScript.h"
+#include "DirectusMeshFilter.h"
+#include "DirectusMeshCollider.h"
+#include "DirectusCore.h"
+#include "DirectusAudioSource.h"
+#include "DirectusAudioListener.h"
+#include "DirectusIComponent.h"
 //================================
 
 //= NAMESPACES ==========

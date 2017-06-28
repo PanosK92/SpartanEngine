@@ -21,13 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES ===============
 #include <QListWidget>
-#include "DirectusCore.h"
-#include "Socket/Socket.h"
 #include "Logging/ILogger.h"
 #include <string>
-//=======================
+#include <memory>
+//==========================
+
+class DirectusCore;
+namespace Directus
+{
+    class Socket;
+}
 
 class EngineLogger : public Directus::ILogger
 {

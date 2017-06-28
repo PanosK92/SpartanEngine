@@ -21,12 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES =====
 #include <QObject>
 #include <QPixmap>
-#include "Socket/Socket.h"
-#include "DirectusProgressBar.h"
-//==============================
+//================
+
+class DirectusProgressBar;
+namespace Directus
+{
+    class Socket;
+}
 
 class DirectusAssetLoader : public QObject
 {

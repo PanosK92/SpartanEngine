@@ -21,24 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES =====
 #include <QWidget>
-#include "Core/GameObject.h"
-#include "DirectusTransform.h"
-#include "DirectusCamera.h"
-#include "DirectusMeshRenderer.h"
-#include "DirectusMaterial.h"
-#include "DirectusCollider.h"
-#include "DirectusRigidBody.h"
-#include "DirectusLight.h"
-#include "DirectusScript.h"
-#include "DirectusMeshFilter.h"
-#include "DirectusMeshCollider.h"
-#include "DirectusCore.h"
-#include "DirectusAudioSource.h"
-#include "DirectusAudioListener.h"
-#include "DirectusIComponent.h"
-//================================
+#include <memory>
+//================
+
+class DirectusCore;
+class DirectusIComponent;
+class DirectusMaterial;
+namespace Directus
+{
+    class GameObject;
+    class Script;
+    class Socket;
+}
 
 class DirectusInspector : public QWidget
 {

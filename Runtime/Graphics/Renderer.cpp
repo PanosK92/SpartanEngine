@@ -43,8 +43,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Core/Settings.h"
 #include "../Core/Engine.h"
-#include "../Resource/ResourceManager.h"
 #include "../Core/Stopwatch.h"
+#include "../Resource/ResourceManager.h"
 #include "../Math/Frustrum.h"
 #include "Material.h"
 //======================================
@@ -428,7 +428,7 @@ namespace Directus
 					if (material->GetResourceID() != objMaterial->GetResourceID())
 						continue;
 
-					// skip objects transparent objects (for now)
+					// skip transparent objects (for now)
 					if (objMaterial->GetOpacity() < 1.0f)
 						continue;
 
@@ -453,7 +453,6 @@ namespace Directus
 				} // GAMEOBJECT/MESH ITERATION
 
 				m_textures.clear();
-				m_textures.shrink_to_fit();
 
 			} // MATERIAL ITERATION
 		} // SHADER ITERATION
@@ -468,7 +467,9 @@ namespace Directus
 		float radius = max(abs(extent.x), abs(extent.y));
 		radius = max(radius, abs(extent.z));
 
-		return cameraFrustrum->CheckSphere(center, radius) == Outside ? false : true;
+		bool isInViewFrustrum = (cameraFrustrum->CheckSphere(center, radius) == Inside);
+
+		return isInViewFrustrum;
 	}
 
 	void Renderer::DeferredPass()
