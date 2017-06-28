@@ -93,8 +93,13 @@ namespace Directus
 
 	void ShaderVariation::Set()
 	{
-		if (m_D3D11Shader)
-			m_D3D11Shader->Set();
+		if (!m_D3D11Shader)
+		{
+			LOG_WARNING("Can't set uninitialized shader");
+			return;
+		}
+
+		m_D3D11Shader->Set();
 	}
 
 	void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* camera)
@@ -239,9 +244,7 @@ namespace Directus
 	void ShaderVariation::AddDefinesBasedOnMaterial(shared_ptr<D3D11Shader> shader)
 	{
 		if (!shader)
-		{
 			return;
-		}
 
 		// Define in the shader what kind of textures it should expect
 		shader->AddDefine("ALBEDO_MAP", m_hasAlbedoTexture);

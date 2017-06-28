@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include <QMutex>
 #include "DirectusProgressBar.h"
+#include "Socket/Socket.h"
 //========================================
 
 //= NAMESPACES ==========

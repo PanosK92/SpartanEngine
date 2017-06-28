@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "DirectusAudioClipDropTarget.h"
-#include "FileSystem/FileSystem.h"
 #include "DirectusInspector.h"
-#include "Components/AudioSource.h"
 #include <QDragMoveEvent>
 #include <QMimeData>
+#include "FileSystem/FileSystem.h"
+#include "Components/AudioSource.h"
 #include "Logging/Log.h"
+#include "Core/GameObject.h"
 //======================================
 
 //= INCLUDES ============

@@ -21,20 +21,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//=================================
+//=============================
+#include "DirectusIComponent.h"
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusComboLabelText.h"
-#include "Core/GameObject.h"
-#include "Components/RigidBody.h"
 #include <QCheckBox>
-#include "DirectusCore.h"
-#include "QComboBox.h"
-#include "DirectusDropDownButton.h"
-#include "DirectusIComponent.h"
-//==================================
+#include <QComboBox.h>
+#include <QLabel>
+#include <memory>
+//============================
 
 class DirectusInspector;
+class DirectusComboLabelText;
+namespace Directus
+{
+    class GameObject;
+    class RigidBody;
+}
 
 class DirectusRigidBody : public DirectusIComponent
 {

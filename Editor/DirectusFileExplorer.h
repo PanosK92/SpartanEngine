@@ -24,11 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // INCLUDES =====================
 #include <QListView>
 #include <QFileSystemModel>
-#include "DirectusIconProvider.h"
-#include "DirectusFileDialog.h"
-#include "DirectusInspector.h"
-#include "DirectusHierarchy.h"
 //===============================
+
+class DirectusCore;
+class DirectusHierarchy;
+class DirectusIconProvider;
+class DirectusFileDialog;
+class DirectusInspector;
 
 class DirectusFileExplorer : public QListView
 {

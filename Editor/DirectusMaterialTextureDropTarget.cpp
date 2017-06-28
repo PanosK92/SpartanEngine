@@ -22,15 +22,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //============================================
 #include "DirectusMaterialTextureDropTarget.h"
 #include "DirectusAssetLoader.h"
+#include "DirectusInspector.h"
+#include "DirectusMaterial.h"
+#include "DirectusCore.h"
 #include <QThread>
 #include <QDragMoveEvent>
 #include <QMimeData>
 #include "Logging/Log.h"
-#include "DirectusInspector.h"
 #include "Resource/ResourceManager.h"
 #include "FileSystem/FileSystem.h"
 #include "Components/MeshRenderer.h"
 #include "Graphics/Texture.h"
+#include "Graphics/Material.h"
 //=============================================
 
 //= NAMESPACES ==========

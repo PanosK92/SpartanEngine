@@ -21,14 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ====
 #include <QLabel>
-#include "DirectusCore.h"
-#include "Graphics/Material.h"
-//============================
+//===============
 
 //= FORWARD DECLARATIONS =
 class DirectusInspector;
+namespace Directus
+{
+    enum TextureType;
+}
 //========================
 
 class DirectusMaterialTextureDropTarget : public QLabel

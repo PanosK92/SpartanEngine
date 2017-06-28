@@ -31,6 +31,7 @@ namespace Directus
 #include "D3D12/D3D12GraphicsDevice.h"
 	class D3D12GraphicsDevice;
 	typedef D3D12GraphicsDevice Graphics;
+#elif defined(API_VULKAN)
 #endif
 	//=============================================
 

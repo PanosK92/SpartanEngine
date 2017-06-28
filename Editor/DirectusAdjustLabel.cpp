@@ -1,9 +1,10 @@
 // INCLUDES ====================
 #include "DirectusAdjustLabel.h"
 #include <QMouseEvent>
-#include "Logging/Log.h"
 #include <QApplication>
 #include <QDesktopWidget>
+#include "Socket/Socket.h"
+#include "Logging/Log.h"
 //==============================
 
 DirectusAdjustLabel::DirectusAdjustLabel(QWidget *parent) : QLabel(parent)

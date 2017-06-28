@@ -156,7 +156,9 @@ namespace Directus
 
 			// If the texture happens to be loaded, we might as well get a reference to it
 			if (m_context)
+			{
 				texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByPath<Texture>(texPath);
+			}
 
 			m_textures.insert(make_pair(make_pair(texPath, texType), texture));
 		}
@@ -165,8 +167,12 @@ namespace Directus
 
 		// Load unloaded textures
 		for (auto& it : m_textures)
+		{
 			if (it.second.expired())
+			{
 				it.second = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(it.first.first);
+			}
+		}
 
 		AcquireShader();
 
@@ -202,7 +208,9 @@ namespace Directus
 		for (const auto& it : m_textures)
 		{
 			if (it.first.second == type)
+			{
 				return it.second;
+			}
 		}
 
 		return weak_ptr<Texture>();
@@ -213,7 +221,9 @@ namespace Directus
 		for (const auto& it : m_textures)
 		{
 			if (it.first.second == type)
+			{
 				return true;
+			}
 		}
 
 		return false;
@@ -224,7 +234,9 @@ namespace Directus
 		for (const auto& it : m_textures)
 		{
 			if (it.first.first == path)
+			{
 				return true;
+			}
 		}
 
 		return false;
@@ -235,7 +247,9 @@ namespace Directus
 		for (const auto& it : m_textures)
 		{
 			if (it.first.second == type)
+			{
 				return it.first.first;
+			}
 		}
 
 		return (string)DATA_NOT_ASSIGNED;
@@ -244,7 +258,6 @@ namespace Directus
 	vector<string> Material::GetTexturePaths()
 	{
 		vector<string> paths;
-
 		for (auto it : m_textures)
 		{
 			paths.push_back(it.first.first);
@@ -329,15 +342,23 @@ namespace Directus
 	void Material::TextureBasedMultiplierAdjustment()
 	{
 		if (HasTextureOfType(Roughness_Texture))
+		{
 			SetRoughnessMultiplier(1.0f);
+		}
 
-		if (HasTextureOfType(Metallic_Texture))
+		if (HasTextureOfType(Metallic_Texture)) 
+		{
 			SetMetallicMultiplier(1.0f);
+		}
 
-		if (HasTextureOfType(Normal_Texture))
+		if (HasTextureOfType(Normal_Texture)) 
+		{
 			SetNormalMultiplier(1.0f);
+		}
 
 		if (HasTextureOfType(Height_Texture))
+		{
 			SetHeightMultiplier(1.0f);
+		}
 	}
 }

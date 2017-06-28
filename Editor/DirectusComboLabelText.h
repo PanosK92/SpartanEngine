@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES ==============
 #include <QWidget>
-#include "DirectusAdjustLabel.h"
 #include <QLineEdit>
 #include <QDoubleValidator>
-//==============================
+//=========================
+
+class DirectusAdjustLabel;
 
 class DirectusComboLabelText : public QWidget
 {

@@ -24,20 +24,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================================
 #include <QWidget>
 #include <QGridLayout>
-#include "DirectusComboLabelText.h"
-#include "DirectusComboSliderText.h"
-#include "DirectusColorPicker.h"
-#include <QPushButton>
-#include "Core/GameObject.h"
-#include <QDoubleValidator>
-#include "Components/Light.h"
-#include <QComboBox>
-#include "DirectusCore.h"
 #include <QLabel>
-#include "Math/Vector4.h"
-#include "DirectusDropDownButton.h"
+#include <QPushButton>
+#include <QComboBox>
+#include <QDoubleValidator>
+#include <memory>
 #include "DirectusIComponent.h"
 //==================================
+
+class DirectusComboLabelText;
+class DirectusInspector;
+class DirectusColorPicker;
+class DirectusComboSliderText;
+namespace Directus
+{
+    class GameObject;
+    class Light;
+}
 
 class DirectusLight : public DirectusIComponent
 {

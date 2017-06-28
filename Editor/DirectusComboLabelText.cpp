@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "DirectusComboLabelText.h"
+#include "DirectusAdjustLabel.h"
 #include "Logging/Log.h"
 //=================================
 

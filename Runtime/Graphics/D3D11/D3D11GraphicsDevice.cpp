@@ -561,28 +561,11 @@ namespace Directus
 	}
 	//================================================================
 
-	void D3D11GraphicsDevice::SetCullMode(CullMode cullMode)
-	{
-		// Set face CullMode only if not already set
-		if (!m_deviceContext || m_cullMode == cullMode)
-			return;
-
-		auto mode = d3dCullMode[cullMode];
-
-		if (mode == D3D11_CULL_FRONT)
-			m_deviceContext->RSSetState(m_rasterStateCullFront);
-		else if (mode == D3D11_CULL_BACK)
-			m_deviceContext->RSSetState(m_rasterStateCullBack);
-		else if (mode == D3D11_CULL_NONE)
-			m_deviceContext->RSSetState(m_rasterStateCullNone);
-
-		// Save the current CullMode mode
-		m_cullMode = cullMode;
-	}
-
 	void D3D11GraphicsDevice::SetBackBufferAsRenderTarget()
 	{
-		if (!m_deviceContext) {
+		if (!m_deviceContext)
+		{
+			LOG_INFO("Cant't set back buffer as render terget, device context is uninitialized");
 			return;
 		}
 
@@ -608,6 +591,37 @@ namespace Directus
 			return;
 
 		m_inputLayout = inputLayout;
+	}
+
+	void D3D11GraphicsDevice::SetCullMode(CullMode cullMode)
+	{
+		if (!m_deviceContext)
+		{
+			LOG_WARNING("Can't set cull mode, device context is uninitialized.");
+			return;
+		}
+
+		// Set face CullMode only if not already set
+		if (m_cullMode == cullMode)
+			return;
+
+		auto mode = d3dCullMode[cullMode];
+
+		if (mode == D3D11_CULL_FRONT)
+		{
+			m_deviceContext->RSSetState(m_rasterStateCullFront);
+		}
+		else if (mode == D3D11_CULL_BACK)
+		{
+			m_deviceContext->RSSetState(m_rasterStateCullBack);
+		}
+		else if (mode == D3D11_CULL_NONE)
+		{
+			m_deviceContext->RSSetState(m_rasterStateCullNone);
+		}
+
+		// Save the current CullMode mode
+		m_cullMode = cullMode;
 	}
 
 	//= HELPER FUNCTIONS ================================================================================
@@ -655,6 +669,7 @@ namespace Directus
 
 		return true;
 	}
+
 	bool D3D11GraphicsDevice::CreateRasterizerState(D3D11_CULL_MODE cullMode, D3D11_FILL_MODE fillMode, ID3D11RasterizerState** rasterizer)
 	{
 		if (!m_device)

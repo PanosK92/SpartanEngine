@@ -19,11 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ===================
 #include "DirectusCamera.h"
-#include "Logging/Log.h"
 #include "DirectusInspector.h"
-//============================
+#include "DirectusAdjustLabel.h"
+#include "Logging/Log.h"
+//==============================
 
 //= NAMESPACES ================
 using namespace std;

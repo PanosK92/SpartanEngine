@@ -21,17 +21,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//================================
+//=============================
+#include <QLabel>
 #include <QWidget>
 #include <QGridLayout>
-#include "Math/Vector3.h"
-#include "Math/Quaternion.h"
-#include "Core/GameObject.h"
 #include <QDoubleValidator>
-#include "DirectusCore.h"
-#include "DirectusComboLabelText.h"
+#include <memory>
 #include "DirectusIComponent.h"
-//=================================
+//=============================
+
+class DirectusInspector;
+class DirectusComboLabelText;
+namespace Directus
+{
+    class GameObject;
+    class Transform;
+}
 
 class DirectusTransform : public DirectusIComponent
 {

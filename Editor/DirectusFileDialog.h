@@ -21,14 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =========
 #include <QFileDialog>
-#include "DirectusAssetLoader.h"
-#include "Socket/Socket.h"
-#include "DirectusCore.h"
-//===============================
+//====================
 
 class DirectusHierarchy;
+class DirectusCore;
+class DirectusAssetLoader;
+
+namespace Directus
+{
+    class Socket;
+}
 
 class DirectusFileDialog : public QFileDialog
 {

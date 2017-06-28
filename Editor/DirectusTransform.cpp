@@ -19,13 +19,19 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//===============================
+//=================================
 #include "DirectusTransform.h"
-#include "Components/Transform.h"
-#include "Logging/Log.h"
+#include "DirectusCore.h"
+#include "DirectusAdjustLabel.h"
+#include "DirectusComboLabelText.h"
+#include "Core/GameObject.h"
 #include "Core/Settings.h"
+#include "Logging/Log.h"
+#include "Math/Vector3.h"
+#include "Math/Quaternion.h"
 #include "Components/RigidBody.h"
-//===============================
+#include "Components/Transform.h"
+//=================================
 
 //= NAMESPACES ================
 using namespace std;

@@ -19,10 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES ======================
 #include "DirectusRigidBody.h"
 #include "DirectusInspector.h"
-//============================
+#include "DirectusAdjustLabel.h"
+#include "DirectusComboLabelText.h"
+#include "DirectusCore.h"
+#include "DirectusDropDownButton.h"
+#include "Core/GameObject.h"
+#include "Components/RigidBody.h"
+//=================================
 
 //= NAMESPACES ================
 using namespace std;

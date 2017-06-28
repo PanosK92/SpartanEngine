@@ -94,7 +94,9 @@ namespace Directus
 		// The Skybox material and texture is managed by the skybox component.
 		// No need to load anything as it will overwrite what the skybox component did.
 		if (m_materialType != Material_Skybox)
+		{
 			m_materialType == Material_Imported ? LoadMaterial(filePath) : SetMaterial(m_materialType);
+		}
 	}
 	//==============================================================================
 
@@ -150,7 +152,7 @@ namespace Directus
 		case Material_Skybox:
 			material = make_shared<Material>(g_context);
 			material->SetResourceName("Skybox");
-			material->SetCullMode(CullBack);
+			material->SetCullMode(CullFront);
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);
 			m_materialType = Material_Skybox;

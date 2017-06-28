@@ -47,7 +47,7 @@ namespace Directus
 
 		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
 		std::weak_ptr<Mesh> AddMesh(const std::string& gameObjID, const std::string& name, std::vector<VertexPosTexNorTan> vertices, std::vector<unsigned int> indices);
-		std::weak_ptr<Mesh> GetMeshByID(const std::string id);
+		std::weak_ptr<Mesh> GetMeshByID(const std::string& id);
 
 		std::string CopyFileToLocalDirectory(const std::string& filePath);
 		std::string GetOriginalFilePath() { return m_originalFilePath; }

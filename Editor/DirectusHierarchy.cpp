@@ -19,23 +19,31 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES ========================
 #include "DirectusHierarchy.h"
-#include <vector>
-#include <QFileDialog>
-#include "Components/Transform.h"
-#include "Logging/Log.h"
 #include "DirectusQVariantPacker.h"
 #include "DirectusAssetLoader.h"
 #include <QApplication>
 #include <QDrag>
 #include <QMenu>
-#include "Components/Light.h"
-#include "Components/Hinge.h"
-#include "Components/MeshFilter.h"
+#include <QFileDialog>
 #include "FileSystem/FileSystem.h"
+#include "Core/GameObject.h"
+#include "Logging/Log.h"
+#include "Components/AudioListener.h"
+#include "Components/AudioSource.h"
+#include "Components/Camera.h"
+#include "Components/Collider.h"
+#include "Components/Hinge.h"
+#include "Components/Light.h"
+#include "Components/MeshCollider.h"
+#include "Components/MeshFilter.h"
+#include "Components/MeshRenderer.h"
+#include "Components/RigidBody.h"
 #include "Components/Skybox.h"
-//=================================
+#include "Components/Transform.h"
+
+//==================================
 
 //= NAMESPACES ==========
 using namespace Directus;
@@ -101,7 +109,9 @@ void DirectusHierarchy::selectionChanged(const QItemSelection &selected, const Q
     QTreeWidget::selectionChanged(selected, deselected);
 
     if (m_inspector)
+    {
         m_inspector->Inspect(GetSelectedGameObject());
+    }
 }
 
 //= DRAG N DROP RELATED ============================================================================
@@ -110,10 +120,10 @@ void DirectusHierarchy::selectionChanged(const QItemSelection &selected, const Q
 void DirectusHierarchy::mouseMoveEvent(QMouseEvent* event)
 {
     if (!(event->buttons() & Qt::LeftButton))
-            return;
+        return;
 
     if ((event->pos() - m_dragStartPosition).manhattanLength() < QApplication::startDragDistance())
-            return;
+        return;
 
     // Make sure the user actually clicked on something
     auto draggedGameObject = GetSelectedGameObject();
@@ -171,7 +181,9 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
         event->accept();
     }
     else
+    {
         event->acceptProposedAction();
+    }
 
     // Get mime data and convert it's text to std::string
     const QMimeData* mime = event->mimeData();
@@ -188,20 +200,24 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     //================================================================
 
     //= DROP CASE: GAMEOBJECT (Assume text is a GameObject ID) =======
-    auto dragged = m_socket->GetGameObjectByID(text).lock();
-    auto hovered = ToGameObject(this->itemAt(event->pos())).lock();
+    auto draggedGameObj = m_socket->GetGameObjectByID(text).lock();
+    QTreeWidgetItem* hoveredItem = this->itemAt(event->pos());
+    auto dropTargetGameObj = ToGameObject(hoveredItem).lock();
 
-    if (dragged && hovered) // It was dropped on a gameobject
+    if (draggedGameObj && dropTargetGameObj) // It was dropped on a gameobject
     {
-        if (dragged->GetID() != hovered->GetID())
-            dragged->GetTransform()->SetParent(hovered->GetTransform());
+        if (draggedGameObj->GetID() != dropTargetGameObj->GetID())
+        {
+            draggedGameObj->GetTransform()->SetParent(dropTargetGameObj->GetTransform());
+            Populate();
+        }
 
     }
-    else if (dragged && !hovered) // It was dropped on nothing
+    else if (draggedGameObj && !dropTargetGameObj) // It was dropped on nothing
     {
-        dragged->GetTransform()->SetParent(nullptr);
-    }
-     Populate();
+        draggedGameObj->GetTransform()->SetParent(nullptr);
+        Populate();
+    }   
     //================================================================
 }
 
@@ -314,10 +330,6 @@ QTreeWidgetItem* DirectusHierarchy::GetSelectedQTreeWidgetItem()
 weak_ptr<GameObject> DirectusHierarchy::GetSelectedGameObject()
 {
     QTreeWidgetItem* item = GetSelectedQTreeWidgetItem();
-
-    if (!item)
-        return weak_ptr<GameObject>();
-
     return ToGameObject(item);
 }
 
@@ -659,7 +671,7 @@ void DirectusHierarchy::CreateCamera()
     gameobject->SetName("Camera");
 
     // Add component
-    Camera* light = gameobject->AddComponent<Camera>();
+    gameobject->AddComponent<Camera>();
 
     // Refresh hierarchy
     Populate();
