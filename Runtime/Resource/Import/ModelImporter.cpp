@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Multithreading/Multithreading.h"
 #include "../../Resource/ResourceManager.h"
 #include "../../Graphics/Model.h"
+#include "../../Graphics/Shaders/ShaderVariation.h"
 //==============================================
 
 //= NAMESPACES ================
@@ -50,6 +51,7 @@ namespace Directus
 	ModelImporter::ModelImporter()
 	{
 		m_context = nullptr;
+		m_isLoading = false;
 	}
 
 	ModelImporter::~ModelImporter()
@@ -146,9 +148,9 @@ namespace Directus
 		mEngine.Decompose(scale, rotation, position);
 
 		// Apply position, rotation and scale
-		gameObject.lock()->GetTransform()->SetPositionLocal(position);
-		gameObject.lock()->GetTransform()->SetRotationLocal(rotation);
-		gameObject.lock()->GetTransform()->SetScaleLocal(scale);
+		gameObject._Get()->GetTransform()->SetPositionLocal(position);
+		gameObject._Get()->GetTransform()->SetRotationLocal(rotation);
+		gameObject._Get()->GetTransform()->SetScaleLocal(scale);
 	}
 
 	Vector4 ToVector4(const aiColor4D& aiColor)
@@ -168,7 +170,7 @@ namespace Directus
 	//============================================================================================
 
 	//= PROCESSING ===============================================================================
-	void ModelImporter::ProcessNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, std::weak_ptr<GameObject> parentNode, std::weak_ptr<GameObject> newNode)
+	void ModelImporter::ProcessNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, weak_ptr<GameObject> parentNode, weak_ptr<GameObject> newNode)
 	{
 		if (newNode.expired())
 			newNode = m_context->GetSubsystem<Scene>()->CreateGameObject();
@@ -181,17 +183,17 @@ namespace Directus
 		// To get a more descriptive name we instead get the name from the file path.
 		if (assimpNode->mParent)
 		{
-			newNode.lock()->SetName(assimpNode->mName.C_Str());
+			newNode._Get()->SetName(assimpNode->mName.C_Str());
 		}
 		else
 		{
-			newNode.lock()->SetName(FileSystem::GetFileNameNoExtensionFromFilePath(model->GetResourceFilePath()));
+			newNode._Get()->SetName(FileSystem::GetFileNameNoExtensionFromFilePath(model->GetResourceFilePath()));
 		}
 		//===========================================================================
 
 		// Set the transform of parentNode as the parent of the newNode's transform
-		Transform* parentTrans = !parentNode.expired() ? parentNode.lock()->GetTransform() : nullptr;
-		newNode.lock()->GetTransform()->SetParent(parentTrans);
+		Transform* parentTrans = !parentNode.expired() ? parentNode._Get()->GetTransform() : nullptr;
+		newNode._Get()->GetTransform()->SetParent(parentTrans);
 
 		// Set the transformation matrix of the assimp node to the new node
 		SetGameObjectTransform(newNode, assimpNode);
@@ -207,12 +209,12 @@ namespace Directus
 			if (assimpNode->mNumMeshes > 1)
 			{
 				gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject(); // create
-				gameobject.lock()->GetTransform()->SetParent(newNode.lock()->GetTransform()); // set parent
+				gameobject._Get()->GetTransform()->SetParent(newNode._Get()->GetTransform()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
 
 			// Set gameobject name
-			gameobject.lock()->SetName(name);
+			gameobject._Get()->SetName(name);
 
 			// Process mesh
 			ProcessMesh(model, mesh, assimpScene, gameobject);
@@ -226,7 +228,7 @@ namespace Directus
 		}
 	}
 
-	void ModelImporter::ProcessMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, std::weak_ptr<GameObject> gameobject)
+	void ModelImporter::ProcessMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, weak_ptr<GameObject> gameobject)
 	{
 		if (gameobject.expired())
 			return;
@@ -274,8 +276,8 @@ namespace Directus
 		}
 
 		// Add a mesh component and pass the data
-		auto mesh = model->AddMesh(gameobject.lock()->GetID(), assimpMesh->mName.C_Str(), vertices, indices);
-		auto meshFilter = gameobject.lock()->AddComponent<MeshFilter>();
+		auto mesh = model->AddMesh(gameobject._Get()->GetID(), assimpMesh->mName.C_Str(), vertices, indices);
+		auto meshFilter = gameobject._Get()->AddComponent<MeshFilter>();
 		meshFilter->SetMesh(mesh);
 
 		// free memory
@@ -293,12 +295,13 @@ namespace Directus
 		auto material = m_context->GetSubsystem<ResourceManager>()->Add(GenerateMaterialFromAiMaterial(model, assimpMaterial));
 
 		// Set it in the mesh renderer component
-		gameobject.lock()->AddComponent<MeshRenderer>()->SetMaterial(material);
+		gameobject._Get()->AddComponent<MeshRenderer>()->SetMaterial(material);
 
-		// Save the material in our custom format
+		// Save the material/shader in our custom format
 		if (!material.expired())
 		{
-			material.lock()->Save(model->GetResourceDirectory() + "Materials//" + material.lock()->GetResourceName(), false);
+			material._Get()->Save(model->GetResourceDirectory() + "Materials//" + material._Get()->GetResourceName(), false);
+			material._Get()->GetShader()._Get()->SaveToFile(model->GetResourceDirectory() + "Shaders//" + material._Get()->GetResourceName());
 		}
 	}
 
@@ -318,7 +321,6 @@ namespace Directus
 		int r = material->Get(AI_MATKEY_TWOSIDED, isTwoSided);
 		if (r == aiReturn_SUCCESS && isTwoSided)
 		{
-			LOG_INFO("two-sided");
 			engineMaterial->SetCullMode(CullNone);
 		}
 
@@ -332,15 +334,15 @@ namespace Directus
 		aiGetMaterialColor(material, AI_MATKEY_OPACITY, &opacity);
 		engineMaterial->SetOpacity(opacity.r);
 
-		// FIX: materials that have a diffuse texture should not be tinted black
-		if (engineMaterial->GetColorAlbedo() == Vector4(0.0f, 0.0f, 0.0f, 1.0f))
-			engineMaterial->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-
 		//= ALBEDO TEXTURE ======================================================================================================
 		aiString texturePath;
 		if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
 			if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			{
 				AddTextureToMaterial(model, engineMaterial, Albedo_Texture, texturePath.data);
+				// FIX: materials that have a diffuse texture should not be tinted black/grey
+				engineMaterial->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+			}
 
 		//= SPECULAR (used as ROUGHNESS) TEXTURE =================================================================================
 		if (material->GetTextureCount(aiTextureType_SHININESS) > 0)
@@ -384,6 +386,9 @@ namespace Directus
 	//= HELPER FUNCTIONS =========================================================================
 	void ModelImporter::AddTextureToMaterial(Model* model, weak_ptr<Material> material, TextureType textureType, const string& originalTexturePath)
 	{
+		if (material.expired())
+			return;
+
 		string texturePath = FindTexture(model, originalTexturePath);
 		if (texturePath == DATA_NOT_ASSIGNED)
 		{
@@ -400,8 +405,8 @@ namespace Directus
 		// Set the texture to the material (if it was loaded successfully)
 		if (!texture.expired())
 		{
-			texture.lock()->SetTextureType(textureType);
-			material.lock()->SetTexture(texture);
+			texture._Get()->SetTextureType(textureType);
+			material._Get()->SetTexture(texture);
 		}
 	}
 

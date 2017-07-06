@@ -41,6 +41,7 @@ namespace Directus
 {
 	Skybox::Skybox()
 	{
+		Register();
 		m_cubeMapTexture = nullptr;
 		m_anchorTrans = nullptr;
 	}

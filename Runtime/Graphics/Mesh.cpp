@@ -66,6 +66,7 @@ namespace Directus
 	{
 		Serializer::WriteSTR(m_id);
 		Serializer::WriteSTR(m_gameObjID);
+		Serializer::WriteSTR(m_modelID);
 		Serializer::WriteSTR(m_name);
 		Serializer::WriteInt(m_vertexCount);
 		Serializer::WriteInt(m_indexCount);
@@ -91,6 +92,7 @@ namespace Directus
 	{
 		m_id = Serializer::ReadSTR();
 		m_gameObjID = Serializer::ReadSTR();
+		m_modelID = Serializer::ReadSTR();
 		m_name = Serializer::ReadSTR();
 		m_vertexCount = Serializer::ReadInt();
 		m_indexCount = Serializer::ReadInt();
@@ -113,14 +115,27 @@ namespace Directus
 		m_boundingBox = Serializer::ReadVector3();
 	}
 
+	void Mesh::SetVertices(const vector<VertexPosTexNorTan>& vertices)
+	{
+		m_vertices = vertices;
+		m_vertexCount = (unsigned int)vertices.size();
+	}
+
+	void Mesh::SetIndices(const vector<unsigned>& indices)
+	{
+		m_indices = indices;
+		m_indexCount = (unsigned int)indices.size();
+		m_triangleCount = m_indexCount / 3;
+	}
+
 	//==============================================================================
 
 	//= PROCESSING =================================================================
 	void Mesh::Update()
 	{
-		GetMinMax(this, m_min, m_max);
-		m_center = GetCenter(m_min, m_max);
-		m_boundingBox = GetBoundingBox(m_min, m_max);
+		FindMinMax(this, m_min, m_max);
+		m_center = CalculateCenter(m_min, m_max);
+		m_boundingBox = CalcualteBoundingBox(m_min, m_max);
 
 		if (m_onUpdate)
 		{
@@ -130,7 +145,7 @@ namespace Directus
 
 	// This is attached to CreateBuffers() which is part of the MeshFilter component.
 	// Whenever something changes, the buffers are auto-updated.
-	void Mesh::OnUpdate(function<void()> function)
+	void Mesh::SubscribeToUpdate(function<void()> function)
 	{
 		m_onUpdate = function;
 
@@ -195,19 +210,19 @@ namespace Directus
 	}
 
 	// Returns the bounding box of a mesh
-	Vector3 Mesh::GetBoundingBox(const Vector3& min, const Vector3& max)
+	Vector3 Mesh::CalcualteBoundingBox(const Vector3& min, const Vector3& max)
 	{
 		return (max - min) * 0.5f;
 	}
 
 	// Returns the center of the mesh based
-	Vector3 Mesh::GetCenter(const Vector3& min, const Vector3& max)
+	Vector3 Mesh::CalculateCenter(const Vector3& min, const Vector3& max)
 	{
 		return (min + max) * 0.5f;
 	}
 
 	// Returns the minimum and maximum point in a mesh
-	void Mesh::GetMinMax(Mesh* mesh, Vector3& min, Vector3& max)
+	void Mesh::FindMinMax(Mesh* mesh, Vector3& min, Vector3& max)
 	{
 		if (!mesh)
 			return;
@@ -217,17 +232,15 @@ namespace Directus
 
 		for (unsigned int i = 0; i < mesh->GetVertexCount(); i++)
 		{
-			float x = mesh->GetVertices()[i].position.x;
-			float y = mesh->GetVertices()[i].position.y;
-			float z = mesh->GetVertices()[i].position.z;
+			auto vertices = mesh->GetVertices();
 
-			if (x > max.x) max.x = x;
-			if (y > max.y) max.y = y;
-			if (z > max.z) max.z = z;
+			max.x = Max(max.x, vertices[i].position.x);
+			max.y = Max(max.y, vertices[i].position.y);
+			max.z = Max(max.z, vertices[i].position.z);
 
-			if (x < min.x) min.x = x;
-			if (y < min.y) min.y = y;
-			if (z < min.z) min.z = z;
+			min.x = Min(min.x, vertices[i].position.x);
+			min.y = Min(min.y, vertices[i].position.y);
+			min.z = Min(min.z, vertices[i].position.z);
 		}
 	}
 	//==============================================================================

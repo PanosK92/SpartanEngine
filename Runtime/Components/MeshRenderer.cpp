@@ -40,6 +40,7 @@ namespace Directus
 {
 	MeshRenderer::MeshRenderer()
 	{
+		Register();
 		m_castShadows = true;
 		m_receiveShadows = true;
 		m_materialType = Material_Imported;
@@ -79,7 +80,7 @@ namespace Directus
 	void MeshRenderer::Serialize()
 	{
 		Serializer::WriteInt((int)m_materialType);
-		Serializer::WriteSTR(!m_material.expired() ? m_material.lock()->GetResourceFilePath() : (string)DATA_NOT_ASSIGNED);
+		Serializer::WriteSTR(!m_material.expired() ? m_material._Get()->GetResourceFilePath() : (string)DATA_NOT_ASSIGNED);
 		Serializer::WriteBool(m_castShadows);
 		Serializer::WriteBool(m_receiveShadows);
 	}
@@ -104,23 +105,21 @@ namespace Directus
 	void MeshRenderer::Render(unsigned int indexCount)
 	{
 		auto materialWeakPTr = GetMaterial();
-		auto materialSharedPtr = materialWeakPTr.lock();
 
-		string gameObjName = !g_gameObject.expired() ? g_gameObject.lock()->GetName() : DATA_NOT_ASSIGNED;
-		if (!materialSharedPtr) // Check if a material exists
+		if (materialWeakPTr.expired()) // Check if a material exists
 		{
-			LOG_WARNING("GameObject \"" + gameObjName + "\" has no material. It can't be rendered.");
+			LOG_WARNING("GameObject \"" + GetGameObjectName() + "\" has no material. It can't be rendered.");
 			return;
 		}
 
-		if (!materialSharedPtr->HasShader()) // Check if the material has a shader
+		if (!materialWeakPTr._Get()->HasShader()) // Check if the material has a shader
 		{
-			LOG_WARNING("GameObject \"" + gameObjName + "\" has a material but not a shader associated with it. It can't be rendered.");
+			LOG_WARNING("GameObject \"" + GetGameObjectName() + "\" has a material but not a shader associated with it. It can't be rendered.");
 			return;
 		}
 
 		// Set the buffers and draw
-		materialSharedPtr->GetShader().lock()->Render(indexCount);
+		materialWeakPTr._Get()->GetShader()._Get()->Render(indexCount);
 	}
 
 	//==============================================================================
@@ -130,7 +129,10 @@ namespace Directus
 	void MeshRenderer::SetMaterial(weak_ptr<Material> material)
 	{
 		if (material.expired())
+		{
+			LOG_INFO("Can't set expired material");
 			return;
+		}
 
 		m_material = g_context->GetSubsystem<ResourceManager>()->Add(material.lock());
 	}
@@ -178,5 +180,11 @@ namespace Directus
 		SetMaterial(material);
 		return GetMaterial();
 	}
+
+	string MeshRenderer::GetGameObjectName()
+	{
+		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
+	}
+
 	//==============================================================================
 }

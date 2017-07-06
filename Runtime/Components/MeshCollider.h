@@ -52,7 +52,7 @@ namespace Directus
 
 		bool GetConvex() { return m_isConvex; }
 		void SetConvex(bool isConvex) { m_isConvex = isConvex; }
-		std::weak_ptr<Mesh> GetMesh() { return m_mesh; }
+		std::weak_ptr<Mesh>& GetMesh() { return m_mesh; }
 		void SetMesh(std::weak_ptr<Mesh> mesh) { m_mesh = mesh; }
 		void Build();
 

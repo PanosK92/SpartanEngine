@@ -64,7 +64,9 @@ namespace Directus
 
 		m_result = m_sound->release();
 		if (m_result != FMOD_OK)
+		{
 			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
+		}
 	}
 
 	bool AudioClip::Load(const string& filePath, PlayMode mode)
@@ -136,28 +138,19 @@ namespace Directus
 
 	bool AudioClip::Stop()
 	{
-		// Check if the sound is playing
-		if (m_channel)
-		{
-			bool isPlaying = false;
-			m_result = m_channel->isPlaying(&isPlaying);
-			if (m_result != FMOD_OK)
-			{
-				LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
-				return false;
-			}
+		if (!m_channel)
+			return true;
 
-			// If it's already stopped, don't bother
-			if (!isPlaying)
-				return true;
-		}
+		// If it's already stopped, don't bother
+		if (!IsPlaying())
+			return true;
 
 		// Stop the sound
 		m_result = m_channel->stop();
-		m_channel = nullptr;
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
+			m_channel = nullptr;
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result)); // spams a lot
 			return false;
 		}
 
@@ -313,22 +306,30 @@ namespace Directus
 		m_result = m_channel->set3DAttributes(&fModPos, &fModVel);
 		if (m_result != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
+			m_channel = nullptr;
+			//LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result)); // spams a lot	
 			return false;
 		}
 
 		return true;
 	}
 
-	void AudioClip::SetTransform(Transform* transform)
+	bool AudioClip::IsPlaying()
 	{
-		m_transform = transform;
+		bool isPlaying = false;
+		m_result = m_channel->isPlaying(&isPlaying);
+		if (m_result != FMOD_OK)
+		{
+			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_result));
+			return false;
+		}
+
+		return isPlaying;
 	}
 
 	//= CREATION =====================================================================================
 	bool AudioClip::CreateSound(const string& filePath)
 	{
-		LOG_INFO(filePath);
 		// Create sound
 		m_result = m_fModSystem->createSound(filePath.c_str(), BuildSoundMode(), nullptr, &m_sound);
 		if (m_result != FMOD_OK)

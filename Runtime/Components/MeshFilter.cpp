@@ -43,6 +43,7 @@ namespace Directus
 {
 	MeshFilter::MeshFilter()
 	{
+		g_type = "MeshFilter";
 		m_vertexBuffer = nullptr;
 		m_indexBuffer = nullptr;
 		m_meshType = Imported;
@@ -81,16 +82,18 @@ namespace Directus
 
 	void MeshFilter::Serialize()
 	{
-		// FIX THIS: SAVE THE MODELS ID SO WE CAN DESRIALIZE EASIER
-		//Serializer::WriteInt((int)m_meshType);
-		//Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetGameObjectID : (string)DATA_NOT_ASSIGNED);
-		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
+		Serializer::WriteInt((int)m_meshType);
+		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetName() : (string)DATA_NOT_ASSIGNED);
+		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetID() : (string)DATA_NOT_ASSIGNED);
+		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetModelID() : (string)DATA_NOT_ASSIGNED);
 	}
 
 	void MeshFilter::Deserialize()
 	{
 		m_meshType = (MeshType)Serializer::ReadInt();
+		string meshName = Serializer::ReadSTR();
 		string meshID = Serializer::ReadSTR();
+		string modelID = Serializer::ReadSTR();
 
 		// If the mesh is a engine constructed primitive
 		if (m_meshType != Imported)
@@ -101,31 +104,36 @@ namespace Directus
 		}
 
 		// ... else load the actual model and try to find the corresponding mesh
-		auto model = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Model>();
-		auto mesh = model.lock
-		for (const auto& model : models)
+		weak_ptr<Model> model = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Model>(modelID);
+		if (model.expired())
 		{
-			auto mesh = model.lock()->GetMeshByID(meshID);
-			if (!mesh.expired())
-			{
-				m_mesh = mesh;
-				SetMesh(m_mesh);
-			}
+			LOG_WARNING("Mesh \"" + meshName + "\" failed to load. Model is not loaded");
+			return;
 		}
+
+		// Get the mesh
+		weak_ptr<Mesh> mesh = model._Get()->GetMeshByID(meshID);
+		if (mesh.expired())
+		{
+			LOG_WARNING("Mesh \"" + meshName + "\" failed to load. Model doesn't contain it");
+			return;
+		}
+
+		SetMesh(mesh);
 	}
 
 	// Sets a mesh from memory
 	bool MeshFilter::SetMesh(weak_ptr<Mesh> mesh)
 	{
-		m_mesh = mesh;
-		if (m_mesh.expired())
+		if (mesh.expired())
 		{
 			LOG_WARNING("Can't create vertex and index buffers for an expired mesh");
 			return false;
 		}
+		m_mesh = mesh;
 
-		// Make the mesh re-create the buffers whenever it updates.
-		m_mesh.lock()->OnUpdate(std::bind(&MeshFilter::CreateBuffers, this));
+		// Re-create the buffers whenever the mesh updates
+		m_mesh._Get()->SubscribeToUpdate(bind(&MeshFilter::CreateBuffers, this));
 
 		// Create buffers
 		CreateBuffers();
@@ -146,12 +154,14 @@ namespace Directus
 		{
 		case Cube:
 			CreateCube(vertices, indices);
+			model->SetResourceName("Engine_Default_Cube");
 			weakMesh = model->AddMesh(g_gameObject.lock()->GetID(), "Cube", vertices, indices);
 			m_meshType = Cube;
 			break;
 
 		case Quad:
 			CreateQuad(vertices, indices);
+			model->SetResourceName("Engine_Default_Quad");
 			weakMesh = model->AddMesh(g_gameObject.lock()->GetID(), "Quad", vertices, indices);
 			m_meshType = Quad;
 			break;
@@ -171,18 +181,17 @@ namespace Directus
 	// Set the buffers to active in the input assembler so they can be rendered.
 	bool MeshFilter::SetBuffers()
 	{
-		string gameObjName = !g_gameObject.expired() ? g_gameObject.lock()->GetName() : DATA_NOT_ASSIGNED;
-		if (!m_vertexBuffer) 
+		if (!m_vertexBuffer)
 		{
-			LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + gameObjName + "\".");
+			LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + GetGameObjectName() + "\".");
 		}
 
-		if (!m_indexBuffer) 
+		if (!m_indexBuffer)
 		{
-			LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + gameObjName + "\".");
+			LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + GetGameObjectName() + "\".");
 		}
 
-		if (!m_vertexBuffer || !m_indexBuffer) 
+		if (!m_vertexBuffer || !m_indexBuffer)
 			return false;
 
 		m_vertexBuffer->SetIA();
@@ -196,27 +205,23 @@ namespace Directus
 
 	Vector3 MeshFilter::GetCenter()
 	{
-		return !m_mesh.expired() ? m_mesh.lock()->GetCenter() * g_transform->GetWorldTransform() : Vector3::Zero;
+		return !m_mesh.expired() ? m_mesh._Get()->GetCenter() * g_transform->GetWorldTransform() : Vector3::Zero;
 	}
 
 	Vector3 MeshFilter::GetBoundingBox()
 	{
-		return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
+		return !m_mesh.expired() ? m_mesh._Get()->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
 	}
 
-	weak_ptr<Mesh> MeshFilter::GetMesh()
+	float MeshFilter::GetBoundingSphereRadius()
 	{
-		return m_mesh;
-	}
-
-	bool MeshFilter::HasMesh()
-	{
-		return m_mesh.expired() ? false : true;
+		Vector3 extent = GetBoundingBox();
+		return max(max(abs(extent.x), abs(extent.y)), abs(extent.z));
 	}
 
 	string MeshFilter::GetMeshName()
 	{
-		return !m_mesh.expired() ? m_mesh.lock()->GetName() : DATA_NOT_ASSIGNED;
+		return !m_mesh.expired() ? m_mesh._Get()->GetName() : DATA_NOT_ASSIGNED;
 	}
 
 	bool MeshFilter::CreateBuffers()
@@ -228,13 +233,9 @@ namespace Directus
 			return false;
 		}
 
-		string gameObjName = !g_gameObject.expired() ? g_gameObject.lock()->GetName() : DATA_NOT_ASSIGNED;
 		if (m_mesh.expired())
 		{
-			LOG_ERROR(
-				"Aborting vertex buffer creation for \"" + gameObjName + "\"."
-				" The mesh has expired."
-			);
+			LOG_ERROR("Aborting vertex buffer creation for \"" + GetGameObjectName() + "\". The mesh has expired.");
 			return false;
 		}
 
@@ -242,16 +243,16 @@ namespace Directus
 		m_indexBuffer.reset();
 
 		m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphicsDevice);
-		if (!m_vertexBuffer->Create(m_mesh.lock()->GetVertices()))
+		if (!m_vertexBuffer->Create(m_mesh._Get()->GetVertices()))
 		{
-			LOG_ERROR("Failed to create vertex buffer \"" + gameObjName + "\".");
+			LOG_ERROR("Failed to create vertex buffer \"" + GetGameObjectName() + "\".");
 			return false;
 		}
 
 		m_indexBuffer = make_shared<D3D11IndexBuffer>(graphicsDevice);
-		if (!m_indexBuffer->Create(m_mesh.lock()->GetIndices()))
+		if (!m_indexBuffer->Create(m_mesh._Get()->GetIndices()))
 		{
-			LOG_ERROR("Failed to create index buffer \"" + gameObjName + "\".");
+			LOG_ERROR("Failed to create index buffer \"" + GetGameObjectName() + "\".");
 			return false;
 		}
 
@@ -334,5 +335,11 @@ namespace Directus
 		indices.push_back(3);
 		indices.push_back(0);
 		indices.push_back(1);
+	}
+
+	string& MeshFilter::GetGameObjectName()
+	{
+		static string gameObjName = !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
+		return gameObjName;
 	}
 }

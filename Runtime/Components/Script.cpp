@@ -34,6 +34,7 @@ namespace Directus
 {
 	Script::Script()
 	{
+		Register();
 		m_scriptInstance = nullptr;
 	}
 
@@ -90,7 +91,9 @@ namespace Directus
 		string scriptPath = Serializer::ReadSTR();
 
 		if (scriptPath != DATA_NOT_ASSIGNED)
+		{
 			AddScript(scriptPath);
+		}
 	}
 	//====================================================================================
 

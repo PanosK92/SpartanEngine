@@ -57,14 +57,14 @@ namespace Directus
 			Graphics* graphics
 		);
 
-		//= RESOURCE INTERFACE ========================================
-		bool LoadFromFile(const std::string& filePath) { return true; }
-		bool SaveToFile(const std::string& filePath) { return true; }
-		//=============================================================
+		//= RESOURCE INTERFACE ========================
+		bool LoadFromFile(const std::string& filePath);
+		bool SaveToFile(const std::string& filePath);
+		//=============================================
 
 		void Set();
 		void UpdatePerFrameBuffer(Light* directionalLight, Camera* camera);
-		void UpdatePerMaterialBuffer(std::shared_ptr<Material> material);
+		void UpdatePerMaterialBuffer(std::weak_ptr<Material> material);
 		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, bool receiveShadows);
 		void UpdateTextures(const std::vector<ID3D11ShaderResourceView*>& textureArray);
 		void Render(int indexCount);

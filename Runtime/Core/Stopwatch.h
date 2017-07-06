@@ -27,7 +27,7 @@ namespace Directus
 	{
 	public:
 		static void Start();
-		static int End();
+		static int Stop();
 
 	private:
 		static int m_milliseconds;

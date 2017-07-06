@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <vector>
 #include "../Resource/Resource.h"
+#include "../Math/Vector3.h"
 //===============================
 
 namespace Directus
@@ -50,22 +51,33 @@ namespace Directus
 		std::weak_ptr<Mesh> GetMeshByID(const std::string& id);
 
 		std::string CopyFileToLocalDirectory(const std::string& filePath);
-		std::string GetOriginalFilePath() { return m_originalFilePath; }
+		const std::string& GetOriginalFilePath() { return m_originalFilePath; }
 		std::string GetOriginalDirectory() { return FileSystem::GetDirectoryFromFilePath(m_originalFilePath); }
 
 		void NormalizeScale();
-		void SetScale(float scale);
+		const Math::Vector3& GetCenter() { return m_center; }
+		const Math::Vector3& GetBoundingBox() { return m_extent; }
+		float GetBoundingSphereRadius() { return Math::Max(Math::Max(abs(m_extent.x), abs(m_extent.y)), abs(m_extent.z)); }
 
 	private:
+		void AddMesh(std::shared_ptr<Mesh> mesh);
 		bool LoadFromEngineFormat(const std::string& filePath);
 		bool LoadFromForeignFormat(const std::string& filePath);
 
+		void SetScale(float scale);
 		float GetNormalizedScale();
 		std::weak_ptr<Mesh> GetLargestBoundingBox();
+		void CalculateDimensions();
 
 		std::weak_ptr<GameObject> m_rootGameObj;
 		std::vector<std::shared_ptr<Mesh>> m_meshes;
-		ResourceManager* m_resourceManager;	
+		ResourceManager* m_resourceManager;
 		std::string m_originalFilePath;
+
+		Math::Vector3 m_min;
+		Math::Vector3 m_max;
+		Math::Vector3 m_extent;
+		Math::Vector3 m_center;
+		float m_normalizedScale;
 	};
 }

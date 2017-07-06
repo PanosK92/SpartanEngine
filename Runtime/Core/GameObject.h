@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <vector>
 #include "Scene.h"
-#include "GUIDGenerator.h"
 #include "../Components/IComponent.h"
 #include "../Core/Context.h"
 //===================================
@@ -71,25 +70,20 @@ namespace Directus
 		template <class T>
 		T* AddComponent()
 		{
-			// Convert class Type to a string.
-			std::string typeStr(typeid(T).name());
-
-			// E.g. the type looks like this: class Directus::Transform but we will simplify it to Transform
-			typeStr = typeStr.substr(typeStr.find_last_of(":") + 1);
+			std::string typeStr = GetTypeSTR<T>();
 
 			// Check if a component of that type already exists
 			IComponent* existingComp = GetComponent<T>();
 			if (existingComp && typeStr != "Script") // If it's anything but a script, it can't have multiple instances,
-				return dynamic_cast<T*>(existingComp); // return the existing component.
+				return static_cast<T*>(existingComp); // return the existing component.
 
 			// Get the created component.
 			IComponent* component = new T;
 
 			// Add the component.
-			m_components.insert(std::pair<std::string, IComponent*>(typeStr, component));
+			m_components.push_back(component);
 
 			// Set default properties.
-			component->g_ID = GENERATE_GUID;
 			component->g_enabled = true;
 			component->g_gameObject = m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID());
 			component->g_transform = GetTransform();
@@ -99,19 +93,19 @@ namespace Directus
 			component->Reset();
 
 			// Return it as a component of the requested type
-			return dynamic_cast<T*>(component);
+			return static_cast<T*>(component);
 		}
 
 		// Returns a component of type T (if it exists)
 		template <class T>
 		T* GetComponent()
 		{
-			for (const auto& it : m_components)
+			for (const auto& component : m_components)
 			{
-				// casting failure == nullptr
-				T* typed_cmp = dynamic_cast<T*>(it.second);
-				if (typed_cmp)
-					return typed_cmp;
+				if (typeid(T) != typeid(*component))
+					continue;
+
+				return static_cast<T*>(component);
 			}
 
 			return nullptr;
@@ -122,12 +116,12 @@ namespace Directus
 		std::vector<T*> GetComponents()
 		{
 			std::vector<T*> components;
-			for (const auto& it : m_components)
+			for (const auto& component : m_components)
 			{
-				// casting failure == nullptr
-				T* typed_cmp = dynamic_cast<T*>(it.second);
-				if (typed_cmp)
-					components.push_back(typed_cmp);
+				if (typeid(T) != typeid(*component))
+					continue;
+
+				components.push_back(static_cast<T*>(component));
 			}
 
 			return components;
@@ -141,17 +135,18 @@ namespace Directus
 		template <class T>
 		void RemoveComponent()
 		{
-			for (auto it = m_components.begin(); it != m_components.end();)
+			for (auto it = m_components.begin(); it != m_components.end(); )
 			{
-				// casting failure == nullptr
-				if (dynamic_cast<T*>(it->second))
+				auto component = *it;
+				if (typeid(T) == typeid(*component))
 				{
-					it->second->Remove();
-					delete it->second;
+					delete component;
 					it = m_components.erase(it);
-					continue;
 				}
-				++it;
+				else
+				{
+					++it;
+				}
 			}
 		}
 
@@ -166,7 +161,7 @@ namespace Directus
 		bool m_isActive;
 		bool m_isPrefab;
 		bool m_hierarchyVisibility;
-		std::multimap<std::string, IComponent*> m_components;
+		std::vector<IComponent*> m_components;
 
 		// This is the only component that is guaranteed to be always attached,
 		// it also is required by most systems in the engine, it's important to
@@ -177,5 +172,12 @@ namespace Directus
 
 		//= HELPER FUNCTIONS ====================================
 		IComponent* AddComponentBasedOnType(const std::string& typeStr);
+
+		template <class T>
+		static std::string GetTypeSTR()
+		{
+			static std::string typeStr = typeid(T).name(); // e.g. Directus::Transform
+			return typeStr.substr(typeStr.find_last_of(":") + 1); // e.g Transform
+		}
 	};
 }

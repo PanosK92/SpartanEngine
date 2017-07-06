@@ -21,8 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-// It's not used here but it will provide functionality
-// to any code that includes this header.
 //= INCLUDES ==============
 #include <cmath>
 #include <limits>
@@ -61,5 +59,11 @@ namespace Directus
 		// Check for equality but allow for a small error
 		template <class T>
 		bool Equals(T lhs, T rhs) { return lhs + std::numeric_limits<T>::epsilon() >= rhs && lhs - std::numeric_limits<T>::epsilon() <= rhs; }
+
+		template <class T>
+		T Max(T a, T b) { return a > b ? a : b; }
+
+		template <class T>
+		T Min(T a, T b) { return a < b ? a : b; }
 	}
 }

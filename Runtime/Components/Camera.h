@@ -34,6 +34,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	class MeshFilter;
+	class Model;
+
 	enum Projection
 	{
 		Perspective,
@@ -75,10 +78,11 @@ namespace Directus
 		void SetProjection(Projection projection);
 		float GetFieldOfView() { return Math::RadiansToDegrees(m_FOV); }
 		void SetFieldOfView(float fov);
-		const std::shared_ptr<Frustrum>& GetFrustrum() { return m_frustrum; }
 		//=========================================================================
 
 		//= MISC =========================================================================
+		bool IsInViewFrustrum(MeshFilter* meshFilter);
+		bool IsInViewFrustrum(std::weak_ptr<Model> model);
 		Math::Vector4 GetClearColor() { return m_clearColor; }
 		void SetClearColor(const Math::Vector4& color) { m_clearColor = color; }
 		//================================================================================

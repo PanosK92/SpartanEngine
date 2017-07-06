@@ -75,19 +75,25 @@ namespace Directus
 	void Scene::Start()
 	{
 		for (const auto& gameObject : m_gameObjects)
+		{
 			gameObject->Start();
+		}
 	}
 
 	void Scene::OnDisable()
 	{
 		for (const auto& gameObject : m_gameObjects)
+		{
 			gameObject->OnDisable();
+		}
 	}
 
 	void Scene::Update()
 	{
 		for (const auto& gameObject : m_gameObjects)
+		{
 			gameObject->Update();
+		}
 
 		CalculateFPS();
 	}
@@ -157,13 +163,13 @@ namespace Directus
 		// 2nd - GameObject IDs
 		for (const auto& root : rootGameObjects)
 		{
-			Serializer::WriteSTR(root.lock()->GetID());
+			Serializer::WriteSTR(root._Get()->GetID());
 		}
 
 		// 3rd - GameObjects
 		for (const auto& root : rootGameObjects)
 		{
-			root.lock()->Serialize();
+			root._Get()->Serialize();
 		}
 		//==============================================
 
@@ -277,7 +283,7 @@ namespace Directus
 
 	weakGameObj Scene::GetGameObjectRoot(weakGameObj gameObject)
 	{
-		return !gameObject.expired() ? gameObject.lock()->GetTransform()->GetRoot()->GetGameObject() : weakGameObj();
+		return !gameObject.expired() ? gameObject._Get()->GetTransform()->GetRoot()->GetGameObject() : weakGameObj();
 	}
 
 	weakGameObj Scene::GetGameObjectByName(const string& name)
@@ -311,7 +317,7 @@ namespace Directus
 		if (gameObject.expired())
 			return false;
 
-		return !GetGameObjectByID(gameObject.lock()->GetID()).expired() ? true : false;
+		return !GetGameObjectByID(gameObject._Get()->GetID()).expired() ? true : false;
 	}
 
 	// Removes a GameObject and all of it's children
@@ -322,12 +328,12 @@ namespace Directus
 
 		// remove any descendants
 		vector<Transform*> descendants;
-		gameObject.lock()->GetTransform()->GetDescendants(&descendants);
+		gameObject._Get()->GetTransform()->GetDescendants(&descendants);
 		for (const auto& descendant : descendants)
 			RemoveSingleGameObject(descendant->GetGameObject());
 
 		// remove this gameobject but keep it's parent
-		Transform* parent = gameObject.lock()->GetTransform()->GetParent();
+		Transform* parent = gameObject._Get()->GetTransform()->GetParent();
 		RemoveSingleGameObject(gameObject);
 
 		// if there is a parent, update it's children pool

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/GUIDGenerator.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
+#include "../../IO/Serializer.h"
 //===================================
 
 //= NAMESPACES ================
@@ -36,6 +37,7 @@ namespace Directus
 	ShaderVariation::ShaderVariation()
 	{
 		// Resource
+		m_resourceID = GENERATE_GUID;
 		m_resourceType = Shader_Resource;
 
 		// Shader
@@ -87,8 +89,66 @@ namespace Directus
 		m_hasCubeMap = cubemap;
 
 		m_graphics = graphics;
-		m_resourceID = GENERATE_GUID; // generate an ID for this shader
-		Load(filePath); // load the shader
+		Load(filePath);
+	}
+
+	bool ShaderVariation::LoadFromFile(const string& filePath)
+	{
+		if (!Serializer::StartReading(filePath))
+			return false;
+
+		m_resourceID = Serializer::ReadSTR();
+		m_resourceName = Serializer::ReadSTR();
+		m_resourceFilePath = Serializer::ReadSTR();
+		m_hasAlbedoTexture = Serializer::ReadBool();
+		m_hasRoughnessTexture = Serializer::ReadBool();
+		m_hasMetallicTexture = Serializer::ReadBool();
+		m_hasNormalTexture = Serializer::ReadBool();
+		m_hasHeightTexture = Serializer::ReadBool();
+		m_hasOcclusionTexture = Serializer::ReadBool();
+		m_hasEmissionTexture = Serializer::ReadBool();
+		m_hasMaskTexture = Serializer::ReadBool();
+		m_hasCubeMap = Serializer::ReadBool();
+
+		Serializer::StopReading();
+
+		return true;
+	}
+
+	bool ShaderVariation::SaveToFile(const string& filePath)
+	{
+		string savePath = filePath;
+
+		if (savePath == RESOURCE_SAVE)
+		{
+			savePath = m_resourceFilePath;
+		}
+
+		// Add shader extension if missing
+		if (FileSystem::GetExtensionFromFilePath(filePath) != SHADER_EXTENSION)
+		{
+			savePath += SHADER_EXTENSION;
+		}
+
+		if (!Serializer::StartWriting(savePath))
+			return false;
+
+		Serializer::WriteSTR(m_resourceID);
+		Serializer::WriteSTR(m_resourceName);
+		Serializer::WriteSTR(m_resourceFilePath);
+		Serializer::WriteBool(m_hasAlbedoTexture);
+		Serializer::WriteBool(m_hasRoughnessTexture);
+		Serializer::WriteBool(m_hasMetallicTexture);
+		Serializer::WriteBool(m_hasNormalTexture);
+		Serializer::WriteBool(m_hasHeightTexture);
+		Serializer::WriteBool(m_hasOcclusionTexture);
+		Serializer::WriteBool(m_hasEmissionTexture);
+		Serializer::WriteBool(m_hasMaskTexture);
+		Serializer::WriteBool(m_hasCubeMap);
+	
+		Serializer::StopWriting();
+
+		return true;
 	}
 
 	void ShaderVariation::Set()
@@ -137,8 +197,13 @@ namespace Directus
 		m_miscBuffer->SetPS(0);
 	}
 
-	void ShaderVariation::UpdatePerMaterialBuffer(shared_ptr<Material> material)
+	void ShaderVariation::UpdatePerMaterialBuffer(weak_ptr<Material> material)
 	{
+		if (material.expired())
+			return;
+
+		auto materialRaw = material._Get();
+
 		if (!m_D3D11Shader->IsCompiled())
 		{
 			LOG_ERROR("Can't render using a shader variation that hasn't been loaded or failed to compile.");
@@ -147,30 +212,30 @@ namespace Directus
 
 		// Determine if the material buffer needs to update
 		bool update = false;
-		update = perMaterialBufferCPU.matAlbedo != material->GetColorAlbedo() ? true : update;
-		update = perMaterialBufferCPU.matTilingUV != material->GetTilingUV() ? true : update;
-		update = perMaterialBufferCPU.matOffsetUV != material->GetOffsetUV() ? true : update;
-		update = perMaterialBufferCPU.matRoughnessMul != material->GetRoughnessMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matMetallicMul != material->GetMetallicMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matOcclusionMul != material->GetOcclusionMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matNormalMul != material->GetNormalMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matSpecularMul != material->GetSpecularMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matShadingMode != float(material->GetShadingMode()) ? true : update;
+		update = perMaterialBufferCPU.matAlbedo != materialRaw->GetColorAlbedo() ? true : update;
+		update = perMaterialBufferCPU.matTilingUV != materialRaw->GetTilingUV() ? true : update;
+		update = perMaterialBufferCPU.matOffsetUV != materialRaw->GetOffsetUV() ? true : update;
+		update = perMaterialBufferCPU.matRoughnessMul != materialRaw->GetRoughnessMultiplier() ? true : update;
+		update = perMaterialBufferCPU.matMetallicMul != materialRaw->GetMetallicMultiplier() ? true : update;
+		update = perMaterialBufferCPU.matOcclusionMul != materialRaw->GetOcclusionMultiplier() ? true : update;
+		update = perMaterialBufferCPU.matNormalMul != materialRaw->GetNormalMultiplier() ? true : update;
+		update = perMaterialBufferCPU.matSpecularMul != materialRaw->GetSpecularMultiplier() ? true : update;
+		update = perMaterialBufferCPU.matShadingMode != float(materialRaw->GetShadingMode()) ? true : update;
 
 		if (update)
 		{
 			//= BUFFER UPDATE =========================================================================
 			PerMaterialBufferType* buffer = (PerMaterialBufferType*)m_materialBuffer->Map();
 
-			buffer->matAlbedo = perMaterialBufferCPU.matAlbedo = material->GetColorAlbedo();
-			buffer->matTilingUV = perMaterialBufferCPU.matTilingUV = material->GetTilingUV();
-			buffer->matOffsetUV = perMaterialBufferCPU.matOffsetUV = material->GetOffsetUV();
-			buffer->matRoughnessMul = perMaterialBufferCPU.matRoughnessMul = material->GetRoughnessMultiplier();
-			buffer->matMetallicMul = perMaterialBufferCPU.matMetallicMul = material->GetMetallicMultiplier();
-			buffer->matOcclusionMul = perMaterialBufferCPU.matOcclusionMul = material->GetOcclusionMultiplier();
-			buffer->matNormalMul = perMaterialBufferCPU.matNormalMul = material->GetNormalMultiplier();
-			buffer->matSpecularMul = perMaterialBufferCPU.matSpecularMul = material->GetSpecularMultiplier();
-			buffer->matShadingMode = perMaterialBufferCPU.matShadingMode = float(material->GetShadingMode());
+			buffer->matAlbedo = perMaterialBufferCPU.matAlbedo = materialRaw->GetColorAlbedo();
+			buffer->matTilingUV = perMaterialBufferCPU.matTilingUV = materialRaw->GetTilingUV();
+			buffer->matOffsetUV = perMaterialBufferCPU.matOffsetUV = materialRaw->GetOffsetUV();
+			buffer->matRoughnessMul = perMaterialBufferCPU.matRoughnessMul = materialRaw->GetRoughnessMultiplier();
+			buffer->matMetallicMul = perMaterialBufferCPU.matMetallicMul = materialRaw->GetMetallicMultiplier();
+			buffer->matOcclusionMul = perMaterialBufferCPU.matOcclusionMul = materialRaw->GetOcclusionMultiplier();
+			buffer->matNormalMul = perMaterialBufferCPU.matNormalMul = materialRaw->GetNormalMultiplier();
+			buffer->matSpecularMul = perMaterialBufferCPU.matSpecularMul = materialRaw->GetSpecularMultiplier();
+			buffer->matShadingMode = perMaterialBufferCPU.matShadingMode = float(materialRaw->GetShadingMode());
 			buffer->padding = Vector2::Zero;
 
 			m_materialBuffer->Unmap();
@@ -224,9 +289,7 @@ namespace Directus
 	void ShaderVariation::UpdateTextures(const vector<ID3D11ShaderResourceView*>& textureArray)
 	{
 		if (!m_graphics)
-		{
 			return;
-		}
 
 		m_graphics->GetDeviceContext()->PSSetShaderResources(0, (UINT)textureArray.size(), &textureArray.front());
 	}
@@ -234,9 +297,7 @@ namespace Directus
 	void ShaderVariation::Render(int indexCount)
 	{
 		if (!m_graphics)
-		{
 			return;
-		}
 
 		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 	}

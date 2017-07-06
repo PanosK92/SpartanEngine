@@ -12,6 +12,7 @@ namespace Directus
 {
 	LineRenderer::LineRenderer()
 	{
+		Register();
 		m_vertexBuffer = nullptr;
 		m_vertices = nullptr;
 		m_vertexIndex = 0;
@@ -89,7 +90,7 @@ namespace Directus
 		m_vertexBuffer->SetIA();
 
 		// Set primitive topology
-		g_context->GetSubsystem<D3D11GraphicsDevice>()->SetPrimitiveTopology(LineList);
+		g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(LineList);
 
 		ClearVertices();
 	}
@@ -106,7 +107,7 @@ namespace Directus
 		m_vertices = new VertexPosCol[m_maxVertices];
 
 		// create vertex buffer
-		m_vertexBuffer = make_shared<D3D11VertexBuffer>(g_context->GetSubsystem<D3D11GraphicsDevice>());
+		m_vertexBuffer = make_shared<D3D11VertexBuffer>(g_context->GetSubsystem<Graphics>());
 		m_vertexBuffer->CreateDynamic(sizeof(VertexPosCol), m_maxVertices);
 	}
 

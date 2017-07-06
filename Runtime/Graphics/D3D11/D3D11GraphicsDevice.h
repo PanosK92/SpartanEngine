@@ -51,7 +51,7 @@ namespace Directus
 		virtual void SetBackBufferAsRenderTarget();
 
 		// Depth
-		virtual bool CreateDepthStencil();
+		virtual bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled);
 		virtual bool CreateDepthStencilBuffer();
 		virtual bool CreateDepthStencilView();
 		virtual void EnableZBuffer(bool enable);
@@ -64,8 +64,10 @@ namespace Directus
 
 		// Viewport
 		virtual bool SetResolution(int width, int height);
+		virtual void* GetViewport() { return (void*)&m_viewport; }
 		virtual void SetViewport(float width, float height);
 		virtual void ResetViewport();
+		virtual float GetMaxDepth() { return m_maxDepth; }
 
 		virtual bool IsInitialized() { return m_initialized; }
 		//======================================================================
@@ -108,5 +110,6 @@ namespace Directus
 		ID3D11BlendState* m_blendStateAlphaDisabled;
 		HWND m_drawHandle;
 		bool m_initialized;
+		float m_maxDepth = 1.0f;
 	};
 }

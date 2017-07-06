@@ -43,23 +43,17 @@ namespace Directus
 		std::string GetGameObjectID() { return m_gameObjID; }
 		void SetGameObjectID(const std::string& gameObjID) { m_gameObjID = gameObjID; }
 
+		std::string GetModelID() { return m_modelID; }
+		void SetModelID(const std::string& modelID) { m_modelID = modelID; }
+
 		std::string GetName() { return m_name; }
 		void SetName(const std::string& name) { m_name = name; }
 
 		std::vector<VertexPosTexNorTan>& GetVertices() { return m_vertices; }
-		void SetVertices(std::vector<VertexPosTexNorTan> vertices)
-		{
-			m_vertices = vertices;
-			m_vertexCount = (unsigned int)vertices.size();
-		}
+		void SetVertices(const std::vector<VertexPosTexNorTan>& vertices);
 
 		std::vector<unsigned int>& GetIndices() { return m_indices; }
-		void SetIndices(std::vector<unsigned int> indices)
-		{
-			m_indices = indices;
-			m_indexCount = (unsigned int)indices.size();
-			m_triangleCount = m_indexCount / 3;
-		}
+		void SetIndices(const std::vector<unsigned int>& indices);
 
 		unsigned int GetVertexCount() const { return m_vertexCount; }
 		unsigned int GetIndexCount() const { return m_indexCount; }
@@ -73,7 +67,7 @@ namespace Directus
 
 		//= PROCESSING =================================================================
 		void Update();
-		void OnUpdate(std::function<void(void)> function);
+		void SubscribeToUpdate(std::function<void(void)> function);
 		void SetScale(float scale);
 		//==============================================================================
 
@@ -83,15 +77,16 @@ namespace Directus
 		static void LoadVertex(VertexPosTexNorTan& vertex);
 		//==============================================================================
 
-		//= HELPER FUNCTIONS ===========================================================
+		//= HELPER FUNCTIONS =========================================================================
 		static void SetScale(Mesh* meshData, float scale);
-		static Math::Vector3 GetBoundingBox(const Math::Vector3& min, const Math::Vector3& max);
-		static Math::Vector3 GetCenter(const Math::Vector3& min, const Math::Vector3& max);
-		static void GetMinMax(Mesh* mesh, Math::Vector3& min, Math::Vector3& max);
-		//==============================================================================
+		static Math::Vector3 CalcualteBoundingBox(const Math::Vector3& min, const Math::Vector3& max);
+		static Math::Vector3 CalculateCenter(const Math::Vector3& min, const Math::Vector3& max);
+		static void FindMinMax(Mesh* mesh, Math::Vector3& min, Math::Vector3& max);
+		//============================================================================================
 
 		std::string m_id;
 		std::string m_gameObjID;
+		std::string m_modelID;
 		std::string m_name;	
 
 		std::vector<VertexPosTexNorTan> m_vertices;

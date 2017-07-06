@@ -71,11 +71,6 @@ namespace Directus
 		m_transparent = false;
 	}
 
-	const vector<vector<unsigned char>>& ImageImporter::GetRGBAMipchain()
-	{
-		return m_mipchainDataRGBA;
-	}
-
 	bool ImageImporter::Load(const string& path, int width, int height, bool scale, bool generateMipmap)
 	{
 		Clear();

@@ -41,8 +41,8 @@ namespace Directus
 	static const D3D11_CULL_MODE d3dCullMode[] =
 	{
 		D3D11_CULL_NONE,
-		D3D11_CULL_BACK,
-		D3D11_CULL_FRONT
+		D3D11_CULL_FRONT,
+		D3D11_CULL_BACK
 	};
 
 	static const D3D11_PRIMITIVE_TOPOLOGY d3dPrimitiveTopology[] =
@@ -113,8 +113,6 @@ namespace Directus
 
 	bool D3D11GraphicsDevice::Initialize()
 	{
-		m_initialized = false;
-
 		if (!IsWindow(m_drawHandle))
 		{
 			LOG_ERROR("Aborting D3D11 initialization. Invalid draw handle.");
@@ -225,11 +223,31 @@ namespace Directus
 
 		SetViewport(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-		//= DEPTH =================
-		CreateDepthStencil();
-		CreateDepthStencilBuffer();
-		CreateDepthStencilView();
-		//=========================
+		//= DEPTH ============================================
+		if (!CreateDepthStencilState(m_depthStencilStateEnabled, true, true))
+		{
+			LOG_ERROR("Failed to create depth stencil enabled state.");
+			return false;
+		}
+
+		if (!CreateDepthStencilState(m_depthStencilStateDisabled, false, false))
+		{
+			LOG_ERROR("Failed to create depth stencil disabled state.");
+			return false;
+		}
+
+		if (!CreateDepthStencilBuffer())
+		{
+			LOG_ERROR("Failed to create depth stencil buffer.");
+			return false;
+		}
+
+		if (!CreateDepthStencilView())
+		{
+			LOG_ERROR("Failed to create the rasterizer state.");
+			return false;
+		}
+		//====================================================
 
 		//= RASTERIZERS ========================================================================
 		{
@@ -288,7 +306,8 @@ namespace Directus
 		}
 		//==============================================================================
 
-		return m_initialized = true;
+		m_initialized = true;
+		return true;
 	}
 
 	void D3D11GraphicsDevice::SetHandle(void* drawHandle)
@@ -300,68 +319,48 @@ namespace Directus
 	void D3D11GraphicsDevice::EnableZBuffer(bool enable)
 	{
 		if (!m_deviceContext || m_zBufferEnabled == enable)
-		{
 			return;
-		}
 
 		// Set depth stencil state
 		m_deviceContext->OMSetDepthStencilState(enable ? m_depthStencilStateEnabled : m_depthStencilStateDisabled, 1);
-
 		m_zBufferEnabled = enable;
 	}
 
-	bool D3D11GraphicsDevice::CreateDepthStencil()
+	bool D3D11GraphicsDevice::CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled)
 	{
 		if (!m_device)
-		{
 			return false;
-		}
 
-		D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
-		ZeroMemory(&depthStencilDesc, sizeof(depthStencilDesc));
+		D3D11_DEPTH_STENCIL_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+
 		// Depth test parameters
-		depthStencilDesc.DepthEnable = true;
-		depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+		desc.DepthEnable = depthEnabled ? TRUE : FALSE;
+		desc.DepthWriteMask = writeEnabled ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+		desc.DepthFunc = D3D11_COMPARISON_LESS;
+
 		// Stencil test parameters
-		depthStencilDesc.StencilEnable = true;
-		depthStencilDesc.StencilReadMask = 0xFF;
-		depthStencilDesc.StencilWriteMask = 0xFF;
+		desc.StencilEnable = true;
+		desc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+		desc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+
 		// Stencil operations if pixel is front-facing
-		depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-		depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		desc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		desc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+		desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
 		// Stencil operations if pixel is back-facing
-		depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-		depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		desc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+		desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
 		// Create a depth stencil state with depth enabled
-		depthStencilDesc.DepthEnable = true;
-		depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		HRESULT result = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateEnabled);
+		ID3D11DepthStencilState* depthStencilStateTyped = (ID3D11DepthStencilState*)depthStencilState;
+		HRESULT result = m_device->CreateDepthStencilState(&desc, &depthStencilStateTyped);
 		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create depth stencil enabled state.");
-			m_initialized = false;
 			return false;
-		}
-
-		// Create a depth stencil state with depth disabled
-		depthStencilDesc.DepthEnable = false;
-		depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-		result = m_device->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilStateDisabled);
-		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create depth stencil disabled state.");
-			m_initialized = false;
-			return false;
-		}
-
-		// Set the default depth stencil state
-		m_deviceContext->OMSetDepthStencilState(m_depthStencilStateEnabled, 1);
 
 		return true;
 	}
@@ -369,9 +368,7 @@ namespace Directus
 	bool D3D11GraphicsDevice::CreateDepthStencilBuffer()
 	{
 		if (!m_device)
-		{
 			return false;
-		}
 
 		D3D11_TEXTURE2D_DESC depthBufferDesc;
 		ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
@@ -390,11 +387,7 @@ namespace Directus
 		// Create the texture for the depth buffer using the filled out description.
 		HRESULT result = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
 		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create the texture for the depth buffer.");
-			m_initialized = false;
 			return false;
-		}
 
 		return true;
 	}
@@ -402,9 +395,7 @@ namespace Directus
 	bool D3D11GraphicsDevice::CreateDepthStencilView()
 	{
 		if (!m_device)
-		{
 			return false;
-		}
 
 		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
 		ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
@@ -415,14 +406,7 @@ namespace Directus
 		// Create the depth stencil view.
 		HRESULT result = m_device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
 		if (FAILED(result))
-		{
-			LOG_ERROR("Failed to create the depth stencil view.");
-			m_initialized = false;
 			return false;
-		}
-
-		// Bind the render target view and depth stencil buffer to the output render pipeline.
-		m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
 
 		return true;
 	}
@@ -431,26 +415,29 @@ namespace Directus
 	void D3D11GraphicsDevice::Clear(const Vector4& color)
 	{
 		if (!m_deviceContext)
-		{
 			return;
-		}
 
-		// Clear the back buffer.
-		float clearColor[4] = { color.x, color.y, color.z, color.w };
-		m_deviceContext->ClearRenderTargetView(m_renderTargetView, clearColor);
-
-		// Clear the depth buffer.
-		m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+		m_deviceContext->ClearRenderTargetView(m_renderTargetView, color.Data()); // back buffer
+		m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_maxDepth, 0); // depth buffer
 	}
 
 	void D3D11GraphicsDevice::Present()
 	{
 		if (!m_swapChain)
+			return;
+
+		m_swapChain->Present(VSYNC, 0);
+	}
+
+	void D3D11GraphicsDevice::SetBackBufferAsRenderTarget()
+	{
+		if (!m_deviceContext)
 		{
+			LOG_INFO("Cant't set back buffer as render terget, device context is uninitialized");
 			return;
 		}
 
-		m_swapChain->Present(VSYNC, 0);
+		m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
 	}
 
 	void D3D11GraphicsDevice::EnableAlphaBlending(bool enable)
@@ -468,9 +455,7 @@ namespace Directus
 	bool D3D11GraphicsDevice::SetResolution(int width, int height)
 	{
 		if (!m_swapChain)
-		{
 			return false;
-		}
 
 		//= RELEASE RESLUTION BASED STUFF =======
 		SafeRelease(m_renderTargetView);
@@ -536,14 +521,12 @@ namespace Directus
 	void D3D11GraphicsDevice::SetViewport(float width, float height)
 	{
 		if (!m_deviceContext)
-		{
 			return;
-		}
 
 		m_viewport.Width = width;
 		m_viewport.Height = height;
 		m_viewport.MinDepth = 0.0f;
-		m_viewport.MaxDepth = 1.0f;
+		m_viewport.MaxDepth = m_maxDepth;
 		m_viewport.TopLeftX = 0.0f;
 		m_viewport.TopLeftY = 0.0f;
 
@@ -553,24 +536,11 @@ namespace Directus
 	void D3D11GraphicsDevice::ResetViewport()
 	{
 		if (!m_deviceContext)
-		{
 			return;
-		}
 
 		m_deviceContext->RSSetViewports(1, &m_viewport);
 	}
 	//================================================================
-
-	void D3D11GraphicsDevice::SetBackBufferAsRenderTarget()
-	{
-		if (!m_deviceContext)
-		{
-			LOG_INFO("Cant't set back buffer as render terget, device context is uninitialized");
-			return;
-		}
-
-		m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
-	}
 
 	void D3D11GraphicsDevice::SetPrimitiveTopology(PrimitiveTopology primitiveTopology)
 	{
@@ -607,7 +577,11 @@ namespace Directus
 
 		auto mode = d3dCullMode[cullMode];
 
-		if (mode == D3D11_CULL_FRONT)
+		if (mode == D3D11_CULL_NONE)
+		{
+			m_deviceContext->RSSetState(m_rasterStateCullNone);
+		}
+		else if (mode == D3D11_CULL_FRONT)
 		{
 			m_deviceContext->RSSetState(m_rasterStateCullFront);
 		}
@@ -615,17 +589,12 @@ namespace Directus
 		{
 			m_deviceContext->RSSetState(m_rasterStateCullBack);
 		}
-		else if (mode == D3D11_CULL_NONE)
-		{
-			m_deviceContext->RSSetState(m_rasterStateCullNone);
-		}
 
 		// Save the current CullMode mode
 		m_cullMode = cullMode;
 	}
 
 	//= HELPER FUNCTIONS ================================================================================
-
 	bool D3D11GraphicsDevice::CreateDeviceAndSwapChain(ID3D11Device** device, ID3D11DeviceContext** deviceContext, IDXGISwapChain** swapchain)
 	{
 		DXGI_SWAP_CHAIN_DESC swapChainDesc;
@@ -679,11 +648,16 @@ namespace Directus
 		}
 
 		D3D11_RASTERIZER_DESC desc = {};
-
-		desc.CullMode = cullMode;
 		desc.FillMode = fillMode;
-		desc.DepthClipEnable = true;
-		desc.MultisampleEnable = true;
+		desc.CullMode = cullMode;
+		desc.FrontCounterClockwise = FALSE;
+		desc.DepthBias = 0;
+		desc.DepthBiasClamp = 0.0f;
+		desc.SlopeScaledDepthBias = 0.0f;
+		desc.DepthClipEnable = TRUE;
+		desc.ScissorEnable = FALSE;
+		desc.MultisampleEnable = FALSE;
+		desc.AntialiasedLineEnable = FALSE;
 
 		HRESULT result = m_device->CreateRasterizerState(&desc, rasterizer);
 

@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <memory>
 #include "../Core/Helper.h"
+#include "../Core/GUIDGenerator.h"
+
 //=========================
 
 namespace Directus
@@ -64,15 +66,27 @@ namespace Directus
 		// Runs when the GameObject is being loaded
 		virtual void Deserialize() = 0;
 
+		// Should be called by the derived component to register it's type
+		void Register()
+		{
+			// Convert class Type to a string.
+			g_type = typeid(*this).name();
+			// class Directus::Transform -> Transform
+			g_type = g_type.substr(g_type.find_last_of(":") + 1);
+
+			g_ID = GENERATE_GUID;
+		}
+
 		//= PROPERTIES ================================
-		std::string g_ID;
+		std::string g_ID;	
+		std::string g_type;
 		bool g_enabled;
 		// The GameObject the component is attached to
 		std::weak_ptr<GameObject> g_gameObject;
 		// The only always existing component
 		Transform* g_transform;
 		// The engine context
-		Context* g_context;
+		Context* g_context;	
 		//=============================================
 	};
 }

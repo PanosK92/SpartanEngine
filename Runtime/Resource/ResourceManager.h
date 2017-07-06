@@ -51,7 +51,7 @@ namespace Directus
 		std::weak_ptr<T> Load(const std::string& filePath)
 		{
 			// Check if the resource is already loaded
-			if (m_resourceCache->Cached(filePath))
+			if (m_resourceCache->CachedByFilePath(filePath))
 				return GetResourceByPath<T>(filePath);
 
 			std::shared_ptr<T> derivedResource = std::make_shared<T>(m_context);
@@ -76,8 +76,8 @@ namespace Directus
 			std::shared_ptr<Resource> baseResource = ToBaseResourceShared(resource);
 
 			// If the resource is already loaded, return the existing one
-			if (m_resourceCache->Cached(baseResource))
-				return ToDerivedResourceWeak<T>(m_resourceCache->GetByID(baseResource->GetResourceID()));
+			if (m_resourceCache->CachedByName(baseResource))
+				return ToDerivedResourceWeak<T>(m_resourceCache->GetByName(baseResource->GetResourceName()));
 
 			// Else, add the resource and return it
 			m_resourceCache->Add(baseResource);
@@ -136,8 +136,8 @@ namespace Directus
 		std::string GetResourceDirectory(ResourceType type);
 
 		// Importers
-		std::weak_ptr<ModelImporter> GetModelImporter() { return m_modelImporter; }
-		std::weak_ptr<ImageImporter> GetImageImporter() { return m_imageImporter; }
+		const std::weak_ptr<ModelImporter>& GetModelImporter() { return m_modelImporter; }
+		const std::weak_ptr<ImageImporter>& GetImageImporter() { return m_imageImporter; }
 
 	private:
 		std::unique_ptr<ResourceCache> m_resourceCache;

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11GraphicsDevice.h"
 #include "../../Core/Settings.h"
 #include "../../Core/Helper.h"
+#include "../../Logging/Log.h"
 //==============================
 
 //= NAMESPACES ================
@@ -56,6 +57,7 @@ namespace Directus
 	{
 		if (!m_graphics->GetDevice()) 
 		{
+			LOG_INFO("Uninitialized device. Can't create render texture");
 			return false;
 		}
 
@@ -78,9 +80,8 @@ namespace Directus
 		textureDesc.MiscFlags = 0;
 
 		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &m_renderTargetTexture);
-		if (FAILED(result)) {
+		if (FAILED(result))
 			return false;
-		}
 		//=================================================================================================================================
 
 		//= RENDER TARGET VIEW ============================================================================================================
@@ -110,7 +111,7 @@ namespace Directus
 		m_viewport.Width = (FLOAT)width;
 		m_viewport.Height = (FLOAT)height;
 		m_viewport.MinDepth = 0.0f;
-		m_viewport.MaxDepth = m_maxDepth;
+		m_viewport.MaxDepth = m_graphics->GetMaxDepth();
 		m_viewport.TopLeftX = 0.0f;
 		m_viewport.TopLeftY = 0.0f;
 		//================================
@@ -152,7 +153,9 @@ namespace Directus
 
 	bool D3D11RenderTexture::SetAsRenderTarget()
 	{
-		if (!m_graphics->GetDeviceContext()) {
+		if (!m_graphics->GetDeviceContext())
+		{
+			LOG_INFO("Uninitialized device context. Can't set render texture as rander target");
 			return false;
 		}
 
@@ -167,12 +170,11 @@ namespace Directus
 
 	bool D3D11RenderTexture::Clear(const Vector4& clearColor)
 	{
-		if (!m_graphics->GetDeviceContext()) {
+		if (!m_graphics->GetDeviceContext())
 			return false;
-		}
 
 		m_graphics->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor.Data()); // Clear back buffer.
-		m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_maxDepth, 0); // Clear depth buffer.
+		m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_graphics->GetMaxDepth(), 0); // Clear depth buffer.
 
 		return true;
 	}

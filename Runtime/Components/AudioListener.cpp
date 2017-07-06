@@ -31,6 +31,7 @@ namespace Directus
 {
 	AudioListener::AudioListener()
 	{
+		Register();
 		m_audio = nullptr;
 	}
 

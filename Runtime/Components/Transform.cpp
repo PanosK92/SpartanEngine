@@ -37,6 +37,7 @@ namespace Directus
 {
 	Transform::Transform()
 	{
+		Register();
 		m_positionLocal = Vector3::Zero;
 		m_rotationLocal = Quaternion(0, 0, 0, 1);
 		m_scaleLocal = Vector3::One;
@@ -118,7 +119,9 @@ namespace Directus
 
 		// update children
 		for (const auto& child : m_children)
+		{
 			child->UpdateWorldTransform();
+		}
 	}
 
 	//= TRANSLATION ==================================================================================
@@ -273,7 +276,9 @@ namespace Directus
 
 		// make the new parent "aware" of this transform/child
 		if (m_parent)
+		{
 			m_parent->ResolveChildrenRecursively();
+		}
 
 		UpdateWorldTransform();
 	}
@@ -344,7 +349,7 @@ namespace Directus
 				continue;
 
 			// get the possible child
-			Transform* possibleChild = gameObject.lock()->GetTransform();
+			Transform* possibleChild = gameObject._Get()->GetTransform();
 
 			// if it doesn't have a parent, forget about it.
 			if (!possibleChild->HasParent())
@@ -387,12 +392,12 @@ namespace Directus
 
 	string Transform::GetID() const
 	{
-		return !g_gameObject.expired() ? g_gameObject.lock()->GetID() : DATA_NOT_ASSIGNED;
+		return !g_gameObject.expired() ? g_gameObject._Get()->GetID() : DATA_NOT_ASSIGNED;
 	}
 
 	string Transform::GetName()
 	{
-		return !g_gameObject.expired() ? g_gameObject.lock()->GetName() : DATA_NOT_ASSIGNED;
+		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
 	}
 
 	Matrix Transform::GetParentTransformMatrix()

@@ -63,12 +63,14 @@ namespace Directus
 		std::weak_ptr<Material> SetMaterial(const std::string& ID);
 		// Loads a material and the sets it
 		std::weak_ptr<Material> LoadMaterial(const std::string& filePath);
-		std::weak_ptr<Material> GetMaterial() { return  m_material; }
+		std::weak_ptr<Material>& GetMaterial() { return  m_material; }
 		bool HasMaterial() { return GetMaterial().expired() ? false : true; }
-		std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial().lock()->GetResourceName() : DATA_NOT_ASSIGNED; }
+		std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial()._Get()->GetResourceName() : DATA_NOT_ASSIGNED; }
 		MaterialType GetMaterialType() { return m_materialType; }
 
 	private:
+		std::string GetGameObjectName();
+
 		std::weak_ptr<Material> m_material;
 		bool m_castShadows;
 		bool m_receiveShadows;

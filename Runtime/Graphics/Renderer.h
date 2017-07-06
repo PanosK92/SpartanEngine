@@ -129,7 +129,6 @@ namespace Directus
 		//================================================
 
 		//= HELPER FUNCTIONS =========================================================================
-		bool IsInViewFrustrum(const std::shared_ptr<Frustrum>& cameraFrustrum, MeshFilter* meshFilter);
 		void AcquirePrerequisites();
 		void DirectionalLightDepthPass();
 		void GBufferPass();

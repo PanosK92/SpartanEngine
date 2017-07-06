@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <memory>
 #include "Resource.h"
+#include "../Logging/Log.h"
+
 //====================
 
 namespace Directus
@@ -71,6 +73,18 @@ namespace Directus
 			return std::shared_ptr<Resource>();
 		}
 
+		// Returns a resource by name
+		std::shared_ptr<Resource> GetByName(const std::string& name)
+		{
+			for (const auto& resource : m_resources)
+			{
+				if (resource->GetResourceName() == name)
+					return resource;
+			}
+
+			return std::shared_ptr<Resource>();
+		}
+
 		// Returns a resource by file path
 		std::shared_ptr<Resource> GetByPath(const std::string& filePath)
 		{
@@ -99,27 +113,51 @@ namespace Directus
 		}
 
 		// Checks whether a resource is already in the cache
-		bool Cached(const std::string& filePath)
+		bool CachedByFilePath(const std::string& filePath)
 		{
 			if (filePath.empty())
 				return false;
 
 			for (const auto& resource : m_resources)
+			{
 				if (resource->GetResourceFilePath() == filePath)
 					return true;
+			}
 
 			return false;
 		}
 
 		// Checks whether a resource is already in the cache
-		bool Cached(std::shared_ptr<Resource> resourceIn)
+		bool CachedByID(std::shared_ptr<Resource> resourceIn)
 		{
 			if (!resourceIn)
 				return false;
 
 			for (const auto& resource : m_resources)
+			{
 				if (resource->GetResourceID() == resourceIn->GetResourceID())
 					return true;
+			}
+
+			return false;
+		}
+
+		// Checks whether a resource is already in the cache
+		bool CachedByName(std::shared_ptr<Resource> resourceIn)
+		{
+			if (!resourceIn)
+				return false;
+
+			if (resourceIn->GetResourceName() == DATA_NOT_ASSIGNED)
+			{
+				LOG_INFO("CachedByName() might fail as no name has been assigned to the resource");
+			}
+
+			for (const auto& resource : m_resources)
+			{
+				if (resource->GetResourceName() == resourceIn->GetResourceName())
+					return true;
+			}
 
 			return false;
 		}

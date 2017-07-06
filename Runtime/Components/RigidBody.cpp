@@ -73,6 +73,7 @@ namespace Directus
 
 	RigidBody::RigidBody()
 	{
+		Register();
 		m_inWorld = false;
 		m_mass = 0.0f;
 		m_restitution = 0.2f;

@@ -121,11 +121,9 @@ namespace Directus
 		for (unsigned int i = 0; i < pointLights.size(); i++)
 		{
 			if (pointLights[i].expired())
-			{
 				continue;
-			}
 
-			Vector3 pos = pointLights[i].lock()->GetTransform()->GetPosition();
+			Vector3 pos = pointLights[i]._Get()->GetTransform()->GetPosition();
 			buffer->pointLightPosition[i] = Vector4(pos.x, pos.y, pos.z, 1.0f);
 			buffer->pointLightColor[i] = pointLights[i].lock()->GetComponent<Light>()->GetColor();
 			buffer->pointLightIntensity[i] = Vector4(pointLights[i].lock()->GetComponent<Light>()->GetIntensity());
@@ -153,14 +151,24 @@ namespace Directus
 
 	void DeferredShader::Set()
 	{
-		if (m_shader)
-			m_shader->Set();
+		if (!m_shader)
+		{
+			LOG_INFO("Unintialized shader, can't set");
+			return;
+		}
+
+		m_shader->Set();
 	}
 
 	void DeferredShader::Render(int indexCount)
 	{
-		if (m_shader)
-			m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+		if (!m_shader)
+		{
+			LOG_INFO("Unintialized shader, can't render");
+			return;
+		}
+
+		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 	}
 
 	bool DeferredShader::IsCompiled()

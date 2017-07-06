@@ -36,6 +36,8 @@ namespace Directus
 		m_graphics = nullptr;
 		m_vertexBuffer = nullptr;
 		m_indexBuffer = nullptr;
+		m_vertexCount = 0;
+		m_indexCount = 0;
 	}
 
 	FullScreenQuad::~FullScreenQuad()
@@ -44,33 +46,23 @@ namespace Directus
 		SafeRelease(m_indexBuffer);
 	}
 
-	bool FullScreenQuad::Initialize(int windowWidth, int windowHeight, Graphics* graphics)
+	bool FullScreenQuad::Initialize(int width, int height, Graphics* graphics)
 	{
 		m_graphics = graphics;
-		if (!m_graphics->GetDevice()) 
-		{
+		if (!m_graphics->GetDevice())
 			return false;
-		}
-
-		float left, right, top, bottom;
-		VertexPosTex* vertices;
-		unsigned long* indices;
-		D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
-		D3D11_SUBRESOURCE_DATA vertexData, indexData;
-		HRESULT result;
-		int i;
 
 		// Calculate the screen coordinates of the left side of the window.
-		left = static_cast<float>((windowWidth / 2) * -1);
+		float left = static_cast<float>((width / 2) * -1);
 
 		// Calculate the screen coordinates of the right side of the window.
-		right = left + static_cast<float>(windowWidth);
+		float right = left + static_cast<float>(width);
 
 		// Calculate the screen coordinates of the top of the window.
-		top = static_cast<float>(windowHeight / 2);
+		float top = static_cast<float>(height / 2);
 
 		// Calculate the screen coordinates of the bottom of the window.
-		bottom = top - static_cast<float>(windowHeight);
+		float bottom = top - static_cast<float>(height);
 
 		// Set the number of vertices in the vertex array.
 		m_vertexCount = 6;
@@ -78,19 +70,9 @@ namespace Directus
 		// Set the number of indices in the index array.
 		m_indexCount = m_vertexCount;
 
-		// Create the vertex array.
-		vertices = new VertexPosTex[m_vertexCount];
-		if (!vertices)
-		{
-			return false;
-		}
-
-		// Create the index array.
-		indices = new unsigned long[m_indexCount];
-		if (!indices)
-		{
-			return false;
-		}
+		// Create index & vertex arrays
+		VertexPosTex* vertices = new VertexPosTex[m_vertexCount];
+		unsigned long* indices = new unsigned long[m_indexCount];
 
 		// Load the vertex array with data.
 		// First triangle.
@@ -114,10 +96,11 @@ namespace Directus
 		vertices[5].uv = Vector2(1.0f, 1.0f);
 
 		// Load the index array with data.
-		for (i = 0; i < m_indexCount; i++)
+		for (int i = 0; i < m_indexCount; i++)
 			indices[i] = i;
 
 		// Set up the description of the vertex buffer.
+		D3D11_BUFFER_DESC vertexBufferDesc;
 		vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
 		vertexBufferDesc.ByteWidth = sizeof(VertexPosTex) * m_vertexCount;
 		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
@@ -126,18 +109,18 @@ namespace Directus
 		vertexBufferDesc.StructureByteStride = 0;
 
 		// Give the subresource structure a pointer to the vertex data.
+		D3D11_SUBRESOURCE_DATA vertexData;
 		vertexData.pSysMem = vertices;
 		vertexData.SysMemPitch = 0;
 		vertexData.SysMemSlicePitch = 0;
 
 		// Now finally create the vertex buffer.
-		result = m_graphics->GetDevice()->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
+		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
 		if (FAILED(result))
-		{
 			return false;
-		}
 
 		// Set up the description of the index buffer.
+		D3D11_BUFFER_DESC indexBufferDesc;
 		indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
 		indexBufferDesc.ByteWidth = sizeof(unsigned long) * m_indexCount;
 		indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
@@ -146,6 +129,7 @@ namespace Directus
 		indexBufferDesc.StructureByteStride = 0;
 
 		// Give the subresource structure a pointer to the index data.
+		D3D11_SUBRESOURCE_DATA indexData;
 		indexData.pSysMem = indices;
 		indexData.SysMemPitch = 0;
 		indexData.SysMemSlicePitch = 0;
@@ -153,9 +137,7 @@ namespace Directus
 		// Create the index buffer.
 		result = m_graphics->GetDevice()->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
 		if (FAILED(result))
-		{
 			return false;
-		}
 
 		// Release the arrays now that the vertex and index buffers have been created and loaded.
 		delete[] vertices;
@@ -169,13 +151,9 @@ namespace Directus
 
 	void FullScreenQuad::SetBuffers()
 	{
-		// Put the vertex and index buffers on the graphics pipeline to prepare them for drawing.
-		unsigned int stride;
-		unsigned int offset;
-
 		// Set vertex buffer stride and offset.
-		stride = sizeof(VertexPosTex);
-		offset = 0;
+		unsigned int stride = sizeof(VertexPosTex);
+		unsigned int offset = 0;
 
 		// Set the vertex buffer to active in the input assembler so it can be rendered.
 		m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
