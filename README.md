@@ -22,11 +22,11 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 - Windows support.
 
 # Features under development - v0.3 (Codename: Da Vinci)
-- [Active] Bug fixes, lot's of them.
-- [Active] DirectX 12 Renderer (It's gonna take a while because I want to do it right, not just swap the API calls)
+- [Active] Vulkan rendering backend.
 - [Active] Dynamic resolution scaling.
-- [Active] Improved shadow quality.
-- [Done] Custom mipchain generation (resulted in a ~15-20% memory usage drop and an increase in texture quality).
+- [50%] Improved shadow quality.
+- [Done] Custom mipchain generation (lower memory usage, better texture fidelity).
+- [Done] Performance improvements, bug fixes and overall increased stability.
 - [80%] SSAO.
 
 # Planned Features
@@ -35,7 +35,6 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 - Font loader & renderer.
 - SSR, Volumetric Lighting.
 - UI components.
-- Vulkan Renderer.
 
 ### Download
 Note: The download link will be updated whenever any features that are under development get completed.
@@ -43,7 +42,7 @@ Note: The download link will be updated whenever any features that are under dev
 
 ### Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109), 
-- [Visual C++ 2015 (x64) runtime package](https://www.microsoft.com/en-us/download/details.aspx?id=48145).
+- [Visual C++ 2017 (x64) runtime package](https://go.microsoft.com/fwlink/?LinkId=746572).
 
 ### License
 - Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
