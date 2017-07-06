@@ -4,7 +4,7 @@ class MouseLook
 	Transform @transform;
 	
 	// mouse look settings
-	float sensitivity = 3.0f;
+	float sensitivity = 5.0f;
 	float smoothing = 5.0f;
 
 	// mouse look variables
