@@ -248,21 +248,8 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
-/ThirdParty/Compiled x64d
-/Editor/GeneratedFiles
-/build-Editor-Desktop_Qt_5_7_0_MSVC2015_64bit-Release
-/ThirdParty/mvcs140d x64
-/ThirdParty/mvsc140d x64
 /Runtime/Runtime.vcxproj.filters
 /Runtime/Runtime.vcxproj
 /Runtime/Runtime.sln
-/Runtime/Runtime.vcxproj.filters
-/Runtime/Runtime.vcxproj
-/Runtime/Runtime.sln
-/Runtime/Runtime.vcxproj.filters
-/Runtime/Runtime.vcxproj
-/Runtime/Runtime.sln
-/Binaries/MetaData
-/Binaries/MetaData
-/Binaries/MetaData/Qt_ObjFiles/Directus3D_resource.res
-/Binaries/MetaData/Qt_MOCFiles/moc_AboutDialog.cpp
+*_debug.lib
+/Binaries
