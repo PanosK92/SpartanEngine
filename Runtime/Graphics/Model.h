@@ -54,7 +54,6 @@ namespace Directus
 		const std::string& GetOriginalFilePath() { return m_originalFilePath; }
 		std::string GetOriginalDirectory() { return FileSystem::GetDirectoryFromFilePath(m_originalFilePath); }
 
-		void NormalizeScale();
 		const Math::Vector3& GetCenter() { return m_center; }
 		const Math::Vector3& GetBoundingBox() { return m_extent; }
 		float GetBoundingSphereRadius() { return Math::Max(Math::Max(abs(m_extent.x), abs(m_extent.y)), abs(m_extent.z)); }
@@ -65,9 +64,9 @@ namespace Directus
 		bool LoadFromForeignFormat(const std::string& filePath);
 
 		void SetScale(float scale);
-		float GetNormalizedScale();
-		std::weak_ptr<Mesh> GetLargestBoundingBox();
-		void CalculateDimensions();
+		float ComputeNormalizeScale();
+		std::weak_ptr<Mesh> ComputeLargestBoundingBox();
+		void ComputeDimensions();
 
 		std::weak_ptr<GameObject> m_rootGameObj;
 		std::vector<std::shared_ptr<Mesh>> m_meshes;

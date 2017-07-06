@@ -36,6 +36,7 @@ namespace Directus
 	class Material;
 	class GameObject;
 	class Model;
+	class Transform;
 
 	class ModelImporter
 	{
@@ -48,22 +49,18 @@ namespace Directus
 		bool Load(Model* model);
 
 	private:
-		bool m_isLoading;
-		std::string m_fullTexturePath;
-		Context* m_context;
-
-		/*------------------------------------------------------------------------------
-										[PROCESSING]
-		------------------------------------------------------------------------------*/
+		// PROCESSING
 		void ProcessNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, std::weak_ptr<GameObject> parentNode, std::weak_ptr<GameObject> newNode);
 		void ProcessMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, std::weak_ptr<GameObject> parentGameObject);
 		std::shared_ptr<Material> GenerateMaterialFromAiMaterial(Model* model, aiMaterial* assimpMaterial);
 
-		/*------------------------------------------------------------------------------
-										[HELPER FUNCTIONS]
-		------------------------------------------------------------------------------*/
+		// HELPER FUNCTIONS
 		void AddTextureToMaterial(Model* model, std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
 		std::string FindTexture(Model* model, const std::string& texturePath);
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
+
+		bool m_isLoading;
+		std::string m_fullTexturePath;
+		Context* m_context;
 	};
 }

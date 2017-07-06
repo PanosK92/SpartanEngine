@@ -66,11 +66,6 @@ namespace Directus
 		bool engineFormat = FileSystem::GetExtensionFromFilePath(filePath) == MODEL_EXTENSION;
 		bool success = engineFormat ? LoadFromEngineFormat(filePath) : LoadFromForeignFormat(filePath);
 
-		if (!engineFormat)
-		{
-			NormalizeScale();
-		}
-
 		return success;
 	}
 
@@ -138,12 +133,6 @@ namespace Directus
 		return textureDestination;
 	}
 
-	void Model::NormalizeScale()
-	{
-		m_normalizedScale = GetNormalizedScale();
-		SetScale(m_normalizedScale);
-	}
-
 	void Model::AddMesh(shared_ptr<Mesh> mesh)
 	{
 		if (!mesh)
@@ -151,8 +140,9 @@ namespace Directus
 
 		// Updates mesh bounding box, center, min, max etc.
 		mesh->Update();
+
 		// Calculate the bounding box of the model as well
-		CalculateDimensions();
+		ComputeDimensions();
 
 		// Save it
 		m_meshes.push_back(mesh);
@@ -197,10 +187,16 @@ namespace Directus
 		FileSystem::CreateDirectory_(m_resourceDirectory + "Shaders//");
 
 		// Load the model
-		if (m_resourceManager->GetModelImporter().lock()->Load(this))
+		if (m_resourceManager->GetModelImporter()._Get()->Load(this))
 		{
+			// Set the normalized scale to the root GameObject's transform
+			m_normalizedScale = ComputeNormalizeScale();
+			m_rootGameObj._Get()->GetComponent<Transform>()->SetScale(m_normalizedScale);
+			m_rootGameObj._Get()->GetComponent<Transform>()->UpdateWorldTransform();
+
 			// Save the model as custom/binary format
 			SaveToFile(m_resourceFilePath);
+
 			return true;
 		}
 
@@ -215,10 +211,10 @@ namespace Directus
 		}
 	}
 
-	float Model::GetNormalizedScale()
+	float Model::ComputeNormalizeScale()
 	{
 		// Find the mesh with the largest bounding box
-		auto largestBoundingBoxMesh = GetLargestBoundingBox().lock();
+		auto largestBoundingBoxMesh = ComputeLargestBoundingBox().lock();
 
 		// Calculate the scale offset
 		float scaleOffset = !largestBoundingBoxMesh ? 1.0f : largestBoundingBoxMesh->GetBoundingBox().Length();
@@ -227,7 +223,7 @@ namespace Directus
 		return 1.0f / scaleOffset;
 	}
 
-	weak_ptr<Mesh> Model::GetLargestBoundingBox()
+	weak_ptr<Mesh> Model::ComputeLargestBoundingBox()
 	{
 		if (m_meshes.empty())
 			return weak_ptr<Mesh>();
@@ -251,7 +247,7 @@ namespace Directus
 		return largestBoundingBoxMesh;
 	}
 
-	void Model::CalculateDimensions()
+	void Model::ComputeDimensions()
 	{
 		for (auto& mesh : m_meshes)
 		{
