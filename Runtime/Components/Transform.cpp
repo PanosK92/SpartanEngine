@@ -171,12 +171,13 @@ namespace Directus
 
 		// A scale of 0 will cause a division by zero when 
 		// decomposing the world transform matrix.
-		if (m_scaleLocal.x == 0.0f) m_scaleLocal.x = M_EPSILON;
-		if (m_scaleLocal.y == 0.0f) m_scaleLocal.y = M_EPSILON;
-		if (m_scaleLocal.z == 0.0f) m_scaleLocal.z = M_EPSILON;
+		m_scaleLocal.x = (m_scaleLocal.x == 0.0f) ? M_EPSILON : m_scaleLocal.x;
+		m_scaleLocal.y = (m_scaleLocal.y == 0.0f) ? M_EPSILON : m_scaleLocal.y;
+		m_scaleLocal.z = (m_scaleLocal.z == 0.0f) ? M_EPSILON : m_scaleLocal.z;
 
 		UpdateWorldTransform();
 	}
+
 	//================================================================================================
 
 	//= TRANSLATION/ROTATION =========================================================================
@@ -384,7 +385,7 @@ namespace Directus
 	{
 		// Depth first acquisition of descendants
 		for (const auto& child : m_children)
-		{			 
+		{
 			descendants->push_back(child);
 			child->GetDescendants(descendants);
 		}
@@ -418,10 +419,15 @@ namespace Directus
 		// delete the original reference
 		m_parent = nullptr;
 
+		// Update the transform without the parent now
+		UpdateWorldTransform();
+
 		// make the parent search for children,
 		// that's indirect way of making tha parent "forget"
 		// about this child, since it won't be able to find it
 		if (tempRef)
+		{
 			tempRef->ResolveChildrenRecursively();
+		}
 	}
 }

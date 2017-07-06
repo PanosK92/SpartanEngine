@@ -1,0 +1,25 @@
+Info: Primary adapter: NVIDIA GeForce GTX 1080 Ti (11117 MB)
+Error: An unknown error occured when trying to load and compile "Deferred.hlsl"
+Error: Can't set input layout of a non-compiled shader.
+Error: An unknown error occured when trying to load and compile "Depth.hlsl"
+Error: Can't set input layout of a non-compiled shader.
+Error: An unknown error occured when trying to load and compile "Debug.hlsl"
+Error: Can't set input layout of a non-compiled shader.
+Error: An unknown error occured when trying to load and compile "PostProcess.hlsl"
+Error: Can't set input layout of a non-compiled shader.
+Error: An unknown error occured when trying to load and compile "PostProcess.hlsl"
+Error: Can't set input layout of a non-compiled shader.
+Error: An unknown error occured when trying to load and compile "PostProcess.hlsl"
+Error: Can't set input layout of a non-compiled shader.
+Warning: Failed to load image "Assets//Standard Assets//Textures//noise.png", it doesn't exist.
+Error: Failed to load texture "Assets//Standard Assets//Textures//noise.png".
+Error: MouseLook.as Failed to open script file 'C:/Users/Panos/Desktop/Directus3D/Runtime/Assets//Standard Assets//Scripts//MouseLook.as'
+Error: Failed to load script "Assets//Standard Assets//Scripts//MouseLook.as".
+Error: FirstPersonController.as Failed to open script file 'C:/Users/Panos/Desktop/Directus3D/Runtime/Assets//Standard Assets//Scripts//FirstPersonController.as'
+Error: Failed to load script "Assets//Standard Assets//Scripts//FirstPersonController.as".
+Error: Failed to load texture "Assets//Standard Assets//Cubemaps//environment.dds".
+Error: An unknown error occured when trying to load and compile "GBuffer.hlsl"
+Error: Can't set input layout of a non-compiled shader.
+Error: An unknown error occured when trying to load and compile "GBuffer.hlsl"
+Error: Can't set input layout of a non-compiled shader.
+Info: Initialized successfully
