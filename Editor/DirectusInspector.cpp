@@ -266,10 +266,8 @@ void DirectusInspector::dropEvent(QDropEvent* event)
 //= HELPER FUNCTIONS  ===============================================================
 vector<Script*> DirectusInspector::FitScriptVectorToGameObject()
 {
-    vector<Script*> engineScripts;
-
     if (m_inspectedGameObject.expired())
-        return engineScripts;
+        return vector<Script*>();
 
     // Clear current script vector
     int scriptCount = (int)m_scripts.size();
@@ -283,9 +281,8 @@ vector<Script*> DirectusInspector::FitScriptVectorToGameObject()
     m_scripts.shrink_to_fit();
 
     // Reflect back to the script vector
-    engineScripts = m_inspectedGameObject.lock()->GetComponents<Script>();
-    scriptCount = (int)engineScripts.size();
-    for (int i = 0; i < scriptCount; i++)
+    auto engineScripts = m_inspectedGameObject._Get()->GetComponents<Script>();
+    for (int i = 0; i < (int)engineScripts.size(); i++)
     {
         m_scripts.push_back(new DirectusScript());
         m_scripts.back()->Initialize(this, m_mainWindow);

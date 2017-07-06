@@ -105,10 +105,10 @@ LIBS += "$$DESTDIR/Runtime.lib"
 INCLUDEPATH += $$PWD/../Runtime/
 
 # QT METADATA
-RCC_DIR = "$$DESTDIR/MetaData/Qt_RCCFiles"
-UI_DIR = "$$DESTDIR/MetaData/Qt_UICFiles"
-MOC_DIR = "$$DESTDIR/MetaData/Qt_MOCFiles"
-OBJECTS_DIR = "$$DESTDIR/MetaData/Qt_ObjFiles"
+RCC_DIR = "$$DESTDIR/../Qt_MetaData/Qt_RCCFiles"
+UI_DIR = "$$DESTDIR/../Qt_MetaData/Qt_UICFiles"
+MOC_DIR = "$$DESTDIR/../Qt_MetaData/Qt_MOCFiles"
+OBJECTS_DIR = "$$DESTDIR/../Qt_MetaData/Qt_ObjFiles"
 
 # RESOURCES
 RESOURCES += \

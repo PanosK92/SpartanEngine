@@ -1,6 +1,6 @@
 #include <windows.h>
 
-IDI_ICON1	ICON	DISCARDABLE	"C:\\Users\\panos\\Desktop\\Directus3D\\Editor\\Images\\icon.ico"
+IDI_ICON1	ICON	DISCARDABLE	"C:\\Users\\Panos\\Desktop\\Directus3D-master\\Editor\\Images\\icon.ico"
 
 VS_VERSION_INFO VERSIONINFO
 	FILEVERSION 0,0,0,0
