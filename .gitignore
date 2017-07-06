@@ -253,3 +253,5 @@ ModelManifest.xml
 /Runtime/Runtime.sln
 *_debug.lib
 /Binaries
+/Runtime/log.txt
+/Runtime/Directus3D.ini
