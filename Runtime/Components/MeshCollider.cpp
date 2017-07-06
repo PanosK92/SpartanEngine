@@ -45,6 +45,7 @@ namespace Directus
 {
 	MeshCollider::MeshCollider()
 	{
+		Register();
 		m_collisionShape = nullptr;
 		m_isConvex = false;
 	}

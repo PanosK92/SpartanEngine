@@ -41,14 +41,10 @@ namespace Directus
 	template <class T>
 	T* Context::GetSubsystem()
 	{
-		for (auto subsystem : m_subsystems)
+		for (const auto& subsystem : m_subsystems)
 		{
-			// casting failure results in nullptr
-			T* typedSubsystem = dynamic_cast<T*>(subsystem);
-
-
-			if (typedSubsystem)
-				return typedSubsystem;
+			if (typeid(T) == typeid(*subsystem))
+				return static_cast<T*>(subsystem);
 		}
 
 		return nullptr;

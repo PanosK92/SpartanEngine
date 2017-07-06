@@ -25,11 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include <vector>
 #include <memory>
+#include "../FileSystem/FileSystem.h"
+
 //=====================
 
 namespace Directus
 {
-	class Model;
 	class Mesh;
 	class D3D11VertexBuffer;
 	class D3D11IndexBuffer;
@@ -63,22 +64,23 @@ namespace Directus
 		// Sets the meshe's buffers
 		bool SetBuffers();
 
-		//= PROPERTIES ================
+		//= PROPERTIES ===========================================
 		Math::Vector3 GetCenter();
 		Math::Vector3 GetBoundingBox();
-		std::weak_ptr<Mesh> GetMesh();
-		bool HasMesh();
+		float GetBoundingSphereRadius();
 		std::string GetMeshName();
-		//============================
+		const std::weak_ptr<Mesh>& GetMesh() { return m_mesh; }
+		bool HasMesh() { return m_mesh.expired() ? false : true; }
+		//========================================================
 
 	private:
 		bool CreateBuffers();
 		void CreateCube(std::vector<VertexPosTexNorTan>& vertices, std::vector<unsigned int>& indices);
 		void CreateQuad(std::vector<VertexPosTexNorTan>& vertices, std::vector<unsigned int>& indices);
+		std::string& GetGameObjectName();
 
 		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
-		std::weak_ptr<Model> m_model;
 		std::weak_ptr<Mesh> m_mesh;
 		MeshType m_meshType;
 	};

@@ -67,7 +67,9 @@ namespace Directus
 		// Release FMOD
 		m_result = m_fmodSystem->release();
 		if (m_result != FMOD_OK)
+		{
 			LOG_ERROR(FMOD_ErrorString(m_result));
+		}
 	}
 
 	bool Audio::Initialize()

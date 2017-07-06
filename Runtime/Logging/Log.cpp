@@ -84,9 +84,15 @@ namespace Directus
 
 		string finalText = prefix + " " + text;
 
-		auto logger = m_logger.lock();
-		logger ? logger->Log(finalText, type) : WriteToFile(finalText);
 		// if a logger is available use it, if not output a text file
+		if (!m_logger.expired())
+		{
+			m_logger._Get()->Log(finalText, type);
+		}
+		else
+		{
+			WriteToFile(finalText);
+		}
 	}
 
 	void Log::Write(const char* text, LogType type)

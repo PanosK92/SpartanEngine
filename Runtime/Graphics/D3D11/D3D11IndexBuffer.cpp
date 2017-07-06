@@ -43,9 +43,8 @@ namespace Directus
 
 	bool D3D11IndexBuffer::Create(const vector<UINT>& indices)
 	{
-		if (!m_graphics->GetDevice() || indices.empty()) {
+		if (!m_graphics->GetDevice() || indices.empty())
 			return false;
-		}
 
 		UINT stride = sizeof(UINT);
 		float size = (UINT)indices.size();
@@ -79,12 +78,10 @@ namespace Directus
 
 	bool D3D11IndexBuffer::SetIA()
 	{
-		if (!m_graphics->GetDeviceContext() || !m_buffer) {
+		if (!m_graphics->GetDeviceContext() || !m_buffer)
 			return false;
-		}
 
 		m_graphics->GetDeviceContext()->IASetIndexBuffer(m_buffer, DXGI_FORMAT_R32_UINT, 0);
-
 		return true;
 	}
 }

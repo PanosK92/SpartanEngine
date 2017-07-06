@@ -54,18 +54,16 @@ namespace Directus
 		m_name = "GameObject";
 		m_isActive = true;
 		m_isPrefab = false;
-		m_hierarchyVisibility = true;	
+		m_hierarchyVisibility = true;
+		m_transform = nullptr;
 	}
 
 	GameObject::~GameObject()
 	{
 		// delete components
-		for (auto it = m_components.begin(); it != m_components.end(); ++it)
+		for (int i = 0; i < m_components.size(); i++)
 		{
-			IComponent* component = it->second;
-			component->Remove();
-			delete component;
-			it = m_components.erase(it);
+			delete m_components[i];
 		}
 		m_components.clear();
 
@@ -83,18 +81,18 @@ namespace Directus
 	void GameObject::Start()
 	{
 		// call component Start()
-		for (auto const it : m_components)
+		for (auto const& component : m_components)
 		{
-			it.second->Start();
+			component->Start();
 		}
 	}
 
 	void GameObject::OnDisable()
 	{
 		// call component OnDisable()
-		for (auto const it : m_components)
+		for (auto const& component : m_components)
 		{
-			it.second->OnDisable();
+			component->OnDisable();
 		}
 	}
 
@@ -104,9 +102,9 @@ namespace Directus
 			return;
 
 		// call component Update()
-		for (const auto& it : m_components)
+		for (const auto& component : m_components)
 		{
-			it.second->Update();
+			component->Update();
 		}
 	}
 
@@ -160,13 +158,13 @@ namespace Directus
 		Serializer::WriteInt((int)m_components.size());
 		for (const auto& component : m_components)
 		{
-			Serializer::WriteSTR(component.first); // type
-			Serializer::WriteSTR(component.second->g_ID); // id
+			Serializer::WriteSTR(component->g_type);
+			Serializer::WriteSTR(component->g_ID);
 		}
 
-		for (const auto& it : m_components)
+		for (const auto& component : m_components)
 		{
-			it.second->Serialize();
+			component->Serialize();
 		}
 		//=============================================
 
@@ -185,7 +183,7 @@ namespace Directus
 		{
 			if (!child->g_gameObject.expired())
 			{
-				child->g_gameObject.lock()->Serialize();
+				child->g_gameObject._Get()->Serialize();
 			}
 			else
 			{
@@ -203,7 +201,7 @@ namespace Directus
 		// Check if a GameObject of the same ID exists (instantiated prefab).
 		// If it does, mentain the new ID and discard the original one.
 		string oldID = Serializer::ReadSTR();
-		m_ID = scene->GetGameObjectByID(oldID).lock() ? m_ID : oldID;
+		m_ID = !scene->GetGameObjectByID(oldID).expired() ? m_ID : oldID;
 
 		m_name = Serializer::ReadSTR();
 		m_isActive = Serializer::ReadBool();
@@ -226,7 +224,7 @@ namespace Directus
 		// the components (like above) and then deserialize them (like here).
 		for (const auto& component : m_components)
 		{
-			component.second->Deserialize();
+			component->Deserialize();
 		}
 		//=============================================
 
@@ -264,17 +262,18 @@ namespace Directus
 
 	void GameObject::RemoveComponentByID(const string& id)
 	{
-		for (auto it = m_components.begin(); it != m_components.end();)
+		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{
-			IComponent* component = it->second;
-			if (component->g_ID == id)
+			auto component = *it;
+			if (id == component->g_ID)
 			{
-				component->Remove();
 				delete component;
 				it = m_components.erase(it);
-				return;
 			}
-			++it;
+			else
+			{
+				++it;
+			}
 		}
 	}
 

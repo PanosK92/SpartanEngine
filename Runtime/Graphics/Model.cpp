@@ -42,10 +42,12 @@ namespace Directus
 	{
 		m_context = context;
 
-		//= RESOURCE INTERFACE ===========
+		//= RESOURCE INTERFACE =========
 		m_resourceID = GENERATE_GUID;
 		m_resourceType = Model_Resource;
-		//================================
+		//==============================
+
+		m_normalizedScale = 1.0f;
 
 		if (!m_context)
 			return;
@@ -62,7 +64,14 @@ namespace Directus
 	bool Model::LoadFromFile(const string& filePath)
 	{
 		bool engineFormat = FileSystem::GetExtensionFromFilePath(filePath) == MODEL_EXTENSION;
-		return engineFormat ? LoadFromEngineFormat(filePath) : LoadFromForeignFormat(filePath);
+		bool success = engineFormat ? LoadFromEngineFormat(filePath) : LoadFromForeignFormat(filePath);
+
+		if (!engineFormat)
+		{
+			NormalizeScale();
+		}
+
+		return success;
 	}
 
 	bool Model::SaveToFile(const string& filePath)
@@ -79,6 +88,7 @@ namespace Directus
 		Serializer::WriteSTR(m_resourceID);
 		Serializer::WriteSTR(m_resourceName);
 		Serializer::WriteSTR(m_resourceFilePath);
+		Serializer::WriteFloat(m_normalizedScale);
 		Serializer::WriteInt((int)m_meshes.size());
 
 		for (const auto& mesh : m_meshes)
@@ -92,18 +102,17 @@ namespace Directus
 	}
 	//============================================================================================
 
-	std::weak_ptr<Mesh> Model::AddMesh(const std::string& gameObjID, const string& name, vector<VertexPosTexNorTan> vertices, vector<unsigned int> indices)
+	weak_ptr<Mesh> Model::AddMesh(const string& gameObjID, const string& name, vector<VertexPosTexNorTan> vertices, vector<unsigned int> indices)
 	{
 		// Create a mesh
 		auto mesh = make_shared<Mesh>();
+		mesh->SetModelID(m_resourceID);
 		mesh->SetGameObjectID(gameObjID);
 		mesh->SetName(name);
 		mesh->SetVertices(vertices);
 		mesh->SetIndices(indices);
-		mesh->Update();
 
-		// Save it
-		m_meshes.push_back(mesh);
+		AddMesh(mesh);
 
 		return mesh;
 	}
@@ -131,16 +140,22 @@ namespace Directus
 
 	void Model::NormalizeScale()
 	{
-		float normalizedScale = GetNormalizedScale();
-		SetScale(normalizedScale);
+		m_normalizedScale = GetNormalizedScale();
+		SetScale(m_normalizedScale);
 	}
 
-	void Model::SetScale(float scale)
+	void Model::AddMesh(shared_ptr<Mesh> mesh)
 	{
-		for (const auto& mesh : m_meshes)
-		{
-			mesh->SetScale(scale);
-		}
+		if (!mesh)
+			return;
+
+		// Updates mesh bounding box, center, min, max etc.
+		mesh->Update();
+		// Calculate the bounding box of the model as well
+		CalculateDimensions();
+
+		// Save it
+		m_meshes.push_back(mesh);
 	}
 
 	bool Model::LoadFromEngineFormat(const string& filePath)
@@ -152,13 +167,14 @@ namespace Directus
 		m_resourceID = Serializer::ReadSTR();
 		m_resourceName = Serializer::ReadSTR();
 		m_resourceFilePath = Serializer::ReadSTR();
+		m_normalizedScale = Serializer::ReadFloat();
 		int meshCount = Serializer::ReadInt();
 
 		for (int i = 0; i < meshCount; i++)
 		{
 			auto mesh = make_shared<Mesh>();
 			mesh->Deserialize();
-			m_meshes.push_back(mesh);
+			AddMesh(mesh);
 		}
 
 		Serializer::StopReading();
@@ -178,6 +194,7 @@ namespace Directus
 		FileSystem::CreateDirectory_("Assets");
 		FileSystem::CreateDirectory_(m_resourceDirectory);
 		FileSystem::CreateDirectory_(m_resourceDirectory + "Materials//");
+		FileSystem::CreateDirectory_(m_resourceDirectory + "Shaders//");
 
 		// Load the model
 		if (m_resourceManager->GetModelImporter().lock()->Load(this))
@@ -188,6 +205,14 @@ namespace Directus
 		}
 
 		return false;
+	}
+
+	void Model::SetScale(float scale)
+	{
+		for (const auto& mesh : m_meshes)
+		{
+			mesh->SetScale(scale);
+		}
 	}
 
 	float Model::GetNormalizedScale()
@@ -210,7 +235,7 @@ namespace Directus
 		Vector3 largestBoundingBox = Vector3::Zero;
 		weak_ptr<Mesh> largestBoundingBoxMesh = m_meshes.front();
 
-		for (auto mesh : m_meshes)
+		for (auto& mesh : m_meshes)
 		{
 			if (!mesh)
 				continue;
@@ -224,5 +249,22 @@ namespace Directus
 		}
 
 		return largestBoundingBoxMesh;
+	}
+
+	void Model::CalculateDimensions()
+	{
+		for (auto& mesh : m_meshes)
+		{
+			m_max.x = Max(m_max.x, mesh->GetBoundingBox().x);
+			m_max.y = Max(m_max.y, mesh->GetBoundingBox().y);
+			m_max.z = Max(m_max.z, mesh->GetBoundingBox().z);
+
+			m_min.x = Min(m_min.x, mesh->GetBoundingBox().x);
+			m_min.y = Min(m_min.y, mesh->GetBoundingBox().y);
+			m_min.z = Min(m_min.z, mesh->GetBoundingBox().z);
+		}
+
+		m_center = (m_min + m_max) * 0.5f;
+		m_extent = (m_max - m_min) * 0.5f;
 	}
 }

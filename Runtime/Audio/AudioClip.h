@@ -89,10 +89,12 @@ namespace Directus
 		bool SetRolloff(Rolloff rolloff);
 
 		// Makes the audio use the 3D attributes of the transform
-		void SetTransform(Transform* transform);
+		void SetTransform(Transform* transform) { m_transform = transform; }
 
 		// Should be called per frame to update the 3D attributes of the sound
 		bool Update();
+
+		bool IsPlaying();
 
 	private:
 		//= CREATION ==================================

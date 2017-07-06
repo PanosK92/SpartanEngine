@@ -45,9 +45,7 @@ namespace Directus
 
 		bool Create(int width, int height);
 		bool SetAsRenderTarget();
-
-		bool Clear(const Math::Vector4& color);
-		bool Clear(float red, float green, float blue, float alpha);
+		bool Clear();
 
 		ID3D11ShaderResourceView* GetShaderResource(int index);
 
@@ -57,11 +55,6 @@ namespace Directus
 		// Depth buffer
 		ID3D11Texture2D* m_depthStencilBuffer;
 		ID3D11DepthStencilView* m_depthStencilView;
-		float m_maxDepth = 1.0f;
-
-		// Dimensions
-		D3D11_VIEWPORT m_viewport;
-		int m_width, m_height;
 
 		// Dependencies
 		Graphics* m_graphics;

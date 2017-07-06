@@ -123,14 +123,11 @@ namespace Directus
 
 	FrustrumSpace Frustrum::CheckSphere(const Vector3& center, float radius)
 	{
-		// various distances
-		float fDistance;
-
 		// calculate our distances to each of the planes
 		for (const auto& plane : m_planes)
 		{
 			// find the distance to this plane
-			fDistance = Vector3::Dot(plane.normal, center) + plane.d;
+			float fDistance = Vector3::Dot(plane.normal, center) + plane.d;
 
 			// if this distance is < -sphere.radius, we are outside
 			if (fDistance < -radius)

@@ -54,16 +54,41 @@ namespace Directus
 		static void Release();
 		static void SetLogger(std::weak_ptr<ILogger> logger);
 
-		//= LOGGING ==========================================================================
+		// STRING
 		static void Write(const std::string& text, LogType type);
+
+		// CHAR_PTR
 		static void Write(const char* text, LogType type);
+
+		// VECTOR3
 		static void Write(const Math::Vector3& vector, LogType type);
+
+		// QUATERNION
 		static void Write(const Math::Quaternion& quaternion, LogType type);
+
+		// FLOAT
 		static void Write(float value, LogType type);
+
+		// INT
 		static void Write(int value, LogType type);
+
+		// UNSIGNED INT
 		static void Write(unsigned int value, LogType type);
+
+		// BOOL
 		static void Write(bool value, LogType type);
+
+		// SIZE_T
 		static void Write(size_t value, LogType type);
+
+		// WEAK_PTR
+		template<typename T>
+		static void Write(std::weak_ptr<T> ptr, LogType type) { Write(ptr.expired() ? "Expired" : typeid(ptr).name(), type); }
+
+		// SHARED_PTR
+		template<typename T>
+		static void Write(std::shared_ptr<T> ptr, LogType type) { Write(ptr ? typeid(ptr).name() : "Null", type); }
+
 		static void WriteToFile(const std::string& text);
 
 	private:

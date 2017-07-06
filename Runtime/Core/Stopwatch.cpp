@@ -35,7 +35,7 @@ namespace Directus
 		m_start = std::chrono::system_clock::now();
 	}
 
-	int Stopwatch::End()
+	int Stopwatch::Stop()
 	{
 		m_end = std::chrono::system_clock::now();
 		m_milliseconds = (int)std::chrono::duration_cast<std::chrono::milliseconds>(m_end - m_start).count();

@@ -21,18 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "FileSystem.h"
-#include "dirent.h"
-#include <direct.h>
+#include <filesystem>
 #include <locale>
 #include <regex>
 #include "../Core/Scene.h"
 #include "../Graphics/Material.h"
-#include "../Logging/Log.h"
 //===============================
 
-//= NAMESPACES =====
+//= NAMESPACES =========================
 using namespace std;
-//==================
+namespace fs = experimental::filesystem;
+//======================================
 
 namespace Directus
 {
@@ -154,14 +153,7 @@ namespace Directus
 	//= DIRECTORY MANAEMENT ==============================================================
 	bool FileSystem::CreateDirectory_(const string& path)
 	{
-		if (!CreateDirectory(ToWString(path).c_str(), nullptr))
-		{
-			//DWORD err = GetLastError();
-			//if (err != ERROR_ALREADY_EXISTS)
-			return false;
-		}
-
-		return true;
+		return fs::create_directories(path);
 	}
 
 	bool FileSystem::OpenDirectoryInExplorer(const string& directory)
@@ -172,28 +164,7 @@ namespace Directus
 
 	bool FileSystem::DeleteDirectory(const string& directory)
 	{
-		bool deleted = _rmdir(directory.c_str()) != 0 ? false : true;
-
-		// Deletion failure is usually caused by the fact 
-		// that the directory contains other directories/files.
-		if (!deleted)
-		{
-			// Delete all the files contained in the directory
-			auto files = GetFilesInDirectory(directory);
-			for (const auto& file : files)
-				DeleteFile_(file);
-
-			// Delete all the directories contained in the directory
-			//auto directories = GetDirectoriesInDirectory(directory);
-			//for (const auto& dir : directories)
-				//DeleteDirectory(dir);
-			// MUST FIX THIS
-
-			// Try deleting now
-			deleted = _rmdir(directory.c_str()) != 0 ? false : true;
-		}
-
-		return deleted;
+		return fs::remove_all(directory);
 	}
 	//====================================================================================
 
@@ -211,7 +182,6 @@ namespace Directus
 
 	bool FileSystem::CopyFileFromTo(const string& source, const string& destination)
 	{
-		//DWORD err = GetLastError();
 		return !CopyFile(ToWString(source).c_str(), ToWString(destination).c_str(), true);
 	}
 	//====================================================================================
@@ -267,42 +237,30 @@ namespace Directus
 
 	vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)
 	{
-		vector<string> directoryPaths;
-
-		DIR* dir = opendir(directory.c_str());
-		struct dirent* entry = readdir(dir);
-		while (entry != nullptr)
+		vector<string> subDirs;
+		fs::directory_iterator end_itr; // default construction yields past-the-end
+		for (fs::directory_iterator itr(directory); itr != end_itr; ++itr)
 		{
-			if (entry->d_type == DT_DIR)
-			{
-				directoryPaths.push_back(entry->d_name);
-			}
+			if (!is_directory(itr->status()))
+				continue;
 
-			entry = readdir(dir);
+			subDirs.push_back(itr->path().generic_string());
 		}
-		closedir(dir);
 
-		// erase the first 2 elements which are "." and ".."
-		directoryPaths.erase(directoryPaths.begin(), directoryPaths.begin() + 2);
-
-		return directoryPaths;
+		return subDirs;
 	}
 
 	vector<string> FileSystem::GetFilesInDirectory(const string& directory)
 	{
-		DIR* dir;
-		struct dirent* ent;
 		vector<string> filePaths;
-
-		if ((dir = opendir(directory.c_str())) == nullptr)
-			return filePaths;
-
-		while ((ent = readdir(dir)) != nullptr)
+		fs::directory_iterator end_itr; // default construction yields past-the-end
+		for (fs::directory_iterator itr(directory); itr != end_itr; ++itr)
 		{
-			filePaths.push_back(directory + "\\" + ent->d_name);
-		}
+			if (!is_regular_file(itr->status()))
+				continue;
 
-		closedir(dir);
+			filePaths.push_back(itr->path().generic_string());
+		}
 
 		return filePaths;
 	}
@@ -312,26 +270,25 @@ namespace Directus
 	vector<string> FileSystem::GetSupportedFilesInDirectory(const string& directory)
 	{
 		vector<string> filesInDirectory = GetFilesInDirectory(directory);
-
 		vector<string> imagesInDirectory = GetSupportedImageFilesFromPaths(filesInDirectory); // get all the images
 		vector<string> scriptsInDirectory = GetSupportedScriptFilesFromPaths(filesInDirectory); // get all the scripts
 		vector<string> modelsInDirectory = GetSupportedModelFilesFromPaths(filesInDirectory); // get all the models
 		vector<string> supportedFiles;
 
 		// get supported images
-		for (const string& imageInDirectory : imagesInDirectory)
+		for (const auto& imageInDirectory : imagesInDirectory)
 		{
 			supportedFiles.push_back(imageInDirectory);
 		}
 
 		// get supported scripts
-		for (const string& scriptInDirectory : scriptsInDirectory)
+		for (const auto& scriptInDirectory : scriptsInDirectory)
 		{
 			supportedFiles.push_back(scriptInDirectory);
 		}
 
 		// get supported models
-		for (const string& modelInDirectory : modelsInDirectory)
+		for (const auto& modelInDirectory : modelsInDirectory)
 		{
 			supportedFiles.push_back(modelInDirectory);
 		}
@@ -342,14 +299,12 @@ namespace Directus
 	vector<string> FileSystem::GetSupportedImageFilesFromPaths(const vector<string>& paths)
 	{
 		vector<string> imageFiles;
-		for (int i = 0; i < paths.size(); i++)
+		for (const auto& path : paths)
 		{
-			string filePath = paths[i];
+			if (!IsSupportedImageFile(path))
+				continue;
 
-			if (IsSupportedImageFile(filePath))
-			{
-				imageFiles.push_back(filePath);
-			}
+			imageFiles.push_back(path);
 		}
 
 		return imageFiles;
@@ -358,14 +313,12 @@ namespace Directus
 	vector<string> FileSystem::GetSupportedAudioFilesFromPaths(const vector<string>& paths)
 	{
 		vector<string> audioFiles;
-		for (int i = 0; i < paths.size(); i++)
+		for (const auto& path : paths)
 		{
-			string filePath = paths[i];
+			if (!IsSupportedAudioFile(path))
+				continue;
 
-			if (IsSupportedAudioFile(filePath))
-			{
-				audioFiles.push_back(filePath);
-			}
+			audioFiles.push_back(path);
 		}
 
 		return audioFiles;
@@ -374,14 +327,12 @@ namespace Directus
 	vector<string> FileSystem::GetSupportedScriptFilesFromPaths(const vector<string>& paths)
 	{
 		vector<string> scripts;
-		for (int i = 0; i < paths.size(); i++)
+		for (const auto& path : paths)
 		{
-			string filePath = paths[i];
+			if (!IsEngineScriptFile(path))
+				continue;
 
-			if (IsEngineScriptFile(filePath))
-			{
-				scripts.push_back(filePath);
-			}
+			scripts.push_back(path);
 		}
 
 		return scripts;
@@ -390,14 +341,12 @@ namespace Directus
 	vector<string> FileSystem::GetSupportedModelFilesFromPaths(const vector<string>& paths)
 	{
 		vector<string> images;
-		for (int i = 0; i < paths.size(); i++)
+		for (const auto& path : paths)
 		{
-			string filePath = paths[i];
+			if (!IsSupportedModelFile(path))
+				continue;
 
-			if (IsSupportedModelFile(filePath))
-			{
-				images.push_back(filePath);
-			}
+			images.push_back(path);
 		}
 
 		return images;
@@ -413,9 +362,13 @@ namespace Directus
 		vector<string> sceneFiles;
 
 		auto files = GetFilesInDirectory(directory);
-		for (auto file : files)
-			if (IsEngineSceneFile(file))
-				sceneFiles.push_back(file);
+		for (const auto& file : files)
+		{
+			if (!IsEngineSceneFile(file))
+				continue;
+
+			sceneFiles.push_back(file);
+		}
 
 		return sceneFiles;
 	}
@@ -427,9 +380,9 @@ namespace Directus
 		string fileExt = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedAudioFormats();
-		for (int i = 0; i < supportedFormats.size(); i++)
+		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == supportedFormats[i] || fileExt == ConvertToUppercase(supportedFormats[i]))
+			if (fileExt == format || fileExt == ConvertToUppercase(format))
 				return true;
 		}
 
@@ -441,9 +394,9 @@ namespace Directus
 		string fileExt = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedImageFormats();
-		for (int i = 0; i < supportedFormats.size(); i++)
+		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == supportedFormats[i] || fileExt == ConvertToUppercase(supportedFormats[i]))
+			if (fileExt == format || fileExt == ConvertToUppercase(format))
 				return true;
 		}
 
@@ -455,9 +408,9 @@ namespace Directus
 		string fileExt = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedModelFormats();
-		for (int i = 0; i < supportedFormats.size(); i++)
+		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == supportedFormats[i] || fileExt == ConvertToUppercase(supportedFormats[i]))
+			if (fileExt == format || fileExt == ConvertToUppercase(format))
 				return true;
 		}
 
@@ -469,9 +422,9 @@ namespace Directus
 		string fileExt = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedShaderFormats();
-		for (int i = 0; i < supportedFormats.size(); i++)
+		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == supportedFormats[i] || fileExt == ConvertToUppercase(supportedFormats[i]))
+			if (fileExt == format || fileExt == ConvertToUppercase(format))
 				return true;
 		}
 
@@ -483,9 +436,9 @@ namespace Directus
 		string fileExt = GetExtensionFromFilePath(path);
 
 		auto supportedFormats = GetSupportedScriptFormats();
-		for (int i = 0; i < supportedFormats.size(); i++)
+		for (const auto& format : supportedFormats)
 		{
-			if (fileExt == supportedFormats[i] || fileExt == ConvertToUppercase(supportedFormats[i]))
+			if (fileExt == format || fileExt == ConvertToUppercase(format))
 				return true;
 		}
 
@@ -525,9 +478,10 @@ namespace Directus
 		return string(ws.begin(), ws.end());
 	}
 
+	// Returns a file path which is relative to the engine
 	string FileSystem::GetRelativeFilePath(const string& absoluteFilePath)
 	{
-		string currentDir = GetEngineDirectory();
+		string currentDir = GetWorkingDirectory();
 		string absoluteDir = absoluteFilePath;
 
 		currentDir = ReplaceExpression(currentDir, "\"", "\\");
@@ -536,9 +490,9 @@ namespace Directus
 		currentDir = ReplaceExpression(currentDir, "/", "\\");
 		absoluteDir = ReplaceExpression(absoluteDir, "/", "\\");
 
-#define MAX_FILENAME_LEN 512
-#define ABSOLUTE_NAME_START 3
-#define SLASH '\\'
+		const int MAX_FILENAME_LEN = 512;
+		const int ABSOLUTE_NAME_START = 3;
+		const char SLASH = '\\';
 
 		int afMarker = 0, rfMarker = 0;
 		int cdLen = 0, afLen = 0;
@@ -634,18 +588,9 @@ namespace Directus
 		return relativeFilename;
 	}
 
-	string FileSystem::GetEngineDirectory() // Windows only
+	string FileSystem::GetWorkingDirectory()
 	{
-		HMODULE hModule = GetModuleHandleW(nullptr);
-		WCHAR path[MAX_PATH];
-		GetModuleFileNameW(hModule, path, MAX_PATH);
-
-		string filePath = ToString(path);
-
-		// Remove Directus3D.exe from the filePath, we are only interested in the directory
-		string directory = GetDirectoryFromFilePath(filePath);
-
-		return directory;
+		return fs::current_path().generic_string();
 	}
 
 	string FileSystem::GetStringAfterExpression(const string& str, const string& expression)
@@ -661,15 +606,15 @@ namespace Directus
 	{
 		locale loc;
 		string upper;
-		for (string::size_type i = 0; i < lower.length(); ++i)
+		for (const auto& character : lower)
 		{
-			upper += std::toupper(lower[i], loc);
+			upper += std::toupper(character, loc);
 		}
-
+	
 		return upper;
 	}
 
-	string FileSystem::ReplaceExpression(const string& str, const string& from, const string to)
+	string FileSystem::ReplaceExpression(const string& str, const string& from, const string& to)
 	{
 		return regex_replace(str, regex(from), to);
 	}

@@ -57,10 +57,13 @@ namespace Directus
 		void SetResourceName(const std::string& name) { m_resourceName = name; }
 
 		std::string& GetResourceFilePath() { return m_resourceFilePath; }
-		void SetResourceFilePath(const std::string& filePath) { m_resourceFilePath = filePath; }
+		void SetResourceFilePath(const std::string& filePath)
+		{
+			m_resourceFilePath = filePath;
+			m_resourceDirectory = FileSystem::GetDirectoryFromFilePath(filePath);
+		}
 
 		std::string& GetResourceDirectory() { return m_resourceDirectory; }
-		void SetResourceDirectory(const std::string& directory) { m_resourceDirectory = directory; }
 
 		// Resource Save/Load
 		virtual bool SaveToFile(const std::string& filePath) = 0;

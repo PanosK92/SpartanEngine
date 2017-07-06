@@ -47,8 +47,8 @@ namespace Directus
 	enum CullMode
 	{
 		CullNone,
-		CullBack,
-		CullFront
+		CullFront,
+		CullBack
 	};
 
 	enum PrimitiveTopology

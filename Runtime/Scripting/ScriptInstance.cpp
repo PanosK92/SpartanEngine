@@ -49,8 +49,11 @@ namespace Directus
 
 	ScriptInstance::~ScriptInstance()
 	{
-		m_scriptObject->Release();
-		m_scriptObject = nullptr;
+		if (m_scriptObject)
+		{
+			m_scriptObject->Release();
+			m_scriptObject = nullptr;
+		}
 
 		m_constructorFunction = nullptr;
 		m_startFunction = nullptr;

@@ -43,6 +43,7 @@ namespace Directus
 {
 	Collider::Collider()
 	{
+		Register();
 		m_shapeType = Box;
 		m_shape = nullptr;
 		m_boundingBox = Vector3::One;

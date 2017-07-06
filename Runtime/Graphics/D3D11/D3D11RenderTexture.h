@@ -51,7 +51,6 @@ namespace Directus
 		// Depth texture
 		ID3D11Texture2D* m_depthStencilBuffer;
 		ID3D11DepthStencilView* m_depthStencilView;
-		float m_maxDepth = 1.0f;
 
 		// Projection matrix
 		float m_nearPlane, m_farPlane;

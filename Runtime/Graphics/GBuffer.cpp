@@ -35,14 +35,12 @@ namespace Directus
 		m_graphics = graphics;
 		m_depthStencilBuffer = nullptr;
 		m_depthStencilView = nullptr;
-		m_width = 1;
-		m_height = 1;
 
 		// Construct the skeleton of the G-Buffer
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R16G16B16A16_FLOAT, nullptr, nullptr, nullptr }); // albedo
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R16G16B16A16_FLOAT, nullptr, nullptr, nullptr }); // normal
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R16G16B16A16_FLOAT, nullptr, nullptr, nullptr }); // depth
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R16G16B16A16_FLOAT, nullptr, nullptr, nullptr }); // material
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // albedo
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // normal
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // depth
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // material
 	}
 
 	GBuffer::~GBuffer()
@@ -63,12 +61,8 @@ namespace Directus
 		if (!m_graphics)
 			return false;
 
-		if (!m_graphics->GetDevice()) 
+		if (!m_graphics->GetDevice())
 			return false;
-
-		// Store the width and height of the render texture.
-		m_width = width;
-		m_height = height;
 
 		for (auto& renderTarget : m_renderTargets)
 		{
@@ -90,16 +84,8 @@ namespace Directus
 			textureDesc.MiscFlags = 0;
 
 			// Create the render target textures.
-			HRESULT result = m_graphics->GetDevice()->CreateTexture2D(
-				&textureDesc,
-				nullptr,
-				&renderTarget.renderTexture
-			);
-
-			if (FAILED(result)) 
-			{
+			if (FAILED(m_graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &renderTarget.renderTexture)))
 				return false;
-			}
 
 			// Setup the description of the render target view.
 			D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
@@ -108,16 +94,8 @@ namespace Directus
 			renderTargetViewDesc.Texture2D.MipSlice = 0;
 
 			// Create the render target views.
-			result = m_graphics->GetDevice()->CreateRenderTargetView(
-				renderTarget.renderTexture,
-				&renderTargetViewDesc,
-				&renderTarget.renderTargetView
-			);
-
-			if (FAILED(result))
-			{
+			if (FAILED(m_graphics->GetDevice()->CreateRenderTargetView(renderTarget.renderTexture, &renderTargetViewDesc, &renderTarget.renderTargetView)))
 				return false;
-			}
 
 			// Setup the description of the shader resource view.
 			D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
@@ -127,16 +105,8 @@ namespace Directus
 			shaderResourceViewDesc.Texture2D.MipLevels = 1;
 
 			// Create the shader resource views.
-			result = m_graphics->GetDevice()->CreateShaderResourceView(
-				renderTarget.renderTexture,
-				&shaderResourceViewDesc,
-				&renderTarget.shaderResourceView
-			);
-
-			if (FAILED(result)) 
-			{
+			if (FAILED(m_graphics->GetDevice()->CreateShaderResourceView(renderTarget.renderTexture, &shaderResourceViewDesc, &renderTarget.shaderResourceView)))
 				return false;
-			}
 		}
 
 		//= DEPTH =================================================================
@@ -158,16 +128,8 @@ namespace Directus
 		depthBufferDesc.MiscFlags = 0;
 
 		// Create the texture for the depth buffer using the filled out description.
-		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(
-			&depthBufferDesc,
-			nullptr,
-			&m_depthStencilBuffer
-		);
-
-		if (FAILED(result)) 
-		{
+		if (FAILED(m_graphics->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer)))
 			return false;
-		}
 
 		// Initailze the depth stencil view description.
 		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
@@ -179,36 +141,17 @@ namespace Directus
 		depthStencilViewDesc.Texture2D.MipSlice = 0;
 
 		// Create the depth stencil view.
-		result = m_graphics->GetDevice()->CreateDepthStencilView(
-			m_depthStencilBuffer,
-			&depthStencilViewDesc,
-			&m_depthStencilView
-		);
-
-		if (FAILED(result)) 
-		{
+		if (FAILED(m_graphics->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView)))
 			return false;
-		}
 		//==================================================================================
-
-		//= VIEWPORT ==================================
-		m_viewport.Width = static_cast<float>(width);
-		m_viewport.Height = static_cast<float>(height);
-		m_viewport.MinDepth = 0.0f;
-		m_viewport.MaxDepth = m_maxDepth;
-		m_viewport.TopLeftX = 0.0f;
-		m_viewport.TopLeftY = 0.0f;
-		//=============================================
 
 		return true;
 	}
 
 	bool GBuffer::SetAsRenderTarget()
 	{
-		if (!m_graphics->GetDeviceContext()) 
-		{
+		if (!m_graphics->GetDeviceContext())
 			return false;
-		}
 
 		// Bind the render target view array and depth stencil buffer to the output render pipeline.
 		ID3D11RenderTargetView* views[4]
@@ -222,34 +165,24 @@ namespace Directus
 
 		m_graphics->GetDeviceContext()->OMSetRenderTargets(UINT(m_renderTargets.size()), &renderTargetViews[0], m_depthStencilView);
 
-		// Set the viewport.
-		m_graphics->GetDeviceContext()->RSSetViewports(1, &m_viewport);
-
 		return true;
 	}
 
-	bool GBuffer::Clear(const Vector4& color)
+	bool GBuffer::Clear()
 	{
-		if (!m_graphics->GetDeviceContext()) 
-		{
+		if (!m_graphics->GetDeviceContext())
 			return false;
-		}
 
 		// Clear the render target buffers.
-		for (auto& renderTarget : m_renderTargets) 
+		for (auto& renderTarget : m_renderTargets)
 		{
-			m_graphics->GetDeviceContext()->ClearRenderTargetView(renderTarget.renderTargetView, color.Data());
+			m_graphics->GetDeviceContext()->ClearRenderTargetView(renderTarget.renderTargetView, Vector4(0,0,0,0).Data());
 		}
 
 		// Clear the depth buffer.
-		m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_maxDepth, 0);
+		m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_graphics->GetMaxDepth(), 0);
 
 		return true;
-	}
-
-	bool GBuffer::Clear(float red, float green, float blue, float alpha)
-	{
-		return Clear(Vector4(red, green, blue, alpha));
 	}
 
 	ID3D11ShaderResourceView* GBuffer::GetShaderResource(int index)

@@ -123,13 +123,13 @@ namespace Directus
 		ShadingMode GetShadingMode() { return m_shadingMode; }
 		void SetShadingMode(ShadingMode shadingMode) { m_shadingMode = shadingMode; }
 
-		Math::Vector4 GetColorAlbedo() { return m_colorAlbedo; }
+		Math::Vector4&  GetColorAlbedo() { return m_colorAlbedo; }
 		void SetColorAlbedo(const Math::Vector4& color) { m_colorAlbedo = color; }
 
-		Math::Vector2 GetTilingUV() { return m_tilingUV; }
+		Math::Vector2&  GetTilingUV() { return m_tilingUV; }
 		void SetTilingUV(const Math::Vector2& tiling) { m_tilingUV = tiling; }
 
-		Math::Vector2 GetOffsetUV() { return m_offsetUV; }
+		Math::Vector2& GetOffsetUV() { return m_offsetUV; }
 		void SetOffsetUV(const Math::Vector2& offset) { m_offsetUV = offset; }
 
 		bool IsEditable() { return m_isEditable; }

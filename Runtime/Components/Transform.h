@@ -105,8 +105,8 @@ namespace Directus
 
 		//= ICOMPONENT ====================================================================
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
-		Math::Matrix GetWorldTransform() { return m_worldTransform; }
-		weakGameObj GetGameObject() { return g_gameObject; }
+		Math::Matrix& GetWorldTransform() { return m_worldTransform; }
+		weakGameObj& GetGameObject() { return g_gameObject; }
 		std::string GetName();
 
 	private:

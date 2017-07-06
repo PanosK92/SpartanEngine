@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MATERIAL_EXTENSION ".mat"
 #define MODEL_EXTENSION ".model"
 #define PREFAB_EXTENSION ".prefab"
+#define SHADER_EXTENSION ".shader"
 //=================================
 
 namespace Directus
@@ -67,7 +68,7 @@ namespace Directus
 		static std::string GetFilePathWithoutExtension(const std::string& path);
 		static std::string GetExtensionFromFilePath(const std::string& path);
 		static std::string GetRelativeFilePath(const std::string& filePath);
-		static std::string GetEngineDirectory();
+		static std::string GetWorkingDirectory();
 		static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
 		static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
 		//======================================================================================
@@ -99,7 +100,7 @@ namespace Directus
 		static std::string GetStringAfterExpression(const std::string& str, const std::string& expression);
 		static std::string ConvertToUppercase(const std::string& lower);
 		static std::wstring ToWString(const std::string& str);
-		static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string to);
+		static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
 		//==========================================================================================================
 
 		//= SUPPORTED ASSET FILE FORMATS ===========================

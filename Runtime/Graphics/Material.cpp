@@ -84,8 +84,8 @@ namespace Directus
 
 		Serializer::WriteSTR(m_resourceID);
 		Serializer::WriteSTR(m_resourceName);
-		Serializer::WriteSTR(m_modelID);
 		Serializer::WriteSTR(m_resourceFilePath);
+		Serializer::WriteSTR(m_modelID);	
 		Serializer::WriteInt(m_cullMode);
 		Serializer::WriteFloat(m_opacity);
 		Serializer::WriteBool(m_alphaBlending);
@@ -130,8 +130,8 @@ namespace Directus
 
 		m_resourceID = Serializer::ReadSTR();
 		m_resourceName = Serializer::ReadSTR();
-		m_modelID = Serializer::ReadSTR();
 		m_resourceFilePath = Serializer::ReadSTR();
+		m_modelID = Serializer::ReadSTR();	
 		m_cullMode = CullMode(Serializer::ReadInt());
 		m_opacity = Serializer::ReadFloat();
 		m_alphaBlending = Serializer::ReadBool();
@@ -321,8 +321,12 @@ namespace Directus
 		// If not, create a new one 
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
 		string shaderDirectory = resourceMng->GetResourceDirectory(Shader_Resource); // Get standard shader directory
+
+		// Create and initialize shader
 		auto shader = make_shared<ShaderVariation>();
-		shader->Initialize(shaderDirectory + "GBuffer.hlsl", albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<D3D11GraphicsDevice>());
+		shader->SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(m_resourceFilePath) + "_shader" + SHADER_EXTENSION);
+		shader->SetResourceName(m_resourceName + "_Shader"); // important to differenciate the name from the material so the resource cache doesn't think it's already cached
+		shader->Initialize(shaderDirectory + "GBuffer.hlsl", albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<Graphics>());
 
 		// Add the shader to the pool and return it
 		return m_context->GetSubsystem<ResourceManager>()->Add(shader);
@@ -333,7 +337,7 @@ namespace Directus
 		auto texture = GetTextureByType(type);
 
 		if (!texture.expired())
-			return texture.lock()->GetShaderResource();
+			return texture._Get()->GetShaderResource();
 
 		return nullptr;
 	}

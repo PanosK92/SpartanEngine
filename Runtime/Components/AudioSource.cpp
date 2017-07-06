@@ -38,6 +38,7 @@ namespace Directus
 {
 	AudioSource::AudioSource()
 	{
+		Register();
 		m_filePath = DATA_NOT_ASSIGNED;
 		m_mute = false;
 		m_playOnAwake = true;
@@ -58,18 +59,18 @@ namespace Directus
 	{
 		// Get an audio handle (in case there isn't one yet)
 		if (m_audioClip.expired())
+		{
 			m_audioClip = g_context->GetSubsystem<Audio>()->CreateAudioClip();
+		}
 	
 		// Set the transform
-		m_audioClip.lock()->SetTransform(g_transform);
+		m_audioClip._Get()->SetTransform(g_transform);
 	}
 	
 	void AudioSource::Start()
 	{
-		auto audioClip = m_audioClip.lock();
-	
 		// Make sure there is an audio clip
-		if (!audioClip)
+		if (m_audioClip.expired())
 			return;
 	
 		// Make sure it's an actual playble audio file
@@ -94,7 +95,7 @@ namespace Directus
 		if (m_audioClip.expired())
 			return;
 	
-		m_audioClip.lock()->Stop();
+		m_audioClip._Get()->Stop();
 	}
 	
 	void AudioSource::Update()
@@ -102,7 +103,7 @@ namespace Directus
 		if (m_audioClip.expired())
 			return;
 	
-		m_audioClip.lock()->Update();
+		m_audioClip._Get()->Update();
 	}
 	
 	void AudioSource::Serialize()
@@ -141,7 +142,9 @@ namespace Directus
 	
 		// If there is audio clip handle, create one
 		if (m_audioClip.expired())
+		{
 			m_audioClip = g_context->GetSubsystem<Audio>()->CreateAudioClip();
+		}
 	
 		// Load the audio (for now it's always in memory)
 		m_audioClipLoaded = m_audioClip.lock()->Load(m_filePath, Memory);
@@ -159,14 +162,12 @@ namespace Directus
 		if (m_audioClip.expired())
 			return false;
 	
-		auto audioClip = m_audioClip.lock();
-	
-		audioClip->Play();
-		audioClip->SetMute(m_mute);
-		audioClip->SetVolume(m_volume);
-		audioClip->SetLoop(m_loop);
-		audioClip->SetPriority(m_priority);
-		audioClip->SetPan(m_pan);
+		m_audioClip._Get()->Play();
+		m_audioClip._Get()->SetMute(m_mute);
+		m_audioClip._Get()->SetVolume(m_volume);
+		m_audioClip._Get()->SetLoop(m_loop);
+		m_audioClip._Get()->SetPriority(m_priority);
+		m_audioClip._Get()->SetPan(m_pan);
 	
 		return true;
 	}
@@ -176,7 +177,7 @@ namespace Directus
 		if (m_audioClip.expired())
 			return false;
 	
-		return m_audioClip.lock()->Stop();
+		return m_audioClip._Get()->Stop();
 	}
 	
 	void AudioSource::SetMute(bool mute)
@@ -184,7 +185,7 @@ namespace Directus
 		if (m_audioClip.expired())
 			return;
 	
-		m_audioClip.lock()->SetMute(mute);
+		m_audioClip._Get()->SetMute(mute);
 	}
 	
 	void AudioSource::SetPriority(int priority)
@@ -204,7 +205,7 @@ namespace Directus
 			return;
 	
 		m_volume = Clamp(volume, 0.0f, 1.0f);
-		m_audioClip.lock()->SetVolume(m_volume);
+		m_audioClip._Get()->SetVolume(m_volume);
 	}
 	
 	void AudioSource::SetPitch(float pitch)
@@ -213,7 +214,7 @@ namespace Directus
 			return;
 	
 		m_pitch = Clamp(pitch, 0.0f, 3.0f);
-		m_audioClip.lock()->SetPitch(m_pitch);
+		m_audioClip._Get()->SetPitch(m_pitch);
 	}
 	
 	void AudioSource::SetPan(float pan)
@@ -223,6 +224,6 @@ namespace Directus
 	
 		// Pan level, from -1.0 (left) to 1.0 (right).
 		m_pan = Clamp(pan, -1.0f, 1.0f);
-		m_audioClip.lock()->SetPan(m_pan);
+		m_audioClip._Get()->SetPan(m_pan);
 	}
 }

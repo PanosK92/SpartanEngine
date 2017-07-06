@@ -19,12 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================
+//= INCLUDES ========================
 #include "Camera.h"
 #include "Transform.h"
 #include "../IO/Serializer.h"
 #include "../Core/Settings.h"
-//===========================
+#include "../Components/MeshFilter.h"
+#include "../Graphics/Model.h"
+//===================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -35,6 +37,7 @@ namespace Directus
 {
 	Camera::Camera()
 	{
+		Register();
 		m_FOV = 75 * DEG_TO_RAD;
 		m_nearPlane = 0.1f;
 		m_farPlane = 1000.0f;
@@ -145,6 +148,25 @@ namespace Directus
 	{
 		m_FOV = DegreesToRadians(fov);
 		m_isDirty = true;
+	}
+
+	bool Camera::IsInViewFrustrum(MeshFilter* meshFilter)
+	{
+		Vector3 center = meshFilter->GetCenter();
+		float radius = meshFilter->GetBoundingSphereRadius();
+
+		return m_frustrum->CheckSphere(center, radius) != Outside;
+	}
+
+	bool Camera::IsInViewFrustrum(weak_ptr<Model> model)
+	{
+		if (model.expired())
+			return true;
+
+		Vector3 center = model._Get()->GetCenter();
+		float radius = model._Get()->GetBoundingSphereRadius();
+
+		return m_frustrum->CheckSphere(center, radius) != Outside;
 	}
 
 	//= RAYCASTING =======================================================================
