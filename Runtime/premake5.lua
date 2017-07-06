@@ -14,7 +14,7 @@ solution (PROJECT_NAME)
 project (PROJECT_NAME)
 	kind "SharedLib"	
 	language "C++"
-	files { "**.h", "**.cpp" }
+	files { "**.h", "**.cpp", "**.hpp" }
 	targetdir "../Binaries/%{cfg.buildcfg}"	
 	objdir "../Binaries/VS_Obj/%{cfg.buildcfg}"
 	
@@ -30,7 +30,7 @@ links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
 includedirs { "../ThirdParty/AngelScript_2.31.2" }
 includedirs { "../ThirdParty/Assimp_3.3.1" }
 includedirs { "../ThirdParty/Bullet_2.86.1" }
-includedirs { "../ThirdParty/FMOD_1.09.04" }
+includedirs { "../ThirdParty/FMOD_1.09.05" }
 includedirs { "../ThirdParty/FreeImage_3.17.0" }
 
 filter "configurations:Debug"
