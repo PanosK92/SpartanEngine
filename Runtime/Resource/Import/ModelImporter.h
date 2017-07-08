@@ -46,7 +46,7 @@ namespace Directus
 
 		bool Initialize(Context* context);
 		void LoadAsync(Model* model);
-		bool Load(Model* model);
+		bool Load(Model* model, const std::string& filePath);
 
 	private:
 		// PROCESSING
@@ -60,7 +60,9 @@ namespace Directus
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 
 		bool m_isLoading;
+		std::string m_filePath;
 		std::string m_fullTexturePath;
+		
 		Context* m_context;
 	};
 }

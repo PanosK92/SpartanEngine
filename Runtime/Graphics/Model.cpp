@@ -125,10 +125,10 @@ namespace Directus
 		return weak_ptr<Mesh>();
 	}
 
-	string Model::CopyFileToLocalDirectory(const string& filePath)
+	string Model::CopyFileToLocalDirectory(const string& from)
 	{
-		string textureDestination = m_resourceDirectory + FileSystem::GetFileNameFromFilePath(filePath);
-		FileSystem::CopyFileFromTo(filePath, textureDestination);
+		string textureDestination = GetResourceDirectory() + FileSystem::GetFileNameFromFilePath(from);
+		FileSystem::CopyFileFromTo(from, textureDestination);
 
 		return textureDestination;
 	}
@@ -175,19 +175,16 @@ namespace Directus
 	bool Model::LoadFromForeignFormat(const string& filePath)
 	{
 		// Set some crucial data (Required by ModelImporter)
-		m_originalFilePath = filePath;
-		m_resourceDirectory = "Assets//" + FileSystem::GetFileNameNoExtensionFromFilePath(m_originalFilePath) + "//"; // Assets/Sponza/
-		m_resourceName = FileSystem::GetFileNameFromFilePath(m_originalFilePath); // Sponza.obj
-		m_resourceFilePath = m_resourceDirectory + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION; // Assets/Sponza/Sponza.model
-
+		string dir = "Assets//" + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"; // Assets/Sponza/
+		m_resourceFilePath = dir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION; // Assets/Sponza/Sponza.model
+		m_resourceName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath); // Sponza
+		
 		// Create asset directory (if it doesn't exist)
-		FileSystem::CreateDirectory_("Assets");
-		FileSystem::CreateDirectory_(m_resourceDirectory);
-		FileSystem::CreateDirectory_(m_resourceDirectory + "Materials//");
-		FileSystem::CreateDirectory_(m_resourceDirectory + "Shaders//");
+		FileSystem::CreateDirectory_(dir + "Materials//");
+		FileSystem::CreateDirectory_(dir + "Shaders//");
 
 		// Load the model
-		if (m_resourceManager->GetModelImporter()._Get()->Load(this))
+		if (m_resourceManager->GetModelImporter()._Get()->Load(this, filePath))
 		{
 			// Set the normalized scale to the root GameObject's transform
 			m_normalizedScale = ComputeNormalizeScale();

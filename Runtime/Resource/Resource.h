@@ -57,25 +57,20 @@ namespace Directus
 		void SetResourceName(const std::string& name) { m_resourceName = name; }
 
 		std::string& GetResourceFilePath() { return m_resourceFilePath; }
-		void SetResourceFilePath(const std::string& filePath)
-		{
-			m_resourceFilePath = filePath;
-			m_resourceDirectory = FileSystem::GetDirectoryFromFilePath(filePath);
-		}
+		void SetResourceFilePath(const std::string& filePath) { m_resourceFilePath = filePath; }
 
-		std::string& GetResourceDirectory() { return m_resourceDirectory; }
+		std::string GetResourceFileName() { return FileSystem::GetFileNameNoExtensionFromFilePath(m_resourceFilePath); }
+		std::string GetResourceDirectory() { return FileSystem::GetDirectoryFromFilePath(m_resourceFilePath); }
 
 		// Resource Save/Load
 		virtual bool SaveToFile(const std::string& filePath) = 0;
-		virtual bool LoadFromFile(const std::string& filePath) = 0;	
+		virtual bool LoadFromFile(const std::string& filePath) = 0;
 
 	protected:
-		Context* m_context = nullptr;
-
-		std::string m_resourceID = DATA_NOT_ASSIGNED;
-		ResourceType m_resourceType = Unknown_Resource;
+		std::string m_resourceID = DATA_NOT_ASSIGNED;	
 		std::string m_resourceName = DATA_NOT_ASSIGNED;
 		std::string m_resourceFilePath = DATA_NOT_ASSIGNED;
-		std::string m_resourceDirectory = DATA_NOT_ASSIGNED;
+		ResourceType m_resourceType = Unknown_Resource;
+		Context* m_context = nullptr;
 	};
 }
