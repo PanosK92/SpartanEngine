@@ -64,7 +64,7 @@ namespace Directus
 	}
 
 	void ShaderVariation::Initialize(
-		const string& filePath,
+		Context* context,
 		bool albedo,
 		bool roughness,
 		bool metallic,
@@ -73,8 +73,7 @@ namespace Directus
 		bool occlusion,
 		bool emission,
 		bool mask,
-		bool cubemap,
-		Graphics* graphics
+		bool cubemap
 	)
 	{
 		// Save the properties of the material
@@ -88,8 +87,10 @@ namespace Directus
 		m_hasMaskTexture = mask;
 		m_hasCubeMap = cubemap;
 
-		m_graphics = graphics;
-		Load(filePath);
+		m_context = context;
+		m_graphics = m_context->GetSubsystem<Graphics>();
+
+		Compile(m_resourceFilePath);
 	}
 
 	bool ShaderVariation::LoadFromFile(const string& filePath)
@@ -166,7 +167,7 @@ namespace Directus
 	{
 		if (!m_D3D11Shader->IsCompiled())
 		{
-			LOG_ERROR("Can't render using a shader variation that hasn't been loaded or failed to compile.");
+			LOG_ERROR("Shader hasn't been loaded or failed to compile. Can't update per frame buffer.");
 			return;
 		}
 
@@ -206,7 +207,7 @@ namespace Directus
 
 		if (!m_D3D11Shader->IsCompiled())
 		{
-			LOG_ERROR("Can't render using a shader variation that hasn't been loaded or failed to compile.");
+			LOG_ERROR("Shader hasn't been loaded or failed to compile. Can't update per material buffer.");
 			return;
 		}
 
@@ -251,7 +252,7 @@ namespace Directus
 	{
 		if (!m_D3D11Shader->IsCompiled())
 		{
-			LOG_ERROR("Can't render using a shader variation that hasn't been loaded or failed to compile.");
+			LOG_ERROR("Shader hasn't been loaded or failed to compile. Can't update per object buffer.");
 			return;
 		}
 
@@ -289,7 +290,10 @@ namespace Directus
 	void ShaderVariation::UpdateTextures(const vector<ID3D11ShaderResourceView*>& textureArray)
 	{
 		if (!m_graphics)
+		{
+			LOG_INFO("GraphicsDevice is expired. Cant't update shader textures.");
 			return;
+		}
 
 		m_graphics->GetDeviceContext()->PSSetShaderResources(0, (UINT)textureArray.size(), &textureArray.front());
 	}
@@ -297,7 +301,10 @@ namespace Directus
 	void ShaderVariation::Render(int indexCount)
 	{
 		if (!m_graphics)
+		{
+			LOG_INFO("GraphicsDevice is expired. Cant't render with shader");
 			return;
+		}
 
 		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 	}
@@ -319,9 +326,15 @@ namespace Directus
 		shader->AddDefine("CUBE_MAP", m_hasCubeMap);
 	}
 
-	void ShaderVariation::Load(const string& filePath)
+	void ShaderVariation::Compile(const string& filePath)
 	{
-		// Load the vertex and the pixel shader
+		if (!m_graphics)
+		{
+			LOG_INFO("GraphicsDevice is expired. Cant't compile shader");
+			return;
+		}
+
+		// Load and compile the vertex and the pixel shader
 		m_D3D11Shader = make_shared<D3D11Shader>(m_graphics);
 		AddDefinesBasedOnMaterial(m_D3D11Shader);
 		m_D3D11Shader->Load(filePath);

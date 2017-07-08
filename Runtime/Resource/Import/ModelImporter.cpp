@@ -78,7 +78,7 @@ namespace Directus
 			return false;
 		}
 
-		m_filePath = filePath;
+		m_modelPath = filePath;
 		m_isLoading = true;
 
 		// Set up Assimp importer
@@ -108,7 +108,7 @@ namespace Directus
 			aiProcess_Debone |
 			aiProcess_ConvertToLeftHanded;
 
-		const aiScene* scene = importer.ReadFile(m_filePath, ppsteps);
+		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
 		if (!scene)
 		{
 			LOG_ERROR("Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
@@ -390,7 +390,7 @@ namespace Directus
 		if (material.expired())
 			return;
 
-		string texturePath = FindTexture(model, originalTexturePath);
+		string texturePath = FindTexture(originalTexturePath);
 		if (texturePath == DATA_NOT_ASSIGNED)
 		{
 			LOG_WARNING("Failed to find model requested texture \"" + originalTexturePath + "\".");
@@ -411,11 +411,11 @@ namespace Directus
 		}
 	}
 
-	string ModelImporter::FindTexture(Model* model, const string& originalTexturePath)
+	string ModelImporter::FindTexture(const string& originalTexturePath)
 	{
 		// Models usually return a texture path which is relative to the model's directory.
 		// However, to load anything, we'll need an absolute path, so we construct it here.
-		string fullTexturePath = m_filePath + originalTexturePath;
+		string fullTexturePath = FileSystem::GetDirectoryFromFilePath(m_modelPath) + originalTexturePath;
 
 		// 1. Check if the texture path is valid
 		if (FileSystem::FileExists(fullTexturePath))
@@ -448,7 +448,7 @@ namespace Directus
 	string ModelImporter::TryPathWithMultipleExtensions(const string& fullpath)
 	{
 		// Remove extension
-		string fileName = FileSystem::GetFileNameNoExtensionFromFilePath(m_fullTexturePath);
+		string fileName = FileSystem::GetFileNameNoExtensionFromFilePath(fullpath);
 
 		// Check if the file exists using all engine supported extensions
 		auto supportedFormats = FileSystem::GetSupportedImageFormats();

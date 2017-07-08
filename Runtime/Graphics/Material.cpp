@@ -324,12 +324,9 @@ namespace Directus
 
 		// Create and initialize shader
 		auto shader = make_shared<ShaderVariation>();
-		if (m_resourceFilePath != DATA_NOT_ASSIGNED)
-		{
-			shader->SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(m_resourceFilePath) + "_shader" + SHADER_EXTENSION);
-		}
-		shader->SetResourceName(m_resourceName + "_Shader_" + GENERATE_GUID); // important to differenciate the name from the material so the resource cache doesn't think it's already cached
-		shader->Initialize(shaderDirectory + "GBuffer.hlsl", albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap, m_context->GetSubsystem<Graphics>());
+		shader->SetResourceFilePath(shaderDirectory + "GBuffer.hlsl");
+		shader->SetResourceName(shader->GetResourceName() + "_" + shader->GetResourceID());
+		shader->Initialize(m_context, albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap);
 
 		// Add the shader to the pool and return it
 		return m_context->GetSubsystem<ResourceManager>()->Add(shader);
@@ -340,7 +337,9 @@ namespace Directus
 		auto texture = GetTextureByType(type);
 
 		if (!texture.expired())
+		{
 			return texture._Get()->GetShaderResource();
+		}
 
 		return nullptr;
 	}

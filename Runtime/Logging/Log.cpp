@@ -74,13 +74,19 @@ namespace Directus
 		string prefix = "";
 
 		if (type == Info)
+		{
 			prefix = "Info:";
+		}
 
 		if (type == Warning)
+		{
 			prefix = "Warning:";
+		}
 
 		if (type == Error)
+		{
 			prefix = "Error:";
+		}
 
 		string finalText = prefix + " " + text;
 
@@ -138,9 +144,13 @@ namespace Directus
 	void Log::Write(bool value, LogType type)
 	{
 		if (value)
+		{
 			Write("True", type);
+		}
 		else
+		{
 			Write("False", type);
+		}
 	}
 
 	void Log::Write(size_t value, LogType type)
