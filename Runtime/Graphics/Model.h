@@ -50,9 +50,7 @@ namespace Directus
 		std::weak_ptr<Mesh> AddMesh(const std::string& gameObjID, const std::string& name, std::vector<VertexPosTexNorTan> vertices, std::vector<unsigned int> indices);
 		std::weak_ptr<Mesh> GetMeshByID(const std::string& id);
 
-		std::string CopyFileToLocalDirectory(const std::string& filePath);
-		const std::string& GetOriginalFilePath() { return m_originalFilePath; }
-		std::string GetOriginalDirectory() { return FileSystem::GetDirectoryFromFilePath(m_originalFilePath); }
+		std::string CopyFileToLocalDirectory(const std::string& from);
 
 		const Math::Vector3& GetCenter() { return m_center; }
 		const Math::Vector3& GetBoundingBox() { return m_extent; }
@@ -71,7 +69,7 @@ namespace Directus
 		std::weak_ptr<GameObject> m_rootGameObj;
 		std::vector<std::shared_ptr<Mesh>> m_meshes;
 		ResourceManager* m_resourceManager;
-		std::string m_originalFilePath;
+
 
 		Math::Vector3 m_min;
 		Math::Vector3 m_max;

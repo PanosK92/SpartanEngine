@@ -70,7 +70,7 @@ namespace Directus
 		//threadPool->AddTask(std::bind(&ModelImporter::Load, this, model, filePath));
 	}
 
-	bool ModelImporter::Load(Model* model)
+	bool ModelImporter::Load(Model* model, const string& filePath)
 	{
 		if (!m_context)
 		{
@@ -78,6 +78,7 @@ namespace Directus
 			return false;
 		}
 
+		m_filePath = filePath;
 		m_isLoading = true;
 
 		// Set up Assimp importer
@@ -107,7 +108,7 @@ namespace Directus
 			aiProcess_Debone |
 			aiProcess_ConvertToLeftHanded;
 
-		const aiScene* scene = importer.ReadFile(model->GetOriginalFilePath(), ppsteps);
+		const aiScene* scene = importer.ReadFile(m_filePath, ppsteps);
 		if (!scene)
 		{
 			LOG_ERROR("Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
@@ -414,7 +415,7 @@ namespace Directus
 	{
 		// Models usually return a texture path which is relative to the model's directory.
 		// However, to load anything, we'll need an absolute path, so we construct it here.
-		string fullTexturePath = model->GetOriginalDirectory() + originalTexturePath;
+		string fullTexturePath = m_filePath + originalTexturePath;
 
 		// 1. Check if the texture path is valid
 		if (FileSystem::FileExists(fullTexturePath))
