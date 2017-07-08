@@ -158,7 +158,7 @@ namespace Directus
 		StartCalculatingStats();
 		AcquirePrerequisites();
 
-		// If there is not camera, clear to black and present
+		// If there is no camera, clear to black and present
 		if (!m_camera)
 		{
 			m_graphics->Clear(Vector4(0, 0, 0, 1));

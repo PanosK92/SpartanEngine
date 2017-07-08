@@ -44,7 +44,7 @@ namespace Directus
 		~ShaderVariation();
 
 		void Initialize(
-			const std::string& filePath,
+			Context* context,
 			bool albedo,
 			bool roughness,
 			bool metallic,
@@ -53,10 +53,9 @@ namespace Directus
 			bool occlusion,
 			bool emission,
 			bool mask,
-			bool cubemap,
-			Graphics* graphics
+			bool cubemap
 		);
-
+	
 		//= RESOURCE INTERFACE ========================
 		bool LoadFromFile(const std::string& filePath);
 		bool SaveToFile(const std::string& filePath);
@@ -81,11 +80,9 @@ namespace Directus
 
 	private:
 		void AddDefinesBasedOnMaterial(std::shared_ptr<D3D11Shader> shader);
-		void Load(const std::string& filePath);
+		void Compile(const std::string& filePath);
 
-		/*------------------------------------------------------------------------------
-										[PROPERTIES]
-		------------------------------------------------------------------------------*/
+		//= PROPERTIES ============
 		bool m_hasAlbedoTexture;
 		bool m_hasRoughnessTexture;
 		bool m_hasMetallicTexture;
@@ -96,9 +93,7 @@ namespace Directus
 		bool m_hasMaskTexture;
 		bool m_hasCubeMap;
 
-		/*------------------------------------------------------------------------------
-										[MISC]
-		------------------------------------------------------------------------------*/
+		//= MISC ==================================================
 		Graphics* m_graphics;
 		std::shared_ptr<D3D11ConstantBuffer> m_perObjectBuffer;
 		std::shared_ptr<D3D11ConstantBuffer> m_materialBuffer;

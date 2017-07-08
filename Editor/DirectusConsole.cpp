@@ -65,7 +65,6 @@ void EngineLogger::Log(const string& log, int type)
     // 1 = Warning,
     // 2 = Error,
 
-    QListWidgetItem* listItem = new QListWidgetItem(QString::fromStdString(log));
-    m_list->addItem(listItem);
+    m_list->addItem(new QListWidgetItem(QString::fromStdString(log)));
     m_list->scrollToBottom();
 }

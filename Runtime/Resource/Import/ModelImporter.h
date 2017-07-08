@@ -56,12 +56,11 @@ namespace Directus
 
 		// HELPER FUNCTIONS
 		void AddTextureToMaterial(Model* model, std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
-		std::string FindTexture(Model* model, const std::string& texturePath);
+		std::string FindTexture(const std::string& texturePath);
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 
 		bool m_isLoading;
-		std::string m_filePath;
-		std::string m_fullTexturePath;
+		std::string m_modelPath;
 		
 		Context* m_context;
 	};
