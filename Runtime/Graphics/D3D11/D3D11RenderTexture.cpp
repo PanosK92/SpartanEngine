@@ -33,7 +33,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	D3D11RenderTexture::D3D11RenderTexture(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
+	D3D11RenderTexture::D3D11RenderTexture(D3D11GraphicsDevice* graphicsDevice)
 	{
 		m_renderTargetTexture = nullptr;
 		m_renderTargetView = nullptr;
@@ -42,6 +42,10 @@ namespace Directus
 		m_depthStencilView = nullptr;
 		m_width = RESOLUTION_WIDTH;
 		m_height = RESOLUTION_HEIGHT;
+		m_graphics = graphicsDevice;
+		m_depthEnabled = false;
+		m_nearPlane = 0.0f;
+		m_farPlane = 0.0f;
 	}
 
 	D3D11RenderTexture::~D3D11RenderTexture()
@@ -53,7 +57,7 @@ namespace Directus
 		SafeRelease(m_renderTargetTexture);
 	}
 
-	bool D3D11RenderTexture::Create(int width, int height)
+	bool D3D11RenderTexture::Create(int width, int height, bool depth)
 	{
 		if (!m_graphics->GetDevice()) 
 		{
@@ -107,31 +111,35 @@ namespace Directus
 			return false;
 		//=================================================================================================================================
 
-		//= VIEWPORT =====================
+		//= VIEWPORT ===================================
 		m_viewport.Width = (FLOAT)width;
 		m_viewport.Height = (FLOAT)height;
 		m_viewport.MinDepth = 0.0f;
 		m_viewport.MaxDepth = m_graphics->GetMaxDepth();
 		m_viewport.TopLeftX = 0.0f;
 		m_viewport.TopLeftY = 0.0f;
-		//================================
+		//==============================================
+
+		m_depthEnabled = depth;
+		if (!m_depthEnabled)
+			return true;
 
 		//= DEPTH BUFFER ==================================================================================================================
-		D3D11_TEXTURE2D_DESC depthBufferDesc;
-		ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-		depthBufferDesc.Width = width;
-		depthBufferDesc.Height = height;
-		depthBufferDesc.MipLevels = 1;
-		depthBufferDesc.ArraySize = 1;
-		depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		depthBufferDesc.SampleDesc.Count = 1;
-		depthBufferDesc.SampleDesc.Quality = 0;
-		depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		depthBufferDesc.CPUAccessFlags = 0;
-		depthBufferDesc.MiscFlags = 0;
+		D3D11_TEXTURE2D_DESC depthTexDesc;
+		ZeroMemory(&depthTexDesc, sizeof(depthTexDesc));
+		depthTexDesc.Width = width;
+		depthTexDesc.Height = height;
+		depthTexDesc.MipLevels = 1;
+		depthTexDesc.ArraySize = 1;
+		depthTexDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		depthTexDesc.SampleDesc.Count = 1;
+		depthTexDesc.SampleDesc.Quality = 0;
+		depthTexDesc.Usage = D3D11_USAGE_DEFAULT;
+		depthTexDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		depthTexDesc.CPUAccessFlags = 0;
+		depthTexDesc.MiscFlags = 0;
 
-		result = m_graphics->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
+		result = m_graphics->GetDevice()->CreateTexture2D(&depthTexDesc, nullptr, &m_depthStencilBuffer);
 		if (FAILED(result))
 			return false;
 		//=================================================================================================================================
@@ -173,8 +181,14 @@ namespace Directus
 		if (!m_graphics->GetDeviceContext())
 			return false;
 
-		m_graphics->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor.Data()); // Clear back buffer.
-		m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_graphics->GetMaxDepth(), 0); // Clear depth buffer.
+		// Clear back buffer
+		m_graphics->GetDeviceContext()->ClearRenderTargetView(m_renderTargetView, clearColor.Data()); 
+
+		// Clear depth buffer.
+		if (m_depthEnabled)
+		{
+			m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_graphics->GetMaxDepth(), 0); 
+		}
 
 		return true;
 	}
@@ -186,9 +200,8 @@ namespace Directus
 
 	void D3D11RenderTexture::CalculateOrthographicProjectionMatrix(float nearPlane, float farPlane)
 	{
-		if (m_nearPlane == nearPlane && m_farPlane == farPlane) {
+		if (m_nearPlane == nearPlane && m_farPlane == farPlane)
 			return;
-		}
 
 		m_nearPlane = nearPlane;
 		m_farPlane = farPlane;

@@ -415,7 +415,8 @@ namespace Directus
 	{
 		// Models usually return a texture path which is relative to the model's directory.
 		// However, to load anything, we'll need an absolute path, so we construct it here.
-		string fullTexturePath = FileSystem::GetDirectoryFromFilePath(m_modelPath) + originalTexturePath;
+		string modelDir = FileSystem::GetDirectoryFromFilePath(m_modelPath);
+		string fullTexturePath = modelDir + originalTexturePath;
 
 		// 1. Check if the texture path is valid
 		if (FileSystem::FileExists(fullTexturePath))
@@ -431,7 +432,7 @@ namespace Directus
 		// The most common mistake is that the artist provided a path which is absolute to his computer.
 
 		// 3. Check if the texture is in the same folder as the model
-		fullTexturePath = FileSystem::GetFileNameFromFilePath(fullTexturePath);
+		fullTexturePath = modelDir + FileSystem::GetFileNameFromFilePath(fullTexturePath);
 		if (FileSystem::FileExists(fullTexturePath))
 			return fullTexturePath;
 

@@ -243,14 +243,14 @@ namespace Directus
 		for (int i = 0; i < childrenCount; i++)
 		{
 			weakGameObj child = scene->CreateGameObject();
-			child.lock()->SetID(Serializer::ReadSTR());
+			child._Get()->SetID(Serializer::ReadSTR());
 			children.push_back(child);
 		}
 
 		// 3rd - children
 		for (const auto& child : children)
 		{
-			child.lock()->Deserialize(GetTransform());
+			child._Get()->Deserialize(GetTransform());
 		}
 		//=============================================
 

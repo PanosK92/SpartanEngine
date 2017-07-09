@@ -21,13 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========
+//= INCLUDES ==============
 #include <vector>
 #include <memory>
 #include "Resource.h"
 #include "../Logging/Log.h"
-
-//====================
+//========================
 
 namespace Directus
 {

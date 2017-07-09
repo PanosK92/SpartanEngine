@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================================
 #include <vector>
-#include "../Math/Vector4.h"
 #include "../Graphics/D3D11/D3D11GraphicsDevice.h"
 //================================================
 
@@ -51,10 +50,6 @@ namespace Directus
 
 	private:
 		std::vector<GBufferTex> m_renderTargets;
-
-		// Depth buffer
-		ID3D11Texture2D* m_depthStencilBuffer;
-		ID3D11DepthStencilView* m_depthStencilView;
 
 		// Dependencies
 		Graphics* m_graphics;

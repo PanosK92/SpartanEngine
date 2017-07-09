@@ -96,10 +96,10 @@ namespace Directus
 		string parentGameObjectID = Serializer::ReadSTR();
 		if (parentGameObjectID != DATA_NOT_ASSIGNED)
 		{
-			sharedGameObj parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID).lock();
-			if (parent)
+			auto parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
+			if (!parent.expired())
 			{
-				parent->GetTransform()->AddChild(this);
+				parent._Get()->GetTransform()->AddChild(this);
 			}
 		}
 
@@ -184,9 +184,13 @@ namespace Directus
 	void Transform::Translate(const Vector3& delta)
 	{
 		if (!HasParent())
+		{
 			SetPositionLocal(m_positionLocal + delta);
+		}
 		else
+		{
 			SetPositionLocal(m_positionLocal + GetParent()->GetWorldTransform().Inverted() * delta);
+		}
 	}
 
 	void Transform::Rotate(const Quaternion& delta, Space space)
@@ -199,9 +203,13 @@ namespace Directus
 
 		case World:
 			if (!HasParent())
+			{
 				SetRotationLocal((delta * m_rotationLocal).Normalized());
+			}
 			else
+			{
 				SetRotationLocal(m_rotationLocal * GetRotation().Inverse() * delta * GetRotation());
+			}
 			break;
 		}
 	}
@@ -255,13 +263,17 @@ namespace Directus
 			{
 				// assign the parent of this transform to the children
 				for (const auto& child : m_children)
+				{
 					child->SetParent(GetParent());
+				}
 			}
 			else // if this transform doesn't have a parent
 			{
 				// make the children orphans
 				for (const auto& child : m_children)
+				{
 					child->BecomeOrphan();
+				}
 			}
 		}
 
@@ -300,8 +312,7 @@ namespace Directus
 	{
 		if (!HasChildren())
 		{
-			sharedGameObj gameObj = g_gameObject.lock();
-			string gameObjName = gameObj ? gameObj->GetName() : DATA_NOT_ASSIGNED;
+			string gameObjName = !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
 			LOG_WARNING(gameObjName + " has no children.");
 			return nullptr;
 		}
@@ -331,7 +342,9 @@ namespace Directus
 
 		auto childrenTransforms = GetChildren();
 		for (const auto& transform : childrenTransforms)
+		{
 			childreGameObjects.push_back(transform->GetGameObject());
+		}
 
 		return childreGameObjects;
 	}

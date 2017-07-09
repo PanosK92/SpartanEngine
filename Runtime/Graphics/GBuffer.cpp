@@ -33,8 +33,6 @@ namespace Directus
 	GBuffer::GBuffer(Graphics* graphics)
 	{
 		m_graphics = graphics;
-		m_depthStencilBuffer = nullptr;
-		m_depthStencilView = nullptr;
 
 		// Construct the skeleton of the G-Buffer
 		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // albedo
@@ -45,9 +43,6 @@ namespace Directus
 
 	GBuffer::~GBuffer()
 	{
-		SafeRelease(m_depthStencilView);
-		SafeRelease(m_depthStencilBuffer);
-
 		for (auto& renderTarget : m_renderTargets)
 		{
 			SafeRelease(renderTarget.shaderResourceView);
@@ -107,43 +102,7 @@ namespace Directus
 			// Create the shader resource views.
 			if (FAILED(m_graphics->GetDevice()->CreateShaderResourceView(renderTarget.renderTexture, &shaderResourceViewDesc, &renderTarget.shaderResourceView)))
 				return false;
-		}
-
-		//= DEPTH =================================================================
-		// Initialize the description of the depth buffer.
-		D3D11_TEXTURE2D_DESC depthBufferDesc;
-		ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-
-		// Set up the description of the depth buffer.
-		depthBufferDesc.Width = width;
-		depthBufferDesc.Height = height;
-		depthBufferDesc.MipLevels = 1;
-		depthBufferDesc.ArraySize = 1;
-		depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		depthBufferDesc.SampleDesc.Count = 1;
-		depthBufferDesc.SampleDesc.Quality = 0;
-		depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		depthBufferDesc.CPUAccessFlags = 0;
-		depthBufferDesc.MiscFlags = 0;
-
-		// Create the texture for the depth buffer using the filled out description.
-		if (FAILED(m_graphics->GetDevice()->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer)))
-			return false;
-
-		// Initailze the depth stencil view description.
-		D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-		ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-
-		// Set up the depth stencil view description.
-		depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-		depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-		// Create the depth stencil view.
-		if (FAILED(m_graphics->GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView)))
-			return false;
-		//==================================================================================
+		}	
 
 		return true;
 	}
@@ -163,7 +122,7 @@ namespace Directus
 		};
 		ID3D11RenderTargetView** renderTargetViews = views;
 
-		m_graphics->GetDeviceContext()->OMSetRenderTargets(UINT(m_renderTargets.size()), &renderTargetViews[0], m_depthStencilView);
+		m_graphics->GetDeviceContext()->OMSetRenderTargets(UINT(m_renderTargets.size()), &renderTargetViews[0], m_graphics->GetDepthStencilView());
 
 		return true;
 	}
@@ -180,7 +139,7 @@ namespace Directus
 		}
 
 		// Clear the depth buffer.
-		m_graphics->GetDeviceContext()->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_graphics->GetMaxDepth(), 0);
+		m_graphics->GetDeviceContext()->ClearDepthStencilView(m_graphics->GetDepthStencilView(), D3D11_CLEAR_DEPTH, m_graphics->GetMaxDepth(), 0);
 
 		return true;
 	}

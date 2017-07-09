@@ -57,19 +57,8 @@ namespace Directus
 {
 	Renderer::Renderer(Context* context) : Subsystem(context)
 	{
-		m_GBuffer = nullptr;
-		m_fullScreenQuad = nullptr;
 		m_renderedMeshesPerFrame = 0;
 		m_renderedMeshesTempCounter = 0;
-		m_renderTexPing = nullptr;
-		m_renderTexPong = nullptr;
-		m_shaderDeferred = nullptr;
-		m_shaderDepth = nullptr;
-		m_shaderDebug = nullptr;
-		m_shaderFXAA = nullptr;
-		m_shaderSharpening = nullptr;
-		m_shaderBlur = nullptr;
-		m_texNoiseMap = nullptr;
 		m_skybox = nullptr;
 		m_camera = nullptr;
 		m_texEnvironment = nullptr;
@@ -134,10 +123,10 @@ namespace Directus
 
 		// Create render textures (used for post processing)
 		m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
-		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics);
-		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		// Misc
 		m_texNoiseMap = make_shared<Texture>(m_context);
@@ -175,7 +164,7 @@ namespace Directus
 		}
 
 		// ENABLE Z-BUFFER
-		m_graphics->EnableZBuffer(true);
+		m_graphics->EnableDepth(true);
 
 		// Render light depth
 		DirectionalLightDepthPass();
@@ -184,7 +173,7 @@ namespace Directus
 		GBufferPass();
 
 		// DISABLE Z-BUFFER
-		m_graphics->EnableZBuffer(false);
+		m_graphics->EnableDepth(false);
 
 		// Deferred Pass
 		DeferredPass();
@@ -224,10 +213,10 @@ namespace Directus
 		m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
 		m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
-		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics);
-		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 	}
 
 	void Renderer::Clear()

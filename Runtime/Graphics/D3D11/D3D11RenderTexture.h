@@ -34,7 +34,7 @@ namespace Directus
 		D3D11RenderTexture(D3D11GraphicsDevice* graphicsDevice);
 		~D3D11RenderTexture();
 
-		bool Create(int width, int height);
+		bool Create(int width, int height, bool depth);
 		bool SetAsRenderTarget();
 		bool Clear(const Math::Vector4& clearColor);
 		bool Clear(float red, float green, float blue, float alpha);
@@ -49,6 +49,7 @@ namespace Directus
 		ID3D11ShaderResourceView* m_shaderResourceView;
 
 		// Depth texture
+		bool m_depthEnabled;
 		ID3D11Texture2D* m_depthStencilBuffer;
 		ID3D11DepthStencilView* m_depthStencilView;
 

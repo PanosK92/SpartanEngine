@@ -86,7 +86,9 @@ void Serializer::WriteVectorSTR(vector<string>& vector)
 {
 	WriteInt(int(vector.size()));
 	for (auto i = 0; i < vector.size(); i++)
+	{
 		WriteSTR(vector[i]);
+	}
 }
 
 void Serializer::WriteVector2(Vector2& vector)
