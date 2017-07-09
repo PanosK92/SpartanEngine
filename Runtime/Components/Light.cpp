@@ -37,6 +37,19 @@ using namespace std;
 
 namespace Directus
 {
+	Cascade::Cascade(int cascade, int resolution, Graphics* device)
+	{
+		m_cascade = cascade;
+		m_depthMap = make_unique<D3D11RenderTexture>(device);
+		m_depthMap->Create(resolution, resolution, true);
+	}
+
+	void Cascade::SetAsRenderTarget()
+	{
+		m_depthMap->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+		m_depthMap->SetAsRenderTarget();
+	}
+
 	Light::Light()
 	{
 		Register();
@@ -50,7 +63,7 @@ namespace Directus
 			147.0f / 255.0f,
 			1.0f
 		);
-		m_bias = 0.03f;
+		m_bias = 0.04f;
 		m_cascades = 3;
 	}
 
@@ -66,7 +79,11 @@ namespace Directus
 
 	void Light::Start()
 	{
-
+		for (int i = 0; i < m_cascades; i++)
+		{
+			auto shadowMap = make_shared<Cascade>(i + 1, SHADOWMAP_RESOLUTION, g_context->GetSubsystem<Graphics>());
+			m_shadowMaps.push_back(shadowMap);
+		}
 	}
 
 	void Light::OnDisable()
@@ -81,21 +98,7 @@ namespace Directus
 
 	void Light::Update()
 	{
-		if (!m_shadowMaps.empty())
-			return;
 
-		Graphics* graphics = g_context->GetSubsystem<Graphics>();
-		weakGameObj camera = g_context->GetSubsystem<Scene>()->GetMainCamera();
-		Camera* cameraComp = !camera.expired() ? camera.lock()->GetComponent<Camera>() : nullptr;
-
-		if (graphics && cameraComp)
-			return;
-
-		for (int i = 0; i < m_cascades; i++)
-		{
-			auto shadowMap = make_shared<Cascade>(i + 1, SHADOWMAP_RESOLUTION, graphics);
-			m_shadowMaps.push_back(shadowMap);
-		}
 	}
 
 	void Light::Serialize()
