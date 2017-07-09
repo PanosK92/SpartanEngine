@@ -179,12 +179,10 @@ namespace Directus
 		return true;
 	}
 
-	// Creates a texture from a predefined mipchain. This is the fastest performing type of texture that also includes a mipchain.
 	bool D3D11Texture::CreateFromMipchain(int width, int height, int channels, const vector<vector<unsigned char>>& mipchain)
 	{
-		if (!m_graphics->GetDevice()) {
+		if (!m_graphics->GetDevice())
 			return false;
-		}
 
 		m_mipLevels = (UINT)mipchain.size();
 

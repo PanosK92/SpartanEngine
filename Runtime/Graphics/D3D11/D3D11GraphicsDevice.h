@@ -54,7 +54,7 @@ namespace Directus
 		virtual bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled);
 		virtual bool CreateDepthStencilBuffer();
 		virtual bool CreateDepthStencilView();
-		virtual void EnableZBuffer(bool enable);
+		virtual void EnableDepth(bool enable);
 
 		virtual void EnableAlphaBlending(bool enable);
 		virtual void SetInputLayout(InputLayout inputLayout);
@@ -70,6 +70,8 @@ namespace Directus
 		virtual float GetMaxDepth() { return m_maxDepth; }
 
 		virtual bool IsInitialized() { return m_initialized; }
+
+		ID3D11DepthStencilView* GetDepthStencilView() { return m_depthStencilView; }
 		//======================================================================
 
 		ID3D11Device* GetDevice() { return m_device; }
@@ -110,6 +112,6 @@ namespace Directus
 		ID3D11BlendState* m_blendStateAlphaDisabled;
 		HWND m_drawHandle;
 		bool m_initialized;
-		float m_maxDepth = 1.0f;
+		float m_maxDepth;
 	};
 }

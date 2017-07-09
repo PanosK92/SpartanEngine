@@ -84,7 +84,7 @@ namespace Directus
 
 		//= PROPERTIES ==================================================
 		unsigned char* GetRGBA() { return m_dataRGBA.data(); }
-		const std::vector<std::vector<unsigned char>>& GetRGBAMipchain() { return m_mipchainDataRGBA; }
+		const std::vector<std::vector<unsigned char>>& GetRGBAMipChain() { return m_mipchainDataRGBA; }
 		unsigned int GetBPP() { return m_bpp; }
 		unsigned int GetWidth() { return m_width; }
 		unsigned int GetHeight() { return m_height; }

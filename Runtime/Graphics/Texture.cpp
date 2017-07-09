@@ -124,7 +124,7 @@ namespace Directus
 		return (void**)m_texture->GetShaderResourceView();
 	}
 
-	bool Texture::LoadFromForeignFormat(const std::string& filePath)
+	bool Texture::LoadFromForeignFormat(const string& filePath)
 	{
 		auto graphicsDevice = m_context->GetSubsystem<Graphics>()->GetDevice();
 		if (!graphicsDevice)
@@ -147,28 +147,28 @@ namespace Directus
 		}
 
 		// Load texture
-		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter().lock();
-		bool loaded = m_generateMipchain ? imageImp->LoadAndCreateMipchain(filePath) : imageImp->Load(filePath);
+		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
+		bool loaded = m_generateMipchain ? imageImp._Get()->LoadAndCreateMipchain(filePath) : imageImp._Get()->Load(filePath);
 		if (!loaded)
 		{
 			LOG_ERROR("Failed to load texture \"" + filePath + "\".");
-			imageImp->Clear();
+			imageImp._Get()->Clear();
 			return false;
 		}
 
 		// Extract any metadata we can from the ImageImporter
-		m_resourceFilePath = imageImp->GetPath();
+		m_resourceFilePath = imageImp._Get()->GetPath();
 		m_resourceName = FileSystem::GetFileNameNoExtensionFromFilePath(GetFilePathTexture());
-		m_width = imageImp->GetWidth();
-		m_height = imageImp->GetHeight();
-		m_grayscale = imageImp->IsGrayscale();
-		m_transparency = imageImp->IsTransparent();
+		m_width = imageImp._Get()->GetWidth();
+		m_height = imageImp._Get()->GetHeight();
+		m_grayscale = imageImp._Get()->IsGrayscale();
+		m_transparency = imageImp._Get()->IsTransparent();
 
 		if (!CreateShaderResource())
 			return false;
 
 		// Free any memory allocated by the ImageImporter
-		imageImp->Clear();
+		imageImp._Get()->Clear();
 
 		if (!LoadFromFile(GetFilePathMetadata())) // Load metadata file
 		{
@@ -181,7 +181,7 @@ namespace Directus
 		return true;
 	}
 
-	bool Texture::LoadMetadata(const std::string& filePath)
+	bool Texture::LoadMetadata(const string& filePath)
 	{
 		if (!Serializer::StartReading(filePath))
 			return false;
@@ -209,20 +209,20 @@ namespace Directus
 		if (!m_context)
 			return false;
 
-		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter().lock();
+		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
 		if (m_generateMipchain)
 		{
-			if (!m_texture->CreateFromMipchain(m_width, m_height, imageImp->GetChannels(), imageImp->GetRGBAMipchain()))
+			if (!m_texture->CreateFromMipchain(m_width, m_height, imageImp._Get()->GetChannels(), imageImp._Get()->GetRGBAMipChain()))
 			{
-				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp->GetPath() + "\".");
+				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp._Get()->GetPath() + "\".");
 				return false;
 			}
 		}
 		else
 		{
-			if (!m_texture->Create(m_width, m_height, imageImp->GetChannels(), imageImp->GetRGBA()))
+			if (!m_texture->Create(m_width, m_height, imageImp._Get()->GetChannels(), imageImp._Get()->GetRGBA()))
 			{
-				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp->GetPath() + "\".");
+				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp._Get()->GetPath() + "\".");
 				return false;
 			}
 		}

@@ -46,7 +46,7 @@ namespace Directus
 		virtual bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled) = 0;
 		virtual bool CreateDepthStencilBuffer() = 0;
 		virtual bool CreateDepthStencilView() = 0;
-		virtual void EnableZBuffer(bool enable) = 0;
+		virtual void EnableDepth(bool enable) = 0;
 		//======================================================================================================
 
 		//=========================================================================
@@ -71,7 +71,7 @@ namespace Directus
 		InputLayout m_inputLayout;
 		CullMode m_cullMode;
 		PrimitiveTopology m_primitiveTopology;
-		bool m_zBufferEnabled;
+		bool m_depthEnabled;
 		bool m_alphaBlendingEnabled;
 	};
 }

@@ -54,13 +54,13 @@ namespace Directus
 		{
 			m_cascade = cascade;
 			m_depthMap = std::make_unique<D3D11RenderTexture>(device);
-			m_depthMap->Create(resolution, resolution);
+			m_depthMap->Create(resolution, resolution, true);
 		}
 		~Cascade() {}
 
 		void SetAsRenderTarget()
 		{
-			m_depthMap->Clear(0.0f, 0.0f, 0.0f, 1.0f);
+			m_depthMap->Clear(1.0f, 0.0f, 0.0f, 1.0f);
 			m_depthMap->SetAsRenderTarget();
 		}
 		ID3D11ShaderResourceView* GetShaderResourceView() { return m_depthMap ? m_depthMap->GetShaderResourceView() : nullptr; }

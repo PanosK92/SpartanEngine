@@ -209,8 +209,12 @@ namespace Directus
 	void Camera::CalculateProjection()
 	{
 		if (m_projection == Perspective)
+		{
 			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(m_FOV, ASPECT_RATIO, m_nearPlane, m_farPlane);
+		}
 		else if (m_projection == Orthographic)
+		{
 			m_mProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
+		}
 	}
 }

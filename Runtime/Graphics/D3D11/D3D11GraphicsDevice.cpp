@@ -61,7 +61,7 @@ namespace Directus
 		m_inputLayout = PositionTextureNormalTangent;
 		m_cullMode = CullBack;
 		m_primitiveTopology = TriangleList;
-		m_zBufferEnabled = true;
+		m_depthEnabled = true;
 		m_alphaBlendingEnabled = false;
 		m_device = nullptr;
 		m_deviceContext = nullptr;
@@ -80,13 +80,17 @@ namespace Directus
 		m_rasterStateCullNone = nullptr;
 		m_blendStateAlphaEnabled = nullptr;
 		m_blendStateAlphaDisabled = nullptr;
+		m_drawHandle = nullptr;
+		m_initialized = false;
+		m_maxDepth = 1.0f;
 	}
 
 	D3D11GraphicsDevice::~D3D11GraphicsDevice()
 	{
 		// Before shutting down set to windowed mode or 
 		// upon releasing the swap chain it will throw an exception.
-		if (m_swapChain) {
+		if (m_swapChain) 
+		{
 			m_swapChain->SetFullscreenState(false, nullptr);
 		}
 
@@ -315,15 +319,16 @@ namespace Directus
 		m_drawHandle = (HWND)drawHandle;
 	}
 
-	//= DEPTH ======================================================================================================
-	void D3D11GraphicsDevice::EnableZBuffer(bool enable)
+	//= DEPTH ================================================================================================================
+	void D3D11GraphicsDevice::EnableDepth(bool enable)
 	{
-		if (!m_deviceContext || m_zBufferEnabled == enable)
+		if (!m_deviceContext || m_depthEnabled == enable)
 			return;
 
+		m_depthEnabled = enable;
+
 		// Set depth stencil state
-		m_deviceContext->OMSetDepthStencilState(enable ? m_depthStencilStateEnabled : m_depthStencilStateDisabled, 1);
-		m_zBufferEnabled = enable;
+		m_deviceContext->OMSetDepthStencilState(m_depthEnabled ? m_depthStencilStateEnabled : m_depthStencilStateDisabled, 1);
 	}
 
 	bool D3D11GraphicsDevice::CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled)
@@ -418,7 +423,10 @@ namespace Directus
 			return;
 
 		m_deviceContext->ClearRenderTargetView(m_renderTargetView, color.Data()); // back buffer
-		m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_maxDepth, 0); // depth buffer
+		if (m_depthEnabled)
+		{
+			m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH, m_maxDepth, 0); // depth buffer
+		}
 	}
 
 	void D3D11GraphicsDevice::Present()
@@ -437,7 +445,7 @@ namespace Directus
 			return;
 		}
 
-		m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthStencilView);
+		m_deviceContext->OMSetRenderTargets(1, &m_renderTargetView, m_depthEnabled ? m_depthStencilView : nullptr);
 	}
 
 	void D3D11GraphicsDevice::EnableAlphaBlending(bool enable)
