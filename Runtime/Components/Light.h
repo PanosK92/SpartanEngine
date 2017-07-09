@@ -50,19 +50,10 @@ namespace Directus
 	class Cascade
 	{
 	public:
-		Cascade(int cascade, int resolution, Graphics* device)
-		{
-			m_cascade = cascade;
-			m_depthMap = std::make_unique<D3D11RenderTexture>(device);
-			m_depthMap->Create(resolution, resolution, true);
-		}
+		Cascade(int cascade, int resolution, Graphics* device);
 		~Cascade() {}
 
-		void SetAsRenderTarget()
-		{
-			m_depthMap->Clear(1.0f, 0.0f, 0.0f, 1.0f);
-			m_depthMap->SetAsRenderTarget();
-		}
+		void SetAsRenderTarget();
 		ID3D11ShaderResourceView* GetShaderResourceView() { return m_depthMap ? m_depthMap->GetShaderResourceView() : nullptr; }
 
 		Math::Matrix CalculateProjectionMatrix(const Math::Vector3 centerPos, const Math::Matrix& viewMatrix)
@@ -94,13 +85,13 @@ namespace Directus
 			float radius = cameraFar * 0.5f;
 
 			if (m_cascade == 1)
-				radius = 40;
+				radius = 15;
 
 			else if (m_cascade == 2)
-				radius = 75;
+				radius = 40;
 
 			if (m_cascade == 3)
-				radius = 200;
+				radius = 80;
 
 			return radius;
 		}
