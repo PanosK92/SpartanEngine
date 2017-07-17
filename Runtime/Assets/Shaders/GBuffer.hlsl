@@ -180,17 +180,19 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 
 	//= SHADOW MAPPING ===========================================================================	
 	float shadowing = 1.0f;
-	int cascadeIndex;	
+	int cascadeIndex = -1;	
 	if (receiveShadows == 1.0f && shadowMappingQuality != 0.0f)
 	{
 		float z = depthCS;
 
-		cascadeIndex = 0;
-		if (z <= shadowSplits.y)
+		if (z <= shadowSplits.z) // 0.4f
+			cascadeIndex = 0;	
+	
+		if (z <= shadowSplits.y) // 0.18f
 			cascadeIndex = 1;	
-			
-		if (z <= shadowSplits.x)
-			cascadeIndex = 2;			
+
+		if (z <= shadowSplits.x) // 0.0f
+			cascadeIndex = 2;				
 		
 		if (cascadeIndex == 0)
 		{
@@ -215,7 +217,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// Write to G-Buffer
 	output.albedo		= albedo;
 	output.normal 		= float4(normal.rgb, totalShadowing);
-	output.depth 		= float4(depthCS, depthCS, emission, 0.0f);
+	output.depth 		= float4(depthCS, depthVS, emission, 0.0f);
 	output.material		= float4(roughness, metallic, specular, type);
 		
 	// Uncomment to vizualize cascade splits 
@@ -225,6 +227,6 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 		output.albedo		= float4(0,1,0,1);
 	if (cascadeIndex == 2)
 		output.albedo		= float4(0,0,1,1);*/
-		
+				
     return output;
 }

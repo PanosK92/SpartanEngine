@@ -37,9 +37,6 @@ namespace Directus
 	DeferredShader::DeferredShader()
 	{
 		m_graphics = nullptr;
-		m_matrixBuffer = nullptr;
-		m_miscBuffer = nullptr;
-		m_shader = nullptr;
 	}
 
 	DeferredShader::~DeferredShader()

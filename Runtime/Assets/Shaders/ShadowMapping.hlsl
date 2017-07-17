@@ -105,7 +105,7 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 {
 	float cosTheta = saturate(dot(normal, lightDir));
 	float slopeScaledBias = bias * tan(acos(cosTheta));
-	slopeScaledBias = clamp(slopeScaledBias, 0.0f, 0.0002f);
+	slopeScaledBias = clamp(slopeScaledBias, 0.0f, 0.002f);
 	
 	// SOFT SHADOWS --> PCF + Interpolation + Stratified Poisson Sampling
 	if (shadowMappingQuality == 1.0f) return ShadowMappingPoisson(shadowMap, samplerState, shadowMapResolution, shadowMappingQuality, pos, slopeScaledBias);

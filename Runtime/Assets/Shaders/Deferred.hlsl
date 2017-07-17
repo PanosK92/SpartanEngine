@@ -153,7 +153,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
     finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
     finalColor = ToGamma(finalColor); // gamma correction
-    float luma = dot(worldPos, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
+    float luma = dot(finalColor.rgb, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
 
     return float4(finalColor, luma);
 }

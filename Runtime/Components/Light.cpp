@@ -56,13 +56,13 @@ namespace Directus
 	{
 		// Hardcoded radius
 		float radius = 0;
-		if (m_cascade == 1)
+		if (m_cascade == 0)
 			radius = 20;
 
-		if (m_cascade == 2)
+		if (m_cascade == 1)
 			radius = 40;
 
-		if (m_cascade == 3)
+		if (m_cascade == 2)
 			radius = 80;
 
 		Vector3 center = centerPos * viewMatrix;
@@ -82,13 +82,13 @@ namespace Directus
 
 		float split = 0;
 
-		if (m_cascade == 1)
+		if (m_cascade == 0)
 			split = 0.3f;
 
-		if (m_cascade == 2)
+		if (m_cascade == 1)
 			split = 0.6f;
 
-		if (m_cascade == 3)
+		if (m_cascade == 2)
 			split = 0.8f;
 
 		Vector4 shaderSplit = Vector4::Transform(Vector3(0, 0, split), m_camera->GetProjectionMatrix());
@@ -127,7 +127,7 @@ namespace Directus
 		{
 			Camera* camera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>();
 			Graphics* graphics = g_context->GetSubsystem<Graphics>();
-			auto shadowMap = make_shared<Cascade>(i + 1, SHADOWMAP_RESOLUTION, camera, graphics);
+			auto shadowMap = make_shared<Cascade>(i, SHADOWMAP_RESOLUTION, camera, graphics);
 			m_shadowMaps.push_back(shadowMap);
 		}
 	}
