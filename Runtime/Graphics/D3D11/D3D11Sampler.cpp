@@ -42,9 +42,8 @@ namespace Directus
 
 	bool D3D11Sampler::Create(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction)
 	{
-		if (!m_graphics->GetDevice()) {
+		if (!m_graphics->GetDevice())
 			return false;
-		}
 
 		D3D11_SAMPLER_DESC samplerDesc;
 		samplerDesc.Filter = filter;
@@ -74,9 +73,8 @@ namespace Directus
 
 	bool D3D11Sampler::Set(unsigned int startSlot)
 	{
-		if (!m_graphics->GetDeviceContext()) {
+		if (!m_graphics->GetDeviceContext())
 			return false;
-		}
 
 		m_graphics->GetDeviceContext()->PSSetSamplers(startSlot, 1, &m_sampler);
 

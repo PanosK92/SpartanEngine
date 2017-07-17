@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================================
+//= INCLUDES ======================================
 #include "ModelImporter.h"
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceManager.h"
 #include "../../Graphics/Model.h"
 #include "../../Graphics/Shaders/ShaderVariation.h"
-//==============================================
+//=================================================
 
 //= NAMESPACES ================
 using namespace std;

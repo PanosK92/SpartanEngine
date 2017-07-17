@@ -42,7 +42,6 @@ namespace Directus
 	Skybox::Skybox()
 	{
 		Register();
-		m_cubeMapTexture = nullptr;
 		m_anchorTrans = nullptr;
 	}
 
@@ -73,17 +72,17 @@ namespace Directus
 		m_cubeMapTexture->SetGrayscale(false);
 
 		// Add the actual "box"
-		g_gameObject.lock()->AddComponent<MeshFilter>()->SetMesh(MeshFilter::Cube);
+		g_gameObject._Get()->AddComponent<MeshFilter>()->SetMesh(MeshFilter::Cube);
 
 		// Add a mesh renderer
-		auto meshRenderer = g_gameObject.lock()->AddComponent<MeshRenderer>();
+		auto meshRenderer = g_gameObject._Get()->AddComponent<MeshRenderer>();
 		meshRenderer->SetCastShadows(false);
 		meshRenderer->SetReceiveShadows(false);
 		meshRenderer->SetMaterial(Material_Skybox);
-		meshRenderer->GetMaterial().lock()->SetTexture(m_cubeMapTexture);
+		meshRenderer->GetMaterial()._Get()->SetTexture(m_cubeMapTexture);
 		g_transform->SetScale(Vector3(1000, 1000, 1000));
 
-		g_gameObject.lock()->SetHierarchyVisibility(false);
+		g_gameObject._Get()->SetHierarchyVisibility(false);
 	}
 
 	void Skybox::Start()
@@ -106,7 +105,7 @@ namespace Directus
 		if (m_anchor.expired())
 		{
 			m_anchor = g_context->GetSubsystem<Scene>()->GetMainCamera();
-			m_anchorTrans = m_anchor.lock()->GetTransform();
+			m_anchorTrans = m_anchor._Get()->GetTransform();
 		}
 
 		if (!m_anchorTrans)

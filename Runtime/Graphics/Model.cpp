@@ -125,6 +125,19 @@ namespace Directus
 		return weak_ptr<Mesh>();
 	}
 
+	weak_ptr<Mesh> Model::GetMeshByName(const string& name)
+	{
+		for (const auto& mesh : m_meshes)
+		{
+			if (mesh->GetName() == name)
+			{
+				return mesh;
+			}
+		}
+
+		return weak_ptr<Mesh>();
+	}
+
 	string Model::CopyFileToLocalDirectory(const string& from)
 	{
 		string textureDestination = GetResourceDirectory() + FileSystem::GetFileNameFromFilePath(from);

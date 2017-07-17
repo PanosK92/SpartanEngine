@@ -1,7 +1,7 @@
-static const float strength = 5.0f;
+static const float strength = 15.0f;
 static const float2 offset  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
 static const float falloff  = 0.0000000f;
-static const float radius = 0.007f;
+static const float radius = 0.001f;
 static const float discardDistance = 0.0001f;
 
 #define NUM_SAMPLES	 16
@@ -41,7 +41,8 @@ static const float3 AO_SAMPLES[26] =
 // Returns linear depth
 float GetDepth(float2 uv)
 {
-	return texDepth.Sample(samplerPoint, uv).g;
+	float depth =  texDepth.Sample(samplerPoint, uv).g;
+	return LinerizeDepth(depth, farPlane, nearPlane);
 }
 
 // Returns normal
@@ -62,7 +63,7 @@ float SSAO(float2 texCoord)
 {
 	float3 randNormal = GetRandomNormal(texCoord);
     float3 normal = GetNormal(texCoord);
-    float  depth  = GetDepth(texCoord);
+    float depth = GetDepth(texCoord);
 	float radius_depth = radius / depth;
 
 	float occlusion = 0.0f;
@@ -76,8 +77,7 @@ float SSAO(float2 texCoord)
 		float depthDiff = depth - sampledDepth;
 			
 		float rangeCheck = smoothstep(0.0f, 1.0f, discardDistance / abs(depthDiff));
-        occlusion += step(falloff, depthDiff) * (1.0 - dot(sampledNormal, normal)) * 
-              (1.0f - smoothstep(falloff, strength, depthDiff)) * rangeCheck;
+        occlusion += step(falloff, depthDiff) * (1.0 - dot(sampledNormal, normal)) * (1.0f - smoothstep(falloff, strength, depthDiff)) * rangeCheck;
     }
 
     occlusion = 1.0f - (occlusion / NUM_SAMPLES);

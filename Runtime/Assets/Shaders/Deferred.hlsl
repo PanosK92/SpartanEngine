@@ -44,7 +44,6 @@ cbuffer MiscBuffer : register(b1)
 // = INCLUDES ========
 #include "Helper.hlsl"
 #include "PBR.hlsl"
-#include "SSAO.hlsl"
 //====================
 
 //= INPUT LAYOUT ======================
@@ -89,7 +88,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float depth = depthSample.g;
 	float emission = depthSample.b * 100.0f;
     float3 worldPos = ReconstructPosition(depth, input.uv, mViewProjectionInverse);
-	float shadowing = softShadows ? texShadows.Sample(samplerAniso, input.uv).a : normalSample.a;
+	float shadowing = softShadows ? texShadows.Sample(samplerAniso, input.uv).a : normalSample.a;	
     shadowing = clamp(shadowing, 0.1f, 1.0f);
     float roughness = materialSample.r;
     float metallic = materialSample.g;
@@ -154,7 +153,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
     finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
     finalColor = ToGamma(finalColor); // gamma correction
-    float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
+    float luma = dot(worldPos, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
 
     return float4(finalColor, luma);
 }

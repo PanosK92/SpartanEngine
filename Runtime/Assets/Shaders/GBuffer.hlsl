@@ -110,8 +110,8 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	PixelOutputType output;
 
 	float2 texel			= float2(1.0f / resolution.x, 1.0f / resolution.y);
-	float depth1 			= input.positionCS.z / input.positionCS.w;
-	float depth2 			= input.positionCS.z / input.positionWS.w;
+	float depthCS 			= input.positionCS.z / input.positionCS.w;
+	float depthVS 			= input.positionCS.z / input.positionWS.w;
 	float2 texCoord 		= float2(input.uv.x * materialTiling.x + materialOffset.x, input.uv.y * materialTiling.y + materialOffset.y);
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= materialRoughness;
@@ -183,14 +183,14 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	int cascadeIndex;	
 	if (receiveShadows == 1.0f && shadowMappingQuality != 0.0f)
 	{
-		float z = depth2;
-		
-		if (z <= shadowSplits.x)
-			cascadeIndex = 0;		
-		else if (z <= shadowSplits.y)
+		float z = depthCS;
+
+		cascadeIndex = 0;
+		if (z <= shadowSplits.y)
 			cascadeIndex = 1;	
-		else
-			cascadeIndex = 2;		
+			
+		if (z <= shadowSplits.x)
+			cascadeIndex = 2;			
 		
 		if (cascadeIndex == 0)
 		{
@@ -215,7 +215,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// Write to G-Buffer
 	output.albedo		= albedo;
 	output.normal 		= float4(normal.rgb, totalShadowing);
-	output.depth 		= float4(depth1, depth2, emission, 0.0f);
+	output.depth 		= float4(depthCS, depthCS, emission, 0.0f);
 	output.material		= float4(roughness, metallic, specular, type);
 		
 	// Uncomment to vizualize cascade splits 

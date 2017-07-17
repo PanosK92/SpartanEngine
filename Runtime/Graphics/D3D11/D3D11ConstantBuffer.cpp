@@ -43,9 +43,8 @@ namespace Directus
 
 	bool D3D11ConstantBuffer::Create(unsigned int size)
 	{
-		if (!m_graphics->GetDevice()) {
+		if (!m_graphics->GetDevice())
 			return false;
-		}
 
 		D3D11_BUFFER_DESC bufferDesc;
 		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
@@ -68,9 +67,8 @@ namespace Directus
 
 	void* D3D11ConstantBuffer::Map()
 	{
-		if (!m_graphics->GetDeviceContext()) {
+		if (!m_graphics->GetDeviceContext())
 			return nullptr;
-		}
 
 		if (!m_buffer)
 		{
@@ -92,9 +90,8 @@ namespace Directus
 
 	bool D3D11ConstantBuffer::Unmap()
 	{
-		if (!m_buffer || !m_graphics->GetDeviceContext()) {
+		if (!m_buffer || !m_graphics->GetDeviceContext())
 			return false;
-		}
 
 		// re-enable GPU access to the vertex buffer data.
 		m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
@@ -104,9 +101,8 @@ namespace Directus
 
 	bool D3D11ConstantBuffer::SetVS(unsigned int startSlot)
 	{
-		if (!m_buffer || !m_graphics->GetDeviceContext()) {
+		if (!m_buffer || !m_graphics->GetDeviceContext())
 			return false;
-		}
 
 		m_graphics->GetDeviceContext()->VSSetConstantBuffers(startSlot, 1, &m_buffer);
 
@@ -115,9 +111,8 @@ namespace Directus
 
 	bool D3D11ConstantBuffer::SetPS(unsigned int startSlot)
 	{
-		if (!m_buffer || !m_graphics->GetDeviceContext()) {
+		if (!m_buffer || !m_graphics->GetDeviceContext())
 			return false;
-		}
 
 		m_graphics->GetDeviceContext()->PSSetConstantBuffers(startSlot, 1, &m_buffer);
 

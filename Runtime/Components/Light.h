@@ -23,17 +23,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================================
 #include <vector>
+#include <memory>
 #include "../Components/IComponent.h"
 #include "../Math/Vector4.h"
 #include "../Math/Vector3.h"
 #include "../Math/Matrix.h"
 #include "../Core/Settings.h"
-#include <memory>
 #include "../Graphics/D3D11/D3D11RenderTexture.h"
 //===============================================
 
 namespace Directus
 {
+	class Camera;
+
 	enum LightType
 	{
 		Directional,
@@ -50,55 +52,18 @@ namespace Directus
 	class Cascade
 	{
 	public:
-		Cascade(int cascade, int resolution, Graphics* device);
+		Cascade(int cascade, int resolution, Camera* camera, Graphics* device);
 		~Cascade() {}
 
 		void SetAsRenderTarget();
 		ID3D11ShaderResourceView* GetShaderResourceView() { return m_depthMap ? m_depthMap->GetShaderResourceView() : nullptr; }
-
-		Math::Matrix CalculateProjectionMatrix(const Math::Vector3 centerPos, const Math::Matrix& viewMatrix)
-		{
-			float radius = GetRadius();
-			Math::Vector3 center = centerPos * viewMatrix;
-			Math::Vector3 min = center - Math::Vector3(radius, radius, radius);
-			Math::Vector3 max = center + Math::Vector3(radius, radius, radius);
-
-			return Math::Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, -max.z, -min.z);
-		}
-
-		float GetSplit()
-		{
-			float split = 0;
-
-			if (m_cascade == 1)
-				split = 990;
-
-			if (m_cascade == 2)
-				split = 998;
-
-			return split / 1000.0f;
-		}
-
-		float GetRadius()
-		{
-			float cameraFar = 1024;
-			float radius = cameraFar * 0.5f;
-
-			if (m_cascade == 1)
-				radius = 15;
-
-			else if (m_cascade == 2)
-				radius = 40;
-
-			if (m_cascade == 3)
-				radius = 80;
-
-			return radius;
-		}
+		Math::Matrix CalculateProjectionMatrix(const Math::Vector3 centerPos, const Math::Matrix& viewMatrix);
+		float GetSplit();
 
 	private:
 		int m_cascade;
 		std::unique_ptr<D3D11RenderTexture> m_depthMap;
+		Camera* m_camera;
 	};
 
 	class DLL_API Light : public IComponent
@@ -137,8 +102,8 @@ namespace Directus
 
 		Math::Vector3 GetDirection();
 
-		Math::Matrix CalculateViewMatrix();
-		Math::Matrix CalculateOrthographicProjectionMatrix(int cascade);
+		Math::Matrix ComputeViewMatrix();
+		Math::Matrix ComputeOrthographicProjectionMatrix(int cascade);
 
 		// Cascaded shadow mapping
 		void SetShadowCascadeAsRenderTarget(int cascade);
