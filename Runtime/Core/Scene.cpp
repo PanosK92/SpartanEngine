@@ -36,7 +36,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/Physics.h"
 #include "../EventSystem/EventHandler.h"
 #include "../Core/Context.h"
-#include "Settings.h"
 #include "../Resource/ResourceManager.h"
 #include "Timer.h"
 #include "../Components/Light.h"

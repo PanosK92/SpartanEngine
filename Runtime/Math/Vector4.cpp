@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 #include "Vector4.h"
+#include "Matrix.h"
 //==================
 
 namespace Directus
@@ -71,6 +72,17 @@ namespace Directus
 				return true;
 
 			return false;
+		}
+
+		Vector4 Vector4::Transform(const Vector3& lhs, const Matrix& rhs)
+		{
+			Vector4 result;
+			result.x = (lhs.x * rhs.m00) + (lhs.y * rhs.m10) + (lhs.z * rhs.m20) + rhs.m30;
+			result.y = (lhs.x * rhs.m01) + (lhs.y * rhs.m11) + (lhs.z * rhs.m21) + rhs.m31;
+			result.z = (lhs.x * rhs.m02) + (lhs.y * rhs.m12) + (lhs.z * rhs.m22) + rhs.m32;
+			result.w = 1 / ((lhs.x * rhs.m03) + (lhs.y * rhs.m13) + (lhs.z * rhs.m23) + rhs.m33);
+
+			return result;
 		}
 	}
 }

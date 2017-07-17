@@ -180,10 +180,10 @@ namespace Directus
 		buffer->viewport = GET_RESOLUTION;
 		buffer->nearPlane = camera->GetNearPlane();
 		buffer->farPlane = camera->GetFarPlane();
-		buffer->mLightViewProjection[0] = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(0);
-		buffer->mLightViewProjection[1] = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(1);
-		buffer->mLightViewProjection[2] = directionalLight->CalculateViewMatrix() * directionalLight->CalculateOrthographicProjectionMatrix(2);
-		buffer->shadowSplits = Vector4(directionalLight->GetShadowCascadeSplit(0), directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), directionalLight->GetShadowCascadeSplit(2));
+		buffer->mLightViewProjection[0] = directionalLight->ComputeViewMatrix() * directionalLight->ComputeOrthographicProjectionMatrix(0);
+		buffer->mLightViewProjection[1] = directionalLight->ComputeViewMatrix() * directionalLight->ComputeOrthographicProjectionMatrix(1);
+		buffer->mLightViewProjection[2] = directionalLight->ComputeViewMatrix() * directionalLight->ComputeOrthographicProjectionMatrix(2);
+		buffer->shadowSplits = Vector4(directionalLight->GetShadowCascadeSplit(0), directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), directionalLight->GetShadowCascadeSplit(3));
 		buffer->lightDir = directionalLight->GetDirection();
 		buffer->shadowBias = directionalLight->GetBias();
 		buffer->shadowMapResolution = directionalLight->GetShadowCascadeResolution();

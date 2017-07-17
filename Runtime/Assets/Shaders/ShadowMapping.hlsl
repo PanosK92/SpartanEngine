@@ -46,11 +46,12 @@ float ShadowMappingPCF(Texture2D shadowMap, SamplerState samplerState, float sha
     // Perform PCF filtering on a 4 x 4 texel neighborhood
 	float percentLit = 0.0f;
 	for (float y = -1.5f; y <= 1.5f; ++y)
+	{
         for (float x = -1.5f; x <= 1.5f; ++x)
 		{
 			percentLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + texOffset(shadowMapResolution, x,y), pos.z);	
 		}
-			
+	}	
 		
 	return percentLit / 16.0f;
 }
@@ -80,7 +81,7 @@ float ShadowMappingPoisson(Texture2D shadowMap, SamplerState samplerState, float
     pos.z -= bias;
 
 	 //Poisson sampling for shadow map
-	float spread = 700.0f; // Defines how much the samples are “spread”
+	float spread = 1000.0f; // Defines how much the samples are “spread”
 	float2 poissonDisk[4] = 
 	{
 	  float2( -0.94201624, -0.39906216 ),
@@ -106,8 +107,8 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	float slopeScaledBias = bias * tan(acos(cosTheta));
 	slopeScaledBias = clamp(slopeScaledBias, 0.0f, 0.0002f);
 	
-	if (shadowMappingQuality == 1.0f) // SOFT SHADOWS --> PCF + Interpolation + Stratified Poisson Sampling
-		return ShadowMappingPoisson(shadowMap, samplerState, shadowMapResolution, shadowMappingQuality, pos, slopeScaledBias);
+	// SOFT SHADOWS --> PCF + Interpolation + Stratified Poisson Sampling
+	if (shadowMappingQuality == 1.0f) return ShadowMappingPoisson(shadowMap, samplerState, shadowMapResolution, shadowMappingQuality, pos, slopeScaledBias);
 		
 	// HARD SHADOWS --> PCF + Interpolation
 	return ShadowMappingPCF(shadowMap, samplerState, shadowMapResolution, shadowMappingQuality, pos, slopeScaledBias);

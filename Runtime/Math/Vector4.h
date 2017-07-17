@@ -29,6 +29,9 @@ namespace Directus
 {
 	namespace Math
 	{
+		class Vector3;
+		class Matrix;
+
 		class DLL_API Vector4
 		{
 		public:
@@ -39,6 +42,8 @@ namespace Directus
 
 			bool operator==(const Vector4& b);
 			bool operator!=(const Vector4& b);
+
+			static Vector4 Transform(const Vector3& lhs, const Matrix& rhs);
 
 			float x, y, z, w;
 

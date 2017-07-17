@@ -75,9 +75,9 @@ namespace Directus
 
 	private:
 		bool CreateBuffers();
-		void CreateCube(std::vector<VertexPosTexNorTan>& vertices, std::vector<unsigned int>& indices);
-		void CreateQuad(std::vector<VertexPosTexNorTan>& vertices, std::vector<unsigned int>& indices);
-		std::string& GetGameObjectName();
+		static void CreateCube(std::vector<VertexPosTexNorTan>& vertices, std::vector<unsigned int>& indices);
+		static void CreateQuad(std::vector<VertexPosTexNorTan>& vertices, std::vector<unsigned int>& indices);
+		std::string GetGameObjectName();
 
 		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;

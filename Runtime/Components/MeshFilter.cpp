@@ -44,8 +44,6 @@ namespace Directus
 	MeshFilter::MeshFilter()
 	{
 		g_type = "MeshFilter";
-		m_vertexBuffer = nullptr;
-		m_indexBuffer = nullptr;
 		m_meshType = Imported;
 	}
 
@@ -125,12 +123,13 @@ namespace Directus
 	// Sets a mesh from memory
 	bool MeshFilter::SetMesh(weak_ptr<Mesh> mesh)
 	{
-		if (mesh.expired())
+		m_mesh = mesh;
+
+		if (m_mesh.expired())
 		{
 			LOG_WARNING("Can't create vertex and index buffers for an expired mesh");
 			return false;
 		}
-		m_mesh = mesh;
 
 		// Re-create the buffers whenever the mesh updates
 		m_mesh._Get()->SubscribeToUpdate(bind(&MeshFilter::CreateBuffers, this));
@@ -144,38 +143,36 @@ namespace Directus
 	// Sets a default mesh (cube, quad)
 	bool MeshFilter::SetMesh(MeshType defaultMesh)
 	{
-		shared_ptr<Model> model = make_shared<Model>(g_context);
-		model->SetRootGameObject(g_gameObject);
-		weak_ptr<Mesh> weakMesh;
+		// Construct vertices/indices
 		vector<VertexPosTexNorTan> vertices;
 		vector<unsigned int> indices;
-
-		switch (defaultMesh)
+		if (defaultMesh == Cube)
 		{
-		case Cube:
 			CreateCube(vertices, indices);
-			model->SetResourceName("Engine_Default_Cube");
-			weakMesh = model->AddMesh(g_gameObject.lock()->GetID(), "Cube", vertices, indices);
-			m_meshType = Cube;
-			break;
-
-		case Quad:
+		}
+		else if (defaultMesh == Quad)
+		{
 			CreateQuad(vertices, indices);
-			model->SetResourceName("Engine_Default_Quad");
-			weakMesh = model->AddMesh(g_gameObject.lock()->GetID(), "Quad", vertices, indices);
-			m_meshType = Quad;
-			break;
-
-		default:
-			m_mesh = weak_ptr<Mesh>();
-			break;
 		}
 
-		// Add the model to the resource manager and set it to the mesh filter
-		g_context->GetSubsystem<ResourceManager>()->Add<Model>(model);
-		bool result = SetMesh(weakMesh);
+		// Find out some details
+		m_meshType = defaultMesh;
+		string resourceName = (defaultMesh == Cube) ? "Engine_Default_Cube" : "Engine_Default_Quad";
+		string meshName = (defaultMesh == Cube) ? "Cube" : "Quad";
 
-		return result;
+		// Initialize a model that contains this mesh
+		shared_ptr<Model> modelShared = make_shared<Model>(g_context);
+		modelShared->SetRootGameObject(g_gameObject);
+		modelShared->SetResourceName(resourceName);
+		modelShared->AddMesh(g_gameObject._Get()->GetID(), meshName, vertices, indices);
+
+		// Add the model to the resource manager and get it as a weak reference. It's important to do that
+		// because the resource manager will maintain it's own copy, thus any external references like
+		// the local shared model here, will expire when this function goes out of scope.
+		weak_ptr<Model> modelWeak = g_context->GetSubsystem<ResourceManager>()->Add<Model>(modelShared);
+		auto mesh = modelWeak._Get()->GetMeshByName(meshName);
+
+		return SetMesh(mesh);
 	}
 
 	// Set the buffers to active in the input assembler so they can be rendered.
@@ -337,9 +334,8 @@ namespace Directus
 		indices.push_back(1);
 	}
 
-	string& MeshFilter::GetGameObjectName()
+	string MeshFilter::GetGameObjectName()
 	{
-		static string gameObjName = !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
-		return gameObjName;
+		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
 	}
 }

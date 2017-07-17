@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../Resource/Resource.h"
 #include "../Math/Vector3.h"
+#include "../Math/MathHelper.h"
 //===============================
 
 namespace Directus
@@ -49,6 +50,7 @@ namespace Directus
 		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
 		std::weak_ptr<Mesh> AddMesh(const std::string& gameObjID, const std::string& name, std::vector<VertexPosTexNorTan> vertices, std::vector<unsigned int> indices);
 		std::weak_ptr<Mesh> GetMeshByID(const std::string& id);
+		std::weak_ptr<Mesh> GetMeshByName(const std::string& name);
 
 		std::string CopyFileToLocalDirectory(const std::string& from);
 

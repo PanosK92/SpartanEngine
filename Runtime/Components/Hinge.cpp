@@ -96,7 +96,7 @@ namespace Directus
 		{
 			if (!m_connectedGameObject.expired())
 			{
-				Serializer::WriteSTR(m_connectedGameObject.lock()->GetID());
+				Serializer::WriteSTR(m_connectedGameObject._Get()->GetID());
 			}
 		}
 
@@ -186,19 +186,22 @@ namespace Directus
 		}
 
 		// get the rigidbodies
-		auto rigidBodyA = g_gameObject.lock()->GetComponent<RigidBody>()->GetBtRigidBody();
-		auto rigidBodyB = m_connectedGameObject.lock()->GetComponent<RigidBody>()->GetBtRigidBody();
+		auto rigidBodyA = g_gameObject._Get()->GetComponent<RigidBody>()->GetBtRigidBody();
+		auto rigidBodyB = m_connectedGameObject._Get()->GetComponent<RigidBody>()->GetBtRigidBody();
 
 		CalculateConnections();
 
 		// convert data to bullet data
-		btVector3 axisA = ToBtVector3(m_axisA);
-		btVector3 axisB = ToBtVector3(m_axisB);
-		btVector3 pivotA = ToBtVector3(m_pivotA);
-		btVector3 pivotB = ToBtVector3(m_pivotB);
+		btTransform localA, localB;
+		localA.setIdentity();
+		localB.setIdentity();
+		localA.getBasis().setEulerZYX(0, PI_2, 0);
+		localA.setOrigin(btVector3(0.0, 1.0, 3.05));
+		localB.getBasis().setEulerZYX(0, PI_2, 0);
+		localB.setOrigin(btVector3(0.0, -1.5, -0.05));
 
 		// create the hinge
-		m_hinge = new btHingeConstraint(*rigidBodyA.lock(), *rigidBodyB.lock(), axisA, axisB, pivotA, pivotB);
+		m_hinge = new btHingeConstraint(*rigidBodyA._Get(), *rigidBodyB._Get(), localA, localB);
 		m_hinge->enableAngularMotor(true, 2, 3);
 
 		// add it to the world
@@ -212,7 +215,9 @@ namespace Directus
 
 	void Hinge::ComponentCheck()
 	{
-		if (!g_gameObject.lock()->HasComponent<RigidBody>())
-			g_gameObject.lock()->AddComponent<RigidBody>();
+		if (g_gameObject.expired())
+			return;
+
+		g_gameObject._Get()->AddComponent<RigidBody>();
 	}
 }

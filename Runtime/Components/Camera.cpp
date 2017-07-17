@@ -39,7 +39,7 @@ namespace Directus
 	{
 		Register();
 		m_FOV = 75 * DEG_TO_RAD;
-		m_nearPlane = 0.1f;
+		m_nearPlane = 0.3f;
 		m_farPlane = 1000.0f;
 		m_frustrum = make_shared<Frustrum>();
 		m_projection = Perspective;

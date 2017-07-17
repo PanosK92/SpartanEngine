@@ -288,8 +288,8 @@ namespace Directus
 			// Set appropriate shadow map as render target
 			m_directionalLight->SetShadowCascadeAsRenderTarget(cascadeIndex);
 
-			Matrix mViewLight = m_directionalLight->CalculateViewMatrix();
-			Matrix mProjectionLight = m_directionalLight->CalculateOrthographicProjectionMatrix(cascadeIndex);
+			Matrix mViewLight = m_directionalLight->ComputeViewMatrix();
+			Matrix mProjectionLight = m_directionalLight->ComputeOrthographicProjectionMatrix(cascadeIndex);
 			Matrix mViewProjectionLight = mViewLight * mProjectionLight;
 
 			for (const auto& gameObject : m_renderables)
@@ -421,15 +421,18 @@ namespace Directus
 					shader->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
 
 					// Set mesh buffer
-					if (meshFilter->SetBuffers())
+					if (meshFilter->HasMesh())
 					{
-						// Set face culling (changes only if required)
-						m_graphics->SetCullMode(objMaterial->GetCullMode());
+						if (meshFilter->SetBuffers())
+						{
+							// Set face culling (changes only if required)
+							m_graphics->SetCullMode(objMaterial->GetCullMode());
 
-						// Render the mesh, finally!				
-						meshRenderer->Render(objMesh->GetIndexCount());
+							// Render the mesh, finally!				
+							meshRenderer->Render(objMesh->GetIndexCount());
 
-						m_renderedMeshesTempCounter++;
+							m_renderedMeshesTempCounter++;
+						}
 					}
 				} // GAMEOBJECT/MESH ITERATION
 
