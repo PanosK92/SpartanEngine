@@ -42,12 +42,11 @@ namespace Directus
 		virtual bool Initialize();
 		//========================
 
-		//= UPDATE ========
+		//= UPDATE ======
 		void Start();
 		void OnDisable();
 		void Update();
-		void LightUpdate();
-		//=================
+		//===============
 
 		//= RESOURCE IO =========================================
 		void LoadModel(const std::string& filePath);

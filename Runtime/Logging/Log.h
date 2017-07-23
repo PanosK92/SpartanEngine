@@ -33,10 +33,14 @@ namespace Directus
 #define LOG_WARNING(text) Log::Write(text, Log::Warning)
 #define LOG_ERROR(text) Log::Write(text, Log::Error)
 
+	class GameObject;
+
 	namespace Math
 	{
 		class Quaternion;
+		class Vector2;
 		class Vector3;
+		class Vector4;
 	}
 
 	class DLL_API Log
@@ -60,8 +64,13 @@ namespace Directus
 		// CHAR_PTR
 		static void Write(const char* text, LogType type);
 
-		// VECTOR3
+		// GAMEOBJECT
+		static void Write(std::weak_ptr<GameObject> gameObject, LogType type);
+
+		// VECTORS
+		static void Write(const Math::Vector2& vector, LogType type);
 		static void Write(const Math::Vector3& vector, LogType type);
+		static void Write(const Math::Vector4& vector, LogType type);
 
 		// QUATERNION
 		static void Write(const Math::Quaternion& quaternion, LogType type);

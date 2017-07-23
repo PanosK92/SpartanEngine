@@ -72,14 +72,6 @@ namespace Directus
 
 		m_engine->Update();
 	}
-
-	void Socket::LightUpdate()
-	{
-		if (!m_engine)
-			return;
-
-		m_engine->LightUpdate();
-	}
 	//=============================================================================
 
 	//= RESOURCE IO ===============================================================
@@ -119,7 +111,7 @@ namespace Directus
 	//= GRAPHICS ===================================================================
 	void Socket::SetViewport(float width, float height)
 	{
-		m_context->GetSubsystem<D3D11GraphicsDevice>()->SetViewport(width, height);
+		m_context->GetSubsystem<Renderer>()->SetViewport(width, height);
 	}
 
 	void Socket::SetResolution(int width, int height)

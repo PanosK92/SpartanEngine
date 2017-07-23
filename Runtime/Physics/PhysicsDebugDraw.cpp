@@ -61,8 +61,7 @@ namespace Directus
 		int lats = 5;
 		int longs = 5;
 
-		int i, j;
-		for (i = 0; i <= lats; i++)
+		for (int i = 0; i <= lats; i++)
 		{
 			btScalar lat0 = SIMD_PI * (-btScalar(0.5) + (btScalar)(i - 1) / lats);
 			btScalar z0 = radius * sin(lat0);
@@ -72,7 +71,7 @@ namespace Directus
 			btScalar z1 = radius * sin(lat1);
 			btScalar zr1 = radius * cos(lat1);
 
-			for (j = 0; j <= longs; j++)
+			for (int j = 0; j <= longs; j++)
 			{
 				btScalar lng = 2 * SIMD_PI * (btScalar)(j - 1) / longs;
 				btScalar x = cos(lng);

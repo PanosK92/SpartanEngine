@@ -64,7 +64,14 @@ namespace Directus
 		//========================
 
 		void Render();
+
+		// Viewport
+		Math::Vector2 GetViewport() { return m_viewport; }
+		void SetViewport(float width, float height);
+
+		// Resolution
 		void SetResolution(int width, int height);
+
 		void Clear();
 		const std::vector<weakGameObj>& GetRenderables() { return m_renderables; }
 
@@ -76,6 +83,16 @@ namespace Directus
 		//===============================================================
 
 	private:
+		//= HELPER FUNCTIONS =================
+		void AcquirePrerequisites();
+		void DirectionalLightDepthPass();
+		void GBufferPass();
+		void DeferredPass();
+		void PostProcessing();
+		void DebugDraw();
+		const Math::Vector4& GetClearColor();
+		//===================================
+
 		std::shared_ptr<FullScreenQuad> m_fullScreenQuad;
 		std::shared_ptr<GBuffer> m_GBuffer;
 
@@ -128,14 +145,6 @@ namespace Directus
 		ResourceManager* m_resourceMng;
 		//================================================
 
-		//= HELPER FUNCTIONS =========================================================================
-		void AcquirePrerequisites();
-		void DirectionalLightDepthPass();
-		void GBufferPass();
-		void DeferredPass();
-		void PostProcessing();
-		void Gizmos() const;
-		const Math::Vector4& GetClearColor();
-		//============================================================================================
+		Math::Vector2 m_viewport;
 	};
 }

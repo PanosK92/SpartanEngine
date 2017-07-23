@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletPhysicsHelper.h"
 #include "../EventSystem/EventHandler.h"
 #include <algorithm>
-#include "../Logging/Log.h"
 #include "../Core/Context.h"
 #include "../Core/Timer.h"
 #include "../Core/Engine.h"
@@ -85,6 +84,10 @@ namespace Directus
 	void Physics::Step()
 	{
 		if (!m_world)
+			return;
+
+		// Don't simulate physics if we are in editor mode
+		if (m_context->GetSubsystem<Engine>()->GetMode() == Editor)
 			return;
 
 		// timeStep < maxSubSteps * fixedTimeStep

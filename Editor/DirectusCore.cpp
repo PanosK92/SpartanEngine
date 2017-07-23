@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logging/Log.h"
 #include <QStyleOption>
 #include "Core/Settings.h"
+#include "Core/GameObject.h"
 #include "Core/Context.h"
 #include "Core/Scene.h"
 #include "Components/Camera.h"
@@ -33,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //============================
 
 //= NAMESPACES ================
+using namespace std;
 using namespace Directus;
 using namespace Directus::Math;
 //=============================
@@ -126,12 +128,23 @@ void DirectusCore::Stop()
     emit EngineStopping();
 }
 
-// Runs as fast as possible, performs a full simulation cycle.
+// Ticks the engine as fast as possible, in Game Mode
 void DirectusCore::Update()
 {
     if (m_locked)
         return;
 
+    m_engine->SetMode(Game);
+    m_socket->Update();
+}
+
+// Ticks the engine at 60Hz, in Editor mode
+void DirectusCore::Update60FPS()
+{
+    if (m_locked)
+        return;
+
+    m_engine->SetMode(Editor);
     m_socket->Update();
 }
 
@@ -144,16 +157,6 @@ void DirectusCore::Update500Mil()
     m_directusStatsLabel->UpdateStats(this);
 }
 
-// Runs 30 times per second
-// Updates engine's subsystems and propagates data, it doesn't simulate
-void DirectusCore::Update60FPS()
-{
-    if (m_locked)
-        return;
-
-    m_socket->LightUpdate();
-}
-
 // Prevents any engine update to execute
 void DirectusCore::LockUpdate()
 {
@@ -164,6 +167,11 @@ void DirectusCore::LockUpdate()
 void DirectusCore::UnlockUpdate()
 {
     m_locked = false;
+}
+
+void DirectusCore::ToggleDebugDraw()
+{
+    Settings::SetDebugDraw(!Settings::GetDebugDraw());
 }
 //====================================================
 
@@ -195,16 +203,12 @@ void DirectusCore::paintEvent(QPaintEvent* evt)
     Update();
 }
 
-// Temporary
 void DirectusCore::mousePressEvent(QMouseEvent* event)
 {
-    /*QPoint mousePos = event->pos();
-    auto picked = m_socket->GetContext()->GetSubsystem<Scene>()->MousePick(Vector2(mousePos.x(), mousePos.y()));
-
-    if (picked)
-        LOG_INFO(picked->GetName());
-
-    m_inspector->Inspect(picked);*/
+    QPoint mousePos = event->pos();
+    weak_ptr<GameObject> camera = m_socket->GetContext()->GetSubsystem<Scene>()->GetMainCamera();
+    auto picked = camera._Get()->GetComponent<Camera>()->Pick(Vector2(mousePos.x(), mousePos.y()));
+    m_inspector->Inspect(picked);
 }
 //===================================================
 

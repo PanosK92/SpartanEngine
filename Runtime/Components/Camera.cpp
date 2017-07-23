@@ -25,7 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/Serializer.h"
 #include "../Core/Settings.h"
 #include "../Components/MeshFilter.h"
+#include "../Components/Skybox.h"
 #include "../Graphics/Model.h"
+#include "../Logging/Log.h"
+#include "../Graphics/Renderer.h"
 //===================================
 
 //= NAMESPACES ================
@@ -38,7 +41,7 @@ namespace Directus
 	Camera::Camera()
 	{
 		Register();
-		m_FOV = 75 * DEG_TO_RAD;
+		SetFOV_Horizontal_Deg(75);
 		m_nearPlane = 0.3f;
 		m_farPlane = 1000.0f;
 		m_frustrum = make_shared<Frustrum>();
@@ -107,7 +110,7 @@ namespace Directus
 	{
 		Serializer::WriteVector4(m_clearColor);
 		Serializer::WriteInt(int(m_projection));
-		Serializer::WriteFloat(m_FOV);
+		Serializer::WriteFloat(m_fovHorizontal);
 		Serializer::WriteFloat(m_nearPlane);
 		Serializer::WriteFloat(m_farPlane);
 	}
@@ -116,7 +119,7 @@ namespace Directus
 	{
 		m_clearColor = Serializer::ReadVector4();
 		m_projection = Projection(Serializer::ReadInt());
-		m_FOV = Serializer::ReadFloat();
+		m_fovHorizontal = Serializer::ReadFloat();
 		m_nearPlane = Serializer::ReadFloat();
 		m_farPlane = Serializer::ReadFloat();
 
@@ -144,9 +147,14 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	void Camera::SetFieldOfView(float fov)
+	float Camera::GetFOV_Horizontal_Deg()
 	{
-		m_FOV = DegreesToRadians(fov);
+		return RadiansToDegrees(m_fovHorizontal);
+	}
+
+	void Camera::SetFOV_Horizontal_Deg(float fov)
+	{
+		m_fovHorizontal = DegreesToRadians(fov);
 		m_isDirty = true;
 	}
 
@@ -169,23 +177,116 @@ namespace Directus
 		return m_frustrum->CheckSphere(center, radius) != Outside;
 	}
 
+	vector<VertexPosCol> Camera::GetPickingRay()
+	{
+		vector<VertexPosCol> lines;
+
+		VertexPosCol rayStart;
+		rayStart.color = Vector4(0, 1, 0, 1);
+		rayStart.position = m_pickingRayStart;
+
+		VertexPosCol rayEnd;
+		rayEnd.color = Vector4(0, 1, 0, 1);
+		rayEnd.position = m_pickingRayEnd;
+
+		lines.push_back(rayStart);
+		lines.push_back(rayEnd);
+
+		return lines;
+	}
+
 	//= RAYCASTING =======================================================================
+	weak_ptr<GameObject> Camera::Pick(const Vector2& mouse)
+	{
+		// Compute ray
+		m_pickingRayStart = g_transform->GetPosition();
+		m_pickingRayEnd = ScreenToWorldPoint(mouse);
+		m_pickingRayDirection = (m_pickingRayEnd - m_pickingRayStart).Normalized();
+
+		vector<weakGameObj> gameObjects = g_context->GetSubsystem<Scene>()->GetRenderables();
+		for (const auto& gameObject : gameObjects)
+		{
+			if (gameObject._Get()->HasComponent<Camera>())
+				continue;
+
+			if (gameObject._Get()->HasComponent<Skybox>())
+				continue;
+
+			float radius = gameObject._Get()->GetComponent<MeshFilter>()->GetBoundingSphereRadius();
+			if (SphereIntersects(m_pickingRayStart, m_pickingRayDirection, gameObject._Get()->GetTransform()->GetPosition(), radius))
+			{
+				return gameObject;
+			}
+		}
+
+		return weak_ptr<GameObject>();
+	}
+	
 	Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
 	{
-		float screenWidth = RESOLUTION_WIDTH;
-		float screenHeight = RESOLUTION_HEIGHT;
+		Vector2 viewport = g_context->GetSubsystem<Renderer>()->GetViewport();
 
-		Vector3 localSpace = worldPoint * GetViewMatrix();
+		Vector3 localSpace = worldPoint * m_mView;
 
-		int screenX = ((localSpace.x / localSpace.z) * (screenWidth * 0.5f)) + (screenWidth * 0.5f);
-		int screenY = -((localSpace.y / localSpace.z) * (screenHeight * 0.5f)) + (screenHeight * 0.5f);
+		int screenX = ((localSpace.x / localSpace.z) * (viewport.x * 0.5f)) + (viewport.x * 0.5f);
+		int screenY = -((localSpace.y / localSpace.z) * (viewport.y * 0.5f)) + (viewport.y * 0.5f);
 
 		return Vector2(screenX, screenY);
 	}
 
-	/*------------------------------------------------------------------------------
-	[PRIVATE]
-	------------------------------------------------------------------------------*/
+	Vector3 Camera::ScreenToWorldPoint(const Vector2& point)
+	{
+		Vector2 viewport = g_context->GetSubsystem<Renderer>()->GetViewport();
+
+		// Convert screen pixel to view space
+		float pointX = (2.0f * point.x / viewport.x - 1.0f);
+		float pointY = (-2.0f * point.y / viewport.y + 1.0f);
+
+		// Unproject point
+		Matrix unprojectMatrix = (m_mView * m_mProjection).Inverted();
+		Vector3 worldPoint = Vector3(pointX, pointY, 1.0f) * unprojectMatrix;
+
+		return worldPoint;
+	}
+
+	//= PRIVATE =======================================================================
+	bool Camera::SphereIntersects(const Vector3& rayOrigin, const Vector3& rayDirection, const Vector3& sphereCenter, float sphereRadius)
+	{
+		float sphereRadiusSquered = sphereRadius * sphereRadius;
+
+		// Squared distance between ray origin and sphere center
+		float squaredDist = Vector3::Dot(rayOrigin - sphereCenter, rayOrigin - sphereCenter);
+
+		// If the distance is less than the squared radius of the sphere...
+		if (squaredDist <= sphereRadiusSquered)
+		{
+			// Point is in sphere, consider as no intersection existing
+			return false;
+		}
+
+		// Compute the coefficients of the quadratic equation
+		float a = Vector3::Dot(rayDirection, rayDirection);
+		float b = 2.0f * Vector3::Dot(rayDirection, rayOrigin - sphereCenter);
+		float c = Vector3::Dot(rayOrigin - sphereCenter, rayOrigin - sphereCenter) - sphereRadiusSquered;
+
+		// Calculate discriminant
+		float disc = (b * b) - (4.0f * a * c);
+
+		if (disc < 0) // No intersection with sphere
+		{
+			return false;
+		}
+
+		// One or two intersections exist
+		float sqrt_disc = sqrt(disc);
+		float t1 = (-b + sqrt_disc) / (2 * a);
+
+		// If the second intersection has a negative value then the intersections
+		// happen behind the ray origin which is not considered. Otherwise t0 is
+		// the intersection to be considered
+		return t1 >= 0;
+	}
+
 	void Camera::CalculateViewMatrix()
 	{
 		Vector3 position = g_transform->GetPosition();
@@ -210,7 +311,7 @@ namespace Directus
 	{
 		if (m_projection == Perspective)
 		{
-			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(m_FOV, ASPECT_RATIO, m_nearPlane, m_farPlane);
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(m_fovHorizontal, ASPECT_RATIO, m_nearPlane, m_farPlane);
 		}
 		else if (m_projection == Orthographic)
 		{

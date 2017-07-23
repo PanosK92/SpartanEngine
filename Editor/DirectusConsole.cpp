@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusConsole.h"
 #include "DirectusCore.h"
 #include "Socket/Socket.h"
+#include "Logging/Log.h"
 //==========================
 
 //= NAMESPACES ==========
@@ -65,6 +66,11 @@ void EngineLogger::Log(const string& log, int type)
     // 1 = Warning,
     // 2 = Error,
 
-    m_list->addItem(new QListWidgetItem(QString::fromStdString(log)));
+    QColor textColor = (type == 0) ? QColor(144, 144, 144) : (type == 1) ? QColor(232, 232, 144) : QColor(214, 115, 115);
+
+    auto item = new QListWidgetItem(QString::fromStdString(log));
+    item->setTextColor(textColor);
+
+    m_list->addItem(item);
     m_list->scrollToBottom();
 }

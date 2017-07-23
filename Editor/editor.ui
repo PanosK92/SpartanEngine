@@ -642,19 +642,17 @@ QListView
 
 QListView::item 
 {
-	color: #909090;				
     background:  #383838;
+}
+
+QListView::item:alternate 
+{		
+    background:  #484848;
 }
 
 QListView::item:focus
 {
 	border:none;
-}
-
-QListView::item:alternate 
-{
-	color: #909090;				
-    background:  #484848;
 }
 /*========================================================================================*/
 
@@ -1516,6 +1514,18 @@ text edit background:					414141
                          <verstretch>0</verstretch>
                         </sizepolicy>
                        </property>
+                       <property name="autoFillBackground">
+                        <bool>false</bool>
+                       </property>
+                       <property name="frameShape">
+                        <enum>QFrame::NoFrame</enum>
+                       </property>
+                       <property name="frameShadow">
+                        <enum>QFrame::Plain</enum>
+                       </property>
+                       <property name="lineWidth">
+                        <number>1</number>
+                       </property>
                        <property name="sizeAdjustPolicy">
                         <enum>QAbstractScrollArea::AdjustIgnored</enum>
                        </property>
@@ -2168,12 +2178,18 @@ text edit background:					414141
                        </widget>
                       </item>
                       <item>
-                       <widget class="QPushButton" name="buttonGizmos">
+                       <widget class="QPushButton" name="buttonDebugDraw">
+                        <property name="minimumSize">
+                         <size>
+                          <width>80</width>
+                          <height>0</height>
+                         </size>
+                        </property>
                         <property name="styleSheet">
                          <string notr="true"/>
                         </property>
                         <property name="text">
-                         <string>Gizmos</string>
+                         <string>Debug Draw</string>
                         </property>
                        </widget>
                       </item>
@@ -2303,7 +2319,7 @@ QTabBar::tab:last
 }</string>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <property name="iconSize">
                <size>
@@ -2604,25 +2620,6 @@ QTabBar::tab:last
                          </property>
                          <property name="text">
                           <string>Clear</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="buttonConsoleClearOnPlay">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="text">
-                          <string>Clear on Play</string>
-                         </property>
-                         <property name="checkable">
-                          <bool>true</bool>
-                         </property>
-                         <property name="checked">
-                          <bool>false</bool>
                          </property>
                         </widget>
                        </item>
@@ -3536,8 +3533,11 @@ QTabBar::tab:last
   <customwidget>
    <class>DirectusCore</class>
    <extends>QWidget</extends>
-   <header>DirectusCore.h</header>
+   <header location="global">DirectusCore.h</header>
    <container>1</container>
+   <slots>
+    <slot>ToggleDebugDraw()</slot>
+   </slots>
   </customwidget>
   <customwidget>
    <class>DirectusStatsLabel</class>
@@ -3928,6 +3928,22 @@ QTabBar::tab:last
     <hint type="destinationlabel">
      <x>132</x>
      <y>295</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonDebugDraw</sender>
+   <signal>pressed()</signal>
+   <receiver>directusCore</receiver>
+   <slot>ToggleDebugDraw()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1040</x>
+     <y>83</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>631</x>
+     <y>324</y>
     </hint>
    </hints>
   </connection>

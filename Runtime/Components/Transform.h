@@ -37,12 +37,6 @@ namespace Directus
 	class DLL_API Transform : public IComponent
 	{
 	public:
-		enum Space
-		{
-			Local,
-			World
-		};
-
 		Transform();
 		~Transform();
 
@@ -55,7 +49,7 @@ namespace Directus
 		virtual void Serialize();
 		virtual void Deserialize();
 
-		void UpdateWorldTransform();
+		void UpdateTransform();
 
 		//= POSITION ======================================================================
 		Math::Vector3 GetPosition() { return m_worldTransform.GetTranslation(); }
@@ -77,7 +71,8 @@ namespace Directus
 
 		//= TRANSLATION/ROTATION =========================================================
 		void Translate(const Math::Vector3& delta);
-		void Rotate(const Math::Quaternion& delta, Space space);
+		void Rotate(const Math::Quaternion& delta);
+		void RotateLocal(const Math::Quaternion& delta);
 
 		//= DIRECTIONS ===================================================================
 		Math::Vector3 GetUp();
@@ -106,6 +101,7 @@ namespace Directus
 		//= ICOMPONENT ====================================================================
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
 		Math::Matrix& GetWorldTransform() { return m_worldTransform; }
+		Math::Matrix& GetLocalTransform() { return m_localTransform; }
 		weakGameObj& GetGameObject() { return g_gameObject; }
 		std::string GetName();
 
@@ -116,6 +112,7 @@ namespace Directus
 		Math::Vector3 m_scaleLocal;
 
 		Math::Matrix m_worldTransform;
+		Math::Matrix m_localTransform;
 		Math::Vector3 m_lookAt;
 
 		Transform* m_parent; // the parent of this transform

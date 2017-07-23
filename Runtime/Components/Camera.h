@@ -30,10 +30,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Quaternion.h"
 #include "../Math/Frustrum.h"
 #include <memory>
+#include "../Graphics/Vertex.h"
+#include <vector>
+
 //=============================
 
 namespace Directus
 {
+	class GameObject;
 	class MeshFilter;
 	class Model;
 
@@ -59,15 +63,18 @@ namespace Directus
 		virtual void Deserialize();
 		//=========================
 
-		//= MATRICES =========================================================
+		//= MATRICES ===============================================
 		Math::Matrix GetViewMatrix() { return m_mView; }
 		Math::Matrix GetProjectionMatrix() { return m_mProjection; }
 		Math::Matrix GetBaseViewMatrix() { return m_mBaseView; }
-		//====================================================================
+		//==========================================================
 
-		//= RAYCASTING =======================================================================
+		//= RAYCASTING ===================================================
+		std::vector<VertexPosCol> GetPickingRay();
+		std::weak_ptr<GameObject> Pick(const Math::Vector2& mousePos);
 		Math::Vector2 WorldToScreenPoint(const Math::Vector3& worldPoint);
-		//====================================================================================
+		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& point);
+		//================================================================
 
 		//= PLANES/PROJECTION =====================================================
 		float GetNearPlane() { return m_nearPlane; }
@@ -76,21 +83,32 @@ namespace Directus
 		void SetFarPlane(float farPlane);
 		Projection GetProjection() { CalculateProjection();  return m_projection; }
 		void SetProjection(Projection projection);
-		float GetFieldOfView() { return Math::RadiansToDegrees(m_FOV); }
-		void SetFieldOfView(float fov);
 		//=========================================================================
 
-		//= MISC =========================================================================
+		//= FOV ==============================
+		float GetFOV_Horizontal_Deg();
+		void SetFOV_Horizontal_Deg(float fov);
+		//====================================
+
+		//= MISC ===============================================================
 		bool IsInViewFrustrum(MeshFilter* meshFilter);
 		bool IsInViewFrustrum(std::weak_ptr<Model> model);
 		Math::Vector4 GetClearColor() { return m_clearColor; }
 		void SetClearColor(const Math::Vector4& color) { m_clearColor = color; }
-		//================================================================================
+		//======================================================================
 
 	private:
-		float m_FOV;
+		bool SphereIntersects(const Math::Vector3& rayOrigin, const Math::Vector3& rayDirection, const Math::Vector3& sphereCenter, float sphereRadius);
+		void CalculateViewMatrix();
+		void CalculateBaseView();
+		void CalculateProjection();
+
+		float m_fovHorizontal;
 		float m_nearPlane;
 		float m_farPlane;
+		Math::Vector3 m_pickingRayStart;
+		Math::Vector3 m_pickingRayEnd;
+		Math::Vector3 m_pickingRayDirection;
 		std::shared_ptr<Frustrum> m_frustrum;
 		Projection m_projection;
 		Math::Vector4 m_clearColor;
@@ -103,13 +121,6 @@ namespace Directus
 		Math::Quaternion m_rotation;
 		bool m_isDirty;
 
-		Math::Vector2 m_lastKnownResolution;
-
-		/*------------------------------------------------------------------------------
-		[PRIVATE]
-		------------------------------------------------------------------------------*/
-		void CalculateViewMatrix();
-		void CalculateBaseView();
-		void CalculateProjection();
+		Math::Vector2 m_lastKnownResolution;	
 	};
 }

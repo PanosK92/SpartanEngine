@@ -24,6 +24,12 @@ DEALINGS IN THE SOFTWARE. */
 
 namespace Directus
 {
+	enum EngineMode
+	{
+		Editor,
+		Game
+	};
+
 	class DLL_API Engine : public Subsystem
 	{
 	public:
@@ -40,11 +46,9 @@ namespace Directus
 		// Performs a complete simulation cycle (used to run your game)
 		void Update();
 
-		// Updates and propagates data through the engine's subsystems (used for data updates by the editor)
-		void LightUpdate();
-
-		// Returns whether the engine is running a full simulation (Update) or not (LightUpdate)
-		bool IsSimulating() { return m_isSimulating; }
+		// Returns whether the engine is running in editor or game mode
+		EngineMode GetMode() { return m_mode; }
+		void SetMode(EngineMode mode) { m_mode = mode; }
 
 		// Returns the current context
 		Context* GetContext() { return m_context; }
@@ -56,6 +60,6 @@ namespace Directus
 		void* m_hinstance;
 		void* m_windowHandle;;
 		void* m_drawHandle;
-		bool m_isSimulating;
+		EngineMode m_mode;
 	};
 }

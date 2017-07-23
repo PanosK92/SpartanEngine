@@ -164,22 +164,18 @@ namespace Directus
 		if (g_gameObject.expired())
 			return;
 
-		// Info
-		// Mesh returns raw untouched data
-		// MeshFilter returns pretransformed data
-
 		auto mesh = GetMeshFromAttachedMeshFilter();
-		auto meshFilter = g_gameObject.lock()->GetComponent<MeshFilter>();
+		auto meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
 		if (!mesh.expired() && meshFilter)
 		{
-			//SetCenter(meshFilter->GetCenter());
-			//SetBoundingBox(meshFilter->GetBoundingBox());
+			SetCenter(meshFilter->GetCenter());
+			SetBoundingBox(meshFilter->GetBoundingBox());
 		}
 	}
 
 	void Collider::DeleteCollisionShape()
 	{
-		SetRigidBodyCollisionShape(nullptr);
+		SetRigidBodyCollisionShape(shared_ptr<btCollisionShape>());
 		m_shape.reset();
 	}
 
@@ -200,7 +196,7 @@ namespace Directus
 		if (g_gameObject.expired())
 			return weak_ptr<Mesh>();
 
-		MeshFilter* meshFilter = g_gameObject.lock()->GetComponent<MeshFilter>();
+		MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
 		return meshFilter ? meshFilter->GetMesh() : weak_ptr<Mesh>();
 	}
 	//=========================================================================
