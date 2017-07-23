@@ -118,15 +118,21 @@ namespace Directus
 		// reseting it's state, we secretly set is as kinematic when the engine is not simulating (e.g. Editor Mode)
 		if (m_rigidBody)
 		{
-			// Not simulating, make it kinematic
-			if (!g_context->GetSubsystem<Engine>()->IsSimulating() && !m_rigidBody->isKinematicObject())
-				AddBodyToWorld();
+			EngineMode engineMode = g_context->GetSubsystem<Engine>()->GetMode();
 
-			// Simulating, if body was not originaly kinematic, make it dynamic
-			if (g_context->GetSubsystem<Engine>()->IsSimulating())
+			// Editor -> Kinematic (so the user can move it around)
+			if (engineMode == Editor && !m_rigidBody->isKinematicObject())
+			{
+				AddBodyToWorld();
+			}
+
+			// Game -> Dynamic (so bullet starts simulating)
+			if (engineMode == Game)
 			{
 				if (!m_isKinematic && m_rigidBody->isKinematicObject())
+				{
 					AddBodyToWorld();
+				}
 			}
 		}
 	}
@@ -388,16 +394,19 @@ namespace Directus
 		//= COLLISION FLAGS ====================================================================
 		int flags = m_rigidBody->getCollisionFlags();
 
-		// If the engine is not simulating (e.g editor mode), the body has to be kinematic
-		// so it can be positioned by the user. The original kinematic state is not lost.
+		// Editor -> Kinematic (so the user can move it around)
 		bool originalKinematicState = m_isKinematic;
-		if (!g_context->GetSubsystem<Engine>()->IsSimulating())
+		if (g_context->GetSubsystem<Engine>()->GetMode() == Editor)
 			m_isKinematic = true;
 
 		if (m_isKinematic)
+		{
 			flags |= btCollisionObject::CF_KINEMATIC_OBJECT;
+		}
 		else
+		{
 			flags &= ~btCollisionObject::CF_KINEMATIC_OBJECT;
+		}
 
 		m_rigidBody->setCollisionFlags(flags);
 		m_rigidBody->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
@@ -417,7 +426,9 @@ namespace Directus
 		g_context->GetSubsystem<Physics>()->GetWorld()->addRigidBody(m_rigidBody.get());
 
 		if (m_mass > 0.0f)
+		{
 			Activate();
+		}
 		else
 		{
 			SetLinearVelocity(Vector3::Zero);
@@ -449,15 +460,23 @@ namespace Directus
 
 		int flags = m_rigidBody->getFlags();
 		if (m_useGravity)
+		{
 			flags &= ~BT_DISABLE_WORLD_GRAVITY;
+		}
 		else
+		{
 			flags |= BT_DISABLE_WORLD_GRAVITY;
+		}
 		m_rigidBody->setFlags(flags);
 
 		if (m_useGravity)
+		{
 			m_rigidBody->setGravity(world->getGravity());
+		}
 		else
+		{
 			m_rigidBody->setGravity(btVector3(0.0f, 0.0f, 0.0f));
+		}
 	}
 
 	void RigidBody::DeleteBtRigidBody()

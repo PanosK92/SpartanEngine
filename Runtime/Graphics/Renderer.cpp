@@ -181,8 +181,8 @@ namespace Directus
 		// Post Processing
 		PostProcessing();
 
-		// Gizmos
-		Gizmos();
+		// Render debug info
+		DebugDraw();
 
 		// display frame
 		m_graphics->Present();
@@ -530,21 +530,35 @@ namespace Directus
 		);
 	}
 
-	void Renderer::Gizmos() const
+	void Renderer::DebugDraw()
 	{
-		if (m_context->GetSubsystem<Engine>()->IsSimulating())
+		if (!DEBUG_DRAW)
 			return;
-
-		m_context->GetSubsystem<Physics>()->DebugDraw();
 
 		if (!m_lineRenderer)
 			return;
 
-		if (!m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->IsDirty())
-			return;
+		m_lineRenderer->ClearVertices();
 
-		// Pass the line list from bullet to the line renderer component
-		m_lineRenderer->AddLineList(m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->GetLines());
+		// // Pass debug info from bullet physics
+		m_context->GetSubsystem<Physics>()->DebugDraw();
+		if (m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->IsDirty())
+		{
+			m_lineRenderer->AddLines(m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->GetLines());
+		}
+
+		// Pass the picking ray
+		m_lineRenderer->AddLines(m_camera->GetPickingRay());
+
+		// Pass bounding spheres
+		for (const auto& gameObject : m_renderables) 
+		{
+			auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>();
+
+			float radius = meshFilter->GetBoundingSphereRadius();
+			Vector3 center = gameObject._Get()->GetTransform()->GetPosition();
+			m_lineRenderer->AddSphere(center, radius, Vector4(1, 0, 0, 1));
+		}
 
 		// Set the buffer
 		m_lineRenderer->SetBuffer();
@@ -579,4 +593,11 @@ namespace Directus
 		m_renderedMeshesPerFrame = m_renderedMeshesTempCounter;
 	}
 	//===============================================================================================================
+	void Renderer::SetViewport(float width, float height)
+	{
+		m_viewport.x = width;
+		m_viewport.y = height;
+
+		m_graphics->SetViewport(width, height);
+	}
 }

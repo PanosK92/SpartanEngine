@@ -41,6 +41,7 @@ namespace Directus
 	float Settings::m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
 	int Settings::m_shadowMapResolution = 2048;
 	unsigned int Settings::m_anisotropy = 16;
+	bool Settings::m_debugDraw = false;
 	string Settings::m_settingsFileName = "Directus3D.ini";
 	//====================================================================================
 	ofstream Settings::m_fout;
@@ -159,6 +160,16 @@ namespace Directus
 	unsigned Settings::GetAnisotropy()
 	{
 		return m_anisotropy;
+	}
+
+	void Settings::SetDebugDraw(bool enabled)
+	{
+		m_debugDraw = enabled;
+	}
+
+	bool Settings::GetDebugDraw()
+	{
+		return m_debugDraw;
 	}
 	//========================================================================
 }

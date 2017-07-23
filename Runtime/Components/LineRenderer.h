@@ -10,6 +10,11 @@
 
 namespace Directus
 {
+	namespace Math
+	{
+		class Vector3;
+	}
+
 	class DLL_API LineRenderer : public IComponent
 	{
 	public:
@@ -24,27 +29,26 @@ namespace Directus
 		virtual void Serialize();
 		virtual void Deserialize();
 
-		//= INPUT ==================================================
-		void AddLineList(const std::vector<VertexPosCol>& lineList);
-		void AddVertex(const VertexPosCol& vertex);
+		//= INPUT ===================================================================================
+		void AddSphere(const Math::Vector3& center, float radius, const Math::Vector4& color);
+		void AddLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color);	
+		void AddLines(const std::vector<VertexPosCol>& lineList);
+		void AddVertex(const VertexPosCol& line);
+		void ClearVertices();
 
-		//= MISC ===================================================
+		//= MISC ================================================================
+		void CreateVertexBuffer();
 		void SetBuffer();
-		unsigned int GetVertexCount() { return m_maxVertices; };
+		unsigned int GetVertexCount() { return (unsigned int)m_vertices.size(); }
 
 	private:
-		void CreateBuffer();
-
-		//= VERTICES ===================	
+		//= VERTICES =====================================
 		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
-		VertexPosCol* m_vertices;
-		int m_maxVertices;
-		int m_vertexIndex;
-		//==============================
+		std::vector<VertexPosCol> m_vertices;
+		//================================================
 
-		//= MISC ========================
+		//= MISC =================
 		void UpdateVertexBuffer();
-		void ClearVertices();
-		//==============================
+		//========================
 	};
 }

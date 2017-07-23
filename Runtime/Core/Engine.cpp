@@ -160,9 +160,6 @@ namespace Directus
 
 	void Engine::Update()
 	{
-		// This is a full simulation loop
-		m_isSimulating = true;
-
 		// TIMER UPDATE
 		m_context->GetSubsystem<Timer>()->Update();
 
@@ -171,19 +168,6 @@ namespace Directus
 
 		// RENDER UPDATE
 		FIRE_EVENT(EVENT_RENDER);
-	}
-
-	void Engine::LightUpdate()
-	{
-		// This is a minimal simulation loop (editor)
-		m_isSimulating = false;
-
-		// Manually update as few subsystems as possible
-		// This is used by the editor when not in game mode.
-		m_context->GetSubsystem<Input>()->Update();
-		m_context->GetSubsystem<Scene>()->Update();
-		m_context->GetSubsystem<Scene>()->Resolve();
-		m_context->GetSubsystem<Renderer>()->Render();
 	}
 
 	void Engine::Shutdown()

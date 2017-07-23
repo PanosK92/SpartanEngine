@@ -74,9 +74,9 @@ public slots:
     void Start();
     void Stop();
     void Update();
-    void Update500Mil();
     void Update60FPS();
-
+    void Update500Mil();
     void LockUpdate();
     void UnlockUpdate();
+    void ToggleDebugDraw();
 };

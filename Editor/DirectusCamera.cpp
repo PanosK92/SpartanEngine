@@ -160,7 +160,7 @@ void DirectusCamera::Reflect(std::weak_ptr<Directus::GameObject> gameobject)
     // Do the actual reflection
     ReflectBackground(m_inspectedCamera->GetClearColor());
     ReflectProjection(m_inspectedCamera->GetProjection());
-    ReflectFOV(m_inspectedCamera->GetFieldOfView());
+    ReflectFOV(m_inspectedCamera->GetFOV_Horizontal_Deg());
     ReflectNearPlane(m_inspectedCamera->GetNearPlane());
     ReflectFarPlane(m_inspectedCamera->GetFarPlane());
 
@@ -218,7 +218,7 @@ void DirectusCamera::MapFOV()
         return;
 
     float fov = m_fov->GetValue();
-    m_inspectedCamera->SetFieldOfView(fov);
+    m_inspectedCamera->SetFOV_Horizontal_Deg(fov);
 }
 
 void DirectusCamera::MapNearPlane()

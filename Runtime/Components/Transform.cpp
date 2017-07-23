@@ -42,6 +42,7 @@ namespace Directus
 		m_rotationLocal = Quaternion(0, 0, 0, 1);
 		m_scaleLocal = Vector3::One;
 		m_worldTransform = Matrix::Identity;
+		m_localTransform = Matrix::Identity;
 		m_parent = nullptr;
 	}
 
@@ -53,7 +54,7 @@ namespace Directus
 	//= ICOMPONENT ====================================================================
 	void Transform::Reset()
 	{
-		UpdateWorldTransform();
+		UpdateTransform();
 	}
 
 	void Transform::Start()
@@ -103,24 +104,24 @@ namespace Directus
 			}
 		}
 
-		UpdateWorldTransform();
+		UpdateTransform();
 	}
 
 	//=====================
-	// UpdateWorldTransform
+	// Update World Transform
 	//=====================
-	void Transform::UpdateWorldTransform()
+	void Transform::UpdateTransform()
 	{
 		// Calculate transform
-		Matrix transform = Matrix(m_positionLocal, m_rotationLocal, m_scaleLocal);
+		m_localTransform = Matrix(m_positionLocal, m_rotationLocal, m_scaleLocal);
 
 		// Calculate global transformation
-		m_worldTransform = HasParent() ? transform * GetParentTransformMatrix() : transform;
+		m_worldTransform = HasParent() ? m_localTransform * GetParentTransformMatrix() : m_localTransform;
 
 		// update children
 		for (const auto& child : m_children)
 		{
-			child->UpdateWorldTransform();
+			child->UpdateTransform();
 		}
 	}
 
@@ -136,7 +137,7 @@ namespace Directus
 			return;
 
 		m_positionLocal = position;
-		UpdateWorldTransform();
+		UpdateTransform();
 	}
 	//================================================================================================
 
@@ -152,7 +153,7 @@ namespace Directus
 			return;
 
 		m_rotationLocal = rotation;
-		UpdateWorldTransform();
+		UpdateTransform();
 	}
 	//================================================================================================
 
@@ -175,9 +176,8 @@ namespace Directus
 		m_scaleLocal.y = (m_scaleLocal.y == 0.0f) ? M_EPSILON : m_scaleLocal.y;
 		m_scaleLocal.z = (m_scaleLocal.z == 0.0f) ? M_EPSILON : m_scaleLocal.z;
 
-		UpdateWorldTransform();
+		UpdateTransform();
 	}
-
 	//================================================================================================
 
 	//= TRANSLATION/ROTATION =========================================================================
@@ -193,25 +193,17 @@ namespace Directus
 		}
 	}
 
-	void Transform::Rotate(const Quaternion& delta, Space space)
+	void Transform::Rotate(const Quaternion& delta)
 	{
-		switch (space)
-		{
-		case Local:
-			SetRotationLocal((m_rotationLocal * delta).Normalized());
-			break;
+		if (!HasParent())
+			RotateLocal(delta);
+		
+		SetRotationLocal(m_rotationLocal * GetRotation().Inverse() * delta * GetRotation());
+	}
 
-		case World:
-			if (!HasParent())
-			{
-				SetRotationLocal((delta * m_rotationLocal).Normalized());
-			}
-			else
-			{
-				SetRotationLocal(m_rotationLocal * GetRotation().Inverse() * delta * GetRotation());
-			}
-			break;
-		}
+	void Transform::RotateLocal(const Quaternion& delta)
+	{
+		SetRotationLocal((m_rotationLocal * delta).Normalized());
 	}
 
 	Vector3 Transform::GetUp()
@@ -293,7 +285,7 @@ namespace Directus
 			m_parent->ResolveChildrenRecursively();
 		}
 
-		UpdateWorldTransform();
+		UpdateTransform();
 	}
 
 	void Transform::AddChild(Transform* child)
@@ -433,7 +425,7 @@ namespace Directus
 		m_parent = nullptr;
 
 		// Update the transform without the parent now
-		UpdateWorldTransform();
+		UpdateTransform();
 
 		// make the parent search for children,
 		// that's indirect way of making tha parent "forget"

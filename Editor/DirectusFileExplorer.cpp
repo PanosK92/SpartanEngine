@@ -47,20 +47,19 @@ DirectusFileExplorer::DirectusFileExplorer(QWidget* parent) : QListView(parent)
 
 }
 
-void DirectusFileExplorer::Initialize(
-        QWidget* mainWindow,
-        DirectusCore* directusCore,
-        DirectusHierarchy* hierarchy,
-        DirectusInspector* inspector
-        )
+void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusCore* directusCore, DirectusHierarchy* hierarchy, DirectusInspector* inspector)
 {
     QString root = "Assets";
     setAcceptDrops(true);
     setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     m_fileModel = new QFileSystemModel(this);
-    m_fileModel->setFilter(QDir::Files | QDir::AllDirs | QDir::NoDotAndDotDot); // Set a filter that displays only folders
-    m_fileModel->setRootPath(root);  // Set the root path
+
+    // Set a filter that displays only folders
+    m_fileModel->setFilter(QDir::Files | QDir::AllDirs | QDir::NoDotAndDotDot);
+
+    // Set the root path
+    m_fileModel->setRootPath(root);
 
     m_directusCore = directusCore;
     m_hierarchy = hierarchy;

@@ -37,6 +37,7 @@ namespace Directus
 #define VSYNC Settings::GetVSync()
 #define FULLSCREEN_ENABLED Settings::IsFullScreen()
 #define ANISOTROPY_LEVEL Settings::GetAnisotropy()
+#define DEBUG_DRAW Settings::GetDebugDraw()
 
 	enum VSync
 	{
@@ -59,6 +60,8 @@ namespace Directus
 		static float GetScreenAspect();
 		static int GetShadowMapResolution();
 		static unsigned int GetAnisotropy();
+		static void SetDebugDraw(bool enabled);
+		static bool GetDebugDraw();
 
 	private:
 		static std::ofstream m_fout;
@@ -73,5 +76,6 @@ namespace Directus
 		static float m_screenAspect;
 		static int m_shadowMapResolution;
 		static unsigned int m_anisotropy;
+		static bool m_debugDraw;
 	};
 }

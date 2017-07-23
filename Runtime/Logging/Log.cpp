@@ -26,7 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ILogger.h"
 #include "../EventSystem/EventHandler.h"
 #include "../FileSystem/FileSystem.h"
+#include "../Core/GameObject.h"
+#include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
+#include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
 //======================================
 
@@ -42,16 +45,6 @@ namespace Directus
 	weak_ptr<ILogger> Log::m_logger;
 	ofstream Log::m_fout;
 	bool Log::m_firstLog = true;
-
-	//= HELPER FUNCTIONS ===================
-	//string WCHARPToString(WCHAR* text)
-	//{
-	//	wstring ws(text);
-	//	string str(ws.begin(), ws.end());
-
-	//	return str;
-	//}
-	//====================================
 
 	void Log::Initialize()
 	{
@@ -107,6 +100,19 @@ namespace Directus
 		Write(str, type);
 	}
 
+	void Log::Write(weak_ptr<GameObject> gameObject, LogType type)
+	{
+		gameObject.expired() ? Write("Null", type) : Write(gameObject._Get()->GetName(), type);
+	}
+
+	void Log::Write(const Vector2& vector, LogType type)
+	{
+		string x = "X: " + to_string(vector.x);
+		string y = "Y: " + to_string(vector.y);
+
+		Write(x + ", " + y, type);
+	}
+
 	void Log::Write(const Vector3& vector, LogType type)
 	{
 		string x = "X: " + to_string(vector.x);
@@ -114,6 +120,16 @@ namespace Directus
 		string z = "Z: " + to_string(vector.z);
 
 		Write(x + ", " + y + ", " + z, type);
+	}
+
+	void Log::Write(const Vector4& vector, LogType type)
+	{
+		string x = "X: " + to_string(vector.x);
+		string y = "Y: " + to_string(vector.y);
+		string z = "Z: " + to_string(vector.z);
+		string w = "W: " + to_string(vector.w);
+
+		Write(x + ", " + y + ", " + z + ", " + w, type);
 	}
 
 	void Log::Write(const Quaternion& quaternion, LogType type)
@@ -143,14 +159,7 @@ namespace Directus
 
 	void Log::Write(bool value, LogType type)
 	{
-		if (value)
-		{
-			Write("True", type);
-		}
-		else
-		{
-			Write("False", type);
-		}
+		value ? Write("True", type) : Write("False", type);
 	}
 
 	void Log::Write(size_t value, LogType type)

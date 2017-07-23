@@ -1,6 +1,8 @@
 //= INCLUDES ===============
 #include "LineRenderer.h"
 #include "../Core/Context.h"
+#include "../Math/MathHelper.h"
+#include "../Math/Matrix.h"
 //==========================
 
 //= NAMESPACES ================
@@ -13,15 +15,11 @@ namespace Directus
 	LineRenderer::LineRenderer()
 	{
 		Register();
-		m_vertexBuffer = nullptr;
-		m_vertices = nullptr;
-		m_vertexIndex = 0;
-		m_maxVertices = 0;
 	}
 
 	LineRenderer::~LineRenderer()
 	{
-		delete[] m_vertices;
+		m_vertices.clear();
 	}
 
 	void LineRenderer::Reset()
@@ -60,30 +58,69 @@ namespace Directus
 	}
 
 	//= INPUT ===============================================================
-	void LineRenderer::AddLineList(const vector<VertexPosCol>& lineList)
+	void LineRenderer::AddSphere(const Vector3& center, float radius, const Vector4& color)
 	{
-		ClearVertices();
+		int lats = 5;
+		int longs = 5;
+		Matrix translation = Matrix::CreateTranslation(center);
 
-		// Grow if needed, otherwise we'll crash
-		if (lineList.size() >= m_maxVertices)
+		for (int i = 0; i <= lats; i++)
 		{
-			m_maxVertices = (int)lineList.size();
-			CreateBuffer();
-		}
+			float lat0 = PI * (-0.5f + (i - 1) / lats);
+			float z0 = radius * sin(lat0);
+			float zr0 = radius * cos(lat0);
 
-		for (int i = 0; i < lineList.size(); i++)
-			AddVertex(lineList[i]);
+			float lat1 = PI * (-0.5f + i / lats);
+			float z1 = radius * sin(lat1);
+			float zr1 = radius * cos(lat1);
+
+			for (int j = 0; j <= longs; j++)
+			{
+				float lng = 2 * PI * (j - 1) / longs;
+				float x = cos(lng);
+				float y = sin(lng);
+
+				Vector3 from = Vector3(x * zr0, y * zr0, z0);
+				Vector3 to = Vector3(x * zr1, y * zr1, z1);
+
+				from = from * translation;
+				to = to * translation;
+
+				AddLine(from, to, color);
+			}
+		}
 	}
 
-	void LineRenderer::AddVertex(const VertexPosCol& vertex)
+	void LineRenderer::AddLine(const Vector3& from, const Vector3& to, const Vector4& color)
 	{
-		m_vertices[m_vertexIndex] = vertex;
-		m_vertexIndex++;
+		AddVertex(VertexPosCol{ from, color });
+		AddVertex(VertexPosCol{ to, color });
+	}
+
+	void LineRenderer::AddLines(const vector<VertexPosCol>& lineList)
+	{
+		for (const auto& line : lineList)
+		{
+			AddVertex(line);
+		}
+	}
+
+	// All add functions resolve to this one
+	void LineRenderer::AddVertex(const VertexPosCol& line)
+	{
+		m_vertices.push_back(line);
+	}
+
+	void LineRenderer::ClearVertices()
+	{
+		m_vertices.clear();
+		m_vertices.shrink_to_fit();
 	}
 
 	//= MISC ================================================================
 	void LineRenderer::SetBuffer()
 	{
+		CreateVertexBuffer();
 		UpdateVertexBuffer();
 
 		// Set vertex buffer
@@ -91,24 +128,12 @@ namespace Directus
 
 		// Set primitive topology
 		g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(LineList);
-
-		ClearVertices();
 	}
 
-	void LineRenderer::CreateBuffer()
+	void LineRenderer::CreateVertexBuffer()
 	{
-		if (m_vertices)
-		{
-			delete[] m_vertices;
-			m_vertices = nullptr;
-		}
-
-		// create vertex array
-		m_vertices = new VertexPosCol[m_maxVertices];
-
-		// create vertex buffer
 		m_vertexBuffer = make_shared<D3D11VertexBuffer>(g_context->GetSubsystem<Graphics>());
-		m_vertexBuffer->CreateDynamic(sizeof(VertexPosCol), m_maxVertices);
+		m_vertexBuffer->CreateDynamic(sizeof(VertexPosCol), (UINT)m_vertices.size());
 	}
 
 	//= MISC ================================================================
@@ -121,14 +146,9 @@ namespace Directus
 		void* data = m_vertexBuffer->Map();
 
 		// update the vertex buffer.
-		memcpy(data, &m_vertices[0], sizeof(VertexPosCol) * m_maxVertices);
+		memcpy(data, &m_vertices[0], sizeof(VertexPosCol) * (int)m_vertices.size());
 
 		// re-enable GPU access to the vertex buffer data.
 		m_vertexBuffer->Unmap();
-	}
-
-	void LineRenderer::ClearVertices()
-	{
-		m_vertexIndex = 0;
 	}
 }
