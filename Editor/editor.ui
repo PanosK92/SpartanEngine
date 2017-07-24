@@ -476,8 +476,7 @@ QProgressBar::chunk
 	background-position: center;
 	border-style: outset;
 	border-width: 1px;
-	border-top-left-radius: 5px;
-	border-bottom-left-radius: 5px;
+	border-radius: 2px;
 }
 
 #directusPlayButton:checked 
@@ -491,38 +490,7 @@ QProgressBar::chunk
 	background-position: center;
 	border-style: outset;
 	border-width: 1px;
-	border-top-left-radius: 5px;
-	border-bottom-left-radius: 5px;
-}
-
-#directusPauseButton
-{
-	min-width: 2em;
-	padding: 3px;
-	border-color: #464646;
-	background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
-	background-image: url(:/Images/pause.png) contain;
-	background-repeat: no-repeat;
-	background-position: center;
-	border-style: outset;
-	border-width: 1px;
-	border-top-right-radius: 5px;
-	border-bottom-right-radius: 5px;
-}
-
-#directusPauseButton:checked 
-{
-	min-width: 2em;
-	padding: 3px;
-	border-color: #464646;
-	background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
-	background-image: url(:/Images/pause.png);
-	background-repeat: no-repeat;
-	background-position: center;
-	border-style: outset;
-	border-width: 1px;
-	border-top-right-radius: 5px;
-	border-bottom-right-radius: 5px;
+	border-radius: 2px;
 }
 
 /*= MENU ===================================================================================*/
@@ -907,22 +875,6 @@ text edit background:					414141
             <bool>false</bool>
            </property>
            <property name="flat">
-            <bool>false</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="directusPauseButton">
-           <property name="styleSheet">
-            <string notr="true"/>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="checked">
             <bool>false</bool>
            </property>
           </widget>
@@ -3519,6 +3471,7 @@ QTabBar::tab:last
     <slot>ShowContextMenuLight()</slot>
     <slot>AddAudioListenerComponent()</slot>
     <slot>AddAudioSourceComponent()</slot>
+    <slot>SelectGameObject(Directus::GameObject*)</slot>
    </slots>
   </customwidget>
   <customwidget>
@@ -3536,6 +3489,7 @@ QTabBar::tab:last
    <header location="global">DirectusCore.h</header>
    <container>1</container>
    <slots>
+    <signal>GameObjectPicked(Directus::GameObject*)</signal>
     <slot>ToggleDebugDraw()</slot>
    </slots>
   </customwidget>
@@ -3879,7 +3833,7 @@ QTabBar::tab:last
     </hint>
     <hint type="destinationlabel">
      <x>62</x>
-     <y>599</y>
+     <y>554</y>
     </hint>
    </hints>
   </connection>
@@ -3944,6 +3898,22 @@ QTabBar::tab:last
     <hint type="destinationlabel">
      <x>631</x>
      <y>324</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>directusCore</sender>
+   <signal>GameObjectPicked(Directus::GameObject*)</signal>
+   <receiver>directusHierarchy</receiver>
+   <slot>SelectGameObject(Directus::GameObject*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>622</x>
+     <y>344</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>210</x>
+     <y>341</y>
     </hint>
    </hints>
   </connection>
