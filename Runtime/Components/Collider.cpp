@@ -21,17 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================================
 #include "Collider.h"
-#include "MeshFilter.h"
-#include "RigidBody.h"
-#include "../Core/GameObject.h"
-#include "../IO/Serializer.h"
-#include "../Physics/BulletPhysicsHelper.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/CollisionShapes/btCylinderShape.h>
 #include <BulletCollision/CollisionShapes/btCapsuleShape.h>
+#include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
+#include <BulletCollision/CollisionShapes/btConeShape.h>
 #include "Transform.h"
+#include "MeshFilter.h"
+#include "RigidBody.h"
+#include "../Core/GameObject.h"
+#include "../IO/Serializer.h"
+#include "../Physics/BulletPhysicsHelper.h"
+#include "../Graphics/Mesh.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -45,9 +48,9 @@ namespace Directus
 	{
 		Register();
 		m_shapeType = Box;
-		m_shape = nullptr;
 		m_extents = Vector3::One;
 		m_center = Vector3::Zero;
+		m_mesh = weak_ptr<Mesh>();
 	}
 
 	Collider::~Collider()
@@ -58,8 +61,14 @@ namespace Directus
 	//= ICOMPONENT ========================================================================
 	void Collider::Reset()
 	{
+		// Get the mesh
+		if (!g_gameObject.expired())
+		{
+			MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
+			m_mesh = meshFilter->GetMesh();
+		}
+
 		m_lastKnownScale = g_transform->GetScale();
-		UpdateBoundingBox();
 		UpdateShape();
 	}
 
@@ -75,17 +84,16 @@ namespace Directus
 
 	void Collider::Remove()
 	{
-		DeleteCollisionShape();
+		ReleaseShape();
 	}
 
 	void Collider::Update()
 	{
-		// Ensure that the collider scales with the transform
+		// Scale the collider if the transform scale has changed
 		if (m_lastKnownScale != g_transform->GetScale())
-		{
-			UpdateBoundingBox();
-			UpdateShape();
+		{	
 			m_lastKnownScale = g_transform->GetScale();
+			m_shape->setLocalScaling(ToBtVector3(m_lastKnownScale));
 		}
 	}
 
@@ -114,67 +122,54 @@ namespace Directus
 		m_extents.y = Clamp(m_extents.y, M_EPSILON, INFINITY);
 		m_extents.z = Clamp(m_extents.z, M_EPSILON, INFINITY);
 	}
+	//=============================================================
 
 	//= COLLISION SHAPE =======================================================
 	void Collider::UpdateShape()
 	{
-		// delete old shape (if it exists)
-		DeleteCollisionShape();
+		// Release previous shape
+		ReleaseShape();
+	
+		Vector3 newWorldScale = g_transform->GetScale();
 
-		// Create BOX shape
-		if (m_shapeType == Box)
+		switch (m_shapeType)
 		{
-			m_shape = make_shared<btBoxShape>(ToBtVector3(m_extents));
-		}
+		case Box:
+			m_shape = make_shared<btBoxShape>(ToBtVector3(m_extents * 0.5f));
+			m_shape->setLocalScaling(ToBtVector3(newWorldScale));
+			break;
 
-		// Create CAPSULE shape
-		else if (m_shapeType == Capsule)
-		{
-			float height = max(m_extents.x, m_extents.z);
-			height = max(height, m_extents.y);
+		case Sphere:
+			m_shape = make_shared<btSphereShape>(m_extents.x);
+			m_shape->setLocalScaling(ToBtVector3(newWorldScale));
+			break;
 
-			float radius = min(m_extents.x, m_extents.z);
-			radius = min(radius, m_extents.y);
+		case Static_Plane:
+			m_shape = make_shared<btStaticPlaneShape>(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
+			break;
 
-			m_shape = make_shared<btCapsuleShape>(radius, height);
-		}
+		case Cylinder:
+			m_shape = make_shared<btCylinderShape>(btVector3(m_extents.x, m_extents.y, m_extents.x));
+			m_shape->setLocalScaling(ToBtVector3(newWorldScale));
+			break;
 
-		// Create CYLINDER shape
-		else if (m_shapeType == Cylinder)
-		{
-			m_shape = make_shared<btCylinderShape>(ToBtVector3(m_extents));
-		}
+		case Capsule:
+			m_shape = make_shared<btCapsuleShape>(m_extents.x, Max(m_extents.y - m_extents.x, 0.0f));
+			m_shape->setLocalScaling(ToBtVector3(newWorldScale));
+			break;
 
-		// Create SPHERE shape
-		else if (m_shapeType == Sphere)
-		{
-			float radius = max(m_extents.x, m_extents.y);
-			radius = max(radius, m_extents.z);
-
-			m_shape = make_shared<btSphereShape>(radius);
+		case Cone:
+			m_shape = make_shared<btConeShape>(m_extents.x, m_extents.y);
+			m_shape->setLocalScaling(ToBtVector3(newWorldScale));
+			break;
 		}
 
 		SetRigidBodyCollisionShape(m_shape);
 	}
 	//=========================================================================
 
-	//= HELPER FUNCTIONS ======================================================
-	void Collider::UpdateBoundingBox()
-	{
-		if (g_gameObject.expired())
-			return;
-
-		auto mesh = GetMeshFromAttachedMeshFilter();
-		auto meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
-		if (!mesh.expired() && meshFilter)
-		{
-			BoundingBox box = meshFilter->GetBoundingBoxTransformed();
-			SetCenter(box.GetCenter());
-			SetBoundingBox(box.GetHalfSize());
-		}
-	}
-
-	void Collider::DeleteCollisionShape()
+	//= PRIVATE ===========================================================================================
+	void Collider::ReleaseShape()
 	{
 		SetRigidBodyCollisionShape(shared_ptr<btCollisionShape>());
 		m_shape.reset();
@@ -185,20 +180,11 @@ namespace Directus
 		if (g_gameObject.expired())
 			return;
 
-		RigidBody* rigidBody = g_gameObject.lock()->GetComponent<RigidBody>();
+		RigidBody* rigidBody = g_gameObject._Get()->GetComponent<RigidBody>();
 		if (rigidBody)
 		{
 			rigidBody->SetCollisionShape(shape);
 		}
 	}
-
-	weak_ptr<Mesh> Collider::GetMeshFromAttachedMeshFilter() const
-	{
-		if (g_gameObject.expired())
-			return weak_ptr<Mesh>();
-
-		MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
-		return meshFilter ? meshFilter->GetMesh() : weak_ptr<Mesh>();
-	}
-	//=========================================================================
+	//======================================================================================================
 }

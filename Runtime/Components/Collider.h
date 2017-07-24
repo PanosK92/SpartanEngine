@@ -21,26 +21,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================
+//= INCLUDES ===============
 #include "IComponent.h"
-#include "../Math/Vector3.h"
-#include "../Graphics/Mesh.h"
 #include <memory>
-//===========================
+#include "../Math/Vector3.h"
+//==========================
 
-class btBoxShape;
 class btCollisionShape;
 
 namespace Directus
 {
+	class Mesh;
 	class MeshFilter;
 
 	enum ColliderShape
 	{
 		Box,
-		Capsule,
+		Sphere,
+		Static_Plane,
 		Cylinder,
-		Sphere
+		Capsule,
+		Cone
 	};
 
 	class DLL_API Collider : public IComponent
@@ -49,9 +50,7 @@ namespace Directus
 		Collider();
 		~Collider();
 
-		/*------------------------------------------------------------------------------
-											[INTERFACE]
-		------------------------------------------------------------------------------*/
+		//= ICOMPONENT =============
 		virtual void Reset();
 		virtual void Start();
 		virtual void OnDisable();
@@ -59,35 +58,37 @@ namespace Directus
 		virtual void Update();
 		virtual void Serialize();
 		virtual void Deserialize();
+		//==========================
 
-		/*------------------------------------------------------------------------------
-										[PROPERTIES]
-		------------------------------------------------------------------------------*/
+		// Bounding box
 		const Math::Vector3& GetBoundingBox() { return m_extents; }
 		void SetBoundingBox(const Math::Vector3& boundingBox);
 
+		// Collider center
 		const Math::Vector3& GetCenter() { return m_center; }
 		void SetCenter(const Math::Vector3& center) { m_center = center; }
 
+		// Collision shape type
 		ColliderShape GetShapeType() { return m_shapeType; }
 		void SetShapeType(ColliderShape type) { m_shapeType = type; }
 
+		// Collision shape
 		std::shared_ptr<btCollisionShape> GetBtCollisionShape() { return m_shape; }
 
 		void UpdateShape();
 
 	private:
-		//= HELPER FUNCTIONS ======================================================
-		void UpdateBoundingBox();
-		void DeleteCollisionShape();
+		// Deletes the collision shape
+		void ReleaseShape();
+
+		// Set a collision shape
 		void SetRigidBodyCollisionShape(std::shared_ptr<btCollisionShape> shape) const;
-		std::weak_ptr<Mesh> GetMeshFromAttachedMeshFilter() const;
-		//=========================================================================
 
 		ColliderShape m_shapeType;
 		std::shared_ptr<btCollisionShape> m_shape;
 		Math::Vector3 m_extents;
 		Math::Vector3 m_center;
 		Math::Vector3 m_lastKnownScale;
+		std::weak_ptr<Mesh> m_mesh;
 	};
 }

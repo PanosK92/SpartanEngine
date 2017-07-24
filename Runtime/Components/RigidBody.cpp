@@ -21,18 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================================
 #include "RigidBody.h"
-#include "Transform.h"
-#include "Collider.h"
-#include "../IO/Serializer.h"
-#include "../Core/GameObject.h"
-#include "../Physics/Physics.h"
-#include "../Physics/BulletPhysicsHelper.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
-#include "../Logging/Log.h"
 #include <LinearMath/btMotionState.h>
+#include "Transform.h"
+#include "Collider.h"
 #include "../Core/Engine.h"
+#include "../Core/GameObject.h"
+#include "../Physics/Physics.h"
+#include "../Physics/BulletPhysicsHelper.h"
+#include "../Math/Quaternion.h"
+#include "../IO/Serializer.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -42,6 +42,11 @@ using namespace std;
 
 namespace Directus
 {
+	static const float DEFAULT_MASS = 0.0f;
+	static const float DEFAULT_RESTITUTION = 0.0f;
+	static const float DEFAULT_FRICTION = 0.5f;
+	static const float DEFAULT_ANGULAR_FRICTION = 0.0f;
+
 	class MotionState : public btMotionState
 	{
 		RigidBody* m_rigidBody;
@@ -63,7 +68,7 @@ namespace Directus
 		void btMotionState::setWorldTransform(const btTransform& worldTransform) override
 		{
 			Quaternion bulletRot = ToQuaternion(worldTransform.getRotation());
-			Vector3 bulletPos = ToVector3(worldTransform.getOrigin()) - bulletRot *  m_rigidBody->GetColliderCenter();
+			Vector3 bulletPos = ToVector3(worldTransform.getOrigin()) - bulletRot * m_rigidBody->GetColliderCenter();
 			m_rigidBody->g_transform->SetPosition(bulletPos);
 			m_rigidBody->g_transform->SetRotation(bulletRot);
 
@@ -75,10 +80,10 @@ namespace Directus
 	{
 		Register();
 		m_inWorld = false;
-		m_mass = 0.0f;
-		m_restitution = 0.2f;
-		m_drag = 0.5f;
-		m_angularDrag = 0.0f;
+		m_mass = DEFAULT_MASS;
+		m_restitution = DEFAULT_RESTITUTION;
+		m_drag = DEFAULT_FRICTION;
+		m_angularDrag = DEFAULT_ANGULAR_FRICTION;
 		m_useGravity = true;
 		m_isKinematic = false;
 		m_hasSimulated = false;
@@ -88,7 +93,7 @@ namespace Directus
 
 	RigidBody::~RigidBody()
 	{
-		DeleteBtRigidBody();
+		ReleaseBtRigidBody();
 	}
 
 	//= ICOMPONENT ==========================================================
@@ -116,24 +121,21 @@ namespace Directus
 	{
 		// To make the body able to get positioned directly by the use without worrying about Bullet 
 		// reseting it's state, we secretly set is as kinematic when the engine is not simulating (e.g. Editor Mode)
-		if (m_rigidBody)
+		if (!m_rigidBody)
+			return;
+
+		EngineMode engineMode = g_context->GetSubsystem<Engine>()->GetMode();
+
+		// Editor -> Kinematic (so the user can move it around)
+		if (engineMode == Editor && !m_rigidBody->isKinematicObject())
 		{
-			EngineMode engineMode = g_context->GetSubsystem<Engine>()->GetMode();
+			AddBodyToWorld();
+		}
 
-			// Editor -> Kinematic (so the user can move it around)
-			if (engineMode == Editor && !m_rigidBody->isKinematicObject())
-			{
-				AddBodyToWorld();
-			}
-
-			// Game -> Dynamic (so bullet starts simulating)
-			if (engineMode == Game)
-			{
-				if (!m_isKinematic && m_rigidBody->isKinematicObject())
-				{
-					AddBodyToWorld();
-				}
-			}
+		// Game -> Dynamic (so bullet starts simulating)
+		if (engineMode == Game && !m_isKinematic && m_rigidBody->isKinematicObject())
+		{
+			AddBodyToWorld();
 		}
 	}
 
@@ -222,7 +224,9 @@ namespace Directus
 
 		m_rigidBody->setLinearVelocity(ToBtVector3(velocity));
 		if (velocity != Vector3::Zero)
+		{
 			Activate();
+		}
 	}
 
 	void RigidBody::SetAngularVelocity(const Vector3& velocity)
@@ -232,7 +236,9 @@ namespace Directus
 
 		m_rigidBody->setAngularVelocity(ToBtVector3(velocity));
 		if (velocity != Vector3::Zero)
+		{
 			Activate();
+		}
 	}
 
 	void RigidBody::ApplyForce(const Vector3& force, ForceMode mode) const
@@ -240,9 +246,13 @@ namespace Directus
 		Activate();
 
 		if (mode == Force)
+		{
 			m_rigidBody->applyCentralForce(ToBtVector3(force));
+		}
 		else if (mode == Impulse)
+		{
 			m_rigidBody->applyCentralImpulse(ToBtVector3(force));
+		}
 	}
 
 	void RigidBody::ApplyForceAtPosition(const Vector3& force, Vector3 position, ForceMode mode) const
@@ -250,9 +260,13 @@ namespace Directus
 		Activate();
 
 		if (mode == Force)
+		{
 			m_rigidBody->applyForce(ToBtVector3(force), ToBtVector3(position));
+		}
 		else if (mode == Impulse)
+		{
 			m_rigidBody->applyImpulse(ToBtVector3(force), ToBtVector3(position));
+		}
 	}
 
 	void RigidBody::ApplyTorque(const Vector3& torque, ForceMode mode) const
@@ -260,18 +274,26 @@ namespace Directus
 		Activate();
 
 		if (mode == Force)
+		{
 			m_rigidBody->applyTorque(ToBtVector3(torque));
+		}
 		else if (mode == Impulse)
+		{
 			m_rigidBody->applyTorqueImpulse(ToBtVector3(torque));
+		}
 	}
 
 	//= CONSTRAINTS =========================================================
 	void RigidBody::SetPositionLock(bool lock)
 	{
 		if (lock)
+		{
 			SetPositionLock(Vector3::One);
+		}
 		else
+		{
 			SetPositionLock(Vector3::Zero);
+		}
 	}
 
 	void RigidBody::SetPositionLock(const Vector3& lock)
@@ -359,30 +381,32 @@ namespace Directus
 		btVector3 inertia(0, 0, 0);
 
 		if (m_mass < 0.0f)
+		{
 			m_mass = 0.0f;
+		}
 
 		// in case there is an existing rigidBody, remove it
 		if (m_rigidBody)
 		{
 			inertia = m_rigidBody->getLocalInertia(); // save the inertia
-			DeleteBtRigidBody();
+			ReleaseBtRigidBody();
 		}
 
 		// Calculate local inertia
 		if (!m_shape.expired())
-			m_shape.lock()->calculateLocalInertia(m_mass, inertia);
+			m_shape._Get()->calculateLocalInertia(m_mass, inertia);
 
 		// Motion state
 		MotionState* motionState = new MotionState(this);
 
 		// Construction Info
-		btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, !m_shape.expired() ? m_shape.lock().get() : nullptr, inertia);
+		btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, !m_shape.expired() ? m_shape._Get() : nullptr, inertia);
 		constructionInfo.m_mass = m_mass;
 		constructionInfo.m_friction = m_drag;
 		constructionInfo.m_rollingFriction = m_angularDrag;
 		constructionInfo.m_restitution = m_restitution;
 		constructionInfo.m_startWorldTransform;
-		constructionInfo.m_collisionShape = !m_shape.expired() ? m_shape.lock().get() : nullptr;
+		constructionInfo.m_collisionShape = !m_shape.expired() ? m_shape._Get() : nullptr;
 		constructionInfo.m_localInertia = inertia;
 		constructionInfo.m_motionState = motionState;
 
@@ -479,7 +503,7 @@ namespace Directus
 		}
 	}
 
-	void RigidBody::DeleteBtRigidBody()
+	void RigidBody::ReleaseBtRigidBody()
 	{
 		if (!m_rigidBody)
 			return;
@@ -499,7 +523,9 @@ namespace Directus
 			return;
 
 		if (m_mass > 0.0f)
+		{
 			m_rigidBody->activate(true);
+		}
 	}
 
 	void RigidBody::Deactivate() const

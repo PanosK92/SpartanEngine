@@ -65,9 +65,11 @@ void DirectusCollider::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_shapeTypeLabel = new QLabel("Type");
     m_shapeType = new QComboBox();
     m_shapeType->addItem("Box");
-    m_shapeType->addItem("Capsule");
-    m_shapeType->addItem("Cylinder");
     m_shapeType->addItem("Sphere");
+    m_shapeType->addItem("Static Plane");
+    m_shapeType->addItem("Cylinder");
+    m_shapeType->addItem("Capsule");
+    m_shapeType->addItem("Cone");
     //=========================================================
 
     //= CENTER ================================================
