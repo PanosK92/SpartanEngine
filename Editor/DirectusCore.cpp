@@ -88,11 +88,6 @@ void DirectusCore::Initialize(void* mainWindowHandle, void* hInstance, DirectusS
     m_directusStatsLabel = directusStatsLabel;
 }
 
-void DirectusCore::SetInspector(DirectusInspector* inspector)
-{
-    m_inspector = inspector;
-}
-
 bool DirectusCore::IsRunning()
 {
     return m_isRunning;
@@ -207,8 +202,12 @@ void DirectusCore::mousePressEvent(QMouseEvent* event)
 {
     QPoint mousePos = event->pos();
     weak_ptr<GameObject> camera = m_socket->GetContext()->GetSubsystem<Scene>()->GetMainCamera();
-    auto picked = camera._Get()->GetComponent<Camera>()->Pick(Vector2(mousePos.x(), mousePos.y()));
-    m_inspector->Inspect(picked);
+    weak_ptr<GameObject> picked = camera._Get()->GetComponent<Camera>()->Pick(Vector2(mousePos.x(), mousePos.y()));
+
+    if (!picked.expired())
+    {
+        emit GameObjectPicked(picked._Get());
+    }
 }
 //===================================================
 

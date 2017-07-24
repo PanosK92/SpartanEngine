@@ -40,7 +40,7 @@ public:
     void Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusCore* directusCore);
 
 protected:
-    virtual void mousePressEvent(QMouseEvent *event);
+    virtual void mousePressEvent(QMouseEvent* event);
     virtual void selectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
     virtual void mouseMoveEvent(QMouseEvent* event);
     virtual void dragEnterEvent(QDragEnterEvent* event);
@@ -56,6 +56,9 @@ private:
     std::weak_ptr<Directus::GameObject> ToGameObject(QTreeWidgetItem* treeItem);
     QTreeWidgetItem* GetSelectedQTreeWidgetItem();
     std::weak_ptr<Directus::GameObject> GetSelectedGameObject();
+    void GetTreeItemDescendants(std::vector<QTreeWidgetItem*>* collection, QTreeWidgetItem* item);
+    std::vector<QTreeWidgetItem*> GetAllTreeItems();
+    void ExpandTreeItemGoingUp(QTreeWidgetItem* item);
 
     bool IsAnyGameObjectSelected();   
   
@@ -78,6 +81,7 @@ public slots:
     void ShowContextMenuLight();
     void RenameSelected();
     void DeleteSelected();
+    void SelectGameObject(Directus::GameObject* gameObject);
 
     //= GAMEOBJECT ADDITIONS =====
     void CreateEmptyGameObject();

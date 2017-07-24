@@ -42,7 +42,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/RigidBody.h"
 #include "Components/Skybox.h"
 #include "Components/Transform.h"
-
 //==================================
 
 //= NAMESPACES ==========
@@ -76,8 +75,9 @@ void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWi
     Populate();
 }
 
-void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
+void DirectusHierarchy::mousePressEvent(QMouseEvent* event)
 {
+    // Left click -> GameObject selection
     if (event->button() == Qt::LeftButton)
     {
         // save the position in order to be
@@ -96,6 +96,7 @@ void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
         }
     }
 
+    // Right click -> context menu
     if(event->button() == Qt::RightButton)
     {
         clearSelection();
@@ -106,8 +107,10 @@ void DirectusHierarchy::mousePressEvent(QMouseEvent *event)
 
 void DirectusHierarchy::selectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
 {
+    // We use the existing event definition
     QTreeWidget::selectionChanged(selected, deselected);
 
+    // We make sure the inspector displays the selected GameObject as well
     if (m_inspector)
     {
         m_inspector->Inspect(GetSelectedGameObject());
@@ -115,8 +118,7 @@ void DirectusHierarchy::selectionChanged(const QItemSelection &selected, const Q
 }
 
 //= DRAG N DROP RELATED ============================================================================
-// Determine whether a drag should begin, and
-// construct a drag object to handle the operation.
+// Determine whether a drag should begin, and construct a drag object to handle the operation.
 void DirectusHierarchy::mouseMoveEvent(QMouseEvent* event)
 {
     if (!(event->buttons() & Qt::LeftButton))
@@ -222,6 +224,8 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
 }
 
 //===================================================================================================
+
+//= HELPER FUNCTIONS ================================================================================
 void DirectusHierarchy::AddRoot(QTreeWidgetItem* item)
 {
     this->addTopLevelItem(item);
@@ -335,8 +339,46 @@ weak_ptr<GameObject> DirectusHierarchy::GetSelectedGameObject()
 
 bool DirectusHierarchy::IsAnyGameObjectSelected()
 {
-    return GetSelectedGameObject().expired() ? false : true;
+    return !GetSelectedGameObject().expired();
 }
+
+void DirectusHierarchy::GetTreeItemDescendants(vector<QTreeWidgetItem*>* collection, QTreeWidgetItem* item)
+{
+    if (!item)
+        return;
+
+    for(int i = 0; i < item->childCount(); i++)
+    {
+        collection->push_back(item->child(i));
+        GetTreeItemDescendants(collection, item->child(i));
+    }
+}
+
+vector<QTreeWidgetItem*> DirectusHierarchy::GetAllTreeItems()
+{
+    vector<QTreeWidgetItem*> collection;
+
+    for (int i = 0; i < topLevelItemCount(); i++)
+    {
+        QTreeWidgetItem* item = topLevelItem(i);
+        collection.push_back(item);
+        GetTreeItemDescendants(&collection, item);
+    }
+
+    return collection;
+}
+
+void DirectusHierarchy::ExpandTreeItemGoingUp(QTreeWidgetItem* item)
+{
+    QTreeWidgetItem* parent = item->parent();
+
+    if (parent)
+    {
+        expandItem(parent);
+        ExpandTreeItemGoingUp(parent);
+    }
+}
+//========================================================================================
 
 //= SLOTS ===============================================
 void DirectusHierarchy::ClearTree()
@@ -573,6 +615,28 @@ void DirectusHierarchy::DeleteSelected()
 
     // Refresh the hierarchy
     Populate();
+}
+
+void DirectusHierarchy::SelectGameObject(GameObject* gameObject)
+{
+    vector<QTreeWidgetItem*> items = GetAllTreeItems();
+    for (const auto& item : items)
+    {
+        auto gameObjectItem = ToGameObject(item);
+        if (gameObjectItem.expired())
+            continue;
+
+        if (gameObjectItem._Get()->GetID() == gameObject->GetID())
+        {
+            // Select
+            clearSelection();
+            item->setSelected(true);
+
+            // Expand
+            ExpandTreeItemGoingUp(item);
+            return;
+        }
+    }
 }
 //========================================================
 

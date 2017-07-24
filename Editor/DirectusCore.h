@@ -33,6 +33,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=============================
 
 class DirectusInspector;
+namespace Directus
+{
+    class GameObject;
+}
 
 class DirectusCore : public QWidget
 {
@@ -44,7 +48,6 @@ public:
     virtual ~DirectusCore();
     Directus::Socket* GetEngineSocket();
     void Initialize(void* hwnd, void* hinstance, DirectusStatsLabel* directusStatsLabel);
-    void SetInspector(DirectusInspector* inspector);
     bool IsRunning();
 
 protected:
@@ -64,11 +67,11 @@ private:
     bool m_isRunning;
     bool m_locked;
     DirectusStatsLabel* m_directusStatsLabel;
-    DirectusInspector* m_inspector;
 
 signals:
     void EngineStarting();
     void EngineStopping();
+    void GameObjectPicked(Directus::GameObject*);
 
 public slots:
     void Start();
