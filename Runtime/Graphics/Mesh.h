@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========
+//= INCLUDES ==================
 #include <vector>
 #include <functional>
 #include "Vertex.h"
-//===================
+#include "../Math/BoundingBox.h"
+//==============================
 
 namespace Directus
 {
@@ -60,10 +61,7 @@ namespace Directus
 		unsigned int GetTriangleCount() const { return m_triangleCount; }
 		unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
 
-		const Math::Vector3& GetMin() const { return m_min; }
-		const Math::Vector3& GetMax() const { return m_max; }
-		const Math::Vector3& GetCenter() const { return m_center; }
-		const Math::Vector3& GetBoundingBox() const { return m_boundingBox; }
+		Math::BoundingBox GetBoundingBox() const { return m_boundingBox; }
 
 		//= PROCESSING =================================================================
 		void Update();
@@ -77,12 +75,9 @@ namespace Directus
 		static void LoadVertex(VertexPosTexNorTan& vertex);
 		//==============================================================================
 
-		//= HELPER FUNCTIONS =========================================================================
+		//= HELPER FUNCTIONS =============================
 		static void SetScale(Mesh* meshData, float scale);
-		static Math::Vector3 CalcualteBoundingBox(const Math::Vector3& min, const Math::Vector3& max);
-		static Math::Vector3 CalculateCenter(const Math::Vector3& min, const Math::Vector3& max);
-		static void FindMinMax(Mesh* mesh, Math::Vector3& min, Math::Vector3& max);
-		//============================================================================================
+		//================================================
 
 		std::string m_id;
 		std::string m_gameObjID;
@@ -96,10 +91,7 @@ namespace Directus
 		unsigned int m_indexCount;
 		unsigned int m_triangleCount;
 
-		Math::Vector3 m_min;
-		Math::Vector3 m_max;
-		Math::Vector3 m_center;
-		Math::Vector3 m_boundingBox;
+		Math::BoundingBox m_boundingBox;
 
 		std::function<void(void)> m_onUpdate;
 	};

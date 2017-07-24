@@ -46,7 +46,7 @@ namespace Directus
 		Register();
 		m_shapeType = Box;
 		m_shape = nullptr;
-		m_boundingBox = Vector3::One;
+		m_extents = Vector3::One;
 		m_center = Vector3::Zero;
 	}
 
@@ -92,14 +92,14 @@ namespace Directus
 	void Collider::Serialize()
 	{
 		Serializer::WriteInt(int(m_shapeType));
-		Serializer::WriteVector3(m_boundingBox);
+		Serializer::WriteVector3(m_extents);
 		Serializer::WriteVector3(m_center);
 	}
 
 	void Collider::Deserialize()
 	{
 		m_shapeType = ColliderShape(Serializer::ReadInt());
-		m_boundingBox = Serializer::ReadVector3();
+		m_extents = Serializer::ReadVector3();
 		m_center = Serializer::ReadVector3();
 
 		Build();
@@ -108,11 +108,11 @@ namespace Directus
 	//= BOUNDING BOX =============================================
 	void Collider::SetBoundingBox(const Vector3& boundingBox)
 	{
-		m_boundingBox = boundingBox;
+		m_extents = boundingBox;
 
-		m_boundingBox.x = Clamp(m_boundingBox.x, M_EPSILON, INFINITY);
-		m_boundingBox.y = Clamp(m_boundingBox.y, M_EPSILON, INFINITY);
-		m_boundingBox.z = Clamp(m_boundingBox.z, M_EPSILON, INFINITY);
+		m_extents.x = Clamp(m_extents.x, M_EPSILON, INFINITY);
+		m_extents.y = Clamp(m_extents.y, M_EPSILON, INFINITY);
+		m_extents.z = Clamp(m_extents.z, M_EPSILON, INFINITY);
 	}
 
 	//= COLLISION SHAPE =======================================================
@@ -124,17 +124,17 @@ namespace Directus
 		// Create BOX shape
 		if (m_shapeType == Box)
 		{
-			m_shape = make_shared<btBoxShape>(ToBtVector3(m_boundingBox));
+			m_shape = make_shared<btBoxShape>(ToBtVector3(m_extents));
 		}
 
 		// Create CAPSULE shape
 		else if (m_shapeType == Capsule)
 		{
-			float height = max(m_boundingBox.x, m_boundingBox.z);
-			height = max(height, m_boundingBox.y);
+			float height = max(m_extents.x, m_extents.z);
+			height = max(height, m_extents.y);
 
-			float radius = min(m_boundingBox.x, m_boundingBox.z);
-			radius = min(radius, m_boundingBox.y);
+			float radius = min(m_extents.x, m_extents.z);
+			radius = min(radius, m_extents.y);
 
 			m_shape = make_shared<btCapsuleShape>(radius, height);
 		}
@@ -142,14 +142,14 @@ namespace Directus
 		// Create CYLINDER shape
 		else if (m_shapeType == Cylinder)
 		{
-			m_shape = make_shared<btCylinderShape>(ToBtVector3(m_boundingBox));
+			m_shape = make_shared<btCylinderShape>(ToBtVector3(m_extents));
 		}
 
 		// Create SPHERE shape
 		else if (m_shapeType == Sphere)
 		{
-			float radius = max(m_boundingBox.x, m_boundingBox.y);
-			radius = max(radius, m_boundingBox.z);
+			float radius = max(m_extents.x, m_extents.y);
+			radius = max(radius, m_extents.z);
 
 			m_shape = make_shared<btSphereShape>(radius);
 		}
@@ -168,8 +168,9 @@ namespace Directus
 		auto meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
 		if (!mesh.expired() && meshFilter)
 		{
-			SetCenter(meshFilter->GetCenter());
-			SetBoundingBox(meshFilter->GetBoundingBox());
+			BoundingBox box = meshFilter->GetBoundingBox();
+			SetCenter(box.GetCenter());
+			SetBoundingBox(box.GetHalfSize());
 		}
 	}
 

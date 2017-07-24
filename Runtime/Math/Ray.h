@@ -21,28 +21,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "../Math/Vector3.h"
-#include "../Math/Plane.h"
-#include "../Math/Matrix.h"
-//==========================
+//= INCLUDES ==============
+#include "../Core/Helper.h"
+#include "Vector3.h"
+//=========================
 
 namespace Directus
 {
 	namespace Math
 	{
-		class Frustrum
+		class BoundingBox;
+
+		class DLL_API Ray
 		{
 		public:
-			Frustrum();
-			~Frustrum();
+			// Constructs a ray with zero origin and direction
+			Ray();
 
-			void Construct(const Matrix& mView, const Matrix&  mProjection, float screenDepth);
-			Intersection CheckCube(const Vector3& center, const Vector3& extent);
-			Intersection CheckSphere(const Vector3& center, float radius);
+			// Construct from origin and direction. The direction will be normalized.
+			Ray(const Vector3& origin, const Vector3& end);
+
+			// Empty destructor
+			~Ray();
+
+			// Returns hit distance to a bounding box, or infinity if there is hit.
+			float HitDistance(const BoundingBox& box);
+
+			Vector3 GetOrigin() { return m_origin; }
+			Vector3 GetEnd() { return m_end; }
+			Vector3 GetDirection() { return m_direction; }
 
 		private:
-			Plane m_planes[6];
+			Vector3 m_origin;
+			Vector3 m_end;
+			Vector3 m_direction;
 		};
 	}
 }

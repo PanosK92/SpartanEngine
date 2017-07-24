@@ -21,13 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES =========================
 #include "IComponent.h"
 #include <vector>
 #include <memory>
 #include "../FileSystem/FileSystem.h"
-
-//=====================
+//===================================
 
 namespace Directus
 {
@@ -35,7 +34,11 @@ namespace Directus
 	class D3D11VertexBuffer;
 	class D3D11IndexBuffer;
 	struct VertexPosTexNorTan;
-	namespace Math { class Vector3; }
+	namespace Math
+	{
+		class Vector3;
+		class BoundingBox;
+	}
 
 	class DLL_API MeshFilter : public IComponent
 	{
@@ -65,8 +68,7 @@ namespace Directus
 		bool SetBuffers();
 
 		//= PROPERTIES ===========================================
-		Math::Vector3 GetCenter();
-		Math::Vector3 GetBoundingBox();
+		Math::BoundingBox GetBoundingBox();
 		float GetBoundingSphereRadius();
 		std::string GetMeshName();
 		const std::weak_ptr<Mesh>& GetMesh() { return m_mesh; }

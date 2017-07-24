@@ -48,10 +48,14 @@ namespace Directus
 	class DebugShader;
 	class PostProcessShader;
 	class Texture;
-	class Frustrum;
 	class ResourceManager;
 	class D3D11RenderTexture;
 	class D3D11GraphicsDevice;
+
+	namespace Math
+	{
+		class Frustrum;
+	}
 
 	class Renderer : public Subsystem
 	{

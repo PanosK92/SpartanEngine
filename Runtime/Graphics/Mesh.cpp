@@ -44,10 +44,7 @@ namespace Directus
 		m_vertexCount = 0;
 		m_indexCount = 0;
 		m_triangleCount = 0;
-		m_min = Vector3::Zero;
-		m_max = Vector3::Zero;
-		m_center = Vector3::Zero;
-		m_boundingBox = Vector3::One;
+		m_boundingBox = BoundingBox();
 		m_onUpdate = nullptr;
 	}
 
@@ -81,11 +78,6 @@ namespace Directus
 		{
 			Serializer::WriteInt(index);
 		}
-
-		Serializer::WriteVector3(m_min);
-		Serializer::WriteVector3(m_max);
-		Serializer::WriteVector3(m_center);
-		Serializer::WriteVector3(m_boundingBox);
 	}
 
 	void Mesh::Deserialize()
@@ -109,10 +101,7 @@ namespace Directus
 			m_indices.push_back(Serializer::ReadInt());
 		}
 
-		m_min = Serializer::ReadVector3();
-		m_max = Serializer::ReadVector3();
-		m_center = Serializer::ReadVector3();
-		m_boundingBox = Serializer::ReadVector3();
+		m_boundingBox.ComputeFromMesh(this);
 	}
 
 	void Mesh::SetVertices(const vector<VertexPosTexNorTan>& vertices)
@@ -133,9 +122,7 @@ namespace Directus
 	//= PROCESSING =================================================================
 	void Mesh::Update()
 	{
-		FindMinMax(this, m_min, m_max);
-		m_center = CalculateCenter(m_min, m_max);
-		m_boundingBox = CalcualteBoundingBox(m_min, m_max);
+		m_boundingBox.ComputeFromMesh(this);
 
 		if (m_onUpdate)
 		{
@@ -206,41 +193,6 @@ namespace Directus
 		for (unsigned int i = 0; i < meshData->GetVertexCount(); i++)
 		{
 			meshData->GetVertices()[i].position *= scale;
-		}
-	}
-
-	// Returns the bounding box of a mesh
-	Vector3 Mesh::CalcualteBoundingBox(const Vector3& min, const Vector3& max)
-	{
-		return (max - min) * 0.5f;
-	}
-
-	// Returns the center of the mesh based
-	Vector3 Mesh::CalculateCenter(const Vector3& min, const Vector3& max)
-	{
-		return (min + max) * 0.5f;
-	}
-
-	// Returns the minimum and maximum point in a mesh
-	void Mesh::FindMinMax(Mesh* mesh, Vector3& min, Vector3& max)
-	{
-		if (!mesh)
-			return;
-
-		min = Vector3::Infinity;
-		max = Vector3::InfinityNeg;
-
-		for (unsigned int i = 0; i < mesh->GetVertexCount(); i++)
-		{
-			auto vertices = mesh->GetVertices();
-
-			max.x = Max(max.x, vertices[i].position.x);
-			max.y = Max(max.y, vertices[i].position.y);
-			max.z = Max(max.z, vertices[i].position.z);
-
-			min.x = Min(min.x, vertices[i].position.x);
-			min.y = Min(min.y, vertices[i].position.y);
-			min.z = Min(min.z, vertices[i].position.z);
 		}
 	}
 	//==============================================================================

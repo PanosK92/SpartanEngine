@@ -227,7 +227,7 @@ namespace Directus
 		auto largestBoundingBoxMesh = ComputeLargestBoundingBox().lock();
 
 		// Calculate the scale offset
-		float scaleOffset = !largestBoundingBoxMesh ? 1.0f : largestBoundingBoxMesh->GetBoundingBox().Length();
+		float scaleOffset = !largestBoundingBoxMesh ? 1.0f : largestBoundingBoxMesh->GetBoundingBox().GetHalfSize().Length();
 
 		// Return the scale
 		return 1.0f / scaleOffset;
@@ -246,7 +246,7 @@ namespace Directus
 			if (!mesh)
 				continue;
 
-			Vector3 boundingBox = mesh->GetBoundingBox();
+			Vector3 boundingBox = mesh->GetBoundingBox().GetHalfSize();
 			if (boundingBox.Volume() > largestBoundingBox.Volume())
 			{
 				largestBoundingBox = boundingBox;
@@ -261,13 +261,13 @@ namespace Directus
 	{
 		for (auto& mesh : m_meshes)
 		{
-			m_max.x = Max(m_max.x, mesh->GetBoundingBox().x);
-			m_max.y = Max(m_max.y, mesh->GetBoundingBox().y);
-			m_max.z = Max(m_max.z, mesh->GetBoundingBox().z);
+			m_max.x = Max(m_max.x, mesh->GetBoundingBox().GetHalfSize().x);
+			m_max.y = Max(m_max.y, mesh->GetBoundingBox().GetHalfSize().y);
+			m_max.z = Max(m_max.z, mesh->GetBoundingBox().GetHalfSize().z);
 
-			m_min.x = Min(m_min.x, mesh->GetBoundingBox().x);
-			m_min.y = Min(m_min.y, mesh->GetBoundingBox().y);
-			m_min.z = Min(m_min.z, mesh->GetBoundingBox().z);
+			m_min.x = Min(m_min.x, mesh->GetBoundingBox().GetHalfSize().x);
+			m_min.y = Min(m_min.y, mesh->GetBoundingBox().GetHalfSize().y);
+			m_min.z = Min(m_min.z, mesh->GetBoundingBox().GetHalfSize().z);
 		}
 
 		m_center = (m_min + m_max) * 0.5f;
