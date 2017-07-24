@@ -74,7 +74,7 @@ namespace Directus
 
 		std::shared_ptr<btCollisionShape> GetBtCollisionShape() { return m_shape; }
 
-		void Build();
+		void UpdateShape();
 
 	private:
 		//= HELPER FUNCTIONS ======================================================

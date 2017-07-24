@@ -60,7 +60,7 @@ namespace Directus
 	{
 		m_lastKnownScale = g_transform->GetScale();
 		UpdateBoundingBox();
-		Build();
+		UpdateShape();
 	}
 
 	void Collider::Start()
@@ -84,7 +84,7 @@ namespace Directus
 		if (m_lastKnownScale != g_transform->GetScale())
 		{
 			UpdateBoundingBox();
-			Build();
+			UpdateShape();
 			m_lastKnownScale = g_transform->GetScale();
 		}
 	}
@@ -102,7 +102,7 @@ namespace Directus
 		m_extents = Serializer::ReadVector3();
 		m_center = Serializer::ReadVector3();
 
-		Build();
+		UpdateShape();
 	}
 
 	//= BOUNDING BOX =============================================
@@ -116,7 +116,7 @@ namespace Directus
 	}
 
 	//= COLLISION SHAPE =======================================================
-	void Collider::Build()
+	void Collider::UpdateShape()
 	{
 		// delete old shape (if it exists)
 		DeleteCollisionShape();

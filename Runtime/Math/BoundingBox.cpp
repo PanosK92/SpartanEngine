@@ -126,7 +126,7 @@ namespace Directus
 			(
 				Abs(transform.m00) * oldEdge.x + Abs(transform.m10) * oldEdge.y + Abs(transform.m20) * oldEdge.z,
 				Abs(transform.m01) * oldEdge.x + Abs(transform.m11) * oldEdge.y + Abs(transform.m21) * oldEdge.z,
-				Abs(transform.m02) * oldEdge.x + Abs(transform.m22) * oldEdge.y + Abs(transform.m22) * oldEdge.z
+				Abs(transform.m02) * oldEdge.x + Abs(transform.m12) * oldEdge.y + Abs(transform.m22) * oldEdge.z
 			);
 
 			return BoundingBox(newCenter - newEdge, newCenter + newEdge);
