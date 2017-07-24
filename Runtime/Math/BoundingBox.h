@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========
 #include "MathHelper.h"
 #include "Vector3.h"
+#include <memory>
 //=====================
 
 namespace Directus
@@ -48,6 +49,7 @@ namespace Directus
 			}
 
 			// Computes a bounding box from a mesh
+			void ComputeFromMesh(std::weak_ptr<Mesh> mesh);
 			void ComputeFromMesh(Mesh* mesh);
 
 			// Returns the center
@@ -68,6 +70,10 @@ namespace Directus
 			// Returns a transformed bounding box
 			BoundingBox Transformed(const Matrix& matrix);
 
+			// Merge with another bounding box
+			void Merge(const BoundingBox& box);
+
+			void Undefine() { min = Vector3::InfinityNeg; max = Vector3::Infinity; }
 			bool Defined() const { return min.x != INFINITY; }
 
 			Vector3 min;

@@ -103,7 +103,6 @@ namespace Directus
 
 		//= MISC ===============================================================
 		bool IsInViewFrustrum(MeshFilter* meshFilter);
-		bool IsInViewFrustrum(std::weak_ptr<Model> model);
 		Math::Vector4 GetClearColor() { return m_clearColor; }
 		void SetClearColor(const Math::Vector4& color) { m_clearColor = color; }
 		//======================================================================

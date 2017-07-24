@@ -82,7 +82,7 @@ namespace Directus
 		std::string m_id;
 		std::string m_gameObjID;
 		std::string m_modelID;
-		std::string m_name;	
+		std::string m_name;
 
 		std::vector<VertexPosTexNorTan> m_vertices;
 		std::vector<unsigned int> m_indices;

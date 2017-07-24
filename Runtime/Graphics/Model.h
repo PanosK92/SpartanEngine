@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Resource.h"
 #include "../Math/Vector3.h"
 #include "../Math/MathHelper.h"
+#include "../Math/BoundingBox.h"
 //===============================
 
 namespace Directus
@@ -35,6 +36,11 @@ namespace Directus
 	class GameObject;
 	class Mesh;
 	struct VertexPosTexNorTan;
+
+	namespace Math
+	{
+		class BoundingBox;
+	}
 
 	class Model : public Resource
 	{
@@ -54,9 +60,8 @@ namespace Directus
 
 		std::string CopyFileToLocalDirectory(const std::string& from);
 
-		const Math::Vector3& GetCenter() { return m_center; }
-		const Math::Vector3& GetBoundingBox() { return m_extent; }
-		float GetBoundingSphereRadius() { return Math::Max(Math::Max(abs(m_extent.x), abs(m_extent.y)), abs(m_extent.z)); }
+		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
+		float GetBoundingSphereRadius();
 
 	private:
 		void AddMesh(std::shared_ptr<Mesh> mesh);
@@ -72,11 +77,7 @@ namespace Directus
 		std::vector<std::shared_ptr<Mesh>> m_meshes;
 		ResourceManager* m_resourceManager;
 
-
-		Math::Vector3 m_min;
-		Math::Vector3 m_max;
-		Math::Vector3 m_extent;
-		Math::Vector3 m_center;
+		Math::BoundingBox m_boundingBox;
 		float m_normalizedScale;
 	};
 }

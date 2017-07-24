@@ -168,7 +168,7 @@ namespace Directus
 		auto meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
 		if (!mesh.expired() && meshFilter)
 		{
-			BoundingBox box = meshFilter->GetBoundingBox();
+			BoundingBox box = meshFilter->GetBoundingBoxTransformed();
 			SetCenter(box.GetCenter());
 			SetBoundingBox(box.GetHalfSize());
 		}

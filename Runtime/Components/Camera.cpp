@@ -164,22 +164,11 @@ namespace Directus
 
 	bool Camera::IsInViewFrustrum(MeshFilter* meshFilter)
 	{
-		BoundingBox box = meshFilter->GetBoundingBox();
+		BoundingBox box = meshFilter->GetBoundingBoxTransformed();
 		Vector3 center = box.GetCenter();
-		float radius = meshFilter->GetBoundingSphereRadius();
+		Vector3 extents = box.GetHalfSize();
 
-		return m_frustrum->CheckSphere(center, radius) != Outside;
-	}
-
-	bool Camera::IsInViewFrustrum(weak_ptr<Model> model)
-	{
-		if (model.expired())
-			return true;
-
-		Vector3 center = model._Get()->GetCenter();
-		float radius = model._Get()->GetBoundingSphereRadius();
-
-		return m_frustrum->CheckSphere(center, radius) != Outside;
+		return m_frustrum->CheckCube(center, extents) != Outside;
 	}
 
 	vector<VertexPosCol> Camera::GetPickingRay()
@@ -217,7 +206,7 @@ namespace Directus
 			if (gameObject._Get()->HasComponent<Skybox>())
 				continue;
 
-			BoundingBox box = gameObject._Get()->GetComponent<MeshFilter>()->GetBoundingBox();
+			BoundingBox box = gameObject._Get()->GetComponent<MeshFilter>()->GetBoundingBoxTransformed();
 			float hitDistance = m_ray.HitDistance(box);
 			if (hitDistance < hitDistanceMin)
 			{
