@@ -37,7 +37,12 @@ namespace Directus
 		class BoundingBox
 		{
 		public:
+			// Construct with zero size.
 			BoundingBox();
+
+			// Construct from minimum and maximum vectors.
+			BoundingBox(const Vector3& min, const Vector3& max);
+
 			~BoundingBox();
 
 			// Assign from bounding box
@@ -68,7 +73,7 @@ namespace Directus
 			Intersection IsInside (const BoundingBox& box) const;
 
 			// Returns a transformed bounding box
-			BoundingBox Transformed(const Matrix& matrix);
+			BoundingBox Transformed(const Matrix& transform);
 
 			// Merge with another bounding box
 			void Merge(const BoundingBox& box);

@@ -553,10 +553,7 @@ namespace Directus
 		for (const auto& gameObject : m_renderables) 
 		{
 			auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>();
-
-			float radius = meshFilter->GetBoundingSphereRadius();
-			Vector3 center = gameObject._Get()->GetTransform()->GetPosition();
-			m_lineRenderer->AddSphere(center, radius, Vector4(1, 0, 0, 1));
+			m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 		}
 
 		// Set the buffer

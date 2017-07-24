@@ -41,7 +41,7 @@ namespace Directus
 	float Settings::m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
 	int Settings::m_shadowMapResolution = 2048;
 	unsigned int Settings::m_anisotropy = 16;
-	bool Settings::m_debugDraw = false;
+	bool Settings::m_debugDraw = true;
 	string Settings::m_settingsFileName = "Directus3D.ini";
 	//====================================================================================
 	ofstream Settings::m_fout;
