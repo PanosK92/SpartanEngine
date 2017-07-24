@@ -212,7 +212,7 @@ void DirectusCollider::MapType()
     int index = m_shapeType->currentIndex();
 
     m_inspectedCollider->SetShapeType((ColliderShape)index);
-    m_inspectedCollider->Build();
+    m_inspectedCollider->UpdateShape();
 }
 
 void DirectusCollider::MapCenter()
@@ -224,7 +224,7 @@ void DirectusCollider::MapCenter()
     );
 
     m_inspectedCollider->SetCenter(center);
-    m_inspectedCollider->Build();
+    m_inspectedCollider->UpdateShape();
 }
 
 void DirectusCollider::MapSize()
@@ -236,7 +236,7 @@ void DirectusCollider::MapSize()
     );
 
     m_inspectedCollider->SetBoundingBox(size);
-    m_inspectedCollider->Build();
+    m_inspectedCollider->UpdateShape();
 }
 
 void DirectusCollider::Remove()
