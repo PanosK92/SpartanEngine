@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <memory>
 #include "../FileSystem/FileSystem.h"
+#include "../Math/BoundingBox.h"
 //===================================
 
 namespace Directus
@@ -67,9 +68,12 @@ namespace Directus
 		// Sets the meshe's buffers
 		bool SetBuffers();
 
-		//= PROPERTIES ===========================================
+		//= BOUNDING BOX =============================
 		Math::BoundingBox GetBoundingBox();
-		float GetBoundingSphereRadius();
+		Math::BoundingBox GetBoundingBoxTransformed();
+		//============================================
+
+		//= PROPERTIES ===========================================
 		std::string GetMeshName();
 		const std::weak_ptr<Mesh>& GetMesh() { return m_mesh; }
 		bool HasMesh() { return m_mesh.expired() ? false : true; }
@@ -85,5 +89,6 @@ namespace Directus
 		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
 		std::weak_ptr<Mesh> m_mesh;
 		MeshType m_meshType;
+		Math::BoundingBox m_boundingBox;
 	};
 }

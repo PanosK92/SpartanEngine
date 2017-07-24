@@ -41,11 +41,19 @@ namespace Directus
 
 		}
 
-		void BoundingBox::ComputeFromMesh(Mesh* mesh)
+		void BoundingBox::ComputeFromMesh(std::weak_ptr<Mesh> mesh)
 		{
-			if (!mesh)
+			min = Vector3::Infinity;
+			max = Vector3::InfinityNeg;
+
+			if (mesh.expired())
 				return;
 
+			ComputeFromMesh(mesh._Get());
+		}
+
+		void BoundingBox::ComputeFromMesh(Mesh* mesh)
+		{
 			min = Vector3::Infinity;
 			max = Vector3::InfinityNeg;
 
@@ -82,19 +90,19 @@ namespace Directus
 
 		Intersection BoundingBox::IsInside(const BoundingBox& box) const
 		{
-			if 
-			(
-				box.max.x < min.x || box.min.x > max.x || 
-				box.max.y < min.y || box.min.y > max.y ||
-				box.max.z < min.z || box.min.z > max.z)
+			if
+				(
+					box.max.x < min.x || box.min.x > max.x ||
+					box.max.y < min.y || box.min.y > max.y ||
+					box.max.z < min.z || box.min.z > max.z)
 			{
 				return Outside;
 			}
 			else if
-			(
-				box.min.x < min.x || box.max.x > max.x || 
-				box.min.y < min.y || box.max.y > max.y ||
-				box.min.z < min.z || box.max.z > max.z)
+				(
+					box.min.x < min.x || box.max.x > max.x ||
+					box.min.y < min.y || box.max.y > max.y ||
+					box.min.z < min.z || box.max.z > max.z)
 			{
 				return Intersects;
 			}
@@ -111,6 +119,16 @@ namespace Directus
 			box.min = box.min * matrix;
 
 			return box;
+		}
+
+		void BoundingBox::Merge(const BoundingBox& box)
+		{
+			if (box.min.x < min.x) min.x = box.min.x;
+			if (box.min.y < min.y) min.y = box.min.y;
+			if (box.min.z < min.z) min.z = box.min.z;
+			if (box.max.x > max.x) max.x = box.max.x;
+			if (box.max.y > max.y) max.y = box.max.y;
+			if (box.max.z > max.z) max.z = box.max.z;
 		}
 	}
 }

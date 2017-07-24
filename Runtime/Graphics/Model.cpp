@@ -146,6 +146,12 @@ namespace Directus
 		return textureDestination;
 	}
 
+	float Model::GetBoundingSphereRadius()
+	{
+		Vector3 extent = m_boundingBox.GetHalfSize().Absolute();
+		return Max(Max(extent.x, extent.y), extent.z);
+	}
+
 	void Model::AddMesh(shared_ptr<Mesh> mesh)
 	{
 		if (!mesh)
@@ -261,16 +267,12 @@ namespace Directus
 	{
 		for (auto& mesh : m_meshes)
 		{
-			m_max.x = Max(m_max.x, mesh->GetBoundingBox().GetHalfSize().x);
-			m_max.y = Max(m_max.y, mesh->GetBoundingBox().GetHalfSize().y);
-			m_max.z = Max(m_max.z, mesh->GetBoundingBox().GetHalfSize().z);
+			if (!m_boundingBox.Defined())
+			{
+				m_boundingBox.ComputeFromMesh(mesh);
+			}
 
-			m_min.x = Min(m_min.x, mesh->GetBoundingBox().GetHalfSize().x);
-			m_min.y = Min(m_min.y, mesh->GetBoundingBox().GetHalfSize().y);
-			m_min.z = Min(m_min.z, mesh->GetBoundingBox().GetHalfSize().z);
+			m_boundingBox.Merge(mesh->GetBoundingBox());
 		}
-
-		m_center = (m_min + m_max) * 0.5f;
-		m_extent = (m_max - m_min) * 0.5f;
 	}
 }

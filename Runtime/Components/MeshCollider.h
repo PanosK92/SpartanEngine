@@ -67,7 +67,5 @@ namespace Directus
 		unsigned int m_vertexLimit = 100000;
 		std::shared_ptr<btCollisionShape> m_collisionShape;
 		bool m_isConvex;
-
-
 	};
 }

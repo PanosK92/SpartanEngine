@@ -45,6 +45,7 @@ namespace Directus
 	{
 		g_type = "MeshFilter";
 		m_meshType = Imported;
+		m_boundingBox = BoundingBox();
 	}
 
 	MeshFilter::~MeshFilter()
@@ -127,6 +128,7 @@ namespace Directus
 
 		if (m_mesh.expired())
 		{
+			m_boundingBox.Undefine();
 			LOG_WARNING("Can't create vertex and index buffers for an expired mesh");
 			return false;
 		}
@@ -134,8 +136,9 @@ namespace Directus
 		// Re-create the buffers whenever the mesh updates
 		m_mesh._Get()->SubscribeToUpdate(bind(&MeshFilter::CreateBuffers, this));
 
-		// Create buffers
 		CreateBuffers();
+
+		m_boundingBox.ComputeFromMesh(m_mesh);
 
 		return true;
 	}
@@ -202,13 +205,12 @@ namespace Directus
 
 	BoundingBox MeshFilter::GetBoundingBox()
 	{
-		return !m_mesh.expired() ? m_mesh._Get()->GetBoundingBox().Transformed(g_transform->GetWorldTransform()) : BoundingBox();
+		return m_boundingBox;
 	}
 
-	float MeshFilter::GetBoundingSphereRadius()
+	BoundingBox MeshFilter::GetBoundingBoxTransformed()
 	{
-		Vector3 extent = GetBoundingBox().GetHalfSize();
-		return max(max(abs(extent.x), abs(extent.y)), abs(extent.z));
+		return m_boundingBox.Transformed(g_transform->GetWorldTransform());
 	}
 
 	string MeshFilter::GetMeshName()
