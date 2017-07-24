@@ -2189,7 +2189,7 @@ text edit background:					414141
                          <string notr="true"/>
                         </property>
                         <property name="text">
-                         <string>Debug Draw</string>
+                         <string>Debug View</string>
                         </property>
                        </widget>
                       </item>
