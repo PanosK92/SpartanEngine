@@ -1,9 +1,9 @@
-//= INCLUDES ===============
+//= INCLUDES ====================
 #include "LineRenderer.h"
 #include "../Core/Context.h"
-#include "../Math/MathHelper.h"
 #include "../Math/Matrix.h"
-//==========================
+#include "../Math/BoundingBox.h"
+//==============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -58,37 +58,35 @@ namespace Directus
 	}
 
 	//= INPUT ===============================================================
-	void LineRenderer::AddSphere(const Vector3& center, float radius, const Vector4& color)
+	void LineRenderer::AddBoundigBox(const BoundingBox& box, const Vector4& color)
 	{
-		int lats = 5;
-		int longs = 5;
-		Matrix translation = Matrix::CreateTranslation(center);
+		// Compute points from min and max
+		Vector3 boundPoint1 = box.min;
+		Vector3 boundPoint2 = box.max;
+		Vector3 boundPoint3 = Vector3(boundPoint1.x, boundPoint1.y, boundPoint2.z);
+		Vector3 boundPoint4 = Vector3(boundPoint1.x, boundPoint2.y, boundPoint1.z);
+		Vector3 boundPoint5 = Vector3(boundPoint2.x, boundPoint1.y, boundPoint1.z);
+		Vector3 boundPoint6 = Vector3(boundPoint1.x, boundPoint2.y, boundPoint2.z);
+		Vector3 boundPoint7 = Vector3(boundPoint2.x, boundPoint1.y, boundPoint2.z);
+		Vector3 boundPoint8 = Vector3(boundPoint2.x, boundPoint2.y, boundPoint1.z);
 
-		for (int i = 0; i <= lats; i++)
-		{
-			float lat0 = PI * (-0.5f + (i - 1) / lats);
-			float z0 = radius * sin(lat0);
-			float zr0 = radius * cos(lat0);
+		// top of rectangular cuboid (6-2-8-4)
+		AddLine(boundPoint6, boundPoint2, color);
+		AddLine(boundPoint2, boundPoint8, color);
+		AddLine(boundPoint8, boundPoint4, color);
+		AddLine(boundPoint4, boundPoint6, color);
 
-			float lat1 = PI * (-0.5f + i / lats);
-			float z1 = radius * sin(lat1);
-			float zr1 = radius * cos(lat1);
+		// bottom of rectangular cuboid (3-7-5-1)
+		AddLine(boundPoint3, boundPoint7, color);
+		AddLine(boundPoint7, boundPoint5, color);
+		AddLine(boundPoint5, boundPoint1, color);
+		AddLine(boundPoint1, boundPoint3, color);
 
-			for (int j = 0; j <= longs; j++)
-			{
-				float lng = 2 * PI * (j - 1) / longs;
-				float x = cos(lng);
-				float y = sin(lng);
-
-				Vector3 from = Vector3(x * zr0, y * zr0, z0);
-				Vector3 to = Vector3(x * zr1, y * zr1, z1);
-
-				from = from * translation;
-				to = to * translation;
-
-				AddLine(from, to, color);
-			}
-		}
+		// legs (6-3, 2-7, 8-5, 4-1)
+		AddLine(boundPoint6, boundPoint3, color);
+		AddLine(boundPoint2, boundPoint7, color);
+		AddLine(boundPoint8, boundPoint5, color);
+		AddLine(boundPoint4, boundPoint1, color);
 	}
 
 	void LineRenderer::AddLine(const Vector3& from, const Vector3& to, const Vector4& color)

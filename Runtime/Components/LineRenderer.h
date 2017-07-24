@@ -12,6 +12,7 @@ namespace Directus
 {
 	namespace Math
 	{
+		class BoundingBox;
 		class Vector3;
 	}
 
@@ -30,7 +31,7 @@ namespace Directus
 		virtual void Deserialize();
 
 		//= INPUT ===================================================================================
-		void AddSphere(const Math::Vector3& center, float radius, const Math::Vector4& color);
+		void AddBoundigBox(const Math::BoundingBox& box, const Math::Vector4& color);
 		void AddLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color);	
 		void AddLines(const std::vector<VertexPosCol>& lineList);
 		void AddVertex(const VertexPosCol& line);

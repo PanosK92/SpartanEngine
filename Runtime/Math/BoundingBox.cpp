@@ -36,6 +36,12 @@ namespace Directus
 			max = Vector3::InfinityNeg;
 		}
 
+		BoundingBox::BoundingBox(const Vector3& min, const Vector3& max)
+		{
+			this->min = min;
+			this->max = max;
+		}
+
 		BoundingBox::~BoundingBox()
 		{
 
@@ -112,13 +118,18 @@ namespace Directus
 			}
 		}
 
-		BoundingBox BoundingBox::Transformed(const Matrix& matrix)
+		BoundingBox BoundingBox::Transformed(const Matrix& transform)
 		{
-			BoundingBox box = *this;
-			box.max = box.max * matrix;
-			box.min = box.min * matrix;
+			Vector3 newCenter = transform * GetCenter();
+			Vector3 oldEdge = GetSize() * 0.5f;
+			Vector3 newEdge = Vector3
+			(
+				Abs(transform.m00) * oldEdge.x + Abs(transform.m10) * oldEdge.y + Abs(transform.m20) * oldEdge.z,
+				Abs(transform.m01) * oldEdge.x + Abs(transform.m11) * oldEdge.y + Abs(transform.m21) * oldEdge.z,
+				Abs(transform.m02) * oldEdge.x + Abs(transform.m22) * oldEdge.y + Abs(transform.m22) * oldEdge.z
+			);
 
-			return box;
+			return BoundingBox(newCenter - newEdge, newCenter + newEdge);
 		}
 
 		void BoundingBox::Merge(const BoundingBox& box)
