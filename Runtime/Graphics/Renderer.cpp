@@ -42,7 +42,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"
 #include "../Core/Settings.h"
-#include "../Core/Engine.h"
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceManager.h"
 #include "Material.h"

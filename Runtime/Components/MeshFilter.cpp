@@ -200,19 +200,14 @@ namespace Directus
 		return true;
 	}
 
-	Vector3 MeshFilter::GetCenter()
+	BoundingBox MeshFilter::GetBoundingBox()
 	{
-		return !m_mesh.expired() ? m_mesh._Get()->GetCenter() * g_transform->GetWorldTransform() : Vector3::Zero;
-	}
-
-	Vector3 MeshFilter::GetBoundingBox()
-	{
-		return !m_mesh.expired() ? m_mesh._Get()->GetBoundingBox() * g_transform->GetWorldTransform() : Vector3::One;
+		return !m_mesh.expired() ? m_mesh._Get()->GetBoundingBox().Transformed(g_transform->GetWorldTransform()) : BoundingBox();
 	}
 
 	float MeshFilter::GetBoundingSphereRadius()
 	{
-		Vector3 extent = GetBoundingBox();
+		Vector3 extent = GetBoundingBox().GetHalfSize();
 		return max(max(abs(extent.x), abs(extent.y)), abs(extent.z));
 	}
 

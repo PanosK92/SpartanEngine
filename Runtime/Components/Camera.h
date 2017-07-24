@@ -23,16 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "IComponent.h"
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
-#include "../Math/Matrix.h"
-#include "../Math/Quaternion.h"
-#include "../Math/Frustrum.h"
 #include <memory>
-#include "../Graphics/Vertex.h"
 #include <vector>
-
+#include "../Graphics/Vertex.h"
+#include "../Math/Matrix.h"
+#include "../Math/Ray.h"
 //=============================
 
 namespace Directus
@@ -40,6 +35,15 @@ namespace Directus
 	class GameObject;
 	class MeshFilter;
 	class Model;
+
+	namespace Math
+	{
+		class Quaternion;
+		class Vector2;
+		class Vector3;
+		class Vector3;
+		class Frustrum;
+	}
 
 	enum Projection
 	{
@@ -70,9 +74,16 @@ namespace Directus
 		//==========================================================
 
 		//= RAYCASTING ===================================================
+		// Returns a the picking ray as vertices (can be used to render it)
 		std::vector<VertexPosCol> GetPickingRay();
+
+		// Returns the nearest GameObject under the cursor
 		std::weak_ptr<GameObject> Pick(const Math::Vector2& mousePos);
+
+		// Converts a world point to a screen point
 		Math::Vector2 WorldToScreenPoint(const Math::Vector3& worldPoint);
+
+		// Converts a screen point to a world point
 		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& point);
 		//================================================================
 
@@ -98,7 +109,6 @@ namespace Directus
 		//======================================================================
 
 	private:
-		bool SphereIntersects(const Math::Vector3& rayOrigin, const Math::Vector3& rayDirection, const Math::Vector3& sphereCenter, float sphereRadius);
 		void CalculateViewMatrix();
 		void CalculateBaseView();
 		void CalculateProjection();
@@ -106,10 +116,8 @@ namespace Directus
 		float m_fovHorizontal;
 		float m_nearPlane;
 		float m_farPlane;
-		Math::Vector3 m_pickingRayStart;
-		Math::Vector3 m_pickingRayEnd;
-		Math::Vector3 m_pickingRayDirection;
-		std::shared_ptr<Frustrum> m_frustrum;
+		Math::Ray m_ray;
+		std::shared_ptr<Math::Frustrum> m_frustrum;
 		Projection m_projection;
 		Math::Vector4 m_clearColor;
 

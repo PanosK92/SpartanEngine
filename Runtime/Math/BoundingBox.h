@@ -21,28 +21,57 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "../Math/Vector3.h"
-#include "../Math/Plane.h"
-#include "../Math/Matrix.h"
-//==========================
+//= INCLUDES ==========
+#include "MathHelper.h"
+#include "Vector3.h"
+//=====================
 
 namespace Directus
 {
+	class Mesh;
 	namespace Math
 	{
-		class Frustrum
+		class Matrix;
+
+		class BoundingBox
 		{
 		public:
-			Frustrum();
-			~Frustrum();
+			BoundingBox();
+			~BoundingBox();
 
-			void Construct(const Matrix& mView, const Matrix&  mProjection, float screenDepth);
-			Intersection CheckCube(const Vector3& center, const Vector3& extent);
-			Intersection CheckSphere(const Vector3& center, float radius);
+			// Assign from bounding box
+			BoundingBox& operator =(const BoundingBox& rhs)
+			{
+				min = rhs.min;
+				max = rhs.max;
+				return *this;
+			}
 
-		private:
-			Plane m_planes[6];
+			// Computes a bounding box from a mesh
+			void ComputeFromMesh(Mesh* mesh);
+
+			// Returns the center
+			Vector3 GetCenter() { return (min + max) * 0.5f; }
+
+			// Returns the size
+			Vector3 GetSize() { return max - min; }
+
+			// Returns the half size (extents)
+			Vector3 GetHalfSize() { return (max - min) * 0.5f; }
+
+			// Test if a point is inside
+			Intersection IsInside(const Vector3& point) const;
+
+			// Test if a bounding box is inside
+			Intersection IsInside (const BoundingBox& box) const;
+
+			// Returns a transformed bounding box
+			BoundingBox Transformed(const Matrix& matrix);
+
+			bool Defined() const { return min.x != INFINITY; }
+
+			Vector3 min;
+			Vector3 max;
 		};
 	}
 }

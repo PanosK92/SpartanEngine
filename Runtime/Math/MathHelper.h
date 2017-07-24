@@ -31,6 +31,13 @@ namespace Directus
 {
 	namespace Math
 	{
+		enum Intersection
+		{
+			Outside,
+			Inside,
+			Intersects
+		};
+
 		static const float M_EPSILON = 0.000001f;
 		static const float PI = 3.14159265358979323846264338327950288f;
 		static const float PI_2 = 6.283185307f;

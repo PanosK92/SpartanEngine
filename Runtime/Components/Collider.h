@@ -63,7 +63,7 @@ namespace Directus
 		/*------------------------------------------------------------------------------
 										[PROPERTIES]
 		------------------------------------------------------------------------------*/
-		const Math::Vector3& GetBoundingBox() { return m_boundingBox; }
+		const Math::Vector3& GetBoundingBox() { return m_extents; }
 		void SetBoundingBox(const Math::Vector3& boundingBox);
 
 		const Math::Vector3& GetCenter() { return m_center; }
@@ -86,7 +86,7 @@ namespace Directus
 
 		ColliderShape m_shapeType;
 		std::shared_ptr<btCollisionShape> m_shape;
-		Math::Vector3 m_boundingBox;
+		Math::Vector3 m_extents;
 		Math::Vector3 m_center;
 		Math::Vector3 m_lastKnownScale;
 	};

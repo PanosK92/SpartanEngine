@@ -26,9 +26,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 #include "../Components/MeshFilter.h"
 #include "../Components/Skybox.h"
-#include "../Graphics/Model.h"
-#include "../Logging/Log.h"
+#include "../Math/Quaternion.h"
+#include "../Math/Vector2.h"
+#include "../Math/Vector3.h"
+#include "../Math/Vector4.h"
+#include "../Math/Frustrum.h"
 #include "../Graphics/Renderer.h"
+#include "../Graphics/Model.h"
 //===================================
 
 //= NAMESPACES ================
@@ -160,7 +164,8 @@ namespace Directus
 
 	bool Camera::IsInViewFrustrum(MeshFilter* meshFilter)
 	{
-		Vector3 center = meshFilter->GetCenter();
+		BoundingBox box = meshFilter->GetBoundingBox();
+		Vector3 center = box.GetCenter();
 		float radius = meshFilter->GetBoundingSphereRadius();
 
 		return m_frustrum->CheckSphere(center, radius) != Outside;
@@ -183,11 +188,11 @@ namespace Directus
 
 		VertexPosCol rayStart;
 		rayStart.color = Vector4(0, 1, 0, 1);
-		rayStart.position = m_pickingRayStart;
+		rayStart.position = m_ray.GetOrigin();
 
 		VertexPosCol rayEnd;
 		rayEnd.color = Vector4(0, 1, 0, 1);
-		rayEnd.position = m_pickingRayEnd;
+		rayEnd.position = m_ray.GetEnd();
 
 		lines.push_back(rayStart);
 		lines.push_back(rayEnd);
@@ -198,11 +203,11 @@ namespace Directus
 	//= RAYCASTING =======================================================================
 	weak_ptr<GameObject> Camera::Pick(const Vector2& mouse)
 	{
-		// Compute ray
-		m_pickingRayStart = g_transform->GetPosition();
-		m_pickingRayEnd = ScreenToWorldPoint(mouse);
-		m_pickingRayDirection = (m_pickingRayEnd - m_pickingRayStart).Normalized();
+		// Compute ray given the origin and end
+		m_ray = Ray(g_transform->GetPosition(), ScreenToWorldPoint(mouse));
 
+		float hitDistanceMin = INFINITY;
+		weakGameObj nearestGameObject;
 		vector<weakGameObj> gameObjects = g_context->GetSubsystem<Scene>()->GetRenderables();
 		for (const auto& gameObject : gameObjects)
 		{
@@ -212,14 +217,16 @@ namespace Directus
 			if (gameObject._Get()->HasComponent<Skybox>())
 				continue;
 
-			float radius = gameObject._Get()->GetComponent<MeshFilter>()->GetBoundingSphereRadius();
-			if (SphereIntersects(m_pickingRayStart, m_pickingRayDirection, gameObject._Get()->GetTransform()->GetPosition(), radius))
+			BoundingBox box = gameObject._Get()->GetComponent<MeshFilter>()->GetBoundingBox();
+			float hitDistance = m_ray.HitDistance(box);
+			if (hitDistance < hitDistanceMin)
 			{
-				return gameObject;
+				hitDistanceMin = hitDistance;
+				nearestGameObject = gameObject;
 			}
 		}
 
-		return weak_ptr<GameObject>();
+		return nearestGameObject;
 	}
 	
 	Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
@@ -250,43 +257,6 @@ namespace Directus
 	}
 
 	//= PRIVATE =======================================================================
-	bool Camera::SphereIntersects(const Vector3& rayOrigin, const Vector3& rayDirection, const Vector3& sphereCenter, float sphereRadius)
-	{
-		float sphereRadiusSquered = sphereRadius * sphereRadius;
-
-		// Squared distance between ray origin and sphere center
-		float squaredDist = Vector3::Dot(rayOrigin - sphereCenter, rayOrigin - sphereCenter);
-
-		// If the distance is less than the squared radius of the sphere...
-		if (squaredDist <= sphereRadiusSquered)
-		{
-			// Point is in sphere, consider as no intersection existing
-			return false;
-		}
-
-		// Compute the coefficients of the quadratic equation
-		float a = Vector3::Dot(rayDirection, rayDirection);
-		float b = 2.0f * Vector3::Dot(rayDirection, rayOrigin - sphereCenter);
-		float c = Vector3::Dot(rayOrigin - sphereCenter, rayOrigin - sphereCenter) - sphereRadiusSquered;
-
-		// Calculate discriminant
-		float disc = (b * b) - (4.0f * a * c);
-
-		if (disc < 0) // No intersection with sphere
-		{
-			return false;
-		}
-
-		// One or two intersections exist
-		float sqrt_disc = sqrt(disc);
-		float t1 = (-b + sqrt_disc) / (2 * a);
-
-		// If the second intersection has a negative value then the intersections
-		// happen behind the ray origin which is not considered. Otherwise t0 is
-		// the intersection to be considered
-		return t1 >= 0;
-	}
-
 	void Camera::CalculateViewMatrix()
 	{
 		Vector3 position = g_transform->GetPosition();
