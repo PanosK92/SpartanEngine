@@ -23,9 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "IComponent.h"
-#include "../Math/Vector3.h"
 #include <memory>
-#include "../Math/Quaternion.h"
+#include "../Math/Vector3.h"
 //==========================
 
 class btRigidBody;
@@ -34,6 +33,10 @@ class btCollisionShape;
 namespace Directus
 {
 	class GameObject;
+	namespace Math
+	{
+		class Quaternion;
+	}
 
 	enum ForceMode
 	{
@@ -122,7 +125,7 @@ namespace Directus
 		void AddBodyToWorld();
 		void RemoveBodyFromWorld();
 		void UpdateGravity() const;
-		void DeleteBtRigidBody();
+		void ReleaseBtRigidBody();
 		//===========================================================
 		bool IsActivated() const;
 		void Activate() const;
