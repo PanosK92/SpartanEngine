@@ -3750,8 +3750,8 @@ QSplitter::handle:vertical
      <y>532</y>
     </hint>
     <hint type="destinationlabel">
-     <x>62</x>
-     <y>554</y>
+     <x>65</x>
+     <y>553</y>
     </hint>
    </hints>
   </connection>
@@ -3784,6 +3784,38 @@ QSplitter::handle:vertical
     <hint type="destinationlabel">
      <x>132</x>
      <y>295</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonDebugDraw</sender>
+   <signal>pressed()</signal>
+   <receiver>widgetViewport</receiver>
+   <slot>ToggleDebugDraw()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>474</x>
+     <y>37</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>493</x>
+     <y>154</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>widgetViewport</sender>
+   <signal>GameObjectPicked(Directus::GameObject*)</signal>
+   <receiver>widgetHierarchy</receiver>
+   <slot>SelectGameObject(Directus::GameObject*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>474</x>
+     <y>282</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>182</x>
+     <y>285</y>
     </hint>
    </hints>
   </connection>
