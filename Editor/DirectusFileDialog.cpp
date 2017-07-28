@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "DirectusFileDialog.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "DirectusHierarchy.h"
 #include "DirectusAssetLoader.h"
 #include <QThread>
@@ -43,7 +43,7 @@ DirectusFileDialog::DirectusFileDialog(QWidget* parent) : QFileDialog(parent)
     connect(this, SIGNAL(fileSelected(QString)), this, SLOT(FileDialogAccepted(QString)));
 }
 
-void DirectusFileDialog::Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusCore *directusCore)
+void DirectusFileDialog::Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusViewport *directusCore)
 {
     m_mainWindow = mainWindow;
     m_directusCore = directusCore;

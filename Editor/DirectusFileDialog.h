@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 class DirectusHierarchy;
-class DirectusCore;
+class DirectusViewport;
 class DirectusAssetLoader;
 
 namespace Directus
@@ -39,7 +39,7 @@ class DirectusFileDialog : public QFileDialog
     Q_OBJECT
 public:
     explicit DirectusFileDialog(QWidget *parent = 0);
-    void Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusCore* directusCore);
+    void Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusViewport* directusCore);
     void Reset();
     void LoadModel();
     void LoadModelDirectly(std::string filePath);
@@ -54,7 +54,7 @@ private:
     DirectusAssetLoader* m_assetLoader;
     QWidget* m_mainWindow;
     Directus::Socket* m_socket;
-    DirectusCore* m_directusCore;
+    DirectusViewport* m_directusCore;
     DirectusHierarchy* m_hierarchy;
 
 public slots:

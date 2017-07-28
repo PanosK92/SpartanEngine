@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //==========================
 
-class DirectusCore;
+class DirectusViewport;
 namespace Directus
 {
     class Socket;
@@ -48,7 +48,7 @@ class DirectusConsole : public QListWidget
     Q_OBJECT
 public:
     explicit DirectusConsole(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore);
+    void Initialize(DirectusViewport* directusCore);
 
 private:
     Directus::Socket* m_socket;

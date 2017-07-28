@@ -38,14 +38,14 @@ namespace Directus
     class GameObject;
 }
 
-class DirectusCore : public QWidget
+class DirectusViewport : public QWidget
 {
 	Q_OBJECT
-    Q_DISABLE_COPY(DirectusCore)
+    Q_DISABLE_COPY(DirectusViewport)
 
 public:
-    DirectusCore(QWidget* parent = NULL);
-    virtual ~DirectusCore();
+    DirectusViewport(QWidget* parent = NULL);
+    virtual ~DirectusViewport();
     Directus::Socket* GetEngineSocket();
     void Initialize(void* hwnd, void* hinstance, DirectusStatsLabel* directusStatsLabel);
     bool IsRunning();

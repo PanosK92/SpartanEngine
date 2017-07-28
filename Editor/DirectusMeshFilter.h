@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QDoubleValidator>
 #include "Components/MeshFilter.h"
 #include <QComboBox>
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include <QLabel>
 #include "Math/Vector4.h"
 #include "DirectusDropDownButton.h"

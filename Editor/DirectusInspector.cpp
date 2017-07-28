@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusScript.h"
 #include "DirectusMeshFilter.h"
 #include "DirectusMeshCollider.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "DirectusAudioSource.h"
 #include "DirectusAudioListener.h"
 #include "DirectusIComponent.h"
@@ -52,7 +52,7 @@ DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
 
 }
 
-void DirectusInspector::SetDirectusCore(DirectusCore* directusCore)
+void DirectusInspector::SetDirectusCore(DirectusViewport* directusCore)
 {
     m_directusCore = directusCore;
 }

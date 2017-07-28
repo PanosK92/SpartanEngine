@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QVariant>
 #include <QMouseEvent>
 #include "DirectusInspector.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "DirectusFileDialog.h"
 //==================================
 
@@ -37,7 +37,7 @@ class DirectusHierarchy : public QTreeWidget
     Q_OBJECT
 public:
     explicit DirectusHierarchy(QWidget* parent = 0);
-    void Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusCore* directusCore);
+    void Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusViewport* directusCore);
 
 protected:
     virtual void mousePressEvent(QMouseEvent* event);
@@ -64,7 +64,7 @@ private:
   
     Directus::Socket* m_socket;
     DirectusInspector* m_inspector;
-    DirectusCore* m_directusCore;
+    DirectusViewport* m_directusCore;
     QWidget* m_mainWindow;
     QPoint m_dragStartPosition;
     DirectusFileDialog* m_fileDialog;

@@ -47,7 +47,7 @@ DirectusFileExplorer::DirectusFileExplorer(QWidget* parent) : QListView(parent)
 
 }
 
-void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusCore* directusCore, DirectusHierarchy* hierarchy, DirectusInspector* inspector)
+void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusViewport* directusCore, DirectusHierarchy* hierarchy, DirectusInspector* inspector)
 {
     QString root = "Assets";
     setAcceptDrops(true);

@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =================
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "Logging/Log.h"
 #include <QStyleOption>
 #include "Core/Settings.h"
@@ -40,7 +40,7 @@ using namespace Directus::Math;
 //=============================
 
 // CONSTRUCTOR/DECONSTRUCTOR =========================
-DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
+DirectusViewport::DirectusViewport(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_MSWindowsUseDirect3D, true);
     setAttribute(Qt::WA_PaintOnScreen, true);
@@ -66,18 +66,18 @@ DirectusCore::DirectusCore(QWidget* parent) : QWidget(parent)
     m_isRunning = false;
 }
 
-DirectusCore::~DirectusCore()
+DirectusViewport::~DirectusViewport()
 {
     m_engine->Shutdown();
     delete m_engine;
 }
 
-Socket* DirectusCore::GetEngineSocket()
+Socket* DirectusViewport::GetEngineSocket()
 {
     return m_socket;
 }
 
-void DirectusCore::Initialize(void* mainWindowHandle, void* hInstance, DirectusStatsLabel* directusStatsLabel)
+void DirectusViewport::Initialize(void* mainWindowHandle, void* hInstance, DirectusStatsLabel* directusStatsLabel)
 {
     // Initialize the engine
     m_engine = new Engine(new Context());
@@ -88,13 +88,13 @@ void DirectusCore::Initialize(void* mainWindowHandle, void* hInstance, DirectusS
     m_directusStatsLabel = directusStatsLabel;
 }
 
-bool DirectusCore::IsRunning()
+bool DirectusViewport::IsRunning()
 {
     return m_isRunning;
 }
 
 // Runs when the play button is pressed
-void DirectusCore::Start()
+void DirectusViewport::Start()
 {
     if (m_locked)
         return;
@@ -109,7 +109,7 @@ void DirectusCore::Start()
 }
 
 // Runs when the play button is released
-void DirectusCore::Stop()
+void DirectusViewport::Stop()
 {
     if (m_locked)
         return;
@@ -124,7 +124,7 @@ void DirectusCore::Stop()
 }
 
 // Ticks the engine as fast as possible, in Game Mode
-void DirectusCore::Update()
+void DirectusViewport::Update()
 {
     if (m_locked)
         return;
@@ -134,7 +134,7 @@ void DirectusCore::Update()
 }
 
 // Ticks the engine at 60Hz, in Editor mode
-void DirectusCore::Update60FPS()
+void DirectusViewport::Update60FPS()
 {
     if (m_locked)
         return;
@@ -144,7 +144,7 @@ void DirectusCore::Update60FPS()
 }
 
 // Runs every second
-void DirectusCore::Update500Mil()
+void DirectusViewport::Update500Mil()
 {
     if (m_locked)
         return;
@@ -153,25 +153,25 @@ void DirectusCore::Update500Mil()
 }
 
 // Prevents any engine update to execute
-void DirectusCore::LockUpdate()
+void DirectusViewport::LockUpdate()
 {
     m_locked = true;
 }
 
 // Allows any engine update function to execute
-void DirectusCore::UnlockUpdate()
+void DirectusViewport::UnlockUpdate()
 {
     m_locked = false;
 }
 
-void DirectusCore::ToggleDebugDraw()
+void DirectusViewport::ToggleDebugDraw()
 {
     Settings::SetDebugDraw(!Settings::GetDebugDraw());
 }
 //====================================================
 
 //= OVERRIDDEN FUNCTIONS =============================
-void DirectusCore::resizeEvent(QResizeEvent* evt)
+void DirectusViewport::resizeEvent(QResizeEvent* evt)
 {
     if (evt->oldSize() == evt->size())
         return;
@@ -193,12 +193,12 @@ void DirectusCore::resizeEvent(QResizeEvent* evt)
 }
 
 // Invoked by QT itself, Update() let's the engine do the rendering
-void DirectusCore::paintEvent(QPaintEvent* evt)
+void DirectusViewport::paintEvent(QPaintEvent* evt)
 {
     Update();
 }
 
-void DirectusCore::mousePressEvent(QMouseEvent* event)
+void DirectusViewport::mousePressEvent(QMouseEvent* event)
 {
     QPoint mousePos = event->pos();
     weak_ptr<GameObject> camera = m_socket->GetContext()->GetSubsystem<Scene>()->GetMainCamera();
@@ -213,7 +213,7 @@ void DirectusCore::mousePressEvent(QMouseEvent* event)
 
 //= Engine functions ================================
 // Changes the rendering resolution of the engine
-void DirectusCore::SetResolution(float width, float height)
+void DirectusViewport::SetResolution(float width, float height)
 {
     if (!m_socket)
         return;

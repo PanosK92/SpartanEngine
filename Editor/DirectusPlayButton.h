@@ -25,17 +25,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QPushButton>
 //====================
 
-class DirectusCore;
+class DirectusViewport;
 
 class DirectusPlayButton : public QPushButton
 {
     Q_OBJECT
 public:
     explicit DirectusPlayButton(QWidget *parent = 0);
-    void Initialize(DirectusCore* directusCore);
+    void Initialize(DirectusViewport* directusCore);
 
 private:
-    DirectusCore* m_directusCore;
+    DirectusViewport* m_directusCore;
 
 public slots:
     void StartEngine();

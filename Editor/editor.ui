@@ -34,54 +34,54 @@
      <colorrole role="WindowText">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>144</red>
-        <green>144</green>
-        <blue>144</blue>
+        <red>194</red>
+        <green>197</green>
+        <blue>204</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Button">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>48</red>
+        <green>49</green>
+        <blue>51</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Text">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>144</red>
-        <green>144</green>
-        <blue>144</blue>
+        <red>194</red>
+        <green>197</green>
+        <blue>204</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="ButtonText">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>144</red>
-        <green>144</green>
-        <blue>144</blue>
+        <red>194</red>
+        <green>197</green>
+        <blue>204</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>48</red>
+        <green>49</green>
+        <blue>51</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>48</red>
+        <green>49</green>
+        <blue>51</blue>
        </color>
       </brush>
      </colorrole>
@@ -90,54 +90,54 @@
      <colorrole role="WindowText">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>144</red>
-        <green>144</green>
-        <blue>144</blue>
+        <red>194</red>
+        <green>197</green>
+        <blue>204</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Button">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>48</red>
+        <green>49</green>
+        <blue>51</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Text">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>144</red>
-        <green>144</green>
-        <blue>144</blue>
+        <red>194</red>
+        <green>197</green>
+        <blue>204</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="ButtonText">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>144</red>
-        <green>144</green>
-        <blue>144</blue>
+        <red>194</red>
+        <green>197</green>
+        <blue>204</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>48</red>
+        <green>49</green>
+        <blue>51</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>48</red>
+        <green>49</green>
+        <blue>51</blue>
        </color>
       </brush>
      </colorrole>
@@ -146,54 +146,54 @@
      <colorrole role="WindowText">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>144</red>
-        <green>144</green>
-        <blue>144</blue>
+        <red>194</red>
+        <green>197</green>
+        <blue>204</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Button">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>48</red>
+        <green>49</green>
+        <blue>51</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Text">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>144</red>
-        <green>144</green>
-        <blue>144</blue>
+        <red>194</red>
+        <green>197</green>
+        <blue>204</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="ButtonText">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>144</red>
-        <green>144</green>
-        <blue>144</blue>
+        <red>194</red>
+        <green>197</green>
+        <blue>204</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>48</red>
+        <green>49</green>
+        <blue>51</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>41</red>
-        <green>41</green>
-        <blue>41</blue>
+        <red>48</red>
+        <green>49</green>
+        <blue>51</blue>
        </color>
       </brush>
      </colorrole>
@@ -221,99 +221,272 @@
   </property>
   <property name="styleSheet">
    <string notr="true">/*
-widget background dark: 			292929
-widget background light:				383838
-widget background highlighted: 	484848
-text disabled:								585858
-text : 											909090
-text highlighted:							EDEDED
-border: 										212121
-border highlighted:						575757
-text edit background:					414141
+widget background dark:						303133
+widget background light:						414345
+widget background highlighted: 			345167
+text disabled:										585858
+text :													C2C5CC
+text highlighted:									EDEDED
+border:												414245
+border highlighted:								575757
+text edit background:							414141
+button background								5F6063
+button background highlighted			467F9C
+button background very highlighted 	3980A3
 */
 
+/*================================================================================================*/
+
+/* QMainWindow - Only visible in the bottom bar of the window */
 QMainWindow
 {
-	color: #909090;
-	background-color: #292929;
-	font: 9pt &quot;Calibri&quot;;
+	background-color: #303133;
 	padding: 0px;
 }
 
+/*================================================================================================*/
+
+/* QWidget - Applies on all widgets */
 QWidget
 {
-	color: #909090;
-	background-color: #292929;
-	border-color: #212121;
+	color: #C2C5CC;
+	background-color: #303133;
+	border-color: #414245;
+	border-width: 0px;
 	border-style: none;
-	border-width: 1px;
 	font: 9pt &quot;Calibri&quot;;
 	padding: 0px;
 }
 
-QLineEdit
-{
-	color: #909090;
-	background-color: #484848;
-	border-style: inset;
+/*================================================================================================*/
+
+/* QScrollBar - Set arrow icons */
+QScrollBar::right-arrow:horizontal
+{   
+	background-image: url(:/Images/arrowRight.png) contain;
 }
 
+QScrollBar::left-arrow:horizontal
+{   
+	background-image: url(:/Images/arrowLeft.png) contain;
+}
+
+/*================================================================================================*/
+
+/* QLineEdit */
+QLineEdit
+{
+	color: #C2C5CC;
+	background-color: #303133;
+	border-style: none;
+	border-radius: 1px;
+}
+
+/*================================================================================================*/
+
+/* QLabel */
 QLabel
 {
-	color: #909090;
-	background-color: #383838;
+	color: #C2C5CC;
+	background-color: #414345;
 	border-style: none;
 }
 
-/*= TREES ==================================================================================*/
-/*NOTE: I am using QTreeView everywhere because even QTreeWidgets inherit from them */
+/*================================================================================================*/
+
+/* QTabWidget::pane */
+QTabWidget::pane  
+{  
+	/* Controls all tabs in the editor as well as the QSplitter */
+	border-color: #414345;
+	border-style: none;
+	border-width: 0px;
+}
+
+/*================================================================================================*/
+
+/* QTreeView - I am tweaking only QTreeView because QTreeWidget inherits from it as well */
 QTreeView
 {
-	background-color: #383838;
-	border-style: solid;
-	border-width: 1px;
+	background-color: #303133;
+	border-style: none;
+	border-width: 0px;
 	border-top-width: 0px;
 	outline: 0px; /* removes ugly selection dashed border */
 }
 
 QTreeView::item
 {
-    background-color: rgba(0, 0, 0, 0);
-	color: #909090;
+    background-color: #303133;
+	color: #C2C5CC;
 }
 
 QTreeView::item:selected 
 {
-	background-color: rgb(62, 95, 150);
+	background-color: #345167;
 	color: white;
 	border-style: none;
 }
 
-QTreeWidget::item:hover 
+QTreeView::item:hover 
 {
-	
-	
+		
 }
 
-/*= COMBOBOX/QPUSHBUTTON  =====================================================================*/
-QComboBox, QPushButton
+QTreeView::branch:has-siblings:!adjoins-item 
 {
-    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(92, 92, 92, 100), stop:1 rgba(92, 92, 92, 255));
-	border-radius: 2px;
-    border-color: #575757;
-    border-width: 1px;
-    border-style: solid;
+    border-image: url(:/Images/vline.png) contain;
+}
+
+QTreeView::branch:has-siblings:adjoins-item 
+{
+    border-image: url(:/Images/branch-more.png) contain;
+}
+
+QTreeView::branch:!has-children:!has-siblings:adjoins-item 
+{
+    border-image: url(:/Images/branch-end.png) contain;
+}
+
+QTreeView::branch:has-children:!has-siblings:closed,
+QTreeView::branch:closed:has-children:has-siblings 
+{
+	border-image: none;
+	image: url(:/Images/branch-closed.png);
+}
+
+QTreeView::branch:open:has-children:!has-siblings,
+QTreeView::branch:open:has-children:has-siblings  
+{
+    border-image: none;
+	image: url(:/Images/branch-open.png);
+}
+
+/*================================================================================================*/
+
+
+/* QTabBar */
+QTabBar::tab
+{	
+	background-color: #353638;
+	background-repeat: no-repeat;
+	background-position: left;
+
+	border-color: red;
+	border-style: solid;
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	border-bottom-width: 0px;
+
+	min-width: 3.5em;
+	min-height: 1.3em;
+
 	padding-left: 5px;
+	padding-right: 5px;
+}
+
+QTabBar::tab:selected
+{
+	background-color: #414345;
+	border-style: none;
+	border-width: 1px;
+	border-bottom-width: 0px;
+}
+
+/*================================================================================================*/
+
+/* QMenuBar */
+QMenuBar
+{
+	color: #B4B4B4;
+	background-color: #414345;
+	padding: 0px;
+}
+
+QMenuBar::item
+{
+	color: #C2C5CC;
+	background-color: #414345;
+}
+
+QMenuBar::item:selected
+{
+	color: #C2C5CC;
+	background-color:#345167;
+}
+
+QMenuBar::item:pressed 
+{
+    color: #C2C5CC;
+	background-color:#345167;
+}
+
+QMenu::item
+{
+	color: #C2C5CC;
+	background-color: #414345;
+}
+
+QMenu::item:!enabled
+{
+	color: #585858;
+	background-color: #414345;
+}
+
+QMenu::item:selected:enabled
+{
+	color: #EDEDED;
+	background-color:#345167;
+}
+
+QMenu::item:pressed 
+{
+    color:  #C2C5CC;
+	background-color:#345167;
+}
+
+QMenu::separator 
+{
+	height: 1px;
+	background:#303133;
+}
+
+/*================================================================================================*/
+
+/* QPushButton */
+QPushButton
+{
+    background-color: #5F6063;
+	border-radius: 2px;
+    border-width: 0px;
+    border-style: solid;
+	padding: 5px;
 }
 
 QPushButton::pressed
 {
-	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(55, 55, 55, 255), stop:1 rgba(70, 70, 70, 255));
+	background-color: #467F9C;
+}
+
+QPushButton::checked
+{
+	background-color: #467F9C;
+}
+/*================================================================================================*/
+
+/* QComboBox */
+QComboBox
+{
+	background-color: #5F6063;
+	border-radius: 2px;
+    border-width: 0px;
+    border-style: solid;
+	padding-left: 5px;
 }
 
 QComboBox::drop-down
 {
-    background-color: rgba(0, 0, 0, 0);
+    background-color: #5F6063;
     border-width: 1px;
     border-style: none;
 }
@@ -325,96 +498,37 @@ QComboBox::down-arrow
 	background-position: center;
 }
 
-/*= SCENE/CONSOLE TABS TOOLBARS =============================================================================*/
-#sceneToolbar , #tabConsoleToolbar, #tabHierarchyToolbar, #tabProjectToolbar 
+/*================================================================================================*/
+
+/* QListView - DirExplorer and FileExplorer are derived from QListView */
+QListView
 {
-	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
-	border-color: #212121;
-
-	border-width: 1px;
-	border-style: solid;
+	background-color: #303133;
+	border-style: none;
+	border-width: 0px;
 }
 
-#buttonGizmos, #buttonConsoleClear, #buttonConsoleClearOnPlay, #buttonHierarchyCreate, #buttonProjectCreate
+QListView::item 
 {
-	min-width: 3em;
-	padding-left: 2px;
-	padding-right: 2px;
-	color: #909090;
-	border-color: #212121;
-	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(62, 62, 62, 255), stop:1 rgba(43, 43, 43, 255));
-	border-style: solid;
-	border-top-width: 0px;
-	border-bottom-width: 0px;
-	border-left-width: 1px;
-	border-right-width: 1px;
-	border-radius: 0px;
-	margin-top: 1px;
-	margin-bottom: 1px;
+	background-color:  #303133;
 }
 
-#buttonGizmos
+QListView::item:alternate 
+{		
+	background-color:  #345167;
+}
+
+QListView::item:focus
 {
-	width: 40px;
-	border-left-width: 0px;
+	border:none;
 }
 
-#buttonConsoleClearOnPlay
-{
-	width: 80px;
-	border-left-width: 0px;
-}
+/*================================================================================================*/
 
-#buttonGizmos:pressed,#buttonConsoleClear:pressed, #buttonConsoleClearOnPlay:pressed, #buttonHierarchyCreate:pressed, #buttonProjectCreate:pressed
-{
-	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(43, 43, 43, 255), stop:1 rgba(62, 62, 62, 255));
-}
-
-#buttonConsoleClearOnPlay:checked 
-{
-	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(43, 43, 43, 255), stop:1 rgba(62, 62, 62, 255));
-}
-
-/*= TABS ===================================================================================*/
-QTabWidget::pane  
-{  
-	/* This thing is empty but it does keep
- 	some weird white borders away */
-}
-
-QTabBar::tab
-{	
-	background-repeat: no-repeat;
-	background-position: left;
-
-	border-color: red;
-	border-style: solid;
-	border-top-left-radius: 3px;
-	border-top-right-radius: 3px;
-	border-bottom-width: 0px;
-
-	min-width: 3.5em;
-	min-height: 1.3em;
-
-	padding-top: 0px;
-	padding-bottom: 0px;
-	padding-left: 18px;
-	padding-right: 10px;
-}
-
-QTabBar::tab:selected
-{
-	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(70, 70, 70, 255), stop:1 rgba(64, 64, 64, 255));
-	border-color: #575757;
-	border-style: solid;
-	border-width: 1px;
-	border-bottom-width: 0px;
-}
-
-/*= CHECKBOX ==================================================================================*/
+/* QCheckBox */
 QCheckBox
 {
-	background-color:  rgba(0, 0, 0, 0);
+	background-color: rgba(0, 0, 0, 0);
 }
 
 QCheckBox::indicator
@@ -433,11 +547,13 @@ QCheckBox::indicator:checked
 	image:  url(:/Images/check.png) contain;
  }
 
-/* PROGRESS BAR =========================================================================================*/
+/*================================================================================================*/
+
+/* QProgressBar */
 QProgressBar 
 {
     border: 1px solid #76797C;
-    border-radius: 5px;
+    border-radius: 1px;
 }
 
 QProgressBar::chunk 
@@ -446,134 +562,18 @@ QProgressBar::chunk
 	width: 1px;
 }
 
-/*= SPECIFIC ===========================================================================================*/
-#directusCore
-{
-	background-color:#383838;
-}
+/*================================================================================================*/
 
-#directusInspector
-{
-	background-color:#383838;
-}
-
-#directusDirExplorer, #directusFileExplorer, #directusHierarchy, #directusInspector
-{
-	border-width: 1px;
-	border-style: solid;
-	border-top-width: 0px;
-}
-
-/*= PLAY/PAUSE BUTTONS ===================================================================================*/
-#directusPlayButton
-{
-	min-width: 2em;
-	padding: 3px;
-	border-color: #464646;
-	background-color: qlineargradient(spread:pad, x1:0.460636, y1:0, x2:0.467, y2:1, stop:0 rgba(120, 120, 120, 255), stop:1 rgba(79, 79, 79, 255));
-	background-image: url(:/Images/play.png);
-	background-repeat: no-repeat;
-	background-position: center;
-	border-style: outset;
-	border-width: 1px;
-	border-radius: 2px;
-}
-
-#directusPlayButton:checked 
-{
-	min-width: 2em;
-	padding: 3px;
-	border-color: #464646;
-	background-color: qradialgradient(spread:pad, cx:0.495, cy:0.5, radius:0.644, fx:0.5, fy:0.5, stop:0.204545 rgba(120, 120, 120, 255), stop:1 rgba(59, 59, 59, 255));
-	background-image: url(:/Images/play.png);
-	background-repeat: no-repeat;
-	background-position: center;
-	border-style: outset;
-	border-width: 1px;
-	border-radius: 2px;
-}
-
-/*= MENU ===================================================================================*/
-QMenuBar
-{
-	color: #B4B4B4;
-	background-color: #383838;
-	padding: 0px;
-}
-
-QMenuBar::item
-{
-	color: #909090;
-	background-color: #383838;
-}
-
-QMenuBar::item:selected
-{
-	color:  #EDEDED;
-	background-color:#484848;
-}
-
-QMenuBar::item:pressed 
-{
-    color:  #909090;
-	background-color:#484848;
-}
-
-QMenu::item
-{
-	color: #909090;
-	background-color: #383838;
-}
-
-QMenu::item:!enabled
-{
-	color: #585858;
-	background-color: #383838;
-}
-
-QMenu::item:selected:enabled
-{
-	color:  #EDEDED;
-	background-color:#484848;
-}
-
-QMenu::item:pressed 
-{
-    color:  #909090;
-	background-color:#484848;
-}
-
-QMenu::separator 
-{
-	height: 1px;
-	background:#292929;
-}
-
-/*= CUSTOM ====================================================================================*/
-DirectusInspector
-{
-	color: #909090;
-	background-color: #383838;
-	border-width: 1px;
-}
-
-DirectusCore
-{
-	color: #909090;
-	background-color: #383838;
-	border-width: 1px;
-}
-
-/*= SLIDER =====================================================================================*/
+/* QSlider */
 QSlider
 {
-	background-color: #383838;
+	background-color: #414345;
 }
 
 QSlider::groove:horizontal 
 {
 	border: 1px;
-	border-color: #212121;
+	border-color: #414345;
 	border-style: inset;
 	background: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.488318, y2:0.358, stop:0 rgba(192, 192, 192, 255), stop:1 rgba(79, 79, 79, 255));
 	height: 5px;
@@ -584,7 +584,7 @@ QSlider::handle:horizontal
 {
 	background: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(110, 110, 110, 255), stop:1 rgba(68, 68, 68, 255));
 	border: 1px;
-	border-color: #212121;
+	border-color: #414345;
 	border-style: outset;
 	width: 10px;
 	height: 10px;
@@ -592,53 +592,23 @@ QSlider::handle:horizontal
 	margin-bottom: -3px;
 	border-radius: 5px;
 }
-/*========================================================================================*/
 
-/*= LISTS ===================================================================================*/
-QListWidget
-{
-	color: #383838;
-	background-color: #383838;
-	border-style: outset;
-}
+/*================================================================================================*/
 
-QListView
-{
-	background-color: #383838;
-	border-style: outset;
-}
-
-QListView::item 
-{
-    background:  #383838;
-}
-
-QListView::item:alternate 
-{		
-    background:  #484848;
-}
-
-QListView::item:focus
-{
-	border:none;
-}
-/*========================================================================================*/
-
-/*= SCROLLBAR - VERTICAL ========================================================================*/
-/* Background (non scrollabe area) */
+/* QScrollBar - Background (non scrollabe area) */
 QScrollBar:vertical 
 {
-	border-color: #212121;
+	border-color: #414245;
 	border-style: solid;
 	border-width: 1px;
-	background-color: #212121;
+	background-color: #414245;
 	margin: 15px 0 15px 0;
 }
 
 /* Background (scrollable area) */
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical 
 {
-	background: #292929;
+	background: #303133;
  }
 
 /* Handle */
@@ -653,8 +623,8 @@ QScrollBar::sub-line:vertical
 	subcontrol-position: top;
   	height: 15px;
     subcontrol-origin: margin;
-	background-color:#292929;
-	border-color: #212121;
+	background-color:#303133;
+	border-color: #414245;
 	border-style: solid;
 	border-width: 1px;
 }
@@ -665,8 +635,8 @@ QScrollBar::add-line:vertical
 	subcontrol-position: bottom;
 	height: 15px;
     subcontrol-origin: margin;
-	background-color:#292929;
-	border-color: #212121;
+	background-color:#303133;
+	border-color: #414245;
 	border-style: solid;
 	border-width: 1px;
 }
@@ -680,23 +650,21 @@ QScrollBar::up-arrow::vertical
 {   
 	background-image: url(:/Images/arrowUp.png) contain;
 }
-/*========================================================================================*/
 
-/*= SCROLLBAR - HORIZONTAL ======================================================================*/
 /* Background (non scrollabe area) */
 QScrollBar:horizontal 
 {
-	border-color: #212121;
+	border-color: #414245;
 	border-style: solid;
 	border-width: 1px;
-	background-color: #212121;
+	background-color: #414245;
 	margin: 0 15px 0 15px;
 }
 
 /* Background (scrollable area) */
 QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal 
 {
-	background: #292929;
+	background: #303133;
  }
 
 /* Handle */
@@ -711,8 +679,8 @@ QScrollBar::add-line:horizontal
 	subcontrol-position: right;
 	width: 15px;
     subcontrol-origin: margin;
-	background-color:#292929;
-	border-color: #212121;
+	background-color:#303133;
+	border-color: #414245;
 	border-style: solid;
 	border-width: 1px;
 }
@@ -723,34 +691,99 @@ QScrollBar::sub-line:horizontal
 	subcontrol-position: left;
   	width: 15px;
     subcontrol-origin: margin;
-	background-color:#292929;
-	border-color: #212121;
+	background-color:#303133;
+	border-color: #414245;
 	border-style: solid;
 	border-width: 1px;
 }
 
-QScrollBar::right-arrow:horizontal
-{   
-	background-image: url(:/Images/arrowRight.png) contain;
-}
-
-QScrollBar::left-arrow:horizontal
-{   
-	background-image: url(:/Images/arrowLeft.png) contain;
-}
 /*========================================================================================*/
 
-/*
-widget background dark: 			292929
-widget background light:				383838
-widget background highlighted: 	484848
-text disabled:								585858
-text : 											909090
-text highlighted:							 EDEDED
-border: 										212121
-border highlighted:						464646
-text edit background:					414141
-*/</string>
+/* QSplitter */
+QSplitter::handle 
+{
+	background-color: #303133;
+}
+
+QSplitter::handle:horizontal 
+{
+	width: 2px;
+}
+
+QSplitter::handle:vertical 
+{
+	width: 2px;
+}
+
+/*================================================================================================*/
+#widgetInspector
+{
+	background-color: #414345;
+}
+
+#directusPlayButton
+{
+	background-image: url(:/Images/play.png);
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+#directusPlayButton:checked 
+{
+	background-image: url(:/Images/play.png);
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+#toolBar
+{
+	background-color: #303133;
+}
+
+#layoutProjectConsole, #widgetHierarchyViewport
+{
+	background-color: #303133;
+}
+
+#sceneToolbar, #tabConsoleToolbar, #tabHierarchyToolbar, #tabProjectToolbar 
+{
+	background-color: #414345;
+	border-width: 0px;
+	border-style: none;
+}
+
+#tabHierarchy::pane
+{
+	border-width: 3px;
+	border-style: solid;
+	border-color: #414345;
+}
+
+#tabViewport::pane
+{
+	border-color: #345167;
+	border-style: solid;
+	border-width: 3px;
+}
+
+#tabInspector::pane
+{
+	border-width: 3px;
+	border-style: solid;
+	border-color: #414345;
+}
+
+#tabProjectConsole::pane
+{
+	border-width: 3px;
+	border-style: solid;
+	border-color: #414345;
+}
+
+#splitterConsoleProject::handle 
+{
+	background-color: #414345;
+}</string>
   </property>
   <property name="locale">
    <locale language="English" country="UnitedStates"/>
@@ -817,24 +850,14 @@ text edit background:					414141
        <item>
         <layout class="QHBoxLayout" name="layoutToolBar">
          <property name="spacing">
+          <number>5</number>
+         </property>
+         <property name="leftMargin">
           <number>0</number>
          </property>
-         <item>
-          <spacer name="verticalSpacer">
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>30</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
+         <property name="topMargin">
+          <number>4</number>
+         </property>
          <item>
           <spacer name="horizontalSpacer">
            <property name="orientation">
@@ -850,6 +873,12 @@ text edit background:					414141
          </item>
          <item>
           <widget class="DirectusPlayButton" name="directusPlayButton">
+           <property name="maximumSize">
+            <size>
+             <width>50</width>
+             <height>16777215</height>
+            </size>
+           </property>
            <property name="autoFillBackground">
             <bool>false</bool>
            </property>
@@ -876,6 +905,89 @@ text edit background:					414141
            </property>
            <property name="flat">
             <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QWidget" name="widgetToolBar" native="true">
+           <layout class="QHBoxLayout" name="horizontalLayout_10">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="buttonDebugDraw">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true"/>
+           </property>
+           <property name="text">
+            <string>Debug View</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="DirectusStatsLabel" name="directusStatsLabel">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>FPS: 0, Delta: 0, Render: 0, Meshes Rendered: 0</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -981,9 +1093,12 @@ text edit background:					414141
              <number>0</number>
             </property>
             <item>
-             <widget class="QSplitter" name="splitterHierarchyScene">
+             <widget class="QSplitter" name="splitterHierarchyViewport">
               <property name="orientation">
                <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="handleWidth">
+               <number>5</number>
               </property>
               <widget class="QTabWidget" name="tabHierarchy">
                <property name="sizePolicy">
@@ -1010,18 +1125,18 @@ text edit background:					414141
                   <colorrole role="WindowText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1064,9 +1179,9 @@ text edit background:					414141
                   <colorrole role="Text">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1082,27 +1197,27 @@ text edit background:					414141
                   <colorrole role="ButtonText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1147,18 +1262,18 @@ text edit background:					414141
                   <colorrole role="WindowText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1201,9 +1316,9 @@ text edit background:					414141
                   <colorrole role="Text">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1219,27 +1334,27 @@ text edit background:					414141
                   <colorrole role="ButtonText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1284,18 +1399,18 @@ text edit background:					414141
                   <colorrole role="WindowText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1338,9 +1453,9 @@ text edit background:					414141
                   <colorrole role="Text">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1356,27 +1471,27 @@ text edit background:					414141
                   <colorrole role="ButtonText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1423,12 +1538,18 @@ text edit background:					414141
                 <enum>Qt::LeftToRight</enum>
                </property>
                <property name="styleSheet">
-                <string notr="true">QTabBar::tab 
-{
-	background-image: url(:/Images/tabHierarchy.png);
-}</string>
+                <string notr="true"/>
                </property>
-               <widget class="QWidget" name="layoutTabHierarchy">
+               <property name="documentMode">
+                <bool>false</bool>
+               </property>
+               <property name="tabsClosable">
+                <bool>false</bool>
+               </property>
+               <property name="movable">
+                <bool>false</bool>
+               </property>
+               <widget class="QWidget" name="widgetLayoutHierarchy">
                 <attribute name="title">
                  <string>Hierarchy</string>
                 </attribute>
@@ -1449,142 +1570,81 @@ text edit background:					414141
                   <number>0</number>
                  </property>
                  <item>
-                  <layout class="QGridLayout" name="tabHierarchyGridLayout">
-                   <property name="spacing">
-                    <number>0</number>
+                  <widget class="DirectusHierarchy" name="widgetHierarchy">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
                    </property>
-                   <item row="1" column="0">
-                    <layout class="QHBoxLayout" name="tabHierarchyLayout">
-                     <property name="spacing">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="DirectusHierarchy" name="directusHierarchy">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="autoFillBackground">
-                        <bool>false</bool>
-                       </property>
-                       <property name="frameShape">
-                        <enum>QFrame::NoFrame</enum>
-                       </property>
-                       <property name="frameShadow">
-                        <enum>QFrame::Plain</enum>
-                       </property>
-                       <property name="lineWidth">
-                        <number>1</number>
-                       </property>
-                       <property name="sizeAdjustPolicy">
-                        <enum>QAbstractScrollArea::AdjustIgnored</enum>
-                       </property>
-                       <property name="editTriggers">
-                        <set>QAbstractItemView::DoubleClicked</set>
-                       </property>
-                       <property name="dragEnabled">
-                        <bool>true</bool>
-                       </property>
-                       <property name="dragDropMode">
-                        <enum>QAbstractItemView::DragDrop</enum>
-                       </property>
-                       <property name="textElideMode">
-                        <enum>Qt::ElideRight</enum>
-                       </property>
-                       <property name="indentation">
-                        <number>20</number>
-                       </property>
-                       <property name="rootIsDecorated">
-                        <bool>true</bool>
-                       </property>
-                       <property name="uniformRowHeights">
-                        <bool>true</bool>
-                       </property>
-                       <property name="animated">
-                        <bool>true</bool>
-                       </property>
-                       <property name="headerHidden">
-                        <bool>true</bool>
-                       </property>
-                       <property name="expandsOnDoubleClick">
-                        <bool>false</bool>
-                       </property>
-                       <attribute name="headerVisible">
-                        <bool>false</bool>
-                       </attribute>
-                       <attribute name="headerCascadingSectionResizes">
-                        <bool>false</bool>
-                       </attribute>
-                       <attribute name="headerShowSortIndicator" stdset="0">
-                        <bool>false</bool>
-                       </attribute>
-                       <attribute name="headerStretchLastSection">
-                        <bool>true</bool>
-                       </attribute>
-                       <column>
-                        <property name="text">
-                         <string>GameObjects</string>
-                        </property>
-                       </column>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="0" column="0">
-                    <widget class="QWidget" name="tabHierarchyToolbar" native="true">
-                     <layout class="QHBoxLayout" name="tabHierarchyToolbarLayout">
-                      <property name="spacing">
-                       <number>0</number>
-                      </property>
-                      <property name="leftMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="topMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="rightMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="bottomMargin">
-                       <number>0</number>
-                      </property>
-                      <item>
-                       <widget class="QPushButton" name="buttonHierarchyCreate">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="text">
-                         <string>Create</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <spacer name="horizontalSpacer_5">
-                        <property name="orientation">
-                         <enum>Qt::Horizontal</enum>
-                        </property>
-                        <property name="sizeHint" stdset="0">
-                         <size>
-                          <width>40</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                       </spacer>
-                      </item>
-                     </layout>
-                    </widget>
-                   </item>
-                  </layout>
+                   <property name="autoFillBackground">
+                    <bool>false</bool>
+                   </property>
+                   <property name="frameShape">
+                    <enum>QFrame::NoFrame</enum>
+                   </property>
+                   <property name="frameShadow">
+                    <enum>QFrame::Plain</enum>
+                   </property>
+                   <property name="lineWidth">
+                    <number>1</number>
+                   </property>
+                   <property name="sizeAdjustPolicy">
+                    <enum>QAbstractScrollArea::AdjustIgnored</enum>
+                   </property>
+                   <property name="editTriggers">
+                    <set>QAbstractItemView::DoubleClicked</set>
+                   </property>
+                   <property name="dragEnabled">
+                    <bool>true</bool>
+                   </property>
+                   <property name="dragDropMode">
+                    <enum>QAbstractItemView::DragDrop</enum>
+                   </property>
+                   <property name="textElideMode">
+                    <enum>Qt::ElideRight</enum>
+                   </property>
+                   <property name="indentation">
+                    <number>20</number>
+                   </property>
+                   <property name="rootIsDecorated">
+                    <bool>true</bool>
+                   </property>
+                   <property name="uniformRowHeights">
+                    <bool>true</bool>
+                   </property>
+                   <property name="animated">
+                    <bool>true</bool>
+                   </property>
+                   <property name="headerHidden">
+                    <bool>true</bool>
+                   </property>
+                   <property name="expandsOnDoubleClick">
+                    <bool>false</bool>
+                   </property>
+                   <attribute name="headerVisible">
+                    <bool>false</bool>
+                   </attribute>
+                   <attribute name="headerCascadingSectionResizes">
+                    <bool>false</bool>
+                   </attribute>
+                   <attribute name="headerShowSortIndicator" stdset="0">
+                    <bool>false</bool>
+                   </attribute>
+                   <attribute name="headerStretchLastSection">
+                    <bool>true</bool>
+                   </attribute>
+                   <column>
+                    <property name="text">
+                     <string>GameObjects</string>
+                    </property>
+                   </column>
+                  </widget>
                  </item>
                 </layout>
                </widget>
               </widget>
-              <widget class="QTabWidget" name="tabScene">
+              <widget class="QTabWidget" name="tabViewport">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                  <horstretch>1</horstretch>
@@ -1609,18 +1669,18 @@ text edit background:					414141
                   <colorrole role="WindowText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1663,9 +1723,9 @@ text edit background:					414141
                   <colorrole role="Text">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1681,27 +1741,27 @@ text edit background:					414141
                   <colorrole role="ButtonText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1746,18 +1806,18 @@ text edit background:					414141
                   <colorrole role="WindowText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1800,9 +1860,9 @@ text edit background:					414141
                   <colorrole role="Text">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1818,27 +1878,27 @@ text edit background:					414141
                   <colorrole role="ButtonText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1883,18 +1943,18 @@ text edit background:					414141
                   <colorrole role="WindowText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Button">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1937,9 +1997,9 @@ text edit background:					414141
                   <colorrole role="Text">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -1955,27 +2015,27 @@ text edit background:					414141
                   <colorrole role="ButtonText">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>144</red>
-                     <green>144</green>
-                     <blue>144</blue>
+                     <red>194</red>
+                     <green>197</green>
+                     <blue>204</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Base">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
                   <colorrole role="Window">
                    <brush brushstyle="SolidPattern">
                     <color alpha="255">
-                     <red>41</red>
-                     <green>41</green>
-                     <blue>41</blue>
+                     <red>48</red>
+                     <green>49</green>
+                     <blue>51</blue>
                     </color>
                    </brush>
                   </colorrole>
@@ -2022,14 +2082,11 @@ text edit background:					414141
                 <enum>Qt::LeftToRight</enum>
                </property>
                <property name="styleSheet">
-                <string notr="true">QTabBar::tab
-{
-	background-image: url(:/Images/tabScene.png);
-}</string>
+                <string notr="true"/>
                </property>
-               <widget class="QWidget" name="layoutTabScene">
+               <widget class="QWidget" name="widgetLayoutViewport">
                 <attribute name="title">
-                 <string>Scene</string>
+                 <string>Viewport</string>
                 </attribute>
                 <layout class="QVBoxLayout" name="verticalLayout_7">
                  <property name="spacing">
@@ -2048,138 +2105,14 @@ text edit background:					414141
                   <number>0</number>
                  </property>
                  <item>
-                  <layout class="QGridLayout" name="directusCoreGridLayout">
-                   <property name="spacing">
-                    <number>0</number>
+                  <widget class="DirectusViewport" name="widgetViewport" native="true">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
                    </property>
-                   <item row="0" column="0">
-                    <widget class="QWidget" name="sceneToolbar" native="true">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="maximumSize">
-                      <size>
-                       <width>16777215</width>
-                       <height>16777215</height>
-                      </size>
-                     </property>
-                     <property name="styleSheet">
-                      <string notr="true"/>
-                     </property>
-                     <layout class="QHBoxLayout" name="horizontalLayout">
-                      <property name="spacing">
-                       <number>0</number>
-                      </property>
-                      <property name="leftMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="topMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="rightMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="bottomMargin">
-                       <number>0</number>
-                      </property>
-                      <item>
-                       <spacer name="horizontalSpacer_3">
-                        <property name="orientation">
-                         <enum>Qt::Horizontal</enum>
-                        </property>
-                        <property name="sizeHint" stdset="0">
-                         <size>
-                          <width>543</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                       </spacer>
-                      </item>
-                      <item>
-                       <widget class="DirectusStatsLabel" name="directusStatsLabel">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                        <property name="minimumSize">
-                         <size>
-                          <width>380</width>
-                          <height>0</height>
-                         </size>
-                        </property>
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>16777215</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>FPS: 0, Delta: 0, Render: 0, Meshes Rendered: 0</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                        </property>
-                        <property name="readOnly">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QPushButton" name="buttonDebugDraw">
-                        <property name="minimumSize">
-                         <size>
-                          <width>80</width>
-                          <height>0</height>
-                         </size>
-                        </property>
-                        <property name="styleSheet">
-                         <string notr="true"/>
-                        </property>
-                        <property name="text">
-                         <string>Debug View</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                   </item>
-                   <item row="1" column="0" colspan="2">
-                    <widget class="QWidget" name="directusCoreWidget" native="true">
-                     <layout class="QHBoxLayout" name="horizontalLayout_3">
-                      <property name="spacing">
-                       <number>0</number>
-                      </property>
-                      <property name="leftMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="topMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="rightMargin">
-                       <number>0</number>
-                      </property>
-                      <property name="bottomMargin">
-                       <number>0</number>
-                      </property>
-                      <item>
-                       <widget class="DirectusCore" name="directusCore" native="true">
-                        <property name="sizePolicy">
-                         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                          <horstretch>0</horstretch>
-                          <verstretch>0</verstretch>
-                         </sizepolicy>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                   </item>
-                  </layout>
+                  </widget>
                  </item>
                 </layout>
                </widget>
@@ -2256,19 +2189,7 @@ text edit background:					414141
                <bool>false</bool>
               </property>
               <property name="styleSheet">
-               <string notr="true">/* Project */
-QTabBar::tab:first
-{
-	background-image: url(:/Images/tabProject.png);
-	padding-left: 25px;
-}
-
-/* Console */
-QTabBar::tab:last
-{
-	background-image: url(:/Images/tabConsole.png);
-	padding-left: 25px;
-}</string>
+               <string notr="true"/>
               </property>
               <property name="currentIndex">
                <number>0</number>
@@ -2386,7 +2307,7 @@ QTabBar::tab:last
                        <number>0</number>
                       </property>
                       <item>
-                       <widget class="QSplitter" name="splitter">
+                       <widget class="QSplitter" name="splitterConsoleProject">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
                           <horstretch>0</horstretch>
@@ -2605,7 +2526,7 @@ QTabBar::tab:last
         </item>
        </layout>
       </widget>
-      <widget class="QTabWidget" name="inspectorTab">
+      <widget class="QTabWidget" name="tabInspector">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -2636,18 +2557,18 @@ QTabBar::tab:last
           <colorrole role="WindowText">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>144</red>
-             <green>144</green>
-             <blue>144</blue>
+             <red>194</red>
+             <green>197</green>
+             <blue>204</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Button">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>41</red>
-             <green>41</green>
-             <blue>41</blue>
+             <red>48</red>
+             <green>49</green>
+             <blue>51</blue>
             </color>
            </brush>
           </colorrole>
@@ -2690,9 +2611,9 @@ QTabBar::tab:last
           <colorrole role="Text">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>144</red>
-             <green>144</green>
-             <blue>144</blue>
+             <red>194</red>
+             <green>197</green>
+             <blue>204</blue>
             </color>
            </brush>
           </colorrole>
@@ -2708,27 +2629,27 @@ QTabBar::tab:last
           <colorrole role="ButtonText">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>144</red>
-             <green>144</green>
-             <blue>144</blue>
+             <red>194</red>
+             <green>197</green>
+             <blue>204</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Base">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>41</red>
-             <green>41</green>
-             <blue>41</blue>
+             <red>48</red>
+             <green>49</green>
+             <blue>51</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Window">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>41</red>
-             <green>41</green>
-             <blue>41</blue>
+             <red>48</red>
+             <green>49</green>
+             <blue>51</blue>
             </color>
            </brush>
           </colorrole>
@@ -2773,18 +2694,18 @@ QTabBar::tab:last
           <colorrole role="WindowText">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>144</red>
-             <green>144</green>
-             <blue>144</blue>
+             <red>194</red>
+             <green>197</green>
+             <blue>204</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Button">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>41</red>
-             <green>41</green>
-             <blue>41</blue>
+             <red>48</red>
+             <green>49</green>
+             <blue>51</blue>
             </color>
            </brush>
           </colorrole>
@@ -2827,9 +2748,9 @@ QTabBar::tab:last
           <colorrole role="Text">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>144</red>
-             <green>144</green>
-             <blue>144</blue>
+             <red>194</red>
+             <green>197</green>
+             <blue>204</blue>
             </color>
            </brush>
           </colorrole>
@@ -2845,27 +2766,27 @@ QTabBar::tab:last
           <colorrole role="ButtonText">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>144</red>
-             <green>144</green>
-             <blue>144</blue>
+             <red>194</red>
+             <green>197</green>
+             <blue>204</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Base">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>41</red>
-             <green>41</green>
-             <blue>41</blue>
+             <red>48</red>
+             <green>49</green>
+             <blue>51</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Window">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>41</red>
-             <green>41</green>
-             <blue>41</blue>
+             <red>48</red>
+             <green>49</green>
+             <blue>51</blue>
             </color>
            </brush>
           </colorrole>
@@ -2910,18 +2831,18 @@ QTabBar::tab:last
           <colorrole role="WindowText">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>144</red>
-             <green>144</green>
-             <blue>144</blue>
+             <red>194</red>
+             <green>197</green>
+             <blue>204</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Button">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>41</red>
-             <green>41</green>
-             <blue>41</blue>
+             <red>48</red>
+             <green>49</green>
+             <blue>51</blue>
             </color>
            </brush>
           </colorrole>
@@ -2964,9 +2885,9 @@ QTabBar::tab:last
           <colorrole role="Text">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>144</red>
-             <green>144</green>
-             <blue>144</blue>
+             <red>194</red>
+             <green>197</green>
+             <blue>204</blue>
             </color>
            </brush>
           </colorrole>
@@ -2982,27 +2903,27 @@ QTabBar::tab:last
           <colorrole role="ButtonText">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>144</red>
-             <green>144</green>
-             <blue>144</blue>
+             <red>194</red>
+             <green>197</green>
+             <blue>204</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Base">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>41</red>
-             <green>41</green>
-             <blue>41</blue>
+             <red>48</red>
+             <green>49</green>
+             <blue>51</blue>
             </color>
            </brush>
           </colorrole>
           <colorrole role="Window">
            <brush brushstyle="SolidPattern">
             <color alpha="255">
-             <red>41</red>
-             <green>41</green>
-             <blue>41</blue>
+             <red>48</red>
+             <green>49</green>
+             <blue>51</blue>
             </color>
            </brush>
           </colorrole>
@@ -3052,12 +2973,9 @@ QTabBar::tab:last
         <bool>false</bool>
        </property>
        <property name="styleSheet">
-        <string notr="true">QTabBar::tab
-{
-	background-image: url(:/Images/tabInspector.png);
-}</string>
+        <string notr="true"/>
        </property>
-       <widget class="DirectusInspector" name="directusInspector">
+       <widget class="DirectusInspector" name="widgetInspector">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
           <horstretch>0</horstretch>
@@ -3484,9 +3402,9 @@ QTabBar::tab:last
    </slots>
   </customwidget>
   <customwidget>
-   <class>DirectusCore</class>
+   <class>DirectusViewport</class>
    <extends>QWidget</extends>
-   <header location="global">DirectusCore.h</header>
+   <header location="global">DirectusViewport.h</header>
    <container>1</container>
    <slots>
     <signal>GameObjectPicked(Directus::GameObject*)</signal>
@@ -3520,7 +3438,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionOpen_Scene</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>OpenScene()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3536,7 +3454,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionNew_Scene</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>NewScene()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3552,7 +3470,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionSave_Scene</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>SaveScene()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3568,7 +3486,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionCreate_Empy</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>CreateEmptyGameObjectRoot()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3584,7 +3502,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionSave_Scene_as</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>SaveSceneAs()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3600,7 +3518,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionLoad_Model</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>LoadModel()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3616,7 +3534,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionDirectional</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>CreateDirectionalLight()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3632,7 +3550,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionPoint</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>CreatePointLight()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3648,7 +3566,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionCube</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>CreateCube()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3664,7 +3582,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionQuad</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>CreateQuad()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3680,7 +3598,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionCamera_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddCameraComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3696,7 +3614,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionLight_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddLightComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3712,7 +3630,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionHinge_Joint_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddHingeComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3728,7 +3646,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionMesh_Collider_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddMeshColliderComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3744,7 +3662,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionMesh_Renderer_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddMeshRendererComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3760,7 +3678,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionCollider_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddColliderComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3776,7 +3694,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionRigidBody_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddRigidBodyComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3792,7 +3710,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionMesh_Filter_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddMeshFilterComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3808,7 +3726,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionSkybox_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddSkyboxComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3838,25 +3756,9 @@ QTabBar::tab:last
    </hints>
   </connection>
   <connection>
-   <sender>buttonHierarchyCreate</sender>
-   <signal>pressed()</signal>
-   <receiver>directusHierarchy</receiver>
-   <slot>ShowContextMenuLight()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>31</x>
-     <y>79</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>76</x>
-     <y>181</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>actionAudio_Listener_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddAudioListenerComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3872,7 +3774,7 @@ QTabBar::tab:last
   <connection>
    <sender>actionAudio_Source_Component</sender>
    <signal>triggered()</signal>
-   <receiver>directusHierarchy</receiver>
+   <receiver>widgetHierarchy</receiver>
    <slot>AddAudioSourceComponent()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -3882,38 +3784,6 @@ QTabBar::tab:last
     <hint type="destinationlabel">
      <x>132</x>
      <y>295</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonDebugDraw</sender>
-   <signal>pressed()</signal>
-   <receiver>directusCore</receiver>
-   <slot>ToggleDebugDraw()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>1040</x>
-     <y>83</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>631</x>
-     <y>324</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>directusCore</sender>
-   <signal>GameObjectPicked(Directus::GameObject*)</signal>
-   <receiver>directusHierarchy</receiver>
-   <slot>SelectGameObject(Directus::GameObject*)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>622</x>
-     <y>344</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>210</x>
-     <y>341</y>
     </hint>
    </hints>
   </connection>

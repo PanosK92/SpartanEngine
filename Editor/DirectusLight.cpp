@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusColorPicker.h"
 #include "Core/GameObject.h"
 #include "Components/Light.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "Math/Vector4.h"
 #include "DirectusDropDownButton.h"
 //===================================

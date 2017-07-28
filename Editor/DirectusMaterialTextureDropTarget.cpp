@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusAssetLoader.h"
 #include "DirectusInspector.h"
 #include "DirectusMaterial.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include <QThread>
 #include <QDragMoveEvent>
 #include <QMimeData>

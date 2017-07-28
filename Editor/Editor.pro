@@ -36,7 +36,6 @@ SOURCES += main.cpp\
     DirectusCollider.cpp \
     DirectusScript.cpp \
     DirectusMeshCollider.cpp \
-    DirectusCore.cpp \
     DirectusAssetLoader.cpp \
     DirectusComboLabelText.cpp \
     DirectusComboSliderText.cpp \
@@ -51,7 +50,8 @@ SOURCES += main.cpp\
     DirectusMaterialTextureDropTarget.cpp \
     DirectusAudioSource.cpp \
     DirectusAudioListener.cpp \
-    DirectusAudioClipDropTarget.cpp
+    DirectusAudioClipDropTarget.cpp \
+    DirectusViewport.cpp
 
 HEADERS += editor.h \
     DirectusPlayButton.h \
@@ -71,7 +71,6 @@ HEADERS += editor.h \
     DirectusCollider.h \
     DirectusScript.h \
     DirectusMeshCollider.h \
-    DirectusCore.h \
     DirectusQVariantPacker.h \
     DirectusAssetLoader.h \
     DirectusComboLabelText.h \
@@ -88,7 +87,8 @@ HEADERS += editor.h \
     DirectusAudioSource.h \
     DirectusAudioListener.h \
     DirectusIComponent.h \
-    DirectusAudioClipDropTarget.h
+    DirectusAudioClipDropTarget.h \
+    DirectusViewport.h
 
 FORMS += editor.ui \
     AboutDialog.ui \

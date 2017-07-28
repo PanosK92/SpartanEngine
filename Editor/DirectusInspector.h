@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 //================
 
-class DirectusCore;
+class DirectusViewport;
 class DirectusIComponent;
 class DirectusMaterial;
 namespace Directus
@@ -41,7 +41,7 @@ class DirectusInspector : public QWidget
     Q_OBJECT
 public:
     explicit DirectusInspector(QWidget *parent = 0);
-    void SetDirectusCore(DirectusCore* directusCore);
+    void SetDirectusCore(DirectusViewport* directusCore);
     void Initialize(QWidget* mainWindow);
     std::weak_ptr<Directus::GameObject>GetInspectedGameObject();
 
@@ -74,7 +74,7 @@ private:
     DirectusIComponent* m_audioSource;
     DirectusIComponent* m_audioListener;
 
-    DirectusCore* m_directusCore;
+    DirectusViewport* m_directusCore;
     std::weak_ptr<Directus::GameObject> m_inspectedGameObject;
     QWidget* m_mainWindow;
     bool m_initialized;

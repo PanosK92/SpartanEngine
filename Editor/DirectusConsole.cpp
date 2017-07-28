@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "DirectusConsole.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "Socket/Socket.h"
 #include "Logging/Log.h"
 //==========================
@@ -36,7 +36,7 @@ DirectusConsole::DirectusConsole(QWidget *parent) : QListWidget(parent)
     m_socket = nullptr;
 }
 
-void DirectusConsole::Initialize(DirectusCore* directusCore)
+void DirectusConsole::Initialize(DirectusViewport* directusCore)
 {
     m_socket = directusCore->GetEngineSocket();
 

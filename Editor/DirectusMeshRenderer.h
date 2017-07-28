@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QDoubleValidator>
 #include <QCheckBox>
 #include "DirectusDropDownButton.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "DirectusMaterialDropTarget.h"
 #include "DirectusIComponent.h"
 #include "DirectusMaterial.h"

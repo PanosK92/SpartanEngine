@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "DirectusPlayButton.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "Logging/Log.h"
 //=============================
 
@@ -33,7 +33,7 @@ DirectusPlayButton::DirectusPlayButton(QWidget *parent) : QPushButton(parent)
     connect(this, SIGNAL(toggled(bool)), this, SLOT(SetPressed(bool)));
 }
 
-void DirectusPlayButton::Initialize(DirectusCore* directusCore)
+void DirectusPlayButton::Initialize(DirectusViewport* directusCore)
 {
     m_directusCore = directusCore;
 
