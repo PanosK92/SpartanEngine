@@ -25,8 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <vector>
 #include "Scene.h"
-#include "../Components/IComponent.h"
+#include "../Components/Component.h"
 #include "../Core/Context.h"
+#include "../Logging/Log.h"
 //===================================
 
 namespace Directus
@@ -73,15 +74,18 @@ namespace Directus
 			std::string typeStr = GetTypeSTR<T>();
 
 			// Check if a component of that type already exists
-			IComponent* existingComp = GetComponent<T>();
+			Component* existingComp = GetComponent<T>();
 			if (existingComp && typeStr != "Script") // If it's anything but a script, it can't have multiple instances,
 				return static_cast<T*>(existingComp); // return the existing component.
 
 			// Get the created component.
-			IComponent* component = new T;
+			Component* component = new T;
 
 			// Add the component.
 			m_components.push_back(component);
+
+			component->Register();
+			LOG_INFO(component->g_type);
 
 			// Set default properties.
 			component->g_enabled = true;
@@ -161,7 +165,7 @@ namespace Directus
 		bool m_isActive;
 		bool m_isPrefab;
 		bool m_hierarchyVisibility;
-		std::vector<IComponent*> m_components;
+		std::vector<Component*> m_components;
 
 		// This is the only component that is guaranteed to be always attached,
 		// it also is required by most systems in the engine, it's important to
@@ -171,7 +175,7 @@ namespace Directus
 		Context* m_context;
 
 		//= HELPER FUNCTIONS ====================================
-		IComponent* AddComponentBasedOnType(const std::string& typeStr);
+		Component* AddComponentBasedOnType(const std::string& typeStr);
 
 		template <class T>
 		static std::string GetTypeSTR()

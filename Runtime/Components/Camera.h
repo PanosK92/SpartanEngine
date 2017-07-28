@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "IComponent.h"
+#include "Component.h"
 #include <memory>
 #include <vector>
 #include "../Graphics/Vertex.h"
@@ -51,7 +51,7 @@ namespace Directus
 		Orthographic,
 	};
 
-	class DLL_API Camera : public IComponent
+	class DLL_API Camera : public Component
 	{
 	public:
 		Camera();

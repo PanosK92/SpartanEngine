@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ================
-#include "IComponent.h"
+#include "Component.h"
 #include "../Graphics/Mesh.h"
 #include <memory>
 //===========================
@@ -34,7 +34,7 @@ namespace Directus
 	class RigidBody;
 	class MeshFilter;	
 
-	class DLL_API MeshCollider : public IComponent
+	class DLL_API MeshCollider : public Component
 	{
 	public:
 		MeshCollider();

@@ -39,7 +39,6 @@ namespace Directus
 {
 	Hinge::Hinge()
 	{
-		Register();
 		m_hinge = nullptr;
 		m_isConnected = false;
 		m_isDirty = false;

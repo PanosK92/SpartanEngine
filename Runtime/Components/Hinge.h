@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include "IComponent.h"
+#include "Component.h"
 #include "../Math/Vector3.h"
 //==========================
 
@@ -32,7 +32,7 @@ namespace Directus
 {
 	class GameObject;
 
-	class DLL_API Hinge : public IComponent
+	class DLL_API Hinge : public Component
 	{
 	public:
 		Hinge();

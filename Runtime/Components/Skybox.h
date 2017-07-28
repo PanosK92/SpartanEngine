@@ -23,13 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include <memory>
-#include "IComponent.h"
+#include "Component.h"
 #include "../Graphics/Texture.h"
 //==============================
 
 namespace Directus
 {
-	class DLL_API Skybox : public IComponent
+	class DLL_API Skybox : public Component
 	{
 	public:
 		Skybox();

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ====================
-#include "IComponent.h"
+#include "Component.h"
 #include "../Graphics/Material.h"
 //===============================
 
@@ -30,7 +30,7 @@ namespace Directus
 {
 	class Light;
 
-	class DLL_API MeshRenderer : public IComponent
+	class DLL_API MeshRenderer : public Component
 	{
 	public:
 		MeshRenderer();

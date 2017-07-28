@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================================
 #include <vector>
 #include <memory>
-#include "../Components/IComponent.h"
+#include "../Components/Component.h"
 #include "../Math/Vector4.h"
 #include "../Math/Vector3.h"
 #include "../Math/Matrix.h"
@@ -66,7 +66,7 @@ namespace Directus
 		Camera* m_camera;
 	};
 
-	class DLL_API Light : public IComponent
+	class DLL_API Light : public Component
 	{
 	public:
 		Light();

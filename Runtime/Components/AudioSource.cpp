@@ -38,7 +38,6 @@ namespace Directus
 {
 	AudioSource::AudioSource()
 	{
-		Register();
 		m_filePath = DATA_NOT_ASSIGNED;
 		m_mute = false;
 		m_playOnAwake = true;

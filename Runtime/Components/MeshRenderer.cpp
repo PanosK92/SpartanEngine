@@ -40,7 +40,6 @@ namespace Directus
 {
 	MeshRenderer::MeshRenderer()
 	{
-		Register();
 		m_castShadows = true;
 		m_receiveShadows = true;
 		m_materialType = Material_Imported;
