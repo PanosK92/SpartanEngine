@@ -147,10 +147,10 @@ namespace Directus
 	void GameObject::Serialize()
 	{
 		//= BASIC DATA ================================
+		Serializer::WriteBool(m_isPrefab);
 		Serializer::WriteSTR(m_ID);
 		Serializer::WriteSTR(m_name);
 		Serializer::WriteBool(m_isActive);
-		Serializer::WriteBool(m_isPrefab);
 		Serializer::WriteBool(m_hierarchyVisibility);
 		//=============================================
 
@@ -196,16 +196,11 @@ namespace Directus
 
 	void GameObject::Deserialize(Transform* parent)
 	{
-		auto scene = m_context->GetSubsystem<Scene>();
 		//= BASIC DATA ================================
-		// Check if a GameObject of the same ID exists (instantiated prefab).
-		// If it does, mentain the new ID and discard the original one.
-		string oldID = Serializer::ReadSTR();
-		m_ID = !scene->GetGameObjectByID(oldID).expired() ? m_ID : oldID;
-
-		m_name = Serializer::ReadSTR();
-		m_isActive = Serializer::ReadBool();
 		m_isPrefab = Serializer::ReadBool();
+		m_ID = Serializer::ReadSTR();
+		m_name = Serializer::ReadSTR();
+		m_isActive = Serializer::ReadBool();	
 		m_hierarchyVisibility = Serializer::ReadBool();
 		//=============================================
 
@@ -216,7 +211,7 @@ namespace Directus
 			string type = Serializer::ReadSTR(); // load component's type
 			string id = Serializer::ReadSTR(); // load component's id
 
-			IComponent* component = AddComponentBasedOnType(type);
+			Component* component = AddComponentBasedOnType(type);
 			component->g_ID = id;
 		}
 		// Sometimes there are component dependencies, e.g. a collider that needs
@@ -239,6 +234,7 @@ namespace Directus
 		int childrenCount = Serializer::ReadInt();
 
 		// 2nd - children IDs
+		auto scene = m_context->GetSubsystem<Scene>();
 		vector<weakGameObj> children;
 		for (int i = 0; i < childrenCount; i++)
 		{
@@ -278,13 +274,13 @@ namespace Directus
 	}
 
 	//= HELPER FUNCTIONS ===========================================
-	IComponent* GameObject::AddComponentBasedOnType(const string& typeStr)
+	Component* GameObject::AddComponentBasedOnType(const string& typeStr)
 	{
 		// Note: this is the only hardcoded part regarding
 		// components. It's one function but it would be
 		// nice if that get's automated too.
 
-		IComponent* component = nullptr;
+		Component* component = nullptr;
 
 		if (typeStr == "Transform")
 			component = AddComponent<Transform>();

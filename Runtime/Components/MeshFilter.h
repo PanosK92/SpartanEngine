@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =========================
-#include "IComponent.h"
+#include "Component.h"
 #include <vector>
 #include <memory>
 #include "../FileSystem/FileSystem.h"
@@ -41,7 +41,7 @@ namespace Directus
 		class BoundingBox;
 	}
 
-	class DLL_API MeshFilter : public IComponent
+	class DLL_API MeshFilter : public Component
 	{
 	public:
 		enum MeshType { Imported, Cube, Quad };

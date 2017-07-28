@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "IComponent.h"
+#include "Component.h"
 #include <vector>
 #include "../Math/Vector3.h"
 #include "../Math/Quaternion.h"
@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DLL_API Transform : public IComponent
+	class DLL_API Transform : public Component
 	{
 	public:
 		Transform();

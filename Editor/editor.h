@@ -30,6 +30,8 @@ namespace Ui {
 class Editor;
 }
 
+class DirectusViewport;
+
 class Editor : public QMainWindow
 {
     Q_OBJECT
@@ -45,4 +47,5 @@ private slots:
 private:
     Ui::Editor* ui;
     AboutDialog* m_aboutDialog;
+    DirectusViewport* m_widgetViewport;
 };

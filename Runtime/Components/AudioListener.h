@@ -22,14 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==========
-#include "IComponent.h"
+#include "Component.h"
 //=====================
 
 namespace Directus
 {
 	class Audio;
 
-	class DLL_API AudioListener : public IComponent
+	class DLL_API AudioListener : public Component
 	{
 	public:
 		AudioListener();

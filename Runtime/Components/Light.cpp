@@ -97,7 +97,6 @@ namespace Directus
 
 	Light::Light()
 	{
-		Register();
 		m_lightType = Point;
 		m_shadowType = Hard_Shadows;
 		m_range = 1.0f;

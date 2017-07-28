@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "IComponent.h"
+#include "Component.h"
 #include <memory>
 #include "../Math/MathHelper.h"
 //=============================
@@ -31,7 +31,7 @@ namespace Directus
 {
 	class AudioClip;
 
-	class DLL_API AudioSource : public IComponent
+	class DLL_API AudioSource : public Component
 	{
 	public:
 		AudioSource();

@@ -34,8 +34,7 @@ namespace Directus
 {
 	Script::Script()
 	{
-		Register();
-		m_scriptInstance = nullptr;
+
 	}
 
 	Script::~Script()

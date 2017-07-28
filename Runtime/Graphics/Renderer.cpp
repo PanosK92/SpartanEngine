@@ -400,7 +400,7 @@ namespace Directus
 					auto mWorld = gameObject._Get()->GetTransform()->GetWorldTransform();
 					//===================================================================
 
-					// skip objects that are missing essential components
+					// skip objects that are missing required components
 					if (!meshFilter || !objMesh || !meshRenderer || !objMaterial)
 						continue;
 

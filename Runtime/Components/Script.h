@@ -22,13 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===========================
-#include "IComponent.h"
+#include "Component.h"
 #include "../Scripting/ScriptInstance.h"
 //======================================
 
 namespace Directus
 {
-	class DLL_API Script : public IComponent
+	class DLL_API Script : public Component
 	{
 	public:
 		Script();

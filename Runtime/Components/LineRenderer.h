@@ -1,7 +1,7 @@
 #pragma once
 
 //= INCLUDES ===================================
-#include "IComponent.h"
+#include "Component.h"
 #include "../Graphics/Vertex.h"
 #include "../Graphics/D3D11/D3D11VertexBuffer.h"
 #include <memory>
@@ -16,7 +16,7 @@ namespace Directus
 		class Vector3;
 	}
 
-	class DLL_API LineRenderer : public IComponent
+	class DLL_API LineRenderer : public Component
 	{
 	public:
 		LineRenderer();

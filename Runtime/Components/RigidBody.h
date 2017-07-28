@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include "IComponent.h"
+#include "Component.h"
 #include <memory>
 #include "../Math/Vector3.h"
 //==========================
@@ -44,7 +44,7 @@ namespace Directus
 		Impulse
 	};
 
-	class DLL_API RigidBody : public IComponent
+	class DLL_API RigidBody : public Component
 	{
 	public:
 		RigidBody();

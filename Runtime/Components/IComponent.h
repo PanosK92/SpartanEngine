@@ -44,10 +44,10 @@ namespace Directus
 	class ShaderPool;
 	class Context;
 
-	class DLL_API IComponent
+	class DLL_API Component
 	{
 	public:
-		virtual ~IComponent() {}
+		virtual ~Component() {}
 
 		// Runs when the component gets added
 		virtual void Reset() = 0;
