@@ -4,13 +4,13 @@
 #include <QLineEdit>
 //==================
 
-class DirectusCore;
+class DirectusViewport;
 
 class DirectusStatsLabel : public QLineEdit
 {
     Q_OBJECT
 public:
     explicit DirectusStatsLabel(QWidget *parent = 0);
-    void UpdateStats(DirectusCore* directusCore);
+    void UpdateStats(DirectusViewport* directusCore);
     std::string FormatFloat(float value, int digitsAfterDecimal);
 };

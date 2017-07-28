@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logging/Log.h"
 #include "Components/MeshRenderer.h"
 #include "Math/Vector2.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "DirectusMaterialTextureDropTarget.h"
 //============================================
 

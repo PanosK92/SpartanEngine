@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusInspector.h"
 #include "DirectusAdjustLabel.h"
 #include "DirectusComboLabelText.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "DirectusDropDownButton.h"
 #include "Core/GameObject.h"
 #include "Components/RigidBody.h"

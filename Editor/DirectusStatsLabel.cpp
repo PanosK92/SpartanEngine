@@ -1,6 +1,6 @@
 //= INCLUDES ==================
 #include "DirectusStatsLabel.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "Socket/Socket.h"
 //=============================
 
@@ -14,7 +14,7 @@ DirectusStatsLabel::DirectusStatsLabel(QWidget *parent) : QLineEdit(parent)
 
 }
 
-void DirectusStatsLabel::UpdateStats(DirectusCore* directusCore)
+void DirectusStatsLabel::UpdateStats(DirectusViewport* directusCore)
 {
     Socket* socket = directusCore->GetEngineSocket();
 

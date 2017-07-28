@@ -27,7 +27,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing">
-    <number>0</number>
+    <number>6</number>
    </property>
    <property name="sizeConstraint">
     <enum>QLayout::SetNoConstraint</enum>
@@ -56,19 +56,19 @@
       <enum>Qt::NoContextMenu</enum>
      </property>
      <property name="styleSheet">
-      <string notr="true">background-color: #292929;</string>
+      <string notr="true">background-color: #303133;</string>
      </property>
      <property name="text">
-      <string>&lt;p&gt;&lt;img style=&quot;float: left;&quot; src=&quot;:/Images/icon.png\&quot; alt=&quot;&quot; width=&quot;45&quot; height=&quot;45&quot; /&gt;&lt;br /&gt;&amp;nbsp;Directus3D %ENGINE_VERSION%&lt;/p&gt;
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-&lt;p&gt;Author: &lt;a href=&quot;https://panoskarabelas.com/&quot;&gt;&lt;span style=&quot;text-decoration: underline; color: #6db8ff;&quot;&gt;Panos Karabelas&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Home Page: &lt;a href=&quot;https://github.com/PanosK92/Directus3D&quot;&gt;&lt;span style=&quot;text-decoration: underline; color: #6db8ff;&quot;&gt;https://github.com/PanosK92/Directus3D&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;img src=&quot;:/Images/icon.png\&quot; width=&quot;45&quot; height=&quot;45&quot; style=&quot;float: left;&quot;/&gt;&lt;br/&gt; Directus3D&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Version: %ENGINE_VERSION% &lt;/p&gt;&lt;p&gt;Author: &lt;a href=&quot;https://panoskarabelas.com/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#6db8ff;&quot;&gt;Panos Karabelas&lt;br/&gt;&lt;/span&gt;&lt;/a&gt;Home Page: &lt;a href=&quot;https://github.com/PanosK92/Directus3D&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#6db8ff;&quot;&gt;https://github.com/PanosK92/Directus3D&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="scaledContents">
       <bool>false</bool>
      </property>
      <property name="alignment">
       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+     </property>
+     <property name="indent">
+      <number>4</number>
      </property>
      <property name="openExternalLinks">
       <bool>true</bool>
@@ -158,7 +158,7 @@
            <enum>Qt::NoContextMenu</enum>
           </property>
           <property name="styleSheet">
-           <string notr="true">background-color: #292929;</string>
+           <string notr="true">background-color: #303133;</string>
           </property>
           <property name="frameShape">
            <enum>QFrame::Box</enum>

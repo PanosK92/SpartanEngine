@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // INCLUDES ============================
 #include "DirectusMaterialDropTarget.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "DirectusInspector.h"
 #include <QDragMoveEvent>
 #include <QMimeData>

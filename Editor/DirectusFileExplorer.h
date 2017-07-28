@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QFileSystemModel>
 //===============================
 
-class DirectusCore;
+class DirectusViewport;
 class DirectusHierarchy;
 class DirectusIconProvider;
 class DirectusFileDialog;
@@ -38,7 +38,7 @@ class DirectusFileExplorer : public QListView
 public:
     explicit DirectusFileExplorer(QWidget *parent = 0);
     void Initialize(QWidget* mainWindow,
-                    DirectusCore* directusCore,
+                    DirectusViewport* directusCore,
                     DirectusHierarchy* hierarchy,
                     DirectusInspector* inspector
                     );
@@ -60,7 +60,7 @@ private:
     QPoint m_dragStartPosition;
     DirectusIconProvider* m_directusIconProvider;
     DirectusFileDialog* m_fileDialog;
-    DirectusCore* m_directusCore;
+    DirectusViewport* m_directusCore;
     DirectusHierarchy* m_hierarchy;
     DirectusInspector* m_inspector;
 

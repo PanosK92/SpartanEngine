@@ -62,7 +62,7 @@ DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
     connect(this, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(RenameSelected()));
 }
 
-void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusCore* directusCore)
+void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusViewport* directusCore)
 {
     m_directusCore = directusCore;
     m_socket = m_directusCore->GetEngineSocket();

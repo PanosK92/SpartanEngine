@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QLineEdit>
 #include <QDoubleValidator>
 #include <QCheckBox>
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "DirectusComboSliderText.h"
 #include "DirectusDropDownButton.h"
 #include "DirectusIComponent.h"

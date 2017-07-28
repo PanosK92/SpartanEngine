@@ -2,12 +2,7 @@
     <qresource prefix="/Images">
         <file>play.png</file>
         <file>pause.png</file>
-        <file>tabConsole.png</file>
-        <file>tabProject.png</file>
         <file>transform.png</file>
-        <file>tabHierarchy.png</file>
-        <file>tabInspector.png</file>
-        <file>tabScene.png</file>
         <file>camera.png</file>
         <file>material.png</file>
         <file>meshRenderer.png</file>
@@ -37,5 +32,10 @@
         <file>audioListener.png</file>
         <file>audioSource.png</file>
         <file>audioFile.png</file>
+        <file>branch-closed.png</file>
+        <file>branch-end.png</file>
+        <file>branch-more.png</file>
+        <file>branch-open.png</file>
+        <file>vline.png</file>
     </qresource>
 </RCC>

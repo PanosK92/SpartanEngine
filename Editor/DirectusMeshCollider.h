@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusComboSliderText.h"
 #include "DirectusDropDownButton.h"
 #include "DirectusIComponent.h"
-#include "DirectusCore.h"
+#include "DirectusViewport.h"
 #include "Components/MeshCollider.h"
 #include "Math/Vector4.h"
 #include "Core/GameObject.h"

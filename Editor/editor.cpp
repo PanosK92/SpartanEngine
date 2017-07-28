@@ -41,24 +41,24 @@ Editor::~Editor()
 void Editor::InitializeEngine()
 {
     // Get engine core
-    DirectusCore* directusCore = ui->directusCore;
+    DirectusViewport* widgetViewport = ui->widgetViewport;
 
     // Aqcuire HWND and HINSTANCE
     void* hWnd = (void*)this->winId();
     void* hInstance = (void*)::GetModuleHandle(NULL);
 
     // Initialize the engine
-    directusCore->Initialize(hWnd, hInstance, ui->directusStatsLabel);
+    widgetViewport->Initialize(hWnd, hInstance, ui->directusStatsLabel);
 
     // Pass the engine around
-    ui->directusInspector->SetDirectusCore(directusCore);
-    ui->directusHierarchy->Initialize(ui->directusInspector, this, directusCore);
-    ui->directusConsole->Initialize(directusCore);
-    ui->directusPlayButton->Initialize(directusCore);
-    ui->directusFileExplorer->Initialize(this, directusCore, ui->directusHierarchy, ui->directusInspector);
+    ui->widgetInspector->SetDirectusCore(widgetViewport);
+    ui->widgetHierarchy->Initialize(ui->widgetInspector, this, widgetViewport);
+    ui->directusConsole->Initialize(widgetViewport);
+    ui->directusPlayButton->Initialize(widgetViewport);
+    ui->directusFileExplorer->Initialize(this, widgetViewport, ui->widgetHierarchy, ui->widgetInspector);
 
     // Resolve other dependencies
-    ui->directusInspector->Initialize(this);
+    ui->widgetInspector->Initialize(this);
     ui->directusDirExplorer->Initialize(ui->directusFileExplorer);
 }
 
