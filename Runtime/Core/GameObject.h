@@ -21,14 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =======================
 #include <map>
 #include <vector>
 #include "Scene.h"
 #include "../Components/Component.h"
 #include "../Core/Context.h"
-#include "../Logging/Log.h"
-//===================================
+//==================================
 
 namespace Directus
 {
@@ -85,7 +84,6 @@ namespace Directus
 			m_components.push_back(component);
 
 			component->Register();
-			LOG_INFO(component->g_type);
 
 			// Set default properties.
 			component->g_enabled = true;

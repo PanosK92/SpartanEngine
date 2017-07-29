@@ -1,38 +1,37 @@
 /*-----------------------------------------------------------------------------------------------
 										[F - Fresnel]
-Fresnel factor called F. It describes how light reflects and refracts at the 
-intersection of two different media (most often in computer graphics, air and the shaded surface)
+Fresnel factor called F. F0 represents the base reflectivity of the surface.
 -----------------------------------------------------------------------------------------------*/
 float3 Fresnel_Schlick(float HdV, float3 F0)
 {
-  return F0 + (1-F0) * pow( 1 - HdV, 5);
+  return F0 + (1.0f - F0) * pow(1.0f - HdV, 5.0f);
 }
 
-float3 Specular_F_Roughness(float3 specularColor, float a, float3 h, float3 v)
+float3 Specular_F_Roughness(float3 F0, float a, float VdH)
 {
 	// Sclick using roughness to attenuate fresnel.
-    return (specularColor + (max(1.0f-a, specularColor) - specularColor) * pow((1 - saturate(dot(v, h))), 5));
+    return (F0 + (max(1.0f - a, F0) - F0) * pow((1.0f - VdH), 5.0f));
 }
 
 /*-----------------------------------------------------------------------------------------------
 								[G - Geometric shadowing]
 		Geometry shadowing term G. Defines the shadowing from the microfacets
 ------------------------------------------------------------------------------------------------*/
-float Geometric_Smith_Schlick_GGX(float a, float NdV, float NdL)
+float Geometric_Smith_Schlick_GGX(float NdotV, float roughness)
 {
-        // Smith schlick-GGX.
-    float k = a * 0.5f;
-    float GV = NdV / (NdV * (1 - k) + k);
-    float GL = NdL / (NdL * (1 - k) + k);
+    float a = roughness;
+    float k = (a * a) / 2.0f;
 
-    return GV * GL;
+    float nom   = NdotV;
+    float denom = NdotV * (1.0f - k) + k;
+
+    return nom / denom;
 }
 
 /*-----------------------------------------------------------------------------------------------
 								[D - Normal distribution]
-
 ------------------------------------------------------------------------------------------------*/
-float NormalDistribution_GGX(float a, float NdH)
+float Distribution_GGX(float a, float NdH)
 {
     // Isotropic ggx.
     float a2 = a*a;
@@ -46,68 +45,66 @@ float NormalDistribution_GGX(float a, float NdH)
 }
 
 /*-----------------------------------------------------------------------------------------------
-										[BRDF]
+										[DIFFUSE]
 ------------------------------------------------------------------------------------------------*/
-float3 DiffuseBRDF(float3 cDiff)
+float3 ComputeLightDiffuse(float3 albedo)
 {
-	return cDiff / PI;
+	return albedo / PI;
 }
 
-float3 BRDF_CookTorrance(float3 albedoColor, float3 specularColor, float3 normal, float roughness, float3 lightColor, float3 lightDir, float3 viewDir)
-{
-    // Compute some useful values.
-    float NdL = saturate(dot(normal, lightDir));
-    float NdV = saturate(dot(normal, viewDir));
-    float3 h = normalize(lightDir + viewDir);
-    float NdH = saturate(dot(normal, h));
-    float VdH = saturate(dot(viewDir, h));
-    float a = max(0.001f, roughness * roughness);
 
-	// calculate deiffuse contribution
-    float3 cDiff = DiffuseBRDF(albedoColor);
-	
-	// calculate specular contribution
-    float F 			= Fresnel_Schlick(VdH, specularColor);
-    float G 			= Geometric_Smith_Schlick_GGX(a, NdV, NdL);
-    float D 			= NormalDistribution_GGX(a, NdH);
-	
-	float numerator 	= F * G * D;
-	float denominator 	= 4.0f * NdL * NdV + 0.0001f;
-    float3 cSpec 		= numerator / denominator;
-	
-	// return final color
-    return lightColor * NdL * (cDiff * (1.0f - cSpec) + cSpec);
-}
-
-float3 BRDF
+float3 PBR
 (
 float3 albedo, 
 float roughness, 
 float metallic, 
-float specular, 
+float userReflectivity, 
 float3 normal, 
 float3 viewDir, 
 float3 lightDir, 
 float3 lightColor, 
 float lightIntensity, 
 float ambientLightIntensity,
-float3 environmentColor, 
+float3 envColor,
 float3 irradianceColor)
 {
-    float3 albedoColor 		= albedo - albedo * metallic;
-    float3 specularColor 	= lerp(0.04f, albedo, metallic);
-	
-	// metallic and smooth surfaces tend to be more reflective
-	float smoothness		= 1.0f - roughness;
-	smoothness 				*= specular; // user defined multiplier (defaults to 0.5f)
-	float reflectivity		= min(1.0f, metallic + smoothness);
-			
-	float3 light 		= BRDF_CookTorrance(albedoColor, specularColor, normal, roughness, lightColor, lightDir, viewDir);	
-	float3 envFresnel 	= Specular_F_Roughness(specularColor, roughness * roughness, normal, viewDir);
-	
-	float3 finalLight		= light * lightIntensity;
-	float3 finalReflection 	= envFresnel * environmentColor * reflectivity;
-	float3 finalAlbedo		= albedoColor * irradianceColor * ambientLightIntensity;
+	//= Compute some useful values ==============
+    float NdL = saturate(dot(normal, lightDir));
+    float NdV = saturate(dot(normal, viewDir));
+    float3 h = normalize(lightDir + viewDir);
+    float NdH = saturate(dot(normal, h));
+    float VdH = saturate(dot(viewDir, h));
+	float a = max(0.001f, roughness * roughness);
+	//===========================================
 
+	float3 albedoColor 		= albedo - albedo * metallic; // Diffuse Color
+	float3 F0 				= lerp(0.03f, albedo, metallic); // F0
+	
+	// Diffuse ================================================
+    float3 cDiff 			= ComputeLightDiffuse(albedoColor);
+	//=========================================================
+	
+	// Specular =================================================================================
+	// Cook-Torrance Specular (BRDF)
+    float3 F 				= Fresnel_Schlick(VdH, F0); // Fresnel	
+    float G 				= Geometric_Smith_Schlick_GGX(NdV, roughness); // Geometric shadowing	
+    float D 				= Distribution_GGX(a, NdH); // Normal distribution
+	float3 nominator 		= F * G * D;
+	float denominator 		= 4.0f * NdL * NdV + 0.0001f;
+    float3 cSpec 			= nominator / denominator;
+	//===========================================================================================
+	
+	//= Reflectivity ==============================================
+	float smoothness		= 1.0f - roughness;
+	smoothness 				*= userReflectivity;
+	float reflectivity		= min(1.0f, metallic + smoothness);
+	float3 envFresnel 		= Specular_F_Roughness(F0, a, VdH);	
+	float3 envSpecular 		= envFresnel * envColor * reflectivity;
+	//=============================================================
+	
+	float3 finalLight		= lightColor * lightIntensity * NdL * (cDiff * (1.0f - cSpec) + cSpec);
+	float3 finalReflection 	= envFresnel * envColor * reflectivity;
+	float3 finalAlbedo 		= albedoColor * irradianceColor * ambientLightIntensity;
+	
 	return finalLight + finalReflection + finalAlbedo;
 }
