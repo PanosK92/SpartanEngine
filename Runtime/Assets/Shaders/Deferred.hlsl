@@ -128,7 +128,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	envColor *= clamp(lightIntensity, 0.0f, 1.0f);
 	irradiance *= clamp(lightIntensity, 0.0f, 1.0f);
 			
-	finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);
+	finalColor += PBR(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);
 	//============================================================================================================================================================
 	
 	//= POINT LIGHTS =============================================================================================================================================
@@ -147,7 +147,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 
 		// Do expensive lighting
         if (dist < radius)
-            finalColor += BRDF(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, 0.0f, envColor, irradiance);
+            finalColor += PBR(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, 0.0f, envColor, irradiance);
     }
 	//============================================================================================================================================================
 	
