@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
-#include "EventHandler.h"
-//=======================
+//= INCLUDES ===========
+#include "EventSystem.h"
+//======================
 
 //= NAMESPACES =====
 using namespace std;
