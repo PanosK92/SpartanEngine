@@ -21,13 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES ==========
 #include <vector>
-#include <functional>
 #include <memory>
-#include "../Core/Helper.h"
 #include "Subscriber.h"
-//=========================
+//=====================
 
 /*
 HOW TO USE

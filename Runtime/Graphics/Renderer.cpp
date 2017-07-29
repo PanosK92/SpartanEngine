@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/Physics.h"
 #include "../Physics/PhysicsDebugDraw.h"
 #include "../Logging/Log.h"
-#include "../EventSystem/EventHandler.h"
+#include "../EventSystem/EventSystem.h"
 #include "../Core/Scene.h"
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"

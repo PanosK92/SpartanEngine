@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream> 
 #include <fstream>
 #include "ILogger.h"
-#include "../EventSystem/EventHandler.h"
+#include "../EventSystem/EventSystem.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Core/GameObject.h"
 #include "../Math/Vector2.h"

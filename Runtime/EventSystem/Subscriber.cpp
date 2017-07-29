@@ -1,8 +1,8 @@
 /*
-Copyright(c) 2016-2017 Panos Karabelas
+Copyright(c) 2016 - 2017 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
+of this software and associated documentation files(the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
-#include "EventSystem.h"
-//======================
+//= INCLUDES ==========
+#include "Subscriber.h"
+//=====================
 
 //= NAMESPACES =====
 using namespace std;
@@ -31,41 +31,22 @@ using namespace std;
 
 namespace Directus
 {
-	vector<shared_ptr<Subscriber>> EventSystem::m_subscribers;
-
-	void EventSystem::Clear()
+	template<typename T, typename... U>
+	size_t getAddress(function<T(U...)> f)
 	{
-		m_subscribers.clear();
-		m_subscribers.shrink_to_fit();
+		typedef T(fnType)(U...);
+		fnType ** fnPointer = f.template target<fnType*>();
+		return (size_t)*fnPointer;
 	}
 
-	void EventSystem::AddSubscriber(shared_ptr<Subscriber> subscriber)
+	Subscriber::Subscriber(int eventID, functionType&& subFunc)
 	{
-		m_subscribers.push_back(subscriber);
+		m_eventID = eventID;
+		m_subscribedFunction = forward<functionType>(subFunc);
 	}
 
-	void EventSystem::RemoveSubscriber(int eventID, size_t functionAddress)
+	size_t Subscriber::GetAddress()
 	{
-		for (auto it = m_subscribers.begin(); it != m_subscribers.end();)
-		{
-			auto subscriber = *it;
-			if (subscriber->GetEventID() == eventID && subscriber->GetAddress() == functionAddress)
-			{
-				it = m_subscribers.erase(it);
-				return;
-			}
-			++it;
-		}
-	}
-
-	void EventSystem::CallSubscriber(int eventID)
-	{
-		for (const auto& subscriber : m_subscribers)
-		{
-			if (subscriber->GetEventID() == eventID)
-			{
-				subscriber->Call();
-			}
-		}
+		return getAddress(m_subscribedFunction);
 	}
 }

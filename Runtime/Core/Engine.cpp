@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Renderer.h"
 #include "../Audio/Audio.h"
 #include "../Graphics/GraphicsDefinitions.h"
-#include "../EventSystem/EventHandler.h"
+#include "../EventSystem/EventSystem.h"
 #include "../Input/Input.h"
 #include "../Physics/Physics.h"
 //===========================================
