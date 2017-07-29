@@ -104,8 +104,8 @@ namespace Directus
 		Serializer::WriteInt(int(m_textures.size()));
 		for (const auto& texture : m_textures)
 		{
-			Serializer::WriteSTR(texture.first.first); // Texture Path
-			Serializer::WriteInt((int)texture.first.second); // Texture Type
+			Serializer::WriteSTR(texture.second.second); // Texture Path
+			Serializer::WriteInt((int)texture.first); // Texture Type
 		}
 
 		Serializer::StopWriting();
@@ -160,7 +160,7 @@ namespace Directus
 				texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByPath<Texture>(texPath);
 			}
 
-			m_textures.insert(make_pair(make_pair(texPath, texType), texture));
+			m_textures.insert(make_pair(texType, make_pair(texture, texPath)));
 		}
 
 		Serializer::StopReading();
@@ -168,9 +168,9 @@ namespace Directus
 		// Load unloaded textures
 		for (auto& it : m_textures)
 		{
-			if (it.second.expired())
+			if (it.second.first.expired())
 			{
-				it.second = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(it.first.first);
+				it.second.first = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(it.second.second);
 			}
 		}
 
@@ -184,17 +184,28 @@ namespace Directus
 	// Set texture from an existing texture
 	void Material::SetTexture(weak_ptr<Texture> texture)
 	{
-		auto texShared = texture.lock();
-
 		// Make sure this texture exists
-		if (!texShared)
+		if (texture.expired())
 		{
 			LOG_ERROR("Can't set uninitialized material texture.");
 			return;
 		}
 
-		// Add it
-		m_textures.insert(make_pair(make_pair(texShared->GetFilePathTexture(), texShared->GetTextureType()), texture));
+		TextureType type = texture._Get()->GetTextureType();
+		string filePath = texture._Get()->GetFilePathTexture();
+
+		// Check if a texture of that type already exists and replace it
+		auto it = m_textures.find(type);
+		if (it != m_textures.end())
+		{
+			it->second.first = texture;
+			it->second.second = filePath;
+		}
+		else
+		{
+			// If that's a new texture type, simply add it
+			m_textures.insert(make_pair(type, make_pair(texture, filePath)));
+		}
 
 		// Adjust texture multipliers
 		TextureBasedMultiplierAdjustment();
@@ -207,9 +218,9 @@ namespace Directus
 	{
 		for (const auto& it : m_textures)
 		{
-			if (it.first.second == type)
+			if (it.first == type)
 			{
-				return it.second;
+				return it.second.first;
 			}
 		}
 
@@ -220,7 +231,7 @@ namespace Directus
 	{
 		for (const auto& it : m_textures)
 		{
-			if (it.first.second == type)
+			if (it.first == type)
 			{
 				return true;
 			}
@@ -233,7 +244,7 @@ namespace Directus
 	{
 		for (const auto& it : m_textures)
 		{
-			if (it.first.first == path)
+			if (it.second.second == path)
 			{
 				return true;
 			}
@@ -246,9 +257,9 @@ namespace Directus
 	{
 		for (const auto& it : m_textures)
 		{
-			if (it.first.second == type)
+			if (it.first == type)
 			{
-				return it.first.first;
+				return it.second.second;
 			}
 		}
 
@@ -260,7 +271,7 @@ namespace Directus
 		vector<string> paths;
 		for (auto it : m_textures)
 		{
-			paths.push_back(it.first.first);
+			paths.push_back(it.second.second);
 		}
 
 		return paths;
@@ -288,25 +299,27 @@ namespace Directus
 		);
 	}
 
-	weak_ptr<ShaderVariation> Material::FindMatchingShader(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
+	weak_ptr<ShaderVariation> Material::FindMatchingShader(
+		bool albedo, bool roughness, bool metallic, 
+		bool normal, bool height, bool occlusion, 
+		bool emission, bool mask, bool cubemap
+	)
 	{
 		auto shaders = m_context->GetSubsystem<ResourceManager>()->GetResourcesByType<ShaderVariation>();
-		for (const auto shaderTemp : shaders)
+		for (const auto& shader : shaders)
 		{
-			auto shader = shaderTemp.lock();
-			if (shader->HasAlbedoTexture() != albedo) continue;
-			if (shader->HasRoughnessTexture() != roughness) continue;
-			if (shader->HasMetallicTexture() != metallic) continue;
-			if (shader->HasNormalTexture() != normal) continue;
-			if (shader->HasHeightTexture() != height) continue;
-			if (shader->HasOcclusionTexture() != occlusion) continue;
-			if (shader->HasEmissionTexture() != emission) continue;
-			if (shader->HasMaskTexture() != mask) continue;
-			if (shader->HasCubeMapTexture() != cubemap) continue;
+			if (shader._Get()->HasAlbedoTexture() != albedo) continue;
+			if (shader._Get()->HasRoughnessTexture() != roughness) continue;
+			if (shader._Get()->HasMetallicTexture() != metallic) continue;
+			if (shader._Get()->HasNormalTexture() != normal) continue;
+			if (shader._Get()->HasHeightTexture() != height) continue;
+			if (shader._Get()->HasOcclusionTexture() != occlusion) continue;
+			if (shader._Get()->HasEmissionTexture() != emission) continue;
+			if (shader._Get()->HasMaskTexture() != mask) continue;
+			if (shader._Get()->HasCubeMapTexture() != cubemap) continue;
 
 			return shader;
 		}
-
 		return weak_ptr<ShaderVariation>();
 	}
 

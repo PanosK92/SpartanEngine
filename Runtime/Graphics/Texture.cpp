@@ -138,7 +138,7 @@ namespace Directus
 			HRESULT hr = DirectX::CreateDDSTextureFromFile(graphicsDevice, widestr.c_str(), nullptr, &ddsTex);
 			if (FAILED(hr))
 			{
-				LOG_ERROR("Failed to load texture \"" + filePath + "\".");
+				LOG_WARNING("Failed to load texture \"" + filePath + "\".");
 				return false;
 			}
 
@@ -151,7 +151,7 @@ namespace Directus
 		bool loaded = m_generateMipchain ? imageImp._Get()->LoadAndCreateMipchain(filePath) : imageImp._Get()->Load(filePath);
 		if (!loaded)
 		{
-			LOG_ERROR("Failed to load texture \"" + filePath + "\".");
+			LOG_WARNING("Failed to load texture \"" + filePath + "\".");
 			imageImp._Get()->Clear();
 			return false;
 		}
