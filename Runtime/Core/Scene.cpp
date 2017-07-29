@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Script.h"
 #include "../Components/MeshFilter.h"
 #include "../Physics/Physics.h"
-#include "../EventSystem/EventHandler.h"
+#include "../EventSystem/EventSystem.h"
 #include "../Core/Context.h"
 #include "../Resource/ResourceManager.h"
 #include "Timer.h"

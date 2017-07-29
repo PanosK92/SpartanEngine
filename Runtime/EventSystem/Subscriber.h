@@ -33,29 +33,12 @@ namespace Directus
 	public:
 		typedef std::function<void()> functionType;
 
-		Subscriber(int eventID, functionType&& subFunc)
-		{
-			m_eventID = eventID;
-			m_subscribedFunction = std::forward<functionType>(subFunc);
-		}
-
-		void Call()
-		{
-			m_subscribedFunction();
-		}
-
+		Subscriber(int eventID, functionType&& subFunc);
+		void Call() { m_subscribedFunction(); }
 		int GetEventID() { return m_eventID; }
-		std::size_t GetAddress() { return getAddress(m_subscribedFunction); }
+		size_t GetAddress();
 
 	private:
-		template<typename T, typename... U>
-		size_t getAddress(std::function<T(U...)> f) 
-		{
-			typedef T(fnType)(U...);
-			fnType ** fnPointer = f.template target<fnType*>();
-			return (size_t)*fnPointer;
-		}
-
 		int m_eventID;
 		functionType m_subscribedFunction;
 	};

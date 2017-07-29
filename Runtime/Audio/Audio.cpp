@@ -19,12 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ==========================
 #include "Audio.h"
 #include "fmod_errors.h"
 #include "../Logging/Log.h"
-#include "../EventSystem/EventHandler.h"
-//=========================
+#include "../EventSystem/EventSystem.h"
+//=====================================
 
 //= NAMESPACES ======
 using namespace std;
