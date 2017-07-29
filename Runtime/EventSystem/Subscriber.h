@@ -45,7 +45,7 @@ namespace Directus
 		}
 
 		int GetEventID() { return m_eventID; }
-		size_t GetAddress() { return getAddress(m_subscribedFunction); }
+		std::size_t GetAddress() { return getAddress(m_subscribedFunction); }
 
 	private:
 		template<typename T, typename... U>

@@ -29,20 +29,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-vector<shared_ptr<Subscriber>> EventHandler::m_subscribers;
+vector<shared_ptr<Subscriber>> EventSystem::m_subscribers;
 
-void EventHandler::Clear()
+void EventSystem::Clear()
 {
 	m_subscribers.clear();
 	m_subscribers.shrink_to_fit();
 }
 
-void EventHandler::AddSubscriber(shared_ptr<Subscriber> subscriber)
+void EventSystem::AddSubscriber(shared_ptr<Subscriber> subscriber)
 {
 	m_subscribers.push_back(subscriber);
 }
 
-void EventHandler::RemoveSubscriber(int eventID, size_t functionAddress)
+void EventSystem::RemoveSubscriber(int eventID, size_t functionAddress)
 {
 	for (auto it = m_subscribers.begin(); it != m_subscribers.end();)
 	{
@@ -56,7 +56,7 @@ void EventHandler::RemoveSubscriber(int eventID, size_t functionAddress)
 	}
 }
 
-void EventHandler::CallSubscriber(int eventID)
+void EventSystem::CallSubscriber(int eventID)
 {
 	for (const auto& subscriber : m_subscribers)
 	{
