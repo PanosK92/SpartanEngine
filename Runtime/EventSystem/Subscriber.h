@@ -48,12 +48,12 @@ namespace Directus
 		size_t GetAddress() { return getAddress(m_subscribedFunction); }
 
 	private:
-		template<typename FunctionType, typename... ARGS>
-		size_t getAddress(function<FunctionType(ARGS...)> function)
+		template<typename T, typename... U>
+		size_t getAddress(std::function<T(U...)> f) 
 		{
-			typedef FunctionType(fnType)(ARGS...);
-			fnType** fptr = function.template target<fnType*>();
-			return size_t(*fptr);
+			typedef T(fnType)(U...);
+			fnType ** fnPointer = f.template target<fnType*>();
+			return (size_t)*fnPointer;
 		}
 
 		int m_eventID;
