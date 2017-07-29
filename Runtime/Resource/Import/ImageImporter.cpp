@@ -77,7 +77,7 @@ namespace Directus
 
 		if (!FileSystem::FileExists(path))
 		{
-			LOG_WARNING("Failed to load image \"" + path + "\", it doesn't exist.");
+			LOG_WARNING("Texture \"" + path + "\" doesn't exist.");
 			return false;
 		}
 

@@ -143,7 +143,9 @@ namespace Directus
 		// The reason behind this mess it that materials can exists alone as a file, yet
 		// they support some editing via the inspector, so some data must always be known
 		// even if the actual textures haven't been loaded yet. For now it's just the TextureType.
-		std::multimap<std::pair<std::string, TextureType>, std::weak_ptr<Texture>> m_textures;
+
+		// Type, Texture, FilePath
+		std::map<TextureType, std::pair<std::weak_ptr<Texture>, std::string>> m_textures;
 
 		std::string m_modelID;
 		CullMode m_cullMode;
