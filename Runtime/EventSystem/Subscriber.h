@@ -21,48 +21,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
-#include "EventHandler.h"
-//=======================
+//= INCLUDES ==============
+#include <functional>
+#include "../Core/Helper.h"
+//=========================
 
-//= NAMESPACES =====
-using namespace std;
-//==================
-
-vector<shared_ptr<Subscriber>> EventHandler::m_subscribers;
-
-void EventHandler::Clear()
+namespace Directus
 {
-	m_subscribers.clear();
-	m_subscribers.shrink_to_fit();
-}
-
-void EventHandler::AddSubscriber(shared_ptr<Subscriber> subscriber)
-{
-	m_subscribers.push_back(subscriber);
-}
-
-void EventHandler::RemoveSubscriber(int eventID, size_t functionAddress)
-{
-	for (auto it = m_subscribers.begin(); it != m_subscribers.end();)
+	class DLL_API Subscriber
 	{
-		auto subscriber = *it;
-		if (subscriber->GetEventID() == eventID && subscriber->GetAddress() == functionAddress)
-		{
-			it = m_subscribers.erase(it);
-			return;
-		}
-		++it;
-	}
-}
+	public:
+		typedef std::function<void()> functionType;
 
-void EventHandler::CallSubscriber(int eventID)
-{
-	for (const auto& subscriber : m_subscribers)
-	{
-		if (subscriber->GetEventID() == eventID)
+		Subscriber(int eventID, functionType&& subFunc)
 		{
-			subscriber->Call();
+			m_eventID = eventID;
+			m_subscribedFunction = std::forward<functionType>(subFunc);
 		}
-	}
+
+		void Call()
+		{
+			m_subscribedFunction();
+		}
+
+		int GetEventID() { return m_eventID; }
+		size_t GetAddress() { return getAddress(m_subscribedFunction); }
+
+	private:
+		template<typename FunctionType, typename... ARGS>
+		size_t getAddress(function<FunctionType(ARGS...)> function)
+		{
+			typedef FunctionType(fnType)(ARGS...);
+			fnType** fptr = function.template target<fnType*>();
+			return size_t(*fptr);
+		}
+
+		int m_eventID;
+		functionType m_subscribedFunction;
+	};
 }

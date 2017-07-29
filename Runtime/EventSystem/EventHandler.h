@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include <memory>
 #include "../Core/Helper.h"
+#include "Subscriber.h"
 //=========================
 
 /*
@@ -49,33 +50,6 @@ To fire an event										-> FIRE_EVENT(SOME_EVENT);
 #define FIRE_EVENT(signalID)									EventHandler::Fire(signalID)
 //=================================================================================================================================
 
-//= SUBSCRIBER ====================================================
-class DLL_API Subscriber
-{
-public:
-	typedef std::function<void()> functionType;
-
-	Subscriber(int eventID, functionType&& subFunc)
-	{
-		m_eventID = eventID;
-		m_subscribedFunction = std::forward<functionType>(subFunc);
-	}
-
-	void Call()
-	{
-		m_subscribedFunction();
-	}
-
-	int GetEventID() { return m_eventID; }
-	size_t GetAddress();
-
-private:
-	int m_eventID;
-	functionType m_subscribedFunction;
-};
-//================================================================
-
-//= EVENT HANDLER ================================================
 class DLL_API EventHandler
 {
 public:
@@ -106,4 +80,3 @@ private:
 	static void RemoveSubscriber(int eventID, size_t functionAddress);
 	static void CallSubscriber(int eventID);	
 };
-//===============================================================
