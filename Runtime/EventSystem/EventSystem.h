@@ -44,39 +44,42 @@ To fire an event										-> FIRE_EVENT(SOME_EVENT);
 #define EVENT_RENDER				1	// Fired when it's time to do rendering
 //==================================================================================
 
-//= MACROS ========================================================================================================================
-#define SUBSCRIBE_TO_EVENT(signalID, instance, function)		EventHandler::Subscribe(signalID, std::bind(&function, instance))
-#define UNSUBSCRIBE_FROM_EVENT(signalID, instance, function)	EventHandler::Unsubscribe(signalID, std::bind(&function, instance))
-#define FIRE_EVENT(signalID)									EventHandler::Fire(signalID)
-//=================================================================================================================================
+//= MACROS =======================================================================================================================
+#define SUBSCRIBE_TO_EVENT(signalID, instance, function)		EventSystem::Subscribe(signalID, std::bind(&function, instance))
+#define UNSUBSCRIBE_FROM_EVENT(signalID, instance, function)	EventSystem::Unsubscribe(signalID, std::bind(&function, instance))
+#define FIRE_EVENT(signalID)									EventSystem::Fire(signalID)
+//================================================================================================================================
 
-class DLL_API EventHandler
+namespace Directus
 {
-public:
-	template <typename Function>
-	static void Subscribe(int eventID, Function&& subscriber)
+	class DLL_API EventSystem
 	{
-		AddSubscriber(std::make_shared<Subscriber>(eventID, std::bind(std::forward<Function>(subscriber))));
-	}
+	public:
+		template <typename Function>
+		static void Subscribe(int eventID, Function&& subscriber)
+		{
+			AddSubscriber(std::make_shared<Subscriber>(eventID, std::bind(std::forward<Function>(subscriber))));
+		}
 
-	template <typename Function>
-	static void Unsubscribe(int eventID, Function&& subscriber)
-	{
-		RemoveSubscriber(eventID, getAddress(subscriber));
-	}
+		template <typename Function>
+		static void Unsubscribe(int eventID, Function&& subscriber)
+		{
+			RemoveSubscriber(eventID, getAddress(subscriber));
+		}
 
-	static void Fire(int eventID)
-	{
-		CallSubscriber(eventID);
-	}
+		static void Fire(int eventID)
+		{
+			CallSubscriber(eventID);
+		}
 
-	static void Clear();
+		static void Clear();
 
-private:
-	static std::vector<std::shared_ptr<Subscriber>> m_subscribers;
+	private:
+		static std::vector<std::shared_ptr<Subscriber>> m_subscribers;
 
-	// Hiding implementations on purpose to allow cross-dll usage without linking errors
-	static void AddSubscriber(std::shared_ptr<Subscriber> subscriber);
-	static void RemoveSubscriber(int eventID, size_t functionAddress);
-	static void CallSubscriber(int eventID);	
-};
+		// Hiding implementations on purpose to allow cross-dll usage without linking errors
+		static void AddSubscriber(std::shared_ptr<Subscriber> subscriber);
+		static void RemoveSubscriber(int eventID, std::size_t functionAddress);
+		static void CallSubscriber(int eventID);
+	};
+}
