@@ -62,7 +62,7 @@ void DirectusFileDialog::Reset()
     m_assetOperation = EMPTY;
 }
 
-void DirectusFileDialog::LoadModel()
+void DirectusFileDialog::OpenModel()
 {
     QString title = "Load model";
     QStringList filters;
@@ -78,13 +78,13 @@ void DirectusFileDialog::LoadModel()
     m_assetOperation = "Load Model";
 }
 
-void DirectusFileDialog::LoadModelDirectly(std::string filePath)
+void DirectusFileDialog::OpenModeImmediatly(const std::string& filePath)
 {
      m_assetOperation = "Load Model";
      FileDialogAccepted(QString::fromStdString(filePath));
 }
 
-void DirectusFileDialog::LoadScene()
+void DirectusFileDialog::OpenScene()
 {
     QString title = "Load Scene";
     std::string sceneFilter = std::string("Scene (*") + SCENE_EXTENSION + ")";

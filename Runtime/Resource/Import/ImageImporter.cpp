@@ -19,13 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES ===========================
 #include "ImageImporter.h"
 #include "../../Logging/Log.h"
 #include "../../FileSystem/FileSystem.h"
 #include "FreeImagePlus.h"
-#include "../../Multithreading/Multithreading.h"
-//==============================================
+#include <future>
+#include <functional>
+//======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -42,6 +43,7 @@ namespace Directus
 		m_channels = 4;
 		m_grayscale = false;
 		m_transparent = false;
+		m_isLoading = false;
 
 		FreeImage_Initialise(true);
 	}
@@ -54,30 +56,20 @@ namespace Directus
 
 	void ImageImporter::LoadAsync(const string& filePath)
 	{
-		//m_threadPool->AddTask(std::bind(&ImageImporter::Load, this, filePath));
+		m_path = filePath;
+		auto future = async(launch::async, [this] {return Load(m_path); });
 	}
 
-	void ImageImporter::Clear()
+	bool ImageImporter::Load(const string& path, int width, int height, bool scale, bool generateMipchain)
 	{
-		m_dataRGBA.clear();
-		m_dataRGBA.shrink_to_fit();
-		m_mipchainDataRGBA.clear();
-		m_mipchainDataRGBA.shrink_to_fit();
-		m_bpp = 0;
-		m_width = 0;
-		m_height = 0;
-		m_path.clear();
-		m_grayscale = false;
-		m_transparent = false;
-	}
+		m_isLoading = true;
 
-	bool ImageImporter::Load(const string& path, int width, int height, bool scale, bool generateMipmap)
-	{
 		Clear();
 
 		if (!FileSystem::FileExists(path))
 		{
 			LOG_WARNING("Texture \"" + path + "\" doesn't exist.");
+			m_isLoading = false;
 			return false;
 		}
 
@@ -95,6 +87,7 @@ namespace Directus
 			if (!FreeImage_FIFSupportsReading(format))
 			{
 				LOG_WARNING("Failed to detect the image format.");
+				m_isLoading = false;
 				return false;
 			}
 
@@ -104,7 +97,10 @@ namespace Directus
 		// Get image format, format == -1 means the file was not found
 		// but I am checking against it also, just in case.
 		if (format == -1 || format == FIF_UNKNOWN)
+		{
+			m_isLoading = false;
 			return false;
+		}
 
 		// Create FIBITMAP pointers that will be used below
 		FIBITMAP* bitmapOriginal;
@@ -136,8 +132,10 @@ namespace Directus
 		// Check if the image is grayscale
 		m_grayscale = GrayscaleCheck(m_dataRGBA, m_width, m_height);
 
-		if (generateMipmap)
+		if (generateMipchain)
+		{
 			GenerateMipChainFromFIBITMAP(bitmap32, &m_mipchainDataRGBA);
+		}
 
 		//= Free memory =====================================
 		// unload the 32-bit bitmap
@@ -152,7 +150,22 @@ namespace Directus
 			FreeImage_Unload(bitmapOriginal);
 		//====================================================
 
+		m_isLoading = false;
 		return true;
+	}
+
+	void ImageImporter::Clear()
+	{
+		m_dataRGBA.clear();
+		m_dataRGBA.shrink_to_fit();
+		m_mipchainDataRGBA.clear();
+		m_mipchainDataRGBA.shrink_to_fit();
+		m_bpp = 0;
+		m_width = 0;
+		m_height = 0;
+		m_path.clear();
+		m_grayscale = false;
+		m_transparent = false;
 	}
 
 	bool ImageImporter::GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, vector<unsigned char>* data)

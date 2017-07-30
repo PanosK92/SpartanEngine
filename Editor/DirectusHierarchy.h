@@ -67,16 +67,16 @@ private:
     DirectusViewport* m_directusCore;
     QWidget* m_mainWindow;
     QPoint m_dragStartPosition;
-    DirectusFileDialog* m_fileDialog;
+    std::unique_ptr<DirectusFileDialog> m_fileDialog;
 
 public slots:
     void ClearTree();
     void Populate();
     void NewScene();
-    void OpenScene();
+    void ShowOpenSceneDialog();
     void SaveScene();
-    void SaveSceneAs();
-    void LoadModel();
+    void ShowSaveSceneAsDialog();
+    void ShowOpenModelDialog();
     void ShowContextMenu(const QPoint& pos);
     void ShowContextMenuLight();
     void RenameSelected();

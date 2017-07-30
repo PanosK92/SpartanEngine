@@ -76,10 +76,11 @@ namespace Directus
 		~ImageImporter();
 
 		void LoadAsync(const std::string& filePath);
-		bool Load(const std::string& filePath) { return Load(filePath, 0, 0, false, false); }
+		bool Load(const std::string filePath) { return Load(filePath, 0, 0, false, false); }
 		bool Load(const std::string& filePath, int width, int height) { return Load(filePath, width, height, true, false); }
-		bool LoadAndCreateMipchain(const std::string& filePath) { return Load(filePath, 0, 0, false, true); }
-
+		bool Load(const std::string& filePath, bool generateMipchain) { return Load(filePath, 0, 0, false, generateMipchain); }
+		bool Load(const std::string& filePath, int width, int height, bool scale, bool generateMipchain);
+		
 		void Clear();
 
 		//= PROPERTIES ==================================================
@@ -95,6 +96,11 @@ namespace Directus
 		//===============================================================
 
 	private:
+		
+		bool GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, std::vector<unsigned char>* data);
+		void GenerateMipChainFromFIBITMAP(FIBITMAP* original, std::vector<std::vector<unsigned char>>*);
+		bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
+
 		std::vector<unsigned char> m_dataRGBA;
 		std::vector<std::vector<unsigned char>> m_mipchainDataRGBA;
 		unsigned int m_bpp;
@@ -104,10 +110,6 @@ namespace Directus
 		std::string m_path;
 		bool m_grayscale;
 		bool m_transparent;
-
-		bool Load(const std::string& path, int width, int height, bool scale, bool generateMipmap);
-		bool GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, std::vector<unsigned char>* data);
-		void GenerateMipChainFromFIBITMAP(FIBITMAP* original, std::vector<std::vector<unsigned char>>*);
-		bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
+		bool m_isLoading;	
 	};
 }
