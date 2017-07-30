@@ -148,7 +148,7 @@ namespace Directus
 
 		// Load texture
 		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
-		bool loaded = m_generateMipchain ? imageImp._Get()->LoadAndCreateMipchain(filePath) : imageImp._Get()->Load(filePath);
+		bool loaded = m_generateMipchain ? imageImp._Get()->Load(filePath, true) : imageImp._Get()->Load(filePath);
 		if (!loaded)
 		{
 			LOG_WARNING("Failed to load texture \"" + filePath + "\".");

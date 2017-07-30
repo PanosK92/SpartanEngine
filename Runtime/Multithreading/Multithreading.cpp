@@ -59,7 +59,9 @@ namespace Directus
 	bool Multithreading::Initialize()
 	{
 		for (int i = 0; i < m_threadCount; i++)
+		{
 			m_threads.emplace_back(thread(&Multithreading::Invoke, this));
+		}
 
 		return true;
 	}

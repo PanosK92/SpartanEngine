@@ -69,7 +69,7 @@ void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWi
     m_inspector = inspector;
     m_mainWindow = mainWindow;
 
-    m_fileDialog = new DirectusFileDialog(mainWindow);
+    m_fileDialog = make_unique<DirectusFileDialog>(mainWindow);
     m_fileDialog->Initialize(m_mainWindow, this, m_directusCore);
 
     Populate();
@@ -407,9 +407,9 @@ void DirectusHierarchy::NewScene()
     Populate();
 }
 
-void DirectusHierarchy::OpenScene()
+void DirectusHierarchy::ShowOpenSceneDialog()
 {
-    m_fileDialog->LoadScene();
+    m_fileDialog->OpenScene();
 }
 
 void DirectusHierarchy::SaveScene()
@@ -417,14 +417,14 @@ void DirectusHierarchy::SaveScene()
     m_fileDialog->SaveScene();
 }
 
-void DirectusHierarchy::SaveSceneAs()
+void DirectusHierarchy::ShowSaveSceneAsDialog()
 {
     m_fileDialog->SaveSceneAs();
 }
 
-void DirectusHierarchy::LoadModel()
+void DirectusHierarchy::ShowOpenModelDialog()
 {
-    m_fileDialog->LoadModel();
+    m_fileDialog->OpenModel();
 }
 
 void DirectusHierarchy::ShowContextMenu(const QPoint &pos)

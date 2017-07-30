@@ -45,7 +45,7 @@ namespace Directus
 		~ModelImporter();
 
 		bool Initialize(Context* context);
-		void LoadAsync(Model* model);
+		void LoadAsync(Model* model, const std::string& filePath);
 		bool Load(Model* model, const std::string& filePath);
 
 	private:
@@ -60,6 +60,7 @@ namespace Directus
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 
 		bool m_isLoading;
+		Model* m_model;
 		std::string m_modelPath;
 		
 		Context* m_context;

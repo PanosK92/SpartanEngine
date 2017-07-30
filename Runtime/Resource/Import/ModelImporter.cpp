@@ -33,10 +33,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Components/MeshFilter.h"
 #include "../../FileSystem/FileSystem.h"
 #include "../../Logging/Log.h"
-#include "../../Multithreading/Multithreading.h"
 #include "../../Resource/ResourceManager.h"
 #include "../../Graphics/Model.h"
 #include "../../Graphics/Shaders/ShaderVariation.h"
+#include <future>
 //=================================================
 
 //= NAMESPACES ================
@@ -52,6 +52,7 @@ namespace Directus
 	{
 		m_context = nullptr;
 		m_isLoading = false;
+		m_model = nullptr;
 	}
 
 	ModelImporter::~ModelImporter()
@@ -64,10 +65,11 @@ namespace Directus
 		return true;
 	}
 
-	void ModelImporter::LoadAsync(Model* model)
+	void ModelImporter::LoadAsync(Model* model, const string& filePath)
 	{
-		//Multithreading* threadPool = m_context->GetSubsystem<Multithreading>();
-		//threadPool->AddTask(std::bind(&ModelImporter::Load, this, model, filePath));
+		m_model = model;
+		m_modelPath = filePath;
+		auto future = async(launch::async, [this] {return Load(m_model, m_modelPath); });
 	}
 
 	bool ModelImporter::Load(Model* model, const string& filePath)
@@ -78,6 +80,7 @@ namespace Directus
 			return false;
 		}
 
+		m_model = model;
 		m_modelPath = filePath;
 		m_isLoading = true;
 

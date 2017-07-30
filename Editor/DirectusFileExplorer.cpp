@@ -85,9 +85,6 @@ void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusViewport* dir
     // Context menu
     connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ShowContextMenu(QPoint)));
 
-    // Rename
-    connect(this, SIGNAL(objectNameChanged(QString)), this, SLOT(RenameItem(QString)));
-
     // Double click
     connect(this, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(DoubleClick(QModelIndex)));
 }
@@ -220,7 +217,7 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
             vector<string> modelFilePaths = FileSystem::GetSupportedModelFilesInDirectory(filePath);
             if (modelFilePaths.size() != 0)
             {
-                m_fileDialog->LoadModelDirectly(modelFilePaths.front());
+                m_fileDialog->OpenModeImmediatly(modelFilePaths.front());
             }
         }
         //= DROP CASE: FILE ==================================
@@ -228,7 +225,7 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
         {
             // Model ?
             if (FileSystem::IsSupportedModelFile(filePath))
-                m_fileDialog->LoadModelDirectly(filePath);
+                m_fileDialog->OpenModeImmediatly(filePath);
 
             // Audio ?
             if (FileSystem::IsSupportedAudioFile(filePath))
@@ -296,38 +293,37 @@ void DirectusFileExplorer::ShowContextMenu(QPoint pos)
     QAction actionDelete("Delete", this);
     actionDelete.setEnabled(true);
 
-    QAction actionOpenSceneAdditive("Open Scene Additive", this);
-    actionOpenSceneAdditive.setEnabled(false);
-
-    QAction actionImportNewAsset("Import New Asset...", this);
-    actionImportNewAsset.setEnabled(false);
+    QAction actionRename("Rename", this);
+    actionRename.setEnabled(true);
 
     //= SIGNAL - SLOT connections ==================================================================
     connect(&actionCreateFolder,        SIGNAL(triggered()), this,  SLOT(CreateDirectory_()));
     connect(&actionCreateMaterial,      SIGNAL(triggered()), this,  SLOT(CreateMaterial()));
     connect(&actionShowInExplorer,      SIGNAL(triggered()), this,  SLOT(ShowRootPathInExplorer()));
     connect(&actionDelete,              SIGNAL(triggered()), this,  SLOT(DeleteSelectedFile()));
+    connect(&actionRename,              SIGNAL(triggered()), this,  SLOT(RenameSelectedItem()));
     //==============================================================================================
 
     contextMenu.addMenu(&actionCreate);
     contextMenu.addAction(&actionShowInExplorer);
     contextMenu.addAction(&actionOpen);
     contextMenu.addAction(&actionDelete);
-    contextMenu.addSeparator();
-    contextMenu.addAction(&actionOpenSceneAdditive);
-    contextMenu.addSeparator();
-    contextMenu.addAction(&actionImportNewAsset);
+    contextMenu.addAction(&actionRename);
 
     contextMenu.exec(QCursor::pos());
 }
 
-void DirectusFileExplorer::RenameItem(QString name)
+void DirectusFileExplorer::RenameSelectedItem()
 {
-    LOG_INFO("RenameItem() called");
+    QModelIndexList selectionList = this->selectedIndexes();
+    QModelIndex selectedItem = selectionList.first();
+
+    // TODO: Implement actual renaming on the item
 }
 
 void DirectusFileExplorer::DoubleClick(QModelIndex modelIndex)
 {
+    // Update file model to so this path
     if (m_fileModel->fileInfo(modelIndex).isDir())
     {
         QString path = m_fileModel->fileInfo(modelIndex).absoluteFilePath();

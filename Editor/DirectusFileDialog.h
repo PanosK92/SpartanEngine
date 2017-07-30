@@ -41,9 +41,9 @@ public:
     explicit DirectusFileDialog(QWidget *parent = 0);
     void Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusViewport* directusCore);
     void Reset();
-    void LoadModel();
-    void LoadModelDirectly(std::string filePath);
-    void LoadScene();
+    void OpenModel();
+    void OpenModeImmediatly(const std::string& filePath);
+    void OpenScene();
     void SaveScene();
     void SaveSceneAs();
 

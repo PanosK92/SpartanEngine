@@ -2270,7 +2270,7 @@ QSplitter::handle:vertical
                         <number>0</number>
                        </property>
                        <item>
-                        <widget class="QPushButton" name="buttonProjectCreate">
+                        <widget class="QPushButton" name="buttonProjectImport">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                            <horstretch>0</horstretch>
@@ -2278,7 +2278,7 @@ QSplitter::handle:vertical
                           </sizepolicy>
                          </property>
                          <property name="text">
-                          <string>Create</string>
+                          <string>Import</string>
                          </property>
                         </widget>
                        </item>
@@ -3367,12 +3367,12 @@ QSplitter::handle:vertical
    <extends>QTreeWidget</extends>
    <header>DirectusHierarchy.h</header>
    <slots>
-    <slot>OpenScene()</slot>
+    <slot>ShowOpenSceneDialog()</slot>
     <slot>SaveScene()</slot>
-    <slot>SaveSceneAs()</slot>
+    <slot>ShowSaveSceneAsDialog()</slot>
     <slot>NewScene()</slot>
     <slot>CreateEmptyGameObjectRoot()</slot>
-    <slot>LoadModel()</slot>
+    <slot>ShowOpenModelDialog()</slot>
     <slot>CreateDirectionalLight()</slot>
     <slot>CreatePointLight()</slot>
     <slot>CreateCube()</slot>
@@ -3439,7 +3439,7 @@ QSplitter::handle:vertical
    <sender>actionOpen_Scene</sender>
    <signal>triggered()</signal>
    <receiver>widgetHierarchy</receiver>
-   <slot>OpenScene()</slot>
+   <slot>ShowOpenSceneDialog()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -3503,7 +3503,7 @@ QSplitter::handle:vertical
    <sender>actionSave_Scene_as</sender>
    <signal>triggered()</signal>
    <receiver>widgetHierarchy</receiver>
-   <slot>SaveSceneAs()</slot>
+   <slot>ShowSaveSceneAsDialog()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -3519,7 +3519,7 @@ QSplitter::handle:vertical
    <sender>actionLoad_Model</sender>
    <signal>triggered()</signal>
    <receiver>widgetHierarchy</receiver>
-   <slot>LoadModel()</slot>
+   <slot>ShowOpenModelDialog()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -3816,6 +3816,22 @@ QSplitter::handle:vertical
     <hint type="destinationlabel">
      <x>182</x>
      <y>285</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonProjectImport</sender>
+   <signal>pressed()</signal>
+   <receiver>widgetHierarchy</receiver>
+   <slot>ShowOpenModelDialog()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>29</x>
+     <y>538</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>141</x>
+     <y>403</y>
     </hint>
    </hints>
   </connection>
