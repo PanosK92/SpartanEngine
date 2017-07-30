@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Resource/ResourceManager.h"
 #include "../../Graphics/Model.h"
-#include "../../Graphics/Shaders/ShaderVariation.h"
 #include <future>
 //=================================================
 
@@ -280,32 +279,25 @@ namespace Directus
 		}
 
 		// Add a mesh component and pass the data
-		auto mesh = model->AddMesh(gameobject._Get()->GetID(), assimpMesh->mName.C_Str(), vertices, indices);
-		auto meshFilter = gameobject._Get()->AddComponent<MeshFilter>();
+		weak_ptr<Mesh> mesh = model->AddMesh(gameobject._Get()->GetID(), assimpMesh->mName.C_Str(), vertices, indices);
+		MeshFilter* meshFilter = gameobject._Get()->AddComponent<MeshFilter>();
 		meshFilter->SetMesh(mesh);
 
 		// free memory
 		vertices.clear();
 		indices.clear();
 
-		// process materials
-		if (!assimpScene->HasMaterials())
-			return;
-
-		// Get assimp material
-		aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
-
-		// Convert AiMaterial to Material and add it to the pool
-		auto material = m_context->GetSubsystem<ResourceManager>()->Add(GenerateMaterialFromAiMaterial(model, assimpMaterial));
-
-		// Set it in the mesh renderer component
-		gameobject._Get()->AddComponent<MeshRenderer>()->SetMaterial(material);
-
-		// Save the material/shader in our custom format
-		if (!material.expired())
+		// Process material
+		if (assimpScene->HasMaterials())
 		{
-			material._Get()->Save(model->GetResourceDirectory() + "Materials//" + material._Get()->GetResourceName(), false);
-			material._Get()->GetShader()._Get()->SaveToFile(model->GetResourceDirectory() + "Shaders//" + material._Get()->GetResourceName());
+			// Get assimp material
+			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
+
+			// Convert it to an engine material and add it to the model
+			auto material = model->AddMaterial(GenerateMaterialFromAiMaterial(model, assimpMaterial));
+
+			// Set this material to a mesh renderer component
+			gameobject._Get()->AddComponent<MeshRenderer>()->SetMaterial(material);
 		}
 	}
 
@@ -401,7 +393,7 @@ namespace Directus
 		}
 
 		// Copy the source texture a directory which will be relative to the model
-		string relativeFilePath = model->CopyFileToLocalDirectory(texturePath);
+		string relativeFilePath = model->CopyTextureToLocalDirectory(texturePath);
 
 		// Load the texture from the relative directory
 		auto texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(relativeFilePath);
