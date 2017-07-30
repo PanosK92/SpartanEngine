@@ -50,9 +50,10 @@ namespace Directus
 		static void Initialize();
 
 		//= DIRECTORY MANAGEMENT ==========================================
-		static bool CreateDirectory_(const std::string& path);
-		static bool OpenDirectoryInExplorer(const std::string& directory);
+		static bool CreateDirectory_(const std::string& directory);
 		static bool DeleteDirectory(const std::string& directory);
+		static bool DirectoryExists(const std::string& directory);
+		static bool OpenDirectoryInExplorer(const std::string& directory);
 		//=================================================================
 
 		//= FILES ============================================================================

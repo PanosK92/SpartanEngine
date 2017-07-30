@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ===================================
 #include "Model.h"
 #include "Mesh.h"
 #include "../Core/GameObject.h"
@@ -28,8 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshFilter.h"
 #include "../Components/Transform.h"
 #include "../Graphics/Vertex.h"
+#include "../Graphics/Material.h"
+#include "../Graphics/Shaders/ShaderVariation.h"
 #include "../IO/Serializer.h"
-//======================================
+//==============================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -112,6 +114,40 @@ namespace Directus
 		return mesh;
 	}
 
+	void Model::AddMesh(shared_ptr<Mesh> mesh)
+	{
+		if (!mesh)
+			return;
+
+		// Updates mesh bounding box, center, min, max etc.
+		mesh->Update();
+
+		// Calculate the bounding box of the model as well
+		ComputeDimensions();
+
+		// Save it
+		m_meshes.push_back(mesh);
+	}
+
+	weak_ptr<Material> Model::AddMaterial(shared_ptr<Material> material)
+	{
+		if (!material)
+			return weak_ptr<Material>();
+
+		// Add it to our resources
+		weak_ptr<Material> weakMat = m_context->GetSubsystem<ResourceManager>()->Add(material);
+
+		// Save the material/shader in our custom format
+		material._Get()->Save(GetResourceDirectory() + "Materials//" + material->GetResourceName(), false);
+		material._Get()->GetShader()._Get()->SaveToFile(GetResourceDirectory() + "Shaders//" + material._Get()->GetResourceName());
+
+		// Save it
+		m_materials.push_back(material);
+
+		// Return it
+		return weakMat;
+	}
+
 	weak_ptr<Mesh> Model::GetMeshByID(const string& id)
 	{
 		for (const auto& mesh : m_meshes)
@@ -138,9 +174,9 @@ namespace Directus
 		return weak_ptr<Mesh>();
 	}
 
-	string Model::CopyFileToLocalDirectory(const string& from)
+	string Model::CopyTextureToLocalDirectory(const string& from)
 	{
-		string textureDestination = GetResourceDirectory() + FileSystem::GetFileNameFromFilePath(from);
+		string textureDestination = GetResourceDirectory() + "Textures//" + FileSystem::GetFileNameFromFilePath(from);
 		FileSystem::CopyFileFromTo(from, textureDestination);
 
 		return textureDestination;
@@ -150,21 +186,6 @@ namespace Directus
 	{
 		Vector3 extent = m_boundingBox.GetHalfSize().Absolute();
 		return Max(Max(extent.x, extent.y), extent.z);
-	}
-
-	void Model::AddMesh(shared_ptr<Mesh> mesh)
-	{
-		if (!mesh)
-			return;
-
-		// Updates mesh bounding box, center, min, max etc.
-		mesh->Update();
-
-		// Calculate the bounding box of the model as well
-		ComputeDimensions();
-
-		// Save it
-		m_meshes.push_back(mesh);
 	}
 
 	bool Model::LoadFromEngineFormat(const string& filePath)
@@ -267,6 +288,9 @@ namespace Directus
 	{
 		for (auto& mesh : m_meshes)
 		{
+			if (!mesh)
+				continue;
+
 			if (!m_boundingBox.Defined())
 			{
 				m_boundingBox.ComputeFromMesh(mesh);

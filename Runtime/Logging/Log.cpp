@@ -64,32 +64,15 @@ namespace Directus
 	//= LOGGING ==========================================================================
 	void Log::Write(const string& text, LogType type) // all functions resolve to that one
 	{
-		string prefix = "";
-
-		if (type == Info)
-		{
-			prefix = "Info:";
-		}
-
-		if (type == Warning)
-		{
-			prefix = "Warning:";
-		}
-
-		if (type == Error)
-		{
-			prefix = "Error:";
-		}
-
-		string finalText = prefix + " " + text;
-
-		// if a logger is available use it, if not output a text file
+		// if a logger is available use it, if not, write to file
 		if (!m_logger.expired())
 		{
-			m_logger._Get()->Log(finalText, type);
+			m_logger._Get()->Log(text, type);
 		}
 		else
 		{
+			string prefix = (type == Info) ? "Info" : (type == Warning) ? "Warning" : "Error";
+			string finalText = prefix + " " + text;
 			WriteToFile(finalText);
 		}
 	}

@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <regex>
 #include "../Core/Scene.h"
 #include "../Graphics/Material.h"
+#include "../Logging/Log.h"
 //===============================
 
 //= NAMESPACES =========================
@@ -150,10 +151,20 @@ namespace Directus
 		}
 	}
 
-	//= DIRECTORY MANAEMENT ==============================================================
+	//= DIRECTORY MANAGEMENT ==============================================================
 	bool FileSystem::CreateDirectory_(const string& path)
 	{
 		return fs::create_directories(path);
+	}
+
+	bool FileSystem::DeleteDirectory(const string& directory)
+	{
+		return fs::remove_all(directory);
+	}
+
+	bool FileSystem::DirectoryExists(const string& directory)
+	{
+		return fs::exists(directory);
 	}
 
 	bool FileSystem::OpenDirectoryInExplorer(const string& directory)
@@ -162,27 +173,53 @@ namespace Directus
 		return !FAILED(result);
 	}
 
-	bool FileSystem::DeleteDirectory(const string& directory)
-	{
-		return fs::remove_all(directory);
-	}
 	//====================================================================================
 
 	//= FILES ============================================================================
-	bool FileSystem::FileExists(const string& path)
+	bool FileSystem::FileExists(const string& filePath)
 	{
 		struct stat buffer;
-		return (stat(path.c_str(), &buffer) == 0);
+		return stat(filePath.c_str(), &buffer) == 0;
 	}
 
 	bool FileSystem::DeleteFile_(const string& filePath)
 	{
-		return remove(filePath.c_str()) != 0 ? false : true;
+		// If this is a directory path, return
+		if (fs::is_directory(filePath))
+			return false;
+
+		bool result = false;
+		try
+		{
+			result = fs::remove(filePath.c_str()) == 0;
+		}
+		catch (fs::filesystem_error& e)
+		{
+			LOG_ERROR("Could not delete \"" + filePath + "\". " + string(e.what()));
+		}
+
+		return result;
 	}
 
 	bool FileSystem::CopyFileFromTo(const string& source, const string& destination)
 	{
-		return !CopyFile(ToWString(source).c_str(), ToWString(destination).c_str(), true);
+		// In case the destination path doesn't exist, create it
+		if (!DirectoryExists(GetDirectoryFromFilePath(destination)))
+		{
+			CreateDirectory_(GetDirectoryFromFilePath(destination));
+		}
+
+		bool result = false;
+		try 
+		{
+			result = fs::copy_file(source, destination, fs::copy_options::overwrite_existing);
+		}
+		catch (fs::filesystem_error& e) 
+		{
+			LOG_ERROR("Could not copy \"" + source + "\". " + string(e.what()));
+		}
+
+		return result;
 	}
 	//====================================================================================
 
