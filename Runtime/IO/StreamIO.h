@@ -46,7 +46,7 @@ namespace Directus
 		static void StopReading();
 		//================================================
 
-		//= WRITING ========================================================
+		//= WRITING =================================================
 		static void WriteBool(bool value);
 		static void WriteSTR(std::string value);
 		static void WriteInt(int value);
@@ -56,9 +56,9 @@ namespace Directus
 		static void WriteVector3(Math::Vector3& vector);
 		static void WriteVector4(Math::Vector4& vector);
 		static void WriteQuaternion(Math::Quaternion& quaternion);
-		//==================================================================
+		//===========================================================
 
-		//= READING ========================================
+		//= READING ====================================
 		static bool ReadBool();
 		static std::string ReadSTR();
 		static unsigned int ReadUINT();
@@ -69,6 +69,6 @@ namespace Directus
 		static Math::Vector3 ReadVector3();
 		static Math::Vector4 ReadVector4();
 		static Math::Quaternion ReadQuaternion();
-		//=================================================
+		//==============================================
 	};
 }
