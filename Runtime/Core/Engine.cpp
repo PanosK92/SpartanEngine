@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EventSystem/EventSystem.h"
 #include "../Input/Input.h"
 #include "../Physics/Physics.h"
-#include "../XmlIO.h"
+#include "../IO/XmlIO.h"
 //===========================================
 
 //= NAMESPACES =====
