@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====
 #include <memory>
 #include <vector>
+#include <string>
 //===============
 
 //= FORWARD DECLARATIONS =============================
@@ -38,12 +39,24 @@ namespace Directus
 		static void Create();
 		static void Release();
 
+		//= NODES =======================================================================
 		static void AddNode(const std::string& name);
 		static bool AddChildNode(const std::string& parentName, const std::string& name);
-		static bool AddAttribute(const std::string& nodeName, const std::string& tag, const std::string& value);
+		//===============================================================================
 
+		//= ATTRIBUTES =========================================================================================
+		static bool AddAttribute(const std::string& nodeName, const char* tag, const char* value);
+		static bool AddAttribute(const std::string& nodeName, const std::string& tag, const std::string& value);
+		static bool AddAttribute(const std::string& nodeName, const std::string& tag, bool value);
+		static bool AddAttribute(const std::string& nodeName, const std::string& tag, int value);
+		static bool AddAttribute(const std::string& nodeName, const std::string& tag, float value);
+		static bool AddAttribute(const std::string& nodeName, const std::string& tag, double value);
+		//======================================================================================================
+
+		//= IO =======================================
 		static bool Load(const std::string& filePath);
 		static bool Save(const std::string& filePath);
+		//============================================
 
 	private:
 		static std::shared_ptr<pugi::xml_node> GetNodeByName(const std::string& name);

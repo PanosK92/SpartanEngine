@@ -96,10 +96,16 @@ namespace Directus
 		XmlDocument::Create();
 		XmlDocument::AddNode("Metadata");
 		XmlDocument::AddAttribute("Metadata", "Type", "Texture");
-		XmlDocument::AddChildNode("Metadata", "Resource");
-		XmlDocument::AddAttribute("Resource", "Resource ID", m_resourceID);
-		XmlDocument::AddAttribute("Resource", "Resource Name", m_resourceName);
-		XmlDocument::AddAttribute("Resource", "Resource Path", m_resourceFilePath);
+		XmlDocument::AddChildNode("Metadata", "Texture");
+		XmlDocument::AddAttribute("Texture", "ID", m_resourceID);
+		XmlDocument::AddAttribute("Texture", "Name", m_resourceName);
+		XmlDocument::AddAttribute("Texture", "Path", m_resourceFilePath);
+		XmlDocument::AddAttribute("Texture", "Width", m_width);
+		XmlDocument::AddAttribute("Texture", "Height", m_height);
+		XmlDocument::AddAttribute("Texture", "Type", int(m_textureType));
+		XmlDocument::AddAttribute("Texture", "Greyscale", m_grayscale);
+		XmlDocument::AddAttribute("Texture", "Transparency", m_transparency);
+		XmlDocument::AddAttribute("Texture", "Mipchain", m_generateMipchain);
 		XmlDocument::Save(savePath + ".xml");
 		XmlDocument::Release();
 
