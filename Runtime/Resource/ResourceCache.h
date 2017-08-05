@@ -57,7 +57,9 @@ namespace Directus
 		{
 			std::vector<std::string> filePaths;
 			for (const auto& resource : m_resources)
+			{
 				filePaths.push_back(resource->GetResourceFilePath());
+			}
 
 			return filePaths;
 		}
@@ -66,8 +68,10 @@ namespace Directus
 		std::shared_ptr<Resource> GetByID(const std::string& ID)
 		{
 			for (const auto& resource : m_resources)
+			{
 				if (resource->GetResourceID() == ID)
 					return resource;
+			}
 
 			return std::shared_ptr<Resource>();
 		}

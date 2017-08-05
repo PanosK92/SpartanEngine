@@ -91,7 +91,7 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS); // Remove cameras and lights
 		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, smoothAngle);
 
-		// Read the 3D model file
+		// Thigns for Assimp to do
 		static auto ppsteps =
 			aiProcess_CalcTangentSpace |
 			aiProcess_GenSmoothNormals |
@@ -110,6 +110,7 @@ namespace Directus
 			aiProcess_Debone |
 			aiProcess_ConvertToLeftHanded;
 
+		// Read the 3D model file
 		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
 		if (!scene)
 		{
@@ -294,10 +295,10 @@ namespace Directus
 			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
 
 			// Convert it to an engine material and add it to the model
-			auto material = model->AddMaterial(GenerateMaterialFromAiMaterial(model, assimpMaterial));
+			weak_ptr<Material> material = model->AddMaterial(GenerateMaterialFromAiMaterial(model, assimpMaterial));
 
 			// Set this material to a mesh renderer component
-			gameobject._Get()->AddComponent<MeshRenderer>()->SetMaterial(material);
+			gameobject._Get()->AddComponent<MeshRenderer>()->SetMaterialFromMemory(material);
 		}
 	}
 

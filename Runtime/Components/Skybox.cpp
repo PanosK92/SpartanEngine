@@ -77,7 +77,7 @@ namespace Directus
 		auto meshRenderer = g_gameObject._Get()->AddComponent<MeshRenderer>();
 		meshRenderer->SetCastShadows(false);
 		meshRenderer->SetReceiveShadows(false);
-		meshRenderer->SetMaterial(Material_Skybox);
+		meshRenderer->SetMaterialByType(Material_Skybox);
 		meshRenderer->GetMaterial()._Get()->SetTexture(m_cubeMapTexture);
 		g_transform->SetScale(Vector3(1000, 1000, 1000));
 

@@ -148,10 +148,10 @@ namespace Directus
 	{
 		//= BASIC DATA ================================
 		Serializer::WriteBool(m_isPrefab);
-		Serializer::WriteSTR(m_ID);
-		Serializer::WriteSTR(m_name);
 		Serializer::WriteBool(m_isActive);
 		Serializer::WriteBool(m_hierarchyVisibility);
+		Serializer::WriteSTR(m_ID);
+		Serializer::WriteSTR(m_name);		
 		//=============================================
 
 		//= COMPONENTS ================================
@@ -198,10 +198,10 @@ namespace Directus
 	{
 		//= BASIC DATA ================================
 		m_isPrefab = Serializer::ReadBool();
+		m_isActive = Serializer::ReadBool();
+		m_hierarchyVisibility = Serializer::ReadBool();
 		m_ID = Serializer::ReadSTR();
 		m_name = Serializer::ReadSTR();
-		m_isActive = Serializer::ReadBool();	
-		m_hierarchyVisibility = Serializer::ReadBool();
 		//=============================================
 
 		//= COMPONENTS ================================

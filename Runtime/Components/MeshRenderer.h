@@ -56,13 +56,17 @@ namespace Directus
 
 		//= MATERIAL ===============================
 		// Sets a material from memory
-		void SetMaterial(std::weak_ptr<Material> material);
-		// Sets a default material (basic, skybox)
-		void SetMaterial(MaterialType type);
-		// Sets a material based on it's ID
-		std::weak_ptr<Material> SetMaterial(const std::string& ID);
+		void SetMaterialFromMemory(std::weak_ptr<Material> material);
+
 		// Loads a material and the sets it
-		std::weak_ptr<Material> LoadMaterial(const std::string& filePath);
+		std::weak_ptr<Material> SetMaterialFromFile(const std::string& filePath);
+
+		// Sets a default material (basic, skybox)
+		void SetMaterialByType(MaterialType type);
+
+		// Sets a material based on it's ID
+		std::weak_ptr<Material> SetMaterialByID(const std::string& ID);
+
 		std::weak_ptr<Material>& GetMaterial() { return  m_material; }
 		bool HasMaterial() { return GetMaterial().expired() ? false : true; }
 		std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial()._Get()->GetResourceName() : DATA_NOT_ASSIGNED; }

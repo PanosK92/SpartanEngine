@@ -65,8 +65,26 @@ namespace Directus
 	//= RESOURCE INTERFACE ====================================================================
 	bool Model::LoadFromFile(const string& filePath)
 	{
-		bool engineFormat = FileSystem::GetExtensionFromFilePath(filePath) == MODEL_EXTENSION;
-		bool success = engineFormat ? LoadFromEngineFormat(filePath) : LoadFromForeignFormat(filePath);
+		string modelFilePath = filePath;
+
+		// Check if this is a directory instead of a model file path
+		if (FileSystem::IsDirectory(filePath))
+		{
+			// If it is, try to find a model file in it
+			vector<string> modelFilePaths = FileSystem::GetSupportedModelFilesInDirectory(filePath);
+			if (!modelFilePaths.empty())
+			{
+				modelFilePath = modelFilePaths.front();
+			}
+			else // abort
+			{
+				LOG_WARNING("Failed to load model. Unable to find a model in directory \"" + filePath + "\".");
+				return false;
+			}
+		}
+
+		bool engineFormat = FileSystem::GetExtensionFromFilePath(modelFilePath) == MODEL_EXTENSION;
+		bool success = engineFormat ? LoadFromEngineFormat(modelFilePath) : LoadFromForeignFormat(modelFilePath);
 
 		return success;
 	}
@@ -218,7 +236,7 @@ namespace Directus
 		string dir = "Assets//" + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"; // Assets/Sponza/
 		m_resourceFilePath = dir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION; // Assets/Sponza/Sponza.model
 		m_resourceName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath); // Sponza
-		
+
 		// Create asset directory (if it doesn't exist)
 		FileSystem::CreateDirectory_(dir + "Materials//");
 		FileSystem::CreateDirectory_(dir + "Shaders//");
@@ -231,7 +249,7 @@ namespace Directus
 			m_rootGameObj._Get()->GetComponent<Transform>()->SetScale(m_normalizedScale);
 			m_rootGameObj._Get()->GetComponent<Transform>()->UpdateTransform();
 
-			// Save the model as custom/binary format
+			// Save the model in our custom format.
 			SaveToFile(m_resourceFilePath);
 
 			return true;
