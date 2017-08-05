@@ -53,6 +53,7 @@ namespace Directus
 		m_nodes.shrink_to_fit();
 	}
 
+	//= NODES =======================================================================
 	void XmlDocument::AddNode(const string& name)
 	{
 		if (!m_document)
@@ -71,12 +72,14 @@ namespace Directus
 			return false;
 		}
 
-		parentNode->append_child(name.c_str());
+		auto node = make_shared<xml_node>(parentNode->append_child(name.c_str()));
+		m_nodes.push_back(node);
 
 		return true;
 	}
 
-	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, const string& value)
+	//= ATTRIBUTES =========================================================================================
+	bool XmlDocument::AddAttribute(const string& nodeName, const char* tag, const char* value)
 	{
 		auto node = GetNodeByName(nodeName);
 		if (!node)
@@ -85,11 +88,38 @@ namespace Directus
 			return false;
 		}
 
-		node->append_attribute(tag.c_str()) = value.c_str();
+		node->append_attribute(tag) = value;
 
 		return true;
 	}
 
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, const string& value)
+	{
+		return AddAttribute(nodeName, tag.c_str(), value.c_str());
+	}
+
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, bool value)
+	{
+		string valueStr = value ? "true" : "false";
+		return AddAttribute(nodeName, tag, valueStr);
+	}
+
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, int value)
+	{
+		return AddAttribute(nodeName, tag, to_string(value));
+	}
+
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, float value)
+	{
+		return AddAttribute(nodeName, tag, to_string(value));
+	}
+
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, double value)
+	{
+		return AddAttribute(nodeName, tag, to_string(value));
+	}
+
+	//= IO =======================================
 	bool XmlDocument::Load(const string& filePath)
 	{
 		m_document = make_unique<xml_document>();
@@ -113,6 +143,7 @@ namespace Directus
 		return m_document->save_file(filePath.c_str());
 	}
 
+	//= PRIVATE =======================================================
 	shared_ptr<xml_node> XmlDocument::GetNodeByName(const string& name)
 	{
 		for (const auto& node : m_nodes)
@@ -123,6 +154,6 @@ namespace Directus
 			}
 		}
 
-		return make_unique<xml_node>();
+		return shared_ptr<xml_node>();
 	}
 }
