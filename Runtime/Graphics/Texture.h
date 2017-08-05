@@ -59,8 +59,6 @@ namespace Directus
 		std::string GetFilePathTexture() { return m_resourceFilePath; }
 		void SetFilePathTexture(const std::string& filepath) { m_resourceFilePath = filepath; }
 
-		std::string GetFilePathMetadata() { return m_resourceFilePath + METADATA_EXTENSION; }
-
 		int GetWidth() { return m_width; }
 		void SetWidth(int width) { m_width = width; }
 

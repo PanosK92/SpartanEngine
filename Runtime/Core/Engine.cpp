@@ -34,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EventSystem/EventSystem.h"
 #include "../Input/Input.h"
 #include "../Physics/Physics.h"
-#include "../IO/XmlIO.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -45,8 +44,6 @@ namespace Directus
 {
 	Engine::Engine(Context* context) : Subsystem(context)
 	{
-		XmlIO::Test();
-
 		// Register self as a subsystem
 		m_context->RegisterSubsystem(this);
 

@@ -21,12 +21,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= INCLUDES ====
+#include <memory>
+#include <vector>
+//===============
+
+//= FORWARD DECLARATIONS =============================
+namespace pugi { class xml_document; class xml_node; }
+//====================================================
+
 namespace Directus
 {
-	class XmlIO
+	class XmlDocument
 	{
 	public:
-		static void Test();
+		static void Create();
+		static void Release();
+
+		static void AddNode(const std::string& name);
+		static bool AddChildNode(const std::string& parentName, const std::string& name);
+		static bool AddAttribute(const std::string& nodeName, const std::string& tag, const std::string& value);
+
+		static bool Load(const std::string& filePath);
+		static bool Save(const std::string& filePath);
+
 	private:
+		static std::shared_ptr<pugi::xml_node> GetNodeByName(const std::string& name);
+
+		static std::unique_ptr<pugi::xml_document> m_document;
+		static std::vector<std::shared_ptr<pugi::xml_node>> m_nodes;
 	};
 }
