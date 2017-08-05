@@ -19,24 +19,110 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ==============
 #include "XmlIO.h"
 #include "pugixml.hpp"
-//====================
+#include "../Logging/Log.h"
+//=========================
 
 //= NAMESPACES ======
+using namespace std;
 using namespace pugi;
 //===================
 
 namespace Directus
 {
-	void XmlIO::Test()
-	{
-		// get a test document
-		xml_document doc;
-		doc.load_string("<foo bar='baz'>hey</foo>");
+	unique_ptr<xml_document> XmlDocument::m_document;
+	vector<shared_ptr<xml_node>> XmlDocument::m_nodes;
 
-		// saver xml file
-		doc.save_file("save_file_output.xml");
+	void XmlDocument::Create()
+	{
+		// Generate new XML document within memory
+		m_document = make_unique<xml_document>();
+
+		// Generate XML declaration
+		auto declarationNode = m_document->append_child(node_declaration);
+		declarationNode.append_attribute("version") = "1.0";
+		declarationNode.append_attribute("encoding") = "ISO-8859-1";
+		declarationNode.append_attribute("standalone") = "yes";	
+	}
+
+	void XmlDocument::Release()
+	{
+		m_nodes.clear();
+		m_nodes.shrink_to_fit();
+	}
+
+	void XmlDocument::AddNode(const string& name)
+	{
+		if (!m_document)
+			return;
+
+		auto node = make_shared<xml_node>(m_document->append_child(name.c_str()));
+		m_nodes.push_back(node);
+	}
+
+	bool XmlDocument::AddChildNode(const string& parentName, const string& name)
+	{
+		auto parentNode = GetNodeByName(parentName);
+		if (!parentNode)
+		{
+			LOG_WARNING("Can't add child node, parent node doesn't exist.");
+			return false;
+		}
+
+		parentNode->append_child(name.c_str());
+
+		return true;
+	}
+
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, const string& value)
+	{
+		auto node = GetNodeByName(nodeName);
+		if (!node)
+		{
+			LOG_WARNING("Can't add attribute, node doesn't exist.");
+			return false;
+		}
+
+		node->append_attribute(tag.c_str()) = value.c_str();
+
+		return true;
+	}
+
+	bool XmlDocument::Load(const string& filePath)
+	{
+		m_document = make_unique<xml_document>();
+		xml_parse_result result = m_document->load_file(filePath.c_str());
+		
+		if (result.status != status_ok)
+		{
+			LOG_ERROR(result.description());
+			m_document.release();
+			return false;
+		}
+
+		return true;
+	}
+
+	bool XmlDocument::Save(const string& filePath)
+	{
+		if (!m_document)
+			return false;
+
+		return m_document->save_file(filePath.c_str());
+	}
+
+	shared_ptr<xml_node> XmlDocument::GetNodeByName(const string& name)
+	{
+		for (const auto& node : m_nodes)
+		{
+			if (node->name() == name)
+			{
+				return node;
+			}
+		}
+
+		return make_unique<xml_node>();
 	}
 }

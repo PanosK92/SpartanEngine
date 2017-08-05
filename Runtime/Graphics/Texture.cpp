@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/DDSTextureImporter.h"
 #include "../Resource/ResourceManager.h"
 #include "D3D11/D3D11Texture.h"
+#include "../IO/XmlIO.h"
 //================================================
 
 //= NAMESPACES =====
@@ -73,7 +74,7 @@ namespace Directus
 		string savePath = filePath;
 		if (filePath == RESOURCE_SAVE)
 		{
-			savePath = GetFilePathMetadata();
+			savePath = m_resourceFilePath;
 		}
 
 		if (!StreamIO::StartWriting(savePath))
@@ -91,6 +92,16 @@ namespace Directus
 		StreamIO::WriteBool(m_generateMipchain);
 
 		StreamIO::StopWriting();
+
+		XmlDocument::Create();
+		XmlDocument::AddNode("Metadata");
+		XmlDocument::AddAttribute("Metadata", "Type", "Texture");
+		XmlDocument::AddChildNode("Metadata", "Resource");
+		XmlDocument::AddAttribute("Resource", "Resource ID", m_resourceID);
+		XmlDocument::AddAttribute("Resource", "Resource Name", m_resourceName);
+		XmlDocument::AddAttribute("Resource", "Resource Path", m_resourceFilePath);
+		XmlDocument::Save(savePath + ".xml");
+		XmlDocument::Release();
 
 		return true;
 	}
@@ -170,9 +181,9 @@ namespace Directus
 		// Free any memory allocated by the ImageImporter
 		imageImp._Get()->Clear();
 
-		if (!LoadFromFile(GetFilePathMetadata())) // Load metadata file
+		if (!LoadFromFile(m_resourceFilePath + METADATA_EXTENSION)) // Load metadata file
 		{
-			if (!SaveToFile(GetFilePathMetadata())) // If a metadata file doesn't exist, create one
+			if (!SaveToFile(m_resourceFilePath + METADATA_EXTENSION)) // If a metadata file doesn't exist, create one
 			{
 				return false; // if that failed too, well at least get the file path right mate
 			}
