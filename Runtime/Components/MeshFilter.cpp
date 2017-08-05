@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "MeshFilter.h"
 #include "Transform.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
@@ -81,18 +81,18 @@ namespace Directus
 
 	void MeshFilter::Serialize()
 	{
-		Serializer::WriteInt((int)m_meshType);
-		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetName() : (string)DATA_NOT_ASSIGNED);
-		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetID() : (string)DATA_NOT_ASSIGNED);
-		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetModelID() : (string)DATA_NOT_ASSIGNED);
+		StreamIO::WriteInt((int)m_meshType);
+		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetName() : (string)DATA_NOT_ASSIGNED);
+		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetID() : (string)DATA_NOT_ASSIGNED);
+		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetModelID() : (string)DATA_NOT_ASSIGNED);
 	}
 
 	void MeshFilter::Deserialize()
 	{
-		m_meshType = (MeshType)Serializer::ReadInt();
-		string meshName = Serializer::ReadSTR();
-		string meshID = Serializer::ReadSTR();
-		string modelID = Serializer::ReadSTR();
+		m_meshType = (MeshType)StreamIO::ReadInt();
+		string meshName = StreamIO::ReadSTR();
+		string meshID = StreamIO::ReadSTR();
+		string modelID = StreamIO::ReadSTR();
 
 		// If the mesh is a engine constructed primitive
 		if (m_meshType != Imported)

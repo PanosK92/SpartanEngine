@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshFilter.h"
 #include "RigidBody.h"
 #include "../Core/GameObject.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Graphics/Mesh.h"
 //===========================================================
@@ -98,16 +98,16 @@ namespace Directus
 
 	void Collider::Serialize()
 	{
-		Serializer::WriteInt(int(m_shapeType));
-		Serializer::WriteVector3(m_extents);
-		Serializer::WriteVector3(m_center);
+		StreamIO::WriteInt(int(m_shapeType));
+		StreamIO::WriteVector3(m_extents);
+		StreamIO::WriteVector3(m_center);
 	}
 
 	void Collider::Deserialize()
 	{
-		m_shapeType = ColliderShape(Serializer::ReadInt());
-		m_extents = Serializer::ReadVector3();
-		m_center = Serializer::ReadVector3();
+		m_shapeType = ColliderShape(StreamIO::ReadInt());
+		m_extents = StreamIO::ReadVector3();
+		m_center = StreamIO::ReadVector3();
 
 		UpdateShape();
 	}

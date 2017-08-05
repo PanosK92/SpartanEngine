@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 //===================================
 
 //= NAMESPACES ================
@@ -61,13 +61,13 @@ namespace Directus
 	//= IO =========================================================================
 	void Mesh::Serialize()
 	{
-		Serializer::WriteSTR(m_id);
-		Serializer::WriteSTR(m_gameObjID);
-		Serializer::WriteSTR(m_modelID);
-		Serializer::WriteSTR(m_name);
-		Serializer::WriteInt(m_vertexCount);
-		Serializer::WriteInt(m_indexCount);
-		Serializer::WriteInt(m_triangleCount);
+		StreamIO::WriteSTR(m_id);
+		StreamIO::WriteSTR(m_gameObjID);
+		StreamIO::WriteSTR(m_modelID);
+		StreamIO::WriteSTR(m_name);
+		StreamIO::WriteInt(m_vertexCount);
+		StreamIO::WriteInt(m_indexCount);
+		StreamIO::WriteInt(m_triangleCount);
 
 		for (const auto& vertex : m_vertices)
 		{
@@ -76,19 +76,19 @@ namespace Directus
 
 		for (const auto& index : m_indices)
 		{
-			Serializer::WriteInt(index);
+			StreamIO::WriteInt(index);
 		}
 	}
 
 	void Mesh::Deserialize()
 	{
-		m_id = Serializer::ReadSTR();
-		m_gameObjID = Serializer::ReadSTR();
-		m_modelID = Serializer::ReadSTR();
-		m_name = Serializer::ReadSTR();
-		m_vertexCount = Serializer::ReadInt();
-		m_indexCount = Serializer::ReadInt();
-		m_triangleCount = Serializer::ReadInt();
+		m_id = StreamIO::ReadSTR();
+		m_gameObjID = StreamIO::ReadSTR();
+		m_modelID = StreamIO::ReadSTR();
+		m_name = StreamIO::ReadSTR();
+		m_vertexCount = StreamIO::ReadInt();
+		m_indexCount = StreamIO::ReadInt();
+		m_triangleCount = StreamIO::ReadInt();
 
 		for (unsigned int i = 0; i < m_vertexCount; i++)
 		{
@@ -98,7 +98,7 @@ namespace Directus
 
 		for (unsigned int i = 0; i < m_indexCount; i++)
 		{
-			m_indices.push_back(Serializer::ReadInt());
+			m_indices.push_back(StreamIO::ReadInt());
 		}
 
 		m_boundingBox.ComputeFromMesh(this);
@@ -152,38 +152,38 @@ namespace Directus
 	//= IO =========================================================================
 	void Mesh::SaveVertex(const VertexPosTexNorTan& vertex)
 	{
-		Serializer::WriteFloat(vertex.position.x);
-		Serializer::WriteFloat(vertex.position.y);
-		Serializer::WriteFloat(vertex.position.z);
+		StreamIO::WriteFloat(vertex.position.x);
+		StreamIO::WriteFloat(vertex.position.y);
+		StreamIO::WriteFloat(vertex.position.z);
 
-		Serializer::WriteFloat(vertex.uv.x);
-		Serializer::WriteFloat(vertex.uv.y);
+		StreamIO::WriteFloat(vertex.uv.x);
+		StreamIO::WriteFloat(vertex.uv.y);
 
-		Serializer::WriteFloat(vertex.normal.x);
-		Serializer::WriteFloat(vertex.normal.y);
-		Serializer::WriteFloat(vertex.normal.z);
+		StreamIO::WriteFloat(vertex.normal.x);
+		StreamIO::WriteFloat(vertex.normal.y);
+		StreamIO::WriteFloat(vertex.normal.z);
 
-		Serializer::WriteFloat(vertex.tangent.x);
-		Serializer::WriteFloat(vertex.tangent.y);
-		Serializer::WriteFloat(vertex.tangent.z);
+		StreamIO::WriteFloat(vertex.tangent.x);
+		StreamIO::WriteFloat(vertex.tangent.y);
+		StreamIO::WriteFloat(vertex.tangent.z);
 	}
 
 	void Mesh::LoadVertex(VertexPosTexNorTan& vertex)
 	{
-		vertex.position.x = Serializer::ReadFloat();
-		vertex.position.y = Serializer::ReadFloat();
-		vertex.position.z = Serializer::ReadFloat();
+		vertex.position.x = StreamIO::ReadFloat();
+		vertex.position.y = StreamIO::ReadFloat();
+		vertex.position.z = StreamIO::ReadFloat();
 
-		vertex.uv.x = Serializer::ReadFloat();
-		vertex.uv.y = Serializer::ReadFloat();
+		vertex.uv.x = StreamIO::ReadFloat();
+		vertex.uv.y = StreamIO::ReadFloat();
 
-		vertex.normal.x = Serializer::ReadFloat();
-		vertex.normal.y = Serializer::ReadFloat();
-		vertex.normal.z = Serializer::ReadFloat();
+		vertex.normal.x = StreamIO::ReadFloat();
+		vertex.normal.y = StreamIO::ReadFloat();
+		vertex.normal.z = StreamIO::ReadFloat();
 
-		vertex.tangent.x = Serializer::ReadFloat();
-		vertex.tangent.y = Serializer::ReadFloat();
-		vertex.tangent.z = Serializer::ReadFloat();
+		vertex.tangent.x = StreamIO::ReadFloat();
+		vertex.tangent.y = StreamIO::ReadFloat();
+		vertex.tangent.z = StreamIO::ReadFloat();
 	}
 	//==============================================================================
 

@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Audio/Audio.h"
 #include "../FileSystem/FileSystem.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 //===================================
 
 //= NAMESPACES ================
@@ -107,26 +107,26 @@ namespace Directus
 	
 	void AudioSource::Serialize()
 	{
-		Serializer::WriteSTR(m_filePath);
-		Serializer::WriteBool(m_mute);
-		Serializer::WriteBool(m_playOnAwake);
-		Serializer::WriteBool(m_loop);
-		Serializer::WriteInt(m_priority);
-		Serializer::WriteFloat(m_volume);
-		Serializer::WriteFloat(m_pitch);
-		Serializer::WriteFloat(m_pan);
+		StreamIO::WriteSTR(m_filePath);
+		StreamIO::WriteBool(m_mute);
+		StreamIO::WriteBool(m_playOnAwake);
+		StreamIO::WriteBool(m_loop);
+		StreamIO::WriteInt(m_priority);
+		StreamIO::WriteFloat(m_volume);
+		StreamIO::WriteFloat(m_pitch);
+		StreamIO::WriteFloat(m_pan);
 	}
 	
 	void AudioSource::Deserialize()
 	{
-		m_filePath = Serializer::ReadSTR();
-		m_mute = Serializer::ReadBool();
-		m_playOnAwake = Serializer::ReadBool();
-		m_loop = Serializer::ReadBool();
-		m_priority = Serializer::ReadInt();
-		m_volume = Serializer::ReadFloat();
-		m_pitch = Serializer::ReadFloat();
-		m_pan = Serializer::ReadFloat();
+		m_filePath = StreamIO::ReadSTR();
+		m_mute = StreamIO::ReadBool();
+		m_playOnAwake = StreamIO::ReadBool();
+		m_loop = StreamIO::ReadBool();
+		m_priority = StreamIO::ReadInt();
+		m_volume = StreamIO::ReadFloat();
+		m_pitch = StreamIO::ReadFloat();
+		m_pan = StreamIO::ReadFloat();
 	
 		LoadAudioClip(m_filePath);
 	}

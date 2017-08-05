@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "Material.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
@@ -79,36 +79,36 @@ namespace Directus
 		if (!overwrite && FileSystem::FileExists(m_resourceFilePath))
 			return true;
 
-		if (!Serializer::StartWriting(m_resourceFilePath))
+		if (!StreamIO::StartWriting(m_resourceFilePath))
 			return false;
 
-		Serializer::WriteSTR(m_resourceID);
-		Serializer::WriteSTR(m_resourceName);
-		Serializer::WriteSTR(m_resourceFilePath);
-		Serializer::WriteSTR(m_modelID);	
-		Serializer::WriteInt(m_cullMode);
-		Serializer::WriteFloat(m_opacity);
-		Serializer::WriteBool(m_alphaBlending);
-		Serializer::WriteInt(m_shadingMode);
-		Serializer::WriteVector4(m_colorAlbedo);
-		Serializer::WriteFloat(m_roughnessMultiplier);
-		Serializer::WriteFloat(m_metallicMultiplier);
-		Serializer::WriteFloat(m_normalMultiplier);
-		Serializer::WriteFloat(m_heightMultiplier);
-		Serializer::WriteFloat(m_occlusionMultiplier);
-		Serializer::WriteFloat(m_specularMultiplier);
-		Serializer::WriteVector2(m_tilingUV);
-		Serializer::WriteVector2(m_offsetUV);
-		Serializer::WriteBool(m_isEditable);
+		StreamIO::WriteSTR(m_resourceID);
+		StreamIO::WriteSTR(m_resourceName);
+		StreamIO::WriteSTR(m_resourceFilePath);
+		StreamIO::WriteSTR(m_modelID);	
+		StreamIO::WriteInt(m_cullMode);
+		StreamIO::WriteFloat(m_opacity);
+		StreamIO::WriteBool(m_alphaBlending);
+		StreamIO::WriteInt(m_shadingMode);
+		StreamIO::WriteVector4(m_colorAlbedo);
+		StreamIO::WriteFloat(m_roughnessMultiplier);
+		StreamIO::WriteFloat(m_metallicMultiplier);
+		StreamIO::WriteFloat(m_normalMultiplier);
+		StreamIO::WriteFloat(m_heightMultiplier);
+		StreamIO::WriteFloat(m_occlusionMultiplier);
+		StreamIO::WriteFloat(m_specularMultiplier);
+		StreamIO::WriteVector2(m_tilingUV);
+		StreamIO::WriteVector2(m_offsetUV);
+		StreamIO::WriteBool(m_isEditable);
 
-		Serializer::WriteInt(int(m_textures.size()));
+		StreamIO::WriteInt(int(m_textures.size()));
 		for (const auto& texture : m_textures)
 		{
-			Serializer::WriteSTR(texture.second.second); // Texture Path
-			Serializer::WriteInt((int)texture.first); // Texture Type
+			StreamIO::WriteSTR(texture.second.second); // Texture Path
+			StreamIO::WriteInt((int)texture.first); // Texture Type
 		}
 
-		Serializer::StopWriting();
+		StreamIO::StopWriting();
 
 		return true;
 	}
@@ -125,33 +125,33 @@ namespace Directus
 	//= RESOURCE INTERFACE =====================================
 	bool Material::LoadFromFile(const string& filePath)
 	{
-		if (!Serializer::StartReading(filePath))
+		if (!StreamIO::StartReading(filePath))
 			return false;
 
-		m_resourceID = Serializer::ReadSTR();
-		m_resourceName = Serializer::ReadSTR();
-		m_resourceFilePath = Serializer::ReadSTR();
-		m_modelID = Serializer::ReadSTR();	
-		m_cullMode = CullMode(Serializer::ReadInt());
-		m_opacity = Serializer::ReadFloat();
-		m_alphaBlending = Serializer::ReadBool();
-		m_shadingMode = ShadingMode(Serializer::ReadInt());
-		m_colorAlbedo = Serializer::ReadVector4();
-		m_roughnessMultiplier = Serializer::ReadFloat();
-		m_metallicMultiplier = Serializer::ReadFloat();
-		m_normalMultiplier = Serializer::ReadFloat();
-		m_heightMultiplier = Serializer::ReadFloat();
-		m_occlusionMultiplier = Serializer::ReadFloat();
-		m_specularMultiplier = Serializer::ReadFloat();
-		m_tilingUV = Serializer::ReadVector2();
-		m_offsetUV = Serializer::ReadVector2();
-		m_isEditable = Serializer::ReadBool();
+		m_resourceID = StreamIO::ReadSTR();
+		m_resourceName = StreamIO::ReadSTR();
+		m_resourceFilePath = StreamIO::ReadSTR();
+		m_modelID = StreamIO::ReadSTR();	
+		m_cullMode = CullMode(StreamIO::ReadInt());
+		m_opacity = StreamIO::ReadFloat();
+		m_alphaBlending = StreamIO::ReadBool();
+		m_shadingMode = ShadingMode(StreamIO::ReadInt());
+		m_colorAlbedo = StreamIO::ReadVector4();
+		m_roughnessMultiplier = StreamIO::ReadFloat();
+		m_metallicMultiplier = StreamIO::ReadFloat();
+		m_normalMultiplier = StreamIO::ReadFloat();
+		m_heightMultiplier = StreamIO::ReadFloat();
+		m_occlusionMultiplier = StreamIO::ReadFloat();
+		m_specularMultiplier = StreamIO::ReadFloat();
+		m_tilingUV = StreamIO::ReadVector2();
+		m_offsetUV = StreamIO::ReadVector2();
+		m_isEditable = StreamIO::ReadBool();
 
-		int textureCount = Serializer::ReadInt();
+		int textureCount = StreamIO::ReadInt();
 		for (int i = 0; i < textureCount; i++)
 		{
-			string texPath = Serializer::ReadSTR();
-			TextureType texType = (TextureType)Serializer::ReadInt();
+			string texPath = StreamIO::ReadSTR();
+			TextureType texType = (TextureType)StreamIO::ReadInt();
 			auto texture = weak_ptr<Texture>();
 
 			// If the texture happens to be loaded, we might as well get a reference to it
@@ -163,7 +163,7 @@ namespace Directus
 			m_textures.insert(make_pair(texType, make_pair(texture, texPath)));
 		}
 
-		Serializer::StopReading();
+		StreamIO::StopReading();
 
 		// Load unloaded textures
 		for (auto& it : m_textures)

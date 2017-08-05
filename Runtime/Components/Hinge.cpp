@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================================
 #include "Hinge.h"
 #include "RigidBody.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Core/Scene.h"
 #include "../Core/GameObject.h"
 #include "../Physics/Physics.h"
@@ -90,35 +90,35 @@ namespace Directus
 
 	void Hinge::Serialize()
 	{
-		Serializer::WriteBool(m_isConnected);
+		StreamIO::WriteBool(m_isConnected);
 		if (m_isConnected)
 		{
 			if (!m_connectedGameObject.expired())
 			{
-				Serializer::WriteSTR(m_connectedGameObject._Get()->GetID());
+				StreamIO::WriteSTR(m_connectedGameObject._Get()->GetID());
 			}
 		}
 
-		Serializer::WriteVector3(m_axisA);
-		Serializer::WriteVector3(m_axisB);
-		Serializer::WriteVector3(m_pivotA);
-		Serializer::WriteVector3(m_pivotB);
+		StreamIO::WriteVector3(m_axisA);
+		StreamIO::WriteVector3(m_axisB);
+		StreamIO::WriteVector3(m_pivotA);
+		StreamIO::WriteVector3(m_pivotB);
 	}
 
 	void Hinge::Deserialize()
 	{
-		m_isConnected = Serializer::ReadBool();
+		m_isConnected = StreamIO::ReadBool();
 		if (m_isConnected)
 		{
 			// load gameobject
-			std::string gameObjectID = Serializer::ReadSTR();
+			std::string gameObjectID = StreamIO::ReadSTR();
 			m_connectedGameObject = g_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
 		}
 
-		m_axisA = Serializer::ReadVector3();
-		m_axisB = Serializer::ReadVector3();
-		m_pivotA = Serializer::ReadVector3();
-		m_pivotB = Serializer::ReadVector3();
+		m_axisA = StreamIO::ReadVector3();
+		m_axisB = StreamIO::ReadVector3();
+		m_pivotA = StreamIO::ReadVector3();
+		m_pivotB = StreamIO::ReadVector3();
 
 		m_isDirty = true;
 	}

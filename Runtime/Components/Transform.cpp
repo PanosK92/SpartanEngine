@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Transform.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Core/Scene.h"
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
@@ -78,22 +78,22 @@ namespace Directus
 
 	void Transform::Serialize()
 	{
-		Serializer::WriteVector3(m_positionLocal);
-		Serializer::WriteQuaternion(m_rotationLocal);
-		Serializer::WriteVector3(m_scaleLocal);
-		Serializer::WriteVector3(m_lookAt);
-		Serializer::WriteSTR(m_parent ? m_parent->GetID() : DATA_NOT_ASSIGNED);
+		StreamIO::WriteVector3(m_positionLocal);
+		StreamIO::WriteQuaternion(m_rotationLocal);
+		StreamIO::WriteVector3(m_scaleLocal);
+		StreamIO::WriteVector3(m_lookAt);
+		StreamIO::WriteSTR(m_parent ? m_parent->GetID() : DATA_NOT_ASSIGNED);
 	}
 
 	void Transform::Deserialize()
 	{
-		m_positionLocal = Serializer::ReadVector3();
-		m_rotationLocal = Serializer::ReadQuaternion();
-		m_scaleLocal = Serializer::ReadVector3();
-		m_lookAt = Serializer::ReadVector3();
+		m_positionLocal = StreamIO::ReadVector3();
+		m_rotationLocal = StreamIO::ReadQuaternion();
+		m_scaleLocal = StreamIO::ReadVector3();
+		m_lookAt = StreamIO::ReadVector3();
 
 		// get parent transform
-		string parentGameObjectID = Serializer::ReadSTR();
+		string parentGameObjectID = StreamIO::ReadSTR();
 		if (parentGameObjectID != DATA_NOT_ASSIGNED)
 		{
 			auto parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);

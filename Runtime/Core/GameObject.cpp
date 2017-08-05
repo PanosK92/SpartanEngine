@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameObject.h"
 #include "Scene.h"
 #include "GUIDGenerator.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Logging/Log.h"
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
@@ -111,7 +111,7 @@ namespace Directus
 	bool GameObject::SaveAsPrefab(const string& filePath)
 	{
 		// Try to create a prefab file
-		if (!Serializer::StartWriting(filePath + PREFAB_EXTENSION))
+		if (!StreamIO::StartWriting(filePath + PREFAB_EXTENSION))
 			return false;
 
 		m_isPrefab = true;
@@ -120,7 +120,7 @@ namespace Directus
 		Serialize();
 
 		// Close it
-		Serializer::StopWriting();
+		StreamIO::StopWriting();
 
 		return true;
 	}
@@ -132,14 +132,14 @@ namespace Directus
 			return false;
 
 		// Try to open it
-		if (!Serializer::StartReading(filePath))
+		if (!StreamIO::StartReading(filePath))
 			return false;
 
 		// Deserialize as usual...
 		Deserialize(nullptr);
 
 		// Close it
-		Serializer::StopReading();
+		StreamIO::StopReading();
 
 		return true;
 	}
@@ -147,19 +147,19 @@ namespace Directus
 	void GameObject::Serialize()
 	{
 		//= BASIC DATA ================================
-		Serializer::WriteBool(m_isPrefab);
-		Serializer::WriteBool(m_isActive);
-		Serializer::WriteBool(m_hierarchyVisibility);
-		Serializer::WriteSTR(m_ID);
-		Serializer::WriteSTR(m_name);		
+		StreamIO::WriteBool(m_isPrefab);
+		StreamIO::WriteBool(m_isActive);
+		StreamIO::WriteBool(m_hierarchyVisibility);
+		StreamIO::WriteSTR(m_ID);
+		StreamIO::WriteSTR(m_name);		
 		//=============================================
 
 		//= COMPONENTS ================================
-		Serializer::WriteInt((int)m_components.size());
+		StreamIO::WriteInt((int)m_components.size());
 		for (const auto& component : m_components)
 		{
-			Serializer::WriteSTR(component->g_type);
-			Serializer::WriteSTR(component->g_ID);
+			StreamIO::WriteSTR(component->g_type);
+			StreamIO::WriteSTR(component->g_ID);
 		}
 
 		for (const auto& component : m_components)
@@ -172,11 +172,11 @@ namespace Directus
 		vector<Transform*> children = GetTransform()->GetChildren();
 
 		// 1st - children count
-		Serializer::WriteInt((int)children.size());
+		StreamIO::WriteInt((int)children.size());
 
 		// 2nd - children IDs
 		for (const auto& child : children)
-			Serializer::WriteSTR(child->GetID());
+			StreamIO::WriteSTR(child->GetID());
 
 		// 3rd - children
 		for (const auto& child : children)
@@ -197,19 +197,19 @@ namespace Directus
 	void GameObject::Deserialize(Transform* parent)
 	{
 		//= BASIC DATA ================================
-		m_isPrefab = Serializer::ReadBool();
-		m_isActive = Serializer::ReadBool();
-		m_hierarchyVisibility = Serializer::ReadBool();
-		m_ID = Serializer::ReadSTR();
-		m_name = Serializer::ReadSTR();
+		m_isPrefab = StreamIO::ReadBool();
+		m_isActive = StreamIO::ReadBool();
+		m_hierarchyVisibility = StreamIO::ReadBool();
+		m_ID = StreamIO::ReadSTR();
+		m_name = StreamIO::ReadSTR();
 		//=============================================
 
 		//= COMPONENTS ================================
-		int componentCount = Serializer::ReadInt();
+		int componentCount = StreamIO::ReadInt();
 		for (int i = 0; i < componentCount; i++)
 		{
-			string type = Serializer::ReadSTR(); // load component's type
-			string id = Serializer::ReadSTR(); // load component's id
+			string type = StreamIO::ReadSTR(); // load component's type
+			string id = StreamIO::ReadSTR(); // load component's id
 
 			Component* component = AddComponentBasedOnType(type);
 			component->g_ID = id;
@@ -231,7 +231,7 @@ namespace Directus
 
 		//= CHILDREN ===================================
 		// 1st - children count
-		int childrenCount = Serializer::ReadInt();
+		int childrenCount = StreamIO::ReadInt();
 
 		// 2nd - children IDs
 		auto scene = m_context->GetSubsystem<Scene>();
@@ -239,7 +239,7 @@ namespace Directus
 		for (int i = 0; i < childrenCount; i++)
 		{
 			weakGameObj child = scene->CreateGameObject();
-			child._Get()->SetID(Serializer::ReadSTR());
+			child._Get()->SetID(StreamIO::ReadSTR());
 			children.push_back(child);
 		}
 
