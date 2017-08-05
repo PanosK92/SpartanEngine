@@ -87,7 +87,7 @@ namespace Directus
 	void MeshRenderer::Deserialize()
 	{
 		m_materialType = (MaterialType)Serializer::ReadInt();
-		string filePath = Serializer::ReadSTR();
+		string materialFilePath = Serializer::ReadSTR();
 		m_castShadows = Serializer::ReadBool();
 		m_receiveShadows = Serializer::ReadBool();
 
@@ -95,7 +95,7 @@ namespace Directus
 		// No need to load anything as it will overwrite what the skybox component did.
 		if (m_materialType != Material_Skybox)
 		{
-			m_materialType == Material_Imported ? LoadMaterial(filePath) : SetMaterial(m_materialType);
+			m_materialType == Material_Imported ? SetMaterialFromFile(materialFilePath) : SetMaterialByType(m_materialType);
 		}
 	}
 	//==============================================================================
@@ -103,29 +103,28 @@ namespace Directus
 	//= MISC =======================================================================
 	void MeshRenderer::Render(unsigned int indexCount)
 	{
-		auto materialWeakPTr = GetMaterial();
-
-		if (materialWeakPTr.expired()) // Check if a material exists
+		// Check if a material exists
+		if (m_material.expired()) 
 		{
 			LOG_WARNING("GameObject \"" + GetGameObjectName() + "\" has no material. It can't be rendered.");
 			return;
 		}
 
-		if (!materialWeakPTr._Get()->HasShader()) // Check if the material has a shader
+		if (!m_material._Get()->HasShader()) // Check if the material has a shader
 		{
 			LOG_WARNING("GameObject \"" + GetGameObjectName() + "\" has a material but not a shader associated with it. It can't be rendered.");
 			return;
 		}
 
-		// Set the buffers and draw
-		materialWeakPTr._Get()->GetShader()._Get()->Render(indexCount);
+		// Get it's shader and render
+		m_material._Get()->GetShader()._Get()->Render(indexCount);
 	}
 
 	//==============================================================================
 
 	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
-	void MeshRenderer::SetMaterial(weak_ptr<Material> material)
+	void MeshRenderer::SetMaterialFromMemory(weak_ptr<Material> material)
 	{
 		if (material.expired())
 		{
@@ -136,7 +135,20 @@ namespace Directus
 		m_material = g_context->GetSubsystem<ResourceManager>()->Add(material.lock());
 	}
 
-	void MeshRenderer::SetMaterial(MaterialType type)
+	weak_ptr<Material> MeshRenderer::SetMaterialFromFile(const string& filePath)
+	{
+		// Load the material
+		shared_ptr<Material> material = make_shared<Material>(g_context);
+		material->LoadFromFile(filePath);
+
+		// Set it as the current material
+		SetMaterialFromMemory(material);
+
+		// Return it
+		return GetMaterial();
+	}
+
+	void MeshRenderer::SetMaterialByType(MaterialType type)
 	{
 		shared_ptr<Material> material;
 
@@ -163,27 +175,29 @@ namespace Directus
 			break;
 		}
 
-		SetMaterial(material);
+		SetMaterialFromMemory(material);
 	}
 
-	weak_ptr<Material> MeshRenderer::SetMaterial(const string& ID)
+	weak_ptr<Material> MeshRenderer::SetMaterialByID(const string& ID)
 	{
-		auto material = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Material>(ID);
-		SetMaterial(material);
-		return GetMaterial();
-	}
+		// Get the material from the resource cache
+		weak_ptr<Material> material = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Material>(ID);	
+		if (material.expired())
+		{
+			LOG_WARNING("Failed to set material. Material with ID \"" + ID + "\" doesn't exist");
+			return weak_ptr<Material>();
+		}
 
-	weak_ptr<Material> MeshRenderer::LoadMaterial(const string& filePath)
-	{
-		auto material = g_context->GetSubsystem<ResourceManager>()->Load<Material>(filePath);
-		SetMaterial(material);
+		// Set it as the current material
+		SetMaterialFromMemory(material);
+
+		// Return it
 		return GetMaterial();
 	}
+	//==============================================================================
 
 	string MeshRenderer::GetGameObjectName()
 	{
 		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
 	}
-
-	//==============================================================================
 }

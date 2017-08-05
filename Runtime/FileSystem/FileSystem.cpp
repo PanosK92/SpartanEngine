@@ -106,6 +106,10 @@ namespace Directus
 
 		// Set supported model formats
 		{
+			// Engine format
+			m_supportedModelFormats.push_back(MODEL_EXTENSION);
+
+			// Foreign formats
 			m_supportedModelFormats.push_back(".3ds");
 			m_supportedModelFormats.push_back(".obj");
 			m_supportedModelFormats.push_back(".fbx");
@@ -167,6 +171,11 @@ namespace Directus
 		return fs::exists(directory);
 	}
 
+	bool FileSystem::IsDirectory(const string& directory)
+	{
+		return fs::is_directory(directory);
+	}
+
 	bool FileSystem::OpenDirectoryInExplorer(const string& directory)
 	{
 		HINSTANCE result = ShellExecute(nullptr, L"open", ToWString(directory).c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
@@ -212,7 +221,7 @@ namespace Directus
 		bool result = false;
 		try 
 		{
-			result = fs::copy_file(source, destination, fs::copy_options::overwrite_existing);
+			result = copy_file(source, destination, fs::copy_options::overwrite_existing);
 		}
 		catch (fs::filesystem_error& e) 
 		{

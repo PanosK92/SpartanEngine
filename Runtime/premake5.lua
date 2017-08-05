@@ -25,6 +25,7 @@ links { "assimp" }
 links { "fmod64_vc" }
 links { "FreeImageLib" }
 links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
+links { "pugixml" }
 
 -- Includes
 includedirs { "../ThirdParty/AngelScript_2.31.2" }
@@ -32,6 +33,7 @@ includedirs { "../ThirdParty/Assimp_3.3.1" }
 includedirs { "../ThirdParty/Bullet_2.86.1" }
 includedirs { "../ThirdParty/FMOD_1.09.05" }
 includedirs { "../ThirdParty/FreeImage_3.17.0" }
+includedirs { "../ThirdParty/pugixml_1.8" }
 
 filter "configurations:Debug"
 	defines { "DEBUG" }

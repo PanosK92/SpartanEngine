@@ -61,7 +61,11 @@ namespace Directus
 			{
 				m_resourceCache->Add(resource);
 			}
-			
+			else
+			{
+				LOG_WARNING("Resource \"" + filePath + "\" failed to load");
+			}
+
 			auto typedResource = GetResourceByPath<T>(filePath);
 			return typedResource;
 		}

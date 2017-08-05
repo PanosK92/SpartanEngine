@@ -214,11 +214,9 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
         //= DROP CASE: DIRECTORY ==========================
         if (fileInfo.isDir()) // The user dropped a folder
         {
-            vector<string> modelFilePaths = FileSystem::GetSupportedModelFilesInDirectory(filePath);
-            if (modelFilePaths.size() != 0)
-            {
-                m_fileDialog->OpenModeImmediatly(modelFilePaths.front());
-            }
+            // Pass the directory as a model filepath and the engine
+            // will figure out if there is a model in there
+            m_fileDialog->OpenModeImmediatly(filePath);
         }
         //= DROP CASE: FILE ==================================
         else if(fileInfo.isFile()) // The user dropped a file
@@ -323,11 +321,18 @@ void DirectusFileExplorer::RenameSelectedItem()
 
 void DirectusFileExplorer::DoubleClick(QModelIndex modelIndex)
 {
-    // Update file model to so this path
+    std::string selectedItemPath = m_fileModel->fileInfo(modelIndex).absoluteFilePath().toStdString();
+    // If the user double click on a folder, open this directory
     if (m_fileModel->fileInfo(modelIndex).isDir())
     {
-        QString path = m_fileModel->fileInfo(modelIndex).absoluteFilePath();
-        this->SetRootPath(path);
+        this->SetRootPath(QString::fromStdString(selectedItemPath));
+        return;
+    }
+
+    // If the user double clicked on a engine model file, load it
+    if (FileSystem::IsEngineModelFile(selectedItemPath))
+    {
+        m_fileDialog->OpenModeImmediatly(selectedItemPath);
     }
 }
 
