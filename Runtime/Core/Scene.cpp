@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "Scene.h"
 #include <complex>
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 #include "../Graphics//Renderer.h"
@@ -144,12 +144,12 @@ namespace Directus
 		// Save any in-memory changes done to resources while running.
 		m_context->GetSubsystem<ResourceManager>()->SaveResourceMetadata();
 
-		if (!Serializer::StartWriting(filePath))
+		if (!StreamIO::StartWriting(filePath))
 			return false;
 
 		//= Save currently loaded resource paths =======================================================
 		vector<string> resourcePaths = m_context->GetSubsystem<ResourceManager>()->GetResourceFilePaths();
-		Serializer::WriteVectorSTR(resourcePaths);
+		StreamIO::WriteVectorSTR(resourcePaths);
 		//==============================================================================================
 
 		//= Save GameObjects ============================
@@ -157,12 +157,12 @@ namespace Directus
 		vector<weakGameObj> rootGameObjects = GetRootGameObjects();
 
 		// 1st - GameObject count
-		Serializer::WriteInt((int)rootGameObjects.size());
+		StreamIO::WriteInt((int)rootGameObjects.size());
 
 		// 2nd - GameObject IDs
 		for (const auto& root : rootGameObjects)
 		{
-			Serializer::WriteSTR(root._Get()->GetID());
+			StreamIO::WriteSTR(root._Get()->GetID());
 		}
 
 		// 3rd - GameObjects
@@ -172,7 +172,7 @@ namespace Directus
 		}
 		//==============================================
 
-		Serializer::StopWriting();
+		StreamIO::StopWriting();
 
 		return true;
 	}
@@ -188,11 +188,11 @@ namespace Directus
 		Clear();
 
 		// Read all the resource file paths
-		if (!Serializer::StartReading(filePath))
+		if (!StreamIO::StartReading(filePath))
 			return false;
 
-		vector<string> resourcePaths = Serializer::ReadVectorSTR();
-		Serializer::StopReading();
+		vector<string> resourcePaths = StreamIO::ReadVectorSTR();
+		StreamIO::StopReading();
 
 		// Load all all these resources
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
@@ -217,22 +217,22 @@ namespace Directus
 		}
 
 
-		if (!Serializer::StartReading(filePath))
+		if (!StreamIO::StartReading(filePath))
 			return false;
 
 		// Read our way through the resource paths
-		Serializer::ReadVectorSTR();
+		StreamIO::ReadVectorSTR();
 
 		//= Load GameObjects ============================	
 		// 1st - GameObject count
-		int rootGameObjectCount = Serializer::ReadInt();
+		int rootGameObjectCount = StreamIO::ReadInt();
 
 		// 2nd - GameObject IDs
 		for (int i = 0; i < rootGameObjectCount; i++)
 		{
 
 			auto gameObj = CreateGameObject().lock();
-			gameObj->SetID(Serializer::ReadSTR());
+			gameObj->SetID(StreamIO::ReadSTR());
 		}
 
 		// 3rd - GameObjects
@@ -245,7 +245,7 @@ namespace Directus
 			m_gameObjects[i]->Deserialize(nullptr);
 		}
 
-		Serializer::StopReading();
+		StreamIO::StopReading();
 		//==============================================
 
 		Resolve();

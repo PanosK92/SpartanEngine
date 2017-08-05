@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Script.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
 //===================================
@@ -82,12 +82,12 @@ namespace Directus
 
 	void Script::Serialize()
 	{
-		Serializer::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)DATA_NOT_ASSIGNED);
+		StreamIO::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)DATA_NOT_ASSIGNED);
 	}
 
 	void Script::Deserialize()
 	{
-		string scriptPath = Serializer::ReadSTR();
+		string scriptPath = StreamIO::ReadSTR();
 
 		if (scriptPath != DATA_NOT_ASSIGNED)
 		{

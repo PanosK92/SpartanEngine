@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Camera.h"
 #include "Transform.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Core/Settings.h"
 #include "../Components/MeshFilter.h"
 #include "../Components/Skybox.h"
@@ -111,20 +111,20 @@ namespace Directus
 
 	void Camera::Serialize()
 	{
-		Serializer::WriteVector4(m_clearColor);
-		Serializer::WriteInt(int(m_projection));
-		Serializer::WriteFloat(m_fovHorizontal);
-		Serializer::WriteFloat(m_nearPlane);
-		Serializer::WriteFloat(m_farPlane);
+		StreamIO::WriteVector4(m_clearColor);
+		StreamIO::WriteInt(int(m_projection));
+		StreamIO::WriteFloat(m_fovHorizontal);
+		StreamIO::WriteFloat(m_nearPlane);
+		StreamIO::WriteFloat(m_farPlane);
 	}
 
 	void Camera::Deserialize()
 	{
-		m_clearColor = Serializer::ReadVector4();
-		m_projection = Projection(Serializer::ReadInt());
-		m_fovHorizontal = Serializer::ReadFloat();
-		m_nearPlane = Serializer::ReadFloat();
-		m_farPlane = Serializer::ReadFloat();
+		m_clearColor = StreamIO::ReadVector4();
+		m_projection = Projection(StreamIO::ReadInt());
+		m_fovHorizontal = StreamIO::ReadFloat();
+		m_nearPlane = StreamIO::ReadFloat();
+		m_farPlane = StreamIO::ReadFloat();
 
 		CalculateBaseView();
 		CalculateViewMatrix();

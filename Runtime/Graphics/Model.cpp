@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Vertex.h"
 #include "../Graphics/Material.h"
 #include "../Graphics/Shaders/ShaderVariation.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 //==============================================
 
 //= NAMESPACES ================
@@ -97,21 +97,21 @@ namespace Directus
 			savePath = m_resourceFilePath;
 		}
 
-		if (!Serializer::StartWriting(savePath))
+		if (!StreamIO::StartWriting(savePath))
 			return false;
 
-		Serializer::WriteSTR(m_resourceID);
-		Serializer::WriteSTR(m_resourceName);
-		Serializer::WriteSTR(m_resourceFilePath);
-		Serializer::WriteFloat(m_normalizedScale);
-		Serializer::WriteInt((int)m_meshes.size());
+		StreamIO::WriteSTR(m_resourceID);
+		StreamIO::WriteSTR(m_resourceName);
+		StreamIO::WriteSTR(m_resourceFilePath);
+		StreamIO::WriteFloat(m_normalizedScale);
+		StreamIO::WriteInt((int)m_meshes.size());
 
 		for (const auto& mesh : m_meshes)
 		{
 			mesh->Serialize();
 		}
 
-		Serializer::StopWriting();
+		StreamIO::StopWriting();
 
 		return true;
 	}
@@ -209,14 +209,14 @@ namespace Directus
 	bool Model::LoadFromEngineFormat(const string& filePath)
 	{
 		// Deserialize
-		if (!Serializer::StartReading(filePath))
+		if (!StreamIO::StartReading(filePath))
 			return false;
 
-		m_resourceID = Serializer::ReadSTR();
-		m_resourceName = Serializer::ReadSTR();
-		m_resourceFilePath = Serializer::ReadSTR();
-		m_normalizedScale = Serializer::ReadFloat();
-		int meshCount = Serializer::ReadInt();
+		m_resourceID = StreamIO::ReadSTR();
+		m_resourceName = StreamIO::ReadSTR();
+		m_resourceFilePath = StreamIO::ReadSTR();
+		m_normalizedScale = StreamIO::ReadFloat();
+		int meshCount = StreamIO::ReadInt();
 
 		for (int i = 0; i < meshCount; i++)
 		{
@@ -225,7 +225,7 @@ namespace Directus
 			AddMesh(mesh);
 		}
 
-		Serializer::StopReading();
+		StreamIO::StopReading();
 
 		return true;
 	}

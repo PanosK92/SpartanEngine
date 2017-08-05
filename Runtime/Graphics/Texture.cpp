@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================================
 #include "Texture.h"
 #include "../Core/GUIDGenerator.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Logging/Log.h"
 #include "../Core/Helper.h"
 #include "../Resource/Import/ImageImporter.h"
@@ -76,21 +76,21 @@ namespace Directus
 			savePath = GetFilePathMetadata();
 		}
 
-		if (!Serializer::StartWriting(savePath))
+		if (!StreamIO::StartWriting(savePath))
 			return false;
 
-		Serializer::WriteSTR(METADATA_TYPE_TEXTURE);
-		Serializer::WriteSTR(m_resourceID);
-		Serializer::WriteSTR(m_resourceName);
-		Serializer::WriteSTR(m_resourceFilePath);
-		Serializer::WriteInt(m_width);
-		Serializer::WriteInt(m_height);
-		Serializer::WriteInt(int(m_textureType));
-		Serializer::WriteBool(m_grayscale);
-		Serializer::WriteBool(m_transparency);
-		Serializer::WriteBool(m_generateMipchain);
+		StreamIO::WriteSTR(METADATA_TYPE_TEXTURE);
+		StreamIO::WriteSTR(m_resourceID);
+		StreamIO::WriteSTR(m_resourceName);
+		StreamIO::WriteSTR(m_resourceFilePath);
+		StreamIO::WriteInt(m_width);
+		StreamIO::WriteInt(m_height);
+		StreamIO::WriteInt(int(m_textureType));
+		StreamIO::WriteBool(m_grayscale);
+		StreamIO::WriteBool(m_transparency);
+		StreamIO::WriteBool(m_generateMipchain);
 
-		Serializer::StopWriting();
+		StreamIO::StopWriting();
 
 		return true;
 	}
@@ -183,23 +183,23 @@ namespace Directus
 
 	bool Texture::LoadMetadata(const string& filePath)
 	{
-		if (!Serializer::StartReading(filePath))
+		if (!StreamIO::StartReading(filePath))
 			return false;
 
-		if (Serializer::ReadSTR() == METADATA_TYPE_TEXTURE)
+		if (StreamIO::ReadSTR() == METADATA_TYPE_TEXTURE)
 		{
-			m_resourceID = Serializer::ReadSTR();
-			m_resourceName = Serializer::ReadSTR();
-			m_resourceFilePath = Serializer::ReadSTR();
-			m_width = Serializer::ReadInt();
-			m_height = Serializer::ReadInt();
-			m_textureType = TextureType(Serializer::ReadInt());
-			m_grayscale = Serializer::ReadBool();
-			m_transparency = Serializer::ReadBool();
-			m_generateMipchain = Serializer::ReadBool();
+			m_resourceID = StreamIO::ReadSTR();
+			m_resourceName = StreamIO::ReadSTR();
+			m_resourceFilePath = StreamIO::ReadSTR();
+			m_width = StreamIO::ReadInt();
+			m_height = StreamIO::ReadInt();
+			m_textureType = TextureType(StreamIO::ReadInt());
+			m_grayscale = StreamIO::ReadBool();
+			m_transparency = StreamIO::ReadBool();
+			m_generateMipchain = StreamIO::ReadBool();
 		}
 
-		Serializer::StopReading();
+		StreamIO::StopReading();
 
 		return true;
 	}

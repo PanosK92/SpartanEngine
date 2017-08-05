@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/GUIDGenerator.h"
 #include "../../Logging/Log.h"
 #include "../../Core/Settings.h"
-#include "../../IO/Serializer.h"
+#include "../../IO/StreamIO.h"
 //===================================
 
 //= NAMESPACES ================
@@ -95,23 +95,23 @@ namespace Directus
 
 	bool ShaderVariation::LoadFromFile(const string& filePath)
 	{
-		if (!Serializer::StartReading(filePath))
+		if (!StreamIO::StartReading(filePath))
 			return false;
 
-		m_resourceID = Serializer::ReadSTR();
-		m_resourceName = Serializer::ReadSTR();
-		m_resourceFilePath = Serializer::ReadSTR();
-		m_hasAlbedoTexture = Serializer::ReadBool();
-		m_hasRoughnessTexture = Serializer::ReadBool();
-		m_hasMetallicTexture = Serializer::ReadBool();
-		m_hasNormalTexture = Serializer::ReadBool();
-		m_hasHeightTexture = Serializer::ReadBool();
-		m_hasOcclusionTexture = Serializer::ReadBool();
-		m_hasEmissionTexture = Serializer::ReadBool();
-		m_hasMaskTexture = Serializer::ReadBool();
-		m_hasCubeMap = Serializer::ReadBool();
+		m_resourceID = StreamIO::ReadSTR();
+		m_resourceName = StreamIO::ReadSTR();
+		m_resourceFilePath = StreamIO::ReadSTR();
+		m_hasAlbedoTexture = StreamIO::ReadBool();
+		m_hasRoughnessTexture = StreamIO::ReadBool();
+		m_hasMetallicTexture = StreamIO::ReadBool();
+		m_hasNormalTexture = StreamIO::ReadBool();
+		m_hasHeightTexture = StreamIO::ReadBool();
+		m_hasOcclusionTexture = StreamIO::ReadBool();
+		m_hasEmissionTexture = StreamIO::ReadBool();
+		m_hasMaskTexture = StreamIO::ReadBool();
+		m_hasCubeMap = StreamIO::ReadBool();
 
-		Serializer::StopReading();
+		StreamIO::StopReading();
 
 		return true;
 	}
@@ -131,23 +131,23 @@ namespace Directus
 			savePath += SHADER_EXTENSION;
 		}
 
-		if (!Serializer::StartWriting(savePath))
+		if (!StreamIO::StartWriting(savePath))
 			return false;
 
-		Serializer::WriteSTR(m_resourceID);
-		Serializer::WriteSTR(m_resourceName);
-		Serializer::WriteSTR(m_resourceFilePath);
-		Serializer::WriteBool(m_hasAlbedoTexture);
-		Serializer::WriteBool(m_hasRoughnessTexture);
-		Serializer::WriteBool(m_hasMetallicTexture);
-		Serializer::WriteBool(m_hasNormalTexture);
-		Serializer::WriteBool(m_hasHeightTexture);
-		Serializer::WriteBool(m_hasOcclusionTexture);
-		Serializer::WriteBool(m_hasEmissionTexture);
-		Serializer::WriteBool(m_hasMaskTexture);
-		Serializer::WriteBool(m_hasCubeMap);
+		StreamIO::WriteSTR(m_resourceID);
+		StreamIO::WriteSTR(m_resourceName);
+		StreamIO::WriteSTR(m_resourceFilePath);
+		StreamIO::WriteBool(m_hasAlbedoTexture);
+		StreamIO::WriteBool(m_hasRoughnessTexture);
+		StreamIO::WriteBool(m_hasMetallicTexture);
+		StreamIO::WriteBool(m_hasNormalTexture);
+		StreamIO::WriteBool(m_hasHeightTexture);
+		StreamIO::WriteBool(m_hasOcclusionTexture);
+		StreamIO::WriteBool(m_hasEmissionTexture);
+		StreamIO::WriteBool(m_hasMaskTexture);
+		StreamIO::WriteBool(m_hasCubeMap);
 	
-		Serializer::StopWriting();
+		StreamIO::StopWriting();
 
 		return true;
 	}

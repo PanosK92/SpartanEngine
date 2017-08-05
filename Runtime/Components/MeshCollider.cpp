@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btTriangleMesh.h>
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
 #include "../Physics/BulletPhysicsHelper.h"
@@ -82,14 +82,14 @@ namespace Directus
 
 	void MeshCollider::Serialize()
 	{
-		Serializer::WriteBool(m_isConvex);
-		Serializer::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
+		StreamIO::WriteBool(m_isConvex);
+		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
 	}
 
 	void MeshCollider::Deserialize()
 	{
-		m_isConvex = Serializer::ReadBool();
-		string meshID = Serializer::ReadSTR();
+		m_isConvex = StreamIO::ReadBool();
+		string meshID = StreamIO::ReadSTR();
 
 		auto models = g_context->GetSubsystem<ResourceManager>()->GetResourcesByType<Model>();
 		for (const auto& model : models)

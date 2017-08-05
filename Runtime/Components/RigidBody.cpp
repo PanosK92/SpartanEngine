@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/Physics.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Math/Quaternion.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -140,28 +140,28 @@ namespace Directus
 
 	void RigidBody::Serialize()
 	{
-		Serializer::WriteFloat(m_mass);
-		Serializer::WriteFloat(m_drag);
-		Serializer::WriteFloat(m_angularDrag);
-		Serializer::WriteFloat(m_restitution);
-		Serializer::WriteBool(m_useGravity);
-		Serializer::WriteVector3(m_gravity);
-		Serializer::WriteBool(m_isKinematic);
-		Serializer::WriteVector3(m_positionLock);
-		Serializer::WriteVector3(m_rotationLock);
+		StreamIO::WriteFloat(m_mass);
+		StreamIO::WriteFloat(m_drag);
+		StreamIO::WriteFloat(m_angularDrag);
+		StreamIO::WriteFloat(m_restitution);
+		StreamIO::WriteBool(m_useGravity);
+		StreamIO::WriteVector3(m_gravity);
+		StreamIO::WriteBool(m_isKinematic);
+		StreamIO::WriteVector3(m_positionLock);
+		StreamIO::WriteVector3(m_rotationLock);
 	}
 
 	void RigidBody::Deserialize()
 	{
-		m_mass = Serializer::ReadFloat();
-		m_drag = Serializer::ReadFloat();
-		m_angularDrag = Serializer::ReadFloat();
-		m_restitution = Serializer::ReadFloat();
-		m_useGravity = Serializer::ReadBool();
-		m_gravity = Serializer::ReadVector3();
-		m_isKinematic = Serializer::ReadBool();
-		m_positionLock = Serializer::ReadVector3();
-		m_rotationLock = Serializer::ReadVector3();
+		m_mass = StreamIO::ReadFloat();
+		m_drag = StreamIO::ReadFloat();
+		m_angularDrag = StreamIO::ReadFloat();
+		m_restitution = StreamIO::ReadFloat();
+		m_useGravity = StreamIO::ReadBool();
+		m_gravity = StreamIO::ReadVector3();
+		m_isKinematic = StreamIO::ReadBool();
+		m_positionLock = StreamIO::ReadVector3();
+		m_rotationLock = StreamIO::ReadVector3();
 
 		AddBodyToWorld();
 	}

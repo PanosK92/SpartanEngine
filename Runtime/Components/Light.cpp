@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Core/Scene.h"
 #include "../Core/Settings.h"
 #include "../Core/Context.h"
@@ -148,22 +148,22 @@ namespace Directus
 
 	void Light::Serialize()
 	{
-		Serializer::WriteInt(int(m_lightType));
-		Serializer::WriteInt(int(m_shadowType));
-		Serializer::WriteVector4(m_color);
-		Serializer::WriteFloat(m_range);
-		Serializer::WriteFloat(m_intensity);
-		Serializer::WriteFloat(m_bias);
+		StreamIO::WriteInt(int(m_lightType));
+		StreamIO::WriteInt(int(m_shadowType));
+		StreamIO::WriteVector4(m_color);
+		StreamIO::WriteFloat(m_range);
+		StreamIO::WriteFloat(m_intensity);
+		StreamIO::WriteFloat(m_bias);
 	}
 
 	void Light::Deserialize()
 	{
-		m_lightType = LightType(Serializer::ReadInt());
-		m_shadowType = ShadowType(Serializer::ReadInt());
-		m_color = Serializer::ReadVector4();
-		m_range = Serializer::ReadFloat();
-		m_intensity = Serializer::ReadFloat();
-		m_bias = Serializer::ReadFloat();
+		m_lightType = LightType(StreamIO::ReadInt());
+		m_shadowType = ShadowType(StreamIO::ReadInt());
+		m_color = StreamIO::ReadVector4();
+		m_range = StreamIO::ReadFloat();
+		m_intensity = StreamIO::ReadFloat();
+		m_bias = StreamIO::ReadFloat();
 	}
 
 	void Light::SetLightType(LightType type)

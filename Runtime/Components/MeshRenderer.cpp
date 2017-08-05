@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "MeshRenderer.h"
 #include "Transform.h"
-#include "../IO/Serializer.h"
+#include "../IO/StreamIO.h"
 #include "../Logging/Log.h"
 #include "../Core/GameObject.h"
 #include "../Graphics/Shaders/ShaderVariation.h"
@@ -78,18 +78,18 @@ namespace Directus
 
 	void MeshRenderer::Serialize()
 	{
-		Serializer::WriteInt((int)m_materialType);
-		Serializer::WriteSTR(!m_material.expired() ? m_material._Get()->GetResourceFilePath() : (string)DATA_NOT_ASSIGNED);
-		Serializer::WriteBool(m_castShadows);
-		Serializer::WriteBool(m_receiveShadows);
+		StreamIO::WriteInt((int)m_materialType);
+		StreamIO::WriteSTR(!m_material.expired() ? m_material._Get()->GetResourceFilePath() : (string)DATA_NOT_ASSIGNED);
+		StreamIO::WriteBool(m_castShadows);
+		StreamIO::WriteBool(m_receiveShadows);
 	}
 
 	void MeshRenderer::Deserialize()
 	{
-		m_materialType = (MaterialType)Serializer::ReadInt();
-		string materialFilePath = Serializer::ReadSTR();
-		m_castShadows = Serializer::ReadBool();
-		m_receiveShadows = Serializer::ReadBool();
+		m_materialType = (MaterialType)StreamIO::ReadInt();
+		string materialFilePath = StreamIO::ReadSTR();
+		m_castShadows = StreamIO::ReadBool();
+		m_receiveShadows = StreamIO::ReadBool();
 
 		// The Skybox material and texture is managed by the skybox component.
 		// No need to load anything as it will overwrite what the skybox component did.
