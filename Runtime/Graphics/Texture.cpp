@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/DDSTextureImporter.h"
 #include "../Resource/ResourceManager.h"
 #include "D3D11/D3D11Texture.h"
-#include "../IO/XmlIO.h"
+#include "../IO/XmlDocument.h"
 //================================================
 
 //= NAMESPACES =====
