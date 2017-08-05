@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==============
-#include "XmlIO.h"
+#include "XmlDocument.h"
 #include "pugixml.hpp"
 #include "../Logging/Log.h"
 //=========================
