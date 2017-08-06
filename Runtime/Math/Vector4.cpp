@@ -24,55 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Matrix.h"
 //==================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace Directus
 {
 	namespace Math
 	{
 		const Vector4 Vector4::Zero(0.0f, 0.0f, 0.0f, 0.0f);
-
-		Vector4::Vector4()
-		{
-			x = 0;
-			y = 0;
-			z = 0;
-			w = 0;
-		}
-
-		Vector4::Vector4(float x, float y, float z, float w)
-		{
-			this->x = x;
-			this->y = y;
-			this->z = z;
-			this->w = w;
-		}
-
-		Vector4::Vector4(float value)
-		{
-			this->x = value;
-			this->y = value;
-			this->z = value;
-			this->w = value;
-		}
-
-		Vector4::~Vector4()
-		{
-		}
-
-		bool Vector4::operator==(const Vector4& b)
-		{
-			if (this->x == b.x && this->y == b.y && this->z == b.z && this->w == b.w)
-				return true;
-
-			return false;
-		}
-
-		bool Vector4::operator!=(const Vector4& b)
-		{
-			if (this->x != b.x | this->y != b.y | this->z != b.z | this->w != b.w)
-				return true;
-
-			return false;
-		}
 
 		Vector4 Vector4::Transform(const Vector3& lhs, const Matrix& rhs)
 		{
@@ -83,6 +43,13 @@ namespace Directus
 			result.w = 1 / ((lhs.x * rhs.m03) + (lhs.y * rhs.m13) + (lhs.z * rhs.m23) + rhs.m33);
 
 			return result;
+		}
+
+		string Vector4::ToString() const
+		{
+			char tempBuffer[200];
+			sprintf(tempBuffer, "X:%f, Y:%f, Z:%f, W:%f", x, y, z, w);
+			return string(tempBuffer);
 		}
 	}
 }

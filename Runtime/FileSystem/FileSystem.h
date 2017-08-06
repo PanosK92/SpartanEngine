@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DATA_NOT_ASSIGNED "N/A"
 
 //= METADATA ===============================
-#define METADATA_EXTENSION ".meta"
+#define METADATA_EXTENSION ".xml"
 #define METADATA_TYPE_TEXTURE "Texture"
 #define METADATA_TYPE_AUDIOCLIP "Audio_Clip"
 //==========================================
@@ -98,12 +98,13 @@ namespace Directus
 		static bool IsEngineMetadataFile(const std::string& filePath);
 		//=============================================================
 
-		//= STRING PARSING =========================================================================================
+		//= STRING PARSING =============================================================================================================================
 		static std::string GetStringAfterExpression(const std::string& str, const std::string& expression);
+		static std::string GetStringBetweenExpressions(const std::string& str, const std::string& firstExpression, const std::string& secondExpression);
 		static std::string ConvertToUppercase(const std::string& lower);
 		static std::wstring ToWString(const std::string& str);
 		static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
-		//==========================================================================================================
+		//==============================================================================================================================================
 
 		//= SUPPORTED ASSET FILE FORMATS ===========================
 		static std::vector<std::string> GetSupportedImageFormats();

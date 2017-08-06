@@ -552,7 +552,7 @@ namespace Directus
 		if (cdLen > MAX_FILENAME_LEN || cdLen < ABSOLUTE_NAME_START + 1 ||
 			afLen > MAX_FILENAME_LEN || afLen < ABSOLUTE_NAME_START + 1)
 		{
-			return DATA_NOT_ASSIGNED;
+			return absoluteDir;
 		}
 
 		// Make sure the paths are not on different drives
@@ -616,7 +616,7 @@ namespace Directus
 		// Check that the result will not be too long
 		if (levels * 3 + afLen - afMarker > MAX_FILENAME_LEN)
 		{
-			return DATA_NOT_ASSIGNED;
+			return absoluteDir;
 		}
 
 		// Add the appropriate number of "..\"s.
@@ -643,9 +643,29 @@ namespace Directus
 	{
 		// ("The quick brown fox", "brown") -> "brown fox"
 		size_t position = str.find(expression);
-		string remaining = position != string::npos ? str.substr(position) : str;
+		string remaining = position != string::npos ? str.substr(position + expression.length()) : str;
 
 		return remaining;
+	}
+
+	string FileSystem::GetStringBetweenExpressions(const string& str, const string& firstExpression, const string& secondExpression)
+	{
+		// ("The quick brown fox", "The ", " brown") -> "quick"
+
+		regex base_regex(firstExpression + "(.*)" + secondExpression);
+
+		smatch base_match;
+		if (regex_search(str, base_match, base_regex)) 
+		{
+			// The first sub_match is the whole string; the next
+			// sub_match is the first parenthesized expression.
+			if (base_match.size() == 2) 
+			{
+				return base_match[1].str();
+			}			
+		}
+
+		return str;
 	}
 
 	string FileSystem::ConvertToUppercase(const string& lower)

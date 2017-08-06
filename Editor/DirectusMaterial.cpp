@@ -257,6 +257,7 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     connect(m_metallic,     SIGNAL(ValueChanged()),             this, SLOT(MapMetallic()));
     connect(m_normal,       SIGNAL(ValueChanged()),             this, SLOT(MapNormal()));
     connect(m_height,       SIGNAL(ValueChanged()),             this, SLOT(MapHeight()));
+    connect(m_occlusion,    SIGNAL(ValueChanged()),             this, SLOT(MapOcclusion()));
     connect(m_specular,     SIGNAL(ValueChanged()),             this, SLOT(MapSpecular()));
     connect(m_tilingX,      SIGNAL(ValueChanged()),             this, SLOT(MapTiling()));
     connect(m_tilingY,      SIGNAL(ValueChanged()),             this, SLOT(MapTiling()));
@@ -307,7 +308,7 @@ void DirectusMaterial::Reflect(weak_ptr<GameObject>  gameobject)
     ReflectTiling();
     ReflectOffset();
 
-    SetPropertiesVisible(m_inspectedMaterial.lock()->IsEditable() ? true : false);
+    SetPropertiesVisible(m_inspectedMaterial._Get()->IsEditable() ? true : false);
 
     // Make this widget visible
     this->show();
@@ -334,7 +335,7 @@ void DirectusMaterial::ReflectFile(string filePath)
     ReflectTiling();
     ReflectOffset();
 
-    SetPropertiesVisible(m_inspectedMaterial.lock()->IsEditable());
+    SetPropertiesVisible(m_inspectedMaterial._Get()->IsEditable());
 
     // Make this widget visible
     this->show();
@@ -404,7 +405,7 @@ void DirectusMaterial::SetPropertiesVisible(bool visible)
 
 void DirectusMaterial::ReflectName()
 {
-    std::string name = m_inspectedMaterial.lock()->GetResourceName();
+    std::string name = m_inspectedMaterial._Get()->GetResourceName();
     QString text = QString::fromStdString("Material - " + name);
     m_title->setText(text);
 }
@@ -412,99 +413,99 @@ void DirectusMaterial::ReflectName()
 void DirectusMaterial::ReflectAlbedo()
 {
     // Load the albedo texture preview
-    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Albedo_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Albedo_Texture);
     m_albedoImage->LoadImageAsync(texPath);
 
-    Vector4 color = m_inspectedMaterial.lock()->GetColorAlbedo();
+    Vector4 color = m_inspectedMaterial._Get()->GetColorAlbedo();
     m_albedoColor->SetColor(color);
 }
 
 void DirectusMaterial::ReflectRoughness()
 {
-    float roughness = m_inspectedMaterial.lock()->GetRoughnessMultiplier();
+    float roughness = m_inspectedMaterial._Get()->GetRoughnessMultiplier();
     m_roughness->SetValue(roughness);
 
     // Load the roughness texture preview
-    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Roughness_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Roughness_Texture);
     m_roughnessImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectMetallic()
 {
-    float metallic = m_inspectedMaterial.lock()->GetMetallicMultiplier();
+    float metallic = m_inspectedMaterial._Get()->GetMetallicMultiplier();
     m_metallic->SetValue(metallic);
 
     // Load the metallic texture preview
-    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Metallic_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Metallic_Texture);
     m_metallicImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectNormal()
 {
-    float normal = m_inspectedMaterial.lock()->GetNormalMultiplier();
+    float normal = m_inspectedMaterial._Get()->GetNormalMultiplier();
     m_normal->SetValue(normal);
 
     // Load the normal texture preview
-    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Normal_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Normal_Texture);
     m_normalImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectHeight()
 {
-    float height = m_inspectedMaterial.lock()->GetHeightMultiplier();
+    float height = m_inspectedMaterial._Get()->GetHeightMultiplier();
     m_height->SetValue(height);
 
     // Load the height texture preview
-    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Height_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Height_Texture);
     m_heightImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectOcclusion()
 {
-    float occlusion = m_inspectedMaterial.lock()->GetOcclusionMultiplier();
+    float occlusion = m_inspectedMaterial._Get()->GetOcclusionMultiplier();
     m_occlusion->SetValue(occlusion);
 
     // Load the occlusion texture preview
-    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Occlusion_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Occlusion_Texture);
     m_occlusionImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectEmission()
 {
     // Load the emission texture preview
-    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Emission_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Emission_Texture);
     m_emissionImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectMask()
 {
     // Load the mask texture preview
-    string texPath = m_inspectedMaterial.lock()->GetTexturePathByType(TextureType::Mask_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Mask_Texture);
     m_maskImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectSpecular()
 {
-    float specular = m_inspectedMaterial.lock()->GetSpecularMultiplier();
+    float specular = m_inspectedMaterial._Get()->GetSpecularMultiplier();
     m_specular->SetValue(specular);
 }
 
 void DirectusMaterial::ReflectTiling()
 {
-    Vector2 tiling = m_inspectedMaterial.lock()->GetTilingUV();
+    Vector2 tiling = m_inspectedMaterial._Get()->GetTilingUV();
     m_tilingX->SetFromFloat(tiling.x);
     m_tilingY->SetFromFloat(tiling.y);
 
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::ReflectOffset()
 {
-    Vector2 offset = m_inspectedMaterial.lock()->GetOffsetUV();
+    Vector2 offset = m_inspectedMaterial._Get()->GetOffsetUV();
     m_offsetX->SetFromFloat(offset.x);
     m_offsetY->SetFromFloat(offset.y);
 
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapAlbedo()
@@ -513,9 +514,8 @@ void DirectusMaterial::MapAlbedo()
         return;
 
     Vector4 color =  m_albedoColor->GetColor();
-    m_inspectedMaterial.lock()->SetColorAlbedo(color);
-
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SetColorAlbedo(color);
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapRoughness()
@@ -524,9 +524,8 @@ void DirectusMaterial::MapRoughness()
         return;
 
     float roughness =  m_roughness->GetValue();
-    m_inspectedMaterial.lock()->SetRoughnessMultiplier(roughness);
-
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SetRoughnessMultiplier(roughness);
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapMetallic()
@@ -535,9 +534,8 @@ void DirectusMaterial::MapMetallic()
         return;
 
     float metallic =  m_metallic->GetValue();
-    m_inspectedMaterial.lock()->SetMetallicMultiplier(metallic);
-
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SetMetallicMultiplier(metallic);
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapNormal()
@@ -546,9 +544,8 @@ void DirectusMaterial::MapNormal()
         return;
 
     float normal =  m_normal->GetValue();
-    m_inspectedMaterial.lock()->SetNormalMultiplier(normal);
-
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SetNormalMultiplier(normal);
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapHeight()
@@ -557,9 +554,8 @@ void DirectusMaterial::MapHeight()
         return;
 
     float height =  m_height->GetValue();
-    m_inspectedMaterial.lock()->SetHeightMultiplier(height);
-
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SetHeightMultiplier(height);
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapOcclusion()
@@ -568,19 +564,24 @@ void DirectusMaterial::MapOcclusion()
         return;
 
     float occlusion =  m_occlusion->GetValue();
-    m_inspectedMaterial.lock()->SetOcclusionMultiplier(occlusion);
-
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SetOcclusionMultiplier(occlusion);
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapEmission()
 {
+    if (m_inspectedMaterial.expired())
+        return;
 
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapMask()
 {
+    if (m_inspectedMaterial.expired())
+        return;
 
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapSpecular()
@@ -589,9 +590,8 @@ void DirectusMaterial::MapSpecular()
         return;
 
     float specular = m_specular->GetValue();
-    m_inspectedMaterial.lock()->SetSpecularMultiplier(specular);
-
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SetSpecularMultiplier(specular);
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapTiling()
@@ -602,9 +602,8 @@ void DirectusMaterial::MapTiling()
     Vector2 tiling;
     tiling.x = m_tilingX->GetAsFloat();
     tiling.y = m_tilingY->GetAsFloat();
-    m_inspectedMaterial.lock()->SetTilingUV(tiling);
-
-    m_inspectedMaterial.lock()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SetTilingUV(tiling);
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
 void DirectusMaterial::MapOffset()
@@ -615,5 +614,6 @@ void DirectusMaterial::MapOffset()
     Vector2 offset;
     offset.x = m_offsetX->GetAsFloat();
     offset.y = m_offsetY->GetAsFloat();
-    m_inspectedMaterial.lock()->SetOffsetUV(offset);
+    m_inspectedMaterial._Get()->SetOffsetUV(offset);
+    m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }

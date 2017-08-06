@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Scene.h"
-#include <complex>
 #include "../IO/StreamIO.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"

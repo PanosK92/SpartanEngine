@@ -126,11 +126,11 @@ namespace Directus
 		Math::Vector4&  GetColorAlbedo() { return m_colorAlbedo; }
 		void SetColorAlbedo(const Math::Vector4& color) { m_colorAlbedo = color; }
 
-		Math::Vector2&  GetTilingUV() { return m_tilingUV; }
-		void SetTilingUV(const Math::Vector2& tiling) { m_tilingUV = tiling; }
+		Math::Vector2&  GetTilingUV() { return m_uvTiling; }
+		void SetTilingUV(const Math::Vector2& tiling) { m_uvTiling = tiling; }
 
-		Math::Vector2& GetOffsetUV() { return m_offsetUV; }
-		void SetOffsetUV(const Math::Vector2& offset) { m_offsetUV = offset; }
+		Math::Vector2& GetOffsetUV() { return m_uvOffset; }
+		void SetOffsetUV(const Math::Vector2& offset) { m_uvOffset = offset; }
 
 		bool IsEditable() { return m_isEditable; }
 		void SetIsEditable(bool isEditable) { m_isEditable = isEditable; }
@@ -158,10 +158,9 @@ namespace Directus
 		float m_heightMultiplier;
 		float m_occlusionMultiplier;
 		float m_specularMultiplier;
-		Math::Vector2 m_tilingUV;
-		Math::Vector2 m_offsetUV;
+		Math::Vector2 m_uvTiling;
+		Math::Vector2 m_uvOffset;
 		ShadingMode m_shadingMode;
-
 		bool m_isEditable;
 
 		//= DEPENDENCIES ==
