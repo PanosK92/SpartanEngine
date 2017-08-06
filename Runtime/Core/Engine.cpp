@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Timer.h"
 #include "Settings.h"
 #include "../Logging/Log.h"
-#include "../Multithreading/Multithreading.h"
+#include "../Threading/Threading.h"
 #include "../Resource/ResourceManager.h"
 #include "../Socket/Socket.h"
 #include "../Scripting/Scripting.h"
@@ -55,7 +55,7 @@ namespace Directus
 		// Register subsystems
 		m_context->RegisterSubsystem(new Timer(m_context));
 		m_context->RegisterSubsystem(new Input(m_context));
-		m_context->RegisterSubsystem(new Multithreading(m_context));
+		m_context->RegisterSubsystem(new Threading(m_context));
 		m_context->RegisterSubsystem(new ResourceManager(m_context));
 		m_context->RegisterSubsystem(new Graphics(m_context));
 		m_context->RegisterSubsystem(new Renderer(m_context));
@@ -91,7 +91,7 @@ namespace Directus
 		}
 
 		// Multithreading
-		if (!m_context->GetSubsystem<Multithreading>()->Initialize())
+		if (!m_context->GetSubsystem<Threading>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Multithreading subsystem");
 			return false;

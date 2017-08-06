@@ -45,11 +45,11 @@ namespace Directus
 	};
 	//=========================================================================================
 
-	class Multithreading : public Subsystem
+	class Threading : public Subsystem
 	{
 	public:
-		Multithreading(Context* context);
-		~Multithreading();
+		Threading(Context* context);
+		~Threading();
 
 		//= Subsystem ============
 		virtual bool Initialize();

@@ -389,7 +389,7 @@ namespace Directus
 		string texturePath = FindTexture(originalTexturePath);
 		if (texturePath == DATA_NOT_ASSIGNED)
 		{
-			LOG_WARNING("Failed to find model requested texture \"" + originalTexturePath + "\".");
+			LOG_WARNING("ModelImporter: Failed to find model requested texture \"" + originalTexturePath + "\".");
 			return;
 		}
 
