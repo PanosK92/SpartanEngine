@@ -54,8 +54,8 @@ namespace Directus
 		static void Release();
 
 		//= NODES =======================================================================
-		static void AddNode(const std::string& name);
-		static bool AddChildNode(const std::string& parentName, const std::string& name);
+		static void AddNode(const std::string& nodeName);
+		static bool AddChildNode(const std::string& parentNodeName, const std::string& childNodeName);
 		//===============================================================================
 
 		//= ADD ATTRIBUTE ================================================================================================

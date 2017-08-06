@@ -19,9 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========
-#include "Multithreading.h"
-//=====================
+//= INCLUDES ==============
+#include "Threading.h"
+//=========================
 
 //= NAMESPACES ======
 using namespace  std;
@@ -29,12 +29,12 @@ using namespace  std;
 
 namespace Directus
 {
-	Multithreading::Multithreading(Context* context) : Subsystem(context)
+	Threading::Threading(Context* context) : Subsystem(context)
 	{
 
 	}
 
-	Multithreading::~Multithreading()
+	Threading::~Threading()
 	{
 		// Put unique lock on task mutex.
 		unique_lock<mutex> lock(m_tasksMutex);
@@ -56,17 +56,17 @@ namespace Directus
 		m_threads.empty();
 	}
 
-	bool Multithreading::Initialize()
+	bool Threading::Initialize()
 	{
 		for (int i = 0; i < m_threadCount; i++)
 		{
-			m_threads.emplace_back(thread(&Multithreading::Invoke, this));
+			m_threads.emplace_back(thread(&Threading::Invoke, this));
 		}
 
 		return true;
 	}
 
-	void Multithreading::Invoke()
+	void Threading::Invoke()
 	{
 		shared_ptr<Task> task;
 		while (true)

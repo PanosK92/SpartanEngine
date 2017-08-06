@@ -22,6 +22,9 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 - Windows support.
 
 # Features under development - v0.3 (Codename: Da Vinci)
+- [Done] XML I/O.
+- [Done] New editor theme.
+- [Done] Debug view (bounding boxes, colliders etc).
 - [Active] Vulkan rendering backend.
 - [Active] Dynamic resolution scaling.
 - [50%] Improved shadow quality.

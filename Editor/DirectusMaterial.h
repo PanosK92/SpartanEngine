@@ -119,11 +119,10 @@ private:
     DirectusComboLabelText* m_offsetY;
     //===============================
 
-    //= MISC ========================
+    //= MISC =============================================
     QGridLayout* m_gridLayout;
     std::weak_ptr<Directus::Material> m_inspectedMaterial;
-    std::shared_ptr<Directus::Material> m_matFromFile;
-    //===============================
+    //====================================================
 
     void SetPropertiesVisible(bool visible);
 

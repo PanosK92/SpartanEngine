@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Math/Vector2.h"
 #include "DirectusViewport.h"
 #include "DirectusMaterialTextureDropTarget.h"
+#include "Resource/ResourceManager.h"
 //============================================
 
 //= NAMESPACES =====================
@@ -280,7 +281,7 @@ void DirectusMaterial::Reflect(weak_ptr<GameObject>  gameobject)
         return;
     }
 
-    MeshRenderer* meshRenderer = gameobject.lock()->GetComponent<MeshRenderer>();
+    MeshRenderer* meshRenderer = gameobject._Get()->GetComponent<MeshRenderer>();
     if (!meshRenderer)
     {
         this->hide();
@@ -316,10 +317,8 @@ void DirectusMaterial::Reflect(weak_ptr<GameObject>  gameobject)
 
 void DirectusMaterial::ReflectFile(string filePath)
 {
-    m_matFromFile = make_shared<Material>(m_inspector->GetSocket()->GetContext());
-    m_matFromFile->LoadFromFile(filePath);
-
-    m_inspectedMaterial = m_matFromFile;
+    // Load the material (won't be loaded again if it's already loaded)
+    m_inspectedMaterial = m_inspector->GetSocket()->GetContext()->GetSubsystem<ResourceManager>()->Load<Material>(filePath);
 
     // Do the actual reflection
     ReflectName();

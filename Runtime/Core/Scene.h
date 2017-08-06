@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================================
+//= INCLUDES ======================
 #include <vector>
 #include "../Math/Vector3.h"
-#include "../Multithreading/Multithreading.h"
-//===========================================
+#include "../Threading/Threading.h"
+//=================================
 
 namespace Directus
 {

@@ -123,12 +123,12 @@ namespace Directus
 	//= I/O ===================================================================================================
 	void Scene::SaveToFileAsync(const string& filePath)
 	{
-		m_context->GetSubsystem<Multithreading>()->AddTask(std::bind(&Scene::SaveToFile, this, filePath));
+		m_context->GetSubsystem<Threading>()->AddTask(std::bind(&Scene::SaveToFile, this, filePath));
 	}
 
 	void Scene::LoadFromFileAsync(const string& filePath)
 	{
-		m_context->GetSubsystem<Multithreading>()->AddTask(std::bind(&Scene::LoadFromFile, this, filePath));
+		m_context->GetSubsystem<Threading>()->AddTask(std::bind(&Scene::LoadFromFile, this, filePath));
 	}
 
 	bool Scene::SaveToFile(const string& filePathIn)
