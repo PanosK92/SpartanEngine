@@ -21,7 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 #include "Vector2.h"
+//==================
 
+//= NAMESPACES =====
+using namespace std;
 //==================
 
 namespace Directus
@@ -30,34 +33,11 @@ namespace Directus
 	{
 		const Vector2 Vector2::Zero(0.0f, 0.0f);
 
-		Vector2::Vector2()
+		string Vector2::ToString() const
 		{
-			x = 0;
-			y = 0;
-		}
-
-		Vector2::Vector2(float x, float y)
-		{
-			this->x = x;
-			this->y = y;
-		}
-
-		Vector2::~Vector2()
-		{
-		}
-
-		Vector2 Vector2::operator+(const Vector2& b)
-		{
-			return Vector2(
-				this->x + b.x,
-				this->y + b.y
-			);
-		}
-
-		void Vector2::operator+=(const Vector2& b)
-		{
-			this->x += b.x;
-			this->y += b.y;
+			char tempBuffer[200];
+			sprintf(tempBuffer, "X:%f, Y:%f", x, y);
+			return string(tempBuffer);
 		}
 	}
 }

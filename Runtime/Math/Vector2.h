@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "../Core/Helper.h"
+#include <string>
 //=========================
 
 namespace Directus
@@ -32,15 +33,34 @@ namespace Directus
 		class DLL_API Vector2
 		{
 		public:
-			Vector2();
-			Vector2(float x, float y);
-			~Vector2();
+			Vector2::Vector2()
+			{
+				x = 0;
+				y = 0;
+			}
 
-			float x;
-			float y;
+			Vector2::Vector2(float x, float y)
+			{
+				this->x = x;
+				this->y = y;
+			}
 
-			Vector2 operator+(const Vector2& b);
-			void operator+=(const Vector2& b);
+			Vector2::~Vector2() {}
+
+			Vector2 Vector2::operator+(const Vector2& b)
+			{
+				return Vector2
+				(
+					this->x + b.x,
+					this->y + b.y
+				);
+			}
+
+			void Vector2::operator+=(const Vector2& b)
+			{
+				this->x += b.x;
+				this->y += b.y;
+			}
 
 			bool operator==(const Vector2& b)
 			{
@@ -58,6 +78,10 @@ namespace Directus
 				return false;
 			}
 
+			std::string ToString() const;
+
+			float x;
+			float y;
 			static const Vector2 Zero;
 		};
 	}

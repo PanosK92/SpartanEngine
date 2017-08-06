@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================================
 #include "Texture.h"
 #include "../Core/GUIDGenerator.h"
-#include "../IO/StreamIO.h"
 #include "../Logging/Log.h"
 #include "../Core/Helper.h"
 #include "../Resource/Import/ImageImporter.h"
@@ -74,24 +73,8 @@ namespace Directus
 		string savePath = filePath;
 		if (filePath == RESOURCE_SAVE)
 		{
-			savePath = m_resourceFilePath;
+			savePath = m_resourceFilePath + METADATA_EXTENSION;
 		}
-
-		if (!StreamIO::StartWriting(savePath))
-			return false;
-
-		StreamIO::WriteSTR(METADATA_TYPE_TEXTURE);
-		StreamIO::WriteSTR(m_resourceID);
-		StreamIO::WriteSTR(m_resourceName);
-		StreamIO::WriteSTR(m_resourceFilePath);
-		StreamIO::WriteInt(m_width);
-		StreamIO::WriteInt(m_height);
-		StreamIO::WriteInt(int(m_textureType));
-		StreamIO::WriteBool(m_grayscale);
-		StreamIO::WriteBool(m_transparency);
-		StreamIO::WriteBool(m_generateMipchain);
-
-		StreamIO::StopWriting();
 
 		XmlDocument::Create();
 		XmlDocument::AddNode("Metadata");
@@ -106,7 +89,10 @@ namespace Directus
 		XmlDocument::AddAttribute("Texture", "Greyscale", m_grayscale);
 		XmlDocument::AddAttribute("Texture", "Transparency", m_transparency);
 		XmlDocument::AddAttribute("Texture", "Mipchain", m_generateMipchain);
-		XmlDocument::Save(savePath + ".xml");
+
+		if (!XmlDocument::Save(savePath))
+			return false;
+
 		XmlDocument::Release();
 
 		return true;
@@ -187,36 +173,28 @@ namespace Directus
 		// Free any memory allocated by the ImageImporter
 		imageImp._Get()->Clear();
 
-		if (!LoadFromFile(m_resourceFilePath + METADATA_EXTENSION)) // Load metadata file
-		{
-			if (!SaveToFile(m_resourceFilePath + METADATA_EXTENSION)) // If a metadata file doesn't exist, create one
-			{
-				return false; // if that failed too, well at least get the file path right mate
-			}
-		}
+		if (!SaveToFile(m_resourceFilePath + METADATA_EXTENSION)) // Create a metadata file
+			return false;
 
 		return true;
 	}
 
 	bool Texture::LoadMetadata(const string& filePath)
 	{
-		if (!StreamIO::StartReading(filePath))
+		if (!XmlDocument::Load(filePath))
 			return false;
 
-		if (StreamIO::ReadSTR() == METADATA_TYPE_TEXTURE)
-		{
-			m_resourceID = StreamIO::ReadSTR();
-			m_resourceName = StreamIO::ReadSTR();
-			m_resourceFilePath = StreamIO::ReadSTR();
-			m_width = StreamIO::ReadInt();
-			m_height = StreamIO::ReadInt();
-			m_textureType = TextureType(StreamIO::ReadInt());
-			m_grayscale = StreamIO::ReadBool();
-			m_transparency = StreamIO::ReadBool();
-			m_generateMipchain = StreamIO::ReadBool();
-		}
-
-		StreamIO::StopReading();
+		XmlDocument::GetAttribute("Texture", "ID", m_resourceID);
+		XmlDocument::GetAttribute("Texture", "Name", m_resourceName);
+		XmlDocument::GetAttribute("Texture", "Path", m_resourceFilePath);
+		XmlDocument::GetAttribute("Texture", "Width", m_width);
+		XmlDocument::GetAttribute("Texture", "Height", m_height);
+		m_textureType = TextureType(XmlDocument::GetAttributeAsInt("Texture", "Type"));
+		XmlDocument::GetAttribute("Texture", "Greyscale", m_grayscale);
+		XmlDocument::GetAttribute("Texture", "Transparency", m_transparency);
+		XmlDocument::GetAttribute("Texture", "Mipchain", m_generateMipchain);
+		
+		XmlDocument::Release();
 
 		return true;
 	}

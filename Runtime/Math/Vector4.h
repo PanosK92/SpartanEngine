@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "../Core/Helper.h"
+#include <string>
 //=========================
 
 namespace Directus
@@ -35,15 +36,51 @@ namespace Directus
 		class DLL_API Vector4
 		{
 		public:
-			Vector4();
-			Vector4(float x, float y, float z, float w);
-			Vector4(float value);
-			~Vector4();
+			Vector4::Vector4()
+			{
+				x = 0;
+				y = 0;
+				z = 0;
+				w = 0;
+			}
 
-			bool operator==(const Vector4& b);
-			bool operator!=(const Vector4& b);
+			Vector4::Vector4(float x, float y, float z, float w)
+			{
+				this->x = x;
+				this->y = y;
+				this->z = z;
+				this->w = w;
+			}
+
+			Vector4::Vector4(float value)
+			{
+				this->x = value;
+				this->y = value;
+				this->z = value;
+				this->w = value;
+			}
+
+			Vector4::~Vector4(){}
+
+			bool Vector4::operator==(const Vector4& b)
+			{
+				if (this->x == b.x && this->y == b.y && this->z == b.z && this->w == b.w)
+					return true;
+
+				return false;
+			}
+
+			bool Vector4::operator!=(const Vector4& b)
+			{
+				if (this->x != b.x | this->y != b.y | this->z != b.z | this->w != b.w)
+					return true;
+
+				return false;
+			}
 
 			static Vector4 Transform(const Vector3& lhs, const Matrix& rhs);
+
+			std::string ToString() const;
 
 			float x, y, z, w;
 

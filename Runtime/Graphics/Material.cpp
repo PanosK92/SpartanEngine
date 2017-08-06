@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "Material.h"
-#include "../IO/StreamIO.h"
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
 #include "../Resource/ResourceManager.h"
 #include "Shaders/ShaderVariation.h"
 #include "../Logging/Log.h"
+#include "../IO/XmlDocument.h"
 //======================================
 
 //= NAMESPACES ================
@@ -57,8 +57,8 @@ namespace Directus
 		m_normalMultiplier = 0.0f;
 		m_heightMultiplier = 0.0f;
 		m_specularMultiplier = 0.5f;
-		m_tilingUV = Vector2(1.0f, 1.0f);
-		m_offsetUV = Vector2(0.0f, 0.0f);
+		m_uvTiling = Vector2(1.0f, 1.0f);
+		m_uvOffset = Vector2(0.0f, 0.0f);
 		m_isEditable = true;
 
 		AcquireShader();
@@ -72,43 +72,57 @@ namespace Directus
 	//= I/O ============================================================
 	bool Material::Save(const string& filePath, bool overwrite)
 	{
-		m_resourceFilePath = filePath + MATERIAL_EXTENSION;
+		// Make sure the path is relative
+		m_resourceFilePath = FileSystem::GetRelativeFilePath(filePath);
+
+		// Add material extension if not present
+		if (FileSystem::GetExtensionFromFilePath(m_resourceFilePath) != MATERIAL_EXTENSION)
+		{
+			m_resourceFilePath = m_resourceFilePath + MATERIAL_EXTENSION;
+		}
 
 		// If the user doesn't want to override and a material
 		// indeed happens to exists, there is nothing to do
 		if (!overwrite && FileSystem::FileExists(m_resourceFilePath))
 			return true;
 
-		if (!StreamIO::StartWriting(m_resourceFilePath))
-			return false;
+		XmlDocument::Create();
+		XmlDocument::AddNode("Material");
+		XmlDocument::AddAttribute("Material", "ID", m_resourceID);
+		XmlDocument::AddAttribute("Material", "Name", m_resourceName);
+		XmlDocument::AddAttribute("Material", "Path", m_resourceFilePath);
+		XmlDocument::AddAttribute("Material", "Model_ID", m_modelID);
+		XmlDocument::AddAttribute("Material", "Cull_Mode", int(m_cullMode));
+		XmlDocument::AddAttribute("Material", "Opacity", m_opacity);
+		XmlDocument::AddAttribute("Material", "Alpha_Blending", m_alphaBlending);
+		XmlDocument::AddAttribute("Material", "Shading_Mode", int(m_shadingMode));
+		XmlDocument::AddAttribute("Material", "Color", m_colorAlbedo);
+		XmlDocument::AddAttribute("Material", "Roughness_Multiplier", m_roughnessMultiplier);
+		XmlDocument::AddAttribute("Material", "Metallic_Multiplier", m_metallicMultiplier);
+		XmlDocument::AddAttribute("Material", "Normal_Multiplier", m_normalMultiplier);
+		XmlDocument::AddAttribute("Material", "Height_Multiplier", m_heightMultiplier);
+		XmlDocument::AddAttribute("Material", "Occlusion_Multiplier", m_occlusionMultiplier);
+		XmlDocument::AddAttribute("Material", "Specular_Multiplier", m_specularMultiplier);
+		XmlDocument::AddAttribute("Material", "UV_Tiling", m_uvTiling);
+		XmlDocument::AddAttribute("Material", "UV_Offset", m_uvOffset);
+		XmlDocument::AddAttribute("Material", "IsEditable", m_isEditable);
 
-		StreamIO::WriteSTR(m_resourceID);
-		StreamIO::WriteSTR(m_resourceName);
-		StreamIO::WriteSTR(m_resourceFilePath);
-		StreamIO::WriteSTR(m_modelID);	
-		StreamIO::WriteInt(m_cullMode);
-		StreamIO::WriteFloat(m_opacity);
-		StreamIO::WriteBool(m_alphaBlending);
-		StreamIO::WriteInt(m_shadingMode);
-		StreamIO::WriteVector4(m_colorAlbedo);
-		StreamIO::WriteFloat(m_roughnessMultiplier);
-		StreamIO::WriteFloat(m_metallicMultiplier);
-		StreamIO::WriteFloat(m_normalMultiplier);
-		StreamIO::WriteFloat(m_heightMultiplier);
-		StreamIO::WriteFloat(m_occlusionMultiplier);
-		StreamIO::WriteFloat(m_specularMultiplier);
-		StreamIO::WriteVector2(m_tilingUV);
-		StreamIO::WriteVector2(m_offsetUV);
-		StreamIO::WriteBool(m_isEditable);
-
-		StreamIO::WriteInt(int(m_textures.size()));
+		XmlDocument::AddChildNode("Material", "Textures");
+		XmlDocument::AddAttribute("Textures", "Count", (int)m_textures.size());
+		int i = 0;
 		for (const auto& texture : m_textures)
 		{
-			StreamIO::WriteSTR(texture.second.second); // Texture Path
-			StreamIO::WriteInt((int)texture.first); // Texture Type
+			string texNode = "Texture_" + to_string(i);
+			XmlDocument::AddChildNode("Textures", texNode);
+			XmlDocument::AddAttribute(texNode, "Texture_Type", (int)texture.first);
+			XmlDocument::AddAttribute(texNode, "Texture_Path", texture.second.second);
+			i++;
 		}
 
-		StreamIO::StopWriting();
+		if (!XmlDocument::Save(m_resourceFilePath))
+			return false;
+
+		XmlDocument::Release();
 
 		return true;
 	}
@@ -125,36 +139,40 @@ namespace Directus
 	//= RESOURCE INTERFACE =====================================
 	bool Material::LoadFromFile(const string& filePath)
 	{
-		if (!StreamIO::StartReading(filePath))
+		// Make sure the path is relative
+		m_resourceFilePath = FileSystem::GetRelativeFilePath(filePath);
+
+		if (!XmlDocument::Load(m_resourceFilePath))
 			return false;
 
-		m_resourceID = StreamIO::ReadSTR();
-		m_resourceName = StreamIO::ReadSTR();
-		m_resourceFilePath = StreamIO::ReadSTR();
-		m_modelID = StreamIO::ReadSTR();	
-		m_cullMode = CullMode(StreamIO::ReadInt());
-		m_opacity = StreamIO::ReadFloat();
-		m_alphaBlending = StreamIO::ReadBool();
-		m_shadingMode = ShadingMode(StreamIO::ReadInt());
-		m_colorAlbedo = StreamIO::ReadVector4();
-		m_roughnessMultiplier = StreamIO::ReadFloat();
-		m_metallicMultiplier = StreamIO::ReadFloat();
-		m_normalMultiplier = StreamIO::ReadFloat();
-		m_heightMultiplier = StreamIO::ReadFloat();
-		m_occlusionMultiplier = StreamIO::ReadFloat();
-		m_specularMultiplier = StreamIO::ReadFloat();
-		m_tilingUV = StreamIO::ReadVector2();
-		m_offsetUV = StreamIO::ReadVector2();
-		m_isEditable = StreamIO::ReadBool();
+		XmlDocument::GetAttribute("Material", "ID", m_resourceID);
+		XmlDocument::GetAttribute("Material", "Name", m_resourceName);
+		XmlDocument::GetAttribute("Material", "Path", m_resourceFilePath);
+		XmlDocument::GetAttribute("Material", "Model_ID", m_modelID);
+		m_cullMode = CullMode(XmlDocument::GetAttributeAsInt("Material", "Cull_Mode"));
+		XmlDocument::GetAttribute("Material", "Opacity", m_opacity);
+		XmlDocument::GetAttribute("Material", "Alpha_Blending", m_alphaBlending);
+		m_shadingMode = ShadingMode(XmlDocument::GetAttributeAsInt("Material", "Shading_Mode"));
+		m_colorAlbedo = XmlDocument::GetAttributeAsVector4("Material", "Color");
+		XmlDocument::GetAttribute("Material", "Roughness_Multiplier", m_roughnessMultiplier);
+		XmlDocument::GetAttribute("Material", "Metallic_Multiplier", m_metallicMultiplier);
+		XmlDocument::GetAttribute("Material", "Normal_Multiplier", m_normalMultiplier);
+		XmlDocument::GetAttribute("Material", "Height_Multiplier", m_heightMultiplier);
+		XmlDocument::GetAttribute("Material", "Occlusion_Multiplier", m_occlusionMultiplier);
+		XmlDocument::GetAttribute("Material", "Specular_Multiplier", m_specularMultiplier);
+		m_uvTiling = XmlDocument::GetAttributeAsVector2("Material", "UV_Tiling");
+		m_uvOffset = XmlDocument::GetAttributeAsVector2("Material", "UV_Offset");
+		XmlDocument::GetAttribute("Material", "IsEditable", m_isEditable);
 
-		int textureCount = StreamIO::ReadInt();
+		int textureCount = XmlDocument::GetAttributeAsInt("Textures", "Count");
 		for (int i = 0; i < textureCount; i++)
 		{
-			string texPath = StreamIO::ReadSTR();
-			TextureType texType = (TextureType)StreamIO::ReadInt();
-			auto texture = weak_ptr<Texture>();
+			string nodeName = "Texture_" + to_string(i);
+			TextureType texType = (TextureType)XmlDocument::GetAttributeAsInt(nodeName, "Texture_Type");
+			string texPath = XmlDocument::GetAttributeAsStr(nodeName, "Texture_Path");
 
-			// If the texture happens to be loaded, we might as well get a reference to it
+			// If the texture happens to be loaded, get a reference to it
+			auto texture = weak_ptr<Texture>();
 			if (m_context)
 			{
 				texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByPath<Texture>(texPath);
@@ -162,8 +180,7 @@ namespace Directus
 
 			m_textures.insert(make_pair(texType, make_pair(texture, texPath)));
 		}
-
-		StreamIO::StopReading();
+		XmlDocument::Release();
 
 		// Load unloaded textures
 		for (auto& it : m_textures)
@@ -300,8 +317,8 @@ namespace Directus
 	}
 
 	weak_ptr<ShaderVariation> Material::FindMatchingShader(
-		bool albedo, bool roughness, bool metallic, 
-		bool normal, bool height, bool occlusion, 
+		bool albedo, bool roughness, bool metallic,
+		bool normal, bool height, bool occlusion,
 		bool emission, bool mask, bool cubemap
 	)
 	{
@@ -365,12 +382,12 @@ namespace Directus
 			SetRoughnessMultiplier(1.0f);
 		}
 
-		if (HasTextureOfType(Metallic_Texture)) 
+		if (HasTextureOfType(Metallic_Texture))
 		{
 			SetMetallicMultiplier(1.0f);
 		}
 
-		if (HasTextureOfType(Normal_Texture)) 
+		if (HasTextureOfType(Normal_Texture))
 		{
 			SetNormalMultiplier(1.0f);
 		}

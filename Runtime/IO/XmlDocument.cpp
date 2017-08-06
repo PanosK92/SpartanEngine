@@ -19,16 +19,21 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ===============
 #include "XmlDocument.h"
 #include "pugixml.hpp"
 #include "../Logging/Log.h"
-//=========================
+#include "../Math/Vector2.h"
+#include "../Math/Vector3.h"
+#include "../Math/Vector4.h"
+#include "../FileSystem/FileSystem.h"
+//==========================
 
-//= NAMESPACES ======
+//= NAMESPACES ================
 using namespace std;
 using namespace pugi;
-//===================
+using namespace Directus::Math;
+//=============================
 
 namespace Directus
 {
@@ -44,7 +49,7 @@ namespace Directus
 		auto declarationNode = m_document->append_child(node_declaration);
 		declarationNode.append_attribute("version") = "1.0";
 		declarationNode.append_attribute("encoding") = "ISO-8859-1";
-		declarationNode.append_attribute("standalone") = "yes";	
+		declarationNode.append_attribute("standalone") = "yes";
 	}
 
 	void XmlDocument::Release()
@@ -68,7 +73,7 @@ namespace Directus
 		auto parentNode = GetNodeByName(parentName);
 		if (!parentNode)
 		{
-			LOG_WARNING("Can't add child node, parent node doesn't exist.");
+			LOG_WARNING("XmlDocument: Can't add child node \"" + name + "\", parent node \"" + parentName + "\" doesn't exist.");
 			return false;
 		}
 
@@ -78,45 +83,182 @@ namespace Directus
 		return true;
 	}
 
-	//= ATTRIBUTES =========================================================================================
-	bool XmlDocument::AddAttribute(const string& nodeName, const char* tag, const char* value)
+	//= ADD ATTRIBUTE ================================================================================================
+	bool XmlDocument::AddAttribute(const string& nodeName, const char* attributeName, const char* value)
 	{
 		auto node = GetNodeByName(nodeName);
 		if (!node)
 		{
-			LOG_WARNING("Can't add attribute, node doesn't exist.");
+			LOG_WARNING("XmlDocument: Can't add attribute \"" + string(attributeName) + "\", node \"" + nodeName + "\" doesn't exist.");
 			return false;
 		}
 
-		node->append_attribute(tag) = value;
+		node->append_attribute(attributeName) = value;
 
 		return true;
 	}
 
-	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, const string& value)
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, const string& value)
 	{
-		return AddAttribute(nodeName, tag.c_str(), value.c_str());
+		return AddAttribute(nodeName, attributeName.c_str(), value.c_str());
 	}
 
-	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, bool value)
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, bool value)
 	{
 		string valueStr = value ? "true" : "false";
-		return AddAttribute(nodeName, tag, valueStr);
+		return AddAttribute(nodeName, attributeName, valueStr);
 	}
 
-	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, int value)
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, int value)
 	{
-		return AddAttribute(nodeName, tag, to_string(value));
+		return AddAttribute(nodeName, attributeName, to_string(value));
 	}
 
-	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, float value)
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, float value)
 	{
-		return AddAttribute(nodeName, tag, to_string(value));
+		return AddAttribute(nodeName, attributeName, to_string(value));
 	}
 
-	bool XmlDocument::AddAttribute(const string& nodeName, const string& tag, double value)
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, double value)
 	{
-		return AddAttribute(nodeName, tag, to_string(value));
+		return AddAttribute(nodeName, attributeName, to_string(value));
+	}
+
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, Vector2& value)
+	{
+		return AddAttribute(nodeName, attributeName, value.ToString());
+	}
+
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, Vector3& value)
+	{
+		return AddAttribute(nodeName, attributeName, value.ToString());
+	}
+
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, Vector4& value)
+	{
+		return AddAttribute(nodeName, attributeName, value.ToString());
+	}
+
+	//= GET ATTRIBUTE ===================================================================================
+	bool XmlDocument::GetAttribute(const string& nodeName, const char* attributeName, string& value)
+	{
+		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+
+		if (!attribute)
+			return false;
+
+		// Get value
+		value = attribute.value();
+
+		return true;
+	}
+
+	bool XmlDocument::GetAttribute(const string& nodeName, const char* attributeName, int& value)
+	{
+		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+
+		if (!attribute)
+			return false;
+
+		// Get value
+		value = attribute.as_int();
+
+		return true;
+	}
+
+	bool XmlDocument::GetAttribute(const string& nodeName, const char* attributeName, bool& value)
+	{
+		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+
+		if (!attribute)
+			return false;
+
+		// Get value
+		value = attribute.as_bool();
+
+		return true;
+	}
+
+	bool XmlDocument::GetAttribute(const string& nodeName, const char* attributeName, float& value)
+	{
+		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+
+		if (!attribute)
+			return false;
+
+		// Get value
+		value = attribute.as_float();
+
+		return true;
+	}
+
+	bool XmlDocument::GetAttribute(const string& nodeName, const char* attributeName, double& value)
+	{
+		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+
+		if (!attribute)
+			return false;
+
+		// Get value
+		value = attribute.as_double();
+
+		return true;
+	}
+
+	string XmlDocument::GetAttributeAsStr(const string& nodeName, const char* attributeName)
+	{
+		string valueStr;
+		GetAttribute(nodeName, attributeName, valueStr);
+
+		return valueStr;
+	}
+
+	int XmlDocument::GetAttributeAsInt(const string& nodeName, const char* attributeName)
+	{
+		int value;
+		GetAttribute(nodeName, attributeName, value);
+
+		return value;
+	}
+
+	Vector2 XmlDocument::GetAttributeAsVector2(const string& nodeName, const char* attributeName)
+	{
+		string valueStr;
+		GetAttribute(nodeName, attributeName, valueStr);
+
+		Vector2 vec;
+		vec.x = atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
+		vec.y = atof(FileSystem::GetStringAfterExpression(valueStr, "Y:").c_str());
+
+		return vec;
+	}
+
+	Vector3 XmlDocument::GetAttributeAsVector3(const string& nodeName, const char* attributeName)
+	{
+		string valueStr;
+		GetAttribute(nodeName, attributeName, valueStr);
+
+		Vector3 vec;
+		vec.x = atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
+		vec.y = atof(FileSystem::GetStringBetweenExpressions(valueStr, "Y:", ",").c_str());
+		vec.z = atof(FileSystem::GetStringAfterExpression(valueStr, "Z:").c_str());
+
+		return vec;
+	}
+
+
+	Vector4 XmlDocument::GetAttributeAsVector4(const string& nodeName, const char* attributeName)
+	{
+		string valueStr;
+		GetAttribute(nodeName, attributeName, valueStr);
+
+		Vector4 vec;
+		vec.x = atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
+		vec.y = atof(FileSystem::GetStringBetweenExpressions(valueStr, "Y:", ",").c_str());
+		vec.z = atof(FileSystem::GetStringBetweenExpressions(valueStr, "Z:", ",").c_str());
+		vec.w = atof(FileSystem::GetStringAfterExpression(valueStr, "W:").c_str());
+
+		return vec;
 	}
 
 	//= IO =======================================
@@ -124,13 +266,23 @@ namespace Directus
 	{
 		m_document = make_unique<xml_document>();
 		xml_parse_result result = m_document->load_file(filePath.c_str());
-		
+
 		if (result.status != status_ok)
 		{
-			LOG_ERROR(result.description());
+			if (result.status == status_file_not_found)
+			{
+				LOG_ERROR("XmlDocument: File \"" + string(filePath) + "\" was not found.");
+			}
+			else
+			{
+				LOG_ERROR("XmlDocument: " + string(result.description()));
+			}
+
 			m_document.release();
 			return false;
 		}
+
+		GetAllNodes();
 
 		return true;
 	}
@@ -140,10 +292,37 @@ namespace Directus
 		if (!m_document)
 			return false;
 
+		if (FileSystem::FileExists(filePath))
+		{
+			FileSystem::DeleteFile_(filePath);
+		}
+
 		return m_document->save_file(filePath.c_str());
 	}
 
 	//= PRIVATE =======================================================
+	xml_attribute XmlDocument::GetAttribute(const string& nodeName, const char* attributeName)
+	{
+		xml_attribute attribute;
+
+		// Make sure the nod exists
+		auto node = GetNodeByName(nodeName);
+		if (!node)
+		{
+			LOG_WARNING("XmlDocument: Can't get attribute \"" + string(attributeName) + "\", node \"" + nodeName + "\" doesn't exist.");
+			return attribute;
+		}
+
+		// Make sure the attribute exists
+		attribute = node->attribute(attributeName);
+		if (!attribute)
+		{
+			LOG_WARNING("XmlDocument: Can't get attribute, attribute \"" + string(attributeName) + "\" doesn't exist.");
+		}
+
+		return attribute;
+	}
+
 	shared_ptr<xml_node> XmlDocument::GetNodeByName(const string& name)
 	{
 		for (const auto& node : m_nodes)
@@ -155,5 +334,37 @@ namespace Directus
 		}
 
 		return shared_ptr<xml_node>();
+	}
+
+	void XmlDocument::GetAllNodes()
+	{
+		if (!m_document)
+			return;
+
+		Release();
+
+		for (xml_node child = m_document->first_child(); child; child = child.next_sibling())
+		{
+			m_nodes.push_back(make_shared<xml_node>(child));
+			if (child.last_child())
+			{
+				GetNodes(child);
+			}
+		}
+	}
+
+	void XmlDocument::GetNodes(xml_node node)
+	{
+		if (!node)
+			return;
+
+		for (xml_node child = node.first_child(); child; child = child.next_sibling())
+		{
+			m_nodes.push_back(make_shared<xml_node>(child));
+			if (child.last_child())
+			{
+				GetNodes(child);
+			}
+		}
 	}
 }
