@@ -76,7 +76,7 @@ namespace Directus
 		m_mousePos.x += m_mousePosDelta.x;
 		m_mousePos.y += m_mousePosDelta.y;
 
-		// keep mouse position in screen
+		// keep mouse position inside the screen
 		m_mousePos.x = m_mousePos.x < 0 ? 0 : m_mousePos.x > RESOLUTION_WIDTH ? RESOLUTION_WIDTH : m_mousePos.x;
 		m_mousePos.y = m_mousePos.y < 0 ? 0 : m_mousePos.y > RESOLUTION_HEIGHT ? RESOLUTION_HEIGHT : m_mousePos.y;
 	}

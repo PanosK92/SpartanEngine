@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/SubSystem.h"
 #include "../Math/Matrix.h"
 #include "../Resource/ResourceManager.h"
+#include "../Core/Settings.h"
 //======================================
 
 class ID3D11ShaderResourceView;
@@ -69,12 +70,12 @@ namespace Directus
 
 		void Render();
 
-		// Viewport
-		Math::Vector2 GetViewport() { return m_viewport; }
-		void SetViewport(float width, float height);
-
 		// Resolution
 		void SetResolution(int width, int height);
+
+		// Viewport
+		Math::Vector2 GetViewport() { return GET_VIEWPORT; }
+		void SetViewport(float width, float height);
 
 		void Clear();
 		const std::vector<weakGameObj>& GetRenderables() { return m_renderables; }
@@ -148,7 +149,5 @@ namespace Directus
 		Graphics* m_graphics;
 		ResourceManager* m_resourceMng;
 		//================================================
-
-		Math::Vector2 m_viewport;
 	};
 }
