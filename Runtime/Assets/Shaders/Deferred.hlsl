@@ -21,23 +21,31 @@ cbuffer MatrixBuffer : register(b0)
 	matrix mView;
 }
 
-#define MaxLights 128
+#define MaxLights 64
 cbuffer MiscBuffer : register(b1)
 {
     float4 cameraPosWS;
-    float4 dirLightDirection;
+	
     float4 dirLightColor;
     float4 dirLightIntensity;
+	float4 dirLightDirection;
+	
     float4 pointLightPosition[MaxLights];
     float4 pointLightColor[MaxLights];
-    float4 pointLightRange[MaxLights];
-    float4 pointLightIntensity[MaxLights];
+    float4 pointLightIntenRange[MaxLights];
+	
+	float4 spotLightColor[MaxLights];
+	float4 spotLightPosition[MaxLights];
+    float4 spotLightDirection[MaxLights];
+    float4 spotLightIntenRangeAngle[MaxLights];
+	
     float pointlightCount;
+	float spotlightCount;
     float nearPlane;
     float farPlane;
 	float softShadows;
     float2 resolution;
-    float2 padding;
+    float padding;
 };
 //=====================================
 
@@ -101,12 +109,12 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	// Sample the skybox and the irradiance texture
     float mipIndex = roughness * roughness * 10.0f;
-    float3 envColor = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, mipIndex));
-    float3 irradiance = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, 10.0f));
+    float3 envColor = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, mipIndex)).rgb;
+    float3 irradiance = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, 10.0f)).rgb;
 	
     if (type == 0.1f) // Texture mapping
     {
-        finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir));
+        finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir)).rgb;
         finalColor = ACESFilm(finalColor);
         finalColor = ToGamma(finalColor);
         finalColor *= clamp(dirLightIntensity[0], 0.1f, 1.0f); // some totally fake day/night effect	
@@ -118,36 +126,72 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float ambientLightIntensity = 0.3f;
 
 	//= DIRECTIONAL LIGHT ========================================================================================================================================
-	float3 lightColor = dirLightColor;
-	float lightIntensity = dirLightIntensity;
-	float3 lightDir = normalize(-dirLightDirection);
+	// Get light data
+	float3 lightColor 		= dirLightColor.rgb;
+	float lightIntensity 	= dirLightIntensity.r;
+	float3 lightDir 		= normalize(-dirLightDirection).rgb;
 
-	ambientLightIntensity = clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
-	lightIntensity *= shadowing;
-	lightIntensity += emission;
-	envColor *= clamp(lightIntensity, 0.0f, 1.0f);
-	irradiance *= clamp(lightIntensity, 0.0f, 1.0f);
-			
+	// Compute
+	ambientLightIntensity 	= clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
+	lightIntensity 			*= shadowing;
+	lightIntensity 			+= emission;
+	envColor 				*= clamp(lightIntensity, 0.0f, 1.0f);
+	irradiance 				*= clamp(lightIntensity, 0.0f, 1.0f);
+	
+	// Compute
 	finalColor += PBR(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);
 	//============================================================================================================================================================
 	
 	//= POINT LIGHTS =============================================================================================================================================
     for (int i = 0; i < pointlightCount; i++)
     {
-        float3 lightColor = pointLightColor[i];
-        float3 lightPos = pointLightPosition[i];
-        float radius = pointLightRange[i];
-        float lightIntensity = pointLightIntensity[i];
+		// Get light data
+        float3 color 		= pointLightColor[i].rgb;
+        float3 position 	= pointLightPosition[i].xyz;
+		float intensity 	= pointLightIntenRange[i].x;
+        float range 		= pointLightIntenRange[i].y;
+        
+		// Compute light
+        float3 direction 	= normalize(position - worldPos);
+        float dist 			= length(worldPos - position);
+        float attunation 	= clamp(1.0f - dist / range, 0.0f, 1.0f); attunation *= attunation;
+		intensity 			*= attunation;
+		intensity 			+= emission;
 
-        float3 lightDir = normalize(lightPos - worldPos);
-        float dist = length(worldPos - lightPos);
-        float attunation = clamp(1.0f - dist / radius, 0.0f, 1.0f); attunation *= attunation;
-		lightIntensity *= attunation;
-		lightIntensity += emission;
+		// Compute illumination
+        if (dist < range)
+		{
+            finalColor += PBR(albedo, roughness, metallic, specular, normal, viewDir, direction, color, intensity, 0.0f, envColor, irradiance);
+		}
+    }
+	//============================================================================================================================================================
+	
+	//= SPOT LIGHTS ==============================================================================================================================================
+    for (int j = 0; j < spotlightCount; j++)
+    {
+		// Get light data
+        float3 color 		= spotLightColor[j].rgb;
+        float3 position 	= spotLightPosition[j].xyz;
+		float intensity 	= spotLightIntenRangeAngle[j].x;
+		float3 spotDir 		= normalize(-spotLightDirection[j].xyz);
+		float range 		= spotLightIntenRangeAngle[j].y;
+        float cutoffAngle 	= 1.0f - spotLightIntenRangeAngle[j].z;
+        
+		// Compute light
+		float3 direction 	= normalize(position - worldPos);
+		float dist 			= length(worldPos - position);	
+		float theta 		= dot(direction, spotDir);
+		float epsilon   	= cutoffAngle - cutoffAngle * 0.9f;
+		float attunation 	= clamp((theta - cutoffAngle) / epsilon, 0.0f, 1.0f);  // attunate when approaching the outer cone
+		attunation 			*= clamp(1.0f - dist / range, 0.0f, 1.0f); attunation *= attunation; // attunate with distance as well
+		intensity 			*= attunation;
+		intensity 			+= emission;
 
-		// Do expensive lighting
-        if (dist < radius)
-            finalColor += PBR(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, 0.0f, envColor, irradiance);
+		// Compute illumination
+		if(theta > cutoffAngle)
+		{
+            finalColor += PBR(albedo, roughness, metallic, specular, normal, viewDir, spotDir, color, intensity, 0.0f, envColor, irradiance);
+		}
     }
 	//============================================================================================================================================================
 	

@@ -61,28 +61,28 @@ namespace Directus
 	public:
 		static void Initialize();
 
-		//= RESOLUTION ================================================
+		//= RESOLUTION ==================================
 		static void SetResolution(int width, int height);
 		static Math::Vector2 GetResolution();
-		static int GetResolutionWidth() { return m_resolutionWidth; }
-		static int GetResolutionHeight() { return m_resolutionHeight; }
-		//=============================================================
+		static int GetResolutionWidth();
+		static int GetResolutionHeight();
+		//===============================================
 
-		//= VIEWPORT ==============================================
+		//= VIEWPORT ==================================
 		static void SetViewport(int width, int height);
 		static Math::Vector2 GetViewport();
-		static int GetViewportWidth() { return m_viewportWidth; }
-		static int GetViewportHeight() { return m_viewportHeight; }
-		//=========================================================
+		static int GetViewportWidth();
+		static int GetViewportHeight();
+		//=============================================
 
-		static bool IsFullScreen() { return m_isFullScreen; }
-		static bool IsMouseVisible() { return m_isMouseVisible; }
+		static bool IsFullScreen();
+		static bool IsMouseVisible();
 		static VSync GetVSync();
-		static float GetScreenAspect() { return m_screenAspect; }
-		static int GetShadowMapResolution() { return m_shadowMapResolution; }
-		static unsigned int GetAnisotropy() { return m_anisotropy; }
-		static void SetDebugDraw(bool enabled) { m_debugDraw = enabled; }
-		static bool GetDebugDraw() { return m_debugDraw; }
+		static float GetScreenAspect();
+		static int GetShadowMapResolution();
+		static unsigned int GetAnisotropy();
+		static void SetDebugDraw(bool enabled);
+		static bool GetDebugDraw();
 
 	private:
 		static std::ofstream m_fout;

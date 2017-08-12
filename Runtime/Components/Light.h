@@ -39,7 +39,8 @@ namespace Directus
 	enum LightType
 	{
 		Directional,
-		Point
+		Point,
+		Spot
 	};
 
 	enum ShadowType
@@ -94,8 +95,11 @@ namespace Directus
 		void SetShadowType(ShadowType shadowType) { m_shadowType = shadowType; }
 		float GetShadowTypeAsFloat() const;
 
-		void SetRange(float value) { m_range = value; }
+		void SetRange(float range);
 		float GetRange() { return m_range; }
+
+		void SetAngle(float angle);
+		float GetAngle() { return m_angle; }
 
 		void SetBias(float value) { m_bias = value; }
 		float GetBias() { return m_bias; }
@@ -118,6 +122,7 @@ namespace Directus
 		Math::Vector4 m_color;
 		float m_range;
 		float m_intensity;
+		float m_angle;
 		float m_bias;
 
 		Math::Matrix m_viewMatrix;

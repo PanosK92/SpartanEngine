@@ -90,7 +90,7 @@ namespace Directus
 		m_matrixBuffer->SetPS(0);
 	}
 
-	void DeferredShader::UpdateMiscBuffer(Light* directionalLight, vector<weakGameObj> pointLights, Camera* camera)
+	void DeferredShader::UpdateMiscBuffer(const vector<Light*>& lights, Camera* camera)
 	{
 		if (!IsCompiled())
 		{
@@ -98,40 +98,84 @@ namespace Directus
 			return;
 		}
 
+		if (!camera || lights.empty())
+			return;
+
 		// Get a pointer to the data in the constant buffer.
 		MiscBufferType* buffer = (MiscBufferType*)m_miscBuffer->Map();
 
 		Vector3 camPos = camera->g_transform->GetPosition();
 		buffer->cameraPosition = Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
 
-		// Fill with directional lights
-		if (directionalLight)
+		// Reset any light buffer values because the shader will still use them
+		for (int i = 0; i < maxLights; i++)
 		{
-			Vector3 direction = directionalLight->GetDirection();
-			buffer->dirLightColor = directionalLight->GetColor();
-			buffer->dirLightDirection = Vector4(direction.x, direction.y, direction.z, 1.0f);
-			buffer->dirLightIntensity = Vector4(directionalLight->GetIntensity());
-			buffer->softShadows = directionalLight->GetShadowType() == Soft_Shadows ? (float)true : (float)false;
+			buffer->dirLightColor = Vector4::Zero;
+			buffer->dirLightDirection = Vector4::Zero;
+			buffer->dirLightIntensity = Vector4::Zero;
+			buffer->softShadows = (float)false;
+			buffer->pointLightPosition[maxLights] = Vector4::Zero;
+			buffer->pointLightColor[maxLights] = Vector4::Zero;
+			buffer->pointLightIntenRange[maxLights] = Vector4::Zero;
+			buffer->spotLightPosition[maxLights] = Vector4::Zero;
+			buffer->spotLightColor[maxLights] = Vector4::Zero;
+			buffer->spotLightIntenRangeAngle[maxLights] = Vector4::Zero;
+		}
+
+		// Fill with directional lights
+		for (const auto& light : lights)
+		{
+			if (light->GetLightType() != Directional)
+				continue;
+
+			Vector3 direction = light->GetDirection();
+
+			buffer->dirLightColor = light->GetColor();	
+			buffer->dirLightIntensity = Vector4(light->GetIntensity());
+			buffer->dirLightDirection = Vector4(direction.x, direction.y, direction.z, 0.0f);
+
+			buffer->softShadows = (light->GetShadowType() == Soft_Shadows) ? (float)true : (float)false;
 		}
 
 		// Fill with point lights
-		for (unsigned int i = 0; i < pointLights.size(); i++)
+		int pointIndex = 0;
+		for (const auto& light : lights)
 		{
-			if (pointLights[i].expired())
+			if (light->GetLightType() != Point)
 				continue;
 
-			Vector3 pos = pointLights[i]._Get()->GetTransform()->GetPosition();
-			buffer->pointLightPosition[i] = Vector4(pos.x, pos.y, pos.z, 1.0f);
-			buffer->pointLightColor[i] = pointLights[i].lock()->GetComponent<Light>()->GetColor();
-			buffer->pointLightIntensity[i] = Vector4(pointLights[i].lock()->GetComponent<Light>()->GetIntensity());
-			buffer->pointLightRange[i] = Vector4(pointLights[i].lock()->GetComponent<Light>()->GetRange());
+			Vector3 pos = light->g_transform->GetPosition();
+			buffer->pointLightPosition[pointIndex] = Vector4(pos.x, pos.y, pos.z, 1.0f);
+			buffer->pointLightColor[pointIndex] = light->GetColor();
+			buffer->pointLightIntenRange[pointIndex] = Vector4(light->GetIntensity(), light->GetRange(), 0.0f, 0.0f);
+
+			pointIndex++;
 		}
 
-		buffer->pointLightCount = (float)pointLights.size();
+		// Fill with spot lights
+		int spotIndex = 0;
+		for (const auto& light : lights)
+		{
+			if (light->GetLightType() != Spot)
+				continue;
+
+			Vector3 direction = light->GetDirection();
+			Vector3 pos = light->g_transform->GetPosition();
+
+			buffer->spotLightColor[spotIndex] = light->GetColor();
+			buffer->spotLightPosition[spotIndex] = Vector4(pos.x, pos.y, pos.z, 1.0f);
+			buffer->spotLightDirection[spotIndex] = Vector4(direction.x, direction.y, direction.z, 0.0f);
+			buffer->spotLightIntenRangeAngle[spotIndex] = Vector4(light->GetIntensity(), light->GetRange(), light->GetAngle(), 0.0f);
+
+			spotIndex++;
+		}
+
+		buffer->pointLightCount = (float)pointIndex;
+		buffer->spotLightCount = (float)spotIndex;
 		buffer->nearPlane = camera->GetNearPlane();
 		buffer->farPlane = camera->GetFarPlane();
 		buffer->viewport = GET_RESOLUTION;
-		buffer->padding = Vector2::Zero;
+		buffer->padding = 0.0f;
 
 		// Unmap buffer
 		m_miscBuffer->Unmap();

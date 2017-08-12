@@ -65,18 +65,25 @@ void DirectusLight::Initialize(DirectusInspector* inspector, QWidget* mainWindow
     m_optionsButton->Initialize(mainWindow);
     //=========================================================
 
-    //= LIGHT TYPE ============================================
+    //= LIGHT TYPE =======================
     m_lightTypeLabel = new QLabel("Type");
     m_lightType = new QComboBox();
     m_lightType->addItem("Directional");
     m_lightType->addItem("Point");
-    //=========================================================
+    m_lightType->addItem("Spot");
+    //====================================
 
-    //= RANGE ======================================
+    //= RANGE =============================
+    m_angle = new DirectusComboLabelText();
+    m_angle->Initialize("Angle");
+    m_angle->AlignLabelToTheLeft();
+    //=====================================
+
+    //= RANGE =============================
     m_range = new DirectusComboLabelText();
     m_range->Initialize("Range");
     m_range->AlignLabelToTheLeft();
-    //=============================================
+    //=====================================
 
     //= COLOR ====================================
     m_colorLabel = new QLabel("Color");
@@ -90,13 +97,13 @@ void DirectusLight::Initialize(DirectusInspector* inspector, QWidget* mainWindow
     m_intensity->Initialize(0, 8);
     //====================================
 
-    //= SHADOW TYPE ======================
+    //= SHADOW TYPE ==============================
     m_shadowTypeLabel = new QLabel("Shadow type");
     m_shadowType = new QComboBox();
     m_shadowType->addItem("No Shadows");
     m_shadowType->addItem("Hard Shadows");
     m_shadowType->addItem("Soft Shadows");
-    //====================================
+    //============================================
 
     //= LINE ======================================
     m_line = new QWidget();
@@ -115,29 +122,34 @@ void DirectusLight::Initialize(DirectusInspector* inspector, QWidget* mainWindow
     m_gridLayout->addWidget(m_lightTypeLabel,   1, 0, 1, 1);
     m_gridLayout->addWidget(m_lightType,        1, 1, 1, 2);
 
-    // Row 2 - RANGE
-    m_gridLayout->addWidget(m_range->GetLabelWidget(),  2, 0, 1, 1);
-    m_gridLayout->addWidget(m_range->GetTextWidget(),   2, 1, 1, 2);
+    // Row 2 - ANGLE
+    m_gridLayout->addWidget(m_angle->GetLabelWidget(),  2, 0, 1, 1);
+    m_gridLayout->addWidget(m_angle->GetTextWidget(),   2, 1, 1, 2);
 
-    // Row 3 - COLOR
-    m_gridLayout->addWidget(m_colorLabel,           3, 0, 1, 1);
-    m_gridLayout->addWidget(m_color->GetWidget(),   3, 1, 1, 2);
+    // Row 3 - RANGE
+    m_gridLayout->addWidget(m_range->GetLabelWidget(),  3, 0, 1, 1);
+    m_gridLayout->addWidget(m_range->GetTextWidget(),   3, 1, 1, 2);
 
-    // Row 4 - INTENSTITY
-    m_gridLayout->addWidget(m_intensityLabel,               4, 0, 1, 1);
-    m_gridLayout->addWidget(m_intensity->GetSlider(),       4, 1, 1, 1);
-    m_gridLayout->addWidget(m_intensity->GetLineEdit(),     4, 2, 1, 1);
+    // Row 4 - COLOR
+    m_gridLayout->addWidget(m_colorLabel,           4, 0, 1, 1);
+    m_gridLayout->addWidget(m_color->GetWidget(),   4, 1, 1, 2);
 
-    // Row 5 - SHADOW TYPE
-    m_gridLayout->addWidget(m_shadowTypeLabel,  5, 0, 1, 1);
-    m_gridLayout->addWidget(m_shadowType,       5, 1, 1, 2);
+    // Row 5 - INTENSTITY
+    m_gridLayout->addWidget(m_intensityLabel,               5, 0, 1, 1);
+    m_gridLayout->addWidget(m_intensity->GetSlider(),       5, 1, 1, 1);
+    m_gridLayout->addWidget(m_intensity->GetLineEdit(),     5, 2, 1, 1);
 
-    // Row 6 - LINE
-    m_gridLayout->addWidget(m_line, 6, 0, 1, 3);
+    // Row 6 - SHADOW TYPE
+    m_gridLayout->addWidget(m_shadowTypeLabel,  6, 0, 1, 1);
+    m_gridLayout->addWidget(m_shadowType,       6, 1, 1, 2);
+
+    // Row 7 - LINE
+    m_gridLayout->addWidget(m_line, 7, 0, 1, 3);
     //==============================================================================
 
-    connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));
+    connect(m_optionsButton,SIGNAL(Remove()),                   this, SLOT(Remove()));
     connect(m_lightType,    SIGNAL(currentIndexChanged(int)),   this, SLOT(MapLightType()));
+    connect(m_angle,        SIGNAL(ValueChanged()),             this, SLOT(MapAngle()));
     connect(m_range,        SIGNAL(ValueChanged()),             this, SLOT(MapRange()));
     connect(m_color,        SIGNAL(ColorPickingCompleted()),    this, SLOT(MapColor()));
     connect(m_intensity,    SIGNAL(ValueChanged()),             this, SLOT(MapIntensity()));
@@ -160,7 +172,7 @@ void DirectusLight::Reflect(std::weak_ptr<Directus::GameObject> gameobject)
     }
 
     // Catch the seed of the evil
-    m_inspectedLight = gameobject.lock()->GetComponent<Light>();
+    m_inspectedLight = gameobject._Get()->GetComponent<Light>();
     if (!m_inspectedLight)
     {
         this->hide();
@@ -169,6 +181,7 @@ void DirectusLight::Reflect(std::weak_ptr<Directus::GameObject> gameobject)
 
     // Do the actual reflection
     ReflectLightType();
+    ReflectAngle();
     ReflectRange();
     ReflectColor();
     ReflectIntensity();
@@ -187,12 +200,32 @@ void DirectusLight::ReflectLightType()
     m_lightType->setCurrentIndex((int)type);
 }
 
+void DirectusLight::ReflectAngle()
+{
+    if (!m_inspectedLight)
+        return;
+
+    if (m_inspectedLight->GetLightType() == Spot)
+    {
+        m_angle->GetLabelWidget()->show();
+        m_angle->GetTextWidget()->show();
+    }
+    else
+    {
+        m_angle->GetLabelWidget()->hide();
+        m_angle->GetTextWidget()->hide();
+    }
+
+    float angle = RAD_TO_DEG * m_inspectedLight->GetAngle();
+    m_angle->SetFromFloat(angle);
+}
+
 void DirectusLight::ReflectRange()
 {
     if (!m_inspectedLight)
         return;
 
-    if (m_inspectedLight->GetLightType() == Point)
+    if (m_inspectedLight->GetLightType() != Directional)
     {
         m_range->GetLabelWidget()->show();
         m_range->GetTextWidget()->show();
@@ -242,10 +275,19 @@ void DirectusLight::MapLightType()
     LightType type = (LightType)(m_lightType->currentIndex());
     m_inspectedLight->SetLightType(type);
 
-    // It's important to reflect the range again because
-    // setting a directional light to a point light, needs
-    // a new field called Range.
+    // It's important to reflect the angle & range again
+    // because point & spot lights require extra fields
+    ReflectAngle();
     ReflectRange();
+}
+
+void DirectusLight::MapAngle()
+{
+    if(!m_inspectedLight)
+        return;
+
+    float angle = DEG_TO_RAD * m_angle->GetAsFloat();
+    m_inspectedLight->SetAngle(angle);
 }
 
 void DirectusLight::MapRange()
@@ -292,7 +334,7 @@ void DirectusLight::Remove()
     auto gameObject = m_inspectedLight->g_gameObject;
     if (!gameObject.expired())
     {
-        gameObject.lock()->RemoveComponent<Light>();
+        gameObject._Get()->RemoveComponent<Light>();
     }
 
     m_inspector->Inspect(gameObject);

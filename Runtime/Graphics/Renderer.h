@@ -101,11 +101,11 @@ namespace Directus
 		std::shared_ptr<FullScreenQuad> m_fullScreenQuad;
 		std::shared_ptr<GBuffer> m_GBuffer;
 
-		// GAMEOBJECTS ==============================
+		// GAMEOBJECTS ========================
 		std::vector<weakGameObj> m_renderables;
-		std::vector<weakGameObj> m_lightsDirectional;
-		std::vector<weakGameObj> m_lightsPoint;
-		//===========================================
+		std::vector<Light*> m_lights;
+		Light* m_directionalLight;
+		//=====================================
 
 		//= RENDER TEXTURES ================================
 		std::shared_ptr<D3D11RenderTexture> m_renderTexPing;
@@ -137,7 +137,6 @@ namespace Directus
 		Camera* m_camera;
 		Skybox* m_skybox;
 		LineRenderer* m_lineRenderer;
-		Light* m_directionalLight;
 		Math::Matrix mView;
 		Math::Matrix mProjection;
 		Math::Matrix mViewProjection;

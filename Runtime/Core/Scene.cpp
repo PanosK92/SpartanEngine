@@ -104,11 +104,8 @@ namespace Directus
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
 
-		m_lightsDirectional.clear();
-		m_lightsDirectional.shrink_to_fit();
-
-		m_lightsPoint.clear();
-		m_lightsPoint.shrink_to_fit();
+		m_lights.clear();
+		m_lights.shrink_to_fit();
 
 		// Clear the resource cache
 		m_context->GetSubsystem<ResourceManager>()->Unload();
@@ -373,33 +370,33 @@ namespace Directus
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
 
-		m_lightsDirectional.clear();
-		m_lightsDirectional.shrink_to_fit();
-
-		m_lightsPoint.clear();
-		m_lightsPoint.shrink_to_fit();
+		m_lights.clear();
+		m_lights.shrink_to_fit();
 
 		for (const auto& gameObject : m_gameObjects)
 		{
 			// Find camera
 			if (gameObject->HasComponent<Camera>())
+			{
 				m_mainCamera = gameObject;
+			}
 
 			// Find skybox
 			if (gameObject->HasComponent<Skybox>())
+			{
 				m_skybox = gameObject;
+			}
 
 			// Find renderables
 			if (gameObject->HasComponent<MeshRenderer>() && gameObject->HasComponent<MeshFilter>())
+			{
 				m_renderables.push_back(gameObject);
+			}
 
 			// Find lights
 			if (gameObject->HasComponent<Light>())
 			{
-				if (gameObject->GetComponent<Light>()->GetLightType() == Directional)
-					m_lightsDirectional.push_back(gameObject);
-				else if (gameObject->GetComponent<Light>()->GetLightType() == Point)
-					m_lightsPoint.push_back(gameObject);
+				m_lights.push_back(gameObject->GetComponent<Light>());
 			}
 		}
 	}
