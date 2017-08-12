@@ -41,7 +41,7 @@ namespace Directus
 		DX8Input();
 		~DX8Input();
 
-		bool Initialize(HINSTANCE instance, HWND handle);
+		bool Initialize(void* instance, void* handle);
 		void Update();
 		void Release();
 
@@ -51,6 +51,8 @@ namespace Directus
 		Math::Vector3 GetMouseDelta();
 
 	private:
+		bool GetKeyboard();
+		bool GetMouse();
 		bool ReadKeyboard();
 		bool ReadMouse();
 

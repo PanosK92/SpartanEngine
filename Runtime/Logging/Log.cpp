@@ -71,7 +71,7 @@ namespace Directus
 		}
 		else
 		{
-			string prefix = (type == Info) ? "Info" : (type == Warning) ? "Warning" : "Error";
+			string prefix = (type == Info) ? "Info:" : (type == Warning) ? "Warning:" : "Error:";
 			string finalText = prefix + " " + text;
 			WriteToFile(finalText);
 		}
