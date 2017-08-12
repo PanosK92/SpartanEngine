@@ -64,7 +64,10 @@ namespace Directus
 		if (!g_gameObject.expired())
 		{
 			MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
-			m_mesh = meshFilter->GetMesh();
+			if (meshFilter)
+			{
+				m_mesh = meshFilter->GetMesh();
+			}
 		}
 
 		m_lastKnownScale = g_transform->GetScale();

@@ -61,7 +61,6 @@ namespace Directus
 		m_camera = nullptr;
 		m_texEnvironment = nullptr;
 		m_lineRenderer = nullptr;
-		m_directionalLight = nullptr;
 		m_nearPlane = 0.0;
 		m_farPlane = 0.0f;
 		m_resourceMng = nullptr;
@@ -228,11 +227,9 @@ namespace Directus
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
 
-		m_lightsDirectional.clear();
-		m_lightsDirectional.shrink_to_fit();
-
-		m_lightsPoint.clear();
-		m_lightsPoint.shrink_to_fit();
+		m_lights.clear();
+		m_lights.shrink_to_fit();
+		m_directionalLight = nullptr;
 	}
 
 	void Renderer::AcquirePrerequisites()
@@ -240,9 +237,19 @@ namespace Directus
 		Clear();
 		Scene* scene = m_context->GetSubsystem<Scene>();
 		m_renderables = scene->GetRenderables();
-		m_lightsDirectional = scene->GetLightsDirectional();
-		m_lightsPoint = scene->GetLightsPoint();
+		m_lights = scene->GetLights();
 
+		// Get directional light
+		for (const auto& light : m_lights)
+		{
+			if (light->GetLightType() == Directional)
+			{
+				m_directionalLight = light;
+				break;
+			}
+		}
+
+		// Get camera and camera related properties
 		weakGameObj camera = scene->GetMainCamera();
 		if (!camera.expired())
 		{
@@ -254,11 +261,6 @@ namespace Directus
 				m_skybox = skybox.lock()->GetComponent<Skybox>();
 				m_lineRenderer = skybox.lock()->GetComponent<LineRenderer>(); // Hush hush...
 			}
-
-			if (m_lightsDirectional.size() != 0)
-				m_directionalLight = m_lightsDirectional[0].lock()->GetComponent<Light>();
-			else
-				m_directionalLight = nullptr;
 
 			mView = m_camera->GetViewMatrix();
 			mProjection = m_camera->GetProjectionMatrix();
@@ -273,7 +275,6 @@ namespace Directus
 			m_camera = nullptr;
 			m_skybox = nullptr;
 			m_lineRenderer = nullptr;
-			m_directionalLight = nullptr;
 		}
 	}
 
@@ -484,7 +485,7 @@ namespace Directus
 
 		// Update buffers
 		m_shaderDeferred->UpdateMatrixBuffer(Matrix::Identity, mView, mBaseView, mProjection, mOrthographicProjection);
-		m_shaderDeferred->UpdateMiscBuffer(m_directionalLight, m_lightsPoint, m_camera);
+		m_shaderDeferred->UpdateMiscBuffer(m_lights, m_camera);
 
 		//= Update textures ===========================================================
 		m_texArray.clear();

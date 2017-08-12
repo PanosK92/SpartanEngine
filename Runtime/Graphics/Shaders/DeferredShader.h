@@ -21,9 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
+//= INCLUDES ==============================
 #include "../../Math/Matrix.h"
-#include "../../Core/GameObject.h"
 #include "../../Math/Vector4.h"
 #include "../../Components/Camera.h"
 #include "../D3D11/D3D11GraphicsDevice.h"
@@ -31,8 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../D3D11/D3D11ConstantBuffer.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../../Resource/ResourceManager.h"
-
-//=======================================
+//=========================================
 
 namespace Directus
 {
@@ -45,13 +43,14 @@ namespace Directus
 		void Load(const std::string& filePath, Graphics* graphics);
 		void UpdateMatrixBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mBaseView,
 			const Math::Matrix& mPerspectiveProjection, const Math::Matrix& mOrthographicProjection);
-		void UpdateMiscBuffer(Light*, std::vector<weakGameObj> pointLights, Camera* camera);
+		void UpdateMiscBuffer(const std::vector<Light*>& lights, Camera* camera);
 		void UpdateTextures(std::vector<ID3D11ShaderResourceView*> textures);
 		void Set();
 		void Render(int indexCount);
 		bool IsCompiled();
 
 	private:
+
 		struct MatrixBufferType
 		{
 			Math::Matrix worldViewProjection;
@@ -59,23 +58,37 @@ namespace Directus
 			Math::Matrix mView;
 		};
 
-		const static int maxPointLights = 128;
+		const static int maxLights = 64;
 		struct MiscBufferType
 		{
 			Math::Vector4 cameraPosition;
-			Math::Vector4 dirLightDirection;
+			
+			//= DIRECTIONAL LIGHT ==========	
 			Math::Vector4 dirLightColor;
 			Math::Vector4 dirLightIntensity;
-			Math::Vector4 pointLightPosition[maxPointLights];
-			Math::Vector4 pointLightColor[maxPointLights];
-			Math::Vector4 pointLightRange[maxPointLights];
-			Math::Vector4 pointLightIntensity[maxPointLights];
+			Math::Vector4 dirLightDirection;
+			//==============================
+
+			//= POINT LIGHTS =============================
+			Math::Vector4 pointLightPosition[maxLights];
+			Math::Vector4 pointLightColor[maxLights];
+			Math::Vector4 pointLightIntenRange[maxLights];
+			//============================================
+
+			//= SPOT LIGHTS ==================================
+			Math::Vector4 spotLightColor[maxLights];
+			Math::Vector4 spotLightPosition[maxLights];
+			Math::Vector4 spotLightDirection[maxLights];
+			Math::Vector4 spotLightIntenRangeAngle[maxLights];
+			//================================================
+
 			float pointLightCount;
+			float spotLightCount;
 			float nearPlane;
 			float farPlane;
 			float softShadows;
 			Math::Vector2 viewport;
-			Math::Vector2 padding;
+			float padding;
 		};
 
 		std::shared_ptr<D3D11ConstantBuffer> m_matrixBuffer;

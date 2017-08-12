@@ -90,6 +90,7 @@ public slots:
     void CreateQuad();
     void CreateDirectionalLight();
     void CreatePointLight();
+    void CreateSpotLight();
     void CreateCamera();
     void CreateAudioSource();
     //============================

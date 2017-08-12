@@ -476,8 +476,12 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     QAction actionPointLight("Point Light", this);
     actionPointLight.setEnabled(true);
 
+    QAction actionSpotLight("Spot Light", this);
+    actionSpotLight.setEnabled(true);
+
     menuLight.addAction(&actionDirectionalLight);
     menuLight.addAction(&actionPointLight);
+    menuLight.addAction(&actionSpotLight);
     //====================================================
 
     //= AUDIO ============================================
@@ -503,6 +507,7 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
     connect(&actionQuad,                SIGNAL(triggered()), this,  SLOT(CreateQuad()));
     connect(&actionDirectionalLight,    SIGNAL(triggered()), this,  SLOT(CreateDirectionalLight()));
     connect(&actionPointLight,          SIGNAL(triggered()), this,  SLOT(CreatePointLight()));
+    connect(&actionSpotLight,           SIGNAL(triggered()), this,  SLOT(CreateSpotLight()));
     connect(&actionAudioSource,         SIGNAL(triggered()), this,  SLOT(CreateAudioSource()));
     connect(&actionCamera,              SIGNAL(triggered()), this,  SLOT(CreateCamera()));
     //==============================================================================================
@@ -557,8 +562,12 @@ void DirectusHierarchy::ShowContextMenuLight()
     QAction actionPointLight("Point Light", this);
     actionPointLight.setEnabled(true);
 
+    QAction actionSpotLight("Spot Light", this);
+    actionSpotLight.setEnabled(true);
+
     menuLight.addAction(&actionDirectionalLight);
     menuLight.addAction(&actionPointLight);
+    menuLight.addAction(&actionSpotLight);
     //====================================================
 
     //= CAMERA ===========================================
@@ -572,6 +581,7 @@ void DirectusHierarchy::ShowContextMenuLight()
     connect(&actionQuad,                SIGNAL(triggered()), this,  SLOT(CreateQuad()));
     connect(&actionDirectionalLight,    SIGNAL(triggered()), this,  SLOT(CreateDirectionalLight()));
     connect(&actionPointLight,          SIGNAL(triggered()), this,  SLOT(CreatePointLight()));
+    connect(&actionSpotLight,           SIGNAL(triggered()), this,  SLOT(CreateSpotLight()));
     connect(&actionCamera,              SIGNAL(triggered()), this,  SLOT(CreateCamera()));
     //==============================================================================================
 
@@ -723,6 +733,20 @@ void DirectusHierarchy::CreatePointLight()
     // Add component
     Light* light = gameobject->AddComponent<Light>();
     light->SetLightType(Point);
+
+    // Refresh hierarchy
+    Populate();
+}
+
+void DirectusHierarchy::CreateSpotLight()
+{
+    // Create GameObject
+    auto gameobject = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+    gameobject->SetName("Spot light");
+
+    // Add component
+    Light* light = gameobject->AddComponent<Light>();
+    light->SetLightType(Spot);
 
     // Refresh hierarchy
     Populate();

@@ -117,6 +117,31 @@ namespace Directus
 		return (VSync)m_vsync;
 	}
 
+	float Settings::GetScreenAspect()
+	{
+		return m_screenAspect;
+	}
+
+	int Settings::GetShadowMapResolution()
+	{
+		return m_shadowMapResolution;
+	}
+
+	unsigned Settings::GetAnisotropy()
+	{
+		return m_anisotropy;
+	}
+
+	void Settings::SetDebugDraw(bool enabled)
+	{
+		m_debugDraw = enabled;
+	}
+
+	bool Settings::GetDebugDraw()
+	{
+		return m_debugDraw;
+	}
+
 	void Settings::SetResolution(int width, int height)
 	{
 		m_resolutionWidth = width;
@@ -129,6 +154,16 @@ namespace Directus
 		return Math::Vector2(m_resolutionWidth, m_resolutionHeight);
 	}
 
+	int Settings::GetResolutionWidth()
+	{
+		return m_resolutionWidth;
+	}
+
+	int Settings::GetResolutionHeight()
+	{
+		return m_resolutionHeight;
+	}
+
 	void Settings::SetViewport(int width, int height)
 	{
 		m_viewportWidth = width;
@@ -139,5 +174,26 @@ namespace Directus
 	{
 		return Math::Vector2(m_viewportWidth, m_viewportHeight);
 	}
+
+	int Settings::GetViewportWidth()
+	{
+		return m_viewportWidth;
+	}
+
+	int Settings::GetViewportHeight()
+	{
+		return m_viewportHeight;
+	}
+
+	bool Settings::IsFullScreen()
+	{
+		return m_isFullScreen;
+	}
+
+	bool Settings::IsMouseVisible()
+	{
+		return m_isMouseVisible;
+	}
+
 	//========================================================================
 }

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class GameObject;
+	class Light;
 	typedef std::weak_ptr<GameObject> weakGameObj;
 	typedef std::shared_ptr<GameObject> sharedGameObj;
 
@@ -69,8 +70,7 @@ namespace Directus
 		//= SCENE RESOLUTION  =========================================================
 		void Resolve();
 		std::vector<weakGameObj> GetRenderables() { return m_renderables; }
-		std::vector<weakGameObj> GetLightsDirectional() { return m_lightsDirectional; }
-		std::vector<weakGameObj> GetLightsPoint() { return m_lightsPoint; }
+		std::vector<Light*> GetLights() { return m_lights; }
 		weakGameObj GetSkybox() { return m_skybox; }
 		weakGameObj GetMainCamera() { return m_mainCamera; }
 
@@ -91,8 +91,7 @@ namespace Directus
 
 		std::vector<sharedGameObj> m_gameObjects;
 		std::vector<weakGameObj> m_renderables;
-		std::vector<weakGameObj> m_lightsDirectional;
-		std::vector<weakGameObj> m_lightsPoint;
+		std::vector<Light*> m_lights;
 
 		weakGameObj m_mainCamera;
 		weakGameObj m_skybox;

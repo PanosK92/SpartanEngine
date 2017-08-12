@@ -57,6 +57,10 @@ private:
     QComboBox* m_lightType;
     //====================================
 
+    //= ANGLE ============================
+    DirectusComboLabelText* m_angle;
+    //====================================
+
     //= RANGE ============================
     DirectusComboLabelText* m_range;
     //====================================
@@ -82,6 +86,7 @@ private:
     //====================================
 
     void ReflectLightType();
+    void ReflectAngle();
     void ReflectRange();
     void ReflectColor();
     void ReflectIntensity();
@@ -89,6 +94,7 @@ private:
 
 public slots:
     void MapLightType();
+    void MapAngle();
     void MapRange();
     void MapColor();
     void MapIntensity();

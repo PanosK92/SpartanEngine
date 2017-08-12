@@ -107,9 +107,8 @@ namespace Directus
 
 	bool D3D11Shader::SetInputLayout(InputLayout inputLayout)
 	{
-		if (!m_graphics->GetDevice()) {
+		if (!m_graphics->GetDevice())
 			return false;
-		}
 
 		if (!m_compiled)
 		{
@@ -118,7 +117,8 @@ namespace Directus
 		}
 
 		// Create vertex input layout
-		if (inputLayout != Auto) {
+		if (inputLayout != Auto) 
+		{
 			m_layoutHasBeenSet = m_D3D11InputLayout->Create(m_VSBlob, inputLayout);
 		}
 		else
@@ -129,9 +129,13 @@ namespace Directus
 
 		// If the creation was successful, release vsBlob else print a message
 		if (m_layoutHasBeenSet)
+		{
 			SafeRelease(m_VSBlob);
+		}
 		else
+		{
 			LOG_ERROR("Failed to create vertex input layout for " + FileSystem::GetFileNameFromFilePath(m_filePath) + ".");
+		}
 
 		return m_layoutHasBeenSet;
 	}
@@ -145,9 +149,8 @@ namespace Directus
 		}
 
 		auto sampler = make_shared<D3D11Sampler>(m_graphics);
-		if (!sampler->Create(filter, textureAddressMode, comparisonFunction)) {
+		if (!sampler->Create(filter, textureAddressMode, comparisonFunction))
 			return false;
-		}
 
 		m_samplers.push_back(sampler);
 
@@ -169,7 +172,9 @@ namespace Directus
 
 		// set the samplers
 		for (int i = 0; i < m_samplers.size(); i++)
+		{
 			m_samplers[i]->Set(i);
+		}
 	}
 
 	void D3D11Shader::SetName(const string& name)
@@ -190,17 +195,15 @@ namespace Directus
 	//= COMPILATION ================================================================================================================================================================================
 	bool D3D11Shader::CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros)
 	{
-		if (!m_graphics->GetDevice()) {
+		if (!m_graphics->GetDevice())
 			return false;
-		}
 
-		HRESULT result = CompileShader(path, macros, entrypoint, profile, vsBlob);
-		if (FAILED(result))
+		if (!CompileShader(path, macros, entrypoint, profile, vsBlob))
 			return false;
 
 		// Create the shader from the buffer.
 		ID3D10Blob* vsb = *vsBlob;
-		result = m_graphics->GetDevice()->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
+		HRESULT result = m_graphics->GetDevice()->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to create vertex shader.");
@@ -212,16 +215,15 @@ namespace Directus
 
 	bool D3D11Shader::CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros)
 	{
-		if (!m_graphics->GetDevice()) {
+		if (!m_graphics->GetDevice())
 			return false;
-		}
 
 		HRESULT result = CompileShader(path, macros, entrypoint, profile, psBlob);
 		if (FAILED(result))
 			return false;
 
-		ID3D10Blob* psb = *psBlob;
 		// Create the shader from the buffer.
+		ID3D10Blob* psb = *psBlob;
 		result = m_graphics->GetDevice()->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader);
 		if (FAILED(result))
 		{
@@ -244,19 +246,17 @@ namespace Directus
 		return r;
 	}
 
-	HRESULT D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut)
+	bool D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut)
 	{
-		HRESULT hr;
-		ID3DBlob* errorBlob = nullptr;
-		ID3DBlob* shaderBlob = nullptr;
-
 		unsigned compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #ifdef _DEBUG
 		compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
 #endif
 
 		// Load and compile from file
-		hr = D3DCompileFromFile(
+		ID3DBlob* errorBlob = nullptr;
+		ID3DBlob* shaderBlob = nullptr;
+		HRESULT result = D3DCompileFromFile(
 			s2ws(filePath).c_str(),
 			macros,
 			D3D_COMPILE_STANDARD_FILE_INCLUDE,
@@ -269,33 +269,48 @@ namespace Directus
 		);
 
 		// Handle any errors
-		if (FAILED(hr))
+		if (FAILED(result))
 		{
 			string shaderName = FileSystem::GetFileNameFromFilePath(filePath);
 			if (errorBlob)
 			{
-				ExportErrorDebugLog(errorBlob);
+				LogD3DCompilerError(errorBlob);
 				SafeRelease(errorBlob);
 			}
-			else if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+			else if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+			{
 				LOG_ERROR("Failed to find shader \"" + shaderName + " \" with path \"" + filePath + "\".");
+			}
 			else
+			{
 				LOG_ERROR("An unknown error occured when trying to load and compile \"" + shaderName + "\"");
+			}
 		}
 
 		// Write to blob out
 		*shaderBlobOut = shaderBlob;
 
-		return hr;
+		return SUCCEEDED(result);
 	}
 
-	void D3D11Shader::ExportErrorDebugLog(ID3D10Blob* errorMessage)
+	void D3D11Shader::LogD3DCompilerError(ID3D10Blob* errorMessage)
 	{
 		stringstream ss((char*)errorMessage->GetBufferPointer());
-		string to;
-
-		while (getline(ss, to, '\n'))
-			LOG_ERROR(to);
+		string line;
+		
+		// Split into lines
+		while (getline(ss, line, '\n'))
+		{
+			// Determine if it's a true error or just a warning
+			if (line.find("error") != string::npos)
+			{
+				LOG_ERROR(line);
+			}
+			else
+			{
+				LOG_WARNING(line);		
+			}
+		}
 	}
 
 	//= REFLECTION ================================================================================================================

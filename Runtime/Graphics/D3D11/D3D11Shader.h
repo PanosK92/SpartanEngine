@@ -60,8 +60,8 @@ namespace Directus
 		//= COMPILATION ================================================================================================================================================================================
 		bool CompileVertexShader(ID3D10Blob** vsBlob, ID3D11VertexShader** vertexShader, std::string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
 		bool CompilePixelShader(ID3D10Blob** psBlob, ID3D11PixelShader** pixelShader, std::string path, LPCSTR entrypoint, LPCSTR profile, D3D_SHADER_MACRO* macros);
-		HRESULT CompileShader(std::string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut);
-		void ExportErrorDebugLog(ID3D10Blob* errorMessage);
+		bool CompileShader(std::string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut);
+		void LogD3DCompilerError(ID3D10Blob* errorMessage);
 
 		//= REFLECTION ============================
 		std::vector<D3D11_INPUT_ELEMENT_DESC> Reflect(ID3D10Blob* shaderBlob) const;

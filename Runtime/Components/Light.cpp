@@ -101,6 +101,7 @@ namespace Directus
 		m_shadowType = Hard_Shadows;
 		m_range = 1.0f;
 		m_intensity = 2.0f;
+		m_angle = 0.5f; // about 30 degrees
 		m_color = Vector4(1.0f, 0.76f, 0.57f, 1.0f);
 		m_bias = 0.04f;
 		m_cascades = 3;
@@ -153,6 +154,7 @@ namespace Directus
 		StreamIO::WriteVector4(m_color);
 		StreamIO::WriteFloat(m_range);
 		StreamIO::WriteFloat(m_intensity);
+		StreamIO::WriteFloat(m_angle);
 		StreamIO::WriteFloat(m_bias);
 	}
 
@@ -163,6 +165,7 @@ namespace Directus
 		m_color = StreamIO::ReadVector4();
 		m_range = StreamIO::ReadFloat();
 		m_intensity = StreamIO::ReadFloat();
+		m_angle = StreamIO::ReadFloat();
 		m_bias = StreamIO::ReadFloat();
 	}
 
@@ -180,6 +183,16 @@ namespace Directus
 			return 1.0f;
 
 		return 0.0f;
+	}
+
+	void Light::SetRange(float range)
+	{
+		m_range = Clamp(range, 0.0f, INFINITY);
+	}
+
+	void Light::SetAngle(float angle)
+	{
+		m_angle = Clamp(angle, 0.0f, 1.0f);
 	}
 
 	Vector3 Light::GetDirection()
