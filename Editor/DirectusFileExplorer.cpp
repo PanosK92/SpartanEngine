@@ -165,12 +165,18 @@ void DirectusFileExplorer::mouseReleaseEvent(QMouseEvent* event)
         return;
 
     // If something was indeed clicked, get it's path.
-    QString filePath = m_fileModel->fileInfo(selectedItems[0]).filePath();
+    string filePath = m_fileModel->fileInfo(selectedItems[0]).filePath().toStdString();
 
-    // Determine what type of file that was, and display it in the inspector (if possible).
-    if (FileSystem::IsEngineMaterialFile(filePath.toStdString()))
+    // Display file in the inspector
+    if (FileSystem::IsEngineMaterialFile(filePath))
     {
-        m_inspector->InspectMaterialFile(filePath.toStdString());
+        m_inspector->InspectMaterialFile(filePath);
+    }
+
+    // Load scene
+    if (FileSystem::IsEngineSceneFile(filePath))
+    {
+        m_inspector->GetSocket()->LoadSceneFromFile(filePath);
     }
 }
 
