@@ -11,7 +11,7 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 - Cascaded shadow mapping.
 - Component-based game object system.
 - Cross-Platform state of the art editor.
-- D3D11 Renderer
+- D3D11 rendering backend
 - Deferred rendering.
 - Frustum culling.
 - Multithreading.
@@ -21,18 +21,19 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 - Scripting.
 - Windows support.
 
-# Features under development - v0.3 (Codename: Da Vinci)
-- [Done] XML I/O.
-- [Done] New editor theme.
-- [Done] Debug view (bounding boxes, colliders etc).
-- [Active] Vulkan rendering backend.
-- [Active] Dynamic resolution scaling.
-- [50%] Improved shadow quality.
+# Features under development - v0.3
 - [Done] Custom mipchain generation (lower memory usage, better texture fidelity).
-- [Done] Performance improvements, bug fixes and overall increased stability.
-- [80%] SSAO.
+- [Done] Redesigned editor.
+- [Done] Debug view (bounding boxes, colliders etc).
+- [Done] Point light support.
+- [Done] XML I/O.
+- [Done] Performance improvements, bug fixes and overall higher quality architecture.
+- [50%] Improved shadow quality.
+- [80%] Screen space ambient occlusion.
 
 # Planned Features
+- Vulkan rendering backend.
+- Dynamic resolution scaling.
 - Draw call batching (static & dynamic).
 - Export on Windows.
 - Font loader & renderer.
