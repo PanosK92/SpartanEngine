@@ -39,18 +39,22 @@ namespace Directus
 
 	DX8Input::~DX8Input()
 	{
+		Release();
 	}
 
-	bool DX8Input::Initialize(HINSTANCE hinstance, HWND hwnd)
+	bool DX8Input::Initialize(void* instance, void* handle)
 	{
-		if (!hinstance || !hwnd)
+		HWND handleHWND = (HWND)handle;
+		HINSTANCE instanceHandle = (HINSTANCE)instance;
+
+		if (!instance || !handle)
 			return false;
 
 		// Make sure the window has focus, otherwise the mouse and keyboard won't be able to be aquired.
-		SetForegroundWindow(hwnd);
+		SetForegroundWindow(handleHWND);
 
 		// Initialize the main direct input interface.
-		HRESULT result = DirectInput8Create(hinstance, DIRECTINPUT_VERSION, IID_IDirectInput8, reinterpret_cast<void**>(&m_directInput), nullptr);
+		HRESULT result = DirectInput8Create(instanceHandle, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&m_directInput, nullptr);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to initialize the DirectInput interface.");
@@ -68,17 +72,22 @@ namespace Directus
 		// Set the data format. In this case since it is a keyboard we can use the predefined data format.
 		result = m_keyboard->SetDataFormat(&c_dfDIKeyboard);
 		if (FAILED(result))
+		{
 			LOG_ERROR("Failed to initialize DirectInput keyboard data format.");
+		}
 
 		// Set the cooperative level of the keyboard to share with other programs.
-		result = m_keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+		result = m_keyboard->SetCooperativeLevel(handleHWND, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 		if (FAILED(result))
+		{
 			LOG_ERROR("Failed to set DirectInput keyboard's cooperative level.");
+		}
 
-		// Now acquire the keyboard.
-		result = m_keyboard->Acquire();
-		if (FAILED(result))
+		// Acquire the keyboard.
+		if (!GetKeyboard())
+		{
 			LOG_ERROR("Failed to aquire the keyboard.");
+		}
 
 		// Initialize the direct input interface for the mouse.
 		result = m_directInput->CreateDevice(GUID_SysMouse, &m_mouse, nullptr);
@@ -91,32 +100,37 @@ namespace Directus
 		// Set the data format for the mouse using the pre-defined mouse data format.
 		result = m_mouse->SetDataFormat(&c_dfDIMouse);
 		if (FAILED(result))
+		{
 			LOG_ERROR("Failed to initialize a DirectInput mouse.");
+		}
 
 		// Set the cooperative level of the mouse to share with other programs.
-		result = m_mouse->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+		result = m_mouse->SetCooperativeLevel(handleHWND, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 		if (FAILED(result))
+		{
 			LOG_ERROR("Failed to set DirectInput mouse's cooperative level.");
+		}
 
 		// Acquire the mouse.
-		result = m_mouse->Acquire();
-		if (FAILED(result))
+		if (!GetMouse())
+		{
 			LOG_ERROR("Failed to aquire the mouse.");
+		}
 
 		return true;
 	}
 
 	void DX8Input::Update()
 	{
-		bool result;
-
-		result = ReadKeyboard();
-		if (!result)
+		if (!ReadKeyboard())
+		{
 			LOG_ERROR("Failed to read from keyboard.");
+		}
 
-		result = ReadMouse();
-		if (!result)
+		if (!ReadMouse())
+		{
 			LOG_ERROR("Failed to read from mouse.");
+		}
 	}
 
 	void DX8Input::Release()
@@ -143,50 +157,6 @@ namespace Directus
 			m_directInput->Release();
 			m_directInput = nullptr;
 		}
-	}
-
-	bool DX8Input::ReadKeyboard()
-	{
-		HRESULT result;
-
-		// Read the keyboard device.
-		result = m_keyboard->GetDeviceState(sizeof(m_keyboardState), static_cast<LPVOID>(&m_keyboardState));
-		if (FAILED(result))
-		{
-			// If the keyboard lost focus or was not acquired then try to get control back.
-			if ((result == DIERR_INPUTLOST) || (result == DIERR_NOTACQUIRED))
-			{
-				m_keyboard->Acquire();
-			}
-			else
-			{
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	bool DX8Input::ReadMouse()
-	{
-		HRESULT result;
-
-		// Read the mouse device.
-		result = m_mouse->GetDeviceState(sizeof(DIMOUSESTATE), static_cast<LPVOID>(&m_mouseState));
-		if (FAILED(result))
-		{
-			// If the mouse lost focus or was not acquired then try to get control back.
-			if ((result == DIERR_INPUTLOST) || (result == DIERR_NOTACQUIRED))
-			{
-				m_mouse->Acquire();
-			}
-			else
-			{
-				return false;
-			}
-		}
-
-		return true;
 	}
 
 	bool DX8Input::IsKeyboardKeyDown(byte key)
@@ -217,5 +187,47 @@ namespace Directus
 		// lY = position y delta
 		// lZ = wheel delta
 		return Vector3(m_mouseState.lX, m_mouseState.lY, m_mouseState.lZ);
+	}
+
+	bool DX8Input::GetKeyboard()
+	{
+		HRESULT result = m_keyboard->Acquire();
+		return SUCCEEDED(result);
+	}
+
+	bool DX8Input::GetMouse()
+	{
+		HRESULT result = m_mouse->Acquire();
+		return SUCCEEDED(result);
+	}
+
+	bool DX8Input::ReadKeyboard()
+	{
+		// Read keyboard
+		HRESULT result = m_keyboard->GetDeviceState(sizeof(m_keyboardState), static_cast<LPVOID>(&m_keyboardState));
+		if (SUCCEEDED(result))
+			return true;
+
+		// If the keyboard lost focus or was not acquired then try to get control back.
+		if ((result == DIERR_INPUTLOST) || (result == DIERR_NOTACQUIRED))
+		{
+			GetKeyboard();
+		}
+		return false;
+	}
+
+	bool DX8Input::ReadMouse()
+	{
+		// Read mouse
+		HRESULT result = m_mouse->GetDeviceState(sizeof(DIMOUSESTATE), static_cast<LPVOID>(&m_mouseState));
+		if (SUCCEEDED(result))
+			return true;
+
+		// If the mouse lost focus or was not acquired then try to get control back.
+		if ((result == DIERR_INPUTLOST) || (result == DIERR_NOTACQUIRED))
+		{
+			GetMouse();
+		}
+		return false;
 	}
 }

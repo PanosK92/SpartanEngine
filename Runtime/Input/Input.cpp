@@ -56,7 +56,7 @@ namespace Directus
 		return m_initialized;
 	}
 
-	void Input::SetHandle(HWND handle, HINSTANCE hinstance)
+	void Input::SetHandle(void* handle, void* hinstance)
 	{
 		m_handle = handle;
 		m_hinstance = hinstance;

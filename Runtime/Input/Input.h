@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES =================
+#include <memory>
 #include "DX8Input.h"
 #include "../Math/Vector2.h"
-#include <memory>
 #include "../Core/Subsystem.h"
-//==========================
+//============================
 
 namespace Directus
 {
@@ -121,7 +121,7 @@ namespace Directus
 		virtual bool Initialize();
 		//========================
 
-		void SetHandle(HWND handle, HINSTANCE instance);
+		void SetHandle(void* handle, void* instance);
 		void Update();
 
 		bool GetKey(KeyCode key);
@@ -133,8 +133,8 @@ namespace Directus
 		Math::Vector2 m_mousePos;
 		Math::Vector2 m_mousePosDelta;
 		std::shared_ptr<DX8Input> m_DX8Input;
-		HWND m_handle;
-		HINSTANCE m_hinstance;
+		void* m_handle;
+		void* m_hinstance;
 		bool m_initialized;
 	};
 }
