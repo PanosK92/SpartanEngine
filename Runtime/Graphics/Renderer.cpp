@@ -41,7 +41,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"
-#include "../Core/Settings.h"
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceManager.h"
 #include "Material.h"
@@ -216,6 +215,12 @@ namespace Directus
 
 		m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics);
 		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+	}
+
+	void Renderer::SetViewport(float width, float height)
+	{
+		SET_VIEWPORT(width, height);
+		m_graphics->SetViewport(width, height);
 	}
 
 	void Renderer::Clear()
@@ -589,11 +594,4 @@ namespace Directus
 		m_renderedMeshesPerFrame = m_renderedMeshesTempCounter;
 	}
 	//===============================================================================================================
-	void Renderer::SetViewport(float width, float height)
-	{
-		m_viewport.x = width;
-		m_viewport.y = height;
-
-		m_graphics->SetViewport(width, height);
-	}
 }

@@ -38,6 +38,8 @@ namespace Directus
 	bool Settings::m_isMouseVisible = true;
 	int Settings::m_resolutionWidth = 1920;
 	int Settings::m_resolutionHeight = 1080;
+	int Settings::m_viewportWidth = 1.0f;
+	int Settings::m_viewportHeight = 1.0f;
 	float Settings::m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
 	int Settings::m_shadowMapResolution = 2048;
 	unsigned int Settings::m_anisotropy = 16;
@@ -110,16 +112,6 @@ namespace Directus
 	}
 
 	//= PROPERTIES ==========================================================
-	bool Settings::IsFullScreen()
-	{
-		return m_isFullScreen;
-	}
-
-	bool Settings::IsMouseVisible()
-	{
-		return m_isMouseVisible;
-	}
-
 	VSync Settings::GetVSync()
 	{
 		return (VSync)m_vsync;
@@ -137,39 +129,15 @@ namespace Directus
 		return Math::Vector2(m_resolutionWidth, m_resolutionHeight);
 	}
 
-	int Settings::GetResolutionWidth()
+	void Settings::SetViewport(int width, int height)
 	{
-		return m_resolutionWidth;
+		m_viewportWidth = width;
+		m_viewportHeight = height;
 	}
 
-	int Settings::GetResolutionHeight()
+	Math::Vector2 Settings::GetViewport()
 	{
-		return m_resolutionHeight;
-	}
-
-	float Settings::GetScreenAspect()
-	{
-		return m_screenAspect;
-	}
-
-	int Settings::GetShadowMapResolution()
-	{
-		return m_shadowMapResolution;
-	}
-
-	unsigned Settings::GetAnisotropy()
-	{
-		return m_anisotropy;
-	}
-
-	void Settings::SetDebugDraw(bool enabled)
-	{
-		m_debugDraw = enabled;
-	}
-
-	bool Settings::GetDebugDraw()
-	{
-		return m_debugDraw;
+		return Math::Vector2(m_viewportWidth, m_viewportHeight);
 	}
 	//========================================================================
 }
