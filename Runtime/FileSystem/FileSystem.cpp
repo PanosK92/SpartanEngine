@@ -73,6 +73,7 @@ namespace Directus
 			m_supportedImageFormats.push_back(".sgi");
 			m_supportedImageFormats.push_back(".targa");
 			m_supportedImageFormats.push_back(".tiff");
+			m_supportedImageFormats.push_back(".tif"); // tiff can also be tif
 			m_supportedImageFormats.push_back(".wbmp");
 			m_supportedImageFormats.push_back(".webp");
 			m_supportedImageFormats.push_back(".xbm");
