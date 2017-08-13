@@ -49,6 +49,7 @@ namespace Directus
 		
 		// Add engine standard resource directories
 		AddResourceDirectory(Texture_Resource, "Standard Assets//Textures//");
+		AddResourceDirectory(Material_Resource, "Standard Assets//Fonts//");
 		AddResourceDirectory(Shader_Resource, "Standard Assets//Shaders//");
 		AddResourceDirectory(Cubemap_Resource, "Standard Assets//Cubemaps//");
 		AddResourceDirectory(Script_Resource, "Standard Assets//Scripts//");
