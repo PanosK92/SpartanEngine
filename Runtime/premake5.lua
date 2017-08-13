@@ -34,7 +34,7 @@ includedirs { "../ThirdParty/Assimp_3.3.1" }
 includedirs { "../ThirdParty/Bullet_2.86.1" }
 includedirs { "../ThirdParty/FMOD_1.09.05" }
 includedirs { "../ThirdParty/FreeImage_3.17.0" }
-includedirs { "../ThirdParty/FreeType_1.8" }
+includedirs { "../ThirdParty/FreeType_2.8" }
 includedirs { "../ThirdParty/pugixml_1.8" }
 
 filter "configurations:Debug"

@@ -38,7 +38,7 @@ namespace Directus
 	class Model;
 	class Transform;
 
-	class ModelImporter
+	class DLL_API ModelImporter
 	{
 	public:
 		ModelImporter();
