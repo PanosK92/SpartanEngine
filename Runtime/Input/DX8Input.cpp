@@ -122,15 +122,8 @@ namespace Directus
 
 	void DX8Input::Update()
 	{
-		if (!ReadKeyboard())
-		{
-			LOG_ERROR("Failed to read from keyboard.");
-		}
-
-		if (!ReadMouse())
-		{
-			LOG_ERROR("Failed to read from mouse.");
-		}
+		ReadKeyboard();
+		ReadMouse();
 	}
 
 	void DX8Input::Release()

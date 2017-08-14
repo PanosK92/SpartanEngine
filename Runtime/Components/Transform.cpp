@@ -82,7 +82,7 @@ namespace Directus
 		StreamIO::WriteQuaternion(m_rotationLocal);
 		StreamIO::WriteVector3(m_scaleLocal);
 		StreamIO::WriteVector3(m_lookAt);
-		StreamIO::WriteSTR(m_parent ? m_parent->GetGameObjID() : DATA_NOT_ASSIGNED);
+		StreamIO::WriteSTR(m_parent ? m_parent->GetGameObject()._Get()->GetID() : DATA_NOT_ASSIGNED);
 	}
 
 	void Transform::Deserialize()
@@ -236,13 +236,13 @@ namespace Directus
 		}
 
 		// make sure the new parent is not this transform
-		if (GetGameObjID() == newParent->GetGameObjID())
+		if (g_ID == newParent->g_ID)
 			return;
 
 		// make sure the new parent is different from the existing parent
 		if (HasParent())
 		{
-			if (GetParent()->GetGameObjID() == newParent->GetGameObjID())
+			if (GetParent()->g_ID == newParent->g_ID)
 				return;
 		}
 
@@ -292,7 +292,7 @@ namespace Directus
 		if (!child)
 			return;
 
-		if (GetGameObjID() == child->GetGameObjID())
+		if (g_ID == child->g_ID)
 			return;
 
 		child->SetParent(this);
@@ -350,7 +350,7 @@ namespace Directus
 				continue;
 
 			// if it's parent matches this transform
-			if (possibleChild->GetParent()->GetGameObjID() == GetGameObjID())
+			if (possibleChild->GetParent()->g_ID == g_ID)
 			{
 				// welcome home son
 				m_children.push_back(possibleChild);
@@ -369,7 +369,7 @@ namespace Directus
 
 		for (const auto& descendant : descendants)
 		{
-			if (descendant->GetGameObjID() == GetGameObjID())
+			if (descendant->g_ID == g_ID)
 				return true;
 		}
 
@@ -384,11 +384,6 @@ namespace Directus
 			descendants->push_back(child);
 			child->GetDescendants(descendants);
 		}
-	}
-
-	string Transform::GetGameObjID()
-	{
-		return !g_gameObject.expired() ? g_gameObject._Get()->GetID() : DATA_NOT_ASSIGNED;
 	}
 
 	string Transform::GetGameObjName()

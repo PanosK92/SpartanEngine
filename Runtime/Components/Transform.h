@@ -94,15 +94,13 @@ namespace Directus
 		void ResolveChildrenRecursively();
 		bool IsDescendantOf(Transform* transform);
 		void GetDescendants(std::vector<Transform*>* descendants);
-		std::string GetGameObjID();
 		std::string GetGameObjName();
 
 		//= ICOMPONENT ====================================================================
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
 		Math::Matrix& GetWorldTransform() { return m_worldTransform; }
 		Math::Matrix& GetLocalTransform() { return m_localTransform; }
-		weakGameObj& GetGameObject() { return g_gameObject; }
-		
+		weakGameObj& GetGameObject() { return g_gameObject; }		
 
 	private:
 		// local
