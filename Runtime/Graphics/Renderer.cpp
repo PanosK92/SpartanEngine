@@ -308,7 +308,7 @@ namespace Directus
 				auto mesh = meshFilter->GetMesh();
 
 				// Make sure we have everything
-				if (mesh.expired() || !meshFilter || !meshRenderer)
+				if (mesh.expired() || !meshFilter || !meshRenderer || material.expired())
 					continue;
 
 				// Skip meshes that don't cast shadows
