@@ -60,13 +60,15 @@ namespace Directus
 
 		void BoundingBox::ComputeFromMesh(Mesh* mesh)
 		{
+			if (!mesh)
+				return;
+
 			min = Vector3::Infinity;
 			max = Vector3::InfinityNeg;
 
+			auto vertices = mesh->GetVertices();
 			for (unsigned int i = 0; i < mesh->GetVertexCount(); i++)
 			{
-				auto vertices = mesh->GetVertices();
-
 				max.x = Max(max.x, vertices[i].position.x);
 				max.y = Max(max.y, vertices[i].position.y);
 				max.z = Max(max.z, vertices[i].position.z);
@@ -79,12 +81,9 @@ namespace Directus
 
 		Intersection BoundingBox::IsInside(const Vector3& point) const
 		{
-			if
-				(
-					point.x < min.x || point.x > max.x ||
-					point.y < min.y || point.y > max.y ||
-					point.z < min.z || point.z > max.z
-					)
+			if (point.x < min.x || point.x > max.x ||
+				point.y < min.y || point.y > max.y ||
+				point.z < min.z || point.z > max.z)
 			{
 				return Outside;
 			}
@@ -96,16 +95,13 @@ namespace Directus
 
 		Intersection BoundingBox::IsInside(const BoundingBox& box) const
 		{
-			if
-				(
-					box.max.x < min.x || box.min.x > max.x ||
-					box.max.y < min.y || box.min.y > max.y ||
-					box.max.z < min.z || box.min.z > max.z)
+			if (box.max.x < min.x || box.min.x > max.x ||
+				box.max.y < min.y || box.min.y > max.y ||
+				box.max.z < min.z || box.min.z > max.z)
 			{
 				return Outside;
 			}
-			else if
-				(
+			else if (
 					box.min.x < min.x || box.max.x > max.x ||
 					box.min.y < min.y || box.max.y > max.y ||
 					box.min.z < min.z || box.max.z > max.z)
