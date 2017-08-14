@@ -251,17 +251,6 @@ namespace Directus
 	//===================================================================================================
 
 	//= GAMEOBJECT HELPER FUNCTIONS  ====================================================================
-	vector<weakGameObj> Scene::GetAllGameObjects()
-	{
-		vector<weakGameObj> allGameObj;
-		for (const auto& gameObject : m_gameObjects)
-		{
-			allGameObj.push_back(gameObject);
-		}
-
-		return allGameObj;
-	}
-
 	vector<weakGameObj> Scene::GetRootGameObjects()
 	{
 		vector<weakGameObj> rootGameObjects;
@@ -325,7 +314,9 @@ namespace Directus
 		vector<Transform*> descendants;
 		gameObject._Get()->GetTransform()->GetDescendants(&descendants);
 		for (const auto& descendant : descendants)
+		{
 			RemoveSingleGameObject(descendant->GetGameObject());
+		}
 
 		// remove this gameobject but keep it's parent
 		Transform* parent = gameObject._Get()->GetTransform()->GetParent();

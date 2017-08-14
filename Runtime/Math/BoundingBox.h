@@ -58,13 +58,13 @@ namespace Directus
 			void ComputeFromMesh(Mesh* mesh);
 
 			// Returns the center
-			Vector3 GetCenter() { return (min + max) * 0.5f; }
+			Vector3 GetCenter() const { return (min + max) * 0.5f; }
 
 			// Returns the size
-			Vector3 GetSize() { return max - min; }
+			Vector3 GetSize() const { return max - min; }
 
 			// Returns the half size (extents)
-			Vector3 GetHalfSize() { return (max - min) * 0.5f; }
+			Vector3 GetHalfSize() const { return (max - min) * 0.5f; }
 
 			// Test if a point is inside
 			Intersection IsInside(const Vector3& point) const;

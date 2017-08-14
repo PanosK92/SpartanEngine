@@ -39,15 +39,15 @@ namespace Directus
 		void Serialize();
 		void Deserialize();
 
-		std::string GetID() { return m_id; }
+		const std::string& GetID() { return m_id; }
 
-		std::string GetGameObjectID() { return m_gameObjID; }
+		const std::string& GetGameObjectID() { return m_gameObjID; }
 		void SetGameObjectID(const std::string& gameObjID) { m_gameObjID = gameObjID; }
 
-		std::string GetModelID() { return m_modelID; }
+		const std::string& GetModelID() { return m_modelID; }
 		void SetModelID(const std::string& modelID) { m_modelID = modelID; }
 
-		std::string GetName() { return m_name; }
+		const std::string& GetName() { return m_name; }
 		void SetName(const std::string& name) { m_name = name; }
 
 		std::vector<VertexPosTexNorTan>& GetVertices() { return m_vertices; }
@@ -61,11 +61,11 @@ namespace Directus
 		unsigned int GetTriangleCount() const { return m_triangleCount; }
 		unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
 
-		Math::BoundingBox GetBoundingBox() const { return m_boundingBox; }
+		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
 
 		//= PROCESSING =================================================================
 		void Update();
-		void SubscribeToUpdate(std::function<void(void)> function);
+		void SubscribeToUpdate(std::function<void()> function);
 		void SetScale(float scale);
 		//==============================================================================
 
@@ -93,6 +93,6 @@ namespace Directus
 
 		Math::BoundingBox m_boundingBox;
 
-		std::function<void(void)> m_onUpdate;
+		std::function<void()> m_onUpdate;
 	};
 }

@@ -72,7 +72,7 @@ namespace Directus
 		//==============================================
 
 		//= GAMEOBJECTS ======================================================
-		std::vector<std::weak_ptr<GameObject>> GetAllGameObjects();
+		std::vector<std::shared_ptr<GameObject>> GetAllGameObjects();
 		std::vector<std::weak_ptr<GameObject>> GetRootGameObjects();
 		std::weak_ptr<GameObject> GetGameObjectByID(std::string gameObjectID);
 		int GetGameObjectCount();

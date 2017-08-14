@@ -150,7 +150,7 @@ namespace Directus
 	//==============================================================================
 
 	//= GAMEOBJECTS ================================================================
-	vector<weakGameObj> Socket::GetAllGameObjects()
+	vector<sharedGameObj> Socket::GetAllGameObjects()
 	{
 		return m_context->GetSubsystem<Scene>()->GetAllGameObjects();
 	}

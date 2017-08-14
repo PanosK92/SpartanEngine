@@ -58,7 +58,7 @@ namespace Directus
 		//= GAMEOBJECT HELPER FUNCTIONS ===============================================
 		weakGameObj CreateGameObject();
 		int GetGameObjectCount() { return (int)m_gameObjects.size(); }
-		std::vector<weakGameObj> GetAllGameObjects();
+		const std::vector<sharedGameObj>& GetAllGameObjects() { return m_gameObjects; }
 		std::vector<weakGameObj> GetRootGameObjects();
 		weakGameObj GetGameObjectRoot(weakGameObj gameObject);
 		weakGameObj GetGameObjectByName(const std::string& name);
@@ -69,8 +69,8 @@ namespace Directus
 
 		//= SCENE RESOLUTION  =========================================================
 		void Resolve();
-		std::vector<weakGameObj> GetRenderables() { return m_renderables; }
-		std::vector<Light*> GetLights() { return m_lights; }
+		const std::vector<weakGameObj>& GetRenderables() { return m_renderables; }
+		const std::vector<Light*>& GetLights() { return m_lights; }
 		weakGameObj GetSkybox() { return m_skybox; }
 		weakGameObj GetMainCamera() { return m_mainCamera; }
 

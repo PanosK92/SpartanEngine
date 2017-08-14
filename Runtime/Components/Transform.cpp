@@ -82,7 +82,7 @@ namespace Directus
 		StreamIO::WriteQuaternion(m_rotationLocal);
 		StreamIO::WriteVector3(m_scaleLocal);
 		StreamIO::WriteVector3(m_lookAt);
-		StreamIO::WriteSTR(m_parent ? m_parent->GetID() : DATA_NOT_ASSIGNED);
+		StreamIO::WriteSTR(m_parent ? m_parent->GetGameObjID() : DATA_NOT_ASSIGNED);
 	}
 
 	void Transform::Deserialize()
@@ -236,13 +236,13 @@ namespace Directus
 		}
 
 		// make sure the new parent is not this transform
-		if (GetID() == newParent->GetID())
+		if (GetGameObjID() == newParent->GetGameObjID())
 			return;
 
 		// make sure the new parent is different from the existing parent
 		if (HasParent())
 		{
-			if (GetParent()->GetID() == newParent->GetID())
+			if (GetParent()->GetGameObjID() == newParent->GetGameObjID())
 				return;
 		}
 
@@ -292,7 +292,7 @@ namespace Directus
 		if (!child)
 			return;
 
-		if (GetID() == child->GetID())
+		if (GetGameObjID() == child->GetGameObjID())
 			return;
 
 		child->SetParent(this);
@@ -321,23 +321,12 @@ namespace Directus
 	Transform* Transform::GetChildByName(const string& name)
 	{
 		for (const auto& child : m_children)
-			if (child->GetName() == name)
-				return child;
-
-		return nullptr;
-	}
-
-	vector<weakGameObj> Transform::GetChildrenAsGameObjects()
-	{
-		vector<weakGameObj> childreGameObjects;
-
-		auto childrenTransforms = GetChildren();
-		for (const auto& transform : childrenTransforms)
 		{
-			childreGameObjects.push_back(transform->GetGameObject());
+			if (child->GetGameObjName() == name)
+				return child;
 		}
 
-		return childreGameObjects;
+		return nullptr;
 	}
 
 	// Searches the entiry hierarchy, finds any children and saves them in m_children.
@@ -350,18 +339,18 @@ namespace Directus
 		auto gameObjects = g_context->GetSubsystem<Scene>()->GetAllGameObjects();
 		for (const auto& gameObject : gameObjects)
 		{
-			if (gameObject.expired())
+			if (!gameObject)
 				continue;
 
 			// get the possible child
-			Transform* possibleChild = gameObject._Get()->GetTransform();
+			Transform* possibleChild = gameObject->GetTransform();
 
 			// if it doesn't have a parent, forget about it.
 			if (!possibleChild->HasParent())
 				continue;
 
 			// if it's parent matches this transform
-			if (possibleChild->GetParent()->GetID() == GetID())
+			if (possibleChild->GetParent()->GetGameObjID() == GetGameObjID())
 			{
 				// welcome home son
 				m_children.push_back(possibleChild);
@@ -373,14 +362,16 @@ namespace Directus
 		}
 	}
 
-	bool Transform::IsDescendantOf(Transform* transform) const
+	bool Transform::IsDescendantOf(Transform* transform)
 	{
 		vector<Transform*> descendants;
 		transform->GetDescendants(&descendants);
 
 		for (const auto& descendant : descendants)
-			if (descendant->GetID() == GetID())
+		{
+			if (descendant->GetGameObjID() == GetGameObjID())
 				return true;
+		}
 
 		return false;
 	}
@@ -395,12 +386,12 @@ namespace Directus
 		}
 	}
 
-	string Transform::GetID() const
+	string Transform::GetGameObjID()
 	{
 		return !g_gameObject.expired() ? g_gameObject._Get()->GetID() : DATA_NOT_ASSIGNED;
 	}
 
-	string Transform::GetName()
+	string Transform::GetGameObjName()
 	{
 		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
 	}

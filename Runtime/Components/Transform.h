@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 #include <memory>
 #include "../Core/Scene.h"
-
 //=============================
 
 namespace Directus
@@ -53,19 +52,19 @@ namespace Directus
 
 		//= POSITION ======================================================================
 		Math::Vector3 GetPosition() { return m_worldTransform.GetTranslation(); }
-		Math::Vector3 GetPositionLocal() { return m_positionLocal; }
+		const Math::Vector3& GetPositionLocal() { return m_positionLocal; }
 		void SetPosition(const Math::Vector3& position);
 		void SetPositionLocal(const Math::Vector3& position);
 
 		//= ROTATION ======================================================================
 		Math::Quaternion GetRotation() { return m_worldTransform.GetRotation(); }
-		Math::Quaternion GetRotationLocal() { return m_rotationLocal; }
+		const Math::Quaternion& GetRotationLocal() { return m_rotationLocal; }
 		void SetRotation(const Math::Quaternion& rotation);
 		void SetRotationLocal(const Math::Quaternion& rotation);
 
 		//= SCALE =========================================================================
 		Math::Vector3 GetScale() { return m_worldTransform.GetScale(); }
-		Math::Vector3 GetScaleLocal() { return m_scaleLocal; }
+		const Math::Vector3& GetScaleLocal() { return m_scaleLocal; }
 		void SetScale(const Math::Vector3& scale);
 		void SetScaleLocal(const Math::Vector3& scale);
 
@@ -81,7 +80,7 @@ namespace Directus
 
 		//= HIERARCHY ====================================================================
 		bool IsRoot() { return !HasParent(); }
-		bool HasParent() { return m_parent ? true : false; }
+		bool HasParent() { return m_parent; }
 		void SetParent(Transform* parent);
 		void BecomeOrphan();
 		bool HasChildren() { return GetChildrenCount() > 0 ? true : false; }
@@ -90,20 +89,20 @@ namespace Directus
 		Transform* GetParent() { return m_parent; }
 		Transform* GetChildByIndex(int index);
 		Transform* GetChildByName(const std::string& name);
-		std::vector<Transform*> GetChildren() { return m_children; }
-		std::vector<weakGameObj> GetChildrenAsGameObjects();
+		const std::vector<Transform*>& GetChildren() { return m_children; }
 		int GetChildrenCount() { return (int)m_children.size(); }
 		void ResolveChildrenRecursively();
-		bool IsDescendantOf(Transform* transform) const;
+		bool IsDescendantOf(Transform* transform);
 		void GetDescendants(std::vector<Transform*>* descendants);
-		std::string GetID() const;
+		std::string GetGameObjID();
+		std::string GetGameObjName();
 
 		//= ICOMPONENT ====================================================================
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
 		Math::Matrix& GetWorldTransform() { return m_worldTransform; }
 		Math::Matrix& GetLocalTransform() { return m_localTransform; }
 		weakGameObj& GetGameObject() { return g_gameObject; }
-		std::string GetName();
+		
 
 	private:
 		// local

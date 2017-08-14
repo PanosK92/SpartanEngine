@@ -52,10 +52,10 @@ namespace Directus
 		void Deserialize(Transform* parent);
 
 		//= PROPERTIES =========================================================================================
-		std::string GetName() { return m_name; }
+		const std::string& GetName() { return m_name; }
 		void SetName(const std::string& name) { m_name = name; }
 
-		std::string GetID() { return m_ID; }
+		const std::string& GetID() { return m_ID; }
 		void SetID(const std::string& ID) { m_ID = ID; }
 
 		bool IsActive() { return m_isActive; }

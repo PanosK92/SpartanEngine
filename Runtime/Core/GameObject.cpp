@@ -176,7 +176,7 @@ namespace Directus
 
 		// 2nd - children IDs
 		for (const auto& child : children)
-			StreamIO::WriteSTR(child->GetID());
+			StreamIO::WriteSTR(child->GetGameObjID());
 
 		// 3rd - children
 		for (const auto& child : children)
