@@ -124,5 +124,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	color = BlurPass(texCoord, texelSize);
 #endif
 
+#if TEXTURE
+	color = sourceTexture.Sample(anisotropicSampler, texCoord);
+#endif
+
     return color;
 }
