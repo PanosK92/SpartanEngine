@@ -61,10 +61,11 @@ namespace Directus
 		m_camera = nullptr;
 		m_texEnvironment = nullptr;
 		m_lineRenderer = nullptr;
-		m_nearPlane = 0.0;
+		m_nearPlane = 0.0f;
 		m_farPlane = 0.0f;
 		m_resourceMng = nullptr;
 		m_graphics = nullptr;
+		m_renderOutput = Render_Default;
 
 		// Subscribe to render event
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
@@ -117,6 +118,9 @@ namespace Directus
 
 		m_shaderBlur = make_shared<PostProcessShader>();
 		m_shaderBlur->Load(shaderDirectory + "PostProcess.hlsl", "BLUR", m_graphics);
+
+		m_shaderTex = make_shared<PostProcessShader>();
+		m_shaderTex->Load(shaderDirectory + "PostProcess.hlsl", "TEXTURE", m_graphics);
 
 		// Create render textures (used for post processing)
 		m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
@@ -508,10 +512,45 @@ namespace Directus
 	{
 		m_graphics->SetCullMode(CullBack);
 
+		if (m_renderOutput != Render_Default)
+		{
+			m_graphics->SetBackBufferAsRenderTarget();
+			m_graphics->ResetViewport();
+			m_graphics->Clear(m_camera->GetClearColor());
+
+			int texIndex = 0;
+			if (m_renderOutput == Render_Albedo)
+			{
+				texIndex = 0;
+			}
+			else if (m_renderOutput == Render_Normal)
+			{
+				texIndex = 1;
+			}
+			else if (m_renderOutput == Render_Depth)
+			{
+				texIndex = 2;
+			}
+			else if (m_renderOutput == Render_Material)
+			{
+				texIndex = 3;
+			}
+
+			m_shaderTex->Render(
+				m_fullScreenQuad->GetIndexCount(),
+				Matrix::Identity,
+				mBaseView,
+				mOrthographicProjection,
+				m_GBuffer->GetShaderResource(texIndex)
+			);
+
+			return;
+		}
+
 		// Set Ping texture as render target
 		m_renderTexPong->SetAsRenderTarget();
 		m_renderTexPong->Clear(GetClearColor());
-
+	
 		// fxaa pass
 		m_shaderFXAA->Render(
 			m_fullScreenQuad->GetIndexCount(),

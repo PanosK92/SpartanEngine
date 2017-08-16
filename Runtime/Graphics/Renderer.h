@@ -58,6 +58,15 @@ namespace Directus
 		class Frustrum;
 	}
 
+	enum RenderOutput
+	{
+		Render_Default,
+		Render_Albedo,
+		Render_Normal,
+		Render_Depth,
+		Render_Material
+	};
+
 	class Renderer : public Subsystem
 	{
 	public:
@@ -125,6 +134,7 @@ namespace Directus
 		std::shared_ptr<PostProcessShader> m_shaderFXAA;
 		std::shared_ptr<PostProcessShader> m_shaderSharpening;
 		std::shared_ptr<PostProcessShader> m_shaderBlur;
+		std::shared_ptr<PostProcessShader> m_shaderTex;
 		//====================================================
 
 		//= STATS ======================
@@ -147,6 +157,7 @@ namespace Directus
 		std::vector<ID3D11ShaderResourceView*> m_textures;
 		Graphics* m_graphics;
 		ResourceManager* m_resourceMng;
+		RenderOutput m_renderOutput;
 		//================================================
 	};
 }
