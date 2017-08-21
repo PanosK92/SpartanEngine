@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =======================
-#include <map>
 #include <vector>
 #include "Scene.h"
 #include "../Components/Component.h"
@@ -32,6 +31,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class Transform;
+	class MeshFilter;
+	class MeshRenderer;
 
 	class DLL_API GameObject
 	{
@@ -94,6 +95,16 @@ namespace Directus
 			// Run Initialize().
 			component->Reset();
 
+			// Caching of rendering performance critical components
+			if (typeStr == "MeshFilter")
+			{
+				m_meshFilter = (MeshFilter*)component;
+			}
+			else if (typeStr == "MeshRenderer")
+			{
+				m_meshRenderer = (MeshRenderer*)component;
+			}
+
 			// Return it as a component of the requested type
 			return static_cast<T*>(component);
 		}
@@ -155,7 +166,10 @@ namespace Directus
 		void RemoveComponentByID(const std::string& id);
 		//======================================================================================================
 
+		// Direct access to performance critical components (not safe)
 		Transform* GetTransform() { return m_transform; }
+		MeshFilter* GetMeshFilter() { return m_meshFilter; }
+		MeshRenderer* GetMeshRenderer() { return m_meshRenderer; }
 
 	private:
 		std::string m_ID;
@@ -165,11 +179,12 @@ namespace Directus
 		bool m_hierarchyVisibility;
 		std::vector<Component*> m_components;
 
-		// This is the only component that is guaranteed to be always attached,
-		// it also is required by most systems in the engine, it's important to
-		// keep a local copy of it here and avoid any runtime searching (performance).
-		Transform* m_transform;
+		// Caching of performance critical components
+		Transform* m_transform; // Updating performance - never null
+		MeshFilter* m_meshFilter; // Rendering performance - can be null
+		MeshRenderer* m_meshRenderer; // Rendering performance - can be null
 
+		// Dependencies
 		Context* m_context;
 
 		//= HELPER FUNCTIONS ====================================

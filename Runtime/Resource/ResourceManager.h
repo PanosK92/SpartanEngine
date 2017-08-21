@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include <memory>
+#include <map>
 #include "../Core/SubSystem.h"
 #include "ResourceCache.h"
 #include "../Graphics/Mesh.h"
