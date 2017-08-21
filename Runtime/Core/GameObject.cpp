@@ -56,6 +56,8 @@ namespace Directus
 		m_isPrefab = false;
 		m_hierarchyVisibility = true;
 		m_transform = nullptr;
+		m_meshFilter = nullptr;
+		m_meshRenderer = nullptr;
 	}
 
 	GameObject::~GameObject()

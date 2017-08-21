@@ -347,26 +347,25 @@ namespace Directus
 		m_graphics->ResetViewport();
 		m_GBuffer->Clear();
 
-		auto materials = m_resourceMng->GetResourcesByType<Material>();
-		auto shaders = m_resourceMng->GetResourcesByType<ShaderVariation>();
+		vector<weak_ptr<Material>> materials = m_resourceMng->GetResourcesByType<Material>();
+		vector<weak_ptr<ShaderVariation>> shaders = m_resourceMng->GetResourcesByType<ShaderVariation>();
 
-		for (const auto& weakShader : shaders) // SHADER ITERATION
+		for (const auto& shader : shaders) // SHADER ITERATION
 		{
 			// Set the shader
-			auto shader = weakShader.lock();
-			shader->Set();
+			shader._Get()->Set();
 
 			// UPDATE PER FRAME BUFFER
-			shader->UpdatePerFrameBuffer(m_directionalLight, m_camera);
+			shader._Get()->UpdatePerFrameBuffer(m_directionalLight, m_camera);
 
 			for (const auto& material : materials) // MATERIAL ITERATION
 			{
 				// Continue only if the material at hand happens to use the already set shader
-				if (material._Get()->GetShader()._Get()->GetResourceID() != shader->GetResourceID())
+				if (material._Get()->GetShader()._Get()->GetResourceID() != shader._Get()->GetResourceID())
 					continue;
 
 				// UPDATE PER MATERIAL BUFFER
-				shader->UpdatePerMaterialBuffer(material);
+				shader._Get()->UpdatePerMaterialBuffer(material);
 
 				// Order the textures they way the shader expects them
 				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(Albedo_Texture));
@@ -394,21 +393,21 @@ namespace Directus
 				}
 
 				// UPDATE TEXTURE BUFFER
-				shader->UpdateTextures(m_textures);
+				shader._Get()->UpdateTextures(m_textures);
 				//==================================================================================
 
-				for (const auto& gameObject : m_renderables) // GAMEOBJECT/MESH ITERATION
+				for (const auto& gameObj : m_renderables) // GAMEOBJECT/MESH ITERATION
 				{
-					if (gameObject.expired())
+					if (gameObj.expired())
 						continue;
 
-					//= Get all that we need ===========================================
-					auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>();
-					auto meshRenderer = gameObject._Get()->GetComponent<MeshRenderer>();
+					//= Get all that we need =========================================
+					MeshFilter* meshFilter = gameObj._Get()->GetMeshFilter();
+					MeshRenderer* meshRenderer = gameObj._Get()->GetMeshRenderer();
 					auto objMesh = meshFilter->GetMesh()._Get();
 					auto objMaterial = meshRenderer->GetMaterial()._Get();
-					auto mWorld = gameObject._Get()->GetTransform()->GetWorldTransform();
-					//===================================================================
+					auto mWorld = gameObj._Get()->GetTransform()->GetWorldTransform();
+					//================================================================
 
 					// skip objects that are missing required components
 					if (!meshFilter || !objMesh || !meshRenderer || !objMaterial)
@@ -427,7 +426,7 @@ namespace Directus
 						continue;
 
 					// UPDATE PER OBJECT BUFFER
-					shader->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
+					shader._Get()->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
 
 					// Set mesh buffer
 					if (meshFilter->HasMesh())
