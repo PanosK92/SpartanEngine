@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "../FileSystem/FileSystem.h"
 #include "../Math/BoundingBox.h"
+#include "../Graphics/Vertex.h"
+
 //===================================
 
 namespace Directus
@@ -34,7 +36,7 @@ namespace Directus
 	class Mesh;
 	class D3D11VertexBuffer;
 	class D3D11IndexBuffer;
-	struct VertexPosTexNorTan;
+	struct LoadVertices;
 	namespace Math
 	{
 		class Vector3;

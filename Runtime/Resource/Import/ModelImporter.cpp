@@ -43,8 +43,74 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
+// Things for Assimp to do
+static auto ppsteps =
+aiProcess_CalcTangentSpace |
+aiProcess_GenSmoothNormals |
+aiProcess_JoinIdenticalVertices |
+aiProcess_ImproveCacheLocality |
+aiProcess_LimitBoneWeights |
+aiProcess_SplitLargeMeshes |
+aiProcess_Triangulate |
+aiProcess_GenUVCoords |
+aiProcess_SortByPType |
+aiProcess_FindDegenerates |
+aiProcess_FindInvalidData |
+aiProcess_FindInstances |
+aiProcess_ValidateDataStructure |
+aiProcess_OptimizeMeshes |
+aiProcess_Debone |
+aiProcess_ConvertToLeftHanded;
+
 namespace Directus
 {
+	//= HELPER FUNCTIONS =============================================
+	Matrix aiMatrix4x4ToMatrix(const aiMatrix4x4& transform)
+	{
+		return Matrix(
+			transform.a1, transform.b1, transform.c1, transform.d1,
+			transform.a2, transform.b2, transform.c2, transform.d2,
+			transform.a3, transform.b3, transform.c3, transform.d3,
+			transform.a4, transform.b4, transform.c4, transform.d4
+		);
+	}
+
+	void SetGameObjectTransform(weakGameObj gameObject, aiNode* node)
+	{
+		if (gameObject.expired())
+			return;
+
+		aiMatrix4x4 mAssimp = node->mTransformation;
+		Vector3 position;
+		Quaternion rotation;
+		Vector3 scale;
+
+		// Decompose the transformation matrix
+		Matrix mEngine = aiMatrix4x4ToMatrix(mAssimp);
+		mEngine.Decompose(scale, rotation, position);
+
+		// Apply position, rotation and scale
+		gameObject._Get()->GetTransform()->SetPositionLocal(position);
+		gameObject._Get()->GetTransform()->SetRotationLocal(rotation);
+		gameObject._Get()->GetTransform()->SetScaleLocal(scale);
+	}
+
+	Vector4 ToVector4(const aiColor4D& aiColor)
+	{
+		return Vector4(aiColor.r, aiColor.g, aiColor.b, aiColor.a);
+	}
+
+	Vector3 ToVector3(const aiVector3D& aiVector)
+	{
+		return Vector3(aiVector.x, aiVector.y, aiVector.z);
+	}
+
+	Vector2 ToVector2(const aiVector2D& aiVector)
+	{
+		return Vector2(aiVector.x, aiVector.y);
+	}
+	//==================================================================
+
 	vector<string> materialNames;
 
 	ModelImporter::ModelImporter()
@@ -91,25 +157,6 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS); // Remove cameras and lights
 		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, smoothAngle);
 
-		// Thigns for Assimp to do
-		static auto ppsteps =
-			aiProcess_CalcTangentSpace |
-			aiProcess_GenSmoothNormals |
-			aiProcess_JoinIdenticalVertices |
-			aiProcess_ImproveCacheLocality |
-			aiProcess_LimitBoneWeights |
-			aiProcess_SplitLargeMeshes |
-			aiProcess_Triangulate |
-			aiProcess_GenUVCoords |
-			aiProcess_SortByPType |
-			aiProcess_FindDegenerates |
-			aiProcess_FindInvalidData |
-			aiProcess_FindInstances |
-			aiProcess_ValidateDataStructure |
-			aiProcess_OptimizeMeshes |
-			aiProcess_Debone |
-			aiProcess_ConvertToLeftHanded;
-
 		// Read the 3D model file
 		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
 		if (!scene)
@@ -117,64 +164,17 @@ namespace Directus
 			LOG_ERROR("Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
 			return false;
 		}
-		
+
 		// This function will recursively process the entire model
-		ProcessNode(model, scene, scene->mRootNode, weakGameObj(), weakGameObj());
+		LoadNode(model, scene, scene->mRootNode, weakGameObj(), weakGameObj());
 		importer.FreeScene();
 		m_isLoading = false;
 
 		return true;
 	}
 
-	//= HELPER FUNCTIONS ========================================================================
-	Matrix aiMatrix4x4ToMatrix(const aiMatrix4x4& transform)
-	{
-		return Matrix(
-			transform.a1, transform.b1, transform.c1, transform.d1,
-			transform.a2, transform.b2, transform.c2, transform.d2,
-			transform.a3, transform.b3, transform.c3, transform.d3,
-			transform.a4, transform.b4, transform.c4, transform.d4
-		);
-	}
-
-	void SetGameObjectTransform(weakGameObj gameObject, aiNode* node)
-	{
-		if (gameObject.expired())
-			return;
-
-		aiMatrix4x4 mAssimp = node->mTransformation;
-		Vector3 position;
-		Quaternion rotation;
-		Vector3 scale;
-
-		// Decompose the transformation matrix
-		Matrix mEngine = aiMatrix4x4ToMatrix(mAssimp);
-		mEngine.Decompose(scale, rotation, position);
-
-		// Apply position, rotation and scale
-		gameObject._Get()->GetTransform()->SetPositionLocal(position);
-		gameObject._Get()->GetTransform()->SetRotationLocal(rotation);
-		gameObject._Get()->GetTransform()->SetScaleLocal(scale);
-	}
-
-	Vector4 ToVector4(const aiColor4D& aiColor)
-	{
-		return Vector4(aiColor.r, aiColor.g, aiColor.b, aiColor.a);
-	}
-
-	Vector3 ToVector3(const aiVector3D& aiVector)
-	{
-		return Vector3(aiVector.x, aiVector.y, aiVector.z);
-	}
-
-	Vector2 ToVector2(const aiVector2D& aiVector)
-	{
-		return Vector2(aiVector.x, aiVector.y);
-	}
-	//============================================================================================
-
 	//= PROCESSING ===============================================================================
-	void ModelImporter::ProcessNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, weak_ptr<GameObject> parentNode, weak_ptr<GameObject> newNode)
+	void ModelImporter::LoadNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<GameObject>& parentNode, weak_ptr<GameObject>& newNode)
 	{
 		if (newNode.expired())
 			newNode = m_context->GetSubsystem<Scene>()->CreateGameObject();
@@ -221,99 +221,126 @@ namespace Directus
 			gameobject._Get()->SetName(name);
 
 			// Process mesh
-			ProcessMesh(model, mesh, assimpScene, gameobject);
+			LoadMesh(model, mesh, assimpScene, gameobject);
 		}
 
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
 			weakGameObj child = m_context->GetSubsystem<Scene>()->CreateGameObject();
-			ProcessNode(model, assimpScene, assimpNode->mChildren[i], newNode, child);
+			LoadNode(model, assimpScene, assimpNode->mChildren[i], newNode, child);
 		}
 	}
 
-	void ModelImporter::ProcessMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, weak_ptr<GameObject> gameobject)
+	void ModelImporter::LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const weak_ptr<GameObject>& gameobject)
 	{
 		if (gameobject.expired())
 			return;
 
-		vector<VertexPosTexNorTan> vertices;
-		vector<unsigned int> indices;
+		// Create a new Mesh
+		shared_ptr<Mesh> mesh = make_shared<Mesh>();
+		mesh->SetModelID(model->GetResourceID());
+		mesh->SetGameObjectID(gameobject._Get()->GetID());
+		mesh->SetName(assimpMesh->mName.C_Str());
 
+		// Vertices
+		LoadAiMeshVertices(assimpMesh, mesh);
+
+		// Indices
+		LoadAiMeshIndices(assimpMesh, mesh);
+
+		// Bones
+		for (unsigned int boneIndex = 0; boneIndex < assimpMesh->mNumBones; boneIndex++)
+		{
+			aiBone* bone = assimpMesh->mBones[boneIndex];
+		}
+
+		// Material
+		shared_ptr<Material> material = shared_ptr<Material>();
+		if (assimpScene->HasMaterials())
+		{
+			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
+			material = AiMaterialToMaterial(model, assimpMaterial);
+		}
+	
+		//= Finilize GameObject =====================================================
+		model->AddMesh(mesh);
+		model->AddMaterial(material);
+
+		MeshFilter* meshFilter = gameobject._Get()->AddComponent<MeshFilter>();
+		MeshRenderer* meshRenderer = gameobject._Get()->AddComponent<MeshRenderer>();
+
+		meshFilter->SetMesh(mesh);
+		meshRenderer->SetMaterialFromMemory(material);
+		//===========================================================================
+	}
+
+	void ModelImporter::LoadAiMeshIndices(aiMesh* assimpMesh, shared_ptr<Mesh> mesh)
+	{
+		// Get indices by iterating through each face of the mesh.
+		for (unsigned int faceIndex = 0; faceIndex < assimpMesh->mNumFaces; faceIndex++)
+		{
+			aiFace face = assimpMesh->mFaces[faceIndex];
+
+			if (face.mNumIndices < 3)
+				continue;
+
+			for (unsigned int j = 0; j < face.mNumIndices; j++)
+			{
+				mesh->AddIndex(face.mIndices[j]);
+			}
+		}
+	}
+
+	void ModelImporter::LoadAiMeshVertices(aiMesh* assimpMesh, shared_ptr<Mesh> mesh)
+	{
 		VertexPosTexNorTan vertex;
 		for (unsigned int vertexIndex = 0; vertexIndex < assimpMesh->mNumVertices; vertexIndex++)
 		{
-			// get the position
+			// Position
 			vertex.position = ToVector3(assimpMesh->mVertices[vertexIndex]);
 
-			// get the normal
+			// Normal
 			if (assimpMesh->mNormals)
+			{
 				vertex.normal = ToVector3(assimpMesh->mNormals[vertexIndex]);
+			}
 
-			// get the tangent
+			// Tangent
 			if (assimpMesh->mTangents)
+			{
 				vertex.tangent = ToVector3(assimpMesh->mTangents[vertexIndex]);
+			}
 
-			// get the texture coordinates
+			// Texture Coordinates
 			if (assimpMesh->HasTextureCoords(0))
+			{
 				vertex.uv = ToVector2(aiVector2D(assimpMesh->mTextureCoords[0][vertexIndex].x, assimpMesh->mTextureCoords[0][vertexIndex].y));
+			}
 
 			// save the vertex
-			vertices.push_back(vertex);
+			mesh->AddVertex(vertex);
 
 			// reset the vertex for use in the next loop
 			vertex.normal = Vector3::Zero;
 			vertex.tangent = Vector3::Zero;
 			vertex.uv = Vector2::Zero;
 		}
-
-		// get the indices by iterating through each face of the mesh.
-		for (unsigned int i = 0; i < assimpMesh->mNumFaces; i++)
-		{
-			aiFace face = assimpMesh->mFaces[i];
-
-			if (face.mNumIndices < 3)
-				continue;
-
-			for (unsigned int j = 0; j < face.mNumIndices; j++)
-				indices.push_back(face.mIndices[j]);
-		}
-
-		// Add a mesh component and pass the data
-		weak_ptr<Mesh> mesh = model->AddMesh(gameobject._Get()->GetID(), assimpMesh->mName.C_Str(), vertices, indices);
-		MeshFilter* meshFilter = gameobject._Get()->AddComponent<MeshFilter>();
-		meshFilter->SetMesh(mesh);
-
-		// free memory
-		vertices.clear();
-		indices.clear();
-
-		// Process material
-		if (assimpScene->HasMaterials())
-		{
-			// Get assimp material
-			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
-
-			// Convert it to an engine material and add it to the model
-			weak_ptr<Material> material = model->AddMaterial(GenerateMaterialFromAiMaterial(model, assimpMaterial));
-
-			// Set this material to a mesh renderer component
-			gameobject._Get()->AddComponent<MeshRenderer>()->SetMaterialFromMemory(material);
-		}
 	}
 
-	shared_ptr<Material> ModelImporter::GenerateMaterialFromAiMaterial(Model* model, aiMaterial* material)
+	shared_ptr<Material> ModelImporter::AiMaterialToMaterial(Model* model, aiMaterial* material)
 	{
 		auto engineMaterial = make_shared<Material>(m_context);
 
-		//= NAME ====================================================================
+		//= NAME ============================================
 		aiString name;
 		aiGetMaterialString(material, AI_MATKEY_NAME, &name);
 		engineMaterial->SetResourceName(name.C_Str());
 		engineMaterial->SetModelID(model->GetResourceName());
 
-		//= CullMode ===============================================================================================
-		// Specifies whether meshes using this material must be rendered without back face CullMode. 0 for false, !0 for true.
+		//= CullMode ===================================================
+		// Specifies whether meshes using this material must be rendered 
+		// without back face CullMode. 0 for false, !0 for true.
 		bool isTwoSided = false;
 		int r = material->Get(AI_MATKEY_TWOSIDED, isTwoSided);
 		if (r == aiReturn_SUCCESS && isTwoSided)
@@ -321,7 +348,7 @@ namespace Directus
 			engineMaterial->SetCullMode(CullNone);
 		}
 
-		//= DIFFUSE COLOR ======================================================================================
+		//= DIFFUSE COLOR ===================================================
 		aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
 		aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &colorDiffuse);
 		engineMaterial->SetColorAlbedo(ToVector4(colorDiffuse));
@@ -331,57 +358,85 @@ namespace Directus
 		aiGetMaterialColor(material, AI_MATKEY_OPACITY, &opacity);
 		engineMaterial->SetOpacity(opacity.r);
 
-		//= ALBEDO TEXTURE ======================================================================================================
+		//= ALBEDO TEXTURE =============================================================================================================
 		aiString texturePath;
 		if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
+		{
 			if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
 				AddTextureToMaterial(model, engineMaterial, Albedo_Texture, texturePath.data);
 				// FIX: materials that have a diffuse texture should not be tinted black/grey
 				engineMaterial->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
+		}
 
-		//= SPECULAR (used as ROUGHNESS) TEXTURE =================================================================================
+		//= SPECULAR (used as ROUGHNESS) TEXTURE =========================================================================================
 		if (material->GetTextureCount(aiTextureType_SHININESS) > 0)
+		{
 			if (material->GetTexture(aiTextureType_SHININESS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			{
 				AddTextureToMaterial(model, engineMaterial, Roughness_Texture, texturePath.data);
+			}
+		}
 
-		//= AMBIENT (used as METALLIC) TEXTURE ===================================================================================
+		//= AMBIENT (used as METALLIC) TEXTURE ========================================================================================
 		if (material->GetTextureCount(aiTextureType_AMBIENT) > 0)
+		{
 			if (material->GetTexture(aiTextureType_AMBIENT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			{
 				AddTextureToMaterial(model, engineMaterial, Metallic_Texture, texturePath.data);
+			}
+		}
 
-		//= NORMAL TEXTURE ======================================================================================================
+		//= NORMAL TEXTURE =============================================================================================================
 		if (material->GetTextureCount(aiTextureType_NORMALS) > 0)
+		{
 			if (material->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			{
 				AddTextureToMaterial(model, engineMaterial, Normal_Texture, texturePath.data);
+			}
+		}
 
-		//= OCCLUSION TEXTURE ====================================================================================================
+		//= OCCLUSION TEXTURE ===========================================================================================================
 		if (material->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
+		{
 			if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			{
 				AddTextureToMaterial(model, engineMaterial, Occlusion_Texture, texturePath.data);
+			}
+		}
 
-		//= EMISSIVE TEXTURE ====================================================================================================
+		//= EMISSIVE TEXTURE ============================================================================================================
 		if (material->GetTextureCount(aiTextureType_EMISSIVE) > 0)
+		{
 			if (material->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			{
 				AddTextureToMaterial(model, engineMaterial, Emission_Texture, texturePath.data);
-
-		//= HEIGHT TEXTURE =====================================================================================================
+			}
+		}
+		//= HEIGHT TEXTURE ============================================================================================================
 		if (material->GetTextureCount(aiTextureType_HEIGHT) > 0)
+		{
 			if (material->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			{
 				AddTextureToMaterial(model, engineMaterial, Height_Texture, texturePath.data);
+			}
+		}
 
-		//= MASK TEXTURE ========================================================================================================
+		//= MASK TEXTURE ===============================================================================================================
 		if (material->GetTextureCount(aiTextureType_OPACITY) > 0)
+		{
 			if (material->GetTexture(aiTextureType_OPACITY, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			{
 				AddTextureToMaterial(model, engineMaterial, Mask_Texture, texturePath.data);
-
+			}
+		}
 		return engineMaterial;
 	}
 	//============================================================================================
 
 	//= HELPER FUNCTIONS =========================================================================
-	void ModelImporter::AddTextureToMaterial(Model* model, weak_ptr<Material> material, TextureType textureType, const string& originalTexturePath)
+	void ModelImporter::AddTextureToMaterial(Model* model, const weak_ptr<Material>& material, TextureType textureType, const string& originalTexturePath)
 	{
 		if (material.expired())
 			return;
@@ -398,7 +453,7 @@ namespace Directus
 
 		// Load the texture from the relative directory
 		auto texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(relativeFilePath);
-		
+
 		// Set the texture to the material (if it was loaded successfully)
 		if (!texture.expired())
 		{

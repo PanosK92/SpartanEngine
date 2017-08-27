@@ -107,21 +107,23 @@ namespace Directus
 	void Mesh::SetVertices(const vector<VertexPosTexNorTan>& vertices)
 	{
 		m_vertices = vertices;
-		m_vertexCount = (unsigned int)vertices.size();
+		Update();
 	}
 
 	void Mesh::SetIndices(const vector<unsigned>& indices)
 	{
 		m_indices = indices;
-		m_indexCount = (unsigned int)indices.size();
-		m_triangleCount = m_indexCount / 3;
+		Update();
 	}
-
 	//==============================================================================
 
 	//= PROCESSING =================================================================
 	void Mesh::Update()
 	{
+		m_vertexCount = (unsigned int)m_vertices.size();
+		m_indexCount = (unsigned int)m_indices.size();
+		m_triangleCount = m_indexCount / 3;
+
 		m_boundingBox.ComputeFromMesh(this);
 
 		if (m_onUpdate)
