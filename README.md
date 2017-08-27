@@ -28,6 +28,7 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 - [Done] Point light support.
 - [Done] XML I/O.
 - [Done] Performance improvements, bug fixes and overall higher quality architecture.
+- [0%]	Implement animation support.
 - [50%] Improved shadow quality.
 - [80%] Screen space ambient occlusion.
 

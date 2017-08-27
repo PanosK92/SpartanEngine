@@ -56,11 +56,13 @@ namespace Directus
 		std::vector<unsigned int>& GetIndices() { return m_indices; }
 		void SetIndices(const std::vector<unsigned int>& indices);
 
+		void AddVertex(VertexPosTexNorTan vertex) { m_vertices.push_back(vertex); }
+		void AddIndex(unsigned int index) { m_indices.push_back(index); }
+
 		unsigned int GetVertexCount() const { return m_vertexCount; }
 		unsigned int GetIndexCount() const { return m_indexCount; }
 		unsigned int GetTriangleCount() const { return m_triangleCount; }
 		unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
-
 		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
 
 		//= PROCESSING =================================================================

@@ -50,12 +50,14 @@ namespace Directus
 
 	private:
 		// PROCESSING
-		void ProcessNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, std::weak_ptr<GameObject> parentNode, std::weak_ptr<GameObject> newNode);
-		void ProcessMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, std::weak_ptr<GameObject> parentGameObject);
-		std::shared_ptr<Material> GenerateMaterialFromAiMaterial(Model* model, aiMaterial* assimpMaterial);
+		void LoadNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const std::weak_ptr<GameObject>& parentNode, std::weak_ptr<GameObject>& newNode);
+		void LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const std::weak_ptr<GameObject>& parentGameObject);
+		void LoadAiMeshVertices(aiMesh* assimpMesh, std::shared_ptr<Mesh> mesh);
+		void LoadAiMeshIndices(aiMesh* assimpMesh, std::shared_ptr<Mesh> mesh);
+		std::shared_ptr<Material> AiMaterialToMaterial(Model* model, aiMaterial* assimpMaterial);
 
 		// HELPER FUNCTIONS
-		void AddTextureToMaterial(Model* model, std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
+		void AddTextureToMaterial(Model* model, const std::weak_ptr<Material>& material, TextureType textureType, const std::string& texturePath);
 		std::string FindTexture(const std::string& texturePath);
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 
