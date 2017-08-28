@@ -22,22 +22,22 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 - Windows support.
 
 # Features under development - v0.3
-- [Done] Custom mipchain generation (lower memory usage, better texture fidelity).
-- [Done] Redesigned editor.
-- [Done] Debug view (bounding boxes, colliders etc).
-- [Done] Point light support.
-- [Done] XML I/O.
-- [Done] Performance improvements, bug fixes and overall higher quality architecture.
-- [0%]	Implement animation support.
+- [100%] Custom mipchain generation (lower memory usage, higher texture fidelity).
+- [100%] New editor theme
+- [100%] Improved debug view (bounding boxes, colliders, raycasts etc).
+- [100%] Point light support.
+- [100%] XML I/O.
+- [100%] Performance improvements, bug fixes and overall higher quality architecture.
+- [5%]	Skeletal Animation.
 - [50%] Improved shadow quality.
 - [80%] Screen space ambient occlusion.
+- [0%] Font importing and rendering.
 
 # Planned Features
 - Vulkan rendering backend.
 - Dynamic resolution scaling.
 - Draw call batching (static & dynamic).
 - Export on Windows.
-- Font loader & renderer.
 - SSR, Volumetric Lighting.
 - UI components.
 

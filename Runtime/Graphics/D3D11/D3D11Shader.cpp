@@ -42,8 +42,8 @@ namespace Directus
 		m_D3D11InputLayout = nullptr;
 		m_VSBlob = nullptr;
 		m_compiled = false;
-		m_entrypoint = DATA_NOT_ASSIGNED;
-		m_profile = DATA_NOT_ASSIGNED;
+		m_entrypoint = NOT_ASSIGNED;
+		m_profile = NOT_ASSIGNED;
 		m_layoutHasBeenSet = false;
 
 		// Create input layout

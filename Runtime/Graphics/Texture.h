@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "../Resource/Resource.h"
-#include "../Core/Helper.h"
 #include <memory>
 //===============================
 

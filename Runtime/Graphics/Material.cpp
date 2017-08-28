@@ -45,7 +45,7 @@ namespace Directus
 
 		// Material
 		m_context = context;
-		m_modelID = DATA_NOT_ASSIGNED;
+		m_modelID = NOT_ASSIGNED;
 		m_cullMode = CullBack;
 		m_opacity = 1.0f;
 		m_alphaBlending = false;
@@ -129,7 +129,7 @@ namespace Directus
 
 	bool Material::SaveToExistingDirectory()
 	{
-		if (m_resourceFilePath == DATA_NOT_ASSIGNED)
+		if (m_resourceFilePath == NOT_ASSIGNED)
 			return false;
 
 		return Save(FileSystem::GetFilePathWithoutExtension(m_resourceFilePath), true);
@@ -280,7 +280,7 @@ namespace Directus
 			}
 		}
 
-		return (string)DATA_NOT_ASSIGNED;
+		return (string)NOT_ASSIGNED;
 	}
 
 	vector<string> Material::GetTexturePaths()

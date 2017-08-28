@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Transform.h"
 #include "../Graphics/Vertex.h"
 #include "../Graphics/Material.h"
+#include "../Graphics/Animation.h"
 #include "../Graphics/Shaders/ShaderVariation.h"
 #include "../IO/StreamIO.h"
 //==============================================
@@ -117,7 +118,7 @@ namespace Directus
 	}
 	//============================================================================================
 
-	weak_ptr<Mesh> Model::AddMesh(const string& gameObjID, const string& name, vector<VertexPosTexNorTan> vertices, vector<unsigned int> indices)
+	weak_ptr<Mesh> Model::AddMeshAsNewResource(const string& gameObjID, const string& name, vector<VertexPosTexNorTan> vertices, vector<unsigned int> indices)
 	{
 		// Create a mesh
 		auto mesh = make_shared<Mesh>();
@@ -127,12 +128,12 @@ namespace Directus
 		mesh->SetVertices(vertices);
 		mesh->SetIndices(indices);
 
-		AddMesh(mesh);
+		AddMeshAsNewResource(mesh);
 
 		return mesh;
 	}
 
-	void Model::AddMesh(shared_ptr<Mesh> mesh)
+	void Model::AddMeshAsNewResource(shared_ptr<Mesh> mesh)
 	{
 		if (!mesh)
 			return;
@@ -147,7 +148,7 @@ namespace Directus
 		m_meshes.push_back(mesh);
 	}
 
-	weak_ptr<Material> Model::AddMaterial(shared_ptr<Material> material)
+	weak_ptr<Material> Model::AddMaterialAsNewResource(shared_ptr<Material> material)
 	{
 		if (!material)
 			return weak_ptr<Material>();
@@ -159,11 +160,26 @@ namespace Directus
 		material._Get()->Save(GetResourceDirectory() + "Materials//" + material->GetResourceName(), false);
 		material._Get()->GetShader()._Get()->SaveToFile(GetResourceDirectory() + "Shaders//" + material._Get()->GetResourceName());
 
-		// Save it
+		// Keep a reference to it
 		m_materials.push_back(material);
 
 		// Return it
 		return weakMat;
+	}
+
+	weak_ptr<Animation> Model::AddAnimationAsNewResource(shared_ptr<Animation> animation)
+	{
+		if (!animation)
+			return weak_ptr<Animation>();
+
+		// Add it to our resources
+		auto weakAnim = m_context->GetSubsystem<ResourceManager>()->Add(animation);
+
+		// Keep a reference to it
+		m_animations.push_back(weakAnim);
+
+		// Return it
+		return weakAnim;
 	}
 
 	weak_ptr<Mesh> Model::GetMeshByID(const string& id)
@@ -222,7 +238,7 @@ namespace Directus
 		{
 			auto mesh = make_shared<Mesh>();
 			mesh->Deserialize();
-			AddMesh(mesh);
+			AddMeshAsNewResource(mesh);
 		}
 
 		StreamIO::StopReading();

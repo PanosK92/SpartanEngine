@@ -40,7 +40,7 @@ namespace Directus
 	{
 		// Mesh	
 		m_id = GENERATE_GUID;
-		m_name = DATA_NOT_ASSIGNED;
+		m_name = NOT_ASSIGNED;
 		m_vertexCount = 0;
 		m_indexCount = 0;
 		m_triangleCount = 0;

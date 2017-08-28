@@ -43,7 +43,7 @@ void DirectusAssetLoader::Initialize(QWidget* mainWindow, Socket* socket)
     m_socket = socket;
 
     m_loadingDialog = new DirectusProgressBar(m_mainWindow);
-    m_loadingDialog->Initialize(m_mainWindow);
+    m_loadingDialog->Initialize(m_mainWindow, socket->GetContext());
 
     // When the loading dialog should show up
     connect(this, SIGNAL(Started()),    m_loadingDialog, SLOT(Show()));

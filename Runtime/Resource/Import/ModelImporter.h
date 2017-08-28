@@ -48,6 +48,11 @@ namespace Directus
 		void LoadAsync(Model* model, const std::string& filePath);
 		bool Load(Model* model, const std::string& filePath);
 
+		std::string GetStatMeshProcessed() { return m_statMeshProcessed; }
+		std::string GetStatNodeProcessed() { return m_statNodeProcessed; }
+		int GetStatNodeCount() { return m_stateNodeCount; }
+		int GetStatNodeCurrent() { return m_stateNodeCurrent; }
+
 	private:
 		// PROCESSING
 		void LoadNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const std::weak_ptr<GameObject>& parentNode, std::weak_ptr<GameObject>& newNode);
@@ -60,10 +65,18 @@ namespace Directus
 		void AddTextureToMaterial(Model* model, const std::weak_ptr<Material>& material, TextureType textureType, const std::string& texturePath);
 		std::string FindTexture(const std::string& texturePath);
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
+		void CalculateNodeCount(aiNode* node, int& count);
+		void ResetStats();
 
 		bool m_isLoading;
 		Model* m_model;
 		std::string m_modelPath;
+
+		// Statistics	
+		std::string m_statMeshProcessed;
+		std::string m_statNodeProcessed;
+		int m_stateNodeCount;
+		int m_stateNodeCurrent;
 		
 		Context* m_context;
 	};

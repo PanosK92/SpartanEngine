@@ -82,14 +82,14 @@ namespace Directus
 
 	void Script::Serialize()
 	{
-		StreamIO::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)DATA_NOT_ASSIGNED);
+		StreamIO::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)NOT_ASSIGNED);
 	}
 
 	void Script::Deserialize()
 	{
 		string scriptPath = StreamIO::ReadSTR();
 
-		if (scriptPath != DATA_NOT_ASSIGNED)
+		if (scriptPath != NOT_ASSIGNED)
 		{
 			AddScript(scriptPath);
 		}
@@ -112,7 +112,7 @@ namespace Directus
 
 	string Script::GetScriptPath()
 	{
-		return m_scriptInstance ? m_scriptInstance->GetScriptPath() : DATA_NOT_ASSIGNED;
+		return m_scriptInstance ? m_scriptInstance->GetScriptPath() : NOT_ASSIGNED;
 	}
 
 	string Script::GetName()

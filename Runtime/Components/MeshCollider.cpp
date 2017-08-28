@@ -83,7 +83,7 @@ namespace Directus
 	void MeshCollider::Serialize()
 	{
 		StreamIO::WriteBool(m_isConvex);
-		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)DATA_NOT_ASSIGNED);
+		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)NOT_ASSIGNED);
 	}
 
 	void MeshCollider::Deserialize()

@@ -190,7 +190,7 @@ namespace Directus
 		vector<string> resourcePaths = StreamIO::ReadVectorSTR();
 		StreamIO::StopReading();
 
-		// Load all all these resources
+		// Load all the resources
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
 		for (const auto& resourcePath : resourcePaths)
 		{

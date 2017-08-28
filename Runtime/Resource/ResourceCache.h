@@ -110,10 +110,7 @@ namespace Directus
 		}
 
 		// Returns all the resources
-		std::vector<std::shared_ptr<Resource>> GetAll()
-		{
-			return m_resources;
-		}
+		const auto& GetAll() { return m_resources; }
 
 		// Checks whether a resource is already in the cache
 		bool CachedByFilePath(const std::string& filePath)
@@ -151,7 +148,7 @@ namespace Directus
 			if (!resourceIn)
 				return false;
 
-			if (resourceIn->GetResourceName() == DATA_NOT_ASSIGNED)
+			if (resourceIn->GetResourceName() == NOT_ASSIGNED)
 			{
 				LOG_INFO("CachedByName() might fail as no name has been assigned to the resource");
 			}

@@ -270,7 +270,7 @@ namespace Directus
 
 	string FileSystem::GetExtensionFromFilePath(const string& filePath)
 	{
-		string extension = DATA_NOT_ASSIGNED;
+		string extension = NOT_ASSIGNED;
 
 		size_t lastindex = filePath.find_last_of(".");
 		if (string::npos != lastindex)
@@ -542,12 +542,11 @@ namespace Directus
 		const char SLASH = '\\';
 
 		int afMarker = 0, rfMarker = 0;
-		int cdLen = 0, afLen = 0;
 		int i = 0;
 		int levels = 0;
 		static char relativeFilename[MAX_FILENAME_LEN + 1];
-		cdLen = strlen(currentDir.c_str());
-		afLen = strlen(absoluteDir.c_str());
+		size_t cdLen = strlen(currentDir.c_str());
+		size_t afLen = strlen(absoluteDir.c_str());
 
 		// Make sure the paths are not too long or too short
 		if (cdLen > MAX_FILENAME_LEN || cdLen < ABSOLUTE_NAME_START + 1 ||

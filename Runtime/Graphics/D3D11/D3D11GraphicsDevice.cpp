@@ -735,14 +735,14 @@ namespace Directus
 	string D3D11GraphicsDevice::GetAdapterDescription(IDXGIAdapter* adapter)
 	{
 		if (!adapter)
-			return DATA_NOT_ASSIGNED;
+			return NOT_ASSIGNED;
 
 		DXGI_ADAPTER_DESC adapterDesc;
 		HRESULT result = adapter->GetDesc(&adapterDesc);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to get adapter description.");
-			return DATA_NOT_ASSIGNED;
+			return NOT_ASSIGNED;
 		}
 
 		int adapterVRAM = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024); // MB

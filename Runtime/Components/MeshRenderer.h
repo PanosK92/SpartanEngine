@@ -69,7 +69,7 @@ namespace Directus
 
 		std::weak_ptr<Material>& GetMaterial() { return  m_material; }
 		bool HasMaterial() { return GetMaterial().expired() ? false : true; }
-		std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial()._Get()->GetResourceName() : DATA_NOT_ASSIGNED; }
+		std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial()._Get()->GetResourceName() : NOT_ASSIGNED; }
 		MaterialType GetMaterialType() { return m_materialType; }
 
 	private:
