@@ -25,6 +25,7 @@ public:
     void Initialize(QWidget* mainWindow, Directus::Context* engineContext);
 
 private slots:
+    void IncrementTowardsTargetValue();
     void UpdateProgressBar();
 
 public slots:
@@ -34,9 +35,13 @@ public slots:
 
 private:
     bool m_isVisible;
+    int m_min;
+    int m_max;
+    int m_targetValue;
 
     Ui::AssetLoadingDialog *ui;
-    QTimer* m_timer;
+    QTimer* m_timerProgressUpdate;
+    QTimer* m_timerSmoothBar;
     QWidget* m_mainWindow;
     Directus::Context* m_engineContext;
 };
