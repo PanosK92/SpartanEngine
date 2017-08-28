@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 //=========================
 
-#define DATA_NOT_ASSIGNED "N/A"
+#define NOT_ASSIGNED "N/A"
 
 //= METADATA ===============================
 #define METADATA_EXTENSION ".xml"

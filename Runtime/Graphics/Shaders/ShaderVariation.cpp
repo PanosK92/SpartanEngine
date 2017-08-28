@@ -165,7 +165,7 @@ namespace Directus
 
 	void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* camera)
 	{
-		if (!m_D3D11Shader->IsCompiled())
+		if (!m_D3D11Shader || !m_D3D11Shader->IsCompiled())
 		{
 			LOG_ERROR("Shader hasn't been loaded or failed to compile. Can't update per frame buffer.");
 			return;

@@ -35,6 +35,7 @@ namespace Directus
 	class GameObject;
 	class Mesh;
 	class Material;
+	class Animation;
 	struct VertexPosTexNorTan;
 
 	namespace Math
@@ -57,13 +58,16 @@ namespace Directus
 		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
 
 		// Adds a mesh by creating from scratch
-		std::weak_ptr<Mesh> AddMesh(const std::string& gameObjID, const std::string& name, std::vector<VertexPosTexNorTan> vertices, std::vector<unsigned int> indices);
+		std::weak_ptr<Mesh> AddMeshAsNewResource(const std::string& gameObjID, const std::string& name, std::vector<VertexPosTexNorTan> vertices, std::vector<unsigned int> indices);
 
-		// Adds a mesh from memoery
-		void AddMesh(std::shared_ptr<Mesh> mesh);
+		// Adds a new mesh
+		void AddMeshAsNewResource(std::shared_ptr<Mesh> mesh);
 
-		// Adds a material to this model
-		std::weak_ptr<Material> AddMaterial(std::shared_ptr<Material> material);
+		// Adds a new material
+		std::weak_ptr<Material> AddMaterialAsNewResource(std::shared_ptr<Material> material);
+
+		// Adds a new animation
+		std::weak_ptr<Animation> AddAnimationAsNewResource(std::shared_ptr<Animation> animation);
 
 		std::weak_ptr<Mesh> GetMeshByID(const std::string& id);
 		std::weak_ptr<Mesh> GetMeshByName(const std::string& name);
@@ -88,15 +92,14 @@ namespace Directus
 		// The root GameObject that represents this model in the scene
 		std::weak_ptr<GameObject> m_rootGameObj;
 
-		// The meshes that make up this model
-		std::vector<std::shared_ptr<Mesh>> m_meshes;
-
-		// The materials used by this model (materials also hold textures)
-		std::vector<std::weak_ptr<Material>> m_materials;
-
 		// Bounding box
 		Math::BoundingBox m_boundingBox;
 		float m_normalizedScale;
+
+		// References to key resources
+		std::vector<std::shared_ptr<Mesh>> m_meshes;
+		std::vector<std::weak_ptr<Material>> m_materials;
+		std::vector<std::weak_ptr<Animation>> m_animations;
 
 		// Dependencies
 		ResourceManager* m_resourceManager;

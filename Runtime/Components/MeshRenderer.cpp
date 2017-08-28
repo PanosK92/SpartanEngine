@@ -79,7 +79,7 @@ namespace Directus
 	void MeshRenderer::Serialize()
 	{
 		StreamIO::WriteInt((int)m_materialType);
-		StreamIO::WriteSTR(!m_material.expired() ? m_material._Get()->GetResourceFilePath() : (string)DATA_NOT_ASSIGNED);
+		StreamIO::WriteSTR(!m_material.expired() ? m_material._Get()->GetResourceFilePath() : (string)NOT_ASSIGNED);
 		StreamIO::WriteBool(m_castShadows);
 		StreamIO::WriteBool(m_receiveShadows);
 	}
@@ -198,6 +198,6 @@ namespace Directus
 
 	string MeshRenderer::GetGameObjectName()
 	{
-		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
+		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : NOT_ASSIGNED;
 	}
 }

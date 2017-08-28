@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceManager.h"
 #include "../../Graphics/Model.h"
 #include <future>
+#include "../../Graphics/Animation.h"
 //=================================================
 
 //= NAMESPACES ================
@@ -61,6 +62,8 @@ aiProcess_ValidateDataStructure |
 aiProcess_OptimizeMeshes |
 aiProcess_Debone |
 aiProcess_ConvertToLeftHanded;
+
+static int normalSmoothAngle = 80;
 
 namespace Directus
 {
@@ -118,10 +121,12 @@ namespace Directus
 		m_context = nullptr;
 		m_isLoading = false;
 		m_model = nullptr;
+		ResetStats();
 	}
 
 	ModelImporter::~ModelImporter()
 	{
+
 	}
 
 	bool ModelImporter::Initialize(Context* context)
@@ -149,26 +154,42 @@ namespace Directus
 		m_modelPath = filePath;
 		m_isLoading = true;
 
-		// Set up Assimp importer
-		static int smoothAngle = 80;
+		// Set up an Assimp importer
 		Assimp::Importer importer;
 		importer.SetPropertyInteger(AI_CONFIG_PP_ICL_PTCACHE_SIZE, 64); // Optimize mesh
 		importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT); // Remove points and lines.
 		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS); // Remove cameras and lights
-		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, smoothAngle);
+		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, normalSmoothAngle); // Default is 45, max is 175
 
 		// Read the 3D model file
 		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
 		if (!scene)
 		{
 			LOG_ERROR("Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
+			m_isLoading = false;
 			return false;
 		}
 
-		// This function will recursively process the entire model
+		// This is a recursive function, it will go through the entire node hierarchy
 		LoadNode(model, scene, scene->mRootNode, weakGameObj(), weakGameObj());
+
+		// Save any possible animations
+		for (int i = 0; i < scene->mNumAnimations; i++)
+		{
+			aiAnimation* assimpAnimation = scene->mAnimations[i];
+			shared_ptr<Animation> animation = make_shared<Animation>();
+
+			animation->SetName(assimpAnimation->mName.C_Str());
+			animation->SetDuration(assimpAnimation->mDuration);
+			animation->SetTicksPerSec(assimpAnimation->mTicksPerSecond);
+
+			model->AddAnimationAsNewResource(animation);
+		}
+
+		// Cleanup
 		importer.FreeScene();
 		m_isLoading = false;
+		ResetStats();
 
 		return true;
 	}
@@ -176,24 +197,38 @@ namespace Directus
 	//= PROCESSING ===============================================================================
 	void ModelImporter::LoadNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<GameObject>& parentNode, weak_ptr<GameObject>& newNode)
 	{
-		if (newNode.expired())
-			newNode = m_context->GetSubsystem<Scene>()->CreateGameObject();
+		// Get scene here because it's used below
+		Scene* scene = m_context->GetSubsystem<Scene>();
 
-		if (!assimpNode->mParent)
+		// Is this the root node?
+		if (!assimpNode->mParent || newNode.expired())
+		{
+			newNode = scene->CreateGameObject();
 			model->SetRootGameObject(newNode.lock());
 
-		//= GET NODE NAME ===========================================================
+			CalculateNodeCount(assimpNode, m_stateNodeCount);
+		}
+
+		m_stateNodeCurrent++;
+
+		//= GET NODE NAME ============================================================
 		// Note: In case this is the root node, aiNode.mName will be "RootNode". 
 		// To get a more descriptive name we instead get the name from the file path.
 		if (assimpNode->mParent)
 		{
-			newNode._Get()->SetName(assimpNode->mName.C_Str());
+			string name = assimpNode->mName.C_Str();
+			newNode._Get()->SetName(name);
+
+			m_statNodeProcessed = name;
 		}
 		else
 		{
-			newNode._Get()->SetName(FileSystem::GetFileNameNoExtensionFromFilePath(model->GetResourceFilePath()));
+			string name = FileSystem::GetFileNameNoExtensionFromFilePath(m_modelPath);
+			newNode._Get()->SetName(name);
+
+			m_statNodeProcessed = name;
 		}
-		//===========================================================================
+		//============================================================================
 
 		// Set the transform of parentNode as the parent of the newNode's transform
 		Transform* parentTrans = !parentNode.expired() ? parentNode._Get()->GetTransform() : nullptr;
@@ -212,7 +247,7 @@ namespace Directus
 			// if this node has many meshes, then assign a new gameobject for each one of them
 			if (assimpNode->mNumMeshes > 1)
 			{
-				gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject(); // create
+				gameobject = scene->CreateGameObject(); // create
 				gameobject._Get()->GetTransform()->SetParent(newNode._Get()->GetTransform()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
@@ -227,7 +262,7 @@ namespace Directus
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
-			weakGameObj child = m_context->GetSubsystem<Scene>()->CreateGameObject();
+			weakGameObj child = scene->CreateGameObject();
 			LoadNode(model, assimpScene, assimpNode->mChildren[i], newNode, child);
 		}
 	}
@@ -242,6 +277,8 @@ namespace Directus
 		mesh->SetModelID(model->GetResourceID());
 		mesh->SetGameObjectID(gameobject._Get()->GetID());
 		mesh->SetName(assimpMesh->mName.C_Str());
+
+		m_statMeshProcessed = mesh->GetName();
 
 		// Vertices
 		LoadAiMeshVertices(assimpMesh, mesh);
@@ -264,8 +301,8 @@ namespace Directus
 		}
 	
 		//= Finilize GameObject =====================================================
-		model->AddMesh(mesh);
-		model->AddMaterial(material);
+		model->AddMeshAsNewResource(mesh);
+		model->AddMaterialAsNewResource(material);
 
 		MeshFilter* meshFilter = gameobject._Get()->AddComponent<MeshFilter>();
 		MeshRenderer* meshRenderer = gameobject._Get()->AddComponent<MeshRenderer>();
@@ -328,110 +365,110 @@ namespace Directus
 		}
 	}
 
-	shared_ptr<Material> ModelImporter::AiMaterialToMaterial(Model* model, aiMaterial* material)
+	shared_ptr<Material> ModelImporter::AiMaterialToMaterial(Model* model, aiMaterial* assimpMaterial)
 	{
-		auto engineMaterial = make_shared<Material>(m_context);
+		auto material = make_shared<Material>(m_context);
 
 		//= NAME ============================================
 		aiString name;
-		aiGetMaterialString(material, AI_MATKEY_NAME, &name);
-		engineMaterial->SetResourceName(name.C_Str());
-		engineMaterial->SetModelID(model->GetResourceName());
+		aiGetMaterialString(assimpMaterial, AI_MATKEY_NAME, &name);
+		material->SetResourceName(name.C_Str());
+		material->SetModelID(model->GetResourceName());
 
 		//= CullMode ===================================================
 		// Specifies whether meshes using this material must be rendered 
 		// without back face CullMode. 0 for false, !0 for true.
 		bool isTwoSided = false;
-		int r = material->Get(AI_MATKEY_TWOSIDED, isTwoSided);
+		int r = assimpMaterial->Get(AI_MATKEY_TWOSIDED, isTwoSided);
 		if (r == aiReturn_SUCCESS && isTwoSided)
 		{
-			engineMaterial->SetCullMode(CullNone);
+			material->SetCullMode(CullNone);
 		}
 
 		//= DIFFUSE COLOR ===================================================
 		aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
-		aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &colorDiffuse);
-		engineMaterial->SetColorAlbedo(ToVector4(colorDiffuse));
+		aiGetMaterialColor(assimpMaterial, AI_MATKEY_COLOR_DIFFUSE, &colorDiffuse);
+		material->SetColorAlbedo(ToVector4(colorDiffuse));
 
 		//= OPACITY ==============================================
 		aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
-		aiGetMaterialColor(material, AI_MATKEY_OPACITY, &opacity);
-		engineMaterial->SetOpacity(opacity.r);
+		aiGetMaterialColor(assimpMaterial, AI_MATKEY_OPACITY, &opacity);
+		material->SetOpacity(opacity.r);
 
 		//= ALBEDO TEXTURE =============================================================================================================
 		aiString texturePath;
-		if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
+		if (assimpMaterial->GetTextureCount(aiTextureType_DIFFUSE) > 0)
 		{
-			if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			if (assimpMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, engineMaterial, Albedo_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, Albedo_Texture, texturePath.data);
 				// FIX: materials that have a diffuse texture should not be tinted black/grey
-				engineMaterial->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+				material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
 		}
 
 		//= SPECULAR (used as ROUGHNESS) TEXTURE =========================================================================================
-		if (material->GetTextureCount(aiTextureType_SHININESS) > 0)
+		if (assimpMaterial->GetTextureCount(aiTextureType_SHININESS) > 0)
 		{
-			if (material->GetTexture(aiTextureType_SHININESS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			if (assimpMaterial->GetTexture(aiTextureType_SHININESS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, engineMaterial, Roughness_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, Roughness_Texture, texturePath.data);
 			}
 		}
 
 		//= AMBIENT (used as METALLIC) TEXTURE ========================================================================================
-		if (material->GetTextureCount(aiTextureType_AMBIENT) > 0)
+		if (assimpMaterial->GetTextureCount(aiTextureType_AMBIENT) > 0)
 		{
-			if (material->GetTexture(aiTextureType_AMBIENT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			if (assimpMaterial->GetTexture(aiTextureType_AMBIENT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, engineMaterial, Metallic_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, Metallic_Texture, texturePath.data);
 			}
 		}
 
 		//= NORMAL TEXTURE =============================================================================================================
-		if (material->GetTextureCount(aiTextureType_NORMALS) > 0)
+		if (assimpMaterial->GetTextureCount(aiTextureType_NORMALS) > 0)
 		{
-			if (material->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			if (assimpMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, engineMaterial, Normal_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, Normal_Texture, texturePath.data);
 			}
 		}
 
 		//= OCCLUSION TEXTURE ===========================================================================================================
-		if (material->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
+		if (assimpMaterial->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
 		{
-			if (material->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			if (assimpMaterial->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, engineMaterial, Occlusion_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, Occlusion_Texture, texturePath.data);
 			}
 		}
 
 		//= EMISSIVE TEXTURE ============================================================================================================
-		if (material->GetTextureCount(aiTextureType_EMISSIVE) > 0)
+		if (assimpMaterial->GetTextureCount(aiTextureType_EMISSIVE) > 0)
 		{
-			if (material->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			if (assimpMaterial->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, engineMaterial, Emission_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, Emission_Texture, texturePath.data);
 			}
 		}
 		//= HEIGHT TEXTURE ============================================================================================================
-		if (material->GetTextureCount(aiTextureType_HEIGHT) > 0)
+		if (assimpMaterial->GetTextureCount(aiTextureType_HEIGHT) > 0)
 		{
-			if (material->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			if (assimpMaterial->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, engineMaterial, Height_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, Height_Texture, texturePath.data);
 			}
 		}
 
 		//= MASK TEXTURE ===============================================================================================================
-		if (material->GetTextureCount(aiTextureType_OPACITY) > 0)
+		if (assimpMaterial->GetTextureCount(aiTextureType_OPACITY) > 0)
 		{
-			if (material->GetTexture(aiTextureType_OPACITY, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			if (assimpMaterial->GetTexture(aiTextureType_OPACITY, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, engineMaterial, Mask_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, Mask_Texture, texturePath.data);
 			}
 		}
-		return engineMaterial;
+		return material;
 	}
 	//============================================================================================
 
@@ -442,7 +479,7 @@ namespace Directus
 			return;
 
 		string texturePath = FindTexture(originalTexturePath);
-		if (texturePath == DATA_NOT_ASSIGNED)
+		if (texturePath == NOT_ASSIGNED)
 		{
 			LOG_WARNING("ModelImporter: Failed to find model requested texture \"" + originalTexturePath + "\".");
 			return;
@@ -494,7 +531,7 @@ namespace Directus
 			return fullTexturePath;
 
 		// Give up, no valid texture path was found
-		return DATA_NOT_ASSIGNED;
+		return NOT_ASSIGNED;
 	}
 
 	string ModelImporter::TryPathWithMultipleExtensions(const string& fullpath)
@@ -521,5 +558,27 @@ namespace Directus
 		}
 
 		return fullpath;
+	}
+
+	void ModelImporter::CalculateNodeCount(aiNode* node, int& count)
+	{
+		if (!node)
+			return;
+
+		count++;
+
+		// Process children
+		for (unsigned int i = 0; i < node->mNumChildren; i++)
+		{
+			CalculateNodeCount(node->mChildren[i], count);
+		}
+	}
+
+	void ModelImporter::ResetStats()
+	{
+		m_statMeshProcessed = NOT_ASSIGNED;
+		m_statNodeProcessed = NOT_ASSIGNED;
+		m_stateNodeCount = 0;
+		m_stateNodeCurrent = 0;
 	}
 }

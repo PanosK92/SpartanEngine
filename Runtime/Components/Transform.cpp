@@ -82,7 +82,7 @@ namespace Directus
 		StreamIO::WriteQuaternion(m_rotationLocal);
 		StreamIO::WriteVector3(m_scaleLocal);
 		StreamIO::WriteVector3(m_lookAt);
-		StreamIO::WriteSTR(m_parent ? m_parent->GetGameObject()._Get()->GetID() : DATA_NOT_ASSIGNED);
+		StreamIO::WriteSTR(m_parent ? m_parent->GetGameObject()._Get()->GetID() : NOT_ASSIGNED);
 	}
 
 	void Transform::Deserialize()
@@ -94,7 +94,7 @@ namespace Directus
 
 		// get parent transform
 		string parentGameObjectID = StreamIO::ReadSTR();
-		if (parentGameObjectID != DATA_NOT_ASSIGNED)
+		if (parentGameObjectID != NOT_ASSIGNED)
 		{
 			auto parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
 			if (!parent.expired())
@@ -303,7 +303,7 @@ namespace Directus
 	{
 		if (!HasChildren())
 		{
-			string gameObjName = !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
+			string gameObjName = !g_gameObject.expired() ? g_gameObject._Get()->GetName() : NOT_ASSIGNED;
 			LOG_WARNING(gameObjName + " has no children.");
 			return nullptr;
 		}
@@ -388,7 +388,7 @@ namespace Directus
 
 	string Transform::GetGameObjName()
 	{
-		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
+		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : NOT_ASSIGNED;
 	}
 
 	Matrix Transform::GetParentTransformMatrix()

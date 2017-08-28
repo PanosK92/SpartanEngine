@@ -82,9 +82,9 @@ namespace Directus
 	void MeshFilter::Serialize()
 	{
 		StreamIO::WriteInt((int)m_meshType);
-		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetName() : (string)DATA_NOT_ASSIGNED);
-		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetID() : (string)DATA_NOT_ASSIGNED);
-		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetModelID() : (string)DATA_NOT_ASSIGNED);
+		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetName() : (string)NOT_ASSIGNED);
+		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetID() : (string)NOT_ASSIGNED);
+		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetModelID() : (string)NOT_ASSIGNED);
 	}
 
 	void MeshFilter::Deserialize()
@@ -167,7 +167,7 @@ namespace Directus
 		shared_ptr<Model> modelShared = make_shared<Model>(g_context);
 		modelShared->SetRootGameObject(g_gameObject);
 		modelShared->SetResourceName(resourceName);
-		modelShared->AddMesh(g_gameObject._Get()->GetID(), meshName, vertices, indices);
+		modelShared->AddMeshAsNewResource(g_gameObject._Get()->GetID(), meshName, vertices, indices);
 
 		// Add the model to the resource manager and get it as a weak reference. It's important to do that
 		// because the resource manager will maintain it's own copy, thus any external references like
@@ -215,7 +215,7 @@ namespace Directus
 
 	string MeshFilter::GetMeshName()
 	{
-		return !m_mesh.expired() ? m_mesh._Get()->GetName() : DATA_NOT_ASSIGNED;
+		return !m_mesh.expired() ? m_mesh._Get()->GetName() : NOT_ASSIGNED;
 	}
 
 	bool MeshFilter::CreateBuffers()
@@ -333,6 +333,6 @@ namespace Directus
 
 	string MeshFilter::GetGameObjectName()
 	{
-		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : DATA_NOT_ASSIGNED;
+		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : NOT_ASSIGNED;
 	}
 }

@@ -290,6 +290,8 @@ QLabel
 	color: #C2C5CC;
 	background-color: #414345;
 	border-style: none;
+	border-radius: 3px;
+	padding: 3px;
 }
 
 /*================================================================================================*/
@@ -558,7 +560,7 @@ QProgressBar
 
 QProgressBar::chunk 
 {
-    background-color: #05B8CC;
+    background-color: #3980A3;
 	width: 1px;
 }
 

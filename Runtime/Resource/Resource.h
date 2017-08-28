@@ -39,7 +39,8 @@ namespace Directus
 		Shader_Resource,
 		Model_Resource,
 		Cubemap_Resource,
-		Script_Resource
+		Script_Resource,
+		Animation_Resource
 	};
 
 	class DLL_API Resource
@@ -67,9 +68,9 @@ namespace Directus
 		virtual bool LoadFromFile(const std::string& filePath) = 0;
 
 	protected:
-		std::string m_resourceID = DATA_NOT_ASSIGNED;	
-		std::string m_resourceName = DATA_NOT_ASSIGNED;
-		std::string m_resourceFilePath = DATA_NOT_ASSIGNED;
+		std::string m_resourceID = NOT_ASSIGNED;	
+		std::string m_resourceName = NOT_ASSIGNED;
+		std::string m_resourceFilePath = NOT_ASSIGNED;
 		ResourceType m_resourceType = Unknown_Resource;
 		Context* m_context = nullptr;
 	};

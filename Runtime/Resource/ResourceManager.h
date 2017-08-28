@@ -55,20 +55,20 @@ namespace Directus
 			if (m_resourceCache->CachedByFilePath(filePath))
 				return GetResourceByPath<T>(filePath);
 
-			std::shared_ptr<T> derivedResource = std::make_shared<T>(m_context);
-			std::shared_ptr<Resource> resource = ToBaseResourceShared(derivedResource);
+			std::shared_ptr<T> typed = std::make_shared<T>(m_context);
+			std::shared_ptr<Resource> base = ToBaseShared(typed);
 
-			if (resource->LoadFromFile(filePath))
+			if (base->LoadFromFile(filePath))
 			{
-				m_resourceCache->Add(resource);
+				m_resourceCache->Add(base);
 			}
 			else
 			{
 				LOG_WARNING("Resource \"" + filePath + "\" failed to load");
 			}
 
-			auto typedResource = GetResourceByPath<T>(filePath);
-			return typedResource;
+			// Returne typed weak
+			return GetResourceByPath<T>(filePath);
 		}
 
 		// Adds a resource into the resource cache
@@ -78,14 +78,14 @@ namespace Directus
 			if (!resource)
 				return std::weak_ptr<T>();
 
-			std::shared_ptr<Resource> baseResource = ToBaseResourceShared(resource);
+			std::shared_ptr<Resource> base = ToBaseShared(resource);
 
 			// If the resource is already loaded, return the existing one
-			if (m_resourceCache->CachedByName(baseResource))
-				return ToDerivedResourceWeak<T>(m_resourceCache->GetByName(baseResource->GetResourceName()));
+			if (m_resourceCache->CachedByName(base))
+				return ToTypedWeak<T>(m_resourceCache->GetByName(base->GetResourceName()));
 
 			// Else, add the resource and return it
-			m_resourceCache->Add(baseResource);
+			m_resourceCache->Add(base);
 			return resource;
 		}
 
@@ -93,56 +93,44 @@ namespace Directus
 		template <class T>
 		std::weak_ptr<T> GetResourceByID(const std::string& ID)
 		{
-			std::shared_ptr<Resource> baseResource = m_resourceCache->GetByID(ID);
-			std::weak_ptr<T> derivedResource = ToDerivedResourceWeak<T>(baseResource);
-
-			return derivedResource;
+			return ToTypedWeak<T>(m_resourceCache->GetByID(ID));
 		}
 
 		// Returns cached resource by Path
 		template <class T>
 		std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
 		{
-			std::shared_ptr<Resource> resource = m_resourceCache->GetByPath(filePath);
-			auto typedResource = ToDerivedResourceWeak<T>(resource);
-
-			return ToDerivedResourceWeak<T>(resource);
+			return ToTypedWeak<T>(m_resourceCache->GetByPath(filePath));
 		}
 
 		// Returns cached resource by Type
 		template <class T>
 		std::vector<std::weak_ptr<T>> GetResourcesByType()
 		{
-			std::vector<std::weak_ptr<T>> typedResources;
+			std::vector<std::weak_ptr<T>> typedVec;
 			for (const auto& resource : m_resourceCache->GetAll())
 			{
-				std::weak_ptr<T> typedResource = ToDerivedResourceWeak<T>(resource);
-				bool validCasting = !typedResource.expired();
+				std::weak_ptr<T> typed = ToTypedWeak<T>(resource);
+				bool validCasting = !typed.expired();
 
 				if (validCasting)
 				{
-					typedResources.push_back(typedResource);
+					typedVec.push_back(typed);
 				}
 			}
-			return typedResources;
+			return typedVec;
 		}
 
-		void SaveResourceMetadata()
-		{
-			m_resourceCache->SaveResourceMetadata();
-		}
+		void SaveResourceMetadata() { m_resourceCache->SaveResourceMetadata(); }
 
-		std::vector<std::string> GetResourceFilePaths()
-		{
-			return m_resourceCache->GetResourceFilePaths();
-		}
+		std::vector<std::string> GetResourceFilePaths() { return m_resourceCache->GetResourceFilePaths(); }
 
 		void AddResourceDirectory(ResourceType type, const std::string& directory);
 		std::string GetResourceDirectory(ResourceType type);
 
 		// Importers
-		const std::weak_ptr<ModelImporter>& GetModelImporter() { return m_modelImporter; }
-		const std::weak_ptr<ImageImporter>& GetImageImporter() { return m_imageImporter; }
+		std::weak_ptr<ModelImporter> GetModelImporter() { return m_modelImporter; }
+		std::weak_ptr<ImageImporter> GetImageImporter() { return m_imageImporter; }
 
 	private:
 		std::unique_ptr<ResourceCache> m_resourceCache;
@@ -152,21 +140,21 @@ namespace Directus
 		std::shared_ptr<ModelImporter> m_modelImporter;
 		std::shared_ptr<ImageImporter> m_imageImporter;
 
-		// Derived -> Resource (as a shared pointer)
-		template <class T>
-		std::shared_ptr<Resource> ToBaseResourceShared(std::shared_ptr<T> resource)
+		// Type -> Resource (as a shared pointer)
+		template <class Type>
+		std::shared_ptr<Resource> ToBaseShared(std::shared_ptr<Type> resource)
 		{
-			std::shared_ptr<Resource> sharedPtr = dynamic_pointer_cast<T>(resource);
+			std::shared_ptr<Resource> sharedPtr = dynamic_pointer_cast<Type>(resource);
 
 			return sharedPtr;
 		}
 
-		// Resource -> Derived (as a weak pointer)
-		template <class T>
-		std::weak_ptr<T> ToDerivedResourceWeak(std::shared_ptr<Resource> resource)
+		// Resource -> Type (as a weak pointer)
+		template <class Type>
+		std::weak_ptr<Type> ToTypedWeak(std::shared_ptr<Resource> resource)
 		{
-			std::shared_ptr<T> sharedPtr = dynamic_pointer_cast<T>(resource);
-			std::weak_ptr<T> weakPtr = std::weak_ptr<T>(sharedPtr);
+			std::shared_ptr<Type> sharedPtr = dynamic_pointer_cast<Type>(resource);
+			std::weak_ptr<Type> weakPtr = std::weak_ptr<Type>(sharedPtr);
 
 			return weakPtr;
 		}

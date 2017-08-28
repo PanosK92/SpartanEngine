@@ -72,6 +72,6 @@ namespace Directus
 				return directory.second;
 		}
 
-		return DATA_NOT_ASSIGNED;
+		return NOT_ASSIGNED;
 	}
 }
