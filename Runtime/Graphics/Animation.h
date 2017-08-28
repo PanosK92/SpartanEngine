@@ -23,10 +23,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "../Resource/Resource.h"
+#include "../Math/Matrix.h"
 //===============================
 
 namespace Directus
 {
+	struct VertexWeight
+	{
+		unsigned int vertexID;
+		float weight;
+	};
+
+	struct Bone
+	{
+		std::string name;
+		std::vector<VertexWeight> vertexWeights;
+		Math::Matrix offset;
+	};
+
+	struct KeyVector
+	{
+		double time;
+		Math::Vector3 value;
+	};
+
+	struct KeyQuaternion;
+
+	struct AnimationNode
+	{
+		std::string name;
+		std::vector<KeyVector> positionFrames;
+		std::vector<KeyQuaternion> rotationFrames;
+		std::vector<KeyVector> scaleFrames;
+	};
+
 	class DLL_API Animation : public Resource
 	{
 	public:
@@ -46,5 +76,6 @@ namespace Directus
 		std::string m_name;
 		double m_duration;
 		double m_ticksPerSec;
+		std::vector<AnimationNode> m_channels;
 	};
 }

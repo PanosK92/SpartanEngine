@@ -112,6 +112,11 @@ namespace Directus
 	{
 		return Vector2(aiVector.x, aiVector.y);
 	}
+
+	Quaternion ToQuaternion(const aiQuaternion& aiQuaternion)
+	{
+		return Quaternion(aiQuaternion.x, aiQuaternion.y, aiQuaternion.z, aiQuaternion.w);
+	}
 	//==================================================================
 
 	vector<string> materialNames;
@@ -182,6 +187,38 @@ namespace Directus
 			animation->SetName(assimpAnimation->mName.C_Str());
 			animation->SetDuration(assimpAnimation->mDuration);
 			animation->SetTicksPerSec(assimpAnimation->mTicksPerSecond);
+
+			for (int j = 0; j > assimpAnimation->mNumChannels; j++)
+			{
+				aiNodeAnim* assimpNodeAnim = assimpAnimation->mChannels[j];
+				AnimationNode animationNode;
+
+				animationNode.name = assimpNodeAnim->mNodeName.C_Str();
+
+				for (int k = 0; k < assimpNodeAnim->mNumPositionKeys; k++)
+				{
+					double time = assimpNodeAnim->mPositionKeys[k].mTime;
+					Vector3 value = ToVector3(assimpNodeAnim->mPositionKeys[k].mValue);
+
+					animationNode.positionFrames.push_back(KeyVector{ time, value });
+				}
+
+				for (int k = 0; k < assimpNodeAnim->mNumRotationKeys; k++)
+				{
+					double time = assimpNodeAnim->mPositionKeys[k].mTime;
+					Quaternion value = ToQuaternion(assimpNodeAnim->mRotationKeys[k].mValue);
+
+					animationNode.rotationFrames.push_back(KeyQuaternion{ time, value });
+				}
+
+				for (int k = 0; k < assimpNodeAnim->mNumScalingKeys; k++)
+				{
+					double time = assimpNodeAnim->mPositionKeys[k].mTime;
+					Vector3 value = ToVector3(assimpNodeAnim->mScalingKeys[k].mValue);
+
+					animationNode.scaleFrames.push_back(KeyVector{ time, value });
+				}
+			}
 
 			model->AddAnimationAsNewResource(animation);
 		}
@@ -299,7 +336,7 @@ namespace Directus
 			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
 			material = AiMaterialToMaterial(model, assimpMaterial);
 		}
-	
+
 		//= Finilize GameObject =====================================================
 		model->AddMeshAsNewResource(mesh);
 		model->AddMaterialAsNewResource(material);
