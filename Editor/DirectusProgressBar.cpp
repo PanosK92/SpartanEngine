@@ -83,10 +83,6 @@ void DirectusProgressBar::UpdateProgressBar()
     // Update progress bar
     m_targetValue = ((float)jobCurrent / (float)jobCount) * (float)m_max;
 
-    LOG_INFO(jobCurrent);
-    LOG_INFO(jobCount);
-    LOG_INFO(m_targetValue);
-
     // Update label
     label->setText(currentJob);
 }
