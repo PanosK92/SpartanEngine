@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>434</width>
-    <height>60</height>
+    <height>62</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -57,6 +57,9 @@
      </property>
      <item>
       <widget class="QProgressBar" name="progressBarLoadingDialog">
+       <property name="maximum">
+        <number>1</number>
+       </property>
        <property name="value">
         <number>0</number>
        </property>

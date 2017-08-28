@@ -16,6 +16,9 @@ DirectusProgressBar::DirectusProgressBar(QWidget *parent) : QDialog(parent), ui(
     ui->setupUi(this);
     m_mainWindow = nullptr;
     m_isVisible = false;
+    m_min = 0;
+    m_max = 1000;
+    m_targetValue = 0;
 
     // WINDOW FLAGS - How the window appears
     Qt::WindowFlags flags = windowFlags() | Qt::MSWindowsFixedSizeDialogHint;
@@ -24,10 +27,15 @@ DirectusProgressBar::DirectusProgressBar(QWidget *parent) : QDialog(parent), ui(
     setWindowFlags(flags);
 
     // Progress bar update frequency
-    m_timer = new QTimer(this);
-    m_timer->start(200);
+    m_timerProgressUpdate = new QTimer(this);
+    m_timerProgressUpdate->start(200);
 
-    connect(m_timer, SIGNAL(timeout()), this, SLOT(UpdateProgressBar()));
+    // Progress bar smooth effect update frequency
+    m_timerSmoothBar = new QTimer(this);
+    m_timerSmoothBar->start(10);
+
+    connect(m_timerProgressUpdate, SIGNAL(timeout()), this, SLOT(UpdateProgressBar()));
+    connect(m_timerSmoothBar, SIGNAL(timeout()), this, SLOT(IncrementTowardsTargetValue()));
 }
 
 void DirectusProgressBar::Initialize(QWidget* mainWindow, Context* engineContext)
@@ -35,8 +43,28 @@ void DirectusProgressBar::Initialize(QWidget* mainWindow, Context* engineContext
     m_mainWindow = mainWindow;
     m_engineContext = engineContext;
 
-    // Make progress bar text visible
-    ui->progressBarLoadingDialog->setTextVisible(true);
+    // Set progress bar properties
+    ui->progressBarLoadingDialog->setTextVisible(true); // show percentage
+    ui->progressBarLoadingDialog->setMinimum(m_min);
+    ui->progressBarLoadingDialog->setMaximum(m_max);
+}
+
+void DirectusProgressBar::IncrementTowardsTargetValue()
+{
+    if (!m_isVisible)
+        return;
+
+    QProgressBar* progressBar = ui->progressBarLoadingDialog;
+
+    int currentValue = progressBar->value();
+    if (currentValue >= m_targetValue)
+    {
+        progressBar->setValue(m_targetValue);
+        return;
+    }
+
+    currentValue++;
+    progressBar->setValue(currentValue);
 }
 
 void DirectusProgressBar::UpdateProgressBar()
@@ -44,7 +72,6 @@ void DirectusProgressBar::UpdateProgressBar()
     if (!m_isVisible)
         return;
 
-    QProgressBar* progressBar = ui->progressBarLoadingDialog;
     QLabel* label = ui->labelLoadingDialog;
     ModelImporter* importer = m_engineContext->GetSubsystem<ResourceManager>()->GetModelImporter()._Get();
 
@@ -52,10 +79,13 @@ void DirectusProgressBar::UpdateProgressBar()
     QString currentJob = QString::fromStdString(importer->GetStatNodeProcessed());
     int jobCount = importer->GetStatNodeCount();
     int jobCurrent = importer->GetStatNodeCurrent();
-    float progressPercentage = ((float)jobCurrent / (float)jobCount) * 100.0f;
 
     // Update progress bar
-    progressBar->setValue(progressPercentage);
+    m_targetValue = ((float)jobCurrent / (float)jobCount) * (float)m_max;
+
+    LOG_INFO(jobCurrent);
+    LOG_INFO(jobCount);
+    LOG_INFO(m_targetValue);
 
     // Update label
     label->setText(currentJob);
