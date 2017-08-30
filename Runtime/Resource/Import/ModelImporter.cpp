@@ -166,7 +166,7 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS); // Remove cameras and lights
 		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, normalSmoothAngle); // Default is 45, max is 175
 
-		// Read the 3D model file
+		// Read the 3D model file from disk
 		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
 		if (!scene)
 		{
@@ -175,53 +175,12 @@ namespace Directus
 			return false;
 		}
 
-		// This is a recursive function, it will go through the entire node hierarchy
-		LoadNode(model, scene, scene->mRootNode, weakGameObj(), weakGameObj());
+		// Map all the nodes as GameObjects while mentaining hierarchical relationships
+		// as well as their properties (meshes, materials, textures etc.).
+		ReadNodeHierarchy(model, scene, scene->mRootNode, weakGameObj(), weakGameObj());
 
-		// Save any possible animations
-		for (int i = 0; i < scene->mNumAnimations; i++)
-		{
-			aiAnimation* assimpAnimation = scene->mAnimations[i];
-			shared_ptr<Animation> animation = make_shared<Animation>();
-
-			animation->SetName(assimpAnimation->mName.C_Str());
-			animation->SetDuration(assimpAnimation->mDuration);
-			animation->SetTicksPerSec(assimpAnimation->mTicksPerSecond);
-
-			for (int j = 0; j > assimpAnimation->mNumChannels; j++)
-			{
-				aiNodeAnim* assimpNodeAnim = assimpAnimation->mChannels[j];
-				AnimationNode animationNode;
-
-				animationNode.name = assimpNodeAnim->mNodeName.C_Str();
-
-				for (int k = 0; k < assimpNodeAnim->mNumPositionKeys; k++)
-				{
-					double time = assimpNodeAnim->mPositionKeys[k].mTime;
-					Vector3 value = ToVector3(assimpNodeAnim->mPositionKeys[k].mValue);
-
-					animationNode.positionFrames.push_back(KeyVector{ time, value });
-				}
-
-				for (int k = 0; k < assimpNodeAnim->mNumRotationKeys; k++)
-				{
-					double time = assimpNodeAnim->mPositionKeys[k].mTime;
-					Quaternion value = ToQuaternion(assimpNodeAnim->mRotationKeys[k].mValue);
-
-					animationNode.rotationFrames.push_back(KeyQuaternion{ time, value });
-				}
-
-				for (int k = 0; k < assimpNodeAnim->mNumScalingKeys; k++)
-				{
-					double time = assimpNodeAnim->mPositionKeys[k].mTime;
-					Vector3 value = ToVector3(assimpNodeAnim->mScalingKeys[k].mValue);
-
-					animationNode.scaleFrames.push_back(KeyVector{ time, value });
-				}
-			}
-
-			model->AddAnimationAsNewResource(animation);
-		}
+		// Load animation (in case there are any)
+		ReadAnimations(model, scene);
 
 		// Cleanup
 		importer.FreeScene();
@@ -232,7 +191,7 @@ namespace Directus
 	}
 
 	//= PROCESSING ===============================================================================
-	void ModelImporter::LoadNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<GameObject>& parentNode, weak_ptr<GameObject>& newNode)
+	void ModelImporter::ReadNodeHierarchy(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<GameObject>& parentNode, weak_ptr<GameObject>& newNode)
 	{
 		// Get scene here because it's used below
 		Scene* scene = m_context->GetSubsystem<Scene>();
@@ -300,7 +259,59 @@ namespace Directus
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
 			weakGameObj child = scene->CreateGameObject();
-			LoadNode(model, assimpScene, assimpNode->mChildren[i], newNode, child);
+			ReadNodeHierarchy(model, assimpScene, assimpNode->mChildren[i], newNode, child);
+		}
+	}
+
+	void ModelImporter::ReadAnimations(Model* model, const aiScene* scene)
+	{
+		for (int i = 0; i < scene->mNumAnimations; i++)
+		{
+			aiAnimation* assimpAnimation = scene->mAnimations[i];
+			shared_ptr<Animation> animation = make_shared<Animation>();
+
+			// Basic properties
+			animation->SetName(assimpAnimation->mName.C_Str());
+			animation->SetDuration(assimpAnimation->mDuration);
+			animation->SetTicksPerSec(assimpAnimation->mTicksPerSecond != 0.0f ? assimpAnimation->mTicksPerSecond : 25.0f);
+
+			// Animation channels
+			for (int j = 0; j > assimpAnimation->mNumChannels; j++)
+			{
+				aiNodeAnim* assimpNodeAnim = assimpAnimation->mChannels[j];
+				AnimationNode animationNode;
+
+				animationNode.name = assimpNodeAnim->mNodeName.C_Str();
+
+				// Position keys
+				for (int k = 0; k < assimpNodeAnim->mNumPositionKeys; k++)
+				{
+					double time = assimpNodeAnim->mPositionKeys[k].mTime;
+					Vector3 value = ToVector3(assimpNodeAnim->mPositionKeys[k].mValue);
+
+					animationNode.positionFrames.push_back(KeyVector{ time, value });
+				}
+
+				// Rotation keys
+				for (int k = 0; k < assimpNodeAnim->mNumRotationKeys; k++)
+				{
+					double time = assimpNodeAnim->mPositionKeys[k].mTime;
+					Quaternion value = ToQuaternion(assimpNodeAnim->mRotationKeys[k].mValue);
+
+					animationNode.rotationFrames.push_back(KeyQuaternion{ time, value });
+				}
+
+				// Scaling keys
+				for (int k = 0; k < assimpNodeAnim->mNumScalingKeys; k++)
+				{
+					double time = assimpNodeAnim->mPositionKeys[k].mTime;
+					Vector3 value = ToVector3(assimpNodeAnim->mScalingKeys[k].mValue);
+
+					animationNode.scaleFrames.push_back(KeyVector{ time, value });
+				}
+			}
+
+			model->AddAnimationAsNewResource(animation);
 		}
 	}
 

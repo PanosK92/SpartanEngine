@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "DirectusConsole.h"
 #include "DirectusViewport.h"
-#include "Socket/Socket.h"
 #include "Logging/Log.h"
 //==========================
 
@@ -36,13 +35,13 @@ DirectusConsole::DirectusConsole(QWidget *parent) : QListWidget(parent)
     m_socket = nullptr;
 }
 
-void DirectusConsole::Initialize(DirectusViewport* directusCore)
+void DirectusConsole::Initialize()
 {
-    m_socket = directusCore->GetEngineSocket();
-
-    // Pass the logger interface implemantation (this)
+    // Create an implemntation of EngineLogger
     m_engineLogger = std::make_shared<EngineLogger>(this);
-    m_socket->SetLogger(m_engineLogger);
+
+    // Se the logger implementation for the engine to use
+    Log::SetLogger(m_engineLogger);
 }
 
 EngineLogger::EngineLogger(QListWidget* list)

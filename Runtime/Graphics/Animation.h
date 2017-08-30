@@ -47,7 +47,11 @@ namespace Directus
 		Math::Vector3 value;
 	};
 
-	struct KeyQuaternion;
+	struct KeyQuaternion
+	{
+		double time;
+		Math::Quaternion value;
+	};
 
 	struct AnimationNode
 	{
@@ -76,6 +80,8 @@ namespace Directus
 		std::string m_name;
 		double m_duration;
 		double m_ticksPerSec;
+
+		// Each channel controls a single node
 		std::vector<AnimationNode> m_channels;
 	};
 }

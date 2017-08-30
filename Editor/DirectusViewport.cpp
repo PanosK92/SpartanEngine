@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Math/Vector3.h"
 #include "Math/Vector2.h"
 #include "DirectusInspector.h"
+#include "Graphics/Renderer.h"
 //============================
 
 //= NAMESPACES ================
@@ -72,11 +73,6 @@ DirectusViewport::~DirectusViewport()
     delete m_engine;
 }
 
-Socket* DirectusViewport::GetEngineSocket()
-{
-    return m_socket;
-}
-
 void DirectusViewport::Initialize(void* mainWindowHandle, void* hInstance, DirectusStatsLabel* directusStatsLabel)
 {
     // Initialize the engine
@@ -84,7 +80,9 @@ void DirectusViewport::Initialize(void* mainWindowHandle, void* hInstance, Direc
     m_engine->SetHandles(hInstance, mainWindowHandle, (void*)this->winId());
     m_engine->Initialize();
 
-    m_socket = m_engine->GetContext()->GetSubsystem<Socket>();
+    // Get context
+    m_context = m_engine->GetContext();
+
     m_directusStatsLabel = directusStatsLabel;
 }
 
@@ -99,7 +97,7 @@ void DirectusViewport::Start()
     if (m_locked)
         return;
 
-    m_socket->Start();
+    m_engine->GetContext()->GetSubsystem<Scene>()->Start();
     m_timerUpdate->start(0);
     m_timer500Mil->start(500);
     m_timer60FPS->stop();
@@ -114,7 +112,7 @@ void DirectusViewport::Stop()
     if (m_locked)
         return;
 
-    m_socket->OnDisable();
+    m_engine->GetContext()->GetSubsystem<Scene>()->OnDisable();
     m_timerUpdate->stop();
     m_timer500Mil->stop();
     m_timer60FPS->start(16);
@@ -130,7 +128,7 @@ void DirectusViewport::Update()
         return;
 
     m_engine->SetMode(Game);
-    m_socket->Update();
+    m_engine->Update();
 }
 
 // Ticks the engine at 60Hz, in Editor mode
@@ -140,7 +138,7 @@ void DirectusViewport::Update60FPS()
         return;
 
     m_engine->SetMode(Editor);
-    m_socket->Update();
+    m_engine->Update();
 }
 
 // Runs every second
@@ -201,7 +199,7 @@ void DirectusViewport::paintEvent(QPaintEvent* evt)
 void DirectusViewport::mousePressEvent(QMouseEvent* event)
 {
     QPoint mousePos = event->pos();
-    weak_ptr<GameObject> camera = m_socket->GetContext()->GetSubsystem<Scene>()->GetMainCamera();
+    weak_ptr<GameObject> camera = m_context->GetSubsystem<Scene>()->GetMainCamera();
     weak_ptr<GameObject> picked = camera._Get()->GetComponent<Camera>()->Pick(Vector2(mousePos.x(), mousePos.y()));
 
     if (!picked.expired())
@@ -215,10 +213,10 @@ void DirectusViewport::mousePressEvent(QMouseEvent* event)
 // Changes the rendering resolution of the engine
 void DirectusViewport::SetResolution(float width, float height)
 {
-    if (!m_socket)
+    if (!m_context)
         return;
 
-    m_socket->SetResolution(width, height);
-    m_socket->SetViewport(width, height);
+    m_context->GetSubsystem<Renderer>()->SetResolution(width, height);
+    m_context->GetSubsystem<Renderer>()->SetViewport(width, height);
 }
 //===================================================

@@ -11,6 +11,6 @@ class DirectusStatsLabel : public QLineEdit
     Q_OBJECT
 public:
     explicit DirectusStatsLabel(QWidget *parent = 0);
-    void UpdateStats(DirectusViewport* directusCore);
+    void UpdateStats(DirectusViewport* directusViewport);
     std::string FormatFloat(float value, int digitsAfterDecimal);
 };

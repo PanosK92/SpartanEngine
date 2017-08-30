@@ -5,7 +5,6 @@ PROJECT_NAME = "Runtime"
 solution (PROJECT_NAME)
 	configurations { "Debug", "Release" }
 	platforms { "x64" }
-	
 	filter { "platforms:x64" }
 		system "Windows"
 		architecture "x64"
@@ -38,9 +37,9 @@ includedirs { "../ThirdParty/FreeType_2.8" }
 includedirs { "../ThirdParty/pugixml_1.8" }
 
 filter "configurations:Debug"
-	defines { "DEBUG" }
+	defines { "DEBUG", "COMPILING_LIB" }
 	symbols "On"
 		 
 filter "configurations:Release"
-	defines { "NDEBUG" }
+	defines { "NDEBUG", "COMPILING_LIB" }
 	optimize "Full"

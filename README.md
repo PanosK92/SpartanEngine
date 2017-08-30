@@ -21,7 +21,7 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 - Scripting.
 - Windows support.
 
-# Features of the upcoming v0.3
+# Upcoming features (v0.3)
 Feature       		            | Completion | Notes 
 ------------- 		            | :--: | :----:
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling
@@ -41,9 +41,9 @@ Font importing and rendering    | 0% | -
 - Dynamic resolution scaling.
 - Draw call batching (static & dynamic).
 - Export on Windows.
-- Screen space reflections
+- Screen space reflections.
 - Volumetric Lighting.
-- Global Illumination
+- Global Illumination.
 - UI components.
 
 ### Download

@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QPaintEngine>
 #include <QResizeEvent>
 #include "Core/Engine.h"
-#include "Socket/Socket.h"
 #include <QTimer>
 #include "DirectusStatsLabel.h"
 //=============================
@@ -46,9 +45,9 @@ class DirectusViewport : public QWidget
 public:
     DirectusViewport(QWidget* parent = NULL);
     virtual ~DirectusViewport();
-    Directus::Socket* GetEngineSocket();
     void Initialize(void* hwnd, void* hinstance, DirectusStatsLabel* directusStatsLabel);
     bool IsRunning();
+    Directus::Context* GetEngineContext() { return m_context; }
 
 protected:
     virtual QPaintEngine* paintEngine() const { return NULL; }
@@ -59,8 +58,8 @@ protected:
 private:
     void SetResolution(float width, float height);
 
-    Directus::Socket* m_socket;
     Directus::Engine* m_engine;
+    Directus::Context* m_context;
     QTimer* m_timerUpdate;
     QTimer* m_timer500Mil;
     QTimer* m_timer60FPS;

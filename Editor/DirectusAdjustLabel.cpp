@@ -3,7 +3,6 @@
 #include <QMouseEvent>
 #include <QApplication>
 #include <QDesktopWidget>
-#include "Socket/Socket.h"
 #include "Logging/Log.h"
 //==============================
 

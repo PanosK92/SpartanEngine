@@ -51,7 +51,7 @@ using namespace std;
 
 DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
 {
-    m_socket = nullptr;
+    m_context = nullptr;
 
     // Set QTreeWidget properties
     this->setAcceptDrops(true);
@@ -62,15 +62,15 @@ DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
     connect(this, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(RenameSelected()));
 }
 
-void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusViewport* directusCore)
+void DirectusHierarchy::Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusViewport* directusViewport)
 {
-    m_directusCore = directusCore;
-    m_socket = m_directusCore->GetEngineSocket();
+    m_directusViewport = directusViewport;
+    m_context = m_directusViewport->GetEngineContext();
     m_inspector = inspector;
     m_mainWindow = mainWindow;
 
     m_fileDialog = make_unique<DirectusFileDialog>(mainWindow);
-    m_fileDialog->Initialize(m_mainWindow, this, m_directusCore);
+    m_fileDialog->Initialize(m_mainWindow, this, m_directusViewport);
 
     Populate();
 }
@@ -194,7 +194,7 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     //= DROP CASE: PREFAB (Assume text is a file path) ===============
     if (FileSystem::IsEnginePrefabFile(text))
     {
-        auto gameObj = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+        auto gameObj = m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
         gameObj->LoadFromPrefab(text);
         Populate();
         return;
@@ -202,7 +202,7 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     //================================================================
 
     //= DROP CASE: GAMEOBJECT (Assume text is a GameObject ID) =======
-    auto draggedGameObj = m_socket->GetGameObjectByID(text).lock();
+    auto draggedGameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(text).lock();
     QTreeWidgetItem* hoveredItem = this->itemAt(event->pos());
     auto dropTargetGameObj = ToGameObject(hoveredItem).lock();
 
@@ -287,7 +287,7 @@ weak_ptr<GameObject> DirectusHierarchy::ToGameObject(QTreeWidgetItem* treeItem)
 
     QVariant data = treeItem->data(0, Qt::UserRole);
     string gameObjID = data.value<QString>().toStdString();
-    auto gameObj = m_socket->GetContext()->GetSubsystem<Scene>()->GetGameObjectByID(gameObjID);
+    auto gameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjID);
 
     return gameObj;
 }
@@ -391,10 +391,10 @@ void DirectusHierarchy::Populate()
 {
     ClearTree();
 
-    if (!m_socket)
+    if (!m_context)
         return;
 
-    auto gameObjects = m_socket->GetRootGameObjects();
+    auto gameObjects = m_context->GetSubsystem<Scene>()->GetRootGameObjects();
     for (const auto& gameObj : gameObjects)
     {
         AddGameObject(gameObj, nullptr);
@@ -403,7 +403,7 @@ void DirectusHierarchy::Populate()
 
 void DirectusHierarchy::NewScene()
 {
-    m_socket->ClearScene();
+    m_context->GetSubsystem<Scene>()->Clear();
     Populate();
 }
 
@@ -621,7 +621,7 @@ void DirectusHierarchy::DeleteSelected()
         return;
 
     // Delete it
-    m_socket->DestroyGameObject(gameObject);
+    m_context->GetSubsystem<Scene>()->RemoveGameObject(gameObject);
 
     // Refresh the hierarchy
     Populate();
@@ -654,7 +654,7 @@ void DirectusHierarchy::SelectGameObject(GameObject* gameObject)
 void DirectusHierarchy::CreateEmptyGameObject()
 {
     // Create an empty GameObject and get it's Transform
-    auto gameobject = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+    auto gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
     Transform* transform = gameobject->GetTransform();
 
     // Make it a child of the selected GameObject (if there is one)
@@ -670,14 +670,14 @@ void DirectusHierarchy::CreateEmptyGameObject()
 
 void DirectusHierarchy::CreateEmptyGameObjectRoot()
 {
-    m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+    m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
     Populate();
 }
 
 void DirectusHierarchy::CreateCube()
 {
     // Create GameObject
-    auto gameobject = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+    auto gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
     gameobject->SetName("Cube");
 
     // Add a mesh component
@@ -695,7 +695,7 @@ void DirectusHierarchy::CreateCube()
 void DirectusHierarchy::CreateQuad()
 {
     // Create GameObject
-    auto gameobject = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+    auto gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
     gameobject->SetName("Quad");
 
     // Add a mesh component
@@ -713,7 +713,7 @@ void DirectusHierarchy::CreateQuad()
 void DirectusHierarchy::CreateDirectionalLight()
 {
     // Create GameObject
-    auto gameobject = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+    auto gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
     gameobject->SetName("Directional light");
 
     // Add component
@@ -727,7 +727,7 @@ void DirectusHierarchy::CreateDirectionalLight()
 void DirectusHierarchy::CreatePointLight()
 {
     // Create GameObject
-    auto gameobject = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+    auto gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
     gameobject->SetName("Point light");
 
     // Add component
@@ -741,7 +741,7 @@ void DirectusHierarchy::CreatePointLight()
 void DirectusHierarchy::CreateSpotLight()
 {
     // Create GameObject
-    auto gameobject = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+    auto gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
     gameobject->SetName("Spot light");
 
     // Add component
@@ -755,7 +755,7 @@ void DirectusHierarchy::CreateSpotLight()
 void DirectusHierarchy::CreateCamera()
 {
     // Create GameObject
-    auto gameobject = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+    auto gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
     gameobject->SetName("Camera");
 
     // Add component
@@ -768,7 +768,7 @@ void DirectusHierarchy::CreateCamera()
 void DirectusHierarchy::CreateAudioSource()
 {
     // Create GameObject
-    auto gameobject = m_socket->GetContext()->GetSubsystem<Scene>()->CreateGameObject().lock();
+    auto gameobject = m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
     gameobject->SetName("Audio source");
 
     // Add component

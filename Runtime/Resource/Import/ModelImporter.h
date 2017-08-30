@@ -46,6 +46,7 @@ namespace Directus
 
 		bool Initialize(Context* context);
 		void LoadAsync(Model* model, const std::string& filePath);
+		void ReadAnimations(Model* model, const aiScene* scene);
 		bool Load(Model* model, const std::string& filePath);
 
 		std::string GetStatMeshProcessed() { return m_statMeshProcessed; }
@@ -55,7 +56,7 @@ namespace Directus
 
 	private:
 		// PROCESSING
-		void LoadNode(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const std::weak_ptr<GameObject>& parentNode, std::weak_ptr<GameObject>& newNode);
+		void ReadNodeHierarchy(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const std::weak_ptr<GameObject>& parentNode, std::weak_ptr<GameObject>& newNode);
 		void LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const std::weak_ptr<GameObject>& parentGameObject);
 		void LoadAiMeshVertices(aiMesh* assimpMesh, std::shared_ptr<Mesh> mesh);
 		void LoadAiMeshIndices(aiMesh* assimpMesh, std::shared_ptr<Mesh> mesh);

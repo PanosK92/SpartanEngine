@@ -33,7 +33,7 @@ namespace Directus
 {
     class GameObject;
     class Script;
-    class Socket;
+    class Context;
 }
 
 class DirectusInspector : public QWidget
@@ -41,13 +41,13 @@ class DirectusInspector : public QWidget
     Q_OBJECT
 public:
     explicit DirectusInspector(QWidget *parent = 0);
-    void SetDirectusCore(DirectusViewport* directusCore);
+    void SetDirectusCore(DirectusViewport* directusViewport);
     void Initialize(QWidget* mainWindow);
     std::weak_ptr<Directus::GameObject>GetInspectedGameObject();
 
     void Clear();
     void InspectMaterialFile(const std::string &filepath);
-    Directus::Socket* GetSocket();
+    Directus::Context* GetContext();
     DirectusMaterial* GetMaterialComponent();
 
     //= DROP ===========================================
@@ -74,7 +74,7 @@ private:
     DirectusIComponent* m_audioSource;
     DirectusIComponent* m_audioListener;
 
-    DirectusViewport* m_directusCore;
+    DirectusViewport* m_directusViewport;
     std::weak_ptr<Directus::GameObject> m_inspectedGameObject;
     QWidget* m_mainWindow;
     bool m_initialized;

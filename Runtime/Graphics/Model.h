@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <vector>
 #include "../Resource/Resource.h"
-#include "../Math/Vector3.h"
 #include "../Math/BoundingBox.h"
 //===============================
 
@@ -43,7 +42,7 @@ namespace Directus
 		class BoundingBox;
 	}
 
-	class Model : public Resource
+	class DLL_API Model : public Resource
 	{
 	public:
 		Model(Context* context);
@@ -71,6 +70,9 @@ namespace Directus
 
 		std::weak_ptr<Mesh> GetMeshByID(const std::string& id);
 		std::weak_ptr<Mesh> GetMeshByName(const std::string& name);
+
+		bool IsAnimated() { return m_isAnimated; }
+		void SetAnimated(bool isAnimated) { m_isAnimated = isAnimated; }
 
 		std::string CopyTextureToLocalDirectory(const std::string& from);
 
@@ -100,6 +102,9 @@ namespace Directus
 		std::vector<std::shared_ptr<Mesh>> m_meshes;
 		std::vector<std::weak_ptr<Material>> m_materials;
 		std::vector<std::weak_ptr<Animation>> m_animations;
+
+		// Misc
+		bool m_isAnimated;
 
 		// Dependencies
 		ResourceManager* m_resourceManager;

@@ -38,7 +38,7 @@ class DirectusFileExplorer : public QListView
 public:
     explicit DirectusFileExplorer(QWidget *parent = 0);
     void Initialize(QWidget* mainWindow,
-                    DirectusViewport* directusCore,
+                    DirectusViewport* directusViewport,
                     DirectusHierarchy* hierarchy,
                     DirectusInspector* inspector
                     );
@@ -60,7 +60,7 @@ private:
     QPoint m_dragStartPosition;
     DirectusIconProvider* m_directusIconProvider;
     DirectusFileDialog* m_fileDialog;
-    DirectusViewport* m_directusCore;
+    DirectusViewport* m_directusViewport;
     DirectusHierarchy* m_hierarchy;
     DirectusInspector* m_inspector;
 

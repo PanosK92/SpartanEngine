@@ -72,7 +72,7 @@ namespace Directus
 
 			bool Vector4::operator!=(const Vector4& b)
 			{
-				if (this->x != b.x | this->y != b.y | this->z != b.z | this->w != b.w)
+				if (this->x != b.x || this->y != b.y || this->z != b.z || this->w != b.w)
 					return true;
 
 				return false;

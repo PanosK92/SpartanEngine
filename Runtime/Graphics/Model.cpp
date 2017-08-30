@@ -51,6 +51,7 @@ namespace Directus
 		//==============================
 
 		m_normalizedScale = 1.0f;
+		m_isAnimated = false;
 
 		if (!m_context)
 			return;
@@ -177,6 +178,8 @@ namespace Directus
 
 		// Keep a reference to it
 		m_animations.push_back(weakAnim);
+
+		m_isAnimated = true;
 
 		// Return it
 		return weakAnim;

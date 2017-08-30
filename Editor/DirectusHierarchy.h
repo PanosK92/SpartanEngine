@@ -21,23 +21,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES ==================
 #include <QTreeWidget>
 #include <QtCore>
-#include "Socket/Socket.h"
 #include <QVariant>
 #include <QMouseEvent>
 #include "DirectusInspector.h"
 #include "DirectusViewport.h"
 #include "DirectusFileDialog.h"
-//==================================
+//=============================
 
 class DirectusHierarchy : public QTreeWidget
 {
     Q_OBJECT
 public:
     explicit DirectusHierarchy(QWidget* parent = 0);
-    void Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusViewport* directusCore);
+    void Initialize(DirectusInspector* inspector, QWidget* mainWindow, DirectusViewport* directusViewport);
 
 protected:
     virtual void mousePressEvent(QMouseEvent* event);
@@ -62,9 +61,9 @@ private:
 
     bool IsAnyGameObjectSelected();   
   
-    Directus::Socket* m_socket;
+    Directus::Context* m_context;
     DirectusInspector* m_inspector;
-    DirectusViewport* m_directusCore;
+    DirectusViewport* m_directusViewport;
     QWidget* m_mainWindow;
     QPoint m_dragStartPosition;
     std::unique_ptr<DirectusFileDialog> m_fileDialog;

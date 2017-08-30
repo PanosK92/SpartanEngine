@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//========================================
+//===================================
 #include "DirectusAssetLoader.h"
-#include "Resource/Import/ImageImporter.h"
-#include "FileSystem/FileSystem.h"
-#include <QMutex>
 #include "DirectusProgressBar.h"
-#include "Socket/Socket.h"
-//========================================
+#include <QMutex>
+#include "Core/Scene.h"
+#include "FileSystem/FileSystem.h"
+#include "Resource/ResourceManager.h"
+//===================================
 
 //= NAMESPACES ==========
 using namespace Directus;
@@ -37,13 +37,13 @@ DirectusAssetLoader::DirectusAssetLoader(QObject* parent) : QObject(parent)
 
 }
 
-void DirectusAssetLoader::Initialize(QWidget* mainWindow, Socket* socket)
+void DirectusAssetLoader::Initialize(QWidget* mainWindow, Directus::Context* context)
 {
     m_mainWindow = mainWindow;
-    m_socket = socket;
+    m_context = context;
 
     m_loadingDialog = new DirectusProgressBar(m_mainWindow);
-    m_loadingDialog->Initialize(m_mainWindow, socket->GetContext());
+    m_loadingDialog->Initialize(m_mainWindow, m_context);
 
     // When the loading dialog should show up
     connect(this, SIGNAL(Started()),    m_loadingDialog, SLOT(Show()));
@@ -69,22 +69,22 @@ void DirectusAssetLoader::PrepareForTexture(std::string filePath, int width, int
 
 void DirectusAssetLoader::LoadSceneFromFile()
 {
-    emit Started();
-    m_socket->LoadSceneFromFile(m_filePath);
+    emit Started(); 
+    m_context->GetSubsystem<Scene>()->LoadFromFile(m_filePath);
     emit Finished();
 }
 
 void DirectusAssetLoader::SaveSceneToFile()
 {
     emit Started();
-    m_socket->SaveSceneToFile(m_filePath);
+    m_context->GetSubsystem<Scene>()->SaveToFile(m_filePath);
     emit Finished();
 }
 
 void DirectusAssetLoader::LoadModelFromFile()
 {
     emit Started();
-    m_socket->LoadModel(m_filePath);
+    m_context->GetSubsystem<ResourceManager>()->Load<Model>(m_filePath);
     emit Finished();
 }
 

@@ -47,7 +47,7 @@ DirectusFileExplorer::DirectusFileExplorer(QWidget* parent) : QListView(parent)
 
 }
 
-void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusViewport* directusCore, DirectusHierarchy* hierarchy, DirectusInspector* inspector)
+void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusViewport* directusViewport, DirectusHierarchy* hierarchy, DirectusInspector* inspector)
 {
     QString root = "Assets";
     setAcceptDrops(true);
@@ -61,7 +61,7 @@ void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusViewport* dir
     // Set the root path
     m_fileModel->setRootPath(root);
 
-    m_directusCore = directusCore;
+    m_directusViewport = directusViewport;
     m_hierarchy = hierarchy;
     m_inspector = inspector;
 
@@ -72,7 +72,7 @@ void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusViewport* dir
 
     // Create file dialog
     m_fileDialog = new DirectusFileDialog();
-    m_fileDialog->Initialize(mainWindow, hierarchy, directusCore);
+    m_fileDialog->Initialize(mainWindow, hierarchy, directusViewport);
 
     // Set the model to the tree view
     this->setModel(m_fileModel);
@@ -176,7 +176,7 @@ void DirectusFileExplorer::mouseReleaseEvent(QMouseEvent* event)
     // Load scene
     if (FileSystem::IsEngineSceneFile(filePath))
     {
-        m_inspector->GetSocket()->LoadSceneFromFile(filePath);
+        m_inspector->GetContext()->GetSubsystem<Scene>()->LoadFromFile(filePath);
     }
 }
 
@@ -196,7 +196,7 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
 
     //= DROP CASE: GAMEOBJECT ===========================================================================
     std::string gameObjectID = mimeData->text().toStdString();
-    auto gameObject = m_directusCore->GetEngineSocket()->GetGameObjectByID(gameObjectID);
+    auto gameObject = m_directusViewport->GetEngineContext()->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
     if (!gameObject.expired())
     {
         auto gameObj = gameObject.lock();
@@ -350,7 +350,7 @@ void DirectusFileExplorer::CreateDirectory_()
 void DirectusFileExplorer::CreateMaterial()
 {
     string materialName = "NewMaterial";
-    auto material = make_shared<Material>(m_directusCore->GetEngineSocket()->GetContext());
+    auto material = make_shared<Material>(m_directusViewport->GetEngineContext());
     material->SetResourceName(materialName);
     material->Save(GetRootPath().toStdString() + "/" + materialName, true);
 }
