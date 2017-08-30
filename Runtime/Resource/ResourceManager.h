@@ -82,7 +82,7 @@ namespace Directus
 
 			// If the resource is already loaded, return the existing one
 			if (m_resourceCache->CachedByName(base))
-				return ToTypedWeak<T>(m_resourceCache->GetByName(base->GetResourceName()));
+				return ToDerivedWeak<T>(m_resourceCache->GetByName(base->GetResourceName()));
 
 			// Else, add the resource and return it
 			m_resourceCache->Add(base);
@@ -93,14 +93,14 @@ namespace Directus
 		template <class T>
 		std::weak_ptr<T> GetResourceByID(const std::string& ID)
 		{
-			return ToTypedWeak<T>(m_resourceCache->GetByID(ID));
+			return ToDerivedWeak<T>(m_resourceCache->GetByID(ID));
 		}
 
 		// Returns cached resource by Path
 		template <class T>
 		std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
 		{
-			return ToTypedWeak<T>(m_resourceCache->GetByPath(filePath));
+			return ToDerivedWeak<T>(m_resourceCache->GetByPath(filePath));
 		}
 
 		// Returns cached resource by Type
@@ -110,7 +110,7 @@ namespace Directus
 			std::vector<std::weak_ptr<T>> typedVec;
 			for (const auto& resource : m_resourceCache->GetAll())
 			{
-				std::weak_ptr<T> typed = ToTypedWeak<T>(resource);
+				std::weak_ptr<T> typed = ToDerivedWeak<T>(resource);
 				bool validCasting = !typed.expired();
 
 				if (validCasting)
@@ -140,23 +140,28 @@ namespace Directus
 		std::shared_ptr<ModelImporter> m_modelImporter;
 		std::shared_ptr<ImageImporter> m_imageImporter;
 
-		// Type -> Resource (as a shared pointer)
+		// Derived -> Base (as a shared pointer)
 		template <class Type>
-		std::shared_ptr<Resource> ToBaseShared(std::shared_ptr<Type> resource)
+		static std::shared_ptr<Resource> ToBaseShared(std::shared_ptr<Type> derived)
 		{
-			std::shared_ptr<Resource> sharedPtr = dynamic_pointer_cast<Type>(resource);
+			std::shared_ptr<Resource> base = dynamic_pointer_cast<Resource>(derived);
 
-			return sharedPtr;
+			return base;
 		}
 
-		// Resource -> Type (as a weak pointer)
+		// Base -> Derived (as a weak pointer)
 		template <class Type>
-		std::weak_ptr<Type> ToTypedWeak(std::shared_ptr<Resource> resource)
+		static std::weak_ptr<Type> ToDerivedWeak(std::shared_ptr<Resource> base)
 		{
-			std::shared_ptr<Type> sharedPtr = dynamic_pointer_cast<Type>(resource);
-			std::weak_ptr<Type> weakPtr = std::weak_ptr<Type>(sharedPtr);
+			std::shared_ptr<Type> derivedShared = dynamic_pointer_cast<Type>(base);
+			std::weak_ptr<Type> derivedWeak = std::weak_ptr<Type>(derivedShared);
 
-			return weakPtr;
+			return derivedWeak;
 		}
 	};
+
+	// Dummy template decleration to prevent 
+	// errors when compiling the editor.
+	template<int>
+	void dynamic_pointer_cast();
 }

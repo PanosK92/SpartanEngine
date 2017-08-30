@@ -1,7 +1,9 @@
 //= INCLUDES ==================
 #include "DirectusStatsLabel.h"
 #include "DirectusViewport.h"
-#include "Socket/Socket.h"
+#include "Core/Scene.h"
+#include "Graphics/Renderer.h"
+#include "Core/Timer.h"
 //=============================
 
 //= NAMESPACES ==========
@@ -14,16 +16,21 @@ DirectusStatsLabel::DirectusStatsLabel(QWidget *parent) : QLineEdit(parent)
 
 }
 
-void DirectusStatsLabel::UpdateStats(DirectusViewport* directusCore)
-{
-    Socket* socket = directusCore->GetEngineSocket();
+void DirectusStatsLabel::UpdateStats(DirectusViewport* directusViewport)
+{ 
+    Context* context = directusViewport->GetEngineContext();
 
-    string fps = "FPS: " + FormatFloat(socket->GetFPS(), 2);
-    string frame = "Frame: " + FormatFloat(socket->GetDeltaTime(), 2) + (" ms");
-    string render = "Render: " + FormatFloat(socket->GetRenderTime(), 2) + (" ms");
-    string meshes = "Meshes Rendered: " + to_string(socket->GetRenderedMeshesCount());
+    float fps = context->GetSubsystem<Scene>()->GetFPS();
+    float render = context->GetSubsystem<Renderer>()->GetRenderTime();
+    float frame = context->GetSubsystem<Timer>()->GetDeltaTime();
+    int meshes = context->GetSubsystem<Renderer>()->GetRenderedMeshesCount();
 
-    string finalText = fps + ", " + frame + ", " + render + ", " + meshes;
+    string fpsStr = "FPS: " + FormatFloat(fps, 2);
+    string frameStr = "Frame: " + FormatFloat(frame, 2) + (" ms");
+    string renderStr = "Render: " + FormatFloat(render, 2) + (" ms");
+    string meshesStr = "Meshes Rendered: " + to_string(meshes);
+
+    string finalText = fpsStr + ", " + frameStr + ", " + renderStr + ", " + meshesStr;
     this->setText(QString::fromStdString(finalText));
 }
 

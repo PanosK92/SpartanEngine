@@ -52,9 +52,9 @@ DirectusInspector::DirectusInspector(QWidget *parent) : QWidget(parent)
 
 }
 
-void DirectusInspector::SetDirectusCore(DirectusViewport* directusCore)
+void DirectusInspector::SetDirectusCore(DirectusViewport* directusViewport)
 {
-    m_directusCore = directusCore;
+    m_directusViewport = directusViewport;
 }
 
 void DirectusInspector::Initialize(QWidget* mainWindow)
@@ -135,12 +135,12 @@ void DirectusInspector::InspectMaterialFile(const string& filepath)
     material->ReflectFile(filepath);
 }
 
-Socket* DirectusInspector::GetSocket()
+Context* DirectusInspector::GetContext()
 {
-    if (!m_directusCore)
+    if (!m_directusViewport)
         return nullptr;
 
-    return m_directusCore->GetEngineSocket();
+    return m_directusViewport->GetEngineContext();
 }
 
 DirectusMaterial* DirectusInspector::GetMaterialComponent()

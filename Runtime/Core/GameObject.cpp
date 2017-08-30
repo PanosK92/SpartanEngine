@@ -160,7 +160,7 @@ namespace Directus
 		StreamIO::WriteInt((int)m_components.size());
 		for (const auto& component : m_components)
 		{
-			StreamIO::WriteSTR(component->g_type);
+			StreamIO::WriteSTR(component->g_typeStr);
 			StreamIO::WriteSTR(component->g_ID);
 		}
 

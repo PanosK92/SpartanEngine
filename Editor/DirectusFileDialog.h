@@ -31,7 +31,7 @@ class DirectusAssetLoader;
 
 namespace Directus
 {
-    class Socket;
+    class Context;
 }
 
 class DirectusFileDialog : public QFileDialog
@@ -39,7 +39,7 @@ class DirectusFileDialog : public QFileDialog
     Q_OBJECT
 public:
     explicit DirectusFileDialog(QWidget *parent = 0);
-    void Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusViewport* directusCore);
+    void Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusViewport* directusViewport);
     void Reset();
     void OpenModel();
     void OpenModeImmediatly(const std::string& filePath);
@@ -53,8 +53,8 @@ private:
 
     DirectusAssetLoader* m_assetLoader;
     QWidget* m_mainWindow;
-    Directus::Socket* m_socket;
-    DirectusViewport* m_directusCore;
+    Directus::Context* m_context;
+    DirectusViewport* m_directusViewport;
     DirectusHierarchy* m_hierarchy;
 
 public slots:

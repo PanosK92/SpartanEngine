@@ -318,7 +318,7 @@ void DirectusMaterial::Reflect(weak_ptr<GameObject>  gameobject)
 void DirectusMaterial::ReflectFile(string filePath)
 {
     // Load the material (won't be loaded again if it's already loaded)
-    m_inspectedMaterial = m_inspector->GetSocket()->GetContext()->GetSubsystem<ResourceManager>()->Load<Material>(filePath);
+    m_inspectedMaterial = m_inspector->GetContext()->GetSubsystem<ResourceManager>()->Load<Material>(filePath);
 
     // Do the actual reflection
     ReflectName();

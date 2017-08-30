@@ -31,8 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Settings.h"
 //======================================
 
-class ID3D11ShaderResourceView;
-
 namespace Directus
 {
 	class GameObject;
@@ -67,7 +65,7 @@ namespace Directus
 		Render_Material
 	};
 
-	class Renderer : public Subsystem
+	class DLL_API Renderer : public Subsystem
 	{
 	public:
 		Renderer(Context* context);

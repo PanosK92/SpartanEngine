@@ -140,8 +140,7 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
             return;
 
         // Set the texture to the material
-        auto context = m_inspector->GetSocket()->GetContext();
-        auto texture = context->GetSubsystem<ResourceManager>()->Load<Texture>(imagePath);
+        auto texture = m_inspector->GetContext()->GetSubsystem<ResourceManager>()->Load<Texture>(imagePath);
 
         if (!texture.expired())
         {

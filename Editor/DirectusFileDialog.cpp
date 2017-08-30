@@ -28,8 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Scene.h"
 #include "Logging/Log.h"
 #include "FileSystem/FileSystem.h"
-#include "Socket/Socket.h"
 //================================
+
+//= NAMESPACES ==========
+using namespace Directus;
+//=======================
 
 #define EMPTY "N/A"
 
@@ -43,15 +46,15 @@ DirectusFileDialog::DirectusFileDialog(QWidget* parent) : QFileDialog(parent)
     connect(this, SIGNAL(fileSelected(QString)), this, SLOT(FileDialogAccepted(QString)));
 }
 
-void DirectusFileDialog::Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusViewport *directusCore)
+void DirectusFileDialog::Initialize(QWidget* mainWindow, DirectusHierarchy* hierarchy, DirectusViewport* directusViewport)
 {
     m_mainWindow = mainWindow;
-    m_directusCore = directusCore;
-    m_socket = m_directusCore->GetEngineSocket();
+    m_directusViewport = directusViewport;
+    m_context = m_directusViewport->GetEngineContext();
     m_hierarchy = hierarchy;
 
     m_assetLoader = new DirectusAssetLoader();
-    m_assetLoader->Initialize(m_mainWindow, m_socket);
+    m_assetLoader->Initialize(m_mainWindow, m_context);
 
     Reset();
 }
@@ -139,9 +142,9 @@ void DirectusFileDialog::FileDialogAccepted(QString filePath)
     m_assetLoader->moveToThread(thread);
 
     // Stop the engine (in case it's running)
-    m_directusCore->Stop();
+    m_directusViewport->Stop();
 
-    connect(thread,             SIGNAL(started()),  m_directusCore,     SLOT(LockUpdate()),             Qt::QueuedConnection);
+    connect(thread,             SIGNAL(started()),  m_directusViewport, SLOT(LockUpdate()),             Qt::QueuedConnection);
 
     if (m_assetOperation == "Save Scene As")
     {
@@ -167,8 +170,8 @@ void DirectusFileDialog::FileDialogAccepted(QString filePath)
 
     connect(m_assetLoader,  SIGNAL(Finished()), thread,                 SLOT(quit()),                   Qt::QueuedConnection);
     connect(thread,         SIGNAL(finished()), thread,                 SLOT(deleteLater()),            Qt::QueuedConnection);
-    connect(m_assetLoader,  SIGNAL(Finished()), m_directusCore,         SLOT(UnlockUpdate()),           Qt::QueuedConnection);
-    connect(m_assetLoader,  SIGNAL(Finished()), m_directusCore,         SLOT(Update()),                 Qt::QueuedConnection);
+    connect(m_assetLoader,  SIGNAL(Finished()), m_directusViewport,     SLOT(UnlockUpdate()),           Qt::QueuedConnection);
+    connect(m_assetLoader,  SIGNAL(Finished()), m_directusViewport,     SLOT(Update()),                 Qt::QueuedConnection);
 
     thread->start(QThread::HighestPriority);
 }

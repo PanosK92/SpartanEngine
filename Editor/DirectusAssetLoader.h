@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class DirectusProgressBar;
 namespace Directus
 {
-    class Socket;
+    class Context;
 }
 
 class DirectusAssetLoader : public QObject
@@ -37,7 +37,7 @@ class DirectusAssetLoader : public QObject
     Q_OBJECT
 public:
     explicit DirectusAssetLoader(QObject* parent = nullptr);
-    void Initialize(QWidget* mainWindow, Directus::Socket* socket);
+    void Initialize(QWidget* mainWindow, Directus::Context* context);
     std::string GetFilePath();
     void SetFilePath(std::string filePath); 
     void PrepareForTexture(std::string filePath, int width, int height);
@@ -53,7 +53,7 @@ private:
     int m_width;
     int m_height;
     QWidget* m_mainWindow;
-    Directus::Socket* m_socket;
+    Directus::Context* m_context;
     DirectusProgressBar* m_loadingDialog;
 
 signals:

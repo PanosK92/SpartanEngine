@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Threading/Threading.h"
 #include "../Resource/ResourceManager.h"
-#include "../Socket/Socket.h"
 #include "../Scripting/Scripting.h"
 #include "../Graphics/Renderer.h"
 #include "../Audio/Audio.h"
@@ -63,7 +62,6 @@ namespace Directus
 		m_context->RegisterSubsystem(new Physics(m_context));
 		m_context->RegisterSubsystem(new Scripting(m_context));
 		m_context->RegisterSubsystem(new Scene(m_context));
-		m_context->RegisterSubsystem(new Socket(m_context));
 	}
 
 	void Engine::SetHandles(void* instance, void* mainWindowHandle, void* drawPaneHandle)
@@ -144,13 +142,6 @@ namespace Directus
 		if (!m_context->GetSubsystem<Scene>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Scene subsystem");
-			return false;
-		}
-
-		// Socket
-		if (!m_context->GetSubsystem<Socket>()->Initialize())
-		{
-			LOG_ERROR("Failed to initialize Socket subsystem");
 			return false;
 		}
 
