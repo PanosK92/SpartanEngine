@@ -78,9 +78,12 @@ namespace Directus
 		void SetAmbientLight(float x, float y, float z);
 		Math::Vector3 GetAmbientLight();
 
-		//= STATS ======================	
+		//= STATS ==============================================
 		float GetFPS() { return m_fps; }
-		//==============================
+		const std::string& GetStatus() { return m_status; }
+		float GetPercentage() { return m_jobStep / m_jobSteps; }
+		bool IsLoading() { return m_isLoading; }
+		//======================================================
 
 	private:
 		//= COMMON GAMEOBJECT CREATION ======
@@ -88,6 +91,11 @@ namespace Directus
 		weakGameObj CreateCamera();
 		weakGameObj CreateDirectionalLight();
 		//===================================
+
+		//= HELPER FUNCTIONS ====
+		void ResetLoadingStats();	
+		void CalculateFPS();
+		//=======================
 
 		std::vector<sharedGameObj> m_gameObjects;
 		std::vector<weakGameObj> m_renderables;
@@ -101,10 +109,10 @@ namespace Directus
 		float m_fps;
 		float m_timePassed;
 		int m_frameCount;
+		std::string m_status;
+		float m_jobStep;
+		float m_jobSteps;
+		bool m_isLoading;
 		//=================
-
-		//= HELPER FUNCTIONS =
-		void CalculateFPS();
-		//====================
 	};
 }

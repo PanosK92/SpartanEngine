@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include "DirectusFileExplorer.h"
 #include "DirectusIconProvider.h"
 #include "DirectusFileDialog.h"
@@ -35,7 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "Core/GameObject.h"
 #include "Graphics/Material.h"
-//================================
+#include "Resource/ResourceManager.h"
+//===================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -49,21 +50,17 @@ DirectusFileExplorer::DirectusFileExplorer(QWidget* parent) : QListView(parent)
 
 void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusViewport* directusViewport, DirectusHierarchy* hierarchy, DirectusInspector* inspector)
 {
-    QString root = "Assets";
-    setAcceptDrops(true);
-    setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_directusViewport = directusViewport;
+    m_hierarchy = hierarchy;
+    m_inspector = inspector;
+
+    this->setAcceptDrops(true);
+    this->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     m_fileModel = new QFileSystemModel(this);
 
     // Set a filter that displays only folders
     m_fileModel->setFilter(QDir::Files | QDir::AllDirs | QDir::NoDotAndDotDot);
-
-    // Set the root path
-    m_fileModel->setRootPath(root);
-
-    m_directusViewport = directusViewport;
-    m_hierarchy = hierarchy;
-    m_inspector = inspector;
 
     // Set icon provider
     m_directusIconProvider = new DirectusIconProvider();
@@ -77,16 +74,14 @@ void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusViewport* dir
     // Set the model to the tree view
     this->setModel(m_fileModel);
 
-    // I must set the path manually as the tree view
-    // (at least visually) refuses to change anything.
-    QModelIndex index = m_fileModel->index(root);
-    this->setRootIndex(index);
-
     // Context menu
     connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ShowContextMenu(QPoint)));
 
     // Double click
     connect(this, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(DoubleClick(QModelIndex)));
+
+    string projectDirectory = directusViewport->GetEngineContext()->GetSubsystem<ResourceManager>()->GetProjectDirectory();
+    SetRootDirectory(projectDirectory);
 }
 
 void DirectusFileExplorer::SetRootPath(QString path)
@@ -254,6 +249,22 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
     //===================================================================================================
 
     event->acceptProposedAction();
+}
+
+void DirectusFileExplorer::SetRootDirectory(const string& directory)
+{
+    QString root = QString::fromStdString(directory);
+
+    // Set the root path
+    m_fileModel->setRootPath(root);
+
+    // Set the model to the tree view
+    this->setModel(m_fileModel);
+
+    // I must set the path manually as the tree view
+    // (at least visually) refuses to change anything.
+    QModelIndex index = m_fileModel->index(root);
+    this->setRootIndex(index);
 }
 
 QString DirectusFileExplorer::GetRootPath()

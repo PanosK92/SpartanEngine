@@ -32,8 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 #include "../Math/Frustrum.h"
 #include "../Graphics/Renderer.h"
-#include "../Graphics/Model.h"
-#include "../Input/Input.h"
 //===================================
 
 //= NAMESPACES ================

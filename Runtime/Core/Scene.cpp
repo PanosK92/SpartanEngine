@@ -50,6 +50,13 @@ namespace Directus
 	Scene::Scene(Context* context) : Subsystem(context)
 	{
 		m_ambientLight = Vector3::Zero;
+		m_fps = 0.0f;
+		m_timePassed = 0.0f;	
+		m_frameCount = 0;
+		m_status = NOT_ASSIGNED;
+		m_jobStep = 0.0f;
+		m_jobSteps = 0.0f;
+		m_isLoading = false;
 	}
 
 	Scene::~Scene()
@@ -130,6 +137,9 @@ namespace Directus
 
 	bool Scene::SaveToFile(const string& filePathIn)
 	{
+		m_status = "Saving scene...";
+		m_isLoading = true;
+
 		// Add scene file extension to the filepath if it's missing
 		string filePath = filePathIn;
 		if (FileSystem::GetExtensionFromFilePath(filePath) != SCENE_EXTENSION)
@@ -153,7 +163,8 @@ namespace Directus
 		vector<weakGameObj> rootGameObjects = GetRootGameObjects();
 
 		// 1st - GameObject count
-		StreamIO::WriteInt((int)rootGameObjects.size());
+		int rootGameObjectCount = (int)rootGameObjects.size();
+		StreamIO::WriteInt(rootGameObjectCount);
 
 		// 2nd - GameObject IDs
 		for (const auto& root : rootGameObjects)
@@ -170,11 +181,16 @@ namespace Directus
 
 		StreamIO::StopWriting();
 
+		ResetLoadingStats();
+
 		return true;
 	}
 
 	bool Scene::LoadFromFile(const string& filePath)
 	{
+		m_status = "Loading scene...";
+		m_isLoading = true;
+
 		if (!FileSystem::FileExists(filePath))
 		{
 			LOG_ERROR(filePath + " was not found.");
@@ -212,7 +228,6 @@ namespace Directus
 			}
 		}
 
-
 		if (!StreamIO::StartReading(filePath))
 			return false;
 
@@ -220,13 +235,12 @@ namespace Directus
 		StreamIO::ReadVectorSTR();
 
 		//= Load GameObjects ============================	
-		// 1st - GameObject count
+		// 1st - Root GameObject count
 		int rootGameObjectCount = StreamIO::ReadInt();
 
-		// 2nd - GameObject IDs
+		// 2nd - Root GameObject IDs
 		for (int i = 0; i < rootGameObjectCount; i++)
 		{
-
 			auto gameObj = CreateGameObject().lock();
 			gameObj->SetID(StreamIO::ReadSTR());
 		}
@@ -245,6 +259,7 @@ namespace Directus
 		//==============================================
 
 		Resolve();
+		ResetLoadingStats();
 
 		return true;
 	}
@@ -422,7 +437,7 @@ namespace Directus
 	weak_ptr<GameObject> Scene::CreateCamera()
 	{
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		string scriptDirectory = resourceMng->GetResourceDirectory(Script_Resource);
+		string scriptDirectory = resourceMng->GetStandardResourceDirectory(Script_Resource);
 
 		sharedGameObj camera = CreateGameObject().lock();
 		camera->SetName("Camera");
@@ -449,6 +464,14 @@ namespace Directus
 	//======================================================================================================
 
 	//= HELPER FUNCTIONS ===================================================================================
+	void Scene::ResetLoadingStats()
+	{
+		m_status = NOT_ASSIGNED;
+		m_jobStep = 0.0f;
+		m_jobSteps = 0.0f;
+		m_isLoading = false;
+	}
+
 	void Scene::CalculateFPS()
 	{
 		// update counters

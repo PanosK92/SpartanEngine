@@ -74,14 +74,26 @@ void DirectusProgressBar::UpdateProgressBar()
 
     QLabel* label = ui->labelLoadingDialog;
     ModelImporter* importer = m_engineContext->GetSubsystem<ResourceManager>()->GetModelImporter()._Get();
+    Scene* scene = m_engineContext->GetSubsystem<Scene>();
 
     // Compute progress bar stats
-    QString currentJob = QString::fromStdString(importer->GetStatNodeProcessed());
-    int jobCount = importer->GetStatNodeCount();
-    int jobCurrent = importer->GetStatNodeCurrent();
+    QString currentJob = "";
+    float percentage = 0.0f;
+
+    // Determine where we should get the loading stats from
+    if (importer->IsLoading())
+    {
+        currentJob = QString::fromStdString(importer->GetStatus());
+        percentage = importer->GetPercentage();
+    }
+    else if (scene->IsLoading())
+    {
+        currentJob = QString::fromStdString(scene->GetStatus());
+        percentage = scene->GetPercentage();
+    }
 
     // Update progress bar
-    m_targetValue = ((float)jobCurrent / (float)jobCount) * (float)m_max;
+    m_targetValue = percentage * (float)m_max;
 
     // Update label
     label->setText(currentJob);

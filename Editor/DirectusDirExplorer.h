@@ -28,16 +28,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusIconProvider.h"
 //===============================
 
+namespace Directus
+{
+    class Context;
+}
+
 class DirectusDirExplorer : public QTreeView
 {
     Q_OBJECT
 public:
     explicit DirectusDirExplorer(QWidget *parent = 0);
-    void Initialize(DirectusFileExplorer* fileExplorer);
+    void Initialize(DirectusFileExplorer* fileExplorer, Directus::Context* context);
 private:
+    void SetRootDirectory(const std::string& directory);
+
     QFileSystemModel* m_dirModel;
     DirectusFileExplorer* m_fileExplorer;
     DirectusIconProvider* m_iconProvider;
+    Directus::Context* m_context;
 signals:
 
 public slots:

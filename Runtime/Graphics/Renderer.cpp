@@ -98,8 +98,8 @@ namespace Directus
 		m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
 
 		// Load and compile shaders
-		string shaderDirectory = m_resourceMng->GetResourceDirectory(Shader_Resource);
-		string textureDirectory = m_resourceMng->GetResourceDirectory(Texture_Resource);
+		string shaderDirectory = m_resourceMng->GetStandardResourceDirectory(Shader_Resource);
+		string textureDirectory = m_resourceMng->GetStandardResourceDirectory(Texture_Resource);
 
 		m_shaderDeferred = make_shared<DeferredShader>();
 		m_shaderDeferred->Load(shaderDirectory + "Deferred.hlsl", m_graphics);
@@ -301,14 +301,14 @@ namespace Directus
 			Matrix mProjectionLight = m_directionalLight->ComputeOrthographicProjectionMatrix(cascadeIndex);
 			Matrix mViewProjectionLight = mViewLight * mProjectionLight;
 
-			for (const auto& gameObject : m_renderables)
+			for (const auto& gameObj : m_renderables)
 			{
-				if (gameObject.expired())
+				if (gameObj.expired())
 					continue;
 
-				auto meshRenderer = gameObject._Get()->GetComponent<MeshRenderer>();
+				MeshFilter* meshFilter = gameObj._Get()->GetMeshFilter();
+				MeshRenderer* meshRenderer = gameObj._Get()->GetMeshRenderer();
 				auto material = meshRenderer->GetMaterial();
-				auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>();
 				auto mesh = meshFilter->GetMesh();
 
 				// Make sure we have everything
@@ -323,11 +323,15 @@ namespace Directus
 				if (material._Get()->GetOpacity() < 1.0f)
 					continue;
 
+				// skip objects outside of the view frustrum
+				//if (!m_directionalLight->IsInViewFrustrum(meshFilter))
+					//continue;
+
 				if (meshFilter->SetBuffers())
 				{
 					// Set shader's buffer
 					m_shaderDepth->UpdateMatrixBuffer(
-						gameObject._Get()->GetTransform()->GetWorldTransform(),
+						gameObj._Get()->GetTransform()->GetWorldTransform(),
 						mViewProjectionLight
 					);
 

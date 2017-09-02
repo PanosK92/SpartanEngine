@@ -24,12 +24,12 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 # Upcoming features (v0.3)
 Feature       		            | Completion | Notes 
 ------------- 		            | :--: | :----:
-Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling
-New editor theme                | 100% | A minimal/clean look
+Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
+New editor theme                | 100% | A minimal/clean look.
 Improved debug view             | 100% | Bounding boxes, colliders, raycasts, etc.
 Point light support             | 100% | -
 XML I/O                         | 100% | -
-Performance improvements        | 100% | Bug fixes, less crashes and overall higher quality architecture.
+Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality architecture.
 Screen space ambient occlusion  | 80% | -
 Improved shadow quality         | 50% | -
 Skeletal Animation              | 5% | -

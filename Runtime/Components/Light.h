@@ -35,6 +35,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Directus
 {
 	class Camera;
+	class MeshFilter;
+
+	namespace Math
+	{
+		class Frustrum;
+	}
 
 	enum LightType
 	{
@@ -116,6 +122,8 @@ namespace Directus
 		int GetShadowCascadeCount() { return m_cascades; }
 		float GetShadowCascadeSplit(int cascade);
 
+		bool IsInViewFrustrum(MeshFilter* meshFilter);
+
 	private:
 		LightType m_lightType;
 		ShadowType m_shadowType;
@@ -124,10 +132,11 @@ namespace Directus
 		float m_intensity;
 		float m_angle;
 		float m_bias;
-
 		Math::Matrix m_viewMatrix;
-
+		std::shared_ptr<Math::Frustrum> m_frustrum;
 		int m_cascades;
 		std::vector<std::shared_ptr<Cascade>> m_shadowMaps;
+		Math::Quaternion m_lastKnownRotation;
+		bool m_isDirty;
 	};
 }

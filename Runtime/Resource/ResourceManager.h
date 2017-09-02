@@ -51,24 +51,27 @@ namespace Directus
 		template <class T>
 		std::weak_ptr<T> Load(const std::string& filePath)
 		{
+			// Try to make the path relative to the engine (in case it isn't)
+			std::string relativeFilePath = FileSystem::GetRelativeFilePath(filePath);
+
 			// Check if the resource is already loaded
-			if (m_resourceCache->CachedByFilePath(filePath))
-				return GetResourceByPath<T>(filePath);
+			if (m_resourceCache->CachedByFilePath(relativeFilePath))
+				return GetResourceByPath<T>(relativeFilePath);
 
 			std::shared_ptr<T> typed = std::make_shared<T>(m_context);
 			std::shared_ptr<Resource> base = ToBaseShared(typed);
 
-			if (base->LoadFromFile(filePath))
+			if (base->LoadFromFile(relativeFilePath))
 			{
 				m_resourceCache->Add(base);
 			}
 			else
 			{
-				LOG_WARNING("Resource \"" + filePath + "\" failed to load");
+				LOG_WARNING("Resource \"" + relativeFilePath + "\" failed to load");
 			}
 
 			// Returne typed weak
-			return GetResourceByPath<T>(filePath);
+			return GetResourceByPath<T>(relativeFilePath);
 		}
 
 		// Adds a resource into the resource cache
@@ -125,8 +128,10 @@ namespace Directus
 
 		std::vector<std::string> GetResourceFilePaths() { return m_resourceCache->GetResourceFilePaths(); }
 
-		void AddResourceDirectory(ResourceType type, const std::string& directory);
-		std::string GetResourceDirectory(ResourceType type);
+		void AddStandardResourceDirectory(ResourceType type, const std::string& directory);
+		std::string GetStandardResourceDirectory(ResourceType type);
+		void SetProjectDirectory(const std::string& directory);
+		std::string GetProjectDirectory() { return m_projectDirectory; }
 
 		// Importers
 		std::weak_ptr<ModelImporter> GetModelImporter() { return m_modelImporter; }
@@ -134,7 +139,8 @@ namespace Directus
 
 	private:
 		std::unique_ptr<ResourceCache> m_resourceCache;
-		std::map<ResourceType, std::string> m_resourceDirectories;
+		std::map<ResourceType, std::string> m_standardResourceDirectories;
+		std::string m_projectDirectory;
 
 		// Importers
 		std::shared_ptr<ModelImporter> m_modelImporter;

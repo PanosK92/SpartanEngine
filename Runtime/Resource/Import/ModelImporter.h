@@ -49,10 +49,9 @@ namespace Directus
 		void ReadAnimations(Model* model, const aiScene* scene);
 		bool Load(Model* model, const std::string& filePath);
 
-		std::string GetStatMeshProcessed() { return m_statMeshProcessed; }
-		std::string GetStatNodeProcessed() { return m_statNodeProcessed; }
-		int GetStatNodeCount() { return m_stateNodeCount; }
-		int GetStatNodeCurrent() { return m_stateNodeCurrent; }
+		const std::string& GetStatus() { return m_status; }
+		float GetPercentage() { return (float)m_stateNodeCurrent / (float)m_stateNodeCount; }
+		bool IsLoading() { return m_isLoading; }
 
 	private:
 		// PROCESSING
@@ -68,16 +67,15 @@ namespace Directus
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 		void CalculateNodeCount(aiNode* node, int& count);
 		void ResetStats();
-
-		bool m_isLoading;
+	
 		Model* m_model;
 		std::string m_modelPath;
 
 		// Statistics	
-		std::string m_statMeshProcessed;
-		std::string m_statNodeProcessed;
+		std::string m_status;
 		int m_stateNodeCount;
 		int m_stateNodeCurrent;
+		bool m_isLoading;
 		
 		Context* m_context;
 	};
