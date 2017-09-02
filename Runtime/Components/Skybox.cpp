@@ -61,7 +61,7 @@ namespace Directus
 
 		// Get cubemap directory
 		auto resourceMng = g_context->GetSubsystem<ResourceManager>();
-		string cubamapDirectory = resourceMng->GetResourceDirectory(Cubemap_Resource);
+		string cubamapDirectory = resourceMng->GetStandardResourceDirectory(Cubemap_Resource);
 
 		m_cubeMapTexture = make_shared<Texture>(g_context);
 		m_cubeMapTexture->LoadFromFile(cubamapDirectory + "environment.dds");

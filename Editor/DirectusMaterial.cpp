@@ -320,6 +320,9 @@ void DirectusMaterial::ReflectFile(string filePath)
     // Load the material (won't be loaded again if it's already loaded)
     m_inspectedMaterial = m_inspector->GetContext()->GetSubsystem<ResourceManager>()->Load<Material>(filePath);
 
+    if (m_inspectedMaterial.expired())
+        return;
+
     // Do the actual reflection
     ReflectName();
     ReflectAlbedo();

@@ -19,19 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//==============================
+//===================================
 #include "DirectusDirExplorer.h"
 #include "Logging/Log.h"
-//==============================
+#include "Resource/ResourceManager.h"
+//===================================
+
+//= NAMESPACES ==========
+using namespace std;
+using namespace Directus;
+//=======================
 
 DirectusDirExplorer::DirectusDirExplorer(QWidget *parent) : QTreeView(parent)
 {
-    QString rootPath = "Assets";
     m_fileExplorer = nullptr;
+    m_context = nullptr;
 
     m_dirModel = new QFileSystemModel(this);
     m_dirModel->setFilter(QDir::NoDotAndDotDot | QDir::AllDirs);  // Set a filter that displays only folders
-    m_dirModel->setRootPath(rootPath);  // Set the root path
 
     // Set icon provider
     m_iconProvider = new DirectusIconProvider();
@@ -41,21 +46,33 @@ DirectusDirExplorer::DirectusDirExplorer(QWidget *parent) : QTreeView(parent)
     // Set the model to the list view
     this->setModel(m_dirModel);
 
-    // I must set the path manually as the tree view
-    // (at least visually) refuses to change anything.
-    QModelIndex index = m_dirModel->index(rootPath);
-    this->setRootIndex(index);
-
     // Hide Size, Type, Date Modified columns
     this->setColumnHidden(1, true);
     this->setColumnHidden(2, true);
     this->setColumnHidden(3, true);
 }
 
-void DirectusDirExplorer::Initialize(DirectusFileExplorer* fileExplorer)
+void DirectusDirExplorer::Initialize(DirectusFileExplorer* fileExplorer, Context* context)
 {
+    m_context = context;
     m_fileExplorer = fileExplorer;
     connect(m_fileExplorer, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(UpdateFromFileExplorer(QModelIndex)));
+
+    string rootPath = m_context->GetSubsystem<ResourceManager>()->GetProjectDirectory();
+    SetRootDirectory(rootPath);
+}
+
+void DirectusDirExplorer::SetRootDirectory(const std::string& directory)
+{
+    QString rootDir = QString::fromStdString(directory);
+
+    // Set the root path
+    m_dirModel->setRootPath(rootDir);
+
+    // I must set the path manually as the tree view
+    // (at least visually) refuses to change anything automatically.
+    QModelIndex index = m_dirModel->index(rootDir);
+    this->setRootIndex(index);
 }
 
 void DirectusDirExplorer::UpdateFileExplorer(QModelIndex index)

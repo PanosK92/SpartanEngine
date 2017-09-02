@@ -34,7 +34,6 @@ namespace Directus
 	ResourceManager::ResourceManager(Context* context) : Subsystem(context)
 	{
 		m_resourceCache = nullptr;
-		m_modelImporter = nullptr;
 	}
 
 	bool ResourceManager::Initialize()
@@ -48,30 +47,43 @@ namespace Directus
 		m_modelImporter->Initialize(m_context);
 		
 		// Add engine standard resource directories
-		AddResourceDirectory(Texture_Resource, "Standard Assets//Textures//");
-		AddResourceDirectory(Material_Resource, "Standard Assets//Fonts//");
-		AddResourceDirectory(Shader_Resource, "Standard Assets//Shaders//");
-		AddResourceDirectory(Cubemap_Resource, "Standard Assets//Cubemaps//");
-		AddResourceDirectory(Script_Resource, "Standard Assets//Scripts//");
-		AddResourceDirectory(Model_Resource, "Standard Assets//Models//");
-		AddResourceDirectory(Material_Resource, "Standard Assets//Materials//");
+		AddStandardResourceDirectory(Texture_Resource, "Standard Assets//Textures//");
+		AddStandardResourceDirectory(Material_Resource, "Standard Assets//Fonts//");
+		AddStandardResourceDirectory(Shader_Resource, "Standard Assets//Shaders//");
+		AddStandardResourceDirectory(Cubemap_Resource, "Standard Assets//Cubemaps//");
+		AddStandardResourceDirectory(Script_Resource, "Standard Assets//Scripts//");
+		AddStandardResourceDirectory(Model_Resource, "Standard Assets//Models//");
+		AddStandardResourceDirectory(Material_Resource, "Standard Assets//Materials//");
+
+		// Add project directory
+		SetProjectDirectory("Project//");
 
 		return true;
 	}
 
-	void ResourceManager::AddResourceDirectory(ResourceType type, const string& directory)
+	void ResourceManager::AddStandardResourceDirectory(ResourceType type, const string& directory)
 	{
-		m_resourceDirectories[type] = directory;
+		m_standardResourceDirectories[type] = directory;
 	}
 
-	string ResourceManager::GetResourceDirectory(ResourceType type)
+	string ResourceManager::GetStandardResourceDirectory(ResourceType type)
 	{
-		for (auto& directory : m_resourceDirectories)
+		for (auto& directory : m_standardResourceDirectories)
 		{
 			if (directory.first == type)
 				return directory.second;
 		}
 
 		return NOT_ASSIGNED;
+	}
+
+	void ResourceManager::SetProjectDirectory(const string& directory)
+	{
+		if (!FileSystem::DirectoryExists(directory))
+		{
+			FileSystem::CreateDirectory_(directory);
+		}
+
+		m_projectDirectory = directory;
 	}
 }

@@ -29,7 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
-//=============================
+#include "../Math/BoundingBox.h"
+#include "MeshFilter.h"
+#include "../Math/Frustrum.h"
+//==============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -80,18 +83,18 @@ namespace Directus
 			return 0;
 		}
 
-		float split = 0;
+		float splitDistance = 0;
 
 		if (m_cascade == 0)
-			split = 0.3f;
+			splitDistance = 0.0f;
 
 		if (m_cascade == 1)
-			split = 0.6f;
+			splitDistance = 0.6f;
 
 		if (m_cascade == 2)
-			split = 0.8f;
+			splitDistance = 0.8f;
 
-		Vector4 shaderSplit = Vector4::Transform(Vector3(0, 0, split), m_camera->GetProjectionMatrix());
+		Vector4 shaderSplit = Vector4::Transform(Vector3(0, 0, splitDistance), m_camera->GetProjectionMatrix());
 		return shaderSplit.z / shaderSplit.w;
 	}
 
@@ -105,6 +108,8 @@ namespace Directus
 		m_color = Vector4(1.0f, 0.76f, 0.57f, 1.0f);
 		m_bias = 0.04f;
 		m_cascades = 3;
+		m_frustrum = make_shared<Frustrum>();
+		m_isDirty = true;
 	}
 
 	Light::~Light()
@@ -144,7 +149,21 @@ namespace Directus
 
 	void Light::Update()
 	{
+		if (m_lightType != Directional)
+			return;
 
+		// DIRTY CHECK
+		if (m_lastKnownRotation != g_transform->GetRotation())
+		{
+			m_lastKnownRotation = g_transform->GetRotation();
+			m_isDirty = true;
+		}
+
+		if (!m_isDirty)
+			return;
+
+		Camera* mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>();
+		m_frustrum->Construct(ComputeViewMatrix(), ComputeOrthographicProjectionMatrix(2), mainCamera->GetFarPlane());
 	}
 
 	void Light::Serialize()
@@ -243,5 +262,14 @@ namespace Directus
 			return m_shadowMaps[cascade]->GetSplit();
 
 		return 0.0f;
+	}
+
+	bool Light::IsInViewFrustrum(MeshFilter* meshFilter)
+	{
+		BoundingBox box = meshFilter->GetBoundingBoxTransformed();
+		Vector3 center = box.GetCenter();
+		Vector3 extents = box.GetHalfSize();
+
+		return m_frustrum->CheckCube(center, extents) != Outside;
 	}
 }

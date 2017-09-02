@@ -350,7 +350,7 @@ namespace Directus
 
 		// If not, create a new one 
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		string shaderDirectory = resourceMng->GetResourceDirectory(Shader_Resource); // Get standard shader directory
+		string shaderDirectory = resourceMng->GetStandardResourceDirectory(Shader_Resource); // Get standard shader directory
 
 		// Create and initialize shader
 		auto shader = make_shared<ShaderVariation>();

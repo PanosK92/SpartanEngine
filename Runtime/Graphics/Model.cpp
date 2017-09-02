@@ -252,13 +252,14 @@ namespace Directus
 	bool Model::LoadFromForeignFormat(const string& filePath)
 	{
 		// Set some crucial data (Required by ModelImporter)
-		string dir = "Assets//" + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"; // Assets/Sponza/
-		m_resourceFilePath = dir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION; // Assets/Sponza/Sponza.model
+		string projectDir = m_context->GetSubsystem<ResourceManager>()->GetProjectDirectory();
+		string modelDir = projectDir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"; // Assets/Sponza/
+		m_resourceFilePath = modelDir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION; // Assets/Sponza/Sponza.model
 		m_resourceName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath); // Sponza
 
 		// Create asset directory (if it doesn't exist)
-		FileSystem::CreateDirectory_(dir + "Materials//");
-		FileSystem::CreateDirectory_(dir + "Shaders//");
+		FileSystem::CreateDirectory_(modelDir + "Materials//");
+		FileSystem::CreateDirectory_(modelDir + "Shaders//");
 
 		// Load the model
 		if (m_resourceManager->GetModelImporter()._Get()->Load(this, filePath))

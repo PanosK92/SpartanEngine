@@ -167,6 +167,7 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, normalSmoothAngle); // Default is 45, max is 175
 
 		// Read the 3D model file from disk
+		m_status = "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) +"\" from disk...";
 		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
 		if (!scene)
 		{
@@ -215,14 +216,14 @@ namespace Directus
 			string name = assimpNode->mName.C_Str();
 			newNode._Get()->SetName(name);
 
-			m_statNodeProcessed = name;
+			m_status = "Processing: " + name;
 		}
 		else
 		{
 			string name = FileSystem::GetFileNameNoExtensionFromFilePath(m_modelPath);
 			newNode._Get()->SetName(name);
 
-			m_statNodeProcessed = name;
+			m_status = "Processing: " + name;
 		}
 		//============================================================================
 
@@ -325,8 +326,6 @@ namespace Directus
 		mesh->SetModelID(model->GetResourceID());
 		mesh->SetGameObjectID(gameobject._Get()->GetID());
 		mesh->SetName(assimpMesh->mName.C_Str());
-
-		m_statMeshProcessed = mesh->GetName();
 
 		// Vertices
 		LoadAiMeshVertices(assimpMesh, mesh);
@@ -624,8 +623,7 @@ namespace Directus
 
 	void ModelImporter::ResetStats()
 	{
-		m_statMeshProcessed = NOT_ASSIGNED;
-		m_statNodeProcessed = NOT_ASSIGNED;
+		m_status = NOT_ASSIGNED;
 		m_stateNodeCount = 0;
 		m_stateNodeCurrent = 0;
 	}

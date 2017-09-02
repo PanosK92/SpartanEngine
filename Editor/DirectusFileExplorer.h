@@ -53,6 +53,7 @@ public:
     virtual void dropEvent(QDropEvent* event);
 
 private:
+    void SetRootDirectory(const std::string& directory);
     QString GetRootPath();
     QString GetSelectionPath();
 
