@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 #include "../Core/Settings.h"
 #include "../Graphics/D3D11/D3D11RenderTexture.h"
+#include "../Graphics/Cascade.h"
 //===============================================
 
 namespace Directus
@@ -54,23 +55,6 @@ namespace Directus
 		No_Shadows,
 		Hard_Shadows,
 		Soft_Shadows
-	};
-
-	class Cascade
-	{
-	public:
-		Cascade(int cascade, int resolution, Camera* camera, Graphics* device);
-		~Cascade() {}
-
-		void SetAsRenderTarget();
-		ID3D11ShaderResourceView* GetShaderResourceView() { return m_depthMap ? m_depthMap->GetShaderResourceView() : nullptr; }
-		Math::Matrix CalculateProjectionMatrix(const Math::Vector3 centerPos, const Math::Matrix& viewMatrix);
-		float GetSplit();
-
-	private:
-		int m_cascade;
-		std::unique_ptr<D3D11RenderTexture> m_depthMap;
-		Camera* m_camera;
 	};
 
 	class DLL_API Light : public Component

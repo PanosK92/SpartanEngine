@@ -225,7 +225,7 @@ namespace Directus
 		}
 		//==============================================================================
 
-		SetViewport(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+		SetViewport((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
 
 		//= DEPTH ============================================
 		if (!CreateDepthStencilState(m_depthStencilStateEnabled, true, true))
