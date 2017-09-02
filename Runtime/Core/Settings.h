@@ -68,12 +68,12 @@ namespace Directus
 		static int GetResolutionHeight();
 		//===============================================
 
-		//= VIEWPORT ==================================
-		static void SetViewport(int width, int height);
+		//= VIEWPORT ======================================
+		static void SetViewport(float width, float height);
 		static Math::Vector2 GetViewport();
 		static int GetViewportWidth();
 		static int GetViewportHeight();
-		//=============================================
+		//=================================================
 
 		static bool IsFullScreen();
 		static bool IsMouseVisible();
@@ -92,8 +92,8 @@ namespace Directus
 		static bool m_isFullScreen;
 		static int m_resolutionWidth;
 		static int m_resolutionHeight;
-		static int m_viewportWidth;
-		static int m_viewportHeight;
+		static float m_viewportWidth;
+		static float m_viewportHeight;
 		static float m_screenAspect;
 		static int m_vsync;
 		static bool m_isMouseVisible;		

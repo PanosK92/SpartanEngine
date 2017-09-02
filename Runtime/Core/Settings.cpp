@@ -38,8 +38,8 @@ namespace Directus
 	bool Settings::m_isMouseVisible = true;
 	int Settings::m_resolutionWidth = 1920;
 	int Settings::m_resolutionHeight = 1080;
-	int Settings::m_viewportWidth = 1.0f;
-	int Settings::m_viewportHeight = 1.0f;
+	float Settings::m_viewportWidth = 1.0f;
+	float Settings::m_viewportHeight = 1.0f;
 	float Settings::m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
 	int Settings::m_shadowMapResolution = 2048;
 	unsigned int Settings::m_anisotropy = 16;
@@ -164,7 +164,7 @@ namespace Directus
 		return m_resolutionHeight;
 	}
 
-	void Settings::SetViewport(int width, int height)
+	void Settings::SetViewport(float width, float height)
 	{
 		m_viewportWidth = width;
 		m_viewportHeight = height;

@@ -386,7 +386,7 @@ namespace Directus
 					for (int i = 0; i < m_directionalLight->GetShadowCascadeCount(); i++)
 					{
 						auto shadowMap = m_directionalLight->GetShadowCascade(i).lock();
-						m_textures.push_back(shadowMap ? shadowMap->GetShaderResourceView() : nullptr);
+						m_textures.push_back(shadowMap ? shadowMap->GetShaderResource() : nullptr);
 					}
 				}
 				else

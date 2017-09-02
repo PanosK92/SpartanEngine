@@ -41,63 +41,6 @@ using namespace std;
 
 namespace Directus
 {
-	Cascade::Cascade(int cascade, int resolution, Camera* camera, Graphics* device)
-	{
-		m_cascade = cascade;
-		m_depthMap = make_unique<D3D11RenderTexture>(device);
-		m_depthMap->Create(resolution, resolution, true);
-		m_camera = camera;
-	}
-
-	void Cascade::SetAsRenderTarget()
-	{
-		m_depthMap->Clear(0.0f, 0.0f, 0.0f, 1.0f);
-		m_depthMap->SetAsRenderTarget();
-	}
-
-	Matrix Cascade::CalculateProjectionMatrix(const Vector3 centerPos, const Matrix& viewMatrix)
-	{
-		// Hardcoded radius
-		float radius = 0;
-		if (m_cascade == 0)
-			radius = 20;
-
-		if (m_cascade == 1)
-			radius = 40;
-
-		if (m_cascade == 2)
-			radius = 80;
-
-		Vector3 center = centerPos * viewMatrix;
-		Vector3 min = center - Vector3(radius, radius, radius);
-		Vector3 max = center + Vector3(radius, radius, radius);
-
-		return Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);
-	}
-
-	float Cascade::GetSplit()
-	{
-		if (!m_camera)
-		{
-			LOG_WARNING("Cascade split can't be computed, camera is not present.");
-			return 0;
-		}
-
-		float splitDistance = 0;
-
-		if (m_cascade == 0)
-			splitDistance = 0.0f;
-
-		if (m_cascade == 1)
-			splitDistance = 0.6f;
-
-		if (m_cascade == 2)
-			splitDistance = 0.8f;
-
-		Vector4 shaderSplit = Vector4::Transform(Vector3(0, 0, splitDistance), m_camera->GetProjectionMatrix());
-		return shaderSplit.z / shaderSplit.w;
-	}
-
 	Light::Light()
 	{
 		m_lightType = Point;
@@ -128,12 +71,11 @@ namespace Directus
 			return;
 
 		m_shadowMaps.clear();
+		Camera* camera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>();
 		for (int i = 0; i < m_cascades; i++)
 		{
-			Camera* camera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>();
-			Graphics* graphics = g_context->GetSubsystem<Graphics>();
-			auto shadowMap = make_shared<Cascade>(i, SHADOWMAP_RESOLUTION, camera, graphics);
-			m_shadowMaps.push_back(shadowMap);
+			auto cascade = make_shared<Cascade>(SHADOWMAP_RESOLUTION, camera, g_context);
+			m_shadowMaps.push_back(cascade);
 		}
 	}
 
@@ -232,14 +174,14 @@ namespace Directus
 		return m_viewMatrix;
 	}
 
-	Matrix Light::ComputeOrthographicProjectionMatrix(int cascade)
+	Matrix Light::ComputeOrthographicProjectionMatrix(int cascadeIndex)
 	{
-		if (cascade >= m_shadowMaps.size())
+		if (cascadeIndex >= m_shadowMaps.size())
 			return Matrix::Identity;
 
 		sharedGameObj mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera().lock();
 		Vector3 centerPos = mainCamera ? mainCamera->GetTransform()->GetPosition() : Vector3::Zero;
-		return m_shadowMaps[cascade]->CalculateProjectionMatrix(centerPos, ComputeViewMatrix());
+		return m_shadowMaps[cascadeIndex]->ComputeProjectionMatrix(cascadeIndex, centerPos, ComputeViewMatrix());
 	}
 
 	void Light::SetShadowCascadeAsRenderTarget(int cascade)
@@ -248,20 +190,20 @@ namespace Directus
 			m_shadowMaps[cascade]->SetAsRenderTarget();
 	}
 
-	weak_ptr<Cascade> Light::GetShadowCascade(int cascade)
+	weak_ptr<Cascade> Light::GetShadowCascade(int cascadeIndex)
 	{
-		if (cascade < m_shadowMaps.size())
-			return m_shadowMaps[cascade];
+		if (cascadeIndex >= m_shadowMaps.size())
+			return weak_ptr<Cascade>();
 
-		return weak_ptr<Cascade>();
+		return m_shadowMaps[cascadeIndex];
 	}
 
-	float Light::GetShadowCascadeSplit(int cascade)
+	float Light::GetShadowCascadeSplit(int cascadeIndex)
 	{
-		if (cascade < m_shadowMaps.size())
-			return m_shadowMaps[cascade]->GetSplit();
+		if (cascadeIndex >= m_shadowMaps.size())
+			return 0.0f;
 
-		return 0.0f;
+		return m_shadowMaps[cascadeIndex]->GetSplit(cascadeIndex);
 	}
 
 	bool Light::IsInViewFrustrum(MeshFilter* meshFilter)
