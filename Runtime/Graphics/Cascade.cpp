@@ -38,9 +38,10 @@ namespace Directus
 {
 	Cascade::Cascade(int resolution, Camera* camera, Context* context)
 	{
+		m_resolution = resolution;
 		auto graphics = context->GetSubsystem<Graphics>();
 		m_depthMap = make_unique<D3D11RenderTexture>(graphics);
-		m_depthMap->Create(resolution, resolution, true);
+		m_depthMap->Create(m_resolution, m_resolution, true);
 		m_camera = camera;
 	}
 
@@ -71,6 +72,18 @@ namespace Directus
 		Vector3 center = centerPos * viewMatrix;
 		Vector3 min = center - Vector3(extents, extents, extents);
 		Vector3 max = center + Vector3(extents, extents, extents);
+
+		//= Shadow shimmering remedy based on ============================================
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/ee416324(v=vs.85).aspx
+		float fWorldUnitsPerTexel = (extents * 2.0f) / m_resolution;
+
+		min /= fWorldUnitsPerTexel;
+		min.Floor();
+		min *= fWorldUnitsPerTexel;
+		max /= fWorldUnitsPerTexel;
+		max.Floor();
+		max *= fWorldUnitsPerTexel;
+		//================================================================================
 
 		return Matrix::CreateOrthoOffCenterLH(min.x, max.x, min.y, max.y, min.z, max.z);
 	}

@@ -52,6 +52,7 @@ namespace Directus
 
 	private:
 		std::unique_ptr<D3D11RenderTexture> m_depthMap;
+		float m_resolution;
 		Camera* m_camera;
 	};
 }
