@@ -52,6 +52,7 @@ cbuffer MiscBuffer : register(b1)
 // = INCLUDES ========
 #include "Helper.hlsl"
 #include "PBR.hlsl"
+#include "SSAO.hlsl"
 //====================
 
 //= INPUT LAYOUT ======================
@@ -83,20 +84,21 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 //= PS() =================================================================================
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
+	float2 texCoord = input.uv;
     float3 finalColor = float3(0, 0, 0);
 	
 	// Sample from G-Buffer
-    float3 albedo = ToLinear(texAlbedo.Sample(samplerAniso, input.uv)).rgb;
-    float4 normalSample = texNormal.Sample(samplerAniso, input.uv);
-    float4 depthSample = texDepth.Sample(samplerPoint, input.uv);
-    float4 materialSample = texMaterial.Sample(samplerPoint, input.uv);
+    float3 albedo = ToLinear(texAlbedo.Sample(samplerAniso, texCoord)).rgb;
+    float4 normalSample = texNormal.Sample(samplerAniso, texCoord);
+    float4 depthSample = texDepth.Sample(samplerPoint, texCoord);
+    float4 materialSample = texMaterial.Sample(samplerPoint, texCoord);
 		
 	// Extract any values out of those samples
     float3 normal = normalize(UnpackNormal(normalSample.rgb));
     float depth = depthSample.g;
 	float emission = depthSample.b * 100.0f;
-    float3 worldPos = ReconstructPosition(depth, input.uv, mViewProjectionInverse);
-	float shadowing = softShadows == 1.0f ? texShadows.Sample(samplerAniso, input.uv).a : normalSample.a;	
+	float shadowing = softShadows == 1.0f ? texShadows.Sample(samplerAniso, texCoord).a : normalSample.a;	
+    float3 worldPos = ReconstructPosition(depth, texCoord, mViewProjectionInverse);
     shadowing = clamp(shadowing, 0.1f, 1.0f);
     float roughness = materialSample.r;
     float metallic = materialSample.g;
@@ -199,5 +201,8 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     finalColor = ToGamma(finalColor); // gamma correction
     float luma = dot(finalColor.rgb, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
 
+	//float ssao = SSAO(texCoord);
+	//return float4(ssao, ssao, ssao, 1.0f);
+	
     return float4(finalColor, luma);
 }

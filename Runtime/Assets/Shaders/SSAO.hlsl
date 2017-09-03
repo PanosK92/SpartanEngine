@@ -1,4 +1,4 @@
-static const float strength = 15.0f;
+static const float strength = 300.0f;
 static const float2 offset  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
 static const float falloff  = 0.0000000f;
 static const float radius = 0.001f;
@@ -41,21 +41,21 @@ static const float3 AO_SAMPLES[26] =
 // Returns linear depth
 float GetDepth(float2 uv)
 {
-	float depth =  texDepth.Sample(samplerPoint, uv).g;
+	float depth =  texDepth.Sample(samplerPoint, uv).r;
 	return LinerizeDepth(depth, farPlane, nearPlane);
 }
 
 // Returns normal
 float3 GetNormal(float2 uv)
 {
-	float3 normal = texNormal.Sample(samplerAniso, uv);
+	float3 normal = texNormal.Sample(samplerAniso, uv).rgb;
 	return normalize(UnpackNormal(normal));
 }
 
 // Returns a random normal
 float3 GetRandomNormal(float2 uv)
 {
-	float3 randNormal = texNoise.Sample(samplerAniso, uv * offset);
+	float3 randNormal = texNoise.Sample(samplerAniso, uv * offset).rgb;
 	return normalize(UnpackNormal(randNormal));
 }
 

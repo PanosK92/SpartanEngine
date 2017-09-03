@@ -56,8 +56,10 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	if (shadowMappingQuality == 0.5f)
 	{
 		// Perform PCF filtering on a 4 x 4 texel neighborhood
+		[unroll(4)]
 		for (float y = -1.5f; y <= 1.5f; ++y)
 		{
+			[unroll(4)]
 			for (float x = -1.5f; x <= 1.5f; ++x)
 			{
 				percentLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + texOffset(shadowMapResolution, x,y), pos.z);	
@@ -78,13 +80,14 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 		  float2( 0.34495938f, 0.29387760f )
 		};
 
-		int samples = 4.0f;
-		for (int i = 0; i < samples; i++)
+		uint samples = 4;
+		[unroll(4)]
+		for (uint i = 0; i < samples; i++)
 		{
-			int index = int(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
+			uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
 			percentLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + poissonDisk[index]/proximity, pos.z);
 		}	
-		percentLit /= samples;
+		percentLit /= (float)samples;
 	}
 		
 	return percentLit;

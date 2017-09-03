@@ -98,14 +98,14 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 	output.positionWS 	= mul(input.position, mWorld);
 	output.positionVS 	= mul(input.position, mWorldView);
 	output.positionCS 	= mul(input.position, mWorldViewProjection);	
-	output.normal 		= normalize(mul(input.normal, mWorld));	
-	output.tangent 		= normalize(mul(input.tangent, mWorld));
+	output.normal 		= normalize(mul(float4(input.normal, 0.0f), mWorld)).xyz;	
+	output.tangent 		= normalize(mul(float4(input.tangent, 0.0f), mWorld)).xyz;
     output.uv = input.uv;
 	
 	return output;
 }
 
-PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
+PixelOutputType DirectusPixelShader(PixelInputType input)
 {
 	PixelOutputType output;
 
@@ -119,7 +119,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float specular 			= clamp(materialSpecular, 0.03f, 1.0f);
 	float emission			= 0.0f;
 	float flippedOcclusion	= 1.0f - materialOcclusion;
-	float4 normal			= float4(PackNormal(input.normal.xyz), flippedOcclusion);
+	float3 normal			= PackNormal(input.normal.xyz);
 	float type				= 0.0f; // pbr mesh
 	
 	//= TYPE CODES ============================
@@ -156,9 +156,9 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	//= NORMAL ==================================================================================
 #if NORMAL_MAP
-		normal 	= texNormal.Sample(samplerAniso, texCoord); // sample
-		normal 	= float4(NormalSampleToWorldSpace(normal, input.normal, input.tangent, materialNormalStrength), 1.0f); // transform to world space
-		normal 	= float4(PackNormal(normal), 1.0f);
+		normal 	= texNormal.Sample(samplerAniso, texCoord).rgb; // sample
+		normal 	= NormalSampleToWorldSpace(normal, input.normal.xyz, input.tangent.xyz, materialNormalStrength);
+		normal 	= PackNormal(normal);
 #endif
 	//============================================================================================
 	
@@ -192,17 +192,17 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 		if (cascadeIndex == 0)
 		{
 			float4 lightPos = mul(input.positionWS, mLightViewProjection[0]);
-			shadowing		= ShadowMapping(lightDepthTex[0], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
+			shadowing		= ShadowMapping(lightDepthTex[0], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal, lightDir);
 		}
 		else if (cascadeIndex == 1)
 		{
 			float4 lightPos = mul(input.positionWS, mLightViewProjection[1]);
-			shadowing		= ShadowMapping(lightDepthTex[1], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
+			shadowing		= ShadowMapping(lightDepthTex[1], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal, lightDir);
 		}
 		else if (cascadeIndex == 2)
 		{
 			float4 lightPos = mul(input.positionWS, mLightViewProjection[2]);
-			shadowing		= ShadowMapping(lightDepthTex[2], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal.rgb, lightDir);
+			shadowing		= ShadowMapping(lightDepthTex[2], samplerAniso, shadowMapResolution, shadowMappingQuality, lightPos, shadowBias, normal, lightDir);
 		}
 	}
 	//============================================================================================
@@ -211,7 +211,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 
 	// Write to G-Buffer
 	output.albedo		= albedo;
-	output.normal 		= float4(normal.rgb, totalShadowing);
+	output.normal 		= float4(normal, totalShadowing);
 	output.depth 		= float4(depthCS, depthVS, emission, 0.0f);
 	output.material		= float4(roughness, metallic, specular, type);
 		
@@ -222,6 +222,6 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 		output.albedo		= float4(0,1,0,1);
 	if (cascadeIndex == 2)
 		output.albedo		= float4(0,0,1,1);*/
-				
+
     return output;
 }
