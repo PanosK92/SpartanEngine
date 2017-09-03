@@ -502,7 +502,7 @@ namespace Directus
 		m_texArray.push_back(m_GBuffer->GetShaderResource(2)); // depth
 		m_texArray.push_back(m_GBuffer->GetShaderResource(3)); // material
 		m_texArray.push_back((ID3D11ShaderResourceView*)m_texNoiseMap->GetShaderResource());
-		m_texArray.push_back(m_renderTexPong->GetShaderResourceView());
+		m_texArray.push_back(m_renderTexPong->GetShaderResourceView()); // contains blurred shadows
 		m_texArray.push_back(m_skybox ? (ID3D11ShaderResourceView*)m_skybox->GetEnvironmentTexture() : nullptr);
 
 		m_shaderDeferred->UpdateTextures(m_texArray);

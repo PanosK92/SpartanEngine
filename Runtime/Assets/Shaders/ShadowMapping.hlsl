@@ -55,7 +55,7 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	// Hard shadows (0.5f) --> PCF + Interpolation
 	if (shadowMappingQuality == 0.5f)
 	{
-		// Perform PCF filtering on a 4 x 4 texel neighborhood	
+		// Perform PCF filtering on a 4 x 4 texel neighborhood
 		for (float y = -1.5f; y <= 1.5f; ++y)
 		{
 			for (float x = -1.5f; x <= 1.5f; ++x)
@@ -65,11 +65,11 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 		}
 		percentLit /= 16.0f;
 	}
-	// Soft shadows (1.0f) --> PCF + Interpolation + Stratified Poisson Sampling
+	// Soft shadows (1.0f) --> Interpolation + Stratified Poisson Sampling
 	else
 	{
 		// Poisson sampling for shadow map
-		float proximity = 2000.0f; // how close together are the samples
+		float proximity = 4000.0f; // how close together are the samples
 		float2 poissonDisk[4] = 
 		{
 		  float2( -0.94201624f, -0.39906216f ),
@@ -78,13 +78,12 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 		  float2( 0.34495938f, 0.29387760f )
 		};
 
-		float samples = 4.0f;
-		for (int i= 0; i < samples; i++)
+		int samples = 4.0f;
+		for (int i = 0; i < samples; i++)
 		{
 			int index = int(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
 			percentLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + poissonDisk[index]/proximity, pos.z);
-		}
-		
+		}	
 		percentLit /= samples;
 	}
 		
@@ -93,6 +92,7 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 
 float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float shadowMappingQuality, float4 pos, float bias, float3 normal, float3 lightDir)
 {
+	bias = 0.00001f; // override bias for now as only small values seem to work
 	float cosTheta = saturate(dot(normal, lightDir));
 	float slopeScaledBias = bias * tan(acos(cosTheta));
 	slopeScaledBias = clamp(slopeScaledBias, 0.0f, 0.002f);

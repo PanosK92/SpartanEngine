@@ -16,7 +16,7 @@ SamplerState bilinearSampler 	: register(s1);
 cbuffer DefaultBuffer : register(b0)
 {
     matrix mWorldViewProjection;
-    float2 viewport;
+    float2 resolution;
     float2 padding;
 };
 
@@ -75,7 +75,7 @@ float4 FXAAPass(float2 texCoord, float2 texelSize)
 #if SHARPENING
 float4 SharpeningPass(float2 texCoord)
 {
-	return LumaSharpen(sourceTexture, anisotropicSampler, texCoord, viewport);
+	return LumaSharpen(sourceTexture, anisotropicSampler, texCoord, resolution);
 }
 #endif
 
@@ -87,14 +87,14 @@ float4 BlurPass(float2 texCoord, float2 texelSize)
 {
 	int uBlurSize = 4; // use size of noise texture
 	
-	float result = 0.0f;
+	float4 result = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float temp = float(-uBlurSize) * 0.5f + 0.5f;
 	float2 hlim = float2(temp, temp);
 	for (int i = 0; i < uBlurSize; ++i) 
 		for (int j = 0; j < uBlurSize; ++j) 
 		{
 			float2 offset = (hlim + float2(float(i), float(j))) * texelSize;
-			result += sourceTexture.Sample(anisotropicSampler, texCoord + offset).r;
+			result += sourceTexture.Sample(anisotropicSampler, texCoord + offset);
 		}
 		
 	result = result / float(uBlurSize * uBlurSize);
@@ -110,7 +110,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
     float2 texCoord = input.uv;
     float4 color;
-    float2 texelSize = float2(1.0f / viewport.x, 1.0f / viewport.y);
+    float2 texelSize = float2(1.0f / resolution.x, 1.0f / resolution.y);
 	
 #if FXAA
 	color = FXAAPass(texCoord, texelSize);

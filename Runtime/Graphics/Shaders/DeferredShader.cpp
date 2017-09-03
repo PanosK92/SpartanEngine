@@ -133,8 +133,7 @@ namespace Directus
 			buffer->dirLightColor = light->GetColor();	
 			buffer->dirLightIntensity = Vector4(light->GetIntensity());
 			buffer->dirLightDirection = Vector4(direction.x, direction.y, direction.z, 0.0f);
-
-			buffer->softShadows = (light->GetShadowType() == Soft_Shadows) ? (float)true : (float)false;
+			buffer->softShadows = (light->GetShadowType() == Soft_Shadows) ? 1.0f : 0.0f;
 		}
 
 		// Fill with point lights

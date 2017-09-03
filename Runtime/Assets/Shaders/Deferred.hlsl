@@ -96,7 +96,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float depth = depthSample.g;
 	float emission = depthSample.b * 100.0f;
     float3 worldPos = ReconstructPosition(depth, input.uv, mViewProjectionInverse);
-	float shadowing = softShadows ? texShadows.Sample(samplerAniso, input.uv).a : normalSample.a;	
+	float shadowing = softShadows == 1.0f ? texShadows.Sample(samplerAniso, input.uv).a : normalSample.a;	
     shadowing = clamp(shadowing, 0.1f, 1.0f);
     float roughness = materialSample.r;
     float metallic = materialSample.g;
