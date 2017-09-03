@@ -33,7 +33,15 @@ float random(float2 seed2)
     return frac(sin(dot_product) * 43758.5453);
 }
 
-float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float shadowMappingQuality, float4 pos, float bias)
+float2 get_shadow_offsets(float3 N, float3 L) 
+{
+    float cos_alpha = saturate(dot(N, L));
+    float offset_scale_N = sqrt(1 - cos_alpha*cos_alpha); // sin(acos(L·N))
+    float offset_scale_L = offset_scale_N / cos_alpha;    // tan(acos(L·N))
+    return float2(offset_scale_N, min(2, offset_scale_L));
+}
+
+float DoShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float shadowMappingQuality, float4 pos, float bias, float3 normal, float3 lightDir)
 {
 	// Re-homogenize position after interpolation
     pos.xyz /= pos.w;
@@ -50,6 +58,8 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	// Apply shadow map bias
     pos.z -= bias;
 
+	//float2 normalOffset = get_shadow_offsets(normal, -lightDir);
+	
 	float percentLit = 0.0f;
 	
 	// Hard shadows (0.5f) --> PCF + Interpolation
@@ -71,7 +81,7 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	else
 	{
 		// Poisson sampling for shadow map
-		float proximity = 4000.0f; // how close together are the samples
+		float packing = 4000.0f; // how close together are the samples
 		float2 poissonDisk[4] = 
 		{
 		  float2( -0.94201624f, -0.39906216f ),
@@ -81,11 +91,11 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 		};
 
 		uint samples = 4;
-		[unroll(4)]
+		[unroll(samples)]
 		for (uint i = 0; i < samples; i++)
 		{
 			uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-			percentLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + poissonDisk[index]/proximity, pos.z);
+			percentLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + (poissonDisk[index] / packing), pos.z);
 		}	
 		percentLit /= (float)samples;
 	}
@@ -95,10 +105,9 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 
 float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float shadowMappingQuality, float4 pos, float bias, float3 normal, float3 lightDir)
 {
-	bias = 0.00001f; // override bias for now as only small values seem to work
 	float cosTheta = saturate(dot(normal, lightDir));
-	float slopeScaledBias = bias * tan(acos(cosTheta));
-	slopeScaledBias = clamp(slopeScaledBias, 0.0f, 0.002f);
-
-	return ShadowMapping(shadowMap, samplerState, shadowMapResolution, shadowMappingQuality, pos, slopeScaledBias);
+	float slopeScaledBias = tan(acos(cosTheta));
+	slopeScaledBias = clamp(slopeScaledBias, 0.0f, 0.003f);
+	
+	return DoShadowMapping(shadowMap, samplerState, shadowMapResolution, shadowMappingQuality, pos, slopeScaledBias, normal, lightDir);
 }

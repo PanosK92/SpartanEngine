@@ -23,14 +23,14 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 
 # Upcoming features (v0.3)
 Feature       		            | Completion | Notes 
-------------- 		            | :--: | :----:
+------------- 		            | :--: | -
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
 New editor theme                | 100% | A minimal/clean look.
 Improved debug view             | 100% | Bounding boxes, colliders, raycasts, etc.
 Point light support             | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality codebase.
-Improved Shadowing         		| 80% | Shadow mapping improvements plus SSAO.
+Improved Shadowing         		| 80% | Improved shadow mapping technique, removed shadow shimmering added SSAO.
 Skeletal Animation              | 5% | -
 Font importing and rendering    | 5% | -
 
