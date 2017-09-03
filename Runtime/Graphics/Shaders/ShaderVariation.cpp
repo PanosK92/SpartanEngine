@@ -183,7 +183,7 @@ namespace Directus
 		buffer->mLightViewProjection[0] = directionalLight->ComputeViewMatrix() * directionalLight->ComputeOrthographicProjectionMatrix(0);
 		buffer->mLightViewProjection[1] = directionalLight->ComputeViewMatrix() * directionalLight->ComputeOrthographicProjectionMatrix(1);
 		buffer->mLightViewProjection[2] = directionalLight->ComputeViewMatrix() * directionalLight->ComputeOrthographicProjectionMatrix(2);
-		buffer->shadowSplits = Vector4(directionalLight->GetShadowCascadeSplit(0), directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), directionalLight->GetShadowCascadeSplit(3));
+		buffer->shadowSplits = Vector4(directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), 0, 0);
 		buffer->lightDir = directionalLight->GetDirection();
 		buffer->shadowBias = directionalLight->GetBias();
 		buffer->shadowMapResolution = directionalLight->GetShadowCascadeResolution();

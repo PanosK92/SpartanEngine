@@ -135,7 +135,7 @@ namespace Directus
 		m_lightType = type;
 	}
 
-	float Light::GetShadowTypeAsFloat() const
+	float Light::GetShadowTypeAsFloat()
 	{
 		if (m_shadowType == Hard_Shadows)
 			return 0.5f;

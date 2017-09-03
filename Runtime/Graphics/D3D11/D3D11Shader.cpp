@@ -249,9 +249,9 @@ namespace Directus
 	bool D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut)
 	{
 		unsigned compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#ifdef _DEBUG
+
 		compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
-#endif
+
 
 		// Load and compile from file
 		ID3DBlob* errorBlob = nullptr;

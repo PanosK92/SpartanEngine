@@ -83,7 +83,7 @@ namespace Directus
 
 		ShadowType GetShadowType() { return m_shadowType; }
 		void SetShadowType(ShadowType shadowType) { m_shadowType = shadowType; }
-		float GetShadowTypeAsFloat() const;
+		float GetShadowTypeAsFloat();
 
 		void SetRange(float range);
 		float GetRange() { return m_range; }
