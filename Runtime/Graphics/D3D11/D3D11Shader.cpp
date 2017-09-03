@@ -39,7 +39,6 @@ namespace Directus
 	{
 		m_vertexShader = nullptr;
 		m_pixelShader = nullptr;
-		m_D3D11InputLayout = nullptr;
 		m_VSBlob = nullptr;
 		m_compiled = false;
 		m_entrypoint = NOT_ASSIGNED;
@@ -117,7 +116,7 @@ namespace Directus
 		}
 
 		// Create vertex input layout
-		if (inputLayout != Auto) 
+		if (inputLayout != Auto)
 		{
 			m_layoutHasBeenSet = m_D3D11InputLayout->Create(m_VSBlob, inputLayout);
 		}
@@ -249,9 +248,9 @@ namespace Directus
 	bool D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut)
 	{
 		unsigned compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
-
-		compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
-
+//#ifdef _DEBUG
+			compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
+//#endif
 
 		// Load and compile from file
 		ID3DBlob* errorBlob = nullptr;
@@ -297,7 +296,7 @@ namespace Directus
 	{
 		stringstream ss((char*)errorMessage->GetBufferPointer());
 		string line;
-		
+
 		// Split into lines
 		while (getline(ss, line, '\n'))
 		{
@@ -308,7 +307,7 @@ namespace Directus
 			}
 			else
 			{
-				LOG_WARNING(line);		
+				LOG_WARNING(line);
 			}
 		}
 	}

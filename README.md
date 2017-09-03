@@ -31,7 +31,7 @@ Point light support             | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality architecture.
 Screen space ambient occlusion  | 80% | -
-Improved shadow quality         | 50% | -
+Improved shadow quality         | 80% | -
 Skeletal Animation              | 5% | -
 Font importing and rendering    | 0% | -
 
