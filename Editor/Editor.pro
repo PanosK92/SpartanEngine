@@ -98,10 +98,8 @@ FORMS += editor.ui \
 release:DESTDIR = $$PWD/../Binaries/Release
 #debug:DESTDIR = $$PWD/../Binaries/Debug
 
-# LIBRARY
+# ENGINE INCLUDE/LIBRARY
 LIBS += "$$DESTDIR/Runtime.lib"
-
-# INCLUDE
 INCLUDEPATH += $$PWD/../Runtime/
 
 # QT METADATA

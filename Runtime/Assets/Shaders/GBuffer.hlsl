@@ -180,20 +180,15 @@ PixelOutputType DirectusPixelShader(PixelInputType input) : SV_TARGET
 
 	//= SHADOW MAPPING ===========================================================================	
 	float shadowing = 1.0f;
-	int cascadeIndex = -1;	
+	int cascadeIndex = 0;
 	if (receiveShadows == 1.0f && shadowMappingQuality != 0.0f)
 	{
-		float z = depthCS;
+		float z = 1.0f - LinerizeDepth(0.3f, 1000.0f, depthCS);
 
-		if (z <= shadowSplits.z) // 0.4f
-			cascadeIndex = 0;	
-	
-		if (z <= shadowSplits.y) // 0.18f
-			cascadeIndex = 1;	
-
-		if (z <= shadowSplits.x) // 0.0f
-			cascadeIndex = 2;				
-		
+		cascadeIndex = 0; // assume 1st cascade as default
+		cascadeIndex = step(shadowSplits.x, z); // test 2nd cascade
+		cascadeIndex = lerp(cascadeIndex, 2, step(shadowSplits.y, z)); // test 3rd cascade
+			
 		if (cascadeIndex == 0)
 		{
 			float4 lightPos = mul(input.positionWS, mLightViewProjection[0]);

@@ -57,16 +57,16 @@ namespace Directus
 
 	Matrix Cascade::ComputeProjectionMatrix(int cascadeIndex, const Vector3 centerPos, const Matrix& viewMatrix)
 	{
-		// Hardcoded size
+		// Hardcoded sizes to match the splits
 		float extents = 0;
 		if (cascadeIndex == 0)
-			extents = 20;
+			extents = 15;
 
 		if (cascadeIndex == 1)
-			extents = 40;
+			extents = 30;
 
 		if (cascadeIndex == 2)
-			extents = 80;
+			extents = 90;
 
 		Vector3 center = centerPos * viewMatrix;
 		Vector3 min = center - Vector3(extents, extents, extents);
@@ -80,20 +80,21 @@ namespace Directus
 		if (!m_camera)
 		{
 			LOG_WARNING("Cascade split can't be computed, camera is not present.");
-			return 0;
+			return 0.0f;
 		}
 
-		float splitDistance = 0;
+		// Note: The shader linearizes it's depth before comparing
+		// against the cascade splits, however it's not perfect so
+		// the cascade splits still maintain a logarithmic nature
 
 		// Second cascade
 		if (cascadeIndex == 1)
-			splitDistance = 0.3f;
+			return 0.7f;
 
 		// Third cascade
 		if (cascadeIndex == 2)
-			splitDistance = 0.6f;
+			return 0.92f;
 
-		Vector4 shaderSplit = Vector4::Transform(Vector3(0, 0, splitDistance), m_camera->GetProjectionMatrix());
-		return shaderSplit.z / shaderSplit.w;
+		return 0.0f;
 	}
 }
