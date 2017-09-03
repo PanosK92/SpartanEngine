@@ -73,11 +73,13 @@ namespace Directus
 
 	bool Engine::Initialize()
 	{
+		bool success = true;
+
 		// Timer
 		if (!m_context->GetSubsystem<Timer>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Timer subsystem");
-			return false;
+			success = false;
 		}
 
 		// Input
@@ -85,21 +87,21 @@ namespace Directus
 		if (!m_context->GetSubsystem<Input>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Input subsystem");
-			return false;
+			success = false;
 		}
 
-		// Multithreading
+		// Threading
 		if (!m_context->GetSubsystem<Threading>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Multithreading subsystem");
-			return false;
+			success = false;
 		}
 
 		// ResourceManager
 		if (!m_context->GetSubsystem<ResourceManager>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize ResourceManager subsystem");
-			return false;
+			success = false;
 		}
 
 		// Graphics
@@ -107,46 +109,45 @@ namespace Directus
 		if (!m_context->GetSubsystem<Graphics>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Graphics subsystem");
-			return false;
+			success = false;
 		}
 
 		// Renderer
 		if (!m_context->GetSubsystem<Renderer>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Renderer subsystem");
-			return false;
+			success = false;
 		}
 
 		// Audio
 		if (!m_context->GetSubsystem<Audio>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Audio subsystem");
-			return false;
+			success = false;
 		}
 
 		// Physics
 		if (!m_context->GetSubsystem<Physics>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Physics subsystem");
-			return false;
+			success = false;
 		}
 
 		// Scripting
 		if (!m_context->GetSubsystem<Scripting>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Scripting subsystem");
-			return false;
+			success = false;
 		}
 
 		// Scene
 		if (!m_context->GetSubsystem<Scene>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Scene subsystem");
-			return false;
+			success = false;
 		}
 
-		LOG_INFO("Initialized successfully");
-		return true;
+		return success;
 	}
 
 	void Engine::Update()

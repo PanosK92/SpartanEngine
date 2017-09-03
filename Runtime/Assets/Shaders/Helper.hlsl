@@ -9,7 +9,7 @@
 ------------------------------------------------------------------------------*/
 float4 ToLinear(float4 color)
 {
-	return pow(color, 2.2f);
+	return pow(abs(color), 2.2f);
 }
 
 float3 ToLinear(float3 color)

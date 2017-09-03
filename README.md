@@ -29,11 +29,10 @@ New editor theme                | 100% | A minimal/clean look.
 Improved debug view             | 100% | Bounding boxes, colliders, raycasts, etc.
 Point light support             | 100% | -
 XML I/O                         | 100% | -
-Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality architecture.
-Screen space ambient occlusion  | 80% | -
-Improved shadow quality         | 80% | -
+Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality codebase.
+Improved Shadowing         		| 80% | Shadow mapping improvements plus SSAO.
 Skeletal Animation              | 5% | -
-Font importing and rendering    | 0% | -
+Font importing and rendering    | 5% | -
 
 
 # Roadmap
