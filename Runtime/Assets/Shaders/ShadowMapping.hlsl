@@ -41,7 +41,7 @@ float2 get_shadow_offsets(float3 N, float3 L)
     return float2(offset_scale_N, min(2, offset_scale_L));
 }
 
-float DoShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float shadowMappingQuality, float4 pos, float bias, float3 normal, float3 lightDir)
+float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float shadowMappingQuality, float4 pos, float3 normal, float3 lightDir)
 {
 	// Re-homogenize position after interpolation
     pos.xyz /= pos.w;
@@ -56,9 +56,10 @@ float DoShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shad
 	pos.y = pos.y / -2.0f + 0.5f;
 
 	// Apply shadow map bias
-    pos.z -= bias;
-
-	//float2 normalOffset = get_shadow_offsets(normal, -lightDir);
+    //pos.z -= bias;
+	
+	//float2 normalOffset = get_shadow_offsets(normal, lightDir);
+	//pos.xyz -= normal * float3(normalOffset, 0.0f);
 	
 	float percentLit = 0.0f;
 	
@@ -66,10 +67,10 @@ float DoShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shad
 	if (shadowMappingQuality == 0.5f)
 	{
 		// Perform PCF filtering on a 4 x 4 texel neighborhood
-		[unroll(4)]
+		[unroll(6)]
 		for (float y = -1.5f; y <= 1.5f; ++y)
 		{
-			[unroll(4)]
+			[unroll(6)]
 			for (float x = -1.5f; x <= 1.5f; ++x)
 			{
 				percentLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + texOffset(shadowMapResolution, x,y), pos.z);	
@@ -101,13 +102,4 @@ float DoShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shad
 	}
 		
 	return percentLit;
-}
-
-float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float shadowMappingQuality, float4 pos, float bias, float3 normal, float3 lightDir)
-{
-	float cosTheta = saturate(dot(normal, lightDir));
-	float slopeScaledBias = tan(acos(cosTheta));
-	slopeScaledBias = clamp(slopeScaledBias, 0.0f, 0.003f);
-	
-	return DoShadowMapping(shadowMap, samplerState, shadowMapResolution, shadowMappingQuality, pos, slopeScaledBias, normal, lightDir);
 }

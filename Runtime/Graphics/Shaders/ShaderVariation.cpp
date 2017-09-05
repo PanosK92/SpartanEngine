@@ -19,13 +19,19 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES =============================
 #include "ShaderVariation.h"
-#include "../../Core/GUIDGenerator.h"
 #include "../../Logging/Log.h"
-#include "../../Core/Settings.h"
 #include "../../IO/StreamIO.h"
-//===================================
+#include "../../Core/GUIDGenerator.h"
+#include "../../Core/Settings.h"
+#include "../../Components/Transform.h"
+#include "../../Components/Camera.h"
+#include "../../Components/Light.h"
+#include "../Material.h"
+#include "../D3D11/D3D11ConstantBuffer.h"
+#include "../D3D11/D3D11Shader.h"
+//=======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -42,10 +48,6 @@ namespace Directus
 
 		// Shader
 		m_graphics = nullptr;
-		m_D3D11Shader = nullptr;
-		m_perObjectBuffer = nullptr;
-		m_materialBuffer = nullptr;
-		m_miscBuffer = nullptr;
 
 		m_hasAlbedoTexture = false;
 		m_hasRoughnessTexture = false;
@@ -185,10 +187,9 @@ namespace Directus
 		buffer->mLightViewProjection[2] = directionalLight->ComputeViewMatrix() * directionalLight->ComputeOrthographicProjectionMatrix(2);
 		buffer->shadowSplits = Vector4(directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), 0, 0);
 		buffer->lightDir = directionalLight->GetDirection();
-		buffer->shadowBias = directionalLight->GetBias();
 		buffer->shadowMapResolution = directionalLight->GetShadowCascadeResolution();
 		buffer->shadowMappingQuality = directionalLight->GetShadowTypeAsFloat();
-		buffer->padding = Vector2::Zero;
+		buffer->cameraPos = camera->g_transform->GetPosition();
 
 		m_miscBuffer->Unmap();
 		//========================================================================================
@@ -340,6 +341,7 @@ namespace Directus
 		m_D3D11Shader->Load(filePath);
 		m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
 		m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+		m_D3D11Shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_CLAMP, D3D11_COMPARISON_LESS_EQUAL);
 
 		// Matrix Buffer
 		m_perObjectBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);

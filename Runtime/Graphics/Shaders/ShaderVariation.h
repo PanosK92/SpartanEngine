@@ -21,22 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
-#include "../D3D11/D3D11Shader.h"
-#include "../../Math/Matrix.h"
-#include "../../Math/Vector2.h"
-#include "../../Math/Vector4.h"
-#include "../Material.h"
+//= INCLUDES ============================
+#include <memory>
 #include "../D3D11/D3D11GraphicsDevice.h"
-#include "../../Components/Light.h"
-#include "../../Components/Camera.h"
-#include "../D3D11/D3D11ConstantBuffer.h"
+#include "../../Resource/Resource.h"
+#include "../../Math/Vector2.h"
+#include "../../Math/Matrix.h"
 //=======================================
 
-#define NULL_SHADER_ID "-1";
+class ID3D11ShaderResourceView;
 
 namespace Directus
 {
+	class Light;
+	class Camera;
+	class Material;
+	class D3D11ConstantBuffer;
+	class D3D11Shader;
+
 	class ShaderVariation : public Resource
 	{
 	public:
@@ -110,10 +112,9 @@ namespace Directus
 			Math::Matrix mLightViewProjection[cascades];
 			Math::Vector4 shadowSplits;
 			Math::Vector3 lightDir;
-			float shadowBias;
 			float shadowMapResolution;
 			float shadowMappingQuality;
-			Math::Vector2 padding;
+			Math::Vector3 cameraPos;
 		};
 
 		struct PerMaterialBufferType
