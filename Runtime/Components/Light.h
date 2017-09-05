@@ -95,6 +95,7 @@ namespace Directus
 		float GetBias() { return m_bias; }
 
 		Math::Vector3 GetDirection();
+		void ClampRotation();
 
 		Math::Matrix ComputeViewMatrix();
 		Math::Matrix ComputeOrthographicProjectionMatrix(int cascade);

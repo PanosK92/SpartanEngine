@@ -60,6 +60,9 @@ namespace Directus
 				this->w = value;
 			}
 
+			Vector4::Vector4(const Vector3& value, float w);
+			Vector4::Vector4(const Vector3& value);
+
 			Vector4::~Vector4(){}
 
 			bool Vector4::operator==(const Vector4& b)

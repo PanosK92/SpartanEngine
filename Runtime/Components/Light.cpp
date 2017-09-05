@@ -49,7 +49,7 @@ namespace Directus
 		m_intensity = 2.0f;
 		m_angle = 0.5f; // about 30 degrees
 		m_color = Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_bias = 0.04f;
+		m_bias = 0.001f;
 		m_cascades = 3;
 		m_frustrum = make_shared<Frustrum>();
 		m_isDirty = true;
@@ -103,6 +103,11 @@ namespace Directus
 
 		if (!m_isDirty)
 			return;
+
+		// Used to prevent directional light
+		// from casting shadows form underneath
+		// the scene which can look weird
+		ClampRotation();
 
 		Camera* mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>();
 		m_frustrum->Construct(ComputeViewMatrix(), ComputeOrthographicProjectionMatrix(2), mainCamera->GetFarPlane());
@@ -161,8 +166,26 @@ namespace Directus
 		return g_transform->GetForward();
 	}
 
+	void Light::ClampRotation()
+	{
+		Vector3 rotation = g_transform->GetRotation().ToEulerAngles();
+		if (rotation.x <= 0.0f)
+		{
+			g_transform->SetRotation(Quaternion::FromEulerAngles(Vector3(179.0f, rotation.y, rotation.z)));
+		}
+		if (rotation.x >= 180.0f)
+		{
+			g_transform->SetRotation(Quaternion::FromEulerAngles(Vector3(1.0f, rotation.y, rotation.z)));
+		}
+	}
+
 	Matrix Light::ComputeViewMatrix()
 	{
+		// Used to prevent directional light
+		// from casting shadows form underneath
+		// the scene which can look weird
+		ClampRotation();
+
 		Vector3 lightDirection = GetDirection();
 		Vector3 position = lightDirection;
 		Vector3 lookAt = position + lightDirection;

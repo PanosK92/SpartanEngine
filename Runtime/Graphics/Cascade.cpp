@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Components/Camera.h"
 #include "../Core/Context.h"
-#include "../Math/Vector4.h"
 #include "D3D11/D3D11RenderTexture.h"
 //===================================
 
@@ -64,7 +63,7 @@ namespace Directus
 			extents = 20;
 
 		if (cascadeIndex == 1)
-			extents = 40;
+			extents = 45;
 
 		if (cascadeIndex == 2)
 			extents = 90;
@@ -106,7 +105,7 @@ namespace Directus
 
 		// Third cascade
 		if (cascadeIndex == 2)
-			return 0.9f;
+			return 0.87f;
 
 		return 0.0f;
 	}

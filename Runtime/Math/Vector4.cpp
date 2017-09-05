@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 #include "Vector4.h"
+#include "Vector3.h"
 #include "Matrix.h"
 //==================
 
@@ -33,6 +34,22 @@ namespace Directus
 	namespace Math
 	{
 		const Vector4 Vector4::Zero(0.0f, 0.0f, 0.0f, 0.0f);
+
+		Vector4::Vector4(const Vector3& value, float w)
+		{
+			this->x = value.x;
+			this->y = value.y;
+			this->z = value.z;
+			this->w = w;
+		}
+
+		Vector4::Vector4(const Vector3& value)
+		{
+			this->x = value.x;
+			this->y = value.y;
+			this->z = value.z;
+			this->w = 0.0f;
+		}
 
 		Vector4 Vector4::Transform(const Vector3& lhs, const Matrix& rhs)
 		{
