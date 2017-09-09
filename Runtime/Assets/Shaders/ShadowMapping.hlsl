@@ -1,19 +1,24 @@
-float2 texOffset(float shadowMapSize, int u, int v)
+//= DEFINES ======================
+#define PCF 2
+#define UnrollPCF (PCF * 2.0f) + 1
+//================================
+
+float2 texOffset(float shadowMapSize, int x, int y)
 {
-    return float2(u * 1.0f / shadowMapSize, v * 1.0f / shadowMapSize);
+    return float2(x * 1.0f / shadowMapSize, y * 1.0f / shadowMapSize);
 }
 
-float depthTest(Texture2D shadowMap, SamplerState samplerState, float2 uv, float compare)
+float depthTest(Texture2D shadowMap, SamplerState samplerState, float2 texCoords, float compare)
 {
-    float depth = shadowMap.Sample(samplerState, uv).r;
+    float depth = shadowMap.Sample(samplerState, texCoords).r;
     return step(compare, depth);
 }
 
-float sampleShadowMap(Texture2D shadowMap, SamplerState samplerState, float2 size, float2 uv, float compare)
+float sampleShadowMap(Texture2D shadowMap, SamplerState samplerState, float2 size, float2 texCoords, float compare)
 {
     float2 texelSize = float2(1.0f, 1.0f) / size;
-    float2 f = frac(uv * size + 0.5f);
-    float2 centroidUV = floor(uv * size + 0.5f) / size;
+    float2 f = frac(texCoords * size + 0.5f);
+    float2 centroidUV = floor(texCoords * size + 0.5f) / size;
 
     float lb = depthTest(shadowMap, samplerState, centroidUV + texelSize * float2(0.0f, 0.0f), compare);
     float lt = depthTest(shadowMap, samplerState, centroidUV + texelSize * float2(0.0f, 1.0f), compare);
@@ -26,19 +31,29 @@ float sampleShadowMap(Texture2D shadowMap, SamplerState samplerState, float2 siz
     return c;
 }
 
+// Performs PCF filtering on a 4 x 4 texel neighborhood
+float sampleShadowMapPCF(Texture2D shadowMap, SamplerState samplerState, float2 size, float2 texCoords, float compare)
+{
+	float amountLit = 0.0f;
+	float count = 0.0f;
+	[unroll(UnrollPCF)]
+	for (float y = -PCF; y <= PCF; ++y)
+	{
+		[unroll(UnrollPCF)]
+		for (float x = -PCF; x <= PCF; ++x)
+		{
+			amountLit += sampleShadowMap(shadowMap, samplerState, size, texCoords + texOffset(size, x, y), compare);
+			count++;			
+		}
+	}
+	return amountLit /= count;
+}
+
 float random(float2 seed2) 
 {
 	float4 seed4 = float4(seed2.x, seed2.y, seed2.y, 1.0f);
 	float dot_product = dot(seed4, float4(12.9898f, 78.233f, 45.164f, 94.673f));
     return frac(sin(dot_product) * 43758.5453);
-}
-
-float2 get_shadow_offsets(float3 N, float3 L) 
-{
-    float cos_alpha = saturate(dot(N, L));
-    float offset_scale_N = sqrt(1 - cos_alpha*cos_alpha); // sin(acos(L·N))
-    float offset_scale_L = offset_scale_N / cos_alpha;    // tan(acos(L·N))
-    return float2(offset_scale_N, min(2, offset_scale_L));
 }
 
 float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float shadowMappingQuality, float4 pos, float3 normal, float3 lightDir)
@@ -58,25 +73,13 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	// Apply shadow map bias
     //pos.z -= bias;
 	
-	//float2 normalOffset = get_shadow_offsets(normal, lightDir);
-	//pos.xyz -= normal * float3(normalOffset, 0.0f);
-	
-	float percentLit = 0.0f;
+	float amountLit = 0.0f;
 	
 	// Hard shadows (0.5f) --> PCF + Interpolation
 	if (shadowMappingQuality == 0.5f)
 	{
 		// Perform PCF filtering on a 4 x 4 texel neighborhood
-		[unroll(6)]
-		for (float y = -1.5f; y <= 1.5f; ++y)
-		{
-			[unroll(6)]
-			for (float x = -1.5f; x <= 1.5f; ++x)
-			{
-				percentLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + texOffset(shadowMapResolution, x,y), pos.z);	
-			}
-		}
-		percentLit /= 16.0f;
+		amountLit = sampleShadowMapPCF(shadowMap, samplerState, shadowMapResolution, pos.xy, pos.z);
 	}
 	// Soft shadows (1.0f) --> Interpolation + Stratified Poisson Sampling
 	else
@@ -96,10 +99,10 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 		for (uint i = 0; i < samples; i++)
 		{
 			uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-			percentLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + (poissonDisk[index] / packing), pos.z);
+			amountLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + (poissonDisk[index] / packing), pos.z);
 		}	
-		percentLit /= (float)samples;
+		amountLit /= (float)samples;
 	}
 		
-	return percentLit;
+	return amountLit;
 }

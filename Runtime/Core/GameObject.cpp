@@ -69,7 +69,7 @@ namespace Directus
 		}
 		m_components.clear();
 
-		m_ID.clear();
+		m_ID = NOT_ASSIGNED_HASH;
 		m_name.clear();
 		m_isActive = true;
 		m_hierarchyVisibility = true;
@@ -152,7 +152,7 @@ namespace Directus
 		StreamIO::WriteBool(m_isPrefab);
 		StreamIO::WriteBool(m_isActive);
 		StreamIO::WriteBool(m_hierarchyVisibility);
-		StreamIO::WriteSTR(m_ID);
+		StreamIO::WriteUInt(m_ID);
 		StreamIO::WriteSTR(m_name);		
 		//=============================================
 
@@ -161,7 +161,7 @@ namespace Directus
 		for (const auto& component : m_components)
 		{
 			StreamIO::WriteSTR(component->g_typeStr);
-			StreamIO::WriteSTR(component->g_ID);
+			StreamIO::WriteUInt(component->g_ID);
 		}
 
 		for (const auto& component : m_components)
@@ -179,7 +179,7 @@ namespace Directus
 		// 2nd - children IDs
 		for (const auto& child : children)
 		{
-			StreamIO::WriteSTR(child->g_ID);
+			StreamIO::WriteUInt(child->g_ID);
 		}
 
 		// 3rd - children
@@ -204,7 +204,7 @@ namespace Directus
 		m_isPrefab = StreamIO::ReadBool();
 		m_isActive = StreamIO::ReadBool();
 		m_hierarchyVisibility = StreamIO::ReadBool();
-		m_ID = StreamIO::ReadSTR();
+		m_ID = StreamIO::ReadUInt();
 		m_name = StreamIO::ReadSTR();
 		//=============================================
 
@@ -213,7 +213,7 @@ namespace Directus
 		for (int i = 0; i < componentCount; i++)
 		{
 			string type = StreamIO::ReadSTR(); // load component's type
-			string id = StreamIO::ReadSTR(); // load component's id
+			unsigned int id = StreamIO::ReadUInt(); // load component's id
 
 			Component* component = AddComponentBasedOnType(type);
 			component->g_ID = id;
@@ -243,7 +243,7 @@ namespace Directus
 		for (int i = 0; i < childrenCount; i++)
 		{
 			weakGameObj child = scene->CreateGameObject();
-			child._Get()->SetID(StreamIO::ReadSTR());
+			child._Get()->SetID(StreamIO::ReadUInt());
 			children.push_back(child);
 		}
 
@@ -260,7 +260,7 @@ namespace Directus
 		}
 	}
 
-	void GameObject::RemoveComponentByID(const string& id)
+	void GameObject::RemoveComponentByID(unsigned int id)
 	{
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{

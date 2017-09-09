@@ -85,7 +85,7 @@ namespace Directus
 		}
 
 		//= PROPERTIES ================================
-		std::string g_ID;	
+		unsigned int g_ID;
 		std::string g_typeStr;
 		bool g_enabled;
 		// The GameObject the component is attached to

@@ -1,6 +1,6 @@
-static const float strength = 300.0f;
+static const float strength = 100.0f;
 static const float2 offset  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
-static const float falloff  = 0.0000000f;
+static const float falloff  = 0.00001f;
 static const float radius = 0.001f;
 static const float discardDistance = 0.0001f;
 
@@ -39,23 +39,23 @@ static const float3 AO_SAMPLES[26] =
 };
 
 // Returns linear depth
-float GetDepth(float2 uv)
+float GetDepth(float2 texCoord)
 {
-	float depth =  texDepth.Sample(samplerPoint, uv).r;
+	float depth =  texDepth.Sample(samplerPoint, texCoord).r;
 	return LinerizeDepth(depth, farPlane, nearPlane);
 }
 
 // Returns normal
-float3 GetNormal(float2 uv)
+float3 GetNormal(float2 texCoord)
 {
-	float3 normal = texNormal.Sample(samplerAniso, uv).rgb;
+	float3 normal = texNormal.Sample(samplerAniso, texCoord).rgb;
 	return normalize(UnpackNormal(normal));
 }
 
 // Returns a random normal
-float3 GetRandomNormal(float2 uv)
+float3 GetRandomNormal(float2 texCoord)
 {
-	float3 randNormal = texNoise.Sample(samplerAniso, uv * offset).rgb;
+	float3 randNormal = texNoise.Sample(samplerAniso, texCoord * offset).rgb;
 	return normalize(UnpackNormal(randNormal));
 }
 
@@ -65,8 +65,9 @@ float SSAO(float2 texCoord)
     float3 normal = GetNormal(texCoord);
     float depth = GetDepth(texCoord);
 	float radius_depth = radius / depth;
-
 	float occlusion = 0.0f;
+	
+	[unroll(NUM_SAMPLES)]
     for( int i = 0; i < NUM_SAMPLES; ++i )
     {
 		float3 ray = radius_depth * reflect(AO_SAMPLES[i], randNormal);
@@ -77,7 +78,7 @@ float SSAO(float2 texCoord)
 		float depthDiff = depth - sampledDepth;
 			
 		float rangeCheck = smoothstep(0.0f, 1.0f, discardDistance / abs(depthDiff));
-        occlusion += step(falloff, depthDiff) * (1.0 - dot(sampledNormal, normal)) * (1.0f - smoothstep(falloff, strength, depthDiff)) * rangeCheck;
+        occlusion += step(falloff, depthDiff) * (1.0f - dot(sampledNormal, normal)) * (1.0f - smoothstep(falloff, strength, depthDiff)) * rangeCheck;
     }
 
     occlusion = 1.0f - (occlusion / NUM_SAMPLES);

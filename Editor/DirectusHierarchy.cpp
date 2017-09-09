@@ -135,7 +135,7 @@ void DirectusHierarchy::mouseMoveEvent(QMouseEvent* event)
     QDrag* drag = new QDrag(this);
     QMimeData* mimeData = new QMimeData;
 
-    QString gameObjectID = QString::fromStdString(draggedGameObject.lock()->GetID());
+    QString gameObjectID = QString::fromStdString(to_string(draggedGameObject._Get()->GetID()));
     mimeData->setText(gameObjectID);
     drag->setMimeData(mimeData);
 
@@ -202,7 +202,7 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     //================================================================
 
     //= DROP CASE: GAMEOBJECT (Assume text is a GameObject ID) =======
-    auto draggedGameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(text).lock();
+    auto draggedGameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(stoi(text))._Get();
     QTreeWidgetItem* hoveredItem = this->itemAt(event->pos());
     auto dropTargetGameObj = ToGameObject(hoveredItem).lock();
 
@@ -286,10 +286,9 @@ weak_ptr<GameObject> DirectusHierarchy::ToGameObject(QTreeWidgetItem* treeItem)
         return weak_ptr<GameObject>();
 
     QVariant data = treeItem->data(0, Qt::UserRole);
-    string gameObjID = data.value<QString>().toStdString();
-    auto gameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjID);
-
-    return gameObj;
+    string idStr = data.value<QString>().toStdString();
+    unsigned int id = GUIDGenerator::ToUInt(idStr);
+    return m_context->GetSubsystem<Scene>()->GetGameObjectByID(id);
 }
 
 // Converts a GameObject to a QTreeWidgetItem
@@ -305,7 +304,7 @@ QTreeWidgetItem* DirectusHierarchy::ToQTreeWidgetItem(weak_ptr<GameObject> gameO
     // Create a tree item
     QTreeWidgetItem* item = isRoot ? new QTreeWidgetItem(this) : new QTreeWidgetItem();
     item->setText(0, name);
-    item->setData(0, Qt::UserRole, QVariant(QString::fromStdString(gameObj.lock()->GetID())));
+    item->setData(0, Qt::UserRole, QVariant(QString::fromStdString(to_string(gameObj._Get()->GetID()))));
 
     //= About Qt::UserRole ==============================================================
     // Constant     -> Qt::UserRole

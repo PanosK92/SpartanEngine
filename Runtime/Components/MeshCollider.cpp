@@ -83,13 +83,13 @@ namespace Directus
 	void MeshCollider::Serialize()
 	{
 		StreamIO::WriteBool(m_isConvex);
-		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh.lock()->GetID() : (string)NOT_ASSIGNED);
+		StreamIO::WriteUInt(!m_mesh.expired() ? m_mesh.lock()->GetID() : NOT_ASSIGNED_HASH);
 	}
 
 	void MeshCollider::Deserialize()
 	{
 		m_isConvex = StreamIO::ReadBool();
-		string meshID = StreamIO::ReadSTR();
+		unsigned int meshID = StreamIO::ReadUInt();
 
 		auto models = g_context->GetSubsystem<ResourceManager>()->GetResourcesByType<Model>();
 		for (const auto& model : models)

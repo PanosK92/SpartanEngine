@@ -188,13 +188,13 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	int cascadeIndex = 0;
 	if (receiveShadows == 1.0f && shadowMappingQuality != 0.0f)
 	{
-		float z = 1.0f - LinerizeDepth(0.3f, 1000.0f, depthCS);
+		float z = 1.0f - LinerizeDepth(nearPlane, farPlane, depthCS);
 
 		cascadeIndex = 0; // assume 1st cascade as default
 		cascadeIndex = step(shadowSplits.x, z); // test 2nd cascade
 		cascadeIndex = lerp(cascadeIndex, 2, step(shadowSplits.y, z)); // test 3rd cascade
 		
-		float cb_depthBias = 25.0f;
+		float cb_depthBias = 2.0f;
 		float cb_normalOffset = 0.1f;
 		float2 shadowTexel = float2(1.0f / shadowMapResolution, 1.0f / shadowMapResolution);
 		float cosAngle = saturate(1.0f - dot(lightDir, normal));

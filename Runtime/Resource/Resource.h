@@ -48,8 +48,8 @@ namespace Directus
 	public:
 		virtual ~Resource() {}
 
-		std::string& GetResourceID() { return m_resourceID; }
-		void SetResourceID(const std::string& ID) { m_resourceID = ID; }
+		unsigned int GetResourceID() { return m_resourceID; }
+		void SetResourceID(unsigned int ID) { m_resourceID = ID; }
 
 		ResourceType GetResourceType() { return m_resourceType; }
 		void SetResourceType(ResourceType type) { m_resourceType = type; }
@@ -68,7 +68,7 @@ namespace Directus
 		virtual bool LoadFromFile(const std::string& filePath) = 0;
 
 	protected:
-		std::string m_resourceID = NOT_ASSIGNED;	
+		unsigned int m_resourceID = NOT_ASSIGNED_HASH;
 		std::string m_resourceName = NOT_ASSIGNED;
 		std::string m_resourceFilePath = NOT_ASSIGNED;
 		ResourceType m_resourceType = Unknown_Resource;

@@ -39,13 +39,13 @@ namespace Directus
 		void Serialize();
 		void Deserialize();
 
-		const std::string& GetID() { return m_id; }
+		unsigned int GetID() { return m_id; }
 
-		const std::string& GetGameObjectID() { return m_gameObjID; }
-		void SetGameObjectID(const std::string& gameObjID) { m_gameObjID = gameObjID; }
+		unsigned int GetGameObjectID() { return m_gameObjID; }
+		void SetGameObjectID(unsigned int gameObjID) { m_gameObjID = gameObjID; }
 
-		const std::string& GetModelID() { return m_modelID; }
-		void SetModelID(const std::string& modelID) { m_modelID = modelID; }
+		unsigned int GetModelID() { return m_modelID; }
+		void SetModelID(unsigned int modelID) { m_modelID = modelID; }
 
 		const std::string& GetName() { return m_name; }
 		void SetName(const std::string& name) { m_name = name; }
@@ -81,9 +81,9 @@ namespace Directus
 		static void SetScale(Mesh* meshData, float scale);
 		//================================================
 
-		std::string m_id;
-		std::string m_gameObjID;
-		std::string m_modelID;
+		unsigned int m_id;
+		unsigned int m_gameObjID;
+		unsigned int m_modelID;
 		std::string m_name;
 
 		std::vector<VertexPosTexNorTan> m_vertices;

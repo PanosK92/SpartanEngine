@@ -56,8 +56,8 @@ namespace Directus
 		const std::string& GetName() { return m_name; }
 		void SetName(const std::string& name) { m_name = name; }
 
-		const std::string& GetID() { return m_ID; }
-		void SetID(const std::string& ID) { m_ID = ID; }
+		unsigned int GetID() { return m_ID; }
+		void SetID(unsigned int ID) { m_ID = ID; }
 
 		bool IsActive() { return m_isActive; }
 		void SetActive(bool active) { m_isActive = active; }
@@ -163,7 +163,7 @@ namespace Directus
 			}
 		}
 
-		void RemoveComponentByID(const std::string& id);
+		void RemoveComponentByID(unsigned int id);
 		//======================================================================================================
 
 		// Direct access to performance critical components (not safe)
@@ -172,7 +172,7 @@ namespace Directus
 		MeshRenderer* GetMeshRenderer() { return m_meshRenderer; }
 
 	private:
-		std::string m_ID;
+		unsigned int m_ID;
 		std::string m_name;
 		bool m_isActive;
 		bool m_isPrefab;

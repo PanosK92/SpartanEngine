@@ -19,9 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
-#include "DebugShader.h"
-//=============================
+//= INCLUDES ============================
+#include "LineShader.h"
+#include "../D3D11/D3D11Shader.h"
+#include "../D3D11/D3D11ConstantBuffer.h"
+//=======================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -30,18 +32,17 @@ using namespace std;
 
 namespace Directus
 {
-	DebugShader::DebugShader()
+	LineShader::LineShader()
 	{
-		m_miscBuffer = nullptr;
-		m_shader = nullptr;
+		m_graphics = nullptr;
 	}
 
-	DebugShader::~DebugShader()
+	LineShader::~LineShader()
 	{
 
 	}
 
-	void DebugShader::Load(const string& filePath, Graphics* graphics)
+	void LineShader::Load(const string& filePath, Graphics* graphics)
 	{
 		m_graphics = graphics;
 
@@ -56,16 +57,12 @@ namespace Directus
 		m_miscBuffer->Create(sizeof(DefaultBuffer));
 	}
 
-	void DebugShader::Render(int vertexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap)
+	void LineShader::Set()
 	{
-		// Set the shader parameters that it will use for rendering.
-		SetShaderBuffers(worldMatrix, viewMatrix, projectionMatrix, depthMap);
-
-		// Now render the prepared buffers with the shader.
-		RenderShader(vertexCount);
+		m_shader->Set();
 	}
 
-	void DebugShader::SetShaderBuffers(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap)
+	void LineShader::SetBuffer(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap)
 	{
 		// get a pointer of the buffer
 		DefaultBuffer* buffer = static_cast<DefaultBuffer*>(m_miscBuffer->Map());
@@ -81,9 +78,8 @@ namespace Directus
 		m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &depthMap);
 	}
 
-	void DebugShader::RenderShader(unsigned int vertexCount)
+	void LineShader::Render(int vertexCount)
 	{
-		m_shader->Set(); // set shader
-		m_graphics->GetDeviceContext()->Draw(vertexCount, 0); // render stuff
+		m_graphics->GetDeviceContext()->Draw(vertexCount, 0); 
 	}
 }

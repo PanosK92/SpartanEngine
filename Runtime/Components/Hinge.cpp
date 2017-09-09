@@ -95,7 +95,7 @@ namespace Directus
 		{
 			if (!m_connectedGameObject.expired())
 			{
-				StreamIO::WriteSTR(m_connectedGameObject._Get()->GetID());
+				StreamIO::WriteInt(m_connectedGameObject._Get()->GetID());
 			}
 		}
 
@@ -111,7 +111,7 @@ namespace Directus
 		if (m_isConnected)
 		{
 			// load gameobject
-			std::string gameObjectID = StreamIO::ReadSTR();
+			std::size_t gameObjectID = StreamIO::ReadInt();
 			m_connectedGameObject = g_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
 		}
 

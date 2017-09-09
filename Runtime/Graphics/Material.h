@@ -86,8 +86,8 @@ namespace Directus
 		//=============================================================================
 
 		//= PROPERTIES ================================================================	
-		std::string GetModelID() { return m_modelID; }
-		void SetModelID(const std::string& ID) { m_modelID = ID; }
+		unsigned int GetModelID() { return m_modelID; }
+		void SetModelID(unsigned int ID) { m_modelID = ID; }
 
 		CullMode GetCullMode() { return m_cullMode; }
 		void SetCullMode(CullMode cullMode) { m_cullMode = cullMode; }
@@ -147,7 +147,7 @@ namespace Directus
 		// Type, Texture, FilePath
 		std::map<TextureType, std::pair<std::weak_ptr<Texture>, std::string>> m_textures;
 
-		std::string m_modelID;
+		unsigned int m_modelID;
 		CullMode m_cullMode;
 		float m_opacity;
 		bool m_alphaBlending;

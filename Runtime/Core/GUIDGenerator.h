@@ -33,6 +33,10 @@ namespace Directus
 	class DLL_API GUIDGenerator
 	{
 	public:
-		static std::string Generate();
+		static unsigned int Generate();
+		static std::string GenerateAsStr();
+
+		static std::string ToStr(unsigned int guid);
+		static unsigned int ToUInt(const std::string& guid);
 	};
 }

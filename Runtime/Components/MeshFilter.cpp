@@ -83,16 +83,16 @@ namespace Directus
 	{
 		StreamIO::WriteInt((int)m_meshType);
 		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetName() : (string)NOT_ASSIGNED);
-		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetID() : (string)NOT_ASSIGNED);
-		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetModelID() : (string)NOT_ASSIGNED);
+		StreamIO::WriteUInt(!m_mesh.expired() ? m_mesh._Get()->GetID() : NOT_ASSIGNED_HASH);
+		StreamIO::WriteUInt(!m_mesh.expired() ? m_mesh._Get()->GetModelID() : NOT_ASSIGNED_HASH);
 	}
 
 	void MeshFilter::Deserialize()
 	{
 		m_meshType = (MeshType)StreamIO::ReadInt();
 		string meshName = StreamIO::ReadSTR();
-		string meshID = StreamIO::ReadSTR();
-		string modelID = StreamIO::ReadSTR();
+		unsigned int meshID = StreamIO::ReadUInt();
+		unsigned int modelID = StreamIO::ReadUInt();
 
 		// If the mesh is a engine constructed primitive
 		if (m_meshType != Imported)

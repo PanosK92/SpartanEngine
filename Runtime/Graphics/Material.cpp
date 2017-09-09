@@ -45,7 +45,7 @@ namespace Directus
 
 		// Material
 		m_context = context;
-		m_modelID = NOT_ASSIGNED;
+		m_modelID = NOT_ASSIGNED_HASH;
 		m_cullMode = CullBack;
 		m_opacity = 1.0f;
 		m_alphaBlending = false;
@@ -88,7 +88,7 @@ namespace Directus
 
 		XmlDocument::Create();
 		XmlDocument::AddNode("Material");
-		XmlDocument::AddAttribute("Material", "ID", m_resourceID);
+		XmlDocument::AddAttribute("Material", "ID", to_string(m_resourceID));
 		XmlDocument::AddAttribute("Material", "Name", m_resourceName);
 		XmlDocument::AddAttribute("Material", "Path", m_resourceFilePath);
 		XmlDocument::AddAttribute("Material", "Model_ID", m_modelID);
@@ -145,7 +145,7 @@ namespace Directus
 		if (!XmlDocument::Load(m_resourceFilePath))
 			return false;
 
-		XmlDocument::GetAttribute("Material", "ID", m_resourceID);
+		m_resourceID = XmlDocument::GetAttributeAsUInt("Material", "ID");
 		XmlDocument::GetAttribute("Material", "Name", m_resourceName);
 		XmlDocument::GetAttribute("Material", "Path", m_resourceFilePath);
 		XmlDocument::GetAttribute("Material", "Model_ID", m_modelID);
@@ -355,7 +355,7 @@ namespace Directus
 		// Create and initialize shader
 		auto shader = make_shared<ShaderVariation>();
 		shader->SetResourceFilePath(shaderDirectory + "GBuffer.hlsl");
-		shader->SetResourceName(shader->GetResourceName() + "_" + shader->GetResourceID());
+		shader->SetResourceName(shader->GetResourceName() + "_" + to_string(shader->GetResourceID()));
 		shader->Initialize(m_context, albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap);
 
 		// Add the shader to the pool and return it

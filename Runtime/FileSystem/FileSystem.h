@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=========================
 
 #define NOT_ASSIGNED "N/A"
+#define NOT_ASSIGNED_HASH -1
 
 //= METADATA ===============================
 #define METADATA_EXTENSION ".xml"

@@ -63,6 +63,7 @@ namespace Directus
 		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, const std::string& value);
 		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, bool value);
 		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, int value);
+		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, unsigned int value);
 		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, float value);
 		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, double value);
 		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector2& value);
@@ -73,12 +74,14 @@ namespace Directus
 		//= GET ATTRIBUTE ===================================================================================
 		static bool GetAttribute(const std::string& nodeName, const char* attributeName, std::string& value);
 		static bool GetAttribute(const std::string& nodeName, const char* attributeName, int& value);
+		static bool GetAttribute(const std::string& nodeName, const char* attributeName, unsigned int& value);
 		static bool GetAttribute(const std::string& nodeName, const char* attributeName, bool& value);
 		static bool GetAttribute(const std::string& nodeName, const char* attributeName, float& value);
 		static bool GetAttribute(const std::string& nodeName, const char* attributeName, double& value);
 
 		static std::string GetAttributeAsStr(const std::string& nodeName, const char* attributeName);
 		static int GetAttributeAsInt(const std::string& nodeName, const char* attributeName);
+		static unsigned int GetAttributeAsUInt(const std::string& nodeName, const char* attributeName);
 		static Math::Vector2 GetAttributeAsVector2(const std::string& nodeName, const char* attributeName);
 		static Math::Vector3 GetAttributeAsVector3(const std::string& nodeName, const char* attributeName);
 		static Math::Vector4 GetAttributeAsVector4(const std::string& nodeName, const char* attributeName);

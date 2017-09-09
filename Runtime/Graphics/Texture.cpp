@@ -184,7 +184,7 @@ namespace Directus
 		if (!XmlDocument::Load(filePath))
 			return false;
 
-		XmlDocument::GetAttribute("Texture", "ID", m_resourceID);
+		m_resourceID = XmlDocument::GetAttributeAsUInt("Texture", "ID");
 		XmlDocument::GetAttribute("Texture", "Name", m_resourceName);
 		XmlDocument::GetAttribute("Texture", "Path", m_resourceFilePath);
 		XmlDocument::GetAttribute("Texture", "Width", m_width);

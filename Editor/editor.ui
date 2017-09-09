@@ -3369,6 +3369,7 @@ QSplitter::handle:vertical
    <extends>QTreeWidget</extends>
    <header>DirectusHierarchy.h</header>
    <slots>
+    <signal>GameObjectSelected(Directus::GameObject*)</signal>
     <slot>ShowOpenSceneDialog()</slot>
     <slot>SaveScene()</slot>
     <slot>ShowSaveSceneAsDialog()</slot>

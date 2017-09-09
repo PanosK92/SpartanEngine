@@ -65,7 +65,7 @@ namespace Directus
 		void SetMaterialByType(MaterialType type);
 
 		// Sets a material based on it's ID
-		std::weak_ptr<Material> SetMaterialByID(const std::string& ID);
+		std::weak_ptr<Material> SetMaterialByID(unsigned int ID);
 
 		std::weak_ptr<Material>& GetMaterial() { return  m_material; }
 		bool HasMaterial() { return GetMaterial().expired() ? false : true; }
