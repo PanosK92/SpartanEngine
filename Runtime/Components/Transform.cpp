@@ -82,7 +82,7 @@ namespace Directus
 		StreamIO::WriteQuaternion(m_rotationLocal);
 		StreamIO::WriteVector3(m_scaleLocal);
 		StreamIO::WriteVector3(m_lookAt);
-		StreamIO::WriteSTR(m_parent ? m_parent->GetGameObject()._Get()->GetID() : NOT_ASSIGNED);
+		StreamIO::WriteUInt(m_parent ? m_parent->GetGameObject()._Get()->GetID() : NOT_ASSIGNED_HASH);
 	}
 
 	void Transform::Deserialize()
@@ -91,10 +91,9 @@ namespace Directus
 		m_rotationLocal = StreamIO::ReadQuaternion();
 		m_scaleLocal = StreamIO::ReadVector3();
 		m_lookAt = StreamIO::ReadVector3();
+		unsigned int parentGameObjectID = StreamIO::ReadUInt();
 
-		// get parent transform
-		string parentGameObjectID = StreamIO::ReadSTR();
-		if (parentGameObjectID != NOT_ASSIGNED)
+		if (parentGameObjectID != NOT_ASSIGNED_HASH)
 		{
 			auto parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
 			if (!parent.expired())

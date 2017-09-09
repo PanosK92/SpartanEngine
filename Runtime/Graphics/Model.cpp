@@ -102,7 +102,7 @@ namespace Directus
 		if (!StreamIO::StartWriting(savePath))
 			return false;
 
-		StreamIO::WriteSTR(m_resourceID);
+		StreamIO::WriteInt(m_resourceID);
 		StreamIO::WriteSTR(m_resourceName);
 		StreamIO::WriteSTR(m_resourceFilePath);
 		StreamIO::WriteFloat(m_normalizedScale);
@@ -119,7 +119,7 @@ namespace Directus
 	}
 	//============================================================================================
 
-	weak_ptr<Mesh> Model::AddMeshAsNewResource(const string& gameObjID, const string& name, vector<VertexPosTexNorTan> vertices, vector<unsigned int> indices)
+	weak_ptr<Mesh> Model::AddMeshAsNewResource(unsigned int gameObjID, const string& name, vector<VertexPosTexNorTan> vertices, vector<unsigned int> indices)
 	{
 		// Create a mesh
 		auto mesh = make_shared<Mesh>();
@@ -185,7 +185,7 @@ namespace Directus
 		return weakAnim;
 	}
 
-	weak_ptr<Mesh> Model::GetMeshByID(const string& id)
+	weak_ptr<Mesh> Model::GetMeshByID(unsigned int id)
 	{
 		for (const auto& mesh : m_meshes)
 		{
@@ -231,7 +231,7 @@ namespace Directus
 		if (!StreamIO::StartReading(filePath))
 			return false;
 
-		m_resourceID = StreamIO::ReadSTR();
+		m_resourceID = StreamIO::ReadInt();
 		m_resourceName = StreamIO::ReadSTR();
 		m_resourceFilePath = StreamIO::ReadSTR();
 		m_normalizedScale = StreamIO::ReadFloat();

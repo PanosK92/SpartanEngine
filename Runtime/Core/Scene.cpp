@@ -169,7 +169,7 @@ namespace Directus
 		// 2nd - GameObject IDs
 		for (const auto& root : rootGameObjects)
 		{
-			StreamIO::WriteSTR(root._Get()->GetID());
+			StreamIO::WriteInt(root._Get()->GetID());
 		}
 
 		// 3rd - GameObjects
@@ -242,7 +242,7 @@ namespace Directus
 		for (int i = 0; i < rootGameObjectCount; i++)
 		{
 			auto gameObj = CreateGameObject().lock();
-			gameObj->SetID(StreamIO::ReadSTR());
+			gameObj->SetID(StreamIO::ReadInt());
 		}
 
 		// 3rd - GameObjects
@@ -298,7 +298,7 @@ namespace Directus
 		return weakGameObj();
 	}
 
-	weakGameObj Scene::GetGameObjectByID(const string& ID)
+	weakGameObj Scene::GetGameObjectByID(unsigned int ID)
 	{
 		for (const auto& gameObject : m_gameObjects)
 		{

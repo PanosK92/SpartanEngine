@@ -44,7 +44,7 @@ namespace Directus
 	class FullScreenQuad;
 	class DeferredShader;
 	class DepthShader;
-	class DebugShader;
+	class LineShader;
 	class PostProcessShader;
 	class Texture;
 	class ResourceManager;
@@ -128,7 +128,7 @@ namespace Directus
 		//= SHADERS ==========================================
 		std::shared_ptr<DeferredShader> m_shaderDeferred;
 		std::shared_ptr<DepthShader> m_shaderDepth;
-		std::shared_ptr<DebugShader> m_shaderDebug;
+		std::shared_ptr<LineShader> m_shaderLine;
 		std::shared_ptr<PostProcessShader> m_shaderFXAA;
 		std::shared_ptr<PostProcessShader> m_shaderSharpening;
 		std::shared_ptr<PostProcessShader> m_shaderBlur;

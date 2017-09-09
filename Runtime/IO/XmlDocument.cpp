@@ -114,6 +114,11 @@ namespace Directus
 		return AddAttribute(nodeName, attributeName, to_string(value));
 	}
 
+	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, unsigned int value)
+	{
+		return AddAttribute(nodeName, attributeName, to_string(value));
+	}
+
 	bool XmlDocument::AddAttribute(const string& nodeName, const string& attributeName, float value)
 	{
 		return AddAttribute(nodeName, attributeName, to_string(value));
@@ -162,6 +167,19 @@ namespace Directus
 
 		// Get value
 		value = attribute.as_int();
+
+		return true;
+	}
+
+	bool XmlDocument::GetAttribute(const string& nodeName, const char* attributeName, unsigned int& value)
+	{
+		xml_attribute attribute = GetAttribute(nodeName, attributeName);
+
+		if (!attribute)
+			return false;
+
+		// Get value
+		value = attribute.as_uint();
 
 		return true;
 	}
@@ -216,6 +234,14 @@ namespace Directus
 	int XmlDocument::GetAttributeAsInt(const string& nodeName, const char* attributeName)
 	{
 		int value;
+		GetAttribute(nodeName, attributeName, value);
+
+		return value;
+	}
+
+	unsigned int XmlDocument::GetAttributeAsUInt(const string& nodeName, const char* attributeName)
+	{
+		unsigned int value;
 		GetAttribute(nodeName, attributeName, value);
 
 		return value;

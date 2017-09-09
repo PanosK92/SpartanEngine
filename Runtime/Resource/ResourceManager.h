@@ -94,7 +94,7 @@ namespace Directus
 
 		// Returns cached resource by ID
 		template <class T>
-		std::weak_ptr<T> GetResourceByID(const std::string& ID)
+		std::weak_ptr<T> GetResourceByID(const std::size_t ID)
 		{
 			return ToDerivedWeak<T>(m_resourceCache->GetByID(ID));
 		}

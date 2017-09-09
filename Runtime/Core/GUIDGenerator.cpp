@@ -36,7 +36,13 @@ using namespace std;
 
 namespace Directus
 {
-	string GUIDGenerator::Generate()
+	unsigned int GUIDGenerator::Generate()
+	{
+		hash<string> hasher;
+		return hasher(GenerateAsStr());
+	}
+
+	string GUIDGenerator::GenerateAsStr()
 	{
 		string guidString = "N/A";
 		GUID guid;
@@ -60,5 +66,19 @@ namespace Directus
 		}
 
 		return guidString;
+	}
+
+	string GUIDGenerator::ToStr(unsigned int guid)
+	{
+		return to_string(guid);
+	}
+
+	unsigned int GUIDGenerator::ToUInt(const string& guid)
+	{
+		stringstream sstream(guid);
+		unsigned int guidSizeT;
+		sstream >> guidSizeT;
+
+		return guidSizeT;
 	}
 }

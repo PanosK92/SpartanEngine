@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FullScreenQuad.h"
 #include "Shaders/ShaderVariation.h"
 #include "Shaders/PostProcessShader.h"
-#include "Shaders/DebugShader.h"
+#include "Shaders/LineShader.h"
 #include "Shaders/DepthShader.h"
 #include "Shaders/DeferredShader.h"
 #include "D3D11/D3D11RenderTexture.h"
@@ -107,8 +107,8 @@ namespace Directus
 		m_shaderDepth = make_shared<DepthShader>();
 		m_shaderDepth->Load(shaderDirectory + "Depth.hlsl", m_graphics);
 
-		m_shaderDebug = make_shared<DebugShader>();
-		m_shaderDebug->Load(shaderDirectory + "Debug.hlsl", m_graphics);
+		m_shaderLine = make_shared<LineShader>();
+		m_shaderLine->Load(shaderDirectory + "Line.hlsl", m_graphics);
 
 		m_shaderFXAA = make_shared<PostProcessShader>();
 		m_shaderFXAA->Load(shaderDirectory + "PostProcess.hlsl", "FXAA", m_graphics);
@@ -553,7 +553,7 @@ namespace Directus
 		// Set Ping texture as render target
 		m_renderTexPong->SetAsRenderTarget();
 		m_renderTexPong->Clear(GetClearColor());
-	
+
 		// fxaa pass
 		m_shaderFXAA->Render(
 			m_fullScreenQuad->GetIndexCount(),
@@ -587,34 +587,32 @@ namespace Directus
 
 		m_lineRenderer->ClearVertices();
 
-		// // Pass debug info from bullet physics
+		//= PHYSICS ========================================================================================
 		m_context->GetSubsystem<Physics>()->DebugDraw();
 		if (m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->IsDirty())
 		{
 			m_lineRenderer->AddLines(m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->GetLines());
 		}
+		//==================================================================================================
 
-		// Pass the picking ray
+		//= PICKING RAY ====================================
 		m_lineRenderer->AddLines(m_camera->GetPickingRay());
+		//==================================================
 
-		// Pass bounding spheres
-		for (const auto& gameObject : m_renderables) 
+		//= BOUNDING BOXES ===========================================================================================
+		for (const auto& gameObject : m_renderables)
 		{
 			auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>();
 			m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 		}
+		//============================================================================================================
 
 		// Set the buffer
 		m_lineRenderer->SetBuffer();
 
-		// Render
-		m_shaderDebug->Render(
-			m_lineRenderer->GetVertexCount(),
-			Matrix::Identity,
-			m_camera->GetViewMatrix(),
-			m_camera->GetProjectionMatrix(),
-			m_GBuffer->GetShaderResource(2) // depth
-		);
+		m_shaderLine->Set();
+		m_shaderLine->SetBuffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), m_GBuffer->GetShaderResource(2));
+		m_shaderLine->Render(m_lineRenderer->GetVertexCount());
 	}
 
 	const Vector4& Renderer::GetClearColor()

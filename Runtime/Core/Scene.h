@@ -62,7 +62,7 @@ namespace Directus
 		std::vector<weakGameObj> GetRootGameObjects();
 		weakGameObj GetGameObjectRoot(weakGameObj gameObject);
 		weakGameObj GetGameObjectByName(const std::string& name);
-		weakGameObj GetGameObjectByID(const std::string& ID);
+		weakGameObj GetGameObjectByID(unsigned int ID);
 		bool GameObjectExists(weakGameObj gameObject);
 		void RemoveGameObject(weakGameObj gameObject);
 		void RemoveSingleGameObject(weakGameObj gameObject);

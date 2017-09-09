@@ -41,6 +41,8 @@ namespace Directus
 		// Mesh	
 		m_id = GENERATE_GUID;
 		m_name = NOT_ASSIGNED;
+		m_gameObjID = NOT_ASSIGNED_HASH;
+		m_modelID = NOT_ASSIGNED_HASH;
 		m_vertexCount = 0;
 		m_indexCount = 0;
 		m_triangleCount = 0;
@@ -61,13 +63,13 @@ namespace Directus
 	//= IO =========================================================================
 	void Mesh::Serialize()
 	{
-		StreamIO::WriteSTR(m_id);
-		StreamIO::WriteSTR(m_gameObjID);
-		StreamIO::WriteSTR(m_modelID);
+		StreamIO::WriteUInt(m_id);
+		StreamIO::WriteUInt(m_gameObjID);
+		StreamIO::WriteUInt(m_modelID);
 		StreamIO::WriteSTR(m_name);
-		StreamIO::WriteInt(m_vertexCount);
-		StreamIO::WriteInt(m_indexCount);
-		StreamIO::WriteInt(m_triangleCount);
+		StreamIO::WriteUInt(m_vertexCount);
+		StreamIO::WriteUInt(m_indexCount);
+		StreamIO::WriteUInt(m_triangleCount);
 
 		for (const auto& vertex : m_vertices)
 		{
@@ -82,13 +84,13 @@ namespace Directus
 
 	void Mesh::Deserialize()
 	{
-		m_id = StreamIO::ReadSTR();
-		m_gameObjID = StreamIO::ReadSTR();
-		m_modelID = StreamIO::ReadSTR();
+		m_id = StreamIO::ReadUInt();
+		m_gameObjID = StreamIO::ReadUInt();
+		m_modelID = StreamIO::ReadUInt();
 		m_name = StreamIO::ReadSTR();
-		m_vertexCount = StreamIO::ReadInt();
-		m_indexCount = StreamIO::ReadInt();
-		m_triangleCount = StreamIO::ReadInt();
+		m_vertexCount = StreamIO::ReadUInt();
+		m_indexCount = StreamIO::ReadUInt();
+		m_triangleCount = StreamIO::ReadUInt();
 
 		for (unsigned int i = 0; i < m_vertexCount; i++)
 		{
@@ -110,7 +112,7 @@ namespace Directus
 		Update();
 	}
 
-	void Mesh::SetIndices(const vector<unsigned>& indices)
+	void Mesh::SetIndices(const vector<unsigned int>& indices)
 	{
 		m_indices = indices;
 		Update();

@@ -100,7 +100,7 @@ namespace Directus
 		if (!StreamIO::StartReading(filePath))
 			return false;
 
-		m_resourceID = StreamIO::ReadSTR();
+		m_resourceID = StreamIO::ReadInt();
 		m_resourceName = StreamIO::ReadSTR();
 		m_resourceFilePath = StreamIO::ReadSTR();
 		m_hasAlbedoTexture = StreamIO::ReadBool();
@@ -136,7 +136,7 @@ namespace Directus
 		if (!StreamIO::StartWriting(savePath))
 			return false;
 
-		StreamIO::WriteSTR(m_resourceID);
+		StreamIO::WriteInt(m_resourceID);
 		StreamIO::WriteSTR(m_resourceName);
 		StreamIO::WriteSTR(m_resourceFilePath);
 		StreamIO::WriteBool(m_hasAlbedoTexture);

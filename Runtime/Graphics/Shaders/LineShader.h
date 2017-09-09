@@ -23,21 +23,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "../D3D11/D3D11GraphicsDevice.h"
-#include "../D3D11/D3D11Shader.h"
 #include "../../Math/Matrix.h"
-#include "../D3D11/D3D11ConstantBuffer.h"
+#include <memory>
 //=======================================
 
 namespace Directus
 {
-	class DebugShader
+	class D3D11ConstantBuffer;
+	class D3D11Shader;
+
+	class LineShader
 	{
 	public:
-		DebugShader();
-		~DebugShader();
+		LineShader();
+		~LineShader();
 
 		void Load(const std::string& filePath, Graphics* graphics);
-		void Render(int vertexCount, const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
+		void Set();
+		void SetBuffer(const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
+		void Render(int vertexCount);
 
 	private:
 		struct DefaultBuffer
@@ -45,9 +49,6 @@ namespace Directus
 			Math::Matrix worldViewProjection;
 			Math::Matrix viewProjection;
 		};
-
-		void SetShaderBuffers(const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
-		void RenderShader(unsigned int vertexCount);
 
 		std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
 		std::shared_ptr<D3D11Shader> m_shader;

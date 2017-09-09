@@ -178,13 +178,13 @@ namespace Directus
 		SetMaterialFromMemory(material);
 	}
 
-	weak_ptr<Material> MeshRenderer::SetMaterialByID(const string& ID)
+	weak_ptr<Material> MeshRenderer::SetMaterialByID(unsigned int ID)
 	{
 		// Get the material from the resource cache
 		weak_ptr<Material> material = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Material>(ID);	
 		if (material.expired())
 		{
-			LOG_WARNING("Failed to set material. Material with ID \"" + ID + "\" doesn't exist");
+			LOG_WARNING("Failed to set material. Material with ID \"" + to_string(ID) + "\" doesn't exist");
 			return weak_ptr<Material>();
 		}
 

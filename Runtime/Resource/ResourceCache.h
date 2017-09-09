@@ -65,7 +65,7 @@ namespace Directus
 		}
 
 		// Returns a resource by ID
-		std::shared_ptr<Resource> GetByID(const std::string& ID)
+		std::shared_ptr<Resource> GetByID(const std::size_t ID)
 		{
 			for (const auto& resource : m_resources)
 			{

@@ -73,7 +73,7 @@ namespace Directus
 		m_scriptPath = path;
 		m_gameObject = gameObject;
 		m_className = FileSystem::GetFileNameNoExtensionFromFilePath(m_scriptPath);
-		m_moduleName = m_className + m_gameObject.lock()->GetID();
+		m_moduleName = m_className + to_string(m_gameObject.lock()->GetID());
 		m_constructorDeclaration = m_className + " @" + m_className + "(GameObject @)";
 
 		// Instantiate the script

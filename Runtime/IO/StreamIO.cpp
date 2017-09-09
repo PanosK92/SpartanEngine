@@ -83,6 +83,11 @@ namespace Directus
 		out.write(reinterpret_cast<char*>(&value), sizeof(value));
 	}
 
+	void StreamIO::WriteUInt(unsigned int value)
+	{
+		out.write(reinterpret_cast<char*>(&value), sizeof(value));
+	}
+
 	void StreamIO::WriteFloat(float value)
 	{
 		out.write(reinterpret_cast<char*>(&value), sizeof(value));
@@ -146,17 +151,17 @@ namespace Directus
 		return value;
 	}
 
-	unsigned int StreamIO::ReadUINT()
+	int StreamIO::ReadInt()
 	{
-		unsigned int value;
+		int value;
 		in.read(reinterpret_cast<char*>(&value), sizeof(value));
 
 		return value;
 	}
 
-	int StreamIO::ReadInt()
+	unsigned int StreamIO::ReadUInt()
 	{
-		int value;
+		unsigned int value;
 		in.read(reinterpret_cast<char*>(&value), sizeof(value));
 
 		return value;
