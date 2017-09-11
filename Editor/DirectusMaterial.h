@@ -89,7 +89,6 @@ private:
     //= OCCLUSION ===================
     DirectusMaterialTextureDropTarget* m_occlusionImage;
     QLabel* m_occlusionLabel;
-    DirectusComboSliderText* m_occlusion;
     //===============================
 
     //= EMISSION ====================
@@ -100,11 +99,6 @@ private:
     //= MASK ========================
     DirectusMaterialTextureDropTarget* m_maskImage;
     QLabel* m_maskLabel;
-    //===============================
-
-    //= SPECULAR ====================
-    QLabel* m_specularLabel;
-    DirectusComboSliderText* m_specular;
     //===============================
 
     //= TILING ======================
@@ -135,7 +129,6 @@ private:
     void ReflectOcclusion();
     void ReflectEmission();
     void ReflectMask();
-    void ReflectSpecular();
     void ReflectTiling();
     void ReflectOffset();
 
@@ -148,7 +141,6 @@ public slots:
     void MapOcclusion();
     void MapEmission();
     void MapMask();
-    void MapSpecular();
     void MapTiling();
     void MapOffset();
     virtual void Remove(){};

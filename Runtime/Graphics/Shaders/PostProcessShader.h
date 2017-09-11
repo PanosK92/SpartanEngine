@@ -23,14 +23,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "../D3D11/D3D11GraphicsDevice.h"
-#include "../D3D11/D3D11Shader.h"
-#include "../D3D11/D3D11ConstantBuffer.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Vector2.h"
+#include <memory>
 //=======================================
 
 namespace Directus
 {
+	class D3D11ConstantBuffer;
+	class D3D11Shader;
+
 	class PostProcessShader
 	{
 	public:
@@ -38,13 +40,10 @@ namespace Directus
 		~PostProcessShader();
 
 		void Load(const std::string& filePath, const std::string& pass, Graphics* graphics);
-		bool Render(
-			int indexCount, 
-			const Math::Matrix& worldMatrix, 
-			const Math::Matrix& viewMatrix, 
-			const Math::Matrix& projectionMatrix, 
-			ID3D11ShaderResourceView* texture
-		);
+		void Set();
+		void SetBuffer(const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix);
+		void SetTexture(ID3D11ShaderResourceView* texture);
+		bool Render(int indexCount);
 
 	private:
 		struct DefaultBuffer
@@ -54,7 +53,7 @@ namespace Directus
 			Math::Vector2 padding;
 		};
 
-		std::shared_ptr<D3D11ConstantBuffer> m_constantBuffer;	
+		std::shared_ptr<D3D11ConstantBuffer> m_constantBuffer;
 		std::shared_ptr<D3D11Shader> m_shader;
 		Graphics* m_graphics;
 	};

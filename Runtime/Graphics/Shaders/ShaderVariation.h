@@ -125,11 +125,8 @@ namespace Directus
 			Math::Vector2 matOffsetUV;
 			float matRoughnessMul;
 			float matMetallicMul;
-			float matOcclusionMul;
 			float matNormalMul;
-			float matSpecularMul;
 			float matShadingMode;
-			Math::Vector2 padding;
 		};
 		PerMaterialBufferType perMaterialBufferCPU;
 

@@ -114,12 +114,6 @@ namespace Directus
 		float GetHeightMultiplier() { return m_heightMultiplier; }
 		void SetHeightMultiplier(float height) { m_heightMultiplier = height; }
 
-		float GetOcclusionMultiplier() { return m_occlusionMultiplier; }
-		void SetOcclusionMultiplier(float occlusion) { m_occlusionMultiplier = occlusion; }
-
-		float GetSpecularMultiplier() { return m_specularMultiplier; }
-		void SetSpecularMultiplier(float specular) { m_specularMultiplier = specular; }
-
 		ShadingMode GetShadingMode() { return m_shadingMode; }
 		void SetShadingMode(ShadingMode shadingMode) { m_shadingMode = shadingMode; }
 
@@ -156,8 +150,6 @@ namespace Directus
 		float m_metallicMultiplier;
 		float m_normalMultiplier;
 		float m_heightMultiplier;
-		float m_occlusionMultiplier;
-		float m_specularMultiplier;
 		Math::Vector2 m_uvTiling;
 		Math::Vector2 m_uvOffset;
 		ShadingMode m_shadingMode;

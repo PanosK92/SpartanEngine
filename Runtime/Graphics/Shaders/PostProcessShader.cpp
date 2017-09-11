@@ -19,11 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES ============================
 #include "PostProcessShader.h"
+#include "../D3D11/D3D11Shader.h"
+#include "../D3D11/D3D11ConstantBuffer.h"
 #include "../../Core/Settings.h"
 #include "../../Logging/Log.h"
-//==============================
+//=======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -61,21 +63,16 @@ namespace Directus
 		m_constantBuffer->Create(sizeof(DefaultBuffer));
 	}
 
-	bool PostProcessShader::Render(int indexCount, const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* texture)
+	void PostProcessShader::Set()
 	{
-		if (!m_graphics->GetDeviceContext()) 
-		{
-			LOG_ERROR("Can't render, graphics is null.");
-			return false;
-		}
+		if (!m_shader)
+			return;
 
-		// Set shader
 		m_shader->Set();
+	}
 
-		// Set texture
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
-
-		//= UPDATE BUFFER ==========================================================
+	void PostProcessShader::SetBuffer(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
+	{
 		DefaultBuffer* buffer = (DefaultBuffer*)m_constantBuffer->Map();
 
 		buffer->worldViewProjection = worldMatrix * viewMatrix * projectionMatrix;
@@ -83,15 +80,29 @@ namespace Directus
 		buffer->padding = GET_RESOLUTION;
 
 		m_constantBuffer->Unmap();
-		//==========================================================================
 
-		// Set constant buffer
+		// Set in pixel and vertex shader
 		m_constantBuffer->SetPS(0);
 		m_constantBuffer->SetVS(0);
+	}
 
-		// Render
+	void PostProcessShader::SetTexture(ID3D11ShaderResourceView* texture)
+	{
+		if (!m_graphics)
+			return;
+
+		m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
+	}
+
+	bool PostProcessShader::Render(int indexCount)
+	{
+		if (!m_graphics->GetDeviceContext()) 
+		{
+			LOG_ERROR("Can't render, graphics is null.");
+			return false;
+		}
+
 		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
-
 		return true;
 	}
 }
