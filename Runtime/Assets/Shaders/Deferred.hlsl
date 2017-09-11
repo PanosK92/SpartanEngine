@@ -49,6 +49,22 @@ cbuffer MiscBuffer : register(b1)
 };
 //=====================================
 
+struct Material
+{
+	float3 albedo;
+	float roughness;
+	float metallic;
+	float3 padding;
+};
+
+struct Light
+{
+	float3 color;
+	float intensity;
+	float3 direction;
+	float padding;
+};
+
 // = INCLUDES ========
 #include "Helper.hlsl"
 #include "PBR.hlsl"
@@ -88,33 +104,34 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float3 finalColor = float3(0, 0, 0);
 	
 	// Sample from G-Buffer
-    float3 albedo = ToLinear(texAlbedo.Sample(samplerAniso, texCoord)).rgb;
-    float4 normalSample = texNormal.Sample(samplerAniso, texCoord);
-    float4 depthSample = texDepth.Sample(samplerPoint, texCoord);
-    float4 materialSample = texMaterial.Sample(samplerPoint, texCoord);
+    float4 albedo 			= ToLinear(texAlbedo.Sample(samplerAniso, texCoord));
+    float4 normalSample 	= texNormal.Sample(samplerAniso, texCoord);
+    float4 depthSample 		= texDepth.Sample(samplerPoint, texCoord);
+    float4 materialSample	= texMaterial.Sample(samplerPoint, texCoord);
+	
+	// Create material
+	Material material;
+	material.albedo = albedo.rgb;
+    material.roughness = materialSample.r;
+    material.metallic = materialSample.g;
 		
 	// Extract any values out of those samples
     float3 normal = normalize(UnpackNormal(normalSample.rgb));
-    float depth = depthSample.g;
-	float emission = depthSample.b * 100.0f;
+	float depth = depthSample.g;
+	float3 worldPos = ReconstructPosition(depth, texCoord, mViewProjectionInverse);
+    
+	// Shadows
 	float shadowing = softShadows == 1.0f ? texShadows.Sample(samplerAniso, texCoord).a : normalSample.a;	
-    float3 worldPos = ReconstructPosition(depth, texCoord, mViewProjectionInverse);
     shadowing = clamp(shadowing, 0.1f, 1.0f);
-    float roughness = materialSample.r;
-    float metallic = materialSample.g;
-    float specular = materialSample.b;
-    float type = materialSample.a;
 	
-	// Calculate view direction and the reflection vector
+	// Misc
+	float emission = depthSample.b * 100.0f;
+	float renderTechnique = materialSample.a;
+	
+	// Calculate view direction
     float3 viewDir = normalize(cameraPosWS.xyz - worldPos.xyz);
-    float3 reflectionVector = reflect(-viewDir, normal);
-	
-	// Sample the skybox and the irradiance texture
-    float mipIndex = roughness * roughness * 10.0f;
-    float3 envColor = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, mipIndex)).rgb;
-    float3 irradiance = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, 10.0f)).rgb;
-	
-    if (type == 0.1f) // Texture mapping
+   	
+    if (renderTechnique == 0.1f)
     {
         finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir)).rgb;
         finalColor = ACESFilm(finalColor);
@@ -125,74 +142,69 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
         return float4(finalColor, luma);
     }
 	
-    float ambientLightIntensity = 0.3f;
-
 	//= DIRECTIONAL LIGHT ========================================================================================================================================
-	// Get light data
-	float3 lightColor 		= dirLightColor.rgb;
-	float lightIntensity 	= dirLightIntensity.r;
-	float3 lightDir 		= normalize(-dirLightDirection).rgb;
+	Light directionalLight;
 
 	// Compute
-	ambientLightIntensity 	= clamp(lightIntensity * 0.3f, 0.0f, 1.0f);
-	lightIntensity 			*= shadowing;
-	lightIntensity 			+= emission;
-	envColor 				*= clamp(lightIntensity, 0.0f, 1.0f);
-	irradiance 				*= clamp(lightIntensity, 0.0f, 1.0f);
+	directionalLight.color 		= dirLightColor.rgb;
+	directionalLight.intensity 	= dirLightIntensity.r;
+	directionalLight.direction	= normalize(-dirLightDirection).rgb;
+	directionalLight.intensity 	*= shadowing;
+	directionalLight.intensity 	+= emission;
 	
-	// Compute
-	finalColor += PBR(albedo, roughness, metallic, specular, normal, viewDir, lightDir, lightColor, lightIntensity, ambientLightIntensity, envColor, irradiance);
+	// Compute illumination
+	finalColor += PBR(material, directionalLight, normal, viewDir);
 	//============================================================================================================================================================
 	
 	//= POINT LIGHTS =============================================================================================================================================
+	Light pointLight;
     for (int i = 0; i < pointlightCount; i++)
     {
 		// Get light data
-        float3 color 		= pointLightColor[i].rgb;
-        float3 position 	= pointLightPosition[i].xyz;
-		float intensity 	= pointLightIntenRange[i].x;
-        float range 		= pointLightIntenRange[i].y;
+        pointLight.color 		= pointLightColor[i].rgb;
+        float3 position 		= pointLightPosition[i].xyz;
+		pointLight.intensity 	= pointLightIntenRange[i].x;
+        float range 			= pointLightIntenRange[i].y;
         
 		// Compute light
-        float3 direction 	= normalize(position - worldPos);
-        float dist 			= length(worldPos - position);
-        float attunation 	= clamp(1.0f - dist / range, 0.0f, 1.0f); attunation *= attunation;
-		intensity 			*= attunation;
-		intensity 			+= emission;
+        pointLight.direction 	= normalize(position - worldPos);
+        float dist 				= length(worldPos - position);
+        float attunation 		= clamp(1.0f - dist / range, 0.0f, 1.0f); attunation *= attunation;
+		pointLight.intensity 	*= attunation;
 
 		// Compute illumination
         if (dist < range)
 		{
-            finalColor += PBR(albedo, roughness, metallic, specular, normal, viewDir, direction, color, intensity, 0.0f, envColor, irradiance);
+            finalColor += PBR(material, pointLight, normal, viewDir);
 		}
     }
 	//============================================================================================================================================================
 	
 	//= SPOT LIGHTS ==============================================================================================================================================
+	Light spotLight;
     for (int j = 0; j < spotlightCount; j++)
     {
 		// Get light data
-        float3 color 		= spotLightColor[j].rgb;
+        spotLight.color 	= spotLightColor[j].rgb;
         float3 position 	= spotLightPosition[j].xyz;
-		float intensity 	= spotLightIntenRangeAngle[j].x;
-		float3 spotDir 		= normalize(-spotLightDirection[j].xyz);
+		spotLight.intensity = spotLightIntenRangeAngle[j].x;
+		spotLight.direction = normalize(-spotLightDirection[j].xyz);
 		float range 		= spotLightIntenRangeAngle[j].y;
         float cutoffAngle 	= 1.0f - spotLightIntenRangeAngle[j].z;
         
 		// Compute light
 		float3 direction 	= normalize(position - worldPos);
 		float dist 			= length(worldPos - position);	
-		float theta 		= dot(direction, spotDir);
+		float theta 		= dot(direction, spotLight.direction);
 		float epsilon   	= cutoffAngle - cutoffAngle * 0.9f;
 		float attunation 	= clamp((theta - cutoffAngle) / epsilon, 0.0f, 1.0f);  // attunate when approaching the outer cone
 		attunation 			*= clamp(1.0f - dist / range, 0.0f, 1.0f); attunation *= attunation; // attunate with distance as well
-		intensity 			*= attunation;
-		intensity 			+= emission;
+		spotLight.intensity *= attunation;
 
 		// Compute illumination
 		if(theta > cutoffAngle)
 		{
-            finalColor += PBR(albedo, roughness, metallic, specular, normal, viewDir, spotDir, color, intensity, 0.0f, envColor, irradiance);
+            finalColor += PBR(material, spotLight, normal, viewDir);
 		}
     }
 	//============================================================================================================================================================
@@ -201,8 +213,5 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     finalColor = ToGamma(finalColor); // gamma correction
     float luma = dot(finalColor.rgb, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
 
-	//float ssao = SSAO(texCoord);
-	//return float4(ssao, ssao, ssao, 1.0f);
-	
     return float4(finalColor, luma);
 }

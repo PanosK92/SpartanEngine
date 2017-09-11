@@ -114,8 +114,6 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_occlusionLabel = new QLabel("Occlusion");
     m_occlusionImage = new DirectusMaterialTextureDropTarget();
     m_occlusionImage->Initialize(inspector, Occlusion_Texture);
-    m_occlusion = new DirectusComboSliderText();
-    m_occlusion->Initialize(0, 1);
     //=========================================================
 
     //= EMISSION ==============================================
@@ -128,12 +126,6 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_maskLabel = new QLabel("Mask");
     m_maskImage = new DirectusMaterialTextureDropTarget();
     m_maskImage->Initialize(inspector, Mask_Texture);
-    //=========================================================
-
-    //= REFLECTIVITY  =========================================
-    m_specularLabel = new QLabel("Specular");
-    m_specular = new DirectusComboSliderText();
-    m_specular->Initialize(0, 1);
     //=========================================================
 
     //= TILING ================================================
@@ -213,8 +205,6 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     // Row 8 - OCCLUSION
     m_gridLayout->addWidget(m_occlusionImage,           row, 0, 1, 1);
     m_gridLayout->addWidget(m_occlusionLabel,           row, 1, 1, 1);
-    m_gridLayout->addWidget(m_occlusion->GetSlider(),   row, 2, 1, 2);
-    m_gridLayout->addWidget(m_occlusion->GetLineEdit(), row, 4, 1, 1);
     row++;
 
     // Row 9 - EMISSION
@@ -227,13 +217,7 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_gridLayout->addWidget(m_maskLabel, row, 1, 1, 1);
     row++;
 
-    // Row 11 - SPECULAR
-    m_gridLayout->addWidget(m_specularLabel,            row, 0, 1, 1);
-    m_gridLayout->addWidget(m_specular->GetSlider(),    row, 1, 1, 3);
-    m_gridLayout->addWidget(m_specular->GetLineEdit(),  row, 4, 1, 1);
-    row++;
-
-    // Row 12 - TILING
+    // Row 11 - TILING
     m_gridLayout->addWidget(m_tilingLabel,                  row, 0, 1, 1);
     m_gridLayout->addWidget(m_tilingX->GetLabelWidget(),    row, 1, 1, 1, Qt::AlignRight);
     m_gridLayout->addWidget(m_tilingX->GetTextWidget(),     row, 2, 1, 1);
@@ -241,7 +225,7 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_gridLayout->addWidget(m_tilingY->GetTextWidget(),     row, 4, 1, 1);
     row++;
 
-    // Row 13 - OFFSET
+    // Row 12 - OFFSET
     m_gridLayout->addWidget(m_offsetLabel,                  row, 0, 1, 1);
     m_gridLayout->addWidget(m_offsetX->GetLabelWidget(),    row, 1, 1, 1, Qt::AlignRight);
     m_gridLayout->addWidget(m_offsetX->GetTextWidget(),     row, 2, 1, 1);
@@ -249,7 +233,7 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_gridLayout->addWidget(m_offsetY->GetTextWidget(),     row, 4, 1, 1);
     row++;
 
-    // Row 14 - LINE
+    // Row 13 - LINE
     m_gridLayout->addWidget(m_line, row, 0, 1, 5);
     //=========================================================
 
@@ -258,8 +242,6 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     connect(m_metallic,     SIGNAL(ValueChanged()),             this, SLOT(MapMetallic()));
     connect(m_normal,       SIGNAL(ValueChanged()),             this, SLOT(MapNormal()));
     connect(m_height,       SIGNAL(ValueChanged()),             this, SLOT(MapHeight()));
-    connect(m_occlusion,    SIGNAL(ValueChanged()),             this, SLOT(MapOcclusion()));
-    connect(m_specular,     SIGNAL(ValueChanged()),             this, SLOT(MapSpecular()));
     connect(m_tilingX,      SIGNAL(ValueChanged()),             this, SLOT(MapTiling()));
     connect(m_tilingY,      SIGNAL(ValueChanged()),             this, SLOT(MapTiling()));
     connect(m_offsetX,      SIGNAL(ValueChanged()),             this, SLOT(MapOffset()));
@@ -305,7 +287,6 @@ void DirectusMaterial::Reflect(weak_ptr<GameObject>  gameobject)
     ReflectOcclusion();
     ReflectEmission();
     ReflectMask();
-    ReflectSpecular();
     ReflectTiling();
     ReflectOffset();
 
@@ -333,7 +314,6 @@ void DirectusMaterial::ReflectFile(string filePath)
     ReflectOcclusion();
     ReflectEmission();
     ReflectMask();
-    ReflectSpecular();
     ReflectTiling();
     ReflectOffset();
 
@@ -379,18 +359,12 @@ void DirectusMaterial::SetPropertiesVisible(bool visible)
 
     m_occlusionImage->setVisible(visible);
     m_occlusionLabel->setVisible(visible);
-    m_occlusion->GetSlider()->setVisible(visible);
-    m_occlusion->GetLineEdit()->setVisible(visible);
 
     m_emissionImage->setVisible(visible);
     m_emissionLabel->setVisible(visible);
 
     m_maskImage->setVisible(visible);
     m_maskLabel->setVisible(visible);
-
-    m_specularLabel->setVisible(visible);
-    m_specular->GetSlider()->setVisible(visible);
-    m_specular->GetLineEdit()->setVisible(visible);
 
     m_tilingLabel->setVisible(visible);
     m_tilingX->GetLabelWidget()->setVisible(visible);
@@ -464,9 +438,6 @@ void DirectusMaterial::ReflectHeight()
 
 void DirectusMaterial::ReflectOcclusion()
 {
-    float occlusion = m_inspectedMaterial._Get()->GetOcclusionMultiplier();
-    m_occlusion->SetValue(occlusion);
-
     // Load the occlusion texture preview
     string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Occlusion_Texture);
     m_occlusionImage->LoadImageAsync(texPath);
@@ -484,12 +455,6 @@ void DirectusMaterial::ReflectMask()
     // Load the mask texture preview
     string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Mask_Texture);
     m_maskImage->LoadImageAsync(texPath);
-}
-
-void DirectusMaterial::ReflectSpecular()
-{
-    float specular = m_inspectedMaterial._Get()->GetSpecularMultiplier();
-    m_specular->SetValue(specular);
 }
 
 void DirectusMaterial::ReflectTiling()
@@ -565,8 +530,6 @@ void DirectusMaterial::MapOcclusion()
     if (m_inspectedMaterial.expired())
         return;
 
-    float occlusion =  m_occlusion->GetValue();
-    m_inspectedMaterial._Get()->SetOcclusionMultiplier(occlusion);
     m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 
@@ -583,16 +546,6 @@ void DirectusMaterial::MapMask()
     if (m_inspectedMaterial.expired())
         return;
 
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
-}
-
-void DirectusMaterial::MapSpecular()
-{
-    if (m_inspectedMaterial.expired())
-        return;
-
-    float specular = m_specular->GetValue();
-    m_inspectedMaterial._Get()->SetSpecularMultiplier(specular);
     m_inspectedMaterial._Get()->SaveToExistingDirectory();
 }
 

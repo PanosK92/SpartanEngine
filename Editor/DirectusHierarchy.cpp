@@ -135,7 +135,7 @@ void DirectusHierarchy::mouseMoveEvent(QMouseEvent* event)
     QDrag* drag = new QDrag(this);
     QMimeData* mimeData = new QMimeData;
 
-    QString gameObjectID = QString::fromStdString(to_string(draggedGameObject._Get()->GetID()));
+    QString gameObjectID = QString::fromStdString(GUIDGenerator::ToStr(draggedGameObject._Get()->GetID()));
     mimeData->setText(gameObjectID);
     drag->setMimeData(mimeData);
 
@@ -194,15 +194,15 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     //= DROP CASE: PREFAB (Assume text is a file path) ===============
     if (FileSystem::IsEnginePrefabFile(text))
     {
-        auto gameObj = m_context->GetSubsystem<Scene>()->CreateGameObject().lock();
-        gameObj->LoadFromPrefab(text);
+        auto gameObj = m_context->GetSubsystem<Scene>()->CreateGameObject();
+        gameObj._Get()->LoadFromPrefab(text);
         Populate();
         return;
     }
     //================================================================
 
     //= DROP CASE: GAMEOBJECT (Assume text is a GameObject ID) =======
-    auto draggedGameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(stoi(text))._Get();
+    auto draggedGameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(GUIDGenerator::ToUInt(text))._Get();
     QTreeWidgetItem* hoveredItem = this->itemAt(event->pos());
     auto dropTargetGameObj = ToGameObject(hoveredItem).lock();
 
@@ -304,7 +304,7 @@ QTreeWidgetItem* DirectusHierarchy::ToQTreeWidgetItem(weak_ptr<GameObject> gameO
     // Create a tree item
     QTreeWidgetItem* item = isRoot ? new QTreeWidgetItem(this) : new QTreeWidgetItem();
     item->setText(0, name);
-    item->setData(0, Qt::UserRole, QVariant(QString::fromStdString(to_string(gameObj._Get()->GetID()))));
+    item->setData(0, Qt::UserRole, QVariant(QString::fromStdString(GUIDGenerator::ToStr(gameObj._Get()->GetID()))));
 
     //= About Qt::UserRole ==============================================================
     // Constant     -> Qt::UserRole

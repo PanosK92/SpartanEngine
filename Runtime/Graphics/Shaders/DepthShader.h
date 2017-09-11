@@ -25,12 +25,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "../../Math/Matrix.h"
 #include "../D3D11/D3D11GraphicsDevice.h"
-#include "../D3D11/D3D11Shader.h"
-#include "../D3D11/D3D11ConstantBuffer.h"
 //=======================================
 
 namespace Directus
 {
+	class D3D11ConstantBuffer;
+	class D3D11Shader;
+
 	class DepthShader
 	{
 	public:
@@ -38,8 +39,8 @@ namespace Directus
 		~DepthShader();
 
 		void Load(const std::string& filePath, Graphics* graphics);
-		void UpdateMatrixBuffer(const Math::Matrix& mWorld, const Math::Matrix& mViewProjection);
 		void Set();
+		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mViewProjection);		
 		void Render(unsigned int indexCount);
 
 	private:

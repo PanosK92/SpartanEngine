@@ -3,6 +3,10 @@
 #include "ShadowMapping.hlsl"
 //===========================
 
+//= DEFINES ======
+#define CASCADES 3
+//================
+
 //= TEXTURES ===============================
 Texture2D texAlbedo 		: register (t0);
 Texture2D texRoughness 		: register (t1);
@@ -19,10 +23,6 @@ Texture2D lightDepthTex[3] 	: register (t8);
 SamplerState samplerAniso : register (s0);
 SamplerState samplerLinear : register (s1);
 //=========================================
-
-//= DEFINES ======
-#define CASCADES 3
-//================
 
 //= BUFFERS ==================================
 cbuffer PerFrameBuffer : register(b0)
@@ -45,11 +45,8 @@ cbuffer PerMaterialBuffer : register(b1)
 	float2 materialOffset;
     float materialRoughness;
     float materialMetallic;
-    float materialOcclusion;
     float materialNormalStrength;
-    float materialSpecular;
     float materialShadingMode; 
-	float2 padding2;
 };
 
 cbuffer PerObjectBuffer : register(b2)
@@ -116,9 +113,8 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	float4 albedo			= materialAlbedoColor;
 	float roughness 		= materialRoughness;
 	float metallic 			= materialMetallic;
-	float specular 			= clamp(materialSpecular, 0.03f, 1.0f);
 	float emission			= 0.0f;
-	float flippedOcclusion	= 1.0f - materialOcclusion;
+	float occlusion			= 1.0f;
 	float3 normal			= PackNormal(input.normal.xyz);
 	float type				= 0.0f; // pbr mesh
 	
@@ -169,7 +165,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	
 	//= OCCLUSION ================================================================================
 #if OCCLUSION_MAP
-		flippedOcclusion = clamp(texOcclusion.Sample(samplerAniso, texCoord).r * (1.0f / (flippedOcclusion)), 0.0f, 1.0f);
+		occlusion = texOcclusion.Sample(samplerAniso, texCoord).r;
 #endif
 	
 	//= EMISSION ================================================================================
@@ -221,13 +217,13 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	}
 	//============================================================================================
 	
-	float totalShadowing = clamp(flippedOcclusion * shadowing, 0.0f, 1.0f);
+	float totalShadowing = clamp(occlusion * shadowing, 0.0f, 1.0f);
 
 	// Write to G-Buffer
 	output.albedo		= albedo;
 	output.normal 		= float4(normal, totalShadowing);
 	output.depth 		= float4(depthCS, depthVS, emission, 0.0f);
-	output.material		= float4(roughness, metallic, specular, type);
+	output.material		= float4(roughness, metallic, 0.0f, type);
 		
 	// Uncomment to vizualize cascade splits 
 	/*if (cascadeIndex == 0)

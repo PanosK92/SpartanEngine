@@ -53,10 +53,8 @@ namespace Directus
 		m_colorAlbedo = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 		m_roughnessMultiplier = 1.0f;
 		m_metallicMultiplier = 0.0f;
-		m_occlusionMultiplier = 0.0f;
 		m_normalMultiplier = 0.0f;
 		m_heightMultiplier = 0.0f;
-		m_specularMultiplier = 0.5f;
 		m_uvTiling = Vector2(1.0f, 1.0f);
 		m_uvOffset = Vector2(0.0f, 0.0f);
 		m_isEditable = true;
@@ -101,8 +99,6 @@ namespace Directus
 		XmlDocument::AddAttribute("Material", "Metallic_Multiplier", m_metallicMultiplier);
 		XmlDocument::AddAttribute("Material", "Normal_Multiplier", m_normalMultiplier);
 		XmlDocument::AddAttribute("Material", "Height_Multiplier", m_heightMultiplier);
-		XmlDocument::AddAttribute("Material", "Occlusion_Multiplier", m_occlusionMultiplier);
-		XmlDocument::AddAttribute("Material", "Specular_Multiplier", m_specularMultiplier);
 		XmlDocument::AddAttribute("Material", "UV_Tiling", m_uvTiling);
 		XmlDocument::AddAttribute("Material", "UV_Offset", m_uvOffset);
 		XmlDocument::AddAttribute("Material", "IsEditable", m_isEditable);
@@ -158,8 +154,6 @@ namespace Directus
 		XmlDocument::GetAttribute("Material", "Metallic_Multiplier", m_metallicMultiplier);
 		XmlDocument::GetAttribute("Material", "Normal_Multiplier", m_normalMultiplier);
 		XmlDocument::GetAttribute("Material", "Height_Multiplier", m_heightMultiplier);
-		XmlDocument::GetAttribute("Material", "Occlusion_Multiplier", m_occlusionMultiplier);
-		XmlDocument::GetAttribute("Material", "Specular_Multiplier", m_specularMultiplier);
 		m_uvTiling = XmlDocument::GetAttributeAsVector2("Material", "UV_Tiling");
 		m_uvOffset = XmlDocument::GetAttributeAsVector2("Material", "UV_Offset");
 		XmlDocument::GetAttribute("Material", "IsEditable", m_isEditable);

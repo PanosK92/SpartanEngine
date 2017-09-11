@@ -19,9 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========
+//= INCLUDES ============================
 #include "DepthShader.h"
-//======================
+#include "../D3D11/D3D11Shader.h"
+#include "../D3D11/D3D11ConstantBuffer.h"
+//=======================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -33,8 +35,6 @@ namespace Directus
 	DepthShader::DepthShader()
 	{
 		m_graphics = nullptr;
-		m_shader = nullptr;
-		m_defaultBuffer = nullptr;
 	}
 
 	DepthShader::~DepthShader()
@@ -56,7 +56,15 @@ namespace Directus
 		m_defaultBuffer->Create(sizeof(DefaultBuffer));
 	}
 
-	void DepthShader::UpdateMatrixBuffer(const Matrix& mWorld, const Matrix& mViewProjection)
+	void DepthShader::Set()
+	{
+		if (!m_shader)
+			return;
+
+		m_shader->Set();
+	}
+
+	void DepthShader::SetBuffer(const Matrix& mWorld, const Matrix& mViewProjection)
 	{
 		if (!m_defaultBuffer)
 			return;
@@ -74,15 +82,11 @@ namespace Directus
 		m_defaultBuffer->SetVS(0);
 	}
 
-	void DepthShader::Set()
-	{
-		if (m_shader)
-			m_shader->Set();
-	}
-
 	void DepthShader::Render(unsigned int indexCount)
 	{
-		if (m_graphics)
-			m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
+		if (!m_graphics)
+			return;
+
+		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 	}
 }

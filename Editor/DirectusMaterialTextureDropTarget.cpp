@@ -41,6 +41,8 @@ using namespace std;
 using namespace Directus;
 //=======================
 
+#define SLOT_SIZE 40
+
 DirectusMaterialTextureDropTarget::DirectusMaterialTextureDropTarget(QWidget *parent) : QLabel(parent)
 {
     setAcceptDrops(true);
@@ -63,7 +65,7 @@ void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector,
     */
 
     this->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    this->setMinimumSize(20,20);
+    this->setMinimumSize(SLOT_SIZE, SLOT_SIZE);
     this->setStyleSheet(
                 "background-color: #484848;"
                 "border-color: #212121;"
@@ -81,7 +83,7 @@ void DirectusMaterialTextureDropTarget::LoadImageAsync(std::string filePath)
     DirectusAssetLoader* imageLoader = new DirectusAssetLoader();
 
     imageLoader->moveToThread(thread);
-    imageLoader->PrepareForTexture(filePath, 20, 20);
+    imageLoader->PrepareForTexture(filePath, SLOT_SIZE, SLOT_SIZE);
 
     connect(thread,         SIGNAL(started()),              imageLoader,    SLOT(LoadTexture()));
     connect(imageLoader,    SIGNAL(ImageReady(QPixmap)),    this,           SLOT(setPixmap(QPixmap)));

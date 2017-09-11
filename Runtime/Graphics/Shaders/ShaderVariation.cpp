@@ -219,9 +219,7 @@ namespace Directus
 		update = perMaterialBufferCPU.matOffsetUV != materialRaw->GetOffsetUV() ? true : update;
 		update = perMaterialBufferCPU.matRoughnessMul != materialRaw->GetRoughnessMultiplier() ? true : update;
 		update = perMaterialBufferCPU.matMetallicMul != materialRaw->GetMetallicMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matOcclusionMul != materialRaw->GetOcclusionMultiplier() ? true : update;
 		update = perMaterialBufferCPU.matNormalMul != materialRaw->GetNormalMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matSpecularMul != materialRaw->GetSpecularMultiplier() ? true : update;
 		update = perMaterialBufferCPU.matShadingMode != float(materialRaw->GetShadingMode()) ? true : update;
 
 		if (update)
@@ -234,11 +232,8 @@ namespace Directus
 			buffer->matOffsetUV = perMaterialBufferCPU.matOffsetUV = materialRaw->GetOffsetUV();
 			buffer->matRoughnessMul = perMaterialBufferCPU.matRoughnessMul = materialRaw->GetRoughnessMultiplier();
 			buffer->matMetallicMul = perMaterialBufferCPU.matMetallicMul = materialRaw->GetMetallicMultiplier();
-			buffer->matOcclusionMul = perMaterialBufferCPU.matOcclusionMul = materialRaw->GetOcclusionMultiplier();
 			buffer->matNormalMul = perMaterialBufferCPU.matNormalMul = materialRaw->GetNormalMultiplier();
-			buffer->matSpecularMul = perMaterialBufferCPU.matSpecularMul = materialRaw->GetSpecularMultiplier();
 			buffer->matShadingMode = perMaterialBufferCPU.matShadingMode = float(materialRaw->GetShadingMode());
-			buffer->padding = Vector2::Zero;
 
 			m_materialBuffer->Unmap();
 			//========================================================================================

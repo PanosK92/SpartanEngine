@@ -330,7 +330,7 @@ namespace Directus
 				if (meshFilter->SetBuffers())
 				{
 					// Set shader's buffer
-					m_shaderDepth->UpdateMatrixBuffer(
+					m_shaderDepth->SetBuffer(
 						gameObj._Get()->GetTransform()->GetWorldTransform(),
 						mViewProjectionLight
 					);
@@ -465,17 +465,15 @@ namespace Directus
 		{
 			if (m_directionalLight->GetShadowType() == Soft_Shadows)
 			{
-				// Set render target
+				// Set pong texture as render target
 				m_renderTexPong->SetAsRenderTarget();
 				m_renderTexPong->Clear(GetClearColor());
 
-				m_shaderBlur->Render(
-					m_fullScreenQuad->GetIndexCount(),
-					Matrix::Identity,
-					mBaseView,
-					mOrthographicProjection,
-					m_GBuffer->GetShaderResource(1) // Normal tex but shadows are in alpha channel
-				);
+				// BLUR
+				m_shaderBlur->Set();
+				m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection);
+				m_shaderBlur->SetTexture(m_GBuffer->GetShaderResource(1)); // Normal tex but shadows are in alpha channel
+				m_shaderBlur->Render(m_fullScreenQuad->GetIndexCount());
 			}
 		}
 		//=====================================================
@@ -539,42 +537,35 @@ namespace Directus
 				texIndex = 3;
 			}
 
-			m_shaderTex->Render(
-				m_fullScreenQuad->GetIndexCount(),
-				Matrix::Identity,
-				mBaseView,
-				mOrthographicProjection,
-				m_GBuffer->GetShaderResource(texIndex)
-			);
+			// TEXTURE
+			m_shaderTex->Set();
+			m_shaderTex->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection);
+			m_shaderTex->SetTexture(m_GBuffer->GetShaderResource(texIndex));
+			m_shaderTex->Render(m_fullScreenQuad->GetIndexCount());
 
 			return;
 		}
 
-		// Set Ping texture as render target
+		// Set ping texture as render target
 		m_renderTexPong->SetAsRenderTarget();
 		m_renderTexPong->Clear(GetClearColor());
 
-		// fxaa pass
-		m_shaderFXAA->Render(
-			m_fullScreenQuad->GetIndexCount(),
-			Matrix::Identity,
-			mBaseView,
-			mOrthographicProjection,
-			m_renderTexPing->GetShaderResourceView()
-		);
+		// FXAA
+		m_shaderFXAA->Set();
+		m_shaderFXAA->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection);
+		m_shaderFXAA->SetTexture(m_renderTexPing->GetShaderResourceView());
+		m_shaderFXAA->Render(m_fullScreenQuad->GetIndexCount());
 
+		// Set back-buffer
 		m_graphics->SetBackBufferAsRenderTarget();
 		m_graphics->ResetViewport();
 		m_graphics->Clear(m_camera->GetClearColor());
 
-		// sharpening pass
-		m_shaderSharpening->Render(
-			m_fullScreenQuad->GetIndexCount(),
-			Matrix::Identity,
-			mBaseView,
-			mOrthographicProjection,
-			m_renderTexPong->GetShaderResourceView()
-		);
+		// LUMASHARPEN
+		m_shaderSharpening->Set();
+		m_shaderSharpening->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection);
+		m_shaderSharpening->SetTexture(m_renderTexPong->GetShaderResourceView());
+		m_shaderSharpening->Render(m_fullScreenQuad->GetIndexCount());
 	}
 
 	void Renderer::DebugDraw()

@@ -59,6 +59,9 @@ namespace Directus
 
 	void LineShader::Set()
 	{
+		if (!m_shader)
+			return;
+
 		m_shader->Set();
 	}
 
@@ -80,6 +83,9 @@ namespace Directus
 
 	void LineShader::Render(int vertexCount)
 	{
+		if (!m_graphics)
+			return;
+
 		m_graphics->GetDeviceContext()->Draw(vertexCount, 0); 
 	}
 }
