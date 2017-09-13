@@ -275,6 +275,8 @@ namespace Directus
 			std::string ToString() const;
 
 			float x, y, z, w;
+
+			static const Quaternion Identity;
 		};
 
 		// Reverse order operators
