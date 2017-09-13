@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Math/Quaternion.h"
 #include "../IO/StreamIO.h"
+#include "../Logging/Log.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -53,18 +54,18 @@ namespace Directus
 	public:
 		MotionState(RigidBody* rigidBody) { m_rigidBody = rigidBody; }
 
-		// Update bullet, ENGINE -> BULLET
+		// Update from engine, ENGINE -> BULLET
 		void btMotionState::getWorldTransform(btTransform& worldTransform) const override
 		{
-			Vector3 enginePositon = m_rigidBody->g_transform->GetPosition();
+			Vector3 enginePosition = m_rigidBody->g_transform->GetPosition();
 			Quaternion engineRotation = m_rigidBody->g_transform->GetRotation();
-			worldTransform.setOrigin(ToBtVector3(enginePositon + engineRotation * m_rigidBody->GetColliderCenter()));
+			worldTransform.setOrigin(ToBtVector3(enginePosition + engineRotation * m_rigidBody->GetColliderCenter()));
 			worldTransform.setRotation(ToBtQuaternion(engineRotation));
 
 			m_rigidBody->m_hasSimulated = true;
 		}
 
-		// Update from bullet, ENGINE <- BULLET
+		// Update from bullet, BULLET -> ENGINE
 		void btMotionState::setWorldTransform(const btTransform& worldTransform) override
 		{
 			Quaternion bulletRot = ToQuaternion(worldTransform.getRotation());
@@ -336,7 +337,7 @@ namespace Directus
 	//= ROTATION ============================================================
 	Quaternion RigidBody::GetRotation() const
 	{
-		return m_rigidBody ? ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) : Quaternion(0, 0, 0, 1);
+		return m_rigidBody ? ToQuaternion(m_rigidBody->getWorldTransform().getRotation()) : Quaternion::Identity;
 	}
 
 	void RigidBody::SetRotation(const Quaternion& rotation)

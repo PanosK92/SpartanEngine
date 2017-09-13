@@ -72,17 +72,17 @@ float3 GetSpecular(float3 F0, float VdotH, float NdotV, float NdotL, float NdotH
 //============================================================================
 
 // IMAGE BASED LIGHTING ======================================================
-float3 IBL(float NdotV, float VdotH, float3 normal, Light light, Material material, float3 reflectionVector, float3 specular, float alpha)
+float3 IBL(float NdotV, float VdotH, float roughness, float alpha, float3 normal, float3 reflectionVector, float3 albedo, float3 specular)
 {
 	// Note: Currently this function assumes a cube texture resolution of 1024x1024
-	float smoothness = 1.0f - material.roughness;
+	float smoothness = 1.0f - roughness;
 	float mipLevel = (1.0f - smoothness * smoothness) * 10.0f;
 
 	float3 indirectDiffuse  = ToLinear(environmentTex.SampleLevel(samplerAniso, normal, 10.0f)).rgb;
 	float3 indirectSpecular = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, mipLevel)).rgb;
 	float3 envFresnel = Specular_F_Roughness(specular, alpha, VdotH); 
 	
-	return (indirectSpecular * envFresnel) + (indirectDiffuse * material.albedo);
+	return (indirectSpecular * envFresnel) + (indirectDiffuse * albedo);
 }
 //============================================================================
 
@@ -103,7 +103,7 @@ float3 PBR(Material material, Light light, float3 normal, float3 viewDir)
 	 
     float3 cDiff = GetDiffuse(albedo) ;
 	float3 cSpec = GetSpecular(specular, VdotH, NdotV, NdotL, NdotH, material.roughness, alpha);
-	float3 ibl = IBL(NdotV, VdotH, normal, light, material, reflectionVector, specular, alpha);
+	float3 ibl = IBL(NdotV, VdotH, material.roughness, alpha, normal, reflectionVector, albedo, specular);
 
 	float3 finalLight		= light.color * light.intensity * NdotL * (cDiff * (1.0f - cSpec) + cSpec);
 	float3 finalReflection 	= light.intensity * ibl;

@@ -40,6 +40,8 @@ namespace Directus
 {
 	namespace Math
 	{
+		const Quaternion Quaternion::Identity(0.0f, 0.0f, 0.0f, 1.0f);
+
 		//= FROM ==================================================================================
 		void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis)
 		{
