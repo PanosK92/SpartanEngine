@@ -200,24 +200,30 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 		
 		float shadowTexel = 1.0f / shadowMapResolution;
 		float bias = 0.03f * shadowTexel;
-		float normalOffset = 300.0f;
-		float cosAngle = saturate(1.0f - dot(lightDir, normal));
+		float normalOffset = 150.0f;
+		float NdotL = dot(normal, lightDir);
+		float cosAngle = saturate(1.0f - NdotL);
 		float3 scaledNormalOffset = normal * (normalOffset * cosAngle * shadowTexel);
 		
-		if (cascadeIndex == 0)
+		// Perform shadow mapping only if the polygons are back-faced
+		// from the light, to avoid self-shadowing artifacts
+		//if (NdotL < 0.0f)
 		{
-			float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[0]);
-			shadowing	= ShadowMapping(lightDepthTex[0], samplerLinear, shadowMapResolution, shadowMappingQuality, lightPos, normal, lightDir, bias);
-		}
-		else if (cascadeIndex == 1)
-		{
-			float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[1]);
-			shadowing	= ShadowMapping(lightDepthTex[1], samplerLinear, shadowMapResolution, shadowMappingQuality, lightPos, normal, lightDir, bias);
-		}
-		else if (cascadeIndex == 2)
-		{
-			float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[2]);
-			shadowing	= ShadowMapping(lightDepthTex[2], samplerLinear, shadowMapResolution, shadowMappingQuality, lightPos, normal, lightDir, bias);
+			if (cascadeIndex == 0)
+			{
+				float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[0]);
+				shadowing	= ShadowMapping(lightDepthTex[0], samplerLinear, shadowMapResolution, shadowMappingQuality, lightPos, normal, lightDir, bias);
+			}
+			else if (cascadeIndex == 1)
+			{
+				float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[1]);
+				shadowing	= ShadowMapping(lightDepthTex[1], samplerLinear, shadowMapResolution, shadowMappingQuality, lightPos, normal, lightDir, bias);
+			}
+			else if (cascadeIndex == 2)
+			{
+				float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[2]);
+				shadowing	= ShadowMapping(lightDepthTex[2], samplerLinear, shadowMapResolution, shadowMappingQuality, lightPos, normal, lightDir, bias);
+			}
 		}
 	}
 	//============================================================================================

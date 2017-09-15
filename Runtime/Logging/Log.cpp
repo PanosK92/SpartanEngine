@@ -130,6 +130,11 @@ namespace Directus
 		Write(to_string(value), type);
 	}
 
+	void Log::Write(double value, LogType type)
+	{
+		Write(to_string(value), type);
+	}
+
 	void Log::Write(int value, LogType type)
 	{
 		Write(to_string(value), type);

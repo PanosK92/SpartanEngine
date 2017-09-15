@@ -78,6 +78,9 @@ namespace Directus
 		// FLOAT
 		static void Write(float value, LogType type);
 
+		// DOUBLE
+		static void Write(double value, LogType type);
+
 		// INT
 		static void Write(int value, LogType type);
 

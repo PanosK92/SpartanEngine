@@ -24,21 +24,36 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <chrono>
 //====================
 
+//= NAMESPACES ========
+using namespace std;
+using namespace chrono;
+//=====================
+
 namespace Directus
 {
-	int Stopwatch::m_milliseconds;
-	static std::chrono::time_point<std::chrono::system_clock> m_start;
-	static std::chrono::time_point<std::chrono::system_clock> m_end;
+	time_point<system_clock> m_start;
+	time_point<system_clock> m_end;
+
+	Stopwatch::Stopwatch()
+	{
+		m_milliseconds = 0.0f;
+	}
+
+	Stopwatch::~Stopwatch()
+	{
+
+	}
 
 	void Stopwatch::Start()
 	{
-		m_start = std::chrono::system_clock::now();
+		m_start = system_clock::now();
 	}
 
-	int Stopwatch::Stop()
+	double Stopwatch::Stop()
 	{
-		m_end = std::chrono::system_clock::now();
-		m_milliseconds = (int)std::chrono::duration_cast<std::chrono::milliseconds>(m_end - m_start).count();
+		m_end = system_clock::now();
+		m_milliseconds = duration_cast<milliseconds>(m_end - m_start).count();
+
 		return m_milliseconds;
 	}
 }

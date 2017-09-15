@@ -476,7 +476,7 @@ namespace Directus
 	{
 		// update counters
 		m_frameCount++;
-		m_timePassed += m_context->GetSubsystem<Timer>()->GetDeltaTime();
+		m_timePassed += m_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
 
 		if (m_timePassed >= 1000)
 		{
