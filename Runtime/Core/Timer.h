@@ -38,11 +38,14 @@ namespace Directus
 		//========================
 
 		void Update();
-		double GetDeltaTimeMs() { return m_deltaTimeMs; }
-		double GetDeltaTimeSec() { return m_deltaTimeMs / 1000.0; }
+		float GetDeltaTimeMs() { return m_deltaTimeMil; }
+		float GetDeltaTimeSec() { return m_deltaTimeSec; }
 
 	private:
-		double m_deltaTimeMs;
-		double m_previousTimeMs;
+		float m_deltaTimeSec;
+		float m_deltaTimeMil;
+		
+		double m_deltaTimeMicroSec;
+		double m_previousTimeMicroSec;
 	};
 }

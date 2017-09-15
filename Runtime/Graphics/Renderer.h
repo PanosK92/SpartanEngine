@@ -92,7 +92,7 @@ namespace Directus
 		void StartCalculatingStats();
 		void StopCalculatingStats();
 		int GetRenderedMeshesCount() { return m_renderedMeshesPerFrame; }
-		double GetRenderTime() { return m_renderTimeMs; }
+		float GetRenderTime() { return m_renderTimeMs; }
 		//===============================================================
 
 	private:
@@ -139,7 +139,7 @@ namespace Directus
 		//= STATS ===================================
 		int m_renderedMeshesPerFrame;
 		int m_renderedMeshesTempCounter;
-		double m_renderTimeMs;
+		float m_renderTimeMs;
 		std::unique_ptr<Stopwatch> m_renderStopwatch;
 		//===========================================
 

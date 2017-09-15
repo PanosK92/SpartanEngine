@@ -30,9 +30,9 @@ namespace Directus
 		~Stopwatch();
 
 		void Start();
-		double Stop();
+		float Stop();
 
 	private:
-		double m_milliseconds;
+		float m_milliseconds;
 	};
 }

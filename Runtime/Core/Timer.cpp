@@ -33,8 +33,10 @@ namespace Directus
 {
 	Timer::Timer(Context* context) : Subsystem(context)
 	{
-		m_previousTimeMs = 0.0f;
-		m_deltaTimeMs = 0.0f;
+		m_deltaTimeSec = 0.0f;
+		m_deltaTimeMil = 0.0f;
+		m_previousTimeMicroSec = 0.0f;
+		m_deltaTimeMicroSec = 0.0f;
 	}
 
 	Timer::~Timer()
@@ -51,12 +53,16 @@ namespace Directus
 	{
 		// Get current time
 		auto currentTime = high_resolution_clock::now().time_since_epoch();
-		double currentTimeMs = duration_cast<milliseconds>(currentTime).count();
+		double currentTimeMs = duration_cast<microseconds>(currentTime).count();
 
 		// Calculate delta time
-		m_deltaTimeMs = currentTimeMs - m_previousTimeMs;
-
+		m_deltaTimeMicroSec = currentTimeMs - m_previousTimeMicroSec;
+	
 		// Save current time
-		m_previousTimeMs = currentTimeMs;
+		m_previousTimeMicroSec = currentTimeMs;
+
+		// Keep delta time in different representations
+		m_deltaTimeMil = m_deltaTimeMicroSec / 1000.0;
+		m_deltaTimeSec = m_deltaTimeMil / 1000.0;
 	}
 }

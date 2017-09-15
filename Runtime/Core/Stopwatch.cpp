@@ -49,10 +49,10 @@ namespace Directus
 		m_start = system_clock::now();
 	}
 
-	double Stopwatch::Stop()
+	float Stopwatch::Stop()
 	{
 		m_end = system_clock::now();
-		m_milliseconds = duration_cast<milliseconds>(m_end - m_start).count();
+		m_milliseconds = duration_cast<microseconds>(m_end - m_start).count() / 1000.0;
 
 		return m_milliseconds;
 	}
