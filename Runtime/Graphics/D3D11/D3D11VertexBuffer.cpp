@@ -42,12 +42,12 @@ namespace Directus
 		SafeRelease(m_buffer);
 	}
 
-	bool D3D11VertexBuffer::Create(const vector<VertexPosTexNorTan>& vertices)
+	bool D3D11VertexBuffer::Create(const vector<VertexPosTexTBN>& vertices)
 	{
 		if (!m_graphics->GetDevice() || vertices.empty())
 			return false;
 
-		m_stride = sizeof(VertexPosTexNorTan);
+		m_stride = sizeof(VertexPosTexTBN);
 		float size = (unsigned int)vertices.size();
 		UINT byteWidth = m_stride * size;
 

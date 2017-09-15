@@ -126,7 +126,9 @@ namespace Directus
 			float matRoughnessMul;
 			float matMetallicMul;
 			float matNormalMul;
+			float matHeightMul;
 			float matShadingMode;
+			Math::Vector3 paddding;
 		};
 		PerMaterialBufferType perMaterialBufferCPU;
 

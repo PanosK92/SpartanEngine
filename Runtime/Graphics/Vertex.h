@@ -29,12 +29,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	struct VertexPosTexNorTan
+	struct VertexPosTexTBN
 	{
 		Math::Vector3 position;
 		Math::Vector2 uv;
 		Math::Vector3 normal;
 		Math::Vector3 tangent;
+		Math::Vector3 bitangent;
 	};
 
 	struct VertexPosTexNor

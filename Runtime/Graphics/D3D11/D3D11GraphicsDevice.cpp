@@ -58,7 +58,7 @@ namespace Directus
 		m_featureLevel = D3D_FEATURE_LEVEL_11_0;
 		m_sdkVersion = D3D11_SDK_VERSION;
 
-		m_inputLayout = PositionTextureNormalTangent;
+		m_inputLayout = PositionTextureTBN;
 		m_cullMode = CullBack;
 		m_primitiveTopology = TriangleList;
 		m_depthEnabled = true;

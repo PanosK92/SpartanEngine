@@ -41,7 +41,7 @@ namespace Directus
 		Position,
 		PositionColor,
 		PositionTexture,
-		PositionTextureNormalTangent
+		PositionTextureTBN
 	};
 
 	enum CullMode

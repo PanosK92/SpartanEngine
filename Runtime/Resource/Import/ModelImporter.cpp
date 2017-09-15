@@ -378,7 +378,7 @@ namespace Directus
 
 	void ModelImporter::LoadAiMeshVertices(aiMesh* assimpMesh, shared_ptr<Mesh> mesh)
 	{
-		VertexPosTexNorTan vertex;
+		VertexPosTexTBN vertex;
 		for (unsigned int vertexIndex = 0; vertexIndex < assimpMesh->mNumVertices; vertexIndex++)
 		{
 			// Position
@@ -394,6 +394,12 @@ namespace Directus
 			if (assimpMesh->mTangents)
 			{
 				vertex.tangent = ToVector3(assimpMesh->mTangents[vertexIndex]);
+			}
+
+			// Bitagent
+			if (assimpMesh->mBitangents)
+			{
+				vertex.bitangent = ToVector3(assimpMesh->mBitangents[vertexIndex]);
 			}
 
 			// Texture Coordinates

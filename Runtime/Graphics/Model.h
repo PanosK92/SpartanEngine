@@ -35,7 +35,7 @@ namespace Directus
 	class Mesh;
 	class Material;
 	class Animation;
-	struct VertexPosTexNorTan;
+	struct VertexPosTexTBN;
 
 	namespace Math
 	{
@@ -57,7 +57,7 @@ namespace Directus
 		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
 
 		// Adds a mesh by creating from scratch
-		std::weak_ptr<Mesh> AddMeshAsNewResource(unsigned int gameObjID, const std::string& name, std::vector<VertexPosTexNorTan> vertices, std::vector<unsigned int> indices);
+		std::weak_ptr<Mesh> AddMeshAsNewResource(unsigned int gameObjID, const std::string& name, std::vector<VertexPosTexTBN> vertices, std::vector<unsigned int> indices);
 
 		// Adds a new mesh
 		void AddMeshAsNewResource(std::shared_ptr<Mesh> mesh);

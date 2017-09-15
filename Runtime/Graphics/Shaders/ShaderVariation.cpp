@@ -233,7 +233,9 @@ namespace Directus
 			buffer->matRoughnessMul = perMaterialBufferCPU.matRoughnessMul = materialRaw->GetRoughnessMultiplier();
 			buffer->matMetallicMul = perMaterialBufferCPU.matMetallicMul = materialRaw->GetMetallicMultiplier();
 			buffer->matNormalMul = perMaterialBufferCPU.matNormalMul = materialRaw->GetNormalMultiplier();
+			buffer->matHeightMul = perMaterialBufferCPU.matNormalMul = materialRaw->GetHeightMultiplier();
 			buffer->matShadingMode = perMaterialBufferCPU.matShadingMode = float(materialRaw->GetShadingMode());
+			buffer->paddding = Vector3::Zero;
 
 			m_materialBuffer->Unmap();
 			//========================================================================================
@@ -334,7 +336,7 @@ namespace Directus
 		m_D3D11Shader = make_shared<D3D11Shader>(m_graphics);
 		AddDefinesBasedOnMaterial(m_D3D11Shader);
 		m_D3D11Shader->Load(filePath);
-		m_D3D11Shader->SetInputLayout(PositionTextureNormalTangent);
+		m_D3D11Shader->SetInputLayout(PositionTextureTBN);
 		m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 		m_D3D11Shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_CLAMP, D3D11_COMPARISON_LESS_EQUAL);
 
