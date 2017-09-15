@@ -133,6 +133,7 @@ namespace Directus
 		m_texNoiseMap = make_shared<Texture>(m_context);
 		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
 		m_texNoiseMap->SetTextureType(Normal_Texture);
+		m_renderStopwatch = make_unique<Stopwatch>();
 
 		return true;
 	}
@@ -618,14 +619,14 @@ namespace Directus
 	// Called in the beginning of the rendering
 	void Renderer::StartCalculatingStats()
 	{
-		Stopwatch::Start();
+		m_renderStopwatch->Start();
 		m_renderedMeshesTempCounter = 0;
 	}
 
 	// Called in the end of the rendering
 	void Renderer::StopCalculatingStats()
 	{
-		m_renderTimeMs = Stopwatch::Stop();
+		m_renderTimeMs = m_renderStopwatch->Stop();
 		m_renderedMeshesPerFrame = m_renderedMeshesTempCounter;
 	}
 	//===============================================================================================================

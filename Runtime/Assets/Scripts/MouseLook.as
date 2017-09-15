@@ -4,16 +4,13 @@ class MouseLook
 	Transform @transform;
 	
 	// mouse look settings
-	float sensitivity = 5.0f;
-	float smoothing = 5.0f;
-
-	// mouse look variables
-	Vector2 smoothMouse = Vector2(0.0f, 0.0f);
+	float sensitivity = 30.0f;
 	Vector3 currentRotation;
 	
 	// misc
 	bool control = false;
 	bool allowToggle = false;
+	bool initialized = false;
 	
 	// Constructor
 	MouseLook(GameObject @obj)
@@ -25,7 +22,11 @@ class MouseLook
 	// Use this for initialization
 	void Start()
 	{
+		if (initialized)
+			return;
+			
 		currentRotation = transform.GetRotation().ToEulerAngles();
+		initialized = true;
 	}
 
 	// Update is called once per frame
@@ -42,39 +43,32 @@ class MouseLook
 		}
 		
 		if (control)
-			FreeLook();			
+		{
+			FreeLook();
+		}			
 	}
 	
 	void FreeLook()
 	{
 		// Get raw mouse input
-		Vector2 mouseDelta = Vector2(input.GetMousePositionDelta().x, input.GetMousePositionDelta().y);
+		float mouseDeltaX = input.GetMousePositionDelta().x;
+		float mouseDeltaY = input.GetMousePositionDelta().y;
 	
-		// Scale input against the sensitivity setting and multiply that against the smoothing value.
-		mouseDelta.x *= sensitivity * smoothing * (1.0f - time.GetDeltaTime());
-		mouseDelta.y *= sensitivity * smoothing * (1.0f - time.GetDeltaTime());
+		currentRotation.x += mouseDeltaX * sensitivity * time.GetDeltaTime();
+		currentRotation.y += mouseDeltaY * sensitivity * time.GetDeltaTime();
 		
-        // Interpolate mouse movement over time to apply smoothing delta.
-		smoothMouse.x = Lerp(smoothMouse.x, mouseDelta.x, 1.0f / smoothing);
-        smoothMouse.y = Lerp(smoothMouse.y, mouseDelta.y, 1.0f / smoothing);
+		// Limit top-bottom rotation freedom
+		currentRotation.y = ClampRotation(currentRotation.y, -90.0f, 90.0f);
 		
-		currentRotation.x += smoothMouse.x * time.GetDeltaTime();
-		currentRotation.y += smoothMouse.y * time.GetDeltaTime();
-		
-		currentRotation.y = ClampRotation(currentRotation.y);
-		
-		Quaternion newRot = QuaternionFromEuler(currentRotation.y, currentRotation.x, 0.0f);
-		
+		// Set new rotation
+		Quaternion newRot = QuaternionFromEuler(currentRotation.y, currentRotation.x, 0.0f);	
 		transform.SetRotationLocal(newRot);
 	}
 
-	float ClampRotation(float rotation)
+	float ClampRotation(float rotation, float min, float max)
 	{
-		if (rotation > 90)
-			rotation = 90;
-		
-		if (rotation < -90)
-			rotation = -90;
+		rotation = rotation > max ? max : rotation;
+		rotation = rotation < min ? min : rotation;
 			
 		return rotation;
 	}

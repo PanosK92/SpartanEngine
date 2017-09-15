@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======
+//= INCLUDES =========
 #include "Subsystem.h"
-//==================
+//====================
 
 namespace Directus
 {
@@ -38,16 +38,11 @@ namespace Directus
 		//========================
 
 		void Update();
-		int GetDeltaTime();
-		int GetTime();
-		int GetElapsedTime();
-		float GetDeltaTimeSec();
+		double GetDeltaTimeMs() { return m_deltaTimeMs; }
+		double GetDeltaTimeSec() { return m_deltaTimeMs / 1000.0; }
 
 	private:
-		int m_ticksPerSec;
-		int m_ticksPerMs;
-		int m_deltaTime;
-		int m_startTime;
-		int m_previousTime;
+		double m_deltaTimeMs;
+		double m_previousTimeMs;
 	};
 }

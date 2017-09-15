@@ -19,25 +19,22 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES =====
 #include "Timer.h"
-#include "Windows.h"
-#include "../Logging/Log.h"
-//=========================
+#include <chrono>
+//================
 
-//= NAMESPACES =====
+//= NAMESPACES ========
 using namespace std;
-//==================
+using namespace chrono;
+//=====================
 
 namespace Directus
 {
 	Timer::Timer(Context* context) : Subsystem(context)
 	{
-		m_ticksPerSec = 0;
-		m_ticksPerMs = 0.0f;
-		m_startTime = 0.0f;
-		m_previousTime = 0.0f;
-		m_deltaTime = 0.0f;
+		m_previousTimeMs = 0.0f;
+		m_deltaTimeMs = 0.0f;
 	}
 
 	Timer::~Timer()
@@ -47,60 +44,19 @@ namespace Directus
 
 	bool Timer::Initialize()
 	{
-		LARGE_INTEGER ticksPerSec;
-		if (QueryPerformanceFrequency(&ticksPerSec))
-		{
-			m_ticksPerSec = ticksPerSec.QuadPart;
-		}
-		else
-		{
-			LOG_ERROR("The system does not support high performance timers.");
-			m_ticksPerSec = 1000000;
-			return false;
-		}
-
-		m_ticksPerMs = m_ticksPerSec / 1000;
-		m_startTime = GetTime();
-		m_previousTime = m_startTime;
-
 		return true;
 	}
 
 	void Timer::Update()
 	{
 		// Get current time
-		int currentTime = GetTime();
+		auto currentTime = high_resolution_clock::now().time_since_epoch();
+		double currentTimeMs = duration_cast<milliseconds>(currentTime).count();
 
 		// Calculate delta time
-		m_deltaTime = currentTime - m_previousTime;
+		m_deltaTimeMs = currentTimeMs - m_previousTimeMs;
 
 		// Save current time
-		m_previousTime = currentTime;
-	}
-
-	// Returns them time it took to complete the last frame in milliseconds
-	int Timer::GetDeltaTime()
-	{
-		return m_deltaTime;
-	}
-
-	// Returns current time in milliseconds
-	int Timer::GetTime()
-	{
-		INT64 currentTime;
-		QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
-
-		return currentTime / m_ticksPerMs;
-	}
-
-	// Returns them elapsed time since the engine initialization in milliseconds
-	int Timer::GetElapsedTime()
-	{
-		return GetTime() - m_startTime;
-	}
-
-	float Timer::GetDeltaTimeSec()
-	{
-		return (float)GetDeltaTime() / 1000.0f;
+		m_previousTimeMs = currentTimeMs;
 	}
 }

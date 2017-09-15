@@ -26,10 +26,13 @@ namespace Directus
 	class Stopwatch
 	{
 	public:
-		static void Start();
-		static int Stop();
+		Stopwatch();
+		~Stopwatch();
+
+		void Start();
+		double Stop();
 
 	private:
-		static int m_milliseconds;
+		double m_milliseconds;
 	};
 }
