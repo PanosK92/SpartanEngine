@@ -147,7 +147,7 @@ namespace Directus
 	bool MeshFilter::SetMesh(MeshType defaultMesh)
 	{
 		// Construct vertices/indices
-		vector<VertexPosTexNorTan> vertices;
+		vector<VertexPosTexTBN> vertices;
 		vector<unsigned int> indices;
 		if (defaultMesh == Cube)
 		{
@@ -253,7 +253,7 @@ namespace Directus
 		return true;
 	}
 
-	void MeshFilter::CreateCube(vector<VertexPosTexNorTan>& vertices, vector<unsigned int>& indices)
+	void MeshFilter::CreateCube(vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices)
 	{
 		// front
 		vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0) }); // 0
@@ -316,7 +316,7 @@ namespace Directus
 		indices.push_back(23); indices.push_back(21); indices.push_back(22);
 	}
 
-	void MeshFilter::CreateQuad(vector<VertexPosTexNorTan>& vertices, vector<unsigned int>& indices)
+	void MeshFilter::CreateQuad(vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices)
 	{
 		vertices.push_back({ Vector3(-0.5f, 0.0f, 0.5f),Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 0 top-left
 		vertices.push_back({ Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 1 top-right

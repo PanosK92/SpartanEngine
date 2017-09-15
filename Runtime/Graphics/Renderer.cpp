@@ -290,6 +290,7 @@ namespace Directus
 		if (m_directionalLight->GetShadowType() == No_Shadows)
 			return;
 
+		//m_graphics->SetCullMode(CullFront);
 		m_shaderDepth->Set();
 
 		for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetShadowCascadeCount(); cascadeIndex++)
@@ -435,8 +436,10 @@ namespace Directus
 					// Set mesh buffer
 					if (meshFilter->HasMesh())
 					{
+						float dummy1;
 						if (meshFilter->SetBuffers())
 						{
+							float dummy2;
 							// Set face culling (changes only if required)
 							m_graphics->SetCullMode(objMaterial->GetCullMode());
 

@@ -94,7 +94,7 @@ namespace Directus
 
 		for (unsigned int i = 0; i < m_vertexCount; i++)
 		{
-			m_vertices.push_back(VertexPosTexNorTan());
+			m_vertices.push_back(VertexPosTexTBN());
 			LoadVertex(m_vertices.back());
 		}
 
@@ -106,7 +106,7 @@ namespace Directus
 		m_boundingBox.ComputeFromMesh(this);
 	}
 
-	void Mesh::SetVertices(const vector<VertexPosTexNorTan>& vertices)
+	void Mesh::SetVertices(const vector<VertexPosTexTBN>& vertices)
 	{
 		m_vertices = vertices;
 		Update();
@@ -154,7 +154,7 @@ namespace Directus
 	//==============================================================================
 
 	//= IO =========================================================================
-	void Mesh::SaveVertex(const VertexPosTexNorTan& vertex)
+	void Mesh::SaveVertex(const VertexPosTexTBN& vertex)
 	{
 		StreamIO::WriteFloat(vertex.position.x);
 		StreamIO::WriteFloat(vertex.position.y);
@@ -170,9 +170,13 @@ namespace Directus
 		StreamIO::WriteFloat(vertex.tangent.x);
 		StreamIO::WriteFloat(vertex.tangent.y);
 		StreamIO::WriteFloat(vertex.tangent.z);
+
+		StreamIO::WriteFloat(vertex.bitangent.x);
+		StreamIO::WriteFloat(vertex.bitangent.y);
+		StreamIO::WriteFloat(vertex.bitangent.z);
 	}
 
-	void Mesh::LoadVertex(VertexPosTexNorTan& vertex)
+	void Mesh::LoadVertex(VertexPosTexTBN& vertex)
 	{
 		vertex.position.x = StreamIO::ReadFloat();
 		vertex.position.y = StreamIO::ReadFloat();
@@ -188,6 +192,10 @@ namespace Directus
 		vertex.tangent.x = StreamIO::ReadFloat();
 		vertex.tangent.y = StreamIO::ReadFloat();
 		vertex.tangent.z = StreamIO::ReadFloat();
+
+		vertex.bitangent.x = StreamIO::ReadFloat();
+		vertex.bitangent.y = StreamIO::ReadFloat();
+		vertex.bitangent.z = StreamIO::ReadFloat();
 	}
 	//==============================================================================
 

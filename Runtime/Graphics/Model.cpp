@@ -119,7 +119,7 @@ namespace Directus
 	}
 	//============================================================================================
 
-	weak_ptr<Mesh> Model::AddMeshAsNewResource(unsigned int gameObjID, const string& name, vector<VertexPosTexNorTan> vertices, vector<unsigned int> indices)
+	weak_ptr<Mesh> Model::AddMeshAsNewResource(unsigned int gameObjID, const string& name, vector<VertexPosTexTBN> vertices, vector<unsigned int> indices)
 	{
 		// Create a mesh
 		auto mesh = make_shared<Mesh>();

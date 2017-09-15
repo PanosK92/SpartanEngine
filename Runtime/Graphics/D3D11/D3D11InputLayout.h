@@ -47,7 +47,7 @@ namespace Directus
 		bool CreatePosDesc(ID3D10Blob* VSBlob);
 		bool CreatePosColDesc(ID3D10Blob* VSBlob);
 		bool CreatePosTexDesc(ID3D10Blob* VSBlob);
-		bool CreatePosTexNorTanDesc(ID3D10Blob* VSBlob);
+		bool CreatePosTBNDesc(ID3D10Blob* VSBlob);
 
 		D3D11GraphicsDevice* m_graphics;
 		ID3D11InputLayout* m_ID3D11InputLayout;

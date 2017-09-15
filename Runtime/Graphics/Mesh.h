@@ -50,13 +50,13 @@ namespace Directus
 		const std::string& GetName() { return m_name; }
 		void SetName(const std::string& name) { m_name = name; }
 
-		std::vector<VertexPosTexNorTan>& GetVertices() { return m_vertices; }
-		void SetVertices(const std::vector<VertexPosTexNorTan>& vertices);
+		std::vector<VertexPosTexTBN>& GetVertices() { return m_vertices; }
+		void SetVertices(const std::vector<VertexPosTexTBN>& vertices);
 
 		std::vector<unsigned int>& GetIndices() { return m_indices; }
 		void SetIndices(const std::vector<unsigned int>& indices);
 
-		void AddVertex(VertexPosTexNorTan vertex) { m_vertices.push_back(vertex); }
+		void AddVertex(VertexPosTexTBN vertex) { m_vertices.push_back(vertex); }
 		void AddIndex(unsigned int index) { m_indices.push_back(index); }
 
 		unsigned int GetVertexCount() const { return m_vertexCount; }
@@ -73,8 +73,8 @@ namespace Directus
 
 	private:
 		//= IO =========================================================================
-		static void SaveVertex(const VertexPosTexNorTan& vertex);
-		static void LoadVertex(VertexPosTexNorTan& vertex);
+		static void SaveVertex(const VertexPosTexTBN& vertex);
+		static void LoadVertex(VertexPosTexTBN& vertex);
 		//==============================================================================
 
 		//= HELPER FUNCTIONS =============================
@@ -86,7 +86,7 @@ namespace Directus
 		unsigned int m_modelID;
 		std::string m_name;
 
-		std::vector<VertexPosTexNorTan> m_vertices;
+		std::vector<VertexPosTexTBN> m_vertices;
 		std::vector<unsigned int> m_indices;
 
 		unsigned int m_vertexCount;

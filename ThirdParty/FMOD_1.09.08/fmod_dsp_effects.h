@@ -1074,7 +1074,7 @@ typedef enum
 */
 typedef enum
 {
-    FMOD_DSP_CONVOLUTION_REVERB_PARAM_IR,       /* (Type:data)  - [w]   16-bit reverb IR (short*) with an extra sample prepended to the start which specifies the number of channels. */
+    FMOD_DSP_CONVOLUTION_REVERB_PARAM_IR,       /* (Type:data)  - [w]   Array of signed 16-bit (short) PCM data to be used as reverb IR.  First member of the array should be a 16 bit value (short) which specifies the number of channels.  Array looks like [index 0=numchannels][index 1+ = raw 16 bit PCM data].  Data is copied internally so source can be freed. */
     FMOD_DSP_CONVOLUTION_REVERB_PARAM_WET,      /* (Type:float) - [r/w] Volume of echo signal to pass to output in dB.  -80.0 to 10.0.  Default = 0. */
     FMOD_DSP_CONVOLUTION_REVERB_PARAM_DRY,      /* (Type:float) - [r/w] Original sound volume in dB.  -80.0 to 10.0.  Default = 0. */
     FMOD_DSP_CONVOLUTION_REVERB_PARAM_LINKED    /* (Type:bool)  - [r/w] Linked - channels are mixed together before processing through the reverb.  Default = TRUE. */
