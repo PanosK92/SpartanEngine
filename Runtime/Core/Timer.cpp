@@ -53,13 +53,13 @@ namespace Directus
 	{
 		// Get current time
 		auto currentTime = high_resolution_clock::now().time_since_epoch();
-		double currentTimeMs = duration_cast<microseconds>(currentTime).count();
+		double currentTimoMicroSec = duration_cast<microseconds>(currentTime).count();
 
 		// Calculate delta time
-		m_deltaTimeMicroSec = currentTimeMs - m_previousTimeMicroSec;
+		m_deltaTimeMicroSec = currentTimoMicroSec - m_previousTimeMicroSec;
 	
 		// Save current time
-		m_previousTimeMicroSec = currentTimeMs;
+		m_previousTimeMicroSec = currentTimoMicroSec;
 
 		// Keep delta time in different representations
 		m_deltaTimeMil = m_deltaTimeMicroSec / 1000.0;

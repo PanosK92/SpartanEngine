@@ -38,5 +38,6 @@ namespace Directus
 		bool LoadFont(const std::string& filePath, int size);
 
 	private:
+		void LogFreeTypeError(int errorCode);
 	};
 }
