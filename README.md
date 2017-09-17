@@ -30,10 +30,9 @@ Improved debug view             | 100% | Bounding boxes, colliders, raycasts, et
 Point light support             | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality codebase.
-Improved Shadowing         		| 80% | Improved shadow mapping technique, removed shadow shimmering added SSAO.
-Skeletal Animation              | 5% | -
-Font importing and rendering    | 5% | -
-
+Improved Shadowing         		| 80% | Improved shadow mapping technique, removed shadow shimmering, added SSAO.
+Skeletal Animation			    | 5% | -
+Font importing and rendering    | 25% | -
 
 # Roadmap
 - Vulkan rendering backend.

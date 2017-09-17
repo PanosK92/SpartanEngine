@@ -43,6 +43,20 @@ using namespace std;
 
 namespace Directus
 {
+	static const char* textureTypeChar[] =
+	{
+		"Unknown",
+		"Albedo",
+		"Roughness",
+		"Metallic",
+		"Normal",
+		"Height",
+		"Occlusion",
+		"Emission",
+		"Mask",
+		"CubeMap",
+	};
+
 	Texture::Texture(Context* context)
 	{
 		//= RESOURCE INTERFACE ===========
@@ -54,11 +68,12 @@ namespace Directus
 		m_context = context;
 		m_width = 0;
 		m_height = 0;
-		m_textureType = Albedo_Texture;
+		m_channels = 0;
+		m_textureType = Unknown_Texture;
 		m_grayscale = false;
 		m_transparency = false;
 		m_alphaIsTransparency = false;
-		m_generateMipchain = true;
+		m_generateMipmaps = true;
 		m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 	}
 
@@ -85,10 +100,11 @@ namespace Directus
 		XmlDocument::AddAttribute("Texture", "Path", m_resourceFilePath);
 		XmlDocument::AddAttribute("Texture", "Width", m_width);
 		XmlDocument::AddAttribute("Texture", "Height", m_height);
-		XmlDocument::AddAttribute("Texture", "Type", int(m_textureType));
+		XmlDocument::AddAttribute("Texture", "Channels", m_channels);
+		XmlDocument::AddAttribute("Texture", "Type", textureTypeChar[(int)m_textureType]);
 		XmlDocument::AddAttribute("Texture", "Greyscale", m_grayscale);
 		XmlDocument::AddAttribute("Texture", "Transparency", m_transparency);
-		XmlDocument::AddAttribute("Texture", "Mipchain", m_generateMipchain);
+		XmlDocument::AddAttribute("Texture", "Mipmaps", m_generateMipmaps);
 
 		if (!XmlDocument::Save(savePath))
 			return false;
@@ -101,7 +117,7 @@ namespace Directus
 	bool Texture::LoadFromFile(const string& filePath)
 	{
 		bool engineFormat = FileSystem::GetExtensionFromFilePath(filePath) == METADATA_EXTENSION;
-		return engineFormat ? LoadMetadata(filePath) : LoadFromForeignFormat(filePath);	
+		return engineFormat ? LoadMetadata(filePath) : LoadFromForeignFormat(filePath);
 	}
 	//==============================================================================================
 
@@ -127,6 +143,42 @@ namespace Directus
 		return (void**)m_texture->GetShaderResourceView();
 	}
 
+	bool Texture::CreateFromMemory(int width, int height, int channels, unsigned char* buffer, TextureFormat format)
+	{
+		if (!m_texture)
+			return false;
+
+		m_width = width;
+		m_height = height;
+		m_channels = channels;
+
+		if (!m_texture->Create(m_width, m_height, m_channels, buffer, (DXGI_FORMAT)ToAPIFormat(format)))
+		{
+			LOG_ERROR("Texture: Failed to create from memory.");
+			return false;
+		}
+
+		return true;
+	}
+
+	bool Texture::CreateFromMemory(int width, int height, int channels, const vector<vector<unsigned char>>& buffer, TextureFormat format)
+	{
+		if (!m_texture)
+			return false;
+
+		m_width = width;
+		m_height = height;
+		m_channels = channels;
+
+		if (!m_texture->CreateFromMipmaps(m_width, m_height, m_channels, buffer, (DXGI_FORMAT)ToAPIFormat(format)))
+		{
+			LOG_ERROR("Texture: Failed to create from memory.");
+			return false;
+		}
+
+		return true;
+	}
+
 	bool Texture::LoadFromForeignFormat(const string& filePath)
 	{
 		auto graphicsDevice = m_context->GetSubsystem<Graphics>()->GetDevice();
@@ -138,8 +190,8 @@ namespace Directus
 		{
 			ID3D11ShaderResourceView* ddsTex = nullptr;
 			wstring widestr = wstring(filePath.begin(), filePath.end());
-			HRESULT hr = DirectX::CreateDDSTextureFromFile(graphicsDevice, widestr.c_str(), nullptr, &ddsTex);
-			if (FAILED(hr))
+			auto hresult = DirectX::CreateDDSTextureFromFile(graphicsDevice, widestr.c_str(), nullptr, &ddsTex);
+			if (FAILED(hresult))
 			{
 				LOG_WARNING("Failed to load texture \"" + filePath + "\".");
 				return false;
@@ -151,7 +203,7 @@ namespace Directus
 
 		// Load texture
 		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
-		bool loaded = m_generateMipchain ? imageImp._Get()->Load(filePath, true) : imageImp._Get()->Load(filePath);
+		bool loaded = imageImp._Get()->Load(filePath, m_generateMipmaps);
 		if (!loaded)
 		{
 			LOG_WARNING("Failed to load texture \"" + filePath + "\".");
@@ -162,18 +214,24 @@ namespace Directus
 		// Extract any metadata we can from the ImageImporter
 		m_resourceFilePath = imageImp._Get()->GetPath();
 		m_resourceName = FileSystem::GetFileNameNoExtensionFromFilePath(GetFilePathTexture());
-		m_width = imageImp._Get()->GetWidth();
-		m_height = imageImp._Get()->GetHeight();
 		m_grayscale = imageImp._Get()->IsGrayscale();
 		m_transparency = imageImp._Get()->IsTransparent();
 
-		if (!CreateShaderResource())
-			return false;
+		// Create the texture
+		if (!m_generateMipmaps)
+		{
+			CreateFromMemory(imageImp._Get()->GetWidth(), imageImp._Get()->GetHeight(), imageImp._Get()->GetChannels(), imageImp._Get()->GetRGBA(), RGBA_8_UNORM);
+		}
+		else
+		{
+			CreateFromMemory(imageImp._Get()->GetWidth(), imageImp._Get()->GetHeight(), imageImp._Get()->GetChannels(), imageImp._Get()->GetRGBAMipChain(), RGBA_8_UNORM);
+		}
 
 		// Free any memory allocated by the ImageImporter
 		imageImp._Get()->Clear();
 
-		if (!SaveToFile(m_resourceFilePath + METADATA_EXTENSION)) // Create a metadata file
+		// Save metadata file
+		if (!SaveToFile(m_resourceFilePath + METADATA_EXTENSION))
 			return false;
 
 		return true;
@@ -189,39 +247,43 @@ namespace Directus
 		XmlDocument::GetAttribute("Texture", "Path", m_resourceFilePath);
 		XmlDocument::GetAttribute("Texture", "Width", m_width);
 		XmlDocument::GetAttribute("Texture", "Height", m_height);
-		m_textureType = TextureType(XmlDocument::GetAttributeAsInt("Texture", "Type"));
+		XmlDocument::GetAttribute("Texture", "Channels", m_channels);
+
+		string type;
+		XmlDocument::GetAttribute("Texture", "Type", type);
+		m_textureType = TextureTypeFromString(type);
+
 		XmlDocument::GetAttribute("Texture", "Greyscale", m_grayscale);
 		XmlDocument::GetAttribute("Texture", "Transparency", m_transparency);
-		XmlDocument::GetAttribute("Texture", "Mipchain", m_generateMipchain);
-		
+		XmlDocument::GetAttribute("Texture", "Mipmaps", m_generateMipmaps);
+
 		XmlDocument::Release();
 
 		return true;
 	}
 
-	bool Texture::CreateShaderResource()
+	TextureType Texture::TextureTypeFromString(const string& type)
 	{
-		if (!m_context)
-			return false;
+		if (type == "Albedo") return Albedo_Texture;
+		if (type == "Roughness") return Roughness_Texture;
+		if (type == "Metallic") return Metallic_Texture;
+		if (type == "Normal") return Normal_Texture;
+		if (type == "Height") return Height_Texture;
+		if (type == "Occlusion") return Occlusion_Texture;
+		if (type == "Emission") return Emission_Texture;
+		if (type == "Mask") return Mask_Texture;
+		if (type == "CubeMap") return CubeMap_Texture;
 
-		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
-		if (m_generateMipchain)
-		{
-			if (!m_texture->CreateFromMipchain(m_width, m_height, imageImp._Get()->GetChannels(), imageImp._Get()->GetRGBAMipChain()))
-			{
-				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp._Get()->GetPath() + "\".");
-				return false;
-			}
-		}
-		else
-		{
-			if (!m_texture->Create(m_width, m_height, imageImp._Get()->GetChannels(), imageImp._Get()->GetRGBA()))
-			{
-				LOG_ERROR("Failed to create texture from loaded image \"" + imageImp._Get()->GetPath() + "\".");
-				return false;
-			}
-		}
+		return Unknown_Texture;
+	}
 
-		return true;
+	int Texture::ToAPIFormat(TextureFormat format)
+	{
+		if (format == RGBA_8_UNORM) return DXGI_FORMAT_R8G8B8A8_UNORM;
+		if (format == RGBA_32_FLOAT) return DXGI_FORMAT_R32G32B32_FLOAT;
+		if (format == RGBA_16_FLOAT) return DXGI_FORMAT_R16G16B16A16_FLOAT;
+		if (format == R_8_UNORM) return DXGI_FORMAT_R8_UNORM;
+
+		return DXGI_FORMAT_R8G8B8A8_UNORM;
 	}
 }

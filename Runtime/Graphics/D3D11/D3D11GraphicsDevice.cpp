@@ -541,7 +541,7 @@ namespace Directus
 		m_deviceContext->RSSetViewports(1, &m_viewport);
 	}
 
-	void D3D11GraphicsDevice::ResetViewport()
+	void D3D11GraphicsDevice::SetViewport()
 	{
 		if (!m_deviceContext)
 			return;

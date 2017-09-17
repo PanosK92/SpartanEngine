@@ -213,6 +213,9 @@ namespace Directus
 
 	bool FileSystem::CopyFileFromTo(const string& source, const string& destination)
 	{
+		if (source == destination)
+			return true;
+
 		// In case the destination path doesn't exist, create it
 		if (!DirectoryExists(GetDirectoryFromFilePath(destination)))
 		{

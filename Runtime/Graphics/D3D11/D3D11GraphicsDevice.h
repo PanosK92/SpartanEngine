@@ -66,7 +66,7 @@ namespace Directus
 		virtual bool SetResolution(int width, int height);
 		virtual void* GetViewport() { return (void*)&m_viewport; }
 		virtual void SetViewport(float width, float height);
-		virtual void ResetViewport();
+		virtual void SetViewport();
 		virtual float GetMaxDepth() { return m_maxDepth; }
 
 		virtual bool IsInitialized() { return m_initialized; }

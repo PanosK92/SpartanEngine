@@ -34,16 +34,21 @@ namespace Directus
 		D3D11Texture(D3D11GraphicsDevice* context);
 		~D3D11Texture();
 
-		bool Create(int width, int height, int channels, unsigned char* data);
-		bool CreateAndGenerateMipchain(int width, int height, int channels, unsigned char* data);
-		bool CreateFromMipchain(int width, int height, int channels, const std::vector<std::vector<unsigned char>>& mipchain);
+		// Creats a texture
+		bool Create(int width, int height, int channels, unsigned char* data, DXGI_FORMAT format);
 
+		// Creates a texture and generates mimaps (easy way to get mimaps 
+		// but not as high quality as the mimaps you can generate manually.
+		bool CreateAndGenerateMipmaps(int width, int height, int channels, unsigned char* data, DXGI_FORMAT format);
+
+		// Creates a texture from pre-defined mimaps
+		bool CreateFromMipmaps(int width, int height, int channels, const std::vector<std::vector<unsigned char>>& mipchain, DXGI_FORMAT format);
+
+		// Shader resource
 		ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }
 		void SetShaderResourceView(ID3D11ShaderResourceView* srv) { m_shaderResourceView = srv; }
 
 	private:
-		DXGI_FORMAT m_format;
-		UINT m_mipLevels;
 		ID3D11ShaderResourceView* m_shaderResourceView;
 		D3D11GraphicsDevice* m_graphics;
 	};

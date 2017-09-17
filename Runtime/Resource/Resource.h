@@ -40,7 +40,8 @@ namespace Directus
 		Model_Resource,
 		Cubemap_Resource,
 		Script_Resource,
-		Animation_Resource
+		Animation_Resource,
+		Font_Resource
 	};
 
 	class DLL_API Resource

@@ -186,20 +186,11 @@ void DirectusFileExplorer::dragMoveEvent(QDragMoveEvent* event)
 }
 
 void DirectusFileExplorer::dropEvent(QDropEvent* event)
-{
+{ 
     const QMimeData* mimeData = event->mimeData();
 
-    //= DROP CASE: GAMEOBJECT ===========================================================================
-    size_t gameObjectID = stoi(mimeData->text().toStdString());
-    auto gameObject = m_directusViewport->GetEngineContext()->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
-    if (!gameObject.expired())
-    {
-        // Save the dropped GameObject as a prefab
-        gameObject._Get()->SaveAsPrefab(GetRootPath().toStdString() + "/" + gameObject._Get()->GetName());
-        event->acceptProposedAction();
+    if (!mimeData)
         return;
-    }
-    //===================================================================================================
 
      //= DROP CASE: FILE/DIRECTORY ======================================================================
     QList<QUrl> droppedUrls = mimeData->urls();
@@ -207,7 +198,6 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
     {
         QString localPath = droppedURL.toLocalFile();
         QFileInfo fileInfo(localPath);
-
         string filePath = fileInfo.filePath().toStdString();
 
         //= DROP CASE: DIRECTORY ==========================
@@ -216,13 +206,22 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
             // Pass the directory as a model filepath and the engine
             // will figure out if there is a model in there
             m_fileDialog->OpenModeImmediatly(filePath);
+
+            event->acceptProposedAction();
+            return;
         }
-        //= DROP CASE: FILE ==================================
-        else if(fileInfo.isFile()) // The user dropped a file
+
+        // DROP CASE: FILE ==================================
+        if(fileInfo.isFile()) // The user dropped a file
         {
             // Model ?
             if (FileSystem::IsSupportedModelFile(filePath))
+            {
                 m_fileDialog->OpenModeImmediatly(filePath);
+
+                event->acceptProposedAction();
+                return;
+            }
 
             // Audio ?
             if (FileSystem::IsSupportedAudioFile(filePath))
@@ -230,6 +229,8 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
                 string fileName = FileSystem::GetFileNameFromFilePath(filePath);
                 string destinationPath = GetRootPath().toStdString() + "/" + fileName;
                 FileSystem::CopyFileFromTo(filePath, destinationPath);
+
+                event->acceptProposedAction();
                 return;
             }
 
@@ -239,14 +240,24 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
                 string fileName = FileSystem::GetFileNameFromFilePath(filePath);
                 string destinationPath = GetRootPath().toStdString() + "/" + fileName;
                 FileSystem::CopyFileFromTo(filePath, destinationPath);
+
+                event->acceptProposedAction();
+                return;
             }
         }
-        //===================================================
 
+        //= DROP CASE: GAMEOBJECT ===========================================================================
+        unsigned int gameObjectID = stoi(mimeData->text().toStdString());
+        auto gameObject = m_directusViewport->GetEngineContext()->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
+        if (!gameObject.expired())
+        {
+            // Save the dropped GameObject as a prefab
+            gameObject._Get()->SaveAsPrefab(GetRootPath().toStdString() + "/" + gameObject._Get()->GetName());
+
+            event->acceptProposedAction();
+            return;
+        }
     }
-    //===================================================================================================
-
-    event->acceptProposedAction();
 }
 
 void DirectusFileExplorer::SetRootDirectory(const string& directory)

@@ -102,23 +102,18 @@ namespace Directus
 			return false;
 		}
 
-		// Create FIBITMAP pointers that will be used below
-		FIBITMAP* bitmapOriginal;
-		FIBITMAP* bitmapScaled;
-		FIBITMAP* bitmap32;
-
 		// Load the image as a FIBITMAP*
-		bitmapOriginal = FreeImage_Load(format, path.c_str());
+		FIBITMAP* bitmapOriginal = FreeImage_Load(format, path.c_str());
 
 		// Flip it vertically
 		FreeImage_FlipVertical(bitmapOriginal);
 
 		// Perform any scaling (if necessary)
-		bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, width, height, FILTER_LANCZOS3) : bitmapOriginal;
+		FIBITMAP* bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, width, height, FILTER_LANCZOS3) : bitmapOriginal;
 
 		// Convert it to 32 bits (if neccessery)
 		m_bpp = FreeImage_GetBPP(bitmapOriginal);
-		bitmap32 = m_bpp != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
+		FIBITMAP* bitmap32 = m_bpp != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
 
 		// Store some useful data	
 		m_transparent = bool(FreeImage_IsTransparent(bitmap32));

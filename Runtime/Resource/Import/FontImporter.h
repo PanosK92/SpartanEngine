@@ -24,20 +24,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "../../Core/Helper.h"
 #include <string>
+#include <memory>
 //============================
 
 namespace Directus
 {
+	class Context;
+	class Texture;
+
 	class DLL_API FontImporter
 	{
 	public:
-		FontImporter();
+		FontImporter(Context* context);
 		~FontImporter();
 
 		void Initialize();
-		bool LoadFont(const std::string& filePath, int size);
+		std::unique_ptr<Texture> LoadFont(const std::string& filePath, int size);
 
 	private:
-		void LogFreeTypeError(int errorCode);
+		bool HandleError(int errorCode);
+
+		Context* m_context;
 	};
 }
