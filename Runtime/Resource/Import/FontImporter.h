@@ -53,7 +53,8 @@ namespace Directus
 		bool LoadFont(const std::string& filePath, int fontSize, std::vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, std::vector<Character>& characterInfo);
 
 	private:
-		void ComputeAtlasTextureDimensions(FT_FaceRec_* face, int& atlasWidth, int& atlasHeight);
+		void ComputeAtlasTextureDimensions(FT_FaceRec_* face, int& atlasWidth, int& atlasHeight, int& rowHeight);
+		int GetCharacterMaxHeight(FT_FaceRec_* face);
 		bool HandleError(int errorCode);
 
 		Context* m_context;

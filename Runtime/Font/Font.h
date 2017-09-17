@@ -41,9 +41,12 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
+		void SetSize(int size);
+
 		void** GetShaderResource();
 			
 	private:
 		std::unique_ptr<Texture> m_textureAtlas;
+		int m_size;
 	};
 }
