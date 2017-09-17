@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright(c) 2016-2017 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,35 +19,27 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES =====================
 #include "FontImporter.h"
 #include "ft2build.h"
 #include FT_FREETYPE_H  
 #include "../../Logging/Log.h"
-#include "../../Graphics/Texture.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/MathHelper.h"
-//=================================
+//================================
 
 //= NAMESPACES ================
 using namespace std;
 using namespace Directus::Math;
 //=============================
 
-// We extract glyphs based on the ASCII table.
-// Since the first 32 are just control codes, we skip them.
+// A minimum size for a texture holding all visible ASCII characters
 #define GLYPH_START 32
-#define GLYPH_END 128 
+#define GLYPH_END 127
+#define ATLAS_MAX_WIDTH 512
 
 namespace Directus
 {
-	struct Character 
-	{
-		Vector2 size;		// Size of glyph
-		Vector2 bearing;	// Offset from baseline to left/top of glyph
-		uint8_t advance;	// Offset to advance to next glyph
-	};
-
 	FT_Library m_library;
 
 	FontImporter::FontImporter(Context* context)
@@ -68,55 +60,101 @@ namespace Directus
 		}
 	}
 
-	unique_ptr<Texture> FontImporter::LoadFont(const string& filePath, int size)
+	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, vector<Character>& characterInfo)
 	{
 		FT_Face face;
 
 		// Load font
 		if (HandleError(FT_New_Face(m_library, filePath.c_str(), 0, &face)))
 		{
-			return unique_ptr<Texture>();
+			// Free memory and return
+			FT_Done_Face(face);
+			return false;
 		}
 
 		int height = size;
 		if (HandleError(FT_Set_Pixel_Sizes(face, 0, height)))
 		{
-			return unique_ptr<Texture>();
+			// Free memory and return
+			FT_Done_Face(face);
+			return false;
 		}
-		
+
+		// Try to estimate the size of the font atlas texture
+		ComputeAtlasTextureDimensions(face, atlasWidth, atlasHeight);
+	
 		// Go through each glyph and create a texture atlas
-		unique_ptr<Texture> m_textureAtlas = make_unique<Texture>(m_context);
-		int atlasHeight = 0;
-		int atlasWidth = 0;
-		vector<unsigned char> m_buffer;
-		for (int i = 0; i < 2; i++)
+		atlasBuffer.reserve(atlasWidth * atlasHeight);
+		int penX = 0, penY = 0;
+		for (int i = GLYPH_START; i < GLYPH_END; i++)
 		{
-			FT_Error error = FT_Load_Char(face, 'A', FT_LOAD_RENDER | FT_LOAD_FORCE_AUTOHINT | FT_LOAD_TARGET_LIGHT);
-			HandleError(error);
+			if (HandleError(FT_Load_Char(face, i, FT_LOAD_RENDER)))
+			{
+				// Free memory
+				FT_Done_Face(face);
+				return false;
+			}
 
 			FT_Bitmap* bitmap = &face->glyph->bitmap;
-			unsigned char* bits = bitmap->buffer;
-
-			for (unsigned int y = 0; y < bitmap->rows; y++)
+			if (penX + bitmap->width >= atlasWidth)
 			{
-				for (unsigned int x = 0; x < bitmap->width; x++)
+				penX = 0;
+				penY += (face->size->metrics.height >> 6) + 1;
+			}
+
+			unsigned char* bits = bitmap->buffer;
+			for (unsigned int row = 0; row < bitmap->rows; row++)
+			{
+				for (unsigned int col = 0; col < bitmap->width; col++)
 				{
-					m_buffer.push_back(bits[y * bitmap->pitch + x]);
+					int x = penX + col;
+					int y = penY + row;
+					atlasBuffer[y * atlasWidth + x] = bits[row * bitmap->pitch + col];
 				}
 			}
-			atlasWidth += bitmap->width;
-			atlasHeight = Max<int>(atlasHeight, bitmap->rows);
 
-			/*Character character;
-			character.size = Vector2(face->glyph->bitmap.width, face->glyph->bitmap.rows);
-			character.bearing = Vector2(face->glyph->bitmap_left, face->glyph->bitmap_top);
-			character.advance = face->glyph->advance.x;*/
+			penX += bitmap->width + 1;
+
+			// Save character info
+			Character character;
+			character.x0 = penX;
+			character.y0 = penY;
+			character.x1 = penX + bitmap->width;
+			character.y1 = penY + bitmap->rows;
+			character.xOff = face->glyph->bitmap_left;
+			character.yOff = face->glyph->bitmap_top;
+			character.advance = face->glyph->advance.x >> 6;
+			characterInfo.push_back(character);
 		}
 
-		m_textureAtlas->CreateFromMemory(atlasWidth, atlasHeight, 1, m_buffer.data(), R_8_UNORM);
-		LOG_INFO("Font Texture Atlas: " + to_string(atlasWidth) + "x" + to_string(atlasHeight) + ", Buffer: " + to_string((float)m_buffer.size() / 8192.0f) + " KB");
+		// Free memory
+		FT_Done_Face(face);
 
-		return m_textureAtlas;
+		return true;
+	}
+
+	void FontImporter::ComputeAtlasTextureDimensions(FT_FaceRec_* face, int& atlasWidth, int& atlasHeight)
+	{
+		int penX = 0;
+		for (int i = GLYPH_START; i < GLYPH_END; i++)
+		{
+			if (HandleError(FT_Load_Char(face, i, FT_LOAD_RENDER))) { continue; }
+
+			FT_Bitmap* bitmap = &face->glyph->bitmap;
+
+			penX += bitmap->width + 1;
+			atlasHeight = Max<int>(atlasHeight, bitmap->rows);
+
+			// If the pen is about to exceed ATLAS_MAX_WIDTH 
+			// we have to switch row. Hence, the height of the
+			// texture atlas must increase to fit that row.
+			if (penX + bitmap->width >= ATLAS_MAX_WIDTH)
+			{
+				penX = 0;
+				atlasHeight += (face->size->metrics.height >> 6) + 1;
+				atlasWidth = ATLAS_MAX_WIDTH;
+			}
+		}
 	}
 
 	bool FontImporter::HandleError(int errorCode)

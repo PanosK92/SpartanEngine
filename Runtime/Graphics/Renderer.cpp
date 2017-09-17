@@ -69,6 +69,8 @@ namespace Directus
 		m_resourceMng = nullptr;
 		m_graphics = nullptr;
 		m_renderOutput = Render_Default;
+		m_renderedMeshesPerFrame = 0;
+		m_renderedMeshesTempCounter = 0;
 
 		// Subscribe to render event
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
