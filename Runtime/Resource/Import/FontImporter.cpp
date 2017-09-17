@@ -67,28 +67,28 @@ namespace Directus
 		// Load font
 		if (HandleError(FT_New_Face(m_library, filePath.c_str(), 0, &face)))
 		{
-			// Free memory and return
 			FT_Done_Face(face);
 			return false;
 		}
 
+		// Set size
 		int height = size;
-		if (HandleError(FT_Set_Pixel_Sizes(face, 0, height)))
+		if (HandleError(FT_Set_Char_Size(face, 0, height << 6, 96, 96)))
 		{
-			// Free memory and return
 			FT_Done_Face(face);
 			return false;
 		}
 
 		// Try to estimate the size of the font atlas texture
-		ComputeAtlasTextureDimensions(face, atlasWidth, atlasHeight);
+		int rowHeight = 0;
+		ComputeAtlasTextureDimensions(face, atlasWidth, atlasHeight, rowHeight);
 	
 		// Go through each glyph and create a texture atlas
-		atlasBuffer.reserve(atlasWidth * atlasHeight);
+		atlasBuffer.resize(atlasWidth * atlasHeight);
 		int penX = 0, penY = 0;
 		for (int i = GLYPH_START; i < GLYPH_END; i++)
 		{
-			if (HandleError(FT_Load_Char(face, i, FT_LOAD_RENDER)))
+			if (HandleError(FT_Load_Char(face, i, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT)))
 			{
 				// Free memory
 				FT_Done_Face(face);
@@ -99,7 +99,7 @@ namespace Directus
 			if (penX + bitmap->width >= atlasWidth)
 			{
 				penX = 0;
-				penY += (face->size->metrics.height >> 6) + 1;
+				penY += rowHeight;
 			}
 
 			unsigned char* bits = bitmap->buffer;
@@ -113,8 +113,6 @@ namespace Directus
 				}
 			}
 
-			penX += bitmap->width + 1;
-
 			// Save character info
 			Character character;
 			character.x0 = penX;
@@ -125,6 +123,8 @@ namespace Directus
 			character.yOff = face->glyph->bitmap_top;
 			character.advance = face->glyph->advance.x >> 6;
 			characterInfo.push_back(character);
+
+			penX += bitmap->width + 1;
 		}
 
 		// Free memory
@@ -133,12 +133,13 @@ namespace Directus
 		return true;
 	}
 
-	void FontImporter::ComputeAtlasTextureDimensions(FT_FaceRec_* face, int& atlasWidth, int& atlasHeight)
+	void FontImporter::ComputeAtlasTextureDimensions(FT_FaceRec_* face, int& atlasWidth, int& atlasHeight, int& rowHeight)
 	{
 		int penX = 0;
+		rowHeight = GetCharacterMaxHeight(face);
 		for (int i = GLYPH_START; i < GLYPH_END; i++)
 		{
-			if (HandleError(FT_Load_Char(face, i, FT_LOAD_RENDER))) { continue; }
+			if (HandleError(FT_Load_Char(face, i, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT))) { continue; }
 
 			FT_Bitmap* bitmap = &face->glyph->bitmap;
 
@@ -151,10 +152,24 @@ namespace Directus
 			if (penX + bitmap->width >= ATLAS_MAX_WIDTH)
 			{
 				penX = 0;
-				atlasHeight += (face->size->metrics.height >> 6) + 1;
+				atlasHeight += rowHeight;
 				atlasWidth = ATLAS_MAX_WIDTH;
 			}
 		}
+	}
+
+	int FontImporter::GetCharacterMaxHeight(FT_FaceRec_* face)
+	{
+		int maxHeight = 0;
+		for (int i = GLYPH_START; i < GLYPH_END; i++)
+		{
+			if (HandleError(FT_Load_Char(face, i, FT_LOAD_RENDER))) { continue; }
+
+			FT_Bitmap* bitmap = &face->glyph->bitmap;
+			maxHeight = Max<int>(maxHeight, bitmap->rows);
+		}
+
+		return maxHeight;
 	}
 
 	bool FontImporter::HandleError(int errorCode)

@@ -35,6 +35,7 @@ namespace Directus
 	Font::Font(Context* context)
 	{
 		m_context = context;
+		m_size = 12;
 	}
 
 	Font::~Font()
@@ -51,14 +52,13 @@ namespace Directus
 		if (!m_context)
 			return false;
 
-		int fontSize = 30;
-		vector<unsigned char> atlasBuffer;
 		int atlasWidth = 0;
 		int atlasHeight = 0;
 		vector<Character> characterInfo;
+		vector<unsigned char> atlasBuffer;
 
 		// Load font
-		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()._Get()->LoadFont(filePath, fontSize, atlasBuffer, atlasWidth, atlasHeight, characterInfo))
+		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()._Get()->LoadFont(filePath, m_size, atlasBuffer, atlasWidth, atlasHeight, characterInfo))
 		{
 			LOG_ERROR("Font: Failed to load font \"" + filePath + "\"");
 			atlasBuffer.clear();
@@ -71,6 +71,11 @@ namespace Directus
 		LOG_INFO("Font Texture Atlas: " + to_string(atlasWidth) + "x" + to_string(atlasHeight));
 
 		return true;
+	}
+
+	void Font::SetSize(int size)
+	{
+		m_size = Math::Clamp<int>(size, 8, 50);
 	}
 
 	void** Font::GetShaderResource()
