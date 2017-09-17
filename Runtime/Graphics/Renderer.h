@@ -45,12 +45,14 @@ namespace Directus
 	class DeferredShader;
 	class DepthShader;
 	class LineShader;
+	class FontShader;
 	class PostProcessShader;
 	class Texture;
 	class ResourceManager;
 	class D3D11RenderTexture;
 	class D3D11GraphicsDevice;
 	class Stopwatch;
+	class Font;
 
 	namespace Math
 	{
@@ -130,6 +132,7 @@ namespace Directus
 		std::shared_ptr<DeferredShader> m_shaderDeferred;
 		std::shared_ptr<DepthShader> m_shaderDepth;
 		std::shared_ptr<LineShader> m_shaderLine;
+		std::shared_ptr<FontShader> m_shaderFont;
 		std::shared_ptr<PostProcessShader> m_shaderFXAA;
 		std::shared_ptr<PostProcessShader> m_shaderSharpening;
 		std::shared_ptr<PostProcessShader> m_shaderBlur;
@@ -141,6 +144,7 @@ namespace Directus
 		int m_renderedMeshesTempCounter;
 		float m_renderTimeMs;
 		std::unique_ptr<Stopwatch> m_renderStopwatch;
+		std::unique_ptr<Font> m_font;
 		//===========================================
 
 		//= PREREQUISITES ================================

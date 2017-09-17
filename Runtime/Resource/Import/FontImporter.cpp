@@ -19,30 +19,45 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =======================
 #include "FontImporter.h"
 #include "ft2build.h"
 #include FT_FREETYPE_H  
 #include "../../Logging/Log.h"
-#include "../../FileSystem/FileSystem.h"
-//======================================
+#include "../../Graphics/Texture.h"
+#include "../../Math/Vector2.h"
+#include "../../Math/MathHelper.h"
+//=================================
 
-//= NAMESPACES =====
+//= NAMESPACES ================
 using namespace std;
-//==================
+using namespace Directus::Math;
+//=============================
+
+// We extract glyphs based on the ASCII table.
+// Since the first 32 are just control codes, we skip them.
+#define GLYPH_START 32
+#define GLYPH_END 128 
 
 namespace Directus
 {
+	struct Character 
+	{
+		Vector2 size;		// Size of glyph
+		Vector2 bearing;	// Offset from baseline to left/top of glyph
+		uint8_t advance;	// Offset to advance to next glyph
+	};
+
 	FT_Library m_library;
 
-	FontImporter::FontImporter()
+	FontImporter::FontImporter(Context* context)
 	{
-
+		m_context = context;
 	}
 
 	FontImporter::~FontImporter()
 	{
-
+		FT_Done_FreeType(m_library);
 	}
 
 	void FontImporter::Initialize()
@@ -50,31 +65,67 @@ namespace Directus
 		if (FT_Init_FreeType(&m_library))
 		{
 			LOG_ERROR("FreeType: Failed to initialize.");
-		}	
+		}
 	}
 
-	bool FontImporter::LoadFont(const string& filePath, int size)
+	unique_ptr<Texture> FontImporter::LoadFont(const string& filePath, int size)
 	{
 		FT_Face face;
 
 		// Load font
-		FT_Error error = FT_New_Face(m_library, filePath.c_str(), 0, &face);
-		LogFreeTypeError(error);
+		if (HandleError(FT_New_Face(m_library, filePath.c_str(), 0, &face)))
+		{
+			return unique_ptr<Texture>();
+		}
 
-		// Set pixel sizes
-		error = FT_Set_Pixel_Sizes(face, 0, size);
-		LogFreeTypeError(error);
+		int height = size;
+		if (HandleError(FT_Set_Pixel_Sizes(face, 0, height)))
+		{
+			return unique_ptr<Texture>();
+		}
+		
+		// Go through each glyph and create a texture atlas
+		unique_ptr<Texture> m_textureAtlas = make_unique<Texture>(m_context);
+		int atlasHeight = 0;
+		int atlasWidth = 0;
+		vector<unsigned char> m_buffer;
+		for (int i = 0; i < 2; i++)
+		{
+			FT_Error error = FT_Load_Char(face, 'A', FT_LOAD_RENDER | FT_LOAD_FORCE_AUTOHINT | FT_LOAD_TARGET_LIGHT);
+			HandleError(error);
 
-		return true;
+			FT_Bitmap* bitmap = &face->glyph->bitmap;
+			unsigned char* bits = bitmap->buffer;
+
+			for (unsigned int y = 0; y < bitmap->rows; y++)
+			{
+				for (unsigned int x = 0; x < bitmap->width; x++)
+				{
+					m_buffer.push_back(bits[y * bitmap->pitch + x]);
+				}
+			}
+			atlasWidth += bitmap->width;
+			atlasHeight = Max<int>(atlasHeight, bitmap->rows);
+
+			/*Character character;
+			character.size = Vector2(face->glyph->bitmap.width, face->glyph->bitmap.rows);
+			character.bearing = Vector2(face->glyph->bitmap_left, face->glyph->bitmap_top);
+			character.advance = face->glyph->advance.x;*/
+		}
+
+		m_textureAtlas->CreateFromMemory(atlasWidth, atlasHeight, 1, m_buffer.data(), R_8_UNORM);
+		LOG_INFO("Font Texture Atlas: " + to_string(atlasWidth) + "x" + to_string(atlasHeight) + ", Buffer: " + to_string((float)m_buffer.size() / 8192.0f) + " KB");
+
+		return m_textureAtlas;
 	}
 
-	void FontImporter::LogFreeTypeError(int errorCode)
+	bool FontImporter::HandleError(int errorCode)
 	{
 		// If there is no error, just return
 		if (errorCode == FT_Err_Ok)
-			return;
+			return false;
 
-		switch(errorCode)
+		switch (errorCode)
 		{
 			// Generic errors
 		case FT_Err_Cannot_Open_Resource:
@@ -114,7 +165,7 @@ namespace Directus
 			LOG_ERROR("FreeType: Missing property.");
 			break;
 
-		// Glyph/character errors
+			// Glyph/character errors
 		case FT_Err_Invalid_Glyph_Index:
 			LOG_ERROR("FreeType: Invalid glyph index.");
 			break;
@@ -140,7 +191,7 @@ namespace Directus
 			LOG_ERROR("FreeType: Invalid pixel size.");
 			break;
 
-		// Handle errors
+			// Handle errors
 		case FT_Err_Invalid_Handle:
 			LOG_ERROR("FreeType: Invalid object handle.");
 			break;
@@ -169,7 +220,7 @@ namespace Directus
 			LOG_ERROR("FreeType: Invalid stream handle.");
 			break;
 
-		// Driver errors
+			// Driver errors
 		case FT_Err_Too_Many_Drivers:
 			LOG_ERROR("FreeType: Too many modules.");
 			break;
@@ -177,7 +228,7 @@ namespace Directus
 			LOG_ERROR("FreeType: Too many extensions.");
 			break;
 
-		// Memory errors
+			// Memory errors
 		case FT_Err_Out_Of_Memory:
 			LOG_ERROR("FreeType: Out of memory.");
 			break;
@@ -185,7 +236,7 @@ namespace Directus
 			LOG_ERROR("FreeType: Unlisted object.");
 			break;
 
-		// Stream errors
+			// Stream errors
 		case FT_Err_Cannot_Open_Stream:
 			LOG_ERROR("FreeType: Cannot open stream.");
 			break;
@@ -211,7 +262,7 @@ namespace Directus
 			LOG_ERROR("FreeType: Invalid frame read.");
 			break;
 
-		// Raster errors
+			// Raster errors
 		case FT_Err_Raster_Uninitialized:
 			LOG_ERROR("FreeType: Raster uninitialized.");
 			break;
@@ -225,12 +276,12 @@ namespace Directus
 			LOG_ERROR("FreeType: Negative height while rastering.");
 			break;
 
-		// Cache errors
+			// Cache errors
 		case FT_Err_Too_Many_Caches:
 			LOG_ERROR("FreeType: Too many registered caches.");
 			break;
 
-		// TrueType and SFNT errors 
+			// TrueType and SFNT errors 
 		case FT_Err_Invalid_Opcode:
 			LOG_ERROR("FreeType: Invalid opcode.");
 			break;
@@ -319,7 +370,7 @@ namespace Directus
 			LOG_ERROR("FreeType: Found FDEF or IDEF opcode in glyf bytecode.");
 			break;
 
-		// CFF, CID, and Type 1 errors 
+			// CFF, CID, and Type 1 errors 
 		case FT_Err_Syntax_Error:
 			LOG_ERROR("FreeType: Opcode syntax error.");
 			break;
@@ -336,7 +387,7 @@ namespace Directus
 			LOG_ERROR("FreeType: Glyph too big for hinting.");
 			break;
 
-		// BDF errors
+			// BDF errors
 		case FT_Err_Missing_Startfont_Field:
 			LOG_ERROR("FreeType: 'STARTFONT' field missing.");
 			break;
@@ -371,10 +422,12 @@ namespace Directus
 			LOG_ERROR("FreeType: Font glyphs corrupted or missing fields.");
 			break;
 
-		// None
+			// None
 		default:
 			LOG_ERROR("FreeType: Unknown error code.");
 			break;
 		}
+
+		return true;
 	}
 }

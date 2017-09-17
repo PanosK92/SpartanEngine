@@ -43,12 +43,13 @@ namespace Directus
 
 		// Importers
 		m_imageImporter = make_shared<ImageImporter>();
-		m_modelImporter = make_shared<ModelImporter>();
-		m_modelImporter->Initialize(m_context);
+		m_modelImporter = make_shared<ModelImporter>(m_context);
+		m_fontImporter = make_shared<FontImporter>(m_context);
+		m_fontImporter->Initialize();
 		
 		// Add engine standard resource directories
 		AddStandardResourceDirectory(Texture_Resource, "Standard Assets//Textures//");
-		AddStandardResourceDirectory(Material_Resource, "Standard Assets//Fonts//");
+		AddStandardResourceDirectory(Font_Resource, "Standard Assets//Fonts//");
 		AddStandardResourceDirectory(Shader_Resource, "Standard Assets//Shaders//");
 		AddStandardResourceDirectory(Cubemap_Resource, "Standard Assets//Cubemaps//");
 		AddStandardResourceDirectory(Script_Resource, "Standard Assets//Scripts//");

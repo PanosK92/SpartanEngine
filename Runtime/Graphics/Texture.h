@@ -32,6 +32,7 @@ namespace Directus
 
 	enum TextureType
 	{
+		Unknown_Texture,
 		Albedo_Texture,
 		Roughness_Texture,
 		Metallic_Texture,
@@ -41,6 +42,14 @@ namespace Directus
 		Emission_Texture,
 		Mask_Texture,
 		CubeMap_Texture,
+	};
+
+	enum TextureFormat
+	{
+		RGBA_32_FLOAT,
+		RGBA_16_FLOAT,
+		RGBA_8_UNORM,
+		R_8_UNORM
 	};
 
 	class DLL_API Texture : public Resource
@@ -76,18 +85,25 @@ namespace Directus
 		void** GetShaderResource();
 		//=============================================================================================
 
+		// Creates a texture of the given type from memory
+		bool CreateFromMemory(int width, int height, int channels, unsigned char* buffer, TextureFormat format);
+		// Creates a texture with pre-generated mimaps from memory
+		bool CreateFromMemory(int width, int height, int channels, const std::vector<std::vector<unsigned char>>& buffer, TextureFormat format);
+
 	private:
 		bool LoadFromForeignFormat(const std::string& filePath);
 		bool LoadMetadata(const std::string& filePath);
-		bool CreateShaderResource();
+		TextureType TextureTypeFromString(const std::string& type);
+		int ToAPIFormat(TextureFormat format);
 
 		int m_width;
 		int m_height;
+		int m_channels;
 		TextureType m_textureType;
 		bool m_grayscale;
 		bool m_transparency;
 		bool m_alphaIsTransparency;
-		bool m_generateMipchain;
+		bool m_generateMipmaps;
 		std::unique_ptr<D3D11Texture> m_texture;
 	};
 }

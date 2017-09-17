@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Shaders/ShaderVariation.h"
 #include "Shaders/PostProcessShader.h"
 #include "Shaders/LineShader.h"
+#include "Shaders/FontShader.h"
 #include "Shaders/DepthShader.h"
 #include "Shaders/DeferredShader.h"
 #include "D3D11/D3D11RenderTexture.h"
@@ -44,6 +45,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Stopwatch.h"
 #include "../Resource/ResourceManager.h"
 #include "Material.h"
+#include "Mesh.h"
+#include "../Font/Font.h"
 //======================================
 
 //= NAMESPACES ================
@@ -110,6 +113,9 @@ namespace Directus
 		m_shaderLine = make_shared<LineShader>();
 		m_shaderLine->Load(shaderDirectory + "Line.hlsl", m_graphics);
 
+		m_shaderFont = make_shared<FontShader>();
+		m_shaderFont->Load(shaderDirectory + "Font.hlsl", m_graphics);
+
 		m_shaderFXAA = make_shared<PostProcessShader>();
 		m_shaderFXAA->Load(shaderDirectory + "PostProcess.hlsl", "FXAA", m_graphics);
 
@@ -134,7 +140,7 @@ namespace Directus
 		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
 		m_texNoiseMap->SetTextureType(Normal_Texture);
 		m_renderStopwatch = make_unique<Stopwatch>();
-
+		
 		return true;
 	}
 
@@ -350,7 +356,7 @@ namespace Directus
 			return;
 
 		m_GBuffer->SetAsRenderTarget();
-		m_graphics->ResetViewport();
+		m_graphics->SetViewport();
 		m_GBuffer->Clear();
 
 		vector<weak_ptr<Material>> materials = m_resourceMng->GetResourcesByType<Material>();
@@ -520,7 +526,7 @@ namespace Directus
 		if (m_renderOutput != Render_Default)
 		{
 			m_graphics->SetBackBufferAsRenderTarget();
-			m_graphics->ResetViewport();
+			m_graphics->SetViewport();
 			m_graphics->Clear(m_camera->GetClearColor());
 
 			int texIndex = 0;
@@ -562,7 +568,7 @@ namespace Directus
 
 		// Set back-buffer
 		m_graphics->SetBackBufferAsRenderTarget();
-		m_graphics->ResetViewport();
+		m_graphics->SetViewport();
 		m_graphics->Clear(m_camera->GetClearColor());
 
 		// LUMASHARPEN
@@ -602,12 +608,31 @@ namespace Directus
 		}
 		//============================================================================================================
 
-		// Set the buffer
+		// Render all the above lines
 		m_lineRenderer->SetBuffer();
-
 		m_shaderLine->Set();
 		m_shaderLine->SetBuffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), m_GBuffer->GetShaderResource(2));
 		m_shaderLine->Render(m_lineRenderer->GetVertexCount());
+
+		//= TEXT EXPERIMENT ============================================================
+		if (!m_font)
+		{
+			m_font = make_unique<Font>(m_context);
+			string fontDir = m_resourceMng->GetStandardResourceDirectory(Font_Resource);
+			m_font->LoadFromFile(fontDir + "CaviarDreams.ttf");
+		}
+
+		//m_graphics->EnableAlphaBlending(true);
+		m_graphics->SetBackBufferAsRenderTarget();
+		m_graphics->SetViewport();
+		m_fullScreenQuad->SetBuffers();
+		
+		m_shaderFont->Set();
+		m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection);
+		m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource());
+		m_shaderFont->Render(m_fullScreenQuad->GetIndexCount());
+
+		//m_graphics->EnableAlphaBlending(false);
 	}
 
 	const Vector4& Renderer::GetClearColor()

@@ -23,9 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FullScreenQuad.h"
 #include "../Core/Helper.h"
 #include "../Graphics/Vertex.h"
+#include <winerror.h>
 //=============================
 
 //= NAMESPACES ================
+using namespace std;
 using namespace Directus::Math;
 //=============================
 
@@ -36,8 +38,6 @@ namespace Directus
 		m_graphics = nullptr;
 		m_vertexBuffer = nullptr;
 		m_indexBuffer = nullptr;
-		m_vertexCount = 0;
-		m_indexCount = 0;
 	}
 
 	FullScreenQuad::~FullScreenQuad()
@@ -64,45 +64,49 @@ namespace Directus
 		// Calculate the screen coordinates of the bottom of the window.
 		float bottom = top - static_cast<float>(height);
 
-		// Set the number of vertices in the vertex array.
-		m_vertexCount = 6;
-
-		// Set the number of indices in the index array.
-		m_indexCount = m_vertexCount;
-
-		// Create index & vertex arrays
-		VertexPosTex* vertices = new VertexPosTex[m_vertexCount];
-		unsigned long* indices = new unsigned long[m_indexCount];
+		// Create index and vertex arrays
+		vector<VertexPosTex> vertices;
+		vector<unsigned long> indices;
+		int indexCount = 6;
 
 		// Load the vertex array with data.
 		// First triangle.
-		vertices[0].position = Vector3(left, top, 0.0f); // Top left.
-		vertices[0].uv = Vector2(0.0f, 0.0f);
+		VertexPosTex vertex;
+		vertex.position = Vector3(left, top, 0.0f); // Top left.
+		vertex.uv = Vector2(0.0f, 0.0f);
+		vertices.push_back(vertex);
 
-		vertices[1].position = Vector3(right, bottom, 0.0f); // Bottom right.
-		vertices[1].uv = Vector2(1.0f, 1.0f);
+		vertex.position = Vector3(right, bottom, 0.0f); // Bottom right.
+		vertex.uv = Vector2(1.0f, 1.0f);
+		vertices.push_back(vertex);
 
-		vertices[2].position = Vector3(left, bottom, 0.0f); // Bottom left.
-		vertices[2].uv = Vector2(0.0f, 1.0f);
+		vertex.position = Vector3(left, bottom, 0.0f); // Bottom left.
+		vertex.uv = Vector2(0.0f, 1.0f);
+		vertices.push_back(vertex);
 
 		// Second triangle.
-		vertices[3].position = Vector3(left, top, 0.0f); // Top left.
-		vertices[3].uv = Vector2(0.0f, 0.0f);
+		vertex.position = Vector3(left, top, 0.0f); // Top left.
+		vertex.uv = Vector2(0.0f, 0.0f);
+		vertices.push_back(vertex);
 
-		vertices[4].position = Vector3(right, top, 0.0f);// Top right.
-		vertices[4].uv = Vector2(1.0f, 0.0f);
+		vertex.position = Vector3(right, top, 0.0f);// Top right.
+		vertex.uv = Vector2(1.0f, 0.0f);
+		vertices.push_back(vertex);
 
-		vertices[5].position = Vector3(right, bottom, 0.0f); // Bottom right.
-		vertices[5].uv = Vector2(1.0f, 1.0f);
+		vertex.position = Vector3(right, bottom, 0.0f); // Bottom right.
+		vertex.uv = Vector2(1.0f, 1.0f);
+		vertices.push_back(vertex);
 
 		// Load the index array with data.
-		for (int i = 0; i < m_indexCount; i++)
-			indices[i] = i;
+		for (int i = 0; i < indexCount; i++)
+		{
+			indices.push_back(i);
+		}
 
 		// Set up the description of the vertex buffer.
 		D3D11_BUFFER_DESC vertexBufferDesc;
 		vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		vertexBufferDesc.ByteWidth = sizeof(VertexPosTex) * m_vertexCount;
+		vertexBufferDesc.ByteWidth = sizeof(VertexPosTex) * vertices.size();
 		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		vertexBufferDesc.CPUAccessFlags = 0;
 		vertexBufferDesc.MiscFlags = 0;
@@ -110,19 +114,19 @@ namespace Directus
 
 		// Give the subresource structure a pointer to the vertex data.
 		D3D11_SUBRESOURCE_DATA vertexData;
-		vertexData.pSysMem = vertices;
+		vertexData.pSysMem = vertices.data();
 		vertexData.SysMemPitch = 0;
 		vertexData.SysMemSlicePitch = 0;
 
 		// Now finally create the vertex buffer.
-		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
-		if (FAILED(result))
+		auto hResult = m_graphics->GetDevice()->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
+		if (FAILED(hResult))
 			return false;
 
 		// Set up the description of the index buffer.
 		D3D11_BUFFER_DESC indexBufferDesc;
 		indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		indexBufferDesc.ByteWidth = sizeof(unsigned long) * m_indexCount;
+		indexBufferDesc.ByteWidth = sizeof(unsigned long) * indices.size();
 		indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 		indexBufferDesc.CPUAccessFlags = 0;
 		indexBufferDesc.MiscFlags = 0;
@@ -130,21 +134,14 @@ namespace Directus
 
 		// Give the subresource structure a pointer to the index data.
 		D3D11_SUBRESOURCE_DATA indexData;
-		indexData.pSysMem = indices;
+		indexData.pSysMem = indices.data();
 		indexData.SysMemPitch = 0;
 		indexData.SysMemSlicePitch = 0;
 
 		// Create the index buffer.
-		result = m_graphics->GetDevice()->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
-		if (FAILED(result))
+		hResult = m_graphics->GetDevice()->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
+		if (FAILED(hResult))
 			return false;
-
-		// Release the arrays now that the vertex and index buffers have been created and loaded.
-		delete[] vertices;
-		vertices = nullptr;
-
-		delete[] indices;
-		indices = nullptr;
 
 		return true;
 	}

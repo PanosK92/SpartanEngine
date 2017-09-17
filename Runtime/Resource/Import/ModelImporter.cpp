@@ -35,8 +35,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Resource/ResourceManager.h"
 #include "../../Graphics/Model.h"
-#include <future>
 #include "../../Graphics/Animation.h"
+#include "../../Graphics/Mesh.h"
+#include <future>
 //=================================================
 
 //= NAMESPACES ================
@@ -121,9 +122,9 @@ namespace Directus
 
 	vector<string> materialNames;
 
-	ModelImporter::ModelImporter()
+	ModelImporter::ModelImporter(Context* context)
 	{
-		m_context = nullptr;
+		m_context = context;
 		m_isLoading = false;
 		m_model = nullptr;
 		ResetStats();
@@ -132,12 +133,6 @@ namespace Directus
 	ModelImporter::~ModelImporter()
 	{
 
-	}
-
-	bool ModelImporter::Initialize(Context* context)
-	{
-		m_context = context;
-		return true;
 	}
 
 	void ModelImporter::LoadAsync(Model* model, const string& filePath)
@@ -548,6 +543,8 @@ namespace Directus
 		if (!texture.expired())
 		{
 			texture._Get()->SetTextureType(textureType);
+			// Save the metadata again so the texture type get's updated
+			texture._Get()->SaveToFile(RESOURCE_SAVE); 
 			material._Get()->SetTexture(texture);
 		}
 	}

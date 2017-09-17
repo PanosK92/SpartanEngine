@@ -36,8 +36,6 @@ namespace Directus
 {
 	PostProcessShader::PostProcessShader()
 	{
-		m_shader = nullptr;
-		m_constantBuffer = nullptr;
 		m_graphics = nullptr;
 	}
 

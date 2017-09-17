@@ -24,12 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include <memory>
 #include <map>
-#include "../Core/SubSystem.h"
 #include "ResourceCache.h"
-#include "../Graphics/Mesh.h"
+#include "../Core/SubSystem.h"
 #include "../Core/GameObject.h"
 #include "Import/ModelImporter.h"
 #include "Import/ImageImporter.h"
+#include "Import/FontImporter.h"
 //===============================
 
 namespace Directus
@@ -136,6 +136,7 @@ namespace Directus
 		// Importers
 		std::weak_ptr<ModelImporter> GetModelImporter() { return m_modelImporter; }
 		std::weak_ptr<ImageImporter> GetImageImporter() { return m_imageImporter; }
+		std::weak_ptr<FontImporter> GetFontImporter() { return m_fontImporter; }
 
 	private:
 		std::unique_ptr<ResourceCache> m_resourceCache;
@@ -145,6 +146,7 @@ namespace Directus
 		// Importers
 		std::shared_ptr<ModelImporter> m_modelImporter;
 		std::shared_ptr<ImageImporter> m_imageImporter;
+		std::shared_ptr<FontImporter> m_fontImporter;
 
 		// Derived -> Base (as a shared pointer)
 		template <class Type>

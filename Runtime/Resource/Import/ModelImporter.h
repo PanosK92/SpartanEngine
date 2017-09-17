@@ -41,10 +41,9 @@ namespace Directus
 	class DLL_API ModelImporter
 	{
 	public:
-		ModelImporter();
+		ModelImporter(Context* context);
 		~ModelImporter();
 
-		bool Initialize(Context* context);
 		void LoadAsync(Model* model, const std::string& filePath);
 		void ReadAnimations(Model* model, const aiScene* scene);
 		bool Load(Model* model, const std::string& filePath);

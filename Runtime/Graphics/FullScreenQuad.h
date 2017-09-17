@@ -35,13 +35,11 @@ namespace Directus
 
 		bool Initialize(int width, int height, Graphics* graphics);
 		void SetBuffers();
-		int GetIndexCount() { return m_indexCount; }
+		int GetIndexCount() { return 6; }
 
 	private:
 		Graphics* m_graphics;
 		ID3D11Buffer* m_vertexBuffer;
 		ID3D11Buffer* m_indexBuffer;
-		int m_vertexCount;
-		int m_indexCount;
 	};
 }
