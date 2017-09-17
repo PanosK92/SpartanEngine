@@ -50,7 +50,7 @@ namespace Directus
 
 		inline DLL_API double Cot(float x) { return cos(x) / sin(x); }
 		inline DLL_API float CotF(float x) { return cosf(x) / sinf(x); }
-		inline DLL_API float DegreesToRadians(float degrees){ return degrees * DEG_TO_RAD; }
+		inline DLL_API float DegreesToRadians(float degrees) { return degrees * DEG_TO_RAD; }
 		inline DLL_API float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
 		template <typename T>
 		inline DLL_API float Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
@@ -72,5 +72,11 @@ namespace Directus
 
 		template <class T>
 		T Min(T a, T b) { return a < b ? a : b; }
+
+		template <class T>
+		float Ceil(T x) { return ceil(x); }
+
+		template <class T>
+		float Sqrt(T x) { return sqrt(x); }
 	}
 }

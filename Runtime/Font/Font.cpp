@@ -26,6 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 //======================================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace Directus
 {
 	Font::Font(Context* context)
@@ -37,18 +41,34 @@ namespace Directus
 	{
 	}
 
-	bool Font::SaveToFile(const std::string& filePath)
+	bool Font::SaveToFile(const string& filePath)
 	{
 		return true;
 	}
 
-	bool Font::LoadFromFile(const std::string& filePath)
+	bool Font::LoadFromFile(const string& filePath)
 	{
 		if (!m_context)
 			return false;
 
-		int fontSize = 200;
-		m_textureAtlas = m_context->GetSubsystem<ResourceManager>()->GetFontImporter()._Get()->LoadFont(filePath, fontSize);
+		int fontSize = 30;
+		vector<unsigned char> atlasBuffer;
+		int atlasWidth = 0;
+		int atlasHeight = 0;
+		vector<Character> characterInfo;
+
+		// Load font
+		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()._Get()->LoadFont(filePath, fontSize, atlasBuffer, atlasWidth, atlasHeight, characterInfo))
+		{
+			LOG_ERROR("Font: Failed to load font \"" + filePath + "\"");
+			atlasBuffer.clear();
+			return false;
+		}
+
+		// Create a font texture atlas form the provided data
+		m_textureAtlas = make_unique<Texture>(m_context);
+		m_textureAtlas->CreateFromMemory(atlasWidth, atlasHeight, 1, atlasBuffer.data(), R_8_UNORM);
+		LOG_INFO("Font Texture Atlas: " + to_string(atlasWidth) + "x" + to_string(atlasHeight));
 
 		return true;
 	}

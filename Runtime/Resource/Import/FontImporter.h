@@ -23,14 +23,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "../../Core/Helper.h"
-#include <string>
-#include <memory>
+#include <vector>
 //============================
+
+struct FT_FaceRec_;
 
 namespace Directus
 {
 	class Context;
-	class Texture;
+
+	struct Character
+	{
+		int x0;
+		int x1;
+		int y0;
+		int y1;
+		int xOff;
+		int yOff;
+		uint8_t advance; // Offset to advance to next glyph
+	};
 
 	class DLL_API FontImporter
 	{
@@ -39,9 +50,10 @@ namespace Directus
 		~FontImporter();
 
 		void Initialize();
-		std::unique_ptr<Texture> LoadFont(const std::string& filePath, int size);
+		bool LoadFont(const std::string& filePath, int fontSize, std::vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, std::vector<Character>& characterInfo);
 
 	private:
+		void ComputeAtlasTextureDimensions(FT_FaceRec_* face, int& atlasWidth, int& atlasHeight);
 		bool HandleError(int errorCode);
 
 		Context* m_context;
