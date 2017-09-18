@@ -148,8 +148,8 @@ namespace Directus
 		m_font = make_unique<Font>(m_context);
 		string fontDir = m_resourceMng->GetStandardResourceDirectory(Font_Resource);
 		m_font->SetSize(12);
-		m_font->SetColor(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-		m_font->LoadFromFile(fontDir + "Calibri.ttf");
+		m_font->SetColor(Vector4(0.5f, 0.5f, 0.5f, 1.0f));
+		m_font->LoadFromFile(fontDir + "CalibriBold.ttf");
 
 		return true;
 	}
