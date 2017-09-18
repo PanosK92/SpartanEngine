@@ -23,10 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "D3D11/D3D11GraphicsDevice.h"
+#include <memory>
 //====================================
 
 namespace Directus
 {
+	class D3D11VertexBuffer;
+	class D3D11IndexBuffer;
+
 	class FullScreenQuad
 	{
 	public:
@@ -34,12 +38,12 @@ namespace Directus
 		~FullScreenQuad();
 
 		bool Initialize(int width, int height, Graphics* graphics);
-		void SetBuffers();
+		bool SetBuffer();
 		int GetIndexCount() { return 6; }
 
 	private:
 		Graphics* m_graphics;
-		ID3D11Buffer* m_vertexBuffer;
-		ID3D11Buffer* m_indexBuffer;
+		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
 	};
 }

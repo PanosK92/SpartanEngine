@@ -19,12 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES =======================
 #include "FullScreenQuad.h"
 #include "../Core/Helper.h"
 #include "../Graphics/Vertex.h"
-#include <winerror.h>
-//=============================
+#include "D3D11/D3D11IndexBuffer.h"
+#include "D3D11/D3D11VertexBuffer.h"
+#include "../Logging/Log.h"
+//==================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -36,14 +38,11 @@ namespace Directus
 	FullScreenQuad::FullScreenQuad()
 	{
 		m_graphics = nullptr;
-		m_vertexBuffer = nullptr;
-		m_indexBuffer = nullptr;
 	}
 
 	FullScreenQuad::~FullScreenQuad()
 	{
-		SafeRelease(m_vertexBuffer);
-		SafeRelease(m_indexBuffer);
+
 	}
 
 	bool FullScreenQuad::Initialize(int width, int height, Graphics* graphics)
@@ -66,8 +65,7 @@ namespace Directus
 
 		// Create index and vertex arrays
 		vector<VertexPosTex> vertices;
-		vector<unsigned long> indices;
-		int indexCount = 6;
+		vector<unsigned int> indices;
 
 		// Load the vertex array with data.
 		// First triangle.
@@ -98,67 +96,39 @@ namespace Directus
 		vertices.push_back(vertex);
 
 		// Load the index array with data.
-		for (int i = 0; i < indexCount; i++)
+		for (int i = 0; i < vertices.size(); i++)
 		{
 			indices.push_back(i);
 		}
 
-		// Set up the description of the vertex buffer.
-		D3D11_BUFFER_DESC vertexBufferDesc;
-		vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		vertexBufferDesc.ByteWidth = sizeof(VertexPosTex) * vertices.size();
-		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		vertexBufferDesc.CPUAccessFlags = 0;
-		vertexBufferDesc.MiscFlags = 0;
-		vertexBufferDesc.StructureByteStride = 0;
-
-		// Give the subresource structure a pointer to the vertex data.
-		D3D11_SUBRESOURCE_DATA vertexData;
-		vertexData.pSysMem = vertices.data();
-		vertexData.SysMemPitch = 0;
-		vertexData.SysMemSlicePitch = 0;
-
-		// Now finally create the vertex buffer.
-		auto hResult = m_graphics->GetDevice()->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
-		if (FAILED(hResult))
+		m_vertexBuffer = make_shared<D3D11VertexBuffer>(m_graphics);
+		if (!m_vertexBuffer->Create(vertices))
+		{
+			LOG_ERROR("FullScreenQuad: Failed to create vertex buffer.");
 			return false;
+		}
 
-		// Set up the description of the index buffer.
-		D3D11_BUFFER_DESC indexBufferDesc;
-		indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		indexBufferDesc.ByteWidth = sizeof(unsigned long) * indices.size();
-		indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		indexBufferDesc.CPUAccessFlags = 0;
-		indexBufferDesc.MiscFlags = 0;
-		indexBufferDesc.StructureByteStride = 0;
-
-		// Give the subresource structure a pointer to the index data.
-		D3D11_SUBRESOURCE_DATA indexData;
-		indexData.pSysMem = indices.data();
-		indexData.SysMemPitch = 0;
-		indexData.SysMemSlicePitch = 0;
-
-		// Create the index buffer.
-		hResult = m_graphics->GetDevice()->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
-		if (FAILED(hResult))
+		m_indexBuffer = make_shared<D3D11IndexBuffer>(m_graphics);
+		if (!m_indexBuffer->Create(indices))
+		{
+			LOG_ERROR("FullScreenQuad: Failed to create index buffer.");
 			return false;
+		}
 
 		return true;
 	}
 
-	void FullScreenQuad::SetBuffers()
+	bool FullScreenQuad::SetBuffer()
 	{
-		// Set vertex buffer stride and offset.
-		unsigned int stride = sizeof(VertexPosTex);
-		unsigned int offset = 0;
+		if (!m_graphics || !m_vertexBuffer || !m_indexBuffer)
+			return false;
 
-		// Set the vertex buffer to active in the input assembler so it can be rendered.
-		m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
+		m_vertexBuffer->SetIA();
+		m_indexBuffer->SetIA();
 
-		// Set the index buffer to active in the input assembler so it can be rendered.
-		m_graphics->GetDeviceContext()->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+		// Set the type of primitive that should be rendered from this vertex buffer
+		m_graphics->SetPrimitiveTopology(TriangleList);
 
-		// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
-		m_graphics->GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		return true;
 	}
 }

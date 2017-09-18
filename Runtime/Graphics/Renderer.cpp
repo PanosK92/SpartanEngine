@@ -469,7 +469,7 @@ namespace Directus
 	//= HELPER FUNCTIONS ==============================================================================================
 	void Renderer::DeferredPass()
 	{
-		m_fullScreenQuad->SetBuffers();
+		m_fullScreenQuad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
 		//= SHADOW BLUR ========================================
@@ -621,18 +621,18 @@ namespace Directus
 		{
 			m_font = make_unique<Font>(m_context);
 			string fontDir = m_resourceMng->GetStandardResourceDirectory(Font_Resource);
-			m_font->LoadFromFile(fontDir + "CaviarDreams.ttf");
+			m_font->LoadFromFile(fontDir + "CalibriLight.ttf");
 		}
 
 		//m_graphics->EnableAlphaBlending(true);
 		m_graphics->SetBackBufferAsRenderTarget();
 		m_graphics->SetViewport();
-		m_fullScreenQuad->SetBuffers();
-		
+
+		m_font->SetBuffer();
 		m_shaderFont->Set();
 		m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection);
 		m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource());
-		m_shaderFont->Render(m_fullScreenQuad->GetIndexCount());
+		m_shaderFont->Render(m_font->GetIndexCount());
 
 		//m_graphics->EnableAlphaBlending(false);
 	}

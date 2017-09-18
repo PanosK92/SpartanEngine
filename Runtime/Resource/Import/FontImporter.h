@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include "../../Core/Helper.h"
 #include <vector>
+#include <map>
 //============================
 
 struct FT_FaceRec_;
@@ -34,13 +35,17 @@ namespace Directus
 
 	struct Character
 	{
-		int x0;
-		int x1;
-		int y0;
-		int y1;
-		int xOff;
-		int yOff;
-		uint8_t advance; // Offset to advance to next glyph
+		int xLeft;
+		int xRight;
+		int yTop;
+		int yBottom;
+		int width;
+		int height;
+		float uvXLeft;
+		float uvXRight;
+		float uvYTop;
+		float uvYBottom;
+		int descent;
 	};
 
 	class DLL_API FontImporter
@@ -50,7 +55,7 @@ namespace Directus
 		~FontImporter();
 
 		void Initialize();
-		bool LoadFont(const std::string& filePath, int fontSize, std::vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, std::vector<Character>& characterInfo);
+		bool LoadFont(const std::string& filePath, int fontSize, std::vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, std::map<int, Character>& characterInfo);
 
 	private:
 		void ComputeAtlasTextureDimensions(FT_FaceRec_* face, int& atlasWidth, int& atlasHeight, int& rowHeight);
