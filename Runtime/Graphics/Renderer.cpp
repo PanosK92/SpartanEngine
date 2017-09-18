@@ -142,7 +142,13 @@ namespace Directus
 		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
 		m_texNoiseMap->SetTextureType(Normal_Texture);
 		m_renderStopwatch = make_unique<Stopwatch>();
-		
+
+		// Font to draw performance metrics
+		m_font = make_unique<Font>(m_context);
+		string fontDir = m_resourceMng->GetStandardResourceDirectory(Font_Resource);
+		m_font->LoadFromFile(fontDir + "CalibriLight.ttf");
+		m_font->SetColor(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+
 		return true;
 	}
 
@@ -617,24 +623,20 @@ namespace Directus
 		m_shaderLine->Render(m_lineRenderer->GetVertexCount());
 
 		//= TEXT EXPERIMENT ============================================================
-		if (!m_font)
-		{
-			m_font = make_unique<Font>(m_context);
-			string fontDir = m_resourceMng->GetStandardResourceDirectory(Font_Resource);
-			m_font->LoadFromFile(fontDir + "CalibriLight.ttf");
-		}
+		m_graphics->EnableAlphaBlending(true);
 
-		//m_graphics->EnableAlphaBlending(true);
 		m_graphics->SetBackBufferAsRenderTarget();
 		m_graphics->SetViewport();
 
+		m_font->SetText("Meshes Rendered: " + to_string(m_renderedMeshesPerFrame), Vector2(-RESOLUTION_WIDTH * 0.5f, 0.0f));
 		m_font->SetBuffer();
 		m_shaderFont->Set();
-		m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection);
+		m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, m_font->GetColor());
 		m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource());
 		m_shaderFont->Render(m_font->GetIndexCount());
 
-		//m_graphics->EnableAlphaBlending(false);
+		m_graphics->EnableAlphaBlending(false);
+		//===============================================================================
 	}
 
 	const Vector4& Renderer::GetClearColor()
