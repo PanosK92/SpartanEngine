@@ -47,6 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "Mesh.h"
 #include "../Font/Font.h"
+#include "../Core/Timer.h"
 //======================================
 
 //= NAMESPACES ================
@@ -146,8 +147,9 @@ namespace Directus
 		// Font to draw performance metrics
 		m_font = make_unique<Font>(m_context);
 		string fontDir = m_resourceMng->GetStandardResourceDirectory(Font_Resource);
-		m_font->LoadFromFile(fontDir + "CalibriLight.ttf");
+		m_font->SetSize(12);
 		m_font->SetColor(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+		m_font->LoadFromFile(fontDir + "Calibri.ttf");
 
 		return true;
 	}
@@ -628,7 +630,15 @@ namespace Directus
 		m_graphics->SetBackBufferAsRenderTarget();
 		m_graphics->SetViewport();
 
-		m_font->SetText("Meshes Rendered: " + to_string(m_renderedMeshesPerFrame), Vector2(-RESOLUTION_WIDTH * 0.5f, 0.0f));
+		float fps = m_context->GetSubsystem<Scene>()->GetFPS();
+		float delta = m_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
+		m_font->SetText(
+			"FPS: " + to_string(fps) + "\n"
+			"Delta: " + to_string(delta) + " ms\n"
+			"Render: " + to_string(m_renderTimeMs) + " ms\n"
+			"Meshes Rendered: " + to_string(m_renderedMeshesPerFrame),
+			Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f)
+		);
 		m_font->SetBuffer();
 		m_shaderFont->Set();
 		m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, m_font->GetColor());

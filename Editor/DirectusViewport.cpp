@@ -54,10 +54,6 @@ DirectusViewport::DirectusViewport(QWidget* parent) : QWidget(parent)
     m_timerUpdate = new QTimer(this);
     connect(m_timerUpdate, SIGNAL(timeout()), this, SLOT(update()));
 
-    // stats
-    m_timer500Mil = new QTimer(this);
-    connect(m_timer500Mil, SIGNAL(timeout()), this, SLOT(Update500Mil()));
-
     // light update
     m_timer60FPS = new QTimer(this);
     connect(m_timer60FPS, SIGNAL(timeout()), this, SLOT(Update60FPS()));
@@ -73,7 +69,7 @@ DirectusViewport::~DirectusViewport()
     delete m_engine;
 }
 
-void DirectusViewport::Initialize(void* mainWindowHandle, void* hInstance, DirectusStatsLabel* directusStatsLabel)
+void DirectusViewport::Initialize(void* mainWindowHandle, void* hInstance)
 {
     // Initialize the engine
     m_engine = new Engine(new Context());
@@ -82,8 +78,6 @@ void DirectusViewport::Initialize(void* mainWindowHandle, void* hInstance, Direc
 
     // Get context
     m_context = m_engine->GetContext();
-
-    m_directusStatsLabel = directusStatsLabel;
 }
 
 bool DirectusViewport::IsRunning()
@@ -99,7 +93,6 @@ void DirectusViewport::Start()
 
     m_engine->GetContext()->GetSubsystem<Scene>()->Start();
     m_timerUpdate->start(0);
-    m_timer500Mil->start(500);
     m_timer60FPS->stop();
     m_isRunning = true;
 
@@ -114,7 +107,6 @@ void DirectusViewport::Stop()
 
     m_engine->GetContext()->GetSubsystem<Scene>()->OnDisable();
     m_timerUpdate->stop();
-    m_timer500Mil->stop();
     m_timer60FPS->start(16);
     m_isRunning = false;
 
@@ -139,15 +131,6 @@ void DirectusViewport::Update60FPS()
 
     m_engine->SetMode(Editor);
     m_engine->Update();
-}
-
-// Runs every second
-void DirectusViewport::Update500Mil()
-{
-    if (m_locked)
-        return;
-
-    m_directusStatsLabel->UpdateStats(this);
 }
 
 // Prevents any engine update to execute

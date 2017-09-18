@@ -46,6 +46,8 @@ namespace Directus
 		float uvYTop;
 		float uvYBottom;
 		int descent;
+		int horizontalAdvance;
+		int verticalAdvance;
 	};
 
 	class DLL_API FontImporter

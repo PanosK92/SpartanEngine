@@ -48,7 +48,7 @@ void Editor::InitializeEngine()
     void* hInstance = (void*)::GetModuleHandle(NULL);
 
     // Initialize the engine
-    m_widgetViewport->Initialize(hWnd, hInstance, ui->directusStatsLabel);
+    m_widgetViewport->Initialize(hWnd, hInstance);
 
 
     ui->widgetInspector->SetDirectusCore(m_widgetViewport);

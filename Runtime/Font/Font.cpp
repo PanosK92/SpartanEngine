@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Vertex.h"
 #include "../Graphics/D3D11/D3D11VertexBuffer.h"
 #include "../Graphics/D3D11/D3D11IndexBuffer.h"
-#include <datetimeapi.h>
 #include "../Core/Settings.h"
 //==============================================
 
@@ -41,7 +40,9 @@ namespace Directus
 	Font::Font(Context* context)
 	{
 		m_context = context;
-		m_fontSize = 50;
+		m_fontSize = 12;
+		m_charMaxWidth = 0;
+		m_charMaxHeight = 0;
 		m_indexCount = 0;
 	}
 
@@ -68,6 +69,13 @@ namespace Directus
 			LOG_ERROR("Font: Failed to load font \"" + filePath + "\"");
 			atlasBuffer.clear();
 			return false;
+		}
+
+		// Find max character height (todo, actually get spacing from freetype)
+		for (const auto& charInfo : m_characterInfo)
+		{
+			m_charMaxWidth = Max<int>(charInfo.second.width, m_charMaxWidth);
+			m_charMaxHeight = Max<int>(charInfo.second.height, m_charMaxHeight);
 		}
 
 		// Create a font texture atlas form the provided data
@@ -113,13 +121,20 @@ namespace Directus
 		// Draw each letter onto a quad.
 		for (const char& character : text)
 		{
-			if (character == 32) // Space
+			auto charInfo = m_characterInfo[character];
+
+			if (character == 10) // New line
 			{
-				pen.x = pen.x + 10;
+				pen.y = pen.y - m_charMaxHeight;
+				pen.x = position.x;
 				continue;
 			}
 
-			auto charInfo = m_characterInfo[character];
+			if (character == 32) // Space
+			{
+				pen.x = pen.x + m_charMaxWidth;
+				continue;
+			}
 
 			// First triangle in quad.
 			// Top left.

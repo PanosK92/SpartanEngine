@@ -21,15 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ===========
 #include <QObject>
 #include <QWidget>
 #include <QPaintEngine>
 #include <QResizeEvent>
 #include "Core/Engine.h"
 #include <QTimer>
-#include "DirectusStatsLabel.h"
-//=============================
+//======================
 
 class DirectusInspector;
 namespace Directus
@@ -45,7 +44,7 @@ class DirectusViewport : public QWidget
 public:
     DirectusViewport(QWidget* parent = NULL);
     virtual ~DirectusViewport();
-    void Initialize(void* hwnd, void* hinstance, DirectusStatsLabel* directusStatsLabel);
+    void Initialize(void* hwnd, void* hinstance);
     bool IsRunning();
     Directus::Context* GetEngineContext() { return m_context; }
 
@@ -61,11 +60,9 @@ private:
     Directus::Engine* m_engine;
     Directus::Context* m_context;
     QTimer* m_timerUpdate;
-    QTimer* m_timer500Mil;
     QTimer* m_timer60FPS;
     bool m_isRunning;
     bool m_locked;
-    DirectusStatsLabel* m_directusStatsLabel;
 
 signals:
     void EngineStarting();
@@ -77,7 +74,6 @@ public slots:
     void Stop();
     void Update();
     void Update60FPS();
-    void Update500Mil();
     void LockUpdate();
     void UnlockUpdate();
     void ToggleDebugDraw();

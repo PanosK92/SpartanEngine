@@ -131,6 +131,8 @@ namespace Directus
 			character.uvYTop = (float)character.yTop / (float)atlasHeight;
 			character.uvYBottom = (float)character.yBottom / (float)atlasHeight;
 			character.descent = rowHeight - face->glyph->bitmap_top;
+			character.horizontalAdvance = face->glyph->linearHoriAdvance;
+			character.verticalAdvance = face->glyph->linearVertAdvance;
 			characterInfo[i] = (character);
 
 			penX += bitmap->width + 1;

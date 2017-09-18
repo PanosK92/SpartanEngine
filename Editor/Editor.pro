@@ -41,7 +41,6 @@ SOURCES += main.cpp\
     DirectusComboSliderText.cpp \
     DirectusMeshFilter.cpp \
     DirectusColorPicker.cpp \
-    DirectusStatsLabel.cpp \
     DirectusDropDownButton.cpp \
     DirectusProgressBar.cpp \
     DirectusFileDialog.cpp \
