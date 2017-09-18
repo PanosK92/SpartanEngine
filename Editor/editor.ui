@@ -963,37 +963,6 @@ QSplitter::handle:vertical
           </widget>
          </item>
          <item>
-          <widget class="DirectusStatsLabel" name="directusStatsLabel">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>0</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>16777215</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>FPS: 0, Delta: 0, Render: 0, Meshes Rendered: 0</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-           </property>
-           <property name="readOnly">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
           <spacer name="horizontalSpacer_2">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
@@ -3413,11 +3382,6 @@ QSplitter::handle:vertical
     <signal>GameObjectPicked(Directus::GameObject*)</signal>
     <slot>ToggleDebugDraw()</slot>
    </slots>
-  </customwidget>
-  <customwidget>
-   <class>DirectusStatsLabel</class>
-   <extends>QLineEdit</extends>
-   <header>DirectusStatsLabel.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

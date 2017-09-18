@@ -69,6 +69,8 @@ namespace Directus
 		std::map<int, Character> m_characterInfo;
 		std::unique_ptr<Texture> m_textureAtlas;
 		int m_fontSize;
+		int m_charMaxWidth;
+		int m_charMaxHeight;
 		Math::Vector4 m_fontColor;
 
 		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
