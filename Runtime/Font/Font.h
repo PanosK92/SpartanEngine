@@ -25,11 +25,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Helper.h"
 #include "../Resource/Resource.h"
 #include <memory>
+#include <map>
 //===============================
 
 namespace Directus
 {
+	namespace Math
+	{
+		class Vector2;
+	}
+
+	struct Character;
+	struct VertexPosTex;
 	class Texture;
+	class D3D11VertexBuffer;
+	class D3D11IndexBuffer;
+
 	class DLL_API Font : Resource
 	{
 	public:
@@ -41,12 +52,22 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
+		void SetText(const std::string& text, const Math::Vector2& position);
 		void SetSize(int size);
 
 		void** GetShaderResource();
+		bool SetBuffer();
+		int GetIndexCount() { return m_indexCount; }
 			
-	private:
+	private:	
+		bool CreateBuffers(std::vector<VertexPosTex>& vertices, std::vector<unsigned int>& indices);
+
+		std::map<int, Character> m_characterInfo;
 		std::unique_ptr<Texture> m_textureAtlas;
-		int m_size;
+		int m_fontSize;
+
+		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
+		int m_indexCount;
 	};
 }

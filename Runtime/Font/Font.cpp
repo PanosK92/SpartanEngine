@@ -21,21 +21,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========================
+//= INCLUDES ===================================
 #include "Font.h"
 #include "../Resource/ResourceManager.h"
-//======================================
+#include "../Graphics/Vertex.h"
+#include "../Graphics/D3D11/D3D11VertexBuffer.h"
+#include "../Graphics/D3D11/D3D11IndexBuffer.h"
+#include <datetimeapi.h>
+#include "../Core/Settings.h"
+//==============================================
 
-//= NAMESPACES =====
+//= NAMESPACES ================
 using namespace std;
-//==================
+using namespace Directus::Math;
+//=============================
 
 namespace Directus
 {
 	Font::Font(Context* context)
 	{
 		m_context = context;
-		m_size = 12;
+		m_fontSize = 50;
+		m_indexCount = 0;
 	}
 
 	Font::~Font()
@@ -52,13 +59,11 @@ namespace Directus
 		if (!m_context)
 			return false;
 
-		int atlasWidth = 0;
-		int atlasHeight = 0;
-		vector<Character> characterInfo;
-		vector<unsigned char> atlasBuffer;
-
 		// Load font
-		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()._Get()->LoadFont(filePath, m_size, atlasBuffer, atlasWidth, atlasHeight, characterInfo))
+		vector<unsigned char> atlasBuffer;
+		int texAtlasWidth = 0;
+		int texAtlasHeight = 0;
+		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()._Get()->LoadFont(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_characterInfo))
 		{
 			LOG_ERROR("Font: Failed to load font \"" + filePath + "\"");
 			atlasBuffer.clear();
@@ -67,19 +72,121 @@ namespace Directus
 
 		// Create a font texture atlas form the provided data
 		m_textureAtlas = make_unique<Texture>(m_context);
-		m_textureAtlas->CreateFromMemory(atlasWidth, atlasHeight, 1, atlasBuffer.data(), R_8_UNORM);
-		LOG_INFO("Font Texture Atlas: " + to_string(atlasWidth) + "x" + to_string(atlasHeight));
+		m_textureAtlas->CreateFromMemory(texAtlasWidth, texAtlasHeight, 1, atlasBuffer.data(), R_8_UNORM);
+
+		SetText("Hello World!", Vector2(100, 100));
 
 		return true;
 	}
 
 	void Font::SetSize(int size)
 	{
-		m_size = Math::Clamp<int>(size, 8, 50);
+		m_fontSize = Clamp<int>(size, 8, 50);
 	}
 
 	void** Font::GetShaderResource()
 	{
 		return m_textureAtlas->GetShaderResource();
+	}
+
+	bool Font::SetBuffer()
+	{
+		auto graphics = m_context->GetSubsystem<Graphics>();
+
+		if (!graphics || !m_vertexBuffer || !m_indexBuffer)
+			return false;
+
+		m_vertexBuffer->SetIA();
+		m_indexBuffer->SetIA();
+
+		// Set the type of primitive that should 
+		// be rendered from this vertex buffer
+		graphics->SetPrimitiveTopology(TriangleList);
+
+		return true;
+	}
+
+	void Font::SetText(const string& text, const Vector2& position)
+	{
+		Vector2 pen = position;
+		vector<VertexPosTex> vertices;
+		VertexPosTex vertex;
+
+		// Draw each letter onto a quad.
+		for (const char& character : text)
+		{
+			auto charInfo = m_characterInfo[character];
+
+			// First triangle in quad.
+			// Top left.
+			vertex.position = Vector3(pen.x, pen.y - charInfo.descent, 0.0f);
+			vertex.uv = Vector2(charInfo.uvXLeft, charInfo.uvYTop);
+			vertices.push_back(vertex);
+
+			// Bottom right.
+			vertex.position = Vector3((pen.x + charInfo.width), (pen.y - charInfo.height - charInfo.descent), 0.0f);
+			vertex.uv = Vector2(charInfo.uvXRight, charInfo.uvYBottom);
+			vertices.push_back(vertex);
+
+			// Bottom left.
+			vertex.position = Vector3(pen.x, (pen.y - charInfo.height - charInfo.descent), 0.0f);
+			vertex.uv = Vector2(charInfo.uvXLeft, charInfo.uvYBottom);
+			vertices.push_back(vertex);
+
+			// Second triangle in quad.
+			// Top left.
+			vertex.position = Vector3(pen.x, pen.y - charInfo.descent, 0.0f);
+			vertex.uv = Vector2(charInfo.uvXLeft, charInfo.uvYTop);
+			vertices.push_back(vertex);
+
+			// Top right.
+			vertex.position = Vector3(pen.x + charInfo.width, pen.y - charInfo.descent, 0.0f);
+			vertex.uv = Vector2(charInfo.uvXRight, charInfo.uvYTop);
+			vertices.push_back(vertex);
+
+			// Bottom right.
+			vertex.position = Vector3((pen.x + charInfo.width), (pen.y - charInfo.height - charInfo.descent), 0.0f);
+			vertex.uv = Vector2(charInfo.uvXRight, charInfo.uvYBottom);
+			vertices.push_back(vertex);
+
+			// Update the x location for drawing by the size of the letter and one pixel.
+			pen.x = pen.x + charInfo.width;
+		}
+
+		vector<unsigned int> indices;
+		for (int i = 0; i < vertices.size(); i++)
+		{
+			indices.push_back(i);
+		}
+		m_indexCount = (int)indices.size();
+
+		CreateBuffers(vertices, indices);
+	}
+
+	bool Font::CreateBuffers(vector<VertexPosTex>& vertices, vector<unsigned int>& indices)
+	{
+		if (!m_context)
+			return false;
+
+		auto graphics = m_context->GetSubsystem<Graphics>();
+
+		m_vertexBuffer.reset();
+		m_indexBuffer.reset();
+
+		m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphics);
+		if (!m_vertexBuffer->Create(vertices))
+		{
+			LOG_ERROR("Font: Failed to create vertex buffer.");
+			return false;
+		}
+
+		m_indexBuffer = make_shared<D3D11IndexBuffer>(graphics);
+		if (!m_indexBuffer->Create(indices))
+		{
+			LOG_ERROR("Font: Failed to create index buffer.");
+			return false;
+		}
+
+		return true;
 	}
 }

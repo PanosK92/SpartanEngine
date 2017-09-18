@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ft2build.h"
 #include FT_FREETYPE_H  
 #include "../../Logging/Log.h"
-#include "../../Math/Vector2.h"
 #include "../../Math/MathHelper.h"
 //================================
 
@@ -60,7 +59,7 @@ namespace Directus
 		}
 	}
 
-	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, vector<Character>& characterInfo)
+	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, map<int, Character>& characterInfo)
 	{
 		FT_Face face;
 
@@ -82,7 +81,13 @@ namespace Directus
 		// Try to estimate the size of the font atlas texture
 		int rowHeight = 0;
 		ComputeAtlasTextureDimensions(face, atlasWidth, atlasHeight, rowHeight);
-	
+
+		if (atlasWidth > 8192 || atlasHeight > 8192)
+		{
+			LOG_ERROR("FontImporter: The resulting font texture atlas is too large (" + to_string(atlasWidth) + "x" + to_string(atlasHeight) + "). Try using a smaller font size.");
+			return false;
+		}
+
 		// Go through each glyph and create a texture atlas
 		atlasBuffer.resize(atlasWidth * atlasHeight);
 		int penX = 0, penY = 0;
@@ -115,14 +120,18 @@ namespace Directus
 
 			// Save character info
 			Character character;
-			character.x0 = penX;
-			character.y0 = penY;
-			character.x1 = penX + bitmap->width;
-			character.y1 = penY + bitmap->rows;
-			character.xOff = face->glyph->bitmap_left;
-			character.yOff = face->glyph->bitmap_top;
-			character.advance = face->glyph->advance.x >> 6;
-			characterInfo.push_back(character);
+			character.xLeft = penX;
+			character.yTop = penY;
+			character.xRight = penX + bitmap->width;
+			character.yBottom = penY + bitmap->rows;
+			character.width = character.xRight - character.xLeft;
+			character.height = character.yBottom - character.yTop;
+			character.uvXLeft = (float)character.xLeft / (float)atlasWidth;
+			character.uvXRight = (float)character.xRight / (float)atlasWidth;
+			character.uvYTop = (float)character.yTop / (float)atlasHeight;
+			character.uvYBottom = (float)character.yBottom / (float)atlasHeight;
+			character.descent = rowHeight - face->glyph->bitmap_top;
+			characterInfo[i] = (character);
 
 			penX += bitmap->width + 1;
 		}
