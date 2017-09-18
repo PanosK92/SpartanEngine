@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Resource.h"
 #include <memory>
 #include <map>
+#include "../Math/Vector4.h"
 //===============================
 
 namespace Directus
@@ -55,6 +56,9 @@ namespace Directus
 		void SetText(const std::string& text, const Math::Vector2& position);
 		void SetSize(int size);
 
+		const Math::Vector4& GetColor() { return m_fontColor; }
+		void SetColor(const Math::Vector4& color) { m_fontColor = color; }
+
 		void** GetShaderResource();
 		bool SetBuffer();
 		int GetIndexCount() { return m_indexCount; }
@@ -65,6 +69,7 @@ namespace Directus
 		std::map<int, Character> m_characterInfo;
 		std::unique_ptr<Texture> m_textureAtlas;
 		int m_fontSize;
+		Math::Vector4 m_fontColor;
 
 		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;

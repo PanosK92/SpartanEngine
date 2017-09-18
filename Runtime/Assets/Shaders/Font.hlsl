@@ -5,6 +5,7 @@ SamplerState texSampler : register(s0);
 cbuffer MiscBuffer : register(b0)
 {
 	matrix mWorldViewProjection;
+	float4 color;
 };
 
 //= Structs =====================
@@ -35,12 +36,16 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 //= Pixel Shader =================================================
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
-	float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
+	float4 finalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
 	
-	color.r = textureAtlas.Sample(texSampler, input.uv).r;
-	color.g = color.r;
-	color.b = color.r;
-	color.a = color.r;
+	// Sample text from texture atlas
+	finalColor.r = textureAtlas.Sample(texSampler, input.uv).r;
+	finalColor.g = finalColor.r;
+	finalColor.b = finalColor.r;
+	finalColor.a = finalColor.r;
 	
-	return color;
+	// Color it
+	finalColor *= color;
+	
+	return finalColor;
 }

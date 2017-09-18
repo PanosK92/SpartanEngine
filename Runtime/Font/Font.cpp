@@ -74,8 +74,6 @@ namespace Directus
 		m_textureAtlas = make_unique<Texture>(m_context);
 		m_textureAtlas->CreateFromMemory(texAtlasWidth, texAtlasHeight, 1, atlasBuffer.data(), R_8_UNORM);
 
-		SetText("Hello World!", Vector2(100, 100));
-
 		return true;
 	}
 
@@ -115,6 +113,12 @@ namespace Directus
 		// Draw each letter onto a quad.
 		for (const char& character : text)
 		{
+			if (character == 32) // Space
+			{
+				pen.x = pen.x + 10;
+				continue;
+			}
+
 			auto charInfo = m_characterInfo[character];
 
 			// First triangle in quad.

@@ -30,8 +30,8 @@ Improved debug view             | 100% | Bounding boxes, colliders, raycasts, et
 Point light support             | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality codebase.
-Improved Shadowing         		| 80% | Improved shadow mapping technique, removed shadow shimmering, added SSAO.
-Font importing and rendering    | 60% | -
+Improved Shadowing         		| 80% | Improved shadow mapping technique, no shadow shimmering, SSAO.
+Font importing and rendering    | 60% | Ability to load any font file. TextMesh component.
 Skeletal Animation			    | 5% | -
 
 # Roadmap

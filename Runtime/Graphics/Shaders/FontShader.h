@@ -40,7 +40,7 @@ namespace Directus
 
 		void Load(const std::string& filePath, Graphics* graphics);
 		void Set();
-		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
+		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector4& color);
 		void SetTexture(ID3D11ShaderResourceView* texture);
 		void Render(int vertexCount);
 
@@ -48,6 +48,7 @@ namespace Directus
 		struct DefaultBuffer
 		{
 			Math::Matrix worldViewProjection;
+			Math::Vector4 color;
 		};
 
 		std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;

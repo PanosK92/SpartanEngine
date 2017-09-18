@@ -65,17 +65,19 @@ namespace Directus
 		m_shader->Set();
 	}
 
-	void FontShader::SetBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
+	void FontShader::SetBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection, const Vector4& color)
 	{
 		// get a pointer of the buffer
 		DefaultBuffer* buffer = static_cast<DefaultBuffer*>(m_miscBuffer->Map());
 
 		// fill the buffer with the matrices
 		buffer->worldViewProjection = mWorld * mView * mProjection;
+		buffer->color = color;
 
 		// unmap the buffer and set it in the vertex shader
 		m_miscBuffer->Unmap();
 		m_miscBuffer->SetVS(0);
+		m_miscBuffer->SetPS(0);
 	}
 
 	void FontShader::SetTexture(ID3D11ShaderResourceView* texture)
