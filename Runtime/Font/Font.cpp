@@ -44,6 +44,7 @@ namespace Directus
 		m_charMaxWidth = 0;
 		m_charMaxHeight = 0;
 		m_indexCount = 0;
+		m_fontColor = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
 	Font::~Font()
