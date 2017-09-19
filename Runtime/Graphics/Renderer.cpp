@@ -634,7 +634,7 @@ namespace Directus
 		float delta = m_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
 		m_font->SetText(
 			"FPS: " + to_string(fps) + "\n"
-			"Delta: " + to_string(delta) + " ms\n"
+			"Frame: " + to_string(delta) + " ms\n"
 			"Render: " + to_string(m_renderTimeMs) + " ms\n"
 			"Meshes Rendered: " + to_string(m_renderedMeshesPerFrame),
 			Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f)
