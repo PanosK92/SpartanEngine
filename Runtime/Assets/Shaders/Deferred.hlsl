@@ -131,12 +131,15 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// Calculate view direction
     float3 viewDir = normalize(cameraPosWS.xyz - worldPos.xyz);
    	
+	// some totally fake dynamic skybox
+	float ambientLight = clamp(dirLightIntensity, 0.01f, 1.0f); 
+	
     if (renderTechnique == 0.1f)
     {
         finalColor = ToLinear(environmentTex.Sample(samplerAniso, -viewDir)).rgb;
         finalColor = ACESFilm(finalColor);
         finalColor = ToGamma(finalColor);
-        finalColor *= clamp(dirLightIntensity[0], 0.1f, 1.0f); // some totally fake day/night effect	
+        finalColor *= ambientLight; // some totally fake day/night effect	
         float luma = dot(finalColor, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
 
         return float4(finalColor, luma);
@@ -148,9 +151,11 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// Compute
 	directionalLight.color 		= dirLightColor.rgb;
 	directionalLight.intensity 	= dirLightIntensity.r;
-	directionalLight.direction	= normalize(-dirLightDirection).rgb;
+	directionalLight.direction	= normalize(-dirLightDirection).xyz;
 	directionalLight.intensity 	*= shadowing;
 	directionalLight.intensity 	+= emission;
+	
+	finalColor += ImageBasedLighting(material, directionalLight.direction, normal, viewDir) * ambientLight;
 	
 	// Compute illumination
 	finalColor += PBR(material, directionalLight, normal, viewDir);
@@ -208,7 +213,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		}
     }
 	//============================================================================================================================================================
-	
+
     finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
     finalColor = ToGamma(finalColor); // gamma correction
     float luma = dot(finalColor.rgb, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
