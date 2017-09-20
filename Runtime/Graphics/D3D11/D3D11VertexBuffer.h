@@ -35,6 +35,7 @@ namespace Directus
 		D3D11VertexBuffer(D3D11GraphicsDevice* graphicsDevice);
 		~D3D11VertexBuffer();
 
+		bool Create(const std::vector<VertexPosCol>& vertices);
 		bool Create(const std::vector<VertexPosTex>& vertices);
 		bool Create(const std::vector<VertexPosTexTBN>& vertices);
 		bool CreateDynamic(UINT stride, UINT initialSize);

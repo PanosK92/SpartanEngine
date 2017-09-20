@@ -21,38 +21,41 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
-#include "../D3D11/D3D11GraphicsDevice.h"
-#include "../../Math/Matrix.h"
+//= INCLUDES =================
+#include "../../Core/Helper.h"
+#include <vector>
 #include <memory>
-//=======================================
+#include "../Math/Matrix.h"
+//============================
 
 namespace Directus
 {
-	class D3D11ConstantBuffer;
-	class D3D11Shader;
+	class Context;
+	class D3D11VertexBuffer;
+	class D3D11IndexBuffer;
+	class Transform;
+	struct VertexPosCol;
 
-	class LineShader
+	class DLL_API Grid
 	{
 	public:
-		LineShader();
-		~LineShader();
+		Grid(Context* context);
+		~Grid();
 
-		void Load(const std::string& filePath, Graphics* graphics);
-		void Set();
-		void SetBuffer(const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
-		void Render(unsigned int vertexCount);
-		void RenderIndexed(unsigned int indexCount);
+		void BuildGrid();
+		bool SetBuffer();
+		const Math::Matrix& ComputeWorldMatrix(Transform* camera);
+		unsigned int GetIndexCount() { return m_indexCount; }
 
-	private:
-		struct DefaultBuffer
-		{
-			Math::Matrix worldViewProjection;
-			Math::Matrix viewProjection;
-		};
+	private:	
+		bool CreateBuffers(std::vector<VertexPosCol>& vertices, std::vector<unsigned int>& indices);
 
-		std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
-		std::shared_ptr<D3D11Shader> m_shader;
-		Graphics* m_graphics;
+		Context* m_context;
+		unsigned int m_indexCount;
+		int m_terrainHeight;
+		int m_terrainWidth;
+		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
+		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
+		Math::Matrix m_world;
 	};
 }

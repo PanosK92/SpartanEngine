@@ -20,9 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ============================
-#include "FontShader.h"
+#include "GridShader.h"
 #include "../D3D11/D3D11Shader.h"
 #include "../D3D11/D3D11ConstantBuffer.h"
+#include "../../Core/Context.h"
 //=======================================
 
 //= NAMESPACES ================
@@ -32,32 +33,33 @@ using namespace std;
 
 namespace Directus
 {
-	FontShader::FontShader()
+	GridShader::GridShader(Context* context)
 	{
-		m_graphics = nullptr;
+		if (!context)
+			return;
+
+		m_graphics = context->GetSubsystem<Graphics>();
 	}
 
-	FontShader::~FontShader()
+	GridShader::~GridShader()
 	{
 
 	}
 
-	void FontShader::Load(const string& filePath, Graphics* graphics)
+	void GridShader::Load(const string& filePath)
 	{
-		m_graphics = graphics;
-
 		// load the vertex and the pixel shader
 		m_shader = make_shared<D3D11Shader>(m_graphics);
 		m_shader->Load(filePath);
-		m_shader->SetInputLayout(PositionTexture);
-		m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_CLAMP, D3D11_COMPARISON_NEVER);
+		m_shader->SetInputLayout(PositionColor);
+		m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 		// create buffer
 		m_miscBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
 		m_miscBuffer->Create(sizeof(DefaultBuffer));
 	}
 
-	void FontShader::Set()
+	void GridShader::Set()
 	{
 		if (!m_shader)
 			return;
@@ -65,30 +67,23 @@ namespace Directus
 		m_shader->Set();
 	}
 
-	void FontShader::SetBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection, const Vector4& color)
+	void GridShader::SetBuffer(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap)
 	{
 		// get a pointer of the buffer
 		DefaultBuffer* buffer = static_cast<DefaultBuffer*>(m_miscBuffer->Map());
 
 		// fill the buffer with the matrices
-		buffer->worldViewProjection = mWorld * mView * mProjection;
-		buffer->color = color;
+		buffer->viewProjection = viewMatrix * projectionMatrix;
+		buffer->worldViewProjection = worldMatrix * buffer->viewProjection;
 
 		// unmap the buffer and set it in the vertex shader
 		m_miscBuffer->Unmap();
 		m_miscBuffer->SetVS(0);
-		m_miscBuffer->SetPS(0);
+
+		m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &depthMap);
 	}
 
-	void FontShader::SetTexture(ID3D11ShaderResourceView* texture)
-	{
-		if (!m_graphics)
-			return;
-
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &texture);
-	}
-
-	void FontShader::Render(int indexCount)
+	void GridShader::Render(unsigned int indexCount)
 	{
 		if (!m_graphics)
 			return;

@@ -32,17 +32,16 @@ namespace Directus
 	class D3D11ConstantBuffer;
 	class D3D11Shader;
 
-	class LineShader
+	class GridShader
 	{
 	public:
-		LineShader();
-		~LineShader();
+		GridShader(Context* context);
+		~GridShader();
 
-		void Load(const std::string& filePath, Graphics* graphics);
+		void Load(const std::string& filePath);
 		void Set();
 		void SetBuffer(const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
-		void Render(unsigned int vertexCount);
-		void RenderIndexed(unsigned int indexCount);
+		void Render(unsigned int indexCount);
 
 	private:
 		struct DefaultBuffer

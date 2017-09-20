@@ -42,7 +42,7 @@ namespace Directus
 		void Set();
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector4& color);
 		void SetTexture(ID3D11ShaderResourceView* texture);
-		void Render(int vertexCount);
+		void Render(int indexCount);
 
 	private:
 		struct DefaultBuffer

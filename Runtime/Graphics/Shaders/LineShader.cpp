@@ -81,11 +81,19 @@ namespace Directus
 		m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &depthMap);
 	}
 
-	void LineShader::Render(int vertexCount)
+	void LineShader::Render(unsigned int vertexCount)
 	{
 		if (!m_graphics)
 			return;
 
 		m_graphics->GetDeviceContext()->Draw(vertexCount, 0); 
+	}
+
+	void LineShader::RenderIndexed(unsigned int indexCount)
+	{
+		if (!m_graphics)
+			return;
+
+		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 	}
 }

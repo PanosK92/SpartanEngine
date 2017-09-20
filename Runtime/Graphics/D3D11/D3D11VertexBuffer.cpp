@@ -42,6 +42,41 @@ namespace Directus
 		SafeRelease(m_buffer);
 	}
 
+	bool D3D11VertexBuffer::Create(const vector<VertexPosCol>& vertices)
+	{
+		if (!m_graphics->GetDevice() || vertices.empty())
+			return false;
+
+		m_stride = sizeof(VertexPosCol);
+		float size = (unsigned int)vertices.size();
+		UINT byteWidth = m_stride * size;
+
+		// fill in a buffer description.
+		D3D11_BUFFER_DESC bufferDesc;
+		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
+		bufferDesc.ByteWidth = byteWidth;
+		bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+		bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		bufferDesc.CPUAccessFlags = 0;
+		bufferDesc.MiscFlags = 0;
+		bufferDesc.StructureByteStride = 0;
+
+		// fill in the subresource data.
+		D3D11_SUBRESOURCE_DATA initData;
+		initData.pSysMem = vertices.data();
+		initData.SysMemPitch = 0;
+		initData.SysMemSlicePitch = 0;
+
+		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to create vertex buffer");
+			return false;
+		}
+
+		return true;
+	}
+
 	bool D3D11VertexBuffer::Create(const vector<VertexPosTex>& vertices)
 	{
 		if (!m_graphics->GetDevice() || vertices.empty())
