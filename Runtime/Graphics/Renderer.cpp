@@ -48,6 +48,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mesh.h"
 #include "../Font/Font.h"
 #include "../Core/Timer.h"
+#include "Grid.h"
+#include "Shaders/GridShader.h"
 //======================================
 
 //= NAMESPACES ================
@@ -116,6 +118,9 @@ namespace Directus
 		m_shaderLine = make_shared<LineShader>();
 		m_shaderLine->Load(shaderDirectory + "Line.hlsl", m_graphics);
 
+		m_shaderGrid = make_shared<GridShader>(m_context);
+		m_shaderGrid->Load(shaderDirectory + "Grid.hlsl");
+
 		m_shaderFont = make_shared<FontShader>();
 		m_shaderFont->Load(shaderDirectory + "Font.hlsl", m_graphics);
 
@@ -144,12 +149,14 @@ namespace Directus
 		m_texNoiseMap->SetTextureType(Normal_Texture);
 		m_renderStopwatch = make_unique<Stopwatch>();
 
-		// Font to draw performance metrics
+		// DEBUG
 		m_font = make_unique<Font>(m_context);
 		string fontDir = m_resourceMng->GetStandardResourceDirectory(Font_Resource);
 		m_font->SetSize(12);
 		m_font->SetColor(Vector4(0.5f, 0.5f, 0.5f, 1.0f));
 		m_font->LoadFromFile(fontDir + "CalibriBold.ttf");
+		m_grid = make_unique<Grid>(m_context);
+		m_grid->BuildGrid();
 
 		return true;
 	}
@@ -593,42 +600,60 @@ namespace Directus
 		if (!DEBUG_DRAW)
 			return;
 
-		if (!m_lineRenderer)
-			return;
-
-		m_lineRenderer->ClearVertices();
-
-		//= PHYSICS ========================================================================================
-		m_context->GetSubsystem<Physics>()->DebugDraw();
-		if (m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->IsDirty())
+		//= PRIMITIVES ===================================================================================
+		// Anything that is a basic shape (doesn't have a vertex and and index buffer) get's rendered here
+		// by passing it's vertices (VertexPosCol) to the LineRenderer. Typically used only for debugging.
+		if (m_lineRenderer)
 		{
-			m_lineRenderer->AddLines(m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->GetLines());
-		}
-		//==================================================================================================
+			m_lineRenderer->ClearVertices();
+			// Physics
+			m_context->GetSubsystem<Physics>()->DebugDraw();
+			if (m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->IsDirty())
+			{
+				m_lineRenderer->AddLines(m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->GetLines());
+			}
 
-		//= PICKING RAY ====================================
-		m_lineRenderer->AddLines(m_camera->GetPickingRay());
-		//==================================================
+			// Picking ray
+			m_lineRenderer->AddLines(m_camera->GetPickingRay());
 
-		//= BOUNDING BOXES ===========================================================================================
-		for (const auto& gameObject : m_renderables)
-		{
-			auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>();
-			m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+			// bounding boxes
+			for (const auto& gameObject : m_renderables)
+			{
+				auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>();
+				m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+			}
+
+			// Render
+			m_lineRenderer->SetBuffer();
+			m_shaderLine->Set();
+			m_shaderLine->SetBuffer(
+				Matrix::Identity, 
+				m_camera->GetViewMatrix(), 
+				m_camera->GetProjectionMatrix(), 
+				m_GBuffer->GetShaderResource(2) // depth
+			);
+			m_shaderLine->Render(m_lineRenderer->GetVertexCount());
 		}
 		//============================================================================================================
 
-		// Render all the above lines
-		m_lineRenderer->SetBuffer();
-		m_shaderLine->Set();
-		m_shaderLine->SetBuffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), m_GBuffer->GetShaderResource(2));
-		m_shaderLine->Render(m_lineRenderer->GetVertexCount());
-
-		//= TEXT EXPERIMENT ============================================================
 		m_graphics->EnableAlphaBlending(true);
 
+		//= GRID =======================================================================
+		m_grid->SetBuffer();	
+		m_shaderGrid->Set();
+		m_shaderGrid->SetBuffer(
+			m_grid->ComputeWorldMatrix(m_camera->g_transform), 
+			m_camera->GetViewMatrix(), 
+			m_camera->GetProjectionMatrix(), 
+			m_GBuffer->GetShaderResource(2) // depth
+		);
+		m_shaderGrid->Render(m_grid->GetIndexCount());
+		//==============================================================================
+
+		//= TEXT =======================================================================	
 		m_graphics->SetBackBufferAsRenderTarget();
 		m_graphics->SetViewport();
+	
 
 		float fps = m_context->GetSubsystem<Scene>()->GetFPS();
 		float delta = m_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
@@ -640,13 +665,14 @@ namespace Directus
 			Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f)
 		);
 		m_font->SetBuffer();
+
 		m_shaderFont->Set();
 		m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, m_font->GetColor());
-		m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource());
-		m_shaderFont->Render(m_font->GetIndexCount());
+		m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource()); // font atlas
+		m_shaderFont->Render(m_font->GetIndexCount());	
+		//===============================================================================
 
 		m_graphics->EnableAlphaBlending(false);
-		//===============================================================================
 	}
 
 	const Vector4& Renderer::GetClearColor()
