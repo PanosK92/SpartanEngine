@@ -223,6 +223,14 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     //================================================================
 }
 
+void DirectusHierarchy::keyPressEvent(QKeyEvent *event)
+{
+    if(event->key() == Qt::Key_Delete)
+    {
+        DeleteSelected();
+    }
+}
+
 //===================================================================================================
 
 //= HELPER FUNCTIONS ================================================================================

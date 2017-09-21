@@ -460,10 +460,8 @@ namespace Directus
 					// Set mesh buffer
 					if (meshFilter->HasMesh())
 					{
-						float dummy1;
 						if (meshFilter->SetBuffers())
 						{
-							float dummy2;
 							// Set face culling (changes only if required)
 							m_graphics->SetCullMode(objMaterial->GetCullMode());
 
@@ -638,7 +636,7 @@ namespace Directus
 
 		m_graphics->EnableAlphaBlending(true);
 
-		//= GRID =======================================================================
+		//= GRID =============================================
 		m_grid->SetBuffer();	
 		m_shaderGrid->Set();
 		m_shaderGrid->SetBuffer(
@@ -648,13 +646,12 @@ namespace Directus
 			m_GBuffer->GetShaderResource(2) // depth
 		);
 		m_shaderGrid->Render(m_grid->GetIndexCount());
-		//==============================================================================
+		//===================================================
 
-		//= TEXT =======================================================================	
+		//= TEXT ========================================================================================
 		m_graphics->SetBackBufferAsRenderTarget();
 		m_graphics->SetViewport();
 	
-
 		float fps = m_context->GetSubsystem<Scene>()->GetFPS();
 		float delta = m_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
 		m_font->SetText(
@@ -670,7 +667,7 @@ namespace Directus
 		m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, m_font->GetColor());
 		m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource()); // font atlas
 		m_shaderFont->Render(m_font->GetIndexCount());	
-		//===============================================================================
+		//===============================================================================================
 
 		m_graphics->EnableAlphaBlending(false);
 	}

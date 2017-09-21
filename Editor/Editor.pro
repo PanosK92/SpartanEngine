@@ -76,7 +76,6 @@ HEADERS += editor.h \
     DirectusComboSliderText.h \
     DirectusMeshFilter.h \
     DirectusColorPicker.h \
-    DirectusStatsLabel.h \
     DirectusDropDownButton.h \
     DirectusProgressBar.h \
     DirectusFileDialog.h \

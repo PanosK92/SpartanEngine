@@ -45,6 +45,7 @@ protected:
     virtual void dragEnterEvent(QDragEnterEvent* event);
     virtual void dragMoveEvent (QDragMoveEvent* event);
     virtual void dropEvent(QDropEvent* event);
+    virtual void keyPressEvent(QKeyEvent* event);
 
 private:
     void AddRoot(QTreeWidgetItem* item);
