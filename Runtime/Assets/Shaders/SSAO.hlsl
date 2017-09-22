@@ -1,8 +1,8 @@
-static const float strength = 100.0f;
+static const float strength = 10.0f;
 static const float2 offset  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
 static const float falloff  = 0.00001f;
-static const float radius = 0.001f;
-static const float discardDistance = 0.0001f;
+static const float radius = 0.01f;
+static const float discardDistance = 0.01f;
 
 #define NUM_SAMPLES	 16
 static const float invSamples = 1.0f / (float)NUM_SAMPLES;

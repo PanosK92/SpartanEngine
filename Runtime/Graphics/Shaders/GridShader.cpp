@@ -73,8 +73,7 @@ namespace Directus
 		DefaultBuffer* buffer = static_cast<DefaultBuffer*>(m_miscBuffer->Map());
 
 		// fill the buffer with the matrices
-		buffer->viewProjection = viewMatrix * projectionMatrix;
-		buffer->worldViewProjection = worldMatrix * buffer->viewProjection;
+		buffer->mWVP = worldMatrix * viewMatrix * projectionMatrix;		
 
 		// unmap the buffer and set it in the vertex shader
 		m_miscBuffer->Unmap();
