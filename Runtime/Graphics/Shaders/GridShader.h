@@ -46,8 +46,7 @@ namespace Directus
 	private:
 		struct DefaultBuffer
 		{
-			Math::Matrix worldViewProjection;
-			Math::Matrix viewProjection;
+			Math::Matrix mWVP;
 		};
 
 		std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;

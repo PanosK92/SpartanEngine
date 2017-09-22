@@ -6,8 +6,7 @@ SamplerState samplerAnisoWrap 	: register(s0);
 //= Constant Buffers ===============
 cbuffer MiscBuffer : register(b0)
 {
-	matrix mWorldViewProjection;
-	matrix mViewProjection;
+	matrix mWVP;
 };
 
 //= Structs ========================
@@ -21,7 +20,7 @@ struct PixelInputType
 {
     float4 position : SV_POSITION;
     float4 color : COLOR;
-	float4 gridPos : WHATEVER;
+	float4 gridPos : POSITION;
 };
 
 //= Vertex Shader ======================================================================================
@@ -30,8 +29,8 @@ PixelInputType DirectusVertexShader(VertexInputType input)
     PixelInputType output;
     	
     input.position.w = 1.0f;
-    output.position = mul(input.position, mWorldViewProjection);
-	output.gridPos = mul(input.position, mViewProjection);
+    output.position = mul(input.position, mWVP);
+	output.gridPos = output.position;
 	output.color = input.color;
 	
 	return output;
