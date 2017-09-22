@@ -50,8 +50,5 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	if (depthMapValue >= gridDepth) 
 		discard;
 	
-	float4 color = input.color;
-	color.a = gridDepth;
-	
-	return color;
+	return float4(input.color.rgb, gridDepth - 0.04f);
 }

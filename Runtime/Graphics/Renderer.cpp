@@ -634,6 +634,8 @@ namespace Directus
 		}
 		//============================================================================================================
 
+		m_graphics->EnableAlphaBlending(true);
+
 		//= GRID =============================================
 		m_grid->SetBuffer();	
 		m_shaderGrid->Set();
@@ -664,11 +666,11 @@ namespace Directus
 		m_shaderFont->Set();
 		m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, m_font->GetColor());
 		m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource()); // font atlas
-
-		m_graphics->EnableAlphaBlending(true);
+	
 		m_shaderFont->Render(m_font->GetIndexCount());
-		m_graphics->EnableAlphaBlending(false);
 		//===============================================================================================
+
+		m_graphics->EnableAlphaBlending(false);
 	}
 
 	const Vector4& Renderer::GetClearColor()
