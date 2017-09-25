@@ -60,22 +60,18 @@ namespace Directus
 		class Frustrum;
 	}
 
-	enum RenderOutput
+	enum RenderFlags
 	{
-		Render_Default,
-		Render_Albedo,
-		Render_Normal,
-		Render_Depth,
-		Render_Material
-	};
-
-	enum RenderDebug
-	{
-		Render_Physics,
-		Render_Bounding_Boxes,
-		Render_Mouse_Picking_Ray,
-		Render_Performance_Metrics,
-		Render_Grid
+		Render_Default = 1,
+		Render_Albedo = 2,
+		Render_Normal = 4,
+		Render_Depth = 8,
+		Render_Material = 16,
+		Render_Physics = 32,
+		Render_Bounding_Boxes = 64,
+		Render_Mouse_Picking_Ray = 128,
+		Render_Grid = 256,
+		Render_Performance_Metrics = 512
 	};
 
 	class DLL_API Renderer : public Subsystem
@@ -146,7 +142,7 @@ namespace Directus
 		//= DEBUG ===================
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
-		RenderDebug m_renderDebug;
+		unsigned int m_renderFlags;
 		//===========================
 
 		//= PREREQUISITES ================================
@@ -163,7 +159,6 @@ namespace Directus
 		std::vector<ID3D11ShaderResourceView*> m_textures;
 		Graphics* m_graphics;
 		ResourceManager* m_resourceMng;
-		RenderOutput m_renderOutput;
 		//================================================
 	};
 }
