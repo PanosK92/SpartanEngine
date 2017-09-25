@@ -39,25 +39,28 @@ namespace Directus
 	class D3D11ConstantBuffer;
 	class D3D11Shader;
 
+	enum ShaderFlags
+	{
+		Variaton_Albedo = 1,
+		Variaton_Roughness = 2,
+		Variaton_Metallic = 4,
+		Variaton_Normal = 8,
+		Variaton_Height = 16,
+		Variaton_Occlusion = 32,
+		Variaton_Emission = 64,
+		Variaton_Mask = 128,
+		Variaton_Cubemap = 256
+	};
+
+
 	class ShaderVariation : public Resource
 	{
 	public:
 		ShaderVariation();
 		~ShaderVariation();
 
-		void Initialize(
-			Context* context,
-			bool albedo,
-			bool roughness,
-			bool metallic,
-			bool normal,
-			bool height,
-			bool occlusion,
-			bool emission,
-			bool mask,
-			bool cubemap
-		);
-	
+		void Initialize(Context* context, unsigned int shaderFlags);
+
 		//= RESOURCE INTERFACE ========================
 		bool LoadFromFile(const std::string& filePath);
 		bool SaveToFile(const std::string& filePath);
@@ -70,30 +73,23 @@ namespace Directus
 		void UpdateTextures(const std::vector<ID3D11ShaderResourceView*>& textureArray);
 		void Render(int indexCount);
 
-		bool HasAlbedoTexture() { return m_hasAlbedoTexture; }
-		bool HasRoughnessTexture() { return m_hasRoughnessTexture; }
-		bool HasMetallicTexture() { return m_hasMetallicTexture; }
-		bool HasNormalTexture() { return m_hasNormalTexture; }
-		bool HasHeightTexture() { return m_hasHeightTexture; }
-		bool HasOcclusionTexture() { return m_hasOcclusionTexture; }
-		bool HasEmissionTexture() { return m_hasEmissionTexture; }
-		bool HasMaskTexture() { return m_hasMaskTexture; }
-		bool HasCubeMapTexture() { return m_hasCubeMap; }
+		unsigned int GetShaderFlags() { return m_shaderFlags; }
+		bool HasAlbedoTexture() { return m_shaderFlags & Variaton_Albedo; }
+		bool HasRoughnessTexture() { return m_shaderFlags & Variaton_Roughness; }
+		bool HasMetallicTexture() { return m_shaderFlags & Variaton_Metallic; }
+		bool HasNormalTexture() { return m_shaderFlags & Variaton_Normal; }
+		bool HasHeightTexture() { return m_shaderFlags & Variaton_Height; }
+		bool HasOcclusionTexture() { return m_shaderFlags & Variaton_Occlusion; }
+		bool HasEmissionTexture() { return m_shaderFlags & Variaton_Emission; }
+		bool HasMaskTexture() { return m_shaderFlags & Variaton_Mask; }
+		bool HasCubeMapTexture() { return m_shaderFlags & Variaton_Cubemap; }
 
 	private:
 		void AddDefinesBasedOnMaterial(std::shared_ptr<D3D11Shader> shader);
 		void Compile(const std::string& filePath);
 
-		//= PROPERTIES ============
-		bool m_hasAlbedoTexture;
-		bool m_hasRoughnessTexture;
-		bool m_hasMetallicTexture;
-		bool m_hasNormalTexture;
-		bool m_hasHeightTexture;
-		bool m_hasOcclusionTexture;
-		bool m_hasEmissionTexture;
-		bool m_hasMaskTexture;
-		bool m_hasCubeMap;
+		//= PROPERTIES =======
+		unsigned int m_shaderFlags;
 
 		//= MISC ==================================================
 		Graphics* m_graphics;
