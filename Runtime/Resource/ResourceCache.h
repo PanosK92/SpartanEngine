@@ -113,21 +113,6 @@ namespace Directus
 		const auto& GetAll() { return m_resources; }
 
 		// Checks whether a resource is already in the cache
-		bool CachedByFilePath(const std::string& filePath)
-		{
-			if (filePath.empty())
-				return false;
-
-			for (const auto& resource : m_resources)
-			{
-				if (resource->GetResourceFilePath() == filePath)
-					return true;
-			}
-
-			return false;
-		}
-
-		// Checks whether a resource is already in the cache
 		bool CachedByID(std::shared_ptr<Resource> resourceIn)
 		{
 			if (!resourceIn)
@@ -150,7 +135,7 @@ namespace Directus
 
 			if (resourceIn->GetResourceName() == NOT_ASSIGNED)
 			{
-				LOG_INFO("CachedByName() might fail as no name has been assigned to the resource");
+				LOG_INFO("ResourceCache: CachedByName() might fail as no name has been assigned to the resource");
 			}
 
 			for (const auto& resource : m_resources)

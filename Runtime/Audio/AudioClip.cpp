@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fmod.hpp>
 #include <fmod_errors.h>
 #include "../Logging/Log.h"
-#include "../Core/GUIDGenerator.h"
 #include "../Components/Transform.h"
 //==================================
 
@@ -41,8 +40,7 @@ namespace Directus
 	AudioClip::AudioClip(System* fModSystem)
 	{
 		// Resource
-		m_resourceID = GENERATE_GUID;
-		m_resourceType = Audio_Resource;
+		InitializeResource(Audio_Resource);
 
 		// AudioClip
 		m_transform = nullptr;

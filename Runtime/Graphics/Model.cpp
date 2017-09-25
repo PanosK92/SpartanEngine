@@ -45,10 +45,9 @@ namespace Directus
 	{
 		m_context = context;
 
-		//= RESOURCE INTERFACE =========
-		m_resourceID = GENERATE_GUID;
-		m_resourceType = Model_Resource;
-		//==============================
+		//= RESOURCE INTERFACE ============
+		InitializeResource(Model_Resource);
+		//=================================
 
 		m_normalizedScale = 1.0f;
 		m_isAnimated = false;
@@ -80,7 +79,7 @@ namespace Directus
 			}
 			else // abort
 			{
-				LOG_WARNING("Failed to load model. Unable to find a model in directory \"" + filePath + "\".");
+				LOG_WARNING("Model: Failed to load model. Unable to find supported file in \"" + FileSystem::GetDirectoryFromFilePath(filePath) + "\".");
 				return false;
 			}
 		}
@@ -96,15 +95,15 @@ namespace Directus
 		string savePath = filePath;
 		if (filePath == RESOURCE_SAVE)
 		{
-			savePath = m_resourceFilePath;
+			savePath = GetResourceFilePath();
 		}
 
 		if (!StreamIO::StartWriting(savePath))
 			return false;
 
-		StreamIO::WriteInt(m_resourceID);
-		StreamIO::WriteSTR(m_resourceName);
-		StreamIO::WriteSTR(m_resourceFilePath);
+		StreamIO::WriteInt(GetResourceID());
+		StreamIO::WriteSTR(GetResourceName());
+		StreamIO::WriteSTR(GetResourceFilePath());
 		StreamIO::WriteFloat(m_normalizedScale);
 		StreamIO::WriteInt((int)m_meshes.size());
 
@@ -123,7 +122,7 @@ namespace Directus
 	{
 		// Create a mesh
 		auto mesh = make_shared<Mesh>();
-		mesh->SetModelID(m_resourceID);
+		mesh->SetModelID(GetResourceID());
 		mesh->SetGameObjectID(gameObjID);
 		mesh->SetName(name);
 		mesh->SetVertices(vertices);
@@ -231,9 +230,9 @@ namespace Directus
 		if (!StreamIO::StartReading(filePath))
 			return false;
 
-		m_resourceID = StreamIO::ReadInt();
-		m_resourceName = StreamIO::ReadSTR();
-		m_resourceFilePath = StreamIO::ReadSTR();
+		SetResourceID(StreamIO::ReadInt());
+		SetResourceName(StreamIO::ReadSTR());
+		SetResourceFilePath(StreamIO::ReadSTR());
 		m_normalizedScale = StreamIO::ReadFloat();
 		int meshCount = StreamIO::ReadInt();
 
@@ -254,8 +253,8 @@ namespace Directus
 		// Set some crucial data (Required by ModelImporter)
 		string projectDir = m_context->GetSubsystem<ResourceManager>()->GetProjectDirectory();
 		string modelDir = projectDir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"; // Assets/Sponza/
-		m_resourceFilePath = modelDir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION; // Assets/Sponza/Sponza.model
-		m_resourceName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath); // Sponza
+		SetResourceFilePath(modelDir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION); // Assets/Sponza/Sponza.model
+		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath)); // Sponza
 
 		// Create asset directory (if it doesn't exist)
 		FileSystem::CreateDirectory_(modelDir + "Materials//");
@@ -270,7 +269,7 @@ namespace Directus
 			m_rootGameObj._Get()->GetComponent<Transform>()->UpdateTransform();
 
 			// Save the model in our custom format.
-			SaveToFile(m_resourceFilePath);
+			SaveToFile(GetResourceFilePath());
 
 			return true;
 		}

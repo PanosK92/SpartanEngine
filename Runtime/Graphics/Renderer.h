@@ -70,6 +70,15 @@ namespace Directus
 		Render_Material
 	};
 
+	enum RenderDebug
+	{
+		Render_Physics,
+		Render_Bounding_Boxes,
+		Render_Mouse_Picking_Ray,
+		Render_Performance_Metrics,
+		Render_Grid
+	};
+
 	class DLL_API Renderer : public Subsystem
 	{
 	public:
@@ -149,6 +158,7 @@ namespace Directus
 		std::unique_ptr<Stopwatch> m_renderStopwatch;
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
+		RenderDebug m_renderDebug;
 		//===========================================
 
 		//= PREREQUISITES ================================

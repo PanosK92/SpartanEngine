@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define METADATA_TYPE_AUDIOCLIP "Audio_Clip"
 //==========================================
 
-//= CUSTOM EXTENSIONS =============
+//= ENGINE EXTENSIONS =============
 #define SCENE_EXTENSION ".directus"
 #define MATERIAL_EXTENSION ".mat"
 #define MODEL_EXTENSION ".model"
@@ -50,13 +50,12 @@ namespace Directus
 	public:
 		static void Initialize();
 
-		//= DIRECTORY MANAGEMENT ==========================================
+		//= DIRECTORIES ==================================================
 		static bool CreateDirectory_(const std::string& directory);
 		static bool DeleteDirectory(const std::string& directory);
 		static bool DirectoryExists(const std::string& directory);
 		static bool IsDirectory(const std::string& directory);
-		static bool OpenDirectoryInExplorer(const std::string& directory);
-		//=================================================================
+		//================================================================
 
 		//= FILES ============================================================================
 		static bool FileExists(const std::string& path);
@@ -100,10 +99,11 @@ namespace Directus
 		//=============================================================
 
 		//= STRING PARSING =============================================================================================================================
+		static std::wstring ToWString(const std::string& str);
 		static std::string GetStringAfterExpression(const std::string& str, const std::string& expression);
 		static std::string GetStringBetweenExpressions(const std::string& str, const std::string& firstExpression, const std::string& secondExpression);
 		static std::string ConvertToUppercase(const std::string& lower);
-		static std::wstring ToWString(const std::string& str);
+		
 		static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
 		//==============================================================================================================================================
 

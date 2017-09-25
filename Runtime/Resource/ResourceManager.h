@@ -55,23 +55,19 @@ namespace Directus
 			std::string relativeFilePath = FileSystem::GetRelativeFilePath(filePath);
 
 			// Check if the resource is already loaded
-			if (m_resourceCache->CachedByFilePath(relativeFilePath))
-				return GetResourceByPath<T>(relativeFilePath);
+			auto cached = GetResourceByPath<T>(relativeFilePath);
+			if (!cached.expired())
+				return cached;
 
+			// Create new resource and load from file path
 			std::shared_ptr<T> typed = std::make_shared<T>(m_context);
-			std::shared_ptr<Resource> base = ToBaseShared(typed);
-
-			if (base->LoadFromFile(relativeFilePath))
+			if (!typed->LoadFromFile(relativeFilePath))
 			{
-				m_resourceCache->Add(base);
-			}
-			else
-			{
-				LOG_WARNING("Resource \"" + relativeFilePath + "\" failed to load");
+				LOG_WARNING("ResourceManager: Resource \"" + relativeFilePath + "\" failed to load");
+				return cached;
 			}
 
-			// Returne typed weak
-			return GetResourceByPath<T>(relativeFilePath);
+			return Add(typed);
 		}
 
 		// Adds a resource into the resource cache

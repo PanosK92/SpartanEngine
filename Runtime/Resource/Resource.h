@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "../Core/Context.h"
 #include "../FileSystem/FileSystem.h"
+#include "../Core/GUIDGenerator.h"
 //===================================
 
 #define RESOURCE_SAVE "SaveToExisting"
@@ -49,6 +50,12 @@ namespace Directus
 	public:
 		virtual ~Resource() {}
 
+		void InitializeResource(ResourceType resourceType)
+		{
+			m_resourceType = resourceType;
+			m_resourceID = GENERATE_GUID;
+		}
+
 		unsigned int GetResourceID() { return m_resourceID; }
 		void SetResourceID(unsigned int ID) { m_resourceID = ID; }
 
@@ -68,11 +75,13 @@ namespace Directus
 		virtual bool SaveToFile(const std::string& filePath) = 0;
 		virtual bool LoadFromFile(const std::string& filePath) = 0;
 
-	protected:
+	private:
 		unsigned int m_resourceID = NOT_ASSIGNED_HASH;
 		std::string m_resourceName = NOT_ASSIGNED;
 		std::string m_resourceFilePath = NOT_ASSIGNED;
 		ResourceType m_resourceType = Unknown_Resource;
+
+	protected:	
 		Context* m_context = nullptr;
 	};
 }

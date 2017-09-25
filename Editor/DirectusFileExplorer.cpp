@@ -377,7 +377,11 @@ void DirectusFileExplorer::CreateMaterial()
 
 void DirectusFileExplorer::ShowRootPathInExplorer()
 {
-    FileSystem::OpenDirectoryInExplorer(GetRootPath().toStdString());
+    QString path = GetRootPath();
+    QStringList args;
+    args << "/select," << QDir::toNativeSeparators(path);
+    QProcess *process = new QProcess(this);
+    process->start("explorer.exe", args);
 }
 
 void DirectusFileExplorer::DeleteSelectedFile()

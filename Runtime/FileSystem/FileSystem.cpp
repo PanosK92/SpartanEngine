@@ -24,8 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <filesystem>
 #include <locale>
 #include <regex>
-#include "../Core/Scene.h"
-#include "../Graphics/Material.h"
 #include "../Logging/Log.h"
 //===============================
 
@@ -156,7 +154,7 @@ namespace Directus
 		}
 	}
 
-	//= DIRECTORY MANAGEMENT ==============================================================
+	//= DIRECTORIES ======================================================================
 	bool FileSystem::CreateDirectory_(const string& path)
 	{
 		return fs::create_directories(path);
@@ -176,20 +174,12 @@ namespace Directus
 	{
 		return fs::is_directory(directory);
 	}
-
-	bool FileSystem::OpenDirectoryInExplorer(const string& directory)
-	{
-		HINSTANCE result = ShellExecute(nullptr, L"open", ToWString(directory).c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
-		return !FAILED(result);
-	}
-
 	//====================================================================================
 
 	//= FILES ============================================================================
 	bool FileSystem::FileExists(const string& filePath)
 	{
-		struct stat buffer;
-		return stat(filePath.c_str(), &buffer) == 0;
+		return fs::exists(filePath);
 	}
 
 	bool FileSystem::DeleteFile_(const string& filePath)
@@ -205,7 +195,7 @@ namespace Directus
 		}
 		catch (fs::filesystem_error& e)
 		{
-			LOG_ERROR("Could not delete \"" + filePath + "\". " + string(e.what()));
+			LOG_ERROR("FileSystem: Could not delete \"" + filePath + "\". " + string(e.what()));
 		}
 
 		return result;
@@ -229,7 +219,7 @@ namespace Directus
 		}
 		catch (fs::filesystem_error& e) 
 		{
-			LOG_ERROR("Could not copy \"" + source + "\". " + string(e.what()));
+			LOG_ERROR("FileSystem: Could not copy \"" + source + "\". " + string(e.what()));
 		}
 
 		return result;
@@ -522,12 +512,6 @@ namespace Directus
 	//============================================================================================
 
 	//= STRING PARSING =====================================================================
-	string ToString(WCHAR* txt)
-	{
-		wstring ws(txt);
-		return string(ws.begin(), ws.end());
-	}
-
 	// Returns a file path which is relative to the engine
 	string FileSystem::GetRelativeFilePath(const string& absoluteFilePath)
 	{
@@ -686,11 +670,6 @@ namespace Directus
 	string FileSystem::ReplaceExpression(const string& str, const string& from, const string& to)
 	{
 		return regex_replace(str, regex(from), to);
-	}
-
-	wstring FileSystem::ToWString(const string& str)
-	{
-		return wstring(str.begin(), str.end());
 	}
 	//=====================================================================================
 

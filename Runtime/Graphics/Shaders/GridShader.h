@@ -40,8 +40,9 @@ namespace Directus
 
 		void Load(const std::string& filePath);
 		void Set();
-		void SetBuffer(const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap);
-		void Render(unsigned int indexCount);
+		void SetBuffer(const Math::Matrix& worldMatrix, const Math::Matrix& viewMatrix, const Math::Matrix& projectionMatrix);
+		void SetDepthMap(ID3D11ShaderResourceView* depthMap);
+		void DrawIndexed(unsigned int indexCount);
 
 	private:
 		struct DefaultBuffer
@@ -49,7 +50,7 @@ namespace Directus
 			Math::Matrix mWVP;
 		};
 
-		std::shared_ptr<D3D11ConstantBuffer> m_miscBuffer;
+		std::shared_ptr<D3D11ConstantBuffer> m_buffer;
 		std::shared_ptr<D3D11Shader> m_shader;
 		Graphics* m_graphics;
 	};

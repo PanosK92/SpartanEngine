@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "Material.h"
-#include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
 #include "../Resource/ResourceManager.h"
@@ -40,8 +39,7 @@ namespace Directus
 	Material::Material(Context* context)
 	{
 		// Resource
-		m_resourceID = GENERATE_GUID;
-		m_resourceType = Material_Resource;
+		InitializeResource(Material_Resource);
 
 		// Material
 		m_context = context;
@@ -71,24 +69,23 @@ namespace Directus
 	bool Material::Save(const string& filePath, bool overwrite)
 	{
 		// Make sure the path is relative
-		m_resourceFilePath = FileSystem::GetRelativeFilePath(filePath);
+		SetResourceFilePath(FileSystem::GetRelativeFilePath(filePath));
 
 		// Add material extension if not present
-		if (FileSystem::GetExtensionFromFilePath(m_resourceFilePath) != MATERIAL_EXTENSION)
+		if (FileSystem::GetExtensionFromFilePath(GetResourceFilePath()) != MATERIAL_EXTENSION)
 		{
-			m_resourceFilePath = m_resourceFilePath + MATERIAL_EXTENSION;
+			SetResourceFilePath(GetResourceFilePath() + MATERIAL_EXTENSION);
 		}
 
 		// If the user doesn't want to override and a material
 		// indeed happens to exists, there is nothing to do
-		if (!overwrite && FileSystem::FileExists(m_resourceFilePath))
+		if (!overwrite && FileSystem::FileExists(GetResourceFilePath()))
 			return true;
 
 		XmlDocument::Create();
 		XmlDocument::AddNode("Material");
-		XmlDocument::AddAttribute("Material", "ID", to_string(m_resourceID));
-		XmlDocument::AddAttribute("Material", "Name", m_resourceName);
-		XmlDocument::AddAttribute("Material", "Path", m_resourceFilePath);
+		XmlDocument::AddAttribute("Material", "Name", GetResourceName());
+		XmlDocument::AddAttribute("Material", "Path", GetResourceFilePath());
 		XmlDocument::AddAttribute("Material", "Model_ID", m_modelID);
 		XmlDocument::AddAttribute("Material", "Cull_Mode", int(m_cullMode));
 		XmlDocument::AddAttribute("Material", "Opacity", m_opacity);
@@ -115,7 +112,7 @@ namespace Directus
 			i++;
 		}
 
-		if (!XmlDocument::Save(m_resourceFilePath))
+		if (!XmlDocument::Save(GetResourceFilePath()))
 			return false;
 
 		XmlDocument::Release();
@@ -125,10 +122,10 @@ namespace Directus
 
 	bool Material::SaveToExistingDirectory()
 	{
-		if (m_resourceFilePath == NOT_ASSIGNED)
+		if (GetResourceFilePath() == NOT_ASSIGNED)
 			return false;
 
-		return Save(FileSystem::GetFilePathWithoutExtension(m_resourceFilePath), true);
+		return Save(FileSystem::GetFilePathWithoutExtension(GetResourceFilePath()), true);
 	}
 	//==================================================================
 
@@ -136,14 +133,13 @@ namespace Directus
 	bool Material::LoadFromFile(const string& filePath)
 	{
 		// Make sure the path is relative
-		m_resourceFilePath = FileSystem::GetRelativeFilePath(filePath);
+		SetResourceFilePath(FileSystem::GetRelativeFilePath(filePath));
 
-		if (!XmlDocument::Load(m_resourceFilePath))
+		if (!XmlDocument::Load(GetResourceFilePath()))
 			return false;
 
-		m_resourceID = XmlDocument::GetAttributeAsUInt("Material", "ID");
-		XmlDocument::GetAttribute("Material", "Name", m_resourceName);
-		XmlDocument::GetAttribute("Material", "Path", m_resourceFilePath);
+		XmlDocument::GetAttribute("Material", "Name", GetResourceName());
+		SetResourceFilePath(XmlDocument::GetAttributeAsStr("Material", "Path"));
 		XmlDocument::GetAttribute("Material", "Model_ID", m_modelID);
 		m_cullMode = CullMode(XmlDocument::GetAttributeAsInt("Material", "Cull_Mode"));
 		XmlDocument::GetAttribute("Material", "Opacity", m_opacity);
@@ -203,7 +199,7 @@ namespace Directus
 		}
 
 		TextureType type = texture._Get()->GetTextureType();
-		string filePath = texture._Get()->GetFilePathTexture();
+		string filePath = texture._Get()->GetResourceFilePath();
 
 		// Check if a texture of that type already exists and replace it
 		auto it = m_textures.find(type);
@@ -349,8 +345,14 @@ namespace Directus
 		// Create and initialize shader
 		auto shader = make_shared<ShaderVariation>();
 		shader->SetResourceFilePath(shaderDirectory + "GBuffer.hlsl");
-		shader->SetResourceName(shader->GetResourceName() + "_" + to_string(shader->GetResourceID()));
 		shader->Initialize(m_context, albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap);
+
+		// A GBuffer shader can exist multiple times in memory because it can have multiple variations.
+		// In order to avoid conflicts where the engine thinks it's the same shader, we randomize the
+		// path which will automatically create a resource ID based on that path. Hence we make sure that
+		// there are no conflicts. A more elegant way to handle this would be nice...
+		shader->SetResourceFilePath(GUIDGenerator::GenerateAsStr());
+		shader->SetResourceName( "GBuffer.hlsl_" + to_string(shader->GetResourceID()));
 
 		// Add the shader to the pool and return it
 		return m_context->GetSubsystem<ResourceManager>()->Add(shader);

@@ -80,7 +80,7 @@ namespace Directus
 		m_miscBuffer->SetPS(0);
 	}
 
-	void FontShader::SetTexture(ID3D11ShaderResourceView* texture)
+	void FontShader::SetFontAtlas(ID3D11ShaderResourceView* texture)
 	{
 		if (!m_graphics)
 			return;

@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 //=========================
 
-class ID3D11ShaderResourceView;
+struct ID3D11ShaderResourceView;
 
 namespace Directus
 {

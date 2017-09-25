@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================================
 #include "Texture.h"
-#include "../Core/GUIDGenerator.h"
 #include "../Logging/Log.h"
 #include "../Core/Helper.h"
 #include "../Resource/Import/ImageImporter.h"
@@ -59,10 +58,9 @@ namespace Directus
 
 	Texture::Texture(Context* context)
 	{
-		//= RESOURCE INTERFACE ===========
-		m_resourceID = GENERATE_GUID;
-		m_resourceType = Texture_Resource;
-		//================================
+		//= RESOURCE INTERFACE ==============
+		InitializeResource(Texture_Resource);
+		//===================================
 
 		// Texture
 		m_context = context;
@@ -88,16 +86,15 @@ namespace Directus
 		string savePath = filePath;
 		if (filePath == RESOURCE_SAVE)
 		{
-			savePath = m_resourceFilePath + METADATA_EXTENSION;
+			savePath = GetResourceFilePath() + METADATA_EXTENSION;
 		}
 
 		XmlDocument::Create();
 		XmlDocument::AddNode("Metadata");
 		XmlDocument::AddAttribute("Metadata", "Type", "Texture");
 		XmlDocument::AddChildNode("Metadata", "Texture");
-		XmlDocument::AddAttribute("Texture", "ID", m_resourceID);
-		XmlDocument::AddAttribute("Texture", "Name", m_resourceName);
-		XmlDocument::AddAttribute("Texture", "Path", m_resourceFilePath);
+		XmlDocument::AddAttribute("Texture", "Name", GetResourceName());
+		XmlDocument::AddAttribute("Texture", "Path", GetResourceFilePath());
 		XmlDocument::AddAttribute("Texture", "Width", m_width);
 		XmlDocument::AddAttribute("Texture", "Height", m_height);
 		XmlDocument::AddAttribute("Texture", "Channels", m_channels);
@@ -212,8 +209,8 @@ namespace Directus
 		}
 
 		// Extract any metadata we can from the ImageImporter
-		m_resourceFilePath = imageImp._Get()->GetPath();
-		m_resourceName = FileSystem::GetFileNameNoExtensionFromFilePath(GetFilePathTexture());
+		SetResourceFilePath(imageImp._Get()->GetPath());
+		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(GetResourceFilePath()));
 		m_grayscale = imageImp._Get()->IsGrayscale();
 		m_transparency = imageImp._Get()->IsTransparent();
 
@@ -231,7 +228,7 @@ namespace Directus
 		imageImp._Get()->Clear();
 
 		// Save metadata file
-		if (!SaveToFile(m_resourceFilePath + METADATA_EXTENSION))
+		if (!SaveToFile(GetResourceFilePath() + METADATA_EXTENSION))
 			return false;
 
 		return true;
@@ -242,9 +239,8 @@ namespace Directus
 		if (!XmlDocument::Load(filePath))
 			return false;
 
-		m_resourceID = XmlDocument::GetAttributeAsUInt("Texture", "ID");
-		XmlDocument::GetAttribute("Texture", "Name", m_resourceName);
-		XmlDocument::GetAttribute("Texture", "Path", m_resourceFilePath);
+		XmlDocument::GetAttribute("Texture", "Name", GetResourceName());
+		SetResourceFilePath(XmlDocument::GetAttributeAsStr("Texture", "Path"));
 		XmlDocument::GetAttribute("Texture", "Width", m_width);
 		XmlDocument::GetAttribute("Texture", "Height", m_height);
 		XmlDocument::GetAttribute("Texture", "Channels", m_channels);
