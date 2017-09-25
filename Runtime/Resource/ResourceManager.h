@@ -120,6 +120,19 @@ namespace Directus
 			return typedVec;
 		}
 
+		// Returns cached resource count by Type
+		template <class T>
+		int GetResourceCountByType()
+		{
+			int count = 0;
+			for (const auto& resource : m_resourceCache->GetAll())
+			{
+				std::weak_ptr<T> typed = ToDerivedWeak<T>(resource);
+				count = typed.expired() ? 0 : count + 1;
+			}
+			return count;
+		}
+
 		void SaveResourceMetadata() { m_resourceCache->SaveResourceMetadata(); }
 
 		std::vector<std::string> GetResourceFilePaths() { return m_resourceCache->GetResourceFilePaths(); }
