@@ -94,7 +94,7 @@ namespace Directus
 		unsigned int meshID = StreamIO::ReadUInt();
 		unsigned int modelID = StreamIO::ReadUInt();
 
-		// If the mesh is a engine constructed primitive
+		// If the mesh is an engine constructed primitive
 		if (m_meshType != Imported)
 		{
 			// Construct it now
@@ -106,7 +106,7 @@ namespace Directus
 		weak_ptr<Model> model = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Model>(modelID);
 		if (model.expired())
 		{
-			LOG_WARNING("Mesh \"" + meshName + "\" failed to load. Model is not loaded");
+			LOG_WARNING("MeshFilter: Can't load mesh \"" + meshName + "\". The model it belongs to is expired.");
 			return;
 		}
 
@@ -114,7 +114,7 @@ namespace Directus
 		weak_ptr<Mesh> mesh = model._Get()->GetMeshByID(meshID);
 		if (mesh.expired())
 		{
-			LOG_WARNING("Mesh \"" + meshName + "\" failed to load. Model doesn't contain it");
+			LOG_WARNING("MeshFilter: Can't load mesh \"" + meshName + "\". It's not part of the model.");
 			return;
 		}
 
@@ -129,7 +129,7 @@ namespace Directus
 		if (m_mesh.expired())
 		{
 			m_boundingBox.Undefine();
-			LOG_WARNING("Can't create vertex and index buffers for an expired mesh");
+			LOG_WARNING("MeshFilter: Can't create vertex and index buffers for an expired mesh");
 			return false;
 		}
 
@@ -183,12 +183,12 @@ namespace Directus
 	{
 		if (!m_vertexBuffer)
 		{
-			LOG_WARNING("Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + GetGameObjectName() + "\".");
+			LOG_WARNING("MeshFilter: Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + GetGameObjectName() + "\".");
 		}
 
 		if (!m_indexBuffer)
 		{
-			LOG_WARNING("Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + GetGameObjectName() + "\".");
+			LOG_WARNING("MeshFilter: Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + GetGameObjectName() + "\".");
 		}
 
 		if (!m_vertexBuffer || !m_indexBuffer)
@@ -223,13 +223,13 @@ namespace Directus
 		auto graphicsDevice = g_context->GetSubsystem<Graphics>();
 		if (!graphicsDevice->GetDevice())
 		{
-			LOG_ERROR("Aborting vertex buffer creation. Graphics device is not present.");
+			LOG_ERROR("MeshFilter: Aborting vertex buffer creation. Graphics device is not present.");
 			return false;
 		}
 
 		if (m_mesh.expired())
 		{
-			LOG_ERROR("Aborting vertex buffer creation for \"" + GetGameObjectName() + "\". The mesh has expired.");
+			LOG_ERROR("MeshFilter: Aborting vertex buffer creation for \"" + GetGameObjectName() + "\". The mesh has expired.");
 			return false;
 		}
 
@@ -239,14 +239,14 @@ namespace Directus
 		m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphicsDevice);
 		if (!m_vertexBuffer->Create(m_mesh._Get()->GetVertices()))
 		{
-			LOG_ERROR("Failed to create vertex buffer \"" + GetGameObjectName() + "\".");
+			LOG_ERROR("MeshFilter: Failed to create vertex buffer \"" + GetGameObjectName() + "\".");
 			return false;
 		}
 
 		m_indexBuffer = make_shared<D3D11IndexBuffer>(graphicsDevice);
 		if (!m_indexBuffer->Create(m_mesh._Get()->GetIndices()))
 		{
-			LOG_ERROR("Failed to create index buffer \"" + GetGameObjectName() + "\".");
+			LOG_ERROR("MeshFilter: Failed to create index buffer \"" + GetGameObjectName() + "\".");
 			return false;
 		}
 

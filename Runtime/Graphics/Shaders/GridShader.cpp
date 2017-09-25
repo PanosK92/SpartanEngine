@@ -55,8 +55,8 @@ namespace Directus
 		m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
 
 		// create buffer
-		m_miscBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
-		m_miscBuffer->Create(sizeof(DefaultBuffer));
+		m_buffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+		m_buffer->Create(sizeof(DefaultBuffer));
 	}
 
 	void GridShader::Set()
@@ -67,22 +67,31 @@ namespace Directus
 		m_shader->Set();
 	}
 
-	void GridShader::SetBuffer(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix, ID3D11ShaderResourceView* depthMap)
+	void GridShader::SetBuffer(const Matrix& worldMatrix, const Matrix& viewMatrix, const Matrix& projectionMatrix)
 	{
-		// get a pointer of the buffer
-		DefaultBuffer* buffer = static_cast<DefaultBuffer*>(m_miscBuffer->Map());
+		if (!m_buffer)
+			return;
 
-		// fill the buffer with the matrices
+		// Get buffer pointer
+		DefaultBuffer* buffer = static_cast<DefaultBuffer*>(m_buffer->Map());
+
+		// Fill the buffer
 		buffer->mWVP = worldMatrix * viewMatrix * projectionMatrix;		
 
-		// unmap the buffer and set it in the vertex shader
-		m_miscBuffer->Unmap();
-		m_miscBuffer->SetVS(0);
+		// Unmap the buffer and set it in the vertex shader
+		m_buffer->Unmap();
+		m_buffer->SetVS(0);
+	}
+
+	void GridShader::SetDepthMap(ID3D11ShaderResourceView* depthMap)
+	{
+		if (!m_graphics)
+			return;
 
 		m_graphics->GetDeviceContext()->PSSetShaderResources(0, 1, &depthMap);
 	}
 
-	void GridShader::Render(unsigned int indexCount)
+	void GridShader::DrawIndexed(unsigned int indexCount)
 	{
 		if (!m_graphics)
 			return;

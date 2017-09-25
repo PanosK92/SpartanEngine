@@ -106,13 +106,13 @@ namespace Directus
 		// Check if a material exists
 		if (m_material.expired()) 
 		{
-			LOG_WARNING("GameObject \"" + GetGameObjectName() + "\" has no material. It can't be rendered.");
+			LOG_WARNING("MeshRenderer: \"" + GetGameObjectName() + "\" has no material. It can't be rendered.");
 			return;
 		}
-
-		if (!m_material._Get()->HasShader()) // Check if the material has a shader
+		// Check if the material has a shader
+		if (!m_material._Get()->HasShader()) 
 		{
-			LOG_WARNING("GameObject \"" + GetGameObjectName() + "\" has a material but not a shader associated with it. It can't be rendered.");
+			LOG_WARNING("MeshRenderer: \"" + GetGameObjectName() + "\" has a material but not a shader associated with it. It can't be rendered.");
 			return;
 		}
 
@@ -128,7 +128,7 @@ namespace Directus
 	{
 		if (material.expired())
 		{
-			LOG_INFO("Can't set expired material");
+			LOG_INFO("MeshRenderer: Can't set expired material");
 			return;
 		}
 
@@ -157,6 +157,7 @@ namespace Directus
 		case Material_Basic:
 			material = make_shared<Material>(g_context);
 			material->SetResourceName("Basic");
+			material->SetResourceFilePath("Standard_Asset_Basic_Material");
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);
 			m_materialType = Material_Basic;
@@ -165,6 +166,7 @@ namespace Directus
 		case Material_Skybox:
 			material = make_shared<Material>(g_context);
 			material->SetResourceName("Skybox");
+			material->SetResourceFilePath("Standard_Asset_Skybox_Material");
 			material->SetCullMode(CullFront);
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);
@@ -184,7 +186,7 @@ namespace Directus
 		weak_ptr<Material> material = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Material>(ID);	
 		if (material.expired())
 		{
-			LOG_WARNING("Failed to set material. Material with ID \"" + to_string(ID) + "\" doesn't exist");
+			LOG_WARNING("MeshRenderer: Failed to set material. Material with ID \"" + to_string(ID) + "\" doesn't exist.");
 			return weak_ptr<Material>();
 		}
 

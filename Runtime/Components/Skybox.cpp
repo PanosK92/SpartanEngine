@@ -78,7 +78,10 @@ namespace Directus
 		meshRenderer->SetCastShadows(false);
 		meshRenderer->SetReceiveShadows(false);
 		meshRenderer->SetMaterialByType(Material_Skybox);
-		meshRenderer->GetMaterial()._Get()->SetTexture(m_cubeMapTexture);
+		if (meshRenderer->HasMaterial())
+		{
+			meshRenderer->GetMaterial()._Get()->SetTexture(m_cubeMapTexture);
+		}
 		g_transform->SetScale(Vector3(1000, 1000, 1000));
 
 		g_gameObject._Get()->SetHierarchyVisibility(false);

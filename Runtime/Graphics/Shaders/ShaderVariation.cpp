@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ShaderVariation.h"
 #include "../../Logging/Log.h"
 #include "../../IO/StreamIO.h"
-#include "../../Core/GUIDGenerator.h"
 #include "../../Core/Settings.h"
 #include "../../Components/Transform.h"
 #include "../../Components/Camera.h"
@@ -43,8 +42,7 @@ namespace Directus
 	ShaderVariation::ShaderVariation()
 	{
 		// Resource
-		m_resourceID = GENERATE_GUID;
-		m_resourceType = Shader_Resource;
+		InitializeResource(Shader_Resource);
 
 		// Shader
 		m_graphics = nullptr;
@@ -92,7 +90,7 @@ namespace Directus
 		m_context = context;
 		m_graphics = m_context->GetSubsystem<Graphics>();
 
-		Compile(m_resourceFilePath);
+		Compile(GetResourceFilePath());
 	}
 
 	bool ShaderVariation::LoadFromFile(const string& filePath)
@@ -100,9 +98,8 @@ namespace Directus
 		if (!StreamIO::StartReading(filePath))
 			return false;
 
-		m_resourceID = StreamIO::ReadInt();
-		m_resourceName = StreamIO::ReadSTR();
-		m_resourceFilePath = StreamIO::ReadSTR();
+		SetResourceName(StreamIO::ReadSTR());
+		SetResourceFilePath(StreamIO::ReadSTR());
 		m_hasAlbedoTexture = StreamIO::ReadBool();
 		m_hasRoughnessTexture = StreamIO::ReadBool();
 		m_hasMetallicTexture = StreamIO::ReadBool();
@@ -124,7 +121,7 @@ namespace Directus
 
 		if (savePath == RESOURCE_SAVE)
 		{
-			savePath = m_resourceFilePath;
+			savePath = GetResourceFilePath();
 		}
 
 		// Add shader extension if missing
@@ -136,9 +133,8 @@ namespace Directus
 		if (!StreamIO::StartWriting(savePath))
 			return false;
 
-		StreamIO::WriteInt(m_resourceID);
-		StreamIO::WriteSTR(m_resourceName);
-		StreamIO::WriteSTR(m_resourceFilePath);
+		StreamIO::WriteSTR(GetResourceName());
+		StreamIO::WriteSTR(GetResourceFilePath());
 		StreamIO::WriteBool(m_hasAlbedoTexture);
 		StreamIO::WriteBool(m_hasRoughnessTexture);
 		StreamIO::WriteBool(m_hasMetallicTexture);

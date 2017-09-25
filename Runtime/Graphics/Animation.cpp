@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES =========
 #include "Animation.h"
-#include "../Core/GUIDGenerator.h"
-//================================
+//====================
 
 //= NAMESPACES =====
 using namespace std;
@@ -34,10 +33,9 @@ namespace Directus
 {
 	Animation::Animation()
 	{
-		//= RESOURCE INTERFACE =============
-		m_resourceID = GENERATE_GUID;
-		m_resourceType = Animation_Resource;
-		//==================================
+		//= RESOURCE INTERFACE ================
+		InitializeResource(Animation_Resource);
+		//=====================================
 
 		m_name = NOT_ASSIGNED;
 		m_duration = 0;

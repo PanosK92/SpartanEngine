@@ -63,10 +63,7 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= PROPERTIES ===============================================================================
-		std::string GetFilePathTexture() { return m_resourceFilePath; }
-		void SetFilePathTexture(const std::string& filepath) { m_resourceFilePath = filepath; }
-
+		//= PROPERTIES ============================================================
 		int GetWidth() { return m_width; }
 		void SetWidth(int width) { m_width = width; }
 
@@ -83,7 +80,7 @@ namespace Directus
 		void SetTransparency(bool transparency) { m_transparency = transparency; }
 
 		void** GetShaderResource();
-		//=============================================================================================
+		//========================================================================
 
 		// Creates a texture of the given type from memory
 		bool CreateFromMemory(int width, int height, int channels, unsigned char* buffer, TextureFormat format);

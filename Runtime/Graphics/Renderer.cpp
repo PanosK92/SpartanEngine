@@ -390,7 +390,7 @@ namespace Directus
 			for (const auto& material : materials) // MATERIAL ITERATION
 			{
 				// Continue only if the material at hand happens to use the already set shader
-				if (material._Get()->GetShader()._Get()->GetResourceID() != shader._Get()->GetResourceID())
+				if (!material._Get()->GetShader().expired() && (material._Get()->GetShader()._Get()->GetResourceID() != shader._Get()->GetResourceID()))
 					continue;
 
 				// UPDATE PER MATERIAL BUFFER
@@ -625,9 +625,9 @@ namespace Directus
 			m_lineRenderer->SetBuffer();
 			m_shaderLine->Set();
 			m_shaderLine->SetBuffer(
-				Matrix::Identity, 
-				m_camera->GetViewMatrix(), 
-				m_camera->GetProjectionMatrix(), 
+				Matrix::Identity,
+				m_camera->GetViewMatrix(),
+				m_camera->GetProjectionMatrix(),
 				m_GBuffer->GetShaderResource(2) // depth
 			);
 			m_shaderLine->Render(m_lineRenderer->GetVertexCount());
@@ -637,36 +637,36 @@ namespace Directus
 		m_graphics->EnableAlphaBlending(true);
 
 		//= GRID =============================================
-		m_grid->SetBuffer();	
+		m_grid->SetBuffer();
 		m_shaderGrid->Set();
-		m_shaderGrid->SetBuffer(
-			m_grid->ComputeWorldMatrix(m_camera->g_transform), 
-			m_camera->GetViewMatrix(), 
-			m_camera->GetProjectionMatrix(), 
-			m_GBuffer->GetShaderResource(2) // depth
-		);
-		m_shaderGrid->Render(m_grid->GetIndexCount());
+		m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->g_transform), m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix());
+		m_shaderGrid->SetDepthMap(m_GBuffer->GetShaderResource(2));
+		m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
 		//===================================================
 
 		//= TEXT ========================================================================================
 		m_graphics->SetBackBufferAsRenderTarget();
 		m_graphics->SetViewport();
-	
+
 		float fps = m_context->GetSubsystem<Scene>()->GetFPS();
 		float delta = m_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
+		int materials = m_resourceMng->GetResourcesByType<Material>().size();
+		int shaders = m_resourceMng->GetResourcesByType<ShaderVariation>().size();
 		m_font->SetText(
 			"FPS: " + to_string(fps) + "\n"
 			"Frame: " + to_string(delta) + " ms\n"
 			"Render: " + to_string(m_renderTimeMs) + " ms\n"
-			"Meshes Rendered: " + to_string(m_renderedMeshesPerFrame),
+			"Meshes Rendered: " + to_string(m_renderedMeshesPerFrame) + "\n"
+			"Materials: " + to_string(materials) + "\n"
+			"Shaders: " + to_string(shaders),
 			Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f)
 		);
 		m_font->SetBuffer();
 
 		m_shaderFont->Set();
 		m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, m_font->GetColor());
-		m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource()); // font atlas
-	
+		m_shaderFont->SetFontAtlas((ID3D11ShaderResourceView*)m_font->GetShaderResource());
+
 		m_shaderFont->Render(m_font->GetIndexCount());
 		//===============================================================================================
 
