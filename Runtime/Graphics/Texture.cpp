@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================================
 
 
-//= INCLUDES ======================================
+//= INCLUDES =====================================
 #include "Texture.h"
 #include "../Logging/Log.h"
 #include "../Core/Helper.h"

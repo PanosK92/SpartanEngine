@@ -42,7 +42,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Scene.h"
 #include "../Core/GameObject.h"
 #include "../Core/Context.h"
-#include "../Core/Stopwatch.h"
 #include "../Resource/ResourceManager.h"
 #include "Material.h"
 #include "Mesh.h"
@@ -50,6 +49,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Timer.h"
 #include "Grid.h"
 #include "Shaders/GridShader.h"
+#include "../Profiling/PerformanceProfiler.h"
 //======================================
 
 //= NAMESPACES ================
@@ -61,8 +61,6 @@ namespace Directus
 {
 	Renderer::Renderer(Context* context) : Subsystem(context)
 	{
-		m_renderedMeshesPerFrame = 0;
-		m_renderedMeshesTempCounter = 0;
 		m_skybox = nullptr;
 		m_camera = nullptr;
 		m_texEnvironment = nullptr;
@@ -72,8 +70,6 @@ namespace Directus
 		m_resourceMng = nullptr;
 		m_graphics = nullptr;
 		m_renderOutput = Render_Default;
-		m_renderedMeshesPerFrame = 0;
-		m_renderedMeshesTempCounter = 0;
 
 		// Subscribe to render event
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
@@ -147,7 +143,6 @@ namespace Directus
 		m_texNoiseMap = make_shared<Texture>(m_context);
 		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
 		m_texNoiseMap->SetTextureType(Normal_Texture);
-		m_renderStopwatch = make_unique<Stopwatch>();
 
 		// DEBUG
 		m_font = make_unique<Font>(m_context);
@@ -169,7 +164,7 @@ namespace Directus
 		if (!m_graphics->IsInitialized())
 			return;
 
-		StartCalculatingStats();
+		PerformanceProfiler::RenderingStarted();
 		AcquirePrerequisites();
 
 		// If there is no camera, clear to black and present
@@ -212,7 +207,7 @@ namespace Directus
 		// display frame
 		m_graphics->Present();
 
-		StopCalculatingStats();
+		PerformanceProfiler::RenderingStoped();
 	}
 
 	void Renderer::SetResolution(int width, int height)
@@ -468,7 +463,7 @@ namespace Directus
 							// Render the mesh, finally!				
 							meshRenderer->Render(objMesh->GetIndexCount());
 
-							m_renderedMeshesTempCounter++;
+							PerformanceProfiler::RenderingMesh();
 						}
 					}
 				} // GAMEOBJECT/MESH ITERATION
@@ -647,20 +642,8 @@ namespace Directus
 		//= TEXT ========================================================================================
 		m_graphics->SetBackBufferAsRenderTarget();
 		m_graphics->SetViewport();
-
-		float fps = m_context->GetSubsystem<Scene>()->GetFPS();
-		float delta = m_context->GetSubsystem<Timer>()->GetDeltaTimeMs();
-		int materials = m_resourceMng->GetResourcesByType<Material>().size();
-		int shaders = m_resourceMng->GetResourcesByType<ShaderVariation>().size();
-		m_font->SetText(
-			"FPS: " + to_string(fps) + "\n"
-			"Frame: " + to_string(delta) + " ms\n"
-			"Render: " + to_string(m_renderTimeMs) + " ms\n"
-			"Meshes Rendered: " + to_string(m_renderedMeshesPerFrame) + "\n"
-			"Materials: " + to_string(materials) + "\n"
-			"Shaders: " + to_string(shaders),
-			Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f)
-		);
+		
+		m_font->SetText(PerformanceProfiler::GetMetrics(), Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f));
 		m_font->SetBuffer();
 
 		m_shaderFont->Set();
@@ -676,21 +659,6 @@ namespace Directus
 	const Vector4& Renderer::GetClearColor()
 	{
 		return m_camera ? m_camera->GetClearColor() : Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-	}
-
-	//= STATS ============================
-	// Called in the beginning of the rendering
-	void Renderer::StartCalculatingStats()
-	{
-		m_renderStopwatch->Start();
-		m_renderedMeshesTempCounter = 0;
-	}
-
-	// Called in the end of the rendering
-	void Renderer::StopCalculatingStats()
-	{
-		m_renderTimeMs = m_renderStopwatch->Stop();
-		m_renderedMeshesPerFrame = m_renderedMeshesTempCounter;
 	}
 	//===============================================================================================================
 }

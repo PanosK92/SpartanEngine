@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EventSystem/EventSystem.h"
 #include "../Input/Input.h"
 #include "../Physics/Physics.h"
+#include "../Profiling/PerformanceProfiler.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -146,6 +147,8 @@ namespace Directus
 			LOG_ERROR("Failed to initialize Scene subsystem");
 			success = false;
 		}
+
+		PerformanceProfiler::Initialize(m_context);
 
 		return success;
 	}

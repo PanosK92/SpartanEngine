@@ -52,7 +52,6 @@ namespace Directus
 	class ResourceManager;
 	class D3D11RenderTexture;
 	class D3D11GraphicsDevice;
-	class Stopwatch;
 	class Font;
 	class Grid;
 
@@ -101,13 +100,6 @@ namespace Directus
 		void Clear();
 		const std::vector<weakGameObj>& GetRenderables() { return m_renderables; }
 
-		//= STATS =======================================================
-		void StartCalculatingStats();
-		void StopCalculatingStats();
-		int GetRenderedMeshesCount() { return m_renderedMeshesPerFrame; }
-		float GetRenderTime() { return m_renderTimeMs; }
-		//===============================================================
-
 	private:
 		//= HELPER FUNCTIONS =================
 		void AcquirePrerequisites();
@@ -151,15 +143,11 @@ namespace Directus
 		std::shared_ptr<PostProcessShader> m_shaderTex;
 		//====================================================
 
-		//= DEBUG ===================================
-		int m_renderedMeshesPerFrame;
-		int m_renderedMeshesTempCounter;
-		float m_renderTimeMs;
-		std::unique_ptr<Stopwatch> m_renderStopwatch;
+		//= DEBUG ===================
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
 		RenderDebug m_renderDebug;
-		//===========================================
+		//===========================
 
 		//= PREREQUISITES ================================
 		Camera* m_camera;
