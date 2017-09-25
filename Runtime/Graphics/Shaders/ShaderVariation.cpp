@@ -44,18 +44,8 @@ namespace Directus
 		// Resource
 		InitializeResource(Shader_Resource);
 
-		// Shader
 		m_graphics = nullptr;
-
-		m_hasAlbedoTexture = false;
-		m_hasRoughnessTexture = false;
-		m_hasMetallicTexture = false;
-		m_hasOcclusionTexture = false;
-		m_hasEmissionTexture = false;
-		m_hasNormalTexture = false;
-		m_hasHeightTexture = false;
-		m_hasMaskTexture = false;
-		m_hasCubeMap = false;
+		m_shaderFlags = 0;
 	}
 
 	ShaderVariation::~ShaderVariation()
@@ -63,32 +53,13 @@ namespace Directus
 
 	}
 
-	void ShaderVariation::Initialize(
-		Context* context,
-		bool albedo,
-		bool roughness,
-		bool metallic,
-		bool normal,
-		bool height,
-		bool occlusion,
-		bool emission,
-		bool mask,
-		bool cubemap
-	)
+	void ShaderVariation::Initialize(Context* context, unsigned int shaderFlags)
 	{
-		// Save the properties of the material
-		m_hasAlbedoTexture = albedo;
-		m_hasRoughnessTexture = roughness;
-		m_hasMetallicTexture = metallic;
-		m_hasNormalTexture = normal;
-		m_hasHeightTexture = height;
-		m_hasOcclusionTexture = occlusion;
-		m_hasEmissionTexture = emission;
-		m_hasMaskTexture = mask;
-		m_hasCubeMap = cubemap;
-
 		m_context = context;
 		m_graphics = m_context->GetSubsystem<Graphics>();
+
+		// Save the properties of the material
+		m_shaderFlags = shaderFlags;
 
 		Compile(GetResourceFilePath());
 	}
@@ -100,15 +71,7 @@ namespace Directus
 
 		SetResourceName(StreamIO::ReadSTR());
 		SetResourceFilePath(StreamIO::ReadSTR());
-		m_hasAlbedoTexture = StreamIO::ReadBool();
-		m_hasRoughnessTexture = StreamIO::ReadBool();
-		m_hasMetallicTexture = StreamIO::ReadBool();
-		m_hasNormalTexture = StreamIO::ReadBool();
-		m_hasHeightTexture = StreamIO::ReadBool();
-		m_hasOcclusionTexture = StreamIO::ReadBool();
-		m_hasEmissionTexture = StreamIO::ReadBool();
-		m_hasMaskTexture = StreamIO::ReadBool();
-		m_hasCubeMap = StreamIO::ReadBool();
+		m_shaderFlags = StreamIO::ReadUInt();
 
 		StreamIO::StopReading();
 
@@ -135,15 +98,7 @@ namespace Directus
 
 		StreamIO::WriteSTR(GetResourceName());
 		StreamIO::WriteSTR(GetResourceFilePath());
-		StreamIO::WriteBool(m_hasAlbedoTexture);
-		StreamIO::WriteBool(m_hasRoughnessTexture);
-		StreamIO::WriteBool(m_hasMetallicTexture);
-		StreamIO::WriteBool(m_hasNormalTexture);
-		StreamIO::WriteBool(m_hasHeightTexture);
-		StreamIO::WriteBool(m_hasOcclusionTexture);
-		StreamIO::WriteBool(m_hasEmissionTexture);
-		StreamIO::WriteBool(m_hasMaskTexture);
-		StreamIO::WriteBool(m_hasCubeMap);
+		StreamIO::WriteUInt(m_shaderFlags);
 	
 		StreamIO::StopWriting();
 
@@ -309,15 +264,15 @@ namespace Directus
 			return;
 
 		// Define in the shader what kind of textures it should expect
-		shader->AddDefine("ALBEDO_MAP", m_hasAlbedoTexture);
-		shader->AddDefine("ROUGHNESS_MAP", m_hasRoughnessTexture);
-		shader->AddDefine("METALLIC_MAP", m_hasMetallicTexture);
-		shader->AddDefine("NORMAL_MAP", m_hasNormalTexture);
-		shader->AddDefine("HEIGHT_MAP", m_hasHeightTexture);
-		shader->AddDefine("OCCLUSION_MAP", m_hasOcclusionTexture);
-		shader->AddDefine("EMISSION_MAP", m_hasEmissionTexture);
-		shader->AddDefine("MASK_MAP", m_hasMaskTexture);
-		shader->AddDefine("CUBE_MAP", m_hasCubeMap);
+		shader->AddDefine("ALBEDO_MAP", HasAlbedoTexture());
+		shader->AddDefine("ROUGHNESS_MAP", HasRoughnessTexture());
+		shader->AddDefine("METALLIC_MAP", HasMetallicTexture());
+		shader->AddDefine("NORMAL_MAP", HasNormalTexture());
+		shader->AddDefine("HEIGHT_MAP", HasHeightTexture());
+		shader->AddDefine("OCCLUSION_MAP", HasOcclusionTexture());
+		shader->AddDefine("EMISSION_MAP", HasEmissionTexture());
+		shader->AddDefine("MASK_MAP", HasMaskTexture());
+		shader->AddDefine("CUBE_MAP", HasCubeMapTexture());
 	}
 
 	void ShaderVariation::Compile(const string& filePath)

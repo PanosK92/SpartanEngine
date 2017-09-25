@@ -293,47 +293,36 @@ namespace Directus
 
 		// Add a shader to the pool based on this material, if a 
 		// matching shader already exists, it will be returned.
-		m_shader = CreateShaderBasedOnMaterial(
-			HasTextureOfType(Albedo_Texture),
-			HasTextureOfType(Roughness_Texture),
-			HasTextureOfType(Metallic_Texture),
-			HasTextureOfType(Normal_Texture),
-			HasTextureOfType(Height_Texture),
-			HasTextureOfType(Occlusion_Texture),
-			HasTextureOfType(Emission_Texture),
-			HasTextureOfType(Mask_Texture),
-			HasTextureOfType(CubeMap_Texture)
-		);
+		unsigned int shaderFlags = 0;
+
+		if (HasTextureOfType(Albedo_Texture)) shaderFlags |= Variaton_Albedo;
+		if (HasTextureOfType(Roughness_Texture)) shaderFlags |= Variaton_Roughness;
+		if (HasTextureOfType(Metallic_Texture)) shaderFlags |= Variaton_Metallic;
+		if (HasTextureOfType(Normal_Texture)) shaderFlags |= Variaton_Normal;
+		if (HasTextureOfType(Height_Texture)) shaderFlags |= Variaton_Height;
+		if (HasTextureOfType(Occlusion_Texture)) shaderFlags |= Variaton_Occlusion;
+		if (HasTextureOfType(Emission_Texture)) shaderFlags |= Variaton_Emission;
+		if (HasTextureOfType(Mask_Texture)) shaderFlags |= Variaton_Mask;
+		if (HasTextureOfType(CubeMap_Texture)) shaderFlags |= Variaton_Cubemap;
+
+		m_shader = CreateShaderBasedOnMaterial(shaderFlags);
 	}
 
-	weak_ptr<ShaderVariation> Material::FindMatchingShader(
-		bool albedo, bool roughness, bool metallic,
-		bool normal, bool height, bool occlusion,
-		bool emission, bool mask, bool cubemap
-	)
+	weak_ptr<ShaderVariation> Material::FindMatchingShader(unsigned int shaderFlags)
 	{
 		auto shaders = m_context->GetSubsystem<ResourceManager>()->GetResourcesByType<ShaderVariation>();
 		for (const auto& shader : shaders)
 		{
-			if (shader._Get()->HasAlbedoTexture() != albedo) continue;
-			if (shader._Get()->HasRoughnessTexture() != roughness) continue;
-			if (shader._Get()->HasMetallicTexture() != metallic) continue;
-			if (shader._Get()->HasNormalTexture() != normal) continue;
-			if (shader._Get()->HasHeightTexture() != height) continue;
-			if (shader._Get()->HasOcclusionTexture() != occlusion) continue;
-			if (shader._Get()->HasEmissionTexture() != emission) continue;
-			if (shader._Get()->HasMaskTexture() != mask) continue;
-			if (shader._Get()->HasCubeMapTexture() != cubemap) continue;
-
-			return shader;
+			if (shader._Get()->GetShaderFlags() == shaderFlags)
+				return shader;
 		}
 		return weak_ptr<ShaderVariation>();
 	}
 
-	weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(bool albedo, bool roughness, bool metallic, bool normal, bool height, bool occlusion, bool emission, bool mask, bool cubemap)
+	weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(unsigned int shaderFlags)
 	{
 		// If an appropriate shader already exists, return it's ID
-		auto existingShader = FindMatchingShader(albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap);
+		auto existingShader = FindMatchingShader(shaderFlags);
 
 		if (!existingShader.expired())
 			return existingShader;
@@ -345,14 +334,14 @@ namespace Directus
 		// Create and initialize shader
 		auto shader = make_shared<ShaderVariation>();
 		shader->SetResourceFilePath(shaderDirectory + "GBuffer.hlsl");
-		shader->Initialize(m_context, albedo, roughness, metallic, normal, height, occlusion, emission, mask, cubemap);
+		shader->Initialize(m_context, shaderFlags);
 
 		// A GBuffer shader can exist multiple times in memory because it can have multiple variations.
 		// In order to avoid conflicts where the engine thinks it's the same shader, we randomize the
 		// path which will automatically create a resource ID based on that path. Hence we make sure that
 		// there are no conflicts. A more elegant way to handle this would be nice...
 		shader->SetResourceFilePath(GUIDGenerator::GenerateAsStr());
-		shader->SetResourceName( "GBuffer.hlsl_" + to_string(shader->GetResourceID()));
+		shader->SetResourceName("GBuffer.hlsl_" + to_string(shader->GetResourceID()));
 
 		// Add the shader to the pool and return it
 		return m_context->GetSubsystem<ResourceManager>()->Add(shader);
