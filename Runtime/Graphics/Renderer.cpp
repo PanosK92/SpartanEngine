@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ===============================
 #include "Renderer.h"
 #include "Gbuffer.h"
 #include "FullScreenQuad.h"
@@ -46,11 +46,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "Mesh.h"
 #include "../Font/Font.h"
-#include "../Core/Timer.h"
 #include "Grid.h"
 #include "Shaders/GridShader.h"
 #include "../Profiling/PerformanceProfiler.h"
-//======================================
+//===========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -69,7 +68,14 @@ namespace Directus
 		m_farPlane = 0.0f;
 		m_resourceMng = nullptr;
 		m_graphics = nullptr;
-		m_renderOutput = Render_Default;
+		m_renderFlags = 0;
+		m_renderFlags |= Render_Default;
+		m_renderFlags |= Render_Performance_Metrics;
+		m_renderFlags |= Render_Physics;
+		m_renderFlags |= Render_Bounding_Boxes;
+		m_renderFlags |= Render_Mouse_Picking_Ray;
+		m_renderFlags |= Render_Grid;
+		m_renderFlags |= Render_Performance_Metrics;
 
 		// Subscribe to render event
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
@@ -533,26 +539,26 @@ namespace Directus
 	{
 		m_graphics->SetCullMode(CullBack);
 
-		if (m_renderOutput != Render_Default)
+		if (!(m_renderFlags & Render_Default))
 		{
 			m_graphics->SetBackBufferAsRenderTarget();
 			m_graphics->SetViewport();
 			m_graphics->Clear(m_camera->GetClearColor());
 
 			int texIndex = 0;
-			if (m_renderOutput == Render_Albedo)
+			if (m_renderFlags & Render_Albedo)
 			{
 				texIndex = 0;
 			}
-			else if (m_renderOutput == Render_Normal)
+			else if (m_renderFlags & Render_Normal)
 			{
 				texIndex = 1;
 			}
-			else if (m_renderOutput == Render_Depth)
+			else if (m_renderFlags & Render_Depth)
 			{
 				texIndex = 2;
 			}
-			else if (m_renderOutput == Render_Material)
+			else if (m_renderFlags & Render_Material)
 			{
 				texIndex = 3;
 			}
@@ -599,21 +605,31 @@ namespace Directus
 		if (m_lineRenderer)
 		{
 			m_lineRenderer->ClearVertices();
+
 			// Physics
-			m_context->GetSubsystem<Physics>()->DebugDraw();
-			if (m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->IsDirty())
+			if (m_renderFlags & Render_Physics)
 			{
-				m_lineRenderer->AddLines(m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->GetLines());
+				m_context->GetSubsystem<Physics>()->DebugDraw();
+				if (m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->IsDirty())
+				{
+					m_lineRenderer->AddLines(m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->GetLines());
+				}
 			}
 
 			// Picking ray
-			m_lineRenderer->AddLines(m_camera->GetPickingRay());
+			if (m_renderFlags & Render_Mouse_Picking_Ray)
+			{
+				m_lineRenderer->AddLines(m_camera->GetPickingRay());
+			}
 
 			// bounding boxes
-			for (const auto& gameObject : m_renderables)
+			if (m_renderFlags & Render_Bounding_Boxes)
 			{
-				auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>();
-				m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+				for (const auto& gameObject : m_renderables)
+				{
+					auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>();
+					m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+				}
 			}
 
 			// Render
@@ -632,25 +648,35 @@ namespace Directus
 		m_graphics->EnableAlphaBlending(true);
 
 		//= GRID =============================================
-		m_grid->SetBuffer();
-		m_shaderGrid->Set();
-		m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->g_transform), m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix());
-		m_shaderGrid->SetDepthMap(m_GBuffer->GetShaderResource(2));
-		m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
+		if (m_renderFlags & Render_Grid)
+		{
+			m_grid->SetBuffer();
+			m_shaderGrid->Set();
+			m_shaderGrid->SetBuffer(
+				m_grid->ComputeWorldMatrix(m_camera->g_transform), 
+				m_camera->GetViewMatrix(), 
+				m_camera->GetProjectionMatrix()
+			);
+			m_shaderGrid->SetDepthMap(m_GBuffer->GetShaderResource(2));
+			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
+		}
 		//===================================================
 
 		//= TEXT ========================================================================================
-		m_graphics->SetBackBufferAsRenderTarget();
-		m_graphics->SetViewport();
-		
-		m_font->SetText(PerformanceProfiler::GetMetrics(), Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f));
-		m_font->SetBuffer();
+		if (m_renderFlags & Render_Performance_Metrics)
+		{
+			m_graphics->SetBackBufferAsRenderTarget();
+			m_graphics->SetViewport();
 
-		m_shaderFont->Set();
-		m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, m_font->GetColor());
-		m_shaderFont->SetFontAtlas((ID3D11ShaderResourceView*)m_font->GetShaderResource());
+			m_font->SetText(PerformanceProfiler::GetMetrics(), Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f));
+			m_font->SetBuffer();
 
-		m_shaderFont->Render(m_font->GetIndexCount());
+			m_shaderFont->Set();
+			m_shaderFont->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, m_font->GetColor());
+			m_shaderFont->SetFontAtlas((ID3D11ShaderResourceView*)m_font->GetShaderResource());
+
+			m_shaderFont->Render(m_font->GetIndexCount());
+		}
 		//===============================================================================================
 
 		m_graphics->EnableAlphaBlending(false);
