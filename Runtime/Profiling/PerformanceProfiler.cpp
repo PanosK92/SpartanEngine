@@ -104,6 +104,7 @@ namespace Directus
 		m_metrics =
 			"FPS: " + To_String_Precision(fps, 2) + "\n"
 			"Frame: " + To_String_Precision(delta, 2) + " ms\n"
+			"Update: " + To_String_Precision(delta - m_renderTimeMs, 2) + " ms\n"
 			"Render: " + To_String_Precision(m_renderTimeMs, 2) + " ms\n"
 			"Meshes Rendered: " + to_string(m_renderedMeshesPerFrame) + "\n"
 			"Materials: " + to_string(materials) + "\n"

@@ -128,7 +128,7 @@ namespace Directus
 			for (const auto& resource : m_resourceCache->GetAll())
 			{
 				std::weak_ptr<T> typed = ToDerivedWeak<T>(resource);
-				count = typed.expired() ? 0 : count + 1;
+				count = typed.expired() ? count : count + 1;
 			}
 			return count;
 		}
