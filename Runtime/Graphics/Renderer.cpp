@@ -148,7 +148,7 @@ namespace Directus
 		m_font = make_unique<Font>(m_context);
 		string fontDir = m_resourceMng->GetStandardResourceDirectory(Font_Resource);
 		m_font->SetSize(12);
-		m_font->SetColor(Vector4(0.5f, 0.5f, 0.5f, 1.0f));
+		m_font->SetColor(Vector4(0.7f, 0.7f, 0.7f, 1.0f));
 		m_font->LoadFromFile(fontDir + "CalibriBold.ttf");
 		m_grid = make_unique<Grid>(m_context);
 		m_grid->BuildGrid();
