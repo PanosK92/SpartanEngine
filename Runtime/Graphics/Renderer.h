@@ -41,7 +41,7 @@ namespace Directus
 	class Light;
 	class MeshFilter;	
 	class GBuffer;
-	class FullScreenQuad;
+	class Rectangle;
 	class DeferredShader;
 	class LineShader;
 	class Shader;
@@ -68,6 +68,7 @@ namespace Directus
 		Render_Mouse_Picking_Ray	= 1UL << 6,
 		Render_Grid					= 1UL << 7,
 		Render_Performance_Metrics	= 1UL << 8,
+		Render_Light				= 1UL << 9
 	};
 
 	class DLL_API Renderer : public Subsystem
@@ -106,8 +107,8 @@ namespace Directus
 		const Math::Vector4& GetClearColor();
 		//===================================
 
-		std::shared_ptr<FullScreenQuad> m_fullScreenQuad;
-		std::shared_ptr<GBuffer> m_GBuffer;
+		std::unique_ptr<Rectangle> m_fullScreenRect;
+		std::unique_ptr<GBuffer> m_GBuffer;
 
 		// GAMEOBJECTS ========================
 		std::vector<weakGameObj> m_renderables;
@@ -116,33 +117,35 @@ namespace Directus
 		//=====================================
 
 		//= RENDER TEXTURES ================================
-		std::shared_ptr<D3D11RenderTexture> m_renderTexPing;
-		std::shared_ptr<D3D11RenderTexture> m_renderTexPong;
+		std::unique_ptr<D3D11RenderTexture> m_renderTexPing;
+		std::unique_ptr<D3D11RenderTexture> m_renderTexPong;
 		//==================================================
 
 		//= MISC =========================================
 		std::vector<ID3D11ShaderResourceView*> m_texArray;
 		ID3D11ShaderResourceView* m_texEnvironment;
-		std::shared_ptr<Texture> m_texNoiseMap;
+		std::unique_ptr<Texture> m_texNoiseMap;
 		//================================================
 
 		//= SHADERS ==========================================
-		std::shared_ptr<DeferredShader> m_shaderDeferred;
-		std::shared_ptr<Shader> m_shaderDepth;
-		std::shared_ptr<LineShader> m_shaderLine;
-		std::shared_ptr<Shader> m_shaderGrid;
-		std::shared_ptr<Shader> m_shaderFont;
-		std::shared_ptr<Shader> m_shaderTexture;
-		std::shared_ptr<Shader> m_shaderFXAA;
-		std::shared_ptr<Shader> m_shaderSharpening;
-		std::shared_ptr<Shader> m_shaderBlur;
+		std::unique_ptr<DeferredShader> m_shaderDeferred;
+		std::unique_ptr<Shader> m_shaderDepth;
+		std::unique_ptr<LineShader> m_shaderLine;
+		std::unique_ptr<Shader> m_shaderGrid;
+		std::unique_ptr<Shader> m_shaderFont;
+		std::unique_ptr<Shader> m_shaderTexture;
+		std::unique_ptr<Shader> m_shaderFXAA;
+		std::unique_ptr<Shader> m_shaderSharpening;
+		std::unique_ptr<Shader> m_shaderBlur;
 		//====================================================
 
-		//= DEBUG ===================
+		//= DEBUG ===============================
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
+		std::unique_ptr<Texture> m_gizmoLightTex;
+		std::unique_ptr<Rectangle> m_gizmoLightRect;
 		unsigned long m_renderFlags;
-		//===========================
+		//=======================================
 
 		//= PREREQUISITES ================================
 		Camera* m_camera;

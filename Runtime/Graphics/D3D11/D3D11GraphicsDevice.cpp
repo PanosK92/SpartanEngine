@@ -184,10 +184,10 @@ namespace Directus
 			// Go through all the display modes and find the one that matches the screen width and height.
 			for (unsigned int i = 0; i < m_displayModeCount; i++)
 			{
-				if (m_displayModeList[i].Width == (UINT)RESOLUTION_WIDTH && m_displayModeList[i].Height == (UINT)RESOLUTION_HEIGHT)
+				if (m_displayModeList[i].Width == (unsigned int)RESOLUTION_WIDTH && m_displayModeList[i].Height == (unsigned int)RESOLUTION_HEIGHT)
 				{
-					m_refreshRateNumerator = (UINT)m_displayModeList[i].RefreshRate.Numerator;
-					m_refreshRateDenominator = (UINT)m_displayModeList[i].RefreshRate.Denominator;
+					m_refreshRateNumerator = (unsigned int)m_displayModeList[i].RefreshRate.Numerator;
+					m_refreshRateDenominator = (unsigned int)m_displayModeList[i].RefreshRate.Denominator;
 					break;
 				}
 			}
@@ -474,8 +474,8 @@ namespace Directus
 		//= RESIZE TARGET ==================================================
 		DXGI_MODE_DESC dxgiModeDesc;
 		ZeroMemory(&dxgiModeDesc, sizeof(dxgiModeDesc));
-		dxgiModeDesc.Width = (UINT)width;
-		dxgiModeDesc.Height = (UINT)height;
+		dxgiModeDesc.Width = (unsigned int)width;
+		dxgiModeDesc.Height = (unsigned int)height;
 		dxgiModeDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		dxgiModeDesc.RefreshRate = DXGI_RATIONAL{ m_refreshRateNumerator, m_refreshRateDenominator };
 		dxgiModeDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
@@ -491,7 +491,7 @@ namespace Directus
 
 		//= RESIZE BUFFERS =================================================
 		// Resize the swap chain and recreate the render target views. 
-		result = m_swapChain->ResizeBuffers(1, (UINT)width, (UINT)height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+		result = m_swapChain->ResizeBuffers(1, (unsigned int)width, (unsigned int)height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
 		if (FAILED(result))
 		{
 			LOG_ERROR("Failed to resize swapchain buffers.");
@@ -680,7 +680,7 @@ namespace Directus
 
 	vector<IDXGIAdapter*> D3D11GraphicsDevice::GetAvailableAdapters(IDXGIFactory* factory)
 	{
-		UINT i = 0;
+		unsigned int i = 0;
 		IDXGIAdapter* pAdapter;
 		vector <IDXGIAdapter*> adapters;
 		while (factory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND)

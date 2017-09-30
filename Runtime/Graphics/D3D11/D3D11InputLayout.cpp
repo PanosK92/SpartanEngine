@@ -52,7 +52,7 @@ namespace Directus
 	}
 
 	//= LAYOUT CREATION ==================================================
-	bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount)
+	bool D3D11InputLayout::Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, unsigned int elementCount)
 	{
 		if (!m_graphics->GetDevice())
 		{
@@ -106,7 +106,7 @@ namespace Directus
 		positionDesc.InstanceDataStepRate = 0;
 		m_layoutDesc.push_back(positionDesc);
 
-		return Create(VSBlob, &m_layoutDesc[0], UINT(m_layoutDesc.size()));
+		return Create(VSBlob, &m_layoutDesc[0], unsigned int(m_layoutDesc.size()));
 	}
 
 	bool D3D11InputLayout::CreatePosColDesc(ID3D10Blob* VSBlob)
@@ -131,7 +131,7 @@ namespace Directus
 		colorDesc.InstanceDataStepRate = 0;
 		m_layoutDesc.push_back(colorDesc);
 
-		return Create(VSBlob, &m_layoutDesc[0], UINT(m_layoutDesc.size()));
+		return Create(VSBlob, &m_layoutDesc[0], unsigned int(m_layoutDesc.size()));
 	}
 
 	bool D3D11InputLayout::CreatePosTexDesc(ID3D10Blob* VSBlob)
@@ -156,7 +156,7 @@ namespace Directus
 		texCoordDesc.InstanceDataStepRate = 0;
 		m_layoutDesc.push_back(texCoordDesc);
 
-		return Create(VSBlob, &m_layoutDesc[0], UINT(m_layoutDesc.size()));
+		return Create(VSBlob, &m_layoutDesc[0], unsigned int(m_layoutDesc.size()));
 	}
 
 	bool D3D11InputLayout::CreatePosTBNDesc(ID3D10Blob* VSBlob)
@@ -211,6 +211,6 @@ namespace Directus
 		bitangentDesc.InstanceDataStepRate = 0;
 		m_layoutDesc.push_back(bitangentDesc);
 
-		return Create(VSBlob, &m_layoutDesc[0], UINT(m_layoutDesc.size()));
+		return Create(VSBlob, &m_layoutDesc[0], unsigned int(m_layoutDesc.size()));
 	}
 }

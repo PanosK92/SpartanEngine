@@ -38,7 +38,7 @@ namespace Directus
 		bool Create(const std::vector<VertexPosCol>& vertices);
 		bool Create(const std::vector<VertexPosTex>& vertices);
 		bool Create(const std::vector<VertexPosTexTBN>& vertices);
-		bool CreateDynamic(UINT stride, UINT initialSize);
+		bool CreateDynamic(unsigned int stride, unsigned int initialSize);
 
 		void* Map();
 		bool Unmap();
@@ -48,6 +48,6 @@ namespace Directus
 	private:
 		D3D11GraphicsDevice* m_graphics;
 		ID3D11Buffer* m_buffer;
-		UINT m_stride;
+		unsigned int m_stride;
 	};
 }

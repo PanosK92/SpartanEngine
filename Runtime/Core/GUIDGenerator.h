@@ -37,6 +37,6 @@ namespace Directus
 		static std::string GenerateAsStr();
 
 		static std::string ToStr(unsigned int guid);
-		static unsigned int ToUInt(const std::string& guid);
+		static unsigned int ToUnsignedInt(const std::string& guid);
 	};
 }

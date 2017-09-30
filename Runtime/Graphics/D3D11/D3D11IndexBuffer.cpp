@@ -41,13 +41,13 @@ namespace Directus
 		SafeRelease(m_buffer);
 	}
 
-	bool D3D11IndexBuffer::Create(const vector<UINT>& indices)
+	bool D3D11IndexBuffer::Create(const vector<unsigned int>& indices)
 	{
 		if (!m_graphics->GetDevice() || indices.empty())
 			return false;
 
-		UINT stride = sizeof(UINT);
-		float size = (UINT)indices.size();
+		unsigned int stride = sizeof(unsigned int);
+		float size = (unsigned int)indices.size();
 		unsigned int finalSize = stride * size;
 
 		// fill in a buffer description.

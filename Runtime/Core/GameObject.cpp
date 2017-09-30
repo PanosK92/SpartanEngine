@@ -152,7 +152,7 @@ namespace Directus
 		StreamIO::WriteBool(m_isPrefab);
 		StreamIO::WriteBool(m_isActive);
 		StreamIO::WriteBool(m_hierarchyVisibility);
-		StreamIO::WriteUInt(m_ID);
+		StreamIO::WriteUnsignedInt(m_ID);
 		StreamIO::WriteSTR(m_name);		
 		//=============================================
 
@@ -161,7 +161,7 @@ namespace Directus
 		for (const auto& component : m_components)
 		{
 			StreamIO::WriteSTR(component->g_typeStr);
-			StreamIO::WriteUInt(component->g_ID);
+			StreamIO::WriteUnsignedInt(component->g_ID);
 		}
 
 		for (const auto& component : m_components)
@@ -179,7 +179,7 @@ namespace Directus
 		// 2nd - children IDs
 		for (const auto& child : children)
 		{
-			StreamIO::WriteUInt(child->g_ID);
+			StreamIO::WriteUnsignedInt(child->g_ID);
 		}
 
 		// 3rd - children
@@ -204,7 +204,7 @@ namespace Directus
 		m_isPrefab = StreamIO::ReadBool();
 		m_isActive = StreamIO::ReadBool();
 		m_hierarchyVisibility = StreamIO::ReadBool();
-		m_ID = StreamIO::ReadUInt();
+		m_ID = StreamIO::ReadUnsignedInt();
 		m_name = StreamIO::ReadSTR();
 		//=============================================
 
@@ -213,7 +213,7 @@ namespace Directus
 		for (int i = 0; i < componentCount; i++)
 		{
 			string type = StreamIO::ReadSTR(); // load component's type
-			unsigned int id = StreamIO::ReadUInt(); // load component's id
+			unsigned int id = StreamIO::ReadUnsignedInt(); // load component's id
 
 			Component* component = AddComponentBasedOnType(type);
 			component->g_ID = id;
@@ -243,7 +243,7 @@ namespace Directus
 		for (int i = 0; i < childrenCount; i++)
 		{
 			weakGameObj child = scene->CreateGameObject();
-			child._Get()->SetID(StreamIO::ReadUInt());
+			child._Get()->SetID(StreamIO::ReadUnsignedInt());
 			children.push_back(child);
 		}
 

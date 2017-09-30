@@ -244,7 +244,7 @@ namespace Directus
 			return;
 		}
 
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, (UINT)textureArray.size(), &textureArray.front());
+		m_graphics->GetDeviceContext()->PSSetShaderResources(0, (unsigned int)textureArray.size(), &textureArray.front());
 	}
 
 	void ShaderVariation::Render(int indexCount)

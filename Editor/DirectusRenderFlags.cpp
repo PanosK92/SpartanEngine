@@ -36,7 +36,7 @@ DirectusRenderFlags::DirectusRenderFlags(QWidget* parent) : QComboBox(parent)
     m_context = nullptr;
     m_renderer = nullptr;
 
-    m_rows = 8;
+    m_rows = 9;
     m_model = new QStandardItemModel(m_rows, 1);
     this->setModel(m_model);
 
@@ -49,6 +49,7 @@ DirectusRenderFlags::DirectusRenderFlags(QWidget* parent) : QComboBox(parent)
     AddCheckItem(6, "Mouse Picking Ray");
     AddCheckItem(7, "Grid");
     AddCheckItem(8, "Performance Metrics");
+    AddCheckItem(9, "Light");
 
     // Called when the user clicks an item
     connect((QListView*) view(), SIGNAL(pressed(QModelIndex)), this, SLOT(OnItemPressed(QModelIndex)));
@@ -158,6 +159,10 @@ void DirectusRenderFlags::MapRenderFlags()
         {
             flags |= Render_Performance_Metrics;
         }
+        else if (i == 8)
+        {
+            flags |= Render_Light;
+        }
     }
 
     m_renderer->SetRenderFlags(flags);
@@ -207,6 +212,10 @@ void DirectusRenderFlags::ReflectRenderFlags()
         else if (i == 8)
         {
             m_model->item(i)->setCheckState((flags & Render_Performance_Metrics) ? Qt::Checked : Qt::Unchecked);
+        }
+        else if (i == 9)
+        {
+            m_model->item(i)->setCheckState((flags & Render_Light) ? Qt::Checked : Qt::Unchecked);
         }
     }
 }

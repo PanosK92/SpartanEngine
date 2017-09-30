@@ -122,7 +122,7 @@ namespace Directus
 		};
 		ID3D11RenderTargetView** renderTargetViews = views;
 
-		m_graphics->GetDeviceContext()->OMSetRenderTargets(UINT(m_renderTargets.size()), &renderTargetViews[0], m_graphics->GetDepthStencilView());
+		m_graphics->GetDeviceContext()->OMSetRenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_graphics->GetDepthStencilView());
 
 		return true;
 	}

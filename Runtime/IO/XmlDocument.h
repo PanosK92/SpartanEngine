@@ -81,7 +81,7 @@ namespace Directus
 
 		static std::string GetAttributeAsStr(const std::string& nodeName, const char* attributeName);
 		static int GetAttributeAsInt(const std::string& nodeName, const char* attributeName);
-		static unsigned int GetAttributeAsUInt(const std::string& nodeName, const char* attributeName);
+		static unsigned int GetAttributeAsUnsignedInt(const std::string& nodeName, const char* attributeName);
 		static Math::Vector2 GetAttributeAsVector2(const std::string& nodeName, const char* attributeName);
 		static Math::Vector3 GetAttributeAsVector3(const std::string& nodeName, const char* attributeName);
 		static Math::Vector4 GetAttributeAsVector4(const std::string& nodeName, const char* attributeName);

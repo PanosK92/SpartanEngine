@@ -34,7 +34,7 @@ namespace Directus
 		D3D11IndexBuffer(D3D11GraphicsDevice* graphicsDevice);
 		~D3D11IndexBuffer();
 
-		bool Create(const std::vector<UINT>& indices);
+		bool Create(const std::vector<unsigned int>& indices);
 		bool SetIA();
 
 	private:
