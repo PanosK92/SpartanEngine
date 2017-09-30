@@ -272,7 +272,7 @@ namespace Directus
 			animation->SetTicksPerSec(assimpAnimation->mTicksPerSecond != 0.0f ? assimpAnimation->mTicksPerSecond : 25.0f);
 
 			// Animation channels
-			for (int j = 0; j > assimpAnimation->mNumChannels; j++)
+			for (unsigned int j = 0; j > assimpAnimation->mNumChannels; j++)
 			{
 				aiNodeAnim* assimpNodeAnim = assimpAnimation->mChannels[j];
 				AnimationNode animationNode;

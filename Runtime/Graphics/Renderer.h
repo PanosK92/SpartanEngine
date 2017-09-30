@@ -43,7 +43,6 @@ namespace Directus
 	class GBuffer;
 	class Rectangle;
 	class DeferredShader;
-	class LineShader;
 	class Shader;
 	class Texture;
 	class ResourceManager;
@@ -130,7 +129,7 @@ namespace Directus
 		//= SHADERS ==========================================
 		std::unique_ptr<DeferredShader> m_shaderDeferred;
 		std::unique_ptr<Shader> m_shaderDepth;
-		std::unique_ptr<LineShader> m_shaderLine;
+		std::unique_ptr<Shader> m_shaderLine;
 		std::unique_ptr<Shader> m_shaderGrid;
 		std::unique_ptr<Shader> m_shaderFont;
 		std::unique_ptr<Shader> m_shaderTexture;

@@ -42,7 +42,7 @@ namespace Directus
 
 		static void RenderingStarted();
 		static void RenderingMesh();
-		static void RenderingStoped();
+		static void RenderingFinished();
 		static void UpdateMetrics();
 		static const std::string& GetMetrics() { return m_metrics; }
 		
