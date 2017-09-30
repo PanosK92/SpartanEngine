@@ -123,7 +123,7 @@ namespace Directus
 		else
 		{
 			vector<D3D11_INPUT_ELEMENT_DESC> inputLayoutDesc = Reflect(m_VSBlob);
-			m_layoutHasBeenSet = m_D3D11InputLayout->Create(m_VSBlob, &inputLayoutDesc[0], UINT(inputLayoutDesc.size()));
+			m_layoutHasBeenSet = m_D3D11InputLayout->Create(m_VSBlob, &inputLayoutDesc[0], unsigned int(inputLayoutDesc.size()));
 		}
 
 		// If the creation was successful, release vsBlob else print a message
@@ -330,7 +330,7 @@ namespace Directus
 		reflector->GetDesc(&shaderDesc);
 
 		// Read input layout description from shader info
-		for (UINT i = 0; i < shaderDesc.InputParameters; i++)
+		for (unsigned int i = 0; i < shaderDesc.InputParameters; i++)
 		{
 			D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
 			reflector->GetInputParameterDesc(i, &paramDesc);

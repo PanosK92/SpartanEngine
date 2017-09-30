@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "Renderer.h"
 #include "Gbuffer.h"
-#include "FullScreenQuad.h"
+#include "Rectangle.h"
 #include "Material.h"
 #include "Mesh.h"
 #include "Grid.h"
@@ -71,6 +71,7 @@ namespace Directus
 		m_renderFlags |= Render_Mouse_Picking_Ray;
 		m_renderFlags |= Render_Grid;
 		m_renderFlags |= Render_Performance_Metrics;
+		m_renderFlags |= Render_Light;
 
 		// Subscribe to render event
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
@@ -95,52 +96,54 @@ namespace Directus
 		m_resourceMng = m_context->GetSubsystem<ResourceManager>();
 
 		// Create G-Buffer
-		m_GBuffer = make_shared<GBuffer>(m_graphics);
+		m_GBuffer = make_unique<GBuffer>(m_graphics);
 		m_GBuffer->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-		// Create fullscreen quad
-		m_fullScreenQuad = make_shared<FullScreenQuad>();
-		m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
+		// Create fullscreen rectangle
+		m_fullScreenRect = make_unique<Rectangle>(m_context);
+		m_fullScreenRect->Create(0, 0, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-		// Load and compile shaders
+		// Get standard resource directories
 		string shaderDirectory = m_resourceMng->GetStandardResourceDirectory(Shader_Resource);
 		string textureDirectory = m_resourceMng->GetStandardResourceDirectory(Texture_Resource);
 
-		m_shaderDeferred = make_shared<DeferredShader>();
+		// Deferred shader
+		m_shaderDeferred = make_unique<DeferredShader>();
 		m_shaderDeferred->Load(shaderDirectory + "Deferred.hlsl", m_graphics);
 
+		// Line shader
+		m_shaderLine = make_unique<LineShader>();
+		m_shaderLine->Load(shaderDirectory + "Line.hlsl", m_graphics);
+
 		// Depth shader
-		m_shaderDepth = make_shared<Shader>(m_context);
+		m_shaderDepth = make_unique<Shader>(m_context);
 		m_shaderDepth->Load(shaderDirectory + "Depth.hlsl");
 		m_shaderDepth->SetInputLaytout(Position);
 		m_shaderDepth->AddBuffer(mWVP, VertexShader);
 
-		m_shaderLine = make_shared<LineShader>();
-		m_shaderLine->Load(shaderDirectory + "Line.hlsl", m_graphics);
-
 		// Grid shader
-		m_shaderGrid = make_shared<Shader>(m_context);
+		m_shaderGrid = make_unique<Shader>(m_context);
 		m_shaderGrid->Load(shaderDirectory + "Grid.hlsl");
 		m_shaderGrid->SetInputLaytout(PositionColor);
 		m_shaderGrid->AddSampler(Anisotropic_Sampler);
 		m_shaderGrid->AddBuffer(mWVP, VertexShader);
 
 		// Font shader
-		m_shaderFont = make_shared<Shader>(m_context);
+		m_shaderFont = make_unique<Shader>(m_context);
 		m_shaderFont->Load(shaderDirectory + "Font.hlsl");
 		m_shaderFont->SetInputLaytout(PositionTexture);
 		m_shaderFont->AddSampler(Point_Sampler);
 		m_shaderFont->AddBuffer(mWVPvColor, Both);
-	
+
 		// Texture shader
-		m_shaderTexture = make_shared<Shader>(m_context);
+		m_shaderTexture = make_unique<Shader>(m_context);
 		m_shaderTexture->Load(shaderDirectory + "Texture.hlsl");
 		m_shaderTexture->SetInputLaytout(PositionTexture);
 		m_shaderTexture->AddSampler(Anisotropic_Sampler);
 		m_shaderTexture->AddBuffer(mWVP, PixelShader);
 
 		// FXAA Shader
-		m_shaderFXAA = make_shared<Shader>(m_context);
+		m_shaderFXAA = make_unique<Shader>(m_context);
 		m_shaderFXAA->AddDefine("FXAA");
 		m_shaderFXAA->Load(shaderDirectory + "PostProcess.hlsl");
 		m_shaderFXAA->SetInputLaytout(PositionTexture);
@@ -149,7 +152,7 @@ namespace Directus
 		m_shaderFXAA->AddBuffer(mWVPvResolution, Both);
 
 		// Sharpening shader
-		m_shaderSharpening = make_shared<Shader>(m_context);
+		m_shaderSharpening = make_unique<Shader>(m_context);
 		m_shaderSharpening->AddDefine("SHARPENING");
 		m_shaderSharpening->Load(shaderDirectory + "PostProcess.hlsl");
 		m_shaderSharpening->SetInputLaytout(PositionTexture);
@@ -158,7 +161,7 @@ namespace Directus
 		m_shaderSharpening->AddBuffer(mWVPvResolution, Both);
 
 		// Blur shader
-		m_shaderBlur = make_shared<Shader>(m_context);
+		m_shaderBlur = make_unique<Shader>(m_context);
 		m_shaderBlur->AddDefine("BLUR");
 		m_shaderBlur->Load(shaderDirectory + "PostProcess.hlsl");
 		m_shaderBlur->SetInputLaytout(PositionTexture);
@@ -167,16 +170,23 @@ namespace Directus
 		m_shaderBlur->AddBuffer(mWVPvResolution, Both);
 
 		// Create render textures (used for post processing)
-		m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
+		m_renderTexPing = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
-		m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics);
+		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		// Misc
-		m_texNoiseMap = make_shared<Texture>(m_context);
+		m_texNoiseMap = make_unique<Texture>(m_context);
 		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
 		m_texNoiseMap->SetTextureType(Normal_Texture);
+
+		// Gizmo icons
+		m_gizmoLightTex = make_unique<Texture>(m_context);
+		m_gizmoLightTex->LoadFromFile(textureDirectory + "light.png");
+		m_gizmoLightTex->SetTextureType(Albedo_Texture);
+		m_gizmoLightRect = make_unique<Rectangle>(m_context);
+		m_gizmoLightRect->Create(100, 100, m_gizmoLightTex->GetWidth(), m_gizmoLightTex->GetHeight());
 
 		// DEBUG
 		m_font = make_unique<Font>(m_context);
@@ -252,24 +262,22 @@ namespace Directus
 			return;
 
 		SET_RESOLUTION(width, height);
-
-		m_GBuffer.reset();
-		m_fullScreenQuad.reset();
-		m_renderTexPing.reset();
-		m_renderTexPong.reset();
-
 		m_graphics->SetResolution(width, height);
 
-		m_GBuffer = make_shared<GBuffer>(m_graphics);
+		m_GBuffer.reset();
+		m_GBuffer = make_unique<GBuffer>(m_graphics);
 		m_GBuffer->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-		m_fullScreenQuad = make_shared<FullScreenQuad>();
-		m_fullScreenQuad->Initialize(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_graphics);
+		m_fullScreenRect.reset();
+		m_fullScreenRect = make_unique<Rectangle>(m_context);
+		m_fullScreenRect->Create(0, 0, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-		m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics);
+		m_renderTexPing.reset();
+		m_renderTexPing = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
-		m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics);
+		m_renderTexPong.reset();
+		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 	}
 
@@ -504,7 +512,7 @@ namespace Directus
 	//= HELPER FUNCTIONS ==============================================================================================
 	void Renderer::DeferredPass()
 	{
-		m_fullScreenQuad->SetBuffer();
+		m_fullScreenRect->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
 		//= SHADOW BLUR ========================================
@@ -520,7 +528,7 @@ namespace Directus
 				m_shaderBlur->Set();
 				m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
 				m_shaderBlur->SetTexture(m_GBuffer->GetShaderResource(1), 0); // Normal tex but shadows are in alpha channel
-				m_shaderBlur->DrawIndexed(m_fullScreenQuad->GetIndexCount());
+				m_shaderBlur->DrawIndexed(m_fullScreenRect->GetIndexCount());
 			}
 		}
 		//=====================================================
@@ -553,13 +561,14 @@ namespace Directus
 		m_shaderDeferred->UpdateTextures(m_texArray);
 		//=============================================================================
 
-		m_shaderDeferred->Render(m_fullScreenQuad->GetIndexCount());
+		m_shaderDeferred->Render(m_fullScreenRect->GetIndexCount());
 	}
 
 	void Renderer::PostProcessing()
 	{
+		m_fullScreenRect->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
-
+		
 		if ((m_renderFlags & Render_Albedo) || (m_renderFlags & Render_Normal) || (m_renderFlags & Render_Depth) || (m_renderFlags & Render_Material))
 		{
 			m_graphics->SetBackBufferAsRenderTarget();
@@ -588,7 +597,7 @@ namespace Directus
 			m_shaderTexture->Set();
 			m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
 			m_shaderTexture->SetTexture(m_GBuffer->GetShaderResource(texIndex), 0);
-			m_shaderTexture->DrawIndexed(m_fullScreenQuad->GetIndexCount());
+			m_shaderTexture->DrawIndexed(m_fullScreenRect->GetIndexCount());
 
 			return;
 		}
@@ -601,7 +610,7 @@ namespace Directus
 		m_shaderFXAA->Set();
 		m_shaderFXAA->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
 		m_shaderFXAA->SetTexture(m_renderTexPing->GetShaderResourceView(), 0);
-		m_shaderFXAA->DrawIndexed(m_fullScreenQuad->GetIndexCount());
+		m_shaderFXAA->DrawIndexed(m_fullScreenRect->GetIndexCount());
 
 		// Set back-buffer
 		m_graphics->SetBackBufferAsRenderTarget();
@@ -612,7 +621,7 @@ namespace Directus
 		m_shaderSharpening->Set();
 		m_shaderSharpening->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
 		m_shaderSharpening->SetTexture(m_renderTexPong->GetShaderResourceView(), 0);
-		m_shaderSharpening->DrawIndexed(m_fullScreenQuad->GetIndexCount());
+		m_shaderSharpening->DrawIndexed(m_fullScreenRect->GetIndexCount());
 	}
 
 	void Renderer::DebugDraw()
@@ -627,10 +636,11 @@ namespace Directus
 			// Physics
 			if (m_renderFlags & Render_Physics)
 			{
-				m_context->GetSubsystem<Physics>()->DebugDraw();
-				if (m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->IsDirty())
+				Physics* physics = m_context->GetSubsystem<Physics>();
+				physics->DebugDraw();
+				if (physics->GetPhysicsDebugDraw()->IsDirty())
 				{
-					m_lineRenderer->AddLines(m_context->GetSubsystem<Physics>()->GetPhysicsDebugDraw()->GetLines());
+					m_lineRenderer->AddLines(physics->GetPhysicsDebugDraw()->GetLines());
 				}
 			}
 
@@ -668,27 +678,29 @@ namespace Directus
 
 		m_graphics->EnableAlphaBlending(true);
 
-		//= GRID =============================================
+		// Grid
 		if (m_renderFlags & Render_Grid)
 		{
 			m_grid->SetBuffer();
 			m_shaderGrid->Set();
-			m_shaderGrid->SetBuffer(
-				m_grid->ComputeWorldMatrix(m_camera->g_transform), 
-				m_camera->GetViewMatrix(), 
-				m_camera->GetProjectionMatrix(), 0
-			);
+			m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->g_transform), m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
 			m_shaderGrid->SetTexture(m_GBuffer->GetShaderResource(2), 0);
 			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
 		}
-		//===================================================
 
-		//= TEXT ========================================================================================
+		// Light gizmo
+		if (m_renderFlags & Render_Light)
+		{
+			m_gizmoLightRect->SetBuffer();
+			m_shaderTexture->Set();
+			m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
+			m_shaderTexture->SetTexture((ID3D11ShaderResourceView*)m_gizmoLightTex->GetShaderResource(), 0);
+			m_shaderTexture->DrawIndexed(m_gizmoLightRect->GetIndexCount());
+		}
+
+		// Performance metrics
 		if (m_renderFlags & Render_Performance_Metrics)
 		{
-			m_graphics->SetBackBufferAsRenderTarget();
-			m_graphics->SetViewport();
-
 			m_font->SetText(PerformanceProfiler::GetMetrics(), Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f));
 			m_font->SetBuffer();
 
@@ -697,7 +709,6 @@ namespace Directus
 			m_shaderFont->SetTexture((ID3D11ShaderResourceView*)m_font->GetShaderResource(), 0);
 			m_shaderFont->DrawIndexed(m_font->GetIndexCount());
 		}
-		//===============================================================================================
 
 		m_graphics->EnableAlphaBlending(false);
 	}

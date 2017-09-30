@@ -49,7 +49,7 @@ namespace Directus
 
 		m_stride = sizeof(VertexPosCol);
 		float size = (unsigned int)vertices.size();
-		UINT byteWidth = m_stride * size;
+		unsigned int byteWidth = m_stride * size;
 
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
@@ -79,12 +79,12 @@ namespace Directus
 
 	bool D3D11VertexBuffer::Create(const vector<VertexPosTex>& vertices)
 	{
-		if (!m_graphics->GetDevice() || vertices.empty())
+		if (!m_graphics || !m_graphics->GetDevice() || vertices.empty())
 			return false;
 
 		m_stride = sizeof(VertexPosTex);
 		float size = (unsigned int)vertices.size();
-		UINT byteWidth = m_stride * size;
+		unsigned int byteWidth = m_stride * size;
 
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
@@ -114,12 +114,12 @@ namespace Directus
 
 	bool D3D11VertexBuffer::Create(const vector<VertexPosTexTBN>& vertices)
 	{
-		if (!m_graphics->GetDevice() || vertices.empty())
+		if (!m_graphics || !m_graphics->GetDevice() || vertices.empty())
 			return false;
 
 		m_stride = sizeof(VertexPosTexTBN);
 		float size = (unsigned int)vertices.size();
-		UINT byteWidth = m_stride * size;
+		unsigned int byteWidth = m_stride * size;
 
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
@@ -147,13 +147,13 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11VertexBuffer::CreateDynamic(UINT stride, UINT initialSize)
+	bool D3D11VertexBuffer::CreateDynamic(unsigned int stride, unsigned int initialSize)
 	{
-		if (!m_graphics->GetDevice())
+		if (!m_graphics || !m_graphics->GetDevice())
 			return false;
 
 		m_stride = stride;
-		UINT byteWidth = m_stride * initialSize;
+		unsigned int byteWidth = m_stride * initialSize;
 
 		// fill in a buffer description.
 		D3D11_BUFFER_DESC bufferDesc;
@@ -177,7 +177,7 @@ namespace Directus
 
 	void* D3D11VertexBuffer::Map()
 	{
-		if (!m_graphics->GetDeviceContext())
+		if (!m_graphics || !m_graphics->GetDeviceContext())
 			return nullptr;
 
 		if (!m_buffer)
@@ -200,7 +200,7 @@ namespace Directus
 
 	bool D3D11VertexBuffer::Unmap()
 	{
-		if (!m_graphics->GetDeviceContext() || !m_buffer)
+		if (!m_graphics || !m_graphics->GetDeviceContext() || !m_buffer)
 			return false;
 
 		// re-enable GPU access to the vertex buffer data.
@@ -211,7 +211,7 @@ namespace Directus
 
 	bool D3D11VertexBuffer::SetIA()
 	{
-		if (!m_graphics->GetDeviceContext() || !m_buffer)
+		if (!m_graphics || !m_graphics->GetDeviceContext() || !m_buffer)
 			return false;
 
 		unsigned int offset = 0;

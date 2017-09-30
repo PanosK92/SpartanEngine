@@ -63,13 +63,13 @@ namespace Directus
 	//= IO =========================================================================
 	void Mesh::Serialize()
 	{
-		StreamIO::WriteUInt(m_id);
-		StreamIO::WriteUInt(m_gameObjID);
-		StreamIO::WriteUInt(m_modelID);
+		StreamIO::WriteUnsignedInt(m_id);
+		StreamIO::WriteUnsignedInt(m_gameObjID);
+		StreamIO::WriteUnsignedInt(m_modelID);
 		StreamIO::WriteSTR(m_name);
-		StreamIO::WriteUInt(m_vertexCount);
-		StreamIO::WriteUInt(m_indexCount);
-		StreamIO::WriteUInt(m_triangleCount);
+		StreamIO::WriteUnsignedInt(m_vertexCount);
+		StreamIO::WriteUnsignedInt(m_indexCount);
+		StreamIO::WriteUnsignedInt(m_triangleCount);
 
 		for (const auto& vertex : m_vertices)
 		{
@@ -84,13 +84,13 @@ namespace Directus
 
 	void Mesh::Deserialize()
 	{
-		m_id = StreamIO::ReadUInt();
-		m_gameObjID = StreamIO::ReadUInt();
-		m_modelID = StreamIO::ReadUInt();
+		m_id = StreamIO::ReadUnsignedInt();
+		m_gameObjID = StreamIO::ReadUnsignedInt();
+		m_modelID = StreamIO::ReadUnsignedInt();
 		m_name = StreamIO::ReadSTR();
-		m_vertexCount = StreamIO::ReadUInt();
-		m_indexCount = StreamIO::ReadUInt();
-		m_triangleCount = StreamIO::ReadUInt();
+		m_vertexCount = StreamIO::ReadUnsignedInt();
+		m_indexCount = StreamIO::ReadUnsignedInt();
+		m_triangleCount = StreamIO::ReadUnsignedInt();
 
 		for (unsigned int i = 0; i < m_vertexCount; i++)
 		{

@@ -31,13 +31,13 @@ namespace Directus
 	class D3D11VertexBuffer;
 	class D3D11IndexBuffer;
 
-	class FullScreenQuad
+	class Rectangle
 	{
 	public:
-		FullScreenQuad();
-		~FullScreenQuad();
+		Rectangle(Context* context);
+		~Rectangle();
 
-		bool Initialize(int width, int height, Graphics* graphics);
+		bool Create(int x, int y, int width, int height);
 		bool SetBuffer();
 		int GetIndexCount() { return 6; }
 

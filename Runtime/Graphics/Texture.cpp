@@ -137,6 +137,9 @@ namespace Directus
 
 	void** Texture::GetShaderResource()
 	{
+		if (!m_texture)
+			return nullptr;
+
 		return (void**)m_texture->GetShaderResourceView();
 	}
 

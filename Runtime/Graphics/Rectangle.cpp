@@ -20,12 +20,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =======================
-#include "FullScreenQuad.h"
-#include "../Core/Helper.h"
-#include "../Graphics/Vertex.h"
+#include "Rectangle.h"
 #include "D3D11/D3D11IndexBuffer.h"
 #include "D3D11/D3D11VertexBuffer.h"
+#include "../Core/Helper.h"
+#include "../Graphics/Vertex.h"
 #include "../Logging/Log.h"
+#include "../Core/Context.h"
+#include "../Core/Settings.h"
 //==================================
 
 //= NAMESPACES ================
@@ -35,63 +37,66 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	FullScreenQuad::FullScreenQuad()
+	Rectangle::Rectangle(Context* context)
 	{
-		m_graphics = nullptr;
+		m_graphics = context->GetSubsystem<Graphics>();
 	}
 
-	FullScreenQuad::~FullScreenQuad()
+	Rectangle::~Rectangle()
 	{
 
 	}
 
-	bool FullScreenQuad::Initialize(int width, int height, Graphics* graphics)
+	bool Rectangle::Create(int x, int y, int width, int height)
 	{
-		m_graphics = graphics;
-		if (!m_graphics->GetDevice())
-			return false;
-
 		// Calculate the screen coordinates of the left side of the window.
-		float left = static_cast<float>((width / 2) * -1);
+		float left = (float)((width * 0.5f) * -1) + x;
 
 		// Calculate the screen coordinates of the right side of the window.
-		float right = left + static_cast<float>(width);
+		float right = left + (float)(width);
 
 		// Calculate the screen coordinates of the top of the window.
-		float top = static_cast<float>(height / 2);
+		float top = (float)(height * 0.5f) - y;
 
 		// Calculate the screen coordinates of the bottom of the window.
-		float bottom = top - static_cast<float>(height);
+		float bottom = top - (float)(height);
 
 		// Create index and vertex arrays
 		vector<VertexPosTex> vertices;
 		vector<unsigned int> indices;
 
-		// Load the vertex array with data.
-		// First triangle.
+		// Load the vertex array with data.		
 		VertexPosTex vertex;
-		vertex.position = Vector3(left, top, 0.0f); // Top left.
+
+		// First triangle
+		// Top left
+		vertex.position = Vector3(left, top, 0.0f); 
 		vertex.uv = Vector2(0.0f, 0.0f);
 		vertices.push_back(vertex);
 
-		vertex.position = Vector3(right, bottom, 0.0f); // Bottom right.
+		// Bottom right
+		vertex.position = Vector3(right, bottom, 0.0f); 
 		vertex.uv = Vector2(1.0f, 1.0f);
 		vertices.push_back(vertex);
 
-		vertex.position = Vector3(left, bottom, 0.0f); // Bottom left.
+		// Bottom left
+		vertex.position = Vector3(left, bottom, 0.0f); 
 		vertex.uv = Vector2(0.0f, 1.0f);
 		vertices.push_back(vertex);
 
-		// Second triangle.
-		vertex.position = Vector3(left, top, 0.0f); // Top left.
+		// Second triangle
+		// Top left
+		vertex.position = Vector3(left, top, 0.0f); 
 		vertex.uv = Vector2(0.0f, 0.0f);
 		vertices.push_back(vertex);
 
-		vertex.position = Vector3(right, top, 0.0f);// Top right.
+		// Top right
+		vertex.position = Vector3(right, top, 0.0f);
 		vertex.uv = Vector2(1.0f, 0.0f);
 		vertices.push_back(vertex);
 
-		vertex.position = Vector3(right, bottom, 0.0f); // Bottom right.
+		// Bottom right
+		vertex.position = Vector3(right, bottom, 0.0f); 
 		vertex.uv = Vector2(1.0f, 1.0f);
 		vertices.push_back(vertex);
 
@@ -104,21 +109,21 @@ namespace Directus
 		m_vertexBuffer = make_shared<D3D11VertexBuffer>(m_graphics);
 		if (!m_vertexBuffer->Create(vertices))
 		{
-			LOG_ERROR("FullScreenQuad: Failed to create vertex buffer.");
+			LOG_ERROR("Rectangle: Failed to create vertex buffer.");
 			return false;
 		}
 
 		m_indexBuffer = make_shared<D3D11IndexBuffer>(m_graphics);
 		if (!m_indexBuffer->Create(indices))
 		{
-			LOG_ERROR("FullScreenQuad: Failed to create index buffer.");
+			LOG_ERROR("Rectangle: Failed to create index buffer.");
 			return false;
 		}
 
 		return true;
 	}
 
-	bool FullScreenQuad::SetBuffer()
+	bool Rectangle::SetBuffer()
 	{
 		if (!m_graphics || !m_vertexBuffer || !m_indexBuffer)
 			return false;

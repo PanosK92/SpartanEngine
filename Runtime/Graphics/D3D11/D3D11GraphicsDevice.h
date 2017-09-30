@@ -89,16 +89,16 @@ namespace Directus
 
 		D3D_DRIVER_TYPE m_driverType;
 		D3D_FEATURE_LEVEL m_featureLevel;
-		UINT m_sdkVersion;
+		unsigned int m_sdkVersion;
 
 		ID3D11Device* m_device;
 		ID3D11DeviceContext* m_deviceContext;
 		IDXGISwapChain* m_swapChain;
 		ID3D11RenderTargetView* m_renderTargetView;
 		D3D11_VIEWPORT m_viewport;
-		UINT m_displayModeCount;
-		UINT m_refreshRateNumerator;
-		UINT m_refreshRateDenominator;
+		unsigned int m_displayModeCount;
+		unsigned int m_refreshRateNumerator;
+		unsigned int m_refreshRateDenominator;
 		DXGI_MODE_DESC* m_displayModeList;
 		
 		ID3D11Texture2D* m_depthStencilBuffer;

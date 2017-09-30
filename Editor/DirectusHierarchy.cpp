@@ -202,7 +202,7 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     //================================================================
 
     //= DROP CASE: GAMEOBJECT (Assume text is a GameObject ID) =======
-    auto draggedGameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(GUIDGenerator::ToUInt(text))._Get();
+    auto draggedGameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(GUIDGenerator::ToUnsignedInt(text))._Get();
     QTreeWidgetItem* hoveredItem = this->itemAt(event->pos());
     auto dropTargetGameObj = ToGameObject(hoveredItem).lock();
 
@@ -295,7 +295,7 @@ weak_ptr<GameObject> DirectusHierarchy::ToGameObject(QTreeWidgetItem* treeItem)
 
     QVariant data = treeItem->data(0, Qt::UserRole);
     string idStr = data.value<QString>().toStdString();
-    unsigned int id = GUIDGenerator::ToUInt(idStr);
+    unsigned int id = GUIDGenerator::ToUnsignedInt(idStr);
     return m_context->GetSubsystem<Scene>()->GetGameObjectByID(id);
 }
 

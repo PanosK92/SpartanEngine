@@ -40,7 +40,7 @@ namespace Directus
 
 	private:
 		DXGI_FORMAT m_format;
-		UINT m_mipLevels;
+		unsigned int m_mipLevels;
 		D3D12GraphicsDevice* m_graphics;
 	};
 }

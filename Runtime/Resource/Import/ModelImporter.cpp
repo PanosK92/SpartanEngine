@@ -421,7 +421,7 @@ namespace Directus
 		aiString name;
 		aiGetMaterialString(assimpMaterial, AI_MATKEY_NAME, &name);
 		material->SetResourceName(name.C_Str());
-		material->SetModelID(GUIDGenerator::ToUInt(model->GetResourceName()));
+		material->SetModelID(GUIDGenerator::ToUnsignedInt(model->GetResourceName()));
 
 		//= CullMode ===================================================
 		// Specifies whether meshes using this material must be rendered 

@@ -243,7 +243,7 @@ namespace Directus
 
 		//= RENDER TARGET VIEW ================================================================================
 		// Get the size of the handle increment for the given type of descriptor heap.
-		UINT renderTargetViewDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		unsigned int renderTargetViewDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 		// Get 1st back buffer pointer
 		result = m_swapChain->GetBuffer(0, __uuidof(ID3D12Resource), (void**)&m_backBufferRenderTarget[0]);

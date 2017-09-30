@@ -79,7 +79,7 @@ namespace Directus
 		//	return false;
 		//}
 
-		//const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_texture.Get(), 0, 1);
+		//const unsigned int64 uploadBufferSize = GetRequiredIntermediateSize(m_texture.Get(), 0, 1);
 
 		//// Create the GPU upload buffer.
 		//result = m_graphics->GetDevice()->CreateCommittedResource(
@@ -98,7 +98,7 @@ namespace Directus
 
 		//// Copy data to the intermediate upload heap and then schedule a copy 
 		//// from the upload heap to the Texture2D.
-		//vector<UINT8> texture = GenerateTextureData();
+		//vector<unsigned int8> texture = GenerateTextureData();
 
 		//D3D12_SUBRESOURCE_DATA textureData = {};
 		//textureData.pData = &texture[0];

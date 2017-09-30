@@ -239,7 +239,7 @@ namespace Directus
 		return value;
 	}
 
-	unsigned int XmlDocument::GetAttributeAsUInt(const string& nodeName, const char* attributeName)
+	unsigned int XmlDocument::GetAttributeAsUnsignedInt(const string& nodeName, const char* attributeName)
 	{
 		unsigned int value;
 		GetAttribute(nodeName, attributeName, value);

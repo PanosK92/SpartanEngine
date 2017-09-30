@@ -50,7 +50,7 @@ namespace Directus
 		static void WriteBool(bool value);
 		static void WriteSTR(std::string value);
 		static void WriteInt(int value);
-		static void WriteUInt(unsigned int value);
+		static void WriteUnsignedInt(unsigned int value);
 		static void WriteULong(unsigned long value);
 		static void WriteFloat(float value);
 		static void WriteVectorSTR(std::vector<std::string>& vector);
@@ -64,7 +64,7 @@ namespace Directus
 		static bool ReadBool();
 		static std::string ReadSTR();
 		static int ReadInt();
-		static unsigned int ReadUInt();
+		static unsigned int ReadUnsignedInt();
 		static unsigned long ReadULong();
 		static float ReadFloat();
 		static std::vector<std::string> ReadVectorSTR();

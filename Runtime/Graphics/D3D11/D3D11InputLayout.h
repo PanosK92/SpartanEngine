@@ -39,7 +39,7 @@ namespace Directus
 		InputLayout GetInputLayout() { return m_inputLayout; }
 
 		//= LAYOUT CREATION ============================================================================
-		bool Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, UINT elementCount);
+		bool Create(ID3D10Blob* VSBlob, D3D11_INPUT_ELEMENT_DESC* vertexInputLayout, unsigned int elementCount);
 		bool Create(ID3D10Blob* VSBlob, InputLayout layout);
 
 	private:

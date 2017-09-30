@@ -73,7 +73,7 @@ namespace Directus
 		return to_string(guid);
 	}
 
-	unsigned int GUIDGenerator::ToUInt(const string& guid)
+	unsigned int GUIDGenerator::ToUnsignedInt(const string& guid)
 	{
 		stringstream sstream(guid);
 		unsigned int guidSizeT;

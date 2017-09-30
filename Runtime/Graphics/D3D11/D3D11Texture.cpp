@@ -51,7 +51,7 @@ namespace Directus
 		if (!m_graphics->GetDevice())
 			return false;
 
-		UINT mipLevels = 1;
+		unsigned int mipLevels = 1;
 
 		//= SUBRESROUCE DATA =======================================================================
 		D3D11_SUBRESOURCE_DATA subresource;
@@ -64,13 +64,13 @@ namespace Directus
 		//= ID3D11Texture2D ========================================================================
 		D3D11_TEXTURE2D_DESC textureDesc;
 		ZeroMemory(&textureDesc, sizeof(textureDesc));
-		textureDesc.Width = (UINT)width;
-		textureDesc.Height = (UINT)height;
+		textureDesc.Width = (unsigned int)width;
+		textureDesc.Height = (unsigned int)height;
 		textureDesc.MipLevels = mipLevels;
-		textureDesc.ArraySize = (UINT)1;
+		textureDesc.ArraySize = (unsigned int)1;
 		textureDesc.Format = format;
-		textureDesc.SampleDesc.Count = (UINT)1;
-		textureDesc.SampleDesc.Quality = (UINT)0;
+		textureDesc.SampleDesc.Count = (unsigned int)1;
+		textureDesc.SampleDesc.Quality = (unsigned int)0;
 		textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
 		textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 		textureDesc.MiscFlags = 0;
@@ -110,18 +110,18 @@ namespace Directus
 		if (!m_graphics->GetDevice())
 			return false;
 
-		UINT mipLevels = 7;
+		unsigned int mipLevels = 7;
 
 		//= ID3D11Texture2D ========================================================================
 		D3D11_TEXTURE2D_DESC textureDesc;
 		ZeroMemory(&textureDesc, sizeof(textureDesc));
-		textureDesc.Width = (UINT)width;
-		textureDesc.Height = (UINT)height;
+		textureDesc.Width = (unsigned int)width;
+		textureDesc.Height = (unsigned int)height;
 		textureDesc.MipLevels = mipLevels;
-		textureDesc.ArraySize = (UINT)1;
+		textureDesc.ArraySize = (unsigned int)1;
 		textureDesc.Format = format;
-		textureDesc.SampleDesc.Count = (UINT)1;
-		textureDesc.SampleDesc.Quality = (UINT)0;
+		textureDesc.SampleDesc.Count = (unsigned int)1;
+		textureDesc.SampleDesc.Quality = (unsigned int)0;
 		textureDesc.Usage = D3D11_USAGE_DEFAULT;
 		textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
 		textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
@@ -176,7 +176,7 @@ namespace Directus
 		if (!m_graphics->GetDevice())
 			return false;
 
-		UINT mipLevels = (UINT)mipchain.size();
+		unsigned int mipLevels = (unsigned int)mipchain.size();
 
 		//= SUBRESOURCE DATA & TEXTURE DESCRIPTIONS ==============================================
 		vector<D3D11_SUBRESOURCE_DATA> subresourceData;
@@ -190,13 +190,13 @@ namespace Directus
 			subresourceData.back().SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
 
 			textureDescs.push_back(D3D11_TEXTURE2D_DESC{});
-			textureDescs.back().Width = (UINT)width;
-			textureDescs.back().Height = (UINT)height;
+			textureDescs.back().Width = (unsigned int)width;
+			textureDescs.back().Height = (unsigned int)height;
 			textureDescs.back().MipLevels = mipLevels;
-			textureDescs.back().ArraySize = (UINT)1;
+			textureDescs.back().ArraySize = (unsigned int)1;
 			textureDescs.back().Format = format;
-			textureDescs.back().SampleDesc.Count = (UINT)1;
-			textureDescs.back().SampleDesc.Quality = (UINT)0;
+			textureDescs.back().SampleDesc.Count = (unsigned int)1;
+			textureDescs.back().SampleDesc.Quality = (unsigned int)0;
 			textureDescs.back().Usage = D3D11_USAGE_IMMUTABLE;
 			textureDescs.back().BindFlags = D3D11_BIND_SHADER_RESOURCE;
 			textureDescs.back().MiscFlags = 0;

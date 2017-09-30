@@ -131,7 +131,7 @@ namespace Directus
 	void LineRenderer::CreateVertexBuffer()
 	{
 		m_vertexBuffer = make_shared<D3D11VertexBuffer>(g_context->GetSubsystem<Graphics>());
-		m_vertexBuffer->CreateDynamic(sizeof(VertexPosCol), (UINT)m_vertices.size());
+		m_vertexBuffer->CreateDynamic(sizeof(VertexPosCol), (unsigned int)m_vertices.size());
 	}
 
 	//= MISC ================================================================
