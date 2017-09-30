@@ -82,6 +82,10 @@ namespace Directus
 		{
 			m_constantBuffer->Create(sizeof(Struct_mWVP));
 		}
+		else if (m_bufferType == mWmVmP)
+		{
+			m_constantBuffer->Create(sizeof(Struct_mWmVmP));
+		}
 		else if (m_bufferType == mWVPvColor)
 		{
 			m_constantBuffer->Create(sizeof(Struct_mWVPvColor));
@@ -149,11 +153,18 @@ namespace Directus
 			return;
 		}
 
-		// Get a pointer of the buffer
-		Struct_mWVP* buffer = static_cast<Struct_mWVP*>(m_constantBuffer->Map());
-
-		// Fill the buffer
-		buffer->mMVP = mWorld * mView * mProjection;
+		if (m_bufferType == mWVP)
+		{
+			Struct_mWVP* buffer = static_cast<Struct_mWVP*>(m_constantBuffer->Map());
+			buffer->mMVP = mWorld * mView * mProjection;
+		}
+		else
+		{
+			Struct_mWmVmP* buffer = static_cast<Struct_mWmVmP*>(m_constantBuffer->Map());
+			buffer->mWorld = mWorld;
+			buffer->mView = mView;
+			buffer->mProjection = mProjection;
+		}
 
 		// Unmap buffer
 		m_constantBuffer->Unmap();
@@ -204,7 +215,15 @@ namespace Directus
 		SetBufferScope(m_constantBuffer, slot);
 	}
 
-	void Shader::DrawIndexed(int indexCount)
+	void Shader::Draw(unsigned int vertexCount)
+	{
+		if (!m_graphics)
+			return;
+
+		m_graphics->GetDeviceContext()->Draw(vertexCount, 0);
+	}
+
+	void Shader::DrawIndexed(unsigned int indexCount)
 	{
 		if (!m_graphics)
 			return;

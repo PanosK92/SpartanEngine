@@ -43,7 +43,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Font/Font.h"
 #include "../Profiling/PerformanceProfiler.h"
 #include "DeferredShaders/ShaderVariation.h"
-#include "DeferredShaders/LineShader.h"
 #include "DeferredShaders/DeferredShader.h"
 #include "Shader.h"
 //===========================================
@@ -112,8 +111,11 @@ namespace Directus
 		m_shaderDeferred->Load(shaderDirectory + "Deferred.hlsl", m_graphics);
 
 		// Line shader
-		m_shaderLine = make_unique<LineShader>();
-		m_shaderLine->Load(shaderDirectory + "Line.hlsl", m_graphics);
+		m_shaderLine = make_unique<Shader>(m_context);
+		m_shaderLine->Load(shaderDirectory + "Line.hlsl");
+		m_shaderLine->SetInputLaytout(PositionColor);
+		m_shaderLine->AddSampler(Linear_Sampler);
+		m_shaderLine->AddBuffer(mWmVmP, VertexShader);
 
 		// Depth shader
 		m_shaderDepth = make_unique<Shader>(m_context);
@@ -251,7 +253,7 @@ namespace Directus
 		// display frame
 		m_graphics->Present();
 
-		PerformanceProfiler::RenderingStoped();
+		PerformanceProfiler::RenderingFinished();
 	}
 
 	void Renderer::SetResolution(int width, int height)
@@ -568,7 +570,7 @@ namespace Directus
 	{
 		m_fullScreenRect->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
-		
+
 		if ((m_renderFlags & Render_Albedo) || (m_renderFlags & Render_Normal) || (m_renderFlags & Render_Depth) || (m_renderFlags & Render_Material))
 		{
 			m_graphics->SetBackBufferAsRenderTarget();
@@ -602,7 +604,7 @@ namespace Directus
 			return;
 		}
 
-		// Set ping texture as render target
+		// Set pong texture as render target
 		m_renderTexPong->SetAsRenderTarget();
 		m_renderTexPong->Clear(GetClearColor());
 
@@ -665,13 +667,9 @@ namespace Directus
 				// Render
 				m_lineRenderer->SetBuffer();
 				m_shaderLine->Set();
-				m_shaderLine->SetBuffer(
-					Matrix::Identity,
-					m_camera->GetViewMatrix(),
-					m_camera->GetProjectionMatrix(),
-					m_GBuffer->GetShaderResource(2) // depth
-				);
-				m_shaderLine->Render(m_lineRenderer->GetVertexCount());
+				m_shaderLine->SetBuffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
+				m_shaderLine->SetTexture(m_GBuffer->GetShaderResource(2), 0); // depth
+				m_shaderLine->Draw(m_lineRenderer->GetVertexCount());
 			}
 		}
 		//============================================================================================================

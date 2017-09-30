@@ -37,6 +37,7 @@ namespace Directus
 	enum ConstantBufferType
 	{
 		mWVP,
+		mWmVmP,
 		mWVPvColor,
 		mWVPvResolution,
 	};
@@ -68,7 +69,8 @@ namespace Directus
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector4& color, unsigned int slot);
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector2& resolution, unsigned int slot);
 
-		void DrawIndexed(int indexCount);
+		void Draw(unsigned int vertexCount);
+		void DrawIndexed(unsigned int indexCount);
 
 	private:
 		void SetBufferScope(std::shared_ptr<D3D11ConstantBuffer> buffer, unsigned int slot);
@@ -76,6 +78,13 @@ namespace Directus
 		struct Struct_mWVP
 		{
 			Math::Matrix mMVP;
+		};
+
+		struct Struct_mWmVmP
+		{
+			Math::Matrix mWorld;
+			Math::Matrix mView;
+			Math::Matrix mProjection;
 		};
 
 		struct Struct_mWVPvColor

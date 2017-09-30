@@ -49,17 +49,11 @@ namespace Directus
 
 	bool Rectangle::Create(int x, int y, int width, int height)
 	{
-		// Calculate the screen coordinates of the left side of the window.
-		float left = (float)((width * 0.5f) * -1) + x;
-
-		// Calculate the screen coordinates of the right side of the window.
-		float right = left + (float)(width);
-
-		// Calculate the screen coordinates of the top of the window.
-		float top = (float)(height * 0.5f) - y;
-
-		// Calculate the screen coordinates of the bottom of the window.
-		float bottom = top - (float)(height);
+		// Compute screen coordinates
+		float left = -(RESOLUTION_WIDTH * 0.5f) + x;
+		float right = left + width;
+		float top = (RESOLUTION_HEIGHT * 0.5f) - y;
+		float bottom = top - height;
 
 		// Create index and vertex arrays
 		vector<VertexPosTex> vertices;

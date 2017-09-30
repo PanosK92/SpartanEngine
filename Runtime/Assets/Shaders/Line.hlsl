@@ -6,8 +6,9 @@ SamplerState samplerAnisoWrap 	: register(s0);
 //= Constant Buffers ===============
 cbuffer MiscBuffer : register(b0)
 {
-	matrix mWorldViewProjection;
-	matrix mViewProjection;
+	matrix mWorld;
+	matrix mView;
+	matrix mProjection;
 };
 
 //= Structs ========================
@@ -30,8 +31,14 @@ PixelInputType DirectusVertexShader(VertexInputType input)
     PixelInputType output;
     	
     input.position.w = 1.0f;
-    output.position = mul(input.position, mWorldViewProjection);
-	output.colliderPos = mul(input.position, mViewProjection);
+	
+    output.position = mul(input.position, mWorld);
+	output.position = mul(output.position, mView);
+	output.position = mul(output.position, mProjection);
+	
+	output.colliderPos = mul(input.position, mView);
+	output.colliderPos = mul(output.colliderPos, mProjection);
+	
 	output.color = input.color;
 	
 	return output;
