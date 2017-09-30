@@ -929,36 +929,24 @@ QSplitter::handle:vertical
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="buttonDebugDraw">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
+          <widget class="DirectusRenderFlags" name="directusRenderFlags">
            <property name="minimumSize">
             <size>
-             <width>0</width>
+             <width>140</width>
              <height>0</height>
             </size>
            </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>16777215</height>
-            </size>
-           </property>
-           <property name="styleSheet">
-            <string notr="true"/>
-           </property>
-           <property name="text">
-            <string>Debug View</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="checked">
+           <property name="editable">
             <bool>false</bool>
+           </property>
+           <property name="currentText">
+            <string comment="Debug Flags"/>
+           </property>
+           <property name="sizeAdjustPolicy">
+            <enum>QComboBox::AdjustToContents</enum>
+           </property>
+           <property name="frame">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -3376,12 +3364,17 @@ QSplitter::handle:vertical
   <customwidget>
    <class>DirectusViewport</class>
    <extends>QWidget</extends>
-   <header location="global">DirectusViewport.h</header>
+   <header>DirectusViewport.h</header>
    <container>1</container>
    <slots>
     <signal>GameObjectPicked(Directus::GameObject*)</signal>
     <slot>ToggleDebugDraw()</slot>
    </slots>
+  </customwidget>
+  <customwidget>
+   <class>DirectusRenderFlags</class>
+   <extends>QComboBox</extends>
+   <header>DirectusRenderFlags.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
@@ -3751,22 +3744,6 @@ QSplitter::handle:vertical
     <hint type="destinationlabel">
      <x>132</x>
      <y>295</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonDebugDraw</sender>
-   <signal>pressed()</signal>
-   <receiver>widgetViewport</receiver>
-   <slot>ToggleDebugDraw()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>474</x>
-     <y>37</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>493</x>
-     <y>154</y>
     </hint>
    </hints>
   </connection>

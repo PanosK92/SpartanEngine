@@ -56,4 +56,11 @@ namespace Directus
 		TriangleList,
 		LineList
 	};
+
+	enum TextureSampler
+	{
+		Anisotropic_Sampler,
+		Linear_Sampler,
+		Point_Sampler
+	};
 }

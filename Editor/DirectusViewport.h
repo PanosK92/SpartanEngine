@@ -34,6 +34,7 @@ class DirectusInspector;
 namespace Directus
 {
     class GameObject;
+    class Renderer;
 }
 
 class DirectusViewport : public QWidget
@@ -59,6 +60,7 @@ private:
 
     Directus::Engine* m_engine;
     Directus::Context* m_context;
+    Directus::Renderer* m_renderer;
     QTimer* m_timerUpdate;
     QTimer* m_timer60FPS;
     bool m_isRunning;
@@ -76,5 +78,4 @@ public slots:
     void Update60FPS();
     void LockUpdate();
     void UnlockUpdate();
-    void ToggleDebugDraw();
 };

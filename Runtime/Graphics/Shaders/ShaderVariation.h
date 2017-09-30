@@ -39,17 +39,17 @@ namespace Directus
 	class D3D11ConstantBuffer;
 	class D3D11Shader;
 
-	enum ShaderFlags
+	enum ShaderFlags : unsigned long
 	{
-		Variaton_Albedo = 1,
-		Variaton_Roughness = 2,
-		Variaton_Metallic = 4,
-		Variaton_Normal = 8,
-		Variaton_Height = 16,
-		Variaton_Occlusion = 32,
-		Variaton_Emission = 64,
-		Variaton_Mask = 128,
-		Variaton_Cubemap = 256
+		Variaton_Albedo		= 1UL << 0,
+		Variaton_Roughness	= 1UL << 1,
+		Variaton_Metallic	= 1UL << 2,
+		Variaton_Normal		= 1UL << 3,
+		Variaton_Height		= 1UL << 4,
+		Variaton_Occlusion	= 1UL << 5,
+		Variaton_Emission	= 1UL << 6,
+		Variaton_Mask		= 1UL << 7,
+		Variaton_Cubemap	= 1UL << 8,
 	};
 
 
@@ -59,7 +59,7 @@ namespace Directus
 		ShaderVariation();
 		~ShaderVariation();
 
-		void Initialize(Context* context, unsigned int shaderFlags);
+		void Initialize(Context* context, unsigned long shaderFlags);
 
 		//= RESOURCE INTERFACE ========================
 		bool LoadFromFile(const std::string& filePath);
@@ -73,7 +73,7 @@ namespace Directus
 		void UpdateTextures(const std::vector<ID3D11ShaderResourceView*>& textureArray);
 		void Render(int indexCount);
 
-		unsigned int GetShaderFlags() { return m_shaderFlags; }
+		unsigned long GetShaderFlags() { return m_shaderFlags; }
 		bool HasAlbedoTexture() { return m_shaderFlags & Variaton_Albedo; }
 		bool HasRoughnessTexture() { return m_shaderFlags & Variaton_Roughness; }
 		bool HasMetallicTexture() { return m_shaderFlags & Variaton_Metallic; }
@@ -89,7 +89,7 @@ namespace Directus
 		void Compile(const std::string& filePath);
 
 		//= PROPERTIES =======
-		unsigned int m_shaderFlags;
+		unsigned long m_shaderFlags;
 
 		//= MISC ==================================================
 		Graphics* m_graphics;

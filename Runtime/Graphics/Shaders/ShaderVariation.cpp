@@ -53,7 +53,7 @@ namespace Directus
 
 	}
 
-	void ShaderVariation::Initialize(Context* context, unsigned int shaderFlags)
+	void ShaderVariation::Initialize(Context* context, unsigned long shaderFlags)
 	{
 		m_context = context;
 		m_graphics = m_context->GetSubsystem<Graphics>();
@@ -71,7 +71,7 @@ namespace Directus
 
 		SetResourceName(StreamIO::ReadSTR());
 		SetResourceFilePath(StreamIO::ReadSTR());
-		m_shaderFlags = StreamIO::ReadUInt();
+		m_shaderFlags = StreamIO::ReadULong();
 
 		StreamIO::StopReading();
 
@@ -98,7 +98,7 @@ namespace Directus
 
 		StreamIO::WriteSTR(GetResourceName());
 		StreamIO::WriteSTR(GetResourceFilePath());
-		StreamIO::WriteUInt(m_shaderFlags);
+		StreamIO::WriteULong(m_shaderFlags);
 	
 		StreamIO::StopWriting();
 
