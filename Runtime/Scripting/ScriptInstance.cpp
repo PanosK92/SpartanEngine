@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 #include "../Core/GameObject.h"
-#include "../Graphics/Shaders/DeferredShader.h"
 //===================================
 
 //= NAMESPACES =====

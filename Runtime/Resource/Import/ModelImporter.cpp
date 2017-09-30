@@ -261,7 +261,7 @@ namespace Directus
 
 	void ModelImporter::ReadAnimations(Model* model, const aiScene* scene)
 	{
-		for (int i = 0; i < scene->mNumAnimations; i++)
+		for (unsigned int i = 0; i < scene->mNumAnimations; i++)
 		{
 			aiAnimation* assimpAnimation = scene->mAnimations[i];
 			shared_ptr<Animation> animation = make_shared<Animation>();
@@ -280,7 +280,7 @@ namespace Directus
 				animationNode.name = assimpNodeAnim->mNodeName.C_Str();
 
 				// Position keys
-				for (int k = 0; k < assimpNodeAnim->mNumPositionKeys; k++)
+				for (unsigned int k = 0; k < assimpNodeAnim->mNumPositionKeys; k++)
 				{
 					double time = assimpNodeAnim->mPositionKeys[k].mTime;
 					Vector3 value = ToVector3(assimpNodeAnim->mPositionKeys[k].mValue);
@@ -289,7 +289,7 @@ namespace Directus
 				}
 
 				// Rotation keys
-				for (int k = 0; k < assimpNodeAnim->mNumRotationKeys; k++)
+				for (unsigned int k = 0; k < assimpNodeAnim->mNumRotationKeys; k++)
 				{
 					double time = assimpNodeAnim->mPositionKeys[k].mTime;
 					Quaternion value = ToQuaternion(assimpNodeAnim->mRotationKeys[k].mValue);
@@ -298,7 +298,7 @@ namespace Directus
 				}
 
 				// Scaling keys
-				for (int k = 0; k < assimpNodeAnim->mNumScalingKeys; k++)
+				for (unsigned int k = 0; k < assimpNodeAnim->mNumScalingKeys; k++)
 				{
 					double time = assimpNodeAnim->mPositionKeys[k].mTime;
 					Vector3 value = ToVector3(assimpNodeAnim->mScalingKeys[k].mValue);

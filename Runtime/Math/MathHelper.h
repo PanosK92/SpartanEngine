@@ -53,7 +53,7 @@ namespace Directus
 		inline DLL_API float DegreesToRadians(float degrees) { return degrees * DEG_TO_RAD; }
 		inline DLL_API float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
 		template <typename T>
-		inline DLL_API float Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
+		inline DLL_API T Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
 
 		// Lerp linearly between to values
 		template <class T, class U>
