@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Math/Quaternion.h"
 #include "../IO/StreamIO.h"
-#include "../Logging/Log.h"
 //===========================================================
 
 //= NAMESPACES ================

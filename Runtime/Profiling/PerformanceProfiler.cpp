@@ -19,18 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES ===========================================
 #include "PerformanceProfiler.h"
 #include "../Core/Stopwatch.h"
 #include "../Core/Timer.h"
 #include "../Core/Scene.h"
 #include "../Graphics/Material.h"
-#include "../Graphics/Shaders/ShaderVariation.h"
+#include "../Graphics/DeferredShaders/ShaderVariation.h"
 #include "../Resource/ResourceManager.h"
 #include "../EventSystem/EventSystem.h"
 #include <iomanip>
 #include <sstream>
-//==============================================
+//=====================================================
 
 //= NAMESPACES =====
 using namespace std;

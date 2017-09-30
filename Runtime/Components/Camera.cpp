@@ -267,8 +267,8 @@ namespace Directus
 
 		Vector3 localSpace = worldPoint * m_mView;
 
-		int screenX = ((localSpace.x / localSpace.z) * (viewport.x * 0.5f)) + (viewport.x * 0.5f);
-		int screenY = -((localSpace.y / localSpace.z) * (viewport.y * 0.5f)) + (viewport.y * 0.5f);
+		float screenX = ((localSpace.x / localSpace.z) * (viewport.x * 0.5f)) + (viewport.x * 0.5f);
+		float screenY = -((localSpace.y / localSpace.z) * (viewport.y * 0.5f)) + (viewport.y * 0.5f);
 
 		return Vector2(screenX, screenY);
 	}
@@ -317,7 +317,7 @@ namespace Directus
 		}
 		else if (m_projection == Orthographic)
 		{
-			m_mProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
+			m_mProjection = Matrix::CreateOrthographicLH((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
 		}
 	}
 }

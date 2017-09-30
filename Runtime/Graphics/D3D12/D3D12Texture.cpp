@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include "D3D12Texture.h"
 #include "D3D12GraphicsDevice.h"
-#include "../../Logging/Log.h"
 //==============================
 
 //= NAMESPAECES ====

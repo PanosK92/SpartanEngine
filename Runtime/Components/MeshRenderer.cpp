@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES ============================================
 #include "MeshRenderer.h"
 #include "Transform.h"
 #include "../IO/StreamIO.h"
 #include "../Logging/Log.h"
 #include "../Core/GameObject.h"
-#include "../Graphics/Shaders/ShaderVariation.h"
+#include "../Graphics/DeferredShaders/ShaderVariation.h"
 #include "../Graphics/Mesh.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/ResourceManager.h"
-//==============================================
+//======================================================
 
 //= NAMESPACES ================
 using namespace std;

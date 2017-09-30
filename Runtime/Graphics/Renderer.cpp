@@ -42,9 +42,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Font/Font.h"
 #include "../Profiling/PerformanceProfiler.h"
-#include "Shaders/ShaderVariation.h"
-#include "Shaders/LineShader.h"
-#include "Shaders/DeferredShader.h"
+#include "DeferredShaders/ShaderVariation.h"
+#include "DeferredShaders/LineShader.h"
+#include "DeferredShaders/DeferredShader.h"
 #include "Shader.h"
 //===========================================
 
