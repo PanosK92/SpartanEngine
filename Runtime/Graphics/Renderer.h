@@ -43,11 +43,8 @@ namespace Directus
 	class GBuffer;
 	class FullScreenQuad;
 	class DeferredShader;
-	class DepthShader;
 	class LineShader;
-	class GridShader;
-	class FontShader;
-	class PostProcessShader;
+	class Shader;
 	class Texture;
 	class ResourceManager;
 	class D3D11RenderTexture;
@@ -60,18 +57,17 @@ namespace Directus
 		class Frustrum;
 	}
 
-	enum RenderFlags
+	enum RenderFlags : unsigned long
 	{
-		Render_Default = 1,
-		Render_Albedo = 2,
-		Render_Normal = 4,
-		Render_Depth = 8,
-		Render_Material = 16,
-		Render_Physics = 32,
-		Render_Bounding_Boxes = 64,
-		Render_Mouse_Picking_Ray = 128,
-		Render_Grid = 256,
-		Render_Performance_Metrics = 512
+		Render_Albedo				= 1UL << 0,
+		Render_Normal				= 1UL << 1,
+		Render_Depth				= 1UL << 2,
+		Render_Material				= 1UL << 3,
+		Render_Physics				= 1UL << 4,
+		Render_Bounding_Boxes		= 1UL << 5,
+		Render_Mouse_Picking_Ray	= 1UL << 6,
+		Render_Grid					= 1UL << 7,
+		Render_Performance_Metrics	= 1UL << 8,
 	};
 
 	class DLL_API Renderer : public Subsystem
@@ -92,6 +88,9 @@ namespace Directus
 		// Viewport
 		Math::Vector2 GetViewport() { return GET_VIEWPORT; }
 		void SetViewport(float width, float height);
+
+		unsigned long GetRenderFlags() { return m_renderFlags; }
+		void SetRenderFlags(unsigned long renderFlags) { m_renderFlags = renderFlags; }
 
 		void Clear();
 		const std::vector<weakGameObj>& GetRenderables() { return m_renderables; }
@@ -129,20 +128,20 @@ namespace Directus
 
 		//= SHADERS ==========================================
 		std::shared_ptr<DeferredShader> m_shaderDeferred;
-		std::shared_ptr<DepthShader> m_shaderDepth;
+		std::shared_ptr<Shader> m_shaderDepth;
 		std::shared_ptr<LineShader> m_shaderLine;
-		std::shared_ptr<GridShader> m_shaderGrid;
-		std::shared_ptr<FontShader> m_shaderFont;
-		std::shared_ptr<PostProcessShader> m_shaderFXAA;
-		std::shared_ptr<PostProcessShader> m_shaderSharpening;
-		std::shared_ptr<PostProcessShader> m_shaderBlur;
-		std::shared_ptr<PostProcessShader> m_shaderTex;
+		std::shared_ptr<Shader> m_shaderGrid;
+		std::shared_ptr<Shader> m_shaderFont;
+		std::shared_ptr<Shader> m_shaderTexture;
+		std::shared_ptr<Shader> m_shaderFXAA;
+		std::shared_ptr<Shader> m_shaderSharpening;
+		std::shared_ptr<Shader> m_shaderBlur;
 		//====================================================
 
 		//= DEBUG ===================
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
-		unsigned int m_renderFlags;
+		unsigned long m_renderFlags;
 		//===========================
 
 		//= PREREQUISITES ================================

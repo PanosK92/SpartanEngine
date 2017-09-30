@@ -293,7 +293,7 @@ namespace Directus
 
 		// Add a shader to the pool based on this material, if a 
 		// matching shader already exists, it will be returned.
-		unsigned int shaderFlags = 0;
+		unsigned long shaderFlags = 0;
 
 		if (HasTextureOfType(Albedo_Texture)) shaderFlags |= Variaton_Albedo;
 		if (HasTextureOfType(Roughness_Texture)) shaderFlags |= Variaton_Roughness;
@@ -308,7 +308,7 @@ namespace Directus
 		m_shader = CreateShaderBasedOnMaterial(shaderFlags);
 	}
 
-	weak_ptr<ShaderVariation> Material::FindMatchingShader(unsigned int shaderFlags)
+	weak_ptr<ShaderVariation> Material::FindMatchingShader(unsigned long shaderFlags)
 	{
 		auto shaders = m_context->GetSubsystem<ResourceManager>()->GetResourcesByType<ShaderVariation>();
 		for (const auto& shader : shaders)
@@ -319,7 +319,7 @@ namespace Directus
 		return weak_ptr<ShaderVariation>();
 	}
 
-	weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(unsigned int shaderFlags)
+	weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(unsigned long shaderFlags)
 	{
 		// If an appropriate shader already exists, return it's ID
 		auto existingShader = FindMatchingShader(shaderFlags);

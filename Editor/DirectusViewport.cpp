@@ -76,8 +76,8 @@ void DirectusViewport::Initialize(void* mainWindowHandle, void* hInstance)
     m_engine->SetHandles(hInstance, mainWindowHandle, (void*)this->winId());
     m_engine->Initialize();
 
-    // Get context
     m_context = m_engine->GetContext();
+    m_renderer = m_context->GetSubsystem<Renderer>();
 }
 
 bool DirectusViewport::IsRunning()
@@ -143,11 +143,6 @@ void DirectusViewport::LockUpdate()
 void DirectusViewport::UnlockUpdate()
 {
     m_locked = false;
-}
-
-void DirectusViewport::ToggleDebugDraw()
-{
-    Settings::SetDebugDraw(!Settings::GetDebugDraw());
 }
 //====================================================
 

@@ -49,7 +49,7 @@ using namespace Directus;
 using namespace std;
 //=======================
 
-DirectusHierarchy::DirectusHierarchy(QWidget *parent) : QTreeWidget(parent)
+DirectusHierarchy::DirectusHierarchy(QWidget* parent) : QTreeWidget(parent)
 {
     m_context = nullptr;
 
