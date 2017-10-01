@@ -646,7 +646,7 @@ void DirectusHierarchy::SelectGameObject(GameObject* gameObject)
         if (gameObjectItem._Get()->GetID() == gameObject->GetID())
         {
             // Select
-            clearSelection();
+            this->clearSelection();
             item->setSelected(true);
 
             // Expand

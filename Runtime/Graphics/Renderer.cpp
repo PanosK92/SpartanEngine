@@ -142,7 +142,7 @@ namespace Directus
 		m_shaderTexture->Load(shaderDirectory + "Texture.hlsl");
 		m_shaderTexture->SetInputLaytout(PositionTexture);
 		m_shaderTexture->AddSampler(Anisotropic_Sampler);
-		m_shaderTexture->AddBuffer(WVP, PixelShader);
+		m_shaderTexture->AddBuffer(WVP, VertexShader);
 
 		// FXAA Shader
 		m_shaderFXAA = make_unique<Shader>(m_context);
@@ -182,7 +182,6 @@ namespace Directus
 		m_gizmoLightTex->LoadFromFile(textureDirectory + "light.png");
 		m_gizmoLightTex->SetTextureType(Albedo_Texture);
 		m_gizmoLightRect = make_unique<Rectangle>(m_context);
-		m_gizmoLightRect->Create(100, 100, m_gizmoLightTex->GetWidth(), m_gizmoLightTex->GetHeight());
 
 		// Performance Metrics
 		m_font = make_unique<Font>(m_context);
@@ -688,6 +687,11 @@ namespace Directus
 		// Light gizmo
 		if (m_renderFlags & Render_Light)
 		{
+			//Vector3 position = m_directionalLight->g_transform->GetPosition();
+			//Quaternion rotation = m_camera->g_transform->GetRotation();
+			//Matrix worldMatrix = Matrix::CreateTranslation(position) * Matrix::CreateRotation(rotation);
+
+			m_gizmoLightRect->Create(0.0f, 0.0f, m_gizmoLightTex->GetWidth(), m_gizmoLightTex->GetHeight());
 			m_gizmoLightRect->SetBuffer();
 			m_shaderTexture->Set();
 			m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);

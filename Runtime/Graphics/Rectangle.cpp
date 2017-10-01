@@ -40,6 +40,10 @@ namespace Directus
 	Rectangle::Rectangle(Context* context)
 	{
 		m_graphics = context->GetSubsystem<Graphics>();
+		m_x = 0;
+		m_y = 0;
+		m_width = 0;
+		m_height = 0;
 	}
 
 	Rectangle::~Rectangle()
@@ -49,11 +53,20 @@ namespace Directus
 
 	bool Rectangle::Create(int x, int y, int width, int height)
 	{
+		// Don't update if it's not needed
+		if (m_x == x && m_y == y && m_width == width && m_height == height)
+			return true;
+
+		m_x = x;
+		m_y = y;
+		m_width = width;
+		m_height = height;
+
 		// Compute screen coordinates
-		float left = -(RESOLUTION_WIDTH * 0.5f) + x;
-		float right = left + width;
-		float top = (RESOLUTION_HEIGHT * 0.5f) - y;
-		float bottom = top - height;
+		float left = -RESOLUTION_WIDTH * 0.5f + m_x;
+		float right = left + m_width;
+		float top = RESOLUTION_HEIGHT * 0.5f - m_y;
+		float bottom = top - m_height;
 
 		// Create index and vertex arrays
 		vector<VertexPosTex> vertices;

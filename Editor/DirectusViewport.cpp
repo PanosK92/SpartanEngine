@@ -162,7 +162,7 @@ void DirectusViewport::resizeEvent(QResizeEvent* evt)
         height++;
 
     // Change the size of the widget
-    setGeometry(QRect(0, 0, width, height));
+    this->setGeometry(QRect(0, 0, width, height));
 
     // Change the resolution of the engine
     SetResolution(width, height);
