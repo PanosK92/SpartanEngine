@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include <string>
 #include "../Core/Helper.h"
+#include "MathHelper.h"
+
 //=========================
 
 namespace Directus
@@ -85,7 +87,7 @@ namespace Directus
 			//========================================================================================================
 
 			//= DOT PRODUCT ==========================================================================================
-			static float Dot(const Vector3& v1, const Vector3& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
+			static float Dot(const Vector3& v1, const Vector3& v2) { return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
 			float Dot(const Vector3& rhs) const { return x * rhs.x + y * rhs.y + z * rhs.z; }
 			//========================================================================================================
 
@@ -102,12 +104,17 @@ namespace Directus
 			//========================================================================================================
 
 			//= LENGTH ===============================================================================================
+			static float Length(const Vector3& v1, const Vector3& v2)
+			{
+				return Sqrt((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z));
+			}
+
 			static float LengthSquared(const Vector3& v1, const Vector3& v2)
 			{
 				return (v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) + (v1.z - v2.z) * (v1.z - v2.z);
 			}
 
-			float Length() const { return sqrtf(x * x + y * y + z * z); }
+			float Length() const { return Sqrt(x * x + y * y + z * z); }
 			float LengthSquared() const { return x * x + y * y + z * z; }
 			//========================================================================================================
 

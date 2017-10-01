@@ -37,7 +37,7 @@ namespace Directus
 		Rectangle(Context* context);
 		~Rectangle();
 
-		bool Create(int x, int y, int width, int height);
+		bool Create(float x, float y, float width, float height);
 		bool SetBuffer();
 		int GetIndexCount() { return 6; }
 
@@ -45,9 +45,11 @@ namespace Directus
 		Graphics* m_graphics;
 		std::unique_ptr<D3D11VertexBuffer> m_vertexBuffer;
 		std::unique_ptr<D3D11IndexBuffer> m_indexBuffer;
-		int m_x;
-		int m_y;
-		int m_width;
-		int m_height;
+		float m_x;
+		float m_y;
+		float m_width;
+		float m_height;
+		int m_resolutionWidth;
+		int m_resolutionHeight;
 	};
 }

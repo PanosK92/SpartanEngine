@@ -101,11 +101,12 @@ namespace Directus
 		void SetFOV_Horizontal_Deg(float fov);
 		//====================================
 
-		//= MISC ===============================================================
+		//= MISC ========================================================================
 		bool IsInViewFrustrum(MeshFilter* meshFilter);
+		bool IsInViewFrustrum(const Math::Vector3& center, const Math::Vector3& extents);
 		Math::Vector4 GetClearColor() { return m_clearColor; }
 		void SetClearColor(const Math::Vector4& color) { m_clearColor = color; }
-		//======================================================================
+		//===============================================================================
 
 	private:
 		void CalculateViewMatrix();
