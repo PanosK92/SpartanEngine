@@ -44,6 +44,8 @@ namespace Directus
 		m_y = 0;
 		m_width = 0;
 		m_height = 0;
+		m_resolutionWidth = RESOLUTION_WIDTH;
+		m_resolutionHeight = RESOLUTION_HEIGHT;
 	}
 
 	Rectangle::~Rectangle()
@@ -51,21 +53,29 @@ namespace Directus
 
 	}
 
-	bool Rectangle::Create(int x, int y, int width, int height)
+	bool Rectangle::Create(float x, float y, float width, float height)
 	{
 		// Don't update if it's not needed
-		if (m_x == x && m_y == y && m_width == width && m_height == height)
+		if (m_x == x && 
+			m_y == y && 
+			m_width == width && 
+			m_height == height && 
+			m_resolutionWidth == RESOLUTION_WIDTH && 
+			m_resolutionHeight == RESOLUTION_HEIGHT
+			)
 			return true;
 
 		m_x = x;
 		m_y = y;
 		m_width = width;
 		m_height = height;
+		m_resolutionWidth = RESOLUTION_WIDTH;
+		m_resolutionHeight = RESOLUTION_HEIGHT;
 
 		// Compute screen coordinates
-		float left = -RESOLUTION_WIDTH * 0.5f + m_x;
+		float left = -m_resolutionWidth * 0.5f + m_x;
 		float right = left + m_width;
-		float top = RESOLUTION_HEIGHT * 0.5f - m_y;
+		float top = m_resolutionHeight * 0.5f - m_y;
 		float bottom = top - m_height;
 
 		// Create index and vertex arrays

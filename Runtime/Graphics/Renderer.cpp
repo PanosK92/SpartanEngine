@@ -52,6 +52,9 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
+#define GIZMO_MAX_SIZE 5.0f
+#define GIZMO_MIN_SIZE 0.1f
+
 namespace Directus
 {
 	Renderer::Renderer(Context* context) : Subsystem(context)
@@ -178,10 +181,19 @@ namespace Directus
 		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 	
 		// Gizmo icons
-		m_gizmoLightTex = make_unique<Texture>(m_context);
-		m_gizmoLightTex->LoadFromFile(textureDirectory + "light.png");
-		m_gizmoLightTex->SetTextureType(Albedo_Texture);
-		m_gizmoLightRect = make_unique<Rectangle>(m_context);
+		m_gizmoTexLightDirectional = make_unique<Texture>(m_context);
+		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
+		m_gizmoTexLightDirectional->SetTextureType(Albedo_Texture);
+
+		m_gizmoTexLightPoint = make_unique<Texture>(m_context);
+		m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
+		m_gizmoTexLightPoint->SetTextureType(Albedo_Texture);
+
+		m_gizmoTexLightSpot = make_unique<Texture>(m_context);
+		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
+		m_gizmoTexLightSpot->SetTextureType(Albedo_Texture);
+
+		m_gizmoRectLight = make_unique<Rectangle>(m_context);
 
 		// Performance Metrics
 		m_font = make_unique<Font>(m_context);
@@ -687,16 +699,56 @@ namespace Directus
 		// Light gizmo
 		if (m_renderFlags & Render_Light)
 		{
-			//Vector3 position = m_directionalLight->g_transform->GetPosition();
-			//Quaternion rotation = m_camera->g_transform->GetRotation();
-			//Matrix worldMatrix = Matrix::CreateTranslation(position) * Matrix::CreateRotation(rotation);
+			for (const auto* light : m_lights)
+			{				
+				Vector3 lightWorldPos = light->g_transform->GetPosition();
+				Vector3 cameraWorldPos = m_camera->g_transform->GetPosition();
 
-			m_gizmoLightRect->Create(0.0f, 0.0f, m_gizmoLightTex->GetWidth(), m_gizmoLightTex->GetHeight());
-			m_gizmoLightRect->SetBuffer();
-			m_shaderTexture->Set();
-			m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
-			m_shaderTexture->SetTexture((ID3D11ShaderResourceView*)m_gizmoLightTex->GetShaderResource(), 0);
-			m_shaderTexture->DrawIndexed(m_gizmoLightRect->GetIndexCount());
+				// Compute light screen space position and scale (based on distance from the camera)
+				Vector2 lightScreenPos = m_camera->WorldToScreenPoint(lightWorldPos);
+				float distance = Vector3::Length(lightWorldPos, cameraWorldPos);
+				float scale = GIZMO_MAX_SIZE / distance;
+				scale = Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
+
+				// Skip if the light is not in front of the camera
+				if (!m_camera->IsInViewFrustrum(lightWorldPos, Vector3(1.0f)))
+					continue;
+
+				// Skip if the light if it's too small
+				if (scale == GIZMO_MIN_SIZE)
+					continue;
+
+				Texture* lightTex = nullptr;
+				LightType type = light->g_gameObject._Get()->GetComponent<Light>()->GetLightType();
+				if (type == Directional)
+				{
+					lightTex = m_gizmoTexLightDirectional.get();
+				}
+				else if (type == Point)
+				{
+					lightTex = m_gizmoTexLightPoint.get();
+				}
+				else if (type == Spot)
+				{
+					lightTex = m_gizmoTexLightSpot.get();
+				}
+
+				// Construct appropriate rectangle
+				float texWidth = lightTex->GetWidth() * scale;
+				float texHeight = lightTex->GetHeight() * scale;
+				m_gizmoRectLight->Create(
+					lightScreenPos.x - texWidth * 0.5f,
+					lightScreenPos.y - texHeight * 0.5f,
+					texWidth,
+					texHeight
+				);
+
+				m_gizmoRectLight->SetBuffer();
+				m_shaderTexture->Set();
+				m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
+				m_shaderTexture->SetTexture((ID3D11ShaderResourceView*)lightTex->GetShaderResource(), 0);
+				m_shaderTexture->DrawIndexed(m_gizmoRectLight->GetIndexCount());
+			}
 		}
 
 		// Performance metrics

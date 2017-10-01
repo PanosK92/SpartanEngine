@@ -169,6 +169,11 @@ namespace Directus
 		return m_frustrum->CheckCube(center, extents) != Outside;
 	}
 
+	bool Camera::IsInViewFrustrum(const Vector3& center, const Vector3& extents)
+	{
+		return m_frustrum->CheckCube(center, extents) != Outside;
+	}
+
 	vector<VertexPosCol> Camera::GetPickingRay()
 	{
 		vector<VertexPosCol> lines;
@@ -265,10 +270,10 @@ namespace Directus
 	{
 		Vector2 viewport = g_context->GetSubsystem<Renderer>()->GetViewport();
 
-		Vector3 localSpace = worldPoint * m_mView;
+		Vector3 localSpace = worldPoint * m_mView * m_mProjection;
 
-		float screenX = ((localSpace.x / localSpace.z) * (viewport.x * 0.5f)) + (viewport.x * 0.5f);
-		float screenY = -((localSpace.y / localSpace.z) * (viewport.y * 0.5f)) + (viewport.y * 0.5f);
+		float screenX = localSpace.x / localSpace.z * (viewport.x * 0.5f) + viewport.x * 0.5f;
+		float screenY = -(localSpace.y / localSpace.z * (viewport.y * 0.5f)) + viewport.y * 0.5f;
 
 		return Vector2(screenX, screenY);
 	}
@@ -278,8 +283,8 @@ namespace Directus
 		Vector2 viewport = g_context->GetSubsystem<Renderer>()->GetViewport();
 
 		// Convert screen pixel to view space
-		float pointX = (2.0f * point.x / viewport.x - 1.0f);
-		float pointY = (-2.0f * point.y / viewport.y + 1.0f);
+		float pointX = 2.0f * point.x / viewport.x - 1.0f;
+		float pointY = -2.0f * point.y / viewport.y + 1.0f;
 
 		// Unproject point
 		Matrix unprojectMatrix = (m_mView * m_mProjection).Inverted();

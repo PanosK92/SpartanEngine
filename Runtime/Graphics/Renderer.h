@@ -131,13 +131,15 @@ namespace Directus
 		std::unique_ptr<Shader> m_shaderBlur;
 		//==============================================
 
-		//= DEBUG ==================================
+		//= DEBUG ==========================================
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
-		std::unique_ptr<Texture> m_gizmoLightTex;
-		std::unique_ptr<Rectangle> m_gizmoLightRect;
+		std::unique_ptr<Texture> m_gizmoTexLightDirectional;
+		std::unique_ptr<Texture> m_gizmoTexLightPoint;
+		std::unique_ptr<Texture> m_gizmoTexLightSpot;
+		std::unique_ptr<Rectangle> m_gizmoRectLight;
 		unsigned long m_renderFlags;
-		//==========================================
+		//==================================================
 
 		//= MISC =========================================
 		std::vector<ID3D11ShaderResourceView*> m_texArray;
