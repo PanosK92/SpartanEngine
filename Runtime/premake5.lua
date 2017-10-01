@@ -26,6 +26,7 @@ links { "FreeImageLib" }
 links { "freetype" }
 links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
 links { "pugixml" }
+links { "IrrXML.lib" }
 
 -- Includes
 includedirs { "../ThirdParty/AngelScript_2.31.2" }
