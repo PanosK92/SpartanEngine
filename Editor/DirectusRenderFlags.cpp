@@ -159,7 +159,7 @@ void DirectusRenderFlags::MapRenderFlags()
         {
             flags |= Render_Performance_Metrics;
         }
-        else if (i == 8)
+        else if (i == 9)
         {
             flags |= Render_Light;
         }

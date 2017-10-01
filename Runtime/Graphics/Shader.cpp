@@ -37,7 +37,7 @@ namespace Directus
 	Shader::Shader(Context* context)
 	{
 		m_graphics = context->GetSubsystem<Graphics>();
-		m_bufferType = mWVP;
+		m_bufferType = WVP;
 		m_bufferScope = VertexShader;
 	}
 
@@ -56,20 +56,20 @@ namespace Directus
 
 		if (!m_shader)
 		{
-			m_shader = make_shared<D3D11Shader>(m_graphics);
+			m_shader = make_unique<D3D11Shader>(m_graphics);
 		}
 
 		m_shader->Load(filePath);
 	}
 
-	void Shader::AddDefine(const string& define)
+	void Shader::AddDefine(LPCSTR define)
 	{
 		if (!m_shader)
 		{
-			m_shader = make_shared<D3D11Shader>(m_graphics);
+			m_shader = make_unique<D3D11Shader>(m_graphics);
 		}
 
-		m_shader->AddDefine(define.c_str(), true);
+		m_shader->AddDefine(define, true);
 	}
 
 	void Shader::AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope)
@@ -77,22 +77,22 @@ namespace Directus
 		m_bufferType = bufferType;
 		m_bufferScope = bufferScope;
 
-		m_constantBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
-		if (m_bufferType == mWVP)
+		m_constantBuffer = make_unique<D3D11ConstantBuffer>(m_graphics);
+		if (m_bufferType == WVP)
 		{
-			m_constantBuffer->Create(sizeof(Struct_mWVP));
+			m_constantBuffer->Create(sizeof(Struct_WVP));
 		}
-		else if (m_bufferType == mWmVmP)
+		else if (m_bufferType == W_V_P)
 		{
-			m_constantBuffer->Create(sizeof(Struct_mWmVmP));
+			m_constantBuffer->Create(sizeof(Struct_W_V_P));
 		}
-		else if (m_bufferType == mWVPvColor)
+		else if (m_bufferType == WVP_Color)
 		{
-			m_constantBuffer->Create(sizeof(Struct_mWVPvColor));
+			m_constantBuffer->Create(sizeof(Struct_WVP_Color));
 		}
-		else if (m_bufferType == mWVPvResolution)
+		else if (m_bufferType == WVP_Resolution)
 		{
-			m_constantBuffer->Create(sizeof(Struct_mWVP_vResolution));
+			m_constantBuffer->Create(sizeof(Struct_WVP_Resolution));
 		}
 	}
 
@@ -153,23 +153,23 @@ namespace Directus
 			return;
 		}
 
-		if (m_bufferType == mWVP)
+		if (m_bufferType == WVP)
 		{
-			Struct_mWVP* buffer = static_cast<Struct_mWVP*>(m_constantBuffer->Map());
-			buffer->mMVP = mWorld * mView * mProjection;
+			Struct_WVP* buffer = static_cast<Struct_WVP*>(m_constantBuffer->Map());
+			buffer->wvp = mWorld * mView * mProjection;
 		}
 		else
 		{
-			Struct_mWmVmP* buffer = static_cast<Struct_mWmVmP*>(m_constantBuffer->Map());
-			buffer->mWorld = mWorld;
-			buffer->mView = mView;
-			buffer->mProjection = mProjection;
+			Struct_W_V_P* buffer = static_cast<Struct_W_V_P*>(m_constantBuffer->Map());
+			buffer->world = mWorld;
+			buffer->view = mView;
+			buffer->projection = mProjection;
 		}
 
 		// Unmap buffer
 		m_constantBuffer->Unmap();
 
-		SetBufferScope(m_constantBuffer, slot);
+		SetBufferScope(m_constantBuffer.get(), slot);
 	}
 
 	void Shader::SetBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection, const Vector4& color, unsigned int slot)
@@ -181,16 +181,16 @@ namespace Directus
 		}
 
 		// Get a pointer of the buffer
-		Struct_mWVPvColor* buffer = static_cast<Struct_mWVPvColor*>(m_constantBuffer->Map());
+		Struct_WVP_Color* buffer = static_cast<Struct_WVP_Color*>(m_constantBuffer->Map());
 
 		// Fill the buffer
-		buffer->mMVP = mWorld * mView * mProjection;
-		buffer->vColor = color;
+		buffer->wvp = mWorld * mView * mProjection;
+		buffer->color = color;
 
 		// Unmap buffer
 		m_constantBuffer->Unmap();
 
-		SetBufferScope(m_constantBuffer, slot);
+		SetBufferScope(m_constantBuffer.get(), slot);
 	}
 
 	void Shader::SetBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection, const Vector2& resolution, unsigned slot)
@@ -202,17 +202,17 @@ namespace Directus
 		}
 
 		// Get a pointer of the buffer
-		Struct_mWVP_vResolution* buffer = static_cast<Struct_mWVP_vResolution*>(m_constantBuffer->Map());
+		Struct_WVP_Resolution* buffer = static_cast<Struct_WVP_Resolution*>(m_constantBuffer->Map());
 
 		// Fill the buffer
-		buffer->mMVP = mWorld * mView * mProjection;
-		buffer->vResolution = resolution;
-		buffer->vPadding = Vector2::Zero;
+		buffer->wvp = mWorld * mView * mProjection;
+		buffer->resolution = resolution;
+		buffer->padding = Vector2::Zero;
 
 		// Unmap buffer
 		m_constantBuffer->Unmap();
 
-		SetBufferScope(m_constantBuffer, slot);
+		SetBufferScope(m_constantBuffer.get(), slot);
 	}
 
 	void Shader::Draw(unsigned int vertexCount)
@@ -231,8 +231,11 @@ namespace Directus
 		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 	}
 
-	void Shader::SetBufferScope(shared_ptr<D3D11ConstantBuffer> buffer, unsigned int slot)
+	void Shader::SetBufferScope(D3D11ConstantBuffer* buffer, unsigned int slot)
 	{
+		if (!buffer)
+			return;
+
 		if (m_bufferScope == VertexShader)
 		{
 			buffer->SetVS(slot);
@@ -241,7 +244,7 @@ namespace Directus
 		{
 			buffer->SetPS(slot);
 		}
-		else if (m_bufferScope == Both)
+		else if (m_bufferScope == Global)
 		{
 			buffer->SetVS(slot);
 			buffer->SetPS(slot);

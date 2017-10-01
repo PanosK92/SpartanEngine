@@ -43,7 +43,7 @@ namespace Directus
 
 	private:
 		Graphics* m_graphics;
-		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
+		std::unique_ptr<D3D11VertexBuffer> m_vertexBuffer;
+		std::unique_ptr<D3D11IndexBuffer> m_indexBuffer;
 	};
 }

@@ -87,7 +87,7 @@ namespace Directus
 		m_graphics = m_context->GetSubsystem<Graphics>();
 		if (!m_graphics->IsInitialized())
 		{
-			LOG_ERROR("Rendere: Failed to initialize, an initialized Graphics subsystem is required.");
+			LOG_ERROR("Renderer: Can't initialize, the Graphics subsystem uninitialized.");
 			return false;
 		}
 
@@ -115,34 +115,34 @@ namespace Directus
 		m_shaderLine->Load(shaderDirectory + "Line.hlsl");
 		m_shaderLine->SetInputLaytout(PositionColor);
 		m_shaderLine->AddSampler(Linear_Sampler);
-		m_shaderLine->AddBuffer(mWmVmP, VertexShader);
+		m_shaderLine->AddBuffer(W_V_P, VertexShader);
 
 		// Depth shader
 		m_shaderDepth = make_unique<Shader>(m_context);
 		m_shaderDepth->Load(shaderDirectory + "Depth.hlsl");
 		m_shaderDepth->SetInputLaytout(Position);
-		m_shaderDepth->AddBuffer(mWVP, VertexShader);
+		m_shaderDepth->AddBuffer(WVP, VertexShader);
 
 		// Grid shader
 		m_shaderGrid = make_unique<Shader>(m_context);
 		m_shaderGrid->Load(shaderDirectory + "Grid.hlsl");
 		m_shaderGrid->SetInputLaytout(PositionColor);
 		m_shaderGrid->AddSampler(Anisotropic_Sampler);
-		m_shaderGrid->AddBuffer(mWVP, VertexShader);
+		m_shaderGrid->AddBuffer(WVP, VertexShader);
 
 		// Font shader
 		m_shaderFont = make_unique<Shader>(m_context);
 		m_shaderFont->Load(shaderDirectory + "Font.hlsl");
 		m_shaderFont->SetInputLaytout(PositionTexture);
 		m_shaderFont->AddSampler(Point_Sampler);
-		m_shaderFont->AddBuffer(mWVPvColor, Both);
+		m_shaderFont->AddBuffer(WVP_Color, Global);
 
 		// Texture shader
 		m_shaderTexture = make_unique<Shader>(m_context);
 		m_shaderTexture->Load(shaderDirectory + "Texture.hlsl");
 		m_shaderTexture->SetInputLaytout(PositionTexture);
 		m_shaderTexture->AddSampler(Anisotropic_Sampler);
-		m_shaderTexture->AddBuffer(mWVP, PixelShader);
+		m_shaderTexture->AddBuffer(WVP, PixelShader);
 
 		// FXAA Shader
 		m_shaderFXAA = make_unique<Shader>(m_context);
@@ -151,7 +151,7 @@ namespace Directus
 		m_shaderFXAA->SetInputLaytout(PositionTexture);
 		m_shaderFXAA->AddSampler(Anisotropic_Sampler);
 		m_shaderFXAA->AddSampler(Linear_Sampler);
-		m_shaderFXAA->AddBuffer(mWVPvResolution, Both);
+		m_shaderFXAA->AddBuffer(WVP_Resolution, Global);
 
 		// Sharpening shader
 		m_shaderSharpening = make_unique<Shader>(m_context);
@@ -160,7 +160,7 @@ namespace Directus
 		m_shaderSharpening->SetInputLaytout(PositionTexture);
 		m_shaderSharpening->AddSampler(Anisotropic_Sampler);
 		m_shaderSharpening->AddSampler(Linear_Sampler);
-		m_shaderSharpening->AddBuffer(mWVPvResolution, Both);
+		m_shaderSharpening->AddBuffer(WVP_Resolution, Global);
 
 		// Blur shader
 		m_shaderBlur = make_unique<Shader>(m_context);
@@ -169,20 +169,14 @@ namespace Directus
 		m_shaderBlur->SetInputLaytout(PositionTexture);
 		m_shaderBlur->AddSampler(Anisotropic_Sampler);
 		m_shaderBlur->AddSampler(Linear_Sampler);
-		m_shaderBlur->AddBuffer(mWVPvResolution, Both);
+		m_shaderBlur->AddBuffer(WVP_Resolution, Global);
 
-		// Create render textures (used for post processing)
+		// Create render textures (used for post-processing)
 		m_renderTexPing = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
-
 		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
-
-		// Misc
-		m_texNoiseMap = make_unique<Texture>(m_context);
-		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
-		m_texNoiseMap->SetTextureType(Normal_Texture);
-
+	
 		// Gizmo icons
 		m_gizmoLightTex = make_unique<Texture>(m_context);
 		m_gizmoLightTex->LoadFromFile(textureDirectory + "light.png");
@@ -190,7 +184,7 @@ namespace Directus
 		m_gizmoLightRect = make_unique<Rectangle>(m_context);
 		m_gizmoLightRect->Create(100, 100, m_gizmoLightTex->GetWidth(), m_gizmoLightTex->GetHeight());
 
-		// DEBUG
+		// Performance Metrics
 		m_font = make_unique<Font>(m_context);
 		string fontDir = m_resourceMng->GetStandardResourceDirectory(Font_Resource);
 		m_font->SetSize(12);
@@ -198,6 +192,11 @@ namespace Directus
 		m_font->LoadFromFile(fontDir + "CalibriBold.ttf");
 		m_grid = make_unique<Grid>(m_context);
 		m_grid->BuildGrid();
+
+		// Noise texture (used by SSAO shader)
+		m_texNoiseMap = make_unique<Texture>(m_context);
+		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
+		m_texNoiseMap->SetTextureType(Normal_Texture);
 
 		return true;
 	}
@@ -216,7 +215,7 @@ namespace Directus
 		// If there is no camera, clear to black and present
 		if (!m_camera)
 		{
-			m_graphics->Clear(Vector4(0, 0, 0, 1));
+			m_graphics->Clear(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 			m_graphics->Present();
 			return;
 		}
@@ -629,7 +628,7 @@ namespace Directus
 	void Renderer::DebugDraw()
 	{
 		//= PRIMITIVES ===================================================================================
-		// Anything that is a basic shape (doesn't have a vertex and and index buffer) get's rendered here
+		// Anything that is a bunch of vertices (doesn't have a vertex and and index buffer) get's rendered here
 		// by passing it's vertices (VertexPosCol) to the LineRenderer. Typically used only for debugging.
 		if (m_lineRenderer)
 		{

@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <set>
 #include "D3D11GraphicsDevice.h"
 #include <memory>
-#include <string>
 //==============================
 
 namespace Directus
@@ -48,13 +47,11 @@ namespace Directus
 		bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
 		void Set();
 
-		void SetName(const std::string& name);
-		void AddDefine(LPCSTR name, LPCSTR definition);
-		void D3D11Shader::AddDefine(LPCSTR name, int definition) { AddDefine(name, m_definitionPool.insert(std::to_string(definition)).first->c_str()); }
+		void SetName(std::string name) { m_name = name; }
+		void AddDefine(LPCSTR, LPCSTR definition);
+		void AddDefine(LPCSTR, bool definition);
 
-		void D3D11Shader::AddDefine(LPCSTR name, bool definition) { AddDefine(name, static_cast<int>(definition)); }
-
-		bool D3D11Shader::IsCompiled() { return m_compiled; }
+		bool IsCompiled() { return m_compiled; }
 
 	private:
 		//= COMPILATION ================================================================================================================================================================================
