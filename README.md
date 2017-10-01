@@ -32,7 +32,7 @@ XML I/O                         | 100% | -
 Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality codebase.
 Improved Shadowing         		| 80% | Improved shadow mapping technique, no shadow shimmering, SSAO.
 Font importing and rendering    | 80% | Ability to load any font file. TextMesh component.
-Debug Rendering    				| 60% | Gizmos, scene grid and G-Buffer visualization.
+Debug Rendering    				| 90% | Gizmos, scene grid and G-Buffer visualization.
 Skeletal Animation			    | 5% | -
 
 # Roadmap

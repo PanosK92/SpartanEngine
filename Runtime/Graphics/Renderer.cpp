@@ -732,7 +732,7 @@ namespace Directus
 				{
 					lightTex = m_gizmoTexLightSpot.get();
 				}
-
+				
 				// Construct appropriate rectangle
 				float texWidth = lightTex->GetWidth() * scale;
 				float texHeight = lightTex->GetHeight() * scale;

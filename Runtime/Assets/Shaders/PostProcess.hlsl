@@ -109,7 +109,7 @@ float4 BlurPass(float2 texCoord, float2 texelSize)
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
     float2 texCoord = input.uv;
-    float4 color;
+    float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
     float2 texelSize = float2(1.0f / resolution.x, 1.0f / resolution.y);
 	
 #if FXAA

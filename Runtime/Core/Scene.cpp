@@ -453,7 +453,8 @@ namespace Directus
 	{
 		sharedGameObj light = CreateGameObject().lock();
 		light->SetName("DirectionalLight");
-		light->GetComponent<Transform>()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
+		light->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
+		light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
 		Light* lightComp = light->AddComponent<Light>();
 		lightComp->SetLightType(Directional);
