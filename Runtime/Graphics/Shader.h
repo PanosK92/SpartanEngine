@@ -36,17 +36,17 @@ namespace Directus
 
 	enum ConstantBufferType
 	{
-		mWVP,
-		mWmVmP,
-		mWVPvColor,
-		mWVPvResolution,
+		WVP,
+		W_V_P,
+		WVP_Color,
+		WVP_Resolution,
 	};
 
 	enum ConstantBufferScope
 	{
 		VertexShader,
 		PixelShader,
-		Both
+		Global
 	};
 
 	class Shader
@@ -57,7 +57,7 @@ namespace Directus
 
 		void Load(const std::string& filePath);
 
-		void AddDefine(const std::string& define);
+		void AddDefine(LPCSTR define);
 		void AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope);
 		void AddSampler(TextureSampler samplerType);
 
@@ -73,35 +73,35 @@ namespace Directus
 		void DrawIndexed(unsigned int indexCount);
 
 	private:
-		void SetBufferScope(std::shared_ptr<D3D11ConstantBuffer> buffer, unsigned int slot);
+		void SetBufferScope(D3D11ConstantBuffer* buffer, unsigned int slot);
 
-		struct Struct_mWVP
+		struct Struct_WVP
 		{
-			Math::Matrix mMVP;
+			Math::Matrix wvp;
 		};
 
-		struct Struct_mWmVmP
+		struct Struct_W_V_P
 		{
-			Math::Matrix mWorld;
-			Math::Matrix mView;
-			Math::Matrix mProjection;
+			Math::Matrix world;
+			Math::Matrix view;
+			Math::Matrix projection;
 		};
 
-		struct Struct_mWVPvColor
+		struct Struct_WVP_Color
 		{
-			Math::Matrix mMVP;
-			Math::Vector4 vColor;
+			Math::Matrix wvp;
+			Math::Vector4 color;
 		};
 
-		struct Struct_mWVP_vResolution
+		struct Struct_WVP_Resolution
 		{
-			Math::Matrix mMVP;
-			Math::Vector2 vResolution;
-			Math::Vector2 vPadding;
+			Math::Matrix wvp;
+			Math::Vector2 resolution;
+			Math::Vector2 padding;
 		};
 
-		std::shared_ptr<D3D11ConstantBuffer> m_constantBuffer;
-		std::shared_ptr<D3D11Shader> m_shader;
+		std::unique_ptr<D3D11ConstantBuffer> m_constantBuffer;
+		std::unique_ptr<D3D11Shader> m_shader;
 		Graphics* m_graphics;
 		ConstantBufferType m_bufferType;
 		ConstantBufferScope m_bufferScope;

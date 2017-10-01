@@ -35,6 +35,17 @@ using namespace std;
 
 namespace Directus
 {
+	wstring string_to_wstring(const string& string)
+	{
+		int slength = int(string.length()) + 1;
+		int len = MultiByteToWideChar(CP_ACP, 0, string.c_str(), slength, nullptr, 0);
+		wchar_t* buf = new wchar_t[len];
+		MultiByteToWideChar(CP_ACP, 0, string.c_str(), slength, buf, len);
+		wstring result(buf);
+		delete[] buf;
+		return result;
+	}
+
 	D3D11Shader::D3D11Shader(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
 	{
 		m_vertexShader = nullptr;
@@ -111,7 +122,7 @@ namespace Directus
 
 		if (!m_compiled)
 		{
-			LOG_ERROR("Can't set input layout of a non-compiled shader.");
+			LOG_ERROR("D3D11Shader: Can't set input layout of a non-compiled shader.");
 			return false;
 		}
 
@@ -133,7 +144,7 @@ namespace Directus
 		}
 		else
 		{
-			LOG_ERROR("Failed to create vertex input layout for " + FileSystem::GetFileNameFromFilePath(m_filePath) + ".");
+			LOG_ERROR("D3D11Shader: Failed to create vertex input layout for " + FileSystem::GetFileNameFromFilePath(m_filePath) + ".");
 		}
 
 		return m_layoutHasBeenSet;
@@ -143,7 +154,7 @@ namespace Directus
 	{
 		if (!m_graphics->GetDevice())
 		{
-			LOG_ERROR("Aborting sampler creation. Graphics device is not present.");
+			LOG_ERROR("D3D11Shader: Aborting sampler creation. Graphics device is not present.");
 			return false;
 		}
 
@@ -176,12 +187,8 @@ namespace Directus
 		}
 	}
 
-	void D3D11Shader::SetName(const string& name)
-	{
-		m_name = name;
-	}
-
-	void D3D11Shader::AddDefine(LPCSTR name, LPCSTR definition) // All overloads resolve to this
+	// All overloads resolve to this
+	void D3D11Shader::AddDefine(LPCSTR name, LPCSTR definition)
 	{
 		D3D_SHADER_MACRO newMacro;
 
@@ -189,6 +196,11 @@ namespace Directus
 		newMacro.Definition = definition;
 
 		m_macros.push_back(newMacro);
+	}
+
+	void D3D11Shader::AddDefine(LPCSTR name, bool definition)
+	{
+		AddDefine(name, m_definitionPool.insert(to_string((int)definition)).first->c_str());
 	}
 
 	//= COMPILATION ================================================================================================================================================================================
@@ -202,10 +214,10 @@ namespace Directus
 
 		// Create the shader from the buffer.
 		ID3D10Blob* vsb = *vsBlob;
-		HRESULT result = m_graphics->GetDevice()->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
+		auto result = m_graphics->GetDevice()->CreateVertexShader(vsb->GetBufferPointer(), vsb->GetBufferSize(), nullptr, vertexShader);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create vertex shader.");
+			LOG_ERROR("D3D11Shader: Failed to create vertex shader.");
 			return false;
 		}
 
@@ -217,7 +229,7 @@ namespace Directus
 		if (!m_graphics->GetDevice())
 			return false;
 
-		HRESULT result = CompileShader(path, macros, entrypoint, profile, psBlob);
+		auto result = CompileShader(path, macros, entrypoint, profile, psBlob);
 		if (FAILED(result))
 			return false;
 
@@ -226,37 +238,25 @@ namespace Directus
 		result = m_graphics->GetDevice()->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, pixelShader);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create pixel shader.");
+			LOG_ERROR("D3D11Shader: Failed to create pixel shader.");
 			return false;
 		}
 
 		return true;
 	}
 
-	wstring s2ws(const string& s)
-	{
-		int len;
-		int slength = int(s.length()) + 1;
-		len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, nullptr, 0);
-		wchar_t* buf = new wchar_t[len];
-		MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
-		wstring r(buf);
-		delete[] buf;
-		return r;
-	}
-
 	bool D3D11Shader::CompileShader(string filePath, D3D_SHADER_MACRO* macros, LPCSTR entryPoint, LPCSTR target, ID3DBlob** shaderBlobOut)
 	{
 		unsigned compileFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
-//#ifdef DEBUG
-			compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
-//#endif
+		//#ifdef DEBUG
+		compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
+		//#endif
 
 		// Load and compile from file
 		ID3DBlob* errorBlob = nullptr;
 		ID3DBlob* shaderBlob = nullptr;
-		HRESULT result = D3DCompileFromFile(
-			s2ws(filePath).c_str(),
+		auto result = D3DCompileFromFile(
+			string_to_wstring(filePath).c_str(),
 			macros,
 			D3D_COMPILE_STANDARD_FILE_INCLUDE,
 			entryPoint,
@@ -279,11 +279,11 @@ namespace Directus
 			}
 			else if (result == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 			{
-				LOG_ERROR("Failed to find shader \"" + shaderName + " \" with path \"" + filePath + "\".");
+				LOG_ERROR("D3D11Shader: Failed to find shader \"" + shaderName + " \" with path \"" + filePath + "\".");
 			}
 			else
 			{
-				LOG_ERROR("An unknown error occured when trying to load and compile \"" + shaderName + "\"");
+				LOG_ERROR("D3D11Shader: An unknown error occured when trying to load and compile \"" + shaderName + "\"");
 			}
 		}
 
@@ -321,7 +321,7 @@ namespace Directus
 		ID3D11ShaderReflection* reflector = nullptr;
 		if (FAILED(D3DReflect(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), IID_ID3D11ShaderReflection, (void**)&reflector)))
 		{
-			LOG_ERROR("Failed to reflect shader.");
+			LOG_ERROR("D3D11Shader: Failed to reflect shader.");
 			return inputLayoutDesc;
 		}
 

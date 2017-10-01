@@ -105,8 +105,7 @@ namespace Directus
 		void DebugDraw();
 		const Math::Vector4& GetClearColor();
 		//===================================
-
-		std::unique_ptr<Rectangle> m_fullScreenRect;
+	
 		std::unique_ptr<GBuffer> m_GBuffer;
 
 		// GAMEOBJECTS ========================
@@ -120,13 +119,7 @@ namespace Directus
 		std::unique_ptr<D3D11RenderTexture> m_renderTexPong;
 		//==================================================
 
-		//= MISC =========================================
-		std::vector<ID3D11ShaderResourceView*> m_texArray;
-		ID3D11ShaderResourceView* m_texEnvironment;
-		std::unique_ptr<Texture> m_texNoiseMap;
-		//================================================
-
-		//= SHADERS ==========================================
+		//= SHADERS =====================================
 		std::unique_ptr<DeferredShader> m_shaderDeferred;
 		std::unique_ptr<Shader> m_shaderDepth;
 		std::unique_ptr<Shader> m_shaderLine;
@@ -136,15 +129,22 @@ namespace Directus
 		std::unique_ptr<Shader> m_shaderFXAA;
 		std::unique_ptr<Shader> m_shaderSharpening;
 		std::unique_ptr<Shader> m_shaderBlur;
-		//====================================================
+		//==============================================
 
-		//= DEBUG ===============================
+		//= DEBUG ==================================
 		std::unique_ptr<Font> m_font;
 		std::unique_ptr<Grid> m_grid;
 		std::unique_ptr<Texture> m_gizmoLightTex;
 		std::unique_ptr<Rectangle> m_gizmoLightRect;
 		unsigned long m_renderFlags;
-		//=======================================
+		//==========================================
+
+		//= MISC =========================================
+		std::vector<ID3D11ShaderResourceView*> m_texArray;
+		ID3D11ShaderResourceView* m_texEnvironment;
+		std::unique_ptr<Texture> m_texNoiseMap;
+		std::unique_ptr<Rectangle> m_fullScreenRect;
+		//================================================
 
 		//= PREREQUISITES ================================
 		Camera* m_camera;

@@ -100,14 +100,14 @@ namespace Directus
 			indices.push_back(i);
 		}
 
-		m_vertexBuffer = make_shared<D3D11VertexBuffer>(m_graphics);
+		m_vertexBuffer = make_unique<D3D11VertexBuffer>(m_graphics);
 		if (!m_vertexBuffer->Create(vertices))
 		{
 			LOG_ERROR("Rectangle: Failed to create vertex buffer.");
 			return false;
 		}
 
-		m_indexBuffer = make_shared<D3D11IndexBuffer>(m_graphics);
+		m_indexBuffer = make_unique<D3D11IndexBuffer>(m_graphics);
 		if (!m_indexBuffer->Create(indices))
 		{
 			LOG_ERROR("Rectangle: Failed to create index buffer.");
@@ -124,8 +124,6 @@ namespace Directus
 
 		m_vertexBuffer->SetIA();
 		m_indexBuffer->SetIA();
-
-		// Set the type of primitive that should be rendered from this vertex buffer
 		m_graphics->SetPrimitiveTopology(TriangleList);
 
 		return true;
