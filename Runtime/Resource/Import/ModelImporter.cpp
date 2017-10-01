@@ -584,30 +584,30 @@ namespace Directus
 		return NOT_ASSIGNED;
 	}
 
-	string ModelImporter::TryPathWithMultipleExtensions(const string& fullpath)
+	string ModelImporter::TryPathWithMultipleExtensions(const string& filePath)
 	{
 		// Remove extension
-		string fileName = FileSystem::GetFileNameNoExtensionFromFilePath(fullpath);
+		string filePathNoExt = FileSystem::GetFilePathWithoutExtension(filePath);
 
 		// Check if the file exists using all engine supported extensions
 		auto supportedFormats = FileSystem::GetSupportedImageFormats();
 		for (unsigned int i = 0; i < supportedFormats.size(); i++)
 		{
-			string fileFormat = supportedFormats[i];
-			string fileFormatUppercase = FileSystem::ConvertToUppercase(fileFormat);
+			string newFilePath = filePathNoExt + supportedFormats[i];
+			string newFilePathUpper = filePathNoExt + FileSystem::ConvertToUppercase(supportedFormats[i]);
 
-			if (FileSystem::FileExists(fileName + fileFormat))
+			if (FileSystem::FileExists(newFilePath))
 			{
-				return fileName + fileFormat;
+				return newFilePath;
 			}
 
-			if (FileSystem::FileExists(fileName + fileFormatUppercase))
+			if (FileSystem::FileExists(newFilePathUpper))
 			{
-				return fileName + fileFormatUppercase;
+				return newFilePathUpper;
 			}
 		}
 
-		return fullpath;
+		return filePath;
 	}
 
 	void ModelImporter::CalculateNodeCount(aiNode* node, int& count)
