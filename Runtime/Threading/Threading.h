@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	//= TASK ==================================================================================
+	//= TASK ===============================================================================
 	class Task
 	{
 	public:
@@ -43,7 +43,7 @@ namespace Directus
 	private:
 		functionType m_function;
 	};
-	//=========================================================================================
+	//======================================================================================
 
 	class Threading : public Subsystem
 	{

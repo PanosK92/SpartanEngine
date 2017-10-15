@@ -37,8 +37,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Engine.h"
 //==============================================================================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace Directus
-{
+{ 
 	Physics::Physics(Context* context) : Subsystem(context)
 	{
 		m_internalFPS = 60.0f;
@@ -47,7 +51,8 @@ namespace Directus
 		m_simulating = false;
 
 		// Subscribe to update event
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Physics::Step);
+		EventSystem::Subscribe(EVENT_UPDATE, bind(&Physics::Step, this));
+		EventSystem::Subscribe(EVENT_CLEAR_SUBSYSTEMS, bind(&Physics::Clear, this));
 	}
 
 	Physics::~Physics()
@@ -103,7 +108,7 @@ namespace Directus
 		m_simulating = false;
 	}
 
-	void Physics::Reset()
+	void Physics::Clear()
 	{
 		if (!m_world)
 			return;

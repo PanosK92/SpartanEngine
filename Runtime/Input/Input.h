@@ -132,7 +132,7 @@ namespace Directus
 	private:
 		Math::Vector2 m_mousePos;
 		Math::Vector2 m_mousePosDelta;
-		std::shared_ptr<DX8Input> m_DX8Input;
+		std::unique_ptr<DX8Input> m_DX8Input;
 		void* m_handle;
 		void* m_hinstance;
 		bool m_initialized;

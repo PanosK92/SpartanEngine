@@ -38,14 +38,14 @@ namespace Directus
 	{
 	public:
 		ResourceManager(Context* context);
-		~ResourceManager() { Unload(); }
+		~ResourceManager() { Clear(); }
 
 		//= Subsystem ============
 		virtual bool Initialize();
 		//========================
 
 		// Unloads all resources
-		void Unload() { m_resourceCache->Unload(); }
+		void Clear() { m_resourceCache->Unload(); }
 
 		// Loads a resource and adds it to the resource cache
 		template <class T>

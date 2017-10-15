@@ -49,7 +49,7 @@ namespace Directus
 		virtual bool Initialize();
 		//========================
 
-		void Reset();
+		void Clear();
 		asIScriptEngine* GetAsIScriptEngine();
 
 		// Contexts

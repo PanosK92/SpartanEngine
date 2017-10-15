@@ -19,10 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ==========================
 #include "ResourceManager.h"
 #include "../Core/GameObject.h"
-//=============================
+#include "../EventSystem/EventSystem.h"
+//=====================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -34,6 +35,7 @@ namespace Directus
 	ResourceManager::ResourceManager(Context* context) : Subsystem(context)
 	{
 		m_resourceCache = nullptr;
+		EventSystem::Subscribe(EVENT_CLEAR_SUBSYSTEMS, bind(&ResourceManager::Clear, this));
 	}
 
 	bool ResourceManager::Initialize()

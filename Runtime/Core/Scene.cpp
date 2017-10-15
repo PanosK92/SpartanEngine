@@ -21,23 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Scene.h"
+#include "Timer.h"
+#include "../Core/Context.h"
 #include "../IO/StreamIO.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
-#include "../Graphics//Renderer.h"
 #include "../Components/Transform.h"
-#include "../Components/MeshRenderer.h"
 #include "../Components/Camera.h"
+#include "../Components/Light.h"
+#include "../Components/Script.h"
 #include "../Components/LineRenderer.h"
 #include "../Components/Skybox.h"
-#include "../Components/Script.h"
 #include "../Components/MeshFilter.h"
-#include "../Physics/Physics.h"
+#include "../Components/MeshRenderer.h"
 #include "../EventSystem/EventSystem.h"
-#include "../Core/Context.h"
 #include "../Resource/ResourceManager.h"
-#include "Timer.h"
-#include "../Components/Light.h"
 //======================================
 
 //= NAMESPACES ================
@@ -51,12 +49,15 @@ namespace Directus
 	{
 		m_ambientLight = Vector3::Zero;
 		m_fps = 0.0f;
-		m_timePassed = 0.0f;	
+		m_timePassed = 0.0f;
 		m_frameCount = 0;
 		m_status = NOT_ASSIGNED;
 		m_jobStep = 0.0f;
 		m_jobSteps = 0.0f;
 		m_isLoading = false;
+
+		EventSystem::Subscribe(EVENT_UPDATE, bind(&Scene::Resolve, this));
+		EventSystem::Subscribe(EVENT_RENDER, bind(&Scene::Update, this));
 	}
 
 	Scene::~Scene()
@@ -70,9 +71,6 @@ namespace Directus
 		CreateSkybox();
 		CreateDirectionalLight();
 		Resolve();
-
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, this, Scene::Resolve);
-		SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Scene::Update);
 
 		return true;
 	}
@@ -111,28 +109,20 @@ namespace Directus
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
 
-		m_lights.clear();
-		m_lights.shrink_to_fit();
-
-		// Clear the resource cache
-		m_context->GetSubsystem<ResourceManager>()->Unload();
-
-		// Clear/Reset subsystems that allocate some things
-		m_context->GetSubsystem<Scripting>()->Reset();
-		m_context->GetSubsystem<Physics>()->Reset();
-		m_context->GetSubsystem<Renderer>()->Clear();
+		// Clear subsystems
+		FIRE_EVENT(EVENT_CLEAR_SUBSYSTEMS);
 	}
 	//=========================================================================================================
 
 	//= I/O ===================================================================================================
 	void Scene::SaveToFileAsync(const string& filePath)
 	{
-		m_context->GetSubsystem<Threading>()->AddTask(std::bind(&Scene::SaveToFile, this, filePath));
+		m_context->GetSubsystem<Threading>()->AddTask(bind(&Scene::SaveToFile, this, filePath));
 	}
 
 	void Scene::LoadFromFileAsync(const string& filePath)
 	{
-		m_context->GetSubsystem<Threading>()->AddTask(std::bind(&Scene::LoadFromFile, this, filePath));
+		m_context->GetSubsystem<Threading>()->AddTask(bind(&Scene::LoadFromFile, this, filePath));
 	}
 
 	bool Scene::SaveToFile(const string& filePathIn)
@@ -376,35 +366,38 @@ namespace Directus
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
 
-		m_lights.clear();
-		m_lights.shrink_to_fit();
-
+		bool hasCamera = false;
+		bool hasSkybox = false;	
 		for (const auto& gameObject : m_gameObjects)
 		{
+			hasCamera = false;
+			hasSkybox = false;
+
 			// Find camera
 			if (gameObject->HasComponent<Camera>())
 			{
 				m_mainCamera = gameObject;
+				hasCamera = true;
 			}
 
 			// Find skybox
 			if (gameObject->HasComponent<Skybox>())
 			{
 				m_skybox = gameObject;
+				hasSkybox = true;
 			}
 
 			// Find renderables
-			if (gameObject->HasComponent<MeshRenderer>() && gameObject->HasComponent<MeshFilter>())
+			if ((gameObject->HasComponent<MeshRenderer>() && gameObject->HasComponent<MeshFilter>()) || 
+				hasCamera ||
+				hasSkybox ||
+				gameObject->HasComponent<Light>())
 			{
 				m_renderables.push_back(gameObject);
 			}
-
-			// Find lights
-			if (gameObject->HasComponent<Light>())
-			{
-				m_lights.push_back(gameObject->GetComponent<Light>());
-			}
 		}
+
+		FIRE_EVENT_DATA(EVENT_SCENE_UPDATED_RENDERABLES, VectorToVariant(m_renderables));
 	}
 	//===================================================================================================
 
@@ -418,7 +411,6 @@ namespace Directus
 	{
 		return m_ambientLight;
 	}
-
 	//======================================================================================================
 
 	//= COMMON GAMEOBJECT CREATION =========================================================================

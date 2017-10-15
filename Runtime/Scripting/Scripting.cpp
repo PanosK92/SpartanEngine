@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES =================================
 #include "Scripting.h"
 #include <angelscript.h>
 #include <scriptstdstring/scriptstdstring.h>
@@ -29,7 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
-//==========================================
+#include "../EventSystem/EventSystem.h"
+//===========================================
 
 #define AS_USE_STLNAMES = 1
 
@@ -38,11 +39,12 @@ namespace Directus
 	Scripting::Scripting(Context* context) : Subsystem(context)
 	{
 		m_scriptEngine = nullptr;
+		EventSystem::Subscribe(EVENT_CLEAR_SUBSYSTEMS, bind(&Scripting::Clear, this));
 	}
 
 	Scripting::~Scripting()
 	{
-		Reset();
+		Clear();
 
 		if (m_scriptEngine)
 		{
@@ -75,7 +77,7 @@ namespace Directus
 		return true;
 	}
 
-	void Scripting::Reset()
+	void Scripting::Clear()
 	{
 		for (auto n = 0; n < m_contexts.size(); n++)
 			m_contexts[n]->Release();

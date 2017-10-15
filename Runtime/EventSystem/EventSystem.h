@@ -21,63 +21,48 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ===============
+#include <map>
 #include <vector>
-#include <memory>
-#include "Subscriber.h"
-//=====================
+#include <functional>
+#include "../Core/Variant.h"
+//==========================
 
 /*
 HOW TO USE
-===================================================================================================================
-To subscribe a function to an event						-> SUBSCRIBE_TO_EVENT(SOME_EVENT, Class::Func, this);
-To subscribe a function (with parameters) to an event	-> SUBSCRIBE_TO_EVENT(SOME_EVENT, Class::Func, this, args);
-To unsubscribe a function from an event					-> UNSUBSCRIBE_FROM_EVENT(SOME_EVENT, Class::Func, this);
+=============================================================================================================
+To subscribe a function to an event						-> SUBSCRIBE_TO_EVENT(SOME_EVENT, this, Class::Func);
 To fire an event										-> FIRE_EVENT(SOME_EVENT);
-===================================================================================================================
+To fire an event with data								-> FIRE_EVENT(SOME_EVENT, data);
+=============================================================================================================
 */
 
 //= EVENTS =========================================================================
-#define EVENT_UPDATE				0	// Fired when it's time to update the engine
-#define EVENT_RENDER				1	// Fired when it's time to do rendering
+#define EVENT_UPDATE						0	// Fired when it's time to update the engine
+#define EVENT_RENDER						1	// Fired when it's time to do rendering
+#define EVENT_CLEAR_SUBSYSTEMS				2
+#define EVENT_SCENE_UPDATED_RENDERABLES		3
+#define EVENT_SCENE_UPDATED_CAMERA			4
 //==================================================================================
 
-//= MACROS =======================================================================================================================
-#define SUBSCRIBE_TO_EVENT(signalID, instance, function)		EventSystem::Subscribe(signalID, std::bind(&function, instance))
-#define UNSUBSCRIBE_FROM_EVENT(signalID, instance, function)	EventSystem::Unsubscribe(signalID, std::bind(&function, instance))
-#define FIRE_EVENT(signalID)									EventSystem::Fire(signalID)
-//================================================================================================================================
+//= MACROS ================================================================================================================================================
+#define FIRE_EVENT(signalID)										EventSystem::Fire(signalID, 0)
+#define FIRE_EVENT_DATA(signalID, data)								EventSystem::Fire(signalID, data)
+#define SUBSCRIBE_TO_EVENT(signalID, instance, function)			EventSystem::Subscribe(signalID, std::bind(&function, instance, std::placeholders::_1))
+//=========================================================================================================================================================
 
 namespace Directus
 {
 	class DLL_API EventSystem
 	{
 	public:
-		template <typename Function>
-		static void Subscribe(int eventID, Function&& subscriber)
-		{
-			AddSubscriber(std::make_shared<Subscriber>(eventID, std::bind(std::forward<Function>(subscriber))));
-		}
+		typedef std::function<void(Variant)> subscriber;
 
-		template <typename Function>
-		static void Unsubscribe(int eventID, Function&& subscriber)
-		{
-			RemoveSubscriber(eventID, getAddress(subscriber));
-		}
-
-		static void Fire(int eventID)
-		{
-			CallSubscriber(eventID);
-		}
-
+		static void Subscribe(int eventID, subscriber&& func);
+		static void Fire(int eventID, Variant data = 0);
 		static void Clear();
 
 	private:
-		static std::vector<std::shared_ptr<Subscriber>> m_subscribers;
-
-		// Hiding implementations on purpose to allow cross-dll usage without linking errors
-		static void AddSubscriber(std::shared_ptr<Subscriber> subscriber);
-		static void RemoveSubscriber(int eventID, std::size_t functionAddress);
-		static void CallSubscriber(int eventID);
+		static std::map<uint8_t, std::vector<subscriber>> m_subscribers;
 	};
 }

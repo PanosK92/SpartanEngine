@@ -199,10 +199,10 @@ namespace Directus
 
 	Matrix Light::ComputeOrthographicProjectionMatrix(int cascadeIndex)
 	{
-		if (cascadeIndex >= m_shadowMaps.size())
+		if (!g_context || cascadeIndex >= m_shadowMaps.size())
 			return Matrix::Identity;
 
-		sharedGameObj mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera().lock();
+		auto mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get();
 		Vector3 centerPos = mainCamera ? mainCamera->GetTransform()->GetPosition() : Vector3::Zero;
 		return m_shadowMaps[cascadeIndex]->ComputeProjectionMatrix(cascadeIndex, centerPos, ComputeViewMatrix());
 	}

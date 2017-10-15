@@ -19,8 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES ===========
 #include "EventSystem.h"
 //======================
@@ -31,41 +29,27 @@ using namespace std;
 
 namespace Directus
 {
-	vector<shared_ptr<Subscriber>> EventSystem::m_subscribers;
+	typedef function<void(Variant)> subscriber;
+	map<uint8_t, vector<subscriber>> EventSystem::m_subscribers;
+
+	void EventSystem::Subscribe(int eventID, subscriber&& func)
+	{
+		m_subscribers[eventID].push_back(forward<subscriber>(func));
+	}
+
+	void EventSystem::Fire(int eventID, Variant data)
+	{
+		if (m_subscribers.find(eventID) == m_subscribers.end())
+			return;
+
+		for (const auto& subscriber : m_subscribers[eventID])
+		{
+			subscriber(data);
+		}
+	}
 
 	void EventSystem::Clear()
 	{
 		m_subscribers.clear();
-		m_subscribers.shrink_to_fit();
-	}
-
-	void EventSystem::AddSubscriber(shared_ptr<Subscriber> subscriber)
-	{
-		m_subscribers.push_back(subscriber);
-	}
-
-	void EventSystem::RemoveSubscriber(int eventID, size_t functionAddress)
-	{
-		for (auto it = m_subscribers.begin(); it != m_subscribers.end();)
-		{
-			auto subscriber = *it;
-			if (subscriber->GetEventID() == eventID && subscriber->GetAddress() == functionAddress)
-			{
-				it = m_subscribers.erase(it);
-				return;
-			}
-			++it;
-		}
-	}
-
-	void EventSystem::CallSubscriber(int eventID)
-	{
-		for (const auto& subscriber : m_subscribers)
-		{
-			if (subscriber->GetEventID() == eventID)
-			{
-				subscriber->Call();
-			}
-		}
 	}
 }

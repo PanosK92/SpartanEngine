@@ -49,7 +49,7 @@ namespace Directus
 		void Update();
 		void Clear();
 
-		//= IO ========================================================================
+		//= IO =============================================
 		void SaveToFileAsync(const std::string& filePath);
 		void LoadFromFileAsync(const std::string& filePath);
 		bool SaveToFile(const std::string& filePath);
@@ -67,14 +67,12 @@ namespace Directus
 		void RemoveGameObject(weakGameObj gameObject);
 		void RemoveSingleGameObject(weakGameObj gameObject);
 
-		//= SCENE RESOLUTION  =========================================================
+		//= SCENE RESOLUTION  ==============================
 		void Resolve();
 		const std::vector<weakGameObj>& GetRenderables() { return m_renderables; }
-		const std::vector<Light*>& GetLights() { return m_lights; }
-		weakGameObj GetSkybox() { return m_skybox; }
 		weakGameObj GetMainCamera() { return m_mainCamera; }
 
-		//= MISC ======================================================================
+		//= MISC =======================================
 		void SetAmbientLight(float x, float y, float z);
 		Math::Vector3 GetAmbientLight();
 
@@ -83,7 +81,6 @@ namespace Directus
 		const std::string& GetStatus() { return m_status; }
 		float GetPercentage() { return m_jobStep / m_jobSteps; }
 		bool IsLoading() { return m_isLoading; }
-		//======================================================
 
 	private:
 		//= COMMON GAMEOBJECT CREATION ======
@@ -93,13 +90,12 @@ namespace Directus
 		//===================================
 
 		//= HELPER FUNCTIONS ====
-		void ResetLoadingStats();	
+		void ResetLoadingStats();
 		void CalculateFPS();
 		//=======================
 
 		std::vector<sharedGameObj> m_gameObjects;
 		std::vector<weakGameObj> m_renderables;
-		std::vector<Light*> m_lights;
 
 		weakGameObj m_mainCamera;
 		weakGameObj m_skybox;
