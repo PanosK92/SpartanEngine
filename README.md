@@ -55,5 +55,3 @@ Note: The download link will be updated whenever any features that are under dev
 
 ### License
 - Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
-
-Devoted to my father.

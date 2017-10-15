@@ -50,6 +50,7 @@ namespace Directus
 	class D3D11GraphicsDevice;
 	class Font;
 	class Grid;
+	class Variant;
 
 	namespace Math
 	{
@@ -96,15 +97,15 @@ namespace Directus
 		const std::vector<weakGameObj>& GetRenderables() { return m_renderables; }
 
 	private:
-		//= HELPER FUNCTIONS =================
-		void AcquirePrerequisites();
+		//= HELPER FUNCTIONS ========================
+		void AcquireRenderables(Variant renderables);
 		void DirectionalLightDepthPass();
 		void GBufferPass();
 		void DeferredPass();
 		void PostProcessing();
 		void DebugDraw();
 		const Math::Vector4& GetClearColor();
-		//===================================
+		//===========================================
 	
 		std::unique_ptr<GBuffer> m_GBuffer;
 

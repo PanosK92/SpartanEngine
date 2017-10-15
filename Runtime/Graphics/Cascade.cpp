@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Camera.h"
 #include "../Core/Context.h"
 #include "D3D11/D3D11RenderTexture.h"
+#include "../Components/Transform.h"
 //===================================
 
 //= NAMESPACES ================
@@ -91,7 +92,7 @@ namespace Directus
 	{
 		if (!m_camera)
 		{
-			LOG_WARNING("Cascade split can't be computed, camera is not present.");
+			LOG_WARNING("Cascade: Split can't be computed, camera is not present.");
 			return 0.0f;
 		}
 

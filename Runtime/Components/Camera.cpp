@@ -223,6 +223,9 @@ namespace Directus
 			if (gameObj._Get()->HasComponent<Skybox>())
 				continue;
 
+			if (!gameObj._Get()->HasComponent<MeshFilter>())
+				continue;
+
 			BoundingBox box = gameObj._Get()->GetComponent<MeshFilter>()->GetBoundingBoxTransformed();
 
 			// Ignore collision if we are inside the bounding box

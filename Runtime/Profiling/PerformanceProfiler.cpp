@@ -67,7 +67,7 @@ namespace Directus
 		m_renderTimer = make_unique<Stopwatch>();
 
 		// Subscribe to update event
-		EventSystem::Subscribe(EVENT_UPDATE, &PerformanceProfiler::UpdateMetrics);
+		EventSystem::Subscribe(EVENT_UPDATE, std::bind(&PerformanceProfiler::UpdateMetrics));
 	}
 
 	void PerformanceProfiler::RenderingStarted()

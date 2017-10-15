@@ -50,7 +50,7 @@ namespace Directus
 		//========================
 
 		void Step();
-		void Reset();
+		void Clear();
 		void DebugDraw();
 
 		btDiscreteDynamicsWorld* GetWorld();

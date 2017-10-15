@@ -26,7 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Material.h"
 #include "Mesh.h"
 #include "Grid.h"
+#include "Shader.h"
 #include "D3D11/D3D11RenderTexture.h"
+#include "DeferredShaders/ShaderVariation.h"
+#include "DeferredShaders/DeferredShader.h"
+#include "../Core/GameObject.h"
+#include "../Core/Context.h"
 #include "../Components/MeshFilter.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshRenderer.h"
@@ -36,15 +41,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsDebugDraw.h"
 #include "../Logging/Log.h"
 #include "../EventSystem/EventSystem.h"
-#include "../Core/Scene.h"
-#include "../Core/GameObject.h"
-#include "../Core/Context.h"
 #include "../Resource/ResourceManager.h"
 #include "../Font/Font.h"
 #include "../Profiling/PerformanceProfiler.h"
-#include "DeferredShaders/ShaderVariation.h"
-#include "DeferredShaders/DeferredShader.h"
-#include "Shader.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -75,8 +74,10 @@ namespace Directus
 		m_renderFlags |= Render_Performance_Metrics;
 		m_renderFlags |= Render_Light;
 
-		// Subscribe to render event
-		SUBSCRIBE_TO_EVENT(EVENT_RENDER, this, Renderer::Render);
+		// Subscribe to events
+		EventSystem::Subscribe(EVENT_RENDER, bind(&Renderer::Render, this));
+		EventSystem::Subscribe(EVENT_CLEAR_SUBSYSTEMS, bind(&Renderer::Clear, this));
+		EventSystem::Subscribe(EVENT_SCENE_UPDATED_RENDERABLES, bind(&Renderer::AcquireRenderables, this, placeholders::_1));
 	}
 
 	Renderer::~Renderer()
@@ -90,7 +91,7 @@ namespace Directus
 		m_graphics = m_context->GetSubsystem<Graphics>();
 		if (!m_graphics->IsInitialized())
 		{
-			LOG_ERROR("Renderer: Can't initialize, the Graphics subsystem uninitialized.");
+			LOG_ERROR("Renderer: Can't initialize, Graphics subsystem uninitialized.");
 			return false;
 		}
 
@@ -179,7 +180,7 @@ namespace Directus
 		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
-	
+
 		// Gizmo icons
 		m_gizmoTexLightDirectional = make_unique<Texture>(m_context);
 		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
@@ -221,7 +222,6 @@ namespace Directus
 			return;
 
 		PerformanceProfiler::RenderingStarted();
-		AcquirePrerequisites();
 
 		// If there is no camera, clear to black and present
 		if (!m_camera)
@@ -306,61 +306,66 @@ namespace Directus
 
 		m_lights.clear();
 		m_lights.shrink_to_fit();
+
 		m_directionalLight = nullptr;
+		m_skybox = nullptr;
+		m_lineRenderer = nullptr;
+		m_camera = nullptr;
 	}
 
-	void Renderer::AcquirePrerequisites()
+	void Renderer::AcquireRenderables(Variant renderables)
 	{
 		Clear();
-		Scene* scene = m_context->GetSubsystem<Scene>();
-		m_renderables = scene->GetRenderables();
-		m_lights = scene->GetLights();
 
-		// Get directional light
-		for (const auto& light : m_lights)
+		auto renderablesVec = VariantToVector<weakGameObj>(renderables);
+
+		for (const auto& renderable : renderablesVec)
 		{
-			if (light->GetLightType() == Directional)
-			{
-				m_directionalLight = light;
-				break;
-			}
-		}
+			GameObject* gameObject = renderable._Get();
+			if (!gameObject)
+				continue;
 
-		// Get camera and camera related properties
-		weakGameObj camera = scene->GetMainCamera();
-		if (!camera.expired())
-		{
-			m_camera = camera.lock()->GetComponent<Camera>();
-
-			weakGameObj skybox = scene->GetSkybox();
-			if (!skybox.expired())
+			// Get meshes
+			if (gameObject->HasComponent<MeshRenderer>() && gameObject->HasComponent<MeshFilter>())
 			{
-				m_skybox = skybox.lock()->GetComponent<Skybox>();
-				m_lineRenderer = skybox.lock()->GetComponent<LineRenderer>(); // Hush hush...
+				m_renderables.push_back(renderable);
 			}
 
-			mView = m_camera->GetViewMatrix();
-			mProjection = m_camera->GetProjectionMatrix();
-			mViewProjection = mView * mProjection;
-			mOrthographicProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
-			mBaseView = m_camera->GetBaseViewMatrix();
-			m_nearPlane = m_camera->GetNearPlane();
-			m_farPlane = m_camera->GetFarPlane();
-		}
-		else
-		{
-			m_camera = nullptr;
-			m_skybox = nullptr;
-			m_lineRenderer = nullptr;
+			// Get lights
+			if (auto light = gameObject->GetComponent<Light>())
+			{
+				m_lights.push_back(light);
+				if (light->GetLightType() == Directional)
+				{
+					m_directionalLight = light;
+				}
+			}
+
+			// Get skybox
+			if (auto skybox = gameObject->GetComponent<Skybox>())
+			{
+				m_skybox = skybox;
+				m_lineRenderer = gameObject->GetComponent<LineRenderer>(); // Hush hush...
+			}
+
+			// Get camera
+			if (auto camera = gameObject->GetComponent<Camera>())
+			{
+				m_camera = camera;
+				mView = m_camera->GetViewMatrix();
+				mProjection = m_camera->GetProjectionMatrix();
+				mViewProjection = mView * mProjection;
+				mOrthographicProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
+				mBaseView = m_camera->GetBaseViewMatrix();
+				m_nearPlane = m_camera->GetNearPlane();
+				m_farPlane = m_camera->GetFarPlane();
+			}
 		}
 	}
 
 	void Renderer::DirectionalLightDepthPass()
 	{
-		if (!m_directionalLight)
-			return;
-
-		if (m_directionalLight->GetShadowType() == No_Shadows)
+		if (!m_directionalLight || m_directionalLight->GetShadowType() == No_Shadows)
 			return;
 
 		//m_graphics->SetCullMode(CullFront);
@@ -500,18 +505,15 @@ namespace Directus
 					shader._Get()->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
 
 					// Set mesh buffer
-					if (meshFilter->HasMesh())
+					if (meshFilter->HasMesh() && meshFilter->SetBuffers())
 					{
-						if (meshFilter->SetBuffers())
-						{
-							// Set face culling (changes only if required)
-							m_graphics->SetCullMode(objMaterial->GetCullMode());
+						// Set face culling (changes only if required)
+						m_graphics->SetCullMode(objMaterial->GetCullMode());
 
-							// Render the mesh, finally!				
-							meshRenderer->Render(objMesh->GetIndexCount());
+						// Render the mesh, finally!				
+						meshRenderer->Render(objMesh->GetIndexCount());
 
-							PerformanceProfiler::RenderingMesh();
-						}
+						PerformanceProfiler::RenderingMesh();
 					}
 				} // GAMEOBJECT/MESH ITERATION
 
@@ -528,20 +530,17 @@ namespace Directus
 		m_graphics->SetCullMode(CullBack);
 
 		//= SHADOW BLUR ========================================
-		if (m_directionalLight)
+		if (m_directionalLight && m_directionalLight->GetShadowType() == Soft_Shadows)
 		{
-			if (m_directionalLight->GetShadowType() == Soft_Shadows)
-			{
-				// Set pong texture as render target
-				m_renderTexPong->SetAsRenderTarget();
-				m_renderTexPong->Clear(GetClearColor());
+			// Set pong texture as render target
+			m_renderTexPong->SetAsRenderTarget();
+			m_renderTexPong->Clear(GetClearColor());
 
-				// BLUR
-				m_shaderBlur->Set();
-				m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
-				m_shaderBlur->SetTexture(m_GBuffer->GetShaderResource(1), 0); // Normal tex but shadows are in alpha channel
-				m_shaderBlur->DrawIndexed(m_fullScreenRect->GetIndexCount());
-			}
+			// BLUR
+			m_shaderBlur->Set();
+			m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
+			m_shaderBlur->SetTexture(m_GBuffer->GetShaderResource(1), 0); // Normal tex but shadows are in alpha channel
+			m_shaderBlur->DrawIndexed(m_fullScreenRect->GetIndexCount());
 		}
 		//=====================================================
 
@@ -700,7 +699,7 @@ namespace Directus
 		if (m_renderFlags & Render_Light)
 		{
 			for (const auto* light : m_lights)
-			{				
+			{
 				Vector3 lightWorldPos = light->g_transform->GetPosition();
 				Vector3 cameraWorldPos = m_camera->g_transform->GetPosition();
 
@@ -732,7 +731,7 @@ namespace Directus
 				{
 					lightTex = m_gizmoTexLightSpot.get();
 				}
-				
+
 				// Construct appropriate rectangle
 				float texWidth = lightTex->GetWidth() * scale;
 				float texHeight = lightTex->GetHeight() * scale;
