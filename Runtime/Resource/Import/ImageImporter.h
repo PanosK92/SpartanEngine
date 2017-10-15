@@ -95,8 +95,7 @@ namespace Directus
 		int GetChannels() { return m_channels; }
 		//===============================================================
 
-	private:
-		
+	private:	
 		bool GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, std::vector<unsigned char>* data);
 		void GenerateMipChainFromFIBITMAP(FIBITMAP* original, std::vector<std::vector<unsigned char>>*);
 		bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);

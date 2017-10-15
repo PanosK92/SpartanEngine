@@ -51,8 +51,8 @@ namespace Directus
 		m_simulating = false;
 
 		// Subscribe to update event
-		EventSystem::Subscribe(EVENT_UPDATE, bind(&Physics::Step, this));
-		EventSystem::Subscribe(EVENT_CLEAR_SUBSYSTEMS, bind(&Physics::Clear, this));
+		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Step));
+		SUBSCRIBE_TO_EVENT(EVENT_CLEAR_SUBSYSTEMS, EVENT_HANDLER(Clear));
 	}
 
 	Physics::~Physics()

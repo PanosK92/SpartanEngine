@@ -75,9 +75,9 @@ namespace Directus
 		m_renderFlags |= Render_Light;
 
 		// Subscribe to events
-		EventSystem::Subscribe(EVENT_RENDER, bind(&Renderer::Render, this));
-		EventSystem::Subscribe(EVENT_CLEAR_SUBSYSTEMS, bind(&Renderer::Clear, this));
-		EventSystem::Subscribe(EVENT_SCENE_UPDATED_RENDERABLES, bind(&Renderer::AcquireRenderables, this, placeholders::_1));
+		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
+		SUBSCRIBE_TO_EVENT(EVENT_CLEAR_SUBSYSTEMS, EVENT_HANDLER(Clear));
+		SUBSCRIBE_TO_EVENT(EVENT_SCENE_UPDATED_RENDERABLES, EVENT_HANDLER_VARIANT(AcquireRenderables));
 	}
 
 	Renderer::~Renderer()
@@ -316,7 +316,6 @@ namespace Directus
 	void Renderer::AcquireRenderables(Variant renderables)
 	{
 		Clear();
-
 		auto renderablesVec = VariantToVector<weakGameObj>(renderables);
 
 		for (const auto& renderable : renderablesVec)
@@ -326,7 +325,7 @@ namespace Directus
 				continue;
 
 			// Get meshes
-			if (gameObject->HasComponent<MeshRenderer>() && gameObject->HasComponent<MeshFilter>())
+			if (gameObject->GetMeshRenderer() && gameObject->GetMeshFilter())
 			{
 				m_renderables.push_back(renderable);
 			}

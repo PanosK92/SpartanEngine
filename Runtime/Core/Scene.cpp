@@ -56,8 +56,8 @@ namespace Directus
 		m_jobSteps = 0.0f;
 		m_isLoading = false;
 
-		EventSystem::Subscribe(EVENT_UPDATE, bind(&Scene::Resolve, this));
-		EventSystem::Subscribe(EVENT_RENDER, bind(&Scene::Update, this));
+		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Resolve));
+		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Update));
 	}
 
 	Scene::~Scene()
