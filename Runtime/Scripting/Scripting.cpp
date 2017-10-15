@@ -39,7 +39,7 @@ namespace Directus
 	Scripting::Scripting(Context* context) : Subsystem(context)
 	{
 		m_scriptEngine = nullptr;
-		EventSystem::Subscribe(EVENT_CLEAR_SUBSYSTEMS, bind(&Scripting::Clear, this));
+		SUBSCRIBE_TO_EVENT(EVENT_CLEAR_SUBSYSTEMS, EVENT_HANDLER(Clear));
 	}
 
 	Scripting::~Scripting()

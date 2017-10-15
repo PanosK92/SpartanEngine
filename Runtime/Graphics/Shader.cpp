@@ -78,21 +78,21 @@ namespace Directus
 		m_bufferScope = bufferScope;
 
 		m_constantBuffer = make_unique<D3D11ConstantBuffer>(m_graphics);
-		if (m_bufferType == WVP)
+
+		switch (m_bufferType)
 		{
+		case WVP:
 			m_constantBuffer->Create(sizeof(Struct_WVP));
-		}
-		else if (m_bufferType == W_V_P)
-		{
+			break;
+		case W_V_P:
 			m_constantBuffer->Create(sizeof(Struct_W_V_P));
-		}
-		else if (m_bufferType == WVP_Color)
-		{
+			break;
+		case WVP_Color:
 			m_constantBuffer->Create(sizeof(Struct_WVP_Color));
-		}
-		else if (m_bufferType == WVP_Resolution)
-		{
+			break;
+		case WVP_Resolution:
 			m_constantBuffer->Create(sizeof(Struct_WVP_Resolution));
+			break;
 		}
 	}
 
@@ -104,17 +104,17 @@ namespace Directus
 			return;
 		}
 
-		if (samplerType == Anisotropic_Sampler)
+		switch (samplerType)
 		{
+		case Anisotropic_Sampler:
 			m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-		}
-		else if (samplerType == Linear_Sampler)
-		{
+			break;
+		case Linear_Sampler:
 			m_shader->AddSampler(D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-		}
-		else if (samplerType == Point_Sampler)
-		{
+			break;
+		case Point_Sampler:
 			m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+			break;
 		}
 	}
 

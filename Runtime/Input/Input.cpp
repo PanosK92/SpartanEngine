@@ -38,7 +38,7 @@ namespace Directus
 		m_initialized = false;
 
 		// Subscribe to update event
-		EventSystem::Subscribe(EVENT_UPDATE, bind(&Input::Update, this));
+		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
 	}
 
 	Input::~Input()

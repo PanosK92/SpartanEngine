@@ -30,26 +30,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /*
 HOW TO USE
-=============================================================================================================
-To subscribe a function to an event						-> SUBSCRIBE_TO_EVENT(SOME_EVENT, this, Class::Func);
-To fire an event										-> FIRE_EVENT(SOME_EVENT);
-To fire an event with data								-> FIRE_EVENT(SOME_EVENT, data);
-=============================================================================================================
+=================================================================================================
+To subscribe a function to an event						-> SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
+To fire an event										-> FIRE_EVENT(EVENT_ID);
+To fire an event with data								-> FIRE_EVENT_DATA(EVENT_ID, Variant)
+==================================================================================================
 */
 
-//= EVENTS =========================================================================
-#define EVENT_UPDATE						0	// Fired when it's time to update the engine
+//= EVENTS =================================================================================
+#define EVENT_UPDATE						0	// Fired when the engine should update
 #define EVENT_RENDER						1	// Fired when it's time to do rendering
-#define EVENT_CLEAR_SUBSYSTEMS				2
-#define EVENT_SCENE_UPDATED_RENDERABLES		3
-#define EVENT_SCENE_UPDATED_CAMERA			4
-//==================================================================================
+#define EVENT_CLEAR_SUBSYSTEMS				2	// Fired when subsystem need to clear
+#define EVENT_SCENE_UPDATED_RENDERABLES		3	// Fired when the scene resolves renderables
+//==========================================================================================
 
-//= MACROS ================================================================================================================================================
-#define FIRE_EVENT(signalID)										EventSystem::Fire(signalID, 0)
-#define FIRE_EVENT_DATA(signalID, data)								EventSystem::Fire(signalID, data)
-#define SUBSCRIBE_TO_EVENT(signalID, instance, function)			EventSystem::Subscribe(signalID, std::bind(&function, instance, std::placeholders::_1))
-//=========================================================================================================================================================
+//= MACROS =======================================================================================
+#define EVENT_HANDLER_STATIC(function)					[](Variant var) { function(); }
+#define EVENT_HANDLER(function)							[this](Variant var) { function(); }
+#define EVENT_HANDLER_VARIANT(function)					[this](Variant var) { function(var); }
+#define EVENT_HANDLER_VARIANT_STATIC(function)			[](Variant var) { function(var); }
+
+#define SUBSCRIBE_TO_EVENT(eventID, function)			EventSystem::Subscribe(eventID, function);
+
+#define FIRE_EVENT(eventID)								EventSystem::Fire(eventID, 0)
+#define FIRE_EVENT_DATA(eventID, data)					EventSystem::Fire(eventID, data)
+//================================================================================================
 
 namespace Directus
 {
@@ -58,9 +63,9 @@ namespace Directus
 	public:
 		typedef std::function<void(Variant)> subscriber;
 
-		static void Subscribe(int eventID, subscriber&& func);
-		static void Fire(int eventID, Variant data = 0);
-		static void Clear();
+		static void Subscribe(int eventID, subscriber&& func) { m_subscribers[eventID].push_back(std::forward<subscriber>(func)); }
+		static void Fire(int eventID, Variant data);
+		static void Clear() { m_subscribers.clear(); }
 
 	private:
 		static std::map<uint8_t, std::vector<subscriber>> m_subscribers;

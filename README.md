@@ -46,7 +46,7 @@ Skeletal Animation			    | 5% | -
 - UI components.
 
 ### Download
-Note: The download link will be updated whenever any features that are under development get completed.
+Note: This version is quite old and doesn't reflect the current state of the engine. Until v0.3 comes out, it's adviced that you compile from source.
 - [Directus v0.2 (Windows x64)](https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc) - 65.8 MB.
 
 ### Dependencies

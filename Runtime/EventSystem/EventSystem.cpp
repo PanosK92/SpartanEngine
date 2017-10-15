@@ -32,11 +32,6 @@ namespace Directus
 	typedef function<void(Variant)> subscriber;
 	map<uint8_t, vector<subscriber>> EventSystem::m_subscribers;
 
-	void EventSystem::Subscribe(int eventID, subscriber&& func)
-	{
-		m_subscribers[eventID].push_back(forward<subscriber>(func));
-	}
-
 	void EventSystem::Fire(int eventID, Variant data)
 	{
 		if (m_subscribers.find(eventID) == m_subscribers.end())
@@ -46,10 +41,5 @@ namespace Directus
 		{
 			subscriber(data);
 		}
-	}
-
-	void EventSystem::Clear()
-	{
-		m_subscribers.clear();
 	}
 }

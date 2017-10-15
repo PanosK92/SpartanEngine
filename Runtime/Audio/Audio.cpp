@@ -48,7 +48,7 @@ namespace Directus
 		m_up = { 0, 1, 0 };
 
 		// Subscribe to update event
-		EventSystem::Subscribe(EVENT_UPDATE, bind(&Audio::Update, this));
+		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
 	}
 
 	Audio::~Audio()
