@@ -2,7 +2,7 @@
 Directus3D is a game engine that started as a hobby project and evolved into something greater.
 The source code is simple, modern and tackles a lot of aspects of engine development. Have fun!
 
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Runtime/Assets/screenshot-v0.3alpha.png)
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Runtime/Assets/screenshot-v0.2.jpg)
 
 # Features
 - 20+ audio file formats support.
