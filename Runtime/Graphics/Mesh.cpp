@@ -94,13 +94,13 @@ namespace Directus
 
 		for (unsigned int i = 0; i < m_vertexCount; i++)
 		{
-			m_vertices.push_back(VertexPosTexTBN());
+			m_vertices.emplace_back(VertexPosTexTBN());
 			LoadVertex(m_vertices.back());
 		}
 
 		for (unsigned int i = 0; i < m_indexCount; i++)
 		{
-			m_indices.push_back(StreamIO::ReadInt());
+			m_indices.emplace_back(StreamIO::ReadInt());
 		}
 
 		m_boundingBox.ComputeFromMesh(this);

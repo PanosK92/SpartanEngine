@@ -26,16 +26,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FreeImagePlus.h"
 #include <future>
 #include <functional>
+#include "../../Core/Context.h"
+#include "../../Threading/Threading.h"
+#include <map>
+#include "../../Math/Vector2.h"
 //======================================
 
-//= NAMESPACES =====
+//= NAMESPACES ================
 using namespace std;
-//==================
+using namespace Directus::Math;
+//=============================
 
 namespace Directus
 {
-	ImageImporter::ImageImporter()
+	ImageImporter::ImageImporter(Context* context)
 	{
+		m_context = context;
 		m_bpp = 0;
 		m_width = 0;
 		m_height = 0;
@@ -122,14 +128,14 @@ namespace Directus
 		m_height = FreeImage_GetHeight(bitmap32);
 
 		// Fill RGBA vector with the data from the FIBITMAP
-		GetDataRGBAFromFIBITMAP(bitmap32, &m_dataRGBA);
+		FIBTIMAPToRGBA(bitmap32, &m_dataRGBA);
 
 		// Check if the image is grayscale
 		m_grayscale = GrayscaleCheck(m_dataRGBA, m_width, m_height);
 
 		if (generateMipchain)
 		{
-			GenerateMipChainFromFIBITMAP(bitmap32, &m_mipchainDataRGBA);
+			GenerateMipmapsFromFIBITMAP(bitmap32, m_mipchainDataRGBA);
 		}
 
 		//= Free memory =====================================
@@ -138,11 +144,15 @@ namespace Directus
 
 		// unload the scaled bitmap only if it was converted
 		if (m_bpp != 32)
+		{
 			FreeImage_Unload(bitmapScaled);
+		}
 
 		// unload the non 32-bit bitmap only if it was scaled
 		if (scale)
+		{
 			FreeImage_Unload(bitmapOriginal);
+		}
 		//====================================================
 
 		m_isLoading = false;
@@ -163,7 +173,7 @@ namespace Directus
 		m_transparent = false;
 	}
 
-	bool ImageImporter::GetDataRGBAFromFIBITMAP(FIBITMAP* fibtimap, vector<unsigned char>* data)
+	bool ImageImporter::FIBTIMAPToRGBA(FIBITMAP* fibtimap, vector<unsigned char>* data)
 	{
 		int width = FreeImage_GetWidth(fibtimap);
 		int height = FreeImage_GetHeight(fibtimap);
@@ -178,10 +188,10 @@ namespace Directus
 			unsigned char* bits = (unsigned char*)FreeImage_GetScanLine(fibtimap, y);
 			for (unsigned int x = 0; x < width; x++)
 			{
-				data->push_back(bits[FI_RGBA_RED]);
-				data->push_back(bits[FI_RGBA_GREEN]);
-				data->push_back(bits[FI_RGBA_BLUE]);
-				data->push_back(bits[FI_RGBA_ALPHA]);
+				data->emplace_back(bits[FI_RGBA_RED]);
+				data->emplace_back(bits[FI_RGBA_GREEN]);
+				data->emplace_back(bits[FI_RGBA_BLUE]);
+				data->emplace_back(bits[FI_RGBA_ALPHA]);
 
 				// jump to next pixel
 				bits += bytespp;
@@ -191,29 +201,82 @@ namespace Directus
 		return true;
 	}
 
-	void ImageImporter::GenerateMipChainFromFIBITMAP(FIBITMAP* original, vector<vector<unsigned char>>* mipchain)
+	struct ImageScalingInfo
 	{
-		mipchain->push_back(m_dataRGBA);
+		int width = 0;
+		int height = 0;
+		bool scaled = false;
+		vector<unsigned char> data;
+
+		ImageScalingInfo(int width, int height, bool scaled)
+		{
+			this->width = width;
+			this->height = height;
+			this->scaled = scaled;
+		}
+	};
+
+	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* original, vector<vector<unsigned char>>& mimaps)
+	{
+		// First mip is full size
+		mimaps.emplace_back(m_dataRGBA);
 		int width = FreeImage_GetWidth(original);
 		int height = FreeImage_GetHeight(original);
-		int levels = 1;
 
+		// Compute the rest mip mipmapInfos
+		vector<ImageScalingInfo> mipmapInfos;
 		while (width > 1 && height > 1)
 		{
-			// Downscale the original FIBITMAP
 			width = max(width / 2, 1);
 			height = max(height / 2, 1);
-			FIBITMAP* downscaled = FreeImage_Rescale(original, width, height, FILTER_LANCZOS3);
-
-			// Extract RGBA data from it and save it into the mipchain
-			mipchain->push_back(vector<unsigned char>());
-			GetDataRGBAFromFIBITMAP(downscaled, &mipchain->back());
-
-			// Unload the downscaled FIBITMAP
-			FreeImage_Unload(downscaled);
-
-			levels++;
+		
+			mipmapInfos.emplace_back(width, height, false);
 		}
+
+		// Parallelize mipmap generation using multiple
+		// threads as FreeImage_Rescale() can take a while.
+		Threading* threading = m_context->GetSubsystem<Threading>();
+		for (int i = 0; i < mipmapInfos.size(); i++)
+		{
+			threading->AddTask([this, &mipmapInfos, i, original]()
+			{
+				mipmapInfos[i].scaled = RescaleFIBITMAP(original, mipmapInfos[i].width, mipmapInfos[i].height, mipmapInfos[i].data);
+			});
+		}
+
+		// Wait until all mimaps have been generated
+		bool ready = false;
+		while (!ready)
+		{
+			ready = true;
+			for (const auto& mimapInfo : mipmapInfos)
+			{
+				if (!mimapInfo.scaled)
+				{
+					ready = false;
+				}
+			}
+		}
+
+		// Now copy all the mimaps
+		for (const auto& mimapInfo : mipmapInfos)
+		{
+			mimaps.emplace_back(mimapInfo.data);
+		}
+	}
+
+	bool ImageImporter::RescaleFIBITMAP(FIBITMAP* fibtimap, int width, int height, vector<unsigned char>& mipmapData)
+	{
+		// Rescale
+		FIBITMAP* scaled = FreeImage_Rescale(fibtimap, width, height, FILTER_LANCZOS3);
+
+		// Extract RGBA data from the IBITMAP
+		bool result = FIBTIMAPToRGBA(scaled, &mipmapData);
+
+		// Unload the FIBITMAP
+		FreeImage_Unload(scaled);
+
+		return result;
 	}
 
 	bool ImageImporter::GrayscaleCheck(const vector<unsigned char>& dataRGBA, int width, int height)
@@ -222,6 +285,7 @@ namespace Directus
 		int scannedPixels = 0;
 
 		for (int i = 0; i < height; i++)
+		{
 			for (int j = 0; j < width; j++)
 			{
 				scannedPixels++;
@@ -233,6 +297,7 @@ namespace Directus
 				if (red == green && red == blue)
 					grayPixels++;
 			}
+		}
 
 		if (grayPixels == scannedPixels)
 			return true;

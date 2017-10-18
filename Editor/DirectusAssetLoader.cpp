@@ -92,7 +92,7 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
 {
     emit Started();
 
-    ImageImporter* imageLoader = new ImageImporter();
+    ImageImporter* imageLoader = new ImageImporter(nullptr);
     QPixmap pixmap;
     if (FileSystem::FileExists(m_filePath))
     {
