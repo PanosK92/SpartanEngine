@@ -44,7 +44,7 @@ namespace Directus
 		m_resourceCache = make_unique<ResourceCache>();
 
 		// Importers
-		m_imageImporter = make_shared<ImageImporter>();
+		m_imageImporter = make_shared<ImageImporter>(m_context);
 		m_modelImporter = make_shared<ModelImporter>(m_context);
 		m_fontImporter = make_shared<FontImporter>(m_context);
 		m_fontImporter->Initialize();

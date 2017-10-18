@@ -331,7 +331,7 @@ namespace Directus
 		// Bones
 		for (unsigned int boneIndex = 0; boneIndex < assimpMesh->mNumBones; boneIndex++)
 		{
-			aiBone* bone = assimpMesh->mBones[boneIndex];
+			//aiBone* bone = assimpMesh->mBones[boneIndex];
 		}
 
 		// Material
@@ -366,7 +366,7 @@ namespace Directus
 
 			for (unsigned int j = 0; j < face.mNumIndices; j++)
 			{
-				mesh->AddIndex(face.mIndices[j]);
+				mesh->GetIndices().emplace_back(face.mIndices[j]);
 			}
 		}
 	}
@@ -404,7 +404,7 @@ namespace Directus
 			}
 
 			// save the vertex
-			mesh->AddVertex(vertex);
+			mesh->GetVertices().emplace_back(vertex);
 
 			// reset the vertex for use in the next loop
 			vertex.normal = Vector3::Zero;

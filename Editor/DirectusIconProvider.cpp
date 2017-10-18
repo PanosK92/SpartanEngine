@@ -33,7 +33,7 @@ using namespace Directus;
 
 void DirectusIconProvider::Initialize()
 {
-    m_imageLoader = new ImageImporter();
+    m_imageLoader = new ImageImporter(nullptr);
 
     m_unknownIcon = QIcon(":/Images/file.png");
     m_folderIcon = QIcon(":/Images/folder.png");
