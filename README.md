@@ -18,7 +18,7 @@ The source code is simple, modern and tackles a lot of aspects of engine develop
 - Physically based shading.
 - Physics.
 - Post-process effects like FXAA & LumaSharpen.
-- Scripting.
+- Scripting (C/C++).
 - Windows support.
 
 # Upcoming features (v0.3)
@@ -36,6 +36,7 @@ Debug Rendering    				| 90% | Gizmos, scene grid and G-Buffer visualization.
 Skeletal Animation			    | 5% | -
 
 # Roadmap
+- C# scripting.
 - Vulkan rendering backend.
 - Dynamic resolution scaling.
 - Draw call batching (static & dynamic).
