@@ -2,6 +2,10 @@
 Directus3D is a game engine that started as a hobby project and evolved into something greater.
 The source code is simple, modern and tackles a lot of aspects of engine development. Have fun!
 
+Note: This project is still in an early development stage and there is a lot experimentation in finding what works best.
+As a result, no design decision is set in stone and it will take a while until it's production ready. Having a full-time
+job, I invest whatever time I have left on it. However, if you wish for things to move faster and help shape it, feel free to contribute.
+
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Runtime/Assets/screenshot-v0.3_preview.png)
 
 # Features
@@ -45,13 +49,14 @@ Skeletal Animation			    | 5% | -
 - Volumetric Lighting.
 - Global Illumination.
 - UI components.
+- Replace Qt with a custom editor.
 
 ### Download
 Note: This version is quite old and doesn't reflect the current state of the engine. Until v0.3 comes out, it's adviced that you compile from source.
 - [Directus v0.2 (Windows x64)](https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc) - 65.8 MB.
 
 ### Dependencies
-- [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109), 
+- [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109).
 - [Visual C++ 2017 (x64) runtime package](https://go.microsoft.com/fwlink/?LinkId=746572).
 
 ### License
