@@ -52,12 +52,15 @@ Skeletal Animation			    | 5% | -
 - Replace Qt with a custom editor.
 
 ### Download
-Note: This version is quite old and doesn't reflect the current state of the engine. Until v0.3 comes out, it's adviced that you compile from source.
+Note: This version is quite old and doesn't reflect the current state of the engine. Until v0.3 comes out, it's adviced that you [compile from source](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/Compiling%20From%20Source.md).
 - [Directus v0.2 (Windows x64)](https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc) - 65.8 MB.
 
 ### Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109).
 - [Visual C++ 2017 (x64) runtime package](https://go.microsoft.com/fwlink/?LinkId=746572).
+
+### Compiling from source
+[Here](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/Compiling%20From%20Source.md) you can find detailed guide on how to go from text to zeroes and ones :-)
 
 ### License
 - Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/Directus3D/blob/master/LICENSE.txt) for details.
