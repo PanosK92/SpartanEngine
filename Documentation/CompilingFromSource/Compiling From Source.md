@@ -12,8 +12,8 @@ Same as before, we just click install.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/Visual%20C%2B%2B.png)
 
 ##### Qt: Download by clicking [here](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe) and install
-Instructions: Before the installation starts, we will be prompted to log in using a Qt Account, in case we don't have one, we have to to create one, unfortunately.
-After that's done, we must make sure that we select the latest 64-bit Qt version that matches the version of Visual Studio we will be using.
+1. Before the installation starts, we will be prompted to log in using a Qt Account, in case we don't have one, we have to to create one, unfortunately.
+2. After that's done, we must make sure that we select the latest 64-bit Qt version that matches the version of Visual Studio we will be using.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/Qt.png)
 
 ### Compiling the Runtime and the Editor
