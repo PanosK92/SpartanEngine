@@ -17,32 +17,36 @@ Same as before, we just click install.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/Qt.png)
 
 ### Compiling the Runtime and the Editor
-At this point we have taken care of all the dependencies and we are ready to build everything.
+At this point we have taken care of all the dependencies and we are ready to start building.
 
 ##### Generating Visual Studio 2017 project files and building the runtime
-1. We run "Generate_VS17_Project.bat" which visible in the 1st section of the image below in order to create the project files.
-2. Then we open the visual studio solution file which should be located at "Directus3D\Runtime\Runtime.sln"
+1. We run **"Generate_VS17_Project.bat"** which visible in the 1st section of the image below in order to create the project files.
+2. Then we open the visual studio solution file which should be located at **"Directus3D\Runtime\Runtime.sln"**
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS.png)
-3. Next, we switch the solution configuration to "Release" and build the Runtime project. This will generate "Runtime.dll" at "Directus3D\Binaries\Release"
+3. Next, we switch the solution configuration to "Release" and build the Runtime project. This will generate **"Runtime.dll"** at **"Directus3D\Binaries\Release"**
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/BuildVS.png)
 
 ##### Using Qt Creator to build the editor
-1. We open the editor project file located at "Directus3D\Editor\Editor.pro".
-2. When the project is first opened, a configuration window will be visible (1), we simply click on "Configure Project".
-3. We then go to the bottom left corner and switch the editor project to "Release" mode.
-4. Next we create a qmake file by clicking at "Build/Run qmake".
-5. Then we can finally build the editor by clicking at "Build/Build Project Editor"
-6. After the build process finishes, the engine should be at "Directus3D\Binaries\Release\Directus3D.exe"
+1. We open the editor project file located at **"Directus3D\Editor\Editor.pro"**.
+2. When the project is first opened, a configuration window will be visible we simply click on **"Configure Project"**.
+3. We then go to the bottom left corner and switch the editor project to **"Release"** mode.
+4. Next we create a qmake file by clicking at **"Build/Run qmake"**.
+5. Then we can finally build the editor by clicking at **"Build/Build Project Editor"**.
+6. After the build process finishes, the engine should be at **"Directus3D\Binaries\Release\Directus3D.exe"**.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/BuildQt.png)
 
 ##### Providing the required DLLs
 Most of the dependencies are statically linked into Runtime.dll. However Qt and FMOD are dynamically linked, hence we have to provide
 their DLLs. The correct way of doing that is to simply copy the DLLs from their respective installation folders. 
-However I have packed everything into 7zip file which you can download by clicking [here](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.7z).
+In any case, I have packed everything into a [DLLs.7z](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.7z) file.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.png)
 
 ### Notes
-1. Directus3D.exe can be launched directly from Visual Studio by providing an appropriate command and a working directory.
-We can do that by right clicking on the "Runtime" project, then "Proprties" and by navigating to "Configuration Properties/Debugging"
+- Directus3D.exe can be launched directly from Visual Studio by providing an appropriate command and a working directory.
+This can be achieved by right clicking on the **"Runtime"** project, then **"Proprties"** and by navigating to **"Configuration Properties/Debugging"**
 where we can fill out what's required.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/LaunchingVS.png)
+
+- We built everything in "Release" configuration as all of the statically linked depndencies have been pre-compiled in "Release" mode and are located at **"Directus3D\ThirdParty\mvsc141_x64\"**. The "Debug" version of them generates libraries that can have a larger size, large enough that it can't be uploaded to the respository. Ideally, the projects of the dependencies could be part of the **"Runtime"** solution but for the time being any dependencies have to be built by the user.
+
+- Apart from including the project of the dependencies into the **"Runtime"** solution, scripts can be written which will automate whatever is possible. Feel free to contribute if you think you can help :-)
