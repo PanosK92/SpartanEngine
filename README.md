@@ -54,7 +54,7 @@ Skeletal Animation			    | 5% | -
 ### Download
 Note: Binaries form v0.2 requite old and don't reflect the current state of the engine. Until v0.3 comes out, it's adviced that you compile from source.
 - [Binaries](https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc) - v0.2 (64-bit, 65.8 MB).
-- [Compiling](https://github.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/CompilingFromSource.md) - Learn how to go from text to zeroes and ones :-)
+- [Compiling](https://github.com/PanosK92/Directus3D/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - Learn how to go from text to zeroes and ones :-)
 
 ### Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109).
