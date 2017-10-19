@@ -1,6 +1,6 @@
 # Compiling from source
 The engine currently uses DirectX 11 as a rendering backend, Qt for it's editor and some of the latest C++ features. 
-As a result we first have to make sure that we set up the right environment for it. Below we can see the dependencies we have to address.
+As a result we first have to make sure that we set up the right environment for it. Below we can see the dependencies and how to address them.
 
 ### Setting up the environment
 ##### DirectX End-User Runtimes: Download by clicking [here](https://www.microsoft.com/en-us/download/details.aspx?id=8109) and install
@@ -36,4 +36,13 @@ At this point we have taken care of all the dependencies and we are ready to bui
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/BuildQt.png)
 
 ##### Providing the required DLLs
+Most of the dependencies are statically linked into Runtime.dll. However Qt and FMOD are dynamically linked, hence we have to provide
+their DLLs. The correct way of doing that is to simply copy the DLLs from their respective installation folders. 
+However I have packed everything into 7zip file which you can download by clicking [here](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.7z).
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.png)
+
 ### Notes
+1. Directus3D.exe can be launched directly from Visual Studio by providing an appropriate command and a working directory.
+We can do that by right clicking on the "Runtime" project, then "Proprties" and by navigating to "Configuration Properties/Debugging"
+where we can fill out what's required.
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/LaunchingVS.png)
