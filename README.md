@@ -6,7 +6,7 @@ Note: This project is still in an early development stage and there is a lot exp
 As a result, no design decision is set in stone and it will take a while until it's production ready. Having a full-time
 job, I invest whatever time I have left on it. However, if you wish for things to move faster and help shape it, feel free to contribute.
 
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Runtime/Assets/screenshot-v0.3_preview.png)
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Runtime/Assets/screenshot-v0.3_preview.jpg)
 
 # Features
 - 20+ audio file formats support.
