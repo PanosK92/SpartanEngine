@@ -50,7 +50,9 @@ namespace Directus
 
 		// Join all threads.
 		for (auto& thread : m_threads)
+		{
 			thread.join();
+		}
 
 		// Empty workers vector.
 		m_threads.empty();

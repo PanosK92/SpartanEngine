@@ -155,7 +155,7 @@ namespace Directus
 		Write(int(value), type);
 	}
 
-	void Log::LogString(const string & text, LogType type)
+	void Log::LogString(const string& text, LogType type)
 	{
 		lock_guard<mutex> guard(Mutex);
 		m_logger._Get()->Log(text, type);
