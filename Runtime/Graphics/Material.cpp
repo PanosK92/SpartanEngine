@@ -340,7 +340,7 @@ namespace Directus
 		// In order to avoid conflicts where the engine thinks it's the same shader, we randomize the
 		// path which will automatically create a resource ID based on that path. Hence we make sure that
 		// there are no conflicts. A more elegant way to handle this would be nice...
-		shader->SetResourceFilePath(GUIDGenerator::GenerateAsStr());
+		shader->SetResourceFilePath(GetResourceFilePath() + GUIDGenerator::GenerateAsStr());
 		shader->SetResourceName("GBuffer.hlsl_" + to_string(shader->GetResourceID()));
 
 		// Add the shader to the pool and return it

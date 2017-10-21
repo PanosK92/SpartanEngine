@@ -36,6 +36,21 @@ namespace Directus
 		Math::Vector3 normal;
 		Math::Vector3 tangent;
 		Math::Vector3 bitangent;
+
+		VertexPosTexTBN() {}
+		VertexPosTexTBN(
+			const Math::Vector3& position, 
+			const Math::Vector2& uv, 
+			const Math::Vector3& normal, 
+			const Math::Vector3& tangent, 
+			const Math::Vector3& bitangent)
+		{
+			this->position = position;
+			this->uv = uv;
+			this->normal = normal;
+			this->tangent = tangent;
+			this->bitangent = bitangent;
+		}
 	};
 
 	struct VertexPosTexNor

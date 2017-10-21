@@ -98,9 +98,9 @@ namespace Directus
 		//===============================================================
 
 	private:	
-		bool FIBTIMAPToRGBA(FIBITMAP* fibtimap, std::vector<unsigned char>* data);
-		void GenerateMipmapsFromFIBITMAP(FIBITMAP* original, std::vector<std::vector<unsigned char>>& rgba);
-		bool RescaleFIBITMAP(FIBITMAP* fibtimap, int width, int height, std::vector<unsigned char>& mipmapData);
+		bool FIBTIMAPToRGBA(FIBITMAP* fibtimap, std::vector<unsigned char>* rgba);
+		void GenerateMipmapsFromFIBITMAP(FIBITMAP* original, std::vector<std::vector<unsigned char>>& mimaps);
+		bool RescaleFIBITMAP(FIBITMAP* fibtimap, int width, int height, std::vector<unsigned char>& rgba);
 		bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
 
 		Context* m_context;

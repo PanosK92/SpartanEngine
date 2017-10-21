@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Graphics/Animation.h"
 #include "../../Graphics/Mesh.h"
 #include <future>
+#include "../../EventSystem/EventSystem.h"
 //=================================================
 
 //= NAMESPACES ================
@@ -139,7 +140,10 @@ namespace Directus
 	{
 		m_model = model;
 		m_modelPath = filePath;
-		auto future = async(launch::async, [this] {return Load(m_model, m_modelPath); });
+		m_context->GetSubsystem<Threading>()->AddTask([this, &model, &filePath]()
+		{
+			Load(m_model, m_modelPath);
+		});
 	}
 
 	bool ModelImporter::Load(Model* model, const string& filePath)
@@ -162,7 +166,7 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, normalSmoothAngle); // Default is 45, max is 175
 
 		// Read the 3D model file from disk
-		m_status = "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) +"\" from disk...";
+		m_status = "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" from disk...";
 		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
 		if (!scene)
 		{
@@ -182,6 +186,8 @@ namespace Directus
 		importer.FreeScene();
 		m_isLoading = false;
 		ResetStats();
+
+		FIRE_EVENT(EVENT_MODEL_LOADED);
 
 		return true;
 	}
@@ -373,43 +379,51 @@ namespace Directus
 
 	void ModelImporter::LoadAiMeshVertices(aiMesh* assimpMesh, shared_ptr<Mesh> mesh)
 	{
-		VertexPosTexTBN vertex;
+		Vector3 position;
+		Vector2 uv;
+		Vector3 normal;
+		Vector3 tangent;
+		Vector3 bitangent;
+
+		mesh->GetVertices().reserve(assimpMesh->mNumVertices);
+
 		for (unsigned int vertexIndex = 0; vertexIndex < assimpMesh->mNumVertices; vertexIndex++)
 		{
 			// Position
-			vertex.position = ToVector3(assimpMesh->mVertices[vertexIndex]);
+			position = ToVector3(assimpMesh->mVertices[vertexIndex]);
 
 			// Normal
 			if (assimpMesh->mNormals)
 			{
-				vertex.normal = ToVector3(assimpMesh->mNormals[vertexIndex]);
+				normal = ToVector3(assimpMesh->mNormals[vertexIndex]);
 			}
 
 			// Tangent
 			if (assimpMesh->mTangents)
 			{
-				vertex.tangent = ToVector3(assimpMesh->mTangents[vertexIndex]);
+				tangent = ToVector3(assimpMesh->mTangents[vertexIndex]);
 			}
 
 			// Bitagent
 			if (assimpMesh->mBitangents)
 			{
-				vertex.bitangent = ToVector3(assimpMesh->mBitangents[vertexIndex]);
+				bitangent = ToVector3(assimpMesh->mBitangents[vertexIndex]);
 			}
 
 			// Texture Coordinates
 			if (assimpMesh->HasTextureCoords(0))
 			{
-				vertex.uv = ToVector2(aiVector2D(assimpMesh->mTextureCoords[0][vertexIndex].x, assimpMesh->mTextureCoords[0][vertexIndex].y));
+				uv = ToVector2(aiVector2D(assimpMesh->mTextureCoords[0][vertexIndex].x, assimpMesh->mTextureCoords[0][vertexIndex].y));
 			}
 
 			// save the vertex
-			mesh->GetVertices().emplace_back(vertex);
+			mesh->GetVertices().emplace_back(position, uv, normal, tangent, bitangent);
 
 			// reset the vertex for use in the next loop
-			vertex.normal = Vector3::Zero;
-			vertex.tangent = Vector3::Zero;
-			vertex.uv = Vector2::Zero;
+			uv = Vector2::Zero;
+			normal = Vector3::Zero;
+			tangent = Vector3::Zero;
+			bitangent = Vector3::Zero;
 		}
 	}
 
@@ -427,8 +441,8 @@ namespace Directus
 		// Specifies whether meshes using this material must be rendered 
 		// without back face CullMode. 0 for false, !0 for true.
 		bool isTwoSided = false;
-		int r = assimpMaterial->Get(AI_MATKEY_TWOSIDED, isTwoSided);
-		if (r == aiReturn_SUCCESS && isTwoSided)
+		int result = assimpMaterial->Get(AI_MATKEY_TWOSIDED, isTwoSided);
+		if (result == aiReturn_SUCCESS && isTwoSided)
 		{
 			material->SetCullMode(CullNone);
 		}
@@ -544,7 +558,7 @@ namespace Directus
 		{
 			texture._Get()->SetTextureType(textureType);
 			// Save the metadata again so the texture type get's updated
-			texture._Get()->SaveToFile(RESOURCE_SAVE); 
+			texture._Get()->SaveToFile(RESOURCE_SAVE);
 			material._Get()->SetTexture(texture);
 		}
 	}

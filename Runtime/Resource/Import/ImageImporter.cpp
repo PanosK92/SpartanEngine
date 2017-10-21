@@ -63,11 +63,15 @@ namespace Directus
 	void ImageImporter::LoadAsync(const string& filePath)
 	{
 		m_path = filePath;
-		auto future = async(launch::async, [this] {return Load(m_path); });
+		m_context->GetSubsystem<Threading>()->AddTask([this]()
+		{
+			Load(m_path);
+		});
 	}
 
 	bool ImageImporter::Load(const string& path, int width, int height, bool scale, bool generateMipchain)
 	{
+		m_path = path;
 		m_isLoading = true;
 
 		Clear();
@@ -173,7 +177,7 @@ namespace Directus
 		m_transparent = false;
 	}
 
-	bool ImageImporter::FIBTIMAPToRGBA(FIBITMAP* fibtimap, vector<unsigned char>* data)
+	bool ImageImporter::FIBTIMAPToRGBA(FIBITMAP* fibtimap, vector<unsigned char>* rgba)
 	{
 		int width = FreeImage_GetWidth(fibtimap);
 		int height = FreeImage_GetHeight(fibtimap);
@@ -188,10 +192,10 @@ namespace Directus
 			unsigned char* bits = (unsigned char*)FreeImage_GetScanLine(fibtimap, y);
 			for (unsigned int x = 0; x < width; x++)
 			{
-				data->emplace_back(bits[FI_RGBA_RED]);
-				data->emplace_back(bits[FI_RGBA_GREEN]);
-				data->emplace_back(bits[FI_RGBA_BLUE]);
-				data->emplace_back(bits[FI_RGBA_ALPHA]);
+				rgba->emplace_back(bits[FI_RGBA_RED]);
+				rgba->emplace_back(bits[FI_RGBA_GREEN]);
+				rgba->emplace_back(bits[FI_RGBA_BLUE]);
+				rgba->emplace_back(bits[FI_RGBA_ALPHA]);
 
 				// jump to next pixel
 				bits += bytespp;
@@ -229,7 +233,7 @@ namespace Directus
 		{
 			width = max(width / 2, 1);
 			height = max(height / 2, 1);
-		
+
 			mipmapInfos.emplace_back(width, height, false);
 		}
 
@@ -240,7 +244,13 @@ namespace Directus
 		{
 			threading->AddTask([this, &mipmapInfos, i, original]()
 			{
-				mipmapInfos[i].scaled = RescaleFIBITMAP(original, mipmapInfos[i].width, mipmapInfos[i].height, mipmapInfos[i].data);
+				if (!RescaleFIBITMAP(original, mipmapInfos[i].width, mipmapInfos[i].height, mipmapInfos[i].data))
+				{
+					string mipLevel = to_string(i + 2) + " (" + to_string(mipmapInfos[i].width) + "x" +to_string(mipmapInfos[i].height) + ")";
+					string texName = FileSystem::GetFileNameFromFilePath(m_path);
+					LOG_INFO("ImageImporter: Failed to create mip level " + mipLevel + " for texture \"" + texName + "\".");
+				}
+				mipmapInfos[i].scaled = true;
 			});
 		}
 
@@ -261,17 +271,17 @@ namespace Directus
 		// Now copy all the mimaps
 		for (const auto& mimapInfo : mipmapInfos)
 		{
-			mimaps.emplace_back(mimapInfo.data);
+			mimaps.emplace_back(move(mimapInfo.data));
 		}
 	}
 
-	bool ImageImporter::RescaleFIBITMAP(FIBITMAP* fibtimap, int width, int height, vector<unsigned char>& mipmapData)
+	bool ImageImporter::RescaleFIBITMAP(FIBITMAP* fibtimap, int width, int height, vector<unsigned char>& rgba)
 	{
 		// Rescale
 		FIBITMAP* scaled = FreeImage_Rescale(fibtimap, width, height, FILTER_LANCZOS3);
 
-		// Extract RGBA data from the IBITMAP
-		bool result = FIBTIMAPToRGBA(scaled, &mipmapData);
+		// Extract RGBA data from the FIBITMAP
+		bool result = FIBTIMAPToRGBA(scaled, &rgba);
 
 		// Unload the FIBITMAP
 		FreeImage_Unload(scaled);
