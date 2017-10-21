@@ -40,6 +40,8 @@ using namespace Directus::Math;
 
 #define LOG_FILE "log.txt"
 
+mutex Mutex;
+
 namespace Directus
 {
 	weak_ptr<ILogger> Log::m_logger;
@@ -67,13 +69,11 @@ namespace Directus
 		// if a logger is available use it, if not, write to file
 		if (!m_logger.expired())
 		{
-			m_logger._Get()->Log(text, type);
+			LogString(text, type);
 		}
 		else
-		{
-			string prefix = (type == Info) ? "Info:" : (type == Warning) ? "Warning:" : "Error:";
-			string finalText = prefix + " " + text;
-			WriteToFile(finalText);
+		{			
+			WriteToFile(text, type);
 		}
 	}
 
@@ -155,8 +155,19 @@ namespace Directus
 		Write(int(value), type);
 	}
 
-	void Log::WriteToFile(const string& text)
+	void Log::LogString(const string & text, LogType type)
 	{
+		lock_guard<mutex> guard(Mutex);
+		m_logger._Get()->Log(text, type);
+	}
+
+	void Log::WriteToFile(const string& text, LogType type)
+	{
+		lock_guard<mutex> guard(Mutex);
+
+		string prefix = (type == Info) ? "Info:" : (type == Warning) ? "Warning:" : "Error:";
+		string finalText = prefix + " " + text;
+
 		// Delete the previous log file (if it exists)
 		if (m_firstLog)
 		{

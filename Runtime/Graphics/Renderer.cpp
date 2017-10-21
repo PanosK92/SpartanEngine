@@ -68,10 +68,7 @@ namespace Directus
 		m_graphics = nullptr;
 		m_renderFlags = 0;
 		m_renderFlags |= Render_Physics;
-		m_renderFlags |= Render_Bounding_Boxes;
-		m_renderFlags |= Render_Mouse_Picking_Ray;
 		m_renderFlags |= Render_Grid;
-		m_renderFlags |= Render_Performance_Metrics;
 		m_renderFlags |= Render_Light;
 
 		// Subscribe to events
