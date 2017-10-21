@@ -21,8 +21,8 @@ Same as before, we just click install.
 At this point we have taken care of all the dependencies and we are ready to start building.
 
 ##### Generating Visual Studio 2017 project files and building the runtime
-1. We run **"Generate_VS17_Project.bat"** which visible in the 1st section of the image below in order to create the project files.
-2. Then we open the visual studio solution file which should be located at **"Directus3D\Runtime\Runtime.sln"**
+1. We click and run **"Generate_VS17_Project.bat"** in order for the project files to be generated.
+2. We then open the visual studio solution file which should be located at **"Directus3D\Runtime\Runtime.sln"**
 3. Before building, we have to right click on the **"Runtime"** project, then click **"Proprties"**, then navigate to **"Configuration Properties/General"** and switch the **"Windows SDK Version"** to 10 (in case it's not).
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS.png)
 4. Next, we switch the solution configuration to **"Release"** and build the Runtime project. This will generate **"Runtime.dll"** at **"Directus3D\Binaries\Release"**
@@ -45,7 +45,7 @@ However, I have packed the required DLLs in this [DLLs.7z](https://raw.githubuse
 
 ### Notes
 - Directus3D.exe can be launched directly from Visual Studio by providing an appropriate command and a working directory.
-This can be achieved by right clicking on the **"Runtime"** project, then **"Proprties"** and by navigating to **"Configuration Properties/Debugging"**
+This can be achieved by right clicking on the **"Runtime"** project, then **"Properties"** and by navigating to **"Configuration Properties/Debugging"**
 where we can fill out what's required.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/LaunchingVS.png)
 
