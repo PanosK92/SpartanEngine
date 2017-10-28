@@ -1,48 +1,127 @@
-static const float strength = 10.0f;
-static const float2 offset  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
-static const float falloff  = 0.00001f;
-static const float radius = 0.01f;
-static const float discardDistance = 0.01f;
+// = INCLUDES ========
+#include "Helper.hlsl"
+//====================
 
-#define NUM_SAMPLES	 16
-static const float invSamples = 1.0f / (float)NUM_SAMPLES;
+//= TEXTURES ==============================
+Texture2D texNormal 		: register(t0);
+Texture2D texDepth 			: register(t1);
+Texture2D texNoise			: register(t2);
+//=========================================
 
-// AO sampling directions 
-static const float3 AO_SAMPLES[26] = 
+//= SAMPLERS ============================
+SamplerState samplerAniso : register(s0);
+//=======================================
+
+//= CONSTANT BUFFERS ===============
+cbuffer DefaultBuffer : register(b0)
 {
-	float3(0.2196607,0.9032637,0.2254677),
-	float3(0.05916681,0.2201506,-0.1430302),
-	float3(-0.4152246,0.1320857,0.7036734),
-	float3(-0.3790807,0.1454145,0.100605),
-	float3(0.3149606,-0.1294581,0.7044517),
-	float3(-0.1108412,0.2162839,0.1336278),
-	float3(0.658012,-0.4395972,-0.2919373),
-	float3(0.5377914,0.3112189,0.426864),
-	float3(-0.2752537,0.07625949,-0.1273409),
-	float3(-0.1915639,-0.4973421,-0.3129629),
-	float3(-0.2634767,0.5277923,-0.1107446),
-	float3(0.8242752,0.02434147,0.06049098),
-	float3(0.06262707,-0.2128643,-0.03671562),
-	float3(-0.1795662,-0.3543862,0.07924347),
-	float3(0.06039629,0.24629,0.4501176),
-	float3(-0.7786345,-0.3814852,-0.2391262),
-	float3(0.2792919,0.2487278,-0.05185341),
-	float3(0.1841383,0.1696993,-0.8936281),
-	float3(-0.3479781,0.4725766,-0.719685),
-	float3(-0.1365018,-0.2513416,0.470937),
-	float3(0.1280388,-0.563242,0.3419276),
-	float3(-0.4800232,-0.1899473,0.2398808),
-	float3(0.6389147,0.1191014,-0.5271206),
-	float3(0.1932822,-0.3692099,-0.6060588),
-	float3(-0.3465451,-0.1654651,-0.6746758),
-	float3(0.2448421,-0.1610962,0.1289366),
+    matrix mWorldViewProjection;
+	matrix mViewProjectionInverse;
+	matrix mView;
+	matrix mProjection;
+	matrix mProjectionInverse;
+    float2 resolution;
+	float nearPlane;
+    float farPlane;
 };
+//==================================
+
+//= STRUCTS ========================
+struct VertexInputType
+{
+    float4 position : POSITION;
+    float2 uv : TEXCOORD;
+};
+
+struct PixelInputType
+{
+    float4 position : SV_POSITION;
+    float2 uv : TEXCOORD;
+};
+//==================================
+
+// Hemisphere sample kernel generated according to the needs of the SSAO approach described here:
+// http://john-chapman-graphics.blogspot.co.uk/2013/01/ssao-tutorial.html
+static const float3 sampleKernel[64] = 
+{
+	float3(0.04977, -0.04471, 0.04996),
+	float3(0.01457, 0.01653, 0.00224),
+	float3(-0.04065, -0.01937, 0.03193),
+	float3(0.01378, -0.09158, 0.04092),
+	float3(0.05599, 0.05979, 0.05766),
+	float3(0.09227, 0.04428, 0.01545),
+	float3(-0.00204, -0.0544, 0.06674),
+	float3(-0.00033, -0.00019, 0.00037),
+	float3(0.05004, -0.04665, 0.02538),
+	float3(0.03813, 0.0314, 0.03287),
+	float3(-0.03188, 0.02046, 0.02251),
+	float3(0.0557, -0.03697, 0.05449),
+	float3(0.05737, -0.02254, 0.07554),
+	float3(-0.01609, -0.00377, 0.05547),
+	float3(-0.02503, -0.02483, 0.02495),
+	float3(-0.03369, 0.02139, 0.0254),
+	float3(-0.01753, 0.01439, 0.00535),
+	float3(0.07336, 0.11205, 0.01101),
+	float3(-0.04406, -0.09028, 0.08368),
+	float3(-0.08328, -0.00168, 0.08499),
+	float3(-0.01041, -0.03287, 0.01927),
+	float3(0.00321, -0.00488, 0.00416),
+	float3(-0.00738, -0.06583, 0.0674),
+	float3(0.09414, -0.008, 0.14335),
+	float3(0.07683, 0.12697, 0.107),
+	float3(0.00039, 0.00045, 0.0003),
+	float3(-0.10479, 0.06544, 0.10174),
+	float3(-0.00445, -0.11964, 0.1619),
+	float3(-0.07455, 0.03445, 0.22414),
+	float3(-0.00276, 0.00308, 0.00292),
+	float3(-0.10851, 0.14234, 0.16644),
+	float3(0.04688, 0.10364, 0.05958),
+	float3(0.13457, -0.02251, 0.13051),
+	float3(-0.16449, -0.15564, 0.12454),
+	float3(-0.18767, -0.20883, 0.05777),
+	float3(-0.04372, 0.08693, 0.0748),
+	float3(-0.00256, -0.002, 0.00407),
+	float3(-0.0967, -0.18226, 0.29949),
+	float3(-0.22577, 0.31606, 0.08916),
+	float3(-0.02751, 0.28719, 0.31718),
+	float3(0.20722, -0.27084, 0.11013),
+	float3(0.0549, 0.10434, 0.32311),
+	float3(-0.13086, 0.11929, 0.28022),
+	float3(0.15404, -0.06537, 0.22984),
+	float3(0.05294, -0.22787, 0.14848),
+	float3(-0.18731, -0.04022, 0.01593),
+	float3(0.14184, 0.04716, 0.13485),
+	float3(-0.04427, 0.05562, 0.05586),
+	float3(-0.02358, -0.08097, 0.21913),
+	float3(-0.14215, 0.19807, 0.00519),
+	float3(0.15865, 0.23046, 0.04372),
+	float3(0.03004, 0.38183, 0.16383),
+	float3(0.08301, -0.30966, 0.06741),
+	float3(0.22695, -0.23535, 0.19367),
+	float3(0.38129, 0.33204, 0.52949),
+	float3(-0.55627, 0.29472, 0.3011),
+	float3(0.42449, 0.00565, 0.11758),
+	float3(0.3665, 0.00359, 0.0857),
+	float3(0.32902, 0.0309, 0.1785),
+	float3(-0.08294, 0.51285, 0.05656),
+	float3(0.86736, -0.00273, 0.10014),
+	float3(0.45574, -0.77201, 0.00384),
+	float3(0.41729, -0.15485, 0.46251),
+	float3(-0.44272, -0.67928, 0.1865)
+};
+
+static const float intensity = 30.0f;
+static const int kernelSize = 4;
+static const float radius = 0.5f;
+static const float bias = 0.2f;
+static const float2 noiseScale  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
 
 // Returns linear depth
 float GetDepth(float2 texCoord)
 {
-	float depth =  texDepth.Sample(samplerPoint, texCoord).r;
-	return LinerizeDepth(depth, farPlane, nearPlane);
+	float depth = texDepth.Sample(samplerAniso, texCoord).r;
+	depth = 1.0f - LinerizeDepth(depth, nearPlane, farPlane);
+	return depth;
 }
 
 // Returns normal
@@ -55,34 +134,80 @@ float3 GetNormal(float2 texCoord)
 // Returns a random normal
 float3 GetRandomNormal(float2 texCoord)
 {
-	float3 randNormal = texNoise.Sample(samplerAniso, texCoord * offset).rgb;
+	float3 randNormal = texNoise.Sample(samplerAniso, texCoord * noiseScale).rgb;
 	return normalize(UnpackNormal(randNormal));
+}
+
+// Returns world position
+float3 GetPosition(float2 texCoord)
+{
+	float depth = texDepth.Sample(samplerAniso, texCoord).g;
+	float3 worldPos = ReconstructPosition(depth, texCoord, mViewProjectionInverse);
+	return worldPos;
+}
+
+float doAmbientOcclusion(float2 texCoord, float3 position, in float3 cnorm)
+{
+	float3 originPos = position;
+	float3 sampledPos = GetPosition(texCoord);
+	float3 diff = sampledPos - originPos;
+	 
+	float3 v = normalize(diff);
+	float d = length(diff) * noiseScale; // halo fix
+	float occlusion = max(0.0f, dot(cnorm, v) - bias) * (1.0f / (1.0f + d));
+	
+    float rangeCheck = smoothstep(0.0f, 1.0f, radius / abs(originPos - sampledPos));
+	
+	return occlusion * rangeCheck;
 }
 
 float SSAO(float2 texCoord)
 {
+	float3 position = GetPosition(texCoord);
 	float3 randNormal = GetRandomNormal(texCoord);
     float3 normal = GetNormal(texCoord);
-    float depth = GetDepth(texCoord);
-	float radius_depth = radius / depth;
+	float originDepth = GetDepth(texCoord);
+	float radius_depth = radius / clamp(originDepth, 0.5f, 1.0f);
 	float occlusion = 0.0f;
 	
-	[unroll(NUM_SAMPLES)]
-    for( int i = 0; i < NUM_SAMPLES; ++i )
+	[unroll(kernelSize)]
+    for( int i = 0; i < kernelSize; i++)
     {
-		float3 ray = radius_depth * reflect(AO_SAMPLES[i], randNormal);
-		float2 sampleTexCoords = texCoord + sign(dot(ray, normal)) * ray.xy;
+		float2 coord1 = reflect(sampleKernel[i], randNormal) * radius_depth;
+		float2 coord2 = float2(coord1.x - coord1.y, coord1.x + coord1.y);
 
-        float sampledDepth = GetDepth(sampleTexCoords);
-		float3 sampledNormal = GetNormal(sampleTexCoords);
-		float depthDiff = depth - sampledDepth;
-			
-		float rangeCheck = smoothstep(0.0f, 1.0f, discardDistance / abs(depthDiff));
-        occlusion += step(falloff, depthDiff) * (1.0f - dot(sampledNormal, normal)) * (1.0f - smoothstep(falloff, strength, depthDiff)) * rangeCheck;
+		float acc = 0.0f;
+		acc += doAmbientOcclusion(texCoord + coord1 * 0.25f, position, normal);
+		acc += doAmbientOcclusion(texCoord + coord2 * 0.5f, position, normal);
+		acc += doAmbientOcclusion(texCoord + coord1 * 0.75f, position, normal);
+		acc += doAmbientOcclusion(texCoord + coord2, position, normal);
+		
+		float depthScaledIntensity = intensity * clamp(originDepth, 0.5f, 1.0f);
+		occlusion += acc * depthScaledIntensity;
     }
 
-    occlusion = 1.0f - (occlusion / NUM_SAMPLES);
-	occlusion = clamp(pow(occlusion, strength), 0.0f, 1.0f);
+    occlusion /= (float)kernelSize * 4.0f;
+	occlusion = 1.0f - occlusion;
 	
-	return occlusion;
+	return clamp(occlusion, 0.0f, 1.0f);
+}
+
+PixelInputType DirectusVertexShader(VertexInputType input)
+{
+    PixelInputType output;
+	
+    input.position.w = 1.0f;
+    output.position = mul(input.position, mWorldViewProjection);
+    output.uv = input.uv;
+	
+    return output;
+}
+
+float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
+{
+    float2 texCoord = input.uv;
+	float ao = SSAO(texCoord);
+    float4 color = float4(ao, ao, ao, 1.0f);
+
+    return color;
 }

@@ -79,6 +79,8 @@ namespace Directus
 		bool GetTransparency() { return m_transparency; }
 		void SetTransparency(bool transparency) { m_transparency = transparency; }
 
+		void EnableMimaps(bool enable) { m_mimaps = enable; }
+
 		void** GetShaderResource();
 		//========================================================================
 
@@ -100,7 +102,7 @@ namespace Directus
 		bool m_grayscale;
 		bool m_transparency;
 		bool m_alphaIsTransparency;
-		bool m_generateMipmaps;
+		bool m_mimaps;
 		std::unique_ptr<D3D11Texture> m_texture;
 	};
 }

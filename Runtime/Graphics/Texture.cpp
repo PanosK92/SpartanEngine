@@ -71,7 +71,7 @@ namespace Directus
 		m_grayscale = false;
 		m_transparency = false;
 		m_alphaIsTransparency = false;
-		m_generateMipmaps = true;
+		m_mimaps = true;
 		m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 	}
 
@@ -101,7 +101,7 @@ namespace Directus
 		XmlDocument::AddAttribute("Texture", "Type", textureTypeChar[(int)m_textureType]);
 		XmlDocument::AddAttribute("Texture", "Greyscale", m_grayscale);
 		XmlDocument::AddAttribute("Texture", "Transparency", m_transparency);
-		XmlDocument::AddAttribute("Texture", "Mipmaps", m_generateMipmaps);
+		XmlDocument::AddAttribute("Texture", "Mipmaps", m_mimaps);
 
 		if (!XmlDocument::Save(savePath))
 			return false;
@@ -203,7 +203,7 @@ namespace Directus
 
 		// Load texture
 		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
-		bool loaded = imageImp._Get()->Load(filePath, m_generateMipmaps);
+		bool loaded = imageImp._Get()->Load(filePath, m_mimaps);
 		if (!loaded)
 		{
 			LOG_WARNING("Failed to load texture \"" + filePath + "\".");
@@ -218,7 +218,7 @@ namespace Directus
 		m_transparency = imageImp._Get()->IsTransparent();
 
 		// Create the texture
-		if (!m_generateMipmaps)
+		if (!m_mimaps)
 		{
 			CreateFromMemory(imageImp._Get()->GetWidth(), imageImp._Get()->GetHeight(), imageImp._Get()->GetChannels(), imageImp._Get()->GetRGBA(), RGBA_8_UNORM);
 		}
@@ -254,7 +254,7 @@ namespace Directus
 
 		XmlDocument::GetAttribute("Texture", "Greyscale", m_grayscale);
 		XmlDocument::GetAttribute("Texture", "Transparency", m_transparency);
-		XmlDocument::GetAttribute("Texture", "Mipmaps", m_generateMipmaps);
+		XmlDocument::GetAttribute("Texture", "Mipmaps", m_mimaps);
 
 		XmlDocument::Release();
 

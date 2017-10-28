@@ -27,22 +27,18 @@ float3 ToGamma(float3 color)
 	return pow(color, 1.0f / 2.2f); 
 }
 
-float LinerizeDepth(float depth, float nearPlane, float farPlane)
+float LinerizeDepth(float depth, float near, float far)
 {
-	return (farPlane / (farPlane - nearPlane)) * (1.0f - (nearPlane / depth));
+	return (far / (far - near)) * (1.0f - (near / depth));
 }
 
 float3 ReconstructPosition(float depth, float2 texCoord, matrix viewProjectionInverse)
 {	
-	// screen space position
 	float x = texCoord.x * 2.0f - 1.0f;
 	float y = (1.0f - texCoord.y) * 2.0f - 1.0f;
 	float z = depth;
-    float4 projectedPos = float4(x, y, z, 1.0f);
-	
-	// transform to world space
-	float4 worldPos = mul(projectedPos, viewProjectionInverse);
-	
+    float4 projectedPos = float4(x, y, z, 1.0f); // clip space
+	float4 worldPos = mul(projectedPos, viewProjectionInverse); // world space
     return worldPos.xyz / worldPos.w;  
 }
 
@@ -59,20 +55,16 @@ float3 PackNormal(float3 normal)
 	return normal * 0.5f + 0.5f;
 }
 
-float3 TangentToWorld(float3 normalMapSample, float3 normalW, float3 tangentW, float3 bitangentW, float strength)
+float3 TangentToWorld(float3 normalMapSample, float3 normalW, float3 tangentW, float3 bitangentW, float intensity)
 {
-	normalMapSample = UnpackNormal(normalMapSample);
-	normalMapSample = normalize(normalMapSample);
-	
 	// normal intensity
-	normalMapSample.r *= strength;
-	normalMapSample.g *= strength;
+	normalMapSample.r *= intensity;
+	normalMapSample.g *= intensity;
 	
+	// construct TBN matrix
 	float3 N = normalW;
 	float3 T = tangentW;
 	float3 B = bitangentW;
-	
-	// construct TBN matrix
 	float3x3 TBN = float3x3(T, B, N); 
 	
 	// transform from tangent space to world space

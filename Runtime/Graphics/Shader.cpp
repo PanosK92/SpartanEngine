@@ -92,6 +92,8 @@ namespace Directus
 			break;
 		case WVP_Resolution:
 			m_constantBuffer->Create(sizeof(Struct_WVP_Resolution));
+		case WVP_WVPInverse_Resolution_Planes:
+			m_constantBuffer->Create(sizeof(Struct_WVP_WVPInverse_Resolution_Planes));
 			break;
 		}
 	}
@@ -143,6 +145,14 @@ namespace Directus
 			return;
 
 		m_graphics->GetDeviceContext()->PSSetShaderResources(slot, 1, &texture);
+	}
+
+	void Shader::SetTextures(vector<ID3D11ShaderResourceView*> textures)
+	{
+		if (!m_graphics)
+			return;
+
+		m_graphics->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &textures.front());
 	}
 
 	void Shader::SetBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection, unsigned int slot)
@@ -208,6 +218,41 @@ namespace Directus
 		buffer->wvp = mWorld * mView * mProjection;
 		buffer->resolution = resolution;
 		buffer->padding = Vector2::Zero;
+
+		// Unmap buffer
+		m_constantBuffer->Unmap();
+
+		SetBufferScope(m_constantBuffer.get(), slot);
+	}
+
+	void Shader::SetBuffer(
+		const Matrix& mWorldViewProjection, 
+		const Matrix& mWorldViewProjectionInverse, 
+		const Matrix& mView, 
+		const Matrix& mProjection, 
+		const Vector2& resolution, 
+		float nearPlane, 
+		float farPlane, 
+		unsigned slot)
+	{
+		if (!m_constantBuffer)
+		{
+			LOG_WARNING("Shader: Can't map uninitialized buffer.");
+			return;
+		}
+
+		// Get a pointer of the buffer
+		Struct_WVP_WVPInverse_Resolution_Planes* buffer = static_cast<Struct_WVP_WVPInverse_Resolution_Planes*>(m_constantBuffer->Map());
+
+		// Fill the buffer
+		buffer->wvp = mWorldViewProjection;
+		buffer->wvpInverse = mWorldViewProjectionInverse;
+		buffer->view = mView;
+		buffer->projection = mProjection;
+		buffer->projectionInverse = mProjection.Inverted();
+		buffer->resolution = resolution;
+		buffer->nearPlane = nearPlane;
+		buffer->farPlane = farPlane;
 
 		// Unmap buffer
 		m_constantBuffer->Unmap();

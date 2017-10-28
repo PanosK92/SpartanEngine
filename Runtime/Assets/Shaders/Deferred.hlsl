@@ -3,8 +3,8 @@ Texture2D texAlbedo 		: register(t0);
 Texture2D texNormal 		: register(t1);
 Texture2D texDepth 			: register(t2);
 Texture2D texMaterial 		: register(t3);
-Texture2D texNoise			: register(t4);
-Texture2D texShadows 		: register(t5);
+Texture2D texShadows 		: register(t4);
+Texture2D texSSAO 			: register(t5);
 TextureCube environmentTex 	: register(t6);
 //=========================================
 
@@ -68,7 +68,6 @@ struct Light
 // = INCLUDES ========
 #include "Helper.hlsl"
 #include "PBR.hlsl"
-#include "SSAO.hlsl"
 //====================
 
 //= INPUT LAYOUT ======================
@@ -106,7 +105,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// Sample from G-Buffer
     float4 albedo 			= ToLinear(texAlbedo.Sample(samplerAniso, texCoord));
     float4 normalSample 	= texNormal.Sample(samplerAniso, texCoord);
-    float4 depthSample 		= texDepth.Sample(samplerPoint, texCoord);
+    float4 depthSample 		= texDepth.Sample(samplerAniso, texCoord);
     float4 materialSample	= texMaterial.Sample(samplerPoint, texCoord);
 	
 	// Create material
@@ -133,8 +132,6 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
    	
 	// some totally fake dynamic skybox
 	float ambientLight = clamp(dirLightIntensity, 0.01f, 1.0f); 
-	//float ssao = SSAO(texCoord);
-	//ambientLight *= ssao;
 	
     if (renderTechnique == 0.1f)
     {
@@ -147,6 +144,10 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
         return float4(finalColor, luma);
     }
 	
+	float ssao = texSSAO.Sample(samplerAniso, texCoord).r;
+	//return float4(ssao, ssao, ssao, 1.0f);
+	ambientLight *= ssao;
+	 
 	//= DIRECTIONAL LIGHT ========================================================================================================================================
 	Light directionalLight;
 

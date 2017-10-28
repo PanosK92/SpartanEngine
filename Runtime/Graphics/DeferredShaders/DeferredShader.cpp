@@ -186,6 +186,9 @@ namespace Directus
 
 	void DeferredShader::UpdateTextures(vector<ID3D11ShaderResourceView*> textures)
 	{
+		if (!m_graphics)
+			return;
+
 		m_graphics->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &textures.front());
 	}
 

@@ -95,14 +95,14 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 {
     PixelInputType output;
     
-    input.position.w = 1.0f;	
+    input.position.w 	= 1.0f;	
 	output.positionWS 	= mul(input.position, mWorld);
 	output.positionVS 	= mul(input.position, mWorldView);
 	output.positionCS 	= mul(input.position, mWorldViewProjection);	
 	output.normal 		= normalize(mul(float4(input.normal, 0.0f), mWorld)).xyz;	
 	output.tangent 		= normalize(mul(float4(input.tangent, 0.0f), mWorld)).xyz;
-	output.bitangent 		= normalize(mul(float4(input.bitangent, 0.0f), mWorld)).xyz;
-    output.uv = input.uv;
+	output.bitangent 	= normalize(mul(float4(input.bitangent, 0.0f), mWorld)).xyz;
+    output.uv 			= input.uv;
 	
 	return output;
 }
@@ -166,7 +166,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	
 	//= NORMAL ==================================================================================
 #if NORMAL_MAP
-		float3 normalSample = texNormal.Sample(samplerAniso, texCoords).rgb;
+		float3 normalSample = normalize(UnpackNormal(texNormal.Sample(samplerAniso, texCoords).rgb));
 		normal = TangentToWorld(normalSample, input.normal.xyz, input.tangent.xyz, input.bitangent.xyz, materialNormalStrength);
 #endif
 	//============================================================================================
@@ -192,7 +192,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	int cascadeIndex = 0;
 	if (receiveShadows == 1.0f && shadowMappingQuality != 0.0f)
 	{
-		float z = 1.0f - LinerizeDepth(nearPlane, farPlane, depthCS);
+		float z = 1.0f - LinerizeDepth(depthCS, nearPlane, farPlane);
 
 		cascadeIndex = 0; // assume 1st cascade as default
 		cascadeIndex = step(shadowSplits.x, z); // test 2nd cascade
