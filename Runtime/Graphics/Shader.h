@@ -40,6 +40,7 @@ namespace Directus
 		W_V_P,
 		WVP_Color,
 		WVP_Resolution,
+		WVP_WVPInverse_Resolution_Planes
 	};
 
 	enum ConstantBufferScope
@@ -64,10 +65,21 @@ namespace Directus
 		void Set();
 		void SetInputLaytout(InputLayout inputLayout);
 		void SetTexture(ID3D11ShaderResourceView* texture, unsigned int slot);
+		void SetTextures(std::vector<ID3D11ShaderResourceView*> textures);
 
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, unsigned int slot);
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector4& color, unsigned int slot);
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector2& resolution, unsigned int slot);
+		void SetBuffer(
+			const Math::Matrix& mWorldViewProjection, 
+			const Math::Matrix& mWorldViewProjectionInverse, 
+			const Math::Matrix& mView, 
+			const Math::Matrix& mProjection, 
+			const Math::Vector2& resolution, 
+			float nearPlane,
+			float farPlane, 
+			unsigned int slot
+		);
 
 		void Draw(unsigned int vertexCount);
 		void DrawIndexed(unsigned int indexCount);
@@ -98,6 +110,18 @@ namespace Directus
 			Math::Matrix wvp;
 			Math::Vector2 resolution;
 			Math::Vector2 padding;
+		};
+
+		struct Struct_WVP_WVPInverse_Resolution_Planes
+		{
+			Math::Matrix wvp;
+			Math::Matrix wvpInverse;
+			Math::Matrix view;
+			Math::Matrix projection;
+			Math::Matrix projectionInverse;
+			Math::Vector2 resolution;
+			float nearPlane;
+			float farPlane;
 		};
 
 		std::unique_ptr<D3D11ConstantBuffer> m_constantBuffer;

@@ -37,7 +37,7 @@ namespace Directus
 		// Construct the skeleton of the G-Buffer
 		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // albedo
 		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // normal
-		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // depth
+		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_D24_UNORM_S8_UINT, nullptr, nullptr, nullptr }); // depth
 		m_renderTargets.push_back(GBufferTex{ DXGI_FORMAT_R32G32B32A32_FLOAT, nullptr, nullptr, nullptr }); // material
 	}
 
@@ -70,7 +70,7 @@ namespace Directus
 			textureDesc.Height = height;
 			textureDesc.MipLevels = 1;
 			textureDesc.ArraySize = 1;
-			textureDesc.Format = renderTarget.format;
+			textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 			textureDesc.SampleDesc.Count = 1;
 			textureDesc.SampleDesc.Quality = 0;
 			textureDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -135,7 +135,7 @@ namespace Directus
 		// Clear the render target buffers.
 		for (auto& renderTarget : m_renderTargets)
 		{
-			m_graphics->GetDeviceContext()->ClearRenderTargetView(renderTarget.renderTargetView, Vector4(0,0,0,0).Data());
+			m_graphics->GetDeviceContext()->ClearRenderTargetView(renderTarget.renderTargetView, Vector4::Zero.Data());
 		}
 
 		// Clear the depth buffer.

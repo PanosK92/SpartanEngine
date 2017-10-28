@@ -205,21 +205,6 @@ namespace Directus
 		return true;
 	}
 
-	struct ImageScalingInfo
-	{
-		int width = 0;
-		int height = 0;
-		bool scaled = false;
-		vector<unsigned char> data;
-
-		ImageScalingInfo(int width, int height, bool scaled)
-		{
-			this->width = width;
-			this->height = height;
-			this->scaled = scaled;
-		}
-	};
-
 	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* original, vector<vector<unsigned char>>& mimaps)
 	{
 		// First mip is full size
@@ -228,30 +213,46 @@ namespace Directus
 		int height = FreeImage_GetHeight(original);
 
 		// Compute the rest mip mipmapInfos
-		vector<ImageScalingInfo> mipmapInfos;
+		struct scalingProcess
+		{
+			int width = 0;
+			int height = 0;
+			bool complete = false;
+			vector<unsigned char> data;
+
+			scalingProcess(int width, int height, bool scaled)
+			{
+				this->width = width;
+				this->height = height;
+				this->complete = scaled;
+			}
+		};
+		vector<scalingProcess> mipmapScalingProcesses;
 		while (width > 1 && height > 1)
 		{
 			width = max(width / 2, 1);
 			height = max(height / 2, 1);
 
-			mipmapInfos.emplace_back(width, height, false);
+			mipmapScalingProcesses.emplace_back(width, height, false);
 		}
 
 		// Parallelize mipmap generation using multiple
 		// threads as FreeImage_Rescale() can take a while.
 		Threading* threading = m_context->GetSubsystem<Threading>();
-		for (int i = 0; i < mipmapInfos.size(); i++)
+		int mipIndex = 0;
+		for (auto& process : mipmapScalingProcesses)
 		{
-			threading->AddTask([this, &mipmapInfos, i, original]()
+			threading->AddTask([this, &process, &mipIndex, original]()
 			{
-				if (!RescaleFIBITMAP(original, mipmapInfos[i].width, mipmapInfos[i].height, mipmapInfos[i].data))
+				if (!RescaleFIBITMAP(original, process.width, process.height, process.data))
 				{
-					string mipLevel = to_string(i + 2) + " (" + to_string(mipmapInfos[i].width) + "x" +to_string(mipmapInfos[i].height) + ")";
+					string mipLevel = to_string(mipIndex + 2) + " (" + to_string(process.width) + "x" + to_string(process.height) + ")";
 					string texName = FileSystem::GetFileNameFromFilePath(m_path);
 					LOG_INFO("ImageImporter: Failed to create mip level " + mipLevel + " for texture \"" + texName + "\".");
 				}
-				mipmapInfos[i].scaled = true;
+				process.complete = true;
 			});
+			mipIndex++;
 		}
 
 		// Wait until all mimaps have been generated
@@ -259,9 +260,9 @@ namespace Directus
 		while (!ready)
 		{
 			ready = true;
-			for (const auto& mimapInfo : mipmapInfos)
+			for (const auto& proccess : mipmapScalingProcesses)
 			{
-				if (!mimapInfo.scaled)
+				if (!proccess.complete)
 				{
 					ready = false;
 				}
@@ -269,7 +270,7 @@ namespace Directus
 		}
 
 		// Now copy all the mimaps
-		for (const auto& mimapInfo : mipmapInfos)
+		for (const auto& mimapInfo : mipmapScalingProcesses)
 		{
 			mimaps.emplace_back(move(mimapInfo.data));
 		}

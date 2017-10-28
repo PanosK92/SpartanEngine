@@ -62,6 +62,20 @@ namespace Directus
 				);
 			}
 
+			Vector2 operator*(const float value) const
+			{
+				return Vector2(
+					x * value,
+					y * value
+				);
+			}
+
+			void operator*=(const float value)
+			{
+				x *= value;
+				y *= value;
+			}
+
 			void Vector2::operator+=(const Vector2& b)
 			{
 				this->x += b.x;

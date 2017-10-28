@@ -44,6 +44,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Font/Font.h"
 #include "../Profiling/PerformanceProfiler.h"
+#include <random>
 //===========================================
 
 //= NAMESPACES ================
@@ -154,6 +155,14 @@ namespace Directus
 		m_shaderFXAA->AddSampler(Linear_Sampler);
 		m_shaderFXAA->AddBuffer(WVP_Resolution, Global);
 
+		// SSAO Shader
+		m_shaderSSAO = make_unique<Shader>(m_context);
+		m_shaderSSAO->Load(shaderDirectory + "SSAO.hlsl");
+		m_shaderSSAO->SetInputLaytout(PositionTexture);
+		m_shaderSSAO->AddSampler(Anisotropic_Sampler);
+		m_shaderSSAO->AddSampler(Linear_Sampler);
+		m_shaderSSAO->AddBuffer(WVP_WVPInverse_Resolution_Planes, Global);
+
 		// Sharpening shader
 		m_shaderSharpening = make_unique<Shader>(m_context);
 		m_shaderSharpening->AddDefine("SHARPENING");
@@ -177,17 +186,30 @@ namespace Directus
 		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexSSAO = make_unique<D3D11RenderTexture>(m_graphics);
+		m_renderTexSSAO->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
+		m_renderTexSSAOBlurred = make_unique<D3D11RenderTexture>(m_graphics);
+		m_renderTexSSAOBlurred->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
+
+		// Noise texture (used by SSAO shader)
+		m_texNoiseMap = make_unique<Texture>(m_context);
+		m_texNoiseMap->EnableMimaps(false);
+		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
+		m_texNoiseMap->SetTextureType(Normal_Texture);
 
 		// Gizmo icons
 		m_gizmoTexLightDirectional = make_unique<Texture>(m_context);
+		m_gizmoTexLightDirectional->EnableMimaps(false);
 		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
 		m_gizmoTexLightDirectional->SetTextureType(Albedo_Texture);
 
 		m_gizmoTexLightPoint = make_unique<Texture>(m_context);
+		m_gizmoTexLightPoint->EnableMimaps(false);
 		m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
 		m_gizmoTexLightPoint->SetTextureType(Albedo_Texture);
 
 		m_gizmoTexLightSpot = make_unique<Texture>(m_context);
+		m_gizmoTexLightSpot->EnableMimaps(false);
 		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
 		m_gizmoTexLightSpot->SetTextureType(Albedo_Texture);
 
@@ -201,11 +223,6 @@ namespace Directus
 		m_font->LoadFromFile(fontDir + "CalibriBold.ttf");
 		m_grid = make_unique<Grid>(m_context);
 		m_grid->BuildGrid();
-
-		// Noise texture (used by SSAO shader)
-		m_texNoiseMap = make_unique<Texture>(m_context);
-		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
-		m_texNoiseMap->SetTextureType(Normal_Texture);
 
 		return true;
 	}
@@ -248,6 +265,8 @@ namespace Directus
 		// DISABLE Z-BUFFER
 		m_graphics->EnableDepth(false);
 
+		ScreenSpaceEffects();
+
 		// Deferred Pass
 		DeferredPass();
 
@@ -288,6 +307,14 @@ namespace Directus
 		m_renderTexPong.reset();
 		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+
+		m_renderTexSSAO.reset();
+		m_renderTexSSAO = make_unique<D3D11RenderTexture>(m_graphics);
+		m_renderTexSSAO->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
+
+		m_renderTexSSAOBlurred.reset();
+		m_renderTexSSAOBlurred = make_unique<D3D11RenderTexture>(m_graphics);
+		m_renderTexSSAOBlurred->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
 	}
 
 	void Renderer::SetViewport(float width, float height)
@@ -310,6 +337,7 @@ namespace Directus
 		m_camera = nullptr;
 	}
 
+	//= HELPER FUNCTIONS ==============================================================================================
 	void Renderer::AcquireRenderables(Variant renderables)
 	{
 		Clear();
@@ -519,27 +547,58 @@ namespace Directus
 		} // SHADER ITERATION
 	}
 
-	//= HELPER FUNCTIONS ==============================================================================================
-	void Renderer::DeferredPass()
+	void Renderer::ScreenSpaceEffects()
 	{
 		m_fullScreenRect->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
-		//= SHADOW BLUR ========================================
+		// Set pong texture as render target
+		m_renderTexPong->SetAsRenderTarget();
+		m_renderTexPong->Clear(GetClearColor());
+
+		//= SHADOW BLUR =====================================================================================
 		if (m_directionalLight && m_directionalLight->GetShadowType() == Soft_Shadows)
 		{
-			// Set pong texture as render target
-			m_renderTexPong->SetAsRenderTarget();
-			m_renderTexPong->Clear(GetClearColor());
-
 			// BLUR
 			m_shaderBlur->Set();
 			m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
-			m_shaderBlur->SetTexture(m_GBuffer->GetShaderResource(1), 0); // Normal tex but shadows are in alpha channel
+			m_shaderBlur->SetTexture(m_GBuffer->GetShaderResource(1), 0); // Normal tex but shadows are alpha
 			m_shaderBlur->DrawIndexed(m_fullScreenRect->GetIndexCount());
 		}
-		//=====================================================
+		//===================================================================================================
 
+		//= SSAO ========================================================================================================
+		m_renderTexSSAO->SetAsRenderTarget();
+		m_renderTexSSAO->Clear(GetClearColor());
+
+		vector<ID3D11ShaderResourceView*> ssaoTextures;
+		ssaoTextures.push_back(m_GBuffer->GetShaderResource(1));
+		ssaoTextures.push_back(m_GBuffer->GetShaderResource(2));
+		ssaoTextures.push_back((ID3D11ShaderResourceView*)m_texNoiseMap->GetShaderResource());
+
+		uniform_real_distribution<float> randomFloats(0.0, 1.0); // generates random floats between 0.0 and 1.0
+		default_random_engine generator;
+
+		Matrix mvp = Matrix::Identity * mBaseView * mOrthographicProjection;
+		Matrix mvpInverted = (Matrix::Identity * mView * mProjection).Inverted();
+		m_shaderSSAO->Set();
+		m_shaderSSAO->SetBuffer(mvp, mvpInverted, mView, mProjection, GET_RESOLUTION, m_camera->GetNearPlane(), m_camera->GetFarPlane(), 0);
+		m_shaderSSAO->SetTextures(ssaoTextures);
+		m_shaderSSAO->DrawIndexed(m_fullScreenRect->GetIndexCount());
+
+		m_renderTexSSAOBlurred->SetAsRenderTarget();
+		m_renderTexSSAOBlurred->Clear(GetClearColor());
+
+		// BLUR
+		m_shaderBlur->Set();
+		m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION * 0.5f, 0);
+		m_shaderBlur->SetTexture(m_renderTexSSAO->GetShaderResourceView(), 0);
+		m_shaderBlur->DrawIndexed(m_fullScreenRect->GetIndexCount());
+		//==============================================================================================================
+	}
+
+	void Renderer::DeferredPass()
+	{
 		if (!m_shaderDeferred->IsCompiled())
 			return;
 
@@ -561,8 +620,8 @@ namespace Directus
 		m_texArray.push_back(m_GBuffer->GetShaderResource(1)); // normal
 		m_texArray.push_back(m_GBuffer->GetShaderResource(2)); // depth
 		m_texArray.push_back(m_GBuffer->GetShaderResource(3)); // material
-		m_texArray.push_back((ID3D11ShaderResourceView*)m_texNoiseMap->GetShaderResource());
-		m_texArray.push_back(m_renderTexPong->GetShaderResourceView()); // contains blurred shadows
+		m_texArray.push_back(m_renderTexPong->GetShaderResourceView()); // contains shadows
+		m_texArray.push_back(m_renderTexSSAOBlurred->GetShaderResourceView()); // contains SSAO
 		m_texArray.push_back(m_skybox ? (ID3D11ShaderResourceView*)m_skybox->GetEnvironmentTexture() : nullptr);
 
 		m_shaderDeferred->UpdateTextures(m_texArray);
