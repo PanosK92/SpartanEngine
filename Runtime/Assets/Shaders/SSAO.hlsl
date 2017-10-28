@@ -110,9 +110,9 @@ static const float3 sampleKernel[64] =
 	float3(-0.44272, -0.67928, 0.1865)
 };
 
-static const float intensity = 30.0f;
+static const float intensity = 10.0f;
 static const int kernelSize = 4;
-static const float radius = 0.5f;
+static const float radius = 0.1f;
 static const float bias = 0.2f;
 static const float2 noiseScale  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
 
@@ -146,16 +146,15 @@ float3 GetPosition(float2 texCoord)
 	return worldPos;
 }
 
-float doAmbientOcclusion(float2 texCoord, float3 position, in float3 cnorm)
+float doAmbientOcclusion(float2 texCoord, float3 position, float3 normal)
 {
 	float3 originPos = position;
 	float3 sampledPos = GetPosition(texCoord);
 	float3 diff = sampledPos - originPos;
 	 
 	float3 v = normalize(diff);
-	float d = length(diff) * noiseScale; // halo fix
-	float occlusion = max(0.0f, dot(cnorm, v) - bias) * (1.0f / (1.0f + d));
-	
+	float d = length(diff) * noiseScale;
+	float occlusion = max(0.0f, dot(normal, v) - bias) * (1.0f / (1.0f + d));
     float rangeCheck = smoothstep(0.0f, 1.0f, radius / abs(originPos - sampledPos));
 	
 	return occlusion * rangeCheck;
@@ -167,7 +166,7 @@ float SSAO(float2 texCoord)
 	float3 randNormal = GetRandomNormal(texCoord);
     float3 normal = GetNormal(texCoord);
 	float originDepth = GetDepth(texCoord);
-	float radius_depth = radius / clamp(originDepth, 0.5f, 1.0f);
+	float radius_depth = radius / originDepth;
 	float occlusion = 0.0f;
 	
 	[unroll(kernelSize)]
@@ -176,14 +175,16 @@ float SSAO(float2 texCoord)
 		float2 coord1 = reflect(sampleKernel[i], randNormal) * radius_depth;
 		float2 coord2 = float2(coord1.x - coord1.y, coord1.x + coord1.y);
 
+		//if(dot(normal, randNormal) < 0.0f)
+            //randNor *= -1.0;
+			
 		float acc = 0.0f;
 		acc += doAmbientOcclusion(texCoord + coord1 * 0.25f, position, normal);
 		acc += doAmbientOcclusion(texCoord + coord2 * 0.5f, position, normal);
 		acc += doAmbientOcclusion(texCoord + coord1 * 0.75f, position, normal);
 		acc += doAmbientOcclusion(texCoord + coord2, position, normal);
 		
-		float depthScaledIntensity = intensity * clamp(originDepth, 0.5f, 1.0f);
-		occlusion += acc * depthScaledIntensity;
+		occlusion += acc * intensity;
     }
 
     occlusion /= (float)kernelSize * 4.0f;
