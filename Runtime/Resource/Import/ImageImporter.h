@@ -60,16 +60,25 @@ XPM files[reading, writing]
 
 #define FREEIMAGE_LIB
 
-//= INCLUDES =================
+//= INCLUDES ===========================
 #include <vector>
 #include "../../Core/Helper.h"
-//============================
+#include "../../FileSystem/FileSystem.h"
+//======================================
 
 class FIBITMAP;
 
 namespace Directus
 {
 	class Context;
+
+	enum LoadState
+	{
+		Idle,
+		Loading,
+		Completed,
+		Failed
+	};
 
 	struct ImageData
 	{
@@ -97,11 +106,11 @@ namespace Directus
 		unsigned int width = 0;
 		unsigned int height = 0;
 		unsigned int channels = 0;
-		std::string filePath;
+		std::string filePath = NOT_ASSIGNED;
 		bool isGrayscale = false;
 		bool isTransparent = false;
 		bool isUsingMipmaps = false;
-		bool isLoaded = false;
+		LoadState loadState = Idle;
 	};
 
 	class DLL_API ImageImporter

@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============
+//= INCLUDES ========================
 #include "XmlDocument.h"
 #include "pugixml.hpp"
 #include "../Logging/Log.h"
@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../FileSystem/FileSystem.h"
-//==========================
+//===================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -37,10 +37,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	unique_ptr<xml_document> XmlDocument::m_document;
-	vector<shared_ptr<xml_node>> XmlDocument::m_nodes;
-
-	void XmlDocument::Create()
+	XmlDocument::XmlDocument()
 	{
 		// Generate new XML document within memory
 		m_document = make_unique<xml_document>();
@@ -52,11 +49,11 @@ namespace Directus
 		declarationNode.append_attribute("standalone") = "yes";
 	}
 
-	void XmlDocument::Release()
+	XmlDocument::~XmlDocument()
 	{
 		m_nodes.clear();
-		m_nodes.shrink_to_fit();
 	}
+
 
 	//= NODES =======================================================================
 	void XmlDocument::AddNode(const string& name)
@@ -367,7 +364,8 @@ namespace Directus
 		if (!m_document)
 			return;
 
-		Release();
+		m_nodes.clear();
+		m_nodes.shrink_to_fit();
 
 		for (xml_node child = m_document->first_child(); child; child = child.next_sibling())
 		{

@@ -89,24 +89,22 @@ namespace Directus
 			savePath = GetResourceFilePath() + METADATA_EXTENSION;
 		}
 
-		XmlDocument::Create();
-		XmlDocument::AddNode("Metadata");
-		XmlDocument::AddAttribute("Metadata", "Type", "Texture");
-		XmlDocument::AddChildNode("Metadata", "Texture");
-		XmlDocument::AddAttribute("Texture", "Name", GetResourceName());
-		XmlDocument::AddAttribute("Texture", "Path", GetResourceFilePath());
-		XmlDocument::AddAttribute("Texture", "Width", m_width);
-		XmlDocument::AddAttribute("Texture", "Height", m_height);
-		XmlDocument::AddAttribute("Texture", "Channels", m_channels);
-		XmlDocument::AddAttribute("Texture", "Type", textureTypeChar[(int)m_textureType]);
-		XmlDocument::AddAttribute("Texture", "Greyscale", m_grayscale);
-		XmlDocument::AddAttribute("Texture", "Transparency", m_transparency);
-		XmlDocument::AddAttribute("Texture", "Mipmaps", m_mimaps);
+		unique_ptr<XmlDocument> xml = make_unique<XmlDocument>();
+		xml->AddNode("Metadata");
+		xml->AddAttribute("Metadata", "Type", "Texture");
+		xml->AddChildNode("Metadata", "Texture");
+		xml->AddAttribute("Texture", "Name", GetResourceName());
+		xml->AddAttribute("Texture", "Path", GetResourceFilePath());
+		xml->AddAttribute("Texture", "Width", m_width);
+		xml->AddAttribute("Texture", "Height", m_height);
+		xml->AddAttribute("Texture", "Channels", m_channels);
+		xml->AddAttribute("Texture", "Type", textureTypeChar[(int)m_textureType]);
+		xml->AddAttribute("Texture", "Greyscale", m_grayscale);
+		xml->AddAttribute("Texture", "Transparency", m_transparency);
+		xml->AddAttribute("Texture", "Mipmaps", m_mimaps);
 
-		if (!XmlDocument::Save(savePath))
+		if (!xml->Save(savePath))
 			return false;
-
-		XmlDocument::Release();
 
 		return true;
 	}
@@ -143,7 +141,7 @@ namespace Directus
 		return (void**)m_texture->GetShaderResourceView();
 	}
 
-	bool Texture::CreateFromMemory(unsigned int width, unsigned int height, unsigned int channels, vector<unsigned char>& buffer, TextureFormat format)
+	bool Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, vector<unsigned char>& buffer, TextureFormat format)
 	{
 		if (!m_texture)
 			return false;
@@ -161,7 +159,7 @@ namespace Directus
 		return true;
 	}
 
-	bool Texture::CreateFromMemory(unsigned int width, unsigned int height, unsigned int channels, const vector<vector<unsigned char>>& buffer, TextureFormat format)
+	bool Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const vector<vector<unsigned char>>& buffer, TextureFormat format)
 	{
 		if (!m_texture)
 			return false;
@@ -220,11 +218,11 @@ namespace Directus
 		// Create the texture
 		if (!m_mimaps)
 		{
-			CreateFromMemory(imageData.width, imageData.height, imageData.channels, imageData.rgba, RGBA_8_UNORM);
+			CreateShaderResource(imageData.width, imageData.height, imageData.channels, imageData.rgba, RGBA_8_UNORM);
 		}
 		else
 		{
-			CreateFromMemory(imageData.width, imageData.height, imageData.channels, imageData.rgba_mimaps, RGBA_8_UNORM);
+			CreateShaderResource(imageData.width, imageData.height, imageData.channels, imageData.rgba_mimaps, RGBA_8_UNORM);
 		}
 
 		// Save metadata file
@@ -236,24 +234,24 @@ namespace Directus
 
 	bool Texture::LoadMetadata(const string& filePath)
 	{
-		if (!XmlDocument::Load(filePath))
+		unique_ptr<XmlDocument> xml = make_unique<XmlDocument>();
+
+		if (!xml->Load(filePath))
 			return false;
 
-		XmlDocument::GetAttribute("Texture", "Name", GetResourceName());
-		SetResourceFilePath(XmlDocument::GetAttributeAsStr("Texture", "Path"));
-		XmlDocument::GetAttribute("Texture", "Width", m_width);
-		XmlDocument::GetAttribute("Texture", "Height", m_height);
-		XmlDocument::GetAttribute("Texture", "Channels", m_channels);
+		xml->GetAttribute("Texture", "Name", GetResourceName());
+		SetResourceFilePath(xml->GetAttributeAsStr("Texture", "Path"));
+		xml->GetAttribute("Texture", "Width", m_width);
+		xml->GetAttribute("Texture", "Height", m_height);
+		xml->GetAttribute("Texture", "Channels", m_channels);
 
 		string type;
-		XmlDocument::GetAttribute("Texture", "Type", type);
+		xml->GetAttribute("Texture", "Type", type);
 		m_textureType = TextureTypeFromString(type);
 
-		XmlDocument::GetAttribute("Texture", "Greyscale", m_grayscale);
-		XmlDocument::GetAttribute("Texture", "Transparency", m_transparency);
-		XmlDocument::GetAttribute("Texture", "Mipmaps", m_mimaps);
-
-		XmlDocument::Release();
+		xml->GetAttribute("Texture", "Greyscale", m_grayscale);
+		xml->GetAttribute("Texture", "Transparency", m_transparency);
+		xml->GetAttribute("Texture", "Mipmaps", m_mimaps);
 
 		return true;
 	}
