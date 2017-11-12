@@ -252,7 +252,7 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     this->hide();
 }
 
-void DirectusMaterial::Reflect(weak_ptr<GameObject>  gameobject)
+void DirectusMaterial::Reflect(weak_ptr<GameObject> gameobject)
 {
     m_inspectedMaterial = weak_ptr<Material>();
 

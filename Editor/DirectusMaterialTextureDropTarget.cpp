@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //============================================
 #include "DirectusMaterialTextureDropTarget.h"
-#include "DirectusAssetLoader.h"
 #include "DirectusInspector.h"
 #include "DirectusMaterial.h"
 #include "DirectusViewport.h"
@@ -46,23 +45,21 @@ using namespace Directus;
 DirectusMaterialTextureDropTarget::DirectusMaterialTextureDropTarget(QWidget *parent) : QLabel(parent)
 {
     setAcceptDrops(true);
+    m_inspector = nullptr;
+    m_imageLoader = nullptr;
+    m_imageData = nullptr;
 }
 
 void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector, TextureType textureType)
 {
     m_inspector = inspector;
+    m_imageLoader = m_inspector->GetContext()->GetSubsystem<ResourceManager>()->GetImageImporter()._Get();
     m_textureType = textureType;
 
-    /*
-    widget background dark:         292929
-    widget background light:		383838
-    widget background highlighted: 	484848
-    text color:                     909090
-    text highlighted:               EDEDED
-    border:                         212121
-    border highlighted:             464646
-    text edit background:           414141
-    */
+    // Timer which checks if the thumbnail image is loaded (async)
+    m_timer500ms = new QTimer(this);
+    connect(m_timer500ms, SIGNAL(timeout()), this, SLOT(Update()));
+    m_timer500ms->start(500);
 
     this->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
     this->setMinimumSize(SLOT_SIZE, SLOT_SIZE);
@@ -75,24 +72,25 @@ void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector,
 
 void DirectusMaterialTextureDropTarget::LoadImageAsync(const std::string& filePath)
 {
-    if (m_currentFilePath == filePath)
+    if (m_currentFilePath == filePath || !m_imageLoader)
         return;
 
     m_currentFilePath = filePath;
-    QThread* thread = new QThread();
+    m_imageData = new ImageData(filePath, SLOT_SIZE, SLOT_SIZE);
+    m_imageLoader->LoadAsync(*m_imageData);
+}
 
-    DirectusAssetLoader* assetLoader = new DirectusAssetLoader();
-    assetLoader->Initialize(nullptr, m_inspector->GetContext());
-    assetLoader->moveToThread(thread);
-    assetLoader->PrepareForTexture(filePath, SLOT_SIZE, SLOT_SIZE);
+void DirectusMaterialTextureDropTarget::Update()
+{
+    if (!m_imageData || !m_imageData->isLoaded)
+        return;
 
-    connect(thread,         SIGNAL(started()),              assetLoader,    SLOT(LoadTexture()));
-    connect(assetLoader,    SIGNAL(ImageReady(QPixmap)),    this,           SLOT(setPixmap(QPixmap)));
-    connect(assetLoader,    SIGNAL(Finished()),             thread,         SLOT(quit()));
-    connect(assetLoader,    SIGNAL(Finished()),             assetLoader,    SLOT(deleteLater()));
-    connect(thread,         SIGNAL(finished()),             thread,         SLOT(deleteLater()));
+    QImage image = QImage((const uchar*)m_imageData->rgba.data(), m_imageData->width, m_imageData->height, QImage::Format_RGBA8888);
+    QPixmap pixmap = QPixmap::fromImage(image);
+    this->setPixmap(pixmap);
 
-    thread->start(QThread::HighestPriority);
+    delete m_imageData;
+    m_imageData = nullptr;
 }
 
 //= DROP ============================================================================

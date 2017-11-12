@@ -76,7 +76,7 @@ namespace Directus
 		}
 
 	private:
-		int m_threadCount = 5;
+		int m_threadCount = 8;
 		std::vector<std::thread> m_threads;
 		std::queue<std::shared_ptr<Task>> m_tasks;
 		std::mutex m_tasksMutex;
