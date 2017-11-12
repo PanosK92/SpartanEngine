@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =========================
 #include "ImageImporter.h"
 #include "FreeImagePlus.h"
 #include <future>
@@ -27,8 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
-#include "../../FileSystem/FileSystem.h"
-//======================================
+#include "../../Core/Variant.h"
+#include "../../EventSystem/EventSystem.h"
+//====================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -58,16 +59,25 @@ namespace Directus
 
 	bool ImageImporter::Load(ImageData& imageData)
 	{
+		imageData.loadState = Loading;
+
+		if (imageData.filePath == NOT_ASSIGNED)
+		{
+			LOG_WARNING("ImageImporter: Can't load image. No file path has been assigned.");
+			imageData.loadState = Failed;
+			return false;
+		}
+
 		if (!FileSystem::FileExists(imageData.filePath))
 		{
-			LOG_WARNING("ImageImporter: Texture \"" + imageData.filePath + "\" doesn't exist.");
-			imageData.isLoaded = true;
+			LOG_WARNING("ImageImporter: Cant' load image. File path \"" + imageData.filePath + "\" is invalid.");
+			imageData.loadState = Failed;
 			return false;
 		}
 
 		// Get image format
 		FREE_IMAGE_FORMAT format = FreeImage_GetFileType(imageData.filePath.c_str(), 0);
-
+		
 		// If the format is unknown
 		if (format == FIF_UNKNOWN)
 		{
@@ -79,7 +89,7 @@ namespace Directus
 			if (!FreeImage_FIFSupportsReading(format))
 			{
 				LOG_WARNING("ImageImporter: Failed to detect the image format.");
-				imageData.isLoaded = true;
+				imageData.loadState = Failed;
 				return false;
 			}
 
@@ -90,7 +100,7 @@ namespace Directus
 		// but I am checking against it also, just in case.
 		if (format == -1 || format == FIF_UNKNOWN)
 		{
-			imageData.isLoaded = true;
+			imageData.loadState = Failed;
 			return false;
 		}
 
@@ -101,7 +111,9 @@ namespace Directus
 		FreeImage_FlipVertical(bitmapOriginal);
 
 		// Perform any scaling (if necessary)
-		bool scale = (imageData.width != 0 && imageData.height != 0);
+		bool userDefineDimensions = (imageData.width != 0 && imageData.height != 0);
+		bool dimensionMismatch = (FreeImage_GetWidth(bitmapOriginal) != imageData.width && FreeImage_GetHeight(bitmapOriginal) != imageData.height);
+		bool scale = userDefineDimensions && dimensionMismatch;
 		FIBITMAP* bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, imageData.width, imageData.height, FILTER_LANCZOS3) : bitmapOriginal;
 
 		// Convert it to 32 bits (if neccessery)
@@ -114,9 +126,6 @@ namespace Directus
 		imageData.width = FreeImage_GetWidth(bitmap32);
 		imageData.height = FreeImage_GetHeight(bitmap32);
 		imageData.channels = ComputeChannelCount(bitmap32, imageData.bpp);
-
-		//FREE_IMAGE_COLOR_TYPE colorType = FreeImage_GetColorType(bitmap32);
-		//LOG_INFO("Color Type: " + to_string(colorType));
 
 		// Fill RGBA vector with the data from the FIBITMAP
 		FIBTIMAPToRGBA(bitmap32, &imageData.rgba);
@@ -146,7 +155,7 @@ namespace Directus
 		}
 		//====================================================
 
-		imageData.isLoaded = true;
+		imageData.loadState = Completed;
 		return true;
 	}
 

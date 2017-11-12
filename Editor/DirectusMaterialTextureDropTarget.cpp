@@ -82,7 +82,17 @@ void DirectusMaterialTextureDropTarget::LoadImageAsync(const std::string& filePa
 
 void DirectusMaterialTextureDropTarget::Update()
 {
-    if (!m_imageData || !m_imageData->isLoaded)
+    if (!m_imageData)
+        return;
+
+    if (m_imageData->loadState == Failed)
+    {
+        delete m_imageData;
+        m_imageData = nullptr;
+        return;
+    }
+
+    if (m_imageData->loadState != Completed)
         return;
 
     QImage image = QImage((const uchar*)m_imageData->rgba.data(), m_imageData->width, m_imageData->height, QImage::Format_RGBA8888);

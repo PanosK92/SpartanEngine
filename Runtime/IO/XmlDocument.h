@@ -50,62 +50,62 @@ namespace Directus
 	class XmlDocument
 	{
 	public:
-		static void Create();
-		static void Release();
+		XmlDocument();
+		~XmlDocument();
 
-		//= NODES =======================================================================
-		static void AddNode(const std::string& nodeName);
-		static bool AddChildNode(const std::string& parentNodeName, const std::string& childNodeName);
-		//===============================================================================
+		//= NODES =============================================================================
+		void AddNode(const std::string& nodeName);
+		bool AddChildNode(const std::string& parentNodeName, const std::string& childNodeName);
+		//=====================================================================================
 
-		//= ADD ATTRIBUTE ================================================================================================
-		static bool AddAttribute(const std::string& nodeName, const char* attributeName, const char* value);
-		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, const std::string& value);
-		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, bool value);
-		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, int value);
-		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, unsigned int value);
-		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, float value);
-		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, double value);
-		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector2& value);
-		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector3& value);
-		static bool AddAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector4& value);
-		//================================================================================================================
+		//= ADD ATTRIBUTE =========================================================================================
+		bool AddAttribute(const std::string& nodeName, const char* attributeName, const char* value);
+		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, const std::string& value);
+		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, bool value);
+		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, int value);
+		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, unsigned int value);
+		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, float value);
+		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, double value);
+		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector2& value);
+		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector3& value);
+		bool AddAttribute(const std::string& nodeName, const std::string& attributeName, Math::Vector4& value);
+		//=========================================================================================================
 
-		//= GET ATTRIBUTE ===================================================================================
-		static bool GetAttribute(const std::string& nodeName, const char* attributeName, std::string& value);
-		static bool GetAttribute(const std::string& nodeName, const char* attributeName, int& value);
-		static bool GetAttribute(const std::string& nodeName, const char* attributeName, unsigned int& value);
-		static bool GetAttribute(const std::string& nodeName, const char* attributeName, bool& value);
-		static bool GetAttribute(const std::string& nodeName, const char* attributeName, float& value);
-		static bool GetAttribute(const std::string& nodeName, const char* attributeName, double& value);
+		//= GET ATTRIBUTE =============================================================================
+		bool GetAttribute(const std::string& nodeName, const char* attributeName, std::string& value);
+		bool GetAttribute(const std::string& nodeName, const char* attributeName, int& value);
+		bool GetAttribute(const std::string& nodeName, const char* attributeName, unsigned int& value);
+		bool GetAttribute(const std::string& nodeName, const char* attributeName, bool& value);
+		bool GetAttribute(const std::string& nodeName, const char* attributeName, float& value);
+		bool GetAttribute(const std::string& nodeName, const char* attributeName, double& value);
 
-		static std::string GetAttributeAsStr(const std::string& nodeName, const char* attributeName);
-		static int GetAttributeAsInt(const std::string& nodeName, const char* attributeName);
-		static unsigned int GetAttributeAsUnsignedInt(const std::string& nodeName, const char* attributeName);
-		static Math::Vector2 GetAttributeAsVector2(const std::string& nodeName, const char* attributeName);
-		static Math::Vector3 GetAttributeAsVector3(const std::string& nodeName, const char* attributeName);
-		static Math::Vector4 GetAttributeAsVector4(const std::string& nodeName, const char* attributeName);
-		//====================================================================================================
+		std::string GetAttributeAsStr(const std::string& nodeName, const char* attributeName);
+		int GetAttributeAsInt(const std::string& nodeName, const char* attributeName);
+		unsigned int GetAttributeAsUnsignedInt(const std::string& nodeName, const char* attributeName);
+		Math::Vector2 GetAttributeAsVector2(const std::string& nodeName, const char* attributeName);
+		Math::Vector3 GetAttributeAsVector3(const std::string& nodeName, const char* attributeName);
+		Math::Vector4 GetAttributeAsVector4(const std::string& nodeName, const char* attributeName);
+		//=============================================================================================
 
-		//= IO =======================================
-		static bool Load(const std::string& filePath);
-		static bool Save(const std::string& filePath);
-		//============================================
+		//= IO ================================
+		bool Load(const std::string& filePath);
+		bool Save(const std::string& filePath);
+		//=====================================
 
 	private:
 		// Returns an attribute as xml_attribute for further handling
-		static pugi::xml_attribute GetAttribute(const std::string& nodeName, const char* attributeName);
+		pugi::xml_attribute GetAttribute(const std::string& nodeName, const char* attributeName);
 
 		// Returns a node by name
-		static std::shared_ptr<pugi::xml_node> GetNodeByName(const std::string& name);
+		std::shared_ptr<pugi::xml_node> GetNodeByName(const std::string& name);
 
 		// Returns all the nodes in the current document
-		static void GetAllNodes();
+		void GetAllNodes();
 
 		// Returns all the descendant nodes of a node
-		static void GetNodes(pugi::xml_node node);
+		void GetNodes(pugi::xml_node node);
 
-		static std::unique_ptr<pugi::xml_document> m_document;
-		static std::vector<std::shared_ptr<pugi::xml_node>> m_nodes;
+		std::unique_ptr<pugi::xml_document> m_document;
+		std::vector<std::shared_ptr<pugi::xml_node>> m_nodes;
 	};
 }
