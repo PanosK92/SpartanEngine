@@ -85,9 +85,9 @@ namespace Directus
 		//========================================================================
 
 		// Creates a texture of the given type from memory
-		bool CreateFromMemory(int width, int height, int channels, unsigned char* buffer, TextureFormat format);
+		bool CreateFromMemory(unsigned int width, unsigned int height, unsigned int channels, std::vector<unsigned char>& buffer, TextureFormat format);
 		// Creates a texture with pre-generated mimaps from memory
-		bool CreateFromMemory(int width, int height, int channels, const std::vector<std::vector<unsigned char>>& buffer, TextureFormat format);
+		bool CreateFromMemory(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::vector<unsigned char>>& buffer, TextureFormat format);
 
 	private:
 		bool LoadFromForeignFormat(const std::string& filePath);

@@ -2,9 +2,8 @@
 Directus3D is a game engine that started as a hobby project and evolved into something greater.
 The source code is simple, modern and tackles a lot of aspects of engine development. Have fun!
 
-Note: This project is still in an early development stage and there is a lot experimentation in finding what works best.
-As a result, no design decision is set in stone and it will take a while until it's production ready. Having a full-time
-job, I invest whatever time I have left on it. However, if you wish for things to move faster and help shape it, feel free to contribute.
+Note: This project is in an early development stage and there is a lot experimentation going on, regarding what works best.
+As a result, no design decision is set in stone and it will take a while until the engine is ready to produce games.
 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Runtime/Assets/screenshot-v0.3_preview.jpg)
 
@@ -34,10 +33,11 @@ Improved debug view             | 100% | Bounding boxes, colliders, raycasts, et
 Point light support             | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality codebase.
-Improved Shadowing         		| 80% | Improved shadow mapping technique, no shadow shimmering, SSAO.
-Font importing and rendering    | 80% | Ability to load any font file. TextMesh component.
 Debug Rendering    				| 90% | Gizmos, scene grid and G-Buffer visualization.
-Skeletal Animation			    | 5% | -
+Improved shadows         		| 90% | Improved shadow mapping technique, no shadow shimmering.
+SSAO         					| 90% | Improved shadow mapping technique, no shadow shimmering.
+Font importing and rendering    | 80% | Ability to load any font file. TextMesh component.
+Screen space reflections        | 10% | -
 
 # Roadmap
 - C# scripting.
@@ -45,7 +45,7 @@ Skeletal Animation			    | 5% | -
 - Dynamic resolution scaling.
 - Draw call batching (static & dynamic).
 - Export on Windows.
-- Screen space reflections.
+- Skeletal Animation.
 - Volumetric Lighting.
 - Global Illumination.
 - UI components.

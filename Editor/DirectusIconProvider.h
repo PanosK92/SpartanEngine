@@ -27,18 +27,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+    class Context;
     class ImageImporter;
 }
 
 class DirectusIconProvider : public QFileIconProvider
 {
 public:
-    void Initialize();
+    void SetContext(Directus::Context* context);
     QIcon icon(const QFileInfo& info) const;
 
 private:
-    Directus::ImageImporter* m_imageLoader;
-
     QIcon m_unknownIcon;
     QIcon m_folderIcon;
     QIcon m_modelIcon;
@@ -48,4 +47,6 @@ private:
     QIcon m_shaderIcon;
     QIcon m_materialIcon;
     QIcon m_audioFileIcon;
+
+    Directus::ImageImporter* m_imageImporter;
 };

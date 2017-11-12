@@ -101,10 +101,10 @@ namespace Directus
 		template<typename T>
 		static void Write(std::shared_ptr<T> ptr, LogType type) { Write(ptr ? typeid(ptr).name() : "Null", type); }
 
-	private:
 		static void LogString(const std::string& text, LogType type);
-		static void WriteToFile(const std::string& text, LogType type);
+		static void LogToFile(const std::string& text, LogType type);
 
+	private:
 		static std::weak_ptr<ILogger> m_logger;
 		static std::ofstream m_fout;
 		static std::string m_logFileName;

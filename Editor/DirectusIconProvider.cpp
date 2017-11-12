@@ -23,7 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusIconProvider.h"
 #include "Logging/Log.h"
 #include "FileSystem/FileSystem.h"
-#include "Resource/Import/ImageImporter.h"
+#include "Core/Context.h"
+#include "Resource/ResourceManager.h"
 //========================================
 
 //= NAMESPACES ==========
@@ -31,10 +32,16 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-void DirectusIconProvider::Initialize()
+void DirectusIconProvider::SetContext(Context* context)
 {
-    m_imageLoader = new ImageImporter(nullptr);
+    m_imageImporter= nullptr;
+    if (!context)
+    {
+        LOG_WARNING("DirectusIconProvider: Can't set uninitialized context.");
+        return;
+    }
 
+    m_imageImporter = context->GetSubsystem<ResourceManager>()->GetImageImporter()._Get();
     m_unknownIcon = QIcon(":/Images/file.png");
     m_folderIcon = QIcon(":/Images/folder.png");
     m_imageIcon = QIcon(":/Images/image.png");
@@ -55,23 +62,22 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
 
     string filePath = info.absoluteFilePath().toStdString();
 
-    // Icon
-    if(FileSystem::IsSupportedImageFile(filePath))
+    // Thumbnail
+    if(FileSystem::IsSupportedImageFile(filePath) && m_imageImporter)
     {
         int width = 100;
         int height = 100;
-        m_imageLoader->Load(filePath, width, height);
+        ImageData imageData = ImageData(filePath, width, height);
+        m_imageImporter->Load(imageData);
 
         auto image =  QImage(
-                    (const uchar*)m_imageLoader->GetRGBA(),
+                    (const uchar*)imageData.rgba.data(),
                     width,
                     height,
                     QImage::Format_RGBA8888
                     );
 
         auto pixmap = QPixmap::fromImage(image);
-
-        m_imageLoader->Clear();
         return pixmap;
     }
 

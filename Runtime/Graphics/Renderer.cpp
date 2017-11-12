@@ -44,7 +44,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Font/Font.h"
 #include "../Profiling/PerformanceProfiler.h"
-#include <random>
 //===========================================
 
 //= NAMESPACES ================
@@ -190,26 +189,24 @@ namespace Directus
 		m_renderTexSSAO->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
 		m_renderTexSSAOBlurred = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexSSAOBlurred->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
+		m_renderTexLastFrame = make_unique<D3D11RenderTexture>(m_graphics);
+		m_renderTexLastFrame->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		// Noise texture (used by SSAO shader)
 		m_texNoiseMap = make_unique<Texture>(m_context);
-		m_texNoiseMap->EnableMimaps(false);
 		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
 		m_texNoiseMap->SetTextureType(Normal_Texture);
 
 		// Gizmo icons
 		m_gizmoTexLightDirectional = make_unique<Texture>(m_context);
-		m_gizmoTexLightDirectional->EnableMimaps(false);
 		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
 		m_gizmoTexLightDirectional->SetTextureType(Albedo_Texture);
 
 		m_gizmoTexLightPoint = make_unique<Texture>(m_context);
-		m_gizmoTexLightPoint->EnableMimaps(false);
 		m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
 		m_gizmoTexLightPoint->SetTextureType(Albedo_Texture);
 
 		m_gizmoTexLightSpot = make_unique<Texture>(m_context);
-		m_gizmoTexLightSpot->EnableMimaps(false);
 		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
 		m_gizmoTexLightSpot->SetTextureType(Albedo_Texture);
 
@@ -265,19 +262,9 @@ namespace Directus
 		// DISABLE Z-BUFFER
 		m_graphics->EnableDepth(false);
 
-		ScreenSpaceEffects();
-
-		// Deferred Pass
+		PreDeferredPass();
 		DeferredPass();
-
-		// Post Processing
-		PostProcessing();
-
-		// Render debug info
-		DebugDraw();
-
-		// display frame
-		m_graphics->Present();
+		PostDeferredPass();
 
 		PerformanceProfiler::RenderingFinished();
 	}
@@ -292,6 +279,7 @@ namespace Directus
 		SET_RESOLUTION(width, height);
 		m_graphics->SetResolution(width, height);
 
+		// Resize everything
 		m_GBuffer.reset();
 		m_GBuffer = make_unique<GBuffer>(m_graphics);
 		m_GBuffer->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
@@ -315,6 +303,10 @@ namespace Directus
 		m_renderTexSSAOBlurred.reset();
 		m_renderTexSSAOBlurred = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexSSAOBlurred->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
+
+		m_renderTexLastFrame.reset();
+		m_renderTexLastFrame = make_unique<D3D11RenderTexture>(m_graphics);
+		m_renderTexLastFrame->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 	}
 
 	void Renderer::SetViewport(float width, float height)
@@ -547,7 +539,7 @@ namespace Directus
 		} // SHADER ITERATION
 	}
 
-	void Renderer::ScreenSpaceEffects()
+	void Renderer::PreDeferredPass()
 	{
 		m_fullScreenRect->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
@@ -572,12 +564,9 @@ namespace Directus
 		m_renderTexSSAO->Clear(GetClearColor());
 
 		vector<ID3D11ShaderResourceView*> ssaoTextures;
-		ssaoTextures.push_back(m_GBuffer->GetShaderResource(1));
-		ssaoTextures.push_back(m_GBuffer->GetShaderResource(2));
-		ssaoTextures.push_back((ID3D11ShaderResourceView*)m_texNoiseMap->GetShaderResource());
-
-		uniform_real_distribution<float> randomFloats(0.0, 1.0); // generates random floats between 0.0 and 1.0
-		default_random_engine generator;
+		ssaoTextures.push_back(m_GBuffer->GetShaderResource(1)); // normal
+		ssaoTextures.push_back(m_GBuffer->GetShaderResource(2)); // depth
+		ssaoTextures.push_back((ID3D11ShaderResourceView*)m_texNoiseMap->GetShaderResource()); // noise
 
 		Matrix mvp = Matrix::Identity * mBaseView * mOrthographicProjection;
 		Matrix mvpInverted = (Matrix::Identity * mView * mProjection).Inverted();
@@ -622,6 +611,7 @@ namespace Directus
 		m_texArray.push_back(m_GBuffer->GetShaderResource(3)); // material
 		m_texArray.push_back(m_renderTexPong->GetShaderResourceView()); // contains shadows
 		m_texArray.push_back(m_renderTexSSAOBlurred->GetShaderResourceView()); // contains SSAO
+		m_texArray.push_back(m_renderTexLastFrame->GetShaderResourceView());
 		m_texArray.push_back(m_skybox ? (ID3D11ShaderResourceView*)m_skybox->GetEnvironmentTexture() : nullptr);
 
 		m_shaderDeferred->UpdateTextures(m_texArray);
@@ -630,43 +620,54 @@ namespace Directus
 		m_shaderDeferred->Render(m_fullScreenRect->GetIndexCount());
 	}
 
-	void Renderer::PostProcessing()
+	bool Renderer::RenderGBuffer()
+	{
+		if (!(m_renderFlags & Render_Albedo) && !(m_renderFlags & Render_Normal) && !(m_renderFlags & Render_Depth) && !(m_renderFlags & Render_Material))
+			return false;
+
+		m_graphics->SetBackBufferAsRenderTarget();
+		m_graphics->SetViewport();
+		m_graphics->Clear(m_camera->GetClearColor());
+
+		int texIndex = 0;
+		if (m_renderFlags & Render_Albedo)
+		{
+			texIndex = 0;
+		}
+		else if (m_renderFlags & Render_Normal)
+		{
+			texIndex = 1;
+		}
+		else if (m_renderFlags & Render_Depth)
+		{
+			texIndex = 2;
+		}
+		else if (m_renderFlags & Render_Material)
+		{
+			texIndex = 3;
+		}
+
+		// TEXTURE
+		m_shaderTexture->Set();
+		m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
+		m_shaderTexture->SetTexture(m_GBuffer->GetShaderResource(texIndex), 0);
+		m_shaderTexture->DrawIndexed(m_fullScreenRect->GetIndexCount());
+
+		// display frame
+		m_graphics->Present();
+
+		return true;
+	}
+
+	void Renderer::PostDeferredPass()
 	{
 		m_fullScreenRect->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
-		if ((m_renderFlags & Render_Albedo) || (m_renderFlags & Render_Normal) || (m_renderFlags & Render_Depth) || (m_renderFlags & Render_Material))
-		{
-			m_graphics->SetBackBufferAsRenderTarget();
-			m_graphics->SetViewport();
-			m_graphics->Clear(m_camera->GetClearColor());
-
-			int texIndex = 0;
-			if (m_renderFlags & Render_Albedo)
-			{
-				texIndex = 0;
-			}
-			else if (m_renderFlags & Render_Normal)
-			{
-				texIndex = 1;
-			}
-			else if (m_renderFlags & Render_Depth)
-			{
-				texIndex = 2;
-			}
-			else if (m_renderFlags & Render_Material)
-			{
-				texIndex = 3;
-			}
-
-			// TEXTURE
-			m_shaderTexture->Set();
-			m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
-			m_shaderTexture->SetTexture(m_GBuffer->GetShaderResource(texIndex), 0);
-			m_shaderTexture->DrawIndexed(m_fullScreenRect->GetIndexCount());
-
+		// If we only have to render some part of the G-Buffer
+		// (debugging) then we return here
+		if (RenderGBuffer())
 			return;
-		}
 
 		// Set pong texture as render target
 		m_renderTexPong->SetAsRenderTarget();
@@ -678,16 +679,30 @@ namespace Directus
 		m_shaderFXAA->SetTexture(m_renderTexPing->GetShaderResourceView(), 0);
 		m_shaderFXAA->DrawIndexed(m_fullScreenRect->GetIndexCount());
 
-		// Set back-buffer
-		m_graphics->SetBackBufferAsRenderTarget();
-		m_graphics->SetViewport();
-		m_graphics->Clear(m_camera->GetClearColor());
+		// Set last frame texture as rendertarget
+		m_renderTexLastFrame->SetAsRenderTarget();
+		m_renderTexLastFrame->Clear(GetClearColor());
 
 		// SHARPENING
 		m_shaderSharpening->Set();
 		m_shaderSharpening->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
 		m_shaderSharpening->SetTexture(m_renderTexPong->GetShaderResourceView(), 0);
 		m_shaderSharpening->DrawIndexed(m_fullScreenRect->GetIndexCount());
+
+		// Set back-buffer as rendertarget
+		m_graphics->SetBackBufferAsRenderTarget();
+		m_graphics->SetViewport();
+		m_graphics->Clear(m_camera->GetClearColor());
+
+		m_shaderTexture->Set();
+		m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
+		m_shaderTexture->SetTexture(m_renderTexLastFrame->GetShaderResourceView(), 0);
+		m_shaderTexture->DrawIndexed(m_fullScreenRect->GetIndexCount());
+
+		DebugDraw();
+
+		// display frame
+		m_graphics->Present();
 	}
 
 	void Renderer::DebugDraw()

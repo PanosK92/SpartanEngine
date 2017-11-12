@@ -5,7 +5,8 @@ Texture2D texDepth 			: register(t2);
 Texture2D texMaterial 		: register(t3);
 Texture2D texShadows 		: register(t4);
 Texture2D texSSAO 			: register(t5);
-TextureCube environmentTex 	: register(t6);
+Texture2D texLastFrame 		: register(t6);
+TextureCube environmentTex 	: register(t7);
 //=========================================
 
 //= SAMPLERS ==============================
@@ -17,6 +18,9 @@ SamplerState samplerAniso : register(s1);
 cbuffer MatrixBuffer : register(b0)
 {
 	matrix mWorldViewProjection;
+	matrix mProjection;
+	matrix mProjectionInverse;
+	matrix mViewProjection;
     matrix mViewProjectionInverse;
 	matrix mView;
 }
@@ -67,6 +71,7 @@ struct Light
 
 // = INCLUDES ========
 #include "Helper.hlsl"
+#include "SSRR.hlsl"
 #include "PBR.hlsl"
 //====================
 
@@ -145,7 +150,6 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     }
 	
 	float ssao = texSSAO.Sample(samplerAniso, texCoord).r;
-	//return float4(ssao, ssao, ssao, 1.0f);
 	ambientLight *= ssao;
 	 
 	//= DIRECTIONAL LIGHT ========================================================================================================================================
@@ -220,6 +224,6 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     finalColor = ACESFilm(finalColor); // ACES Filmic Tone Mapping (default tone mapping curve in Unreal Engine 4)
     finalColor = ToGamma(finalColor); // gamma correction
     float luma = dot(finalColor.rgb, float3(0.299f, 0.587f, 0.114f)); // compute luma as alpha for fxaa
-	
+
     return float4(finalColor, luma);
 }

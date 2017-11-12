@@ -54,7 +54,10 @@ namespace Directus
 		struct MatrixBufferType
 		{
 			Math::Matrix worldViewProjection;
-			Math::Matrix viewProjectionInverse;
+			Math::Matrix mProjection;
+			Math::Matrix mProjectionInverse;
+			Math::Matrix mViewProjection;
+			Math::Matrix mViewProjectionInverse;
 			Math::Matrix mView;
 		};
 

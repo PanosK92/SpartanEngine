@@ -40,7 +40,7 @@ void DirectusConsole::Initialize()
     // Create an implemntation of EngineLogger
     m_engineLogger = std::make_shared<EngineLogger>(this);
 
-    // Se the logger implementation for the engine to use
+    // Set the logger implementation for the engine to use
     Log::SetLogger(m_engineLogger);
 }
 
