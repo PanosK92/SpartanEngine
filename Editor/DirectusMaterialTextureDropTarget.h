@@ -23,12 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====
 #include <QLabel>
+#include <QTimer>
 //===============
 
 //= FORWARD DECLARATIONS =
 class DirectusInspector;
 namespace Directus
 {
+    class ImageImporter;
+    struct ImageData;
     enum TextureType;
 }
 //========================
@@ -39,6 +42,7 @@ class DirectusMaterialTextureDropTarget : public QLabel
 public:
     explicit DirectusMaterialTextureDropTarget(QWidget* parent = 0);
     void Initialize(DirectusInspector* inspector, Directus::TextureType textureType);
+
     void LoadImageAsync(const std::string &filePath);
     virtual void dragEnterEvent(QDragEnterEvent* event);
     virtual void dragMoveEvent (QDragMoveEvent* event);
@@ -48,4 +52,10 @@ private:
     std::string m_currentFilePath;
     DirectusInspector* m_inspector;
     Directus::TextureType m_textureType;
+    QTimer* m_timer500ms;
+    Directus::ImageData* m_imageData;
+    Directus::ImageImporter* m_imageLoader;
+
+public slots:
+    void Update();
 };

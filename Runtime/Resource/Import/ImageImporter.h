@@ -110,6 +110,7 @@ namespace Directus
 		ImageImporter(Context* context);
 		~ImageImporter();
 
+		void LoadAsync(ImageData& imageData);
 		bool Load(ImageData& imageData);
 
 	private:

@@ -48,11 +48,20 @@ namespace Directus
 		FreeImage_DeInitialise();
 	}
 
+	void ImageImporter::LoadAsync(ImageData& imageData)
+	{
+		m_context->GetSubsystem<Threading>()->AddTask([this, &imageData]()
+		{
+			Load(imageData);
+		});
+	}
+
 	bool ImageImporter::Load(ImageData& imageData)
 	{
 		if (!FileSystem::FileExists(imageData.filePath))
 		{
-			LOG_WARNING("Texture \"" + imageData.filePath + "\" doesn't exist.");
+			LOG_WARNING("ImageImporter: Texture \"" + imageData.filePath + "\" doesn't exist.");
+			imageData.isLoaded = true;
 			return false;
 		}
 
@@ -63,23 +72,25 @@ namespace Directus
 		if (format == FIF_UNKNOWN)
 		{
 			// Try getting the format from the file extension
-			LOG_WARNING("Failed to determine image format for \"" + imageData.filePath + "\", attempting to detect it from the file's extension...");
+			LOG_WARNING("ImageImporter: Failed to determine image format for \"" + imageData.filePath + "\", attempting to detect it from the file's extension...");
 			format = FreeImage_GetFIFFromFilename(imageData.filePath.c_str());
 
 			// If the format is still unknown, give up
 			if (!FreeImage_FIFSupportsReading(format))
 			{
-				LOG_WARNING("Failed to detect the image format.");
+				LOG_WARNING("ImageImporter: Failed to detect the image format.");
+				imageData.isLoaded = true;
 				return false;
 			}
 
-			LOG_WARNING("The image format has been detected succesfully.");
+			LOG_WARNING("ImageImporter: The image format has been detected succesfully.");
 		}
 
 		// Get image format, format == -1 means the file was not found
 		// but I am checking against it also, just in case.
 		if (format == -1 || format == FIF_UNKNOWN)
 		{
+			imageData.isLoaded = true;
 			return false;
 		}
 
