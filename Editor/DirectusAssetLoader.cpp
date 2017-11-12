@@ -34,13 +34,17 @@ using namespace Directus;
 
 DirectusAssetLoader::DirectusAssetLoader(QObject* parent) : QObject(parent)
 {
-
+    m_mainWindow = nullptr;
+    m_context = nullptr;
 }
 
-void DirectusAssetLoader::Initialize(QWidget* mainWindow, Directus::Context* context)
+void DirectusAssetLoader::Initialize(QWidget* mainWindow, Context* context)
 {
     m_mainWindow = mainWindow;
     m_context = context;
+
+    if (!mainWindow)
+        return;
 
     m_loadingDialog = new DirectusProgressBar(m_mainWindow);
     m_loadingDialog->Initialize(m_mainWindow, m_context);
@@ -90,26 +94,33 @@ void DirectusAssetLoader::LoadModelFromFile()
 
 QPixmap DirectusAssetLoader::LoadTextureFromFile()
 {
+    QPixmap pixmap;
+
+    if (!m_context)
+    {
+        LOG_WARNING("DirectusAssetLoader: Can't load texture from file, Context is uninitialized.");
+        return pixmap;
+    }
+
+    ImageImporter* imageLoader = m_context->GetSubsystem<ResourceManager>()->GetImageImporter()._Get();
+    if (!imageLoader)
+    {
+        LOG_WARNING("DirectusAssetLoader: Can't load texture from file, ImageLoader uninitialized.");
+        return pixmap;
+    }
+
+    if (!FileSystem::FileExists(m_filePath))
+    {
+        LOG_WARNING("DirectusAssetLoader: Can't load texture from file, file path is invalid.");
+        return pixmap;
+    }
+
     emit Started();
 
-    ImageImporter* imageLoader = new ImageImporter(nullptr);
-    QPixmap pixmap;
-    if (FileSystem::FileExists(m_filePath))
-    {
-        imageLoader->Load(m_filePath, m_width, m_height);
-
-        auto image =  QImage(
-                    (const uchar*)imageLoader->GetRGBA(),
-                    m_width,
-                    m_height,
-                    QImage::Format_RGBA8888
-                    );
-
-        pixmap = QPixmap::fromImage(image);
-
-        imageLoader->Clear();
-        delete imageLoader;
-    }
+    ImageData imageData = ImageData(m_filePath, m_width, m_height);
+    imageLoader->Load(imageData);
+    auto image =  QImage((const uchar*)imageData.rgba.data(), m_width, m_height, QImage::Format_RGBA8888);
+    pixmap = QPixmap::fromImage(image);
 
     emit Finished();
 

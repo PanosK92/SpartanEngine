@@ -143,7 +143,7 @@ namespace Directus
 		return (void**)m_texture->GetShaderResourceView();
 	}
 
-	bool Texture::CreateFromMemory(int width, int height, int channels, unsigned char* buffer, TextureFormat format)
+	bool Texture::CreateFromMemory(unsigned int width, unsigned int height, unsigned int channels, vector<unsigned char>& buffer, TextureFormat format)
 	{
 		if (!m_texture)
 			return false;
@@ -152,7 +152,7 @@ namespace Directus
 		m_height = height;
 		m_channels = channels;
 
-		if (!m_texture->Create(m_width, m_height, m_channels, buffer, (DXGI_FORMAT)ToAPIFormat(format)))
+		if (!m_texture->Create(m_width, m_height, m_channels, &buffer[0], (DXGI_FORMAT)ToAPIFormat(format)))
 		{
 			LOG_ERROR("Texture: Failed to create from memory.");
 			return false;
@@ -161,7 +161,7 @@ namespace Directus
 		return true;
 	}
 
-	bool Texture::CreateFromMemory(int width, int height, int channels, const vector<vector<unsigned char>>& buffer, TextureFormat format)
+	bool Texture::CreateFromMemory(unsigned int width, unsigned int height, unsigned int channels, const vector<vector<unsigned char>>& buffer, TextureFormat format)
 	{
 		if (!m_texture)
 			return false;
@@ -203,32 +203,29 @@ namespace Directus
 
 		// Load texture
 		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
-		bool loaded = imageImp._Get()->Load(filePath, m_mimaps);
+		ImageData imageData = ImageData(filePath, m_mimaps);
+		bool loaded = imageImp._Get()->Load(imageData);
 		if (!loaded)
 		{
 			LOG_WARNING("Failed to load texture \"" + filePath + "\".");
-			imageImp._Get()->Clear();
 			return false;
 		}
 
 		// Extract any metadata we can from the ImageImporter
-		SetResourceFilePath(imageImp._Get()->GetPath());
+		SetResourceFilePath(imageData.filePath);
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(GetResourceFilePath()));
-		m_grayscale = imageImp._Get()->IsGrayscale();
-		m_transparency = imageImp._Get()->IsTransparent();
+		m_grayscale = imageData.isGrayscale;
+		m_transparency = imageData.isTransparent;
 
 		// Create the texture
 		if (!m_mimaps)
 		{
-			CreateFromMemory(imageImp._Get()->GetWidth(), imageImp._Get()->GetHeight(), imageImp._Get()->GetChannels(), imageImp._Get()->GetRGBA(), RGBA_8_UNORM);
+			CreateFromMemory(imageData.width, imageData.height, imageData.channels, imageData.rgba, RGBA_8_UNORM);
 		}
 		else
 		{
-			CreateFromMemory(imageImp._Get()->GetWidth(), imageImp._Get()->GetHeight(), imageImp._Get()->GetChannels(), imageImp._Get()->GetRGBAMipChain(), RGBA_8_UNORM);
+			CreateFromMemory(imageData.width, imageData.height, imageData.channels, imageData.rgba_mimaps, RGBA_8_UNORM);
 		}
-
-		// Free any memory allocated by the ImageImporter
-		imageImp._Get()->Clear();
 
 		// Save metadata file
 		if (!SaveToFile(GetResourceFilePath() + METADATA_EXTENSION))

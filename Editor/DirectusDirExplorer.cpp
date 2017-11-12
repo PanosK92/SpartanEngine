@@ -40,7 +40,6 @@ DirectusDirExplorer::DirectusDirExplorer(QWidget *parent) : QTreeView(parent)
 
     // Set icon provider
     m_iconProvider = new DirectusIconProvider();
-    m_iconProvider->Initialize();
     m_dirModel->setIconProvider(m_iconProvider);
 
     // Set the model to the list view
@@ -55,6 +54,10 @@ DirectusDirExplorer::DirectusDirExplorer(QWidget *parent) : QTreeView(parent)
 void DirectusDirExplorer::Initialize(DirectusFileExplorer* fileExplorer, Context* context)
 {
     m_context = context;
+
+    // Set engine context to icon provider
+    m_iconProvider->SetContext(m_context);
+
     m_fileExplorer = fileExplorer;
     connect(m_fileExplorer, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(UpdateFromFileExplorer(QModelIndex)));
 

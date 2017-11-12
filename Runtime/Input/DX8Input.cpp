@@ -19,10 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ==============
 #include "DX8Input.h"
 #include "../Logging/Log.h"
-//====================
+//=========================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -57,7 +57,7 @@ namespace Directus
 		HRESULT result = DirectInput8Create(instanceHandle, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&m_directInput, nullptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to initialize the DirectInput interface.");
+			LOG_ERROR("DX8Input: Failed to initialize the DirectInput interface.");
 			return false;
 		}
 
@@ -65,7 +65,7 @@ namespace Directus
 		result = m_directInput->CreateDevice(GUID_SysKeyboard, &m_keyboard, nullptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to initialize a DirectInput keyboard.");
+			LOG_ERROR("DX8Input: Failed to initialize a DirectInput keyboard.");
 			return false;
 		}
 
@@ -73,27 +73,27 @@ namespace Directus
 		result = m_keyboard->SetDataFormat(&c_dfDIKeyboard);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to initialize DirectInput keyboard data format.");
+			LOG_ERROR("DX8Input: Failed to initialize DirectInput keyboard data format.");
 		}
 
 		// Set the cooperative level of the keyboard to share with other programs.
 		result = m_keyboard->SetCooperativeLevel(handleHWND, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to set DirectInput keyboard's cooperative level.");
+			LOG_ERROR("DX8Input: Failed to set DirectInput keyboard's cooperative level.");
 		}
 
 		// Acquire the keyboard.
 		if (!GetKeyboard())
 		{
-			LOG_ERROR("Failed to aquire the keyboard.");
+			LOG_ERROR("DX8Input: Failed to aquire the keyboard.");
 		}
 
 		// Initialize the direct input interface for the mouse.
 		result = m_directInput->CreateDevice(GUID_SysMouse, &m_mouse, nullptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to set DirectInput keyboard's cooperative level.");
+			LOG_ERROR("DX8Input: Failed to set DirectInput keyboard's cooperative level.");
 			return false;
 		}
 
@@ -101,20 +101,20 @@ namespace Directus
 		result = m_mouse->SetDataFormat(&c_dfDIMouse);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to initialize a DirectInput mouse.");
+			LOG_ERROR("DX8Input: Failed to initialize a DirectInput mouse.");
 		}
 
 		// Set the cooperative level of the mouse to share with other programs.
 		result = m_mouse->SetCooperativeLevel(handleHWND, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to set DirectInput mouse's cooperative level.");
+			LOG_ERROR("DX8Input: Failed to set DirectInput mouse's cooperative level.");
 		}
 
 		// Acquire the mouse.
 		if (!GetMouse())
 		{
-			LOG_ERROR("Failed to aquire the mouse.");
+			LOG_ERROR("DX8Input: Failed to aquire the mouse.");
 		}
 
 		return true;

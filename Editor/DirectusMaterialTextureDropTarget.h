@@ -39,7 +39,7 @@ class DirectusMaterialTextureDropTarget : public QLabel
 public:
     explicit DirectusMaterialTextureDropTarget(QWidget* parent = 0);
     void Initialize(DirectusInspector* inspector, Directus::TextureType textureType);
-    void LoadImageAsync(std::string filePath);
+    void LoadImageAsync(const std::string &filePath);
     virtual void dragEnterEvent(QDragEnterEvent* event);
     virtual void dragMoveEvent (QDragMoveEvent* event);
     virtual void dropEvent(QDropEvent* event);

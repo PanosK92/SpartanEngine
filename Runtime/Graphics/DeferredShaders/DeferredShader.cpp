@@ -80,7 +80,10 @@ namespace Directus
 		MatrixBufferType* buffer = (MatrixBufferType*)m_matrixBuffer->Map();
 
 		buffer->worldViewProjection = worlBaseViewProjection;
-		buffer->viewProjectionInverse = viewProjection.Inverted();
+		buffer->mProjection = mPerspectiveProjection;
+		buffer->mProjectionInverse = mPerspectiveProjection.Inverted();
+		buffer->mViewProjection = viewProjection;
+		buffer->mViewProjectionInverse = viewProjection.Inverted();
 		buffer->mView = mView;
 
 		m_matrixBuffer->Unmap();

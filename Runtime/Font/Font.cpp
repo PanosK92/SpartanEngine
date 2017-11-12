@@ -81,7 +81,7 @@ namespace Directus
 
 		// Create a font texture atlas form the provided data
 		m_textureAtlas = make_unique<Texture>(m_context);
-		m_textureAtlas->CreateFromMemory(texAtlasWidth, texAtlasHeight, 1, atlasBuffer.data(), R_8_UNORM);
+		m_textureAtlas->CreateFromMemory(texAtlasWidth, texAtlasHeight, 1, atlasBuffer, R_8_UNORM);
 
 		return true;
 	}

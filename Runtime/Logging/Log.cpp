@@ -19,19 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES ========================
 #include "Log.h"
 #include <sstream> 
 #include <fstream>
 #include "ILogger.h"
-#include "../EventSystem/EventSystem.h"
-#include "../FileSystem/FileSystem.h"
-#include "../Core/GameObject.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
-//======================================
+#include "../Core/GameObject.h"
+#include "../FileSystem/FileSystem.h"
+//===================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -70,17 +69,15 @@ namespace Directus
 		if (!m_logger.expired())
 		{
 			LogString(text, type);
+			return;
 		}
-		else
-		{			
-			WriteToFile(text, type);
-		}
+
+		LogToFile(text, type);
 	}
 
 	void Log::Write(const char* text, LogType type)
 	{
-		string str = text;
-		Write(str, type);
+		Write(string(text), type);
 	}
 
 	void Log::Write(weak_ptr<GameObject> gameObject, LogType type)
@@ -161,7 +158,7 @@ namespace Directus
 		m_logger._Get()->Log(text, type);
 	}
 
-	void Log::WriteToFile(const string& text, LogType type)
+	void Log::LogToFile(const string& text, LogType type)
 	{
 		lock_guard<mutex> guard(Mutex);
 
@@ -179,7 +176,7 @@ namespace Directus
 		m_fout.open(LOG_FILE, ofstream::out | ofstream::app);
 
 		// Write out the error message.
-		m_fout << text << endl;
+		m_fout << finalText << endl;
 
 		// Close the file.
 		m_fout.close();

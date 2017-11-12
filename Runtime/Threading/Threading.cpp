@@ -31,7 +31,7 @@ namespace Directus
 {
 	Threading::Threading(Context* context) : Subsystem(context)
 	{
-
+		m_stopping = false;
 	}
 
 	Threading::~Threading()
@@ -54,7 +54,7 @@ namespace Directus
 			thread.join();
 		}
 
-		// Empty workers vector.
+		// Empty worker threads.
 		m_threads.empty();
 	}
 

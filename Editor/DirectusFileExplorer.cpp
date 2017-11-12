@@ -64,7 +64,7 @@ void DirectusFileExplorer::Initialize(QWidget* mainWindow, DirectusViewport* dir
 
     // Set icon provider
     m_directusIconProvider = new DirectusIconProvider();
-    m_directusIconProvider->Initialize();
+    m_directusIconProvider->SetContext(m_inspector->GetContext());
     m_fileModel->setIconProvider(m_directusIconProvider);
 
     // Create file dialog

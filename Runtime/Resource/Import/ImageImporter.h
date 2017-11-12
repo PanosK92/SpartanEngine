@@ -71,48 +71,54 @@ namespace Directus
 {
 	class Context;
 
+	struct ImageData
+	{
+		ImageData(const std::string& filePath)
+		{
+			this->filePath = filePath;
+		}
+
+		ImageData(const std::string& filePath, unsigned int width, unsigned int height)
+		{
+			this->filePath = filePath;
+			this->width = width;
+			this->height = height;
+		}
+
+		ImageData(const std::string& filePath, bool generateMipmaps)
+		{
+			this->filePath = filePath;
+			this->isUsingMipmaps = generateMipmaps;
+		}
+
+		std::vector<unsigned char> rgba;
+		std::vector<std::vector<unsigned char>> rgba_mimaps;
+		unsigned int bpp = 0;
+		unsigned int width = 0;
+		unsigned int height = 0;
+		unsigned int channels = 0;
+		std::string filePath;
+		bool isGrayscale = false;
+		bool isTransparent = false;
+		bool isUsingMipmaps = false;
+		bool isLoaded = false;
+	};
+
 	class DLL_API ImageImporter
 	{
 	public:
 		ImageImporter(Context* context);
 		~ImageImporter();
 
-		void LoadAsync(const std::string& filePath);
-		bool Load(const std::string filePath) { return Load(filePath, 0, 0, false, false); }
-		bool Load(const std::string& filePath, int width, int height) { return Load(filePath, width, height, true, false); }
-		bool Load(const std::string& filePath, bool generateMipchain) { return Load(filePath, 0, 0, false, generateMipchain); }
-		bool Load(const std::string& filePath, int width, int height, bool scale, bool generateMipchain);
-		
-		void Clear();
+		bool Load(ImageData& imageData);
 
-		//= PROPERTIES ==================================================
-		unsigned char* GetRGBA() { return m_dataRGBA.data(); }
-		const std::vector<std::vector<unsigned char>>& GetRGBAMipChain() { return m_mipchainDataRGBA; }
-		unsigned int GetBPP() { return m_bpp; }
-		unsigned int GetWidth() { return m_width; }
-		unsigned int GetHeight() { return m_height; }
-		bool IsGrayscale() { return m_grayscale; }
-		bool IsTransparent() { return m_transparent; }
-		const std::string& GetPath() { return m_path; }
-		int GetChannels() { return m_channels; }
-		//===============================================================
-
-	private:	
+	private:
+		unsigned int ComputeChannelCount(FIBITMAP* fibtimap, unsigned int bpp);
 		bool FIBTIMAPToRGBA(FIBITMAP* fibtimap, std::vector<unsigned char>* rgba);
-		void GenerateMipmapsFromFIBITMAP(FIBITMAP* original, std::vector<std::vector<unsigned char>>& mimaps);
+		void GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, ImageData& imageData);
 		bool RescaleFIBITMAP(FIBITMAP* fibtimap, int width, int height, std::vector<unsigned char>& rgba);
 		bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
 
 		Context* m_context;
-		std::vector<unsigned char> m_dataRGBA;
-		std::vector<std::vector<unsigned char>> m_mipchainDataRGBA;
-		unsigned int m_bpp;
-		unsigned int m_width;
-		unsigned int m_height;
-		int m_channels;
-		std::string m_path;
-		bool m_grayscale;
-		bool m_transparent;
-		bool m_isLoading;	
 	};
 }

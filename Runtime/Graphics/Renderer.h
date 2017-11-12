@@ -101,9 +101,10 @@ namespace Directus
 		void AcquireRenderables(Variant renderables);
 		void DirectionalLightDepthPass();
 		void GBufferPass();
-		void ScreenSpaceEffects();
+		void PreDeferredPass();
 		void DeferredPass();
-		void PostProcessing();
+		bool RenderGBuffer();
+		void PostDeferredPass();
 		void DebugDraw();
 		const Math::Vector4& GetClearColor();
 		//===========================================
@@ -116,12 +117,13 @@ namespace Directus
 		Light* m_directionalLight;
 		//=====================================
 
-		//= RENDER TEXTURES ================================
+		//= RENDER TEXTURES =======================================
 		std::unique_ptr<D3D11RenderTexture> m_renderTexPing;
 		std::unique_ptr<D3D11RenderTexture> m_renderTexPong;
 		std::unique_ptr<D3D11RenderTexture> m_renderTexSSAO;
 		std::unique_ptr<D3D11RenderTexture> m_renderTexSSAOBlurred;
-		//==================================================
+		std::unique_ptr<D3D11RenderTexture> m_renderTexLastFrame;
+		//=========================================================
 
 		//= SHADERS =====================================
 		std::unique_ptr<DeferredShader> m_shaderDeferred;

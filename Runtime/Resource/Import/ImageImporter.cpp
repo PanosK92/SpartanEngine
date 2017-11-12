@@ -21,15 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "ImageImporter.h"
-#include "../../Logging/Log.h"
-#include "../../FileSystem/FileSystem.h"
 #include "FreeImagePlus.h"
 #include <future>
 #include <functional>
+#include "../../Logging/Log.h"
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
-#include <map>
-#include "../../Math/Vector2.h"
+#include "../../FileSystem/FileSystem.h"
 //======================================
 
 //= NAMESPACES ================
@@ -42,62 +40,36 @@ namespace Directus
 	ImageImporter::ImageImporter(Context* context)
 	{
 		m_context = context;
-		m_bpp = 0;
-		m_width = 0;
-		m_height = 0;
-		m_path.clear();
-		m_channels = 4;
-		m_grayscale = false;
-		m_transparent = false;
-		m_isLoading = false;
-
 		FreeImage_Initialise(true);
 	}
 
 	ImageImporter::~ImageImporter()
 	{
-		Clear();
 		FreeImage_DeInitialise();
 	}
 
-	void ImageImporter::LoadAsync(const string& filePath)
+	bool ImageImporter::Load(ImageData& imageData)
 	{
-		m_path = filePath;
-		m_context->GetSubsystem<Threading>()->AddTask([this]()
+		if (!FileSystem::FileExists(imageData.filePath))
 		{
-			Load(m_path);
-		});
-	}
-
-	bool ImageImporter::Load(const string& path, int width, int height, bool scale, bool generateMipchain)
-	{
-		m_path = path;
-		m_isLoading = true;
-
-		Clear();
-
-		if (!FileSystem::FileExists(path))
-		{
-			LOG_WARNING("Texture \"" + path + "\" doesn't exist.");
-			m_isLoading = false;
+			LOG_WARNING("Texture \"" + imageData.filePath + "\" doesn't exist.");
 			return false;
 		}
 
 		// Get image format
-		FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
+		FREE_IMAGE_FORMAT format = FreeImage_GetFileType(imageData.filePath.c_str(), 0);
 
 		// If the format is unknown
 		if (format == FIF_UNKNOWN)
 		{
 			// Try getting the format from the file extension
-			LOG_WARNING("Failed to determine image format for \"" + path + "\", attempting to detect it from the file's extension...");
-			format = FreeImage_GetFIFFromFilename(path.c_str());
+			LOG_WARNING("Failed to determine image format for \"" + imageData.filePath + "\", attempting to detect it from the file's extension...");
+			format = FreeImage_GetFIFFromFilename(imageData.filePath.c_str());
 
 			// If the format is still unknown, give up
 			if (!FreeImage_FIFSupportsReading(format))
 			{
 				LOG_WARNING("Failed to detect the image format.");
-				m_isLoading = false;
 				return false;
 			}
 
@@ -108,38 +80,42 @@ namespace Directus
 		// but I am checking against it also, just in case.
 		if (format == -1 || format == FIF_UNKNOWN)
 		{
-			m_isLoading = false;
 			return false;
 		}
 
 		// Load the image as a FIBITMAP*
-		FIBITMAP* bitmapOriginal = FreeImage_Load(format, path.c_str());
+		FIBITMAP* bitmapOriginal = FreeImage_Load(format, imageData.filePath.c_str());
 
 		// Flip it vertically
 		FreeImage_FlipVertical(bitmapOriginal);
 
 		// Perform any scaling (if necessary)
-		FIBITMAP* bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, width, height, FILTER_LANCZOS3) : bitmapOriginal;
+		bool scale = (imageData.width != 0 && imageData.height != 0);
+		FIBITMAP* bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, imageData.width, imageData.height, FILTER_LANCZOS3) : bitmapOriginal;
 
 		// Convert it to 32 bits (if neccessery)
-		m_bpp = FreeImage_GetBPP(bitmapOriginal);
-		FIBITMAP* bitmap32 = m_bpp != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
+		imageData.bpp = FreeImage_GetBPP(bitmapOriginal);
+		FIBITMAP* bitmap32 = imageData.bpp != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
+		imageData.bpp = 32; // this is a hack, have to handle more elegant
 
 		// Store some useful data	
-		m_transparent = bool(FreeImage_IsTransparent(bitmap32));
-		m_path = path;
-		m_width = FreeImage_GetWidth(bitmap32);
-		m_height = FreeImage_GetHeight(bitmap32);
+		imageData.isTransparent = bool(FreeImage_IsTransparent(bitmap32));
+		imageData.width = FreeImage_GetWidth(bitmap32);
+		imageData.height = FreeImage_GetHeight(bitmap32);
+		imageData.channels = ComputeChannelCount(bitmap32, imageData.bpp);
+
+		//FREE_IMAGE_COLOR_TYPE colorType = FreeImage_GetColorType(bitmap32);
+		//LOG_INFO("Color Type: " + to_string(colorType));
 
 		// Fill RGBA vector with the data from the FIBITMAP
-		FIBTIMAPToRGBA(bitmap32, &m_dataRGBA);
+		FIBTIMAPToRGBA(bitmap32, &imageData.rgba);
 
 		// Check if the image is grayscale
-		m_grayscale = GrayscaleCheck(m_dataRGBA, m_width, m_height);
+		imageData.isGrayscale = GrayscaleCheck(imageData.rgba, imageData.width, imageData.height);
 
-		if (generateMipchain)
+		if (imageData.isUsingMipmaps)
 		{
-			GenerateMipmapsFromFIBITMAP(bitmap32, m_mipchainDataRGBA);
+			GenerateMipmapsFromFIBITMAP(bitmap32, imageData);
 		}
 
 		//= Free memory =====================================
@@ -147,7 +123,7 @@ namespace Directus
 		FreeImage_Unload(bitmap32);
 
 		// unload the scaled bitmap only if it was converted
-		if (m_bpp != 32)
+		if (imageData.bpp != 32)
 		{
 			FreeImage_Unload(bitmapScaled);
 		}
@@ -159,22 +135,26 @@ namespace Directus
 		}
 		//====================================================
 
-		m_isLoading = false;
+		imageData.isLoaded = true;
 		return true;
 	}
 
-	void ImageImporter::Clear()
+	unsigned ImageImporter::ComputeChannelCount(FIBITMAP* fibtimap, unsigned int bpp)
 	{
-		m_dataRGBA.clear();
-		m_dataRGBA.shrink_to_fit();
-		m_mipchainDataRGBA.clear();
-		m_mipchainDataRGBA.shrink_to_fit();
-		m_bpp = 0;
-		m_width = 0;
-		m_height = 0;
-		m_path.clear();
-		m_grayscale = false;
-		m_transparent = false;
+		FREE_IMAGE_TYPE imageType = FreeImage_GetImageType(fibtimap);
+		if (imageType != FIT_BITMAP)
+			return 0;
+
+		if (bpp == 8)
+			return 1;
+
+		if (bpp == 24)
+			return 3;
+
+		if (bpp == 32)
+			return 4;
+
+		return 0;
 	}
 
 	bool ImageImporter::FIBTIMAPToRGBA(FIBITMAP* fibtimap, vector<unsigned char>* rgba)
@@ -205,12 +185,12 @@ namespace Directus
 		return true;
 	}
 
-	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* original, vector<vector<unsigned char>>& mimaps)
+	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, ImageData& imageData)
 	{
 		// First mip is full size
-		mimaps.emplace_back(m_dataRGBA);
-		int width = FreeImage_GetWidth(original);
-		int height = FreeImage_GetHeight(original);
+		imageData.rgba_mimaps.emplace_back(move(imageData.rgba));
+		int width = imageData.width;
+		int height = imageData.height;
 
 		// Compute the rest mip mipmapInfos
 		struct scalingProcess
@@ -227,32 +207,30 @@ namespace Directus
 				this->complete = scaled;
 			}
 		};
-		vector<scalingProcess> mipmapScalingProcesses;
+		vector<scalingProcess> scalingJobs;
 		while (width > 1 && height > 1)
 		{
 			width = max(width / 2, 1);
 			height = max(height / 2, 1);
 
-			mipmapScalingProcesses.emplace_back(width, height, false);
+			scalingJobs.emplace_back(width, height, false);
 		}
 
 		// Parallelize mipmap generation using multiple
-		// threads as FreeImage_Rescale() can take a while.
+		// threads as FreeImage_Rescale() using FILTER_LANCZOS3 can take a while.
 		Threading* threading = m_context->GetSubsystem<Threading>();
-		int mipIndex = 0;
-		for (auto& process : mipmapScalingProcesses)
+		for (auto& job : scalingJobs)
 		{
-			threading->AddTask([this, &process, &mipIndex, original]()
+			threading->AddTask([this, &job, &imageData, &originalFIBITMAP]()
 			{
-				if (!RescaleFIBITMAP(original, process.width, process.height, process.data))
+				if (!RescaleFIBITMAP(originalFIBITMAP, job.width, job.height, job.data))
 				{
-					string mipLevel = to_string(mipIndex + 2) + " (" + to_string(process.width) + "x" + to_string(process.height) + ")";
-					string texName = FileSystem::GetFileNameFromFilePath(m_path);
-					LOG_INFO("ImageImporter: Failed to create mip level " + mipLevel + " for texture \"" + texName + "\".");
+					string mipSize = "(" + to_string(job.width) + "x" + to_string(job.height) + ")";
+					string texName = FileSystem::GetFileNameFromFilePath(imageData.filePath);
+					LOG_INFO("ImageImporter: Failed to create mip level " + mipSize + " for texture \"" + texName + "\".");
 				}
-				process.complete = true;
+				job.complete = true;
 			});
-			mipIndex++;
 		}
 
 		// Wait until all mimaps have been generated
@@ -260,7 +238,7 @@ namespace Directus
 		while (!ready)
 		{
 			ready = true;
-			for (const auto& proccess : mipmapScalingProcesses)
+			for (const auto& proccess : scalingJobs)
 			{
 				if (!proccess.complete)
 				{
@@ -270,9 +248,9 @@ namespace Directus
 		}
 
 		// Now copy all the mimaps
-		for (const auto& mimapInfo : mipmapScalingProcesses)
+		for (const auto& mimapInfo : scalingJobs)
 		{
-			mimaps.emplace_back(move(mimapInfo.data));
+			imageData.rgba_mimaps.emplace_back(move(mimapInfo.data));
 		}
 	}
 
@@ -293,26 +271,24 @@ namespace Directus
 	bool ImageImporter::GrayscaleCheck(const vector<unsigned char>& dataRGBA, int width, int height)
 	{
 		int grayPixels = 0;
-		int scannedPixels = 0;
+		int totalPixels = width * height;
+		int channels = 4;
 
 		for (int i = 0; i < height; i++)
 		{
 			for (int j = 0; j < width; j++)
 			{
-				scannedPixels++;
-
-				int red = dataRGBA[(i * width + j) * 4 + 0];
-				int green = dataRGBA[(i * width + j) * 4 + 1];
-				int blue = dataRGBA[(i * width + j) * 4 + 2];
+				int red = dataRGBA[(i * width + j) * channels + 0];
+				int green = dataRGBA[(i * width + j) * channels + 1];
+				int blue = dataRGBA[(i * width + j) * channels + 2];
 
 				if (red == green && red == blue)
+				{
 					grayPixels++;
+				}
 			}
 		}
 
-		if (grayPixels == scannedPixels)
-			return true;
-
-		return false;
+		return grayPixels == totalPixels;
 	}
 }

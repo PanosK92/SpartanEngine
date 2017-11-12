@@ -73,22 +73,23 @@ void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector,
                 );
 }
 
-void DirectusMaterialTextureDropTarget::LoadImageAsync(std::string filePath)
+void DirectusMaterialTextureDropTarget::LoadImageAsync(const std::string& filePath)
 {
     if (m_currentFilePath == filePath)
         return;
 
     m_currentFilePath = filePath;
     QThread* thread = new QThread();
-    DirectusAssetLoader* imageLoader = new DirectusAssetLoader();
 
-    imageLoader->moveToThread(thread);
-    imageLoader->PrepareForTexture(filePath, SLOT_SIZE, SLOT_SIZE);
+    DirectusAssetLoader* assetLoader = new DirectusAssetLoader();
+    assetLoader->Initialize(nullptr, m_inspector->GetContext());
+    assetLoader->moveToThread(thread);
+    assetLoader->PrepareForTexture(filePath, SLOT_SIZE, SLOT_SIZE);
 
-    connect(thread,         SIGNAL(started()),              imageLoader,    SLOT(LoadTexture()));
-    connect(imageLoader,    SIGNAL(ImageReady(QPixmap)),    this,           SLOT(setPixmap(QPixmap)));
-    connect(imageLoader,    SIGNAL(Finished()),             thread,         SLOT(quit()));
-    connect(imageLoader,    SIGNAL(Finished()),             imageLoader,    SLOT(deleteLater()));
+    connect(thread,         SIGNAL(started()),              assetLoader,    SLOT(LoadTexture()));
+    connect(assetLoader,    SIGNAL(ImageReady(QPixmap)),    this,           SLOT(setPixmap(QPixmap)));
+    connect(assetLoader,    SIGNAL(Finished()),             thread,         SLOT(quit()));
+    connect(assetLoader,    SIGNAL(Finished()),             assetLoader,    SLOT(deleteLater()));
     connect(thread,         SIGNAL(finished()),             thread,         SLOT(deleteLater()));
 
     thread->start(QThread::HighestPriority);
