@@ -53,7 +53,6 @@ void Editor::InitializeEngine()
 
     ui->widgetInspector->SetDirectusCore(m_widgetViewport);
     ui->widgetHierarchy->Initialize(ui->widgetInspector, this, m_widgetViewport);
-    ui->directusConsole->Initialize();
     ui->directusRenderFlags->Initialize(m_widgetViewport->GetEngineContext());
     ui->directusPlayButton->Initialize(m_widgetViewport);
     ui->directusFileExplorer->Initialize(this, m_widgetViewport, ui->widgetHierarchy, ui->widgetInspector);

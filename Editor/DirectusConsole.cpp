@@ -30,46 +30,48 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-DirectusConsole::DirectusConsole(QWidget *parent) : QListWidget(parent)
+DirectusConsole::DirectusConsole(QWidget *parent) : QTextEdit(parent)
 {
     m_socket = nullptr;
-}
 
-void DirectusConsole::Initialize()
-{
-    // Create an implemntation of EngineLogger
-    m_engineLogger = std::make_shared<EngineLogger>(this);
+    this->setReadOnly(true);
+
+    // Create an implementation of EngineLogger
+    m_engineLogger = make_shared<EngineLogger>();
+    m_engineLogger->SetQtCallback([this](LogPackage package){ AddLogPackage(package); });
 
     // Set the logger implementation for the engine to use
     Log::SetLogger(m_engineLogger);
+
+    // Timer which checks if the thumbnail image is loaded (async)
+    m_timer = new QTimer(this);
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(CheckLogPackages()));
+    m_timer->start(500);
 }
 
-EngineLogger::EngineLogger(QListWidget* list)
+void DirectusConsole::Log(const string& text, int errorLevel)
 {
-    m_list = list;
+     // 0 = Info
+     // 1 = Warning
+     // 2 = Error
+
+    QString colorStart = (errorLevel == 0) ? "<font color=\"#A1A1A1\">" : (errorLevel == 1) ? "<font color=\"#C8CC5E\">" : "<font color=\"#BD5151\">";
+    QString colorEnd = "</font>";
+
+    // Construct html message
+    QString message = colorStart + QString::fromStdString(text) + colorEnd;
+
+    // Log it
+    this->append(message);
 }
 
-/*
-    I should replace QListWidget with a QListView and implement my
-    own data model inheriting from QAbstractListModel. I could pass the results
-    to the model and it will pass the items data when needed. This should
-    should help with performance & memory issues the logging currenty suffers from.
-*/
-
-void EngineLogger::Log(const string& log, int type)
+void DirectusConsole::CheckLogPackages()
 {
-    if (!m_list)
-        return;
+    for (const auto& package : m_logs)
+    {
+        Log(package.text, package.errorLevel);
+    }
 
-    // 0 = Info,
-    // 1 = Warning,
-    // 2 = Error,
-
-    QColor textColor = (type == 0) ? QColor(144, 144, 144) : (type == 1) ? QColor(232, 232, 144) : QColor(214, 115, 115);
-
-    auto item = new QListWidgetItem(QString::fromStdString(log));
-    item->setTextColor(textColor);
-
-    m_list->addItem(item);
-    m_list->scrollToBottom();
+    m_logs.clear();
+    m_logs.shrink_to_fit();
 }

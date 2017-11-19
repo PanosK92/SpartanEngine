@@ -22,39 +22,70 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include <QListWidget>
+#include <QTextEdit>
+#include <QTimer>
 #include "Logging/ILogger.h"
 #include <string>
 #include <memory>
+#include <functional>
 //==========================
 
+//= FORWARD DECLARATIONS ===========
 class DirectusViewport;
-namespace Directus
-{
-    class Socket;
-}
+namespace Directus { class Socket; }
+//==================================
 
+// The engine logger could call Qt directly but this can be dangerous
+// in a multithreaded environment. So, the engine never interacts with Qt directly,
+// it instead sends LogPackages which the Qt side will check once in a while and log on its own.
+
+struct LogPackage
+{
+    std::string text;
+    int errorLevel;
+};
+
+// Implementation of Directus::ILogger so the engine can log into Qt
 class EngineLogger : public Directus::ILogger
 {
 public:
-    EngineLogger(QListWidget* list);
-    virtual void Log(const std::string& log, int type);
+    typedef std::function<void(LogPackage)> logFunc;
+    void SetQtCallback(logFunc&& func)
+    {
+        m_logFunc = std::forward<logFunc>(func);
+    }
+
+    virtual void Log(const std::string& text, int errorLevel)
+    {
+        // Send package to Qt
+        LogPackage package;
+        package.text = text;
+        package.errorLevel = errorLevel;
+        m_logFunc(package);
+    }
+
 private:
-    QListWidget* m_list;
+    logFunc m_logFunc;
 };
 
-class DirectusConsole : public QListWidget
+// Actual Qt console
+class DirectusConsole : public QTextEdit
 {
     Q_OBJECT
 public:
-    explicit DirectusConsole(QWidget *parent = 0);
-    void Initialize();
+    explicit DirectusConsole(QWidget* parent = 0);
+    void Log(const std::string& text, int errorLevel);
+    void AddLogPackage(LogPackage package) { m_logs.push_back(package); }
+
+public slots:
+    void CheckLogPackages();
 
 private:
     Directus::Socket* m_socket;
     std::shared_ptr<EngineLogger> m_engineLogger;
-
-signals:
-
-public slots:
+    std::vector<LogPackage> m_logs;
+    QTimer* m_timer;
 };
+
+
+
