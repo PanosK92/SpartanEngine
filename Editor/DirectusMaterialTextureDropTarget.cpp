@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/MeshRenderer.h"
 #include "Graphics/Texture.h"
 #include "Graphics/Material.h"
+#include "Logging/Log.h"
 //=============================================
 
 //= NAMESPACES ==========
@@ -72,7 +73,7 @@ void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector,
 
 void DirectusMaterialTextureDropTarget::LoadImageAsync(const std::string& filePath)
 {
-    if (m_currentFilePath == filePath || !m_imageLoader)
+    if (m_currentFilePath == filePath || filePath == NOT_ASSIGNED || !m_imageLoader)
         return;
 
     m_currentFilePath = filePath;

@@ -198,7 +198,7 @@ namespace Directus
 		// Compute ray given the origin and end
 		m_ray = Ray(g_transform->GetPosition(), ScreenToWorldPoint(mouse));
 
-		// We use the boundibg box of each mesh to determine find and return the 
+		// We use the bounding box of each mesh to determine find and return the 
 		// one that's nearest to the camera. However, there are scenarios where
 		// hollow meshes (let's say a building) will have a large bounding box
 		// which will contain other bounding boxes and potentially even the camera.

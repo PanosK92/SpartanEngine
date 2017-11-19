@@ -173,7 +173,7 @@ void DirectusInspector::Inspect(weak_ptr<GameObject> gameobject)
         m_transform->Reflect(gameobject);
         m_camera->Reflect(gameobject);
         m_meshFilter->Reflect(gameobject);
-        m_meshRenderer->Reflect(gameobject);   
+        m_meshRenderer->Reflect(gameobject);
         m_rigidBody->Reflect(gameobject);
         m_collider->Reflect(gameobject);
         m_meshCollider->Reflect(gameobject);
@@ -187,7 +187,6 @@ void DirectusInspector::Inspect(weak_ptr<GameObject> gameobject)
             DirectusScript* scriptComp = (DirectusScript*)m_scripts[i];
             scriptComp->Reflect(engineScripts[i]);
         }
-
     }
     else // NOTE: If no item is selected, the gameobject will be null
     {

@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
+#include "../../Graphics/Texture.h"
 //====================================
 
 //= NAMESPACES ================
@@ -47,7 +48,7 @@ namespace Directus
 		FreeImage_DeInitialise();
 	}
 
-	void ImageImporter::LoadAsync(const string filePath, TextureInfo& texInfo)
+	void ImageImporter::LoadAsync(const string& filePath, TextureInfo& texInfo)
 	{
 		m_context->GetSubsystem<Threading>()->AddTask([this, &filePath, &texInfo]()
 		{
@@ -55,22 +56,28 @@ namespace Directus
 		});
 	}
 
-	bool ImageImporter::Load(const string filePath, TextureInfo& texInfo)
+	bool ImageImporter::Load(const string& filePath, TextureInfo& texInfo)
 	{
 		texInfo.loadState = Loading;
 
-		if (filePath == NOT_ASSIGNED)
+		// Validate the file path
+		if (!ValidateFilePath(filePath))
 		{
-			LOG_WARNING("ImageImporter: Can't load image. No file path has been assigned.");
 			texInfo.loadState = Failed;
 			return false;
 		}
 
-		if (!FileSystem::FileExists(filePath))
+		// In case this is an engine texture, load it directly
+		if (FileSystem::IsEngineTextureFile(filePath))
 		{
-			LOG_WARNING("ImageImporter: Cant' load image. File path \"" + filePath + "\" is invalid.");
-			texInfo.loadState = Failed;
-			return false;
+			if (!LoadEngineTexture(filePath, texInfo))
+			{
+				texInfo.loadState = Failed;
+				return false;
+			}
+
+			texInfo.loadState = Completed;
+			return true;
 		}
 
 		// Get image format
@@ -154,6 +161,34 @@ namespace Directus
 		//====================================================
 
 		texInfo.loadState = Completed;
+		return true;
+	}
+
+	bool ImageImporter::ValidateFilePath(const string& filePath)
+	{
+		if (filePath.empty() || filePath == NOT_ASSIGNED)
+		{
+			LOG_WARNING("ImageImporter: Can't load image. No file path has been provided.");
+			return false;
+		}
+
+		if (!FileSystem::FileExists(filePath))
+		{
+			LOG_WARNING("ImageImporter: Cant' load image. File path \"" + filePath + "\" is invalid.");
+			return false;
+		}
+
+		return true;
+	}
+
+	bool ImageImporter::LoadEngineTexture(const string& filePath, TextureInfo& texInfo)
+	{
+		if (!texInfo.Deserialize(filePath))
+		{
+			LOG_WARNING("ImageImporter: Failed to load engine texture.");
+			return false;
+		}
+
 		return true;
 	}
 

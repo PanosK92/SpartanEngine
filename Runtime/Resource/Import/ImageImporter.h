@@ -60,17 +60,17 @@ XPM files[reading, writing]
 
 #define FREEIMAGE_LIB
 
-//= INCLUDES ======================
+//= INCLUDES =================
 #include <vector>
 #include "../../Core/Helper.h"
-#include "../../Graphics/Texture.h"
-//=================================
+//============================
 
 class FIBITMAP;
 
 namespace Directus
 {
 	class Context;
+	class TextureInfo;
 
 	class DLL_API ImageImporter
 	{
@@ -78,10 +78,12 @@ namespace Directus
 		ImageImporter(Context* context);
 		~ImageImporter();
 
-		void LoadAsync(const std::string filePath, TextureInfo& texInfo);
-		bool Load(const std::string filePath, TextureInfo& texInfo);
+		void LoadAsync(const std::string& filePath, TextureInfo& texInfo);
+		bool Load(const std::string& filePath, TextureInfo& texInfo);
 
 	private:
+		bool ValidateFilePath(const std::string& filePath);
+		bool LoadEngineTexture(const std::string& filePath, TextureInfo& texInfo);
 		unsigned int ComputeChannelCount(FIBITMAP* fibtimap, unsigned int bpp);
 		bool FIBTIMAPToRGBA(FIBITMAP* fibtimap, std::vector<unsigned char>* rgba);
 		void GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, TextureInfo& imageData);
