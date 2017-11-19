@@ -210,7 +210,7 @@ namespace Directus
 		//= ID3D11Texture2D ========================================================================
 		// Create texture from description
 		ID3D11Texture2D* texture = nullptr;
-		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDescs[0], &subresourceData[0], &texture);
+		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(textureDescs.data(), subresourceData.data(), &texture);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11Texture: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");

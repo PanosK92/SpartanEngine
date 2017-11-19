@@ -78,7 +78,7 @@ namespace Directus
 	bool Texture::SaveToFile(const string& filePath)
 	{
 		SetResourceFilePath(filePath);
-		return Serialize(filePath);
+		return m_textureInfo->Serialize(filePath);
 	}
 
 	bool Texture::LoadFromFile(const string& filePath)
@@ -87,7 +87,7 @@ namespace Directus
 		bool engineFormat = FileSystem::GetExtensionFromFilePath(filePath) == TEXTURE_EXTENSION;
 		if (engineFormat)
 		{
-			loaded = Deserialize(filePath);
+			loaded = m_textureInfo->Deserialize(filePath);
 		}
 		else
 		{
@@ -107,18 +107,18 @@ namespace Directus
 
 	void Texture::SetTextureType(TextureType type)
 	{
-		m_type = type;
+		m_textureInfo->type = type;
 
 		// Some models (or Assimp) pass a normal map as a height map
 		// and others pass a height map as a normal map, we try to fix that.
-		if (m_type == Height_Texture && !GetGrayscale())
+		if (m_textureInfo->type == Height_Texture && !GetGrayscale())
 		{
-			m_type = Normal_Texture;
+			m_textureInfo->type = Normal_Texture;
 		}
 
-		if (m_type == Normal_Texture && GetGrayscale())
+		if (m_textureInfo->type == Normal_Texture && GetGrayscale())
 		{
-			m_type = Height_Texture;
+			m_textureInfo->type = Height_Texture;
 		}
 	}
 
@@ -157,67 +157,6 @@ namespace Directus
 			{
 				LOG_ERROR("Texture: Failed to create shader resource with mipmaps for \"" + m_resourceFilePath + "\".");
 				return false;
-			}
-		}
-
-		return true;
-	}
-
-	bool Texture::Serialize(const string& filePath)
-	{
-		auto file = make_unique<StreamIO>(filePath, Mode_Write);
-		if (!file->IsCreated())
-			return false;
-
-		file->Write((int)m_type);
-		file->Write(m_textureInfo->bpp);
-		file->Write(m_textureInfo->width);
-		file->Write(m_textureInfo->height);
-		file->Write(m_textureInfo->channels);
-		file->Write(m_textureInfo->isGrayscale);
-		file->Write(m_textureInfo->isTransparent);
-		file->Write(m_textureInfo->isUsingMipmaps);
-		if (!m_textureInfo->isUsingMipmaps)
-		{
-			file->Write(m_textureInfo->rgba);
-		}
-		else
-		{
-			file->Write((unsigned int)m_textureInfo->rgba_mimaps.size());
-			for (auto& mip : m_textureInfo->rgba_mimaps)
-			{
-				file->Write(mip);
-			}
-		}
-
-		return true;
-	}
-
-	bool Texture::Deserialize(const string& filePath)
-	{
-		auto file = make_unique<StreamIO>(filePath, Mode_Read);
-		if (!file->IsCreated())
-			return false;
-
-		m_type = (TextureType)file->ReadInt();
-		file->Read(m_textureInfo->bpp);
-		file->Read(m_textureInfo->width);
-		file->Read(m_textureInfo->height);
-		file->Read(m_textureInfo->channels);
-		file->Read(m_textureInfo->isGrayscale);
-		file->Read(m_textureInfo->isTransparent);
-		file->Read(m_textureInfo->isUsingMipmaps);
-		if (!m_textureInfo->isUsingMipmaps)
-		{
-			file->Read(m_textureInfo->rgba);
-		}
-		else
-		{
-			int mipCount = file->ReadUInt();
-			for (int i = 0; i < mipCount; i++)
-			{
-				m_textureInfo->rgba_mimaps.emplace_back(vector<unsigned char>());
-				file->Read(m_textureInfo->rgba_mimaps[i]);
 			}
 		}
 

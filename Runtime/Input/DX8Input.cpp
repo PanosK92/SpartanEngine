@@ -57,7 +57,14 @@ namespace Directus
 		HRESULT result = DirectInput8Create(instanceHandle, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&m_directInput, nullptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("DX8Input: Failed to initialize the DirectInput interface.");
+			switch (result)
+			{
+				case DIERR_INVALIDPARAM:			LOG_ERROR("DX8Input: DirectInput8Create() Failed, invalid parameters.");		break;
+				case DIERR_BETADIRECTINPUTVERSION:	LOG_ERROR("DX8Input: DirectInput8Create() Failed, beta direct input version."); break;
+				case DIERR_OLDDIRECTINPUTVERSION:	LOG_ERROR("DX8Input: DirectInput8Create() Failed, old direct input version.");	break;
+				case DIERR_OUTOFMEMORY:				LOG_ERROR("DX8Input: DirectInput8Create() Failed, out of memory.");				break;
+				default:							LOG_ERROR("DX8Input: Failed to initialize the DirectInput interface.");
+			}
 			return false;
 		}
 

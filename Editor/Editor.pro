@@ -96,7 +96,7 @@ FORMS += editor.ui \
 
 # DESTINATION
 release:DESTDIR = $$PWD/../Binaries/Release
-#debug:DESTDIR = $$PWD/../Binaries/Debug
+debug:DESTDIR = $$PWD/../Binaries/Release
 
 # ENGINE INCLUDE/LIBRARY
 LIBS += "$$DESTDIR/Runtime.lib"

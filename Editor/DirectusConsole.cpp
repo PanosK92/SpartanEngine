@@ -50,8 +50,8 @@ EngineLogger::EngineLogger(QListWidget* list)
 }
 
 /*
-    I have to replace your QListWidget with a QListView and implement my
-    own data model inheriting QAbstractListModel. I could pass the results
+    I should replace QListWidget with a QListView and implement my
+    own data model inheriting from QAbstractListModel. I could pass the results
     to the model and it will pass the items data when needed. This should
     should help with performance & memory issues the logging currenty suffers from.
 */

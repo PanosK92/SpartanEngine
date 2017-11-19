@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "../Resource/Resource.h"
 #include <memory>
+#include "../IO/StreamIO.h"
+
 //===============================
 
 namespace Directus
@@ -83,6 +85,67 @@ namespace Directus
 			this->isUsingMipmaps = generateMipmaps;
 		}
 
+		bool Serialize(const std::string& filePath)
+		{
+			auto file = std::make_unique<StreamIO>(filePath, Mode_Write);
+			if (!file->IsCreated())
+				return false;
+
+			file->Write((int)type);
+			file->Write(bpp);
+			file->Write(width);
+			file->Write(height);
+			file->Write(channels);
+			file->Write(isGrayscale);
+			file->Write(isTransparent);
+			file->Write(isUsingMipmaps);
+			if (!isUsingMipmaps)
+			{
+				file->Write(rgba);
+			}
+			else
+			{
+				file->Write((unsigned int)rgba_mimaps.size());
+				for (auto& mip : rgba_mimaps)
+				{
+					file->Write(mip);
+				}
+			}
+
+			return true;
+		}
+
+		bool Deserialize(const std::string& filePath)
+		{
+			auto file = std::make_unique<StreamIO>(filePath, Mode_Read);
+			if (!file->IsCreated())
+				return false;
+
+			type = (TextureType)file->ReadInt();
+			file->Read(bpp);
+			file->Read(width);
+			file->Read(height);
+			file->Read(channels);
+			file->Read(isGrayscale);
+			file->Read(isTransparent);
+			file->Read(isUsingMipmaps);
+			if (!isUsingMipmaps)
+			{
+				file->Read(rgba);
+			}
+			else
+			{
+				int mipCount = file->ReadUInt();
+				for (int i = 0; i < mipCount; i++)
+				{
+					rgba_mimaps.emplace_back(std::vector<unsigned char>());
+					file->Read(rgba_mimaps[i]);
+				}
+			}
+
+			return true;
+		}
+
 		unsigned int bpp = 0;
 		unsigned int width = 0;
 		unsigned int height = 0;
@@ -93,6 +156,7 @@ namespace Directus
 		std::vector<unsigned char> rgba;
 		std::vector<std::vector<unsigned char>> rgba_mimaps;
 		LoadState loadState = Idle;
+		TextureType type = Unknown_Texture;
 	};
 
 	class DLL_API Texture : public Resource
@@ -113,7 +177,7 @@ namespace Directus
 		int GetHeight() { return m_textureInfo->height; }
 		void SetHeight(int height) { m_textureInfo->height = height; }
 
-		TextureType GetTextureType() { return m_type; }
+		TextureType GetTextureType() { return m_textureInfo->type; }
 		void SetTextureType(TextureType type);
 
 		bool GetGrayscale() { return m_textureInfo->isGrayscale; }
@@ -133,16 +197,12 @@ namespace Directus
 		bool CreateShaderResource(TextureInfo* texInfo);
 
 	private:		
-		bool Serialize(const std::string& filePath);
-		bool Deserialize(const std::string& filePath);
-
 		bool LoadFromForeignFormat(const std::string& filePath);
 		TextureType TextureTypeFromString(const std::string& type);
 		int ToAPIFormat(TextureFormat format);
 
 		std::unique_ptr<D3D11Texture> m_textureAPI;
 		std::unique_ptr<TextureInfo> m_textureInfo;
-		TextureType m_type = Unknown_Texture;
 		TextureFormat m_format = RGBA_8_UNORM;
 	};
 }

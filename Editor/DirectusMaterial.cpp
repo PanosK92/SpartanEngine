@@ -270,6 +270,8 @@ void DirectusMaterial::Reflect(weak_ptr<GameObject> gameobject)
         return;
     }
 
+
+
     m_inspectedMaterial = meshRenderer->GetMaterial();
     if (m_inspectedMaterial.expired())
     {
