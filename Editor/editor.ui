@@ -2413,17 +2413,7 @@ QSplitter::handle:vertical
                      <number>0</number>
                     </property>
                     <item>
-                     <widget class="DirectusConsole" name="directusConsole">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                        <horstretch>0</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="alternatingRowColors">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
+                     <widget class="DirectusConsole" name="directusConsole"/>
                     </item>
                    </layout>
                   </item>
@@ -3325,11 +3315,6 @@ QSplitter::handle:vertical
    </slots>
   </customwidget>
   <customwidget>
-   <class>DirectusConsole</class>
-   <extends>QListWidget</extends>
-   <header>DirectusConsole.h</header>
-  </customwidget>
-  <customwidget>
    <class>DirectusHierarchy</class>
    <extends>QTreeWidget</extends>
    <header>DirectusHierarchy.h</header>
@@ -3384,6 +3369,11 @@ QSplitter::handle:vertical
    <extends>QComboBox</extends>
    <header>DirectusRenderFlags.h</header>
   </customwidget>
+  <customwidget>
+   <class>DirectusConsole</class>
+   <extends>QTextEdit</extends>
+   <header location="global">DirectusConsole.h</header>
+  </customwidget>
  </customwidgets>
  <resources/>
  <connections>
@@ -3395,11 +3385,11 @@ QSplitter::handle:vertical
    <hints>
     <hint type="sourcelabel">
      <x>105</x>
-     <y>742</y>
+     <y>580</y>
     </hint>
     <hint type="destinationlabel">
      <x>105</x>
-     <y>742</y>
+     <y>580</y>
     </hint>
    </hints>
   </connection>
@@ -3414,8 +3404,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1239</x>
-     <y>440</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3430,8 +3420,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1239</x>
-     <y>440</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3446,8 +3436,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1239</x>
-     <y>440</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3462,8 +3452,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1239</x>
-     <y>440</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3478,8 +3468,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1239</x>
-     <y>440</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3494,8 +3484,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>440</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3510,8 +3500,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3526,8 +3516,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3542,8 +3532,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3558,8 +3548,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3574,8 +3564,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3590,8 +3580,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3606,8 +3596,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3622,8 +3612,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3638,8 +3628,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3654,8 +3644,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3670,8 +3660,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3686,8 +3676,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3702,24 +3692,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1238</x>
-     <y>439</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonConsoleClear</sender>
-   <signal>pressed()</signal>
-   <receiver>directusConsole</receiver>
-   <slot>clear()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>25</x>
-     <y>532</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>70</x>
-     <y>743</y>
+     <x>258</x>
+     <y>491</y>
     </hint>
    </hints>
   </connection>
@@ -3734,8 +3708,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1240</x>
-     <y>377</y>
+     <x>258</x>
+     <y>450</y>
     </hint>
    </hints>
   </connection>
@@ -3750,8 +3724,8 @@ QSplitter::handle:vertical
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1240</x>
-     <y>377</y>
+     <x>258</x>
+     <y>450</y>
     </hint>
    </hints>
   </connection>
@@ -3766,8 +3740,8 @@ QSplitter::handle:vertical
      <y>282</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1290</x>
-     <y>367</y>
+     <x>258</x>
+     <y>440</y>
     </hint>
    </hints>
   </connection>
@@ -3782,8 +3756,24 @@ QSplitter::handle:vertical
      <y>538</y>
     </hint>
     <hint type="destinationlabel">
-     <x>1249</x>
-     <y>485</y>
+     <x>258</x>
+     <y>491</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonConsoleClear</sender>
+   <signal>clicked()</signal>
+   <receiver>directusConsole</receiver>
+   <slot>clear()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>19</x>
+     <y>539</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>116</x>
+     <y>621</y>
     </hint>
    </hints>
   </connection>
