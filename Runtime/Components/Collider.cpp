@@ -99,18 +99,18 @@ namespace Directus
 		}
 	}
 
-	void Collider::Serialize()
+	void Collider::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteInt(int(m_shapeType));
-		StreamIO::WriteVector3(m_extents);
-		StreamIO::WriteVector3(m_center);
+		stream->Write(int(m_shapeType));
+		stream->Write(m_extents);
+		stream->Write(m_center);
 	}
 
-	void Collider::Deserialize()
+	void Collider::Deserialize(StreamIO* stream)
 	{
-		m_shapeType = ColliderShape(StreamIO::ReadInt());
-		m_extents = StreamIO::ReadVector3();
-		m_center = StreamIO::ReadVector3();
+		m_shapeType = ColliderShape(stream->ReadInt());
+		stream->Read(m_extents);
+		stream->Read(m_center);
 
 		UpdateShape();
 	}

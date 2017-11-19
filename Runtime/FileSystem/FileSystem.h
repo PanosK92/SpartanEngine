@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MODEL_EXTENSION ".model"
 #define PREFAB_EXTENSION ".prefab"
 #define SHADER_EXTENSION ".shader"
+#define TEXTURE_EXTENSION ".texture"
 //=================================
 
 namespace Directus
@@ -95,11 +96,11 @@ namespace Directus
 		static bool IsEngineMaterialFile(const std::string& filePath);
 		static bool IsEngineModelFile(const std::string& filePath);
 		static bool IsEngineSceneFile(const std::string& filePath);
+		static bool IsEngineTextureFile(const std::string& filePath);
 		static bool IsEngineMetadataFile(const std::string& filePath);
 		//=============================================================
 
 		//= STRING PARSING =============================================================================================================================
-		static std::wstring ToWString(const std::string& str);
 		static std::string GetStringAfterExpression(const std::string& str, const std::string& expression);
 		static std::string GetStringBetweenExpressions(const std::string& str, const std::string& firstExpression, const std::string& secondExpression);
 		static std::string ConvertToUppercase(const std::string& lower);

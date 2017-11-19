@@ -21,13 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES =====
 #include <vector>
-//===============
+#include <fstream>
+//================
 
 namespace Directus
 {
 	class GameObject;
+	struct VertexPosTexTBN;
 	namespace Math
 	{
 		class Vector2;
@@ -36,42 +38,89 @@ namespace Directus
 		class Quaternion;
 	}
 
+	enum SreamIOMode
+	{
+		Mode_Read,
+		Mode_Write
+	};
+
 	class StreamIO
 	{
 	public:
-		//= STREAM =======================================
-		static bool StartWriting(const std::string& path);
-		static void StopWriting();
-		static bool StartReading(const std::string& path);
-		static void StopReading();
-		//================================================
+		StreamIO(const std::string& path, SreamIOMode mode);
+		~StreamIO();
 
-		//= WRITING =================================================
-		static void WriteBool(bool value);
-		static void WriteSTR(std::string value);
-		static void WriteInt(int value);
-		static void WriteUnsignedInt(unsigned int value);
-		static void WriteULong(unsigned long value);
-		static void WriteFloat(float value);
-		static void WriteVectorSTR(std::vector<std::string>& vector);
-		static void WriteVector2(Math::Vector2& vector);
-		static void WriteVector3(Math::Vector3& vector);
-		static void WriteVector4(Math::Vector4& vector);
-		static void WriteQuaternion(Math::Quaternion& quaternion);
+		bool IsCreated() { return m_created; }
+
+		//= WRITING ==================================================
+		template <class T, class = typename std::enable_if<
+			std::is_same<T, int>::value || 
+			std::is_same<T, unsigned int>::value ||
+			std::is_same<T, unsigned long>::value ||
+			std::is_same<T, unsigned char>::value ||
+			std::is_same<T, float>::value ||
+			std::is_same<T, bool>::value ||
+			std::is_same<T, double>::value 
+		>::type>
+		void Write(T value)
+		{
+			out.write(reinterpret_cast<char*>(&value), sizeof(value));
+		}
+
+		void Write(const std::string& value);
+		void Write(const std::vector<std::string>& value);
+		void Write(const Math::Vector2& value);
+		void Write(const Math::Vector3& value);
+		void Write(const Math::Vector4& value);
+		void Write(const Math::Quaternion& value);
+		void Write(const VertexPosTexTBN& value);
+		void Write(const std::vector<unsigned char>& value);
 		//===========================================================
+		
+		//= READING ================================================
+		template <class T, class = typename std::enable_if<
+			std::is_same<T, int>::value ||
+			std::is_same<T, unsigned int>::value ||
+			std::is_same<T, unsigned long>::value ||
+			std::is_same<T, unsigned char>::value ||
+			std::is_same<T, float>::value ||
+			std::is_same<T, bool>::value ||
+			std::is_same<T, double>::value
+		>::type>
+			void Read(T& value)
+		{
+			in.read(reinterpret_cast<char*>(&value), sizeof(value));
+		}
 
-		//= READING ====================================
-		static bool ReadBool();
-		static std::string ReadSTR();
-		static int ReadInt();
-		static unsigned int ReadUnsignedInt();
-		static unsigned long ReadULong();
-		static float ReadFloat();
-		static std::vector<std::string> ReadVectorSTR();
-		static Math::Vector2 ReadVector2();
-		static Math::Vector3 ReadVector3();
-		static Math::Vector4 ReadVector4();
-		static Math::Quaternion ReadQuaternion();
-		//==============================================
+		void Read(std::string& value);
+		void Read(std::vector<std::string>& value);
+		void Read(Math::Vector2& value);
+		void Read(Math::Vector3& value);
+		void Read(Math::Vector4& value);
+		void Read(Math::Quaternion& value);
+		void Read(VertexPosTexTBN& value);
+		void Read(std::vector<unsigned char>& value);
+
+		// Helps when reading enums
+		int ReadInt()
+		{
+			int value = 0;
+			Read(value);
+			return value;
+		}
+
+		unsigned int ReadUInt()
+		{
+			unsigned int value = 0;
+			Read(value);
+			return value;
+		}
+		//==========================================================
+
+	private:
+		std::ofstream out;
+		std::ifstream in;
+		SreamIOMode m_mode;
+		bool m_created;
 	};
 }

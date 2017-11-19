@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "StreamIO.h"
-#include <fstream>
 #include "../Core/GameObject.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
+#include "../Logging/Log.h"
+#include "../Graphics/Vertex.h"
 //=============================
 
 //= NAMESPACES ================
@@ -34,209 +35,206 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
-//= STREAMS =
-ofstream out;
-ifstream in;
-//===========
-
 namespace Directus
 {
-
-	bool StreamIO::StartWriting(const string& path)
+	StreamIO::StreamIO(const string& path, SreamIOMode mode)
 	{
-		out.open(path, ios::out | ios::binary);
-		return !out.fail();
-	}
+		m_created = false;
+		m_mode = mode;
 
-	void StreamIO::StopWriting()
-	{
-		out.flush();
-		out.close();
-	}
-
-	bool StreamIO::StartReading(const string& path)
-	{
-		in.open(path, ios::in | ios::binary);
-		return !in.fail();
-	}
-
-	void StreamIO::StopReading()
-	{
-		in.clear();
-		in.close();
-	}
-
-	void StreamIO::WriteBool(bool value)
-	{
-		out.write(reinterpret_cast<char*>(&value), sizeof(value));
-	}
-
-	void StreamIO::WriteSTR(string value)
-	{
-		int stringSize = value.size();
-		out.write(reinterpret_cast<char*>(&stringSize), sizeof(stringSize));
-		out.write(const_cast<char*>(value.c_str()), stringSize);
-	}
-
-	void StreamIO::WriteInt(int value)
-	{
-		out.write(reinterpret_cast<char*>(&value), sizeof(value));
-	}
-
-	void StreamIO::WriteUnsignedInt(unsigned int value)
-	{
-		out.write(reinterpret_cast<char*>(&value), sizeof(value));
-	}
-
-	void StreamIO::WriteULong(unsigned long value)
-	{
-		out.write(reinterpret_cast<char*>(&value), sizeof(value));
-	}
-
-	void StreamIO::WriteFloat(float value)
-	{
-		out.write(reinterpret_cast<char*>(&value), sizeof(value));
-	}
-
-	void StreamIO::WriteVectorSTR(vector<string>& vector)
-	{
-		WriteInt(int(vector.size()));
-		for (auto i = 0; i < vector.size(); i++)
+		if (mode == Mode_Write)
 		{
-			WriteSTR(vector[i]);
+			out.open(path, ios::out | ios::binary);
+			if (out.fail())
+			{
+				LOG_ERROR("StreamIO: Failed to open \"" + path + "\" for writing.");
+				return;
+			}
+		}
+		else if (mode == Mode_Read)
+		{
+			in.open(path, ios::in | ios::binary);
+			if(in.fail())
+			{
+				LOG_ERROR("StreamIO: Failed to open \"" + path + "\" for reading.");
+				return;
+			}
+		}
+
+		m_created = true;
+	}
+
+	StreamIO::~StreamIO()
+	{
+		if (m_mode == Mode_Write)
+		{
+			out.flush();
+			out.close();
+		}
+		else if (m_mode == Mode_Read)
+		{
+			in.clear();
+			in.close();
 		}
 	}
 
-	void StreamIO::WriteVector2(Vector2& vector)
+	void StreamIO::Write(const string& value)
 	{
-		out.write(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
-		out.write(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
+		unsigned int length = value.length();
+		Write(length);
+
+		out.write(const_cast<char*>(value.c_str()), length);
 	}
 
-	void StreamIO::WriteVector3(Vector3& vector)
+	void StreamIO::Write(const vector<string>& value)
 	{
-		out.write(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
-		out.write(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
-		out.write(reinterpret_cast<char*>(&vector.z), sizeof(vector.z));
+		unsigned int size = value.size();
+		Write(size);
+
+		for (unsigned int i = 0; i < size; i++)
+		{
+			Write(value[i]);
+		}
 	}
 
-	void StreamIO::WriteVector4(Vector4& vector)
+	void StreamIO::Write(const Vector2& vector)
 	{
-		out.write(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
-		out.write(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
-		out.write(reinterpret_cast<char*>(&vector.z), sizeof(vector.z));
-		out.write(reinterpret_cast<char*>(&vector.w), sizeof(vector.w));
+		Write(vector.x);
+		Write(vector.y);
 	}
 
-	void StreamIO::WriteQuaternion(Quaternion& quaternion)
+	void StreamIO::Write(const Vector3& vector)
 	{
-		out.write(reinterpret_cast<char*>(&quaternion.x), sizeof(quaternion.x));
-		out.write(reinterpret_cast<char*>(&quaternion.y), sizeof(quaternion.y));
-		out.write(reinterpret_cast<char*>(&quaternion.z), sizeof(quaternion.z));
-		out.write(reinterpret_cast<char*>(&quaternion.w), sizeof(quaternion.w));
+		Write(vector.x);
+		Write(vector.y);
+		Write(vector.z);
 	}
 
-	bool StreamIO::ReadBool()
+	void StreamIO::Write(const Vector4& vector)
 	{
-		bool value;
-		in.read(reinterpret_cast<char*>(&value), sizeof(value));
-
-		return value;
+		Write(vector.x);
+		Write(vector.y);
+		Write(vector.z);
+		Write(vector.w);
 	}
 
-	string StreamIO::ReadSTR()
+	void StreamIO::Write(const Quaternion& quaternion)
 	{
-		int stringSize;
-		in.read(reinterpret_cast<char*>(&stringSize), sizeof(stringSize));
-
-		string value;
-		value.resize(stringSize);
-		in.read(const_cast<char*>(value.c_str()), stringSize);
-
-		return value;
+		Write(quaternion.x);
+		Write(quaternion.y);
+		Write(quaternion.z);
+		Write(quaternion.w);
 	}
 
-	int StreamIO::ReadInt()
+	void StreamIO::Write(const VertexPosTexTBN& value)
 	{
-		int value;
-		in.read(reinterpret_cast<char*>(&value), sizeof(value));
+		Write(value.position.x);
+		Write(value.position.y);
+		Write(value.position.z);
 
-		return value;
+		Write(value.uv.x);
+		Write(value.uv.y);
+
+		Write(value.normal.x);
+		Write(value.normal.y);
+		Write(value.normal.z);
+
+		Write(value.tangent.x);
+		Write(value.tangent.y);
+		Write(value.tangent.z);
+
+		Write(value.bitangent.x);
+		Write(value.bitangent.y);
+		Write(value.bitangent.z);
 	}
 
-	unsigned int StreamIO::ReadUnsignedInt()
+	void StreamIO::Write(const vector<unsigned char>& value)
 	{
-		unsigned int value;
-		in.read(reinterpret_cast<char*>(&value), sizeof(value));
+		unsigned int size = value.size();
+		Write(size);
 
-		return value;
+		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(value[0]) * size);
 	}
 
-	unsigned long StreamIO::ReadULong()
+	void StreamIO::Read(string& value)
 	{
-		unsigned int value;
-		in.read(reinterpret_cast<char*>(&value), sizeof(value));
+		unsigned int length = 0;
+		Read(length);
 
-		return value;
+		value.resize(length);
+		in.read(const_cast<char*>(value.c_str()), length);
 	}
 
-	float StreamIO::ReadFloat()
+	void StreamIO::Read(vector<string>& value)
 	{
-		float value;
-		in.read(reinterpret_cast<char*>(&value), sizeof(value));
+		unsigned int size = 0;
+		Read(size);
 
-		return value;
+		string str;
+		for (unsigned int i = 0; i < size; i++)
+		{
+			Read(str);
+			value.emplace_back(str);
+		}
 	}
 
-	vector<string> StreamIO::ReadVectorSTR()
+	void StreamIO::Read(Vector2& value)
 	{
-		vector<string> vector;
-
-		int textureIDsCount = ReadInt();
-		for (int i = 0; i < textureIDsCount; i++)
-			vector.push_back(ReadSTR());
-
-		return vector;
+		Read(value.x);
+		Read(value.y);
 	}
 
-	Vector2 StreamIO::ReadVector2()
+	void StreamIO::Read(Vector3& value)
 	{
-		Vector2 vector;
-		in.read(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
-		in.read(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
-
-		return vector;
+		Read(value.x);
+		Read(value.y);
+		Read(value.z);
 	}
 
-	Vector3 StreamIO::ReadVector3()
+	void StreamIO::Read(Vector4& value)
 	{
-		Vector3 vector;
-		in.read(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
-		in.read(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
-		in.read(reinterpret_cast<char*>(&vector.z), sizeof(vector.z));
-
-		return vector;
+		Read(value.x);
+		Read(value.y);
+		Read(value.z);
+		Read(value.w);
 	}
 
-	Vector4 StreamIO::ReadVector4()
+	void StreamIO::Read(Quaternion& value)
 	{
-		Vector4 vector;
-		in.read(reinterpret_cast<char*>(&vector.x), sizeof(vector.x));
-		in.read(reinterpret_cast<char*>(&vector.y), sizeof(vector.y));
-		in.read(reinterpret_cast<char*>(&vector.z), sizeof(vector.z));
-		in.read(reinterpret_cast<char*>(&vector.w), sizeof(vector.w));
-
-		return vector;
+		Read(value.x);
+		Read(value.y);
+		Read(value.z);
+		Read(value.w);
 	}
 
-	Quaternion StreamIO::ReadQuaternion()
+	void StreamIO::Read(VertexPosTexTBN& value)
 	{
-		Quaternion quaternion = Quaternion(0, 0, 0, 1);
-		in.read(reinterpret_cast<char*>(&quaternion.x), sizeof(quaternion.x));
-		in.read(reinterpret_cast<char*>(&quaternion.y), sizeof(quaternion.y));
-		in.read(reinterpret_cast<char*>(&quaternion.z), sizeof(quaternion.z));
-		in.read(reinterpret_cast<char*>(&quaternion.w), sizeof(quaternion.w));
+		Read(value.position.x);
+		Read(value.position.y);
+		Read(value.position.z);
 
-		return quaternion;
+		Read(value.uv.x);
+		Read(value.uv.y);
+
+		Read(value.normal.x);
+		Read(value.normal.y);
+		Read(value.normal.z);
+
+		Read(value.tangent.x);
+		Read(value.tangent.y);
+		Read(value.tangent.z);
+
+		Read(value.bitangent.x);
+		Read(value.bitangent.y);
+		Read(value.bitangent.z);
+	}
+
+	void StreamIO::Read(vector<unsigned char>& value)
+	{
+		unsigned int size = 0;
+		Read(size);
+		value.resize(size);
+
+		in.read(reinterpret_cast<char*>(&value[0]), sizeof(value[0]) * size);
 	}
 }

@@ -91,27 +91,20 @@ namespace Directus
 
 	bool Model::SaveToFile(const string& filePath)
 	{
-		string savePath = filePath;
-		if (filePath == RESOURCE_SAVE)
-		{
-			savePath = GetResourceFilePath();
-		}
-
-		if (!StreamIO::StartWriting(savePath))
+		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Write);
+		if (!file->IsCreated())
 			return false;
 
-		StreamIO::WriteInt(GetResourceID());
-		StreamIO::WriteSTR(GetResourceName());
-		StreamIO::WriteSTR(GetResourceFilePath());
-		StreamIO::WriteFloat(m_normalizedScale);
-		StreamIO::WriteInt((int)m_meshes.size());
+		file->Write(GetResourceID());
+		file->Write(GetResourceName());
+		file->Write(GetResourceFilePath());
+		file->Write(m_normalizedScale);
+		file->Write((int)m_meshes.size());
 
 		for (const auto& mesh : m_meshes)
 		{
-			mesh->Serialize();
+			mesh->Serialize(file.get());
 		}
-
-		StreamIO::StopWriting();
 
 		return true;
 	}
@@ -156,8 +149,8 @@ namespace Directus
 		weak_ptr<Material> weakMat = m_context->GetSubsystem<ResourceManager>()->Add(material);
 
 		// Save the material/shader in our custom format
-		material._Get()->Save(GetResourceDirectory() + "Materials//" + material->GetResourceName(), false);
-		material._Get()->GetShader()._Get()->SaveToFile(GetResourceDirectory() + "Shaders//" + material._Get()->GetResourceName());
+		material._Get()->Save(m_modelDirectoryMaterials + material->GetResourceName(), false);
+		material._Get()->GetShader()._Get()->SaveToFile(m_modelDirectoryShaders + material._Get()->GetResourceName());
 
 		// Keep a reference to it
 		m_materials.push_back(material);
@@ -209,14 +202,6 @@ namespace Directus
 		return weak_ptr<Mesh>();
 	}
 
-	string Model::CopyTextureToLocalDirectory(const string& from)
-	{
-		string textureDestination = GetResourceDirectory() + "Textures//" + FileSystem::GetFileNameFromFilePath(from);
-		FileSystem::CopyFileFromTo(from, textureDestination);
-
-		return textureDestination;
-	}
-
 	float Model::GetBoundingSphereRadius()
 	{
 		Vector3 extent = m_boundingBox.GetHalfSize().Absolute();
@@ -226,23 +211,24 @@ namespace Directus
 	bool Model::LoadFromEngineFormat(const string& filePath)
 	{
 		// Deserialize
-		if (!StreamIO::StartReading(filePath))
+		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Read);
+		if (!file->IsCreated())
 			return false;
 
-		SetResourceID(StreamIO::ReadInt());
-		SetResourceName(StreamIO::ReadSTR());
-		SetResourceFilePath(StreamIO::ReadSTR());
-		m_normalizedScale = StreamIO::ReadFloat();
-		int meshCount = StreamIO::ReadInt();
+		int meshCount = 0;
+
+		file->Read(m_resourceID);
+		file->Read(m_resourceName);
+		file->Read(m_resourceFilePath);
+		file->Read(m_normalizedScale);
+		file->Read(meshCount);
 
 		for (int i = 0; i < meshCount; i++)
 		{
 			auto mesh = make_shared<Mesh>();
-			mesh->Deserialize();
+			mesh->Deserialize(file.get());
 			AddMeshAsNewResource(mesh);
 		}
-
-		StreamIO::StopReading();
 
 		return true;
 	}
@@ -255,9 +241,13 @@ namespace Directus
 		SetResourceFilePath(modelDir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION); // Assets/Sponza/Sponza.model
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath)); // Sponza
 
-		// Create asset directory (if it doesn't exist)
-		FileSystem::CreateDirectory_(modelDir + "Materials//");
-		FileSystem::CreateDirectory_(modelDir + "Shaders//");
+		// Create asset directory (if it doesn't exist)]
+		m_modelDirectoryMaterials = modelDir + "Materials//";
+		m_modelDirectoryShaders = modelDir + "Shaders//";
+		m_modelDirectoryTextures = modelDir + "Textures//";
+		FileSystem::CreateDirectory_(m_modelDirectoryMaterials);
+		FileSystem::CreateDirectory_(m_modelDirectoryShaders);
+		FileSystem::CreateDirectory_(m_modelDirectoryTextures);
 
 		// Load the model
 		if (m_resourceManager->GetModelImporter()._Get()->Load(this, filePath))

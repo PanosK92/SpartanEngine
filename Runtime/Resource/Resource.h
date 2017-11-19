@@ -27,8 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GUIDGenerator.h"
 //===================================
 
-#define RESOURCE_SAVE "SaveToExisting"
-
 namespace Directus
 {
 	enum ResourceType
@@ -75,13 +73,11 @@ namespace Directus
 		virtual bool SaveToFile(const std::string& filePath) = 0;
 		virtual bool LoadFromFile(const std::string& filePath) = 0;
 
-	private:
+	protected:	
 		unsigned int m_resourceID = NOT_ASSIGNED_HASH;
 		std::string m_resourceName = NOT_ASSIGNED;
 		std::string m_resourceFilePath = NOT_ASSIGNED;
 		ResourceType m_resourceType = Unknown_Resource;
-
-	protected:	
 		Context* m_context = nullptr;
 	};
 }

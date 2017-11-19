@@ -88,37 +88,37 @@ namespace Directus
 		m_isDirty = false;
 	}
 
-	void Hinge::Serialize()
+	void Hinge::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteBool(m_isConnected);
+		stream->Write(m_isConnected);
 		if (m_isConnected)
 		{
 			if (!m_connectedGameObject.expired())
 			{
-				StreamIO::WriteInt(m_connectedGameObject._Get()->GetID());
+				stream->Write(m_connectedGameObject._Get()->GetID());
 			}
 		}
 
-		StreamIO::WriteVector3(m_axisA);
-		StreamIO::WriteVector3(m_axisB);
-		StreamIO::WriteVector3(m_pivotA);
-		StreamIO::WriteVector3(m_pivotB);
+		stream->Write(m_axisA);
+		stream->Write(m_axisB);
+		stream->Write(m_pivotA);
+		stream->Write(m_pivotB);
 	}
 
-	void Hinge::Deserialize()
+	void Hinge::Deserialize(StreamIO* stream)
 	{
-		m_isConnected = StreamIO::ReadBool();
+		stream->Read(m_isConnected);
 		if (m_isConnected)
 		{
 			// load gameobject
-			std::size_t gameObjectID = StreamIO::ReadInt();
+			size_t gameObjectID = stream->ReadInt();
 			m_connectedGameObject = g_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
 		}
 
-		m_axisA = StreamIO::ReadVector3();
-		m_axisB = StreamIO::ReadVector3();
-		m_pivotA = StreamIO::ReadVector3();
-		m_pivotB = StreamIO::ReadVector3();
+		stream->Read(m_axisA);
+		stream->Read(m_axisB);
+		stream->Read(m_pivotA);
+		stream->Read(m_pivotB);
 
 		m_isDirty = true;
 	}

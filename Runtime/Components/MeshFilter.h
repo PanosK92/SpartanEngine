@@ -25,10 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Component.h"
 #include <vector>
 #include <memory>
-#include "../FileSystem/FileSystem.h"
 #include "../Math/BoundingBox.h"
 #include "../Graphics/Vertex.h"
-
 //===================================
 
 namespace Directus
@@ -37,6 +35,7 @@ namespace Directus
 	class D3D11VertexBuffer;
 	class D3D11IndexBuffer;
 	struct LoadVertices;
+
 	namespace Math
 	{
 		class Vector3;
@@ -51,15 +50,15 @@ namespace Directus
 		MeshFilter();
 		~MeshFilter();
 
-		//= ICOMPONENT =============
+		//= ICOMPONENT ============================
 		virtual void Reset();
 		virtual void Start();
 		virtual void OnDisable();
 		virtual void Remove();
 		virtual void Update();
-		virtual void Serialize();
-		virtual void Deserialize();
-		//=========================
+		virtual void Serialize(StreamIO* stream);
+		virtual void Deserialize(StreamIO* stream);
+		//=========================================
 
 		// Sets a mesh from memory
 		bool SetMesh(std::weak_ptr<Mesh> mesh);

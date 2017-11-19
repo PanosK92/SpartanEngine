@@ -112,17 +112,14 @@ namespace Directus
 
 	bool GameObject::SaveAsPrefab(const string& filePath)
 	{
-		// Try to create a prefab file
-		if (!StreamIO::StartWriting(filePath + PREFAB_EXTENSION))
+		// Create a prefab file
+		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath + PREFAB_EXTENSION, Mode_Write);
+		if (!file->IsCreated())
 			return false;
 
+		// Serialize
 		m_isPrefab = true;
-
-		// Serialize as usual...
-		Serialize();
-
-		// Close it
-		StreamIO::StopWriting();
+		Serialize(file.get());
 
 		return true;
 	}
@@ -134,39 +131,36 @@ namespace Directus
 			return false;
 
 		// Try to open it
-		if (!StreamIO::StartReading(filePath))
+		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Read);
+		if (!file->IsCreated())
 			return false;
 
-		// Deserialize as usual...
-		Deserialize(nullptr);
-
-		// Close it
-		StreamIO::StopReading();
+		Deserialize(file.get(), nullptr);
 
 		return true;
 	}
 
-	void GameObject::Serialize()
+	void GameObject::Serialize(StreamIO* stream)
 	{
-		//= BASIC DATA ================================
-		StreamIO::WriteBool(m_isPrefab);
-		StreamIO::WriteBool(m_isActive);
-		StreamIO::WriteBool(m_hierarchyVisibility);
-		StreamIO::WriteUnsignedInt(m_ID);
-		StreamIO::WriteSTR(m_name);		
-		//=============================================
+		//= BASIC DATA ==========================
+		stream->Write(m_isPrefab);
+		stream->Write(m_isActive);
+		stream->Write(m_hierarchyVisibility);
+		stream->Write(m_ID);
+		stream->Write(m_name);
+		//=======================================
 
 		//= COMPONENTS ================================
-		StreamIO::WriteInt((int)m_components.size());
+		stream->Write((int)m_components.size());
 		for (const auto& component : m_components)
 		{
-			StreamIO::WriteSTR(component->g_typeStr);
-			StreamIO::WriteUnsignedInt(component->g_ID);
+			stream->Write(component->g_typeStr);
+			stream->Write(component->g_ID);
 		}
 
 		for (const auto& component : m_components)
 		{
-			component->Serialize();
+			component->Serialize(stream);
 		}
 		//=============================================
 
@@ -174,12 +168,12 @@ namespace Directus
 		vector<Transform*> children = GetTransform()->GetChildren();
 
 		// 1st - children count
-		StreamIO::WriteInt((int)children.size());
+		stream->Write((int)children.size());
 
 		// 2nd - children IDs
 		for (const auto& child : children)
 		{
-			StreamIO::WriteUnsignedInt(child->g_ID);
+			stream->Write(child->g_ID);
 		}
 
 		// 3rd - children
@@ -187,7 +181,7 @@ namespace Directus
 		{
 			if (!child->g_gameObject.expired())
 			{
-				child->g_gameObject._Get()->Serialize();
+				child->g_gameObject._Get()->Serialize(stream);
 			}
 			else
 			{
@@ -198,22 +192,25 @@ namespace Directus
 		//=============================================
 	}
 
-	void GameObject::Deserialize(Transform* parent)
+	void GameObject::Deserialize(StreamIO* stream, Transform* parent)
 	{
-		//= BASIC DATA ================================
-		m_isPrefab = StreamIO::ReadBool();
-		m_isActive = StreamIO::ReadBool();
-		m_hierarchyVisibility = StreamIO::ReadBool();
-		m_ID = StreamIO::ReadUnsignedInt();
-		m_name = StreamIO::ReadSTR();
-		//=============================================
+		//= BASIC DATA =====================
+		stream->Read(m_isPrefab);
+		stream->Read(m_isActive);
+		stream->Read(m_hierarchyVisibility);
+		stream->Read(m_ID);
+		stream->Read(m_name);
+		//==================================
 
 		//= COMPONENTS ================================
-		int componentCount = StreamIO::ReadInt();
+		int componentCount = stream->ReadInt();
 		for (int i = 0; i < componentCount; i++)
 		{
-			string type = StreamIO::ReadSTR(); // load component's type
-			unsigned int id = StreamIO::ReadUnsignedInt(); // load component's id
+			string type = NOT_ASSIGNED;
+			unsigned int id = 0;
+
+			stream->Read(type); // load component's type
+			stream->Read(id); // load component's id
 
 			Component* component = AddComponentBasedOnType(type);
 			component->g_ID = id;
@@ -223,7 +220,7 @@ namespace Directus
 		// the components (like above) and then deserialize them (like here).
 		for (const auto& component : m_components)
 		{
-			component->Deserialize();
+			component->Deserialize(stream);
 		}
 		//=============================================
 
@@ -235,7 +232,7 @@ namespace Directus
 
 		//= CHILDREN ===================================
 		// 1st - children count
-		int childrenCount = StreamIO::ReadInt();
+		int childrenCount = stream->ReadInt();
 
 		// 2nd - children IDs
 		auto scene = m_context->GetSubsystem<Scene>();
@@ -243,14 +240,14 @@ namespace Directus
 		for (int i = 0; i < childrenCount; i++)
 		{
 			weakGameObj child = scene->CreateGameObject();
-			child._Get()->SetID(StreamIO::ReadUnsignedInt());
+			child._Get()->SetID(stream->ReadUInt());
 			children.push_back(child);
 		}
 
 		// 3rd - children
 		for (const auto& child : children)
 		{
-			child._Get()->Deserialize(GetTransform());
+			child._Get()->Deserialize(stream, GetTransform());
 		}
 		//=============================================
 

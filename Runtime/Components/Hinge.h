@@ -38,16 +38,15 @@ namespace Directus
 		Hinge();
 		~Hinge();
 
-		/*------------------------------------------------------------------------------
-									[INTERFACE]
-		------------------------------------------------------------------------------*/
+		//= COMPONENT =============================
 		virtual void Reset();
 		virtual void Start();
 		virtual void OnDisable();
 		virtual void Remove();
 		virtual void Update();
-		virtual void Serialize();
-		virtual void Deserialize();
+		virtual void Serialize(StreamIO* stream);
+		virtual void Deserialize(StreamIO* stream);
+		//=========================================
 
 		void SetConnectedGameObject(std::weak_ptr<GameObject> connectedRigidBody);
 		std::weak_ptr<GameObject> GetConnectedGameObject();

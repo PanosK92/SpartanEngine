@@ -39,10 +39,10 @@ namespace Directus
 
 		VertexPosTexTBN() {}
 		VertexPosTexTBN(
-			const Math::Vector3& position, 
-			const Math::Vector2& uv, 
-			const Math::Vector3& normal, 
-			const Math::Vector3& tangent, 
+			const Math::Vector3& position,
+			const Math::Vector2& uv,
+			const Math::Vector3& normal,
+			const Math::Vector3& tangent,
 			const Math::Vector3& bitangent)
 		{
 			this->position = position;

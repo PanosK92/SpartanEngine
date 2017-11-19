@@ -21,13 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES =====================
 #include <string>
 #include <memory>
 #include "../Core/Helper.h"
 #include "../Core/GUIDGenerator.h"
-
-//=========================
+//================================
 
 namespace Directus
 {
@@ -43,6 +42,7 @@ namespace Directus
 	class TexturePool;
 	class ShaderPool;
 	class Context;
+	class StreamIO;
 
 	class DLL_API Component
 	{
@@ -68,10 +68,10 @@ namespace Directus
 		virtual void Update() = 0;
 
 		// Runs when the GameObject is being saved
-		virtual void Serialize() = 0;
+		virtual void Serialize(StreamIO* stream) = 0;
 
 		// Runs when the GameObject is being loaded
-		virtual void Deserialize() = 0;
+		virtual void Deserialize(StreamIO* stream) = 0;
 
 		// Should be called by the derived component to register it's type
 		void Register()

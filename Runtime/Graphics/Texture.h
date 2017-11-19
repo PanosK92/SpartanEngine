@@ -52,6 +52,49 @@ namespace Directus
 		R_8_UNORM
 	};
 
+	enum LoadState
+	{
+		Idle,
+		Loading,
+		Completed,
+		Failed
+	};
+
+	class DLL_API TextureInfo
+	{
+	public:
+		TextureInfo() {}
+		~TextureInfo()
+		{
+			rgba.clear();
+			rgba.shrink_to_fit();
+			rgba_mimaps.clear();
+			rgba_mimaps.shrink_to_fit();
+		}
+
+		TextureInfo(unsigned int width, unsigned int height)
+		{
+			this->width = width;
+			this->height = height;
+		}
+
+		TextureInfo(bool generateMipmaps)
+		{
+			this->isUsingMipmaps = generateMipmaps;
+		}
+
+		unsigned int bpp = 0;
+		unsigned int width = 0;
+		unsigned int height = 0;
+		unsigned int channels = 0;
+		bool isGrayscale = false;
+		bool isTransparent = false;
+		bool isUsingMipmaps = false;
+		std::vector<unsigned char> rgba;
+		std::vector<std::vector<unsigned char>> rgba_mimaps;
+		LoadState loadState = Idle;
+	};
+
 	class DLL_API Texture : public Resource
 	{
 	public:
@@ -63,46 +106,43 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 		//=============================================
 
-		//= PROPERTIES ============================================================
-		int GetWidth() { return m_width; }
-		void SetWidth(int width) { m_width = width; }
+		//= PROPERTIES ========================================================================
+		int GetWidth() { return m_textureInfo->width; }
+		void SetWidth(int width) { m_textureInfo->width = width; }
 
-		int GetHeight() { return m_height; }
-		void SetHeight(int height) { m_height = height; }
+		int GetHeight() { return m_textureInfo->height; }
+		void SetHeight(int height) { m_textureInfo->height = height; }
 
-		TextureType GetTextureType() { return m_textureType; }
+		TextureType GetTextureType() { return m_type; }
 		void SetTextureType(TextureType type);
 
-		bool GetGrayscale() { return m_grayscale; }
-		void SetGrayscale(bool grayscale) { m_grayscale = grayscale; }
+		bool GetGrayscale() { return m_textureInfo->isGrayscale; }
+		void SetGrayscale(bool grayscale) { m_textureInfo->isGrayscale = grayscale; }
 
-		bool GetTransparency() { return m_transparency; }
-		void SetTransparency(bool transparency) { m_transparency = transparency; }
+		bool GetTransparency() { return m_textureInfo->isTransparent; }
+		void SetTransparency(bool transparency) { m_textureInfo->isTransparent = transparency; }
 
-		void EnableMimaps(bool enable) { m_mimaps = enable; }
+		void EnableMimaps(bool enable) { m_textureInfo->isUsingMipmaps = enable; }
 
 		void** GetShaderResource();
-		//========================================================================
+		//======================================================================================
 
-		// Creates a texture of the given type from memory
-		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, std::vector<unsigned char>& buffer, TextureFormat format);
-		// Creates a texture with pre-generated mimaps from memory
-		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const std::vector<std::vector<unsigned char>>& buffer, TextureFormat format);
+		// Creates a shader resource from memory
+		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, std::vector<unsigned char> rgba, TextureFormat format);
+		// Creates a shader resource from memory
+		bool CreateShaderResource(TextureInfo* texInfo);
 
-	private:
+	private:		
+		bool Serialize(const std::string& filePath);
+		bool Deserialize(const std::string& filePath);
+
 		bool LoadFromForeignFormat(const std::string& filePath);
-		bool LoadMetadata(const std::string& filePath);
 		TextureType TextureTypeFromString(const std::string& type);
 		int ToAPIFormat(TextureFormat format);
 
-		int m_width;
-		int m_height;
-		int m_channels;
-		TextureType m_textureType;
-		bool m_grayscale;
-		bool m_transparency;
-		bool m_alphaIsTransparency;
-		bool m_mimaps;
-		std::unique_ptr<D3D11Texture> m_texture;
+		std::unique_ptr<D3D11Texture> m_textureAPI;
+		std::unique_ptr<TextureInfo> m_textureInfo;
+		TextureType m_type = Unknown_Texture;
+		TextureFormat m_format = RGBA_8_UNORM;
 	};
 }

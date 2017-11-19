@@ -76,20 +76,22 @@ namespace Directus
 
 	}
 
-	void MeshRenderer::Serialize()
+	void MeshRenderer::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteInt((int)m_materialType);
-		StreamIO::WriteSTR(!m_material.expired() ? m_material._Get()->GetResourceFilePath() : (string)NOT_ASSIGNED);
-		StreamIO::WriteBool(m_castShadows);
-		StreamIO::WriteBool(m_receiveShadows);
+		stream->Write((int)m_materialType);
+		stream->Write(!m_material.expired() ? m_material._Get()->GetResourceFilePath() : (string)NOT_ASSIGNED);
+		stream->Write(m_castShadows);
+		stream->Write(m_receiveShadows);
 	}
 
-	void MeshRenderer::Deserialize()
+	void MeshRenderer::Deserialize(StreamIO* stream)
 	{
-		m_materialType = (MaterialType)StreamIO::ReadInt();
-		string materialFilePath = StreamIO::ReadSTR();
-		m_castShadows = StreamIO::ReadBool();
-		m_receiveShadows = StreamIO::ReadBool();
+		string materialFilePath = NOT_ASSIGNED;
+
+		m_materialType = (MaterialType)stream->ReadInt();
+		stream->Read(materialFilePath);
+		stream->Read(m_castShadows);
+		stream->Read(m_receiveShadows);
 
 		// The Skybox material and texture is managed by the skybox component.
 		// No need to load anything as it will overwrite what the skybox component did.

@@ -79,20 +79,24 @@ namespace Directus
 
 	}
 
-	void MeshFilter::Serialize()
+	void MeshFilter::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteInt((int)m_meshType);
-		StreamIO::WriteSTR(!m_mesh.expired() ? m_mesh._Get()->GetName() : (string)NOT_ASSIGNED);
-		StreamIO::WriteUnsignedInt(!m_mesh.expired() ? m_mesh._Get()->GetID() : NOT_ASSIGNED_HASH);
-		StreamIO::WriteUnsignedInt(!m_mesh.expired() ? m_mesh._Get()->GetModelID() : NOT_ASSIGNED_HASH);
+		stream->Write((int)m_meshType);
+		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetName() : (string)NOT_ASSIGNED);
+		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetID() : NOT_ASSIGNED_HASH);
+		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetModelID() : NOT_ASSIGNED_HASH);
 	}
 
-	void MeshFilter::Deserialize()
+	void MeshFilter::Deserialize(StreamIO* stream)
 	{
-		m_meshType = (MeshType)StreamIO::ReadInt();
-		string meshName = StreamIO::ReadSTR();
-		unsigned int meshID = StreamIO::ReadUnsignedInt();
-		unsigned int modelID = StreamIO::ReadUnsignedInt();
+		m_meshType				= (MeshType)stream->ReadInt();
+		string meshName			= NOT_ASSIGNED;
+		unsigned int meshID		= 0;
+		unsigned int modelID	= 0;
+
+		stream->Read(meshName);
+		stream->Read(meshID);
+		stream->Read(modelID);
 
 		// If the mesh is an engine constructed primitive
 		if (m_meshType != Imported)

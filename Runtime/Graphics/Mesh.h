@@ -30,14 +30,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	class StreamIO;
+
 	class Mesh
 	{
 	public:
 		Mesh();
 		~Mesh();
 
-		void Serialize();
-		void Deserialize();
+		void Serialize(StreamIO* stream);
+		void Deserialize(StreamIO* stream);
 
 		unsigned int GetID() { return m_id; }
 
@@ -65,18 +67,13 @@ namespace Directus
 		unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
 		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
 
-		//= PROCESSING =================================================================
+		//= PROCESSING ========================================
 		void Update();
 		void SubscribeToUpdate(std::function<void()> function);
 		void SetScale(float scale);
-		//==============================================================================
+		//=====================================================
 
 	private:
-		//= IO =========================================================================
-		static void SaveVertex(const VertexPosTexTBN& vertex);
-		static void LoadVertex(VertexPosTexTBN& vertex);
-		//==============================================================================
-
 		//= HELPER FUNCTIONS =============================
 		static void SetScale(Mesh* meshData, float scale);
 		//================================================

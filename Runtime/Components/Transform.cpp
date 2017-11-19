@@ -76,22 +76,24 @@ namespace Directus
 
 	}
 
-	void Transform::Serialize()
+	void Transform::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteVector3(m_positionLocal);
-		StreamIO::WriteQuaternion(m_rotationLocal);
-		StreamIO::WriteVector3(m_scaleLocal);
-		StreamIO::WriteVector3(m_lookAt);
-		StreamIO::WriteUnsignedInt(m_parent ? m_parent->GetGameObject()._Get()->GetID() : NOT_ASSIGNED_HASH);
+		stream->Write(m_positionLocal);
+		stream->Write(m_rotationLocal);
+		stream->Write(m_scaleLocal);
+		stream->Write(m_lookAt);
+		stream->Write(m_parent ? m_parent->GetGameObject()._Get()->GetID() : NOT_ASSIGNED_HASH);
 	}
 
-	void Transform::Deserialize()
+	void Transform::Deserialize(StreamIO* stream)
 	{
-		m_positionLocal = StreamIO::ReadVector3();
-		m_rotationLocal = StreamIO::ReadQuaternion();
-		m_scaleLocal = StreamIO::ReadVector3();
-		m_lookAt = StreamIO::ReadVector3();
-		unsigned int parentGameObjectID = StreamIO::ReadUnsignedInt();
+		unsigned int parentGameObjectID = 0;
+
+		stream->Read(m_positionLocal);
+		stream->Read(m_rotationLocal);
+		stream->Read(m_scaleLocal);
+		stream->Read(m_lookAt);
+		stream->Read(parentGameObjectID);
 
 		if (parentGameObjectID != NOT_ASSIGNED_HASH)
 		{

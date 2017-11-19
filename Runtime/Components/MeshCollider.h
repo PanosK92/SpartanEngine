@@ -40,15 +40,15 @@ namespace Directus
 		MeshCollider();
 		~MeshCollider();
 
-		//= ICOMPONENT ==============
+		//= ICOMPONENT ============================
 		virtual void Reset();
 		virtual void Start();
 		virtual void OnDisable();
 		virtual void Remove();
 		virtual void Update();
-		virtual void Serialize();
-		virtual void Deserialize();
-		//===========================
+		virtual void Serialize(StreamIO* stream);
+		virtual void Deserialize(StreamIO* stream);
+		//=========================================
 
 		bool GetConvex() { return m_isConvex; }
 		void SetConvex(bool isConvex) { m_isConvex = isConvex; }

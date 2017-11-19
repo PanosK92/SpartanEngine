@@ -65,19 +65,12 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
     // Thumbnail
     if(FileSystem::IsSupportedImageFile(filePath) && m_imageImporter)
     {
-        int width = 100;
-        int height = 100;
-        ImageData imageData = ImageData(filePath, width, height);
-        m_imageImporter->Load(imageData);
-
-        auto image =  QImage(
-                    (const uchar*)imageData.rgba.data(),
-                    width,
-                    height,
-                    QImage::Format_RGBA8888
-                    );
-
-        auto pixmap = QPixmap::fromImage(image);
+        unsigned int width = 100;
+        unsigned int height = 100;
+        TextureInfo texInfo = TextureInfo(width, height);
+        m_imageImporter->Load(filePath, texInfo);
+        QImage image =  QImage((const uchar*)texInfo.rgba.data(), width, height, QImage::Format_RGBA8888);
+        QPixmap pixmap = QPixmap::fromImage(image);
         return pixmap;
     }
 

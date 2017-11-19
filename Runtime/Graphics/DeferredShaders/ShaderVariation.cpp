@@ -66,14 +66,13 @@ namespace Directus
 
 	bool ShaderVariation::LoadFromFile(const string& filePath)
 	{
-		if (!StreamIO::StartReading(filePath))
+		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Read);
+		if (!file->IsCreated())
 			return false;
 
-		SetResourceName(StreamIO::ReadSTR());
-		SetResourceFilePath(StreamIO::ReadSTR());
-		m_shaderFlags = StreamIO::ReadULong();
-
-		StreamIO::StopReading();
+		file->Read(m_resourceName);
+		file->Read(m_resourceFilePath);
+		file->Read(m_shaderFlags);
 
 		return true;
 	}
@@ -82,26 +81,20 @@ namespace Directus
 	{
 		string savePath = filePath;
 
-		if (savePath == RESOURCE_SAVE)
-		{
-			savePath = GetResourceFilePath();
-		}
-
 		// Add shader extension if missing
 		if (FileSystem::GetExtensionFromFilePath(filePath) != SHADER_EXTENSION)
 		{
 			savePath += SHADER_EXTENSION;
 		}
 
-		if (!StreamIO::StartWriting(savePath))
+		unique_ptr<StreamIO> file = make_unique<StreamIO>(savePath, Mode_Write);
+		if (!file->IsCreated())
 			return false;
 
-		StreamIO::WriteSTR(GetResourceName());
-		StreamIO::WriteSTR(GetResourceFilePath());
-		StreamIO::WriteULong(m_shaderFlags);
+		file->Write(GetResourceName());
+		file->Write(GetResourceFilePath());
+		file->Write(m_shaderFlags);
 	
-		StreamIO::StopWriting();
-
 		return true;
 	}
 

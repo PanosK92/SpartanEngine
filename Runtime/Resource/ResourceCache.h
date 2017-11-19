@@ -105,7 +105,7 @@ namespace Directus
 		{
 			for (const auto& resource : m_resources)
 			{
-				resource->SaveToFile(RESOURCE_SAVE);
+				resource->SaveToFile(resource->GetResourceFilePath());
 			}
 		}
 

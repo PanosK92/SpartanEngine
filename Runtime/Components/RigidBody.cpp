@@ -138,30 +138,30 @@ namespace Directus
 		}
 	}
 
-	void RigidBody::Serialize()
+	void RigidBody::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteFloat(m_mass);
-		StreamIO::WriteFloat(m_drag);
-		StreamIO::WriteFloat(m_angularDrag);
-		StreamIO::WriteFloat(m_restitution);
-		StreamIO::WriteBool(m_useGravity);
-		StreamIO::WriteVector3(m_gravity);
-		StreamIO::WriteBool(m_isKinematic);
-		StreamIO::WriteVector3(m_positionLock);
-		StreamIO::WriteVector3(m_rotationLock);
+		stream->Write(m_mass);
+		stream->Write(m_drag);
+		stream->Write(m_angularDrag);
+		stream->Write(m_restitution);
+		stream->Write(m_useGravity);
+		stream->Write(m_gravity);
+		stream->Write(m_isKinematic);
+		stream->Write(m_positionLock);
+		stream->Write(m_rotationLock);
 	}
 
-	void RigidBody::Deserialize()
+	void RigidBody::Deserialize(StreamIO* stream)
 	{
-		m_mass = StreamIO::ReadFloat();
-		m_drag = StreamIO::ReadFloat();
-		m_angularDrag = StreamIO::ReadFloat();
-		m_restitution = StreamIO::ReadFloat();
-		m_useGravity = StreamIO::ReadBool();
-		m_gravity = StreamIO::ReadVector3();
-		m_isKinematic = StreamIO::ReadBool();
-		m_positionLock = StreamIO::ReadVector3();
-		m_rotationLock = StreamIO::ReadVector3();
+		stream->Read(m_mass);
+		stream->Read(m_drag);
+		stream->Read(m_angularDrag);
+		stream->Read(m_restitution);
+		stream->Read(m_useGravity);
+		stream->Read(m_gravity);
+		stream->Read(m_isKinematic);
+		stream->Read(m_positionLock);
+		stream->Read(m_rotationLock);
 
 		AddBodyToWorld();
 	}

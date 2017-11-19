@@ -505,6 +505,11 @@ namespace Directus
 		return GetExtensionFromFilePath(filePath) == SCENE_EXTENSION;
 	}
 
+	bool FileSystem::IsEngineTextureFile(const string& filePath)
+	{
+		return GetExtensionFromFilePath(filePath) == TEXTURE_EXTENSION;
+	}
+
 	bool FileSystem::IsEngineMetadataFile(const string& filePath)
 	{
 		return GetExtensionFromFilePath(filePath) == METADATA_EXTENSION;
