@@ -22,13 +22,15 @@ namespace Directus
 		LineRenderer();
 		~LineRenderer();
 
+		//= COMPONENT =============================
 		virtual void Reset();
 		virtual void Start();
 		virtual void OnDisable();
 		virtual void Remove();
 		virtual void Update();
-		virtual void Serialize();
-		virtual void Deserialize();
+		virtual void Serialize(StreamIO* stream);
+		virtual void Deserialize(StreamIO* stream);
+		//=========================================
 
 		//= INPUT ===================================================================================
 		void AddBoundigBox(const Math::BoundingBox& box, const Math::Vector4& color);

@@ -108,22 +108,22 @@ namespace Directus
 		m_isDirty = false;
 	}
 
-	void Camera::Serialize()
+	void Camera::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteVector4(m_clearColor);
-		StreamIO::WriteInt(int(m_projection));
-		StreamIO::WriteFloat(m_fovHorizontal);
-		StreamIO::WriteFloat(m_nearPlane);
-		StreamIO::WriteFloat(m_farPlane);
+		stream->Write(m_clearColor);
+		stream->Write(int(m_projection));
+		stream->Write(m_fovHorizontal);
+		stream->Write(m_nearPlane);
+		stream->Write(m_farPlane);
 	}
 
-	void Camera::Deserialize()
+	void Camera::Deserialize(StreamIO* stream)
 	{
-		m_clearColor = StreamIO::ReadVector4();
-		m_projection = Projection(StreamIO::ReadInt());
-		m_fovHorizontal = StreamIO::ReadFloat();
-		m_nearPlane = StreamIO::ReadFloat();
-		m_farPlane = StreamIO::ReadFloat();
+		stream->Read(m_clearColor);
+		m_projection = Projection(stream->ReadInt());
+		stream->Read(m_fovHorizontal);
+		stream->Read(m_nearPlane);
+		stream->Read(m_farPlane);
 
 		CalculateBaseView();
 		CalculateViewMatrix();

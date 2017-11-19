@@ -59,8 +59,14 @@ namespace Directus
 			if (!cached.expired())
 				return cached;
 
-			// Create new resource and load from file path
+			// Create new resource
 			std::shared_ptr<T> typed = std::make_shared<T>(m_context);
+
+			// Assign filepath and name
+			typed->SetResourceFilePath(relativeFilePath);
+			typed->SetResourceName(FileSystem::GetFileNameFromFilePath(relativeFilePath));
+
+			// Load 
 			if (!typed->LoadFromFile(relativeFilePath))
 			{
 				LOG_WARNING("ResourceManager: Resource \"" + relativeFilePath + "\" failed to load");

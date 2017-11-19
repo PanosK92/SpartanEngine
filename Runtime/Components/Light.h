@@ -63,13 +63,15 @@ namespace Directus
 		Light();
 		~Light();
 
+		//= COMPONENT =============================
 		virtual void Reset();
 		virtual void Start();
 		virtual void OnDisable();
 		virtual void Remove();
 		virtual void Update();
-		virtual void Serialize();
-		virtual void Deserialize();
+		virtual void Serialize(StreamIO* stream);
+		virtual void Deserialize(StreamIO* stream);
+		//=========================================
 
 		LightType GetLightType() { return m_lightType; }
 		void SetLightType(LightType type);

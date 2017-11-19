@@ -80,14 +80,15 @@ namespace Directus
 		m_scriptInstance->ExecuteUpdate();
 	}
 
-	void Script::Serialize()
+	void Script::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteSTR(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)NOT_ASSIGNED);
+		stream->Write(m_scriptInstance ? m_scriptInstance->GetScriptPath() : (string)NOT_ASSIGNED);
 	}
 
-	void Script::Deserialize()
+	void Script::Deserialize(StreamIO* stream)
 	{
-		string scriptPath = StreamIO::ReadSTR();
+		string scriptPath = NOT_ASSIGNED;
+		stream->Read(scriptPath);
 
 		if (scriptPath != NOT_ASSIGNED)
 		{

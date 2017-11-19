@@ -547,18 +547,20 @@ namespace Directus
 			return;
 		}
 
-		// Copy the source texture a directory which will be relative to the model
-		string relativeFilePath = model->CopyTextureToLocalDirectory(texturePath);
-
 		// Load the texture from the relative directory
-		auto texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(relativeFilePath);
+		weak_ptr<Texture> texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(texturePath);
 
-		// Set the texture to the material (if it was loaded successfully)
+		// If the texture was loaded successfully
 		if (!texture.expired())
 		{
+			// Create a filepath which is relative to the imported model file, then use that to save to save a binary texture to.
+			string modelRelativeFilePath = model->GetDirectoryTexture() + FileSystem::GetFileNameNoExtensionFromFilePath(texturePath) + TEXTURE_EXTENSION;
+
 			texture._Get()->SetTextureType(textureType);
-			// Save the metadata again so the texture type get's updated
-			texture._Get()->SaveToFile(RESOURCE_SAVE);
+			texture._Get()->SaveToFile(modelRelativeFilePath);
+			texture._Get()->SetResourceFilePath(modelRelativeFilePath);
+
+			// Set this last so it get's a properly initialized texture
 			material._Get()->SetTexture(texture);
 		}
 	}

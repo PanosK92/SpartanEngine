@@ -60,11 +60,11 @@ XPM files[reading, writing]
 
 #define FREEIMAGE_LIB
 
-//= INCLUDES ===========================
+//= INCLUDES ======================
 #include <vector>
 #include "../../Core/Helper.h"
-#include "../../FileSystem/FileSystem.h"
-//======================================
+#include "../../Graphics/Texture.h"
+//=================================
 
 class FIBITMAP;
 
@@ -72,60 +72,19 @@ namespace Directus
 {
 	class Context;
 
-	enum LoadState
-	{
-		Idle,
-		Loading,
-		Completed,
-		Failed
-	};
-
-	struct ImageData
-	{
-		ImageData(const std::string& filePath)
-		{
-			this->filePath = filePath;
-		}
-
-		ImageData(const std::string& filePath, unsigned int width, unsigned int height)
-		{
-			this->filePath = filePath;
-			this->width = width;
-			this->height = height;
-		}
-
-		ImageData(const std::string& filePath, bool generateMipmaps)
-		{
-			this->filePath = filePath;
-			this->isUsingMipmaps = generateMipmaps;
-		}
-
-		std::vector<unsigned char> rgba;
-		std::vector<std::vector<unsigned char>> rgba_mimaps;
-		unsigned int bpp = 0;
-		unsigned int width = 0;
-		unsigned int height = 0;
-		unsigned int channels = 0;
-		std::string filePath = NOT_ASSIGNED;
-		bool isGrayscale = false;
-		bool isTransparent = false;
-		bool isUsingMipmaps = false;
-		LoadState loadState = Idle;
-	};
-
 	class DLL_API ImageImporter
 	{
 	public:
 		ImageImporter(Context* context);
 		~ImageImporter();
 
-		void LoadAsync(ImageData& imageData);
-		bool Load(ImageData& imageData);
+		void LoadAsync(const std::string filePath, TextureInfo& texInfo);
+		bool Load(const std::string filePath, TextureInfo& texInfo);
 
 	private:
 		unsigned int ComputeChannelCount(FIBITMAP* fibtimap, unsigned int bpp);
 		bool FIBTIMAPToRGBA(FIBITMAP* fibtimap, std::vector<unsigned char>* rgba);
-		void GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, ImageData& imageData);
+		void GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, TextureInfo& imageData);
 		bool RescaleFIBITMAP(FIBITMAP* fibtimap, int width, int height, std::vector<unsigned char>& rgba);
 		bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
 

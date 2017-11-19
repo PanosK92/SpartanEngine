@@ -27,8 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
-#include "../../Core/Variant.h"
-#include "../../EventSystem/EventSystem.h"
 //====================================
 
 //= NAMESPACES ================
@@ -49,47 +47,47 @@ namespace Directus
 		FreeImage_DeInitialise();
 	}
 
-	void ImageImporter::LoadAsync(ImageData& imageData)
+	void ImageImporter::LoadAsync(const string filePath, TextureInfo& texInfo)
 	{
-		m_context->GetSubsystem<Threading>()->AddTask([this, &imageData]()
+		m_context->GetSubsystem<Threading>()->AddTask([this, &filePath, &texInfo]()
 		{
-			Load(imageData);
+			Load(filePath, texInfo);
 		});
 	}
 
-	bool ImageImporter::Load(ImageData& imageData)
+	bool ImageImporter::Load(const string filePath, TextureInfo& texInfo)
 	{
-		imageData.loadState = Loading;
+		texInfo.loadState = Loading;
 
-		if (imageData.filePath == NOT_ASSIGNED)
+		if (filePath == NOT_ASSIGNED)
 		{
 			LOG_WARNING("ImageImporter: Can't load image. No file path has been assigned.");
-			imageData.loadState = Failed;
+			texInfo.loadState = Failed;
 			return false;
 		}
 
-		if (!FileSystem::FileExists(imageData.filePath))
+		if (!FileSystem::FileExists(filePath))
 		{
-			LOG_WARNING("ImageImporter: Cant' load image. File path \"" + imageData.filePath + "\" is invalid.");
-			imageData.loadState = Failed;
+			LOG_WARNING("ImageImporter: Cant' load image. File path \"" + filePath + "\" is invalid.");
+			texInfo.loadState = Failed;
 			return false;
 		}
 
 		// Get image format
-		FREE_IMAGE_FORMAT format = FreeImage_GetFileType(imageData.filePath.c_str(), 0);
+		FREE_IMAGE_FORMAT format = FreeImage_GetFileType(filePath.c_str(), 0);
 		
 		// If the format is unknown
 		if (format == FIF_UNKNOWN)
 		{
 			// Try getting the format from the file extension
-			LOG_WARNING("ImageImporter: Failed to determine image format for \"" + imageData.filePath + "\", attempting to detect it from the file's extension...");
-			format = FreeImage_GetFIFFromFilename(imageData.filePath.c_str());
+			LOG_WARNING("ImageImporter: Failed to determine image format for \"" + filePath + "\", attempting to detect it from the file's extension...");
+			format = FreeImage_GetFIFFromFilename(filePath.c_str());
 
 			// If the format is still unknown, give up
 			if (!FreeImage_FIFSupportsReading(format))
 			{
 				LOG_WARNING("ImageImporter: Failed to detect the image format.");
-				imageData.loadState = Failed;
+				texInfo.loadState = Failed;
 				return false;
 			}
 
@@ -100,42 +98,42 @@ namespace Directus
 		// but I am checking against it also, just in case.
 		if (format == -1 || format == FIF_UNKNOWN)
 		{
-			imageData.loadState = Failed;
+			texInfo.loadState = Failed;
 			return false;
 		}
 
 		// Load the image as a FIBITMAP*
-		FIBITMAP* bitmapOriginal = FreeImage_Load(format, imageData.filePath.c_str());
+		FIBITMAP* bitmapOriginal = FreeImage_Load(format, filePath.c_str());
 
 		// Flip it vertically
 		FreeImage_FlipVertical(bitmapOriginal);
 
 		// Perform any scaling (if necessary)
-		bool userDefineDimensions = (imageData.width != 0 && imageData.height != 0);
-		bool dimensionMismatch = (FreeImage_GetWidth(bitmapOriginal) != imageData.width && FreeImage_GetHeight(bitmapOriginal) != imageData.height);
+		bool userDefineDimensions = (texInfo.width != 0 && texInfo.height != 0);
+		bool dimensionMismatch = (FreeImage_GetWidth(bitmapOriginal) != texInfo.width && FreeImage_GetHeight(bitmapOriginal) != texInfo.height);
 		bool scale = userDefineDimensions && dimensionMismatch;
-		FIBITMAP* bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, imageData.width, imageData.height, FILTER_LANCZOS3) : bitmapOriginal;
+		FIBITMAP* bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, texInfo.width, texInfo.height, FILTER_LANCZOS3) : bitmapOriginal;
 
 		// Convert it to 32 bits (if neccessery)
-		imageData.bpp = FreeImage_GetBPP(bitmapOriginal);
-		FIBITMAP* bitmap32 = imageData.bpp != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
-		imageData.bpp = 32; // this is a hack, have to handle more elegant
+		texInfo.bpp = FreeImage_GetBPP(bitmapOriginal);
+		FIBITMAP* bitmap32 = texInfo.bpp != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
+		texInfo.bpp = 32; // this is a hack, have to handle more elegant
 
 		// Store some useful data	
-		imageData.isTransparent = bool(FreeImage_IsTransparent(bitmap32));
-		imageData.width = FreeImage_GetWidth(bitmap32);
-		imageData.height = FreeImage_GetHeight(bitmap32);
-		imageData.channels = ComputeChannelCount(bitmap32, imageData.bpp);
+		texInfo.isTransparent = bool(FreeImage_IsTransparent(bitmap32));
+		texInfo.width = FreeImage_GetWidth(bitmap32);
+		texInfo.height = FreeImage_GetHeight(bitmap32);
+		texInfo.channels = ComputeChannelCount(bitmap32, texInfo.bpp);
 
 		// Fill RGBA vector with the data from the FIBITMAP
-		FIBTIMAPToRGBA(bitmap32, &imageData.rgba);
+		FIBTIMAPToRGBA(bitmap32, &texInfo.rgba);
 
 		// Check if the image is grayscale
-		imageData.isGrayscale = GrayscaleCheck(imageData.rgba, imageData.width, imageData.height);
+		texInfo.isGrayscale = GrayscaleCheck(texInfo.rgba, texInfo.width, texInfo.height);
 
-		if (imageData.isUsingMipmaps)
+		if (texInfo.isUsingMipmaps)
 		{
-			GenerateMipmapsFromFIBITMAP(bitmap32, imageData);
+			GenerateMipmapsFromFIBITMAP(bitmap32, texInfo);
 		}
 
 		//= Free memory =====================================
@@ -143,7 +141,7 @@ namespace Directus
 		FreeImage_Unload(bitmap32);
 
 		// unload the scaled bitmap only if it was converted
-		if (imageData.bpp != 32)
+		if (texInfo.bpp != 32)
 		{
 			FreeImage_Unload(bitmapScaled);
 		}
@@ -155,7 +153,7 @@ namespace Directus
 		}
 		//====================================================
 
-		imageData.loadState = Completed;
+		texInfo.loadState = Completed;
 		return true;
 	}
 
@@ -205,12 +203,12 @@ namespace Directus
 		return true;
 	}
 
-	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, ImageData& imageData)
+	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, TextureInfo& texInfo)
 	{
 		// First mip is full size
-		imageData.rgba_mimaps.emplace_back(move(imageData.rgba));
-		int width = imageData.width;
-		int height = imageData.height;
+		texInfo.rgba_mimaps.emplace_back(move(texInfo.rgba));
+		int width = texInfo.width;
+		int height = texInfo.height;
 
 		// Compute the rest mip mipmapInfos
 		struct scalingProcess
@@ -241,13 +239,12 @@ namespace Directus
 		Threading* threading = m_context->GetSubsystem<Threading>();
 		for (auto& job : scalingJobs)
 		{
-			threading->AddTask([this, &job, &imageData, &originalFIBITMAP]()
+			threading->AddTask([this, &job, &texInfo, &originalFIBITMAP]()
 			{
 				if (!RescaleFIBITMAP(originalFIBITMAP, job.width, job.height, job.data))
 				{
 					string mipSize = "(" + to_string(job.width) + "x" + to_string(job.height) + ")";
-					string texName = FileSystem::GetFileNameFromFilePath(imageData.filePath);
-					LOG_INFO("ImageImporter: Failed to create mip level " + mipSize + " for texture \"" + texName + "\".");
+					LOG_INFO("ImageImporter: Failed to create mip level " + mipSize + ".");
 				}
 				job.complete = true;
 			});
@@ -270,7 +267,7 @@ namespace Directus
 		// Now copy all the mimaps
 		for (const auto& mimapInfo : scalingJobs)
 		{
-			imageData.rgba_mimaps.emplace_back(move(mimapInfo.data));
+			texInfo.rgba_mimaps.emplace_back(move(mimapInfo.data));
 		}
 	}
 

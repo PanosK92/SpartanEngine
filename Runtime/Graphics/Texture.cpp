@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/DDSTextureImporter.h"
 #include "../Resource/ResourceManager.h"
 #include "D3D11/D3D11Texture.h"
-#include "../IO/XmlDocument.h"
+#include "../IO/StreamIO.h"
 //================================================
 
 //= NAMESPACES =====
@@ -64,15 +64,9 @@ namespace Directus
 
 		// Texture
 		m_context = context;
-		m_width = 0;
-		m_height = 0;
-		m_channels = 0;
-		m_textureType = Unknown_Texture;
-		m_grayscale = false;
-		m_transparency = false;
-		m_alphaIsTransparency = false;
-		m_mimaps = true;
-		m_texture = make_unique<D3D11Texture>(m_context->GetSubsystem<Graphics>());
+		m_textureInfo = make_unique<TextureInfo>();
+		m_textureInfo->isUsingMipmaps = true;
+		m_textureAPI = make_unique<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 	}
 
 	Texture::~Texture()
@@ -80,98 +74,151 @@ namespace Directus
 
 	}
 
-	//= RESOURCE INTERFACE =======================================================================
+	//= RESOURCE INTERFACE =====================================================================
 	bool Texture::SaveToFile(const string& filePath)
 	{
-		string savePath = filePath;
-		if (filePath == RESOURCE_SAVE)
-		{
-			savePath = GetResourceFilePath() + METADATA_EXTENSION;
-		}
-
-		unique_ptr<XmlDocument> xml = make_unique<XmlDocument>();
-		xml->AddNode("Metadata");
-		xml->AddAttribute("Metadata", "Type", "Texture");
-		xml->AddChildNode("Metadata", "Texture");
-		xml->AddAttribute("Texture", "Name", GetResourceName());
-		xml->AddAttribute("Texture", "Path", GetResourceFilePath());
-		xml->AddAttribute("Texture", "Width", m_width);
-		xml->AddAttribute("Texture", "Height", m_height);
-		xml->AddAttribute("Texture", "Channels", m_channels);
-		xml->AddAttribute("Texture", "Type", textureTypeChar[(int)m_textureType]);
-		xml->AddAttribute("Texture", "Greyscale", m_grayscale);
-		xml->AddAttribute("Texture", "Transparency", m_transparency);
-		xml->AddAttribute("Texture", "Mipmaps", m_mimaps);
-
-		if (!xml->Save(savePath))
-			return false;
-
-		return true;
+		SetResourceFilePath(filePath);
+		return Serialize(filePath);
 	}
 
 	bool Texture::LoadFromFile(const string& filePath)
 	{
-		bool engineFormat = FileSystem::GetExtensionFromFilePath(filePath) == METADATA_EXTENSION;
-		return engineFormat ? LoadMetadata(filePath) : LoadFromForeignFormat(filePath);
+		bool loaded = false;
+		bool engineFormat = FileSystem::GetExtensionFromFilePath(filePath) == TEXTURE_EXTENSION;
+		if (engineFormat)
+		{
+			loaded = Deserialize(filePath);
+		}
+		else
+		{
+			loaded = LoadFromForeignFormat(filePath);
+		}
+
+		if (!loaded)
+		{
+			LOG_ERROR("Texture: Failed to load \"" + filePath + "\".");
+			return false;
+		}
+
+		CreateShaderResource(m_textureInfo.get());
+		return true;
 	}
-	//==============================================================================================
+	//==========================================================================================
 
 	void Texture::SetTextureType(TextureType type)
 	{
-		m_textureType = type;
+		m_type = type;
 
 		// Some models (or Assimp) pass a normal map as a height map
 		// and others pass a height map as a normal map, we try to fix that.
-		if (m_textureType == Height_Texture && !GetGrayscale())
+		if (m_type == Height_Texture && !GetGrayscale())
 		{
-			m_textureType = Normal_Texture;
+			m_type = Normal_Texture;
 		}
 
-		if (m_textureType == Normal_Texture && GetGrayscale())
+		if (m_type == Normal_Texture && GetGrayscale())
 		{
-			m_textureType = Height_Texture;
+			m_type = Height_Texture;
 		}
 	}
 
 	void** Texture::GetShaderResource()
 	{
-		if (!m_texture)
+		if (!m_textureAPI)
 			return nullptr;
 
-		return (void**)m_texture->GetShaderResourceView();
+		return (void**)m_textureAPI->GetShaderResourceView();
 	}
 
-	bool Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, vector<unsigned char>& buffer, TextureFormat format)
+	bool Texture::CreateShaderResource(unsigned width, unsigned height, unsigned channels, vector<unsigned char> rgba, TextureFormat format)
 	{
-		if (!m_texture)
-			return false;
+		return m_textureAPI->Create(width, height, channels, rgba, (DXGI_FORMAT)ToAPIFormat(format));
+	}
 
-		m_width = width;
-		m_height = height;
-		m_channels = channels;
-
-		if (!m_texture->Create(m_width, m_height, m_channels, &buffer[0], (DXGI_FORMAT)ToAPIFormat(format)))
+	bool Texture::CreateShaderResource(TextureInfo* texInfo)
+	{
+		if (!m_textureAPI)
 		{
-			LOG_ERROR("Texture: Failed to create from memory.");
+			LOG_ERROR("Texture: Failed to create shader resource. API texture not initialized.");
 			return false;
+		}
+
+		if (!texInfo->isUsingMipmaps)
+		{
+			if (!m_textureAPI->Create(texInfo->width, texInfo->height, texInfo->channels, texInfo->rgba, (DXGI_FORMAT)ToAPIFormat(m_format)))
+			{
+				LOG_ERROR("Texture: Failed to create shader resource for \"" + m_resourceFilePath + "\".");
+				return false;
+			}
+		}
+		else
+		{
+			if (!m_textureAPI->CreateWithMipmaps(texInfo->width, texInfo->height, texInfo->channels, texInfo->rgba_mimaps, (DXGI_FORMAT)ToAPIFormat(m_format)))
+			{
+				LOG_ERROR("Texture: Failed to create shader resource with mipmaps for \"" + m_resourceFilePath + "\".");
+				return false;
+			}
 		}
 
 		return true;
 	}
 
-	bool Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, const vector<vector<unsigned char>>& buffer, TextureFormat format)
+	bool Texture::Serialize(const string& filePath)
 	{
-		if (!m_texture)
+		auto file = make_unique<StreamIO>(filePath, Mode_Write);
+		if (!file->IsCreated())
 			return false;
 
-		m_width = width;
-		m_height = height;
-		m_channels = channels;
-
-		if (!m_texture->CreateFromMipmaps(m_width, m_height, m_channels, buffer, (DXGI_FORMAT)ToAPIFormat(format)))
+		file->Write((int)m_type);
+		file->Write(m_textureInfo->bpp);
+		file->Write(m_textureInfo->width);
+		file->Write(m_textureInfo->height);
+		file->Write(m_textureInfo->channels);
+		file->Write(m_textureInfo->isGrayscale);
+		file->Write(m_textureInfo->isTransparent);
+		file->Write(m_textureInfo->isUsingMipmaps);
+		if (!m_textureInfo->isUsingMipmaps)
 		{
-			LOG_ERROR("Texture: Failed to create from memory.");
+			file->Write(m_textureInfo->rgba);
+		}
+		else
+		{
+			file->Write((unsigned int)m_textureInfo->rgba_mimaps.size());
+			for (auto& mip : m_textureInfo->rgba_mimaps)
+			{
+				file->Write(mip);
+			}
+		}
+
+		return true;
+	}
+
+	bool Texture::Deserialize(const string& filePath)
+	{
+		auto file = make_unique<StreamIO>(filePath, Mode_Read);
+		if (!file->IsCreated())
 			return false;
+
+		m_type = (TextureType)file->ReadInt();
+		file->Read(m_textureInfo->bpp);
+		file->Read(m_textureInfo->width);
+		file->Read(m_textureInfo->height);
+		file->Read(m_textureInfo->channels);
+		file->Read(m_textureInfo->isGrayscale);
+		file->Read(m_textureInfo->isTransparent);
+		file->Read(m_textureInfo->isUsingMipmaps);
+		if (!m_textureInfo->isUsingMipmaps)
+		{
+			file->Read(m_textureInfo->rgba);
+		}
+		else
+		{
+			int mipCount = file->ReadUInt();
+			for (int i = 0; i < mipCount; i++)
+			{
+				m_textureInfo->rgba_mimaps.emplace_back(vector<unsigned char>());
+				file->Read(m_textureInfo->rgba_mimaps[i]);
+			}
 		}
 
 		return true;
@@ -179,79 +226,35 @@ namespace Directus
 
 	bool Texture::LoadFromForeignFormat(const string& filePath)
 	{
-		auto graphicsDevice = m_context->GetSubsystem<Graphics>()->GetDevice();
-		if (!graphicsDevice)
-			return false;
-
 		// Load DDS (too bored to implement dds cubemap support in the ImageImporter)
 		if (FileSystem::GetExtensionFromFilePath(filePath) == ".dds")
 		{
+			auto graphicsDevice = m_context->GetSubsystem<Graphics>()->GetDevice();
+			if (!graphicsDevice)
+				return false;
+
 			ID3D11ShaderResourceView* ddsTex = nullptr;
 			wstring widestr = wstring(filePath.begin(), filePath.end());
 			auto hresult = DirectX::CreateDDSTextureFromFile(graphicsDevice, widestr.c_str(), nullptr, &ddsTex);
 			if (FAILED(hresult))
 			{
-				LOG_WARNING("Failed to load texture \"" + filePath + "\".");
 				return false;
 			}
 
-			m_texture->SetShaderResourceView(ddsTex);
+			m_textureAPI->SetShaderResourceView(ddsTex);
 			return true;
 		}
 
 		// Load texture
-		auto imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
-		ImageData imageData = ImageData(filePath, m_mimaps);
-		bool loaded = imageImp._Get()->Load(imageData);
-		if (!loaded)
+		weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();	
+		if (!imageImp._Get()->Load(filePath, *m_textureInfo.get()))
 		{
-			LOG_WARNING("Failed to load texture \"" + filePath + "\".");
 			return false;
 		}
 
 		// Extract any metadata we can from the ImageImporter
-		SetResourceFilePath(imageData.filePath);
+		SetResourceFilePath(filePath);
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(GetResourceFilePath()));
-		m_grayscale = imageData.isGrayscale;
-		m_transparency = imageData.isTransparent;
-
-		// Create the texture
-		if (!m_mimaps)
-		{
-			CreateShaderResource(imageData.width, imageData.height, imageData.channels, imageData.rgba, RGBA_8_UNORM);
-		}
-		else
-		{
-			CreateShaderResource(imageData.width, imageData.height, imageData.channels, imageData.rgba_mimaps, RGBA_8_UNORM);
-		}
-
-		// Save metadata file
-		if (!SaveToFile(GetResourceFilePath() + METADATA_EXTENSION))
-			return false;
-
-		return true;
-	}
-
-	bool Texture::LoadMetadata(const string& filePath)
-	{
-		unique_ptr<XmlDocument> xml = make_unique<XmlDocument>();
-
-		if (!xml->Load(filePath))
-			return false;
-
-		xml->GetAttribute("Texture", "Name", GetResourceName());
-		SetResourceFilePath(xml->GetAttributeAsStr("Texture", "Path"));
-		xml->GetAttribute("Texture", "Width", m_width);
-		xml->GetAttribute("Texture", "Height", m_height);
-		xml->GetAttribute("Texture", "Channels", m_channels);
-
-		string type;
-		xml->GetAttribute("Texture", "Type", type);
-		m_textureType = TextureTypeFromString(type);
-
-		xml->GetAttribute("Texture", "Greyscale", m_grayscale);
-		xml->GetAttribute("Texture", "Transparency", m_transparency);
-		xml->GetAttribute("Texture", "Mipmaps", m_mimaps);
 
 		return true;
 	}

@@ -116,16 +116,6 @@ namespace Directus
 		g_transform->SetPosition(m_anchorTrans->GetPosition());
 	}
 
-	void Skybox::Serialize()
-	{
-
-	}
-
-	void Skybox::Deserialize()
-	{
-
-	}
-
 	/*------------------------------------------------------------------------------
 									[MISC]
 	------------------------------------------------------------------------------*/

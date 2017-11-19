@@ -113,26 +113,26 @@ namespace Directus
 		m_frustrum->Construct(ComputeViewMatrix(), ComputeOrthographicProjectionMatrix(2), mainCamera->GetFarPlane());
 	}
 
-	void Light::Serialize()
+	void Light::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteInt(int(m_lightType));
-		StreamIO::WriteInt(int(m_shadowType));
-		StreamIO::WriteVector4(m_color);
-		StreamIO::WriteFloat(m_range);
-		StreamIO::WriteFloat(m_intensity);
-		StreamIO::WriteFloat(m_angle);
-		StreamIO::WriteFloat(m_bias);
+		stream->Write(int(m_lightType));
+		stream->Write(int(m_shadowType));
+		stream->Write(m_color);
+		stream->Write(m_range);
+		stream->Write(m_intensity);
+		stream->Write(m_angle);
+		stream->Write(m_bias);
 	}
 
-	void Light::Deserialize()
+	void Light::Deserialize(StreamIO* stream)
 	{
-		m_lightType = LightType(StreamIO::ReadInt());
-		m_shadowType = ShadowType(StreamIO::ReadInt());
-		m_color = StreamIO::ReadVector4();
-		m_range = StreamIO::ReadFloat();
-		m_intensity = StreamIO::ReadFloat();
-		m_angle = StreamIO::ReadFloat();
-		m_bias = StreamIO::ReadFloat();
+		m_lightType = LightType(stream->ReadInt());
+		m_shadowType = ShadowType(stream->ReadInt());
+		stream->Read(m_color);
+		stream->Read(m_range);
+		stream->Read(m_intensity);
+		stream->Read(m_angle);
+		stream->Read(m_bias);
 	}
 
 	void Light::SetLightType(LightType type)

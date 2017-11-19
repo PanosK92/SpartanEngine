@@ -105,28 +105,28 @@ namespace Directus
 		m_audioClip._Get()->Update();
 	}
 	
-	void AudioSource::Serialize()
+	void AudioSource::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteSTR(m_filePath);
-		StreamIO::WriteBool(m_mute);
-		StreamIO::WriteBool(m_playOnAwake);
-		StreamIO::WriteBool(m_loop);
-		StreamIO::WriteInt(m_priority);
-		StreamIO::WriteFloat(m_volume);
-		StreamIO::WriteFloat(m_pitch);
-		StreamIO::WriteFloat(m_pan);
+		stream->Write(m_filePath);
+		stream->Write(m_mute);
+		stream->Write(m_playOnAwake);
+		stream->Write(m_loop);
+		stream->Write(m_priority);
+		stream->Write(m_volume);
+		stream->Write(m_pitch);
+		stream->Write(m_pan);
 	}
 	
-	void AudioSource::Deserialize()
+	void AudioSource::Deserialize(StreamIO* stream)
 	{
-		m_filePath = StreamIO::ReadSTR();
-		m_mute = StreamIO::ReadBool();
-		m_playOnAwake = StreamIO::ReadBool();
-		m_loop = StreamIO::ReadBool();
-		m_priority = StreamIO::ReadInt();
-		m_volume = StreamIO::ReadFloat();
-		m_pitch = StreamIO::ReadFloat();
-		m_pan = StreamIO::ReadFloat();
+		stream->Read(m_filePath);
+		stream->Read(m_mute);
+		stream->Read(m_playOnAwake);
+		stream->Read(m_loop);
+		stream->Read(m_priority);
+		stream->Read(m_volume);
+		stream->Read(m_pitch);
+		stream->Read(m_pan);
 	
 		LoadAudioClip(m_filePath);
 	}

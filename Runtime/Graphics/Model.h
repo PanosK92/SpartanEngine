@@ -74,10 +74,10 @@ namespace Directus
 		bool IsAnimated() { return m_isAnimated; }
 		void SetAnimated(bool isAnimated) { m_isAnimated = isAnimated; }
 
-		std::string CopyTextureToLocalDirectory(const std::string& from);
-
 		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
 		float GetBoundingSphereRadius();
+
+		const std::string& GetDirectoryTexture() { return m_modelDirectoryTextures; }
 
 	private:
 		// Load the model from disk
@@ -105,6 +105,11 @@ namespace Directus
 
 		// Misc
 		bool m_isAnimated;
+
+		// Model related directories
+		std::string m_modelDirectoryMaterials;
+		std::string m_modelDirectoryShaders;
+		std::string m_modelDirectoryTextures;
 
 		// Dependencies
 		ResourceManager* m_resourceManager;

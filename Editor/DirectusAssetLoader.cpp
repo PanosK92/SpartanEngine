@@ -117,9 +117,9 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
 
     emit Started();
 
-    ImageData imageData = ImageData(m_filePath, m_width, m_height);
-    imageLoader->Load(imageData);
-    auto image =  QImage((const uchar*)imageData.rgba.data(), m_width, m_height, QImage::Format_RGBA8888);
+    TextureInfo texInfo = TextureInfo(m_width, m_height);
+    imageLoader->Load(m_filePath, texInfo);
+    auto image =  QImage((const uchar*)texInfo.rgba.data(), m_width, m_height, QImage::Format_RGBA8888);
     pixmap = QPixmap::fromImage(image);
 
     emit Finished();

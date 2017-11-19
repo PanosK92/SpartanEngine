@@ -35,16 +35,15 @@ namespace Directus
 		AudioListener();
 		~AudioListener();
 
-		/*------------------------------------------------------------------------------
-		[INTERFACE]
-		------------------------------------------------------------------------------*/
+		//= COMPONENT =============================
 		virtual void Reset();
 		virtual void Start();
 		virtual void OnDisable();
 		virtual void Remove();
 		virtual void Update();
-		virtual void Serialize();
-		virtual void Deserialize();
+		virtual void Serialize(StreamIO* stream);
+		virtual void Deserialize(StreamIO* stream);
+		//=========================================
 
 	private:
 		Audio* m_audio;

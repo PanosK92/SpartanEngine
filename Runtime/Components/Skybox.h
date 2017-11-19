@@ -35,14 +35,15 @@ namespace Directus
 		Skybox();
 		~Skybox();
 
-		//= Interface =================
+		//= Interface ===============================
 		virtual void Reset();
 		virtual void Start();
 		virtual void OnDisable();
 		virtual void Remove();
 		virtual void Update();
-		virtual void Serialize();
-		virtual void Deserialize();
+		virtual void Serialize(StreamIO* stream) {}
+		virtual void Deserialize(StreamIO* stream) {}
+		//===========================================
 
 		//= MISC ======================
 		void** GetEnvironmentTexture();

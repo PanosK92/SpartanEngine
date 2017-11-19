@@ -140,13 +140,13 @@ namespace Directus
 		// Save any in-memory changes done to resources while running.
 		m_context->GetSubsystem<ResourceManager>()->SaveResourceMetadata();
 
-		if (!StreamIO::StartWriting(filePath))
+		// Create a prefab file
+		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Write);
+		if (!file->IsCreated())
 			return false;
 
-		//= Save currently loaded resource paths =======================================================
-		vector<string> resourcePaths = m_context->GetSubsystem<ResourceManager>()->GetResourceFilePaths();
-		StreamIO::WriteVectorSTR(resourcePaths);
-		//==============================================================================================
+		// Save currently loaded resource paths
+		file->Write(m_context->GetSubsystem<ResourceManager>()->GetResourceFilePaths());
 
 		//= Save GameObjects ============================
 		// Only save root GameObjects as they will also save their descendants
@@ -154,25 +154,22 @@ namespace Directus
 
 		// 1st - GameObject count
 		int rootGameObjectCount = (int)rootGameObjects.size();
-		StreamIO::WriteInt(rootGameObjectCount);
+		file->Write(rootGameObjectCount);
 
 		// 2nd - GameObject IDs
 		for (const auto& root : rootGameObjects)
 		{
-			StreamIO::WriteInt(root._Get()->GetID());
+			file->Write(root._Get()->GetID());
 		}
 
 		// 3rd - GameObjects
 		for (const auto& root : rootGameObjects)
 		{
-			root._Get()->Serialize();
+			root._Get()->Serialize(file.get());
 		}
 		//==============================================
 
-		StreamIO::StopWriting();
-
 		ResetLoadingStats();
-
 		return true;
 	}
 
@@ -190,11 +187,12 @@ namespace Directus
 		Clear();
 
 		// Read all the resource file paths
-		if (!StreamIO::StartReading(filePath))
+		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Read);
+		if (!file->IsCreated())
 			return false;
 
-		vector<string> resourcePaths = StreamIO::ReadVectorSTR();
-		StreamIO::StopReading();
+		vector<string> resourcePaths;
+		file->Read(resourcePaths);
 
 		// Load all the resources
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
@@ -212,27 +210,21 @@ namespace Directus
 				continue;
 			}
 
-			if (FileSystem::IsSupportedImageFile(resourcePath))
+			if (FileSystem::IsEngineTextureFile(resourcePath))
 			{
 				resourceMng->Load<Texture>(resourcePath);
 			}
 		}
 
-		if (!StreamIO::StartReading(filePath))
-			return false;
-
-		// Read our way through the resource paths
-		StreamIO::ReadVectorSTR();
-
 		//= Load GameObjects ============================	
 		// 1st - Root GameObject count
-		int rootGameObjectCount = StreamIO::ReadInt();
+		int rootGameObjectCount = file->ReadInt();
 
 		// 2nd - Root GameObject IDs
 		for (int i = 0; i < rootGameObjectCount; i++)
 		{
 			auto gameObj = CreateGameObject().lock();
-			gameObj->SetID(StreamIO::ReadInt());
+			gameObj->SetID(file->ReadInt());
 		}
 
 		// 3rd - GameObjects
@@ -242,10 +234,8 @@ namespace Directus
 		// deserialize their descendants.
 		for (int i = 0; i < rootGameObjectCount; i++)
 		{
-			m_gameObjects[i]->Deserialize(nullptr);
+			m_gameObjects[i]->Deserialize(file.get(), nullptr);
 		}
-
-		StreamIO::StopReading();
 		//==============================================
 
 		Resolve();

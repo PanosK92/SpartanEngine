@@ -38,7 +38,6 @@ namespace Directus
 {
 	Mesh::Mesh()
 	{
-		// Mesh	
 		m_id = GENERATE_GUID;
 		m_name = NOT_ASSIGNED;
 		m_gameObjID = NOT_ASSIGNED_HASH;
@@ -61,46 +60,46 @@ namespace Directus
 	}
 
 	//= IO =========================================================================
-	void Mesh::Serialize()
+	void Mesh::Serialize(StreamIO* stream)
 	{
-		StreamIO::WriteUnsignedInt(m_id);
-		StreamIO::WriteUnsignedInt(m_gameObjID);
-		StreamIO::WriteUnsignedInt(m_modelID);
-		StreamIO::WriteSTR(m_name);
-		StreamIO::WriteUnsignedInt(m_vertexCount);
-		StreamIO::WriteUnsignedInt(m_indexCount);
-		StreamIO::WriteUnsignedInt(m_triangleCount);
+		stream->Write(m_id);
+		stream->Write(m_gameObjID);
+		stream->Write(m_modelID);
+		stream->Write(m_name);
+		stream->Write(m_vertexCount);
+		stream->Write(m_indexCount);
+		stream->Write(m_triangleCount);
 
 		for (const auto& vertex : m_vertices)
 		{
-			SaveVertex(vertex);
+			stream->Write(vertex);
 		}
 
 		for (const auto& index : m_indices)
 		{
-			StreamIO::WriteInt(index);
+			stream->Write(index);
 		}
 	}
 
-	void Mesh::Deserialize()
+	void Mesh::Deserialize(StreamIO* stream)
 	{
-		m_id = StreamIO::ReadUnsignedInt();
-		m_gameObjID = StreamIO::ReadUnsignedInt();
-		m_modelID = StreamIO::ReadUnsignedInt();
-		m_name = StreamIO::ReadSTR();
-		m_vertexCount = StreamIO::ReadUnsignedInt();
-		m_indexCount = StreamIO::ReadUnsignedInt();
-		m_triangleCount = StreamIO::ReadUnsignedInt();
+		stream->Read(m_id);
+		stream->Read(m_gameObjID);
+		stream->Read(m_modelID);
+		stream->Read(m_name);
+		stream->Read(m_vertexCount);
+		stream->Read(m_indexCount);
+		stream->Read(m_triangleCount);
 
 		for (unsigned int i = 0; i < m_vertexCount; i++)
 		{
 			m_vertices.emplace_back(VertexPosTexTBN());
-			LoadVertex(m_vertices.back());
+			stream->Read(m_vertices.back());
 		}
 
 		for (unsigned int i = 0; i < m_indexCount; i++)
 		{
-			m_indices.emplace_back(StreamIO::ReadInt());
+			m_indices.emplace_back(stream->ReadInt());
 		}
 
 		m_boundingBox.ComputeFromMesh(this);
@@ -150,52 +149,6 @@ namespace Directus
 	{
 		SetScale(this, scale);
 		Update();
-	}
-	//==============================================================================
-
-	//= IO =========================================================================
-	void Mesh::SaveVertex(const VertexPosTexTBN& vertex)
-	{
-		StreamIO::WriteFloat(vertex.position.x);
-		StreamIO::WriteFloat(vertex.position.y);
-		StreamIO::WriteFloat(vertex.position.z);
-
-		StreamIO::WriteFloat(vertex.uv.x);
-		StreamIO::WriteFloat(vertex.uv.y);
-
-		StreamIO::WriteFloat(vertex.normal.x);
-		StreamIO::WriteFloat(vertex.normal.y);
-		StreamIO::WriteFloat(vertex.normal.z);
-
-		StreamIO::WriteFloat(vertex.tangent.x);
-		StreamIO::WriteFloat(vertex.tangent.y);
-		StreamIO::WriteFloat(vertex.tangent.z);
-
-		StreamIO::WriteFloat(vertex.bitangent.x);
-		StreamIO::WriteFloat(vertex.bitangent.y);
-		StreamIO::WriteFloat(vertex.bitangent.z);
-	}
-
-	void Mesh::LoadVertex(VertexPosTexTBN& vertex)
-	{
-		vertex.position.x = StreamIO::ReadFloat();
-		vertex.position.y = StreamIO::ReadFloat();
-		vertex.position.z = StreamIO::ReadFloat();
-
-		vertex.uv.x = StreamIO::ReadFloat();
-		vertex.uv.y = StreamIO::ReadFloat();
-
-		vertex.normal.x = StreamIO::ReadFloat();
-		vertex.normal.y = StreamIO::ReadFloat();
-		vertex.normal.z = StreamIO::ReadFloat();
-
-		vertex.tangent.x = StreamIO::ReadFloat();
-		vertex.tangent.y = StreamIO::ReadFloat();
-		vertex.tangent.z = StreamIO::ReadFloat();
-
-		vertex.bitangent.x = StreamIO::ReadFloat();
-		vertex.bitangent.y = StreamIO::ReadFloat();
-		vertex.bitangent.z = StreamIO::ReadFloat();
 	}
 	//==============================================================================
 

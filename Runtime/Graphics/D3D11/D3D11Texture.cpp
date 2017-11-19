@@ -46,7 +46,7 @@ namespace Directus
 		m_shaderResourceView = nullptr;
 	}
 
-	bool D3D11Texture::Create(int width, int height, int channels, unsigned char* data, DXGI_FORMAT format)
+	bool D3D11Texture::Create(int width, int height, int channels, const vector<unsigned char>& data, DXGI_FORMAT format)
 	{
 		if (!m_graphics->GetDevice())
 			return false;
@@ -56,7 +56,7 @@ namespace Directus
 		//= SUBRESROUCE DATA =======================================================================
 		D3D11_SUBRESOURCE_DATA subresource;
 		ZeroMemory(&subresource, sizeof(subresource));
-		subresource.pSysMem = data;
+		subresource.pSysMem = &data[0];
 		subresource.SysMemPitch = (width * channels) * sizeof(unsigned char);
 		subresource.SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
 		//==========================================================================================
@@ -81,7 +81,7 @@ namespace Directus
 		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, &subresource, &texture);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
+			LOG_ERROR("D3D11Texture: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 			return false;
 		}
 		//=========================================================================================
@@ -97,7 +97,7 @@ namespace Directus
 		result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
+			LOG_ERROR("D3D11Texture: Failed to create the ID3D11ShaderResourceView.");
 			return false;
 		}
 		//========================================================================================
@@ -105,7 +105,7 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11Texture::CreateAndGenerateMipmaps(int width, int height, int channels, unsigned char* data, DXGI_FORMAT format)
+	bool D3D11Texture::CreateAndGenerateMipmaps(int width, int height, int channels, const vector<unsigned char>& data, DXGI_FORMAT format)
 	{
 		if (!m_graphics->GetDevice())
 			return false;
@@ -132,7 +132,7 @@ namespace Directus
 		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, nullptr, &texture);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
+			LOG_ERROR("D3D11Texture: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 			return false;
 		}
 		//=========================================================================================
@@ -148,7 +148,7 @@ namespace Directus
 		result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
+			LOG_ERROR("D3D11Texture: Failed to create the ID3D11ShaderResourceView.");
 			return false;
 		}
 		//========================================================================================
@@ -157,7 +157,7 @@ namespace Directus
 		// Resource data description
 		D3D11_SUBRESOURCE_DATA subresource;
 		ZeroMemory(&subresource, sizeof(subresource));
-		subresource.pSysMem = data;
+		subresource.pSysMem = &data[0];
 		subresource.SysMemPitch = (width * channels) * sizeof(unsigned char);
 		subresource.SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
 
@@ -171,21 +171,21 @@ namespace Directus
 		return true;
 	}
 
-	bool D3D11Texture::CreateFromMipmaps(int width, int height, int channels, const vector<vector<unsigned char>>& mipchain, DXGI_FORMAT format)
+	bool D3D11Texture::CreateWithMipmaps(int width, int height, int channels, const vector<vector<unsigned char>>& mipmaps, DXGI_FORMAT format)
 	{
 		if (!m_graphics->GetDevice())
 			return false;
 
-		unsigned int mipLevels = (unsigned int)mipchain.size();
+		unsigned int mipLevels = (unsigned int)mipmaps.size();
 
 		//= SUBRESOURCE DATA & TEXTURE DESCRIPTIONS ==============================================
 		vector<D3D11_SUBRESOURCE_DATA> subresourceData;
 		vector<D3D11_TEXTURE2D_DESC> textureDescs;
-		for (const auto& mipLevel : mipchain)
+		for (const auto& mip : mipmaps)
 		{
 			// Create subresource
 			subresourceData.push_back(D3D11_SUBRESOURCE_DATA{});
-			subresourceData.back().pSysMem = mipLevel.data();
+			subresourceData.back().pSysMem = &mip[0];
 			subresourceData.back().SysMemPitch = (width * channels) * sizeof(unsigned char);
 			subresourceData.back().SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
 
@@ -213,7 +213,7 @@ namespace Directus
 		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDescs[0], &subresourceData[0], &texture);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
+			LOG_ERROR("D3D11Texture: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 			return false;
 		}
 		//=========================================================================================
@@ -229,7 +229,7 @@ namespace Directus
 		result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create the ID3D11ShaderResourceView.");
+			LOG_ERROR("D3D11Texture: Failed to create the ID3D11ShaderResourceView.");
 			return false;
 		}
 		//========================================================================================

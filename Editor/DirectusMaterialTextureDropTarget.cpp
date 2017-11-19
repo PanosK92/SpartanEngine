@@ -47,7 +47,7 @@ DirectusMaterialTextureDropTarget::DirectusMaterialTextureDropTarget(QWidget *pa
     setAcceptDrops(true);
     m_inspector = nullptr;
     m_imageLoader = nullptr;
-    m_imageData = nullptr;
+    m_textureInfo = nullptr;
 }
 
 void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector, TextureType textureType)
@@ -76,31 +76,31 @@ void DirectusMaterialTextureDropTarget::LoadImageAsync(const std::string& filePa
         return;
 
     m_currentFilePath = filePath;
-    m_imageData = new ImageData(filePath, SLOT_SIZE, SLOT_SIZE);
-    m_imageLoader->LoadAsync(*m_imageData);
+    m_textureInfo = new TextureInfo(SLOT_SIZE, SLOT_SIZE);
+    m_imageLoader->LoadAsync(filePath, *m_textureInfo);
 }
 
 void DirectusMaterialTextureDropTarget::Update()
 {
-    if (!m_imageData)
+    if (!m_textureInfo)
         return;
 
-    if (m_imageData->loadState == Failed)
+    if (m_textureInfo->loadState == Failed)
     {
-        delete m_imageData;
-        m_imageData = nullptr;
+        delete m_textureInfo;
+        m_textureInfo = nullptr;
         return;
     }
 
-    if (m_imageData->loadState != Completed)
+    if (m_textureInfo->loadState != Completed)
         return;
 
-    QImage image = QImage((const uchar*)m_imageData->rgba.data(), m_imageData->width, m_imageData->height, QImage::Format_RGBA8888);
+    QImage image = QImage((const uchar*)m_textureInfo->rgba.data(), m_textureInfo->width, m_textureInfo->height, QImage::Format_RGBA8888);
     QPixmap pixmap = QPixmap::fromImage(image);
     this->setPixmap(pixmap);
 
-    delete m_imageData;
-    m_imageData = nullptr;
+    delete m_textureInfo;
+    m_textureInfo = nullptr;
 }
 
 //= DROP ============================================================================
