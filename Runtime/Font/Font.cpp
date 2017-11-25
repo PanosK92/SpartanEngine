@@ -21,14 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================================
+//= INCLUDES =====================================
 #include "Font.h"
 #include "../Resource/ResourceManager.h"
 #include "../Graphics/Vertex.h"
 #include "../Graphics/D3D11/D3D11VertexBuffer.h"
 #include "../Graphics/D3D11/D3D11IndexBuffer.h"
+#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
 #include "../Core/Settings.h"
-//==============================================
+//================================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -37,6 +38,8 @@ using namespace Directus::Math;
 
 namespace Directus
 {
+	Graphics* graphics;
+
 	Font::Font(Context* context)
 	{
 		m_context = context;
@@ -45,6 +48,7 @@ namespace Directus
 		m_charMaxHeight = 0;
 		m_indexCount = 0;
 		m_fontColor = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+		graphics = m_context->GetSubsystem<Graphics>();
 	}
 
 	Font::~Font()
@@ -98,8 +102,6 @@ namespace Directus
 
 	bool Font::SetBuffer()
 	{
-		auto graphics = m_context->GetSubsystem<Graphics>();
-
 		if (!graphics || !m_vertexBuffer || !m_indexBuffer)
 			return false;
 
@@ -174,38 +176,48 @@ namespace Directus
 		}
 
 		vector<unsigned int> indices;
+		indices.reserve(vertices.size());
 		for (int i = 0; i < vertices.size(); i++)
 		{
-			indices.push_back(i);
+			indices.emplace_back(i);
 		}
 		m_indexCount = (int)indices.size();
 
-		CreateBuffers(vertices, indices);
+		UpdateBuffers(vertices, indices);
 	}
 
-	bool Font::CreateBuffers(vector<VertexPosTex>& vertices, vector<unsigned int>& indices)
+	bool Font::UpdateBuffers(vector<VertexPosTex>& vertices, vector<unsigned int>& indices)
 	{
 		if (!m_context)
 			return false;
 
-		auto graphics = m_context->GetSubsystem<Graphics>();
-
-		m_vertexBuffer.reset();
-		m_indexBuffer.reset();
-
-		m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphics);
-		if (!m_vertexBuffer->Create(vertices))
+		// Vertex buffer
+		if (!m_vertexBuffer)
 		{
-			LOG_ERROR("Font: Failed to create vertex buffer.");
-			return false;
+			m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphics);
+			if (!m_vertexBuffer->CreateDynamic(sizeof(VertexPosTex), (unsigned int)vertices.size()))
+			{
+				LOG_ERROR("Font: Failed to create vertex buffer.");
+				return false;
+			}	
 		}
+		void* data = m_vertexBuffer->Map();
+		memcpy(data, &vertices[0], sizeof(VertexPosTex) * (int)vertices.size());
+		m_vertexBuffer->Unmap();
 
-		m_indexBuffer = make_shared<D3D11IndexBuffer>(graphics);
-		if (!m_indexBuffer->Create(indices))
+		// Index buffer
+		if (!m_indexBuffer)
 		{
-			LOG_ERROR("Font: Failed to create index buffer.");
-			return false;
+			m_indexBuffer = make_shared<D3D11IndexBuffer>(graphics);
+			if (!m_indexBuffer->CreateDynamic((unsigned int)indices.size()))
+			{
+				LOG_ERROR("Font: Failed to create index buffer.");
+				return false;
+			}
 		}
+		data = m_indexBuffer->Map();
+		memcpy(data, &indices[0], sizeof(unsigned int) * (int)indices.size());
+		m_indexBuffer->Unmap();
 
 		return true;
 	}

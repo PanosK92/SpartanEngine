@@ -69,9 +69,70 @@ namespace Directus
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if FAILED(result)
 		{
-			LOG_ERROR("Failed to create index buffer");
+			LOG_ERROR("D3D11IndexBuffer: Failed to create index buffer");
 			return false;
 		}
+
+		return true;
+	}
+
+	bool D3D11IndexBuffer::CreateDynamic(unsigned int initialSize)
+	{
+		if (!m_graphics || !m_graphics->GetDevice())
+			return false;
+
+		unsigned int byteWidth = sizeof(unsigned int) * initialSize;
+
+		// fill in a buffer description.
+		D3D11_BUFFER_DESC bufferDesc;
+		ZeroMemory(&bufferDesc, sizeof(bufferDesc));
+		bufferDesc.ByteWidth = byteWidth;
+		bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+		bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		bufferDesc.MiscFlags = 0;
+		bufferDesc.StructureByteStride = 0;
+
+		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
+		if FAILED(result)
+		{
+			LOG_ERROR("D3D11IndexBuffer: Failed to create dynamic index buffer");
+			return false;
+		}
+
+		return true;
+	}
+
+	void* D3D11IndexBuffer::Map()
+	{
+		if (!m_graphics || !m_graphics->GetDeviceContext())
+			return nullptr;
+
+		if (!m_buffer)
+		{
+			LOG_ERROR("D3D11IndexBuffer: Can't map uninitialized index buffer.");
+			return nullptr;
+		}
+
+		// disable GPU access to the index buffer data.
+		D3D11_MAPPED_SUBRESOURCE mappedResource;
+		HRESULT result = m_graphics->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		if (FAILED(result))
+		{
+			LOG_ERROR("D3D11IndexBuffer: Failed to map index buffer.");
+			return nullptr;
+		}
+
+		return mappedResource.pData;
+	}
+
+	bool D3D11IndexBuffer::Unmap()
+	{
+		if (!m_graphics || !m_graphics->GetDeviceContext() || !m_buffer)
+			return false;
+
+		// re-enable GPU access to the index buffer data.
+		m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
 
 		return true;
 	}
