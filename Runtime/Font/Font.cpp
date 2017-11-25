@@ -69,7 +69,7 @@ namespace Directus
 		vector<unsigned char> atlasBuffer;
 		int texAtlasWidth = 0;
 		int texAtlasHeight = 0;
-		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()._Get()->LoadFont(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_characterInfo))
+		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()._Get()->LoadFont(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
 		{
 			LOG_ERROR("Font: Failed to load font \"" + filePath + "\"");
 			atlasBuffer.clear();
@@ -77,7 +77,7 @@ namespace Directus
 		}
 
 		// Find max character height (todo, actually get spacing from freetype)
-		for (const auto& charInfo : m_characterInfo)
+		for (const auto& charInfo : m_glyphs)
 		{
 			m_charMaxWidth = Max<int>(charInfo.second.width, m_charMaxWidth);
 			m_charMaxHeight = Max<int>(charInfo.second.height, m_charMaxHeight);
@@ -115,64 +115,64 @@ namespace Directus
 		return true;
 	}
 
-	void Font::SetText(const string& text, const Vector2& position)
+	void Font::SetText(const string& glyphs, const Vector2& position)
 	{
 		Vector2 pen = position;
 		vector<VertexPosTex> vertices;
 		VertexPosTex vertex;
 
 		// Draw each letter onto a quad.
-		for (const char& character : text)
+		for (const char& glyphASCII : glyphs)
 		{
-			auto charInfo = m_characterInfo[character];
+			auto glyph = m_glyphs[glyphASCII];
 
-			if (character == 10) // New line
+			if (glyphASCII == 10) // New line
 			{
 				pen.y = pen.y - m_charMaxHeight;
 				pen.x = position.x;
 				continue;
 			}
 
-			if (character == 32) // Space
+			if (glyphASCII == 32) // Space
 			{
-				pen.x = pen.x + m_charMaxWidth;
+				pen.x = pen.x + glyph.horizontalOffset;
 				continue;
 			}
 
 			// First triangle in quad.
 			// Top left.
-			vertex.position = Vector3(pen.x, pen.y - charInfo.descent, 0.0f);
-			vertex.uv = Vector2(charInfo.uvXLeft, charInfo.uvYTop);
+			vertex.position = Vector3(pen.x, pen.y - glyph.descent, 0.0f);
+			vertex.uv = Vector2(glyph.uvXLeft, glyph.uvYTop);
 			vertices.push_back(vertex);
 
 			// Bottom right.
-			vertex.position = Vector3((pen.x + charInfo.width), (pen.y - charInfo.height - charInfo.descent), 0.0f);
-			vertex.uv = Vector2(charInfo.uvXRight, charInfo.uvYBottom);
+			vertex.position = Vector3((pen.x + glyph.width), (pen.y - glyph.height - glyph.descent), 0.0f);
+			vertex.uv = Vector2(glyph.uvXRight, glyph.uvYBottom);
 			vertices.push_back(vertex);
 
 			// Bottom left.
-			vertex.position = Vector3(pen.x, (pen.y - charInfo.height - charInfo.descent), 0.0f);
-			vertex.uv = Vector2(charInfo.uvXLeft, charInfo.uvYBottom);
+			vertex.position = Vector3(pen.x, (pen.y - glyph.height - glyph.descent), 0.0f);
+			vertex.uv = Vector2(glyph.uvXLeft, glyph.uvYBottom);
 			vertices.push_back(vertex);
 
 			// Second triangle in quad.
 			// Top left.
-			vertex.position = Vector3(pen.x, pen.y - charInfo.descent, 0.0f);
-			vertex.uv = Vector2(charInfo.uvXLeft, charInfo.uvYTop);
+			vertex.position = Vector3(pen.x, pen.y - glyph.descent, 0.0f);
+			vertex.uv = Vector2(glyph.uvXLeft, glyph.uvYTop);
 			vertices.push_back(vertex);
 
 			// Top right.
-			vertex.position = Vector3(pen.x + charInfo.width, pen.y - charInfo.descent, 0.0f);
-			vertex.uv = Vector2(charInfo.uvXRight, charInfo.uvYTop);
+			vertex.position = Vector3(pen.x + glyph.width, pen.y - glyph.descent, 0.0f);
+			vertex.uv = Vector2(glyph.uvXRight, glyph.uvYTop);
 			vertices.push_back(vertex);
 
 			// Bottom right.
-			vertex.position = Vector3((pen.x + charInfo.width), (pen.y - charInfo.height - charInfo.descent), 0.0f);
-			vertex.uv = Vector2(charInfo.uvXRight, charInfo.uvYBottom);
+			vertex.position = Vector3((pen.x + glyph.width), (pen.y - glyph.height - glyph.descent), 0.0f);
+			vertex.uv = Vector2(glyph.uvXRight, glyph.uvYBottom);
 			vertices.push_back(vertex);
 
 			// Update the x location for drawing by the size of the letter and one pixel.
-			pen.x = pen.x + charInfo.width;
+			pen.x = pen.x + glyph.width;
 		}
 
 		vector<unsigned int> indices;
