@@ -745,6 +745,27 @@ QSplitter::handle:vertical
 	background-position: center;
 }
 
+#buttonConsoleInfo
+{
+	background-image: url(:/Images/info.png);
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+#buttonConsoleWarnings
+{
+	background-image: url(:/Images/warning.png);
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+#buttonConsoleErrors
+{
+	background-image: url(:/Images/error.png);
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
 #toolBar
 {
 	background-color: #303133;
@@ -2455,8 +2476,14 @@ QSplitter::handle:vertical
                        </item>
                        <item>
                         <widget class="QPushButton" name="buttonConsoleInfo">
+                         <property name="maximumSize">
+                          <size>
+                           <width>30</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
                          <property name="text">
-                          <string>Info</string>
+                          <string/>
                          </property>
                          <property name="checkable">
                           <bool>true</bool>
@@ -2468,8 +2495,20 @@ QSplitter::handle:vertical
                        </item>
                        <item>
                         <widget class="QPushButton" name="buttonConsoleWarnings">
+                         <property name="maximumSize">
+                          <size>
+                           <width>30</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="baseSize">
+                          <size>
+                           <width>0</width>
+                           <height>0</height>
+                          </size>
+                         </property>
                          <property name="text">
-                          <string>Warnings</string>
+                          <string/>
                          </property>
                          <property name="checkable">
                           <bool>true</bool>
@@ -2481,8 +2520,20 @@ QSplitter::handle:vertical
                        </item>
                        <item>
                         <widget class="QPushButton" name="buttonConsoleErrors">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="maximumSize">
+                          <size>
+                           <width>30</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
                          <property name="text">
-                          <string>Errors</string>
+                          <string/>
                          </property>
                          <property name="checkable">
                           <bool>true</bool>

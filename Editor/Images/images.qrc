@@ -37,5 +37,8 @@
         <file>branch-more.png</file>
         <file>branch-open.png</file>
         <file>vline.png</file>
+        <file>error.png</file>
+        <file>info.png</file>
+        <file>warning.png</file>
     </qresource>
 </RCC>
