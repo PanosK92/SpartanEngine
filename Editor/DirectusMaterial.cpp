@@ -73,7 +73,7 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     //= ALBEDO ================================================
     m_albedoLabel = new QLabel("Albedo");
     m_albedoImage = new DirectusMaterialTextureDropTarget();
-    m_albedoImage->Initialize(inspector, Albedo_Texture);
+    m_albedoImage->Initialize(inspector, TextureType_Albedo);
     m_albedoColor = new DirectusColorPicker();
     m_albedoColor->Initialize(mainWindow);
     //=========================================================
@@ -81,7 +81,7 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     //= ROUGHNESS =============================================
     m_roughnessLabel = new QLabel("Roughness");
     m_roughnessImage = new DirectusMaterialTextureDropTarget();
-    m_roughnessImage->Initialize(inspector, Roughness_Texture);
+    m_roughnessImage->Initialize(inspector, TextureType_Roughness);
     m_roughness = new DirectusComboSliderText();
     m_roughness->Initialize(0, 1);
     //=========================================================
@@ -89,7 +89,7 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     //= METALLIC ==============================================
     m_metallicLabel = new QLabel("Metallic");
     m_metallicImage = new DirectusMaterialTextureDropTarget();
-    m_metallicImage->Initialize(inspector, Metallic_Texture);
+    m_metallicImage->Initialize(inspector, TextureType_Metallic);
     m_metallic = new DirectusComboSliderText();
     m_metallic->Initialize(0, 1);
     //=========================================================
@@ -97,7 +97,7 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     //= NORMAL ================================================
     m_normalLabel = new QLabel("Normal");
     m_normalImage = new DirectusMaterialTextureDropTarget();
-    m_normalImage->Initialize(inspector, Normal_Texture);
+    m_normalImage->Initialize(inspector, TextureType_Normal);
     m_normal = new DirectusComboSliderText();
     m_normal->Initialize(0, 1);
     //=========================================================
@@ -105,7 +105,7 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     //= HEIGHT ================================================
     m_heightLabel = new QLabel("Height");
     m_heightImage = new DirectusMaterialTextureDropTarget();
-    m_heightImage->Initialize(inspector, Height_Texture);
+    m_heightImage->Initialize(inspector, TextureType_Height);
     m_height = new DirectusComboSliderText();
     m_height->Initialize(0, 1);
     //=========================================================
@@ -113,19 +113,19 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     //= OCCLUSION =============================================
     m_occlusionLabel = new QLabel("Occlusion");
     m_occlusionImage = new DirectusMaterialTextureDropTarget();
-    m_occlusionImage->Initialize(inspector, Occlusion_Texture);
+    m_occlusionImage->Initialize(inspector, TextureType_Occlusion);
     //=========================================================
 
     //= EMISSION ==============================================
     m_emissionLabel = new QLabel("Emission");
     m_emissionImage = new DirectusMaterialTextureDropTarget();
-    m_emissionImage->Initialize(inspector, Emission_Texture);
+    m_emissionImage->Initialize(inspector, TextureType_Emission);
     //=========================================================
 
     //= MASK ==================================================
     m_maskLabel = new QLabel("Mask");
     m_maskImage = new DirectusMaterialTextureDropTarget();
-    m_maskImage->Initialize(inspector, Mask_Texture);
+    m_maskImage->Initialize(inspector, TextureType_Mask);
     //=========================================================
 
     //= TILING ================================================
@@ -391,7 +391,7 @@ void DirectusMaterial::ReflectName()
 void DirectusMaterial::ReflectAlbedo()
 {
     // Load the albedo texture preview
-    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Albedo_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType_Albedo);
     m_albedoImage->LoadImageAsync(texPath);
 
     Vector4 color = m_inspectedMaterial._Get()->GetColorAlbedo();
@@ -404,7 +404,7 @@ void DirectusMaterial::ReflectRoughness()
     m_roughness->SetValue(roughness);
 
     // Load the roughness texture preview
-    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Roughness_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType_Roughness);
     m_roughnessImage->LoadImageAsync(texPath);
 }
 
@@ -414,7 +414,7 @@ void DirectusMaterial::ReflectMetallic()
     m_metallic->SetValue(metallic);
 
     // Load the metallic texture preview
-    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Metallic_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType_Metallic);
     m_metallicImage->LoadImageAsync(texPath);
 }
 
@@ -424,7 +424,7 @@ void DirectusMaterial::ReflectNormal()
     m_normal->SetValue(normal);
 
     // Load the normal texture preview
-    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Normal_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType_Normal);
     m_normalImage->LoadImageAsync(texPath);
 }
 
@@ -434,28 +434,28 @@ void DirectusMaterial::ReflectHeight()
     m_height->SetValue(height);
 
     // Load the height texture preview
-    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Height_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType_Height);
     m_heightImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectOcclusion()
 {
     // Load the occlusion texture preview
-    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Occlusion_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType_Occlusion);
     m_occlusionImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectEmission()
 {
     // Load the emission texture preview
-    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Emission_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType_Emission);
     m_emissionImage->LoadImageAsync(texPath);
 }
 
 void DirectusMaterial::ReflectMask()
 {
     // Load the mask texture preview
-    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType::Mask_Texture);
+    string texPath = m_inspectedMaterial._Get()->GetTexturePathByType(TextureType_Mask);
     m_maskImage->LoadImageAsync(texPath);
 }
 

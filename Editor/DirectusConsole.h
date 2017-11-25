@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <memory>
 #include <functional>
+#include <deque>
 //==========================
 
 //= FORWARD DECLARATIONS ===========
@@ -78,7 +79,7 @@ public:
     void AddLogPackage(LogPackage package);
 
 public slots:
-    void CheckLogPackages();
+    void UpdateConsole();
     void SetDisplayInfo(bool display);
     void SetDisplayWarnings(bool display);
     void SetDisplayErrors(bool display);
@@ -86,8 +87,13 @@ public slots:
 private:
     Directus::Socket* m_socket;
     std::shared_ptr<EngineLogger> m_engineLogger;
-    std::vector<LogPackage> m_logs;
     QTimer* m_timer;
+    std::deque<LogPackage> m_logs;
+    int m_maxLogEntries = 200;
+    bool m_isDirty;
+    bool m_showInfo;
+    bool m_showWarnings;
+    bool m_showErrors;
 };
 
 

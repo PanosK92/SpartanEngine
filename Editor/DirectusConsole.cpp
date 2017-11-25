@@ -34,6 +34,10 @@ DirectusConsole::DirectusConsole(QWidget *parent) : QTextEdit(parent)
 {
     m_socket = nullptr;
 
+    m_showInfo = true;
+    m_showWarnings = true;
+    m_showErrors = true;
+
     this->setReadOnly(true);
 
     // Create an implementation of EngineLogger
@@ -45,7 +49,7 @@ DirectusConsole::DirectusConsole(QWidget *parent) : QTextEdit(parent)
 
     // Timer which checks if the thumbnail image is loaded (async)
     m_timer = new QTimer(this);
-    connect(m_timer, SIGNAL(timeout()), this, SLOT(CheckLogPackages()));
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(UpdateConsole()));
     m_timer->start(500);
 }
 
@@ -73,30 +77,61 @@ void DirectusConsole::AddLogPackage(LogPackage package)
     package.text = colorStart + package.text + colorEnd;
 
     m_logs.push_back(package);
-}
-
-void DirectusConsole::CheckLogPackages()
-{
-    for (const auto& package : m_logs)
+    if (m_logs.size() > m_maxLogEntries)
     {
-        Log(package.text, true);
+        m_logs.pop_front();
     }
 
-    m_logs.clear();
-    m_logs.shrink_to_fit();
+    m_isDirty = true;
+}
+
+void DirectusConsole::UpdateConsole()
+{
+    if (!m_isDirty)
+        return;
+
+    this->clear();
+    for (const auto& package : m_logs)
+    {
+        if (package.errorLevel == 0 && m_showInfo)
+        {
+            Log(package.text, true);
+            continue;
+        }
+
+        if (package.errorLevel == 1 && m_showWarnings)
+        {
+            Log(package.text, true);
+            continue;
+        }
+
+        if (package.errorLevel == 2 && m_showErrors)
+        {
+            Log(package.text, true);
+            continue;
+        }
+    }
+
+    m_isDirty = false;
 }
 
 void DirectusConsole::SetDisplayInfo(bool display)
 {
-    this->append(display ? "info on" : "info off");
+    m_showInfo = display;
+    m_isDirty = true;
+    UpdateConsole();
 }
 
 void DirectusConsole::SetDisplayWarnings(bool display)
 {
-     this->append(display ? "warnings on" : "warnings off");
+    m_showWarnings = display;
+    m_isDirty = true;
+    UpdateConsole();
 }
 
 void DirectusConsole::SetDisplayErrors(bool display)
 {
-     this->append(display ? "errors on" : "errors off");
+    m_showErrors = display;
+    m_isDirty = true;
+    UpdateConsole();
 }
