@@ -40,12 +40,12 @@ namespace Directus
 		ResourceManager(Context* context);
 		~ResourceManager() { Clear(); }
 
-		//= Subsystem ============
-		virtual bool Initialize();
-		//========================
+		//= Subsystem =============
+		bool Initialize() override;
+		//=========================
 
 		// Unloads all resources
-		void Clear() { m_resourceCache->Unload(); }
+		void Clear() { m_resourceCache->Clear(); }
 
 		// Loads a resource and adds it to the resource cache
 		template <class T>
@@ -53,9 +53,10 @@ namespace Directus
 		{
 			// Try to make the path relative to the engine (in case it isn't)
 			std::string relativeFilePath = FileSystem::GetRelativeFilePath(filePath);
+			std::string name = FileSystem::GetFileNameFromFilePath(relativeFilePath);
 
 			// Check if the resource is already loaded
-			auto cached = GetResourceByPath<T>(relativeFilePath);
+			auto cached = GetResourceByName<T>(name);
 			if (!cached.expired())
 				return cached;
 
@@ -64,7 +65,7 @@ namespace Directus
 
 			// Assign filepath and name
 			typed->SetResourceFilePath(relativeFilePath);
-			typed->SetResourceName(FileSystem::GetFileNameFromFilePath(relativeFilePath));
+			typed->SetResourceName(name);
 
 			// Load 
 			if (!typed->LoadFromFile(relativeFilePath))
@@ -94,6 +95,17 @@ namespace Directus
 			return resource;
 		}
 
+		template <class T>
+		void SaveResource(std::weak_ptr<T> resource, const std::string& filePath)
+		{
+			if (resource.expired())
+				return;
+
+			resource._Get()->SetResourceFilePath(filePath);
+			resource._Get()->SetResourceName(FileSystem::GetFileNameFromFilePath(filePath));
+			resource._Get()->SaveToFile(filePath);
+		}
+
 		// Returns cached resource by ID
 		template <class T>
 		std::weak_ptr<T> GetResourceByID(const std::size_t ID)
@@ -103,9 +115,16 @@ namespace Directus
 
 		// Returns cached resource by Path
 		template <class T>
-		std::weak_ptr<T> GetResourceByPath(const std::string& filePath)
+		std::weak_ptr<T> GetResourceByName(const std::string& name)
 		{
-			return ToDerivedWeak<T>(m_resourceCache->GetByPath(filePath));
+			return ToDerivedWeak<T>(m_resourceCache->GetByName(name));
+		}
+
+		// Returns cached resource by Path
+		template <class T>
+		std::weak_ptr<T> GetResourceByPath(const std::string& path)
+		{
+			return ToDerivedWeak<T>(m_resourceCache->GetByPath(path));
 		}
 
 		// Returns cached resource by Type
@@ -126,23 +145,23 @@ namespace Directus
 			return typedVec;
 		}
 
-		// Returns cached resource count by Type
-		template <class T>
-		int GetResourceCountByType()
+		// Returns all resources of a given type
+		unsigned int GetResourceCountByType(ResourceType type)
 		{
-			int count = 0;
-			for (const auto& resource : m_resourceCache->GetAll())
-			{
-				std::weak_ptr<T> typed = ToDerivedWeak<T>(resource);
-				count = typed.expired() ? count : count + 1;
-			}
-			return count;
+			return m_resourceCache->GetByType(type).size();
 		}
 
-		void SaveResourceMetadata() { m_resourceCache->SaveResourceMetadata(); }
+		void SaveResourcesToFiles()
+		{
+			m_resourceCache->SaveResourcesToFiles();
+		}
 
-		std::vector<std::string> GetResourceFilePaths() { return m_resourceCache->GetResourceFilePaths(); }
+		void GetResourceFilePaths(std::vector<std::string>& filePaths)
+		{
+			m_resourceCache->GetResourceFilePaths(filePaths);
+		}
 
+		// Directories
 		void AddStandardResourceDirectory(ResourceType type, const std::string& directory);
 		std::string GetStandardResourceDirectory(ResourceType type);
 		void SetProjectDirectory(const std::string& directory);

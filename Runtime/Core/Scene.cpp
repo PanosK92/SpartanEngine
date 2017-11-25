@@ -52,8 +52,8 @@ namespace Directus
 		m_timePassed = 0.0f;
 		m_frameCount = 0;
 		m_status = NOT_ASSIGNED;
-		m_jobStep = 0.0f;
-		m_jobSteps = 0.0f;
+		m_jobsDone = 0.0f;
+		m_jobsTotal = 0.0f;
 		m_isLoading = false;
 
 		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Resolve));
@@ -138,7 +138,7 @@ namespace Directus
 		}
 
 		// Save any in-memory changes done to resources while running.
-		m_context->GetSubsystem<ResourceManager>()->SaveResourceMetadata();
+		m_context->GetSubsystem<ResourceManager>()->SaveResourcesToFiles();
 
 		// Create a prefab file
 		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Write);
@@ -146,7 +146,9 @@ namespace Directus
 			return false;
 
 		// Save currently loaded resource paths
-		file->Write(m_context->GetSubsystem<ResourceManager>()->GetResourceFilePaths());
+		vector<string> filePaths;
+		m_context->GetSubsystem<ResourceManager>()->GetResourceFilePaths(filePaths);
+		file->Write(filePaths);
 
 		//= Save GameObjects ============================
 		// Only save root GameObjects as they will also save their descendants
@@ -194,6 +196,8 @@ namespace Directus
 		vector<string> resourcePaths;
 		file->Read(resourcePaths);
 
+		m_jobsTotal = resourcePaths.size();
+
 		// Load all the resources
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
 		for (const auto& resourcePath : resourcePaths)
@@ -201,19 +205,19 @@ namespace Directus
 			if (FileSystem::IsEngineModelFile(resourcePath))
 			{
 				resourceMng->Load<Model>(resourcePath);
-				continue;
 			}
 
 			if (FileSystem::IsEngineMaterialFile(resourcePath))
 			{
 				resourceMng->Load<Material>(resourcePath);
-				continue;
 			}
 
 			if (FileSystem::IsEngineTextureFile(resourcePath))
 			{
 				resourceMng->Load<Texture>(resourcePath);
 			}
+
+			m_jobsDone++;
 		}
 
 		//= Load GameObjects ============================	
@@ -419,7 +423,7 @@ namespace Directus
 	weak_ptr<GameObject> Scene::CreateCamera()
 	{
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		string scriptDirectory = resourceMng->GetStandardResourceDirectory(Script_Resource);
+		string scriptDirectory = resourceMng->GetStandardResourceDirectory(Resource_Script);
 
 		sharedGameObj camera = CreateGameObject().lock();
 		camera->SetName("Camera");
@@ -450,8 +454,8 @@ namespace Directus
 	void Scene::ResetLoadingStats()
 	{
 		m_status = NOT_ASSIGNED;
-		m_jobStep = 0.0f;
-		m_jobSteps = 0.0f;
+		m_jobsDone = 0.0f;
+		m_jobsTotal = 0.0f;
 		m_isLoading = false;
 	}
 

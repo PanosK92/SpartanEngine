@@ -41,35 +41,35 @@ namespace Directus
 		~D3D11GraphicsDevice();
 
 		//= Sybsystem ============
-		virtual bool Initialize();
+		bool Initialize() override;
 		//========================
 
 		//= IGraphicsDevice ========================================================
-		virtual void SetHandle(void* drawHandle);
-		virtual void Clear(const Math::Vector4& color);
-		virtual void Present();
-		virtual void SetBackBufferAsRenderTarget();
+		void SetHandle(void* drawHandle) override;
+		void Clear(const Math::Vector4& color) override;
+		void Present() override;
+		void SetBackBufferAsRenderTarget() override;
 
 		// Depth
-		virtual bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled);
-		virtual bool CreateDepthStencilBuffer();
-		virtual bool CreateDepthStencilView();
-		virtual void EnableDepth(bool enable);
+		bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled) override;
+		bool CreateDepthStencilBuffer() override;
+		bool CreateDepthStencilView() override;
+		void EnableDepth(bool enable) override;
 
-		virtual void EnableAlphaBlending(bool enable);
-		virtual void SetInputLayout(InputLayout inputLayout);
-		virtual CullMode GetCullMode() { return m_cullMode; }
-		virtual void SetCullMode(CullMode cullMode);
-		virtual void SetPrimitiveTopology(PrimitiveTopology primitiveTopology);
+		void EnableAlphaBlending(bool enable) override;
+		void SetInputLayout(InputLayout inputLayout) override;
+		CullMode GetCullMode() override { return m_cullMode; }
+		void SetCullMode(CullMode cullMode) override;
+		void SetPrimitiveTopology(PrimitiveTopology primitiveTopology) override;
 
 		// Viewport
-		virtual bool SetResolution(int width, int height);
-		virtual void* GetViewport() { return (void*)&m_viewport; }
-		virtual void SetViewport(float width, float height);
-		virtual void SetViewport();
-		virtual float GetMaxDepth() { return m_maxDepth; }
+		bool SetResolution(int width, int height) override;
+		void* GetViewport() override { return (void*)&m_viewport; }
+		void SetViewport(float width, float height) override;
+		void SetViewport() override;
+		float GetMaxDepth() override { return m_maxDepth; }
 
-		virtual bool IsInitialized() { return m_initialized; }
+		bool IsInitialized() override { return m_initialized; }
 
 		ID3D11DepthStencilView* GetDepthStencilView() { return m_depthStencilView; }
 		//======================================================================

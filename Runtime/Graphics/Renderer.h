@@ -78,7 +78,7 @@ namespace Directus
 		~Renderer();
 
 		//= Subsystem ============
-		virtual bool Initialize();
+		bool Initialize() override;
 		//========================
 
 		void Render();

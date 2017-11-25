@@ -63,8 +63,8 @@ namespace Directus
 		//=====================================================
 
 		//= RESOURCE INTERFACE ======================================
-		bool LoadFromFile(const std::string& filePath);
-		bool SaveToFile(const std::string& filePath) { return true; }
+		bool LoadFromFile(const std::string& filePath) override;
+		bool SaveToFile(const std::string& filePath) override { return true; }
 		//===========================================================
 
 		//= TEXTURES ==================================================================

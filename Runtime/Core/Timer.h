@@ -34,7 +34,7 @@ namespace Directus
 		~Timer();
 
 		//= Subsystem ============
-		virtual bool Initialize();
+		bool Initialize() override;
 		//========================
 
 		void Update();

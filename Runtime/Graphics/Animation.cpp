@@ -34,7 +34,7 @@ namespace Directus
 	Animation::Animation()
 	{
 		//= RESOURCE INTERFACE ================
-		InitializeResource(Animation_Resource);
+		InitializeResource(Resource_Animation);
 		//=====================================
 
 		m_name = NOT_ASSIGNED;

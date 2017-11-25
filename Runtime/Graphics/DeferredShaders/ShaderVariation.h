@@ -62,8 +62,8 @@ namespace Directus
 		void Initialize(Context* context, unsigned long shaderFlags);
 
 		//= RESOURCE INTERFACE ========================
-		bool LoadFromFile(const std::string& filePath);
-		bool SaveToFile(const std::string& filePath);
+		bool LoadFromFile(const std::string& filePath) override;
+		bool SaveToFile(const std::string& filePath) override;
 		//=============================================
 
 		void Set();

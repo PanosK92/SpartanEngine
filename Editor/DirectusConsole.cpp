@@ -49,29 +49,54 @@ DirectusConsole::DirectusConsole(QWidget *parent) : QTextEdit(parent)
     m_timer->start(500);
 }
 
-void DirectusConsole::Log(const string& text, int errorLevel)
+void DirectusConsole::Log(const string& text, bool append)
 {
-     // 0 = Info
-     // 1 = Warning
-     // 2 = Error
+    if (append)
+    {
+        this->append(QString::fromStdString(text));
+    }
+    else
+    {
+        this->setText(QString::fromStdString(text));
+    }
+}
 
-    QString colorStart = (errorLevel == 0) ? "<font color=\"#A1A1A1\">" : (errorLevel == 1) ? "<font color=\"#C8CC5E\">" : "<font color=\"#BD5151\">";
-    QString colorEnd = "</font>";
+void DirectusConsole::AddLogPackage(LogPackage package)
+{
+    // 0 = Info
+    // 1 = Warning
+    // 2 = Error
+    string colorStart = (package.errorLevel == 0) ? "<font color=\"#A1A1A1\">" : (package.errorLevel == 1) ? "<font color=\"#C8CC5E\">" : "<font color=\"#BD5151\">";
+    string colorEnd = "</font>";
 
-    // Construct html message
-    QString message = colorStart + QString::fromStdString(text) + colorEnd;
+    // Construct html version of text
+    package.text = colorStart + package.text + colorEnd;
 
-    // Log it
-    this->append(message);
+    m_logs.push_back(package);
 }
 
 void DirectusConsole::CheckLogPackages()
 {
     for (const auto& package : m_logs)
     {
-        Log(package.text, package.errorLevel);
+        Log(package.text, true);
     }
 
     m_logs.clear();
     m_logs.shrink_to_fit();
+}
+
+void DirectusConsole::SetDisplayInfo(bool display)
+{
+    this->append(display ? "info on" : "info off");
+}
+
+void DirectusConsole::SetDisplayWarnings(bool display)
+{
+     this->append(display ? "warnings on" : "warnings off");
+}
+
+void DirectusConsole::SetDisplayErrors(bool display)
+{
+     this->append(display ? "errors on" : "errors off");
 }

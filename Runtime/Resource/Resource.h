@@ -31,16 +31,16 @@ namespace Directus
 {
 	enum ResourceType
 	{
-		Unknown_Resource,
-		Texture_Resource,
-		Audio_Resource,
-		Material_Resource,
-		Shader_Resource,
-		Model_Resource,
-		Cubemap_Resource,
-		Script_Resource,
-		Animation_Resource,
-		Font_Resource
+		Resource_Unknown,
+		Resource_Texture,
+		Resource_Audio,
+		Resource_Material,
+		Resource_Shader,
+		Resource_Model,
+		Resource_Cubemap,
+		Resource_Script,
+		Resource_Animation,
+		Resource_Font
 	};
 
 	class DLL_API Resource
@@ -77,7 +77,7 @@ namespace Directus
 		unsigned int m_resourceID = NOT_ASSIGNED_HASH;
 		std::string m_resourceName = NOT_ASSIGNED;
 		std::string m_resourceFilePath = NOT_ASSIGNED;
-		ResourceType m_resourceType = Unknown_Resource;
+		ResourceType m_resourceType = Resource_Unknown;
 		Context* m_context = nullptr;
 	};
 }

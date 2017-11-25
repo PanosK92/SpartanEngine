@@ -19,18 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================================
+//= INCLUDES ===========================
 #include "PerformanceProfiler.h"
 #include "../Core/Stopwatch.h"
 #include "../Core/Timer.h"
 #include "../Core/Scene.h"
 #include "../Graphics/Material.h"
-#include "../Graphics/DeferredShaders/ShaderVariation.h"
 #include "../Resource/ResourceManager.h"
 #include "../EventSystem/EventSystem.h"
 #include <iomanip>
 #include <sstream>
-//=====================================================
+//======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -98,15 +97,17 @@ namespace Directus
 		}
 
 		float fps = m_scene->GetFPS();
-		int materials = m_resourceManager->GetResourceCountByType<Material>();
-		int shaders = m_resourceManager->GetResourceCountByType<ShaderVariation>();
-
+		int textures = m_resourceManager->GetResourceCountByType(Resource_Texture);
+		int materials = m_resourceManager->GetResourceCountByType(Resource_Material);
+		int shaders = m_resourceManager->GetResourceCountByType(Resource_Shader);
+		
 		m_metrics =
 			"FPS: " + To_String_Precision(fps, 2) + "\n"
 			"Frame: " + To_String_Precision(delta, 2) + " ms\n"
 			"Update: " + To_String_Precision(delta - m_renderTimeMs, 2) + " ms\n"
 			"Render: " + To_String_Precision(m_renderTimeMs, 2) + " ms\n"
 			"Meshes Rendered: " + to_string(m_renderedMeshesPerFrame) + "\n"
+			"Textures: " + to_string(textures) + "\n"
 			"Materials: " + to_string(materials) + "\n"
 			"Shaders: " + to_string(shaders);
 

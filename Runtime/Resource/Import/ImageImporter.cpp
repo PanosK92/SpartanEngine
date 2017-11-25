@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
 #include "../../Graphics/Texture.h"
+#include "../TextureInfo.h"
 //====================================
 
 //= NAMESPACES ================

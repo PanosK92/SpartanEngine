@@ -34,13 +34,12 @@ namespace Directus
 	{
 	public:
 		ResourceCache() {}
-		~ResourceCache() { Unload(); }
+		~ResourceCache() { Clear(); }
 
 		// Unloads all resources
-		void Unload()
+		void Clear()
 		{
-			m_resources.clear();
-			m_resources.shrink_to_fit();
+			m_resourceGroups.clear();
 		}
 
 		// Adds a resource
@@ -49,28 +48,31 @@ namespace Directus
 			if (!resource)
 				return;
 
-			m_resources.push_back(resource);
+			m_resourceGroups[resource->GetResourceType()].push_back(resource);
 		}
 
 		// Returns the file paths of all the resources
-		std::vector<std::string> GetResourceFilePaths()
+		void GetResourceFilePaths(std::vector<std::string>& filePaths)
 		{
-			std::vector<std::string> filePaths;
-			for (const auto& resource : m_resources)
+			for (const auto& resourceGroup : m_resourceGroups)
 			{
-				filePaths.push_back(resource->GetResourceFilePath());
+				for (const auto& resource : resourceGroup.second)
+				{
+					filePaths.push_back(resource->GetResourceFilePath());
+				}
 			}
-
-			return filePaths;
 		}
 
 		// Returns a resource by ID
 		std::shared_ptr<Resource> GetByID(const std::size_t ID)
 		{
-			for (const auto& resource : m_resources)
+			for (const auto& resourceGroup : m_resourceGroups)
 			{
-				if (resource->GetResourceID() == ID)
-					return resource;
+				for (const auto& resource : resourceGroup.second)
+				{
+					if (resource->GetResourceID() == ID)
+						return resource;
+				}
 			}
 
 			return std::shared_ptr<Resource>();
@@ -79,75 +81,81 @@ namespace Directus
 		// Returns a resource by name
 		std::shared_ptr<Resource> GetByName(const std::string& name)
 		{
-			for (const auto& resource : m_resources)
+			for (const auto& resourceGroup : m_resourceGroups)
 			{
-				if (resource->GetResourceName() == name)
-					return resource;
+				for (const auto& resource : resourceGroup.second)
+				{
+					if (resource->GetResourceName() == name)
+						return resource;
+				}
 			}
-
 			return std::shared_ptr<Resource>();
 		}
 
-		// Returns a resource by file path
-		std::shared_ptr<Resource> GetByPath(const std::string& filePath)
+		// Returns a resource by name
+		std::shared_ptr<Resource> GetByPath(const std::string& path)
 		{
-			for (const auto& resource : m_resources)
+			for (const auto& resourceGroup : m_resourceGroups)
 			{
-				if (resource->GetResourceFilePath() == filePath)
-					return resource;
+				for (const auto& resource : resourceGroup.second)
+				{
+					if (resource->GetResourceFilePath() == path)
+						return resource;
+				}
 			}
 
 			return std::shared_ptr<Resource>();
 		}
 
 		// Makes the resources save their metadata
-		void SaveResourceMetadata()
+		void SaveResourcesToFiles()
 		{
-			for (const auto& resource : m_resources)
+			for (const auto& resourceGroup : m_resourceGroups)
 			{
-				resource->SaveToFile(resource->GetResourceFilePath());
+				for (const auto& resource : resourceGroup.second)
+				{
+					resource->SaveToFile(resource->GetResourceFilePath());
+				}
 			}
 		}
 
 		// Returns all the resources
-		const auto& GetAll() { return m_resources; }
-
-		// Checks whether a resource is already in the cache
-		bool CachedByID(std::shared_ptr<Resource> resourceIn)
+		std::vector<std::shared_ptr<Resource>> GetAll()
 		{
-			if (!resourceIn)
-				return false;
-
-			for (const auto& resource : m_resources)
+			std::vector<std::shared_ptr<Resource>> resources;
+			for (const auto& resourceGroup : m_resourceGroups)
 			{
-				if (resource->GetResourceID() == resourceIn->GetResourceID())
-					return true;
+				resources.insert(resources.end(), resourceGroup.second.begin(), resourceGroup.second.end());
 			}
 
-			return false;
+			return resources;
+		}
+
+		// Returns all resources of a given type
+		const std::vector<std::shared_ptr<Resource>>& GetByType(ResourceType type)
+		{
+			return m_resourceGroups[type];
 		}
 
 		// Checks whether a resource is already in the cache
-		bool CachedByName(std::shared_ptr<Resource> resourceIn)
+		bool CachedByName(std::shared_ptr<Resource> resource)
 		{
-			if (!resourceIn)
+			if (!resource)
 				return false;
 
-			if (resourceIn->GetResourceName() == NOT_ASSIGNED)
+			if (resource->GetResourceName() == NOT_ASSIGNED)
 			{
 				LOG_INFO("ResourceCache: CachedByName() might fail as no name has been assigned to the resource");
+				return false;
 			}
 
-			for (const auto& resource : m_resources)
-			{
-				if (resource->GetResourceName() == resourceIn->GetResourceName())
-					return true;
-			}
+			std::vector<std::shared_ptr<Resource>>& vector = m_resourceGroups[resource->GetResourceType()];
+			bool exists = std::find(vector.begin(), vector.end(), resource) != vector.end();
 
-			return false;
+			return exists;
 		}
 
 	private:
-		std::vector<std::shared_ptr<Resource>> m_resources;
+		std::map<ResourceType, std::vector<std::shared_ptr<Resource>>> m_resourceGroups;
 	};
 }

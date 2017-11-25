@@ -42,7 +42,7 @@ namespace Directus
 		~Audio();
 
 		// SUBSYSTEM =============
-		virtual bool Initialize();
+		bool Initialize() override;
 		//========================
 
 		bool Update();

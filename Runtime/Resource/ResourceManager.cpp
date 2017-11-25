@@ -50,13 +50,13 @@ namespace Directus
 		m_fontImporter->Initialize();
 		
 		// Add engine standard resource directories
-		AddStandardResourceDirectory(Texture_Resource, "Standard Assets//Textures//");
-		AddStandardResourceDirectory(Font_Resource, "Standard Assets//Fonts//");
-		AddStandardResourceDirectory(Shader_Resource, "Standard Assets//Shaders//");
-		AddStandardResourceDirectory(Cubemap_Resource, "Standard Assets//Cubemaps//");
-		AddStandardResourceDirectory(Script_Resource, "Standard Assets//Scripts//");
-		AddStandardResourceDirectory(Model_Resource, "Standard Assets//Models//");
-		AddStandardResourceDirectory(Material_Resource, "Standard Assets//Materials//");
+		AddStandardResourceDirectory(Resource_Texture, "Standard Assets//Textures//");
+		AddStandardResourceDirectory(Resource_Font, "Standard Assets//Fonts//");
+		AddStandardResourceDirectory(Resource_Shader, "Standard Assets//Shaders//");
+		AddStandardResourceDirectory(Resource_Cubemap, "Standard Assets//Cubemaps//");
+		AddStandardResourceDirectory(Resource_Script, "Standard Assets//Scripts//");
+		AddStandardResourceDirectory(Resource_Model, "Standard Assets//Models//");
+		AddStandardResourceDirectory(Resource_Material, "Standard Assets//Materials//");
 
 		// Add project directory
 		SetProjectDirectory("Project//");

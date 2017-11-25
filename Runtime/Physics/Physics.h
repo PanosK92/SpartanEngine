@@ -45,9 +45,9 @@ namespace Directus
 		Physics(Context* context);
 		~Physics();
 
-		//= Subsystem ============
-		virtual bool Initialize();
-		//========================
+		//= Subsystem =============
+		bool Initialize() override;
+		//=========================
 
 		void Step();
 		void Clear();
