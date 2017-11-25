@@ -49,7 +49,7 @@ namespace Directus
 		bool Load(Model* model, const std::string& filePath);
 
 		const std::string& GetStatus() { return m_status; }
-		float GetPercentage() { return (float)m_stateNodeCurrent / (float)m_stateNodeCount; }
+		float GetPercentage() { return (float)m_jobsTotal / (float)m_jobsDone; }
 		bool IsLoading() { return m_isLoading; }
 
 	private:
@@ -72,8 +72,8 @@ namespace Directus
 
 		// Statistics	
 		std::string m_status;
-		int m_stateNodeCount;
-		int m_stateNodeCurrent;
+		int m_jobsDone;
+		int m_jobsTotal;
 		bool m_isLoading;
 		
 		Context* m_context;

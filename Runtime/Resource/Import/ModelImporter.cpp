@@ -204,10 +204,10 @@ namespace Directus
 			newNode = scene->CreateGameObject();
 			model->SetRootGameObject(newNode.lock());
 
-			CalculateNodeCount(assimpNode, m_stateNodeCount);
+			CalculateNodeCount(assimpNode, m_jobsDone);
 		}
 
-		m_stateNodeCurrent++;
+		m_jobsTotal++;
 
 		//= GET NODE NAME ============================================================
 		// Note: In case this is the root node, aiNode.mName will be "RootNode". 
@@ -463,7 +463,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, Albedo_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, TextureType_Albedo, texturePath.data);
 				// FIX: materials that have a diffuse texture should not be tinted black/grey
 				material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
@@ -474,7 +474,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_SHININESS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, Roughness_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, TextureType_Roughness, texturePath.data);
 			}
 		}
 
@@ -483,7 +483,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_AMBIENT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, Metallic_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, TextureType_Metallic, texturePath.data);
 			}
 		}
 
@@ -492,7 +492,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, Normal_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, TextureType_Normal, texturePath.data);
 			}
 		}
 
@@ -501,7 +501,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, Occlusion_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, TextureType_Occlusion, texturePath.data);
 			}
 		}
 
@@ -510,7 +510,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, Emission_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, TextureType_Emission, texturePath.data);
 			}
 		}
 		//= HEIGHT TEXTURE ============================================================================================================
@@ -518,7 +518,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, Height_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, TextureType_Height, texturePath.data);
 			}
 		}
 
@@ -527,7 +527,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_OPACITY, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, Mask_Texture, texturePath.data);
+				AddTextureToMaterial(model, material, TextureType_Mask, texturePath.data);
 			}
 		}
 		return material;
@@ -540,6 +540,7 @@ namespace Directus
 		if (material.expired())
 			return;
 
+		// Validate texture path
 		string texturePath = FindTexture(originalTexturePath);
 		if (texturePath == NOT_ASSIGNED)
 		{
@@ -547,22 +548,30 @@ namespace Directus
 			return;
 		}
 
-		// Load the texture from the relative directory
-		weak_ptr<Texture> texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(texturePath);
+		
+		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
+		string texName = FileSystem::GetFileNameNoExtensionFromFilePath(texturePath);
 
-		// If the texture was loaded successfully
-		if (!texture.expired())
+		// Check if the texture already exists
+		weak_ptr<Texture> texture = resourceMng->GetResourceByName<Texture>(texName);
+			
+		// If it doesn't, load it
+		if (texture.expired())
 		{
-			// Create a filepath which is relative to the imported model file, then use that to save to save a binary texture to.
-			string modelRelativeFilePath = model->GetDirectoryTexture() + FileSystem::GetFileNameNoExtensionFromFilePath(texturePath) + TEXTURE_EXTENSION;
+			// Load into memory
+			texture = resourceMng->Load<Texture>(texturePath);
+			if (texture.expired())
+				return;
 
-			texture._Get()->SetTextureType(textureType);
-			texture._Get()->SaveToFile(modelRelativeFilePath);
-			texture._Get()->SetResourceFilePath(modelRelativeFilePath);
+			texture._Get()->SetTextureType(textureType); // set type
+			string modelRelativeTexPath = model->GetDirectoryTexture() + texName + TEXTURE_EXTENSION;
 
-			// Set this last so it get's a properly initialized texture
-			material._Get()->SetTexture(texture);
+			// save to model relative project dir (move inside project folder)
+			resourceMng->SaveResource(texture, modelRelativeTexPath); 
 		}
+
+		// set to material
+		material._Get()->SetTexture(texture); 
 	}
 
 	string ModelImporter::FindTexture(const string& originalTexturePath)
@@ -643,7 +652,7 @@ namespace Directus
 	void ModelImporter::ResetStats()
 	{
 		m_status = NOT_ASSIGNED;
-		m_stateNodeCount = 0;
-		m_stateNodeCurrent = 0;
+		m_jobsDone = 0;
+		m_jobsTotal = 0;
 	}
 }

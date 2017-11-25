@@ -118,7 +118,7 @@ namespace Directus
 		~Input();
 
 		// SUBSYSTEM =============
-		virtual bool Initialize();
+		bool Initialize() override;
 		//========================
 
 		void SetHandle(void* handle, void* instance);

@@ -40,7 +40,7 @@ namespace Directus
 		void SetHandles(void* instance, void* mainWindowHandle, void* drawPaneHandle);
 
 		//= SUBSYSTEM ============
-		virtual bool Initialize();
+		bool Initialize() override;
 		//========================
 
 		// Performs a complete simulation cycle (used to run your game)

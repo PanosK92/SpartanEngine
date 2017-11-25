@@ -58,8 +58,8 @@ namespace Directus
 		~AudioClip();
 
 		//= RESOURCE INTERFACE ========================================
-		bool LoadFromFile(const std::string& filePath) { return true; }
-		bool SaveToFile(const std::string& filePath) { return true; }
+		bool LoadFromFile(const std::string& filePath) override { return true; }
+		bool SaveToFile(const std::string& filePath) override { return true; }
 		//=============================================================
 
 		bool Load(const std::string& filePath, PlayMode mode);

@@ -24,26 +24,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "../Resource/Resource.h"
 #include <memory>
-#include "../IO/StreamIO.h"
-
 //===============================
 
 namespace Directus
 {
+	class TextureInfo;
 	class D3D11Texture;
 
 	enum TextureType
 	{
-		Unknown_Texture,
-		Albedo_Texture,
-		Roughness_Texture,
-		Metallic_Texture,
-		Normal_Texture,
-		Height_Texture,
-		Occlusion_Texture,
-		Emission_Texture,
-		Mask_Texture,
-		CubeMap_Texture,
+		TextureType_Unknown,
+		TextureType_Albedo,
+		TextureType_Roughness,
+		TextureType_Metallic,
+		TextureType_Normal,
+		TextureType_Height,
+		TextureType_Occlusion,
+		TextureType_Emission,
+		TextureType_Mask,
+		TextureType_CubeMap,
 	};
 
 	enum TextureFormat
@@ -62,103 +61,6 @@ namespace Directus
 		Failed
 	};
 
-	class DLL_API TextureInfo
-	{
-	public:
-		TextureInfo() {}
-		~TextureInfo()
-		{
-			rgba.clear();
-			rgba.shrink_to_fit();
-			rgba_mimaps.clear();
-			rgba_mimaps.shrink_to_fit();
-		}
-
-		TextureInfo(unsigned int width, unsigned int height)
-		{
-			this->width = width;
-			this->height = height;
-		}
-
-		TextureInfo(bool generateMipmaps)
-		{
-			this->isUsingMipmaps = generateMipmaps;
-		}
-
-		bool Serialize(const std::string& filePath)
-		{
-			auto file = std::make_unique<StreamIO>(filePath, Mode_Write);
-			if (!file->IsCreated())
-				return false;
-
-			file->Write((int)type);
-			file->Write(bpp);
-			file->Write(width);
-			file->Write(height);
-			file->Write(channels);
-			file->Write(isGrayscale);
-			file->Write(isTransparent);
-			file->Write(isUsingMipmaps);
-			if (!isUsingMipmaps)
-			{
-				file->Write(rgba);
-			}
-			else
-			{
-				file->Write((unsigned int)rgba_mimaps.size());
-				for (auto& mip : rgba_mimaps)
-				{
-					file->Write(mip);
-				}
-			}
-
-			return true;
-		}
-
-		bool Deserialize(const std::string& filePath)
-		{
-			auto file = std::make_unique<StreamIO>(filePath, Mode_Read);
-			if (!file->IsCreated())
-				return false;
-
-			type = (TextureType)file->ReadInt();
-			file->Read(bpp);
-			file->Read(width);
-			file->Read(height);
-			file->Read(channels);
-			file->Read(isGrayscale);
-			file->Read(isTransparent);
-			file->Read(isUsingMipmaps);
-			if (!isUsingMipmaps)
-			{
-				file->Read(rgba);
-			}
-			else
-			{
-				int mipCount = file->ReadUInt();
-				for (int i = 0; i < mipCount; i++)
-				{
-					rgba_mimaps.emplace_back(std::vector<unsigned char>());
-					file->Read(rgba_mimaps[i]);
-				}
-			}
-
-			return true;
-		}
-
-		unsigned int bpp = 0;
-		unsigned int width = 0;
-		unsigned int height = 0;
-		unsigned int channels = 0;
-		bool isGrayscale = false;
-		bool isTransparent = false;
-		bool isUsingMipmaps = false;
-		std::vector<unsigned char> rgba;
-		std::vector<std::vector<unsigned char>> rgba_mimaps;
-		LoadState loadState = Idle;
-		TextureType type = Unknown_Texture;
-	};
-
 	class DLL_API Texture : public Resource
 	{
 	public:
@@ -166,30 +68,30 @@ namespace Directus
 		~Texture();
 
 		//= RESOURCE INTERFACE ========================
-		bool SaveToFile(const std::string& filePath);
-		bool LoadFromFile(const std::string& filePath);
+		bool SaveToFile(const std::string& filePath) override;
+		bool LoadFromFile(const std::string& filePath) override;
 		//=============================================
 
-		//= PROPERTIES ========================================================================
-		int GetWidth() { return m_textureInfo->width; }
-		void SetWidth(int width) { m_textureInfo->width = width; }
+		//= PROPERTIES =========================
+		unsigned int GetWidth();
+		void SetWidth(unsigned int width);
 
-		int GetHeight() { return m_textureInfo->height; }
-		void SetHeight(int height) { m_textureInfo->height = height; }
+		unsigned int GetHeight();
+		void SetHeight(unsigned int height);
 
-		TextureType GetTextureType() { return m_textureInfo->type; }
+		TextureType GetTextureType();
 		void SetTextureType(TextureType type);
 
-		bool GetGrayscale() { return m_textureInfo->isGrayscale; }
-		void SetGrayscale(bool grayscale) { m_textureInfo->isGrayscale = grayscale; }
+		bool GetGrayscale();
+		void SetGrayscale(bool grayscale);
 
-		bool GetTransparency() { return m_textureInfo->isTransparent; }
-		void SetTransparency(bool transparency) { m_textureInfo->isTransparent = transparency; }
+		bool GetTransparency();
+		void SetTransparency(bool transparency);
 
-		void EnableMimaps(bool enable) { m_textureInfo->isUsingMipmaps = enable; }
+		void EnableMimaps(bool enable);
 
 		void** GetShaderResource();
-		//======================================================================================
+		//======================================
 
 		// Creates a shader resource from memory
 		bool CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, std::vector<unsigned char> rgba, TextureFormat format);
@@ -204,5 +106,6 @@ namespace Directus
 		std::unique_ptr<D3D11Texture> m_textureAPI;
 		std::unique_ptr<TextureInfo> m_textureInfo;
 		TextureFormat m_format = RGBA_8_UNORM;
+		bool m_isDirty;
 	};
 }

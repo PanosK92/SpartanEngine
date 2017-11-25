@@ -49,8 +49,8 @@ namespace Directus
 		~Model();
 
 		//= RESOURCE INTERFACE ================================
-		virtual bool LoadFromFile(const std::string& filePath);
-		virtual bool SaveToFile(const std::string& filePath);
+		bool LoadFromFile(const std::string& filePath) override;
+		bool SaveToFile(const std::string& filePath) override;
 		//======================================================
 
 		// Sets the  GameObject that represents this model in the scene

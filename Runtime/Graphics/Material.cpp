@@ -39,7 +39,7 @@ namespace Directus
 	Material::Material(Context* context)
 	{
 		// Resource
-		InitializeResource(Material_Resource);
+		InitializeResource(Resource_Material);
 
 		// Material
 		m_context = context;
@@ -293,15 +293,15 @@ namespace Directus
 		// matching shader already exists, it will be returned.
 		unsigned long shaderFlags = 0;
 
-		if (HasTextureOfType(Albedo_Texture)) shaderFlags |= Variaton_Albedo;
-		if (HasTextureOfType(Roughness_Texture)) shaderFlags |= Variaton_Roughness;
-		if (HasTextureOfType(Metallic_Texture)) shaderFlags |= Variaton_Metallic;
-		if (HasTextureOfType(Normal_Texture)) shaderFlags |= Variaton_Normal;
-		if (HasTextureOfType(Height_Texture)) shaderFlags |= Variaton_Height;
-		if (HasTextureOfType(Occlusion_Texture)) shaderFlags |= Variaton_Occlusion;
-		if (HasTextureOfType(Emission_Texture)) shaderFlags |= Variaton_Emission;
-		if (HasTextureOfType(Mask_Texture)) shaderFlags |= Variaton_Mask;
-		if (HasTextureOfType(CubeMap_Texture)) shaderFlags |= Variaton_Cubemap;
+		if (HasTextureOfType(TextureType_Albedo)) shaderFlags |= Variaton_Albedo;
+		if (HasTextureOfType(TextureType_Roughness)) shaderFlags |= Variaton_Roughness;
+		if (HasTextureOfType(TextureType_Metallic)) shaderFlags |= Variaton_Metallic;
+		if (HasTextureOfType(TextureType_Normal)) shaderFlags |= Variaton_Normal;
+		if (HasTextureOfType(TextureType_Height)) shaderFlags |= Variaton_Height;
+		if (HasTextureOfType(TextureType_Occlusion)) shaderFlags |= Variaton_Occlusion;
+		if (HasTextureOfType(TextureType_Emission)) shaderFlags |= Variaton_Emission;
+		if (HasTextureOfType(TextureType_Mask)) shaderFlags |= Variaton_Mask;
+		if (HasTextureOfType(TextureType_CubeMap)) shaderFlags |= Variaton_Cubemap;
 
 		m_shader = CreateShaderBasedOnMaterial(shaderFlags);
 	}
@@ -327,7 +327,7 @@ namespace Directus
 
 		// If not, create a new one 
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		string shaderDirectory = resourceMng->GetStandardResourceDirectory(Shader_Resource); // Get standard shader directory
+		string shaderDirectory = resourceMng->GetStandardResourceDirectory(Resource_Shader); // Get standard shader directory
 
 		// Create and initialize shader
 		auto shader = make_shared<ShaderVariation>();
@@ -360,22 +360,22 @@ namespace Directus
 
 	void Material::TextureBasedMultiplierAdjustment()
 	{
-		if (HasTextureOfType(Roughness_Texture))
+		if (HasTextureOfType(TextureType_Roughness))
 		{
 			SetRoughnessMultiplier(1.0f);
 		}
 
-		if (HasTextureOfType(Metallic_Texture))
+		if (HasTextureOfType(TextureType_Metallic))
 		{
 			SetMetallicMultiplier(1.0f);
 		}
 
-		if (HasTextureOfType(Normal_Texture))
+		if (HasTextureOfType(TextureType_Normal))
 		{
 			SetNormalMultiplier(1.0f);
 		}
 
-		if (HasTextureOfType(Height_Texture))
+		if (HasTextureOfType(TextureType_Height))
 		{
 			SetHeightMultiplier(1.0f);
 		}

@@ -74,11 +74,14 @@ class DirectusConsole : public QTextEdit
     Q_OBJECT
 public:
     explicit DirectusConsole(QWidget* parent = 0);
-    void Log(const std::string& text, int errorLevel);
-    void AddLogPackage(LogPackage package) { m_logs.push_back(package); }
+    void Log(const std::string& text, bool append);
+    void AddLogPackage(LogPackage package);
 
 public slots:
     void CheckLogPackages();
+    void SetDisplayInfo(bool display);
+    void SetDisplayWarnings(bool display);
+    void SetDisplayErrors(bool display);
 
 private:
     Directus::Socket* m_socket;

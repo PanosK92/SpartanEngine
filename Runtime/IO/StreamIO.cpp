@@ -28,6 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Quaternion.h"
 #include "../Logging/Log.h"
 #include "../Graphics/Vertex.h"
+#include <iostream>
+#include <iterator>
 //=============================
 
 //= NAMESPACES ================
@@ -152,7 +154,6 @@ namespace Directus
 	{
 		unsigned int size = value.size();
 		Write(size);
-
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(value[0]) * size);
 	}
 
@@ -231,10 +232,8 @@ namespace Directus
 
 	void StreamIO::Read(vector<unsigned char>& value)
 	{
-		unsigned int size = 0;
-		Read(size);
-		value.resize(size);
-
+		unsigned int size = ReadUInt();
+		value.reserve(size);
 		in.read(reinterpret_cast<char*>(&value[0]), sizeof(value[0]) * size);
 	}
 }

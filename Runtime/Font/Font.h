@@ -49,8 +49,8 @@ namespace Directus
 		~Font();
 
 		//= RESOURCE INTERFACE ========================
-		bool SaveToFile(const std::string& filePath);
-		bool LoadFromFile(const std::string& filePath);
+		bool SaveToFile(const std::string& filePath) override;
+		bool LoadFromFile(const std::string& filePath) override;
 		//=============================================
 
 		void SetText(const std::string& text, const Math::Vector2& position);

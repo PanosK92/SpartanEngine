@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Scene.h"
 #include "FileSystem/FileSystem.h"
 #include "Resource/ResourceManager.h"
+#include "Resource/TextureInfo.h"
 //===================================
 
 //= NAMESPACES ==========

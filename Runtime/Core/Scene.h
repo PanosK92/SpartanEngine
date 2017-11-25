@@ -41,7 +41,7 @@ namespace Directus
 		~Scene();
 
 		//= Subsystem ============
-		virtual bool Initialize();
+		bool Initialize() override;
 		//========================
 
 		void Start();
@@ -79,7 +79,7 @@ namespace Directus
 		//= STATS ==============================================
 		float GetFPS() { return m_fps; }
 		const std::string& GetStatus() { return m_status; }
-		float GetPercentage() { return m_jobStep / m_jobSteps; }
+		float GetPercentage() { return m_jobsDone / m_jobsTotal; }
 		bool IsLoading() { return m_isLoading; }
 
 	private:
@@ -106,8 +106,8 @@ namespace Directus
 		float m_timePassed;
 		int m_frameCount;
 		std::string m_status;
-		float m_jobStep;
-		float m_jobSteps;
+		float m_jobsDone;
+		float m_jobsTotal;
 		bool m_isLoading;
 		//=================
 	};

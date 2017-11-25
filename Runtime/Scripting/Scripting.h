@@ -46,7 +46,7 @@ namespace Directus
 		~Scripting();
 
 		// SUBSYSTEM =============
-		virtual bool Initialize();
+		bool Initialize() override;
 		//========================
 
 		void Clear();

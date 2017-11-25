@@ -2159,7 +2159,7 @@ QSplitter::handle:vertical
                <string notr="true"/>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <property name="iconSize">
                <size>
@@ -2450,6 +2450,45 @@ QSplitter::handle:vertical
                          </property>
                          <property name="text">
                           <string>Clear</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="buttonConsoleInfo">
+                         <property name="text">
+                          <string>Info</string>
+                         </property>
+                         <property name="checkable">
+                          <bool>true</bool>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="buttonConsoleWarnings">
+                         <property name="text">
+                          <string>Warnings</string>
+                         </property>
+                         <property name="checkable">
+                          <bool>true</bool>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="buttonConsoleErrors">
+                         <property name="text">
+                          <string>Errors</string>
+                         </property>
+                         <property name="checkable">
+                          <bool>true</bool>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>
@@ -3373,6 +3412,11 @@ QSplitter::handle:vertical
    <class>DirectusConsole</class>
    <extends>QTextEdit</extends>
    <header location="global">DirectusConsole.h</header>
+   <slots>
+    <slot>SetDisplayInfo(bool)</slot>
+    <slot>SetDisplayWarnings(bool)</slot>
+    <slot>SetDisplayErrors(bool)</slot>
+   </slots>
   </customwidget>
  </customwidgets>
  <resources/>
@@ -3774,6 +3818,54 @@ QSplitter::handle:vertical
     <hint type="destinationlabel">
      <x>116</x>
      <y>621</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonConsoleInfo</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>directusConsole</receiver>
+   <slot>SetDisplayInfo(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>72</x>
+     <y>535</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>145</x>
+     <y>609</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonConsoleWarnings</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>directusConsole</receiver>
+   <slot>SetDisplayWarnings(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>126</x>
+     <y>532</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>290</x>
+     <y>643</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonConsoleErrors</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>directusConsole</receiver>
+   <slot>SetDisplayErrors(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>179</x>
+     <y>537</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>260</x>
+     <y>636</y>
     </hint>
    </hints>
   </connection>

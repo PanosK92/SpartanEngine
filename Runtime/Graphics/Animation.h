@@ -68,8 +68,8 @@ namespace Directus
 		~Animation();
 
 		//= RESOURCE INTERFACE ========================
-		bool LoadFromFile(const std::string& filePath);
-		bool SaveToFile(const std::string& filePath);
+		bool LoadFromFile(const std::string& filePath) override;
+		bool SaveToFile(const std::string& filePath) override;
 		//=============================================
 
 		void SetName(const std::string& name) { m_name = name; }

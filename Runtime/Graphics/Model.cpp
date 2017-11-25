@@ -45,7 +45,7 @@ namespace Directus
 		m_context = context;
 
 		//= RESOURCE INTERFACE ============
-		InitializeResource(Model_Resource);
+		InitializeResource(Resource_Model);
 		//=================================
 
 		m_normalizedScale = 1.0f;

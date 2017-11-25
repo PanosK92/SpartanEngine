@@ -52,7 +52,7 @@ namespace Directus
 		~Threading();
 
 		//= Subsystem ============
-		virtual bool Initialize();
+		bool Initialize() override;
 		//========================
 
 		// This function is invoked by the threads

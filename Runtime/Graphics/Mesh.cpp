@@ -91,12 +91,14 @@ namespace Directus
 		stream->Read(m_indexCount);
 		stream->Read(m_triangleCount);
 
+		m_vertices.reserve(m_vertexCount);
 		for (unsigned int i = 0; i < m_vertexCount; i++)
 		{
 			m_vertices.emplace_back(VertexPosTexTBN());
 			stream->Read(m_vertices.back());
 		}
 
+		m_indices.reserve(m_indexCount);
 		for (unsigned int i = 0; i < m_indexCount; i++)
 		{
 			m_indices.emplace_back(stream->ReadInt());

@@ -42,7 +42,7 @@ namespace Directus
 	ShaderVariation::ShaderVariation()
 	{
 		// Resource
-		InitializeResource(Shader_Resource);
+		InitializeResource(Resource_Shader);
 
 		m_graphics = nullptr;
 		m_shaderFlags = 0;

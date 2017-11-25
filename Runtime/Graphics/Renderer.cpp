@@ -104,8 +104,8 @@ namespace Directus
 		m_fullScreenRect->Create(0, 0, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 		// Get standard resource directories
-		string shaderDirectory = m_resourceMng->GetStandardResourceDirectory(Shader_Resource);
-		string textureDirectory = m_resourceMng->GetStandardResourceDirectory(Texture_Resource);
+		string shaderDirectory = m_resourceMng->GetStandardResourceDirectory(Resource_Shader);
+		string textureDirectory = m_resourceMng->GetStandardResourceDirectory(Resource_Texture);
 
 		// Deferred shader
 		m_shaderDeferred = make_unique<DeferredShader>();
@@ -195,26 +195,26 @@ namespace Directus
 		// Noise texture (used by SSAO shader)
 		m_texNoiseMap = make_unique<Texture>(m_context);
 		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
-		m_texNoiseMap->SetTextureType(Normal_Texture);
+		m_texNoiseMap->SetTextureType(TextureType_Normal);
 
 		// Gizmo icons
 		m_gizmoTexLightDirectional = make_unique<Texture>(m_context);
 		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
-		m_gizmoTexLightDirectional->SetTextureType(Albedo_Texture);
+		m_gizmoTexLightDirectional->SetTextureType(TextureType_Albedo);
 
 		m_gizmoTexLightPoint = make_unique<Texture>(m_context);
 		m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
-		m_gizmoTexLightPoint->SetTextureType(Albedo_Texture);
+		m_gizmoTexLightPoint->SetTextureType(TextureType_Albedo);
 
 		m_gizmoTexLightSpot = make_unique<Texture>(m_context);
 		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
-		m_gizmoTexLightSpot->SetTextureType(Albedo_Texture);
+		m_gizmoTexLightSpot->SetTextureType(TextureType_Albedo);
 
 		m_gizmoRectLight = make_unique<Rectangle>(m_context);
 
 		// Performance Metrics
 		m_font = make_unique<Font>(m_context);
-		string fontDir = m_resourceMng->GetStandardResourceDirectory(Font_Resource);
+		string fontDir = m_resourceMng->GetStandardResourceDirectory(Resource_Font);
 		m_font->SetSize(12);
 		m_font->SetColor(Vector4(0.7f, 0.7f, 0.7f, 1.0f));
 		m_font->LoadFromFile(fontDir + "CalibriBold.ttf");
@@ -460,14 +460,14 @@ namespace Directus
 				shader._Get()->UpdatePerMaterialBuffer(material);
 
 				// Order the textures they way the shader expects them
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(Albedo_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(Roughness_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(Metallic_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(Normal_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(Height_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(Occlusion_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(Emission_Texture));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(Mask_Texture));
+				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Albedo));
+				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Roughness));
+				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Metallic));
+				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Normal));
+				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Height));
+				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Occlusion));
+				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Emission));
+				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Mask));
 
 				if (m_directionalLight)
 				{

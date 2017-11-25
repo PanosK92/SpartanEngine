@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Graphics/Texture.h"
 #include "Graphics/Material.h"
 #include "Logging/Log.h"
+#include "Resource/TextureInfo.h"
 //=============================================
 
 //= NAMESPACES ==========
