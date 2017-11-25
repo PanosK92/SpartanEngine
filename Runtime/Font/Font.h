@@ -64,7 +64,7 @@ namespace Directus
 		int GetIndexCount() { return m_indexCount; }
 			
 	private:	
-		bool CreateBuffers(std::vector<VertexPosTex>& vertices, std::vector<unsigned int>& indices);
+		bool UpdateBuffers(std::vector<VertexPosTex>& vertices, std::vector<unsigned int>& indices);
 
 		std::map<int, Character> m_characterInfo;
 		std::unique_ptr<Texture> m_textureAtlas;

@@ -70,7 +70,7 @@ namespace Directus
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create vertex buffer");
+			LOG_ERROR("D3D11VertexBuffer: Failed to create vertex buffer");
 			return false;
 		}
 
@@ -105,7 +105,7 @@ namespace Directus
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create vertex buffer");
+			LOG_ERROR("D3D11VertexBuffer: Failed to create vertex buffer");
 			return false;
 		}
 
@@ -140,7 +140,7 @@ namespace Directus
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to create vertex buffer");
+			LOG_ERROR("D3D11VertexBuffer: Failed to create vertex buffer");
 			return false;
 		}
 
@@ -168,7 +168,7 @@ namespace Directus
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, nullptr, &m_buffer);
 		if FAILED(result)
 		{
-			LOG_ERROR("Failed to create vertex buffer");
+			LOG_ERROR("D3D11VertexBuffer: Failed to create dynamic vertex buffer");
 			return false;
 		}
 
@@ -182,7 +182,7 @@ namespace Directus
 
 		if (!m_buffer)
 		{
-			LOG_ERROR("Can't map uninitialized vertex buffer.");
+			LOG_ERROR("D3D11VertexBuffer: Can't map uninitialized vertex buffer.");
 			return nullptr;
 		}
 
@@ -191,7 +191,7 @@ namespace Directus
 		HRESULT result = m_graphics->GetDeviceContext()->Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		if (FAILED(result))
 		{
-			LOG_ERROR("Failed to map vertex buffer.");
+			LOG_ERROR("D3D11VertexBuffer: Failed to map vertex buffer.");
 			return nullptr;
 		}
 

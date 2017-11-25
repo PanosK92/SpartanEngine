@@ -35,6 +35,11 @@ namespace Directus
 		~D3D11IndexBuffer();
 
 		bool Create(const std::vector<unsigned int>& indices);
+		bool CreateDynamic(unsigned int initialSize);
+
+		void* Map();
+		bool Unmap();
+
 		bool SetIA();
 
 	private:
