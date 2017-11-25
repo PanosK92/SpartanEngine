@@ -33,7 +33,7 @@ namespace Directus
 {
 	class Context;
 
-	struct Character
+	struct Glyph
 	{
 		int xLeft;
 		int xRight;
@@ -46,8 +46,7 @@ namespace Directus
 		float uvYTop;
 		float uvYBottom;
 		int descent;
-		int horizontalAdvance;
-		int verticalAdvance;
+		int horizontalOffset;
 	};
 
 	class DLL_API FontImporter
@@ -57,7 +56,7 @@ namespace Directus
 		~FontImporter();
 
 		void Initialize();
-		bool LoadFont(const std::string& filePath, int fontSize, std::vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, std::map<int, Character>& characterInfo);
+		bool LoadFont(const std::string& filePath, int fontSize, std::vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, std::map<unsigned int, Glyph>& characterInfo);
 
 	private:
 		void ComputeAtlasTextureDimensions(FT_FaceRec_* face, int& atlasWidth, int& atlasHeight, int& rowHeight);

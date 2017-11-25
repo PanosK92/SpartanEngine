@@ -36,7 +36,7 @@ namespace Directus
 		class Vector2;
 	}
 
-	struct Character;
+	struct Glyph;
 	struct VertexPosTex;
 	class Texture;
 	class D3D11VertexBuffer;
@@ -66,7 +66,7 @@ namespace Directus
 	private:	
 		bool UpdateBuffers(std::vector<VertexPosTex>& vertices, std::vector<unsigned int>& indices);
 
-		std::map<int, Character> m_characterInfo;
+		std::map<unsigned int, Glyph> m_glyphs;
 		std::unique_ptr<Texture> m_textureAtlas;
 		int m_fontSize;
 		int m_charMaxWidth;

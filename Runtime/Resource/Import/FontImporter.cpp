@@ -59,7 +59,7 @@ namespace Directus
 		}
 	}
 
-	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, map<int, Character>& characterInfo)
+	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, map<unsigned int, Glyph>& characterInfo)
 	{
 		FT_Face face;
 
@@ -91,7 +91,7 @@ namespace Directus
 		// Go through each glyph and create a texture atlas
 		atlasBuffer.resize(atlasWidth * atlasHeight);
 		int penX = 0, penY = 0;
-		for (int i = GLYPH_START; i < GLYPH_END; i++)
+		for (unsigned int i = GLYPH_START; i < GLYPH_END; i++)
 		{
 			if (HandleError(FT_Load_Char(face, i, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT)))
 			{
@@ -119,7 +119,7 @@ namespace Directus
 			}
 
 			// Save character info
-			Character character;
+			Glyph character;
 			character.xLeft = penX;
 			character.yTop = penY;
 			character.xRight = penX + bitmap->width;
@@ -131,8 +131,18 @@ namespace Directus
 			character.uvYTop = (float)character.yTop / (float)atlasHeight;
 			character.uvYBottom = (float)character.yBottom / (float)atlasHeight;
 			character.descent = rowHeight - face->glyph->bitmap_top;
-			character.horizontalAdvance = face->glyph->linearHoriAdvance;
-			character.verticalAdvance = face->glyph->linearVertAdvance;
+			character.horizontalOffset = face->glyph->advance.x >> 6;
+			// Kerning is the process of adjusting the position of two subsequent glyph images 
+			// in a string of text in order to improve the general appearance of text. 
+			// For example, if a glyph for an uppercase ‘A’ is followed by a glyph for an 
+			// uppercase ‘V’, the space between the two glyphs can be slightly reduced to 
+			// avoid extra ‘diagonal whitespace’.
+			if (i >= 1)
+			{
+				FT_Vector kerningVec;
+				FT_Get_Kerning(face, i - 1, i, FT_KERNING_DEFAULT, &kerningVec);
+				character.horizontalOffset += kerningVec.x >> 6;
+			}
 			characterInfo[i] = (character);
 
 			penX += bitmap->width + 1;
