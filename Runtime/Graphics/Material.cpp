@@ -342,7 +342,7 @@ namespace Directus
 		shader->SetResourceName("GBuffer.hlsl_" + to_string(shader->GetResourceID()));
 
 		// Add the shader to the pool and return it
-		return m_context->GetSubsystem<ResourceManager>()->Add(shader);
+		return m_context->GetSubsystem<ResourceManager>()->Add<ShaderVariation>(shader);
 	}
 
 	void** Material::GetShaderResource(TextureType type)

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Import/ModelImporter.h"
 #include "Import/ImageImporter.h"
 #include "Import/FontImporter.h"
+#include "../Graphics/Model.h"
 //===============================
 
 namespace Directus
@@ -61,47 +62,53 @@ namespace Directus
 				return GetResourceByName<T>(name);
 			}
 
-			// Create new resource
+			// Create new resource of provided type
 			std::shared_ptr<T> typed = std::make_shared<T>(m_context);
+			// Cast it to it's base
+			std::shared_ptr<Resource> base = ToBaseShared(typed);
 
 			// Assign filepath and name
-			typed->SetResourceFilePath(relativeFilePath);
-			typed->SetResourceName(name);
+			base->SetResourceFilePath(relativeFilePath);
+			base->SetResourceName(name);
 
 			// Load
-			typed->SetLoadState(Loading);
-			if (!typed->LoadFromFile(relativeFilePath))
+			base->SetLoadState(Loading);
+			if (!base->LoadFromFile(relativeFilePath))
 			{
 				LOG_WARNING("ResourceManager: Resource \"" + relativeFilePath + "\" failed to load");
-				typed->SetLoadState(Failed);
+				base->SetLoadState(Failed);
 				return std::weak_ptr<T>();
 			}
-			typed->SetLoadState(Completed);
+			base->SetLoadState(Completed);
 
-			return Add(typed);
+			return Add<T>(base);
 		}
 
-		// Adds a resource into the resource cache
+		// Adds a resource into the cache and returns the derived resource as a weak reference
 		template <class T>
-		std::weak_ptr<T> Add(std::weak_ptr<T> resource) { return Add(resource.lock()); }
-
-		// Adds a resource into the resource cache
-		template <class T>
-		std::weak_ptr<T> Add(std::shared_ptr<T> resource)
+		std::weak_ptr<T> Add(std::shared_ptr<Resource> resource)
 		{
 			if (!resource)
 				return std::weak_ptr<T>();
 
 			// If the resource is already loaded, return the existing one
 			if (m_resourceCache->IsCached(resource->GetResourceFilePath()))
+			{
 				return GetResourceByName<T>(FileSystem::GetFileNameNoExtensionFromFilePath(resource->GetResourceFilePath()));
+			}
+
+			Add(resource);
+			return ToDerivedWeak<T>(resource);
+		}
+
+		// Adds a resource into the cache (if it's not already cached)
+		void Add(std::shared_ptr<Resource> resource)
+		{
+			if (!resource || m_resourceCache->IsCached(resource->GetResourceFilePath()))
+				return;
 
 			// Add the resource
-			std::shared_ptr<Resource> base = ToBaseShared(resource);
-			m_resourceCache->Add(base);
-
-			// Return it
-			return resource;
+			m_resourceCache->Add(resource);
 		}
 
 		template <class T>

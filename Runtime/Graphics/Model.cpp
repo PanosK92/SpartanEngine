@@ -154,7 +154,7 @@ namespace Directus
 			return weak_ptr<Material>();
 
 		// Add it to our resources
-		weak_ptr<Material> weakMat = m_context->GetSubsystem<ResourceManager>()->Add(material);
+		weak_ptr<Material> weakMat = m_context->GetSubsystem<ResourceManager>()->Add<Material>(material);
 
 		// Save the material/shader in our custom format
 		material._Get()->Save(m_modelDirectoryMaterials + material->GetResourceName(), false);
@@ -173,7 +173,7 @@ namespace Directus
 			return weak_ptr<Animation>();
 
 		// Add it to our resources
-		auto weakAnim = m_context->GetSubsystem<ResourceManager>()->Add(animation);
+		auto weakAnim = m_context->GetSubsystem<ResourceManager>()->Add<Animation>(animation);
 
 		// Keep a reference to it
 		m_animations.push_back(weakAnim);
