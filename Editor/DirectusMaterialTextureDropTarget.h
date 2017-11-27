@@ -31,7 +31,7 @@ class DirectusInspector;
 namespace Directus
 {
     class ImageImporter;
-    class TextureInfo;
+    class Texture;
     enum TextureType;
 }
 //========================
@@ -53,7 +53,7 @@ private:
     DirectusInspector* m_inspector;
     Directus::TextureType m_textureType;
     QTimer* m_timer500ms;
-    Directus::TextureInfo* m_textureInfo;
+    Directus::Texture* m_texture;
     Directus::ImageImporter* m_imageLoader;
 
 public slots:

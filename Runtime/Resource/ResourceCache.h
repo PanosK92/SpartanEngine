@@ -36,12 +36,6 @@ namespace Directus
 		ResourceCache() {}
 		~ResourceCache() { Clear(); }
 
-		// Unloads all resources
-		void Clear()
-		{
-			m_resourceGroups.clear();
-		}
-
 		// Adds a resource
 		void Add(std::shared_ptr<Resource> resource)
 		{
@@ -131,31 +125,87 @@ namespace Directus
 			return resources;
 		}
 
-		// Returns all resources of a given type
-		const std::vector<std::shared_ptr<Resource>>& GetByType(ResourceType type)
+		// Checks whether a resource is already cached
+		bool IsCached(const std::string& filePath)
 		{
-			return m_resourceGroups[type];
-		}
-
-		// Checks whether a resource is already in the cache
-		bool CachedByName(std::shared_ptr<Resource> resource)
-		{
-			if (!resource)
-				return false;
-
-			if (resource->GetResourceName() == NOT_ASSIGNED)
+			if (filePath == NOT_ASSIGNED)
 			{
-				LOG_INFO("ResourceCache: CachedByName() might fail as no name has been assigned to the resource");
+				LOG_WARNING("ResourceCache:IsCached: Can't check if resource \"" + filePath + "\" is cached as the filepath is unassigned.");
 				return false;
 			}
 
-			std::vector<std::shared_ptr<Resource>>& vector = m_resourceGroups[resource->GetResourceType()];
-			bool exists = std::find(vector.begin(), vector.end(), resource) != vector.end();
+			ResourceType type = GetResourceTypeFromFilePath(filePath);
+			if (type == Resource_Unknown)
+			{
+				LOG_WARNING("ResourceCache:IsCached: Unable to determine resource type from path \"" + filePath + "\".");
+				return false;
+			}
 
-			return exists;
+			std::vector<std::shared_ptr<Resource>>& vector = m_resourceGroups[type];
+			std::string name = FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
+			for (const auto& resource : vector)
+			{
+				if (resource->GetResourceName() == name)
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
+		unsigned int GetMemoryUsageKB(ResourceType type)
+		{
+			unsigned int sizeKB = 0;
+			for (const auto& resource : m_resourceGroups[type])
+			{
+				sizeKB += resource->GetMemoryUsageKB();
+			}
+
+			return sizeKB;
+		}
+
+		// Returns all resources of a given type
+		const std::vector<std::shared_ptr<Resource>>& GetByType(ResourceType type) { return m_resourceGroups[type]; }
+		// Unloads all resources
+		void Clear() { m_resourceGroups.clear(); }
+
 	private:
+		ResourceType GetResourceTypeFromFilePath(const std::string& filePath)
+		{
+			ResourceType type = Resource_Unknown;
+			if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
+			{
+				type = Resource_Texture;
+			}
+			else if (FileSystem::IsSupportedModelFile(filePath) || FileSystem::IsEngineModelFile(filePath))
+			{
+				type = Resource_Model;
+			}
+			else if (FileSystem::IsSupportedAudioFile(filePath)) // engine doesn't use custom audio files
+			{
+				type = Resource_Audio;
+			}		
+			else if (FileSystem::IsSupportedShaderFile(filePath)) // engine doesn't use custom shader files
+			{
+				type = Resource_Shader;
+			}
+			else if (FileSystem::IsSupportedFontFile(filePath)) // engine doesn't use custom font files
+			{
+				type = Resource_Font;
+			}
+			else if (FileSystem::IsEngineMaterialFile(filePath))
+			{
+				type = Resource_Material;
+			}
+			else if (FileSystem::IsEngineScriptFile(filePath))
+			{
+				type = Resource_Script;
+			}
+
+			return type;
+		}
+
 		std::map<ResourceType, std::vector<std::shared_ptr<Resource>>> m_resourceGroups;
 	};
 }

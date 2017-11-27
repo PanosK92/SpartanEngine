@@ -429,6 +429,12 @@ namespace Directus
 
 	shared_ptr<Material> ModelImporter::AiMaterialToMaterial(Model* model, aiMaterial* assimpMaterial)
 	{
+		if (!model || !assimpMaterial)
+		{
+			LOG_WARNING("ModelImporter: Can't convert AiMaterial to Material, one of them is null.");
+			return nullptr;
+		}
+
 		auto material = make_shared<Material>(m_context);
 
 		//= NAME ============================================

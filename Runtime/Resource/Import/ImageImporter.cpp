@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
 #include "../../Graphics/Texture.h"
-#include "../TextureInfo.h"
 //====================================
 
 //= NAMESPACES ================
@@ -49,7 +48,7 @@ namespace Directus
 		FreeImage_DeInitialise();
 	}
 
-	void ImageImporter::LoadAsync(const string& filePath, TextureInfo& texInfo)
+	void ImageImporter::LoadAsync(const string& filePath, Texture* texInfo)
 	{
 		m_context->GetSubsystem<Threading>()->AddTask([this, &filePath, &texInfo]()
 		{
@@ -57,28 +56,21 @@ namespace Directus
 		});
 	}
 
-	bool ImageImporter::Load(const string& filePath, TextureInfo& texInfo)
+	bool ImageImporter::Load(const string& filePath, Texture* texture)
 	{
-		texInfo.loadState = Loading;
+		if (!texture)
+			return false;
 
-		// Validate the file path
-		if (!ValidateFilePath(filePath))
+		if (filePath.empty() || filePath == NOT_ASSIGNED)
 		{
-			texInfo.loadState = Failed;
+			LOG_WARNING("ImageImporter: Can't load image. No file path has been provided.");
 			return false;
 		}
 
-		// In case this is an engine texture, load it directly
-		if (FileSystem::IsEngineTextureFile(filePath))
+		if (!FileSystem::FileExists(filePath))
 		{
-			if (!LoadEngineTexture(filePath, texInfo))
-			{
-				texInfo.loadState = Failed;
-				return false;
-			}
-
-			texInfo.loadState = Completed;
-			return true;
+			LOG_WARNING("ImageImporter: Cant' load image. File path \"" + filePath + "\" is invalid.");
+			return false;
 		}
 
 		// Get image format
@@ -95,7 +87,6 @@ namespace Directus
 			if (!FreeImage_FIFSupportsReading(format))
 			{
 				LOG_WARNING("ImageImporter: Failed to detect the image format.");
-				texInfo.loadState = Failed;
 				return false;
 			}
 
@@ -106,7 +97,6 @@ namespace Directus
 		// but I am checking against it also, just in case.
 		if (format == -1 || format == FIF_UNKNOWN)
 		{
-			texInfo.loadState = Failed;
 			return false;
 		}
 
@@ -117,31 +107,31 @@ namespace Directus
 		FreeImage_FlipVertical(bitmapOriginal);
 
 		// Perform any scaling (if necessary)
-		bool userDefineDimensions = (texInfo.width != 0 && texInfo.height != 0);
-		bool dimensionMismatch = (FreeImage_GetWidth(bitmapOriginal) != texInfo.width && FreeImage_GetHeight(bitmapOriginal) != texInfo.height);
+		bool userDefineDimensions = (texture->GetWidth() != 0 && texture->GetHeight() != 0);
+		bool dimensionMismatch = (FreeImage_GetWidth(bitmapOriginal) != texture->GetWidth() && FreeImage_GetHeight(bitmapOriginal) != texture->GetHeight());
 		bool scale = userDefineDimensions && dimensionMismatch;
-		FIBITMAP* bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, texInfo.width, texInfo.height, FILTER_LANCZOS3) : bitmapOriginal;
+		FIBITMAP* bitmapScaled = scale ? FreeImage_Rescale(bitmapOriginal, texture->GetWidth(), texture->GetHeight(), FILTER_LANCZOS3) : bitmapOriginal;
 
 		// Convert it to 32 bits (if neccessery)
-		texInfo.bpp = FreeImage_GetBPP(bitmapOriginal);
-		FIBITMAP* bitmap32 = texInfo.bpp != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
-		texInfo.bpp = 32; // this is a hack, have to handle more elegant
+		FIBITMAP* bitmap32 = FreeImage_GetBPP(bitmapOriginal) != 32 ? FreeImage_ConvertTo32Bits(bitmapScaled) : bitmapScaled;
+		texture->SetBPP(32);
 
 		// Store some useful data	
-		texInfo.isTransparent = bool(FreeImage_IsTransparent(bitmap32));
-		texInfo.width = FreeImage_GetWidth(bitmap32);
-		texInfo.height = FreeImage_GetHeight(bitmap32);
-		texInfo.channels = ComputeChannelCount(bitmap32, texInfo.bpp);
+		texture->SetTransparency(bool(FreeImage_IsTransparent(bitmap32)));
+		texture->SetWidth(FreeImage_GetWidth(bitmap32));
+		texture->SetHeight(FreeImage_GetHeight(bitmap32));
+		texture->SetChannels(ComputeChannelCount(bitmap32, texture->GetBPP()));
 
 		// Fill RGBA vector with the data from the FIBITMAP
-		FIBTIMAPToRGBA(bitmap32, &texInfo.rgba);
+		texture->GetRGBA().emplace_back(std::vector<unsigned char>());
+		FIBTIMAPToRGBA(bitmap32, &texture->GetRGBA()[0]);
 
 		// Check if the image is grayscale
-		texInfo.isGrayscale = GrayscaleCheck(texInfo.rgba, texInfo.width, texInfo.height);
+		texture->SetGrayscale(GrayscaleCheck(texture->GetRGBA()[0], texture->GetWidth(), texture->GetHeight()));
 
-		if (texInfo.isUsingMipmaps)
+		if (texture->IsUsingMimmaps())
 		{
-			GenerateMipmapsFromFIBITMAP(bitmap32, texInfo);
+			GenerateMipmapsFromFIBITMAP(bitmap32, texture);
 		}
 
 		//= Free memory =====================================
@@ -149,7 +139,7 @@ namespace Directus
 		FreeImage_Unload(bitmap32);
 
 		// unload the scaled bitmap only if it was converted
-		if (texInfo.bpp != 32)
+		if (texture->GetBPP() != 32)
 		{
 			FreeImage_Unload(bitmapScaled);
 		}
@@ -160,35 +150,6 @@ namespace Directus
 			FreeImage_Unload(bitmapOriginal);
 		}
 		//====================================================
-
-		texInfo.loadState = Completed;
-		return true;
-	}
-
-	bool ImageImporter::ValidateFilePath(const string& filePath)
-	{
-		if (filePath.empty() || filePath == NOT_ASSIGNED)
-		{
-			LOG_WARNING("ImageImporter: Can't load image. No file path has been provided.");
-			return false;
-		}
-
-		if (!FileSystem::FileExists(filePath))
-		{
-			LOG_WARNING("ImageImporter: Cant' load image. File path \"" + filePath + "\" is invalid.");
-			return false;
-		}
-
-		return true;
-	}
-
-	bool ImageImporter::LoadEngineTexture(const string& filePath, TextureInfo& texInfo)
-	{
-		if (!texInfo.Deserialize(filePath))
-		{
-			LOG_WARNING("ImageImporter: Failed to load engine texture.");
-			return false;
-		}
 
 		return true;
 	}
@@ -239,45 +200,47 @@ namespace Directus
 		return true;
 	}
 
-	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, TextureInfo& texInfo)
+	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, Texture* texture)
 	{
+		if (!texture)
+			return;
+
 		// First mip is full size
-		texInfo.rgba_mimaps.emplace_back(move(texInfo.rgba));
-		int width = texInfo.width;
-		int height = texInfo.height;
+		int width = texture->GetWidth();
+		int height = texture->GetHeight();
 
 		// Compute the rest mip mipmapInfos
-		struct scalingProcess
+		struct rescaleJob
 		{
 			int width = 0;
 			int height = 0;
 			bool complete = false;
-			vector<unsigned char> data;
+			vector<unsigned char> rgba;
 
-			scalingProcess(int width, int height, bool scaled)
+			rescaleJob(int width, int height, bool scaled)
 			{
 				this->width = width;
 				this->height = height;
 				this->complete = scaled;
 			}
 		};
-		vector<scalingProcess> scalingJobs;
+		vector<rescaleJob> rescaleJobs;
 		while (width > 1 && height > 1)
 		{
 			width = max(width / 2, 1);
 			height = max(height / 2, 1);
 
-			scalingJobs.emplace_back(width, height, false);
+			rescaleJobs.emplace_back(width, height, false);
 		}
 
 		// Parallelize mipmap generation using multiple
 		// threads as FreeImage_Rescale() using FILTER_LANCZOS3 can take a while.
 		Threading* threading = m_context->GetSubsystem<Threading>();
-		for (auto& job : scalingJobs)
+		for (auto& job : rescaleJobs)
 		{
-			threading->AddTask([this, &job, &texInfo, &originalFIBITMAP]()
+			threading->AddTask([this, &job, &texture, &originalFIBITMAP]()
 			{
-				if (!RescaleFIBITMAP(originalFIBITMAP, job.width, job.height, job.data))
+				if (!RescaleFIBITMAP(originalFIBITMAP, job.width, job.height, job.rgba))
 				{
 					string mipSize = "(" + to_string(job.width) + "x" + to_string(job.height) + ")";
 					LOG_INFO("ImageImporter: Failed to create mip level " + mipSize + ".");
@@ -291,9 +254,9 @@ namespace Directus
 		while (!ready)
 		{
 			ready = true;
-			for (const auto& proccess : scalingJobs)
+			for (const auto& job : rescaleJobs)
 			{
-				if (!proccess.complete)
+				if (!job.complete)
 				{
 					ready = false;
 				}
@@ -301,9 +264,9 @@ namespace Directus
 		}
 
 		// Now copy all the mimaps
-		for (const auto& mimapInfo : scalingJobs)
+		for (const auto& job : rescaleJobs)
 		{
-			texInfo.rgba_mimaps.emplace_back(move(mimapInfo.data));
+			texture->GetRGBA().emplace_back(move(job.rgba));
 		}
 	}
 

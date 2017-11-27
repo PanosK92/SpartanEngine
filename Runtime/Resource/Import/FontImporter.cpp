@@ -59,7 +59,7 @@ namespace Directus
 		}
 	}
 
-	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, map<unsigned int, Glyph>& characterInfo)
+	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, map<unsigned int, Glyph>& glyphs)
 	{
 		FT_Face face;
 
@@ -118,32 +118,35 @@ namespace Directus
 				}
 			}
 
-			// Save character info
-			Glyph character;
-			character.xLeft = penX;
-			character.yTop = penY;
-			character.xRight = penX + bitmap->width;
-			character.yBottom = penY + bitmap->rows;
-			character.width = character.xRight - character.xLeft;
-			character.height = character.yBottom - character.yTop;
-			character.uvXLeft = (float)character.xLeft / (float)atlasWidth;
-			character.uvXRight = (float)character.xRight / (float)atlasWidth;
-			character.uvYTop = (float)character.yTop / (float)atlasHeight;
-			character.uvYBottom = (float)character.yBottom / (float)atlasHeight;
-			character.descent = rowHeight - face->glyph->bitmap_top;
-			character.horizontalOffset = face->glyph->advance.x >> 6;
+			// Save glyph info
+			Glyph glyph;
+			glyph.xLeft = penX;
+			glyph.yTop = penY;
+			glyph.xRight = penX + bitmap->width;
+			glyph.yBottom = penY + bitmap->rows;
+			glyph.width = glyph.xRight - glyph.xLeft;
+			glyph.height = glyph.yBottom - glyph.yTop;
+			glyph.uvXLeft = (float)glyph.xLeft / (float)atlasWidth;
+			glyph.uvXRight = (float)glyph.xRight / (float)atlasWidth;
+			glyph.uvYTop = (float)glyph.yTop / (float)atlasHeight;
+			glyph.uvYBottom = (float)glyph.yBottom / (float)atlasHeight;
+			glyph.descent = rowHeight - face->glyph->bitmap_top;
+			glyph.horizontalOffset = face->glyph->advance.x >> 6;
 			// Kerning is the process of adjusting the position of two subsequent glyph images 
 			// in a string of text in order to improve the general appearance of text. 
 			// For example, if a glyph for an uppercase ‘A’ is followed by a glyph for an 
 			// uppercase ‘V’, the space between the two glyphs can be slightly reduced to 
 			// avoid extra ‘diagonal whitespace’.
-			if (i >= 1)
+			if (i >= 1 && FT_HAS_KERNING(face))
 			{
 				FT_Vector kerningVec;
 				FT_Get_Kerning(face, i - 1, i, FT_KERNING_DEFAULT, &kerningVec);
-				character.horizontalOffset += kerningVec.x >> 6;
+				glyph.horizontalOffset += kerningVec.x >> 6;
 			}
-			characterInfo[i] = (character);
+			// horizontal distance from the current cursor position to the leftmost border of the glyph image's bounding box.
+			glyph.horizontalOffset += face->glyph->metrics.horiBearingX;
+
+			glyphs[i] = (glyph);
 
 			penX += bitmap->width + 1;
 		}

@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Graphics/Texture.h"
 #include "Graphics/Material.h"
 #include "Logging/Log.h"
-#include "Resource/TextureInfo.h"
+#include "Graphics/Texture.h"
 //=============================================
 
 //= NAMESPACES ==========
@@ -49,7 +49,7 @@ DirectusMaterialTextureDropTarget::DirectusMaterialTextureDropTarget(QWidget *pa
     setAcceptDrops(true);
     m_inspector = nullptr;
     m_imageLoader = nullptr;
-    m_textureInfo = nullptr;
+    m_texture = nullptr;
 }
 
 void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector, TextureType textureType)
@@ -78,31 +78,31 @@ void DirectusMaterialTextureDropTarget::LoadImageAsync(const std::string& filePa
         return;
 
     m_currentFilePath = filePath;
-    m_textureInfo = new TextureInfo(SLOT_SIZE, SLOT_SIZE);
-    m_imageLoader->LoadAsync(filePath, *m_textureInfo);
+    m_texture = new Texture(SLOT_SIZE, SLOT_SIZE);
+    m_imageLoader->LoadAsync(filePath, m_texture);
 }
 
 void DirectusMaterialTextureDropTarget::Update()
 {
-    if (!m_textureInfo)
+    if (!m_texture)
         return;
 
-    if (m_textureInfo->loadState == Failed)
+    if (m_texture->GetLoadState() == Failed)
     {
-        delete m_textureInfo;
-        m_textureInfo = nullptr;
+        delete m_texture;
+        m_texture = nullptr;
         return;
     }
 
-    if (m_textureInfo->loadState != Completed)
+    if (m_texture->GetLoadState() != Completed)
         return;
 
-    QImage image = QImage((const uchar*)m_textureInfo->rgba.data(), m_textureInfo->width, m_textureInfo->height, QImage::Format_RGBA8888);
+    QImage image = QImage((const uchar*)m_texture->GetRGBA().data(), m_texture->GetWidth(), m_texture->GetHeight(), QImage::Format_RGBA8888);
     QPixmap pixmap = QPixmap::fromImage(image);
     this->setPixmap(pixmap);
 
-    delete m_textureInfo;
-    m_textureInfo = nullptr;
+    delete m_texture;
+    m_texture = nullptr;
 }
 
 //= DROP ============================================================================

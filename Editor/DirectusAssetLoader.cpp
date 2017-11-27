@@ -26,11 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Scene.h"
 #include "FileSystem/FileSystem.h"
 #include "Resource/ResourceManager.h"
-#include "Resource/TextureInfo.h"
+#include "Graphics/Texture.h"
 //===================================
 
 //= NAMESPACES ==========
 using namespace Directus;
+using namespace std;
 //=======================
 
 DirectusAssetLoader::DirectusAssetLoader(QObject* parent) : QObject(parent)
@@ -118,9 +119,9 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
 
     emit Started();
 
-    TextureInfo texInfo = TextureInfo(m_width, m_height);
-    imageLoader->Load(m_filePath, texInfo);
-    auto image =  QImage((const uchar*)texInfo.rgba.data(), m_width, m_height, QImage::Format_RGBA8888);
+    shared_ptr<Texture> texture = make_shared<Texture>(m_width, m_height);
+    imageLoader->Load(m_filePath, texture.get());
+    auto image =  QImage((const uchar*)texture->GetRGBA()[0].data(), m_width, m_height, QImage::Format_RGBA8888);
     pixmap = QPixmap::fromImage(image);
 
     emit Finished();

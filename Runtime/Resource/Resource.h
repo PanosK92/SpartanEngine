@@ -43,6 +43,14 @@ namespace Directus
 		Resource_Font
 	};
 
+	enum LoadState
+	{
+		Idle,
+		Loading,
+		Completed,
+		Failed
+	};
+
 	class DLL_API Resource
 	{
 	public:
@@ -69,15 +77,19 @@ namespace Directus
 		std::string GetResourceFileName() { return FileSystem::GetFileNameNoExtensionFromFilePath(m_resourceFilePath); }
 		std::string GetResourceDirectory() { return FileSystem::GetDirectoryFromFilePath(m_resourceFilePath); }
 
-		// Resource Save/Load
 		virtual bool SaveToFile(const std::string& filePath) = 0;
 		virtual bool LoadFromFile(const std::string& filePath) = 0;
+		virtual unsigned int GetMemoryUsageKB() { return 0; }
+
+		LoadState GetLoadState() { return m_loadState; }
+		void SetLoadState(LoadState state) { m_loadState = state; }
 
 	protected:	
 		unsigned int m_resourceID = NOT_ASSIGNED_HASH;
 		std::string m_resourceName = NOT_ASSIGNED;
 		std::string m_resourceFilePath = NOT_ASSIGNED;
 		ResourceType m_resourceType = Resource_Unknown;
+		LoadState m_loadState = Idle;
 		Context* m_context = nullptr;
 	};
 }

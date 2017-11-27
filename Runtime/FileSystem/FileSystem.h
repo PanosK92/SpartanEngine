@@ -35,14 +35,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define METADATA_TYPE_AUDIOCLIP "Audio_Clip"
 //==========================================
 
-//= ENGINE EXTENSIONS =============
+//= ENGINE EXTENSIONS ==============
 #define SCENE_EXTENSION ".directus"
 #define MATERIAL_EXTENSION ".mat"
 #define MODEL_EXTENSION ".model"
 #define PREFAB_EXTENSION ".prefab"
 #define SHADER_EXTENSION ".shader"
 #define TEXTURE_EXTENSION ".texture"
-//=================================
+//==================================
 
 namespace Directus
 {
@@ -91,6 +91,7 @@ namespace Directus
 		static bool IsSupportedImageFile(const std::string& filePath);	
 		static bool IsSupportedModelFile(const std::string& filePath);
 		static bool IsSupportedShaderFile(const std::string& filePath);
+		static bool IsSupportedFontFile(const std::string& filePath);
 		static bool IsEngineScriptFile(const std::string& filePath);
 		static bool IsEnginePrefabFile(const std::string& filePath);		
 		static bool IsEngineMaterialFile(const std::string& filePath);
@@ -114,6 +115,7 @@ namespace Directus
 		static std::vector<std::string> GetSupportedModelFormats();
 		static std::vector<std::string> GetSupportedShaderFormats();
 		static std::vector<std::string> GetSupportedScriptFormats();
+		static std::vector<std::string> GetSupportedFontFormats();
 		//==========================================================
 
 	private:
@@ -122,5 +124,6 @@ namespace Directus
 		static std::vector<std::string> m_supportedModelFormats;
 		static std::vector<std::string> m_supportedShaderFormats;
 		static std::vector<std::string> m_supportedScriptFormats;
+		static std::vector<std::string> m_supportedFontFormats;
 	};
 }

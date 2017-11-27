@@ -39,6 +39,7 @@ namespace Directus
 	vector<string> FileSystem::m_supportedModelFormats;
 	vector<string> FileSystem::m_supportedShaderFormats;
 	vector<string> FileSystem::m_supportedScriptFormats;
+	vector<string> FileSystem::m_supportedFontFormats;
 
 	void FileSystem::Initialize()
 	{
@@ -151,6 +152,21 @@ namespace Directus
 		// Set supported script formats
 		{
 			m_supportedScriptFormats.push_back(".as");
+		}
+
+		// Set supported font formats
+		{
+			m_supportedScriptFormats.push_back(".ttf");
+			m_supportedScriptFormats.push_back(".ttc");
+			m_supportedScriptFormats.push_back(".cff");
+			m_supportedScriptFormats.push_back(".woff");
+			m_supportedScriptFormats.push_back(".otf");
+			m_supportedScriptFormats.push_back(".otc");
+			m_supportedScriptFormats.push_back(".pfa");
+			m_supportedScriptFormats.push_back(".pfb");
+			m_supportedScriptFormats.push_back(".fnt");
+			m_supportedScriptFormats.push_back(".bdf");
+			m_supportedScriptFormats.push_back(".pfr");
 		}
 	}
 
@@ -471,6 +487,20 @@ namespace Directus
 		return false;
 	}
 
+	bool FileSystem::IsSupportedFontFile(const string& path)
+	{
+		string fileExt = GetExtensionFromFilePath(path);
+
+		auto supportedFormats = GetSupportedFontFormats();
+		for (const auto& format : supportedFormats)
+		{
+			if (fileExt == format || fileExt == ConvertToUppercase(format))
+				return true;
+		}
+
+		return false;
+	}
+
 	bool FileSystem::IsEngineScriptFile(const string& path)
 	{
 		string fileExt = GetExtensionFromFilePath(path);
@@ -684,5 +714,6 @@ namespace Directus
 	vector<string> FileSystem::GetSupportedModelFormats() { return m_supportedModelFormats; }
 	vector<string> FileSystem::GetSupportedShaderFormats() { return m_supportedShaderFormats; }
 	vector<string> FileSystem::GetSupportedScriptFormats() { return m_supportedScriptFormats; }
+	vector<string> FileSystem::GetSupportedFontFormats() { return m_supportedFontFormats; }
 	//=========================================================================================
 }
