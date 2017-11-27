@@ -47,6 +47,7 @@ namespace Directus
 		m_triangleCount = 0;
 		m_boundingBox = BoundingBox();
 		m_onUpdate = nullptr;
+		m_memoryUsageKB = 0;
 	}
 
 	Mesh::~Mesh()
@@ -105,6 +106,8 @@ namespace Directus
 		}
 
 		m_boundingBox.ComputeFromMesh(this);
+
+		m_memoryUsageKB = ComputeMemoryUsageKB();
 	}
 
 	void Mesh::SetVertices(const vector<VertexPosTexTBN>& vertices)
@@ -133,6 +136,8 @@ namespace Directus
 		{
 			m_onUpdate();
 		}
+
+		m_memoryUsageKB = ComputeMemoryUsageKB();
 	}
 
 	// This is attached to CreateBuffers() which is part of the MeshFilter component.
@@ -161,6 +166,15 @@ namespace Directus
 		{
 			meshData->GetVertices()[i].position *= scale;
 		}
+	}
+
+	unsigned int Mesh::ComputeMemoryUsageKB()
+	{
+		unsigned int sizeKB = 0;
+		sizeKB += m_vertices.size() * sizeof(VertexPosTexTBN);
+		sizeKB += m_indices.size() * sizeof(unsigned int);
+
+		return sizeKB / 1000;
 	}
 	//==============================================================================
 }

@@ -55,6 +55,7 @@ namespace Directus
 			return;
 
 		m_resourceManager = m_context->GetSubsystem<ResourceManager>();
+		m_memoryUsageKB = 0;
 	}
 
 	Model::~Model()
@@ -85,6 +86,13 @@ namespace Directus
 
 		bool engineFormat = FileSystem::GetExtensionFromFilePath(modelFilePath) == MODEL_EXTENSION;
 		bool success = engineFormat ? LoadFromEngineFormat(modelFilePath) : LoadFromForeignFormat(modelFilePath);
+
+		// Compute memory usage
+		m_memoryUsageKB = 0;
+		for (const auto& mesh : m_meshes)
+		{
+			m_memoryUsageKB += mesh->GetMemoryUsageKB();
+		}
 
 		return success;
 	}

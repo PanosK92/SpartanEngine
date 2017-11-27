@@ -2434,7 +2434,23 @@ QSplitter::handle:vertical
                      <number>0</number>
                     </property>
                     <item>
-                     <widget class="DirectusConsole" name="directusConsole"/>
+                     <widget class="DirectusConsole" name="directusConsole">
+                      <property name="frameShape">
+                       <enum>QFrame::StyledPanel</enum>
+                      </property>
+                      <property name="frameShadow">
+                       <enum>QFrame::Sunken</enum>
+                      </property>
+                      <property name="autoFormatting">
+                       <set>QTextEdit::AutoNone</set>
+                      </property>
+                      <property name="tabChangesFocus">
+                       <bool>false</bool>
+                      </property>
+                      <property name="readOnly">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
                     </item>
                    </layout>
                   </item>

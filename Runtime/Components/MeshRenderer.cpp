@@ -134,7 +134,7 @@ namespace Directus
 			return;
 		}
 
-		m_material = g_context->GetSubsystem<ResourceManager>()->Add(material.lock());
+		m_material = g_context->GetSubsystem<ResourceManager>()->Add(material);
 	}
 
 	weak_ptr<Material> MeshRenderer::SetMaterialFromFile(const string& filePath)
@@ -153,13 +153,14 @@ namespace Directus
 	void MeshRenderer::SetMaterialByType(MaterialType type)
 	{
 		shared_ptr<Material> material;
+		string projectDir = g_context->GetSubsystem<ResourceManager>()->GetProjectDirectory();
 
 		switch (type)
 		{
 		case Material_Basic:
 			material = make_shared<Material>(g_context);
-			material->SetResourceName("Basic");
-			material->SetResourceFilePath("Standard_Asset_Basic_Material");
+			material->SetResourceName("Standard");
+			material->SetResourceFilePath(projectDir + "Standard_Asset_Standard_Material" + string(MATERIAL_EXTENSION));
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);
 			m_materialType = Material_Basic;
@@ -167,8 +168,8 @@ namespace Directus
 
 		case Material_Skybox:
 			material = make_shared<Material>(g_context);
-			material->SetResourceName("Skybox");
-			material->SetResourceFilePath("Standard_Asset_Skybox_Material");
+			material->SetResourceName("Standard_Skybox");
+			material->SetResourceFilePath(projectDir + "Standard_Asset_Standard_Material_Skybox" + string(MATERIAL_EXTENSION));
 			material->SetCullMode(CullFront);
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);

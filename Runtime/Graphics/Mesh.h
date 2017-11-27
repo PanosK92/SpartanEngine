@@ -73,9 +73,12 @@ namespace Directus
 		void SetScale(float scale);
 		//=====================================================
 
+		unsigned int GetMemoryUsageKB() { return m_memoryUsageKB; }
+
 	private:
 		//= HELPER FUNCTIONS =============================
 		static void SetScale(Mesh* meshData, float scale);
+		unsigned int ComputeMemoryUsageKB();
 		//================================================
 
 		unsigned int m_id;
@@ -93,5 +96,7 @@ namespace Directus
 		Math::BoundingBox m_boundingBox;
 
 		std::function<void()> m_onUpdate;
+
+		unsigned int m_memoryUsageKB;
 	};
 }

@@ -48,10 +48,11 @@ namespace Directus
 		Model(Context* context);
 		~Model();
 
-		//= RESOURCE INTERFACE ================================
+		//= RESOURCE INTERFACE =============================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
-		//======================================================
+		unsigned int GetMemoryUsageKB() override { return m_memoryUsageKB; }
+		//==================================================================
 
 		// Sets the  GameObject that represents this model in the scene
 		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
@@ -78,6 +79,8 @@ namespace Directus
 		float GetBoundingSphereRadius();
 
 		const std::string& GetDirectoryTexture() { return m_modelDirectoryTextures; }
+
+		unsigned int GetMeshCount() { return m_meshes.size(); }
 
 	private:
 		// Load the model from disk
@@ -113,5 +116,7 @@ namespace Directus
 
 		// Dependencies
 		ResourceManager* m_resourceManager;
+
+		unsigned int m_memoryUsageKB;
 	};
 }

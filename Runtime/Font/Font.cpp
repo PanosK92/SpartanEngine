@@ -85,7 +85,10 @@ namespace Directus
 
 		// Create a font texture atlas form the provided data
 		m_textureAtlas = make_unique<Texture>(m_context);
-		m_textureAtlas->CreateShaderResource(texAtlasWidth, texAtlasHeight, 1, atlasBuffer, R_8_UNORM);
+		if (!m_textureAtlas->CreateShaderResource(texAtlasWidth, texAtlasHeight, 1, atlasBuffer, R_8_UNORM))
+		{
+			LOG_ERROR("Font: Failed to create shader resource.");
+		}
 
 		return true;
 	}

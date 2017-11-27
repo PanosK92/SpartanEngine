@@ -53,12 +53,13 @@ namespace Directus
 		{
 			// Try to make the path relative to the engine (in case it isn't)
 			std::string relativeFilePath = FileSystem::GetRelativeFilePath(filePath);
-			std::string name = FileSystem::GetFileNameFromFilePath(relativeFilePath);
+			std::string name = FileSystem::GetFileNameNoExtensionFromFilePath(relativeFilePath);
 
 			// Check if the resource is already loaded
-			auto cached = GetResourceByName<T>(name);
-			if (!cached.expired())
-				return cached;
+			if (m_resourceCache->IsCached(filePath))
+			{
+				return GetResourceByName<T>(name);
+			}
 
 			// Create new resource
 			std::shared_ptr<T> typed = std::make_shared<T>(m_context);
@@ -67,15 +68,22 @@ namespace Directus
 			typed->SetResourceFilePath(relativeFilePath);
 			typed->SetResourceName(name);
 
-			// Load 
+			// Load
+			typed->SetLoadState(Loading);
 			if (!typed->LoadFromFile(relativeFilePath))
 			{
 				LOG_WARNING("ResourceManager: Resource \"" + relativeFilePath + "\" failed to load");
-				return cached;
+				typed->SetLoadState(Failed);
+				return std::weak_ptr<T>();
 			}
+			typed->SetLoadState(Completed);
 
 			return Add(typed);
 		}
+
+		// Adds a resource into the resource cache
+		template <class T>
+		std::weak_ptr<T> Add(std::weak_ptr<T> resource) { return Add(resource.lock()); }
 
 		// Adds a resource into the resource cache
 		template <class T>
@@ -84,14 +92,15 @@ namespace Directus
 			if (!resource)
 				return std::weak_ptr<T>();
 
-			std::shared_ptr<Resource> base = ToBaseShared(resource);
-
 			// If the resource is already loaded, return the existing one
-			if (m_resourceCache->CachedByName(base))
-				return ToDerivedWeak<T>(m_resourceCache->GetByName(base->GetResourceName()));
+			if (m_resourceCache->IsCached(resource->GetResourceFilePath()))
+				return GetResourceByName<T>(FileSystem::GetFileNameNoExtensionFromFilePath(resource->GetResourceFilePath()));
 
-			// Else, add the resource and return it
+			// Add the resource
+			std::shared_ptr<Resource> base = ToBaseShared(resource);
 			m_resourceCache->Add(base);
+
+			// Return it
 			return resource;
 		}
 
@@ -102,7 +111,7 @@ namespace Directus
 				return;
 
 			resource._Get()->SetResourceFilePath(filePath);
-			resource._Get()->SetResourceName(FileSystem::GetFileNameFromFilePath(filePath));
+			resource._Get()->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath));
 			resource._Get()->SaveToFile(filePath);
 		}
 
@@ -160,6 +169,9 @@ namespace Directus
 		{
 			m_resourceCache->GetResourceFilePaths(filePaths);
 		}
+
+		// Memory
+		unsigned int GetMemoryUsageKB(ResourceType type) { return m_resourceCache->GetMemoryUsageKB(type); }
 
 		// Directories
 		void AddStandardResourceDirectory(ResourceType type, const std::string& directory);

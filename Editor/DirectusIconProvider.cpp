@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "Core/Context.h"
 #include "Resource/ResourceManager.h"
-#include "Resource/TextureInfo.h"
+#include "Graphics/Texture.h"
 //========================================
 
 //= NAMESPACES ==========
@@ -63,14 +63,25 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
 
     string filePath = info.absoluteFilePath().toStdString();
 
-    // Thumbnail
+    // Thumbnail from foreign formats
     if(FileSystem::IsSupportedImageFile(filePath) && m_imageImporter)
     {
         unsigned int width = 100;
         unsigned int height = 100;
-        TextureInfo texInfo = TextureInfo(width, height);
-        m_imageImporter->Load(filePath, texInfo);
-        QImage image =  QImage((const uchar*)texInfo.rgba.data(), width, height, QImage::Format_RGBA8888);
+        shared_ptr<Texture> texture = make_shared<Texture>(width, height);
+        m_imageImporter->Load(filePath, texture.get());
+        QImage image =  QImage((const uchar*)texture->GetRGBA().data(), width, height, QImage::Format_RGBA8888);
+        QPixmap pixmap = QPixmap::fromImage(image);
+        return pixmap;
+    }
+    // Thumbnail from engine format
+    if(FileSystem::IsEngineTextureFile(filePath))
+    {
+        unsigned int width = 100;
+        unsigned int height = 100;
+        shared_ptr<Texture> texture = make_shared<Texture>(width, height);
+        texture->Deserialize(filePath);
+        QImage image =  QImage((const uchar*)texture->GetRGBA().data(), width, height, QImage::Format_RGBA8888);
         QPixmap pixmap = QPixmap::fromImage(image);
         return pixmap;
     }
