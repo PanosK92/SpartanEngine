@@ -24,11 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "../Resource/Resource.h"
 #include <memory>
-#include "D3D11/D3D11Texture.h"
 //===============================
 
 namespace Directus
 {
+	class D3D11Texture;
+
 	enum TextureType
 	{
 		TextureType_Unknown,
@@ -133,7 +134,7 @@ namespace Directus
 
 		bool m_isDirty;
 		unsigned int m_memoryUsageKB = 0;
-		std::unique_ptr<D3D11Texture> m_textureAPI;
+		std::shared_ptr<D3D11Texture> m_textureAPI;
 		TextureFormat m_format = RGBA_8_UNORM;
 
 		//= DATA ======================================

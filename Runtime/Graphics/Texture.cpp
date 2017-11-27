@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/ImageImporter.h"
 #include "../Resource/Import/DDSTextureImporter.h"
 #include "../Resource/ResourceManager.h"
-
+#include "D3D11/D3D11Texture.h"
 #include "../IO/StreamIO.h"
 //================================================
 
@@ -65,7 +65,7 @@ namespace Directus
 		// Texture
 		m_context = context;
 		m_isUsingMipmaps = true;
-		m_textureAPI = make_unique<D3D11Texture>(m_context->GetSubsystem<Graphics>());
+		m_textureAPI = make_shared<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 		m_isDirty = false;
 	}
 

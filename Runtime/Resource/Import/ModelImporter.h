@@ -20,11 +20,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
+#include <string>
 
-//= INCLUDES ======================
-#include "../../Graphics/Texture.h"
-#include "../../Graphics/Model.h"
-//=================================
+//= INCLUDES =================
+#include "../../Core/Helper.h"
+#include <memory>
+//============================
 
 struct aiNode;
 struct aiScene;
@@ -33,6 +34,9 @@ struct aiMesh;
 
 namespace Directus
 {
+	enum TextureType;
+	class Mesh;
+	class Context;
 	class Material;
 	class GameObject;
 	class Model;

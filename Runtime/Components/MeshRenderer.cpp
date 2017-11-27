@@ -134,7 +134,7 @@ namespace Directus
 			return;
 		}
 
-		m_material = g_context->GetSubsystem<ResourceManager>()->Add(material);
+		m_material = g_context->GetSubsystem<ResourceManager>()->Add<Material>(material.lock());
 	}
 
 	weak_ptr<Material> MeshRenderer::SetMaterialFromFile(const string& filePath)

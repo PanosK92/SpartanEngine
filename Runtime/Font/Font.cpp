@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/D3D11/D3D11VertexBuffer.h"
 #include "../Graphics/D3D11/D3D11IndexBuffer.h"
 #include "../Graphics/D3D11/D3D11GraphicsDevice.h"
+#include "../Graphics/Texture.h"
 #include "../Core/Settings.h"
 //================================================
 

@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================================
 #include "ModelImporter.h"
+#include <vector>
+#include <future>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
-#include <vector>
 #include "../../Core/Scene.h"
 #include "../../Core/GameObject.h"
 #include "../../Core/Context.h"
@@ -37,7 +38,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Graphics/Model.h"
 #include "../../Graphics/Animation.h"
 #include "../../Graphics/Mesh.h"
-#include <future>
 #include "../../EventSystem/EventSystem.h"
 //=================================================
 
