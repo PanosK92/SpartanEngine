@@ -95,9 +95,10 @@ namespace Directus
 			return;
 
 		// DIRTY CHECK
-		if (m_lastKnownRotation != g_transform->GetRotation())
+		if (m_lastPos != g_transform->GetPosition() || m_lastRot != g_transform->GetRotation())
 		{
-			m_lastKnownRotation = g_transform->GetRotation();
+			m_lastPos = g_transform->GetPosition();
+			m_lastRot = g_transform->GetRotation();
 			m_isDirty = true;
 		}
 
@@ -105,12 +106,12 @@ namespace Directus
 			return;
 
 		// Used to prevent directional light
-		// from casting shadows form underneath
+		// from casting shadows from underneath
 		// the scene which can look weird
 		ClampRotation();
 
 		Camera* mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>();
-		m_frustrum->Construct(ComputeViewMatrix(), ComputeOrthographicProjectionMatrix(2), mainCamera->GetFarPlane());
+		m_frustrum->Construct(GetViewMatrix(), GetOrthographicProjectionMatrix(2), mainCamera->GetFarPlane());
 	}
 
 	void Light::Serialize(StreamIO* stream)
@@ -138,6 +139,7 @@ namespace Directus
 	void Light::SetLightType(LightType type)
 	{
 		m_lightType = type;
+		m_isDirty = true;
 	}
 
 	float Light::GetShadowTypeAsFloat()
@@ -154,11 +156,13 @@ namespace Directus
 	void Light::SetRange(float range)
 	{
 		m_range = Clamp(range, 0.0f, INFINITY);
+		m_isDirty = true;
 	}
 
 	void Light::SetAngle(float angle)
 	{
 		m_angle = Clamp(angle, 0.0f, 1.0f);
+		m_isDirty = true;
 	}
 
 	Vector3 Light::GetDirection()
@@ -179,8 +183,12 @@ namespace Directus
 		}
 	}
 
-	Matrix Light::ComputeViewMatrix()
+	Matrix Light::GetViewMatrix()
 	{
+		// Only re-compute if dirty
+		if (!m_isDirty)
+			return m_viewMatrix;
+
 		// Used to prevent directional light
 		// from casting shadows form underneath
 		// the scene which can look weird
@@ -197,14 +205,19 @@ namespace Directus
 		return m_viewMatrix;
 	}
 
-	Matrix Light::ComputeOrthographicProjectionMatrix(int cascadeIndex)
+	Matrix Light::GetOrthographicProjectionMatrix(int cascadeIndex)
 	{
 		if (!g_context || cascadeIndex >= m_shadowMaps.size())
 			return Matrix::Identity;
 
+		// Only re-compute if dirty
+		if (!m_isDirty)
+			return m_projectionMatrix;
+
 		auto mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get();
 		Vector3 centerPos = mainCamera ? mainCamera->GetTransform()->GetPosition() : Vector3::Zero;
-		return m_shadowMaps[cascadeIndex]->ComputeProjectionMatrix(cascadeIndex, centerPos, ComputeViewMatrix());
+		m_projectionMatrix = m_shadowMaps[cascadeIndex]->ComputeProjectionMatrix(cascadeIndex, centerPos, GetViewMatrix());
+		return m_projectionMatrix;
 	}
 
 	void Light::SetShadowCascadeAsRenderTarget(int cascade)

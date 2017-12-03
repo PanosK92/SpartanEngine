@@ -41,6 +41,10 @@ namespace Directus
 	{
 		m_context = context;
 		FreeImage_Initialise(true);
+
+		// Log version
+		string version = FreeImage_GetVersion();
+		LOG_INFO("ImageImporter: FreeImage " + version);
 	}
 
 	ImageImporter::~ImageImporter()
@@ -75,7 +79,7 @@ namespace Directus
 
 		// Get image format
 		FREE_IMAGE_FORMAT format = FreeImage_GetFileType(filePath.c_str(), 0);
-		
+
 		// If the format is unknown
 		if (format == FIF_UNKNOWN)
 		{
@@ -124,7 +128,7 @@ namespace Directus
 
 		// Fill RGBA vector with the data from the FIBITMAP
 		texture->GetRGBA().emplace_back(std::vector<unsigned char>());
-		FIBTIMAPToRGBA(bitmap32, &texture->GetRGBA()[0]);
+		GetBitsFromFIBITMAP(bitmap32, texture->GetRGBA()[0]);
 
 		// Check if the image is grayscale
 		texture->SetGrayscale(GrayscaleCheck(texture->GetRGBA()[0], texture->GetWidth(), texture->GetHeight()));
@@ -154,9 +158,23 @@ namespace Directus
 		return true;
 	}
 
-	unsigned ImageImporter::ComputeChannelCount(FIBITMAP* fibtimap, unsigned int bpp)
+	bool ImageImporter::RescaleBits(vector<unsigned char>& rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int toWidth, unsigned int toHeight)
 	{
-		FREE_IMAGE_TYPE imageType = FreeImage_GetImageType(fibtimap);
+		if (rgba.empty())
+		{
+			LOG_WARNING("ImageImporter: Can't rescale bits. Provided bits are empty.");
+			return false;
+		}
+
+		unsigned int pitch = fromWidth * 4;
+		FIBITMAP* bitmap = FreeImage_ConvertFromRawBits(&rgba[0], fromWidth, fromHeight, pitch, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
+		bool result = GetRescaledBitsFromBitmap(bitmap, toWidth, toHeight, rgba);
+		return result;
+	}
+
+	unsigned int ImageImporter::ComputeChannelCount(FIBITMAP* bitmap, unsigned int bpp)
+	{
+		FREE_IMAGE_TYPE imageType = FreeImage_GetImageType(bitmap);
 		if (imageType != FIT_BITMAP)
 			return 0;
 
@@ -172,59 +190,83 @@ namespace Directus
 		return 0;
 	}
 
-	bool ImageImporter::FIBTIMAPToRGBA(FIBITMAP* fibtimap, vector<unsigned char>* rgba)
+	bool ImageImporter::GetBitsFromFIBITMAP(FIBITMAP* bitmap, vector<unsigned char>& rgba)
 	{
-		int width = FreeImage_GetWidth(fibtimap);
-		int height = FreeImage_GetHeight(fibtimap);
+		int width = FreeImage_GetWidth(bitmap);
+		int height = FreeImage_GetHeight(bitmap);
 
-		unsigned int bytespp = width != 0 ? FreeImage_GetLine(fibtimap) / width : -1;
-		if (bytespp == -1)
+		if (width == 0 || height == 0)
 			return false;
+
+		unsigned int bytesPerPixel = FreeImage_GetLine(bitmap) / width;
+		rgba.reserve(4 * width * height);
 
 		// Construct an RGBA array
 		for (unsigned int y = 0; y < height; y++)
 		{
-			unsigned char* bits = (unsigned char*)FreeImage_GetScanLine(fibtimap, y);
+			unsigned char* bits = (unsigned char*)FreeImage_GetScanLine(bitmap, y);
 			for (unsigned int x = 0; x < width; x++)
 			{
-				rgba->emplace_back(bits[FI_RGBA_RED]);
-				rgba->emplace_back(bits[FI_RGBA_GREEN]);
-				rgba->emplace_back(bits[FI_RGBA_BLUE]);
-				rgba->emplace_back(bits[FI_RGBA_ALPHA]);
+				rgba.emplace_back(bits[FI_RGBA_RED]);
+				rgba.emplace_back(bits[FI_RGBA_GREEN]);
+				rgba.emplace_back(bits[FI_RGBA_BLUE]);
+				rgba.emplace_back(bits[FI_RGBA_ALPHA]);
 
 				// jump to next pixel
-				bits += bytespp;
+				bits += bytesPerPixel;
 			}
 		}
 
 		return true;
 	}
 
-	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, Texture* texture)
+	bool ImageImporter::GetRescaledBitsFromBitmap(FIBITMAP* bitmap, int width, int height, vector<unsigned char>& rgbaOut)
+	{
+		if (!bitmap || width == 0 || height == 0)
+			return false;
+
+		rgbaOut.clear();
+		rgbaOut.shrink_to_fit();
+
+		// Rescale
+		FIBITMAP* scaled = FreeImage_Rescale(bitmap, width, height, FILTER_LANCZOS3);
+
+		// Extract RGBA data from the FIBITMAP
+		bool result = GetBitsFromFIBITMAP(scaled, rgbaOut);
+
+		// Unload the FIBITMAP
+		FreeImage_Unload(scaled);
+
+		return result;
+	}
+
+	void ImageImporter::GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, Texture* texture)
 	{
 		if (!texture)
 			return;
 
-		// First mip is full size
+		// First mip is full size, we won't do anything special for it
 		int width = texture->GetWidth();
 		int height = texture->GetHeight();
 
-		// Compute the rest mip mipmapInfos
-		struct rescaleJob
+		// Define a struct that the threads will work with
+		struct RescaleJob
 		{
 			int width = 0;
 			int height = 0;
 			bool complete = false;
 			vector<unsigned char> rgba;
 
-			rescaleJob(int width, int height, bool scaled)
+			RescaleJob(int width, int height, bool scaled)
 			{
 				this->width = width;
 				this->height = height;
 				this->complete = scaled;
 			}
 		};
-		vector<rescaleJob> rescaleJobs;
+		vector<RescaleJob> rescaleJobs;
+
+		// For each mip level that we need, add a job
 		while (width > 1 && height > 1)
 		{
 			width = max(width / 2, 1);
@@ -238,9 +280,9 @@ namespace Directus
 		Threading* threading = m_context->GetSubsystem<Threading>();
 		for (auto& job : rescaleJobs)
 		{
-			threading->AddTask([this, &job, &texture, &originalFIBITMAP]()
+			threading->AddTask([this, &job, &texture, &bitmap]()
 			{
-				if (!RescaleFIBITMAP(originalFIBITMAP, job.width, job.height, job.rgba))
+				if (!GetRescaledBitsFromBitmap(bitmap, job.width, job.height, job.rgba))
 				{
 					string mipSize = "(" + to_string(job.width) + "x" + to_string(job.height) + ")";
 					LOG_INFO("ImageImporter: Failed to create mip level " + mipSize + ".");
@@ -263,29 +305,18 @@ namespace Directus
 			}
 		}
 
-		// Now copy all the mimaps
+		// Now move the mip map data into the texture
 		for (const auto& job : rescaleJobs)
 		{
 			texture->GetRGBA().emplace_back(move(job.rgba));
 		}
 	}
 
-	bool ImageImporter::RescaleFIBITMAP(FIBITMAP* fibtimap, int width, int height, vector<unsigned char>& rgba)
-	{
-		// Rescale
-		FIBITMAP* scaled = FreeImage_Rescale(fibtimap, width, height, FILTER_LANCZOS3);
-
-		// Extract RGBA data from the FIBITMAP
-		bool result = FIBTIMAPToRGBA(scaled, &rgba);
-
-		// Unload the FIBITMAP
-		FreeImage_Unload(scaled);
-
-		return result;
-	}
-
 	bool ImageImporter::GrayscaleCheck(const vector<unsigned char>& dataRGBA, int width, int height)
 	{
+		if (dataRGBA.empty())
+			return false;
+
 		int grayPixels = 0;
 		int totalPixels = width * height;
 		int channels = 4;

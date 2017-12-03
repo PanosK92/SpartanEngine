@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshRenderer.h"
 #include "../EventSystem/EventSystem.h"
 #include "../Resource/ResourceManager.h"
+#include "GameObject.h"
 //======================================
 
 //= NAMESPACES ================

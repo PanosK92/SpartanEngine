@@ -2,8 +2,9 @@
 #include "DirectusProgressBar.h"
 #include "ui_AssetLoadingDialog.h"
 #include <QTimer>
-#include "Resource/ResourceManager.h"
 #include <memory>
+#include "Resource/ResourceManager.h"
+#include "Core/Scene.h"
 //===================================
 
 //= NAMESPACES ==========

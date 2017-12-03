@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "Resource/ResourceManager.h"
 #include "Graphics/Texture.h"
+#include "directusutilities.h"
 //===================================
 
 //= NAMESPACES ==========
@@ -104,13 +105,6 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
         return pixmap;
     }
 
-    ImageImporter* imageLoader = m_context->GetSubsystem<ResourceManager>()->GetImageImporter()._Get();
-    if (!imageLoader)
-    {
-        LOG_WARNING("DirectusAssetLoader: Can't load texture from file, ImageLoader uninitialized.");
-        return pixmap;
-    }
-
     if (!FileSystem::FileExists(m_filePath))
     {
         LOG_WARNING("DirectusAssetLoader: Can't load texture from file, file path is invalid.");
@@ -118,12 +112,7 @@ QPixmap DirectusAssetLoader::LoadTextureFromFile()
     }
 
     emit Started();
-
-    shared_ptr<Texture> texture = make_shared<Texture>(m_width, m_height);
-    imageLoader->Load(m_filePath, texture.get());
-    auto image =  QImage((const uchar*)texture->GetRGBA()[0].data(), m_width, m_height, QImage::Format_RGBA8888);
-    pixmap = QPixmap::fromImage(image);
-
+    pixmap = DirectusUtilities::LoadQPixmap(m_context, m_filePath, m_width, m_height);
     emit Finished();
 
     return pixmap;

@@ -141,7 +141,6 @@ namespace Directus
 			LOG_ERROR("Couldn't find any adapters.");
 			return false;
 		}
-		LOG_INFO("Primary adapter: " + GetAdapterDescription(adapter));
 		//==============================================================================
 
 		//= ADAPTER OUTPUT / DISPLAY MODE ==============================================
@@ -309,6 +308,8 @@ namespace Directus
 			}
 		}
 		//==============================================================================
+
+		LOG_INFO("IGraphicsDevice: Direct3D " + to_string(D3D11_MAJOR_VERSION) + "." + to_string(D3D11_MINOR_VERSION) + " (" + GetAdapterDescription(adapter) + ")");
 
 		m_initialized = true;
 		return true;
@@ -545,7 +546,7 @@ namespace Directus
 	{
 		if (!m_deviceContext)
 			return;
-
+		
 		m_deviceContext->RSSetViewports(1, &m_viewport);
 	}
 	//================================================================

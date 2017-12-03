@@ -22,10 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "DX8Input.h"
 #include "../Logging/Log.h"
+#include <sstream>
 //=========================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
+using namespace std;
 //=============================
 
 namespace Directus
@@ -123,6 +125,12 @@ namespace Directus
 		{
 			LOG_ERROR("DX8Input: Failed to aquire the mouse.");
 		}
+
+		stringstream ss;
+		ss << hex << DIRECTINPUT_VERSION;
+		string major = ss.str().erase(1, 2);
+		string minor = ss.str().erase(0, 1);
+		LOG_INFO("Input: DirectInput " + major + "." + minor);
 
 		return true;
 	}

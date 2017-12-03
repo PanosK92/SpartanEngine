@@ -21,61 +21,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
-//==========================
+//= INCLUDES ======================
+#include "../Resource/Resource.h"
+#include "../Threading/Threading.h"
+//=================================
 
-namespace Directus
+//= NAMESPACES ==========
+using namespace std;
+using namespace Directus;
+//=======================
+
+string Resource::GetResourceFileName()
 {
-	struct VertexPosTexTBN
+	return FileSystem::GetFileNameNoExtensionFromFilePath(m_resourceFilePath);
+}
+
+string Resource::GetResourceDirectory()
+{
+	return FileSystem::GetDirectoryFromFilePath(m_resourceFilePath);
+}
+
+void Resource::SaveToFileAsync(const string& filePath)
+{
+	m_context->GetSubsystem<Threading>()->AddTask([this, &filePath]()
 	{
-		Math::Vector3 position;
-		Math::Vector2 uv;
-		Math::Vector3 normal;
-		Math::Vector3 tangent;
-		Math::Vector3 bitangent;
+		SaveToFile(filePath);
+	});
+}
 
-		VertexPosTexTBN() {}
-		VertexPosTexTBN(
-			const Math::Vector3& position,
-			const Math::Vector2& uv,
-			const Math::Vector3& normal,
-			const Math::Vector3& tangent,
-			const Math::Vector3& bitangent)
-		{
-			this->position = position;
-			this->uv = uv;
-			this->normal = normal;
-			this->tangent = tangent;
-			this->bitangent = bitangent;
-		}
-	};
-
-	struct VertexPosTexNor
+void Resource::LoadFromFileAsync(const string& filePath)
+{
+	m_context->GetSubsystem<Threading>()->AddTask([this, &filePath]()
 	{
-		Math::Vector3 position;
-		Math::Vector2 uv;
-		Math::Vector3 normal;
-	};
-
-	struct VertexPosTex
-	{
-		VertexPosTex(){}
-		VertexPosTex(const Math::Vector3& position, const Math::Vector2& uv)
-		{
-			this->position = position;
-			this->uv = uv;
-		}
-
-		Math::Vector3 position;
-		Math::Vector2 uv;
-	};
-
-	struct VertexPosCol
-	{
-		Math::Vector3 position;
-		Math::Vector4 color;
-	};
+		LoadFromFile(filePath);
+	});
 }

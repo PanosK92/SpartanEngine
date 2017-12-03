@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Core/Timer.h"
 #include "../Core/Engine.h"
+#include "../Logging/Log.h"
 //==============================================================================
 
 //= NAMESPACES =====
@@ -82,6 +83,11 @@ namespace Directus
 		m_world->getDispatchInfo().m_useContinuous = true;
 		m_world->getSolverInfo().m_splitImpulse = false;
 		m_world->setDebugDrawer(m_debugDraw);
+
+		// Log version
+		string major = to_string(btGetVersion() / 100);
+		string minor = to_string(btGetVersion()).erase(0, 1);
+		LOG_INFO("Physics: Bullet " + major + "." + minor);
 
 		return true;
 	}

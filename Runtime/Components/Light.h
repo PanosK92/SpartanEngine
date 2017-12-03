@@ -99,8 +99,8 @@ namespace Directus
 		Math::Vector3 GetDirection();
 		void ClampRotation();
 
-		Math::Matrix ComputeViewMatrix();
-		Math::Matrix ComputeOrthographicProjectionMatrix(int cascade);
+		Math::Matrix GetViewMatrix();
+		Math::Matrix GetOrthographicProjectionMatrix(int cascade);
 
 		// Cascaded shadow mapping
 		void SetShadowCascadeAsRenderTarget(int cascade);
@@ -120,10 +120,12 @@ namespace Directus
 		float m_angle;
 		float m_bias;
 		Math::Matrix m_viewMatrix;
+		Math::Matrix m_projectionMatrix;
 		std::shared_ptr<Math::Frustrum> m_frustrum;
 		int m_cascades;
 		std::vector<std::shared_ptr<Cascade>> m_shadowMaps;
-		Math::Quaternion m_lastKnownRotation;
+		Math::Quaternion m_lastRot;
+		Math::Vector3 m_lastPos;
 		bool m_isDirty;
 	};
 }

@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Context.h"
 #include "Resource/ResourceManager.h"
 #include "Graphics/Texture.h"
+#include "DirectusUtilities.h"
 //========================================
 
 //= NAMESPACES ==========
@@ -35,14 +36,14 @@ using namespace Directus;
 
 void DirectusIconProvider::SetContext(Context* context)
 {
-    m_imageImporter= nullptr;
     if (!context)
     {
         LOG_WARNING("DirectusIconProvider: Can't set uninitialized context.");
         return;
     }
 
-    m_imageImporter = context->GetSubsystem<ResourceManager>()->GetImageImporter()._Get();
+    m_context = context;
+
     m_unknownIcon = QIcon(":/Images/file.png");
     m_folderIcon = QIcon(":/Images/folder.png");
     m_imageIcon = QIcon(":/Images/image.png");
@@ -63,28 +64,9 @@ QIcon DirectusIconProvider::icon(const QFileInfo& info) const
 
     string filePath = info.absoluteFilePath().toStdString();
 
-    // Thumbnail from foreign formats
-    if(FileSystem::IsSupportedImageFile(filePath) && m_imageImporter)
-    {
-        unsigned int width = 100;
-        unsigned int height = 100;
-        shared_ptr<Texture> texture = make_shared<Texture>(width, height);
-        m_imageImporter->Load(filePath, texture.get());
-        QImage image =  QImage((const uchar*)texture->GetRGBA().data(), width, height, QImage::Format_RGBA8888);
-        QPixmap pixmap = QPixmap::fromImage(image);
-        return pixmap;
-    }
-    // Thumbnail from engine format
-    if(FileSystem::IsEngineTextureFile(filePath))
-    {
-        unsigned int width = 100;
-        unsigned int height = 100;
-        shared_ptr<Texture> texture = make_shared<Texture>(width, height);
-        texture->Deserialize(filePath);
-        QImage image =  QImage((const uchar*)texture->GetRGBA().data(), width, height, QImage::Format_RGBA8888);
-        QPixmap pixmap = QPixmap::fromImage(image);
-        return pixmap;
-    }
+    // Create thumbnail
+    if (FileSystem::IsEngineTextureFile(filePath) || FileSystem::IsSupportedImageFile(filePath))
+        return DirectusUtilities::LoadQPixmap(m_context, filePath, 100, 100);
 
     // Model
     if (FileSystem::IsSupportedModelFile(filePath))

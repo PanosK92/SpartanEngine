@@ -88,7 +88,8 @@ HEADERS += editor.h \
     DirectusIComponent.h \
     DirectusAudioClipDropTarget.h \
     DirectusViewport.h \
-    DirectusRenderFlags.h
+    DirectusRenderFlags.h \
+    DirectusUtilities.h
 
 FORMS += editor.ui \
     AboutDialog.ui \

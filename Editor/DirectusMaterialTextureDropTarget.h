@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class DirectusInspector;
 namespace Directus
 {
-    class ImageImporter;
     class Texture;
     enum TextureType;
 }
@@ -54,7 +53,6 @@ private:
     Directus::TextureType m_textureType;
     QTimer* m_timer500ms;
     Directus::Texture* m_texture;
-    Directus::ImageImporter* m_imageLoader;
 
 public slots:
     void Update();

@@ -65,68 +65,6 @@ namespace Directus
 
 	}
 
-	//= I/O ============================================================
-	bool Material::Save(const string& filePath, bool overwrite)
-	{
-		// Make sure the path is relative
-		SetResourceFilePath(FileSystem::GetRelativeFilePath(filePath));
-
-		// Add material extension if not present
-		if (FileSystem::GetExtensionFromFilePath(GetResourceFilePath()) != MATERIAL_EXTENSION)
-		{
-			SetResourceFilePath(GetResourceFilePath() + MATERIAL_EXTENSION);
-		}
-
-		// If the user doesn't want to override and a material
-		// indeed happens to exists, there is nothing to do
-		if (!overwrite && FileSystem::FileExists(GetResourceFilePath()))
-			return true;
-
-		unique_ptr<XmlDocument> xml = make_unique<XmlDocument>();
-		xml->AddNode("Material");
-		xml->AddAttribute("Material", "Name", GetResourceName());
-		xml->AddAttribute("Material", "Path", GetResourceFilePath());
-		xml->AddAttribute("Material", "Model_ID", m_modelID);
-		xml->AddAttribute("Material", "Cull_Mode", int(m_cullMode));
-		xml->AddAttribute("Material", "Opacity", m_opacity);
-		xml->AddAttribute("Material", "Alpha_Blending", m_alphaBlending);
-		xml->AddAttribute("Material", "Shading_Mode", int(m_shadingMode));
-		xml->AddAttribute("Material", "Color", m_colorAlbedo);
-		xml->AddAttribute("Material", "Roughness_Multiplier", m_roughnessMultiplier);
-		xml->AddAttribute("Material", "Metallic_Multiplier", m_metallicMultiplier);
-		xml->AddAttribute("Material", "Normal_Multiplier", m_normalMultiplier);
-		xml->AddAttribute("Material", "Height_Multiplier", m_heightMultiplier);
-		xml->AddAttribute("Material", "UV_Tiling", m_uvTiling);
-		xml->AddAttribute("Material", "UV_Offset", m_uvOffset);
-		xml->AddAttribute("Material", "IsEditable", m_isEditable);
-
-		xml->AddChildNode("Material", "Textures");
-		xml->AddAttribute("Textures", "Count", (int)m_textures.size());
-		int i = 0;
-		for (const auto& texture : m_textures)
-		{
-			string texNode = "Texture_" + to_string(i);
-			xml->AddChildNode("Textures", texNode);
-			xml->AddAttribute(texNode, "Texture_Type", (int)texture.first);
-			xml->AddAttribute(texNode, "Texture_Path", texture.second.second);
-			i++;
-		}
-
-		if (!xml->Save(GetResourceFilePath()))
-			return false;
-
-		return true;
-	}
-
-	bool Material::SaveToExistingDirectory()
-	{
-		if (GetResourceFilePath() == NOT_ASSIGNED)
-			return false;
-
-		return Save(FileSystem::GetFilePathWithoutExtension(GetResourceFilePath()), true);
-	}
-	//==================================================================
-
 	//= RESOURCE INTERFACE =====================================
 	bool Material::LoadFromFile(const string& filePath)
 	{
@@ -183,6 +121,61 @@ namespace Directus
 
 		return true;
 	}
+
+	bool Material::SaveToFile(const string& filePath)
+	{
+		// Make sure the path is relative
+		SetResourceFilePath(FileSystem::GetRelativeFilePath(filePath));
+
+		// Add material extension if not present
+		if (FileSystem::GetExtensionFromFilePath(GetResourceFilePath()) != MATERIAL_EXTENSION)
+		{
+			SetResourceFilePath(GetResourceFilePath() + MATERIAL_EXTENSION);
+		}
+
+		unique_ptr<XmlDocument> xml = make_unique<XmlDocument>();
+		xml->AddNode("Material");
+		xml->AddAttribute("Material", "Name", GetResourceName());
+		xml->AddAttribute("Material", "Path", GetResourceFilePath());
+		xml->AddAttribute("Material", "Model_ID", m_modelID);
+		xml->AddAttribute("Material", "Cull_Mode", int(m_cullMode));
+		xml->AddAttribute("Material", "Opacity", m_opacity);
+		xml->AddAttribute("Material", "Alpha_Blending", m_alphaBlending);
+		xml->AddAttribute("Material", "Shading_Mode", int(m_shadingMode));
+		xml->AddAttribute("Material", "Color", m_colorAlbedo);
+		xml->AddAttribute("Material", "Roughness_Multiplier", m_roughnessMultiplier);
+		xml->AddAttribute("Material", "Metallic_Multiplier", m_metallicMultiplier);
+		xml->AddAttribute("Material", "Normal_Multiplier", m_normalMultiplier);
+		xml->AddAttribute("Material", "Height_Multiplier", m_heightMultiplier);
+		xml->AddAttribute("Material", "UV_Tiling", m_uvTiling);
+		xml->AddAttribute("Material", "UV_Offset", m_uvOffset);
+		xml->AddAttribute("Material", "IsEditable", m_isEditable);
+
+		xml->AddChildNode("Material", "Textures");
+		xml->AddAttribute("Textures", "Count", (int)m_textures.size());
+		int i = 0;
+		for (const auto& texture : m_textures)
+		{
+			string texNode = "Texture_" + to_string(i);
+			xml->AddChildNode("Textures", texNode);
+			xml->AddAttribute(texNode, "Texture_Type", (int)texture.first);
+			xml->AddAttribute(texNode, "Texture_Path", texture.second.second);
+			i++;
+		}
+
+		if (!xml->Save(GetResourceFilePath()))
+			return false;
+
+		// If this material is using a shader, save it
+		if (!m_shader.expired())
+		{
+			m_shader._Get()->SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(filePath) + SHADER_EXTENSION);
+			m_shader._Get()->SaveToFile(m_shader._Get()->GetResourceFilePath());
+		}
+
+		return true;
+	}
+
 	//==========================================================
 
 	//= TEXTURES ===================================================================
@@ -338,8 +331,8 @@ namespace Directus
 		// In order to avoid conflicts where the engine thinks it's the same shader, we randomize the
 		// path which will automatically create a resource ID based on that path. Hence we make sure that
 		// there are no conflicts. A more elegant way to handle this would be nice...
-		shader->SetResourceFilePath(GetResourceFilePath() + GUIDGenerator::GenerateAsStr());
-		shader->SetResourceName("GBuffer.hlsl_" + to_string(shader->GetResourceID()));
+		shader->SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(GetResourceFilePath()) + "_" + GUIDGenerator::GenerateAsStr() + SHADER_EXTENSION);
+		shader->SetResourceName("GBuffer_" + to_string(shader->GetResourceID()) + ".hlsl");
 
 		// Add the shader to the pool and return it
 		return m_context->GetSubsystem<ResourceManager>()->Add<ShaderVariation>(shader);

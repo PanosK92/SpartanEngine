@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Graphics/Vertex.h"
 #include <iostream>
-#include <iterator>
 //=============================
 
 //= NAMESPACES ================
@@ -154,7 +153,7 @@ namespace Directus
 	{
 		unsigned int size = value.size();
 		Write(size);
-		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(value[0]) * size);
+		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
 	}
 
 	void StreamIO::Read(string& value)
@@ -234,6 +233,7 @@ namespace Directus
 	{
 		unsigned int size = ReadUInt();
 		value.reserve(size);
-		in.read(reinterpret_cast<char*>(&value[0]), sizeof(value[0]) * size);
+		value.resize(size);
+		in.read(reinterpret_cast<char*>(&value[0]), sizeof(unsigned char) * size);
 	}
 }

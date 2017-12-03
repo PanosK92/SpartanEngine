@@ -19,10 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====
+//= INCLUDES ==========================
 #include "Timer.h"
 #include <chrono>
-//================
+#include "../EventSystem/EventSystem.h"
+//=====================================
 
 //= NAMESPACES ========
 using namespace std;
@@ -37,6 +38,8 @@ namespace Directus
 		m_deltaTimeMil = 0.0f;
 		m_previousTimeMicroSec = 0.0f;
 		m_deltaTimeMicroSec = 0.0f;
+
+		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
 	}
 
 	Timer::~Timer()

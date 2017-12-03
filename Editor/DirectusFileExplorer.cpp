@@ -372,7 +372,7 @@ void DirectusFileExplorer::CreateMaterial()
     string materialName = "NewMaterial";
     auto material = make_shared<Material>(m_directusViewport->GetEngineContext());
     material->SetResourceName(materialName);
-    material->Save(GetRootPath().toStdString() + "/" + materialName, true);
+    material->SaveToFile(GetRootPath().toStdString() + "/" + materialName);
 }
 
 void DirectusFileExplorer::ShowRootPathInExplorer()

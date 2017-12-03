@@ -48,14 +48,12 @@ DirectusMaterialTextureDropTarget::DirectusMaterialTextureDropTarget(QWidget *pa
 {
     setAcceptDrops(true);
     m_inspector = nullptr;
-    m_imageLoader = nullptr;
     m_texture = nullptr;
 }
 
 void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector, TextureType textureType)
 {
     m_inspector = inspector;
-    m_imageLoader = m_inspector->GetContext()->GetSubsystem<ResourceManager>()->GetImageImporter()._Get();
     m_textureType = textureType;
 
     // Timer which checks if the thumbnail image is loaded (async)
@@ -74,12 +72,12 @@ void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector,
 
 void DirectusMaterialTextureDropTarget::LoadImageAsync(const std::string& filePath)
 {
-    if (m_currentFilePath == filePath || filePath == NOT_ASSIGNED || !m_imageLoader)
+    if (m_currentFilePath == filePath || filePath == NOT_ASSIGNED)
         return;
 
     m_currentFilePath = filePath;
-    m_texture = new Texture(SLOT_SIZE, SLOT_SIZE);
-    m_imageLoader->LoadAsync(filePath, m_texture);
+    m_texture = new Texture(m_inspector->GetContext(), SLOT_SIZE, SLOT_SIZE);
+    m_texture->LoadFromFileAsync(filePath);
 }
 
 void DirectusMaterialTextureDropTarget::Update()
@@ -87,17 +85,17 @@ void DirectusMaterialTextureDropTarget::Update()
     if (!m_texture)
         return;
 
-    if (m_texture->GetLoadState() == Failed)
+    if (m_texture->GetAsyncState() == Async_Failed)
     {
         delete m_texture;
         m_texture = nullptr;
         return;
     }
 
-    if (m_texture->GetLoadState() != Completed)
+    if (m_texture->GetAsyncState() != Async_Completed)
         return;
 
-    QImage image = QImage((const uchar*)m_texture->GetRGBA().data(), m_texture->GetWidth(), m_texture->GetHeight(), QImage::Format_RGBA8888);
+    QImage image = QImage((const uchar*)m_texture->GetRGBA()[0].data(), m_texture->GetWidth(), m_texture->GetHeight(), QImage::Format_RGBA8888);
     QPixmap pixmap = QPixmap::fromImage(image);
     this->setPixmap(pixmap);
 
@@ -145,7 +143,7 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
     QString absolutePath = event->mimeData()->text();
     std::string imagePath = FileSystem::GetRelativeFilePath(absolutePath.toStdString());
 
-    if (FileSystem::IsSupportedImageFile(imagePath))
+    if (FileSystem::IsSupportedImageFile(imagePath) ||FileSystem::IsEngineTextureFile(imagePath))
     {
         // Get the currently inspected material
         auto material = m_inspector->GetMaterialComponent()->GetInspectedMaterial().lock();
@@ -159,7 +157,7 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
         {
             texture._Get()->SetTextureType(m_textureType);
             material->SetTexture(texture);
-            material->SaveToExistingDirectory();
+            material->SaveToFile(material->GetResourceFilePath());
             LoadImageAsync(imagePath);
         }
     }

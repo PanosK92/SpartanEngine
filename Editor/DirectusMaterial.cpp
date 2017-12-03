@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//== INCLUDES =================================
+//== INCLUDES =======================================
 #include "DirectusMaterial.h"
 #include "DirectusInspector.h"
 #include "DirectusAdjustLabel.h"
@@ -34,7 +34,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusViewport.h"
 #include "DirectusMaterialTextureDropTarget.h"
 #include "Resource/ResourceManager.h"
-//============================================
+#include "Graphics/DeferredShaders/ShaderVariation.h"
+//===================================================
 
 //= NAMESPACES =====================
 using namespace Directus;
@@ -64,11 +65,9 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
                 );
     //=========================================================
 
-    //= SHADER ================================================
+    //= SHADER ==========================
     m_shaderLabel = new QLabel("Shader");
-    m_shader = new QComboBox();
-    m_shader->addItem("Default");
-    //=========================================================
+    //===================================
 
     //= ALBEDO ================================================
     m_albedoLabel = new QLabel("Albedo");
@@ -160,12 +159,11 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
 
     // addWidget(widget, row, column, rowspan, colspan)
     // Row 0
-    m_gridLayout->addWidget(m_title,        row, 0, 1, 3);
+    m_gridLayout->addWidget(m_title,        row, 0, 1, 5);
     row++;
 
     // Row 2 - SHADER
-    m_gridLayout->addWidget(m_shaderLabel,  row, 0, 1, 1);
-    m_gridLayout->addWidget(m_shader,       row, 1, 1, 4);
+    m_gridLayout->addWidget(m_shaderLabel,  row, 0, 1, 5);
     row++;
 
     // Row 3 - ALBEDO
@@ -281,6 +279,7 @@ void DirectusMaterial::Reflect(weak_ptr<GameObject> gameobject)
 
     // Do the actual reflection
     ReflectName();
+    ReflectShader();
     ReflectAlbedo();
     ReflectRoughness();
     ReflectMetallic();
@@ -308,6 +307,7 @@ void DirectusMaterial::ReflectFile(string filePath)
 
     // Do the actual reflection
     ReflectName();
+    ReflectShader();
     ReflectAlbedo();
     ReflectRoughness();
     ReflectMetallic();
@@ -333,7 +333,6 @@ std::weak_ptr<Material> DirectusMaterial::GetInspectedMaterial()
 void DirectusMaterial::SetPropertiesVisible(bool visible)
 {
     m_shaderLabel->setVisible(visible);
-    m_shader->setVisible(visible);
 
     m_albedoImage->setVisible(visible);
     m_albedoLabel->setVisible(visible);
@@ -386,6 +385,14 @@ void DirectusMaterial::ReflectName()
     std::string name = m_inspectedMaterial._Get()->GetResourceName();
     QString text = QString::fromStdString("Material - " + name);
     m_title->setText(text);
+}
+
+void DirectusMaterial::ReflectShader()
+{
+    weak_ptr<ShaderVariation> shader = m_inspectedMaterial._Get()->GetShader();
+    std::string name = !shader.expired() ? shader._Get()->GetResourceName() : NOT_ASSIGNED;
+    QString text = QString::fromStdString("Shader - " + name);
+    m_shaderLabel->setText(text);
 }
 
 void DirectusMaterial::ReflectAlbedo()
@@ -465,7 +472,7 @@ void DirectusMaterial::ReflectTiling()
     m_tilingX->SetFromFloat(tiling.x);
     m_tilingY->SetFromFloat(tiling.y);
 
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::ReflectOffset()
@@ -474,7 +481,7 @@ void DirectusMaterial::ReflectOffset()
     m_offsetX->SetFromFloat(offset.x);
     m_offsetY->SetFromFloat(offset.y);
 
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::MapAlbedo()
@@ -484,7 +491,7 @@ void DirectusMaterial::MapAlbedo()
 
     Vector4 color =  m_albedoColor->GetColor();
     m_inspectedMaterial._Get()->SetColorAlbedo(color);
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::MapRoughness()
@@ -494,7 +501,7 @@ void DirectusMaterial::MapRoughness()
 
     float roughness =  m_roughness->GetValue();
     m_inspectedMaterial._Get()->SetRoughnessMultiplier(roughness);
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::MapMetallic()
@@ -504,7 +511,7 @@ void DirectusMaterial::MapMetallic()
 
     float metallic =  m_metallic->GetValue();
     m_inspectedMaterial._Get()->SetMetallicMultiplier(metallic);
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::MapNormal()
@@ -514,7 +521,7 @@ void DirectusMaterial::MapNormal()
 
     float normal =  m_normal->GetValue();
     m_inspectedMaterial._Get()->SetNormalMultiplier(normal);
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::MapHeight()
@@ -524,7 +531,7 @@ void DirectusMaterial::MapHeight()
 
     float height =  m_height->GetValue();
     m_inspectedMaterial._Get()->SetHeightMultiplier(height);
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::MapOcclusion()
@@ -532,7 +539,7 @@ void DirectusMaterial::MapOcclusion()
     if (m_inspectedMaterial.expired())
         return;
 
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::MapEmission()
@@ -540,7 +547,7 @@ void DirectusMaterial::MapEmission()
     if (m_inspectedMaterial.expired())
         return;
 
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::MapMask()
@@ -548,7 +555,7 @@ void DirectusMaterial::MapMask()
     if (m_inspectedMaterial.expired())
         return;
 
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::MapTiling()
@@ -560,7 +567,7 @@ void DirectusMaterial::MapTiling()
     tiling.x = m_tilingX->GetAsFloat();
     tiling.y = m_tilingY->GetAsFloat();
     m_inspectedMaterial._Get()->SetTilingUV(tiling);
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }
 
 void DirectusMaterial::MapOffset()
@@ -572,5 +579,5 @@ void DirectusMaterial::MapOffset()
     offset.x = m_offsetX->GetAsFloat();
     offset.y = m_offsetY->GetAsFloat();
     m_inspectedMaterial._Get()->SetOffsetUV(offset);
-    m_inspectedMaterial._Get()->SaveToExistingDirectory();
+    m_inspectedMaterial._Get()->SaveToFile(m_inspectedMaterial._Get()->GetResourceFilePath());
 }

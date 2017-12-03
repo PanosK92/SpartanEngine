@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================================
+//= INCLUDES ===========================
 #include "Model.h"
 #include "Mesh.h"
 #include "../Core/GameObject.h"
@@ -29,9 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Vertex.h"
 #include "../Graphics/Material.h"
 #include "../Graphics/Animation.h"
-#include "../Graphics/DeferredShaders/ShaderVariation.h"
 #include "../IO/StreamIO.h"
-//======================================================
+//======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -156,9 +155,8 @@ namespace Directus
 		// Add it to our resources
 		weak_ptr<Material> weakMat = m_context->GetSubsystem<ResourceManager>()->Add<Material>(material);
 
-		// Save the material/shader in our custom format
-		material._Get()->Save(m_modelDirectoryMaterials + material->GetResourceName(), false);
-		material._Get()->GetShader()._Get()->SaveToFile(m_modelDirectoryShaders + material._Get()->GetResourceName());
+		// Save the material in the model directory
+		material._Get()->SaveToFile(m_modelDirectoryMaterials + material->GetResourceName());
 
 		// Keep a reference to it
 		m_materials.push_back(material);
@@ -251,10 +249,8 @@ namespace Directus
 
 		// Create asset directory (if it doesn't exist)]
 		m_modelDirectoryMaterials = modelDir + "Materials//";
-		m_modelDirectoryShaders = modelDir + "Shaders//";
 		m_modelDirectoryTextures = modelDir + "Textures//";
 		FileSystem::CreateDirectory_(m_modelDirectoryMaterials);
-		FileSystem::CreateDirectory_(m_modelDirectoryShaders);
 		FileSystem::CreateDirectory_(m_modelDirectoryTextures);
 
 		// Load the model
