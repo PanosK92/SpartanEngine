@@ -171,6 +171,8 @@ namespace Directus
 		shared_ptr<Model> modelShared = make_shared<Model>(g_context);
 		modelShared->SetRootGameObject(g_gameObject);
 		modelShared->SetResourceName(resourceName);
+		string projectDir = g_context->GetSubsystem<ResourceManager>()->GetProjectDirectory();
+		modelShared->SetResourceFilePath(projectDir + resourceName + MODEL_EXTENSION);
 		modelShared->AddMeshAsNewResource(g_gameObject._Get()->GetID(), meshName, vertices, indices);
 
 		// Add the model to the resource manager and get it as a weak reference. It's important to do that

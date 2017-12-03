@@ -98,6 +98,7 @@ namespace Directus
 		static bool IsEngineModelFile(const std::string& filePath);
 		static bool IsEngineSceneFile(const std::string& filePath);
 		static bool IsEngineTextureFile(const std::string& filePath);
+		static bool IsEngineShaderFile(const std::string& filePath);
 		static bool IsEngineMetadataFile(const std::string& filePath);
 		//=============================================================
 

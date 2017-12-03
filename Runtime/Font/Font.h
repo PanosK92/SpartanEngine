@@ -61,7 +61,7 @@ namespace Directus
 
 		void** GetShaderResource();
 		bool SetBuffer();
-		int GetIndexCount() { return m_indexCount; }
+		unsigned int GetIndexCount() { return m_indices.size(); }
 			
 	private:	
 		bool UpdateBuffers(std::vector<VertexPosTex>& vertices, std::vector<unsigned int>& indices);
@@ -72,9 +72,10 @@ namespace Directus
 		int m_charMaxWidth;
 		int m_charMaxHeight;
 		Math::Vector4 m_fontColor;
-
 		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
-		int m_indexCount;
+		std::vector<VertexPosTex> m_vertices;
+		std::vector<unsigned int> m_indices;
+		std::string m_currentText;
 	};
 }

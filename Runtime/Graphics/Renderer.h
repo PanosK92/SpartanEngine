@@ -94,7 +94,7 @@ namespace Directus
 		void SetRenderFlags(unsigned long renderFlags) { m_renderFlags = renderFlags; }
 
 		void Clear();
-		const std::vector<weakGameObj>& GetRenderables() { return m_renderables; }
+		const std::vector<std::weak_ptr<GameObject>>& GetRenderables() { return m_renderables; }
 
 	private:
 		//= HELPER FUNCTIONS ========================
@@ -111,11 +111,11 @@ namespace Directus
 	
 		std::unique_ptr<GBuffer> m_GBuffer;
 
-		// GAMEOBJECTS ========================
-		std::vector<weakGameObj> m_renderables;
+		// GAMEOBJECTS ======================================
+		std::vector<std::weak_ptr<GameObject>> m_renderables;
 		std::vector<Light*> m_lights;
 		Light* m_directionalLight;
-		//=====================================
+		//===================================================
 
 		//= RENDER TEXTURES =======================================
 		std::unique_ptr<D3D11RenderTexture> m_renderTexPing;

@@ -47,7 +47,6 @@ namespace Directus
 		m_fontSize = 12;
 		m_charMaxWidth = 0;
 		m_charMaxHeight = 0;
-		m_indexCount = 0;
 		m_fontColor = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 		graphics = m_context->GetSubsystem<Graphics>();
 	}
@@ -119,14 +118,18 @@ namespace Directus
 		return true;
 	}
 
-	void Font::SetText(const string& glyphs, const Vector2& position)
+	void Font::SetText(const string& text, const Vector2& position)
 	{
+		if (text == m_currentText)
+			return;
+
 		Vector2 pen = position;
-		vector<VertexPosTex> vertices;
-		VertexPosTex vertex;
+		m_currentText = text;
+		m_vertices.clear();
+		m_vertices.shrink_to_fit();
 
 		// Draw each letter onto a quad.
-		for (const char& glyphASCII : glyphs)
+		for (const char& glyphASCII : m_currentText)
 		{
 			auto glyph = m_glyphs[glyphASCII];
 
@@ -143,51 +146,31 @@ namespace Directus
 				continue;
 			}
 
-			// First triangle in quad.
-			// Top left.
-			vertex.position = Vector3(pen.x, pen.y - glyph.descent, 0.0f);
-			vertex.uv = Vector2(glyph.uvXLeft, glyph.uvYTop);
-			vertices.push_back(vertex);
-
-			// Bottom right.
-			vertex.position = Vector3((pen.x + glyph.width), (pen.y - glyph.height - glyph.descent), 0.0f);
-			vertex.uv = Vector2(glyph.uvXRight, glyph.uvYBottom);
-			vertices.push_back(vertex);
-
-			// Bottom left.
-			vertex.position = Vector3(pen.x, (pen.y - glyph.height - glyph.descent), 0.0f);
-			vertex.uv = Vector2(glyph.uvXLeft, glyph.uvYBottom);
-			vertices.push_back(vertex);
-
+			// First triangle in quad.		
+			m_vertices.emplace_back(Vector3(pen.x, pen.y - glyph.descent, 0.0f),									Vector2(glyph.uvXLeft, glyph.uvYTop)); // Top left
+			m_vertices.emplace_back(Vector3((pen.x + glyph.width), (pen.y - glyph.height - glyph.descent), 0.0f),	Vector2(glyph.uvXRight, glyph.uvYBottom)); // Bottom right
+			m_vertices.emplace_back(Vector3(pen.x, (pen.y - glyph.height - glyph.descent), 0.0f),					Vector2(glyph.uvXLeft, glyph.uvYBottom)); // Bottom left
 			// Second triangle in quad.
-			// Top left.
-			vertex.position = Vector3(pen.x, pen.y - glyph.descent, 0.0f);
-			vertex.uv = Vector2(glyph.uvXLeft, glyph.uvYTop);
-			vertices.push_back(vertex);
-
-			// Top right.
-			vertex.position = Vector3(pen.x + glyph.width, pen.y - glyph.descent, 0.0f);
-			vertex.uv = Vector2(glyph.uvXRight, glyph.uvYTop);
-			vertices.push_back(vertex);
-
-			// Bottom right.
-			vertex.position = Vector3((pen.x + glyph.width), (pen.y - glyph.height - glyph.descent), 0.0f);
-			vertex.uv = Vector2(glyph.uvXRight, glyph.uvYBottom);
-			vertices.push_back(vertex);
+			m_vertices.emplace_back(Vector3(pen.x, pen.y - glyph.descent, 0.0f),									Vector2(glyph.uvXLeft, glyph.uvYTop)); // Top left
+			m_vertices.emplace_back(Vector3(pen.x + glyph.width, pen.y - glyph.descent, 0.0f),						Vector2(glyph.uvXRight, glyph.uvYTop)); // Top right
+			m_vertices.emplace_back(Vector3((pen.x + glyph.width), (pen.y - glyph.height - glyph.descent), 0.0f),	Vector2(glyph.uvXRight, glyph.uvYBottom)); // Bottom right
 
 			// Update the x location for drawing by the size of the letter and one pixel.
 			pen.x = pen.x + glyph.width;
 		}
 
-		vector<unsigned int> indices;
-		indices.reserve(vertices.size());
-		for (int i = 0; i < vertices.size(); i++)
+		if (m_indices.size() != m_vertices.size())
 		{
-			indices.emplace_back(i);
-		}
-		m_indexCount = (int)indices.size();
+			m_indices.clear();
+			m_indices.shrink_to_fit();
+			m_indices.reserve(m_vertices.size());
+			for (int i = 0; i < m_vertices.size(); i++)
+			{
+				m_indices.emplace_back(i);
+			}
+		}		
 
-		UpdateBuffers(vertices, indices);
+		UpdateBuffers(m_vertices, m_indices);
 	}
 
 	bool Font::UpdateBuffers(vector<VertexPosTex>& vertices, vector<unsigned int>& indices)

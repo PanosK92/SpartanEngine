@@ -43,12 +43,12 @@ namespace Directus
 		Resource_Font
 	};
 
-	enum LoadState
+	enum AsyncState
 	{
-		Idle,
-		Loading,
-		Completed,
-		Failed
+		Async_Idle,
+		Async_Started,
+		Async_Completed,
+		Async_Failed
 	};
 
 	class DLL_API Resource
@@ -60,8 +60,10 @@ namespace Directus
 		{
 			m_resourceType = resourceType;
 			m_resourceID = GENERATE_GUID;
+			m_asyncState = Async_Idle;
 		}
 
+		//= PROPERTIES =========================================================================
 		unsigned int GetResourceID() { return m_resourceID; }
 		void SetResourceID(unsigned int ID) { m_resourceID = ID; }
 
@@ -74,22 +76,27 @@ namespace Directus
 		std::string& GetResourceFilePath() { return m_resourceFilePath; }
 		void SetResourceFilePath(const std::string& filePath) { m_resourceFilePath = filePath; }
 
-		std::string GetResourceFileName() { return FileSystem::GetFileNameNoExtensionFromFilePath(m_resourceFilePath); }
-		std::string GetResourceDirectory() { return FileSystem::GetDirectoryFromFilePath(m_resourceFilePath); }
+		std::string GetResourceFileName();
+		std::string GetResourceDirectory();
+		//======================================================================================
 
+		//= IO =====================================================
 		virtual bool SaveToFile(const std::string& filePath) = 0;
 		virtual bool LoadFromFile(const std::string& filePath) = 0;
+		virtual void SaveToFileAsync(const std::string& filePath);
+		virtual void LoadFromFileAsync(const std::string& filePath);
 		virtual unsigned int GetMemoryUsageKB() { return 0; }
+		//==========================================================
 
-		LoadState GetLoadState() { return m_loadState; }
-		void SetLoadState(LoadState state) { m_loadState = state; }
+		AsyncState GetAsyncState() { return m_asyncState; }
+		void SetAsyncState(AsyncState state) { m_asyncState = state; }
 
 	protected:	
 		unsigned int m_resourceID = NOT_ASSIGNED_HASH;
 		std::string m_resourceName = NOT_ASSIGNED;
 		std::string m_resourceFilePath = NOT_ASSIGNED;
 		ResourceType m_resourceType = Resource_Unknown;
-		LoadState m_loadState = Idle;
+		AsyncState m_asyncState = Async_Idle;
 		Context* m_context = nullptr;
 	};
 }

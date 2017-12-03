@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
+#include <assimp/version.h>
 #include "../../Core/Scene.h"
 #include "../../Core/GameObject.h"
 #include "../../Core/Context.h"
@@ -129,6 +130,13 @@ namespace Directus
 		m_isLoading = false;
 		m_model = nullptr;
 		ResetStats();
+
+		// Log version
+		int major = aiGetVersionMajor();
+		int minor = aiGetVersionMinor();
+		int rev = aiGetVersionRevision();
+		string version = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
+		LOG_INFO("ModelImporter: Assimp " + version);
 	}
 
 	ModelImporter::~ModelImporter()

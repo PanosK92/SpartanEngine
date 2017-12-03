@@ -106,9 +106,6 @@ namespace Directus
 
 		// Set supported model formats
 		{
-			// Engine format
-			m_supportedModelFormats.push_back(MODEL_EXTENSION);
-
 			// Foreign formats
 			m_supportedModelFormats.push_back(".3ds");
 			m_supportedModelFormats.push_back(".obj");
@@ -538,6 +535,11 @@ namespace Directus
 	bool FileSystem::IsEngineTextureFile(const string& filePath)
 	{
 		return GetExtensionFromFilePath(filePath) == TEXTURE_EXTENSION;
+	}
+
+	bool FileSystem::IsEngineShaderFile(const std::string& filePath)
+	{
+		return GetExtensionFromFilePath(filePath) == SHADER_EXTENSION;
 	}
 
 	bool FileSystem::IsEngineMetadataFile(const string& filePath)

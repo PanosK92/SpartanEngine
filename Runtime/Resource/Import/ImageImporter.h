@@ -80,12 +80,13 @@ namespace Directus
 
 		void LoadAsync(const std::string& filePath, Texture* texInfo);
 		bool Load(const std::string& filePath, Texture* texInfo);
+		bool RescaleBits(std::vector<unsigned char>& rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int toWidth, unsigned int toHeight);
 
 	private:
-		unsigned int ComputeChannelCount(FIBITMAP* fibtimap, unsigned int bpp);
-		bool FIBTIMAPToRGBA(FIBITMAP* fibtimap, std::vector<unsigned char>* rgba);
-		void GenerateMipmapsFromFIBITMAP(FIBITMAP* originalFIBITMAP, Texture* imageData);
-		bool RescaleFIBITMAP(FIBITMAP* fibtimap, int width, int height, std::vector<unsigned char>& rgba);
+		unsigned int ComputeChannelCount(FIBITMAP* bitmap, unsigned int bpp);
+		bool GetBitsFromFIBITMAP(FIBITMAP* bitmap, std::vector<unsigned char>& rgba);
+		bool GetRescaledBitsFromBitmap(FIBITMAP* bitmap, int width, int height, std::vector<unsigned char>& rgbaOut);
+		void GenerateMipmapsFromFIBITMAP(FIBITMAP* bitmap, Texture* imageData);	
 		bool GrayscaleCheck(const std::vector<unsigned char>& dataRGBA, int width, int height);
 
 		Context* m_context;

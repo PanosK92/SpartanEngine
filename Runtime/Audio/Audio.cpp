@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fmod_errors.h"
 #include "../Logging/Log.h"
 #include "../EventSystem/EventSystem.h"
+#include <sstream>
 //=====================================
 
 //= NAMESPACES ======
@@ -121,6 +122,14 @@ namespace Directus
 			LOG_ERROR(FMOD_ErrorString(m_result));
 			return false;
 		}
+
+		// Log version
+		stringstream ss;
+		ss << hex << version;
+		string major	= ss.str().erase(1, 4);
+		string minor	= ss.str().erase(0, 1).erase(2, 2);
+		string rev		= ss.str().erase(0, 3);
+		LOG_INFO("Audio: FMOD " + major + "." + minor + "." + rev);
 
 		m_initialized = true;
 		return true;

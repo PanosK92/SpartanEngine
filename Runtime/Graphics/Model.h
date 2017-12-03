@@ -111,7 +111,6 @@ namespace Directus
 
 		// Model related directories
 		std::string m_modelDirectoryMaterials;
-		std::string m_modelDirectoryShaders;
 		std::string m_modelDirectoryTextures;
 
 		// Dependencies

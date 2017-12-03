@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include "ResourceCache.h"
 #include "../Core/SubSystem.h"
-#include "../Core/GameObject.h"
 #include "Import/ModelImporter.h"
 #include "Import/ImageImporter.h"
 #include "Import/FontImporter.h"
@@ -52,6 +51,12 @@ namespace Directus
 		template <class T>
 		std::weak_ptr<T> Load(const std::string& filePath)
 		{
+			if (filePath == NOT_ASSIGNED)
+			{
+				LOG_WARNING("ResourceManager: Can't load resource, filepath \"" + filePath + "\" is unassigned.");
+				return std::weak_ptr<T>();
+			}
+
 			// Try to make the path relative to the engine (in case it isn't)
 			std::string relativeFilePath = FileSystem::GetRelativeFilePath(filePath);
 			std::string name = FileSystem::GetFileNameNoExtensionFromFilePath(relativeFilePath);
@@ -72,14 +77,14 @@ namespace Directus
 			base->SetResourceName(name);
 
 			// Load
-			base->SetLoadState(Loading);
+			base->SetAsyncState(Async_Started);
 			if (!base->LoadFromFile(relativeFilePath))
 			{
 				LOG_WARNING("ResourceManager: Resource \"" + relativeFilePath + "\" failed to load");
-				base->SetLoadState(Failed);
+				base->SetAsyncState(Async_Failed);
 				return std::weak_ptr<T>();
 			}
-			base->SetLoadState(Completed);
+			base->SetAsyncState(Async_Completed);
 
 			return Add<T>(base);
 		}
@@ -159,6 +164,16 @@ namespace Directus
 				}
 			}
 			return typedVec;
+		}
+
+		std::vector<std::weak_ptr<Resource>> GetResourcesByType(ResourceType type)
+		{
+			std::vector<std::weak_ptr<Resource>> vec;
+			for (const auto& resource : m_resourceCache->GetByType(type))
+			{
+				vec.push_back(resource);
+			}
+			return vec;
 		}
 
 		// Returns all resources of a given type

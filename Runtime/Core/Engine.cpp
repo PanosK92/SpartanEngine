@@ -155,10 +155,7 @@ namespace Directus
 
 	void Engine::Update()
 	{
-		// TIMER UPDATE
-		m_context->GetSubsystem<Timer>()->Update();
-
-		// LOGIC UPDATE
+		// GAME UPDATE
 		FIRE_EVENT(EVENT_UPDATE);
 
 		// RENDER UPDATE

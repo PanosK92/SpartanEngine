@@ -126,9 +126,9 @@ namespace Directus
 		buffer->viewport = GET_RESOLUTION;
 		buffer->nearPlane = camera->GetNearPlane();
 		buffer->farPlane = camera->GetFarPlane();
-		buffer->mLightViewProjection[0] = directionalLight->ComputeViewMatrix() * directionalLight->ComputeOrthographicProjectionMatrix(0);
-		buffer->mLightViewProjection[1] = directionalLight->ComputeViewMatrix() * directionalLight->ComputeOrthographicProjectionMatrix(1);
-		buffer->mLightViewProjection[2] = directionalLight->ComputeViewMatrix() * directionalLight->ComputeOrthographicProjectionMatrix(2);
+		buffer->mLightViewProjection[0] = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(0);
+		buffer->mLightViewProjection[1] = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(1);
+		buffer->mLightViewProjection[2] = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
 		buffer->shadowSplits = Vector4(directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), 0, 0);
 		buffer->lightDir = directionalLight->GetDirection();
 		buffer->shadowMapResolution = directionalLight->GetShadowCascadeResolution();
@@ -143,12 +143,10 @@ namespace Directus
 		m_miscBuffer->SetPS(0);
 	}
 
-	void ShaderVariation::UpdatePerMaterialBuffer(weak_ptr<Material> material)
+	void ShaderVariation::UpdatePerMaterialBuffer(Material* material)
 	{
-		if (material.expired())
+		if (!material)
 			return;
-
-		auto materialRaw = material._Get();
 
 		if (!m_D3D11Shader->IsCompiled())
 		{
@@ -158,27 +156,27 @@ namespace Directus
 
 		// Determine if the material buffer needs to update
 		bool update = false;
-		update = perMaterialBufferCPU.matAlbedo != materialRaw->GetColorAlbedo() ? true : update;
-		update = perMaterialBufferCPU.matTilingUV != materialRaw->GetTilingUV() ? true : update;
-		update = perMaterialBufferCPU.matOffsetUV != materialRaw->GetOffsetUV() ? true : update;
-		update = perMaterialBufferCPU.matRoughnessMul != materialRaw->GetRoughnessMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matMetallicMul != materialRaw->GetMetallicMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matNormalMul != materialRaw->GetNormalMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matShadingMode != float(materialRaw->GetShadingMode()) ? true : update;
+		update = perMaterialBufferCPU.matAlbedo			!= material->GetColorAlbedo() ? true : update;
+		update = perMaterialBufferCPU.matTilingUV		!= material->GetTilingUV() ? true : update;
+		update = perMaterialBufferCPU.matOffsetUV		!= material->GetOffsetUV() ? true : update;
+		update = perMaterialBufferCPU.matRoughnessMul	!= material->GetRoughnessMultiplier() ? true : update;
+		update = perMaterialBufferCPU.matMetallicMul	!= material->GetMetallicMultiplier() ? true : update;
+		update = perMaterialBufferCPU.matNormalMul		!= material->GetNormalMultiplier() ? true : update;
+		update = perMaterialBufferCPU.matShadingMode	!= float(material->GetShadingMode()) ? true : update;
 
 		if (update)
 		{
 			//= BUFFER UPDATE =========================================================================
 			PerMaterialBufferType* buffer = (PerMaterialBufferType*)m_materialBuffer->Map();
 
-			buffer->matAlbedo = perMaterialBufferCPU.matAlbedo = materialRaw->GetColorAlbedo();
-			buffer->matTilingUV = perMaterialBufferCPU.matTilingUV = materialRaw->GetTilingUV();
-			buffer->matOffsetUV = perMaterialBufferCPU.matOffsetUV = materialRaw->GetOffsetUV();
-			buffer->matRoughnessMul = perMaterialBufferCPU.matRoughnessMul = materialRaw->GetRoughnessMultiplier();
-			buffer->matMetallicMul = perMaterialBufferCPU.matMetallicMul = materialRaw->GetMetallicMultiplier();
-			buffer->matNormalMul = perMaterialBufferCPU.matNormalMul = materialRaw->GetNormalMultiplier();
-			buffer->matHeightMul = perMaterialBufferCPU.matNormalMul = materialRaw->GetHeightMultiplier();
-			buffer->matShadingMode = perMaterialBufferCPU.matShadingMode = float(materialRaw->GetShadingMode());
+			buffer->matAlbedo = perMaterialBufferCPU.matAlbedo				= material->GetColorAlbedo();
+			buffer->matTilingUV = perMaterialBufferCPU.matTilingUV			= material->GetTilingUV();
+			buffer->matOffsetUV = perMaterialBufferCPU.matOffsetUV			= material->GetOffsetUV();
+			buffer->matRoughnessMul = perMaterialBufferCPU.matRoughnessMul	= material->GetRoughnessMultiplier();
+			buffer->matMetallicMul = perMaterialBufferCPU.matMetallicMul	= material->GetMetallicMultiplier();
+			buffer->matNormalMul = perMaterialBufferCPU.matNormalMul		= material->GetNormalMultiplier();
+			buffer->matHeightMul = perMaterialBufferCPU.matNormalMul		= material->GetHeightMultiplier();
+			buffer->matShadingMode = perMaterialBufferCPU.matShadingMode	= float(material->GetShadingMode());
 			buffer->paddding = Vector3::Zero;
 
 			m_materialBuffer->Unmap();

@@ -51,17 +51,22 @@ namespace Directus
 		if (!m_graphics->GetDevice())
 			return false;
 
+		if (data.empty())
+		{
+			LOG_ERROR("D3D11Texture: Aborting creation of ID3D11Texture2D. Provided texture bits are empty.");
+			return false;
+		}
+
 		unsigned int mipLevels = 1;
 
-		//= SUBRESROUCE DATA =======================================================================
+		// SUBRESROUCE DATA
 		D3D11_SUBRESOURCE_DATA subresource;
 		ZeroMemory(&subresource, sizeof(subresource));
 		subresource.pSysMem = &data[0];
 		subresource.SysMemPitch = (width * channels) * sizeof(unsigned char);
 		subresource.SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
-		//==========================================================================================
 
-		//= ID3D11Texture2D ========================================================================
+		// ID3D11Texture2D
 		D3D11_TEXTURE2D_DESC textureDesc;
 		ZeroMemory(&textureDesc, sizeof(textureDesc));
 		textureDesc.Width = (unsigned int)width;
@@ -76,7 +81,6 @@ namespace Directus
 		textureDesc.MiscFlags = 0;
 		textureDesc.CPUAccessFlags = 0;
 
-		// Create texture from description
 		ID3D11Texture2D* texture = nullptr;
 		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(&textureDesc, &subresource, &texture);
 		if (FAILED(result))
@@ -84,23 +88,85 @@ namespace Directus
 			LOG_ERROR("D3D11Texture: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 			return false;
 		}
-		//=========================================================================================
 
-		//= SHADER RESOURCE VIEW ==================================================================
+		// SHADER RESOURCE VIEW
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 		srvDesc.Format = format;
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MostDetailedMip = 0;
 		srvDesc.Texture2D.MipLevels = mipLevels;
 
-		// Create shader resource view from description
 		result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
 		if (FAILED(result))
 		{
 			LOG_ERROR("D3D11Texture: Failed to create the ID3D11ShaderResourceView.");
 			return false;
 		}
-		//========================================================================================
+
+		return true;
+	}
+
+	bool D3D11Texture::Create(int width, int height, int channels, const vector<vector<unsigned char>>& mipmaps, DXGI_FORMAT format)
+	{
+		if (!m_graphics->GetDevice())
+			return false;
+
+		unsigned int mipLevels = (unsigned int)mipmaps.size();
+
+		vector<D3D11_SUBRESOURCE_DATA> subresourceData;
+		vector<D3D11_TEXTURE2D_DESC> textureDescs;
+		for (unsigned int i = 0; i < mipLevels; i++)
+		{
+			if (mipmaps[i].empty())
+			{
+				LOG_ERROR("D3D11Texture: Aborting creation of ID3D11Texture2D. Provided bits for mip level \"" + to_string(i) + "\" are empty.");
+				return false;
+			}
+
+			// SUBRESROUCE DATA
+			subresourceData.push_back(D3D11_SUBRESOURCE_DATA{});
+			subresourceData.back().pSysMem = &mipmaps[i][0];
+			subresourceData.back().SysMemPitch = (width * channels) * sizeof(unsigned char);
+			subresourceData.back().SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
+
+			// ID3D11Texture2D
+			textureDescs.push_back(D3D11_TEXTURE2D_DESC{});
+			textureDescs.back().Width = (unsigned int)width;
+			textureDescs.back().Height = (unsigned int)height;
+			textureDescs.back().MipLevels = mipLevels;
+			textureDescs.back().ArraySize = (unsigned int)1;
+			textureDescs.back().Format = format;
+			textureDescs.back().SampleDesc.Count = (unsigned int)1;
+			textureDescs.back().SampleDesc.Quality = (unsigned int)0;
+			textureDescs.back().Usage = D3D11_USAGE_IMMUTABLE;
+			textureDescs.back().BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			textureDescs.back().MiscFlags = 0;
+			textureDescs.back().CPUAccessFlags = 0;
+
+			width = max(width / 2, 1);
+			height = max(height / 2, 1);
+		}
+		ID3D11Texture2D* texture = nullptr;
+		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(textureDescs.data(), subresourceData.data(), &texture);
+		if (FAILED(result))
+		{
+			LOG_ERROR("D3D11Texture: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
+			return false;
+		}
+
+		// SHADER RESOURCE VIEW
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+		srvDesc.Format = format;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.MipLevels = mipLevels;
+
+		result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
+		if (FAILED(result))
+		{
+			LOG_ERROR("D3D11Texture: Failed to create the ID3D11ShaderResourceView.");
+			return false;
+		}
 
 		return true;
 	}
@@ -112,7 +178,7 @@ namespace Directus
 
 		unsigned int mipLevels = 7;
 
-		//= ID3D11Texture2D ========================================================================
+		// ID3D11Texture2D
 		D3D11_TEXTURE2D_DESC textureDesc;
 		ZeroMemory(&textureDesc, sizeof(textureDesc));
 		textureDesc.Width = (unsigned int)width;
@@ -135,9 +201,8 @@ namespace Directus
 			LOG_ERROR("D3D11Texture: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
 			return false;
 		}
-		//=========================================================================================
 
-		//= SHADER RESOURCE VIEW ==================================================================
+		// SHADER RESOURCE VIEW
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 		srvDesc.Format = format;
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
@@ -151,10 +216,8 @@ namespace Directus
 			LOG_ERROR("D3D11Texture: Failed to create the ID3D11ShaderResourceView.");
 			return false;
 		}
-		//========================================================================================
 
-		//= MIPCHAIN GENERATION ==================================================================
-		// Resource data description
+		// SHADER RESOURCE VIEW
 		D3D11_SUBRESOURCE_DATA subresource;
 		ZeroMemory(&subresource, sizeof(subresource));
 		subresource.pSysMem = &data[0];
@@ -166,73 +229,6 @@ namespace Directus
 
 		// Create mipchain based on ID3D11ShaderResourveView
 		m_graphics->GetDeviceContext()->GenerateMips(m_shaderResourceView);
-		//========================================================================================
-
-		return true;
-	}
-
-	bool D3D11Texture::CreateWithMipmaps(int width, int height, int channels, const vector<vector<unsigned char>>& mipmaps, DXGI_FORMAT format)
-	{
-		if (!m_graphics->GetDevice())
-			return false;
-
-		unsigned int mipLevels = (unsigned int)mipmaps.size();
-
-		//= SUBRESOURCE DATA & TEXTURE DESCRIPTIONS ==============================================
-		vector<D3D11_SUBRESOURCE_DATA> subresourceData;
-		vector<D3D11_TEXTURE2D_DESC> textureDescs;
-		for (const auto& mip : mipmaps)
-		{
-			// Create subresource
-			subresourceData.push_back(D3D11_SUBRESOURCE_DATA{});
-			subresourceData.back().pSysMem = &mip[0];
-			subresourceData.back().SysMemPitch = (width * channels) * sizeof(unsigned char);
-			subresourceData.back().SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
-
-			textureDescs.push_back(D3D11_TEXTURE2D_DESC{});
-			textureDescs.back().Width = (unsigned int)width;
-			textureDescs.back().Height = (unsigned int)height;
-			textureDescs.back().MipLevels = mipLevels;
-			textureDescs.back().ArraySize = (unsigned int)1;
-			textureDescs.back().Format = format;
-			textureDescs.back().SampleDesc.Count = (unsigned int)1;
-			textureDescs.back().SampleDesc.Quality = (unsigned int)0;
-			textureDescs.back().Usage = D3D11_USAGE_IMMUTABLE;
-			textureDescs.back().BindFlags = D3D11_BIND_SHADER_RESOURCE;
-			textureDescs.back().MiscFlags = 0;
-			textureDescs.back().CPUAccessFlags = 0;
-
-			width = max(width / 2, 1);
-			height = max(height / 2, 1);
-		}
-		//==========================================================================================
-
-		//= ID3D11Texture2D ========================================================================
-		// Create texture from description
-		ID3D11Texture2D* texture = nullptr;
-		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(textureDescs.data(), subresourceData.data(), &texture);
-		if (FAILED(result))
-		{
-			LOG_ERROR("D3D11Texture: Failed to create ID3D11Texture2D. Invalid CreateTexture2D() parameters.");
-			return false;
-		}
-		//=========================================================================================
-
-		//= SHADER RESOURCE VIEW ==================================================================
-		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		srvDesc.Format = format;
-		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Texture2D.MipLevels = mipLevels;
-
-		// Create shader resource view from description
-		result = m_graphics->GetDevice()->CreateShaderResourceView(texture, &srvDesc, &m_shaderResourceView);
-		if (FAILED(result))
-		{
-			LOG_ERROR("D3D11Texture: Failed to create the ID3D11ShaderResourceView.");
-			return false;
-		}
-		//========================================================================================
 
 		return true;
 	}

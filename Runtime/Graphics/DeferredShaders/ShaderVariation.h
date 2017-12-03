@@ -61,14 +61,14 @@ namespace Directus
 
 		void Initialize(Context* context, unsigned long shaderFlags);
 
-		//= RESOURCE INTERFACE ========================
+		//= RESOURCE INTERFACE =================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
-		//=============================================
+		//======================================================
 
 		void Set();
 		void UpdatePerFrameBuffer(Light* directionalLight, Camera* camera);
-		void UpdatePerMaterialBuffer(std::weak_ptr<Material> material);
+		void UpdatePerMaterialBuffer(Material* material);
 		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, bool receiveShadows);
 		void UpdateTextures(const std::vector<ID3D11ShaderResourceView*>& textureArray);
 		void Render(int indexCount);

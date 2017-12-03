@@ -57,33 +57,28 @@ namespace Directus
 		Material(Context* context);
 		~Material();
 
-		//= I/O ===============================================
-		bool Save(const std::string& filePath, bool overwrite);
-		bool SaveToExistingDirectory();
-		//=====================================================
-
-		//= RESOURCE INTERFACE ======================================
+		//= RESOURCE ===========================================
 		bool LoadFromFile(const std::string& filePath) override;
-		bool SaveToFile(const std::string& filePath) override { return true; }
-		//===========================================================
+		bool SaveToFile(const std::string& filePath) override;
+		//======================================================
 
-		//= TEXTURES ==================================================================
+		//= TEXTURES =============================================
 		void SetTexture(std::weak_ptr<Texture> texture);
 		std::weak_ptr<Texture> GetTextureByType(TextureType type);
 		bool HasTextureOfType(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		//=============================================================================
+		//========================================================
 
-		//= SHADER ====================================================================
+		//= SHADER ===========================================================================
 		void AcquireShader();
 		std::weak_ptr<ShaderVariation> FindMatchingShader(unsigned long shaderFlags);
 		std::weak_ptr<ShaderVariation> CreateShaderBasedOnMaterial(unsigned long shaderFlags);
 		std::weak_ptr<ShaderVariation>& GetShader() { return m_shader; }
 		bool HasShader() { return GetShader().expired() ? false : true; }
 		void** GetShaderResource(TextureType type);
-		//=============================================================================
+		//====================================================================================
 
 		//= PROPERTIES ================================================================	
 		unsigned int GetModelID() { return m_modelID; }

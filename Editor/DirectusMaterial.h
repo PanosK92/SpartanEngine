@@ -51,10 +51,9 @@ public:
     std::weak_ptr<Directus::Material> GetInspectedMaterial();
 
 private:
-    //= SHADER ======================
+    //= SHADER ===========
     QLabel* m_shaderLabel;
-    QComboBox* m_shader;
-    //===============================
+    //====================
 
     //= ALBEDO ======================
     DirectusMaterialTextureDropTarget* m_albedoImage;
@@ -121,6 +120,7 @@ private:
     void SetPropertiesVisible(bool visible);
 
     void ReflectName();
+    void ReflectShader();
     void ReflectAlbedo();
     void ReflectRoughness();
     void ReflectMetallic();

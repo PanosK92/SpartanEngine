@@ -56,22 +56,43 @@ namespace Directus
 		"CubeMap",
 	};
 
+	static const DXGI_FORMAT apiTextureFormat[]
+	{
+		DXGI_FORMAT_R32G32B32_FLOAT,
+		DXGI_FORMAT_R16G16B16A16_FLOAT,
+		DXGI_FORMAT_R8G8B8A8_UNORM,
+		DXGI_FORMAT_R8_UNORM
+	};
+
 	Texture::Texture(Context* context)
 	{
-		//= RESOURCE INTERFACE ==============
+		// Resource
 		InitializeResource(Resource_Texture);
-		//===================================
 
 		// Texture
 		m_context = context;
 		m_isUsingMipmaps = true;
 		m_textureAPI = make_shared<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 		m_isDirty = false;
+		m_hasShaderResource = true;
+	}
+
+	Texture::Texture(Context* context, unsigned int width, unsigned int height)
+	{
+		// Resource
+		InitializeResource(Resource_Texture);
+
+		m_width = width;
+		m_height = height;
+		m_isUsingMipmaps = false;	
+		m_hasShaderResource = false;
+		m_context = context;
+		m_isDirty = true;
 	}
 
 	Texture::~Texture()
 	{
-
+		Clear();
 	}
 
 	//= RESOURCE INTERFACE =====================================================================
@@ -97,12 +118,13 @@ namespace Directus
 	bool Texture::LoadFromFile(const string& filePath)
 	{
 		bool loaded;
-
-		if (FileSystem::GetExtensionFromFilePath(filePath) == TEXTURE_EXTENSION) // engine format
+		// engine format (binary)
+		if (FileSystem::GetExtensionFromFilePath(filePath) == TEXTURE_EXTENSION) 
 		{
 			loaded = Deserialize(filePath);
 		}
-		else // foreign format
+		// foreign format (most known image formats)
+		else 
 		{
 			loaded = LoadFromForeignFormat(filePath);
 		}
@@ -113,69 +135,15 @@ namespace Directus
 			return false;
 		}
 
+		// DDS textures load directly as a shader resource, no need to do it here
+		if (m_hasShaderResource && FileSystem::GetExtensionFromFilePath(filePath) != ".dds")
+		{
+			CreateShaderResource();
+		}
+
 		m_memoryUsageKB = ComputeMemoryUsageKB();
 		m_isDirty = true;
 		return true;
-	}
-	//=====================================================================================
-
-	//= SHADER RESOURCE CREATION ==========================================================
-	bool Texture::Serialize(const string& filePath)
-	{
-		auto file = std::make_unique<StreamIO>(filePath, Mode_Write);
-		if (!file->IsCreated())
-			return false;
-
-		file->Write((int)m_type);
-		file->Write(m_bpp);
-		file->Write(m_width);
-		file->Write(m_height);
-		file->Write(m_channels);
-		file->Write(m_isGrayscale);
-		file->Write(m_isTransparent);
-		file->Write(m_isUsingMipmaps);
-
-		file->Write((unsigned int)m_rgba.size());
-		for (auto& mip : m_rgba)
-		{
-			file->Write(mip);
-		}
-
-		return true;
-	}
-
-	bool Texture::Deserialize(const string& filePath)
-	{
-		auto file = std::make_unique<StreamIO>(filePath, Mode_Read);
-		if (!file->IsCreated())
-			return false;
-
-		Clear();
-
-		m_type = (TextureType)file->ReadInt();
-		file->Read(m_bpp);
-		file->Read(m_width);
-		file->Read(m_height);
-		file->Read(m_channels);
-		file->Read(m_isGrayscale);
-		file->Read(m_isTransparent);
-		file->Read(m_isUsingMipmaps);
-
-		unsigned int mipCount = file->ReadUInt();
-		m_rgba.reserve(mipCount);
-		for (unsigned int i = 0; i < mipCount; i++)
-		{
-			m_rgba.emplace_back(std::vector<unsigned char>());
-			file->Read(m_rgba[i]);
-		}
-
-		return true;
-	}
-
-	void Texture::Clear()
-	{
-		m_rgba.clear();
-		m_rgba.shrink_to_fit();
 	}
 	//=====================================================================================
 
@@ -259,7 +227,7 @@ namespace Directus
 
 	bool Texture::CreateShaderResource(unsigned int width, unsigned int height, unsigned int channels, vector<unsigned char> rgba, TextureFormat format)
 	{
-		if (!m_textureAPI->Create(width, height, channels, rgba, (DXGI_FORMAT)ToAPIFormat(format)))
+		if (!m_textureAPI->Create(width, height, channels, rgba, apiTextureFormat[format]))
 		{
 			LOG_ERROR("Texture: Failed to create shader resource for \"" + m_resourceFilePath + "\".");
 			return false;
@@ -278,7 +246,7 @@ namespace Directus
 
 		if (!m_isUsingMipmaps)
 		{
-			if (!m_textureAPI->Create(m_width, m_height, m_channels, m_rgba[0], (DXGI_FORMAT)ToAPIFormat(m_format)))
+			if (!m_textureAPI->Create(m_width, m_height, m_channels, m_rgba[0], apiTextureFormat[m_format]))
 			{
 				LOG_ERROR("Texture: Failed to create shader resource for \"" + m_resourceFilePath + "\".");
 				return false;
@@ -286,7 +254,7 @@ namespace Directus
 		}
 		else
 		{
-			if (!m_textureAPI->CreateWithMipmaps(m_width, m_height, m_channels, m_rgba, (DXGI_FORMAT)ToAPIFormat(m_format)))
+			if (!m_textureAPI->Create(m_width, m_height, m_channels, m_rgba, apiTextureFormat[m_format]))
 			{
 				LOG_ERROR("Texture: Failed to create shader resource with mipmaps for \"" + m_resourceFilePath + "\".");
 				return false;
@@ -332,13 +300,12 @@ namespace Directus
 			return false;
 		}
 
-		// Extract any metadata we can from the ImageImporter
-		SetResourceFilePath(filePath);
+		// Change texture extension to an engine texture
+		SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(filePath) + TEXTURE_EXTENSION);
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(GetResourceFilePath()));
 
 		m_isDirty = true;
-
-		return CreateShaderResource();
+		return true;
 	}
 
 	TextureType Texture::TextureTypeFromString(const string& type)
@@ -356,16 +323,6 @@ namespace Directus
 		return TextureType_Unknown;
 	}
 
-	int Texture::ToAPIFormat(TextureFormat format)
-	{
-		if (format == RGBA_8_UNORM) return DXGI_FORMAT_R8G8B8A8_UNORM;
-		if (format == RGBA_32_FLOAT) return DXGI_FORMAT_R32G32B32_FLOAT;
-		if (format == RGBA_16_FLOAT) return DXGI_FORMAT_R16G16B16A16_FLOAT;
-		if (format == R_8_UNORM) return DXGI_FORMAT_R8_UNORM;
-
-		return DXGI_FORMAT_R8G8B8A8_UNORM;
-	}
-
 	unsigned Texture::ComputeMemoryUsageKB()
 	{
 		unsigned int memoryKB = 0;
@@ -376,5 +333,79 @@ namespace Directus
 		}
 
 		return memoryKB / 1000;
+	}
+
+	bool Texture::Serialize(const string& filePath)
+	{
+		auto file = make_unique<StreamIO>(filePath, Mode_Write);
+		if (!file->IsCreated())
+			return false;
+
+		file->Write((int)m_type);
+		file->Write(m_bpp);
+		file->Write(m_width);
+		file->Write(m_height);
+		file->Write(m_channels);
+		file->Write(m_isGrayscale);
+		file->Write(m_isTransparent);
+		file->Write(m_isUsingMipmaps);
+
+		file->Write((unsigned int)m_rgba.size());
+		for (auto& mip : m_rgba)
+		{
+			file->Write(mip);
+		}
+
+		return true;
+	}
+
+	bool Texture::Deserialize(const string& filePath)
+	{
+		int requestedWidth = m_width;
+		int requestedHeight = m_height;
+		bool rescaleRequest = (m_width != 0 && m_height != 0);
+
+		SetAsyncState(Async_Started);
+		auto file = make_unique<StreamIO>(filePath, Mode_Read);
+		if (!file->IsCreated())
+		{
+			SetAsyncState(Async_Failed);
+			return false;
+		}
+
+		Clear();
+
+		m_type = (TextureType)file->ReadInt();
+		file->Read(m_bpp);
+		file->Read(m_width);
+		file->Read(m_height);
+		file->Read(m_channels);
+		file->Read(m_isGrayscale);
+		file->Read(m_isTransparent);
+		file->Read(m_isUsingMipmaps);
+
+		unsigned int mipCount = file->ReadUInt();
+		for (unsigned int i = 0; i < mipCount; i++)
+		{
+			m_rgba.emplace_back(vector<unsigned char>());
+			file->Read(m_rgba[i]);
+		}
+
+		// If a size was defined before deserialization, and this texture won't be used for rendering, we rescale here.
+		// This can be requested by the editor whenever it needs to quickly inspect some texture.
+		if (rescaleRequest && !m_hasShaderResource && !m_rgba.empty() && !m_rgba[0].empty())
+		{
+			weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
+			imageImp._Get()->RescaleBits(m_rgba[0], m_width, m_height, requestedWidth, requestedHeight);
+		}
+
+		SetAsyncState(Async_Completed);
+		return true;
+	}
+
+	void Texture::Clear()
+	{
+		m_rgba.clear();
+		m_rgba.shrink_to_fit();
 	}
 }

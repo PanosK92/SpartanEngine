@@ -57,6 +57,14 @@ namespace Directus
 		{
 			LOG_ERROR("FreeType: Failed to initialize.");
 		}
+
+		// Log version
+		FT_Int major;
+		FT_Int minor;
+		FT_Int rev;
+		FT_Library_Version(m_library, &major, &minor, &rev);
+		string version = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
+		LOG_INFO("FontImporter: FreeType " + version);
 	}
 
 	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, map<unsigned int, Glyph>& glyphs)

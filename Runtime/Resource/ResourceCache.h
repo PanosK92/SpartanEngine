@@ -185,14 +185,14 @@ namespace Directus
 			else if (FileSystem::IsSupportedAudioFile(filePath)) // engine doesn't use custom audio files
 			{
 				type = Resource_Audio;
-			}		
-			else if (FileSystem::IsSupportedShaderFile(filePath)) // engine doesn't use custom shader files
-			{
-				type = Resource_Shader;
-			}
+			}				
 			else if (FileSystem::IsSupportedFontFile(filePath)) // engine doesn't use custom font files
 			{
 				type = Resource_Font;
+			}
+			else if (FileSystem::IsSupportedShaderFile(filePath) || FileSystem::IsEngineShaderFile(filePath))
+			{
+				type = Resource_Shader;
 			}
 			else if (FileSystem::IsEngineMaterialFile(filePath))
 			{

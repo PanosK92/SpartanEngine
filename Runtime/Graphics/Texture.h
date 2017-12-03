@@ -55,20 +55,11 @@ namespace Directus
 	class DLL_API Texture : public Resource
 	{
 	public:
+		// Used by the engine for all textures
 		Texture(Context* context);
-		Texture(unsigned int width, unsigned int height)
-		{
-			m_width = width;
-			m_height = height;
-			m_isUsingMipmaps = false;
-			m_isDirty = true;
-		}
+		// Used by the editor whenever it needs to load a thumbnail or something like that
+		Texture(Context* context, unsigned int width, unsigned int height);
 
-		Texture(bool useMimaps)
-		{
-			m_isUsingMipmaps = useMimaps;
-			m_isDirty = true;
-		}
 		~Texture();
 
 		//= RESOURCE INTERFACE =============================================
@@ -76,12 +67,6 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath) override;
 		unsigned int GetMemoryUsageKB() override { return m_memoryUsageKB; }
 		//==================================================================
-
-		//= NATIVE TEXTURE HANDLING (BINARY) =========
-		bool Serialize(const std::string& filePath);
-		bool Deserialize(const std::string& filePath);	
-		void Clear();
-		//============================================
 
 		//= PROPERTIES ======================================================
 		unsigned int GetWidth() { return m_width; }
@@ -126,10 +111,15 @@ namespace Directus
 		bool CreateShaderResource();
 		//==============================================
 
-	private:		
+	private:
+		//= NATIVE TEXTURE HANDLING (BINARY) =========
+		bool Serialize(const std::string& filePath);
+		bool Deserialize(const std::string& filePath);
+		void Clear();
+		//============================================
+
 		bool LoadFromForeignFormat(const std::string& filePath);
 		TextureType TextureTypeFromString(const std::string& type);
-		int ToAPIFormat(TextureFormat format);
 		unsigned int ComputeMemoryUsageKB();
 
 		bool m_isDirty;
@@ -145,6 +135,7 @@ namespace Directus
 		bool m_isGrayscale = false;
 		bool m_isTransparent = false;
 		bool m_isUsingMipmaps = false;
+		bool m_hasShaderResource;
 		std::vector<std::vector<unsigned char>> m_rgba;
 		TextureType m_type = TextureType_Unknown;
 		//=============================================

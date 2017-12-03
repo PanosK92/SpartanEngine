@@ -392,8 +392,8 @@ namespace Directus
 			// Set appropriate shadow map as render target
 			m_directionalLight->SetShadowCascadeAsRenderTarget(cascadeIndex);
 
-			Matrix mViewLight = m_directionalLight->ComputeViewMatrix();
-			Matrix mProjectionLight = m_directionalLight->ComputeOrthographicProjectionMatrix(cascadeIndex);
+			Matrix mViewLight = m_directionalLight->GetViewMatrix();
+			Matrix mProjectionLight = m_directionalLight->GetOrthographicProjectionMatrix(cascadeIndex);
 
 			for (const auto& gameObj : m_renderables)
 			{
@@ -439,35 +439,41 @@ namespace Directus
 		m_graphics->SetViewport();
 		m_GBuffer->Clear();
 
-		vector<weak_ptr<Material>> materials = m_resourceMng->GetResourcesByType<Material>();
-		vector<weak_ptr<ShaderVariation>> shaders = m_resourceMng->GetResourcesByType<ShaderVariation>();
+		vector<weak_ptr<Resource>> materials = m_resourceMng->GetResourcesByType(Resource_Material);
+		vector<weak_ptr<Resource>> shaders = m_resourceMng->GetResourcesByType(Resource_Shader);
 
-		for (const auto& shader : shaders) // SHADER ITERATION
+		for (const auto& shaderIt : shaders) // SHADER ITERATION
 		{
-			// Set the shader
-			shader._Get()->Set();
+			ShaderVariation* shader = (ShaderVariation*)shaderIt._Get();
+			if (!shader)
+				continue;
 
-			// UPDATE PER FRAME BUFFER
-			shader._Get()->UpdatePerFrameBuffer(m_directionalLight, m_camera);
+			// Set the shader and update frame buffer
+			shader->Set();
+			shader->UpdatePerFrameBuffer(m_directionalLight, m_camera);
 
-			for (const auto& material : materials) // MATERIAL ITERATION
+			for (const auto& materialIt : materials) // MATERIAL ITERATION
 			{
+				Material* material = (Material*)materialIt._Get();
+				if (!material)
+					continue;
+
 				// Continue only if the material at hand happens to use the already set shader
-				if (!material._Get()->GetShader().expired() && (material._Get()->GetShader()._Get()->GetResourceID() != shader._Get()->GetResourceID()))
+				if (!material->GetShader().expired() && (material->GetShader()._Get()->GetResourceID() != shader->GetResourceID()))
 					continue;
 
 				// UPDATE PER MATERIAL BUFFER
-				shader._Get()->UpdatePerMaterialBuffer(material);
+				shader->UpdatePerMaterialBuffer(material);
 
 				// Order the textures they way the shader expects them
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Albedo));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Roughness));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Metallic));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Normal));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Height));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Occlusion));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Emission));
-				m_textures.push_back((ID3D11ShaderResourceView*)material._Get()->GetShaderResource(TextureType_Mask));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Albedo));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Roughness));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Metallic));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Normal));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Height));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Occlusion));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Emission));
+				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Mask));
 
 				if (m_directionalLight)
 				{
@@ -485,7 +491,7 @@ namespace Directus
 				}
 
 				// UPDATE TEXTURE BUFFER
-				shader._Get()->UpdateTextures(m_textures);
+				shader->UpdateTextures(m_textures);
 				//==================================================================================
 
 				for (const auto& gameObj : m_renderables) // GAMEOBJECT/MESH ITERATION
@@ -506,7 +512,7 @@ namespace Directus
 						continue;
 
 					// skip objects that use a different material
-					if (material._Get()->GetResourceID() != objMaterial->GetResourceID())
+					if (material->GetResourceID() != objMaterial->GetResourceID())
 						continue;
 
 					// skip transparent objects (for now)
@@ -518,7 +524,7 @@ namespace Directus
 						continue;
 
 					// UPDATE PER OBJECT BUFFER
-					shader._Get()->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
+					shader->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
 
 					// Set mesh buffer
 					if (meshFilter->HasMesh() && meshFilter->SetBuffers())
