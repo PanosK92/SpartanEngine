@@ -38,7 +38,10 @@ class DirectusUtilities
 public:
     static QPixmap LoadQPixmap(Context* context, const std::string& filePath, unsigned int width, unsigned int height)
     {
+        // To be returned
         QPixmap pixmap;
+
+        // Validate file path
         if (!FileSystem::IsEngineTextureFile(filePath) && !FileSystem::IsSupportedImageFile(filePath))
         {
             LOG_WARNING("DirectusUtilities: Can't create QPixmap. Provided filepath \"" + filePath + "\" is not a supported texture file.");
@@ -49,15 +52,19 @@ public:
         shared_ptr<Texture> texture = make_shared<Texture>(context);
         if (texture->LoadFromFile(filePath))
         {
-            // Get smallest mip
+            // Get first (or only) mip
             unsigned char* bits = &texture->GetRGBA().front()[0];
             int texWidth = texture->GetWidth();
             int texHeight = texture->GetHeight();
 
-            QImage image = QImage((const uchar*)bits, texWidth, texHeight, QImage::Format_RGBA8888);
-            pixmap = QPixmap::fromImage(image);
+            // If for some reason, there are no bits in the texture, return
+            if (texture->GetRGBA().front().empty())
+                return pixmap;
 
-            // Is rescaling required?
+            // Create QPixamp using the texture's bits
+            pixmap = QPixmap::fromImage(QImage((const uchar*)bits, texWidth, texHeight, QImage::Format_RGBA8888));
+
+            // Is rescaling required? If so, we do a fast rescale using Qt as the editor doesn't really need high quality textures for a simple inspection
             if (texture->GetWidth() != width || texture->GetHeight() != height)
             {
                 pixmap = pixmap.scaled(width, height, Qt::IgnoreAspectRatio, Qt::FastTransformation);
