@@ -153,6 +153,7 @@ namespace Directus
 				auto component = *it;
 				if (typeid(T) == typeid(*component))
 				{
+					component->Remove();
 					delete component;
 					it = m_components.erase(it);
 				}

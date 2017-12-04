@@ -64,6 +64,7 @@ namespace Directus
 		// delete components
 		for (int i = 0; i < m_components.size(); i++)
 		{
+			m_components[i]->Remove();
 			delete m_components[i];
 		}
 		m_components.clear();

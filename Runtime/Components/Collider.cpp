@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================================================
+//= INCLUDES ==================================================
 #include "Collider.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
@@ -29,9 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
 #include <BulletCollision/CollisionShapes/btConeShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
-#include <BulletCollision/CollisionShapes/btShapeHull.h>
-#include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
-#include <BulletCollision/CollisionShapes/btTriangleMesh.h>
 #include "Transform.h"
 #include "MeshFilter.h"
 #include "RigidBody.h"
@@ -40,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Graphics/Mesh.h"
 #include "../Logging/Log.h"
-//=================================================================
+//=============================================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -62,7 +59,7 @@ namespace Directus
 
 	}
 
-	//= ICOMPONENT ========================================================================
+	//= ICOMPONENT ==================================================================
 	void Collider::Initialize()
 	{
 		// Get the mesh
@@ -129,8 +126,9 @@ namespace Directus
 
 		UpdateShape();
 	}
+	//===============================================================================
 
-	//= BOUNDING BOX =============================================
+	//= BOUNDING BOX =========================================
 	void Collider::SetBoundingBox(const Vector3& boundingBox)
 	{
 		m_extents = boundingBox;
@@ -139,7 +137,7 @@ namespace Directus
 		m_extents.y = Clamp(m_extents.y, M_EPSILON, INFINITY);
 		m_extents.z = Clamp(m_extents.z, M_EPSILON, INFINITY);
 	}
-	//=============================================================
+	//========================================================
 
 	//= COLLISION SHAPE =======================================================
 	void Collider::UpdateShape()
@@ -189,13 +187,19 @@ namespace Directus
 			}
 
 			// Construct hull approximation
-			auto shape = make_shared<btConvexHullShape>((btScalar*)&m_mesh._Get()->GetVertices()[0], m_mesh._Get()->GetVertexCount(), sizeof(VertexPosTexTBN));
+			m_collisionShape = make_shared<btConvexHullShape>(
+				(btScalar*)&m_mesh._Get()->GetVertices()[0],	// points
+				m_mesh._Get()->GetVertexCount(),				// point count
+				sizeof(VertexPosTexTBN));						// stride
+
+			// Optimize if requested
 			if (m_optimize)
 			{
-				shape->optimizeConvexHull();
+				btConvexHullShape* hull = (btConvexHullShape*)m_collisionShape.get();
+				hull->optimizeConvexHull();
 			}
-			shape->setLocalScaling(ToBtVector3(newWorldScale));
-			m_collisionShape = shape;
+
+			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 		}
 

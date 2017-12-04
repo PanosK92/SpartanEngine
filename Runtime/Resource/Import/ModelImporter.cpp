@@ -40,6 +40,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Graphics/Animation.h"
 #include "../../Graphics/Mesh.h"
 #include "../../EventSystem/EventSystem.h"
+#include "../../Components/Collider.h"
+#include "../../Components/RigidBody.h"
 //=================================================
 
 //= NAMESPACES ================
@@ -365,6 +367,10 @@ namespace Directus
 
 		meshFilter->SetMesh(mesh);
 		meshRenderer->SetMaterialFromMemory(material);
+
+		RigidBody* meshBody = gameobject._Get()->AddComponent<RigidBody>();
+		Collider* meshCollider = gameobject._Get()->AddComponent<Collider>();
+		meshCollider->SetShapeType(CollishionShape_Mesh);
 		//===========================================================================
 	}
 

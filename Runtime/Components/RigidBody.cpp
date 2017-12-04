@@ -353,11 +353,11 @@ namespace Directus
 		m_shape = shape;
 		if (!m_shape.expired())
 		{
-			RemoveBodyFromWorld();
+			AddBodyToWorld();		
 		}
 		else
 		{
-			AddBodyToWorld();
+			RemoveBodyFromWorld();
 		}
 	}
 
