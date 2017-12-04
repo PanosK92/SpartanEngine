@@ -75,6 +75,13 @@ namespace Directus
 
 	struct VertexPosCol
 	{
+		VertexPosCol() {}
+		VertexPosCol(const Math::Vector3& position, const Math::Vector4& color)
+		{
+			this->position = position;
+			this->color = color;
+		}
+
 		Math::Vector3 position;
 		Math::Vector4 color;
 	};
