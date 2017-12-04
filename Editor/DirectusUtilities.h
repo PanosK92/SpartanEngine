@@ -45,12 +45,23 @@ public:
             return pixmap;
         }
 
-        shared_ptr<Texture> texture = make_shared<Texture>(context, width, height);
-
+        // Load texture
+        shared_ptr<Texture> texture = make_shared<Texture>(context);
         if (texture->LoadFromFile(filePath))
         {
-            QImage image = QImage((const uchar*)texture->GetRGBA()[0].data(), width, height, QImage::Format_RGBA8888);
+            // Get smallest mip
+            unsigned char* bits = &texture->GetRGBA().front()[0];
+            int texWidth = texture->GetWidth();
+            int texHeight = texture->GetHeight();
+
+            QImage image = QImage((const uchar*)bits, texWidth, texHeight, QImage::Format_RGBA8888);
             pixmap = QPixmap::fromImage(image);
+
+            // Is rescaling required?
+            if (texture->GetWidth() != width || texture->GetHeight() != height)
+            {
+                pixmap = pixmap.scaled(width, height, Qt::IgnoreAspectRatio, Qt::FastTransformation);
+            }
         }
 
         return pixmap;

@@ -74,20 +74,6 @@ namespace Directus
 		m_isUsingMipmaps = true;
 		m_textureAPI = make_shared<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 		m_isDirty = false;
-		m_hasShaderResource = true;
-	}
-
-	Texture::Texture(Context* context, unsigned int width, unsigned int height)
-	{
-		// Resource
-		InitializeResource(Resource_Texture);
-
-		m_width = width;
-		m_height = height;
-		m_isUsingMipmaps = false;	
-		m_hasShaderResource = false;
-		m_context = context;
-		m_isDirty = true;
 	}
 
 	Texture::~Texture()
@@ -117,14 +103,16 @@ namespace Directus
 
 	bool Texture::LoadFromFile(const string& filePath)
 	{
-		bool loaded;
+		bool loaded = false;
+		SetAsyncState(Async_Started);
+
 		// engine format (binary)
-		if (FileSystem::GetExtensionFromFilePath(filePath) == TEXTURE_EXTENSION) 
+		if (FileSystem::IsEngineTextureFile(filePath)) 
 		{
 			loaded = Deserialize(filePath);
 		}
 		// foreign format (most known image formats)
-		else 
+		else if (FileSystem::IsSupportedImageFile(filePath))
 		{
 			loaded = LoadFromForeignFormat(filePath);
 		}
@@ -132,15 +120,17 @@ namespace Directus
 		if (!loaded)
 		{
 			LOG_ERROR("Texture: Failed to load \"" + filePath + "\".");
+			SetAsyncState(Async_Failed);
 			return false;
 		}
 
 		// DDS textures load directly as a shader resource, no need to do it here
-		if (m_hasShaderResource && FileSystem::GetExtensionFromFilePath(filePath) != ".dds")
+		if (FileSystem::GetExtensionFromFilePath(filePath) != ".dds")
 		{
 			CreateShaderResource();
 		}
 
+		SetAsyncState(Async_Completed);
 		m_memoryUsageKB = ComputeMemoryUsageKB();
 		m_isDirty = true;
 		return true;
@@ -361,17 +351,9 @@ namespace Directus
 
 	bool Texture::Deserialize(const string& filePath)
 	{
-		int requestedWidth = m_width;
-		int requestedHeight = m_height;
-		bool rescaleRequest = (m_width != 0 && m_height != 0);
-
-		SetAsyncState(Async_Started);
 		auto file = make_unique<StreamIO>(filePath, Mode_Read);
 		if (!file->IsCreated())
-		{
-			SetAsyncState(Async_Failed);
 			return false;
-		}
 
 		Clear();
 
@@ -391,15 +373,6 @@ namespace Directus
 			file->Read(m_rgba[i]);
 		}
 
-		// If a size was defined before deserialization, and this texture won't be used for rendering, we rescale here.
-		// This can be requested by the editor whenever it needs to quickly inspect some texture.
-		if (rescaleRequest && !m_hasShaderResource && !m_rgba.empty() && !m_rgba[0].empty())
-		{
-			weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();
-			imageImp._Get()->RescaleBits(m_rgba[0], m_width, m_height, requestedWidth, requestedHeight);
-		}
-
-		SetAsyncState(Async_Completed);
 		return true;
 	}
 

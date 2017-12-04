@@ -128,7 +128,7 @@ namespace Directus
 
 		// Fill RGBA vector with the data from the FIBITMAP
 		texture->GetRGBA().emplace_back(std::vector<unsigned char>());
-		GetBitsFromFIBITMAP(bitmap32, texture->GetRGBA()[0]);
+		GetBitsFromFIBITMAP(&texture->GetRGBA()[0], bitmap32);
 
 		// Check if the image is grayscale
 		texture->SetGrayscale(GrayscaleCheck(texture->GetRGBA()[0], texture->GetWidth(), texture->GetHeight()));
@@ -158,17 +158,17 @@ namespace Directus
 		return true;
 	}
 
-	bool ImageImporter::RescaleBits(vector<unsigned char>& rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int toWidth, unsigned int toHeight)
+	bool ImageImporter::RescaleBits(vector<unsigned char>* rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int toWidth, unsigned int toHeight)
 	{
-		if (rgba.empty())
+		if (rgba->empty())
 		{
 			LOG_WARNING("ImageImporter: Can't rescale bits. Provided bits are empty.");
 			return false;
 		}
 
 		unsigned int pitch = fromWidth * 4;
-		FIBITMAP* bitmap = FreeImage_ConvertFromRawBits(&rgba[0], fromWidth, fromHeight, pitch, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
-		bool result = GetRescaledBitsFromBitmap(bitmap, toWidth, toHeight, rgba);
+		FIBITMAP* bitmap = FreeImage_ConvertFromRawBits(rgba->data(), fromWidth, fromHeight, pitch, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
+		bool result = GetRescaledBitsFromBitmap(rgba, toWidth, toHeight, bitmap);
 		return result;
 	}
 
@@ -190,7 +190,7 @@ namespace Directus
 		return 0;
 	}
 
-	bool ImageImporter::GetBitsFromFIBITMAP(FIBITMAP* bitmap, vector<unsigned char>& rgba)
+	bool ImageImporter::GetBitsFromFIBITMAP(vector<unsigned char>* bitsRGBA, FIBITMAP* bitmap)
 	{
 		int width = FreeImage_GetWidth(bitmap);
 		int height = FreeImage_GetHeight(bitmap);
@@ -199,7 +199,7 @@ namespace Directus
 			return false;
 
 		unsigned int bytesPerPixel = FreeImage_GetLine(bitmap) / width;
-		rgba.reserve(4 * width * height);
+		bitsRGBA->reserve(4 * width * height);
 
 		// Construct an RGBA array
 		for (unsigned int y = 0; y < height; y++)
@@ -207,10 +207,10 @@ namespace Directus
 			unsigned char* bits = (unsigned char*)FreeImage_GetScanLine(bitmap, y);
 			for (unsigned int x = 0; x < width; x++)
 			{
-				rgba.emplace_back(bits[FI_RGBA_RED]);
-				rgba.emplace_back(bits[FI_RGBA_GREEN]);
-				rgba.emplace_back(bits[FI_RGBA_BLUE]);
-				rgba.emplace_back(bits[FI_RGBA_ALPHA]);
+				bitsRGBA->emplace_back(bits[FI_RGBA_RED]);
+				bitsRGBA->emplace_back(bits[FI_RGBA_GREEN]);
+				bitsRGBA->emplace_back(bits[FI_RGBA_BLUE]);
+				bitsRGBA->emplace_back(bits[FI_RGBA_ALPHA]);
 
 				// jump to next pixel
 				bits += bytesPerPixel;
@@ -220,22 +220,22 @@ namespace Directus
 		return true;
 	}
 
-	bool ImageImporter::GetRescaledBitsFromBitmap(FIBITMAP* bitmap, int width, int height, vector<unsigned char>& rgbaOut)
+	bool ImageImporter::GetRescaledBitsFromBitmap(vector<unsigned char>* bitsOutRGBA, int width, int height, FIBITMAP* bitmap)
 	{
 		if (!bitmap || width == 0 || height == 0)
 			return false;
 
-		rgbaOut.clear();
-		rgbaOut.shrink_to_fit();
+		bitsOutRGBA->clear();
+		bitsOutRGBA->shrink_to_fit();
 
 		// Rescale
-		FIBITMAP* scaled = FreeImage_Rescale(bitmap, width, height, FILTER_LANCZOS3);
+		FIBITMAP* bitmapScaled = FreeImage_Rescale(bitmap, width, height, FILTER_LANCZOS3);
 
 		// Extract RGBA data from the FIBITMAP
-		bool result = GetBitsFromFIBITMAP(scaled, rgbaOut);
+		bool result = GetBitsFromFIBITMAP(bitsOutRGBA, bitmapScaled);
 
 		// Unload the FIBITMAP
-		FreeImage_Unload(scaled);
+		FreeImage_Unload(bitmapScaled);
 
 		return result;
 	}
@@ -282,7 +282,7 @@ namespace Directus
 		{
 			threading->AddTask([this, &job, &texture, &bitmap]()
 			{
-				if (!GetRescaledBitsFromBitmap(bitmap, job.width, job.height, job.rgba))
+				if (!GetRescaledBitsFromBitmap(&job.rgba, job.width, job.height, bitmap))
 				{
 					string mipSize = "(" + to_string(job.width) + "x" + to_string(job.height) + ")";
 					LOG_INFO("ImageImporter: Failed to create mip level " + mipSize + ".");
@@ -312,9 +312,9 @@ namespace Directus
 		}
 	}
 
-	bool ImageImporter::GrayscaleCheck(const vector<unsigned char>& dataRGBA, int width, int height)
+	bool ImageImporter::GrayscaleCheck(const vector<unsigned char>& bitsRGBA, int width, int height)
 	{
-		if (dataRGBA.empty())
+		if (bitsRGBA.empty())
 			return false;
 
 		int grayPixels = 0;
@@ -325,9 +325,9 @@ namespace Directus
 		{
 			for (int j = 0; j < width; j++)
 			{
-				int red = dataRGBA[(i * width + j) * channels + 0];
-				int green = dataRGBA[(i * width + j) * channels + 1];
-				int blue = dataRGBA[(i * width + j) * channels + 2];
+				int red		= bitsRGBA[(i * width + j) * channels + 0];
+				int green	= bitsRGBA[(i * width + j) * channels + 1];
+				int blue	= bitsRGBA[(i * width + j) * channels + 2];
 
 				if (red == green && red == blue)
 				{

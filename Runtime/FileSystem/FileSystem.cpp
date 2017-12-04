@@ -276,16 +276,19 @@ namespace Directus
 
 	string FileSystem::GetExtensionFromFilePath(const string& filePath)
 	{
-		string extension = NOT_ASSIGNED;
+		if (filePath.empty() || filePath == NOT_ASSIGNED)
+		{
+			return NOT_ASSIGNED;
+		}
 
 		size_t lastindex = filePath.find_last_of(".");
 		if (string::npos != lastindex)
 		{
 			// extension with dot included
-			extension = filePath.substr(lastindex, filePath.length());
+			return filePath.substr(lastindex, filePath.length());
 		}
 
-		return extension;
+		return NOT_ASSIGNED;
 	}
 
 	vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)

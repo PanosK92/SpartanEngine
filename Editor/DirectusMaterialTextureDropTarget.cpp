@@ -72,12 +72,12 @@ void DirectusMaterialTextureDropTarget::Initialize(DirectusInspector* inspector,
 
 void DirectusMaterialTextureDropTarget::LoadImageAsync(const std::string& filePath)
 {
-    if (m_currentFilePath == filePath || filePath == NOT_ASSIGNED)
+    if (m_currentFilePath == filePath || filePath == NOT_ASSIGNED || filePath.empty())
         return;
 
     m_currentFilePath = filePath;
-    m_texture = new Texture(m_inspector->GetContext(), SLOT_SIZE, SLOT_SIZE);
-    m_texture->LoadFromFileAsync(filePath);
+    m_texture = new Texture(m_inspector->GetContext());
+    m_texture->LoadFromFile(filePath);
 }
 
 void DirectusMaterialTextureDropTarget::Update()
@@ -95,8 +95,12 @@ void DirectusMaterialTextureDropTarget::Update()
     if (m_texture->GetAsyncState() != Async_Completed)
         return;
 
-    QImage image = QImage((const uchar*)m_texture->GetRGBA()[0].data(), m_texture->GetWidth(), m_texture->GetHeight(), QImage::Format_RGBA8888);
+    QImage image = QImage((const uchar*)m_texture->GetRGBA().front().data(), m_texture->GetWidth(), m_texture->GetHeight(), QImage::Format_RGBA8888);
     QPixmap pixmap = QPixmap::fromImage(image);
+    if (m_texture->GetWidth() != SLOT_SIZE || m_texture->GetHeight() != SLOT_SIZE)
+    {
+        pixmap = pixmap.scaled(SLOT_SIZE, SLOT_SIZE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
+    }
     this->setPixmap(pixmap);
 
     delete m_texture;
