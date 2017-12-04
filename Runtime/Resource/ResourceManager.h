@@ -77,14 +77,11 @@ namespace Directus
 			base->SetResourceName(name);
 
 			// Load
-			base->SetAsyncState(Async_Started);
 			if (!base->LoadFromFile(relativeFilePath))
 			{
 				LOG_WARNING("ResourceManager: Resource \"" + relativeFilePath + "\" failed to load");
-				base->SetAsyncState(Async_Failed);
 				return std::weak_ptr<T>();
 			}
-			base->SetAsyncState(Async_Completed);
 
 			return Add<T>(base);
 		}

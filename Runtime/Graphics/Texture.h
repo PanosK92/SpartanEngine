@@ -57,8 +57,6 @@ namespace Directus
 	public:
 		// Used by the engine for all textures
 		Texture(Context* context);
-		// Used by the editor whenever it needs to load a thumbnail or something like that
-		Texture(Context* context, unsigned int width, unsigned int height);
 
 		~Texture();
 
@@ -135,7 +133,6 @@ namespace Directus
 		bool m_isGrayscale = false;
 		bool m_isTransparent = false;
 		bool m_isUsingMipmaps = false;
-		bool m_hasShaderResource;
 		std::vector<std::vector<unsigned char>> m_rgba;
 		TextureType m_type = TextureType_Unknown;
 		//=============================================
