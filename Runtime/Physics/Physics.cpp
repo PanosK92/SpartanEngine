@@ -46,7 +46,7 @@ namespace Directus
 { 
 	Physics::Physics(Context* context) : Subsystem(context)
 	{
-		m_internalFPS = 60.0f;
+		m_internalFPS = 25.0f;
 		m_maxSubSteps = 1;
 		m_gravity = Math::Vector3(0.0f, -9.81f, 0.0f);
 		m_simulating = false;
