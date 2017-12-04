@@ -97,10 +97,7 @@ namespace Directus
 
 	void LineRenderer::AddLines(const vector<VertexPosCol>& lineList)
 	{
-		for (const auto& line : lineList)
-		{
-			AddVertex(line);
-		}
+		m_vertices.insert(m_vertices.end(), lineList.begin(), lineList.end());
 	}
 
 	// All add functions resolve to this one
