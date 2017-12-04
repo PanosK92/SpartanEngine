@@ -52,9 +52,6 @@ namespace Directus
 		// Runs when the component gets added
 		virtual void Initialize() = 0;
 
-		//virtual void Awake() = 0; // todo
-		//virtual void OnEnable() = 0; // todo
-
 		// Runs every time the simulation starts
 		virtual void Start() = 0;
 
