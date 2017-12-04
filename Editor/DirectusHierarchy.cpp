@@ -36,7 +36,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Collider.h"
 #include "Components/Hinge.h"
 #include "Components/Light.h"
-#include "Components/MeshCollider.h"
 #include "Components/MeshFilter.h"
 #include "Components/MeshRenderer.h"
 #include "Components/RigidBody.h"
@@ -860,19 +859,6 @@ void DirectusHierarchy::AddColliderComponent()
         return;
 
     gameobject.lock()->AddComponent<Collider>();
-
-    // Update the engine and the inspector
-    m_inspector->Inspect(gameobject);
-}
-
-void DirectusHierarchy::AddMeshColliderComponent()
-{
-    // Get the currently selected GameObject
-    auto gameobject = GetSelectedGameObject();
-    if (gameobject.expired())
-        return;
-
-    gameobject.lock()->AddComponent<MeshCollider>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);

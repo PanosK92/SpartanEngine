@@ -36,12 +36,13 @@ namespace Directus
 
 	enum ColliderShape
 	{
-		Box,
-		Sphere,
-		Static_Plane,
-		Cylinder,
-		Capsule,
-		Cone
+		CollishionShape_Box,
+		CollishionShape_Sphere,
+		CollishionShape_StaticPlane,
+		CollishionShape_Cylinder,
+		CollishionShape_Capsule,
+		CollishionShape_Cone,
+		CollishionShape_Mesh,
 	};
 
 	class DLL_API Collider : public Component
@@ -51,7 +52,7 @@ namespace Directus
 		~Collider();
 
 		//= ICOMPONENT =============================
-		void Reset() override;
+		void Initialize() override;
 		void Start() override;
 		void OnDisable() override;
 		void Remove() override;
@@ -73,7 +74,10 @@ namespace Directus
 		void SetShapeType(ColliderShape type) { m_shapeType = type; }
 
 		// Collision shape
-		std::shared_ptr<btCollisionShape> GetBtCollisionShape() { return m_shape; }
+		std::shared_ptr<btCollisionShape> GetBtCollisionShape() { return m_collisionShape; }
+
+		bool GetOptimize() { return m_optimize; }
+		void SetOptimize(bool optimize) { m_optimize = optimize; }
 
 		void UpdateShape();
 
@@ -85,10 +89,12 @@ namespace Directus
 		void SetRigidBodyCollisionShape(std::shared_ptr<btCollisionShape> shape) const;
 
 		ColliderShape m_shapeType;
-		std::shared_ptr<btCollisionShape> m_shape;
+		std::shared_ptr<btCollisionShape> m_collisionShape;
 		Math::Vector3 m_extents;
 		Math::Vector3 m_center;
 		Math::Vector3 m_lastKnownScale;
 		std::weak_ptr<Mesh> m_mesh;
+		unsigned int m_vertexLimit = 100000;
+		bool m_optimize = true;
 	};
 }

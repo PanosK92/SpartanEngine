@@ -54,7 +54,7 @@ namespace Directus
 		m_indexBuffer.reset();
 	}
 
-	void MeshFilter::Reset()
+	void MeshFilter::Initialize()
 	{
 
 	}

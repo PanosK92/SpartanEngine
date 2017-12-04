@@ -96,7 +96,7 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ==========================================================
-	void RigidBody::Reset()
+	void RigidBody::Initialize()
 	{
 		AddBodyToWorld();
 	}
@@ -351,7 +351,14 @@ namespace Directus
 	void RigidBody::SetCollisionShape(weak_ptr<btCollisionShape> shape)
 	{
 		m_shape = shape;
-		AddBodyToWorld();
+		if (!m_shape.expired())
+		{
+			RemoveBodyFromWorld();
+		}
+		else
+		{
+			AddBodyToWorld();
+		}
 	}
 
 	void RigidBody::ClearForces() const
@@ -393,7 +400,9 @@ namespace Directus
 
 		// Calculate local inertia
 		if (!m_shape.expired())
+		{
 			m_shape._Get()->calculateLocalInertia(m_mass, inertia);
+		}
 
 		// Motion state
 		MotionState* motionState = new MotionState(this);
@@ -420,7 +429,9 @@ namespace Directus
 		// Editor -> Kinematic (so the user can move it around)
 		bool originalKinematicState = m_isKinematic;
 		if (g_context->GetSubsystem<Engine>()->GetMode() == Editor)
+		{
 			m_isKinematic = true;
+		}
 
 		if (m_isKinematic)
 		{

@@ -66,6 +66,11 @@ private:
     DirectusComboLabelText* m_sizeZ;
     //====================================
 
+    //= OPTIMIZE ===========
+    QLabel* m_optimizeLabel;
+    QCheckBox* m_optimize;
+    //======================
+
     //= MISC ===============================
     QValidator* m_validator;
     Directus::Collider* m_inspectedCollider;
@@ -74,10 +79,12 @@ private:
     void ReflectType();
     void ReflectCenter();
     void ReflectSize();
+    void ReflectOptimize();
 
 public slots:
     void MapType();
     void MapCenter();
     void MapSize();
+    void MapOptimize();
     virtual void Remove();
 };

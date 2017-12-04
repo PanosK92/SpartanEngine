@@ -22,7 +22,7 @@ namespace Directus
 		m_vertices.clear();
 	}
 
-	void LineRenderer::Reset()
+	void LineRenderer::Initialize()
 	{
 
 	}

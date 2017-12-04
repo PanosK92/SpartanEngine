@@ -3160,7 +3160,6 @@ QSplitter::handle:vertical
      <addaction name="actionRigidBody_Component"/>
      <addaction name="separator"/>
      <addaction name="actionCollider_Component"/>
-     <addaction name="actionMesh_Collider_Component"/>
      <addaction name="separator"/>
      <addaction name="actionHinge_Joint_Component"/>
     </widget>
@@ -3713,22 +3712,6 @@ QSplitter::handle:vertical
    </hints>
   </connection>
   <connection>
-   <sender>actionMesh_Collider_Component</sender>
-   <signal>triggered()</signal>
-   <receiver>widgetHierarchy</receiver>
-   <slot>AddMeshColliderComponent()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>258</x>
-     <y>491</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>actionMesh_Renderer_Component</sender>
    <signal>triggered()</signal>
    <receiver>widgetHierarchy</receiver>
@@ -3911,8 +3894,8 @@ QSplitter::handle:vertical
    <slot>SetDisplayWarnings(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>126</x>
-     <y>532</y>
+     <x>106</x>
+     <y>549</y>
     </hint>
     <hint type="destinationlabel">
      <x>290</x>
@@ -3927,8 +3910,8 @@ QSplitter::handle:vertical
    <slot>SetDisplayErrors(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>179</x>
-     <y>537</y>
+     <x>136</x>
+     <y>549</y>
     </hint>
     <hint type="destinationlabel">
      <x>260</x>

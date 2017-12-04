@@ -36,7 +36,7 @@ namespace Directus
 		~AudioListener();
 
 		//= COMPONENT ==============================
-		void Reset() override;
+		void Initialize() override;
 		void Start() override;
 		void OnDisable() override;
 		void Remove() override;

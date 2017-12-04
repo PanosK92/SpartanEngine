@@ -43,7 +43,7 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ==================================================================
-	void Script::Reset()
+	void Script::Initialize()
 	{
 
 	}
