@@ -61,7 +61,7 @@ void DirectusCollider::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_optionsButton->Initialize(mainWindow);
     //=========================================================
 
-    //= TYPE ==================================================
+    //= TYPE =============================
     m_shapeTypeLabel = new QLabel("Type");
     m_shapeType = new QComboBox();
     m_shapeType->addItem("Box");
@@ -70,9 +70,10 @@ void DirectusCollider::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_shapeType->addItem("Cylinder");
     m_shapeType->addItem("Capsule");
     m_shapeType->addItem("Cone");
-    //=========================================================
+    m_shapeType->addItem("Mesh");
+    //====================================
 
-    //= CENTER ================================================
+    //= CENTER ==============================
     m_centerLabel = new QLabel("Center");
     m_centerX = new DirectusComboLabelText();
     m_centerX->Initialize("X");
@@ -80,9 +81,9 @@ void DirectusCollider::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_centerY->Initialize("Y");
     m_centerZ = new DirectusComboLabelText();
     m_centerZ->Initialize("Z");
-    //=========================================================
+    //=======================================
 
-    //= SIZE ==================================================
+    //= SIZE ==============================
     m_sizeLabel = new QLabel("Size");
     m_sizeX = new DirectusComboLabelText();
     m_sizeX->Initialize("X");
@@ -90,14 +91,19 @@ void DirectusCollider::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_sizeY->Initialize("Y");
     m_sizeZ = new DirectusComboLabelText();
     m_sizeZ->Initialize("Z");
-    //=========================================================
+    //=====================================
 
-    //= LINE ======================================
+    //= LINE =========================================================
     m_line = new QWidget();
     m_line->setFixedHeight(1);
     m_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_line->setStyleSheet(QString("background-color: #585858;"));
-    //=============================================
+    //================================================================
+
+    //= OPTIMIZE ============================
+    m_optimizeLabel = new QLabel("Optimize");
+    m_optimize = new QCheckBox();
+    //=======================================
 
     // addWidget(widget, row, column, rowspan, colspan)
     //= GRID ==================================================
@@ -133,7 +139,12 @@ void DirectusCollider::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_gridLayout->addWidget(m_sizeZ->GetTextWidget(),   row, 6, 1, 1);
     row++;
 
-    // Row 4 - LINE
+    // Row 4 - CONVEX
+    m_gridLayout->addWidget(m_optimizeLabel,  row, 0, 1, 1);
+    m_gridLayout->addWidget(m_optimize,       row, 1, 1, 1);
+    row++;
+
+    // Row 5 - LINE
     m_gridLayout->addWidget(m_line, row, 0, 1, 7);
     //==============================================================================
 
@@ -145,6 +156,7 @@ void DirectusCollider::Initialize(DirectusInspector* inspector, QWidget* mainWin
     connect(m_sizeX,            SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
     connect(m_sizeY,            SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
     connect(m_sizeZ,            SIGNAL(ValueChanged()),             this, SLOT(MapSize()));
+    connect(m_optimize,         SIGNAL(clicked(bool)),              this, SLOT(MapOptimize()));
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -173,6 +185,7 @@ void DirectusCollider::Reflect(weak_ptr<GameObject> gameobject)
     ReflectType();
     ReflectCenter();
     ReflectSize();
+    ReflectOptimize();
 
     // Make this widget visible
     this->show();
@@ -183,8 +196,13 @@ void DirectusCollider::ReflectType()
     if (!m_inspectedCollider)
         return;
 
+    // Shape
     ColliderShape shape = m_inspectedCollider->GetShapeType();
     m_shapeType->setCurrentIndex((int)shape);
+
+   // If the shape is a mesh, make the optimize label and checkbox, visible
+    m_optimize->setVisible(shape == CollishionShape_Mesh);
+    m_optimizeLabel->setVisible(shape == CollishionShape_Mesh);
 }
 
 void DirectusCollider::ReflectCenter()
@@ -209,12 +227,21 @@ void DirectusCollider::ReflectSize()
     m_sizeZ->SetFromFloat(size.z);
 }
 
+void DirectusCollider::ReflectOptimize()
+{
+    bool optimize = m_inspectedCollider->GetOptimize();
+    m_optimize->setChecked(optimize);
+}
+
 void DirectusCollider::MapType()
 {
-    int index = m_shapeType->currentIndex();
-
-    m_inspectedCollider->SetShapeType((ColliderShape)index);
+    ColliderShape shape = (ColliderShape)m_shapeType->currentIndex();
+    m_inspectedCollider->SetShapeType(shape);
     m_inspectedCollider->UpdateShape();
+
+    // If the shape is a mesh, make the optimize label and checkbox, visible
+    m_optimizeLabel->setVisible(shape == CollishionShape_Mesh);
+    m_optimize->setVisible(shape == CollishionShape_Mesh);
 }
 
 void DirectusCollider::MapCenter()
@@ -238,6 +265,13 @@ void DirectusCollider::MapSize()
     );
 
     m_inspectedCollider->SetBoundingBox(size);
+    m_inspectedCollider->UpdateShape();
+}
+
+void DirectusCollider::MapOptimize()
+{
+    bool optimize = m_optimize->isChecked();
+    m_inspectedCollider->SetOptimize(optimize);
     m_inspectedCollider->UpdateShape();
 }
 

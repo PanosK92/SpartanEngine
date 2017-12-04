@@ -70,7 +70,6 @@ private:
     DirectusIComponent* m_light;
     std::vector<DirectusIComponent*> m_scripts;
     DirectusIComponent* m_meshFilter;
-    DirectusIComponent* m_meshCollider;
     DirectusIComponent* m_audioSource;
     DirectusIComponent* m_audioListener;
 

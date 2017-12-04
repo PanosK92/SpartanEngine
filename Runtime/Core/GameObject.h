@@ -93,7 +93,7 @@ namespace Directus
 			component->g_context = m_context;
 
 			// Run Initialize().
-			component->Reset();
+			component->Initialize();
 
 			// Caching of rendering performance critical components
 			if (typeStr == "MeshFilter")

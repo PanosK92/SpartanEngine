@@ -60,7 +60,7 @@ namespace Directus
 		m_shadowMaps.clear();
 	}
 
-	void Light::Reset()
+	void Light::Initialize()
 	{
 
 	}

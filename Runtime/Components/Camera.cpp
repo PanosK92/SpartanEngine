@@ -59,7 +59,7 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ============
-	void Camera::Reset()
+	void Camera::Initialize()
 	{
 		CalculateBaseView();
 		CalculateViewMatrix();

@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/LineRenderer.h"
 #include "../Components/MeshFilter.h"
 #include "../Components/MeshRenderer.h"
-#include "../Components/MeshCollider.h"
 #include "../Components/RigidBody.h"
 #include "../Components/Skybox.h"
 #include "../Components/Script.h"
@@ -306,9 +305,6 @@ namespace Directus
 
 		if (typeStr == "Collider")
 			component = AddComponent<Collider>();
-
-		if (typeStr == "MeshCollider")
-			component = AddComponent<MeshCollider>();
 
 		if (typeStr == "Hinge")
 			component = AddComponent<Hinge>();

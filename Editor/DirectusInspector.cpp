@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusLight.h"
 #include "DirectusScript.h"
 #include "DirectusMeshFilter.h"
-#include "DirectusMeshCollider.h"
 #include "DirectusViewport.h"
 #include "DirectusAudioSource.h"
 #include "DirectusAudioListener.h"
@@ -82,9 +81,6 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     m_collider = new DirectusCollider();
     m_collider->Initialize(this, mainWindow);
 
-    m_meshCollider = new DirectusMeshCollider();
-    m_meshCollider->Initialize(this, mainWindow);
-
     m_light = new DirectusLight();
     m_light->Initialize(this, mainWindow);
 
@@ -107,7 +103,6 @@ void DirectusInspector::Initialize(QWidget* mainWindow)
     this->layout()->addWidget(m_meshRenderer);   
     this->layout()->addWidget(m_rigidBody);
     this->layout()->addWidget(m_collider);
-    this->layout()->addWidget(m_meshCollider);
     this->layout()->addWidget(m_light);
     this->layout()->addWidget(m_scripts[0]);
     this->layout()->addWidget(m_material);
@@ -176,7 +171,6 @@ void DirectusInspector::Inspect(weak_ptr<GameObject> gameobject)
         m_meshRenderer->Reflect(gameobject);
         m_rigidBody->Reflect(gameobject);
         m_collider->Reflect(gameobject);
-        m_meshCollider->Reflect(gameobject);
         m_light->Reflect(gameobject);
         m_material->Reflect(gameobject);
         m_audioSource->Reflect(gameobject);
@@ -196,7 +190,6 @@ void DirectusInspector::Inspect(weak_ptr<GameObject> gameobject)
         m_meshRenderer->hide();     
         m_rigidBody->hide();
         m_collider->hide();
-        m_meshCollider->hide();
         m_light->hide();     
         m_material->hide();
         m_audioSource->hide();

@@ -50,7 +50,7 @@ namespace Directus
 		virtual ~Component() {}
 
 		// Runs when the component gets added
-		virtual void Reset() = 0;
+		virtual void Initialize() = 0;
 
 		//virtual void Awake() = 0; // todo
 		//virtual void OnEnable() = 0; // todo

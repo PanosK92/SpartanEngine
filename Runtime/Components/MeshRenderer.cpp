@@ -51,7 +51,7 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ===============================================================
-	void MeshRenderer::Reset()
+	void MeshRenderer::Initialize()
 	{
 
 	}

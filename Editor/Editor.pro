@@ -35,7 +35,6 @@ SOURCES += main.cpp\
     DirectusRigidBody.cpp \
     DirectusCollider.cpp \
     DirectusScript.cpp \
-    DirectusMeshCollider.cpp \
     DirectusAssetLoader.cpp \
     DirectusComboLabelText.cpp \
     DirectusComboSliderText.cpp \
@@ -70,7 +69,6 @@ HEADERS += editor.h \
     DirectusRigidBody.h \
     DirectusCollider.h \
     DirectusScript.h \
-    DirectusMeshCollider.h \
     DirectusQVariantPacker.h \
     DirectusAssetLoader.h \
     DirectusComboLabelText.h \
