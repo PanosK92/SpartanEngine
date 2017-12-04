@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================================
+//= INCLUDES ==============================
 #include "ModelImporter.h"
 #include <vector>
 #include <future>
@@ -42,7 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../EventSystem/EventSystem.h"
 #include "../../Components/Collider.h"
 #include "../../Components/RigidBody.h"
-//=================================================
+//=========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -362,15 +362,18 @@ namespace Directus
 		model->AddMeshAsNewResource(mesh);
 		model->AddMaterialAsNewResource(material);
 
+		// Add a MeshFilter and assign the mesh to it
 		MeshFilter* meshFilter = gameobject._Get()->AddComponent<MeshFilter>();
-		MeshRenderer* meshRenderer = gameobject._Get()->AddComponent<MeshRenderer>();
-
 		meshFilter->SetMesh(mesh);
+
+		// Add a MeshRenderer and assign the material to it
+		MeshRenderer* meshRenderer = gameobject._Get()->AddComponent<MeshRenderer>();
 		meshRenderer->SetMaterialFromMemory(material);
 
-		RigidBody* meshBody = gameobject._Get()->AddComponent<RigidBody>();
-		Collider* meshCollider = gameobject._Get()->AddComponent<Collider>();
-		meshCollider->SetShapeType(CollishionShape_Mesh);
+		// Add a Collider and assign a mesh collision shape to it
+		gameobject._Get()->AddComponent<RigidBody>();
+		Collider* collider = gameobject._Get()->AddComponent<Collider>();
+		collider->SetShapeType(CollishionShape_Mesh);
 		//===========================================================================
 	}
 
@@ -554,7 +557,7 @@ namespace Directus
 	}
 	//============================================================================================
 
-	//= HELPER FUNCTIONS =========================================================================
+	//= HELPER FUNCTIONS =================================================================================================================================
 	void ModelImporter::AddTextureToMaterial(Model* model, const weak_ptr<Material>& material, TextureType textureType, const string& originalTexturePath)
 	{
 		if (material.expired())

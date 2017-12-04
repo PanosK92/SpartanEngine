@@ -237,7 +237,6 @@ void DirectusCollider::MapType()
 {
     ColliderShape shape = (ColliderShape)m_shapeType->currentIndex();
     m_inspectedCollider->SetShapeType(shape);
-    m_inspectedCollider->UpdateShape();
 
     // If the shape is a mesh, make the optimize label and checkbox, visible
     m_optimizeLabel->setVisible(shape == CollishionShape_Mesh);
@@ -253,7 +252,6 @@ void DirectusCollider::MapCenter()
     );
 
     m_inspectedCollider->SetCenter(center);
-    m_inspectedCollider->UpdateShape();
 }
 
 void DirectusCollider::MapSize()
@@ -265,14 +263,12 @@ void DirectusCollider::MapSize()
     );
 
     m_inspectedCollider->SetBoundingBox(size);
-    m_inspectedCollider->UpdateShape();
 }
 
 void DirectusCollider::MapOptimize()
 {
     bool optimize = m_optimize->isChecked();
     m_inspectedCollider->SetOptimize(optimize);
-    m_inspectedCollider->UpdateShape();
 }
 
 void DirectusCollider::Remove()

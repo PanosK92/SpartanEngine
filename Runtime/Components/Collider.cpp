@@ -51,7 +51,6 @@ namespace Directus
 		m_shapeType = CollishionShape_Box;
 		m_extents = Vector3::One;
 		m_center = Vector3::Zero;
-		m_mesh = weak_ptr<Mesh>();
 	}
 
 	Collider::~Collider()
@@ -62,16 +61,6 @@ namespace Directus
 	//= ICOMPONENT ==================================================================
 	void Collider::Initialize()
 	{
-		// Get the mesh
-		if (!g_gameObject.expired())
-		{
-			MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
-			if (meshFilter)
-			{
-				m_mesh = meshFilter->GetMesh();
-			}
-		}
-
 		m_lastKnownScale = g_transform->GetScale();
 		UpdateShape();
 	}
@@ -93,21 +82,11 @@ namespace Directus
 
 	void Collider::Update()
 	{
-		// Get mesh
-		if (m_mesh.expired())
-		{
-			MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
-			if (meshFilter)
-			{
-				m_mesh = meshFilter->GetMesh();
-			}
-		}
-
 		// Scale the collider if the transform scale has changed
 		if (m_collisionShape && (m_lastKnownScale != g_transform->GetScale()))
 		{	
 			m_lastKnownScale = g_transform->GetScale();
-			m_collisionShape->setLocalScaling(ToBtVector3(m_lastKnownScale));
+			UpdateShape();
 		}
 	}
 
@@ -131,11 +110,42 @@ namespace Directus
 	//= BOUNDING BOX =========================================
 	void Collider::SetBoundingBox(const Vector3& boundingBox)
 	{
-		m_extents = boundingBox;
+		if (m_extents == boundingBox)
+			return;
 
+		m_extents = boundingBox;
 		m_extents.x = Clamp(m_extents.x, M_EPSILON, INFINITY);
 		m_extents.y = Clamp(m_extents.y, M_EPSILON, INFINITY);
 		m_extents.z = Clamp(m_extents.z, M_EPSILON, INFINITY);
+
+		UpdateShape();
+	}
+
+	void Collider::SetCenter(const Vector3& center)
+	{
+		if (m_center == center)
+			return;
+
+		m_center = center;
+		UpdateShape();
+	}
+
+	void Collider::SetShapeType(ColliderShape type)
+	{
+		if (m_shapeType == type)
+			return;
+
+		m_shapeType = type;
+		UpdateShape();
+	}
+
+	void Collider::SetOptimize(bool optimize)
+	{
+		if (m_optimize == optimize)
+			return;
+
+		m_optimize = optimize;
+		UpdateShape();
 	}
 	//========================================================
 
@@ -179,11 +189,19 @@ namespace Directus
 			break;
 
 		case CollishionShape_Mesh:
-			if (m_mesh.expired())
-				break;
+			// Get mesh
+			MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
+			Mesh* mesh = nullptr;
+			if (meshFilter)
+			{
+				if (meshFilter->GetMesh().expired())
+					break;
+
+				mesh = meshFilter->GetMesh()._Get();
+			}
 
 			// Validate vertex count
-			if (m_mesh._Get()->GetVertexCount() >= m_vertexLimit)
+			if (mesh->GetVertexCount() >= m_vertexLimit)
 			{
 				LOG_WARNING("No user defined collider with more than " + to_string(m_vertexLimit) + " vertices is allowed.");
 				break;
@@ -191,9 +209,9 @@ namespace Directus
 
 			// Construct hull approximation
 			m_collisionShape = make_shared<btConvexHullShape>(
-				(btScalar*)&m_mesh._Get()->GetVertices()[0],	// points
-				m_mesh._Get()->GetVertexCount(),				// point count
-				sizeof(VertexPosTexTBN));						// stride
+				(btScalar*)&mesh->GetVertices()[0],	// points
+				mesh->GetVertexCount(),				// point count
+				sizeof(VertexPosTexTBN));			// stride
 
 			// Scaling has to be done before (potential) optimization
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));

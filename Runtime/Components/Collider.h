@@ -67,21 +67,22 @@ namespace Directus
 
 		// Collider center
 		const Math::Vector3& GetCenter() { return m_center; }
-		void SetCenter(const Math::Vector3& center) { m_center = center; }
+		void SetCenter(const Math::Vector3& center);
 
 		// Collision shape type
 		ColliderShape GetShapeType() { return m_shapeType; }
-		void SetShapeType(ColliderShape type) { m_shapeType = type; }
+		void SetShapeType(ColliderShape type);
 
 		// Collision shape
 		std::shared_ptr<btCollisionShape> GetBtCollisionShape() { return m_collisionShape; }
 
 		bool GetOptimize() { return m_optimize; }
-		void SetOptimize(bool optimize) { m_optimize = optimize; }
-
-		void UpdateShape();
+		void SetOptimize(bool optimize);
 
 	private:
+		// Update the collision shape
+		void UpdateShape();
+
 		// Deletes the collision shape
 		void ReleaseShape();
 
@@ -93,7 +94,6 @@ namespace Directus
 		Math::Vector3 m_extents;
 		Math::Vector3 m_center;
 		Math::Vector3 m_lastKnownScale;
-		std::weak_ptr<Mesh> m_mesh;
 		unsigned int m_vertexLimit = 100000;
 		bool m_optimize = true;
 	};
