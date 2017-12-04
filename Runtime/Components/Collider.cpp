@@ -104,7 +104,7 @@ namespace Directus
 		}
 
 		// Scale the collider if the transform scale has changed
-		if (m_lastKnownScale != g_transform->GetScale())
+		if (m_collisionShape && (m_lastKnownScale != g_transform->GetScale()))
 		{	
 			m_lastKnownScale = g_transform->GetScale();
 			m_collisionShape->setLocalScaling(ToBtVector3(m_lastKnownScale));
@@ -179,6 +179,9 @@ namespace Directus
 			break;
 
 		case CollishionShape_Mesh:
+			if (m_mesh.expired())
+				break;
+
 			// Validate vertex count
 			if (m_mesh._Get()->GetVertexCount() >= m_vertexLimit)
 			{
@@ -192,14 +195,16 @@ namespace Directus
 				m_mesh._Get()->GetVertexCount(),				// point count
 				sizeof(VertexPosTexTBN));						// stride
 
+			// Scaling has to be done before (potential) optimization
+			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
+
 			// Optimize if requested
 			if (m_optimize)
 			{
 				btConvexHullShape* hull = (btConvexHullShape*)m_collisionShape.get();
 				hull->optimizeConvexHull();
+				hull->initializePolyhedralFeatures();
 			}
-
-			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 		}
 
