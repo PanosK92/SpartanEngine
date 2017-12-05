@@ -50,14 +50,16 @@ protected:
     QWidget* m_line;
     //==============
 
-    //= MISC ========================================
-    QGridLayout* m_gridLayout;
+    //= GRID LAYOUT ================
+     QGridLayout* m_gridLayout;
+     int m_verticalSpacing      = 0;
+     int m_horizontalSpacing    = 0;
+    //==============================
+
+    //= MISC ========================================  
     DirectusInspector* m_inspector;
     std::weak_ptr<Directus::GameObject> m_gameObject;
     //===============================================
-
-signals:
-    //void IStorageSignal1(const QString &par1);
 
 public slots:
     virtual void Remove() = 0;

@@ -164,6 +164,11 @@ void DirectusAudioSource::Initialize(DirectusInspector* inspector, QWidget* main
     m_gridLayout->addWidget(m_line, row, 0, 1, 3);
     //============================================================
 
+    //= SET GRID SPACING ===================================
+    m_gridLayout->setHorizontalSpacing(m_horizontalSpacing);
+    m_gridLayout->setVerticalSpacing(m_verticalSpacing);
+    //======================================================
+
     //= SIGNALS ==========================================================================
     // Gear button on the top left
     connect(m_optionsButton,        SIGNAL(Remove()),       this, SLOT(Remove()));

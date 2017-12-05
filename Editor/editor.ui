@@ -2,6 +2,9 @@
 <ui version="4.0">
  <class>Editor</class>
  <widget class="QMainWindow" name="Editor">
+  <property name="windowModality">
+   <enum>Qt::NonModal</enum>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -894,9 +897,12 @@ QSplitter::handle:vertical
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Fixed</enum>
+           </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>40</width>
+             <width>10</width>
              <height>20</height>
             </size>
            </property>
@@ -940,6 +946,19 @@ QSplitter::handle:vertical
           </widget>
          </item>
          <item>
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
           <widget class="QWidget" name="widgetToolBar" native="true">
            <layout class="QHBoxLayout" name="horizontalLayout_10">
             <property name="leftMargin">
@@ -969,7 +988,10 @@ QSplitter::handle:vertical
             <bool>false</bool>
            </property>
            <property name="currentText">
-            <string comment="Debug Flags"/>
+            <string/>
+           </property>
+           <property name="currentIndex">
+            <number>-1</number>
            </property>
            <property name="sizeAdjustPolicy">
             <enum>QComboBox::AdjustToContents</enum>
@@ -984,9 +1006,12 @@ QSplitter::handle:vertical
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Fixed</enum>
+           </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>40</width>
+             <width>10</width>
              <height>20</height>
             </size>
            </property>

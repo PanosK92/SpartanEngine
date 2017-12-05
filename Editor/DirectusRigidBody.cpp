@@ -194,6 +194,11 @@ void DirectusRigidBody::Initialize(DirectusInspector* inspector, QWidget* mainWi
     m_gridLayout->addWidget(m_line, row, 0, 1, 7);
     //==============================================================================
 
+    //= SET GRID SPACING ===================================
+    m_gridLayout->setHorizontalSpacing(m_horizontalSpacing);
+    m_gridLayout->setVerticalSpacing(m_verticalSpacing);
+    //======================================================
+
     connect(m_optionsButton,    SIGNAL(Remove()),           this, SLOT(Remove()));
     connect(m_mass,             SIGNAL(ValueChanged()),     this, SLOT(MapMass()));
     connect(m_drag,             SIGNAL(ValueChanged()),     this, SLOT(MapDrag()));

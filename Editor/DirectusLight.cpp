@@ -147,6 +147,11 @@ void DirectusLight::Initialize(DirectusInspector* inspector, QWidget* mainWindow
     m_gridLayout->addWidget(m_line, 7, 0, 1, 3);
     //==============================================================================
 
+    //= SET GRID SPACING ===================================
+    m_gridLayout->setHorizontalSpacing(m_horizontalSpacing);
+    m_gridLayout->setVerticalSpacing(m_verticalSpacing);
+    //======================================================
+
     connect(m_optionsButton,SIGNAL(Remove()),                   this, SLOT(Remove()));
     connect(m_lightType,    SIGNAL(currentIndexChanged(int)),   this, SLOT(MapLightType()));
     connect(m_angle,        SIGNAL(ValueChanged()),             this, SLOT(MapAngle()));

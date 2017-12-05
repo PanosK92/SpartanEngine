@@ -235,6 +235,11 @@ void DirectusMaterial::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_gridLayout->addWidget(m_line, row, 0, 1, 5);
     //=========================================================
 
+    //= SET GRID SPACING ===================================
+    m_gridLayout->setHorizontalSpacing(m_horizontalSpacing);
+    m_gridLayout->setVerticalSpacing(m_verticalSpacing);
+    //======================================================
+
     connect(m_albedoColor,  SIGNAL(ColorPickingCompleted()),    this, SLOT(MapAlbedo()));
     connect(m_roughness,    SIGNAL(ValueChanged()),             this, SLOT(MapRoughness()));
     connect(m_metallic,     SIGNAL(ValueChanged()),             this, SLOT(MapMetallic()));

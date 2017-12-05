@@ -101,6 +101,11 @@ void DirectusMeshRenderer::Initialize(DirectusInspector* inspector, QWidget* mai
     m_gridLayout->addWidget(m_line, 4, 0, 1, 3);
     //============================================================
 
+    //= SET GRID SPACING ===================================
+    m_gridLayout->setHorizontalSpacing(m_horizontalSpacing);
+    m_gridLayout->setVerticalSpacing(m_verticalSpacing);
+    //======================================================
+
     // Gear button on the top left
     connect(m_optionsButton,            SIGNAL(Remove()),       this, SLOT(Remove()));
     // Cast shadows check box
