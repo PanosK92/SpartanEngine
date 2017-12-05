@@ -148,6 +148,11 @@ void DirectusCollider::Initialize(DirectusInspector* inspector, QWidget* mainWin
     m_gridLayout->addWidget(m_line, row, 0, 1, 7);
     //==============================================================================
 
+    //= SET GRID SPACING ===================================
+    m_gridLayout->setHorizontalSpacing(m_horizontalSpacing);
+    m_gridLayout->setVerticalSpacing(m_verticalSpacing);
+    //======================================================
+
     connect(m_optionsButton,    SIGNAL(Remove()),                   this, SLOT(Remove()));
     connect(m_shapeType,        SIGNAL(currentIndexChanged(int)),   this, SLOT(MapType()));
     connect(m_centerX,          SIGNAL(ValueChanged()),             this, SLOT(MapCenter()));

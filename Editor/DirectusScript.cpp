@@ -72,6 +72,11 @@ void DirectusScript::Initialize(DirectusInspector* inspector, QWidget* mainWindo
     m_gridLayout->addWidget(m_line, 1, 0, 1, 2);
     //==============================================================================
 
+    //= SET GRID SPACING ===================================
+    m_gridLayout->setHorizontalSpacing(m_horizontalSpacing);
+    m_gridLayout->setVerticalSpacing(m_verticalSpacing);
+    //======================================================
+
     connect(m_optionsButton, SIGNAL(Remove()), this, SLOT(Remove()));
 
     this->setLayout(m_gridLayout);

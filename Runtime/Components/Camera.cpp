@@ -194,82 +194,39 @@ namespace Directus
 	}
 
 	//= RAYCASTING =======================================================================
-	weak_ptr<GameObject> Camera::Pick(const Vector2& mouse)
+	weak_ptr<GameObject> Camera::Pick(const Vector2& mousePos)
 	{
 		// Compute ray given the origin and end
-		m_ray = Ray(g_transform->GetPosition(), ScreenToWorldPoint(mouse));
+		m_ray = Ray(g_transform->GetPosition(), ScreenToWorldPoint(mousePos));
 
-		// We use the bounding box of each mesh to determine find and return the 
-		// one that's nearest to the camera. However, there are scenarios where
-		// hollow meshes (let's say a building) will have a large bounding box
-		// which will contain other bounding boxes and potentially even the camera.
-		// In a scenario like this, the hit distance of the large bounding box
-		// will be zero, and it will be picked every time. Because this is unlikely
-		// what the user would want to do (e.g. in a building, trying to pick contained objects),
-		// we reject any bounding boxes that contain the camera and return them only
-		// if nothing else was hit. Hence bounding boxes inside a larger one can 
-		// be picked. It feels more intuitive.
+		// Hits <Distance, GameObject>
+		map<float, weakGameObj> hits;
 
-		// Nearest mesh
-		float hitDistanceMin = INFINITY;
-		weakGameObj nearestGameObj;
-
-		// A mesh we are potentialy inside of
-		vector<weakGameObj> containerGameObj;
-
-		// Find the GameObject nearest to the camera
+		// Find all the GameObjects that the ray hits
 		vector<weakGameObj> gameObjects = g_context->GetSubsystem<Scene>()->GetRenderables();
 		for (const auto& gameObj : gameObjects)
 		{
-			if (gameObj._Get()->HasComponent<Skybox>())
+			// Make sure there GameObject has a mesh and exclude the SkyBox
+			if (!gameObj._Get()->HasComponent<MeshFilter>() || gameObj._Get()->HasComponent<Skybox>())
 				continue;
 
-			if (!gameObj._Get()->HasComponent<MeshFilter>())
-				continue;
-
+			// Get bounding box
 			BoundingBox box = gameObj._Get()->GetComponent<MeshFilter>()->GetBoundingBoxTransformed();
 
-			// Ignore collision if we are inside the bounding box
-			// but keep those container bounding boxes
-			if (box.IsInside(g_transform->GetPosition()))
-			{
-				containerGameObj.push_back(gameObj);
-				continue;
-			}
-
+			// Compute hit distance
 			float hitDistance = m_ray.HitDistance(box);
-			if (hitDistance < hitDistanceMin)
-			{
-				hitDistanceMin = hitDistance;
-				nearestGameObj = gameObj;
-			}
+
+			// Don't store hit data if we are inside the bounding box (0.0f) or there was no hit (INFINITY)
+			if (hitDistance == 0.0f || hitDistance == INFINITY)
+				continue;
+
+			hits[hitDistance] = gameObj;
 		}
 
-		weakGameObj pickedGameObj = nearestGameObj;
-
-		// In case there is no nearest GameObject, go through the 
-		// containg GameObjects and return the one whose center 
-		// is nearest to the camera's position.
-		if (nearestGameObj.expired())
-		{
-			float distanceMin = INFINITY;
-
-			for (const auto& gameObj : containerGameObj)
-			{
-				BoundingBox box = gameObj._Get()->GetComponent<MeshFilter>()->GetBoundingBoxTransformed();
-				float distance = Vector3::LengthSquared(g_transform->GetPosition(), box.GetCenter());
-
-				if (distance < distanceMin)
-				{
-					distanceMin = distance;
-					pickedGameObj = gameObj;
-				}
-			}
-		}
-
-		return pickedGameObj;
+		// Return closest hit
+		return !hits.empty() ? hits.begin()->second : weak_ptr<GameObject>();
 	}
-	
+
 	Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
 	{
 		Vector2 viewport = g_context->GetSubsystem<Renderer>()->GetViewport();

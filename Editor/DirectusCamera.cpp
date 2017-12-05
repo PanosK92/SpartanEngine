@@ -124,6 +124,11 @@ void DirectusCamera::Initialize(DirectusInspector* inspector, QWidget* mainWindo
     m_gridLayout->addWidget(m_line, 6, 0, 1, 4);
     //=============================================================================
 
+    //= SET GRID SPACING ===================================
+    m_gridLayout->setHorizontalSpacing(m_horizontalSpacing);
+    m_gridLayout->setVerticalSpacing(m_verticalSpacing);
+    //======================================================
+
     // textChanged(QString) -> emits signal when changed through code
     // textEdit(QString) -> doesn't emit signal when changed through code
     connect(m_optionsButton,        SIGNAL(Remove()),                   this, SLOT(Remove()));

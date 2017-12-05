@@ -52,7 +52,7 @@ void DirectusTransform::Initialize(DirectusInspector* inspector, QWidget* mainWi
     m_validator = new QDoubleValidator(-2147483647, 2147483647, 4);
     m_validator->setProperty("notation", QDoubleValidator::StandardNotation);
 
-    //= TITLE =====================================
+    //= TITLE ==================================================
     m_title = new QLabel("Transform");
     m_title->setStyleSheet(
                 "background-image: url(:/Images/transform.png);"
@@ -60,9 +60,9 @@ void DirectusTransform::Initialize(DirectusInspector* inspector, QWidget* mainWi
                 "background-position: left;"
                 "padding-left: 20px;"
                 );
-    //============================================
+    //==========================================================
 
-    // = POSITION =================================
+    // = POSITION ========================
     m_posLabel = new QLabel("Position");
 
     m_posX = new DirectusComboLabelText();
@@ -73,9 +73,9 @@ void DirectusTransform::Initialize(DirectusInspector* inspector, QWidget* mainWi
 
     m_posZ = new DirectusComboLabelText();
     m_posZ->Initialize("Z");
-    //=============================================
+    //====================================
 
-    //= ROTATION ==================================
+    //= ROTATION =========================
     m_rotLabel = new QLabel("Rotation");
 
     m_rotX = new DirectusComboLabelText();
@@ -86,9 +86,9 @@ void DirectusTransform::Initialize(DirectusInspector* inspector, QWidget* mainWi
 
     m_rotZ = new DirectusComboLabelText();
     m_rotZ->Initialize("Z");
-    //=============================================
+    //====================================
 
-    //= SCALE =====================================
+    //= SCALE ============================
     m_scaLabel = new QLabel("Scale");
 
     m_scaX = new DirectusComboLabelText();
@@ -99,52 +99,57 @@ void DirectusTransform::Initialize(DirectusInspector* inspector, QWidget* mainWi
 
     m_scaZ = new DirectusComboLabelText();
     m_scaZ->Initialize("Z");
-    //=============================================
+    //====================================
 
-    //= LINE ======================================
+    //= LINE =========================================================
     m_line = new QWidget();
     m_line->setFixedHeight(1);
     m_line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_line->setStyleSheet(QString("background-color: #585858;"));
-    //=============================================
+    //================================================================
 
+    //= GRID =============================================================
+    int row = 0;
     // addWidget(widget, row, column, rowspan, colspan)
-    //= GRID ==================================================
     // Row 0 - TITLE
-    m_gridLayout->addWidget(m_title,                        0, 0, 1, 7);
+    m_gridLayout->addWidget(m_title,                        row, 0, 1, 7);
+    row++;
 
     // Row 1 - POSITION
-    m_gridLayout->addWidget(m_posLabel,                     1, 0, 1, 1);
-    m_gridLayout->addWidget(m_posX->GetLabelWidget(),       1, 1, 1, 1);
-    m_gridLayout->addWidget(m_posX->GetTextWidget(),        1, 2, 1, 1);
-    m_gridLayout->addWidget(m_posY->GetLabelWidget(),       1, 3, 1, 1);
-    m_gridLayout->addWidget(m_posY->GetTextWidget(),        1, 4, 1, 1);
-    m_gridLayout->addWidget(m_posZ->GetLabelWidget(),       1, 5, 1, 1);
-    m_gridLayout->addWidget(m_posZ->GetTextWidget(),        1, 6, 1, 1);
+    m_gridLayout->addWidget(m_posLabel,                     row, 0, 1, 1);
+    m_gridLayout->addWidget(m_posX->GetLabelWidget(),       row, 1, 1, 1);
+    m_gridLayout->addWidget(m_posX->GetTextWidget(),        row, 2, 1, 1);
+    m_gridLayout->addWidget(m_posY->GetLabelWidget(),       row, 3, 1, 1);
+    m_gridLayout->addWidget(m_posY->GetTextWidget(),        row, 4, 1, 1);
+    m_gridLayout->addWidget(m_posZ->GetLabelWidget(),       row, 5, 1, 1);
+    m_gridLayout->addWidget(m_posZ->GetTextWidget(),        row, 6, 1, 1);
+    row++;
 
     // Row 2 - ROTATION
-    m_gridLayout->addWidget(m_rotLabel,                     2, 0, 1, 1);
-    m_gridLayout->addWidget(m_rotX->GetLabelWidget(),       2, 1, 1, 1);
-    m_gridLayout->addWidget(m_rotX->GetTextWidget(),        2, 2, 1, 1);
-    m_gridLayout->addWidget(m_rotY->GetLabelWidget(),       2, 3, 1, 1);
-    m_gridLayout->addWidget(m_rotY->GetTextWidget(),        2, 4, 1, 1);
-    m_gridLayout->addWidget(m_rotZ->GetLabelWidget(),       2, 5, 1, 1);
-    m_gridLayout->addWidget(m_rotZ->GetTextWidget(),        2, 6, 1, 1);
+    m_gridLayout->addWidget(m_rotLabel,                     row, 0, 1, 1);
+    m_gridLayout->addWidget(m_rotX->GetLabelWidget(),       row, 1, 1, 1);
+    m_gridLayout->addWidget(m_rotX->GetTextWidget(),        row, 2, 1, 1);
+    m_gridLayout->addWidget(m_rotY->GetLabelWidget(),       row, 3, 1, 1);
+    m_gridLayout->addWidget(m_rotY->GetTextWidget(),        row, 4, 1, 1);
+    m_gridLayout->addWidget(m_rotZ->GetLabelWidget(),       row, 5, 1, 1);
+    m_gridLayout->addWidget(m_rotZ->GetTextWidget(),        row, 6, 1, 1);
+    row++;
 
     // Row 3 - SCALE
-    m_gridLayout->addWidget(m_scaLabel,                     3, 0, 1, 1);
-    m_gridLayout->addWidget(m_scaX->GetLabelWidget(),       3, 1, 1, 1);
-    m_gridLayout->addWidget(m_scaX->GetTextWidget(),        3, 2, 1, 1);
-    m_gridLayout->addWidget(m_scaY->GetLabelWidget(),       3, 3, 1, 1);
-    m_gridLayout->addWidget(m_scaY->GetTextWidget(),        3, 4, 1, 1);
-    m_gridLayout->addWidget(m_scaZ->GetLabelWidget(),       3, 5, 1, 1);
-    m_gridLayout->addWidget(m_scaZ->GetTextWidget(),        3, 6, 1, 1);
+    m_gridLayout->addWidget(m_scaLabel,                     row, 0, 1, 1);
+    m_gridLayout->addWidget(m_scaX->GetLabelWidget(),       row, 1, 1, 1);
+    m_gridLayout->addWidget(m_scaX->GetTextWidget(),        row, 2, 1, 1);
+    m_gridLayout->addWidget(m_scaY->GetLabelWidget(),       row, 3, 1, 1);
+    m_gridLayout->addWidget(m_scaY->GetTextWidget(),        row, 4, 1, 1);
+    m_gridLayout->addWidget(m_scaZ->GetLabelWidget(),       row, 5, 1, 1);
+    m_gridLayout->addWidget(m_scaZ->GetTextWidget(),        row, 6, 1, 1);
+    row++;
 
     // Row 4 - LINE
-    m_gridLayout->addWidget(m_line,                         4, 0, 1, 7);
+    m_gridLayout->addWidget(m_line,                         row, 0, 1, 7);
+    //====================================================================
 
-    // textChanged(QString) -> emits signal when changed through code
-    // textEdited(QString) -> doesn't emit signal when changed through code
+    //= SIGNALS =======================================================
     connect(m_posX, SIGNAL(ValueChanged()), this, SLOT(MapPosition()));
     connect(m_posY, SIGNAL(ValueChanged()), this, SLOT(MapPosition()));
     connect(m_posZ, SIGNAL(ValueChanged()), this, SLOT(MapPosition()));
@@ -154,6 +159,12 @@ void DirectusTransform::Initialize(DirectusInspector* inspector, QWidget* mainWi
     connect(m_scaX, SIGNAL(ValueChanged()), this, SLOT(MapScale()));
     connect(m_scaY, SIGNAL(ValueChanged()), this, SLOT(MapScale()));
     connect(m_scaZ, SIGNAL(ValueChanged()), this, SLOT(MapScale()));
+    //=================================================================
+
+    //= SET GRID SPACING ===================================
+    m_gridLayout->setHorizontalSpacing(m_horizontalSpacing);
+    m_gridLayout->setVerticalSpacing(m_verticalSpacing);
+    //======================================================
 
     this->setLayout(m_gridLayout);
     this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
