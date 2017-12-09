@@ -63,8 +63,8 @@ namespace Directus
 			// Returns the size
 			Vector3 GetSize() const { return max - min; }
 
-			// Returns the half size (extents)
-			Vector3 GetHalfSize() const { return (max - min) * 0.5f; }
+			// Returns extents
+			Vector3 GetExtents() const { return (max - min) * 0.5f; }
 
 			// Test if a point is inside
 			Intersection IsInside(const Vector3& point) const;

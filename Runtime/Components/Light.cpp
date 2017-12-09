@@ -246,7 +246,7 @@ namespace Directus
 	{
 		BoundingBox box = meshFilter->GetBoundingBoxTransformed();
 		Vector3 center = box.GetCenter();
-		Vector3 extents = box.GetHalfSize();
+		Vector3 extents = box.GetExtents();
 
 		return m_frustrum->CheckCube(center, extents) != Outside;
 	}

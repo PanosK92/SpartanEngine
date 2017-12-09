@@ -21,14 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================================================
 #include "Collider.h"
-#include <BulletCollision/CollisionShapes/btCollisionShape.h>
-#include <BulletCollision/CollisionShapes/btBoxShape.h>
-#include <BulletCollision/CollisionShapes/btSphereShape.h>
-#include <BulletCollision/CollisionShapes/btCylinderShape.h>
-#include <BulletCollision/CollisionShapes/btCapsuleShape.h>
-#include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
-#include <BulletCollision/CollisionShapes/btConeShape.h>
-#include <BulletCollision/CollisionShapes/btConvexHullShape.h>
 #include "Transform.h"
 #include "MeshFilter.h"
 #include "RigidBody.h"
@@ -37,6 +29,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Graphics/Mesh.h"
 #include "../Logging/Log.h"
+#include <BulletCollision/CollisionShapes/btCollisionShape.h>
+#include <BulletCollision/CollisionShapes/btBoxShape.h>
+#include <BulletCollision/CollisionShapes/btSphereShape.h>
+#include <BulletCollision/CollisionShapes/btCylinderShape.h>
+#include <BulletCollision/CollisionShapes/btCapsuleShape.h>
+#include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
+#include <BulletCollision/CollisionShapes/btConeShape.h>
+#include <BulletCollision/CollisionShapes/btConvexHullShape.h>
 //=============================================================
 
 //= NAMESPACES ================
@@ -49,8 +49,8 @@ namespace Directus
 	Collider::Collider()
 	{
 		m_shapeType = ColliderShape_Box;
-		m_extents = Vector3::One;
 		m_center = Vector3::Zero;
+		m_size = Vector3::One;
 	}
 
 	Collider::~Collider()
@@ -62,6 +62,14 @@ namespace Directus
 	void Collider::Initialize()
 	{
 		m_lastKnownScale = g_transform->GetScale();
+
+		// If there is a mesh, use it's bounding box
+		if (auto meshFilter = g_gameObject._Get()->GetMeshFilter())
+		{
+			m_center = meshFilter->GetBoundingBox().GetCenter();
+			m_size = meshFilter->GetBoundingBox().GetSize();
+		}
+
 		UpdateShape();
 	}
 
@@ -84,7 +92,7 @@ namespace Directus
 	{
 		// Scale the collider if the transform scale has changed
 		if (m_collisionShape && (m_lastKnownScale != g_transform->GetScale()))
-		{	
+		{
 			m_lastKnownScale = g_transform->GetScale();
 			UpdateShape();
 		}
@@ -93,14 +101,14 @@ namespace Directus
 	void Collider::Serialize(StreamIO* stream)
 	{
 		stream->Write(int(m_shapeType));
-		stream->Write(m_extents);
+		stream->Write(m_size);
 		stream->Write(m_center);
 	}
 
 	void Collider::Deserialize(StreamIO* stream)
 	{
 		m_shapeType = ColliderShape(stream->ReadInt());
-		stream->Read(m_extents);
+		stream->Read(m_size);
 		stream->Read(m_center);
 
 		UpdateShape();
@@ -110,13 +118,13 @@ namespace Directus
 	//= BOUNDING BOX =========================================
 	void Collider::SetBoundingBox(const Vector3& boundingBox)
 	{
-		if (m_extents == boundingBox)
+		if (m_size == boundingBox)
 			return;
 
-		m_extents = boundingBox;
-		m_extents.x = Clamp(m_extents.x, M_EPSILON, INFINITY);
-		m_extents.y = Clamp(m_extents.y, M_EPSILON, INFINITY);
-		m_extents.z = Clamp(m_extents.z, M_EPSILON, INFINITY);
+		m_size = boundingBox;
+		m_size.x = Clamp(m_size.x, M_EPSILON, INFINITY);
+		m_size.y = Clamp(m_size.y, M_EPSILON, INFINITY);
+		m_size.z = Clamp(m_size.z, M_EPSILON, INFINITY);
 
 		UpdateShape();
 	}
@@ -154,18 +162,18 @@ namespace Directus
 	{
 		// Release previous shape
 		ReleaseShape();
-	
+
 		Vector3 newWorldScale = g_transform->GetScale();
 
 		switch (m_shapeType)
 		{
 		case ColliderShape_Box:
-			m_collisionShape = make_shared<btBoxShape>(ToBtVector3(m_extents * 0.5f));
+			m_collisionShape = make_shared<btBoxShape>(ToBtVector3(m_size * 0.5f));
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 
 		case ColliderShape_Sphere:
-			m_collisionShape = make_shared<btSphereShape>(m_extents.x);
+			m_collisionShape = make_shared<btSphereShape>(m_size.x * 0.5f);
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 
@@ -174,17 +182,17 @@ namespace Directus
 			break;
 
 		case ColliderShape_Cylinder:
-			m_collisionShape = make_shared<btCylinderShape>(btVector3(m_extents.x, m_extents.y, m_extents.x));
+			m_collisionShape = make_shared<btCylinderShape>(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 
 		case ColliderShape_Capsule:
-			m_collisionShape = make_shared<btCapsuleShape>(m_extents.x, Max(m_extents.y - m_extents.x, 0.0f));
+			m_collisionShape = make_shared<btCapsuleShape>(m_size.x * 0.5f, Max(m_size.y - m_size.x, 0.0f));
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 
 		case ColliderShape_Cone:
-			m_collisionShape = make_shared<btConeShape>(m_extents.x, m_extents.y);
+			m_collisionShape = make_shared<btConeShape>(m_size.x * 0.5f, m_size.y);
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 
