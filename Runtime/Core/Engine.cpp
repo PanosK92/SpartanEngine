@@ -156,7 +156,7 @@ namespace Directus
 	void Engine::Update()
 	{
 		// GAME UPDATE
-		FIRE_EVENT(EVENT_UPDATE);
+		FIRE_EVENT_DATA(EVENT_UPDATE, m_context->GetSubsystem<Timer>()->GetDeltaTimeMs());
 
 		// RENDER UPDATE
 		FIRE_EVENT(EVENT_RENDER);

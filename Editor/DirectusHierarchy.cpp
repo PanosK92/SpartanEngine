@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/AudioSource.h"
 #include "Components/Camera.h"
 #include "Components/Collider.h"
-#include "Components/Hinge.h"
+#include "Components/Constraint.h"
 #include "Components/Light.h"
 #include "Components/MeshFilter.h"
 #include "Components/MeshRenderer.h"
@@ -793,7 +793,7 @@ void DirectusHierarchy::AddCameraComponent()
     if (gameobject.expired())
         return;
 
-    gameobject.lock()->AddComponent<Camera>();
+    gameobject._Get()->AddComponent<Camera>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -806,7 +806,7 @@ void DirectusHierarchy::AddMeshFilterComponent()
     if (gameobject.expired())
         return;
 
-    gameobject.lock()->AddComponent<MeshFilter>();
+    gameobject._Get()->AddComponent<MeshFilter>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -819,7 +819,7 @@ void DirectusHierarchy::AddMeshRendererComponent()
     if (gameobject.expired())
         return;
 
-    gameobject.lock()->AddComponent<MeshRenderer>();
+    gameobject._Get()->AddComponent<MeshRenderer>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -832,7 +832,7 @@ void DirectusHierarchy::AddLightComponent()
     if (gameobject.expired())
         return;
 
-    gameobject.lock()->AddComponent<Light>();
+    gameobject._Get()->AddComponent<Light>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -845,7 +845,7 @@ void DirectusHierarchy::AddRigidBodyComponent()
     if (gameobject.expired())
         return;
 
-    gameobject.lock()->AddComponent<RigidBody>();
+    gameobject._Get()->AddComponent<RigidBody>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -858,7 +858,7 @@ void DirectusHierarchy::AddColliderComponent()
     if (gameobject.expired())
         return;
 
-    gameobject.lock()->AddComponent<Collider>();
+    gameobject._Get()->AddComponent<Collider>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -871,7 +871,7 @@ void DirectusHierarchy::AddHingeComponent()
     if (gameobject.expired())
         return;
 
-    gameobject.lock()->AddComponent<Hinge>();
+    gameobject._Get()->AddComponent<Constraint>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -884,7 +884,7 @@ void DirectusHierarchy::AddSkyboxComponent()
     if (gameobject.expired())
         return;
 
-    gameobject.lock()->AddComponent<Skybox>();
+    gameobject._Get()->AddComponent<Skybox>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -897,7 +897,7 @@ void DirectusHierarchy::AddAudioListenerComponent()
     if (gameobject.expired())
         return;
 
-    gameobject.lock()->AddComponent<AudioListener>();
+    gameobject._Get()->AddComponent<AudioListener>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -910,7 +910,7 @@ void DirectusHierarchy::AddAudioSourceComponent()
     if (gameobject.expired())
         return;
 
-    gameobject.lock()->AddComponent<AudioSource>();
+    gameobject._Get()->AddComponent<AudioSource>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);

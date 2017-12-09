@@ -48,7 +48,7 @@ namespace Directus
 		
 	private:
 		// Converts float to string with specificed precision
-		static std::string To_String_Precision(float value, int decimals);
+		static std::string to_string_precision(float value, int decimals);
 
 		// Metrics
 		static float m_renderTimeMs;

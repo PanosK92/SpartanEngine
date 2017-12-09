@@ -67,7 +67,6 @@ namespace Directus
 		m_resourceMng = nullptr;
 		m_graphics = nullptr;
 		m_renderFlags = 0;
-		m_renderFlags |= Render_Physics;
 		m_renderFlags |= Render_Grid;
 		m_renderFlags |= Render_Light;
 
@@ -201,15 +200,12 @@ namespace Directus
 		m_gizmoTexLightDirectional = make_unique<Texture>(m_context);
 		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
 		m_gizmoTexLightDirectional->SetTextureType(TextureType_Albedo);
-
 		m_gizmoTexLightPoint = make_unique<Texture>(m_context);
 		m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
 		m_gizmoTexLightPoint->SetTextureType(TextureType_Albedo);
-
 		m_gizmoTexLightSpot = make_unique<Texture>(m_context);
 		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
 		m_gizmoTexLightSpot->SetTextureType(TextureType_Albedo);
-
 		m_gizmoRectLight = make_unique<Rectangle>(m_context);
 
 		// Performance Metrics
@@ -218,6 +214,8 @@ namespace Directus
 		m_font->SetSize(12);
 		m_font->SetColor(Vector4(0.7f, 0.7f, 0.7f, 1.0f));
 		m_font->LoadFromFile(fontDir + "CalibriBold.ttf");
+
+		// Scene grid
 		m_grid = make_unique<Grid>(m_context);
 		m_grid->BuildGrid();
 

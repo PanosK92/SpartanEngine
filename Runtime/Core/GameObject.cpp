@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/Camera.h"
 #include "../Components/Collider.h"
 #include "../Components/Transform.h"
-#include "../Components/Hinge.h"
+#include "../Components/Constraint.h"
 #include "../Components/Light.h"
 #include "../Components/LineRenderer.h"
 #include "../Components/MeshFilter.h"
@@ -307,8 +307,8 @@ namespace Directus
 		if (typeStr == "Collider")
 			component = AddComponent<Collider>();
 
-		if (typeStr == "Hinge")
-			component = AddComponent<Hinge>();
+		if (typeStr == "Constraint")
+			component = AddComponent<Constraint>();
 
 		if (typeStr == "Script")
 			component = AddComponent<Script>();

@@ -104,20 +104,20 @@ namespace Directus
 		int shaders = m_resourceManager->GetResourceCountByType(Resource_Shader);
 
 		m_metrics =
-			"FPS: " + To_String_Precision(fps, 2) + "\n"
-			"Frame: " + To_String_Precision(delta, 2) + " ms\n"
-			"Update: " + To_String_Precision(delta - m_renderTimeMs, 2) + " ms\n"
-			"Render: " + To_String_Precision(m_renderTimeMs, 2) + " ms\n"
-			"Meshes Rendered: " + to_string(m_renderedMeshesPerFrame) + "\n"
-			"Meshes: " + To_String_Precision(meshesMB, 1) + " MB\n"
-			"Textures: " + to_string(textures) + " (" + To_String_Precision(textureMemoryMB, 1) + " MB)\n"
-			"Materials: " + to_string(materials) + "\n"
-			"Shaders: " + to_string(shaders);
+			"FPS:\t\t\t" + to_string_precision(fps, 2) + "\n"
+			"Frame:\t\t\t" + to_string_precision(delta, 2) + " ms\n"
+			"Update:\t\t\t" + to_string_precision(delta - m_renderTimeMs, 2) + " ms\n"
+			"Render:\t\t\t" + to_string_precision(m_renderTimeMs, 2) + " ms\n"
+			"Meshes Rendered:\t" + to_string(m_renderedMeshesPerFrame) + "\n"
+			"Meshes:\t\t\t" + to_string_precision(meshesMB, 1) + " MB\n"
+			"Textures:\t\t" + to_string(textures) + " (" + to_string_precision(textureMemoryMB, 1) + " MB)\n"
+			"Materials:\t\t" + to_string(materials) + "\n"
+			"Shaders:\t\t\t" + to_string(shaders);
 
 		m_timeSinceLastUpdate = 0;
 	}
 
-	string PerformanceProfiler::To_String_Precision(float value, int decimals)
+	string PerformanceProfiler::to_string_precision(float value, int decimals)
 	{
 		ostringstream out;
 		out << fixed << setprecision(decimals) << value;

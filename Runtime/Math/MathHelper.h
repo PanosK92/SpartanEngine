@@ -74,9 +74,12 @@ namespace Directus
 		T Min(T a, T b) { return a < b ? a : b; }
 
 		template <class T>
-		float Ceil(T x) { return ceil(x); }
+		T Ceil(T x) { return ceil(x); }
 
 		template <class T>
-		float Sqrt(T x) { return sqrt(x); }
+		T Sqrt(T x) { return sqrt(x); }
+
+		template <class T>
+		T Floor(T x) { return floor(x); }
 	}
 }

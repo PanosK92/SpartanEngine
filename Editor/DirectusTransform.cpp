@@ -259,7 +259,7 @@ void DirectusTransform::MapPosition()
         return;
 
     // Update the rigidBody
-    auto rigidBody = gameObj.lock()->GetComponent<RigidBody>();
+    auto rigidBody = gameObj._Get()->GetComponent<RigidBody>();
     if (rigidBody)
     {
         rigidBody->SetPosition(pos);
@@ -285,7 +285,7 @@ void DirectusTransform::MapRotation()
         return;
 
     // Update the rigidBody (if it exists)
-    auto rigidBody = gameObj.lock()->GetComponent<RigidBody>();
+    auto rigidBody = gameObj._Get()->GetComponent<RigidBody>();
     if (rigidBody)
     {
         rigidBody->SetRotation(rot);
