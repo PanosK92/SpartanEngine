@@ -864,7 +864,7 @@ void DirectusHierarchy::AddColliderComponent()
     m_inspector->Inspect(gameobject);
 }
 
-void DirectusHierarchy::AddHingeComponent()
+void DirectusHierarchy::AddConstraintComponent()
 {
     // Get the currently selected GameObject
     auto gameobject = GetSelectedGameObject();

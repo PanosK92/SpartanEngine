@@ -373,7 +373,7 @@ namespace Directus
 		// Add a Collider and assign a mesh collision shape to it
 		gameobject._Get()->AddComponent<RigidBody>();
 		Collider* collider = gameobject._Get()->AddComponent<Collider>();
-		collider->SetShapeType(CollishionShape_Mesh);
+		collider->SetShapeType(ColliderShape_Mesh);
 		//===========================================================================
 	}
 

@@ -69,13 +69,13 @@ void DirectusRigidBody::Initialize(DirectusInspector* inspector, QWidget* mainWi
 
     //= DRAG =============================
     m_drag = new DirectusComboLabelText();
-    m_drag->Initialize("Drag");
+    m_drag->Initialize("Friction");
     m_drag->AlignLabelToTheLeft();
     //====================================
 
     //= ANGULAR DRAG =====================
     m_angularDrag = new DirectusComboLabelText();
-    m_angularDrag->Initialize("Angular Drag");
+    m_angularDrag->Initialize("Rolling Friction");
     m_angularDrag->AlignLabelToTheLeft();
     //====================================
 
@@ -265,8 +265,8 @@ void DirectusRigidBody::ReflectDrag()
     if (!m_inspectedRigidBody)
         return;
 
-    float drag = m_inspectedRigidBody->GetDrag();
-    m_drag->SetFromFloat(drag);
+    float friction = m_inspectedRigidBody->GetFriction();
+    m_drag->SetFromFloat(friction);
 }
 
 void DirectusRigidBody::ReflectAngulaDrag()
@@ -274,8 +274,8 @@ void DirectusRigidBody::ReflectAngulaDrag()
     if (!m_inspectedRigidBody)
         return;
 
-    float angularDrag = m_inspectedRigidBody->GetAngularDrag();
-    m_angularDrag->SetFromFloat(angularDrag);
+    float frictionRolling = m_inspectedRigidBody->GetFrictionRolling();
+    m_angularDrag->SetFromFloat(frictionRolling);
 }
 
 void DirectusRigidBody::ReflectRestitution()
@@ -353,8 +353,8 @@ void DirectusRigidBody::MapDrag()
     if (!m_inspectedRigidBody)
         return;
 
-    float drag = m_drag->GetAsFloat();
-    m_inspectedRigidBody->SetDrag(drag);
+    float friction = m_drag->GetAsFloat();
+    m_inspectedRigidBody->SetFriction(friction);
 }
 
 void DirectusRigidBody::MapAngularDrag()
@@ -362,8 +362,8 @@ void DirectusRigidBody::MapAngularDrag()
     if (!m_inspectedRigidBody)
         return;
 
-    float angularDrag = m_angularDrag->GetAsFloat();
-    m_inspectedRigidBody->SetAngularDrag(angularDrag);
+    float frictionRolling = m_angularDrag->GetAsFloat();
+    m_inspectedRigidBody->SetFrictionRolling(frictionRolling);
 }
 
 void DirectusRigidBody::MapRestitution()

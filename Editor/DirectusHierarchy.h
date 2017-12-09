@@ -102,7 +102,7 @@ public slots:
     void AddLightComponent();
     void AddRigidBodyComponent();
     void AddColliderComponent();
-    void AddHingeComponent();
+    void AddConstraintComponent();
     void AddSkyboxComponent();
     void AddAudioListenerComponent();
     void AddAudioSourceComponent();
