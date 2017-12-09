@@ -33,11 +33,7 @@ class btCollisionShape;
 namespace Directus
 {
 	class GameObject;
-
-	namespace Math
-	{
-		class Quaternion;
-	}
+	namespace Math { class Quaternion; }
 
 	enum ForceMode
 	{
@@ -60,94 +56,89 @@ namespace Directus
 		void Serialize(StreamIO* stream) override;
 		void Deserialize(StreamIO* stream) override;
 		//=========================================
-
-		//= MASS ================================================
+		//= MASS =========================
 		float GetMass() { return m_mass; }
 		void SetMass(float mass);
-
-		//= DRAG ===============================================
-		float GetDrag() { return m_drag; }
-		void SetDrag(float drag);
-
+		//================================
+		//= DRAG =================================
+		float GetFriction() { return m_friction; }
+		void SetFriction(float friction);
+		//========================================
 		//= ANGULAR DRAG =======================================
-		float GetAngularDrag() { return m_angularDrag; }
-		void SetAngularDrag(float angularDrag);
-
-		//= RESTITUTION ========================================
+		float GetFrictionRolling() { return m_frictionRolling; }
+		void SetFrictionRolling(float frictionRolling);
+		//======================================================
+		//= RESTITUTION ================================
 		float GetRestitution() { return m_restitution; }
 		void SetRestitution(float restitution);
-
-		//= GRAVITY ============================================
+		//==============================================
+		//= GRAVITY =======================================
 		void SetUseGravity(bool gravity);
 		bool GetUseGravity() { return m_useGravity; };
 		Math::Vector3 GetGravity() { return m_gravity; }
 		void SetGravity(const Math::Vector3& acceleration);
-		//======================================================
-
-		//= KINEMATIC ==========================================
+		//=================================================
+		//= KINEMATIC ===============================
 		void SetKinematic(bool kinematic);
 		bool GetKinematic() { return m_isKinematic; }
-
-		//= VELOCITY/FORCE/TORQUE =======================================
+		//===========================================
+		//= VELOCITY/FORCE/TORQUE ==========================================================================
 		void SetLinearVelocity(const Math::Vector3& velocity) const;
 		void SetAngularVelocity(const Math::Vector3& velocity);
 		void ApplyForce(const Math::Vector3& force, ForceMode mode) const;
 		void ApplyForceAtPosition(const Math::Vector3& force, Math::Vector3 position, ForceMode mode) const;
 		void ApplyTorque(const Math::Vector3& torque, ForceMode mode) const;
-
-		//= POSITION LOCK =================================
+		//==================================================================================================
+		//= POSITION LOCK ========================================
 		void SetPositionLock(bool lock);
 		void SetPositionLock(const Math::Vector3& lock);
 		Math::Vector3 GetPositionLock() { return m_positionLock; }
-		//=================================================
-
-		//= ROTATION LOCK =================================
+		//========================================================
+		//= ROTATION LOCK ========================================
 		void SetRotationLock(bool lock);
 		void SetRotationLock(const Math::Vector3& lock);
 		Math::Vector3 GetRotationLock() { return m_rotationLock; }
-		//=================================================
+		//========================================================
 
-		//= POSITION ============================================
+		//= POSITION ===================================
 		Math::Vector3 GetPosition() const;
 		void SetPosition(const Math::Vector3& position);
-
-		//= ROTATION ============================================
+		//==============================================
+		//= ROTATION ======================================
 		Math::Quaternion GetRotation() const;
 		void SetRotation(const Math::Quaternion& rotation);
-
-		//= MISC ================================================
+		//=================================================
+		//= MISC =====================================================
 		void SetCollisionShape(std::weak_ptr<btCollisionShape> shape);
 		btRigidBody* GetBtRigidBody() { return m_rigidBody.get(); }
 		void ClearForces() const;
 		Math::Vector3 GetColliderCenter() const;
-
+		//============================================================
 	private:
-		//= HELPER FUNCTIONS ========================================
+		//= HELPER FUNCTIONS ======
 		void AddBodyToWorld();
 		void RemoveBodyFromWorld();
 		void UpdateGravity() const;
 		void ReleaseBtRigidBody();
-		//===========================================================
 		bool IsActivated() const;
 		void Activate() const;
 		void Deactivate() const;
-
-		std::shared_ptr<btRigidBody> m_rigidBody;
-		std::weak_ptr<btCollisionShape> m_shape;
+		//=========================
 
 		float m_mass;
-		float m_drag;
-		float m_angularDrag;
+		float m_friction;
+		float m_frictionRolling;
 		float m_restitution;
 		bool m_useGravity;
 		bool m_isKinematic;
-	public:
-		bool m_hasSimulated;
-	private:
 		Math::Vector3 m_gravity;
 		Math::Vector3 m_positionLock;
 		Math::Vector3 m_rotationLock;
 
+		std::shared_ptr<btRigidBody> m_rigidBody;
+		std::weak_ptr<btCollisionShape> m_shape;
 		bool m_inWorld;
+	public:
+		bool m_hasSimulated;
 	};
 }

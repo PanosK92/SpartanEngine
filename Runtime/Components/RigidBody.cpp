@@ -43,34 +43,34 @@ using namespace std;
 namespace Directus
 {
 	static const float DEFAULT_MASS = 0.0f;
-	static const float DEFAULT_RESTITUTION = 0.0f;
 	static const float DEFAULT_FRICTION = 0.5f;
-	static const float DEFAULT_ANGULAR_FRICTION = 0.0f;
+	static const float DEFAULT_FRICTION_ROLLING = 0.0f;
+	static const float DEFAULT_RESTITUTION = 0.0f;	
 
 	class MotionState : public btMotionState
 	{
 		RigidBody* m_rigidBody;
 	public:
 		MotionState(RigidBody* rigidBody) { m_rigidBody = rigidBody; }
-
 		// Update from engine, ENGINE -> BULLET
-		void btMotionState::getWorldTransform(btTransform& worldTransform) const override
+		void getWorldTransform(btTransform& worldTrans) const override
 		{
-			Vector3 enginePosition = m_rigidBody->g_transform->GetPosition();
-			Quaternion engineRotation = m_rigidBody->g_transform->GetRotation();
-			worldTransform.setOrigin(ToBtVector3(enginePosition + engineRotation * m_rigidBody->GetColliderCenter()));
-			worldTransform.setRotation(ToBtQuaternion(engineRotation));
+			Vector3 lastPos		= m_rigidBody->g_transform->GetPosition();
+			Quaternion lastRot	= m_rigidBody->g_transform->GetRotation();
+			worldTrans.setOrigin(ToBtVector3(lastPos + lastRot * m_rigidBody->GetColliderCenter()));
+			worldTrans.setRotation(ToBtQuaternion(lastRot));
 
 			m_rigidBody->m_hasSimulated = true;
 		}
 
 		// Update from bullet, BULLET -> ENGINE
-		void btMotionState::setWorldTransform(const btTransform& worldTransform) override
+		void setWorldTransform(const btTransform& worldTrans) override
 		{
-			Quaternion bulletRot = ToQuaternion(worldTransform.getRotation());
-			Vector3 bulletPos = ToVector3(worldTransform.getOrigin()) - bulletRot * m_rigidBody->GetColliderCenter();
-			m_rigidBody->g_transform->SetPosition(bulletPos);
-			m_rigidBody->g_transform->SetRotation(bulletRot);
+			Quaternion newWorldRot	= ToQuaternion(worldTrans.getRotation());
+			Vector3 newWorldPos		= ToVector3(worldTrans.getOrigin()) - newWorldRot * m_rigidBody->GetColliderCenter();
+
+			m_rigidBody->g_transform->SetPosition(newWorldPos);
+			m_rigidBody->g_transform->SetRotation(newWorldRot);
 
 			m_rigidBody->m_hasSimulated = true;
 		}
@@ -81,8 +81,8 @@ namespace Directus
 		m_inWorld = false;
 		m_mass = DEFAULT_MASS;
 		m_restitution = DEFAULT_RESTITUTION;
-		m_drag = DEFAULT_FRICTION;
-		m_angularDrag = DEFAULT_ANGULAR_FRICTION;
+		m_friction = DEFAULT_FRICTION;
+		m_frictionRolling = DEFAULT_FRICTION_ROLLING;
 		m_useGravity = true;
 		m_isKinematic = false;
 		m_hasSimulated = false;
@@ -141,8 +141,8 @@ namespace Directus
 	void RigidBody::Serialize(StreamIO* stream)
 	{
 		stream->Write(m_mass);
-		stream->Write(m_drag);
-		stream->Write(m_angularDrag);
+		stream->Write(m_friction);
+		stream->Write(m_frictionRolling);
 		stream->Write(m_restitution);
 		stream->Write(m_useGravity);
 		stream->Write(m_gravity);
@@ -154,8 +154,8 @@ namespace Directus
 	void RigidBody::Deserialize(StreamIO* stream)
 	{
 		stream->Read(m_mass);
-		stream->Read(m_drag);
-		stream->Read(m_angularDrag);
+		stream->Read(m_friction);
+		stream->Read(m_frictionRolling);
 		stream->Read(m_restitution);
 		stream->Read(m_useGravity);
 		stream->Read(m_gravity);
@@ -169,26 +169,39 @@ namespace Directus
 	// = PROPERTIES =========================================================
 	void RigidBody::SetMass(float mass)
 	{
-		m_mass = max(mass, 0.0f);
-		AddBodyToWorld();
+		mass = Max(mass, 0.0f);
+		if (mass != m_mass)
+		{
+			m_mass = mass;
+			AddBodyToWorld();
+		}
 	}
 
-	void RigidBody::SetDrag(float drag)
+	void RigidBody::SetFriction(float friction)
 	{
-		m_drag = drag;
-		AddBodyToWorld();
+		if (!m_rigidBody || m_friction == friction)
+			return;
+
+		m_friction = friction;
+		m_rigidBody->setFriction(friction);
 	}
 
-	void RigidBody::SetAngularDrag(float angularDrag)
+	void RigidBody::SetFrictionRolling(float frictionRolling)
 	{
-		m_angularDrag = angularDrag;
-		AddBodyToWorld();
+		if (!m_rigidBody || m_frictionRolling == frictionRolling)
+			return;
+
+		m_frictionRolling = frictionRolling;
+		m_rigidBody->setRollingFriction(frictionRolling);
 	}
 
 	void RigidBody::SetRestitution(float restitution)
 	{
+		if (!m_rigidBody || m_restitution == restitution)
+			return;
+
 		m_restitution = restitution;
-		AddBodyToWorld();
+		m_rigidBody->setRestitution(restitution);
 	}
 
 	void RigidBody::SetUseGravity(bool gravity)
@@ -242,6 +255,9 @@ namespace Directus
 
 	void RigidBody::ApplyForce(const Vector3& force, ForceMode mode) const
 	{
+		if (!m_rigidBody)
+			return;
+
 		Activate();
 
 		if (mode == Force)
@@ -256,6 +272,9 @@ namespace Directus
 
 	void RigidBody::ApplyForceAtPosition(const Vector3& force, Vector3 position, ForceMode mode) const
 	{
+		if (!m_rigidBody)
+			return;
+
 		Activate();
 
 		if (mode == Force)
@@ -270,6 +289,9 @@ namespace Directus
 
 	void RigidBody::ApplyTorque(const Vector3& torque, ForceMode mode) const
 	{
+		if (!m_rigidBody)
+			return;
+
 		Activate();
 
 		if (mode == Force)
@@ -297,26 +319,34 @@ namespace Directus
 
 	void RigidBody::SetPositionLock(const Vector3& lock)
 	{
-		m_positionLock = lock;
+		if (!m_rigidBody || m_positionLock == lock)
+			return;
 
-		Vector3 translationFreedom = Vector3(!lock.x, !lock.y, !lock.z);
-		m_rigidBody->setLinearFactor(ToBtVector3(translationFreedom));
+		m_positionLock = lock;
+		Vector3 linearFactor = Vector3(!lock.x, !lock.y, !lock.z);
+		m_rigidBody->setLinearFactor(ToBtVector3(linearFactor));
 	}
 
 	void RigidBody::SetRotationLock(bool lock)
 	{
 		if (lock)
+		{
 			SetRotationLock(Vector3::One);
+		}
 		else
+		{
 			SetRotationLock(Vector3::Zero);
+		}
 	}
 
 	void RigidBody::SetRotationLock(const Vector3& lock)
 	{
-		m_rotationLock = lock;
+		if (!m_rigidBody || m_rotationLock == lock)
+			return;
 
-		Vector3 rotationFreedom = Vector3(!lock.x, !lock.y, !lock.z);
-		m_rigidBody->setAngularFactor(ToBtVector3(rotationFreedom));
+		m_rotationLock = lock;
+		Vector3 angularFactor = Vector3(!lock.x, !lock.y, !lock.z);
+		m_rigidBody->setAngularFactor(ToBtVector3(angularFactor));
 	}
 
 	//= POSITION ============================================================
@@ -353,7 +383,7 @@ namespace Directus
 		m_shape = shape;
 		if (!m_shape.expired())
 		{
-			AddBodyToWorld();		
+			AddBodyToWorld();
 		}
 		else
 		{
@@ -384,71 +414,75 @@ namespace Directus
 	//= HELPER FUNCTIONS ========================================================
 	void RigidBody::AddBodyToWorld()
 	{
-		btVector3 inertia(0, 0, 0);
-
 		if (m_mass < 0.0f)
 		{
 			m_mass = 0.0f;
 		}
 
-		// in case there is an existing rigidBody, remove it
+		// Remove existing btRigidBody but keep it's inertia
+		btVector3 localInertia(0, 0, 0);
 		if (m_rigidBody)
 		{
-			inertia = m_rigidBody->getLocalInertia(); // save the inertia
+			localInertia = m_rigidBody->getLocalInertia();
 			ReleaseBtRigidBody();
 		}
 
 		// Calculate local inertia
 		if (!m_shape.expired())
 		{
-			m_shape._Get()->calculateLocalInertia(m_mass, inertia);
+			m_shape._Get()->calculateLocalInertia(m_mass, localInertia);
 		}
 
-		// Motion state
-		MotionState* motionState = new MotionState(this);
+		// Construction of btRigidBody
+		{
+			// Create a motion state (memory will be freed by the RigidBody)
+			MotionState* motionState = new MotionState(this);
 
-		// Construction Info
-		btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, !m_shape.expired() ? m_shape._Get() : nullptr, inertia);
-		constructionInfo.m_mass = m_mass;
-		constructionInfo.m_friction = m_drag;
-		constructionInfo.m_rollingFriction = m_angularDrag;
-		constructionInfo.m_restitution = m_restitution;
-		constructionInfo.m_startWorldTransform;
-		constructionInfo.m_collisionShape = !m_shape.expired() ? m_shape._Get() : nullptr;
-		constructionInfo.m_localInertia = inertia;
-		constructionInfo.m_motionState = motionState;
+			// Info
+			btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motionState, !m_shape.expired() ? m_shape._Get() : nullptr, localInertia);
+			constructionInfo.m_mass = m_mass;
+			constructionInfo.m_friction = m_friction;
+			constructionInfo.m_rollingFriction = m_frictionRolling;
+			constructionInfo.m_restitution = m_restitution;
+			constructionInfo.m_startWorldTransform;
+			constructionInfo.m_collisionShape = !m_shape.expired() ? m_shape._Get() : nullptr;
+			constructionInfo.m_localInertia = localInertia;
+			constructionInfo.m_motionState = motionState;
 
-		// RigidBody
-		m_rigidBody = make_shared<btRigidBody>(constructionInfo);
+			m_rigidBody = make_shared<btRigidBody>(constructionInfo);
+		}
 
 		UpdateGravity();
+		
+		// Collision flags
+		{ 
+			int flags = m_rigidBody->getCollisionFlags();
 
-		//= COLLISION FLAGS ====================================================================
-		int flags = m_rigidBody->getCollisionFlags();
+			// Editor -> Kinematic (so the user can move it around)
+			bool originalKinematicState = m_isKinematic;
+			if (g_context->GetSubsystem<Engine>()->GetMode() == Editor)
+			{
+				m_isKinematic = true;
+			}
 
-		// Editor -> Kinematic (so the user can move it around)
-		bool originalKinematicState = m_isKinematic;
-		if (g_context->GetSubsystem<Engine>()->GetMode() == Editor)
-		{
-			m_isKinematic = true;
+			if (m_isKinematic)
+			{
+				flags |= btCollisionObject::CF_KINEMATIC_OBJECT;
+			}
+			else
+			{
+				flags &= ~btCollisionObject::CF_KINEMATIC_OBJECT;
+			}
+
+			m_rigidBody->setCollisionFlags(flags);
+			m_rigidBody->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
+
+			m_isKinematic = originalKinematicState;
 		}
 
-		if (m_isKinematic)
-		{
-			flags |= btCollisionObject::CF_KINEMATIC_OBJECT;
-		}
-		else
-		{
-			flags &= ~btCollisionObject::CF_KINEMATIC_OBJECT;
-		}
-
-		m_rigidBody->setCollisionFlags(flags);
-		m_rigidBody->forceActivationState(m_isKinematic ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
-
-		m_isKinematic = originalKinematicState;
-		//======================================================================================
 		m_rigidBody->setDeactivationTime(2000);
 
+		// Set initial transform
 		SetPosition(g_transform->GetPosition());
 		SetRotation(g_transform->GetRotation());
 
@@ -456,9 +490,8 @@ namespace Directus
 		SetPositionLock(m_positionLock);
 		SetRotationLock(m_rotationLock);
 
-		// PHYSICS WORLD - ADD
+		// Add btRigidBody to world
 		g_context->GetSubsystem<Physics>()->GetWorld()->addRigidBody(m_rigidBody.get());
-
 		if (m_mass > 0.0f)
 		{
 			Activate();
@@ -517,7 +550,9 @@ namespace Directus
 		if (!m_rigidBody)
 			return;
 
+		// Remove rigidbody from world
 		g_context->GetSubsystem<Physics>()->GetWorld()->removeRigidBody(m_rigidBody.get());
+		// Delete it's motion state
 		delete m_rigidBody->getMotionState();
 	}
 

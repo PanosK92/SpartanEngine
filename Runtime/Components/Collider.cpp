@@ -48,7 +48,7 @@ namespace Directus
 {
 	Collider::Collider()
 	{
-		m_shapeType = CollishionShape_Box;
+		m_shapeType = ColliderShape_Box;
 		m_extents = Vector3::One;
 		m_center = Vector3::Zero;
 	}
@@ -159,36 +159,36 @@ namespace Directus
 
 		switch (m_shapeType)
 		{
-		case CollishionShape_Box:
+		case ColliderShape_Box:
 			m_collisionShape = make_shared<btBoxShape>(ToBtVector3(m_extents * 0.5f));
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 
-		case CollishionShape_Sphere:
+		case ColliderShape_Sphere:
 			m_collisionShape = make_shared<btSphereShape>(m_extents.x);
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 
-		case CollishionShape_StaticPlane:
+		case ColliderShape_StaticPlane:
 			m_collisionShape = make_shared<btStaticPlaneShape>(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
 			break;
 
-		case CollishionShape_Cylinder:
+		case ColliderShape_Cylinder:
 			m_collisionShape = make_shared<btCylinderShape>(btVector3(m_extents.x, m_extents.y, m_extents.x));
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 
-		case CollishionShape_Capsule:
+		case ColliderShape_Capsule:
 			m_collisionShape = make_shared<btCapsuleShape>(m_extents.x, Max(m_extents.y - m_extents.x, 0.0f));
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 
-		case CollishionShape_Cone:
+		case ColliderShape_Cone:
 			m_collisionShape = make_shared<btConeShape>(m_extents.x, m_extents.y);
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));
 			break;
 
-		case CollishionShape_Mesh:
+		case ColliderShape_Mesh:
 			// Get mesh
 			MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
 			Mesh* mesh = nullptr;

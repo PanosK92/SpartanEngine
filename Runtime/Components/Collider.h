@@ -36,13 +36,13 @@ namespace Directus
 
 	enum ColliderShape
 	{
-		CollishionShape_Box,
-		CollishionShape_Sphere,
-		CollishionShape_StaticPlane,
-		CollishionShape_Cylinder,
-		CollishionShape_Capsule,
-		CollishionShape_Cone,
-		CollishionShape_Mesh,
+		ColliderShape_Box,
+		ColliderShape_Sphere,
+		ColliderShape_StaticPlane,
+		ColliderShape_Cylinder,
+		ColliderShape_Capsule,
+		ColliderShape_Cone,
+		ColliderShape_Mesh,
 	};
 
 	class DLL_API Collider : public Component

@@ -32,6 +32,14 @@ namespace Directus
 {
 	class GameObject;
 
+	enum ConstraintType
+	{
+		ConstraintType_Point2Point,
+		ConstraintType_Hinge,
+		ConstraintType_Slider,
+		ConstraintType_ConeTwist
+	};
+
 	class DLL_API Constraint : public Component
 	{
 	public:

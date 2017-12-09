@@ -206,8 +206,8 @@ void DirectusCollider::ReflectType()
     m_shapeType->setCurrentIndex((int)shape);
 
    // If the shape is a mesh, make the optimize label and checkbox, visible
-    m_optimize->setVisible(shape == CollishionShape_Mesh);
-    m_optimizeLabel->setVisible(shape == CollishionShape_Mesh);
+    m_optimize->setVisible(shape == ColliderShape_Mesh);
+    m_optimizeLabel->setVisible(shape == ColliderShape_Mesh);
 }
 
 void DirectusCollider::ReflectCenter()
@@ -244,8 +244,8 @@ void DirectusCollider::MapType()
     m_inspectedCollider->SetShapeType(shape);
 
     // If the shape is a mesh, make the optimize label and checkbox, visible
-    m_optimizeLabel->setVisible(shape == CollishionShape_Mesh);
-    m_optimize->setVisible(shape == CollishionShape_Mesh);
+    m_optimizeLabel->setVisible(shape == ColliderShape_Mesh);
+    m_optimize->setVisible(shape == ColliderShape_Mesh);
 }
 
 void DirectusCollider::MapCenter()

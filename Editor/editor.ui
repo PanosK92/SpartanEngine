@@ -3186,7 +3186,7 @@ QSplitter::handle:vertical
      <addaction name="separator"/>
      <addaction name="actionCollider_Component"/>
      <addaction name="separator"/>
-     <addaction name="actionHinge_Joint_Component"/>
+     <addaction name="actionConstraint_Component"/>
     </widget>
     <widget class="QMenu" name="menuMesh">
      <property name="title">
@@ -3300,9 +3300,9 @@ QSplitter::handle:vertical
     <string>Add a Mesh Collider component</string>
    </property>
   </action>
-  <action name="actionHinge_Joint_Component">
+  <action name="actionConstraint_Component">
    <property name="text">
-    <string>Hinge Joint</string>
+    <string>Constraint</string>
    </property>
    <property name="toolTip">
     <string>Add a Hinge Joint component</string>
@@ -3462,7 +3462,7 @@ QSplitter::handle:vertical
     <slot>CreateQuad()</slot>
     <slot>AddCameraComponent()</slot>
     <slot>AddLightComponent()</slot>
-    <slot>AddHingeComponent()</slot>
+    <slot>AddConstraintComponent()</slot>
     <slot>AddColliderComponent()</slot>
     <slot>AddRigidBodyComponent()</slot>
     <slot>AddMeshFilterComponent()</slot>
@@ -3721,10 +3721,10 @@ QSplitter::handle:vertical
    </hints>
   </connection>
   <connection>
-   <sender>actionHinge_Joint_Component</sender>
+   <sender>actionConstraint_Component</sender>
    <signal>triggered()</signal>
    <receiver>widgetHierarchy</receiver>
-   <slot>AddHingeComponent()</slot>
+   <slot>AddConstraintComponent()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
