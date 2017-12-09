@@ -62,7 +62,7 @@ namespace Directus
 		//=========================================
 
 		// Bounding box
-		const Math::Vector3& GetBoundingBox() { return m_extents; }
+		const Math::Vector3& GetBoundingBox() { return m_size; }
 		void SetBoundingBox(const Math::Vector3& boundingBox);
 
 		// Collider center
@@ -91,7 +91,7 @@ namespace Directus
 
 		ColliderShape m_shapeType;
 		std::shared_ptr<btCollisionShape> m_collisionShape;
-		Math::Vector3 m_extents;
+		Math::Vector3 m_size;
 		Math::Vector3 m_center;
 		Math::Vector3 m_lastKnownScale;
 		unsigned int m_vertexLimit = 100000;

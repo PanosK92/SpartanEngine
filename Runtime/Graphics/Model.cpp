@@ -210,7 +210,7 @@ namespace Directus
 
 	float Model::GetBoundingSphereRadius()
 	{
-		Vector3 extent = m_boundingBox.GetHalfSize().Absolute();
+		Vector3 extent = m_boundingBox.GetExtents().Absolute();
 		return Max(Max(extent.x, extent.y), extent.z);
 	}
 
@@ -284,7 +284,7 @@ namespace Directus
 		auto largestBoundingBoxMesh = ComputeLargestBoundingBox().lock();
 
 		// Calculate the scale offset
-		float scaleOffset = !largestBoundingBoxMesh ? 1.0f : largestBoundingBoxMesh->GetBoundingBox().GetHalfSize().Length();
+		float scaleOffset = !largestBoundingBoxMesh ? 1.0f : largestBoundingBoxMesh->GetBoundingBox().GetExtents().Length();
 
 		// Return the scale
 		return 1.0f / scaleOffset;
@@ -303,7 +303,7 @@ namespace Directus
 			if (!mesh)
 				continue;
 
-			Vector3 boundingBox = mesh->GetBoundingBox().GetHalfSize();
+			Vector3 boundingBox = mesh->GetBoundingBox().GetExtents();
 			if (boundingBox.Volume() > largestBoundingBox.Volume())
 			{
 				largestBoundingBox = boundingBox;

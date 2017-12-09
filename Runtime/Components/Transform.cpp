@@ -144,7 +144,7 @@ namespace Directus
 	//= ROTATION =====================================================================================
 	void Transform::SetRotation(const Quaternion& rotation)
 	{
-		SetRotationLocal(!HasParent() ? rotation : GetParent()->GetRotation().Inverse() * rotation);
+		SetRotationLocal(!HasParent() ? rotation : rotation * GetParent()->GetRotation().Inverse());
 	}
 
 	void Transform::SetRotationLocal(const Quaternion& rotation)
