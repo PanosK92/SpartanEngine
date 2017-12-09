@@ -157,7 +157,9 @@ namespace Directus
 				{
 					Vector3 axis = Vector3::Right.Cross(normStart);
 					if (axis.Length() < M_EPSILON)
+					{
 						axis = Vector3::Up.Cross(normStart);
+					}
 
 					FromAngleAxis(180.0f, axis);
 				}

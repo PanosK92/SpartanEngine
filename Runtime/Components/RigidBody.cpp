@@ -490,8 +490,6 @@ namespace Directus
 		if (!m_rigidBody)
 			return;
 
-		btDiscreteDynamicsWorld* world = g_context->GetSubsystem<Physics>()->GetWorld();
-
 		int flags = m_rigidBody->getFlags();
 		if (m_useGravity)
 		{
@@ -505,7 +503,8 @@ namespace Directus
 
 		if (m_useGravity)
 		{
-			m_rigidBody->setGravity(world->getGravity());
+			btVector3 gravity = ToBtVector3(g_context->GetSubsystem<Physics>()->GetGravity());
+			m_rigidBody->setGravity(gravity);
 		}
 		else
 		{

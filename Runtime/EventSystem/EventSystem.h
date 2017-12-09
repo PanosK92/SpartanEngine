@@ -53,7 +53,7 @@ To fire an event with data								-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 
 #define SUBSCRIBE_TO_EVENT(eventID, function)			EventSystem::Subscribe(eventID, function);
 
-#define FIRE_EVENT(eventID)								EventSystem::Fire(eventID, 0)
+#define FIRE_EVENT(eventID)								EventSystem::Fire(eventID)
 #define FIRE_EVENT_DATA(eventID, data)					EventSystem::Fire(eventID, data)
 //================================================================================================
 
@@ -65,7 +65,7 @@ namespace Directus
 		typedef std::function<void(Variant)> subscriber;
 
 		static void Subscribe(int eventID, subscriber&& func) { m_subscribers[eventID].push_back(std::forward<subscriber>(func)); }
-		static void Fire(int eventID, Variant data);
+		static void Fire(int eventID, Variant data = 0);
 		static void Clear() { m_subscribers.clear(); }
 
 	private:

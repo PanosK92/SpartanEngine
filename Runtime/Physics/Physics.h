@@ -22,10 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include "../Math/Vector3.h"
 #include "../Core/Subsystem.h"
+#include <memory>
 //============================
 
+class btCollisionShape;
 class btVector3;
 class btBroadphaseInterface;
 class btRigidBody;
@@ -37,7 +38,15 @@ class btDiscreteDynamicsWorld;
 
 namespace Directus
 {
+	class Variant;
+	class RigidBody;
+	class Collider;
+	class Constraint;
 	class PhysicsDebugDraw;
+	namespace Math
+	{
+		class Vector3;
+	}	
 
 	class Physics : public Subsystem
 	{
@@ -49,27 +58,31 @@ namespace Directus
 		bool Initialize() override;
 		//=========================
 
-		void Step();
+		// Step the world
+		void Step(Variant deltaTime);
+		// Remove everything from the world
 		void Clear();
+		// Draw debug geometry
 		void DebugDraw();
+		// Return the world
+		std::shared_ptr<btDiscreteDynamicsWorld> GetWorld() { return m_world; }
+		// Return the world's gravity
+		const Math::Vector3& GetGravity();
 
-		btDiscreteDynamicsWorld* GetWorld();
-		PhysicsDebugDraw* GetPhysicsDebugDraw();
+		PhysicsDebugDraw* GetPhysicsDebugDraw() { return m_debugDraw.get(); }
 		bool IsSimulating() { return m_simulating; }
 
 	private:
-		btBroadphaseInterface* m_broadphase;
-		btCollisionDispatcher* m_dispatcher;
-		btConstraintSolver* m_constraintSolver;
-		btDefaultCollisionConfiguration* m_collisionConfiguration;
-		btDiscreteDynamicsWorld* m_world;
-		PhysicsDebugDraw* m_debugDraw;
+		std::unique_ptr<btBroadphaseInterface> m_broadphase;
+		std::unique_ptr<btCollisionDispatcher> m_dispatcher;
+		std::unique_ptr<btConstraintSolver> m_constraintSolver;
+		std::unique_ptr<btDefaultCollisionConfiguration> m_collisionConfiguration;
+		std::shared_ptr<btDiscreteDynamicsWorld> m_world;
+		std::shared_ptr<PhysicsDebugDraw> m_debugDraw;
 
-		//= PROPERTIES ====================
-		float m_internalFPS;
+		//= PROPERTIES ===
 		int m_maxSubSteps;
-		Math::Vector3 m_gravity;
 		bool m_simulating;
-		//=================================
+		//================
 	};
 }

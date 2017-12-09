@@ -69,10 +69,10 @@ namespace Directus
 		// Sets the meshe's buffers
 		bool SetBuffers();
 
-		//= BOUNDING BOX =============================
-		Math::BoundingBox GetBoundingBox();
+		//= BOUNDING BOX ===============================
+		const Math::BoundingBox& GetBoundingBox() const;
 		Math::BoundingBox GetBoundingBoxTransformed();
-		//============================================
+		//==============================================
 
 		//= PROPERTIES ===========================================
 		std::string GetMeshName();

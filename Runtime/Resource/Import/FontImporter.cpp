@@ -101,7 +101,14 @@ namespace Directus
 		int penX = 0, penY = 0;
 		for (unsigned int i = GLYPH_START; i < GLYPH_END; i++)
 		{
-			if (HandleError(FT_Load_Char(face, i, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT)))
+			FT_UInt32 loadMode_ = 0;
+			loadMode_ |= FT_LOAD_DEFAULT;
+			loadMode_ |= FT_LOAD_RENDER;
+			loadMode_ |= FT_LOAD_FORCE_AUTOHINT;
+			loadMode_ |= FT_LOAD_NO_HINTING;
+			loadMode_ |= FT_LOAD_TARGET_LIGHT;
+
+			if (HandleError(FT_Load_Char(face, i, loadMode_)))
 			{
 				// Free memory
 				FT_Done_Face(face);

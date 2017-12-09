@@ -209,7 +209,7 @@ namespace Directus
 		return true;
 	}
 
-	BoundingBox MeshFilter::GetBoundingBox()
+	const BoundingBox& MeshFilter::GetBoundingBox() const
 	{
 		return m_boundingBox;
 	}

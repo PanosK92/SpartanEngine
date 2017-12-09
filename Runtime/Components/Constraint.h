@@ -32,11 +32,11 @@ namespace Directus
 {
 	class GameObject;
 
-	class DLL_API Hinge : public Component
+	class DLL_API Constraint : public Component
 	{
 	public:
-		Hinge();
-		~Hinge();
+		Constraint();
+		~Constraint();
 
 		//= COMPONENT =============================
 		void Initialize() override;
@@ -61,7 +61,7 @@ namespace Directus
 		Math::Vector3 GetPivotConnected();
 
 	private:
-		btHingeConstraint* m_hinge;
+		btHingeConstraint* m_constraint;
 		std::weak_ptr<GameObject> m_connectedGameObject;
 		bool m_isConnected;
 		Math::Vector3 m_pivotA;

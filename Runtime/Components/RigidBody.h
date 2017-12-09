@@ -117,7 +117,7 @@ namespace Directus
 
 		//= MISC ================================================
 		void SetCollisionShape(std::weak_ptr<btCollisionShape> shape);
-		std::weak_ptr<btRigidBody> GetBtRigidBody() { return m_rigidBody; }
+		btRigidBody* GetBtRigidBody() { return m_rigidBody.get(); }
 		void ClearForces() const;
 		Math::Vector3 GetColliderCenter() const;
 

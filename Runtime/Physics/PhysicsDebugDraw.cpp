@@ -25,6 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 //==============================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace Directus
 {
 	PhysicsDebugDraw::PhysicsDebugDraw()
@@ -102,7 +106,7 @@ namespace Directus
 
 	void PhysicsDebugDraw::reportErrorWarning(const char* warningString)
 	{
-		LOG_WARNING(warningString);
+		LOG_WARNING("Physics: " + string(warningString));
 	}
 
 	void PhysicsDebugDraw::draw3dText(const btVector3& location, const char* textString)

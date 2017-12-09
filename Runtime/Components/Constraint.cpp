@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =================================================
-#include "Hinge.h"
+#include "Constraint.h"
 #include "RigidBody.h"
 #include "../IO/StreamIO.h"
 #include "../Core/Scene.h"
@@ -37,14 +37,14 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Hinge::Hinge()
+	Constraint::Constraint()
 	{
-		m_hinge = nullptr;
+		m_constraint = nullptr;
 		m_isConnected = false;
 		m_isDirty = false;
 	}
 
-	Hinge::~Hinge()
+	Constraint::~Constraint()
 	{
 
 	}
@@ -52,7 +52,7 @@ namespace Directus
 	/*------------------------------------------------------------------------------
 										[INTERFACE]
 	------------------------------------------------------------------------------*/
-	void Hinge::Initialize()
+	void Constraint::Initialize()
 	{
 		// A is the chassis and B is the tyre.
 		m_axisA = Vector3(0.f, 1.f, 0.f); // The axis in A should be equal to to the axis in B and point away from the car off to the side.
@@ -61,22 +61,22 @@ namespace Directus
 		m_pivotB = Vector3(0.f, 0.f, 0.f); // the centre of the tyre
 	}
 
-	void Hinge::Start()
+	void Constraint::Start()
 	{
 
 	}
 
-	void Hinge::OnDisable()
+	void Constraint::OnDisable()
 	{
 
 	}
 
-	void Hinge::Remove()
+	void Constraint::Remove()
 	{
-		g_context->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_hinge);
+		g_context->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_constraint);
 	}
 
-	void Hinge::Update()
+	void Constraint::Update()
 	{
 		ComponentCheck();
 
@@ -88,7 +88,7 @@ namespace Directus
 		m_isDirty = false;
 	}
 
-	void Hinge::Serialize(StreamIO* stream)
+	void Constraint::Serialize(StreamIO* stream)
 	{
 		stream->Write(m_isConnected);
 		if (m_isConnected)
@@ -105,7 +105,7 @@ namespace Directus
 		stream->Write(m_pivotB);
 	}
 
-	void Hinge::Deserialize(StreamIO* stream)
+	void Constraint::Deserialize(StreamIO* stream)
 	{
 		stream->Read(m_isConnected);
 		if (m_isConnected)
@@ -123,7 +123,7 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	void Hinge::SetConnectedGameObject(weakGameObj connectedRigidBody)
+	void Constraint::SetConnectedGameObject(weakGameObj connectedRigidBody)
 	{
 		m_connectedGameObject = connectedRigidBody;
 		m_isConnected = true;
@@ -131,40 +131,40 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	weakGameObj Hinge::GetConnectedGameObject()
+	weakGameObj Constraint::GetConnectedGameObject()
 	{
 		return m_connectedGameObject;
 	}
 
-	void Hinge::SetAxis(Vector3 axis)
+	void Constraint::SetAxis(Vector3 axis)
 	{
 		m_axisA = axis;
 		m_isDirty = true;
 	}
 
-	Vector3 Hinge::GetAxis()
+	Vector3 Constraint::GetAxis()
 	{
 		return m_axisA;
 	}
 
-	void Hinge::SetPivot(Vector3 pivot)
+	void Constraint::SetPivot(Vector3 pivot)
 	{
 		m_pivotA = pivot;
 		m_isDirty = true;
 	}
 
-	Vector3 Hinge::GetPivot()
+	Vector3 Constraint::GetPivot()
 	{
 		return m_pivotA;
 	}
 
-	void Hinge::SetPivotConnected(Vector3 pivot)
+	void Constraint::SetPivotConnected(Vector3 pivot)
 	{
 		m_pivotB = pivot;
 		m_isDirty = true;
 	}
 
-	Vector3 Hinge::GetPivotConnected()
+	Vector3 Constraint::GetPivotConnected()
 	{
 		return m_pivotB;
 	}
@@ -172,16 +172,16 @@ namespace Directus
 	/*------------------------------------------------------------------------------
 								[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	void Hinge::ConstructHinge()
+	void Constraint::ConstructHinge()
 	{
 		if (m_connectedGameObject.expired())
 			return;
 
-		if (m_hinge)
+		if (m_constraint)
 		{
-			g_context->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_hinge);
-			delete m_hinge;
-			m_hinge = nullptr;
+			g_context->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_constraint);
+			delete m_constraint;
+			m_constraint = nullptr;
 		}
 
 		// get the rigidbodies
@@ -200,19 +200,19 @@ namespace Directus
 		localB.setOrigin(btVector3(0.0, -1.5, -0.05));
 
 		// create the hinge
-		m_hinge = new btHingeConstraint(*rigidBodyA._Get(), *rigidBodyB._Get(), localA, localB);
-		m_hinge->enableAngularMotor(true, 2, 3);
+		m_constraint = new btHingeConstraint(*rigidBodyA, *rigidBodyB, localA, localB);
+		m_constraint->enableAngularMotor(true, 2, 3);
 
 		// add it to the world
-		g_context->GetSubsystem<Physics>()->GetWorld()->addConstraint(m_hinge);
+		g_context->GetSubsystem<Physics>()->GetWorld()->addConstraint(m_constraint);
 	}
 
-	void Hinge::CalculateConnections()
+	void Constraint::CalculateConnections()
 	{
 		m_axisB = m_axisA; // The axis in A should be equal to to the axis in B and point away from the car off to the side.
 	}
 
-	void Hinge::ComponentCheck()
+	void Constraint::ComponentCheck()
 	{
 		if (g_gameObject.expired())
 			return;
