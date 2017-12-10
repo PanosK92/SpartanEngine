@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "Stopwatch.h"
-#include <chrono>
 //====================
 
 //= NAMESPACES ========
@@ -31,12 +30,9 @@ using namespace chrono;
 
 namespace Directus
 {
-	time_point<system_clock> m_start;
-	time_point<system_clock> m_end;
-
 	Stopwatch::Stopwatch()
 	{
-		m_milliseconds = 0.0f;
+		Start();
 	}
 
 	Stopwatch::~Stopwatch()
@@ -46,14 +42,11 @@ namespace Directus
 
 	void Stopwatch::Start()
 	{
-		m_start = system_clock::now();
+		m_start = steady_clock::now();
 	}
 
-	float Stopwatch::Stop()
+	float Stopwatch::GetElapsedTime()
 	{
-		m_end = system_clock::now();
-		m_milliseconds = duration_cast<microseconds>(m_end - m_start).count() / 1000.0;
-
-		return m_milliseconds;
+		return duration_cast<microseconds>(steady_clock::now() - m_start).count() / 1000.0;
 	}
 }

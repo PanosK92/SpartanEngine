@@ -82,7 +82,7 @@ namespace Directus
 
 	void PerformanceProfiler::RenderingFinished()
 	{
-		m_renderTimeMs = m_renderTimer->Stop();
+		m_renderTimeMs = m_renderTimer->GetElapsedTime();
 		m_renderedMeshesPerFrame = m_renderedMeshesCount;
 	}
 

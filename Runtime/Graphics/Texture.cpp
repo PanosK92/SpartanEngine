@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "D3D11/D3D11Texture.h"
 #include "../IO/StreamIO.h"
+#include "../Core/Stopwatch.h"
 //================================================
 
 //= NAMESPACES =====
@@ -103,6 +104,7 @@ namespace Directus
 
 	bool Texture::LoadFromFile(const string& filePath)
 	{
+		Stopwatch timer;
 		bool loaded = false;
 		SetAsyncState(Async_Started);
 
@@ -133,6 +135,8 @@ namespace Directus
 		SetAsyncState(Async_Completed);
 		m_memoryUsageKB = ComputeMemoryUsageKB();
 		m_isDirty = true;
+		LOG_INFO("Texture: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTime()) + " ms");
+
 		return true;
 	}
 	//=====================================================================================
