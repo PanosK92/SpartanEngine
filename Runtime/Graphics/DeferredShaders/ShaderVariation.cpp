@@ -70,9 +70,9 @@ namespace Directus
 		if (!file->IsCreated())
 			return false;
 
-		file->Read(m_resourceName);
-		file->Read(m_resourceFilePath);
-		file->Read(m_shaderFlags);
+		file->Read(&m_resourceName);
+		file->Read(&m_resourceFilePath);
+		file->Read(&m_shaderFlags);
 
 		return true;
 	}

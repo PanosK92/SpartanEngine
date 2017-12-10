@@ -109,8 +109,8 @@ namespace Directus
 	void Collider::Deserialize(StreamIO* stream)
 	{
 		m_shapeType = ColliderShape(stream->ReadInt());
-		stream->Read(m_size);
-		stream->Read(m_center);
+		stream->Read(&m_size);
+		stream->Read(&m_center);
 
 		UpdateShape();
 	}

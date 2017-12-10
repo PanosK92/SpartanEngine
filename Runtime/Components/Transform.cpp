@@ -90,11 +90,11 @@ namespace Directus
 	{
 		unsigned int parentGameObjectID = 0;
 
-		stream->Read(m_positionLocal);
-		stream->Read(m_rotationLocal);
-		stream->Read(m_scaleLocal);
-		stream->Read(m_lookAt);
-		stream->Read(parentGameObjectID);
+		stream->Read(&m_positionLocal);
+		stream->Read(&m_rotationLocal);
+		stream->Read(&m_scaleLocal);
+		stream->Read(&m_lookAt);
+		stream->Read(&parentGameObjectID);
 
 		if (parentGameObjectID != NOT_ASSIGNED_HASH)
 		{

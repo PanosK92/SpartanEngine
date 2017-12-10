@@ -88,7 +88,7 @@ namespace Directus
 	void Script::Deserialize(StreamIO* stream)
 	{
 		string scriptPath = NOT_ASSIGNED;
-		stream->Read(scriptPath);
+		stream->Read(&scriptPath);
 
 		if (scriptPath != NOT_ASSIGNED)
 		{

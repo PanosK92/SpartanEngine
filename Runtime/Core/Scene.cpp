@@ -201,7 +201,7 @@ namespace Directus
 		Stopwatch timer;
 
 		vector<string> resourcePaths;
-		file->Read(resourcePaths);
+		file->Read(&resourcePaths);
 
 		m_jobsTotal = resourcePaths.size();
 
