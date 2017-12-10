@@ -73,11 +73,11 @@ namespace Directus
 		{
 			ComponentType type = ToComponentType<T>();
 
-			// Return component in case it exits, however allow multiple Script components
+			// Return component in case it already exists while ingoring Script components (they can exist multiple times)
 			if (HasComponent(type) && type != ComponentType_Script)
 				return std::static_pointer_cast<T>(GetComponent<T>().lock());
 
-			// Add the component.
+			// Add component
 			auto newComponent = std::make_shared<T>();
 			m_components.insert(make_pair(type, newComponent));
 
@@ -99,7 +99,7 @@ namespace Directus
 			}
 
 			// Return it as a component of the requested type
-			return std::static_pointer_cast<T>(newComponent);
+			return newComponent;
 		}
 
 		std::weak_ptr<Component> AddComponent(ComponentType type);

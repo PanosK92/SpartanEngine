@@ -378,6 +378,11 @@ namespace Directus
 
 	void Texture::Clear()
 	{
+		for (auto& mip : m_rgba)
+		{
+			mip.clear();
+			mip.shrink_to_fit();
+		}
 		m_rgba.clear();
 		m_rgba.shrink_to_fit();
 	}

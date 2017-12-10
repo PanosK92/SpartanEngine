@@ -38,6 +38,8 @@ namespace Directus
 		Mesh();
 		~Mesh();
 
+		void Clear();
+
 		void Serialize(StreamIO* stream);
 		void Deserialize(StreamIO* stream);
 

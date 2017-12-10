@@ -59,7 +59,14 @@ namespace Directus
 
 	Model::~Model()
 	{
+		m_meshes.clear();
+		m_meshes.shrink_to_fit();
 
+		m_materials.clear();
+		m_materials.shrink_to_fit();
+
+		m_animations.clear();
+		m_animations.shrink_to_fit();
 	}
 
 	//= RESOURCE INTERFACE ====================================================================
