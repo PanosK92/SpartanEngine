@@ -14,7 +14,7 @@ namespace Directus
 {
 	LineRenderer::LineRenderer()
 	{
-
+		Register(ComponentType_LineRenderer);
 	}
 
 	LineRenderer::~LineRenderer()

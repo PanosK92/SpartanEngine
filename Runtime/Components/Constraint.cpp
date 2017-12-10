@@ -39,6 +39,7 @@ namespace Directus
 {
 	Constraint::Constraint()
 	{
+		Register(ComponentType_Constraint);
 		m_constraint = nullptr;
 		m_isDirty = false;
 	}

@@ -37,6 +37,7 @@ namespace Directus
 {
 	Transform::Transform()
 	{
+		Register(ComponentType_Transform);
 		m_positionLocal = Vector3::Zero;
 		m_rotationLocal = Quaternion(0, 0, 0, 1);
 		m_scaleLocal = Vector3::One;

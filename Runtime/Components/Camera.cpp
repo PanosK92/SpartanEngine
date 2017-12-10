@@ -44,6 +44,7 @@ namespace Directus
 {
 	Camera::Camera()
 	{
+		Register(ComponentType_Camera);
 		SetFOV_Horizontal_Deg(75);
 		m_nearPlane = 0.3f;
 		m_farPlane = 1000.0f;

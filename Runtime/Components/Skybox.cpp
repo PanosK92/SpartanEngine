@@ -41,6 +41,7 @@ namespace Directus
 {
 	Skybox::Skybox()
 	{
+		Register(ComponentType_Skybox);
 		m_anchorTrans = nullptr;
 	}
 

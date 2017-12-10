@@ -43,7 +43,7 @@ namespace Directus
 {
 	MeshFilter::MeshFilter()
 	{
-		g_typeStr = "MeshFilter";
+		Register(ComponentType_MeshFilter);
 		m_meshType = Imported;
 		m_boundingBox = BoundingBox();
 	}

@@ -62,13 +62,12 @@ namespace Directus
 	GameObject::~GameObject()
 	{
 		// delete components
-		for (int i = 0; i < m_components.size(); i++)
+		for (auto& component : m_components)
 		{
-			m_components[i]->Remove();
-			m_components[i].reset();
+			component.second->Remove();
+			component.second.reset();
 		}
 		m_components.clear();
-		m_components.shrink_to_fit();
 
 		m_ID = NOT_ASSIGNED_HASH;
 		m_name.clear();
@@ -86,7 +85,7 @@ namespace Directus
 		// call component Start()
 		for (auto const& component : m_components)
 		{
-			component->Start();
+			component.second->Start();
 		}
 	}
 
@@ -95,7 +94,7 @@ namespace Directus
 		// call component OnDisable()
 		for (auto const& component : m_components)
 		{
-			component->OnDisable();
+			component.second->OnDisable();
 		}
 	}
 
@@ -107,7 +106,7 @@ namespace Directus
 		// call component Update()
 		for (const auto& component : m_components)
 		{
-			component->Update();
+			component.second->Update();
 		}
 	}
 
@@ -155,13 +154,13 @@ namespace Directus
 		stream->Write((int)m_components.size());
 		for (const auto& component : m_components)
 		{
-			stream->Write(component->g_typeStr);
-			stream->Write(component->g_ID);
+			stream->Write((unsigned int)component.second->g_type);
+			stream->Write(component.second->g_ID);
 		}
 
 		for (const auto& component : m_components)
 		{
-			component->Serialize(stream);
+			component.second->Serialize(stream);
 		}
 		//=============================================
 
@@ -207,13 +206,13 @@ namespace Directus
 		int componentCount = stream->ReadInt();
 		for (int i = 0; i < componentCount; i++)
 		{
-			string type = NOT_ASSIGNED;
+			unsigned int type = ComponentType_Unknown;
 			unsigned int id = 0;
 
 			stream->Read(type); // load component's type
 			stream->Read(id); // load component's id
 
-			auto component = AddComponentBasedOnType(type);
+			auto component = AddComponent((ComponentType)type);
 			component._Get()->g_ID = id;
 		}
 		// Sometimes there are component dependencies, e.g. a collider that needs
@@ -221,7 +220,7 @@ namespace Directus
 		// the components (like above) and then deserialize them (like here).
 		for (const auto& component : m_components)
 		{
-			component->Deserialize(stream);
+			component.second->Deserialize(stream);
 		}
 		//=============================================
 
@@ -258,15 +257,42 @@ namespace Directus
 		}
 	}
 
+	weak_ptr<Component> GameObject::AddComponent(ComponentType type)
+	{
+		// This is the only hardcoded part regarding components. It's 
+		// one function but it would be nice if that get's automated too, somehow...
+		weak_ptr<Component> component;
+		switch (type)
+		{
+		case ComponentType_AudioListener:	component = AddComponent<AudioListener>();	break;
+		case ComponentType_AudioSource:		component = AddComponent<AudioSource>();	break;
+		case ComponentType_Camera:			component = AddComponent<Camera>();			break;
+		case ComponentType_Collider:		component = AddComponent<Collider>();		break;
+		case ComponentType_Constraint:		component = AddComponent<Constraint>();		break;
+		case ComponentType_Light:			component = AddComponent<Light>();			break;
+		case ComponentType_LineRenderer:	component = AddComponent<LineRenderer>();	break;
+		case ComponentType_MeshFilter:		component = AddComponent<MeshFilter>();		break;
+		case ComponentType_MeshRenderer:	component = AddComponent<MeshRenderer>();	break;
+		case ComponentType_RigidBody:		component = AddComponent<RigidBody>();		break;
+		case ComponentType_Script:			component = AddComponent<Script>();			break;
+		case ComponentType_Skybox:			component = AddComponent<Skybox>();			break;
+		case ComponentType_Transform:		component = AddComponent<Transform>();		break;
+		case ComponentType_Unknown:														break;
+		default:																		break;
+		}
+
+		return component;
+	}
+
 	void GameObject::RemoveComponentByID(unsigned int id)
 	{
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{
 			auto component = *it;
-			if (id == component->g_ID)
+			if (id == component.second->g_ID)
 			{
-				component->Remove();
-				component.reset();
+				component.second->Remove();
+				component.second.reset();
 				it = m_components.erase(it);
 			}
 			else
@@ -274,56 +300,5 @@ namespace Directus
 				++it;
 			}
 		}
-	}
-
-	//= HELPER FUNCTIONS ===========================================
-	weak_ptr<Component> GameObject::AddComponentBasedOnType(const string& typeStr)
-	{
-		// Note: this is the only hardcoded part regarding
-		// components. It's one function but it would be
-		// nice if that get's automated too.
-
-		weak_ptr<Component> component;
-
-		if (typeStr == "Transform")
-			component = AddComponent<Transform>();
-
-		if (typeStr == "MeshFilter")
-			component = AddComponent<MeshFilter>();
-
-		if (typeStr == "MeshRenderer")
-			component = AddComponent<MeshRenderer>();
-
-		if (typeStr == "Light")
-			component = AddComponent<Light>();
-
-		if (typeStr == "Camera")
-			component = AddComponent<Camera>();
-
-		if (typeStr == "Skybox")
-			component = AddComponent<Skybox>();
-
-		if (typeStr == "RigidBody")
-			component = AddComponent<RigidBody>();
-
-		if (typeStr == "Collider")
-			component = AddComponent<Collider>();
-
-		if (typeStr == "Constraint")
-			component = AddComponent<Constraint>();
-
-		if (typeStr == "Script")
-			component = AddComponent<Script>();
-
-		if (typeStr == "LineRenderer")
-			component = AddComponent<LineRenderer>();
-
-		if (typeStr == "AudioSource")
-			component = AddComponent<AudioSource>();
-
-		if (typeStr == "AudioListener")
-			component = AddComponent<AudioListener>();
-
-		return component;
 	}
 }
