@@ -67,8 +67,8 @@ namespace Directus
 		// If there is a mesh, use it's bounding box
 		if (auto meshFilter = g_gameObject._Get()->GetMeshFilter())
 		{
-			m_center = meshFilter->GetBoundingBox().GetCenter();
-			m_size = meshFilter->GetBoundingBox().GetSize();
+			m_center = g_transform->GetPosition();
+			m_size = meshFilter->GetBoundingBoxTransformed().GetSize();
 		}
 
 		UpdateShape();
@@ -95,6 +95,13 @@ namespace Directus
 		if (m_collisionShape && (m_lastKnownScale != g_transform->GetScale()))
 		{
 			m_lastKnownScale = g_transform->GetScale();
+			UpdateShape();
+		}
+
+		// If the MeshFilter is added after the collider, the construction would have failed.
+		// Therefore, keep trying to update the shape here.
+		if (m_shapeType == ColliderShape_Mesh && !m_collisionShape)
+		{
 			UpdateShape();
 		}
 	}
@@ -198,15 +205,20 @@ namespace Directus
 			break;
 
 		case ColliderShape_Mesh:
-			// Get mesh
+			// Get mesh filter
 			MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>()._Get();
-			Mesh* mesh = nullptr;
-			if (meshFilter)
+			if (!meshFilter)
 			{
-				if (meshFilter->GetMesh().expired())
-					break;
+				LOG_WARNING("Collider: Can't construct mesh shape, there is no MeshFilter component attached.");
+				return;
+			}
 
-				mesh = meshFilter->GetMesh()._Get();
+			// Get mesh
+			Mesh* mesh = meshFilter->GetMesh()._Get();
+			if (!mesh)
+			{
+				LOG_WARNING("Collider: Can't construct mesh shape, MeshFilter component doesn't have a mesh.");
+				return;
 			}
 
 			// Validate vertex count

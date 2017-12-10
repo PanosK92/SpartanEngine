@@ -21,19 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
+//= INCLUDES ===================
 #include "Component.h"
 #include <vector>
 #include <memory>
 #include "../Math/BoundingBox.h"
 #include "../Graphics/Vertex.h"
-//===================================
+//==============================
 
 namespace Directus
 {
 	class Mesh;
-	class D3D11VertexBuffer;
-	class D3D11IndexBuffer;
 	struct LoadVertices;
 
 	namespace Math
@@ -61,12 +59,12 @@ namespace Directus
 		//=========================================
 
 		// Sets a mesh from memory
-		bool SetMesh(std::weak_ptr<Mesh> mesh);
+		void SetMesh(std::weak_ptr<Mesh> mesh) { m_mesh = mesh; }
 
 		// Sets a default mesh (cube, quad)
-		bool SetMesh(MeshType defaultMesh);
+		void SetMesh(MeshType defaultMesh);
 
-		// Sets the meshe's buffers
+		// Set the buffers to active in the input assembler so they can be rendered.
 		bool SetBuffers();
 
 		//= BOUNDING BOX ===============================
@@ -81,15 +79,11 @@ namespace Directus
 		//========================================================
 
 	private:
-		bool CreateBuffers();
 		static void CreateCube(std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices);
 		static void CreateQuad(std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices);
 		std::string GetGameObjectName();
 
-		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
 		std::weak_ptr<Mesh> m_mesh;
 		MeshType m_meshType;
-		Math::BoundingBox m_boundingBox;
 	};
 }

@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../Resource/Resource.h"
 #include "../Math/BoundingBox.h"
+#include "Texture.h"
+
 //===============================
 
 namespace Directus
@@ -57,17 +59,20 @@ namespace Directus
 		// Sets the  GameObject that represents this model in the scene
 		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
 
-		// Adds a mesh by creating from scratch
-		std::weak_ptr<Mesh> AddMeshAsNewResource(unsigned int gameObjID, const std::string& name, std::vector<VertexPosTexTBN> vertices, std::vector<unsigned int> indices);
+		// Adds a mesh by creating it from scratch
+		std::weak_ptr<Mesh> AddMesh(unsigned int gameObjID, const std::string& name, std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices);
 
 		// Adds a new mesh
-		void AddMeshAsNewResource(std::shared_ptr<Mesh> mesh);
+		void AddMesh(std::shared_ptr<Mesh> mesh);
 
 		// Adds a new material
 		std::weak_ptr<Material> AddMaterialAsNewResource(std::shared_ptr<Material> material);
 
 		// Adds a new animation
 		std::weak_ptr<Animation> AddAnimationAsNewResource(std::shared_ptr<Animation> animation);
+
+		// Adds a texture to a material (and saves it to the model directory)
+		void AddTextureToMaterial(const std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
 
 		std::weak_ptr<Mesh> GetMeshByID(unsigned int id);
 		std::weak_ptr<Mesh> GetMeshByName(const std::string& name);
@@ -88,10 +93,9 @@ namespace Directus
 		bool LoadFromForeignFormat(const std::string& filePath);
 
 		//= SCALING / DIMENSIONS =======================
-		void SetScale(float scale);
 		float ComputeNormalizeScale();
 		std::weak_ptr<Mesh> ComputeLargestBoundingBox();
-		void ComputeDimensions();
+		void ComputeBoundingBox();
 		//==============================================
 
 		// The root GameObject that represents this model in the scene

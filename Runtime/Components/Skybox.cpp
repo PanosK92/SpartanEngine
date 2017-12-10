@@ -66,7 +66,7 @@ namespace Directus
 
 		m_cubeMapTexture = make_shared<Texture>(g_context);
 		m_cubeMapTexture->LoadFromFile(cubamapDirectory + "environment.dds");
-		m_cubeMapTexture->SetTextureType(TextureType_CubeMap);
+		m_cubeMapTexture->SetType(TextureType_CubeMap);
 		m_cubeMapTexture->SetWidth(1024);
 		m_cubeMapTexture->SetHeight(1024);
 		m_cubeMapTexture->SetGrayscale(false);

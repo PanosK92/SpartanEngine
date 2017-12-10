@@ -65,8 +65,7 @@ namespace Directus
 		std::shared_ptr<Material> AiMaterialToMaterial(Model* model, aiMaterial* assimpMaterial);
 
 		// HELPER FUNCTIONS
-		void AddTextureToMaterial(Model* model, const std::weak_ptr<Material>& material, TextureType textureType, const std::string& texturePath);
-		std::string FindTexture(const std::string& texturePath);
+		std::string ValidateTexturePath(const std::string& texturePath);
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 		void CalculateNodeCount(aiNode* node, int& count);
 		void ResetStats();

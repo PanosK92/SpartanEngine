@@ -335,7 +335,7 @@ namespace Directus
 			return;
 
 		// Create a new Mesh
-		shared_ptr<Mesh> mesh = make_shared<Mesh>();
+		shared_ptr<Mesh> mesh = make_shared<Mesh>(m_context);
 		mesh->SetModelID(model->GetResourceID());
 		mesh->SetGameObjectID(gameobject._Get()->GetID());
 		mesh->SetName(assimpMesh->mName.C_Str());
@@ -361,7 +361,7 @@ namespace Directus
 		}
 
 		//= Finilize GameObject =====================================================
-		model->AddMeshAsNewResource(mesh);
+		model->AddMesh(mesh);
 		model->AddMaterialAsNewResource(material);
 
 		// Add a MeshFilter and assign the mesh to it
@@ -488,7 +488,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, TextureType_Albedo, texturePath.data);
+				model->AddTextureToMaterial(material, TextureType_Albedo, ValidateTexturePath(texturePath.data));
 				// FIX: materials that have a diffuse texture should not be tinted black/grey
 				material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
@@ -499,7 +499,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_SHININESS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, TextureType_Roughness, texturePath.data);
+				model->AddTextureToMaterial(material, TextureType_Roughness, ValidateTexturePath(texturePath.data));
 			}
 		}
 
@@ -508,7 +508,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_AMBIENT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, TextureType_Metallic, texturePath.data);
+				model->AddTextureToMaterial(material, TextureType_Metallic, ValidateTexturePath(texturePath.data));
 			}
 		}
 
@@ -517,7 +517,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, TextureType_Normal, texturePath.data);
+				model->AddTextureToMaterial(material, TextureType_Normal, ValidateTexturePath(texturePath.data));
 			}
 		}
 
@@ -526,7 +526,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, TextureType_Occlusion, texturePath.data);
+				model->AddTextureToMaterial(material, TextureType_Occlusion, ValidateTexturePath(texturePath.data));
 			}
 		}
 
@@ -535,7 +535,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, TextureType_Emission, texturePath.data);
+				model->AddTextureToMaterial(material, TextureType_Emission, ValidateTexturePath(texturePath.data));
 			}
 		}
 		//= HEIGHT TEXTURE ============================================================================================================
@@ -543,7 +543,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, TextureType_Height, texturePath.data);
+				model->AddTextureToMaterial(material, TextureType_Height, ValidateTexturePath(texturePath.data));
 			}
 		}
 
@@ -552,7 +552,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_OPACITY, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				AddTextureToMaterial(model, material, TextureType_Mask, texturePath.data);
+				model->AddTextureToMaterial(material, TextureType_Mask, ValidateTexturePath(texturePath.data));
 			}
 		}
 		return material;
@@ -560,46 +560,7 @@ namespace Directus
 	//============================================================================================
 
 	//= HELPER FUNCTIONS =================================================================================================================================
-	void ModelImporter::AddTextureToMaterial(Model* model, const weak_ptr<Material>& material, TextureType textureType, const string& originalTexturePath)
-	{
-		if (material.expired())
-			return;
-
-		// Validate texture path
-		string texturePath = FindTexture(originalTexturePath);
-		if (texturePath == NOT_ASSIGNED)
-		{
-			LOG_WARNING("ModelImporter: Failed to find model requested texture \"" + originalTexturePath + "\".");
-			return;
-		}
-
-		
-		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		string texName = FileSystem::GetFileNameNoExtensionFromFilePath(texturePath);
-
-		// Check if the texture already exists
-		weak_ptr<Texture> texture = resourceMng->GetResourceByName<Texture>(texName);
-			
-		// If it doesn't, load it
-		if (texture.expired())
-		{
-			// Load into memory
-			texture = resourceMng->Load<Texture>(texturePath);
-			if (texture.expired())
-				return;
-
-			texture._Get()->SetTextureType(textureType); // set type
-			string modelRelativeTexPath = model->GetDirectoryTexture() + texName + TEXTURE_EXTENSION;
-
-			// save to model relative project dir (move inside project folder)
-			resourceMng->SaveResource(texture, modelRelativeTexPath); 
-		}
-
-		// set to material
-		material._Get()->SetTexture(texture); 
-	}
-
-	string ModelImporter::FindTexture(const string& originalTexturePath)
+	string ModelImporter::ValidateTexturePath(const string& originalTexturePath)
 	{
 		// Models usually return a texture path which is relative to the model's directory.
 		// However, to load anything, we'll need an absolute path, so we construct it here.

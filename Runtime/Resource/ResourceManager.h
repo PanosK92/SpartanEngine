@@ -113,17 +113,6 @@ namespace Directus
 			m_resourceCache->Add(resource);
 		}
 
-		template <class T>
-		void SaveResource(std::weak_ptr<T> resource, const std::string& filePath)
-		{
-			if (resource.expired())
-				return;
-
-			resource._Get()->SetResourceFilePath(filePath);
-			resource._Get()->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath));
-			resource._Get()->SaveToFile(filePath);
-		}
-
 		// Returns cached resource by ID
 		template <class T>
 		std::weak_ptr<T> GetResourceByID(const std::size_t ID)

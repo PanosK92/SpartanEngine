@@ -50,6 +50,7 @@ public:
 
         // Load texture
         shared_ptr<Texture> texture = make_shared<Texture>(context);
+        texture->SetUsage(TextureUsage_External);
         if (texture->LoadFromFile(filePath))
         {
             // Get first (or only) mip
