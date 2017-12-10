@@ -85,6 +85,13 @@ void DirectusConsole::AddLogPackage(LogPackage package)
     m_isDirty = true;
 }
 
+void DirectusConsole::Clear()
+{
+    this->clear();
+    m_logs.clear();;
+    m_logs.shrink_to_fit();
+}
+
 void DirectusConsole::UpdateConsole()
 {
     if (!m_isDirty)
