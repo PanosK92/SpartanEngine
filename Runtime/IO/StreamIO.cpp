@@ -98,33 +98,24 @@ namespace Directus
 		}
 	}
 
-	void StreamIO::Write(const Vector2& vector)
+	void StreamIO::Write(const Vector2& value)
 	{
-		Write(vector.x);
-		Write(vector.y);
+		out.write(reinterpret_cast<const char*>(&value), sizeof(Vector2));
 	}
 
-	void StreamIO::Write(const Vector3& vector)
+	void StreamIO::Write(const Vector3& value)
 	{
-		Write(vector.x);
-		Write(vector.y);
-		Write(vector.z);
+		out.write(reinterpret_cast<const char*>(&value), sizeof(Vector3));
 	}
 
-	void StreamIO::Write(const Vector4& vector)
+	void StreamIO::Write(const Vector4& value)
 	{
-		Write(vector.x);
-		Write(vector.y);
-		Write(vector.z);
-		Write(vector.w);
+		out.write(reinterpret_cast<const char*>(&value), sizeof(Vector4));
 	}
 
-	void StreamIO::Write(const Quaternion& quaternion)
+	void StreamIO::Write(const Quaternion& value)
 	{
-		Write(quaternion.x);
-		Write(quaternion.y);
-		Write(quaternion.z);
-		Write(quaternion.w);
+		out.write(reinterpret_cast<const char*>(&value), sizeof(Quaternion));
 	}
 
 	void StreamIO::Write(const vector<VertexPosTexTBN>& value)
@@ -172,31 +163,22 @@ namespace Directus
 
 	void StreamIO::Read(Vector2& value)
 	{
-		Read(value.x);
-		Read(value.y);
+		in.read(reinterpret_cast<char*>(&value), sizeof(Vector2));
 	}
 
 	void StreamIO::Read(Vector3& value)
 	{
-		Read(value.x);
-		Read(value.y);
-		Read(value.z);
+		in.read(reinterpret_cast<char*>(&value), sizeof(Vector3));
 	}
 
 	void StreamIO::Read(Vector4& value)
 	{
-		Read(value.x);
-		Read(value.y);
-		Read(value.z);
-		Read(value.w);
+		in.read(reinterpret_cast<char*>(&value), sizeof(Vector4));
 	}
 
 	void StreamIO::Read(Quaternion& value)
 	{
-		Read(value.x);
-		Read(value.y);
-		Read(value.z);
-		Read(value.w);
+		in.read(reinterpret_cast<char*>(&value), sizeof(Quaternion));
 	}
 
 	void StreamIO::Read(vector<VertexPosTexTBN>& value)
