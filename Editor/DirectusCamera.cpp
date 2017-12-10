@@ -155,7 +155,7 @@ void DirectusCamera::Reflect(std::weak_ptr<Directus::GameObject> gameobject)
     }
 
     // Catch the seed of the evil
-    m_inspectedCamera = gameobject.lock()->GetComponent<Camera>();
+    m_inspectedCamera = gameobject.lock()->GetComponent<Camera>()._Get();
     if (!m_inspectedCamera)
     {
         this->hide();

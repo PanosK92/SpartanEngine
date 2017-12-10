@@ -198,7 +198,7 @@ void DirectusAudioSource::Reflect(std::weak_ptr<Directus::GameObject> gameobject
     }
 
     // Catch the seed of the evil
-    m_inspectedAudioSource = gameobject.lock()->GetComponent<AudioSource>();
+    m_inspectedAudioSource = gameobject.lock()->GetComponent<AudioSource>()._Get();
     if (!m_inspectedAudioSource)
     {
         this->hide();

@@ -266,7 +266,7 @@ void DirectusMaterial::Reflect(weak_ptr<GameObject> gameobject)
         return;
     }
 
-    MeshRenderer* meshRenderer = gameobject._Get()->GetComponent<MeshRenderer>();
+    MeshRenderer* meshRenderer = gameobject._Get()->GetComponent<MeshRenderer>()._Get();
     if (!meshRenderer)
     {
         this->hide();

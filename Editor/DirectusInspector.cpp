@@ -161,7 +161,7 @@ void DirectusInspector::Inspect(weak_ptr<GameObject> gameobject)
 
     // Make sure we have at least as many script widgets
     // as the GameObject has script components.
-    vector<Script*> engineScripts = FitScriptVectorToGameObject();
+    auto engineScripts = FitScriptVectorToGameObject();
 
     if (!gameobject.expired())
     {    
@@ -179,7 +179,7 @@ void DirectusInspector::Inspect(weak_ptr<GameObject> gameobject)
         for (int i = 0; i < m_scripts.size(); i++)
         {
             DirectusScript* scriptComp = (DirectusScript*)m_scripts[i];
-            scriptComp->Reflect(engineScripts[i]);
+            scriptComp->Reflect(engineScripts[i]._Get());
         }
     }
     else // NOTE: If no item is selected, the gameobject will be null
@@ -246,7 +246,7 @@ void DirectusInspector::dropEvent(QDropEvent* event)
         scriptPath = FileSystem::GetRelativeFilePath(scriptPath);
 
         // Add a script component and load the script
-        Script* scriptComp = m_inspectedGameObject.lock()->AddComponent<Script>();
+        Script* scriptComp = m_inspectedGameObject.lock()->AddComponent<Script>()._Get();
         scriptComp->AddScript(scriptPath);
 
         // Update the inspector
@@ -256,10 +256,10 @@ void DirectusInspector::dropEvent(QDropEvent* event)
 //===================================================================================
 
 //= HELPER FUNCTIONS  ===============================================================
-vector<Script*> DirectusInspector::FitScriptVectorToGameObject()
+vector<weak_ptr<Script>> DirectusInspector::FitScriptVectorToGameObject()
 {
     if (m_inspectedGameObject.expired())
-        return vector<Script*>();
+        return vector<weak_ptr<Script>>();
 
     // Clear current script vector
     int scriptCount = (int)m_scripts.size();

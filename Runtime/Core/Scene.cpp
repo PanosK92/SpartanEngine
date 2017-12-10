@@ -430,8 +430,8 @@ namespace Directus
 		camera->SetName("Camera");
 		camera->AddComponent<Camera>();
 		camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
-		camera->AddComponent<Script>()->AddScript(scriptDirectory + "MouseLook.as");
-		camera->AddComponent<Script>()->AddScript(scriptDirectory + "FirstPersonController.as");
+		camera->AddComponent<Script>()._Get()->AddScript(scriptDirectory + "MouseLook.as");
+		camera->AddComponent<Script>()._Get()->AddScript(scriptDirectory + "FirstPersonController.as");
 
 		return camera;
 	}
@@ -443,7 +443,7 @@ namespace Directus
 		light->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 0.0, 0.0f));
 		light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
-		Light* lightComp = light->AddComponent<Light>();
+		Light* lightComp = light->AddComponent<Light>()._Get();
 		lightComp->SetLightType(Directional);
 		lightComp->SetIntensity(2.0f);
 
@@ -485,7 +485,7 @@ namespace Directus
 		// will call the scene to get the GameObject it's attached to
 		m_gameObjects.push_back(gameObj);
 
-		gameObj->Initialize(gameObj->AddComponent<Transform>());
+		gameObj->Initialize(gameObj->AddComponent<Transform>()._Get());
 
 		return gameObj;
 	}

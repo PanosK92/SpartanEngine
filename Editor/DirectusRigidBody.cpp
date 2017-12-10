@@ -229,7 +229,7 @@ void DirectusRigidBody::Reflect(weak_ptr<GameObject> gameobject)
         return;
     }
 
-    m_inspectedRigidBody = gameobject.lock()->GetComponent<RigidBody>();
+    m_inspectedRigidBody = gameobject.lock()->GetComponent<RigidBody>()._Get();
     if (!m_inspectedRigidBody)
     {
         this->hide();

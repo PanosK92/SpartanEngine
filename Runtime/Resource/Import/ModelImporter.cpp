@@ -363,16 +363,16 @@ namespace Directus
 		model->AddMaterialAsNewResource(material);
 
 		// Add a MeshFilter and assign the mesh to it
-		MeshFilter* meshFilter = gameobject._Get()->AddComponent<MeshFilter>();
+		MeshFilter* meshFilter = gameobject._Get()->AddComponent<MeshFilter>()._Get();
 		meshFilter->SetMesh(mesh);
 
 		// Add a MeshRenderer and assign the material to it
-		MeshRenderer* meshRenderer = gameobject._Get()->AddComponent<MeshRenderer>();
+		MeshRenderer* meshRenderer = gameobject._Get()->AddComponent<MeshRenderer>()._Get();
 		meshRenderer->SetMaterialFromMemory(material);
 
 		// Add a Collider and assign a mesh collision shape to it
 		gameobject._Get()->AddComponent<RigidBody>();
-		Collider* collider = gameobject._Get()->AddComponent<Collider>();
+		Collider* collider = gameobject._Get()->AddComponent<Collider>()._Get();
 		collider->SetShapeType(ColliderShape_Mesh);
 		//===========================================================================
 	}

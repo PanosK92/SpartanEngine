@@ -71,10 +71,10 @@ namespace Directus
 		m_cubeMapTexture->SetGrayscale(false);
 
 		// Add the actual "box"
-		g_gameObject._Get()->AddComponent<MeshFilter>()->SetMesh(MeshFilter::Cube);
+		g_gameObject._Get()->AddComponent<MeshFilter>()._Get()->SetMesh(MeshFilter::Cube);
 
 		// Add a mesh renderer
-		auto meshRenderer = g_gameObject._Get()->AddComponent<MeshRenderer>();
+		auto meshRenderer = g_gameObject._Get()->AddComponent<MeshRenderer>()._Get();
 		meshRenderer->SetCastShadows(false);
 		meshRenderer->SetReceiveShadows(false);
 		meshRenderer->SetMaterialByType(Material_Skybox);

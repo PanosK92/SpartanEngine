@@ -132,7 +132,7 @@ void DirectusMeshRenderer::Reflect(weak_ptr<GameObject> gameobject)
     }
 
     // Catch the seed of the evil
-    m_inspectedMeshRenderer = gameobject.lock()->GetComponent<MeshRenderer>();
+    m_inspectedMeshRenderer = gameobject.lock()->GetComponent<MeshRenderer>()._Get();
     if (!m_inspectedMeshRenderer)
     {
         this->hide();

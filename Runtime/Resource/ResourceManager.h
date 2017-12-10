@@ -226,15 +226,10 @@ namespace Directus
 		template <class Type>
 		static std::weak_ptr<Type> ToDerivedWeak(std::shared_ptr<Resource> base)
 		{
-			std::shared_ptr<Type> derivedShared = dynamic_pointer_cast<Type>(base);
+			std::shared_ptr<Type> derivedShared = std::static_pointer_cast<Type>(base);
 			std::weak_ptr<Type> derivedWeak = std::weak_ptr<Type>(derivedShared);
 
 			return derivedWeak;
 		}
 	};
-
-	// Dummy template decleration to prevent 
-	// errors when compiling the editor.
-	template<int>
-	void dynamic_pointer_cast();
 }

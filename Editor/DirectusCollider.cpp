@@ -179,7 +179,7 @@ void DirectusCollider::Reflect(weak_ptr<GameObject> gameobject)
         return;
     }
 
-    m_inspectedCollider = gameobject.lock()->GetComponent<Collider>();
+    m_inspectedCollider = gameobject.lock()->GetComponent<Collider>()._Get();
     if (!m_inspectedCollider)
     {
         this->hide();

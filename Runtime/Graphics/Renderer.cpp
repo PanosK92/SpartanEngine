@@ -346,7 +346,7 @@ namespace Directus
 			}
 
 			// Get lights
-			if (auto light = gameObject->GetComponent<Light>())
+			if (auto light = gameObject->GetComponent<Light>()._Get())
 			{
 				m_lights.push_back(light);
 				if (light->GetLightType() == Directional)
@@ -356,14 +356,14 @@ namespace Directus
 			}
 
 			// Get skybox
-			if (auto skybox = gameObject->GetComponent<Skybox>())
+			if (auto skybox = gameObject->GetComponent<Skybox>()._Get())
 			{
 				m_skybox = skybox;
-				m_lineRenderer = gameObject->GetComponent<LineRenderer>(); // Hush hush...
+				m_lineRenderer = gameObject->GetComponent<LineRenderer>()._Get(); // Hush hush...
 			}
 
 			// Get camera
-			if (auto camera = gameObject->GetComponent<Camera>())
+			if (auto camera = gameObject->GetComponent<Camera>()._Get())
 			{
 				m_camera = camera;
 				mView = m_camera->GetViewMatrix();
@@ -740,7 +740,7 @@ namespace Directus
 			{
 				for (const auto& gameObject : m_renderables)
 				{
-					auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>();
+					auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>()._Get();
 					m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 				}
 			}
@@ -792,7 +792,7 @@ namespace Directus
 					continue;
 
 				Texture* lightTex = nullptr;
-				LightType type = light->g_gameObject._Get()->GetComponent<Light>()->GetLightType();
+				LightType type = light->g_gameObject._Get()->GetComponent<Light>()._Get()->GetLightType();
 				if (type == Directional)
 				{
 					lightTex = m_gizmoTexLightDirectional.get();

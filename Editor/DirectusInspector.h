@@ -59,7 +59,7 @@ protected:
     virtual void paintEvent(QPaintEvent* evt);
 
 private:
-    std::vector<Directus::Script*> FitScriptVectorToGameObject();
+    std::vector<std::weak_ptr<Directus::Script>> FitScriptVectorToGameObject();
 
     DirectusIComponent* m_transform;
     DirectusIComponent* m_camera;

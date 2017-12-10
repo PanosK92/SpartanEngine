@@ -687,11 +687,11 @@ void DirectusHierarchy::CreateCube()
     gameobject->SetName("Cube");
 
     // Add a mesh component
-    MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
+    MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>()._Get();
     meshComp->SetMesh(MeshFilter::Cube);
 
     // Add a mesh renderer
-    MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>();
+    MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>()._Get();
     meshRenderer->SetMaterialByType(MaterialType::Material_Basic);
 
     // Refresh hierarchy
@@ -705,11 +705,11 @@ void DirectusHierarchy::CreateQuad()
     gameobject->SetName("Quad");
 
     // Add a mesh component
-    MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>();
+    MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>()._Get();
     meshComp->SetMesh(MeshFilter::Quad);
 
     // Add a mesh renderer
-    MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>();
+    MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>()._Get();
     meshRenderer->SetMaterialByType(MaterialType::Material_Basic);
 
     // Refresh hierarchy
@@ -723,7 +723,7 @@ void DirectusHierarchy::CreateDirectionalLight()
     gameobject->SetName("Directional light");
 
     // Add component
-    Light* light = gameobject->AddComponent<Light>();
+    Light* light = gameobject->AddComponent<Light>()._Get();
     light->SetLightType(Directional);
 
     // Refresh hierarchy
@@ -737,7 +737,7 @@ void DirectusHierarchy::CreatePointLight()
     gameobject->SetName("Point light");
 
     // Add component
-    Light* light = gameobject->AddComponent<Light>();
+    Light* light = gameobject->AddComponent<Light>()._Get();
     light->SetLightType(Point);
 
     // Refresh hierarchy
@@ -751,7 +751,7 @@ void DirectusHierarchy::CreateSpotLight()
     gameobject->SetName("Spot light");
 
     // Add component
-    Light* light = gameobject->AddComponent<Light>();
+    Light* light = gameobject->AddComponent<Light>()._Get();
     light->SetLightType(Spot);
 
     // Refresh hierarchy

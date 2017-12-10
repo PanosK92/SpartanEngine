@@ -113,16 +113,16 @@ namespace Directus
 		btRigidBody* GetBtRigidBody() { return m_rigidBody.get(); }
 		void ClearForces() const;
 		Math::Vector3 GetColliderCenter() const;
+		void Activate() const;
+		void Deactivate() const;
 		//============================================================
 	private:
 		//= HELPER FUNCTIONS ======
 		void AddBodyToWorld();
 		void RemoveBodyFromWorld();
 		void UpdateGravity() const;
-		void ReleaseBtRigidBody();
+		void ReleaseRigidBody();
 		bool IsActivated() const;
-		void Activate() const;
-		void Deactivate() const;
 		//=========================
 
 		float m_mass;

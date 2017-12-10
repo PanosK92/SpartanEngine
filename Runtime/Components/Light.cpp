@@ -71,7 +71,7 @@ namespace Directus
 			return;
 
 		m_shadowMaps.clear();
-		Camera* camera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>();
+		Camera* camera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>()._Get();
 		for (int i = 0; i < m_cascades; i++)
 		{
 			auto cascade = make_shared<Cascade>(SHADOWMAP_RESOLUTION, camera, g_context);
@@ -110,7 +110,7 @@ namespace Directus
 		// the scene which can look weird
 		ClampRotation();
 
-		Camera* mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>();
+		Camera* mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>()._Get();
 		m_frustrum->Construct(GetViewMatrix(), GetOrthographicProjectionMatrix(2), mainCamera->GetFarPlane());
 	}
 

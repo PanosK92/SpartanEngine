@@ -69,17 +69,17 @@ namespace Directus
 		//= COMPONENTS =========================================================================================
 		// Adds a component of type T
 		template <class T>
-		T* AddComponent()
+		std::weak_ptr<T> AddComponent()
 		{
 			std::string typeStr = GetTypeSTR<T>();
 
-			// Check if a component of that type already exists
-			Component* existingComp = GetComponent<T>();
-			if (existingComp && typeStr != "Script") // If it's anything but a script, it can't have multiple instances,
-				return static_cast<T*>(existingComp); // return the existing component.
+			// Return existing component but allow multiple Script components
+			std::weak_ptr<Component> existingComp = GetComponent<T>();
+			if (!existingComp.expired() && typeStr != "Script")
+				return std::static_pointer_cast<T>(existingComp.lock());
 
 			// Get the created component.
-			Component* component = new T;
+			std::shared_ptr<Component> component = std::make_shared<T>();
 
 			// Add the component.
 			m_components.push_back(component);
@@ -98,43 +98,43 @@ namespace Directus
 			// Caching of rendering performance critical components
 			if (typeStr == "MeshFilter")
 			{
-				m_meshFilter = (MeshFilter*)component;
+				m_meshFilter = (MeshFilter*)component.get();
 			}
 			else if (typeStr == "MeshRenderer")
 			{
-				m_meshRenderer = (MeshRenderer*)component;
+				m_meshRenderer = (MeshRenderer*)component.get();
 			}
 
 			// Return it as a component of the requested type
-			return static_cast<T*>(component);
+			return ToDerivedWeak<T>(component);
 		}
 
 		// Returns a component of type T (if it exists)
 		template <class T>
-		T* GetComponent()
+		std::weak_ptr<T> GetComponent()
 		{
 			for (const auto& component : m_components)
 			{
-				if (typeid(T) != typeid(*component))
+				if (typeid(T) != typeid(*component.get()))
 					continue;
 
-				return static_cast<T*>(component);
+				return ToDerivedWeak<T>(component);
 			}
 
-			return nullptr;
+			return std::weak_ptr<T>();
 		}
 
 		// Returns any components of type T (if they exist)
 		template <class T>
-		std::vector<T*> GetComponents()
+		std::vector<std::weak_ptr<T>> GetComponents()
 		{
-			std::vector<T*> components;
+			std::vector<std::weak_ptr<T>> components;
 			for (const auto& component : m_components)
 			{
-				if (typeid(T) != typeid(*component))
+				if (typeid(T) != typeid(*component.get()))
 					continue;
 
-				components.push_back(static_cast<T*>(component));
+				components.push_back(ToDerivedWeak<T>(component));
 			}
 
 			return components;
@@ -142,7 +142,7 @@ namespace Directus
 
 		// Checks if a component of type T exists
 		template <class T>
-		bool HasComponent() { return GetComponent<T>() ? true : false; }
+		bool HasComponent() { return !GetComponent<T>().expired(); }
 
 		// Removes a component of type T (if it exists)
 		template <class T>
@@ -151,10 +151,10 @@ namespace Directus
 			for (auto it = m_components.begin(); it != m_components.end(); )
 			{
 				auto component = *it;
-				if (typeid(T) == typeid(*component))
+				if (typeid(T) == typeid(*component.get()))
 				{
 					component->Remove();
-					delete component;
+					component.reset();
 					it = m_components.erase(it);
 				}
 				else
@@ -178,7 +178,7 @@ namespace Directus
 		bool m_isActive;
 		bool m_isPrefab;
 		bool m_hierarchyVisibility;
-		std::vector<Component*> m_components;
+		std::vector<std::shared_ptr<Component>> m_components;
 
 		// Caching of performance critical components
 		Transform* m_transform; // Updating performance - never null
@@ -189,13 +189,22 @@ namespace Directus
 		Context* m_context;
 
 		//= HELPER FUNCTIONS ====================================
-		Component* AddComponentBasedOnType(const std::string& typeStr);
+		std::weak_ptr<Component> AddComponentBasedOnType(const std::string& typeStr);
 
 		template <class T>
 		static std::string GetTypeSTR()
 		{
 			static std::string typeStr = typeid(T).name(); // e.g. Directus::Transform
 			return typeStr.substr(typeStr.find_last_of(":") + 1); // e.g Transform
+		}
+
+		template <class T>
+		static std::weak_ptr<T> ToDerivedWeak(std::shared_ptr<Component> base)
+		{
+			std::shared_ptr<T> derivedShared = std::static_pointer_cast<T>(base);
+			std::weak_ptr<T> derivedWeak = std::weak_ptr<T>(derivedShared);
+
+			return derivedWeak;
 		}
 	};
 }
