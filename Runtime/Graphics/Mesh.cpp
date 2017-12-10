@@ -61,6 +61,9 @@ namespace Directus
 		m_vertices.shrink_to_fit();
 		m_indices.clear();
 		m_indices.shrink_to_fit();
+		m_name = NOT_ASSIGNED;
+		m_gameObjID = NOT_ASSIGNED_HASH;
+		m_modelID = NOT_ASSIGNED_HASH;
 		m_name.clear();
 		m_vertexCount = 0;
 		m_indexCount = 0;
