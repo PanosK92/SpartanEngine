@@ -86,12 +86,12 @@ namespace Directus
 	{
 		Clear();
 
-		stream->Read(m_id);
-		stream->Read(m_gameObjID);
-		stream->Read(m_modelID);
-		stream->Read(m_name);
-		stream->Read(m_vertices);
-		stream->Read(m_indices);
+		stream->Read(&m_id);
+		stream->Read(&m_gameObjID);
+		stream->Read(&m_modelID);
+		stream->Read(&m_name);
+		stream->Read(&m_vertices);
+		stream->Read(&m_indices);
 
 		m_vertexCount = (unsigned int)m_vertices.size();
 		m_indexCount = (unsigned int)m_indices.size();

@@ -196,11 +196,11 @@ namespace Directus
 	void GameObject::Deserialize(StreamIO* stream, Transform* parent)
 	{
 		//= BASIC DATA =====================
-		stream->Read(m_isPrefab);
-		stream->Read(m_isActive);
-		stream->Read(m_hierarchyVisibility);
-		stream->Read(m_ID);
-		stream->Read(m_name);
+		stream->Read(&m_isPrefab);
+		stream->Read(&m_isActive);
+		stream->Read(&m_hierarchyVisibility);
+		stream->Read(&m_ID);
+		stream->Read(&m_name);
 		//==================================
 
 		//= COMPONENTS ================================
@@ -210,8 +210,8 @@ namespace Directus
 			unsigned int type = ComponentType_Unknown;
 			unsigned int id = 0;
 
-			stream->Read(type); // load component's type
-			stream->Read(id); // load component's id
+			stream->Read(&type); // load component's type
+			stream->Read(&id); // load component's id
 
 			auto component = AddComponent((ComponentType)type);
 			component._Get()->g_ID = id;

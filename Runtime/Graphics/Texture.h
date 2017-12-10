@@ -113,7 +113,7 @@ namespace Directus
 		//= NATIVE TEXTURE HANDLING (BINARY) =========
 		bool Serialize(const std::string& filePath);
 		bool Deserialize(const std::string& filePath);
-		void Clear();
+		void ClearTextureBits();
 		//============================================
 
 		bool LoadFromForeignFormat(const std::string& filePath);

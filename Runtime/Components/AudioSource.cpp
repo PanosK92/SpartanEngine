@@ -120,14 +120,14 @@ namespace Directus
 	
 	void AudioSource::Deserialize(StreamIO* stream)
 	{
-		stream->Read(m_filePath);
-		stream->Read(m_mute);
-		stream->Read(m_playOnAwake);
-		stream->Read(m_loop);
-		stream->Read(m_priority);
-		stream->Read(m_volume);
-		stream->Read(m_pitch);
-		stream->Read(m_pan);
+		stream->Read(&m_filePath);
+		stream->Read(&m_mute);
+		stream->Read(&m_playOnAwake);
+		stream->Read(&m_loop);
+		stream->Read(&m_priority);
+		stream->Read(&m_volume);
+		stream->Read(&m_pitch);
+		stream->Read(&m_pan);
 	
 		LoadAudioClip(m_filePath);
 	}

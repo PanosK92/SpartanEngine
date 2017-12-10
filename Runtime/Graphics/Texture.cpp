@@ -79,7 +79,7 @@ namespace Directus
 
 	Texture::~Texture()
 	{
-		Clear();
+		ClearTextureBits();
 	}
 
 	//= RESOURCE INTERFACE =====================================================================
@@ -90,7 +90,7 @@ namespace Directus
 
 		m_isDirty = false;
 		Serialize(filePath);
-		Clear();
+		ClearTextureBits();
 
 		// Serialize data in another thread so it doesn't stall the engine
 		/*m_context->GetSubsystem<Threading>()->AddTask([this, &filePath]()
@@ -156,19 +156,9 @@ namespace Directus
 
 	void Texture::SetTextureType(TextureType type)
 	{
-		m_type = type;
-
 		// Some models (or Assimp) pass a normal map as a height map
 		// and others pass a height map as a normal map, we try to fix that.
-		if (m_type == TextureType_Height && !GetGrayscale())
-		{
-			m_type = TextureType_Normal;
-		}
-
-		if (m_type == TextureType_Normal && GetGrayscale())
-		{
-			m_type = TextureType_Height;
-		}
+		m_type = (type == TextureType_Normal && GetGrayscale()) ? TextureType_Height : type;
 
 		m_isDirty = true;
 	}
@@ -227,6 +217,7 @@ namespace Directus
 			return false;
 		}
 
+		ClearTextureBits();
 		return true;
 	}
 
@@ -254,7 +245,8 @@ namespace Directus
 				return false;
 			}
 		}
-
+		
+		ClearTextureBits();
 		return true;
 	}
 	//=====================================================================================
@@ -359,28 +351,28 @@ namespace Directus
 		if (!file->IsCreated())
 			return false;
 
-		Clear();
+		ClearTextureBits();
 
 		m_type = (TextureType)file->ReadInt();
-		file->Read(m_bpp);
-		file->Read(m_width);
-		file->Read(m_height);
-		file->Read(m_channels);
-		file->Read(m_isGrayscale);
-		file->Read(m_isTransparent);
-		file->Read(m_isUsingMipmaps);
+		file->Read(&m_bpp);
+		file->Read(&m_width);
+		file->Read(&m_height);
+		file->Read(&m_channels);
+		file->Read(&m_isGrayscale);
+		file->Read(&m_isTransparent);
+		file->Read(&m_isUsingMipmaps);
 
 		unsigned int mipCount = file->ReadUInt();
 		for (unsigned int i = 0; i < mipCount; i++)
 		{
 			m_rgba.emplace_back(vector<unsigned char>());
-			file->Read(m_rgba[i]);
+			file->Read(&m_rgba[i]);
 		}
 
 		return true;
 	}
 
-	void Texture::Clear()
+	void Texture::ClearTextureBits()
 	{
 		for (auto& mip : m_rgba)
 		{

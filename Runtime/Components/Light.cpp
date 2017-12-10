@@ -130,11 +130,11 @@ namespace Directus
 	{
 		m_lightType = LightType(stream->ReadInt());
 		m_shadowType = ShadowType(stream->ReadInt());
-		stream->Read(m_color);
-		stream->Read(m_range);
-		stream->Read(m_intensity);
-		stream->Read(m_angle);
-		stream->Read(m_bias);
+		stream->Read(&m_color);
+		stream->Read(&m_range);
+		stream->Read(&m_intensity);
+		stream->Read(&m_angle);
+		stream->Read(&m_bias);
 	}
 
 	void Light::SetLightType(LightType type)

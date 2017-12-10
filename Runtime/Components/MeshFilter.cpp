@@ -94,9 +94,9 @@ namespace Directus
 		unsigned int meshID		= 0;
 		unsigned int modelID	= 0;
 
-		stream->Read(meshName);
-		stream->Read(meshID);
-		stream->Read(modelID);
+		stream->Read(&meshName);
+		stream->Read(&meshID);
+		stream->Read(&modelID);
 
 		// If the mesh is an engine constructed primitive
 		if (m_meshType != Imported)

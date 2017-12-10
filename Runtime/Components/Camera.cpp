@@ -121,11 +121,11 @@ namespace Directus
 
 	void Camera::Deserialize(StreamIO* stream)
 	{
-		stream->Read(m_clearColor);
+		stream->Read(&m_clearColor);
 		m_projection = Projection(stream->ReadInt());
-		stream->Read(m_fovHorizontal);
-		stream->Read(m_nearPlane);
-		stream->Read(m_farPlane);
+		stream->Read(&m_fovHorizontal);
+		stream->Read(&m_nearPlane);
+		stream->Read(&m_farPlane);
 
 		CalculateBaseView();
 		CalculateViewMatrix();

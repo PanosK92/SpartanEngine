@@ -68,11 +68,11 @@ namespace Directus
 		}
 
 		void Write(const std::string& value);
-		void Write(const std::vector<std::string>& value);
 		void Write(const Math::Vector2& value);
 		void Write(const Math::Vector3& value);
 		void Write(const Math::Vector4& value);
 		void Write(const Math::Quaternion& value);
+		void Write(const std::vector<std::string>& value);
 		void Write(const std::vector<VertexPosTexTBN>& value);
 		void Write(const std::vector<unsigned int>& value);
 		void Write(const std::vector<unsigned char>& value);
@@ -88,33 +88,33 @@ namespace Directus
 			std::is_same<T, bool>::value ||
 			std::is_same<T, double>::value
 		>::type>
-			void Read(T& value)
+			void Read(T* value)
 		{
-			in.read(reinterpret_cast<char*>(&value), sizeof(value));
+			in.read(reinterpret_cast<char*>(value), sizeof(T));
 		}
 
-		void Read(std::string& value);
-		void Read(std::vector<std::string>& value);
-		void Read(Math::Vector2& value);
-		void Read(Math::Vector3& value);
-		void Read(Math::Vector4& value);
-		void Read(Math::Quaternion& value);
-		void Read(std::vector<VertexPosTexTBN>& value);
-		void Read(std::vector<unsigned int>& value);
-		void Read(std::vector<unsigned char>& value);
+		void Read(std::string* value);	
+		void Read(Math::Vector2* value);
+		void Read(Math::Vector3* value);
+		void Read(Math::Vector4* value);
+		void Read(Math::Quaternion* value);
+		void Read(std::vector<std::string>* value);
+		void Read(std::vector<VertexPosTexTBN>* value);
+		void Read(std::vector<unsigned int>* value);
+		void Read(std::vector<unsigned char>* value);
 
 		// Helps when reading enums
 		int ReadInt()
 		{
 			int value = 0;
-			Read(value);
+			Read(&value);
 			return value;
 		}
 
 		unsigned int ReadUInt()
 		{
 			unsigned int value = 0;
-			Read(value);
+			Read(&value);
 			return value;
 		}
 		//==========================================================

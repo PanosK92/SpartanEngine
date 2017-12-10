@@ -90,9 +90,9 @@ namespace Directus
 		string materialFilePath = NOT_ASSIGNED;
 
 		m_materialType = (MaterialType)stream->ReadInt();
-		stream->Read(materialFilePath);
-		stream->Read(m_castShadows);
-		stream->Read(m_receiveShadows);
+		stream->Read(&materialFilePath);
+		stream->Read(&m_castShadows);
+		stream->Read(&m_receiveShadows);
 
 		// The Skybox material and texture is managed by the skybox component.
 		// No need to load anything as it will overwrite what the skybox component did.

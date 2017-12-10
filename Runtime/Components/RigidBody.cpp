@@ -154,15 +154,15 @@ namespace Directus
 
 	void RigidBody::Deserialize(StreamIO* stream)
 	{
-		stream->Read(m_mass);
-		stream->Read(m_friction);
-		stream->Read(m_frictionRolling);
-		stream->Read(m_restitution);
-		stream->Read(m_useGravity);
-		stream->Read(m_gravity);
-		stream->Read(m_isKinematic);
-		stream->Read(m_positionLock);
-		stream->Read(m_rotationLock);
+		stream->Read(&m_mass);
+		stream->Read(&m_friction);
+		stream->Read(&m_frictionRolling);
+		stream->Read(&m_restitution);
+		stream->Read(&m_useGravity);
+		stream->Read(&m_gravity);
+		stream->Read(&m_isKinematic);
+		stream->Read(&m_positionLock);
+		stream->Read(&m_rotationLock);
 
 		AddBodyToWorld();
 	}

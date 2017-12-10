@@ -139,69 +139,87 @@ namespace Directus
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
 	}
 
-	void StreamIO::Read(string& value)
+	void StreamIO::Read(string* value)
 	{
 		unsigned int length = 0;
-		Read(length);
+		Read(&length);
 
-		value.resize(length);
-		in.read(const_cast<char*>(value.c_str()), length);
+		value->resize(length);
+		in.read(const_cast<char*>(value->c_str()), length);
 	}
 
-	void StreamIO::Read(vector<string>& value)
+	void StreamIO::Read(Vector2* value)
 	{
+		in.read(reinterpret_cast<char*>(value), sizeof(Vector2));
+	}
+
+	void StreamIO::Read(Vector3* value)
+	{
+		in.read(reinterpret_cast<char*>(value), sizeof(Vector3));
+	}
+
+	void StreamIO::Read(Vector4* value)
+	{
+		in.read(reinterpret_cast<char*>(value), sizeof(Vector4));
+	}
+
+	void StreamIO::Read(Quaternion* value)
+	{
+		in.read(reinterpret_cast<char*>(value), sizeof(Quaternion));
+	}
+
+	void StreamIO::Read(vector<string>* value)
+	{
+		value->clear();
+		value->shrink_to_fit();
+
 		unsigned int size = 0;
-		Read(size);
+		Read(&size);
 
 		string str;
 		for (unsigned int i = 0; i < size; i++)
 		{
-			Read(str);
-			value.emplace_back(str);
+			Read(&str);
+			value->emplace_back(str);
 		}
 	}
 
-	void StreamIO::Read(Vector2& value)
+	void StreamIO::Read(vector<VertexPosTexTBN>* value)
 	{
-		in.read(reinterpret_cast<char*>(&value), sizeof(Vector2));
-	}
+		value->clear();
+		value->shrink_to_fit();
 
-	void StreamIO::Read(Vector3& value)
-	{
-		in.read(reinterpret_cast<char*>(&value), sizeof(Vector3));
-	}
-
-	void StreamIO::Read(Vector4& value)
-	{
-		in.read(reinterpret_cast<char*>(&value), sizeof(Vector4));
-	}
-
-	void StreamIO::Read(Quaternion& value)
-	{
-		in.read(reinterpret_cast<char*>(&value), sizeof(Quaternion));
-	}
-
-	void StreamIO::Read(vector<VertexPosTexTBN>& value)
-	{
 		unsigned int length = ReadUInt();
-		value.reserve(length);
-		value.resize(length);
-		in.read(reinterpret_cast<char*>(&value[0]), sizeof(VertexPosTexTBN) * length);
+
+		value->reserve(length);
+		value->resize(length);
+
+		in.read(reinterpret_cast<char*>(value->data()), sizeof(VertexPosTexTBN) * length);
 	}
 
-	void StreamIO::Read(vector<unsigned int>& value)
+	void StreamIO::Read(vector<unsigned int>* value)
 	{
+		value->clear();
+		value->shrink_to_fit();
+
 		unsigned int length = ReadUInt();
-		value.reserve(length);
-		value.resize(length);
-		in.read(reinterpret_cast<char*>(&value[0]), sizeof(unsigned int) * length);
+
+		value->reserve(length);
+		value->resize(length);
+
+		in.read(reinterpret_cast<char*>(value->data()), sizeof(unsigned int) * length);
 	}
 
-	void StreamIO::Read(vector<unsigned char>& value)
+	void StreamIO::Read(vector<unsigned char>* value)
 	{
+		value->clear();
+		value->shrink_to_fit();
+
 		unsigned int length = ReadUInt();
-		value.reserve(length);
-		value.resize(length);
-		in.read(reinterpret_cast<char*>(&value[0]), sizeof(unsigned char) * length);
+
+		value->reserve(length);
+		value->resize(length);
+
+		in.read(reinterpret_cast<char*>(value->data()), sizeof(unsigned char) * length);
 	}
 }

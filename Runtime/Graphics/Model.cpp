@@ -234,11 +234,11 @@ namespace Directus
 
 		int meshCount = 0;
 
-		file->Read(m_resourceID);
-		file->Read(m_resourceName);
-		file->Read(m_resourceFilePath);
-		file->Read(m_normalizedScale);
-		file->Read(meshCount);
+		file->Read(&m_resourceID);
+		file->Read(&m_resourceName);
+		file->Read(&m_resourceFilePath);
+		file->Read(&m_normalizedScale);
+		file->Read(&meshCount);
 
 		for (int i = 0; i < meshCount; i++)
 		{
