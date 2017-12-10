@@ -92,7 +92,7 @@ namespace Directus
 
 	RigidBody::~RigidBody()
 	{
-		ReleaseBtRigidBody();
+		ReleaseRigidBody();
 	}
 
 	//= ICOMPONENT ==========================================================
@@ -406,8 +406,27 @@ namespace Directus
 			return Vector3::Zero;
 		}
 
-		Collider* collider = g_gameObject.lock()->GetComponent<Collider>();
+		Collider* collider = g_gameObject.lock()->GetComponent<Collider>()._Get();
 		return collider ? collider->GetCenter() : Vector3::Zero;
+	}
+
+	void RigidBody::Activate() const
+	{
+		if (!m_rigidBody)
+			return;
+
+		if (m_mass > 0.0f)
+		{
+			m_rigidBody->activate(true);
+		}
+	}
+
+	void RigidBody::Deactivate() const
+	{
+		if (!m_rigidBody)
+			return;
+
+		m_rigidBody->setActivationState(WANTS_DEACTIVATION);
 	}
 	//===========================================================================
 
@@ -424,7 +443,7 @@ namespace Directus
 		if (m_rigidBody)
 		{
 			localInertia = m_rigidBody->getLocalInertia();
-			ReleaseBtRigidBody();
+			ReleaseRigidBody();
 		}
 
 		// Calculate local inertia
@@ -545,7 +564,7 @@ namespace Directus
 		}
 	}
 
-	void RigidBody::ReleaseBtRigidBody()
+	void RigidBody::ReleaseRigidBody()
 	{
 		if (!m_rigidBody)
 			return;
@@ -559,25 +578,6 @@ namespace Directus
 	bool RigidBody::IsActivated() const
 	{
 		return m_rigidBody->isActive();
-	}
-
-	void RigidBody::Activate() const
-	{
-		if (!m_rigidBody)
-			return;
-
-		if (m_mass > 0.0f)
-		{
-			m_rigidBody->activate(true);
-		}
-	}
-
-	void RigidBody::Deactivate() const
-	{
-		if (!m_rigidBody)
-			return;
-
-		m_rigidBody->setActivationState(WANTS_DEACTIVATION);
 	}
 	//===========================================================================
 }

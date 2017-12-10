@@ -40,25 +40,17 @@ namespace Directus
 	Constraint::Constraint()
 	{
 		m_constraint = nullptr;
-		m_isConnected = false;
 		m_isDirty = false;
 	}
 
 	Constraint::~Constraint()
 	{
-
+		ReleaseConstraint();
 	}
 
-	/*------------------------------------------------------------------------------
-										[INTERFACE]
-	------------------------------------------------------------------------------*/
 	void Constraint::Initialize()
 	{
-		// A is the chassis and B is the tyre.
-		m_axisA = Vector3(0.f, 1.f, 0.f); // The axis in A should be equal to to the axis in B and point away from the car off to the side.
-		m_axisB = Vector3(0.f, 0.f, 0.f); // The axis in A should be equal to to the axis in B and point away from the car off to the side.
-		m_pivotA = Vector3(0.f, 1.f, 0.f); // the mount point for the tyre on the chassis
-		m_pivotB = Vector3(0.f, 0.f, 0.f); // the centre of the tyre
+
 	}
 
 	void Constraint::Start()
@@ -73,108 +65,42 @@ namespace Directus
 
 	void Constraint::Remove()
 	{
-		g_context->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_constraint);
+		ReleaseConstraint();
 	}
 
 	void Constraint::Update()
 	{
-		ComponentCheck();
-
 		if (!m_isDirty)
 			return;
 
-		ConstructHinge();
+		ConstructConstraint();
 
 		m_isDirty = false;
 	}
 
 	void Constraint::Serialize(StreamIO* stream)
 	{
-		stream->Write(m_isConnected);
-		if (m_isConnected)
-		{
-			if (!m_connectedGameObject.expired())
-			{
-				stream->Write(m_connectedGameObject._Get()->GetID());
-			}
-		}
-
-		stream->Write(m_axisA);
-		stream->Write(m_axisB);
-		stream->Write(m_pivotA);
-		stream->Write(m_pivotB);
+		stream->Write(!m_bodyOther.expired() ? m_bodyOther._Get()->g_gameObject._Get()->GetID() : (unsigned int)0);
 	}
 
 	void Constraint::Deserialize(StreamIO* stream)
 	{
-		stream->Read(m_isConnected);
-		if (m_isConnected)
+		unsigned int bodyOtherID = stream->ReadUInt();
+		auto otherGameObject = g_context->GetSubsystem<Scene>()->GetGameObjectByID(bodyOtherID);
+		if (!otherGameObject.expired())
 		{
-			// load gameobject
-			size_t gameObjectID = stream->ReadInt();
-			m_connectedGameObject = g_context->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
+			m_bodyOther = otherGameObject._Get()->GetComponent<RigidBody>();
 		}
 
-		stream->Read(m_axisA);
-		stream->Read(m_axisB);
-		stream->Read(m_pivotA);
-		stream->Read(m_pivotB);
-
 		m_isDirty = true;
-	}
-
-	void Constraint::SetConnectedGameObject(weakGameObj connectedRigidBody)
-	{
-		m_connectedGameObject = connectedRigidBody;
-		m_isConnected = true;
-
-		m_isDirty = true;
-	}
-
-	weakGameObj Constraint::GetConnectedGameObject()
-	{
-		return m_connectedGameObject;
-	}
-
-	void Constraint::SetAxis(Vector3 axis)
-	{
-		m_axisA = axis;
-		m_isDirty = true;
-	}
-
-	Vector3 Constraint::GetAxis()
-	{
-		return m_axisA;
-	}
-
-	void Constraint::SetPivot(Vector3 pivot)
-	{
-		m_pivotA = pivot;
-		m_isDirty = true;
-	}
-
-	Vector3 Constraint::GetPivot()
-	{
-		return m_pivotA;
-	}
-
-	void Constraint::SetPivotConnected(Vector3 pivot)
-	{
-		m_pivotB = pivot;
-		m_isDirty = true;
-	}
-
-	Vector3 Constraint::GetPivotConnected()
-	{
-		return m_pivotB;
 	}
 
 	/*------------------------------------------------------------------------------
 								[HELPER FUNCTIONS]
 	------------------------------------------------------------------------------*/
-	void Constraint::ConstructHinge()
+	void Constraint::ConstructConstraint()
 	{
-		if (m_connectedGameObject.expired())
+		/*if (m_connectedRigidBody.expired())
 			return;
 
 		if (m_constraint)
@@ -186,9 +112,7 @@ namespace Directus
 
 		// get the rigidbodies
 		auto rigidBodyA = g_gameObject._Get()->GetComponent<RigidBody>()->GetBtRigidBody();
-		auto rigidBodyB = m_connectedGameObject._Get()->GetComponent<RigidBody>()->GetBtRigidBody();
-
-		CalculateConnections();
+		auto rigidBodyB = m_connectedRigidBody._Get()->GetComponent<RigidBody>()->GetBtRigidBody();
 
 		// convert data to bullet data
 		btTransform localA, localB;
@@ -205,18 +129,25 @@ namespace Directus
 
 		// add it to the world
 		g_context->GetSubsystem<Physics>()->GetWorld()->addConstraint(m_constraint);
+		*/
 	}
 
-	void Constraint::CalculateConnections()
+	void Constraint::ReleaseConstraint()
 	{
-		m_axisB = m_axisA; // The axis in A should be equal to to the axis in B and point away from the car off to the side.
-	}
-
-	void Constraint::ComponentCheck()
-	{
-		if (g_gameObject.expired())
+		if (!m_constraint)
 			return;
 
-		g_gameObject._Get()->AddComponent<RigidBody>();
+		// Activate RigidBodies
+		if (!m_bodyOwn.expired())
+		{
+			m_bodyOwn._Get()->Activate();
+		}
+		if (!m_bodyOther.expired())
+		{
+			m_bodyOther._Get()->Activate();
+		}
+
+		g_context->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_constraint.get());
+		m_constraint.reset();
 	}
 }

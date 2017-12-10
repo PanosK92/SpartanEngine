@@ -100,7 +100,7 @@ void DirectusAudioListener::Reflect(weak_ptr<GameObject> gameobject)
     }
 
     // Catch the seed of the evil
-    m_inspectedAudioListener = gameobject.lock()->GetComponent<AudioListener>();
+    m_inspectedAudioListener = gameobject.lock()->GetComponent<AudioListener>()._Get();
     if (!m_inspectedAudioListener)
     {
         this->hide();

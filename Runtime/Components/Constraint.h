@@ -26,10 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 //==========================
 
-class btHingeConstraint;
+class btTypedConstraint;
 
 namespace Directus
 {
+	class RigidBody;
 	class GameObject;
 
 	enum ConstraintType
@@ -56,34 +57,13 @@ namespace Directus
 		void Deserialize(StreamIO* stream) override;
 		//=========================================
 
-		void SetConnectedGameObject(std::weak_ptr<GameObject> connectedRigidBody);
-		std::weak_ptr<GameObject> GetConnectedGameObject();
-
-		void SetAxis(Math::Vector3 axis);
-		Math::Vector3 GetAxis();
-
-		void SetPivot(Math::Vector3 pivot);
-		Math::Vector3 GetPivot();
-
-		void SetPivotConnected(Math::Vector3 pivot);
-		Math::Vector3 GetPivotConnected();
 
 	private:
-		btHingeConstraint* m_constraint;
-		std::weak_ptr<GameObject> m_connectedGameObject;
-		bool m_isConnected;
-		Math::Vector3 m_pivotA;
-		Math::Vector3 m_pivotB;
-		Math::Vector3 m_axisA;
-		Math::Vector3 m_axisB;
-
+		void ConstructConstraint();
+		void ReleaseConstraint();
+		std::unique_ptr<btTypedConstraint> m_constraint;
+		std::weak_ptr<RigidBody> m_bodyOwn;
+		std::weak_ptr<RigidBody> m_bodyOther;
 		bool m_isDirty;
-
-		/*------------------------------------------------------------------------------
-								[HELPER FUNCTIONS]
-		------------------------------------------------------------------------------*/
-		void ConstructHinge();
-		void CalculateConnections();
-		void ComponentCheck();
 	};
 }

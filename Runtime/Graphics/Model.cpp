@@ -258,8 +258,8 @@ namespace Directus
 		{
 			// Set the normalized scale to the root GameObject's transform
 			m_normalizedScale = ComputeNormalizeScale();
-			m_rootGameObj._Get()->GetComponent<Transform>()->SetScale(m_normalizedScale);
-			m_rootGameObj._Get()->GetComponent<Transform>()->UpdateTransform();
+			m_rootGameObj._Get()->GetComponent<Transform>()._Get()->SetScale(m_normalizedScale);
+			m_rootGameObj._Get()->GetComponent<Transform>()._Get()->UpdateTransform();
 
 			// Save the model in our custom format.
 			SaveToFile(GetResourceFilePath());

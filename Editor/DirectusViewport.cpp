@@ -178,7 +178,7 @@ void DirectusViewport::mousePressEvent(QMouseEvent* event)
 {
     QPoint mousePos = event->pos();
     weak_ptr<GameObject> camera = m_context->GetSubsystem<Scene>()->GetMainCamera();
-    weak_ptr<GameObject> picked = camera._Get()->GetComponent<Camera>()->Pick(Vector2(mousePos.x(), mousePos.y()));
+    weak_ptr<GameObject> picked = camera._Get()->GetComponent<Camera>()._Get()->Pick(Vector2(mousePos.x(), mousePos.y()));
 
     if (!picked.expired())
     {

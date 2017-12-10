@@ -198,7 +198,7 @@ namespace Directus
 
 		case ColliderShape_Mesh:
 			// Get mesh
-			MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>();
+			MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>()._Get();
 			Mesh* mesh = nullptr;
 			if (meshFilter)
 			{
@@ -250,7 +250,7 @@ namespace Directus
 		if (g_gameObject.expired())
 			return;
 
-		RigidBody* rigidBody = g_gameObject._Get()->GetComponent<RigidBody>();
+		RigidBody* rigidBody = g_gameObject._Get()->GetComponent<RigidBody>()._Get();
 		if (rigidBody)
 		{
 			rigidBody->SetCollisionShape(shape);

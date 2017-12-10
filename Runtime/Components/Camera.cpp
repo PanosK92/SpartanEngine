@@ -211,7 +211,7 @@ namespace Directus
 				continue;
 
 			// Get bounding box
-			BoundingBox box = gameObj._Get()->GetComponent<MeshFilter>()->GetBoundingBoxTransformed();
+			BoundingBox box = gameObj._Get()->GetComponent<MeshFilter>()._Get()->GetBoundingBoxTransformed();
 
 			// Compute hit distance
 			float hitDistance = m_ray.HitDistance(box);

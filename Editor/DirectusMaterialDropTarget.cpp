@@ -111,7 +111,7 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
         return;
 
     // Load the material
-    weak_ptr<Material> material = gameObject._Get()->GetComponent<MeshRenderer>()->SetMaterialFromFile(materialPath);
+    weak_ptr<Material> material = gameObject._Get()->GetComponent<MeshRenderer>()._Get()->SetMaterialFromFile(materialPath);
     if (material.expired())
         return;
 

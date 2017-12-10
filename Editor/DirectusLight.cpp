@@ -177,7 +177,7 @@ void DirectusLight::Reflect(std::weak_ptr<Directus::GameObject> gameobject)
     }
 
     // Catch the seed of the evil
-    m_inspectedLight = gameobject._Get()->GetComponent<Light>();
+    m_inspectedLight = gameobject._Get()->GetComponent<Light>()._Get();
     if (!m_inspectedLight)
     {
         this->hide();

@@ -106,7 +106,7 @@ void DirectusMeshFilter::Reflect(weak_ptr<GameObject> gameobject)
     }
 
     // Catch the seed of the evil
-    m_inspectedMeshFilter = gameobject.lock()->GetComponent<MeshFilter>();
+    m_inspectedMeshFilter = gameobject.lock()->GetComponent<MeshFilter>()._Get();
     if (!m_inspectedMeshFilter)
     {
         this->hide();

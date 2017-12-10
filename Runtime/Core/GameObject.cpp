@@ -65,9 +65,10 @@ namespace Directus
 		for (int i = 0; i < m_components.size(); i++)
 		{
 			m_components[i]->Remove();
-			delete m_components[i];
+			m_components[i].reset();
 		}
 		m_components.clear();
+		m_components.shrink_to_fit();
 
 		m_ID = NOT_ASSIGNED_HASH;
 		m_name.clear();
@@ -212,8 +213,8 @@ namespace Directus
 			stream->Read(type); // load component's type
 			stream->Read(id); // load component's id
 
-			Component* component = AddComponentBasedOnType(type);
-			component->g_ID = id;
+			auto component = AddComponentBasedOnType(type);
+			component._Get()->g_ID = id;
 		}
 		// Sometimes there are component dependencies, e.g. a collider that needs
 		// to set it's shape to a rigibody. So, it's important to first create all 
@@ -264,7 +265,8 @@ namespace Directus
 			auto component = *it;
 			if (id == component->g_ID)
 			{
-				delete component;
+				component->Remove();
+				component.reset();
 				it = m_components.erase(it);
 			}
 			else
@@ -275,13 +277,13 @@ namespace Directus
 	}
 
 	//= HELPER FUNCTIONS ===========================================
-	Component* GameObject::AddComponentBasedOnType(const string& typeStr)
+	weak_ptr<Component> GameObject::AddComponentBasedOnType(const string& typeStr)
 	{
 		// Note: this is the only hardcoded part regarding
 		// components. It's one function but it would be
 		// nice if that get's automated too.
 
-		Component* component = nullptr;
+		weak_ptr<Component> component;
 
 		if (typeStr == "Transform")
 			component = AddComponent<Transform>();
