@@ -68,44 +68,60 @@ namespace Directus
 	{
 		// Log
 		m_scriptEngine->RegisterEnum("LogType");
-		m_scriptEngine->RegisterEnumValue("LogType", "Info", int(Log::Info));
+		m_scriptEngine->RegisterEnumValue("LogType", "Info",	int(Log::Info));
 		m_scriptEngine->RegisterEnumValue("LogType", "Warning", int(Log::Warning));
-		m_scriptEngine->RegisterEnumValue("LogType", "Error", int(Log::Error));
+		m_scriptEngine->RegisterEnumValue("LogType", "Error",	int(Log::Error));
+
+		// Component types
+		m_scriptEngine->RegisterEnum("ComponentType");
+		m_scriptEngine->RegisterEnumValue("ComponentType", "AudioListener", int(ComponentType_AudioListener));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "AudioSource",	int(ComponentType_AudioSource));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Camera",		int(ComponentType_Camera));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Collider",		int(ComponentType_Collider));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Constraint",	int(ComponentType_Constraint));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Light",			int(ComponentType_Light));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "LineRenderer",	int(ComponentType_LineRenderer));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "MeshFilter",	int(ComponentType_MeshFilter));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "MeshRenderer",	int(ComponentType_MeshRenderer));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "RigidBody",		int(ComponentType_RigidBody));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Script",		int(ComponentType_Script));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Skybox",		int(ComponentType_Skybox));
+		m_scriptEngine->RegisterEnumValue("ComponentType", "Transform",		int(ComponentType_Transform));
 
 		// KeyCode
 		m_scriptEngine->RegisterEnum("KeyCode");
-		m_scriptEngine->RegisterEnumValue("KeyCode", "Space", int(Space));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "Q", int(Q));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "W", int(W));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "E", int(E));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "R", int(R));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "T", int(T));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "Y", int(Y));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "U", int(U));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "I", int(I));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "O", int(O));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "P", int(P));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "A", int(A));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "S", int(S));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "D", int(D));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "F", int(F));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "G", int(G));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "H", int(H));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "J", int(J));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "K", int(K));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "L", int(L));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "Z", int(Z));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "X", int(X));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "C", int(C));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "V", int(V));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "B", int(B));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "N", int(N));
-		m_scriptEngine->RegisterEnumValue("KeyCode", "M", int(M));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Space",	int(Space));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Q",		int(Q));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "W",		int(W));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "E",		int(E));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "R",		int(R));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "T",		int(T));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Y",		int(Y));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "U",		int(U));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "I",		int(I));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "O",		int(O));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "P",		int(P));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "A",		int(A));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "S",		int(S));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "D",		int(D));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "F",		int(F));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "G",		int(G));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "H",		int(H));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "J",		int(J));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "K",		int(K));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "L",		int(L));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "Z",		int(Z));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "X",		int(X));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "C",		int(C));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "V",		int(V));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "B",		int(B));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "N",		int(N));
+		m_scriptEngine->RegisterEnumValue("KeyCode", "M",		int(M));
 
 		// ForceMode
 		m_scriptEngine->RegisterEnum("ForceMode");
-		m_scriptEngine->RegisterEnumValue("ForceMode", "Force", int(Force));
-		m_scriptEngine->RegisterEnumValue("ForceMode", "Impulse", int(Impulse));
+		m_scriptEngine->RegisterEnumValue("ForceMode", "Force",		int(Force));
+		m_scriptEngine->RegisterEnumValue("ForceMode", "Impulse",	int(Impulse));
 	}
 
 	void ScriptInterface::RegisterTypes()
@@ -167,10 +183,8 @@ namespace Directus
 		m_scriptEngine->RegisterObjectMethod("GameObject", "void SetName(string)", asMETHOD(GameObject, SetName), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "bool IsActive()", asMETHOD(GameObject, IsActive), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "void SetActive(bool)", asMETHOD(GameObject, SetActive), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "Transform &GetTransform()", asMETHOD(GameObject, GetTransform), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "bool HasCamera()", asMETHOD(GameObject, HasComponent<Camera>), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("GameObject", "Transform &GetTransform()", asMETHOD(GameObject, GetTransform), asCALL_THISCALL);	
 		m_scriptEngine->RegisterObjectMethod("GameObject", "Camera &GetCamera()", asMETHOD(GameObject, GetComponent<Camera>), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "bool HasRigidBody()", asMETHOD(GameObject, HasComponent<RigidBody>), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "RigidBody &GetRigidBody()", asMETHOD(GameObject, GetComponent<RigidBody>), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "MeshRenderer &GetMeshRenderer()", asMETHOD(GameObject, GetComponent<MeshRenderer>), asCALL_THISCALL);
 	}

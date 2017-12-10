@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =======================
-#include <vector>
+#include <map>
 #include "Scene.h"
 #include "../Components/Component.h"
 #include "../Core/Context.h"
@@ -71,90 +71,91 @@ namespace Directus
 		template <class T>
 		std::weak_ptr<T> AddComponent()
 		{
-			std::string typeStr = GetTypeSTR<T>();
+			ComponentType type = ToComponentType<T>();
 
-			// Return existing component but allow multiple Script components
-			std::weak_ptr<Component> existingComp = GetComponent<T>();
-			if (!existingComp.expired() && typeStr != "Script")
-				return std::static_pointer_cast<T>(existingComp.lock());
-
-			// Get the created component.
-			std::shared_ptr<Component> component = std::make_shared<T>();
+			// Return component in case it exits, however allow multiple Script components
+			if (HasComponent(type) && type != ComponentType_Script)
+				return std::static_pointer_cast<T>(GetComponent<T>().lock());
 
 			// Add the component.
-			m_components.push_back(component);
+			auto newComponent = std::make_shared<T>();
+			m_components.insert(make_pair(type, newComponent));
 
-			component->Register();
-
-			// Set default properties.
-			component->g_enabled = true;
-			component->g_gameObject = m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID());
-			component->g_transform = GetTransform();
-			component->g_context = m_context;
-
-			// Run Initialize().
-			component->Initialize();
+			// Setup component
+			newComponent->g_enabled = true;
+			newComponent->g_gameObject = m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID());
+			newComponent->g_transform = GetTransform();
+			newComponent->g_context = m_context;
+			newComponent->Initialize();
 
 			// Caching of rendering performance critical components
-			if (typeStr == "MeshFilter")
+			if (newComponent->g_type == ComponentType_MeshFilter)
 			{
-				m_meshFilter = (MeshFilter*)component.get();
+				m_meshFilter = (MeshFilter*)newComponent.get();
 			}
-			else if (typeStr == "MeshRenderer")
+			else if (newComponent->g_type == ComponentType_MeshRenderer)
 			{
-				m_meshRenderer = (MeshRenderer*)component.get();
+				m_meshRenderer = (MeshRenderer*)newComponent.get();
 			}
 
 			// Return it as a component of the requested type
-			return ToDerivedWeak<T>(component);
+			return std::static_pointer_cast<T>(newComponent);
 		}
+
+		std::weak_ptr<Component> AddComponent(ComponentType type);
 
 		// Returns a component of type T (if it exists)
 		template <class T>
 		std::weak_ptr<T> GetComponent()
 		{
-			for (const auto& component : m_components)
-			{
-				if (typeid(T) != typeid(*component.get()))
-					continue;
+			ComponentType type = ToComponentType<T>();
 
-				return ToDerivedWeak<T>(component);
-			}
+			if (m_components.find(type) == m_components.end())
+				return std::weak_ptr<T>();
 
-			return std::weak_ptr<T>();
+			return std::static_pointer_cast<T>(m_components.find(type)->second);
 		}
 
 		// Returns any components of type T (if they exist)
 		template <class T>
 		std::vector<std::weak_ptr<T>> GetComponents()
 		{
+			ComponentType type = ToComponentType<T>();
+
 			std::vector<std::weak_ptr<T>> components;
 			for (const auto& component : m_components)
 			{
-				if (typeid(T) != typeid(*component.get()))
+				if (type != component.second->g_type)
 					continue;
 
-				components.push_back(ToDerivedWeak<T>(component));
+				components.push_back(std::static_pointer_cast<T>(component.second));
 			}
 
 			return components;
 		}
-
+		
+		// Checks if a component of ComponentType exists
+		bool HasComponent(ComponentType type) { return m_components.find(type) != m_components.end(); }
 		// Checks if a component of type T exists
 		template <class T>
-		bool HasComponent() { return !GetComponent<T>().expired(); }
+		bool HasComponent() { return HasComponent(ToComponentType<T>()); }
 
 		// Removes a component of type T (if it exists)
 		template <class T>
 		void RemoveComponent()
 		{
+			ComponentType type = ToComponentType<T>();
+
+			if (m_components.find(type) == m_components.end())
+				return;
+
 			for (auto it = m_components.begin(); it != m_components.end(); )
 			{
 				auto component = *it;
-				if (typeid(T) == typeid(*component.get()))
+				if (type == component.second->g_type)
 				{
-					component->Remove();
-					component.reset();
+					component.second->Remove();
+					component.second.reset();
 					it = m_components.erase(it);
 				}
 				else
@@ -178,33 +179,12 @@ namespace Directus
 		bool m_isActive;
 		bool m_isPrefab;
 		bool m_hierarchyVisibility;
-		std::vector<std::shared_ptr<Component>> m_components;
+		std::multimap<ComponentType, std::shared_ptr<Component>> m_components;
+		Context* m_context;
 
 		// Caching of performance critical components
 		Transform* m_transform; // Updating performance - never null
 		MeshFilter* m_meshFilter; // Rendering performance - can be null
 		MeshRenderer* m_meshRenderer; // Rendering performance - can be null
-
-		// Dependencies
-		Context* m_context;
-
-		//= HELPER FUNCTIONS ====================================
-		std::weak_ptr<Component> AddComponentBasedOnType(const std::string& typeStr);
-
-		template <class T>
-		static std::string GetTypeSTR()
-		{
-			static std::string typeStr = typeid(T).name(); // e.g. Directus::Transform
-			return typeStr.substr(typeStr.find_last_of(":") + 1); // e.g Transform
-		}
-
-		template <class T>
-		static std::weak_ptr<T> ToDerivedWeak(std::shared_ptr<Component> base)
-		{
-			std::shared_ptr<T> derivedShared = std::static_pointer_cast<T>(base);
-			std::weak_ptr<T> derivedWeak = std::weak_ptr<T>(derivedShared);
-
-			return derivedWeak;
-		}
 	};
 }

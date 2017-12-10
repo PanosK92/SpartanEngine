@@ -34,7 +34,7 @@ namespace Directus
 {
 	Script::Script()
 	{
-
+		Register(ComponentType_Script);
 	}
 
 	Script::~Script()

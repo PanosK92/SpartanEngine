@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <string>
 #include <memory>
 #include "../Core/Helper.h"
 #include "../Core/GUIDGenerator.h"
@@ -30,6 +29,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	class AudioListener;
+	class AudioSource;
+	class Camera;
+	class Collider;
+	class Constraint;
+	class Light;
+	class LineRenderer;
+	class MeshFilter;
+	class MeshRenderer;
+	class RigidBody;
+	class Script;
+	class Skybox;
+	class Transform;
 	class GameObject;
 	class Transform;
 	class IGraphicsDevice;
@@ -43,6 +55,70 @@ namespace Directus
 	class ShaderPool;
 	class Context;
 	class StreamIO;
+
+	// Add new components here
+	enum ComponentType : unsigned int
+	{
+		ComponentType_AudioListener,
+		ComponentType_AudioSource,
+		ComponentType_Camera,
+		ComponentType_Collider,
+		ComponentType_Constraint,
+		ComponentType_Light,
+		ComponentType_LineRenderer,
+		ComponentType_MeshFilter,
+		ComponentType_MeshRenderer,
+		ComponentType_RigidBody,
+		ComponentType_Script,
+		ComponentType_Skybox,
+		ComponentType_Transform,
+		ComponentType_Unknown
+	};
+	// Add new components here
+	template <class T>
+	static ComponentType ToComponentType()
+	{
+		if (typeid(T) == typeid(AudioListener))
+			return ComponentType_AudioListener;
+
+		if (typeid(T) == typeid(AudioSource))
+			return ComponentType_AudioSource;
+
+		if (typeid(T) == typeid(Camera))
+			return ComponentType_Camera;
+
+		if (typeid(T) == typeid(Collider))
+			return ComponentType_Collider;
+
+		if (typeid(T) == typeid(Constraint))
+			return ComponentType_Constraint;
+
+		if (typeid(T) == typeid(Light))
+			return ComponentType_Light;
+
+		if (typeid(T) == typeid(LineRenderer))
+			return ComponentType_LineRenderer;
+
+		if (typeid(T) == typeid(MeshFilter))
+			return ComponentType_MeshFilter;
+
+		if (typeid(T) == typeid(MeshRenderer))
+			return ComponentType_MeshRenderer;
+
+		if (typeid(T) == typeid(RigidBody))
+			return ComponentType_RigidBody;
+
+		if (typeid(T) == typeid(Script))
+			return ComponentType_Script;
+
+		if (typeid(T) == typeid(Skybox))
+			return ComponentType_Skybox;
+
+		if (typeid(T) == typeid(Transform))
+			return ComponentType_Transform;
+
+		return ComponentType_Unknown;
+	}
 
 	class DLL_API Component
 	{
@@ -71,26 +147,22 @@ namespace Directus
 		virtual void Deserialize(StreamIO* stream) = 0;
 
 		// Should be called by the derived component to register it's type
-		void Register()
+		void Register(ComponentType type)
 		{
-			// Convert class Type to a string.
-			g_typeStr = typeid(*this).name();
-			// class Directus::Transform -> Transform
-			g_typeStr = g_typeStr.substr(g_typeStr.find_last_of(":") + 1);
-
+			g_type = type;
 			g_ID = GENERATE_GUID;
 		}
 
-		//= PROPERTIES ================================
+		//= PROPERTIES ========================
+		ComponentType g_type;
 		unsigned int g_ID;
-		std::string g_typeStr;
 		bool g_enabled;
-		// The GameObject the component is attached to
+		// The component owner
 		std::weak_ptr<GameObject> g_gameObject;
 		// The only always existing component
 		Transform* g_transform;
 		// The engine context
 		Context* g_context;	
-		//=============================================
+		//=====================================
 	};
 }
