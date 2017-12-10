@@ -127,26 +127,18 @@ namespace Directus
 		Write(quaternion.w);
 	}
 
-	void StreamIO::Write(const VertexPosTexTBN& value)
+	void StreamIO::Write(const vector<VertexPosTexTBN>& value)
 	{
-		Write(value.position.x);
-		Write(value.position.y);
-		Write(value.position.z);
+		unsigned int length = value.size();
+		Write(length);
+		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(VertexPosTexTBN) * length);
+	}
 
-		Write(value.uv.x);
-		Write(value.uv.y);
-
-		Write(value.normal.x);
-		Write(value.normal.y);
-		Write(value.normal.z);
-
-		Write(value.tangent.x);
-		Write(value.tangent.y);
-		Write(value.tangent.z);
-
-		Write(value.bitangent.x);
-		Write(value.bitangent.y);
-		Write(value.bitangent.z);
+	void StreamIO::Write(const vector<unsigned int>& value)
+	{
+		unsigned int length = value.size();
+		Write(length);
+		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned int) * length);
 	}
 
 	void StreamIO::Write(const vector<unsigned char>& value)
@@ -207,33 +199,27 @@ namespace Directus
 		Read(value.w);
 	}
 
-	void StreamIO::Read(VertexPosTexTBN& value)
+	void StreamIO::Read(vector<VertexPosTexTBN>& value)
 	{
-		Read(value.position.x);
-		Read(value.position.y);
-		Read(value.position.z);
+		unsigned int length = ReadUInt();
+		value.reserve(length);
+		value.resize(length);
+		in.read(reinterpret_cast<char*>(&value[0]), sizeof(VertexPosTexTBN) * length);
+	}
 
-		Read(value.uv.x);
-		Read(value.uv.y);
-
-		Read(value.normal.x);
-		Read(value.normal.y);
-		Read(value.normal.z);
-
-		Read(value.tangent.x);
-		Read(value.tangent.y);
-		Read(value.tangent.z);
-
-		Read(value.bitangent.x);
-		Read(value.bitangent.y);
-		Read(value.bitangent.z);
+	void StreamIO::Read(vector<unsigned int>& value)
+	{
+		unsigned int length = ReadUInt();
+		value.reserve(length);
+		value.resize(length);
+		in.read(reinterpret_cast<char*>(&value[0]), sizeof(unsigned int) * length);
 	}
 
 	void StreamIO::Read(vector<unsigned char>& value)
 	{
-		unsigned int size = ReadUInt();
-		value.reserve(size);
-		value.resize(size);
-		in.read(reinterpret_cast<char*>(&value[0]), sizeof(unsigned char) * size);
+		unsigned int length = ReadUInt();
+		value.reserve(length);
+		value.resize(length);
+		in.read(reinterpret_cast<char*>(&value[0]), sizeof(unsigned char) * length);
 	}
 }

@@ -52,13 +52,21 @@ namespace Directus
 
 	Mesh::~Mesh()
 	{
+		Clear();
+	}
+
+	void Mesh::Clear()
+	{
 		m_vertices.clear();
+		m_vertices.shrink_to_fit();
 		m_indices.clear();
+		m_indices.shrink_to_fit();
 		m_name.clear();
 		m_vertexCount = 0;
 		m_indexCount = 0;
 		m_triangleCount = 0;
 	}
+
 
 	//= IO =========================================================================
 	void Mesh::Serialize(StreamIO* stream)
@@ -67,46 +75,25 @@ namespace Directus
 		stream->Write(m_gameObjID);
 		stream->Write(m_modelID);
 		stream->Write(m_name);
-		stream->Write(m_vertexCount);
-		stream->Write(m_indexCount);
-		stream->Write(m_triangleCount);
-
-		for (const auto& vertex : m_vertices)
-		{
-			stream->Write(vertex);
-		}
-
-		for (const auto& index : m_indices)
-		{
-			stream->Write(index);
-		}
+		stream->Write(m_vertices);
+		stream->Write(m_indices);
 	}
 
 	void Mesh::Deserialize(StreamIO* stream)
 	{
+		Clear();
+
 		stream->Read(m_id);
 		stream->Read(m_gameObjID);
 		stream->Read(m_modelID);
 		stream->Read(m_name);
-		stream->Read(m_vertexCount);
-		stream->Read(m_indexCount);
-		stream->Read(m_triangleCount);
+		stream->Read(m_vertices);
+		stream->Read(m_indices);
 
-		m_vertices.reserve(m_vertexCount);
-		for (unsigned int i = 0; i < m_vertexCount; i++)
-		{
-			m_vertices.emplace_back(VertexPosTexTBN());
-			stream->Read(m_vertices.back());
-		}
-
-		m_indices.reserve(m_indexCount);
-		for (unsigned int i = 0; i < m_indexCount; i++)
-		{
-			m_indices.emplace_back(stream->ReadInt());
-		}
-
+		m_vertexCount = (unsigned int)m_vertices.size();
+		m_indexCount = (unsigned int)m_indices.size();
+		m_triangleCount = m_indexCount / 3;
 		m_boundingBox.ComputeFromMesh(this);
-
 		m_memoryUsageKB = ComputeMemoryUsageKB();
 	}
 

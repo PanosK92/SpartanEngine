@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES ===========================
 #include "GameObject.h"
 #include "Scene.h"
 #include "GUIDGenerator.h"
@@ -62,10 +62,11 @@ namespace Directus
 	GameObject::~GameObject()
 	{
 		// delete components
-		for (auto& component : m_components)
+		for (auto it = m_components.begin(); it != m_components.end(); )
 		{
-			component.second->Remove();
-			component.second.reset();
+			(*it).second->Remove();
+			(*it).second.reset();
+			it = m_components.erase(it);
 		}
 		m_components.clear();
 

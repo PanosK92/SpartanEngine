@@ -73,7 +73,8 @@ namespace Directus
 		void Write(const Math::Vector3& value);
 		void Write(const Math::Vector4& value);
 		void Write(const Math::Quaternion& value);
-		void Write(const VertexPosTexTBN& value);
+		void Write(const std::vector<VertexPosTexTBN>& value);
+		void Write(const std::vector<unsigned int>& value);
 		void Write(const std::vector<unsigned char>& value);
 		//===========================================================
 		
@@ -98,7 +99,8 @@ namespace Directus
 		void Read(Math::Vector3& value);
 		void Read(Math::Vector4& value);
 		void Read(Math::Quaternion& value);
-		void Read(VertexPosTexTBN& value);
+		void Read(std::vector<VertexPosTexTBN>& value);
+		void Read(std::vector<unsigned int>& value);
 		void Read(std::vector<unsigned char>& value);
 
 		// Helps when reading enums

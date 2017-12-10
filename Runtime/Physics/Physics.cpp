@@ -104,7 +104,7 @@ namespace Directus
 		if (m_context->GetSubsystem<Engine>()->GetMode() == Editor)
 			return;
 
-		// Convert from milliseconds to seconds
+		// Convert milliseconds to seconds (required by Bullet)
 		float timeStep = deltaTime.GetFloat() / 1000.0f;
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
