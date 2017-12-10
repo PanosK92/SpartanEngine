@@ -194,18 +194,18 @@ namespace Directus
 		// Noise texture (used by SSAO shader)
 		m_texNoiseMap = make_unique<Texture>(m_context);
 		m_texNoiseMap->LoadFromFile(textureDirectory + "noise.png");
-		m_texNoiseMap->SetTextureType(TextureType_Normal);
+		m_texNoiseMap->SetType(TextureType_Normal);
 
 		// Gizmo icons
 		m_gizmoTexLightDirectional = make_unique<Texture>(m_context);
 		m_gizmoTexLightDirectional->LoadFromFile(textureDirectory + "sun.png");
-		m_gizmoTexLightDirectional->SetTextureType(TextureType_Albedo);
+		m_gizmoTexLightDirectional->SetType(TextureType_Albedo);
 		m_gizmoTexLightPoint = make_unique<Texture>(m_context);
 		m_gizmoTexLightPoint->LoadFromFile(textureDirectory + "light_bulb.png");
-		m_gizmoTexLightPoint->SetTextureType(TextureType_Albedo);
+		m_gizmoTexLightPoint->SetType(TextureType_Albedo);
 		m_gizmoTexLightSpot = make_unique<Texture>(m_context);
 		m_gizmoTexLightSpot->LoadFromFile(textureDirectory + "flashlight.png");
-		m_gizmoTexLightSpot->SetTextureType(TextureType_Albedo);
+		m_gizmoTexLightSpot->SetType(TextureType_Albedo);
 		m_gizmoRectLight = make_unique<Rectangle>(m_context);
 
 		// Performance Metrics
@@ -608,7 +608,6 @@ namespace Directus
 
 		//= Update textures ===========================================================
 		m_texArray.clear();
-		m_texArray.shrink_to_fit();
 		m_texArray.push_back(m_GBuffer->GetShaderResource(0)); // albedo
 		m_texArray.push_back(m_GBuffer->GetShaderResource(1)); // normal
 		m_texArray.push_back(m_GBuffer->GetShaderResource(2)); // depth

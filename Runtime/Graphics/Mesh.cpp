@@ -27,6 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
 #include "../IO/StreamIO.h"
+#include "../Core/Context.h"
+#include "D3D11/D3D11VertexBuffer.h"
+#include "D3D11/D3D11IndexBuffer.h"
 //===================================
 
 //= NAMESPACES ================
@@ -36,8 +39,9 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Mesh::Mesh()
+	Mesh::Mesh(Context* context)
 	{
+		m_context = context;
 		m_id = GENERATE_GUID;
 		m_name = NOT_ASSIGNED;
 		m_gameObjID = NOT_ASSIGNED_HASH;
@@ -46,7 +50,6 @@ namespace Directus
 		m_indexCount = 0;
 		m_triangleCount = 0;
 		m_boundingBox = BoundingBox();
-		m_onUpdate = nullptr;
 		m_memoryUsageKB = 0;
 	}
 
@@ -55,12 +58,17 @@ namespace Directus
 		Clear();
 	}
 
-	void Mesh::Clear()
+	void Mesh::ClearVerticesAndIndices()
 	{
 		m_vertices.clear();
 		m_vertices.shrink_to_fit();
 		m_indices.clear();
 		m_indices.shrink_to_fit();
+	}
+
+	void Mesh::Clear()
+	{
+		ClearVerticesAndIndices();
 		m_name = NOT_ASSIGNED;
 		m_gameObjID = NOT_ASSIGNED_HASH;
 		m_modelID = NOT_ASSIGNED_HASH;
@@ -70,8 +78,7 @@ namespace Directus
 		m_triangleCount = 0;
 	}
 
-
-	//= IO =========================================================================
+	//= IO =============================================
 	void Mesh::Serialize(StreamIO* stream)
 	{
 		stream->Write(m_id);
@@ -93,69 +100,93 @@ namespace Directus
 		stream->Read(&m_vertices);
 		stream->Read(&m_indices);
 
+		Construct();
+	}
+	//==================================================
+
+	bool Mesh::Construct()
+	{
+		if (m_vertices.empty())
+		{
+			LOG_WARNING("Mesh: Can't set vertex buffer. \"" + m_name + "\" doesn't have an initialized vertex buffer.");
+		}
+
+		if (m_indices.empty())
+		{
+			LOG_WARNING("Mesh: Can't set vertex buffer. \"" + m_name + "\" doesn't have an initialized vertex buffer.");
+		}
+
+		if (m_vertices.empty() || m_indices.empty())
+			return false;
+
+		m_memoryUsageKB = ComputeMemoryUsageKB();
 		m_vertexCount = (unsigned int)m_vertices.size();
 		m_indexCount = (unsigned int)m_indices.size();
 		m_triangleCount = m_indexCount / 3;
 		m_boundingBox.ComputeFromMesh(this);
-		m_memoryUsageKB = ComputeMemoryUsageKB();
-	}
 
-	void Mesh::SetVertices(const vector<VertexPosTexTBN>& vertices)
-	{
-		m_vertices = vertices;
-		Update();
-	}
-
-	void Mesh::SetIndices(const vector<unsigned int>& indices)
-	{
-		m_indices = indices;
-		Update();
-	}
-	//==============================================================================
-
-	//= PROCESSING =================================================================
-	void Mesh::Update()
-	{
-		m_vertexCount = (unsigned int)m_vertices.size();
-		m_indexCount = (unsigned int)m_indices.size();
-		m_triangleCount = m_indexCount / 3;
-
-		m_boundingBox.ComputeFromMesh(this);
-
-		if (m_onUpdate)
+		if (!ConstructBuffers())
 		{
-			m_onUpdate();
+			return false;
+		}	
+
+		//ClearVerticesAndIndices();
+
+		return true;
+	}
+
+	bool Mesh::SetBuffers()
+	{
+		if (!m_vertexBuffer)
+		{
+			LOG_WARNING("Mesh: Can't set vertex buffer. \"" + m_name + "\" doesn't have an initialized vertex buffer.");
 		}
 
-		m_memoryUsageKB = ComputeMemoryUsageKB();
-	}
-
-	// This is attached to CreateBuffers() which is part of the MeshFilter component.
-	// Whenever something changes, the buffers are auto-updated.
-	void Mesh::SubscribeToUpdate(function<void()> function)
-	{
-		m_onUpdate = function;
-
-		if (m_onUpdate)
+		if (!m_indexBuffer)
 		{
-			m_onUpdate();
+			LOG_WARNING("Mesh: Can't set index buffer. \"" + m_name + "\" doesn't have an initialized index buffer.");
 		}
-	}
 
-	void Mesh::SetScale(float scale)
-	{
-		SetScale(this, scale);
-		Update();
+		if (!m_vertexBuffer || !m_indexBuffer)
+			return false;
+
+		m_vertexBuffer->SetIA();
+		m_indexBuffer->SetIA();
+
+		// Set the type of primitive that should be rendered from mesh
+		m_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(TriangleList);
+
+		return true;
 	}
-	//==============================================================================
 
 	//= HELPER FUNCTIONS ===========================================================
-	void Mesh::SetScale(Mesh* meshData, float scale)
+	bool Mesh::ConstructBuffers()
 	{
-		for (unsigned int i = 0; i < meshData->GetVertexCount(); i++)
+		auto graphics = m_context->GetSubsystem<Graphics>();
+		if (!graphics->GetDevice())
 		{
-			meshData->GetVertices()[i].position *= scale;
+			LOG_ERROR("Mesh: Aborting vertex buffer creation. Graphics device is not present.");
+			return false;
 		}
+
+		m_vertexBuffer.reset();
+		m_indexBuffer.reset();
+
+		m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphics);
+		if (!m_vertexBuffer->Create(m_vertices))
+		{
+			LOG_ERROR("Mesh: Failed to create vertex buffer \"" + m_name + "\".");
+			return false;
+		}
+
+		m_indexBuffer = make_shared<D3D11IndexBuffer>(graphics);
+		if (!m_indexBuffer->Create(m_indices))
+		{
+			LOG_ERROR("MeshFilter: Failed to create index buffer \"" + m_name + "\".");
+			return false;
+		}
+
+		return true;
 	}
 
 	unsigned int Mesh::ComputeMemoryUsageKB()

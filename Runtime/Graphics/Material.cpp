@@ -189,7 +189,7 @@ namespace Directus
 			return;
 		}
 
-		TextureType type = texture._Get()->GetTextureType();
+		TextureType type = texture._Get()->GetType();
 		string filePath = texture._Get()->GetResourceFilePath();
 
 		// Check if a texture of that type already exists and replace it

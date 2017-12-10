@@ -82,6 +82,17 @@ namespace Directus
 		ClearTextureBits();
 	}
 
+	void Texture::ClearTextureBits()
+	{
+		for (auto& mip : m_rgba)
+		{
+			mip.clear();
+			mip.shrink_to_fit();
+		}
+		m_rgba.clear();
+		m_rgba.shrink_to_fit();
+	}
+
 	//= RESOURCE INTERFACE =====================================================================
 	bool Texture::SaveToFile(const string& filePath)
 	{
@@ -90,7 +101,6 @@ namespace Directus
 
 		m_isDirty = false;
 		Serialize(filePath);
-		ClearTextureBits();
 
 		// Serialize data in another thread so it doesn't stall the engine
 		/*m_context->GetSubsystem<Threading>()->AddTask([this, &filePath]()
@@ -126,10 +136,25 @@ namespace Directus
 			return false;
 		}
 
-		// DDS textures load directly as a shader resource, no need to do it here
-		if (FileSystem::GetExtensionFromFilePath(filePath) != ".dds")
+		// Create shader resource only if this texture is intended for internal use (by the engine)
+		if (m_usage == TextureUsage_Internal)
 		{
-			CreateShaderResource();
+			// DDS textures load directly as a shader resource, no need to do it here
+			if (FileSystem::GetExtensionFromFilePath(filePath) != ".dds")
+			{
+				if (CreateShaderResource())
+				{
+					// If the texture was loaded from an image file, it's not 
+					// saved yet, hence we have to maintain it's texture bits.
+					// However, if the texture was deserialized (engine format) 
+					// then we no longer need the texture bits. 
+					// We free them here to free up some memory.
+					if (FileSystem::IsEngineTextureFile(filePath))
+					{
+						ClearTextureBits();
+					}
+				}
+			}
 		}
 
 		SetAsyncState(Async_Completed);
@@ -154,7 +179,7 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	void Texture::SetTextureType(TextureType type)
+	void Texture::SetType(TextureType type)
 	{
 		// Some models (or Assimp) pass a normal map as a height map
 		// and others pass a height map as a normal map, we try to fix that.
@@ -217,7 +242,6 @@ namespace Directus
 			return false;
 		}
 
-		ClearTextureBits();
 		return true;
 	}
 
@@ -246,7 +270,6 @@ namespace Directus
 			}
 		}
 		
-		ClearTextureBits();
 		return true;
 	}
 	//=====================================================================================
@@ -311,11 +334,21 @@ namespace Directus
 
 	unsigned Texture::ComputeMemoryUsageKB()
 	{
+		// Compute texture bits (in case they are loaded)
 		unsigned int memoryKB = 0;
-
 		for (const auto& mip : m_rgba)
 		{
 			memoryKB += mip.size();
+		}
+
+		// Compute shader resource (in case it's created)
+		if (m_textureAPI->GetShaderResourceView())
+		{
+			GUID guid;
+			unsigned int size = 0;
+			void* data = nullptr;
+			m_textureAPI->GetShaderResourceView()->GetPrivateData(guid, &size, &data);
+			memoryKB += sizeof(&data);
 		}
 
 		return memoryKB / 1000;
@@ -370,16 +403,5 @@ namespace Directus
 		}
 
 		return true;
-	}
-
-	void Texture::ClearTextureBits()
-	{
-		for (auto& mip : m_rgba)
-		{
-			mip.clear();
-			mip.shrink_to_fit();
-		}
-		m_rgba.clear();
-		m_rgba.shrink_to_fit();
 	}
 }

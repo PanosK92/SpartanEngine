@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES ===========================
 #include "MeshFilter.h"
 #include "Transform.h"
 #include "../IO/StreamIO.h"
@@ -30,9 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Graphics/Model.h"
 #include "../Graphics/Mesh.h"
-#include "../Graphics/D3D11/D3D11VertexBuffer.h"
-#include "../Graphics/D3D11/D3D11IndexBuffer.h"
-//==============================================
+//======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -45,13 +43,11 @@ namespace Directus
 	{
 		Register(ComponentType_MeshFilter);
 		m_meshType = Imported;
-		m_boundingBox = BoundingBox();
 	}
 
 	MeshFilter::~MeshFilter()
 	{
-		m_vertexBuffer.reset();
-		m_indexBuffer.reset();
+
 	}
 
 	void MeshFilter::Initialize()
@@ -115,40 +111,16 @@ namespace Directus
 		}
 
 		// Get the mesh
-		weak_ptr<Mesh> mesh = model._Get()->GetMeshByID(meshID);
-		if (mesh.expired())
+		m_mesh = model._Get()->GetMeshByID(meshID);
+		if (m_mesh.expired())
 		{
 			LOG_WARNING("MeshFilter: Can't load mesh \"" + meshName + "\". It's not part of the model.");
 			return;
 		}
-
-		SetMesh(mesh);
-	}
-
-	// Sets a mesh from memory
-	bool MeshFilter::SetMesh(weak_ptr<Mesh> mesh)
-	{
-		m_mesh = mesh;
-
-		if (m_mesh.expired())
-		{
-			m_boundingBox.Undefine();
-			LOG_WARNING("MeshFilter: Can't create vertex and index buffers for an expired mesh");
-			return false;
-		}
-
-		// Re-create the buffers whenever the mesh updates
-		m_mesh._Get()->SubscribeToUpdate(bind(&MeshFilter::CreateBuffers, this));
-
-		CreateBuffers();
-
-		m_boundingBox.ComputeFromMesh(m_mesh);
-
-		return true;
 	}
 
 	// Sets a default mesh (cube, quad)
-	bool MeshFilter::SetMesh(MeshType defaultMesh)
+	void MeshFilter::SetMesh(MeshType defaultMesh)
 	{
 		// Construct vertices/indices
 		vector<VertexPosTexTBN> vertices;
@@ -173,90 +145,38 @@ namespace Directus
 		modelShared->SetResourceName(resourceName);
 		string projectDir = g_context->GetSubsystem<ResourceManager>()->GetProjectDirectory();
 		modelShared->SetResourceFilePath(projectDir + resourceName + MODEL_EXTENSION);
-		modelShared->AddMeshAsNewResource(g_gameObject._Get()->GetID(), meshName, vertices, indices);
+		modelShared->AddMesh(g_gameObject._Get()->GetID(), meshName, vertices, indices);
 
 		// Add the model to the resource manager and get it as a weak reference. It's important to do that
 		// because the resource manager will maintain it's own copy, thus any external references like
 		// the local shared model here, will expire when this function goes out of scope.
 		weak_ptr<Model> modelWeak = g_context->GetSubsystem<ResourceManager>()->Add<Model>(modelShared);
-		auto mesh = modelWeak._Get()->GetMeshByName(meshName);
-
-		return SetMesh(mesh);
+		m_mesh = modelWeak._Get()->GetMeshByName(meshName);
 	}
 
-	// Set the buffers to active in the input assembler so they can be rendered.
 	bool MeshFilter::SetBuffers()
 	{
-		if (!m_vertexBuffer)
-		{
-			LOG_WARNING("MeshFilter: Can't set vertex buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized vertex buffer \"" + GetGameObjectName() + "\".");
-		}
-
-		if (!m_indexBuffer)
-		{
-			LOG_WARNING("MeshFilter: Can't set index buffer. Mesh \"" + GetMeshName() + "\" doesn't have an initialized index buffer \"" + GetGameObjectName() + "\".");
-		}
-
-		if (!m_vertexBuffer || !m_indexBuffer)
+		if (m_mesh.expired())
 			return false;
 
-		m_vertexBuffer->SetIA();
-		m_indexBuffer->SetIA();
-
-		// Set the type of primitive that should be rendered from this vertex buffer
-		g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(TriangleList);
-
+		m_mesh._Get()->SetBuffers();
 		return true;
 	}
 
 	const BoundingBox& MeshFilter::GetBoundingBox() const
 	{
-		return m_boundingBox;
+		return !m_mesh.expired() ? m_mesh._Get()->GetBoundingBox() : BoundingBox();
 	}
 
 	BoundingBox MeshFilter::GetBoundingBoxTransformed()
 	{
-		return m_boundingBox.Transformed(g_transform->GetWorldTransform());
+		BoundingBox boundingBox = !m_mesh.expired() ? m_mesh._Get()->GetBoundingBox() : BoundingBox();
+		return boundingBox.Transformed(g_transform->GetWorldTransform());
 	}
 
 	string MeshFilter::GetMeshName()
 	{
 		return !m_mesh.expired() ? m_mesh._Get()->GetName() : NOT_ASSIGNED;
-	}
-
-	bool MeshFilter::CreateBuffers()
-	{
-		auto graphicsDevice = g_context->GetSubsystem<Graphics>();
-		if (!graphicsDevice->GetDevice())
-		{
-			LOG_ERROR("MeshFilter: Aborting vertex buffer creation. Graphics device is not present.");
-			return false;
-		}
-
-		if (m_mesh.expired())
-		{
-			LOG_ERROR("MeshFilter: Aborting vertex buffer creation for \"" + GetGameObjectName() + "\". The mesh has expired.");
-			return false;
-		}
-
-		m_vertexBuffer.reset();
-		m_indexBuffer.reset();
-
-		m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphicsDevice);
-		if (!m_vertexBuffer->Create(m_mesh._Get()->GetVertices()))
-		{
-			LOG_ERROR("MeshFilter: Failed to create vertex buffer \"" + GetGameObjectName() + "\".");
-			return false;
-		}
-
-		m_indexBuffer = make_shared<D3D11IndexBuffer>(graphicsDevice);
-		if (!m_indexBuffer->Create(m_mesh._Get()->GetIndices()))
-		{
-			LOG_ERROR("MeshFilter: Failed to create index buffer \"" + GetGameObjectName() + "\".");
-			return false;
-		}
-
-		return true;
 	}
 
 	void MeshFilter::CreateCube(vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices)

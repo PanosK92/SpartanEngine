@@ -58,7 +58,7 @@ namespace Directus
 			void ComputeFromMesh(Mesh* mesh);
 
 			// Returns the center
-			Vector3 GetCenter() const { return (min + max) * 0.5f; }
+			Vector3 GetCenter() const { return (max + min) * 0.5f; }
 
 			// Returns the size
 			Vector3 GetSize() const { return max - min; }

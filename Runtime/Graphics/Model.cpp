@@ -128,31 +128,31 @@ namespace Directus
 	}
 	//============================================================================================
 
-	weak_ptr<Mesh> Model::AddMeshAsNewResource(unsigned int gameObjID, const string& name, vector<VertexPosTexTBN> vertices, vector<unsigned int> indices)
+	weak_ptr<Mesh> Model::AddMesh(unsigned int gameObjID, const string& name, vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices)
 	{
 		// Create a mesh
-		auto mesh = make_shared<Mesh>();
+		auto mesh = make_shared<Mesh>(m_context);
 		mesh->SetModelID(GetResourceID());
 		mesh->SetGameObjectID(gameObjID);
 		mesh->SetName(name);
 		mesh->SetVertices(vertices);
 		mesh->SetIndices(indices);
 
-		AddMeshAsNewResource(mesh);
+		AddMesh(mesh);
 
 		return mesh;
 	}
 
-	void Model::AddMeshAsNewResource(shared_ptr<Mesh> mesh)
+	void Model::AddMesh(shared_ptr<Mesh> mesh)
 	{
 		if (!mesh)
 			return;
 
-		// Updates mesh bounding box, center, min, max etc.
-		mesh->Update();
+		// Construct mesh (vertex buffer, index buffer, bounding box, etc...)
+		mesh->Construct();
 
 		// Calculate the bounding box of the model as well
-		ComputeDimensions();
+		ComputeBoundingBox();
 
 		// Save it
 		m_meshes.push_back(mesh);
@@ -191,6 +191,50 @@ namespace Directus
 
 		// Return it
 		return weakAnim;
+	}
+
+	void Model::AddTextureToMaterial(const weak_ptr<Material> material, TextureType textureType, const string& filePath)
+	{
+		// Validate material
+		if (material.expired())
+			return;
+
+		// Validate texture file path
+		if (filePath == NOT_ASSIGNED)
+		{
+			LOG_WARNING("Model: Failed to find model requested texture \"" + filePath + "\".");
+			return;
+		}
+
+		// Check if the texture is already loaded
+		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
+		string texName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
+		weak_ptr<Texture> texture = resourceMng->GetResourceByName<Texture>(texName);
+
+		// If the texture is not loaded, load it 
+		if (texture.expired())
+		{
+			// Load texture into memory
+			texture = resourceMng->Load<Texture>(filePath);
+			if (texture.expired())
+				return;
+
+			// Set texture type
+			texture._Get()->SetType(textureType);
+			
+			// Update the texture with Model directory relative file path. Then save it to this directory
+			string modelRelativeTexPath = GetDirectoryTexture() + texName + TEXTURE_EXTENSION;
+			texture._Get()->SetResourceFilePath(modelRelativeTexPath);
+			texture._Get()->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
+			texture._Get()->SaveToFile(modelRelativeTexPath);
+			LOG_INFO(modelRelativeTexPath);
+
+			// Since the texture has been loaded and had it's texture bits saved, clear them to free some memory
+			texture._Get()->ClearTextureBits();
+		}
+
+		// Set the texture to the provided material
+		material._Get()->SetTexture(texture);
 	}
 
 	weak_ptr<Mesh> Model::GetMeshByID(unsigned int id)
@@ -242,9 +286,9 @@ namespace Directus
 
 		for (int i = 0; i < meshCount; i++)
 		{
-			auto mesh = make_shared<Mesh>();
+			auto mesh = make_shared<Mesh>(m_context);
 			mesh->Deserialize(file.get());
-			AddMeshAsNewResource(mesh);
+			AddMesh(mesh);
 		}
 
 		return true;
@@ -279,14 +323,6 @@ namespace Directus
 		}
 
 		return false;
-	}
-
-	void Model::SetScale(float scale)
-	{
-		for (const auto& mesh : m_meshes)
-		{
-			mesh->SetScale(scale);
-		}
 	}
 
 	float Model::ComputeNormalizeScale()
@@ -325,7 +361,7 @@ namespace Directus
 		return largestBoundingBoxMesh;
 	}
 
-	void Model::ComputeDimensions()
+	void Model::ComputeBoundingBox()
 	{
 		for (auto& mesh : m_meshes)
 		{
@@ -335,6 +371,7 @@ namespace Directus
 			if (!m_boundingBox.Defined())
 			{
 				m_boundingBox.ComputeFromMesh(mesh);
+				continue;
 			}
 
 			m_boundingBox.Merge(mesh->GetBoundingBox());

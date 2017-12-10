@@ -77,6 +77,7 @@ void DirectusMaterialTextureDropTarget::LoadImageAsync(const std::string& filePa
 
     m_currentFilePath = filePath;
     m_texture = new Texture(m_inspector->GetContext());
+    m_texture->SetUsage(TextureUsage_External);
     m_texture->LoadFromFile(filePath);
 }
 
@@ -159,7 +160,7 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
 
         if (!texture.expired())
         {
-            texture._Get()->SetTextureType(m_textureType);
+            texture._Get()->SetType(m_textureType);
             material->SetTexture(texture);
             material->SaveToFile(material->GetResourceFilePath());
             LoadImageAsync(imagePath);

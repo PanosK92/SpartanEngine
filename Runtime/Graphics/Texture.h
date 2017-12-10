@@ -52,6 +52,14 @@ namespace Directus
 		R_8_UNORM
 	};
 
+	enum TextureUsage
+	{
+		TextureUsage_Internal,
+		// When set as external, no shader resource will automatically created and
+		// no texture bits removed for memory. The creator has full control.
+		TextureUsage_External
+	};
+
 	class DLL_API Texture : public Resource
 	{
 	public:
@@ -59,6 +67,8 @@ namespace Directus
 		Texture(Context* context);
 
 		~Texture();
+
+		void ClearTextureBits();
 
 		//= RESOURCE INTERFACE =============================================
 		bool SaveToFile(const std::string& filePath) override;
@@ -73,8 +83,8 @@ namespace Directus
 		unsigned int GetHeight() { return m_height; }
 		void SetHeight(unsigned int height);
 
-		TextureType GetTextureType() { return m_type; }
-		void SetTextureType(TextureType type);
+		TextureType GetType() { return m_type; }
+		void SetType(TextureType type);
 
 		bool GetGrayscale() { return m_isGrayscale; }
 		void SetGrayscale(bool grayscale);
@@ -93,6 +103,8 @@ namespace Directus
 
 		void EnableMimaps(bool enable);
 		bool IsUsingMimmaps() { return m_isUsingMipmaps; }
+
+		void SetUsage(TextureUsage use) { m_usage = use; }
 		//===================================================================
 		
 		//= SHADER RESOURCE ============================
@@ -113,13 +125,13 @@ namespace Directus
 		//= NATIVE TEXTURE HANDLING (BINARY) =========
 		bool Serialize(const std::string& filePath);
 		bool Deserialize(const std::string& filePath);
-		void ClearTextureBits();
 		//============================================
 
 		bool LoadFromForeignFormat(const std::string& filePath);
 		TextureType TextureTypeFromString(const std::string& type);
 		unsigned int ComputeMemoryUsageKB();
 
+		TextureUsage m_usage = TextureUsage_Internal;
 		bool m_isDirty;
 		unsigned int m_memoryUsageKB = 0;
 		std::shared_ptr<D3D11Texture> m_textureAPI;
