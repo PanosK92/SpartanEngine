@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/D3D11/D3D11GraphicsDevice.h"
 #include "../Graphics/Texture.h"
 #include "../Core/Settings.h"
+#include "../Core/Stopwatch.h"
 //================================================
 
 //= NAMESPACES ================
@@ -69,6 +70,8 @@ namespace Directus
 		if (!m_context)
 			return false;
 
+		Stopwatch timer;
+
 		// Load font
 		vector<unsigned char> atlasBuffer;
 		int texAtlasWidth = 0;
@@ -93,6 +96,7 @@ namespace Directus
 		{
 			LOG_ERROR("Font: Failed to create shader resource.");
 		}
+		LOG_INFO("Font: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTime()) + " ms");
 
 		return true;
 	}

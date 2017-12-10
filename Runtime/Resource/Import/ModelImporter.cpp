@@ -180,7 +180,7 @@ namespace Directus
 		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
 		if (!scene)
 		{
-			LOG_ERROR("Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
+			LOG_ERROR("ModelImporter: Failed to load \"" + model->GetResourceName() + "\". " + importer.GetErrorString());
 			m_isLoading = false;
 			return false;
 		}
@@ -194,6 +194,8 @@ namespace Directus
 
 		// Cleanup
 		importer.FreeScene();
+
+		// Stats
 		m_isLoading = false;
 		ResetStats();
 

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Material.h"
 #include "../Graphics/Animation.h"
 #include "../IO/StreamIO.h"
+#include "../Core/Stopwatch.h"
 //======================================
 
 //= NAMESPACES ================
@@ -72,6 +73,7 @@ namespace Directus
 	//= RESOURCE INTERFACE ====================================================================
 	bool Model::LoadFromFile(const string& filePath)
 	{
+		Stopwatch timer;
 		string modelFilePath = filePath;
 
 		// Check if this is a directory instead of a model file path
@@ -99,6 +101,8 @@ namespace Directus
 		{
 			m_memoryUsageKB += mesh->GetMemoryUsageKB();
 		}
+
+		LOG_INFO("Model: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTime()) + " ms");
 
 		return success;
 	}

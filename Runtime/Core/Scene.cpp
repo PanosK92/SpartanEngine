@@ -131,7 +131,6 @@ namespace Directus
 	{
 		m_status = "Saving scene...";
 		Stopwatch timer;
-		timer.Start();
 		m_isLoading = true;
 
 		// Add scene file extension to the filepath if it's missing
@@ -176,7 +175,7 @@ namespace Directus
 		//==============================================
 
 		ResetLoadingStats();
-		LOG_INFO("Scene: Saving took " + to_string(timer.Stop()) + " ms");
+		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTime()) + " ms");
 
 		return true;
 	}
@@ -200,7 +199,6 @@ namespace Directus
 			return false;
 
 		Stopwatch timer;
-		timer.Start();
 
 		vector<string> resourcePaths;
 		file->Read(resourcePaths);
@@ -253,7 +251,7 @@ namespace Directus
 
 		Resolve();
 		ResetLoadingStats();
-		LOG_INFO("Scene: Loading took " + to_string(timer.Stop()) + " ms");
+		LOG_INFO("Scene: Loading took " + to_string((int)timer.GetElapsedTime()) + " ms");
 
 		return true;
 	}

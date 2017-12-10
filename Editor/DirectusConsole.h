@@ -90,7 +90,7 @@ private:
     std::shared_ptr<EngineLogger> m_engineLogger;
     QTimer* m_timer;
     std::deque<LogPackage> m_logs;
-    int m_maxLogEntries = 200;
+    int m_maxLogEntries = 500;
     bool m_isDirty;
     bool m_showInfo;
     bool m_showWarnings;
