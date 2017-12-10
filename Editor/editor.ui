@@ -3507,6 +3507,7 @@ QSplitter::handle:vertical
     <slot>SetDisplayInfo(bool)</slot>
     <slot>SetDisplayWarnings(bool)</slot>
     <slot>SetDisplayErrors(bool)</slot>
+    <slot>Clear()</slot>
    </slots>
   </customwidget>
  </customwidgets>
@@ -3519,12 +3520,12 @@ QSplitter::handle:vertical
    <slot>UpdateFileExplorer(QModelIndex)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>105</x>
-     <y>580</y>
+     <x>102</x>
+     <y>549</y>
     </hint>
     <hint type="destinationlabel">
-     <x>105</x>
-     <y>580</y>
+     <x>102</x>
+     <y>549</y>
     </hint>
    </hints>
   </connection>
@@ -3884,7 +3885,7 @@ QSplitter::handle:vertical
    <sender>buttonConsoleClear</sender>
    <signal>clicked()</signal>
    <receiver>directusConsole</receiver>
-   <slot>clear()</slot>
+   <slot>Clear()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>19</x>

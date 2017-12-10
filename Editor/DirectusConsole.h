@@ -79,6 +79,7 @@ public:
     void AddLogPackage(LogPackage package);
 
 public slots:
+    void Clear();
     void UpdateConsole();
     void SetDisplayInfo(bool display);
     void SetDisplayWarnings(bool display);

@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EventSystem/EventSystem.h"
 #include "../Resource/ResourceManager.h"
 #include "GameObject.h"
+#include "Stopwatch.h"
 //======================================
 
 //= NAMESPACES ================
@@ -129,6 +130,8 @@ namespace Directus
 	bool Scene::SaveToFile(const string& filePathIn)
 	{
 		m_status = "Saving scene...";
+		Stopwatch timer;
+		timer.Start();
 		m_isLoading = true;
 
 		// Add scene file extension to the filepath if it's missing
@@ -173,6 +176,8 @@ namespace Directus
 		//==============================================
 
 		ResetLoadingStats();
+		LOG_INFO("Scene: Saving took " + to_string(timer.Stop()) + " ms");
+
 		return true;
 	}
 
@@ -193,6 +198,9 @@ namespace Directus
 		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Read);
 		if (!file->IsCreated())
 			return false;
+
+		Stopwatch timer;
+		timer.Start();
 
 		vector<string> resourcePaths;
 		file->Read(resourcePaths);
@@ -245,6 +253,7 @@ namespace Directus
 
 		Resolve();
 		ResetLoadingStats();
+		LOG_INFO("Scene: Loading took " + to_string(timer.Stop()) + " ms");
 
 		return true;
 	}
