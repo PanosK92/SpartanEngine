@@ -226,6 +226,9 @@ namespace Directus
 			vector<unsigned int> indices;
 			mesh->GetGeometry(&vertices, &indices);
 
+			if (vertices.empty())
+				return;
+
 			// Construct hull approximation
 			m_collisionShape = make_shared<btConvexHullShape>(
 				(btScalar*)&vertices[0],	// points

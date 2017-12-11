@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Resource.h"
 #include "../Math/BoundingBox.h"
 #include "Texture.h"
-
 //===============================
 
 namespace Directus
@@ -80,7 +79,7 @@ namespace Directus
 		bool IsAnimated() { return m_isAnimated; }
 		void SetAnimated(bool isAnimated) { m_isAnimated = isAnimated; }
 
-		// Returns model's bounding boxe (merged bounding boxes of meshes)
+		// Returns model's bounding box (a merge of all the bounding boxes of it's meshes)
 		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
 		float GetBoundingSphereRadius();
 
@@ -97,7 +96,6 @@ namespace Directus
 		// Scale relate functions
 		float ComputeNormalizeScale();
 		std::weak_ptr<Mesh> ComputeLargestBoundingBox();
-		void ComputeBoundingBox();
 
 		// Misc
 		void ComputeMemoryUsage();

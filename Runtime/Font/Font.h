@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ====================
-#include "../../Core/Helper.h"
+#include "../Core/Helper.h"
 #include "../Resource/Resource.h"
 #include <memory>
 #include <map>
@@ -48,10 +48,10 @@ namespace Directus
 		Font(Context* context);
 		~Font();
 
-		//= RESOURCE INTERFACE ========================
+		//= RESOURCE INTERFACE =================================
 		bool SaveToFile(const std::string& filePath) override;
 		bool LoadFromFile(const std::string& filePath) override;
-		//=============================================
+		//======================================================
 
 		void SetText(const std::string& text, const Math::Vector2& position);
 		void SetSize(int size);

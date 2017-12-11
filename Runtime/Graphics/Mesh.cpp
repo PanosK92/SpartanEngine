@@ -59,7 +59,7 @@ namespace Directus
 		Clear();
 	}
 
-	void Mesh::ClearVerticesAndIndices()
+	void Mesh::ClearGeometry()
 	{
 		m_vertices.clear();
 		m_vertices.shrink_to_fit();
@@ -69,7 +69,7 @@ namespace Directus
 
 	void Mesh::Clear()
 	{
-		ClearVerticesAndIndices();
+		ClearGeometry();
 		m_gameObjID = NOT_ASSIGNED_HASH;
 		m_modelID = NOT_ASSIGNED_HASH;
 		m_vertexCount = 0;
@@ -86,13 +86,13 @@ namespace Directus
 
 		Clear();
 
+		file->Read(&m_vertices);
+		file->Read(&m_indices);
 		file->Read(&m_resourceID);
 		file->Read(&m_gameObjID);
 		file->Read(&m_modelID);
 		file->Read(&m_resourceName);
-		file->Read(&m_vertices);
-		file->Read(&m_indices);
-
+		
 		Construct();
 
 		return true;
@@ -100,16 +100,21 @@ namespace Directus
 
 	bool Mesh::SaveToFile(const string& filePath)
 	{
+		// If the geometry data has been cleared, load it again
+		// as we don't want to replaced existing data with nothing.
+		// If the geometry data is not cleared, it won't be loaded again.
+		GetGeometry(&m_vertices, &m_indices);
+
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
 		if (!file->IsOpen())
 			return false;
 
+		file->Write(m_vertices);
+		file->Write(m_indices);
 		file->Write(m_resourceID);
 		file->Write(m_gameObjID);
 		file->Write(m_modelID);
 		file->Write(m_resourceName);
-		file->Write(m_vertices);
-		file->Write(m_indices);
 
 		return true;
 	}
@@ -123,85 +128,54 @@ namespace Directus
 			return;
 		}
 
-		auto file = make_unique<FileStream>(m_resourceFilePath, FileStreamMode_Write);
+		auto file = make_unique<FileStream>(m_resourceFilePath, FileStreamMode_Read);
 		if (!file->IsOpen())
 			return;
 
-		// Read over the first values
-		int dummy;
-		string dummy2;
-		file->Read(&dummy);
-		file->Read(&dummy);
-		file->Read(&dummy);
-		file->Read(&dummy2);
-
-		// Read vertices
-		if (vertices)
-		{
-			file->Read(vertices);
-		}
-
-		// Read indices
-		if (indices)
-		{
-			file->Read(indices);
-		}
+		// Read vertices and indices
+		if (vertices)	{ file->Read(vertices); }
+		if (indices)	{ file->Read(indices); }
 	}
+
 	//=========================================================================
 
 	bool Mesh::Construct()
 	{
-		if (m_vertices.empty())
-		{
-			LOG_WARNING("Mesh: Can't set vertex buffer. \"" + m_resourceName + "\" doesn't have an initialized vertex buffer.");
-		}
-
-		if (m_indices.empty())
-		{
-			LOG_WARNING("Mesh: Can't set vertex buffer. \"" + m_resourceName + "\" doesn't have an initialized vertex buffer.");
-		}
-
-		if (m_vertices.empty() || m_indices.empty())
-			return false;
-
 		m_memoryUsageKB = ComputeMemoryUsageKB();
 		m_vertexCount = (unsigned int)m_vertices.size();
 		m_indexCount = (unsigned int)m_indices.size();
 		m_triangleCount = m_indexCount / 3;
 		m_boundingBox.ComputeFromVertices(m_vertices);
-
-		if (!ConstructBuffers())
-		{
-			return false;
-		}	
-
-		ClearVerticesAndIndices();
-
-		return true;
+		return ConstructBuffers();
 	}
 
 	bool Mesh::SetBuffers()
 	{
-		if (!m_vertexBuffer)
+		bool success = true;
+		if (m_vertexBuffer)
+		{
+			m_vertexBuffer->SetIA();
+		}
+		else
 		{
 			LOG_WARNING("Mesh: Can't set vertex buffer. \"" + m_resourceName + "\" doesn't have an initialized vertex buffer.");
+			success = false;
 		}
 
-		if (!m_indexBuffer)
+		if (m_indexBuffer)
+		{
+			m_indexBuffer->SetIA();
+		}
+		else
 		{
 			LOG_WARNING("Mesh: Can't set index buffer. \"" + m_resourceName + "\" doesn't have an initialized index buffer.");
+			success = false;
 		}
-
-		if (!m_vertexBuffer || !m_indexBuffer)
-			return false;
-
-		m_vertexBuffer->SetIA();
-		m_indexBuffer->SetIA();
 
 		// Set the type of primitive that should be rendered from mesh
 		m_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(TriangleList);
 
-		return true;
+		return success;
 	}
 
 	//= HELPER FUNCTIONS ===========================================================
@@ -214,24 +188,39 @@ namespace Directus
 			return false;
 		}
 
-		m_vertexBuffer.reset();
-		m_indexBuffer.reset();
+		bool success = true;
 
-		m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphics);
-		if (!m_vertexBuffer->Create(m_vertices))
+		if (!m_vertices.empty())
 		{
-			LOG_ERROR("Mesh: Failed to create vertex buffer \"" + m_resourceName + "\".");
-			return false;
+			m_vertexBuffer = make_shared<D3D11VertexBuffer>(graphics);
+			if (!m_vertexBuffer->Create(m_vertices))
+			{
+				LOG_ERROR("Mesh: Failed to create vertex buffer for \"" + m_resourceName + "\".");
+				success = false;
+			}
+		}
+		else
+		{
+			LOG_ERROR("Mesh: Can't create vertex buffer for \"" + m_resourceName + "\". Provided vertices are empty.");
+			success = false;
 		}
 
-		m_indexBuffer = make_shared<D3D11IndexBuffer>(graphics);
-		if (!m_indexBuffer->Create(m_indices))
+		if (!m_indices.empty())
 		{
-			LOG_ERROR("MeshFilter: Failed to create index buffer \"" + m_resourceName + "\".");
-			return false;
+			m_indexBuffer = make_shared<D3D11IndexBuffer>(graphics);
+			if (!m_indexBuffer->Create(m_indices))
+			{
+				LOG_ERROR("MeshFilter: Failed to create index buffer for \"" + m_resourceName + "\".");
+				success = false;
+			}
+		}
+		else
+		{
+			LOG_ERROR("Mesh: Can't create index buffer for \"" + m_resourceName + "\". Provided indices are empty.");
+			success = false;
 		}
 
-		return true;
+		return success;
 	}
 
 	unsigned int Mesh::ComputeMemoryUsageKB()
