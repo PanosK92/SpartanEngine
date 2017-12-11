@@ -168,7 +168,7 @@ namespace Directus
 		mesh._Get()->Construct();
 
 		// Calculate the bounding box of the model as well
-		ComputeBoundingBox();
+		m_boundingBox.Merge(mesh._Get()->GetBoundingBox());
 
 		// Add it to the resource manager
 		auto weakMesh = m_context->GetSubsystem<ResourceManager>()->Add<Mesh>(mesh.lock());
@@ -189,6 +189,9 @@ namespace Directus
 				collider->SetShapeType(ColliderShape_Mesh);
 			}
 		}
+
+		// Release geometry data now that we are done with it
+		weakMesh._Get()->ClearGeometry();
 	}
 
 	void Model::AddMaterial(weak_ptr<Material> material, weak_ptr<GameObject> gameObject)
@@ -408,26 +411,6 @@ namespace Directus
 		}
 
 		return largestBoundingBoxMesh;
-	}
-
-	void Model::ComputeBoundingBox()
-	{
-		for (auto& mesh : m_meshes)
-		{
-			if (!mesh.expired())
-				continue;
-
-			if (!m_boundingBox.Defined())
-			{
-				vector<VertexPosTexTBN> vertices;
-				vector<unsigned> indices;
-				mesh._Get()->GetGeometry(&vertices, &indices);
-				m_boundingBox.ComputeFromVertices(vertices);
-				continue;
-			}
-
-			m_boundingBox.Merge(mesh._Get()->GetBoundingBox());
-		}
 	}
 
 	void Model::ComputeMemoryUsage()

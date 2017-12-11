@@ -68,44 +68,47 @@ namespace Directus
 
 		~Texture();
 
-		void ClearTextureBits();
-
 		//= RESOURCE INTERFACE =============================================
 		bool SaveToFile(const std::string& filePath) override;
 		bool LoadFromFile(const std::string& filePath) override;
 		unsigned int GetMemoryUsageKB() override { return m_memoryUsageKB; }
 		//==================================================================
 
-		//= PROPERTIES ======================================================
+		//= PROPERTIES ==========================================================================================
 		unsigned int GetWidth() { return m_width; }
-		void SetWidth(unsigned int width);
+		void SetWidth(unsigned int width) { m_width = width; }
 
 		unsigned int GetHeight() { return m_height; }
-		void SetHeight(unsigned int height);
+		void SetHeight(unsigned int height) { m_height = height; }
 
 		TextureType GetType() { return m_type; }
 		void SetType(TextureType type);
 
 		bool GetGrayscale() { return m_isGrayscale; }
-		void SetGrayscale(bool grayscale);
+		void SetGrayscale(bool isGrayscale) { m_isGrayscale = isGrayscale; }
 
 		bool GetTransparency() { return m_isTransparent; }
-		void SetTransparency(bool transparency);
+		void SetTransparency(bool isTransparent) { m_isTransparent = isTransparent; }
 
 		unsigned int GetBPP() { return m_bpp; }
-		void SetBPP(unsigned int bpp);
+		void SetBPP(unsigned int bpp) { m_bpp = bpp; }
 
 		unsigned int GetChannels() { return m_channels; }
-		void SetChannels(unsigned int channels);
+		void SetChannels(unsigned int channels) { m_channels = channels; }
 
-		std::vector<std::vector<unsigned char>>& GetRGBA() { return m_rgba; }
-		void SetRGBA(const std::vector<std::vector<unsigned char>>& rgba);
+		std::vector<std::vector<unsigned char>>& GetRGBA() { return m_textureBits; }
+		void SetRGBA(const std::vector<std::vector<unsigned char>>& textureBits) { m_textureBits = textureBits; }
 
-		void EnableMimaps(bool enable);
+		void EnableMimaps(bool enable) { m_isUsingMipmaps = enable; }
 		bool IsUsingMimmaps() { return m_isUsingMipmaps; }
 
 		void SetUsage(TextureUsage use) { m_usage = use; }
-		//===================================================================
+		//=======================================================================================================
+
+		//= TEXTURE BITS =========================================================
+		void ClearTextureBits();
+		void GetTextureBits(std::vector<std::vector<unsigned char>>* textureBits);
+		//========================================================================
 		
 		//= SHADER RESOURCE ============================
 		void** GetShaderResource();
@@ -132,12 +135,11 @@ namespace Directus
 		unsigned int ComputeMemoryUsageKB();
 
 		TextureUsage m_usage = TextureUsage_Internal;
-		bool m_isDirty;
 		unsigned int m_memoryUsageKB = 0;
 		std::shared_ptr<D3D11Texture> m_textureAPI;
 		TextureFormat m_format = RGBA_8_UNORM;
 
-		//= DATA ======================================
+		//= DATA =============================================
 		unsigned int m_bpp = 0;
 		unsigned int m_width = 0;
 		unsigned int m_height = 0;
@@ -145,8 +147,8 @@ namespace Directus
 		bool m_isGrayscale = false;
 		bool m_isTransparent = false;
 		bool m_isUsingMipmaps = false;
-		std::vector<std::vector<unsigned char>> m_rgba;
+		std::vector<std::vector<unsigned char>> m_textureBits;
 		TextureType m_type = TextureType_Unknown;
-		//=============================================
+		//====================================================
 	};
 }

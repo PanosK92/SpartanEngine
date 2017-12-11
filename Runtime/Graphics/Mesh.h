@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ====================
 #include <vector>
 #include "Vertex.h"
 #include "../Math/BoundingBox.h"
 #include "../Resource/Resource.h"
-//==============================
+#include <memory>
+//===============================
 
 namespace Directus
 {
@@ -41,7 +42,6 @@ namespace Directus
 		Mesh(Context* context);
 		~Mesh();
 
-		void ClearVerticesAndIndices();
 		void Clear();
 
 		//= RESOURCE INTERFACE =============================================
@@ -56,21 +56,33 @@ namespace Directus
 		unsigned int GetModelID() { return m_modelID; }
 		void SetModelID(unsigned int modelID) { m_modelID = modelID; }
 
+		//= GEOMETRY ================================================================================
+		// Clears geomtry (vertices and indices)
+		void ClearGeometry();
+		// Returns vertices & indices and loads them from disk. in case they have been erased
 		void GetGeometry(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
+		// Returns vertices. Will be empty after creating a vertex buffer for the GPU
+		std::vector<VertexPosTexTBN>& GetVertices() { return m_vertices; }
+		// Sets vertices
 		void SetVertices(const std::vector<VertexPosTexTBN>& vertices) { m_vertices = vertices; }
+		// Returns indices. Will be empty after creating an index buffer
+		std::vector<unsigned int>& GetIndices() { return m_indices; }
+		// Sets indices
 		void SetIndices(const std::vector<unsigned int>& indices) { m_indices = indices; }
-
 		// Adds a single vertex
-		void AddVertex(VertexPosTexTBN vertex) { m_vertices.push_back(vertex); }
+		void AddVertex(const VertexPosTexTBN& vertex) { m_vertices.emplace_back(vertex); }
 		// Adds a single index
-		void AddIndex(unsigned int index) { m_indices.push_back(index); }
+		void AddIndex(unsigned int index) { m_indices.emplace_back(index); }
 
 		unsigned int GetVertexCount() const { return m_vertexCount; }
 		unsigned int GetIndexCount() const { return m_indexCount; }
 		unsigned int GetTriangleCount() const { return m_triangleCount; }
 		unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
+		//===========================================================================================
+	
 		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
 
+		// Computes bounding box, creates vertex and index buffers etc...
 		bool Construct();
 		// Set the buffers to active in the input assembler so they can be rendered.
 		bool SetBuffers();

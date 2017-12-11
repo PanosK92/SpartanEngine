@@ -570,7 +570,7 @@ namespace Directus
 		if (!m_rigidBody)
 			return;
 
-		// Remove rigidbody from world
+		// Remove RigidBody from world
 		g_context->GetSubsystem<Physics>()->GetWorld()->removeRigidBody(m_rigidBody.get());
 		// Delete it's motion state
 		delete m_rigidBody->getMotionState();
