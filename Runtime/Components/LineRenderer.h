@@ -28,8 +28,8 @@ namespace Directus
 		void OnDisable() override;
 		void Remove() override;
 		void Update() override;
-		void Serialize(StreamIO* stream) override;
-		void Deserialize(StreamIO* stream) override;
+		void Serialize(FileStream* stream) override;
+		void Deserialize(FileStream* stream) override;
 		//=========================================
 
 		//= INPUT ===================================================================================

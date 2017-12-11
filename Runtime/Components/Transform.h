@@ -39,15 +39,15 @@ namespace Directus
 		Transform();
 		~Transform();
 
-		//= ICOMPONENT ============================
+		//= ICOMPONENT ===============================
 		void Initialize() override;
 		void Start() override;
 		void OnDisable() override;
 		void Remove() override;
 		void Update() override;
-		void Serialize(StreamIO* stream) override;
-		void Deserialize(StreamIO* stream) override;
-		//=========================================
+		void Serialize(FileStream* stream) override;
+		void Deserialize(FileStream* stream) override;
+		//============================================
 
 		void UpdateTransform();
 

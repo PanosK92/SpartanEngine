@@ -25,16 +25,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "Vertex.h"
 #include "../Math/BoundingBox.h"
+#include "../Resource/Resource.h"
 //==============================
 
 namespace Directus
 {
 	class Context;
-	class StreamIO;
+	class FileStream;
 	class D3D11VertexBuffer;
 	class D3D11IndexBuffer;
 
-	class Mesh
+	class Mesh : public Resource
 	{
 	public:
 		Mesh(Context* context);
@@ -43,10 +44,11 @@ namespace Directus
 		void ClearVerticesAndIndices();
 		void Clear();
 
-		void Serialize(StreamIO* stream);
-		void Deserialize(StreamIO* stream);
-
-		unsigned int GetID() { return m_id; }
+		//= RESOURCE INTERFACE =============================================
+		bool LoadFromFile(const std::string& filePath) override;
+		bool SaveToFile(const std::string& filePath) override;
+		unsigned int GetMemoryUsageKB() override { return m_memoryUsageKB; }
+		//==================================================================
 
 		unsigned int GetGameObjectID() { return m_gameObjID; }
 		void SetGameObjectID(unsigned int gameObjID) { m_gameObjID = gameObjID; }
@@ -54,13 +56,8 @@ namespace Directus
 		unsigned int GetModelID() { return m_modelID; }
 		void SetModelID(unsigned int modelID) { m_modelID = modelID; }
 
-		const std::string& GetName() { return m_name; }
-		void SetName(const std::string& name) { m_name = name; }
-
-		std::vector<VertexPosTexTBN>& GetVertices() { return m_vertices; }
+		void GetGeometry(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
 		void SetVertices(const std::vector<VertexPosTexTBN>& vertices) { m_vertices = vertices; }
-
-		std::vector<unsigned int>& GetIndices() { return m_indices; }
 		void SetIndices(const std::vector<unsigned int>& indices) { m_indices = indices; }
 
 		// Adds a single vertex
@@ -78,18 +75,14 @@ namespace Directus
 		// Set the buffers to active in the input assembler so they can be rendered.
 		bool SetBuffers();
 
-		unsigned int GetMemoryUsageKB() { return m_memoryUsageKB; }
-
 	private:
 		//= HELPER FUNCTIONS ===============
 		bool ConstructBuffers();
 		unsigned int ComputeMemoryUsageKB();
 		//==================================
 
-		unsigned int m_id;
 		unsigned int m_gameObjID;
 		unsigned int m_modelID;
-		std::string m_name;
 		std::vector<VertexPosTexTBN> m_vertices;
 		std::vector<unsigned int> m_indices;
 		unsigned int m_vertexCount;

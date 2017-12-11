@@ -68,12 +68,12 @@ namespace Directus
 		m_audio->SetListenerTransform(g_transform);
 	}
 
-	void AudioListener::Serialize(StreamIO* stream)
+	void AudioListener::Serialize(FileStream* stream)
 	{
 
 	}
 
-	void AudioListener::Deserialize(StreamIO* stream)
+	void AudioListener::Deserialize(FileStream* stream)
 	{
 
 	}

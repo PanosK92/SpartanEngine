@@ -56,23 +56,23 @@ namespace Directus
 		unsigned int GetMemoryUsageKB() override { return m_memoryUsageKB; }
 		//==================================================================
 
-		// Sets the  GameObject that represents this model in the scene
+		// Sets the GameObject that represents this model in the scene
 		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
 
 		// Adds a mesh by creating it from scratch
-		std::weak_ptr<Mesh> AddMesh(unsigned int gameObjID, const std::string& name, std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices);
+		void AddMesh(const std::string& name, std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices, std::weak_ptr<GameObject> gameObject);
 
 		// Adds a new mesh
-		void AddMesh(std::shared_ptr<Mesh> mesh);
+		void AddMesh(std::weak_ptr<Mesh> mesh, std::weak_ptr<GameObject> gameObject);
 
 		// Adds a new material
-		std::weak_ptr<Material> AddMaterialAsNewResource(std::shared_ptr<Material> material);
+		void AddMaterial(std::weak_ptr<Material> material, std::weak_ptr<GameObject> gameObject);
 
 		// Adds a new animation
-		std::weak_ptr<Animation> AddAnimationAsNewResource(std::shared_ptr<Animation> animation);
+		std::weak_ptr<Animation> AddAnimation(std::weak_ptr<Animation> animation);
 
-		// Adds a texture to a material (and saves it to the model directory)
-		void AddTextureToMaterial(const std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
+		// Adds a texture (the material that uses this texture must be passed as well)
+		void AddTexture(const std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
 
 		std::weak_ptr<Mesh> GetMeshByID(unsigned int id);
 		std::weak_ptr<Mesh> GetMeshByName(const std::string& name);
@@ -80,46 +80,47 @@ namespace Directus
 		bool IsAnimated() { return m_isAnimated; }
 		void SetAnimated(bool isAnimated) { m_isAnimated = isAnimated; }
 
+		// Returns model's bounding boxe (merged bounding boxes of meshes)
 		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
 		float GetBoundingSphereRadius();
 
-		const std::string& GetDirectoryTexture() { return m_modelDirectoryTextures; }
-
+		// Returns the number of meshes used by this model
 		unsigned int GetMeshCount() { return m_meshes.size(); }
+
+		void SetWorkingDirectory(const std::string& directory);
 
 	private:
 		// Load the model from disk
 		bool LoadFromEngineFormat(const std::string& filePath);
 		bool LoadFromForeignFormat(const std::string& filePath);
 
-		//= SCALING / DIMENSIONS =======================
+		// Scale relate functions
 		float ComputeNormalizeScale();
 		std::weak_ptr<Mesh> ComputeLargestBoundingBox();
 		void ComputeBoundingBox();
-		//==============================================
+
+		// Misc
+		void ComputeMemoryUsage();
 
 		// The root GameObject that represents this model in the scene
 		std::weak_ptr<GameObject> m_rootGameObj;
 
-		// Bounding box
-		Math::BoundingBox m_boundingBox;
-		float m_normalizedScale;
-
-		// References to key resources
-		std::vector<std::shared_ptr<Mesh>> m_meshes;
+		// Weak references to key resources
+		std::vector<std::weak_ptr<Mesh>> m_meshes;
 		std::vector<std::weak_ptr<Material>> m_materials;
 		std::vector<std::weak_ptr<Animation>> m_animations;
 
-		// Misc
-		bool m_isAnimated;
-
-		// Model related directories
+		// Directories relative to this model
+		std::string m_modelDirectoryModel;
+		std::string m_modelDirectoryMeshes;
 		std::string m_modelDirectoryMaterials;
 		std::string m_modelDirectoryTextures;
 
-		// Dependencies
+		// Misc
+		Math::BoundingBox m_boundingBox;
+		float m_normalizedScale;
+		bool m_isAnimated;
 		ResourceManager* m_resourceManager;
-
 		unsigned int m_memoryUsageKB;
 	};
 }

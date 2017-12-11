@@ -47,12 +47,12 @@ namespace Directus
 
 	}
 
-	void LineRenderer::Serialize(StreamIO* stream)
+	void LineRenderer::Serialize(FileStream* stream)
 	{
 
 	}
 
-	void LineRenderer::Deserialize(StreamIO* stream)
+	void LineRenderer::Deserialize(FileStream* stream)
 	{
 
 	}

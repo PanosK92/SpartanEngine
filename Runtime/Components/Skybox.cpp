@@ -72,7 +72,7 @@ namespace Directus
 		m_cubeMapTexture->SetGrayscale(false);
 
 		// Add the actual "box"
-		g_gameObject._Get()->AddComponent<MeshFilter>()._Get()->SetMesh(MeshFilter::Cube);
+		g_gameObject._Get()->AddComponent<MeshFilter>()._Get()->SetMesh(MeshType_Cube);
 
 		// Add a mesh renderer
 		auto meshRenderer = g_gameObject._Get()->AddComponent<MeshRenderer>()._Get();

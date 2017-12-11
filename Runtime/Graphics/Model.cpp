@@ -24,12 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mesh.h"
 #include "../Core/GameObject.h"
 #include "../Resource/ResourceManager.h"
-#include "../Components/MeshFilter.h"
 #include "../Components/Transform.h"
+#include "../Components/MeshFilter.h"
+#include "../Components/MeshRenderer.h"
+#include "../Components/RigidBody.h"
+#include "../Components/Collider.h"
 #include "../Graphics/Vertex.h"
 #include "../Graphics/Material.h"
 #include "../Graphics/Animation.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
 //======================================
 
@@ -45,7 +48,7 @@ namespace Directus
 		m_context = context;
 
 		//= RESOURCE INTERFACE ============
-		InitializeResource(Resource_Model);
+		RegisterResource(Resource_Model);
 		//=================================
 
 		m_normalizedScale = 1.0f;
@@ -70,7 +73,7 @@ namespace Directus
 		m_animations.shrink_to_fit();
 	}
 
-	//= RESOURCE INTERFACE ====================================================================
+	//= RESOURCE ============================================
 	bool Model::LoadFromFile(const string& filePath)
 	{
 		Stopwatch timer;
@@ -95,13 +98,7 @@ namespace Directus
 		bool engineFormat = FileSystem::GetExtensionFromFilePath(modelFilePath) == MODEL_EXTENSION;
 		bool success = engineFormat ? LoadFromEngineFormat(modelFilePath) : LoadFromForeignFormat(modelFilePath);
 
-		// Compute memory usage
-		m_memoryUsageKB = 0;
-		for (const auto& mesh : m_meshes)
-		{
-			m_memoryUsageKB += mesh->GetMemoryUsageKB();
-		}
-
+		ComputeMemoryUsage();
 		LOG_INFO("Model: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTime()) + " ms");
 
 		return success;
@@ -109,8 +106,8 @@ namespace Directus
 
 	bool Model::SaveToFile(const string& filePath)
 	{
-		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Write);
-		if (!file->IsCreated())
+		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
+		if (!file->IsOpen())
 			return false;
 
 		file->Write(GetResourceID());
@@ -118,71 +115,111 @@ namespace Directus
 		file->Write(GetResourceFilePath());
 		file->Write(m_normalizedScale);
 		file->Write((int)m_meshes.size());
-
 		for (const auto& mesh : m_meshes)
 		{
-			mesh->Serialize(file.get());
+			file->Write(mesh._Get()->GetResourceName());
 		}
 
 		return true;
 	}
-	//============================================================================================
+	//=======================================================
 
-	weak_ptr<Mesh> Model::AddMesh(unsigned int gameObjID, const string& name, vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices)
+	void Model::AddMesh(const string& name, vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices, weak_ptr<GameObject> gameObject)
 	{
-		// Create a mesh
+		// In case this mesh is already loaded, use that one
+		auto existingMesh = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(name);
+		if (!existingMesh.expired())
+		{
+			AddMesh(existingMesh, gameObject);
+			return;
+		}
+
+		// In case this mesh is new, create one 
 		auto mesh = make_shared<Mesh>(m_context);
 		mesh->SetModelID(GetResourceID());
-		mesh->SetGameObjectID(gameObjID);
-		mesh->SetName(name);
+		mesh->SetGameObjectID(!gameObject.expired() ? gameObject._Get()->GetID() : NOT_ASSIGNED_HASH);
+		mesh->SetResourceName(name);
 		mesh->SetVertices(vertices);
 		mesh->SetIndices(indices);
 
-		AddMesh(mesh);
-
-		return mesh;
+		// Add the mesh to the model
+		AddMesh(mesh, gameObject);
 	}
 
-	void Model::AddMesh(shared_ptr<Mesh> mesh)
+	void Model::AddMesh(weak_ptr<Mesh> mesh, weak_ptr<GameObject> gameObject)
 	{
-		if (!mesh)
+		if (mesh.expired())
 			return;
 
+		// Don't add mesh if it's already added
+		for (const auto& cachedMesh : m_meshes)
+		{
+			if (cachedMesh._Get()->GetResourceName() == mesh._Get()->GetResourceName())
+				return;
+		}
+
+		// Update the mesh with Model directory relative file path. Then save it to this directory
+		string modelRelativeTexPath = m_modelDirectoryMeshes + mesh._Get()->GetResourceName() + MESH_EXTENSION;
+		mesh._Get()->SetResourceFilePath(modelRelativeTexPath);
+		mesh._Get()->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
+		mesh._Get()->SaveToFile(modelRelativeTexPath);
+
 		// Construct mesh (vertex buffer, index buffer, bounding box, etc...)
-		mesh->Construct();
+		mesh._Get()->Construct();
 
 		// Calculate the bounding box of the model as well
 		ComputeBoundingBox();
 
+		// Add it to the resource manager
+		auto weakMesh = m_context->GetSubsystem<ResourceManager>()->Add<Mesh>(mesh.lock());
+
 		// Save it
-		m_meshes.push_back(mesh);
+		m_meshes.push_back(weakMesh);
+
+		// Add a MeshFilter a RigidBody and a Collider
+		if (!gameObject.expired())
+		{
+			MeshFilter* meshFilter = gameObject._Get()->AddComponent<MeshFilter>()._Get();
+			meshFilter->SetMesh(weakMesh);
+
+			if (meshFilter->GetType() == MeshType_Custom)
+			{
+				gameObject._Get()->AddComponent<RigidBody>();
+				Collider* collider = gameObject._Get()->AddComponent<Collider>()._Get();
+				collider->SetShapeType(ColliderShape_Mesh);
+			}
+		}
 	}
 
-	weak_ptr<Material> Model::AddMaterialAsNewResource(shared_ptr<Material> material)
+	void Model::AddMaterial(weak_ptr<Material> material, weak_ptr<GameObject> gameObject)
 	{
-		if (!material)
-			return weak_ptr<Material>();
+		if (material.expired())
+			return;
 
 		// Add it to our resources
-		weak_ptr<Material> weakMat = m_context->GetSubsystem<ResourceManager>()->Add<Material>(material);
+		weak_ptr<Material> weakMat = m_context->GetSubsystem<ResourceManager>()->Add<Material>(material.lock());
 
 		// Save the material in the model directory
-		material._Get()->SaveToFile(m_modelDirectoryMaterials + material->GetResourceName());
+		weakMat._Get()->SaveToFile(m_modelDirectoryMaterials + weakMat._Get()->GetResourceName());
 
 		// Keep a reference to it
-		m_materials.push_back(material);
+		m_materials.push_back(weakMat);
 
-		// Return it
-		return weakMat;
+		// Create a MeshRenderer and pass the Material to it
+		if (!gameObject.expired())
+		{
+			MeshRenderer* meshRenderer = gameObject._Get()->AddComponent<MeshRenderer>()._Get();
+			meshRenderer->SetMaterialFromMemory(material);
+		}
 	}
 
-	weak_ptr<Animation> Model::AddAnimationAsNewResource(shared_ptr<Animation> animation)
+	weak_ptr<Animation> Model::AddAnimation(weak_ptr<Animation> animation)
 	{
-		if (!animation)
-			return weak_ptr<Animation>();
+		if (animation.expired())
+			return animation;
 
 		// Add it to our resources
-		auto weakAnim = m_context->GetSubsystem<ResourceManager>()->Add<Animation>(animation);
+		auto weakAnim = m_context->GetSubsystem<ResourceManager>()->Add<Animation>(animation.lock());
 
 		// Keep a reference to it
 		m_animations.push_back(weakAnim);
@@ -193,7 +230,7 @@ namespace Directus
 		return weakAnim;
 	}
 
-	void Model::AddTextureToMaterial(const weak_ptr<Material> material, TextureType textureType, const string& filePath)
+	void Model::AddTexture(const weak_ptr<Material> material, TextureType textureType, const string& filePath)
 	{
 		// Validate material
 		if (material.expired())
@@ -223,11 +260,10 @@ namespace Directus
 			texture._Get()->SetType(textureType);
 			
 			// Update the texture with Model directory relative file path. Then save it to this directory
-			string modelRelativeTexPath = GetDirectoryTexture() + texName + TEXTURE_EXTENSION;
+			string modelRelativeTexPath = m_modelDirectoryTextures + texName + TEXTURE_EXTENSION;
 			texture._Get()->SetResourceFilePath(modelRelativeTexPath);
 			texture._Get()->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
 			texture._Get()->SaveToFile(modelRelativeTexPath);
-			LOG_INFO(modelRelativeTexPath);
 
 			// Since the texture has been loaded and had it's texture bits saved, clear them to free some memory
 			texture._Get()->ClearTextureBits();
@@ -241,7 +277,7 @@ namespace Directus
 	{
 		for (const auto& mesh : m_meshes)
 		{
-			if (mesh->GetID() == id)
+			if (mesh._Get()->GetResourceID() == id)
 			{
 				return mesh;
 			}
@@ -254,7 +290,7 @@ namespace Directus
 	{
 		for (const auto& mesh : m_meshes)
 		{
-			if (mesh->GetName() == name)
+			if (mesh._Get()->GetResourceName() == name)
 			{
 				return mesh;
 			}
@@ -269,11 +305,26 @@ namespace Directus
 		return Max(Max(extent.x, extent.y), extent.z);
 	}
 
+	void Model::SetWorkingDirectory(const string& directory)
+	{
+		// Set directoties based on new directory
+		m_modelDirectoryModel		= directory;
+		m_modelDirectoryMeshes		= m_modelDirectoryModel + "Meshes//";
+		m_modelDirectoryMaterials	= m_modelDirectoryModel + "Materials//";
+		m_modelDirectoryTextures	= m_modelDirectoryModel + "Textures//";
+
+		// Create directories
+		FileSystem::CreateDirectory_(directory);
+		FileSystem::CreateDirectory_(m_modelDirectoryMeshes);
+		FileSystem::CreateDirectory_(m_modelDirectoryMaterials);
+		FileSystem::CreateDirectory_(m_modelDirectoryTextures);
+	}
+
 	bool Model::LoadFromEngineFormat(const string& filePath)
 	{
 		// Deserialize
-		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Read);
-		if (!file->IsCreated())
+		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Read);
+		if (!file->IsOpen())
 			return false;
 
 		int meshCount = 0;
@@ -283,12 +334,17 @@ namespace Directus
 		file->Read(&m_resourceFilePath);
 		file->Read(&m_normalizedScale);
 		file->Read(&meshCount);
-
+		string meshName = NOT_ASSIGNED;
 		for (int i = 0; i < meshCount; i++)
 		{
-			auto mesh = make_shared<Mesh>(m_context);
-			mesh->Deserialize(file.get());
-			AddMesh(mesh);
+			file->Read(&meshName);
+			auto mesh = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
+			if (mesh.expired())
+			{
+				LOG_WARNING("Model: Failed to load mesh \"" + meshName +"\"");
+				continue;
+			}
+			m_meshes.push_back(mesh);
 		}
 
 		return true;
@@ -297,16 +353,9 @@ namespace Directus
 	bool Model::LoadFromForeignFormat(const string& filePath)
 	{
 		// Set some crucial data (Required by ModelImporter)
-		string projectDir = m_context->GetSubsystem<ResourceManager>()->GetProjectDirectory();
-		string modelDir = projectDir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"; // Assets/Sponza/
-		SetResourceFilePath(modelDir + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION); // Assets/Sponza/Sponza.model
+		SetWorkingDirectory(m_context->GetSubsystem<ResourceManager>()->GetProjectDirectory() + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + "//"); // Assets/Sponza/
+		SetResourceFilePath(m_modelDirectoryModel + FileSystem::GetFileNameNoExtensionFromFilePath(filePath) + MODEL_EXTENSION); // Assets/Sponza/Sponza.model
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath)); // Sponza
-
-		// Create asset directory (if it doesn't exist)]
-		m_modelDirectoryMaterials = modelDir + "Materials//";
-		m_modelDirectoryTextures = modelDir + "Textures//";
-		FileSystem::CreateDirectory_(m_modelDirectoryMaterials);
-		FileSystem::CreateDirectory_(m_modelDirectoryTextures);
 
 		// Load the model
 		if (m_resourceManager->GetModelImporter()._Get()->Load(this, filePath))
@@ -347,10 +396,10 @@ namespace Directus
 
 		for (auto& mesh : m_meshes)
 		{
-			if (!mesh)
+			if (!mesh.expired())
 				continue;
 
-			Vector3 boundingBox = mesh->GetBoundingBox().GetExtents();
+			Vector3 boundingBox = mesh._Get()->GetBoundingBox().GetExtents();
 			if (boundingBox.Volume() > largestBoundingBox.Volume())
 			{
 				largestBoundingBox = boundingBox;
@@ -365,16 +414,28 @@ namespace Directus
 	{
 		for (auto& mesh : m_meshes)
 		{
-			if (!mesh)
+			if (!mesh.expired())
 				continue;
 
 			if (!m_boundingBox.Defined())
 			{
-				m_boundingBox.ComputeFromMesh(mesh);
+				vector<VertexPosTexTBN> vertices;
+				vector<unsigned> indices;
+				mesh._Get()->GetGeometry(&vertices, &indices);
+				m_boundingBox.ComputeFromVertices(vertices);
 				continue;
 			}
 
-			m_boundingBox.Merge(mesh->GetBoundingBox());
+			m_boundingBox.Merge(mesh._Get()->GetBoundingBox());
+		}
+	}
+
+	void Model::ComputeMemoryUsage()
+	{
+		m_memoryUsageKB = 0;
+		for (const auto& mesh : m_meshes)
+		{
+			m_memoryUsageKB += mesh._Get()->GetMemoryUsageKB();
 		}
 	}
 }

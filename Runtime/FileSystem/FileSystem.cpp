@@ -530,6 +530,11 @@ namespace Directus
 		return GetExtensionFromFilePath(filePath) == MATERIAL_EXTENSION;
 	}
 
+	bool FileSystem::IsEngineMeshFile(const string& filePath)
+	{
+		return GetExtensionFromFilePath(filePath) == MESH_EXTENSION;
+	}
+
 	bool FileSystem::IsEngineSceneFile(const string& filePath)
 	{
 		return GetExtensionFromFilePath(filePath) == SCENE_EXTENSION;

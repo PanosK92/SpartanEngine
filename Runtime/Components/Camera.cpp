@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Camera.h"
 #include "Transform.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../Core/Settings.h"
 #include "../Components/MeshFilter.h"
 #include "../Components/Skybox.h"
@@ -110,7 +110,7 @@ namespace Directus
 		m_isDirty = false;
 	}
 
-	void Camera::Serialize(StreamIO* stream)
+	void Camera::Serialize(FileStream* stream)
 	{
 		stream->Write(m_clearColor);
 		stream->Write(int(m_projection));
@@ -119,7 +119,7 @@ namespace Directus
 		stream->Write(m_farPlane);
 	}
 
-	void Camera::Deserialize(StreamIO* stream)
+	void Camera::Deserialize(FileStream* stream)
 	{
 		stream->Read(&m_clearColor);
 		m_projection = Projection(stream->ReadInt());

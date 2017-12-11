@@ -178,6 +178,10 @@ namespace Directus
 			{
 				type = Resource_Texture;
 			}
+			else if (FileSystem::IsEngineMeshFile(filePath))
+			{
+				type = Resource_Mesh;
+			}
 			else if (FileSystem::IsSupportedModelFile(filePath) || FileSystem::IsEngineModelFile(filePath))
 			{
 				type = Resource_Model;

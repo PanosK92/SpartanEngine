@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include "ShaderVariation.h"
 #include "../../Logging/Log.h"
-#include "../../IO/StreamIO.h"
+#include "../../IO/FileStream.h"
 #include "../../Core/Settings.h"
 #include "../../Components/Transform.h"
 #include "../../Components/Camera.h"
@@ -42,7 +42,7 @@ namespace Directus
 	ShaderVariation::ShaderVariation()
 	{
 		// Resource
-		InitializeResource(Resource_Shader);
+		RegisterResource(Resource_Shader);
 
 		m_graphics = nullptr;
 		m_shaderFlags = 0;
@@ -66,8 +66,8 @@ namespace Directus
 
 	bool ShaderVariation::LoadFromFile(const string& filePath)
 	{
-		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Read);
-		if (!file->IsCreated())
+		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Read);
+		if (!file->IsOpen())
 			return false;
 
 		file->Read(&m_resourceName);
@@ -87,8 +87,8 @@ namespace Directus
 			savePath += SHADER_EXTENSION;
 		}
 
-		unique_ptr<StreamIO> file = make_unique<StreamIO>(savePath, Mode_Write);
-		if (!file->IsCreated())
+		unique_ptr<FileStream> file = make_unique<FileStream>(savePath, FileStreamMode_Write);
+		if (!file->IsOpen())
 			return false;
 
 		file->Write(GetResourceName());

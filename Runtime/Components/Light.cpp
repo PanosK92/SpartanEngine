@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../Core/Scene.h"
 #include "../Core/Settings.h"
 #include "../Core/Context.h"
@@ -115,7 +115,7 @@ namespace Directus
 		m_frustrum->Construct(GetViewMatrix(), GetOrthographicProjectionMatrix(2), mainCamera->GetFarPlane());
 	}
 
-	void Light::Serialize(StreamIO* stream)
+	void Light::Serialize(FileStream* stream)
 	{
 		stream->Write(int(m_lightType));
 		stream->Write(int(m_shadowType));
@@ -126,7 +126,7 @@ namespace Directus
 		stream->Write(m_bias);
 	}
 
-	void Light::Deserialize(StreamIO* stream)
+	void Light::Deserialize(FileStream* stream)
 	{
 		m_lightType = LightType(stream->ReadInt());
 		m_shadowType = ShadowType(stream->ReadInt());

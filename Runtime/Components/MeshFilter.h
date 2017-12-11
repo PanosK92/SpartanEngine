@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "../Math/BoundingBox.h"
 #include "../Graphics/Vertex.h"
+#include "../Logging/Log.h"
 //==============================
 
 namespace Directus
@@ -40,31 +41,36 @@ namespace Directus
 		class BoundingBox;
 	}
 
+	enum MeshType
+	{
+		MeshType_Custom,
+		MeshType_Cube,
+		MeshType_Quad
+	};
+
 	class DLL_API MeshFilter : public Component
 	{
 	public:
-		enum MeshType { Imported, Cube, Quad };
-
 		MeshFilter();
 		~MeshFilter();
 
-		//= ICOMPONENT ============================
+		//= ICOMPONENT ===============================
 		void Initialize() override;
 		void Start() override;
 		void OnDisable() override;
 		void Remove() override;
 		void Update() override;
-		void Serialize(StreamIO* stream) override;
-		void Deserialize(StreamIO* stream) override;
-		//=========================================
+		void Serialize(FileStream* stream) override;
+		void Deserialize(FileStream* stream) override;
+		//============================================
 
 		// Sets a mesh from memory
-		void SetMesh(std::weak_ptr<Mesh> mesh) { m_mesh = mesh; }
+		void SetMesh(std::weak_ptr<Mesh> mesh){ m_mesh = mesh; }
 
 		// Sets a default mesh (cube, quad)
 		void SetMesh(MeshType defaultMesh);
 
-		// Set the buffers to active in the input assembler so they can be rendered.
+		// Set vertex and index buffers (must be called before rendering)
 		bool SetBuffers();
 
 		//= BOUNDING BOX ===============================
@@ -72,18 +78,21 @@ namespace Directus
 		Math::BoundingBox GetBoundingBoxTransformed();
 		//==============================================
 
-		//= PROPERTIES ===========================================
+		//= PROPERTIES ========================================
+		MeshType GetType() { return m_type; }
 		std::string GetMeshName();
 		const std::weak_ptr<Mesh>& GetMesh() { return m_mesh; }
-		bool HasMesh() { return m_mesh.expired() ? false : true; }
-		//========================================================
+		bool HasMesh() { return !m_mesh.expired(); }
+		//=====================================================
 
 	private:
 		static void CreateCube(std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices);
 		static void CreateQuad(std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices);
 		std::string GetGameObjectName();
 
+		// A weak reference to the mesh
 		std::weak_ptr<Mesh> m_mesh;
-		MeshType m_meshType;
+		// Type of mesh
+		MeshType m_type;
 	};
 }

@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===================
-#include "StreamIO.h"
+#include "FileStream.h"
 #include "../Core/GameObject.h"
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
@@ -38,12 +38,12 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	StreamIO::StreamIO(const string& path, SreamIOMode mode)
+	FileStream::FileStream(const string& path, FileStreamMode mode)
 	{
-		m_created = false;
+		m_isOpen = false;
 		m_mode = mode;
 
-		if (mode == Mode_Write)
+		if (mode == FileStreamMode_Write)
 		{
 			out.open(path, ios::out | ios::binary);
 			if (out.fail())
@@ -52,7 +52,7 @@ namespace Directus
 				return;
 			}
 		}
-		else if (mode == Mode_Read)
+		else if (mode == FileStreamMode_Read)
 		{
 			in.open(path, ios::in | ios::binary);
 			if(in.fail())
@@ -62,24 +62,24 @@ namespace Directus
 			}
 		}
 
-		m_created = true;
+		m_isOpen = true;
 	}
 
-	StreamIO::~StreamIO()
+	FileStream::~FileStream()
 	{
-		if (m_mode == Mode_Write)
+		if (m_mode == FileStreamMode_Write)
 		{
 			out.flush();
 			out.close();
 		}
-		else if (m_mode == Mode_Read)
+		else if (m_mode == FileStreamMode_Read)
 		{
 			in.clear();
 			in.close();
 		}
 	}
 
-	void StreamIO::Write(const string& value)
+	void FileStream::Write(const string& value)
 	{
 		unsigned int length = value.length();
 		Write(length);
@@ -87,7 +87,7 @@ namespace Directus
 		out.write(const_cast<char*>(value.c_str()), length);
 	}
 
-	void StreamIO::Write(const vector<string>& value)
+	void FileStream::Write(const vector<string>& value)
 	{
 		unsigned int size = value.size();
 		Write(size);
@@ -98,48 +98,48 @@ namespace Directus
 		}
 	}
 
-	void StreamIO::Write(const Vector2& value)
+	void FileStream::Write(const Vector2& value)
 	{
 		out.write(reinterpret_cast<const char*>(&value), sizeof(Vector2));
 	}
 
-	void StreamIO::Write(const Vector3& value)
+	void FileStream::Write(const Vector3& value)
 	{
 		out.write(reinterpret_cast<const char*>(&value), sizeof(Vector3));
 	}
 
-	void StreamIO::Write(const Vector4& value)
+	void FileStream::Write(const Vector4& value)
 	{
 		out.write(reinterpret_cast<const char*>(&value), sizeof(Vector4));
 	}
 
-	void StreamIO::Write(const Quaternion& value)
+	void FileStream::Write(const Quaternion& value)
 	{
 		out.write(reinterpret_cast<const char*>(&value), sizeof(Quaternion));
 	}
 
-	void StreamIO::Write(const vector<VertexPosTexTBN>& value)
+	void FileStream::Write(const vector<VertexPosTexTBN>& value)
 	{
 		unsigned int length = value.size();
 		Write(length);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(VertexPosTexTBN) * length);
 	}
 
-	void StreamIO::Write(const vector<unsigned int>& value)
+	void FileStream::Write(const vector<unsigned int>& value)
 	{
 		unsigned int length = value.size();
 		Write(length);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned int) * length);
 	}
 
-	void StreamIO::Write(const vector<unsigned char>& value)
+	void FileStream::Write(const vector<unsigned char>& value)
 	{
 		unsigned int size = value.size();
 		Write(size);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
 	}
 
-	void StreamIO::Read(string* value)
+	void FileStream::Read(string* value)
 	{
 		unsigned int length = 0;
 		Read(&length);
@@ -148,27 +148,27 @@ namespace Directus
 		in.read(const_cast<char*>(value->c_str()), length);
 	}
 
-	void StreamIO::Read(Vector2* value)
+	void FileStream::Read(Vector2* value)
 	{
 		in.read(reinterpret_cast<char*>(value), sizeof(Vector2));
 	}
 
-	void StreamIO::Read(Vector3* value)
+	void FileStream::Read(Vector3* value)
 	{
 		in.read(reinterpret_cast<char*>(value), sizeof(Vector3));
 	}
 
-	void StreamIO::Read(Vector4* value)
+	void FileStream::Read(Vector4* value)
 	{
 		in.read(reinterpret_cast<char*>(value), sizeof(Vector4));
 	}
 
-	void StreamIO::Read(Quaternion* value)
+	void FileStream::Read(Quaternion* value)
 	{
 		in.read(reinterpret_cast<char*>(value), sizeof(Quaternion));
 	}
 
-	void StreamIO::Read(vector<string>* value)
+	void FileStream::Read(vector<string>* value)
 	{
 		value->clear();
 		value->shrink_to_fit();
@@ -184,7 +184,7 @@ namespace Directus
 		}
 	}
 
-	void StreamIO::Read(vector<VertexPosTexTBN>* value)
+	void FileStream::Read(vector<VertexPosTexTBN>* value)
 	{
 		value->clear();
 		value->shrink_to_fit();
@@ -197,7 +197,7 @@ namespace Directus
 		in.read(reinterpret_cast<char*>(value->data()), sizeof(VertexPosTexTBN) * length);
 	}
 
-	void StreamIO::Read(vector<unsigned int>* value)
+	void FileStream::Read(vector<unsigned int>* value)
 	{
 		value->clear();
 		value->shrink_to_fit();
@@ -210,7 +210,7 @@ namespace Directus
 		in.read(reinterpret_cast<char*>(value->data()), sizeof(unsigned int) * length);
 	}
 
-	void StreamIO::Read(vector<unsigned char>* value)
+	void FileStream::Read(vector<unsigned char>* value)
 	{
 		value->clear();
 		value->shrink_to_fit();

@@ -54,7 +54,7 @@ namespace Directus
 	class TexturePool;
 	class ShaderPool;
 	class Context;
-	class StreamIO;
+	class FileStream;
 
 	// Add new components here
 	enum ComponentType : unsigned int
@@ -141,10 +141,10 @@ namespace Directus
 		virtual void Update() = 0;
 
 		// Runs when the GameObject is being saved
-		virtual void Serialize(StreamIO* stream) = 0;
+		virtual void Serialize(FileStream* stream) = 0;
 
 		// Runs when the GameObject is being loaded
-		virtual void Deserialize(StreamIO* stream) = 0;
+		virtual void Deserialize(FileStream* stream) = 0;
 
 		// Should be called by the derived component to register it's type
 		void Register(ComponentType type)

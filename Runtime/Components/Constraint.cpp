@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================================
 #include "Constraint.h"
 #include "RigidBody.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../Core/Scene.h"
 #include "../Core/GameObject.h"
 #include "../Physics/Physics.h"
@@ -79,12 +79,12 @@ namespace Directus
 		m_isDirty = false;
 	}
 
-	void Constraint::Serialize(StreamIO* stream)
+	void Constraint::Serialize(FileStream* stream)
 	{
 		stream->Write(!m_bodyOther.expired() ? m_bodyOther._Get()->g_gameObject._Get()->GetID() : (unsigned int)0);
 	}
 
-	void Constraint::Deserialize(StreamIO* stream)
+	void Constraint::Deserialize(FileStream* stream)
 	{
 		unsigned int bodyOtherID = stream->ReadUInt();
 		auto otherGameObject = g_context->GetSubsystem<Scene>()->GetGameObjectByID(bodyOtherID);

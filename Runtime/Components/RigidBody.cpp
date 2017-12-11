@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/Physics.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Math/Quaternion.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 //===========================================================
 
 //= NAMESPACES ================
@@ -139,7 +139,7 @@ namespace Directus
 		}
 	}
 
-	void RigidBody::Serialize(StreamIO* stream)
+	void RigidBody::Serialize(FileStream* stream)
 	{
 		stream->Write(m_mass);
 		stream->Write(m_friction);
@@ -152,7 +152,7 @@ namespace Directus
 		stream->Write(m_rotationLock);
 	}
 
-	void RigidBody::Deserialize(StreamIO* stream)
+	void RigidBody::Deserialize(FileStream* stream)
 	{
 		stream->Read(&m_mass);
 		stream->Read(&m_friction);
