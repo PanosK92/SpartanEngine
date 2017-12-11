@@ -71,9 +71,9 @@ namespace Directus
 		RegisterResource(Resource_Texture);
 
 		// Texture
-		m_context = context;
-		m_isUsingMipmaps = true;
-		m_textureAPI = make_shared<D3D11Texture>(m_context->GetSubsystem<Graphics>());
+		m_context			= context;
+		m_isUsingMipmaps	= true;
+		m_textureAPI		= make_shared<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 	}
 
 	Texture::~Texture()
@@ -134,11 +134,33 @@ namespace Directus
 		}
 
 		SetAsyncState(Async_Completed);
-		m_memoryUsageKB = ComputeMemoryUsageKB();
 		LOG_INFO("Texture: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTime()) + " ms");
 
 		return true;
 	}
+
+	unsigned int Texture::GetMemoryUsageKB()
+	{
+		// Compute texture bits (in case they are loaded)
+		unsigned int memoryKB = 0;
+		for (const auto& mip : m_textureBits)
+		{
+			memoryKB += mip.size();
+		}
+
+		// Compute shader resource (in case it's created)
+		if (m_textureAPI->GetShaderResourceView())
+		{
+			GUID guid;
+			unsigned int size = 0;
+			void* data = nullptr;
+			m_textureAPI->GetShaderResourceView()->GetPrivateData(guid, &size, &data);
+			memoryKB += sizeof(&data);
+		}
+
+		return memoryKB / 1000;
+	}
+
 	//=====================================================================================
 
 	//= PROPERTIES =========================================================================
@@ -287,28 +309,6 @@ namespace Directus
 		if (type == "CubeMap") return TextureType_CubeMap;
 
 		return TextureType_Unknown;
-	}
-
-	unsigned Texture::ComputeMemoryUsageKB()
-	{
-		// Compute texture bits (in case they are loaded)
-		unsigned int memoryKB = 0;
-		for (const auto& mip : m_textureBits)
-		{
-			memoryKB += mip.size();
-		}
-
-		// Compute shader resource (in case it's created)
-		if (m_textureAPI->GetShaderResourceView())
-		{
-			GUID guid;
-			unsigned int size = 0;
-			void* data = nullptr;
-			m_textureAPI->GetShaderResourceView()->GetPrivateData(guid, &size, &data);
-			memoryKB += sizeof(&data);
-		}
-
-		return memoryKB / 1000;
 	}
 
 	bool Texture::Serialize(const string& filePath)

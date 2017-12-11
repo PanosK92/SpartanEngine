@@ -68,11 +68,11 @@ namespace Directus
 
 		~Texture();
 
-		//= RESOURCE INTERFACE =============================================
+		//= RESOURCE INTERFACE =================================
 		bool SaveToFile(const std::string& filePath) override;
 		bool LoadFromFile(const std::string& filePath) override;
-		unsigned int GetMemoryUsageKB() override { return m_memoryUsageKB; }
-		//==================================================================
+		unsigned int GetMemoryUsageKB() override;
+		//======================================================
 
 		//= PROPERTIES ==========================================================================================
 		unsigned int GetWidth() { return m_width; }
@@ -132,10 +132,8 @@ namespace Directus
 
 		bool LoadFromForeignFormat(const std::string& filePath);
 		TextureType TextureTypeFromString(const std::string& type);
-		unsigned int ComputeMemoryUsageKB();
 
 		TextureUsage m_usage = TextureUsage_Internal;
-		unsigned int m_memoryUsageKB = 0;
 		std::shared_ptr<D3D11Texture> m_textureAPI;
 		TextureFormat m_format = RGBA_8_UNORM;
 

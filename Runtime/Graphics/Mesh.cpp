@@ -44,14 +44,13 @@ namespace Directus
 		// Resource
 		RegisterResource(Resource_Mesh);
 
-		m_context = context;
-		m_gameObjID = NOT_ASSIGNED_HASH;
-		m_modelID = NOT_ASSIGNED_HASH;
-		m_vertexCount = 0;
-		m_indexCount = 0;
+		m_context		= context;
+		m_gameObjID		= NOT_ASSIGNED_HASH;
+		m_modelID		= NOT_ASSIGNED_HASH;
+		m_vertexCount	= 0;
+		m_indexCount	= 0;
 		m_triangleCount = 0;
-		m_boundingBox = BoundingBox();
-		m_memoryUsageKB = 0;
+		m_boundingBox	= BoundingBox();
 	}
 
 	Mesh::~Mesh()
@@ -70,10 +69,10 @@ namespace Directus
 	void Mesh::Clear()
 	{
 		ClearGeometry();
-		m_gameObjID = NOT_ASSIGNED_HASH;
-		m_modelID = NOT_ASSIGNED_HASH;
-		m_vertexCount = 0;
-		m_indexCount = 0;
+		m_gameObjID		= NOT_ASSIGNED_HASH;
+		m_modelID		= NOT_ASSIGNED_HASH;
+		m_vertexCount	= 0;
+		m_indexCount	= 0;
 		m_triangleCount = 0;
 	}
 
@@ -94,6 +93,7 @@ namespace Directus
 		file->Read(&m_resourceName);
 		
 		Construct();
+		ClearGeometry();
 
 		return true;
 	}
@@ -119,6 +119,15 @@ namespace Directus
 		return true;
 	}
 
+	unsigned int Mesh::GetMemoryUsageKB()
+	{
+		unsigned int sizeKB = 0;
+		sizeKB += m_vertices.size() * sizeof(VertexPosTexTBN);
+		sizeKB += m_indices.size() * sizeof(unsigned int);
+
+		return sizeKB / 1000;
+	}
+
 	void Mesh::GetGeometry(vector<VertexPosTexTBN>* vertices, vector<unsigned>* indices)
 	{
 		if (!m_vertices.empty() && !m_indices.empty())
@@ -141,9 +150,8 @@ namespace Directus
 
 	bool Mesh::Construct()
 	{
-		m_memoryUsageKB = ComputeMemoryUsageKB();
-		m_vertexCount = (unsigned int)m_vertices.size();
-		m_indexCount = (unsigned int)m_indices.size();
+		m_vertexCount	= (unsigned int)m_vertices.size();
+		m_indexCount	= (unsigned int)m_indices.size();
 		m_triangleCount = m_indexCount / 3;
 		m_boundingBox.ComputeFromVertices(m_vertices);
 		return ConstructBuffers();
@@ -221,15 +229,6 @@ namespace Directus
 		}
 
 		return success;
-	}
-
-	unsigned int Mesh::ComputeMemoryUsageKB()
-	{
-		unsigned int sizeKB = 0;
-		sizeKB += m_vertices.size() * sizeof(VertexPosTexTBN);
-		sizeKB += m_indices.size() * sizeof(unsigned int);
-
-		return sizeKB / 1000;
 	}
 	//==============================================================================
 }
