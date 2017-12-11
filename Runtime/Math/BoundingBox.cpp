@@ -47,35 +47,20 @@ namespace Directus
 
 		}
 
-		void BoundingBox::ComputeFromMesh(std::weak_ptr<Mesh> mesh)
+		void BoundingBox::ComputeFromVertices(const std::vector<VertexPosTexTBN>& vertices)
 		{
 			min = Vector3::Infinity;
 			max = Vector3::InfinityNeg;
 
-			if (mesh.expired())
-				return;
-
-			ComputeFromMesh(mesh._Get());
-		}
-
-		void BoundingBox::ComputeFromMesh(Mesh* mesh)
-		{
-			if (!mesh)
-				return;
-
-			min = Vector3::Infinity;
-			max = Vector3::InfinityNeg;
-
-			auto vertices = mesh->GetVertices();
-			for (unsigned int i = 0; i < mesh->GetVertexCount(); i++)
+			for (const auto& vertex : vertices)
 			{
-				max.x = Max(max.x, vertices[i].position.x);
-				max.y = Max(max.y, vertices[i].position.y);
-				max.z = Max(max.z, vertices[i].position.z);
+				max.x = Max(max.x, vertex.position.x);
+				max.y = Max(max.y, vertex.position.y);
+				max.z = Max(max.z, vertex.position.z);
 
-				min.x = Min(min.x, vertices[i].position.x);
-				min.y = Min(min.y, vertices[i].position.y);
-				min.z = Min(min.z, vertices[i].position.z);
+				min.x = Min(min.x, vertex.position.x);
+				min.y = Min(min.y, vertex.position.y);
+				min.z = Min(min.z, vertex.position.z);
 			}
 		}
 

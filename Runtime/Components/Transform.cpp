@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Transform.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../Core/Scene.h"
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
@@ -77,7 +77,7 @@ namespace Directus
 
 	}
 
-	void Transform::Serialize(StreamIO* stream)
+	void Transform::Serialize(FileStream* stream)
 	{
 		stream->Write(m_positionLocal);
 		stream->Write(m_rotationLocal);
@@ -86,7 +86,7 @@ namespace Directus
 		stream->Write(m_parent ? m_parent->GetGameObject()._Get()->GetID() : NOT_ASSIGNED_HASH);
 	}
 
-	void Transform::Deserialize(StreamIO* stream)
+	void Transform::Deserialize(FileStream* stream)
 	{
 		unsigned int parentGameObjectID = 0;
 

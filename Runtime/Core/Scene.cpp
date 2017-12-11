@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene.h"
 #include "Timer.h"
 #include "../Core/Context.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 #include "../Components/Transform.h"
@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/MeshRenderer.h"
 #include "../EventSystem/EventSystem.h"
 #include "../Resource/ResourceManager.h"
+#include "../Graphics/Mesh.h"
 #include "GameObject.h"
 #include "Stopwatch.h"
 //======================================
@@ -144,8 +145,8 @@ namespace Directus
 		m_context->GetSubsystem<ResourceManager>()->SaveResourcesToFiles();
 
 		// Create a prefab file
-		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Write);
-		if (!file->IsCreated())
+		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Write);
+		if (!file->IsOpen())
 			return false;
 
 		// Save currently loaded resource paths
@@ -194,8 +195,8 @@ namespace Directus
 		Clear();
 
 		// Read all the resource file paths
-		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Read);
-		if (!file->IsCreated())
+		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Read);
+		if (!file->IsOpen())
 			return false;
 
 		Stopwatch timer;
@@ -209,6 +210,11 @@ namespace Directus
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
 		for (const auto& resourcePath : resourcePaths)
 		{
+			if (FileSystem::IsEngineMeshFile(resourcePath))
+			{
+				resourceMng->Load<Mesh>(resourcePath);
+			}
+
 			if (FileSystem::IsEngineModelFile(resourcePath))
 			{
 				resourceMng->Load<Model>(resourcePath);

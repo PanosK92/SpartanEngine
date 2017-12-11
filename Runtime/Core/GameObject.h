@@ -49,8 +49,8 @@ namespace Directus
 		bool SaveAsPrefab(const std::string& filePath);
 		bool LoadFromPrefab(const std::string& filePath);
 
-		void Serialize(StreamIO* stream);
-		void Deserialize(StreamIO* stream, Transform* parent);
+		void Serialize(FileStream* stream);
+		void Deserialize(FileStream* stream, Transform* parent);
 
 		//= PROPERTIES =========================================================================================
 		const std::string& GetName() { return m_name; }

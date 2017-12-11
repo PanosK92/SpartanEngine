@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameObject.h"
 #include "Scene.h"
 #include "GUIDGenerator.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../Logging/Log.h"
 #include "../Components/AudioSource.h"
 #include "../Components/AudioListener.h"
@@ -114,8 +114,8 @@ namespace Directus
 	bool GameObject::SaveAsPrefab(const string& filePath)
 	{
 		// Create a prefab file
-		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath + PREFAB_EXTENSION, Mode_Write);
-		if (!file->IsCreated())
+		unique_ptr<FileStream> file = make_unique<FileStream>(filePath + PREFAB_EXTENSION, FileStreamMode_Write);
+		if (!file->IsOpen())
 			return false;
 
 		// Serialize
@@ -132,8 +132,8 @@ namespace Directus
 			return false;
 
 		// Try to open it
-		unique_ptr<StreamIO> file = make_unique<StreamIO>(filePath, Mode_Read);
-		if (!file->IsCreated())
+		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Read);
+		if (!file->IsOpen())
 			return false;
 
 		Deserialize(file.get(), nullptr);
@@ -141,7 +141,7 @@ namespace Directus
 		return true;
 	}
 
-	void GameObject::Serialize(StreamIO* stream)
+	void GameObject::Serialize(FileStream* stream)
 	{
 		//= BASIC DATA ==========================
 		stream->Write(m_isPrefab);
@@ -193,7 +193,7 @@ namespace Directus
 		//=============================================
 	}
 
-	void GameObject::Deserialize(StreamIO* stream, Transform* parent)
+	void GameObject::Deserialize(FileStream* stream, Transform* parent)
 	{
 		//= BASIC DATA =====================
 		stream->Read(&m_isPrefab);

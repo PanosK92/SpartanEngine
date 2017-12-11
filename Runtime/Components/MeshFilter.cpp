@@ -22,13 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "MeshFilter.h"
 #include "Transform.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../Core/GameObject.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/ResourceManager.h"
 #include "../Math/Vector3.h"
-#include "../Graphics/Model.h"
 #include "../Graphics/Mesh.h"
 //======================================
 
@@ -42,7 +41,7 @@ namespace Directus
 	MeshFilter::MeshFilter()
 	{
 		Register(ComponentType_MeshFilter);
-		m_meshType = Imported;
+		m_type = MeshType_Custom;
 	}
 
 	MeshFilter::~MeshFilter()
@@ -75,83 +74,72 @@ namespace Directus
 
 	}
 
-	void MeshFilter::Serialize(StreamIO* stream)
+	void MeshFilter::Serialize(FileStream* stream)
 	{
-		stream->Write((int)m_meshType);
-		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetName() : (string)NOT_ASSIGNED);
-		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetID() : NOT_ASSIGNED_HASH);
-		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetModelID() : NOT_ASSIGNED_HASH);
+		stream->Write((int)m_type);
+		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetResourceName() : (string)NOT_ASSIGNED);
+		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetResourceID() : NOT_ASSIGNED_HASH);
 	}
 
-	void MeshFilter::Deserialize(StreamIO* stream)
+	void MeshFilter::Deserialize(FileStream* stream)
 	{
-		m_meshType				= (MeshType)stream->ReadInt();
+		m_type					= (MeshType)stream->ReadInt();
 		string meshName			= NOT_ASSIGNED;
 		unsigned int meshID		= 0;
-		unsigned int modelID	= 0;
-
 		stream->Read(&meshName);
 		stream->Read(&meshID);
-		stream->Read(&modelID);
 
-		// If the mesh is an engine constructed primitive
-		if (m_meshType != Imported)
-		{
-			// Construct it now
-			SetMesh(m_meshType);
-			return;
-		}
-
-		// ... else load the actual model and try to find the corresponding mesh
-		weak_ptr<Model> model = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Model>(modelID);
-		if (model.expired())
-		{
-			LOG_WARNING("MeshFilter: Can't load mesh \"" + meshName + "\". The model it belongs to is expired.");
-			return;
-		}
-
-		// Get the mesh
-		m_mesh = model._Get()->GetMeshByID(meshID);
+		// Get the mesh from the ResourceManager
+		m_mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(meshID);
 		if (m_mesh.expired())
 		{
-			LOG_WARNING("MeshFilter: Can't load mesh \"" + meshName + "\". It's not part of the model.");
-			return;
+			LOG_WARNING("MeshFilter: Failed to load mesh \"" + meshName + "\".");
 		}
 	}
 
 	// Sets a default mesh (cube, quad)
-	void MeshFilter::SetMesh(MeshType defaultMesh)
+	void MeshFilter::SetMesh(MeshType type)
 	{
+		m_type = type;
+
 		// Construct vertices/indices
 		vector<VertexPosTexTBN> vertices;
 		vector<unsigned int> indices;
-		if (defaultMesh == Cube)
+		if (type == MeshType_Cube)
 		{
 			CreateCube(vertices, indices);
 		}
-		else if (defaultMesh == Quad)
+		else if (type == MeshType_Quad)
 		{
 			CreateQuad(vertices, indices);
 		}
+	
+		// Create a name for this standard mesh
+		string meshName = (type == MeshType_Cube) ? "Standard_Cube" : "Standard_Quad";
 
-		// Find out some details
-		m_meshType = defaultMesh;
-		string resourceName = (defaultMesh == Cube) ? "Engine_Default_Cube" : "Engine_Default_Quad";
-		string meshName = (defaultMesh == Cube) ? "Cube" : "Quad";
+		// Check if this mesh is already loaded, if so, use the existing one
+		auto meshExisting = g_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
+		if (!meshExisting.expired())
+		{
+			m_mesh = meshExisting;
+			return;
+		}
 
-		// Initialize a model that contains this mesh
-		shared_ptr<Model> modelShared = make_shared<Model>(g_context);
-		modelShared->SetRootGameObject(g_gameObject);
-		modelShared->SetResourceName(resourceName);
+		// Create a file path (in the project directory) for this standard mesh
 		string projectDir = g_context->GetSubsystem<ResourceManager>()->GetProjectDirectory();
-		modelShared->SetResourceFilePath(projectDir + resourceName + MODEL_EXTENSION);
-		modelShared->AddMesh(g_gameObject._Get()->GetID(), meshName, vertices, indices);
+		string standardAssetDir = projectDir + "Assets//Standard_Assets//";
+		FileSystem::CreateDirectory_(standardAssetDir);
+		string meshFilePath = standardAssetDir + meshName + MESH_EXTENSION;
 
-		// Add the model to the resource manager and get it as a weak reference. It's important to do that
-		// because the resource manager will maintain it's own copy, thus any external references like
-		// the local shared model here, will expire when this function goes out of scope.
-		weak_ptr<Model> modelWeak = g_context->GetSubsystem<ResourceManager>()->Add<Model>(modelShared);
-		m_mesh = modelWeak._Get()->GetMeshByName(meshName);
+		// Create a mesh, save it and add it to the ResourceManager
+		auto mesh = make_shared<Mesh>(g_context);
+		mesh->SetVertices(vertices);
+		mesh->SetIndices(indices);
+		mesh->SetResourceName(meshName);
+		mesh->SetResourceFilePath(meshFilePath);	
+		mesh->SaveToFile(meshFilePath);
+		mesh->Construct();
+		m_mesh = g_context->GetSubsystem<ResourceManager>()->Add<Mesh>(mesh);
 	}
 
 	bool MeshFilter::SetBuffers()
@@ -176,7 +164,7 @@ namespace Directus
 
 	string MeshFilter::GetMeshName()
 	{
-		return !m_mesh.expired() ? m_mesh._Get()->GetName() : NOT_ASSIGNED;
+		return !m_mesh.expired() ? m_mesh._Get()->GetResourceName() : NOT_ASSIGNED;
 	}
 
 	void MeshFilter::CreateCube(vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices)

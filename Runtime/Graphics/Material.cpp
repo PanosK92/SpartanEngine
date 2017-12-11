@@ -39,7 +39,7 @@ namespace Directus
 	Material::Material(Context* context)
 	{
 		// Resource
-		InitializeResource(Resource_Material);
+		RegisterResource(Resource_Material);
 
 		// Material
 		m_context = context;

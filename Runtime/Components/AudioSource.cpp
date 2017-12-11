@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../Audio/Audio.h"
 #include "../FileSystem/FileSystem.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 //===================================
 
 //= NAMESPACES ================
@@ -106,7 +106,7 @@ namespace Directus
 		m_audioClip._Get()->Update();
 	}
 	
-	void AudioSource::Serialize(StreamIO* stream)
+	void AudioSource::Serialize(FileStream* stream)
 	{
 		stream->Write(m_filePath);
 		stream->Write(m_mute);
@@ -118,7 +118,7 @@ namespace Directus
 		stream->Write(m_pan);
 	}
 	
-	void AudioSource::Deserialize(StreamIO* stream)
+	void AudioSource::Deserialize(FileStream* stream)
 	{
 		stream->Read(&m_filePath);
 		stream->Read(&m_mute);

@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PREFAB_EXTENSION ".prefab"
 #define SHADER_EXTENSION ".shader"
 #define TEXTURE_EXTENSION ".texture"
+#define MESH_EXTENSION ".mesh"
 //==================================
 
 namespace Directus
@@ -95,6 +96,7 @@ namespace Directus
 		static bool IsEngineScriptFile(const std::string& filePath);
 		static bool IsEnginePrefabFile(const std::string& filePath);		
 		static bool IsEngineMaterialFile(const std::string& filePath);
+		static bool IsEngineMeshFile(const std::string& filePath);
 		static bool IsEngineModelFile(const std::string& filePath);
 		static bool IsEngineSceneFile(const std::string& filePath);
 		static bool IsEngineTextureFile(const std::string& filePath);

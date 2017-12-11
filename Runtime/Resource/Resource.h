@@ -36,6 +36,7 @@ namespace Directus
 		Resource_Audio,
 		Resource_Material,
 		Resource_Shader,
+		Resource_Mesh,
 		Resource_Model,
 		Resource_Cubemap,
 		Resource_Script,
@@ -56,7 +57,7 @@ namespace Directus
 	public:
 		virtual ~Resource() {}
 
-		void InitializeResource(ResourceType resourceType)
+		void RegisterResource(ResourceType resourceType)
 		{
 			m_resourceType = resourceType;
 			m_resourceID = GENERATE_GUID;

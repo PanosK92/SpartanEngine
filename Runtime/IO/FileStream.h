@@ -38,19 +38,19 @@ namespace Directus
 		class Quaternion;
 	}
 
-	enum SreamIOMode
+	enum FileStreamMode
 	{
-		Mode_Read,
-		Mode_Write
+		FileStreamMode_Read,
+		FileStreamMode_Write
 	};
 
-	class StreamIO
+	class FileStream
 	{
 	public:
-		StreamIO(const std::string& path, SreamIOMode mode);
-		~StreamIO();
+		FileStream(const std::string& path, FileStreamMode mode);
+		~FileStream();
 
-		bool IsCreated() { return m_created; }
+		bool IsOpen() { return m_isOpen; }
 
 		//= WRITING ==================================================
 		template <class T, class = typename std::enable_if<
@@ -122,7 +122,7 @@ namespace Directus
 	private:
 		std::ofstream out;
 		std::ifstream in;
-		SreamIOMode m_mode;
-		bool m_created;
+		FileStreamMode m_mode;
+		bool m_isOpen;
 	};
 }

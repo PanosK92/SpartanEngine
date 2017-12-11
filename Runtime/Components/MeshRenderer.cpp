@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================================
 #include "MeshRenderer.h"
 #include "Transform.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../Logging/Log.h"
 #include "../Core/GameObject.h"
 #include "../Graphics/DeferredShaders/ShaderVariation.h"
@@ -77,7 +77,7 @@ namespace Directus
 
 	}
 
-	void MeshRenderer::Serialize(StreamIO* stream)
+	void MeshRenderer::Serialize(FileStream* stream)
 	{
 		stream->Write((int)m_materialType);
 		stream->Write(!m_material.expired() ? m_material._Get()->GetResourceFilePath() : (string)NOT_ASSIGNED);
@@ -85,7 +85,7 @@ namespace Directus
 		stream->Write(m_receiveShadows);
 	}
 
-	void MeshRenderer::Deserialize(StreamIO* stream)
+	void MeshRenderer::Deserialize(FileStream* stream)
 	{
 		string materialFilePath = NOT_ASSIGNED;
 

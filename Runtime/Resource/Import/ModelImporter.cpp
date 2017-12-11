@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES =============================
 #include "ModelImporter.h"
 #include <vector>
 #include <future>
@@ -31,18 +31,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/GameObject.h"
 #include "../../Core/Context.h"
 #include "../../Components/Transform.h"
-#include "../../Components/MeshRenderer.h"
-#include "../../Components/MeshFilter.h"
 #include "../../FileSystem/FileSystem.h"
 #include "../../Logging/Log.h"
-#include "../../Resource/ResourceManager.h"
 #include "../../Graphics/Model.h"
 #include "../../Graphics/Animation.h"
 #include "../../Graphics/Mesh.h"
 #include "../../EventSystem/EventSystem.h"
-#include "../../Components/Collider.h"
-#include "../../Components/RigidBody.h"
-//=========================================
+#include "../../Graphics/Material.h"
+//========================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -325,7 +321,7 @@ namespace Directus
 				}
 			}
 
-			model->AddAnimationAsNewResource(animation);
+			model->AddAnimation(animation);
 		}
 	}
 
@@ -334,49 +330,40 @@ namespace Directus
 		if (gameobject.expired())
 			return;
 
+		//= GEOMETRY =====================================
 		// Create a new Mesh
-		shared_ptr<Mesh> mesh = make_shared<Mesh>(m_context);
+		auto mesh = make_shared<Mesh>(m_context);
 		mesh->SetModelID(model->GetResourceID());
 		mesh->SetGameObjectID(gameobject._Get()->GetID());
-		mesh->SetName(assimpMesh->mName.C_Str());
+		mesh->SetResourceName(assimpMesh->mName.C_Str());
 
-		// Vertices
-		LoadAiMeshVertices(assimpMesh, mesh);
+		// Populate mesh with vertices
+		LoadAiMeshVertices(assimpMesh, mesh); 
 
-		// Indices
-		LoadAiMeshIndices(assimpMesh, mesh);
+		// Populate mesh with indices
+		LoadAiMeshIndices(assimpMesh, mesh); 
 
-		// Bones
+		// Add the mesh to the model
+		model->AddMesh(mesh, gameobject);
+		//================================================
+
+		//= MATERIAL ========================================================================
+		auto material = shared_ptr<Material>();
+		if (assimpScene->HasMaterials())
+		{
+			// Get aiMaterial
+			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
+			// Convert it and add it to the model
+			model->AddMaterial(AiMaterialToMaterial(model, assimpMaterial), gameobject);
+		}
+		//===================================================================================
+
+		//= BONES ======================================================================
 		for (unsigned int boneIndex = 0; boneIndex < assimpMesh->mNumBones; boneIndex++)
 		{
 			//aiBone* bone = assimpMesh->mBones[boneIndex];
 		}
-
-		// Material
-		shared_ptr<Material> material = shared_ptr<Material>();
-		if (assimpScene->HasMaterials())
-		{
-			aiMaterial* assimpMaterial = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
-			material = AiMaterialToMaterial(model, assimpMaterial);
-		}
-
-		//= Finilize GameObject =====================================================
-		model->AddMesh(mesh);
-		model->AddMaterialAsNewResource(material);
-
-		// Add a MeshFilter and assign the mesh to it
-		MeshFilter* meshFilter = gameobject._Get()->AddComponent<MeshFilter>()._Get();
-		meshFilter->SetMesh(mesh);
-
-		// Add a MeshRenderer and assign the material to it
-		MeshRenderer* meshRenderer = gameobject._Get()->AddComponent<MeshRenderer>()._Get();
-		meshRenderer->SetMaterialFromMemory(material);
-
-		// Add a Collider and assign a mesh collision shape to it
-		gameobject._Get()->AddComponent<RigidBody>();
-		Collider* collider = gameobject._Get()->AddComponent<Collider>()._Get();
-		collider->SetShapeType(ColliderShape_Mesh);
-		//===========================================================================
+		//==============================================================================
 	}
 
 	void ModelImporter::LoadAiMeshIndices(aiMesh* assimpMesh, shared_ptr<Mesh> mesh)
@@ -488,7 +475,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				model->AddTextureToMaterial(material, TextureType_Albedo, ValidateTexturePath(texturePath.data));
+				model->AddTexture(material, TextureType_Albedo, ValidateTexturePath(texturePath.data));
 				// FIX: materials that have a diffuse texture should not be tinted black/grey
 				material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			}
@@ -499,7 +486,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_SHININESS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				model->AddTextureToMaterial(material, TextureType_Roughness, ValidateTexturePath(texturePath.data));
+				model->AddTexture(material, TextureType_Roughness, ValidateTexturePath(texturePath.data));
 			}
 		}
 
@@ -508,7 +495,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_AMBIENT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				model->AddTextureToMaterial(material, TextureType_Metallic, ValidateTexturePath(texturePath.data));
+				model->AddTexture(material, TextureType_Metallic, ValidateTexturePath(texturePath.data));
 			}
 		}
 
@@ -517,7 +504,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				model->AddTextureToMaterial(material, TextureType_Normal, ValidateTexturePath(texturePath.data));
+				model->AddTexture(material, TextureType_Normal, ValidateTexturePath(texturePath.data));
 			}
 		}
 
@@ -526,7 +513,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				model->AddTextureToMaterial(material, TextureType_Occlusion, ValidateTexturePath(texturePath.data));
+				model->AddTexture(material, TextureType_Occlusion, ValidateTexturePath(texturePath.data));
 			}
 		}
 
@@ -535,7 +522,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				model->AddTextureToMaterial(material, TextureType_Emission, ValidateTexturePath(texturePath.data));
+				model->AddTexture(material, TextureType_Emission, ValidateTexturePath(texturePath.data));
 			}
 		}
 		//= HEIGHT TEXTURE ============================================================================================================
@@ -543,7 +530,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				model->AddTextureToMaterial(material, TextureType_Height, ValidateTexturePath(texturePath.data));
+				model->AddTexture(material, TextureType_Height, ValidateTexturePath(texturePath.data));
 			}
 		}
 
@@ -552,7 +539,7 @@ namespace Directus
 		{
 			if (assimpMaterial->GetTexture(aiTextureType_OPACITY, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 			{
-				model->AddTextureToMaterial(material, TextureType_Mask, ValidateTexturePath(texturePath.data));
+				model->AddTexture(material, TextureType_Mask, ValidateTexturePath(texturePath.data));
 			}
 		}
 		return material;

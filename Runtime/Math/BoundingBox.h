@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ==================
 #include "MathHelper.h"
 #include "Vector3.h"
-#include <memory>
-//=====================
+#include <vector>
+#include "../Graphics/Vertex.h"
+//=============================
 
 namespace Directus
 {
@@ -53,9 +54,8 @@ namespace Directus
 				return *this;
 			}
 
-			// Computes a bounding box from a mesh
-			void ComputeFromMesh(std::weak_ptr<Mesh> mesh);
-			void ComputeFromMesh(Mesh* mesh);
+			// Compute bounding box from vertices
+			void ComputeFromVertices(const std::vector<VertexPosTexTBN>& vertices);
 
 			// Returns the center
 			Vector3 GetCenter() const { return (max + min) * 0.5f; }

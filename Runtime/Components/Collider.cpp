@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshFilter.h"
 #include "RigidBody.h"
 #include "../Core/GameObject.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Graphics/Mesh.h"
 #include "../Logging/Log.h"
@@ -97,23 +97,16 @@ namespace Directus
 			m_lastKnownScale = g_transform->GetScale();
 			UpdateShape();
 		}
-
-		// If the MeshFilter is added after the collider, the construction would have failed.
-		// Therefore, keep trying to update the shape here.
-		if (m_shapeType == ColliderShape_Mesh && !m_collisionShape)
-		{
-			UpdateShape();
-		}
 	}
 
-	void Collider::Serialize(StreamIO* stream)
+	void Collider::Serialize(FileStream* stream)
 	{
 		stream->Write(int(m_shapeType));
 		stream->Write(m_size);
 		stream->Write(m_center);
 	}
 
-	void Collider::Deserialize(StreamIO* stream)
+	void Collider::Deserialize(FileStream* stream)
 	{
 		m_shapeType = ColliderShape(stream->ReadInt());
 		stream->Read(&m_size);
@@ -228,11 +221,16 @@ namespace Directus
 				break;
 			}
 
+			// Get mesh geometry
+			vector<VertexPosTexTBN> vertices;
+			vector<unsigned int> indices;
+			mesh->GetGeometry(&vertices, &indices);
+
 			// Construct hull approximation
 			m_collisionShape = make_shared<btConvexHullShape>(
-				(btScalar*)&mesh->GetVertices()[0],	// points
-				mesh->GetVertexCount(),				// point count
-				sizeof(VertexPosTexTBN));			// stride
+				(btScalar*)&vertices[0],	// points
+				mesh->GetVertexCount(),		// point count
+				sizeof(VertexPosTexTBN));	// stride
 
 			// Scaling has to be done before (potential) optimization
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));

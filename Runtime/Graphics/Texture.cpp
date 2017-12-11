@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/DDSTextureImporter.h"
 #include "../Resource/ResourceManager.h"
 #include "D3D11/D3D11Texture.h"
-#include "../IO/StreamIO.h"
+#include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
 //================================================
 
@@ -68,7 +68,7 @@ namespace Directus
 	Texture::Texture(Context* context)
 	{
 		// Resource
-		InitializeResource(Resource_Texture);
+		RegisterResource(Resource_Texture);
 
 		// Texture
 		m_context = context;
@@ -356,8 +356,8 @@ namespace Directus
 
 	bool Texture::Serialize(const string& filePath)
 	{
-		auto file = make_unique<StreamIO>(filePath, Mode_Write);
-		if (!file->IsCreated())
+		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
+		if (!file->IsOpen())
 			return false;
 
 		file->Write((int)m_type);
@@ -380,8 +380,8 @@ namespace Directus
 
 	bool Texture::Deserialize(const string& filePath)
 	{
-		auto file = make_unique<StreamIO>(filePath, Mode_Read);
-		if (!file->IsCreated())
+		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
+		if (!file->IsOpen())
 			return false;
 
 		ClearTextureBits();
