@@ -47,7 +47,7 @@ namespace Directus
 		//= RESOURCE INTERFACE =============================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
-		unsigned int GetMemoryUsageKB() override { return m_memoryUsageKB; }
+		unsigned int GetMemoryUsageKB() override;
 		//==================================================================
 
 		unsigned int GetGameObjectID() { return m_gameObjID; }
@@ -57,7 +57,7 @@ namespace Directus
 		void SetModelID(unsigned int modelID) { m_modelID = modelID; }
 
 		//= GEOMETRY ================================================================================
-		// Clears geomtry (vertices and indices)
+		// Clears geometry (vertices and indices)
 		void ClearGeometry();
 		// Returns vertices & indices and loads them from disk. in case they have been erased
 		void GetGeometry(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
@@ -88,10 +88,9 @@ namespace Directus
 		bool SetBuffers();
 
 	private:
-		//= HELPER FUNCTIONS ===============
+		//= HELPER FUNCTIONS ===
 		bool ConstructBuffers();
-		unsigned int ComputeMemoryUsageKB();
-		//==================================
+		//======================
 
 		unsigned int m_gameObjID;
 		unsigned int m_modelID;
@@ -103,7 +102,6 @@ namespace Directus
 		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
 		Math::BoundingBox m_boundingBox;
-		unsigned int m_memoryUsageKB;
 		Context* m_context;
 	};
 }
