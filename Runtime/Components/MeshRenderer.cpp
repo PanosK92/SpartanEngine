@@ -154,14 +154,15 @@ namespace Directus
 	void MeshRenderer::SetMaterialByType(MaterialType type)
 	{
 		shared_ptr<Material> material;
-		string projectDir = g_context->GetSubsystem<ResourceManager>()->GetProjectDirectory();
+		string projectStandardAssetDir = g_context->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
+		FileSystem::CreateDirectory_(projectStandardAssetDir);
 
 		switch (type)
 		{
 		case Material_Basic:
 			material = make_shared<Material>(g_context);
 			material->SetResourceName("Standard");
-			material->SetResourceFilePath(projectDir + "Standard_Asset_Standard_Material" + string(MATERIAL_EXTENSION));
+			material->SetResourceFilePath(projectStandardAssetDir + "Standard_Material" + string(MATERIAL_EXTENSION));
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);
 			m_materialType = Material_Basic;
@@ -170,7 +171,7 @@ namespace Directus
 		case Material_Skybox:
 			material = make_shared<Material>(g_context);
 			material->SetResourceName("Standard_Skybox");
-			material->SetResourceFilePath(projectDir + "Standard_Asset_Standard_Material_Skybox" + string(MATERIAL_EXTENSION));
+			material->SetResourceFilePath(projectStandardAssetDir + "Standard_Material_Skybox" + string(MATERIAL_EXTENSION));
 			material->SetCullMode(CullFront);
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 			material->SetIsEditable(false);
