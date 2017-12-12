@@ -69,7 +69,7 @@ namespace Directus
 		m_standardResourceDirectories[type] = directory;
 	}
 
-	string ResourceManager::GetStandardResourceDirectory(ResourceType type)
+	const string& ResourceManager::GetStandardResourceDirectory(ResourceType type)
 	{
 		for (auto& directory : m_standardResourceDirectories)
 		{

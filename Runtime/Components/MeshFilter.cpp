@@ -126,10 +126,9 @@ namespace Directus
 		}
 
 		// Create a file path (in the project directory) for this standard mesh
-		string projectDir = g_context->GetSubsystem<ResourceManager>()->GetProjectDirectory();
-		string standardAssetDir = projectDir + "Assets//Standard_Assets//";
-		FileSystem::CreateDirectory_(standardAssetDir);
-		string meshFilePath = standardAssetDir + meshName + MESH_EXTENSION;
+		string projectStandardAssetDir = g_context->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
+		FileSystem::CreateDirectory_(projectStandardAssetDir);
+		string meshFilePath = projectStandardAssetDir + meshName + MESH_EXTENSION;
 
 		// Create a mesh, save it and add it to the ResourceManager
 		auto mesh = make_shared<Mesh>(g_context);

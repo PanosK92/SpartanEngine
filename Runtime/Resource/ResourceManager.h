@@ -183,9 +183,10 @@ namespace Directus
 
 		// Directories
 		void AddStandardResourceDirectory(ResourceType type, const std::string& directory);
-		std::string GetStandardResourceDirectory(ResourceType type);
+		const std::string& GetStandardResourceDirectory(ResourceType type);
 		void SetProjectDirectory(const std::string& directory);
-		std::string GetProjectDirectory() { return m_projectDirectory; }
+		const std::string& GetProjectDirectory() { return m_projectDirectory; }
+		std::string GetProjectStandardAssetsDirectory() { return m_projectDirectory + "Standard_Assets//"; }
 
 		// Importers
 		std::weak_ptr<ModelImporter> GetModelImporter() { return m_modelImporter; }
