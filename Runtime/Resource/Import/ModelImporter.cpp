@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Graphics/Mesh.h"
 #include "../../EventSystem/EventSystem.h"
 #include "../../Graphics/Material.h"
+#include "AssimpHelper.h"
 //========================================
 
 //= NAMESPACES ================
@@ -68,58 +69,6 @@ static int normalSmoothAngle = 80;
 
 namespace Directus
 {
-	//= HELPER FUNCTIONS =============================================
-	Matrix aiMatrix4x4ToMatrix(const aiMatrix4x4& transform)
-	{
-		return Matrix(
-			transform.a1, transform.b1, transform.c1, transform.d1,
-			transform.a2, transform.b2, transform.c2, transform.d2,
-			transform.a3, transform.b3, transform.c3, transform.d3,
-			transform.a4, transform.b4, transform.c4, transform.d4
-		);
-	}
-
-	void SetGameObjectTransform(weakGameObj gameObject, aiNode* node)
-	{
-		if (gameObject.expired())
-			return;
-
-		aiMatrix4x4 mAssimp = node->mTransformation;
-		Vector3 position;
-		Quaternion rotation;
-		Vector3 scale;
-
-		// Decompose the transformation matrix
-		Matrix mEngine = aiMatrix4x4ToMatrix(mAssimp);
-		mEngine.Decompose(scale, rotation, position);
-
-		// Apply position, rotation and scale
-		gameObject._Get()->GetTransform()->SetPositionLocal(position);
-		gameObject._Get()->GetTransform()->SetRotationLocal(rotation);
-		gameObject._Get()->GetTransform()->SetScaleLocal(scale);
-	}
-
-	Vector4 ToVector4(const aiColor4D& aiColor)
-	{
-		return Vector4(aiColor.r, aiColor.g, aiColor.b, aiColor.a);
-	}
-
-	Vector3 ToVector3(const aiVector3D& aiVector)
-	{
-		return Vector3(aiVector.x, aiVector.y, aiVector.z);
-	}
-
-	Vector2 ToVector2(const aiVector2D& aiVector)
-	{
-		return Vector2(aiVector.x, aiVector.y);
-	}
-
-	Quaternion ToQuaternion(const aiQuaternion& aiQuaternion)
-	{
-		return Quaternion(aiQuaternion.x, aiQuaternion.y, aiQuaternion.z, aiQuaternion.w);
-	}
-	//==================================================================
-
 	vector<string> materialNames;
 
 	ModelImporter::ModelImporter(Context* context)
@@ -203,8 +152,7 @@ namespace Directus
 	//= PROCESSING ===============================================================================
 	void ModelImporter::ReadNodeHierarchy(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<GameObject>& parentNode, weak_ptr<GameObject>& newNode)
 	{
-		// Get scene here because it's used below
-		Scene* scene = m_context->GetSubsystem<Scene>();
+		auto scene = m_context->GetSubsystem<Scene>();
 
 		// Is this the root node?
 		if (!assimpNode->mParent || newNode.expired())
@@ -240,8 +188,8 @@ namespace Directus
 		Transform* parentTrans = !parentNode.expired() ? parentNode._Get()->GetTransform() : nullptr;
 		newNode._Get()->GetTransform()->SetParent(parentTrans);
 
-		// Set the transformation matrix of the assimp node to the new node
-		SetGameObjectTransform(newNode, assimpNode);
+		// Set the transformation matrix of the Assimp node to the new node
+		AssimpHelper::SetGameObjectTransform(newNode, assimpNode);
 
 		// Process all the node's meshes
 		for (unsigned int i = 0; i < assimpNode->mNumMeshes; i++)
@@ -297,7 +245,7 @@ namespace Directus
 				for (unsigned int k = 0; k < assimpNodeAnim->mNumPositionKeys; k++)
 				{
 					double time = assimpNodeAnim->mPositionKeys[k].mTime;
-					Vector3 value = ToVector3(assimpNodeAnim->mPositionKeys[k].mValue);
+					Vector3 value = AssimpHelper::ToVector3(assimpNodeAnim->mPositionKeys[k].mValue);
 
 					animationNode.positionFrames.push_back(KeyVector{ time, value });
 				}
@@ -306,7 +254,7 @@ namespace Directus
 				for (unsigned int k = 0; k < assimpNodeAnim->mNumRotationKeys; k++)
 				{
 					double time = assimpNodeAnim->mPositionKeys[k].mTime;
-					Quaternion value = ToQuaternion(assimpNodeAnim->mRotationKeys[k].mValue);
+					Quaternion value = AssimpHelper::ToQuaternion(assimpNodeAnim->mRotationKeys[k].mValue);
 
 					animationNode.rotationFrames.push_back(KeyQuaternion{ time, value });
 				}
@@ -315,7 +263,7 @@ namespace Directus
 				for (unsigned int k = 0; k < assimpNodeAnim->mNumScalingKeys; k++)
 				{
 					double time = assimpNodeAnim->mPositionKeys[k].mTime;
-					Vector3 value = ToVector3(assimpNodeAnim->mScalingKeys[k].mValue);
+					Vector3 value = AssimpHelper::ToVector3(assimpNodeAnim->mScalingKeys[k].mValue);
 
 					animationNode.scaleFrames.push_back(KeyVector{ time, value });
 				}
@@ -396,30 +344,30 @@ namespace Directus
 		for (unsigned int vertexIndex = 0; vertexIndex < assimpMesh->mNumVertices; vertexIndex++)
 		{
 			// Position
-			position = ToVector3(assimpMesh->mVertices[vertexIndex]);
+			position = AssimpHelper::ToVector3(assimpMesh->mVertices[vertexIndex]);
 
 			// Normal
 			if (assimpMesh->mNormals)
 			{
-				normal = ToVector3(assimpMesh->mNormals[vertexIndex]);
+				normal = AssimpHelper::ToVector3(assimpMesh->mNormals[vertexIndex]);
 			}
 
 			// Tangent
 			if (assimpMesh->mTangents)
 			{
-				tangent = ToVector3(assimpMesh->mTangents[vertexIndex]);
+				tangent = AssimpHelper::ToVector3(assimpMesh->mTangents[vertexIndex]);
 			}
 
 			// Bitagent
 			if (assimpMesh->mBitangents)
 			{
-				bitangent = ToVector3(assimpMesh->mBitangents[vertexIndex]);
+				bitangent = AssimpHelper::ToVector3(assimpMesh->mBitangents[vertexIndex]);
 			}
 
 			// Texture Coordinates
 			if (assimpMesh->HasTextureCoords(0))
 			{
-				uv = ToVector2(aiVector2D(assimpMesh->mTextureCoords[0][vertexIndex].x, assimpMesh->mTextureCoords[0][vertexIndex].y));
+				uv = AssimpHelper::ToVector2(aiVector2D(assimpMesh->mTextureCoords[0][vertexIndex].x, assimpMesh->mTextureCoords[0][vertexIndex].y));
 			}
 
 			// save the vertex
@@ -462,7 +410,7 @@ namespace Directus
 		//= DIFFUSE COLOR ===================================================
 		aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
 		aiGetMaterialColor(assimpMaterial, AI_MATKEY_COLOR_DIFFUSE, &colorDiffuse);
-		material->SetColorAlbedo(ToVector4(colorDiffuse));
+		material->SetColorAlbedo(AssimpHelper::ToVector4(colorDiffuse));
 
 		//= OPACITY ==============================================
 		aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
