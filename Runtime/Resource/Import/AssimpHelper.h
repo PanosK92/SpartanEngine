@@ -30,61 +30,59 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\..\Core\GameObject.h"
 //================================
 
-//= NAMESPACES ================
-using namespace std;
-using namespace Directus::Math;
-//=============================
-
-class AssimpHelper
+namespace Directus
 {
-public:
-	static Matrix aiMatrix4x4ToMatrix(const aiMatrix4x4& transform)
+	class AssimpHelper
 	{
-		return Matrix(
-			transform.a1, transform.b1, transform.c1, transform.d1,
-			transform.a2, transform.b2, transform.c2, transform.d2,
-			transform.a3, transform.b3, transform.c3, transform.d3,
-			transform.a4, transform.b4, transform.c4, transform.d4
-		);
-	}
+	public:
+		static Math::Matrix aiMatrix4x4ToMatrix(const aiMatrix4x4& transform)
+		{
+			return Math::Matrix(
+				transform.a1, transform.b1, transform.c1, transform.d1,
+				transform.a2, transform.b2, transform.c2, transform.d2,
+				transform.a3, transform.b3, transform.c3, transform.d3,
+				transform.a4, transform.b4, transform.c4, transform.d4
+			);
+		}
 
-	static void SetGameObjectTransform(weak_ptr<GameObject> gameObject, aiNode* node)
-	{
-		if (gameObject.expired())
-			return;
+		static void SetGameObjectTransform(std::weak_ptr<GameObject> gameObject, aiNode* node)
+		{
+			if (gameObject.expired())
+				return;
 
-		aiMatrix4x4 mAssimp = node->mTransformation;
-		Vector3 position;
-		Quaternion rotation;
-		Vector3 scale;
+			aiMatrix4x4 mAssimp = node->mTransformation;
+			Math::Vector3 position;
+			Math::Quaternion rotation;
+			Math::Vector3 scale;
 
-		// Decompose the transformation matrix
-		Matrix mEngine = aiMatrix4x4ToMatrix(mAssimp);
-		mEngine.Decompose(scale, rotation, position);
+			// Decompose the transformation matrix
+			Math::Matrix mEngine = aiMatrix4x4ToMatrix(mAssimp);
+			mEngine.Decompose(scale, rotation, position);
 
-		// Apply position, rotation and scale
-		gameObject._Get()->GetTransform()->SetPositionLocal(position);
-		gameObject._Get()->GetTransform()->SetRotationLocal(rotation);
-		gameObject._Get()->GetTransform()->SetScaleLocal(scale);
-	}
+			// Apply position, rotation and scale
+			gameObject._Get()->GetTransform()->SetPositionLocal(position);
+			gameObject._Get()->GetTransform()->SetRotationLocal(rotation);
+			gameObject._Get()->GetTransform()->SetScaleLocal(scale);
+		}
 
-	static Vector4 ToVector4(const aiColor4D& aiColor)
-	{
-		return Vector4(aiColor.r, aiColor.g, aiColor.b, aiColor.a);
-	}
+		static Math::Vector4 ToVector4(const aiColor4D& aiColor)
+		{
+			return Math::Vector4(aiColor.r, aiColor.g, aiColor.b, aiColor.a);
+		}
 
-	static Vector3 ToVector3(const aiVector3D& aiVector)
-	{
-		return Vector3(aiVector.x, aiVector.y, aiVector.z);
-	}
+		static Math::Vector3 ToVector3(const aiVector3D& aiVector)
+		{
+			return Math::Vector3(aiVector.x, aiVector.y, aiVector.z);
+		}
 
-	static Vector2 ToVector2(const aiVector2D& aiVector)
-	{
-		return Vector2(aiVector.x, aiVector.y);
-	}
+		static Math::Vector2 ToVector2(const aiVector2D& aiVector)
+		{
+			return Math::Vector2(aiVector.x, aiVector.y);
+		}
 
-	static Quaternion ToQuaternion(const aiQuaternion& aiQuaternion)
-	{
-		return Quaternion(aiQuaternion.x, aiQuaternion.y, aiQuaternion.z, aiQuaternion.w);
-	}
-};
+		static Math::Quaternion ToQuaternion(const aiQuaternion& aiQuaternion)
+		{
+			return Math::Quaternion(aiQuaternion.x, aiQuaternion.y, aiQuaternion.z, aiQuaternion.w);
+		}
+	};
+}
