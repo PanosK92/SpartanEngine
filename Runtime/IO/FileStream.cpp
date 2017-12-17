@@ -168,10 +168,13 @@ namespace Directus
 		in.read(reinterpret_cast<char*>(value), sizeof(Quaternion));
 	}
 
-	void FileStream::Read(vector<string>* value)
+	void FileStream::Read(vector<string>* vec)
 	{
-		value->clear();
-		value->shrink_to_fit();
+		if (!vec)
+			return;
+
+		vec->clear();
+		vec->shrink_to_fit();
 
 		unsigned int size = 0;
 		Read(&size);
@@ -180,46 +183,55 @@ namespace Directus
 		for (unsigned int i = 0; i < size; i++)
 		{
 			Read(&str);
-			value->emplace_back(str);
+			vec->emplace_back(str);
 		}
 	}
 
-	void FileStream::Read(vector<VertexPosTexTBN>* value)
+	void FileStream::Read(vector<VertexPosTexTBN>* vec)
 	{
-		value->clear();
-		value->shrink_to_fit();
+		if (!vec)
+			return;
+
+		vec->clear();
+		vec->shrink_to_fit();
 
 		unsigned int length = ReadUInt();
 
-		value->reserve(length);
-		value->resize(length);
+		vec->reserve(length);
+		vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(value->data()), sizeof(VertexPosTexTBN) * length);
+		in.read(reinterpret_cast<char*>(vec->data()), sizeof(VertexPosTexTBN) * length);
 	}
 
-	void FileStream::Read(vector<unsigned int>* value)
+	void FileStream::Read(vector<unsigned int>* vec)
 	{
-		value->clear();
-		value->shrink_to_fit();
+		if (!vec)
+			return;
+
+		vec->clear();
+		vec->shrink_to_fit();
 
 		unsigned int length = ReadUInt();
 
-		value->reserve(length);
-		value->resize(length);
+		vec->reserve(length);
+		vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(value->data()), sizeof(unsigned int) * length);
+		in.read(reinterpret_cast<char*>(vec->data()), sizeof(unsigned int) * length);
 	}
 
-	void FileStream::Read(vector<unsigned char>* value)
+	void FileStream::Read(vector<unsigned char>* vec)
 	{
-		value->clear();
-		value->shrink_to_fit();
+		if (!vec)
+			return;
+
+		vec->clear();
+		vec->shrink_to_fit();
 
 		unsigned int length = ReadUInt();
 
-		value->reserve(length);
-		value->resize(length);
+		vec->reserve(length);
+		vec->resize(length);
 
-		in.read(reinterpret_cast<char*>(value->data()), sizeof(unsigned char) * length);
+		in.read(reinterpret_cast<char*>(vec->data()), sizeof(unsigned char) * length);
 	}
 }

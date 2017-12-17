@@ -714,7 +714,7 @@ namespace Directus
 		return maxAdapter;
 	}
 
-	IDXGIAdapter* D3D11GraphicsDevice::GetAdapterByVendorID(IDXGIFactory* factory, unsigned vendorID)
+	IDXGIAdapter* D3D11GraphicsDevice::GetAdapterByVendorID(IDXGIFactory* factory, unsigned int vendorID)
 	{
 		// Nvidia: 0x10DE
 		// AMD: 0x1002, 0x1022

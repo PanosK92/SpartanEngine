@@ -31,8 +31,9 @@ using namespace std;
 
 namespace Directus
 {
-	D3D11VertexBuffer::D3D11VertexBuffer(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
+	D3D11VertexBuffer::D3D11VertexBuffer(D3D11GraphicsDevice* graphicsDevice)
 	{
+		m_graphics = graphicsDevice;
 		m_buffer = nullptr;
 		m_stride = 0;
 	}
@@ -177,12 +178,21 @@ namespace Directus
 
 	void* D3D11VertexBuffer::Map()
 	{
-		if (!m_graphics || !m_graphics->GetDeviceContext())
+		if (!m_graphics)
+		{
+			LOG_ERROR("D3D11VertexBuffer: Can't map. Graphics adapter is uninitialized.");
 			return nullptr;
+		}
+
+		if (!m_graphics->GetDeviceContext())
+		{
+			LOG_ERROR("D3D11VertexBuffer: Can't map. Graphics adapter context is uninitialized.");
+			return nullptr;
+		}
 
 		if (!m_buffer)
 		{
-			LOG_ERROR("D3D11VertexBuffer: Can't map uninitialized vertex buffer.");
+			LOG_ERROR("D3D11VertexBuffer: Can't map. Buffer is uninitialized.");
 			return nullptr;
 		}
 
@@ -200,8 +210,23 @@ namespace Directus
 
 	bool D3D11VertexBuffer::Unmap()
 	{
-		if (!m_graphics || !m_graphics->GetDeviceContext() || !m_buffer)
+		if (!m_graphics)
+		{
+			LOG_ERROR("D3D11VertexBuffer: Can't unmap. Graphics adapter is uninitialized.");
 			return false;
+		}
+
+		if (!m_graphics->GetDeviceContext())
+		{
+			LOG_ERROR("D3D11VertexBuffer: Can't unmap. Graphics adapter context is uninitialized.");
+			return false;
+		}
+
+		if (!m_buffer)
+		{
+			LOG_ERROR("D3D11VertexBuffer: Can't unmap. Buffer is uninitialized.");
+			return false;
+		}
 
 		// re-enable GPU access to the vertex buffer data.
 		m_graphics->GetDeviceContext()->Unmap(m_buffer, 0);
@@ -211,8 +236,23 @@ namespace Directus
 
 	bool D3D11VertexBuffer::SetIA()
 	{
-		if (!m_graphics || !m_graphics->GetDeviceContext() || !m_buffer)
+		if (!m_graphics)
+		{
+			LOG_ERROR("D3D11VertexBuffer: Can't set input assembly. Graphics adapter is uninitialized.");
 			return false;
+		}
+
+		if (!m_graphics->GetDeviceContext())
+		{
+			LOG_ERROR("D3D11VertexBuffer: Can't set input assembly. Graphics adapter context is uninitialized.");
+			return false;
+		}
+
+		if (!m_buffer)
+		{
+			LOG_ERROR("D3D11VertexBuffer: Can't set input assembly. Buffer is uninitialized.");
+			return false;
+		}
 
 		unsigned int offset = 0;
 		m_graphics->GetDeviceContext()->IASetVertexBuffers(0, 1, &m_buffer, &m_stride, &offset);

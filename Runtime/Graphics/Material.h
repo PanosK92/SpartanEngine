@@ -130,8 +130,21 @@ namespace Directus
 
 		std::weak_ptr<ShaderVariation> m_shader;
 
+		struct TexInfo
+		{
+			TexInfo(std::weak_ptr<Texture> texture, std::string name, std::string path)
+			{
+				this->texture = texture;
+				this->name	= name;
+				this->path	= path;
+			}
+
+			std::weak_ptr<Texture> texture;
+			std::string name;
+			std::string path;
+		};
 		// <tex_type, <tex,	tex_path>>
-		std::map<TextureType, std::pair<std::weak_ptr<Texture>, std::string>> m_textures;
+		std::map<TextureType, TexInfo> m_textures;
 
 		unsigned int m_modelID;
 		CullMode m_cullMode;

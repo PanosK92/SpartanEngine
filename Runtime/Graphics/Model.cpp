@@ -110,7 +110,6 @@ namespace Directus
 		if (!file->IsOpen())
 			return false;
 
-		file->Write(GetResourceID());
 		file->Write(GetResourceName());
 		file->Write(GetResourceFilePath());
 		file->Write(m_normalizedScale);
@@ -136,7 +135,7 @@ namespace Directus
 
 		// In case this mesh is new, create one 
 		auto mesh = make_shared<Mesh>(m_context);
-		mesh->SetModelID(GetResourceID());
+		mesh->SetModelName(GetName());
 		mesh->SetGameObjectID(!gameObject.expired() ? gameObject._Get()->GetID() : NOT_ASSIGNED_HASH);
 		mesh->SetResourceName(name);
 		mesh->SetVertices(vertices);
@@ -279,19 +278,6 @@ namespace Directus
 		material._Get()->SetTexture(texture);
 	}
 
-	weak_ptr<Mesh> Model::GetMeshByID(unsigned int id)
-	{
-		for (const auto& mesh : m_meshes)
-		{
-			if (mesh._Get()->GetResourceID() == id)
-			{
-				return mesh;
-			}
-		}
-
-		return weak_ptr<Mesh>();
-	}
-
 	weak_ptr<Mesh> Model::GetMeshByName(const string& name)
 	{
 		for (const auto& mesh : m_meshes)
@@ -309,6 +295,11 @@ namespace Directus
 	{
 		Vector3 extent = m_boundingBox.GetExtents().Absolute();
 		return Max(Max(extent.x, extent.y), extent.z);
+	}
+
+	const string& Model::GetName()
+	{
+		return !m_rootGameObj.expired() ? m_rootGameObj._Get()->GetName() : NOT_ASSIGNED;
 	}
 
 	void Model::SetWorkingDirectory(const string& directory)
@@ -335,7 +326,6 @@ namespace Directus
 
 		int meshCount = 0;
 
-		file->Read(&m_resourceID);
 		file->Read(&m_resourceName);
 		file->Read(&m_resourceFilePath);
 		file->Read(&m_normalizedScale);

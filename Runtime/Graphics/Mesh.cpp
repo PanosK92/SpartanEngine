@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "../Graphics/Mesh.h"
 #include "../Logging/Log.h"
-#include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
 #include "../IO/FileStream.h"
 #include "../Core/Context.h"
@@ -87,7 +86,6 @@ namespace Directus
 
 		file->Read(&m_vertices);
 		file->Read(&m_indices);
-		file->Read(&m_resourceID);
 		file->Read(&m_gameObjID);
 		file->Read(&m_modelID);
 		file->Read(&m_resourceName);
@@ -111,7 +109,6 @@ namespace Directus
 
 		file->Write(m_vertices);
 		file->Write(m_indices);
-		file->Write(m_resourceID);
 		file->Write(m_gameObjID);
 		file->Write(m_modelID);
 		file->Write(m_resourceName);
@@ -142,8 +139,8 @@ namespace Directus
 			return;
 
 		// Read vertices and indices
-		if (vertices)	{ file->Read(vertices); }
-		if (indices)	{ file->Read(indices); }
+		file->Read(vertices);
+		file->Read(indices);
 	}
 
 	//=========================================================================

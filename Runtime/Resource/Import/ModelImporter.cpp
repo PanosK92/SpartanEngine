@@ -281,7 +281,7 @@ namespace Directus
 		//= GEOMETRY =====================================
 		// Create a new Mesh
 		auto mesh = make_shared<Mesh>(m_context);
-		mesh->SetModelID(model->GetResourceID());
+		mesh->SetModelName(model->GetName());
 		mesh->SetGameObjectID(gameobject._Get()->GetID());
 		mesh->SetResourceName(assimpMesh->mName.C_Str());
 

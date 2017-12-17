@@ -42,20 +42,20 @@ namespace Directus
 		RegisterResource(Resource_Material);
 
 		// Material
-		m_context				= context;
-		m_modelID				= NOT_ASSIGNED_HASH;
-		m_cullMode				= CullBack;
-		m_opacity				= 1.0f;
-		m_alphaBlending			= false;
-		m_shadingMode			= Shading_PBR;
-		m_colorAlbedo			= Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-		m_roughnessMultiplier	= 1.0f;
-		m_metallicMultiplier	= 0.0f;
-		m_normalMultiplier		= 0.0f;
-		m_heightMultiplier		= 0.0f;
-		m_uvTiling				= Vector2(1.0f, 1.0f);
-		m_uvOffset				= Vector2(0.0f, 0.0f);
-		m_isEditable			= true;
+		m_context = context;
+		m_modelID = NOT_ASSIGNED_HASH;
+		m_cullMode = CullBack;
+		m_opacity = 1.0f;
+		m_alphaBlending = false;
+		m_shadingMode = Shading_PBR;
+		m_colorAlbedo = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+		m_roughnessMultiplier = 1.0f;
+		m_metallicMultiplier = 0.0f;
+		m_normalMultiplier = 0.0f;
+		m_heightMultiplier = 0.0f;
+		m_uvTiling = Vector2(1.0f, 1.0f);
+		m_uvOffset = Vector2(0.0f, 0.0f);
+		m_isEditable = true;
 
 		AcquireShader();
 	}
@@ -78,42 +78,38 @@ namespace Directus
 		xml->GetAttribute("Material", "Name", GetResourceName());
 		SetResourceFilePath(xml->GetAttributeAsStr("Material", "Path"));
 		xml->GetAttribute("Material", "Model_ID", m_modelID);
-		m_cullMode = CullMode(xml->GetAttributeAsInt("Material", "Cull_Mode"));
 		xml->GetAttribute("Material", "Opacity", m_opacity);
-		xml->GetAttribute("Material", "Alpha_Blending", m_alphaBlending);
-		m_shadingMode = ShadingMode(xml->GetAttributeAsInt("Material", "Shading_Mode"));
-		m_colorAlbedo = xml->GetAttributeAsVector4("Material", "Color");
+		xml->GetAttribute("Material", "Alpha_Blending", m_alphaBlending);	
 		xml->GetAttribute("Material", "Roughness_Multiplier", m_roughnessMultiplier);
 		xml->GetAttribute("Material", "Metallic_Multiplier", m_metallicMultiplier);
 		xml->GetAttribute("Material", "Normal_Multiplier", m_normalMultiplier);
 		xml->GetAttribute("Material", "Height_Multiplier", m_heightMultiplier);
-		m_uvTiling = xml->GetAttributeAsVector2("Material", "UV_Tiling");
-		m_uvOffset = xml->GetAttributeAsVector2("Material", "UV_Offset");
 		xml->GetAttribute("Material", "IsEditable", m_isEditable);
+		m_cullMode		= CullMode(xml->GetAttributeAsInt("Material", "Cull_Mode"));
+		m_shadingMode	= ShadingMode(xml->GetAttributeAsInt("Material", "Shading_Mode"));
+		m_colorAlbedo	= xml->GetAttributeAsVector4("Material", "Color");
+		m_uvTiling		= xml->GetAttributeAsVector2("Material", "UV_Tiling");
+		m_uvOffset		= xml->GetAttributeAsVector2("Material", "UV_Offset");
 
 		int textureCount = xml->GetAttributeAsInt("Textures", "Count");
 		for (int i = 0; i < textureCount; i++)
 		{
-			string nodeName = "Texture_" + to_string(i);
+			string nodeName		= "Texture_" + to_string(i);
 			TextureType texType = (TextureType)xml->GetAttributeAsInt(nodeName, "Texture_Type");
-			string texName = xml->GetAttributeAsStr(nodeName, "Texture_Name");
+			string texName		= xml->GetAttributeAsStr(nodeName, "Texture_Name");
+			string texPath		= xml->GetAttributeAsStr(nodeName, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
-			auto texture = weak_ptr<Texture>();
-			if (m_context)
-			{
-				texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Texture>(texName);
-			}
-
-			m_textures.insert(make_pair(texType, make_pair(texture, texName)));
+			auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Texture>(texName);
+			m_textures.insert(make_pair(texType, TexInfo(texture, texName, texPath)));
 		}
 
-		// Load unloaded textures
+		// Load unloaded (expired) textures
 		for (auto& it : m_textures)
 		{
-			if (it.second.first.expired())
+			if (it.second.texture.expired())
 			{
-				it.second.first = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(it.second.second);
+				it.second.texture = m_context->GetSubsystem<ResourceManager>()->Load<Texture>(it.second.path);
 			}
 		}
 
@@ -159,7 +155,8 @@ namespace Directus
 			string texNode = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", texNode);
 			xml->AddAttribute(texNode, "Texture_Type", (int)texture.first);
-			xml->AddAttribute(texNode, "Texture_Name", texture.second.second);
+			xml->AddAttribute(texNode, "Texture_Name", texture.second.name);
+			xml->AddAttribute(texNode, "Texture_Path", texture.second.path);
 			i++;
 		}
 
@@ -190,19 +187,21 @@ namespace Directus
 		}
 
 		TextureType texType = texture._Get()->GetType();
-		string texName = texture._Get()->GetResourceName();
+		string texName		= texture._Get()->GetResourceName();
+		string texPath		= texture._Get()->GetResourceFilePath();
 
 		// Check if a texture of that type already exists and replace it
 		auto it = m_textures.find(texType);
 		if (it != m_textures.end())
 		{
-			it->second.first = texture;
-			it->second.second = texName;
+			it->second.texture	= texture;
+			it->second.name		= texName;
+			it->second.path		= texPath;
 		}
 		else
 		{
 			// If that's a new texture type, simply add it
-			m_textures.insert(make_pair(texType, make_pair(texture, texName)));
+			m_textures.insert(make_pair(texType, TexInfo(texture, texName, texPath)));
 		}
 
 		// Adjust texture multipliers
@@ -218,7 +217,7 @@ namespace Directus
 		{
 			if (it.first == type)
 			{
-				return it.second.first;
+				return it.second.texture;
 			}
 		}
 
@@ -242,7 +241,7 @@ namespace Directus
 	{
 		for (const auto& it : m_textures)
 		{
-			if (it.second.second == path)
+			if (it.second.path == path)
 			{
 				return true;
 			}
@@ -257,7 +256,7 @@ namespace Directus
 		{
 			if (it.first == type)
 			{
-				return it.second.second;
+				return it.second.path;
 			}
 		}
 
@@ -269,7 +268,7 @@ namespace Directus
 		vector<string> paths;
 		for (auto it : m_textures)
 		{
-			paths.push_back(it.second.second);
+			paths.push_back(it.second.path);
 		}
 
 		return paths;
