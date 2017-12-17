@@ -120,23 +120,23 @@ namespace Directus
 		if (!directionalLight || !camera)
 			return;
 
-		//= BUFFER UPDATE ========================================================================
+		//= BUFFER UPDATE ======================================================================================================================
 		PerFrameBufferType* buffer = (PerFrameBufferType*)m_miscBuffer->Map();
 
-		buffer->viewport = GET_RESOLUTION;
-		buffer->nearPlane = camera->GetNearPlane();
-		buffer->farPlane = camera->GetFarPlane();
+		buffer->viewport				= GET_RESOLUTION;
+		buffer->nearPlane				= camera->GetNearPlane();
+		buffer->farPlane				= camera->GetFarPlane();
 		buffer->mLightViewProjection[0] = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(0);
 		buffer->mLightViewProjection[1] = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(1);
 		buffer->mLightViewProjection[2] = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
-		buffer->shadowSplits = Vector4(directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), 0, 0);
-		buffer->lightDir = directionalLight->GetDirection();
-		buffer->shadowMapResolution = directionalLight->GetShadowCascadeResolution();
-		buffer->shadowMappingQuality = directionalLight->GetShadowTypeAsFloat();
-		buffer->cameraPos = camera->g_transform->GetPosition();
+		buffer->shadowSplits			= Vector4(directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), 0, 0);
+		buffer->lightDir				= directionalLight->GetDirection();
+		buffer->shadowMapResolution		= directionalLight->GetShadowCascadeResolution();
+		buffer->shadowMappingQuality	= directionalLight->GetShadowTypeAsFloat();
+		buffer->cameraPos				= camera->g_transform->GetPosition();
 
 		m_miscBuffer->Unmap();
-		//========================================================================================
+		//======================================================================================================================================
 
 		// Set to shader slot
 		m_miscBuffer->SetVS(0);
@@ -156,28 +156,28 @@ namespace Directus
 
 		// Determine if the material buffer needs to update
 		bool update = false;
-		update = perMaterialBufferCPU.matAlbedo			!= material->GetColorAlbedo() ? true : update;
-		update = perMaterialBufferCPU.matTilingUV		!= material->GetTilingUV() ? true : update;
-		update = perMaterialBufferCPU.matOffsetUV		!= material->GetOffsetUV() ? true : update;
-		update = perMaterialBufferCPU.matRoughnessMul	!= material->GetRoughnessMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matMetallicMul	!= material->GetMetallicMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matNormalMul		!= material->GetNormalMultiplier() ? true : update;
-		update = perMaterialBufferCPU.matShadingMode	!= float(material->GetShadingMode()) ? true : update;
+		update = perMaterialBufferCPU.matAlbedo			!= material->GetColorAlbedo()			? true : update;
+		update = perMaterialBufferCPU.matTilingUV		!= material->GetTilingUV()				? true : update;
+		update = perMaterialBufferCPU.matOffsetUV		!= material->GetOffsetUV()				? true : update;
+		update = perMaterialBufferCPU.matRoughnessMul	!= material->GetRoughnessMultiplier()	? true : update;
+		update = perMaterialBufferCPU.matMetallicMul	!= material->GetMetallicMultiplier()	? true : update;
+		update = perMaterialBufferCPU.matNormalMul		!= material->GetNormalMultiplier()		? true : update;
+		update = perMaterialBufferCPU.matShadingMode	!= float(material->GetShadingMode())	? true : update;
 
 		if (update)
 		{
 			//= BUFFER UPDATE =========================================================================
 			PerMaterialBufferType* buffer = (PerMaterialBufferType*)m_materialBuffer->Map();
 
-			buffer->matAlbedo = perMaterialBufferCPU.matAlbedo				= material->GetColorAlbedo();
-			buffer->matTilingUV = perMaterialBufferCPU.matTilingUV			= material->GetTilingUV();
-			buffer->matOffsetUV = perMaterialBufferCPU.matOffsetUV			= material->GetOffsetUV();
+			buffer->matAlbedo		= perMaterialBufferCPU.matAlbedo		= material->GetColorAlbedo();
+			buffer->matTilingUV		= perMaterialBufferCPU.matTilingUV		= material->GetTilingUV();
+			buffer->matOffsetUV		= perMaterialBufferCPU.matOffsetUV		= material->GetOffsetUV();
 			buffer->matRoughnessMul = perMaterialBufferCPU.matRoughnessMul	= material->GetRoughnessMultiplier();
-			buffer->matMetallicMul = perMaterialBufferCPU.matMetallicMul	= material->GetMetallicMultiplier();
-			buffer->matNormalMul = perMaterialBufferCPU.matNormalMul		= material->GetNormalMultiplier();
-			buffer->matHeightMul = perMaterialBufferCPU.matNormalMul		= material->GetHeightMultiplier();
-			buffer->matShadingMode = perMaterialBufferCPU.matShadingMode	= float(material->GetShadingMode());
-			buffer->paddding = Vector3::Zero;
+			buffer->matMetallicMul	= perMaterialBufferCPU.matMetallicMul	= material->GetMetallicMultiplier();
+			buffer->matNormalMul	= perMaterialBufferCPU.matNormalMul		= material->GetNormalMultiplier();
+			buffer->matHeightMul	= perMaterialBufferCPU.matNormalMul		= material->GetHeightMultiplier();
+			buffer->matShadingMode	= perMaterialBufferCPU.matShadingMode	= float(material->GetShadingMode());
+			buffer->paddding		= Vector3::Zero;
 
 			m_materialBuffer->Unmap();
 			//========================================================================================
@@ -196,30 +196,30 @@ namespace Directus
 			return;
 		}
 
-		Matrix world = mWorld;
-		Matrix worldView = mWorld * mView;
-		Matrix worldViewProjection = worldView * mProjection;
+		Matrix world				= mWorld;
+		Matrix worldView			= mWorld * mView;
+		Matrix worldViewProjection	= worldView * mProjection;
 
 		// Determine if the buffer actually needs to update
 		bool update = false;
-		update = perObjectBufferCPU.mWorld != world ? true : update;
-		update = perObjectBufferCPU.mWorldView != worldView ? true : update;
-		update = perObjectBufferCPU.mWorldViewProjection != worldViewProjection ? true : update;
-		update = perObjectBufferCPU.receiveShadows != (float)receiveShadows ? true : update;
+		update = perObjectBufferCPU.mWorld					!= world ? true : update;
+		update = perObjectBufferCPU.mWorldView				!= worldView ? true : update;
+		update = perObjectBufferCPU.mWorldViewProjection	!= worldViewProjection ? true : update;
+		update = perObjectBufferCPU.receiveShadows			!= (float)receiveShadows ? true : update;
 
 		if (update)
 		{
-			//= BUFFER UPDATE =======================================================================
+			//= BUFFER UPDATE ==============================================================================
 			PerObjectBufferType* buffer = (PerObjectBufferType*)m_perObjectBuffer->Map();
 
-			buffer->mWorld = perObjectBufferCPU.mWorld = world;
-			buffer->mWorldView = perObjectBufferCPU.mWorldView = worldView;
-			buffer->mWorldViewProjection = perObjectBufferCPU.mWorldViewProjection = worldViewProjection;
-			buffer->receiveShadows = perObjectBufferCPU.receiveShadows = (float)receiveShadows;
-			buffer->padding = Vector3::Zero;
+			buffer->mWorld = perObjectBufferCPU.mWorld								= world;
+			buffer->mWorldView = perObjectBufferCPU.mWorldView						= worldView;
+			buffer->mWorldViewProjection = perObjectBufferCPU.mWorldViewProjection	= worldViewProjection;
+			buffer->receiveShadows = perObjectBufferCPU.receiveShadows				= (float)receiveShadows;
+			buffer->padding															= Vector3::Zero;
 
 			m_perObjectBuffer->Unmap();
-			//=======================================================================================
+			//==============================================================================================
 		}
 
 		// Set to shader slot
@@ -255,15 +255,15 @@ namespace Directus
 			return;
 
 		// Define in the shader what kind of textures it should expect
-		shader->AddDefine("ALBEDO_MAP", HasAlbedoTexture());
-		shader->AddDefine("ROUGHNESS_MAP", HasRoughnessTexture());
-		shader->AddDefine("METALLIC_MAP", HasMetallicTexture());
-		shader->AddDefine("NORMAL_MAP", HasNormalTexture());
-		shader->AddDefine("HEIGHT_MAP", HasHeightTexture());
-		shader->AddDefine("OCCLUSION_MAP", HasOcclusionTexture());
-		shader->AddDefine("EMISSION_MAP", HasEmissionTexture());
-		shader->AddDefine("MASK_MAP", HasMaskTexture());
-		shader->AddDefine("CUBE_MAP", HasCubeMapTexture());
+		shader->AddDefine("ALBEDO_MAP",		HasAlbedoTexture());
+		shader->AddDefine("ROUGHNESS_MAP",	HasRoughnessTexture());
+		shader->AddDefine("METALLIC_MAP",	HasMetallicTexture());
+		shader->AddDefine("NORMAL_MAP",		HasNormalTexture());
+		shader->AddDefine("HEIGHT_MAP",		HasHeightTexture());
+		shader->AddDefine("OCCLUSION_MAP",	HasOcclusionTexture());
+		shader->AddDefine("EMISSION_MAP",	HasEmissionTexture());
+		shader->AddDefine("MASK_MAP",		HasMaskTexture());
+		shader->AddDefine("CUBE_MAP",		HasCubeMapTexture());
 	}
 
 	void ShaderVariation::Compile(const string& filePath)

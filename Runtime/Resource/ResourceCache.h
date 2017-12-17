@@ -57,21 +57,6 @@ namespace Directus
 			}
 		}
 
-		// Returns a resource by ID
-		std::shared_ptr<Resource> GetByID(const std::size_t ID)
-		{
-			for (const auto& resourceGroup : m_resourceGroups)
-			{
-				for (const auto& resource : resourceGroup.second)
-				{
-					if (resource->GetResourceID() == ID)
-						return resource;
-				}
-			}
-
-			return std::shared_ptr<Resource>();
-		}
-
 		// Returns a resource by name
 		std::shared_ptr<Resource> GetByName(const std::string& name)
 		{
@@ -83,21 +68,6 @@ namespace Directus
 						return resource;
 				}
 			}
-			return std::shared_ptr<Resource>();
-		}
-
-		// Returns a resource by name
-		std::shared_ptr<Resource> GetByPath(const std::string& path)
-		{
-			for (const auto& resourceGroup : m_resourceGroups)
-			{
-				for (const auto& resource : resourceGroup.second)
-				{
-					if (resource->GetResourceFilePath() == path)
-						return resource;
-				}
-			}
-
 			return std::shared_ptr<Resource>();
 		}
 

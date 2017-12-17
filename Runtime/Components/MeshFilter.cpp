@@ -78,19 +78,16 @@ namespace Directus
 	{
 		stream->Write((int)m_type);
 		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetResourceName() : (string)NOT_ASSIGNED);
-		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetResourceID() : NOT_ASSIGNED_HASH);
 	}
 
 	void MeshFilter::Deserialize(FileStream* stream)
 	{
 		m_type					= (MeshType)stream->ReadInt();
 		string meshName			= NOT_ASSIGNED;
-		unsigned int meshID		= 0;
 		stream->Read(&meshName);
-		stream->Read(&meshID);
 
 		// Get the mesh from the ResourceManager
-		m_mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Mesh>(meshID);
+		m_mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
 		if (m_mesh.expired())
 		{
 			LOG_WARNING("MeshFilter: Failed to load mesh \"" + meshName + "\".");
@@ -102,6 +99,17 @@ namespace Directus
 	{
 		m_type = type;
 
+		// Create a name for this standard mesh
+		string meshName = (type == MeshType_Cube) ? "Standard_Cube" : "Standard_Quad";
+
+		// Check if this mesh is already loaded, if so, use the existing one
+		auto meshExisting = g_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
+		if (!meshExisting.expired())
+		{
+			m_mesh = meshExisting;
+			return;
+		}
+
 		// Construct vertices/indices
 		vector<VertexPosTexTBN> vertices;
 		vector<unsigned int> indices;
@@ -112,17 +120,6 @@ namespace Directus
 		else if (type == MeshType_Quad)
 		{
 			CreateQuad(vertices, indices);
-		}
-	
-		// Create a name for this standard mesh
-		string meshName = (type == MeshType_Cube) ? "Standard_Cube" : "Standard_Quad";
-
-		// Check if this mesh is already loaded, if so, use the existing one
-		auto meshExisting = g_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
-		if (!meshExisting.expired())
-		{
-			m_mesh = meshExisting;
-			return;
 		}
 
 		// Create a file path (in the project directory) for this standard mesh
@@ -169,79 +166,79 @@ namespace Directus
 	void MeshFilter::CreateCube(vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices)
 	{
 		// front
-		vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 0
-		vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 1
-		vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 2
-		vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 3
+		vertices.emplace_back(Vector3(-0.5f, -0.5f, -0.5f),	Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
+		vertices.emplace_back(Vector3(-0.5f, 0.5f, -0.5f),	Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
+		vertices.emplace_back(Vector3(0.5f, -0.5f, -0.5f),	Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
+		vertices.emplace_back(Vector3(0.5f, 0.5f, -0.5f),	Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
 
 		// bottom
-		vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 4
-		vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 5
-		vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 6
-		vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 7
+		vertices.emplace_back(Vector3(-0.5f, -0.5f, 0.5f),	Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
+		vertices.emplace_back(Vector3(-0.5f, -0.5f, -0.5f),	Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
+		vertices.emplace_back(Vector3(0.5f, -0.5f, 0.5f),	Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
+		vertices.emplace_back(Vector3(0.5f, -0.5f, -0.5f),	Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
 
 		// back
-		vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 8
-		vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 9
-		vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 10
-		vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0) }); // 11
+		vertices.emplace_back(Vector3(-0.5f, -0.5f, 0.5f),	Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)); 
+		vertices.emplace_back(Vector3(-0.5f, 0.5f, 0.5f),	Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)); 
+		vertices.emplace_back(Vector3(0.5f, -0.5f, 0.5f),	Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)); 
+		vertices.emplace_back(Vector3(0.5f, 0.5f, 0.5f),	Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)); 
 
 		// top
-		vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 12
-		vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 13
-		vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 14
-		vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 15
+		vertices.emplace_back(Vector3(-0.5f, 0.5f, 0.5f),	Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); 
+		vertices.emplace_back(Vector3(-0.5f, 0.5f, -0.5f),	Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); 
+		vertices.emplace_back(Vector3(0.5f, 0.5f, 0.5f),	Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); 
+		vertices.emplace_back(Vector3(0.5f, 0.5f, -0.5f),	Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); 
 
 		// left
-		vertices.push_back({ Vector3(-0.5f, -0.5f, 0.5f), Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1) }); // 16
-		vertices.push_back({ Vector3(-0.5f, 0.5f, 0.5f), Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1) }); // 17
-		vertices.push_back({ Vector3(-0.5f, -0.5f, -0.5f), Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1) }); // 18
-		vertices.push_back({ Vector3(-0.5f, 0.5f, -0.5f), Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1) }); // 19
+		vertices.emplace_back(Vector3(-0.5f, -0.5f, 0.5f),	Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
+		vertices.emplace_back(Vector3(-0.5f, 0.5f, 0.5f),	Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
+		vertices.emplace_back(Vector3(-0.5f, -0.5f, -0.5f),	Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
+		vertices.emplace_back(Vector3(-0.5f, 0.5f, -0.5f),	Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
 
 		// right
-		vertices.push_back({ Vector3(0.5f, -0.5f, 0.5f), Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1) }); // 20
-		vertices.push_back({ Vector3(0.5f, 0.5f, 0.5f), Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1) }); // 21
-		vertices.push_back({ Vector3(0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1) }); // 22
-		vertices.push_back({ Vector3(0.5f, 0.5f, -0.5f), Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1) }); // 23
+		vertices.emplace_back(Vector3(0.5f, -0.5f, 0.5f),	Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
+		vertices.emplace_back(Vector3(0.5f, 0.5f, 0.5f),	Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
+		vertices.emplace_back(Vector3(0.5f, -0.5f, -0.5f),	Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
+		vertices.emplace_back(Vector3(0.5f, 0.5f, -0.5f),	Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
 
 		// front
-		indices.push_back(0); indices.push_back(1); indices.push_back(2);
-		indices.push_back(2); indices.push_back(1); indices.push_back(3);
+		indices.emplace_back(0); indices.emplace_back(1); indices.emplace_back(2);
+		indices.emplace_back(2); indices.emplace_back(1); indices.emplace_back(3);
 
 		// bottom
-		indices.push_back(4); indices.push_back(5); indices.push_back(6);
-		indices.push_back(6); indices.push_back(5); indices.push_back(7);
+		indices.emplace_back(4); indices.emplace_back(5); indices.emplace_back(6);
+		indices.emplace_back(6); indices.emplace_back(5); indices.emplace_back(7);
 
 		// back
-		indices.push_back(10); indices.push_back(9); indices.push_back(8);
-		indices.push_back(11); indices.push_back(9); indices.push_back(10);
+		indices.emplace_back(10); indices.emplace_back(9); indices.emplace_back(8);
+		indices.emplace_back(11); indices.emplace_back(9); indices.emplace_back(10);
 
 		// top
-		indices.push_back(14); indices.push_back(13); indices.push_back(12);
-		indices.push_back(15); indices.push_back(13); indices.push_back(14);
+		indices.emplace_back(14); indices.emplace_back(13); indices.emplace_back(12);
+		indices.emplace_back(15); indices.emplace_back(13); indices.emplace_back(14);
 
 		// left
-		indices.push_back(16); indices.push_back(17); indices.push_back(18);
-		indices.push_back(18); indices.push_back(17); indices.push_back(19);
+		indices.emplace_back(16); indices.emplace_back(17); indices.emplace_back(18);
+		indices.emplace_back(18); indices.emplace_back(17); indices.emplace_back(19);
 
 		// right
-		indices.push_back(22); indices.push_back(21); indices.push_back(20);
-		indices.push_back(23); indices.push_back(21); indices.push_back(22);
+		indices.emplace_back(22); indices.emplace_back(21); indices.emplace_back(20);
+		indices.emplace_back(23); indices.emplace_back(21); indices.emplace_back(22);
 	}
 
 	void MeshFilter::CreateQuad(vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices)
 	{
-		vertices.push_back({ Vector3(-0.5f, 0.0f, 0.5f),Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 0 top-left
-		vertices.push_back({ Vector3(0.5f, 0.0f, 0.5f), Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 1 top-right
-		vertices.push_back({ Vector3(-0.5f, 0.0f, -0.5f), Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 2 bottom-left
-		vertices.push_back({ Vector3(0.5f, 0.0f, -0.5f),Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1) }); // 3 bottom-right
+		vertices.emplace_back(Vector3(-0.5f, 0.0f, 0.5f),	Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 0 top-left
+		vertices.emplace_back(Vector3(0.5f, 0.0f, 0.5f),	Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 1 top-right
+		vertices.emplace_back(Vector3(-0.5f, 0.0f, -0.5f),	Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 2 bottom-left
+		vertices.emplace_back(Vector3(0.5f, 0.0f, -0.5f),	Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 3 bottom-right
 
-		indices.push_back(3);
-		indices.push_back(2);
-		indices.push_back(0);
-		indices.push_back(3);
-		indices.push_back(0);
-		indices.push_back(1);
+		indices.emplace_back(3);
+		indices.emplace_back(2);
+		indices.emplace_back(0);
+		indices.emplace_back(3);
+		indices.emplace_back(0);
+		indices.emplace_back(1);
 	}
 
 	string MeshFilter::GetGameObjectName()
