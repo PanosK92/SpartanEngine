@@ -129,11 +129,8 @@ namespace Directus
 		void TextureBasedMultiplierAdjustment();
 
 		std::weak_ptr<ShaderVariation> m_shader;
-		// The reason behind this mess it that materials can exists alone as a file, yet
-		// they support some editing via the inspector, so some data must always be known
-		// even if the actual textures haven't been loaded yet. For now it's just the TextureType.
 
-		// Type, Texture, FilePath
+		// <tex_type, <tex,	tex_path>>
 		std::map<TextureType, std::pair<std::weak_ptr<Texture>, std::string>> m_textures;
 
 		unsigned int m_modelID;

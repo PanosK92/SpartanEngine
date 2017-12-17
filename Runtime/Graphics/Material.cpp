@@ -42,20 +42,20 @@ namespace Directus
 		RegisterResource(Resource_Material);
 
 		// Material
-		m_context = context;
-		m_modelID = NOT_ASSIGNED_HASH;
-		m_cullMode = CullBack;
-		m_opacity = 1.0f;
-		m_alphaBlending = false;
-		m_shadingMode = Shading_PBR;
-		m_colorAlbedo = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-		m_roughnessMultiplier = 1.0f;
-		m_metallicMultiplier = 0.0f;
-		m_normalMultiplier = 0.0f;
-		m_heightMultiplier = 0.0f;
-		m_uvTiling = Vector2(1.0f, 1.0f);
-		m_uvOffset = Vector2(0.0f, 0.0f);
-		m_isEditable = true;
+		m_context				= context;
+		m_modelID				= NOT_ASSIGNED_HASH;
+		m_cullMode				= CullBack;
+		m_opacity				= 1.0f;
+		m_alphaBlending			= false;
+		m_shadingMode			= Shading_PBR;
+		m_colorAlbedo			= Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+		m_roughnessMultiplier	= 1.0f;
+		m_metallicMultiplier	= 0.0f;
+		m_normalMultiplier		= 0.0f;
+		m_heightMultiplier		= 0.0f;
+		m_uvTiling				= Vector2(1.0f, 1.0f);
+		m_uvOffset				= Vector2(0.0f, 0.0f);
+		m_isEditable			= true;
 
 		AcquireShader();
 	}
@@ -96,16 +96,16 @@ namespace Directus
 		{
 			string nodeName = "Texture_" + to_string(i);
 			TextureType texType = (TextureType)xml->GetAttributeAsInt(nodeName, "Texture_Type");
-			string texPath = xml->GetAttributeAsStr(nodeName, "Texture_Path");
+			string texName = xml->GetAttributeAsStr(nodeName, "Texture_Name");
 
 			// If the texture happens to be loaded, get a reference to it
 			auto texture = weak_ptr<Texture>();
 			if (m_context)
 			{
-				texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByPath<Texture>(texPath);
+				texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Texture>(texName);
 			}
 
-			m_textures.insert(make_pair(texType, make_pair(texture, texPath)));
+			m_textures.insert(make_pair(texType, make_pair(texture, texName)));
 		}
 
 		// Load unloaded textures
@@ -159,7 +159,7 @@ namespace Directus
 			string texNode = "Texture_" + to_string(i);
 			xml->AddChildNode("Textures", texNode);
 			xml->AddAttribute(texNode, "Texture_Type", (int)texture.first);
-			xml->AddAttribute(texNode, "Texture_Path", texture.second.second);
+			xml->AddAttribute(texNode, "Texture_Name", texture.second.second);
 			i++;
 		}
 
@@ -189,20 +189,20 @@ namespace Directus
 			return;
 		}
 
-		TextureType type = texture._Get()->GetType();
-		string filePath = texture._Get()->GetResourceFilePath();
+		TextureType texType = texture._Get()->GetType();
+		string texName = texture._Get()->GetResourceName();
 
 		// Check if a texture of that type already exists and replace it
-		auto it = m_textures.find(type);
+		auto it = m_textures.find(texType);
 		if (it != m_textures.end())
 		{
 			it->second.first = texture;
-			it->second.second = filePath;
+			it->second.second = texName;
 		}
 		else
 		{
 			// If that's a new texture type, simply add it
-			m_textures.insert(make_pair(type, make_pair(texture, filePath)));
+			m_textures.insert(make_pair(texType, make_pair(texture, texName)));
 		}
 
 		// Adjust texture multipliers

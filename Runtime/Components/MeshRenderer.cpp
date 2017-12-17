@@ -135,7 +135,16 @@ namespace Directus
 			return;
 		}
 
-		m_material = g_context->GetSubsystem<ResourceManager>()->Add<Material>(material.lock());
+		auto resourceManager = g_context->GetSubsystem<ResourceManager>();
+
+		// If the material doesn't already existn in the resource cache, save it to a file as well
+		auto existingMaterial = resourceManager->GetResourceByName<Material>(material._Get()->GetResourceName());
+		if (existingMaterial.expired())
+		{
+			material._Get()->SaveToFile(material._Get()->GetResourceFilePath());
+		}
+
+		m_material = resourceManager->Add<Material>(material.lock());
 	}
 
 	weak_ptr<Material> MeshRenderer::SetMaterialFromFile(const string& filePath)
@@ -183,23 +192,6 @@ namespace Directus
 		}
 
 		SetMaterialFromMemory(material);
-	}
-
-	weak_ptr<Material> MeshRenderer::SetMaterialByID(unsigned int ID)
-	{
-		// Get the material from the resource cache
-		weak_ptr<Material> material = g_context->GetSubsystem<ResourceManager>()->GetResourceByID<Material>(ID);	
-		if (material.expired())
-		{
-			LOG_WARNING("MeshRenderer: Failed to set material. Material with ID \"" + to_string(ID) + "\" doesn't exist.");
-			return weak_ptr<Material>();
-		}
-
-		// Set it as the current material
-		SetMaterialFromMemory(material);
-
-		// Return it
-		return GetMaterial();
 	}
 	//==============================================================================
 

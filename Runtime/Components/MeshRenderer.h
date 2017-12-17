@@ -64,9 +64,6 @@ namespace Directus
 		// Sets a default material (basic, skybox)
 		void SetMaterialByType(MaterialType type);
 
-		// Sets a material based on it's ID
-		std::weak_ptr<Material> SetMaterialByID(unsigned int ID);
-
 		std::weak_ptr<Material>& GetMaterial() { return  m_material; }
 		bool HasMaterial() { return GetMaterial().expired() ? false : true; }
 		std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial()._Get()->GetResourceName() : NOT_ASSIGNED; }

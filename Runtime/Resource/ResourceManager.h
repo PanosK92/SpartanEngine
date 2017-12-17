@@ -113,25 +113,11 @@ namespace Directus
 			m_resourceCache->Add(resource);
 		}
 
-		// Returns cached resource by ID
-		template <class T>
-		std::weak_ptr<T> GetResourceByID(const std::size_t ID)
-		{
-			return ToDerivedWeak<T>(m_resourceCache->GetByID(ID));
-		}
-
 		// Returns cached resource by Path
 		template <class T>
 		std::weak_ptr<T> GetResourceByName(const std::string& name)
 		{
 			return ToDerivedWeak<T>(m_resourceCache->GetByName(name));
-		}
-
-		// Returns cached resource by Path
-		template <class T>
-		std::weak_ptr<T> GetResourceByPath(const std::string& path)
-		{
-			return ToDerivedWeak<T>(m_resourceCache->GetByPath(path));
 		}
 
 		// Returns cached resource by Type
