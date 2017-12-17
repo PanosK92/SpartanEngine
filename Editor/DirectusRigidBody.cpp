@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusComboLabelText.h"
 #include "DirectusViewport.h"
 #include "DirectusDropDownButton.h"
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 #include "Components/RigidBody.h"
 //=================================
 

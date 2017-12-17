@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "MeshFilter.h"
 #include "RigidBody.h"
-#include "../Core/GameObject.h"
+#include "../Scene/GameObject.h"
 #include "../IO/FileStream.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Graphics/Mesh.h"

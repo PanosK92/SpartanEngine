@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QGridLayout>
 #include "DirectusComboSliderText.h"
 #include <QPushButton>
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 #include <QDoubleValidator>
 #include "Components/MeshFilter.h"
 #include <QComboBox>

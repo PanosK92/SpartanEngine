@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusComboLabelText.h"
 #include "DirectusColorPicker.h"
 #include <QByteArray>
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 #include "Logging/Log.h"
 #include "Components/MeshRenderer.h"
 #include "Math/Vector2.h"

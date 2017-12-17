@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "Collider.h"
 #include "../Core/Engine.h"
-#include "../Core/GameObject.h"
+#include "../Scene/GameObject.h"
 #include "../Physics/Physics.h"
 #include "../Physics/BulletPhysicsHelper.h"
 #include "../Math/Quaternion.h"

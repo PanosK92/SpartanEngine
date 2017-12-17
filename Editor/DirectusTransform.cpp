@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusViewport.h"
 #include "DirectusAdjustLabel.h"
 #include "DirectusComboLabelText.h"
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 #include "Core/Settings.h"
 #include "Logging/Log.h"
 #include "Math/Vector3.h"

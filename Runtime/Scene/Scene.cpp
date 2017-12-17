@@ -21,11 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "Scene.h"
-#include "Timer.h"
+#include "GameObject.h"
+#include "../Core/Timer.h"
 #include "../Core/Context.h"
-#include "../IO/FileStream.h"
-#include "../FileSystem/FileSystem.h"
-#include "../Logging/Log.h"
+#include "../Core/Stopwatch.h"
 #include "../Components/Transform.h"
 #include "../Components/Camera.h"
 #include "../Components/Light.h"
@@ -37,8 +36,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EventSystem/EventSystem.h"
 #include "../Resource/ResourceManager.h"
 #include "../Graphics/Mesh.h"
-#include "GameObject.h"
-#include "Stopwatch.h"
+#include "../IO/FileStream.h"
+#include "../FileSystem/FileSystem.h"
+#include "../Logging/Log.h"
 //======================================
 
 //= NAMESPACES ================

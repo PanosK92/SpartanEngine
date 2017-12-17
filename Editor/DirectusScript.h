@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QGridLayout>
 #include "DirectusAdjustLabel.h"
 #include <QLineEdit>
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 #include <QDoubleValidator>
 #include "Components/Script.h"
 #include <QCheckBox>

@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusIComponent.h"
 #include "DirectusMaterial.h"
 #include "Components/MeshRenderer.h"
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 //=====================================
 
 class DirectusInspector;

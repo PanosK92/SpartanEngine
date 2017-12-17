@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PerformanceProfiler.h"
 #include "../Core/Stopwatch.h"
 #include "../Core/Timer.h"
-#include "../Core/Scene.h"
+#include "../Scene/Scene.h"
 #include "../Graphics/Material.h"
 #include "../Resource/ResourceManager.h"
 #include "../EventSystem/EventSystem.h"

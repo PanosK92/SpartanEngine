@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 #include "../Math/Frustrum.h"
 #include "../Graphics/Renderer.h"
-#include "../Core/GameObject.h"
+#include "../Scene/GameObject.h"
 //===================================
 
 //= NAMESPACES ================

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QWidget>
 #include <QGridLayout>
 #include <QLineEdit>
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 #include <QComboBox>
 #include "Components/Camera.h"
 #include <QPushButton>

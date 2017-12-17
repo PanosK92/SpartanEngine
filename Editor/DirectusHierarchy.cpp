@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QMenu>
 #include <QFileDialog>
 #include "FileSystem/FileSystem.h"
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 #include "Logging/Log.h"
 #include "Components/AudioListener.h"
 #include "Components/AudioSource.h"
@@ -537,8 +537,6 @@ void DirectusHierarchy::ShowContextMenu(const QPoint &pos)
 
 void DirectusHierarchy::ShowContextMenuLight()
 {
-    bool selected = IsAnyGameObjectSelected();
-
     QMenu contextMenu(tr("Context menu"), this);
 
     QAction actionCreateEmpty("Create Empty", this);

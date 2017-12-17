@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusHierarchy.h"
 #include "DirectusAssetLoader.h"
 #include <QThread>
-#include "Core/Scene.h"
+#include "Scene/Scene.h"
 #include "Logging/Log.h"
 #include "FileSystem/FileSystem.h"
 //================================

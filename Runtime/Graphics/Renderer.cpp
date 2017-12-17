@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D11/D3D11RenderTexture.h"
 #include "DeferredShaders/ShaderVariation.h"
 #include "DeferredShaders/DeferredShader.h"
-#include "../Core/GameObject.h"
+#include "../Scene/GameObject.h"
 #include "../Core/Context.h"
 #include "../Components/MeshFilter.h"
 #include "../Components/Transform.h"

@@ -4,7 +4,7 @@
 #include <QTimer>
 #include <memory>
 #include "Resource/ResourceManager.h"
-#include "Core/Scene.h"
+#include "Scene/Scene.h"
 //===================================
 
 //= NAMESPACES ==========

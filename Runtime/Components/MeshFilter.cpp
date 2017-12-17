@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshFilter.h"
 #include "Transform.h"
 #include "../IO/FileStream.h"
-#include "../Core/GameObject.h"
+#include "../Scene/GameObject.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/ResourceManager.h"
