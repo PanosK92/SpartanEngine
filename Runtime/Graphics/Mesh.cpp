@@ -44,8 +44,7 @@ namespace Directus
 		RegisterResource(Resource_Mesh);
 
 		m_context		= context;
-		m_gameObjID		= NOT_ASSIGNED_HASH;
-		m_modelID		= NOT_ASSIGNED_HASH;
+		m_modelName		= NOT_ASSIGNED_HASH;
 		m_vertexCount	= 0;
 		m_indexCount	= 0;
 		m_triangleCount = 0;
@@ -68,8 +67,7 @@ namespace Directus
 	void Mesh::Clear()
 	{
 		ClearGeometry();
-		m_gameObjID		= NOT_ASSIGNED_HASH;
-		m_modelID		= NOT_ASSIGNED_HASH;
+		m_modelName		= NOT_ASSIGNED_HASH;
 		m_vertexCount	= 0;
 		m_indexCount	= 0;
 		m_triangleCount = 0;
@@ -86,8 +84,7 @@ namespace Directus
 
 		file->Read(&m_vertices);
 		file->Read(&m_indices);
-		file->Read(&m_gameObjID);
-		file->Read(&m_modelID);
+		file->Read(&m_modelName);
 		file->Read(&m_resourceName);
 		
 		Construct();
@@ -109,8 +106,7 @@ namespace Directus
 
 		file->Write(m_vertices);
 		file->Write(m_indices);
-		file->Write(m_gameObjID);
-		file->Write(m_modelID);
+		file->Write(m_modelName);
 		file->Write(m_resourceName);
 
 		return true;

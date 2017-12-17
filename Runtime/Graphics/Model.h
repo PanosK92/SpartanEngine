@@ -85,8 +85,6 @@ namespace Directus
 		// Returns the number of meshes used by this model
 		unsigned int GetMeshCount() { return m_meshes.size(); }
 
-		const std::string& GetName();
-
 		void SetWorkingDirectory(const std::string& directory);
 
 	private:

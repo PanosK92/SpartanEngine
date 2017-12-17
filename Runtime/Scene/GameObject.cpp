@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "GameObject.h"
 #include "Scene.h"
-#include "GUIDGenerator.h"
+#include "../Core/GUIDGenerator.h"
 #include "../IO/FileStream.h"
 #include "../Logging/Log.h"
 #include "../Components/AudioSource.h"

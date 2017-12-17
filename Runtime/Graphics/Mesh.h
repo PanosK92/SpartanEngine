@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include <vector>
+#include <memory>
 #include "Vertex.h"
 #include "../Math/BoundingBox.h"
 #include "../Resource/Resource.h"
-#include <memory>
 //===============================
 
 namespace Directus
@@ -44,17 +44,11 @@ namespace Directus
 
 		void Clear();
 
-		//= RESOURCE INTERFACE =============================================
+		//= RESOURCE INTERFACE =================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
 		unsigned int GetMemoryUsageKB() override;
-		//==================================================================
-
-		unsigned int GetGameObjectID() { return m_gameObjID; }
-		void SetGameObjectID(unsigned int gameObjID) { m_gameObjID = gameObjID; }
-
-		const std::string& GetModelName() { return m_modelID; }
-		void SetModelName(const std::string& moodelName) { m_modelID = moodelName; }
+		//======================================================
 
 		//= GEOMETRY ================================================================================
 		// Clears geometry (vertices and indices)
@@ -79,6 +73,9 @@ namespace Directus
 		unsigned int GetTriangleCount() const { return m_triangleCount; }
 		unsigned int GetIndexStart() { return !m_indices.empty() ? m_indices.front() : 0; }
 		//===========================================================================================
+
+		const std::string& GetModelName() { return m_modelName; }
+		void SetModelName(const std::string& modelName) { m_modelName = modelName; }
 	
 		const Math::BoundingBox& GetBoundingBox() { return m_boundingBox; }
 
@@ -92,8 +89,7 @@ namespace Directus
 		bool ConstructBuffers();
 		//======================
 
-		unsigned int m_gameObjID;
-		std::string m_modelID;
+		std::string m_modelName;
 		std::vector<VertexPosTexTBN> m_vertices;
 		std::vector<unsigned int> m_indices;
 		unsigned int m_vertexCount;

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusAssetLoader.h"
 #include "DirectusProgressBar.h"
 #include <QMutex>
-#include "Core/Scene.h"
+#include "Scene/Scene.h"
 #include "FileSystem/FileSystem.h"
 #include "Resource/ResourceManager.h"
 #include "Graphics/Texture.h"

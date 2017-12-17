@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ======================
 #include <memory>
 #include "assimp\scene.h"
 #include "..\..\Math\Vector2.h"
 #include "..\..\Math\Vector3.h"
 #include "..\..\Math\Matrix.h"
-#include "..\..\Core\GameObject.h"
-//================================
+#include "..\..\Scene\GameObject.h"
+//=================================
 
 namespace Directus
 {

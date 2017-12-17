@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Transform.h"
 #include "../IO/FileStream.h"
-#include "../Core/Scene.h"
-#include "../Core/GameObject.h"
+#include "../Scene/Scene.h"
+#include "../Scene/GameObject.h"
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 //===================================

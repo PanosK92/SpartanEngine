@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusDropDownButton.h"
 #include "DirectusInspector.h"
 #include "Components/Collider.h"
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 //=================================
 
 //= NAMESPACES ================

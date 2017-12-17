@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logging/Log.h"
 #include <QStyleOption>
 #include "Core/Settings.h"
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 #include "Core/Context.h"
-#include "Core/Scene.h"
+#include "Scene/Scene.h"
 #include "Components/Camera.h"
 #include "Math/Vector3.h"
 #include "Math/Vector2.h"

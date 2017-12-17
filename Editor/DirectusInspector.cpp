@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logging/Log.h"
 #include "FileSystem/FileSystem.h"
 #include "Components/Transform.h"
-#include "Core/GameObject.h"
+#include "Scene/GameObject.h"
 #include "DirectusTransform.h"
 #include "DirectusCamera.h"
 #include "DirectusMeshRenderer.h"

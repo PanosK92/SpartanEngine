@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
-#include "../Core/GameObject.h"
+#include "../Scene/GameObject.h"
 //===================================
 
 //= NAMESPACES =====

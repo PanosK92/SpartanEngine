@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "MeshRenderer.h"
 #include "MeshFilter.h"
-#include "../Core/GameObject.h"
+#include "../Scene/GameObject.h"
 #include "../Graphics/Texture.h"
 #include "../Math/Vector3.h"
-#include "../Core/Scene.h"
+#include "../Scene/Scene.h"
 #include "../Resource/ResourceCache.h"
 #include "../Resource/ResourceManager.h"
 //====================================

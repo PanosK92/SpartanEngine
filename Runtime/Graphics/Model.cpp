@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "Model.h"
 #include "Mesh.h"
-#include "../Core/GameObject.h"
+#include "../Scene/GameObject.h"
 #include "../Resource/ResourceManager.h"
 #include "../Components/Transform.h"
 #include "../Components/MeshFilter.h"
@@ -135,8 +135,7 @@ namespace Directus
 
 		// In case this mesh is new, create one 
 		auto mesh = make_shared<Mesh>(m_context);
-		mesh->SetModelName(GetName());
-		mesh->SetGameObjectID(!gameObject.expired() ? gameObject._Get()->GetID() : NOT_ASSIGNED_HASH);
+		mesh->SetModelName(GetResourceName());
 		mesh->SetResourceName(name);
 		mesh->SetVertices(vertices);
 		mesh->SetIndices(indices);
@@ -161,6 +160,7 @@ namespace Directus
 		string modelRelativeTexPath = m_modelDirectoryMeshes + mesh._Get()->GetResourceName() + MESH_EXTENSION;
 		mesh._Get()->SetResourceFilePath(modelRelativeTexPath);
 		mesh._Get()->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
+		mesh._Get()->SetModelName(GetResourceName());
 		mesh._Get()->SaveToFile(modelRelativeTexPath);
 
 		// Construct mesh (vertex buffer, index buffer, bounding box, etc...)
@@ -295,11 +295,6 @@ namespace Directus
 	{
 		Vector3 extent = m_boundingBox.GetExtents().Absolute();
 		return Max(Max(extent.x, extent.y), extent.z);
-	}
-
-	const string& Model::GetName()
-	{
-		return !m_rootGameObj.expired() ? m_rootGameObj._Get()->GetName() : NOT_ASSIGNED;
 	}
 
 	void Model::SetWorkingDirectory(const string& directory)

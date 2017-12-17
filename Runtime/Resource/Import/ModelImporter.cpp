@@ -27,8 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/version.h>
-#include "../../Core/Scene.h"
-#include "../../Core/GameObject.h"
+#include "../../Scene/Scene.h"
+#include "../../Scene/GameObject.h"
 #include "../../Core/Context.h"
 #include "../../Components/Transform.h"
 #include "../../FileSystem/FileSystem.h"
@@ -275,14 +275,12 @@ namespace Directus
 
 	void ModelImporter::LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const weak_ptr<GameObject>& gameobject)
 	{
-		if (gameobject.expired())
+		if (!model || !assimpMesh || !assimpScene || gameobject.expired())
 			return;
 
 		//= GEOMETRY =====================================
 		// Create a new Mesh
 		auto mesh = make_shared<Mesh>(m_context);
-		mesh->SetModelName(model->GetName());
-		mesh->SetGameObjectID(gameobject._Get()->GetID());
 		mesh->SetResourceName(assimpMesh->mName.C_Str());
 
 		// Populate mesh with vertices
