@@ -199,11 +199,14 @@ namespace Directus
 		if (material.expired())
 			return;
 
+		// Create a file path for this material
+		material._Get()->SetResourceFilePath(m_modelDirectoryMaterials + material._Get()->GetResourceName() + MATERIAL_EXTENSION);
+
 		// Add it to our resources
 		weak_ptr<Material> weakMat = m_context->GetSubsystem<ResourceManager>()->Add<Material>(material.lock());
 
-		// Save the material in the model directory
-		weakMat._Get()->SaveToFile(m_modelDirectoryMaterials + weakMat._Get()->GetResourceName());
+		// Save the material in the model directory		
+		weakMat._Get()->SaveToFile(weakMat._Get()->GetResourceFilePath());
 
 		// Keep a reference to it
 		m_materials.push_back(weakMat);
