@@ -66,8 +66,7 @@ namespace Directus
 
 		//= PROPERTIES =========================================================================
 		unsigned int GetResourceID() { return m_resourceID; }
-		void SetResourceID(unsigned int ID) { m_resourceID = ID; }
-
+	
 		ResourceType GetResourceType() { return m_resourceType; }
 		void SetResourceType(ResourceType type) { m_resourceType = type; }
 

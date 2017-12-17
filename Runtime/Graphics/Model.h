@@ -73,7 +73,6 @@ namespace Directus
 		// Adds a texture (the material that uses this texture must be passed as well)
 		void AddTexture(const std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
 
-		std::weak_ptr<Mesh> GetMeshByID(unsigned int id);
 		std::weak_ptr<Mesh> GetMeshByName(const std::string& name);
 
 		bool IsAnimated() { return m_isAnimated; }
@@ -85,6 +84,8 @@ namespace Directus
 
 		// Returns the number of meshes used by this model
 		unsigned int GetMeshCount() { return m_meshes.size(); }
+
+		const std::string& GetName();
 
 		void SetWorkingDirectory(const std::string& directory);
 

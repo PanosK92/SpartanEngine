@@ -53,8 +53,8 @@ namespace Directus
 		unsigned int GetGameObjectID() { return m_gameObjID; }
 		void SetGameObjectID(unsigned int gameObjID) { m_gameObjID = gameObjID; }
 
-		unsigned int GetModelID() { return m_modelID; }
-		void SetModelID(unsigned int modelID) { m_modelID = modelID; }
+		const std::string& GetModelName() { return m_modelID; }
+		void SetModelName(const std::string& moodelName) { m_modelID = moodelName; }
 
 		//= GEOMETRY ================================================================================
 		// Clears geometry (vertices and indices)
@@ -93,7 +93,7 @@ namespace Directus
 		//======================
 
 		unsigned int m_gameObjID;
-		unsigned int m_modelID;
+		std::string m_modelID;
 		std::vector<VertexPosTexTBN> m_vertices;
 		std::vector<unsigned int> m_indices;
 		unsigned int m_vertexCount;
