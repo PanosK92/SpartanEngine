@@ -150,16 +150,19 @@ namespace Directus
 			return;
 
 		// Don't add mesh if it's already added
-		for (const auto& cachedMesh : m_meshes)
+		weak_ptr<Mesh> modelCached;
+		DetermineMeshUniqueness(mesh, modelCached);
+		if (!modelCached.expired())
 		{
-			if (cachedMesh._Get()->GetResourceName() == mesh._Get()->GetResourceName())
-				return;
+			// The mesh is cached but we must not forget to add
+			// some standard components to the GameObject that uses it.
+			AddStandardComponents(gameObject, modelCached);
+			return;
 		}
 
 		// Update the mesh with Model directory relative file path. Then save it to this directory
 		string modelRelativeTexPath = m_modelDirectoryMeshes + mesh._Get()->GetResourceName() + MESH_EXTENSION;
 		mesh._Get()->SetResourceFilePath(modelRelativeTexPath);
-		mesh._Get()->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
 		mesh._Get()->SetModelName(GetResourceName());
 		mesh._Get()->SaveToFile(modelRelativeTexPath);
 
@@ -175,19 +178,8 @@ namespace Directus
 		// Save it
 		m_meshes.push_back(weakMesh);
 
-		// Add a MeshFilter a RigidBody and a Collider
-		if (!gameObject.expired())
-		{
-			MeshFilter* meshFilter = gameObject._Get()->AddComponent<MeshFilter>()._Get();
-			meshFilter->SetMesh(weakMesh);
-
-			if (meshFilter->GetType() == MeshType_Custom)
-			{
-				gameObject._Get()->AddComponent<RigidBody>();
-				Collider* collider = gameObject._Get()->AddComponent<Collider>()._Get();
-				collider->SetShapeType(ColliderShape_Mesh);
-			}
-		}
+		// Add some standard components
+		AddStandardComponents(gameObject, weakMesh);
 
 		// Release geometry data now that we are done with it
 		weakMesh._Get()->ClearGeometry();
@@ -263,7 +255,7 @@ namespace Directus
 
 			// Set texture type
 			texture._Get()->SetType(textureType);
-			
+
 			// Update the texture with Model directory relative file path. Then save it to this directory
 			string modelRelativeTexPath = m_modelDirectoryTextures + texName + TEXTURE_EXTENSION;
 			texture._Get()->SetResourceFilePath(modelRelativeTexPath);
@@ -300,10 +292,10 @@ namespace Directus
 	void Model::SetWorkingDirectory(const string& directory)
 	{
 		// Set directoties based on new directory
-		m_modelDirectoryModel		= directory;
-		m_modelDirectoryMeshes		= m_modelDirectoryModel + "Meshes//";
-		m_modelDirectoryMaterials	= m_modelDirectoryModel + "Materials//";
-		m_modelDirectoryTextures	= m_modelDirectoryModel + "Textures//";
+		m_modelDirectoryModel = directory;
+		m_modelDirectoryMeshes = m_modelDirectoryModel + "Meshes//";
+		m_modelDirectoryMaterials = m_modelDirectoryModel + "Materials//";
+		m_modelDirectoryTextures = m_modelDirectoryModel + "Textures//";
 
 		// Create directories
 		FileSystem::CreateDirectory_(directory);
@@ -332,7 +324,7 @@ namespace Directus
 			auto mesh = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
 			if (mesh.expired())
 			{
-				LOG_WARNING("Model: Failed to load mesh \"" + meshName +"\"");
+				LOG_WARNING("Model: Failed to load mesh \"" + meshName + "\"");
 				continue;
 			}
 			m_meshes.push_back(mesh);
@@ -363,6 +355,85 @@ namespace Directus
 		}
 
 		return false;
+	}
+
+	void Model::AddStandardComponents(weak_ptr<GameObject> gameObject, weak_ptr<Mesh> mesh)
+	{
+		if (gameObject.expired())
+			return;
+
+		// Add a MeshFilter
+		MeshFilter* meshFilter = gameObject._Get()->AddComponent<MeshFilter>()._Get();
+		meshFilter->SetMesh(mesh);
+
+		if (meshFilter->GetType() == MeshType_Custom)
+		{
+			// Add a RigidBody
+			gameObject._Get()->AddComponent<RigidBody>();
+
+			// Add a Collider
+			Collider* collider = gameObject._Get()->AddComponent<Collider>()._Get();
+			collider->SetShapeType(ColliderShape_Mesh);
+		}
+	}
+
+	void Model::DetermineMeshUniqueness(weak_ptr<Mesh> mesh, weak_ptr<Mesh> modelCached)
+	{
+		// Some meshes can come from model formats like .obj
+		// Such formats contain pure geometry data, meaning that there is no transformation data.
+		// This in turn means that in order to have instances of the same mesh using different transforms,
+		// .obj simply re-defines the mesh in all the needed transformations. Because of that we can't simply compare
+		// mesh names to decide if they are different or not, we have to do a more extensive testing to determine the uniquness of a mesh.
+
+
+		// Find all the meshes with the same name
+		vector<weak_ptr<Mesh>> sameNameMeshes;
+		for (const auto& cachedMesh : m_meshes)
+		{
+			if (cachedMesh._Get()->GetResourceName() == mesh._Get()->GetResourceName() 
+				|| cachedMesh._Get()->GetResourceName().find(mesh._Get()->GetResourceName()) != string::npos)
+			{
+				sameNameMeshes.push_back(cachedMesh);
+			}
+		}
+
+		bool isUnique = true;
+		for (const auto& cachedMesh : sameNameMeshes)
+		{
+			// Vertex count matches
+			if (cachedMesh._Get()->GetVertexCount() != mesh._Get()->GetVertexCount())
+				continue;
+
+			auto meshVertices = mesh._Get()->GetVertices();
+			auto cachedVertices = cachedMesh._Get()->GetVertices();
+
+			bool geometryMatches = true;
+			for (int i = 0; i < meshVertices.size(); i++)
+			{
+				if (meshVertices[i].position != cachedVertices[i].position)
+				{
+					geometryMatches = false;
+					break;
+				}
+			}
+
+			if (geometryMatches)
+			{
+				isUnique = false;
+				break;
+			}
+		}
+
+		// If the mesh is unique, give it a different name (in case other with the same name exist)
+		if (isUnique)
+		{
+			string num = sameNameMeshes.size() == 0 ? string("") : "_" + to_string(sameNameMeshes.size() + 1);
+			mesh._Get()->SetResourceName(mesh._Get()->GetResourceName() + num);
+		}
+		else
+		{
+			modelCached = sameNameMeshes.front();
+		}
 	}
 
 	float Model::ComputeNormalizeScale()
