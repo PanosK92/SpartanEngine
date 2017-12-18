@@ -404,8 +404,13 @@ namespace Directus
 			if (cachedMesh._Get()->GetVertexCount() != mesh._Get()->GetVertexCount())
 				continue;
 
-			auto meshVertices = mesh._Get()->GetVertices();
-			auto cachedVertices = cachedMesh._Get()->GetVertices();
+			vector<VertexPosTexTBN> meshVertices;
+			vector<unsigned int> meshIndices;
+			mesh._Get()->GetGeometry(&meshVertices, &meshIndices);
+
+			vector<VertexPosTexTBN> cachedVertices;
+			vector<unsigned int> cachedIndices;
+			cachedMesh._Get()->GetGeometry(&cachedVertices, &cachedIndices);
 
 			bool geometryMatches = true;
 			for (int i = 0; i < meshVertices.size(); i++)

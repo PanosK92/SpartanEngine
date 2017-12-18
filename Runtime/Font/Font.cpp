@@ -145,9 +145,10 @@ namespace Directus
 			if (textChar == ASCII_TAB)
 			{
 				int spaceOffset = m_glyphs[ASCII_SPACE].horizontalOffset;
-				int tabSpaceCount = 8; // spaces in a typical terminal
-				int tabSpacing = spaceOffset * tabSpaceCount;
-				int nextTabStop = tabSpacing - ((int)pen.x % tabSpacing);
+				int spaceCount = 8; // spaces in a typical terminal
+				int tabSpacing = spaceOffset * spaceCount;
+				int columnHeader = pen.x - position.x; // -position.x because it has to be zero based so we can do the mod below
+				float nextTabStop = tabSpacing - (columnHeader % tabSpacing);
 				pen.x += nextTabStop;
 				continue;
 			}
@@ -167,7 +168,7 @@ namespace Directus
 
 			// First triangle in quad.		
 			m_vertices.emplace_back(Vector3(pen.x,					pen.y - glyph.descent,					0.0f),	Vector2(glyph.uvXLeft,	glyph.uvYTop));		// Top left
-			m_vertices.emplace_back(Vector3((pen.x + glyph.width), (pen.y - glyph.height - glyph.descent),	0.0f),	Vector2(glyph.uvXRight, glyph.uvYBottom));	// Bottom right
+			m_vertices.emplace_back(Vector3((pen.x + glyph.width),	(pen.y - glyph.height - glyph.descent),	0.0f),	Vector2(glyph.uvXRight, glyph.uvYBottom));	// Bottom right
 			m_vertices.emplace_back(Vector3(pen.x,					(pen.y - glyph.height - glyph.descent), 0.0f),	Vector2(glyph.uvXLeft,	glyph.uvYBottom));	// Bottom left
 			// Second triangle in quad.
 			m_vertices.emplace_back(Vector3(pen.x,					pen.y - glyph.descent, 0.0f),					Vector2(glyph.uvXLeft,	glyph.uvYTop));		// Top left
