@@ -47,6 +47,6 @@ namespace Directus
 
 	float Stopwatch::GetElapsedTime()
 	{
-		return duration_cast<microseconds>(steady_clock::now() - m_start).count() / 1000.0;
+		return float(duration_cast<microseconds>(steady_clock::now() - m_start).count() / 1000.0);
 	}
 }

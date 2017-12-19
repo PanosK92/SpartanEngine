@@ -47,7 +47,7 @@ namespace Directus
 			return false;
 
 		unsigned int stride = sizeof(unsigned int);
-		float size = (unsigned int)indices.size();
+		unsigned int size = (unsigned int)indices.size();
 		unsigned int finalSize = stride * size;
 
 		// fill in a buffer description.

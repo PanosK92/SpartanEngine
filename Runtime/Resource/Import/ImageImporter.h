@@ -65,14 +65,14 @@ XPM files[reading, writing]
 #include "../../Core/Helper.h"
 //============================
 
-class FIBITMAP;
+struct FIBITMAP;
 
 namespace Directus
 {
 	class Context;
 	class Texture;
 
-	class DLL_API ImageImporter
+	class ENGINE_API ImageImporter
 	{
 	public:
 		ImageImporter(Context* context);

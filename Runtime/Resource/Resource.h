@@ -52,7 +52,7 @@ namespace Directus
 		Async_Failed
 	};
 
-	class DLL_API Resource
+	class ENGINE_API Resource
 	{
 	public:
 		virtual ~Resource() {}

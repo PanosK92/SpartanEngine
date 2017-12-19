@@ -43,7 +43,7 @@ namespace Directus
 		class BoundingBox;
 	}
 
-	class DLL_API Model : public Resource
+	class ENGINE_API Model : public Resource
 	{
 	public:
 		Model(Context* context);
@@ -83,7 +83,7 @@ namespace Directus
 		float GetBoundingSphereRadius();
 
 		// Returns the number of meshes used by this model
-		unsigned int GetMeshCount() { return m_meshes.size(); }
+		unsigned int GetMeshCount() { return (unsigned int)m_meshes.size(); }
 
 		void SetWorkingDirectory(const std::string& directory);
 

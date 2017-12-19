@@ -56,7 +56,7 @@ namespace Directus
 	{
 		// Get current time
 		auto currentTime = high_resolution_clock::now().time_since_epoch();
-		double currentTimoMicroSec = duration_cast<microseconds>(currentTime).count();
+		double currentTimoMicroSec = (double)duration_cast<microseconds>(currentTime).count();
 
 		// Calculate delta time
 		m_deltaTimeMicroSec = currentTimoMicroSec - m_previousTimeMicroSec;
@@ -65,7 +65,7 @@ namespace Directus
 		m_previousTimeMicroSec = currentTimoMicroSec;
 
 		// Keep delta time in different representations
-		m_deltaTimeMil = m_deltaTimeMicroSec / 1000.0;
-		m_deltaTimeSec = m_deltaTimeMil / 1000.0;
+		m_deltaTimeMil = float(m_deltaTimeMicroSec / 1000.0);
+		m_deltaTimeSec = float(m_deltaTimeMil / 1000.0);
 	}
 }

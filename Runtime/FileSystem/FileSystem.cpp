@@ -612,7 +612,7 @@ namespace Directus
 				i++;
 			}
 
-			strcpy(relativeFilename, &absoluteDir[i]);
+			strcpy_s(relativeFilename, &absoluteDir[i]);
 			return relativeFilename;
 		}
 

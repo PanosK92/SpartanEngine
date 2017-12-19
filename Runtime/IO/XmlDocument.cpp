@@ -250,8 +250,8 @@ namespace Directus
 		GetAttribute(nodeName, attributeName, valueStr);
 
 		Vector2 vec;
-		vec.x = atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
-		vec.y = atof(FileSystem::GetStringAfterExpression(valueStr, "Y:").c_str());
+		vec.x = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
+		vec.y = (float)atof(FileSystem::GetStringAfterExpression(valueStr, "Y:").c_str());
 
 		return vec;
 	}
@@ -262,9 +262,9 @@ namespace Directus
 		GetAttribute(nodeName, attributeName, valueStr);
 
 		Vector3 vec;
-		vec.x = atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
-		vec.y = atof(FileSystem::GetStringBetweenExpressions(valueStr, "Y:", ",").c_str());
-		vec.z = atof(FileSystem::GetStringAfterExpression(valueStr, "Z:").c_str());
+		vec.x = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
+		vec.y = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "Y:", ",").c_str());
+		vec.z = (float)atof(FileSystem::GetStringAfterExpression(valueStr, "Z:").c_str());
 
 		return vec;
 	}
@@ -276,10 +276,10 @@ namespace Directus
 		GetAttribute(nodeName, attributeName, valueStr);
 
 		Vector4 vec;
-		vec.x = atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
-		vec.y = atof(FileSystem::GetStringBetweenExpressions(valueStr, "Y:", ",").c_str());
-		vec.z = atof(FileSystem::GetStringBetweenExpressions(valueStr, "Z:", ",").c_str());
-		vec.w = atof(FileSystem::GetStringAfterExpression(valueStr, "W:").c_str());
+		vec.x = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "X:", ",").c_str());
+		vec.y = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "Y:", ",").c_str());
+		vec.z = (float)atof(FileSystem::GetStringBetweenExpressions(valueStr, "Z:", ",").c_str());
+		vec.w = (float)atof(FileSystem::GetStringAfterExpression(valueStr, "W:").c_str());
 
 		return vec;
 	}

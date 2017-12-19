@@ -16,7 +16,7 @@ namespace Directus
 		class Vector3;
 	}
 
-	class DLL_API LineRenderer : public Component
+	class ENGINE_API LineRenderer : public Component
 	{
 	public:
 		LineRenderer();

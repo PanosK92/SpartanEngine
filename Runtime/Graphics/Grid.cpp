@@ -54,11 +54,13 @@ namespace Directus
 	void Grid::BuildGrid()
 	{
 		vector<VertexPosCol> vertices;
-
 		VertexPosCol vertex;
-		for (int j = -(m_terrainHeight * 0.5f); j < (m_terrainHeight * 0.5f); j++)
+		int halfSizeW = int(m_terrainWidth * 0.5f);
+		int halfSizeH = int(m_terrainHeight * 0.5f);
+
+		for (int j = -halfSizeH; j < halfSizeH; j++)
 		{
-			for (int i = -(m_terrainWidth * 0.5f); i < (m_terrainWidth * 0.5f); i++)
+			for (int i = -halfSizeW; i < halfSizeW; i++)
 			{
 				// LINE 1
 				// Upper left.

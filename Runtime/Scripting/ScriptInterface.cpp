@@ -413,7 +413,7 @@ namespace Directus
 		new(self) Quaternion(other.x, other.y, other.z, other.w);
 	}
 
-	void ConstructorQuaternionDoubles(double x, double y, double z, double w, Quaternion* self)
+	void ConstructorQuaternionFloats(float x, float y, float z, float w, Quaternion* self)
 	{
 		new(self) Quaternion(x, y, z, w);
 	}
@@ -435,12 +435,12 @@ namespace Directus
 
 	void ScriptInterface::RegisterQuaternion()
 	{
-		//= CONSTRUCTORS/DESTRUCTOR ==============================================================================================================================================================
+		//= CONSTRUCTORS/DESTRUCTOR ====================================================================================================================================================
 		m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructorQuaternion), asCALL_CDECL_OBJLAST);
 		m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f(const Quaternion &in)", asFUNCTION(CopyConstructorQuaternion), asCALL_CDECL_OBJLAST);
-		m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f(double, double, double, double)", asFUNCTION(ConstructorQuaternionDoubles), asCALL_CDECL_OBJLAST);
+		m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void f(float, float, float, float)", asFUNCTION(ConstructorQuaternionFloats), asCALL_CDECL_OBJLAST);
 		m_scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestructQuaternion), asCALL_CDECL_OBJLAST);
-		//========================================================================================================================================================================================
+		//==============================================================================================================================================================================
 
 		//= PROPERTIES ===========================================================================
 		m_scriptEngine->RegisterObjectProperty("Quaternion", "double x", asOFFSET(Quaternion, x));

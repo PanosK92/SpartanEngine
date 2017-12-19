@@ -39,7 +39,7 @@ namespace Directus
 	unsigned int GUIDGenerator::Generate()
 	{
 		hash<string> hasher;
-		return hasher(GenerateAsStr());
+		return (unsigned int)hasher(GenerateAsStr());
 	}
 
 	string GUIDGenerator::GenerateAsStr()

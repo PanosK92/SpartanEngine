@@ -42,7 +42,7 @@ namespace Directus
 	class D3D11VertexBuffer;
 	class D3D11IndexBuffer;
 
-	class DLL_API Font : Resource
+	class ENGINE_API Font : Resource
 	{
 	public:
 		Font(Context* context);
@@ -61,7 +61,7 @@ namespace Directus
 
 		void** GetShaderResource();
 		bool SetBuffer();
-		unsigned int GetIndexCount() { return m_indices.size(); }
+		unsigned int GetIndexCount() { return (unsigned int)m_indices.size(); }
 			
 	private:	
 		bool UpdateBuffers(std::vector<VertexPosTex>& vertices, std::vector<unsigned int>& indices);

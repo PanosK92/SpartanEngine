@@ -131,7 +131,7 @@ namespace Directus
 		buffer->mLightViewProjection[2] = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
 		buffer->shadowSplits			= Vector4(directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), 0, 0);
 		buffer->lightDir				= directionalLight->GetDirection();
-		buffer->shadowMapResolution		= directionalLight->GetShadowCascadeResolution();
+		buffer->shadowMapResolution		= (float)directionalLight->GetShadowCascadeResolution();
 		buffer->shadowMappingQuality	= directionalLight->GetShadowTypeAsFloat();
 		buffer->cameraPos				= camera->g_transform->GetPosition();
 

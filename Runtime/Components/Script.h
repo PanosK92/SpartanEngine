@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DLL_API Script : public Component
+	class ENGINE_API Script : public Component
 	{
 	public:
 		Script();

@@ -49,17 +49,17 @@ namespace Directus
 		int horizontalOffset;
 	};
 
-	class DLL_API FontImporter
+	class ENGINE_API FontImporter
 	{
 	public:
 		FontImporter(Context* context);
 		~FontImporter();
 
 		void Initialize();
-		bool LoadFont(const std::string& filePath, int fontSize, std::vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, std::map<unsigned int, Glyph>& characterInfo);
+		bool LoadFont(const std::string& filePath, int fontSize, std::vector<unsigned char>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, std::map<unsigned int, Glyph>& characterInfo);
 
 	private:
-		void ComputeAtlasTextureDimensions(FT_FaceRec_* face, int& atlasWidth, int& atlasHeight, int& rowHeight);
+		void ComputeAtlasTextureDimensions(FT_FaceRec_* face, unsigned int& atlasWidth, unsigned int& atlasHeight, unsigned int& rowHeight);
 		int GetCharacterMaxHeight(FT_FaceRec_* face);
 		bool HandleError(int errorCode);
 

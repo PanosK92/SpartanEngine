@@ -32,7 +32,7 @@ namespace Directus
 	{
 		class BoundingBox;
 
-		class DLL_API Ray
+		class ENGINE_API Ray
 		{
 		public:
 			// Constructs a ray with zero origin and direction

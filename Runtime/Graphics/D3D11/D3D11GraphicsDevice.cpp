@@ -696,7 +696,7 @@ namespace Directus
 	IDXGIAdapter* D3D11GraphicsDevice::GetAdapterWithTheHighestVRAM(IDXGIFactory* factory)
 	{
 		IDXGIAdapter* maxAdapter = nullptr;
-		size_t maxVRAM = -INFINITY;
+		unsigned int maxVRAM = 0;
 
 		auto adapters = GetAvailableAdapters(factory);
 		DXGI_ADAPTER_DESC adapterDesc;
@@ -706,7 +706,7 @@ namespace Directus
 
 			if (adapterDesc.DedicatedVideoMemory > maxVRAM)
 			{
-				maxVRAM = adapterDesc.DedicatedVideoMemory;
+				maxVRAM = (unsigned int)adapterDesc.DedicatedVideoMemory;
 				maxAdapter = adapter;
 			}
 		}

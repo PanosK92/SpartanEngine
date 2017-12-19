@@ -47,7 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DLL_API FileSystem
+	class ENGINE_API FileSystem
 	{
 	public:
 		static void Initialize();

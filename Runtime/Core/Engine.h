@@ -30,7 +30,7 @@ namespace Directus
 		Game
 	};
 
-	class DLL_API Engine : public Subsystem
+	class ENGINE_API Engine : public Subsystem
 	{
 	public:
 		Engine(Context* context);
