@@ -192,8 +192,8 @@ namespace Directus
 
 	bool ImageImporter::GetBitsFromFIBITMAP(vector<unsigned char>* bitsRGBA, FIBITMAP* bitmap)
 	{
-		int width = FreeImage_GetWidth(bitmap);
-		int height = FreeImage_GetHeight(bitmap);
+		unsigned int width = FreeImage_GetWidth(bitmap);
+		unsigned int height = FreeImage_GetHeight(bitmap);
 
 		if (width == 0 || height == 0)
 			return false;

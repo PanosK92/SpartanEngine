@@ -36,7 +36,7 @@ namespace Directus
 		string Vector2::ToString() const
 		{
 			char tempBuffer[200];
-			sprintf(tempBuffer, "X:%f, Y:%f", x, y);
+			sprintf_s(tempBuffer, "X:%f, Y:%f", x, y);
 			return string(tempBuffer);
 		}
 	}

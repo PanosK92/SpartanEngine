@@ -135,12 +135,12 @@ namespace Directus
 	{
 		m_resolutionWidth = width;
 		m_resolutionHeight = height;
-		m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
+		m_screenAspect = (float)m_resolutionWidth / (float)m_resolutionHeight;
 	}
 
 	Math::Vector2 Settings::GetResolution()
 	{
-		return Math::Vector2(m_resolutionWidth, m_resolutionHeight);
+		return Math::Vector2((float)m_resolutionWidth, (float)m_resolutionHeight);
 	}
 
 	int Settings::GetResolutionWidth()
@@ -166,12 +166,12 @@ namespace Directus
 
 	int Settings::GetViewportWidth()
 	{
-		return m_viewportWidth;
+		return (int)m_viewportWidth;
 	}
 
 	int Settings::GetViewportHeight()
 	{
-		return m_viewportHeight;
+		return (int)m_viewportHeight;
 	}
 
 	bool Settings::IsFullScreen()

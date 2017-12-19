@@ -34,7 +34,7 @@ namespace Directus
 	typedef std::weak_ptr<GameObject> weakGameObj;
 	typedef std::shared_ptr<GameObject> sharedGameObj;
 
-	class DLL_API Scene : public Subsystem
+	class ENGINE_API Scene : public Subsystem
 	{
 	public:
 		Scene(Context* context);

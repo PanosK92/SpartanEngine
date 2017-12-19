@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DLL_API ResourceManager : public Subsystem
+	class ENGINE_API ResourceManager : public Subsystem
 	{
 	public:
 		ResourceManager(Context* context);
@@ -151,7 +151,7 @@ namespace Directus
 		// Returns all resources of a given type
 		unsigned int GetResourceCountByType(ResourceType type)
 		{
-			return m_resourceCache->GetByType(type).size();
+			return (unsigned int)m_resourceCache->GetByType(type).size();
 		}
 
 		void SaveResourcesToFiles()

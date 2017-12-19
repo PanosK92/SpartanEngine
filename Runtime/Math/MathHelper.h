@@ -48,16 +48,16 @@ namespace Directus
 		static const float DEG_TO_RAD_2 = PI / 360.0f;
 		static const float RAD_TO_DEG = 180.0f / PI;
 
-		inline DLL_API double Cot(float x) { return cos(x) / sin(x); }
-		inline DLL_API float CotF(float x) { return cosf(x) / sinf(x); }
-		inline DLL_API float DegreesToRadians(float degrees) { return degrees * DEG_TO_RAD; }
-		inline DLL_API float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
+		inline ENGINE_API double Cot(float x) { return cos(x) / sin(x); }
+		inline ENGINE_API float CotF(float x) { return cosf(x) / sinf(x); }
+		inline ENGINE_API float DegreesToRadians(float degrees) { return degrees * DEG_TO_RAD; }
+		inline ENGINE_API float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
 		template <typename T>
-		inline DLL_API T Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
+		inline ENGINE_API T Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
 
 		// Lerp linearly between to values
 		template <class T, class U>
-		T Lerp(T lhs, T rhs, U t) { return lhs * (1.0 - t) + rhs * t; }
+		T Lerp(T lhs, T rhs, U t) { return lhs * ((U)1.0 - t) + rhs * t; }
 
 		// Returns the absolute value
 		template <class T>

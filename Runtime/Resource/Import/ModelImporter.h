@@ -42,7 +42,7 @@ namespace Directus
 	class Model;
 	class Transform;
 
-	class DLL_API ModelImporter
+	class ENGINE_API ModelImporter
 	{
 	public:
 		ModelImporter(Context* context);

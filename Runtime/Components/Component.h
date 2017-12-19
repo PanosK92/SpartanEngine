@@ -120,7 +120,7 @@ namespace Directus
 		return ComponentType_Unknown;
 	}
 
-	class DLL_API Component
+	class ENGINE_API Component
 	{
 	public:
 		virtual ~Component() {}

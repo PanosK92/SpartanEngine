@@ -115,8 +115,8 @@ namespace Directus
 	unsigned int Mesh::GetMemoryUsageKB()
 	{
 		unsigned int sizeKB = 0;
-		sizeKB += m_vertices.size() * sizeof(VertexPosTexTBN);
-		sizeKB += m_indices.size() * sizeof(unsigned int);
+		sizeKB += unsigned int(m_vertices.size() * sizeof(VertexPosTexTBN));
+		sizeKB += unsigned int(m_indices.size() * sizeof(unsigned int));
 
 		return sizeKB / 1000;
 	}

@@ -231,9 +231,9 @@ namespace Directus
 
 			// Construct hull approximation
 			m_collisionShape = make_shared<btConvexHullShape>(
-				(btScalar*)&vertices[0],	// points
-				mesh->GetVertexCount(),		// point count
-				sizeof(VertexPosTexTBN));	// stride
+				(btScalar*)&vertices[0],				// points
+				mesh->GetVertexCount(),					// point count
+				(unsigned int)sizeof(VertexPosTexTBN));	// stride
 
 			// Scaling has to be done before (potential) optimization
 			m_collisionShape->setLocalScaling(ToBtVector3(newWorldScale));

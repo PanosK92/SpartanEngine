@@ -49,7 +49,7 @@ namespace Directus
 			return false;
 
 		m_stride = sizeof(VertexPosCol);
-		float size = (unsigned int)vertices.size();
+		unsigned int size = (unsigned int)vertices.size();
 		unsigned int byteWidth = m_stride * size;
 
 		// fill in a buffer description.
@@ -84,7 +84,7 @@ namespace Directus
 			return false;
 
 		m_stride = sizeof(VertexPosTex);
-		float size = (unsigned int)vertices.size();
+		unsigned int size = (unsigned int)vertices.size();
 		unsigned int byteWidth = m_stride * size;
 
 		// fill in a buffer description.
@@ -119,7 +119,7 @@ namespace Directus
 			return false;
 
 		m_stride = sizeof(VertexPosTexTBN);
-		float size = (unsigned int)vertices.size();
+		unsigned int size = (unsigned int)vertices.size();
 		unsigned int byteWidth = m_stride * size;
 
 		// fill in a buffer description.

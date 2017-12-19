@@ -72,7 +72,7 @@ namespace Directus
 		string Quaternion::ToString() const
 		{
 			char tempBuffer[200];
-			sprintf(tempBuffer, "X:%f, Y:%f, Z:%f, W:%f", x, y, z, w);
+			sprintf_s(tempBuffer, "X:%f, Y:%f, Z:%f, W:%f", x, y, z, w);
 			return string(tempBuffer);
 		}
 	}

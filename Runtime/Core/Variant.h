@@ -88,7 +88,7 @@ namespace Directus
 
 	static_assert(sizeof(VariantValue) == VARIANT_VALUE_SIZE, "Unexpected size of VariantValue");
 
-	class DLL_API Variant
+	class ENGINE_API Variant
 	{
 	public:
 		Variant() { }

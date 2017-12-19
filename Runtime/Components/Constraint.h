@@ -41,7 +41,7 @@ namespace Directus
 		ConstraintType_ConeTwist
 	};
 
-	class DLL_API Constraint : public Component
+	class ENGINE_API Constraint : public Component
 	{
 	public:
 		Constraint();

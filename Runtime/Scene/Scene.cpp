@@ -204,7 +204,7 @@ namespace Directus
 		vector<string> resourcePaths;
 		file->Read(&resourcePaths);
 
-		m_jobsTotal = resourcePaths.size();
+		m_jobsTotal = (float)resourcePaths.size();
 
 		// Load all the resources
 		auto resourceMng = m_context->GetSubsystem<ResourceManager>();

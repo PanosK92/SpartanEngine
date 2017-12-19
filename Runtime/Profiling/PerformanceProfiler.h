@@ -35,7 +35,7 @@ namespace Directus
 	class Timer;
 	class ResourceManager;
 
-	class DLL_API PerformanceProfiler
+	class ENGINE_API PerformanceProfiler
 	{
 	public:
 		static void Initialize(Context* context);

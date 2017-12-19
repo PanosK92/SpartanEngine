@@ -39,7 +39,7 @@ namespace Directus
 		class Vector3;
 	}
 
-	class DLL_API Cascade
+	class ENGINE_API Cascade
 	{
 	public:
 		Cascade(int resolution, Camera* camera, Context* context);
@@ -52,7 +52,7 @@ namespace Directus
 
 	private:
 		std::unique_ptr<D3D11RenderTexture> m_depthMap;
-		float m_resolution;
+		int m_resolution;
 		Camera* m_camera;
 	};
 }

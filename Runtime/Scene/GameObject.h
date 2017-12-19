@@ -34,7 +34,7 @@ namespace Directus
 	class MeshFilter;
 	class MeshRenderer;
 
-	class DLL_API GameObject
+	class ENGINE_API GameObject
 	{
 	public:
 		GameObject(Context* context);

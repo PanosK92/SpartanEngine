@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class DLL_API ResourceCache
+	class ENGINE_API ResourceCache
 	{
 	public:
 		ResourceCache() {}

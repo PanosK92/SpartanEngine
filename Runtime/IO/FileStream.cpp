@@ -81,7 +81,7 @@ namespace Directus
 
 	void FileStream::Write(const string& value)
 	{
-		unsigned int length = value.length();
+		unsigned int length = (unsigned int)value.length();
 		Write(length);
 
 		out.write(const_cast<char*>(value.c_str()), length);
@@ -89,7 +89,7 @@ namespace Directus
 
 	void FileStream::Write(const vector<string>& value)
 	{
-		unsigned int size = value.size();
+		unsigned int size = (unsigned int)value.size();
 		Write(size);
 
 		for (unsigned int i = 0; i < size; i++)
@@ -120,21 +120,21 @@ namespace Directus
 
 	void FileStream::Write(const vector<VertexPosTexTBN>& value)
 	{
-		unsigned int length = value.size();
+		unsigned int length = (unsigned int)value.size();
 		Write(length);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(VertexPosTexTBN) * length);
 	}
 
 	void FileStream::Write(const vector<unsigned int>& value)
 	{
-		unsigned int length = value.size();
+		unsigned int length = (unsigned int)value.size();
 		Write(length);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned int) * length);
 	}
 
 	void FileStream::Write(const vector<unsigned char>& value)
 	{
-		unsigned int size = value.size();
+		unsigned int size = (unsigned int)value.size();
 		Write(size);
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
 	}

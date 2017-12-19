@@ -31,7 +31,7 @@ namespace Directus
 {
 	class AudioClip;
 
-	class DLL_API AudioSource : public Component
+	class ENGINE_API AudioSource : public Component
 	{
 	public:
 		AudioSource();

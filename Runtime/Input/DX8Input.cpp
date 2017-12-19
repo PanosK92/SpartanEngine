@@ -194,7 +194,7 @@ namespace Directus
 		// lX = position x delta
 		// lY = position y delta
 		// lZ = wheel delta
-		return Vector3(m_mouseState.lX, m_mouseState.lY, m_mouseState.lZ);
+		return Vector3((float)m_mouseState.lX, (float)m_mouseState.lY, (float)m_mouseState.lZ);
 	}
 
 	bool DX8Input::GetKeyboard()

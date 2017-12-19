@@ -31,7 +31,7 @@ namespace Directus
 {
 	namespace Math
 	{
-		class DLL_API Vector3
+		class ENGINE_API Vector3
 		{
 		public:
 			// Constructor
@@ -240,6 +240,6 @@ namespace Directus
 		};
 
 		// Reverse order operators
-		inline DLL_API Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
+		inline ENGINE_API Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
 	}
 }

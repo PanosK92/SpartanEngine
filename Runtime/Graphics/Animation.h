@@ -61,7 +61,7 @@ namespace Directus
 		std::vector<KeyVector> scaleFrames;
 	};
 
-	class DLL_API Animation : public Resource
+	class ENGINE_API Animation : public Resource
 	{
 	public:
 		Animation();

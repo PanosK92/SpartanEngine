@@ -65,7 +65,7 @@ namespace Directus
 		string Vector4::ToString() const
 		{
 			char tempBuffer[200];
-			sprintf(tempBuffer, "X:%f, Y:%f, Z:%f, W:%f", x, y, z, w);
+			sprintf_s(tempBuffer, "X:%f, Y:%f, Z:%f, W:%f", x, y, z, w);
 			return string(tempBuffer);
 		}
 	}

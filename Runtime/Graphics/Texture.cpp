@@ -145,7 +145,7 @@ namespace Directus
 		unsigned int memoryKB = 0;
 		for (const auto& mip : m_textureBits)
 		{
-			memoryKB += mip.size();
+			memoryKB += (unsigned int)mip.size();
 		}
 
 		// Compute shader resource (in case it's created)

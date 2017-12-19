@@ -67,7 +67,7 @@ namespace Directus
 		LOG_INFO("FontImporter: FreeType " + version);
 	}
 
-	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, int& atlasWidth, int& atlasHeight, map<unsigned int, Glyph>& glyphs)
+	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, map<unsigned int, Glyph>& glyphs)
 	{
 		FT_Face face;
 
@@ -87,7 +87,7 @@ namespace Directus
 		}
 
 		// Try to estimate the size of the font atlas texture
-		int rowHeight = 0;
+		unsigned int rowHeight = 0;
 		ComputeAtlasTextureDimensions(face, atlasWidth, atlasHeight, rowHeight);
 
 		if (atlasWidth > 8192 || atlasHeight > 8192)
@@ -172,7 +172,7 @@ namespace Directus
 		return true;
 	}
 
-	void FontImporter::ComputeAtlasTextureDimensions(FT_FaceRec_* face, int& atlasWidth, int& atlasHeight, int& rowHeight)
+	void FontImporter::ComputeAtlasTextureDimensions(FT_FaceRec_* face, unsigned int& atlasWidth, unsigned int& atlasHeight, unsigned int& rowHeight)
 	{
 		int penX = 0;
 		rowHeight = GetCharacterMaxHeight(face);

@@ -32,8 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EventSystem/EventSystem.h"
 //===========================================
 
-#define AS_USE_STLNAMES = 1
-
 namespace Directus
 {
 	Scripting::Scripting(Context* context) : Subsystem(context)

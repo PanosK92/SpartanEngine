@@ -100,7 +100,7 @@ namespace Directus
 
 		// Create fullscreen rectangle
 		m_fullScreenRect = make_unique<Rectangle>(m_context);
-		m_fullScreenRect->Create(0, 0, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+		m_fullScreenRect->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
 
 		// Get standard resource directories
 		string shaderDirectory = m_resourceMng->GetStandardResourceDirectory(Resource_Shader);
@@ -185,9 +185,9 @@ namespace Directus
 		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 		m_renderTexSSAO = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexSSAO->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
+		m_renderTexSSAO->Create(int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
 		m_renderTexSSAOBlurred = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexSSAOBlurred->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
+		m_renderTexSSAOBlurred->Create(int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
 		m_renderTexLastFrame = make_unique<D3D11RenderTexture>(m_graphics);
 		m_renderTexLastFrame->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
@@ -284,7 +284,7 @@ namespace Directus
 
 		m_fullScreenRect.reset();
 		m_fullScreenRect = make_unique<Rectangle>(m_context);
-		m_fullScreenRect->Create(0, 0, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+		m_fullScreenRect->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
 
 		m_renderTexPing.reset();
 		m_renderTexPing = make_unique<D3D11RenderTexture>(m_graphics);
@@ -296,11 +296,11 @@ namespace Directus
 
 		m_renderTexSSAO.reset();
 		m_renderTexSSAO = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexSSAO->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
+		m_renderTexSSAO->Create(int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
 
 		m_renderTexSSAOBlurred.reset();
 		m_renderTexSSAOBlurred = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexSSAOBlurred->Create(RESOLUTION_WIDTH * 0.5f, RESOLUTION_HEIGHT * 0.5f, false);
+		m_renderTexSSAOBlurred->Create(int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
 
 		m_renderTexLastFrame.reset();
 		m_renderTexLastFrame = make_unique<D3D11RenderTexture>(m_graphics);
@@ -369,7 +369,7 @@ namespace Directus
 				mView = m_camera->GetViewMatrix();
 				mProjection = m_camera->GetProjectionMatrix();
 				mViewProjection = mView * mProjection;
-				mOrthographicProjection = Matrix::CreateOrthographicLH(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
+				mOrthographicProjection = Matrix::CreateOrthographicLH((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
 				mBaseView = m_camera->GetBaseViewMatrix();
 				m_nearPlane = m_camera->GetNearPlane();
 				m_farPlane = m_camera->GetFarPlane();
