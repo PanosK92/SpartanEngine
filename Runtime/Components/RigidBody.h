@@ -47,15 +47,12 @@ namespace Directus
 		RigidBody();
 		~RigidBody();
 
-		//= ICOMPONENT ============================
+		//= ICOMPONENT ===============================
 		void Initialize() override;
-		void Start() override;
-		void OnDisable() override;
-		void Remove() override;
 		void Update() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
-		//=========================================
+		//============================================
 		//= MASS =========================
 		float GetMass() { return m_mass; }
 		void SetMass(float mass);
@@ -112,7 +109,7 @@ namespace Directus
 		void SetCollisionShape(std::weak_ptr<btCollisionShape> shape);
 		btRigidBody* GetBtRigidBody() { return m_rigidBody.get(); }
 		void ClearForces() const;
-		Math::Vector3 GetColliderCenter() const;
+		Math::Vector3 GetColliderCenter();
 		void Activate() const;
 		void Deactivate() const;
 		//============================================================
@@ -120,7 +117,7 @@ namespace Directus
 		//= HELPER FUNCTIONS ======
 		void AddBodyToWorld();
 		void RemoveBodyFromWorld();
-		void UpdateGravity() const;
+		void UpdateGravity();
 		void ReleaseRigidBody();
 		bool IsActivated() const;
 		//=========================

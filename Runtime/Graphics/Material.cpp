@@ -166,8 +166,8 @@ namespace Directus
 		// If this material is using a shader, save it
 		if (!m_shader.expired())
 		{
-			m_shader._Get()->SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(filePath) + SHADER_EXTENSION);
-			m_shader._Get()->SaveToFile(m_shader._Get()->GetResourceFilePath());
+			m_shader.lock()->SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(filePath) + SHADER_EXTENSION);
+			m_shader.lock()->SaveToFile(m_shader.lock()->GetResourceFilePath());
 		}
 
 		return true;
@@ -186,9 +186,9 @@ namespace Directus
 			return;
 		}
 
-		TextureType texType = texture._Get()->GetType();
-		string texName		= texture._Get()->GetResourceName();
-		string texPath		= texture._Get()->GetResourceFilePath();
+		TextureType texType = texture.lock()->GetType();
+		string texName		= texture.lock()->GetResourceName();
+		string texPath		= texture.lock()->GetResourceFilePath();
 
 		// Check if a texture of that type already exists and replace it
 		auto it = m_textures.find(texType);
@@ -303,7 +303,7 @@ namespace Directus
 		auto shaders = m_context->GetSubsystem<ResourceManager>()->GetResourcesByType<ShaderVariation>();
 		for (const auto& shader : shaders)
 		{
-			if (shader._Get()->GetShaderFlags() == shaderFlags)
+			if (shader.lock()->GetShaderFlags() == shaderFlags)
 				return shader;
 		}
 		return weak_ptr<ShaderVariation>();
@@ -343,7 +343,7 @@ namespace Directus
 
 		if (!texture.expired())
 		{
-			return texture._Get()->GetShaderResource();
+			return texture.lock()->GetShaderResource();
 		}
 
 		return nullptr;

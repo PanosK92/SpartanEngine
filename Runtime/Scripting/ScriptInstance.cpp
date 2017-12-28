@@ -61,7 +61,7 @@ namespace Directus
 		m_isInstantiated = false;
 	}
 
-	bool ScriptInstance::Instantiate(const string& path, weakGameObj gameObject, Scripting* scriptEngine)
+	bool ScriptInstance::Instantiate(const string& path, std::weak_ptr<GameObject> gameObject, Scripting* scriptEngine)
 	{
 		if (gameObject.expired())
 			return false;

@@ -51,15 +51,13 @@ namespace Directus
 		Collider();
 		~Collider();
 
-		//= ICOMPONENT =============================
+		//= ICOMPONENT ===============================
 		void Initialize() override;
-		void Start() override;
-		void OnDisable() override;
 		void Remove() override;
 		void Update() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
-		//=========================================
+		//============================================
 
 		// Bounding box
 		const Math::Vector3& GetBoundingBox() { return m_size; }
@@ -87,7 +85,7 @@ namespace Directus
 		void ReleaseShape();
 
 		// Set a collision shape
-		void SetRigidBodyCollisionShape(std::shared_ptr<btCollisionShape> shape) const;
+		void SetRigidBodyCollisionShape(std::shared_ptr<btCollisionShape> shape);
 
 		ColliderShape m_shapeType;
 		std::shared_ptr<btCollisionShape> m_collisionShape;

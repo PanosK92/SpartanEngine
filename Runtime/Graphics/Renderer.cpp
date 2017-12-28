@@ -331,11 +331,11 @@ namespace Directus
 	void Renderer::AcquireRenderables(Variant renderables)
 	{
 		Clear();
-		auto renderablesVec = VariantToVector<weakGameObj>(renderables);
+		auto renderablesVec = VariantToVector<std::weak_ptr<GameObject>>(renderables);
 
 		for (const auto& renderable : renderablesVec)
 		{
-			GameObject* gameObject = renderable._Get();
+			GameObject* gameObject = renderable.lock().get();
 			if (!gameObject)
 				continue;
 
@@ -346,26 +346,26 @@ namespace Directus
 			}
 
 			// Get lights
-			if (auto light = gameObject->GetComponent<Light>()._Get())
+			if (auto light = gameObject->GetComponent<Light>().lock())
 			{
-				m_lights.push_back(light);
+				m_lights.push_back(light.get());
 				if (light->GetLightType() == Directional)
 				{
-					m_directionalLight = light;
+					m_directionalLight = light.get();
 				}
 			}
 
 			// Get skybox
-			if (auto skybox = gameObject->GetComponent<Skybox>()._Get())
+			if (auto skybox = gameObject->GetComponent<Skybox>().lock())
 			{
-				m_skybox = skybox;
-				m_lineRenderer = gameObject->GetComponent<LineRenderer>()._Get(); // Hush hush...
+				m_skybox = skybox.get();
+				m_lineRenderer = gameObject->GetComponent<LineRenderer>().lock().get(); // Hush hush...
 			}
 
 			// Get camera
-			if (auto camera = gameObject->GetComponent<Camera>()._Get())
+			if (auto camera = gameObject->GetComponent<Camera>().lock())
 			{
-				m_camera = camera;
+				m_camera = camera.get();
 				mView = m_camera->GetViewMatrix();
 				mProjection = m_camera->GetProjectionMatrix();
 				mViewProjection = mView * mProjection;
@@ -393,13 +393,14 @@ namespace Directus
 			Matrix mViewLight = m_directionalLight->GetViewMatrix();
 			Matrix mProjectionLight = m_directionalLight->GetOrthographicProjectionMatrix(cascadeIndex);
 
-			for (const auto& gameObj : m_renderables)
+			for (const auto& gameObjWeak : m_renderables)
 			{
-				if (gameObj.expired())
+				auto gameObj = gameObjWeak.lock();
+				if (!gameObj)
 					continue;
 
-				MeshFilter* meshFilter = gameObj._Get()->GetMeshFilter();
-				MeshRenderer* meshRenderer = gameObj._Get()->GetMeshRenderer();
+				MeshFilter* meshFilter = gameObj->GetMeshFilter();
+				MeshRenderer* meshRenderer = gameObj->GetMeshRenderer();
 				auto material = meshRenderer->GetMaterial();
 				auto mesh = meshFilter->GetMesh();
 
@@ -412,7 +413,7 @@ namespace Directus
 					continue;
 
 				// Skip transparent meshes (for now)
-				if (material._Get()->GetOpacity() < 1.0f)
+				if (material.lock()->GetOpacity() < 1.0f)
 					continue;
 
 				// skip objects outside of the view frustrum
@@ -421,8 +422,8 @@ namespace Directus
 
 				if (meshFilter->SetBuffers())
 				{
-					m_shaderDepth->SetBuffer(gameObj._Get()->GetTransform()->GetWorldTransform(), mViewLight, mProjectionLight, 0);
-					m_shaderDepth->DrawIndexed(mesh._Get()->GetIndexCount());
+					m_shaderDepth->SetBuffer(gameObj->GetTransform()->GetWorldTransform(), mViewLight, mProjectionLight, 0);
+					m_shaderDepth->DrawIndexed(mesh.lock()->GetIndexCount());
 				}
 			}
 		}
@@ -442,7 +443,7 @@ namespace Directus
 
 		for (const auto& shaderIt : shaders) // SHADER ITERATION
 		{
-			ShaderVariation* shader = (ShaderVariation*)shaderIt._Get();
+			ShaderVariation* shader = (ShaderVariation*)shaderIt.lock().get();
 			if (!shader)
 				continue;
 
@@ -452,12 +453,12 @@ namespace Directus
 
 			for (const auto& materialIt : materials) // MATERIAL ITERATION
 			{
-				Material* material = (Material*)materialIt._Get();
+				Material* material = (Material*)materialIt.lock().get();
 				if (!material)
 					continue;
 
 				// Continue only if the material at hand happens to use the already set shader
-				if (!material->GetShader().expired() && (material->GetShader()._Get()->GetResourceID() != shader->GetResourceID()))
+				if (!material->GetShader().expired() && (material->GetShader().lock()->GetResourceID() != shader->GetResourceID()))
 					continue;
 
 				// UPDATE PER MATERIAL BUFFER
@@ -492,18 +493,19 @@ namespace Directus
 				shader->UpdateTextures(m_textures);
 				//==================================================================================
 
-				for (const auto& gameObj : m_renderables) // GAMEOBJECT/MESH ITERATION
+				for (const auto& gameObjWeak : m_renderables) // GAMEOBJECT/MESH ITERATION
 				{
-					if (gameObj.expired())
+					auto gameObj = gameObjWeak.lock();
+					if (!gameObj)
 						continue;
 
-					//= Get all that we need =========================================
-					MeshFilter* meshFilter = gameObj._Get()->GetMeshFilter();
-					MeshRenderer* meshRenderer = gameObj._Get()->GetMeshRenderer();
-					auto objMesh = meshFilter->GetMesh()._Get();
-					auto objMaterial = meshRenderer->GetMaterial()._Get();
-					auto mWorld = gameObj._Get()->GetTransform()->GetWorldTransform();
-					//================================================================
+					//= Get all that we need ==================================================
+					MeshFilter* meshFilter		= gameObj->GetMeshFilter();
+					MeshRenderer* meshRenderer	= gameObj->GetMeshRenderer();
+					auto objMesh				= meshFilter->GetMesh().lock();
+					auto objMaterial			= meshRenderer->GetMaterial().lock();
+					auto mWorld					= gameObj->GetTransform()->GetWorldTransform();
+					//=========================================================================
 
 					// skip objects that are missing required components
 					if (!meshFilter || !objMesh || !meshRenderer || !objMaterial)
@@ -739,7 +741,7 @@ namespace Directus
 			{
 				for (const auto& gameObject : m_renderables)
 				{
-					auto meshFilter = gameObject._Get()->GetComponent<MeshFilter>()._Get();
+					auto meshFilter = gameObject.lock()->GetComponent<MeshFilter>().lock();
 					m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 				}
 			}
@@ -763,7 +765,7 @@ namespace Directus
 		{
 			m_grid->SetBuffer();
 			m_shaderGrid->Set();
-			m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->g_transform), m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
+			m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()), m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
 			m_shaderGrid->SetTexture(m_GBuffer->GetShaderResource(2), 0);
 			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
 		}
@@ -771,10 +773,10 @@ namespace Directus
 		// Light gizmo
 		if (m_renderFlags & Render_Light)
 		{
-			for (const auto* light : m_lights)
+			for (auto* light : m_lights)
 			{
-				Vector3 lightWorldPos = light->g_transform->GetPosition();
-				Vector3 cameraWorldPos = m_camera->g_transform->GetPosition();
+				Vector3 lightWorldPos = light->GetTransform()->GetPosition();
+				Vector3 cameraWorldPos = m_camera->GetTransform()->GetPosition();
 
 				// Compute light screen space position and scale (based on distance from the camera)
 				Vector2 lightScreenPos = m_camera->WorldToScreenPoint(lightWorldPos);
@@ -791,7 +793,7 @@ namespace Directus
 					continue;
 
 				Texture* lightTex = nullptr;
-				LightType type = light->g_gameObject._Get()->GetComponent<Light>()._Get()->GetLightType();
+				LightType type = light->GetGameObject()->GetComponent<Light>().lock()->GetLightType();
 				if (type == Directional)
 				{
 					lightTex = m_gizmoTexLightDirectional.get();

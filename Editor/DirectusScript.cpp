@@ -124,10 +124,10 @@ void DirectusScript::Remove()
     if (!m_inspectedScript)
         return;
 
-    auto gameObject = m_inspectedScript->g_gameObject;
+    auto gameObject = m_inspectedScript->GetGameObjectRef();
     if (!gameObject.expired())
     {
-        gameObject.lock()->RemoveComponentByID(m_inspectedScript->g_ID);
+        gameObject.lock()->RemoveComponentByID(m_inspectedScript->GetID());
     }
 
     m_inspector->Inspect(gameObject);

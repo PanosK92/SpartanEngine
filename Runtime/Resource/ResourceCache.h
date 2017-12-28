@@ -96,28 +96,20 @@ namespace Directus
 		}
 
 		// Checks whether a resource is already cached
-		bool IsCached(const std::string& filePath)
+		bool IsCachedByName(const std::string& resourceName)
 		{
-			if (filePath == NOT_ASSIGNED)
+			if (resourceName == NOT_ASSIGNED)
 			{
-				LOG_WARNING("ResourceCache:IsCached: Can't check if resource \"" + filePath + "\" is cached as the filepath is unassigned.");
+				LOG_WARNING("ResourceCache:IsCached: Can't check if resource \"" + resourceName + "\" is cached as it has no name assigned to it.");
 				return false;
 			}
 
-			ResourceType type = GetResourceTypeFromFilePath(filePath);
-			if (type == Resource_Unknown)
+			for (const auto& resourceGroup : m_resourceGroups)
 			{
-				LOG_WARNING("ResourceCache:IsCached: Unable to determine resource type from path \"" + filePath + "\".");
-				return false;
-			}
-
-			std::vector<std::shared_ptr<Resource>>& vector = m_resourceGroups[type];
-			std::string name = FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
-			for (const auto& resource : vector)
-			{
-				if (resource->GetResourceName() == name)
+				for (const auto& resource : resourceGroup.second)
 				{
-					return true;
+					if (resource->GetResourceName() == resourceName)
+						return true;
 				}
 			}
 
@@ -141,45 +133,6 @@ namespace Directus
 		void Clear() { m_resourceGroups.clear(); }
 
 	private:
-		ResourceType GetResourceTypeFromFilePath(const std::string& filePath)
-		{
-			ResourceType type = Resource_Unknown;
-			if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
-			{
-				type = Resource_Texture;
-			}
-			else if (FileSystem::IsEngineMeshFile(filePath))
-			{
-				type = Resource_Mesh;
-			}
-			else if (FileSystem::IsSupportedModelFile(filePath) || FileSystem::IsEngineModelFile(filePath))
-			{
-				type = Resource_Model;
-			}
-			else if (FileSystem::IsSupportedAudioFile(filePath)) // engine doesn't use custom audio files
-			{
-				type = Resource_Audio;
-			}				
-			else if (FileSystem::IsSupportedFontFile(filePath)) // engine doesn't use custom font files
-			{
-				type = Resource_Font;
-			}
-			else if (FileSystem::IsSupportedShaderFile(filePath) || FileSystem::IsEngineShaderFile(filePath))
-			{
-				type = Resource_Shader;
-			}
-			else if (FileSystem::IsEngineMaterialFile(filePath))
-			{
-				type = Resource_Material;
-			}
-			else if (FileSystem::IsEngineScriptFile(filePath))
-			{
-				type = Resource_Script;
-			}
-
-			return type;
-		}
-
 		std::map<ResourceType, std::vector<std::shared_ptr<Resource>>> m_resourceGroups;
 	};
 }

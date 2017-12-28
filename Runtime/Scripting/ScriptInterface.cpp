@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/MathHelper.h"
 #include "../Core/Timer.h"
 #include "../Components/MeshRenderer.h"
+#include "../Graphics/Material.h"
 //=====================================
 
 //= NAMESPACES ================

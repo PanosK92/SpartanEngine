@@ -63,15 +63,12 @@ namespace Directus
 		Light();
 		~Light();
 
-		//= COMPONENT =============================
-		void Initialize() override;
+		//= COMPONENT ================================
 		void Start() override;
-		void OnDisable() override;
-		void Remove() override;
 		void Update() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
-		//=========================================
+		//============================================
 
 		LightType GetLightType() { return m_lightType; }
 		void SetLightType(LightType type);

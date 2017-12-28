@@ -21,42 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
 #include <memory>
+#include <string>
 #include "../Core/Helper.h"
-#include "../Core/GUIDGenerator.h"
-//================================
+//=========================
 
 namespace Directus
 {
-	class AudioListener;
-	class AudioSource;
-	class Camera;
-	class Collider;
-	class Constraint;
-	class Light;
-	class LineRenderer;
-	class MeshFilter;
-	class MeshRenderer;
-	class RigidBody;
-	class Script;
-	class Skybox;
-	class Transform;
 	class GameObject;
 	class Transform;
-	class IGraphicsDevice;
-	class Scene;
-	class Renderer;
-	class Physics;
-	class Scripting;
-	class MeshPool;
-	class MaterialPool;
-	class TexturePool;
-	class ShaderPool;
 	class Context;
 	class FileStream;
 
-	// Add new components here
 	enum ComponentType : unsigned int
 	{
 		ComponentType_AudioListener,
@@ -74,95 +51,65 @@ namespace Directus
 		ComponentType_Transform,
 		ComponentType_Unknown
 	};
-	// Add new components here
-	template <class T>
-	static ComponentType ToComponentType()
-	{
-		if (typeid(T) == typeid(AudioListener))
-			return ComponentType_AudioListener;
-
-		if (typeid(T) == typeid(AudioSource))
-			return ComponentType_AudioSource;
-
-		if (typeid(T) == typeid(Camera))
-			return ComponentType_Camera;
-
-		if (typeid(T) == typeid(Collider))
-			return ComponentType_Collider;
-
-		if (typeid(T) == typeid(Constraint))
-			return ComponentType_Constraint;
-
-		if (typeid(T) == typeid(Light))
-			return ComponentType_Light;
-
-		if (typeid(T) == typeid(LineRenderer))
-			return ComponentType_LineRenderer;
-
-		if (typeid(T) == typeid(MeshFilter))
-			return ComponentType_MeshFilter;
-
-		if (typeid(T) == typeid(MeshRenderer))
-			return ComponentType_MeshRenderer;
-
-		if (typeid(T) == typeid(RigidBody))
-			return ComponentType_RigidBody;
-
-		if (typeid(T) == typeid(Script))
-			return ComponentType_Script;
-
-		if (typeid(T) == typeid(Skybox))
-			return ComponentType_Skybox;
-
-		if (typeid(T) == typeid(Transform))
-			return ComponentType_Transform;
-
-		return ComponentType_Unknown;
-	}
 
 	class ENGINE_API Component
 	{
 	public:
 		virtual ~Component() {}
 
+		// Runs when the component is first created
+		void Register(GameObject* gameObject, Transform* transform, Context* context, ComponentType type);
+
 		// Runs when the component gets added
-		virtual void Initialize() = 0;
+		virtual void Initialize() {}
 
 		// Runs every time the simulation starts
-		virtual void Start() = 0;
+		virtual void Start() {}
 
 		// Runs every time the simulation stops
-		virtual void OnDisable() = 0;
+		virtual void OnDisable() {}
 
 		// Runs when the component is removed
-		virtual void Remove() = 0;
+		virtual void Remove(){}
 
 		// Runs every frame
-		virtual void Update() = 0;
+		virtual void Update() {}
 
 		// Runs when the GameObject is being saved
-		virtual void Serialize(FileStream* stream) = 0;
+		virtual void Serialize(FileStream* stream) {}
 
 		// Runs when the GameObject is being loaded
-		virtual void Deserialize(FileStream* stream) = 0;
+		virtual void Deserialize(FileStream* stream) {}
+		
+		//= PROPERTIES =====================================
+		GameObject* GetGameObject() { return m_gameObject; }
+		std::weak_ptr<GameObject> GetGameObjectRef();
+		Transform* GetTransform() { return m_transform; }
+		Context* GetContext() { return m_context; }
+		unsigned int GetID() { return m_ID; }
+		void SetID(unsigned int id) { m_ID = id; }
+		ComponentType GetType() { return m_type; }
+		//==================================================
 
-		// Should be called by the derived component to register it's type
-		void Register(ComponentType type)
-		{
-			g_type = type;
-			g_ID = GENERATE_GUID;
-		}
+		//= HELPER FUNCTIONS ==================
+		const std::string& GetGameObjectName();
 
-		//= PROPERTIES ========================
-		ComponentType g_type;
-		unsigned int g_ID;
-		bool g_enabled;
-		// The component owner
-		std::weak_ptr<GameObject> g_gameObject;
-		// The only always existing component
-		Transform* g_transform;
-		// The engine context
-		Context* g_context;	
+		template <typename T>
+		static ComponentType ToComponentType();
 		//=====================================
+
+	protected:
+		// The type of the component
+		ComponentType m_type		= ComponentType_Unknown;
+		// The id of the component
+		unsigned int m_ID			= 0;
+		// The state of the component
+		bool m_enabled				= false;
+		// The owner of the component
+		GameObject* m_gameObject	= nullptr;
+		// The transform of the component (always exists)
+		Transform* m_transform		= nullptr;
+		// The context of the engine
+		Context* m_context			= nullptr;
 	};
 }

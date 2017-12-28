@@ -14,47 +14,12 @@ namespace Directus
 {
 	LineRenderer::LineRenderer()
 	{
-		Register(ComponentType_LineRenderer);
+
 	}
 
 	LineRenderer::~LineRenderer()
 	{
 		m_vertices.clear();
-	}
-
-	void LineRenderer::Initialize()
-	{
-
-	}
-
-	void LineRenderer::Start()
-	{
-
-	}
-
-	void LineRenderer::OnDisable()
-	{
-
-	}
-
-	void LineRenderer::Remove()
-	{
-
-	}
-
-	void LineRenderer::Update()
-	{
-
-	}
-
-	void LineRenderer::Serialize(FileStream* stream)
-	{
-
-	}
-
-	void LineRenderer::Deserialize(FileStream* stream)
-	{
-
 	}
 
 	//= INPUT ===============================================================
@@ -122,12 +87,12 @@ namespace Directus
 		m_vertexBuffer->SetIA();
 
 		// Set primitive topology
-		g_context->GetSubsystem<Graphics>()->SetPrimitiveTopology(LineList);
+		GetContext()->GetSubsystem<Graphics>()->SetPrimitiveTopology(LineList);
 	}
 
 	void LineRenderer::CreateVertexBuffer()
 	{
-		m_vertexBuffer = make_shared<D3D11VertexBuffer>(g_context->GetSubsystem<Graphics>());
+		m_vertexBuffer = make_shared<D3D11VertexBuffer>(GetContext()->GetSubsystem<Graphics>());
 		m_vertexBuffer->CreateDynamic(sizeof(VertexPosCol), (unsigned int)m_vertices.size());
 	}
 

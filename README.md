@@ -1,6 +1,6 @@
 # About Directus3D
 Directus3D is a game engine that started as a hobby project and evolved into something greater.
-The source code is simple, modern and tackles a lot of aspects of engine development. Have fun!
+The source code is clean, modern and tackles a lot of aspects of engine development. Have fun!
 
 Note: This project is in an early development stage and there is a lot experimentation going on, regarding what works best.
 As a result, no design decision is set in stone and it will take a while until the engine is ready to produce games.
@@ -35,7 +35,7 @@ XML I/O                         | 100% | -
 Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality codebase.
 Debug Rendering    				| 90% | Gizmos, scene grid and G-Buffer visualization.
 Improved shadows         		| 90% | Improved shadow mapping technique, no shadow shimmering.
-SSAO         					| 90% | Improved shadow mapping technique, no shadow shimmering.
+SSAO         					| 90% | -
 Font importing and rendering    | 80% | Ability to load any font file. TextMesh component.
 Screen space reflections        | 10% | -
 
@@ -49,7 +49,7 @@ Screen space reflections        | 10% | -
 - Volumetric Lighting.
 - Global Illumination.
 - UI components.
-- Replace Qt with a custom UI framework.
+- Replace Qt with ImGui.
 
 ### Download
 Note: Binaries for v0.2 are old and don't reflect the current state of the engine. 

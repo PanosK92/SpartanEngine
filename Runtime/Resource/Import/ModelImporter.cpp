@@ -132,7 +132,7 @@ namespace Directus
 
 		// Map all the nodes as GameObjects while mentaining hierarchical relationships
 		// as well as their properties (meshes, materials, textures etc.).
-		ReadNodeHierarchy(model, scene, scene->mRootNode, weakGameObj(), weakGameObj());
+		ReadNodeHierarchy(model, scene, scene->mRootNode, weak_ptr<GameObject>(), weak_ptr<GameObject>());
 
 		// Load animation (in case there are any)
 		ReadAnimations(model, scene);
@@ -171,22 +171,22 @@ namespace Directus
 		if (assimpNode->mParent)
 		{
 			string name = assimpNode->mName.C_Str();
-			newNode._Get()->SetName(name);
+			newNode.lock()->SetName(name);
 
 			m_status = "Processing: " + name;
 		}
 		else
 		{
 			string name = FileSystem::GetFileNameNoExtensionFromFilePath(m_modelPath);
-			newNode._Get()->SetName(name);
+			newNode.lock()->SetName(name);
 
 			m_status = "Processing: " + name;
 		}
 		//============================================================================
 
 		// Set the transform of parentNode as the parent of the newNode's transform
-		Transform* parentTrans = !parentNode.expired() ? parentNode._Get()->GetTransform() : nullptr;
-		newNode._Get()->GetTransform()->SetParent(parentTrans);
+		Transform* parentTrans = !parentNode.expired() ? parentNode.lock()->GetTransform() : nullptr;
+		newNode.lock()->GetTransform()->SetParent(parentTrans);
 
 		// Set the transformation matrix of the Assimp node to the new node
 		AssimpHelper::SetGameObjectTransform(newNode, assimpNode);
@@ -194,7 +194,7 @@ namespace Directus
 		// Process all the node's meshes
 		for (unsigned int i = 0; i < assimpNode->mNumMeshes; i++)
 		{
-			weakGameObj gameobject = newNode; // set the current gameobject
+			std::weak_ptr<GameObject> gameobject = newNode; // set the current gameobject
 			aiMesh* mesh = assimpScene->mMeshes[assimpNode->mMeshes[i]]; // get mesh
 			string name = assimpNode->mName.C_Str(); // get name
 
@@ -202,12 +202,12 @@ namespace Directus
 			if (assimpNode->mNumMeshes > 1)
 			{
 				gameobject = scene->CreateGameObject(); // create
-				gameobject._Get()->GetTransform()->SetParent(newNode._Get()->GetTransform()); // set parent
+				gameobject.lock()->GetTransform()->SetParent(newNode.lock()->GetTransform()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
 
 			// Set gameobject name
-			gameobject._Get()->SetName(name);
+			gameobject.lock()->SetName(name);
 
 			// Process mesh
 			LoadMesh(model, mesh, assimpScene, gameobject);
@@ -216,7 +216,7 @@ namespace Directus
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
-			weakGameObj child = scene->CreateGameObject();
+			std::weak_ptr<GameObject> child = scene->CreateGameObject();
 			ReadNodeHierarchy(model, assimpScene, assimpNode->mChildren[i], newNode, child);
 		}
 	}

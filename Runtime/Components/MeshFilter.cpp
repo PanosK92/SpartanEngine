@@ -40,8 +40,7 @@ namespace Directus
 {
 	MeshFilter::MeshFilter()
 	{
-		Register(ComponentType_MeshFilter);
-		m_type = MeshType_Custom;
+		m_meshType = MeshType_Custom;
 	}
 
 	MeshFilter::~MeshFilter()
@@ -49,45 +48,20 @@ namespace Directus
 
 	}
 
-	void MeshFilter::Initialize()
-	{
-
-	}
-
-	void MeshFilter::Start()
-	{
-
-	}
-
-	void MeshFilter::OnDisable()
-	{
-
-	}
-
-	void MeshFilter::Remove()
-	{
-
-	}
-
-	void MeshFilter::Update()
-	{
-
-	}
-
 	void MeshFilter::Serialize(FileStream* stream)
 	{
-		stream->Write((int)m_type);
-		stream->Write(!m_mesh.expired() ? m_mesh._Get()->GetResourceName() : (string)NOT_ASSIGNED);
+		stream->Write((int)m_meshType);
+		stream->Write(!m_mesh.expired() ? m_mesh.lock()->GetResourceName() : (string)NOT_ASSIGNED);
 	}
 
 	void MeshFilter::Deserialize(FileStream* stream)
 	{
-		m_type					= (MeshType)stream->ReadInt();
-		string meshName			= NOT_ASSIGNED;
+		m_meshType		= (MeshType)stream->ReadInt();
+		string meshName	= NOT_ASSIGNED;
 		stream->Read(&meshName);
 
 		// Get the mesh from the ResourceManager
-		m_mesh = g_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
+		m_mesh = GetContext()->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
 		if (m_mesh.expired())
 		{
 			LOG_WARNING("MeshFilter: Failed to load mesh \"" + meshName + "\".");
@@ -97,13 +71,13 @@ namespace Directus
 	// Sets a default mesh (cube, quad)
 	void MeshFilter::SetMesh(MeshType type)
 	{
-		m_type = type;
+		m_meshType = type;
 
 		// Create a name for this standard mesh
 		string meshName = (type == MeshType_Cube) ? "Standard_Cube" : "Standard_Quad";
 
 		// Check if this mesh is already loaded, if so, use the existing one
-		auto meshExisting = g_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
+		auto meshExisting = GetContext()->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
 		if (!meshExisting.expired())
 		{
 			m_mesh = meshExisting;
@@ -123,19 +97,19 @@ namespace Directus
 		}
 
 		// Create a file path (in the project directory) for this standard mesh
-		string projectStandardAssetDir = g_context->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
+		string projectStandardAssetDir = GetContext()->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
 		FileSystem::CreateDirectory_(projectStandardAssetDir);
 		string meshFilePath = projectStandardAssetDir + meshName + MESH_EXTENSION;
 
 		// Create a mesh, save it and add it to the ResourceManager
-		auto mesh = make_shared<Mesh>(g_context);
+		auto mesh = make_shared<Mesh>(GetContext());
 		mesh->SetVertices(vertices);
 		mesh->SetIndices(indices);
 		mesh->SetResourceName(meshName);
 		mesh->SetResourceFilePath(meshFilePath);	
 		mesh->SaveToFile(meshFilePath);
 		mesh->Construct();
-		m_mesh = g_context->GetSubsystem<ResourceManager>()->Add<Mesh>(mesh);
+		m_mesh = GetContext()->GetSubsystem<ResourceManager>()->Add<Mesh>(mesh);
 	}
 
 	bool MeshFilter::SetBuffers()
@@ -143,24 +117,24 @@ namespace Directus
 		if (m_mesh.expired())
 			return false;
 
-		m_mesh._Get()->SetBuffers();
+		m_mesh.lock()->SetBuffers();
 		return true;
 	}
 
 	const BoundingBox& MeshFilter::GetBoundingBox() const
 	{
-		return !m_mesh.expired() ? m_mesh._Get()->GetBoundingBox() : BoundingBox();
+		return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() : BoundingBox();
 	}
 
 	BoundingBox MeshFilter::GetBoundingBoxTransformed()
 	{
-		BoundingBox boundingBox = !m_mesh.expired() ? m_mesh._Get()->GetBoundingBox() : BoundingBox();
-		return boundingBox.Transformed(g_transform->GetWorldTransform());
+		BoundingBox boundingBox = !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() : BoundingBox();
+		return boundingBox.Transformed(GetTransform()->GetWorldTransform());
 	}
 
 	string MeshFilter::GetMeshName()
 	{
-		return !m_mesh.expired() ? m_mesh._Get()->GetResourceName() : NOT_ASSIGNED;
+		return !m_mesh.expired() ? m_mesh.lock()->GetResourceName() : NOT_ASSIGNED;
 	}
 
 	void MeshFilter::CreateCube(vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices)
@@ -239,10 +213,5 @@ namespace Directus
 		indices.emplace_back(3);
 		indices.emplace_back(0);
 		indices.emplace_back(1);
-	}
-
-	string MeshFilter::GetGameObjectName()
-	{
-		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : NOT_ASSIGNED;
 	}
 }

@@ -43,7 +43,6 @@ namespace Directus
 {
 	Light::Light()
 	{
-		Register(ComponentType_Light);
 		m_lightType = Point;
 		m_shadowType = Hard_Shadows;
 		m_range = 1.0f;
@@ -61,33 +60,18 @@ namespace Directus
 		m_shadowMaps.clear();
 	}
 
-	void Light::Initialize()
-	{
-
-	}
-
 	void Light::Start()
 	{
 		if (!m_shadowMaps.empty())
 			return;
 
 		m_shadowMaps.clear();
-		Camera* camera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>()._Get();
+		Camera* camera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
 		for (int i = 0; i < m_cascades; i++)
 		{
-			auto cascade = make_shared<Cascade>(SHADOWMAP_RESOLUTION, camera, g_context);
+			auto cascade = make_shared<Cascade>(SHADOWMAP_RESOLUTION, camera, GetContext());
 			m_shadowMaps.push_back(cascade);
 		}
-	}
-
-	void Light::OnDisable()
-	{
-
-	}
-
-	void Light::Remove()
-	{
-
 	}
 
 	void Light::Update()
@@ -96,10 +80,10 @@ namespace Directus
 			return;
 
 		// DIRTY CHECK
-		if (m_lastPos != g_transform->GetPosition() || m_lastRot != g_transform->GetRotation())
+		if (m_lastPos != GetTransform()->GetPosition() || m_lastRot != GetTransform()->GetRotation())
 		{
-			m_lastPos = g_transform->GetPosition();
-			m_lastRot = g_transform->GetRotation();
+			m_lastPos = GetTransform()->GetPosition();
+			m_lastRot = GetTransform()->GetRotation();
 			m_isDirty = true;
 		}
 
@@ -111,7 +95,7 @@ namespace Directus
 		// the scene which can look weird
 		ClampRotation();
 
-		Camera* mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get()->GetComponent<Camera>()._Get();
+		Camera* mainCamera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
 		m_frustrum->Construct(GetViewMatrix(), GetOrthographicProjectionMatrix(2), mainCamera->GetFarPlane());
 	}
 
@@ -168,19 +152,19 @@ namespace Directus
 
 	Vector3 Light::GetDirection()
 	{
-		return g_transform->GetForward();
+		return GetTransform()->GetForward();
 	}
 
 	void Light::ClampRotation()
 	{
-		Vector3 rotation = g_transform->GetRotation().ToEulerAngles();
+		Vector3 rotation = GetTransform()->GetRotation().ToEulerAngles();
 		if (rotation.x <= 0.0f)
 		{
-			g_transform->SetRotation(Quaternion::FromEulerAngles(Vector3(179.0f, rotation.y, rotation.z)));
+			GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(179.0f, rotation.y, rotation.z)));
 		}
 		if (rotation.x >= 180.0f)
 		{
-			g_transform->SetRotation(Quaternion::FromEulerAngles(Vector3(1.0f, rotation.y, rotation.z)));
+			GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(1.0f, rotation.y, rotation.z)));
 		}
 	}
 
@@ -208,14 +192,14 @@ namespace Directus
 
 	Matrix Light::GetOrthographicProjectionMatrix(int cascadeIndex)
 	{
-		if (!g_context || cascadeIndex >= m_shadowMaps.size())
+		if (!GetContext() || cascadeIndex >= m_shadowMaps.size())
 			return Matrix::Identity;
 
 		// Only re-compute if dirty
 		if (!m_isDirty)
 			return m_projectionMatrix;
 
-		auto mainCamera = g_context->GetSubsystem<Scene>()->GetMainCamera()._Get();
+		auto mainCamera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock();
 		Vector3 centerPos = mainCamera ? mainCamera->GetTransform()->GetPosition() : Vector3::Zero;
 		m_projectionMatrix = m_shadowMaps[cascadeIndex]->ComputeProjectionMatrix(cascadeIndex, centerPos, GetViewMatrix());
 		return m_projectionMatrix;

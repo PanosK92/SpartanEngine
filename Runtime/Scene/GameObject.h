@@ -71,9 +71,9 @@ namespace Directus
 		template <class T>
 		std::weak_ptr<T> AddComponent()
 		{
-			ComponentType type = ToComponentType<T>();
+			ComponentType type = Component::ToComponentType<T>();
 
-			// Return component in case it already exists while ingoring Script components (they can exist multiple times)
+			// Return component in case it already exists while ignoring Script components (they can exist multiple times)
 			if (HasComponent(type) && type != ComponentType_Script)
 				return std::static_pointer_cast<T>(GetComponent<T>().lock());
 
@@ -81,19 +81,22 @@ namespace Directus
 			auto newComponent = std::make_shared<T>();
 			m_components.insert(make_pair(type, newComponent));
 
-			// Setup component
-			newComponent->g_enabled = true;
-			newComponent->g_gameObject = m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID());
-			newComponent->g_transform = GetTransform();
-			newComponent->g_context = m_context;
+			// Register component
+			newComponent->Register
+			(
+				m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID()).lock().get(),
+				GetTransform(),
+				m_context,
+				type
+			);
 			newComponent->Initialize();
 
 			// Caching of rendering performance critical components
-			if (newComponent->g_type == ComponentType_MeshFilter)
+			if (newComponent->GetType() == ComponentType_MeshFilter)
 			{
 				m_meshFilter = (MeshFilter*)newComponent.get();
 			}
-			else if (newComponent->g_type == ComponentType_MeshRenderer)
+			else if (newComponent->GetType() == ComponentType_MeshRenderer)
 			{
 				m_meshRenderer = (MeshRenderer*)newComponent.get();
 			}
@@ -108,7 +111,7 @@ namespace Directus
 		template <class T>
 		std::weak_ptr<T> GetComponent()
 		{
-			ComponentType type = ToComponentType<T>();
+			ComponentType type = Component::ToComponentType<T>();
 
 			if (m_components.find(type) == m_components.end())
 				return std::weak_ptr<T>();
@@ -120,12 +123,12 @@ namespace Directus
 		template <class T>
 		std::vector<std::weak_ptr<T>> GetComponents()
 		{
-			ComponentType type = ToComponentType<T>();
+			ComponentType type = Component::ToComponentType<T>();
 
 			std::vector<std::weak_ptr<T>> components;
 			for (const auto& component : m_components)
 			{
-				if (type != component.second->g_type)
+				if (type != component.second->GetType())
 					continue;
 
 				components.push_back(std::static_pointer_cast<T>(component.second));
@@ -138,13 +141,13 @@ namespace Directus
 		bool HasComponent(ComponentType type) { return m_components.find(type) != m_components.end(); }
 		// Checks if a component of type T exists
 		template <class T>
-		bool HasComponent() { return HasComponent(ToComponentType<T>()); }
+		bool HasComponent() { return HasComponent(Component::ToComponentType<T>()); }
 
 		// Removes a component of type T (if it exists)
 		template <class T>
 		void RemoveComponent()
 		{
-			ComponentType type = ToComponentType<T>();
+			ComponentType type = Component::ToComponentType<T>();
 
 			if (m_components.find(type) == m_components.end())
 				return;
@@ -152,7 +155,7 @@ namespace Directus
 			for (auto it = m_components.begin(); it != m_components.end(); )
 			{
 				auto component = *it;
-				if (type == component.second->g_type)
+                                if (type == component.second->GetType())
 				{
 					component.second->Remove();
 					component.second.reset();

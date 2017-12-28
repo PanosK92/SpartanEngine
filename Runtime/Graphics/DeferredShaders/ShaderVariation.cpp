@@ -133,7 +133,7 @@ namespace Directus
 		buffer->lightDir				= directionalLight->GetDirection();
 		buffer->shadowMapResolution		= (float)directionalLight->GetShadowCascadeResolution();
 		buffer->shadowMappingQuality	= directionalLight->GetShadowTypeAsFloat();
-		buffer->cameraPos				= camera->g_transform->GetPosition();
+		buffer->cameraPos				= camera->GetTransform()->GetPosition();
 
 		m_miscBuffer->Unmap();
 		//======================================================================================================================================

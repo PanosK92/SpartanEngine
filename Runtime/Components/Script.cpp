@@ -34,7 +34,7 @@ namespace Directus
 {
 	Script::Script()
 	{
-		Register(ComponentType_Script);
+
 	}
 
 	Script::~Script()
@@ -43,11 +43,6 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ==================================================================
-	void Script::Initialize()
-	{
-
-	}
-
 	void Script::Start()
 	{
 		if (!m_scriptInstance)
@@ -57,16 +52,6 @@ namespace Directus
 			return;
 
 		m_scriptInstance->ExecuteStart();
-	}
-
-	void Script::OnDisable()
-	{
-
-	}
-
-	void Script::Remove()
-	{
-
 	}
 
 	void Script::Update()
@@ -101,7 +86,7 @@ namespace Directus
 	{
 		// Instantiate the script
 		m_scriptInstance = make_shared<ScriptInstance>();
-		m_scriptInstance->Instantiate(filePath, g_gameObject, g_context->GetSubsystem<Scripting>());
+		m_scriptInstance->Instantiate(filePath, GetGameObjectRef(), GetContext()->GetSubsystem<Scripting>());
 
 		// Check if the script has been instantiated successfully.
 		if (!m_scriptInstance->IsInstantiated())

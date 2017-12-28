@@ -21,14 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =========
 #include "Component.h"
-#include "../Graphics/Material.h"
-//===============================
+//====================
 
 namespace Directus
 {
 	class Light;
+	class Material;
+	enum MaterialType;
 
 	class ENGINE_API MeshRenderer : public Component
 	{
@@ -36,25 +37,23 @@ namespace Directus
 		MeshRenderer();
 		~MeshRenderer();
 
-		//= ICOMPONENT ============================
-		void Initialize() override;
-		void Start() override;
-		void OnDisable() override;
-		void Remove() override;
-		void Update() override;
+		//= ICOMPONENT ===============================
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
+		//============================================
 
-		//= MISC ===================================
+		//= RENDERING =======================
 		void Render(unsigned int indexCount);
+		//===================================
 
-		//= PROPERTIES =============================
+		//= PROPERTIES ===================================================================
 		void SetCastShadows(bool castShadows) { m_castShadows = castShadows; }
 		bool GetCastShadows() { return m_castShadows; }
 		void SetReceiveShadows(bool receiveShadows) { m_receiveShadows = receiveShadows; }
 		bool GetReceiveShadows() { return m_receiveShadows; }
+		//================================================================================
 
-		//= MATERIAL ===============================
+		//= MATERIAL ============================================================
 		// Sets a material from memory
 		void SetMaterialFromMemory(std::weak_ptr<Material> material);
 
@@ -64,14 +63,13 @@ namespace Directus
 		// Sets a default material (basic, skybox)
 		void SetMaterialByType(MaterialType type);
 
-		std::weak_ptr<Material>& GetMaterial() { return  m_material; }
-		bool HasMaterial() { return GetMaterial().expired() ? false : true; }
-		std::string GetMaterialName() { return !GetMaterial().expired() ? GetMaterial()._Get()->GetResourceName() : NOT_ASSIGNED; }
+		std::weak_ptr<Material> GetMaterial() { return  m_material; }
+		bool HasMaterial() { return !m_material.expired(); }
+		std::string GetMaterialName();
 		MaterialType GetMaterialType() { return m_materialType; }
+		//=======================================================================
 
 	private:
-		std::string GetGameObjectName();
-
 		std::weak_ptr<Material> m_material;
 		bool m_castShadows;
 		bool m_receiveShadows;

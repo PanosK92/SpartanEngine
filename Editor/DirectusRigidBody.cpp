@@ -229,7 +229,7 @@ void DirectusRigidBody::Reflect(weak_ptr<GameObject> gameobject)
         return;
     }
 
-    m_inspectedRigidBody = gameobject.lock()->GetComponent<RigidBody>()._Get();
+    m_inspectedRigidBody = gameobject.lock()->GetComponent<RigidBody>().lock().get();
     if (!m_inspectedRigidBody)
     {
         this->hide();
@@ -420,7 +420,7 @@ void DirectusRigidBody::Remove()
     if (!m_inspectedRigidBody)
         return;
 
-    auto gameObject = m_inspectedRigidBody->g_gameObject;
+    auto gameObject = m_inspectedRigidBody->GetGameObjectRef();
     if (!gameObject.expired())
     {
         gameObject.lock()->RemoveComponent<RigidBody>();

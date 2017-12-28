@@ -31,7 +31,6 @@ namespace Directus
 {
 	AudioListener::AudioListener()
 	{
-		Register(ComponentType_AudioListener);
 		m_audio = nullptr;
 	}
 
@@ -42,22 +41,7 @@ namespace Directus
 
 	void AudioListener::Initialize()
 	{
-		m_audio = g_context->GetSubsystem<Audio>();
-	}
-
-	void AudioListener::Start()
-	{
-
-	}
-
-	void AudioListener::OnDisable()
-	{
-
-	}
-
-	void AudioListener::Remove()
-	{
-
+		m_audio = GetContext()->GetSubsystem<Audio>();
 	}
 
 	void AudioListener::Update()
@@ -65,16 +49,6 @@ namespace Directus
 		if (!m_audio)
 			return;
 
-		m_audio->SetListenerTransform(g_transform);
-	}
-
-	void AudioListener::Serialize(FileStream* stream)
-	{
-
-	}
-
-	void AudioListener::Deserialize(FileStream* stream)
-	{
-
+		m_audio->SetListenerTransform(GetTransform());
 	}
 }

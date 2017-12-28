@@ -76,7 +76,7 @@ namespace Directus
 		vector<unsigned char> atlasBuffer;
 		unsigned int texAtlasWidth = 0;
 		unsigned int texAtlasHeight = 0;
-		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter()._Get()->LoadFont(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
+		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter().lock()->LoadFont(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))
 		{
 			LOG_ERROR("Font: Failed to load font \"" + filePath + "\"");
 			atlasBuffer.clear();
@@ -147,9 +147,9 @@ namespace Directus
 				int spaceOffset = m_glyphs[ASCII_SPACE].horizontalOffset;
 				int spaceCount = 8; // spaces in a typical terminal
 				int tabSpacing = spaceOffset * spaceCount;
-				int columnHeader = (int)pen.x - (int)position.x; // -position.x because it has to be zero based so we can do the mod below
-				int nextTabStop = tabSpacing - (columnHeader % tabSpacing);
-				pen.x += nextTabStop;
+				int columnHeader = int(pen.x - position.x); // -position.x because it has to be zero based so we can do the mod below
+				int offsetToNextTabStop = tabSpacing - (columnHeader % tabSpacing);
+				pen.x += offsetToNextTabStop;
 				continue;
 			}
 

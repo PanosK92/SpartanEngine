@@ -67,6 +67,38 @@ namespace Directus
 		LOG_INFO("FontImporter: FreeType " + version);
 	}
 
+	// Glyph metrics:
+	// --------------
+	//
+	//                       xmin                     xmax
+	//                        |                         |
+	//                        |<-------- width -------->|
+	//                        |                         |
+	//              |         +-------------------------+----------------- ymax
+	//              |         |    ggggggggg   ggggg    |     ^        ^
+	//              |         |   g:::::::::ggg::::g    |     |        |
+	//              |         |  g:::::::::::::::::g    |     |        |
+	//              |         | g::::::ggggg::::::gg    |     |        |
+	//              |         | g:::::g     g:::::g     |     |        |
+	//    offsetX  -|-------->| g:::::g     g:::::g     |  offsetY     |
+	//              |         | g:::::g     g:::::g     |     |        |
+	//              |         | g::::::g    g:::::g     |     |        |
+	//              |         | g:::::::ggggg:::::g     |     |        |
+	//              |         |  g::::::::::::::::g     |     |      height
+	//              |         |   gg::::::::::::::g     |     |        |
+	//  baseline ---*---------|---- gggggggg::::::g-----*--------      |
+	//            / |         |             g:::::g     |              |
+	//     origin   |         | gggggg      g:::::g     |              |
+	//              |         | g:::::gg   gg:::::g     |              |
+	//              |         |  g::::::ggg:::::::g     |              |
+	//              |         |   gg:::::::::::::g      |              |
+	//              |         |     ggg::::::ggg        |              |
+	//              |         |         gggggg          |              v
+	//              |         +-------------------------+----------------- ymin
+	//              |                                   |
+	//              |------------- advanceX ----------->|
+
+
 	bool FontImporter::LoadFont(const string& filePath, int size, vector<unsigned char>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, map<unsigned int, Glyph>& glyphs)
 	{
 		FT_Face face;

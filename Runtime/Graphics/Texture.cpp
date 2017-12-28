@@ -284,7 +284,7 @@ namespace Directus
 
 		// Load texture
 		weak_ptr<ImageImporter> imageImp = m_context->GetSubsystem<ResourceManager>()->GetImageImporter();	
-		if (!imageImp._Get()->Load(filePath, this))
+		if (!imageImp.lock()->Load(filePath, this))
 		{
 			return false;
 		}
