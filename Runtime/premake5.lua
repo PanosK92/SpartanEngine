@@ -19,7 +19,7 @@ project (PROJECT_NAME)
 
 -- Includes
 includedirs { "../ThirdParty/AngelScript_2.31.2" }
-includedirs { "../ThirdParty/Assimp_4.0.1" }
+includedirs { "../ThirdParty/Assimp_4.1.0" }
 includedirs { "../ThirdParty/Bullet_2.87" }
 includedirs { "../ThirdParty/FMOD_1.09.08" }
 includedirs { "../ThirdParty/FreeImage_3.17.0" }
