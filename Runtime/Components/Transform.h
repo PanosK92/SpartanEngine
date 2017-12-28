@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "Component.h"
 #include <vector>
+#include <memory>
 #include "../Math/Vector3.h"
 #include "../Math/Quaternion.h"
 #include "../Math/Matrix.h"
-#include <memory>
 #include "../Scene/Scene.h"
 //=============================
 
@@ -41,45 +41,46 @@ namespace Directus
 
 		//= ICOMPONENT ===============================
 		void Initialize() override;
-		void Start() override;
-		void OnDisable() override;
-		void Remove() override;
-		void Update() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
 		void UpdateTransform();
 
-		//= POSITION ======================================================================
+		//= POSITION ============================================================
 		Math::Vector3 GetPosition() { return m_worldTransform.GetTranslation(); }
 		const Math::Vector3& GetPositionLocal() { return m_positionLocal; }
 		void SetPosition(const Math::Vector3& position);
 		void SetPositionLocal(const Math::Vector3& position);
+		//=======================================================================
 
-		//= ROTATION ======================================================================
+		//= ROTATION ============================================================
 		Math::Quaternion GetRotation() { return m_worldTransform.GetRotation(); }
 		const Math::Quaternion& GetRotationLocal() { return m_rotationLocal; }
 		void SetRotation(const Math::Quaternion& rotation);
 		void SetRotationLocal(const Math::Quaternion& rotation);
+		//=======================================================================
 
-		//= SCALE =========================================================================
+		//= SCALE ======================================================
 		Math::Vector3 GetScale() { return m_worldTransform.GetScale(); }
 		const Math::Vector3& GetScaleLocal() { return m_scaleLocal; }
 		void SetScale(const Math::Vector3& scale);
 		void SetScaleLocal(const Math::Vector3& scale);
+		//==============================================================
 
-		//= TRANSLATION/ROTATION =========================================================
+		//= TRANSLATION/ROTATION =======================
 		void Translate(const Math::Vector3& delta);
 		void Rotate(const Math::Quaternion& delta);
 		void RotateLocal(const Math::Quaternion& delta);
+		//==============================================
 
-		//= DIRECTIONS ===================================================================
+		//= DIRECTIONS ============
 		Math::Vector3 GetUp();
 		Math::Vector3 GetForward();
 		Math::Vector3 GetRight();
+		//=========================
 
-		//= HIERARCHY ====================================================================
+		//= HIERARCHY ==============================================================
 		bool IsRoot() { return !HasParent(); }
 		bool HasParent() { return m_parent; }
 		void SetParent(Transform* parent);
@@ -95,13 +96,11 @@ namespace Directus
 		void ResolveChildrenRecursively();
 		bool IsDescendantOf(Transform* transform);
 		void GetDescendants(std::vector<Transform*>* descendants);
-		std::string GetGameObjName();
+		//==========================================================================
 
-		//= ICOMPONENT ====================================================================
 		void LookAt(const Math::Vector3& v) { m_lookAt = v; }
 		Math::Matrix& GetWorldTransform() { return m_worldTransform; }
 		Math::Matrix& GetLocalTransform() { return m_localTransform; }
-		weakGameObj& GetGameObject() { return g_gameObject; }		
 
 	private:
 		// local

@@ -109,7 +109,7 @@ void DirectusAudioClipDropTarget::dropEvent(QDropEvent *event)
     auto inspectedGameObj = m_inspector->GetInspectedGameObject();
     if (!inspectedGameObj.expired())
     {
-        AudioSource* audioSource = inspectedGameObj.lock()->GetComponent<AudioSource>()._Get();
+        AudioSource* audioSource = inspectedGameObj.lock()->GetComponent<AudioSource>().lock().get();
         audioSource->LoadAudioClip(audioClipPath);
         clipName = audioSource->GetAudioClipName();
     }

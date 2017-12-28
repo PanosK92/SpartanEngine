@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================================
 #include "MeshRenderer.h"
 #include "Transform.h"
+#include "../Graphics/Material.h"
 #include "../IO/FileStream.h"
 #include "../Logging/Log.h"
 #include "../Scene/GameObject.h"
 #include "../Graphics/DeferredShaders/ShaderVariation.h"
-#include "../Graphics/Mesh.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Resource/ResourceManager.h"
 //======================================================
@@ -40,7 +40,6 @@ namespace Directus
 {
 	MeshRenderer::MeshRenderer()
 	{
-		Register(ComponentType_MeshRenderer);
 		m_castShadows = true;
 		m_receiveShadows = true;
 		m_materialType = Material_Imported;
@@ -52,35 +51,10 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ===============================================================
-	void MeshRenderer::Initialize()
-	{
-
-	}
-
-	void MeshRenderer::Start()
-	{
-
-	}
-
-	void MeshRenderer::OnDisable()
-	{
-
-	}
-
-	void MeshRenderer::Remove()
-	{
-
-	}
-
-	void MeshRenderer::Update()
-	{
-
-	}
-
 	void MeshRenderer::Serialize(FileStream* stream)
 	{
 		stream->Write((int)m_materialType);
-		stream->Write(!m_material.expired() ? m_material._Get()->GetResourceFilePath() : (string)NOT_ASSIGNED);
+		stream->Write(!m_material.expired() ? m_material.lock()->GetResourceFilePath() : (string)NOT_ASSIGNED);
 		stream->Write(m_castShadows);
 		stream->Write(m_receiveShadows);
 	}
@@ -113,14 +87,14 @@ namespace Directus
 			return;
 		}
 		// Check if the material has a shader
-		if (!m_material._Get()->HasShader()) 
+		if (!m_material.lock()->HasShader()) 
 		{
 			LOG_WARNING("MeshRenderer: \"" + GetGameObjectName() + "\" has a material but not a shader associated with it. It can't be rendered.");
 			return;
 		}
 
 		// Get it's shader and render
-		m_material._Get()->GetShader()._Get()->Render(indexCount);
+		m_material.lock()->GetShader().lock()->Render(indexCount);
 	}
 
 	//==============================================================================
@@ -135,13 +109,13 @@ namespace Directus
 			return;
 		}
 
-		auto resourceManager = g_context->GetSubsystem<ResourceManager>();
+		auto resourceManager = GetContext()->GetSubsystem<ResourceManager>();
 
 		// If the material doesn't already existn in the resource cache, save it to a file as well
-		auto existingMaterial = resourceManager->GetResourceByName<Material>(material._Get()->GetResourceName());
+		auto existingMaterial = resourceManager->GetResourceByName<Material>(material.lock()->GetResourceName());
 		if (existingMaterial.expired())
 		{
-			material._Get()->SaveToFile(material._Get()->GetResourceFilePath());
+			material.lock()->SaveToFile(material.lock()->GetResourceFilePath());
 		}
 
 		m_material = resourceManager->Add<Material>(material.lock());
@@ -150,7 +124,7 @@ namespace Directus
 	weak_ptr<Material> MeshRenderer::SetMaterialFromFile(const string& filePath)
 	{
 		// Load the material
-		shared_ptr<Material> material = make_shared<Material>(g_context);
+		shared_ptr<Material> material = make_shared<Material>(GetContext());
 		material->LoadFromFile(filePath);
 
 		// Set it as the current material
@@ -163,13 +137,13 @@ namespace Directus
 	void MeshRenderer::SetMaterialByType(MaterialType type)
 	{
 		shared_ptr<Material> material;
-		string projectStandardAssetDir = g_context->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
+		string projectStandardAssetDir = GetContext()->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
 		FileSystem::CreateDirectory_(projectStandardAssetDir);
 
 		switch (type)
 		{
 		case Material_Basic:
-			material = make_shared<Material>(g_context);
+			material = make_shared<Material>(GetContext());
 			material->SetResourceName("Standard");
 			material->SetResourceFilePath(projectStandardAssetDir + "Standard_Material" + string(MATERIAL_EXTENSION));
 			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -178,7 +152,7 @@ namespace Directus
 			break;
 
 		case Material_Skybox:
-			material = make_shared<Material>(g_context);
+			material = make_shared<Material>(GetContext());
 			material->SetResourceName("Standard_Skybox");
 			material->SetResourceFilePath(projectStandardAssetDir + "Standard_Material_Skybox" + string(MATERIAL_EXTENSION));
 			material->SetCullMode(CullFront);
@@ -195,8 +169,8 @@ namespace Directus
 	}
 	//==============================================================================
 
-	string MeshRenderer::GetGameObjectName()
+	string MeshRenderer::GetMaterialName()
 	{
-		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : NOT_ASSIGNED;
+		return !GetMaterial().expired() ? GetMaterial().lock()->GetResourceName() : NOT_ASSIGNED;
 	}
 }

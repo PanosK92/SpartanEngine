@@ -60,9 +60,9 @@ namespace Directus
 			mEngine.Decompose(scale, rotation, position);
 
 			// Apply position, rotation and scale
-			gameObject._Get()->GetTransform()->SetPositionLocal(position);
-			gameObject._Get()->GetTransform()->SetRotationLocal(rotation);
-			gameObject._Get()->GetTransform()->SetScaleLocal(scale);
+			gameObject.lock()->GetTransform()->SetPositionLocal(position);
+			gameObject.lock()->GetTransform()->SetRotationLocal(rotation);
+			gameObject.lock()->GetTransform()->SetScaleLocal(scale);
 		}
 
 		static Math::Vector4 ToVector4(const aiColor4D& aiColor)

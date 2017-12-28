@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/MeshRenderer.h"
 #include "DirectusMaterial.h"
 #include "Logging/Log.h"
+#include "Graphics/Material.h"
 //======================================
 
 //= NAMESPACES ==========
@@ -111,7 +112,7 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
         return;
 
     // Load the material
-    weak_ptr<Material> material = gameObject._Get()->GetComponent<MeshRenderer>()._Get()->SetMaterialFromFile(materialPath);
+    weak_ptr<Material> material = gameObject.lock()->GetComponent<MeshRenderer>().lock()->SetMaterialFromFile(materialPath);
     if (material.expired())
         return;
 
@@ -119,7 +120,7 @@ void DirectusMaterialDropTarget::dropEvent(QDropEvent* event)
     m_inspector->GetMaterialComponent()->Reflect(gameObject);
 
     // Set the text of the QLineEdit
-    this->setText(QString::fromStdString(material._Get()->GetResourceName()));
+    this->setText(QString::fromStdString(material.lock()->GetResourceName()));
 
     // Emit a signal with the material
     emit MaterialDropped(material);

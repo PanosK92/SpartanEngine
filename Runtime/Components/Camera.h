@@ -57,15 +57,12 @@ namespace Directus
 		Camera();
 		~Camera();
 
-		//= ICOMPONENT ============================
+		//= ICOMPONENT ===============================
 		void Initialize() override;
-		void Start() override;
-		void OnDisable() override;
-		void Remove() override;
 		void Update() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
-		//=========================================
+		//============================================
 
 		//= MATRICES ===============================================
 		Math::Matrix GetViewMatrix() { return m_mView; }
@@ -73,7 +70,7 @@ namespace Directus
 		Math::Matrix GetBaseViewMatrix() { return m_mBaseView; }
 		//==========================================================
 
-		//= RAYCASTING ===================================================
+		//= RAYCASTING ====================================================
 		// Returns a the picking ray as vertices (can be used to render it)
 		std::vector<VertexPosCol> GetPickingRay();
 
@@ -85,7 +82,7 @@ namespace Directus
 
 		// Converts a screen point to a world point
 		Math::Vector3 ScreenToWorldPoint(const Math::Vector2& point);
-		//================================================================
+		//=================================================================
 
 		//= PLANES/PROJECTION =====================================================
 		float GetNearPlane() { return m_nearPlane; }

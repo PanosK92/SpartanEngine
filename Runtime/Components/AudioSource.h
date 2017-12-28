@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Component.h"
 #include <memory>
 #include "../Math/MathHelper.h"
+#include <string>
 //=============================
 
 namespace Directus
@@ -37,7 +38,7 @@ namespace Directus
 		AudioSource();
 		~AudioSource();
 
-		//= INTERFACE =============
+		//= INTERFACE ================================
 		void Initialize() override;
 		void Start() override;
 		void OnDisable() override;
@@ -45,9 +46,9 @@ namespace Directus
 		void Update() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
-		//=========================
+		//============================================
 
-		//= PROPERTIES ======================================================================
+		//= PROPERTIES =======================================================
 		bool LoadAudioClip(const std::string& filePath);
 		std::string GetAudioClipName();
 
@@ -74,7 +75,7 @@ namespace Directus
 
 		float GetPan() { return m_pan; }
 		void SetPan(float pan);
-		//===================================================================================
+		//====================================================================
 
 	private:
 		std::weak_ptr<AudioClip> m_audioClip;
@@ -86,7 +87,6 @@ namespace Directus
 		float m_volume;
 		float m_pitch;
 		float m_pan;
-
 		bool m_audioClipLoaded;
 	};
 }

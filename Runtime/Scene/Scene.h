@@ -31,8 +31,6 @@ namespace Directus
 {
 	class GameObject;
 	class Light;
-	typedef std::weak_ptr<GameObject> weakGameObj;
-	typedef std::shared_ptr<GameObject> sharedGameObj;
 
 	class ENGINE_API Scene : public Subsystem
 	{
@@ -56,21 +54,22 @@ namespace Directus
 		bool LoadFromFile(const std::string& filePath);
 
 		//= GAMEOBJECT HELPER FUNCTIONS ===============================================
-		weakGameObj CreateGameObject();
+		std::weak_ptr<GameObject> CreateGameObject();
 		int GetGameObjectCount() { return (int)m_gameObjects.size(); }
-		const std::vector<sharedGameObj>& GetAllGameObjects() { return m_gameObjects; }
-		std::vector<weakGameObj> GetRootGameObjects();
-		weakGameObj GetGameObjectRoot(weakGameObj gameObject);
-		weakGameObj GetGameObjectByName(const std::string& name);
-		weakGameObj GetGameObjectByID(unsigned int ID);
-		bool GameObjectExists(weakGameObj gameObject);
-		void RemoveGameObject(weakGameObj gameObject);
-		void RemoveSingleGameObject(weakGameObj gameObject);
+		const std::vector<std::shared_ptr<GameObject>>& GetAllGameObjects() { return m_gameObjects; }
+		std::vector<std::weak_ptr<GameObject>> GetRootGameObjects();
+		std::weak_ptr<GameObject> GetGameObjectRoot(std::weak_ptr<GameObject> gameObject);
+		std::weak_ptr<GameObject> GetGameObjectByName(const std::string& name);
+		std::weak_ptr<GameObject> GetGameObjectByID(unsigned int ID);
+		bool GameObjectExists(std::weak_ptr<GameObject> gameObject);
+		void RemoveGameObject(std::weak_ptr<GameObject> gameObject);
+		void RemoveSingleGameObject(std::weak_ptr<GameObject> gameObject);
+		std::weak_ptr<GameObject> GetWeakReferenceToGameObject(GameObject* gameObject);
 
 		//= SCENE RESOLUTION  ==============================
 		void Resolve();
-		const std::vector<weakGameObj>& GetRenderables() { return m_renderables; }
-		weakGameObj GetMainCamera() { return m_mainCamera; }
+		const std::vector<std::weak_ptr<GameObject>>& GetRenderables() { return m_renderables; }
+		std::weak_ptr<GameObject> GetMainCamera() { return m_mainCamera; }
 
 		//= MISC =======================================
 		void SetAmbientLight(float x, float y, float z);
@@ -83,22 +82,22 @@ namespace Directus
 		bool IsLoading() { return m_isLoading; }
 
 	private:
-		//= COMMON GAMEOBJECT CREATION ======
-		weakGameObj CreateSkybox();
-		weakGameObj CreateCamera();
-		weakGameObj CreateDirectionalLight();
-		//===================================
+		//= COMMON GAMEOBJECT CREATION ====================
+		std::weak_ptr<GameObject> CreateSkybox();
+		std::weak_ptr<GameObject> CreateCamera();
+		std::weak_ptr<GameObject> CreateDirectionalLight();
+		//=================================================
 
 		//= HELPER FUNCTIONS ====
 		void ResetLoadingStats();
 		void CalculateFPS();
 		//=======================
 
-		std::vector<sharedGameObj> m_gameObjects;
-		std::vector<weakGameObj> m_renderables;
+		std::vector<std::shared_ptr<GameObject>> m_gameObjects;
+		std::vector<std::weak_ptr<GameObject>> m_renderables;
 
-		weakGameObj m_mainCamera;
-		weakGameObj m_skybox;
+		std::weak_ptr<GameObject> m_mainCamera;
+		std::weak_ptr<GameObject> m_skybox;
 		Math::Vector3 m_ambientLight;
 
 		//= STATS =========

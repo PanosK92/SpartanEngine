@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DirectusMeshRenderer.h"
 #include "Logging/Log.h"
 #include "DirectusInspector.h"
+#include "Graphics/Material.h"
 //===============================
 
 //= NAMESPACES ==========
@@ -132,7 +133,7 @@ void DirectusMeshRenderer::Reflect(weak_ptr<GameObject> gameobject)
     }
 
     // Catch the seed of the evil
-    m_inspectedMeshRenderer = gameobject.lock()->GetComponent<MeshRenderer>()._Get();
+    m_inspectedMeshRenderer = gameobject.lock()->GetComponent<MeshRenderer>().lock().get();
     if (!m_inspectedMeshRenderer)
     {
         this->hide();
@@ -185,7 +186,7 @@ void DirectusMeshRenderer::DoMaterialInspCompReflection()
     if (!m_materialUIComp || material.expired())
         return;
 
-    m_materialUIComp->Reflect(m_inspectedMeshRenderer->g_gameObject);
+    m_materialUIComp->Reflect(m_inspectedMeshRenderer->GetGameObjectRef());
 }
 
 void DirectusMeshRenderer::MapCastShadows()
@@ -211,7 +212,7 @@ void DirectusMeshRenderer::Remove()
     if (!m_inspectedMeshRenderer)
         return;
 
-    auto gameObject = m_inspectedMeshRenderer->g_gameObject;
+    auto gameObject = m_inspectedMeshRenderer->GetGameObjectRef();
     if (!gameObject.expired())
     {
         gameObject.lock()->RemoveComponent<MeshRenderer>();

@@ -107,7 +107,7 @@ namespace Directus
 		// Get a pointer to the data in the constant buffer.
 		MiscBufferType* buffer = (MiscBufferType*)m_miscBuffer->Map();
 
-		Vector3 camPos = camera->g_transform->GetPosition();
+		Vector3 camPos = camera->GetTransform()->GetPosition();
 		buffer->cameraPosition = Vector4(camPos.x, camPos.y, camPos.z, 1.0f);
 
 		// Reset any light buffer values because the shader will still use them
@@ -146,7 +146,7 @@ namespace Directus
 			if (light->GetLightType() != Point)
 				continue;
 
-			Vector3 pos = light->g_transform->GetPosition();
+			Vector3 pos = light->GetTransform()->GetPosition();
 			buffer->pointLightPosition[pointIndex] = Vector4(pos.x, pos.y, pos.z, 1.0f);
 			buffer->pointLightColor[pointIndex] = light->GetColor();
 			buffer->pointLightIntenRange[pointIndex] = Vector4(light->GetIntensity(), light->GetRange(), 0.0f, 0.0f);
@@ -162,7 +162,7 @@ namespace Directus
 				continue;
 
 			Vector3 direction = light->GetDirection();
-			Vector3 pos = light->g_transform->GetPosition();
+			Vector3 pos = light->GetTransform()->GetPosition();
 
 			buffer->spotLightColor[spotIndex] = light->GetColor();
 			buffer->spotLightPosition[spotIndex] = Vector4(pos.x, pos.y, pos.z, 1.0f);

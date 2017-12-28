@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Import/ImageImporter.h"
 #include "Import/FontImporter.h"
 #include "../Graphics/Model.h"
+#include "../Graphics/Material.h"
 //===============================
 
 namespace Directus
@@ -62,28 +63,22 @@ namespace Directus
 			std::string name = FileSystem::GetFileNameNoExtensionFromFilePath(relativeFilePath);
 
 			// Check if the resource is already loaded
-			if (m_resourceCache->IsCached(filePath))
+			if (m_resourceCache->IsCachedByName(name))
 			{
 				return GetResourceByName<T>(name);
 			}
 
-			// Create new resource of provided type
+			// Create new resource of the provided type
 			std::shared_ptr<T> typed = std::make_shared<T>(m_context);
-			// Cast it to it's base
-			std::shared_ptr<Resource> base = ToBaseShared(typed);
-
-			// Assign filepath and name
-			base->SetResourceFilePath(relativeFilePath);
-			base->SetResourceName(name);
 
 			// Load
-			if (!base->LoadFromFile(relativeFilePath))
+			if (!typed->LoadFromFile(relativeFilePath))
 			{
 				LOG_WARNING("ResourceManager: Resource \"" + relativeFilePath + "\" failed to load");
 				return std::weak_ptr<T>();
 			}
 
-			return Add<T>(base);
+			return Add<T>(typed);
 		}
 
 		// Adds a resource into the cache and returns the derived resource as a weak reference
@@ -94,7 +89,7 @@ namespace Directus
 				return std::weak_ptr<T>();
 
 			// If the resource is already loaded, return the existing one
-			if (m_resourceCache->IsCached(resource->GetResourceFilePath()))
+			if (m_resourceCache->IsCachedByName(resource->GetResourceName()))
 			{
 				return GetResourceByName<T>(FileSystem::GetFileNameNoExtensionFromFilePath(resource->GetResourceFilePath()));
 			}
@@ -106,7 +101,7 @@ namespace Directus
 		// Adds a resource into the cache (if it's not already cached)
 		void Add(std::shared_ptr<Resource> resource)
 		{
-			if (!resource || m_resourceCache->IsCached(resource->GetResourceFilePath()))
+			if (!resource || m_resourceCache->IsCachedByName(resource->GetResourceName()))
 				return;
 
 			// Add the resource

@@ -254,12 +254,12 @@ void DirectusTransform::MapPosition()
     m_inspectedTransform->SetPositionLocal(pos);
 
     // Get the GameObject this transform is attached to
-    auto gameObj = m_inspectedTransform->g_gameObject;
+    auto gameObj = m_inspectedTransform->GetGameObjectRef();
     if (gameObj.expired())
         return;
 
     // Update the rigidBody
-    auto rigidBody = gameObj._Get()->GetComponent<RigidBody>()._Get();
+    auto rigidBody = gameObj.lock()->GetComponent<RigidBody>().lock().get();
     if (rigidBody)
     {
         rigidBody->SetPosition(pos);
@@ -280,12 +280,12 @@ void DirectusTransform::MapRotation()
     m_inspectedTransform->SetRotationLocal(rot);
 
     // Get the GameObject this transform is attached to
-    auto gameObj = m_inspectedTransform->g_gameObject;
+    auto gameObj = m_inspectedTransform->GetGameObjectRef();
     if (gameObj.expired())
         return;
 
     // Update the rigidBody (if it exists)
-    auto rigidBody = gameObj._Get()->GetComponent<RigidBody>()._Get();
+    auto rigidBody = gameObj.lock()->GetComponent<RigidBody>().lock().get();
     if (rigidBody)
     {
         rigidBody->SetRotation(rot);

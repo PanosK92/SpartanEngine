@@ -74,7 +74,7 @@ void DirectusProgressBar::UpdateProgressBar()
         return;
 
     QLabel* label = ui->labelLoadingDialog;
-    ModelImporter* importer = m_engineContext->GetSubsystem<ResourceManager>()->GetModelImporter()._Get();
+    ModelImporter* importer = m_engineContext->GetSubsystem<ResourceManager>()->GetModelImporter().lock().get();
     Scene* scene = m_engineContext->GetSubsystem<Scene>();
 
     // Compute progress bar stats

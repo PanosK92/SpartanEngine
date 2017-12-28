@@ -248,11 +248,11 @@ void DirectusFileExplorer::dropEvent(QDropEvent* event)
 
         //= DROP CASE: GAMEOBJECT ===========================================================================
         unsigned int gameObjectID = stoi(mimeData->text().toStdString());
-        auto gameObject = m_directusViewport->GetEngineContext()->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID);
-        if (!gameObject.expired())
+        auto gameObject = m_directusViewport->GetEngineContext()->GetSubsystem<Scene>()->GetGameObjectByID(gameObjectID).lock();
+        if (!gameObject)
         {
             // Save the dropped GameObject as a prefab
-            gameObject._Get()->SaveAsPrefab(GetRootPath().toStdString() + "/" + gameObject._Get()->GetName());
+            gameObject->SaveAsPrefab(GetRootPath().toStdString() + "/" + gameObject->GetName());
 
             event->acceptProposedAction();
             return;

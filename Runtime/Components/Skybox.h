@@ -21,36 +21,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES =========
 #include <memory>
 #include "Component.h"
-#include "../Graphics/Texture.h"
-//==============================
+//====================
 
 namespace Directus
 {
+	class Texture;
+
 	class ENGINE_API Skybox : public Component
 	{
 	public:
 		Skybox();
 		~Skybox();
 
-		//= Interface ===============================
+		//= Interface =============
 		void Initialize() override;
-		void Start() override;
-		void OnDisable() override;
-		void Remove() override;
 		void Update() override;
-		void Serialize(FileStream* stream) override {}
-		void Deserialize(FileStream* stream) override {}
-		//===========================================
+		//=========================
 
 		//= MISC ======================
 		void** GetEnvironmentTexture();
 
 	private:
 		std::weak_ptr<GameObject> m_anchor;
-		Transform* m_anchorTrans;
-		std::shared_ptr<Texture> m_cubeMapTexture;
+		std::shared_ptr<Texture> m_cubemapTexture;
 	};
 }

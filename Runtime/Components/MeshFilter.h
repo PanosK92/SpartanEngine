@@ -55,11 +55,6 @@ namespace Directus
 		~MeshFilter();
 
 		//= ICOMPONENT ===============================
-		void Initialize() override;
-		void Start() override;
-		void OnDisable() override;
-		void Remove() override;
-		void Update() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================
@@ -79,7 +74,7 @@ namespace Directus
 		//==============================================
 
 		//= PROPERTIES ========================================
-		MeshType GetType() { return m_type; }
+		MeshType GetMeshType() { return m_meshType; }
 		std::string GetMeshName();
 		const std::weak_ptr<Mesh>& GetMesh() { return m_mesh; }
 		bool HasMesh() { return !m_mesh.expired(); }
@@ -88,11 +83,10 @@ namespace Directus
 	private:
 		static void CreateCube(std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices);
 		static void CreateQuad(std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices);
-		std::string GetGameObjectName();
 
 		// A weak reference to the mesh
 		std::weak_ptr<Mesh> m_mesh;
 		// Type of mesh
-		MeshType m_type;
+		MeshType m_meshType;
 	};
 }

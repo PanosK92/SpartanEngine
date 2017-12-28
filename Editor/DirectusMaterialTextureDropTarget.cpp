@@ -160,7 +160,7 @@ void DirectusMaterialTextureDropTarget::dropEvent(QDropEvent* event)
 
         if (!texture.expired())
         {
-            texture._Get()->SetType(m_textureType);
+            texture.lock()->SetType(m_textureType);
             material->SetTexture(texture);
             material->SaveToFile(material->GetResourceFilePath());
             LoadImageAsync(imagePath);

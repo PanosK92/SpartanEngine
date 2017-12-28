@@ -34,15 +34,12 @@ namespace Directus
 		Script();
 		~Script();
 
-		//= ICOMPONENT ============================
-		void Initialize() override;
+		//= ICOMPONENT ===============================
 		void Start() override;
-		void OnDisable() override;
-		void Remove() override;
 		void Update() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
-		//=========================================
+		//============================================
 
 		bool AddScript(const std::string& filePath);
 		std::string GetScriptPath();

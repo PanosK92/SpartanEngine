@@ -6,7 +6,7 @@
 #include "../Graphics/D3D11/D3D11VertexBuffer.h"
 #include <memory>
 #include <vector>
-//=============================================
+//==============================================
 
 namespace Directus
 {
@@ -21,16 +21,6 @@ namespace Directus
 	public:
 		LineRenderer();
 		~LineRenderer();
-
-		//= COMPONENT =============================
-		void Initialize() override;
-		void Start() override;
-		void OnDisable() override;
-		void Remove() override;
-		void Update() override;
-		void Serialize(FileStream* stream) override;
-		void Deserialize(FileStream* stream) override;
-		//=========================================
 
 		//= INPUT ===================================================================================
 		void AddBoundigBox(const Math::BoundingBox& box, const Math::Vector4& color);

@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Components/RigidBody.h"
 #include "../Components/Skybox.h"
 #include "../Components/Script.h"
+#include "../FileSystem/FileSystem.h"
 //======================================
 
 //= NAMESPACES =====
@@ -155,8 +156,8 @@ namespace Directus
 		stream->Write((int)m_components.size());
 		for (const auto& component : m_components)
 		{
-			stream->Write((unsigned int)component.second->g_type);
-			stream->Write(component.second->g_ID);
+			stream->Write((unsigned int)component.second->GetType());
+			stream->Write(component.second->GetID());
 		}
 
 		for (const auto& component : m_components)
@@ -174,15 +175,15 @@ namespace Directus
 		// 2nd - children IDs
 		for (const auto& child : children)
 		{
-			stream->Write(child->g_ID);
+			stream->Write(child->GetID());
 		}
 
 		// 3rd - children
 		for (const auto& child : children)
 		{
-			if (!child->g_gameObject.expired())
+			if (child->GetGameObject())
 			{
-				child->g_gameObject._Get()->Serialize(stream);
+				child->GetGameObject()->Serialize(stream);
 			}
 			else
 			{
@@ -214,7 +215,7 @@ namespace Directus
 			stream->Read(&id); // load component's id
 
 			auto component = AddComponent((ComponentType)type);
-			component._Get()->g_ID = id;
+			component.lock()->SetID(id);
 		}
 		// Sometimes there are component dependencies, e.g. a collider that needs
 		// to set it's shape to a rigibody. So, it's important to first create all 
@@ -237,18 +238,18 @@ namespace Directus
 
 		// 2nd - children IDs
 		auto scene = m_context->GetSubsystem<Scene>();
-		vector<weakGameObj> children;
+		vector<std::weak_ptr<GameObject>> children;
 		for (int i = 0; i < childrenCount; i++)
 		{
-			weakGameObj child = scene->CreateGameObject();
-			child._Get()->SetID(stream->ReadUInt());
+			std::weak_ptr<GameObject> child = scene->CreateGameObject();
+			child.lock()->SetID(stream->ReadUInt());
 			children.push_back(child);
 		}
 
 		// 3rd - children
 		for (const auto& child : children)
 		{
-			child._Get()->Deserialize(stream, GetTransform());
+			child.lock()->Deserialize(stream, GetTransform());
 		}
 		//=============================================
 
@@ -290,7 +291,7 @@ namespace Directus
 		for (auto it = m_components.begin(); it != m_components.end(); ) 
 		{
 			auto component = *it;
-			if (id == component.second->g_ID)
+			if (id == component.second->GetID())
 			{
 				component.second->Remove();
 				component.second.reset();

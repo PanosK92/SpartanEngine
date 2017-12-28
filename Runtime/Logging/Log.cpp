@@ -82,7 +82,7 @@ namespace Directus
 
 	void Log::Write(weak_ptr<GameObject> gameObject, LogType type)
 	{
-		gameObject.expired() ? Write("Null", type) : Write(gameObject._Get()->GetName(), type);
+		gameObject.expired() ? Write("Null", type) : Write(gameObject.lock()->GetName(), type);
 	}
 
 	void Log::Write(const Vector2& vector, LogType type)
@@ -155,7 +155,7 @@ namespace Directus
 	void Log::LogString(const string& text, LogType type)
 	{
 		lock_guard<mutex> guard(Mutex);
-		m_logger._Get()->Log(text, type);
+		m_logger.lock()->Log(text, type);
 	}
 
 	void Log::LogToFile(const string& text, LogType type)

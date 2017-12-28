@@ -39,7 +39,6 @@ namespace Directus
 {
 	Constraint::Constraint()
 	{
-		Register(ComponentType_Constraint);
 		m_constraint = nullptr;
 		m_isDirty = false;
 	}
@@ -81,16 +80,16 @@ namespace Directus
 
 	void Constraint::Serialize(FileStream* stream)
 	{
-		stream->Write(!m_bodyOther.expired() ? m_bodyOther._Get()->g_gameObject._Get()->GetID() : (unsigned int)0);
+		stream->Write(!m_bodyOther.expired() ? m_bodyOther.lock()->GetGameObject()->GetID() : (unsigned int)0);
 	}
 
 	void Constraint::Deserialize(FileStream* stream)
 	{
 		unsigned int bodyOtherID = stream->ReadUInt();
-		auto otherGameObject = g_context->GetSubsystem<Scene>()->GetGameObjectByID(bodyOtherID);
+		auto otherGameObject = GetContext()->GetSubsystem<Scene>()->GetGameObjectByID(bodyOtherID);
 		if (!otherGameObject.expired())
 		{
-			m_bodyOther = otherGameObject._Get()->GetComponent<RigidBody>();
+			m_bodyOther = otherGameObject.lock()->GetComponent<RigidBody>();
 		}
 
 		m_isDirty = true;
@@ -112,8 +111,8 @@ namespace Directus
 		}
 
 		// get the rigidbodies
-		auto rigidBodyA = g_gameObject._Get()->GetComponent<RigidBody>()->GetBtRigidBody();
-		auto rigidBodyB = m_connectedRigidBody._Get()->GetComponent<RigidBody>()->GetBtRigidBody();
+		auto rigidBodyA = g_gameObject.lock()->GetComponent<RigidBody>()->GetBtRigidBody();
+		auto rigidBodyB = m_connectedRigidBody.lock()->GetComponent<RigidBody>()->GetBtRigidBody();
 
 		// convert data to bullet data
 		btTransform localA, localB;
@@ -141,14 +140,14 @@ namespace Directus
 		// Activate RigidBodies
 		if (!m_bodyOwn.expired())
 		{
-			m_bodyOwn._Get()->Activate();
+			m_bodyOwn.lock()->Activate();
 		}
 		if (!m_bodyOther.expired())
 		{
-			m_bodyOther._Get()->Activate();
+			m_bodyOther.lock()->Activate();
 		}
 
-		g_context->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_constraint.get());
+		GetContext()->GetSubsystem<Physics>()->GetWorld()->removeConstraint(m_constraint.get());
 		m_constraint.reset();
 	}
 }

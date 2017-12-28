@@ -179,7 +179,7 @@ void DirectusInspector::Inspect(weak_ptr<GameObject> gameobject)
         for (int i = 0; i < m_scripts.size(); i++)
         {
             DirectusScript* scriptComp = (DirectusScript*)m_scripts[i];
-            scriptComp->Reflect(engineScripts[i]._Get());
+            scriptComp->Reflect(engineScripts[i].lock().get());
         }
     }
     else // NOTE: If no item is selected, the gameobject will be null
@@ -246,7 +246,7 @@ void DirectusInspector::dropEvent(QDropEvent* event)
         scriptPath = FileSystem::GetRelativeFilePath(scriptPath);
 
         // Add a script component and load the script
-        Script* scriptComp = m_inspectedGameObject.lock()->AddComponent<Script>()._Get();
+        Script* scriptComp = m_inspectedGameObject.lock()->AddComponent<Script>().lock().get();
         scriptComp->AddScript(scriptPath);
 
         // Update the inspector
@@ -273,7 +273,7 @@ vector<weak_ptr<Script>> DirectusInspector::FitScriptVectorToGameObject()
     m_scripts.shrink_to_fit();
 
     // Reflect back to the script vector
-    auto engineScripts = m_inspectedGameObject._Get()->GetComponents<Script>();
+    auto engineScripts = m_inspectedGameObject.lock()->GetComponents<Script>();
     for (int i = 0; i < (int)engineScripts.size(); i++)
     {
         m_scripts.push_back(new DirectusScript());

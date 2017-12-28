@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ===========================
 #include "Skybox.h"
 #include "Transform.h"
 #include "MeshRenderer.h"
@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Scene/Scene.h"
 #include "../Resource/ResourceCache.h"
 #include "../Resource/ResourceManager.h"
-//====================================
+//======================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -41,8 +41,7 @@ namespace Directus
 {
 	Skybox::Skybox()
 	{
-		Register(ComponentType_Skybox);
-		m_anchorTrans = nullptr;
+
 	}
 
 	Skybox::~Skybox()
@@ -55,66 +54,41 @@ namespace Directus
 	------------------------------------------------------------------------------*/
 	void Skybox::Initialize()
 	{
-		if (g_gameObject.expired())
-		{
-			return;
-		}
+		auto resourceMng = GetContext()->GetSubsystem<ResourceManager>();
 
-		// Get cubemap directory
-		auto resourceMng = g_context->GetSubsystem<ResourceManager>();
-		string cubamapDirectory = resourceMng->GetStandardResourceDirectory(Resource_Cubemap);
-
-		m_cubeMapTexture = make_shared<Texture>(g_context);
-		m_cubeMapTexture->LoadFromFile(cubamapDirectory + "environment.dds");
-		m_cubeMapTexture->SetType(TextureType_CubeMap);
-		m_cubeMapTexture->SetWidth(1024);
-		m_cubeMapTexture->SetHeight(1024);
-		m_cubeMapTexture->SetGrayscale(false);
+		// Load cubemap texture
+		string cubemapDirectory = resourceMng->GetStandardResourceDirectory(Resource_Cubemap);
+		string texPath = cubemapDirectory + "environment.dds";
+		m_cubemapTexture = make_shared<Texture>(GetContext());
+		m_cubemapTexture->SetResourceName(FileSystem::GetFileNameFromFilePath(texPath));
+		m_cubemapTexture->LoadFromFile(texPath);
+		m_cubemapTexture->SetType(TextureType_CubeMap);
+		m_cubemapTexture->SetWidth(1024);
+		m_cubemapTexture->SetHeight(1024);
+		m_cubemapTexture->SetGrayscale(false);
 
 		// Add the actual "box"
-		g_gameObject._Get()->AddComponent<MeshFilter>()._Get()->SetMesh(MeshType_Cube);
+		GetGameObject()->AddComponent<MeshFilter>().lock()->SetMesh(MeshType_Cube);
 
 		// Add a mesh renderer
-		auto meshRenderer = g_gameObject._Get()->AddComponent<MeshRenderer>()._Get();
+		shared_ptr<MeshRenderer> meshRenderer = GetGameObject()->AddComponent<MeshRenderer>().lock();
 		meshRenderer->SetCastShadows(false);
 		meshRenderer->SetReceiveShadows(false);
 		meshRenderer->SetMaterialByType(Material_Skybox);
-		if (meshRenderer->HasMaterial())
+		shared_ptr<Material> material = meshRenderer->GetMaterial().lock();
+		if (material)
 		{
-			meshRenderer->GetMaterial()._Get()->SetTexture(m_cubeMapTexture);
+			material->SetTexture(m_cubemapTexture);
 		}
-		g_transform->SetScale(Vector3(1000, 1000, 1000));
-
-		g_gameObject._Get()->SetHierarchyVisibility(false);
-	}
-
-	void Skybox::Start()
-	{
-
-	}
-
-	void Skybox::OnDisable()
-	{
-
-	}
-
-	void Skybox::Remove()
-	{
-
+		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 	}
 
 	void Skybox::Update()
 	{
 		if (m_anchor.expired())
-		{
-			m_anchor = g_context->GetSubsystem<Scene>()->GetMainCamera();
-			m_anchorTrans = m_anchor._Get()->GetTransform();
-		}
-
-		if (!m_anchorTrans)
 			return;
 
-		g_transform->SetPosition(m_anchorTrans->GetPosition());
+		GetTransform()->SetPosition(m_anchor.lock()->GetTransform()->GetPosition());
 	}
 
 	/*------------------------------------------------------------------------------
@@ -122,6 +96,6 @@ namespace Directus
 	------------------------------------------------------------------------------*/
 	void** Skybox::GetEnvironmentTexture()
 	{
-		return m_cubeMapTexture ? m_cubeMapTexture->GetShaderResource() : nullptr;
+		return m_cubemapTexture ? m_cubemapTexture->GetShaderResource() : nullptr;
 	}
 }

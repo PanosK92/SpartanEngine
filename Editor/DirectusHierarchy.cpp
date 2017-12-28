@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/RigidBody.h"
 #include "Components/Skybox.h"
 #include "Components/Transform.h"
+#include "Graphics/Material.h"
 //==================================
 
 //= NAMESPACES ==========
@@ -134,7 +135,7 @@ void DirectusHierarchy::mouseMoveEvent(QMouseEvent* event)
     QDrag* drag = new QDrag(this);
     QMimeData* mimeData = new QMimeData;
 
-    QString gameObjectID = QString::fromStdString(GUIDGenerator::ToStr(draggedGameObject._Get()->GetID()));
+    QString gameObjectID = QString::fromStdString(GUIDGenerator::ToStr(draggedGameObject.lock()->GetID()));
     mimeData->setText(gameObjectID);
     drag->setMimeData(mimeData);
 
@@ -194,14 +195,14 @@ void DirectusHierarchy::dropEvent(QDropEvent* event)
     if (FileSystem::IsEnginePrefabFile(text))
     {
         auto gameObj = m_context->GetSubsystem<Scene>()->CreateGameObject();
-        gameObj._Get()->LoadFromPrefab(text);
+        gameObj.lock()->LoadFromPrefab(text);
         Populate();
         return;
     }
     //================================================================
 
     //= DROP CASE: GAMEOBJECT (Assume text is a GameObject ID) =======
-    auto draggedGameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(GUIDGenerator::ToUnsignedInt(text))._Get();
+    auto draggedGameObj = m_context->GetSubsystem<Scene>()->GetGameObjectByID(GUIDGenerator::ToUnsignedInt(text)).lock().get();
     QTreeWidgetItem* hoveredItem = this->itemAt(event->pos());
     auto dropTargetGameObj = ToGameObject(hoveredItem).lock();
 
@@ -275,7 +276,7 @@ void DirectusHierarchy::AddGameObject(weak_ptr<GameObject> gameobject, QTreeWidg
     auto childrenTrans = gameObj->GetTransform()->GetChildren();
     for (const auto& childTrans : childrenTrans)
     {
-        auto child = childTrans->GetGameObject();
+        auto child = childTrans->GetGameObjectRef();
         if (!child.expired())
         {
             if (!child.lock()->IsVisibleInHierarchy())
@@ -311,7 +312,7 @@ QTreeWidgetItem* DirectusHierarchy::ToQTreeWidgetItem(weak_ptr<GameObject> gameO
     // Create a tree item
     QTreeWidgetItem* item = isRoot ? new QTreeWidgetItem(this) : new QTreeWidgetItem();
     item->setText(0, name);
-    item->setData(0, Qt::UserRole, QVariant(QString::fromStdString(GUIDGenerator::ToStr(gameObj._Get()->GetID()))));
+    item->setData(0, Qt::UserRole, QVariant(QString::fromStdString(GUIDGenerator::ToStr(gameObj.lock()->GetID()))));
 
     //= About Qt::UserRole ==============================================================
     // Constant     -> Qt::UserRole
@@ -640,7 +641,7 @@ void DirectusHierarchy::SelectGameObject(GameObject* gameObject)
         if (gameObjectItem.expired())
             continue;
 
-        if (gameObjectItem._Get()->GetID() == gameObject->GetID())
+        if (gameObjectItem.lock()->GetID() == gameObject->GetID())
         {
             // Select
             this->clearSelection();
@@ -685,11 +686,11 @@ void DirectusHierarchy::CreateCube()
     gameobject->SetName("Cube");
 
     // Add a mesh component
-    MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>()._Get();
+    MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>().lock().get();
     meshComp->SetMesh(MeshType_Cube);
 
     // Add a mesh renderer
-    MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>()._Get();
+    MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>().lock().get();
     meshRenderer->SetMaterialByType(MaterialType::Material_Basic);
 
     // Refresh hierarchy
@@ -703,11 +704,11 @@ void DirectusHierarchy::CreateQuad()
     gameobject->SetName("Quad");
 
     // Add a mesh component
-    MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>()._Get();
+    MeshFilter* meshComp = gameobject->AddComponent<MeshFilter>().lock().get();
     meshComp->SetMesh(MeshType_Quad);
 
     // Add a mesh renderer
-    MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>()._Get();
+    MeshRenderer* meshRenderer = gameobject->AddComponent<MeshRenderer>().lock().get();
     meshRenderer->SetMaterialByType(MaterialType::Material_Basic);
 
     // Refresh hierarchy
@@ -721,7 +722,7 @@ void DirectusHierarchy::CreateDirectionalLight()
     gameobject->SetName("Directional light");
 
     // Add component
-    Light* light = gameobject->AddComponent<Light>()._Get();
+    Light* light = gameobject->AddComponent<Light>().lock().get();
     light->SetLightType(Directional);
 
     // Refresh hierarchy
@@ -735,7 +736,7 @@ void DirectusHierarchy::CreatePointLight()
     gameobject->SetName("Point light");
 
     // Add component
-    Light* light = gameobject->AddComponent<Light>()._Get();
+    Light* light = gameobject->AddComponent<Light>().lock().get();
     light->SetLightType(Point);
 
     // Refresh hierarchy
@@ -749,7 +750,7 @@ void DirectusHierarchy::CreateSpotLight()
     gameobject->SetName("Spot light");
 
     // Add component
-    Light* light = gameobject->AddComponent<Light>()._Get();
+    Light* light = gameobject->AddComponent<Light>().lock().get();
     light->SetLightType(Spot);
 
     // Refresh hierarchy
@@ -791,7 +792,7 @@ void DirectusHierarchy::AddCameraComponent()
     if (gameobject.expired())
         return;
 
-    gameobject._Get()->AddComponent<Camera>();
+    gameobject.lock()->AddComponent<Camera>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -804,7 +805,7 @@ void DirectusHierarchy::AddMeshFilterComponent()
     if (gameobject.expired())
         return;
 
-    gameobject._Get()->AddComponent<MeshFilter>();
+    gameobject.lock()->AddComponent<MeshFilter>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -817,7 +818,7 @@ void DirectusHierarchy::AddMeshRendererComponent()
     if (gameobject.expired())
         return;
 
-    gameobject._Get()->AddComponent<MeshRenderer>();
+    gameobject.lock()->AddComponent<MeshRenderer>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -830,7 +831,7 @@ void DirectusHierarchy::AddLightComponent()
     if (gameobject.expired())
         return;
 
-    gameobject._Get()->AddComponent<Light>();
+    gameobject.lock()->AddComponent<Light>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -843,7 +844,7 @@ void DirectusHierarchy::AddRigidBodyComponent()
     if (gameobject.expired())
         return;
 
-    gameobject._Get()->AddComponent<RigidBody>();
+    gameobject.lock()->AddComponent<RigidBody>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -856,7 +857,7 @@ void DirectusHierarchy::AddColliderComponent()
     if (gameobject.expired())
         return;
 
-    gameobject._Get()->AddComponent<Collider>();
+    gameobject.lock()->AddComponent<Collider>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -869,7 +870,7 @@ void DirectusHierarchy::AddConstraintComponent()
     if (gameobject.expired())
         return;
 
-    gameobject._Get()->AddComponent<Constraint>();
+    gameobject.lock()->AddComponent<Constraint>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -882,7 +883,7 @@ void DirectusHierarchy::AddSkyboxComponent()
     if (gameobject.expired())
         return;
 
-    gameobject._Get()->AddComponent<Skybox>();
+    gameobject.lock()->AddComponent<Skybox>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -895,7 +896,7 @@ void DirectusHierarchy::AddAudioListenerComponent()
     if (gameobject.expired())
         return;
 
-    gameobject._Get()->AddComponent<AudioListener>();
+    gameobject.lock()->AddComponent<AudioListener>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);
@@ -908,7 +909,7 @@ void DirectusHierarchy::AddAudioSourceComponent()
     if (gameobject.expired())
         return;
 
-    gameobject._Get()->AddComponent<AudioSource>();
+    gameobject.lock()->AddComponent<AudioSource>();
 
     // Update the engine and the inspector
     m_inspector->Inspect(gameobject);

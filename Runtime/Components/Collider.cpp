@@ -48,7 +48,6 @@ namespace Directus
 {
 	Collider::Collider()
 	{
-		Register(ComponentType_Collider);
 		m_shapeType = ColliderShape_Box;
 		m_center = Vector3::Zero;
 		m_size = Vector3::One;
@@ -62,26 +61,16 @@ namespace Directus
 	//= ICOMPONENT ==================================================================
 	void Collider::Initialize()
 	{
-		m_lastKnownScale = g_transform->GetScale();
+		m_lastKnownScale = GetTransform()->GetScale();
 
 		// If there is a mesh, use it's bounding box
-		if (auto meshFilter = g_gameObject._Get()->GetMeshFilter())
+		if (auto meshFilter = GetGameObject()->GetMeshFilter())
 		{
-			m_center = g_transform->GetPosition();
+			m_center = GetTransform()->GetPosition();
 			m_size = meshFilter->GetBoundingBoxTransformed().GetSize();
 		}
 
 		UpdateShape();
-	}
-
-	void Collider::Start()
-	{
-
-	}
-
-	void Collider::OnDisable()
-	{
-
 	}
 
 	void Collider::Remove()
@@ -92,9 +81,9 @@ namespace Directus
 	void Collider::Update()
 	{
 		// Scale the collider if the transform scale has changed
-		if (m_collisionShape && (m_lastKnownScale != g_transform->GetScale()))
+		if (m_collisionShape && (m_lastKnownScale != GetTransform()->GetScale()))
 		{
-			m_lastKnownScale = g_transform->GetScale();
+			m_lastKnownScale = GetTransform()->GetScale();
 			UpdateShape();
 		}
 	}
@@ -164,7 +153,7 @@ namespace Directus
 		// Release previous shape
 		ReleaseShape();
 
-		Vector3 newWorldScale = g_transform->GetScale();
+		Vector3 newWorldScale = GetTransform()->GetScale();
 
 		switch (m_shapeType)
 		{
@@ -199,7 +188,7 @@ namespace Directus
 
 		case ColliderShape_Mesh:
 			// Get mesh filter
-			MeshFilter* meshFilter = g_gameObject._Get()->GetComponent<MeshFilter>()._Get();
+			MeshFilter* meshFilter = GetGameObject()->GetComponent<MeshFilter>().lock().get();
 			if (!meshFilter)
 			{
 				LOG_WARNING("Collider: Can't construct mesh shape, there is no MeshFilter component attached.");
@@ -207,7 +196,7 @@ namespace Directus
 			}
 
 			// Get mesh
-			Mesh* mesh = meshFilter->GetMesh()._Get();
+			Mesh* mesh = meshFilter->GetMesh().lock().get();
 			if (!mesh)
 			{
 				LOG_WARNING("Collider: Can't construct mesh shape, MeshFilter component doesn't have a mesh.");
@@ -259,12 +248,9 @@ namespace Directus
 		m_collisionShape.reset();
 	}
 
-	void Collider::SetRigidBodyCollisionShape(shared_ptr<btCollisionShape> shape) const
+	void Collider::SetRigidBodyCollisionShape(shared_ptr<btCollisionShape> shape)
 	{
-		if (g_gameObject.expired())
-			return;
-
-		RigidBody* rigidBody = g_gameObject._Get()->GetComponent<RigidBody>()._Get();
+		RigidBody* rigidBody = GetGameObject()->GetComponent<RigidBody>().lock().get();
 		if (rigidBody)
 		{
 			rigidBody->SetCollisionShape(shape);

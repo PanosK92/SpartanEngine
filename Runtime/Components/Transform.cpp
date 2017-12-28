@@ -37,7 +37,6 @@ namespace Directus
 {
 	Transform::Transform()
 	{
-		Register(ComponentType_Transform);
 		m_positionLocal = Vector3::Zero;
 		m_rotationLocal = Quaternion(0, 0, 0, 1);
 		m_scaleLocal = Vector3::One;
@@ -57,33 +56,13 @@ namespace Directus
 		UpdateTransform();
 	}
 
-	void Transform::Start()
-	{
-
-	}
-
-	void Transform::OnDisable()
-	{
-
-	}
-
-	void Transform::Remove()
-	{
-
-	}
-
-	void Transform::Update()
-	{
-
-	}
-
 	void Transform::Serialize(FileStream* stream)
 	{
 		stream->Write(m_positionLocal);
 		stream->Write(m_rotationLocal);
 		stream->Write(m_scaleLocal);
 		stream->Write(m_lookAt);
-		stream->Write(m_parent ? m_parent->GetGameObject()._Get()->GetID() : NOT_ASSIGNED_HASH);
+		stream->Write(m_parent ? m_parent->GetGameObject()->GetID() : NOT_ASSIGNED_HASH);
 	}
 
 	void Transform::Deserialize(FileStream* stream)
@@ -98,10 +77,10 @@ namespace Directus
 
 		if (parentGameObjectID != NOT_ASSIGNED_HASH)
 		{
-			auto parent = g_context->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
+			auto parent = GetContext()->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
 			if (!parent.expired())
 			{
-				parent._Get()->GetTransform()->AddChild(this);
+				parent.lock()->GetTransform()->AddChild(this);
 			}
 		}
 
@@ -238,13 +217,13 @@ namespace Directus
 		}
 
 		// make sure the new parent is not this transform
-		if (g_ID == newParent->g_ID)
+		if (GetID() == newParent->GetID())
 			return;
 
 		// make sure the new parent is different from the existing parent
 		if (HasParent())
 		{
-			if (GetParent()->g_ID == newParent->g_ID)
+			if (GetParent()->GetID() == newParent->GetID())
 				return;
 		}
 
@@ -294,7 +273,7 @@ namespace Directus
 		if (!child)
 			return;
 
-		if (g_ID == child->g_ID)
+		if (GetID() == child->GetID())
 			return;
 
 		child->SetParent(this);
@@ -305,8 +284,7 @@ namespace Directus
 	{
 		if (!HasChildren())
 		{
-			string gameObjName = !g_gameObject.expired() ? g_gameObject._Get()->GetName() : NOT_ASSIGNED;
-			LOG_WARNING(gameObjName + " has no children.");
+			LOG_WARNING(GetGameObjectName() + " has no children.");
 			return nullptr;
 		}
 
@@ -324,7 +302,7 @@ namespace Directus
 	{
 		for (const auto& child : m_children)
 		{
-			if (child->GetGameObjName() == name)
+			if (child->GetGameObjectName() == name)
 				return child;
 		}
 
@@ -338,7 +316,7 @@ namespace Directus
 		m_children.clear();
 		m_children.shrink_to_fit();
 
-		auto gameObjects = g_context->GetSubsystem<Scene>()->GetAllGameObjects();
+		auto gameObjects = GetContext()->GetSubsystem<Scene>()->GetAllGameObjects();
 		for (const auto& gameObject : gameObjects)
 		{
 			if (!gameObject)
@@ -352,7 +330,7 @@ namespace Directus
 				continue;
 
 			// if it's parent matches this transform
-			if (possibleChild->GetParent()->g_ID == g_ID)
+			if (possibleChild->GetParent()->GetID() == m_ID)
 			{
 				// welcome home son
 				m_children.push_back(possibleChild);
@@ -371,7 +349,7 @@ namespace Directus
 
 		for (const auto& descendant : descendants)
 		{
-			if (descendant->g_ID == g_ID)
+			if (descendant->GetID() == m_ID)
 				return true;
 		}
 
@@ -386,11 +364,6 @@ namespace Directus
 			descendants->push_back(child);
 			child->GetDescendants(descendants);
 		}
-	}
-
-	string Transform::GetGameObjName()
-	{
-		return !g_gameObject.expired() ? g_gameObject._Get()->GetName() : NOT_ASSIGNED;
 	}
 
 	Matrix Transform::GetParentTransformMatrix()

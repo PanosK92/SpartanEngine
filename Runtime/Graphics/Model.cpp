@@ -116,7 +116,7 @@ namespace Directus
 		file->Write((int)m_meshes.size());
 		for (const auto& mesh : m_meshes)
 		{
-			file->Write(mesh._Get()->GetResourceName());
+			file->Write(mesh.lock()->GetResourceName());
 		}
 
 		return true;
@@ -161,28 +161,31 @@ namespace Directus
 		}
 
 		// Update the mesh with Model directory relative file path. Then save it to this directory
-		string modelRelativeTexPath = m_modelDirectoryMeshes + mesh._Get()->GetResourceName() + MESH_EXTENSION;
-		mesh._Get()->SetResourceFilePath(modelRelativeTexPath);
-		mesh._Get()->SetModelName(GetResourceName());
-		mesh._Get()->SaveToFile(modelRelativeTexPath);
+		string modelRelativeTexPath = m_modelDirectoryMeshes + mesh.lock()->GetResourceName() + MESH_EXTENSION;
+		mesh.lock()->SetResourceFilePath(modelRelativeTexPath);
+		mesh.lock()->SetModelName(GetResourceName());
+		mesh.lock()->SaveToFile(modelRelativeTexPath);
 
 		// Construct mesh (vertex buffer, index buffer, bounding box, etc...)
-		mesh._Get()->Construct();
+		mesh.lock()->Construct();
 
 		// Calculate the bounding box of the model as well
-		m_boundingBox.Merge(mesh._Get()->GetBoundingBox());
+		m_boundingBox.Merge(mesh.lock()->GetBoundingBox());
 
 		// Add it to the resource manager
 		auto weakMesh = m_context->GetSubsystem<ResourceManager>()->Add<Mesh>(mesh.lock());
 
-		// Save it
-		m_meshes.push_back(weakMesh);
+		if (!weakMesh.expired())
+		{
+			// Save it
+			m_meshes.push_back(weakMesh);
 
-		// Add some standard components
-		AddStandardComponents(gameObject, weakMesh);
+			// Add some standard components
+			AddStandardComponents(gameObject, weakMesh);
 
-		// Release geometry data now that we are done with it
-		weakMesh._Get()->ClearGeometry();
+			// Release geometry data now that we are done with it
+			weakMesh.lock()->ClearGeometry();
+		}
 	}
 
 	void Model::AddMaterial(weak_ptr<Material> material, weak_ptr<GameObject> gameObject)
@@ -191,13 +194,13 @@ namespace Directus
 			return;
 
 		// Create a file path for this material
-		material._Get()->SetResourceFilePath(m_modelDirectoryMaterials + material._Get()->GetResourceName() + MATERIAL_EXTENSION);
+		material.lock()->SetResourceFilePath(m_modelDirectoryMaterials + material.lock()->GetResourceName() + MATERIAL_EXTENSION);
 
 		// Add it to our resources
 		weak_ptr<Material> weakMat = m_context->GetSubsystem<ResourceManager>()->Add<Material>(material.lock());
 
 		// Save the material in the model directory		
-		weakMat._Get()->SaveToFile(weakMat._Get()->GetResourceFilePath());
+		weakMat.lock()->SaveToFile(weakMat.lock()->GetResourceFilePath());
 
 		// Keep a reference to it
 		m_materials.push_back(weakMat);
@@ -205,7 +208,7 @@ namespace Directus
 		// Create a MeshRenderer and pass the Material to it
 		if (!gameObject.expired())
 		{
-			MeshRenderer* meshRenderer = gameObject._Get()->AddComponent<MeshRenderer>()._Get();
+			MeshRenderer* meshRenderer = gameObject.lock()->AddComponent<MeshRenderer>().lock().get();
 			meshRenderer->SetMaterialFromMemory(material);
 		}
 	}
@@ -254,27 +257,27 @@ namespace Directus
 				return;
 
 			// Set texture type
-			texture._Get()->SetType(textureType);
+			texture.lock()->SetType(textureType);
 
 			// Update the texture with Model directory relative file path. Then save it to this directory
 			string modelRelativeTexPath = m_modelDirectoryTextures + texName + TEXTURE_EXTENSION;
-			texture._Get()->SetResourceFilePath(modelRelativeTexPath);
-			texture._Get()->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
-			texture._Get()->SaveToFile(modelRelativeTexPath);
+			texture.lock()->SetResourceFilePath(modelRelativeTexPath);
+			texture.lock()->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
+			texture.lock()->SaveToFile(modelRelativeTexPath);
 
 			// Since the texture has been loaded and had it's texture bits saved, clear them to free some memory
-			texture._Get()->ClearTextureBits();
+			texture.lock()->ClearTextureBits();
 		}
 
 		// Set the texture to the provided material
-		material._Get()->SetTexture(texture);
+		material.lock()->SetTexture(texture);
 	}
 
 	weak_ptr<Mesh> Model::GetMeshByName(const string& name)
 	{
 		for (const auto& mesh : m_meshes)
 		{
-			if (mesh._Get()->GetResourceName() == name)
+			if (mesh.lock()->GetResourceName() == name)
 			{
 				return mesh;
 			}
@@ -341,12 +344,12 @@ namespace Directus
 		SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(filePath)); // Sponza
 
 		// Load the model
-		if (m_resourceManager->GetModelImporter()._Get()->Load(this, filePath))
+		if (m_resourceManager->GetModelImporter().lock()->Load(this, filePath))
 		{
 			// Set the normalized scale to the root GameObject's transform
 			m_normalizedScale = ComputeNormalizeScale();
-			m_rootGameObj._Get()->GetComponent<Transform>()._Get()->SetScale(m_normalizedScale);
-			m_rootGameObj._Get()->GetComponent<Transform>()._Get()->UpdateTransform();
+			m_rootGameObj.lock()->GetComponent<Transform>().lock()->SetScale(m_normalizedScale);
+			m_rootGameObj.lock()->GetComponent<Transform>().lock()->UpdateTransform();
 
 			// Save the model in our custom format.
 			SaveToFile(GetResourceFilePath());
@@ -363,16 +366,16 @@ namespace Directus
 			return;
 
 		// Add a MeshFilter
-		MeshFilter* meshFilter = gameObject._Get()->AddComponent<MeshFilter>()._Get();
+		MeshFilter* meshFilter = gameObject.lock()->AddComponent<MeshFilter>().lock().get();
 		meshFilter->SetMesh(mesh);
 
-		if (meshFilter->GetType() == MeshType_Custom)
+		if (meshFilter->GetMeshType() == MeshType_Custom)
 		{
 			// Add a RigidBody
-			gameObject._Get()->AddComponent<RigidBody>();
+			gameObject.lock()->AddComponent<RigidBody>();
 
 			// Add a Collider
-			Collider* collider = gameObject._Get()->AddComponent<Collider>()._Get();
+			Collider* collider = gameObject.lock()->AddComponent<Collider>().lock().get();
 			collider->SetShapeType(ColliderShape_Mesh);
 		}
 	}
@@ -390,8 +393,8 @@ namespace Directus
 		vector<weak_ptr<Mesh>> sameNameMeshes;
 		for (const auto& cachedMesh : m_meshes)
 		{
-			if (cachedMesh._Get()->GetResourceName() == mesh._Get()->GetResourceName() 
-				|| cachedMesh._Get()->GetResourceName().find(mesh._Get()->GetResourceName()) != string::npos)
+			if (cachedMesh.lock()->GetResourceName() == mesh.lock()->GetResourceName() 
+				|| cachedMesh.lock()->GetResourceName().find(mesh.lock()->GetResourceName()) != string::npos)
 			{
 				sameNameMeshes.push_back(cachedMesh);
 			}
@@ -401,16 +404,16 @@ namespace Directus
 		for (const auto& cachedMesh : sameNameMeshes)
 		{
 			// Vertex count matches
-			if (cachedMesh._Get()->GetVertexCount() != mesh._Get()->GetVertexCount())
+			if (cachedMesh.lock()->GetVertexCount() != mesh.lock()->GetVertexCount())
 				continue;
 
 			vector<VertexPosTexTBN> meshVertices;
 			vector<unsigned int> meshIndices;
-			mesh._Get()->GetGeometry(&meshVertices, &meshIndices);
+			mesh.lock()->GetGeometry(&meshVertices, &meshIndices);
 
 			vector<VertexPosTexTBN> cachedVertices;
 			vector<unsigned int> cachedIndices;
-			cachedMesh._Get()->GetGeometry(&cachedVertices, &cachedIndices);
+			cachedMesh.lock()->GetGeometry(&cachedVertices, &cachedIndices);
 
 			bool geometryMatches = true;
 			for (int i = 0; i < meshVertices.size(); i++)
@@ -433,7 +436,7 @@ namespace Directus
 		if (isUnique)
 		{
 			string num = sameNameMeshes.size() == 0 ? string("") : "_" + to_string(sameNameMeshes.size() + 1);
-			mesh._Get()->SetResourceName(mesh._Get()->GetResourceName() + num);
+			mesh.lock()->SetResourceName(mesh.lock()->GetResourceName() + num);
 		}
 		else
 		{
@@ -466,7 +469,7 @@ namespace Directus
 			if (!mesh.expired())
 				continue;
 
-			Vector3 boundingBox = mesh._Get()->GetBoundingBox().GetExtents();
+			Vector3 boundingBox = mesh.lock()->GetBoundingBox().GetExtents();
 			if (boundingBox.Volume() > largestBoundingBox.Volume())
 			{
 				largestBoundingBox = boundingBox;
@@ -482,7 +485,7 @@ namespace Directus
 		m_memoryUsageKB = 0;
 		for (const auto& mesh : m_meshes)
 		{
-			m_memoryUsageKB += mesh._Get()->GetMemoryUsageKB();
+			m_memoryUsageKB += mesh.lock()->GetMemoryUsageKB();
 		}
 	}
 }

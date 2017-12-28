@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EventSystem/EventSystem.h"
 #include <iomanip>
 #include <sstream>
+#include "../Core/Settings.h"
 //======================================
 
 //= NAMESPACES =====
@@ -71,7 +72,11 @@ namespace Directus
 
 	void PerformanceProfiler::RenderingStarted()
 	{
-		m_renderTimer->Start();
+		if (m_renderTimer)
+		{
+			m_renderTimer->Start();
+		}
+
 		m_renderedMeshesCount = 0;
 	}
 
@@ -82,7 +87,10 @@ namespace Directus
 
 	void PerformanceProfiler::RenderingFinished()
 	{
-		m_renderTimeMs = m_renderTimer->GetElapsedTime();
+		if (m_renderTimer)
+		{
+			m_renderTimeMs = m_renderTimer->GetElapsedTime();
+		}
 		m_renderedMeshesPerFrame = m_renderedMeshesCount;
 	}
 
@@ -108,6 +116,7 @@ namespace Directus
 			"Frame:\t\t\t\t" + to_string_precision(delta, 2) + " ms\n"
 			"Update:\t\t\t" + to_string_precision(delta - m_renderTimeMs, 2) + " ms\n"
 			"Render:\t\t\t" + to_string_precision(m_renderTimeMs, 2) + " ms\n"
+			"Resolution:\t\t" + to_string(int(RESOLUTION_WIDTH)) + "x" + to_string(int(RESOLUTION_HEIGHT)) + "\n" 
 			"Meshes Rendered:\t" + to_string(m_renderedMeshesPerFrame) + "\n"
 			"Meshes:\t\t\t" + to_string_precision(meshesMB, 1) + " MB\n"
 			"Textures:\t\t\t" + to_string(textures) + " (" + to_string_precision(textureMemoryMB, 1) + " MB)\n"

@@ -44,7 +44,6 @@ namespace Directus
 {
 	Camera::Camera()
 	{
-		Register(ComponentType_Camera);
 		SetFOV_Horizontal_Deg(75);
 		m_nearPlane = 0.3f;
 		m_farPlane = 1000.0f;
@@ -67,21 +66,6 @@ namespace Directus
 		CalculateProjection();
 	}
 
-	void Camera::Start()
-	{
-
-	}
-
-	void Camera::OnDisable()
-	{
-
-	}
-
-	void Camera::Remove()
-	{
-
-	}
-
 	void Camera::Update()
 	{
 		if (m_lastKnownResolution != GET_RESOLUTION)
@@ -91,10 +75,10 @@ namespace Directus
 		}
 
 		// DIRTY CHECK
-		if (m_position != g_transform->GetPosition() || m_rotation != g_transform->GetRotation())
+		if (m_position != GetTransform()->GetPosition() || m_rotation != GetTransform()->GetRotation())
 		{
-			m_position = g_transform->GetPosition();
-			m_rotation = g_transform->GetRotation();
+			m_position = GetTransform()->GetPosition();
+			m_rotation = GetTransform()->GetRotation();
 			m_isDirty = true;
 		}
 
@@ -198,21 +182,21 @@ namespace Directus
 	weak_ptr<GameObject> Camera::Pick(const Vector2& mousePos)
 	{
 		// Compute ray given the origin and end
-		m_ray = Ray(g_transform->GetPosition(), ScreenToWorldPoint(mousePos));
+		m_ray = Ray(GetTransform()->GetPosition(), ScreenToWorldPoint(mousePos));
 
 		// Hits <Distance, GameObject>
-		map<float, weakGameObj> hits;
+		map<float, std::weak_ptr<GameObject>> hits;
 
 		// Find all the GameObjects that the ray hits
-		vector<weakGameObj> gameObjects = g_context->GetSubsystem<Scene>()->GetRenderables();
+		vector<std::weak_ptr<GameObject>> gameObjects = GetContext()->GetSubsystem<Scene>()->GetRenderables();
 		for (const auto& gameObj : gameObjects)
 		{
 			// Make sure there GameObject has a mesh and exclude the SkyBox
-			if (!gameObj._Get()->HasComponent<MeshFilter>() || gameObj._Get()->HasComponent<Skybox>())
+			if (!gameObj.lock()->HasComponent<MeshFilter>() || gameObj.lock()->HasComponent<Skybox>())
 				continue;
 
 			// Get bounding box
-			BoundingBox box = gameObj._Get()->GetComponent<MeshFilter>()._Get()->GetBoundingBoxTransformed();
+			BoundingBox box = gameObj.lock()->GetComponent<MeshFilter>().lock()->GetBoundingBoxTransformed();
 
 			// Compute hit distance
 			float hitDistance = m_ray.HitDistance(box);
@@ -230,7 +214,7 @@ namespace Directus
 
 	Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
 	{
-		Vector2 viewport = g_context->GetSubsystem<Renderer>()->GetViewport();
+		Vector2 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewport();
 
 		Vector3 localSpace = worldPoint * m_mView * m_mProjection;
 
@@ -242,7 +226,7 @@ namespace Directus
 
 	Vector3 Camera::ScreenToWorldPoint(const Vector2& point)
 	{
-		Vector2 viewport = g_context->GetSubsystem<Renderer>()->GetViewport();
+		Vector2 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewport();
 
 		// Convert screen pixel to view space
 		float pointX = 2.0f * point.x / viewport.x - 1.0f;
@@ -258,9 +242,9 @@ namespace Directus
 	//= PRIVATE =======================================================================
 	void Camera::CalculateViewMatrix()
 	{
-		Vector3 position = g_transform->GetPosition();
-		Vector3 lookAt = g_transform->GetRotation() * Vector3::Forward;
-		Vector3 up = g_transform->GetRotation() * Vector3::Up;
+		Vector3 position	= GetTransform()->GetPosition();
+		Vector3 lookAt		= GetTransform()->GetRotation() * Vector3::Forward;
+		Vector3 up			= GetTransform()->GetRotation() * Vector3::Up;
 
 		// offset lookAt by current position
 		lookAt = position + lookAt;
