@@ -108,6 +108,9 @@ namespace Directus
 	//= TRANSLATION ==================================================================================
 	void Transform::SetPosition(const Vector3& position)
 	{
+		if (GetPosition() == position)
+			return;
+
 		SetPositionLocal(!HasParent() ? position : GetParent()->GetWorldTransform().Inverted() * position);
 	}
 
@@ -124,6 +127,9 @@ namespace Directus
 	//= ROTATION =====================================================================================
 	void Transform::SetRotation(const Quaternion& rotation)
 	{
+		if (GetRotation() == rotation)
+			return;
+
 		SetRotationLocal(!HasParent() ? rotation : rotation * GetParent()->GetRotation().Inverse());
 	}
 
@@ -140,6 +146,9 @@ namespace Directus
 	//= SCALE ========================================================================================
 	void Transform::SetScale(const Vector3& scale)
 	{
+		if (GetScale() == scale)
+			return;
+
 		SetScaleLocal(!HasParent() ? scale : scale / GetParent()->GetScale());
 	}
 

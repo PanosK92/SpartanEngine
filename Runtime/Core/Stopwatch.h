@@ -21,23 +21,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====
+//= INCLUDES ======
 #include <chrono>
-//===============
+#include "Helper.h"
+//=================
 
 namespace Directus
 {
-	class Stopwatch
+	class ENGINE_API Stopwatch
 	{
 	public:
 		Stopwatch();
 		~Stopwatch();
 
 		void Start();
-		// Returns time in milliseconds
-		float GetElapsedTime();
+
+		float GetElapsedTimeSec();
+		float GetElapsedTimeMs();
 
 	private:
-		std::chrono::time_point<std::chrono::steady_clock> m_start;
+		std::chrono::time_point<std::chrono::high_resolution_clock> m_start;
 	};
 }

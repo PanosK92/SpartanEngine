@@ -53,6 +53,7 @@ namespace Directus
 
 			Vector2::~Vector2() {}
 
+			//= ADDITION ===============================
 			Vector2 Vector2::operator+(const Vector2& b)
 			{
 				return Vector2
@@ -62,12 +63,28 @@ namespace Directus
 				);
 			}
 
+			void Vector2::operator+=(const Vector2& b)
+			{
+				this->x += b.x;
+				this->y += b.y;
+			}
+			//==========================================
+
+			//= MULTIPLICATION =======================================================================================
+			Vector2 operator*(const Vector2& b) const
+			{
+				return Vector2(x * b.x, y * b.y);
+			}
+
+			void operator*=(const Vector2& b)
+			{
+				x *= b.x;
+				y *= b.y;
+			}
+
 			Vector2 operator*(const float value) const
 			{
-				return Vector2(
-					x * value,
-					y * value
-				);
+				return Vector2(x * value, y * value);
 			}
 
 			void operator*=(const float value)
@@ -75,12 +92,30 @@ namespace Directus
 				x *= value;
 				y *= value;
 			}
+			//=======================================================================================================
 
-			void Vector2::operator+=(const Vector2& b)
+
+			//= SUBTRACTION ===============================================================
+			Vector2 operator-(const Vector2& b) const { return Vector2(x - b.x, y - b.y); }
+			Vector2 operator-(const float value) { return Vector2(x - value, y - value); }
+
+			void operator-=(const Vector2& rhs)
 			{
-				this->x += b.x;
-				this->y += b.y;
+				x -= rhs.x;
+				y -= rhs.y;
 			}
+			//=============================================================================
+
+			//= DIVISION ========================================================================
+			Vector2 operator/(const Vector2& rhs) const { return Vector2(x / rhs.x, y / rhs.y); }
+			Vector2 operator/(const float rhs) { return Vector2(x / rhs, y / rhs); }
+
+			void operator/=(const Vector2& rhs)
+			{
+				x /= rhs.x;
+				y /= rhs.y;
+			}
+			//===================================================================================
 
 			bool operator==(const Vector2& b)
 			{

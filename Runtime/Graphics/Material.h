@@ -75,7 +75,7 @@ namespace Directus
 		void AcquireShader();
 		std::weak_ptr<ShaderVariation> FindMatchingShader(unsigned long shaderFlags);
 		std::weak_ptr<ShaderVariation> CreateShaderBasedOnMaterial(unsigned long shaderFlags);
-		std::weak_ptr<ShaderVariation>& GetShader() { return m_shader; }
+		std::weak_ptr<ShaderVariation> GetShader() { return m_shader; }
 		bool HasShader() { return GetShader().expired() ? false : true; }
 		void** GetShaderResource(TextureType type);
 		//====================================================================================
@@ -97,7 +97,7 @@ namespace Directus
 		bool GetAlphaBlending() { return m_alphaBlending; }
 		void SetAlphaBlending(bool alphaBlending) { m_alphaBlending = alphaBlending; }
 
-		float GetRoughnessMultiplier() { return m_roughnessMultiplier; }
+		float& GetRoughnessMultiplier() { return m_roughnessMultiplier; }
 		void SetRoughnessMultiplier(float roughness) { m_roughnessMultiplier = roughness; }
 
 		float GetMetallicMultiplier() { return m_metallicMultiplier; }
@@ -115,11 +115,11 @@ namespace Directus
 		Math::Vector4&  GetColorAlbedo() { return m_colorAlbedo; }
 		void SetColorAlbedo(const Math::Vector4& color) { m_colorAlbedo = color; }
 
-		Math::Vector2&  GetTilingUV() { return m_uvTiling; }
-		void SetTilingUV(const Math::Vector2& tiling) { m_uvTiling = tiling; }
+		Math::Vector2&  GetTiling() { return m_uvTiling; }
+		void SetTiling(const Math::Vector2& tiling) { m_uvTiling = tiling; }
 
-		Math::Vector2& GetOffsetUV() { return m_uvOffset; }
-		void SetOffsetUV(const Math::Vector2& offset) { m_uvOffset = offset; }
+		Math::Vector2& GetOffset() { return m_uvOffset; }
+		void SetOffset(const Math::Vector2& offset) { m_uvOffset = offset; }
 
 		bool IsEditable() { return m_isEditable; }
 		void SetIsEditable(bool isEditable) { m_isEditable = isEditable; }

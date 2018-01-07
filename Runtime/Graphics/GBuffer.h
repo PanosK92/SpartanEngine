@@ -23,35 +23,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================================
 #include <vector>
+#include <memory>
 #include "../Graphics/D3D11/D3D11GraphicsDevice.h"
+#include "../Core/Settings.h"
 //================================================
 
 namespace Directus
 {
-	struct GBufferTex
-	{
-		DXGI_FORMAT format;
-		ID3D11Texture2D* renderTexture;
-		ID3D11RenderTargetView* renderTargetView;
-		ID3D11ShaderResourceView* shaderResourceView;
-	};
+	class D3D11RenderTexture;
 
 	class GBuffer
 	{
 	public:
-		GBuffer(Graphics* graphics);
+		GBuffer(Graphics* graphics, int width = RESOLUTION_WIDTH, int height = RESOLUTION_HEIGHT);
 		~GBuffer();
 
-		bool Create(int width, int height);
 		bool SetAsRenderTarget();
 		bool Clear();
 
 		ID3D11ShaderResourceView* GetShaderResource(int index);
 
 	private:
-		std::vector<GBufferTex> m_renderTargets;
+		std::vector<std::unique_ptr<D3D11RenderTexture>> m_renderTargets;
 
 		// Dependencies
 		Graphics* m_graphics;
+
 	};
 }

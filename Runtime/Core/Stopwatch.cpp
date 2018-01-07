@@ -42,11 +42,18 @@ namespace Directus
 
 	void Stopwatch::Start()
 	{
-		m_start = steady_clock::now();
+		m_start = high_resolution_clock::now();
 	}
 
-	float Stopwatch::GetElapsedTime()
+	float Stopwatch::GetElapsedTimeSec()
 	{
-		return float(duration_cast<microseconds>(steady_clock::now() - m_start).count() / 1000.0);
+		duration<double, milli> seconds = high_resolution_clock::now() - m_start;
+		return seconds.count() / 1000.0f;
+	}
+
+	float Stopwatch::GetElapsedTimeMs()
+	{
+		duration<double, milli> ms = high_resolution_clock::now() - m_start;
+		return ms.count();
 	}
 }

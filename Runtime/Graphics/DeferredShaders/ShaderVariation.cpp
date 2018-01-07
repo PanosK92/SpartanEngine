@@ -157,8 +157,8 @@ namespace Directus
 		// Determine if the material buffer needs to update
 		bool update = false;
 		update = perMaterialBufferCPU.matAlbedo			!= material->GetColorAlbedo()			? true : update;
-		update = perMaterialBufferCPU.matTilingUV		!= material->GetTilingUV()				? true : update;
-		update = perMaterialBufferCPU.matOffsetUV		!= material->GetOffsetUV()				? true : update;
+		update = perMaterialBufferCPU.matTilingUV		!= material->GetTiling()				? true : update;
+		update = perMaterialBufferCPU.matOffsetUV		!= material->GetOffset()				? true : update;
 		update = perMaterialBufferCPU.matRoughnessMul	!= material->GetRoughnessMultiplier()	? true : update;
 		update = perMaterialBufferCPU.matMetallicMul	!= material->GetMetallicMultiplier()	? true : update;
 		update = perMaterialBufferCPU.matNormalMul		!= material->GetNormalMultiplier()		? true : update;
@@ -170,8 +170,8 @@ namespace Directus
 			PerMaterialBufferType* buffer = (PerMaterialBufferType*)m_materialBuffer->Map();
 
 			buffer->matAlbedo		= perMaterialBufferCPU.matAlbedo		= material->GetColorAlbedo();
-			buffer->matTilingUV		= perMaterialBufferCPU.matTilingUV		= material->GetTilingUV();
-			buffer->matOffsetUV		= perMaterialBufferCPU.matOffsetUV		= material->GetOffsetUV();
+			buffer->matTilingUV		= perMaterialBufferCPU.matTilingUV		= material->GetTiling();
+			buffer->matOffsetUV		= perMaterialBufferCPU.matOffsetUV		= material->GetOffset();
 			buffer->matRoughnessMul = perMaterialBufferCPU.matRoughnessMul	= material->GetRoughnessMultiplier();
 			buffer->matMetallicMul	= perMaterialBufferCPU.matMetallicMul	= material->GetMetallicMultiplier();
 			buffer->matNormalMul	= perMaterialBufferCPU.matNormalMul		= material->GetNormalMultiplier();

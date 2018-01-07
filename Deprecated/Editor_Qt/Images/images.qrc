@@ -1,0 +1,44 @@
+<RCC>
+    <qresource prefix="/Images">
+        <file>play.png</file>
+        <file>pause.png</file>
+        <file>transform.png</file>
+        <file>camera.png</file>
+        <file>material.png</file>
+        <file>meshRenderer.png</file>
+        <file>light.png</file>
+        <file>arrow.png</file>
+        <file>icon.ico</file>
+        <file>rigidBody.png</file>
+        <file>collider.png</file>
+        <file>meshFilter.png</file>
+        <file>meshCollider.png</file>
+        <file>arrowDown.png</file>
+        <file>arrowLeft.png</file>
+        <file>arrowRight.png</file>
+        <file>arrowUp.png</file>
+        <file>check.png</file>
+        <file>componentOptions.png</file>
+        <file>folder.png</file>
+        <file>image.png</file>
+        <file>model.png</file>
+        <file>file.png</file>
+        <file>scriptLarge.png</file>
+        <file>scriptSmall.png</file>
+        <file>scene.png</file>
+        <file>hlsl.png</file>
+        <file>materialLarge.png</file>
+        <file>icon.png</file>
+        <file>audioListener.png</file>
+        <file>audioSource.png</file>
+        <file>audioFile.png</file>
+        <file>branch-closed.png</file>
+        <file>branch-end.png</file>
+        <file>branch-more.png</file>
+        <file>branch-open.png</file>
+        <file>vline.png</file>
+        <file>error.png</file>
+        <file>info.png</file>
+        <file>warning.png</file>
+    </qresource>
+</RCC>

@@ -89,7 +89,7 @@ namespace Directus
 	{
 		// Before shutting down set to windowed mode or 
 		// upon releasing the swap chain it will throw an exception.
-		if (m_swapChain) 
+		if (m_swapChain)
 		{
 			m_swapChain->SetFullscreenState(false, nullptr);
 		}
@@ -277,41 +277,50 @@ namespace Directus
 		}
 		//=======================================================================================
 
-		//= BLEND STATE ================================================================
-		D3D11_BLEND_DESC blendStateDesc;
-		{
-			ZeroMemory(&blendStateDesc, sizeof(blendStateDesc));
-			blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
-			blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-			blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-			blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-			blendStateDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-			blendStateDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-			blendStateDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-			blendStateDesc.RenderTarget[0].RenderTargetWriteMask = 0x0f;
-
-			// Create a blending state with alpha blending enabled
-			blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
-			result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaEnabled);
-			if (FAILED(result))
-			{
-				LOG_ERROR("Failed to create blend state.");
-				return false;
-			}
-			// Create a blending state with alpha blending disabled
-			blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)false;
-			result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaDisabled);
-			if (FAILED(result))
-			{
-				LOG_ERROR("Failed to create blend state.");
-				return false;
-			}
-		}
-		//==============================================================================
+		//= BLEND STATES ========
+		if (!CreateBlendStates())
+			return false;
+		//=======================
 
 		LOG_INFO("IGraphicsDevice: Direct3D " + to_string(D3D11_MAJOR_VERSION) + "." + to_string(D3D11_MINOR_VERSION) + " (" + GetAdapterDescription(adapter) + ")");
 
 		m_initialized = true;
+		return true;
+	}
+
+	bool D3D11GraphicsDevice::CreateBlendStates()
+	{
+		D3D11_BLEND_DESC blendStateDesc;
+		ZeroMemory(&blendStateDesc, sizeof(blendStateDesc));
+		blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
+		blendStateDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+		
+		blendStateDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+		blendStateDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		blendStateDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+		
+		blendStateDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ZERO;
+		blendStateDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+		blendStateDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+
+		// Create a blending state with alpha blending enabled
+		blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)true;
+		HRESULT result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaEnabled);
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to create blend state.");
+			return false;
+		}
+
+		// Create a blending state with alpha blending disabled
+		blendStateDesc.RenderTarget[0].BlendEnable = (BOOL)false;
+		result = m_device->CreateBlendState(&blendStateDesc, &m_blendStateAlphaDisabled);
+		if (FAILED(result))
+		{
+			LOG_ERROR("Failed to create blend state.");
+			return false;
+		}
+
 		return true;
 	}
 
@@ -546,7 +555,7 @@ namespace Directus
 	{
 		if (!m_deviceContext)
 			return;
-		
+
 		m_deviceContext->RSSetViewports(1, &m_viewport);
 	}
 	//================================================================

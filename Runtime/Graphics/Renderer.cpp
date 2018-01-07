@@ -95,12 +95,11 @@ namespace Directus
 		m_resourceMng = m_context->GetSubsystem<ResourceManager>();
 
 		// Create G-Buffer
-		m_GBuffer = make_unique<GBuffer>(m_graphics);
-		m_GBuffer->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+		m_gbuffer = make_unique<GBuffer>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
 		// Create fullscreen rectangle
-		m_fullScreenRect = make_unique<Rectangle>(m_context);
-		m_fullScreenRect->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
+		m_quad = make_unique<Rectangle>(m_context);
+		m_quad->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
 
 		// Get standard resource directories
 		string shaderDirectory = m_resourceMng->GetStandardResourceDirectory(Resource_Shader);
@@ -180,16 +179,11 @@ namespace Directus
 		m_shaderBlur->AddBuffer(WVP_Resolution, Global);
 
 		// Create render textures (used for post-processing)
-		m_renderTexPing = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
-		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
-		m_renderTexSSAO = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexSSAO->Create(int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
-		m_renderTexSSAOBlurred = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexSSAOBlurred->Create(int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
-		m_renderTexLastFrame = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexLastFrame->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexSSAO = make_shared<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
+		m_renderTexSSAOBlurred = make_shared<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
+		m_renderTexFinalFrame = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		// Noise texture (used by SSAO shader)
 		m_texNoiseMap = make_unique<Texture>(m_context);
@@ -222,6 +216,35 @@ namespace Directus
 		return true;
 	}
 
+	void Renderer::SetRenderTarget(D3D11RenderTexture* renderTexture)
+	{
+		if (renderTexture)
+		{
+			renderTexture->SetAsRenderTarget();
+			renderTexture->Clear(GetClearColor());
+			return;
+		}
+
+		m_graphics->SetBackBufferAsRenderTarget();
+		m_graphics->SetViewport();
+		m_graphics->Clear(GetClearColor());
+	}
+
+	void Renderer::SetRenderTarget(shared_ptr<D3D11RenderTexture> renderTexture)
+	{
+		SetRenderTarget(renderTexture.get());
+	}
+
+	void* Renderer::GetFrame()
+	{
+		return (void*)m_renderTexFinalFrame->GetShaderResourceView();
+	}
+
+	void Renderer::Present()
+	{
+		m_graphics->Present();
+	}
+
 	void Renderer::Render()
 	{
 		if (!m_graphics)
@@ -248,18 +271,8 @@ namespace Directus
 			return;
 		}
 
-		// ENABLE Z-BUFFER
-		m_graphics->EnableDepth(true);
-
-		// Render light depth
 		DirectionalLightDepthPass();
-
-		// G-Buffer
 		GBufferPass();
-
-		// DISABLE Z-BUFFER
-		m_graphics->EnableDepth(false);
-
 		PreDeferredPass();
 		DeferredPass();
 		PostDeferredPass();
@@ -267,50 +280,61 @@ namespace Directus
 		PerformanceProfiler::RenderingFinished();
 	}
 
+	void Renderer::SetResolutionBackBuffer(int width, int height)
+	{
+		m_graphics->SetResolution(width, height);
+	}
+
+	void Renderer::SetViewportBackBuffer(float width, float height)
+	{
+		m_graphics->SetViewport(width, height);
+	}
+
+	Vector4 Renderer::GetViewportBackBuffer()
+	{
+		D3D11_VIEWPORT* viewport = (D3D11_VIEWPORT*)m_graphics->GetViewport();
+		return Vector4(viewport->TopLeftX, viewport->TopLeftY, viewport->Width, viewport->Height);
+	}
+
 	void Renderer::SetResolution(int width, int height)
 	{
-		// A resolution of 0 will cause the depth stencil 
-		// buffer creation to fail, let's prevent that.
+		// Return if resolution already set
+		if (GET_RESOLUTION.x == width && GET_RESOLUTION.y == height)
+			return;
+
+		// Return if resolution is invalid
 		if (width <= 0 || height <= 0)
 			return;
 
 		SET_RESOLUTION(width, height);
-		m_graphics->SetResolution(width, height);
-
+		
 		// Resize everything
-		m_GBuffer.reset();
-		m_GBuffer = make_unique<GBuffer>(m_graphics);
-		m_GBuffer->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+		m_gbuffer.reset();
+		m_gbuffer = make_unique<GBuffer>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
 
-		m_fullScreenRect.reset();
-		m_fullScreenRect = make_unique<Rectangle>(m_context);
-		m_fullScreenRect->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
+		m_quad.reset();
+		m_quad = make_unique<Rectangle>(m_context);
+		m_quad->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
 
 		m_renderTexPing.reset();
-		m_renderTexPing = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexPing->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexPing = make_unique<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		m_renderTexPong.reset();
-		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexPong->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		m_renderTexSSAO.reset();
-		m_renderTexSSAO = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexSSAO->Create(int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
+		m_renderTexSSAO = make_unique<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
 
 		m_renderTexSSAOBlurred.reset();
-		m_renderTexSSAOBlurred = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexSSAOBlurred->Create(int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
+		m_renderTexSSAOBlurred = make_unique<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
 
-		m_renderTexLastFrame.reset();
-		m_renderTexLastFrame = make_unique<D3D11RenderTexture>(m_graphics);
-		m_renderTexLastFrame->Create(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexFinalFrame.reset();
+		m_renderTexFinalFrame = make_unique<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 	}
 
-	void Renderer::SetViewport(float width, float height)
+	void Renderer::SetViewport(int width, int height)
 	{
 		SET_VIEWPORT(width, height);
-		m_graphics->SetViewport(width, height);
 	}
 
 	void Renderer::Clear()
@@ -331,7 +355,7 @@ namespace Directus
 	void Renderer::AcquireRenderables(Variant renderables)
 	{
 		Clear();
-		auto renderablesVec = VariantToVector<std::weak_ptr<GameObject>>(renderables);
+		auto renderablesVec = VariantToVector<weak_ptr<GameObject>>(renderables);
 
 		for (const auto& renderable : renderablesVec)
 		{
@@ -379,8 +403,10 @@ namespace Directus
 
 	void Renderer::DirectionalLightDepthPass()
 	{
-		if (!m_directionalLight || m_directionalLight->GetShadowType() == No_Shadows)
+		if (!m_directionalLight || m_directionalLight->GetShadowQuality() == No_Shadows)
 			return;
+
+		m_graphics->EnableDepth(true);
 
 		//m_graphics->SetCullMode(CullFront);
 		m_shaderDepth->Set();
@@ -427,6 +453,8 @@ namespace Directus
 				}
 			}
 		}
+
+		m_graphics->EnableDepth(false);
 	}
 
 	void Renderer::GBufferPass()
@@ -434,9 +462,8 @@ namespace Directus
 		if (!m_graphics)
 			return;
 
-		m_GBuffer->SetAsRenderTarget();
-		m_graphics->SetViewport();
-		m_GBuffer->Clear();
+		m_gbuffer->SetAsRenderTarget();
+		m_gbuffer->Clear();
 
 		vector<weak_ptr<Resource>> materials = m_resourceMng->GetResourcesByType(Resource_Material);
 		vector<weak_ptr<Resource>> shaders = m_resourceMng->GetResourcesByType(Resource_Shader);
@@ -547,31 +574,29 @@ namespace Directus
 
 	void Renderer::PreDeferredPass()
 	{
-		m_fullScreenRect->SetBuffer();
+		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
 		// Set pong texture as render target
-		m_renderTexPong->SetAsRenderTarget();
-		m_renderTexPong->Clear(GetClearColor());
+		SetRenderTarget(m_renderTexPong);
 
 		//= SHADOW BLUR =====================================================================================
-		if (m_directionalLight && m_directionalLight->GetShadowType() == Soft_Shadows)
+		if (m_directionalLight && m_directionalLight->GetShadowQuality() == Soft_Shadows)
 		{
 			// BLUR
 			m_shaderBlur->Set();
 			m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
-			m_shaderBlur->SetTexture(m_GBuffer->GetShaderResource(1), 0); // Normal tex but shadows are alpha
-			m_shaderBlur->DrawIndexed(m_fullScreenRect->GetIndexCount());
+			m_shaderBlur->SetTexture(m_gbuffer->GetShaderResource(1), 0); // Normal tex but shadows are alpha
+			m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
 		}
 		//===================================================================================================
 
 		//= SSAO ========================================================================================================
-		m_renderTexSSAO->SetAsRenderTarget();
-		m_renderTexSSAO->Clear(GetClearColor());
+		SetRenderTarget(m_renderTexSSAO);
 
 		vector<ID3D11ShaderResourceView*> ssaoTextures;
-		ssaoTextures.push_back(m_GBuffer->GetShaderResource(1)); // normal
-		ssaoTextures.push_back(m_GBuffer->GetShaderResource(2)); // depth
+		ssaoTextures.push_back(m_gbuffer->GetShaderResource(1)); // normal
+		ssaoTextures.push_back(m_gbuffer->GetShaderResource(2)); // depth
 		ssaoTextures.push_back((ID3D11ShaderResourceView*)m_texNoiseMap->GetShaderResource()); // noise
 
 		Matrix mvp = Matrix::Identity * mBaseView * mOrthographicProjection;
@@ -579,16 +604,15 @@ namespace Directus
 		m_shaderSSAO->Set();
 		m_shaderSSAO->SetBuffer(mvp, mvpInverted, mView, mProjection, GET_RESOLUTION, m_camera->GetNearPlane(), m_camera->GetFarPlane(), 0);
 		m_shaderSSAO->SetTextures(ssaoTextures);
-		m_shaderSSAO->DrawIndexed(m_fullScreenRect->GetIndexCount());
+		m_shaderSSAO->DrawIndexed(m_quad->GetIndexCount());
 
-		m_renderTexSSAOBlurred->SetAsRenderTarget();
-		m_renderTexSSAOBlurred->Clear(GetClearColor());
+		SetRenderTarget(m_renderTexSSAOBlurred);
 
 		// BLUR
 		m_shaderBlur->Set();
 		m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION * 0.5f, 0);
 		m_shaderBlur->SetTexture(m_renderTexSSAO->GetShaderResourceView(), 0);
-		m_shaderBlur->DrawIndexed(m_fullScreenRect->GetIndexCount());
+		m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
 		//==============================================================================================================
 	}
 
@@ -601,8 +625,7 @@ namespace Directus
 		m_shaderDeferred->Set();
 
 		// Set render target
-		m_renderTexPing->SetAsRenderTarget();
-		m_renderTexPing->Clear(GetClearColor());
+		SetRenderTarget(m_renderTexPing);
 
 		// Update buffers
 		m_shaderDeferred->UpdateMatrixBuffer(Matrix::Identity, mView, mBaseView, mProjection, mOrthographicProjection);
@@ -610,29 +633,25 @@ namespace Directus
 
 		//= Update textures ===========================================================
 		m_texArray.clear();
-		m_texArray.push_back(m_GBuffer->GetShaderResource(0)); // albedo
-		m_texArray.push_back(m_GBuffer->GetShaderResource(1)); // normal
-		m_texArray.push_back(m_GBuffer->GetShaderResource(2)); // depth
-		m_texArray.push_back(m_GBuffer->GetShaderResource(3)); // material
+		m_texArray.push_back(m_gbuffer->GetShaderResource(0)); // albedo
+		m_texArray.push_back(m_gbuffer->GetShaderResource(1)); // normal
+		m_texArray.push_back(m_gbuffer->GetShaderResource(2)); // depth
+		m_texArray.push_back(m_gbuffer->GetShaderResource(3)); // material
 		m_texArray.push_back(m_renderTexPong->GetShaderResourceView()); // contains shadows
 		m_texArray.push_back(m_renderTexSSAOBlurred->GetShaderResourceView()); // contains SSAO
-		m_texArray.push_back(m_renderTexLastFrame->GetShaderResourceView());
+		m_texArray.push_back(m_renderTexFinalFrame->GetShaderResourceView());
 		m_texArray.push_back(m_skybox ? (ID3D11ShaderResourceView*)m_skybox->GetEnvironmentTexture() : nullptr);
 
 		m_shaderDeferred->UpdateTextures(m_texArray);
 		//=============================================================================
 
-		m_shaderDeferred->Render(m_fullScreenRect->GetIndexCount());
+		m_shaderDeferred->Render(m_quad->GetIndexCount());
 	}
 
 	bool Renderer::RenderGBuffer()
 	{
 		if (!(m_renderFlags & Render_Albedo) && !(m_renderFlags & Render_Normal) && !(m_renderFlags & Render_Depth) && !(m_renderFlags & Render_Material))
 			return false;
-
-		m_graphics->SetBackBufferAsRenderTarget();
-		m_graphics->SetViewport();
-		m_graphics->Clear(m_camera->GetClearColor());
 
 		int texIndex = 0;
 		if (m_renderFlags & Render_Albedo)
@@ -655,59 +674,37 @@ namespace Directus
 		// TEXTURE
 		m_shaderTexture->Set();
 		m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
-		m_shaderTexture->SetTexture(m_GBuffer->GetShaderResource(texIndex), 0);
-		m_shaderTexture->DrawIndexed(m_fullScreenRect->GetIndexCount());
-
-		// display frame
-		m_graphics->Present();
+		m_shaderTexture->SetTexture(m_gbuffer->GetShaderResource(texIndex), 0);
+		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
 		return true;
 	}
 
 	void Renderer::PostDeferredPass()
 	{
-		m_fullScreenRect->SetBuffer();
+		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
-		// If we only have to render some part of the G-Buffer
-		// (debugging) then we return here
-		if (RenderGBuffer())
-			return;
+		SetRenderTarget(m_renderTexPong);
 
-		// Set pong texture as render target
-		m_renderTexPong->SetAsRenderTarget();
-		m_renderTexPong->Clear(GetClearColor());
+		// For debugging purposes (ideally, we shouldn't post-process this) 
+		RenderGBuffer();
 
 		// FXAA
 		m_shaderFXAA->Set();
 		m_shaderFXAA->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
 		m_shaderFXAA->SetTexture(m_renderTexPing->GetShaderResourceView(), 0);
-		m_shaderFXAA->DrawIndexed(m_fullScreenRect->GetIndexCount());
+		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
 
-		// Set last frame texture as rendertarget
-		m_renderTexLastFrame->SetAsRenderTarget();
-		m_renderTexLastFrame->Clear(GetClearColor());
-
+		SetRenderTarget(m_renderTexFinalFrame);
+		
 		// SHARPENING
 		m_shaderSharpening->Set();
 		m_shaderSharpening->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
 		m_shaderSharpening->SetTexture(m_renderTexPong->GetShaderResourceView(), 0);
-		m_shaderSharpening->DrawIndexed(m_fullScreenRect->GetIndexCount());
-
-		// Set back-buffer as rendertarget
-		m_graphics->SetBackBufferAsRenderTarget();
-		m_graphics->SetViewport();
-		m_graphics->Clear(m_camera->GetClearColor());
-
-		m_shaderTexture->Set();
-		m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
-		m_shaderTexture->SetTexture(m_renderTexLastFrame->GetShaderResourceView(), 0);
-		m_shaderTexture->DrawIndexed(m_fullScreenRect->GetIndexCount());
+		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
 
 		DebugDraw();
-
-		// display frame
-		m_graphics->Present();
 	}
 
 	void Renderer::DebugDraw()
@@ -752,7 +749,7 @@ namespace Directus
 				m_lineRenderer->SetBuffer();
 				m_shaderLine->Set();
 				m_shaderLine->SetBuffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
-				m_shaderLine->SetTexture(m_GBuffer->GetShaderResource(2), 0); // depth
+				m_shaderLine->SetTexture(m_gbuffer->GetShaderResource(2), 0); // depth
 				m_shaderLine->Draw(m_lineRenderer->GetVertexCount());
 			}
 		}
@@ -766,7 +763,7 @@ namespace Directus
 			m_grid->SetBuffer();
 			m_shaderGrid->Set();
 			m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()), m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
-			m_shaderGrid->SetTexture(m_GBuffer->GetShaderResource(2), 0);
+			m_shaderGrid->SetTexture(m_gbuffer->GetShaderResource(2), 0);
 			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
 		}
 
@@ -779,10 +776,10 @@ namespace Directus
 				Vector3 cameraWorldPos = m_camera->GetTransform()->GetPosition();
 
 				// Compute light screen space position and scale (based on distance from the camera)
-				Vector2 lightScreenPos = m_camera->WorldToScreenPoint(lightWorldPos);
-				float distance = Vector3::Length(lightWorldPos, cameraWorldPos);
-				float scale = GIZMO_MAX_SIZE / distance;
-				scale = Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
+				Vector2 lightScreenPos	= m_camera->WorldToScreenPoint(lightWorldPos);
+				float distance			= Vector3::Length(lightWorldPos, cameraWorldPos);
+				float scale				= GIZMO_MAX_SIZE / distance;
+				scale					= Clamp(scale, GIZMO_MIN_SIZE, GIZMO_MAX_SIZE);
 
 				// Skip if the light is not in front of the camera
 				if (!m_camera->IsInViewFrustrum(lightWorldPos, Vector3(1.0f)))

@@ -21,10 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ===========================================
 #include "../Resource/Resource.h"
 #include "../Threading/Threading.h"
-//=================================
+#include "../Graphics/Texture.h"
+#include "../Font/Font.h"
+#include "../Graphics/Animation.h"
+#include "../Components/Script.h"
+#include "../Graphics/Model.h"
+#include "../Graphics/Material.h"
+#include "../Graphics/Mesh.h"
+#include "../Graphics/DeferredShaders/ShaderVariation.h"
+#include "../Audio/Audio.h"
+//======================================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -56,3 +65,48 @@ void Resource::LoadFromFileAsync(const string& filePath)
 		LoadFromFile(filePath);
 	});
 }
+
+template <typename T>
+ResourceType Resource::ToResourceType()
+{
+	if (typeid(T) == typeid(Texture))
+		return Resource_Texture;
+
+	if (typeid(T) == typeid(Audio))
+		return Resource_Audio;
+
+	if (typeid(T) == typeid(Material))
+		return Resource_Material;
+
+	if (typeid(T) == typeid(ShaderVariation))
+		return Resource_Shader;
+
+	if (typeid(T) == typeid(Mesh))
+		return Resource_Mesh;
+
+	if (typeid(T) == typeid(Model))
+		return Resource_Model;
+
+	if (typeid(T) == typeid(Script))
+		return Resource_Script;
+
+	if (typeid(T) == typeid(Animation))
+		return Resource_Animation;
+
+	if (typeid(T) == typeid(Font))
+		return Resource_Font;
+
+	return Resource_Unknown;
+}
+
+#define INSTANTIATE(T) template ENGINE_API ResourceType Resource::ToResourceType<T>()
+// Explicit template instantiation
+INSTANTIATE(Texture);
+INSTANTIATE(Audio);
+INSTANTIATE(Material);
+INSTANTIATE(ShaderVariation);
+INSTANTIATE(Mesh);
+INSTANTIATE(Model);
+INSTANTIATE(Script);
+INSTANTIATE(Animation);
+INSTANTIATE(Font);

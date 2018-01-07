@@ -81,15 +81,23 @@ namespace Directus
 		bool Initialize() override;
 		//========================
 
+		// Rendering
+		void SetRenderTarget(D3D11RenderTexture* renderTexture);
+		void SetRenderTarget(std::shared_ptr<D3D11RenderTexture> renderTexture);
+		void* GetFrame();
+		void Present();
 		void Render();
 
-		// Resolution
+		// Back-buffer rendering
+		void SetResolutionBackBuffer(int width, int height);
+		void SetViewportBackBuffer(float width, float height);
+		Math::Vector4 GetViewportBackBuffer();
+
+		// Internal rendering
 		void SetResolution(int width, int height);
-
-		// Viewport
-		Math::Vector2 GetViewport() { return GET_VIEWPORT; }
-		void SetViewport(float width, float height);
-
+		void SetViewport(int width, int height);
+		const Math::Vector2& GetViewport() { return GET_VIEWPORT; }
+		
 		unsigned long GetRenderFlags() { return m_renderFlags; }
 		void SetRenderFlags(unsigned long renderFlags) { m_renderFlags = renderFlags; }
 
@@ -109,7 +117,7 @@ namespace Directus
 		const Math::Vector4& GetClearColor();
 		//===========================================
 	
-		std::unique_ptr<GBuffer> m_GBuffer;
+		std::unique_ptr<GBuffer> m_gbuffer;
 
 		// GAMEOBJECTS ======================================
 		std::vector<std::weak_ptr<GameObject>> m_renderables;
@@ -118,11 +126,11 @@ namespace Directus
 		//===================================================
 
 		//= RENDER TEXTURES =======================================
-		std::unique_ptr<D3D11RenderTexture> m_renderTexPing;
-		std::unique_ptr<D3D11RenderTexture> m_renderTexPong;
-		std::unique_ptr<D3D11RenderTexture> m_renderTexSSAO;
-		std::unique_ptr<D3D11RenderTexture> m_renderTexSSAOBlurred;
-		std::unique_ptr<D3D11RenderTexture> m_renderTexLastFrame;
+		std::shared_ptr<D3D11RenderTexture> m_renderTexPing;
+		std::shared_ptr<D3D11RenderTexture> m_renderTexPong;
+		std::shared_ptr<D3D11RenderTexture> m_renderTexSSAO;
+		std::shared_ptr<D3D11RenderTexture> m_renderTexSSAOBlurred;
+		std::shared_ptr<D3D11RenderTexture> m_renderTexFinalFrame;
 		//=========================================================
 
 		//= SHADERS =====================================
@@ -152,7 +160,7 @@ namespace Directus
 		std::vector<ID3D11ShaderResourceView*> m_texArray;
 		ID3D11ShaderResourceView* m_texEnvironment;
 		std::unique_ptr<Texture> m_texNoiseMap;
-		std::unique_ptr<Rectangle> m_fullScreenRect;
+		std::unique_ptr<Rectangle> m_quad;
 		//================================================
 
 		//= PREREQUISITES ================================

@@ -76,8 +76,8 @@ namespace Directus
 		void SetGravity(const Math::Vector3& acceleration);
 		//=================================================
 		//= KINEMATIC ===============================
-		void SetKinematic(bool kinematic);
-		bool GetKinematic() { return m_isKinematic; }
+		void SetIsKinematic(bool kinematic);
+		bool GetIsKinematic() { return m_isKinematic; }
 		//===========================================
 		//= VELOCITY/FORCE/TORQUE ==========================================================================
 		void SetLinearVelocity(const Math::Vector3& velocity) const;

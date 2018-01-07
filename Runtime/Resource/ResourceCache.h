@@ -57,20 +57,6 @@ namespace Directus
 			}
 		}
 
-		// Returns a resource by name
-		std::shared_ptr<Resource> GetByName(const std::string& name)
-		{
-			for (const auto& resourceGroup : m_resourceGroups)
-			{
-				for (const auto& resource : resourceGroup.second)
-				{
-					if (resource->GetResourceName() == name)
-						return resource;
-				}
-			}
-			return std::shared_ptr<Resource>();
-		}
-
 		// Makes the resources save their metadata
 		void SaveResourcesToFiles()
 		{
@@ -95,8 +81,40 @@ namespace Directus
 			return resources;
 		}
 
+		// Returns a resource by name
+		template <class T>
+		std::shared_ptr<Resource> GetByName(const std::string& name)
+		{
+			for (const auto& resource : m_resourceGroups[Resource::ToResourceType<T>()])
+			{
+				if (name == resource->GetResourceName())
+					return resource;
+			}
+
+			return std::shared_ptr<Resource>();
+		}
+
+		// Returns a resource by path
+		template <class T>
+		std::shared_ptr<Resource> GetByPath(const std::string& path)
+		{
+			for (const auto& resource : m_resourceGroups[Resource::ToResourceType<T>()])
+			{
+				if (path == resource->GetResourceFilePath())
+					return resource;
+			}
+
+			return std::shared_ptr<Resource>();
+		}
+
 		// Checks whether a resource is already cached
-		bool IsCachedByName(const std::string& resourceName)
+		bool IsCached(std::shared_ptr<Resource> resourceIn)
+		{
+			return IsCached(resourceIn->GetResourceName(), resourceIn->GetResourceType());
+		}
+
+		// Checks whether a resource is already cached
+		bool IsCached(const std::string& resourceName, ResourceType resourceType)
 		{
 			if (resourceName == NOT_ASSIGNED)
 			{
@@ -104,13 +122,10 @@ namespace Directus
 				return false;
 			}
 
-			for (const auto& resourceGroup : m_resourceGroups)
+			for (const auto& resource : m_resourceGroups[resourceType])
 			{
-				for (const auto& resource : resourceGroup.second)
-				{
-					if (resource->GetResourceName() == resourceName)
-						return true;
-				}
+				if (resourceName == resource->GetResourceName())
+					return true;
 			}
 
 			return false;
@@ -129,6 +144,7 @@ namespace Directus
 
 		// Returns all resources of a given type
 		const std::vector<std::shared_ptr<Resource>>& GetByType(ResourceType type) { return m_resourceGroups[type]; }
+
 		// Unloads all resources
 		void Clear() { m_resourceGroups.clear(); }
 

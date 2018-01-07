@@ -89,7 +89,7 @@ namespace Directus
 	{
 		if (m_renderTimer)
 		{
-			m_renderTimeMs = m_renderTimer->GetElapsedTime();
+			m_renderTimeMs = m_renderTimer->GetElapsedTimeMs();
 		}
 		m_renderedMeshesPerFrame = m_renderedMeshesCount;
 	}

@@ -134,7 +134,7 @@ namespace Directus
 		}
 
 		SetAsyncState(Async_Completed);
-		LOG_INFO("Texture: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTime()) + " ms");
+		LOG_INFO("Texture: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string(timer.GetElapsedTimeMs()) + " ms");
 
 		return true;
 	}
@@ -194,7 +194,7 @@ namespace Directus
 		m_textureBits.shrink_to_fit();
 	}
 
-	void Texture::GetTextureBits(std::vector<std::vector<unsigned char>>* textureBits)
+	void Texture::GetTextureBits(vector<vector<unsigned char>>* textureBits)
 	{
 		if (!m_textureBits.empty())
 		{

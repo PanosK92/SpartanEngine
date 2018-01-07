@@ -75,7 +75,7 @@ namespace Directus
 		if (!xml->Load(GetResourceFilePath()))
 			return false;
 
-		xml->GetAttribute("Material", "Name", GetResourceName());
+		SetResourceName(xml->GetAttributeAsStr("Material", "Name"));
 		SetResourceFilePath(xml->GetAttributeAsStr("Material", "Path"));
 		xml->GetAttribute("Material", "Model_ID", m_modelID);
 		xml->GetAttribute("Material", "Opacity", m_opacity);

@@ -93,7 +93,7 @@ namespace Directus
 		bool LoadFromForeignFormat(const std::string& filePath);
 
 		void AddStandardComponents(std::weak_ptr<GameObject> gameObject, std::weak_ptr<Mesh> mesh);
-		void DetermineMeshUniqueness(std::weak_ptr<Mesh> mesh, std::weak_ptr<Mesh> modelCached);
+		void DetermineMeshUniqueness(std::weak_ptr<Mesh> mesh, std::weak_ptr<Mesh>* modelCached);
 
 		// Scale relate functions
 		float ComputeNormalizeScale();

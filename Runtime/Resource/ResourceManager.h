@@ -63,7 +63,7 @@ namespace Directus
 			std::string name = FileSystem::GetFileNameNoExtensionFromFilePath(relativeFilePath);
 
 			// Check if the resource is already loaded
-			if (m_resourceCache->IsCachedByName(name))
+			if (m_resourceCache->IsCached(name, Resource::ToResourceType<T>()))
 			{
 				return GetResourceByName<T>(name);
 			}
@@ -89,7 +89,7 @@ namespace Directus
 				return std::weak_ptr<T>();
 
 			// If the resource is already loaded, return the existing one
-			if (m_resourceCache->IsCachedByName(resource->GetResourceName()))
+			if (m_resourceCache->IsCached(resource))
 			{
 				return GetResourceByName<T>(FileSystem::GetFileNameNoExtensionFromFilePath(resource->GetResourceFilePath()));
 			}
@@ -101,18 +101,25 @@ namespace Directus
 		// Adds a resource into the cache (if it's not already cached)
 		void Add(std::shared_ptr<Resource> resource)
 		{
-			if (!resource || m_resourceCache->IsCachedByName(resource->GetResourceName()))
+			if (!resource || m_resourceCache->IsCached(resource))
 				return;
 
 			// Add the resource
 			m_resourceCache->Add(resource);
 		}
 
-		// Returns cached resource by Path
+		// Returns cached resource by )
 		template <class T>
 		std::weak_ptr<T> GetResourceByName(const std::string& name)
 		{
-			return ToDerivedWeak<T>(m_resourceCache->GetByName(name));
+			return ToDerivedWeak<T>(m_resourceCache->GetByName<T>(name));
+		}
+
+		// Returns cached resource by path
+		template <class T>
+		std::weak_ptr<T> GetResourceByPath(const std::string& path)
+		{
+			return ToDerivedWeak<T>(m_resourceCache->GetByPath<T>(path));
 		}
 
 		// Returns cached resource by Type
@@ -166,7 +173,8 @@ namespace Directus
 		void AddStandardResourceDirectory(ResourceType type, const std::string& directory);
 		const std::string& GetStandardResourceDirectory(ResourceType type);
 		void SetProjectDirectory(const std::string& directory);
-		const std::string& GetProjectDirectory() { return m_projectDirectory; }
+		const std::string& GetProjectDirectoryAbsolute();
+		const std::string& GetProjectDirectory() { return m_projectDirectory; }	
 		std::string GetProjectStandardAssetsDirectory() { return m_projectDirectory + "Standard_Assets//"; }
 
 		// Importers
