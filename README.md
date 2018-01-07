@@ -28,7 +28,7 @@ As a result, no design decision is set in stone and it will take a while until t
 Feature       		            | Completion | Notes 
 ------------- 		            | :--: | -
 Easy to work with               | 100% | Single click project generation which includes editor and runtime.
-New editor               		| 5% | Replace Qt editor with an ImGui editor.
+New editor               		| 60% | Replace Qt editor with an ImGui editor.
 Debug Rendering    				| 90% | Gizmos, scene grid and G-Buffer visualization.
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
 SSAO         					| 90% | -
