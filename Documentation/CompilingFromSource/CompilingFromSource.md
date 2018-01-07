@@ -16,7 +16,7 @@ At this point we have taken care of all the dependencies and we are ready to sta
 1. We click and run **"Generate_VS17_Project.bat"** in order for a Visual Studio solution to be generated.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS.png)
 2. We then open the Visual Studio solution file which should be located at **"Directus.sln"**
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS.png)
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS2.png)
 3. Before building, we have to right click on the **"Runtime"** project, then click **"Properties"**, then navigate to **"Configuration Properties/General"** and switch the **"Windows SDK Version"** to 10 (in case it's not).
 
 4. Next, we switch the solution configuration to **"Release"** and build the Runtime project. This will generate **"Runtime.dll"** at **"Directus3D\Binaries\Release"**
@@ -24,8 +24,8 @@ At this point we have taken care of all the dependencies and we are ready to sta
 
 ##### Providing the required DLLs
 Most of the dependencies are statically linked into Runtime.dll. However FMOD is dynamically linked, hence we have to provide
-it's DLLs. The correct way of doing that is to simply copy the DLLs from it's respective installation folders on your machine.
-However, I have packed the required DLLs in this [fmod64.7z](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.7z) file.
+it's DLL. The correct way of doing that is to simply copy the DLL from it's respective installation folders on your machine.
+However, I have packed the required DLL in this [fmod64.7z](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.7z) file.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.png)
 
 ### Notes
