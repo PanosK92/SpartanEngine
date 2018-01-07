@@ -24,7 +24,7 @@ At this point we have taken care of all the dependencies and we are ready to sta
 ##### Providing the required DLLs
 Most of the dependencies are statically linked into Runtime.dll. However FMOD is dynamically linked, hence we have to provide
 it's DLL. The correct way of doing that is to simply copy the DLL from it's respective installation folder on your machine.
-However, I have packed the required DLL in this [fmod64.7z](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.7z) file.
+However, I have packed the required DLL in this [fmod64.7z](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/fmod64.7z) file.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.png)
 
 ### Notes
