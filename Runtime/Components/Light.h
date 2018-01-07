@@ -80,8 +80,8 @@ namespace Directus
 		void SetIntensity(float value) { m_intensity = value; }
 		float GetIntensity() { return m_intensity; }
 
-		ShadowType GetShadowType() { return m_shadowType; }
-		void SetShadowType(ShadowType shadowType) { m_shadowType = shadowType; }
+		ShadowType GetShadowQuality() { return m_shadowType; }
+		void SetShadowQuality(ShadowType shadowType) { m_shadowType = shadowType; }
 		float GetShadowTypeAsFloat();
 
 		void SetRange(float range);

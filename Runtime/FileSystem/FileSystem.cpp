@@ -545,7 +545,7 @@ namespace Directus
 		return GetExtensionFromFilePath(filePath) == TEXTURE_EXTENSION;
 	}
 
-	bool FileSystem::IsEngineShaderFile(const std::string& filePath)
+	bool FileSystem::IsEngineShaderFile(const string& filePath)
 	{
 		return GetExtensionFromFilePath(filePath) == SHADER_EXTENSION;
 	}
@@ -669,6 +669,14 @@ namespace Directus
 	string FileSystem::GetWorkingDirectory()
 	{
 		return fs::current_path().generic_string();
+	}
+
+	string FileSystem::GetParentDirectory(const string& directory)
+	{
+		if (!IsDirectory(directory))
+			return directory;
+
+		return directory.substr(0, directory.find_last_of("/\\"));
 	}
 
 	string FileSystem::GetStringAfterExpression(const string& str, const string& expression)

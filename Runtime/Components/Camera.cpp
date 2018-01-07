@@ -48,7 +48,7 @@ namespace Directus
 		m_nearPlane = 0.3f;
 		m_farPlane = 1000.0f;
 		m_frustrum = make_shared<Frustrum>();
-		m_projection = Perspective;
+		m_projection = Projection_Perspective;
 		m_clearColor = Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
 		m_isDirty = false;
 	}
@@ -106,7 +106,7 @@ namespace Directus
 	void Camera::Deserialize(FileStream* stream)
 	{
 		stream->Read(&m_clearColor);
-		m_projection = Projection(stream->ReadInt());
+		m_projection = ProjectionType(stream->ReadInt());
 		stream->Read(&m_fovHorizontal);
 		stream->Read(&m_nearPlane);
 		stream->Read(&m_farPlane);
@@ -129,7 +129,7 @@ namespace Directus
 		m_isDirty = true;
 	}
 
-	void Camera::SetProjection(Projection projection)
+	void Camera::SetProjection(ProjectionType projection)
 	{
 		m_projection = projection;
 		m_isDirty = true;
@@ -262,11 +262,11 @@ namespace Directus
 
 	void Camera::CalculateProjection()
 	{
-		if (m_projection == Perspective)
+		if (m_projection == Projection_Perspective)
 		{
 			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(m_fovHorizontal, ASPECT_RATIO, m_nearPlane, m_farPlane);
 		}
-		else if (m_projection == Orthographic)
+		else if (m_projection == Projection_Orthographic)
 		{
 			m_mProjection = Matrix::CreateOrthographicLH((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
 		}

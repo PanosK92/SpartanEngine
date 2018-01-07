@@ -224,7 +224,7 @@ namespace Directus
 	//= MATERIAL ====================================================================
 	void ScriptInterface::RegisterMaterial()
 	{
-		m_scriptEngine->RegisterObjectMethod("Material", "void SetOffsetUV(Vector2)", asMETHOD(Material, SetOffsetUV), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("Material", "void SetOffsetUV(Vector2)", asMETHOD(Material, SetOffset), asCALL_THISCALL);
 	}
 	//===============================================================================
 

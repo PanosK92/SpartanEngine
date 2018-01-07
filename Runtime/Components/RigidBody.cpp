@@ -200,11 +200,14 @@ namespace Directus
 
 	void RigidBody::SetGravity(const Vector3& acceleration)
 	{
+		if (m_gravity == acceleration)
+			return;
+
 		m_gravity = acceleration;
 		AddBodyToWorld();
 	}
 
-	void RigidBody::SetKinematic(bool kinematic)
+	void RigidBody::SetIsKinematic(bool kinematic)
 	{
 		if (kinematic == m_isKinematic)
 			return;

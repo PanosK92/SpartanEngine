@@ -96,7 +96,7 @@ namespace Directus
 		{
 			LOG_ERROR("Font: Failed to create shader resource.");
 		}
-		LOG_INFO("Font: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTime()) + " ms");
+		LOG_INFO("Font: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
 
 		return true;
 	}

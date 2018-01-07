@@ -99,7 +99,7 @@ namespace Directus
 		bool success = engineFormat ? LoadFromEngineFormat(modelFilePath) : LoadFromForeignFormat(modelFilePath);
 
 		ComputeMemoryUsage();
-		LOG_INFO("Model: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTime()) + " ms");
+		LOG_INFO("Model: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
 
 		return success;
 	}
@@ -151,7 +151,7 @@ namespace Directus
 
 		// Don't add mesh if it's already added
 		weak_ptr<Mesh> modelCached;
-		DetermineMeshUniqueness(mesh, modelCached);
+		DetermineMeshUniqueness(mesh, &modelCached);
 		if (!modelCached.expired())
 		{
 			// The mesh is cached but we must not forget to add
@@ -380,7 +380,7 @@ namespace Directus
 		}
 	}
 
-	void Model::DetermineMeshUniqueness(weak_ptr<Mesh> mesh, weak_ptr<Mesh> modelCached)
+	void Model::DetermineMeshUniqueness(weak_ptr<Mesh> mesh, weak_ptr<Mesh>* modelCached)
 	{
 		// Some meshes can come from model formats like .obj
 		// Such formats contain pure geometry data, meaning that there is no transformation data.
@@ -440,7 +440,7 @@ namespace Directus
 		}
 		else
 		{
-			modelCached = sameNameMeshes.front();
+			modelCached = &sameNameMeshes.front();
 		}
 	}
 

@@ -73,6 +73,7 @@ namespace Directus
 		static std::string GetExtensionFromFilePath(const std::string& path);
 		static std::string GetRelativeFilePath(const std::string& filePath);
 		static std::string GetWorkingDirectory();
+		static std::string GetParentDirectory(const std::string& directory);
 		static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
 		static std::vector<std::string> GetFilesInDirectory(const std::string& directory);
 		//======================================================================================
@@ -107,8 +108,7 @@ namespace Directus
 		//= STRING PARSING =============================================================================================================================
 		static std::string GetStringAfterExpression(const std::string& str, const std::string& expression);
 		static std::string GetStringBetweenExpressions(const std::string& str, const std::string& firstExpression, const std::string& secondExpression);
-		static std::string ConvertToUppercase(const std::string& lower);
-		
+		static std::string ConvertToUppercase(const std::string& lower);		
 		static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
 		//==============================================================================================================================================
 

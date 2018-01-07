@@ -176,7 +176,7 @@ namespace Directus
 		//==============================================
 
 		ResetLoadingStats();
-		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTime()) + " ms");
+		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
 
 		return true;
 	}
@@ -257,7 +257,7 @@ namespace Directus
 
 		Resolve();
 		ResetLoadingStats();
-		LOG_INFO("Scene: Loading took " + to_string((int)timer.GetElapsedTime()) + " ms");
+		LOG_INFO("Scene: Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
 
 		return true;
 	}
@@ -384,6 +384,10 @@ namespace Directus
 	//= SCENE RESOLUTION  ===============================================================================
 	void Scene::Resolve()
 	{
+		// If a model is being loaded (also creating GameObjects), postpone resolution
+		if (m_context->GetSubsystem<ResourceManager>()->GetModelImporter().lock()->IsLoading())
+			return;
+
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
 

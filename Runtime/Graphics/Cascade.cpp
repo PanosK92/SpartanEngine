@@ -40,8 +40,7 @@ namespace Directus
 	{
 		m_resolution = resolution;
 		auto graphics = context->GetSubsystem<Graphics>();
-		m_depthMap = make_unique<D3D11RenderTexture>(graphics);
-		m_depthMap->Create(m_resolution, m_resolution, true);
+		m_depthMap = make_unique<D3D11RenderTexture>(graphics, m_resolution, m_resolution, true);
 		m_camera = camera;
 	}
 

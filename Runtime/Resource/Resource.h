@@ -70,10 +70,10 @@ namespace Directus
 		ResourceType GetResourceType() { return m_resourceType; }
 		void SetResourceType(ResourceType type) { m_resourceType = type; }
 
-		std::string& GetResourceName() { return m_resourceName; }
+		const std::string& GetResourceName() { return m_resourceName; }
 		void SetResourceName(const std::string& name) { m_resourceName = name; }
 
-		std::string& GetResourceFilePath() { return m_resourceFilePath; }
+		const std::string& GetResourceFilePath() { return m_resourceFilePath; }
 		void SetResourceFilePath(const std::string& filePath) { m_resourceFilePath = filePath; }
 
 		std::string GetResourceFileName();
@@ -90,6 +90,11 @@ namespace Directus
 
 		AsyncState GetAsyncState() { return m_asyncState; }
 		void SetAsyncState(AsyncState state) { m_asyncState = state; }
+
+		//= HELPER FUNCTIONS ================
+		template <typename T>
+		static ResourceType ToResourceType();
+		//===================================
 
 	protected:	
 		unsigned int m_resourceID = NOT_ASSIGNED_HASH;

@@ -38,11 +38,13 @@ namespace Directus
 	{
 	public:
 		D3D11GraphicsDevice(Context* context);
-		~D3D11GraphicsDevice();
+		~D3D11GraphicsDevice();	
 
 		//= Sybsystem ============
 		bool Initialize() override;
 		//========================
+
+		bool CreateBlendStates();
 
 		//= IGraphicsDevice ========================================================
 		void SetHandle(void* drawHandle) override;

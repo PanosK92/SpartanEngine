@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Shader.h"
 #include "D3D11/D3D11Shader.h"
 #include "D3D11/D3D11ConstantBuffer.h"
-#include "../../Core/Context.h"
-#include "../../Logging/Log.h"
+#include "../Core/Context.h"
+#include "../Logging/Log.h"
 //====================================
 
 //= NAMESPACES ================

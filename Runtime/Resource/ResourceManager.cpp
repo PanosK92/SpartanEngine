@@ -89,4 +89,9 @@ namespace Directus
 
 		m_projectDirectory = directory;
 	}
+
+	const string& ResourceManager::GetProjectDirectoryAbsolute()
+	{
+		return FileSystem::GetWorkingDirectory() + m_projectDirectory;
+	}
 }

@@ -45,10 +45,10 @@ namespace Directus
 		class Frustrum;
 	}
 
-	enum Projection
+	enum ProjectionType
 	{
-		Perspective,
-		Orthographic,
+		Projection_Perspective,
+		Projection_Orthographic,
 	};
 
 	class ENGINE_API Camera : public Component
@@ -89,8 +89,8 @@ namespace Directus
 		void SetNearPlane(float nearPlane);
 		float GetFarPlane() { return m_farPlane; }
 		void SetFarPlane(float farPlane);
-		Projection GetProjection() { CalculateProjection();  return m_projection; }
-		void SetProjection(Projection projection);
+		ProjectionType GetProjection() { CalculateProjection();  return m_projection; }
+		void SetProjection(ProjectionType projection);
 		//=========================================================================
 
 		//= FOV ==============================
@@ -115,7 +115,7 @@ namespace Directus
 		float m_farPlane;
 		Math::Ray m_ray;
 		std::shared_ptr<Math::Frustrum> m_frustrum;
-		Projection m_projection;
+		ProjectionType m_projection;
 		Math::Vector4 m_clearColor;
 
 		Math::Matrix m_mView;

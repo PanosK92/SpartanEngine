@@ -27,17 +27,17 @@ As a result, no design decision is set in stone and it will take a while until t
 # Upcoming features (v0.3)
 Feature       		            | Completion | Notes 
 ------------- 		            | :--: | -
+Easy to work with               | 100% | Single click project generation which includes editor and runtime.
+New editor               		| 5% | Replace Qt editor with an ImGui editor.
+Debug Rendering    				| 90% | Gizmos, scene grid and G-Buffer visualization.
+Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
+SSAO         					| 90% | -
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
-New editor theme                | 100% | A minimal/clean look.
 Improved debug view             | 100% | Bounding boxes, colliders, raycasts, etc.
 Point light support             | 100% | -
 XML I/O                         | 100% | -
-Architecture improvements       | 100% | Performance improvements, bug fixes, less crashes and overall higher quality codebase.
-Debug Rendering    				| 90% | Gizmos, scene grid and G-Buffer visualization.
-Improved shadows         		| 90% | Improved shadow mapping technique, no shadow shimmering.
-SSAO         					| 90% | -
-Font importing and rendering    | 80% | Ability to load any font file. TextMesh component.
-Screen space reflections        | 10% | -
+Architecture improvements       | 100% | Performance improvements, bug fixes and overall higher quality codebase.
+Font importing and rendering    | 100% | Ability to load any font file
 
 # Roadmap
 - C# scripting.
@@ -46,14 +46,14 @@ Screen space reflections        | 10% | -
 - Draw call batching (static & dynamic).
 - Export on Windows.
 - Skeletal Animation.
+- Screen space reflections.
 - Volumetric Lighting.
 - Global Illumination.
 - UI components.
-- Replace Qt with ImGui.
 
 ### Download
 Note: Binaries for v0.2 are old and don't reflect the current state of the engine. 
-Until v0.3 comes out, it's adviced that you compile from source.
+Until v0.3 comes out, it's advised that you compile from source.
 - [Binaries](https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc) - Binaries for v0.2 64-bit (65.8 MB).
 - [Compiling](https://github.com/PanosK92/Directus3D/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - A guide on how to compile the engine.
 
