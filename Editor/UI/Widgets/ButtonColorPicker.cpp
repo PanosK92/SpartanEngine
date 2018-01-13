@@ -36,9 +36,16 @@ static string g_buttonLabel;
 static string g_colorPickerLabel;
 static bool showWheel = false;
 static bool showPreview = true;
-static bool showRGB = true;
-static bool showHSV = true;
-static bool showHex = true;
+
+//= COLOR PICKER SETTINGS ==============
+static bool hdr					= false;
+static bool alpha_preview		= true;
+static bool alpha_half_preview	= false;
+static bool options_menu		= true;
+static bool showRGB				= true;
+static bool showHSV				= false;
+static bool showHex				= true;
+//======================================
 
 ButtonColorPicker::ButtonColorPicker(const string& windowTitle)
 {
@@ -69,10 +76,6 @@ void ButtonColorPicker::ShowColorPicker()
 	ImGui::Begin(m_windowTitle.c_str(), &m_isVisible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_ResizeFromAnySide);
 	ImGui::SetWindowFocus();
 
-	static bool hdr = false;
-	static bool alpha_preview = true;
-	static bool alpha_half_preview = false;
-	static bool options_menu = true;
 	int misc_flags = (hdr ? ImGuiColorEditFlags_HDR : 0) | (alpha_half_preview ? ImGuiColorEditFlags_AlphaPreviewHalf : (alpha_preview ? ImGuiColorEditFlags_AlphaPreview : 0)) | (options_menu ? 0 : ImGuiColorEditFlags_NoOptions);
 	ImGuiColorEditFlags flags = misc_flags;
 						flags |= ImGuiColorEditFlags_AlphaBar;
