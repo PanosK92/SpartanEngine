@@ -168,7 +168,8 @@ namespace Directus
 	{
 		// Some models (or Assimp) pass a normal map as a height map
 		// and others pass a height map as a normal map, we try to fix that.
-		m_type = (type == TextureType_Normal && GetGrayscale()) ? TextureType_Height : type;
+		m_type = (type == TextureType_Normal && GetGrayscale()) ? TextureType_Height : 
+				(type == TextureType_Height && !GetGrayscale()) ? TextureType_Normal : type;
 	}
 	//======================================================================================
 
