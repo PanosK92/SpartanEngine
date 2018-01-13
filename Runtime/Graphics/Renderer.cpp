@@ -585,7 +585,7 @@ namespace Directus
 			// BLUR
 			m_shaderBlur->Set();
 			m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
-			m_shaderBlur->SetTexture(m_gbuffer->GetShaderResource(1), 0); // Normal tex but shadows are alpha
+			m_shaderBlur->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Normal), 0); // Shadows are alpha
 			m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
 		}
 		//===================================================================================================
@@ -593,10 +593,10 @@ namespace Directus
 		//= SSAO ========================================================================================================
 		SetRenderTarget(m_renderTexSSAO);
 
-		vector<ID3D11ShaderResourceView*> ssaoTextures;
-		ssaoTextures.push_back(m_gbuffer->GetShaderResource(1)); // normal
-		ssaoTextures.push_back(m_gbuffer->GetShaderResource(2)); // depth
-		ssaoTextures.push_back((ID3D11ShaderResourceView*)m_texNoiseMap->GetShaderResource()); // noise
+		vector<void*> ssaoTextures;
+		ssaoTextures.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Normal));
+		ssaoTextures.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
+		ssaoTextures.push_back(m_texNoiseMap->GetShaderResource());
 
 		Matrix mvp = Matrix::Identity * mBaseView * mOrthographicProjection;
 		Matrix mvpInverted = (Matrix::Identity * mView * mProjection).Inverted();
@@ -632,14 +632,14 @@ namespace Directus
 
 		//= Update textures ===========================================================
 		m_texArray.clear();
-		m_texArray.push_back(m_gbuffer->GetShaderResource(0)); // albedo
-		m_texArray.push_back(m_gbuffer->GetShaderResource(1)); // normal
-		m_texArray.push_back(m_gbuffer->GetShaderResource(2)); // depth
-		m_texArray.push_back(m_gbuffer->GetShaderResource(3)); // material
+		m_texArray.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Albedo));
+		m_texArray.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Normal));
+		m_texArray.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
+		m_texArray.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Material));
 		m_texArray.push_back(m_renderTexPong->GetShaderResourceView()); // contains shadows
-		m_texArray.push_back(m_renderTexSSAOBlurred->GetShaderResourceView()); // contains SSAO
+		m_texArray.push_back(m_renderTexSSAOBlurred->GetShaderResourceView());
 		m_texArray.push_back(m_renderTexFinalFrame->GetShaderResourceView());
-		m_texArray.push_back(m_skybox ? (ID3D11ShaderResourceView*)m_skybox->GetEnvironmentTexture() : nullptr);
+		m_texArray.push_back(m_skybox ? m_skybox->GetEnvironmentTexture() : nullptr);
 
 		m_shaderDeferred->UpdateTextures(m_texArray);
 		//=============================================================================
@@ -652,28 +652,28 @@ namespace Directus
 		if (!(m_renderFlags & Render_Albedo) && !(m_renderFlags & Render_Normal) && !(m_renderFlags & Render_Depth) && !(m_renderFlags & Render_Material))
 			return false;
 
-		int texIndex = 0;
+		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
 		if (m_renderFlags & Render_Albedo)
 		{
-			texIndex = 0;
+			texType = GBuffer_Target_Albedo;
 		}
 		else if (m_renderFlags & Render_Normal)
 		{
-			texIndex = 1;
+			texType = GBuffer_Target_Normal;
 		}
 		else if (m_renderFlags & Render_Depth)
 		{
-			texIndex = 2;
+			texType = GBuffer_Target_Depth;
 		}
 		else if (m_renderFlags & Render_Material)
 		{
-			texIndex = 3;
+			texType = GBuffer_Target_Material;
 		}
 
 		// TEXTURE
 		m_shaderTexture->Set();
 		m_shaderTexture->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, 0);
-		m_shaderTexture->SetTexture(m_gbuffer->GetShaderResource(texIndex), 0);
+		m_shaderTexture->SetTexture(m_gbuffer->GetShaderResource(texType), 0);
 		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
 		return true;
@@ -748,7 +748,7 @@ namespace Directus
 				m_lineRenderer->SetBuffer();
 				m_shaderLine->Set();
 				m_shaderLine->SetBuffer(Matrix::Identity, m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
-				m_shaderLine->SetTexture(m_gbuffer->GetShaderResource(2), 0); // depth
+				m_shaderLine->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0); // depth
 				m_shaderLine->Draw(m_lineRenderer->GetVertexCount());
 			}
 		}
@@ -762,7 +762,7 @@ namespace Directus
 			m_grid->SetBuffer();
 			m_shaderGrid->Set();
 			m_shaderGrid->SetBuffer(m_grid->ComputeWorldMatrix(m_camera->GetTransform()), m_camera->GetViewMatrix(), m_camera->GetProjectionMatrix(), 0);
-			m_shaderGrid->SetTexture(m_gbuffer->GetShaderResource(2), 0);
+			m_shaderGrid->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Depth), 0);
 			m_shaderGrid->DrawIndexed(m_grid->GetIndexCount());
 		}
 

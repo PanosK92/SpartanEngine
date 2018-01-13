@@ -44,7 +44,7 @@ namespace Directus
 		void UpdateMatrixBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mBaseView,
 			const Math::Matrix& mPerspectiveProjection, const Math::Matrix& mOrthographicProjection);
 		void UpdateMiscBuffer(const std::vector<Light*>& lights, Camera* camera);
-		void UpdateTextures(std::vector<ID3D11ShaderResourceView*> textures);
+		void UpdateTextures(std::vector<void*> textures);
 		void Set();
 		void Render(int indexCount);
 		bool IsCompiled();

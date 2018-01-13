@@ -156,12 +156,12 @@ namespace Directus
 		unsigned long m_renderFlags;
 		//==================================================
 
-		//= MISC =========================================
-		std::vector<ID3D11ShaderResourceView*> m_texArray;
+		//= MISC ==================================
+		std::vector<void*> m_texArray;
 		ID3D11ShaderResourceView* m_texEnvironment;
 		std::unique_ptr<Texture> m_texNoiseMap;
 		std::unique_ptr<Rectangle> m_quad;
-		//================================================
+		//=========================================
 
 		//= PREREQUISITES ================================
 		Camera* m_camera;

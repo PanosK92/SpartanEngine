@@ -530,9 +530,9 @@ bool ImGui_Impl_ProcessEvent(SDL_Event* event)
 	}
 	case SDL_MOUSEBUTTONDOWN:
 	{
-		if (event->button.button == SDL_BUTTON_LEFT) g_MousePressed[0] = true;
-		if (event->button.button == SDL_BUTTON_RIGHT) g_MousePressed[1] = true;
-		if (event->button.button == SDL_BUTTON_MIDDLE) g_MousePressed[2] = true;
+		if (event->button.button == SDL_BUTTON_LEFT)	g_MousePressed[0] = true;
+		if (event->button.button == SDL_BUTTON_RIGHT)	g_MousePressed[1] = true;
+		if (event->button.button == SDL_BUTTON_MIDDLE)	g_MousePressed[2] = true;
 		return true;
 	}
 	case SDL_TEXTINPUT:
@@ -546,9 +546,9 @@ bool ImGui_Impl_ProcessEvent(SDL_Event* event)
 		int key = event->key.keysym.sym & ~SDLK_SCANCODE_MASK;
 		io.KeysDown[key] = (event->type == SDL_KEYDOWN);
 		io.KeyShift = ((SDL_GetModState() & KMOD_SHIFT) != 0);
-		io.KeyCtrl = ((SDL_GetModState() & KMOD_CTRL) != 0);
-		io.KeyAlt = ((SDL_GetModState() & KMOD_ALT) != 0);
-		io.KeySuper = ((SDL_GetModState() & KMOD_GUI) != 0);
+		io.KeyCtrl	= ((SDL_GetModState() & KMOD_CTRL)	!= 0);
+		io.KeyAlt	= ((SDL_GetModState() & KMOD_ALT)	!= 0);
+		io.KeySuper = ((SDL_GetModState() & KMOD_GUI)	!= 0);
 		return true;
 	}
 	default:;

@@ -121,7 +121,7 @@ static bool g_rigidBodyFreezeRotY;
 static bool g_rigidBodyFreezeRotZ;
 //==========================================================
 
-//= COLLIDER =======================================
+//= COLLIDER =========================================
 const char* g_colShapes[] = {
 	"Box",
 	"Sphere",
@@ -133,14 +133,14 @@ const char* g_colShapes[] = {
 };
 static const char* g_colShape = nullptr;
 static int g_colShapeInt = -1;
-static char g_colCenterX[BUFFER_TEXT_DEFAULT] = "0";
-static char g_colCenterY[BUFFER_TEXT_DEFAULT] = "0";
-static char g_colCenterZ[BUFFER_TEXT_DEFAULT] = "0";
-static char g_colSizeX[BUFFER_TEXT_DEFAULT] = "0";
-static char g_colSizeY[BUFFER_TEXT_DEFAULT] = "0";
-static char g_colSizeZ[BUFFER_TEXT_DEFAULT] = "0";
+static char g_colCenterX[BUFFER_TEXT_DEFAULT]	= "0";
+static char g_colCenterY[BUFFER_TEXT_DEFAULT]	= "0";
+static char g_colCenterZ[BUFFER_TEXT_DEFAULT]	= "0";
+static char g_colSizeX[BUFFER_TEXT_DEFAULT]		= "0";
+static char g_colSizeY[BUFFER_TEXT_DEFAULT]		= "0";
+static char g_colSizeZ[BUFFER_TEXT_DEFAULT]		= "0";
 static bool g_colOptimize = false;
-//==================================================
+//====================================================
 
 #define COMPONENT_BEGIN(name, icon_enum)									\
 	ICON_PROVIDER_IMAGE(icon_enum, 15);										\

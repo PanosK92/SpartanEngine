@@ -54,6 +54,7 @@ namespace Directus
 		ID3D11DepthStencilView* GetDepthStencilView() { return m_depthStencilView; }
 		float GetMaxDepth() { return m_maxDepth; }
 		const D3D11_VIEWPORT& GetViewport() { return m_viewport; }
+		bool GetDepthEnabled() { return m_depthEnabled; }
 
 	private:
 		bool Construct();

@@ -46,8 +46,8 @@ namespace Directus
 
 	void Cascade::SetAsRenderTarget()
 	{
-		m_depthMap->Clear(0.0f, 0.0f, 0.0f, 1.0f);
 		m_depthMap->SetAsRenderTarget();
+		m_depthMap->Clear(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
 	ID3D11ShaderResourceView* Cascade::GetShaderResource()
