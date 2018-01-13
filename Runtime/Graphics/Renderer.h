@@ -64,10 +64,10 @@ namespace Directus
 		Render_Depth				= 1UL << 2,
 		Render_Material				= 1UL << 3,
 		Render_Physics				= 1UL << 4,
-		Render_Bounding_Boxes		= 1UL << 5,
-		Render_Mouse_Picking_Ray	= 1UL << 6,
+		Render_AABB					= 1UL << 5,
+		Render_PickingRay			= 1UL << 6,
 		Render_Grid					= 1UL << 7,
-		Render_Performance_Metrics	= 1UL << 8,
+		Render_PerformanceMetrics	= 1UL << 8,
 		Render_Light				= 1UL << 9
 	};
 

@@ -727,13 +727,13 @@ namespace Directus
 			}
 
 			// Picking ray
-			if (m_renderFlags & Render_Mouse_Picking_Ray)
+			if (m_renderFlags & Render_PickingRay)
 			{
 				m_lineRenderer->AddLines(m_camera->GetPickingRay());
 			}
 
 			// bounding boxes
-			if (m_renderFlags & Render_Bounding_Boxes)
+			if (m_renderFlags & Render_AABB)
 			{
 				for (const auto& gameObject : m_renderables)
 				{
@@ -822,7 +822,7 @@ namespace Directus
 		}
 
 		// Performance metrics
-		if (m_renderFlags & Render_Performance_Metrics)
+		if (m_renderFlags & Render_PerformanceMetrics)
 		{
 			m_font->SetText(PerformanceProfiler::GetMetrics(), Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f));
 			m_font->SetBuffer();

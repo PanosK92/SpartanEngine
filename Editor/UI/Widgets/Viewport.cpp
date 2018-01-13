@@ -42,6 +42,12 @@ static Renderer* g_renderer = nullptr;
 static Scene* g_scene = nullptr;
 static Vector2 g_framePos;
 
+static bool g_physics;
+static bool g_aabb;
+static bool g_gizmos;
+static bool g_pickingRay;
+static bool g_performanceMetrics;
+
 const char* g_rendererViews[] =
 {
 	"Default",
@@ -53,16 +59,6 @@ const char* g_rendererViews[] =
 static int g_rendererViewInt = 0;
 static const char* g_rendererView = g_rendererViews[g_rendererViewInt];
 
-const char* g_rendererProperties[] =
-{
-	"Physics",
-	"Bounding Boxes",
-	"Mouse Picking Ray",
-	"Grid",
-	"Performance Metrics",
-	"Light"
-};
-
 Viewport::Viewport()
 {
 	m_title = "Viewport";
@@ -71,15 +67,9 @@ Viewport::Viewport()
 void Viewport::Initialize(Context* context)
 {
 	Widget::Initialize(context);
-	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
-	g_renderer = m_context->GetSubsystem<Renderer>();
-	g_scene = m_context->GetSubsystem<Scene>();
-
-	// Setup renderer
-	unsigned long renderFlags = g_renderer->GetRenderFlags();
-	renderFlags |= Render_Performance_Metrics;
-	renderFlags |= Render_Mouse_Picking_Ray;
-	g_renderer->SetRenderFlags(renderFlags);
+	m_windowFlags	|= ImGuiWindowFlags_NoScrollbar;
+	g_renderer		= m_context->GetSubsystem<Renderer>();
+	g_scene			= m_context->GetSubsystem<Scene>();
 }
 
 void Viewport::Update()
@@ -87,8 +77,17 @@ void Viewport::Update()
 	if (!g_renderer)
 		return;
 
-	// Renderer view
-	if (ImGui::BeginCombo("##RendererConfig", g_rendererView))
+	// Render options
+	ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetStyle().WindowPadding.x); ImGui::Checkbox("Physics", &g_physics);
+	ImGui::SameLine(); ImGui::Checkbox("AABB", &g_aabb);
+	ImGui::SameLine(); ImGui::Checkbox("Gizmos", &g_gizmos);
+	ImGui::SameLine(); ImGui::Checkbox("Picking Ray", &g_pickingRay);
+	ImGui::SameLine(); ImGui::Checkbox("Performance Metrics", &g_performanceMetrics);
+	
+	// G-Buffer Visualization
+	ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetWindowSize().x - 145); ImGui::Text("G-Buffer");
+	ImGui::PushItemWidth(80);
+	ImGui::SameLine(); if (ImGui::BeginCombo("##RendererConfig", g_rendererView))
 	{
 		for (int i = 0; i < IM_ARRAYSIZE(g_rendererViews); i++)
 		{
@@ -97,7 +96,6 @@ void Viewport::Update()
 			{
 				g_rendererView = g_rendererViews[i];
 				g_rendererViewInt = i;
-				SetRenderFlags();
 			}
 			if (is_selected)
 			{
@@ -106,6 +104,8 @@ void Viewport::Update()
 		}
 		ImGui::EndCombo();
 	}
+	ImGui::PopItemWidth();
+
 	ImGui::Separator();
 
 	// Frame
@@ -126,6 +126,8 @@ void Viewport::Update()
 
 	// GameObject mouse picking
 	MousePicking();
+
+	SetRenderFlags();
 }
 
 void Viewport::MousePicking()
@@ -149,53 +151,18 @@ void Viewport::MousePicking()
 }
 void Viewport::SetRenderFlags()
 {
-	unsigned long flags = g_renderer->GetRenderFlags();
+	auto flags = g_renderer->GetRenderFlags();
 
-	// Default
-	if (g_rendererViewInt == 0)
-	{
-		flags &= ~Render_Albedo;
-		flags &= ~Render_Normal;
-		flags &= ~Render_Depth;
-		flags &= ~Render_Material;
-		flags &= ~Render_Albedo;
-	}
-	// Albedo
-	else if (g_rendererViewInt == 1)
-	{
-		flags |= Render_Albedo;
-		flags &= ~Render_Normal;
-		flags &= ~Render_Depth;
-		flags &= ~Render_Material;
-		flags &= ~Render_Albedo;
-	}
-	// Material
-	else if (g_rendererViewInt == 2)
-	{
-		flags &= ~Render_Albedo;
-		flags &= ~Render_Normal;
-		flags &= ~Render_Depth;
-		flags |= Render_Material;
-		flags &= ~Render_Albedo;
-	}
-	// Normal
-	else if (g_rendererViewInt == 3)
-	{
-		flags &= ~Render_Albedo;
-		flags |= Render_Normal;
-		flags &= ~Render_Depth;
-		flags &= ~Render_Material;
-		flags &= ~Render_Albedo;
-	}
-	// Depth
-	else if (g_rendererViewInt == 4)
-	{
-		flags &= ~Render_Albedo;
-		flags &= ~Render_Normal;
-		flags |= Render_Depth;
-		flags &= ~Render_Material;
-		flags &= ~Render_Albedo;
-	}
+	flags = g_physics				? flags | Render_Physics			: flags & ~Render_Physics;
+	flags = g_aabb					? flags | Render_AABB				: flags & ~Render_AABB;
+	flags = g_gizmos				? flags | Render_Light				: flags & ~Render_Light;
+	flags = g_pickingRay			? flags | Render_PickingRay			: flags & ~Render_PickingRay;
+	flags = g_performanceMetrics	? flags | Render_PerformanceMetrics : flags & ~Render_PerformanceMetrics;	
+	flags = g_rendererViewInt == 1	? flags | Render_Albedo				: flags & ~Render_Albedo;
+	flags = g_rendererViewInt == 2	? flags | Render_Normal				: flags & ~Render_Normal;
+	flags = g_rendererViewInt == 3	? flags | Render_Depth				: flags & ~Render_Depth;
+	flags = g_rendererViewInt == 4	? flags | Render_Material			: flags & ~Render_Material;
+	flags = g_rendererViewInt == 0	? flags & ~Render_Albedo & ~Render_Normal & ~Render_Depth & ~Render_Material : flags;
 
 	g_renderer->SetRenderFlags(flags);
 }
