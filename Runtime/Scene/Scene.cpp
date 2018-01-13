@@ -54,13 +54,13 @@ namespace Directus
 		m_fps = 0.0f;
 		m_timePassed = 0.0f;
 		m_frameCount = 0;
-		m_status = NOT_ASSIGNED;
+		m_progressStatus = NOT_ASSIGNED;
 		m_jobsDone = 0.0f;
 		m_jobsTotal = 0.0f;
 		m_isLoading = false;
 
 		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Resolve));
-		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Update));
+		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
 	}
 
 	Scene::~Scene()
@@ -112,25 +112,14 @@ namespace Directus
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
 
-		// Clear subsystems
-		FIRE_EVENT(EVENT_CLEAR_SUBSYSTEMS);
+		FIRE_EVENT(EVENT_SCENE_CLEARED);
 	}
 	//=========================================================================================================
 
 	//= I/O ===================================================================================================
-	void Scene::SaveToFileAsync(const string& filePath)
-	{
-		m_context->GetSubsystem<Threading>()->AddTask(bind(&Scene::SaveToFile, this, filePath));
-	}
-
-	void Scene::LoadFromFileAsync(const string& filePath)
-	{
-		m_context->GetSubsystem<Threading>()->AddTask(bind(&Scene::LoadFromFile, this, filePath));
-	}
-
 	bool Scene::SaveToFile(const string& filePathIn)
 	{
-		m_status = "Saving scene...";
+		m_progressStatus = "Saving scene...";
 		Stopwatch timer;
 		m_isLoading = true;
 
@@ -175,24 +164,24 @@ namespace Directus
 		}
 		//==============================================
 
-		ResetLoadingStats();
+		ClearProgressStatus();
 		LOG_INFO("Scene: Saving took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
+		FIRE_EVENT(EVENT_SCENE_SAVED);
 
 		return true;
 	}
 
 	bool Scene::LoadFromFile(const string& filePath)
 	{
-		m_status = "Loading scene...";
-		m_isLoading = true;
-
 		if (!FileSystem::FileExists(filePath))
 		{
 			LOG_ERROR(filePath + " was not found.");
 			return false;
 		}
 
-		Clear();
+		Clear(); 
+		m_progressStatus = "Loading scene...";
+		m_isLoading = true;
 
 		// Read all the resource file paths
 		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Read);
@@ -255,9 +244,9 @@ namespace Directus
 		}
 		//==============================================
 
-		Resolve();
-		ResetLoadingStats();
+		ClearProgressStatus();
 		LOG_INFO("Scene: Loading took " + to_string((int)timer.GetElapsedTimeMs()) + " ms");
+		FIRE_EVENT(EVENT_SCENE_LOADED);
 
 		return true;
 	}
@@ -384,15 +373,11 @@ namespace Directus
 	//= SCENE RESOLUTION  ===============================================================================
 	void Scene::Resolve()
 	{
-		// If a model is being loaded (also creating GameObjects), postpone resolution
-		if (m_context->GetSubsystem<ResourceManager>()->GetModelImporter().lock()->IsLoading())
-			return;
-
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
 
 		bool hasCamera = false;
-		bool hasSkybox = false;	
+		bool hasSkybox = false;
 		for (const auto& gameObject : m_gameObjects)
 		{
 			hasCamera = false;
@@ -413,7 +398,7 @@ namespace Directus
 			}
 
 			// Find renderables
-			if ((gameObject->HasComponent<MeshRenderer>() && gameObject->HasComponent<MeshFilter>()) || 
+			if ((gameObject->HasComponent<MeshRenderer>() && gameObject->HasComponent<MeshFilter>()) ||
 				hasCamera ||
 				hasSkybox ||
 				gameObject->HasComponent<Light>())
@@ -422,7 +407,7 @@ namespace Directus
 			}
 		}
 
-		FIRE_EVENT_DATA(EVENT_SCENE_UPDATED_RENDERABLES, VectorToVariant(m_renderables));
+		FIRE_EVENT_DATA(EVENT_SCENE_UPDATED, VectorToVariant(m_renderables));
 	}
 	//===================================================================================================
 
@@ -482,9 +467,9 @@ namespace Directus
 	//======================================================================================================
 
 	//= HELPER FUNCTIONS ===================================================================================
-	void Scene::ResetLoadingStats()
+	void Scene::ClearProgressStatus()
 	{
-		m_status = NOT_ASSIGNED;
+		m_progressStatus = NOT_ASSIGNED;
 		m_jobsDone = 0.0f;
 		m_jobsTotal = 0.0f;
 		m_isLoading = false;
@@ -518,5 +503,13 @@ namespace Directus
 		gameObj->Initialize(gameObj->AddComponent<Transform>().lock().get());
 
 		return gameObj;
+	}
+
+	void Scene::AddGameObject(shared_ptr<GameObject> gameObject)
+	{
+		if (!gameObject)
+			return;
+
+		m_gameObjects.push_back(gameObject);
 	}
 }

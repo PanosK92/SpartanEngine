@@ -29,7 +29,7 @@ namespace Directus
 		Subsystem(Context* context);
 		virtual ~Subsystem() {}
 
-		virtual bool Initialize() = 0;
+		virtual bool Initialize() { return true; }
 
 	protected:
 		Context* m_context;

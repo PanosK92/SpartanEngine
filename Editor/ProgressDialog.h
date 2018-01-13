@@ -21,26 +21,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
-#include "Widget.h"
-#include <memory>
-//=================
 
-class FileDialog;
-class ProgressDialog;
+//= INCLUDES ====
+#include <string>
+//===============
 
-class AssetViewer : public Widget
+namespace Directus
+{
+	class Context;
+}
+
+class ProgressDialog
 {
 public:
-	AssetViewer();
-	void Initialize(Directus::Context* context) override;
-	void Update() override;
+	ProgressDialog(const std::string& title, Directus::Context* context);
+	~ProgressDialog();
+
+	void Update();
+
+	void SetEngineUpdate(bool update);
+	void SetIsVisible(bool isVisible) { m_isVisible = isVisible; }
+	void SetProgress(float progress) { m_progress = progress; }
+	void SetProgressStatus(const std::string& progressStatus) { m_progressStatus = progressStatus; }
 
 private:
-	void ShowProgressDialog();
-	void OnModelLoaded();
+	void ShowProgressBar();
 
-	std::unique_ptr<FileDialog> m_fileDialogView;
-	std::unique_ptr<FileDialog> m_fileDialogLoad;
-	std::unique_ptr<ProgressDialog> m_progressDialog;
+	std::string m_title;
+	bool m_isVisible;
+	float m_progress;
+	std::string m_progressStatus;
+	Directus::Context* m_context;
 };

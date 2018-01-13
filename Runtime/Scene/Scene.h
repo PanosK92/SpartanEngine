@@ -47,14 +47,16 @@ namespace Directus
 		void Update();
 		void Clear();
 
-		//= IO =============================================
-		void SaveToFileAsync(const std::string& filePath);
-		void LoadFromFileAsync(const std::string& filePath);
+		//= IO ========================================
 		bool SaveToFile(const std::string& filePath);
 		bool LoadFromFile(const std::string& filePath);
+		//=============================================
 
 		//= GAMEOBJECT HELPER FUNCTIONS ===============================================
+		// Creates a GameObject and adds it to the scene
 		std::weak_ptr<GameObject> CreateGameObject();
+		// Adds a GameObject to the scene
+		void AddGameObject(std::shared_ptr<GameObject> gameObject);
 		int GetGameObjectCount() { return (int)m_gameObjects.size(); }
 		const std::vector<std::shared_ptr<GameObject>>& GetAllGameObjects() { return m_gameObjects; }
 		std::vector<std::weak_ptr<GameObject>> GetRootGameObjects();
@@ -77,8 +79,8 @@ namespace Directus
 
 		//= STATS ==============================================
 		float GetFPS() { return m_fps; }
-		const std::string& GetStatus() { return m_status; }
-		float GetPercentage() { return m_jobsDone / m_jobsTotal; }
+		const std::string& GetProgressStatus() { return m_progressStatus; }
+		float GetProgress() { return m_jobsDone / m_jobsTotal; }
 		bool IsLoading() { return m_isLoading; }
 
 	private:
@@ -89,7 +91,7 @@ namespace Directus
 		//=================================================
 
 		//= HELPER FUNCTIONS ====
-		void ResetLoadingStats();
+		void ClearProgressStatus();
 		void CalculateFPS();
 		//=======================
 
@@ -104,7 +106,7 @@ namespace Directus
 		float m_fps;
 		float m_timePassed;
 		int m_frameCount;
-		std::string m_status;
+		std::string m_progressStatus;
 		float m_jobsDone;
 		float m_jobsTotal;
 		bool m_isLoading;

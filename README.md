@@ -27,8 +27,8 @@ As a result, no design decision is set in stone and it will take a while until t
 # Upcoming features (v0.3)
 Feature       		            | Completion | Notes 
 ------------- 		            | :--: | -
-Easy to work with               | 100% | Single click project generation which includes editor and runtime.
-New editor               		| 60% | Replace Qt editor with an ImGui editor.
+Easy to build               	| 100% | Single click project generation which includes editor and runtime.
+New editor               		| 60% | Replace Qt editor with ImGui editor.
 Debug Rendering    				| 90% | Gizmos, scene grid and G-Buffer visualization.
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
 SSAO         					| 90% | -

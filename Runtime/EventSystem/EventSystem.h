@@ -38,11 +38,13 @@ To fire an event with data								-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 */
 
 //= EVENTS =================================================================================
-#define EVENT_UPDATE						0	// Fired when the engine should update
-#define EVENT_RENDER						1	// Fired when it's time to do rendering
-#define EVENT_CLEAR_SUBSYSTEMS				2	// Fired when subsystem need to clear
-#define EVENT_SCENE_UPDATED_RENDERABLES		3	// Fired when the scene resolves renderables
-#define EVENT_MODEL_LOADED					4
+#define EVENT_UPDATE			0	// Fired when the engine should update
+#define EVENT_RENDER			1	// Fired when it's time to do rendering
+#define EVENT_SCENE_SAVED		2
+#define EVENT_SCENE_LOADED		3
+#define EVENT_SCENE_UPDATED		4	// Fired when the scene resolves renderables
+#define EVENT_SCENE_CLEARED		5	// Fired when the scene resolves renderables
+#define EVENT_MODEL_LOADED		6
 //==========================================================================================
 
 //= MACROS =======================================================================================

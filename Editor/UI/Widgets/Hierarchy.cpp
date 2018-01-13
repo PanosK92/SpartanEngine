@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Scene.h"
 #include "Scene/GameObject.h"
 #include "Components/Transform.h"
+#include "Core/Engine.h"
 //===============================
 
 //= NAMESPACES ==========
@@ -53,6 +54,10 @@ void Hierarchy::Initialize(Context* context)
 
 void Hierarchy::Update()
 {
+	// If the engine is not updating, don't update
+	if (!m_context->GetSubsystem<Engine>()->IsUpdating())
+		return;
+
 	if (ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
@@ -64,9 +69,6 @@ void Hierarchy::Update()
 
 void Hierarchy::Populate()
 {
-	if (!g_scene)
-		return;
-
 	auto rootGameObjects = g_scene->GetRootGameObjects();
 	for (const auto& gameObject : rootGameObjects)
 	{

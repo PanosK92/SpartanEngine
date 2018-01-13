@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Graphics/Model.h"
 #include "Resource/ResourceManager.h"
 #include "Threading/Threading.h"
+#include "../../ProgressDialog.h"
+#include "EventSystem/EventSystem.h"
 //===================================
 
 //= NAMESPACES ==========
@@ -41,6 +43,7 @@ static bool g_showFileDialogLoad	= false;
 static string g_fileDialogSelection_View;
 static string g_fileDialogSelection_Load;
 static ResourceManager* g_resourceManager = nullptr;
+static bool g_showProgressDialog = false;
 
 AssetViewer::AssetViewer()
 {
@@ -50,9 +53,11 @@ AssetViewer::AssetViewer()
 void AssetViewer::Initialize(Context* context)
 {
 	Widget::Initialize(context);
-	m_fileDialogView = make_unique<FileDialog>(m_context, false, FileDialog_Filter_All);
-	m_fileDialogLoad = make_unique<FileDialog>(m_context, true, FileDialog_Filter_Model, FileDialog_Style_Load);
-	g_resourceManager = m_context->GetSubsystem<ResourceManager>();
+	m_fileDialogView	= make_unique<FileDialog>(m_context, false, FileDialog_Filter_All);
+	m_fileDialogLoad	= make_unique<FileDialog>(m_context, true, FileDialog_Filter_Model, FileDialog_Style_Load);
+	m_progressDialog	= make_unique<ProgressDialog>("Hold on...", m_context);
+	g_resourceManager	= m_context->GetSubsystem<ResourceManager>();
+	SUBSCRIBE_TO_EVENT(EVENT_MODEL_LOADED, EVENT_HANDLER(OnModelLoaded));
 }
 
 void AssetViewer::Update()
@@ -74,11 +79,33 @@ void AssetViewer::Update()
 		// Model
 		if (FileSystem::IsSupportedModelFile(g_fileDialogSelection_Load))
 		{
+			m_progressDialog->SetEngineUpdate(false);
 			m_context->GetSubsystem<Threading>()->AddTask([]()
 			{
 				g_resourceManager->Load<Model>(g_fileDialogSelection_Load);
 			});
+			
 			g_showFileDialogLoad = false;
+			g_showProgressDialog = true;
 		}
 	}
+
+	if (g_showProgressDialog) ShowProgressDialog();
+}
+
+void AssetViewer::ShowProgressDialog()
+{
+	auto importer = g_resourceManager->GetModelImporter().lock();
+	m_progressDialog->Update();
+	m_progressDialog->SetProgress(importer->GetProgress());
+	m_progressDialog->SetProgressStatus(importer->GetProgressStatus());
+	m_progressDialog->SetIsVisible(g_showProgressDialog);
+}
+
+void AssetViewer::OnModelLoaded()
+{
+	// Hide progress dialog
+	g_showProgressDialog = false;
+	m_progressDialog->SetIsVisible(g_showProgressDialog);
+	m_progressDialog->SetEngineUpdate(true);
 }

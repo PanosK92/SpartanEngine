@@ -76,7 +76,7 @@ namespace Directus
 		m_context = context;
 		m_isLoading = false;
 		m_model = nullptr;
-		ResetStats();
+		ClearProgressStatus();
 
 		// Log version
 		int major = aiGetVersionMajor();
@@ -89,16 +89,6 @@ namespace Directus
 	ModelImporter::~ModelImporter()
 	{
 
-	}
-
-	void ModelImporter::LoadAsync(Model* model, const string& filePath)
-	{
-		m_model = model;
-		m_modelPath = filePath;
-		m_context->GetSubsystem<Threading>()->AddTask([this, &model, &filePath]()
-		{
-			Load(m_model, m_modelPath);
-		});
 	}
 
 	bool ModelImporter::Load(Model* model, const string& filePath)
@@ -121,7 +111,7 @@ namespace Directus
 		importer.SetPropertyInteger(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, normalSmoothAngle); // Default is 45, max is 175
 
 		// Read the 3D model file from disk
-		m_status = "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" from disk...";
+		m_progressStatus = "Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" from disk...";
 		const aiScene* scene = importer.ReadFile(m_modelPath, ppsteps);
 		if (!scene)
 		{
@@ -132,7 +122,7 @@ namespace Directus
 
 		// Map all the nodes as GameObjects while mentaining hierarchical relationships
 		// as well as their properties (meshes, materials, textures etc.).
-		ReadNodeHierarchy(model, scene, scene->mRootNode, weak_ptr<GameObject>(), weak_ptr<GameObject>());
+		ReadNodeHierarchy(model, scene, scene->mRootNode);
 
 		// Load animation (in case there are any)
 		ReadAnimations(model, scene);
@@ -142,7 +132,7 @@ namespace Directus
 
 		// Stats
 		m_isLoading = false;
-		ResetStats();
+		ClearProgressStatus();
 
 		FIRE_EVENT(EVENT_MODEL_LOADED);
 
@@ -150,7 +140,7 @@ namespace Directus
 	}
 
 	//= PROCESSING ===============================================================================
-	void ModelImporter::ReadNodeHierarchy(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<GameObject>& parentNode, weak_ptr<GameObject>& newNode)
+	void ModelImporter::ReadNodeHierarchy(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const weak_ptr<GameObject> parentNode, weak_ptr<GameObject> newNode)
 	{
 		auto scene = m_context->GetSubsystem<Scene>();
 
@@ -173,14 +163,14 @@ namespace Directus
 			string name = assimpNode->mName.C_Str();
 			newNode.lock()->SetName(name);
 
-			m_status = "Processing: " + name;
+			m_progressStatus = "Processing: " + name;
 		}
 		else
 		{
 			string name = FileSystem::GetFileNameNoExtensionFromFilePath(m_modelPath);
 			newNode.lock()->SetName(name);
 
-			m_status = "Processing: " + name;
+			m_progressStatus = "Processing: " + name;
 		}
 		//============================================================================
 
@@ -194,7 +184,7 @@ namespace Directus
 		// Process all the node's meshes
 		for (unsigned int i = 0; i < assimpNode->mNumMeshes; i++)
 		{
-			std::weak_ptr<GameObject> gameobject = newNode; // set the current gameobject
+			weak_ptr<GameObject> gameobject = newNode; // set the current gameobject
 			aiMesh* mesh = assimpScene->mMeshes[assimpNode->mMeshes[i]]; // get mesh
 			string name = assimpNode->mName.C_Str(); // get name
 
@@ -216,7 +206,7 @@ namespace Directus
 		// Process children
 		for (unsigned int i = 0; i < assimpNode->mNumChildren; i++)
 		{
-			std::weak_ptr<GameObject> child = scene->CreateGameObject();
+			weak_ptr<GameObject> child = scene->CreateGameObject();
 			ReadNodeHierarchy(model, assimpScene, assimpNode->mChildren[i], newNode, child);
 		}
 	}
@@ -568,9 +558,9 @@ namespace Directus
 		}
 	}
 
-	void ModelImporter::ResetStats()
+	void ModelImporter::ClearProgressStatus()
 	{
-		m_status = NOT_ASSIGNED;
+		m_progressStatus = NOT_ASSIGNED;
 		m_jobsDone = 0;
 		m_jobsTotal = 0;
 	}
