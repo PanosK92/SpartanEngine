@@ -139,20 +139,25 @@ namespace Directus
 		m_shader->SetInputLayout(inputLayout);
 	}
 
-	void Shader::SetTexture(ID3D11ShaderResourceView* texture, unsigned int slot)
+	void Shader::SetTexture(void* texture, unsigned int slot)
 	{
 		if (!m_graphics)
 			return;
 
-		m_graphics->GetDeviceContext()->PSSetShaderResources(slot, 1, &texture);
+		ID3D11ShaderResourceView* id3d11Srv = (ID3D11ShaderResourceView*)texture;
+		m_graphics->GetDeviceContext()->PSSetShaderResources(slot, 1, &id3d11Srv);
 	}
 
-	void Shader::SetTextures(vector<ID3D11ShaderResourceView*> textures)
+	void Shader::SetTextures(vector<void*> textures)
 	{
 		if (!m_graphics)
 			return;
 
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &textures.front());
+		ID3D11ShaderResourceView** ptr = (ID3D11ShaderResourceView**)textures.data();
+		int length = (int)textures.size();
+		auto tex = vector<ID3D11ShaderResourceView*>(ptr, ptr + length);
+
+		m_graphics->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
 	}
 
 	void Shader::SetBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection, unsigned int slot)

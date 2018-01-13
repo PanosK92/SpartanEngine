@@ -32,6 +32,21 @@ namespace Directus
 {
 	class D3D11RenderTexture;
 
+	enum GBuffer_Texture_Type
+	{
+		GBuffer_Target_Unknown,
+		GBuffer_Target_Albedo,
+		GBuffer_Target_Normal,
+		GBuffer_Target_Depth,
+		GBuffer_Target_Material
+	};
+
+	struct GBuffer_Texture
+	{
+		std::unique_ptr<D3D11RenderTexture> texture;
+		GBuffer_Texture_Type type;
+	};
+
 	class GBuffer
 	{
 	public:
@@ -41,10 +56,10 @@ namespace Directus
 		bool SetAsRenderTarget();
 		bool Clear();
 
-		ID3D11ShaderResourceView* GetShaderResource(int index);
+		void* GetShaderResource(GBuffer_Texture_Type type);
 
 	private:
-		std::vector<std::unique_ptr<D3D11RenderTexture>> m_renderTargets;
+		std::vector<GBuffer_Texture> m_renderTargets;
 
 		// Dependencies
 		Graphics* m_graphics;

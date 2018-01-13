@@ -64,8 +64,8 @@ namespace Directus
 
 		void Set();
 		void SetInputLaytout(InputLayout inputLayout);
-		void SetTexture(ID3D11ShaderResourceView* texture, unsigned int slot);
-		void SetTextures(std::vector<ID3D11ShaderResourceView*> textures);
+		void SetTexture(void* texture, unsigned int slot);
+		void SetTextures(std::vector<void*> textures);
 
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, unsigned int slot);
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector4& color, unsigned int slot);

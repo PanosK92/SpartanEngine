@@ -187,12 +187,16 @@ namespace Directus
 		m_miscBuffer->SetPS(1);
 	}
 
-	void DeferredShader::UpdateTextures(vector<ID3D11ShaderResourceView*> textures)
+	void DeferredShader::UpdateTextures(vector<void*> textures)
 	{
 		if (!m_graphics)
 			return;
 
-		m_graphics->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &textures.front());
+		ID3D11ShaderResourceView** ptr = (ID3D11ShaderResourceView**)textures.data();
+		int length = (int)textures.size();
+		auto tex = vector<ID3D11ShaderResourceView*>(ptr, ptr + length);
+
+		m_graphics->GetDeviceContext()->PSSetShaderResources(0, unsigned int(textures.size()), &tex.front());
 	}
 
 	void DeferredShader::Set()
