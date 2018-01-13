@@ -39,7 +39,7 @@ using namespace Math;
 //=======================
 
 static Renderer* g_renderer = nullptr;
-static Scene* g_scene = nullptr;
+static Scene* g_scene		= nullptr;
 static Vector2 g_framePos;
 
 static bool g_physics;
@@ -56,8 +56,8 @@ const char* g_rendererViews[] =
 	"Normal",
 	"Depth"
 };
-static int g_rendererViewInt = 0;
-static const char* g_rendererView = g_rendererViews[g_rendererViewInt];
+static int g_rendererViewInt		= 0;
+static const char* g_rendererView	= g_rendererViews[g_rendererViewInt];
 
 Viewport::Viewport()
 {
