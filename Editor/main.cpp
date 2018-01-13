@@ -103,9 +103,13 @@ void Update(bool& isRunning, SDL_Event* event)
 		isRunning = false;
 	}
 
+	// Update engine
 	g_engine->Update();
+	// Set back buffer as render target (for ImGUI to render on)
 	g_renderer->SetRenderTarget(nullptr);
+	// Update editor
 	g_editor->Update();
+	// Present back buffer (ImGui result)
 	g_renderer->Present();
 }
 

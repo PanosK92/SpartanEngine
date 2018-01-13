@@ -58,22 +58,21 @@ namespace Directus
 {
 	Renderer::Renderer(Context* context) : Subsystem(context)
 	{
-		m_skybox = nullptr;
-		m_camera = nullptr;
-		m_texEnvironment = nullptr;
-		m_lineRenderer = nullptr;
-		m_nearPlane = 0.0f;
-		m_farPlane = 0.0f;
-		m_resourceMng = nullptr;
-		m_graphics = nullptr;
-		m_renderFlags = 0;
-		m_renderFlags |= Render_Grid;
-		m_renderFlags |= Render_Light;
+		m_skybox			= nullptr;
+		m_camera			= nullptr;
+		m_texEnvironment	= nullptr;
+		m_lineRenderer		= nullptr;
+		m_nearPlane			= 0.0f;
+		m_farPlane			= 0.0f;
+		m_resourceMng		= nullptr;
+		m_graphics			= nullptr;
+		m_renderFlags		= 0;
+		m_renderFlags		|= Render_Grid;
+		m_renderFlags		|= Render_Light;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
-		SUBSCRIBE_TO_EVENT(EVENT_CLEAR_SUBSYSTEMS, EVENT_HANDLER(Clear));
-		SUBSCRIBE_TO_EVENT(EVENT_SCENE_UPDATED_RENDERABLES, EVENT_HANDLER_VARIANT(AcquireRenderables));
+		SUBSCRIBE_TO_EVENT(EVENT_SCENE_UPDATED, EVENT_HANDLER_VARIANT(AcquireRenderables));
 	}
 
 	Renderer::~Renderer()
@@ -389,14 +388,14 @@ namespace Directus
 			// Get camera
 			if (auto camera = gameObject->GetComponent<Camera>().lock())
 			{
-				m_camera = camera.get();
-				mView = m_camera->GetViewMatrix();
-				mProjection = m_camera->GetProjectionMatrix();
+				m_camera		= camera.get();
+				mView			= m_camera->GetViewMatrix();
+				mProjection		= m_camera->GetProjectionMatrix();
 				mViewProjection = mView * mProjection;
 				mOrthographicProjection = Matrix::CreateOrthographicLH((float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT, m_nearPlane, m_farPlane);
-				mBaseView = m_camera->GetBaseViewMatrix();
-				m_nearPlane = m_camera->GetNearPlane();
-				m_farPlane = m_camera->GetFarPlane();
+				mBaseView		= m_camera->GetBaseViewMatrix();
+				m_nearPlane		= m_camera->GetNearPlane();
+				m_farPlane		= m_camera->GetFarPlane();
 			}
 		}
 	}
@@ -416,7 +415,7 @@ namespace Directus
 			// Set appropriate shadow map as render target
 			m_directionalLight->SetShadowCascadeAsRenderTarget(cascadeIndex);
 
-			Matrix mViewLight = m_directionalLight->GetViewMatrix();
+			Matrix mViewLight		= m_directionalLight->GetViewMatrix();
 			Matrix mProjectionLight = m_directionalLight->GetOrthographicProjectionMatrix(cascadeIndex);
 
 			for (const auto& gameObjWeak : m_renderables)
@@ -425,10 +424,10 @@ namespace Directus
 				if (!gameObj)
 					continue;
 
-				MeshFilter* meshFilter = gameObj->GetMeshFilter();
-				MeshRenderer* meshRenderer = gameObj->GetMeshRenderer();
-				auto material = meshRenderer->GetMaterial();
-				auto mesh = meshFilter->GetMesh();
+				MeshFilter* meshFilter		= gameObj->GetMeshFilter();
+				MeshRenderer* meshRenderer	= gameObj->GetMeshRenderer();
+				auto material				= meshRenderer->GetMaterial();
+				auto mesh					= meshFilter->GetMesh();
 
 				// Make sure we have everything
 				if (mesh.expired() || !meshFilter || !meshRenderer || material.expired())

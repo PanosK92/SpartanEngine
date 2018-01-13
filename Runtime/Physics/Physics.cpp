@@ -54,7 +54,7 @@ namespace Directus
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_UPDATE,			EVENT_HANDLER_VARIANT(Step));
-		SUBSCRIBE_TO_EVENT(EVENT_CLEAR_SUBSYSTEMS,	EVENT_HANDLER(Clear));
+		SUBSCRIBE_TO_EVENT(EVENT_SCENE_CLEARED,		EVENT_HANDLER(Clear));
 	}
 
 	Physics::~Physics()
@@ -100,8 +100,8 @@ namespace Directus
 		if (!m_world)
 			return;
 
-		// Don't simulate physics if we are in editor mode
-		if (m_context->GetSubsystem<Engine>()->GetMode() == Editor)
+		// Don't simulate physics if they are turned of
+		if (!m_context->GetSubsystem<Engine>()->GetFlags() & Engine_Physics)
 			return;
 
 		// Convert milliseconds to seconds (required by Bullet)

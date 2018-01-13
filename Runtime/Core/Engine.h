@@ -24,11 +24,14 @@ DEALINGS IN THE SOFTWARE. */
 
 namespace Directus
 {
-	enum EngineMode
+	enum EngineFlags
 	{
-		Editor,
-		Game
+		Engine_Physics,
+		Engine_Update,
+		Engine_Render
 	};
+
+	class Timer;
 
 	class ENGINE_API Engine : public Subsystem
 	{
@@ -39,16 +42,19 @@ namespace Directus
 		// Sets a draw handle, input handle and a window instance for the engine to use
 		void SetHandles(void* instance, void* mainWindowHandle, void* drawPaneHandle);
 
-		//= SUBSYSTEM ============
+		//= SUBSYSTEM =============
 		bool Initialize() override;
-		//========================
+		//=========================
 
 		// Performs a complete simulation cycle (used to run your game)
 		void Update();
 
 		// Returns whether the engine is running in editor or game mode
-		EngineMode GetMode() { return m_mode; }
-		void SetMode(EngineMode mode) { m_mode = mode; }
+		int GetFlags() { return m_flags; }
+		void SetFlags(int flags) { m_flags = flags; }
+
+		bool IsUpdating();
+		bool IsRendering();
 
 		// Returns the current context
 		Context* GetContext() { return m_context; }
@@ -58,8 +64,9 @@ namespace Directus
 
 	private:
 		void* m_hinstance;
-		void* m_windowHandle;;
+		void* m_windowHandle;
 		void* m_drawHandle;
-		EngineMode m_mode;
+		int m_flags;
+		Timer* m_timer;
 	};
 }

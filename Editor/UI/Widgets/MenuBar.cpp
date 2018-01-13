@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Resource/ResourceManager.h"
 #include "FileDialog.h"
 #include "Scene/Scene.h"
+#include "EventSystem/EventSystem.h"
+#include "../../ProgressDialog.h"
 //===================================
 
 //= NAMESPACES ==========
@@ -40,6 +42,7 @@ static bool g_showAboutWindow = false;
 static bool g_showMetricsWindow = false;
 static bool g_showStyleEditor = false;
 static bool g_fileDialogVisible = false;
+static bool g_progressDialogVisible = false;
 static string g_fileDialogSelection;
 ResourceManager* g_resourceManager = nullptr;
 Scene* g_scene = nullptr;
@@ -55,6 +58,9 @@ void MenuBar::Initialize(Context* context)
 	g_resourceManager = m_context->GetSubsystem<ResourceManager>();
 	g_scene = m_context->GetSubsystem<Scene>();
 	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Filter_Scene);
+	m_progressDialog = make_unique<ProgressDialog>("Hold on...", m_context);
+	SUBSCRIBE_TO_EVENT(EVENT_SCENE_SAVED, EVENT_HANDLER(OnSceneSaved));
+	SUBSCRIBE_TO_EVENT(EVENT_SCENE_LOADED, EVENT_HANDLER(OnSceneLoaded));
 }
 
 void MenuBar::Update()
@@ -126,8 +132,13 @@ void MenuBar::ShowFileDialog()
 		// Scene
 		if (FileSystem::IsEngineSceneFile(g_fileDialogSelection))
 		{
-			g_scene->LoadFromFile(g_fileDialogSelection);
+			m_progressDialog->SetEngineUpdate(false);
+			m_context->GetSubsystem<Threading>()->AddTask([]()
+			{
+				g_scene->LoadFromFile(g_fileDialogSelection);
+			});		
 			g_fileDialogVisible = false;
+			g_progressDialogVisible = true;
 		}
 	}
 	// SAVE
@@ -136,10 +147,41 @@ void MenuBar::ShowFileDialog()
 		// Scene
 		if (m_fileDialog->GetFilter() == FileDialog_Filter_Scene)
 		{
-			g_scene->SaveToFile(g_fileDialogSelection);
+			m_progressDialog->SetEngineUpdate(false);
+			m_context->GetSubsystem<Threading>()->AddTask([]()
+			{
+				g_scene->SaveToFile(g_fileDialogSelection);
+			});		
 			g_fileDialogVisible = false;
+			g_progressDialogVisible = true;
 		}
 	}
+
+	if (g_progressDialogVisible) ShowProgressDialog();
+}
+
+void MenuBar::ShowProgressDialog()
+{
+	m_progressDialog->Update();
+	m_progressDialog->SetProgress(g_scene->GetProgress());
+	m_progressDialog->SetProgressStatus(g_scene->GetProgressStatus());
+	m_progressDialog->SetIsVisible(true);
+}
+
+void MenuBar::OnSceneLoaded()
+{
+	// Hide progress dialog
+	g_progressDialogVisible = false;
+	m_progressDialog->SetIsVisible(false);
+	m_progressDialog->SetEngineUpdate(true);
+}
+
+void MenuBar::OnSceneSaved()
+{
+	// Hide progress dialog
+	g_progressDialogVisible = false;
+	m_progressDialog->SetIsVisible(false);
+	m_progressDialog->SetEngineUpdate(true);
 }
 
 void MenuBar::ShowAboutWindow()

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "Subsystem.h"
+#include <chrono>
 //====================
 
 namespace Directus
@@ -33,19 +34,14 @@ namespace Directus
 		Timer(Context* context);
 		~Timer();
 
-		//= Subsystem ============
-		bool Initialize() override;
-		//========================
-
 		void Update();
-		float GetDeltaTimeMs() { return m_deltaTimeMil; }
+		float GetDeltaTimeMs() { return m_deltaTimeMs; }
 		float GetDeltaTimeSec() { return m_deltaTimeSec; }
 
 	private:
+		float m_deltaTimeMs;
 		float m_deltaTimeSec;
-		float m_deltaTimeMil;
-		
-		double m_deltaTimeMicroSec;
-		double m_previousTimeMicroSec;
+
+		std::chrono::high_resolution_clock::time_point m_previousTime;
 	};
 }

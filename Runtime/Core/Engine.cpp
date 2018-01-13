@@ -44,6 +44,13 @@ namespace Directus
 {
 	Engine::Engine(Context* context) : Subsystem(context)
 	{
+		m_flags = 0;
+		m_flags |= Engine_Update;
+		m_flags |= Engine_Render;
+		m_flags |= Engine_Physics;
+
+		m_timer = nullptr;
+
 		// Register self as a subsystem
 		m_context->RegisterSubsystem(this);
 
@@ -82,6 +89,7 @@ namespace Directus
 			LOG_ERROR("Failed to initialize Timer subsystem");
 			success = false;
 		}
+		m_timer = m_context->GetSubsystem<Timer>();
 
 		// Input
 		m_context->GetSubsystem<Input>()->SetHandle((HWND)m_windowHandle, (HINSTANCE)m_hinstance);
@@ -155,11 +163,25 @@ namespace Directus
 
 	void Engine::Update()
 	{
-		// GAME UPDATE
-		FIRE_EVENT_DATA(EVENT_UPDATE, m_context->GetSubsystem<Timer>()->GetDeltaTimeMs());
+		if (m_flags & Engine_Update)
+		{
+			FIRE_EVENT_DATA(EVENT_UPDATE, m_timer->GetDeltaTimeMs());
+		}
 
-		// RENDER UPDATE
-		FIRE_EVENT(EVENT_RENDER);
+		if (m_flags & Engine_Render)
+		{
+			FIRE_EVENT(EVENT_RENDER);
+		}
+	}
+
+	bool Engine::IsUpdating()
+	{
+		return m_flags & Engine_Update;
+	}
+
+	bool Engine::IsRendering()
+	{
+		return m_flags & Engine_Render;
 	}
 
 	void Engine::Shutdown()

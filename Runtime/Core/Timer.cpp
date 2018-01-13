@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "Timer.h"
-#include <chrono>
 #include "../EventSystem/EventSystem.h"
 //=====================================
 
@@ -34,10 +33,8 @@ namespace Directus
 {
 	Timer::Timer(Context* context) : Subsystem(context)
 	{
-		m_deltaTimeSec = 0.0f;
-		m_deltaTimeMil = 0.0f;
-		m_previousTimeMicroSec = 0.0f;
-		m_deltaTimeMicroSec = 0.0f;
+		m_deltaTimeSec	= 0.0f;
+		m_deltaTimeMs	= 0.0f;
 
 		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
 	}
@@ -47,25 +44,13 @@ namespace Directus
 
 	}
 
-	bool Timer::Initialize()
-	{
-		return true;
-	}
-
 	void Timer::Update()
 	{
-		// Get current time
-		auto currentTime = high_resolution_clock::now().time_since_epoch();
-		double currentTimoMicroSec = (double)duration_cast<microseconds>(currentTime).count();
+		auto currentTime = high_resolution_clock::now();
+		duration<double, milli> ms = currentTime - m_previousTime;
+		m_previousTime = currentTime;
 
-		// Calculate delta time
-		m_deltaTimeMicroSec = currentTimoMicroSec - m_previousTimeMicroSec;
-	
-		// Save current time
-		m_previousTimeMicroSec = currentTimoMicroSec;
-
-		// Keep delta time in different representations
-		m_deltaTimeMil = float(m_deltaTimeMicroSec / 1000.0);
-		m_deltaTimeSec = float(m_deltaTimeMil / 1000.0);
+		m_deltaTimeMs = ms.count();
+		m_deltaTimeSec = ms.count() / 1000;
 	}
 }

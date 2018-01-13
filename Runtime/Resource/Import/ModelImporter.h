@@ -48,17 +48,22 @@ namespace Directus
 		ModelImporter(Context* context);
 		~ModelImporter();
 
-		void LoadAsync(Model* model, const std::string& filePath);
 		void ReadAnimations(Model* model, const aiScene* scene);
 		bool Load(Model* model, const std::string& filePath);
 
-		const std::string& GetStatus() { return m_status; }
-		float GetPercentage() { return (float)m_jobsTotal / (float)m_jobsDone; }
+		const std::string& GetProgressStatus() { return m_progressStatus; }
+		float GetProgress() { return (float)m_jobsTotal / (float)m_jobsDone; }
 		bool IsLoading() { return m_isLoading; }
 
 	private:
 		// PROCESSING
-		void ReadNodeHierarchy(Model* model, const aiScene* assimpScene, aiNode* assimpNode, const std::weak_ptr<GameObject>& parentNode, std::weak_ptr<GameObject>& newNode);
+		void ReadNodeHierarchy(
+			Model* model, 
+			const aiScene* assimpScene, 
+			aiNode* assimpNode, 
+			const std::weak_ptr<GameObject> parentNode = std::weak_ptr<GameObject>(), 
+			std::weak_ptr<GameObject> newNode = std::weak_ptr<GameObject>()
+		);
 		void LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const std::weak_ptr<GameObject>& parentGameObject);
 		void LoadAiMeshVertices(aiMesh* assimpMesh, std::shared_ptr<Mesh> mesh);
 		void LoadAiMeshIndices(aiMesh* assimpMesh, std::shared_ptr<Mesh> mesh);
@@ -68,13 +73,13 @@ namespace Directus
 		std::string ValidateTexturePath(const std::string& texturePath);
 		std::string TryPathWithMultipleExtensions(const std::string& fullpath);
 		void CalculateNodeCount(aiNode* node, int& count);
-		void ResetStats();
+		void ClearProgressStatus();
 	
 		Model* m_model;
 		std::string m_modelPath;
 
 		// Statistics	
-		std::string m_status;
+		std::string m_progressStatus;
 		int m_jobsDone;
 		int m_jobsTotal;
 		bool m_isLoading;

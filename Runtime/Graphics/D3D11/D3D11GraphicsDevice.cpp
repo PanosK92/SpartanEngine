@@ -350,26 +350,26 @@ namespace Directus
 		ZeroMemory(&desc, sizeof(desc));
 
 		// Depth test parameters
-		desc.DepthEnable = depthEnabled ? TRUE : FALSE;
+		desc.DepthEnable	= depthEnabled ? TRUE : FALSE;
 		desc.DepthWriteMask = writeEnabled ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-		desc.DepthFunc = D3D11_COMPARISON_LESS;
+		desc.DepthFunc		= D3D11_COMPARISON_LESS;
 
 		// Stencil test parameters
-		desc.StencilEnable = true;
-		desc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
-		desc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+		desc.StencilEnable		= true;
+		desc.StencilReadMask	= D3D11_DEFAULT_STENCIL_READ_MASK;
+		desc.StencilWriteMask	= D3D11_DEFAULT_STENCIL_WRITE_MASK;
 
 		// Stencil operations if pixel is front-facing
-		desc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		desc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-		desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		desc.FrontFace.StencilFailOp		= D3D11_STENCIL_OP_KEEP;
+		desc.FrontFace.StencilDepthFailOp	= D3D11_STENCIL_OP_INCR;
+		desc.FrontFace.StencilPassOp		= D3D11_STENCIL_OP_KEEP;
+		desc.FrontFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
 
 		// Stencil operations if pixel is back-facing
-		desc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-		desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-		desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-		desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		desc.BackFace.StencilFailOp			= D3D11_STENCIL_OP_KEEP;
+		desc.BackFace.StencilDepthFailOp	= D3D11_STENCIL_OP_DECR;
+		desc.BackFace.StencilPassOp			= D3D11_STENCIL_OP_KEEP;
+		desc.BackFace.StencilFunc			= D3D11_COMPARISON_ALWAYS;
 
 		// Create a depth stencil state with depth enabled
 		ID3D11DepthStencilState* depthStencilStateTyped = (ID3D11DepthStencilState*)depthStencilState;
@@ -484,12 +484,12 @@ namespace Directus
 		//= RESIZE TARGET ==================================================
 		DXGI_MODE_DESC dxgiModeDesc;
 		ZeroMemory(&dxgiModeDesc, sizeof(dxgiModeDesc));
-		dxgiModeDesc.Width = (unsigned int)width;
-		dxgiModeDesc.Height = (unsigned int)height;
-		dxgiModeDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		dxgiModeDesc.RefreshRate = DXGI_RATIONAL{ m_refreshRateNumerator, m_refreshRateDenominator };
-		dxgiModeDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-		dxgiModeDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		dxgiModeDesc.Width				= (unsigned int)width;
+		dxgiModeDesc.Height				= (unsigned int)height;
+		dxgiModeDesc.Format				= DXGI_FORMAT_R8G8B8A8_UNORM;
+		dxgiModeDesc.RefreshRate		= DXGI_RATIONAL{ m_refreshRateNumerator, m_refreshRateDenominator };
+		dxgiModeDesc.Scaling			= DXGI_MODE_SCALING_UNSPECIFIED;
+		dxgiModeDesc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 
 		HRESULT result = m_swapChain->ResizeTarget(&dxgiModeDesc);
 		if (FAILED(result))

@@ -30,4 +30,4 @@ However, I have packed the required DLL in this [fmod64.7z](https://raw.githubus
 ### Notes
 - We built everything in "Release" configuration as all of the statically linked dependencies have been pre-compiled in "Release" mode and are located at **"Directus3D\ThirdParty\mvsc141_x64\"**. The "Debug" version of them consists of libraries of a larger size, large enough that it can't be uploaded to the repository. Ideally, the projects of the dependencies could be part of the **"Directus"** solution but for the time being any dependencies have to be built by the user.
 
-- Apart from including a project of each dependency into the **"Directus"** solution, scripts can be written which will automate whatever is possible. Feel free to contribute if you think you can help :-)
+- Apart from including the project of each dependency into the **"Directus"** solution, scripts can be written which will automate whatever is possible. Feel free to contribute if you think you can help :-)

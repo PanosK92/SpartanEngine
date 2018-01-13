@@ -108,16 +108,16 @@ namespace Directus
 		if (!m_rigidBody)
 			return;
 
-		EngineMode engineMode = GetContext()->GetSubsystem<Engine>()->GetMode();
+		auto engineFlags = GetContext()->GetSubsystem<Engine>()->GetFlags();
 
 		// Editor -> Kinematic (so the user can move it around)
-		if (engineMode == Editor && !m_rigidBody->isKinematicObject())
+		if (engineFlags & Engine_Physics && !m_rigidBody->isKinematicObject())
 		{
 			AddBodyToWorld();
 		}
 
 		// Game -> Dynamic (so bullet starts simulating)
-		if (engineMode == Game && !m_isKinematic && m_rigidBody->isKinematicObject())
+		if (!engineFlags & Engine_Physics && !m_isKinematic && m_rigidBody->isKinematicObject())
 		{
 			AddBodyToWorld();
 		}
@@ -462,7 +462,7 @@ namespace Directus
 
 			// Editor -> Kinematic (so the user can move it around)
 			bool originalKinematicState = m_isKinematic;
-			if (GetContext()->GetSubsystem<Engine>()->GetMode() == Editor)
+			if (!GetContext()->GetSubsystem<Engine>()->GetFlags() & Engine_Physics)
 			{
 				m_isKinematic = true;
 			}
