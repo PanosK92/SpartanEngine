@@ -305,7 +305,7 @@ namespace Directus
 		if (width <= 0 || height <= 0)
 			return;
 
-		SET_RESOLUTION(width, height);
+		SET_RESOLUTION(Vector2((float)width, (float)height));
 		
 		// Resize everything
 		m_gbuffer.reset();
@@ -333,7 +333,7 @@ namespace Directus
 
 	void Renderer::SetViewport(int width, int height)
 	{
-		SET_VIEWPORT(width, height);
+		SET_VIEWPORT(Vector4(GET_VIEWPORT.x, GET_VIEWPORT.y, (float)width, (float)height));
 	}
 
 	void Renderer::Clear()
@@ -598,10 +598,10 @@ namespace Directus
 		ssaoTextures.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
 		ssaoTextures.push_back(m_texNoiseMap->GetShaderResource());
 
-		Matrix mvp = Matrix::Identity * mBaseView * mOrthographicProjection;
-		Matrix mvpInverted = (Matrix::Identity * mView * mProjection).Inverted();
+		Matrix mvp_ortho = Matrix::Identity * mBaseView * mOrthographicProjection;
+		Matrix mvp_persp_inv = (Matrix::Identity * mView * mProjection).Inverted();
 		m_shaderSSAO->Set();
-		m_shaderSSAO->SetBuffer(mvp, mvpInverted, mView, mProjection, GET_RESOLUTION, m_camera->GetNearPlane(), m_camera->GetFarPlane(), 0);
+		m_shaderSSAO->SetBuffer(mvp_ortho, mvp_persp_inv, mView, mProjection, GET_RESOLUTION, m_camera->GetNearPlane(), m_camera->GetFarPlane(), 0);
 		m_shaderSSAO->SetTextures(ssaoTextures);
 		m_shaderSSAO->DrawIndexed(m_quad->GetIndexCount());
 

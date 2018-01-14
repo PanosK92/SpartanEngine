@@ -236,7 +236,8 @@ void Properties::ShowTransform(Transform* transform)
 							
 	COMPONENT_BEGIN("Transform", Icon_Component_Transform);
 	{
-		int posX = 90;
+		float posX = 90.0f;
+
 		// Position
 		ImGui::Text("Position");
 		ImGui::SameLine(posX); ImGui::Text("X");
@@ -300,13 +301,13 @@ void Properties::ShowLight(Light* light)
 	g_lightButtonColorPicker->SetColor(light->GetColor());
 	SetCharArray(&g_lightRange[0], light->GetRange());
 
-	int widgetPosX = 105;
+	float posX = 105.0f;
 
 	COMPONENT_BEGIN("Light", Icon_Component_Light);
 	{
 		// Type
 		ImGui::Text("Type");
-		ImGui::SameLine(widgetPosX); if (ImGui::BeginCombo("##LightType", g_lightType))
+		ImGui::SameLine(posX); if (ImGui::BeginCombo("##LightType", g_lightType))
 		{
 			for (int i = 0; i < IM_ARRAYSIZE(g_lightTypes); i++)
 			{
@@ -326,28 +327,28 @@ void Properties::ShowLight(Light* light)
 
 		// Color
 		ImGui::Text("Color");
-		ImGui::SameLine(widgetPosX); g_lightButtonColorPicker->Update();
+		ImGui::SameLine(posX); g_lightButtonColorPicker->Update();
 
 		// Intensity
 		ImGui::Text("Intensity");
-		ImGui::SameLine(widgetPosX); ImGui::SliderFloat("##lightIntensity", &g_lightIntensity, 0.0f, 10.0f);
+		ImGui::SameLine(posX); ImGui::SliderFloat("##lightIntensity", &g_lightIntensity, 0.0f, 10.0f);
 
 		// Cast shadows
 		ImGui::Text("Shadows");
-		ImGui::SameLine(widgetPosX); ImGui::Checkbox("##lightShadows", &g_lightShadows);
+		ImGui::SameLine(posX); ImGui::Checkbox("##lightShadows", &g_lightShadows);
 
 		// Range
 		if (g_lightTypeInt != (int)Directional)
 		{
 			ImGui::Text("Range");
-			ImGui::SameLine(widgetPosX); ImGui::InputText("##lightRange", g_lightRange, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
+			ImGui::SameLine(posX); ImGui::InputText("##lightRange", g_lightRange, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
 		}
 
 		// Angle
 		if (g_lightTypeInt == (int)Spot)
 		{
 			ImGui::Text("Angle");
-			ImGui::SameLine(widgetPosX); ImGui::SliderFloat("##lightAngle", &g_lightAngle, 1.0f, 179.0f);
+			ImGui::SameLine(posX); ImGui::SliderFloat("##lightAngle", &g_lightAngle, 1.0f, 179.0f);
 		}
 	}
 	COMPONENT_END;
@@ -389,21 +390,21 @@ void Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
 	g_meshRendererReceiveShadows = meshRenderer->GetReceiveShadows();
 	string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
 
-	int widgetPosX = 150;
+	float posX = 150.0f;
 
 	COMPONENT_BEGIN("Mesh Renderer", Icon_Component_MeshRenderer);
 	{
 		// Cast shadows
 		ImGui::Text("Cast Shadows");
-		ImGui::SameLine(widgetPosX); ImGui::Checkbox("##MeshRendererCast", &g_meshRendererCastShadows);
+		ImGui::SameLine(posX); ImGui::Checkbox("##MeshRendererCast", &g_meshRendererCastShadows);
 
 		// Receive shadows
 		ImGui::Text("Receive Shadows");
-		ImGui::SameLine(widgetPosX); ImGui::Checkbox("##MeshRendererReceived", &g_meshRendererReceiveShadows);
+		ImGui::SameLine(posX); ImGui::Checkbox("##MeshRendererReceived", &g_meshRendererReceiveShadows);
 
 		// Material
 		ImGui::Text("Material");
-		ImGui::SameLine(widgetPosX); ImGui::Text(materialName.c_str());
+		ImGui::SameLine(posX); ImGui::Text(materialName.c_str());
 	}
 	COMPONENT_END;
 
@@ -431,7 +432,7 @@ void Properties::ShowRigidBody(RigidBody* rigidBody)
 	g_rigidBodyFreezeRotY = (bool)rigidBody->GetRotationLock().y;
 	g_rigidBodyFreezeRotZ = (bool)rigidBody->GetRotationLock().z;
 
-	int posX = 150;
+	float posX = 150.0f;
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 	COMPONENT_BEGIN("RigidBody", Icon_Component_RigidBody);
@@ -515,7 +516,7 @@ void Properties::ShowCollider(Collider* collider)
 	SetCharArray(&g_colSizeZ[0], collider->GetBoundingBox().z);
 	g_colOptimize = collider->GetOptimize();
 
-	int posX = 90;
+	float posX = 90.0f;
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
 	COMPONENT_BEGIN("Collider", Icon_Component_Collider);
@@ -606,7 +607,7 @@ void Properties::ShowMaterial(Material* material)
 	SetCharArray(&g_matOffsetX[0], material->GetOffset().x);
 	SetCharArray(&g_matOffsetY[0], material->GetOffset().y);
 
-	int posX = 100;
+	float posX = 100.0f;
 
 	COMPONENT_BEGIN("Material", Icon_Component_Material);
 	{
@@ -743,7 +744,7 @@ void Properties::ShowCamera(Camera* camera)
 	SetCharArray(&g_cameraFar[0], camera->GetFarPlane());
 
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
-	int posX = 150;
+	float posX = 150.0f;
 
 	COMPONENT_BEGIN("Camera", Icon_Component_Camera);
 	{

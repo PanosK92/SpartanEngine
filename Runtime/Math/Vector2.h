@@ -33,28 +33,28 @@ namespace Directus
 		class ENGINE_API Vector2
 		{
 		public:
-			Vector2::Vector2()
+			Vector2()
 			{
 				x = 0;
 				y = 0;
 			}
 
-			Vector2::Vector2(const Vector2& vector)
+			Vector2(const Vector2& vector)
 			{
 				this->x = vector.x;
 				this->y = vector.y;
 			}
 
-			Vector2::Vector2(float x, float y)
+			Vector2(float x, float y)
 			{
 				this->x = x;
 				this->y = y;
 			}
 
-			Vector2::~Vector2() {}
+			~Vector2() {}
 
 			//= ADDITION ===============================
-			Vector2 Vector2::operator+(const Vector2& b)
+			Vector2 operator+(const Vector2& b)
 			{
 				return Vector2
 				(
@@ -63,7 +63,7 @@ namespace Directus
 				);
 			}
 
-			void Vector2::operator+=(const Vector2& b)
+			void operator+=(const Vector2& b)
 			{
 				this->x += b.x;
 				this->y += b.y;
@@ -119,18 +119,12 @@ namespace Directus
 
 			bool operator==(const Vector2& b)
 			{
-				if (x == b.x && y == b.y)
-					return true;
-
-				return false;
+				return x == b.x && y == b.y;
 			}
 
 			bool operator!=(const Vector2& b)
 			{
-				if (x != b.x || y != b.y)
-					return true;
-
-				return false;
+				return x != b.x || y != b.y;
 			}
 
 			std::string ToString() const;
@@ -138,6 +132,7 @@ namespace Directus
 			float x;
 			float y;
 			static const Vector2 Zero;
+			static const Vector2 One;
 		};
 	}
 }

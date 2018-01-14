@@ -24,27 +24,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
+#include "../Math/Vector2.h"
+#include "../Math/Vector4.h"
 //===================================
 
-//= NAMESPACES =====
+//= NAMESPACES ================
 using namespace std;
-//==================
+using namespace Directus::Math;
+//=============================
 
 namespace Directus
 {
-	//= Initialize with default values ===================================================
+	//= Initialize with default values ================================================
 	bool Settings::m_isFullScreen = false;
 	int Settings::m_vsync = (int)Off;
 	bool Settings::m_isMouseVisible = true;
-	int Settings::m_resolutionWidth = 1920;
-	int Settings::m_resolutionHeight = 1080;
-	float Settings::m_viewportWidth = 1.0f;
-	float Settings::m_viewportHeight = 1.0f;
-	float Settings::m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
+	Vector2 Settings::m_resolution = Vector2(1920, 1080);
+	Vector4 Settings::m_viewport = Vector4(0.0f, 0.0f, m_resolution.x, m_resolution.y);
 	int Settings::m_shadowMapResolution = 2048;
 	unsigned int Settings::m_anisotropy = 16;
 	string Settings::m_settingsFileName = "Directus3D.ini";
-	//====================================================================================
+	//=================================================================================
 	ofstream Settings::m_fout;
 	ifstream Settings::m_fin;
 
@@ -77,16 +77,19 @@ namespace Directus
 			// Create a settings file
 			m_fin.open(m_settingsFileName, ifstream::in);
 
-			// Read the settings
-			ReadSetting(m_fin, "FullScreen", m_isFullScreen);
-			ReadSetting(m_fin, "VSync", m_vsync);
-			ReadSetting(m_fin, "IsMouseVisible", m_isMouseVisible);
-			ReadSetting(m_fin, "ResolutionWidth", m_resolutionWidth);
-			ReadSetting(m_fin, "ResolutionHeight", m_resolutionHeight);
-			ReadSetting(m_fin, "ShadowMapResolution", m_shadowMapResolution);
-			ReadSetting(m_fin, "Anisotropy", m_anisotropy);
+			float resolutionX = 0;
+			float resolutionY = 0;
 
-			m_screenAspect = float(m_resolutionWidth) / float(m_resolutionHeight);
+			// Read the settings
+			ReadSetting(m_fin, "FullScreen",			m_isFullScreen);
+			ReadSetting(m_fin, "VSync",					m_vsync);
+			ReadSetting(m_fin, "IsMouseVisible",		m_isMouseVisible);
+			ReadSetting(m_fin, "ResolutionWidth",		resolutionX);
+			ReadSetting(m_fin, "ResolutionHeight",		resolutionY);
+			ReadSetting(m_fin, "ShadowMapResolution",	m_shadowMapResolution);
+			ReadSetting(m_fin, "Anisotropy",			m_anisotropy);
+
+			m_resolution = Vector2(resolutionX, resolutionY);
 
 			// Close the file.
 			m_fin.close();
@@ -100,8 +103,8 @@ namespace Directus
 			WriteSetting(m_fout, "FullScreen", m_isFullScreen);
 			WriteSetting(m_fout, "VSync", m_vsync);
 			WriteSetting(m_fout, "IsMouseVisible", m_isMouseVisible);
-			WriteSetting(m_fout, "ResolutionWidth", m_resolutionWidth);
-			WriteSetting(m_fout, "ResolutionHeight", m_resolutionHeight);
+			WriteSetting(m_fout, "ResolutionWidth", m_resolution.x);
+			WriteSetting(m_fout, "ResolutionHeight", m_resolution.y);
 			WriteSetting(m_fout, "ShadowMapResolution", m_shadowMapResolution);
 			WriteSetting(m_fout, "Anisotropy", m_anisotropy);
 
@@ -111,77 +114,49 @@ namespace Directus
 	}
 
 	//= PROPERTIES ==========================================================
-	VSync Settings::GetVSync()
-	{
-		return (VSync)m_vsync;
-	}
-
-	float Settings::GetScreenAspect()
-	{
-		return m_screenAspect;
-	}
-
-	int Settings::GetShadowMapResolution()
-	{
-		return m_shadowMapResolution;
-	}
-
-	unsigned Settings::GetAnisotropy()
-	{
-		return m_anisotropy;
-	}
-
 	void Settings::SetResolution(int width, int height)
 	{
-		m_resolutionWidth = width;
-		m_resolutionHeight = height;
-		m_screenAspect = (float)m_resolutionWidth / (float)m_resolutionHeight;
+		m_resolution = Vector2((float)width, (float)height);
 	}
 
-	Math::Vector2 Settings::GetResolution()
+	void Settings::SetResolution(const Vector2& resolution)
 	{
-		return Math::Vector2((float)m_resolutionWidth, (float)m_resolutionHeight);
+		m_resolution = resolution;
 	}
 
 	int Settings::GetResolutionWidth()
 	{
-		return m_resolutionWidth;
+		return (int)m_resolution.x;
 	}
 
 	int Settings::GetResolutionHeight()
 	{
-		return m_resolutionHeight;
+		return (int)m_resolution.y;
 	}
 
-	void Settings::SetViewport(float width, float height)
+	void Settings::SetViewport(int x, int y, int width, int height)
 	{
-		m_viewportWidth = width;
-		m_viewportHeight = height;
+		m_viewport = Vector4((float)x, (float)y, (float)width, (float)height);
 	}
 
-	Math::Vector2 Settings::GetViewport()
+	void Settings::SetViewport(const Vector4& viewport)
 	{
-		return Math::Vector2(m_viewportWidth, m_viewportHeight);
+		m_viewport = viewport;
 	}
 
 	int Settings::GetViewportWidth()
 	{
-		return (int)m_viewportWidth;
+		return (int)m_viewport.z;
 	}
 
 	int Settings::GetViewportHeight()
 	{
-		return (int)m_viewportHeight;
+		return (int)m_viewport.w;
 	}
 
-	bool Settings::IsFullScreen()
+	float Settings::GetScreenAspect()
 	{
-		return m_isFullScreen;
-	}
-
-	bool Settings::IsMouseVisible()
-	{
-		return m_isMouseVisible;
+		return m_resolution.x / m_resolution.y;
 	}
 
 	//========================================================================
