@@ -21,32 +21,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "../Math/Vector2.h"
+//= INCLUDES ======
+#include "Helper.h"
 #include <fstream>
-//==========================
+//=================
 
 namespace Directus
 {
-//= RESOLUTION ==========================================
-#define SET_RESOLUTION(x,y) Settings::SetResolution(x,y)
-#define GET_RESOLUTION Settings::GetResolution()
-#define RESOLUTION_WIDTH Settings::GetResolutionWidth()
-#define RESOLUTION_HEIGHT Settings::GetResolutionHeight()
-//=======================================================
+//= RESOLUTION =======================================================
+#define SET_RESOLUTION(resolution) Settings::SetResolution(resolution)
+#define GET_RESOLUTION				Settings::GetResolution()
+#define RESOLUTION_WIDTH			Settings::GetResolutionWidth()
+#define RESOLUTION_HEIGHT			Settings::GetResolutionHeight()
+//====================================================================
 
-// VIEWPORT ===========================================
-#define SET_VIEWPORT(x,y) Settings::SetViewport(x,y)
-#define GET_VIEWPORT Settings::GetViewport()
-#define VIEWPORT_WIDTH Settings::GetResolutionWidth()
-#define VIEWPORT_HEIGHT Settings::GetResolutionHeight()
-//=====================================================
+// VIEWPORT ===================================================
+#define SET_VIEWPORT(viewport)	Settings::SetViewport(viewport)
+#define GET_VIEWPORT			Settings::GetViewport()
+#define VIEWPORT_WIDTH			Settings::GetResolutionWidth()
+#define VIEWPORT_HEIGHT			Settings::GetResolutionHeight()
+//=============================================================
 
-#define ASPECT_RATIO Settings::GetScreenAspect()
-#define SHADOWMAP_RESOLUTION Settings::GetShadowMapResolution()
-#define VSYNC Settings::GetVSync()
-#define FULLSCREEN_ENABLED Settings::IsFullScreen()
-#define ANISOTROPY_LEVEL Settings::GetAnisotropy()
+//= OTHER ========================================================
+#define ASPECT_RATIO			Settings::GetScreenAspect()
+#define SHADOWMAP_RESOLUTION	Settings::GetShadowMapResolution()
+#define VSYNC					Settings::GetVSync()
+#define FULLSCREEN_ENABLED		Settings::IsFullScreen()
+#define ANISOTROPY_LEVEL		Settings::GetAnisotropy()
+//================================================================
+
+	namespace Math
+	{
+		class Vector2;
+		class Vector4;
+	}
 
 	enum VSync
 	{
@@ -60,26 +68,30 @@ namespace Directus
 	public:
 		static void Initialize();
 
-		//= RESOLUTION ==================================
+		//= RESOLUTION =====================================================
 		static void SetResolution(int width, int height);
-		static Math::Vector2 GetResolution();
+		static void SetResolution(const Math::Vector2& resolution);
+		static const Math::Vector2& GetResolution() { return m_resolution; }
 		static int GetResolutionWidth();
 		static int GetResolutionHeight();
-		//===============================================
+		//==================================================================
 
-		//= VIEWPORT ======================================
-		static void SetViewport(float width, float height);
-		static Math::Vector2 GetViewport();
+		//= VIEWPORT ===================================================
+		static void SetViewport(int x, int y, int width, int height);
+		static void SetViewport(const Math::Vector4& viewport);
+		static const Math::Vector4& GetViewport() { return m_viewport; }
 		static int GetViewportWidth();
 		static int GetViewportHeight();
-		//=================================================
+		//==============================================================
 
-		static bool IsFullScreen();
-		static bool IsMouseVisible();
-		static VSync GetVSync();
+		//= OTHER ===========================================================
+		static bool IsFullScreen() { return m_isFullScreen; }
+		static bool IsMouseVisible() { return m_isMouseVisible; }
+		static VSync GetVSync() { return (VSync)m_vsync; }
 		static float GetScreenAspect();
-		static int GetShadowMapResolution();
-		static unsigned int GetAnisotropy();
+		static int GetShadowMapResolution() { return m_shadowMapResolution; }
+		static unsigned int GetAnisotropy() { return m_anisotropy; }
+		//===================================================================
 
 	private:
 		static std::ofstream m_fout;
@@ -87,11 +99,8 @@ namespace Directus
 		static std::string m_settingsFileName;
 
 		static bool m_isFullScreen;
-		static int m_resolutionWidth;
-		static int m_resolutionHeight;
-		static float m_viewportWidth;
-		static float m_viewportHeight;
-		static float m_screenAspect;
+		static Math::Vector2 m_resolution;
+		static Math::Vector4 m_viewport;
 		static int m_vsync;
 		static bool m_isMouseVisible;		
 		static int m_shadowMapResolution;

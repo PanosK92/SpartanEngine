@@ -214,23 +214,23 @@ namespace Directus
 
 	Vector2 Camera::WorldToScreenPoint(const Vector3& worldPoint)
 	{
-		Vector2 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewport();
+		Vector4 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewport();
 
 		Vector3 localSpace = worldPoint * m_mView * m_mProjection;
 
-		float screenX = localSpace.x / localSpace.z * (viewport.x * 0.5f) + viewport.x * 0.5f;
-		float screenY = -(localSpace.y / localSpace.z * (viewport.y * 0.5f)) + viewport.y * 0.5f;
+		float screenX = localSpace.x	/ localSpace.z	* (viewport.z * 0.5f)	+ viewport.z * 0.5f;
+		float screenY = -(localSpace.y	/ localSpace.z	* (viewport.w * 0.5f))	+ viewport.w * 0.5f;
 
 		return Vector2(screenX, screenY);
 	}
 
 	Vector3 Camera::ScreenToWorldPoint(const Vector2& point)
 	{
-		Vector2 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewport();
+		Vector4 viewport = GetContext()->GetSubsystem<Renderer>()->GetViewport();
 
 		// Convert screen pixel to view space
-		float pointX = 2.0f * point.x / viewport.x - 1.0f;
-		float pointY = -2.0f * point.y / viewport.y + 1.0f;
+		float pointX = 2.0f		* point.x / viewport.z - 1.0f;
+		float pointY = -2.0f	* point.y / viewport.w + 1.0f;
 
 		// Unproject point
 		Matrix unprojectMatrix = (m_mView * m_mProjection).Inverted();

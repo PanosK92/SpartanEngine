@@ -209,10 +209,7 @@ namespace Directus
 			//= COMPARISON ===========================================================================================
 			bool operator==(const Vector3& rhs) const
 			{
-				if (x == rhs.x && y == rhs.y && z == rhs.z)
-					return true;
-
-				return false;
+				return x == rhs.x && y == rhs.y && z == rhs.z;
 			}
 
 			bool operator!=(const Vector3& rhs) const
