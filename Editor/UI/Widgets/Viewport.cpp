@@ -42,11 +42,12 @@ static Renderer* g_renderer = nullptr;
 static Scene* g_scene		= nullptr;
 static Vector2 g_framePos;
 
-static bool g_physics;
-static bool g_aabb;
-static bool g_gizmos;
-static bool g_pickingRay;
-static bool g_performanceMetrics;
+static bool g_physics				= true;
+static bool g_aabb					= false;
+static bool g_gizmos				= true;
+static bool g_pickingRay			= false;
+static bool g_grid					= true;
+static bool g_performanceMetrics	= false;
 
 const char* g_rendererViews[] =
 {
@@ -82,6 +83,7 @@ void Viewport::Update()
 	ImGui::SameLine(); ImGui::Checkbox("AABB", &g_aabb);
 	ImGui::SameLine(); ImGui::Checkbox("Gizmos", &g_gizmos);
 	ImGui::SameLine(); ImGui::Checkbox("Picking Ray", &g_pickingRay);
+	ImGui::SameLine(); ImGui::Checkbox("Scene Grid", &g_grid);
 	ImGui::SameLine(); ImGui::Checkbox("Performance Metrics", &g_performanceMetrics);
 	
 	// G-Buffer Visualization
@@ -157,6 +159,7 @@ void Viewport::SetRenderFlags()
 	flags = g_aabb					? flags | Render_AABB				: flags & ~Render_AABB;
 	flags = g_gizmos				? flags | Render_Light				: flags & ~Render_Light;
 	flags = g_pickingRay			? flags | Render_PickingRay			: flags & ~Render_PickingRay;
+	flags = g_grid					? flags | Render_SceneGrid			: flags & ~Render_SceneGrid;
 	flags = g_performanceMetrics	? flags | Render_PerformanceMetrics : flags & ~Render_PerformanceMetrics;	
 	flags = g_rendererViewInt == 1	? flags | Render_Albedo				: flags & ~Render_Albedo;
 	flags = g_rendererViewInt == 2	? flags | Render_Normal				: flags & ~Render_Normal;

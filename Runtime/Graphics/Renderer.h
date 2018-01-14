@@ -66,7 +66,7 @@ namespace Directus
 		Render_Physics				= 1UL << 4,
 		Render_AABB					= 1UL << 5,
 		Render_PickingRay			= 1UL << 6,
-		Render_Grid					= 1UL << 7,
+		Render_SceneGrid					= 1UL << 7,
 		Render_PerformanceMetrics	= 1UL << 8,
 		Render_Light				= 1UL << 9
 	};
