@@ -67,7 +67,7 @@ namespace Directus
 		m_resourceMng		= nullptr;
 		m_graphics			= nullptr;
 		m_renderFlags		= 0;
-		m_renderFlags		|= Render_Grid;
+		m_renderFlags		|= Render_SceneGrid;
 		m_renderFlags		|= Render_Light;
 
 		// Subscribe to events
@@ -757,7 +757,7 @@ namespace Directus
 		m_graphics->EnableAlphaBlending(true);
 
 		// Grid
-		if (m_renderFlags & Render_Grid)
+		if (m_renderFlags & Render_SceneGrid)
 		{
 			m_grid->SetBuffer();
 			m_shaderGrid->Set();
