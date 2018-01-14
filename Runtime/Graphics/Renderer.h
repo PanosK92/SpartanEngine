@@ -96,7 +96,7 @@ namespace Directus
 		// Internal rendering
 		void SetResolution(int width, int height);
 		void SetViewport(int width, int height);
-		const Math::Vector4& GetViewport() { return GET_VIEWPORT; }
+		static const Math::Vector4& GetViewport() { return GET_VIEWPORT; }
 		
 		unsigned long GetRenderFlags() { return m_renderFlags; }
 		void SetRenderFlags(unsigned long renderFlags) { m_renderFlags = renderFlags; }

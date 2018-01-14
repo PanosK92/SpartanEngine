@@ -26,24 +26,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 //=========================
 
-#define NOT_ASSIGNED "N/A"
-#define NOT_ASSIGNED_HASH -1
-
-//= METADATA ===============================
-#define METADATA_EXTENSION ".xml"
-#define METADATA_TYPE_TEXTURE "Texture"
-#define METADATA_TYPE_AUDIOCLIP "Audio_Clip"
-//==========================================
-
-//= ENGINE EXTENSIONS ==============
-#define SCENE_EXTENSION ".directus"
-#define MATERIAL_EXTENSION ".mat"
-#define MODEL_EXTENSION ".model"
-#define PREFAB_EXTENSION ".prefab"
-#define SHADER_EXTENSION ".shader"
-#define TEXTURE_EXTENSION ".texture"
-#define MESH_EXTENSION ".mesh"
-//==================================
+//=========================================================
+static const char* NOT_ASSIGNED				= "N/A";
+static const int NOT_ASSIGNED_HASH			= -1;
+// Metadata extensions
+static const char* METADATA_EXTENSION		= ".xml";
+static const char* METADATA_TYPE_TEXTURE	= "Texture";
+static const char* METADATA_TYPE_AUDIOCLIP	= "Audio_Clip";
+// Engine file extensions
+static const char* SCENE_EXTENSION			= ".directus";
+static const char* MATERIAL_EXTENSION		= ".mat";
+static const char* MODEL_EXTENSION			= ".model";
+static const char* PREFAB_EXTENSION			= ".prefab";
+static const char* SHADER_EXTENSION			= ".shader";
+static const char* TEXTURE_EXTENSION		= ".texture";
+static const char* MESH_EXTENSION			= ".mesh";
+//=========================================================
 
 namespace Directus
 {
@@ -52,26 +50,26 @@ namespace Directus
 	public:
 		static void Initialize();
 
-		//= DIRECTORIES ==================================================
-		static bool CreateDirectory_(const std::string& directory);
+		//= DIRECTORIES ===========================================
+		static bool CreateDirectory_(const std::string& path);
 		static bool DeleteDirectory(const std::string& directory);
 		static bool DirectoryExists(const std::string& directory);
 		static bool IsDirectory(const std::string& directory);
-		//================================================================
+		//=========================================================
 
 		//= FILES ============================================================================
-		static bool FileExists(const std::string& path);
+		static bool FileExists(const std::string& filePath);
 		static bool DeleteFile_(const std::string& filePath);
 		static bool CopyFileFromTo(const std::string& source, const std::string& destination);
 		//====================================================================================
 
 		//= DIRECTORY PARSING  =================================================================
 		static std::string GetFileNameFromFilePath(const std::string& path);
-		static std::string GetFileNameNoExtensionFromFilePath(const std::string& path);
-		static std::string GetDirectoryFromFilePath(const std::string& path);
-		static std::string GetFilePathWithoutExtension(const std::string& path);
-		static std::string GetExtensionFromFilePath(const std::string& path);
-		static std::string GetRelativeFilePath(const std::string& filePath);
+		static std::string GetFileNameNoExtensionFromFilePath(const std::string& filepath);
+		static std::string GetDirectoryFromFilePath(const std::string& filePath);
+		static std::string GetFilePathWithoutExtension(const std::string& filePath);
+		static std::string GetExtensionFromFilePath(const std::string& filePath);
+		static std::string GetRelativeFilePath(const std::string& absoluteFilePath);
 		static std::string GetWorkingDirectory();
 		static std::string GetParentDirectory(const std::string& directory);
 		static std::vector<std::string> GetDirectoriesInDirectory(const std::string& directory);
@@ -89,12 +87,12 @@ namespace Directus
 		//======================================================================================================
 
 		//= SUPPORTED FILE CHECKS =====================================	
-		static bool IsSupportedAudioFile(const std::string& filePath);
-		static bool IsSupportedImageFile(const std::string& filePath);	
-		static bool IsSupportedModelFile(const std::string& filePath);
-		static bool IsSupportedShaderFile(const std::string& filePath);
-		static bool IsSupportedFontFile(const std::string& filePath);
-		static bool IsEngineScriptFile(const std::string& filePath);
+		static bool IsSupportedAudioFile(const std::string& path);
+		static bool IsSupportedImageFile(const std::string& path);	
+		static bool IsSupportedModelFile(const std::string& path);
+		static bool IsSupportedShaderFile(const std::string& path);
+		static bool IsSupportedFontFile(const std::string& path);
+		static bool IsEngineScriptFile(const std::string& path);
 		static bool IsEnginePrefabFile(const std::string& filePath);		
 		static bool IsEngineMaterialFile(const std::string& filePath);
 		static bool IsEngineMeshFile(const std::string& filePath);
