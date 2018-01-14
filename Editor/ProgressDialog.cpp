@@ -31,7 +31,7 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-static float width = 500.0f;
+static float width		= 500.0f;
 static Engine* g_engine = nullptr;
 
 ProgressDialog::ProgressDialog(const string& title, Context* context)
@@ -60,16 +60,8 @@ void ProgressDialog::Update()
 void ProgressDialog::SetEngineUpdate(bool update)
 {
 	auto flags = g_engine->GetFlags();
-
-	if (update)
-	{
-		flags |= Engine_Update;		
-	}
-	else
-	{
-		flags &= ~Engine_Update;
-	}
-
+	flags = update ? flags | Engine_Update : flags & ~Engine_Update;
+	flags = update ? flags | Engine_Render : flags & ~Engine_Render;
 	g_engine->SetFlags(flags);
 }
 

@@ -47,7 +47,7 @@ enum FileDialog_Filter
 class FileDialog
 {
 public:
-	FileDialog(Directus::Context* context, bool standaloneWindow = true, FileDialog_Filter filter = FileDialog_Filter_All, FileDialog_Style style = FileDialog_Style_Basic);
+	FileDialog(Directus::Context* context, bool standaloneWindow = true, FileDialog_Filter filter = FileDialog_Filter_All, FileDialog_Style type = FileDialog_Style_Basic);
 
 	// Filter
 	FileDialog_Filter GetFilter() { return m_filter; }
@@ -55,28 +55,27 @@ public:
 
 	// Style
 	FileDialog_Style GetStyle() { return m_style; }
-	void SetStyle(FileDialog_Style style);
+	void SetStyle(FileDialog_Style type);
 	
 	// Show
 	bool Show(bool* isVisible, std::string* path);
 
 private:	
-	void ViewPath(const std::string& pathDoubleClicked);
-	bool NavigateToDirectory(const std::string& pathDoubleClicked);
+	void ViewPath(const std::string& pathClicked);
+	bool NavigateToDirectory(const std::string& pathClicked);
 
 	std::string m_title;
-	std::string m_pathVisible;
+	std::string m_currentDirectory;
 	std::string m_pathClicked;
-	std::string m_pathDoubleClicked;
 	FileDialog_Style m_style;
 	FileDialog_Filter m_filter;
 	bool m_isWindow;
 	float m_itemSize;
 	bool m_selectionMade = false;
-	bool m_isInDirectory;
+	bool m_navigateToPath;
 	std::map<std::string, IconProvider_Icon> m_directoryContents;
 	std::unique_ptr<Directus::Stopwatch> m_stopwatch;
-	char m_fileNameText[BUFFER_TEXT_DEFAULT];
-	char m_labelText[BUFFER_TEXT_DEFAULT];
+	char m_fileNameText[BUFFER_TEXT_DEFAULT]{};
+	char m_itemLabel[BUFFER_TEXT_DEFAULT]{};
 	Directus::Context* m_context;
 };

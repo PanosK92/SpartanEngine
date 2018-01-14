@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============================
 #include "Renderer.h"
-#include "Gbuffer.h"
+#include "GBuffer.h"
 #include "Rectangle.h"
 #include "Material.h"
 #include "Mesh.h"
@@ -56,6 +56,9 @@ using namespace Directus::Math;
 
 namespace Directus
 {
+	static Physics* g_physics				= nullptr;
+	static ResourceManager* g_resourceMng	= nullptr;
+
 	Renderer::Renderer(Context* context) : Subsystem(context)
 	{
 		m_skybox			= nullptr;
@@ -64,7 +67,6 @@ namespace Directus
 		m_lineRenderer		= nullptr;
 		m_nearPlane			= 0.0f;
 		m_farPlane			= 0.0f;
-		m_resourceMng		= nullptr;
 		m_graphics			= nullptr;
 		m_renderFlags		= 0;
 		m_renderFlags		|= Render_SceneGrid;
@@ -91,7 +93,8 @@ namespace Directus
 		}
 
 		// Get ResourceManager subsystem
-		m_resourceMng = m_context->GetSubsystem<ResourceManager>();
+		g_resourceMng	= m_context->GetSubsystem<ResourceManager>();
+		g_physics		= m_context->GetSubsystem<Physics>();
 
 		// Create G-Buffer
 		m_gbuffer = make_unique<GBuffer>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
@@ -101,8 +104,8 @@ namespace Directus
 		m_quad->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
 
 		// Get standard resource directories
-		string shaderDirectory = m_resourceMng->GetStandardResourceDirectory(Resource_Shader);
-		string textureDirectory = m_resourceMng->GetStandardResourceDirectory(Resource_Texture);
+		string shaderDirectory	= g_resourceMng->GetStandardResourceDirectory(Resource_Shader);
+		string textureDirectory = g_resourceMng->GetStandardResourceDirectory(Resource_Texture);
 
 		// Deferred shader
 		m_shaderDeferred = make_unique<DeferredShader>();
@@ -203,7 +206,7 @@ namespace Directus
 
 		// Performance Metrics
 		m_font = make_unique<Font>(m_context);
-		string fontDir = m_resourceMng->GetStandardResourceDirectory(Resource_Font);
+		string fontDir = g_resourceMng->GetStandardResourceDirectory(Resource_Font);
 		m_font->SetSize(12);
 		m_font->SetColor(Vector4(0.7f, 0.7f, 0.7f, 1.0f));
 		m_font->LoadFromFile(fontDir + "CalibriBold.ttf");
@@ -464,8 +467,8 @@ namespace Directus
 		m_gbuffer->SetAsRenderTarget();
 		m_gbuffer->Clear();
 
-		vector<weak_ptr<Resource>> materials = m_resourceMng->GetResourcesByType(Resource_Material);
-		vector<weak_ptr<Resource>> shaders = m_resourceMng->GetResourcesByType(Resource_Shader);
+		vector<weak_ptr<Resource>> materials	= g_resourceMng->GetResourcesByType(Resource_Material);
+		vector<weak_ptr<Resource>> shaders		= g_resourceMng->GetResourcesByType(Resource_Shader);
 
 		for (const auto& shaderIt : shaders) // SHADER ITERATION
 		{
@@ -632,14 +635,14 @@ namespace Directus
 
 		//= Update textures ===========================================================
 		m_texArray.clear();
-		m_texArray.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Albedo));
-		m_texArray.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Normal));
-		m_texArray.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
-		m_texArray.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Material));
-		m_texArray.push_back(m_renderTexPong->GetShaderResourceView()); // contains shadows
-		m_texArray.push_back(m_renderTexSSAOBlurred->GetShaderResourceView());
-		m_texArray.push_back(m_renderTexFinalFrame->GetShaderResourceView());
-		m_texArray.push_back(m_skybox ? m_skybox->GetEnvironmentTexture() : nullptr);
+		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Albedo));
+		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Normal));
+		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
+		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Material));
+		m_texArray.emplace_back(m_renderTexPong->GetShaderResourceView()); // contains shadows
+		m_texArray.emplace_back(m_renderTexSSAOBlurred->GetShaderResourceView());
+		m_texArray.emplace_back(m_renderTexFinalFrame->GetShaderResourceView());
+		m_texArray.emplace_back(m_skybox ? m_skybox->GetEnvironmentTexture() : nullptr);
 
 		m_shaderDeferred->UpdateTextures(m_texArray);
 		//=============================================================================
@@ -718,11 +721,10 @@ namespace Directus
 			// Physics
 			if (m_renderFlags & Render_Physics)
 			{
-				Physics* physics = m_context->GetSubsystem<Physics>();
-				physics->DebugDraw();
-				if (physics->GetPhysicsDebugDraw()->IsDirty())
+				g_physics->DebugDraw();
+				if (g_physics->GetPhysicsDebugDraw()->IsDirty())
 				{
-					m_lineRenderer->AddLines(physics->GetPhysicsDebugDraw()->GetLines());
+					m_lineRenderer->AddLines(g_physics->GetPhysicsDebugDraw()->GetLines());
 				}
 			}
 
