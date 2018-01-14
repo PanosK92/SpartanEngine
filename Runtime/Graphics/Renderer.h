@@ -176,7 +176,6 @@ namespace Directus
 		float m_farPlane;
 		std::vector<ID3D11ShaderResourceView*> m_textures;
 		Graphics* m_graphics;
-		ResourceManager* m_resourceMng;
 		//================================================
 	};
 }

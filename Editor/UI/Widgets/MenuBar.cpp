@@ -19,8 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES ========================
 #include "MenuBar.h"
 #include "../imgui/imgui.h"
@@ -38,14 +36,14 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-static bool g_showAboutWindow = false;
-static bool g_showMetricsWindow = false;
-static bool g_showStyleEditor = false;
-static bool g_fileDialogVisible = false;
+static bool g_showAboutWindow		= false;
+static bool g_showMetricsWindow		= false;
+static bool g_showStyleEditor		= false;
+static bool g_fileDialogVisible		= false;
 static bool g_progressDialogVisible = false;
 static string g_fileDialogSelection;
-ResourceManager* g_resourceManager = nullptr;
-Scene* g_scene = nullptr;
+ResourceManager* g_resourceManager	= nullptr;
+Scene* g_scene						= nullptr;
 
 MenuBar::MenuBar()
 {

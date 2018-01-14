@@ -668,15 +668,27 @@ namespace Directus
 
 	string FileSystem::GetWorkingDirectory()
 	{
-		return fs::current_path().generic_string();
+		return fs::current_path().generic_string() + "/";
 	}
 
 	string FileSystem::GetParentDirectory(const string& directory)
 	{
-		if (!IsDirectory(directory))
+		size_t found	= directory.find_last_of("/\\");
+		string result	= directory;
+
+		// If no slash was found, return provided string
+		if (found == string::npos)
 			return directory;
 
-		return directory.substr(0, directory.find_last_of("/\\"));
+		// If the slash was find at the last position, remove it and try again
+		if (found == directory.length() - 1)
+		{
+			result = result.substr(0, found - 1);
+			return GetParentDirectory(result);
+		}
+
+		// Return parent directory including a slash at the end
+		return result.substr(0, found) + "/";
 	}
 
 	string FileSystem::GetStringAfterExpression(const string& str, const string& expression)
