@@ -35,6 +35,7 @@ using namespace Directus;
 
 static float g_itemSizeMin		= 50.0f;
 static float g_itemSizeMax		= 150.0f;
+
 #define GET_WINDOW_NAME (type == FileDialog_Style_Open)		? "Open"		: (type == FileDialog_Style_Load)		? "Load"		: (type == FileDialog_Style_Save) ? "Save" : "View"
 #define GET_FILTER_NAME	(m_filter == FileDialog_Filter_All) ? "All (*.*)"	: (m_filter == FileDialog_Filter_Model) ? "Model(*.*)"	: "Scene (*.scene)"
 #define GET_BUTTON_NAME (m_style == FileDialog_Style_Open)	? "Open"		: (m_style == FileDialog_Style_Load)	? "Load"		: "Save"
@@ -114,17 +115,13 @@ bool FileDialog::Show(bool* isVisible, string* path)
 				m_selectionMade		= !isDirectory;
 				m_stopwatch->Start();
 			}
-
-			if (m_style == FileDialog_Style_Basic)
-			{		
-				if (ImGui::BeginDragDropSource())
-				{
-					auto texture = GetOrLoadTexture(item.first, m_context);
-					ImGui::SetDragDropPayload("tex", &texture, sizeof(texture), ImGuiCond_Once);
-					ImGui::EndDragDropSource();
-				}
-			}
 		}
+
+		if (m_style == FileDialog_Style_Basic)
+		{
+			SendPayload(g_dragDrop_Texture, item.first);
+		}
+		
 		ImGui::PopID();
 
 		// LABEL

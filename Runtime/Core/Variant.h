@@ -145,7 +145,7 @@ namespace Directus
 
 		~Variant() { m_type = var_none; }
 
-		//= Copy Constructors ==========================================================
+		//= Copy Constructors =============================================
 		Variant(bool value) { *this = value; }
 		Variant(int value) { *this = value; }
 		Variant(float value) { *this = value; }
@@ -159,7 +159,7 @@ namespace Directus
 		Variant(const std::vector<Variant>& value) { *this = value; }
 		Variant(const std::vector<unsigned char>& value) { *this = value; }
 		Variant(void* value) { *this = value; }
-		//=============================================================================
+		//=================================================================
 
 		//= ASSIGNMENT OPERATORS ============================
 		Variant& operator =(const Variant& rhs);

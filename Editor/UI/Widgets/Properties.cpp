@@ -142,6 +142,10 @@ static char g_colSizeZ[BUFFER_TEXT_DEFAULT]		= "0";
 static bool g_colOptimize = false;
 //====================================================
 
+//= DRAG N DROP ===========
+static string g_dropResult;
+//=========================
+
 #define COMPONENT_BEGIN(name, icon_enum)									\
 	ICON_PROVIDER_IMAGE(icon_enum, 15);										\
 	ImGui::SameLine(25);													\
@@ -625,17 +629,13 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
-		if (ImGui::BeginDragDropTarget())
+		// Albedo - Drop Target
+		GetPayload(g_dragDrop_Texture, &g_dropResult);
+		if (!g_dropResult.empty())
 		{
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("tex"))
-			{
-				/*void* ptr = const_cast<void*>(payload->Data);
-				weak_ptr<Texture> texture = static_cast<weak_ptr<Texture>>(ptr);
-				texture.lock()->SetType(TextureType_Albedo);
-				material->SetTexture(texture);*/
-			}
-			ImGui::EndDragDropTarget();
+			LOG_INFO(g_dropResult);
 		}
+
 		ImGui::SameLine(); 	g_materialButtonColorPicker->Update();
 
 		// Roughness
