@@ -59,8 +59,8 @@ namespace Directus
 			}
 
 			// Try to make the path relative to the engine (in case it isn't)
-			std::string relativeFilePath = FileSystem::GetRelativeFilePath(filePath);
-			std::string name = FileSystem::GetFileNameNoExtensionFromFilePath(relativeFilePath);
+			std::string filePathRelative	= FileSystem::GetRelativeFilePath(filePath);
+			std::string name				= FileSystem::GetFileNameNoExtensionFromFilePath(filePathRelative);
 
 			// Check if the resource is already loaded
 			if (m_resourceCache->IsCached(name, Resource::ToResourceType<T>()))
@@ -72,11 +72,14 @@ namespace Directus
 			std::shared_ptr<T> typed = std::make_shared<T>(m_context);
 
 			// Load
-			if (!typed->LoadFromFile(relativeFilePath))
+			if (!typed->LoadFromFile(filePathRelative))
 			{
-				LOG_WARNING("ResourceManager: Resource \"" + relativeFilePath + "\" failed to load");
+				LOG_WARNING("ResourceManager: Resource \"" + filePathRelative + "\" failed to load");
 				return std::weak_ptr<T>();
 			}
+
+			typed->SetResourceFilePath(filePathRelative);
+			typed->SetResourceName(name);
 
 			return Add<T>(typed);
 		}

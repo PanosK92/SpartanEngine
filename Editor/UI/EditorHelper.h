@@ -21,16 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
+//= INCLUDES ========================
 #include <string>
 #include "imgui/imgui.h"
 #include "Math/Vector4.h"
 #include "Math/Vector2.h"
 #include "Graphics/Texture.h"
 #include "Resource/ResourceManager.h"
-//=======================
+//===================================
 
 static const int BUFFER_TEXT_DEFAULT = 255;
+static const char* g_dragDrop_Texture = "Texture";
 
 inline void SetCharArray(char* array, const std::string& value)
 {
@@ -73,20 +74,12 @@ inline Directus::Math::Vector4 ToVector4(const ImVec4& vector)
 
 inline ImVec2 ToImVec2(const Directus::Math::Vector2& vector)
 {
-	return ImVec2
-	(
-		vector.x,
-		vector.y
-	);
+	return ImVec2{vector.x,vector.y};
 }
 
 inline Directus::Math::Vector2 ToVector2(const ImVec2& vector)
 {
-	return Directus::Math::Vector2
-	(
-		vector.x,
-		vector.y
-	);
+	return Directus::Math::Vector2(vector.x, vector.y);
 }
 
 inline std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context)
@@ -98,4 +91,30 @@ inline std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& file
 
 	texture = resourceManager->Load<Directus::Texture>(filePath);
 	return texture;
+}
+
+inline void SendPayload(const char* type, const std::string& text)
+{
+	if (ImGui::BeginDragDropSource())
+	{
+		ImGui::SetDragDropPayload(type, &text[0], text.size(), ImGuiCond_Once);
+		ImGui::EndDragDropSource();
+	}
+}
+
+inline void GetPayload(const char* type, std::string* result)
+{
+	if (!result)
+		return;
+
+	result->clear();
+	if (ImGui::BeginDragDropTarget())
+	{
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(type))
+		{
+			void* ptr = const_cast<void*>(payload->Data);
+			(*result) = (char*)ptr;
+		}
+		ImGui::EndDragDropTarget();
+	}
 }

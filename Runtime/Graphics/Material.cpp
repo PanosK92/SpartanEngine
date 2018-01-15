@@ -182,7 +182,7 @@ namespace Directus
 		// Make sure this texture exists
 		if (texture.expired())
 		{
-			LOG_ERROR("Can't set uninitialized material texture.");
+			LOG_WARNING("Material: Can't set uninitialized material texture.");
 			return;
 		}
 

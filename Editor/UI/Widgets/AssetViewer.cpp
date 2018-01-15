@@ -36,12 +36,12 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-static bool g_showFileDialogView	= true;
-static bool g_showFileDialogLoad	= false;
+static bool g_showFileDialogView			= true;
+static bool g_showFileDialogLoad			= false;
 static string g_fileDialogSelection_View;
 static string g_fileDialogSelection_Load;
-static ResourceManager* g_resourceManager = nullptr;
-static bool g_showProgressDialog = false;
+static ResourceManager* g_resourceManager	= nullptr;
+static bool g_showProgressDialog			= false;
 
 AssetViewer::AssetViewer()
 {
@@ -77,7 +77,7 @@ void AssetViewer::Update()
 		// Model
 		if (FileSystem::IsSupportedModelFile(g_fileDialogSelection_Load))
 		{
-			m_progressDialog->SetEngineUpdate(false);
+			m_progressDialog->SetEngineEnabled(false);
 			m_context->GetSubsystem<Threading>()->AddTask([]()
 			{
 				g_resourceManager->Load<Model>(g_fileDialogSelection_Load);
@@ -105,5 +105,5 @@ void AssetViewer::OnModelLoaded()
 	// Hide progress dialog
 	g_showProgressDialog = false;
 	m_progressDialog->SetIsVisible(g_showProgressDialog);
-	m_progressDialog->SetEngineUpdate(true);
+	m_progressDialog->SetEngineEnabled(true);
 }

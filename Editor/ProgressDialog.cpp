@@ -57,7 +57,7 @@ void ProgressDialog::Update()
 	ShowProgressBar();
 }
 
-void ProgressDialog::SetEngineUpdate(bool update)
+void ProgressDialog::SetEngineEnabled(bool update)
 {
 	auto flags = g_engine->GetFlags();
 	flags = update ? flags | Engine_Update : flags & ~Engine_Update;
