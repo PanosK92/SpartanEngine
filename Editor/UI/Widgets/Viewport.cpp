@@ -114,7 +114,7 @@ void Viewport::Update()
 	g_renderer->SetResolution(width, height);
 	g_renderer->SetViewport(width, height);
 
-	g_framePos = ToVector2(ImGui::GetCursorPos()) + ToVector2(ImGui::GetWindowPos());
+	g_framePos = EditorHelper::ToVector2(ImGui::GetCursorPos()) + EditorHelper::ToVector2(ImGui::GetWindowPos());
 	ImGui::Image(
 		g_renderer->GetFrame(),
 		ImVec2(width, height),
@@ -138,7 +138,7 @@ void Viewport::MousePicking()
 	auto camera = g_scene->GetMainCamera();
 	if (!camera.expired())
 	{
-		Vector2 mousePosRelative = ToVector2(ImGui::GetMousePos()) - g_framePos;
+		Vector2 mousePosRelative = EditorHelper::ToVector2(ImGui::GetMousePos()) - g_framePos;
 		auto picked = camera.lock()->GetComponent<Camera>().lock()->Pick(mousePosRelative);
 		if (!picked.expired())
 		{

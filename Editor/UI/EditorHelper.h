@@ -28,93 +28,117 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Math/Vector2.h"
 #include "Graphics/Texture.h"
 #include "Resource/ResourceManager.h"
+#include "Core/Engine.h"
 //===================================
 
-static const int BUFFER_TEXT_DEFAULT = 255;
-static const char* g_dragDrop_Texture = "Texture";
-
-inline void SetCharArray(char* array, const std::string& value)
+namespace Directus
 {
-	if (value.length() > BUFFER_TEXT_DEFAULT)
-		return;
-
-	memset(&array[0], 0, BUFFER_TEXT_DEFAULT * sizeof(array[0]));
-	copy(value.begin(), value.end(), array);
+	class Engine;
 }
 
-template <class T, class = typename std::enable_if<
-	std::is_same<T, int>::value		||
-	std::is_same<T, float>::value	||
-	std::is_same<T, bool>::value	||
-	std::is_same<T, double>::value
->::type>
-void SetCharArray(char* array, T value) { SetCharArray(array, std::to_string(value)); }
+static const int BUFFER_TEXT_DEFAULT	= 255;
+static const char* g_dragDrop_Texture	= "Texture";
+static Directus::Engine* g_engine		= nullptr;
 
-inline ImVec4 ToImVec4(const Directus::Math::Vector4& vector)
+class EditorHelper
 {
-	return ImVec4
-	(
-		vector.x,
-		vector.y,
-		vector.z,
-		vector.w
-	);
-}
+public:
+	static void Initialize(Directus::Context* context)
+	{
+		g_engine = context->GetSubsystem<Directus::Engine>();
+	}
 
-inline Directus::Math::Vector4 ToVector4(const ImVec4& vector)
-{
-	return Directus::Math::Vector4
-	(
-		vector.x,
-		vector.y,
-		vector.z,
-		vector.w
-	);
-}
+	static void SetCharArray(char* array, const std::string& value)
+	{
+		if (value.length() > BUFFER_TEXT_DEFAULT)
+			return;
 
-inline ImVec2 ToImVec2(const Directus::Math::Vector2& vector)
-{
-	return ImVec2{vector.x,vector.y};
-}
+		memset(&array[0], 0, BUFFER_TEXT_DEFAULT * sizeof(array[0]));
+		copy(value.begin(), value.end(), array);
+	}
 
-inline Directus::Math::Vector2 ToVector2(const ImVec2& vector)
-{
-	return Directus::Math::Vector2(vector.x, vector.y);
-}
+	template <class T, class = typename std::enable_if<
+		std::is_same<T, int>::value		||
+		std::is_same<T, float>::value	||
+		std::is_same<T, bool>::value	||
+		std::is_same<T, double>::value
+	>::type>
+	static void SetCharArray(char* array, T value) { SetCharArray(array, std::to_string(value)); }
 
-inline std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context)
-{
-	auto resourceManager = context->GetSubsystem<Directus::ResourceManager>();
-	auto texture = resourceManager->GetResourceByPath<Directus::Texture>(filePath);
-	if (!texture.expired())
+	static ImVec4 ToImVec4(const Directus::Math::Vector4& vector)
+	{
+		return ImVec4
+		(
+			vector.x,
+			vector.y,
+			vector.z,
+			vector.w
+		);
+	}
+
+	static Directus::Math::Vector4 ToVector4(const ImVec4& vector)
+	{
+		return Directus::Math::Vector4
+		(
+			vector.x,
+			vector.y,
+			vector.z,
+			vector.w
+		);
+	}
+
+	static ImVec2 ToImVec2(const Directus::Math::Vector2& vector)
+	{
+		return ImVec2{ vector.x,vector.y };
+	}
+
+	static Directus::Math::Vector2 ToVector2(const ImVec2& vector)
+	{
+		return Directus::Math::Vector2(vector.x, vector.y);
+	}
+
+	static std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context)
+	{
+		auto resourceManager = context->GetSubsystem<Directus::ResourceManager>();
+		auto texture = resourceManager->GetResourceByPath<Directus::Texture>(filePath);
+		if (!texture.expired())
+			return texture;
+
+		texture = resourceManager->Load<Directus::Texture>(filePath);
 		return texture;
-
-	texture = resourceManager->Load<Directus::Texture>(filePath);
-	return texture;
-}
-
-inline void SendPayload(const char* type, const std::string& text)
-{
-	if (ImGui::BeginDragDropSource())
-	{
-		ImGui::SetDragDropPayload(type, &text[0], text.size(), ImGuiCond_Once);
-		ImGui::EndDragDropSource();
 	}
-}
 
-inline void GetPayload(const char* type, std::string* result)
-{
-	if (!result)
-		return;
-
-	result->clear();
-	if (ImGui::BeginDragDropTarget())
+	static void SendPayload(const char* type, const std::string& text)
 	{
-		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(type))
+		if (ImGui::BeginDragDropSource())
 		{
-			void* ptr = const_cast<void*>(payload->Data);
-			(*result) = (char*)ptr;
+			ImGui::SetDragDropPayload(type, &text[0], text.size(), ImGuiCond_Once);
+			ImGui::EndDragDropSource();
 		}
-		ImGui::EndDragDropTarget();
 	}
-}
+
+	static void GetPayload(const char* type, std::string* result)
+	{
+		if (!result)
+			return;
+
+		result->clear();
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(type))
+			{
+				void* ptr = const_cast<void*>(payload->Data);
+				(*result) = (char*)ptr;
+			}
+			ImGui::EndDragDropTarget();
+		}
+	}
+
+	static void SetEngineUpdate(bool update)
+	{
+		auto flags = g_engine->GetFlags();
+		flags = update ? flags | Directus::Engine_Update : flags & ~Directus::Engine_Update;
+		flags = update ? flags | Directus::Engine_Render : flags & ~Directus::Engine_Render;
+		g_engine->SetFlags(flags);
+	}
+};

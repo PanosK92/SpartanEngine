@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==================================
-#include "EditorUI.h"
+#include "Editor.h"
 #include <memory>
 #include "UI/ImGui_Implementation.h"
 #include "UI/Widgets/Widget.h"
@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/AssetViewer.h"
 #include "UI/Widgets/Viewport.h"
 #include "UI/IconProvider.h"
+#include "UI/EditorHelper.h"
 //=============================================
 
 //= NAMESPACES ==========
@@ -42,7 +43,7 @@ using namespace Directus;
 
 static SDL_Window* g_window = nullptr;
 
-EditorUI::EditorUI()
+Editor::Editor()
 {
 	m_widgets.emplace_back(make_unique<MenuBar>());
 	m_widgets.emplace_back(make_unique<Properties>());
@@ -52,14 +53,15 @@ EditorUI::EditorUI()
 	m_widgets.emplace_back(make_unique<Viewport>());
 }
 
-EditorUI::~EditorUI()
+Editor::~Editor()
 {
 	Shutdown();
 }
 
-void EditorUI::Initialize(SDL_Window* window, Context* context)
+void Editor::Initialize(SDL_Window* window, Context* context)
 {
 	IconProvider::Initialize(context);
+	EditorHelper::Initialize(context);
 
 	g_window = window;
 	ImGui_Impl_Initialize(g_window, context->GetSubsystem<Graphics>());
@@ -71,26 +73,26 @@ void EditorUI::Initialize(SDL_Window* window, Context* context)
 	}
 }
 
-void EditorUI::HandleEvent(SDL_Event* event)
+void Editor::HandleEvent(SDL_Event* event)
 {
 	ImGui_Impl_ProcessEvent(event);
 }
 
-void EditorUI::Update()
+void Editor::Update()
 {	
 	ImGui_Impl_NewFrame(g_window);
 	DrawEditor();
 	ImGui::Render();
 }
 
-void EditorUI::Shutdown()
+void Editor::Shutdown()
 {
 	m_widgets.clear();
 	m_widgets.shrink_to_fit();
 	ImGui_Impl_Shutdown();
 }
 
-void EditorUI::DrawEditor()
+void Editor::DrawEditor()
 {
 	for (auto& widget : m_widgets)
 	{
@@ -108,7 +110,7 @@ void EditorUI::DrawEditor()
 	}
 }
 
-void EditorUI::ApplyStyle()
+void Editor::ApplyStyle()
 {
 	ImGui::StyleColorsDark();
 	ImGuiStyle& style = ImGui::GetStyle();

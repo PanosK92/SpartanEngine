@@ -104,7 +104,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 			if (m_pathClicked != item.first) // Single click
 			{
 				m_pathClicked = item.first;
-				SetCharArray(&m_fileNameText[0], FileSystem::GetFileNameFromFilePath(m_pathClicked));
+				EditorHelper::SetCharArray(&m_fileNameText[0], FileSystem::GetFileNameFromFilePath(m_pathClicked));
 				m_stopwatch->Start();
 			}
 			else if (m_stopwatch->GetElapsedTimeMs() <= 500) // Double click
@@ -119,7 +119,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 
 		if (m_style == FileDialog_Style_Basic)
 		{
-			SendPayload(g_dragDrop_Texture, item.first);
+			EditorHelper::SendPayload(g_dragDrop_Texture, item.first);
 		}
 		
 		ImGui::PopID();
@@ -130,7 +130,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 10); // move to the bottom of the thumbnail
 		ImGui::PushItemWidth(ImGui::GetColumnWidth());
 		
-		SetCharArray(&m_itemLabel[0], FileSystem::GetFileNameFromFilePath(item.first));
+		EditorHelper::SetCharArray(&m_itemLabel[0], FileSystem::GetFileNameFromFilePath(item.first));
 		ImGui::InputText("##Temp", m_itemLabel, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
 
 		ImGui::PopItemWidth();
@@ -251,7 +251,7 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 		}
 	}
 
-	SetCharArray(&m_fileNameText[0], "");
+	EditorHelper::SetCharArray(&m_fileNameText[0], "");
 	
 	return true;
 }

@@ -169,15 +169,15 @@ Properties::Properties()
 
 void Properties::Clear()
 {
-	SetCharArray(&g_transPosX[0], 0);
-	SetCharArray(&g_transPosY[0], 0);
-	SetCharArray(&g_transPosZ[0], 0);
-	SetCharArray(&g_transRotX[0], 0);
-	SetCharArray(&g_transRotY[0], 0);
-	SetCharArray(&g_transRotZ[0], 0);
-	SetCharArray(&g_transScaX[0], 0);
-	SetCharArray(&g_transScaY[0], 0);
-	SetCharArray(&g_transScaZ[0], 0);
+	EditorHelper::SetCharArray(&g_transPosX[0], 0);
+	EditorHelper::SetCharArray(&g_transPosY[0], 0);
+	EditorHelper::SetCharArray(&g_transPosZ[0], 0);
+	EditorHelper::SetCharArray(&g_transRotX[0], 0);
+	EditorHelper::SetCharArray(&g_transRotY[0], 0);
+	EditorHelper::SetCharArray(&g_transRotZ[0], 0);
+	EditorHelper::SetCharArray(&g_transScaX[0], 0);
+	EditorHelper::SetCharArray(&g_transScaY[0], 0);
+	EditorHelper::SetCharArray(&g_transScaZ[0], 0);
 	g_materialRoughness = 0.0f;
 	g_materialMetallic = 0.0f;
 	g_materialNormal = 0.0f;
@@ -226,15 +226,15 @@ void Properties::Update()
 void Properties::ShowTransform(Transform* transform)
 {
 	// REFLECT
-	SetCharArray(&g_transPosX[0], transform->GetPosition().x);
-	SetCharArray(&g_transPosY[0], transform->GetPosition().y);
-	SetCharArray(&g_transPosZ[0], transform->GetPosition().z);
-	SetCharArray(&g_transRotX[0], transform->GetRotation().ToEulerAngles().x);
-	SetCharArray(&g_transRotY[0], transform->GetRotation().ToEulerAngles().y);
-	SetCharArray(&g_transRotZ[0], transform->GetRotation().ToEulerAngles().z);
-	SetCharArray(&g_transScaX[0], transform->GetScale().x);
-	SetCharArray(&g_transScaY[0], transform->GetScale().y);
-	SetCharArray(&g_transScaZ[0], transform->GetScale().z);
+	EditorHelper::SetCharArray(&g_transPosX[0], transform->GetPosition().x);
+	EditorHelper::SetCharArray(&g_transPosY[0], transform->GetPosition().y);
+	EditorHelper::SetCharArray(&g_transPosZ[0], transform->GetPosition().z);
+	EditorHelper::SetCharArray(&g_transRotX[0], transform->GetRotation().ToEulerAngles().x);
+	EditorHelper::SetCharArray(&g_transRotY[0], transform->GetRotation().ToEulerAngles().y);
+	EditorHelper::SetCharArray(&g_transRotZ[0], transform->GetRotation().ToEulerAngles().z);
+	EditorHelper::SetCharArray(&g_transScaX[0], transform->GetScale().x);
+	EditorHelper::SetCharArray(&g_transScaY[0], transform->GetScale().y);
+	EditorHelper::SetCharArray(&g_transScaZ[0], transform->GetScale().z);
 
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 							
@@ -303,7 +303,7 @@ void Properties::ShowLight(Light* light)
 	g_lightShadows = light->GetShadowQuality() != No_Shadows;
 	g_lightAngle = light->GetAngle();
 	g_lightButtonColorPicker->SetColor(light->GetColor());
-	SetCharArray(&g_lightRange[0], light->GetRange());
+	EditorHelper::SetCharArray(&g_lightRange[0], light->GetRange());
 
 	float posX = 105.0f;
 
@@ -423,10 +423,10 @@ void Properties::ShowRigidBody(RigidBody* rigidBody)
 		return;
 
 	// REFLECT
-	SetCharArray(&g_rigidBodyMass[0], rigidBody->GetMass());
-	SetCharArray(&g_rigidBodyFriction[0], rigidBody->GetFriction());
-	SetCharArray(&g_rigidBodyFrictionRolling[0], rigidBody->GetFrictionRolling());
-	SetCharArray(&g_rigidBodyRestitution[0], rigidBody->GetRestitution());
+	EditorHelper::SetCharArray(&g_rigidBodyMass[0], rigidBody->GetMass());
+	EditorHelper::SetCharArray(&g_rigidBodyFriction[0], rigidBody->GetFriction());
+	EditorHelper::SetCharArray(&g_rigidBodyFrictionRolling[0], rigidBody->GetFrictionRolling());
+	EditorHelper::SetCharArray(&g_rigidBodyRestitution[0], rigidBody->GetRestitution());
 	g_rigidBodyUseGravity = rigidBody->GetUseGravity();
 	g_rigidBodyIsKinematic = rigidBody->GetIsKinematic();
 	g_rigidBodyFreezePosX = (bool)rigidBody->GetPositionLock().x;
@@ -512,12 +512,12 @@ void Properties::ShowCollider(Collider* collider)
 	// REFLECT
 	g_colShapeInt = (int)collider->GetShapeType();
 	g_colShape = g_colShapes[g_colShapeInt];
-	SetCharArray(&g_colCenterX[0], collider->GetCenter().x);
-	SetCharArray(&g_colCenterY[0], collider->GetCenter().y);
-	SetCharArray(&g_colCenterZ[0], collider->GetCenter().z);
-	SetCharArray(&g_colSizeX[0], collider->GetBoundingBox().x);
-	SetCharArray(&g_colSizeY[0], collider->GetBoundingBox().y);
-	SetCharArray(&g_colSizeZ[0], collider->GetBoundingBox().z);
+	EditorHelper::SetCharArray(&g_colCenterX[0], collider->GetCenter().x);
+	EditorHelper::SetCharArray(&g_colCenterY[0], collider->GetCenter().y);
+	EditorHelper::SetCharArray(&g_colCenterZ[0], collider->GetCenter().z);
+	EditorHelper::SetCharArray(&g_colSizeX[0], collider->GetBoundingBox().x);
+	EditorHelper::SetCharArray(&g_colSizeY[0], collider->GetBoundingBox().y);
+	EditorHelper::SetCharArray(&g_colSizeZ[0], collider->GetBoundingBox().z);
 	g_colOptimize = collider->GetOptimize();
 
 	float posX = 90.0f;
@@ -606,10 +606,10 @@ void Properties::ShowMaterial(Material* material)
 	g_materialNormal = material->GetNormalMultiplier();
 	g_materialHeight = material->GetHeightMultiplier();
 	g_materialButtonColorPicker->SetColor(material->GetColorAlbedo());
-	SetCharArray(&g_matTilingX[0], material->GetTiling().x);
-	SetCharArray(&g_matTilingY[0], material->GetTiling().y);
-	SetCharArray(&g_matOffsetX[0], material->GetOffset().x);
-	SetCharArray(&g_matOffsetY[0], material->GetOffset().y);
+	EditorHelper::SetCharArray(&g_matTilingX[0], material->GetTiling().x);
+	EditorHelper::SetCharArray(&g_matTilingY[0], material->GetTiling().y);
+	EditorHelper::SetCharArray(&g_matOffsetX[0], material->GetOffset().x);
+	EditorHelper::SetCharArray(&g_matOffsetY[0], material->GetOffset().y);
 
 	float posX = 100.0f;
 
@@ -630,7 +630,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 128)
 		);
 		// Albedo - Drop Target
-		GetPayload(g_dragDrop_Texture, &g_dropResult);
+		EditorHelper::GetPayload(g_dragDrop_Texture, &g_dropResult);
 		if (!g_dropResult.empty())
 		{
 			LOG_INFO(g_dropResult);
@@ -740,8 +740,8 @@ void Properties::ShowCamera(Camera* camera)
 	g_cameraProjectionInt = (int)camera->GetProjection();
 	g_cameraProjection = g_cameraProjections[g_cameraProjectionInt];
 	g_cameraFOV = camera->GetFOV_Horizontal_Deg();
-	SetCharArray(&g_cameraNear[0], camera->GetNearPlane());
-	SetCharArray(&g_cameraFar[0], camera->GetFarPlane());
+	EditorHelper::SetCharArray(&g_cameraNear[0], camera->GetNearPlane());
+	EditorHelper::SetCharArray(&g_cameraFar[0], camera->GetFarPlane());
 
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 	float posX = 150.0f;
