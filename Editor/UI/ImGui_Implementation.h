@@ -26,16 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Graphics/D3D11/D3D11GraphicsDevice.h"
 //=============================================
 
-//= LINKING ===========================
-#pragma comment(lib, "d3dcompiler.lib")
-//=====================================
-
 struct SDL_Window;
 union SDL_Event;
-struct ID3D11Device;
-struct ID3D11DeviceContext;
 
-IMGUI_API bool	ImGui_Impl_Initialize(SDL_Window* window, Directus::Graphics* graphics);
+IMGUI_API bool	ImGui_Impl_Initialize(SDL_Window* window, Directus::Context* context);
 IMGUI_API bool	ImGui_Impl_ProcessEvent(SDL_Event* event);
 IMGUI_API void	ImGui_Impl_Shutdown();
 IMGUI_API void	ImGui_Impl_NewFrame(SDL_Window* window);
