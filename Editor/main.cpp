@@ -148,6 +148,10 @@ int main(int argc, char* argv[])
 	auto winHandle = systemInfo.info.win.window;
 	auto winInstance = systemInfo.info.win.hinstance;
 
+	// Create the editor before the engine because it implements
+	// the engine's logging system and will catch all output from it.
+	g_editor = new Editor();
+
 	// Create and initialize the engine
 	g_engine = new Engine(new Context);
 	g_engine->SetHandles(winInstance, winHandle, winHandle);
@@ -155,8 +159,7 @@ int main(int argc, char* argv[])
 	g_engineContext = g_engine->GetContext();
 	g_renderer = g_engineContext->GetSubsystem<Renderer>();
 
-	// Create and initialize the editor
-	g_editor = new Editor();
+	// Initialize
 	g_editor->Initialize(g_window, g_engineContext);
 
 	// Start loop

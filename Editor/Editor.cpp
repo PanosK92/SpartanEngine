@@ -64,7 +64,7 @@ void Editor::Initialize(SDL_Window* window, Context* context)
 	EditorHelper::GetInstance().Initialize(context);
 
 	g_window = window;
-	ImGui_Impl_Initialize(g_window, context->GetSubsystem<Graphics>());
+	ImGui_Impl_Initialize(g_window, context);
 	ApplyStyle();
 
 	for (auto& widget : m_widgets)
