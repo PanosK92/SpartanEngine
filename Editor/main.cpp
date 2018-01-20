@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/ImGui_Implementation.h"
 #include <Core/Engine.h>
 #include "Graphics/Renderer.h"
-#include "EditorUI.h"
+#include "Editor.h"
 //==================================
 
 //= NAMESPACES ==========
@@ -36,7 +36,7 @@ using namespace Math;
 //=======================
 
 SDL_Window* g_window		= nullptr;
-EditorUI* g_editor			= nullptr;
+Editor* g_editor			= nullptr;
 Engine* g_engine			= nullptr;
 Context* g_engineContext	= nullptr;
 Graphics* g_graphics		= nullptr;
@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
 	auto winInstance = systemInfo.info.win.hinstance;
 
 	// Create editor
-	g_editor = new EditorUI();
+	g_editor = new Editor();
 
 	// Create and initialize the engine
 	g_engine = new Engine(new Context);

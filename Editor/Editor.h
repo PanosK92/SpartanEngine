@@ -31,13 +31,13 @@ struct SDL_Window;
 union SDL_Event;
 namespace Directus {class Context;}
 
-class EditorUI
+class Editor
 {
 public:
-	EditorUI();
-	~EditorUI();
+	Editor();
+	~Editor();
 
-	void Initialize(SDL_Window* window, Directus::Context* graphics);	
+	void Initialize(SDL_Window* window, Directus::Context* context);	
 	void HandleEvent(SDL_Event* event);
 	void Update();
 	void Shutdown();

@@ -77,7 +77,7 @@ void AssetViewer::Update()
 		// Model
 		if (FileSystem::IsSupportedModelFile(g_fileDialogSelection_Load))
 		{
-			m_progressDialog->SetEngineEnabled(false);
+			EditorHelper::SetEngineUpdate(false);
 			m_context->GetSubsystem<Threading>()->AddTask([]()
 			{
 				g_resourceManager->Load<Model>(g_fileDialogSelection_Load);
@@ -105,5 +105,5 @@ void AssetViewer::OnModelLoaded()
 	// Hide progress dialog
 	g_showProgressDialog = false;
 	m_progressDialog->SetIsVisible(g_showProgressDialog);
-	m_progressDialog->SetEngineEnabled(true);
+	EditorHelper::SetEngineUpdate(true);
 }

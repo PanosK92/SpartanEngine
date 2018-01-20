@@ -38,8 +38,6 @@ public:
 	~ProgressDialog();
 
 	void Update();
-
-	void SetEngineEnabled(bool update);
 	void SetIsVisible(bool isVisible) { m_isVisible = isVisible; }
 	void SetProgress(float progress) { m_progress = progress; }
 	void SetProgressStatus(const std::string& progressStatus) { m_progressStatus = progressStatus; }

@@ -31,8 +31,7 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-static float width		= 500.0f;
-static Engine* g_engine = nullptr;
+static float width = 500.0f;
 
 ProgressDialog::ProgressDialog(const string& title, Context* context)
 {
@@ -55,14 +54,6 @@ void ProgressDialog::Update()
 		return;
 
 	ShowProgressBar();
-}
-
-void ProgressDialog::SetEngineEnabled(bool update)
-{
-	auto flags = g_engine->GetFlags();
-	flags = update ? flags | Engine_Update : flags & ~Engine_Update;
-	flags = update ? flags | Engine_Render : flags & ~Engine_Render;
-	g_engine->SetFlags(flags);
 }
 
 void ProgressDialog::ShowProgressBar()
