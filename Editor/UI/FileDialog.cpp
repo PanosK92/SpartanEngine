@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "FileDialog.h"
-#include "../imgui/imgui.h"
+#include "imgui/imgui.h"
 #include "FileSystem/FileSystem.h"
 #include "Logging/Log.h"
-#include "../IconProvider.h"
-#include "Resource/Resource.h"
+#include "IconProvider.h"
+#include "DragDrop.h"
 //================================
 
 //= NAMESPACES ==========
@@ -40,6 +40,8 @@ static float g_itemSizeMax		= 150.0f;
 #define GET_FILTER_NAME	(m_filter == FileDialog_Filter_All) ? "All (*.*)"	: (m_filter == FileDialog_Filter_Model) ? "Model(*.*)"	: "Scene (*.scene)"
 #define GET_BUTTON_NAME (m_style == FileDialog_Style_Open)	? "Open"		: (m_style == FileDialog_Style_Load)	? "Load"		: "Save"
 
+static DragDropPayload g_dragDropPayload;
+
 FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filter filter, FileDialog_Style type)
 {
 	m_context			= context;
@@ -51,6 +53,8 @@ FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filte
 	m_pathClicked		= m_currentDirectory;
 	m_itemSize			= (type != FileDialog_Style_Basic) ? g_itemSizeMin * 2.0f : g_itemSizeMin;
 	m_stopwatch			= make_unique<Stopwatch>();
+	m_navigateToPath	= false;
+	g_dragDropPayload	= DragDropPayload(g_dragDrop_Type_Texture, nullptr);
 }
 
 void FileDialog::SetFilter(FileDialog_Filter filter)
@@ -119,7 +123,8 @@ bool FileDialog::Show(bool* isVisible, string* path)
 
 		if (m_style == FileDialog_Style_Basic)
 		{
-			EditorHelper::SendPayload(g_dragDrop_Texture, item.first);
+			g_dragDropPayload.payload = item.first.c_str();
+			DragDrop::SendPayload(g_dragDropPayload);
 		}
 		
 		ImGui::PopID();

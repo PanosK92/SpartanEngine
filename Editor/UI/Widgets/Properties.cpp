@@ -19,8 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES ========================
 #include "Properties.h"
 #include "../imgui/imgui.h"
@@ -41,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Script.h"
 #include "../IconProvider.h"
 #include "../EditorHelper.h"
+#include "../DragDrop.h"
 //===================================
 
 //= NAMESPACES ==========
@@ -142,9 +141,11 @@ static char g_colSizeZ[BUFFER_TEXT_DEFAULT]		= "0";
 static bool g_colOptimize = false;
 //====================================================
 
-//= DRAG N DROP ===========
-static string g_dropResult;
-//=========================
+//= DRAG N DROP ====================
+static DragDropPayload g_dropResult;
+//==================================
+
+static ResourceManager* g_resourceManager = nullptr;
 
 #define COMPONENT_BEGIN(name, icon_enum)									\
 	ICON_PROVIDER_IMAGE(icon_enum, 15);										\
@@ -162,9 +163,16 @@ static string g_dropResult;
 Properties::Properties()
 {
 	m_title = "Properties";
-	g_lightButtonColorPicker = make_unique<ButtonColorPicker>("Light Color Picker");
+	g_lightButtonColorPicker	= make_unique<ButtonColorPicker>("Light Color Picker");
 	g_materialButtonColorPicker = make_unique<ButtonColorPicker>("Material Color Picker");
-	g_cameraButtonColorPicker = make_unique<ButtonColorPicker>("Camera Color Picker");
+	g_cameraButtonColorPicker	= make_unique<ButtonColorPicker>("Camera Color Picker");
+}
+
+void Properties::Initialize(Context* context)
+{
+	Widget::Initialize(context);
+
+	g_resourceManager = context->GetSubsystem<ResourceManager>();
 }
 
 void Properties::Clear()
@@ -303,7 +311,7 @@ void Properties::ShowLight(Light* light)
 	g_lightShadows = light->GetShadowQuality() != No_Shadows;
 	g_lightAngle = light->GetAngle();
 	g_lightButtonColorPicker->SetColor(light->GetColor());
-	EditorHelper::GetInstance().SetCharArray(&g_lightRange[0], light->GetRange());
+	EditorHelper::SetCharArray(&g_lightRange[0], light->GetRange());
 
 	float posX = 105.0f;
 
@@ -594,17 +602,17 @@ void Properties::ShowMaterial(Material* material)
 		return;
 
 	// REFLECT
-	auto texAlbedo = material->GetTextureByType(TextureType_Albedo).lock();
-	auto texRoughness = material->GetTextureByType(TextureType_Roughness).lock();
-	auto texMetallic = material->GetTextureByType(TextureType_Metallic).lock();
-	auto texNormal = material->GetTextureByType(TextureType_Normal).lock();
-	auto texHeight = material->GetTextureByType(TextureType_Height).lock();
-	auto texOcclusion = material->GetTextureByType(TextureType_Occlusion).lock();
-	auto texMask = material->GetTextureByType(TextureType_Mask).lock();
+	auto texAlbedo		= material->GetTextureByType(TextureType_Albedo).lock();
+	auto texRoughness	= material->GetTextureByType(TextureType_Roughness).lock();
+	auto texMetallic	= material->GetTextureByType(TextureType_Metallic).lock();
+	auto texNormal		= material->GetTextureByType(TextureType_Normal).lock();
+	auto texHeight		= material->GetTextureByType(TextureType_Height).lock();
+	auto texOcclusion	= material->GetTextureByType(TextureType_Occlusion).lock();
+	auto texMask		= material->GetTextureByType(TextureType_Mask).lock();
 	g_materialRoughness = material->GetRoughnessMultiplier();
-	g_materialMetallic = material->GetMetallicMultiplier();
-	g_materialNormal = material->GetNormalMultiplier();
-	g_materialHeight = material->GetHeightMultiplier();
+	g_materialMetallic	= material->GetMetallicMultiplier();
+	g_materialNormal	= material->GetNormalMultiplier();
+	g_materialHeight	= material->GetHeightMultiplier();
 	g_materialButtonColorPicker->SetColor(material->GetColorAlbedo());
 	EditorHelper::SetCharArray(&g_matTilingX[0], material->GetTiling().x);
 	EditorHelper::SetCharArray(&g_matTilingY[0], material->GetTiling().y);
@@ -630,10 +638,16 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 128)
 		);
 		// Albedo - Drop Target
-		EditorHelper::GetInstance().GetPayload(g_dragDrop_Texture, &g_dropResult);
-		if (!g_dropResult.empty())
+		DragDrop::GetPayload(&g_dropResult);
+		if (g_dropResult.payload)
 		{
-			LOG_INFO(g_dropResult);
+			auto texture = g_resourceManager->Load<Texture>(g_dropResult.payload);
+			if (!texture.expired())
+			{
+				texture.lock()->SetType(TextureType_Albedo);
+				material->SetTexture(texture);
+			}
+			LOG_INFO(g_dropResult.payload);
 		}
 
 		ImGui::SameLine(); 	g_materialButtonColorPicker->Update();

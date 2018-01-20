@@ -19,46 +19,53 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES ==============
+#include "ProgressDialog.h"
+#include "imgui/imgui.h"
+#include "EditorHelper.h"
+#include "Core/Engine.h"
+//=========================
 
-//= INCLUDES ======
-#include "Widget.h"
-//=================
+//= NAMESPACES ==========
+using namespace std;
+using namespace Directus;
+//=======================
 
-namespace Directus
+static float width = 500.0f;
+
+ProgressDialog::ProgressDialog(const string& title, Context* context)
 {
-	class GameObject;
-	class Transform;
-	class Light;
-	class MeshFilter;
-	class MeshRenderer;
-	class RigidBody;
-	class Collider;
-	class Material;
-	class Camera;
-	class AudioSource;
-	class AudioListener;
-	class Script;
+	m_title = title;
+	m_context = context;
+	m_isVisible = true;
+	m_progress = 0.0f;
 }
 
-class Properties : public Widget
+ProgressDialog::~ProgressDialog()
 {
-public:
-	Properties();
-	void Initialize(Directus::Context* context) override;
-	void Clear();
-	void Update() override;
 
-private:
-	void ShowTransform(Directus::Transform* transform);
-	void ShowLight(Directus::Light* light);
-	void ShowMeshFilter(Directus::MeshFilter* meshFilter);
-	void ShowMeshRenderer(Directus::MeshRenderer* meshRenderer);
-	void ShowRigidBody(Directus::RigidBody* rigidBody);
-	void ShowCollider(Directus::Collider* collider);
-	void ShowMaterial(Directus::Material* material);
-	void ShowCamera(Directus::Camera* camera);
-	void ShowAudioSource(Directus::AudioSource* audioSource);
-	void ShowAudioListener(Directus::AudioListener* audioListener);
-	void ShowScript(Directus::Script* script);
-};
+}
+
+void ProgressDialog::Update()
+{
+	if (!m_isVisible)
+		return;
+
+	ShowProgressBar();
+}
+
+void ProgressDialog::ShowProgressBar()
+{
+	// Window begin
+	ImGui::SetNextWindowSize(ImVec2(width, 73), ImGuiCond_Always);
+	ImGui::Begin(m_title.c_str(), &m_isVisible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
+
+	// Progress	
+	ImGui::PushItemWidth(width - ImGui::GetStyle().WindowPadding.x * 2.0f);
+	ImGui::ProgressBar(m_progress, ImVec2(0.0f, 0.0f));
+	ImGui::Text(m_progressStatus.c_str());
+	ImGui::PopItemWidth();
+
+	// Window end
+	ImGui::End();
+}
