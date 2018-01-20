@@ -130,7 +130,7 @@ void MenuBar::ShowFileDialog()
 		// Scene
 		if (FileSystem::IsEngineSceneFile(g_fileDialogSelection))
 		{
-			EditorHelper::SetEngineUpdate(false);
+			EditorHelper::GetInstance().SetEngineUpdate(false);
 			m_context->GetSubsystem<Threading>()->AddTask([]()
 			{
 				g_scene->LoadFromFile(g_fileDialogSelection);
@@ -145,7 +145,7 @@ void MenuBar::ShowFileDialog()
 		// Scene
 		if (m_fileDialog->GetFilter() == FileDialog_Filter_Scene)
 		{
-			EditorHelper::SetEngineUpdate(false);
+			EditorHelper::GetInstance().SetEngineUpdate(false);
 			m_context->GetSubsystem<Threading>()->AddTask([]()
 			{
 				g_scene->SaveToFile(g_fileDialogSelection);
@@ -171,7 +171,7 @@ void MenuBar::OnSceneLoaded()
 	// Hide progress dialog
 	g_progressDialogVisible = false;
 	m_progressDialog->SetIsVisible(false);
-	EditorHelper::SetEngineUpdate(true);
+	EditorHelper::GetInstance().SetEngineUpdate(true);
 }
 
 void MenuBar::OnSceneSaved()
@@ -179,7 +179,7 @@ void MenuBar::OnSceneSaved()
 	// Hide progress dialog
 	g_progressDialogVisible = false;
 	m_progressDialog->SetIsVisible(false);
-	EditorHelper::SetEngineUpdate(true);
+	EditorHelper::GetInstance().SetEngineUpdate(true);
 }
 
 void MenuBar::ShowAboutWindow()

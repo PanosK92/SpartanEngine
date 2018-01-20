@@ -39,8 +39,6 @@ ProgressDialog::ProgressDialog(const string& title, Context* context)
 	m_context = context;
 	m_isVisible = true;
 	m_progress = 0.0f;
-
-	g_engine = m_context->GetSubsystem<Engine>();
 }
 
 ProgressDialog::~ProgressDialog()

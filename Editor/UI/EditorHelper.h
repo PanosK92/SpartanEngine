@@ -38,12 +38,17 @@ namespace Directus
 
 static const int BUFFER_TEXT_DEFAULT	= 255;
 static const char* g_dragDrop_Texture	= "Texture";
-static Directus::Engine* g_engine		= nullptr;
 
 class EditorHelper
 {
 public:
-	static void Initialize(Directus::Context* context)
+	static EditorHelper& GetInstance()
+	{
+		static EditorHelper instance;
+		return instance;
+	}
+
+	void Initialize(Directus::Context* context)
 	{
 		g_engine = context->GetSubsystem<Directus::Engine>();
 	}
@@ -97,7 +102,7 @@ public:
 		return Directus::Math::Vector2(vector.x, vector.y);
 	}
 
-	static std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context)
+	std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context)
 	{
 		auto resourceManager = context->GetSubsystem<Directus::ResourceManager>();
 		auto texture = resourceManager->GetResourceByPath<Directus::Texture>(filePath);
@@ -134,11 +139,20 @@ public:
 		}
 	}
 
-	static void SetEngineUpdate(bool update)
+	void SetEngineUpdate(bool update)
 	{
+		if (!g_engine)
+		{
+			LOG_WARNING("EditorHelper: Aborting SetEngineUpdate(), engine is null");
+			return;
+		}
+
 		auto flags = g_engine->GetFlags();
 		flags = update ? flags | Directus::Engine_Update : flags & ~Directus::Engine_Update;
 		flags = update ? flags | Directus::Engine_Render : flags & ~Directus::Engine_Render;
 		g_engine->SetFlags(flags);
 	}
+
+private:
+	Directus::Engine* g_engine = nullptr;
 };
