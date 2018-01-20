@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/RigidBody.h"
 #include "Components/Collider.h"
 #include "Components/Light.h"
-#include "ButtonColorPicker.h"
 #include "Components/AudioSource.h"
 #include "Components/AudioListener.h"
 #include "Components/Camera.h"
@@ -40,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IconProvider.h"
 #include "../EditorHelper.h"
 #include "../DragDrop.h"
+#include "../ButtonColorPicker.h"
 //===================================
 
 //= NAMESPACES ==========
@@ -141,10 +141,6 @@ static char g_colSizeZ[BUFFER_TEXT_DEFAULT]		= "0";
 static bool g_colOptimize = false;
 //====================================================
 
-//= DRAG N DROP ====================
-static DragDropPayload g_dropResult;
-//==================================
-
 static ResourceManager* g_resourceManager = nullptr;
 
 #define COMPONENT_BEGIN(name, icon_enum)									\
@@ -159,6 +155,19 @@ static ResourceManager* g_resourceManager = nullptr;
 	}									\
 	ImGui::Separator()					\
 
+#define DROP_TARGET_TEXTURE(payloadType, textureType)					\
+{																		\
+	auto payload = DragDrop::GetPayload(payloadType); 					\
+	if (payload.data)													\
+	{																	\
+		auto texture = g_resourceManager->Load<Texture>(payload.data);	\
+		if (!texture.expired())											\
+		{																\
+			texture.lock()->SetType(textureType);						\
+			material->SetTexture(texture);								\
+		}																\
+	}																	\
+}																		\
 
 Properties::Properties()
 {
@@ -637,19 +646,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
-		// Albedo - Drop Target
-		DragDrop::GetPayload(&g_dropResult);
-		if (g_dropResult.payload)
-		{
-			auto texture = g_resourceManager->Load<Texture>(g_dropResult.payload);
-			if (!texture.expired())
-			{
-				texture.lock()->SetType(TextureType_Albedo);
-				material->SetTexture(texture);
-			}
-			LOG_INFO(g_dropResult.payload);
-		}
-
+		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Albedo);
 		ImGui::SameLine(); 	g_materialButtonColorPicker->Update();
 
 		// Roughness
@@ -662,6 +659,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
+		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Roughness);
 		ImGui::SameLine(); ImGui::SliderFloat("##matRoughness", &g_materialRoughness, 0.0f, 1.0f);
 
 		// Metallic
@@ -674,6 +672,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
+		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Metallic);
 		ImGui::SameLine(); ImGui::SliderFloat("##matMetallic", &g_materialMetallic, 0.0f, 1.0f);
 
 		// Normal
@@ -686,6 +685,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
+		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Normal);
 		ImGui::SameLine(); ImGui::SliderFloat("##matNormal", &g_materialNormal, 0.0f, 1.0f);
 
 		// Height
@@ -698,6 +698,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
+		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Height);
 		ImGui::SameLine(); ImGui::SliderFloat("##matHeight", &g_materialHeight, 0.0f, 1.0f);
 
 		// Occlusion
@@ -710,6 +711,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
+		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Occlusion);
 
 		// Mask
 		ImGui::Text("Mask");
@@ -721,6 +723,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
+		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Mask);
 
 		// Tiling
 		ImGui::Text("Tiling");

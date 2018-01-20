@@ -27,21 +27,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct DragDropPayload
 {
-	DragDropPayload()
+	DragDropPayload(const char* data = nullptr, const char* type = nullptr)
 	{
-		type	= nullptr;
-		payload = nullptr;
-	}
-
-	DragDropPayload(const char* type, const char* payload)
-	{
-		this->type		= type;
-		this->payload	= payload;
+		this->type	= type;
+		this->data	= data;
 	}
 	const char* type;
-	const char* payload;
+	const char* data;
 };
 static const char* g_dragDrop_Type_Texture = "Texture";
+static bool g_isDragging = false;
 
 class DragDrop
 {
@@ -53,24 +48,22 @@ public:
 		{
 			ImGui::SetDragDropPayload(payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
 			ImGui::EndDragDropSource();
-			LOG_INFO("Payload send");
 		}
 	}
 
-	static void GetPayload(DragDropPayload* payload)
+	static DragDropPayload GetPayload(const char* type)
 	{
-		if (!payload)
-			return;
+		DragDropPayload payload;
 
 		if (ImGui::BeginDragDropTarget())
 		{
-			if (const ImGuiPayload* imguiPayload = ImGui::AcceptDragDropPayload(payload->type))
+			if (const ImGuiPayload* imguiPayload = ImGui::AcceptDragDropPayload(type))
 			{
-				void* ptr = const_cast<void*>(imguiPayload->Data);
-				payload = (DragDropPayload*)ptr;
-				LOG_INFO("Payload received");
+				payload = *(DragDropPayload*)imguiPayload->Data;
 			}
 			ImGui::EndDragDropTarget();
 		}
+
+		return payload;
 	}
 };
