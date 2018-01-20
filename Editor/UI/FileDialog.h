@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ==============
 #include <map>
 #include <memory>
 #include "Core/Stopwatch.h"
-#include "../IconProvider.h"
-#include "../EditorHelper.h"
-//==========================
+#include "IconProvider.h"
+#include "EditorHelper.h"
+//=========================
 
 enum FileDialog_Style
 {

@@ -21,22 +21,56 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
-#include "Math/Vector4.h"
-//=======================
+//= INCLUDES ===========
+#include "imgui/imgui.h"
+//======================
 
-class ButtonColorPicker
+struct DragDropPayload
+{
+	DragDropPayload()
+	{
+		type	= nullptr;
+		payload = nullptr;
+	}
+
+	DragDropPayload(const char* type, const char* payload)
+	{
+		this->type		= type;
+		this->payload	= payload;
+	}
+	const char* type;
+	const char* payload;
+};
+static const char* g_dragDrop_Type_Texture = "Texture";
+
+class DragDrop
 {
 public:
-	ButtonColorPicker(const std::string& windowTitle);
-	void Update();
-	void SetColor(const Directus::Math::Vector4 color) { m_color = color; }
-	const Directus::Math::Vector4& GetColor(){ return m_color; }
 
-private:
-	void ShowColorPicker();
+	static void SendPayload(const DragDropPayload& payload)
+	{
+		if (ImGui::BeginDragDropSource())
+		{
+			ImGui::SetDragDropPayload(payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
+			ImGui::EndDragDropSource();
+			LOG_INFO("Payload send");
+		}
+	}
 
-	bool m_isVisible;
-	Directus::Math::Vector4 m_color;
-	std::string m_windowTitle;
+	static void GetPayload(DragDropPayload* payload)
+	{
+		if (!payload)
+			return;
+
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* imguiPayload = ImGui::AcceptDragDropPayload(payload->type))
+			{
+				void* ptr = const_cast<void*>(imguiPayload->Data);
+				payload = (DragDropPayload*)ptr;
+				LOG_INFO("Payload received");
+			}
+			ImGui::EndDragDropTarget();
+		}
+	}
 };

@@ -37,7 +37,6 @@ namespace Directus
 }
 
 static const int BUFFER_TEXT_DEFAULT	= 255;
-static const char* g_dragDrop_Texture	= "Texture";
 
 class EditorHelper
 {
@@ -111,32 +110,6 @@ public:
 
 		texture = resourceManager->Load<Directus::Texture>(filePath);
 		return texture;
-	}
-
-	static void SendPayload(const char* type, const std::string& text)
-	{
-		if (ImGui::BeginDragDropSource())
-		{
-			ImGui::SetDragDropPayload(type, &text[0], text.size(), ImGuiCond_Once);
-			ImGui::EndDragDropSource();
-		}
-	}
-
-	static void GetPayload(const char* type, std::string* result)
-	{
-		if (!result)
-			return;
-
-		result->clear();
-		if (ImGui::BeginDragDropTarget())
-		{
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(type))
-			{
-				void* ptr = const_cast<void*>(payload->Data);
-				(*result) = (char*)ptr;
-			}
-			ImGui::EndDragDropTarget();
-		}
 	}
 
 	void SetEngineUpdate(bool update)

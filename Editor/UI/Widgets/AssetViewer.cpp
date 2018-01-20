@@ -22,13 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "../imgui/imgui.h"
 #include "AssetViewer.h"
-#include "FileDialog.h"
 #include "FileSystem/FileSystem.h"
 #include "Graphics/Model.h"
 #include "Resource/ResourceManager.h"
 #include "Threading/Threading.h"
-#include "../../ProgressDialog.h"
+#include "../ProgressDialog.h"
 #include "EventSystem/EventSystem.h"
+#include "../EditorHelper.h"
+#include "../FileDialog.h"
 //===================================
 
 //= NAMESPACES ==========

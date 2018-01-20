@@ -19,53 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
-#include "ProgressDialog.h"
-#include "UI/imgui/imgui.h"
-#include "UI/EditorHelper.h"
-#include "Core/Engine.h"
-//=========================
+#pragma once
 
-//= NAMESPACES ==========
-using namespace std;
-using namespace Directus;
+//= INCLUDES ============
+#include "Math/Vector4.h"
 //=======================
 
-static float width = 500.0f;
-
-ProgressDialog::ProgressDialog(const string& title, Context* context)
+class ButtonColorPicker
 {
-	m_title = title;
-	m_context = context;
-	m_isVisible = true;
-	m_progress = 0.0f;
-}
+public:
+	ButtonColorPicker(const std::string& windowTitle);
+	void Update();
+	void SetColor(const Directus::Math::Vector4& color) { m_color = color; }
+	const Directus::Math::Vector4& GetColor(){ return m_color; }
 
-ProgressDialog::~ProgressDialog()
-{
+private:
+	void ShowColorPicker();
 
-}
-
-void ProgressDialog::Update()
-{
-	if (!m_isVisible)
-		return;
-
-	ShowProgressBar();
-}
-
-void ProgressDialog::ShowProgressBar()
-{
-	// Window begin
-	ImGui::SetNextWindowSize(ImVec2(width, 73), ImGuiCond_Always);
-	ImGui::Begin(m_title.c_str(), &m_isVisible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
-
-	// Progress	
-	ImGui::PushItemWidth(width - ImGui::GetStyle().WindowPadding.x * 2.0f);
-	ImGui::ProgressBar(m_progress, ImVec2(0.0f, 0.0f));
-	ImGui::Text(m_progressStatus.c_str());
-	ImGui::PopItemWidth();
-
-	// Window end
-	ImGui::End();
-}
+	bool m_isVisible;
+	Directus::Math::Vector4 m_color;
+	std::string m_windowTitle;
+};
