@@ -54,7 +54,6 @@ FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filte
 	m_itemSize			= (type != FileDialog_Style_Basic) ? g_itemSizeMin * 2.0f : g_itemSizeMin;
 	m_stopwatch			= make_unique<Stopwatch>();
 	m_navigateToPath	= false;
-	g_dragDropPayload	= DragDropPayload(g_dragDrop_Type_Texture, nullptr);
 }
 
 void FileDialog::SetFilter(FileDialog_Filter filter)
@@ -123,7 +122,8 @@ bool FileDialog::Show(bool* isVisible, string* path)
 
 		if (m_style == FileDialog_Style_Basic)
 		{
-			g_dragDropPayload.payload = item.first.c_str();
+			g_dragDropPayload.type = g_dragDrop_Type_Texture;
+			g_dragDropPayload.data = item.first.c_str();
 			DragDrop::SendPayload(g_dragDropPayload);
 		}
 		
