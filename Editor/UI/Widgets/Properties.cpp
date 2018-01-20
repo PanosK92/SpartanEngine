@@ -303,7 +303,7 @@ void Properties::ShowLight(Light* light)
 	g_lightShadows = light->GetShadowQuality() != No_Shadows;
 	g_lightAngle = light->GetAngle();
 	g_lightButtonColorPicker->SetColor(light->GetColor());
-	EditorHelper::SetCharArray(&g_lightRange[0], light->GetRange());
+	EditorHelper::GetInstance().SetCharArray(&g_lightRange[0], light->GetRange());
 
 	float posX = 105.0f;
 
@@ -630,7 +630,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 128)
 		);
 		// Albedo - Drop Target
-		EditorHelper::GetPayload(g_dragDrop_Texture, &g_dropResult);
+		EditorHelper::GetInstance().GetPayload(g_dragDrop_Texture, &g_dropResult);
 		if (!g_dropResult.empty())
 		{
 			LOG_INFO(g_dropResult);

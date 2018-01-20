@@ -61,7 +61,7 @@ Editor::~Editor()
 void Editor::Initialize(SDL_Window* window, Context* context)
 {
 	IconProvider::Initialize(context);
-	EditorHelper::Initialize(context);
+	EditorHelper::GetInstance().Initialize(context);
 
 	g_window = window;
 	ImGui_Impl_Initialize(g_window, context->GetSubsystem<Graphics>());

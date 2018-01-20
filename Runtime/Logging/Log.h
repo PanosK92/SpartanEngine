@@ -25,16 +25,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Helper.h"
 #include <string>
 #include <memory>
-#include <sstream>
 #include <iomanip>
-
 //=========================
 
 namespace Directus
 {
-#define LOG_INFO(text) Log::Write(text, Log::Info)
-#define LOG_WARNING(text) Log::Write(text, Log::Warning)
-#define LOG_ERROR(text) Log::Write(text, Log::Error)
+#define LOG_INFO(text)		Directus::Log::Write(text, Directus::Log::Info)
+#define LOG_WARNING(text)	Directus::Log::Write(text, Directus::Log::Warning)
+#define LOG_ERROR(text)		Directus::Log::Write(text, Directus::Log::Error)
 
 	class GameObject;
 
