@@ -164,6 +164,7 @@ namespace Directus
 		if (key == CapsLock)		return m_DX8Input->IsKeyboardKeyDown(DIK_CAPSLOCK);
 		if (key == Backspace)		return m_DX8Input->IsKeyboardKeyDown(DIK_BACKSPACE);
 		if (key == Return)			return m_DX8Input->IsKeyboardKeyDown(DIK_RETURN);
+		if (key == Delete)			return m_DX8Input->IsKeyboardKeyDown(DIK_DELETE);
 
 		return false;
 	}

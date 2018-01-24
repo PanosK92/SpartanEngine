@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "DX8Input.h"
 #include "../Math/Vector2.h"
-#include "../Core/Subsystem.h"
+#include "../Core/SubSystem.h"
 //============================
 
 namespace Directus
@@ -109,9 +109,10 @@ namespace Directus
 		CapsLock,
 		Backspace,
 		Return,
+		Delete
 	};
 
-	class Input : public Subsystem
+	class ENGINE_API Input : public Subsystem
 	{
 	public:
 		Input(Context* context);
