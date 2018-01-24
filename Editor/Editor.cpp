@@ -19,13 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================================
+//= INCLUDES =======================
 #include "Editor.h"
 #include <memory>
 #include "UI/ImGui_Implementation.h"
 #include "UI/Widgets/Widget.h"
 #include "Core/Context.h"
-#include "Graphics/D3D11/D3D11GraphicsDevice.h"
 #include "UI/Widgets/MenuBar.h"
 #include "UI/Widgets/Properties.h"
 #include "UI/Widgets/Console.h"
@@ -34,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Viewport.h"
 #include "UI/IconProvider.h"
 #include "UI/EditorHelper.h"
-//=============================================
+//==================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -115,7 +114,7 @@ void Editor::ApplyStyle()
 	ImGui::StyleColorsDark();
 	ImGuiStyle& style = ImGui::GetStyle();
 
-	float fontSize = 15.0f;
+	float fontSize			= 15.0f;
 	float roundness			= 2.0f;
 	ImVec4 white			= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 	ImVec4 text				= ImVec4(0.76f, 0.77f, 0.8f, 1.0f);
@@ -126,22 +125,22 @@ void Editor::ApplyStyle()
 	ImVec4 highlightBright	= ImVec4(0.22f, 0.5f, 0.64f, 1.0f);
 
 	// Spatial
-	style.WindowBorderSize = 1.0f;
-	style.FrameBorderSize = 1.0f;
-	//style.WindowMinSize = ImVec2(160, 20);
-	//style.FramePadding = ImVec2(4, 2);
-	//style.ItemSpacing = ImVec2(6, 2);
-	//style.ItemInnerSpacing = ImVec2(6, 4);
-	style.Alpha = 1.0f;
-	style.WindowRounding = roundness;
-	style.FrameRounding = roundness;
-	//style.IndentSpacing = 6.0f;
-	//style.ItemInnerSpacing = ImVec2(2, 4);
-	//style.ColumnsMinSpacing = 50.0f;
-	//style.GrabMinSize = 14.0f;
-	style.GrabRounding = roundness;
-	//style.ScrollbarSize = 12.0f;
-	style.ScrollbarRounding = roundness;	
+	style.WindowBorderSize		= 1.0f;
+	style.FrameBorderSize		= 1.0f;
+	//style.WindowMinSize		= ImVec2(160, 20);
+	//style.FramePadding		= ImVec2(4, 2);
+	//style.ItemSpacing			= ImVec2(6, 2);
+	//style.ItemInnerSpacing	= ImVec2(6, 4);
+	style.Alpha					= 1.0f;
+	style.WindowRounding		= roundness;
+	style.FrameRounding			= roundness;
+	//style.IndentSpacing		= 6.0f;
+	//style.ItemInnerSpacing	= ImVec2(2, 4);
+	//style.ColumnsMinSpacing	= 50.0f;
+	//style.GrabMinSize			= 14.0f;
+	style.GrabRounding			= roundness;
+	//style.ScrollbarSize		= 12.0f;
+	style.ScrollbarRounding		= roundness;	
 
 	// Colors
 	style.Colors[ImGuiCol_Text]						= text;

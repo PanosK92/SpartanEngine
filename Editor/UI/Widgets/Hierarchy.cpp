@@ -19,8 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES ====================
 #include "Hierarchy.h"
 #include "../imgui/imgui.h"
@@ -36,7 +34,10 @@ using namespace Directus;
 //=======================
 
 weak_ptr<GameObject> Hierarchy::m_gameObjectSelected;
-static Scene* g_scene = nullptr;
+weak_ptr<GameObject> g_gameObjectEmpty;
+static Engine* g_engine = nullptr;
+static Scene* g_scene	= nullptr;
+static bool g_wasItemHovered = false;
 
 Hierarchy::Hierarchy()
 {
@@ -49,36 +50,39 @@ Hierarchy::Hierarchy()
 void Hierarchy::Initialize(Context* context)
 {
 	Widget::Initialize(context);
+	g_engine = m_context->GetSubsystem<Engine>();
 	g_scene = m_context->GetSubsystem<Scene>();
 }
 
 void Hierarchy::Update()
 {
-	// If the engine is not updating, don't update
-	if (!m_context->GetSubsystem<Engine>()->IsUpdating())
+	g_wasItemHovered = false;
+
+	// If the engine is not updating, don't populate the hierarchy yet
+	if (!g_engine->IsUpdating())
 		return;
 
 	if (ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
-		Populate();
+		Tree_Populate();
 		ImGui::PopStyleVar();
 		ImGui::TreePop();
 	}
 }
 
-void Hierarchy::Populate()
+void Hierarchy::Tree_Populate()
 {
 	auto rootGameObjects = g_scene->GetRootGameObjects();
 	for (const auto& gameObject : rootGameObjects)
 	{
-		AddGameObject(gameObject);
+		Tree_AddGameObject(gameObject);
 	}
 }
 
-void Hierarchy::AddGameObject(weak_ptr<GameObject> gameObject)
+void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& currentGameObject)
 {
-	GameObject* gameObjPtr = gameObject.lock().get();
+	GameObject* gameObjPtr = currentGameObject.lock().get();
 
 	// Node children visibility
 	bool hasVisibleChildren = false;
@@ -92,23 +96,65 @@ void Hierarchy::AddGameObject(weak_ptr<GameObject> gameObject)
 		}
 	}
 
-	// Node flags
+	// Node flags -> Default
 	ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnDoubleClick;
+	// Node flags -> Expandable?
 	node_flags |= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf;
+	// Node flags -> Selected?
 	if (!m_gameObjectSelected.expired())
 	{
-		node_flags |= m_gameObjectSelected.lock()->GetID() == gameObjPtr->GetID() ? ImGuiTreeNodeFlags_Selected : 0;
+		node_flags |= (m_gameObjectSelected.lock()->GetID() == gameObjPtr->GetID()) ? ImGuiTreeNodeFlags_Selected : 0;
 	}
 
 	// Node
-	bool node_open = ImGui::TreeNodeEx((void*)(intptr_t)gameObjPtr->GetID(), node_flags, gameObjPtr->GetName().c_str());
-	if (ImGui::IsItemClicked())
+	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)gameObjPtr->GetID(), node_flags, gameObjPtr->GetName().c_str());
+
+	// Handle clicking
+	if (ImGui::IsMouseHoveringWindow())
+	{		
+		// Left click
+		if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_Default))
+		{
+			m_gameObjectSelected = currentGameObject;
+			g_wasItemHovered = true;
+		}
+
+		// Right click
+		if (ImGui::IsMouseClicked(1) && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
+		{
+			m_gameObjectSelected = currentGameObject;
+			ImGui::OpenPopup("##HierarchyContextMenu");
+			g_wasItemHovered = true;
+		}
+
+		// Clicking inside the window (but not on an item)
+		if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !g_wasItemHovered)
+		{
+			m_gameObjectSelected = g_gameObjectEmpty;
+		}
+	}
+	
+	// Context menu
+	if (ImGui::BeginPopup("##HierarchyContextMenu"))
 	{
-		m_gameObjectSelected = gameObject;
+		if (!m_gameObjectSelected.expired())
+		{
+			ImGui::MenuItem("Rename");
+			if (ImGui::MenuItem("Delete"))
+			{
+				GameObject_Delete(m_gameObjectSelected);
+			}
+			ImGui::Separator();
+		}		
+		if (ImGui::MenuItem("Creaty Empty"))
+		{
+			GameObject_CreateEmpty();
+		}
+		ImGui::EndPopup();
 	}
 
 	// Child nodes
-	if (node_open)
+	if (isNodeOpen)
 	{
 		if (hasVisibleChildren)
 		{
@@ -117,9 +163,19 @@ void Hierarchy::AddGameObject(weak_ptr<GameObject> gameObject)
 				if (!child->GetGameObject()->IsVisibleInHierarchy())
 					continue;
 
-				AddGameObject(child->GetGameObjectRef());
+				Tree_AddGameObject(child->GetGameObjectRef());
 			}
 		}
 		ImGui::TreePop();
 	}
+}
+
+void Hierarchy::GameObject_Delete(weak_ptr<GameObject> gameObject)
+{
+	g_scene->RemoveGameObject(gameObject);
+}
+
+void Hierarchy::GameObject_CreateEmpty()
+{
+	g_scene->CreateGameObject();
 }

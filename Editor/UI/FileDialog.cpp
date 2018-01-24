@@ -53,7 +53,7 @@ FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filte
 	m_pathClicked		= m_currentDirectory;
 	m_itemSize			= (type != FileDialog_Style_Basic) ? g_itemSizeMin * 2.0f : g_itemSizeMin;
 	m_stopwatch			= make_unique<Stopwatch>();
-	m_navigateToPath	= false;
+	m_navigateToPath	= true;
 }
 
 void FileDialog::SetFilter(FileDialog_Filter filter)

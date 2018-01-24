@@ -39,8 +39,10 @@ public:
 	static void SetSelectedGameObject(std::weak_ptr<Directus::GameObject> gameObject) { m_gameObjectSelected = gameObject; }
 
 private:
-	void Populate();
-	void AddGameObject(std::weak_ptr<Directus::GameObject> gameObject);
+	void Tree_Populate();
+	void Tree_AddGameObject(const std::weak_ptr<Directus::GameObject>& gameObject);
+	void GameObject_Delete(std::weak_ptr<Directus::GameObject> gameObject);
+	void GameObject_CreateEmpty();
 
 	static std::weak_ptr<Directus::GameObject> m_gameObjectSelected;
 };
