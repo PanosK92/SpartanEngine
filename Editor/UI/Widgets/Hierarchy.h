@@ -35,14 +35,21 @@ public:
 	void Initialize(Directus::Context* context) override;
 	void Update() override;
 
+
 	static std::weak_ptr<Directus::GameObject> GetSelectedGameObject() { return m_gameObjectSelected; }
 	static void SetSelectedGameObject(std::weak_ptr<Directus::GameObject> gameObject) { m_gameObjectSelected = gameObject; }
 
-private:
+private:	
 	void Tree_Populate();
 	void Tree_AddGameObject(const std::weak_ptr<Directus::GameObject>& gameObject);
-	void GameObject_Delete(std::weak_ptr<Directus::GameObject> gameObject);
-	void GameObject_CreateEmpty();
 
+	void OnTreeBegin();
+	void OnTreeEnd();
+
+	void HandleKeyShortcuts();
+
+	void Action_GameObject_Delete(std::weak_ptr<Directus::GameObject> gameObject);
+	void Action_GameObject_CreateEmpty();
+	
 	static std::weak_ptr<Directus::GameObject> m_gameObjectSelected;
 };

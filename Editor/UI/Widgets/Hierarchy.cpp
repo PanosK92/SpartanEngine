@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/GameObject.h"
 #include "Components/Transform.h"
 #include "Core/Engine.h"
+#include "Input/Input.h"
 //===============================
 
 //= NAMESPACES ==========
@@ -37,6 +38,7 @@ weak_ptr<GameObject> Hierarchy::m_gameObjectSelected;
 weak_ptr<GameObject> g_gameObjectEmpty;
 static Engine* g_engine = nullptr;
 static Scene* g_scene	= nullptr;
+static Input* g_input	= nullptr;
 static bool g_wasItemHovered = false;
 
 Hierarchy::Hierarchy()
@@ -52,37 +54,53 @@ void Hierarchy::Initialize(Context* context)
 	Widget::Initialize(context);
 	g_engine = m_context->GetSubsystem<Engine>();
 	g_scene = m_context->GetSubsystem<Scene>();
+	g_input = m_context->GetSubsystem<Input>();
 }
 
 void Hierarchy::Update()
 {
-	g_wasItemHovered = false;
-
 	// If the engine is not updating, don't populate the hierarchy yet
 	if (!g_engine->IsUpdating())
 		return;
-
-	if (ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
-		Tree_Populate();
-		ImGui::PopStyleVar();
-		ImGui::TreePop();
-	}
+	
+	Tree_Populate();
 }
 
 void Hierarchy::Tree_Populate()
 {
-	auto rootGameObjects = g_scene->GetRootGameObjects();
-	for (const auto& gameObject : rootGameObjects)
+	OnTreeBegin();
+
+	if (ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		Tree_AddGameObject(gameObject);
+		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
+		auto rootGameObjects = g_scene->GetRootGameObjects();
+		for (const auto& gameObject : rootGameObjects)
+		{
+			Tree_AddGameObject(gameObject);
+		}
+
+		ImGui::PopStyleVar();
+		ImGui::TreePop();
 	}
+
+	OnTreeEnd();
 }
 
-void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& currentGameObject)
+void Hierarchy::OnTreeBegin()
 {
-	GameObject* gameObjPtr = currentGameObject.lock().get();
+	g_wasItemHovered = false;
+}
+
+void Hierarchy::OnTreeEnd()
+{
+	HandleKeyShortcuts();
+}
+
+void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
+{
+	GameObject* gameObjPtr = gameObject.lock().get();
+	if (!gameObjPtr)
+		return;
 
 	// Node children visibility
 	bool hasVisibleChildren = false;
@@ -115,7 +133,7 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& currentGameObject
 		// Left click
 		if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_Default))
 		{
-			m_gameObjectSelected = currentGameObject;
+			m_gameObjectSelected = gameObject;
 			g_wasItemHovered = true;
 		}
 
@@ -124,7 +142,7 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& currentGameObject
 		{
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
 			{
-				m_gameObjectSelected = currentGameObject;
+				m_gameObjectSelected = gameObject;
 			}
 			else
 			{
@@ -146,15 +164,15 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& currentGameObject
 		if (!m_gameObjectSelected.expired())
 		{
 			ImGui::MenuItem("Rename");
-			if (ImGui::MenuItem("Delete"))
+			if (ImGui::MenuItem("Delete", "Delete"))
 			{
-				GameObject_Delete(m_gameObjectSelected);
+				Action_GameObject_Delete(m_gameObjectSelected);
 			}
 			ImGui::Separator();
 		}		
 		if (ImGui::MenuItem("Creaty Empty"))
 		{
-			GameObject_CreateEmpty();
+			Action_GameObject_CreateEmpty();
 		}
 		ImGui::EndPopup();
 	}
@@ -176,12 +194,20 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& currentGameObject
 	}
 }
 
-void Hierarchy::GameObject_Delete(weak_ptr<GameObject> gameObject)
+void Hierarchy::HandleKeyShortcuts()
+{
+	if (g_input->GetKey(Delete))
+	{
+		Action_GameObject_Delete(m_gameObjectSelected);
+	}
+}
+
+void Hierarchy::Action_GameObject_Delete(weak_ptr<GameObject> gameObject)
 {
 	g_scene->RemoveGameObject(gameObject);
 }
 
-void Hierarchy::GameObject_CreateEmpty()
+void Hierarchy::Action_GameObject_CreateEmpty()
 {
 	auto gameObject = g_scene->CreateGameObject();
 	if (auto selected = m_gameObjectSelected.lock())
