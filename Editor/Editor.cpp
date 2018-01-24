@@ -134,6 +134,7 @@ void Editor::ApplyStyle()
 	style.Alpha					= 1.0f;
 	style.WindowRounding		= roundness;
 	style.FrameRounding			= roundness;
+	style.PopupRounding			= roundness;
 	//style.IndentSpacing		= 6.0f;
 	//style.ItemInnerSpacing	= ImVec2(2, 4);
 	//style.ColumnsMinSpacing	= 50.0f;
