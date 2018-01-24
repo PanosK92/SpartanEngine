@@ -155,9 +155,9 @@ static ResourceManager* g_resourceManager = nullptr;
 	}									\
 	ImGui::Separator()					\
 
-#define DROP_TARGET_TEXTURE(payloadType, textureType)					\
+#define DROP_TARGET_TEXTURE(textureType)								\
 {																		\
-	auto payload = DragDrop::GetPayload(payloadType); 					\
+	auto payload = DragDrop::GetPayload(g_dragDrop_Type_Texture); 		\
 	if (payload.data)													\
 	{																	\
 		auto texture = g_resourceManager->Load<Texture>(payload.data);	\
@@ -646,7 +646,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
-		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Albedo);
+		DROP_TARGET_TEXTURE(TextureType_Albedo);
 		ImGui::SameLine(); 	g_materialButtonColorPicker->Update();
 
 		// Roughness
@@ -659,7 +659,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
-		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Roughness);
+		DROP_TARGET_TEXTURE(TextureType_Roughness);
 		ImGui::SameLine(); ImGui::SliderFloat("##matRoughness", &g_materialRoughness, 0.0f, 1.0f);
 
 		// Metallic
@@ -672,7 +672,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
-		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Metallic);
+		DROP_TARGET_TEXTURE(TextureType_Metallic);
 		ImGui::SameLine(); ImGui::SliderFloat("##matMetallic", &g_materialMetallic, 0.0f, 1.0f);
 
 		// Normal
@@ -685,7 +685,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
-		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Normal);
+		DROP_TARGET_TEXTURE(TextureType_Normal);
 		ImGui::SameLine(); ImGui::SliderFloat("##matNormal", &g_materialNormal, 0.0f, 1.0f);
 
 		// Height
@@ -698,7 +698,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
-		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Height);
+		DROP_TARGET_TEXTURE(TextureType_Height);
 		ImGui::SameLine(); ImGui::SliderFloat("##matHeight", &g_materialHeight, 0.0f, 1.0f);
 
 		// Occlusion
@@ -711,7 +711,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
-		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Occlusion);
+		DROP_TARGET_TEXTURE(TextureType_Occlusion);
 
 		// Mask
 		ImGui::Text("Mask");
@@ -723,7 +723,7 @@ void Properties::ShowMaterial(Material* material)
 			ImColor(255, 255, 255, 255),
 			ImColor(255, 255, 255, 128)
 		);
-		DROP_TARGET_TEXTURE(g_dragDrop_Type_Texture, TextureType_Mask);
+		DROP_TARGET_TEXTURE(TextureType_Mask);
 
 		// Tiling
 		ImGui::Text("Tiling");
@@ -754,9 +754,9 @@ void Properties::ShowCamera(Camera* camera)
 
 	// REFLECT
 	g_cameraButtonColorPicker->SetColor(camera->GetClearColor());
-	g_cameraProjectionInt = (int)camera->GetProjection();
-	g_cameraProjection = g_cameraProjections[g_cameraProjectionInt];
-	g_cameraFOV = camera->GetFOV_Horizontal_Deg();
+	g_cameraProjectionInt	= (int)camera->GetProjection();
+	g_cameraProjection		= g_cameraProjections[g_cameraProjectionInt];
+	g_cameraFOV				= camera->GetFOV_Horizontal_Deg();
 	EditorHelper::SetCharArray(&g_cameraNear[0], camera->GetNearPlane());
 	EditorHelper::SetCharArray(&g_cameraFar[0], camera->GetFarPlane());
 

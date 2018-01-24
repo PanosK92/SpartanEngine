@@ -45,8 +45,9 @@ public:
 	static void SendPayload(const DragDropPayload& payload)
 	{
 		if (ImGui::BeginDragDropSource())
-		{
+		{		
 			ImGui::SetDragDropPayload(payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
+			ICON_PROVIDER_IMAGE(Icon_File_Default, 50);
 			ImGui::EndDragDropSource();
 		}
 	}

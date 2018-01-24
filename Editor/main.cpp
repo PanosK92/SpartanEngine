@@ -103,6 +103,13 @@ void Update(bool& isRunning, SDL_Event* event)
 		isRunning = false;
 	}
 
+	while (SDL_PollEvent(event))
+	{
+		Event_Window(event);
+		Event_Input(event);
+		g_editor->HandleEvent(event);
+	}
+
 	// Update engine
 	g_engine->Update();
 	// Set back buffer as render target (for ImGUI to render on)
@@ -167,12 +174,6 @@ int main(int argc, char* argv[])
 	SDL_Event event;
 	while (isRunning)
 	{
-		if (SDL_PollEvent(&event))
-		{
-			Event_Window(&event);
-			Event_Input(&event);
-			g_editor->HandleEvent(&event);
-		}
 		Update(isRunning, &event);
 	}
 

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <d3dcompiler.h>
 #include "Core/Timer.h"
 #include "Core/Context.h"
+#include "Logging/Log.h"
 //===============================
 
 //= NAMESPACES ==========
@@ -519,7 +520,7 @@ bool ImGui_Impl_Initialize(SDL_Window* window, Context* context)
 	SDL_SysWMinfo wmInfo;
 	SDL_VERSION(&wmInfo.version);
 	SDL_GetWindowWMInfo(window, &wmInfo);
-	io.ImeWindowHandle = (HWND)systemInfo.info.win.window;
+	io.ImeWindowHandle = (void*)systemInfo.info.win.window;
 #else
 	(void)window;
 #endif
@@ -534,17 +535,17 @@ bool ImGui_Impl_ProcessEvent(SDL_Event* event)
 	{
 	case SDL_MOUSEWHEEL:
 	{
-		if (event->wheel.x > 0) io.MouseWheelH += 1;
-		if (event->wheel.x < 0) io.MouseWheelH -= 1;
-		if (event->wheel.y > 0) io.MouseWheel += 1;
-		if (event->wheel.y < 0) io.MouseWheel -= 1;
+		if (event->wheel.x > 0) io.MouseWheelH	+= 1;
+		if (event->wheel.x < 0) io.MouseWheelH	-= 1;
+		if (event->wheel.y > 0) io.MouseWheel	+= 1;
+		if (event->wheel.y < 0) io.MouseWheel	-= 1;
 		return true;
 	}
 	case SDL_MOUSEBUTTONDOWN:
 	{
-		if (event->button.button == SDL_BUTTON_LEFT) g_MousePressed[0]		= true;
-		if (event->button.button == SDL_BUTTON_RIGHT) g_MousePressed[1]		= true;
-		if (event->button.button == SDL_BUTTON_MIDDLE) g_MousePressed[2]	= true;
+		if (event->button.button == SDL_BUTTON_LEFT)	g_MousePressed[0] = true;
+		if (event->button.button == SDL_BUTTON_RIGHT)	g_MousePressed[1] = true;
+		if (event->button.button == SDL_BUTTON_MIDDLE)	g_MousePressed[2] = true;
 		return true;
 	}
 	case SDL_TEXTINPUT:
@@ -578,7 +579,9 @@ void ImGui_Impl_Shutdown()
 void ImGui_Impl_NewFrame(SDL_Window* window)
 {
 	if (!g_pFontSampler)
+	{
 		ImGui_Impl_CreateDeviceObjects();
+	}
 
 	ImGuiIO& io = ImGui::GetIO();
 

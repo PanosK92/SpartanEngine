@@ -34,7 +34,6 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-static bool g_visible = false;
 static bool g_scrollToBottom = false;
 static ImVec4 g_logColor[3] =
 {
@@ -76,7 +75,7 @@ void Console::Update()
 		if (!g_logFilter.PassFilter(log.text.c_str()))
 			continue;
 
-		if (log.errorLevel == 0 && m_showInfo || log.errorLevel == 1 && m_showWarnings || log.errorLevel == 2 && m_showErrors)
+		if ((log.errorLevel == 0 && m_showInfo) || (log.errorLevel == 1 && m_showWarnings) || (log.errorLevel == 2 && m_showErrors))
 		{
 			ImGui::PushStyleColor(ImGuiCol_Text, g_logColor[log.errorLevel]);
 			ImGui::TextUnformatted(log.text.c_str());
@@ -96,7 +95,7 @@ void Console::Update()
 void Console::AddLogPackage(LogPackage package)
 {
 	m_logs.push_back(package);
-	if (m_logs.size() > m_maxLogEntries)
+	if ((int)m_logs.size() > m_maxLogEntries)
 	{
 		m_logs.pop_front();
 	}
