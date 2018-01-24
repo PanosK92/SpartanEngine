@@ -183,5 +183,9 @@ void Hierarchy::GameObject_Delete(weak_ptr<GameObject> gameObject)
 
 void Hierarchy::GameObject_CreateEmpty()
 {
-	g_scene->CreateGameObject();
+	auto gameObject = g_scene->CreateGameObject();
+	if (auto selected = m_gameObjectSelected.lock())
+	{
+		gameObject.lock()->GetTransform()->SetParent(selected->GetTransform());
+	}
 }
