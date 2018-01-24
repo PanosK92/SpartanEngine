@@ -209,14 +209,14 @@ void MenuBar::ShowAboutWindow()
 	ImGui::Text("CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
 	ImGui::Separator();
 	ImGui::Text("Third party libraries");
-	ImGui::Text("\tAngelScript");
-	ImGui::Text("\tAssimp");
-	ImGui::Text("\tBullet");
-	ImGui::Text("\tFMOD");
-	ImGui::Text("\tFreeImage");
-	ImGui::Text("\tFreeType");
-	ImGui::Text("\tImGui");
-	ImGui::Text("\tPugiXML");
-	ImGui::Text("\tSDL");
+	ImGui::BulletText("AngelScript");
+	ImGui::BulletText("Assimp");
+	ImGui::BulletText("Bullet");
+	ImGui::BulletText("FMOD");
+	ImGui::BulletText("FreeImage");
+	ImGui::BulletText("FreeType");
+	ImGui::BulletText("ImGui");
+	ImGui::BulletText("PugiXML");
+	ImGui::BulletText("SDL");
 	ImGui::End();
 }
