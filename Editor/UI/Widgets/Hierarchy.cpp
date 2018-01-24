@@ -120,10 +120,16 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& currentGameObject
 		}
 
 		// Right click
-		if (ImGui::IsMouseClicked(1) && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
+		if (ImGui::IsMouseClicked(1))
 		{
-			m_gameObjectSelected = currentGameObject;
-			ImGui::OpenPopup("##HierarchyContextMenu");
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
+			{
+				m_gameObjectSelected = currentGameObject;
+			}
+			else
+			{
+				ImGui::OpenPopup("##HierarchyContextMenu");
+			}
 			g_wasItemHovered = true;
 		}
 
