@@ -75,7 +75,14 @@ void Viewport::Update()
 {
 	if (!g_renderer)
 		return;
+	
+	ShowTopToolbar();
+	ImGui::Separator();
+	ShowFrame();
+}
 
+void Viewport::ShowTopToolbar()
+{
 	// Render options
 	ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetStyle().WindowPadding.x); ImGui::Checkbox("Physics", &g_physics);
 	ImGui::SameLine(); ImGui::Checkbox("AABB", &g_aabb);
@@ -83,7 +90,7 @@ void Viewport::Update()
 	ImGui::SameLine(); ImGui::Checkbox("Picking Ray", &g_pickingRay);
 	ImGui::SameLine(); ImGui::Checkbox("Scene Grid", &g_grid);
 	ImGui::SameLine(); ImGui::Checkbox("Performance Metrics", &g_performanceMetrics);
-	
+
 	// G-Buffer Visualization
 	ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetWindowSize().x - 145); ImGui::Text("G-Buffer");
 	ImGui::PushItemWidth(80);
@@ -106,11 +113,13 @@ void Viewport::Update()
 	}
 	ImGui::PopItemWidth();
 
-	ImGui::Separator();
+	SetRenderFlags();
+}
 
-	// Frame
-	float width = ImGui::GetWindowContentRegionWidth();
-	float height = ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y;
+void Viewport::ShowFrame()
+{
+	float width		= ImGui::GetWindowContentRegionWidth();
+	float height	= ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y - 30;
 	g_renderer->SetResolution(width, height);
 	g_renderer->SetViewport(width, height);
 
@@ -124,10 +133,7 @@ void Viewport::Update()
 		ImColor(50, 127, 166, 255)
 	);
 
-	// GameObject mouse picking
 	MousePicking();
-
-	SetRenderFlags();
 }
 
 void Viewport::MousePicking()

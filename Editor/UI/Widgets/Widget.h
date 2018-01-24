@@ -20,7 +20,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
+
+//= INCLUDES ====
 #include <string>
+//===============
 
 namespace Directus { class Context; }
 
@@ -39,5 +42,5 @@ protected:
 	bool m_isVisible = false;
 	bool m_isWindow = true;
 	std::string m_title;
-	int m_windowFlags;
+	int m_windowFlags = 0;
 };
