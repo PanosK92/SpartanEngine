@@ -189,7 +189,10 @@ void MenuBar::ShowAboutWindow()
 	ImGui::Begin("About", &g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
 	ImGui::SetWindowFocus();
 	ImGui::Text("Directus3D %s", ENGINE_VERSION);
-	ImGui::Text("GitHub: https://github.com/PanosK92/Directus3D");
+	ImGui::Text("GitHub: "); ImGui::SameLine(); if (ImGui::Button("https://github.com/PanosK92/Directus3D"))
+	{
+		ShellExecute(nullptr, nullptr, L"https://github.com/PanosK92/Directus3D", nullptr, nullptr , SW_SHOW );
+	}
 	ImGui::Text("By Panos Karabelas.");
 	ImGui::Separator();
 	ImGui::Text("MIT License");
