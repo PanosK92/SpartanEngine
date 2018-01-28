@@ -49,6 +49,7 @@ enum IconProvider_Icon
 
 namespace Directus { class Context; }
 
+// An image
 #define ICON_PROVIDER_IMAGE(icon_enum, size)	\
 	ImGui::Image(								\
 	IconProvider::GetIcon(icon_enum),			\
@@ -58,8 +59,11 @@ namespace Directus { class Context; }
 	ImColor(255, 255, 255, 255),				\
 	ImColor(255, 255, 255, 0))					\
 
+// An image button
 #define ICON_PROVIDER_IMAGE_BUTTON(icon_enum, size) ImGui::ImageButton(ICON_PROVIDER(icon_enum), ImVec2(size, size))
-
+// An image button with a specific ID
+#define ICON_PROVIDER_IMAGE_BUTTON_ID(id, icon_enum, size) IconProvider::ImageButtonID(id, icon_enum, size)
+// An icon shader resource pointer
 #define ICON_PROVIDER(icon_enum) IconProvider::GetIcon(icon_enum)
 
 class IconProvider
@@ -67,4 +71,6 @@ class IconProvider
 public:
 	static void Initialize(Directus::Context* context);
 	static void* GetIcon(IconProvider_Icon icon);
+
+	static bool ImageButtonID(const char* id, IconProvider_Icon icon, float size);
 };

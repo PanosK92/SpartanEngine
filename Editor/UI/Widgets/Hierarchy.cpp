@@ -45,10 +45,10 @@ using namespace Directus;
 
 weak_ptr<GameObject> Hierarchy::m_gameObjectSelected;
 weak_ptr<GameObject> g_gameObjectEmpty;
-static Engine* g_engine = nullptr;
-static Scene* g_scene	= nullptr;
-static Input* g_input	= nullptr;
-static bool g_itemHoveredOnPreviousFrame = false;
+static Engine* g_engine						= nullptr;
+static Scene* g_scene						= nullptr;
+static Input* g_input						= nullptr;
+static bool g_itemHoveredOnPreviousFrame	= false;
 static DragDropPayload g_payload;
 
 Hierarchy::Hierarchy()

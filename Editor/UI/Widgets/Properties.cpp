@@ -147,19 +147,22 @@ static bool g_colOptimize = false;
 //====================================================
 
 static ResourceManager* g_resourceManager = nullptr;
+static const char* g_contexMenuID;
 
-#define COMPONENT_BEGIN(name, icon_enum, componentInstance)				\
-	ICON_PROVIDER_IMAGE(icon_enum, 15);									\
-	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);				\
-	ImGui::SameLine(425);												\
-	if (ICON_PROVIDER_IMAGE_BUTTON(Icon_Component_Options, 15))			\
-	{																	\
-		ImGui::OpenPopup("##ComponentContextMenu_Options");				\
-	}																	\
-	ComponentContextMenu_Options(componentInstance);					\
-	ImGui::SameLine(25);												\
-	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))		\
-	{																	\
+#define COMPONENT_BEGIN(name, icon_enum, componentInstance)					\
+	ICON_PROVIDER_IMAGE(icon_enum, 15);										\
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);					\
+	ImGui::SameLine(425);													\
+	if (ICON_PROVIDER_IMAGE_BUTTON_ID(##name, Icon_Component_Options, 15))	\
+	{																		\
+		g_contexMenuID = ##name;											\
+		ImGui::OpenPopup(g_contexMenuID);									\
+	}																		\
+	if (g_contexMenuID == ##name)											\
+		ComponentContextMenu_Options(g_contexMenuID, componentInstance);	\
+	ImGui::SameLine(25);													\
+	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))			\
+	{																		\
 		
 #define COMPONENT_BEGIN_NO_OPTIONS(name, icon_enum)					\
 	ICON_PROVIDER_IMAGE(icon_enum, 15);								\
@@ -250,6 +253,7 @@ void Properties::Update()
 	ShowMaterial(material);
 	ShowRigidBody(rigidBody);
 	ShowCollider(collider);
+	ShowConstraint(constraint);
 	ShowScript(script);
 
 	ShowAddComponentButton();
@@ -626,6 +630,18 @@ void Properties::ShowCollider(Collider* collider)
 	collider->SetOptimize(g_colOptimize);
 }
 
+void Properties::ShowConstraint(Constraint* collider)
+{
+	if (!collider)
+		return;
+
+	COMPONENT_BEGIN("Constraint", Icon_Component_AudioSource, collider);
+	{
+
+	}
+	COMPONENT_END;
+}
+
 void Properties::ShowMaterial(Material* material)
 {
 	if (!material)
@@ -867,9 +883,9 @@ void Properties::ShowScript(Script* script)
 	COMPONENT_END;
 }
 
-void Properties::ComponentContextMenu_Options(Component* component)
+void Properties::ComponentContextMenu_Options(const char* id, Component* component)
 {
-	if (ImGui::BeginPopup("##ComponentContextMenu_Options"))
+	if (ImGui::BeginPopup(id))
 	{
 		if (ImGui::MenuItem("Remove"))
 		{
