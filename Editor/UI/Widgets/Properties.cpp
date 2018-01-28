@@ -197,7 +197,6 @@ Properties::Properties()
 void Properties::Initialize(Context* context)
 {
 	Widget::Initialize(context);
-
 	g_resourceManager = context->GetSubsystem<ResourceManager>();
 }
 
