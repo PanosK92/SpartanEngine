@@ -100,7 +100,7 @@ static float g_lightAngle = 0.0f;
 static bool g_lightShadows;
 //==============================================================
 
-//= CAMERA ========================================================
+//= CAMERA ==========================================================
 static unique_ptr<ButtonColorPicker> g_cameraButtonColorPicker;
 const char* g_cameraProjections[] = { "Pespective", "Orthographic" };
 static const char* g_cameraProjection = nullptr;
@@ -108,7 +108,7 @@ static int g_cameraProjectionInt = -1;
 static float g_cameraFOV;
 static char g_cameraNear[BUFFER_TEXT_DEFAULT];
 static char g_cameraFar[BUFFER_TEXT_DEFAULT];
-//=================================================================
+//===================================================================
 
 //= RIGIBODY ===============================================
 static char g_rigidBodyMass[BUFFER_TEXT_DEFAULT];
@@ -151,12 +151,12 @@ static ResourceManager* g_resourceManager = nullptr;
 #define COMPONENT_BEGIN(name, icon_enum, componentInstance)				\
 	ICON_PROVIDER_IMAGE(icon_enum, 15);									\
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);				\
-	ImGui::SameLine(420);												\
+	ImGui::SameLine(425);												\
 	if (ICON_PROVIDER_IMAGE_BUTTON(Icon_Component_Options, 15))			\
 	{																	\
-		ImGui::OpenPopup("##ComponentContextMenu");						\
+		ImGui::OpenPopup("##ComponentContextMenu_Options");				\
 	}																	\
-	Component_ContextMenu(componentInstance);							\
+	ComponentContextMenu_Options(componentInstance);					\
 	ImGui::SameLine(25);												\
 	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))		\
 	{																	\
@@ -252,7 +252,7 @@ void Properties::Update()
 	ShowCollider(collider);
 	ShowScript(script);
 
-	ImGui::Button("Add Component");
+	ShowAddComponentButton();
 
 	ImGui::PopItemWidth();
 }
@@ -867,19 +867,99 @@ void Properties::ShowScript(Script* script)
 	COMPONENT_END;
 }
 
-void Properties::Component_ContextMenu(Component* component)
+void Properties::ComponentContextMenu_Options(Component* component)
 {
-	if (!component)
-		return;
-
-	if (ImGui::BeginPopup("##ComponentContextMenu"))
+	if (ImGui::BeginPopup("##ComponentContextMenu_Options"))
 	{
 		if (ImGui::MenuItem("Remove"))
 		{
-			auto gameObject = Hierarchy::GetSelectedGameObject().lock();
-			if (gameObject)
+			if (auto gameObject = Hierarchy::GetSelectedGameObject().lock())
 			{
-				gameObject->RemoveComponentByID(component->GetID());
+				if (component)
+				{
+					gameObject->RemoveComponentByID(component->GetID());
+				}
+			}
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
+void Properties::ShowAddComponentButton()
+{
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
+	ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 50);
+	if (ImGui::Button("Add Component"))
+	{
+		ImGui::OpenPopup("##ComponentContextMenu_Add");
+	}
+	ComponentContextMenu_Add();
+}
+
+void Properties::ComponentContextMenu_Add()
+{
+	if (ImGui::BeginPopup("##ComponentContextMenu_Add"))
+	{
+		if (auto gameObject = Hierarchy::GetSelectedGameObject().lock())
+		{
+			// CAMERA
+			if (ImGui::MenuItem("Camera"))
+			{
+				gameObject->AddComponent<Camera>();
+			}
+
+			// LIGHT
+			if (ImGui::BeginMenu("Light"))
+			{
+				if (ImGui::MenuItem("Directional"))
+				{
+					gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Directional);
+				}
+				else if (ImGui::MenuItem("Point"))
+				{
+					gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Point);
+				}
+				else if (ImGui::MenuItem("Spot"))
+				{
+					gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Spot);
+				}
+
+				ImGui::EndMenu();
+			}
+
+			// PHYSICS
+			if (ImGui::BeginMenu("Physics"))
+			{
+				if (ImGui::MenuItem("Rigid Body"))
+				{
+					gameObject->AddComponent<RigidBody>();
+				}
+				else if (ImGui::MenuItem("Collider"))
+				{
+					gameObject->AddComponent<Collider>();
+				}
+				else if (ImGui::MenuItem("Constraint"))
+				{
+					gameObject->AddComponent<Constraint>();
+				}
+
+				ImGui::EndMenu();
+			}
+
+			// AUDIO
+			if (ImGui::BeginMenu("Audio"))
+			{
+				if (ImGui::MenuItem("Audio Source"))
+				{
+					gameObject->AddComponent<AudioSource>();
+				}
+				else if (ImGui::MenuItem("Audio Listener"))
+				{
+					gameObject->AddComponent<AudioListener>();
+				}
+
+				ImGui::EndMenu();
 			}
 		}
 
