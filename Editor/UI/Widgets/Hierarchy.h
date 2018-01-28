@@ -58,6 +58,7 @@ private:
 	void Action_GameObject_CreateLightSpot();
 	void Action_GameObject_CreateRigidBody();
 	void Action_GameObject_CreateCollider();
+	void Action_GameObject_CreateConstraint();
 	void Action_GameObject_CreateAudioSource();
 	void Action_GameObject_CreateAudioListener();
 	

@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/MeshRenderer.h"
 #include "Components/RigidBody.h"
 #include "Components/Collider.h"
+#include "Components/Constraint.h"
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
 #include "Components/AudioListener.h"
@@ -41,6 +42,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
 //===================================
+
+namespace Directus {
+	class Constraint;
+}
 
 //= NAMESPACES ==========
 using namespace std;
@@ -143,13 +148,25 @@ static bool g_colOptimize = false;
 
 static ResourceManager* g_resourceManager = nullptr;
 
-#define COMPONENT_BEGIN(name, icon_enum)									\
+#define COMPONENT_BEGIN(name, icon_enum, componentInstance)					\
 	ICON_PROVIDER_IMAGE(icon_enum, 15);										\
 	ImGui::SameLine(25);													\
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);					\
 	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))			\
 	{																		\
-	ImGui::SameLine(420); ICON_PROVIDER_IMAGE(Icon_Component_Options, 15);	\
+		ImGui::SameLine(420);												\
+		if (ICON_PROVIDER_IMAGE_BUTTON(Icon_Component_Options, 15))			\
+		{																	\
+			ImGui::OpenPopup("##ComponentContextMenu");						\
+		}																	\
+		Component_ContextMenu(componentInstance);							\
+
+#define COMPONENT_BEGIN_NO_OPTIONS(name, icon_enum)					\
+	ICON_PROVIDER_IMAGE(icon_enum, 15);								\
+	ImGui::SameLine(25);											\
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);			\
+	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))	\
+	{																\
 
 #define COMPONENT_END ImGui::TreePop(); \
 	}									\
@@ -219,6 +236,7 @@ void Properties::Update()
 	auto material		= meshRenderer ? meshRenderer->GetMaterial().lock().get() : nullptr;
 	auto rigidBody		= gameObjectPtr->GetComponent<RigidBody>().lock().get();
 	auto collider		= gameObjectPtr->GetComponent<Collider>().lock().get();
+	auto constraint		= gameObjectPtr->GetComponent<Constraint>().lock().get();
 	auto script			= gameObjectPtr->GetComponent<Script>().lock().get();
 
 	ImGui::PushItemWidth(g_maxWidth);
@@ -254,8 +272,8 @@ void Properties::ShowTransform(Transform* transform)
 	EditorHelper::SetCharArray(&g_transScaZ[0], transform->GetScale().z);
 
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
-							
-	COMPONENT_BEGIN("Transform", Icon_Component_Transform);
+		
+	COMPONENT_BEGIN_NO_OPTIONS("Transform", Icon_Component_Transform);
 	{
 		float posX = 90.0f;
 
@@ -327,7 +345,7 @@ void Properties::ShowLight(Light* light)
 
 	float posX = 105.0f;
 
-	COMPONENT_BEGIN("Light", Icon_Component_Light);
+	COMPONENT_BEGIN("Light", Icon_Component_Light, light);
 	{
 		// Type
 		ImGui::Text("Type");
@@ -395,7 +413,7 @@ void Properties::ShowMeshFilter(MeshFilter* meshFilter)
 	auto mesh = meshFilter->GetMesh().lock();
 	string meshName = mesh ? mesh->GetResourceName() : NOT_ASSIGNED;
 
-	COMPONENT_BEGIN("Mesh Filter", Icon_Component_MeshFilter);
+	COMPONENT_BEGIN("Mesh Filter", Icon_Component_MeshFilter, meshFilter);
 	{
 		// Mesh
 		ImGui::Text("Mesh");
@@ -417,7 +435,7 @@ void Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
 
 	float posX = 150.0f;
 
-	COMPONENT_BEGIN("Mesh Renderer", Icon_Component_MeshRenderer);
+	COMPONENT_BEGIN("Mesh Renderer", Icon_Component_MeshRenderer, meshRenderer);
 	{
 		// Cast shadows
 		ImGui::Text("Cast Shadows");
@@ -460,7 +478,7 @@ void Properties::ShowRigidBody(RigidBody* rigidBody)
 	float posX = 150.0f;
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
-	COMPONENT_BEGIN("RigidBody", Icon_Component_RigidBody);
+	COMPONENT_BEGIN("RigidBody", Icon_Component_RigidBody, rigidBody);
 	{
 		// Mass
 		ImGui::Text("Mass");
@@ -544,7 +562,7 @@ void Properties::ShowCollider(Collider* collider)
 	float posX = 90.0f;
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 
-	COMPONENT_BEGIN("Collider", Icon_Component_Collider);
+	COMPONENT_BEGIN("Collider", Icon_Component_Collider, collider);
 	{
 		// Type
 		ImGui::Text("Type");
@@ -634,7 +652,7 @@ void Properties::ShowMaterial(Material* material)
 
 	float posX = 100.0f;
 
-	COMPONENT_BEGIN("Material", Icon_Component_Material);
+	COMPONENT_BEGIN_NO_OPTIONS("Material", Icon_Component_Material);
 	{
 		// Name
 		ImGui::Text("Name");
@@ -767,7 +785,7 @@ void Properties::ShowCamera(Camera* camera)
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 	float posX = 150.0f;
 
-	COMPONENT_BEGIN("Camera", Icon_Component_Camera);
+	COMPONENT_BEGIN("Camera", Icon_Component_Camera, camera);
 	{
 		// Background
 		ImGui::Text("Background");
@@ -817,7 +835,7 @@ void Properties::ShowAudioSource(AudioSource* audioSource)
 	if (!audioSource)
 		return;
 
-	COMPONENT_BEGIN("Audio Source", Icon_Component_AudioSource);
+	COMPONENT_BEGIN("Audio Source", Icon_Component_AudioSource, audioSource);
 	{
 
 	}
@@ -829,7 +847,7 @@ void Properties::ShowAudioListener(AudioListener* audioListener)
 	if (!audioListener)
 		return;
 
-	COMPONENT_BEGIN("Audio Listener", Icon_Component_AudioListener);
+	COMPONENT_BEGIN("Audio Listener", Icon_Component_AudioListener, audioListener);
 	{
 
 	}
@@ -841,11 +859,31 @@ void Properties::ShowScript(Script* script)
 	if (!script)
 		return;
 
-	COMPONENT_BEGIN("Script", Icon_Component_Script)
+	COMPONENT_BEGIN("Script", Icon_Component_Script, script)
 	{
 		// Name
 		ImGui::Text("Name");
 		ImGui::SameLine(105); ImGui::Text(script->GetName().c_str());
 	}
 	COMPONENT_END;
+}
+
+void Properties::Component_ContextMenu(Component* component)
+{
+	if (!component)
+		return;
+
+	if (ImGui::BeginPopup("##ComponentContextMenu"))
+	{
+		if (ImGui::MenuItem("Remove"))
+		{
+			auto gameObject = Hierarchy::GetSelectedGameObject().lock();
+			if (gameObject)
+			{
+				gameObject->RemoveComponentByID(component->GetID());
+			}
+		}
+
+		ImGui::EndPopup();
+	}
 }

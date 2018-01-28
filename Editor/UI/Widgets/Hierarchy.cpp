@@ -19,22 +19,23 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES ========================
 #include "Hierarchy.h"
 #include "../imgui/imgui.h"
+#include "../EditorHelper.h"
 #include "Scene/Scene.h"
 #include "Scene/GameObject.h"
-#include "Components/Transform.h"
 #include "Core/Engine.h"
 #include "Input/Input.h"
-#include "../EditorHelper.h"
+#include "Components/Transform.h"
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
 #include "Components/AudioListener.h"
 #include "Components/RigidBody.h"
 #include "Components/Collider.h"
 #include "Components/Camera.h"
-//===============================
+#include "Components/Constraint.h"
+//===================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -243,6 +244,10 @@ void Hierarchy::ContextMenu()
 			{
 				Action_GameObject_CreateCollider();
 			}
+			else if (ImGui::MenuItem("Constraint"))
+			{
+				Action_GameObject_CreateConstraint();
+			}
 
 			ImGui::EndMenu();
 		}
@@ -330,6 +335,13 @@ void Hierarchy::Action_GameObject_CreateCollider()
 	auto gameObject = Action_GameObject_CreateEmpty().lock();
 	gameObject->AddComponent<Collider>();
 	gameObject->SetName("Collider");
+}
+
+void Hierarchy::Action_GameObject_CreateConstraint()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<Constraint>();
+	gameObject->SetName("Constraint");
 }
 
 void Hierarchy::Action_GameObject_CreateAudioSource()
