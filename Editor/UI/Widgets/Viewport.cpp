@@ -36,8 +36,8 @@ using namespace Directus;
 using namespace Math;
 //=======================
 
-static Renderer* g_renderer = nullptr;
-static Scene* g_scene		= nullptr;
+static Renderer* g_renderer			= nullptr;
+static Scene* g_scene				= nullptr;
 static Vector2 g_framePos;
 
 static bool g_physics				= true;

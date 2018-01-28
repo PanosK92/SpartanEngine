@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include "Graphics/Texture.h"
 #include "Logging/Log.h"
+#include "imgui/imgui.h"
 //===========================
 
 //= NAMESPACES ==========
@@ -32,7 +33,6 @@ using namespace Directus;
 //=======================
 
 static map<IconProvider_Icon, unique_ptr<Texture>> g_icons;
-
 
 void IconProvider::Initialize(Context* context)
 {
@@ -75,4 +75,13 @@ void* IconProvider::GetIcon(IconProvider_Icon icon)
 		return nullptr;
 
 	return (void*)g_icons[icon]->GetShaderResource();
+}
+
+bool IconProvider::ImageButtonID(const char* id, IconProvider_Icon icon, float size)
+{
+	ImGui::PushID(id);
+	bool pressed = ImGui::ImageButton(GetIcon(icon),ImVec2(size, size));
+	ImGui::PopID();
+
+	return pressed;
 }

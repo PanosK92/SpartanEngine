@@ -34,6 +34,7 @@ namespace Directus
 	class MeshRenderer;
 	class RigidBody;
 	class Collider;
+	class Constraint;
 	class Material;
 	class Camera;
 	class AudioSource;
@@ -57,13 +58,14 @@ private:
 	void ShowMeshRenderer(Directus::MeshRenderer* meshRenderer);
 	void ShowRigidBody(Directus::RigidBody* rigidBody);
 	void ShowCollider(Directus::Collider* collider);
+	void ShowConstraint(Directus::Constraint* collider);
 	void ShowMaterial(Directus::Material* material);
 	void ShowCamera(Directus::Camera* camera);
 	void ShowAudioSource(Directus::AudioSource* audioSource);
 	void ShowAudioListener(Directus::AudioListener* audioListener);
 	void ShowScript(Directus::Script* script);
 
-	void ComponentContextMenu_Options(Directus::Component* component);
+	void ComponentContextMenu_Options(const char* id, Directus::Component* component);
 	void ShowAddComponentButton();
 	void ComponentContextMenu_Add();
 };
