@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletDynamics/ConstraintSolver/btTypedConstraint.h"
 #include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
 #include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
+#include "../Core/Settings.h"
 //==============================================================================
 
 //= NAMESPACES ================
@@ -90,7 +91,8 @@ namespace Directus
 		// Log version
 		string major = to_string(btGetVersion() / 100);
 		string minor = to_string(btGetVersion()).erase(0, 1);
-		LOG_INFO("Physics: Bullet " + major + "." + minor);
+		Settings::g_versionBullet = major + "." + minor;
+		LOG_INFO("Physics: Bullet " + Settings::g_versionBullet);
 
 		return true;
 	}

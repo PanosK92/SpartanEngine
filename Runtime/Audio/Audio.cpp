@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../EventSystem/EventSystem.h"
 #include <sstream>
+#include "../Core/Settings.h"
 //=====================================
 
 //= NAMESPACES ======
@@ -129,7 +130,8 @@ namespace Directus
 		string major	= ss.str().erase(1, 4);
 		string minor	= ss.str().erase(0, 1).erase(2, 2);
 		string rev		= ss.str().erase(0, 3);
-		LOG_INFO("Audio: FMOD " + major + "." + minor + "." + rev);
+		Settings::g_versionFMOD = major + "." + minor + "." + rev;
+		LOG_INFO("Audio: FMOD " + Settings::g_versionFMOD);
 
 		m_initialized = true;
 		return true;

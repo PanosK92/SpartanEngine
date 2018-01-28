@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
 #include "../EventSystem/EventSystem.h"
+#include "../Core/Settings.h"
+
 //===========================================
 
 namespace Directus
@@ -76,15 +78,18 @@ namespace Directus
 		string major	= to_string(ANGELSCRIPT_VERSION).erase(1, 4);
 		string minor	= to_string(ANGELSCRIPT_VERSION).erase(0, 1).erase(2, 2);
 		string rev		= to_string(ANGELSCRIPT_VERSION).erase(0, 3);
-		LOG_INFO("Scripting: AngelScript " + major + "." + minor + "." + rev);
+		Settings::g_versionAngelScript = major + "." + minor + "." + rev;
+		LOG_INFO("Scripting: AngelScript " + Settings::g_versionAngelScript);
 
 		return true;
 	}
 
 	void Scripting::Clear()
 	{
-		for (auto n = 0; n < m_contexts.size(); n++)
-			m_contexts[n]->Release();
+		for (auto& context : m_contexts)
+		{
+			context->Release();
+		}
 
 		m_contexts.clear();
 		m_contexts.shrink_to_fit();

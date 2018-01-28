@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Context.h"
 #include "../../Threading/Threading.h"
 #include "../../Graphics/Texture.h"
+#include "../../Core/Settings.h"
 //====================================
 
 //= NAMESPACES ================
@@ -43,8 +44,8 @@ namespace Directus
 		FreeImage_Initialise(true);
 
 		// Log version
-		string version = FreeImage_GetVersion();
-		LOG_INFO("ImageImporter: FreeImage " + version);
+		Settings::g_versionFreeImage = FreeImage_GetVersion();
+		LOG_INFO("ImageImporter: FreeImage " + Settings::g_versionFreeImage);
 	}
 
 	ImageImporter::~ImageImporter()
