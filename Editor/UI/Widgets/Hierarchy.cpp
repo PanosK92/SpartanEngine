@@ -46,7 +46,7 @@ weak_ptr<GameObject> g_gameObjectEmpty;
 static Engine* g_engine = nullptr;
 static Scene* g_scene	= nullptr;
 static Input* g_input	= nullptr;
-static bool g_wasItemHovered = false;
+static bool g_itemHoveredOnPreviousFrame = false;
 
 Hierarchy::Hierarchy()
 {
@@ -98,7 +98,7 @@ void Hierarchy::Tree_Populate()
 
 void Hierarchy::OnTreeBegin()
 {
-	g_wasItemHovered = false;
+	g_itemHoveredOnPreviousFrame = false;
 }
 
 void Hierarchy::OnTreeEnd()
@@ -144,7 +144,7 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 		if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_Default))
 		{
 			m_gameObjectSelected = gameObject;
-			g_wasItemHovered = true;
+			g_itemHoveredOnPreviousFrame = true;
 		}
 
 		// Right click
@@ -153,16 +153,16 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
 			{
 				m_gameObjectSelected = gameObject;
+				g_itemHoveredOnPreviousFrame = true;
 			}
 			else
 			{
 				ImGui::OpenPopup("##HierarchyContextMenu");
-			}
-			g_wasItemHovered = true;
+			}			
 		}
 
-		// Clicking inside the window (but not on an item)
-		if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !g_wasItemHovered)
+		// Clicking (any button) inside the window but not on an item (empty space)
+		if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !g_itemHoveredOnPreviousFrame)
 		{
 			m_gameObjectSelected = g_gameObjectEmpty;
 		}
@@ -170,7 +170,7 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 	
 	ContextMenu();
 
-	// Child nodes
+	// Recursively show all child nodes
 	if (isNodeOpen)
 	{
 		if (hasVisibleChildren)
