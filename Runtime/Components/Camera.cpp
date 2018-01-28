@@ -45,12 +45,12 @@ namespace Directus
 	Camera::Camera()
 	{
 		SetFOV_Horizontal_Deg(75);
-		m_nearPlane = 0.3f;
-		m_farPlane = 1000.0f;
-		m_frustrum = make_shared<Frustrum>();
-		m_projection = Projection_Perspective;
-		m_clearColor = Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
-		m_isDirty = false;
+		m_nearPlane		= 0.3f;
+		m_farPlane		= 1000.0f;
+		m_frustrum		= make_shared<Frustrum>();
+		m_projection	= Projection_Perspective;
+		m_clearColor	= Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
+		m_isDirty	= false;
 	}
 
 	Camera::~Camera()

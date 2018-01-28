@@ -43,7 +43,8 @@ enum IconProvider_Icon
 	Icon_Folder,
 	Icon_File_Audio,
 	Icon_File_Scene,
-	Icon_File_Model
+	Icon_File_Model,
+	Icon_Button_Play
 };
 
 namespace Directus { class Context; }

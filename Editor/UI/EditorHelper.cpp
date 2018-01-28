@@ -19,41 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
-#include "Stopwatch.h"
-//====================
+//= INCLUDES ============
+#include "EditorHelper.h"
+//=======================
 
-//= NAMESPACES ========
-using namespace std;
-using namespace chrono;
-//=====================
-
-namespace Directus
-{
-	Stopwatch::Stopwatch()
-	{
-		Start();
-	}
-
-	Stopwatch::~Stopwatch()
-	{
-
-	}
-
-	void Stopwatch::Start()
-	{
-		m_start = high_resolution_clock::now();
-	}
-
-	float Stopwatch::GetElapsedTimeSec()
-	{
-		duration<double, milli> seconds = high_resolution_clock::now() - m_start;
-		return (float)(seconds.count() / 1000.0f);
-	}
-
-	float Stopwatch::GetElapsedTimeMs()
-	{
-		duration<double, milli> ms = high_resolution_clock::now() - m_start;
-		return (float)ms.count();
-	}
-}
+Directus::Engine* EditorHelper::g_engine = nullptr;
+bool EditorHelper::g_isLoading = false;

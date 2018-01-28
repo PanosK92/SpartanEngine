@@ -27,6 +27,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Transform.h"
 #include "Core/Engine.h"
 #include "Input/Input.h"
+#include "../EditorHelper.h"
+#include "Components/Light.h"
+#include "Components/AudioSource.h"
+#include "Components/AudioListener.h"
+#include "Components/RigidBody.h"
+#include "Components/Collider.h"
+#include "Components/Camera.h"
 //===============================
 
 //= NAMESPACES ==========
@@ -52,15 +59,18 @@ Hierarchy::Hierarchy()
 void Hierarchy::Initialize(Context* context)
 {
 	Widget::Initialize(context);
+
 	g_engine = m_context->GetSubsystem<Engine>();
 	g_scene = m_context->GetSubsystem<Scene>();
 	g_input = m_context->GetSubsystem<Input>();
+
+	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
 }
 
 void Hierarchy::Update()
 {
-	// If the engine is not updating, don't populate the hierarchy yet
-	if (!g_engine->IsUpdating())
+	// If something is being loaded, don't parse the hierarchy
+	if (EditorHelper::GetEngineLoading())
 		return;
 	
 	Tree_Populate();
@@ -158,24 +168,7 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 		}
 	}
 	
-	// Context menu
-	if (ImGui::BeginPopup("##HierarchyContextMenu"))
-	{
-		if (!m_gameObjectSelected.expired())
-		{
-			ImGui::MenuItem("Rename");
-			if (ImGui::MenuItem("Delete", "Delete"))
-			{
-				Action_GameObject_Delete(m_gameObjectSelected);
-			}
-			ImGui::Separator();
-		}		
-		if (ImGui::MenuItem("Creaty Empty"))
-		{
-			Action_GameObject_CreateEmpty();
-		}
-		ImGui::EndPopup();
-	}
+	ContextMenu();
 
 	// Child nodes
 	if (isNodeOpen)
@@ -194,6 +187,85 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 	}
 }
 
+void Hierarchy::ContextMenu()
+{
+	if (ImGui::BeginPopup("##HierarchyContextMenu"))
+	{
+		if (!m_gameObjectSelected.expired())
+		{
+			ImGui::MenuItem("Rename");
+			if (ImGui::MenuItem("Delete", "Delete"))
+			{
+				Action_GameObject_Delete(m_gameObjectSelected);
+			}
+			ImGui::Separator();
+		}
+
+		// EMPTY
+		if (ImGui::MenuItem("Creaty Empty"))
+		{
+			Action_GameObject_CreateEmpty();
+		}
+
+		// CAMERA
+		if (ImGui::MenuItem("Camera"))
+		{
+			Action_GameObject_CreateCamera();
+		}
+
+		// LIGHT
+		if (ImGui::BeginMenu("Light"))
+		{
+			if (ImGui::MenuItem("Directional"))
+			{
+				Action_GameObject_CreateLightDirectional();
+			}
+			else if (ImGui::MenuItem("Point"))
+			{
+				Action_GameObject_CreateLightPoint();
+			}
+			else if (ImGui::MenuItem("Spot"))
+			{
+				Action_GameObject_CreateLightSpot();
+			}
+
+			ImGui::EndMenu();
+		}
+
+		// PHYSICS
+		if (ImGui::BeginMenu("Physics"))
+		{
+			if (ImGui::MenuItem("Rigid Body"))
+			{
+				Action_GameObject_CreateRigidBody();
+			}
+			else if (ImGui::MenuItem("Collider"))
+			{
+				Action_GameObject_CreateCollider();
+			}
+
+			ImGui::EndMenu();
+		}
+
+		// AUDIO
+		if (ImGui::BeginMenu("Audio"))
+		{
+			if (ImGui::MenuItem("Audio Source"))
+			{
+				Action_GameObject_CreateAudioSource();
+			}
+			else if (ImGui::MenuItem("Audio Listener"))
+			{
+				Action_GameObject_CreateAudioListener();
+			}
+
+			ImGui::EndMenu();
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
 void Hierarchy::HandleKeyShortcuts()
 {
 	if (g_input->GetKey(Delete))
@@ -207,11 +279,69 @@ void Hierarchy::Action_GameObject_Delete(weak_ptr<GameObject> gameObject)
 	g_scene->RemoveGameObject(gameObject);
 }
 
-void Hierarchy::Action_GameObject_CreateEmpty()
+weak_ptr<GameObject> Hierarchy::Action_GameObject_CreateEmpty()
 {
 	auto gameObject = g_scene->CreateGameObject();
 	if (auto selected = m_gameObjectSelected.lock())
 	{
 		gameObject.lock()->GetTransform()->SetParent(selected->GetTransform());
 	}
+
+	return gameObject;
+}
+
+void Hierarchy::Action_GameObject_CreateCamera()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<Camera>();
+	gameObject->SetName("Camera");
+}
+
+void Hierarchy::Action_GameObject_CreateLightDirectional()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Directional);
+	gameObject->SetName("Directional");
+}
+
+void Hierarchy::Action_GameObject_CreateLightPoint()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Point);
+	gameObject->SetName("Point");
+}
+
+void Hierarchy::Action_GameObject_CreateLightSpot()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Spot);
+	gameObject->SetName("Spot");
+}
+
+void Hierarchy::Action_GameObject_CreateRigidBody()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<RigidBody>();
+	gameObject->SetName("RigidBody");
+}
+
+void Hierarchy::Action_GameObject_CreateCollider()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<Collider>();
+	gameObject->SetName("Collider");
+}
+
+void Hierarchy::Action_GameObject_CreateAudioSource()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<AudioSource>();
+	gameObject->SetName("AudioSource");
+}
+
+void Hierarchy::Action_GameObject_CreateAudioListener()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<AudioListener>();
+	gameObject->SetName("AudioListener");
 }

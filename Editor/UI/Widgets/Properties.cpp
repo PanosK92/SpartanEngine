@@ -48,9 +48,9 @@ using namespace Directus;
 using namespace Math;
 //=======================
 
-//= SETTINGS =====================
-static const int g_maxWidth = 100;
-//================================
+//= SETTINGS ==========================
+static const float g_maxWidth = 100.0f;
+//=====================================
 
 // Reflected properties
 
@@ -209,17 +209,17 @@ void Properties::Update()
 	
 	auto gameObjectPtr = gameObject.lock().get();
 
-	auto transform = gameObjectPtr->GetTransform();
-	auto light = gameObjectPtr->GetComponent<Light>().lock().get();
-	auto camera = gameObjectPtr->GetComponent<Camera>().lock().get();
-	auto audioSource = gameObjectPtr->GetComponent<AudioSource>().lock().get();
-	auto audioListener = gameObjectPtr->GetComponent<AudioListener>().lock().get();
-	auto meshFilter = gameObjectPtr->GetComponent<MeshFilter>().lock().get();
-	auto meshRenderer = gameObjectPtr->GetComponent<MeshRenderer>().lock().get();
-	auto material = meshRenderer ? meshRenderer->GetMaterial().lock().get() : nullptr;
-	auto rigidBody = gameObjectPtr->GetComponent<RigidBody>().lock().get();
-	auto collider = gameObjectPtr->GetComponent<Collider>().lock().get();
-	auto script = gameObjectPtr->GetComponent<Script>().lock().get();
+	auto transform		= gameObjectPtr->GetTransform();
+	auto light			= gameObjectPtr->GetComponent<Light>().lock().get();
+	auto camera			= gameObjectPtr->GetComponent<Camera>().lock().get();
+	auto audioSource	= gameObjectPtr->GetComponent<AudioSource>().lock().get();
+	auto audioListener	= gameObjectPtr->GetComponent<AudioListener>().lock().get();
+	auto meshFilter		= gameObjectPtr->GetComponent<MeshFilter>().lock().get();
+	auto meshRenderer	= gameObjectPtr->GetComponent<MeshRenderer>().lock().get();
+	auto material		= meshRenderer ? meshRenderer->GetMaterial().lock().get() : nullptr;
+	auto rigidBody		= gameObjectPtr->GetComponent<RigidBody>().lock().get();
+	auto collider		= gameObjectPtr->GetComponent<Collider>().lock().get();
+	auto script			= gameObjectPtr->GetComponent<Script>().lock().get();
 
 	ImGui::PushItemWidth(g_maxWidth);
 
@@ -289,23 +289,26 @@ void Properties::ShowTransform(Transform* transform)
 	COMPONENT_END;
 
 	// MAP
-	transform->SetPosition(Vector3(
-		atof(&g_transPosX[0]),
-		atof(&g_transPosY[0]),
-		atof(&g_transPosZ[0])
-	));
+	if (!EditorHelper::GetEngineUpdate())
+	{
+		transform->SetPosition(Vector3(
+			(float)atof(&g_transPosX[0]),
+			(float)atof(&g_transPosY[0]),
+			(float)atof(&g_transPosZ[0])
+		));
 
-	transform->SetRotation(Quaternion::FromEulerAngles(
-		atof(&g_transRotX[0]),
-		atof(&g_transRotY[0]),
-		atof(&g_transRotZ[0])
-	));
+		transform->SetRotation(Quaternion::FromEulerAngles(
+			(float)atof(&g_transRotX[0]),
+			(float)atof(&g_transRotY[0]),
+			(float)atof(&g_transRotZ[0])
+		));
 
-	transform->SetScale(Vector3(
-		atof(&g_transScaX[0]),
-		atof(&g_transScaY[0]),
-		atof(&g_transScaZ[0])
-	));
+		transform->SetScale(Vector3(
+			(float)atof(&g_transScaX[0]),
+			(float)atof(&g_transScaY[0]),
+			(float)atof(&g_transScaZ[0])
+		));
+	}
 }
 
 void Properties::ShowLight(Light* light)
@@ -359,14 +362,14 @@ void Properties::ShowLight(Light* light)
 		ImGui::SameLine(posX); ImGui::Checkbox("##lightShadows", &g_lightShadows);
 
 		// Range
-		if (g_lightTypeInt != (int)Directional)
+		if (g_lightTypeInt != (int)LightType_Directional)
 		{
 			ImGui::Text("Range");
 			ImGui::SameLine(posX); ImGui::InputText("##lightRange", g_lightRange, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
 		}
 
 		// Angle
-		if (g_lightTypeInt == (int)Spot)
+		if (g_lightTypeInt == (int)LightType_Spot)
 		{
 			ImGui::Text("Angle");
 			ImGui::SameLine(posX); ImGui::SliderFloat("##lightAngle", &g_lightAngle, 1.0f, 179.0f);
@@ -379,7 +382,7 @@ void Properties::ShowLight(Light* light)
 	light->SetColor(g_lightButtonColorPicker->GetColor());
 	light->SetIntensity(g_lightIntensity);
 	light->SetShadowQuality(g_lightShadows ? Hard_Shadows : No_Shadows);
-	light->SetRange(atof(&g_lightRange[0]));
+	light->SetRange((float)atof(&g_lightRange[0]));
 	light->SetAngle(g_lightAngle);
 }
 
@@ -388,6 +391,7 @@ void Properties::ShowMeshFilter(MeshFilter* meshFilter)
 	if (!meshFilter)
 		return;
 
+	// REFLECT
 	auto mesh = meshFilter->GetMesh().lock();
 	string meshName = mesh ? mesh->GetResourceName() : NOT_ASSIGNED;
 
@@ -503,10 +507,10 @@ void Properties::ShowRigidBody(RigidBody* rigidBody)
 	COMPONENT_END;
 
 	// MAP
-	rigidBody->SetMass(atof(&g_rigidBodyMass[0]));
-	rigidBody->SetFriction(atof(&g_rigidBodyFriction[0]));
-	rigidBody->SetFrictionRolling(atof(&g_rigidBodyFrictionRolling[0]));
-	rigidBody->SetRestitution(atof(&g_rigidBodyRestitution[0]));
+	rigidBody->SetMass((float)atof(&g_rigidBodyMass[0]));
+	rigidBody->SetFriction((float)atof(&g_rigidBodyFriction[0]));
+	rigidBody->SetFrictionRolling((float)atof(&g_rigidBodyFrictionRolling[0]));
+	rigidBody->SetRestitution((float)atof(&g_rigidBodyRestitution[0]));
 	rigidBody->SetUseGravity(g_rigidBodyUseGravity);
 	rigidBody->SetIsKinematic(g_rigidBodyIsKinematic);
 	rigidBody->SetPositionLock(Vector3(
@@ -592,15 +596,15 @@ void Properties::ShowCollider(Collider* collider)
 	// MAP
 	collider->SetShapeType((ColliderShape)g_colShapeInt);
 	collider->SetCenter(Vector3(
-		atof(&g_colCenterX[0]),
-		atof(&g_colCenterY[0]),
-		atof(&g_colCenterZ[0])
+		(float)atof(&g_colCenterX[0]),
+		(float)atof(&g_colCenterY[0]),
+		(float)atof(&g_colCenterZ[0])
 	));
 
 	collider->SetBoundingBox(Vector3(
-		atof(&g_colSizeX[0]),
-		atof(&g_colSizeY[0]),
-		atof(&g_colSizeZ[0])
+		(float)atof(&g_colSizeX[0]),
+		(float)atof(&g_colSizeY[0]),
+		(float)atof(&g_colSizeZ[0])
 	));
 	collider->SetOptimize(g_colOptimize);
 }
@@ -743,8 +747,8 @@ void Properties::ShowMaterial(Material* material)
 	material->SetMetallicMultiplier(g_materialMetallic);
 	material->SetNormalMultiplier(g_materialNormal);
 	material->SetHeightMultiplier(g_materialHeight);
-	material->SetTiling(Vector2(atof(&g_matTilingX[0]), atof(&g_matTilingY[0])));
-	material->SetOffset(Vector2(atof(&g_matOffsetX[0]), atof(&g_matOffsetY[0])));
+	material->SetTiling(Vector2((float)atof(&g_matTilingX[0]), (float)atof(&g_matTilingY[0])));
+	material->SetOffset(Vector2((float)atof(&g_matOffsetX[0]), (float)atof(&g_matOffsetY[0])));
 }
 
 void Properties::ShowCamera(Camera* camera)
@@ -804,8 +808,8 @@ void Properties::ShowCamera(Camera* camera)
 	camera->SetClearColor(g_cameraButtonColorPicker->GetColor());
 	camera->SetProjection((ProjectionType)g_cameraProjectionInt);
 	camera->SetFOV_Horizontal_Deg(g_cameraFOV);
-	camera->SetNearPlane(atof(&g_cameraNear[0]));
-	camera->SetFarPlane(atof(&g_cameraFar[0]));
+	camera->SetNearPlane((float)atof(&g_cameraNear[0]));
+	camera->SetFarPlane((float)atof(&g_cameraFar[0]));
 }
 
 void Properties::ShowAudioSource(AudioSource* audioSource)

@@ -36,18 +36,12 @@ namespace Directus
 	class Engine;
 }
 
-static const int BUFFER_TEXT_DEFAULT	= 255;
+static const int BUFFER_TEXT_DEFAULT = 255;
 
 class EditorHelper
 {
 public:
-	static EditorHelper& GetInstance()
-	{
-		static EditorHelper instance;
-		return instance;
-	}
-
-	void Initialize(Directus::Context* context)
+	static void Initialize(Directus::Context* context)
 	{
 		g_engine = context->GetSubsystem<Directus::Engine>();
 	}
@@ -69,39 +63,14 @@ public:
 	>::type>
 	static void SetCharArray(char* array, T value) { SetCharArray(array, std::to_string(value)); }
 
-	static ImVec4 ToImVec4(const Directus::Math::Vector4& vector)
-	{
-		return ImVec4
-		(
-			vector.x,
-			vector.y,
-			vector.z,
-			vector.w
-		);
-	}
+	//= CONVERSIONS ===================================================================================================
+	static ImVec4 ToImVec4(const Directus::Math::Vector4& v)	{ return ImVec4(v.x, v.y, v.z, v.w); }
+	static Directus::Math::Vector4 ToVector4(const ImVec4& v)	{ return Directus::Math::Vector4(v.x, v.y, v.z, v.w); }
+	static ImVec2 ToImVec2(const Directus::Math::Vector2& v)	{ return ImVec2{ v.x,v.y }; }
+	static Directus::Math::Vector2 ToVector2(const ImVec2& v)	{ return Directus::Math::Vector2{ v.x,v.y }; }
+	//=================================================================================================================
 
-	static Directus::Math::Vector4 ToVector4(const ImVec4& vector)
-	{
-		return Directus::Math::Vector4
-		(
-			vector.x,
-			vector.y,
-			vector.z,
-			vector.w
-		);
-	}
-
-	static ImVec2 ToImVec2(const Directus::Math::Vector2& vector)
-	{
-		return ImVec2{ vector.x,vector.y };
-	}
-
-	static Directus::Math::Vector2 ToVector2(const ImVec2& vector)
-	{
-		return Directus::Math::Vector2(vector.x, vector.y);
-	}
-
-	std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context)
+	static std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context)
 	{
 		auto resourceManager = context->GetSubsystem<Directus::ResourceManager>();
 		auto texture = resourceManager->GetResourceByPath<Directus::Texture>(filePath);
@@ -112,7 +81,7 @@ public:
 		return texture;
 	}
 
-	void SetEngineUpdate(bool update)
+	static void SetEngineUpdate(bool update)
 	{
 		if (!g_engine)
 		{
@@ -126,6 +95,12 @@ public:
 		g_engine->SetFlags(flags);
 	}
 
+	static bool GetEngineUpdate() { return g_engine->GetFlags() & Directus::Engine_Update; }
+
+	static void SetEngineLoading(bool loading) { g_isLoading = loading; }
+	static bool GetEngineLoading() { return g_isLoading; }
+
 private:
-	Directus::Engine* g_engine = nullptr;
+	static Directus::Engine* g_engine;
+	static bool g_isLoading;
 };

@@ -66,6 +66,7 @@ void IconProvider::Initialize(Context* context)
 	LoadIcon(Icon_File_Audio,				"Standard Assets\\Editor\\audio.png");
 	LoadIcon(Icon_File_Model,				"Standard Assets\\Editor\\model.png");
 	LoadIcon(Icon_File_Scene,				"Standard Assets\\Editor\\scene.png");
+	LoadIcon(Icon_Button_Play,				"Standard Assets\\Editor\\play.png");
 }
 
 void* IconProvider::GetIcon(IconProvider_Icon icon)

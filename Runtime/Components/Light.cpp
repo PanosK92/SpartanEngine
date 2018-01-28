@@ -43,7 +43,7 @@ namespace Directus
 {
 	Light::Light()
 	{
-		m_lightType = Point;
+		m_lightType = LightType_Point;
 		m_shadowType = Hard_Shadows;
 		m_range = 1.0f;
 		m_intensity = 2.0f;
@@ -76,7 +76,7 @@ namespace Directus
 
 	void Light::Update()
 	{
-		if (m_lightType != Directional)
+		if (m_lightType != LightType_Directional)
 			return;
 
 		// DIRTY CHECK
@@ -95,8 +95,13 @@ namespace Directus
 		// the scene which can look weird
 		ClampRotation();
 
-		Camera* mainCamera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock()->GetComponent<Camera>().lock().get();
-		m_frustrum->Construct(GetViewMatrix(), GetOrthographicProjectionMatrix(2), mainCamera->GetFarPlane());
+		if (auto mainCamera = GetContext()->GetSubsystem<Scene>()->GetMainCamera().lock().get())
+		{
+			if (auto cameraComp = mainCamera->GetComponent<Camera>().lock().get())
+			{
+				m_frustrum->Construct(GetViewMatrix(), GetOrthographicProjectionMatrix(2), cameraComp->GetFarPlane());
+			}
+		}
 	}
 
 	void Light::Serialize(FileStream* stream)

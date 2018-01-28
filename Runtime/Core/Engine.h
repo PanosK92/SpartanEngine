@@ -63,9 +63,9 @@ namespace Directus
 		void Shutdown();
 
 	private:
-		void* m_hinstance;
-		void* m_windowHandle;
-		void* m_drawHandle;
+		void* m_hinstance{};
+		void* m_windowHandle{};
+		void* m_drawHandle{};
 		int m_flags;
 		Timer* m_timer;
 	};

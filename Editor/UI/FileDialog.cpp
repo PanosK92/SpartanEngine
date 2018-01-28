@@ -95,7 +95,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 
 	// List
 	int index = 0;
-	int columns = ImGui::GetWindowContentRegionWidth() / m_itemSize;
+	int columns = (int)(ImGui::GetWindowContentRegionWidth() / m_itemSize);
 	columns = columns < 1 ? 1 : columns;
 	ImGui::Columns(columns, nullptr, false);
 	for (const auto& item : m_directoryContents)
@@ -133,7 +133,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 		ImGui::SameLine();
 		ImGui::SetCursorPosX(ImGui::GetCursorPosX() - m_itemSize - 16); // move to the left of the thumbnail
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 10); // move to the bottom of the thumbnail
-		ImGui::PushItemWidth(ImGui::GetColumnWidth());
+		ImGui::PushItemWidth(m_itemSize + 8.5f);
 		
 		EditorHelper::SetCharArray(&m_itemLabel[0], FileSystem::GetFileNameFromFilePath(item.first));
 		ImGui::InputText("##Temp", m_itemLabel, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);

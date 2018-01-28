@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Viewport.h"
 #include "UI/IconProvider.h"
 #include "UI/EditorHelper.h"
+#include "UI/Widgets/Toolbar.h"
 //==================================
 
 //= NAMESPACES ==========
@@ -45,6 +46,7 @@ static SDL_Window* g_window = nullptr;
 Editor::Editor()
 {
 	m_widgets.emplace_back(make_unique<MenuBar>());
+	m_widgets.emplace_back(make_unique<Toolbar>());
 	m_widgets.emplace_back(make_unique<Properties>());
 	m_widgets.emplace_back(make_unique<Console>());
 	m_widgets.emplace_back(make_unique<Hierarchy>());
@@ -60,7 +62,7 @@ Editor::~Editor()
 void Editor::Initialize(SDL_Window* window, Context* context)
 {
 	IconProvider::Initialize(context);
-	EditorHelper::GetInstance().Initialize(context);
+	EditorHelper::Initialize(context);
 
 	g_window = window;
 	ImGui_Impl_Initialize(g_window, context);

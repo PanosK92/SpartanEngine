@@ -46,10 +46,19 @@ private:
 	void OnTreeBegin();
 	void OnTreeEnd();
 
+	void ContextMenu();
 	void HandleKeyShortcuts();
 
 	void Action_GameObject_Delete(std::weak_ptr<Directus::GameObject> gameObject);
-	void Action_GameObject_CreateEmpty();
+	std::weak_ptr<Directus::GameObject> Action_GameObject_CreateEmpty();
+	void Action_GameObject_CreateCamera();
+	void Action_GameObject_CreateLightDirectional();
+	void Action_GameObject_CreateLightPoint();
+	void Action_GameObject_CreateLightSpot();
+	void Action_GameObject_CreateRigidBody();
+	void Action_GameObject_CreateCollider();
+	void Action_GameObject_CreateAudioSource();
+	void Action_GameObject_CreateAudioListener();
 	
 	static std::weak_ptr<Directus::GameObject> m_gameObjectSelected;
 };
