@@ -43,4 +43,8 @@ protected:
 	bool m_isWindow = true;
 	std::string m_title;
 	int m_windowFlags = 0;
+	float m_xMin = 0;
+	float m_xMax = 0;
+	float m_yMin = 0;
+	float m_yMax = 0;
 };
