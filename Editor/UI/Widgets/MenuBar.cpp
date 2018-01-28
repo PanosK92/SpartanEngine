@@ -195,11 +195,13 @@ void MenuBar::ShowAboutWindow()
 	ImGui::SetWindowFocus();
 	ImGui::Text("Directus3D %s", ENGINE_VERSION);
 	ImGui::Text("Author: Panos Karabelas");
-	if (ImGui::Button("GitHub"))
+	ImGui::SameLine(600); ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);  if (ImGui::Button("GitHub"))
 	{
 		ShellExecute(nullptr, nullptr, L"https://github.com/PanosK92/Directus3D", nullptr, nullptr, SW_SHOW);
 	}	
+
 	ImGui::Separator();
+
 	ImGui::Text("MIT License");
 	ImGui::Text("Permission is hereby granted, free of charge, to any person obtaining a copy");
 	ImGui::Text("of this software and associated documentation files(the \"Software\"), to deal");
@@ -215,7 +217,9 @@ void MenuBar::ShowAboutWindow()
 	ImGui::Text("COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER");
 	ImGui::Text("IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN");
 	ImGui::Text("CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
+
 	ImGui::Separator();
+
 	ImGui::Text("Third party libraries");
 	static float posX = 120;
 	ImGui::BulletText("AngelScript");	ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionAngelScript).c_str());
@@ -227,5 +231,6 @@ void MenuBar::ShowAboutWindow()
 	ImGui::BulletText("ImGui");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionImGui).c_str());
 	ImGui::BulletText("PugiXML");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionPugiXML).c_str());
 	ImGui::BulletText("SDL");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionSDL).c_str());
+
 	ImGui::End();
 }

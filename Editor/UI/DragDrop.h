@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES ============
 #include "imgui/imgui.h"
-//======================
+#include "IconProvider.h"
+//=======================
 
 struct DragDropPayload
 {
@@ -35,7 +36,8 @@ struct DragDropPayload
 	const char* type;
 	const char* data;
 };
-static const char* g_dragDrop_Type_Texture = "Texture";
+static const char* g_dragDrop_Type_Texture		= "0";
+static const char* g_dragDrop_Type_GameObject	= "1";
 static bool g_isDragging = false;
 
 class DragDrop
