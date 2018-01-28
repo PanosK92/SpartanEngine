@@ -39,6 +39,7 @@ namespace Directus
 	class AudioSource;
 	class AudioListener;
 	class Script;
+	class Component;
 }
 
 class Properties : public Widget
@@ -61,4 +62,6 @@ private:
 	void ShowAudioSource(Directus::AudioSource* audioSource);
 	void ShowAudioListener(Directus::AudioListener* audioListener);
 	void ShowScript(Directus::Script* script);
+
+	void Component_ContextMenu(Directus::Component* component);
 };

@@ -47,12 +47,12 @@ namespace Directus
 {
 	void Component::Register(GameObject* gameObject, Transform* transform, Context* context, ComponentType type)
 	{
-		m_enabled = true;
-		m_gameObject = gameObject;
-		m_transform = transform;
-		m_context = context;
-		m_type = type;
-		m_ID = GENERATE_GUID;
+		m_enabled		= true;
+		m_gameObject	= gameObject;
+		m_transform		= transform;
+		m_context		= context;
+		m_type			= type;
+		m_ID			= GENERATE_GUID;
 	}
 
 	weak_ptr<GameObject> Component::GetGameObjectRef()
