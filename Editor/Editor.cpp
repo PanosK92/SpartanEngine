@@ -187,6 +187,7 @@ void Editor::ApplyStyle()
 	style.Colors[ImGuiCol_PlotHistogramHovered]		= highlightBright;
 	style.Colors[ImGuiCol_TextSelectedBg]			= highlightDim;
 	style.Colors[ImGuiCol_PopupBg]					= backgroundMedium;
+	style.Colors[ImGuiCol_DragDropTarget]			= backgroundLight;
 	//style.Colors[ImGuiCol_ModalWindowDarkening]	= ImVec4(0.20f, 0.22f, 0.27f, 0.73f);
 
 	ImGuiIO& io = ImGui::GetIO();

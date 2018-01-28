@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Collider.h"
 #include "Components/Camera.h"
 #include "Components/Constraint.h"
+#include "../DragDrop.h"
 //===================================
 
 //= NAMESPACES ==========
@@ -48,6 +49,7 @@ static Engine* g_engine = nullptr;
 static Scene* g_scene	= nullptr;
 static Input* g_input	= nullptr;
 static bool g_itemHoveredOnPreviousFrame = false;
+static DragDropPayload g_payload;
 
 Hierarchy::Hierarchy()
 {
@@ -74,10 +76,10 @@ void Hierarchy::Update()
 	if (EditorHelper::GetEngineLoading())
 		return;
 	
-	Tree_Populate();
+	Tree_Show();
 }
 
-void Hierarchy::Tree_Populate()
+void Hierarchy::Tree_Show()
 {
 	OnTreeBegin();
 
@@ -113,6 +115,10 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 	if (!gameObjPtr)
 		return;
 
+	// Node self visibility
+	if (!gameObjPtr->IsVisibleInHierarchy())
+		return;
+
 	// Node children visibility
 	bool hasVisibleChildren = false;
 	auto children = gameObjPtr->GetTransform()->GetChildren();
@@ -126,7 +132,7 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 	}
 
 	// Node flags -> Default
-	ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnDoubleClick;
+	ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowItemOverlap;
 	// Node flags -> Expandable?
 	node_flags |= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf;
 	// Node flags -> Selected?
@@ -137,6 +143,24 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 
 	// Node
 	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)gameObjPtr->GetID(), node_flags, gameObjPtr->GetName().c_str());
+
+	// Drag
+	g_payload.data = (char*)gameObjPtr->GetID();
+	g_payload.type = g_dragDrop_Type_GameObject;
+	DragDrop::SendPayload(g_payload);
+	// Drop
+	auto drop = DragDrop::GetPayload(g_dragDrop_Type_GameObject);
+	if (drop.type == g_dragDrop_Type_GameObject)
+	{
+		auto gameObjectID = (unsigned int)drop.data;
+		if (auto droppedGameObj = g_scene->GetGameObjectByID(gameObjectID).lock())
+		{
+			if (droppedGameObj->GetID() != gameObjPtr->GetID())
+			{
+				droppedGameObj->GetTransform()->SetParent(gameObjPtr->GetTransform());
+			}
+		}
+	}
 
 	// Handle clicking
 	if (ImGui::IsMouseHoveringWindow())

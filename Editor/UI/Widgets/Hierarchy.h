@@ -40,7 +40,7 @@ public:
 
 private:
 	// Tree
-	void Tree_Populate();
+	void Tree_Show();
 	void Tree_AddGameObject(const std::weak_ptr<Directus::GameObject>& gameObject);
 	void OnTreeBegin();
 	void OnTreeEnd();
