@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include FT_FREETYPE_H  
 #include "../../Logging/Log.h"
 #include "../../Math/MathHelper.h"
+#include "../../Core/Settings.h"
 //================================
 
 //= NAMESPACES ================
@@ -63,8 +64,8 @@ namespace Directus
 		FT_Int minor;
 		FT_Int rev;
 		FT_Library_Version(m_library, &major, &minor, &rev);
-		string version = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
-		LOG_INFO("FontImporter: FreeType " + version);
+		Settings::g_versionFreeType = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
+		LOG_INFO("FontImporter: FreeType " + Settings::g_versionFreeType);
 	}
 
 	// Glyph metrics:

@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Timer.h"
 #include "Core/Context.h"
 #include "Logging/Log.h"
+#include "Core/Settings.h"
 //===============================
 
 //= NAMESPACES ==========
@@ -482,6 +483,7 @@ bool ImGui_Impl_Initialize(SDL_Window* window, Context* context)
 {
 	g_graphics	= context->GetSubsystem<Graphics>();
 	g_timer		= context->GetSubsystem<Timer>();
+	Settings::g_versionImGui = IMGUI_VERSION;
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.KeyMap[ImGuiKey_Tab]			= SDLK_TAB;

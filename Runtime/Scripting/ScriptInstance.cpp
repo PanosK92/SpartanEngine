@@ -37,13 +37,13 @@ namespace Directus
 {
 	ScriptInstance::ScriptInstance()
 	{
-		m_constructorFunction = nullptr;
-		m_startFunction = nullptr;
-		m_updateFunction = nullptr;
-		m_scriptObject = nullptr;
-		m_module = nullptr;
-		m_scriptEngine = nullptr;
-		m_isInstantiated = false;
+		m_constructorFunction	= nullptr;
+		m_startFunction			= nullptr;
+		m_updateFunction		= nullptr;
+		m_scriptObject			= nullptr;
+		m_module				= nullptr;
+		m_scriptEngine			= nullptr;
+		m_isInstantiated		= false;
 	}
 
 	ScriptInstance::~ScriptInstance()

@@ -35,6 +35,16 @@ using namespace Directus::Math;
 
 namespace Directus
 {
+	string Settings::g_versionAngelScript;
+	string Settings::g_versionAssimp;
+	string Settings::g_versionBullet;
+	string Settings::g_versionFMOD;
+	string Settings::g_versionFreeImage;
+	string Settings::g_versionFreeType;
+	string Settings::g_versionImGui;
+	string Settings::g_versionPugiXML = "1.80";
+	string Settings::g_versionSDL;
+
 	//= Initialize with default values ================================================
 	bool Settings::m_isFullScreen = false;
 	int Settings::m_vsync = (int)Off;

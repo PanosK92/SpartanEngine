@@ -28,27 +28,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-//= RESOLUTION =======================================================
-#define SET_RESOLUTION(resolution) Settings::SetResolution(resolution)
-#define GET_RESOLUTION				Settings::GetResolution()
-#define RESOLUTION_WIDTH			Settings::GetResolutionWidth()
-#define RESOLUTION_HEIGHT			Settings::GetResolutionHeight()
-//====================================================================
+	//= RESOLUTION =======================================================
+	#define SET_RESOLUTION(resolution) Settings::SetResolution(resolution)
+	#define GET_RESOLUTION				Settings::GetResolution()
+	#define RESOLUTION_WIDTH			Settings::GetResolutionWidth()
+	#define RESOLUTION_HEIGHT			Settings::GetResolutionHeight()
+	//====================================================================
 
-// VIEWPORT ===================================================
-#define SET_VIEWPORT(viewport)	Settings::SetViewport(viewport)
-#define GET_VIEWPORT			Settings::GetViewport()
-#define VIEWPORT_WIDTH			Settings::GetResolutionWidth()
-#define VIEWPORT_HEIGHT			Settings::GetResolutionHeight()
-//=============================================================
+	// VIEWPORT ===================================================
+	#define SET_VIEWPORT(viewport)	Settings::SetViewport(viewport)
+	#define GET_VIEWPORT			Settings::GetViewport()
+	#define VIEWPORT_WIDTH			Settings::GetResolutionWidth()
+	#define VIEWPORT_HEIGHT			Settings::GetResolutionHeight()
+	//=============================================================
 
-//= OTHER ========================================================
-#define ASPECT_RATIO			Settings::GetScreenAspect()
-#define SHADOWMAP_RESOLUTION	Settings::GetShadowMapResolution()
-#define VSYNC					Settings::GetVSync()
-#define FULLSCREEN_ENABLED		Settings::IsFullScreen()
-#define ANISOTROPY_LEVEL		Settings::GetAnisotropy()
-//================================================================
+	//= OTHER ========================================================
+	#define ASPECT_RATIO			Settings::GetScreenAspect()
+	#define SHADOWMAP_RESOLUTION	Settings::GetShadowMapResolution()
+	#define VSYNC					Settings::GetVSync()
+	#define FULLSCREEN_ENABLED		Settings::IsFullScreen()
+	#define ANISOTROPY_LEVEL		Settings::GetAnisotropy()
+	//================================================================
 
 	namespace Math
 	{
@@ -92,6 +92,17 @@ namespace Directus
 		static int GetShadowMapResolution() { return m_shadowMapResolution; }
 		static unsigned int GetAnisotropy() { return m_anisotropy; }
 		//===================================================================
+
+		// Third party lib versions
+		static std::string g_versionAngelScript;
+		static std::string g_versionAssimp;
+		static std::string g_versionBullet;
+		static std::string g_versionFMOD;
+		static std::string g_versionFreeImage;
+		static std::string g_versionFreeType;
+		static std::string g_versionImGui;
+		static std::string g_versionPugiXML;
+		static std::string g_versionSDL;
 
 	private:
 		static std::ofstream m_fout;

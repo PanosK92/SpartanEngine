@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Resource/ResourceManager.h"
 #include "Scene/Scene.h"
 #include "EventSystem/EventSystem.h"
+#include "Core/Settings.h"
 //===================================
 
 //= NAMESPACES ==========
@@ -216,14 +217,15 @@ void MenuBar::ShowAboutWindow()
 	ImGui::Text("CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
 	ImGui::Separator();
 	ImGui::Text("Third party libraries");
-	ImGui::BulletText("AngelScript");
-	ImGui::BulletText("Assimp");
-	ImGui::BulletText("Bullet");
-	ImGui::BulletText("FMOD");
-	ImGui::BulletText("FreeImage");
-	ImGui::BulletText("FreeType");
-	ImGui::BulletText("ImGui");
-	ImGui::BulletText("PugiXML");
-	ImGui::BulletText("SDL");
+	static float posX = 120;
+	ImGui::BulletText("AngelScript");	ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionAngelScript).c_str());
+	ImGui::BulletText("Assimp");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionAssimp).c_str());
+	ImGui::BulletText("Bullet");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionBullet).c_str());
+	ImGui::BulletText("FMOD ");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionFMOD).c_str());
+	ImGui::BulletText("FreeImage");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionFreeImage).c_str());
+	ImGui::BulletText("FreeType");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionFreeType).c_str());
+	ImGui::BulletText("ImGui");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionImGui).c_str());
+	ImGui::BulletText("PugiXML");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionPugiXML).c_str());
+	ImGui::BulletText("SDL");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionSDL).c_str());
 	ImGui::End();
 }

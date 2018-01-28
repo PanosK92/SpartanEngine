@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../EventSystem/EventSystem.h"
 #include "../../Graphics/Material.h"
 #include "AssimpHelper.h"
+#include "../../Core/Settings.h"
 //========================================
 
 //= NAMESPACES ================
@@ -82,8 +83,8 @@ namespace Directus
 		int major = aiGetVersionMajor();
 		int minor = aiGetVersionMinor();
 		int rev = aiGetVersionRevision();
-		string version = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
-		LOG_INFO("ModelImporter: Assimp " + version);
+		Settings::g_versionAssimp = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
+		LOG_INFO("ModelImporter: Assimp " + Settings::g_versionAssimp);
 	}
 
 	ModelImporter::~ModelImporter()

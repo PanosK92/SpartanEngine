@@ -132,6 +132,7 @@ int main(int argc, char* argv[])
 		LOG_ERROR("main: " + std::string(SDL_GetError()));
 		return -1;
 	}
+	Settings::g_versionSDL = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
 
 	// Get current resolution
 	Vector2 resolution = GetResolutionDisplayPrimary();

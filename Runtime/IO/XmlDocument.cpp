@@ -60,7 +60,7 @@ namespace Directus
 	{
 		if (!m_document)
 			return;
-
+		
 		auto node = make_shared<xml_node>(m_document->append_child(name.c_str()));
 		m_nodes.push_back(node);
 	}
