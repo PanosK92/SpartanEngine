@@ -128,7 +128,7 @@ namespace Directus
 		// Fill with directional lights
 		for (const auto& light : lights)
 		{
-			if (light->GetLightType() != Directional)
+			if (light->GetLightType() != LightType_Directional)
 				continue;
 
 			Vector3 direction = light->GetDirection();
@@ -143,7 +143,7 @@ namespace Directus
 		int pointIndex = 0;
 		for (const auto& light : lights)
 		{
-			if (light->GetLightType() != Point)
+			if (light->GetLightType() != LightType_Point)
 				continue;
 
 			Vector3 pos = light->GetTransform()->GetPosition();
@@ -158,7 +158,7 @@ namespace Directus
 		int spotIndex = 0;
 		for (const auto& light : lights)
 		{
-			if (light->GetLightType() != Spot)
+			if (light->GetLightType() != LightType_Spot)
 				continue;
 
 			Vector3 direction = light->GetDirection();

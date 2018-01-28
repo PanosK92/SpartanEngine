@@ -19,10 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES =====
 #include "Timer.h"
-#include "../EventSystem/EventSystem.h"
-//=====================================
+//================
 
 //= NAMESPACES ========
 using namespace std;
@@ -35,8 +34,6 @@ namespace Directus
 	{
 		m_deltaTimeSec	= 0.0f;
 		m_deltaTimeMs	= 0.0f;
-
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(Update));
 	}
 
 	Timer::~Timer()
@@ -50,7 +47,7 @@ namespace Directus
 		duration<double, milli> ms = currentTime - m_previousTime;
 		m_previousTime = currentTime;
 
-		m_deltaTimeMs = ms.count();
-		m_deltaTimeSec = ms.count() / 1000;
+		m_deltaTimeMs	= (float)ms.count();
+		m_deltaTimeSec	= (float)(ms.count() / 1000);
 	}
 }

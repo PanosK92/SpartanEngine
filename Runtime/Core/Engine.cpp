@@ -163,9 +163,13 @@ namespace Directus
 
 	void Engine::Update()
 	{
+		// Timer always ticks
+		m_timer->Update();
+		static float deltaTime = m_timer->GetDeltaTimeMs();
+
 		if (m_flags & Engine_Update)
 		{
-			FIRE_EVENT_DATA(EVENT_UPDATE, m_timer->GetDeltaTimeMs());
+			FIRE_EVENT_DATA(EVENT_UPDATE, deltaTime);
 		}
 
 		if (m_flags & Engine_Render)

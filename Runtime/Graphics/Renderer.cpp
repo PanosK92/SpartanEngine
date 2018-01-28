@@ -375,7 +375,7 @@ namespace Directus
 			if (auto light = gameObject->GetComponent<Light>().lock())
 			{
 				m_lights.push_back(light.get());
-				if (light->GetLightType() == Directional)
+				if (light->GetLightType() == LightType_Directional)
 				{
 					m_directionalLight = light.get();
 				}
@@ -792,15 +792,15 @@ namespace Directus
 
 				Texture* lightTex = nullptr;
 				LightType type = light->GetGameObject()->GetComponent<Light>().lock()->GetLightType();
-				if (type == Directional)
+				if (type == LightType_Directional)
 				{
 					lightTex = m_gizmoTexLightDirectional.get();
 				}
-				else if (type == Point)
+				else if (type == LightType_Point)
 				{
 					lightTex = m_gizmoTexLightPoint.get();
 				}
-				else if (type == Spot)
+				else if (type == LightType_Spot)
 				{
 					lightTex = m_gizmoTexLightSpot.get();
 				}

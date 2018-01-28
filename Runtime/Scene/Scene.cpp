@@ -459,7 +459,7 @@ namespace Directus
 		light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
 		Light* lightComp = light->AddComponent<Light>().lock().get();
-		lightComp->SetLightType(Directional);
+		lightComp->SetLightType(LightType_Directional);
 		lightComp->SetIntensity(2.0f);
 
 		return light;

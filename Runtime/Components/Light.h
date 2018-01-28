@@ -45,9 +45,9 @@ namespace Directus
 
 	enum LightType
 	{
-		Directional,
-		Point,
-		Spot
+		LightType_Directional,
+		LightType_Point,
+		LightType_Spot
 	};
 
 	enum ShadowType

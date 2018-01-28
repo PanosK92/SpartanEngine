@@ -84,7 +84,7 @@ void Viewport::Update()
 void Viewport::ShowTopToolbar()
 {
 	// Render options
-	ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetStyle().WindowPadding.x); ImGui::Checkbox("Physics", &g_physics);
+	ImGui::SetCursorPosX(ImGui::GetStyle().WindowPadding.x); ImGui::Checkbox("Physics", &g_physics);
 	ImGui::SameLine(); ImGui::Checkbox("AABB", &g_aabb);
 	ImGui::SameLine(); ImGui::Checkbox("Gizmos", &g_gizmos);
 	ImGui::SameLine(); ImGui::Checkbox("Picking Ray", &g_pickingRay);
@@ -120,8 +120,8 @@ void Viewport::ShowFrame()
 {
 	float width		= ImGui::GetWindowContentRegionWidth();
 	float height	= ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y - 30;
-	g_renderer->SetResolution(width, height);
-	g_renderer->SetViewport(width, height);
+	g_renderer->SetResolution((int)width, (int)height);
+	g_renderer->SetViewport((int)width, (int)height);
 
 	g_framePos = EditorHelper::ToVector2(ImGui::GetCursorPos()) + EditorHelper::ToVector2(ImGui::GetWindowPos());
 	ImGui::Image(
