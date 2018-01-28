@@ -85,6 +85,17 @@ void Hierarchy::Tree_Show()
 
 	if (ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		// Dropping on the scene node should unparent the GameObject
+		auto drop = DragDrop::GetPayload(g_dragDrop_Type_GameObject);
+		if (drop.type == g_dragDrop_Type_GameObject)
+		{
+			auto gameObjectID = (unsigned int)drop.data;
+			if (auto droppedGameObj = g_scene->GetGameObjectByID(gameObjectID).lock())
+			{
+				droppedGameObj->GetTransform()->SetParent(nullptr);
+			}
+		}
+
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
 		auto rootGameObjects = g_scene->GetRootGameObjects();
 		for (const auto& gameObject : rootGameObjects)
