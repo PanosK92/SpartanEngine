@@ -148,19 +148,19 @@ static bool g_colOptimize = false;
 
 static ResourceManager* g_resourceManager = nullptr;
 
-#define COMPONENT_BEGIN(name, icon_enum, componentInstance)					\
-	ICON_PROVIDER_IMAGE(icon_enum, 15);										\
-	ImGui::SameLine(25);													\
-	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);					\
-	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))			\
-	{																		\
-		ImGui::SameLine(420);												\
-		if (ICON_PROVIDER_IMAGE_BUTTON(Icon_Component_Options, 15))			\
-		{																	\
-			ImGui::OpenPopup("##ComponentContextMenu");						\
-		}																	\
-		Component_ContextMenu(componentInstance);							\
-
+#define COMPONENT_BEGIN(name, icon_enum, componentInstance)				\
+	ICON_PROVIDER_IMAGE(icon_enum, 15);									\
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);				\
+	ImGui::SameLine(420);												\
+	if (ICON_PROVIDER_IMAGE_BUTTON(Icon_Component_Options, 15))			\
+	{																	\
+		ImGui::OpenPopup("##ComponentContextMenu");						\
+	}																	\
+	Component_ContextMenu(componentInstance);							\
+	ImGui::SameLine(25);												\
+	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))		\
+	{																	\
+		
 #define COMPONENT_BEGIN_NO_OPTIONS(name, icon_enum)					\
 	ICON_PROVIDER_IMAGE(icon_enum, 15);								\
 	ImGui::SameLine(25);											\
