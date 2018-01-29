@@ -43,10 +43,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ButtonColorPicker.h"
 //===================================
 
-namespace Directus {
-	class Constraint;
-}
-
 //= NAMESPACES ==========
 using namespace std;
 using namespace Directus;
@@ -56,8 +52,6 @@ using namespace Math;
 //= SETTINGS ==========================
 static const float g_maxWidth = 100.0f;
 //=====================================
-
-// Reflected properties
 
 //= TRANSFORM ===============================
 static char g_transPosX[BUFFER_TEXT_DEFAULT];
@@ -673,94 +667,43 @@ void Properties::ShowMaterial(Material* material)
 		ImGui::Text("Name");
 		ImGui::SameLine(posX); ImGui::Text(material->GetResourceName().c_str());
 
+#define MAT_TEX(tex, texName, texEnum)					\
+		ImGui::Text(texName);							\
+		ImGui::SameLine(posX); ImGui::Image(			\
+			tex ? tex->GetShaderResource() : nullptr,	\
+			g_materialTexSize,							\
+			ImVec2(0, 0),								\
+			ImVec2(1, 1),								\
+			ImColor(255, 255, 255, 255),				\
+			ImColor(255, 255, 255, 128)					\
+		);												\
+		DROP_TARGET_TEXTURE(texEnum);					\
+
 		// Albedo
-		ImGui::Text("Abedo");
-		ImGui::SameLine(posX); ImGui::Image(
-			texAlbedo ? texAlbedo->GetShaderResource() : nullptr,
-			g_materialTexSize,
-			ImVec2(0, 0),
-			ImVec2(1, 1),
-			ImColor(255, 255, 255, 255),
-			ImColor(255, 255, 255, 128)
-		);
-		DROP_TARGET_TEXTURE(TextureType_Albedo);
-		ImGui::SameLine(); 	g_materialButtonColorPicker->Update();
+		MAT_TEX(texAlbedo, "Albedo", TextureType_Albedo); 
+		ImGui::SameLine(); g_materialButtonColorPicker->Update();
 
 		// Roughness
-		ImGui::Text("Roughness");
-		ImGui::SameLine(posX); ImGui::Image(
-			texRoughness ? texRoughness->GetShaderResource() : nullptr,
-			g_materialTexSize,
-			ImVec2(0, 0),
-			ImVec2(1, 1),
-			ImColor(255, 255, 255, 255),
-			ImColor(255, 255, 255, 128)
-		);
-		DROP_TARGET_TEXTURE(TextureType_Roughness);
+		MAT_TEX(texRoughness, "Roughness", TextureType_Roughness); 
 		ImGui::SameLine(); ImGui::SliderFloat("##matRoughness", &g_materialRoughness, 0.0f, 1.0f);
 
 		// Metallic
-		ImGui::Text("Metallic");
-		ImGui::SameLine(posX); ImGui::Image(
-			texMetallic ? texMetallic->GetShaderResource() : nullptr,
-			g_materialTexSize,
-			ImVec2(0, 0),
-			ImVec2(1, 1),
-			ImColor(255, 255, 255, 255),
-			ImColor(255, 255, 255, 128)
-		);
-		DROP_TARGET_TEXTURE(TextureType_Metallic);
+		MAT_TEX(texMetallic, "Metallic", TextureType_Metallic); 
 		ImGui::SameLine(); ImGui::SliderFloat("##matMetallic", &g_materialMetallic, 0.0f, 1.0f);
 
 		// Normal
-		ImGui::Text("Normal");
-		ImGui::SameLine(posX); ImGui::Image(
-			texNormal ? texNormal->GetShaderResource() : nullptr,
-			g_materialTexSize,
-			ImVec2(0, 0),
-			ImVec2(1, 1),
-			ImColor(255, 255, 255, 255),
-			ImColor(255, 255, 255, 128)
-		);
-		DROP_TARGET_TEXTURE(TextureType_Normal);
+		MAT_TEX(texNormal, "Normal", TextureType_Normal);
 		ImGui::SameLine(); ImGui::SliderFloat("##matNormal", &g_materialNormal, 0.0f, 1.0f);
 
 		// Height
-		ImGui::Text("Height");
-		ImGui::SameLine(posX); ImGui::Image(
-			texHeight ? texHeight->GetShaderResource() : nullptr,
-			g_materialTexSize,
-			ImVec2(0, 0),
-			ImVec2(1, 1),
-			ImColor(255, 255, 255, 255),
-			ImColor(255, 255, 255, 128)
-		);
-		DROP_TARGET_TEXTURE(TextureType_Height);
+		MAT_TEX(texHeight, "Height", TextureType_Height); 
 		ImGui::SameLine(); ImGui::SliderFloat("##matHeight", &g_materialHeight, 0.0f, 1.0f);
 
 		// Occlusion
-		ImGui::Text("Occlusion");
-		ImGui::SameLine(posX); ImGui::Image(
-			texOcclusion ? texOcclusion->GetShaderResource() : nullptr,
-			g_materialTexSize,
-			ImVec2(0, 0),
-			ImVec2(1, 1),
-			ImColor(255, 255, 255, 255),
-			ImColor(255, 255, 255, 128)
-		);
-		DROP_TARGET_TEXTURE(TextureType_Occlusion);
+		MAT_TEX(texOcclusion, "Occlusion", TextureType_Occlusion);
 
 		// Mask
-		ImGui::Text("Mask");
-		ImGui::SameLine(posX); ImGui::Image(
-			texMask ? texMask->GetShaderResource() : nullptr,
-			g_materialTexSize,
-			ImVec2(0, 0),
-			ImVec2(1, 1),
-			ImColor(255, 255, 255, 255),
-			ImColor(255, 255, 255, 128)
-		);
-		DROP_TARGET_TEXTURE(TextureType_Mask);
+		MAT_TEX(texMask, "Mask", TextureType_Mask);
 
 		// Tiling
 		ImGui::Text("Tiling");
