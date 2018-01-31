@@ -3,7 +3,8 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2017, assimp team
+Copyright (c) 2006-2018, assimp team
+
 
 All rights reserved.
 
@@ -642,13 +643,13 @@ enum aiComponent
     "IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES"
 
 // ---------------------------------------------------------------------------
-/** @brief Set whether the fbx importer will search for embedded loaded textures, where no embedded texture data is provided.
+/** @brief Set whether the fbx importer will use the legacy embedded texture naming.
 *
 * The default value is false (0)
 * Property type: bool
 */
-#define AI_CONFIG_IMPORT_FBX_SEARCH_EMBEDDED_TEXTURES \
-	"IMPORT_FBX_SEARCH_EMBEDDED_TEXTURES"
+#define AI_CONFIG_IMPORT_FBX_EMBEDDED_TEXTURES_LEGACY_NAMING \
+	"AI_CONFIG_IMPORT_FBX_EMBEDDED_TEXTURES_LEGACY_NAMING"
 	
 // ---------------------------------------------------------------------------
 /** @brief  Set the vertex animation keyframe to be imported
