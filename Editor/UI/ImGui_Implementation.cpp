@@ -481,11 +481,13 @@ void ImGui_Impl_InvalidateDeviceObjects()
 
 bool ImGui_Impl_Initialize(SDL_Window* window, Context* context)
 {
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+
 	g_graphics	= context->GetSubsystem<Graphics>();
 	g_timer		= context->GetSubsystem<Timer>();
 	Settings::g_versionImGui = IMGUI_VERSION;
 
-	ImGuiIO& io = ImGui::GetIO();
 	io.KeyMap[ImGuiKey_Tab]			= SDLK_TAB;
 	io.KeyMap[ImGuiKey_LeftArrow]	= SDL_SCANCODE_LEFT;
 	io.KeyMap[ImGuiKey_RightArrow]	= SDL_SCANCODE_RIGHT;
@@ -573,9 +575,9 @@ bool ImGui_Impl_ProcessEvent(SDL_Event* event)
 void ImGui_Impl_Shutdown()
 {
 	ImGui_Impl_InvalidateDeviceObjects();
-	ImGui::Shutdown();
 	g_pd3dDevice = nullptr;
 	g_pd3dDeviceContext = nullptr;
+	ImGui::DestroyContext();
 }
 
 void ImGui_Impl_NewFrame(SDL_Window* window)
