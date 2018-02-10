@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <LinearMath/btMotionState.h>
 #include "Transform.h"
 #include "Collider.h"
-#include "../Core/Engine.h"
-#include "../Scene/GameObject.h"
-#include "../Physics/Physics.h"
-#include "../Physics/BulletPhysicsHelper.h"
-#include "../Math/Quaternion.h"
-#include "../IO/FileStream.h"
+#include "../GameObject.h"
+#include "../../Core/Engine.h"
+#include "../../Physics/Physics.h"
+#include "../../Physics/BulletPhysicsHelper.h"
+#include "../../Math/Quaternion.h"
+#include "../../IO/FileStream.h"
 //===========================================================
 
 //= NAMESPACES ================

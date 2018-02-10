@@ -19,20 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES ======================
 #include "Light.h"
 #include "Transform.h"
 #include "Camera.h"
-#include "../IO/FileStream.h"
-#include "../Scene/Scene.h"
-#include "../Core/Settings.h"
-#include "../Core/Context.h"
-#include "../Scene/GameObject.h"
-#include "../Logging/Log.h"
-#include "../Math/BoundingBox.h"
 #include "MeshFilter.h"
-#include "../Math/Frustrum.h"
-//==============================
+#include "../Scene.h"
+#include "../../IO/FileStream.h"
+#include "../../Core/Settings.h"
+#include "../../Core/Context.h"
+#include "../../Scene/GameObject.h"
+#include "../../Logging/Log.h"
+#include "../../Math/BoundingBox.h"
+#include "../../Math/Frustrum.h"
+//=================================
 
 //= NAMESPACES ================
 using namespace Directus::Math;

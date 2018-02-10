@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ==================
 #include "Component.h"
 #include <memory>
-#include "../Math/Vector3.h"
-//==========================
+#include "../../Math/Vector3.h"
+//=============================
 
 class btCollisionShape;
 

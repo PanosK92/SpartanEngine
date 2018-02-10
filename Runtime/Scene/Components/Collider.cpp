@@ -24,11 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "MeshFilter.h"
 #include "RigidBody.h"
-#include "../Scene/GameObject.h"
-#include "../IO/FileStream.h"
-#include "../Physics/BulletPhysicsHelper.h"
-#include "../Graphics/Mesh.h"
-#include "../Logging/Log.h"
+#include "../GameObject.h"
+#include "../../IO/FileStream.h"
+#include "../../Physics/BulletPhysicsHelper.h"
+#include "../../Graphics/Mesh.h"
+#include "../../Logging/Log.h"
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
 #include <BulletCollision/CollisionShapes/btSphereShape.h>

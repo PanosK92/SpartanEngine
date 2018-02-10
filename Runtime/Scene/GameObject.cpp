@@ -19,27 +19,27 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES =================================
 #include "GameObject.h"
 #include "Scene.h"
-#include "../Core/GUIDGenerator.h"
-#include "../IO/FileStream.h"
 #include "../Logging/Log.h"
-#include "../Components/AudioSource.h"
-#include "../Components/AudioListener.h"
-#include "../Components/Camera.h"
-#include "../Components/Collider.h"
-#include "../Components/Transform.h"
-#include "../Components/Constraint.h"
-#include "../Components/Light.h"
-#include "../Components/LineRenderer.h"
-#include "../Components/MeshFilter.h"
-#include "../Components/MeshRenderer.h"
-#include "../Components/RigidBody.h"
-#include "../Components/Skybox.h"
-#include "../Components/Script.h"
+#include "../IO/FileStream.h"
+#include "../Core/GUIDGenerator.h"
 #include "../FileSystem/FileSystem.h"
-//======================================
+#include "../Scene/Components/Camera.h"
+#include "../Scene/Components/Collider.h"
+#include "../Scene/Components/Transform.h"
+#include "../Scene/Components/Constraint.h"
+#include "../Scene/Components/Light.h"
+#include "../Scene/Components/LineRenderer.h"
+#include "../Scene/Components/MeshFilter.h"
+#include "../Scene/Components/MeshRenderer.h"
+#include "../Scene/Components/RigidBody.h"
+#include "../Scene/Components/Skybox.h"
+#include "../Scene/Components/Script.h"
+#include "../Scene/Components/AudioSource.h"
+#include "../Scene/Components/AudioListener.h"
+//============================================
 
 //= NAMESPACES =====
 using namespace std;

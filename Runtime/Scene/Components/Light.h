@@ -21,17 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================================
+//= INCLUDES =======================================
 #include <vector>
 #include <memory>
 #include "../Components/Component.h"
-#include "../Math/Vector4.h"
-#include "../Math/Vector3.h"
-#include "../Math/Matrix.h"
-#include "../Core/Settings.h"
-#include "../Graphics/D3D11/D3D11RenderTexture.h"
-#include "../Graphics/Cascade.h"
-//===============================================
+#include "../../Math/Vector4.h"
+#include "../../Math/Vector3.h"
+#include "../../Math/Matrix.h"
+#include "../../Core/Settings.h"
+#include "../../Graphics/D3D11/D3D11RenderTexture.h"
+#include "../../Graphics/Cascade.h"
+//==================================================
 
 namespace Directus
 {

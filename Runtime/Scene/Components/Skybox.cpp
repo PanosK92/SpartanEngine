@@ -19,18 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ==============================
 #include "Skybox.h"
 #include "Transform.h"
 #include "MeshRenderer.h"
 #include "MeshFilter.h"
-#include "../Scene/GameObject.h"
-#include "../Graphics/Texture.h"
-#include "../Math/Vector3.h"
-#include "../Scene/Scene.h"
-#include "../Resource/ResourceCache.h"
-#include "../Resource/ResourceManager.h"
-//======================================
+#include "../GameObject.h"
+#include "../../Graphics/Texture.h"
+#include "../../Math/Vector3.h"
+#include "../../Scene/Scene.h"
+#include "../../Resource/ResourceCache.h"
+#include "../../Resource/ResourceManager.h"
+//=========================================
 
 //= NAMESPACES ================
 using namespace std;

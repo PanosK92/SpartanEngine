@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ==================
 #include "AudioListener.h"
-#include "../Audio/Audio.h"
-#include "../Core/Context.h"
-//==========================
+#include "../../Audio/Audio.h"
+#include "../../Core/Context.h"
+//=============================
 
 namespace Directus
 {

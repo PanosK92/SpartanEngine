@@ -19,24 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ==============================
 #include "Hierarchy.h"
 #include "../imgui/imgui.h"
 #include "Scene/Scene.h"
 #include "Scene/GameObject.h"
 #include "Core/Engine.h"
 #include "Input/Input.h"
-#include "Components/Transform.h"
-#include "Components/Light.h"
-#include "Components/AudioSource.h"
-#include "Components/AudioListener.h"
-#include "Components/RigidBody.h"
-#include "Components/Collider.h"
-#include "Components/Camera.h"
-#include "Components/Constraint.h"
+#include "Scene/Components/Transform.h"
+#include "Scene/Components/Light.h"
+#include "Scene/Components/AudioSource.h"
+#include "Scene/Components/AudioListener.h"
+#include "Scene/Components/RigidBody.h"
+#include "Scene/Components/Collider.h"
+#include "Scene/Components/Camera.h"
+#include "Scene/Components/Constraint.h"
 #include "../DragDrop.h"
 #include "../EditorHelper.h"
-//===================================
+//=========================================
 
 //= NAMESPACES ==========
 using namespace std;

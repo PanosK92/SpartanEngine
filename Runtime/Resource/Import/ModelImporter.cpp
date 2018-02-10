@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES ================================
 #include "ModelImporter.h"
 #include <vector>
 #include <future>
@@ -27,20 +27,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/version.h>
-#include "../../Scene/Scene.h"
-#include "../../Scene/GameObject.h"
+#include "AssimpHelper.h"
 #include "../../Core/Context.h"
-#include "../../Components/Transform.h"
+#include "../../Core/Settings.h"
 #include "../../FileSystem/FileSystem.h"
+#include "../../EventSystem/EventSystem.h"
 #include "../../Logging/Log.h"
 #include "../../Graphics/Model.h"
 #include "../../Graphics/Animation.h"
 #include "../../Graphics/Mesh.h"
-#include "../../EventSystem/EventSystem.h"
 #include "../../Graphics/Material.h"
-#include "AssimpHelper.h"
-#include "../../Core/Settings.h"
-//========================================
+#include "../../Scene/Scene.h"
+#include "../../Scene/Components/Transform.h"
+#include "../../Scene/GameObject.h"
+//===========================================
 
 //= NAMESPACES ================
 using namespace std;

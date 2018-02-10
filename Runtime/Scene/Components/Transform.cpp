@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ===========================
 #include "Transform.h"
-#include "../IO/FileStream.h"
-#include "../Scene/Scene.h"
-#include "../Scene/GameObject.h"
-#include "../Logging/Log.h"
-#include "../FileSystem/FileSystem.h"
-//===================================
+#include "../Scene.h"
+#include "../GameObject.h"
+#include "../../Logging/Log.h"
+#include "../../IO/FileStream.h"
+#include "../../FileSystem/FileSystem.h"
+//======================================
 
 //= NAMESPACES ================
 using namespace std;
