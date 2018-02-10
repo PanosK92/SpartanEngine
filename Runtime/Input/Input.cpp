@@ -43,13 +43,13 @@ namespace Directus
 
 	Input::~Input()
 	{
-		m_DX8Input->Release();
+
 	}
 
 	bool Input::Initialize()
 	{
-		m_DX8Input = make_unique<DX8Input>();
-		m_initialized = m_DX8Input->Initialize();
+		m_DX8Input		= make_unique<DX8Input>();
+		m_initialized	= m_DX8Input->Initialize();
 
 		return m_initialized;
 	}

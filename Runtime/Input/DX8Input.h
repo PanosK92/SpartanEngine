@@ -43,9 +43,8 @@ namespace Directus
 
 		bool Initialize();
 		void Update();
-		void Release();
 
-		bool IsKeyboardKeyDown(byte key);
+		bool IsKeyboardKeyDown(int key);
 		bool IsMouseKeyDown(int key);
 
 		Math::Vector3 GetMouseDelta();

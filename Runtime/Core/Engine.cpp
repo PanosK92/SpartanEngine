@@ -58,7 +58,7 @@ namespace Directus
 		// Register self as a subsystem
 		m_context->RegisterSubsystem(this);
 
-		// Initialize global/static modules 
+		// Initialize global/static subsystems 
 		Log::Initialize();
 		FileSystem::Initialize();
 		Settings::Initialize();

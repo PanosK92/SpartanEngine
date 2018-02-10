@@ -42,7 +42,28 @@ namespace Directus
 
 	DX8Input::~DX8Input()
 	{
-		Release();
+		// Release the mouse.
+		if (m_mouse)
+		{
+			m_mouse->Unacquire();
+			m_mouse->Release();
+			m_mouse = nullptr;
+		}
+
+		// Release the keyboard.
+		if (m_keyboard)
+		{
+			m_keyboard->Unacquire();
+			m_keyboard->Release();
+			m_keyboard = nullptr;
+		}
+
+		// Release the main interface to direct input.
+		if (m_directInput)
+		{
+			m_directInput->Release();
+			m_directInput = nullptr;
+		}
 	}
 
 	bool DX8Input::Initialize()
@@ -142,52 +163,19 @@ namespace Directus
 		ReadMouse();
 	}
 
-	void DX8Input::Release()
+	bool DX8Input::IsKeyboardKeyDown(int key)
 	{
-		// Release the mouse.
-		if (m_mouse)
-		{
-			m_mouse->Unacquire();
-			m_mouse->Release();
-			m_mouse = nullptr;
-		}
-
-		// Release the keyboard.
-		if (m_keyboard)
-		{
-			m_keyboard->Unacquire();
-			m_keyboard->Release();
-			m_keyboard = nullptr;
-		}
-
-		// Release the main interface to direct input.
-		if (m_directInput)
-		{
-			m_directInput->Release();
-			m_directInput = nullptr;
-		}
-	}
-
-	bool DX8Input::IsKeyboardKeyDown(byte key)
-	{
-		// & = bitwise AND
-		// hexadecimal 0x80 = 10000000 binary
-		if (m_keyboardState[key] & 0x80)
-			return true;
-
-		return false;
+		// hex: 0x80 | Bin: 10000000
+		return m_keyboardState[key] & 0x80;
 	}
 
 	bool DX8Input::IsMouseKeyDown(int key)
 	{
-		//  0 = Left Button
-		//  1 = Right Button
-		//  3 = Middle Button (Scroll Wheel pressed)
+		//  0	= Left Button
+		//  1	= Right Button
+		//  3	= Middle Button (Scroll Wheel pressed)
 		//  4-7 = Side buttons
-		if (m_mouseState.rgbButtons[key] & 0x80)
-			return true;
-
-		return false;
+		return m_mouseState.rgbButtons[key] & 0x80;
 	}
 
 	Vector3 DX8Input::GetMouseDelta()
@@ -200,14 +188,12 @@ namespace Directus
 
 	bool DX8Input::GetKeyboard()
 	{
-		HRESULT result = m_keyboard->Acquire();
-		return SUCCEEDED(result);
+		return SUCCEEDED(m_keyboard->Acquire());
 	}
 
 	bool DX8Input::GetMouse()
 	{
-		HRESULT result = m_mouse->Acquire();
-		return SUCCEEDED(result);
+		return SUCCEEDED(m_mouse->Acquire());
 	}
 
 	bool DX8Input::ReadKeyboard()
