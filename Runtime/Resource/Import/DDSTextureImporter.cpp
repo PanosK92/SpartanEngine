@@ -128,7 +128,7 @@ namespace
 
 	typedef public std::unique_ptr<void, handle_closer> ScopedHandle;
 
-	inline HANDLE safe_handle(HANDLE h) { return (h == INVALID_HANDLE_VALUE) ? 0 : h; }
+	inline HANDLE safe_handle(HANDLE h) { return (h == INVALID_HANDLE_VALUE) ? nullptr : h; }
 
 	template<UINT TNameLength>
 	inline void SetDebugObjectName(_In_ ID3D11DeviceChild* resource, _In_ const char(&name)[TNameLength])
@@ -967,9 +967,9 @@ static HRESULT CreateD3DResources(_In_ ID3D11Device* d3dDevice,
 			initData,
 			&tex
 		);
-		if (SUCCEEDED(hr) && tex != 0)
+		if (SUCCEEDED(hr) && tex != nullptr)
 		{
-			if (textureView != 0)
+			if (textureView != nullptr)
 			{
 				D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc;
 				memset(&SRVDesc, 0, sizeof(SRVDesc));
@@ -998,7 +998,7 @@ static HRESULT CreateD3DResources(_In_ ID3D11Device* d3dDevice,
 				}
 			}
 
-			if (texture != 0)
+			if (texture != nullptr)
 			{
 				*texture = tex;
 			}
@@ -1038,9 +1038,9 @@ static HRESULT CreateD3DResources(_In_ ID3D11Device* d3dDevice,
 			initData,
 			&tex
 		);
-		if (SUCCEEDED(hr) && tex != 0)
+		if (SUCCEEDED(hr) && tex != nullptr)
 		{
-			if (textureView != 0)
+			if (textureView != nullptr)
 			{
 				D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc;
 				memset(&SRVDesc, 0, sizeof(SRVDesc));
@@ -1085,7 +1085,7 @@ static HRESULT CreateD3DResources(_In_ ID3D11Device* d3dDevice,
 				}
 			}
 
-			if (texture != 0)
+			if (texture != nullptr)
 			{
 				*texture = tex;
 			}
@@ -1116,9 +1116,9 @@ static HRESULT CreateD3DResources(_In_ ID3D11Device* d3dDevice,
 			initData,
 			&tex
 		);
-		if (SUCCEEDED(hr) && tex != 0)
+		if (SUCCEEDED(hr) && tex != nullptr)
 		{
-			if (textureView != 0)
+			if (textureView != nullptr)
 			{
 				D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc;
 				memset(&SRVDesc, 0, sizeof(SRVDesc));
@@ -1138,7 +1138,7 @@ static HRESULT CreateD3DResources(_In_ ID3D11Device* d3dDevice,
 				}
 			}
 
-			if (texture != 0)
+			if (texture != nullptr)
 			{
 				*texture = tex;
 			}
@@ -1337,7 +1337,7 @@ static HRESULT CreateTextureFromDDS(_In_ ID3D11Device* d3dDevice,
 	}
 
 	bool autogen = false;
-	if (mipCount == 1 && d3dContext != 0 && textureView != 0) // Must have context and shader-view to auto generate mipmaps
+	if (mipCount == 1 && d3dContext != nullptr && textureView != nullptr) // Must have context and shader-view to auto generate mipmaps
 	{
 		// See if format is supported for auto-gen mipmaps (varies by feature level)
 		UINT fmtSupport = 0;
@@ -1659,12 +1659,12 @@ HRESULT DirectX::CreateDDSTextureFromMemoryEx(ID3D11Device* d3dDevice,
 		texture, textureView);
 	if (SUCCEEDED(hr))
 	{
-		if (texture != 0 && *texture != 0)
+		if (texture != nullptr && *texture != nullptr)
 		{
 			SetDebugObjectName(*texture, "DDSTextureLoader");
 		}
 
-		if (textureView != 0 && *textureView != 0)
+		if (textureView != nullptr && *textureView != nullptr)
 		{
 			SetDebugObjectName(*textureView, "DDSTextureLoader");
 		}
