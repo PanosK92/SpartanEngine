@@ -92,7 +92,7 @@ WORKING_DIR 	= "../Binaries/Release"
 		links { "freetype" }
 		links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
 		links { "pugixml" }
-		links { "IrrXML.lib" }
+		links { "IrrXML" }
 	
 -- Debug libraries
 	configuration "Debug"

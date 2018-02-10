@@ -39,9 +39,6 @@ namespace Directus
 		Engine(Context* context);
 		~Engine() { Shutdown(); }
 
-		// Sets a draw handle, input handle and a window instance for the engine to use
-		void SetHandles(void* instance, void* mainWindowHandle, void* drawPaneHandle);
-
 		//= SUBSYSTEM =============
 		bool Initialize() override;
 		//=========================
@@ -62,10 +59,17 @@ namespace Directus
 		// Shuts down the engine
 		void Shutdown();
 
+		//= WINDOW ========================================================================
+		static void SetHandles(void* drawHandle, void* windowHandle, void* windowInstance);
+		static void* GetWindowHandle() { return m_windowHandle; }
+		static void* GetWindowInstance() { return m_windowInstance; }
+		//=================================================================================
+
 	private:
-		void* m_hinstance{};
-		void* m_windowHandle{};
-		void* m_drawHandle{};
+		static void* m_drawHandle;	
+		static void* m_windowHandle;
+		static void* m_windowInstance;
+		
 		int m_flags;
 		Timer* m_timer;
 	};

@@ -161,8 +161,8 @@ int main(int argc, char* argv[])
 	g_editor = new Editor();
 
 	// Create and initialize the engine
+	Engine::SetHandles(winHandle, winHandle, winInstance);
 	g_engine = new Engine(new Context);
-	g_engine->SetHandles(winInstance, winHandle, winHandle);
 	g_engine->Initialize();
 	g_engineContext = g_engine->GetContext();
 	g_renderer = g_engineContext->GetSubsystem<Renderer>();
