@@ -33,33 +33,4 @@ namespace Directus
 	typedef VULKANGraphicsDevice Graphics;
 #endif
 	//=============================================
-
-	enum InputLayout
-	{
-		Auto,
-		Position,
-		PositionColor,
-		PositionTexture,
-		PositionTextureTBN
-	};
-
-	enum CullMode
-	{
-		CullNone,
-		CullFront,
-		CullBack
-	};
-
-	enum PrimitiveTopology
-	{
-		TriangleList,
-		LineList
-	};
-
-	enum TextureSampler
-	{
-		Anisotropic_Sampler,
-		Linear_Sampler,
-		Point_Sampler
-	};
 }
