@@ -21,19 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-// Graphics
+//= RENDERING ===
 #define API_D3D11
+//===============
+
+//= INPUT ============
+#if defined(API_D3D11)
+#define API_DInput
+#endif
+//====================
 
 namespace Directus
 {
-//= GRAPHICS =====================================
+//= RENDERING ====================================
 #if defined(API_D3D11)
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
-#pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
-#define DIRECTINPUT_VERSION 0x0800
 #include "../Graphics/D3D11/D3D11GraphicsDevice.h"
 	class D3D11GraphicsDevice;
 	typedef D3D11GraphicsDevice Graphics;
@@ -43,4 +48,11 @@ namespace Directus
 	typedef VULKANGraphicsDevice Graphics;
 #endif
 //================================================
+
+//= INPUT =========================
+#if defined(API_DInput)
+#pragma comment(lib, "dinput8.lib")
+#define DIRECTINPUT_VERSION 0x0800
+#endif
+//=================================
 }
