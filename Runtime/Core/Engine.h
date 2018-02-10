@@ -33,7 +33,7 @@ namespace Directus
 
 	class Timer;
 
-	class ENGINE_API Engine : public Subsystem
+	class ENGINE_CLASS Engine : public Subsystem
 	{
 	public:
 		Engine(Context* context);

@@ -31,7 +31,7 @@ namespace Directus
 	class Material;
 	enum MaterialType;
 
-	class ENGINE_API MeshRenderer : public Component
+	class ENGINE_CLASS MeshRenderer : public Component
 	{
 	public:
 		MeshRenderer();

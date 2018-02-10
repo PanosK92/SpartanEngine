@@ -22,7 +22,7 @@ DEALINGS IN THE SOFTWARE. */
 
 namespace Directus
 {
-	class ENGINE_API Subsystem
+	class ENGINE_CLASS Subsystem
 	{
 		friend class Context;
 	public:

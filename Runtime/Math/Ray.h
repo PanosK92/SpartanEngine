@@ -31,7 +31,7 @@ namespace Directus
 	{
 		class BoundingBox;
 
-		class ENGINE_API Ray
+		class ENGINE_CLASS Ray
 		{
 		public:
 			// Constructs a ray with zero origin and direction

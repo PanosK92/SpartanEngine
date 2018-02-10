@@ -57,7 +57,7 @@ namespace Directus
 		Soft_Shadows
 	};
 
-	class ENGINE_API Light : public Component
+	class ENGINE_CLASS Light : public Component
 	{
 	public:
 		Light();

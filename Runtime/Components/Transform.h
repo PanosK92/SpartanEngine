@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ENGINE_API Transform : public Component
+	class ENGINE_CLASS Transform : public Component
 	{
 	public:
 		Transform();

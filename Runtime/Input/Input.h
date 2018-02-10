@@ -112,7 +112,7 @@ namespace Directus
 		Delete
 	};
 
-	class ENGINE_API Input : public Subsystem
+	class ENGINE_CLASS Input : public Subsystem
 	{
 	public:
 		Input(Context* context);

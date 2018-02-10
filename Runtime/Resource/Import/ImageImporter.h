@@ -72,7 +72,7 @@ namespace Directus
 	class Context;
 	class Texture;
 
-	class ENGINE_API ImageImporter
+	class ENGINE_CLASS ImageImporter
 	{
 	public:
 		ImageImporter(Context* context);

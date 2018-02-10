@@ -32,7 +32,7 @@ namespace Directus
 	class GameObject;
 	class Light;
 
-	class ENGINE_API Scene : public Subsystem
+	class ENGINE_CLASS Scene : public Subsystem
 	{
 	public:
 		Scene(Context* context);

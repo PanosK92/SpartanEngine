@@ -41,7 +41,7 @@ namespace Directus
 		Impulse
 	};
 
-	class ENGINE_API RigidBody : public Component
+	class ENGINE_CLASS RigidBody : public Component
 	{
 	public:
 		RigidBody();

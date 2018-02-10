@@ -36,7 +36,7 @@ namespace Directus
 	class Transform;
 	struct VertexPosCol;
 
-	class ENGINE_API Grid
+	class ENGINE_CLASS Grid
 	{
 	public:
 		Grid(Context* context);

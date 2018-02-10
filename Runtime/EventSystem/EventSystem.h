@@ -61,7 +61,7 @@ To fire an event with data								-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 
 namespace Directus
 {
-	class ENGINE_API EventSystem
+	class ENGINE_CLASS EventSystem
 	{
 	public:
 		typedef std::function<void(Variant)> subscriber;

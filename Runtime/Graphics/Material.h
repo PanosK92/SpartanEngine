@@ -51,7 +51,7 @@ namespace Directus
 		Material_Skybox
 	};
 
-	class ENGINE_API Material : public Resource
+	class ENGINE_CLASS Material : public Resource
 	{
 	public:
 		Material(Context* context);

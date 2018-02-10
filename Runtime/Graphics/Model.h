@@ -43,7 +43,7 @@ namespace Directus
 		class BoundingBox;
 	}
 
-	class ENGINE_API Model : public Resource
+	class ENGINE_CLASS Model : public Resource
 	{
 	public:
 		Model(Context* context);

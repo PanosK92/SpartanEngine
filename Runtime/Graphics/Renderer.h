@@ -71,7 +71,7 @@ namespace Directus
 		Render_Light				= 1UL << 9
 	};
 
-	class ENGINE_API Renderer : public Subsystem
+	class ENGINE_CLASS Renderer : public Subsystem
 	{
 	public:
 		Renderer(Context* context);

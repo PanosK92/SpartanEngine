@@ -27,14 +27,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //======================================================================================
 
 #ifdef COMPILING_LIB
-#define ENGINE_API __declspec(dllexport)
+#define ENGINE_CLASS __declspec(dllexport)
 #else
-#define ENGINE_API __declspec(dllimport)
+#define ENGINE_CLASS __declspec(dllimport)
 #endif
 
 namespace Directus
 {
-	//= A COLLECTION OF SOME HELPFUL FUNCTIONS =================
 	template <typename T>
 	void SafeRelease(T& ptr)
 	{
@@ -54,5 +53,4 @@ namespace Directus
 			ptr = nullptr;
 		}
 	}
-	//=========================================================
 }

@@ -52,7 +52,7 @@ namespace Directus
 		ComponentType_Unknown
 	};
 
-	class ENGINE_API Component
+	class ENGINE_CLASS Component
 	{
 	public:
 		virtual ~Component() {}

@@ -63,7 +63,7 @@ namespace Directus
 		Every_Second_VBlank
 	};
 
-	class ENGINE_API Settings
+	class ENGINE_CLASS Settings
 	{
 	public:
 		static void Initialize();

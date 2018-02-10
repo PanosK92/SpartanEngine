@@ -116,7 +116,7 @@ namespace Directus
 		return ComponentType_Unknown;
 	}
 
-#define INSTANTIATE(T) template ENGINE_API ComponentType Component::ToComponentType<T>()
+#define INSTANTIATE(T) template ENGINE_CLASS ComponentType Component::ToComponentType<T>()
 	// Explicit template instantiation
 	INSTANTIATE(AudioListener);
 	INSTANTIATE(AudioSource);

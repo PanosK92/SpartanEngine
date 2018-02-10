@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
-	class ENGINE_API GUIDGenerator
+	class ENGINE_CLASS GUIDGenerator
 	{
 	public:
 		static unsigned int Generate();

@@ -42,7 +42,7 @@ namespace Directus
 	class D3D11VertexBuffer;
 	class D3D11IndexBuffer;
 
-	class ENGINE_API Font : Resource
+	class ENGINE_CLASS Font : Resource
 	{
 	public:
 		Font(Context* context);

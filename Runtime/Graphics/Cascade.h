@@ -39,7 +39,7 @@ namespace Directus
 		class Vector3;
 	}
 
-	class ENGINE_API Cascade
+	class ENGINE_CLASS Cascade
 	{
 	public:
 		Cascade(int resolution, Camera* camera, Context* context);
