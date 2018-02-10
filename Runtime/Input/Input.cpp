@@ -48,7 +48,7 @@ namespace Directus
 
 	bool Input::Initialize()
 	{
-		m_DX8Input		= make_unique<DX8Input>();
+		m_DX8Input		= make_unique<DInput>();
 		m_initialized	= m_DX8Input->Initialize();
 
 		return m_initialized;
@@ -148,12 +148,12 @@ namespace Directus
 		// CONTROLS
 		if (key == Esc)				return m_DX8Input->IsKeyboardKeyDown(DIK_ESCAPE);
 		if (key == Tab)				return m_DX8Input->IsKeyboardKeyDown(DIK_TAB);
-		if (key == LeftShift)		return m_DX8Input->IsKeyboardKeyDown(DIK_LSHIFT);
-		if (key == RightShift)		return m_DX8Input->IsKeyboardKeyDown(DIK_RSHIFT);
-		if (key == LeftControl)		return m_DX8Input->IsKeyboardKeyDown(DIK_LCONTROL);
-		if (key == RightControl)	return m_DX8Input->IsKeyboardKeyDown(DIK_RCONTROL);
-		if (key == LeftAlt)			return m_DX8Input->IsKeyboardKeyDown(DIK_LALT);
-		if (key == RightAlt)		return m_DX8Input->IsKeyboardKeyDown(DIK_RALT);
+		if (key == Shift_Left)		return m_DX8Input->IsKeyboardKeyDown(DIK_LSHIFT);
+		if (key == Shift_Right)		return m_DX8Input->IsKeyboardKeyDown(DIK_RSHIFT);
+		if (key == Ctrl_Left)		return m_DX8Input->IsKeyboardKeyDown(DIK_LCONTROL);
+		if (key == Ctrl_Right)	return m_DX8Input->IsKeyboardKeyDown(DIK_RCONTROL);
+		if (key == Alt_Left)			return m_DX8Input->IsKeyboardKeyDown(DIK_LALT);
+		if (key == Alt_Right)		return m_DX8Input->IsKeyboardKeyDown(DIK_RALT);
 		if (key == Space)			return m_DX8Input->IsKeyboardKeyDown(DIK_SPACE);
 		if (key == CapsLock)		return m_DX8Input->IsKeyboardKeyDown(DIK_CAPSLOCK);
 		if (key == Backspace)		return m_DX8Input->IsKeyboardKeyDown(DIK_BACKSPACE);

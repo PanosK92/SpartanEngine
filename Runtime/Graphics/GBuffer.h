@@ -63,6 +63,5 @@ namespace Directus
 
 		// Dependencies
 		Graphics* m_graphics;
-
 	};
 }

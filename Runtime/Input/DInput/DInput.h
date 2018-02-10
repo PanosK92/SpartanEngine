@@ -21,18 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "../Math/Vector3.h"
+//= INCLUDES ==================
+#include "../../Math/Vector3.h"
 #include <dinput.h>
-//==========================
+//=============================
 
 namespace Directus
 {
-	class DX8Input
+	class DInput
 	{
 	public:
-		DX8Input();
-		~DX8Input();
+		DInput();
+		~DInput();
 
 		bool Initialize();
 		void Update();
