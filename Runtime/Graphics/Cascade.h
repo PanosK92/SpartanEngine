@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include <memory>
-#include "../Core/Helper.h"
+#include "../Core/EngineDefs.h"
 //=========================
 
 struct ID3D11ShaderResourceView;

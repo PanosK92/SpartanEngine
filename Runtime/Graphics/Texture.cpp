@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================================
 #include "Texture.h"
 #include "../Logging/Log.h"
-#include "../Core/Helper.h"
+#include "../Core/EngineDefs.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Resource/Import/DDSTextureImporter.h"
 #include "../Resource/ResourceManager.h"

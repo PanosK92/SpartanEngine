@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============
-#include "../Core/Helper.h"
+#include "../Core/EngineDefs.h"
 #include <vector>
 #include <memory>
 #include "../Math/Matrix.h"

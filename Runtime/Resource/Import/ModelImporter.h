@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 
 //= INCLUDES =================
-#include "../../Core/Helper.h"
+#include "../../Core/EngineDefs.h"
 #include <memory>
 //============================
 

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include <cmath>
 #include <limits>
-#include "../Core/Helper.h"
+#include "../Core/EngineDefs.h"
 //=========================
 
 namespace Directus

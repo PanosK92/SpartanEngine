@@ -17,7 +17,7 @@ DEALINGS IN THE SOFTWARE. */
 #pragma once
 
 //= INLUDES =======
-#include "Helper.h"
+#include "EngineDefs.h"
 //=================
 
 namespace Directus

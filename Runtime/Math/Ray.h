@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include "../Core/Helper.h"
+//= INCLUDES =======
 #include "Vector3.h"
-//=========================
+//==================
 
 namespace Directus
 {
