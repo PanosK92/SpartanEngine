@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==========
-#include "MathHelper.h"
 #include "Quaternion.h"
 #include "Vector3.h"
 #include "Vector4.h"

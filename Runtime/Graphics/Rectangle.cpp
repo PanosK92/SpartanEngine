@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rectangle.h"
 #include "D3D11/D3D11IndexBuffer.h"
 #include "D3D11/D3D11VertexBuffer.h"
-#include "../Core/Helper.h"
+#include "../Core/EngineDefs.h"
 #include "../Graphics/Vertex.h"
 #include "../Logging/Log.h"
 #include "../Core/Context.h"

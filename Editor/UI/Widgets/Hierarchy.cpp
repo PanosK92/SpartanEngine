@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Hierarchy.h"
 #include "../imgui/imgui.h"
-#include "../EditorHelper.h"
 #include "Scene/Scene.h"
 #include "Scene/GameObject.h"
 #include "Core/Engine.h"
@@ -36,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Camera.h"
 #include "Components/Constraint.h"
 #include "../DragDrop.h"
+#include "../EditorHelper.h"
 //===================================
 
 //= NAMESPACES ==========

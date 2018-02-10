@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Physics.h"
 #include "../Core/Context.h"
 #include "../Core/Engine.h"
-#include "../Core/Helper.h"
+#include "../Core/EngineDefs.h"
 #include "../Logging/Log.h"
 #include "../EventSystem/EventSystem.h"
 #include "PhysicsDebugDraw.h"

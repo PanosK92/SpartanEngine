@@ -62,7 +62,7 @@ XPM files[reading, writing]
 
 //= INCLUDES =================
 #include <vector>
-#include "../../Core/Helper.h"
+#include "../../Core/EngineDefs.h"
 //============================
 
 struct FIBITMAP;
