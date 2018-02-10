@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DX8Input.h"
 #include "../Logging/Log.h"
 #include <sstream>
+#include "../Core/Engine.h"
 //=========================
 
 //= NAMESPACES ================
@@ -34,9 +35,9 @@ namespace Directus
 {
 	DX8Input::DX8Input()
 	{
-		m_directInput = nullptr;
-		m_keyboard = nullptr;
-		m_mouse = nullptr;
+		m_directInput	= nullptr;
+		m_keyboard		= nullptr;
+		m_mouse			= nullptr;
 	}
 
 	DX8Input::~DX8Input()
@@ -44,19 +45,19 @@ namespace Directus
 		Release();
 	}
 
-	bool DX8Input::Initialize(void* instance, void* handle)
+	bool DX8Input::Initialize()
 	{
-		HWND handleHWND = (HWND)handle;
-		HINSTANCE instanceHandle = (HINSTANCE)instance;
-
-		if (!instance || !handle)
+		if (!Engine::GetWindowHandle() || !Engine::GetWindowInstance())
 			return false;
 
+		auto windowHandle = (HWND)Engine::GetWindowHandle();
+		auto windowInstance = (HINSTANCE)Engine::GetWindowInstance();
+
 		// Make sure the window has focus, otherwise the mouse and keyboard won't be able to be aquired.
-		SetForegroundWindow(handleHWND);
+		SetForegroundWindow(windowHandle);
 
 		// Initialize the main direct input interface.
-		HRESULT result = DirectInput8Create(instanceHandle, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&m_directInput, nullptr);
+		HRESULT result = DirectInput8Create(windowInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&m_directInput, nullptr);
 		if (FAILED(result))
 		{
 			switch (result)
@@ -86,7 +87,7 @@ namespace Directus
 		}
 
 		// Set the cooperative level of the keyboard to share with other programs.
-		result = m_keyboard->SetCooperativeLevel(handleHWND, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+		result = m_keyboard->SetCooperativeLevel(windowHandle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 		if (FAILED(result))
 		{
 			LOG_ERROR("DX8Input: Failed to set DirectInput keyboard's cooperative level.");
@@ -114,7 +115,7 @@ namespace Directus
 		}
 
 		// Set the cooperative level of the mouse to share with other programs.
-		result = m_mouse->SetCooperativeLevel(handleHWND, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+		result = m_mouse->SetCooperativeLevel(windowHandle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 		if (FAILED(result))
 		{
 			LOG_ERROR("DX8Input: Failed to set DirectInput mouse's cooperative level.");
