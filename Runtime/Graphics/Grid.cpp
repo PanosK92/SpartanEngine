@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES =============================
 #include "Grid.h"
 #include "../Core/Context.h"
 #include "Vertex.h"
 #include "D3D11/D3D11VertexBuffer.h"
 #include "D3D11/D3D11IndexBuffer.h"
 #include "../Logging/Log.h"
-#include "../Components/Transform.h"
-//==================================
+#include "../Scene/Components/Transform.h"
+//========================================
 
 //= NAMESPACES ================
 using namespace std;

@@ -19,29 +19,29 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ==============================
 #include "Properties.h"
 #include "../imgui/imgui.h"
 #include "Hierarchy.h"
 #include "Scene/GameObject.h"
 #include "Graphics/Material.h"
 #include "Graphics/Mesh.h"
-#include "Components/Transform.h"
-#include "Components/MeshFilter.h"
-#include "Components/MeshRenderer.h"
-#include "Components/RigidBody.h"
-#include "Components/Collider.h"
-#include "Components/Constraint.h"
-#include "Components/Light.h"
-#include "Components/AudioSource.h"
-#include "Components/AudioListener.h"
-#include "Components/Camera.h"
-#include "Components/Script.h"
+#include "Scene/Components/Transform.h"
+#include "Scene/Components/MeshFilter.h"
+#include "Scene/Components/MeshRenderer.h"
+#include "Scene/Components/RigidBody.h"
+#include "Scene/Components/Collider.h"
+#include "Scene/Components/Constraint.h"
+#include "Scene/Components/Light.h"
+#include "Scene/Components/AudioSource.h"
+#include "Scene/Components/AudioListener.h"
+#include "Scene/Components/Camera.h"
+#include "Scene/Components/Script.h"
 #include "../IconProvider.h"
 #include "../EditorHelper.h"
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
-//===================================
+//=========================================
 
 //= NAMESPACES ==========
 using namespace std;

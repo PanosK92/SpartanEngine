@@ -22,17 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Camera.h"
 #include "Transform.h"
-#include "../IO/FileStream.h"
-#include "../Core/Settings.h"
 #include "../Components/MeshFilter.h"
 #include "../Components/Skybox.h"
-#include "../Math/Quaternion.h"
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
-#include "../Math/Frustrum.h"
-#include "../Graphics/Renderer.h"
-#include "../Scene/GameObject.h"
+#include "../../IO/FileStream.h"
+#include "../../Core/Settings.h"
+#include "../../Math/Quaternion.h"
+#include "../../Math/Vector2.h"
+#include "../../Math/Vector3.h"
+#include "../../Math/Vector4.h"
+#include "../../Math/Frustrum.h"
+#include "../../Graphics/Renderer.h"
+#include "../GameObject.h"
 //===================================
 
 //= NAMESPACES ================

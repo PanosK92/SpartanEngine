@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Texture.h"
 #include "../Font/Font.h"
 #include "../Graphics/Animation.h"
-#include "../Components/Script.h"
+#include "../Scene/Components/Script.h"
 #include "../Graphics/Model.h"
 #include "../Graphics/Material.h"
 #include "../Graphics/Mesh.h"

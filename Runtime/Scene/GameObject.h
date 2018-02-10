@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES ====================
 #include <map>
 #include "Scene.h"
-#include "../Components/Component.h"
+#include "Components/Component.h"
 #include "../Core/Context.h"
-//==================================
+//===============================
 
 namespace Directus
 {

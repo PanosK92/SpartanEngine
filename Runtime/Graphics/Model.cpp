@@ -19,22 +19,22 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ================================
 #include "Model.h"
 #include "Mesh.h"
-#include "../Scene/GameObject.h"
 #include "../Resource/ResourceManager.h"
-#include "../Components/Transform.h"
-#include "../Components/MeshFilter.h"
-#include "../Components/MeshRenderer.h"
-#include "../Components/RigidBody.h"
-#include "../Components/Collider.h"
+#include "../Scene/GameObject.h"
+#include "../Scene/Components/Transform.h"
+#include "../Scene/Components/MeshFilter.h"
+#include "../Scene/Components/MeshRenderer.h"
+#include "../Scene/Components/RigidBody.h"
+#include "../Scene/Components/Collider.h"
 #include "../Graphics/Vertex.h"
 #include "../Graphics/Material.h"
 #include "../Graphics/Animation.h"
 #include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
-//======================================
+//===========================================
 
 //= NAMESPACES ================
 using namespace std;

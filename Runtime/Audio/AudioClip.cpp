@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =======================
+//= INCLUDES =============================
 #include "AudioClip.h"
 #include <fmod.hpp>
 #include <fmod_errors.h>
 #include "../Logging/Log.h"
-#include "../Components/Transform.h"
-//==================================
+#include "../Scene/Components/Transform.h"
+//========================================
 
 //= NAMESPACES ================
 using namespace std;

@@ -1,12 +1,12 @@
 #pragma once
 
-//= INCLUDES ===================================
+//= INCLUDES ======================================
 #include "Component.h"
-#include "../Graphics/Vertex.h"
-#include "../Graphics/D3D11/D3D11VertexBuffer.h"
 #include <memory>
 #include <vector>
-//==============================================
+#include "../../Graphics/Vertex.h"
+#include "../../Graphics/D3D11/D3D11VertexBuffer.h"
+//=================================================
 
 namespace Directus
 {

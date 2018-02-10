@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================================
 #include "Constraint.h"
 #include "RigidBody.h"
-#include "../IO/FileStream.h"
-#include "../Scene/Scene.h"
-#include "../Scene/GameObject.h"
-#include "../Physics/Physics.h"
-#include "../Physics/BulletPhysicsHelper.h"
+#include "../Scene.h"
+#include "../GameObject.h"
+#include "../../IO/FileStream.h"
+#include "../../Physics/Physics.h"
+#include "../../Physics/BulletPhysicsHelper.h"
 #include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 //============================================================
