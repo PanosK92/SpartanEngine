@@ -29,7 +29,7 @@ namespace Directus
 {
 	class Audio;
 
-	class ENGINE_API AudioListener : public Component
+	class ENGINE_CLASS AudioListener : public Component
 	{
 	public:
 		AudioListener();

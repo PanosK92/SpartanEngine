@@ -99,7 +99,7 @@ ResourceType Resource::ToResourceType()
 	return Resource_Unknown;
 }
 
-#define INSTANTIATE(T) template ENGINE_API ResourceType Resource::ToResourceType<T>()
+#define INSTANTIATE(T) template ENGINE_CLASS ResourceType Resource::ToResourceType<T>()
 // Explicit template instantiation
 INSTANTIATE(Texture);
 INSTANTIATE(Audio);

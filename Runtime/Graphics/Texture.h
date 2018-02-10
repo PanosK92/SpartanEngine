@@ -60,7 +60,7 @@ namespace Directus
 		TextureUsage_External
 	};
 
-	class ENGINE_API Texture : public Resource
+	class ENGINE_CLASS Texture : public Resource
 	{
 	public:
 		// Used by the engine for all textures

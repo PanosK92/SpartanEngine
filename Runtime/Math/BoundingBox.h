@@ -35,7 +35,7 @@ namespace Directus
 	{
 		class Matrix;
 
-		class ENGINE_API BoundingBox
+		class ENGINE_CLASS BoundingBox
 		{
 		public:
 			// Construct with zero size.

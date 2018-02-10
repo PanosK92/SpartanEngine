@@ -33,7 +33,7 @@ namespace Directus
 		class Vector3;
 		class Matrix;
 
-		class ENGINE_API Vector4
+		class ENGINE_CLASS Vector4
 		{
 		public:
 			Vector4::Vector4()

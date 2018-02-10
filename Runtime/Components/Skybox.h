@@ -30,7 +30,7 @@ namespace Directus
 {
 	class Texture;
 
-	class ENGINE_API Skybox : public Component
+	class ENGINE_CLASS Skybox : public Component
 	{
 	public:
 		Skybox();

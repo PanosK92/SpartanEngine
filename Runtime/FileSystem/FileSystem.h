@@ -45,7 +45,7 @@ static const char* MESH_EXTENSION			= ".mesh";
 
 namespace Directus
 {
-	class ENGINE_API FileSystem
+	class ENGINE_CLASS FileSystem
 	{
 	public:
 		static void Initialize();

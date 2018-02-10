@@ -30,7 +30,7 @@ namespace Directus
 {
 	namespace Math
 	{
-		class ENGINE_API Vector2
+		class ENGINE_CLASS Vector2
 		{
 		public:
 			Vector2()

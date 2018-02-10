@@ -51,7 +51,7 @@ namespace Directus
 		Projection_Orthographic,
 	};
 
-	class ENGINE_API Camera : public Component
+	class ENGINE_CLASS Camera : public Component
 	{
 	public:
 		Camera();

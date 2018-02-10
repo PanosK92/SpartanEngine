@@ -29,7 +29,7 @@ namespace Directus
 {
 	namespace Math
 	{
-		class ENGINE_API Quaternion
+		class ENGINE_CLASS Quaternion
 		{
 		public:
 			// Constructs an identity quaternion
@@ -281,7 +281,7 @@ namespace Directus
 		};
 
 		// Reverse order operators
-		inline ENGINE_API Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
-		inline ENGINE_API Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
+		inline ENGINE_CLASS Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
+		inline ENGINE_CLASS Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
 	}
 }

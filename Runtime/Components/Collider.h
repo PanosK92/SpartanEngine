@@ -45,7 +45,7 @@ namespace Directus
 		ColliderShape_Mesh,
 	};
 
-	class ENGINE_API Collider : public Component
+	class ENGINE_CLASS Collider : public Component
 	{
 	public:
 		Collider();

@@ -44,7 +44,7 @@ namespace Directus
 		class Vector4;
 	}
 
-	class ENGINE_API Log
+	class ENGINE_CLASS Log
 	{
 		friend class ILogger;
 	public:

@@ -48,7 +48,7 @@ namespace Directus
 		MeshType_Quad
 	};
 
-	class ENGINE_API MeshFilter : public Component
+	class ENGINE_CLASS MeshFilter : public Component
 	{
 	public:
 		MeshFilter();

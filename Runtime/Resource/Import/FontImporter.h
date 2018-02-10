@@ -49,7 +49,7 @@ namespace Directus
 		int horizontalOffset;
 	};
 
-	class ENGINE_API FontImporter
+	class ENGINE_CLASS FontImporter
 	{
 	public:
 		FontImporter(Context* context);
