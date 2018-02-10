@@ -29,18 +29,54 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus
 {
+	enum PrimitiveTopology
+	{
+		TriangleList,
+		LineList
+	};
+
+	enum InputLayout
+	{
+		Auto,
+		Position,
+		PositionColor,
+		PositionTexture,
+		PositionTextureTBN
+	};
+
+	enum CullMode
+	{
+		CullNone,
+		CullFront,
+		CullBack
+	};
+
+	enum TextureSampler
+	{
+		Anisotropic_Sampler,
+		Linear_Sampler,
+		Point_Sampler
+	};
+
 	class IGraphicsDevice : public Subsystem
 	{
 	public:
-		IGraphicsDevice(Context* context) : Subsystem(context) {}
+		IGraphicsDevice(Context* context) : Subsystem(context)
+		{
+			m_primitiveTopology		= TriangleList;
+			m_inputLayout			= PositionTextureTBN;
+			m_cullMode				= CullBack;
+			m_depthEnabled			= true;
+			m_alphaBlendingEnabled	= true;
+		}
 		virtual ~IGraphicsDevice() {}
 
-		//==========================================================================
+		//=================================================
 		virtual void SetHandle(void* drawHandle) = 0;
 		virtual void Clear(const Math::Vector4& color) = 0;
 		virtual void Present() = 0;
 		virtual void SetBackBufferAsRenderTarget() = 0;
-		//==========================================================================
+		//=================================================
 
 		//= DEPTH ==============================================================================================
 		virtual bool CreateDepthStencilState(void* depthStencilState, bool depthEnabled, bool writeEnabled) = 0;
@@ -57,20 +93,20 @@ namespace Directus
 		virtual void SetPrimitiveTopology(PrimitiveTopology primitiveTopology) = 0;
 		//=========================================================================
 
-		//= VIEWPORT ==============================================================
+		//= VIEWPORT ===========================================
 		virtual bool SetResolution(int width, int height) = 0;
 		virtual void* GetViewport() = 0;
 		virtual void SetViewport(float width, float height) = 0;
 		virtual void SetViewport() = 0;
 		virtual float GetMaxDepth() = 0;
-		//=========================================================================
+		//======================================================
 
 		virtual bool IsInitialized() = 0;
 
 	protected:
-		InputLayout m_inputLayout;
-		CullMode m_cullMode;
 		PrimitiveTopology m_primitiveTopology;
+		InputLayout m_inputLayout;
+		CullMode m_cullMode;	
 		bool m_depthEnabled;
 		bool m_alphaBlendingEnabled;
 	};
