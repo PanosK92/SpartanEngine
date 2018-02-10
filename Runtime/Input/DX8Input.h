@@ -41,7 +41,7 @@ namespace Directus
 		DX8Input();
 		~DX8Input();
 
-		bool Initialize(void* instance, void* handle);
+		bool Initialize();
 		void Update();
 		void Release();
 

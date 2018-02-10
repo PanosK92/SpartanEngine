@@ -49,15 +49,9 @@ namespace Directus
 	bool Input::Initialize()
 	{
 		m_DX8Input = make_unique<DX8Input>();
-		m_initialized = m_DX8Input->Initialize(m_hinstance, m_handle);
+		m_initialized = m_DX8Input->Initialize();
 
 		return m_initialized;
-	}
-
-	void Input::SetHandle(void* handle, void* hinstance)
-	{
-		m_handle = handle;
-		m_hinstance = hinstance;
 	}
 
 	void Input::Update()

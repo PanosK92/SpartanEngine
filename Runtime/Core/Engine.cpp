@@ -89,7 +89,6 @@ namespace Directus
 		m_timer = m_context->GetSubsystem<Timer>();
 
 		// Input
-		m_context->GetSubsystem<Input>()->SetHandle((HWND)m_windowHandle, (HINSTANCE)m_windowInstance);
 		if (!m_context->GetSubsystem<Input>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Input subsystem");

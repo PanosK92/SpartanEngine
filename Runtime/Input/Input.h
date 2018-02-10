@@ -122,7 +122,6 @@ namespace Directus
 		bool Initialize() override;
 		//========================
 
-		void SetHandle(void* handle, void* instance);
 		void Update();
 
 		bool GetKey(KeyCode key);
@@ -134,8 +133,6 @@ namespace Directus
 		Math::Vector2 m_mousePos;
 		Math::Vector2 m_mousePosDelta;
 		std::unique_ptr<DX8Input> m_DX8Input;
-		void* m_handle;
-		void* m_hinstance;
 		bool m_initialized;
 	};
 }
