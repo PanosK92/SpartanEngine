@@ -19,15 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES =============================
 #include "Cascade.h"
 #include "../Math/Matrix.h"
 #include "../Logging/Log.h"
-#include "../Components/Camera.h"
 #include "../Core/Context.h"
+#include "../Scene/Components/Camera.h"
+#include "../Scene/Components/Transform.h"
 #include "D3D11/D3D11RenderTexture.h"
-#include "../Components/Transform.h"
-//===================================
+//========================================
 
 //= NAMESPACES ================
 using namespace std;
