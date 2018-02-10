@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ================================
 #include "Renderer.h"
 #include "GBuffer.h"
 #include "Rectangle.h"
@@ -32,11 +32,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DeferredShaders/DeferredShader.h"
 #include "../Scene/GameObject.h"
 #include "../Core/Context.h"
-#include "../Components/MeshFilter.h"
-#include "../Components/Transform.h"
-#include "../Components/MeshRenderer.h"
-#include "../Components/Skybox.h"
-#include "../Components/LineRenderer.h"
+#include "../Scene/Components/MeshFilter.h"
+#include "../Scene/Components/Transform.h"
+#include "../Scene/Components/MeshRenderer.h"
+#include "../Scene/Components/Skybox.h"
+#include "../Scene/Components/LineRenderer.h"
 #include "../Physics/Physics.h"
 #include "../Physics/PhysicsDebugDraw.h"
 #include "../Logging/Log.h"

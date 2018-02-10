@@ -19,12 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
-#include "DX8Input.h"
-#include "../Logging/Log.h"
+//= INCLUDES =================
+#include "DInput.h"
 #include <sstream>
-#include "../Core/Engine.h"
-//=========================
+#include "../../Logging/Log.h"
+#include "../../Core/Engine.h"
+//============================
 
 //= NAMESPACES ================
 using namespace Directus::Math;
@@ -33,14 +33,14 @@ using namespace std;
 
 namespace Directus
 {
-	DX8Input::DX8Input()
+	DInput::DInput()
 	{
 		m_directInput	= nullptr;
 		m_keyboard		= nullptr;
 		m_mouse			= nullptr;
 	}
 
-	DX8Input::~DX8Input()
+	DInput::~DInput()
 	{
 		// Release the mouse.
 		if (m_mouse)
@@ -66,7 +66,7 @@ namespace Directus
 		}
 	}
 
-	bool DX8Input::Initialize()
+	bool DInput::Initialize()
 	{
 		if (!Engine::GetWindowHandle() || !Engine::GetWindowInstance())
 			return false;
@@ -83,11 +83,11 @@ namespace Directus
 		{
 			switch (result)
 			{
-				case DIERR_INVALIDPARAM:			LOG_ERROR("DX8Input: DirectInput8Create() Failed, invalid parameters.");		break;
-				case DIERR_BETADIRECTINPUTVERSION:	LOG_ERROR("DX8Input: DirectInput8Create() Failed, beta direct input version."); break;
-				case DIERR_OLDDIRECTINPUTVERSION:	LOG_ERROR("DX8Input: DirectInput8Create() Failed, old direct input version.");	break;
-				case DIERR_OUTOFMEMORY:				LOG_ERROR("DX8Input: DirectInput8Create() Failed, out of memory.");				break;
-				default:							LOG_ERROR("DX8Input: Failed to initialize the DirectInput interface.");
+				case DIERR_INVALIDPARAM:			LOG_ERROR("DInput: DirectInput8Create() Failed, invalid parameters.");		break;
+				case DIERR_BETADIRECTINPUTVERSION:	LOG_ERROR("DInput: DirectInput8Create() Failed, beta direct input version."); break;
+				case DIERR_OLDDIRECTINPUTVERSION:	LOG_ERROR("DInput: DirectInput8Create() Failed, old direct input version.");	break;
+				case DIERR_OUTOFMEMORY:				LOG_ERROR("DInput: DirectInput8Create() Failed, out of memory.");				break;
+				default:							LOG_ERROR("DInput: Failed to initialize the DirectInput interface.");
 			}
 			return false;
 		}
@@ -96,7 +96,7 @@ namespace Directus
 		result = m_directInput->CreateDevice(GUID_SysKeyboard, &m_keyboard, nullptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("DX8Input: Failed to initialize a DirectInput keyboard.");
+			LOG_ERROR("DInput: Failed to initialize a DirectInput keyboard.");
 			return false;
 		}
 
@@ -104,27 +104,27 @@ namespace Directus
 		result = m_keyboard->SetDataFormat(&c_dfDIKeyboard);
 		if (FAILED(result))
 		{
-			LOG_ERROR("DX8Input: Failed to initialize DirectInput keyboard data format.");
+			LOG_ERROR("DInput: Failed to initialize DirectInput keyboard data format.");
 		}
 
 		// Set the cooperative level of the keyboard to share with other programs.
 		result = m_keyboard->SetCooperativeLevel(windowHandle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 		if (FAILED(result))
 		{
-			LOG_ERROR("DX8Input: Failed to set DirectInput keyboard's cooperative level.");
+			LOG_ERROR("DInput: Failed to set DirectInput keyboard's cooperative level.");
 		}
 
 		// Acquire the keyboard.
 		if (!GetKeyboard())
 		{
-			LOG_ERROR("DX8Input: Failed to aquire the keyboard.");
+			LOG_ERROR("DInput: Failed to aquire the keyboard.");
 		}
 
 		// Initialize the direct input interface for the mouse.
 		result = m_directInput->CreateDevice(GUID_SysMouse, &m_mouse, nullptr);
 		if (FAILED(result))
 		{
-			LOG_ERROR("DX8Input: Failed to set DirectInput keyboard's cooperative level.");
+			LOG_ERROR("DInput: Failed to set DirectInput keyboard's cooperative level.");
 			return false;
 		}
 
@@ -132,20 +132,20 @@ namespace Directus
 		result = m_mouse->SetDataFormat(&c_dfDIMouse);
 		if (FAILED(result))
 		{
-			LOG_ERROR("DX8Input: Failed to initialize a DirectInput mouse.");
+			LOG_ERROR("DInput: Failed to initialize a DirectInput mouse.");
 		}
 
 		// Set the cooperative level of the mouse to share with other programs.
 		result = m_mouse->SetCooperativeLevel(windowHandle, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 		if (FAILED(result))
 		{
-			LOG_ERROR("DX8Input: Failed to set DirectInput mouse's cooperative level.");
+			LOG_ERROR("DInput: Failed to set DirectInput mouse's cooperative level.");
 		}
 
 		// Acquire the mouse.
 		if (!GetMouse())
 		{
-			LOG_ERROR("DX8Input: Failed to aquire the mouse.");
+			LOG_ERROR("DInput: Failed to aquire the mouse.");
 		}
 
 		stringstream ss;
@@ -157,19 +157,19 @@ namespace Directus
 		return true;
 	}
 
-	void DX8Input::Update()
+	void DInput::Update()
 	{
 		ReadKeyboard();
 		ReadMouse();
 	}
 
-	bool DX8Input::IsKeyboardKeyDown(int key)
+	bool DInput::IsKeyboardKeyDown(int key)
 	{
 		// hex: 0x80 | Bin: 10000000
 		return m_keyboardState[key] & 0x80;
 	}
 
-	bool DX8Input::IsMouseKeyDown(int key)
+	bool DInput::IsMouseKeyDown(int key)
 	{
 		//  0	= Left Button
 		//  1	= Right Button
@@ -178,7 +178,7 @@ namespace Directus
 		return m_mouseState.rgbButtons[key] & 0x80;
 	}
 
-	Vector3 DX8Input::GetMouseDelta()
+	Vector3 DInput::GetMouseDelta()
 	{
 		// lX = position x delta
 		// lY = position y delta
@@ -186,17 +186,17 @@ namespace Directus
 		return Vector3((float)m_mouseState.lX, (float)m_mouseState.lY, (float)m_mouseState.lZ);
 	}
 
-	bool DX8Input::GetKeyboard()
+	bool DInput::GetKeyboard()
 	{
 		return SUCCEEDED(m_keyboard->Acquire());
 	}
 
-	bool DX8Input::GetMouse()
+	bool DInput::GetMouse()
 	{
 		return SUCCEEDED(m_mouse->Acquire());
 	}
 
-	bool DX8Input::ReadKeyboard()
+	bool DInput::ReadKeyboard()
 	{
 		// Read keyboard
 		HRESULT result = m_keyboard->GetDeviceState(sizeof(m_keyboardState), static_cast<LPVOID>(&m_keyboardState));
@@ -211,7 +211,7 @@ namespace Directus
 		return false;
 	}
 
-	bool DX8Input::ReadMouse()
+	bool DInput::ReadMouse()
 	{
 		// Read mouse
 		HRESULT result = m_mouse->GetDeviceState(sizeof(DIMOUSESTATE), static_cast<LPVOID>(&m_mouseState));
