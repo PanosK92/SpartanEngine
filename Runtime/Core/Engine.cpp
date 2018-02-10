@@ -174,16 +174,6 @@ namespace Directus
 		}
 	}
 
-	bool Engine::IsUpdating()
-	{
-		return m_flags & Engine_Update;
-	}
-
-	bool Engine::IsRendering()
-	{
-		return m_flags & Engine_Render;
-	}
-
 	void Engine::Shutdown()
 	{
 		// The context will deallocate the subsystems

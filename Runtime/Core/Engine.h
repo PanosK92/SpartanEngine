@@ -45,25 +45,24 @@ namespace Directus
 
 		// Performs a complete simulation cycle (used to run your game)
 		void Update();
-
-		// Returns whether the engine is running in editor or game mode
-		int GetFlags() { return m_flags; }
-		void SetFlags(int flags) { m_flags = flags; }
-
-		bool IsUpdating();
-		bool IsRendering();
-
-		// Returns the current context
-		Context* GetContext() { return m_context; }
-
 		// Shuts down the engine
 		void Shutdown();
+
+		//= MODE FLAGS  ======================================
+		int GetFlags() { return m_flags; }
+		void SetFlags(int flags) { m_flags = flags; }
+		bool IsUpdating() { return m_flags & Engine_Update; }
+		bool IsRendering() { return m_flags & Engine_Render; }
+		//====================================================
 
 		//= WINDOW ========================================================================
 		static void SetHandles(void* drawHandle, void* windowHandle, void* windowInstance);
 		static void* GetWindowHandle() { return m_windowHandle; }
 		static void* GetWindowInstance() { return m_windowInstance; }
 		//=================================================================================
+
+		// Returns the engine's context
+		Context* GetContext() { return m_context; }
 
 	private:
 		static void* m_drawHandle;	
