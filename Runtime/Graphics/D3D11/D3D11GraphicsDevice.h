@@ -21,11 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= LINKING =====================
-#pragma comment(lib, "d3d11.lib")
-#pragma comment(lib, "dxgi.lib")
-//===============================
-
 //= INCLUDES ==================
 #include "../IGraphicsDevice.h"
 #include <d3d11.h>

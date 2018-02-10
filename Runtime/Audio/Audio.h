@@ -21,10 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= LINKING =========================
-#pragma comment(lib, "fmod64_vc.lib")
-//===================================
-
 //= INCLUDES =======================
 #include "../Core/Subsystem.h"
 #include "fmod.hpp"

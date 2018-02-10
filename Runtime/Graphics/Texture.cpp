@@ -19,12 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= LINKING ==========================
-// Required by DDSTextureLoader when using Windows 10 SDK
-//#pragma comment(lib, "WindowsApp.lib")
-//====================================
-
-
 //= INCLUDES =====================================
 #include "Texture.h"
 #include "../Logging/Log.h"

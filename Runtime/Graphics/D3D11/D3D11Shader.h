@@ -21,10 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= LINKING ===========================
-#pragma comment(lib, "d3dcompiler.lib")
-//=====================================
-
 //= INCLUDES ===================
 #include <vector>
 #include "D3D11InputLayout.h"

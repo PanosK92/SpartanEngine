@@ -1,13 +1,16 @@
 /*
 Copyright(c) 2016-2017 Panos Karabelas
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
+
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
@@ -18,13 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+// Graphics
 #define API_D3D11
 
 namespace Directus
 {
-	//= INCLUDES ==================================
+//= GRAPHICS =====================================
 #if defined(API_D3D11)
-#include "D3D11/D3D11GraphicsDevice.h"
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "dinput8.lib")
+#pragma comment(lib, "dxguid.lib")
+#define DIRECTINPUT_VERSION 0x0800
+#include "../Graphics/D3D11/D3D11GraphicsDevice.h"
 	class D3D11GraphicsDevice;
 	typedef D3D11GraphicsDevice Graphics;
 #elif defined(API_VULKAN)
@@ -32,5 +42,5 @@ namespace Directus
 	class VULKANGraphicsDevice;
 	typedef VULKANGraphicsDevice Graphics;
 #endif
-	//=============================================
+//================================================
 }
