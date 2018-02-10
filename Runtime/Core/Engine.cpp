@@ -42,6 +42,10 @@ using namespace std;
 
 namespace Directus
 {
+	void* Engine::m_drawHandle		= nullptr;
+	void* Engine::m_windowHandle	= nullptr;
+	void* Engine::m_windowInstance	= nullptr;
+
 	Engine::Engine(Context* context) : Subsystem(context)
 	{
 		m_flags = 0;
@@ -72,13 +76,6 @@ namespace Directus
 		m_context->RegisterSubsystem(new Scene(m_context));
 	}
 
-	void Engine::SetHandles(void* instance, void* mainWindowHandle, void* drawPaneHandle)
-	{
-		m_drawHandle = drawPaneHandle;
-		m_windowHandle = mainWindowHandle;
-		m_hinstance = instance;
-	}
-
 	bool Engine::Initialize()
 	{
 		bool success = true;
@@ -92,7 +89,7 @@ namespace Directus
 		m_timer = m_context->GetSubsystem<Timer>();
 
 		// Input
-		m_context->GetSubsystem<Input>()->SetHandle((HWND)m_windowHandle, (HINSTANCE)m_hinstance);
+		m_context->GetSubsystem<Input>()->SetHandle((HWND)m_windowHandle, (HINSTANCE)m_windowInstance);
 		if (!m_context->GetSubsystem<Input>()->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Input subsystem");
@@ -196,5 +193,12 @@ namespace Directus
 
 		// Release Log singleton
 		Log::Release();
+	}
+
+	void Engine::SetHandles(void* drawHandle, void* windowHandle, void* windowInstance)
+	{
+		m_drawHandle		= drawHandle;
+		m_windowHandle		= windowHandle;
+		m_windowInstance	= windowInstance;
 	}
 }
