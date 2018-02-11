@@ -21,13 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========
+//= INCLUDES ==========
 #include <memory>
 #include "IComponent.h"
-//====================
+//=====================
 
 namespace Directus
 {
+	class Material;
 	class Texture;
 
 	class ENGINE_CLASS Skybox : public IComponent
@@ -36,16 +37,18 @@ namespace Directus
 		Skybox();
 		~Skybox();
 
-		//= Interface =============
+		//= IComponent ============
 		void Initialize() override;
 		void Update() override;
 		//=========================
 
-		//= MISC ======================
-		void** GetEnvironmentTexture();
+		//= MISC ==================
+		void** GetShaderResource();
+		//=========================
 
 	private:
 		std::weak_ptr<GameObject> m_anchor;
-		std::shared_ptr<Texture> m_cubemapTexture;
+		std::shared_ptr<Material> m_matSkybox;
+		std::shared_ptr<Texture> m_cubemapTexture;	
 	};
 }

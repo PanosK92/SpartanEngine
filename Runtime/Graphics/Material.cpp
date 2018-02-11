@@ -38,24 +38,25 @@ namespace Directus
 {
 	Material::Material(Context* context)
 	{
-		// Resource
-		RegisterResource(Resource_Material);
+		//= IResource ===============
+		RegisterResource<Material>();
+		//===========================
 
 		// Material
-		m_context = context;
-		m_modelID = NOT_ASSIGNED_HASH;
-		m_cullMode = CullBack;
-		m_opacity = 1.0f;
-		m_alphaBlending = false;
-		m_shadingMode = Shading_PBR;
-		m_colorAlbedo = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-		m_roughnessMultiplier = 1.0f;
-		m_metallicMultiplier = 0.0f;
-		m_normalMultiplier = 0.0f;
-		m_heightMultiplier = 0.0f;
-		m_uvTiling = Vector2(1.0f, 1.0f);
-		m_uvOffset = Vector2(0.0f, 0.0f);
-		m_isEditable = true;
+		m_context				= context;
+		m_modelID				= NOT_ASSIGNED_HASH;
+		m_opacity				= 1.0f;
+		m_alphaBlending			= false;
+		m_cullMode				= CullBack;
+		m_shadingMode			= Shading_PBR;
+		m_colorAlbedo			= Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+		m_roughnessMultiplier	= 1.0f;
+		m_metallicMultiplier	= 0.0f;
+		m_normalMultiplier		= 0.0f;
+		m_heightMultiplier		= 0.0f;
+		m_uvTiling				= Vector2(1.0f, 1.0f);
+		m_uvOffset				= Vector2(0.0f, 0.0f);
+		m_isEditable			= true;
 
 		AcquireShader();
 	}
@@ -134,9 +135,9 @@ namespace Directus
 		xml->AddAttribute("Material", "Name", GetResourceName());
 		xml->AddAttribute("Material", "Path", GetResourceFilePath());
 		xml->AddAttribute("Material", "Model_ID", m_modelID);
-		xml->AddAttribute("Material", "Cull_Mode", int(m_cullMode));
 		xml->AddAttribute("Material", "Opacity", m_opacity);
 		xml->AddAttribute("Material", "Alpha_Blending", m_alphaBlending);
+		xml->AddAttribute("Material", "Cull_Mode", int(m_cullMode));	
 		xml->AddAttribute("Material", "Shading_Mode", int(m_shadingMode));
 		xml->AddAttribute("Material", "Color", m_colorAlbedo);
 		xml->AddAttribute("Material", "Roughness_Multiplier", m_roughnessMultiplier);
@@ -172,36 +173,36 @@ namespace Directus
 
 		return true;
 	}
-
 	//==========================================================
 
 	//= TEXTURES ===================================================================
 	// Set texture from an existing texture
-	void Material::SetTexture(weak_ptr<Texture> texture)
+	void Material::SetTexture(const weak_ptr<Texture>& textureWeak)
 	{
 		// Make sure this texture exists
-		if (texture.expired())
+		auto texture = textureWeak.lock();
+		if (!texture)
 		{
-			LOG_WARNING("Material: Can't set uninitialized material texture.");
+			LOG_WARNING("Material::SetTexture(): Provided texture is null, can't execute function");
 			return;
 		}
 
-		TextureType texType = texture.lock()->GetType();
-		string texName		= texture.lock()->GetResourceName();
-		string texPath		= texture.lock()->GetResourceFilePath();
+		TextureType texType = texture->GetType();
+		string texName		= texture->GetResourceName();
+		string texPath		= texture->GetResourceFilePath();
 
 		// Check if a texture of that type already exists and replace it
 		auto it = m_textures.find(texType);
 		if (it != m_textures.end())
 		{
-			it->second.texture	= texture;
+			it->second.texture	= textureWeak;
 			it->second.name		= texName;
 			it->second.path		= texPath;
 		}
 		else
 		{
 			// If that's a new texture type, simply add it
-			m_textures.insert(make_pair(texType, TexInfo(texture, texName, texPath)));
+			m_textures.insert(make_pair(texType, TexInfo(textureWeak, texName, texPath)));
 		}
 
 		// Adjust texture multipliers
@@ -279,21 +280,24 @@ namespace Directus
 	void Material::AcquireShader()
 	{
 		if (!m_context)
+		{
+			LOG_ERROR("Material::AcquireShader(): Context is null, can't execute function");
 			return;
+		}
 
 		// Add a shader to the pool based on this material, if a 
 		// matching shader already exists, it will be returned.
 		unsigned long shaderFlags = 0;
 
-		if (HasTextureOfType(TextureType_Albedo)) shaderFlags |= Variaton_Albedo;
-		if (HasTextureOfType(TextureType_Roughness)) shaderFlags |= Variaton_Roughness;
-		if (HasTextureOfType(TextureType_Metallic)) shaderFlags |= Variaton_Metallic;
-		if (HasTextureOfType(TextureType_Normal)) shaderFlags |= Variaton_Normal;
-		if (HasTextureOfType(TextureType_Height)) shaderFlags |= Variaton_Height;
-		if (HasTextureOfType(TextureType_Occlusion)) shaderFlags |= Variaton_Occlusion;
-		if (HasTextureOfType(TextureType_Emission)) shaderFlags |= Variaton_Emission;
-		if (HasTextureOfType(TextureType_Mask)) shaderFlags |= Variaton_Mask;
-		if (HasTextureOfType(TextureType_CubeMap)) shaderFlags |= Variaton_Cubemap;
+		if (HasTextureOfType(TextureType_Albedo)) shaderFlags		|= Variaton_Albedo;
+		if (HasTextureOfType(TextureType_Roughness)) shaderFlags	|= Variaton_Roughness;
+		if (HasTextureOfType(TextureType_Metallic)) shaderFlags		|= Variaton_Metallic;
+		if (HasTextureOfType(TextureType_Normal)) shaderFlags		|= Variaton_Normal;
+		if (HasTextureOfType(TextureType_Height)) shaderFlags		|= Variaton_Height;
+		if (HasTextureOfType(TextureType_Occlusion)) shaderFlags	|= Variaton_Occlusion;
+		if (HasTextureOfType(TextureType_Emission)) shaderFlags		|= Variaton_Emission;
+		if (HasTextureOfType(TextureType_Mask)) shaderFlags			|= Variaton_Mask;
+		if (HasTextureOfType(TextureType_CubeMap)) shaderFlags		|= Variaton_Cubemap;
 
 		m_shader = CreateShaderBasedOnMaterial(shaderFlags);
 	}
@@ -311,6 +315,12 @@ namespace Directus
 
 	weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(unsigned long shaderFlags)
 	{
+		if (!m_context)
+		{
+			LOG_ERROR("Material::CreateShaderBasedOnMaterial(): Context is null, can't execute function");
+			return weak_ptr<ShaderVariation>();
+		}
+
 		// If an appropriate shader already exists, return it's ID
 		auto existingShader = FindMatchingShader(shaderFlags);
 

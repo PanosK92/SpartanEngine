@@ -40,8 +40,9 @@ namespace Directus
 {
 	Mesh::Mesh(Context* context)
 	{
-		// Resource
-		RegisterResource(Resource_Mesh);
+		//= IResource ===========
+		RegisterResource<Mesh>();
+		//=======================
 
 		m_context		= context;
 		m_modelName		= NOT_ASSIGNED_HASH;

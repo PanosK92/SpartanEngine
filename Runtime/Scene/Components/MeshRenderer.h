@@ -29,7 +29,6 @@ namespace Directus
 {
 	class Light;
 	class Material;
-	enum MaterialType;
 
 	class ENGINE_CLASS MeshRenderer : public IComponent
 	{
@@ -53,26 +52,24 @@ namespace Directus
 		bool GetReceiveShadows() { return m_receiveShadows; }
 		//================================================================================
 
-		//= MATERIAL ============================================================
-		// Sets a material from memory
-		void SetMaterialFromMemory(std::weak_ptr<Material> material);
+		//= MATERIAL ==================================================================================
+		// Sets a material from memory (adds it to the resource cache by default)
+		void SetMaterialFromMemory(const std::weak_ptr<Material>& materialWeak, bool autoCache = true);
 
 		// Loads a material and the sets it
 		std::weak_ptr<Material> SetMaterialFromFile(const std::string& filePath);
 
-		// Sets a default material (basic, skybox)
-		void SetMaterialByType(MaterialType type);
+		void UseStandardMaterial();
 
 		std::weak_ptr<Material> GetMaterial() { return  m_material; }
 		bool HasMaterial() { return !m_material.expired(); }
 		std::string GetMaterialName();
-		MaterialType GetMaterialType() { return m_materialType; }
-		//=======================================================================
+		//=============================================================================================
 
 	private:
 		std::weak_ptr<Material> m_material;
 		bool m_castShadows;
 		bool m_receiveShadows;
-		MaterialType m_materialType;
+		bool m_usingStandardMaterial;
 	};
 }

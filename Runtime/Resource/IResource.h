@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Context.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Core/GUIDGenerator.h"
+#include <memory>
 //===================================
 
 namespace Directus
@@ -39,7 +40,7 @@ namespace Directus
 		Resource_Mesh,
 		Resource_Model,
 		Resource_Cubemap,
-		Resource_Script,
+		Resource_Script, // not an actual resource, resource manager simply uses this to return standard resource path (must remove)
 		Resource_Animation,
 		Resource_Font
 	};
@@ -52,17 +53,13 @@ namespace Directus
 		Async_Failed
 	};
 
-	class ENGINE_CLASS Resource
+	class ENGINE_CLASS IResource : public std::enable_shared_from_this<IResource>
 	{
 	public:
-		virtual ~Resource() {}
+		virtual ~IResource() {}
 
-		void RegisterResource(ResourceType resourceType)
-		{
-			m_resourceType = resourceType;
-			m_resourceID = GENERATE_GUID;
-			m_asyncState = Async_Idle;
-		}
+		template <typename T>
+		void RegisterResource();
 
 		//= PROPERTIES =========================================================================
 		unsigned int GetResourceID() { return m_resourceID; }
@@ -80,6 +77,17 @@ namespace Directus
 		std::string GetResourceDirectory();
 		//======================================================================================
 
+		//= CACHE ================================================================
+		// Checks whether the resource is cached or not
+		template <typename T>
+		bool IsCached();
+
+		// Adds the resource into the resource cache and returns a cache reference
+		// In case the resource is already cached, it returns the existing one
+		template <typename T>
+		std::weak_ptr<T> Cache();
+		//========================================================================
+
 		//= IO =====================================================
 		virtual bool SaveToFile(const std::string& filePath) = 0;
 		virtual bool LoadFromFile(const std::string& filePath) = 0;
@@ -88,13 +96,19 @@ namespace Directus
 		virtual unsigned int GetMemoryUsageKB() { return 0; }
 		//==========================================================
 
+		//= TYPE ============================
+		ResourceType ToResourceType();
+
+		template <typename T>
+		static ResourceType ToResourceType();	
+		//===================================
+
+		//= PTR ==========================================
+		auto GetSharedPtr() { return shared_from_this(); }
+		//================================================
+
 		AsyncState GetAsyncState() { return m_asyncState; }
 		void SetAsyncState(AsyncState state) { m_asyncState = state; }
-
-		//= HELPER FUNCTIONS ================
-		template <typename T>
-		static ResourceType ToResourceType();
-		//===================================
 
 	protected:	
 		unsigned int m_resourceID = NOT_ASSIGNED_HASH;

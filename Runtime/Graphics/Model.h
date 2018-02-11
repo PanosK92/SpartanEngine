@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =====================
 #include <memory>
 #include <vector>
-#include "../Resource/Resource.h"
+#include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
 #include "Texture.h"
-//===============================
+//================================
 
 namespace Directus
 {
@@ -43,7 +43,7 @@ namespace Directus
 		class BoundingBox;
 	}
 
-	class ENGINE_CLASS Model : public Resource
+	class ENGINE_CLASS Model : public IResource
 	{
 	public:
 		Model(Context* context);

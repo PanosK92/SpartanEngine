@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include <memory>
 #include "../D3D11/D3D11GraphicsDevice.h"
-#include "../../Resource/Resource.h"
+#include "../../Resource/IResource.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/Matrix.h"
 //=======================================
@@ -53,7 +53,7 @@ namespace Directus
 	};
 
 
-	class ShaderVariation : public Resource
+	class ShaderVariation : public IResource
 	{
 	public:
 		ShaderVariation();

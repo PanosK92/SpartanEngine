@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =====================
 #include "../Core/EngineDefs.h"
-#include "../Resource/Resource.h"
+#include "../Resource/IResource.h"
 #include <memory>
 #include <map>
 #include "../Math/Vector4.h"
-//===============================
+//================================
 
 namespace Directus
 {
@@ -42,7 +42,7 @@ namespace Directus
 	class D3D11VertexBuffer;
 	class D3D11IndexBuffer;
 
-	class ENGINE_CLASS Font : Resource
+	class ENGINE_CLASS Font : IResource
 	{
 	public:
 		Font(Context* context);
