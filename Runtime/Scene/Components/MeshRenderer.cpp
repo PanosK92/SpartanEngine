@@ -54,19 +54,27 @@ namespace Directus
 	void MeshRenderer::Serialize(FileStream* stream)
 	{
 		stream->Write(m_usingStandardMaterial);
+		stream->Write(!m_material.expired() ? m_material.lock()->GetResourceName() : NOT_ASSIGNED);
 		stream->Write(m_castShadows);
 		stream->Write(m_receiveShadows);
 	}
 
 	void MeshRenderer::Deserialize(FileStream* stream)
 	{
+		std::string materialName;
+
 		stream->Read(&m_usingStandardMaterial);
+		stream->Read(&materialName);
 		stream->Read(&m_castShadows);
 		stream->Read(&m_receiveShadows);
 
 		if (m_usingStandardMaterial)
 		{
 			UseStandardMaterial();
+		}
+		else
+		{
+			m_material = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Material>(materialName);
 		}
 	}
 	//==============================================================================
@@ -95,7 +103,7 @@ namespace Directus
 
 	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
-	void MeshRenderer::SetMaterialFromMemory(weak_ptr<Material> materialWeak, bool autoCache /* true */)
+	void MeshRenderer::SetMaterialFromMemory(const weak_ptr<Material>& materialWeak, bool autoCache /* true */)
 	{
 		// Validate material
 		auto material = materialWeak.lock();

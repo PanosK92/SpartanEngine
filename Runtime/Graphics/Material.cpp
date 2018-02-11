@@ -177,7 +177,7 @@ namespace Directus
 
 	//= TEXTURES ===================================================================
 	// Set texture from an existing texture
-	void Material::SetTexture(const weak_ptr<Texture>& textureWeak)
+	void Material::SetTexture(const weak_ptr<Texture>& textureWeak, bool autoCache /* true */)
 	{
 		// Make sure this texture exists
 		auto texture = textureWeak.lock();
@@ -187,6 +187,9 @@ namespace Directus
 			return;
 		}
 
+		// Cache it or use the provided reference as is
+		auto texRef = autoCache ? textureWeak.lock()->Cache<Texture>() : textureWeak;
+
 		TextureType texType = texture->GetType();
 		string texName		= texture->GetResourceName();
 		string texPath		= texture->GetResourceFilePath();
@@ -195,14 +198,14 @@ namespace Directus
 		auto it = m_textures.find(texType);
 		if (it != m_textures.end())
 		{
-			it->second.texture	= textureWeak;
+			it->second.texture	= texRef;
 			it->second.name		= texName;
 			it->second.path		= texPath;
 		}
 		else
 		{
 			// If that's a new texture type, simply add it
-			m_textures.insert(make_pair(texType, TexInfo(textureWeak, texName, texPath)));
+			m_textures.insert(make_pair(texType, TexInfo(texRef, texName, texPath)));
 		}
 
 		// Adjust texture multipliers

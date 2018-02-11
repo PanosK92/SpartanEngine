@@ -59,19 +59,19 @@ namespace Directus
 		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
 
 		// Adds a mesh by creating it from scratch
-		void AddMesh(const std::string& name, std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices, std::weak_ptr<GameObject> gameObject);
+		void AddMesh(const std::string& name, std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices, const std::weak_ptr<GameObject>& gameObject);
 
 		// Adds a new mesh
-		void AddMesh(std::weak_ptr<Mesh> mesh, std::weak_ptr<GameObject> gameObject);
+		void AddMesh(const std::weak_ptr<Mesh>& mesh, const std::weak_ptr<GameObject>& gameObject, bool autoCache = true);
 
 		// Adds a new material
-		void AddMaterial(std::weak_ptr<Material> material, std::weak_ptr<GameObject> gameObject);
+		void AddMaterial(const std::weak_ptr<Material>& material, const std::weak_ptr<GameObject>& gameObject, bool autoCache = true);
 
 		// Adds a new animation
 		std::weak_ptr<Animation> AddAnimation(std::weak_ptr<Animation> animation);
 
 		// Adds a texture (the material that uses this texture must be passed as well)
-		void AddTexture(const std::weak_ptr<Material> material, TextureType textureType, const std::string& texturePath);
+		void AddTexture(const std::weak_ptr<Material>& material, TextureType textureType, const std::string& filePath);
 
 		std::weak_ptr<Mesh> GetMeshByName(const std::string& name);
 
@@ -92,8 +92,8 @@ namespace Directus
 		bool LoadFromEngineFormat(const std::string& filePath);
 		bool LoadFromForeignFormat(const std::string& filePath);
 
-		void AddStandardComponents(std::weak_ptr<GameObject> gameObject, std::weak_ptr<Mesh> mesh);
-		void DetermineMeshUniqueness(std::weak_ptr<Mesh> mesh, std::weak_ptr<Mesh>* modelCached);
+		void AddStandardComponents(const std::weak_ptr<GameObject>& gameObject, const std::weak_ptr<Mesh>& mesh);
+		void DetermineMeshUniqueness(const std::weak_ptr<Mesh>& mesh, std::weak_ptr<Mesh>* modelCached);
 
 		// Scale relate functions
 		float ComputeNormalizeScale();

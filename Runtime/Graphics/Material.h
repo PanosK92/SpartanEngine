@@ -55,14 +55,14 @@ namespace Directus
 		bool SaveToFile(const std::string& filePath) override;
 		//======================================================
 
-		//= TEXTURES ==============================================
-		void SetTexture(const std::weak_ptr<Texture>& textureWeak);
+		//= TEXTURES =====================================================================
+		void SetTexture(const std::weak_ptr<Texture>& textureWeak, bool autoCache = true);
 		std::weak_ptr<Texture> GetTextureByType(TextureType type);
 		bool HasTextureOfType(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		//=========================================================
+		//================================================================================
 
 		//= SHADER ===========================================================================
 		void AcquireShader();
