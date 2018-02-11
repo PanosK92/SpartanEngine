@@ -54,7 +54,7 @@ namespace Directus
 
 		//= MATERIAL ==================================================================================
 		// Sets a material from memory (adds it to the resource cache by default)
-		void SetMaterialFromMemory(const std::weak_ptr<Material>& materialWeak, bool autoCache = true);
+		void SetMaterialFromMemory(std::weak_ptr<Material> materialWeak, bool autoCache = true);
 
 		// Loads a material and the sets it
 		std::weak_ptr<Material> SetMaterialFromFile(const std::string& filePath);

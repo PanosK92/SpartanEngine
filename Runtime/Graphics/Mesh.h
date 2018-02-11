@@ -98,6 +98,5 @@ namespace Directus
 		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
 		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
 		Math::BoundingBox m_boundingBox;
-		Context* m_context;
 	};
 }

@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "../../Math/BoundingBox.h"
 #include "../../Graphics/Vertex.h"
-#include "../../Logging/Log.h"
 //=================================
 
 namespace Directus
@@ -43,7 +42,7 @@ namespace Directus
 
 	enum MeshType
 	{
-		MeshType_Custom,
+		MeshType_Imported,
 		MeshType_Cube,
 		MeshType_Quad
 	};
@@ -60,10 +59,10 @@ namespace Directus
 		//============================================
 
 		// Sets a mesh from memory
-		void SetMesh(std::weak_ptr<Mesh> mesh){ m_mesh = mesh; }
+		void SetMesh(const std::weak_ptr<Mesh>& mesh, bool autoCache = true);
 
 		// Sets a default mesh (cube, quad)
-		void SetMesh(MeshType defaultMesh);
+		void UseStandardMesh(MeshType type);
 
 		// Set vertex and index buffers (must be called before rendering)
 		bool SetBuffers();
@@ -81,8 +80,8 @@ namespace Directus
 		//=====================================================
 
 	private:
-		static void CreateCube(std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices);
-		static void CreateQuad(std::vector<VertexPosTexTBN>& vertices, std::vector<unsigned int>& indices);
+		static void CreateCube(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
+		static void CreateQuad(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
 
 		// A weak reference to the mesh
 		std::weak_ptr<Mesh> m_mesh;
