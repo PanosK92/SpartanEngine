@@ -51,7 +51,7 @@ private:
 
 	// Context menu actions
 	void Action_GameObject_Delete(std::weak_ptr<Directus::GameObject> gameObject);
-	std::weak_ptr<Directus::GameObject> Action_GameObject_CreateEmpty();
+	Directus::GameObject* Action_GameObject_CreateEmpty();
 	void Action_GameObject_CreateCube();
 	void Action_GameObject_CreateQuad();
 	void Action_GameObject_CreateCamera();
