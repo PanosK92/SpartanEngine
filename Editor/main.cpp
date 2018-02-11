@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Core/Engine.h>
 #include "Graphics/Renderer.h"
 #include "Editor.h"
+#include "UI/ImGui/imgui.h"
 //============================
 
 //= NAMESPACES ==========
@@ -154,7 +155,7 @@ int main(int argc, char* argv[])
 	SDL_GetWindowWMInfo(g_window, &systemInfo);
 	auto winHandle = systemInfo.info.win.window;
 	auto winInstance = systemInfo.info.win.hinstance;
-
+	
 	// Create the editor before the engine because it implements
 	// the engine's logging system and will catch all output from it.
 	g_editor = new Editor();
@@ -167,6 +168,7 @@ int main(int argc, char* argv[])
 	g_renderer = g_engineContext->GetSubsystem<Renderer>();
 
 	// Initialize
+	ImGui::CreateContext();
 	g_editor->Initialize(g_window, g_engineContext);
 
 	// Start loop
@@ -181,12 +183,13 @@ int main(int argc, char* argv[])
 	{
 		g_editor->Shutdown();
 		delete g_editor;
+		ImGui::DestroyContext();
 
 		g_engine->Shutdown();
 		delete g_engine;
-
+		
 		SDL_DestroyWindow(g_window);
-		SDL_Quit();
+		SDL_Quit();		
 	}
 
 	// Exit

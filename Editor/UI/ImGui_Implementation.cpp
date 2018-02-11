@@ -328,7 +328,6 @@ static void ImGui_Impl_CreateFontsTexture()
 
 bool ImGui_Impl_Initialize(SDL_Window* window, Context* context)
 {
-	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
 
 	g_graphics	= context->GetSubsystem<Graphics>();
@@ -425,7 +424,6 @@ void ImGui_Impl_Shutdown()
 	ImGui_Impl_InvalidateDeviceObjects();
 	g_pd3dDevice = nullptr;
 	g_pd3dDeviceContext = nullptr;
-	ImGui::DestroyContext();
 }
 
 void ImGui_Impl_NewFrame(SDL_Window* window)
@@ -640,5 +638,5 @@ void ImGui_Impl_InvalidateDeviceObjects()
     if (g_pVertexConstantBuffer) { g_pVertexConstantBuffer->Release(); g_pVertexConstantBuffer = nullptr; }
     if (g_pInputLayout) { g_pInputLayout->Release(); g_pInputLayout = nullptr; }
     if (g_pVertexShader) { g_pVertexShader->Release(); g_pVertexShader = nullptr; }
-if (g_pVertexShaderBlob) { g_pVertexShaderBlob->Release(); g_pVertexShaderBlob = nullptr; }
+	if (g_pVertexShaderBlob) { g_pVertexShaderBlob->Release(); g_pVertexShaderBlob = nullptr; }
 }
