@@ -303,7 +303,7 @@ namespace Directus
 		//==============================================================================
 	}
 
-	void ModelImporter::LoadAiMeshIndices(aiMesh* assimpMesh, shared_ptr<Mesh> mesh)
+	void ModelImporter::LoadAiMeshIndices(aiMesh* assimpMesh, const shared_ptr<Mesh>& mesh)
 	{
 		// Get indices by iterating through each face of the mesh.
 		for (unsigned int faceIndex = 0; faceIndex < assimpMesh->mNumFaces; faceIndex++)
@@ -320,7 +320,7 @@ namespace Directus
 		}
 	}
 
-	void ModelImporter::LoadAiMeshVertices(aiMesh* assimpMesh, shared_ptr<Mesh> mesh)
+	void ModelImporter::LoadAiMeshVertices(aiMesh* assimpMesh, const shared_ptr<Mesh>& mesh)
 	{
 		Vector3 position;
 		Vector2 uv;
@@ -363,10 +363,10 @@ namespace Directus
 			mesh->GetVertices().emplace_back(position, uv, normal, tangent, bitangent);
 
 			// reset the vertex for use in the next loop
-			uv = Vector2::Zero;
-			normal = Vector3::Zero;
-			tangent = Vector3::Zero;
-			bitangent = Vector3::Zero;
+			uv			= Vector2::Zero;
+			normal		= Vector3::Zero;
+			tangent		= Vector3::Zero;
+			bitangent	= Vector3::Zero;
 		}
 	}
 
@@ -561,8 +561,8 @@ namespace Directus
 
 	void ModelImporter::ClearProgressStatus()
 	{
-		m_progressStatus = NOT_ASSIGNED;
-		m_jobsDone = 0;
-		m_jobsTotal = 0;
+		m_progressStatus	= NOT_ASSIGNED;
+		m_jobsDone			= 0;
+		m_jobsTotal			= 0;
 	}
 }

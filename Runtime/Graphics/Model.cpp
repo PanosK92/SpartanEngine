@@ -123,13 +123,13 @@ namespace Directus
 	}
 	//=======================================================
 
-	void Model::AddMesh(const string& name, vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices, weak_ptr<GameObject> gameObject)
+	void Model::AddMesh(const string& name, vector<VertexPosTexTBN>& vertices, vector<unsigned int>& indices, const weak_ptr<GameObject>& gameObject)
 	{
 		// In case this mesh is already loaded, use that one
 		auto existingMesh = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(name);
 		if (!existingMesh.expired())
 		{
-			AddMesh(existingMesh, gameObject);
+			AddMesh(existingMesh, gameObject, false);
 			return;
 		}
 
@@ -141,22 +141,25 @@ namespace Directus
 		mesh->SetIndices(indices);
 
 		// Add the mesh to the model
-		AddMesh(mesh, gameObject);
+		AddMesh(mesh, gameObject, true);
 	}
 
-	void Model::AddMesh(weak_ptr<Mesh> mesh, weak_ptr<GameObject> gameObject)
+	void Model::AddMesh(const weak_ptr<Mesh>& mesh, const weak_ptr<GameObject>& gameObject, bool autoCache /* true */)
 	{
 		if (mesh.expired())
+		{
+			LOG_WARNING("Model::AddMesh(): Provided mesh is null, can't execute function");
 			return;
-
+		}
+			
 		// Don't add mesh if it's already added
-		weak_ptr<Mesh> modelCached;
-		DetermineMeshUniqueness(mesh, &modelCached);
-		if (!modelCached.expired())
+		weak_ptr<Mesh> existingMesh;
+		DetermineMeshUniqueness(mesh, &existingMesh);
+		if (!existingMesh.expired())
 		{
 			// The mesh is cached but we must not forget to add
 			// some standard components to the GameObject that uses it.
-			AddStandardComponents(gameObject, modelCached);
+			AddStandardComponents(gameObject, existingMesh);
 			return;
 		}
 
@@ -172,44 +175,47 @@ namespace Directus
 		// Calculate the bounding box of the model as well
 		m_boundingBox.Merge(mesh.lock()->GetBoundingBox());
 
-		// Add it to the resource manager
-		auto weakMesh = m_context->GetSubsystem<ResourceManager>()->Add<Mesh>(mesh.lock());
+		// Cache it or use the provided reference as is
+		auto meshRef = autoCache ? mesh.lock()->Cache<Mesh>() : mesh;
 
-		if (!weakMesh.expired())
+		if (!meshRef.expired())
 		{
 			// Save it
-			m_meshes.push_back(weakMesh);
+			m_meshes.push_back(meshRef);
 
 			// Add some standard components
-			AddStandardComponents(gameObject, weakMesh);
+			AddStandardComponents(gameObject, meshRef);
 
 			// Release geometry data now that we are done with it
-			weakMesh.lock()->ClearGeometry();
+			meshRef.lock()->ClearGeometry();
 		}
 	}
 
-	void Model::AddMaterial(weak_ptr<Material> material, weak_ptr<GameObject> gameObject)
+	void Model::AddMaterial(const weak_ptr<Material>& material, const weak_ptr<GameObject>& gameObject, bool autoCache /* true */)
 	{
 		if (material.expired())
+		{
+			LOG_WARNING("Model::AddMaterial(): Provided material is null, can't execute function");
 			return;
+		}
 
 		// Create a file path for this material
 		material.lock()->SetResourceFilePath(m_modelDirectoryMaterials + material.lock()->GetResourceName() + MATERIAL_EXTENSION);
 
-		// Add it to our resources
-		weak_ptr<Material> weakMat = m_context->GetSubsystem<ResourceManager>()->Add<Material>(material.lock());
-
 		// Save the material in the model directory		
-		weakMat.lock()->SaveToFile(weakMat.lock()->GetResourceFilePath());
+		material.lock()->SaveToFile(material.lock()->GetResourceFilePath());
+
+		// Cache it or use the provided reference as is
+		auto matRef = autoCache ? material.lock()->Cache<Material>() : material;
 
 		// Keep a reference to it
-		m_materials.push_back(weakMat);
+		m_materials.push_back(matRef);
 
-		// Create a MeshRenderer and pass the Material to it
+		// Create a MeshRenderer and pass the material to it
 		if (!gameObject.expired())
 		{
-			MeshRenderer* meshRenderer = gameObject.lock()->AddComponent<MeshRenderer>().lock().get();
-			meshRenderer->SetMaterialFromMemory(material);
+			auto meshRenderer = gameObject.lock()->AddComponent<MeshRenderer>().lock();
+			meshRenderer->SetMaterialFromMemory(matRef, false);
 		}
 	}
 
@@ -230,7 +236,7 @@ namespace Directus
 		return weakAnim;
 	}
 
-	void Model::AddTexture(const weak_ptr<Material> material, TextureType textureType, const string& filePath)
+	void Model::AddTexture(const weak_ptr<Material>& material, TextureType textureType, const string& filePath)
 	{
 		// Validate material
 		if (material.expired())
@@ -239,38 +245,38 @@ namespace Directus
 		// Validate texture file path
 		if (filePath == NOT_ASSIGNED)
 		{
-			LOG_WARNING("Model: Failed to find model requested texture \"" + filePath + "\".");
+			LOG_WARNING("Model::AddTexture(): Provided texture file path hasn't been provided. Can't execute function");
 			return;
 		}
 
-		// Check if the texture is already loaded
-		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		string texName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
-		weak_ptr<Texture> texture = resourceMng->GetResourceByName<Texture>(texName);
-
-		// If the texture is not loaded, load it 
-		if (texture.expired())
+		// Try to get the texture
+		auto texName = FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
+		auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Texture>(texName).lock();
+		if (texture)
 		{
-			// Load texture into memory
-			texture = resourceMng->Load<Texture>(filePath);
-			if (texture.expired())
-				return;
-
-			// Set texture type
-			texture.lock()->SetType(textureType);
+			material.lock()->SetTexture(texture, false);
+		}
+		// If we didn't get a texture, it's not cached, hence we have to load it and cache it now
+		else if (!texture)
+		{
+			// Load texture
+			texture = make_shared<Texture>(m_context);
+			texture->LoadFromFile(filePath);
+			texture->SetType(textureType);
 
 			// Update the texture with Model directory relative file path. Then save it to this directory
 			string modelRelativeTexPath = m_modelDirectoryTextures + texName + TEXTURE_EXTENSION;
-			texture.lock()->SetResourceFilePath(modelRelativeTexPath);
-			texture.lock()->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
-			texture.lock()->SaveToFile(modelRelativeTexPath);
+			texture->SetResourceFilePath(modelRelativeTexPath);
+			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
+			texture->SaveToFile(modelRelativeTexPath);
+			// Now that the texture is saved, free up it's memory since we already have a shader resource
+			texture->ClearTextureBits();
+			// Make sure to put it into the resource cache
+			texture->Cache<Texture>();
 
-			// Since the texture has been loaded and had it's texture bits saved, clear them to free some memory
-			texture.lock()->ClearTextureBits();
+			// Set the texture to the provided material
+			material.lock()->SetTexture(texture, true);
 		}
-
-		// Set the texture to the provided material
-		material.lock()->SetTexture(texture);
 	}
 
 	weak_ptr<Mesh> Model::GetMeshByName(const string& name)
@@ -295,10 +301,10 @@ namespace Directus
 	void Model::SetWorkingDirectory(const string& directory)
 	{
 		// Set directoties based on new directory
-		m_modelDirectoryModel = directory;
-		m_modelDirectoryMeshes = m_modelDirectoryModel + "Meshes//";
-		m_modelDirectoryMaterials = m_modelDirectoryModel + "Materials//";
-		m_modelDirectoryTextures = m_modelDirectoryModel + "Textures//";
+		m_modelDirectoryModel		= directory;
+		m_modelDirectoryMeshes		= m_modelDirectoryModel + "Meshes//";
+		m_modelDirectoryMaterials	= m_modelDirectoryModel + "Materials//";
+		m_modelDirectoryTextures	= m_modelDirectoryModel + "Textures//";
 
 		// Create directories
 		FileSystem::CreateDirectory_(directory);
@@ -360,7 +366,7 @@ namespace Directus
 		return false;
 	}
 
-	void Model::AddStandardComponents(weak_ptr<GameObject> gameObject, weak_ptr<Mesh> mesh)
+	void Model::AddStandardComponents(const weak_ptr<GameObject>& gameObject, const weak_ptr<Mesh>& mesh)
 	{
 		if (gameObject.expired())
 			return;
@@ -375,12 +381,12 @@ namespace Directus
 			gameObject.lock()->AddComponent<RigidBody>();
 
 			// Add a Collider
-			Collider* collider = gameObject.lock()->AddComponent<Collider>().lock().get();
+			auto collider = gameObject.lock()->AddComponent<Collider>().lock().get();
 			collider->SetShapeType(ColliderShape_Mesh);
 		}
 	}
 
-	void Model::DetermineMeshUniqueness(weak_ptr<Mesh> mesh, weak_ptr<Mesh>* modelCached)
+	void Model::DetermineMeshUniqueness(const weak_ptr<Mesh>& mesh, weak_ptr<Mesh>* modelCached)
 	{
 		// Some meshes can come from model formats like .obj
 		// Such formats contain pure geometry data, meaning that there is no transformation data.
@@ -435,7 +441,7 @@ namespace Directus
 		// If the mesh is unique, give it a different name (in case other with the same name exist)
 		if (isUnique)
 		{
-			string num = sameNameMeshes.size() == 0 ? string("") : "_" + to_string(sameNameMeshes.size() + 1);
+			string num = sameNameMeshes.empty() ? string("") : "_" + to_string(sameNameMeshes.size() + 1);
 			mesh.lock()->SetResourceName(mesh.lock()->GetResourceName() + num);
 		}
 		else

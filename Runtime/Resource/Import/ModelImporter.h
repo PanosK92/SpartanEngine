@@ -65,8 +65,8 @@ namespace Directus
 			std::weak_ptr<GameObject> newNode = std::weak_ptr<GameObject>()
 		);
 		void LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const std::weak_ptr<GameObject>& parentGameObject);
-		void LoadAiMeshVertices(aiMesh* assimpMesh, std::shared_ptr<Mesh> mesh);
-		void LoadAiMeshIndices(aiMesh* assimpMesh, std::shared_ptr<Mesh> mesh);
+		void LoadAiMeshVertices(aiMesh* assimpMesh, const std::shared_ptr<Mesh>& mesh);
+		void LoadAiMeshIndices(aiMesh* assimpMesh, const std::shared_ptr<Mesh>& mesh);
 		std::shared_ptr<Material> AiMaterialToMaterial(Model* model, aiMaterial* assimpMaterial);
 
 		// HELPER FUNCTIONS
