@@ -15,11 +15,9 @@ At this point we have taken care of all the dependencies and we are ready to sta
 ##### Generating Visual Studio 2017 project files and building the runtime
 1. We click and run **"Generate_VS17_Project.bat"** in order for a Visual Studio solution to be generated.
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS.png)
-2. We then open the Visual Studio solution file which should be located at **"Directus.sln"**
+2. We then open the Visual Studio solution file named **"Directus.sln"**
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS2.png)
-3. Before building, we have to select both projects (**"Editor"** and **"Runtime"**), right click on them, click **"Properties"**, then navigate to **"Configuration Properties/General"** and switch the **"Windows SDK Version"** to **10** (in case it's not).
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/SDKVS.png)
-4. Next, we switch the solution configuration to **"Release"** and build the entire solution. This will generate **"Editor.exe"** and **"Runtime.dll"** at **"Directus3D\Binaries\Release"**.
+3. Next, we switch the solution configuration to **"Release"** and build the entire solution. This will generate **"Editor.exe"** and **"Runtime.dll"** at **"Directus3D\Binaries\Release"**.
 
 ##### Providing the required DLLs
 Most of the dependencies are statically linked into Runtime.dll. However FMOD is dynamically linked, hence we have to provide
@@ -28,6 +26,10 @@ However, I have packed the required DLL in this [fmod64.7z](https://raw.githubus
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.png)
 
 ### Notes
-- We built everything in "Release" configuration as all of the statically linked dependencies have been pre-compiled in "Release" mode and are located at **"Directus3D\ThirdParty\mvsc141_x64\"**. The "Debug" version of them consists of libraries of a larger size, large enough that it can't be uploaded to the repository. Ideally, the projects of the dependencies could be part of the **"Directus"** solution but for the time being any dependencies have to be built by the user.
+- We built everything in "Release" configuration as all of the statically linked dependencies have been pre-compiled in "Release" mode and are located at **"Directus3D\ThirdParty\mvsc141_x64\"**. The "Debug" version of them consists of libraries of a larger size, large enough that it can't be uploaded to the repository. 
 
-- Apart from including the project of each dependency into the **"Directus"** solution, scripts can be written which will automate whatever is possible. Feel free to contribute if you think you can help :-)
+- Ideally, the projects of the dependencies could be part of the **"Directus"** solution but for the time being any dependencies have to be built by the user.
+
+- Pre-compiled libraries are provided for convenience (because of the above bullet), however, don't rely on them. If you get any linking errors, it is advised that you download and compile the dependency. 
+
+- All sorts of build scripts can be written in order to automate even more things. Feel free to contribute if you think you can help :-)
