@@ -22,27 +22,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
-#include <memory>
-#include "DInput/DInput.h"
 #include "../Math/Vector2.h"
 #include "../Core/SubSystem.h"
 //============================
 
 namespace Directus
 {
-	enum KeyCode
+	enum Button_Mouse
 	{
-		// Function keys
-		F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15,
-		// Numeric keypad
-		Keypad0, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9,
-		// Alphanumeric keys
-		Alpha0, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9,
+		Click_Left,
+		Click_Middle,
+		Click_Right
+	};
 
+	enum Button_Keyboard
+	{
+		// FUNCTION
+		F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15,
+		// NUMBERS
+		Alpha0, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, Alpha7, Alpha8, Alpha9,
+		// NUMPAD
+		Keypad0, Keypad1, Keypad2, Keypad3, Keypad4, Keypad5, Keypad6, Keypad7, Keypad8, Keypad9,
+		// LETTERS
 		Q, W, E, R, T, Y, U, I, O, P,
 		A, S, D, F, G, H, J, K, L,
 		Z, X, C, V, B, N, M,
-		// Controls
+		// CONTROLS
 		Esc,
 		Tab,
 		Shift_Left, Shift_Right,
@@ -55,27 +60,33 @@ namespace Directus
 		Delete
 	};
 
-	class ENGINE_CLASS Input : public Subsystem
+	class ENGINE_CLASS IInput : public Subsystem
 	{
 	public:
-		Input(Context* context);
-		~Input();
+		IInput(Context* context) : Subsystem(context)
+		{
+			m_mouseWheel = 0;
+			m_mouseWheelDelta = 0;
+		}
+		virtual ~IInput() {}
 
-		// SUBSYSTEM =============
-		bool Initialize() override;
-		//========================
+		// SUBSYSTEM ============================================
+		bool Initialize() override { return Input_Initialize(); }
+		//=======================================================
 
-		void Update();
+		bool GetButtonKeyboard(Button_Keyboard button) { return m_keyboardState[(int)button]; }
+		bool GetButtonMouse(Button_Mouse button) { return m_mouseState[(int)button]; }
+		const Math::Vector2& GetMousePosition() { return m_mousePos; }
+		const Math::Vector2& GetMouseDelta() { return m_mouseDelta; }
 
-		bool GetKey(KeyCode key);
-		bool GetMouseButton(int button) { return m_initialized ? m_DX8Input->IsMouseKeyDown(button) : false; }
-		Math::Vector2 GetMousePosition() { return m_mousePos; }
-		Math::Vector2 GetMousePositionDelta() { return m_mousePosDelta; }
+	protected:
+		virtual bool Input_Initialize() = 0;
 
-	private:
+		bool m_mouseState[3];
+		bool m_keyboardState[73];
 		Math::Vector2 m_mousePos;
-		Math::Vector2 m_mousePosDelta;
-		std::unique_ptr<DInput> m_DX8Input;
-		bool m_initialized;
+		Math::Vector2 m_mouseDelta;
+		float m_mouseWheel;
+		float m_mouseWheelDelta;
 	};
 }

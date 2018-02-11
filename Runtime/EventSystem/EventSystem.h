@@ -30,14 +30,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /*
 HOW TO USE
-=================================================================================================
-To subscribe a function to an event						-> SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
-To fire an event										-> FIRE_EVENT(EVENT_ID);
-To fire an event with data								-> FIRE_EVENT_DATA(EVENT_ID, Variant)
-==================================================================================================
+=============================================================================
+To subscribe a function to an event	-> SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
+To fire an event					-> FIRE_EVENT(EVENT_ID);
+To fire an event with data			-> FIRE_EVENT_DATA(EVENT_ID, Variant)
+=============================================================================
 */
 
-//= EVENTS =================================================================================
+//= EVENTS =====================================================================
 #define EVENT_UPDATE			0	// Fired when the engine should update
 #define EVENT_RENDER			1	// Fired when it's time to do rendering
 #define EVENT_SCENE_SAVED		2
@@ -45,19 +45,17 @@ To fire an event with data								-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 #define EVENT_SCENE_UPDATED		4	// Fired when the scene resolves renderables
 #define EVENT_SCENE_CLEARED		5	// Fired when the scene resolves renderables
 #define EVENT_MODEL_LOADED		6
-//==========================================================================================
+//==============================================================================
 
-//= MACROS =======================================================================================
-#define EVENT_HANDLER_STATIC(function)					[](Variant var) { function(); }
-#define EVENT_HANDLER(function)							[this](Variant var) { function(); }
-#define EVENT_HANDLER_VARIANT(function)					[this](Variant var) { function(var); }
-#define EVENT_HANDLER_VARIANT_STATIC(function)			[](Variant var) { function(var); }
-
-#define SUBSCRIBE_TO_EVENT(eventID, function)			EventSystem::Subscribe(eventID, function);
-
-#define FIRE_EVENT(eventID)								EventSystem::Fire(eventID)
-#define FIRE_EVENT_DATA(eventID, data)					EventSystem::Fire(eventID, data)
-//================================================================================================
+//= MACROS ===============================================================================
+#define EVENT_HANDLER_STATIC(function)			[](Variant var) { function(); }
+#define EVENT_HANDLER(function)					[this](Variant var) { function(); }
+#define EVENT_HANDLER_VARIANT(function)			[this](Variant var) { function(var); }
+#define EVENT_HANDLER_VARIANT_STATIC(function)	[](Variant var) { function(var); }
+#define SUBSCRIBE_TO_EVENT(eventID, function)	EventSystem::Subscribe(eventID, function);
+#define FIRE_EVENT(eventID)						EventSystem::Fire(eventID)
+#define FIRE_EVENT_DATA(eventID, data)			EventSystem::Fire(eventID, data)
+//========================================================================================
 
 namespace Directus
 {
