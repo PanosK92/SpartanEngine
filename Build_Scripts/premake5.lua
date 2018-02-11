@@ -26,12 +26,12 @@ WORKING_DIR 	= "../Binaries/Release"
 		systemversion(WIN_SDK_VERSION)
 
 -- Includes
-	includedirs { "../ThirdParty/AngelScript_2.31.2" }
+	includedirs { "../ThirdParty/AngelScript_2.32.0" }
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
 	includedirs { "../ThirdParty/Bullet_2.87" }
-	includedirs { "../ThirdParty/FMOD_1.09.08" }
+	includedirs { "../ThirdParty/FMOD_1.10.03" }
 	includedirs { "../ThirdParty/FreeImage_3.17.0" }
-	includedirs { "../ThirdParty/FreeType_2.8.1" }
+	includedirs { "../ThirdParty/FreeType_2.9" }
 	includedirs { "../ThirdParty/pugixml_1.8" }
 
 -- Library directory
