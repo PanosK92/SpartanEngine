@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/Constraint.h"
 #include "../DragDrop.h"
 #include "../EditorHelper.h"
+#include "Input/DInput/DInput.h"
 //=========================================
 
 //= NAMESPACES ==========
@@ -308,7 +309,7 @@ void Hierarchy::ContextMenu()
 
 void Hierarchy::HandleKeyShortcuts()
 {
-	if (g_input->GetKey(Delete))
+	if (g_input->GetButtonKeyboard(Delete))
 	{
 		Action_GameObject_Delete(m_gameObjectSelected);
 	}

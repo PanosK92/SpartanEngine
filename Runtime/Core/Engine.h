@@ -21,6 +21,7 @@ DEALINGS IN THE SOFTWARE. */
 //==================
 
 #define ENGINE_VERSION "v0.3 alpha"
+#define WIN32_LEAN_AND_MEAN
 
 namespace Directus
 {

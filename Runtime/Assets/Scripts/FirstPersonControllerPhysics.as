@@ -36,12 +36,12 @@ class FirstPersonControllerPhysics
 	// Update is called once per frame
 	void Update()
 	{
-		if (input.GetKey(E) && allowToggle)
+		if (input.GetButtonKeyboard(E) && allowToggle)
 		{
 			control = !control;
 			allowToggle = false;
 		}
-		else if (!input.GetKey(E))
+		else if (!input.GetButtonKeyboard(E))
 		{
 			allowToggle = true;
 		}
@@ -55,30 +55,30 @@ class FirstPersonControllerPhysics
 	void Movement()
 	{
 		// forward
-		if (input.GetKey(W))
+		if (input.GetButtonKeyboard(W))
 			rigidbody.ApplyForce(movementSpeed * cameraTransform.GetForward(), Force);
 			
 		// backward
-		if (input.GetKey(S))
+		if (input.GetButtonKeyboard(S))
 			rigidbody.ApplyForce(-movementSpeed * cameraTransform.GetForward(), Force);
 		
 		// right
-		if (input.GetKey(D))
+		if (input.GetButtonKeyboard(D))
 			rigidbody.ApplyForce(movementSpeed * cameraTransform.GetRight(), Force);
 		
 		// left
-		if (input.GetKey(A))
+		if (input.GetButtonKeyboard(A))
 			rigidbody.ApplyForce(-movementSpeed * cameraTransform.GetRight(), Force);
 			
 		// jump
-		if (input.GetKey(Space))
+		if (input.GetButtonKeyboard(Space))
 			rigidbody.ApplyForce(jumpForce * Vector3(0,1,0), Impulse);
 	}
 	
 	void MouseLook()
 	{
 		// Get raw mouse input
-		Vector2 mouseDelta = Vector2(input.GetMousePositionDelta().x, input.GetMousePositionDelta().y);
+		Vector2 mouseDelta = Vector2(input.GetMouseDelta().x, input.GetMouseDelta().y);
 	
 		// Scale input against the sensitivity setting and multiply that against the smoothing value.
 		mouseDelta.x *= sensitivity * smoothing * time.GetDeltaTime();

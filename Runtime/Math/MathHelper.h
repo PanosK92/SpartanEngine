@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES ==================
 #include <cmath>
+#include <math.h>
 #include <limits>
 #include "../Core/EngineDefs.h"
-//=========================
+//=============================
 
 namespace Directus
 {
@@ -52,8 +53,9 @@ namespace Directus
 		inline ENGINE_CLASS float CotF(float x) { return cosf(x) / sinf(x); }
 		inline ENGINE_CLASS float DegreesToRadians(float degrees) { return degrees * DEG_TO_RAD; }
 		inline ENGINE_CLASS float RadiansToDegrees(float radians) { return radians * RAD_TO_DEG; }
+
 		template <typename T>
-		inline ENGINE_CLASS T Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
+		T Clamp(T x, T a, T b) { return x < a ? a : (x > b ? b : x); }
 
 		// Lerp linearly between to values
 		template <class T, class U>

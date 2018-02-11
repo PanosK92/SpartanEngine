@@ -21,38 +21,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include "../../Math/Vector3.h"
-#include <dinput.h>
-//=============================
+//= INCLUDES ========
+#include "../Input.h"
+//===================
 
 namespace Directus
 {
-	class DInput
+	class DInput : public IInput
 	{
 	public:
-		DInput();
+		DInput(Context* context);
 		~DInput();
 
-		bool Initialize();
-		void Update();
-
-		bool IsKeyboardKeyDown(int key);
-		bool IsMouseKeyDown(int key);
-
-		Math::Vector3 GetMouseDelta();
+		//= IInput ======================
+		bool Input_Initialize() override;
+		//===============================
 
 	private:
-		bool GetKeyboard();
-		bool GetMouse();
-		bool ReadKeyboard();
+		void Update();
 		bool ReadMouse();
-
-		IDirectInput8* m_directInput;
-		IDirectInputDevice8* m_keyboard;
-		IDirectInputDevice8* m_mouse;
-
-		unsigned char m_keyboardState[256];
-		DIMOUSESTATE m_mouseState;
+		bool ReadKeyboard();	
 	};
 }

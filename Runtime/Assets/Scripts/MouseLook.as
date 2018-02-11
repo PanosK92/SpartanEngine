@@ -32,12 +32,12 @@ class MouseLook
 	// Update is called once per frame
 	void Update()
 	{	
-		if (input.GetKey(E) && allowToggle)
+		if (input.GetButtonKeyboard(E) && allowToggle)
 		{
 			control = !control;
 			allowToggle = false;
 		}
-		else if (!input.GetKey(E))
+		else if (!input.GetButtonKeyboard(E))
 		{
 			allowToggle = true;
 		}
@@ -51,8 +51,8 @@ class MouseLook
 	void FreeLook()
 	{
 		// Get raw mouse input
-		float mouseDeltaX = input.GetMousePositionDelta().x;
-		float mouseDeltaY = input.GetMousePositionDelta().y;
+		float mouseDeltaX = input.GetMouseDelta().x;
+		float mouseDeltaY = input.GetMouseDelta().y;
 	
 		currentRotation.x += mouseDeltaX * sensitivity * time.GetDeltaTime();
 		currentRotation.y += mouseDeltaY * sensitivity * time.GetDeltaTime();

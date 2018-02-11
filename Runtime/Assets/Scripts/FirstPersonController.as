@@ -25,22 +25,22 @@ class FirstPersonController
 	void Update()
 	{
 		// Move forward
-		if (input.GetKey(W))
+		if (input.GetButtonKeyboard(W))
 		{
 			movementSpeed += acceleration * transform.GetForward() * time.GetDeltaTime();
 		}		
 		// Move backward
-		if (input.GetKey(S))
+		if (input.GetButtonKeyboard(S))
 		{
 			movementSpeed -= acceleration * transform.GetForward() * time.GetDeltaTime();
 		}
 		// Move right
-		if (input.GetKey(D))
+		if (input.GetButtonKeyboard(D))
 		{
 			movementSpeed += acceleration * transform.GetRight() * time.GetDeltaTime();
 		}
 		// Move left
-		if (input.GetKey(A))
+		if (input.GetButtonKeyboard(A))
 		{
 			movementSpeed -= acceleration * transform.GetRight() * time.GetDeltaTime();
 		}

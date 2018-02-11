@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Audio/Audio.h"
 #include "../Core/EngineBackends.h"
 #include "../EventSystem/EventSystem.h"
-#include "../Input/Input.h"
+#include "../Input/DInput/DInput.h"
 #include "../Physics/Physics.h"
 #include "../Profiling/PerformanceProfiler.h"
 //===========================================
@@ -81,13 +81,13 @@ namespace Directus
 		bool success = true;
 
 		// Timer
-		if (!m_context->GetSubsystem<Timer>()->Initialize())
+		m_timer = m_context->GetSubsystem<Timer>();
+		if (!m_timer->Initialize())
 		{
 			LOG_ERROR("Failed to initialize Timer subsystem");
 			success = false;
 		}
-		m_timer = m_context->GetSubsystem<Timer>();
-
+	
 		// Input
 		if (!m_context->GetSubsystem<Input>()->Initialize())
 		{

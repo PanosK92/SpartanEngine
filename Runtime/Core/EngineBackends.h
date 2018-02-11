@@ -52,7 +52,8 @@ namespace Directus
 //= INPUT =========================
 #if defined(API_DInput)
 #pragma comment(lib, "dinput8.lib")
-#define DIRECTINPUT_VERSION 0x0800
+	class DInput;
+	typedef DInput Input;
 #endif
 //=================================
 }
