@@ -52,7 +52,7 @@ namespace Directus
 	};
 	//===============================================================
 
-	D3D11GraphicsDevice::D3D11GraphicsDevice(Context* context) : IGraphicsDevice(context)
+	D3D11GraphicsDevice::D3D11GraphicsDevice(Context* context) : IGraphics(context)
 	{
 		m_driverType = D3D_DRIVER_TYPE_HARDWARE;
 		m_featureLevel = D3D_FEATURE_LEVEL_11_0;

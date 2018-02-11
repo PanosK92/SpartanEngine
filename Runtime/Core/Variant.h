@@ -308,10 +308,10 @@ namespace Directus
 		const Math::Matrix& GetMatrix() const { return m_type == var_matrix ? *m_value.matrix_ : Math::Matrix::Identity; }
 
 		// Returns a variant vector or an empty vector on type mismatch.
-		const std::vector<Variant>& GetVariantVector() const { return m_type == var_variant_vector ? m_value.variantVector_ : std::vector<Variant>(); }
+		const std::vector<Variant>& GetVariantVector() const { return m_value.variantVector_; }
 
 		// Returns an unsigned char vector or an empty vector on type mismatch.
-		const std::vector<unsigned char>& GetBuffer() const { return m_type == var_buffer ? m_value.buffer_ : std::vector<unsigned char>(); }
+		const std::vector<unsigned char>& GetBuffer() const { return m_value.buffer_; }
 
 		// Returns void pointer or nullptr on type mismatch.
 		void* GetVoidPtr() const { return m_type == var_voidptr ? m_value.voidPtr_ : nullptr; }

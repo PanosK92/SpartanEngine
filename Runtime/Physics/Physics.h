@@ -67,7 +67,7 @@ namespace Directus
 		// Return the world
 		std::shared_ptr<btDiscreteDynamicsWorld> GetWorld() { return m_world; }
 		// Return the world's gravity
-		const Math::Vector3& GetGravity();
+		Math::Vector3 GetGravity();
 
 		PhysicsDebugDraw* GetPhysicsDebugDraw() { return m_debugDraw.get(); }
 		bool IsSimulating() { return m_simulating; }
