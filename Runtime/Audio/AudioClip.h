@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
-#include "../Resource/Resource.h"
+//= INCLUDES =====================
+#include "../Resource/IResource.h"
 #include "../Math/Vector3.h"
-//===============================
+//================================
 
 //= FMOD FORWARD DECLARATIONS =
 namespace FMOD
@@ -51,16 +51,16 @@ namespace Directus
 		Custom
 	};
 
-	class AudioClip : Resource
+	class AudioClip : IResource
 	{
 	public:
 		AudioClip(FMOD::System* fModSystem);
 		~AudioClip();
 
-		//= RESOURCE INTERFACE ========================================
+		//= IResource ==========================================================
 		bool LoadFromFile(const std::string& filePath) override { return true; }
 		bool SaveToFile(const std::string& filePath) override { return true; }
-		//=============================================================
+		//======================================================================
 
 		bool Load(const std::string& filePath, PlayMode mode);
 		bool Play();

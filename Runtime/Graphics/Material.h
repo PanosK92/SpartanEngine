@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =====================
 #include <vector>
 #include <memory>
 #include <map>
 #include "Texture.h"
-#include "../Resource/Resource.h"
+#include "../Resource/IResource.h"
 #include "../Math/Vector2.h"
 #include "Rectangle.h"
-//===============================
+//================================
 
 namespace Directus
 {
@@ -37,23 +37,16 @@ namespace Directus
 	class ShaderPool;
 	class TexturePool;
 
-	enum ShadingMode
-	{
-		Shading_PBR,
-		Shading_Unlit,
-		Shading_Skybox
-	};
-
-	enum MaterialType
-	{
-		Material_Imported,
-		Material_Basic,
-		Material_Skybox
-	};
-
-	class ENGINE_CLASS Material : public Resource
+	class ENGINE_CLASS Material : public IResource
 	{
 	public:
+		enum ShadingMode
+		{
+			Shading_PBR,
+			Shading_Unlit,
+			Shading_Skybox
+		};
+
 		Material(Context* context);
 		~Material();
 
@@ -62,14 +55,14 @@ namespace Directus
 		bool SaveToFile(const std::string& filePath) override;
 		//======================================================
 
-		//= TEXTURES =============================================
-		void SetTexture(std::weak_ptr<Texture> texture);
+		//= TEXTURES ==============================================
+		void SetTexture(const std::weak_ptr<Texture>& textureWeak);
 		std::weak_ptr<Texture> GetTextureByType(TextureType type);
 		bool HasTextureOfType(TextureType type);
 		bool HasTexture(const std::string& path);
 		std::string GetTexturePathByType(TextureType type);
 		std::vector<std::string> GetTexturePaths();
-		//========================================================
+		//=========================================================
 
 		//= SHADER ===========================================================================
 		void AcquireShader();
@@ -146,22 +139,18 @@ namespace Directus
 		// <tex_type, <tex,	tex_path>>
 		std::map<TextureType, TexInfo> m_textures;
 
-		unsigned int m_modelID;
-		CullMode m_cullMode;
+		unsigned int m_modelID;	
 		float m_opacity;
 		bool m_alphaBlending;
+		CullMode m_cullMode;
+		ShadingMode m_shadingMode;
 		Math::Vector4 m_colorAlbedo;
 		float m_roughnessMultiplier;
 		float m_metallicMultiplier;
 		float m_normalMultiplier;
 		float m_heightMultiplier;
 		Math::Vector2 m_uvTiling;
-		Math::Vector2 m_uvOffset;
-		ShadingMode m_shadingMode;
+		Math::Vector2 m_uvOffset;	
 		bool m_isEditable;
-
-		//= DEPENDENCIES ==
-		Context* m_context;
-		//=================
 	};
 }

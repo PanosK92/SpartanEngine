@@ -40,9 +40,9 @@ namespace Directus
 {
 	MeshRenderer::MeshRenderer()
 	{
-		m_castShadows = true;
-		m_receiveShadows = true;
-		m_materialType = Material_Imported;
+		m_castShadows			= true;
+		m_receiveShadows		= true;
+		m_usingStandardMaterial = false;
 	}
 
 	MeshRenderer::~MeshRenderer()
@@ -53,26 +53,20 @@ namespace Directus
 	//= ICOMPONENT ===============================================================
 	void MeshRenderer::Serialize(FileStream* stream)
 	{
-		stream->Write((int)m_materialType);
-		stream->Write(!m_material.expired() ? m_material.lock()->GetResourceFilePath() : (string)NOT_ASSIGNED);
+		stream->Write(m_usingStandardMaterial);
 		stream->Write(m_castShadows);
 		stream->Write(m_receiveShadows);
 	}
 
 	void MeshRenderer::Deserialize(FileStream* stream)
 	{
-		string materialFilePath = NOT_ASSIGNED;
-
-		m_materialType = (MaterialType)stream->ReadInt();
-		stream->Read(&materialFilePath);
+		stream->Read(&m_usingStandardMaterial);
 		stream->Read(&m_castShadows);
 		stream->Read(&m_receiveShadows);
 
-		// The Skybox material and texture is managed by the skybox component.
-		// No need to load anything as it will overwrite what the skybox component did.
-		if (m_materialType != Material_Skybox)
+		if (m_usingStandardMaterial)
 		{
-			m_materialType == Material_Imported ? SetMaterialFromFile(materialFilePath) : SetMaterialByType(m_materialType);
+			UseStandardMaterial();
 		}
 	}
 	//==============================================================================
@@ -101,31 +95,43 @@ namespace Directus
 
 	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
-	void MeshRenderer::SetMaterialFromMemory(weak_ptr<Material> material)
+	void MeshRenderer::SetMaterialFromMemory(const weak_ptr<Material>& materialWeak, bool autoCache /* true */)
 	{
-		if (material.expired())
+		// Validate material
+		auto material = materialWeak.lock();
+		if (!material)
 		{
-			LOG_INFO("MeshRenderer: Can't set expired material");
+			LOG_WARNING("MeshRenderer::SetMaterialFromMemory(): Provided material is null, can't execute function");
 			return;
 		}
 
-		auto resourceManager = GetContext()->GetSubsystem<ResourceManager>();
-
-		// If the material doesn't already existn in the resource cache, save it to a file as well
-		auto existingMaterial = resourceManager->GetResourceByName<Material>(material.lock()->GetResourceName());
-		if (existingMaterial.expired())
+		if (autoCache) // Cache it
 		{
-			material.lock()->SaveToFile(material.lock()->GetResourceFilePath());
+			if (auto cachedMat = material->Cache<Material>().lock())
+			{
+				m_material = cachedMat;
+				m_material.lock()->SaveToFile(material->GetResourceFilePath());
+			}
+			m_usingStandardMaterial = false;
 		}
-
-		m_material = resourceManager->Add<Material>(material.lock());
+		else
+		{
+			// Anything that's we don't cache is considered a standard material.
+			// A standard material's lifetime is entirely up to the caller.
+			m_material = material;
+			m_usingStandardMaterial = true;
+		}
 	}
 
 	weak_ptr<Material> MeshRenderer::SetMaterialFromFile(const string& filePath)
 	{
 		// Load the material
-		shared_ptr<Material> material = make_shared<Material>(GetContext());
-		material->LoadFromFile(filePath);
+		auto material = make_shared<Material>(GetContext());
+		if (!material->LoadFromFile(filePath))
+		{
+			LOG_WARNING("MeshRenderer::SetMaterialFromFile(): Failed to load material from \"" + filePath + "\"");
+			return weak_ptr<Material>();
+		}
 
 		// Set it as the current material
 		SetMaterialFromMemory(material);
@@ -134,39 +140,18 @@ namespace Directus
 		return GetMaterial();
 	}
 
-	void MeshRenderer::SetMaterialByType(MaterialType type)
+	void MeshRenderer::UseStandardMaterial()
 	{
-		shared_ptr<Material> material;
-		string projectStandardAssetDir = GetContext()->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
+		auto projectStandardAssetDir = GetContext()->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
 		FileSystem::CreateDirectory_(projectStandardAssetDir);
-
-		switch (type)
-		{
-		case Material_Basic:
-			material = make_shared<Material>(GetContext());
-			material->SetResourceName("Standard");
-			material->SetResourceFilePath(projectStandardAssetDir + "Standard_Material" + string(MATERIAL_EXTENSION));
-			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-			material->SetIsEditable(false);
-			m_materialType = Material_Basic;
-			break;
-
-		case Material_Skybox:
-			material = make_shared<Material>(GetContext());
-			material->SetResourceName("Standard_Skybox");
-			material->SetResourceFilePath(projectStandardAssetDir + "Standard_Material_Skybox" + string(MATERIAL_EXTENSION));
-			material->SetCullMode(CullFront);
-			material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-			material->SetIsEditable(false);
-			m_materialType = Material_Skybox;
-			break;
-
-		default:
-			break;
-		}
-
-		SetMaterialFromMemory(material);
+		auto materialStandard = make_shared<Material>(GetContext());
+		materialStandard->SetResourceName("Standard");
+		materialStandard->SetCullMode(CullBack);
+		materialStandard->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+		materialStandard->SetIsEditable(false);
+		SetMaterialFromMemory(materialStandard->Cache<Material>(), false);
 	}
+
 	//==============================================================================
 
 	string MeshRenderer::GetMaterialName()

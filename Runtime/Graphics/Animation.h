@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
-#include "../Resource/Resource.h"
+//= INCLUDES =====================
+#include "../Resource/IResource.h"
 #include "../Math/Matrix.h"
-//===============================
+//================================
 
 namespace Directus
 {
@@ -61,7 +61,7 @@ namespace Directus
 		std::vector<KeyVector> scaleFrames;
 	};
 
-	class ENGINE_CLASS Animation : public Resource
+	class ENGINE_CLASS Animation : public IResource
 	{
 	public:
 		Animation();

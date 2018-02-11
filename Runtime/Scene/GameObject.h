@@ -155,7 +155,7 @@ namespace Directus
 			for (auto it = m_components.begin(); it != m_components.end(); )
 			{
 				auto component = *it;
-                                if (type == component.second->GetType())
+				if (type == component.second->GetType())
 				{
 					component.second->Remove();
 					component.second.reset();

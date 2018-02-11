@@ -351,7 +351,7 @@ void Hierarchy::Action_GameObject_CreateCube()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<MeshFilter>().lock()->SetMesh(MeshType_Cube);
-	gameObject->AddComponent<MeshRenderer>().lock()->SetMaterialByType(Material_Basic);
+	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
 	gameObject->SetName("Cube");
 }
 
@@ -359,7 +359,7 @@ void Hierarchy::Action_GameObject_CreateQuad()
 {
 	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<MeshFilter>().lock()->SetMesh(MeshType_Quad);
-	gameObject->AddComponent<MeshRenderer>().lock()->SetMaterialByType(Material_Basic);
+	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
 	gameObject->SetName("Quad");
 }
 

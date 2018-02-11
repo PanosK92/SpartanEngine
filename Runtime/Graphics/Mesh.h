@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =====================
 #include <vector>
 #include <memory>
 #include "Vertex.h"
 #include "../Math/BoundingBox.h"
-#include "../Resource/Resource.h"
-//===============================
+#include "../Resource/IResource.h"
+//================================
 
 namespace Directus
 {
@@ -36,7 +36,7 @@ namespace Directus
 	class D3D11VertexBuffer;
 	class D3D11IndexBuffer;
 
-	class Mesh : public Resource
+	class Mesh : public IResource
 	{
 	public:
 		Mesh(Context* context);

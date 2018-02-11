@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Graphics/Texture.h"
 #include "../../Math/Vector3.h"
 #include "../../Scene/Scene.h"
-#include "../../Resource/ResourceCache.h"
 #include "../../Resource/ResourceManager.h"
 //=========================================
 
@@ -46,40 +45,41 @@ namespace Directus
 
 	Skybox::~Skybox()
 	{
-
+		 GetGameObject()->RemoveComponent<MeshFilter>();
+		 GetGameObject()->RemoveComponent<MeshRenderer>();
 	}
 
-	/*------------------------------------------------------------------------------
-									[INTERFACE]
-	------------------------------------------------------------------------------*/
 	void Skybox::Initialize()
 	{
-		auto resourceMng = GetContext()->GetSubsystem<ResourceManager>();
-
-		// Load cubemap texture
-		string cubemapDirectory = resourceMng->GetStandardResourceDirectory(Resource_Cubemap);
-		string texPath = cubemapDirectory + "environment.dds";
-		m_cubemapTexture = make_shared<Texture>(GetContext());
+		// Load environment texture and create a cubemap
+		auto cubemapDirectory	= GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
+		auto texPath			= cubemapDirectory + "environment.dds";
+		m_cubemapTexture		= make_shared<Texture>(GetContext());
 		m_cubemapTexture->SetResourceName(FileSystem::GetFileNameFromFilePath(texPath));
 		m_cubemapTexture->LoadFromFile(texPath);
 		m_cubemapTexture->SetType(TextureType_CubeMap);
 		m_cubemapTexture->SetWidth(1024);
 		m_cubemapTexture->SetHeight(1024);
 		m_cubemapTexture->SetGrayscale(false);
+		
+		// Create a skybox material
+		m_matSkybox = make_shared<Material>(GetContext());
+		m_matSkybox->SetResourceName("Standard_Skybox");
+		m_matSkybox->SetCullMode(CullFront);
+		m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+		m_matSkybox->SetIsEditable(false);
+		m_matSkybox->SetTexture(m_cubemapTexture); // assign cubmap texture
 
-		// Add the actual "box"
+		// Add a cube mesh
 		GetGameObject()->AddComponent<MeshFilter>().lock()->SetMesh(MeshType_Cube);
 
-		// Add a mesh renderer
+		// Add a mesh renderer and assign the skybox material to it
 		shared_ptr<MeshRenderer> meshRenderer = GetGameObject()->AddComponent<MeshRenderer>().lock();
 		meshRenderer->SetCastShadows(false);
 		meshRenderer->SetReceiveShadows(false);
-		meshRenderer->SetMaterialByType(Material_Skybox);
-		shared_ptr<Material> material = meshRenderer->GetMaterial().lock();
-		if (material)
-		{
-			material->SetTexture(m_cubemapTexture);
-		}
+		meshRenderer->SetMaterialFromMemory(m_matSkybox, true);
+
+		// Make the skybox big enough
 		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 	}
 
@@ -91,10 +91,7 @@ namespace Directus
 		GetTransform()->SetPosition(m_anchor.lock()->GetTransform()->GetPosition());
 	}
 
-	/*------------------------------------------------------------------------------
-									[MISC]
-	------------------------------------------------------------------------------*/
-	void** Skybox::GetEnvironmentTexture()
+	void** Skybox::GetShaderResource()
 	{
 		return m_cubemapTexture ? m_cubemapTexture->GetShaderResource() : nullptr;
 	}

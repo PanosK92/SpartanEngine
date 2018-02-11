@@ -47,9 +47,9 @@ namespace Directus
 	{
 		m_context = context;
 
-		//= RESOURCE INTERFACE ============
-		RegisterResource(Resource_Model);
-		//=================================
+		//= IResource ============
+		RegisterResource<Model>();
+		//========================
 
 		m_normalizedScale = 1.0f;
 		m_isAnimated = false;

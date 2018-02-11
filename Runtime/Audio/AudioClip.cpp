@@ -39,8 +39,9 @@ namespace Directus
 {
 	AudioClip::AudioClip(System* fModSystem)
 	{
-		// Resource
-		RegisterResource(Resource_Audio);
+		//= IResource ================
+		RegisterResource<AudioClip>();
+		//============================
 
 		// AudioClip
 		m_transform = nullptr;

@@ -41,8 +41,9 @@ namespace Directus
 {
 	ShaderVariation::ShaderVariation()
 	{
-		// Resource
-		RegisterResource(Resource_Shader);
+		//= IResource ======================
+		RegisterResource<ShaderVariation>();
+		//==================================
 
 		m_graphics = nullptr;
 		m_shaderFlags = 0;

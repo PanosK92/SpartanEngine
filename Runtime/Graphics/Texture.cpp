@@ -61,8 +61,9 @@ namespace Directus
 
 	Texture::Texture(Context* context)
 	{
-		// Resource
-		RegisterResource(Resource_Texture);
+		//= IResource ==============
+		RegisterResource<Texture>();
+		//==========================
 
 		// Texture
 		m_context			= context;

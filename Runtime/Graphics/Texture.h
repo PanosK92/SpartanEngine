@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
-#include "../Resource/Resource.h"
+//= INCLUDES =====================
+#include "../Resource/IResource.h"
 #include <memory>
-//===============================
+//================================
 
 namespace Directus
 {
@@ -60,7 +60,7 @@ namespace Directus
 		TextureUsage_External
 	};
 
-	class ENGINE_CLASS Texture : public Resource
+	class ENGINE_CLASS Texture : public IResource
 	{
 	public:
 		// Used by the engine for all textures

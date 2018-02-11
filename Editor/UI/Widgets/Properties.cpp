@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ========================================
 #include "Properties.h"
 #include "../imgui/imgui.h"
 #include "Hierarchy.h"
@@ -41,7 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EditorHelper.h"
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
-//=========================================
+#include "Graphics/DeferredShaders/ShaderVariation.h"
+//===================================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -666,6 +667,10 @@ void Properties::ShowMaterial(Material* material)
 		// Name
 		ImGui::Text("Name");
 		ImGui::SameLine(posX); ImGui::Text(material->GetResourceName().c_str());
+
+			// Name
+		ImGui::Text("Shader");
+		ImGui::SameLine(posX); ImGui::Text(!material->GetShader().expired() ? material->GetShader().lock()->GetResourceName().c_str() : NOT_ASSIGNED);
 
 #define MAT_TEX(tex, texName, texEnum)					\
 		ImGui::Text(texName);							\

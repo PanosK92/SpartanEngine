@@ -468,8 +468,8 @@ namespace Directus
 		m_gbuffer->SetAsRenderTarget();
 		m_gbuffer->Clear();
 
-		vector<weak_ptr<Resource>> materials	= g_resourceMng->GetResourcesByType(Resource_Material);
-		vector<weak_ptr<Resource>> shaders		= g_resourceMng->GetResourcesByType(Resource_Shader);
+		vector<weak_ptr<IResource>> materials	= g_resourceMng->GetResourcesByType(Resource_Material);
+		vector<weak_ptr<IResource>> shaders		= g_resourceMng->GetResourcesByType(Resource_Shader);
 
 		for (const auto& shaderIt : shaders) // SHADER ITERATION
 		{
@@ -643,7 +643,7 @@ namespace Directus
 		m_texArray.emplace_back(m_renderTexPong->GetShaderResourceView()); // contains shadows
 		m_texArray.emplace_back(m_renderTexSSAOBlurred->GetShaderResourceView());
 		m_texArray.emplace_back(m_renderTexFinalFrame->GetShaderResourceView());
-		m_texArray.emplace_back(m_skybox ? m_skybox->GetEnvironmentTexture() : nullptr);
+		m_texArray.emplace_back(m_skybox ? m_skybox->GetShaderResource() : nullptr);
 
 		m_shaderDeferred->UpdateTextures(m_texArray);
 		//=============================================================================
