@@ -336,12 +336,12 @@ void Hierarchy::Action_GameObject_Delete(weak_ptr<GameObject> gameObject)
 	g_scene->RemoveGameObject(gameObject);
 }
 
-weak_ptr<GameObject> Hierarchy::Action_GameObject_CreateEmpty()
+GameObject* Hierarchy::Action_GameObject_CreateEmpty()
 {
-	auto gameObject = g_scene->CreateGameObject();
+	auto gameObject = g_scene->CreateGameObject().lock().get();
 	if (auto selected = m_gameObjectSelected.lock())
 	{
-		gameObject.lock()->GetTransform()->SetParent(selected->GetTransform());
+		gameObject->GetTransform()->SetParent(selected->GetTransform());
 	}
 
 	return gameObject;
@@ -349,7 +349,7 @@ weak_ptr<GameObject> Hierarchy::Action_GameObject_CreateEmpty()
 
 void Hierarchy::Action_GameObject_CreateCube()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<MeshFilter>().lock()->SetMesh(MeshType_Cube);
 	gameObject->AddComponent<MeshRenderer>().lock()->SetMaterialByType(Material_Basic);
 	gameObject->SetName("Cube");
@@ -357,7 +357,7 @@ void Hierarchy::Action_GameObject_CreateCube()
 
 void Hierarchy::Action_GameObject_CreateQuad()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<MeshFilter>().lock()->SetMesh(MeshType_Quad);
 	gameObject->AddComponent<MeshRenderer>().lock()->SetMaterialByType(Material_Basic);
 	gameObject->SetName("Quad");
@@ -365,63 +365,63 @@ void Hierarchy::Action_GameObject_CreateQuad()
 
 void Hierarchy::Action_GameObject_CreateCamera()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Camera>();
 	gameObject->SetName("Camera");
 }
 
 void Hierarchy::Action_GameObject_CreateLightDirectional()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Directional);
 	gameObject->SetName("Directional");
 }
 
 void Hierarchy::Action_GameObject_CreateLightPoint()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Point);
 	gameObject->SetName("Point");
 }
 
 void Hierarchy::Action_GameObject_CreateLightSpot()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Light>().lock()->SetLightType(LightType_Spot);
 	gameObject->SetName("Spot");
 }
 
 void Hierarchy::Action_GameObject_CreateRigidBody()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<RigidBody>();
 	gameObject->SetName("RigidBody");
 }
 
 void Hierarchy::Action_GameObject_CreateCollider()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Collider>();
 	gameObject->SetName("Collider");
 }
 
 void Hierarchy::Action_GameObject_CreateConstraint()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<Constraint>();
 	gameObject->SetName("Constraint");
 }
 
 void Hierarchy::Action_GameObject_CreateAudioSource()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<AudioSource>();
 	gameObject->SetName("AudioSource");
 }
 
 void Hierarchy::Action_GameObject_CreateAudioListener()
 {
-	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	auto gameObject = Action_GameObject_CreateEmpty();
 	gameObject->AddComponent<AudioListener>();
 	gameObject->SetName("AudioListener");
 }
