@@ -15,53 +15,7 @@ WORKING_DIR 	= "../Binaries/Release"
 			system "Windows"
 			architecture "x64"
  
- -- Editor
-	project (EDITOR_NAME)
-		location (EDITOR_DIR)
-		kind "ConsoleApp"	
-		language "C++"
-		files { "../Editor/**.h", "../Editor/**.cpp", "../Editor/**.hpp" }
-		targetdir "../Binaries/Release/"--targetdir "../Binaries/%{cfg.buildcfg}"	
-		objdir "../Binaries/VS_Obj/%{cfg.buildcfg}"
-		links { RUNTIME_NAME }
-		dependson { RUNTIME_NAME }
-		
--- Includes
-	includedirs { "../Runtime" }
-	includedirs { "../ThirdParty/SDL_2.0.7" }
-
--- Library directory
-	libdirs { "../ThirdParty/mvsc141_x64" }
-	
--- Release libraries
-	configuration "Release"
-		debugdir (WORKING_DIR)
-		links { "SDL2" }
-		links { "SDL2main" }
-		links { "version" }
-		links { "imm32" }
-		links { "winmm" }
-	
--- Debug libraries
-	configuration "Debug"
-		debugdir (WORKING_DIR)
-		links { "SDL2_debug" }
-		links { "SDL2main_debug" }
-		links { "version" }
-		links { "imm32" }
-		links { "winmm" }
-
--- Debug libraries
-	filter "configurations:Debug"
-		defines { "DEBUG" }
-		symbols "On"
-
--- Release libraries
-	filter "configurations:Release"
-		defines { "NDEBUG" }
-		optimize "Full"
-	
--- Runtime
+ -- Runtime -------------------------------------------------------------------------------------------------
 	project (RUNTIME_NAME)
 		location (RUNTIME_DIR)
 		kind "SharedLib"	
@@ -69,6 +23,7 @@ WORKING_DIR 	= "../Binaries/Release"
 		files { "../Runtime/**.h", "../Runtime/**.cpp", "../Runtime/**.hpp" }
 		targetdir "../Binaries/Release/"--targetdir "../Binaries/%{cfg.buildcfg}"	
 		objdir "../Binaries/VS_Obj/%{cfg.buildcfg}"
+		systemversion(WIN_SDK_VERSION)
 
 -- Includes
 	includedirs { "../ThirdParty/AngelScript_2.31.2" }
@@ -106,12 +61,59 @@ WORKING_DIR 	= "../Binaries/Release"
 		links { "pugixml_debug" }
 		links { "IrrXML_debug" }
 
--- Debug libraries
+-- Release configuration
+	filter "configurations:Release"
+		defines { "NDEBUG", "COMPILING_LIB" }
+		optimize "Full"
+		
+-- Debug configuration
 	filter "configurations:Debug"
 		defines { "DEBUG", "COMPILING_LIB" }
+		symbols "On"
+	
+ -- Editor --------------------------------------------------------------------------------------------------
+	project (EDITOR_NAME)
+		location (EDITOR_DIR)
+		kind "ConsoleApp"	
+		language "C++"
+		files { "../Editor/**.h", "../Editor/**.cpp", "../Editor/**.hpp" }
+		targetdir "../Binaries/Release/"--targetdir "../Binaries/%{cfg.buildcfg}"	
+		objdir "../Binaries/VS_Obj/%{cfg.buildcfg}"
+		links { RUNTIME_NAME }
+		dependson { RUNTIME_NAME }
+		systemversion(WIN_SDK_VERSION)
+		
+-- Includes
+	includedirs { "../Runtime" }
+	includedirs { "../ThirdParty/SDL_2.0.7" }
+
+-- Library directory
+	libdirs { "../ThirdParty/mvsc141_x64" }
+	
+-- Release libraries
+	configuration "Release"
+		debugdir (WORKING_DIR)
+		links { "SDL2" }
+		links { "SDL2main" }
+		links { "version" }
+		links { "imm32" }
+		links { "winmm" }
+	
+-- Debug libraries
+	configuration "Debug"
+		debugdir (WORKING_DIR)
+		links { "SDL2_debug" }
+		links { "SDL2main_debug" }
+		links { "version" }
+		links { "imm32" }
+		links { "winmm" }
+
+-- Debug libraries
+	filter "configurations:Debug"
+		defines { "DEBUG" }
 		symbols "On"
 
 -- Release libraries
 	filter "configurations:Release"
-		defines { "NDEBUG", "COMPILING_LIB" }
+		defines { "NDEBUG" }
 		optimize "Full"
