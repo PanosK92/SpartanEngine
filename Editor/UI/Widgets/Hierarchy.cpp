@@ -22,10 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "Hierarchy.h"
 #include "../imgui/imgui.h"
+#include "../DragDrop.h"
+#include "../EditorHelper.h"
 #include "Scene/Scene.h"
 #include "Scene/GameObject.h"
 #include "Core/Engine.h"
-#include "Input/Input.h"
+#include "Input/DInput/DInput.h"
 #include "Scene/Components/Transform.h"
 #include "Scene/Components/Light.h"
 #include "Scene/Components/AudioSource.h"
@@ -34,9 +36,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/Collider.h"
 #include "Scene/Components/Camera.h"
 #include "Scene/Components/Constraint.h"
-#include "../DragDrop.h"
-#include "../EditorHelper.h"
-#include "Input/DInput/DInput.h"
+#include "Scene/Components/MeshFilter.h"
+#include "Scene/Components/MeshRenderer.h"
 //=========================================
 
 //= NAMESPACES ==========
@@ -244,6 +245,21 @@ void Hierarchy::ContextMenu()
 			Action_GameObject_CreateEmpty();
 		}
 
+		// 3D OBJECCTS
+		if (ImGui::BeginMenu("3D Objects"))
+		{
+			if (ImGui::MenuItem("Cube"))
+			{
+				Action_GameObject_CreateCube();
+			}
+			else if (ImGui::MenuItem("Quad"))
+			{
+				Action_GameObject_CreateQuad();
+			}
+
+			ImGui::EndMenu();
+		}
+
 		// CAMERA
 		if (ImGui::MenuItem("Camera"))
 		{
@@ -329,6 +345,22 @@ weak_ptr<GameObject> Hierarchy::Action_GameObject_CreateEmpty()
 	}
 
 	return gameObject;
+}
+
+void Hierarchy::Action_GameObject_CreateCube()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<MeshFilter>().lock()->SetMesh(MeshType_Cube);
+	gameObject->AddComponent<MeshRenderer>().lock()->SetMaterialByType(Material_Basic);
+	gameObject->SetName("Cube");
+}
+
+void Hierarchy::Action_GameObject_CreateQuad()
+{
+	auto gameObject = Action_GameObject_CreateEmpty().lock();
+	gameObject->AddComponent<MeshFilter>().lock()->SetMesh(MeshType_Quad);
+	gameObject->AddComponent<MeshRenderer>().lock()->SetMaterialByType(Material_Basic);
+	gameObject->SetName("Quad");
 }
 
 void Hierarchy::Action_GameObject_CreateCamera()
