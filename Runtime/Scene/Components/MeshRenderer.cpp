@@ -95,7 +95,7 @@ namespace Directus
 
 	//= MATERIAL ===================================================================
 	// All functions (set/load) resolve to this
-	void MeshRenderer::SetMaterialFromMemory(const weak_ptr<Material>& materialWeak, bool autoCache /* true */)
+	void MeshRenderer::SetMaterialFromMemory(weak_ptr<Material> materialWeak, bool autoCache /* true */)
 	{
 		// Validate material
 		auto material = materialWeak.lock();

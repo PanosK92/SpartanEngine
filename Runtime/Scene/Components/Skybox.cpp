@@ -71,10 +71,10 @@ namespace Directus
 		m_matSkybox->SetTexture(m_cubemapTexture); // assign cubmap texture
 
 		// Add a cube mesh
-		GetGameObject()->AddComponent<MeshFilter>().lock()->SetMesh(MeshType_Cube);
+		GetGameObject()->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cube);
 
 		// Add a mesh renderer and assign the skybox material to it
-		shared_ptr<MeshRenderer> meshRenderer = GetGameObject()->AddComponent<MeshRenderer>().lock();
+		auto meshRenderer = GetGameObject()->AddComponent<MeshRenderer>().lock();
 		meshRenderer->SetCastShadows(false);
 		meshRenderer->SetReceiveShadows(false);
 		meshRenderer->SetMaterialFromMemory(m_matSkybox, true);

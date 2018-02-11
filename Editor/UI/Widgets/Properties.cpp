@@ -642,6 +642,9 @@ void Properties::ShowMaterial(Material* material)
 	if (!material)
 		return;
 
+	if (!material->IsEditable())
+		return;
+
 	// REFLECT
 	auto texAlbedo		= material->GetTextureByType(TextureType_Albedo).lock();
 	auto texRoughness	= material->GetTextureByType(TextureType_Roughness).lock();

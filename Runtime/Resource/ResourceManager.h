@@ -78,9 +78,6 @@ namespace Directus
 				return std::weak_ptr<T>();
 			}
 
-			typed->SetResourceFilePath(filePathRelative);
-			typed->SetResourceName(name);
-
 			return Add<T>(typed);
 		}
 

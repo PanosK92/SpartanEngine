@@ -369,7 +369,7 @@ namespace Directus
 		MeshFilter* meshFilter = gameObject.lock()->AddComponent<MeshFilter>().lock().get();
 		meshFilter->SetMesh(mesh);
 
-		if (meshFilter->GetMeshType() == MeshType_Custom)
+		if (meshFilter->GetMeshType() == MeshType_Imported)
 		{
 			// Add a RigidBody
 			gameObject.lock()->AddComponent<RigidBody>();
