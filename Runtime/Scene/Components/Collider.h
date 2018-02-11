@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "Component.h"
+#include "IComponent.h"
 #include <memory>
 #include "../../Math/Vector3.h"
 //=============================
@@ -45,7 +45,7 @@ namespace Directus
 		ColliderShape_Mesh,
 	};
 
-	class ENGINE_CLASS Collider : public Component
+	class ENGINE_CLASS Collider : public IComponent
 	{
 	public:
 		Collider();

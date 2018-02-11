@@ -49,15 +49,15 @@ namespace Directus
 {
 	GameObject::GameObject(Context* context)
 	{
-		m_context = context;
-		m_ID = GENERATE_GUID;
-		m_name = "GameObject";
-		m_isActive = true;
-		m_isPrefab = false;
-		m_hierarchyVisibility = true;
-		m_transform = nullptr;
-		m_meshFilter = nullptr;
-		m_meshRenderer = nullptr;
+		m_context				= context;
+		m_ID					= GENERATE_GUID;
+		m_name					= "GameObject";
+		m_isActive				= true;
+		m_isPrefab				= false;
+		m_hierarchyVisibility	= true;
+		m_transform				= nullptr;
+		m_meshFilter			= nullptr;
+		m_meshRenderer			= nullptr;
 	}
 
 	GameObject::~GameObject()
@@ -259,11 +259,11 @@ namespace Directus
 		}
 	}
 
-	weak_ptr<Component> GameObject::AddComponent(ComponentType type)
+	weak_ptr<IComponent> GameObject::AddComponent(ComponentType type)
 	{
 		// This is the only hardcoded part regarding components. It's 
 		// one function but it would be nice if that get's automated too, somehow...
-		weak_ptr<Component> component;
+		weak_ptr<IComponent> component;
 		switch (type)
 		{
 		case ComponentType_AudioListener:	component = AddComponent<AudioListener>();	break;

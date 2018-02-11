@@ -21,17 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========
-#include "Component.h"
+//= INCLUDES ==========
+#include "IComponent.h"
 #include <memory>
 #include <string>
-//====================
+//=====================
 
 namespace Directus
 {
 	class AudioClip;
 
-	class ENGINE_CLASS AudioSource : public Component
+	class ENGINE_CLASS AudioSource : public IComponent
 	{
 	public:
 		AudioSource();

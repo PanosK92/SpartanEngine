@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======================================
-#include "Component.h"
+#include "IComponent.h"
 #include <memory>
 #include <vector>
 #include "../../Graphics/Vertex.h"
@@ -37,7 +37,7 @@ namespace Directus
 		class Vector3;
 	}
 
-	class ENGINE_CLASS LineRenderer : public Component
+	class ENGINE_CLASS LineRenderer : public IComponent
 	{
 	public:
 		LineRenderer();

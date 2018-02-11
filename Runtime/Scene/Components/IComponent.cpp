@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
-#include "Component.h"
+#include "IComponent.h"
 #include "Skybox.h"
 #include "Script.h"
 #include "RigidBody.h"
@@ -45,7 +45,7 @@ using namespace std;
 
 namespace Directus
 {
-	void Component::Register(GameObject* gameObject, Transform* transform, Context* context, ComponentType type)
+	void IComponent::Register(GameObject* gameObject, Transform* transform, Context* context, ComponentType type)
 	{
 		m_enabled		= true;
 		m_gameObject	= gameObject;
@@ -55,7 +55,7 @@ namespace Directus
 		m_ID			= GENERATE_GUID;
 	}
 
-	weak_ptr<GameObject> Component::GetGameObjectRef()
+	weak_ptr<GameObject> IComponent::GetGameObjectRef()
 	{
 		if (!m_context)
 			return weak_ptr<GameObject>();
@@ -63,7 +63,7 @@ namespace Directus
 		return m_context->GetSubsystem<Scene>()->GetWeakReferenceToGameObject(m_gameObject);
 	}
 
-	const string& Component::GetGameObjectName()
+	const string& IComponent::GetGameObjectName()
 	{
 		if (!m_gameObject)
 			return "";
@@ -72,7 +72,7 @@ namespace Directus
 	}
 
 	template <typename T>
-	ComponentType Component::ToComponentType()
+	ComponentType IComponent::ToComponentType()
 	{
 		if (typeid(T) == typeid(AudioListener))
 			return ComponentType_AudioListener;
@@ -116,7 +116,7 @@ namespace Directus
 		return ComponentType_Unknown;
 	}
 
-#define INSTANTIATE(T) template ENGINE_CLASS ComponentType Component::ToComponentType<T>()
+#define INSTANTIATE(T) template ENGINE_CLASS ComponentType IComponent::ToComponentType<T>()
 	// Explicit template instantiation
 	INSTANTIATE(AudioListener);
 	INSTANTIATE(AudioSource);

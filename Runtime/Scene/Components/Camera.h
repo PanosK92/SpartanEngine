@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "Component.h"
+#include "IComponent.h"
 #include <memory>
 #include <vector>
 #include "../../Graphics/Vertex.h"
@@ -51,7 +51,7 @@ namespace Directus
 		Projection_Orthographic,
 	};
 
-	class ENGINE_CLASS Camera : public Component
+	class ENGINE_CLASS Camera : public IComponent
 	{
 	public:
 		Camera();
