@@ -1,8 +1,7 @@
 # Compiling from source
-The engine currently uses DirectX 11 as a rendering backend and some of the latest C++ features. 
-As a result we first have to make sure that we set up the right environment for it. Below we can see it's few dependencies and how to address them.
 
 ### Setting up the environment
+The engine currently uses DirectX 11 as a rendering backend and some of the latest C++ features. As a result we first have to make sure that we set up the right environment for it. Below we can see it's few dependencies and how to address them.
 ##### DirectX End-User Runtimes: Download by clicking [here](https://www.microsoft.com/en-us/download/details.aspx?id=8109) and install
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DirectX.png)
 
@@ -10,7 +9,7 @@ As a result we first have to make sure that we set up the right environment for 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/Visual%20C%2B%2B.png)
 
 ### Compiling the Runtime and the Editor
-At this point we have taken care of all the dependencies and we are ready to start building.
+At this point we have taken care of all the environment dependencies and we are ready to start building.
 
 ##### Generating Visual Studio 2017 project files and building the runtime
 1. We click and run **"Generate_VS17_Project.bat"** in order for a Visual Studio solution to be generated.
@@ -23,13 +22,11 @@ At this point we have taken care of all the dependencies and we are ready to sta
 Most of the dependencies are statically linked into Runtime.dll. However FMOD is dynamically linked, hence we have to provide
 it's DLL. The correct way of doing that is to simply copy the DLL from it's respective installation folder on your machine.
 However, I have packed the required DLL in this [fmod64.7z](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/fmod64.7z) file.
+
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.png)
 
 ### Notes
 - We built everything in "Release" configuration as all of the statically linked dependencies have been pre-compiled in "Release" mode and are located at **"Directus3D\ThirdParty\mvsc141_x64\"**. The "Debug" version of them consists of libraries of a larger size, large enough that it can't be uploaded to the repository. 
-
 - Ideally, the projects of the dependencies could be part of the **"Directus"** solution but for the time being any dependencies have to be built by the user.
-
 - Pre-compiled libraries are provided for convenience (because of the above bullet), however, don't rely on them. If you get any linking errors, it is advised that you download and compile the dependency. 
-
 - All sorts of build scripts can be written in order to automate even more things. Feel free to contribute if you think you can help :-)
