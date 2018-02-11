@@ -22,14 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "../IGraphicsDevice.h"
+#include "../IGraphics.h"
 #include <d3d11.h>
 #include <vector>
 //=============================
 
 namespace Directus
 {
-	class D3D11GraphicsDevice : public IGraphicsDevice
+	class D3D11GraphicsDevice : public IGraphics
 	{
 	public:
 		D3D11GraphicsDevice(Context* context);

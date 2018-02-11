@@ -58,10 +58,10 @@ namespace Directus
 		Point_Sampler
 	};
 
-	class IGraphicsDevice : public Subsystem
+	class IGraphics : public Subsystem
 	{
 	public:
-		IGraphicsDevice(Context* context) : Subsystem(context)
+		IGraphics(Context* context) : Subsystem(context)
 		{
 			m_primitiveTopology		= TriangleList;
 			m_inputLayout			= PositionTextureTBN;
@@ -69,7 +69,7 @@ namespace Directus
 			m_depthEnabled			= true;
 			m_alphaBlendingEnabled	= true;
 		}
-		virtual ~IGraphicsDevice() {}
+		virtual ~IGraphics() {}
 
 		//=================================================
 		virtual void SetHandle(void* drawHandle) = 0;

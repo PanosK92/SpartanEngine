@@ -52,7 +52,7 @@ Vector2 GetResolutionDisplayPrimary()
 		return Vector2::Zero;
 	}
 
-	return Vector2((int)dm.w, (int)dm.h);
+	return Vector2((float)dm.w, (float)dm.h);
 }
 
 void SetBackBufferResolution(int width, int height)
@@ -64,12 +64,12 @@ void SetBackBufferResolution(int width, int height)
 	}
 
 	g_renderer->SetResolutionBackBuffer(width, height);
-	g_renderer->SetViewportBackBuffer(width, height);
+	g_renderer->SetViewportBackBuffer((float)width, (float)height);
 }
 
 void SetBackBufferResolution(const Vector2& resolution)
 {
-	SetBackBufferResolution(resolution.x, resolution.y);
+	SetBackBufferResolution((int)resolution.x, (int)resolution.y);
 }
 
 void Event_Input(SDL_Event* event)

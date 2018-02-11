@@ -58,6 +58,7 @@ namespace Directus
 {
 	static Physics* g_physics				= nullptr;
 	static ResourceManager* g_resourceMng	= nullptr;
+	static Vector4 g_clearColorDefault		= Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
 	Renderer::Renderer(Context* context) : Subsystem(context)
 	{
@@ -840,7 +841,7 @@ namespace Directus
 
 	const Vector4& Renderer::GetClearColor()
 	{
-		return m_camera ? m_camera->GetClearColor() : Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+		return m_camera ? m_camera->GetClearColor() : g_clearColorDefault;
 	}
 	//===============================================================================================================
 }

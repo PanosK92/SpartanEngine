@@ -163,7 +163,7 @@ namespace Directus
 		m_world->debugDrawWorld();
 	}
 
-	const Vector3& Physics::GetGravity()
+	Vector3 Physics::GetGravity()
 	{
 		return ToVector3(m_world->getGravity());
 	}
