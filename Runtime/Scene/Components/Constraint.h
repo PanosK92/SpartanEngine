@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "Component.h"
+#include "IComponent.h"
 #include "../../Math/Vector3.h"
 //=============================
 
@@ -41,7 +41,7 @@ namespace Directus
 		ConstraintType_ConeTwist
 	};
 
-	class ENGINE_CLASS Constraint : public Component
+	class ENGINE_CLASS Constraint : public IComponent
 	{
 	public:
 		Constraint();

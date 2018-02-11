@@ -23,14 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include <memory>
-#include "Component.h"
+#include "IComponent.h"
 //====================
 
 namespace Directus
 {
 	class Texture;
 
-	class ENGINE_CLASS Skybox : public Component
+	class ENGINE_CLASS Skybox : public IComponent
 	{
 	public:
 		Skybox();

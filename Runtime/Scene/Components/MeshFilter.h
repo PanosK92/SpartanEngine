@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======================
-#include "Component.h"
+#include "IComponent.h"
 #include <vector>
 #include <memory>
 #include "../../Math/BoundingBox.h"
@@ -48,7 +48,7 @@ namespace Directus
 		MeshType_Quad
 	};
 
-	class ENGINE_CLASS MeshFilter : public Component
+	class ENGINE_CLASS MeshFilter : public IComponent
 	{
 	public:
 		MeshFilter();

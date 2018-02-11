@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================================
 #include <vector>
 #include <memory>
-#include "../Components/Component.h"
+#include "IComponent.h"
 #include "../../Math/Vector4.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
@@ -57,7 +57,7 @@ namespace Directus
 		Soft_Shadows
 	};
 
-	class ENGINE_CLASS Light : public Component
+	class ENGINE_CLASS Light : public IComponent
 	{
 	public:
 		Light();

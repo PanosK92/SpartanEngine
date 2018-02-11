@@ -52,10 +52,10 @@ namespace Directus
 		ComponentType_Unknown
 	};
 
-	class ENGINE_CLASS Component
+	class ENGINE_CLASS IComponent
 	{
 	public:
-		virtual ~Component() {}
+		virtual ~IComponent() {}
 
 		// Runs when the component is first created
 		void Register(GameObject* gameObject, Transform* transform, Context* context, ComponentType type);

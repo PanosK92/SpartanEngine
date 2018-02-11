@@ -826,7 +826,7 @@ void Properties::ShowScript(Script* script)
 	COMPONENT_END;
 }
 
-void Properties::ComponentContextMenu_Options(const char* id, Component* component)
+void Properties::ComponentContextMenu_Options(const char* id, IComponent* component)
 {
 	if (ImGui::BeginPopup(id))
 	{

@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =====================
 #include <map>
 #include "Scene.h"
-#include "Components/Component.h"
+#include "Components/IComponent.h"
 #include "../Core/Context.h"
-//===============================
+//================================
 
 namespace Directus
 {
@@ -52,7 +52,7 @@ namespace Directus
 		void Serialize(FileStream* stream);
 		void Deserialize(FileStream* stream, Transform* parent);
 
-		//= PROPERTIES =========================================================================================
+		//= PROPERTIES =======================================================================================
 		const std::string& GetName() { return m_name; }
 		void SetName(const std::string& name) { m_name = name; }
 
@@ -64,14 +64,14 @@ namespace Directus
 
 		bool IsVisibleInHierarchy() { return m_hierarchyVisibility; }
 		void SetHierarchyVisibility(bool hierarchyVisibility) { m_hierarchyVisibility = hierarchyVisibility; }
-		//======================================================================================================
+		//====================================================================================================
 
 		//= COMPONENTS =========================================================================================
 		// Adds a component of type T
 		template <class T>
 		std::weak_ptr<T> AddComponent()
 		{
-			ComponentType type = Component::ToComponentType<T>();
+			ComponentType type = IComponent::ToComponentType<T>();
 
 			// Return component in case it already exists while ignoring Script components (they can exist multiple times)
 			if (HasComponent(type) && type != ComponentType_Script)
@@ -105,13 +105,13 @@ namespace Directus
 			return newComponent;
 		}
 
-		std::weak_ptr<Component> AddComponent(ComponentType type);
+		std::weak_ptr<IComponent> AddComponent(ComponentType type);
 
 		// Returns a component of type T (if it exists)
 		template <class T>
 		std::weak_ptr<T> GetComponent()
 		{
-			ComponentType type = Component::ToComponentType<T>();
+			ComponentType type = IComponent::ToComponentType<T>();
 
 			if (m_components.find(type) == m_components.end())
 				return std::weak_ptr<T>();
@@ -123,7 +123,7 @@ namespace Directus
 		template <class T>
 		std::vector<std::weak_ptr<T>> GetComponents()
 		{
-			ComponentType type = Component::ToComponentType<T>();
+			ComponentType type = IComponent::ToComponentType<T>();
 
 			std::vector<std::weak_ptr<T>> components;
 			for (const auto& component : m_components)
@@ -141,13 +141,13 @@ namespace Directus
 		bool HasComponent(ComponentType type) { return m_components.find(type) != m_components.end(); }
 		// Checks if a component of type T exists
 		template <class T>
-		bool HasComponent() { return HasComponent(Component::ToComponentType<T>()); }
+		bool HasComponent() { return HasComponent(IComponent::ToComponentType<T>()); }
 
 		// Removes a component of type T (if it exists)
 		template <class T>
 		void RemoveComponent()
 		{
-			ComponentType type = Component::ToComponentType<T>();
+			ComponentType type = IComponent::ToComponentType<T>();
 
 			if (m_components.find(type) == m_components.end())
 				return;
@@ -182,7 +182,7 @@ namespace Directus
 		bool m_isActive;
 		bool m_isPrefab;
 		bool m_hierarchyVisibility;
-		std::multimap<ComponentType, std::shared_ptr<Component>> m_components;
+		std::multimap<ComponentType, std::shared_ptr<IComponent>> m_components;
 		Context* m_context;
 
 		// Caching of performance critical components
