@@ -141,6 +141,7 @@ static char g_colSizeZ[BUFFER_TEXT_DEFAULT]		= "0";
 static bool g_colOptimize = false;
 //====================================================
 
+static bool g_reflect = true;
 static ResourceManager* g_resourceManager = nullptr;
 static const char* g_contexMenuID;
 
@@ -236,6 +237,8 @@ void Properties::Update()
 	auto constraint		= gameObjectPtr->GetComponent<Constraint>().lock().get();
 	auto script			= gameObjectPtr->GetComponent<Script>().lock().get();
 
+	g_reflect = Engine::EngineMode_IsSet(Engine_Game);
+
 	ImGui::PushItemWidth(g_maxWidth);
 
 	ShowTransform(transform);
@@ -259,16 +262,18 @@ void Properties::Update()
 void Properties::ShowTransform(Transform* transform)
 {
 	// REFLECT
-	EditorHelper::SetCharArray(&g_transPosX[0], transform->GetPosition().x);
-	EditorHelper::SetCharArray(&g_transPosY[0], transform->GetPosition().y);
-	EditorHelper::SetCharArray(&g_transPosZ[0], transform->GetPosition().z);
-	EditorHelper::SetCharArray(&g_transRotX[0], transform->GetRotation().ToEulerAngles().x);
-	EditorHelper::SetCharArray(&g_transRotY[0], transform->GetRotation().ToEulerAngles().y);
-	EditorHelper::SetCharArray(&g_transRotZ[0], transform->GetRotation().ToEulerAngles().z);
-	EditorHelper::SetCharArray(&g_transScaX[0], transform->GetScale().x);
-	EditorHelper::SetCharArray(&g_transScaY[0], transform->GetScale().y);
-	EditorHelper::SetCharArray(&g_transScaZ[0], transform->GetScale().z);
-
+	if (g_reflect)
+	{
+		EditorHelper::SetCharArray(&g_transPosX[0], transform->GetPosition().x);
+		EditorHelper::SetCharArray(&g_transPosY[0], transform->GetPosition().y);
+		EditorHelper::SetCharArray(&g_transPosZ[0], transform->GetPosition().z);
+		EditorHelper::SetCharArray(&g_transRotX[0], transform->GetRotation().ToEulerAngles().x);
+		EditorHelper::SetCharArray(&g_transRotY[0], transform->GetRotation().ToEulerAngles().y);
+		EditorHelper::SetCharArray(&g_transRotZ[0], transform->GetRotation().ToEulerAngles().z);
+		EditorHelper::SetCharArray(&g_transScaX[0], transform->GetScale().x);
+		EditorHelper::SetCharArray(&g_transScaY[0], transform->GetScale().y);
+		EditorHelper::SetCharArray(&g_transScaZ[0], transform->GetScale().z);
+	}
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 		
 	COMPONENT_BEGIN_NO_OPTIONS("Transform", Icon_Component_Transform);
@@ -305,7 +310,7 @@ void Properties::ShowTransform(Transform* transform)
 	COMPONENT_END;
 
 	// MAP
-	if (!EditorHelper::GetEngineUpdate())
+	if (!g_reflect)
 	{
 		transform->SetPosition(Vector3(
 			(float)atof(&g_transPosX[0]),
@@ -333,11 +338,11 @@ void Properties::ShowLight(Light* light)
 		return;
 
 	// REFLECT
-	g_lightTypeInt = (int)light->GetLightType();
-	g_lightType = g_lightTypes[g_lightTypeInt];
-	g_lightIntensity = light->GetIntensity();
-	g_lightShadows = light->GetShadowQuality() != No_Shadows;
-	g_lightAngle = light->GetAngle();
+	g_lightTypeInt		= (int)light->GetLightType();
+	g_lightType			= g_lightTypes[g_lightTypeInt];
+	g_lightIntensity	= light->GetIntensity();
+	g_lightShadows		= light->GetShadowQuality() != No_Shadows;
+	g_lightAngle		= light->GetAngle();
 	g_lightButtonColorPicker->SetColor(light->GetColor());
 	EditorHelper::SetCharArray(&g_lightRange[0], light->GetRange());
 
@@ -426,9 +431,9 @@ void Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
 		return;
 
 	// MAP
-	auto material = meshRenderer->GetMaterial().lock();
-	g_meshRendererCastShadows = meshRenderer->GetCastShadows();
-	g_meshRendererReceiveShadows = meshRenderer->GetReceiveShadows();
+	auto material					= meshRenderer->GetMaterial().lock();
+	g_meshRendererCastShadows		= meshRenderer->GetCastShadows();
+	g_meshRendererReceiveShadows	= meshRenderer->GetReceiveShadows();
 	string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
 
 	float posX = 150.0f;

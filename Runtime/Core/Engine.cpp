@@ -45,13 +45,14 @@ namespace Directus
 	void* Engine::m_drawHandle		= nullptr;
 	void* Engine::m_windowHandle	= nullptr;
 	void* Engine::m_windowInstance	= nullptr;
+	unsigned long Engine::m_flags	= 0;
 
 	Engine::Engine(Context* context) : Subsystem(context)
 	{
-		m_flags = 0;
 		m_flags |= Engine_Update;
 		m_flags |= Engine_Render;
 		m_flags |= Engine_Physics;
+		m_flags |= Engine_Game;
 
 		m_timer = nullptr;
 
@@ -161,11 +162,10 @@ namespace Directus
 	{
 		// Timer always ticks
 		m_timer->Update();
-		static float deltaTime = m_timer->GetDeltaTimeMs();
 
 		if (m_flags & Engine_Update)
 		{
-			FIRE_EVENT_DATA(EVENT_UPDATE, deltaTime);
+			FIRE_EVENT_DATA(EVENT_UPDATE, m_timer->GetDeltaTimeSec());
 		}
 
 		if (m_flags & Engine_Render)

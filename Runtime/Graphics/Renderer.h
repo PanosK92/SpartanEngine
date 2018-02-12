@@ -122,7 +122,7 @@ namespace Directus
 		// GAMEOBJECTS ======================================
 		std::vector<std::weak_ptr<GameObject>> m_renderables;
 		std::vector<Light*> m_lights;
-		Light* m_directionalLight;
+		Light* m_directionalLight{};
 		//===================================================
 
 		//= RENDER TEXTURES =======================================
