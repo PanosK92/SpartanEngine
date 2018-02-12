@@ -142,6 +142,7 @@ static bool g_colOptimize = false;
 //====================================================
 
 static bool g_reflect = true;
+static bool g_reflectOnce = false;
 static ResourceManager* g_resourceManager = nullptr;
 static const char* g_contexMenuID;
 
@@ -238,6 +239,7 @@ void Properties::Update()
 	auto script			= gameObjectPtr->GetComponent<Script>().lock().get();
 
 	g_reflect = Engine::EngineMode_IsSet(Engine_Game);
+	g_reflectOnce = true;
 
 	ImGui::PushItemWidth(g_maxWidth);
 
@@ -257,12 +259,14 @@ void Properties::Update()
 	ShowAddComponentButton();
 
 	ImGui::PopItemWidth();
+
+	g_reflectOnce = false;
 }
 
 void Properties::ShowTransform(Transform* transform)
 {
 	// REFLECT
-	if (g_reflect)
+	if (g_reflect || g_reflectOnce)
 	{
 		EditorHelper::SetCharArray(&g_transPosX[0], transform->GetPosition().x);
 		EditorHelper::SetCharArray(&g_transPosY[0], transform->GetPosition().y);
