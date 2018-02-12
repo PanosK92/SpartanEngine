@@ -36,6 +36,7 @@ namespace Directus
 		m_graphics = graphicsDevice;
 		m_buffer = nullptr;
 		m_stride = 0;
+		m_memoryUsage = 0;
 	}
 
 	D3D11VertexBuffer::~D3D11VertexBuffer()

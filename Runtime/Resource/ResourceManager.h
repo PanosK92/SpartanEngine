@@ -172,7 +172,8 @@ namespace Directus
 		}
 
 		// Memory
-		unsigned int GetMemoryUsage(ResourceType type) { return m_resourceCache->GetMemoryUsage(type); }
+		unsigned int GetMemoryUsage(ResourceType type)	{ return m_resourceCache->GetMemoryUsage(type); }
+		unsigned int GetMemoryUsage()					{ return m_resourceCache->GetMemoryUsage(); }
 
 		// Directories
 		void AddStandardResourceDirectory(ResourceType type, const std::string& directory);

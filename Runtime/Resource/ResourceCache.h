@@ -131,6 +131,20 @@ namespace Directus
 			return false;
 		}
 
+		unsigned int GetMemoryUsage()
+		{
+			unsigned int size = 0;
+			for (const auto& group : m_resourceGroups)
+			{
+				for (const auto& resource : group.second)
+				{
+					size += resource->GetMemory();
+				}
+			}
+
+			return size;
+		}
+
 		unsigned int GetMemoryUsage(ResourceType type)
 		{
 			unsigned int size = 0;

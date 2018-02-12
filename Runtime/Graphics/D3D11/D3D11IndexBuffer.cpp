@@ -34,6 +34,7 @@ namespace Directus
 	D3D11IndexBuffer::D3D11IndexBuffer(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
 	{
 		m_buffer = nullptr;
+		m_memoryUsage = 0;
 	}
 
 	D3D11IndexBuffer::~D3D11IndexBuffer()
