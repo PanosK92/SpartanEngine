@@ -24,6 +24,7 @@ WORKING_DIR 	= "../Binaries/Release"
 		targetdir "../Binaries/Release/"--targetdir "../Binaries/%{cfg.buildcfg}"	
 		objdir "../Binaries/VS_Obj/%{cfg.buildcfg}"
 		systemversion(WIN_SDK_VERSION)
+		flags { "MultiProcessorCompile" }
 
 -- Includes
 	includedirs { "../ThirdParty/AngelScript_2.32.0" }
@@ -82,6 +83,7 @@ WORKING_DIR 	= "../Binaries/Release"
 		links { RUNTIME_NAME }
 		dependson { RUNTIME_NAME }
 		systemversion(WIN_SDK_VERSION)
+		flags { "MultiProcessorCompile" }
 		
 -- Includes
 	includedirs { "../Runtime" }
