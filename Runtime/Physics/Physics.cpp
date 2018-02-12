@@ -102,7 +102,7 @@ namespace Directus
 		if (!m_world)
 			return;
 		
-		// Don't simulate physics if they are turned of
+		// Don't simulate physics if they are turned off
 		if (!Engine::EngineMode_IsSet(Engine_Physics))
 			return;
 
@@ -111,7 +111,6 @@ namespace Directus
 			return;
 
 		float timeStep = deltaTime.GetFloat();
-		LOG_INFO(timeStep);
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
 		float internalTimeStep = 1.0f / INTERNAL_FPS;
