@@ -49,11 +49,11 @@ namespace Directus
 		Model(Context* context);
 		~Model();
 
-		//= RESOURCE INTERFACE =============================================
+		//= RESOURCE INTERFACE ====================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
-		unsigned int GetMemoryUsageKB() override { return m_memoryUsageKB; }
-		//==================================================================
+		unsigned int GetMemory() override { return m_memoryUsage; }
+		//=========================================================
 
 		// Sets the GameObject that represents this model in the scene
 		void SetRootGameObject(std::weak_ptr<GameObject> gameObj) { m_rootGameObj = gameObj; }
@@ -121,6 +121,6 @@ namespace Directus
 		float m_normalizedScale;
 		bool m_isAnimated;
 		ResourceManager* m_resourceManager;
-		unsigned int m_memoryUsageKB;
+		unsigned int m_memoryUsage;
 	};
 }

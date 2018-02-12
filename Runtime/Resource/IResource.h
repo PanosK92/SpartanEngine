@@ -93,7 +93,7 @@ namespace Directus
 		virtual bool LoadFromFile(const std::string& filePath) = 0;
 		virtual void SaveToFileAsync(const std::string& filePath);
 		virtual void LoadFromFileAsync(const std::string& filePath);
-		virtual unsigned int GetMemoryUsageKB() { return 0; }
+		virtual unsigned int GetMemory() { return 0; }
 		//==========================================================
 
 		//= TYPE ============================

@@ -134,26 +134,18 @@ namespace Directus
 		return true;
 	}
 
-	unsigned int Texture::GetMemoryUsageKB()
+	unsigned int Texture::GetMemory()
 	{
 		// Compute texture bits (in case they are loaded)
-		unsigned int memoryKB = 0;
+		unsigned int size = 0;
 		for (const auto& mip : m_textureBits)
 		{
-			memoryKB += (unsigned int)mip.size();
+			size += (unsigned int)mip.size();
 		}
 
 		// Compute shader resource (in case it's created)
-		if (m_textureAPI->GetShaderResourceView())
-		{
-			GUID guid;
-			unsigned int size = 0;
-			void* data = nullptr;
-			m_textureAPI->GetShaderResourceView()->GetPrivateData(guid, &size, &data);
-			memoryKB += sizeof(&data);
-		}
-
-		return memoryKB / 1000;
+		size += m_textureAPI->GetMemoryUsage();
+		return size;
 	}
 
 	//=====================================================================================

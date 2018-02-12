@@ -58,7 +58,7 @@ namespace Directus
 			return;
 
 		m_resourceManager = m_context->GetSubsystem<ResourceManager>();
-		m_memoryUsageKB = 0;
+		m_memoryUsage = 0;
 	}
 
 	Model::~Model()
@@ -488,10 +488,10 @@ namespace Directus
 
 	void Model::ComputeMemoryUsage()
 	{
-		m_memoryUsageKB = 0;
+		m_memoryUsage = 0;
 		for (const auto& mesh : m_meshes)
 		{
-			m_memoryUsageKB += mesh.lock()->GetMemoryUsageKB();
+			m_memoryUsage += mesh.lock()->GetMemory();
 		}
 	}
 }

@@ -224,6 +224,11 @@ namespace Directus
 		subresource.SysMemPitch = (width * channels) * sizeof(unsigned char);
 		subresource.SysMemSlicePitch = (width * height * channels) * sizeof(unsigned char);
 
+		// Keep track of the memory allocated
+		m_memoryUsage += sizeof(unsigned char) * data.size();
+		m_memoryUsage += sizeof(UINT);
+		m_memoryUsage += sizeof(UINT);
+
 		// Copy data from memory to the subresource created in non-mappable memory
 		m_graphics->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, subresource.pSysMem, subresource.SysMemPitch, 0);
 
