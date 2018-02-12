@@ -83,7 +83,7 @@ namespace Directus
 
 		// Rendering
 		void SetRenderTarget(D3D11RenderTexture* renderTexture);
-		void SetRenderTarget(std::shared_ptr<D3D11RenderTexture> renderTexture);
+		void SetRenderTarget(const std::shared_ptr<D3D11RenderTexture>& renderTexture);
 		void* GetFrame();
 		void Present();
 		void Render();
