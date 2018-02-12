@@ -19,8 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES =========
 #include "Animation.h"
 //====================
@@ -31,7 +29,7 @@ using namespace std;
 
 namespace Directus
 {
-	Animation::Animation()
+	Animation::Animation(Context* context): IResource(context)
 	{
 		//= IResource ================
 		RegisterResource<Animation>();

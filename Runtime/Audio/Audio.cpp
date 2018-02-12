@@ -180,7 +180,7 @@ namespace Directus
 		if (!m_initialized)
 			return weak_ptr<AudioClip>();
 
-		shared_ptr<AudioClip> audioClip = make_shared<AudioClip>(m_fmodSystem);
+		auto audioClip = make_shared<AudioClip>(m_fmodSystem, m_context);
 		m_audioHandles.push_back(audioClip);
 
 		return audioClip;

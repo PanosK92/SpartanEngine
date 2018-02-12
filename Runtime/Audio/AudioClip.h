@@ -54,7 +54,7 @@ namespace Directus
 	class AudioClip : IResource
 	{
 	public:
-		AudioClip(FMOD::System* fModSystem);
+		AudioClip(FMOD::System* fModSystem, Context* context);
 		~AudioClip();
 
 		//= IResource ==========================================================

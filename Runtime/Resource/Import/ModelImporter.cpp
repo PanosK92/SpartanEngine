@@ -217,7 +217,7 @@ namespace Directus
 		for (unsigned int i = 0; i < scene->mNumAnimations; i++)
 		{
 			aiAnimation* assimpAnimation = scene->mAnimations[i];
-			shared_ptr<Animation> animation = make_shared<Animation>();
+			shared_ptr<Animation> animation = make_shared<Animation>(m_context);
 
 			// Basic properties
 			animation->SetName(assimpAnimation->mName.C_Str());

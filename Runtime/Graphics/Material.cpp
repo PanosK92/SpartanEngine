@@ -36,14 +36,13 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Material::Material(Context* context)
+	Material::Material(Context* context) : IResource(context)
 	{
 		//= IResource ===============
 		RegisterResource<Material>();
 		//===========================
 
 		// Material
-		m_context				= context;
 		m_modelID				= NOT_ASSIGNED_HASH;
 		m_opacity				= 1.0f;
 		m_alphaBlending			= false;
@@ -350,19 +349,12 @@ namespace Directus
 		string shaderDirectory = resourceMng->GetStandardResourceDirectory(Resource_Shader); // Get standard shader directory
 
 		// Create and initialize shader
-		auto shader = make_shared<ShaderVariation>();
-		shader->SetResourceFilePath(shaderDirectory + "GBuffer.hlsl");
-		shader->Initialize(m_context, shaderFlags);
-
-		// A GBuffer shader can exist multiple times in memory because it can have multiple variations.
-		// In order to avoid conflicts where the engine thinks it's the same shader, we randomize the
-		// path which will automatically create a resource ID based on that path. Hence we make sure that
-		// there are no conflicts. A more elegant way to handle this would be nice...
-		shader->SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(GetResourceFilePath()) + "_" + GUIDGenerator::GenerateAsStr() + SHADER_EXTENSION);
-		shader->SetResourceName("GBuffer_" + to_string(shader->GetResourceID()) + ".hlsl");
+		auto shader = make_shared<ShaderVariation>(m_context);
+		shader->Compile(shaderDirectory + "GBuffer.hlsl", shaderFlags);
+		shader->SetResourceName("ShaderVariation_" + to_string(shader->GetResourceID())); // set a different name for it's shader the cache doesn't thing they are the same
 
 		// Add the shader to the pool and return it
-		return m_context->GetSubsystem<ResourceManager>()->Add<ShaderVariation>(shader);
+		return shader->Cache<ShaderVariation>();
 	}
 
 	void** Material::GetShaderResource(TextureType type)

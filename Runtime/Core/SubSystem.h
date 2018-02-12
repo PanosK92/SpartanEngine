@@ -16,9 +16,9 @@ DEALINGS IN THE SOFTWARE. */
 
 #pragma once
 
-//= INLUDES =======
+//= INLUDES ===========
 #include "EngineDefs.h"
-//=================
+//=====================
 
 namespace Directus
 {
@@ -26,7 +26,10 @@ namespace Directus
 	{
 		friend class Context;
 	public:
-		Subsystem(Context* context);
+		Subsystem(Context* context)
+		{
+			m_context = context;
+		}
 		virtual ~Subsystem() {}
 
 		virtual bool Initialize() { return true; }

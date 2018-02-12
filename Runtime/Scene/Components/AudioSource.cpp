@@ -38,15 +38,15 @@ namespace Directus
 {
 	AudioSource::AudioSource()
 	{
-		m_filePath = NOT_ASSIGNED;
-		m_mute = false;
-		m_playOnAwake = true;
-		m_loop = false;
-		m_priority = 128;
-		m_volume = 1.0f;
-		m_pitch = 1.0f;
-		m_pan = 0.0f;
-		m_audioClipLoaded = false;
+		m_filePath			= NOT_ASSIGNED;
+		m_mute				= false;
+		m_playOnAwake		= true;
+		m_loop				= false;
+		m_priority			= 128;
+		m_volume			= 1.0f;
+		m_pitch				= 1.0f;
+		m_pan				= 0.0f;
+		m_audioClipLoaded	= false;
 	}
 	
 	AudioSource::~AudioSource()

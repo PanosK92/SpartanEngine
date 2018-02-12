@@ -43,22 +43,16 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Model::Model(Context* context)
+	Model::Model(Context* context) : IResource(context)
 	{
-		m_context = context;
-
 		//= IResource ============
 		RegisterResource<Model>();
 		//========================
 
-		m_normalizedScale = 1.0f;
-		m_isAnimated = false;
-
-		if (!m_context)
-			return;
-
-		m_resourceManager = m_context->GetSubsystem<ResourceManager>();
-		m_memoryUsage = 0;
+		m_normalizedScale	= 1.0f;
+		m_isAnimated		= false;
+		m_resourceManager	= m_context->GetSubsystem<ResourceManager>();
+		m_memoryUsage		= 0;
 	}
 
 	Model::~Model()
