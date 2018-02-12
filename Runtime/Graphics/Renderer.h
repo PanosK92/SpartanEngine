@@ -106,7 +106,7 @@ namespace Directus
 
 	private:
 		//= HELPER FUNCTIONS ========================
-		void AcquireRenderables(Variant renderables);
+		void AcquireRenderables(const Variant& renderables);
 		void DirectionalLightDepthPass();
 		void GBufferPass();
 		void PreDeferredPass();

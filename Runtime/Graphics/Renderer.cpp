@@ -355,7 +355,7 @@ namespace Directus
 	}
 
 	//= HELPER FUNCTIONS ==============================================================================================
-	void Renderer::AcquireRenderables(Variant renderables)
+	void Renderer::AcquireRenderables(const Variant& renderables)
 	{
 		Clear();
 		auto renderablesVec = VariantToVector<weak_ptr<GameObject>>(renderables);
