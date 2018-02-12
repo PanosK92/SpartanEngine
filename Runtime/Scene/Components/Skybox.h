@@ -46,8 +46,9 @@ namespace Directus
 		void** GetShaderResource();
 		//=========================
 
+		std::weak_ptr<Material> GetMaterial() { return m_matSkybox;}
+
 	private:
-		std::weak_ptr<GameObject> m_anchor;
 		std::shared_ptr<Material> m_matSkybox;
 		std::shared_ptr<Texture> m_cubemapTexture;	
 	};

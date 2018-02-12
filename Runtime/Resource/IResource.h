@@ -92,13 +92,13 @@ namespace Directus
 		std::weak_ptr<T> Cache();
 		//========================================================================
 
-		//= IO =====================================================
-		virtual bool SaveToFile(const std::string& filePath) = 0;
-		virtual bool LoadFromFile(const std::string& filePath) = 0;
+		//= IO ================================================================
+		virtual bool SaveToFile(const std::string& filePath) { return true; }
+		virtual bool LoadFromFile(const std::string& filePath) { return true; }
 		virtual void SaveToFileAsync(const std::string& filePath);
 		virtual void LoadFromFileAsync(const std::string& filePath);
 		virtual unsigned int GetMemory() { return 0; }
-		//==========================================================
+		//=====================================================================
 
 		//= TYPE ============================
 		ResourceType ToResourceType();
@@ -121,5 +121,6 @@ namespace Directus
 		ResourceType m_resourceType		= Resource_Unknown;
 		AsyncState m_asyncState			= Async_Idle;
 		Context* m_context				= nullptr;
+		bool m_persistent				= true;
 	};
 }

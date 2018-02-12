@@ -79,16 +79,15 @@ namespace Directus
 		meshRenderer->SetReceiveShadows(false);
 		meshRenderer->SetMaterialFromMemory(m_matSkybox, true);
 
+		GetGameObject()->SetHierarchyVisibility(true);
+
 		// Make the skybox big enough
 		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 	}
 
 	void Skybox::Update()
 	{
-		if (m_anchor.expired())
-			return;
 
-		GetTransform()->SetPosition(m_anchor.lock()->GetTransform()->GetPosition());
 	}
 
 	void** Skybox::GetShaderResource()

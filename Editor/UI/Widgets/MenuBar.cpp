@@ -258,49 +258,47 @@ void MenuBar::ShowResourceCache()
 	if (!g_showResourceCache)
 		return;
 
+	auto resources = m_context->GetSubsystem<ResourceManager>()->GetResourceAll();
+	auto totalMemoryUsage =  m_context->GetSubsystem<ResourceManager>()->GetMemoryUsage() / 1000.0f / 1000.0f;
+
 	ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Resource Cache", &g_showResourceCache, ImGuiWindowFlags_HorizontalScrollbar);
 
-	auto resources = m_context->GetSubsystem<ResourceManager>()->GetResourceAll();
-	auto totalMemoryUsage =  m_context->GetSubsystem<ResourceManager>()->GetMemoryUsage() / 1000.0f / 1000.0f;
 	ImGui::Text("Resource count: %d, Total memory usage: %d Mb", (int)resources.size(), (int)totalMemoryUsage);
+	ImGui::Separator();
+	ImGui::Columns(4, "mycolumns"); // 4-ways, with border
+	ImGui::Text("Type"); ImGui::NextColumn();
+	ImGui::Text("Name"); ImGui::NextColumn();
+	ImGui::Text("Path"); ImGui::NextColumn();
+	ImGui::Text("Size"); ImGui::NextColumn();
+	ImGui::Separator();
 	for (const auto& resource : resources)
 	{
 		if (!resource)
 			continue;
 
 		// Type
-		ImGui::Text("Type: ");
-		ImGui::SameLine();
-		ImGui::Text(to_string(resource->GetResourceType()).c_str());
-		ImGui::SameLine(100);
+		ImGui::Text(to_string(resource->GetResourceType()).c_str());	ImGui::NextColumn();
 
 		// Name
-		ImGui::Text("Name: ");
-		ImGui::SameLine();
-		ImGui::Text(resource->GetResourceName().c_str());
-		ImGui::SameLine(400);
-		
+		ImGui::Text(resource->GetResourceName().c_str());				ImGui::NextColumn();
+
 		// Path
-		ImGui::Text("Path: ");
-		ImGui::SameLine();
-		ImGui::Text(resource->GetResourceFilePath().c_str());
-		ImGui::SameLine(1000);
+		ImGui::Text(resource->GetResourceFilePath().c_str());			ImGui::NextColumn();
 
 		// Memory
-		ImGui::Text("Memory: ");
-		ImGui::SameLine();
 		unsigned int memory = resource->GetMemory() / 1000.0f; // default in Kb
 		if (memory <= 1024)
 		{
-			ImGui::Text((to_string(memory) + string(" Kb")).c_str());		
+			ImGui::Text((to_string(memory) + string(" Kb")).c_str());	ImGui::NextColumn();
 		}
 		else
 		{
 			memory = memory / 1000.0f; // turn into Mb
-			ImGui::Text((to_string(memory) + string(" Mb")).c_str());
+			ImGui::Text((to_string(memory) + string(" Mb")).c_str());	ImGui::NextColumn();
 		}		
 	}
+	ImGui::Columns(1);
 
 	ImGui::End();
 }

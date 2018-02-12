@@ -428,9 +428,9 @@ namespace Directus
 	{
 		shared_ptr<GameObject> skybox = CreateGameObject().lock();
 		skybox->SetName("Skybox");
-		skybox->AddComponent<LineRenderer>();
-		skybox->AddComponent<Skybox>();
 		skybox->SetHierarchyVisibility(false);
+		skybox->AddComponent<LineRenderer>();
+		skybox->AddComponent<Skybox>();	
 		skybox->GetTransform()->SetParent(m_mainCamera.lock()->GetTransform());
 
 		return skybox;

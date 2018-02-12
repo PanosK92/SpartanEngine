@@ -84,40 +84,6 @@ namespace Directus
 		m_miscBuffer->Create(sizeof(PerFrameBufferType));
 	}
 
-	bool ShaderVariation::LoadFromFile(const string& filePath)
-	{
-		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Read);
-		if (!file->IsOpen())
-			return false;
-
-		file->Read(&m_resourceName);
-		file->Read(&m_resourceFilePath);
-		file->Read(&m_shaderFlags);
-
-		return true;
-	}
-
-	bool ShaderVariation::SaveToFile(const string& filePath)
-	{
-		string savePath = filePath;
-
-		// Add shader extension if missing
-		if (FileSystem::GetExtensionFromFilePath(filePath) != SHADER_EXTENSION)
-		{
-			savePath += SHADER_EXTENSION;
-		}
-
-		unique_ptr<FileStream> file = make_unique<FileStream>(savePath, FileStreamMode_Write);
-		if (!file->IsOpen())
-			return false;
-
-		file->Write(GetResourceName());
-		file->Write(GetResourceFilePath());
-		file->Write(m_shaderFlags);
-	
-		return true;
-	}
-
 	void ShaderVariation::Set()
 	{
 		if (!m_D3D11Shader)
