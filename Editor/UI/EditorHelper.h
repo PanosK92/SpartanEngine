@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include <string>
-#include "imgui/imgui.h"
+#include "ImGui/imgui.h"
 #include "Math/Vector4.h"
 #include "Math/Vector2.h"
 #include "Graphics/Texture.h"
@@ -72,31 +72,30 @@ public:
 
 	static std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context)
 	{
+		// Try to get a cached one
 		auto resourceManager = context->GetSubsystem<Directus::ResourceManager>();
-		auto texture = resourceManager->GetResourceByPath<Directus::Texture>(filePath);
-		if (!texture.expired())
-			return texture;
-
-		texture = resourceManager->Load<Directus::Texture>(filePath);
-		return texture;
-	}
-
-	static void SetEngineUpdate(bool update)
-	{
-		if (!g_engine)
-		{
-			LOG_WARNING("EditorHelper: Aborting SetEngineUpdate(), engine is null");
-			return;
+		if (auto cached = resourceManager->GetResourceByPath<Directus::Texture>(filePath).lock())
+		{			
+			return cached;
 		}
 
-		auto flags = g_engine->GetFlags();
-		flags = update ? flags | Directus::Engine_Update : flags & ~Directus::Engine_Update;
-		flags = update ? flags | Directus::Engine_Render : flags & ~Directus::Engine_Render;
-		g_engine->SetFlags(flags);
+		// Since the texture is not cached, load it and returned a cached ref
+		auto texture = std::make_shared<Directus::Texture>(context);
+		texture->LoadFromFile(filePath);
+		return texture->Cache<Directus::Texture>();
+
 	}
 
-	static bool GetEngineUpdate() { return g_engine->GetFlags() & Directus::Engine_Update; }
+	// Whether the engine sould update & render or not
+	static void SetEngineUpdate(bool update)
+	{
+		auto flags = g_engine->EngineMode_GetAll();
+		flags = update ? flags | Directus::Engine_Update : flags & ~Directus::Engine_Update;
+		flags = update ? flags | Directus::Engine_Render : flags & ~Directus::Engine_Render;
+		g_engine->EngineMode_SetAll(flags);
+	}
 
+	// LOADING (Whether any editor system caused the engine to load something
 	static void SetEngineLoading(bool loading) { g_isLoading = loading; }
 	static bool GetEngineLoading() { return g_isLoading; }
 

@@ -108,16 +108,14 @@ namespace Directus
 		if (!m_rigidBody)
 			return;
 
-		auto engineFlags = GetContext()->GetSubsystem<Engine>()->GetFlags();
-
 		// Editor -> Kinematic (so the user can move it around)
-		if (engineFlags & Engine_Physics && !m_rigidBody->isKinematicObject())
+		if (!Engine::EngineMode_IsSet(Engine_Game) && !m_rigidBody->isKinematicObject())
 		{
 			AddBodyToWorld();
 		}
 
 		// Game -> Dynamic (so bullet starts simulating)
-		if (!engineFlags & Engine_Physics && !m_isKinematic && m_rigidBody->isKinematicObject())
+		if (Engine::EngineMode_IsSet(Engine_Game) && !m_isKinematic && m_rigidBody->isKinematicObject())
 		{
 			AddBodyToWorld();
 		}
@@ -446,7 +444,7 @@ namespace Directus
 			constructionInfo.m_friction = m_friction;
 			constructionInfo.m_rollingFriction = m_frictionRolling;
 			constructionInfo.m_restitution = m_restitution;
-			constructionInfo.m_startWorldTransform;
+			//constructionInfo.m_startWorldTransform;
 			constructionInfo.m_collisionShape = !m_shape.expired() ? m_shape.lock().get() : nullptr;
 			constructionInfo.m_localInertia = localInertia;
 			constructionInfo.m_motionState = motionState;
@@ -462,7 +460,7 @@ namespace Directus
 
 			// Editor -> Kinematic (so the user can move it around)
 			bool originalKinematicState = m_isKinematic;
-			if (!GetContext()->GetSubsystem<Engine>()->GetFlags() & Engine_Physics)
+			if (!Engine::EngineMode_IsSet(Engine_Physics))
 			{
 				m_isKinematic = true;
 			}

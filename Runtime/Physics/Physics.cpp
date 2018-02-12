@@ -101,13 +101,17 @@ namespace Directus
 	{
 		if (!m_world)
 			return;
-
+		
 		// Don't simulate physics if they are turned of
-		if (!m_context->GetSubsystem<Engine>()->GetFlags() & Engine_Physics)
+		if (!Engine::EngineMode_IsSet(Engine_Physics))
 			return;
 
-		// Convert milliseconds to seconds (required by Bullet)
-		float timeStep = deltaTime.GetFloat() / 1000.0f;
+		// Don't simulate physics if they engine is not in game mode
+		if (!Engine::EngineMode_IsSet(Engine_Game))
+			return;
+
+		float timeStep = deltaTime.GetFloat();
+		LOG_INFO(timeStep);
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
 		float internalTimeStep = 1.0f / INTERNAL_FPS;

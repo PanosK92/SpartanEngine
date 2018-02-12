@@ -21,14 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "Toolbar.h"
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
+#include "../ImGui/imgui.h"
+#include "../ImGui/imgui_internal.h"
 #include "../IconProvider.h"
 #include "../EditorHelper.h"
 //==================================
 
+//= NAMESPACES ==========
+using namespace Directus;
+//=======================
+
 static float g_buttonSize			= 15.0f;
-static bool g_play					= false;
 static ImVec4 g_colorButtonReleased = ImVec4(0, 1, 0, 1);
 static ImVec4 g_colorButtonPressed	= ImVec4(0, 0.5f, 0.5f, 1);
 
@@ -37,7 +40,7 @@ Toolbar::Toolbar()
 	
 }
 
-void Toolbar::Initialize(Directus::Context* context)
+void Toolbar::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 	m_title = "Toolbar";
@@ -47,6 +50,8 @@ void Toolbar::Initialize(Directus::Context* context)
 		ImGuiWindowFlags_NoSavedSettings		| 
 		ImGuiWindowFlags_NoScrollbar			|
 		ImGuiWindowFlags_NoTitleBar;
+
+	Engine::EngineMode_Disable(Engine_Game);
 }
 
 void Toolbar::Begin()
@@ -61,9 +66,11 @@ void Toolbar::Begin()
 
 void Toolbar::Update()
 {
-	if (ImGui::ImageButton(ICON_PROVIDER(Icon_Button_Play), ImVec2(g_buttonSize, g_buttonSize), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), g_play ? g_colorButtonPressed : g_colorButtonReleased))
+	bool editorMode = !Engine::EngineMode_IsSet(Engine_Game);
+	if (ImGui::ImageButton(ICON_PROVIDER(Icon_Button_Play), ImVec2(g_buttonSize, g_buttonSize), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), editorMode ? g_colorButtonReleased : g_colorButtonPressed))
 	{
-		g_play = !g_play;
-		EditorHelper::SetEngineUpdate(g_play);
+		Engine::EngineMode_Toggle(Engine_Game);
 	}
+
+	ImGui::SameLine(); ImGui::Text(editorMode ? "Editor" : "Game");
 }

@@ -25,11 +25,12 @@ DEALINGS IN THE SOFTWARE. */
 
 namespace Directus
 {
-	enum EngineFlags
+	enum Engine_Mode : unsigned long
 	{
-		Engine_Physics,
-		Engine_Update,
-		Engine_Render
+		Engine_Update	= 1UL << 0,	// Should the engine update?
+		Engine_Physics	= 1UL << 1, // Should physics update?	
+		Engine_Render	= 1UL << 2,	// Should the engine render?
+		Engine_Game		= 1UL << 3,	// Is the engine running in game or editor mode?
 	};
 
 	class Timer;
@@ -49,12 +50,20 @@ namespace Directus
 		// Shuts down the engine
 		void Shutdown();
 
-		//= MODE FLAGS  ======================================
-		int GetFlags() { return m_flags; }
-		void SetFlags(int flags) { m_flags = flags; }
-		bool IsUpdating() { return m_flags & Engine_Update; }
-		bool IsRendering() { return m_flags & Engine_Render; }
-		//====================================================
+		//= ENGINE MODE FLAGS  =====================================================================================================
+		// Returns all engine mode flags
+		static unsigned long EngineMode_GetAll()			{ return m_flags; }
+		// Set's all engine mode flags
+		static void EngineMode_SetAll(unsigned long flags)	{ m_flags = flags; }
+		// Enables an engine mode flag
+		static void EngineMode_Enable(unsigned long flags)	{ m_flags |= flags; }
+		// Removes an engine mode flag
+		static void EngineMode_Disable(Engine_Mode flag)	{ m_flags &= ~flag; }
+		// Toggles an engine mode flag
+		static void EngineMode_Toggle(Engine_Mode flag)		{ m_flags = !EngineMode_IsSet(flag) ? m_flags | flag : m_flags & ~flag;}
+		// Returns whether engine mode flag is set
+		static bool EngineMode_IsSet(Engine_Mode flag)		{ return m_flags & flag; }
+		//==========================================================================================================================
 
 		//= WINDOW ========================================================================
 		static void SetHandles(void* drawHandle, void* windowHandle, void* windowInstance);
@@ -69,8 +78,7 @@ namespace Directus
 		static void* m_drawHandle;	
 		static void* m_windowHandle;
 		static void* m_windowInstance;
-		
-		int m_flags;
+		static unsigned long m_flags;
 		Timer* m_timer;
 	};
 }
