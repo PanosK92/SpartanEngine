@@ -97,7 +97,7 @@ namespace Directus
 		return true;
 	}
 
-	void Physics::Step(Variant deltaTime)
+	void Physics::Step(const Variant& deltaTime)
 	{
 		if (!m_world)
 			return;

@@ -65,7 +65,7 @@ namespace Directus
 		typedef std::function<void(Variant)> subscriber;
 
 		static void Subscribe(int eventID, subscriber&& func) { m_subscribers[eventID].push_back(std::forward<subscriber>(func)); }
-		static void Fire(int eventID, Variant data = 0);
+		static void Fire(int eventID, const Variant& data = 0);
 		static void Clear() { m_subscribers.clear(); }
 
 	private:

@@ -59,7 +59,7 @@ namespace Directus
 		//=========================
 
 		// Step the world
-		void Step(Variant deltaTime);
+		void Step(const Variant& deltaTime);
 		// Remove everything from the world
 		void Clear();
 		// Draw debug geometry

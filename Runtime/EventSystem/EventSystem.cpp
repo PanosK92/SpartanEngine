@@ -32,7 +32,7 @@ namespace Directus
 	typedef function<void(Variant)> subscriber;
 	map<uint8_t, vector<subscriber>> EventSystem::m_subscribers;
 
-	void EventSystem::Fire(int eventID, Variant data)
+	void EventSystem::Fire(int eventID, const Variant& data)
 	{
 		if (m_subscribers.find(eventID) == m_subscribers.end())
 			return;
