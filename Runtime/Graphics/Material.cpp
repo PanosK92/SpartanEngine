@@ -66,7 +66,7 @@ namespace Directus
 
 	}
 
-	//= RESOURCE INTERFACE =====================================
+	//= IResource ==============================================
 	bool Material::LoadFromFile(const string& filePath)
 	{
 		// Make sure the path is relative
@@ -173,6 +173,21 @@ namespace Directus
 
 		return true;
 	}
+
+	unsigned int Material::GetMemory()
+	{
+		// Doesn't have to be spot on, just representative
+		unsigned int size = 0;
+		size += sizeof(bool) * 2;
+		size += sizeof(int) * 3;
+		size += sizeof(float) * 5;
+		size += sizeof(Vector2) * 2;
+		size += sizeof(Vector4);
+		size += sizeof(std::map<TextureType, TexInfo>) + (sizeof(TextureType) + sizeof(TexInfo)) * m_textures.size();
+
+		return size;
+	}
+
 	//==========================================================
 
 	//= TEXTURES ===================================================================

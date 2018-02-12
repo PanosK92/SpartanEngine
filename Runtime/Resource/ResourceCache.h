@@ -131,15 +131,15 @@ namespace Directus
 			return false;
 		}
 
-		unsigned int GetMemoryUsageKB(ResourceType type)
+		unsigned int GetMemoryUsage(ResourceType type)
 		{
-			unsigned int sizeKB = 0;
+			unsigned int size = 0;
 			for (const auto& resource : m_resourceGroups[type])
 			{
-				sizeKB += resource->GetMemoryUsageKB();
+				size += resource->GetMemory();
 			}
 
-			return sizeKB;
+			return size;
 		}
 
 		// Returns all resources of a given type

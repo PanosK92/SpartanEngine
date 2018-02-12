@@ -113,13 +113,18 @@ namespace Directus
 		return true;
 	}
 
-	unsigned int Mesh::GetMemoryUsageKB()
+	unsigned int Mesh::GetMemory()
 	{
-		unsigned int sizeKB = 0;
-		sizeKB += unsigned int(m_vertices.size() * sizeof(VertexPosTexTBN));
-		sizeKB += unsigned int(m_indices.size() * sizeof(unsigned int));
+		// Vertices & Indices
+		unsigned int size = 0;
+		size += unsigned int(m_vertices.size() * sizeof(VertexPosTexTBN));
+		size += unsigned int(m_indices.size() * sizeof(unsigned int));
 
-		return sizeKB / 1000;
+		// Buffers
+		size += m_vertexBuffer->GetMemoryUsage();
+		size += m_indexBuffer->GetMemoryUsage();
+
+		return size;
 	}
 
 	void Mesh::GetGeometry(vector<VertexPosTexTBN>* vertices, vector<unsigned>* indices)

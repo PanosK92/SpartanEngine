@@ -50,10 +50,11 @@ namespace Directus
 		Material(Context* context);
 		~Material();
 
-		//= RESOURCE ===========================================
+		//= IResource ==================================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
-		//======================================================
+		unsigned int GetMemory() override;
+		//==============================================================
 
 		//= TEXTURES =====================================================================
 		void SetTexture(const std::weak_ptr<Texture>& textureWeak, bool autoCache = true);

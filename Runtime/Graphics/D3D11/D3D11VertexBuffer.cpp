@@ -68,6 +68,9 @@ namespace Directus
 		initData.SysMemPitch = 0;
 		initData.SysMemSlicePitch = 0;
 
+		// Compute memory usage
+		m_memoryUsage = sizeof(VertexPosCol) * vertices.size();
+
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))
 		{
@@ -84,7 +87,7 @@ namespace Directus
 			return false;
 
 		m_stride = sizeof(VertexPosTex);
-		unsigned int size = (unsigned int)vertices.size();
+		auto size = (unsigned int)vertices.size();
 		unsigned int byteWidth = m_stride * size;
 
 		// fill in a buffer description.
@@ -102,6 +105,9 @@ namespace Directus
 		initData.pSysMem = vertices.data();
 		initData.SysMemPitch = 0;
 		initData.SysMemSlicePitch = 0;
+
+		// Compute memory usage
+		m_memoryUsage = sizeof(VertexPosTex) * vertices.size();
 
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))
@@ -137,6 +143,9 @@ namespace Directus
 		initData.pSysMem = vertices.data();
 		initData.SysMemPitch = 0;
 		initData.SysMemSlicePitch = 0;
+
+		// Compute memory usage
+		m_memoryUsage = sizeof(VertexPosTexTBN) * vertices.size();
 
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if (FAILED(result))

@@ -47,7 +47,7 @@ namespace Directus
 		//= RESOURCE INTERFACE =================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override;
-		unsigned int GetMemoryUsageKB() override;
+		unsigned int GetMemory() override;
 		//======================================================
 
 		//= GEOMETRY ================================================================================

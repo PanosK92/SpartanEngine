@@ -66,6 +66,9 @@ namespace Directus
 		initData.SysMemPitch = 0;
 		initData.SysMemSlicePitch = 0;
 
+		// Compute memory usage
+		m_memoryUsage = sizeof(unsigned int) * indices.size();
+
 		HRESULT result = m_graphics->GetDevice()->CreateBuffer(&bufferDesc, &initData, &m_buffer);
 		if FAILED(result)
 		{

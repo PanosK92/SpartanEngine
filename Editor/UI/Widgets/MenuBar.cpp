@@ -289,7 +289,16 @@ void MenuBar::ShowResourceCache()
 		// Memory
 		ImGui::Text("Memory: ");
 		ImGui::SameLine();
-		ImGui::Text(to_string(resource->GetMemoryUsageKB()).c_str());
+		unsigned int memory = resource->GetMemory() / 1000.0f; // default in Kb
+		if (memory <= 1024)
+		{
+			ImGui::Text((to_string(memory) + string(" Kb")).c_str());		
+		}
+		else
+		{
+			memory = memory / 1000.0f; // turn into Mb
+			ImGui::Text((to_string(memory) + string(" Mb")).c_str());
+		}		
 	}
 
 	ImGui::End();

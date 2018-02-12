@@ -45,9 +45,12 @@ namespace Directus
 
 		bool SetIA();
 
+		unsigned int GetMemoryUsage() { return m_memoryUsage; }
+
 	private:
 		D3D11GraphicsDevice* m_graphics;
 		ID3D11Buffer* m_buffer;
 		unsigned int m_stride;
+		unsigned int m_memoryUsage;
 	};
 }
