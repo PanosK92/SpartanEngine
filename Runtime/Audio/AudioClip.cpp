@@ -37,23 +37,23 @@ using namespace FMOD;
 
 namespace Directus
 {
-	AudioClip::AudioClip(System* fModSystem)
+	AudioClip::AudioClip(System* fModSystem, Context* context) : IResource(context)
 	{
 		//= IResource ================
 		RegisterResource<AudioClip>();
 		//============================
 
 		// AudioClip
-		m_transform = nullptr;
-		m_fModSystem = fModSystem;
-		m_result = FMOD_OK;
-		m_sound = nullptr;
-		m_channel = nullptr;
-		m_playMode = Memory;
-		m_minDistance = 1.0f;
-		m_maxDistance = 10000.0f;
-		m_modeRolloff = FMOD_3D_LINEARROLLOFF;
-		m_modeLoop = FMOD_LOOP_OFF;
+		m_transform		= nullptr;
+		m_fModSystem	= fModSystem;
+		m_result		= FMOD_OK;
+		m_sound			= nullptr;
+		m_channel		= nullptr;
+		m_playMode		= Memory;
+		m_minDistance	= 1.0f;
+		m_maxDistance	= 10000.0f;
+		m_modeRolloff	= FMOD_3D_LINEARROLLOFF;
+		m_modeLoop		= FMOD_LOOP_OFF;
 	}
 
 	AudioClip::~AudioClip()

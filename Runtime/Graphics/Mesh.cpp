@@ -38,13 +38,12 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Mesh::Mesh(Context* context)
+	Mesh::Mesh(Context* context) : IResource(context)
 	{
 		//= IResource ===========
 		RegisterResource<Mesh>();
 		//=======================
 
-		m_context		= context;
 		m_modelName		= NOT_ASSIGNED_HASH;
 		m_vertexCount	= 0;
 		m_indexCount	= 0;

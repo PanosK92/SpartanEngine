@@ -59,14 +59,13 @@ namespace Directus
 		DXGI_FORMAT_R8_UNORM
 	};
 
-	Texture::Texture(Context* context)
+	Texture::Texture(Context* context) : IResource(context)
 	{
 		//= IResource ==============
 		RegisterResource<Texture>();
 		//==========================
 
 		// Texture
-		m_context			= context;
 		m_isUsingMipmaps	= true;
 		m_textureAPI		= make_shared<D3D11Texture>(m_context->GetSubsystem<Graphics>());
 	}

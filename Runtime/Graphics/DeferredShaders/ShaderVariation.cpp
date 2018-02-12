@@ -39,14 +39,14 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	ShaderVariation::ShaderVariation()
+	ShaderVariation::ShaderVariation(Context* context): IResource(context)
 	{
 		//= IResource ======================
 		RegisterResource<ShaderVariation>();
 		//==================================
 
-		m_graphics = nullptr;
-		m_shaderFlags = 0;
+		m_graphics		= m_context->GetSubsystem<Graphics>();
+		m_shaderFlags	= 0;
 	}
 
 	ShaderVariation::~ShaderVariation()
@@ -54,15 +54,34 @@ namespace Directus
 
 	}
 
-	void ShaderVariation::Initialize(Context* context, unsigned long shaderFlags)
+	void ShaderVariation::Compile(const string& filePath, unsigned long shaderFlags)
 	{
-		m_context = context;
-		m_graphics = m_context->GetSubsystem<Graphics>();
-
-		// Save the properties of the material
 		m_shaderFlags = shaderFlags;
+		if (!m_graphics)
+		{
+			LOG_INFO("GraphicsDevice is expired. Cant't compile shader");
+			return;
+		}
 
-		Compile(GetResourceFilePath());
+		// Load and compile the vertex and the pixel shader
+		m_D3D11Shader = make_shared<D3D11Shader>(m_graphics);
+		AddDefinesBasedOnMaterial(m_D3D11Shader);
+		m_D3D11Shader->Load(filePath);
+		m_D3D11Shader->SetInputLayout(PositionTextureTBN);
+		m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+		m_D3D11Shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_CLAMP, D3D11_COMPARISON_LESS_EQUAL);
+
+		// Matrix Buffer
+		m_perObjectBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+		m_perObjectBuffer->Create(sizeof(PerObjectBufferType));
+
+		// Object Buffer
+		m_materialBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+		m_materialBuffer->Create(sizeof(PerMaterialBufferType));
+
+		// Object Buffer
+		m_miscBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
+		m_miscBuffer->Create(sizeof(PerFrameBufferType));
 	}
 
 	bool ShaderVariation::LoadFromFile(const string& filePath)
@@ -250,7 +269,7 @@ namespace Directus
 		m_graphics->GetDeviceContext()->DrawIndexed(indexCount, 0, 0);
 	}
 
-	void ShaderVariation::AddDefinesBasedOnMaterial(shared_ptr<D3D11Shader> shader)
+	void ShaderVariation::AddDefinesBasedOnMaterial(const shared_ptr<D3D11Shader>& shader)
 	{
 		if (!shader)
 			return;
@@ -265,34 +284,5 @@ namespace Directus
 		shader->AddDefine("EMISSION_MAP",	HasEmissionTexture());
 		shader->AddDefine("MASK_MAP",		HasMaskTexture());
 		shader->AddDefine("CUBE_MAP",		HasCubeMapTexture());
-	}
-
-	void ShaderVariation::Compile(const string& filePath)
-	{
-		if (!m_graphics)
-		{
-			LOG_INFO("GraphicsDevice is expired. Cant't compile shader");
-			return;
-		}
-
-		// Load and compile the vertex and the pixel shader
-		m_D3D11Shader = make_shared<D3D11Shader>(m_graphics);
-		AddDefinesBasedOnMaterial(m_D3D11Shader);
-		m_D3D11Shader->Load(filePath);
-		m_D3D11Shader->SetInputLayout(PositionTextureTBN);
-		m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-		m_D3D11Shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_CLAMP, D3D11_COMPARISON_LESS_EQUAL);
-
-		// Matrix Buffer
-		m_perObjectBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
-		m_perObjectBuffer->Create(sizeof(PerObjectBufferType));
-
-		// Object Buffer
-		m_materialBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
-		m_materialBuffer->Create(sizeof(PerMaterialBufferType));
-
-		// Object Buffer
-		m_miscBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
-		m_miscBuffer->Create(sizeof(PerFrameBufferType));
 	}
 }

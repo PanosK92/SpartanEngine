@@ -64,7 +64,7 @@ namespace Directus
 	class ENGINE_CLASS Animation : public IResource
 	{
 	public:
-		Animation();
+		Animation(Context* context);
 		~Animation();
 
 		//= RESOURCE INTERFACE ========================

@@ -56,10 +56,10 @@ namespace Directus
 	class ShaderVariation : public IResource
 	{
 	public:
-		ShaderVariation();
+		ShaderVariation(Context* context);
 		~ShaderVariation();
 
-		void Initialize(Context* context, unsigned long shaderFlags);
+		void Compile(const std::string& filePath, unsigned long shaderFlags);
 
 		//= RESOURCE INTERFACE =================================
 		bool LoadFromFile(const std::string& filePath) override;
@@ -85,9 +85,8 @@ namespace Directus
 		bool HasCubeMapTexture() { return m_shaderFlags & Variaton_Cubemap; }
 
 	private:
-		void AddDefinesBasedOnMaterial(std::shared_ptr<D3D11Shader> shader);
-		void Compile(const std::string& filePath);
-
+		void AddDefinesBasedOnMaterial(const std::shared_ptr<D3D11Shader>& shader);
+		
 		//= PROPERTIES =======
 		unsigned long m_shaderFlags;
 

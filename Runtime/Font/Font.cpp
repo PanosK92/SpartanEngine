@@ -46,14 +46,13 @@ namespace Directus
 {
 	Graphics* graphics;
 
-	Font::Font(Context* context)
+	Font::Font(Context* context) : IResource(context)
 	{
-		m_context = context;
-		m_fontSize = 12;
-		m_charMaxWidth = 0;
+		m_fontSize		= 12;
+		m_charMaxWidth	= 0;
 		m_charMaxHeight = 0;
-		m_fontColor = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-		graphics = m_context->GetSubsystem<Graphics>();
+		m_fontColor		= Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+		graphics		= m_context->GetSubsystem<Graphics>();
 	}
 
 	Font::~Font()

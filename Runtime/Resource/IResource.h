@@ -56,6 +56,10 @@ namespace Directus
 	class ENGINE_CLASS IResource : public std::enable_shared_from_this<IResource>
 	{
 	public:
+		IResource(Context* context)
+		{
+			m_context = context;
+		}
 		virtual ~IResource() {}
 
 		template <typename T>
@@ -111,11 +115,11 @@ namespace Directus
 		void SetAsyncState(AsyncState state) { m_asyncState = state; }
 
 	protected:	
-		unsigned int m_resourceID = NOT_ASSIGNED_HASH;
-		std::string m_resourceName = NOT_ASSIGNED;
-		std::string m_resourceFilePath = NOT_ASSIGNED;
-		ResourceType m_resourceType = Resource_Unknown;
-		AsyncState m_asyncState = Async_Idle;
-		Context* m_context = nullptr;
+		unsigned int m_resourceID		= NOT_ASSIGNED_HASH;
+		std::string m_resourceName		= NOT_ASSIGNED;
+		std::string m_resourceFilePath	= NOT_ASSIGNED;
+		ResourceType m_resourceType		= Resource_Unknown;
+		AsyncState m_asyncState			= Async_Idle;
+		Context* m_context				= nullptr;
 	};
 }
