@@ -108,8 +108,6 @@ namespace Directus
 		int textures = m_resourceManager->GetResourceCountByType(Resource_Texture);	
 		int materials = m_resourceManager->GetResourceCountByType(Resource_Material);
 		int shaders = m_resourceManager->GetResourceCountByType(Resource_Shader);
-		float meshesMB = (float)m_resourceManager->GetMemoryUsage(Resource_Mesh) / 1000.0f / 1000.0f;
-		float textureMemoryMB = (float)m_resourceManager->GetMemoryUsage(Resource_Texture) / 1000.0f / 1000.0f;
 
 		m_metrics =
 			"FPS:\t\t\t\t" + to_string_precision(fps, 2) + "\n"
@@ -118,8 +116,7 @@ namespace Directus
 			"Render:\t\t\t" + to_string_precision(m_renderTimeMs, 2) + " ms\n"
 			"Resolution:\t\t" + to_string(int(RESOLUTION_WIDTH)) + "x" + to_string(int(RESOLUTION_HEIGHT)) + "\n" 
 			"Meshes Rendered:\t" + to_string(m_renderedMeshesPerFrame) + "\n"
-			"Meshes:\t\t\t" + to_string_precision(meshesMB, 1) + " MB\n"
-			"Textures:\t\t\t" + to_string(textures) + " (" + to_string_precision(textureMemoryMB, 1) + " MB)\n"
+			"Textures:\t\t\t" + to_string(textures) + "\n"
 			"Materials:\t\t\t" + to_string(materials) + "\n"
 			"Shaders:\t\t\t" + to_string(shaders);
 

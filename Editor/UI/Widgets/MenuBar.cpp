@@ -262,7 +262,8 @@ void MenuBar::ShowResourceCache()
 	ImGui::Begin("Resource Cache", &g_showResourceCache, ImGuiWindowFlags_HorizontalScrollbar);
 
 	auto resources = m_context->GetSubsystem<ResourceManager>()->GetResourceAll();
-	ImGui::Text("Resource count: %d", (int)resources.size());
+	auto totalMemoryUsage =  m_context->GetSubsystem<ResourceManager>()->GetMemoryUsage() / 1000.0f / 1000.0f;
+	ImGui::Text("Resource count: %d, Total memory usage: %d Mb", (int)resources.size(), (int)totalMemoryUsage);
 	for (const auto& resource : resources)
 	{
 		if (!resource)
