@@ -43,6 +43,9 @@ private:
 	void OnSceneSaved();
 	void ShowAboutWindow();
 
+	// DEBUG
+	void ShowResourceCache();
+
 	std::unique_ptr<FileDialog> m_fileDialog;
 	std::unique_ptr<ProgressDialog> m_progressDialog;
 };

@@ -156,6 +156,11 @@ namespace Directus
 			return (unsigned int)m_resourceCache->GetByType(type).size();
 		}
 
+		auto GetResourceAll() 
+		{
+			return m_resourceCache->GetAll();
+		}
+
 		void SaveResourcesToFiles()
 		{
 			m_resourceCache->SaveResourcesToFiles();

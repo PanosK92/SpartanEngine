@@ -41,6 +41,7 @@ static bool g_showMetricsWindow		= false;
 static bool g_showStyleEditor		= false;
 static bool g_fileDialogVisible		= false;
 static bool g_progressDialogVisible = false;
+static bool g_showResourceCache		= false;
 static string g_fileDialogSelection;
 ResourceManager* g_resourceManager	= nullptr;
 Scene* g_scene						= nullptr;
@@ -104,6 +105,12 @@ void MenuBar::Update()
 			ImGui::EndMenu();
 		}
 
+		if (ImGui::BeginMenu("Debug"))
+		{
+			ImGui::MenuItem("Resource Cache", nullptr, &g_showResourceCache);
+			ImGui::EndMenu();
+		}
+
 		if (ImGui::BeginMenu("Help"))
 		{
 			ImGui::MenuItem("About", nullptr, &g_showAboutWindow);
@@ -113,14 +120,25 @@ void MenuBar::Update()
 		ImGui::EndMainMenuBar();
 	}
 
-	if (g_fileDialogVisible)	ShowFileDialog();
-	if (g_showAboutWindow)		ShowAboutWindow();
-	if (g_showMetricsWindow)	ImGui::ShowMetricsWindow();
-	if (g_showStyleEditor)		ImGui::ShowStyleEditor();
+	if (g_showMetricsWindow)
+	{
+		ImGui::ShowMetricsWindow();
+	}
+	if (g_showStyleEditor)
+	{
+		ImGui::ShowStyleEditor();
+	}
+
+	ShowFileDialog();
+	ShowAboutWindow();
+	ShowResourceCache();
 }
 
 void MenuBar::ShowFileDialog()
 {
+	if (!g_fileDialogVisible)
+		return;
+
 	if (!m_fileDialog->Show(&g_fileDialogVisible, &g_fileDialogSelection))
 		return;
 
@@ -192,7 +210,7 @@ void MenuBar::ShowAboutWindow()
 		return;
 
 	ImGui::Begin("About", &g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
-	ImGui::SetWindowFocus();
+
 	ImGui::Text("Directus3D %s", ENGINE_VERSION);
 	ImGui::Text("Author: Panos Karabelas");
 	ImGui::SameLine(600); ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);  if (ImGui::Button("GitHub"))
@@ -231,6 +249,48 @@ void MenuBar::ShowAboutWindow()
 	ImGui::BulletText("ImGui");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionImGui).c_str());
 	ImGui::BulletText("PugiXML");		ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionPugiXML).c_str());
 	ImGui::BulletText("SDL");			ImGui::SameLine(posX); ImGui::Text(("v" + Settings::g_versionSDL).c_str());
+
+	ImGui::End();
+}
+
+void MenuBar::ShowResourceCache()
+{
+	if (!g_showResourceCache)
+		return;
+
+	ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
+	ImGui::Begin("Resource Cache", &g_showResourceCache, ImGuiWindowFlags_HorizontalScrollbar);
+
+	auto resources = m_context->GetSubsystem<ResourceManager>()->GetResourceAll();
+	ImGui::Text("Resource count: %d", (int)resources.size());
+	for (const auto& resource : resources)
+	{
+		if (!resource)
+			continue;
+
+		// Type
+		ImGui::Text("Type: ");
+		ImGui::SameLine();
+		ImGui::Text(to_string(resource->GetResourceType()).c_str());
+		ImGui::SameLine(100);
+
+		// Name
+		ImGui::Text("Name: ");
+		ImGui::SameLine();
+		ImGui::Text(resource->GetResourceName().c_str());
+		ImGui::SameLine(400);
+		
+		// Path
+		ImGui::Text("Path: ");
+		ImGui::SameLine();
+		ImGui::Text(resource->GetResourceFilePath().c_str());
+		ImGui::SameLine(1000);
+
+		// Memory
+		ImGui::Text("Memory: ");
+		ImGui::SameLine();
+		ImGui::Text(to_string(resource->GetMemoryUsageKB()).c_str());
+	}
 
 	ImGui::End();
 }
