@@ -138,6 +138,9 @@ namespace Directus
 			{
 				for (const auto& resource : group.second)
 				{
+					if (!resource)
+						continue;
+
 					size += resource->GetMemory();
 				}
 			}

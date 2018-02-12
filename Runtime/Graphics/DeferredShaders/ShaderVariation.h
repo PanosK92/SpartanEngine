@@ -61,11 +61,6 @@ namespace Directus
 
 		void Compile(const std::string& filePath, unsigned long shaderFlags);
 
-		//= RESOURCE INTERFACE =================================
-		bool LoadFromFile(const std::string& filePath) override;
-		bool SaveToFile(const std::string& filePath) override;
-		//======================================================
-
 		void Set();
 		void UpdatePerFrameBuffer(Light* directionalLight, Camera* camera);
 		void UpdatePerMaterialBuffer(Material* material);

@@ -53,27 +53,28 @@ namespace Directus
 	//= ICOMPONENT ===============================================================
 	void MeshRenderer::Serialize(FileStream* stream)
 	{
-		stream->Write(m_usingStandardMaterial);
-		stream->Write(!m_material.expired() ? m_material.lock()->GetResourceName() : NOT_ASSIGNED);
 		stream->Write(m_castShadows);
 		stream->Write(m_receiveShadows);
+		stream->Write(m_usingStandardMaterial);
+		if (!m_usingStandardMaterial)
+		{
+			stream->Write(!m_material.expired() ? m_material.lock()->GetResourceName() : NOT_ASSIGNED);
+		}
 	}
 
 	void MeshRenderer::Deserialize(FileStream* stream)
 	{
-		std::string materialName;
-
-		stream->Read(&m_usingStandardMaterial);
-		stream->Read(&materialName);
 		stream->Read(&m_castShadows);
 		stream->Read(&m_receiveShadows);
-
+		stream->Read(&m_usingStandardMaterial);
 		if (m_usingStandardMaterial)
 		{
-			UseStandardMaterial();
+			UseStandardMaterial();		
 		}
 		else
 		{
+			string materialName;
+			stream->Read(&materialName);
 			m_material = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Material>(materialName);
 		}
 	}
