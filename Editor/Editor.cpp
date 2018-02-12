@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/IconProvider.h"
 #include "UI/EditorHelper.h"
 #include "UI/Widgets/Toolbar.h"
+#include "Resource/ResourceManager.h"
 //==================================
 
 //= NAMESPACES ==========
@@ -61,6 +62,7 @@ Editor::~Editor()
 
 void Editor::Initialize(SDL_Window* window, Context* context)
 {
+	m_context = context;
 	IconProvider::Initialize(context);
 	EditorHelper::Initialize(context);
 

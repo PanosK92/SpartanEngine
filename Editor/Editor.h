@@ -47,4 +47,5 @@ private:
 	void ApplyStyle();
 
 	std::vector<std::unique_ptr<Widget>> m_widgets;
+	Directus::Context* m_context;
 };
