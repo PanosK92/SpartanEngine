@@ -110,7 +110,7 @@ void Update(bool& isRunning, SDL_Event* event)
 		g_editor->HandleEvent(event);
 	}
 
-	// Update engine
+	// Update engine (will simulate and render)
 	g_engine->Update();
 	// Set back buffer as render target (for ImGUI to render on)
 	g_renderer->SetRenderTarget(nullptr);

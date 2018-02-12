@@ -233,7 +233,7 @@ namespace Directus
 		m_graphics->Clear(GetClearColor());
 	}
 
-	void Renderer::SetRenderTarget(shared_ptr<D3D11RenderTexture> renderTexture)
+	void Renderer::SetRenderTarget(const shared_ptr<D3D11RenderTexture>& renderTexture)
 	{
 		SetRenderTarget(renderTexture.get());
 	}
@@ -258,27 +258,27 @@ namespace Directus
 
 		PerformanceProfiler::RenderingStarted();
 
-		// If there is no camera, clear to black and present
-		if (!m_camera)
+		// If there is a camera, render the scene
+		if (m_camera)
+		{
+			// If there is nothing to render clear to camera's color and present
+			if (m_renderables.empty())
+			{
+				m_graphics->Clear(m_camera->GetClearColor());
+				m_graphics->Present();
+				return;
+			}
+
+			DirectionalLightDepthPass();
+			GBufferPass();
+			PreDeferredPass();
+			DeferredPass();
+			PostDeferredPass();
+		}		
+		else // If there is no camera, clear to black
 		{
 			m_graphics->Clear(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-			m_graphics->Present();
-			return;
 		}
-
-		// If there is nothing to render clear to camera's color and present
-		if (m_renderables.empty())
-		{
-			m_graphics->Clear(m_camera->GetClearColor());
-			m_graphics->Present();
-			return;
-		}
-
-		DirectionalLightDepthPass();
-		GBufferPass();
-		PreDeferredPass();
-		DeferredPass();
-		PostDeferredPass();
 
 		PerformanceProfiler::RenderingFinished();
 	}
