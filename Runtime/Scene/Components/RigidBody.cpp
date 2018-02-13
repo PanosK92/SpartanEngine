@@ -460,7 +460,7 @@ namespace Directus
 
 			// Editor -> Kinematic (so the user can move it around)
 			bool originalKinematicState = m_isKinematic;
-			if (!Engine::EngineMode_IsSet(Engine_Physics))
+			if (!Engine::EngineMode_IsSet(Engine_Game))
 			{
 				m_isKinematic = true;
 			}
