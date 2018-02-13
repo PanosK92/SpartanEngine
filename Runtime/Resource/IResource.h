@@ -124,6 +124,5 @@ namespace Directus
 		ResourceType m_resourceType		= Resource_Unknown;
 		AsyncState m_asyncState			= Async_Idle;
 		Context* m_context				= nullptr;
-		bool m_persistent				= true;
 	};
 }
