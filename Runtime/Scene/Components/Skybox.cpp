@@ -68,7 +68,7 @@ namespace Directus
 		m_matSkybox->SetCullMode(CullFront);
 		m_matSkybox->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		m_matSkybox->SetIsEditable(false);
-		m_matSkybox->SetTexture(m_cubemapTexture); // assign cubmap texture
+		m_matSkybox->SetTexture(m_cubemapTexture, false); // assign cubmap texture
 
 		// Add a cube mesh
 		GetGameObject()->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cube);

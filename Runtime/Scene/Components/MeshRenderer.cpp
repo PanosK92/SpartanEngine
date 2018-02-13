@@ -122,16 +122,13 @@ namespace Directus
 				if (cachedMat->HasFilePath())
 				{
 					m_material.lock()->SaveToFile(material->GetResourceFilePath());
+					m_usingStandardMaterial = false;
 				}
 			}
-			m_usingStandardMaterial = false;
 		}
 		else
 		{
-			// Anything that's we don't cache is considered a standard material.
-			// A standard material's lifetime is entirely up to the caller.
 			m_material = material;
-			m_usingStandardMaterial = true;
 		}
 	}
 
@@ -154,13 +151,15 @@ namespace Directus
 
 	void MeshRenderer::UseStandardMaterial()
 	{
+		m_usingStandardMaterial = true;
+
 		auto projectStandardAssetDir = GetContext()->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
 		FileSystem::CreateDirectory_(projectStandardAssetDir);
 		auto materialStandard = make_shared<Material>(GetContext());
 		materialStandard->SetResourceName("Standard");
 		materialStandard->SetCullMode(CullBack);
 		materialStandard->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-		materialStandard->SetIsEditable(false);
+		materialStandard->SetIsEditable(false);		
 		SetMaterialFromMemory(materialStandard->Cache<Material>(), false);
 	}
 
