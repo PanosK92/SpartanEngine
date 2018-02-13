@@ -89,6 +89,7 @@ namespace Directus
 
 			const float* Data() const { return &x; }
 
+			static const Vector4 One;
 			static const Vector4 Zero;
 		};
 	}

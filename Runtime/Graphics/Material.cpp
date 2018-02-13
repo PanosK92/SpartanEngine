@@ -94,10 +94,10 @@ namespace Directus
 		int textureCount = xml->GetAttributeAsInt("Textures", "Count");
 		for (int i = 0; i < textureCount; i++)
 		{
-			string nodeName		= "Texture_" + to_string(i);
-			TextureType texType = (TextureType)xml->GetAttributeAsInt(nodeName, "Texture_Type");
-			string texName		= xml->GetAttributeAsStr(nodeName, "Texture_Name");
-			string texPath		= xml->GetAttributeAsStr(nodeName, "Texture_Path");
+			string nodeName	= "Texture_" + to_string(i);
+			auto texType	= (TextureType)xml->GetAttributeAsInt(nodeName, "Texture_Type");
+			string texName	= xml->GetAttributeAsStr(nodeName, "Texture_Name");
+			string texPath	= xml->GetAttributeAsStr(nodeName, "Texture_Path");
 
 			// If the texture happens to be loaded, get a reference to it
 			auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Texture>(texName);
@@ -129,7 +129,7 @@ namespace Directus
 			SetResourceFilePath(GetResourceFilePath() + MATERIAL_EXTENSION);
 		}
 
-		unique_ptr<XmlDocument> xml = make_unique<XmlDocument>();
+		auto xml = make_unique<XmlDocument>();
 		xml->AddNode("Material");
 		xml->AddAttribute("Material", "Name", GetResourceName());
 		xml->AddAttribute("Material", "Path", GetResourceFilePath());

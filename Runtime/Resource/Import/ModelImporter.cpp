@@ -374,19 +374,19 @@ namespace Directus
 	{
 		if (!model || !assimpMaterial)
 		{
-			LOG_WARNING("ModelImporter: Can't convert AiMaterial to Material, one of them is null.");
+			LOG_WARNING("ModelImporter::AiMaterialToMaterial(): One of the provided materials is null, can't execute function");
 			return nullptr;
 		}
 
 		auto material = make_shared<Material>(m_context);
 
-		//= NAME ============================================
+		// NAME
 		aiString name;
 		aiGetMaterialString(assimpMaterial, AI_MATKEY_NAME, &name);
 		material->SetResourceName(name.C_Str());
 		material->SetModelID(GUIDGenerator::ToUnsignedInt(model->GetResourceName()));
 
-		//= CullMode ===================================================
+		// CULL MODE
 		// Specifies whether meshes using this material must be rendered 
 		// without back face CullMode. 0 for false, !0 for true.
 		bool isTwoSided = false;
@@ -396,89 +396,45 @@ namespace Directus
 			material->SetCullMode(CullNone);
 		}
 
-		//= DIFFUSE COLOR ===================================================
+		// DIFFUSE COLOR
 		aiColor4D colorDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
 		aiGetMaterialColor(assimpMaterial, AI_MATKEY_COLOR_DIFFUSE, &colorDiffuse);
 		material->SetColorAlbedo(AssimpHelper::ToVector4(colorDiffuse));
 
-		//= OPACITY ==============================================
+		// OPACITY
 		aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
 		aiGetMaterialColor(assimpMaterial, AI_MATKEY_OPACITY, &opacity);
 		material->SetOpacity(opacity.r);
 
-		//= ALBEDO TEXTURE =============================================================================================================
-		aiString texturePath;
-		if (assimpMaterial->GetTextureCount(aiTextureType_DIFFUSE) > 0)
+		// TEXTURES
+		auto LoadMatTex = [this, &model, &assimpMaterial, &material](aiTextureType assimpTex, TextureType engineTex)
 		{
-			if (assimpMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+			aiString texturePath;
+			if (assimpMaterial->GetTextureCount(assimpTex) > 0)
 			{
-				model->AddTexture(material, TextureType_Albedo, ValidateTexturePath(texturePath.data));
-				// FIX: materials that have a diffuse texture should not be tinted black/grey
-				material->SetColorAlbedo(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-			}
-		}
+				if (assimpMaterial->GetTexture(assimpTex, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
+				{
+					model->AddTexture(material, engineTex, ValidateTexturePath(texturePath.data));
 
-		//= SPECULAR (used as ROUGHNESS) TEXTURE =========================================================================================
-		if (assimpMaterial->GetTextureCount(aiTextureType_SHININESS) > 0)
-		{
-			if (assimpMaterial->GetTexture(aiTextureType_SHININESS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			{
-				model->AddTexture(material, TextureType_Roughness, ValidateTexturePath(texturePath.data));
+					if (assimpTex == aiTextureType_DIFFUSE)
+					{
+						// FIX: materials that have a diffuse texture should not be tinted black/grey
+						material->SetColorAlbedo(Vector4::One);
+					}
+				}
 			}
-		}
+		};
 
-		//= AMBIENT (used as METALLIC) TEXTURE ========================================================================================
-		if (assimpMaterial->GetTextureCount(aiTextureType_AMBIENT) > 0)
-		{
-			if (assimpMaterial->GetTexture(aiTextureType_AMBIENT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			{
-				model->AddTexture(material, TextureType_Metallic, ValidateTexturePath(texturePath.data));
-			}
-		}
+		LoadMatTex(aiTextureType_DIFFUSE,	TextureType_Albedo);
+		LoadMatTex(aiTextureType_SHININESS,	TextureType_Roughness); // Specular as roughness
+		LoadMatTex(aiTextureType_AMBIENT,	TextureType_Metallic);	// Ambient as metallic
+		LoadMatTex(aiTextureType_NORMALS,	TextureType_Normal);
+		LoadMatTex(aiTextureType_LIGHTMAP,	TextureType_Occlusion);
+		LoadMatTex(aiTextureType_EMISSIVE,	TextureType_Emission);
+		LoadMatTex(aiTextureType_LIGHTMAP,	TextureType_Occlusion);
+		LoadMatTex(aiTextureType_HEIGHT,	TextureType_Height);
+		LoadMatTex(aiTextureType_OPACITY,	TextureType_Mask);
 
-		//= NORMAL TEXTURE =============================================================================================================
-		if (assimpMaterial->GetTextureCount(aiTextureType_NORMALS) > 0)
-		{
-			if (assimpMaterial->GetTexture(aiTextureType_NORMALS, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			{
-				model->AddTexture(material, TextureType_Normal, ValidateTexturePath(texturePath.data));
-			}
-		}
-
-		//= OCCLUSION TEXTURE ===========================================================================================================
-		if (assimpMaterial->GetTextureCount(aiTextureType_LIGHTMAP) > 0)
-		{
-			if (assimpMaterial->GetTexture(aiTextureType_LIGHTMAP, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			{
-				model->AddTexture(material, TextureType_Occlusion, ValidateTexturePath(texturePath.data));
-			}
-		}
-
-		//= EMISSIVE TEXTURE ============================================================================================================
-		if (assimpMaterial->GetTextureCount(aiTextureType_EMISSIVE) > 0)
-		{
-			if (assimpMaterial->GetTexture(aiTextureType_EMISSIVE, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			{
-				model->AddTexture(material, TextureType_Emission, ValidateTexturePath(texturePath.data));
-			}
-		}
-		//= HEIGHT TEXTURE ============================================================================================================
-		if (assimpMaterial->GetTextureCount(aiTextureType_HEIGHT) > 0)
-		{
-			if (assimpMaterial->GetTexture(aiTextureType_HEIGHT, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			{
-				model->AddTexture(material, TextureType_Height, ValidateTexturePath(texturePath.data));
-			}
-		}
-
-		//= MASK TEXTURE ===============================================================================================================
-		if (assimpMaterial->GetTextureCount(aiTextureType_OPACITY) > 0)
-		{
-			if (assimpMaterial->GetTexture(aiTextureType_OPACITY, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
-			{
-				model->AddTexture(material, TextureType_Mask, ValidateTexturePath(texturePath.data));
-			}
-		}
 		return material;
 	}
 	//============================================================================================
