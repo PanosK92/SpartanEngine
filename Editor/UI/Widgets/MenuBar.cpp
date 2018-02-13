@@ -107,7 +107,7 @@ void MenuBar::Update()
 
 		if (ImGui::BeginMenu("Debug"))
 		{
-			ImGui::MenuItem("Resource Cache", nullptr, &g_showResourceCache);
+			ImGui::MenuItem("Resource Cache Viewer", nullptr, &g_showResourceCache);
 			ImGui::EndMenu();
 		}
 
