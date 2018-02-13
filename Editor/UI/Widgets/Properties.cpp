@@ -675,9 +675,6 @@ void Properties::ShowMaterial(Material* material)
 	if (!material)
 		return;
 
-	if (!material->IsEditable())
-		return;
-
 	auto texAlbedo		= material->GetTextureByType(TextureType_Albedo).lock();
 	auto texRoughness	= material->GetTextureByType(TextureType_Roughness).lock();
 	auto texMetallic	= material->GetTextureByType(TextureType_Metallic).lock();
@@ -724,41 +721,44 @@ void Properties::ShowMaterial(Material* material)
 		);												\
 		DROP_TARGET_TEXTURE(texEnum);					\
 
-		// Albedo
-		MAT_TEX(texAlbedo, "Albedo", TextureType_Albedo); 
-		ImGui::SameLine(); g_materialButtonColorPicker->Update();
+		if (material->IsEditable())
+		{
+			// Albedo
+			MAT_TEX(texAlbedo, "Albedo", TextureType_Albedo); 
+			ImGui::SameLine(); g_materialButtonColorPicker->Update();
 
-		// Roughness
-		MAT_TEX(texRoughness, "Roughness", TextureType_Roughness); 
-		ImGui::SameLine(); ImGui::SliderFloat("##matRoughness", &g_materialRoughness, 0.0f, 1.0f);
+			// Roughness
+			MAT_TEX(texRoughness, "Roughness", TextureType_Roughness); 
+			ImGui::SameLine(); ImGui::SliderFloat("##matRoughness", &g_materialRoughness, 0.0f, 1.0f);
 
-		// Metallic
-		MAT_TEX(texMetallic, "Metallic", TextureType_Metallic); 
-		ImGui::SameLine(); ImGui::SliderFloat("##matMetallic", &g_materialMetallic, 0.0f, 1.0f);
+			// Metallic
+			MAT_TEX(texMetallic, "Metallic", TextureType_Metallic); 
+			ImGui::SameLine(); ImGui::SliderFloat("##matMetallic", &g_materialMetallic, 0.0f, 1.0f);
 
-		// Normal
-		MAT_TEX(texNormal, "Normal", TextureType_Normal);
-		ImGui::SameLine(); ImGui::SliderFloat("##matNormal", &g_materialNormal, 0.0f, 1.0f);
+			// Normal
+			MAT_TEX(texNormal, "Normal", TextureType_Normal);
+			ImGui::SameLine(); ImGui::SliderFloat("##matNormal", &g_materialNormal, 0.0f, 1.0f);
 
-		// Height
-		MAT_TEX(texHeight, "Height", TextureType_Height); 
-		ImGui::SameLine(); ImGui::SliderFloat("##matHeight", &g_materialHeight, 0.0f, 1.0f);
+			// Height
+			MAT_TEX(texHeight, "Height", TextureType_Height); 
+			ImGui::SameLine(); ImGui::SliderFloat("##matHeight", &g_materialHeight, 0.0f, 1.0f);
 
-		// Occlusion
-		MAT_TEX(texOcclusion, "Occlusion", TextureType_Occlusion);
+			// Occlusion
+			MAT_TEX(texOcclusion, "Occlusion", TextureType_Occlusion);
 
-		// Mask
-		MAT_TEX(texMask, "Mask", TextureType_Mask);
+			// Mask
+			MAT_TEX(texMask, "Mask", TextureType_Mask);
 
-		// Tiling
-		ImGui::Text("Tiling");
-		ImGui::SameLine(posX); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputText("##matTilingX", g_matTilingX, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
-		ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputText("##matTilingY", g_matTilingY, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
+			// Tiling
+			ImGui::Text("Tiling");
+			ImGui::SameLine(posX); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputText("##matTilingX", g_matTilingX, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
+			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputText("##matTilingY", g_matTilingY, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
 
-		// Offset
-		ImGui::Text("Offset");
-		ImGui::SameLine(posX); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputText("##matOffsetX", g_matOffsetX, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
-		ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputText("##matOffsetY", g_matOffsetY, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
+			// Offset
+			ImGui::Text("Offset");
+			ImGui::SameLine(posX); ImGui::Text("X"); ImGui::SameLine(); ImGui::InputText("##matOffsetX", g_matOffsetX, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
+			ImGui::SameLine(); ImGui::Text("Y"); ImGui::SameLine(); ImGui::InputText("##matOffsetY", g_matOffsetY, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_CharsDecimal);
+		}
 	}
 	COMPONENT_END;
 
