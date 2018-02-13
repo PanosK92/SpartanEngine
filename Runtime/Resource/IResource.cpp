@@ -53,7 +53,7 @@ string IResource::GetResourceDirectory()
 template <typename T>
 void IResource::RegisterResource()
 {
-	m_resourceType	= ToResourceType<T>();
+	m_resourceType	= DeduceResourceType<T>();
 	m_resourceID	= GENERATE_GUID;
 	m_asyncState	= Async_Idle;
 }
@@ -119,7 +119,36 @@ void IResource::LoadFromFileAsync(const string& filePath)
 	});
 }
 
-ResourceType IResource::ToResourceType()
+string IResource::GetResourceTypeStr()
+{
+	if (typeid(*this) == typeid(Texture))
+		return "Texture";
+
+	if (typeid(*this) == typeid(Audio))
+			return "Audio";
+
+	if (typeid(*this) == typeid(Material))
+			return "Material";
+
+	if (typeid(*this) == typeid(ShaderVariation))
+			return "ShaderVariation";
+
+	if (typeid(*this) == typeid(Mesh))
+			return "Mesh";
+
+	if (typeid(*this) == typeid(Model))
+			return "Model";
+
+	if (typeid(*this) == typeid(Animation))
+			return "Animation";
+
+	if (typeid(*this) == typeid(Font))
+			return "Font";
+
+	return NOT_ASSIGNED;
+}
+
+ResourceType IResource::DeduceResourceType()
 {
 	if (typeid(*this) == typeid(Texture))
 		return Resource_Texture;
@@ -149,7 +178,7 @@ ResourceType IResource::ToResourceType()
 }
 
 template <typename T>
-ResourceType IResource::ToResourceType()
+ResourceType IResource::DeduceResourceType()
 {
 	if (typeid(T) == typeid(Texture))
 		return Resource_Texture;
@@ -190,7 +219,7 @@ INSTANTIATE_RegisterResource(Animation);
 INSTANTIATE_RegisterResource(Font);
 
 // Explicit template instantiation
-#define INSTANTIATE_ToResourceType(T) template ENGINE_CLASS ResourceType IResource::ToResourceType<T>()
+#define INSTANTIATE_ToResourceType(T) template ENGINE_CLASS ResourceType IResource::DeduceResourceType<T>()
 INSTANTIATE_ToResourceType(Texture);
 INSTANTIATE_ToResourceType(AudioClip);
 INSTANTIATE_ToResourceType(Material);

@@ -91,7 +91,7 @@ namespace Directus
 		template <class T>
 		std::shared_ptr<IResource> GetByName(const std::string& name)
 		{
-			for (const auto& resource : m_resourceGroups[IResource::ToResourceType<T>()])
+			for (const auto& resource : m_resourceGroups[IResource::DeduceResourceType<T>()])
 			{
 				if (name == resource->GetResourceName())
 					return resource;
@@ -104,7 +104,7 @@ namespace Directus
 		template <class T>
 		std::shared_ptr<IResource> GetByPath(const std::string& path)
 		{
-			for (const auto& resource : m_resourceGroups[IResource::ToResourceType<T>()])
+			for (const auto& resource : m_resourceGroups[IResource::DeduceResourceType<T>()])
 			{
 				if (path == resource->GetResourceFilePath())
 					return resource;

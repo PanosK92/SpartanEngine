@@ -55,7 +55,7 @@ namespace Directus
 		auto cubemapDirectory	= GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
 		auto texPath			= cubemapDirectory + "environment.dds";
 		m_cubemapTexture		= make_shared<Texture>(GetContext());
-		m_cubemapTexture->SetResourceName(FileSystem::GetFileNameFromFilePath(texPath));
+		m_cubemapTexture->SetResourceName("Cubemap");
 		m_cubemapTexture->LoadFromFile(texPath);
 		m_cubemapTexture->SetType(TextureType_CubeMap);
 		m_cubemapTexture->SetWidth(1024);
