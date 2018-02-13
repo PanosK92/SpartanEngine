@@ -77,6 +77,8 @@ namespace Directus
 		const std::string& GetResourceFilePath() { return m_resourceFilePath; }
 		void SetResourceFilePath(const std::string& filePath) { m_resourceFilePath = filePath; }
 
+		bool HasFilePath() { return m_resourceFilePath != NOT_ASSIGNED;}
+
 		std::string GetResourceFileName();
 		std::string GetResourceDirectory();
 		//======================================================================================
@@ -100,12 +102,13 @@ namespace Directus
 		virtual unsigned int GetMemory() { return 0; }
 		//=====================================================================
 
-		//= TYPE ============================
-		ResourceType ToResourceType();
+		//= TYPE ================================
+		std::string GetResourceTypeStr();
 
+		ResourceType DeduceResourceType();
 		template <typename T>
-		static ResourceType ToResourceType();	
-		//===================================
+		static ResourceType DeduceResourceType();
+		//=======================================
 
 		//= PTR ==========================================
 		auto GetSharedPtr() { return shared_from_this(); }

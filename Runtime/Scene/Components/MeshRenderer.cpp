@@ -119,7 +119,10 @@ namespace Directus
 			if (auto cachedMat = material->Cache<Material>().lock())
 			{
 				m_material = cachedMat;
-				m_material.lock()->SaveToFile(material->GetResourceFilePath());
+				if (cachedMat->HasFilePath())
+				{
+					m_material.lock()->SaveToFile(material->GetResourceFilePath());
+				}
 			}
 			m_usingStandardMaterial = false;
 		}

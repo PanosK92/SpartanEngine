@@ -63,7 +63,7 @@ namespace Directus
 			std::string name				= FileSystem::GetFileNameNoExtensionFromFilePath(filePathRelative);
 
 			// Check if the resource is already loaded
-			if (m_resourceCache->IsCached(name, IResource::ToResourceType<T>()))
+			if (m_resourceCache->IsCached(name, IResource::DeduceResourceType<T>()))
 			{
 				return GetResourceByName<T>(name);
 			}

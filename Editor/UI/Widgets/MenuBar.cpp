@@ -262,11 +262,11 @@ void MenuBar::ShowResourceCache()
 	auto totalMemoryUsage =  m_context->GetSubsystem<ResourceManager>()->GetMemoryUsage() / 1000.0f / 1000.0f;
 
 	ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Resource Cache", &g_showResourceCache, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::Begin("Resource Cache Viewer", &g_showResourceCache, ImGuiWindowFlags_HorizontalScrollbar);
 
 	ImGui::Text("Resource count: %d, Total memory usage: %d Mb", (int)resources.size(), (int)totalMemoryUsage);
 	ImGui::Separator();
-	ImGui::Columns(4, "mycolumns"); // 4-ways, with border
+	ImGui::Columns(4, "##ResourceCacheViewer");
 	ImGui::Text("Type"); ImGui::NextColumn();
 	ImGui::Text("Name"); ImGui::NextColumn();
 	ImGui::Text("Path"); ImGui::NextColumn();
@@ -278,7 +278,7 @@ void MenuBar::ShowResourceCache()
 			continue;
 
 		// Type
-		ImGui::Text(to_string(resource->GetResourceType()).c_str());	ImGui::NextColumn();
+		ImGui::Text(resource->GetResourceTypeStr().c_str());			ImGui::NextColumn();
 
 		// Name
 		ImGui::Text(resource->GetResourceName().c_str());				ImGui::NextColumn();
