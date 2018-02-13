@@ -48,7 +48,6 @@ namespace Directus
 		ModelImporter(Context* context);
 		~ModelImporter();
 
-		void ReadAnimations(Model* model, const aiScene* scene);
 		bool Load(Model* model, const std::string& filePath);
 
 		const std::string& GetProgressStatus() { return m_progressStatus; }
@@ -64,6 +63,7 @@ namespace Directus
 			const std::weak_ptr<GameObject> parentNode = std::weak_ptr<GameObject>(), 
 			std::weak_ptr<GameObject> newNode = std::weak_ptr<GameObject>()
 		);
+		void ReadAnimations(Model* model, const aiScene* scene);
 		void LoadMesh(Model* model, aiMesh* assimpMesh, const aiScene* assimpScene, const std::weak_ptr<GameObject>& parentGameObject);
 		void LoadAiMeshVertices(aiMesh* assimpMesh, const std::shared_ptr<Mesh>& mesh);
 		void LoadAiMeshIndices(aiMesh* assimpMesh, const std::shared_ptr<Mesh>& mesh);

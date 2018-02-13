@@ -71,7 +71,7 @@ namespace Directus
 		// Make sure the path is relative
 		SetResourceFilePath(FileSystem::GetRelativeFilePath(filePath));
 
-		unique_ptr<XmlDocument> xml = make_unique<XmlDocument>();
+		auto xml = make_unique<XmlDocument>();
 		if (!xml->Load(GetResourceFilePath()))
 			return false;
 
@@ -160,17 +160,7 @@ namespace Directus
 			i++;
 		}
 
-		if (!xml->Save(GetResourceFilePath()))
-			return false;
-
-		// If this material is using a shader, save it
-		if (!m_shader.expired())
-		{
-			m_shader.lock()->SetResourceFilePath(FileSystem::GetFilePathWithoutExtension(filePath) + SHADER_EXTENSION);
-			m_shader.lock()->SaveToFile(m_shader.lock()->GetResourceFilePath());
-		}
-
-		return true;
+		return xml->Save(GetResourceFilePath());
 	}
 
 	unsigned int Material::GetMemory()
@@ -222,10 +212,7 @@ namespace Directus
 			m_textures.insert(make_pair(texType, TexInfo(texRef, texName, texPath)));
 		}
 
-		// Adjust texture multipliers
 		TextureBasedMultiplierAdjustment();
-
-		// Acquire and appropriate shader
 		AcquireShader();
 	}
 
@@ -316,7 +303,7 @@ namespace Directus
 		if (HasTextureOfType(TextureType_Mask)) shaderFlags			|= Variaton_Mask;
 		if (HasTextureOfType(TextureType_CubeMap)) shaderFlags		|= Variaton_Cubemap;
 
-		m_shader = CreateShaderBasedOnMaterial(shaderFlags);
+		m_shader = GetOrCreateShader(shaderFlags);
 	}
 
 	weak_ptr<ShaderVariation> Material::FindMatchingShader(unsigned long shaderFlags)
@@ -330,27 +317,22 @@ namespace Directus
 		return weak_ptr<ShaderVariation>();
 	}
 
-	weak_ptr<ShaderVariation> Material::CreateShaderBasedOnMaterial(unsigned long shaderFlags)
+	weak_ptr<ShaderVariation> Material::GetOrCreateShader(unsigned long shaderFlags)
 	{
 		if (!m_context)
 		{
-			LOG_ERROR("Material::CreateShaderBasedOnMaterial(): Context is null, can't execute function");
+			LOG_ERROR("Material::GetOrCreateShader(): Context is null, can't execute function");
 			return weak_ptr<ShaderVariation>();
 		}
 
 		// If an appropriate shader already exists, return it's ID
 		auto existingShader = FindMatchingShader(shaderFlags);
-
 		if (!existingShader.expired())
 			return existingShader;
 
-		// If not, create a new one 
-		auto resourceMng = m_context->GetSubsystem<ResourceManager>();
-		string shaderDirectory = resourceMng->GetStandardResourceDirectory(Resource_Shader); // Get standard shader directory
-
 		// Create and initialize shader
 		auto shader = make_shared<ShaderVariation>(m_context);
-		shader->Compile(shaderDirectory + "GBuffer.hlsl", shaderFlags);
+		shader->Compile(m_context->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Shader) + "GBuffer.hlsl", shaderFlags);
 		shader->SetResourceName("ShaderVariation_" + to_string(shader->GetResourceID())); // set a different name for it's shader the cache doesn't thing they are the same
 
 		// Add the shader to the pool and return it
@@ -369,7 +351,6 @@ namespace Directus
 		return nullptr;
 	}
 	//==============================================================================
-
 	void Material::TextureBasedMultiplierAdjustment()
 	{
 		if (HasTextureOfType(TextureType_Roughness))
