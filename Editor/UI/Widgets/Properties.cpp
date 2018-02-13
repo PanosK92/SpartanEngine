@@ -342,13 +342,16 @@ void Properties::ShowLight(Light* light)
 		return;
 
 	// REFLECT
-	g_lightTypeInt		= (int)light->GetLightType();
-	g_lightType			= g_lightTypes[g_lightTypeInt];
-	g_lightIntensity	= light->GetIntensity();
-	g_lightShadows		= light->GetShadowQuality() != No_Shadows;
-	g_lightAngle		= light->GetAngle();
-	g_lightButtonColorPicker->SetColor(light->GetColor());
-	EditorHelper::SetCharArray(&g_lightRange[0], light->GetRange());
+	if (g_reflect || g_reflectOnce)
+	{
+		g_lightTypeInt		= (int)light->GetLightType();
+		g_lightType			= g_lightTypes[g_lightTypeInt];
+		g_lightIntensity	= light->GetIntensity();
+		g_lightShadows		= light->GetShadowQuality() != No_Shadows;
+		g_lightAngle		= light->GetAngle();
+		g_lightButtonColorPicker->SetColor(light->GetColor());
+		EditorHelper::SetCharArray(&g_lightRange[0], light->GetRange());
+	}
 
 	float posX = 105.0f;
 
@@ -403,12 +406,15 @@ void Properties::ShowLight(Light* light)
 	COMPONENT_END;
 
 	// MAP
-	light->SetLightType((LightType)g_lightTypeInt);
-	light->SetColor(g_lightButtonColorPicker->GetColor());
-	light->SetIntensity(g_lightIntensity);
-	light->SetShadowQuality(g_lightShadows ? Hard_Shadows : No_Shadows);
-	light->SetRange((float)atof(&g_lightRange[0]));
-	light->SetAngle(g_lightAngle);
+	if (!g_reflect)
+	{
+		light->SetLightType((LightType)g_lightTypeInt);
+		light->SetColor(g_lightButtonColorPicker->GetColor());
+		light->SetIntensity(g_lightIntensity);
+		light->SetShadowQuality(g_lightShadows ? Hard_Shadows : No_Shadows);
+		light->SetRange((float)atof(&g_lightRange[0]));
+		light->SetAngle(g_lightAngle);
+	}
 }
 
 void Properties::ShowMeshFilter(MeshFilter* meshFilter)
@@ -416,7 +422,6 @@ void Properties::ShowMeshFilter(MeshFilter* meshFilter)
 	if (!meshFilter)
 		return;
 
-	// REFLECT
 	auto mesh = meshFilter->GetMesh().lock();
 	string meshName = mesh ? mesh->GetResourceName() : NOT_ASSIGNED;
 
@@ -434,11 +439,15 @@ void Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
 	if (!meshRenderer)
 		return;
 
-	// MAP
-	auto material					= meshRenderer->GetMaterial().lock();
-	g_meshRendererCastShadows		= meshRenderer->GetCastShadows();
-	g_meshRendererReceiveShadows	= meshRenderer->GetReceiveShadows();
+	auto material = meshRenderer->GetMaterial().lock();
 	string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
+
+	// REFLECT
+	if (g_reflect || g_reflectOnce)
+	{
+		g_meshRendererCastShadows		= meshRenderer->GetCastShadows();
+		g_meshRendererReceiveShadows	= meshRenderer->GetReceiveShadows();	
+	}
 
 	float posX = 150.0f;
 
@@ -458,9 +467,12 @@ void Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
 	}
 	COMPONENT_END;
 
-	// REFLECT
-	meshRenderer->SetCastShadows(g_meshRendererCastShadows);
-	meshRenderer->SetReceiveShadows(g_meshRendererReceiveShadows);
+	// MAP
+	if (!g_reflect)
+	{
+		meshRenderer->SetCastShadows(g_meshRendererCastShadows);
+		meshRenderer->SetReceiveShadows(g_meshRendererReceiveShadows);
+	}
 }
 
 void Properties::ShowRigidBody(RigidBody* rigidBody)
@@ -469,18 +481,21 @@ void Properties::ShowRigidBody(RigidBody* rigidBody)
 		return;
 
 	// REFLECT
-	EditorHelper::SetCharArray(&g_rigidBodyMass[0], rigidBody->GetMass());
-	EditorHelper::SetCharArray(&g_rigidBodyFriction[0], rigidBody->GetFriction());
-	EditorHelper::SetCharArray(&g_rigidBodyFrictionRolling[0], rigidBody->GetFrictionRolling());
-	EditorHelper::SetCharArray(&g_rigidBodyRestitution[0], rigidBody->GetRestitution());
-	g_rigidBodyUseGravity = rigidBody->GetUseGravity();
-	g_rigidBodyIsKinematic = rigidBody->GetIsKinematic();
-	g_rigidBodyFreezePosX = (bool)rigidBody->GetPositionLock().x;
-	g_rigidBodyFreezePosY = (bool)rigidBody->GetPositionLock().y;
-	g_rigidBodyFreezePosZ = (bool)rigidBody->GetPositionLock().z;
-	g_rigidBodyFreezeRotX = (bool)rigidBody->GetRotationLock().x;
-	g_rigidBodyFreezeRotY = (bool)rigidBody->GetRotationLock().y;
-	g_rigidBodyFreezeRotZ = (bool)rigidBody->GetRotationLock().z;
+	if (g_reflect || g_reflectOnce)
+	{
+		EditorHelper::SetCharArray(&g_rigidBodyMass[0], rigidBody->GetMass());
+		EditorHelper::SetCharArray(&g_rigidBodyFriction[0], rigidBody->GetFriction());
+		EditorHelper::SetCharArray(&g_rigidBodyFrictionRolling[0], rigidBody->GetFrictionRolling());
+		EditorHelper::SetCharArray(&g_rigidBodyRestitution[0], rigidBody->GetRestitution());
+		g_rigidBodyUseGravity = rigidBody->GetUseGravity();
+		g_rigidBodyIsKinematic = rigidBody->GetIsKinematic();
+		g_rigidBodyFreezePosX = (bool)rigidBody->GetPositionLock().x;
+		g_rigidBodyFreezePosY = (bool)rigidBody->GetPositionLock().y;
+		g_rigidBodyFreezePosZ = (bool)rigidBody->GetPositionLock().z;
+		g_rigidBodyFreezeRotX = (bool)rigidBody->GetRotationLock().x;
+		g_rigidBodyFreezeRotY = (bool)rigidBody->GetRotationLock().y;
+		g_rigidBodyFreezeRotZ = (bool)rigidBody->GetRotationLock().z;
+	}
 
 	float posX = 150.0f;
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
@@ -532,22 +547,25 @@ void Properties::ShowRigidBody(RigidBody* rigidBody)
 	COMPONENT_END;
 
 	// MAP
-	rigidBody->SetMass((float)atof(&g_rigidBodyMass[0]));
-	rigidBody->SetFriction((float)atof(&g_rigidBodyFriction[0]));
-	rigidBody->SetFrictionRolling((float)atof(&g_rigidBodyFrictionRolling[0]));
-	rigidBody->SetRestitution((float)atof(&g_rigidBodyRestitution[0]));
-	rigidBody->SetUseGravity(g_rigidBodyUseGravity);
-	rigidBody->SetIsKinematic(g_rigidBodyIsKinematic);
-	rigidBody->SetPositionLock(Vector3(
-		(float)g_rigidBodyFreezePosX,
-		(float)g_rigidBodyFreezePosY,
-		(float)g_rigidBodyFreezePosZ
-	));
-	rigidBody->SetRotationLock(Vector3(
-		(float)g_rigidBodyFreezeRotX,
-		(float)g_rigidBodyFreezeRotY,
-		(float)g_rigidBodyFreezeRotZ
-	));
+	if (!g_reflect)
+	{
+		rigidBody->SetMass((float)atof(&g_rigidBodyMass[0]));
+		rigidBody->SetFriction((float)atof(&g_rigidBodyFriction[0]));
+		rigidBody->SetFrictionRolling((float)atof(&g_rigidBodyFrictionRolling[0]));
+		rigidBody->SetRestitution((float)atof(&g_rigidBodyRestitution[0]));
+		rigidBody->SetUseGravity(g_rigidBodyUseGravity);
+		rigidBody->SetIsKinematic(g_rigidBodyIsKinematic);
+		rigidBody->SetPositionLock(Vector3(
+			(float)g_rigidBodyFreezePosX,
+			(float)g_rigidBodyFreezePosY,
+			(float)g_rigidBodyFreezePosZ
+		));
+		rigidBody->SetRotationLock(Vector3(
+			(float)g_rigidBodyFreezeRotX,
+			(float)g_rigidBodyFreezeRotY,
+			(float)g_rigidBodyFreezeRotZ
+		));
+	}
 }
 
 void Properties::ShowCollider(Collider* collider)
@@ -556,15 +574,18 @@ void Properties::ShowCollider(Collider* collider)
 		return;
 
 	// REFLECT
-	g_colShapeInt = (int)collider->GetShapeType();
-	g_colShape = g_colShapes[g_colShapeInt];
-	EditorHelper::SetCharArray(&g_colCenterX[0], collider->GetCenter().x);
-	EditorHelper::SetCharArray(&g_colCenterY[0], collider->GetCenter().y);
-	EditorHelper::SetCharArray(&g_colCenterZ[0], collider->GetCenter().z);
-	EditorHelper::SetCharArray(&g_colSizeX[0], collider->GetBoundingBox().x);
-	EditorHelper::SetCharArray(&g_colSizeY[0], collider->GetBoundingBox().y);
-	EditorHelper::SetCharArray(&g_colSizeZ[0], collider->GetBoundingBox().z);
-	g_colOptimize = collider->GetOptimize();
+	if (g_reflect || g_reflectOnce)
+	{
+		g_colShapeInt = (int)collider->GetShapeType();
+		g_colShape = g_colShapes[g_colShapeInt];
+		EditorHelper::SetCharArray(&g_colCenterX[0], collider->GetCenter().x);
+		EditorHelper::SetCharArray(&g_colCenterY[0], collider->GetCenter().y);
+		EditorHelper::SetCharArray(&g_colCenterZ[0], collider->GetCenter().z);
+		EditorHelper::SetCharArray(&g_colSizeX[0], collider->GetBoundingBox().x);
+		EditorHelper::SetCharArray(&g_colSizeY[0], collider->GetBoundingBox().y);
+		EditorHelper::SetCharArray(&g_colSizeZ[0], collider->GetBoundingBox().z);
+		g_colOptimize = collider->GetOptimize();
+	}
 
 	float posX = 90.0f;
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
@@ -619,19 +640,22 @@ void Properties::ShowCollider(Collider* collider)
 	COMPONENT_END;
 
 	// MAP
-	collider->SetShapeType((ColliderShape)g_colShapeInt);
-	collider->SetCenter(Vector3(
-		(float)atof(&g_colCenterX[0]),
-		(float)atof(&g_colCenterY[0]),
-		(float)atof(&g_colCenterZ[0])
-	));
+	if (!g_reflect)
+	{
+		collider->SetShapeType((ColliderShape)g_colShapeInt);
+		collider->SetCenter(Vector3(
+			(float)atof(&g_colCenterX[0]),
+			(float)atof(&g_colCenterY[0]),
+			(float)atof(&g_colCenterZ[0])
+		));
 
-	collider->SetBoundingBox(Vector3(
-		(float)atof(&g_colSizeX[0]),
-		(float)atof(&g_colSizeY[0]),
-		(float)atof(&g_colSizeZ[0])
-	));
-	collider->SetOptimize(g_colOptimize);
+		collider->SetBoundingBox(Vector3(
+			(float)atof(&g_colSizeX[0]),
+			(float)atof(&g_colSizeY[0]),
+			(float)atof(&g_colSizeZ[0])
+		));
+		collider->SetOptimize(g_colOptimize);
+	}
 }
 
 void Properties::ShowConstraint(Constraint* collider)
@@ -654,7 +678,6 @@ void Properties::ShowMaterial(Material* material)
 	if (!material->IsEditable())
 		return;
 
-	// REFLECT
 	auto texAlbedo		= material->GetTextureByType(TextureType_Albedo).lock();
 	auto texRoughness	= material->GetTextureByType(TextureType_Roughness).lock();
 	auto texMetallic	= material->GetTextureByType(TextureType_Metallic).lock();
@@ -662,15 +685,20 @@ void Properties::ShowMaterial(Material* material)
 	auto texHeight		= material->GetTextureByType(TextureType_Height).lock();
 	auto texOcclusion	= material->GetTextureByType(TextureType_Occlusion).lock();
 	auto texMask		= material->GetTextureByType(TextureType_Mask).lock();
-	g_materialRoughness = material->GetRoughnessMultiplier();
-	g_materialMetallic	= material->GetMetallicMultiplier();
-	g_materialNormal	= material->GetNormalMultiplier();
-	g_materialHeight	= material->GetHeightMultiplier();
-	g_materialButtonColorPicker->SetColor(material->GetColorAlbedo());
-	EditorHelper::SetCharArray(&g_matTilingX[0], material->GetTiling().x);
-	EditorHelper::SetCharArray(&g_matTilingY[0], material->GetTiling().y);
-	EditorHelper::SetCharArray(&g_matOffsetX[0], material->GetOffset().x);
-	EditorHelper::SetCharArray(&g_matOffsetY[0], material->GetOffset().y);
+
+	// REFLECT
+	if (g_reflect || g_reflectOnce)
+	{
+		g_materialRoughness = material->GetRoughnessMultiplier();
+		g_materialMetallic	= material->GetMetallicMultiplier();
+		g_materialNormal	= material->GetNormalMultiplier();
+		g_materialHeight	= material->GetHeightMultiplier();
+		g_materialButtonColorPicker->SetColor(material->GetColorAlbedo());
+		EditorHelper::SetCharArray(&g_matTilingX[0], material->GetTiling().x);
+		EditorHelper::SetCharArray(&g_matTilingY[0], material->GetTiling().y);
+		EditorHelper::SetCharArray(&g_matOffsetX[0], material->GetOffset().x);
+		EditorHelper::SetCharArray(&g_matOffsetY[0], material->GetOffset().y);
+	}
 
 	float posX = 100.0f;
 
@@ -735,13 +763,16 @@ void Properties::ShowMaterial(Material* material)
 	COMPONENT_END;
 
 	// MAP
-	material->SetColorAlbedo(g_materialButtonColorPicker->GetColor());
-	material->SetRoughnessMultiplier(g_materialRoughness);
-	material->SetMetallicMultiplier(g_materialMetallic);
-	material->SetNormalMultiplier(g_materialNormal);
-	material->SetHeightMultiplier(g_materialHeight);
-	material->SetTiling(Vector2((float)atof(&g_matTilingX[0]), (float)atof(&g_matTilingY[0])));
-	material->SetOffset(Vector2((float)atof(&g_matOffsetX[0]), (float)atof(&g_matOffsetY[0])));
+	if (!g_reflect)
+	{
+		material->SetColorAlbedo(g_materialButtonColorPicker->GetColor());
+		material->SetRoughnessMultiplier(g_materialRoughness);
+		material->SetMetallicMultiplier(g_materialMetallic);
+		material->SetNormalMultiplier(g_materialNormal);
+		material->SetHeightMultiplier(g_materialHeight);
+		material->SetTiling(Vector2((float)atof(&g_matTilingX[0]), (float)atof(&g_matTilingY[0])));
+		material->SetOffset(Vector2((float)atof(&g_matOffsetX[0]), (float)atof(&g_matOffsetY[0])));
+	}
 }
 
 void Properties::ShowCamera(Camera* camera)
@@ -750,12 +781,15 @@ void Properties::ShowCamera(Camera* camera)
 		return;
 
 	// REFLECT
-	g_cameraButtonColorPicker->SetColor(camera->GetClearColor());
-	g_cameraProjectionInt	= (int)camera->GetProjection();
-	g_cameraProjection		= g_cameraProjections[g_cameraProjectionInt];
-	g_cameraFOV				= camera->GetFOV_Horizontal_Deg();
-	EditorHelper::SetCharArray(&g_cameraNear[0], camera->GetNearPlane());
-	EditorHelper::SetCharArray(&g_cameraFar[0], camera->GetFarPlane());
+	if (g_reflect || g_reflectOnce)
+	{
+		g_cameraButtonColorPicker->SetColor(camera->GetClearColor());
+		g_cameraProjectionInt	= (int)camera->GetProjection();
+		g_cameraProjection		= g_cameraProjections[g_cameraProjectionInt];
+		g_cameraFOV				= camera->GetFOV_Horizontal_Deg();
+		EditorHelper::SetCharArray(&g_cameraNear[0], camera->GetNearPlane());
+		EditorHelper::SetCharArray(&g_cameraFar[0], camera->GetFarPlane());
+	}
 
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 	float posX = 150.0f;
@@ -798,11 +832,14 @@ void Properties::ShowCamera(Camera* camera)
 	COMPONENT_END;
 
 	// MAP
-	camera->SetClearColor(g_cameraButtonColorPicker->GetColor());
-	camera->SetProjection((ProjectionType)g_cameraProjectionInt);
-	camera->SetFOV_Horizontal_Deg(g_cameraFOV);
-	camera->SetNearPlane((float)atof(&g_cameraNear[0]));
-	camera->SetFarPlane((float)atof(&g_cameraFar[0]));
+	if (!g_reflect)
+	{
+		camera->SetClearColor(g_cameraButtonColorPicker->GetColor());
+		camera->SetProjection((ProjectionType)g_cameraProjectionInt);
+		camera->SetFOV_Horizontal_Deg(g_cameraFOV);
+		camera->SetNearPlane((float)atof(&g_cameraNear[0]));
+		camera->SetFarPlane((float)atof(&g_cameraFar[0]));
+		}
 }
 
 void Properties::ShowAudioSource(AudioSource* audioSource)
