@@ -68,7 +68,7 @@ namespace Directus
 		//= SHADER ===========================================================================
 		void AcquireShader();
 		std::weak_ptr<ShaderVariation> FindMatchingShader(unsigned long shaderFlags);
-		std::weak_ptr<ShaderVariation> CreateShaderBasedOnMaterial(unsigned long shaderFlags);
+		std::weak_ptr<ShaderVariation> GetOrCreateShader(unsigned long shaderFlags);
 		std::weak_ptr<ShaderVariation> GetShader() { return m_shader; }
 		bool HasShader() { return GetShader().expired() ? false : true; }
 		void** GetShaderResource(TextureType type);

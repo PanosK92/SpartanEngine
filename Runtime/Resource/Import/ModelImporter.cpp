@@ -121,7 +121,7 @@ namespace Directus
 			return false;
 		}
 
-		// Map all the nodes as GameObjects while mentaining hierarchical relationships
+		// Map all the nodes as GameObjects while maintaining hierarchical relationships
 		// as well as their properties (meshes, materials, textures etc.).
 		ReadNodeHierarchy(model, scene, scene->mRootNode);
 

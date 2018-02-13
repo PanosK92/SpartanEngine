@@ -116,15 +116,12 @@ namespace Directus
 		// Create a file path (in the project directory) for this standard mesh
 		string projectStandardAssetDir = GetContext()->GetSubsystem<ResourceManager>()->GetProjectStandardAssetsDirectory();
 		FileSystem::CreateDirectory_(projectStandardAssetDir);
-		string meshFilePath = projectStandardAssetDir + meshName + MESH_EXTENSION;
 
 		// Create a mesh
 		auto mesh = make_shared<Mesh>(GetContext());
 		mesh->SetVertices(vertices);
 		mesh->SetIndices(indices);
 		mesh->SetResourceName(meshName);
-		mesh->SetResourceFilePath(meshFilePath);	
-		mesh->SaveToFile(meshFilePath);
 		mesh->Construct();
 
 		// Cache it and keep a reference
