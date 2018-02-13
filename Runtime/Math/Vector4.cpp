@@ -33,6 +33,7 @@ namespace Directus
 {
 	namespace Math
 	{
+		const Vector4 Vector4::One(1.0f, 1.0f, 1.0f, 1.0f);
 		const Vector4 Vector4::Zero(0.0f, 0.0f, 0.0f, 0.0f);
 
 		Vector4::Vector4(const Vector3& value, float w)

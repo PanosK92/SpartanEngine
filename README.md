@@ -4,6 +4,7 @@ The source code is clean, modern and tackles a lot of aspects of engine developm
 
 Note: This project is in an early development stage and there is a lot experimentation going on, regarding what works best.
 As a result, no design decision is set in stone and it will take a while until the engine is ready to produce games.
+NOte #2: High quality code-base is prioritized over writing code fast to get things running.
 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Runtime/Assets/screenshot-v0.3_preview.jpg)
 
