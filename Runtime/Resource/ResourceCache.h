@@ -64,11 +64,8 @@ namespace Directus
 			{
 				for (const auto& resource : resourceGroup.second)
 				{
-					if (resource->GetResourceFilePath() == NOT_ASSIGNED)
-					{
-						LOG_WARNING("ResourceCache::SaveResourcesToFiles(): Skipping resource which has no file path");
+					if (!resource->HasFilePath())
 						continue;
-					}
 
 					resource->SaveToFile(resource->GetResourceFilePath());
 				}

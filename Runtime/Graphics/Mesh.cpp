@@ -86,6 +86,7 @@ namespace Directus
 		file->Read(&m_indices);
 		file->Read(&m_modelName);
 		file->Read(&m_resourceName);
+		file->Read(&m_resourceFilePath);
 		
 		Construct();
 		ClearGeometry();
@@ -108,6 +109,7 @@ namespace Directus
 		file->Write(m_indices);
 		file->Write(m_modelName);
 		file->Write(m_resourceName);
+		file->Write(m_resourceFilePath);
 
 		return true;
 	}

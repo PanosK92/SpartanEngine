@@ -41,7 +41,8 @@ namespace Directus
 	enum FileStreamMode
 	{
 		FileStreamMode_Read,
-		FileStreamMode_Write
+		FileStreamMode_Write,
+		FileStreamMode_Write_AppendStart
 	};
 
 	class FileStream
