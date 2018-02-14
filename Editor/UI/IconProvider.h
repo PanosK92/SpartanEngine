@@ -21,6 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= INCLUDES ====
+#include <string>
+//===============
+
 enum IconProvider_Icon
 {
 	Icon_Component_Options,
@@ -52,25 +56,34 @@ namespace Directus { class Context; }
 // An image
 #define ICON_PROVIDER_IMAGE(icon_enum, size)	\
 	ImGui::Image(								\
-	IconProvider::GetIcon(icon_enum),			\
+	IconProvider::GetShaderResource(icon_enum),	\
 	ImVec2(size, size),							\
 	ImVec2(0, 0),								\
 	ImVec2(1, 1),								\
 	ImColor(255, 255, 255, 255),				\
 	ImColor(255, 255, 255, 0))					\
 
-// An image button
-#define ICON_PROVIDER_IMAGE_BUTTON(icon_enum, size) ImGui::ImageButton(ICON_PROVIDER(icon_enum), ImVec2(size, size))
-// An image button with a specific ID
-#define ICON_PROVIDER_IMAGE_BUTTON_ID(id, icon_enum, size) IconProvider::ImageButtonID(id, icon_enum, size)
-// An icon shader resource pointer
-#define ICON_PROVIDER(icon_enum) IconProvider::GetIcon(icon_enum)
+// An image button by enum
+#define ICON_PROVIDER_IMAGE_BUTTON_ENUM(icon_enum, size) ImGui::ImageButton(ICON_PROVIDER(icon_enum), ImVec2(size, size))
+// An image button by enum, with a specific ID
+#define ICON_PROVIDER_IMAGE_BUTTON_ENUM_ID(id, icon_enum, size) IconProvider::ImageButton_enum_id(id, icon_enum, size)
+// An image button by filepath
+#define ICON_PROVIDER_IMAGE_BUTTON_FILEPATH(filepath, size) ImGui::ImageButton(ICON_PROVIDER(filepath), ImVec2(size, size))
+// An icon shader resource pointer by enum or filePath
+#define ICON_PROVIDER(variant) IconProvider::GetShaderResource(variant)
 
 class IconProvider
 {
 public:
 	static void Initialize(Directus::Context* context);
-	static void* GetIcon(IconProvider_Icon icon);
 
-	static bool ImageButtonID(const char* id, IconProvider_Icon icon, float size);
+	//= SHADER RESOURCE ========================================
+	static void* GetShaderResource(IconProvider_Icon icon);
+	static void* GetShaderResource(const std::string& filePath);
+	//==========================================================
+
+	//= ImGui::ImageButton =============================================================
+	static bool ImageButton_enum_id(const char* id, IconProvider_Icon icon, float size);
+	static bool ImageButton_filepath(const std::string& filepath, float size);
+	//==================================================================================
 };

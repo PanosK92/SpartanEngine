@@ -102,7 +102,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 	{
 		// ICON
 		ImGui::PushID(index);
-		if (ICON_PROVIDER_IMAGE_BUTTON(item.second, m_itemSize))
+		if (ICON_PROVIDER_IMAGE_BUTTON_FILEPATH(item.first, m_itemSize))
 		{
 			if (m_pathClicked != item.first) // Single click
 			{

@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Graphics/Texture.h"
 #include "Resource/ResourceManager.h"
 #include "Core/Engine.h"
+#include "FileSystem/FileSystem.h"
 //===================================
 
 namespace Directus
@@ -72,9 +73,14 @@ public:
 
 	static std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context)
 	{
-		// Try to get a cached one
+		// Validate file path
+		if (!Directus::FileSystem::IsSupportedImageFile(filePath))
+			return std::weak_ptr<Directus::Texture>();
+
+		// Check if this texture is already cached, if so return the cached one
 		auto resourceManager = context->GetSubsystem<Directus::ResourceManager>();
-		if (auto cached = resourceManager->GetResourceByPath<Directus::Texture>(filePath).lock())
+		auto texName = Directus::FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
+		if (auto cached = resourceManager->GetResourceByName<Directus::Texture>(texName).lock())
 		{			
 			return cached;
 		}
@@ -83,10 +89,9 @@ public:
 		auto texture = std::make_shared<Directus::Texture>(context);
 		texture->LoadFromFile(filePath);
 		return texture->Cache<Directus::Texture>();
-
 	}
 
-	// Whether the engine sould update & render or not
+	// Whether the engine should update & render or not
 	static void SetEngineUpdate(bool update)
 	{
 		auto flags = g_engine->EngineMode_GetAll();
