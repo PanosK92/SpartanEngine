@@ -21,11 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================
 #include "IconProvider.h"
-#include <map>
 #include "Graphics/Texture.h"
-#include "Logging/Log.h"
-#include "imgui/imgui.h"
+#include "ImGui/imgui.h"
 #include "EditorHelper.h"
+#include "Threading/Threading.h"
 //===========================
 
 //= NAMESPACES ==========
@@ -33,68 +32,86 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-static map<IconProvider_Icon, unique_ptr<Texture>> g_icons;
+vector<IconProviderImage> IconProvider::m_icons;
 static Context* g_context;
+static int g_id = -1;
 
 void IconProvider::Initialize(Context* context)
 {
 	g_context = context;
 
-	auto LoadIcon = [context](IconProvider_Icon icon, char* filePath)
+	LoadAsync(Icon_Component_Options,		"Standard Assets\\Editor\\component_ComponentOptions.png");
+	LoadAsync(Icon_Component_AudioListener,	"Standard Assets\\Editor\\component_AudioListener.png");
+	LoadAsync(Icon_Component_AudioSource,	"Standard Assets\\Editor\\component_AudioSource.png");
+	LoadAsync(Icon_Component_Camera,		"Standard Assets\\Editor\\component_Camera.png");
+	LoadAsync(Icon_Component_Collider,		"Standard Assets\\Editor\\component_Collider.png");
+	LoadAsync(Icon_Component_Light,			"Standard Assets\\Editor\\component_Light.png");
+	LoadAsync(Icon_Component_Material,		"Standard Assets\\Editor\\component_Material.png");
+	LoadAsync(Icon_Component_MeshCollider,	"Standard Assets\\Editor\\component_MeshCollider.png");
+	LoadAsync(Icon_Component_MeshFilter,	"Standard Assets\\Editor\\component_MeshFilter.png");
+	LoadAsync(Icon_Component_MeshRenderer,	"Standard Assets\\Editor\\component_MeshRenderer.png");
+	LoadAsync(Icon_Component_RigidBody,		"Standard Assets\\Editor\\component_RigidBody.png");
+	LoadAsync(Icon_Component_Script,		"Standard Assets\\Editor\\component_Script.png");
+	LoadAsync(Icon_Component_Transform,		"Standard Assets\\Editor\\component_Transform.png");
+	LoadAsync(Icon_Console_Info,			"Standard Assets\\Editor\\console_info.png");
+	LoadAsync(Icon_Console_Warning,			"Standard Assets\\Editor\\console_warning.png");
+	LoadAsync(Icon_Console_Error,			"Standard Assets\\Editor\\console_error.png");
+	LoadAsync(Icon_File_Default,			"Standard Assets\\Editor\\file.png");
+	LoadAsync(Icon_Folder,					"Standard Assets\\Editor\\folder.png");
+	LoadAsync(Icon_File_Audio,				"Standard Assets\\Editor\\audio.png");
+	LoadAsync(Icon_File_Model,				"Standard Assets\\Editor\\model.png");
+	LoadAsync(Icon_File_Scene,				"Standard Assets\\Editor\\scene.png");
+	LoadAsync(Icon_Button_Play,				"Standard Assets\\Editor\\button_play.png");
+}
+
+void* IconProvider::GetShaderResourceByEnum(IconProvider_Icon iconEnum)
+{
+	for (const auto& icon : m_icons)
 	{
-		g_icons[icon] = make_unique<Texture>(context);
-		if (!g_icons[icon]->LoadFromFile(filePath))
+		if (icon.texture->GetAsyncState() != Async_Completed)
+			continue;
+
+		if (icon.iconEnum == iconEnum)
 		{
-			LOG_ERROR("IconProvider: Failed to load " + string(filePath));
+			return icon.texture->GetShaderResource();
 		}
-	};
-
-	LoadIcon(Icon_Component_Options,		"Standard Assets\\Editor\\component_ComponentOptions.png");
-	LoadIcon(Icon_Component_AudioListener,	"Standard Assets\\Editor\\component_AudioListener.png");
-	LoadIcon(Icon_Component_AudioSource,	"Standard Assets\\Editor\\component_AudioSource.png");
-	LoadIcon(Icon_Component_Camera,			"Standard Assets\\Editor\\component_Camera.png");
-	LoadIcon(Icon_Component_Collider,		"Standard Assets\\Editor\\component_Collider.png");
-	LoadIcon(Icon_Component_Light,			"Standard Assets\\Editor\\component_Light.png");
-	LoadIcon(Icon_Component_Material,		"Standard Assets\\Editor\\component_Material.png");
-	LoadIcon(Icon_Component_MeshCollider,	"Standard Assets\\Editor\\component_MeshCollider.png");
-	LoadIcon(Icon_Component_MeshFilter,		"Standard Assets\\Editor\\component_MeshFilter.png");
-	LoadIcon(Icon_Component_MeshRenderer,	"Standard Assets\\Editor\\component_MeshRenderer.png");
-	LoadIcon(Icon_Component_RigidBody,		"Standard Assets\\Editor\\component_RigidBody.png");
-	LoadIcon(Icon_Component_Script,			"Standard Assets\\Editor\\component_Script.png");
-	LoadIcon(Icon_Component_Transform,		"Standard Assets\\Editor\\component_Transform.png");
-	LoadIcon(Icon_Console_Info,				"Standard Assets\\Editor\\console_info.png");
-	LoadIcon(Icon_Console_Warning,			"Standard Assets\\Editor\\console_warning.png");
-	LoadIcon(Icon_Console_Error,			"Standard Assets\\Editor\\console_error.png");
-	LoadIcon(Icon_File_Default,				"Standard Assets\\Editor\\file.png");
-	LoadIcon(Icon_Folder,					"Standard Assets\\Editor\\folder.png");
-	LoadIcon(Icon_File_Audio,				"Standard Assets\\Editor\\audio.png");
-	LoadIcon(Icon_File_Model,				"Standard Assets\\Editor\\model.png");
-	LoadIcon(Icon_File_Scene,				"Standard Assets\\Editor\\scene.png");
-	LoadIcon(Icon_Button_Play,				"Standard Assets\\Editor\\button_play.png");
-}
-
-void* IconProvider::GetShaderResource(IconProvider_Icon icon)
-{
-	if (g_icons.find(icon) == g_icons.end())
-		return nullptr;
-
-	return (void*)g_icons[icon]->GetShaderResource();
-}
-
-void* IconProvider::GetShaderResource(const std::string& filePath)
-{
-	if (auto texture = EditorHelper::GetOrLoadTexture(filePath, g_context).lock())
-	{
-		return texture->GetShaderResource();
 	}
 
 	return nullptr;
 }
 
-bool IconProvider::ImageButton_enum_id(const char* id, IconProvider_Icon icon, float size)
+void* IconProvider::GetShaderResourceByFilePath(const std::string& filePath)
+{
+	// Validate file path
+	if (FileSystem::IsDirectory(filePath))
+		return nullptr;
+	if (!FileSystem::IsSupportedImageFile(filePath) && !FileSystem::IsEngineTextureFile(filePath))
+		return nullptr;
+
+	if (!IconExistsByFilePath(filePath))
+	{
+		LoadAsync(Icon_Custom, filePath);
+		return nullptr;
+	}
+
+	for (const auto& icon : m_icons)
+	{
+		if (icon.filePath == filePath)
+		{
+			if (icon.texture->GetAsyncState() == Async_Completed)
+			{
+				return icon.texture->GetShaderResource();
+			}
+		}	
+	}
+
+	return nullptr;
+}
+
+bool IconProvider::ImageButton_enum_id(const char* id, IconProvider_Icon iconEnum, float size)
 {
 	ImGui::PushID(id);
-	bool pressed = ImGui::ImageButton(GetShaderResource(icon),ImVec2(size, size));
+	bool pressed = ImGui::ImageButton(GetShaderResourceByEnum(iconEnum), ImVec2(size, size));
 	ImGui::PopID();
 
 	return pressed;
@@ -102,7 +119,26 @@ bool IconProvider::ImageButton_enum_id(const char* id, IconProvider_Icon icon, f
 
 bool IconProvider::ImageButton_filepath(const std::string& filepath, float size)
 {
-	bool pressed = ImGui::ImageButton(GetShaderResource(filepath), ImVec2(size, size));
+	bool pressed = ImGui::ImageButton(GetShaderResourceByFilePath(filepath), ImVec2(size, size));
 
 	return pressed;
+}
+
+void IconProvider::LoadAsync(IconProvider_Icon iconEnum, const string& filePath)
+{
+	if (auto texture = EditorHelper::GetOrLoadTexture(filePath, g_context, false).lock())
+	{
+		m_icons.emplace_back(iconEnum, texture.get(), filePath);
+	}
+}
+
+bool IconProvider::IconExistsByFilePath(const std::string& filePath)
+{
+	for (const auto& icon : m_icons)
+	{
+		if (icon.filePath == filePath)
+			return true;
+	}
+
+	return false;
 }

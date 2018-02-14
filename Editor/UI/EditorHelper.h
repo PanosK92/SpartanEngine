@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Resource/ResourceManager.h"
 #include "Core/Engine.h"
 #include "FileSystem/FileSystem.h"
+#include "Threading/Threading.h"
+
 //===================================
 
 namespace Directus
@@ -71,23 +73,41 @@ public:
 	static Directus::Math::Vector2 ToVector2(const ImVec2& v)	{ return Directus::Math::Vector2{ v.x,v.y }; }
 	//=================================================================================================================
 
-	static std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context)
+	static std::weak_ptr<Directus::Texture> GetOrLoadTexture(const std::string& filePath, Directus::Context* context, bool async = false)
 	{
 		// Validate file path
-		if (!Directus::FileSystem::IsSupportedImageFile(filePath))
+		if (Directus::FileSystem::IsDirectory(filePath))
+			return std::weak_ptr<Directus::Texture>();
+		if (!Directus::FileSystem::IsSupportedImageFile(filePath) && !Directus::FileSystem::IsEngineTextureFile(filePath))
 			return std::weak_ptr<Directus::Texture>();
 
+		// Compute some useful information
+		auto path = Directus::FileSystem::GetRelativeFilePath(filePath);
+		auto name = Directus::FileSystem::GetFileNameNoExtensionFromFilePath(path);
+
 		// Check if this texture is already cached, if so return the cached one
-		auto resourceManager = context->GetSubsystem<Directus::ResourceManager>();
-		auto texName = Directus::FileSystem::GetFileNameNoExtensionFromFilePath(filePath);
-		if (auto cached = resourceManager->GetResourceByName<Directus::Texture>(texName).lock())
+		auto resourceManager = context->GetSubsystem<Directus::ResourceManager>();	
+		if (auto cached = resourceManager->GetResourceByName<Directus::Texture>(name).lock())
 		{			
 			return cached;
 		}
 
 		// Since the texture is not cached, load it and returned a cached ref
 		auto texture = std::make_shared<Directus::Texture>(context);
-		texture->LoadFromFile(filePath);
+		texture->SetResourceName(name);
+		texture->SetResourceFilePath(path);
+		if (!async)
+		{
+			texture->LoadFromFile(path);
+		}
+		else
+		{
+			context->GetSubsystem<Directus::Threading>()->AddTask([texture, filePath]()
+			{
+				texture->LoadFromFile(filePath);
+			});
+		}
+
 		return texture->Cache<Directus::Texture>();
 	}
 

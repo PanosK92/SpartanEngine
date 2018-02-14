@@ -19,11 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES ===========================================
 #include "../Resource/IResource.h"
-#include "../Threading/Threading.h"
 #include "../Graphics/Texture.h"
 #include "../Font/Font.h"
 #include "../Graphics/Animation.h"
@@ -89,34 +86,6 @@ weak_ptr<T> IResource::Cache()
 	}
 
 	return resource;
-}
-
-void IResource::SaveToFileAsync(const string& filePath)
-{
-	if (!m_context)
-	{
-		LOG_ERROR("Resource::SaveToFileAsync(): Context is null, can't execute function");
-		return;
-	}
-
-	m_context->GetSubsystem<Threading>()->AddTask([this, &filePath]()
-	{
-		SaveToFile(filePath);
-	});
-}
-
-void IResource::LoadFromFileAsync(const string& filePath)
-{
-	if (!m_context)
-	{
-		LOG_ERROR("Resource::LoadFromFileAsync(): Context is null, can't execute function");
-		return;
-	}
-
-	m_context->GetSubsystem<Threading>()->AddTask([this, &filePath]()
-	{
-		LoadFromFile(filePath);
-	});
 }
 
 string IResource::GetResourceTypeStr()
