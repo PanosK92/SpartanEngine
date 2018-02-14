@@ -62,9 +62,9 @@ Console::Console()
 void Console::Update()
 {
 	if (ImGui::Button("Clear"))										{ Clear(); }														ImGui::SameLine();
-	if (ICON_PROVIDER_IMAGE_BUTTON(Icon_Console_Info, 15.0f))		{ m_showInfo		= !m_showInfo;		g_scrollToBottom = true; }	ImGui::SameLine();
-	if (ICON_PROVIDER_IMAGE_BUTTON(Icon_Console_Warning,	15.0f))	{ m_showWarnings	= !m_showWarnings;	g_scrollToBottom = true;}	ImGui::SameLine();
-	if (ICON_PROVIDER_IMAGE_BUTTON(Icon_Console_Error,		15.0f))	{ m_showErrors		= !m_showErrors;	g_scrollToBottom = true;}	ImGui::SameLine();
+	if (ICON_PROVIDER_IMAGE_BUTTON_ENUM(Icon_Console_Info, 15.0f))		{ m_showInfo		= !m_showInfo;		g_scrollToBottom = true; }	ImGui::SameLine();
+	if (ICON_PROVIDER_IMAGE_BUTTON_ENUM(Icon_Console_Warning,	15.0f))	{ m_showWarnings	= !m_showWarnings;	g_scrollToBottom = true;}	ImGui::SameLine();
+	if (ICON_PROVIDER_IMAGE_BUTTON_ENUM(Icon_Console_Error,		15.0f))	{ m_showErrors		= !m_showErrors;	g_scrollToBottom = true;}	ImGui::SameLine();
 
 	g_logFilter.Draw("Filter", -100.0f);
 	ImGui::Separator();

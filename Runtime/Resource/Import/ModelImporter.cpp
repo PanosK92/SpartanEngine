@@ -414,7 +414,11 @@ namespace Directus
 			{
 				if (assimpMaterial->GetTexture(assimpTex, 0, &texturePath, nullptr, nullptr, nullptr, nullptr, nullptr) == AI_SUCCESS)
 				{
-					model->AddTexture(material, engineTex, ValidateTexturePath(texturePath.data));
+					auto deducedPath = ValidateTexturePath(texturePath.data);
+					if (FileSystem::IsSupportedImageFile(deducedPath))
+					{
+						model->AddTexture(material, engineTex, ValidateTexturePath(texturePath.data));
+					}
 
 					if (assimpTex == aiTextureType_DIFFUSE)
 					{

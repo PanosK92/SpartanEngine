@@ -82,11 +82,14 @@ namespace Directus
 		return true;
 	}
 
-	bool Texture::LoadFromFile(const string& filePath)
+	bool Texture::LoadFromFile(const string& rawFilePath)
 	{
 		Stopwatch timer;
 		bool loaded = false;
 		SetAsyncState(Async_Started);
+
+		// Make the path, relative to the engine
+		auto filePath = FileSystem::GetRelativeFilePath(rawFilePath);
 
 		// engine format (binary)
 		if (FileSystem::IsEngineTextureFile(filePath)) 

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Graphics/Texture.h"
 #include "Logging/Log.h"
 #include "imgui/imgui.h"
+#include "EditorHelper.h"
 //===========================
 
 //= NAMESPACES ==========
@@ -33,9 +34,12 @@ using namespace Directus;
 //=======================
 
 static map<IconProvider_Icon, unique_ptr<Texture>> g_icons;
+static Context* g_context;
 
 void IconProvider::Initialize(Context* context)
 {
+	g_context = context;
+
 	auto LoadIcon = [context](IconProvider_Icon icon, char* filePath)
 	{
 		g_icons[icon] = make_unique<Texture>(context);
@@ -69,7 +73,7 @@ void IconProvider::Initialize(Context* context)
 	LoadIcon(Icon_Button_Play,				"Standard Assets\\Editor\\button_play.png");
 }
 
-void* IconProvider::GetIcon(IconProvider_Icon icon)
+void* IconProvider::GetShaderResource(IconProvider_Icon icon)
 {
 	if (g_icons.find(icon) == g_icons.end())
 		return nullptr;
@@ -77,11 +81,28 @@ void* IconProvider::GetIcon(IconProvider_Icon icon)
 	return (void*)g_icons[icon]->GetShaderResource();
 }
 
-bool IconProvider::ImageButtonID(const char* id, IconProvider_Icon icon, float size)
+void* IconProvider::GetShaderResource(const std::string& filePath)
+{
+	if (auto texture = EditorHelper::GetOrLoadTexture(filePath, g_context).lock())
+	{
+		return texture->GetShaderResource();
+	}
+
+	return nullptr;
+}
+
+bool IconProvider::ImageButton_enum_id(const char* id, IconProvider_Icon icon, float size)
 {
 	ImGui::PushID(id);
-	bool pressed = ImGui::ImageButton(GetIcon(icon),ImVec2(size, size));
+	bool pressed = ImGui::ImageButton(GetShaderResource(icon),ImVec2(size, size));
 	ImGui::PopID();
+
+	return pressed;
+}
+
+bool IconProvider::ImageButton_filepath(const std::string& filepath, float size)
+{
+	bool pressed = ImGui::ImageButton(GetShaderResource(filepath), ImVec2(size, size));
 
 	return pressed;
 }
