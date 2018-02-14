@@ -84,28 +84,49 @@ void* IconProvider::GetShaderResourceByFilePath(const std::string& filePath)
 {
 	// Validate file path
 	if (FileSystem::IsDirectory(filePath))
-		return nullptr;
-	if (!FileSystem::IsSupportedImageFile(filePath) && !FileSystem::IsEngineTextureFile(filePath))
-		return nullptr;
+		return GetShaderResourceByEnum(Icon_Folder);
 
-	if (!IconExistsByFilePath(filePath))
+	// Texture
+	if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
 	{
-		LoadAsync(Icon_Custom, filePath);
-		return nullptr;
-	}
-
-	for (const auto& icon : m_icons)
-	{
-		if (icon.filePath == filePath)
+		if (!IconExistsByFilePath(filePath))
 		{
-			if (icon.texture->GetAsyncState() == Async_Completed)
+			LoadAsync(Icon_Custom, filePath);
+			return nullptr;
+		}
+
+		for (const auto& icon : m_icons)
+		{
+			if (icon.filePath == filePath)
 			{
-				return icon.texture->GetShaderResource();
-			}
-		}	
+				if (icon.texture->GetAsyncState() == Async_Completed)
+				{
+					return icon.texture->GetShaderResource();
+				}
+			}	
+		}
 	}
 
-	return nullptr;
+	// Model
+	if (FileSystem::IsSupportedModelFile(filePath))
+	{
+		return GetShaderResourceByEnum(Icon_File_Model);
+	}
+
+	// Audio
+	if (FileSystem::IsSupportedAudioFile(filePath))
+	{
+		return GetShaderResourceByEnum(Icon_File_Audio);
+	}
+
+	// Scene
+	if (FileSystem::IsEngineSceneFile(filePath))
+	{
+		return GetShaderResourceByEnum(Icon_File_Scene);
+	}
+
+	// Default file
+	return GetShaderResourceByEnum(Icon_File_Default);
 }
 
 bool IconProvider::ImageButton_enum_id(const char* id, IconProvider_Icon iconEnum, float size)
