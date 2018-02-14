@@ -248,6 +248,7 @@ namespace Directus
 		auto texture = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Texture>(texName).lock();
 		if (texture)
 		{
+			texture->SetType(textureType); // if this texture was cached from the editor, it has no type, we have to set it
 			material.lock()->SetTexture(texture, false);
 		}
 		// If we didn't get a texture, it's not cached, hence we have to load it and cache it now
