@@ -52,14 +52,6 @@ namespace Directus
 		R_8_UNORM
 	};
 
-	enum TextureUsage
-	{
-		TextureUsage_Internal,
-		// When set as external, no shader resource will automatically created and
-		// no texture bits removed for memory. The creator has full control.
-		TextureUsage_External
-	};
-
 	class ENGINE_CLASS Texture : public IResource
 	{
 	public:
@@ -101,8 +93,6 @@ namespace Directus
 
 		void EnableMimaps(bool enable) { m_isUsingMipmaps = enable; }
 		bool IsUsingMimmaps() { return m_isUsingMipmaps; }
-
-		void SetUsage(TextureUsage use) { m_usage = use; }
 		//=======================================================================================================
 
 		//= TEXTURE BITS =========================================================
@@ -133,7 +123,6 @@ namespace Directus
 		bool LoadFromForeignFormat(const std::string& filePath);
 		TextureType TextureTypeFromString(const std::string& type);
 
-		TextureUsage m_usage = TextureUsage_Internal;
 		std::shared_ptr<D3D11Texture> m_textureAPI;
 		TextureFormat m_format = RGBA_8_UNORM;
 

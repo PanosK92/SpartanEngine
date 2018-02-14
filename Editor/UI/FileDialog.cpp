@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "FileDialog.h"
-#include "imgui/imgui.h"
+#include "ImGui/imgui.h"
 #include "FileSystem/FileSystem.h"
 #include "Logging/Log.h"
 #include "IconProvider.h"

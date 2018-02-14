@@ -109,23 +109,19 @@ namespace Directus
 			return false;
 		}
 
-		// Create shader resource only if this texture is intended for internal use (by the engine)
-		if (m_usage == TextureUsage_Internal)
+		// DDS textures load directly as a shader resource, no need to do it here
+		if (FileSystem::GetExtensionFromFilePath(filePath) != ".dds")
 		{
-			// DDS textures load directly as a shader resource, no need to do it here
-			if (FileSystem::GetExtensionFromFilePath(filePath) != ".dds")
+			if (CreateShaderResource())
 			{
-				if (CreateShaderResource())
+				// If the texture was loaded from an image file, it's not 
+				// saved yet, hence we have to maintain it's texture bits.
+				// However, if the texture was deserialized (engine format) 
+				// then we no longer need the texture bits. 
+				// We free them here to free up some memory.
+				if (FileSystem::IsEngineTextureFile(filePath))
 				{
-					// If the texture was loaded from an image file, it's not 
-					// saved yet, hence we have to maintain it's texture bits.
-					// However, if the texture was deserialized (engine format) 
-					// then we no longer need the texture bits. 
-					// We free them here to free up some memory.
-					if (FileSystem::IsEngineTextureFile(filePath))
-					{
-						ClearTextureBits();
-					}
+					ClearTextureBits();
 				}
 			}
 		}

@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <thread>
 #include <mutex>
 #include <queue>
-#include "../Core/Subsystem.h"
+#include "../Core/SubSystem.h"
 //============================
 
 namespace Directus
@@ -76,7 +76,7 @@ namespace Directus
 		}
 
 	private:
-		int m_threadCount = 8;
+		int m_threadCount = 7;
 		std::vector<std::thread> m_threads;
 		std::queue<std::shared_ptr<Task>> m_tasks;
 		std::mutex m_tasksMutex;
