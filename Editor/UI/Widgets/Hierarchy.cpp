@@ -88,7 +88,7 @@ void Hierarchy::Tree_Show()
 	if (ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		// Dropping on the scene node should unparent the GameObject
-		auto drop = DragDrop::GetPayload(g_dragDrop_Type_GameObject);
+		auto drop = DragDrop::Get().GetPayload(g_dragDrop_Type_GameObject);
 		if (drop.type == g_dragDrop_Type_GameObject)
 		{
 			auto gameObjectID = (unsigned int)drop.data;
@@ -160,9 +160,9 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 	// Drag
 	g_payload.data = (char*)gameObjPtr->GetID();
 	g_payload.type = g_dragDrop_Type_GameObject;
-	DragDrop::SendPayload(g_payload);
+	DragDrop::Get().SendPayload(g_payload);
 	// Drop
-	auto drop = DragDrop::GetPayload(g_dragDrop_Type_GameObject);
+	auto drop = DragDrop::Get().GetPayload(g_dragDrop_Type_GameObject);
 	if (drop.type == g_dragDrop_Type_GameObject)
 	{
 		auto gameObjectID = (unsigned int)drop.data;

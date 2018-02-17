@@ -124,7 +124,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 		{
 			g_dragDropPayload.type = g_dragDrop_Type_Texture;
 			g_dragDropPayload.data = entry.first.c_str();
-			DragDrop::SendPayload(g_dragDropPayload);
+			DragDrop::Get().SendPayload(g_dragDropPayload, entry.second.texture->GetShaderResource());
 		}
 		
 		ImGui::PopID();
