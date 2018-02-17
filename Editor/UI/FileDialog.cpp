@@ -127,13 +127,15 @@ bool FileDialog::Show(bool* isVisible, string* path)
 				if (FileSystem::IsSupportedModelFile(entry.first))
 				{
 					g_dragDropPayload.type = g_dragDrop_Type_Model;
+					g_dragDropPayload.data = entry.first.c_str();
+					DragDrop::Get().DragPayload(g_dragDropPayload, entry.second.texture->GetShaderResource());				
 				}
 				else if (FileSystem::IsSupportedImageFile(entry.first) || FileSystem::IsEngineTextureFile(entry.first))
 				{
 					g_dragDropPayload.type = g_dragDrop_Type_Texture;
+					g_dragDropPayload.data = entry.first.c_str();
+					DragDrop::Get().DragPayload(g_dragDropPayload, entry.second.texture->GetShaderResource());
 				}
-				g_dragDropPayload.data = entry.first.c_str();
-				DragDrop::Get().DragPayload(g_dragDropPayload, entry.second.texture->GetShaderResource());
 				DragDrop::Get().DragEnd();
 			}
 		}
@@ -237,7 +239,7 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 	vector<string> childDirectories = FileSystem::GetDirectoriesInDirectory(m_currentDirectory);
 	for (const auto& childDir : childDirectories)
 	{
-		AddThumbnail(childDir, Icon_Folder);
+		AddThumbnail(childDir, Thumbnail_Folder);
 	}
 
 	// Get files (based on filter)
@@ -255,7 +257,7 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 		childFiles = FileSystem::GetSupportedSceneFilesInDirectory(m_currentDirectory);
 		for (const auto& childFile : childFiles)
 		{
-			AddThumbnail(childFile, Icon_File_Scene);
+			AddThumbnail(childFile, Thumbnail_File_Scene);
 		}
 	}
 	else if (m_filter == FileDialog_Model)
@@ -263,7 +265,7 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 		childFiles = FileSystem::GetSupportedModelFilesInDirectory(m_currentDirectory);
 		for (const auto& childFile : childFiles)
 		{
-			AddThumbnail(childFile, Icon_File_Model);
+			AddThumbnail(childFile, Thumbnail_File_Model);
 		}
 	}
 

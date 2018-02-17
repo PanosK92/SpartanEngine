@@ -62,7 +62,7 @@ public:
 private:	
 	void ViewPath(const std::string& pathClicked);
 	bool NavigateToDirectory(const std::string& pathClicked);
-	void AddThumbnail(const std::string& filePath, Thumbnail_Type type = Icon_Custom);
+	void AddThumbnail(const std::string& filePath, Thumbnail_Type type = Thumbnail_Custom);
 
 	std::string m_title;
 	std::string m_currentDirectory;

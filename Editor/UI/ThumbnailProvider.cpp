@@ -63,11 +63,11 @@ void ThumbnailProvider::Initialize(Context* context)
 	Thumbnail_Load("Standard Assets\\Editor\\console_info.png",					Icon_Console_Info);	
 	Thumbnail_Load("Standard Assets\\Editor\\console_warning.png",				Icon_Console_Warning);
 	Thumbnail_Load("Standard Assets\\Editor\\console_error.png",				Icon_Console_Error);	
-	Thumbnail_Load("Standard Assets\\Editor\\file.png",							Icon_File_Default);	
-	Thumbnail_Load("Standard Assets\\Editor\\folder.png",						Icon_Folder);	
-	Thumbnail_Load("Standard Assets\\Editor\\audio.png",						Icon_File_Audio);	
-	Thumbnail_Load("Standard Assets\\Editor\\model.png",						Icon_File_Model);	
-	Thumbnail_Load("Standard Assets\\Editor\\scene.png",						Icon_File_Scene);	
+	Thumbnail_Load("Standard Assets\\Editor\\file.png",							Thumbnail_File_Default);	
+	Thumbnail_Load("Standard Assets\\Editor\\folder.png",						Thumbnail_Folder);	
+	Thumbnail_Load("Standard Assets\\Editor\\audio.png",						Thumbnail_File_Audio);	
+	Thumbnail_Load("Standard Assets\\Editor\\model.png",						Thumbnail_File_Model);	
+	Thumbnail_Load("Standard Assets\\Editor\\scene.png",						Thumbnail_File_Scene);	
 	Thumbnail_Load("Standard Assets\\Editor\\button_play.png",					Icon_Button_Play);
 }
 
@@ -116,7 +116,7 @@ bool ThumbnailProvider::ImageButton_filepath(const std::string& filepath, float 
 const Thumbnail& ThumbnailProvider::Thumbnail_Load(const string& filePath, Thumbnail_Type type /*Icon_Custom*/, int size /*100*/)
 {
 	// Check if we already have this thumbnail (by type)
-	if (type != Icon_Custom)
+	if (type != Thumbnail_Custom)
 	{
 		for (auto& thumbnail : m_thumbnails)
 		{
@@ -137,24 +137,24 @@ const Thumbnail& ThumbnailProvider::Thumbnail_Load(const string& filePath, Thumb
 
 	// Directory
 	if (FileSystem::IsDirectory(filePath))
-		return GetThumbnailByType(Icon_Folder);
+		return GetThumbnailByType(Thumbnail_Folder);
 
 	// Model
 	if (FileSystem::IsSupportedModelFile(filePath))
 	{
-		return GetThumbnailByType(Icon_File_Model);
+		return GetThumbnailByType(Thumbnail_File_Model);
 	}
 
 	// Audio
 	if (FileSystem::IsSupportedAudioFile(filePath))
 	{
-		return GetThumbnailByType(Icon_File_Audio);
+		return GetThumbnailByType(Thumbnail_File_Audio);
 	}
 
 	// Scene
 	if (FileSystem::IsEngineSceneFile(filePath))
 	{
-		return GetThumbnailByType(Icon_File_Scene);
+		return GetThumbnailByType(Thumbnail_File_Scene);
 	}
 
 	// Texture
@@ -176,7 +176,7 @@ const Thumbnail& ThumbnailProvider::Thumbnail_Load(const string& filePath, Thumb
 		return m_thumbnails.back();
 	}
 
-	return GetThumbnailByType(Icon_File_Default);
+	return GetThumbnailByType(Thumbnail_File_Default);
 }
 
 const Thumbnail& ThumbnailProvider::GetThumbnailByType(Thumbnail_Type type)
