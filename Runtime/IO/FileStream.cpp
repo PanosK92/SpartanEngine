@@ -43,18 +43,13 @@ namespace Directus
 		m_isOpen = false;
 		m_mode = mode;
 
-		if (mode == FileStreamMode_Write || mode == FileStreamMode_Write_AppendStart)
+		if (mode == FileStreamMode_Write)
 		{
 			out.open(path, ios::out | ios::binary);
 			if (out.fail())
 			{
 				LOG_ERROR("StreamIO: Failed to open \"" + path + "\" for writing.");
 				return;
-			}
-
-			if (mode == FileStreamMode_Write_AppendStart)
-			{
-				 out.seekp(0);
 			}
 		}
 		else if (mode == FileStreamMode_Read)

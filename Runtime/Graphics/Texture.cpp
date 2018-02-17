@@ -308,13 +308,6 @@ namespace Directus
 		if (!file->IsOpen())
 			return false;
 
-		// Write texture bits
-		file->Write((unsigned int)m_textureBits.size());
-		for (auto& mip : m_textureBits)
-		{
-			file->Write(mip);
-		}
-
 		// Write properties
 		file->Write((int)m_type);
 		file->Write(m_bpp);
@@ -328,6 +321,13 @@ namespace Directus
 		file->Write(m_resourceName);
 		file->Write(m_resourceFilePath);
 
+		// Write texture bits
+		file->Write((unsigned int)m_textureBits.size());
+		for (auto& mip : m_textureBits)
+		{
+			file->Write(mip);
+		}
+
 		return true;
 	}
 
@@ -336,15 +336,6 @@ namespace Directus
 		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
 		if (!file->IsOpen())
 			return false;
-
-		// Read texture bits
-		ClearTextureBits();
-		unsigned int mipCount = file->ReadUInt();
-		for (unsigned int i = 0; i < mipCount; i++)
-		{
-			m_textureBits.emplace_back(vector<unsigned char>());
-			file->Read(&m_textureBits[i]);
-		}
 
 		// Read properties
 		m_type = (TextureType)file->ReadInt();
@@ -358,6 +349,15 @@ namespace Directus
 		file->Read(&m_resourceID);
 		file->Read(&m_resourceName);
 		file->Read(&m_resourceFilePath);
+
+		// Read texture bits
+		ClearTextureBits();
+		unsigned int mipCount = file->ReadUInt();
+		for (unsigned int i = 0; i < mipCount; i++)
+		{
+			m_textureBits.emplace_back(vector<unsigned char>());
+			file->Read(&m_textureBits[i]);
+		}
 
 		return true;
 	}

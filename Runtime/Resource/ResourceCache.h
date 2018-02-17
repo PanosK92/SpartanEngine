@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "IResource.h"
 #include "../Logging/Log.h"
+#include <mutex>
 //========================
 
 namespace Directus
@@ -42,6 +43,7 @@ namespace Directus
 			if (!resource)
 				return;
 
+			std::lock_guard<std::mutex> guard(m_mutex);
 			m_resourceGroups[resource->GetResourceType()].push_back(resource);
 		}
 
@@ -170,5 +172,6 @@ namespace Directus
 
 	private:
 		std::map<ResourceType, std::vector<std::shared_ptr<IResource>>> m_resourceGroups;
+		std::mutex m_mutex;
 	};
 }
