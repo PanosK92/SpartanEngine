@@ -172,24 +172,13 @@ shared_ptr<Texture> IconProvider::LoadThumbnail(const std::string& filePath, Con
 	if (!FileSystem::IsSupportedImageFile(filePath) && !FileSystem::IsEngineTextureFile(filePath))
 		return nullptr;
 
-	// Compute some useful information
-	auto path = FileSystem::GetRelativeFilePath(filePath);
-	auto name = FileSystem::GetFileNameNoExtensionFromFilePath(path);
-
-	// Check if this texture is already cached, if so return the cached one
-	auto resourceManager = context->GetSubsystem<ResourceManager>();	
-	if (auto cached = resourceManager->GetResourceByName<Texture>(name).lock())
-	{			
-		return cached;
-	}
-
-	// Since the texture is not cached, load it and returned a cached ref
+	// Make a cheap texture
 	auto texture = std::make_shared<Texture>(context);
 	texture->EnableMimaps(false);
 	texture->SetWidth(100);
 	texture->SetHeight(100);
-	texture->SetResourceName(name);
-	texture->SetResourceFilePath(path);
+
+	// Load it asynchronously
 	context->GetSubsystem<Threading>()->AddTask([texture, filePath]()
 	{
 		texture->LoadFromFile(filePath);
