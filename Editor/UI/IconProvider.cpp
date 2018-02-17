@@ -147,9 +147,9 @@ bool IconProvider::ImageButton_filepath(const std::string& filepath, float size)
 
 void IconProvider::LoadAsync(IconProvider_Icon iconEnum, const string& filePath)
 {
-	if (auto texture = EditorHelper::GetOrLoadTexture(filePath, g_context, false).lock())
+	if (auto texture = LoadThumbnail(filePath, g_context))
 	{
-		m_icons.emplace_back(iconEnum, texture.get(), filePath);
+		m_icons.emplace_back(iconEnum, texture, filePath);
 	}
 }
 
@@ -162,4 +162,38 @@ bool IconProvider::IconExistsByFilePath(const std::string& filePath)
 	}
 
 	return false;
+}
+
+shared_ptr<Texture> IconProvider::LoadThumbnail(const std::string& filePath, Context* context)
+{
+	// Validate file path
+	if (FileSystem::IsDirectory(filePath))
+		return nullptr;
+	if (!FileSystem::IsSupportedImageFile(filePath) && !FileSystem::IsEngineTextureFile(filePath))
+		return nullptr;
+
+	// Compute some useful information
+	auto path = FileSystem::GetRelativeFilePath(filePath);
+	auto name = FileSystem::GetFileNameNoExtensionFromFilePath(path);
+
+	// Check if this texture is already cached, if so return the cached one
+	auto resourceManager = context->GetSubsystem<ResourceManager>();	
+	if (auto cached = resourceManager->GetResourceByName<Texture>(name).lock())
+	{			
+		return cached;
+	}
+
+	// Since the texture is not cached, load it and returned a cached ref
+	auto texture = std::make_shared<Texture>(context);
+	texture->EnableMimaps(false);
+	texture->SetWidth(100);
+	texture->SetHeight(100);
+	texture->SetResourceName(name);
+	texture->SetResourceFilePath(path);
+	context->GetSubsystem<Threading>()->AddTask([texture, filePath]()
+	{
+		texture->LoadFromFile(filePath);
+	});
+
+	return texture;
 }

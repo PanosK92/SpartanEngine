@@ -21,12 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES ==================
 #include "../Core/EngineDefs.h"
 #include <string>
 #include <memory>
 #include <iomanip>
-//=========================
+#include <mutex>
+//=============================
 
 namespace Directus
 {
@@ -110,5 +111,6 @@ namespace Directus
 		static std::ofstream m_fout;
 		static std::string m_logFileName;
 		static bool m_firstLog;
+		static std::mutex m_mutex;
 	};
 }

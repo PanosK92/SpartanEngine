@@ -85,14 +85,14 @@ namespace Directus
 
 struct IconProviderImage
 {
-	IconProviderImage(IconProvider_Icon iconEnum, Directus::Texture* texture, const std::string& filePath)
+	IconProviderImage(IconProvider_Icon iconEnum, std::shared_ptr<Directus::Texture> texture, const std::string& filePath)
 	{
 		this->iconEnum = iconEnum;
 		this->texture = texture;
 		this->filePath = filePath;
 	}
 	IconProvider_Icon iconEnum;
-	Directus::Texture* texture;
+	std::shared_ptr<Directus::Texture> texture;
 	std::string filePath;
 };
 
@@ -114,6 +114,7 @@ public:
 private:
 	static void LoadAsync(IconProvider_Icon iconEnum, const std::string& filePath);
 	static bool IconExistsByFilePath(const std::string& filePath);
+	static std::shared_ptr<Directus::Texture> LoadThumbnail(const std::string& filePath, Directus::Context* context);
 
 	static std::vector<IconProviderImage> m_icons;
 };

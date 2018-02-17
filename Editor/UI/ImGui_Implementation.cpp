@@ -59,6 +59,8 @@ static ID3D11RasterizerState*   g_pRasterizerState = nullptr;
 static ID3D11BlendState*        g_pBlendState = nullptr;
 static ID3D11DepthStencilState* g_pDepthStencilState = nullptr;
 static int                      g_VertexBufferSize = 5000, g_IndexBufferSize = 10000;
+static SDL_Cursor*				g_SdlCursors[ImGuiMouseCursor_Count_] = { 0 };
+
 
 static Graphics* g_graphics = nullptr;
 static Timer* g_timer		= nullptr;
@@ -326,12 +328,16 @@ static void ImGui_Impl_CreateFontsTexture()
 
 bool ImGui_Impl_Initialize(SDL_Window* window, Context* context)
 {
-	ImGuiIO& io = ImGui::GetIO();
-
 	g_graphics	= context->GetSubsystem<Graphics>();
 	g_timer		= context->GetSubsystem<Timer>();
 	Settings::g_versionImGui = IMGUI_VERSION;
+	SDL_SysWMinfo systemInfo;
+	SDL_VERSION(&systemInfo.version);
+	SDL_GetWindowWMInfo(window, &systemInfo);
+	g_pd3dDevice			= g_graphics->GetDevice();
+	g_pd3dDeviceContext		= g_graphics->GetDeviceContext();
 
+	ImGuiIO& io = ImGui::GetIO();
     io.KeyMap[ImGuiKey_Tab]			= SDL_SCANCODE_TAB;
     io.KeyMap[ImGuiKey_LeftArrow]	= SDL_SCANCODE_LEFT;
     io.KeyMap[ImGuiKey_RightArrow]	= SDL_SCANCODE_RIGHT;
@@ -354,16 +360,18 @@ bool ImGui_Impl_Initialize(SDL_Window* window, Context* context)
     io.KeyMap[ImGuiKey_Y]			= SDL_SCANCODE_Y;
 	io.KeyMap[ImGuiKey_Z]			= SDL_SCANCODE_Z;
 
-	SDL_SysWMinfo systemInfo;
-	SDL_VERSION(&systemInfo.version);
-	SDL_GetWindowWMInfo(window, &systemInfo);
-	g_pd3dDevice			= g_graphics->GetDevice();
-	g_pd3dDeviceContext		= g_graphics->GetDeviceContext();
-
 	io.RenderDrawListsFn	= ImGui_Impl_Render;
 	io.SetClipboardTextFn	= ImGui_Impl_SetClipboardText;
 	io.GetClipboardTextFn	= ImGui_Impl_GetClipboardText;
 	io.ClipboardUserData	= nullptr;
+
+	g_SdlCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+    g_SdlCursors[ImGuiMouseCursor_TextInput] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+    g_SdlCursors[ImGuiMouseCursor_ResizeAll] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+    g_SdlCursors[ImGuiMouseCursor_ResizeNS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+    g_SdlCursors[ImGuiMouseCursor_ResizeEW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+    g_SdlCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
+	g_SdlCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
 
 #ifdef _WIN32
 	SDL_SysWMinfo wmInfo;
@@ -423,6 +431,9 @@ void ImGui_Impl_Shutdown()
 	ImGui_Impl_InvalidateDeviceObjects();
 	g_pd3dDevice = nullptr;
 	g_pd3dDeviceContext = nullptr;
+
+	 for (ImGuiMouseCursor cursor_n = 0; cursor_n < ImGuiMouseCursor_Count_; cursor_n++)
+		SDL_FreeCursor(g_SdlCursors[cursor_n]);
 }
 
 void ImGui_Impl_NewFrame(SDL_Window* window)
@@ -430,7 +441,7 @@ void ImGui_Impl_NewFrame(SDL_Window* window)
 	if (!g_pFontSampler)
         ImGui_Impl_CreateDeviceObjects();
 
-    ImGuiIO& io = ImGui::GetIO();
+ ImGuiIO& io = ImGui::GetIO();
 
     // Setup display size (every frame to accommodate for window resizing)
     int w, h;
@@ -472,7 +483,16 @@ void ImGui_Impl_NewFrame(SDL_Window* window)
 #endif
 
     // Hide OS mouse cursor if ImGui is drawing it
-    SDL_ShowCursor(io.MouseDrawCursor ? 0 : 1);
+    ImGuiMouseCursor cursor = ImGui::GetMouseCursor();
+    if (io.MouseDrawCursor || cursor == ImGuiMouseCursor_None)
+    {
+        SDL_ShowCursor(0);
+    }
+    else
+    {
+        SDL_SetCursor(g_SdlCursors[cursor]);
+        SDL_ShowCursor(1);
+    }
 
     // Start the frame. This call will update the io.WantCaptureMouse, io.WantCaptureKeyboard flag that you can use to dispatch inputs (or not) to your application.
 ImGui::NewFrame();
