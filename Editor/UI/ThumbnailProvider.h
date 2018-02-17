@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //===============
 
-enum IconProvider_Icon
+enum Thumbnail_Type
 {
 	Icon_Custom,
 	Icon_Component_Options,
@@ -62,59 +62,59 @@ namespace Directus
 }
 
 // An icon shader resource pointer by enum 
-#define ICON_PROVIDER_BY_ENUM(iconEnum) IconProvider::GetShaderResourceByEnum(iconEnum)
+#define THUMBNAIL_PROVIDER_BY_ENUM(iconEnum) ThumbnailProvider::GetShaderResourceByEnum(iconEnum)
 // An icon shader resource pointer by filePath
-#define ICON_PROVIDER_BY_FILEPATH(filepath) IconProvider::GetShaderResourceByFilePath(filepath)
+#define THUMBNAIL_PROVIDER_BY_FILEPATH(filepath) ThumbnailProvider::GetShaderResourceByFilePath(filepath)
 
 // An image
-#define ICON_PROVIDER_IMAGE(icon_enum, size)	\
-	ImGui::Image(								\
-	ICON_PROVIDER_BY_ENUM(icon_enum),			\
-	ImVec2(size, size),							\
-	ImVec2(0, 0),								\
-	ImVec2(1, 1),								\
-	ImColor(255, 255, 255, 255),				\
-	ImColor(255, 255, 255, 0))					\
+#define THUMBNAIL_PROVIDER_IMAGE(icon_enum, size)	\
+	ImGui::Image(									\
+	THUMBNAIL_PROVIDER_BY_ENUM(icon_enum),			\
+	ImVec2(size, size),								\
+	ImVec2(0, 0),									\
+	ImVec2(1, 1),									\
+	ImColor(255, 255, 255, 255),					\
+	ImColor(255, 255, 255, 0))						\
 
-// An image button by enum
-#define ICON_PROVIDER_IMAGE_BUTTON_ENUM(icon_enum, size) ImGui::ImageButton(ICON_PROVIDER_BY_ENUM(icon_enum), ImVec2(size, size))
-// An image button by enum, with a specific ID
-#define ICON_PROVIDER_IMAGE_BUTTON_ENUM_ID(id, icon_enum, size) IconProvider::ImageButton_enum_id(id, icon_enum, size)
-// An image button by filepath
-#define ICON_PROVIDER_IMAGE_BUTTON_FILEPATH(filepath, size) ImGui::ImageButton(ICON_PROVIDER_BY_FILEPATH(filepath), ImVec2(size, size))
+// An thumbnail button by enum
+#define THUMBNAIL_PROVIDER_IMAGE_BUTTON_ENUM(icon_enum, size) ImGui::ImageButton(THUMBNAIL_PROVIDER_BY_ENUM(icon_enum), ImVec2(size, size))
+// An thumbnail button by enum, with a specific ID
+#define THUMBNAIL_PROVIDER_IMAGE_BUTTON_ENUM_ID(id, icon_enum, size) ThumbnailProvider::ImageButton_enum_id(id, icon_enum, size)
+// An thumbnail button by filepath
+#define THUMBNAIL_PROVIDER_IMAGE_BUTTON_FILEPATH(filepath, size) ImGui::ImageButton(THUMBNAIL_PROVIDER_BY_FILEPATH(filepath), ImVec2(size, size))
 
-struct IconProviderImage
+struct Thumbnail
 {
-	IconProviderImage(IconProvider_Icon iconEnum, std::shared_ptr<Directus::Texture> texture, const std::string& filePath)
+	Thumbnail(Thumbnail_Type type, std::shared_ptr<Directus::Texture> texture, const std::string& filePath)
 	{
-		this->iconEnum = iconEnum;
+		this->type = type;
 		this->texture = texture;
 		this->filePath = filePath;
 	}
-	IconProvider_Icon iconEnum;
+	Thumbnail_Type type;
 	std::shared_ptr<Directus::Texture> texture;
 	std::string filePath;
 };
 
-class IconProvider
+class ThumbnailProvider
 {
 public:
 	static void Initialize(Directus::Context* context);
 
 	//= SHADER RESOURCE ==================================================
-	static void* GetShaderResourceByEnum(IconProvider_Icon iconEnum);
+	static void* GetShaderResourceByEnum(Thumbnail_Type iconEnum);
 	static void* GetShaderResourceByFilePath(const std::string& filePath);
 	//====================================================================
 
 	//= ImGui::ImageButton =================================================================
-	static bool ImageButton_enum_id(const char* id, IconProvider_Icon iconEnum, float size);
+	static bool ImageButton_enum_id(const char* id, Thumbnail_Type iconEnum, float size);
 	static bool ImageButton_filepath(const std::string& filepath, float size);
 	//======================================================================================
 
 private:
-	static void LoadAsync(IconProvider_Icon iconEnum, const std::string& filePath);
-	static bool IconExistsByFilePath(const std::string& filePath);
+	static void Thumbnail_Load(Thumbnail_Type iconEnum, const std::string& filePath);
+	static bool Thumbnail_Exists(const std::string& filePath);
 	static std::shared_ptr<Directus::Texture> LoadThumbnail(const std::string& filePath, Directus::Context* context);
 
-	static std::vector<IconProviderImage> m_icons;
+	static std::vector<Thumbnail> m_thumbnails;
 };

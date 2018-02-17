@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============
 #include "imgui/imgui.h"
-#include "IconProvider.h"
+#include "ThumbnailProvider.h"
 //=======================
 
 struct DragDropPayload
@@ -49,7 +49,7 @@ public:
 		if (ImGui::BeginDragDropSource())
 		{		
 			ImGui::SetDragDropPayload(payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
-			ICON_PROVIDER_IMAGE(Icon_File_Default, 50);
+			THUMBNAIL_PROVIDER_IMAGE(Icon_File_Default, 50);
 			ImGui::EndDragDropSource();
 		}
 	}

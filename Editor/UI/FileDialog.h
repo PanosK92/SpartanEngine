@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <memory>
 #include "Core/Stopwatch.h"
-#include "IconProvider.h"
+#include "ThumbnailProvider.h"
 #include "EditorHelper.h"
 //=========================
 
@@ -73,7 +73,7 @@ private:
 	float m_itemSize;
 	bool m_selectionMade = false;
 	bool m_navigateToPath;
-	std::map<std::string, IconProvider_Icon> m_directoryContents;
+	std::map<std::string, Thumbnail_Type> m_directoryContents;
 	std::unique_ptr<Directus::Stopwatch> m_stopwatch;
 	char m_fileNameText[BUFFER_TEXT_DEFAULT]{};
 	char m_itemLabel[BUFFER_TEXT_DEFAULT]{};
