@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=================
 
 class FileDialog;
-class ProgressDialog;
 
 class AssetViewer : public Widget
 {
@@ -37,10 +36,6 @@ public:
 	void Update() override;
 
 private:
-	void ShowProgressDialog();
-	void OnModelLoaded();
-
 	std::unique_ptr<FileDialog> m_fileDialogView;
 	std::unique_ptr<FileDialog> m_fileDialogLoad;
-	std::unique_ptr<ProgressDialog> m_progressDialog;
 };

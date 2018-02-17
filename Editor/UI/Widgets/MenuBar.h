@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=================
 
 class FileDialog;
-class ProgressDialog;
 
 class MenuBar : public Widget
 {
@@ -47,5 +46,4 @@ private:
 	void ShowResourceCache();
 
 	std::unique_ptr<FileDialog> m_fileDialog;
-	std::unique_ptr<ProgressDialog> m_progressDialog;
 };
