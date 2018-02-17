@@ -61,7 +61,7 @@ public:
 		}
 		else
 		{
-			THUMBNAIL_IMAGE_BY_ENUM(Icon_File_Default, 50);
+			THUMBNAIL_IMAGE_BY_ENUM(Thumbnail_File_Default, 50);
 		}
 	}
 	void DragEnd() { ImGui::EndDragDropSource(); }

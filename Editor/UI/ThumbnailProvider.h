@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum Thumbnail_Type
 {
-	Icon_Custom,
+	Thumbnail_Custom,
 	Icon_Component_Options,
 	Icon_Component_AudioListener,
 	Icon_Component_AudioSource,
@@ -45,12 +45,12 @@ enum Thumbnail_Type
 	Icon_Component_Transform,
 	Icon_Console_Info,
 	Icon_Console_Warning,
-	Icon_Console_Error,
-	Icon_File_Default,
-	Icon_Folder,
-	Icon_File_Audio,
-	Icon_File_Scene,
-	Icon_File_Model,
+	Icon_Console_Error,	
+	Thumbnail_Folder,
+	Thumbnail_File_Audio,
+	Thumbnail_File_Scene,
+	Thumbnail_File_Model,
+	Thumbnail_File_Default,
 	Icon_Button_Play
 };
 
@@ -95,7 +95,7 @@ public:
 	//============================================================================
 
 	//= THUMBNAIL ==================================================================================================
-	const Thumbnail& Thumbnail_Load(const std::string& filePath, Thumbnail_Type type = Icon_Custom, int size = 100);
+	const Thumbnail& Thumbnail_Load(const std::string& filePath, Thumbnail_Type type = Thumbnail_Custom, int size = 100);
 	//==============================================================================================================
 
 	 static ThumbnailProvider& Get()
