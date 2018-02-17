@@ -271,9 +271,9 @@ void Properties::ShowTransform(Transform* transform)
 		EditorHelper::SetCharArray(&g_transPosX[0], transform->GetPosition().x);
 		EditorHelper::SetCharArray(&g_transPosY[0], transform->GetPosition().y);
 		EditorHelper::SetCharArray(&g_transPosZ[0], transform->GetPosition().z);
-		EditorHelper::SetCharArray(&g_transRotX[0], transform->GetRotation().ToEulerAngles().x);
-		EditorHelper::SetCharArray(&g_transRotY[0], transform->GetRotation().ToEulerAngles().y);
-		EditorHelper::SetCharArray(&g_transRotZ[0], transform->GetRotation().ToEulerAngles().z);
+		EditorHelper::SetCharArray(&g_transRotX[0], transform->GetRotation().Pitch());
+		EditorHelper::SetCharArray(&g_transRotY[0], transform->GetRotation().Yaw());
+		EditorHelper::SetCharArray(&g_transRotZ[0], transform->GetRotation().Roll());
 		EditorHelper::SetCharArray(&g_transScaX[0], transform->GetScale().x);
 		EditorHelper::SetCharArray(&g_transScaY[0], transform->GetScale().y);
 		EditorHelper::SetCharArray(&g_transScaZ[0], transform->GetScale().z);
