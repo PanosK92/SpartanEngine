@@ -47,15 +47,35 @@ static const int BUFFER_TEXT_DEFAULT = 255;
 // An thumbnail button by enum, with a specific ID
 #define THUMBNAIL_BUTTON_TYPE_UNIQUE_ID(id, type, size)	ThumbnailProvider::Get().ImageButton_enum_id(id, type, size)
 
-// A thumbnail
-#define THUMBNAIL_IMAGE(type, size)	\
-	ImGui::Image(					\
-	SHADER_RESOURCE_BY_TYPE(type),	\
-	ImVec2(size, size),				\
-	ImVec2(0, 0),					\
-	ImVec2(1, 1),					\
-	ImColor(255, 255, 255, 255),	\
-	ImColor(255, 255, 255, 0))		\
+// A thumbnail image
+#define THUMBNAIL_IMAGE(thumbnail, size)								\
+	ImGui::Image(														\
+	ThumbnailProvider::Get().GetShaderResourceByThumbnail(thumbnail),	\
+	ImVec2(size, size),													\
+	ImVec2(0, 0),														\
+	ImVec2(1, 1),														\
+	ImColor(255, 255, 255, 255),										\
+	ImColor(255, 255, 255, 0))											\
+
+// A thumbnail image by shader resource
+#define THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(srv, size)	\
+	ImGui::Image(										\
+	srv,												\
+	ImVec2(size, size),									\
+	ImVec2(0, 0),										\
+	ImVec2(1, 1),										\
+	ImColor(255, 255, 255, 255),						\
+	ImColor(255, 255, 255, 0))							\
+
+// A thumbnail image by enum
+#define THUMBNAIL_IMAGE_BY_ENUM(type, size)	\
+	ImGui::Image(							\
+	SHADER_RESOURCE_BY_TYPE(type),			\
+	ImVec2(size, size),						\
+	ImVec2(0, 0),							\
+	ImVec2(1, 1),							\
+	ImColor(255, 255, 255, 255),			\
+	ImColor(255, 255, 255, 0))				\
 
 class EditorHelper
 {

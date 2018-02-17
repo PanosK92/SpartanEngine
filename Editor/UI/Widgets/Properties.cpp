@@ -147,7 +147,7 @@ static ResourceManager* g_resourceManager = nullptr;
 static const char* g_contexMenuID;
 
 #define COMPONENT_BEGIN(name, icon_enum, componentInstance)					\
-	THUMBNAIL_IMAGE(icon_enum, 15);											\
+	THUMBNAIL_IMAGE_BY_ENUM(icon_enum, 15);									\
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);					\
 	ImGui::SameLine(425);													\
 	if (THUMBNAIL_BUTTON_TYPE_UNIQUE_ID(##name, Icon_Component_Options, 15))\
@@ -162,7 +162,7 @@ static const char* g_contexMenuID;
 	{																		\
 		
 #define COMPONENT_BEGIN_NO_OPTIONS(name, icon_enum)					\
-	THUMBNAIL_IMAGE(icon_enum, 15);									\
+	THUMBNAIL_IMAGE_BY_ENUM(icon_enum, 15);							\
 	ImGui::SameLine(25);											\
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);			\
 	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))	\
@@ -174,7 +174,7 @@ static const char* g_contexMenuID;
 
 #define DROP_TARGET_TEXTURE(textureType)								\
 {																		\
-	auto payload = DragDrop::GetPayload(g_dragDrop_Type_Texture); 		\
+	auto payload = DragDrop::Get().GetPayload(g_dragDrop_Type_Texture); \
 	if (payload.data)													\
 	{																	\
 		auto texture = g_resourceManager->Load<Texture>(payload.data);	\

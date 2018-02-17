@@ -44,17 +44,31 @@ class DragDrop
 {
 public:
 
-	static void SendPayload(const DragDropPayload& payload)
+	static DragDrop& Get()
+	{
+		static DragDrop instance;
+		return instance;
+	}
+
+	void SendPayload(const DragDropPayload& payload, void* thumbnailShaderResource = nullptr)
 	{
 		if (ImGui::BeginDragDropSource())
 		{		
 			ImGui::SetDragDropPayload(payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
-			THUMBNAIL_IMAGE(Icon_File_Default, 50);
+			if (thumbnailShaderResource)
+			{
+				THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(thumbnailShaderResource, 50);
+			}
+			else
+			{
+				THUMBNAIL_IMAGE_BY_ENUM(Icon_File_Default, 50);
+			}
 			ImGui::EndDragDropSource();
 		}
 	}
 
-	static DragDropPayload GetPayload(const char* type)
+
+	DragDropPayload GetPayload(const char* type)
 	{
 		DragDropPayload payload;
 
