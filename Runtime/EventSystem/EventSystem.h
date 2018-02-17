@@ -47,15 +47,15 @@ To fire an event with data			-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 #define EVENT_MODEL_LOADED		6
 //==============================================================================
 
-//= MACROS ===============================================================================
-#define EVENT_HANDLER_STATIC(function)			[](Variant var) { function(); }
-#define EVENT_HANDLER(function)					[this](Variant var) { function(); }
-#define EVENT_HANDLER_VARIANT(function)			[this](Variant var) { function(var); }
-#define EVENT_HANDLER_VARIANT_STATIC(function)	[](Variant var) { function(var); }
-#define SUBSCRIBE_TO_EVENT(eventID, function)	EventSystem::Subscribe(eventID, function);
-#define FIRE_EVENT(eventID)						EventSystem::Fire(eventID)
-#define FIRE_EVENT_DATA(eventID, data)			EventSystem::Fire(eventID, data)
-//========================================================================================
+//= MACROS =========================================================================================
+#define EVENT_HANDLER_STATIC(function)			[](Directus::Variant var)		{ function(); }
+#define EVENT_HANDLER(function)					[this](Directus::Variant var)	{ function(); }
+#define EVENT_HANDLER_VARIANT(function)			[this](Directus::Variant var)	{ function(var); }
+#define EVENT_HANDLER_VARIANT_STATIC(function)	[](Directus::Variant var)		{ function(var); }
+#define SUBSCRIBE_TO_EVENT(eventID, function)	Directus::EventSystem::Subscribe(eventID, function);
+#define FIRE_EVENT(eventID)						Directus::EventSystem::Fire(eventID)
+#define FIRE_EVENT_DATA(eventID, data)			Directus::EventSystem::Fire(eventID, data)
+//==================================================================================================
 
 namespace Directus
 {

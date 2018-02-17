@@ -75,7 +75,7 @@ void Hierarchy::Initialize(Context* context)
 void Hierarchy::Update()
 {
 	// If something is being loaded, don't parse the hierarchy
-	if (EditorHelper::GetEngineLoading())
+	if (EditorHelper::Get().GetEngineLoading())
 		return;
 	
 	Tree_Show();
@@ -158,9 +158,13 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)gameObjPtr->GetID(), node_flags, gameObjPtr->GetName().c_str());
 
 	// Drag
-	g_payload.data = (char*)gameObjPtr->GetID();
-	g_payload.type = g_dragDrop_Type_GameObject;
-	DragDrop::Get().SendPayload(g_payload);
+	if (DragDrop::Get().DragBegin())
+	{
+		g_payload.data = (char*)gameObjPtr->GetID();
+		g_payload.type = g_dragDrop_Type_GameObject;
+		DragDrop::Get().DragPayload(g_payload);
+		DragDrop::Get().DragEnd();
+	}
 	// Drop
 	auto drop = DragDrop::Get().GetPayload(g_dragDrop_Type_GameObject);
 	if (drop.type == g_dragDrop_Type_GameObject)

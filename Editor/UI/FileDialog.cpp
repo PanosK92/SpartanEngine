@@ -122,9 +122,20 @@ bool FileDialog::Show(bool* isVisible, string* path)
 
 		if (m_style == FileDialog_Basic)
 		{
-			g_dragDropPayload.type = g_dragDrop_Type_Texture;
-			g_dragDropPayload.data = entry.first.c_str();
-			DragDrop::Get().SendPayload(g_dragDropPayload, entry.second.texture->GetShaderResource());
+			if (DragDrop::Get().DragBegin())
+			{
+				if (FileSystem::IsSupportedModelFile(entry.first))
+				{
+					g_dragDropPayload.type = g_dragDrop_Type_Model;
+				}
+				else if (FileSystem::IsSupportedImageFile(entry.first) || FileSystem::IsEngineTextureFile(entry.first))
+				{
+					g_dragDropPayload.type = g_dragDrop_Type_Texture;
+				}
+				g_dragDropPayload.data = entry.first.c_str();
+				DragDrop::Get().DragPayload(g_dragDropPayload, entry.second.texture->GetShaderResource());
+				DragDrop::Get().DragEnd();
+			}
 		}
 		
 		ImGui::PopID();

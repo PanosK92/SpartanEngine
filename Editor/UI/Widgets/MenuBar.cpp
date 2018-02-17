@@ -19,17 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ==============
 #include "MenuBar.h"
-#include "../imgui/imgui.h"
+#include "../ImGui/imgui.h"
 #include "../FileDialog.h"
-#include "../ProgressDialog.h"
 #include "Core/Engine.h"
-#include "Resource/ResourceManager.h"
-#include "Scene/Scene.h"
-#include "EventSystem/EventSystem.h"
 #include "Core/Settings.h"
-//===================================
+//=========================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -40,7 +36,6 @@ static bool g_showAboutWindow		= false;
 static bool g_showMetricsWindow		= false;
 static bool g_showStyleEditor		= false;
 static bool g_fileDialogVisible		= false;
-static bool g_progressDialogVisible = false;
 static bool g_showResourceCache		= false;
 static string g_fileDialogSelection;
 ResourceManager* g_resourceManager	= nullptr;
@@ -57,9 +52,6 @@ void MenuBar::Initialize(Context* context)
 	g_resourceManager = m_context->GetSubsystem<ResourceManager>();
 	g_scene = m_context->GetSubsystem<Scene>();
 	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Scene);
-	m_progressDialog = make_unique<ProgressDialog>("Hold on...", m_context);
-	SUBSCRIBE_TO_EVENT(EVENT_SCENE_SAVED, EVENT_HANDLER(OnSceneSaved));
-	SUBSCRIBE_TO_EVENT(EVENT_SCENE_LOADED, EVENT_HANDLER(OnSceneLoaded));
 }
 
 void MenuBar::Update()
@@ -148,14 +140,8 @@ void MenuBar::ShowFileDialog()
 		// Scene
 		if (FileSystem::IsEngineSceneFile(g_fileDialogSelection))
 		{
-			EditorHelper::SetEngineUpdate(false);
-			EditorHelper::SetEngineLoading(true);
-			m_context->GetSubsystem<Threading>()->AddTask([]()
-			{
-				g_scene->LoadFromFile(g_fileDialogSelection);
-			});		
+			EditorHelper::Get().LoadScene(g_fileDialogSelection);
 			g_fileDialogVisible = false;
-			g_progressDialogVisible = true;
 		}
 	}
 	// SAVE
@@ -164,44 +150,10 @@ void MenuBar::ShowFileDialog()
 		// Scene
 		if (m_fileDialog->GetFilter() == FileDialog_Scene)
 		{
-			EditorHelper::SetEngineUpdate(false);
-			EditorHelper::SetEngineLoading(true);
-			m_context->GetSubsystem<Threading>()->AddTask([]()
-			{
-				g_scene->SaveToFile(g_fileDialogSelection);
-			});		
+			EditorHelper::Get().SaveScene(g_fileDialogSelection);
 			g_fileDialogVisible = false;
-			g_progressDialogVisible = true;
 		}
 	}
-
-	if (g_progressDialogVisible) ShowProgressDialog();
-}
-
-void MenuBar::ShowProgressDialog()
-{
-	m_progressDialog->Update();
-	m_progressDialog->SetProgress(g_scene->GetProgress());
-	m_progressDialog->SetProgressStatus(g_scene->GetProgressStatus());
-	m_progressDialog->SetIsVisible(true);
-}
-
-void MenuBar::OnSceneLoaded()
-{
-	// Hide progress dialog
-	g_progressDialogVisible = false;
-	m_progressDialog->SetIsVisible(false);
-	EditorHelper::SetEngineUpdate(true);
-	EditorHelper::SetEngineLoading(false);
-}
-
-void MenuBar::OnSceneSaved()
-{
-	// Hide progress dialog
-	g_progressDialogVisible = false;
-	m_progressDialog->SetIsVisible(false);
-	EditorHelper::SetEngineUpdate(true);
-	EditorHelper::SetEngineLoading(true);
 }
 
 void MenuBar::ShowAboutWindow()

@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/Camera.h"
 #include "../EditorHelper.h"
 #include "Hierarchy.h"
+#include "../DragDrop.h"
 //==================================
 
 //= NAMESPACES ==========
@@ -132,6 +133,13 @@ void Viewport::ShowFrame()
 		ImColor(255, 255, 255, 255),
 		ImColor(50, 127, 166, 255)
 	);
+	// Hande model drop
+	auto drop = DragDrop::Get().GetPayload(g_dragDrop_Type_Model);
+	if (drop.type == g_dragDrop_Type_Model)
+	{
+		auto modelPath = (const char*)drop.data;
+		EditorHelper::Get().LoadModel(modelPath);
+	}
 
 	MousePicking();
 }

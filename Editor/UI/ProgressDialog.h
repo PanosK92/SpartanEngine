@@ -34,8 +34,14 @@ namespace Directus
 class ProgressDialog
 {
 public:
-	ProgressDialog(const std::string& title, Directus::Context* context);
+	ProgressDialog(char* title = "Hold on...");
 	~ProgressDialog();
+
+	static ProgressDialog& Get()
+	{
+		static ProgressDialog instance;
+		return instance;
+	}
 
 	void Update();
 	void SetIsVisible(bool isVisible) { m_isVisible = isVisible; }
@@ -49,5 +55,4 @@ private:
 	bool m_isVisible;
 	float m_progress;
 	std::string m_progressStatus;
-	Directus::Context* m_context;
 };

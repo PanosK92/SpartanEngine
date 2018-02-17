@@ -64,7 +64,7 @@ void Editor::Initialize(SDL_Window* window, Context* context)
 {
 	m_context = context;
 	ThumbnailProvider::Get().Initialize(context);
-	EditorHelper::Initialize(context);
+	EditorHelper::Get().Initialize(context);
 
 	g_window = window;
 	ImGui_Impl_Initialize(g_window, context);
@@ -85,6 +85,7 @@ void Editor::Update()
 {	
 	ImGui_Impl_NewFrame(g_window);
 	DrawEditor();
+	EditorHelper::Get().Update();
 	ImGui::Render();
 }
 

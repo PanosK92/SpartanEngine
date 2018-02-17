@@ -38,6 +38,7 @@ struct DragDropPayload
 };
 static const char* g_dragDrop_Type_Texture		= "0";
 static const char* g_dragDrop_Type_GameObject	= "1";
+static const char* g_dragDrop_Type_Model		= "2";
 static bool g_isDragging = false;
 
 class DragDrop
@@ -50,23 +51,20 @@ public:
 		return instance;
 	}
 
-	void SendPayload(const DragDropPayload& payload, void* thumbnailShaderResource = nullptr)
+	bool DragBegin() { return ImGui::BeginDragDropSource(); }
+	void DragPayload(const DragDropPayload& payload, void* thumbnailShaderResource = nullptr)
 	{
-		if (ImGui::BeginDragDropSource())
-		{		
-			ImGui::SetDragDropPayload(payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
-			if (thumbnailShaderResource)
-			{
-				THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(thumbnailShaderResource, 50);
-			}
-			else
-			{
-				THUMBNAIL_IMAGE_BY_ENUM(Icon_File_Default, 50);
-			}
-			ImGui::EndDragDropSource();
+		ImGui::SetDragDropPayload(payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
+		if (thumbnailShaderResource)
+		{
+			THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(thumbnailShaderResource, 50);
+		}
+		else
+		{
+			THUMBNAIL_IMAGE_BY_ENUM(Icon_File_Default, 50);
 		}
 	}
-
+	void DragEnd() { ImGui::EndDragDropSource(); }
 
 	DragDropPayload GetPayload(const char* type)
 	{

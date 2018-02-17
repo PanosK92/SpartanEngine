@@ -19,30 +19,23 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
-#include "../imgui/imgui.h"
+//= INCLUDES =====================
 #include "AssetViewer.h"
+#include "../ImGui/imgui.h"
 #include "FileSystem/FileSystem.h"
-#include "Graphics/Model.h"
-#include "Resource/ResourceManager.h"
-#include "Threading/Threading.h"
-#include "../ProgressDialog.h"
-#include "EventSystem/EventSystem.h"
 #include "../EditorHelper.h"
 #include "../FileDialog.h"
-//===================================
+//================================
 
 //= NAMESPACES ==========
 using namespace std;
 using namespace Directus;
 //=======================
 
-static bool g_showFileDialogView			= true;
-static bool g_showFileDialogLoad			= false;
+static bool g_showFileDialogView = true;
+static bool g_showFileDialogLoad = false;
 static string g_fileDialogSelection_View;
 static string g_fileDialogSelection_Load;
-static ResourceManager* g_resourceManager	= nullptr;
-static bool g_showProgressDialog			= false;
 
 AssetViewer::AssetViewer()
 {
@@ -54,9 +47,6 @@ void AssetViewer::Initialize(Context* context)
 	Widget::Initialize(context);
 	m_fileDialogView	= make_unique<FileDialog>(m_context, false, FileDialog_All);
 	m_fileDialogLoad	= make_unique<FileDialog>(m_context, true, FileDialog_Model, FileDialog_Load);
-	m_progressDialog	= make_unique<ProgressDialog>("Hold on...", m_context);
-	g_resourceManager	= m_context->GetSubsystem<ResourceManager>();
-	SUBSCRIBE_TO_EVENT(EVENT_MODEL_LOADED, EVENT_HANDLER(OnModelLoaded));
 }
 
 void AssetViewer::Update()
@@ -78,35 +68,8 @@ void AssetViewer::Update()
 		// Model
 		if (FileSystem::IsSupportedModelFile(g_fileDialogSelection_Load))
 		{
-			EditorHelper::SetEngineUpdate(false);
-			EditorHelper::SetEngineLoading(true);
-			m_context->GetSubsystem<Threading>()->AddTask([]()
-			{
-				g_resourceManager->Load<Model>(g_fileDialogSelection_Load);
-			});
-			
+			EditorHelper::Get().LoadModel(g_fileDialogSelection_Load);
 			g_showFileDialogLoad = false;
-			g_showProgressDialog = true;
 		}
 	}
-
-	if (g_showProgressDialog) ShowProgressDialog();
-}
-
-void AssetViewer::ShowProgressDialog()
-{
-	auto importer = g_resourceManager->GetModelImporter().lock();
-	m_progressDialog->Update();
-	m_progressDialog->SetProgress(importer->GetProgress());
-	m_progressDialog->SetProgressStatus(importer->GetProgressStatus());
-	m_progressDialog->SetIsVisible(g_showProgressDialog);
-}
-
-void AssetViewer::OnModelLoaded()
-{
-	// Hide progress dialog
-	g_showProgressDialog = false;
-	m_progressDialog->SetIsVisible(g_showProgressDialog);
-	EditorHelper::SetEngineUpdate(true);
-	EditorHelper::SetEngineLoading(false);
 }
