@@ -19,120 +19,88 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================
+//= INCLUDES ===================
 #include "ThumbnailProvider.h"
 #include "Graphics/Texture.h"
 #include "ImGui/imgui.h"
 #include "EditorHelper.h"
 #include "Threading/Threading.h"
-//===========================
+//==============================
 
 //= NAMESPACES ==========
 using namespace std;
 using namespace Directus;
 //=======================
 
-vector<Thumbnail> ThumbnailProvider::m_thumbnails;
-static Context* g_context;
-static int g_id = -1;
+ThumbnailProvider::ThumbnailProvider()
+{
+	m_context = nullptr;
+}
+
+ThumbnailProvider::~ThumbnailProvider()
+{
+	m_thumbnails.clear();
+}
 
 void ThumbnailProvider::Initialize(Context* context)
 {
-	g_context = context;
+	m_context = context;
 
-	Thumbnail_Load(Icon_Component_Options,		"Standard Assets\\Editor\\component_ComponentOptions.png");
-	Thumbnail_Load(Icon_Component_AudioListener,	"Standard Assets\\Editor\\component_AudioListener.png");
-	Thumbnail_Load(Icon_Component_AudioSource,	"Standard Assets\\Editor\\component_AudioSource.png");
-	Thumbnail_Load(Icon_Component_Camera,		"Standard Assets\\Editor\\component_Camera.png");
-	Thumbnail_Load(Icon_Component_Collider,		"Standard Assets\\Editor\\component_Collider.png");
-	Thumbnail_Load(Icon_Component_Light,			"Standard Assets\\Editor\\component_Light.png");
-	Thumbnail_Load(Icon_Component_Material,		"Standard Assets\\Editor\\component_Material.png");
-	Thumbnail_Load(Icon_Component_MeshCollider,	"Standard Assets\\Editor\\component_MeshCollider.png");
-	Thumbnail_Load(Icon_Component_MeshFilter,	"Standard Assets\\Editor\\component_MeshFilter.png");
-	Thumbnail_Load(Icon_Component_MeshRenderer,	"Standard Assets\\Editor\\component_MeshRenderer.png");
-	Thumbnail_Load(Icon_Component_RigidBody,		"Standard Assets\\Editor\\component_RigidBody.png");
-	Thumbnail_Load(Icon_Component_Script,		"Standard Assets\\Editor\\component_Script.png");
-	Thumbnail_Load(Icon_Component_Transform,		"Standard Assets\\Editor\\component_Transform.png");
-	Thumbnail_Load(Icon_Console_Info,			"Standard Assets\\Editor\\console_info.png");
-	Thumbnail_Load(Icon_Console_Warning,			"Standard Assets\\Editor\\console_warning.png");
-	Thumbnail_Load(Icon_Console_Error,			"Standard Assets\\Editor\\console_error.png");
-	Thumbnail_Load(Icon_File_Default,			"Standard Assets\\Editor\\file.png");
-	Thumbnail_Load(Icon_Folder,					"Standard Assets\\Editor\\folder.png");
-	Thumbnail_Load(Icon_File_Audio,				"Standard Assets\\Editor\\audio.png");
-	Thumbnail_Load(Icon_File_Model,				"Standard Assets\\Editor\\model.png");
-	Thumbnail_Load(Icon_File_Scene,				"Standard Assets\\Editor\\scene.png");
-	Thumbnail_Load(Icon_Button_Play,				"Standard Assets\\Editor\\button_play.png");
+	// Load standard some standard icons
+	Thumbnail_Load("Standard Assets\\Editor\\component_ComponentOptions.png",	Icon_Component_Options);	
+	Thumbnail_Load("Standard Assets\\Editor\\component_AudioListener.png",		Icon_Component_AudioListener);
+	Thumbnail_Load("Standard Assets\\Editor\\component_AudioSource.png",		Icon_Component_AudioSource);	
+	Thumbnail_Load("Standard Assets\\Editor\\component_Camera.png",				Icon_Component_Camera);	
+	Thumbnail_Load("Standard Assets\\Editor\\component_Collider.png",			Icon_Component_Collider);	
+	Thumbnail_Load("Standard Assets\\Editor\\component_Light.png",				Icon_Component_Light);
+	Thumbnail_Load("Standard Assets\\Editor\\component_Material.png",			Icon_Component_Material);	
+	Thumbnail_Load("Standard Assets\\Editor\\component_MeshCollider.png",		Icon_Component_MeshCollider);	
+	Thumbnail_Load("Standard Assets\\Editor\\component_MeshFilter.png",			Icon_Component_MeshFilter);	
+	Thumbnail_Load("Standard Assets\\Editor\\component_MeshRenderer.png",		Icon_Component_MeshRenderer);	
+	Thumbnail_Load("Standard Assets\\Editor\\component_RigidBody.png",			Icon_Component_RigidBody);
+	Thumbnail_Load("Standard Assets\\Editor\\component_Script.png",				Icon_Component_Script);	
+	Thumbnail_Load("Standard Assets\\Editor\\component_Transform.png",			Icon_Component_Transform);
+	Thumbnail_Load("Standard Assets\\Editor\\console_info.png",					Icon_Console_Info);	
+	Thumbnail_Load("Standard Assets\\Editor\\console_warning.png",				Icon_Console_Warning);
+	Thumbnail_Load("Standard Assets\\Editor\\console_error.png",				Icon_Console_Error);	
+	Thumbnail_Load("Standard Assets\\Editor\\file.png",							Icon_File_Default);	
+	Thumbnail_Load("Standard Assets\\Editor\\folder.png",						Icon_Folder);	
+	Thumbnail_Load("Standard Assets\\Editor\\audio.png",						Icon_File_Audio);	
+	Thumbnail_Load("Standard Assets\\Editor\\model.png",						Icon_File_Model);	
+	Thumbnail_Load("Standard Assets\\Editor\\scene.png",						Icon_File_Scene);	
+	Thumbnail_Load("Standard Assets\\Editor\\button_play.png",					Icon_Button_Play);
 }
 
-void* ThumbnailProvider::GetShaderResourceByEnum(Thumbnail_Type iconEnum)
+void* ThumbnailProvider::GetShaderResourceByType(Thumbnail_Type type)
 {
-	for (const auto& icon : m_thumbnails)
+	return Thumbnail_Load(NOT_ASSIGNED, type).texture->GetShaderResource();
+}
+
+void* ThumbnailProvider::GetShaderResourceByFilePath(const std::string& filePath)
+{
+	return Thumbnail_Load(filePath).texture->GetShaderResource();
+}
+
+void* ThumbnailProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail)
+{
+	for (const auto& thumbnailTemp : m_thumbnails)
 	{
-		if (icon.texture->GetAsyncState() != Async_Completed)
+		if (thumbnailTemp.texture->GetAsyncState() != Async_Completed)
 			continue;
 
-		if (icon.type == iconEnum)
+		if (thumbnailTemp.texture->GetResourceID() == thumbnail.texture->GetResourceID())
 		{
-			return icon.texture->GetShaderResource();
+			return thumbnailTemp.texture->GetShaderResource();
 		}
 	}
 
 	return nullptr;
 }
 
-void* ThumbnailProvider::GetShaderResourceByFilePath(const std::string& filePath)
-{
-	// Validate file path
-	if (FileSystem::IsDirectory(filePath))
-		return GetShaderResourceByEnum(Icon_Folder);
-
-	// Texture
-	if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
-	{
-		if (!Thumbnail_Exists(filePath))
-		{
-			Thumbnail_Load(Icon_Custom, filePath);
-			return nullptr;
-		}
-
-		for (const auto& icon : m_thumbnails)
-		{
-			if (icon.filePath == filePath)
-			{
-				if (icon.texture->GetAsyncState() == Async_Completed)
-				{
-					return icon.texture->GetShaderResource();
-				}
-			}	
-		}
-	}
-
-	// Model
-	if (FileSystem::IsSupportedModelFile(filePath))
-	{
-		return GetShaderResourceByEnum(Icon_File_Model);
-	}
-
-	// Audio
-	if (FileSystem::IsSupportedAudioFile(filePath))
-	{
-		return GetShaderResourceByEnum(Icon_File_Audio);
-	}
-
-	// Scene
-	if (FileSystem::IsEngineSceneFile(filePath))
-	{
-		return GetShaderResourceByEnum(Icon_File_Scene);
-	}
-
-	// Default file
-	return GetShaderResourceByEnum(Icon_File_Default);
-}
-
 bool ThumbnailProvider::ImageButton_enum_id(const char* id, Thumbnail_Type iconEnum, float size)
 {
 	ImGui::PushID(id);
-	bool pressed = ImGui::ImageButton(GetShaderResourceByEnum(iconEnum), ImVec2(size, size));
+	bool pressed = ImGui::ImageButton(GetShaderResourceByType(iconEnum), ImVec2(size, size));
 	ImGui::PopID();
 
 	return pressed;
@@ -145,44 +113,79 @@ bool ThumbnailProvider::ImageButton_filepath(const std::string& filepath, float 
 	return pressed;
 }
 
-void ThumbnailProvider::Thumbnail_Load(Thumbnail_Type iconEnum, const string& filePath)
+const Thumbnail& ThumbnailProvider::Thumbnail_Load(const string& filePath, Thumbnail_Type type /*Icon_Custom*/, int size /*100*/)
 {
-	if (auto texture = LoadThumbnail(filePath, g_context))
+	// Check if we already have this thumbnail (by type)
+	if (type != Icon_Custom)
 	{
-		m_thumbnails.emplace_back(iconEnum, texture, filePath);
+		for (auto& thumbnail : m_thumbnails)
+		{
+			if (thumbnail.type == type)
+				return thumbnail;
+		}
 	}
-}
-
-bool ThumbnailProvider::Thumbnail_Exists(const std::string& filePath)
-{
-	for (const auto& thumbnail : m_thumbnails)
-	{
-		if (thumbnail.filePath == filePath)
-			return true;
+	else // Check if we already have this thumbnail (by path)
+	{		
+		for (auto& thumbnail : m_thumbnails)
+		{
+			if (thumbnail.filePath == filePath)
+				return thumbnail;
+		}
 	}
 
-	return false;
-}
+	// Deduce file path type
 
-shared_ptr<Texture> ThumbnailProvider::LoadThumbnail(const std::string& filePath, Context* context)
-{
-	// Validate file path
+	// Directory
 	if (FileSystem::IsDirectory(filePath))
-		return nullptr;
-	if (!FileSystem::IsSupportedImageFile(filePath) && !FileSystem::IsEngineTextureFile(filePath))
-		return nullptr;
+		return GetThumbnailByType(Icon_Folder);
 
-	// Make a cheap texture
-	auto texture = std::make_shared<Texture>(context);
-	texture->EnableMimaps(false);
-	texture->SetWidth(100);
-	texture->SetHeight(100);
-
-	// Load it asynchronously
-	context->GetSubsystem<Threading>()->AddTask([texture, filePath]()
+	// Model
+	if (FileSystem::IsSupportedModelFile(filePath))
 	{
-		texture->LoadFromFile(filePath);
-	});
+		return GetThumbnailByType(Icon_File_Model);
+	}
 
-	return texture;
+	// Audio
+	if (FileSystem::IsSupportedAudioFile(filePath))
+	{
+		return GetThumbnailByType(Icon_File_Audio);
+	}
+
+	// Scene
+	if (FileSystem::IsEngineSceneFile(filePath))
+	{
+		return GetThumbnailByType(Icon_File_Scene);
+	}
+
+	// Texture
+	if (FileSystem::IsSupportedImageFile(filePath) || FileSystem::IsEngineTextureFile(filePath))
+	{
+		// Make a cheap texture
+		auto texture = std::make_shared<Texture>(m_context);
+		texture->EnableMimaps(false);
+		texture->SetWidth(size);
+		texture->SetHeight(size);
+
+		// Load it asynchronously
+		m_context->GetSubsystem<Threading>()->AddTask([texture, filePath]()
+		{
+			texture->LoadFromFile(filePath);
+		});
+
+		m_thumbnails.emplace_back(type, texture, filePath);
+		return m_thumbnails.back();
+	}
+
+	return GetThumbnailByType(Icon_File_Default);
+}
+
+const Thumbnail& ThumbnailProvider::GetThumbnailByType(Thumbnail_Type type)
+{
+	for (auto& thumbnail : m_thumbnails)
+	{
+		if (thumbnail.type == type)
+			return thumbnail;
+	}
+
+	return Thumbnail();
 }

@@ -34,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/ThumbnailProvider.h"
 #include "UI/EditorHelper.h"
 #include "UI/Widgets/Toolbar.h"
-#include "Resource/ResourceManager.h"
 //==================================
 
 //= NAMESPACES ==========
@@ -46,6 +45,7 @@ static SDL_Window* g_window = nullptr;
 
 Editor::Editor()
 {
+	m_context = nullptr;
 	m_widgets.emplace_back(make_unique<MenuBar>());
 	m_widgets.emplace_back(make_unique<Toolbar>());
 	m_widgets.emplace_back(make_unique<Properties>());
@@ -63,7 +63,7 @@ Editor::~Editor()
 void Editor::Initialize(SDL_Window* window, Context* context)
 {
 	m_context = context;
-	ThumbnailProvider::Initialize(context);
+	ThumbnailProvider::Get().Initialize(context);
 	EditorHelper::Initialize(context);
 
 	g_window = window;

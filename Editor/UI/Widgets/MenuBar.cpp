@@ -56,7 +56,7 @@ void MenuBar::Initialize(Context* context)
 	Widget::Initialize(context);
 	g_resourceManager = m_context->GetSubsystem<ResourceManager>();
 	g_scene = m_context->GetSubsystem<Scene>();
-	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Filter_Scene);
+	m_fileDialog = make_unique<FileDialog>(m_context, true, FileDialog_Scene);
 	m_progressDialog = make_unique<ProgressDialog>("Hold on...", m_context);
 	SUBSCRIBE_TO_EVENT(EVENT_SCENE_SAVED, EVENT_HANDLER(OnSceneSaved));
 	SUBSCRIBE_TO_EVENT(EVENT_SCENE_LOADED, EVENT_HANDLER(OnSceneLoaded));
@@ -77,7 +77,7 @@ void MenuBar::Update()
 
 			if (ImGui::MenuItem("Load"))
 			{
-				m_fileDialog->SetStyle(FileDialog_Style_Load);
+				m_fileDialog->SetStyle(FileDialog_Load);
 				g_fileDialogVisible = true;
 			}
 
@@ -85,13 +85,13 @@ void MenuBar::Update()
 
 			if (ImGui::MenuItem("Save"))
 			{
-				m_fileDialog->SetStyle(FileDialog_Style_Save);
+				m_fileDialog->SetStyle(FileDialog_Save);
 				g_fileDialogVisible = true;
 			}
 
 			if (ImGui::MenuItem("Save As..."))
 			{
-				m_fileDialog->SetStyle(FileDialog_Style_Save);
+				m_fileDialog->SetStyle(FileDialog_Save);
 				g_fileDialogVisible = true;
 			}
 
@@ -143,7 +143,7 @@ void MenuBar::ShowFileDialog()
 		return;
 
 	// LOAD
-	if (m_fileDialog->GetStyle() == FileDialog_Style_Open || m_fileDialog->GetStyle() == FileDialog_Style_Load)
+	if (m_fileDialog->GetStyle() == FileDialog_Open || m_fileDialog->GetStyle() == FileDialog_Load)
 	{
 		// Scene
 		if (FileSystem::IsEngineSceneFile(g_fileDialogSelection))
@@ -159,10 +159,10 @@ void MenuBar::ShowFileDialog()
 		}
 	}
 	// SAVE
-	else if (m_fileDialog->GetStyle() == FileDialog_Style_Save)
+	else if (m_fileDialog->GetStyle() == FileDialog_Save)
 	{
 		// Scene
-		if (m_fileDialog->GetFilter() == FileDialog_Filter_Scene)
+		if (m_fileDialog->GetFilter() == FileDialog_Scene)
 		{
 			EditorHelper::SetEngineUpdate(false);
 			EditorHelper::SetEngineLoading(true);
