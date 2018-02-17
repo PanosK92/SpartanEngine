@@ -33,7 +33,7 @@ namespace Directus
 		{
 		public:
 			// Constructs an identity quaternion
-			Quaternion::Quaternion()
+			Quaternion()
 			{
 				x = 0;
 				y = 0;
@@ -42,7 +42,7 @@ namespace Directus
 			}
 
 			// Constructs a new quaternion with the given components
-			Quaternion::Quaternion(float x, float y, float z, float w)
+			Quaternion(float x, float y, float z, float w)
 			{
 				this->x = x;
 				this->y = y;
@@ -69,7 +69,7 @@ namespace Directus
 				return q;
 			}
 
-			void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
+			void FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
 			static Quaternion FromEulerAngles(const Vector3& eulerAngles) { return FromEulerAngles(eulerAngles.x, eulerAngles.y, eulerAngles.z); }
 
 			static Quaternion FromEulerAngles(float x, float y, float z)
@@ -227,7 +227,7 @@ namespace Directus
 			}
 			//============================================================================================
 
-			//= MULTIPLICATION ===========================================================================
+			//= MULTIPLICATION ==============================================================================
 			Quaternion operator*(const Quaternion& rhs) const
 			{
 				return Quaternion(
@@ -266,16 +266,16 @@ namespace Directus
 			}
 
 			Quaternion operator *(float rhs) const { return Quaternion(w * rhs, x * rhs, y * rhs, z * rhs); }
-			//===============================================================================================================
+			//===============================================================================================
 
-			//= COMPARISON ==================================================================================================
-			bool operator==(const Quaternion& b) const{return (x == b.x && y == b.y && z == b.z && w == b.w) ? true : false;}
-			bool operator!=(const Quaternion& b) const { return !(*this == b); }
-			//===============================================================================================================
+			//= COMPARISON =======================================================================================
+			bool operator ==(const Quaternion& b) const { return (x == b.x && y == b.y && z == b.z && w == b.w); }
+			bool operator !=(const Quaternion& b) const { return (x != b.x || y != b.y || z != b.z || w != b.w); }
+			//====================================================================================================
 
 			std::string ToString() const;
 
-			float x, y, z, w;
+			double x, y, z, w;
 
 			static const Quaternion Identity;
 		};
