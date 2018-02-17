@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================================
 #include "Properties.h"
-#include "../imgui/imgui.h"
+#include "../ImGui/imgui.h"
 #include "Hierarchy.h"
 #include "Scene/GameObject.h"
 #include "Graphics/Material.h"
@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/AudioListener.h"
 #include "Scene/Components/Camera.h"
 #include "Scene/Components/Script.h"
-#include "../IconProvider.h"
+#include "../ThumbnailProvider.h"
 #include "../EditorHelper.h"
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
@@ -146,23 +146,23 @@ static bool g_reflectOnce = false;
 static ResourceManager* g_resourceManager = nullptr;
 static const char* g_contexMenuID;
 
-#define COMPONENT_BEGIN(name, icon_enum, componentInstance)						\
-	ICON_PROVIDER_IMAGE(icon_enum, 15);											\
-	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);						\
-	ImGui::SameLine(425);														\
-	if (ICON_PROVIDER_IMAGE_BUTTON_ENUM_ID(##name, Icon_Component_Options, 15))	\
-	{																			\
-		g_contexMenuID = ##name;												\
-		ImGui::OpenPopup(g_contexMenuID);										\
-	}																			\
-	if (g_contexMenuID == ##name)												\
-		ComponentContextMenu_Options(g_contexMenuID, componentInstance);		\
-	ImGui::SameLine(25);														\
-	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))				\
-	{																			\
+#define COMPONENT_BEGIN(name, icon_enum, componentInstance)							\
+	THUMBNAIL_PROVIDER_IMAGE(icon_enum, 15);										\
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);							\
+	ImGui::SameLine(425);															\
+	if (THUMBNAIL_PROVIDER_IMAGE_BUTTON_ENUM_ID(##name, Icon_Component_Options, 15))\
+	{																				\
+		g_contexMenuID = ##name;													\
+		ImGui::OpenPopup(g_contexMenuID);											\
+	}																				\
+	if (g_contexMenuID == ##name)													\
+		ComponentContextMenu_Options(g_contexMenuID, componentInstance);			\
+	ImGui::SameLine(25);															\
+	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))					\
+	{																				\
 		
 #define COMPONENT_BEGIN_NO_OPTIONS(name, icon_enum)					\
-	ICON_PROVIDER_IMAGE(icon_enum, 15);								\
+	THUMBNAIL_PROVIDER_IMAGE(icon_enum, 15);						\
 	ImGui::SameLine(25);											\
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);			\
 	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))	\

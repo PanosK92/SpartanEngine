@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "UI/Widgets/Hierarchy.h"
 #include "UI/Widgets/AssetViewer.h"
 #include "UI/Widgets/Viewport.h"
-#include "UI/IconProvider.h"
+#include "UI/ThumbnailProvider.h"
 #include "UI/EditorHelper.h"
 #include "UI/Widgets/Toolbar.h"
 #include "Resource/ResourceManager.h"
@@ -63,7 +63,7 @@ Editor::~Editor()
 void Editor::Initialize(SDL_Window* window, Context* context)
 {
 	m_context = context;
-	IconProvider::Initialize(context);
+	ThumbnailProvider::Initialize(context);
 	EditorHelper::Initialize(context);
 
 	g_window = window;

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/imgui.h"
 #include "FileSystem/FileSystem.h"
 #include "Logging/Log.h"
-#include "IconProvider.h"
+#include "ThumbnailProvider.h"
 #include "DragDrop.h"
 //================================
 
@@ -102,7 +102,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 	{
 		// ICON
 		ImGui::PushID(index);
-		if (ICON_PROVIDER_IMAGE_BUTTON_FILEPATH(item.first, m_itemSize))
+		if (THUMBNAIL_PROVIDER_IMAGE_BUTTON_FILEPATH(item.first, m_itemSize))
 		{
 			if (m_pathClicked != item.first) // Single click
 			{
