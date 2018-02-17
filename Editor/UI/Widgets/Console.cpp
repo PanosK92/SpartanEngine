@@ -19,15 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
-//= INCLUDES ===============
+//= INCLUDES ====================
 #include "Console.h"
-#include "../imgui/imgui.h"
-#include "Core/Engine.h"
+#include "../ImGui/imgui.h"
 #include "Logging/Log.h"
 #include "../ThumbnailProvider.h"
-//==========================
+#include "../EditorHelper.h"
+//===============================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -61,10 +59,10 @@ Console::Console()
 
 void Console::Update()
 {
-	if (ImGui::Button("Clear"))										{ Clear(); }														ImGui::SameLine();
-	if (THUMBNAIL_PROVIDER_IMAGE_BUTTON_ENUM(Icon_Console_Info, 15.0f))		{ m_showInfo		= !m_showInfo;		g_scrollToBottom = true; }	ImGui::SameLine();
-	if (THUMBNAIL_PROVIDER_IMAGE_BUTTON_ENUM(Icon_Console_Warning,	15.0f))	{ m_showWarnings	= !m_showWarnings;	g_scrollToBottom = true;}	ImGui::SameLine();
-	if (THUMBNAIL_PROVIDER_IMAGE_BUTTON_ENUM(Icon_Console_Error,		15.0f))	{ m_showErrors		= !m_showErrors;	g_scrollToBottom = true;}	ImGui::SameLine();
+	if (ImGui::Button("Clear"))									{ Clear(); }														ImGui::SameLine();
+	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Console_Info,		15.0f))	{ m_showInfo		= !m_showInfo;		g_scrollToBottom = true; }	ImGui::SameLine();
+	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Console_Warning,	15.0f))	{ m_showWarnings	= !m_showWarnings;	g_scrollToBottom = true;}	ImGui::SameLine();
+	if (THUMBNAIL_BUTTON_BY_TYPE(Icon_Console_Error,	15.0f))	{ m_showErrors		= !m_showErrors;	g_scrollToBottom = true;}	ImGui::SameLine();
 
 	g_logFilter.Draw("Filter", -100.0f);
 	ImGui::Separator();

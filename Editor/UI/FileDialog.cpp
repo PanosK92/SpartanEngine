@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/imgui.h"
 #include "FileSystem/FileSystem.h"
 #include "Logging/Log.h"
-#include "ThumbnailProvider.h"
+#include "EditorHelper.h"
 #include "DragDrop.h"
 //================================
 
@@ -36,13 +36,13 @@ using namespace Directus;
 static float g_itemSizeMin		= 50.0f;
 static float g_itemSizeMax		= 150.0f;
 
-#define GET_WINDOW_NAME (type == FileDialog_Style_Open)		? "Open"		: (type == FileDialog_Style_Load)		? "Load"		: (type == FileDialog_Style_Save) ? "Save" : "View"
-#define GET_FILTER_NAME	(m_filter == FileDialog_Filter_All) ? "All (*.*)"	: (m_filter == FileDialog_Filter_Model) ? "Model(*.*)"	: "Scene (*.scene)"
-#define GET_BUTTON_NAME (m_style == FileDialog_Style_Open)	? "Open"		: (m_style == FileDialog_Style_Load)	? "Load"		: "Save"
+#define GET_WINDOW_NAME (type == FileDialog_Open)		? "Open"		: (type == FileDialog_Load)			? "Load"		: (type == FileDialog_Save) ? "Save" : "View"
+#define GET_FILTER_NAME	(m_filter == FileDialog_All)	? "All (*.*)"	: (m_filter == FileDialog_Model)	? "Model(*.*)"	: "Scene (*.scene)"
+#define GET_BUTTON_NAME (m_style == FileDialog_Open)	? "Open"		: (m_style == FileDialog_Load)		? "Load"		: "Save"
 
 static DragDropPayload g_dragDropPayload;
 
-FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filter filter, FileDialog_Style type)
+FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filter filter, FileDialog_Mode type)
 {
 	m_context			= context;
 	m_filter			= filter;
@@ -51,7 +51,7 @@ FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filte
 	m_isWindow			= standaloneWindow;
 	m_currentDirectory	= FileSystem::GetWorkingDirectory();
 	m_pathClicked		= m_currentDirectory;
-	m_itemSize			= (type != FileDialog_Style_Basic) ? g_itemSizeMin * 2.0f : g_itemSizeMin;
+	m_itemSize			= (type != FileDialog_Basic) ? g_itemSizeMin * 2.0f : g_itemSizeMin;
 	m_stopwatch			= make_unique<Stopwatch>();
 	m_navigateToPath	= true;
 }
@@ -61,7 +61,7 @@ void FileDialog::SetFilter(FileDialog_Filter filter)
 	m_filter = filter;
 }
 
-void FileDialog::SetStyle(FileDialog_Style type)
+void FileDialog::SetStyle(FileDialog_Mode type)
 {
 	m_style = type;
 	m_title = GET_WINDOW_NAME;
@@ -98,15 +98,15 @@ bool FileDialog::Show(bool* isVisible, string* path)
 	int columns = (int)(ImGui::GetWindowContentRegionWidth() / m_itemSize);
 	columns = columns < 1 ? 1 : columns;
 	ImGui::Columns(columns, nullptr, false);
-	for (const auto& item : m_directoryContents)
+	for (const auto& entry : m_directoryEntries)
 	{
 		// ICON
 		ImGui::PushID(index);
-		if (THUMBNAIL_PROVIDER_IMAGE_BUTTON_FILEPATH(item.first, m_itemSize))
+		if (THUMBNAIL_BUTTON(entry.second, m_itemSize))
 		{
-			if (m_pathClicked != item.first) // Single click
+			if (m_pathClicked != entry.first) // Single click
 			{
-				m_pathClicked = item.first;
+				m_pathClicked = entry.first;
 				EditorHelper::SetCharArray(&m_fileNameText[0], FileSystem::GetFileNameFromFilePath(m_pathClicked));
 				m_stopwatch->Start();
 			}
@@ -114,16 +114,16 @@ bool FileDialog::Show(bool* isVisible, string* path)
 			{
 				bool isDirectory	= FileSystem::IsDirectory(m_pathClicked);
 				m_navigateToPath	= isDirectory;
-				m_pathClicked		= !isDirectory ? item.first : item.first + "/";
+				m_pathClicked		= !isDirectory ? entry.first : entry.first + "/";
 				m_selectionMade		= !isDirectory;
 				m_stopwatch->Start();
 			}
 		}
 
-		if (m_style == FileDialog_Style_Basic)
+		if (m_style == FileDialog_Basic)
 		{
 			g_dragDropPayload.type = g_dragDrop_Type_Texture;
-			g_dragDropPayload.data = item.first.c_str();
+			g_dragDropPayload.data = entry.first.c_str();
 			DragDrop::SendPayload(g_dragDropPayload);
 		}
 		
@@ -135,12 +135,12 @@ bool FileDialog::Show(bool* isVisible, string* path)
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 10); // move to the bottom of the thumbnail
 		ImGui::PushItemWidth(m_itemSize + 8.5f);
 		
-		EditorHelper::SetCharArray(&m_itemLabel[0], FileSystem::GetFileNameFromFilePath(item.first));
-		ImGui::InputText("##Temp", m_itemLabel, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
+		EditorHelper::SetCharArray(&m_itemLabel[0], FileSystem::GetFileNameFromFilePath(entry.first));
+		ImGui::Text(m_itemLabel);
 
 		ImGui::PopItemWidth();
-		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + m_itemSize + 16); // move to the left of the thumbnail
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() - m_itemSize + 10); // move to the bottom of the thumbnail
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + m_itemSize + 16); // move to the right of the thumbnail
+		ImGui::SetCursorPosY(ImGui::GetCursorPosY() - m_itemSize + 10); // move to the top of the thumbnail
 
 		ImGui::NextColumn();
 		index++;
@@ -148,7 +148,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 	ImGui::Columns(1);
 
 	// Bottom-right buttons
-	if (m_style != FileDialog_Style_Basic)
+	if (m_style != FileDialog_Basic)
 	{
 		ImGui::SetCursorPosY(ImGui::GetWindowSize().y - 35); // move to the bottom of the window
 		ImGui::Separator();
@@ -216,47 +216,52 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 		return false;
 	}
 
-	if (m_currentDirectory == pathClicked && !m_directoryContents.empty())
+	if (m_currentDirectory == pathClicked && !m_directoryEntries.empty())
 		return true;
 
 	m_currentDirectory = pathClicked;
-	m_directoryContents.clear();
+	m_directoryEntries.clear();
 
 	// Get directories
 	vector<string> childDirectories = FileSystem::GetDirectoriesInDirectory(m_currentDirectory);
 	for (const auto& childDir : childDirectories)
 	{
-		m_directoryContents[childDir] = Icon_Folder;
+		AddThumbnail(childDir, Icon_Folder);
 	}
 
 	// Get files (based on filter)
 	vector<string> childFiles;
-	if (m_filter == FileDialog_Filter_All)
+	if (m_filter == FileDialog_All)
 	{
 		childFiles = FileSystem::GetFilesInDirectory(m_currentDirectory);
 		for (const auto& childFile : childFiles)
-		{
-			m_directoryContents[childFile] = Icon_File_Default;
+		{	
+			AddThumbnail(childFile);
 		}
 	}
-	else if (m_filter == FileDialog_Filter_Scene)
+	else if (m_filter == FileDialog_Scene)
 	{
 		childFiles = FileSystem::GetSupportedSceneFilesInDirectory(m_currentDirectory);
 		for (const auto& childFile : childFiles)
 		{
-			m_directoryContents[childFile] = Icon_File_Scene;
+			AddThumbnail(childFile, Icon_File_Scene);
 		}
 	}
-	else if (m_filter == FileDialog_Filter_Model)
+	else if (m_filter == FileDialog_Model)
 	{
 		childFiles = FileSystem::GetSupportedModelFilesInDirectory(m_currentDirectory);
 		for (const auto& childFile : childFiles)
 		{
-			m_directoryContents[childFile] = Icon_File_Model;
+			AddThumbnail(childFile, Icon_File_Model);
 		}
 	}
 
 	EditorHelper::SetCharArray(&m_fileNameText[0], "");
 	
 	return true;
+}
+
+void FileDialog::AddThumbnail(const std::string& filePath, Thumbnail_Type type)
+{
+	m_directoryEntries[filePath] = ThumbnailProvider::Get().Thumbnail_Load(filePath, type, m_itemSize);
 }

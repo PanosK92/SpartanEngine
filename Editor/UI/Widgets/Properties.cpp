@@ -146,23 +146,23 @@ static bool g_reflectOnce = false;
 static ResourceManager* g_resourceManager = nullptr;
 static const char* g_contexMenuID;
 
-#define COMPONENT_BEGIN(name, icon_enum, componentInstance)							\
-	THUMBNAIL_PROVIDER_IMAGE(icon_enum, 15);										\
-	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);							\
-	ImGui::SameLine(425);															\
-	if (THUMBNAIL_PROVIDER_IMAGE_BUTTON_ENUM_ID(##name, Icon_Component_Options, 15))\
-	{																				\
-		g_contexMenuID = ##name;													\
-		ImGui::OpenPopup(g_contexMenuID);											\
-	}																				\
-	if (g_contexMenuID == ##name)													\
-		ComponentContextMenu_Options(g_contexMenuID, componentInstance);			\
-	ImGui::SameLine(25);															\
-	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))					\
-	{																				\
+#define COMPONENT_BEGIN(name, icon_enum, componentInstance)					\
+	THUMBNAIL_IMAGE(icon_enum, 15);											\
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);					\
+	ImGui::SameLine(425);													\
+	if (THUMBNAIL_BUTTON_TYPE_UNIQUE_ID(##name, Icon_Component_Options, 15))\
+	{																		\
+		g_contexMenuID = ##name;											\
+		ImGui::OpenPopup(g_contexMenuID);									\
+	}																		\
+	if (g_contexMenuID == ##name)											\
+		ComponentContextMenu_Options(g_contexMenuID, componentInstance);	\
+	ImGui::SameLine(25);													\
+	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))			\
+	{																		\
 		
 #define COMPONENT_BEGIN_NO_OPTIONS(name, icon_enum)					\
-	THUMBNAIL_PROVIDER_IMAGE(icon_enum, 15);						\
+	THUMBNAIL_IMAGE(icon_enum, 15);									\
 	ImGui::SameLine(25);											\
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.5f);			\
 	if (ImGui::TreeNodeEx(name, ImGuiTreeNodeFlags_DefaultOpen))	\

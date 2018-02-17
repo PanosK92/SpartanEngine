@@ -45,125 +45,125 @@ namespace Directus
 	{
 		// Set supported image formats
 		{
-			m_supportedImageFormats.push_back(".jpg");
-			m_supportedImageFormats.push_back(".png");
-			m_supportedImageFormats.push_back(".bmp");
-			m_supportedImageFormats.push_back(".tga");
-			m_supportedImageFormats.push_back(".dds");
-			m_supportedImageFormats.push_back(".exr");
-			m_supportedImageFormats.push_back(".raw");
-			m_supportedImageFormats.push_back(".gif");
-			m_supportedImageFormats.push_back(".hdr");
-			m_supportedImageFormats.push_back(".ico");
-			m_supportedImageFormats.push_back(".iff");
-			m_supportedImageFormats.push_back(".jng");
-			m_supportedImageFormats.push_back(".jpeg");
-			m_supportedImageFormats.push_back(".koala");
-			m_supportedImageFormats.push_back(".kodak");
-			m_supportedImageFormats.push_back(".mng");
-			m_supportedImageFormats.push_back(".pcx");
-			m_supportedImageFormats.push_back(".pbm");
-			m_supportedImageFormats.push_back(".pgm");
-			m_supportedImageFormats.push_back(".ppm");
-			m_supportedImageFormats.push_back(".pfm");
-			m_supportedImageFormats.push_back(".pict");
-			m_supportedImageFormats.push_back(".psd");
-			m_supportedImageFormats.push_back(".raw");
-			m_supportedImageFormats.push_back(".sgi");
-			m_supportedImageFormats.push_back(".targa");
-			m_supportedImageFormats.push_back(".tiff");
-			m_supportedImageFormats.push_back(".tif"); // tiff can also be tif
-			m_supportedImageFormats.push_back(".wbmp");
-			m_supportedImageFormats.push_back(".webp");
-			m_supportedImageFormats.push_back(".xbm");
-			m_supportedImageFormats.push_back(".xpm");
+			m_supportedImageFormats.emplace_back(".jpg");
+			m_supportedImageFormats.emplace_back(".png");
+			m_supportedImageFormats.emplace_back(".bmp");
+			m_supportedImageFormats.emplace_back(".tga");
+			m_supportedImageFormats.emplace_back(".dds");
+			m_supportedImageFormats.emplace_back(".exr");
+			m_supportedImageFormats.emplace_back(".raw");
+			m_supportedImageFormats.emplace_back(".gif");
+			m_supportedImageFormats.emplace_back(".hdr");
+			m_supportedImageFormats.emplace_back(".ico");
+			m_supportedImageFormats.emplace_back(".iff");
+			m_supportedImageFormats.emplace_back(".jng");
+			m_supportedImageFormats.emplace_back(".jpeg");
+			m_supportedImageFormats.emplace_back(".koala");
+			m_supportedImageFormats.emplace_back(".kodak");
+			m_supportedImageFormats.emplace_back(".mng");
+			m_supportedImageFormats.emplace_back(".pcx");
+			m_supportedImageFormats.emplace_back(".pbm");
+			m_supportedImageFormats.emplace_back(".pgm");
+			m_supportedImageFormats.emplace_back(".ppm");
+			m_supportedImageFormats.emplace_back(".pfm");
+			m_supportedImageFormats.emplace_back(".pict");
+			m_supportedImageFormats.emplace_back(".psd");
+			m_supportedImageFormats.emplace_back(".raw");
+			m_supportedImageFormats.emplace_back(".sgi");
+			m_supportedImageFormats.emplace_back(".targa");
+			m_supportedImageFormats.emplace_back(".tiff");
+			m_supportedImageFormats.emplace_back(".tif"); // tiff can also be tif
+			m_supportedImageFormats.emplace_back(".wbmp");
+			m_supportedImageFormats.emplace_back(".webp");
+			m_supportedImageFormats.emplace_back(".xbm");
+			m_supportedImageFormats.emplace_back(".xpm");
 		}
 
 		// Set supported audio formats
 		{
-			m_supportedAudioFormats.push_back(".aiff");
-			m_supportedAudioFormats.push_back(".asf");
-			m_supportedAudioFormats.push_back(".asx");
-			m_supportedAudioFormats.push_back(".dls");
-			m_supportedAudioFormats.push_back(".flac");
-			m_supportedAudioFormats.push_back(".fsb");
-			m_supportedAudioFormats.push_back(".it");
-			m_supportedAudioFormats.push_back(".m3u");
-			m_supportedAudioFormats.push_back(".midi");
-			m_supportedAudioFormats.push_back(".mod");
-			m_supportedAudioFormats.push_back(".mp2");
-			m_supportedAudioFormats.push_back(".mp3");
-			m_supportedAudioFormats.push_back(".ogg");
-			m_supportedAudioFormats.push_back(".pls");
-			m_supportedAudioFormats.push_back(".s3m");
-			m_supportedAudioFormats.push_back(".vag"); // PS2/PSP
-			m_supportedAudioFormats.push_back(".wav");
-			m_supportedAudioFormats.push_back(".wax");
-			m_supportedAudioFormats.push_back(".wma");
-			m_supportedAudioFormats.push_back(".xm");
-			m_supportedAudioFormats.push_back(".xma"); // XBOX 360
+			m_supportedAudioFormats.emplace_back(".aiff");
+			m_supportedAudioFormats.emplace_back(".asf");
+			m_supportedAudioFormats.emplace_back(".asx");
+			m_supportedAudioFormats.emplace_back(".dls");
+			m_supportedAudioFormats.emplace_back(".flac");
+			m_supportedAudioFormats.emplace_back(".fsb");
+			m_supportedAudioFormats.emplace_back(".it");
+			m_supportedAudioFormats.emplace_back(".m3u");
+			m_supportedAudioFormats.emplace_back(".midi");
+			m_supportedAudioFormats.emplace_back(".mod");
+			m_supportedAudioFormats.emplace_back(".mp2");
+			m_supportedAudioFormats.emplace_back(".mp3");
+			m_supportedAudioFormats.emplace_back(".ogg");
+			m_supportedAudioFormats.emplace_back(".pls");
+			m_supportedAudioFormats.emplace_back(".s3m");
+			m_supportedAudioFormats.emplace_back(".vag"); // PS2/PSP
+			m_supportedAudioFormats.emplace_back(".wav");
+			m_supportedAudioFormats.emplace_back(".wax");
+			m_supportedAudioFormats.emplace_back(".wma");
+			m_supportedAudioFormats.emplace_back(".xm");
+			m_supportedAudioFormats.emplace_back(".xma"); // XBOX 360
 		}
 
 		// Set supported model formats
 		{
 			// Foreign formats
-			m_supportedModelFormats.push_back(".3ds");
-			m_supportedModelFormats.push_back(".obj");
-			m_supportedModelFormats.push_back(".fbx");
-			m_supportedModelFormats.push_back(".blend");
-			m_supportedModelFormats.push_back(".dae");
-			m_supportedModelFormats.push_back(".lwo");
-			m_supportedModelFormats.push_back(".c4d");
-			m_supportedModelFormats.push_back(".ase");
-			m_supportedModelFormats.push_back(".dxf");
-			m_supportedModelFormats.push_back(".hmp");
-			m_supportedModelFormats.push_back(".md2");
-			m_supportedModelFormats.push_back(".md3");
-			m_supportedModelFormats.push_back(".md5");
-			m_supportedModelFormats.push_back(".mdc");
-			m_supportedModelFormats.push_back(".mdl");
-			m_supportedModelFormats.push_back(".nff");
-			m_supportedModelFormats.push_back(".ply");
-			m_supportedModelFormats.push_back(".stl");
-			m_supportedModelFormats.push_back(".x");
-			m_supportedModelFormats.push_back(".smd");
-			m_supportedModelFormats.push_back(".lxo");
-			m_supportedModelFormats.push_back(".lws");
-			m_supportedModelFormats.push_back(".ter");
-			m_supportedModelFormats.push_back(".ac3d");
-			m_supportedModelFormats.push_back(".ms3d");
-			m_supportedModelFormats.push_back(".cob");
-			m_supportedModelFormats.push_back(".q3bsp");
-			m_supportedModelFormats.push_back(".xgl");
-			m_supportedModelFormats.push_back(".csm");
-			m_supportedModelFormats.push_back(".bvh");
-			m_supportedModelFormats.push_back(".b3d");
-			m_supportedModelFormats.push_back(".ndo");
+			m_supportedModelFormats.emplace_back(".3ds");
+			m_supportedModelFormats.emplace_back(".obj");
+			m_supportedModelFormats.emplace_back(".fbx");
+			m_supportedModelFormats.emplace_back(".blend");
+			m_supportedModelFormats.emplace_back(".dae");
+			m_supportedModelFormats.emplace_back(".lwo");
+			m_supportedModelFormats.emplace_back(".c4d");
+			m_supportedModelFormats.emplace_back(".ase");
+			m_supportedModelFormats.emplace_back(".dxf");
+			m_supportedModelFormats.emplace_back(".hmp");
+			m_supportedModelFormats.emplace_back(".md2");
+			m_supportedModelFormats.emplace_back(".md3");
+			m_supportedModelFormats.emplace_back(".md5");
+			m_supportedModelFormats.emplace_back(".mdc");
+			m_supportedModelFormats.emplace_back(".mdl");
+			m_supportedModelFormats.emplace_back(".nff");
+			m_supportedModelFormats.emplace_back(".ply");
+			m_supportedModelFormats.emplace_back(".stl");
+			m_supportedModelFormats.emplace_back(".x");
+			m_supportedModelFormats.emplace_back(".smd");
+			m_supportedModelFormats.emplace_back(".lxo");
+			m_supportedModelFormats.emplace_back(".lws");
+			m_supportedModelFormats.emplace_back(".ter");
+			m_supportedModelFormats.emplace_back(".ac3d");
+			m_supportedModelFormats.emplace_back(".ms3d");
+			m_supportedModelFormats.emplace_back(".cob");
+			m_supportedModelFormats.emplace_back(".q3bsp");
+			m_supportedModelFormats.emplace_back(".xgl");
+			m_supportedModelFormats.emplace_back(".csm");
+			m_supportedModelFormats.emplace_back(".bvh");
+			m_supportedModelFormats.emplace_back(".b3d");
+			m_supportedModelFormats.emplace_back(".ndo");
 		}
 
 		// Set supported shader formats
 		{
-			m_supportedShaderFormats.push_back(".hlsl");
+			m_supportedShaderFormats.emplace_back(".hlsl");
 		}
 
 		// Set supported script formats
 		{
-			m_supportedScriptFormats.push_back(".as");
+			m_supportedScriptFormats.emplace_back(".as");
 		}
 
 		// Set supported font formats
 		{
-			m_supportedScriptFormats.push_back(".ttf");
-			m_supportedScriptFormats.push_back(".ttc");
-			m_supportedScriptFormats.push_back(".cff");
-			m_supportedScriptFormats.push_back(".woff");
-			m_supportedScriptFormats.push_back(".otf");
-			m_supportedScriptFormats.push_back(".otc");
-			m_supportedScriptFormats.push_back(".pfa");
-			m_supportedScriptFormats.push_back(".pfb");
-			m_supportedScriptFormats.push_back(".fnt");
-			m_supportedScriptFormats.push_back(".bdf");
-			m_supportedScriptFormats.push_back(".pfr");
+			m_supportedScriptFormats.emplace_back(".ttf");
+			m_supportedScriptFormats.emplace_back(".ttc");
+			m_supportedScriptFormats.emplace_back(".cff");
+			m_supportedScriptFormats.emplace_back(".woff");
+			m_supportedScriptFormats.emplace_back(".otf");
+			m_supportedScriptFormats.emplace_back(".otc");
+			m_supportedScriptFormats.emplace_back(".pfa");
+			m_supportedScriptFormats.emplace_back(".pfb");
+			m_supportedScriptFormats.emplace_back(".fnt");
+			m_supportedScriptFormats.emplace_back(".bdf");
+			m_supportedScriptFormats.emplace_back(".pfr");
 		}
 	}
 

@@ -67,7 +67,7 @@ void Toolbar::Begin()
 void Toolbar::Update()
 {
 	bool editorMode = !Engine::EngineMode_IsSet(Engine_Game);
-	if (ImGui::ImageButton(THUMBNAIL_PROVIDER_BY_ENUM(Icon_Button_Play), ImVec2(g_buttonSize, g_buttonSize), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), editorMode ? g_colorButtonReleased : g_colorButtonPressed))
+	if (ImGui::ImageButton(SHADER_RESOURCE_BY_TYPE(Icon_Button_Play), ImVec2(g_buttonSize, g_buttonSize), ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), editorMode ? g_colorButtonReleased : g_colorButtonPressed))
 	{
 		Engine::EngineMode_Toggle(Engine_Game);
 	}

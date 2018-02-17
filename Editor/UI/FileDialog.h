@@ -21,41 +21,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include <map>
+//= INCLUDES =================
 #include <memory>
 #include "Core/Stopwatch.h"
 #include "ThumbnailProvider.h"
 #include "EditorHelper.h"
-//=========================
+//============================
 
-enum FileDialog_Style
+enum FileDialog_Mode
 {
-	FileDialog_Style_Basic,
-	FileDialog_Style_Open,
-	FileDialog_Style_Load,
-	FileDialog_Style_Save
+	FileDialog_Basic,
+	FileDialog_Open,
+	FileDialog_Load,
+	FileDialog_Save
 };
 
 enum FileDialog_Filter
 {
-	FileDialog_Filter_All,
-	FileDialog_Filter_Scene,
-	FileDialog_Filter_Model
+	FileDialog_All,
+	FileDialog_Scene,
+	FileDialog_Model
 };
 
 class FileDialog
 {
 public:
-	FileDialog(Directus::Context* context, bool standaloneWindow = true, FileDialog_Filter filter = FileDialog_Filter_All, FileDialog_Style type = FileDialog_Style_Basic);
+	FileDialog(Directus::Context* context, bool standaloneWindow = true, FileDialog_Filter filter = FileDialog_All, FileDialog_Mode type = FileDialog_Basic);
 
 	// Filter
 	FileDialog_Filter GetFilter() { return m_filter; }
 	void SetFilter(FileDialog_Filter filter);
 
 	// Style
-	FileDialog_Style GetStyle() { return m_style; }
-	void SetStyle(FileDialog_Style type);
+	FileDialog_Mode GetStyle() { return m_style; }
+	void SetStyle(FileDialog_Mode type);
 	
 	// Show
 	bool Show(bool* isVisible, std::string* path);
@@ -63,19 +62,23 @@ public:
 private:	
 	void ViewPath(const std::string& pathClicked);
 	bool NavigateToDirectory(const std::string& pathClicked);
+	void AddThumbnail(const std::string& filePath, Thumbnail_Type type = Icon_Custom);
 
 	std::string m_title;
 	std::string m_currentDirectory;
 	std::string m_pathClicked;
-	FileDialog_Style m_style;
+	FileDialog_Mode m_style;
 	FileDialog_Filter m_filter;
 	bool m_isWindow;
 	float m_itemSize;
 	bool m_selectionMade = false;
 	bool m_navigateToPath;
-	std::map<std::string, Thumbnail_Type> m_directoryContents;
 	std::unique_ptr<Directus::Stopwatch> m_stopwatch;
 	char m_fileNameText[BUFFER_TEXT_DEFAULT]{};
 	char m_itemLabel[BUFFER_TEXT_DEFAULT]{};
+
+	// Display name, data
+	std::map<std::string, Thumbnail> m_directoryEntries;
+
 	Directus::Context* m_context;
 };

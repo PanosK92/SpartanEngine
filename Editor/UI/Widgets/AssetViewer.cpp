@@ -52,8 +52,8 @@ AssetViewer::AssetViewer()
 void AssetViewer::Initialize(Context* context)
 {
 	Widget::Initialize(context);
-	m_fileDialogView	= make_unique<FileDialog>(m_context, false, FileDialog_Filter_All);
-	m_fileDialogLoad	= make_unique<FileDialog>(m_context, true, FileDialog_Filter_Model, FileDialog_Style_Load);
+	m_fileDialogView	= make_unique<FileDialog>(m_context, false, FileDialog_All);
+	m_fileDialogLoad	= make_unique<FileDialog>(m_context, true, FileDialog_Model, FileDialog_Load);
 	m_progressDialog	= make_unique<ProgressDialog>("Hold on...", m_context);
 	g_resourceManager	= m_context->GetSubsystem<ResourceManager>();
 	SUBSCRIBE_TO_EVENT(EVENT_MODEL_LOADED, EVENT_HANDLER(OnModelLoaded));

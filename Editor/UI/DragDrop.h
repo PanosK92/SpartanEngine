@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ============
-#include "imgui/imgui.h"
-#include "ThumbnailProvider.h"
+#include "ImGui/imgui.h"
+#include "EditorHelper.h"
 //=======================
 
 struct DragDropPayload
@@ -49,7 +49,7 @@ public:
 		if (ImGui::BeginDragDropSource())
 		{		
 			ImGui::SetDragDropPayload(payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
-			THUMBNAIL_PROVIDER_IMAGE(Icon_File_Default, 50);
+			THUMBNAIL_IMAGE(Icon_File_Default, 50);
 			ImGui::EndDragDropSource();
 		}
 	}
