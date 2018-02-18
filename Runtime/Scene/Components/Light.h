@@ -50,13 +50,6 @@ namespace Directus
 		LightType_Spot
 	};
 
-	enum ShadowType
-	{
-		No_Shadows,
-		Hard_Shadows,
-		Soft_Shadows
-	};
-
 	class ENGINE_CLASS Light : public IComponent
 	{
 	public:
@@ -80,9 +73,8 @@ namespace Directus
 		void SetIntensity(float value) { m_intensity = value; }
 		float GetIntensity() { return m_intensity; }
 
-		ShadowType GetShadowQuality() { return m_shadowType; }
-		void SetShadowQuality(ShadowType shadowType) { m_shadowType = shadowType; }
-		float GetShadowTypeAsFloat();
+		bool GetCastShadows() { return m_castShadows; }
+		void SetCastShadows(bool castShadows) { m_castShadows = castShadows; }
 
 		void SetRange(float range);
 		float GetRange() { return m_range; }
@@ -97,20 +89,20 @@ namespace Directus
 		void ClampRotation();
 
 		Math::Matrix GetViewMatrix();
-		Math::Matrix GetOrthographicProjectionMatrix(int cascade);
+		Math::Matrix GetOrthographicProjectionMatrix(int cascadeIndex);
 
 		// Cascaded shadow mapping
 		void SetShadowCascadeAsRenderTarget(int cascade);
-		std::weak_ptr<Cascade> GetShadowCascade(int cascade);
+		std::weak_ptr<Cascade> GetShadowCascade(int cascadeIndex);
 		int GetShadowCascadeResolution() { return SHADOWMAP_RESOLUTION; }
 		int GetShadowCascadeCount() { return m_cascades; }
-		float GetShadowCascadeSplit(int cascade);
+		float GetShadowCascadeSplit(int cascadeIndex);
 
 		bool IsInViewFrustrum(MeshFilter* meshFilter);
 
 	private:
 		LightType m_lightType;
-		ShadowType m_shadowType;
+		bool m_castShadows;
 		Math::Vector4 m_color;
 		float m_range;
 		float m_intensity;

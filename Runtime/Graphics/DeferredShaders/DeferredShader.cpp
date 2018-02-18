@@ -116,7 +116,6 @@ namespace Directus
 			buffer->dirLightColor = Vector4::Zero;
 			buffer->dirLightDirection = Vector4::Zero;
 			buffer->dirLightIntensity = Vector4::Zero;
-			buffer->softShadows = (float)false;
 			buffer->pointLightPosition[maxLights] = Vector4::Zero;
 			buffer->pointLightColor[maxLights] = Vector4::Zero;
 			buffer->pointLightIntenRange[maxLights] = Vector4::Zero;
@@ -136,7 +135,6 @@ namespace Directus
 			buffer->dirLightColor = light->GetColor();	
 			buffer->dirLightIntensity = Vector4(light->GetIntensity());
 			buffer->dirLightDirection = Vector4(direction.x, direction.y, direction.z, 0.0f);
-			buffer->softShadows = (light->GetShadowQuality() == Soft_Shadows) ? 1.0f : 0.0f;
 		}
 
 		// Fill with point lights
@@ -177,7 +175,7 @@ namespace Directus
 		buffer->nearPlane = camera->GetNearPlane();
 		buffer->farPlane = camera->GetFarPlane();
 		buffer->viewport = GET_RESOLUTION;
-		buffer->padding = 0.0f;
+		buffer->padding = Vector2::Zero;
 
 		// Unmap buffer
 		m_miscBuffer->Unmap();

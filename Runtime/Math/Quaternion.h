@@ -95,7 +95,7 @@ namespace Directus
 			}
 			//===========================================================================
 
-			//= TO ======================================================================
+			//= TO ================================================================================
 			Vector3 ToEulerAngles() const
 			{
 				// Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
@@ -133,7 +133,7 @@ namespace Directus
 			float Yaw() const { return ToEulerAngles().y; }
 			float Pitch() const { return ToEulerAngles().x; }
 			float Roll() const { return ToEulerAngles().z; }
-			//===========================================================================
+			//=====================================================================================
 
 			void FromRotationTo(const Vector3& start, const Vector3& end)
 			{
@@ -186,7 +186,7 @@ namespace Directus
 			Quaternion Conjugate() const { return Quaternion(w, -x, -y, -z); }
 			float LengthSquared() const { return w * w + x * x + y * y + z * z; }
 
-			//= NORMALIZATION ============================================================================
+			//= NORMALIZATION =====================================
 			void Normalize()
 			{
 				float lenSquared = LengthSquared();
@@ -213,9 +213,9 @@ namespace Directus
 			}
 
 			Quaternion Inverse() const;
-			//============================================================================================
+			//=====================================================
 
-			//= ASSIGNMENT ===============================================================================
+			//= ASSIGNMENT ==============================
 			Quaternion& operator =(const Quaternion& rhs)
 			{
 				w = rhs.w;
@@ -225,7 +225,7 @@ namespace Directus
 
 				return *this;
 			}
-			//============================================================================================
+			//===========================================
 
 			//= MULTIPLICATION ==============================================================================
 			Quaternion operator*(const Quaternion& rhs) const

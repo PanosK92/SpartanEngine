@@ -60,25 +60,28 @@ public:
 	bool Show(bool* isVisible, std::string* path);
 
 private:	
-	void ViewPath(const std::string& pathClicked);
 	bool NavigateToDirectory(const std::string& pathClicked);
 	void AddThumbnail(const std::string& filePath, Thumbnail_Type type = Thumbnail_Custom);
+	void HandleClicking(const std::string& directoryEntry);
+	void ContextMenu();
 
 	std::string m_title;
-	std::string m_currentDirectory;
-	std::string m_pathClicked;
+
+	// Display name, data
+	std::map<std::string, Thumbnail> m_directoryEntries;
+	std::string m_currentPath;
+	std::string m_currentFullPath;
+
 	FileDialog_Mode m_style;
 	FileDialog_Filter m_filter;
+
+	char m_fileNameText[BUFFER_TEXT_DEFAULT]{};
+	char m_itemLabel[BUFFER_TEXT_DEFAULT]{};
+
 	bool m_isWindow;
 	float m_itemSize;
 	bool m_selectionMade = false;
 	bool m_navigateToPath;
 	std::unique_ptr<Directus::Stopwatch> m_stopwatch;
-	char m_fileNameText[BUFFER_TEXT_DEFAULT]{};
-	char m_itemLabel[BUFFER_TEXT_DEFAULT]{};
-
-	// Display name, data
-	std::map<std::string, Thumbnail> m_directoryEntries;
-
 	Directus::Context* m_context;
 };

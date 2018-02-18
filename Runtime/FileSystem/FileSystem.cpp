@@ -19,13 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES ==============
 #include "FileSystem.h"
 #include <filesystem>
 #include <locale>
 #include <regex>
 #include "../Logging/Log.h"
-//===============================
+#include <Windows.h>
+//=========================
 
 //= NAMESPACES =========================
 using namespace std;
@@ -187,6 +188,19 @@ namespace Directus
 	{
 		return fs::is_directory(directory);
 	}
+
+	void FileSystem::OpenDirectoryWindow(const std::string& directory)
+	{
+		int strLength	= (int)directory.length() + 1;
+		int len			= MultiByteToWideChar(CP_ACP, 0, directory.c_str(), strLength, nullptr, 0); 
+		wchar_t* buf	= new wchar_t[len];
+		MultiByteToWideChar(CP_ACP, 0, directory.c_str(), strLength, buf, len);
+		std::wstring wstr(buf);
+		delete[] buf;
+
+		ShellExecute(nullptr, nullptr, wstr.c_str(), nullptr, nullptr, SW_SHOW);
+	}
+
 	//====================================================================================
 
 	//= FILES ============================================================================

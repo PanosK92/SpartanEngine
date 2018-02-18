@@ -56,7 +56,7 @@ float random(float2 seed2)
     return frac(sin(dot_product) * 43758.5453);
 }
 
-float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float shadowMappingQuality, float4 pos, float3 normal, float3 lightDir, float bias)
+float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadowMapResolution, float4 pos, float3 normal, float3 lightDir, float bias)
 {	
 	// Re-homogenize position after interpolation
     pos.xyz /= pos.w;
@@ -74,6 +74,8 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	pos.z -= bias;
 	
 	float amountLit = 0.0f;
+	
+	float shadowMappingQuality = 0.5f;
 	
 	// Hard shadows (0.5f) --> PCF + Interpolation
 	if (shadowMappingQuality == 0.5f)
