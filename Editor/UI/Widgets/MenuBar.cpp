@@ -167,7 +167,7 @@ void MenuBar::ShowAboutWindow()
 	ImGui::Text("Author: Panos Karabelas");
 	ImGui::SameLine(600); ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);  if (ImGui::Button("GitHub"))
 	{
-		ShellExecute(nullptr, nullptr, L"https://github.com/PanosK92/Directus3D", nullptr, nullptr, SW_SHOW);
+		FileSystem::OpenDirectoryWindow("https://github.com/PanosK92/Directus3D");
 	}	
 
 	ImGui::Separator();

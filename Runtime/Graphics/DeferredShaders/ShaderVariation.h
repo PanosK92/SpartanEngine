@@ -103,7 +103,7 @@ namespace Directus
 			Math::Vector4 shadowSplits;
 			Math::Vector3 lightDir;
 			float shadowMapResolution;
-			float shadowMappingQuality;
+			float doShadowMapping;
 			Math::Vector3 cameraPos;
 		};
 

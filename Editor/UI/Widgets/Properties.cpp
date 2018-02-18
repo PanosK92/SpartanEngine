@@ -347,7 +347,7 @@ void Properties::ShowLight(Light* light)
 		g_lightTypeInt		= (int)light->GetLightType();
 		g_lightType			= g_lightTypes[g_lightTypeInt];
 		g_lightIntensity	= light->GetIntensity();
-		g_lightShadows		= light->GetShadowQuality() != No_Shadows;
+		g_lightShadows		= light->GetCastShadows();
 		g_lightAngle		= light->GetAngle();
 		g_lightButtonColorPicker->SetColor(light->GetColor());
 		EditorHelper::SetCharArray(&g_lightRange[0], light->GetRange());
@@ -411,7 +411,7 @@ void Properties::ShowLight(Light* light)
 		light->SetLightType((LightType)g_lightTypeInt);
 		light->SetColor(g_lightButtonColorPicker->GetColor());
 		light->SetIntensity(g_lightIntensity);
-		light->SetShadowQuality(g_lightShadows ? Hard_Shadows : No_Shadows);
+		light->SetCastShadows(g_lightShadows);
 		light->SetRange((float)atof(&g_lightRange[0]));
 		light->SetAngle(g_lightAngle);
 	}

@@ -44,7 +44,7 @@ namespace Directus
 	Light::Light()
 	{
 		m_lightType = LightType_Point;
-		m_shadowType = Hard_Shadows;
+		m_castShadows = true;
 		m_range = 1.0f;
 		m_intensity = 2.0f;
 		m_angle = 0.5f; // about 30 degrees
@@ -107,7 +107,7 @@ namespace Directus
 	void Light::Serialize(FileStream* stream)
 	{
 		stream->Write(int(m_lightType));
-		stream->Write(int(m_shadowType));
+		stream->Write(m_castShadows);
 		stream->Write(m_color);
 		stream->Write(m_range);
 		stream->Write(m_intensity);
@@ -118,7 +118,7 @@ namespace Directus
 	void Light::Deserialize(FileStream* stream)
 	{
 		m_lightType = LightType(stream->ReadInt());
-		m_shadowType = ShadowType(stream->ReadInt());
+		stream->Read(&m_castShadows);
 		stream->Read(&m_color);
 		stream->Read(&m_range);
 		stream->Read(&m_intensity);
@@ -130,17 +130,6 @@ namespace Directus
 	{
 		m_lightType = type;
 		m_isDirty = true;
-	}
-
-	float Light::GetShadowTypeAsFloat()
-	{
-		if (m_shadowType == Hard_Shadows)
-			return 0.5f;
-
-		if (m_shadowType == Soft_Shadows)
-			return 1.0f;
-
-		return 0.0f;
 	}
 
 	void Light::SetRange(float range)
@@ -197,7 +186,7 @@ namespace Directus
 
 	Matrix Light::GetOrthographicProjectionMatrix(int cascadeIndex)
 	{
-		if (!GetContext() || cascadeIndex >= m_shadowMaps.size())
+		if (!GetContext() || cascadeIndex >= (int)m_shadowMaps.size())
 			return Matrix::Identity;
 
 		// Only re-compute if dirty
@@ -212,13 +201,13 @@ namespace Directus
 
 	void Light::SetShadowCascadeAsRenderTarget(int cascade)
 	{
-		if (cascade < m_shadowMaps.size())
+		if (cascade < (int)m_shadowMaps.size())
 			m_shadowMaps[cascade]->SetAsRenderTarget();
 	}
 
 	weak_ptr<Cascade> Light::GetShadowCascade(int cascadeIndex)
 	{
-		if (cascadeIndex >= m_shadowMaps.size())
+		if (cascadeIndex >= (int)m_shadowMaps.size())
 			return weak_ptr<Cascade>();
 
 		return m_shadowMaps[cascadeIndex];
@@ -226,7 +215,7 @@ namespace Directus
 
 	float Light::GetShadowCascadeSplit(int cascadeIndex)
 	{
-		if (cascadeIndex >= m_shadowMaps.size())
+		if (cascadeIndex >= (int)m_shadowMaps.size())
 			return 0.0f;
 
 		return m_shadowMaps[cascadeIndex]->GetSplit(cascadeIndex);

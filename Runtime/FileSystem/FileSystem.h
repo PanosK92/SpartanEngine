@@ -50,12 +50,13 @@ namespace Directus
 	public:
 		static void Initialize();
 
-		//= DIRECTORIES ===========================================
+		//= DIRECTORIES ==============================================
 		static bool CreateDirectory_(const std::string& path);
 		static bool DeleteDirectory(const std::string& directory);
 		static bool DirectoryExists(const std::string& directory);
 		static bool IsDirectory(const std::string& directory);
-		//=========================================================
+		static void OpenDirectoryWindow(const std::string& directory);
+		//============================================================
 
 		//= FILES ============================================================================
 		static bool FileExists(const std::string& filePath);

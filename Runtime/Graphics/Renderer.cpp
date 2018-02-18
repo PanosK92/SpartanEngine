@@ -27,11 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mesh.h"
 #include "Grid.h"
 #include "Shader.h"
+#include "../Core/Context.h"
 #include "D3D11/D3D11RenderTexture.h"
 #include "DeferredShaders/ShaderVariation.h"
 #include "DeferredShaders/DeferredShader.h"
 #include "../Scene/GameObject.h"
-#include "../Core/Context.h"
 #include "../Scene/Components/MeshFilter.h"
 #include "../Scene/Components/Transform.h"
 #include "../Scene/Components/MeshRenderer.h"
@@ -406,7 +406,7 @@ namespace Directus
 
 	void Renderer::DirectionalLightDepthPass()
 	{
-		if (!m_directionalLight || m_directionalLight->GetShadowQuality() == No_Shadows)
+		if (!m_directionalLight || !m_directionalLight->GetCastShadows())
 			return;
 
 		m_graphics->EnableDepth(true);
@@ -584,7 +584,7 @@ namespace Directus
 		SetRenderTarget(m_renderTexPong);
 
 		//= SHADOW BLUR =====================================================================================
-		if (m_directionalLight && m_directionalLight->GetShadowQuality() == Soft_Shadows)
+		if (m_directionalLight)
 		{
 			// BLUR
 			m_shaderBlur->Set();

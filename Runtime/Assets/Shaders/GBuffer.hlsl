@@ -34,7 +34,7 @@ cbuffer PerFrameBuffer : register(b0)
 	float4 shadowSplits;		
 	float3 lightDir;
 	float shadowMapResolution;
-	float shadowMappingQuality;	
+	float doShadowMapping;	
 	float3 cameraPosWS;
 };
 
@@ -190,7 +190,7 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	//= SHADOW MAPPING ===========================================================================	
 	float shadowing = 1.0f;
 	int cascadeIndex = 0;
-	if (receiveShadows == 1.0f && shadowMappingQuality != 0.0f)
+	if (receiveShadows == 1.0f && doShadowMapping != 0.0f)
 	{
 		float z = 1.0f - LinerizeDepth(depthCS, nearPlane, farPlane);
 
@@ -212,17 +212,17 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 			if (cascadeIndex == 0)
 			{
 				float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[0]);
-				shadowing	= ShadowMapping(lightDepthTex[0], samplerLinear, shadowMapResolution, shadowMappingQuality, lightPos, normal, lightDir, bias);
+				shadowing	= ShadowMapping(lightDepthTex[0], samplerLinear, shadowMapResolution, lightPos, normal, lightDir, bias);
 			}
 			else if (cascadeIndex == 1)
 			{
 				float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[1]);
-				shadowing	= ShadowMapping(lightDepthTex[1], samplerLinear, shadowMapResolution, shadowMappingQuality, lightPos, normal, lightDir, bias);
+				shadowing	= ShadowMapping(lightDepthTex[1], samplerLinear, shadowMapResolution, lightPos, normal, lightDir, bias);
 			}
 			else if (cascadeIndex == 2)
 			{
 				float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[2]);
-				shadowing	= ShadowMapping(lightDepthTex[2], samplerLinear, shadowMapResolution, shadowMappingQuality, lightPos, normal, lightDir, bias);
+				shadowing	= ShadowMapping(lightDepthTex[2], samplerLinear, shadowMapResolution, lightPos, normal, lightDir, bias);
 			}
 		}
 	}

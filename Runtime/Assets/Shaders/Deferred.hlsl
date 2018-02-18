@@ -33,7 +33,7 @@ cbuffer MiscBuffer : register(b1)
     float4 dirLightColor;
     float4 dirLightIntensity;
 	float4 dirLightDirection;
-	
+
     float4 pointLightPosition[MaxLights];
     float4 pointLightColor[MaxLights];
     float4 pointLightIntenRange[MaxLights];
@@ -47,9 +47,9 @@ cbuffer MiscBuffer : register(b1)
 	float spotlightCount;
     float nearPlane;
     float farPlane;
-	float softShadows;
+	
     float2 resolution;
-    float padding;
+    float2 padding;
 };
 //=====================================
 
@@ -125,7 +125,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	float3 worldPos = ReconstructPosition(depth, texCoord, mViewProjectionInverse);
     
 	// Shadows
-	float shadowing = softShadows == 1.0f ? texShadows.Sample(samplerAniso, texCoord).a : normalSample.a;	
+	float shadowing = texShadows.Sample(samplerAniso, texCoord).a;	
     shadowing = clamp(shadowing, 0.1f, 1.0f);
 	
 	// Misc

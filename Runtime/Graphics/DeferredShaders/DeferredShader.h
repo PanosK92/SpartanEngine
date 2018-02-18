@@ -89,9 +89,8 @@ namespace Directus
 			float spotLightCount;
 			float nearPlane;
 			float farPlane;
-			float softShadows;
 			Math::Vector2 viewport;
-			float padding;
+			Math::Vector2 padding;
 		};
 
 		std::shared_ptr<D3D11ConstantBuffer> m_matrixBuffer;
