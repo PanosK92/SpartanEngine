@@ -46,7 +46,7 @@ using namespace std;
 
 namespace Directus
 {
-	Collider::Collider()
+	Collider::Collider(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
 		m_shapeType = ColliderShape_Box;
 		m_center	= Vector3::Zero;

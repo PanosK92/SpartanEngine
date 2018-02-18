@@ -35,7 +35,7 @@ namespace Directus
 	class ENGINE_CLASS Transform : public IComponent
 	{
 	public:
-		Transform();
+		Transform(Context* context, GameObject* gameObject, Transform* transform);
 		~Transform();
 
 		//= ICOMPONENT ===============================

@@ -26,71 +26,68 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 //=============================
 
-namespace Directus
+namespace Directus::Math
 {
-	namespace Math
+	class Vector3;
+	class Matrix;
+
+	class ENGINE_CLASS Vector4
 	{
-		class Vector3;
-		class Matrix;
-
-		class ENGINE_CLASS Vector4
+	public:
+		Vector4()
 		{
-		public:
-			Vector4::Vector4()
-			{
-				x = 0;
-				y = 0;
-				z = 0;
-				w = 0;
-			}
+			x = 0;
+			y = 0;
+			z = 0;
+			w = 0;
+		}
 
-			Vector4::Vector4(float x, float y, float z, float w)
-			{
-				this->x = x;
-				this->y = y;
-				this->z = z;
-				this->w = w;
-			}
+		Vector4(float x, float y, float z, float w)
+		{
+			this->x = x;
+			this->y = y;
+			this->z = z;
+			this->w = w;
+		}
 
-			Vector4::Vector4(float value)
-			{
-				this->x = value;
-				this->y = value;
-				this->z = value;
-				this->w = value;
-			}
+		Vector4(float value)
+		{
+			this->x = value;
+			this->y = value;
+			this->z = value;
+			this->w = value;
+		}
 
-			Vector4::Vector4(const Vector3& value, float w);
-			Vector4::Vector4(const Vector3& value);
+		Vector4(const Vector3& value, float w);
+		Vector4(const Vector3& value);
 
-			Vector4::~Vector4(){}
+		~Vector4(){}
 
-			bool Vector4::operator==(const Vector4& b)
-			{
-				if (this->x == b.x && this->y == b.y && this->z == b.z && this->w == b.w)
-					return true;
+		bool operator==(const Vector4& b)
+		{
+			if (this->x == b.x && this->y == b.y && this->z == b.z && this->w == b.w)
+				return true;
 
-				return false;
-			}
+			return false;
+		}
 
-			bool Vector4::operator!=(const Vector4& b)
-			{
-				if (this->x != b.x || this->y != b.y || this->z != b.z || this->w != b.w)
-					return true;
+		bool operator!=(const Vector4& b)
+		{
+			if (this->x != b.x || this->y != b.y || this->z != b.z || this->w != b.w)
+				return true;
 
-				return false;
-			}
+			return false;
+		}
 
-			static Vector4 Transform(const Vector3& lhs, const Matrix& rhs);
+		static Vector4 Transform(const Vector3& lhs, const Matrix& rhs);
 
-			std::string ToString() const;
+		std::string ToString() const;
 
-			float x, y, z, w;
+		float x, y, z, w;
 
-			const float* Data() const { return &x; }
+		const float* Data() const { return &x; }
 
-			static const Vector4 One;
-			static const Vector4 Zero;
-		};
-	}
+		static const Vector4 One;
+		static const Vector4 Zero;
+	};
 }

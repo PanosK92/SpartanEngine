@@ -58,6 +58,7 @@ namespace Directus
 			std::is_same<T, unsigned int>::value ||
 			std::is_same<T, unsigned long>::value ||
 			std::is_same<T, unsigned char>::value ||
+			std::is_same<T, std::byte>::value ||
 			std::is_same<T, float>::value ||
 			std::is_same<T, bool>::value ||
 			std::is_same<T, double>::value 
@@ -76,6 +77,7 @@ namespace Directus
 		void Write(const std::vector<VertexPosTexTBN>& value);
 		void Write(const std::vector<unsigned int>& value);
 		void Write(const std::vector<unsigned char>& value);
+		void Write(const std::vector<std::byte>& value);
 		//===========================================================
 		
 		//= READING ================================================
@@ -84,6 +86,7 @@ namespace Directus
 			std::is_same<T, unsigned int>::value ||
 			std::is_same<T, unsigned long>::value ||
 			std::is_same<T, unsigned char>::value ||
+			std::is_same<T, std::byte>::value ||
 			std::is_same<T, float>::value ||
 			std::is_same<T, bool>::value ||
 			std::is_same<T, double>::value
@@ -98,10 +101,11 @@ namespace Directus
 		void Read(Math::Vector3* value);
 		void Read(Math::Vector4* value);
 		void Read(Math::Quaternion* value);
-		void Read(std::vector<std::string>* value);
-		void Read(std::vector<VertexPosTexTBN>* value);
-		void Read(std::vector<unsigned int>* value);
-		void Read(std::vector<unsigned char>* value);
+		void Read(std::vector<std::string>* vec);
+		void Read(std::vector<VertexPosTexTBN>* vec);
+		void Read(std::vector<unsigned int>* vec);
+		void Read(std::vector<unsigned char>* vec);
+		void Read(std::vector<std::byte>* vec);
 
 		// Helps when reading enums
 		int ReadInt()

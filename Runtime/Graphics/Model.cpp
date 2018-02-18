@@ -265,7 +265,7 @@ namespace Directus
 			texture->SetResourceName(FileSystem::GetFileNameNoExtensionFromFilePath(modelRelativeTexPath));
 			texture->SaveToFile(modelRelativeTexPath);
 			// Now that the texture is saved, free up it's memory since we already have a shader resource
-			texture->ClearTextureBits();
+			texture->ClearTextureBytes();
 
 			// Set the texture to the provided material
 			material.lock()->SetTexture(texture->Cache<Texture>(), false);

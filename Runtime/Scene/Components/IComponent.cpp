@@ -45,13 +45,12 @@ using namespace std;
 
 namespace Directus
 {
-	void IComponent::Register(GameObject* gameObject, Transform* transform, Context* context, ComponentType type)
+	IComponent::IComponent(Context* context, GameObject* gameObject, Transform* transform)
 	{
-		m_enabled		= true;
+		m_context		= context;
 		m_gameObject	= gameObject;
 		m_transform		= transform;
-		m_context		= context;
-		m_type			= type;
+		m_enabled		= true;
 		m_ID			= GENERATE_GUID;
 	}
 

@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================================
 #include "MeshRenderer.h"
 #include "Transform.h"
-#include "../GameObject.h"
 #include "../../Logging/Log.h"
 #include "../../IO/FileStream.h"
 #include "../../Graphics/Material.h"
@@ -38,7 +37,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	MeshRenderer::MeshRenderer()
+	MeshRenderer::MeshRenderer(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
 		m_castShadows			= true;
 		m_receiveShadows		= true;

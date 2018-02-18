@@ -41,18 +41,18 @@ using namespace std;
 
 namespace Directus
 {
-	Light::Light()
+	Light::Light(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
-		m_lightType = LightType_Point;
-		m_castShadows = true;
-		m_range = 1.0f;
-		m_intensity = 2.0f;
-		m_angle = 0.5f; // about 30 degrees
-		m_color = Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-		m_bias = 0.001f;
-		m_cascades = 3;
-		m_frustrum = make_shared<Frustrum>();
-		m_isDirty = true;
+		m_lightType		= LightType_Point;
+		m_castShadows	= true;
+		m_range			= 1.0f;
+		m_intensity		= 2.0f;
+		m_angle			= 0.5f; // about 30 degrees
+		m_color			= Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+		m_bias			= 0.001f;
+		m_cascades		= 3;
+		m_frustrum		= make_shared<Frustrum>();
+		m_isDirty		= true;
 	}
 
 	Light::~Light()

@@ -56,7 +56,7 @@ namespace Directus
 		~FontImporter();
 
 		void Initialize();
-		bool LoadFont(const std::string& filePath, int fontSize, std::vector<unsigned char>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, std::map<unsigned int, Glyph>& characterInfo);
+		bool LoadFont(const std::string& filePath, int fontSize, std::vector<std::byte>& atlasBuffer, unsigned int& atlasWidth, unsigned int& atlasHeight, std::map<unsigned int, Glyph>& characterInfo);
 
 	private:
 		void ComputeAtlasTextureDimensions(FT_FaceRec_* face, unsigned int& atlasWidth, unsigned int& atlasHeight, unsigned int& rowHeight);

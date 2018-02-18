@@ -54,7 +54,7 @@ namespace Directus
 	class ENGINE_CLASS Camera : public IComponent
 	{
 	public:
-		Camera();
+		Camera(Context* context, GameObject* gameObject, Transform* transform);
 		~Camera();
 
 		//= ICOMPONENT ===============================

@@ -50,7 +50,7 @@ namespace Directus
 	class ENGINE_CLASS MeshFilter : public IComponent
 	{
 	public:
-		MeshFilter();
+		MeshFilter(Context* context, GameObject* gameObject, Transform* transform);
 		~MeshFilter();
 
 		//= ICOMPONENT ===============================

@@ -44,7 +44,7 @@ namespace Directus
 	class ENGINE_CLASS Constraint : public IComponent
 	{
 	public:
-		Constraint();
+		Constraint(Context* context, GameObject* gameObject, Transform* transform);
 		~Constraint();
 
 		//= COMPONENT =============================

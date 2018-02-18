@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========
+//= INCLUDES ==========
 #include "IComponent.h"
-//====================
+//=====================
 
 namespace Directus
 {
@@ -33,7 +33,7 @@ namespace Directus
 	class ENGINE_CLASS MeshRenderer : public IComponent
 	{
 	public:
-		MeshRenderer();
+		MeshRenderer(Context* context, GameObject* gameObject, Transform* transform);
 		~MeshRenderer();
 
 		//= ICOMPONENT ===============================

@@ -35,7 +35,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Transform::Transform()
+	Transform::Transform(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
 		m_positionLocal		= Vector3::Zero;
 		m_rotationLocal		= Quaternion(0, 0, 0, 1);

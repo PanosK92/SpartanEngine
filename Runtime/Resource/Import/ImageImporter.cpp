@@ -128,7 +128,7 @@ namespace Directus
 		texture->SetChannels(ComputeChannelCount(bitmap32, texture->GetBPP()));
 
 		// Fill RGBA vector with the data from the FIBITMAP
-		texture->GetRGBA().emplace_back(std::vector<unsigned char>());
+		texture->GetRGBA().emplace_back(vector<std::byte>());
 		GetBitsFromFIBITMAP(&texture->GetRGBA()[0], bitmap32);
 
 		// Check if the image is grayscale
@@ -159,7 +159,7 @@ namespace Directus
 		return true;
 	}
 
-	bool ImageImporter::RescaleBits(vector<unsigned char>* rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int toWidth, unsigned int toHeight)
+	bool ImageImporter::RescaleBits(vector<std::byte>* rgba, unsigned int fromWidth, unsigned int fromHeight, unsigned int toWidth, unsigned int toHeight)
 	{
 		if (rgba->empty())
 		{
@@ -168,7 +168,7 @@ namespace Directus
 		}
 
 		unsigned int pitch = fromWidth * 4;
-		FIBITMAP* bitmap = FreeImage_ConvertFromRawBits(rgba->data(), fromWidth, fromHeight, pitch, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
+		FIBITMAP* bitmap = FreeImage_ConvertFromRawBits((BYTE*)rgba->data(), fromWidth, fromHeight, pitch, 32, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, FALSE);
 		bool result = GetRescaledBitsFromBitmap(rgba, toWidth, toHeight, bitmap);
 		return result;
 	}
@@ -191,7 +191,7 @@ namespace Directus
 		return 0;
 	}
 
-	bool ImageImporter::GetBitsFromFIBITMAP(vector<unsigned char>* bitsRGBA, FIBITMAP* bitmap)
+	bool ImageImporter::GetBitsFromFIBITMAP(vector<std::byte>* bitsRGBA, FIBITMAP* bitmap)
 	{
 		unsigned int width = FreeImage_GetWidth(bitmap);
 		unsigned int height = FreeImage_GetHeight(bitmap);
@@ -205,35 +205,35 @@ namespace Directus
 		// Construct an RGBA array
 		for (unsigned int y = 0; y < height; y++)
 		{
-			unsigned char* bits = (unsigned char*)FreeImage_GetScanLine(bitmap, y);
+			unsigned char* bytes = (unsigned char*)FreeImage_GetScanLine(bitmap, y);
 			for (unsigned int x = 0; x < width; x++)
 			{
-				bitsRGBA->emplace_back(bits[FI_RGBA_RED]);
-				bitsRGBA->emplace_back(bits[FI_RGBA_GREEN]);
-				bitsRGBA->emplace_back(bits[FI_RGBA_BLUE]);
-				bitsRGBA->emplace_back(bits[FI_RGBA_ALPHA]);
+				bitsRGBA->emplace_back((std::byte)bytes[FI_RGBA_RED]);
+				bitsRGBA->emplace_back((std::byte)bytes[FI_RGBA_GREEN]);
+				bitsRGBA->emplace_back((std::byte)bytes[FI_RGBA_BLUE]);
+				bitsRGBA->emplace_back((std::byte)bytes[FI_RGBA_ALPHA]);
 
 				// jump to next pixel
-				bits += bytesPerPixel;
+				bytes += bytesPerPixel;
 			}
 		}
 
 		return true;
 	}
 
-	bool ImageImporter::GetRescaledBitsFromBitmap(vector<unsigned char>* bitsOutRGBA, int width, int height, FIBITMAP* bitmap)
+	bool ImageImporter::GetRescaledBitsFromBitmap(vector<std::byte>* bytesOutRGBA, int width, int height, FIBITMAP* bitmap)
 	{
 		if (!bitmap || width == 0 || height == 0)
 			return false;
 
-		bitsOutRGBA->clear();
-		bitsOutRGBA->shrink_to_fit();
+		bytesOutRGBA->clear();
+		bytesOutRGBA->shrink_to_fit();
 
 		// Rescale
 		FIBITMAP* bitmapScaled = FreeImage_Rescale(bitmap, width, height, FILTER_LANCZOS3);
 
 		// Extract RGBA data from the FIBITMAP
-		bool result = GetBitsFromFIBITMAP(bitsOutRGBA, bitmapScaled);
+		bool result = GetBitsFromFIBITMAP(bytesOutRGBA, bitmapScaled);
 
 		// Unload the FIBITMAP
 		FreeImage_Unload(bitmapScaled);
@@ -256,7 +256,7 @@ namespace Directus
 			int width = 0;
 			int height = 0;
 			bool complete = false;
-			vector<unsigned char> rgba;
+			vector<std::byte> rgba;
 
 			RescaleJob(int width, int height, bool scaled)
 			{
@@ -313,7 +313,7 @@ namespace Directus
 		}
 	}
 
-	bool ImageImporter::GrayscaleCheck(const vector<unsigned char>& bitsRGBA, int width, int height)
+	bool ImageImporter::GrayscaleCheck(const vector<std::byte>& bitsRGBA, int width, int height)
 	{
 		if (bitsRGBA.empty())
 			return false;
@@ -326,9 +326,9 @@ namespace Directus
 		{
 			for (int j = 0; j < width; j++)
 			{
-				int red		= bitsRGBA[(i * width + j) * channels + 0];
-				int green	= bitsRGBA[(i * width + j) * channels + 1];
-				int blue	= bitsRGBA[(i * width + j) * channels + 2];
+				std::byte red	= bitsRGBA[(i * width + j) * channels + 0];
+				std::byte green	= bitsRGBA[(i * width + j) * channels + 1];
+				std::byte blue	= bitsRGBA[(i * width + j) * channels + 2];
 
 				if (red == green && red == blue)
 				{

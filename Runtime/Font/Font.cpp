@@ -72,7 +72,7 @@ namespace Directus
 		Stopwatch timer;
 
 		// Load font
-		vector<unsigned char> atlasBuffer;
+		vector<std::byte> atlasBuffer;
 		unsigned int texAtlasWidth = 0;
 		unsigned int texAtlasHeight = 0;
 		if (!m_context->GetSubsystem<ResourceManager>()->GetFontImporter().lock()->LoadFont(filePath, m_fontSize, atlasBuffer, texAtlasWidth, texAtlasHeight, m_glyphs))

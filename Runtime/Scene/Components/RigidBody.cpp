@@ -76,18 +76,18 @@ namespace Directus
 		}
 	};
 
-	RigidBody::RigidBody()
+	RigidBody::RigidBody(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
-		m_inWorld = false;
-		m_mass = DEFAULT_MASS;
-		m_restitution = DEFAULT_RESTITUTION;
-		m_friction = DEFAULT_FRICTION;
-		m_frictionRolling = DEFAULT_FRICTION_ROLLING;
-		m_useGravity = true;
-		m_isKinematic = false;
-		m_hasSimulated = false;
-		m_positionLock = Vector3::Zero;
-		m_rotationLock = Vector3::Zero;
+		m_inWorld			= false;
+		m_mass				= DEFAULT_MASS;
+		m_restitution		= DEFAULT_RESTITUTION;
+		m_friction			= DEFAULT_FRICTION;
+		m_frictionRolling	= DEFAULT_FRICTION_ROLLING;
+		m_useGravity		= true;
+		m_isKinematic		= false;
+		m_hasSimulated		= false;
+		m_positionLock		= Vector3::Zero;
+		m_rotationLock		= Vector3::Zero;
 	}
 
 	RigidBody::~RigidBody()

@@ -42,7 +42,7 @@ using namespace std;
 
 namespace Directus
 {
-	Camera::Camera()
+	Camera::Camera(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
 		SetFOV_Horizontal_Deg(75);
 		m_nearPlane		= 0.3f;

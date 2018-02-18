@@ -37,10 +37,10 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Constraint::Constraint()
+	Constraint::Constraint(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
-		m_constraint = nullptr;
-		m_isDirty = false;
+		m_constraint	= nullptr;
+		m_isDirty		= false;
 	}
 
 	Constraint::~Constraint()

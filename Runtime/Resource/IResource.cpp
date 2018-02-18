@@ -52,7 +52,7 @@ void IResource::RegisterResource()
 {
 	m_resourceType	= DeduceResourceType<T>();
 	m_resourceID	= GENERATE_GUID;
-	m_loadState	= LoadState_Idle;
+	m_loadState		= LoadState_Idle;
 }
 
 template <typename T>

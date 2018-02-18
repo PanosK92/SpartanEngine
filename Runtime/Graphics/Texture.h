@@ -66,7 +66,7 @@ namespace Directus
 		unsigned int GetMemory() override;
 		//======================================================
 
-		//= PROPERTIES ==========================================================================================
+		//= PROPERTIES =======================================================================================
 		unsigned int GetWidth() { return m_width; }
 		void SetWidth(unsigned int width) { m_width = width; }
 
@@ -88,17 +88,17 @@ namespace Directus
 		unsigned int GetChannels() { return m_channels; }
 		void SetChannels(unsigned int channels) { m_channels = channels; }
 
-		std::vector<std::vector<unsigned char>>& GetRGBA() { return m_textureBits; }
-		void SetRGBA(const std::vector<std::vector<unsigned char>>& textureBits) { m_textureBits = textureBits; }
+		std::vector<std::vector<std::byte>>& GetRGBA() { return m_textureBytes; }
+		void SetRGBA(const std::vector<std::vector<std::byte>>& textureBits) { m_textureBytes = textureBits; }
 
 		void EnableMimaps(bool enable) { m_isUsingMipmaps = enable; }
 		bool IsUsingMimmaps() { return m_isUsingMipmaps; }
-		//=======================================================================================================
+		//====================================================================================================
 
-		//= TEXTURE BITS =========================================================
-		void ClearTextureBits();
-		void GetTextureBits(std::vector<std::vector<unsigned char>>* textureBits);
-		//========================================================================
+		//= TEXTURE BITS ======================================================
+		void ClearTextureBytes();
+		void GetTextureBytes(std::vector<std::vector<std::byte>>* textureBits);
+		//=====================================================================
 		
 		//= SHADER RESOURCE ============================
 		void** GetShaderResource();
@@ -107,7 +107,7 @@ namespace Directus
 			unsigned int width, 
 			unsigned int height, 
 			unsigned int channels, 
-			std::vector<unsigned char> rgba, 
+			const std::vector<std::byte>& rgba, 
 			TextureFormat format
 		);
 		// Creates a shader resource from memory
@@ -126,7 +126,7 @@ namespace Directus
 		std::shared_ptr<D3D11Texture> m_textureAPI;
 		TextureFormat m_format = RGBA_8_UNORM;
 
-		//= DATA =============================================
+		//= DATA ==========================================
 		unsigned int m_bpp = 0;
 		unsigned int m_width = 0;
 		unsigned int m_height = 0;
@@ -134,8 +134,8 @@ namespace Directus
 		bool m_isGrayscale = false;
 		bool m_isTransparent = false;
 		bool m_isUsingMipmaps = false;
-		std::vector<std::vector<unsigned char>> m_textureBits;
+		std::vector<std::vector<std::byte>> m_textureBytes;
 		TextureType m_type = TextureType_Unknown;
-		//====================================================
+		//=================================================
 	};
 }
