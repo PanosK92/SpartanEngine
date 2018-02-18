@@ -134,7 +134,7 @@ namespace Directus
 		m_context->GetSubsystem<ResourceManager>()->SaveResourcesToFiles();
 
 		// Create a prefab file
-		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Write);
+		auto file = make_unique<FileStream>(filePath, FileStreamMode_Write);
 		if (!file->IsOpen())
 			return false;
 
@@ -184,7 +184,7 @@ namespace Directus
 		m_isLoading = true;
 
 		// Read all the resource file paths
-		unique_ptr<FileStream> file = make_unique<FileStream>(filePath, FileStreamMode_Read);
+		auto file = make_unique<FileStream>(filePath, FileStreamMode_Read);
 		if (!file->IsOpen())
 			return false;
 

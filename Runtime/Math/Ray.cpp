@@ -24,118 +24,115 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BoundingBox.h"
 //======================
 
-namespace Directus
+namespace Directus::Math
 {
-	namespace Math
+	Ray::Ray()
 	{
-		Ray::Ray()
+		m_origin = Vector3::Zero;
+		m_end = Vector3::Zero;
+		m_direction = Vector3::Zero;
+	}
+
+	Ray::Ray(const Vector3& origin, const Vector3& end)
+	{
+		m_origin = origin;
+		m_end = end;
+		m_direction = (end - origin).Normalized();
+	}
+
+	Ray::~Ray()
+	{
+
+	}
+
+	float Ray::HitDistance(const BoundingBox& box)
+	{
+		// If undefined, no hit (infinite distance)
+		if (!box.Defined())
+			return INFINITY;
+		
+		// Check for ray origin being inside the box
+		if (box.IsInside(m_origin))
+			return 0.0f;
+
+		float dist = INFINITY;
+
+		// Check for intersecting in the X-direction
+		if (m_origin.x < box.min.x && m_direction.x > 0.0f)
 		{
-			m_origin = Vector3::Zero;
-			m_end = Vector3::Zero;
-			m_direction = Vector3::Zero;
+			float x = (box.min.x - m_origin.x) / m_direction.x;
+			if (x < dist)
+			{
+				Vector3 point = m_origin + x * m_direction;
+				if (point.y >= box.min.y && point.y <= box.max.y && point.z >= box.min.z && point.z <= box.max.z)
+				{
+					dist = x;
+				}
+			}
+		}
+		if (m_origin.x > box.max.x && m_direction.x < 0.0f)
+		{
+			float x = (box.max.x - m_origin.x) / m_direction.x;
+			if (x < dist)
+			{
+				Vector3 point = m_origin + x * m_direction;
+				if (point.y >= box.min.y && point.y <= box.max.y && point.z >= box.min.z && point.z <= box.max.z)
+				{
+					dist = x;
+				}
+			}
+		}
+		// Check for intersecting in the Y-direction
+		if (m_origin.y < box.min.y && m_direction.y > 0.0f)
+		{
+			float x = (box.min.y - m_origin.y) / m_direction.y;
+			if (x < dist)
+			{
+				Vector3 point = m_origin + x * m_direction;
+				if (point.x >= box.min.x && point.x <= box.max.x && point.z >= box.min.z && point.z <= box.max.z)
+				{
+					dist = x;
+				}
+			}
+		}
+		if (m_origin.y > box.max.y && m_direction.y < 0.0f)
+		{
+			float x = (box.max.y - m_origin.y) / m_direction.y;
+			if (x < dist)
+			{
+				Vector3 point = m_origin + x * m_direction;
+				if (point.x >= box.min.x && point.x <= box.max.x && point.z >= box.min.z && point.z <= box.max.z)
+				{
+					dist = x;
+				}
+			}
+		}
+		// Check for intersecting in the Z-direction
+		if (m_origin.z < box.min.z && m_direction.z > 0.0f)
+		{
+			float x = (box.min.z - m_origin.z) / m_direction.z;
+			if (x < dist)
+			{
+				Vector3 point = m_origin + x * m_direction;
+				if (point.x >= box.min.x && point.x <= box.max.x && point.y >= box.min.y && point.y <= box.max.y)
+				{
+					dist = x;
+				}
+			}
+		}
+		if (m_origin.z > box.max.z && m_direction.z < 0.0f)
+		{
+			float x = (box.max.z - m_origin.z) / m_direction.z;
+			if (x < dist)
+			{
+				Vector3 point = m_origin + x * m_direction;
+				if (point.x >= box.min.x && point.x <= box.max.x && point.y >= box.min.y && point.y <= box.max.y)
+				{
+					dist = x;
+				}
+			}
 		}
 
-		Ray::Ray(const Vector3& origin, const Vector3& end)
-		{
-			m_origin = origin;
-			m_end = end;
-			m_direction = (end - origin).Normalized();
-		}
-
-		Ray::~Ray()
-		{
-
-		}
-
-		float Ray::HitDistance(const BoundingBox& box)
-		{
-			// If undefined, no hit (infinite distance)
-			if (!box.Defined())
-				return INFINITY;
-			
-			// Check for ray origin being inside the box
-			if (box.IsInside(m_origin))
-				return 0.0f;
-
-			float dist = INFINITY;
-
-			// Check for intersecting in the X-direction
-			if (m_origin.x < box.min.x && m_direction.x > 0.0f)
-			{
-				float x = (box.min.x - m_origin.x) / m_direction.x;
-				if (x < dist)
-				{
-					Vector3 point = m_origin + x * m_direction;
-					if (point.y >= box.min.y && point.y <= box.max.y && point.z >= box.min.z && point.z <= box.max.z)
-					{
-						dist = x;
-					}
-				}
-			}
-			if (m_origin.x > box.max.x && m_direction.x < 0.0f)
-			{
-				float x = (box.max.x - m_origin.x) / m_direction.x;
-				if (x < dist)
-				{
-					Vector3 point = m_origin + x * m_direction;
-					if (point.y >= box.min.y && point.y <= box.max.y && point.z >= box.min.z && point.z <= box.max.z)
-					{
-						dist = x;
-					}
-				}
-			}
-			// Check for intersecting in the Y-direction
-			if (m_origin.y < box.min.y && m_direction.y > 0.0f)
-			{
-				float x = (box.min.y - m_origin.y) / m_direction.y;
-				if (x < dist)
-				{
-					Vector3 point = m_origin + x * m_direction;
-					if (point.x >= box.min.x && point.x <= box.max.x && point.z >= box.min.z && point.z <= box.max.z)
-					{
-						dist = x;
-					}
-				}
-			}
-			if (m_origin.y > box.max.y && m_direction.y < 0.0f)
-			{
-				float x = (box.max.y - m_origin.y) / m_direction.y;
-				if (x < dist)
-				{
-					Vector3 point = m_origin + x * m_direction;
-					if (point.x >= box.min.x && point.x <= box.max.x && point.z >= box.min.z && point.z <= box.max.z)
-					{
-						dist = x;
-					}
-				}
-			}
-			// Check for intersecting in the Z-direction
-			if (m_origin.z < box.min.z && m_direction.z > 0.0f)
-			{
-				float x = (box.min.z - m_origin.z) / m_direction.z;
-				if (x < dist)
-				{
-					Vector3 point = m_origin + x * m_direction;
-					if (point.x >= box.min.x && point.x <= box.max.x && point.y >= box.min.y && point.y <= box.max.y)
-					{
-						dist = x;
-					}
-				}
-			}
-			if (m_origin.z > box.max.z && m_direction.z < 0.0f)
-			{
-				float x = (box.max.z - m_origin.z) / m_direction.z;
-				if (x < dist)
-				{
-					Vector3 point = m_origin + x * m_direction;
-					if (point.x >= box.min.x && point.x <= box.max.x && point.y >= box.min.y && point.y <= box.max.y)
-					{
-						dist = x;
-					}
-				}
-			}
-
-			return dist;
-		}
+		return dist;
 	}
 }

@@ -25,26 +25,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vector3.h"
 //==================
 
-namespace Directus
+namespace Directus::Math
 {
-	namespace Math
+	class Plane
 	{
-		class Plane
-		{
-		public:
-			Plane();
-			Plane(const Vector3& normal, float d);
-			Plane(const Vector3& a, const Vector3& b, const Vector3& c);
-			~Plane();
-
-			void Normalize();
-			static Plane Normalize(const Plane& plane);
-
-			float DotCoordinate(const Vector3& v);
-			static float DotCoordinate(const Plane& p, const Vector3& v);
-
-			float d;
-			Vector3 normal;
-		};
-	}
+	public:
+		Plane();
+		Plane(const Vector3& normal, float d);
+		Plane(const Vector3& a, const Vector3& b, const Vector3& c);
+		~Plane();
+	
+		void Normalize();
+		static Plane Normalize(const Plane& plane);
+	
+		float DotCoordinate(const Vector3& v);
+		static float DotCoordinate(const Plane& p, const Vector3& v);
+	
+		float d;
+		Vector3 normal;
+	};
 }

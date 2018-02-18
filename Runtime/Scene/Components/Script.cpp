@@ -32,7 +32,7 @@ using namespace std;
 
 namespace Directus
 {
-	Script::Script()
+	Script::Script(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
 
 	}

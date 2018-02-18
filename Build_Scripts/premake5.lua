@@ -25,6 +25,7 @@ WORKING_DIR 	= "../Binaries/Release"
 		objdir "../Binaries/VS_Obj/%{cfg.buildcfg}"
 		systemversion(WIN_SDK_VERSION)
 		flags { "MultiProcessorCompile" }
+		cppdialect "C++17"
 
 -- Includes
 	includedirs { "../ThirdParty/AngelScript_2.32.0" }
@@ -84,6 +85,7 @@ WORKING_DIR 	= "../Binaries/Release"
 		dependson { RUNTIME_NAME }
 		systemversion(WIN_SDK_VERSION)
 		flags { "MultiProcessorCompile" }
+		cppdialect "C++17"
 		
 -- Includes
 	includedirs { "../Runtime" }

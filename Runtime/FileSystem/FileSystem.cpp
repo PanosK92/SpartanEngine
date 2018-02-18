@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Windows.h>
 //=========================
 
-//= NAMESPACES =========================
+//= NAMESPACES ==========================
 using namespace std;
-namespace fs = experimental::filesystem;
-//======================================
+using namespace experimental::filesystem;
+//=======================================
 
 namespace Directus
 {
@@ -171,22 +171,22 @@ namespace Directus
 	//= DIRECTORIES ======================================================================
 	bool FileSystem::CreateDirectory_(const string& path)
 	{
-		return fs::create_directories(path);
+		return create_directories(path);
 	}
 
 	bool FileSystem::DeleteDirectory(const string& directory)
 	{
-		return fs::remove_all(directory);
+		return remove_all(directory);
 	}
 
 	bool FileSystem::DirectoryExists(const string& directory)
 	{
-		return fs::exists(directory);
+		return exists(directory);
 	}
 
 	bool FileSystem::IsDirectory(const string& directory)
 	{
-		return fs::is_directory(directory);
+		return is_directory(directory);
 	}
 
 	void FileSystem::OpenDirectoryWindow(const std::string& directory)
@@ -206,21 +206,21 @@ namespace Directus
 	//= FILES ============================================================================
 	bool FileSystem::FileExists(const string& filePath)
 	{
-		return fs::exists(filePath);
+		return exists(filePath);
 	}
 
 	bool FileSystem::DeleteFile_(const string& filePath)
 	{
 		// If this is a directory path, return
-		if (fs::is_directory(filePath))
+		if (is_directory(filePath))
 			return false;
 
 		bool result = false;
 		try
 		{
-			result = fs::remove(filePath.c_str()) == 0;
+			result = remove(filePath.c_str()) == 0;
 		}
-		catch (fs::filesystem_error& e)
+		catch (filesystem_error& e)
 		{
 			LOG_ERROR("FileSystem: Could not delete \"" + filePath + "\". " + string(e.what()));
 		}
@@ -242,9 +242,9 @@ namespace Directus
 		bool result = false;
 		try 
 		{
-			result = copy_file(source, destination, fs::copy_options::overwrite_existing);
+			result = copy_file(source, destination, copy_options::overwrite_existing);
 		}
-		catch (fs::filesystem_error& e) 
+		catch (filesystem_error& e) 
 		{
 			LOG_ERROR("FileSystem: Could not copy \"" + source + "\". " + string(e.what()));
 		}
@@ -308,8 +308,8 @@ namespace Directus
 	vector<string> FileSystem::GetDirectoriesInDirectory(const string& directory)
 	{
 		vector<string> subDirs;
-		fs::directory_iterator end_itr; // default construction yields past-the-end
-		for (fs::directory_iterator itr(directory); itr != end_itr; ++itr)
+		directory_iterator end_itr; // default construction yields past-the-end
+		for (directory_iterator itr(directory); itr != end_itr; ++itr)
 		{
 			if (!is_directory(itr->status()))
 				continue;
@@ -323,8 +323,8 @@ namespace Directus
 	vector<string> FileSystem::GetFilesInDirectory(const string& directory)
 	{
 		vector<string> filePaths;
-		fs::directory_iterator end_itr; // default construction yields past-the-end
-		for (fs::directory_iterator itr(directory); itr != end_itr; ++itr)
+		directory_iterator end_itr; // default construction yields past-the-end
+		for (directory_iterator itr(directory); itr != end_itr; ++itr)
 		{
 			if (!is_regular_file(itr->status()))
 				continue;
@@ -682,7 +682,7 @@ namespace Directus
 
 	string FileSystem::GetWorkingDirectory()
 	{
-		return fs::current_path().generic_string() + "/";
+		return current_path().generic_string() + "/";
 	}
 
 	string FileSystem::GetParentDirectory(const string& directory)

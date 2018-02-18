@@ -33,7 +33,7 @@ using namespace std;
 
 namespace Directus
 {
-	LineRenderer::LineRenderer()
+	LineRenderer::LineRenderer(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
 
 	}

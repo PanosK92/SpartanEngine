@@ -35,14 +35,14 @@ namespace Directus
 		~D3D11Texture();
 
 		// Create from data
-		bool Create(int width, int height, int channels, const std::vector<unsigned char>& data, DXGI_FORMAT format);
+		bool Create(int width, int height, int channels, const std::vector<std::byte>& data, DXGI_FORMAT format);
 
 		// Creates from data with mimaps
-		bool Create(int width, int height, int channels, const std::vector<std::vector<unsigned char>>& mimaps, DXGI_FORMAT format);
+		bool Create(int width, int height, int channels, const std::vector<std::vector<std::byte>>& mimaps, DXGI_FORMAT format);
 
 		// Creates a texture and generates mimaps (easy way to get mimaps 
 		// but not as high quality as the mimaps you can generate manually)
-		bool CreateAndGenerateMipmaps(int width, int height, int channels, const std::vector<unsigned char>& data, DXGI_FORMAT format);
+		bool CreateAndGenerateMipmaps(int width, int height, int channels, const std::vector<std::byte>& data, DXGI_FORMAT format);
 
 		// Shader resource
 		ID3D11ShaderResourceView* GetShaderResourceView() { return m_shaderResourceView; }

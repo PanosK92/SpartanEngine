@@ -25,35 +25,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vector3.h"
 //==================
 
-namespace Directus
+namespace Directus::Math
 {
-	namespace Math
+	class BoundingBox;
+
+	class ENGINE_CLASS Ray
 	{
-		class BoundingBox;
+	public:
+		// Constructs a ray with zero origin and direction
+		Ray();
 
-		class ENGINE_CLASS Ray
-		{
-		public:
-			// Constructs a ray with zero origin and direction
-			Ray();
+		// Construct from origin and direction. The direction will be normalized.
+		Ray(const Vector3& origin, const Vector3& end);
 
-			// Construct from origin and direction. The direction will be normalized.
-			Ray(const Vector3& origin, const Vector3& end);
+		// Empty destructor
+		~Ray();
 
-			// Empty destructor
-			~Ray();
+		// Returns hit distance to a bounding box, or infinity if there is no hit.
+		float HitDistance(const BoundingBox& box);
 
-			// Returns hit distance to a bounding box, or infinity if there is no hit.
-			float HitDistance(const BoundingBox& box);
+		Vector3 GetOrigin() { return m_origin; }
+		Vector3 GetEnd() { return m_end; }
+		Vector3 GetDirection() { return m_direction; }
 
-			Vector3 GetOrigin() { return m_origin; }
-			Vector3 GetEnd() { return m_end; }
-			Vector3 GetDirection() { return m_direction; }
-
-		private:
-			Vector3 m_origin;
-			Vector3 m_end;
-			Vector3 m_direction;
-		};
-	}
+	private:
+		Vector3 m_origin;
+		Vector3 m_end;
+		Vector3 m_direction;
+	};
 }

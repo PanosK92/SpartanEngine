@@ -139,6 +139,13 @@ namespace Directus
 		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
 	}
 
+	void FileStream::Write(const vector<std::byte>& value)
+	{
+		unsigned int size = (unsigned int)value.size();
+		Write(size);
+		out.write(reinterpret_cast<const char*>(&value[0]), sizeof(std::byte) * size);
+	}
+
 	void FileStream::Read(string* value)
 	{
 		unsigned int length = 0;
@@ -233,5 +240,21 @@ namespace Directus
 		vec->resize(length);
 
 		in.read(reinterpret_cast<char*>(vec->data()), sizeof(unsigned char) * length);
+	}
+
+	void FileStream::Read(vector<std::byte>* vec)
+	{
+		if (!vec)
+			return;
+
+		vec->clear();
+		vec->shrink_to_fit();
+
+		unsigned int length = ReadUInt();
+
+		vec->reserve(length);
+		vec->resize(length);
+
+		in.read(reinterpret_cast<char*>(vec->data()), sizeof(std::byte) * length);
 	}
 }

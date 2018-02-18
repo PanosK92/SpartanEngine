@@ -205,7 +205,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 
 	if (m_selectionMade)
 	{
-		(*path) = m_currentFullPath;
+		(*path) = m_currentPath + "/" + string(m_fileNameText);
 	}
 
 	ContextMenu();

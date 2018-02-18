@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../GameObject.h"
 #include "../../Graphics/Texture.h"
 #include "../../Math/Vector3.h"
-#include "../../Scene/Scene.h"
 #include "../../Resource/ResourceManager.h"
 //=========================================
 
@@ -38,7 +37,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	Skybox::Skybox()
+	Skybox::Skybox(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
 
 	}

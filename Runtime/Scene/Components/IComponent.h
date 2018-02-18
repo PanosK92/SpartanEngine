@@ -55,10 +55,8 @@ namespace Directus
 	class ENGINE_CLASS IComponent
 	{
 	public:
+		IComponent(Context* context, GameObject* gameObject, Transform* transform);
 		virtual ~IComponent() {}
-
-		// Runs when the component is first created
-		void Register(GameObject* gameObject, Transform* transform, Context* context, ComponentType type);
 
 		// Runs when the component gets added
 		virtual void Initialize() {}
@@ -89,6 +87,7 @@ namespace Directus
 		unsigned int GetID() { return m_ID; }
 		void SetID(unsigned int id) { m_ID = id; }
 		ComponentType GetType() { return m_type; }
+		void SetType(ComponentType type) { m_type = type; }
 		//==================================================
 
 		//= HELPER FUNCTIONS ==================

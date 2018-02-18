@@ -34,7 +34,7 @@ namespace Directus
 	class ENGINE_CLASS Skybox : public IComponent
 	{
 	public:
-		Skybox();
+		Skybox(Context* context, GameObject* gameObject, Transform* transform);
 		~Skybox();
 
 		//= IComponent ============

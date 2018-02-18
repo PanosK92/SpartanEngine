@@ -48,7 +48,7 @@ namespace Directus
 	class ENGINE_CLASS Collider : public IComponent
 	{
 	public:
-		Collider();
+		Collider(Context* context, GameObject* gameObject, Transform* transform);
 		~Collider();
 
 		//= ICOMPONENT ===============================

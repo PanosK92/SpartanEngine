@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "MeshFilter.h"
 #include "Transform.h"
-#include "../GameObject.h"
 #include "../../Logging/Log.h"
 #include "../../Math/Vector3.h"
 #include "../../IO/FileStream.h"
@@ -38,7 +37,7 @@ using namespace Directus::Math;
 
 namespace Directus
 {
-	MeshFilter::MeshFilter()
+	MeshFilter::MeshFilter(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
 		m_meshType = MeshType_Imported;
 	}

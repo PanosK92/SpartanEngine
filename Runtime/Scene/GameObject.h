@@ -78,17 +78,15 @@ namespace Directus
 				return std::static_pointer_cast<T>(GetComponent<T>().lock());
 
 			// Add component
-			auto newComponent = std::make_shared<T>();
+			auto newComponent = std::make_shared<T>(
+				m_context, 
+				m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID()).lock().get(),
+				GetTransform()
+				);
 			m_components.insert(make_pair(type, newComponent));
+			newComponent->SetType(IComponent::ToComponentType<T>());
 
 			// Register component
-			newComponent->Register
-			(
-				m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID()).lock().get(),
-				GetTransform(),
-				m_context,
-				type
-			);
 			newComponent->Initialize();
 
 			// Caching of rendering performance critical components

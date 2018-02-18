@@ -44,7 +44,7 @@ namespace Directus
 	class ENGINE_CLASS RigidBody : public IComponent
 	{
 	public:
-		RigidBody();
+		RigidBody(Context* context, GameObject* gameObject, Transform* transform);
 		~RigidBody();
 
 		//= ICOMPONENT ===============================

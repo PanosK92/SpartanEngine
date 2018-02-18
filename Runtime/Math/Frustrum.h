@@ -27,22 +27,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 //==========================
 
-namespace Directus
+namespace Directus::Math
 {
-	namespace Math
+	class Frustrum
 	{
-		class Frustrum
-		{
-		public:
-			Frustrum();
-			~Frustrum();
+	public:
+		Frustrum();
+		~Frustrum();
 
-			void Construct(const Matrix& mView, const Matrix&  mProjection, float screenDepth);
-			Intersection CheckCube(const Vector3& center, const Vector3& extent);
-			Intersection CheckSphere(const Vector3& center, float radius);
+		void Construct(const Matrix& mView, const Matrix&  mProjection, float screenDepth);
+		Intersection CheckCube(const Vector3& center, const Vector3& extent);
+		Intersection CheckSphere(const Vector3& center, float radius);
 
-		private:
-			Plane m_planes[6];
-		};
-	}
+	private:
+		Plane m_planes[6];
+	};
 }
