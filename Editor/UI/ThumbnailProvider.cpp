@@ -85,7 +85,7 @@ void* ThumbnailProvider::GetShaderResourceByThumbnail(const Thumbnail& thumbnail
 {
 	for (const auto& thumbnailTemp : m_thumbnails)
 	{
-		if (thumbnailTemp.texture->GetAsyncState() != Async_Completed)
+		if (thumbnailTemp.texture->GetLoadState() != LoadState_Completed)
 			continue;
 
 		if (thumbnailTemp.texture->GetResourceID() == thumbnail.texture->GetResourceID())

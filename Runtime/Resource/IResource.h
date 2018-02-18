@@ -45,12 +45,12 @@ namespace Directus
 		Resource_Font
 	};
 
-	enum AsyncState
+	enum LoadState
 	{
-		Async_Idle,
-		Async_Started,
-		Async_Completed,
-		Async_Failed
+		LoadState_Idle,
+		LoadState_Started,
+		LoadState_Completed,
+		LoadState_Failed
 	};
 
 	class ENGINE_CLASS IResource : public std::enable_shared_from_this<IResource>
@@ -112,15 +112,15 @@ namespace Directus
 		auto GetSharedPtr() { return shared_from_this(); }
 		//================================================
 
-		AsyncState GetAsyncState() { return m_asyncState; }
-		void SetAsyncState(AsyncState state) { m_asyncState = state; }
+		LoadState GetLoadState() { return m_loadState; }
+		void GetLoadState(LoadState state) { m_loadState = state; }
 
 	protected:	
 		unsigned int m_resourceID		= NOT_ASSIGNED_HASH;
 		std::string m_resourceName		= NOT_ASSIGNED;
 		std::string m_resourceFilePath	= NOT_ASSIGNED;
 		ResourceType m_resourceType		= Resource_Unknown;
-		AsyncState m_asyncState			= Async_Idle;
+		LoadState m_loadState			= LoadState_Idle;
 		Context* m_context				= nullptr;
 	};
 }

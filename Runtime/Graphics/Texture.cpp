@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "D3D11/D3D11Texture.h"
 #include "../IO/FileStream.h"
-#include "../Core/Stopwatch.h"
 //================================================
 
 //= NAMESPACES =====
@@ -78,15 +77,13 @@ namespace Directus
 	//= RESOURCE INTERFACE =====================================================================
 	bool Texture::SaveToFile(const string& filePath)
 	{
-		Serialize(filePath); // Async maybe?
-		return true;
+		return Serialize(filePath);
 	}
 
 	bool Texture::LoadFromFile(const string& rawFilePath)
 	{
-		Stopwatch timer;
 		bool loaded = false;
-		SetAsyncState(Async_Started);
+		GetLoadState(LoadState_Started);
 
 		// Make the path, relative to the engine
 		auto filePath = FileSystem::GetRelativeFilePath(rawFilePath);
@@ -105,7 +102,7 @@ namespace Directus
 		if (!loaded)
 		{
 			LOG_ERROR("Texture: Failed to load \"" + filePath + "\".");
-			SetAsyncState(Async_Failed);
+			GetLoadState(LoadState_Failed);
 			return false;
 		}
 
@@ -126,9 +123,7 @@ namespace Directus
 			}
 		}
 
-		SetAsyncState(Async_Completed);
-		LOG_INFO("Texture: Loading \"" + FileSystem::GetFileNameFromFilePath(filePath) + "\" took " + to_string(timer.GetElapsedTimeMs()) + " ms");
-
+		GetLoadState(LoadState_Completed);
 		return true;
 	}
 
