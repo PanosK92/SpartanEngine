@@ -47,7 +47,7 @@ namespace Directus
 
 		void SetAsRenderTarget();
 		ID3D11ShaderResourceView* GetShaderResource();
-		Math::Matrix ComputeProjectionMatrix(int cascadeIndex, const Math::Vector3 centerPos, const Math::Matrix& viewMatrix);
+		Math::Matrix ComputeProjectionMatrix(int cascadeIndex, const Math::Vector3& centerPos, const Math::Matrix& viewMatrix);
 		float GetSplit(int cascadeIndex);
 
 	private:

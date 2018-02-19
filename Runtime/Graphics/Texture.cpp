@@ -175,11 +175,11 @@ namespace Directus
 		m_textureBytes.shrink_to_fit();
 	}
 
-	void Texture::GetTextureBytes(vector<vector<std::byte>>* textureBits)
+	void Texture::GetTextureBytes(vector<vector<std::byte>>* textureBytes)
 	{
 		if (!m_textureBytes.empty())
 		{
-			textureBits = &m_textureBytes;
+			textureBytes = &m_textureBytes;
 			return;
 		}
 
@@ -190,7 +190,7 @@ namespace Directus
 		unsigned int mipCount = file->ReadUInt();
 		for (unsigned int i = 0; i < mipCount; i++)
 		{
-			textureBits->emplace_back(vector<std::byte>());
+			textureBytes->emplace_back(vector<std::byte>());
 			file->Read(&m_textureBytes[i]);
 		}
 	}

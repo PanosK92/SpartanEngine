@@ -373,11 +373,9 @@ namespace Directus
 
 		// Create a depth stencil state with depth enabled
 		ID3D11DepthStencilState* depthStencilStateTyped = (ID3D11DepthStencilState*)depthStencilState;
-		HRESULT result = m_device->CreateDepthStencilState(&desc, &depthStencilStateTyped);
-		if (FAILED(result))
-			return false;
+		auto result = m_device->CreateDepthStencilState(&desc, &depthStencilStateTyped);
 
-		return true;
+		return !FAILED(result);
 	}
 
 	bool D3D11GraphicsDevice::CreateDepthStencilBuffer()
@@ -400,11 +398,9 @@ namespace Directus
 		depthBufferDesc.MiscFlags = 0;
 
 		// Create the texture for the depth buffer using the filled out description.
-		HRESULT result = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
-		if (FAILED(result))
-			return false;
+		auto result = m_device->CreateTexture2D(&depthBufferDesc, nullptr, &m_depthStencilBuffer);
 
-		return true;
+		return !FAILED(result);
 	}
 
 	bool D3D11GraphicsDevice::CreateDepthStencilView()
@@ -419,11 +415,9 @@ namespace Directus
 		depthStencilViewDesc.Texture2D.MipSlice = 0;
 
 		// Create the depth stencil view.
-		HRESULT result = m_device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
-		if (FAILED(result))
-			return false;
+		auto result = m_device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
 
-		return true;
+		return !FAILED(result);
 	}
 	//========================================================================================================================
 

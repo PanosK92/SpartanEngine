@@ -58,7 +58,7 @@ namespace Directus
 
 	}
 
-	void Constraint::OnDisable()
+	void Constraint::Stop()
 	{
 
 	}

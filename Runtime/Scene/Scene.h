@@ -42,10 +42,16 @@ namespace Directus
 		bool Initialize() override;
 		//========================
 
+		//= GameObject events ==========================
+		// Runs every time the simulation starts
 		void Start();
-		void OnDisable();
+		// Runs every time the simulation stops
+		void Stop();
+		// Runs every frame
 		void Update();
+		// Runs when all GameObjects should be destroyed
 		void Clear();
+		//==============================================
 
 		//= IO ========================================
 		bool SaveToFile(const std::string& filePath);
@@ -102,7 +108,7 @@ namespace Directus
 		std::weak_ptr<GameObject> m_skybox;
 		Math::Vector3 m_ambientLight;
 
-		//= STATS =========
+		//= STATS ===================
 		float m_fps;
 		float m_timePassed;
 		int m_frameCount;
@@ -110,6 +116,7 @@ namespace Directus
 		float m_jobsDone;
 		float m_jobsTotal;
 		bool m_isLoading;
-		//=================
+		bool m_isInEditorMode;
+		//===========================
 	};
 }

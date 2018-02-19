@@ -40,7 +40,7 @@ namespace Directus
 		//= INTERFACE ================================
 		void Initialize() override;
 		void Start() override;
-		void OnDisable() override;
+		void Stop() override;
 		void Remove() override;
 		void Update() override;
 		void Serialize(FileStream* stream) override;

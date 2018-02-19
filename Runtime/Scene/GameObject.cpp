@@ -91,12 +91,12 @@ namespace Directus
 		}
 	}
 
-	void GameObject::OnDisable()
+	void GameObject::Stop()
 	{
-		// call component OnDisable()
+		// call component Stop()
 		for (auto const& component : m_components)
 		{
-			component.second->OnDisable();
+			component.second->Stop();
 		}
 	}
 

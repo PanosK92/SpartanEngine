@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IO/FileStream.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
+#include "../Core/Engine.h"
 //======================================
 
 //= NAMESPACES ================
@@ -86,16 +87,30 @@ namespace Directus
 		}
 	}
 
-	void Scene::OnDisable()
+	void Scene::Stop()
 	{
 		for (const auto& gameObject : m_gameObjects)
 		{
-			gameObject->OnDisable();
+			gameObject->Stop();
 		}
 	}
 
 	void Scene::Update()
-	{
+	{	
+		//= DETECT TOGGLING TO GAME MODE =============================
+		if (Engine::EngineMode_IsSet(Engine_Game) && m_isInEditorMode)
+		{
+			Start();
+		}
+		//============================================================
+		//= DETECT TOGGLING TO EDITOR MODE ============================
+		if (!Engine::EngineMode_IsSet(Engine_Game) && !m_isInEditorMode)
+		{
+			Stop();
+		}
+		//=============================================================
+		m_isInEditorMode = !Engine::EngineMode_IsSet(Engine_Game);
+
 		for (const auto& gameObject : m_gameObjects)
 		{
 			gameObject->Update();

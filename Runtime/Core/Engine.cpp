@@ -54,7 +54,7 @@ namespace Directus
 		m_flags |= Engine_Physics;
 		m_flags |= Engine_Game;
 
-		m_timer = nullptr;
+		m_timer			= nullptr;
 
 		// Register self as a subsystem
 		m_context->RegisterSubsystem(this);

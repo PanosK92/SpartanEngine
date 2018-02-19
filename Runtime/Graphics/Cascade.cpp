@@ -38,10 +38,10 @@ namespace Directus
 {
 	Cascade::Cascade(int resolution, Camera* camera, Context* context)
 	{
-		m_resolution = resolution;
-		auto graphics = context->GetSubsystem<Graphics>();
-		m_depthMap = make_unique<D3D11RenderTexture>(graphics, m_resolution, m_resolution, true);
-		m_camera = camera;
+		m_resolution	= resolution;
+		auto graphics	= context->GetSubsystem<Graphics>();
+		m_depthMap		= make_unique<D3D11RenderTexture>(graphics, m_resolution, m_resolution, true);
+		m_camera		= camera;
 	}
 
 	void Cascade::SetAsRenderTarget()
@@ -55,7 +55,7 @@ namespace Directus
 		return m_depthMap ? m_depthMap->GetShaderResourceView() : nullptr;
 	}
 
-	Matrix Cascade::ComputeProjectionMatrix(int cascadeIndex, const Vector3 centerPos, const Matrix& viewMatrix)
+	Matrix Cascade::ComputeProjectionMatrix(int cascadeIndex, const Vector3& centerPos, const Matrix& viewMatrix)
 	{
 		// Hardcoded sizes to match the splits
 		float extents = 0;

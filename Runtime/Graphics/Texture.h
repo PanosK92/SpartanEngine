@@ -97,7 +97,7 @@ namespace Directus
 
 		//= TEXTURE BITS ======================================================
 		void ClearTextureBytes();
-		void GetTextureBytes(std::vector<std::vector<std::byte>>* textureBits);
+		void GetTextureBytes(std::vector<std::vector<std::byte>>* textureBytes);
 		//=====================================================================
 		
 		//= SHADER RESOURCE ============================

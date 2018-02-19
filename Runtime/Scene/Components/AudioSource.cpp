@@ -82,7 +82,7 @@ namespace Directus
 			PlayAudioClip();
 	}
 	
-	void AudioSource::OnDisable()
+	void AudioSource::Stop()
 	{
 		StopPlayingAudioClip();
 	}
