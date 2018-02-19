@@ -323,6 +323,8 @@ namespace Directus
 		file->Write(m_resourceName);
 		file->Write(m_resourceFilePath);
 
+		ClearTextureBytes();
+
 		return true;
 	}
 

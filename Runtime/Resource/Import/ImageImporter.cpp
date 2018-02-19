@@ -205,13 +205,13 @@ namespace Directus
 		// Construct an RGBA array
 		for (unsigned int y = 0; y < height; y++)
 		{
-			unsigned char* bytes = (unsigned char*)FreeImage_GetScanLine(bitmap, y);
+			auto bytes = (std::byte*)FreeImage_GetScanLine(bitmap, y);
 			for (unsigned int x = 0; x < width; x++)
 			{
-				bitsRGBA->emplace_back((std::byte)bytes[FI_RGBA_RED]);
-				bitsRGBA->emplace_back((std::byte)bytes[FI_RGBA_GREEN]);
-				bitsRGBA->emplace_back((std::byte)bytes[FI_RGBA_BLUE]);
-				bitsRGBA->emplace_back((std::byte)bytes[FI_RGBA_ALPHA]);
+				bitsRGBA->emplace_back(bytes[FI_RGBA_RED]);
+				bitsRGBA->emplace_back(bytes[FI_RGBA_GREEN]);
+				bitsRGBA->emplace_back(bytes[FI_RGBA_BLUE]);
+				bitsRGBA->emplace_back(bytes[FI_RGBA_ALPHA]);
 
 				// jump to next pixel
 				bytes += bytesPerPixel;
