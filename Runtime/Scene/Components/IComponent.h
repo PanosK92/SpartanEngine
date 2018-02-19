@@ -65,7 +65,7 @@ namespace Directus
 		virtual void Start() {}
 
 		// Runs every time the simulation stops
-		virtual void OnDisable() {}
+		virtual void Stop() {}
 
 		// Runs when the component is removed
 		virtual void Remove(){}

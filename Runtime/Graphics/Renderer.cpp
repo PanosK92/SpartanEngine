@@ -410,8 +410,6 @@ namespace Directus
 			return;
 
 		m_graphics->EnableDepth(true);
-
-		//m_graphics->SetCullMode(CullFront);
 		m_shaderDepth->Set();
 
 		for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetShadowCascadeCount(); cascadeIndex++)

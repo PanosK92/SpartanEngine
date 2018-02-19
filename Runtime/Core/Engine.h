@@ -56,7 +56,7 @@ namespace Directus
 		// Set's all engine mode flags
 		static void EngineMode_SetAll(unsigned long flags)	{ m_flags = flags; }
 		// Enables an engine mode flag
-		static void EngineMode_Enable(unsigned long flags)	{ m_flags |= flags; }
+		static void EngineMode_Enable(Engine_Mode flag)		{ m_flags |= flag; }
 		// Removes an engine mode flag
 		static void EngineMode_Disable(Engine_Mode flag)	{ m_flags &= ~flag; }
 		// Toggles an engine mode flag
@@ -80,5 +80,6 @@ namespace Directus
 		static void* m_windowInstance;
 		static unsigned long m_flags;
 		Timer* m_timer;
+		bool m_gameToggled;
 	};
 }

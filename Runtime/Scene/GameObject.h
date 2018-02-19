@@ -42,9 +42,11 @@ namespace Directus
 
 		void Initialize(Transform* transform);
 
+		//============
 		void Start();
-		void OnDisable();
+		void Stop();
 		void Update();
+		//============
 
 		bool SaveAsPrefab(const std::string& filePath);
 		bool LoadFromPrefab(const std::string& filePath);
