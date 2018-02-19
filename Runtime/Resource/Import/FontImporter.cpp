@@ -155,14 +155,14 @@ namespace Directus
 				penY += rowHeight;
 			}
 
-			unsigned char* bits = bitmap->buffer;
+			auto bytes = (std::byte*)bitmap->buffer;
 			for (unsigned int row = 0; row < bitmap->rows; row++)
 			{
 				for (unsigned int col = 0; col < bitmap->width; col++)
 				{
 					int x = penX + col;
 					int y = penY + row;
-					atlasBuffer[y * atlasWidth + x] = (std::byte)bits[row * bitmap->pitch + col];
+					atlasBuffer[y * atlasWidth + x] = bytes[row * bitmap->pitch + col];
 				}
 			}
 
