@@ -66,7 +66,7 @@ namespace Directus
 		Render_Physics				= 1UL << 4,
 		Render_AABB					= 1UL << 5,
 		Render_PickingRay			= 1UL << 6,
-		Render_SceneGrid					= 1UL << 7,
+		Render_SceneGrid			= 1UL << 7,
 		Render_PerformanceMetrics	= 1UL << 8,
 		Render_Light				= 1UL << 9
 	};
@@ -82,7 +82,7 @@ namespace Directus
 		//========================
 
 		// Rendering
-		void SetRenderTarget(void* renderTexture);
+		void SetRenderTarget(void* renderTarget);
 		void SetRenderTarget(const std::shared_ptr<D3D11RenderTexture>& renderTexture);
 		void* GetFrame();
 		void Present();
@@ -105,17 +105,31 @@ namespace Directus
 		const std::vector<std::weak_ptr<GameObject>>& GetRenderables() { return m_renderables; }
 
 	private:
-		//= HELPER FUNCTIONS ========================
+		//= RENDER PATHS =============================================
 		void AcquireRenderables(const Variant& renderables);
 		void DirectionalLightDepthPass(Light* directionalLight);
 		void GBufferPass(Light* inDirectionalLight);
-		void PreDeferredPass(D3D11RenderTexture* inRenderTargetShadowBlur, D3D11RenderTexture* inRenderTargetSSAO, D3D11RenderTexture* inRenderTargetSSAOBlur);
-		void DeferredPass(D3D11RenderTexture* inRenderTarget);	
-		void PostDeferredPass(D3D11RenderTexture* inRenderTargetFXAA, D3D11RenderTexture* inFrame, D3D11RenderTexture* inRenderTargetSharpening);
+		void PreDeferredPass(
+			void* inTextureNormal,
+			void* inTextureDepth,
+			void* inTextureNormalNoise,
+			void* inRenderTexure,
+			void* outRenderTextureShadowBlur,
+			void* outRenderTextureSSAO
+		);
+		void DeferredPass(
+			void* inTextureShadows,
+			void* inTextureSSAO,
+			void* outRenderTexture
+		);	
+		void PostDeferredPass(
+			std::shared_ptr<D3D11RenderTexture>& inRenderTextureFrame,
+			std::shared_ptr<D3D11RenderTexture>& outRenderTexture
+		);
 		bool RenderGBuffer();
 		void DebugDraw();
 		const Math::Vector4& GetClearColor();
-		//===========================================
+		//============================================================
 	
 		//= PASSES ===========================================================================================
 		void Pass_FXAA(void* texture, void* renderTarget);
@@ -136,7 +150,6 @@ namespace Directus
 		std::shared_ptr<D3D11RenderTexture> m_renderTexPing;
 		std::shared_ptr<D3D11RenderTexture> m_renderTexPong;
 		std::shared_ptr<D3D11RenderTexture> m_renderTexSSAO;
-		std::shared_ptr<D3D11RenderTexture> m_renderTexSSAOBlurred;
 		std::shared_ptr<D3D11RenderTexture> m_renderTexFinalFrame;
 		//=========================================================
 

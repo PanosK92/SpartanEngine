@@ -185,7 +185,6 @@ namespace Directus
 		m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 		m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 		m_renderTexSSAO = make_shared<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
-		m_renderTexSSAOBlurred = make_shared<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
 		m_renderTexFinalFrame = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		// Noise texture (used by SSAO shader)
@@ -271,10 +270,28 @@ namespace Directus
 			}
 
 			DirectionalLightDepthPass(m_directionalLight);
+
 			GBufferPass(m_directionalLight);
-			PreDeferredPass(m_renderTexPong.get(), m_renderTexSSAO.get(), m_renderTexSSAOBlurred.get());
-			DeferredPass(m_renderTexPing.get());
-			PostDeferredPass(m_renderTexPong.get(), m_renderTexPing.get(), m_renderTexFinalFrame.get());
+
+			PreDeferredPass(
+				m_gbuffer->GetShaderResource(GBuffer_Target_Normal),	// IN:	Texture			- Normal
+				m_gbuffer->GetShaderResource(GBuffer_Target_Depth),		// IN:	Texture			- Depth
+				m_texNoiseMap->GetShaderResource(),						// IN:	Texture			- Normal noise
+				m_renderTexPing.get(),									// IN:	Render texture	- SSAO blur
+				m_renderTexPong.get(),									// OUT: Render texture	- shadow blur			
+				m_renderTexSSAO.get()									// OUT: Render texture	- SSAO
+			);
+
+			DeferredPass(
+				m_renderTexPong->GetShaderResourceView(),	// IN:	Texture			- Shadows
+				m_renderTexSSAO->GetShaderResourceView(),	// IN:	Texture			- SSAO
+				m_renderTexPing.get()						// OUT: Render texture	- Result
+			);
+
+			PostDeferredPass(
+				m_renderTexPing,		// IN:	Render texture - Deferred pass result
+				m_renderTexFinalFrame	// OUT: Render texture - Result
+			);
 		}		
 		else // If there is no camera, clear to black
 		{
@@ -329,9 +346,6 @@ namespace Directus
 		m_renderTexSSAO.reset();
 		m_renderTexSSAO = make_unique<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
 
-		m_renderTexSSAOBlurred.reset();
-		m_renderTexSSAOBlurred = make_unique<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
-
 		m_renderTexFinalFrame.reset();
 		m_renderTexFinalFrame = make_unique<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 	}
@@ -355,7 +369,7 @@ namespace Directus
 		m_camera = nullptr;
 	}
 
-	//= HELPER FUNCTIONS ==============================================================================================
+	//= RENDER PATHS =================================================================================================
 	void Renderer::AcquireRenderables(const Variant& renderables)
 	{
 		Clear();
@@ -574,29 +588,20 @@ namespace Directus
 		} // SHADER ITERATION
 	}
 
-	void Renderer::PreDeferredPass(D3D11RenderTexture* inRenderTargetShadowBlur, D3D11RenderTexture* inRenderTargetSSAO, D3D11RenderTexture* inRenderTargetSSAOBlur)
+	void Renderer::PreDeferredPass(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowBlur, void* outRenderTextureSSAO)
 	{
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
 		// SHADOW BLUR
-		if (m_directionalLight)
-		{
-			Pass_Blur(m_gbuffer->GetShaderResource(GBuffer_Target_Normal), inRenderTargetShadowBlur, GET_RESOLUTION);
-		}
-
+		if (m_directionalLight) { Pass_Blur(inTextureNormal, outRenderTextureShadowBlur, GET_RESOLUTION); }
 		// SSAO
-		Pass_SSAO(
-			m_gbuffer->GetShaderResource(GBuffer_Target_Normal),
-			m_gbuffer->GetShaderResource(GBuffer_Target_Depth),
-			m_texNoiseMap->GetShaderResource(),
-			inRenderTargetSSAO
-		);
+		Pass_SSAO(inTextureNormal, inTextureDepth, inTextureNormalNoise, inRenderTexure);
 		// SSAO BLUR
-		Pass_Blur(inRenderTargetSSAO->GetShaderResourceView(), inRenderTargetSSAOBlur, GET_RESOLUTION * 0.5f);
+		Pass_Blur(((D3D11RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureSSAO, GET_RESOLUTION * 0.5f);
 	}
 
-	void Renderer::DeferredPass(D3D11RenderTexture* inRenderTarget)
+	void Renderer::DeferredPass(void* inTextureShadows, void* inTextureSSAO, void* outRenderTexture)
 	{
 		if (!m_shaderDeferred->IsCompiled())
 			return;
@@ -605,7 +610,7 @@ namespace Directus
 		m_shaderDeferred->Set();
 
 		// Set render target
-		SetRenderTarget(inRenderTarget);
+		SetRenderTarget(outRenderTexture);
 
 		// Update buffers
 		m_shaderDeferred->UpdateMatrixBuffer(Matrix::Identity, mView, mBaseView, mProjection, mOrthographicProjection);
@@ -617,9 +622,9 @@ namespace Directus
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Normal));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Specular));
-		m_texArray.emplace_back(m_renderTexPong->GetShaderResourceView()); // contains shadows
-		m_texArray.emplace_back(m_renderTexSSAOBlurred->GetShaderResourceView());
-		m_texArray.emplace_back(m_renderTexFinalFrame->GetShaderResourceView());
+		m_texArray.emplace_back(inTextureShadows);
+		m_texArray.emplace_back(inTextureSSAO);
+		m_texArray.emplace_back(nullptr); // previous frame for SSR
 		m_texArray.emplace_back(m_skybox ? m_skybox->GetShaderResource() : nullptr);
 
 		m_shaderDeferred->UpdateTextures(m_texArray);
@@ -628,17 +633,20 @@ namespace Directus
 		m_shaderDeferred->Render(m_quad->GetIndexCount());
 	}
 
-	void Renderer::PostDeferredPass(D3D11RenderTexture* inRenderTargetFXAA, D3D11RenderTexture* inFrame, D3D11RenderTexture* inRenderTargetSharpening)
+	void Renderer::PostDeferredPass(shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, shared_ptr<D3D11RenderTexture>& outRenderTexture)
 	{
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
 		// FXAA
-		Pass_FXAA(inFrame->GetShaderResourceView(), inRenderTargetFXAA);
+		Pass_FXAA(inRenderTextureFrame->GetShaderResourceView(), outRenderTexture.get());
 		// SHARPENING
-		Pass_Sharpening(inRenderTargetFXAA->GetShaderResourceView(), inRenderTargetSharpening);
+		Pass_Sharpening(outRenderTexture->GetShaderResourceView(), inRenderTextureFrame.get());
+
+		outRenderTexture.swap(inRenderTextureFrame);
 
 		DebugDraw();
+		RenderGBuffer();
 	}
 
 	bool Renderer::RenderGBuffer()
