@@ -95,18 +95,17 @@ namespace Directus
 			return 0.0f;
 		}
 
-		// Note: The shader linearizes it's depth before comparing
-		// against the cascade splits, however it's not perfect so
-		// the cascade splits still maintain a logarithmic nature
+		// These cascade splits have a logarithmic nature, have to fix
 
 		// Second cascade
 		if (cascadeIndex == 1)
-			return 0.7f;
+			return 0.92f;
 
 		// Third cascade
 		if (cascadeIndex == 2)
-			return 0.87f;
+			return 0.97f;
 
 		return 0.0f;
 	}
+
 }
