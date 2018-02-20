@@ -62,7 +62,7 @@ namespace Directus
 		Render_Albedo				= 1UL << 0,
 		Render_Normal				= 1UL << 1,
 		Render_Depth				= 1UL << 2,
-		Render_Material				= 1UL << 3,
+		Render_Specular				= 1UL << 3,
 		Render_Physics				= 1UL << 4,
 		Render_AABB					= 1UL << 5,
 		Render_PickingRay			= 1UL << 6,
@@ -82,7 +82,7 @@ namespace Directus
 		//========================
 
 		// Rendering
-		void SetRenderTarget(D3D11RenderTexture* renderTexture);
+		void SetRenderTarget(void* renderTexture);
 		void SetRenderTarget(const std::shared_ptr<D3D11RenderTexture>& renderTexture);
 		void* GetFrame();
 		void Present();
@@ -107,16 +107,23 @@ namespace Directus
 	private:
 		//= HELPER FUNCTIONS ========================
 		void AcquireRenderables(const Variant& renderables);
-		void DirectionalLightDepthPass();
-		void GBufferPass();
-		void PreDeferredPass();
-		void DeferredPass();
+		void DirectionalLightDepthPass(Light* directionalLight);
+		void GBufferPass(Light* inDirectionalLight);
+		void PreDeferredPass(D3D11RenderTexture* inRenderTargetShadowBlur, D3D11RenderTexture* inRenderTargetSSAO, D3D11RenderTexture* inRenderTargetSSAOBlur);
+		void DeferredPass(D3D11RenderTexture* inRenderTarget);	
+		void PostDeferredPass(D3D11RenderTexture* inRenderTargetFXAA, D3D11RenderTexture* inFrame, D3D11RenderTexture* inRenderTargetSharpening);
 		bool RenderGBuffer();
-		void PostDeferredPass();
 		void DebugDraw();
 		const Math::Vector4& GetClearColor();
 		//===========================================
 	
+		//= PASSES ===========================================================================================
+		void Pass_FXAA(void* texture, void* renderTarget);
+		void Pass_Sharpening(void* texture, void* renderTarget);
+		void Pass_Blur(void* texture, void* renderTarget, const Math::Vector2& blurScale);
+		void Pass_SSAO(void* textureNormal, void* textureDepth, void* textureNormalNoise, void* renderTarget);
+		//====================================================================================================
+		
 		std::unique_ptr<GBuffer> m_gbuffer;
 
 		// GAMEOBJECTS ======================================

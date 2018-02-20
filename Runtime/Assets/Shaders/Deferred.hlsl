@@ -2,7 +2,7 @@
 Texture2D texAlbedo 		: register(t0);
 Texture2D texNormal 		: register(t1);
 Texture2D texDepth 			: register(t2);
-Texture2D texMaterial 		: register(t3);
+Texture2D texSpecular 		: register(t3);
 Texture2D texShadows 		: register(t4);
 Texture2D texSSAO 			: register(t5);
 Texture2D texLastFrame 		: register(t6);
@@ -111,13 +111,13 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     float4 albedo 			= ToLinear(texAlbedo.Sample(samplerAniso, texCoord));
     float4 normalSample 	= texNormal.Sample(samplerAniso, texCoord);
     float4 depthSample 		= texDepth.Sample(samplerAniso, texCoord);
-    float4 materialSample	= texMaterial.Sample(samplerPoint, texCoord);
+    float4 specularSample	= texSpecular.Sample(samplerPoint, texCoord);
 	
 	// Create material
 	Material material;
 	material.albedo = albedo.rgb;
-    material.roughness = materialSample.r;
-    material.metallic = materialSample.g;
+    material.roughness = specularSample.r;
+    material.metallic = specularSample.g;
 		
 	// Extract any values out of those samples
     float3 normal = normalize(UnpackNormal(normalSample.rgb));
@@ -130,7 +130,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	// Misc
 	float emission = depthSample.b * 100.0f;
-	float renderTechnique = materialSample.a;
+	float renderTechnique = specularSample.a;
 	
 	// Calculate view direction
     float3 viewDir = normalize(cameraPosWS.xyz - worldPos.xyz);

@@ -219,8 +219,9 @@ namespace Directus
 		return true;
 	}
 
-	void Renderer::SetRenderTarget(D3D11RenderTexture* renderTexture)
+	void Renderer::SetRenderTarget(void* renderTarget)
 	{
+		D3D11RenderTexture* renderTexture = (D3D11RenderTexture*)renderTarget;
 		if (renderTexture)
 		{
 			renderTexture->SetAsRenderTarget();
@@ -269,11 +270,11 @@ namespace Directus
 				return;
 			}
 
-			DirectionalLightDepthPass();
-			GBufferPass();
-			PreDeferredPass();
-			DeferredPass();
-			PostDeferredPass();
+			DirectionalLightDepthPass(m_directionalLight);
+			GBufferPass(m_directionalLight);
+			PreDeferredPass(m_renderTexPong.get(), m_renderTexSSAO.get(), m_renderTexSSAOBlurred.get());
+			DeferredPass(m_renderTexPing.get());
+			PostDeferredPass(m_renderTexPong.get(), m_renderTexPing.get(), m_renderTexFinalFrame.get());
 		}		
 		else // If there is no camera, clear to black
 		{
@@ -404,21 +405,21 @@ namespace Directus
 		}
 	}
 
-	void Renderer::DirectionalLightDepthPass()
+	void Renderer::DirectionalLightDepthPass(Light* directionalLight)
 	{
-		if (!m_directionalLight || !m_directionalLight->GetCastShadows())
+		if (!directionalLight || !directionalLight->GetCastShadows())
 			return;
 
 		m_graphics->EnableDepth(true);
 		m_shaderDepth->Set();
 
-		for (int cascadeIndex = 0; cascadeIndex < m_directionalLight->GetShadowCascadeCount(); cascadeIndex++)
+		for (int cascadeIndex = 0; cascadeIndex < directionalLight->GetShadowCascadeCount(); cascadeIndex++)
 		{
 			// Set appropriate shadow map as render target
-			m_directionalLight->SetShadowCascadeAsRenderTarget(cascadeIndex);
+			directionalLight->SetShadowCascadeAsRenderTarget(cascadeIndex);
 
-			Matrix mViewLight		= m_directionalLight->GetViewMatrix();
-			Matrix mProjectionLight = m_directionalLight->GetOrthographicProjectionMatrix(cascadeIndex);
+			Matrix mViewLight		= directionalLight->GetViewMatrix();
+			Matrix mProjectionLight = directionalLight->GetOrthographicProjectionMatrix(cascadeIndex);
 
 			for (const auto& gameObjWeak : m_renderables)
 			{
@@ -458,7 +459,7 @@ namespace Directus
 		m_graphics->EnableDepth(false);
 	}
 
-	void Renderer::GBufferPass()
+	void Renderer::GBufferPass(Light* inDirectionalLight)
 	{
 		if (!m_graphics)
 			return;
@@ -477,7 +478,7 @@ namespace Directus
 
 			// Set the shader and update frame buffer
 			shader->Set();
-			shader->UpdatePerFrameBuffer(m_directionalLight, m_camera);
+			shader->UpdatePerFrameBuffer(inDirectionalLight, m_camera);
 
 			for (const auto& materialIt : materials) // MATERIAL ITERATION
 			{
@@ -502,11 +503,11 @@ namespace Directus
 				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Emission));
 				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Mask));
 
-				if (m_directionalLight)
+				if (inDirectionalLight)
 				{
-					for (int i = 0; i < m_directionalLight->GetShadowCascadeCount(); i++)
+					for (int i = 0; i < inDirectionalLight->GetShadowCascadeCount(); i++)
 					{
-						auto shadowMap = m_directionalLight->GetShadowCascade(i).lock();
+						auto shadowMap = inDirectionalLight->GetShadowCascade(i).lock();
 						m_textures.push_back(shadowMap ? shadowMap->GetShaderResource() : nullptr);
 					}
 				}
@@ -573,51 +574,29 @@ namespace Directus
 		} // SHADER ITERATION
 	}
 
-	void Renderer::PreDeferredPass()
+	void Renderer::PreDeferredPass(D3D11RenderTexture* inRenderTargetShadowBlur, D3D11RenderTexture* inRenderTargetSSAO, D3D11RenderTexture* inRenderTargetSSAOBlur)
 	{
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
-		// Set pong texture as render target
-		SetRenderTarget(m_renderTexPong);
-
-		//= SHADOW BLUR =====================================================================================
+		// SHADOW BLUR
 		if (m_directionalLight)
 		{
-			// BLUR
-			m_shaderBlur->Set();
-			m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
-			m_shaderBlur->SetTexture(m_gbuffer->GetShaderResource(GBuffer_Target_Normal), 0); // Shadows are alpha
-			m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
+			Pass_Blur(m_gbuffer->GetShaderResource(GBuffer_Target_Normal), inRenderTargetShadowBlur, GET_RESOLUTION);
 		}
-		//===================================================================================================
 
-		//= SSAO ========================================================================================================
-		SetRenderTarget(m_renderTexSSAO);
-
-		vector<void*> ssaoTextures;
-		ssaoTextures.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Normal));
-		ssaoTextures.push_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
-		ssaoTextures.push_back(m_texNoiseMap->GetShaderResource());
-
-		Matrix mvp_ortho = Matrix::Identity * mBaseView * mOrthographicProjection;
-		Matrix mvp_persp_inv = (Matrix::Identity * mView * mProjection).Inverted();
-		m_shaderSSAO->Set();
-		m_shaderSSAO->SetBuffer(mvp_ortho, mvp_persp_inv, mView, mProjection, GET_RESOLUTION, m_camera->GetNearPlane(), m_camera->GetFarPlane(), 0);
-		m_shaderSSAO->SetTextures(ssaoTextures);
-		m_shaderSSAO->DrawIndexed(m_quad->GetIndexCount());
-
-		SetRenderTarget(m_renderTexSSAOBlurred);
-
-		// BLUR
-		m_shaderBlur->Set();
-		m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION * 0.5f, 0);
-		m_shaderBlur->SetTexture(m_renderTexSSAO->GetShaderResourceView(), 0);
-		m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
-		//==============================================================================================================
+		// SSAO
+		Pass_SSAO(
+			m_gbuffer->GetShaderResource(GBuffer_Target_Normal),
+			m_gbuffer->GetShaderResource(GBuffer_Target_Depth),
+			m_texNoiseMap->GetShaderResource(),
+			inRenderTargetSSAO
+		);
+		// SSAO BLUR
+		Pass_Blur(inRenderTargetSSAO->GetShaderResourceView(), inRenderTargetSSAOBlur, GET_RESOLUTION * 0.5f);
 	}
 
-	void Renderer::DeferredPass()
+	void Renderer::DeferredPass(D3D11RenderTexture* inRenderTarget)
 	{
 		if (!m_shaderDeferred->IsCompiled())
 			return;
@@ -626,7 +605,7 @@ namespace Directus
 		m_shaderDeferred->Set();
 
 		// Set render target
-		SetRenderTarget(m_renderTexPing);
+		SetRenderTarget(inRenderTarget);
 
 		// Update buffers
 		m_shaderDeferred->UpdateMatrixBuffer(Matrix::Identity, mView, mBaseView, mProjection, mOrthographicProjection);
@@ -637,7 +616,7 @@ namespace Directus
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Albedo));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Normal));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
-		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Material));
+		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Specular));
 		m_texArray.emplace_back(m_renderTexPong->GetShaderResourceView()); // contains shadows
 		m_texArray.emplace_back(m_renderTexSSAOBlurred->GetShaderResourceView());
 		m_texArray.emplace_back(m_renderTexFinalFrame->GetShaderResourceView());
@@ -649,9 +628,22 @@ namespace Directus
 		m_shaderDeferred->Render(m_quad->GetIndexCount());
 	}
 
+	void Renderer::PostDeferredPass(D3D11RenderTexture* inRenderTargetFXAA, D3D11RenderTexture* inFrame, D3D11RenderTexture* inRenderTargetSharpening)
+	{
+		m_quad->SetBuffer();
+		m_graphics->SetCullMode(CullBack);
+
+		// FXAA
+		Pass_FXAA(inFrame->GetShaderResourceView(), inRenderTargetFXAA);
+		// SHARPENING
+		Pass_Sharpening(inRenderTargetFXAA->GetShaderResourceView(), inRenderTargetSharpening);
+
+		DebugDraw();
+	}
+
 	bool Renderer::RenderGBuffer()
 	{
-		if (!(m_renderFlags & Render_Albedo) && !(m_renderFlags & Render_Normal) && !(m_renderFlags & Render_Depth) && !(m_renderFlags & Render_Material))
+		if (!(m_renderFlags & Render_Albedo) && !(m_renderFlags & Render_Normal) && !(m_renderFlags & Render_Depth) && !(m_renderFlags & Render_Specular))
 			return false;
 
 		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
@@ -667,9 +659,9 @@ namespace Directus
 		{
 			texType = GBuffer_Target_Depth;
 		}
-		else if (m_renderFlags & Render_Material)
+		else if (m_renderFlags & Render_Specular)
 		{
-			texType = GBuffer_Target_Material;
+			texType = GBuffer_Target_Specular;
 		}
 
 		// TEXTURE
@@ -679,33 +671,6 @@ namespace Directus
 		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
 		return true;
-	}
-
-	void Renderer::PostDeferredPass()
-	{
-		m_quad->SetBuffer();
-		m_graphics->SetCullMode(CullBack);
-
-		SetRenderTarget(m_renderTexPong);
-
-		// For debugging purposes (ideally, we shouldn't post-process this) 
-		RenderGBuffer();
-
-		// FXAA
-		m_shaderFXAA->Set();
-		m_shaderFXAA->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
-		m_shaderFXAA->SetTexture(m_renderTexPing->GetShaderResourceView(), 0);
-		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
-
-		SetRenderTarget(m_renderTexFinalFrame);
-		
-		// SHARPENING
-		m_shaderSharpening->Set();
-		m_shaderSharpening->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
-		m_shaderSharpening->SetTexture(m_renderTexPong->GetShaderResourceView(), 0);
-		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
-
-		DebugDraw();
 	}
 
 	void Renderer::DebugDraw()
@@ -842,4 +807,59 @@ namespace Directus
 		return m_camera ? m_camera->GetClearColor() : g_clearColorDefault;
 	}
 	//===============================================================================================================
+
+	//= PASSES ====================================================================================================
+	void Renderer::Pass_FXAA(void* texture, void* renderTarget)
+	{
+		SetRenderTarget(renderTarget);
+		m_shaderFXAA->Set();
+		m_shaderFXAA->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
+		m_shaderFXAA->SetTexture(texture, 0);
+		m_shaderFXAA->DrawIndexed(m_quad->GetIndexCount());
+	}
+
+	void Renderer::Pass_Sharpening(void* texture, void* renderTarget)
+	{
+		SetRenderTarget(renderTarget);
+		m_shaderSharpening->Set();
+		m_shaderSharpening->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, GET_RESOLUTION, 0);
+		m_shaderSharpening->SetTexture(texture, 0);
+		m_shaderSharpening->DrawIndexed(m_quad->GetIndexCount());
+	}
+
+	void Renderer::Pass_Blur(void* texture, void* renderTarget, const Vector2& blurScale)
+	{
+		SetRenderTarget(renderTarget);
+		m_shaderBlur->Set();
+		m_shaderBlur->SetBuffer(Matrix::Identity, mBaseView, mOrthographicProjection, blurScale, 0);
+		m_shaderBlur->SetTexture(texture, 0); // Shadows are alpha
+		m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
+	}
+
+	void Renderer::Pass_SSAO(void* textureNormal, void* textureDepth, void* textureNormalNoise, void* renderTarget)
+	{
+		SetRenderTarget(renderTarget);
+
+		vector<void*> ssaoTextures;
+		ssaoTextures.push_back(textureNormal);
+		ssaoTextures.push_back(textureDepth);
+		ssaoTextures.push_back(textureNormalNoise);
+
+		Matrix mvp_ortho = Matrix::Identity * mBaseView * mOrthographicProjection;
+		Matrix mvp_persp_inv = (Matrix::Identity * mView * mProjection).Inverted();
+		m_shaderSSAO->Set();
+		m_shaderSSAO->SetBuffer(
+			mvp_ortho, 
+			mvp_persp_inv, 
+			mView, 
+			mProjection, 
+			GET_RESOLUTION, 
+			m_camera->GetNearPlane(),
+			m_camera->GetFarPlane(),
+			0
+		);
+		m_shaderSSAO->SetTextures(ssaoTextures);
+		m_shaderSSAO->DrawIndexed(m_quad->GetIndexCount());
+	}
+	//=============================================================================================================
 }
