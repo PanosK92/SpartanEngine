@@ -3,9 +3,9 @@
 #define UnrollPCF (PCF * 2.0f) + 1
 //================================
 
-float2 texOffset(float shadowMapSize, int x, int y)
+float2 texOffset(float2 shadowMapSize, int x, int y)
 {
-    return float2(x * 1.0f / shadowMapSize, y * 1.0f / shadowMapSize);
+    return float2(x * 1.0f / shadowMapSize.x, y * 1.0f / shadowMapSize.y);
 }
 
 float depthTest(Texture2D shadowMap, SamplerState samplerState, float2 texCoords, float compare)

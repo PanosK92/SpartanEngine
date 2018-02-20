@@ -192,11 +192,11 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	int cascadeIndex = 0;
 	if (receiveShadows == 1.0f && doShadowMapping != 0.0f)
 	{
-		float z = 1.0f - LinerizeDepth(depthCS, nearPlane, farPlane);
+		float z = 1.0f - depthCS;
 
 		cascadeIndex = 0; // assume 1st cascade as default
-		cascadeIndex = step(shadowSplits.x, z); // test 2nd cascade
-		cascadeIndex = lerp(cascadeIndex, 2, step(shadowSplits.y, z)); // test 3rd cascade
+		cascadeIndex += step(shadowSplits.x, z); // test 2nd cascade
+		cascadeIndex += step(shadowSplits.y, z); // test 3rd cascade
 		
 		float shadowTexel = 1.0f / shadowMapResolution;
 		float bias = 0.03f * shadowTexel;
