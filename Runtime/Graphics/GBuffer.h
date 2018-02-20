@@ -37,8 +37,8 @@ namespace Directus
 		GBuffer_Target_Unknown,
 		GBuffer_Target_Albedo,
 		GBuffer_Target_Normal,
-		GBuffer_Target_Depth,
-		GBuffer_Target_Material
+		GBuffer_Target_Specular,
+		GBuffer_Target_Depth
 	};
 
 	struct GBuffer_Texture

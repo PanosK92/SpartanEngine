@@ -39,10 +39,10 @@ namespace Directus
 		m_renderTargets.push_back(GBuffer_Texture{ make_unique<D3D11RenderTexture>(m_graphics, width, height, false, DXGI_FORMAT_R32G32B32A32_FLOAT),	GBuffer_Target_Albedo });
 		// NORMAL
 		m_renderTargets.push_back(GBuffer_Texture{ make_unique<D3D11RenderTexture>(m_graphics, width, height, false, DXGI_FORMAT_R32G32B32A32_FLOAT),	GBuffer_Target_Normal });
+		// SPECULAR
+		m_renderTargets.push_back(GBuffer_Texture{ make_unique<D3D11RenderTexture>(m_graphics, width, height, false, DXGI_FORMAT_R32G32B32A32_FLOAT),	GBuffer_Target_Specular });
 		// DEPTH
-		m_renderTargets.push_back(GBuffer_Texture{ make_unique<D3D11RenderTexture>(m_graphics, width, height, true,	DXGI_FORMAT_R32G32B32A32_FLOAT),	GBuffer_Target_Depth });
-		// MATERIAL
-		m_renderTargets.push_back(GBuffer_Texture{ make_unique<D3D11RenderTexture>(m_graphics, width, height, false, DXGI_FORMAT_R32G32B32A32_FLOAT),	GBuffer_Target_Material });
+		m_renderTargets.push_back(GBuffer_Texture{ make_unique<D3D11RenderTexture>(m_graphics, width, height, true,	DXGI_FORMAT_R32G32B32A32_FLOAT),	GBuffer_Target_Depth });	
 	}
 
 	GBuffer::~GBuffer()
@@ -65,7 +65,8 @@ namespace Directus
 		};
 		ID3D11RenderTargetView** renderTargetViews = views;
 
-		m_graphics->GetDeviceContext()->OMSetRenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_renderTargets[2].texture->GetDepthStencilView());
+		// Depth
+		m_graphics->GetDeviceContext()->OMSetRenderTargets(unsigned int(m_renderTargets.size()), &renderTargetViews[0], m_renderTargets[3].texture->GetDepthStencilView());
 
 		// Set the viewport.
 		m_graphics->GetDeviceContext()->RSSetViewports(1, &m_renderTargets[0].texture->GetViewport());

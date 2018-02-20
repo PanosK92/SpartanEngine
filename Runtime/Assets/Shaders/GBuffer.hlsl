@@ -86,8 +86,8 @@ struct PixelOutputType
 {
 	float4 albedo		: SV_Target0;
 	float4 normal		: SV_Target1;
-	float4 depth		: SV_Target2;
-	float4 material		: SV_Target3;
+	float4 specular		: SV_Target2;
+	float4 depth		: SV_Target3;
 };
 //===========================================
 
@@ -199,8 +199,8 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 		cascadeIndex += step(shadowSplits.y, z); // test 3rd cascade
 		
 		float shadowTexel = 1.0f / shadowMapResolution;
-		float bias = 0.03f * shadowTexel;
-		float normalOffset = 150.0f;
+		float bias = 10.00f * shadowTexel;
+		float normalOffset = 200.0f;
 		float NdotL = dot(normal, lightDir);
 		float cosAngle = saturate(1.0f - NdotL);
 		float3 scaledNormalOffset = normal * (normalOffset * cosAngle * shadowTexel);
@@ -233,9 +233,9 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	// Write to G-Buffer
 	output.albedo		= albedo;
 	output.normal 		= float4(PackNormal(normal), totalShadowing);
+	output.specular		= float4(roughness, metallic, 0.0f, type);
 	output.depth 		= float4(depthCS, depthVS, emission, 0.0f);
-	output.material		= float4(roughness, metallic, 0.0f, type);
-		
+	
 	// Uncomment to vizualize cascade splits 
 	/*if (cascadeIndex == 0)
 		output.albedo		= float4(1,0,0,1);

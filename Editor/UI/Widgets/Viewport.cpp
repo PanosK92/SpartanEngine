@@ -176,8 +176,8 @@ void Viewport::SetRenderFlags()
 	flags = g_rendererViewInt == 1	? flags | Render_Albedo				: flags & ~Render_Albedo;
 	flags = g_rendererViewInt == 2	? flags | Render_Normal				: flags & ~Render_Normal;
 	flags = g_rendererViewInt == 3	? flags | Render_Depth				: flags & ~Render_Depth;
-	flags = g_rendererViewInt == 4	? flags | Render_Material			: flags & ~Render_Material;
-	flags = g_rendererViewInt == 0	? flags & ~Render_Albedo & ~Render_Normal & ~Render_Depth & ~Render_Material : flags;
+	flags = g_rendererViewInt == 4	? flags | Render_Specular			: flags & ~Render_Specular;
+	flags = g_rendererViewInt == 0	? flags & ~Render_Albedo & ~Render_Normal & ~Render_Depth & ~Render_Specular : flags;
 
 	g_renderer->SetRenderFlags(flags);
 }

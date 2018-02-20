@@ -77,34 +77,29 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	
 	float shadowMappingQuality = 0.5f;
 	
-	// Hard shadows (0.5f) --> PCF + Interpolation
-	if (shadowMappingQuality == 0.5f)
-	{
-		// Perform PCF filtering on a 4 x 4 texel neighborhood
+	// Interpolation + PCF
+	// Perform PCF filtering on a 4 x 4 texel neighborhood
 		amountLit = sampleShadowMapPCF(shadowMap, samplerState, shadowMapResolution, pos.xy, pos.z);
-	}
-	// Soft shadows (1.0f) --> Interpolation + Stratified Poisson Sampling
-	else
-	{
-		// Poisson sampling for shadow map
-		float packing = 4000.0f; // how close together are the samples
-		float2 poissonDisk[4] = 
-		{
-		  float2( -0.94201624f, -0.39906216f ),
-		  float2( 0.94558609f, -0.76890725f ),
-		  float2( -0.094184101f, -0.92938870f ),
-		  float2( 0.34495938f, 0.29387760f )
-		};
-
-		uint samples = 4;
-		[unroll(samples)]
-		for (uint i = 0; i < samples; i++)
-		{
-			uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-			amountLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + (poissonDisk[index] / packing), pos.z);
-		}	
-		amountLit /= (float)samples;
-	}
+	
+	// Stratified Poisson Sampling
+	// Poisson sampling for shadow map
+	//float packing = 2000.0f; // how close together are the samples
+	//float2 poissonDisk[4] = 
+	//{
+	//  float2( -0.94201624f, -0.39906216f ),
+	//  float2( 0.94558609f, -0.76890725f ),
+	//  float2( -0.094184101f, -0.92938870f ),
+	//  float2( 0.34495938f, 0.29387760f )
+	//};
+    //
+	//uint samples = 4;
+	//[unroll(samples)]
+	//for (uint i = 0; i < samples; i++)
+	//{
+	//	uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
+	//	amountLit += depthTest(shadowMap, samplerState, pos.xy + (poissonDisk[index] / packing), pos.z);
+	//}	
+	//amountLit /= (float)samples;
 	
 	return amountLit;
 }
