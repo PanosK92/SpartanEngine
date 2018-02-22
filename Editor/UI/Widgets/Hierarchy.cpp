@@ -47,27 +47,30 @@ using namespace Directus;
 
 weak_ptr<GameObject> Hierarchy::m_gameObjectSelected;
 weak_ptr<GameObject> g_gameObjectEmpty;
-static Engine* g_engine						= nullptr;
-static Scene* g_scene						= nullptr;
-static Input* g_input						= nullptr;
-static bool g_itemHoveredOnPreviousFrame	= false;
-static DragDropPayload g_payload;
 
+namespace HierarchyStatics
+{
+	static Engine* g_engine						= nullptr;
+	static Scene* g_scene						= nullptr;
+	static Input* g_input						= nullptr;
+	static bool g_itemHoveredOnPreviousFrame	= false;
+	static DragDropPayload g_payload;
+}
 Hierarchy::Hierarchy()
 {
 	m_title = "Hierarchy";
 
 	m_context = nullptr;
-	g_scene = nullptr;
+	HierarchyStatics::g_scene = nullptr;
 }
 
 void Hierarchy::Initialize(Context* context)
 {
 	Widget::Initialize(context);
 
-	g_engine = m_context->GetSubsystem<Engine>();
-	g_scene = m_context->GetSubsystem<Scene>();
-	g_input = m_context->GetSubsystem<Input>();
+	HierarchyStatics::g_engine = m_context->GetSubsystem<Engine>();
+	HierarchyStatics::g_scene = m_context->GetSubsystem<Scene>();
+	HierarchyStatics::g_input = m_context->GetSubsystem<Input>();
 
 	m_windowFlags |= ImGuiWindowFlags_HorizontalScrollbar;
 }
@@ -92,14 +95,14 @@ void Hierarchy::Tree_Show()
 		if (drop.type == g_dragDrop_Type_GameObject)
 		{
 			auto gameObjectID = (unsigned int)drop.data;
-			if (auto droppedGameObj = g_scene->GetGameObjectByID(gameObjectID).lock())
+			if (auto droppedGameObj = HierarchyStatics::g_scene->GetGameObjectByID(gameObjectID).lock())
 			{
 				droppedGameObj->GetTransform()->SetParent(nullptr);
 			}
 		}
 
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
-		auto rootGameObjects = g_scene->GetRootGameObjects();
+		auto rootGameObjects = HierarchyStatics::g_scene->GetRootGameObjects();
 		for (const auto& gameObject : rootGameObjects)
 		{
 			Tree_AddGameObject(gameObject);
@@ -114,7 +117,7 @@ void Hierarchy::Tree_Show()
 
 void Hierarchy::OnTreeBegin()
 {
-	g_itemHoveredOnPreviousFrame = false;
+	HierarchyStatics::g_itemHoveredOnPreviousFrame = false;
 }
 
 void Hierarchy::OnTreeEnd()
@@ -160,9 +163,9 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 	// Drag
 	if (DragDrop::Get().DragBegin())
 	{
-		g_payload.data = (char*)gameObjPtr->GetID();
-		g_payload.type = g_dragDrop_Type_GameObject;
-		DragDrop::Get().DragPayload(g_payload);
+		HierarchyStatics::g_payload.data = (char*)gameObjPtr->GetID();
+		HierarchyStatics::g_payload.type = g_dragDrop_Type_GameObject;
+		DragDrop::Get().DragPayload(HierarchyStatics::g_payload);
 		DragDrop::Get().DragEnd();
 	}
 	// Drop
@@ -170,7 +173,7 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 	if (drop.type == g_dragDrop_Type_GameObject)
 	{
 		auto gameObjectID = (unsigned int)drop.data;
-		if (auto droppedGameObj = g_scene->GetGameObjectByID(gameObjectID).lock())
+		if (auto droppedGameObj = HierarchyStatics::g_scene->GetGameObjectByID(gameObjectID).lock())
 		{
 			if (droppedGameObj->GetID() != gameObjPtr->GetID())
 			{
@@ -186,7 +189,7 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 		if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_Default))
 		{
 			m_gameObjectSelected = gameObject;
-			g_itemHoveredOnPreviousFrame = true;
+			HierarchyStatics::g_itemHoveredOnPreviousFrame = true;
 		}
 
 		// Right click
@@ -195,7 +198,7 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
 			{
 				m_gameObjectSelected = gameObject;
-				g_itemHoveredOnPreviousFrame = true;
+				HierarchyStatics::g_itemHoveredOnPreviousFrame = true;
 			}
 			else
 			{
@@ -204,7 +207,7 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 		}
 
 		// Clicking (any button) inside the window but not on an item (empty space)
-		if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !g_itemHoveredOnPreviousFrame)
+		if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !HierarchyStatics::g_itemHoveredOnPreviousFrame)
 		{
 			m_gameObjectSelected = g_gameObjectEmpty;
 		}
@@ -329,7 +332,7 @@ void Hierarchy::ContextMenu()
 
 void Hierarchy::HandleKeyShortcuts()
 {
-	if (g_input->GetButtonKeyboard(Delete))
+	if (HierarchyStatics::g_input->GetButtonKeyboard(Delete))
 	{
 		Action_GameObject_Delete(m_gameObjectSelected);
 	}
@@ -337,12 +340,12 @@ void Hierarchy::HandleKeyShortcuts()
 
 void Hierarchy::Action_GameObject_Delete(weak_ptr<GameObject> gameObject)
 {
-	g_scene->RemoveGameObject(gameObject);
+	HierarchyStatics::g_scene->RemoveGameObject(gameObject);
 }
 
 GameObject* Hierarchy::Action_GameObject_CreateEmpty()
 {
-	auto gameObject = g_scene->CreateGameObject().lock().get();
+	auto gameObject = HierarchyStatics::g_scene->CreateGameObject().lock().get();
 	if (auto selected = m_gameObjectSelected.lock())
 	{
 		gameObject->GetTransform()->SetParent(selected->GetTransform());

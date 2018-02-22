@@ -114,9 +114,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	// Create material
 	Material material;
-	material.albedo = albedo.rgb;
-    material.roughness = specularSample.r;
-    material.metallic = specularSample.g;
+	material.albedo 	= albedo.rgb;
+    material.roughness 	= specularSample.r;
+    material.metallic 	= specularSample.g;
 		
 	// Extract any values out of those samples
     float3 normal 	= normalize(UnpackNormal(normalSample.rgb));
