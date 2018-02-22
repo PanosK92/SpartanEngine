@@ -33,15 +33,16 @@ using namespace std;
 using namespace Directus;
 //=======================
 
-static float g_itemSizeMin		= 50.0f;
-static float g_itemSizeMax		= 150.0f;
-static bool g_itemHoveredOnPreviousFrame;
-
+namespace FileDialogStatics
+{
+	static float g_itemSizeMin		= 50.0f;
+	static float g_itemSizeMax		= 150.0f;
+	static bool g_itemHoveredOnPreviousFrame;
+	static DragDropPayload g_dragDropPayload;
+}
 #define GET_WINDOW_NAME (type == FileDialog_Open)		? "Open"		: (type == FileDialog_Load)			? "Load"		: (type == FileDialog_Save) ? "Save" : "View"
 #define GET_FILTER_NAME	(m_filter == FileDialog_All)	? "All (*.*)"	: (m_filter == FileDialog_Model)	? "Model(*.*)"	: "Scene (*.scene)"
 #define GET_BUTTON_NAME (m_style == FileDialog_Open)	? "Open"		: (m_style == FileDialog_Load)		? "Load"		: "Save"
-
-static DragDropPayload g_dragDropPayload;
 
 FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filter filter, FileDialog_Mode type)
 {
@@ -52,7 +53,7 @@ FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filte
 	m_isWindow			= standaloneWindow;
 	m_currentPath		= FileSystem::GetWorkingDirectory();
 	m_currentFullPath	= m_currentPath;
-	m_itemSize			= (type != FileDialog_Basic) ? g_itemSizeMin * 2.0f : g_itemSizeMin;
+	m_itemSize			= (type != FileDialog_Basic) ? FileDialogStatics::g_itemSizeMin * 2.0f : FileDialogStatics::g_itemSizeMin;
 	m_stopwatch			= make_unique<Stopwatch>();
 	m_navigateToPath	= true;
 }
@@ -74,7 +75,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 		return false;
 
 	m_selectionMade = false;
-	g_itemHoveredOnPreviousFrame = false;
+	FileDialogStatics::g_itemHoveredOnPreviousFrame = false;
 
 	if (m_isWindow)
 	{
@@ -90,7 +91,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 	}
 	ImGui::SameLine(); ImGui::Text(m_currentPath.c_str());
 	ImGui::PushItemWidth(ImGui::GetWindowSize().x * 0.25f);
-	ImGui::SliderFloat("##FileDialogSlider", &m_itemSize, g_itemSizeMin, g_itemSizeMax);
+	ImGui::SliderFloat("##FileDialogSlider", &m_itemSize, FileDialogStatics::g_itemSizeMin, FileDialogStatics::g_itemSizeMax);
 	ImGui::PopItemWidth();
 
 	ImGui::Separator();
@@ -132,15 +133,15 @@ bool FileDialog::Show(bool* isVisible, string* path)
 			{
 				if (FileSystem::IsSupportedModelFile(entry.first))
 				{
-					g_dragDropPayload.type = g_dragDrop_Type_Model;
-					g_dragDropPayload.data = entry.first.c_str();
-					DragDrop::Get().DragPayload(g_dragDropPayload, entry.second.texture->GetShaderResource());				
+					FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Model;
+					FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
+					DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());				
 				}
 				else if (FileSystem::IsSupportedImageFile(entry.first) || FileSystem::IsEngineTextureFile(entry.first))
 				{
-					g_dragDropPayload.type = g_dragDrop_Type_Texture;
-					g_dragDropPayload.data = entry.first.c_str();
-					DragDrop::Get().DragPayload(g_dragDropPayload, entry.second.texture->GetShaderResource());
+					FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Texture;
+					FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
+					DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
 				}
 				DragDrop::Get().DragEnd();
 			}
@@ -276,7 +277,7 @@ void FileDialog::HandleClicking(const std::string& directoryEntry)
 	// Left click
 	if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_Default))
 	{
-		g_itemHoveredOnPreviousFrame = true;
+		FileDialogStatics::g_itemHoveredOnPreviousFrame = true;
 	}
 
 	// Right click
@@ -292,7 +293,7 @@ void FileDialog::HandleClicking(const std::string& directoryEntry)
 			{
 				m_currentFullPath = FileSystem::GetDirectoryFromFilePath(m_currentPath) + FileSystem::GetFileNameFromFilePath(directoryEntry);
 			}
-			g_itemHoveredOnPreviousFrame = true;
+			FileDialogStatics::g_itemHoveredOnPreviousFrame = true;
 		}
 		else
 		{
@@ -301,7 +302,7 @@ void FileDialog::HandleClicking(const std::string& directoryEntry)
 	}
 
 	// Clicking on empty space
-	if(((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !g_itemHoveredOnPreviousFrame) && m_stopwatch->GetElapsedTimeMs() >= 500)
+	if(((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !FileDialogStatics::g_itemHoveredOnPreviousFrame) && m_stopwatch->GetElapsedTimeMs() >= 500)
 	{
 		m_currentFullPath = m_currentPath;
 	}
