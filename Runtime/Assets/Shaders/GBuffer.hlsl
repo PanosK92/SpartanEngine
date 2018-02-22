@@ -1,11 +1,6 @@
-// = INCLUDES ===============
+// = INCLUDES ========
 #include "Helper.hlsl"
-#include "ShadowMapping.hlsl"
-//===========================
-
-//= DEFINES ======
-#define CASCADES 3
-//================
+//====================
 
 //= TEXTURES ===============================
 Texture2D texAlbedo 		: register (t0);
@@ -16,26 +11,19 @@ Texture2D texHeight 		: register (t4);
 Texture2D texOcclusion 		: register (t5);
 Texture2D texEmission 		: register (t6);
 Texture2D texMask 			: register (t7);
-Texture2D lightDepthTex[3] 	: register (t8);
 //==========================================
 
-//= SAMPLERS ==============================
+//= SAMPLERS =============================
 SamplerState samplerAniso : register (s0);
-SamplerState samplerLinear : register (s1);
-//=========================================
+//========================================
 
 //= BUFFERS ==================================
 cbuffer PerFrameBuffer : register(b0)
 {		
-	float2 resolution;
-	float nearPlane;
-	float farPlane;
-	matrix mLightViewProjection[CASCADES];
-	float4 shadowSplits;		
-	float3 lightDir;
-	float shadowMapResolution;
-	float doShadowMapping;	
 	float3 cameraPosWS;
+	float1 padding;
+	float2 resolution;
+	float2 padding2;	
 };
 
 cbuffer PerMaterialBuffer : register(b1)
@@ -56,8 +44,6 @@ cbuffer PerObjectBuffer : register(b2)
 	matrix mWorld;
     matrix mWorldView;
     matrix mWorldViewProjection;
-	float receiveShadows;
-	float3 padding2;
 }
 //===========================================
 
@@ -187,62 +173,11 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 #endif
 	//============================================================================================
 
-	//= SHADOW MAPPING ===========================================================================	
-	float shadowing = 1.0f;
-	int cascadeIndex = 0;
-	if (receiveShadows == 1.0f && doShadowMapping != 0.0f)
-	{
-		float z = 1.0f - depthCS;
-
-		cascadeIndex = 0; // assume 1st cascade as default
-		cascadeIndex += step(shadowSplits.x, z); // test 2nd cascade
-		cascadeIndex += step(shadowSplits.y, z); // test 3rd cascade
-		
-		float shadowTexel = 1.0f / shadowMapResolution;
-		float bias = 10.00f * shadowTexel;
-		float normalOffset = 200.0f;
-		float NdotL = dot(normal, lightDir);
-		float cosAngle = saturate(1.0f - NdotL);
-		float3 scaledNormalOffset = normal * (normalOffset * cosAngle * shadowTexel);
-		
-		// Perform shadow mapping only if the polygons are back-faced
-		// from the light, to avoid self-shadowing artifacts
-		//if (NdotL < 0.0f)
-		{
-			if (cascadeIndex == 0)
-			{
-				float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[0]);
-				shadowing	= ShadowMapping(lightDepthTex[0], samplerLinear, shadowMapResolution, lightPos, normal, lightDir, bias);
-			}
-			else if (cascadeIndex == 1)
-			{
-				float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[1]);
-				shadowing	= ShadowMapping(lightDepthTex[1], samplerLinear, shadowMapResolution, lightPos, normal, lightDir, bias);
-			}
-			else if (cascadeIndex == 2)
-			{
-				float4 lightPos = mul(float4(input.positionWS.xyz + scaledNormalOffset, 1.0f), mLightViewProjection[2]);
-				shadowing	= ShadowMapping(lightDepthTex[2], samplerLinear, shadowMapResolution, lightPos, normal, lightDir, bias);
-			}
-		}
-	}
-	//============================================================================================
-	
-	float totalShadowing = clamp(occlusion * shadowing, 0.0f, 1.0f);
-
 	// Write to G-Buffer
 	output.albedo		= albedo;
-	output.normal 		= float4(PackNormal(normal), totalShadowing);
+	output.normal 		= float4(PackNormal(normal), occlusion);
 	output.specular		= float4(roughness, metallic, 0.0f, type);
 	output.depth 		= float4(depthCS, depthVS, emission, 0.0f);
-	
-	// Uncomment to vizualize cascade splits 
-	/*if (cascadeIndex == 0)
-		output.albedo		= float4(1,0,0,1);
-	if (cascadeIndex == 1)
-		output.albedo		= float4(0,1,0,1);
-	if (cascadeIndex == 2)
-		output.albedo		= float4(0,0,1,1);*/
 
     return output;
 }

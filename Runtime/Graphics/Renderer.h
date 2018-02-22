@@ -108,23 +108,10 @@ namespace Directus
 		//= RENDER PATHS =============================================
 		void AcquireRenderables(const Variant& renderables);
 		void DirectionalLightDepthPass(Light* directionalLight);
-		void GBufferPass(Light* inDirectionalLight);
-		void PreDeferredPass(
-			void* inTextureNormal,
-			void* inTextureDepth,
-			void* inTextureNormalNoise,
-			void* inRenderTexure,
-			void* outRenderTextureShadowBlur,
-			void* outRenderTextureSSAO
-		);
-		void DeferredPass(
-			void* inTextureShadows,
-			void* inTextureSSAO,
-			void* outRenderTexture
-		);	
-		void PostDeferredPass(
-			std::shared_ptr<D3D11RenderTexture>& inRenderTextureFrame,
-			std::shared_ptr<D3D11RenderTexture>& outRenderTexture
+		void GBufferPass();
+		void PreDeferredPass(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing);
+		void DeferredPass(void* inTextureShadowing, void* outRenderTexture);	
+		void PostDeferredPass(std::shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, std::shared_ptr<D3D11RenderTexture>& outRenderTexture
 		);
 		bool RenderGBuffer();
 		void DebugDraw();
@@ -135,7 +122,13 @@ namespace Directus
 		void Pass_FXAA(void* texture, void* renderTarget);
 		void Pass_Sharpening(void* texture, void* renderTarget);
 		void Pass_Blur(void* texture, void* renderTarget, const Math::Vector2& blurScale);
-		void Pass_SSAO(void* textureNormal, void* textureDepth, void* textureNormalNoise, void* renderTarget);
+		void Pass_Shadowing(
+			void* inTextureNormal,
+			void* inTextureDepth,
+			void* inTextureNormalNoise,
+			Light* inDirectionalLight,
+			void* outRenderTexture
+		);
 		//====================================================================================================
 		
 		std::unique_ptr<GBuffer> m_gbuffer;
@@ -147,9 +140,8 @@ namespace Directus
 		//===================================================
 
 		//= RENDER TEXTURES =======================================
-		std::shared_ptr<D3D11RenderTexture> m_renderTexPing;
-		std::shared_ptr<D3D11RenderTexture> m_renderTexPong;
-		std::shared_ptr<D3D11RenderTexture> m_renderTexSSAO;
+		std::shared_ptr<D3D11RenderTexture> m_renderTexSpare;
+		std::shared_ptr<D3D11RenderTexture> m_renderTexShadowing;
 		std::shared_ptr<D3D11RenderTexture> m_renderTexFinalFrame;
 		//=========================================================
 
@@ -161,7 +153,7 @@ namespace Directus
 		std::unique_ptr<Shader> m_shaderFont;
 		std::unique_ptr<Shader> m_shaderTexture;
 		std::unique_ptr<Shader> m_shaderFXAA;
-		std::unique_ptr<Shader> m_shaderSSAO;
+		std::unique_ptr<Shader> m_shaderShadowing;
 		std::unique_ptr<Shader> m_shaderSharpening;
 		std::unique_ptr<Shader> m_shaderBlur;
 		//==============================================

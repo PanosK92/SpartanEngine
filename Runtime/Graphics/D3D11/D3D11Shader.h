@@ -38,7 +38,7 @@ namespace Directus
 		D3D11Shader(D3D11GraphicsDevice* graphicsDevice);
 		~D3D11Shader();
 
-		bool Load(const std::string& filePath);
+		bool Compile(const std::string& filePath);
 		bool SetInputLayout(InputLayout inputLayout);
 		bool AddSampler(D3D11_FILTER filter, D3D11_TEXTURE_ADDRESS_MODE textureAddressMode, D3D11_COMPARISON_FUNC comparisonFunction);
 		void Set();

@@ -62,9 +62,9 @@ namespace Directus
 		void Compile(const std::string& filePath, unsigned long shaderFlags);
 
 		void Set();
-		void UpdatePerFrameBuffer(Light* directionalLight, Camera* camera);
+		void UpdatePerFrameBuffer(Camera* camera);
 		void UpdatePerMaterialBuffer(Material* material);
-		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, bool receiveShadows);
+		void UpdatePerObjectBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection);
 		void UpdateTextures(const std::vector<ID3D11ShaderResourceView*>& textureArray);
 		void Render(int indexCount);
 
@@ -93,18 +93,12 @@ namespace Directus
 		std::shared_ptr<D3D11Shader> m_D3D11Shader;
 
 		//= BUFFERS ===============================================
-		const static int cascades = 3;
 		struct PerFrameBufferType
 		{
-			Math::Vector2 viewport;
-			float nearPlane;
-			float farPlane;
-			Math::Matrix mLightViewProjection[cascades];
-			Math::Vector4 shadowSplits;
-			Math::Vector3 lightDir;
-			float shadowMapResolution;
-			float doShadowMapping;
 			Math::Vector3 cameraPos;
+			float padding;
+			Math::Vector2 viewport;
+			Math::Vector2 padding2;			
 		};
 
 		struct PerMaterialBufferType
@@ -127,8 +121,6 @@ namespace Directus
 			Math::Matrix mWorld;
 			Math::Matrix mWorldView;
 			Math::Matrix mWorldViewProjection;
-			float receiveShadows;
-			Math::Vector3 padding;
 		};
 		PerObjectBufferType perObjectBufferCPU;
 		//==========================================================

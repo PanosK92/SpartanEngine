@@ -1,45 +1,3 @@
-// = INCLUDES ========
-#include "Helper.hlsl"
-//====================
-
-//= TEXTURES ==============================
-Texture2D texNormal 		: register(t0);
-Texture2D texDepth 			: register(t1);
-Texture2D texNoise			: register(t2);
-//=========================================
-
-//= SAMPLERS ============================
-SamplerState samplerAniso : register(s0);
-//=======================================
-
-//= CONSTANT BUFFERS ===============
-cbuffer DefaultBuffer : register(b0)
-{
-    matrix mWorldViewProjection;
-	matrix mViewProjectionInverse;
-	matrix mView;
-	matrix mProjection;
-	matrix mProjectionInverse;
-    float2 resolution;
-	float nearPlane;
-    float farPlane;
-};
-//==================================
-
-//= STRUCTS ========================
-struct VertexInputType
-{
-    float4 position : POSITION;
-    float2 uv : TEXCOORD;
-};
-
-struct PixelInputType
-{
-    float4 position : SV_POSITION;
-    float2 uv : TEXCOORD;
-};
-//==================================
-
 // Hemisphere sample kernel generated according to the needs of the SSAO approach described here:
 // http://john-chapman-graphics.blogspot.co.uk/2013/01/ssao-tutorial.html
 static const float3 sampleKernel[64] = 
@@ -110,26 +68,11 @@ static const float3 sampleKernel[64] =
 	float3(-0.44272, -0.67928, 0.1865)
 };
 
-static const float intensity = 10.0f;
+static const float intensity = 13.0f;
 static const int kernelSize = 4;
-static const float radius = 0.1f;
-static const float bias = 0.2f;
+static const float radius = 0.8f;
+static const float bias = 0.1f;
 static const float2 noiseScale  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
-
-// Returns linear depth
-float GetDepth(float2 texCoord)
-{
-	float depth = texDepth.Sample(samplerAniso, texCoord).r;
-	depth = 1.0f - LinerizeDepth(depth, nearPlane, farPlane);
-	return depth;
-}
-
-// Returns normal
-float3 GetNormal(float2 texCoord)
-{
-	float3 normal = texNormal.Sample(samplerAniso, texCoord).rgb;
-	return normalize(UnpackNormal(normal));
-}
 
 // Returns a random normal
 float3 GetRandomNormal(float2 texCoord)
@@ -138,19 +81,11 @@ float3 GetRandomNormal(float2 texCoord)
 	return normalize(UnpackNormal(randNormal));
 }
 
-// Returns world position
-float3 GetPosition(float2 texCoord)
-{
-	float depth = texDepth.Sample(samplerAniso, texCoord).g;
-	float3 worldPos = ReconstructPosition(depth, texCoord, mViewProjectionInverse);
-	return worldPos;
-}
-
 float doAmbientOcclusion(float2 texCoord, float3 position, float3 normal)
 {
-	float3 originPos = position;
-	float3 sampledPos = GetPosition(texCoord);
-	float3 diff = sampledPos - originPos;
+	float3 originPos 	= position;
+	float3 sampledPos 	= GetPositionWorldFromDepth(texDepth, samplerAniso, mViewProjectionInverse, texCoord);
+	float3 diff 		= sampledPos - originPos;
 	 
 	float3 v = normalize(diff);
 	float d = length(diff) * noiseScale;
@@ -162,12 +97,12 @@ float doAmbientOcclusion(float2 texCoord, float3 position, float3 normal)
 
 float SSAO(float2 texCoord)
 {
-	float3 position = GetPosition(texCoord);
-	float3 randNormal = GetRandomNormal(texCoord);
-    float3 normal = GetNormal(texCoord);
-	float originDepth = GetDepth(texCoord);
-	float radius_depth = radius / originDepth;
-	float occlusion = 0.0f;
+	float3 position 	= GetPositionWorldFromDepth(texDepth, samplerAniso, mViewProjectionInverse, texCoord);
+	float3 randNormal 	= GetRandomNormal(texCoord);
+    float3 normal 		= GetNormalUnpacked(texNormal, samplerAniso, texCoord);
+	float originDepth 	= GetDepthLinear(texDepth, samplerAniso, nearPlane, farPlane, texCoord);
+	float radius_depth 	= radius / originDepth;
+	float occlusion 	= 0.0f;
 	
 	[unroll(kernelSize)]
     for( int i = 0; i < kernelSize; i++)
@@ -191,24 +126,4 @@ float SSAO(float2 texCoord)
 	occlusion = 1.0f - occlusion;
 	
 	return clamp(occlusion, 0.0f, 1.0f);
-}
-
-PixelInputType DirectusVertexShader(VertexInputType input)
-{
-    PixelInputType output;
-	
-    input.position.w = 1.0f;
-    output.position = mul(input.position, mWorldViewProjection);
-    output.uv = input.uv;
-	
-    return output;
-}
-
-float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
-{
-    float2 texCoord = input.uv;
-	float ao = SSAO(texCoord);
-    float4 color = float4(ao, ao, ao, 1.0f);
-
-    return color;
 }
