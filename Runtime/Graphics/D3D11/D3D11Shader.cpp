@@ -70,7 +70,7 @@ namespace Directus
 		m_samplers.shrink_to_fit();
 	}
 
-	bool D3D11Shader::Load(const string& filePath)
+	bool D3D11Shader::Compile(const string& filePath)
 	{
 		m_filePath = filePath;
 

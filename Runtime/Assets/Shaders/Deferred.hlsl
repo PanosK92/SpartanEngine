@@ -3,10 +3,9 @@ Texture2D texAlbedo 		: register(t0);
 Texture2D texNormal 		: register(t1);
 Texture2D texDepth 			: register(t2);
 Texture2D texSpecular 		: register(t3);
-Texture2D texShadows 		: register(t4);
-Texture2D texSSAO 			: register(t5);
-Texture2D texLastFrame 		: register(t6);
-TextureCube environmentTex 	: register(t7);
+Texture2D texShadowing 		: register(t4);
+Texture2D texLastFrame 		: register(t5);
+TextureCube environmentTex 	: register(t6);
 //=========================================
 
 //= SAMPLERS ==============================
@@ -120,13 +119,14 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
     material.metallic = specularSample.g;
 		
 	// Extract any values out of those samples
-    float3 normal = normalize(UnpackNormal(normalSample.rgb));
-	float depth = depthSample.g;
-	float3 worldPos = ReconstructPosition(depth, texCoord, mViewProjectionInverse);
+    float3 normal 	= normalize(UnpackNormal(normalSample.rgb));
+	float depth 	= depthSample.g;
+	float3 worldPos = ReconstructPositionWorld(depth, mViewProjectionInverse, texCoord);
     
-	// Shadows
-	float shadowing = texShadows.Sample(samplerAniso, texCoord).a;	
-    shadowing = clamp(shadowing, 0.1f, 1.0f);
+	// Shadows + SSAO
+	float2 shadowing 	= texShadowing.Sample(samplerAniso, texCoord).rg;
+	float shadow 		= shadowing.r;
+	float ssao 			= shadowing.g;
 	
 	// Misc
 	float emission = depthSample.b * 100.0f;
@@ -149,7 +149,6 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
         return float4(finalColor, luma);
     }
 	
-	float ssao = texSSAO.Sample(samplerAniso, texCoord).r;
 	ambientLight *= ssao;
 	 
 	//= DIRECTIONAL LIGHT ========================================================================================================================================
@@ -159,7 +158,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	directionalLight.color 		= dirLightColor.rgb;
 	directionalLight.intensity 	= dirLightIntensity.r;
 	directionalLight.direction	= normalize(-dirLightDirection).xyz;
-	directionalLight.intensity 	*= shadowing;
+	directionalLight.intensity 	*= shadow;
 	directionalLight.intensity 	+= emission;
 	
 	finalColor += ImageBasedLighting(material, directionalLight.direction, normal, viewDir) * ambientLight;

@@ -33,14 +33,16 @@ namespace Directus
 	class D3D11ConstantBuffer;
 	class D3D11Shader;
 	class Context;
+	class Light;
+	class Camera;
 
 	enum ConstantBufferType
 	{
-		WVP,
-		W_V_P,
-		WVP_Color,
-		WVP_Resolution,
-		WVP_WVPInverse_Resolution_Planes
+		CB_WVP,
+		CB_W_V_P,
+		CB_WVP_Color,
+		CB_WVP_Resolution,
+		CB_Shadowing
 	};
 
 	enum ConstantBufferScope
@@ -56,7 +58,7 @@ namespace Directus
 		Shader(Context* context);
 		~Shader();
 
-		void Load(const std::string& filePath);
+		void Compile(const std::string& filePath);
 
 		void AddDefine(LPCSTR define);
 		void AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope);
@@ -71,13 +73,13 @@ namespace Directus
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector4& color, unsigned int slot);
 		void SetBuffer(const Math::Matrix& mWorld, const Math::Matrix& mView, const Math::Matrix& mProjection, const Math::Vector2& resolution, unsigned int slot);
 		void SetBuffer(
-			const Math::Matrix& mWorldViewProjection, 
-			const Math::Matrix& mWorldViewProjectionInverse, 
+			const Math::Matrix& mWVPortho, 
+			const Math::Matrix& mWVPinv, 
 			const Math::Matrix& mView, 
-			const Math::Matrix& mProjection, 
-			const Math::Vector2& resolution, 
-			float nearPlane,
-			float farPlane, 
+			const Math::Matrix& mProjection,		
+			const Math::Vector2& resolution,
+			Light* dirLight,
+			Camera* camera,
 			unsigned int slot
 		);
 
@@ -112,16 +114,22 @@ namespace Directus
 			Math::Vector2 padding;
 		};
 
-		struct Struct_WVP_WVPInverse_Resolution_Planes
+		struct Struct_Shadowing
 		{
-			Math::Matrix wvp;
-			Math::Matrix wvpInverse;
+			Math::Matrix wvpOrtho;
+			Math::Matrix wvpInv;
 			Math::Matrix view;
 			Math::Matrix projection;
 			Math::Matrix projectionInverse;
+			Math::Matrix mLightViewProjection[3];
+			Math::Vector4 shadowSplits;
+			Math::Vector3 lightDir;
+			float shadowMapResolution;
 			Math::Vector2 resolution;
 			float nearPlane;
 			float farPlane;
+			float doShadowMapping;
+			Math::Vector3 padding;
 		};
 
 		std::unique_ptr<D3D11ConstantBuffer> m_constantBuffer;

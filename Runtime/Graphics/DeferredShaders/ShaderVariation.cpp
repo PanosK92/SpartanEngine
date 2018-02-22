@@ -66,10 +66,9 @@ namespace Directus
 		// Load and compile the vertex and the pixel shader
 		m_D3D11Shader = make_shared<D3D11Shader>(m_graphics);
 		AddDefinesBasedOnMaterial(m_D3D11Shader);
-		m_D3D11Shader->Load(filePath);
+		m_D3D11Shader->Compile(filePath);
 		m_D3D11Shader->SetInputLayout(PositionTextureTBN);
 		m_D3D11Shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-		m_D3D11Shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_CLAMP, D3D11_COMPARISON_LESS_EQUAL);
 
 		// Matrix Buffer
 		m_perObjectBuffer = make_shared<D3D11ConstantBuffer>(m_graphics);
@@ -95,7 +94,7 @@ namespace Directus
 		m_D3D11Shader->Set();
 	}
 
-	void ShaderVariation::UpdatePerFrameBuffer(Light* directionalLight, Camera* camera)
+	void ShaderVariation::UpdatePerFrameBuffer(Camera* camera)
 	{
 		if (!m_D3D11Shader || !m_D3D11Shader->IsCompiled())
 		{
@@ -103,29 +102,21 @@ namespace Directus
 			return;
 		}
 
-		if (!directionalLight || !camera)
+		if (!camera)
 			return;
 
 		//= BUFFER UPDATE ======================================================================================================================
 		PerFrameBufferType* buffer = (PerFrameBufferType*)m_miscBuffer->Map();
 
-		buffer->viewport				= GET_RESOLUTION;
-		buffer->nearPlane				= camera->GetNearPlane();
-		buffer->farPlane				= camera->GetFarPlane();
-		buffer->mLightViewProjection[0] = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(0);
-		buffer->mLightViewProjection[1] = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(1);
-		buffer->mLightViewProjection[2] = directionalLight->GetViewMatrix() * directionalLight->GetOrthographicProjectionMatrix(2);
-		buffer->shadowSplits			= Vector4(directionalLight->GetShadowCascadeSplit(1), directionalLight->GetShadowCascadeSplit(2), 0, 0);
-		buffer->lightDir				= directionalLight->GetDirection();
-		buffer->shadowMapResolution		= (float)directionalLight->GetShadowCascadeResolution();
-		buffer->doShadowMapping			= directionalLight->GetCastShadows();
-		buffer->cameraPos				= camera->GetTransform()->GetPosition();
-
+		buffer->cameraPos	= camera->GetTransform()->GetPosition();
+		buffer->padding		= 0.0f;
+		buffer->viewport	= GET_RESOLUTION;
+		buffer->padding2	= Vector2::Zero;
+		
 		m_miscBuffer->Unmap();
 		//======================================================================================================================================
 
 		// Set to shader slot
-		m_miscBuffer->SetVS(0);
 		m_miscBuffer->SetPS(0);
 	}
 
@@ -170,11 +161,10 @@ namespace Directus
 		}
 
 		// Set to shader slot
-		m_materialBuffer->SetVS(1);
 		m_materialBuffer->SetPS(1);
 	}
 
-	void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection, bool receiveShadows)
+	void ShaderVariation::UpdatePerObjectBuffer(const Matrix& mWorld, const Matrix& mView, const Matrix& mProjection)
 	{
 		if (!m_D3D11Shader->IsCompiled())
 		{
@@ -191,7 +181,6 @@ namespace Directus
 		update = perObjectBufferCPU.mWorld					!= world ? true : update;
 		update = perObjectBufferCPU.mWorldView				!= worldView ? true : update;
 		update = perObjectBufferCPU.mWorldViewProjection	!= worldViewProjection ? true : update;
-		update = perObjectBufferCPU.receiveShadows			!= (float)receiveShadows ? true : update;
 
 		if (update)
 		{
@@ -201,8 +190,6 @@ namespace Directus
 			buffer->mWorld = perObjectBufferCPU.mWorld								= world;
 			buffer->mWorldView = perObjectBufferCPU.mWorldView						= worldView;
 			buffer->mWorldViewProjection = perObjectBufferCPU.mWorldViewProjection	= worldViewProjection;
-			buffer->receiveShadows = perObjectBufferCPU.receiveShadows				= (float)receiveShadows;
-			buffer->padding															= Vector3::Zero;
 
 			m_perObjectBuffer->Unmap();
 			//==============================================================================================
@@ -210,7 +197,6 @@ namespace Directus
 
 		// Set to shader slot
 		m_perObjectBuffer->SetVS(2);
-		m_perObjectBuffer->SetPS(2);
 	}
 
 	void ShaderVariation::UpdateTextures(const vector<ID3D11ShaderResourceView*>& textureArray)

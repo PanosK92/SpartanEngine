@@ -5,7 +5,7 @@
 #define EPSILON 2.7182818284
 
 /*------------------------------------------------------------------------------
-								[MISC]
+							[GAMMA CORRECTION]
 ------------------------------------------------------------------------------*/
 float4 ToLinear(float4 color)
 {
@@ -25,21 +25,6 @@ float4 ToGamma(float4 color)
 float3 ToGamma(float3 color)
 {
 	return pow(color, 1.0f / 2.2f); 
-}
-
-float LinerizeDepth(float depth, float near, float far)
-{
-	return (far / (far - near)) * (1.0f - (near / depth));
-}
-
-float3 ReconstructPosition(float depth, float2 texCoord, matrix viewProjectionInverse)
-{	
-	float x = texCoord.x * 2.0f - 1.0f;
-	float y = (1.0f - texCoord.y) * 2.0f - 1.0f;
-	float z = depth;
-    float4 projectedPos = float4(x, y, z, 1.0f); // clip space
-	float4 worldPos = mul(projectedPos, viewProjectionInverse); // world space
-    return worldPos.xyz / worldPos.w;  
 }
 
 /*------------------------------------------------------------------------------
@@ -96,4 +81,43 @@ float3 ACESFilm(float3 x)
     float d = 0.59f;
     float e = 0.14f;
     return saturate((x*(a*x+b))/(x*(c*x+d)+e));
+}
+
+/*------------------------------------------------------------------------------
+								[MISC]
+------------------------------------------------------------------------------*/
+float LinerizeDepth(float depth, float near, float far)
+{
+	return (far / (far - near)) * (1.0f - (near / depth));
+}
+
+float3 ReconstructPositionWorld(float depth, matrix mViewProjectionInverse, float2 texCoord)
+{	
+	float x = texCoord.x * 2.0f - 1.0f;
+	float y = (1.0f - texCoord.y) * 2.0f - 1.0f;
+	float z = depth;
+    float4 projectedPos = float4(x, y, z, 1.0f); // clip space
+	float4 worldPos = mul(projectedPos, mViewProjectionInverse); // world space
+    return worldPos.xyz / worldPos.w;  
+}
+
+// Returns linear depth
+float GetDepthLinear(Texture2D texDepth, SamplerState samplerState, float nearPlane, float farPlane, float2 texCoord)
+{
+	float depth = texDepth.Sample(samplerState, texCoord).r;
+	return 1.0f - LinerizeDepth(depth, nearPlane, farPlane);
+}
+
+// Returns normal
+float3 GetNormalUnpacked(Texture2D texNormal, SamplerState samplerState, float2 texCoord)
+{
+	float3 normal = texNormal.Sample(samplerState, texCoord).rgb;
+	return normalize(UnpackNormal(normal));
+}
+
+// Returns world position
+float3 GetPositionWorldFromDepth(Texture2D texDepth, SamplerState samplerState, matrix mViewProjectionInverse, float2 texCoord)
+{
+	float depth = texDepth.Sample(samplerState, texCoord).g;
+	return ReconstructPositionWorld(depth, mViewProjectionInverse, texCoord);
 }

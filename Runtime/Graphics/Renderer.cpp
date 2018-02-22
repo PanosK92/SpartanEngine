@@ -114,77 +114,76 @@ namespace Directus
 
 		// Line shader
 		m_shaderLine = make_unique<Shader>(m_context);
-		m_shaderLine->Load(shaderDirectory + "Line.hlsl");
+		m_shaderLine->Compile(shaderDirectory + "Line.hlsl");
 		m_shaderLine->SetInputLaytout(PositionColor);
 		m_shaderLine->AddSampler(Linear_Sampler);
-		m_shaderLine->AddBuffer(W_V_P, VertexShader);
+		m_shaderLine->AddBuffer(CB_W_V_P, VertexShader);
 
 		// Depth shader
 		m_shaderDepth = make_unique<Shader>(m_context);
-		m_shaderDepth->Load(shaderDirectory + "Depth.hlsl");
+		m_shaderDepth->Compile(shaderDirectory + "Depth.hlsl");
 		m_shaderDepth->SetInputLaytout(Position);
-		m_shaderDepth->AddBuffer(WVP, VertexShader);
+		m_shaderDepth->AddBuffer(CB_WVP, VertexShader);
 
 		// Grid shader
 		m_shaderGrid = make_unique<Shader>(m_context);
-		m_shaderGrid->Load(shaderDirectory + "Grid.hlsl");
+		m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl");
 		m_shaderGrid->SetInputLaytout(PositionColor);
 		m_shaderGrid->AddSampler(Anisotropic_Sampler);
-		m_shaderGrid->AddBuffer(WVP, VertexShader);
+		m_shaderGrid->AddBuffer(CB_WVP, VertexShader);
 
 		// Font shader
 		m_shaderFont = make_unique<Shader>(m_context);
-		m_shaderFont->Load(shaderDirectory + "Font.hlsl");
+		m_shaderFont->Compile(shaderDirectory + "Font.hlsl");
 		m_shaderFont->SetInputLaytout(PositionTexture);
 		m_shaderFont->AddSampler(Point_Sampler);
-		m_shaderFont->AddBuffer(WVP_Color, Global);
+		m_shaderFont->AddBuffer(CB_WVP_Color, Global);
 
 		// Texture shader
 		m_shaderTexture = make_unique<Shader>(m_context);
-		m_shaderTexture->Load(shaderDirectory + "Texture.hlsl");
+		m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl");
 		m_shaderTexture->SetInputLaytout(PositionTexture);
 		m_shaderTexture->AddSampler(Anisotropic_Sampler);
-		m_shaderTexture->AddBuffer(WVP, VertexShader);
+		m_shaderTexture->AddBuffer(CB_WVP, VertexShader);
 
 		// FXAA Shader
 		m_shaderFXAA = make_unique<Shader>(m_context);
 		m_shaderFXAA->AddDefine("FXAA");
-		m_shaderFXAA->Load(shaderDirectory + "PostProcess.hlsl");
+		m_shaderFXAA->Compile(shaderDirectory + "PostProcess.hlsl");
 		m_shaderFXAA->SetInputLaytout(PositionTexture);
 		m_shaderFXAA->AddSampler(Anisotropic_Sampler);
 		m_shaderFXAA->AddSampler(Linear_Sampler);
-		m_shaderFXAA->AddBuffer(WVP_Resolution, Global);
+		m_shaderFXAA->AddBuffer(CB_WVP_Resolution, Global);
 
-		// SSAO Shader
-		m_shaderSSAO = make_unique<Shader>(m_context);
-		m_shaderSSAO->Load(shaderDirectory + "SSAO.hlsl");
-		m_shaderSSAO->SetInputLaytout(PositionTexture);
-		m_shaderSSAO->AddSampler(Anisotropic_Sampler);
-		m_shaderSSAO->AddSampler(Linear_Sampler);
-		m_shaderSSAO->AddBuffer(WVP_WVPInverse_Resolution_Planes, Global);
+		// Shadowing shader (Shadow mapping & SSAO)
+		m_shaderShadowing = make_unique<Shader>(m_context);
+		m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
+		m_shaderShadowing->SetInputLaytout(PositionTexture);
+		m_shaderShadowing->AddSampler(Anisotropic_Sampler);
+		m_shaderShadowing->AddSampler(Linear_Sampler);
+		m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 
 		// Sharpening shader
 		m_shaderSharpening = make_unique<Shader>(m_context);
 		m_shaderSharpening->AddDefine("SHARPENING");
-		m_shaderSharpening->Load(shaderDirectory + "PostProcess.hlsl");
+		m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl");
 		m_shaderSharpening->SetInputLaytout(PositionTexture);
 		m_shaderSharpening->AddSampler(Anisotropic_Sampler);
 		m_shaderSharpening->AddSampler(Linear_Sampler);
-		m_shaderSharpening->AddBuffer(WVP_Resolution, Global);
+		m_shaderSharpening->AddBuffer(CB_WVP_Resolution, Global);
 
 		// Blur shader
 		m_shaderBlur = make_unique<Shader>(m_context);
 		m_shaderBlur->AddDefine("BLUR");
-		m_shaderBlur->Load(shaderDirectory + "PostProcess.hlsl");
+		m_shaderBlur->Compile(shaderDirectory + "PostProcess.hlsl");
 		m_shaderBlur->SetInputLaytout(PositionTexture);
 		m_shaderBlur->AddSampler(Anisotropic_Sampler);
 		m_shaderBlur->AddSampler(Linear_Sampler);
-		m_shaderBlur->AddBuffer(WVP_Resolution, Global);
+		m_shaderBlur->AddBuffer(CB_WVP_Resolution, Global);
 
 		// Create render textures (used for post-processing)
-		m_renderTexPing = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
-		m_renderTexPong = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
-		m_renderTexSSAO = make_shared<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
+		m_renderTexSpare = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexShadowing = make_shared<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
 		m_renderTexFinalFrame = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
 		// Noise texture (used by SSAO shader)
@@ -271,25 +270,23 @@ namespace Directus
 
 			DirectionalLightDepthPass(m_directionalLight);
 
-			GBufferPass(m_directionalLight);
+			GBufferPass();
 
 			PreDeferredPass(
 				m_gbuffer->GetShaderResource(GBuffer_Target_Normal),	// IN:	Texture			- Normal
 				m_gbuffer->GetShaderResource(GBuffer_Target_Depth),		// IN:	Texture			- Depth
 				m_texNoiseMap->GetShaderResource(),						// IN:	Texture			- Normal noise
-				m_renderTexPing.get(),									// IN:	Render texture	- SSAO blur
-				m_renderTexPong.get(),									// OUT: Render texture	- shadow blur			
-				m_renderTexSSAO.get()									// OUT: Render texture	- SSAO
+				m_renderTexSpare.get(),									// IN:	Render texture		
+				m_renderTexShadowing.get()								// OUT: Render texture	- Shadowing (Shadow mapping + SSAO)
 			);
 
 			DeferredPass(
-				m_renderTexPong->GetShaderResourceView(),	// IN:	Texture			- Shadows
-				m_renderTexSSAO->GetShaderResourceView(),	// IN:	Texture			- SSAO
-				m_renderTexPing.get()						// OUT: Render texture	- Result
+				m_renderTexShadowing->GetShaderResourceView(),	// IN:	Texture			- Shadowing (Shadow mapping + SSAO)
+				m_renderTexSpare.get()							// OUT: Render texture	- Result
 			);
 
 			PostDeferredPass(
-				m_renderTexPing,		// IN:	Render texture - Deferred pass result
+				m_renderTexSpare,		// IN:	Render texture - Deferred pass result
 				m_renderTexFinalFrame	// OUT: Render texture - Result
 			);
 		}		
@@ -337,14 +334,11 @@ namespace Directus
 		m_quad = make_unique<Rectangle>(m_context);
 		m_quad->Create(0, 0, (float)RESOLUTION_WIDTH, (float)RESOLUTION_HEIGHT);
 
-		m_renderTexPing.reset();
-		m_renderTexPing = make_unique<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
+		m_renderTexSpare.reset();
+		m_renderTexSpare = make_unique<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
 
-		m_renderTexPong.reset();
-		m_renderTexPong = make_unique<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
-
-		m_renderTexSSAO.reset();
-		m_renderTexSSAO = make_unique<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
+		m_renderTexShadowing.reset();
+		m_renderTexShadowing = make_unique<D3D11RenderTexture>(m_graphics, int(RESOLUTION_WIDTH * 0.5f), int(RESOLUTION_HEIGHT * 0.5f), false);
 
 		m_renderTexFinalFrame.reset();
 		m_renderTexFinalFrame = make_unique<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);
@@ -473,7 +467,7 @@ namespace Directus
 		m_graphics->EnableDepth(false);
 	}
 
-	void Renderer::GBufferPass(Light* inDirectionalLight)
+	void Renderer::GBufferPass()
 	{
 		if (!m_graphics)
 			return;
@@ -492,7 +486,7 @@ namespace Directus
 
 			// Set the shader and update frame buffer
 			shader->Set();
-			shader->UpdatePerFrameBuffer(inDirectionalLight, m_camera);
+			shader->UpdatePerFrameBuffer(m_camera);
 
 			for (const auto& materialIt : materials) // MATERIAL ITERATION
 			{
@@ -516,21 +510,6 @@ namespace Directus
 				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Occlusion));
 				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Emission));
 				m_textures.push_back((ID3D11ShaderResourceView*)material->GetShaderResource(TextureType_Mask));
-
-				if (inDirectionalLight)
-				{
-					for (int i = 0; i < inDirectionalLight->GetShadowCascadeCount(); i++)
-					{
-						auto shadowMap = inDirectionalLight->GetShadowCascade(i).lock();
-						m_textures.push_back(shadowMap ? shadowMap->GetShaderResource() : nullptr);
-					}
-				}
-				else
-				{
-					m_textures.push_back(nullptr);
-					m_textures.push_back(nullptr);
-					m_textures.push_back(nullptr);
-				}
 
 				// UPDATE TEXTURE BUFFER
 				shader->UpdateTextures(m_textures);
@@ -567,7 +546,7 @@ namespace Directus
 						continue;
 
 					// UPDATE PER OBJECT BUFFER
-					shader->UpdatePerObjectBuffer(mWorld, mView, mProjection, meshRenderer->GetReceiveShadows());
+					shader->UpdatePerObjectBuffer(mWorld, mView, mProjection);
 
 					// Set mesh buffer
 					if (meshFilter->HasMesh() && meshFilter->SetBuffers())
@@ -588,20 +567,18 @@ namespace Directus
 		} // SHADER ITERATION
 	}
 
-	void Renderer::PreDeferredPass(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowBlur, void* outRenderTextureSSAO)
+	void Renderer::PreDeferredPass(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing)
 	{
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
-		// SHADOW BLUR
-		if (m_directionalLight) { Pass_Blur(inTextureNormal, outRenderTextureShadowBlur, GET_RESOLUTION); }
-		// SSAO
-		Pass_SSAO(inTextureNormal, inTextureDepth, inTextureNormalNoise, inRenderTexure);
-		// SSAO BLUR
-		Pass_Blur(((D3D11RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureSSAO, GET_RESOLUTION * 0.5f);
+		// Shadow mapping + SSAO
+		Pass_Shadowing(inTextureNormal, inTextureDepth, inTextureNormalNoise, m_directionalLight, inRenderTexure);
+		// Blur the shadows and the ssao
+		Pass_Blur(((D3D11RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureShadowing, GET_RESOLUTION);
 	}
 
-	void Renderer::DeferredPass(void* inTextureShadows, void* inTextureSSAO, void* outRenderTexture)
+	void Renderer::DeferredPass(void* inTextureShadowing, void* outRenderTexture)
 	{
 		if (!m_shaderDeferred->IsCompiled())
 			return;
@@ -622,8 +599,7 @@ namespace Directus
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Normal));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Depth));
 		m_texArray.emplace_back(m_gbuffer->GetShaderResource(GBuffer_Target_Specular));
-		m_texArray.emplace_back(inTextureShadows);
-		m_texArray.emplace_back(inTextureSSAO);
+		m_texArray.emplace_back(inTextureShadowing);
 		m_texArray.emplace_back(nullptr); // previous frame for SSR
 		m_texArray.emplace_back(m_skybox ? m_skybox->GetShaderResource() : nullptr);
 
@@ -844,30 +820,44 @@ namespace Directus
 		m_shaderBlur->DrawIndexed(m_quad->GetIndexCount());
 	}
 
-	void Renderer::Pass_SSAO(void* textureNormal, void* textureDepth, void* textureNormalNoise, void* renderTarget)
+	void Renderer::Pass_Shadowing(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, Light* inDirectionalLight, void* outRenderTexture)
 	{
-		SetRenderTarget(renderTarget);
+		// SHADOWING (Shadow mapping + SSAO)
 
-		vector<void*> ssaoTextures;
-		ssaoTextures.push_back(textureNormal);
-		ssaoTextures.push_back(textureDepth);
-		ssaoTextures.push_back(textureNormalNoise);
+		SetRenderTarget(outRenderTexture);
 
+		// TEXTURES
+		vector<void*> textures;
+		textures.push_back(inTextureNormal);
+		textures.push_back(inTextureDepth);
+		textures.push_back(inTextureNormalNoise);
+		if (inDirectionalLight)
+		{
+			for (int i = 0; i < inDirectionalLight->GetShadowCascadeCount(); i++)
+			{
+				Cascade* shadowMap = inDirectionalLight->GetShadowCascade(i).lock().get();
+				textures.push_back(shadowMap ? shadowMap->GetShaderResource() : nullptr);
+			}
+		}
+
+		// BUFFER
 		Matrix mvp_ortho = Matrix::Identity * mBaseView * mOrthographicProjection;
 		Matrix mvp_persp_inv = (Matrix::Identity * mView * mProjection).Inverted();
-		m_shaderSSAO->Set();
-		m_shaderSSAO->SetBuffer(
+
+		m_shaderShadowing->Set();
+		m_shaderShadowing->SetBuffer(
 			mvp_ortho, 
 			mvp_persp_inv, 
 			mView, 
-			mProjection, 
+			mProjection,		
 			GET_RESOLUTION, 
-			m_camera->GetNearPlane(),
-			m_camera->GetFarPlane(),
+			inDirectionalLight,
+			m_camera,
 			0
 		);
-		m_shaderSSAO->SetTextures(ssaoTextures);
-		m_shaderSSAO->DrawIndexed(m_quad->GetIndexCount());
+		m_shaderShadowing->SetTextures(textures);
+
+		m_shaderShadowing->DrawIndexed(m_quad->GetIndexCount());
 	}
 	//=============================================================================================================
 }
