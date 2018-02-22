@@ -127,8 +127,8 @@ float3 IBL(float3 v, float3 h, float roughness, float a, float3 normal, float3 r
 	float smoothness = 1.0f - roughness;
 	float mipLevel = (1.0f - smoothness * smoothness) * 10.0f;
 
-	float3 indirectDiffuse  = ToLinear(environmentTex.SampleLevel(samplerAniso, normal, 10.0f)).rgb;
-	float3 indirectSpecular = ToLinear(environmentTex.SampleLevel(samplerAniso, reflectionVector, mipLevel)).rgb;
+	float3 indirectDiffuse  = ToLinear(environmentTex.SampleLevel(samplerLinear, normal, 10.0f)).rgb;
+	float3 indirectSpecular = ToLinear(environmentTex.SampleLevel(samplerLinear, reflectionVector, mipLevel)).rgb;
 	float3 envFresnel = Fresnel_Schlick(specular, a, normal, v); //EnvBRDFApprox(specular, roughness, dot(normal,v));
 
 	float3 cSpecular = indirectSpecular * envFresnel;

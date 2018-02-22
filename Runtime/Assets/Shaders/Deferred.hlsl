@@ -8,10 +8,11 @@ Texture2D texLastFrame 		: register(t5);
 TextureCube environmentTex 	: register(t6);
 //=========================================
 
-//= SAMPLERS ==============================
+//= SAMPLERS =============================
 SamplerState samplerPoint : register(s0);
 SamplerState samplerAniso : register(s1);
-//=========================================
+SamplerState samplerLinear : register(s3);
+//========================================
 
 //= CONSTANT BUFFERS ===================
 cbuffer MatrixBuffer : register(b0)
