@@ -60,7 +60,7 @@ namespace Directus
 		// Hardcoded sizes to match the splits
 		float extents = 0;
 		if (cascadeIndex == 0)
-			extents = 20;
+			extents = 10;
 
 		if (cascadeIndex == 1)
 			extents = 45;
@@ -99,7 +99,7 @@ namespace Directus
 
 		// Second cascade
 		if (cascadeIndex == 1)
-			return 0.92f;
+			return 0.79f;
 
 		// Third cascade
 		if (cascadeIndex == 2)

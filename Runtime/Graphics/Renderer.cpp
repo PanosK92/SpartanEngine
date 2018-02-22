@@ -841,8 +841,8 @@ namespace Directus
 		}
 
 		// BUFFER
-		Matrix mvp_ortho = Matrix::Identity * mBaseView * mOrthographicProjection;
-		Matrix mvp_persp_inv = (Matrix::Identity * mView * mProjection).Inverted();
+		Matrix mvp_ortho		= Matrix::Identity * mBaseView * mOrthographicProjection;
+		Matrix mvp_persp_inv	= (Matrix::Identity * mView * mProjection).Inverted();
 
 		m_shaderShadowing->Set();
 		m_shaderShadowing->SetBuffer(

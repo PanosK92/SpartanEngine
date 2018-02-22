@@ -51,7 +51,7 @@ float4 FXAAPass(float2 texCoord, float2 texelSize)
 {
 	FxaaTex tex 						= { bilinearSampler, sourceTexture };	
     float2 fxaaQualityRcpFrame			= texelSize;
-    float fxaaQualitySubpix				= 0.75f; // 0.75f // The amount of sub-pixel aliasing removal.
+    float fxaaQualitySubpix				= 1.5f; // 0.75f // The amount of sub-pixel aliasing removal.
     float fxaaQualityEdgeThreshold		= 0.125f; // 0.125f; // Edge detection threshold. The minimum amount of local contrast required to apply algorithm.
     float fxaaQualityEdgeThresholdMin	= 0.0833f; // 0.0833f // Darkness threshold. Trims the algorithm from processing darks.
 	

@@ -120,13 +120,6 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		}
 	}
 	
-	// Uncomment to vizualize cascade splits 
-	/*if (cascadeIndex == 0)
-		return = float4(1,0,0,1);
-	if (cascadeIndex == 1)
-		return = float4(0,1,0,1);
-	if (cascadeIndex == 2)
-		return = float4(0,0,1,1);*/
 	//============================================================================================
 
     return float4(shadow, ssao, 0.0f, 1.0f);
