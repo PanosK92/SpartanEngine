@@ -51,6 +51,7 @@ namespace Directus::Math
 		~Quaternion() {}
 
 		//= FROM ====================================================================
+		/// Define from an angle (in degrees) and axis.
 		static Quaternion FromAngleAxis(float angle, const Vector3& axis)
 		{
 			Vector3 normAxis = axis.Normalized();
@@ -162,7 +163,7 @@ namespace Directus::Math
 			}
 		}
 
-		bool FromLookRotation(const Vector3& direction, const Vector3& upDirection) const
+		static Quaternion FromLookRotation(const Vector3& direction, const Vector3& upDirection = Vector3::Up)
 		{
 			Quaternion ret;
 			Vector3 forward = direction.Normalized();
@@ -178,7 +179,12 @@ namespace Directus::Math
 			else
 				ret.FromRotationTo(Vector3::Forward, forward);
 
-			return true;
+			return ret;
+		}
+
+		static Quaternion FromToRotation(const Quaternion& start, const Quaternion& end)
+		{
+			return Inverse(start) * end;
 		}
 
 		Quaternion Conjugate() const { return Quaternion(w, -x, -y, -z); }
@@ -210,7 +216,8 @@ namespace Directus::Math
 			return *this;
 		}
 
-		Quaternion Inverse() const;
+		static Quaternion Inverse(const Quaternion& q);
+		Quaternion Inverse() const { return Inverse(*this); }
 		//=====================================================
 
 		//= ASSIGNMENT ==============================
@@ -266,10 +273,14 @@ namespace Directus::Math
 		Quaternion operator *(float rhs) const { return Quaternion(w * rhs, x * rhs, y * rhs, z * rhs); }
 		//===============================================================================================
 
-		//= COMPARISON =======================================================================================
-		bool operator ==(const Quaternion& b) const { return (x == b.x && y == b.y && z == b.z && w == b.w); }
-		bool operator !=(const Quaternion& b) const { return (x != b.x || y != b.y || z != b.z || w != b.w); }
-		//====================================================================================================
+		//= COMPARISON =========================================================================
+		bool operator ==(const Quaternion& rhs) const
+		{
+			// Test for a quality while allowing for some error
+			return Equals(w, rhs.w) && Equals(x, rhs.x) && Equals(y, rhs.y) && Equals(z, rhs.z);
+		}
+		bool operator !=(const Quaternion& rhs) const { return !((*this) == rhs); }
+		//======================================================================================
 
 		std::string ToString() const;
 

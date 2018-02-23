@@ -443,10 +443,10 @@ namespace Directus
 		//==============================================================================================================================================================================
 
 		//= PROPERTIES ===========================================================================
-		m_scriptEngine->RegisterObjectProperty("Quaternion", "double x", asOFFSET(Quaternion, x));
-		m_scriptEngine->RegisterObjectProperty("Quaternion", "double y", asOFFSET(Quaternion, y));
-		m_scriptEngine->RegisterObjectProperty("Quaternion", "double z", asOFFSET(Quaternion, z));
-		m_scriptEngine->RegisterObjectProperty("Quaternion", "double w", asOFFSET(Quaternion, w));
+		m_scriptEngine->RegisterObjectProperty("Quaternion", "float x", asOFFSET(Quaternion, x));
+		m_scriptEngine->RegisterObjectProperty("Quaternion", "float y", asOFFSET(Quaternion, y));
+		m_scriptEngine->RegisterObjectProperty("Quaternion", "float z", asOFFSET(Quaternion, z));
+		m_scriptEngine->RegisterObjectProperty("Quaternion", "float w", asOFFSET(Quaternion, w));
 		//========================================================================================
 
 		//= OPERATORS ============================================================================================================================================================================
@@ -457,7 +457,7 @@ namespace Directus
 
 		//= FUNCTIONS ============================================================================================================================================================================
 		m_scriptEngine->RegisterObjectMethod("Quaternion", "Vector3 ToEulerAngles()", asMETHOD(Quaternion, ToEulerAngles), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("Quaternion", "bool FromLookRotation(const Vector3& in, const Vector3& in)", asMETHOD(Quaternion, FromLookRotation), asCALL_THISCALL);
+		m_scriptEngine->RegisterGlobalFunction("Quaternion FromLookRotation(const Vector3& in, const Vector3& in)", asFUNCTIONPR(Quaternion::FromLookRotation, (const Vector3&, const Vector3&), Quaternion), asCALL_CDECL);
 		//========================================================================================================================================================================================
 
 		//= STATIC FUNCTIONS =====================================================================================================================================================================

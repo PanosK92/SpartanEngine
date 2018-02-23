@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======
 #include "Widget.h"
+#include <memory>
 //=================
 
 namespace Directus
@@ -50,6 +51,7 @@ public:
 	void Initialize(Directus::Context* context) override;
 	void Clear();
 	void Update() override;
+	static void Inspect(std::weak_ptr<Directus::GameObject> gameObject);
 
 private:
 	void ShowTransform(Directus::Transform* transform);
@@ -68,4 +70,7 @@ private:
 	void ComponentContextMenu_Options(const char* id, Directus::IComponent* component);
 	void ShowAddComponentButton();
 	void ComponentContextMenu_Add();
+
+	static std::weak_ptr<Directus::GameObject> m_gameObject;
+	static bool m_isDirty;
 };

@@ -50,6 +50,9 @@ using namespace Directus;
 using namespace Math;
 //=======================
 
+weak_ptr<GameObject> Properties::m_gameObject;
+bool Properties::m_isDirty;
+
 //= SETTINGS ==========================
 static const float g_maxWidth = 100.0f;
 //=====================================
@@ -142,7 +145,6 @@ static bool g_colOptimize = false;
 //====================================================
 
 static bool g_reflect = true;
-static bool g_reflectOnce = false;
 static ResourceManager* g_resourceManager = nullptr;
 static const char* g_contexMenuID;
 
@@ -193,6 +195,7 @@ Properties::Properties()
 	g_lightButtonColorPicker	= make_unique<ButtonColorPicker>("Light Color Picker");
 	g_materialButtonColorPicker = make_unique<ButtonColorPicker>("Material Color Picker");
 	g_cameraButtonColorPicker	= make_unique<ButtonColorPicker>("Camera Color Picker");
+	m_isDirty = false;
 }
 
 void Properties::Initialize(Context* context)
@@ -220,11 +223,10 @@ void Properties::Clear()
 
 void Properties::Update()
 {
-	auto gameObject = Hierarchy::GetSelectedGameObject();
-	if (gameObject.expired())
+	if (m_gameObject.expired())
 		return;
 	
-	auto gameObjectPtr = gameObject.lock().get();
+	auto gameObjectPtr = m_gameObject.lock().get();
 
 	auto transform		= gameObjectPtr->GetTransform();
 	auto light			= gameObjectPtr->GetComponent<Light>().lock().get();
@@ -240,7 +242,7 @@ void Properties::Update()
 	auto script			= gameObjectPtr->GetComponent<Script>().lock().get();
 
 	g_reflect = Engine::EngineMode_IsSet(Engine_Game);
-	g_reflectOnce = true;
+	g_reflect = m_isDirty ? true : g_reflect;
 
 	ImGui::PushItemWidth(g_maxWidth);
 
@@ -261,23 +263,33 @@ void Properties::Update()
 
 	ImGui::PopItemWidth();
 
-	g_reflectOnce = false;
+	m_isDirty = false;
+}
+
+void Properties::Inspect(weak_ptr<GameObject> gameObject)
+{
+	m_gameObject = gameObject;
+	m_isDirty = true;
 }
 
 void Properties::ShowTransform(Transform* transform)
 {
 	// REFLECT
-	if (g_reflect || g_reflectOnce)
+	if (g_reflect)
 	{
-		EditorHelper::SetCharArray(&g_transPosX[0], transform->GetPosition().x);
-		EditorHelper::SetCharArray(&g_transPosY[0], transform->GetPosition().y);
-		EditorHelper::SetCharArray(&g_transPosZ[0], transform->GetPosition().z);
-		EditorHelper::SetCharArray(&g_transRotX[0], transform->GetRotation().Pitch());
-		EditorHelper::SetCharArray(&g_transRotY[0], transform->GetRotation().Yaw());
-		EditorHelper::SetCharArray(&g_transRotZ[0], transform->GetRotation().Roll());
-		EditorHelper::SetCharArray(&g_transScaX[0], transform->GetScale().x);
-		EditorHelper::SetCharArray(&g_transScaY[0], transform->GetScale().y);
-		EditorHelper::SetCharArray(&g_transScaZ[0], transform->GetScale().z);
+		auto position	= transform->GetPosition();
+		auto rotation	= transform->GetRotation();
+		auto scale		= transform->GetScale();
+
+		EditorHelper::SetCharArray(&g_transPosX[0], position.x);
+		EditorHelper::SetCharArray(&g_transPosY[0], position.y);
+		EditorHelper::SetCharArray(&g_transPosZ[0], position.z);
+		EditorHelper::SetCharArray(&g_transRotX[0], rotation.Pitch());
+		EditorHelper::SetCharArray(&g_transRotY[0], rotation.Yaw());
+		EditorHelper::SetCharArray(&g_transRotZ[0], rotation.Roll());
+		EditorHelper::SetCharArray(&g_transScaX[0], scale.x);
+		EditorHelper::SetCharArray(&g_transScaY[0], scale.y);
+		EditorHelper::SetCharArray(&g_transScaZ[0], scale.z);
 	}
 	auto inputTextFlags = ImGuiInputTextFlags_CharsDecimal;
 		
@@ -343,7 +355,7 @@ void Properties::ShowLight(Light* light)
 		return;
 
 	// REFLECT
-	if (g_reflect || g_reflectOnce)
+	if (g_reflect)
 	{
 		g_lightTypeInt		= (int)light->GetLightType();
 		g_lightType			= g_lightTypes[g_lightTypeInt];
@@ -444,7 +456,7 @@ void Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
 	string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
 
 	// REFLECT
-	if (g_reflect || g_reflectOnce)
+	if (g_reflect)
 	{
 		g_meshRendererCastShadows		= meshRenderer->GetCastShadows();
 		g_meshRendererReceiveShadows	= meshRenderer->GetReceiveShadows();	
@@ -482,7 +494,7 @@ void Properties::ShowRigidBody(RigidBody* rigidBody)
 		return;
 
 	// REFLECT
-	if (g_reflect || g_reflectOnce)
+	if (g_reflect)
 	{
 		EditorHelper::SetCharArray(&g_rigidBodyMass[0], rigidBody->GetMass());
 		EditorHelper::SetCharArray(&g_rigidBodyFriction[0], rigidBody->GetFriction());
@@ -575,7 +587,7 @@ void Properties::ShowCollider(Collider* collider)
 		return;
 
 	// REFLECT
-	if (g_reflect || g_reflectOnce)
+	if (g_reflect)
 	{
 		g_colShapeInt = (int)collider->GetShapeType();
 		g_colShape = g_colShapes[g_colShapeInt];
@@ -685,7 +697,7 @@ void Properties::ShowMaterial(Material* material)
 	auto texMask		= material->GetTextureByType(TextureType_Mask).lock();
 
 	// REFLECT
-	if (g_reflect || g_reflectOnce)
+	if (g_reflect)
 	{
 		g_materialRoughness = material->GetRoughnessMultiplier();
 		g_materialMetallic	= material->GetMetallicMultiplier();
@@ -782,7 +794,7 @@ void Properties::ShowCamera(Camera* camera)
 		return;
 
 	// REFLECT
-	if (g_reflect || g_reflectOnce)
+	if (g_reflect)
 	{
 		g_cameraButtonColorPicker->SetColor(camera->GetClearColor());
 		g_cameraProjectionInt	= (int)camera->GetProjection();
