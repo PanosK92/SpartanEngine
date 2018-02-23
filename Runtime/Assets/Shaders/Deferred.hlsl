@@ -110,9 +110,9 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	// Sample from G-Buffer
     float4 albedo 			= ToLinear(texAlbedo.Sample(samplerAniso, texCoord));
     float4 normalSample 	= texNormal.Sample(samplerAniso, texCoord);
+	float4 specularSample	= texSpecular.Sample(samplerPoint, texCoord);
     float4 depthSample 		= texDepth.Sample(samplerAniso, texCoord);
-    float4 specularSample	= texSpecular.Sample(samplerPoint, texCoord);
-	
+    	
 	// Create material
 	Material material;
 	material.albedo 	= albedo.rgb;
@@ -131,7 +131,7 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 	
 	// Misc
 	float emission = depthSample.b * 100.0f;
-	float renderTechnique = specularSample.a;
+	float renderTechnique = specularSample.b;
 	
 	// Calculate view direction
     float3 viewDir = normalize(cameraPosWS.xyz - worldPos.xyz);

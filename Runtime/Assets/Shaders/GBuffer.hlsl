@@ -176,8 +176,8 @@ PixelOutputType DirectusPixelShader(PixelInputType input)
 	// Write to G-Buffer
 	output.albedo		= albedo;
 	output.normal 		= float4(PackNormal(normal), occlusion);
-	output.specular		= float4(roughness, metallic, 0.0f, type);
-	output.depth 		= float4(depthCS, depthVS, emission, 0.0f);
+	output.specular		= float4(roughness, metallic, type, 1.0f);
+	output.depth 		= float4(depthCS, depthVS, emission, 1.0f);
 
     return output;
 }

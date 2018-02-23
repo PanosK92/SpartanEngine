@@ -118,9 +118,9 @@ namespace Directus
 		float phiStep	= PI / stacks;
 		float thetaStep = 2.0f * PI / slices;
 		        
-		for (int i = 1; i <= stacks-1; i++) 
+		for (int i = 1; i <= stacks - 1; i++) 
 		{
-		    float phi = i*phiStep;
+		    float phi = i * phiStep;
 		    for (int j = 0; j <= slices; j++) 
 			{
 		        float theta = j * thetaStep;
@@ -133,7 +133,6 @@ namespace Directus
 		        Vector3 t = Vector3(-radius * sin(phi) * sin(theta), 0, radius * sin(phi) * cos(theta)).Normalized();
 		        Vector3 n = p.Normalized();
 		        Vector2 uv = Vector2(theta / (PI * 2), phi / PI);
-
 				vertices->emplace_back(p, uv, n, t, Vector3::Cross(n, t));
 		    }
 		}
@@ -141,7 +140,7 @@ namespace Directus
 		normal		= Vector3(0, -1, 0);
 		tangent		= Vector3(1, 0, 0);
 		bitangent	= Vector3::Cross(normal, tangent);
-		vertices->emplace_back(Vector3(0,-radius, 0), Vector2(0, 1), normal, tangent, bitangent);
+		vertices->emplace_back(Vector3(0, -radius, 0), Vector2(0, 1), normal, tangent, bitangent);
 	        
 		for (int i = 1; i <= slices; i++) 
 		{
