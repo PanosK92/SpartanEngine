@@ -263,6 +263,14 @@ void Hierarchy::ContextMenu()
 			{
 				Action_GameObject_CreateQuad();
 			}
+			else if (ImGui::MenuItem("Sphere"))
+			{
+				Action_GameObject_CreateSphere();
+			}
+			else if (ImGui::MenuItem("Cylinder"))
+			{
+				Action_GameObject_CreateCylinder();
+			}
 
 			ImGui::EndMenu();
 		}
@@ -368,6 +376,22 @@ void Hierarchy::Action_GameObject_CreateQuad()
 	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Quad);
 	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
 	gameObject->SetName("Quad");
+}
+
+void Hierarchy::Action_GameObject_CreateSphere()
+{
+	auto gameObject = Action_GameObject_CreateEmpty();
+	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Sphere);
+	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
+	gameObject->SetName("Sphere");
+}
+
+void Hierarchy::Action_GameObject_CreateCylinder()
+{
+	auto gameObject = Action_GameObject_CreateEmpty();
+	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cylinder);
+	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
+	gameObject->SetName("Cylinder");
 }
 
 void Hierarchy::Action_GameObject_CreateCamera()

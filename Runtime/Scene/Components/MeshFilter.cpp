@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshFilter.h"
 #include "Transform.h"
 #include "../../Logging/Log.h"
-#include "../../Math/Vector3.h"
 #include "../../IO/FileStream.h"
 #include "../../Graphics/Mesh.h"
 #include "../../FileSystem/FileSystem.h"
 #include "../../Resource/ResourceManager.h"
+#include "../../Graphics/GeometryUtility.h"
 //=========================================
 
 //= NAMESPACES ================
@@ -90,7 +90,23 @@ namespace Directus
 		m_meshType = type;
 
 		// Create a name for this standard mesh
-		string meshName = (type == MeshType_Cube) ? "Standard_Cube" : "Standard_Quad";
+		string meshName;
+		if (type == MeshType_Cube)
+		{
+			meshName = "Standard_Cube";
+		}
+		else if (type == MeshType_Quad)
+		{
+			meshName = "Standard_Quad";
+		}
+		else if (type == MeshType_Sphere)
+		{
+			meshName = "Standard_Sphere";
+		}
+		else if (type == MeshType_Cylinder)
+		{
+			meshName = "Standard_Cylinder";
+		}
 
 		// Check if this mesh is already loaded, if so, use the existing one
 		if (auto existingMesh = GetContext()->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName).lock())
@@ -105,11 +121,19 @@ namespace Directus
 		vector<unsigned int> indices;
 		if (type == MeshType_Cube)
 		{
-			CreateCube(&vertices, &indices);
+			GeometryUtility::CreateCube(&vertices, &indices);
 		}
 		else if (type == MeshType_Quad)
 		{
-			CreateQuad(&vertices, &indices);
+			GeometryUtility::CreateQuad(&vertices, &indices);
+		}
+		else if (type == MeshType_Sphere)
+		{
+			GeometryUtility::CreateSphere(&vertices, &indices);
+		}
+		else if (type == MeshType_Cylinder)
+		{
+			GeometryUtility::CreateCylinder(&vertices, &indices);
 		}
 
 		// Create a file path (in the project directory) for this standard mesh
@@ -150,83 +174,5 @@ namespace Directus
 	string MeshFilter::GetMeshName()
 	{
 		return !m_mesh.expired() ? m_mesh.lock()->GetResourceName() : NOT_ASSIGNED;
-	}
-
-	void MeshFilter::CreateCube(vector<VertexPosTexTBN>* vertices, vector<unsigned int>* indices)
-	{
-		// front
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f),	Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, -0.5f),	Vector2(0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
-		vertices->emplace_back(Vector3(0.5f, -0.5f, -0.5f),	Vector2(1, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
-		vertices->emplace_back(Vector3(0.5f, 0.5f, -0.5f),	Vector2(1, 0), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0));
-
-		// bottom
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, 0.5f),	Vector2(0, 1), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f),	Vector2(0, 0), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, -0.5f, 0.5f),	Vector2(1, 1), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, -0.5f, -0.5f),	Vector2(1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1));
-
-		// back
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, 0.5f),	Vector2(1, 1), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)); 
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, 0.5f),	Vector2(1, 0), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)); 
-		vertices->emplace_back(Vector3(0.5f, -0.5f, 0.5f),	Vector2(0, 1), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)); 
-		vertices->emplace_back(Vector3(0.5f, 0.5f, 0.5f),	Vector2(0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0)); 
-
-		// top
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, 0.5f),	Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); 
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, -0.5f),	Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); 
-		vertices->emplace_back(Vector3(0.5f, 0.5f, 0.5f),	Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); 
-		vertices->emplace_back(Vector3(0.5f, 0.5f, -0.5f),	Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); 
-
-		// left
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, 0.5f),	Vector2(0, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, 0.5f),	Vector2(0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f),	Vector2(1, 1), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(-0.5f, 0.5f, -0.5f),	Vector2(1, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-
-		// right
-		vertices->emplace_back(Vector3(0.5f, -0.5f, 0.5f),	Vector2(1, 1), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, 0.5f, 0.5f),	Vector2(1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, -0.5f, -0.5f),	Vector2(0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-		vertices->emplace_back(Vector3(0.5f, 0.5f, -0.5f),	Vector2(0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1));
-
-		// front
-		indices->emplace_back(0); indices->emplace_back(1); indices->emplace_back(2);
-		indices->emplace_back(2); indices->emplace_back(1); indices->emplace_back(3);
-
-		// bottom
-		indices->emplace_back(4); indices->emplace_back(5); indices->emplace_back(6);
-		indices->emplace_back(6); indices->emplace_back(5); indices->emplace_back(7);
-
-		// back
-		indices->emplace_back(10); indices->emplace_back(9); indices->emplace_back(8);
-		indices->emplace_back(11); indices->emplace_back(9); indices->emplace_back(10);
-
-		// top
-		indices->emplace_back(14); indices->emplace_back(13); indices->emplace_back(12);
-		indices->emplace_back(15); indices->emplace_back(13); indices->emplace_back(14);
-
-		// left
-		indices->emplace_back(16); indices->emplace_back(17); indices->emplace_back(18);
-		indices->emplace_back(18); indices->emplace_back(17); indices->emplace_back(19);
-
-		// right
-		indices->emplace_back(22); indices->emplace_back(21); indices->emplace_back(20);
-		indices->emplace_back(23); indices->emplace_back(21); indices->emplace_back(22);
-	}
-
-	void MeshFilter::CreateQuad(vector<VertexPosTexTBN>* vertices, vector<unsigned int>* indices)
-	{
-		vertices->emplace_back(Vector3(-0.5f, 0.0f, 0.5f),	Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 0 top-left
-		vertices->emplace_back(Vector3(0.5f, 0.0f, 0.5f),	Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 1 top-right
-		vertices->emplace_back(Vector3(-0.5f, 0.0f, -0.5f),	Vector2(0, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 2 bottom-left
-		vertices->emplace_back(Vector3(0.5f, 0.0f, -0.5f),	Vector2(1, 1), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)); // 3 bottom-right
-
-		indices->emplace_back(3);
-		indices->emplace_back(2);
-		indices->emplace_back(0);
-		indices->emplace_back(3);
-		indices->emplace_back(0);
-		indices->emplace_back(1);
 	}
 }
