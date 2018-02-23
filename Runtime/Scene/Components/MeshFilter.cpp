@@ -107,6 +107,10 @@ namespace Directus
 		{
 			meshName = "Standard_Cylinder";
 		}
+		else if (type == MeshType_Cone)
+		{
+			meshName = "Standard_Cone";
+		}
 
 		// Check if this mesh is already loaded, if so, use the existing one
 		if (auto existingMesh = GetContext()->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName).lock())
@@ -134,6 +138,10 @@ namespace Directus
 		else if (type == MeshType_Cylinder)
 		{
 			GeometryUtility::CreateCylinder(&vertices, &indices);
+		}
+		else if (type == MeshType_Cone)
+		{
+			GeometryUtility::CreateCone(&vertices, &indices);
 		}
 
 		// Create a file path (in the project directory) for this standard mesh

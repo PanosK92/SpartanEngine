@@ -45,7 +45,8 @@ namespace Directus
 		MeshType_Cube,
 		MeshType_Quad,
 		MeshType_Sphere,
-		MeshType_Cylinder
+		MeshType_Cylinder,
+		MeshType_Cone
 	};
 
 	class ENGINE_CLASS MeshFilter : public IComponent

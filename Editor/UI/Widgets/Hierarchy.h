@@ -56,6 +56,7 @@ private:
 	void Action_GameObject_CreateQuad();
 	void Action_GameObject_CreateSphere();
 	void Action_GameObject_CreateCylinder();
+	void Action_GameObject_CreateCone();
 	void Action_GameObject_CreateCamera();
 	void Action_GameObject_CreateLightDirectional();
 	void Action_GameObject_CreateLightPoint();
