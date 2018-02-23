@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Hierarchy.h"
-#include "../imgui/imgui.h"
+#include "../ImGui/imgui.h"
 #include "../DragDrop.h"
 #include "../EditorHelper.h"
 #include "Scene/Scene.h"
@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene/Components/Constraint.h"
 #include "Scene/Components/MeshFilter.h"
 #include "Scene/Components/MeshRenderer.h"
+#include "Properties.h"
 //=========================================
 
 //= NAMESPACES ==========
@@ -50,16 +51,15 @@ weak_ptr<GameObject> g_gameObjectEmpty;
 
 namespace HierarchyStatics
 {
-	static Engine* g_engine						= nullptr;
-	static Scene* g_scene						= nullptr;
-	static Input* g_input						= nullptr;
-	static bool g_itemHoveredOnPreviousFrame	= false;
+	static GameObject* g_hoveredGameObject	= nullptr;
+	static Engine* g_engine					= nullptr;
+	static Scene* g_scene					= nullptr;
+	static Input* g_input					= nullptr;
 	static DragDropPayload g_payload;
 }
 Hierarchy::Hierarchy()
 {
 	m_title = "Hierarchy";
-
 	m_context = nullptr;
 	HierarchyStatics::g_scene = nullptr;
 }
@@ -84,6 +84,12 @@ void Hierarchy::Update()
 	Tree_Show();
 }
 
+void Hierarchy::SetSelectedGameObject(weak_ptr<GameObject> gameObject)
+{
+	m_gameObjectSelected = gameObject;
+	Properties::Inspect(m_gameObjectSelected);
+}
+
 void Hierarchy::Tree_Show()
 {
 	OnTreeBegin();
@@ -101,14 +107,12 @@ void Hierarchy::Tree_Show()
 			}
 		}
 
-		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
 		auto rootGameObjects = HierarchyStatics::g_scene->GetRootGameObjects();
 		for (const auto& gameObject : rootGameObjects)
 		{
-			Tree_AddGameObject(gameObject);
+			Tree_AddGameObject(gameObject.lock().get());
 		}
 
-		ImGui::PopStyleVar();
 		ImGui::TreePop();
 	}
 
@@ -117,27 +121,25 @@ void Hierarchy::Tree_Show()
 
 void Hierarchy::OnTreeBegin()
 {
-	HierarchyStatics::g_itemHoveredOnPreviousFrame = false;
+	HierarchyStatics::g_hoveredGameObject = nullptr;
 }
 
 void Hierarchy::OnTreeEnd()
 {
 	HandleKeyShortcuts();
+	HandleClicking();
+	ContextMenu();
 }
 
-void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
+void Hierarchy::Tree_AddGameObject(GameObject* gameObject)
 {
-	GameObject* gameObjPtr = gameObject.lock().get();
-	if (!gameObjPtr)
-		return;
-
 	// Node self visibility
-	if (!gameObjPtr->IsVisibleInHierarchy())
+	if (!gameObject->IsVisibleInHierarchy())
 		return;
 
 	// Node children visibility
 	bool hasVisibleChildren = false;
-	auto children = gameObjPtr->GetTransform()->GetChildren();
+	auto children = gameObject->GetTransform()->GetChildren();
 	for (const auto& child : children)
 	{
 		if (child->GetGameObject()->IsVisibleInHierarchy())
@@ -154,12 +156,66 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 	// Node flags -> Selected?
 	if (!m_gameObjectSelected.expired())
 	{
-		node_flags |= (m_gameObjectSelected.lock()->GetID() == gameObjPtr->GetID()) ? ImGuiTreeNodeFlags_Selected : 0;
+		node_flags |= (m_gameObjectSelected.lock()->GetID() == gameObject->GetID()) ? ImGuiTreeNodeFlags_Selected : 0;
 	}
 
 	// Node
-	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)gameObjPtr->GetID(), node_flags, gameObjPtr->GetName().c_str());
+	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)gameObject->GetID(), node_flags, gameObject->GetName().c_str());
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
+	{
+		HierarchyStatics::g_hoveredGameObject = gameObject;
+	}
 
+	HandleDragDrop(gameObject);	
+
+	// Recursively show all child nodes
+	if (isNodeOpen)
+	{
+		if (hasVisibleChildren)
+		{
+			for (const auto& child : children)
+			{
+				if (!child->GetGameObject()->IsVisibleInHierarchy())
+					continue;
+
+				Tree_AddGameObject(child->GetGameObjectRef().lock().get());
+			}
+		}
+		ImGui::TreePop();
+	}
+}
+
+void Hierarchy::HandleClicking()
+{
+	if (ImGui::IsMouseHoveringWindow())
+	{		
+		// Left click on item
+		if (ImGui::IsMouseClicked(0) && HierarchyStatics::g_hoveredGameObject)
+		{
+			SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetTransform()->GetGameObjectRef());
+		}
+
+		// Right click on item
+		if (ImGui::IsMouseClicked(1))
+		{
+			if (HierarchyStatics::g_hoveredGameObject)
+			{			
+				SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetTransform()->GetGameObjectRef());
+			}
+
+			ImGui::OpenPopup("##HierarchyContextMenu");		
+		}
+
+		// Clicking (any button) inside the window but not on an item (empty space)
+		if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !ImGui::IsAnyItemHovered())
+		{
+			SetSelectedGameObject(g_gameObjectEmpty);
+		}
+	}
+}
+
+void Hierarchy::HandleDragDrop(GameObject* gameObjPtr)
+{
 	// Drag
 	if (DragDrop::Get().DragBegin())
 	{
@@ -180,55 +236,6 @@ void Hierarchy::Tree_AddGameObject(const weak_ptr<GameObject>& gameObject)
 				droppedGameObj->GetTransform()->SetParent(gameObjPtr->GetTransform());
 			}
 		}
-	}
-
-	// Handle clicking
-	if (ImGui::IsMouseHoveringWindow())
-	{		
-		// Left click
-		if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_Default))
-		{
-			m_gameObjectSelected = gameObject;
-			HierarchyStatics::g_itemHoveredOnPreviousFrame = true;
-		}
-
-		// Right click
-		if (ImGui::IsMouseClicked(1))
-		{
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
-			{
-				m_gameObjectSelected = gameObject;
-				HierarchyStatics::g_itemHoveredOnPreviousFrame = true;
-			}
-			else
-			{
-				ImGui::OpenPopup("##HierarchyContextMenu");
-			}			
-		}
-
-		// Clicking (any button) inside the window but not on an item (empty space)
-		if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !HierarchyStatics::g_itemHoveredOnPreviousFrame)
-		{
-			m_gameObjectSelected = g_gameObjectEmpty;
-		}
-	}
-	
-	ContextMenu();
-
-	// Recursively show all child nodes
-	if (isNodeOpen)
-	{
-		if (hasVisibleChildren)
-		{
-			for (const auto& child : children)
-			{
-				if (!child->GetGameObject()->IsVisibleInHierarchy())
-					continue;
-
-				Tree_AddGameObject(child->GetGameObjectRef());
-			}
-		}
-		ImGui::TreePop();
 	}
 }
 

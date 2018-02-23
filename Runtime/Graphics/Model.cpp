@@ -146,16 +146,7 @@ namespace Directus
 			return;
 		}
 			
-		// Don't add mesh if it's already added
-		weak_ptr<Mesh> existingMesh;
-		DetermineMeshUniqueness(mesh, &existingMesh);
-		if (!existingMesh.expired())
-		{
-			// The mesh is cached but we must not forget to add
-			// some standard components to the GameObject that uses it.
-			AddStandardComponents(gameObject, existingMesh);
-			return;
-		}
+		AddStandardComponents(gameObject, mesh);
 
 		// Update the mesh with Model directory relative file path. Then save it to this directory
 		string modelRelativeTexPath = m_modelDirectoryMeshes + mesh.lock()->GetResourceName() + MESH_EXTENSION;
@@ -367,80 +358,6 @@ namespace Directus
 		// Add a MeshFilter
 		MeshFilter* meshFilter = gameObject.lock()->AddComponent<MeshFilter>().lock().get();
 		meshFilter->SetMesh(mesh);
-
-		if (meshFilter->GetMeshType() == MeshType_Imported)
-		{
-			// Add a RigidBody
-			gameObject.lock()->AddComponent<RigidBody>();
-
-			// Add a Collider
-			auto collider = gameObject.lock()->AddComponent<Collider>().lock().get();
-			collider->SetShapeType(ColliderShape_Mesh);
-		}
-	}
-
-	void Model::DetermineMeshUniqueness(const weak_ptr<Mesh>& mesh, weak_ptr<Mesh>* modelCached)
-	{
-		// Some meshes can come from model formats like .obj
-		// Such formats contain pure geometry data, meaning that there is no transformation data.
-		// This in turn means that in order to have instances of the same mesh using different transforms,
-		// .obj simply re-defines the mesh in all the needed transformations. Because of that we can't simply compare
-		// mesh names to decide if they are different or not, we have to do a more extensive testing to determine the uniquness of a mesh.
-
-
-		// Find all the meshes with the same name
-		vector<weak_ptr<Mesh>> sameNameMeshes;
-		for (const auto& cachedMesh : m_meshes)
-		{
-			if (cachedMesh.lock()->GetResourceName() == mesh.lock()->GetResourceName() 
-				|| cachedMesh.lock()->GetResourceName().find(mesh.lock()->GetResourceName()) != string::npos)
-			{
-				sameNameMeshes.push_back(cachedMesh);
-			}
-		}
-
-		bool isUnique = true;
-		for (const auto& cachedMesh : sameNameMeshes)
-		{
-			// Vertex count matches
-			if (cachedMesh.lock()->GetVertexCount() != mesh.lock()->GetVertexCount())
-				continue;
-
-			vector<VertexPosTexTBN> meshVertices;
-			vector<unsigned int> meshIndices;
-			mesh.lock()->GetGeometry(&meshVertices, &meshIndices);
-
-			vector<VertexPosTexTBN> cachedVertices;
-			vector<unsigned int> cachedIndices;
-			cachedMesh.lock()->GetGeometry(&cachedVertices, &cachedIndices);
-
-			bool geometryMatches = true;
-			for (int i = 0; i < meshVertices.size(); i++)
-			{
-				if (meshVertices[i].position != cachedVertices[i].position)
-				{
-					geometryMatches = false;
-					break;
-				}
-			}
-
-			if (geometryMatches)
-			{
-				isUnique = false;
-				break;
-			}
-		}
-
-		// If the mesh is unique, give it a different name (in case other with the same name exist)
-		if (isUnique)
-		{
-			string num = sameNameMeshes.empty() ? string("") : "_" + to_string(sameNameMeshes.size() + 1);
-			mesh.lock()->SetResourceName(mesh.lock()->GetResourceName() + num);
-		}
-		else
-		{
-			modelCached = &sameNameMeshes.front();
-		}
 	}
 
 	float Model::ComputeNormalizeScale()

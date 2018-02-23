@@ -621,10 +621,10 @@ namespace Directus
 		// SHARPENING
 		Pass_Sharpening(outRenderTexture->GetShaderResourceView(), inRenderTextureFrame.get());
 
-		outRenderTexture.swap(inRenderTextureFrame);
+		outRenderTexture.swap(inRenderTextureFrame);	
 
 		RenderGBuffer();
-		DebugDraw();	
+		DebugDraw();
 	}
 
 	bool Renderer::RenderGBuffer()

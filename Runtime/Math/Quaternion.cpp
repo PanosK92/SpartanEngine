@@ -52,15 +52,15 @@ namespace Directus::Math
 	}
 	//========================================================================================
 
-	Quaternion Quaternion::Inverse() const
+	Quaternion Quaternion::Inverse(const Quaternion& q)
 	{
-		float lenSquared = LengthSquared();
+		float lenSquared = q.LengthSquared();
 
 		if (lenSquared == 1.0f)
-			return Conjugate();
+			return q.Conjugate();
 
 		if (lenSquared >= M_EPSILON)
-			return Conjugate() * (1.0f / lenSquared);
+			return q.Conjugate() * (1.0f / lenSquared);
 
 		// impemented this here because Identity (static)
 		// doesnt play well with dllexport
