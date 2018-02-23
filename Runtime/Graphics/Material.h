@@ -103,6 +103,8 @@ namespace Directus
 		float GetHeightMultiplier() { return m_heightMultiplier; }
 		void SetHeightMultiplier(float height) { m_heightMultiplier = height; }
 
+		void SetMultiplier(TextureType type, float value);
+
 		ShadingMode GetShadingMode() { return m_shadingMode; }
 		void SetShadingMode(ShadingMode shadingMode) { m_shadingMode = shadingMode; }
 

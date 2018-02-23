@@ -44,6 +44,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Font/Font.h"
 #include "../Profiling/PerformanceProfiler.h"
+#include "../Core/Engine.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -59,6 +60,7 @@ namespace Directus
 	static Physics* g_physics				= nullptr;
 	static ResourceManager* g_resourceMng	= nullptr;
 	static Vector4 g_clearColorDefault		= Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+	unsigned long Renderer::m_flags;
 
 	Renderer::Renderer(Context* context) : Subsystem(context)
 	{
@@ -69,9 +71,9 @@ namespace Directus
 		m_nearPlane			= 0.0f;
 		m_farPlane			= 0.0f;
 		m_graphics			= nullptr;
-		m_renderFlags		= 0;
-		m_renderFlags		|= Render_SceneGrid;
-		m_renderFlags		|= Render_Light;
+		m_flags		= 0;
+		m_flags		|= Render_SceneGrid;
+		m_flags		|= Render_Light;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
@@ -621,31 +623,36 @@ namespace Directus
 
 		outRenderTexture.swap(inRenderTextureFrame);
 
-		DebugDraw();
 		RenderGBuffer();
+		DebugDraw();	
 	}
 
 	bool Renderer::RenderGBuffer()
 	{
-		if (!(m_renderFlags & Render_Albedo) && !(m_renderFlags & Render_Normal) && !(m_renderFlags & Render_Depth) && !(m_renderFlags & Render_Specular))
+		bool albedo		= RenderMode_IsSet(Render_Albedo);
+		bool normal		= RenderMode_IsSet(Render_Normal);
+		bool specular	= RenderMode_IsSet(Render_Specular);
+		bool depth		= RenderMode_IsSet(Render_Depth);
+
+		if (!albedo && !normal && !specular && !depth)
 			return false;
 
 		GBuffer_Texture_Type texType = GBuffer_Target_Unknown;
-		if (m_renderFlags & Render_Albedo)
+		if (albedo)
 		{
 			texType = GBuffer_Target_Albedo;
 		}
-		else if (m_renderFlags & Render_Normal)
+		else if (normal)
 		{
 			texType = GBuffer_Target_Normal;
 		}
-		else if (m_renderFlags & Render_Depth)
+		else if (specular)
+		{
+			texType = GBuffer_Target_Specular;			
+		}
+		else if (depth)
 		{
 			texType = GBuffer_Target_Depth;
-		}
-		else if (m_renderFlags & Render_Specular)
-		{
-			texType = GBuffer_Target_Specular;
 		}
 
 		// TEXTURE
@@ -667,7 +674,7 @@ namespace Directus
 			m_lineRenderer->ClearVertices();
 
 			// Physics
-			if (m_renderFlags & Render_Physics)
+			if (m_flags & Render_Physics)
 			{
 				g_physics->DebugDraw();
 				if (g_physics->GetPhysicsDebugDraw()->IsDirty())
@@ -677,13 +684,13 @@ namespace Directus
 			}
 
 			// Picking ray
-			if (m_renderFlags & Render_PickingRay)
+			if (m_flags & Render_PickingRay)
 			{
 				m_lineRenderer->AddLines(m_camera->GetPickingRay());
 			}
 
 			// bounding boxes
-			if (m_renderFlags & Render_AABB)
+			if (m_flags & Render_AABB)
 			{
 				for (const auto& gameObject : m_renderables)
 				{
@@ -707,7 +714,7 @@ namespace Directus
 		m_graphics->EnableAlphaBlending(true);
 
 		// Grid
-		if (m_renderFlags & Render_SceneGrid)
+		if (m_flags & Render_SceneGrid)
 		{
 			m_grid->SetBuffer();
 			m_shaderGrid->Set();
@@ -717,7 +724,7 @@ namespace Directus
 		}
 
 		// Light gizmo
-		if (m_renderFlags & Render_Light)
+		if (m_flags & Render_Light)
 		{
 			for (auto* light : m_lights)
 			{
@@ -772,7 +779,7 @@ namespace Directus
 		}
 
 		// Performance metrics
-		if (m_renderFlags & Render_PerformanceMetrics)
+		if (m_flags & Render_PerformanceMetrics)
 		{
 			m_font->SetText(PerformanceProfiler::GetMetrics(), Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f));
 			m_font->SetBuffer();

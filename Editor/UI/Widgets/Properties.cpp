@@ -182,6 +182,7 @@ static const char* g_contexMenuID;
 		{																\
 			texture.lock()->SetType(textureType);						\
 			material->SetTexture(texture);								\
+			material->SetMultiplier(textureType, 1.0f);					\
 		}																\
 	}																	\
 }																		\

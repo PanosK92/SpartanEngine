@@ -57,12 +57,12 @@ namespace Directus
 		class Frustrum;
 	}
 
-	enum RenderFlags : unsigned long
+	enum RenderMode : unsigned long
 	{
 		Render_Albedo				= 1UL << 0,
 		Render_Normal				= 1UL << 1,
-		Render_Depth				= 1UL << 2,
-		Render_Specular				= 1UL << 3,
+		Render_Specular				= 1UL << 2,
+		Render_Depth				= 1UL << 3,	
 		Render_Physics				= 1UL << 4,
 		Render_AABB					= 1UL << 5,
 		Render_PickingRay			= 1UL << 6,
@@ -98,8 +98,18 @@ namespace Directus
 		void SetViewport(int width, int height);
 		static const Math::Vector4& GetViewport() { return GET_VIEWPORT; }
 		
-		unsigned long GetRenderFlags() { return m_renderFlags; }
-		void SetRenderFlags(unsigned long renderFlags) { m_renderFlags = renderFlags; }
+		//= RENDER MODE ======================================================================
+		// Returns all render mode flags
+		static unsigned long RenderMode_GetAll()					{ return m_flags; }
+		// Set's all render mode flags
+		static void RenderMode_SetAll(unsigned long renderFlags)	{ m_flags = renderFlags; }
+		// Enables an render mode flag
+		static void RenderMode_Enable(RenderMode flag)				{ m_flags |= flag; }
+		// Removes an render mode flag
+		static void RenderMode_Disable(RenderMode flag)				{ m_flags &= ~flag; }
+		// Returns whether render mode flag is set
+		static bool RenderMode_IsSet(RenderMode flag)				{ return m_flags & flag; }
+		//====================================================================================
 
 		void Clear();
 		const std::vector<std::weak_ptr<GameObject>>& GetRenderables() { return m_renderables; }
@@ -165,7 +175,7 @@ namespace Directus
 		std::unique_ptr<Texture> m_gizmoTexLightPoint;
 		std::unique_ptr<Texture> m_gizmoTexLightSpot;
 		std::unique_ptr<Rectangle> m_gizmoRectLight;
-		unsigned long m_renderFlags;
+		static unsigned long m_flags;
 		//==================================================
 
 		//= MISC ==================================

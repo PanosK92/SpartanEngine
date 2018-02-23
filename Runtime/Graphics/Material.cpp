@@ -350,6 +350,27 @@ namespace Directus
 
 		return nullptr;
 	}
+
+	void Material::SetMultiplier(TextureType type, float value)
+	{
+		if (type == TextureType_Roughness)
+		{
+			m_roughnessMultiplier = value;
+		}
+		else if (type == TextureType_Metallic)
+		{
+			m_metallicMultiplier = value;
+		}
+		else if (type == TextureType_Normal)
+		{
+			m_normalMultiplier = value;
+		}
+		else if (type == TextureType_Height)
+		{
+			m_heightMultiplier = value;
+		}
+	}
+
 	//==============================================================================
 	void Material::TextureBasedMultiplierAdjustment()
 	{

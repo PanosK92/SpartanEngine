@@ -52,8 +52,8 @@ const char* g_rendererViews[] =
 {
 	"Default",
 	"Albedo",
-	"Material",
 	"Normal",
+	"Specular",
 	"Depth"
 };
 static int g_rendererViewInt		= 0;
@@ -165,19 +165,48 @@ void Viewport::MousePicking()
 }
 void Viewport::SetRenderFlags()
 {
-	auto flags = g_renderer->GetRenderFlags();
+	g_physics				? Renderer::RenderMode_Enable(Render_Physics)				: Renderer::RenderMode_Disable(Render_Physics);		
+	g_aabb					? Renderer::RenderMode_Enable(Render_AABB)					: Renderer::RenderMode_Disable(Render_AABB);	
+	g_gizmos				? Renderer::RenderMode_Enable(Render_Light)					: Renderer::RenderMode_Disable(Render_Light);			
+	g_pickingRay			? Renderer::RenderMode_Enable(Render_PickingRay)			: Renderer::RenderMode_Disable(Render_PickingRay);	
+	g_grid					? Renderer::RenderMode_Enable(Render_SceneGrid)				: Renderer::RenderMode_Disable(Render_SceneGrid);		
+	g_performanceMetrics	? Renderer::RenderMode_Enable(Render_PerformanceMetrics)	: Renderer::RenderMode_Disable(Render_PerformanceMetrics);
 
-	flags = g_physics				? flags | Render_Physics			: flags & ~Render_Physics;
-	flags = g_aabb					? flags | Render_AABB				: flags & ~Render_AABB;
-	flags = g_gizmos				? flags | Render_Light				: flags & ~Render_Light;
-	flags = g_pickingRay			? flags | Render_PickingRay			: flags & ~Render_PickingRay;
-	flags = g_grid					? flags | Render_SceneGrid			: flags & ~Render_SceneGrid;
-	flags = g_performanceMetrics	? flags | Render_PerformanceMetrics : flags & ~Render_PerformanceMetrics;	
-	flags = g_rendererViewInt == 1	? flags | Render_Albedo				: flags & ~Render_Albedo;
-	flags = g_rendererViewInt == 2	? flags | Render_Normal				: flags & ~Render_Normal;
-	flags = g_rendererViewInt == 3	? flags | Render_Depth				: flags & ~Render_Depth;
-	flags = g_rendererViewInt == 4	? flags | Render_Specular			: flags & ~Render_Specular;
-	flags = g_rendererViewInt == 0	? flags & ~Render_Albedo & ~Render_Normal & ~Render_Depth & ~Render_Specular : flags;
-
-	g_renderer->SetRenderFlags(flags);
+	// G-buffer
+	if (g_rendererViewInt == 0) // Combined
+	{
+		Renderer::RenderMode_Disable(Render_Albedo);
+		Renderer::RenderMode_Disable(Render_Normal);		
+		Renderer::RenderMode_Disable(Render_Specular);
+		Renderer::RenderMode_Disable(Render_Depth);
+	}
+	else if (g_rendererViewInt == 1) // Albedo
+	{
+		Renderer::RenderMode_Enable(Render_Albedo);
+		Renderer::RenderMode_Disable(Render_Normal);		
+		Renderer::RenderMode_Disable(Render_Specular);
+		Renderer::RenderMode_Disable(Render_Depth);
+	}
+	else if (g_rendererViewInt == 2) // Normal
+	{
+		Renderer::RenderMode_Disable(Render_Albedo);
+		Renderer::RenderMode_Enable(Render_Normal);		
+		Renderer::RenderMode_Disable(Render_Specular);
+		Renderer::RenderMode_Disable(Render_Depth);
+	}
+	else if (g_rendererViewInt == 3) // Specular
+	{
+		Renderer::RenderMode_Disable(Render_Albedo);
+		Renderer::RenderMode_Disable(Render_Normal);		
+		Renderer::RenderMode_Enable(Render_Specular);
+		Renderer::RenderMode_Disable(Render_Depth);
+	}
+	else if (g_rendererViewInt == 4) // Depth
+	{
+		Renderer::RenderMode_Disable(Render_Albedo);
+		Renderer::RenderMode_Disable(Render_Normal);		
+		Renderer::RenderMode_Disable(Render_Specular);
+		Renderer::RenderMode_Enable(Render_Depth);
+	}
+	
 }
