@@ -24,38 +24,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "../Core/EngineDefs.h"
 #include <vector>
-#include <memory>
-#include "../Math/Matrix.h"
+#include "Vertex.h"
 //=============================
 
 namespace Directus
 {
-	class Context;
-	class D3D11VertexBuffer;
-	class D3D11IndexBuffer;
-	class Transform;
-	struct VertexPosCol;
-
-	class ENGINE_CLASS Grid
+	class ENGINE_CLASS GeometryUtility
 	{
 	public:
-		Grid(Context* context);
-		~Grid();
-
-		void BuildGrid();
-		bool SetBuffer();
-		const Math::Matrix& ComputeWorldMatrix(Transform* camera);
-		unsigned int GetIndexCount() { return m_indexCount; }
-
-	private:	
-		bool CreateBuffers(std::vector<VertexPosCol>& vertices, std::vector<unsigned int>& indices);
-
-		Context* m_context;
-		unsigned int m_indexCount;
-		int m_terrainHeight;
-		int m_terrainWidth;
-		std::shared_ptr<D3D11VertexBuffer> m_vertexBuffer;
-		std::shared_ptr<D3D11IndexBuffer> m_indexBuffer;
-		Math::Matrix m_world;
+		static void CreateCube(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
+		static void CreateQuad(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
+		static void CreateSphere(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices, float radius = 1.0f, int slices = 15, int stacks = 15);
+		static void CreateCone(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
+		static void CreateCylinder(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15);
 	};
 }

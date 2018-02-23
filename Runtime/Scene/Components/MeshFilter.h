@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <memory>
 #include "../../Math/BoundingBox.h"
-#include "../../Graphics/Vertex.h"
 //=================================
 
 namespace Directus
@@ -44,7 +43,9 @@ namespace Directus
 	{
 		MeshType_Imported,
 		MeshType_Cube,
-		MeshType_Quad
+		MeshType_Quad,
+		MeshType_Sphere,
+		MeshType_Cylinder
 	};
 
 	class ENGINE_CLASS MeshFilter : public IComponent
@@ -80,9 +81,6 @@ namespace Directus
 		//=====================================================
 
 	private:
-		static void CreateCube(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
-		static void CreateQuad(std::vector<VertexPosTexTBN>* vertices, std::vector<unsigned int>* indices);
-
 		// A weak reference to the mesh
 		std::weak_ptr<Mesh> m_mesh;
 		// Type of mesh
