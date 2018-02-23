@@ -271,6 +271,10 @@ void Hierarchy::ContextMenu()
 			{
 				Action_GameObject_CreateCylinder();
 			}
+			else if (ImGui::MenuItem("Cone"))
+			{
+				Action_GameObject_CreateCone();
+			}
 
 			ImGui::EndMenu();
 		}
@@ -392,6 +396,14 @@ void Hierarchy::Action_GameObject_CreateCylinder()
 	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cylinder);
 	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
 	gameObject->SetName("Cylinder");
+}
+
+void Hierarchy::Action_GameObject_CreateCone()
+{
+	auto gameObject = Action_GameObject_CreateEmpty();
+	gameObject->AddComponent<MeshFilter>().lock()->UseStandardMesh(MeshType_Cone);
+	gameObject->AddComponent<MeshRenderer>().lock()->UseStandardMaterial();
+	gameObject->SetName("Cone");
 }
 
 void Hierarchy::Action_GameObject_CreateCamera()

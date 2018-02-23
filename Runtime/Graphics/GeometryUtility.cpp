@@ -174,11 +174,6 @@ namespace Directus
 		}
 	}
 
-	void GeometryUtility::CreateCone(vector<VertexPosTexTBN>* vertices, vector<unsigned>* indices)
-	{
-
-	}
-
 	void GeometryUtility::CreateCylinder(vector<VertexPosTexTBN>* vertices, vector<unsigned>* indices, float radiusTop /*=1.0f*/, float radiusBottom /*=1.0f*/, float height /*=1.0f*/, int slices /*=15*/, int stacks /*=15*/)
 	{
 		float stackHeight	= height / stacks;
@@ -287,5 +282,10 @@ namespace Directus
 		    indices->push_back(baseIndex + i );
 		    indices->push_back(baseIndex + i + 1);
 		}
+	}
+
+	void GeometryUtility::CreateCone(vector<VertexPosTexTBN>* vertices, vector<unsigned>* indices, float radius /*=1.0f*/, float height /*=2.0f*/)
+	{
+		CreateCylinder(vertices, indices, 0.0f, radius, height);
 	}
 }
