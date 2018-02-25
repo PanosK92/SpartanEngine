@@ -1,5 +1,5 @@
 Texture2D sourceTexture 		: register(t0);
-SamplerState anisotropicSampler : register(s0);
+SamplerState pointSampler 		: register(s0);
 SamplerState bilinearSampler 	: register(s1);
 
 #if SHARPENING
@@ -75,7 +75,7 @@ float4 FXAAPass(float2 texCoord, float2 texelSize)
 #if SHARPENING
 float4 SharpeningPass(float2 texCoord)
 {
-	return LumaSharpen(sourceTexture, anisotropicSampler, texCoord, resolution);
+	return LumaSharpen(sourceTexture, bilinearSampler, texCoord, resolution);
 }
 #endif
 
@@ -94,7 +94,7 @@ float4 BlurPass(float2 texCoord, float2 texelSize)
 		for (int j = 0; j < uBlurSize; ++j) 
 		{
 			float2 offset = (hlim + float2(float(i), float(j))) * texelSize;
-			result += sourceTexture.Sample(anisotropicSampler, texCoord + offset);
+			result += sourceTexture.Sample(pointSampler, texCoord + offset);
 		}
 		
 	result = result / float(uBlurSize * uBlurSize);

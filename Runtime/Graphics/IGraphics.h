@@ -53,9 +53,10 @@ namespace Directus
 
 	enum TextureSampler
 	{
-		Anisotropic_Sampler,
-		Linear_Sampler,
-		Point_Sampler
+		Sampler_Point,
+		Sampler_Bilinear,
+		Sampler_Linear,	
+		Sampler_Anisotropic
 	};
 
 	class IGraphics : public Subsystem

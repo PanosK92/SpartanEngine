@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logging/Log.h"
 #include "EditorHelper.h"
 #include "DragDrop.h"
+#include "ImGui/imgui_internal.h"
 //================================
 
 //= NAMESPACES ==========
@@ -35,27 +36,31 @@ using namespace Directus;
 
 namespace FileDialogStatics
 {
-	static float g_itemSizeMin		= 50.0f;
-	static float g_itemSizeMax		= 150.0f;
-	static bool g_itemHoveredOnPreviousFrame;
+	static float g_itemSizeMin = 100.0f;
+	static float g_itemSizeMax = 200.0f;
+	static bool g_isHoveringItem;
+	static const char* g_hoveredItemPath;
+	static bool g_isMouseHoveringWindow;
 	static DragDropPayload g_dragDropPayload;
 }
+
 #define GET_WINDOW_NAME (type == FileDialog_Open)		? "Open"		: (type == FileDialog_Load)			? "Load"		: (type == FileDialog_Save) ? "Save" : "View"
 #define GET_FILTER_NAME	(m_filter == FileDialog_All)	? "All (*.*)"	: (m_filter == FileDialog_Model)	? "Model(*.*)"	: "Scene (*.scene)"
 #define GET_BUTTON_NAME (m_style == FileDialog_Open)	? "Open"		: (m_style == FileDialog_Load)		? "Load"		: "Save"
 
 FileDialog::FileDialog(Context* context, bool standaloneWindow, FileDialog_Filter filter, FileDialog_Mode type)
 {
-	m_context			= context;
-	m_filter			= filter;
-	m_style				= type;
-	m_title				= GET_WINDOW_NAME;
-	m_isWindow			= standaloneWindow;
-	m_currentPath		= FileSystem::GetWorkingDirectory();
-	m_currentFullPath	= m_currentPath;
-	m_itemSize			= (type != FileDialog_Basic) ? FileDialogStatics::g_itemSizeMin * 2.0f : FileDialogStatics::g_itemSizeMin;
-	m_stopwatch			= make_unique<Stopwatch>();
-	m_navigateToPath	= true;
+	m_context         = context;
+	m_filter          = filter;
+	m_style           = type;
+	m_title           = GET_WINDOW_NAME;
+	m_isWindow        = standaloneWindow;
+	m_currentPath     = FileSystem::GetWorkingDirectory();
+	m_currentFullPath = m_currentPath;
+	m_itemSize        = (type != FileDialog_Basic) ? FileDialogStatics::g_itemSizeMin * 2.0f : FileDialogStatics::g_itemSizeMin;
+	m_stopwatch       = make_unique<Stopwatch>();
+	m_isDirty         = true;
+	m_selectionMade   = false;
 }
 
 void FileDialog::SetFilter(FileDialog_Filter filter)
@@ -74,38 +79,82 @@ bool FileDialog::Show(bool* isVisible, string* path)
 	if (!(*isVisible))
 		return false;
 
-	m_selectionMade = false;
-	FileDialogStatics::g_itemHoveredOnPreviousFrame = false;
+	m_selectionMade								= false;
+	FileDialogStatics::g_isHoveringItem			= false;
+	FileDialogStatics::g_hoveredItemPath		= "";
+	FileDialogStatics::g_isMouseHoveringWindow = false;
+
+	// Top menu
+	Dialog_Top(isVisible);
+	// Contents of the current directory
+	Dialog_Middle();
+	// Bottom menu
+	Dialog_Bottom(isVisible);
 
 	if (m_isWindow)
 	{
+		ImGui::End();
+	}
+
+	if (m_isDirty)
+	{
+		NavigateToDirectory(m_currentPath);
+		m_isDirty = false;
+	}
+
+	if (m_selectionMade)
+	{
+		(*path) = m_currentPath + "/" + string(m_fileNameText);
+	}
+
+	return m_selectionMade;
+}
+
+void FileDialog::Dialog_Top(bool* isVisible)
+{
+	if (m_isWindow)
+	{
 		ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-		ImGui::Begin(m_title.c_str(), isVisible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_ResizeFromAnySide | ImGuiWindowFlags_AlwaysVerticalScrollbar);
+		ImGui::Begin(m_title.c_str(), isVisible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_ResizeFromAnySide | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoFocusOnAppearing);
 		ImGui::SetWindowFocus();
 	}
 
 	if (ImGui::Button("<"))
 	{
-		m_currentPath		= FileSystem::GetParentDirectory(m_currentPath);
-		m_navigateToPath	= true;
+		m_currentPath = FileSystem::GetParentDirectory(m_currentPath);
+		m_isDirty     = true;
 	}
-	ImGui::SameLine(); ImGui::Text(m_currentPath.c_str());
+	ImGui::SameLine();
+	ImGui::Text(m_currentPath.c_str());
 	ImGui::PushItemWidth(ImGui::GetWindowSize().x * 0.25f);
 	ImGui::SliderFloat("##FileDialogSlider", &m_itemSize, FileDialogStatics::g_itemSizeMin, FileDialogStatics::g_itemSizeMax);
 	ImGui::PopItemWidth();
+}
 
-	ImGui::Separator();
+void FileDialog::Dialog_Middle()
+{
+	// CONTENT WINDOW START
+	ImGuiWindow* window = ImGui::GetCurrentWindowRead();
+	float contentWidth  = window->ContentsRegionRect.Max.x - window->ContentsRegionRect.Min.x;
+	float contentHeight = window->ContentsRegionRect.Max.y - window->ContentsRegionRect.Min.y - 80;
+	ImGui::BeginChild("##ContentRegion", ImVec2(contentWidth, contentHeight), true);
 
-	// List
-	int index = 0;
+	FileDialogStatics::g_isMouseHoveringWindow = ImGui::IsMouseHoveringWindow() ? true : FileDialogStatics::g_isMouseHoveringWindow;
+
+	// LIST OF WINDOWS, REPRESENTING DIRECTORY CONTENTS
+	int index   = 0;
 	int columns = (int)(ImGui::GetWindowContentRegionWidth() / m_itemSize);
-	columns = columns < 1 ? 1 : columns;
+	columns     = columns < 1 ? 1 : columns;
 	ImGui::Columns(columns, nullptr, false);
 	for (const auto& entry : m_directoryEntries)
 	{
+		// ITEM WINDOW START
+		ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f);
+		ImGui::BeginChild(entry.first.c_str(), ImVec2(m_itemSize + 25, m_itemSize + 15), true, ImGuiWindowFlags_NoScrollbar);
+
 		// ICON
 		ImGui::PushID(index);
-		if (THUMBNAIL_BUTTON(entry.second, m_itemSize))
+		if (ImGui::ImageButton(SHADER_RESOURCE(entry.second), ImVec2(m_itemSize, m_itemSize - 23.0f)))
 		{
 			if (m_currentFullPath != entry.first) // Single click
 			{
@@ -115,17 +164,27 @@ bool FileDialog::Show(bool* isVisible, string* path)
 			}
 			else if (m_stopwatch->GetElapsedTimeMs() <= 500) // Double click
 			{
-				bool isDirectory	= FileSystem::IsDirectory(entry.first);
+				bool isDirectory = FileSystem::IsDirectory(entry.first);
 				if (isDirectory)
 				{
-					m_currentPath		= entry.first;
-					m_navigateToPath	= true;
+					m_currentPath = entry.first;
+					m_isDirty     = true;
 				}
-				m_selectionMade		= !isDirectory;
+				m_selectionMade = !isDirectory;
 			}
 		}
 		ImGui::PopID();
 
+		// Manually detect some useful states
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
+		{
+			FileDialogStatics::g_isHoveringItem     = true;
+			FileDialogStatics::g_hoveredItemPath = entry.first.c_str();
+		}
+		FileDialogStatics::g_isMouseHoveringWindow = ImGui::IsMouseHoveringWindow() ? true : FileDialogStatics::g_isMouseHoveringWindow;
+		HandleClicking(FileDialogStatics::g_hoveredItemPath);
+		ContextMenu();
+		
 		// Drag
 		if (m_style == FileDialog_Basic)
 		{
@@ -135,7 +194,7 @@ bool FileDialog::Show(bool* isVisible, string* path)
 				{
 					FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Model;
 					FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
-					DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());				
+					DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
 				}
 				else if (FileSystem::IsSupportedImageFile(entry.first) || FileSystem::IsEngineTextureFile(entry.first))
 				{
@@ -147,71 +206,61 @@ bool FileDialog::Show(bool* isVisible, string* path)
 			}
 		}
 
-		// Further handle clicking here
-		HandleClicking(entry.first);
+		// ITEM WINDOW END		
+		ImGui::EndChild();
+		ImGui::PopStyleVar();
 
 		// LABEL
 		ImGui::SameLine();
-		ImGui::SetCursorPosX(ImGui::GetCursorPosX() - m_itemSize - 16); // move to the left of the thumbnail
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 10); // move to the bottom of the thumbnail
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() - m_itemSize - 20); // move to the left of the thumbnail
+		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + m_itemSize - 5);  // move to the bottom of the thumbnail
 		ImGui::PushItemWidth(m_itemSize + 8.5f);
-		
+
 		EditorHelper::SetCharArray(&m_itemLabel[0], FileSystem::GetFileNameFromFilePath(entry.first));
 		ImGui::Text(m_itemLabel);
 
 		ImGui::PopItemWidth();
-		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + m_itemSize + 16); // move to the right of the thumbnail
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() - m_itemSize + 10); // move to the top of the thumbnail
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + m_itemSize + 20); // move to the right of the thumbnail
+		ImGui::SetCursorPosY(ImGui::GetCursorPosY() - m_itemSize + 5);  // move to the top of the thumbnail
 
+		// COLUMN END
 		ImGui::NextColumn();
 		index++;
 	}
 	ImGui::Columns(1);
 
+	// CONTENT WINDOW END
+	ImGui::EndChild();
+}
+
+void FileDialog::Dialog_Bottom(bool* isVisible)
+{
 	// Bottom-right buttons
 	if (m_style != FileDialog_Basic)
 	{
 		ImGui::SetCursorPosY(ImGui::GetWindowSize().y - 35); // move to the bottom of the window
-		ImGui::Separator();
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 3.0f); // move to the bottom of the window
-		
+
 		ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235);
 		ImGui::InputText("##FileName", m_fileNameText, BUFFER_TEXT_DEFAULT);
 		ImGui::PopItemWidth();
-		
-		ImGui::SameLine(); ImGui::Text(GET_FILTER_NAME);
 
-		ImGui::SameLine(); if (ImGui::Button(GET_BUTTON_NAME))
+		ImGui::SameLine();
+		ImGui::Text(GET_FILTER_NAME);
+
+		ImGui::SameLine();
+		if (ImGui::Button(GET_BUTTON_NAME))
 		{
-			m_selectionMade = true;			
+			m_selectionMade = true;
 		}
 
-		ImGui::SameLine(); if (ImGui::Button("Cancel"))
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel"))
 		{
 			m_selectionMade = false;
-			(*isVisible) = false;
-		}		
+			(*isVisible)    = false;
+		}
 	}
-
-	if (m_isWindow)
-	{
-		ImGui::End();
-	}
-
-	if (m_navigateToPath)
-	{
-		NavigateToDirectory(m_currentPath);
-		m_navigateToPath = false;
-	}
-
-	if (m_selectionMade)
-	{
-		(*path) = m_currentPath + "/" + string(m_fileNameText);
-	}
-
-	ContextMenu();
-
-	return m_selectionMade;
 }
 
 bool FileDialog::NavigateToDirectory(const string& pathClicked)
@@ -237,7 +286,7 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 	{
 		childFiles = FileSystem::GetFilesInDirectory(pathClicked);
 		for (const auto& childFile : childFiles)
-		{	
+		{
 			AddThumbnail(childFile);
 		}
 	}
@@ -259,7 +308,7 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 	}
 
 	EditorHelper::SetCharArray(&m_fileNameText[0], "");
-	
+
 	return true;
 }
 
@@ -268,41 +317,33 @@ void FileDialog::AddThumbnail(const std::string& filePath, Thumbnail_Type type)
 	m_directoryEntries[filePath] = ThumbnailProvider::Get().Thumbnail_Load(filePath, type, m_itemSize);
 }
 
-void FileDialog::HandleClicking(const std::string& directoryEntry)
+void FileDialog::HandleClicking(const char* directoryEntry)
 {
-	// Ensure we are hovering over the window (since we are handling clicks manually)
-	if (!ImGui::IsMouseHoveringWindow())
+	// Since we are handling clicking manually, we must ensure we are inside the window
+	if (!FileDialogStatics::g_isMouseHoveringWindow)
 		return;
-
-	// Left click
-	if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_Default))
-	{
-		FileDialogStatics::g_itemHoveredOnPreviousFrame = true;
-	}
 
 	// Right click
 	if (ImGui::IsMouseClicked(1))
 	{
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
+		ImGui::OpenPopup("##FileDialogContextMenu");
+	}
+
+	// Right click on item
+	if (ImGui::IsMouseClicked(1) && FileDialogStatics::g_isHoveringItem)
+	{
+		if (FileSystem::IsDirectory(directoryEntry))
 		{
-			if (FileSystem::IsDirectory(directoryEntry))
-			{
-				m_currentFullPath = directoryEntry;
-			}
-			else
-			{
-				m_currentFullPath = FileSystem::GetDirectoryFromFilePath(m_currentPath) + FileSystem::GetFileNameFromFilePath(directoryEntry);
-			}
-			FileDialogStatics::g_itemHoveredOnPreviousFrame = true;
+			m_currentFullPath = directoryEntry;
 		}
 		else
 		{
-			ImGui::OpenPopup("##FileDialogContextMenu");		
-		}			
+			m_currentFullPath = FileSystem::GetDirectoryFromFilePath(m_currentPath) + FileSystem::GetFileNameFromFilePath(directoryEntry);
+		}
 	}
 
-	// Clicking on empty space
-	if(((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !FileDialogStatics::g_itemHoveredOnPreviousFrame) && m_stopwatch->GetElapsedTimeMs() >= 500)
+	// Right/Left click on empty space
+	if (((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !FileDialogStatics::g_isHoveringItem) && m_stopwatch->GetElapsedTimeMs() >= 500)
 	{
 		m_currentFullPath = m_currentPath;
 	}
@@ -310,6 +351,10 @@ void FileDialog::HandleClicking(const std::string& directoryEntry)
 
 void FileDialog::ContextMenu()
 {
+	// Since we are handling clicking manually, we must ensure we are inside the window
+	if (!FileDialogStatics::g_isMouseHoveringWindow)
+		return;
+
 	if (!ImGui::BeginPopup("##FileDialogContextMenu"))
 		return;
 
@@ -318,20 +363,24 @@ void FileDialog::ContextMenu()
 		FileSystem::CreateDirectory_(m_currentPath + "New folder");
 		NavigateToDirectory(m_currentPath);
 	}
-	else if (ImGui::MenuItem("Delete"))
+	
+	if (FileDialogStatics::g_isHoveringItem)
 	{
-		if (FileSystem::IsDirectory(m_currentFullPath))
+		if (ImGui::MenuItem("Delete"))
 		{
-			FileSystem::DeleteDirectory(m_currentFullPath);
-			NavigateToDirectory(m_currentPath);
-		}
-		else
-		{
-			FileSystem::DeleteFile_(m_currentFullPath);
-			NavigateToDirectory(m_currentPath);
+			if (FileSystem::IsDirectory(m_currentFullPath))
+			{
+				FileSystem::DeleteDirectory(m_currentFullPath);
+				NavigateToDirectory(m_currentPath);
+			}
+			else
+			{
+				FileSystem::DeleteFile_(m_currentFullPath);
+				NavigateToDirectory(m_currentPath);
+			}
 		}
 	}
-	
+
 	ImGui::Separator();
 	if (ImGui::MenuItem("Open in file explorer"))
 	{

@@ -44,7 +44,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceManager.h"
 #include "../Font/Font.h"
 #include "../Profiling/PerformanceProfiler.h"
-#include "../Core/Engine.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -118,7 +117,7 @@ namespace Directus
 		m_shaderLine = make_unique<Shader>(m_context);
 		m_shaderLine->Compile(shaderDirectory + "Line.hlsl");
 		m_shaderLine->SetInputLaytout(PositionColor);
-		m_shaderLine->AddSampler(Linear_Sampler);
+		m_shaderLine->AddSampler(Sampler_Linear);
 		m_shaderLine->AddBuffer(CB_W_V_P, VertexShader);
 
 		// Depth shader
@@ -131,21 +130,21 @@ namespace Directus
 		m_shaderGrid = make_unique<Shader>(m_context);
 		m_shaderGrid->Compile(shaderDirectory + "Grid.hlsl");
 		m_shaderGrid->SetInputLaytout(PositionColor);
-		m_shaderGrid->AddSampler(Anisotropic_Sampler);
+		m_shaderGrid->AddSampler(Sampler_Anisotropic);
 		m_shaderGrid->AddBuffer(CB_WVP, VertexShader);
 
 		// Font shader
 		m_shaderFont = make_unique<Shader>(m_context);
 		m_shaderFont->Compile(shaderDirectory + "Font.hlsl");
 		m_shaderFont->SetInputLaytout(PositionTexture);
-		m_shaderFont->AddSampler(Point_Sampler);
+		m_shaderFont->AddSampler(Sampler_Point);
 		m_shaderFont->AddBuffer(CB_WVP_Color, Global);
 
 		// Texture shader
 		m_shaderTexture = make_unique<Shader>(m_context);
 		m_shaderTexture->Compile(shaderDirectory + "Texture.hlsl");
 		m_shaderTexture->SetInputLaytout(PositionTexture);
-		m_shaderTexture->AddSampler(Anisotropic_Sampler);
+		m_shaderTexture->AddSampler(Sampler_Linear);
 		m_shaderTexture->AddBuffer(CB_WVP, VertexShader);
 
 		// FXAA Shader
@@ -153,25 +152,17 @@ namespace Directus
 		m_shaderFXAA->AddDefine("FXAA");
 		m_shaderFXAA->Compile(shaderDirectory + "PostProcess.hlsl");
 		m_shaderFXAA->SetInputLaytout(PositionTexture);
-		m_shaderFXAA->AddSampler(Anisotropic_Sampler);
-		m_shaderFXAA->AddSampler(Linear_Sampler);
+		m_shaderFXAA->AddSampler(Sampler_Point);
+		m_shaderFXAA->AddSampler(Sampler_Bilinear);
 		m_shaderFXAA->AddBuffer(CB_WVP_Resolution, Global);
-
-		// Shadowing shader (Shadow mapping & SSAO)
-		m_shaderShadowing = make_unique<Shader>(m_context);
-		m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
-		m_shaderShadowing->SetInputLaytout(PositionTexture);
-		m_shaderShadowing->AddSampler(Anisotropic_Sampler);
-		m_shaderShadowing->AddSampler(Linear_Sampler);
-		m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 
 		// Sharpening shader
 		m_shaderSharpening = make_unique<Shader>(m_context);
 		m_shaderSharpening->AddDefine("SHARPENING");
 		m_shaderSharpening->Compile(shaderDirectory + "PostProcess.hlsl");
 		m_shaderSharpening->SetInputLaytout(PositionTexture);
-		m_shaderSharpening->AddSampler(Anisotropic_Sampler);
-		m_shaderSharpening->AddSampler(Linear_Sampler);
+		m_shaderSharpening->AddSampler(Sampler_Point);
+		m_shaderSharpening->AddSampler(Sampler_Bilinear);
 		m_shaderSharpening->AddBuffer(CB_WVP_Resolution, Global);
 
 		// Blur shader
@@ -179,9 +170,17 @@ namespace Directus
 		m_shaderBlur->AddDefine("BLUR");
 		m_shaderBlur->Compile(shaderDirectory + "PostProcess.hlsl");
 		m_shaderBlur->SetInputLaytout(PositionTexture);
-		m_shaderBlur->AddSampler(Anisotropic_Sampler);
-		m_shaderBlur->AddSampler(Linear_Sampler);
+		m_shaderBlur->AddSampler(Sampler_Point);
+		m_shaderBlur->AddSampler(Sampler_Bilinear);
 		m_shaderBlur->AddBuffer(CB_WVP_Resolution, Global);
+
+		// Shadowing shader (Shadow mapping & SSAO)
+		m_shaderShadowing = make_unique<Shader>(m_context);
+		m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
+		m_shaderShadowing->SetInputLaytout(PositionTexture);
+		m_shaderShadowing->AddSampler(Sampler_Point);
+		m_shaderShadowing->AddSampler(Sampler_Linear);
+		m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 
 		// Create render textures (used for post-processing)
 		m_renderTexSpare = make_shared<D3D11RenderTexture>(m_graphics, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, false);

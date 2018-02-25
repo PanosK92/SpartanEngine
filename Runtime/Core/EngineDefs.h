@@ -21,10 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= DISABLED WARNINGS ==================================================================
+//= DISABLED WARNINGS ===========================================================================
+// identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
 #pragma warning(disable: 4251) // https://msdn.microsoft.com/en-us/library/esew7y1w.aspx
+// non – DLL-interface classkey 'identifier' used as base for DLL-interface classkey 'identifier'
 #pragma warning(disable: 4275) // https://msdn.microsoft.com/en-us/library/3tdb471s.aspx
-//======================================================================================
+//===============================================================================================
 
 #ifdef COMPILING_LIB
 #define ENGINE_CLASS __declspec(dllexport)

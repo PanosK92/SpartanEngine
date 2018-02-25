@@ -75,16 +75,16 @@ static const float bias = 0.2f;
 static const float2 noiseScale  = float2(resolution.x / 64.0f, resolution.y / 64.0f);
 
 // Returns a random normal
-float3 GetRandomNormal(float2 texCoord)
+float3 GetRandomNormal(float2 texCoord, SamplerState samplerState)
 {
-	float3 randNormal = texNoise.Sample(samplerAniso, texCoord * noiseScale).rgb;
+	float3 randNormal = texNoise.Sample(samplerState, texCoord * noiseScale).rgb;
 	return normalize(UnpackNormal(randNormal));
 }
 
-float doAmbientOcclusion(float2 texCoord, float3 position, float3 normal)
+float doAmbientOcclusion(float2 texCoord, float3 position, float3 normal, SamplerState samplerState)
 {
 	float3 originPos 	= position;
-	float3 sampledPos 	= GetPositionWorldFromDepth(texDepth, samplerAniso, mViewProjectionInverse, texCoord);
+	float3 sampledPos 	= GetPositionWorldFromDepth(texDepth, samplerState, mViewProjectionInverse, texCoord);
 	float3 diff 		= sampledPos - originPos;
 	 
 	float3 v = normalize(diff);
@@ -95,12 +95,12 @@ float doAmbientOcclusion(float2 texCoord, float3 position, float3 normal)
 	return occlusion * rangeCheck;
 }
 
-float SSAO(float2 texCoord)
+float SSAO(float2 texCoord, SamplerState samplerState)
 {
-	float3 position 	= GetPositionWorldFromDepth(texDepth, samplerAniso, mViewProjectionInverse, texCoord);
-	float3 randNormal 	= GetRandomNormal(texCoord);
-    float3 normal 		= GetNormalUnpacked(texNormal, samplerAniso, texCoord);
-	float originDepth 	= GetDepthLinear(texDepth, samplerAniso, nearPlane, farPlane, texCoord);
+	float3 position 	= GetPositionWorldFromDepth(texDepth, samplerState, mViewProjectionInverse, texCoord);
+	float3 randNormal 	= GetRandomNormal(texCoord, samplerState);
+    float3 normal 		= GetNormalUnpacked(texNormal, samplerState, texCoord);
+	float originDepth 	= GetDepthLinear(texDepth, samplerState, nearPlane, farPlane, texCoord);
 	float radius_depth 	= radius / originDepth;
 	float occlusion 	= 0.0f;
 	
@@ -114,10 +114,10 @@ float SSAO(float2 texCoord)
             //randNor *= -1.0;
 			
 		float acc = 0.0f;
-		acc += doAmbientOcclusion(texCoord + coord1 * 0.25f, position, normal);
-		acc += doAmbientOcclusion(texCoord + coord2 * 0.5f, position, normal);
-		acc += doAmbientOcclusion(texCoord + coord1 * 0.75f, position, normal);
-		acc += doAmbientOcclusion(texCoord + coord2, position, normal);
+		acc += doAmbientOcclusion(texCoord + coord1 * 0.25f, position, normal, samplerState);
+		acc += doAmbientOcclusion(texCoord + coord2 * 0.5f, position, normal, samplerState);
+		acc += doAmbientOcclusion(texCoord + coord1 * 0.75f, position, normal, samplerState);
+		acc += doAmbientOcclusion(texCoord + coord2, position, normal, samplerState);
 		
 		occlusion += acc * intensity;
     }

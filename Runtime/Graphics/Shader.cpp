@@ -83,20 +83,20 @@ namespace Directus
 
 		switch (m_bufferType)
 		{
-		case CB_WVP:
-			m_constantBuffer->Create(sizeof(Struct_WVP));
-			break;
-		case CB_W_V_P:
-			m_constantBuffer->Create(sizeof(Struct_W_V_P));
-			break;
-		case CB_WVP_Color:
-			m_constantBuffer->Create(sizeof(Struct_WVP_Color));
-			break;
-		case CB_WVP_Resolution:
-			m_constantBuffer->Create(sizeof(Struct_WVP_Resolution));
-		case CB_Shadowing:
-			m_constantBuffer->Create(sizeof(Struct_Shadowing));
-			break;
+			case CB_WVP:
+				m_constantBuffer->Create(sizeof(Struct_WVP));
+				break;
+			case CB_W_V_P:
+				m_constantBuffer->Create(sizeof(Struct_W_V_P));
+				break;
+			case CB_WVP_Color:
+				m_constantBuffer->Create(sizeof(Struct_WVP_Color));
+				break;
+			case CB_WVP_Resolution:
+				m_constantBuffer->Create(sizeof(Struct_WVP_Resolution));
+			case CB_Shadowing:
+				m_constantBuffer->Create(sizeof(Struct_Shadowing));
+				break;
 		}
 	}
 
@@ -109,16 +109,20 @@ namespace Directus
 		}
 
 		switch (samplerType)
-		{
-		case Anisotropic_Sampler:
-			m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-			break;
-		case Linear_Sampler:
-			m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-			break;
-		case Point_Sampler:
-			m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-			break;
+		{	
+			case Sampler_Point:
+				m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+				break;
+			case Sampler_Bilinear:
+				m_shader->AddSampler(D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+				break;
+			case Sampler_Linear:
+				m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+				break;
+			case Sampler_Anisotropic:
+				m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
+				break;
+
 		}
 	}
 
