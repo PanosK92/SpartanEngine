@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "ProgressDialog.h"
-#include "ImGui/imgui.h"
+#include "../ImGui/imgui.h"
 #include "EditorHelper.h"
 //=========================
 

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================================
-#include "imgui/imgui.h"
+#include "../ImGui/imgui.h"
 #include "Graphics/D3D11/D3D11GraphicsDevice.h"
 //=============================================
 

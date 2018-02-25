@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Core/Engine.h>
 #include "Graphics/Renderer.h"
 #include "Editor.h"
-#include "UI/ImGui/imgui.h"
+#include "ImGui/imgui.h"
 //============================
 
 //= NAMESPACES ==========

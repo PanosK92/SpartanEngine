@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================================
 #include "Properties.h"
-#include "../ImGui/imgui.h"
+#include "../../ImGui/imgui.h"
 #include "Hierarchy.h"
 #include "Scene/GameObject.h"
 #include "Graphics/Material.h"

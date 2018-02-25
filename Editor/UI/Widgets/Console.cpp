@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "Console.h"
-#include "../ImGui/imgui.h"
+#include "../../ImGui/imgui.h"
 #include "Logging/Log.h"
 #include "../ThumbnailProvider.h"
 #include "../EditorHelper.h"

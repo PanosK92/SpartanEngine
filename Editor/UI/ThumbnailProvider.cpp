@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include "ThumbnailProvider.h"
 #include "Graphics/Texture.h"
-#include "ImGui/imgui.h"
+#include "../ImGui/imgui.h"
 #include "EditorHelper.h"
 #include "Threading/Threading.h"
 //==============================
