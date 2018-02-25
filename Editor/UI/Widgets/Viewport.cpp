@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "Viewport.h"
-#include "../imgui/imgui.h"
+#include "../../ImGui/imgui.h"
 #include "Graphics/Renderer.h"
 #include "Scene/Scene.h"
 #include "Scene/GameObject.h"

@@ -19,15 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES =======================
 #include "FileDialog.h"
-#include "ImGui/imgui.h"
+#include "../ImGui/imgui.h"
 #include "FileSystem/FileSystem.h"
 #include "Logging/Log.h"
 #include "EditorHelper.h"
 #include "DragDrop.h"
-#include "ImGui/imgui_internal.h"
-//================================
+#include "../ImGui/imgui_internal.h"
+//==================================
 
 //= NAMESPACES ==========
 using namespace std;

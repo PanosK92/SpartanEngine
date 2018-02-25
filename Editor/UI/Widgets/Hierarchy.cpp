@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Hierarchy.h"
-#include "../ImGui/imgui.h"
+#include "../../ImGui/imgui.h"
 #include "../DragDrop.h"
 #include "../EditorHelper.h"
 #include "Scene/Scene.h"
