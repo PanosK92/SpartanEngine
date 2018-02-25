@@ -59,9 +59,9 @@ namespace HierarchyStatics
 }
 Hierarchy::Hierarchy()
 {
-	m_title = "Hierarchy";
-	m_context = nullptr;
-	HierarchyStatics::g_scene = nullptr;
+	m_title						= "Hierarchy";
+	m_context					= nullptr;
+	HierarchyStatics::g_scene	= nullptr;
 }
 
 void Hierarchy::Initialize(Context* context)
@@ -149,18 +149,14 @@ void Hierarchy::Tree_AddGameObject(GameObject* gameObject)
 		}
 	}
 
-	// Node flags -> Default
 	ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowItemOverlap;
-	// Node flags -> Expandable?
-	node_flags |= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf;
-	// Node flags -> Selected?
-	if (!m_gameObjectSelected.expired())
+	node_flags |= hasVisibleChildren ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; // Expandable?	
+	if (!m_gameObjectSelected.expired()) // Selected?
 	{
 		node_flags |= (m_gameObjectSelected.lock()->GetID() == gameObject->GetID()) ? ImGuiTreeNodeFlags_Selected : 0;
 	}
-
-	// Node
 	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)gameObject->GetID(), node_flags, gameObject->GetName().c_str());
+
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
 	{
 		HierarchyStatics::g_hoveredGameObject = gameObject;
@@ -187,30 +183,31 @@ void Hierarchy::Tree_AddGameObject(GameObject* gameObject)
 
 void Hierarchy::HandleClicking()
 {
-	if (ImGui::IsMouseHoveringWindow())
-	{		
-		// Left click on item
-		if (ImGui::IsMouseClicked(0) && HierarchyStatics::g_hoveredGameObject)
-		{
+	// Since we are handling clicking manually, we must ensure we are inside the window
+	if (!ImGui::IsMouseHoveringWindow())
+		return;	
+
+	// Left click on item - Select
+	if (ImGui::IsMouseClicked(0) && HierarchyStatics::g_hoveredGameObject)
+	{
+		SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetTransform()->GetGameObjectRef());
+	}
+
+	// Right click on item - Select and show context menu
+	if (ImGui::IsMouseClicked(1))
+	{
+		if (HierarchyStatics::g_hoveredGameObject)
+		{			
 			SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetTransform()->GetGameObjectRef());
 		}
 
-		// Right click on item
-		if (ImGui::IsMouseClicked(1))
-		{
-			if (HierarchyStatics::g_hoveredGameObject)
-			{			
-				SetSelectedGameObject(HierarchyStatics::g_hoveredGameObject->GetTransform()->GetGameObjectRef());
-			}
+		ImGui::OpenPopup("##HierarchyContextMenu");		
+	}
 
-			ImGui::OpenPopup("##HierarchyContextMenu");		
-		}
-
-		// Clicking (any button) inside the window but not on an item (empty space)
-		if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !ImGui::IsAnyItemHovered())
-		{
-			SetSelectedGameObject(g_gameObjectEmpty);
-		}
+	// Clicking on empty space - Clear selection
+	if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !ImGui::IsAnyItemHovered())
+	{
+		SetSelectedGameObject(g_gameObjectEmpty);
 	}
 }
 
@@ -241,112 +238,116 @@ void Hierarchy::HandleDragDrop(GameObject* gameObjPtr)
 
 void Hierarchy::ContextMenu()
 {
-	if (ImGui::BeginPopup("##HierarchyContextMenu"))
+	// Since we are handling clicking manually, we must ensure we are inside the window
+	if (!ImGui::IsMouseHoveringWindow())
+		return;	
+
+	if (!ImGui::BeginPopup("##HierarchyContextMenu"))
+		return;
+
+	if (!m_gameObjectSelected.expired())
 	{
-		if (!m_gameObjectSelected.expired())
+		ImGui::MenuItem("Rename");
+		if (ImGui::MenuItem("Delete", "Delete"))
 		{
-			ImGui::MenuItem("Rename");
-			if (ImGui::MenuItem("Delete", "Delete"))
-			{
-				Action_GameObject_Delete(m_gameObjectSelected);
-			}
-			ImGui::Separator();
+			Action_GameObject_Delete(m_gameObjectSelected);
 		}
-
-		// EMPTY
-		if (ImGui::MenuItem("Creaty Empty"))
-		{
-			Action_GameObject_CreateEmpty();
-		}
-
-		// 3D OBJECCTS
-		if (ImGui::BeginMenu("3D Objects"))
-		{
-			if (ImGui::MenuItem("Cube"))
-			{
-				Action_GameObject_CreateCube();
-			}
-			else if (ImGui::MenuItem("Quad"))
-			{
-				Action_GameObject_CreateQuad();
-			}
-			else if (ImGui::MenuItem("Sphere"))
-			{
-				Action_GameObject_CreateSphere();
-			}
-			else if (ImGui::MenuItem("Cylinder"))
-			{
-				Action_GameObject_CreateCylinder();
-			}
-			else if (ImGui::MenuItem("Cone"))
-			{
-				Action_GameObject_CreateCone();
-			}
-
-			ImGui::EndMenu();
-		}
-
-		// CAMERA
-		if (ImGui::MenuItem("Camera"))
-		{
-			Action_GameObject_CreateCamera();
-		}
-
-		// LIGHT
-		if (ImGui::BeginMenu("Light"))
-		{
-			if (ImGui::MenuItem("Directional"))
-			{
-				Action_GameObject_CreateLightDirectional();
-			}
-			else if (ImGui::MenuItem("Point"))
-			{
-				Action_GameObject_CreateLightPoint();
-			}
-			else if (ImGui::MenuItem("Spot"))
-			{
-				Action_GameObject_CreateLightSpot();
-			}
-
-			ImGui::EndMenu();
-		}
-
-		// PHYSICS
-		if (ImGui::BeginMenu("Physics"))
-		{
-			if (ImGui::MenuItem("Rigid Body"))
-			{
-				Action_GameObject_CreateRigidBody();
-			}
-			else if (ImGui::MenuItem("Collider"))
-			{
-				Action_GameObject_CreateCollider();
-			}
-			else if (ImGui::MenuItem("Constraint"))
-			{
-				Action_GameObject_CreateConstraint();
-			}
-
-			ImGui::EndMenu();
-		}
-
-		// AUDIO
-		if (ImGui::BeginMenu("Audio"))
-		{
-			if (ImGui::MenuItem("Audio Source"))
-			{
-				Action_GameObject_CreateAudioSource();
-			}
-			else if (ImGui::MenuItem("Audio Listener"))
-			{
-				Action_GameObject_CreateAudioListener();
-			}
-
-			ImGui::EndMenu();
-		}
-
-		ImGui::EndPopup();
+		ImGui::Separator();
 	}
+
+	// EMPTY
+	if (ImGui::MenuItem("Creaty Empty"))
+	{
+		Action_GameObject_CreateEmpty();
+	}
+
+	// 3D OBJECCTS
+	if (ImGui::BeginMenu("3D Objects"))
+	{
+		if (ImGui::MenuItem("Cube"))
+		{
+			Action_GameObject_CreateCube();
+		}
+		else if (ImGui::MenuItem("Quad"))
+		{
+			Action_GameObject_CreateQuad();
+		}
+		else if (ImGui::MenuItem("Sphere"))
+		{
+			Action_GameObject_CreateSphere();
+		}
+		else if (ImGui::MenuItem("Cylinder"))
+		{
+			Action_GameObject_CreateCylinder();
+		}
+		else if (ImGui::MenuItem("Cone"))
+		{
+			Action_GameObject_CreateCone();
+		}
+
+		ImGui::EndMenu();
+	}
+
+	// CAMERA
+	if (ImGui::MenuItem("Camera"))
+	{
+		Action_GameObject_CreateCamera();
+	}
+
+	// LIGHT
+	if (ImGui::BeginMenu("Light"))
+	{
+		if (ImGui::MenuItem("Directional"))
+		{
+			Action_GameObject_CreateLightDirectional();
+		}
+		else if (ImGui::MenuItem("Point"))
+		{
+			Action_GameObject_CreateLightPoint();
+		}
+		else if (ImGui::MenuItem("Spot"))
+		{
+			Action_GameObject_CreateLightSpot();
+		}
+
+		ImGui::EndMenu();
+	}
+
+	// PHYSICS
+	if (ImGui::BeginMenu("Physics"))
+	{
+		if (ImGui::MenuItem("Rigid Body"))
+		{
+			Action_GameObject_CreateRigidBody();
+		}
+		else if (ImGui::MenuItem("Collider"))
+		{
+			Action_GameObject_CreateCollider();
+		}
+		else if (ImGui::MenuItem("Constraint"))
+		{
+			Action_GameObject_CreateConstraint();
+		}
+
+		ImGui::EndMenu();
+	}
+
+	// AUDIO
+	if (ImGui::BeginMenu("Audio"))
+	{
+		if (ImGui::MenuItem("Audio Source"))
+		{
+			Action_GameObject_CreateAudioSource();
+		}
+		else if (ImGui::MenuItem("Audio Listener"))
+		{
+			Action_GameObject_CreateAudioListener();
+		}
+
+		ImGui::EndMenu();
+	}
+
+	ImGui::EndPopup();
 }
 
 void Hierarchy::HandleKeyShortcuts()

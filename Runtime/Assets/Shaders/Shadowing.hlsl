@@ -10,7 +10,7 @@ Texture2D lightDepthTex[3] 	: register (t3);
 //==========================================
 
 //= SAMPLERS ===============================
-SamplerState samplerAniso 	: register(s0);
+SamplerState samplerPoint 	: register (s0);
 SamplerState samplerLinear 	: register (s1);
 //==========================================
 
@@ -69,16 +69,16 @@ PixelInputType DirectusVertexShader(VertexInputType input)
 float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 {
 	float2 texCoord 	= input.uv;
-	float3 normal 		= texNormal.Sample(samplerAniso, texCoord).rgb;
-	float3 depthSample 	= texDepth.Sample(samplerAniso, texCoord).rgb;
-	float depthCS 		= texDepth.Sample(samplerAniso, texCoord).r;
-	float depthVS 		= texDepth.Sample(samplerAniso, texCoord).g;
+	float3 normal 		= texNormal.Sample(samplerPoint, texCoord).rgb;
+	float3 depthSample 	= texDepth.Sample(samplerPoint, texCoord).rgb;
+	float depthCS 		= texDepth.Sample(samplerPoint, texCoord).r;
+	float depthVS 		= texDepth.Sample(samplerPoint, texCoord).g;
 	float3 positionWS 	= ReconstructPositionWorld(depthVS, mViewProjectionInverse, texCoord);
 	
 	
-	//== SSAO ==================
-	float ssao = SSAO(texCoord);
-	//==========================
+	//== SSAO =================================
+	float ssao = SSAO(texCoord, samplerLinear);
+	//=========================================
 	
 	//= SHADOW MAPPING ===========================================================================	
 	float shadow = 1.0f;
@@ -91,9 +91,10 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 		cascadeIndex += step(shadowSplits.x, z); // test 2nd cascade
 		cascadeIndex += step(shadowSplits.y, z); // test 3rd cascade
 		
+		float cascadeCompensation	= (cascadeIndex + 1.0f) * 2.0f; // the further the cascade, the more ugly under sharp angles
 		float shadowTexel 			= 1.0f / shadowMapResolution;
-		float bias 					= 10.00f * shadowTexel;
-		float normalOffset 			= 200.0f;
+		float bias 					= 2.0f * shadowTexel * cascadeCompensation;
+		float normalOffset 			= 70.0f * cascadeCompensation;
 		float NdotL 				= dot(normal, lightDir);
 		float cosAngle 				= saturate(1.0f - NdotL);
 		float3 scaledNormalOffset 	= normal * (normalOffset * cosAngle * shadowTexel);
@@ -105,17 +106,17 @@ float4 DirectusPixelShader(PixelInputType input) : SV_TARGET
 			if (cascadeIndex == 0)
 			{
 				float4 lightPos = mul(float4(positionWS + scaledNormalOffset, 1.0f), mLightViewProjection[0]);
-				shadow	= ShadowMapping(lightDepthTex[0], samplerLinear, shadowMapResolution, lightPos, normal, lightDir, bias);
+				shadow	= ShadowMapping(lightDepthTex[0], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, bias);
 			}
 			else if (cascadeIndex == 1)
 			{
 				float4 lightPos = mul(float4(positionWS + scaledNormalOffset, 1.0f), mLightViewProjection[1]);
-				shadow	= ShadowMapping(lightDepthTex[1], samplerLinear, shadowMapResolution, lightPos, normal, lightDir, bias);
+				shadow	= ShadowMapping(lightDepthTex[1], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, bias);
 			}
 			else if (cascadeIndex == 2)
 			{
 				float4 lightPos = mul(float4(positionWS + scaledNormalOffset, 1.0f), mLightViewProjection[2]);
-				shadow	= ShadowMapping(lightDepthTex[2], samplerLinear, shadowMapResolution, lightPos, normal, lightDir, bias);
+				shadow	= ShadowMapping(lightDepthTex[2], samplerPoint, shadowMapResolution, lightPos, normal, lightDir, bias);
 			}
 		}
 	}

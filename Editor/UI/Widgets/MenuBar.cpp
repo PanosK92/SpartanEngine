@@ -90,15 +90,10 @@ void MenuBar::Update()
 			ImGui::EndMenu();
 		}
 
-		if (ImGui::BeginMenu("Editor"))
+		if (ImGui::BeginMenu("Tools"))
 		{
 			ImGui::MenuItem("Metrics", nullptr, &g_showMetricsWindow);
 			ImGui::MenuItem("Style", nullptr, &g_showStyleEditor);
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("Debug"))
-		{
 			ImGui::MenuItem("Resource Cache Viewer", nullptr, &g_showResourceCache);
 			ImGui::EndMenu();
 		}

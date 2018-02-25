@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "Widget.h"
-#include "../imgui/imgui.h"
+#include "../ImGui/imgui.h"
 //=========================
 
 //= NAMESPACES ==========

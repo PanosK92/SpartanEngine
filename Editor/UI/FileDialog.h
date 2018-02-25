@@ -55,14 +55,17 @@ public:
 	// Style
 	FileDialog_Mode GetStyle() { return m_style; }
 	void SetStyle(FileDialog_Mode type);
-	
+
 	// Show
 	bool Show(bool* isVisible, std::string* path);
 
-private:	
+private:
+	void Dialog_Top(bool* isVisible);
+	void Dialog_Middle();
+	void Dialog_Bottom(bool* isVisible);
 	bool NavigateToDirectory(const std::string& pathClicked);
 	void AddThumbnail(const std::string& filePath, Thumbnail_Type type = Thumbnail_Custom);
-	void HandleClicking(const std::string& directoryEntry);
+	void HandleClicking(const char* directoryEntry);
 	void ContextMenu();
 
 	std::string m_title;
@@ -80,8 +83,8 @@ private:
 
 	bool m_isWindow;
 	float m_itemSize;
-	bool m_selectionMade = false;
-	bool m_navigateToPath;
+	bool m_selectionMade;
+	bool m_isDirty;
 	std::unique_ptr<Directus::Stopwatch> m_stopwatch;
 	Directus::Context* m_context;
 };
