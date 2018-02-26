@@ -110,7 +110,7 @@ namespace Directus
 		void CalculateBaseView();
 		void CalculateProjection();
 
-		float m_fovHorizontal{};
+		float m_fovHorizontalRad;
 		float m_nearPlane;
 		float m_farPlane;
 		Math::Ray m_ray;

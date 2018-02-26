@@ -238,10 +238,6 @@ void Hierarchy::HandleDragDrop(GameObject* gameObjPtr)
 
 void Hierarchy::ContextMenu()
 {
-	// Since we are handling clicking manually, we must ensure we are inside the window
-	if (!ImGui::IsMouseHoveringWindow())
-		return;	
-
 	if (!ImGui::BeginPopup("##HierarchyContextMenu"))
 		return;
 

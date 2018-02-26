@@ -38,8 +38,8 @@ namespace Directus
 	// VIEWPORT ===================================================
 	#define SET_VIEWPORT(viewport)	Settings::SetViewport(viewport)
 	#define GET_VIEWPORT			Settings::GetViewport()
-	#define VIEWPORT_WIDTH			Settings::GetResolutionWidth()
-	#define VIEWPORT_HEIGHT			Settings::GetResolutionHeight()
+	#define VIEWPORT_WIDTH			Settings::GetViewportWidth()
+	#define VIEWPORT_HEIGHT			Settings::GetViewportHeight()
 	//=============================================================
 
 	//= OTHER ========================================================
@@ -80,8 +80,8 @@ namespace Directus
 		static void SetViewport(int x, int y, int width, int height);
 		static void SetViewport(const Math::Vector4& viewport);
 		static const Math::Vector4& GetViewport() { return m_viewport; }
-		static int GetViewportWidth();
-		static int GetViewportHeight();
+		static float GetViewportWidth();
+		static float GetViewportHeight();
 		//==============================================================
 
 		//= OTHER ===========================================================

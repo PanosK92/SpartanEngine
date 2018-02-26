@@ -154,19 +154,19 @@ namespace Directus
 		m_viewport = viewport;
 	}
 
-	int Settings::GetViewportWidth()
+	float Settings::GetViewportWidth()
 	{
-		return (int)m_viewport.z;
+		return m_viewport.z;
 	}
 
-	int Settings::GetViewportHeight()
+	float Settings::GetViewportHeight()
 	{
-		return (int)m_viewport.w;
+		return m_viewport.w;
 	}
 
 	float Settings::GetScreenAspect()
 	{
-		return m_resolution.x / m_resolution.y;
+		return (float)GetViewportWidth() / (float)GetViewportHeight();
 	}
 
 	//========================================================================
