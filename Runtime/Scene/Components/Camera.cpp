@@ -44,7 +44,7 @@ namespace Directus
 {
 	Camera::Camera(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
-		SetFOV_Horizontal_Deg(75);
+		SetFOV_Horizontal_Deg(90);
 		m_nearPlane		= 0.3f;
 		m_farPlane		= 1000.0f;
 		m_frustrum		= make_shared<Frustrum>();
@@ -98,7 +98,7 @@ namespace Directus
 	{
 		stream->Write(m_clearColor);
 		stream->Write(int(m_projection));
-		stream->Write(m_fovHorizontal);
+		stream->Write(m_fovHorizontalRad);
 		stream->Write(m_nearPlane);
 		stream->Write(m_farPlane);
 	}
@@ -107,7 +107,7 @@ namespace Directus
 	{
 		stream->Read(&m_clearColor);
 		m_projection = ProjectionType(stream->ReadInt());
-		stream->Read(&m_fovHorizontal);
+		stream->Read(&m_fovHorizontalRad);
 		stream->Read(&m_nearPlane);
 		stream->Read(&m_farPlane);
 
@@ -137,12 +137,12 @@ namespace Directus
 
 	float Camera::GetFOV_Horizontal_Deg()
 	{
-		return RadiansToDegrees(m_fovHorizontal);
+		return RadiansToDegrees(m_fovHorizontalRad);
 	}
 
 	void Camera::SetFOV_Horizontal_Deg(float fov)
 	{
-		m_fovHorizontal = DegreesToRadians(fov);
+		m_fovHorizontalRad = DegreesToRadians(fov);
 		m_isDirty = true;
 	}
 
@@ -264,7 +264,8 @@ namespace Directus
 	{
 		if (m_projection == Projection_Perspective)
 		{
-			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(m_fovHorizontal, ASPECT_RATIO, m_nearPlane, m_farPlane);
+			float vfovRad = 2.0f * atan(tan(m_fovHorizontalRad / 2.0f) * (VIEWPORT_HEIGHT/ VIEWPORT_WIDTH)); 
+			m_mProjection = Matrix::CreatePerspectiveFieldOfViewLH(vfovRad, ASPECT_RATIO, m_nearPlane, m_farPlane);
 		}
 		else if (m_projection == Projection_Orthographic)
 		{

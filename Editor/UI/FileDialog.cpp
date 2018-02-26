@@ -351,10 +351,6 @@ void FileDialog::HandleClicking(const char* directoryEntry)
 
 void FileDialog::ContextMenu()
 {
-	// Since we are handling clicking manually, we must ensure we are inside the window
-	if (!FileDialogStatics::g_isMouseHoveringWindow)
-		return;
-
 	if (!ImGui::BeginPopup("##FileDialogContextMenu"))
 		return;
 
