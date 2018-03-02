@@ -89,7 +89,7 @@ WORKING_DIR 	= "../Binaries/Release"
 		
 -- Includes
 	includedirs { "../Runtime" }
-	includedirs { "../ThirdParty/SDL_2.0.7" }
+	includedirs { "../ThirdParty/SDL_2.0.8" }
 
 -- Library directory
 	libdirs { "../ThirdParty/mvsc141_x64" }
@@ -97,8 +97,7 @@ WORKING_DIR 	= "../Binaries/Release"
 -- Release libraries
 	configuration "Release"
 		debugdir (WORKING_DIR)
-		links { "SDL2" }
-		links { "SDL2main" }
+		links { "SDL2-static" }
 		links { "version" }
 		links { "imm32" }
 		links { "winmm" }
@@ -106,8 +105,7 @@ WORKING_DIR 	= "../Binaries/Release"
 -- Debug libraries
 	configuration "Debug"
 		debugdir (WORKING_DIR)
-		links { "SDL2_debug" }
-		links { "SDL2main_debug" }
+		links { "SDL2-static_debug" }
 		links { "version" }
 		links { "imm32" }
 		links { "winmm" }
