@@ -26,8 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 #include "../Math/Vector2.h"
 #include <memory>
-#include "D3D11/D3D11RenderTexture.h"
-
 //====================================
 
 namespace Directus

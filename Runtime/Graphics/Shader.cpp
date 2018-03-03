@@ -166,7 +166,7 @@ namespace Directus
 		if (!m_graphics)
 			return;
 
-		ID3D11ShaderResourceView* id3d11Srv = (ID3D11ShaderResourceView*)texture;
+		auto id3d11Srv = (ID3D11ShaderResourceView*)texture;
 		m_graphics->GetDeviceContext()->PSSetShaderResources(slot, 1, &id3d11Srv);
 	}
 
@@ -175,7 +175,7 @@ namespace Directus
 		if (!m_graphics)
 			return;
 
-		ID3D11ShaderResourceView** ptr = (ID3D11ShaderResourceView**)textures.data();
+		auto ptr = (ID3D11ShaderResourceView**)textures.data();
 		int length = (int)textures.size();
 		auto tex = vector<ID3D11ShaderResourceView*>(ptr, ptr + length);
 
@@ -218,7 +218,7 @@ namespace Directus
 		}
 
 		// Get a pointer of the buffer
-		auto buffer		= static_cast<Struct_WVP_Color*>(m_constantBuffer->Map());
+		auto buffer	= static_cast<Struct_WVP_Color*>(m_constantBuffer->Map());
 
 		// Fill the buffer
 		buffer->wvp		= mWorld * mView * mProjection;

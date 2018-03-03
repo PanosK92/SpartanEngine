@@ -1,6 +1,7 @@
 //= DEFINES ======================
 #define PCF 2
-#define UnrollPCF (PCF * 2.0f) + 1
+#define PCF_DIM PCF / 2
+#define PCF_UNROLL PCF * 2
 //================================
 
 float2 texOffset(float2 shadowMapSize, int x, int y)
@@ -36,11 +37,12 @@ float sampleShadowMapPCF(Texture2D shadowMap, SamplerState samplerState, float2 
 {
 	float amountLit = 0.0f;
 	float count = 0.0f;
-	[unroll(UnrollPCF)]
-	for (float y = -PCF; y <= PCF; ++y)
+	
+	[unroll(PCF_UNROLL)]
+	for (float y = -PCF_DIM; y <= PCF_DIM; ++y)
 	{
-		[unroll(UnrollPCF)]
-		for (float x = -PCF; x <= PCF; ++x)
+		[unroll(PCF_UNROLL)]
+		for (float x = -PCF_DIM; x <= PCF_DIM; ++x)
 		{
 			amountLit += sampleShadowMap(shadowMap, samplerState, size, texCoords + texOffset(size, x, y), compare);
 			count++;			
@@ -72,14 +74,9 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 
 	// Apply shadow map bias
 	pos.z -= bias;
-	
-	float amountLit = 0.0f;
-	
-	float shadowMappingQuality = 0.5f;
-	
+
 	// Interpolation + PCF
-	// Perform PCF filtering on a 4 x 4 texel neighborhood
-		amountLit = sampleShadowMapPCF(shadowMap, samplerState, shadowMapResolution, pos.xy, pos.z);
+	float amountLit = sampleShadowMapPCF(shadowMap, samplerState, shadowMapResolution, pos.xy, pos.z);
 	
 	// Stratified Poisson Sampling
 	// Poisson sampling for shadow map
@@ -92,12 +89,13 @@ float ShadowMapping(Texture2D shadowMap, SamplerState samplerState, float shadow
 	//  float2( 0.34495938f, 0.29387760f )
 	//};
     //
-	//uint samples = 4;
+	//uint samples = 8;
+	//float amountLit = 0.0f;
 	//[unroll(samples)]
 	//for (uint i = 0; i < samples; i++)
 	//{
 	//	uint index = uint(samples * random(pos.xy * i)) % samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-	//	amountLit += depthTest(shadowMap, samplerState, pos.xy + (poissonDisk[index] / packing), pos.z);
+	//	amountLit += sampleShadowMap(shadowMap, samplerState, shadowMapResolution, pos.xy + (poissonDisk[index] / packing), pos.z);
 	//}	
 	//amountLit /= (float)samples;
 	
