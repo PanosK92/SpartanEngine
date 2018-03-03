@@ -34,6 +34,37 @@ using namespace Directus::Math;
 using namespace std;
 //=============================
 
+// = ENUMERATIONS =========================================
+static const D3D11_FILTER filterAPI[] =
+{
+	D3D11_FILTER_MIN_MAG_MIP_POINT,
+	D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,
+	D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+	D3D11_FILTER_ANISOTROPIC
+};
+
+static const D3D11_TEXTURE_ADDRESS_MODE addressModeAPI[] =
+{
+	D3D11_TEXTURE_ADDRESS_WRAP,
+	D3D11_TEXTURE_ADDRESS_MIRROR,
+	D3D11_TEXTURE_ADDRESS_CLAMP,
+	D3D11_TEXTURE_ADDRESS_BORDER,
+	D3D11_TEXTURE_ADDRESS_MIRROR_ONCE
+};
+
+static const D3D11_COMPARISON_FUNC comparisonFunctionAPI[]=
+{
+	D3D11_COMPARISON_NEVER,
+	D3D11_COMPARISON_LESS,
+	D3D11_COMPARISON_EQUAL,
+	D3D11_COMPARISON_LESS_EQUAL,
+	D3D11_COMPARISON_GREATER,
+	D3D11_COMPARISON_NOT_EQUAL,
+	D3D11_COMPARISON_GREATER_EQUAL,
+	D3D11_COMPARISON_ALWAYS
+};
+//=========================================================
+
 namespace Directus
 {
 	Shader::Shader(Context* context)
@@ -100,30 +131,15 @@ namespace Directus
 		}
 	}
 
-	void Shader::AddSampler(TextureSampler samplerType)
+	bool Shader::AddSampler(Texture_Sampler_Filter filter, Texture_Address_Mode addressMode, Texture_Comparison_Function comparisonFunc)
 	{
 		if (!m_shader)
 		{
 			LOG_WARNING("Shader: Can't add sampler to uninitialized shader.");
-			return;
+			return false;
 		}
 
-		switch (samplerType)
-		{	
-			case Sampler_Point:
-				m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-				break;
-			case Sampler_Bilinear:
-				m_shader->AddSampler(D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-				break;
-			case Sampler_Linear:
-				m_shader->AddSampler(D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-				break;
-			case Sampler_Anisotropic:
-				m_shader->AddSampler(D3D11_FILTER_ANISOTROPIC, D3D11_TEXTURE_ADDRESS_WRAP, D3D11_COMPARISON_ALWAYS);
-				break;
-
-		}
+		return m_shader->AddSampler(filterAPI[filter], addressModeAPI[addressMode], comparisonFunctionAPI[comparisonFunc]);
 	}
 
 	void Shader::Set()
