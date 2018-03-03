@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "../Math/Vector4.h"
-#include "../Core/Subsystem.h"
+#include "../Core/SubSystem.h"
 #include "../Core/EngineBackends.h"
 //=================================
 
@@ -51,12 +51,33 @@ namespace Directus
 		CullBack
 	};
 
-	enum TextureSampler
+	enum Texture_Sampler_Filter
 	{
-		Sampler_Point,
-		Sampler_Bilinear,
-		Sampler_Linear,	
-		Sampler_Anisotropic
+		Texture_Sampler_Point,
+		Texture_Sampler_Bilinear,
+		Texture_Sampler_Linear,	
+		Texture_Sampler_Anisotropic
+	};
+
+	enum Texture_Address_Mode
+	{
+		Texture_Address_Wrap,
+        Texture_Address_Mirror,
+        Texture_Address_Clamp,
+        Texture_Address_Border,
+        Texture_Address_MirrorOnce,
+	};
+
+	enum Texture_Comparison_Function
+	{
+		Texture_Comparison_Never,
+        Texture_Comparison_Less,
+        Texture_Comparison_Equal,
+        Texture_Comparison_LessEqual,
+        Texture_Comparison_Greater,
+        Texture_Comparison_NotEqual,
+        Texture_Comparison_GreaterEqual,
+        Texture_Comparison_Always
 	};
 
 	class IGraphics : public Subsystem

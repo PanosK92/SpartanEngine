@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 #include "../Math/Vector2.h"
 #include <memory>
+#include "D3D11/D3D11RenderTexture.h"
+
 //====================================
 
 namespace Directus
@@ -62,7 +64,11 @@ namespace Directus
 
 		void AddDefine(LPCSTR define);
 		void AddBuffer(ConstantBufferType bufferType, ConstantBufferScope bufferScope);
-		void AddSampler(TextureSampler samplerType);
+		bool AddSampler(
+			Texture_Sampler_Filter filter = Texture_Sampler_Anisotropic, 
+			Texture_Address_Mode addressMode = Texture_Address_Wrap, 
+			Texture_Comparison_Function comparisonFunc = Texture_Comparison_Always
+		);
 
 		void Set();
 		void SetInputLaytout(InputLayout inputLayout);
