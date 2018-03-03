@@ -114,10 +114,10 @@ namespace Directus
 		void Clear();
 		const std::vector<std::weak_ptr<GameObject>>& GetRenderables() { return m_renderables; }
 
-	private:
-		//= RENDER PATHS =============================================
+	private:	
 		void AcquireRenderables(const Variant& renderables);
 		void DirectionalLightDepthPass(Light* directionalLight);
+		//= RENDER PATHS =============================================
 		void GBufferPass();
 		void PreDeferredPass(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing);
 		void DeferredPass(void* inTextureShadowing, void* outRenderTexture);	

@@ -178,8 +178,8 @@ namespace Directus
 		m_shaderShadowing = make_unique<Shader>(m_context);
 		m_shaderShadowing->Compile(shaderDirectory + "Shadowing.hlsl");
 		m_shaderShadowing->SetInputLaytout(PositionTexture);
-		m_shaderShadowing->AddSampler(Texture_Sampler_Point);
-		m_shaderShadowing->AddSampler(Texture_Sampler_Linear);
+		m_shaderShadowing->AddSampler(Texture_Sampler_Point, Texture_Address_Border); // Shadow mapping
+		m_shaderShadowing->AddSampler(Texture_Sampler_Linear); // SSAO
 		m_shaderShadowing->AddBuffer(CB_Shadowing, Global);
 
 		// Create render textures (used for post-processing)
