@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/DInput/DInput.h"
 #include "../Physics/Physics.h"
 #include "../Profiling/PerformanceProfiler.h"
+#include "../Scene/Scene.h"
 //===========================================
 
 //= NAMESPACES =====

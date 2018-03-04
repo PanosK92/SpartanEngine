@@ -48,11 +48,11 @@ namespace Directus
 		~Constraint();
 
 		//= COMPONENT =============================
-		void Initialize() override;
-		void Start() override;
-		void Stop() override;
-		void Remove() override;
-		void Update() override;
+		void OnInitialize() override;
+		void OnStart() override;
+		void OnStop() override;
+		void OnRemove() override;
+		void OnUpdate() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//=========================================

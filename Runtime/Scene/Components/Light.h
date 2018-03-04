@@ -57,8 +57,8 @@ namespace Directus
 		~Light();
 
 		//= COMPONENT ================================
-		void Start() override;
-		void Update() override;
+		void OnStart() override;
+		void OnUpdate() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================

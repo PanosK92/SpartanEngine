@@ -26,14 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 //================================
 
-//= FMOD FORWARD DECLARATIONS =
+//= FWD DECLARATIONS =
 namespace FMOD
 {
 	class System;
 	class Sound;
 	class Channel;
 }
-//=============================
+//====================
 
 namespace Directus
 {
@@ -41,8 +41,8 @@ namespace Directus
 
 	enum PlayMode
 	{
-		Memory,
-		Stream
+		Play_Memory,
+		Play_Stream
 	};
 
 	enum Rolloff
@@ -51,22 +51,22 @@ namespace Directus
 		Custom
 	};
 
-	class AudioClip : IResource
+	class ENGINE_CLASS AudioClip : public IResource
 	{
 	public:
-		AudioClip(FMOD::System* fModSystem, Context* context);
+		AudioClip(Context* context);
 		~AudioClip();
 
 		//= IResource ==========================================================
-		bool LoadFromFile(const std::string& filePath) override { return true; }
+		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override { return true; }
 		//======================================================================
 
-		bool Load(const std::string& filePath, PlayMode mode);
 		bool Play();
 		bool Pause();
 		bool Stop();
 
+		// Set's sound looping
 		bool SetLoop(bool loop);
 
 		// Set's the volume [0.0f, 1.0f]
@@ -101,17 +101,18 @@ namespace Directus
 		bool CreateSound(const std::string& filePath);
 		bool CreateStream(const std::string& filePath);
 		//=============================================
-		int BuildSoundMode();
+		int GetSoundMode();
+		void LogErrorFMOD(int error);
 
 		Transform* m_transform;
-		FMOD::System* m_fModSystem;
-		int m_result;
-		FMOD::Sound* m_sound;
-		FMOD::Channel* m_channel;
+		FMOD::System* m_systemFMOD;
+		FMOD::Sound* m_soundFMOD;
+		FMOD::Channel* m_channelFMOD;	
 		PlayMode m_playMode;
 		int m_modeLoop;
 		float m_minDistance;
 		float m_maxDistance;
 		int m_modeRolloff;
+		int m_result;	
 	};
 }

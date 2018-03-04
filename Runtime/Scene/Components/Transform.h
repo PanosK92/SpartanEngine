@@ -39,7 +39,7 @@ namespace Directus
 		~Transform();
 
 		//= ICOMPONENT ===============================
-		void Initialize() override;
+		void OnInitialize() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================

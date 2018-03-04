@@ -89,7 +89,7 @@ namespace Directus
 			newComponent->SetType(IComponent::ToComponentType<T>());
 
 			// Register component
-			newComponent->Initialize();
+			newComponent->OnInitialize();
 
 			// Caching of rendering performance critical components
 			if (newComponent->GetType() == ComponentType_MeshFilter)
@@ -157,7 +157,7 @@ namespace Directus
 				auto component = *it;
 				if (type == component.second->GetType())
 				{
-					component.second->Remove();
+					component.second->OnRemove();
 					component.second.reset();
 					it = m_components.erase(it);
 				}

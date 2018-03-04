@@ -60,7 +60,7 @@ namespace Directus
 		m_shadowMaps.clear();
 	}
 
-	void Light::Start()
+	void Light::OnStart()
 	{
 		if (!m_shadowMaps.empty())
 			return;
@@ -74,7 +74,7 @@ namespace Directus
 		}
 	}
 
-	void Light::Update()
+	void Light::OnUpdate()
 	{
 		if (m_lightType != LightType_Directional)
 			return;

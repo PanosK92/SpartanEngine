@@ -52,9 +52,9 @@ namespace Directus
 		~Collider();
 
 		//= ICOMPONENT ===============================
-		void Initialize() override;
-		void Remove() override;
-		void Update() override;
+		void OnInitialize() override;
+		void OnRemove() override;
+		void OnUpdate() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================

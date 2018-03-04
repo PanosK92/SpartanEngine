@@ -38,8 +38,8 @@ namespace Directus
 		~Skybox();
 
 		//= IComponent ============
-		void Initialize() override;
-		void Update() override;
+		void OnInitialize() override;
+		void OnUpdate() override;
 		//=========================
 
 		//= MISC ==================

@@ -43,7 +43,7 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ==================================================================
-	void Script::Start()
+	void Script::OnStart()
 	{
 		if (!m_scriptInstance)
 			return;
@@ -54,7 +54,7 @@ namespace Directus
 		m_scriptInstance->ExecuteStart();
 	}
 
-	void Script::Update()
+	void Script::OnUpdate()
 	{
 		if (!m_scriptInstance)
 			return;

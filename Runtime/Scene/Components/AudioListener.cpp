@@ -37,12 +37,12 @@ namespace Directus
 
 	}
 
-	void AudioListener::Initialize()
+	void AudioListener::OnInitialize()
 	{
 		m_audio = GetContext()->GetSubsystem<Audio>();
 	}
 
-	void AudioListener::Update()
+	void AudioListener::OnUpdate()
 	{
 		if (!m_audio)
 			return;

@@ -39,6 +39,7 @@ struct DragDropPayload
 static const char* g_dragDrop_Type_Texture		= "0";
 static const char* g_dragDrop_Type_GameObject	= "1";
 static const char* g_dragDrop_Type_Model		= "2";
+static const char* g_dragDrop_Type_Audio		= "3";
 static bool g_isDragging = false;
 
 class DragDrop

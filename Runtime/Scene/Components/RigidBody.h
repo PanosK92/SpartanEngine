@@ -48,8 +48,8 @@ namespace Directus
 		~RigidBody();
 
 		//= ICOMPONENT ===============================
-		void Initialize() override;
-		void Update() override;
+		void OnInitialize() override;
+		void OnUpdate() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================

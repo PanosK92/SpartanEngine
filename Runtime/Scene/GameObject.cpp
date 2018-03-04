@@ -65,7 +65,7 @@ namespace Directus
 		// delete components
 		for (auto it = m_components.begin(); it != m_components.end(); )
 		{
-			(*it).second->Remove();
+			(*it).second->OnRemove();
 			(*it).second.reset();
 			it = m_components.erase(it);
 		}
@@ -87,7 +87,7 @@ namespace Directus
 		// call component Start()
 		for (auto const& component : m_components)
 		{
-			component.second->Start();
+			component.second->OnStart();
 		}
 	}
 
@@ -96,7 +96,7 @@ namespace Directus
 		// call component Stop()
 		for (auto const& component : m_components)
 		{
-			component.second->Stop();
+			component.second->OnStop();
 		}
 	}
 
@@ -108,7 +108,7 @@ namespace Directus
 		// call component Update()
 		for (const auto& component : m_components)
 		{
-			component.second->Update();
+			component.second->OnUpdate();
 		}
 	}
 
@@ -293,7 +293,7 @@ namespace Directus
 			auto component = *it;
 			if (id == component.second->GetID())
 			{
-				component.second->Remove();
+				component.second->OnRemove();
 				component.second.reset();
 				it = m_components.erase(it);
 			}

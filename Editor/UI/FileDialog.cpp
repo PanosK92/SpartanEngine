@@ -186,25 +186,7 @@ void FileDialog::Dialog_Middle()
 		ContextMenu();
 		
 		// Drag
-		if (m_style == FileDialog_Basic)
-		{
-			if (DragDrop::Get().DragBegin())
-			{
-				if (FileSystem::IsSupportedModelFile(entry.first))
-				{
-					FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Model;
-					FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
-					DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
-				}
-				else if (FileSystem::IsSupportedImageFile(entry.first) || FileSystem::IsEngineTextureFile(entry.first))
-				{
-					FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Texture;
-					FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
-					DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
-				}
-				DragDrop::Get().DragEnd();
-			}
-		}
+		HandleDrag(entry);
 
 		// ITEM WINDOW END		
 		ImGui::EndChild();
@@ -315,6 +297,35 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 void FileDialog::AddThumbnail(const std::string& filePath, Thumbnail_Type type)
 {
 	m_directoryEntries[filePath] = ThumbnailProvider::Get().Thumbnail_Load(filePath, type, m_itemSize);
+}
+
+void FileDialog::HandleDrag(const map<basic_string<char>, Thumbnail>::value_type& entry)
+{
+	if (m_style == FileDialog_Basic)
+	{
+		if (DragDrop::Get().DragBegin())
+		{
+			if (FileSystem::IsSupportedModelFile(entry.first))
+			{
+				FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Model;
+				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
+				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
+			}
+			else if (FileSystem::IsSupportedImageFile(entry.first) || FileSystem::IsEngineTextureFile(entry.first))
+			{
+				FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Texture;
+				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
+				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
+			}
+			else if (FileSystem::IsSupportedAudioFile(entry.first))
+			{
+				FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Audio;
+				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
+				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
+			}
+			DragDrop::Get().DragEnd();
+		}
+	}
 }
 
 void FileDialog::HandleClicking(const char* directoryEntry)

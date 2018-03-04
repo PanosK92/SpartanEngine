@@ -59,19 +59,19 @@ namespace Directus
 		virtual ~IComponent() {}
 
 		// Runs when the component gets added
-		virtual void Initialize() {}
+		virtual void OnInitialize() {}
 
 		// Runs every time the simulation starts
-		virtual void Start() {}
+		virtual void OnStart() {}
 
 		// Runs every time the simulation stops
-		virtual void Stop() {}
+		virtual void OnStop() {}
 
 		// Runs when the component is removed
-		virtual void Remove(){}
+		virtual void OnRemove(){}
 
 		// Runs every frame
-		virtual void Update() {}
+		virtual void OnUpdate() {}
 
 		// Runs when the GameObject is being saved
 		virtual void Serialize(FileStream* stream) {}

@@ -65,6 +65,7 @@ private:
 	void Dialog_Bottom(bool* isVisible);
 	bool NavigateToDirectory(const std::string& pathClicked);
 	void AddThumbnail(const std::string& filePath, Thumbnail_Type type = Thumbnail_Custom);
+	void HandleDrag(const std::pair<const std::basic_string<char>, Thumbnail>& entry);
 	void HandleClicking(const char* directoryEntry);
 	void ContextMenu();
 

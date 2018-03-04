@@ -51,7 +51,7 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ====================================================================
-	void Transform::Initialize()
+	void Transform::OnInitialize()
 	{
 		UpdateTransform();
 	}

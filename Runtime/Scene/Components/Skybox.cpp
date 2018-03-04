@@ -48,7 +48,7 @@ namespace Directus
 		 GetGameObject()->RemoveComponent<MeshRenderer>();
 	}
 
-	void Skybox::Initialize()
+	void Skybox::OnInitialize()
 	{
 		// Load environment texture and create a cubemap
 		auto cubemapDirectory	= GetContext()->GetSubsystem<ResourceManager>()->GetStandardResourceDirectory(Resource_Cubemap);
@@ -84,7 +84,7 @@ namespace Directus
 		GetTransform()->SetScale(Vector3(1000, 1000, 1000));
 	}
 
-	void Skybox::Update()
+	void Skybox::OnUpdate()
 	{
 
 	}
