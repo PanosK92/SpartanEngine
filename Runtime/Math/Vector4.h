@@ -63,21 +63,17 @@ namespace Directus::Math
 
 		~Vector4(){}
 
-		bool operator==(const Vector4& b)
+		//= COMPARISON ================================================
+		bool operator==(const Vector4& rhs) const
 		{
-			if (this->x == b.x && this->y == b.y && this->z == b.z && this->w == b.w)
-				return true;
-
-			return false;
+			return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w;
 		}
 
-		bool operator!=(const Vector4& b)
+		bool operator!=(const Vector4& rhs) const
 		{
-			if (this->x != b.x || this->y != b.y || this->z != b.z || this->w != b.w)
-				return true;
-
-			return false;
+			return !(*this == rhs);
 		}
+		//=============================================================
 
 		static Vector4 Transform(const Vector3& lhs, const Matrix& rhs);
 

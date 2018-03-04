@@ -23,8 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "../Core/SubSystem.h"
-#include "AudioClip.h"
-#include <memory>
 //============================
 
 //= FORWARD DECLARATIONS =
@@ -36,6 +34,8 @@ namespace FMOD
 
 namespace Directus
 {
+	class Transform;
+
 	class Audio : public Subsystem
 	{
 	public:
@@ -48,21 +48,16 @@ namespace Directus
 
 		bool Update();
 		FMOD::System* GetSystemFMOD() { return m_systemFMOD; }
-
-		std::weak_ptr<AudioClip> CreateAudioClip();
 		void SetListenerTransform(Transform* transform);
 
 	private:
+		void LogErrorFMOD(int error);
+
 		int m_resultFMOD;
 		FMOD::System* m_systemFMOD;
 		int m_maxChannels;
 		float m_distanceFactor;
 		bool m_initialized;
-
-		//= LISTENER =========
 		Transform* m_listener;
-		//====================
-
-		std::vector<std::shared_ptr<AudioClip>> m_audioHandles;
 	};
 }

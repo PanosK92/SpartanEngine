@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================================
 #include "../Resource/IResource.h"
-#include "../Graphics/Texture.h"
+#include "ResourceManager.h"
 #include "../Font/Font.h"
+#include "../Audio/AudioClip.h"
+#include "../Graphics/Texture.h"
 #include "../Graphics/Animation.h"
 #include "../Graphics/Model.h"
 #include "../Graphics/Material.h"
 #include "../Graphics/Mesh.h"
 #include "../Graphics/DeferredShaders/ShaderVariation.h"
-#include "../Audio/Audio.h"
-#include "ResourceManager.h"
 //======================================================
 
 //= NAMESPACES ==========
@@ -93,7 +93,7 @@ string IResource::GetResourceTypeStr()
 	if (typeid(*this) == typeid(Texture))
 		return "Texture";
 
-	if (typeid(*this) == typeid(Audio))
+	if (typeid(*this) == typeid(AudioClip))
 			return "Audio";
 
 	if (typeid(*this) == typeid(Material))
@@ -122,7 +122,7 @@ ResourceType IResource::DeduceResourceType()
 	if (typeid(*this) == typeid(Texture))
 		return Resource_Texture;
 
-	if (typeid(*this) == typeid(Audio))
+	if (typeid(*this) == typeid(AudioClip))
 		return Resource_Audio;
 
 	if (typeid(*this) == typeid(Material))
@@ -152,7 +152,7 @@ ResourceType IResource::DeduceResourceType()
 	if (typeid(T) == typeid(Texture))
 		return Resource_Texture;
 
-	if (typeid(T) == typeid(Audio))
+	if (typeid(T) == typeid(AudioClip))
 		return Resource_Audio;
 
 	if (typeid(T) == typeid(Material))

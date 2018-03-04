@@ -49,7 +49,6 @@ class Properties : public Widget
 public:
 	Properties();
 	void Initialize(Directus::Context* context) override;
-	void Clear();
 	void Update() override;
 	static void Inspect(std::weak_ptr<Directus::GameObject> gameObject);
 
@@ -72,5 +71,4 @@ private:
 	void ComponentContextMenu_Add();
 
 	static std::weak_ptr<Directus::GameObject> m_gameObject;
-	static bool m_isDirty;
 };
