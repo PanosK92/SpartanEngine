@@ -38,7 +38,7 @@ namespace Directus
 	{
 		m_filePath			= NOT_ASSIGNED;
 		m_mute				= false;
-		m_playOnAwake		= true;
+		m_playOnStart		= true;
 		m_loop				= false;
 		m_priority			= 128;
 		m_volume			= 1.0f;
@@ -52,7 +52,7 @@ namespace Directus
 	
 	}
 	
-	void AudioSource::Initialize()
+	void AudioSource::OnInitialize()
 	{
 		// Get an audio handle (in case there isn't one yet)
 		if (m_audioClip.expired())
@@ -64,30 +64,20 @@ namespace Directus
 		m_audioClip.lock()->SetTransform(GetTransform());
 	}
 	
-	void AudioSource::Start()
+	void AudioSource::OnStart()
 	{
-		// Make sure there is an audio clip
-		if (m_audioClip.expired())
+		if (!m_playOnStart)
 			return;
-	
-		// Make sure it's an actual playble audio file
-		if (!FileSystem::IsSupportedAudioFile(m_filePath))
-			return;
-	
-		if (!m_audioClipLoaded)
-			return;
-	
-		// Start playing the audio file
-		if (m_playOnAwake)
-			PlayAudioClip();
+
+		Play();
 	}
 	
-	void AudioSource::Stop()
+	void AudioSource::OnStop()
 	{
-		StopPlayingAudioClip();
+		Stop();
 	}
 	
-	void AudioSource::Remove()
+	void AudioSource::OnRemove()
 	{
 		if (m_audioClip.expired())
 			return;
@@ -95,7 +85,7 @@ namespace Directus
 		m_audioClip.lock()->Stop();
 	}
 	
-	void AudioSource::Update()
+	void AudioSource::OnUpdate()
 	{
 		if (m_audioClip.expired())
 			return;
@@ -107,7 +97,7 @@ namespace Directus
 	{
 		stream->Write(m_filePath);
 		stream->Write(m_mute);
-		stream->Write(m_playOnAwake);
+		stream->Write(m_playOnStart);
 		stream->Write(m_loop);
 		stream->Write(m_priority);
 		stream->Write(m_volume);
@@ -119,7 +109,7 @@ namespace Directus
 	{
 		stream->Read(&m_filePath);
 		stream->Read(&m_mute);
-		stream->Read(&m_playOnAwake);
+		stream->Read(&m_playOnStart);
 		stream->Read(&m_loop);
 		stream->Read(&m_priority);
 		stream->Read(&m_volume);
@@ -128,48 +118,41 @@ namespace Directus
 	
 		LoadAudioClip(m_filePath);
 	}
-	
-	bool AudioSource::LoadAudioClip(const string& filePath)
+
+	bool AudioSource::SetAudioClip(weak_ptr<AudioClip> audioClip, bool cacheIt)
 	{
-		m_filePath = filePath;
-	
-		// Make sure the filePath points to an actual playble audio file
-		if (!FileSystem::IsSupportedAudioFile(m_filePath))
-			return false;
-	
-		// If there is audio clip handle, create one
-		if (m_audioClip.expired())
+		if (audioClip.expired())
 		{
-			m_audioClip = GetContext()->GetSubsystem<Audio>()->CreateAudioClip();
+			m_audioClip = audioClip;
+			return true;
+
 		}
-	
-		// Load the audio (for now it's always in memory)
-		m_audioClipLoaded = m_audioClip.lock()->Load(m_filePath, Memory);
-	
-		return m_audioClipLoaded;
+		m_audioClip = !cacheIt ? audioClip : audioClip.lock()->Cache<AudioClip>();
+		return true;
 	}
-	
+
 	string AudioSource::GetAudioClipName()
 	{
 		return FileSystem::GetFileNameFromFilePath(m_filePath);
 	}
 	
-	bool AudioSource::PlayAudioClip()
+	bool AudioSource::Play()
 	{
 		if (m_audioClip.expired())
 			return false;
 	
-		m_audioClip.lock()->Play();
-		m_audioClip.lock()->SetMute(m_mute);
-		m_audioClip.lock()->SetVolume(m_volume);
-		m_audioClip.lock()->SetLoop(m_loop);
-		m_audioClip.lock()->SetPriority(m_priority);
-		m_audioClip.lock()->SetPan(m_pan);
+		auto audioClip = m_audioClip.lock();
+		audioClip->Play();
+		audioClip->SetMute(m_mute);
+		audioClip->SetVolume(m_volume);
+		audioClip->SetLoop(m_loop);
+		audioClip->SetPriority(m_priority);
+		audioClip->SetPan(m_pan);
 	
 		return true;
 	}
 	
-	bool AudioSource::StopPlayingAudioClip()
+	bool AudioSource::Stop()
 	{
 		if (m_audioClip.expired())
 			return false;
@@ -222,5 +205,25 @@ namespace Directus
 		// Pan level, from -1.0 (left) to 1.0 (right).
 		m_pan = Clamp(pan, -1.0f, 1.0f);
 		m_audioClip.lock()->SetPan(m_pan);
+	}
+
+	bool AudioSource::LoadAudioClip(const string& filePath)
+	{
+		m_filePath = filePath;
+	
+		// Make sure the filePath points to an actual playble audio file
+		if (!FileSystem::IsSupportedAudioFile(m_filePath))
+			return false;
+	
+		// If there is audio clip handle, create one
+		if (m_audioClip.expired())
+		{
+			m_audioClip = GetContext()->GetSubsystem<Audio>()->CreateAudioClip();
+		}
+	
+		// Load the audio (for now it's always in memory)
+		m_audioClipLoaded = m_audioClip.lock()->LoadFromFile(m_filePath);
+	
+		return m_audioClipLoaded;
 	}
 }

@@ -96,12 +96,12 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ==========================================================
-	void RigidBody::Initialize()
+	void RigidBody::OnInitialize()
 	{
 		AddBodyToWorld();
 	}
 
-	void RigidBody::Update()
+	void RigidBody::OnUpdate()
 	{
 		// To make the body able to get positioned directly by the use without worrying about Bullet 
 		// reseting it's state, we secretly set is as kinematic when the engine is not simulating (e.g. Editor Mode)

@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
 #include "../Core/Engine.h"
+#include "Components/AudioListener.h"
 //======================================
 
 //= NAMESPACES ================
@@ -459,9 +460,10 @@ namespace Directus
 		shared_ptr<GameObject> camera = CreateGameObject().lock();
 		camera->SetName("Camera");
 		camera->AddComponent<Camera>();
-		camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
+		camera->AddComponent<AudioListener>();
 		camera->AddComponent<Script>().lock()->AddScript(scriptDirectory + "MouseLook.as");
 		camera->AddComponent<Script>().lock()->AddScript(scriptDirectory + "FirstPersonController.as");
+		camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
 		return camera;
 	}

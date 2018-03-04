@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../DragDrop.h"
 #include "../ButtonColorPicker.h"
 #include "Graphics/DeferredShaders/ShaderVariation.h"
+#include "Audio/Audio.h"
 //===================================================
 
 //= NAMESPACES ==========
@@ -862,7 +863,66 @@ void Properties::ShowAudioSource(AudioSource* audioSource)
 
 	COMPONENT_BEGIN("Audio Source", Icon_Component_AudioSource, audioSource);
 	{
+		// REFLECT
+		float posX = 120;
+		static char inputText[BUFFER_TEXT_DEFAULT];
+		static bool mute		= audioSource->GetMute();
+		static bool playOnStart = audioSource->GetPlayOnStart();
+		static bool loop		= audioSource->GetLoop();
+		static int priority		= audioSource->GetPriority();
+		static float volume		= audioSource->GetVolume();
+		static float pitch		= audioSource->GetPitch();
+		static float pan		= audioSource->GetPan();
 
+		// Audio clip
+		ImGui::Text("Audio Clip");
+		ImGui::SameLine(posX); ImGui::PushItemWidth(250.0f);
+		ImGui::InputText("##audioSourceAudioClip", inputText, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
+		ImGui::PopItemWidth();
+		auto payload = DragDrop::Get().GetPayload(g_dragDrop_Type_Audio); 
+		if (payload.data)													
+		{		
+			EditorHelper::SetCharArray(&inputText[0], FileSystem::GetFileNameFromFilePath(payload.data));
+			auto audioClip = g_resourceManager->Load<AudioClip>(payload.data);	
+			audioSource->SetAudioClip(audioClip, false);											
+		}																	
+
+		// Mute
+		ImGui::Text("Mute");
+		ImGui::SameLine(posX); ImGui::Checkbox("##audioSourceMute", &mute);
+
+		// Play on start
+		ImGui::Text("Play on Start");
+		ImGui::SameLine(posX); ImGui::Checkbox("##audioSourcePlayOnStart", &playOnStart);
+
+		// Loop
+		ImGui::Text("Loop");
+		ImGui::SameLine(posX); ImGui::Checkbox("##audioSourceLoop", &loop);
+
+		// Priority
+		ImGui::Text("Priority");
+		ImGui::SameLine(posX); ImGui::SliderInt("##audioSourcePriority", &priority, 0, 255);
+
+		// Volume
+		ImGui::Text("Volume");
+		ImGui::SameLine(posX); ImGui::SliderFloat("##audioSourceVolume", &volume, 0.0f, 1.0f);
+
+		// Pitch
+		ImGui::Text("Pitch");
+		ImGui::SameLine(posX); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.0f, 3.0f);
+
+		// Pan
+		ImGui::Text("Pan");
+		ImGui::SameLine(posX); ImGui::SliderFloat("##audioSourcePan", &pan, -1.0f, 1.0f);
+
+		// MAP
+		if (mute		!= audioSource->GetMute())			audioSource->SetMute(mute);
+		if (playOnStart != audioSource->GetPlayOnStart())	audioSource->SetPlayOnStart(playOnStart);
+		if (loop		!= audioSource->GetLoop())			audioSource->SetLoop(loop);
+		if (priority	!= audioSource->GetPriority())		audioSource->SetPriority(priority);
+		if (volume		!= audioSource->GetVolume())		audioSource->SetVolume(volume);
+		if (pitch		!= audioSource->GetPitch())			audioSource->SetPitch(pitch);
+		if (pan			!= audioSource->GetPan())			audioSource->SetPan(pan);
 	}
 	COMPONENT_END;
 }
@@ -874,7 +934,7 @@ void Properties::ShowAudioListener(AudioListener* audioListener)
 
 	COMPONENT_BEGIN("Audio Listener", Icon_Component_AudioListener, audioListener);
 	{
-
+		
 	}
 	COMPONENT_END;
 }

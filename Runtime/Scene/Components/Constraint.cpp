@@ -48,27 +48,27 @@ namespace Directus
 		ReleaseConstraint();
 	}
 
-	void Constraint::Initialize()
+	void Constraint::OnInitialize()
 	{
 
 	}
 
-	void Constraint::Start()
+	void Constraint::OnStart()
 	{
 
 	}
 
-	void Constraint::Stop()
+	void Constraint::OnStop()
 	{
 
 	}
 
-	void Constraint::Remove()
+	void Constraint::OnRemove()
 	{
 		ReleaseConstraint();
 	}
 
-	void Constraint::Update()
+	void Constraint::OnUpdate()
 	{
 		if (!m_isDirty)
 			return;

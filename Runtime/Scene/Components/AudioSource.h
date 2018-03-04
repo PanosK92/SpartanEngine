@@ -38,27 +38,27 @@ namespace Directus
 		~AudioSource();
 
 		//= INTERFACE ================================
-		void Initialize() override;
-		void Start() override;
-		void Stop() override;
-		void Remove() override;
-		void Update() override;
+		void OnInitialize() override;
+		void OnStart() override;
+		void OnStop() override;
+		void OnRemove() override;
+		void OnUpdate() override;
 		void Serialize(FileStream* stream) override;
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
 		//= PROPERTIES =======================================================
-		bool LoadAudioClip(const std::string& filePath);
+		bool SetAudioClip(std::weak_ptr<AudioClip> audioClip, bool cacheIt = true);
 		std::string GetAudioClipName();
 
-		bool PlayAudioClip();
-		bool StopPlayingAudioClip();
+		bool Play();
+		bool Stop();
 
 		bool GetMute() { return m_mute; }
 		void SetMute(bool mute);
 
-		bool GetPlayOnAwake() { return m_playOnAwake; }
-		void SetPlayOnAwake(bool playOnAwake) { m_playOnAwake = playOnAwake; }
+		bool GetPlayOnStart() { return m_playOnStart; }
+		void SetPlayOnStart(bool playOnStart) { m_playOnStart = playOnStart; }
 
 		bool GetLoop() { return m_loop; }
 		void SetLoop(bool loop) { m_loop = loop; }
@@ -77,10 +77,12 @@ namespace Directus
 		//====================================================================
 
 	private:
+		bool LoadAudioClip(const std::string& filePath);
+
 		std::weak_ptr<AudioClip> m_audioClip;
 		std::string m_filePath;
 		bool m_mute;
-		bool m_playOnAwake;
+		bool m_playOnStart;
 		bool m_loop;
 		int m_priority;
 		float m_volume;

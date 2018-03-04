@@ -21,13 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
-#include "../Core/Subsystem.h"
-#include "fmod.hpp"
-#include "../Scene/Components/Transform.h"
+//= INCLUDES =================
+#include "../Core/SubSystem.h"
 #include "AudioClip.h"
 #include <memory>
-//========================================
+//============================
+
+//= FORWARD DECLARATIONS =
+namespace FMOD
+{
+	class System;
+}
+//========================
 
 namespace Directus
 {
@@ -42,23 +47,20 @@ namespace Directus
 		//========================
 
 		bool Update();
+		FMOD::System* GetSystemFMOD() { return m_systemFMOD; }
 
 		std::weak_ptr<AudioClip> CreateAudioClip();
 		void SetListenerTransform(Transform* transform);
 
 	private:
-		FMOD_RESULT m_result;
-		FMOD::System* m_fmodSystem;
+		int m_resultFMOD;
+		FMOD::System* m_systemFMOD;
 		int m_maxChannels;
 		float m_distanceFactor;
 		bool m_initialized;
 
 		//= LISTENER =========
 		Transform* m_listener;
-		FMOD_VECTOR m_pos;
-		FMOD_VECTOR m_vel;
-		FMOD_VECTOR m_for;
-		FMOD_VECTOR m_up;
 		//====================
 
 		std::vector<std::shared_ptr<AudioClip>> m_audioHandles;

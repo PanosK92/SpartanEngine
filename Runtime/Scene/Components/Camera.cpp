@@ -59,14 +59,14 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ============
-	void Camera::Initialize()
+	void Camera::OnInitialize()
 	{
 		CalculateBaseView();
 		CalculateViewMatrix();
 		CalculateProjection();
 	}
 
-	void Camera::Update()
+	void Camera::OnUpdate()
 	{
 		if (m_lastKnownResolution != GET_RESOLUTION)
 		{

@@ -59,7 +59,7 @@ namespace Directus
 	}
 
 	//= ICOMPONENT ==================================================================
-	void Collider::Initialize()
+	void Collider::OnInitialize()
 	{
 		m_lastKnownScale = GetTransform()->GetScale();
 
@@ -73,12 +73,12 @@ namespace Directus
 		UpdateShape();
 	}
 
-	void Collider::Remove()
+	void Collider::OnRemove()
 	{
 		ReleaseShape();
 	}
 
-	void Collider::Update()
+	void Collider::OnUpdate()
 	{
 		// Scale the collider if the transform scale has changed
 		if (m_collisionShape && (m_lastKnownScale != GetTransform()->GetScale()))
