@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Import/FontImporter.h"
 #include "../Graphics/Model.h"
 #include "../Graphics/Material.h"
+#include "../Audio/AudioClip.h"
 //===============================
 
 namespace Directus
@@ -68,8 +69,11 @@ namespace Directus
 				return GetResourceByName<T>(name);
 			}
 
-			// Create new resource of the provided type
-			std::shared_ptr<T> typed = std::make_shared<T>(m_context);
+			// Create new resource
+			auto typed = std::make_shared<T>(m_context);
+			// Set a default name and a default filepath in case it's not overridden by LoadFromFile()
+			typed->SetResourceName(name);
+			typed->SetResourceFilePath(filePathRelative);
 
 			// Load
 			if (!typed->LoadFromFile(filePathRelative))
@@ -78,6 +82,7 @@ namespace Directus
 				return std::weak_ptr<T>();
 			}
 
+			// Cache it and cast it
 			return Add<T>(typed);
 		}
 

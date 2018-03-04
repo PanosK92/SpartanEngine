@@ -59,7 +59,7 @@ namespace Directus
 		m_resultFMOD = m_systemFMOD->close();
 		if (m_resultFMOD != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_resultFMOD));
+			LogErrorFMOD(m_resultFMOD);
 			return;
 		}
 
@@ -67,7 +67,7 @@ namespace Directus
 		m_resultFMOD = m_systemFMOD->release();
 		if (m_resultFMOD != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_resultFMOD));
+			LogErrorFMOD(m_resultFMOD);
 		}
 	}
 
@@ -77,7 +77,7 @@ namespace Directus
 		m_resultFMOD = System_Create(&m_systemFMOD);
 		if (m_resultFMOD != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_resultFMOD));
+			LogErrorFMOD(m_resultFMOD);
 			return false;
 		}
 
@@ -86,13 +86,13 @@ namespace Directus
 		m_resultFMOD = m_systemFMOD->getVersion(&version);
 		if (m_resultFMOD != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_resultFMOD));
+			LogErrorFMOD(m_resultFMOD);
 			return false;
 		}
 
 		if (version < FMOD_VERSION)
 		{
-			LOG_ERROR("Lib version doesn't match header version.");
+			LogErrorFMOD(m_resultFMOD);
 			return false;
 		}
 
@@ -101,7 +101,7 @@ namespace Directus
 		m_resultFMOD = m_systemFMOD->getNumDrivers(&driverCount);
 		if (m_resultFMOD != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_resultFMOD));
+			LogErrorFMOD(m_resultFMOD);
 			return false;
 		}
 
@@ -109,7 +109,7 @@ namespace Directus
 		m_resultFMOD = m_systemFMOD->init(m_maxChannels, FMOD_INIT_NORMAL, nullptr);
 		if (m_resultFMOD != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_resultFMOD));
+			LogErrorFMOD(m_resultFMOD);
 			return false;
 		}
 
@@ -117,7 +117,7 @@ namespace Directus
 		m_resultFMOD = m_systemFMOD->set3DSettings(1.0, m_distanceFactor, 0.0f);
 		if (m_resultFMOD != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_resultFMOD));
+			LogErrorFMOD(m_resultFMOD);
 			return false;
 		}
 
@@ -143,7 +143,7 @@ namespace Directus
 		m_resultFMOD = m_systemFMOD->update();
 		if (m_resultFMOD != FMOD_OK)
 		{
-			LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_resultFMOD));
+			LogErrorFMOD(m_resultFMOD);
 			return false;
 		}
 
@@ -165,7 +165,7 @@ namespace Directus
 			);
 			if (m_resultFMOD != FMOD_OK)
 			{
-				LOG_ERROR(FMOD_ErrorString((FMOD_RESULT)m_resultFMOD));
+				LogErrorFMOD(m_resultFMOD);
 				return false;
 			}
 		}
@@ -174,19 +174,13 @@ namespace Directus
 		return true;
 	}
 
-	weak_ptr<AudioClip> Audio::CreateAudioClip()
-	{
-		if (!m_initialized)
-			return weak_ptr<AudioClip>();
-
-		auto audioClip = make_shared<AudioClip>(m_context);
-		m_audioHandles.push_back(audioClip);
-
-		return audioClip;
-	}
-
 	void Audio::SetListenerTransform(Transform* transform)
 	{
 		m_listener = transform;
+	}
+
+	void Audio::LogErrorFMOD(int error)
+	{
+		LOG_ERROR("Audio::FMOD: " + string(FMOD_ErrorString((FMOD_RESULT)error)));
 	}
 }

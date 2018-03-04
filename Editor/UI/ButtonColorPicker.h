@@ -31,7 +31,7 @@ public:
 	ButtonColorPicker(const std::string& windowTitle);
 	void Update();
 	void SetColor(const Directus::Math::Vector4& color) { m_color = color; }
-	const Directus::Math::Vector4& GetColor(){ return m_color; }
+	const Directus::Math::Vector4& GetColor() { return m_color; }
 
 private:
 	void ShowColorPicker();

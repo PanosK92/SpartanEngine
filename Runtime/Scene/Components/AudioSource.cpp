@@ -25,6 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Audio/Audio.h"
 #include "../../FileSystem/FileSystem.h"
 #include "../../IO/FileStream.h"
+#include "../../Math/MathHelper.h"
+#include "../../Audio/AudioClip.h"
+#include "../../Resource/ResourceManager.h"
 //======================================
 
 //= NAMESPACES ================
@@ -54,12 +57,9 @@ namespace Directus
 	
 	void AudioSource::OnInitialize()
 	{
-		// Get an audio handle (in case there isn't one yet)
 		if (m_audioClip.expired())
-		{
-			m_audioClip = GetContext()->GetSubsystem<Audio>()->CreateAudioClip();
-		}
-	
+			return;
+		
 		// Set the transform
 		m_audioClip.lock()->SetTransform(GetTransform());
 	}
@@ -116,10 +116,11 @@ namespace Directus
 		stream->Read(&m_pitch);
 		stream->Read(&m_pan);
 	
-		LoadAudioClip(m_filePath);
+		// ResourceManager will return cached audio clip if it's already loaded
+		m_audioClip = m_context->GetSubsystem<ResourceManager>()->Load<AudioClip>(m_filePath);
 	}
 
-	bool AudioSource::SetAudioClip(weak_ptr<AudioClip> audioClip, bool cacheIt)
+	bool AudioSource::SetAudioClip(weak_ptr<AudioClip> audioClip, bool autoCache)
 	{
 		if (audioClip.expired())
 		{
@@ -127,13 +128,13 @@ namespace Directus
 			return true;
 
 		}
-		m_audioClip = !cacheIt ? audioClip : audioClip.lock()->Cache<AudioClip>();
+		m_audioClip = !autoCache ? audioClip : audioClip.lock()->Cache<AudioClip>();
 		return true;
 	}
 
-	string AudioSource::GetAudioClipName()
+	const string& AudioSource::GetAudioClipName()
 	{
-		return FileSystem::GetFileNameFromFilePath(m_filePath);
+		return !m_audioClip.expired() ? m_audioClip.lock()->GetResourceName() : NOT_ASSIGNED;
 	}
 	
 	bool AudioSource::Play()
@@ -205,25 +206,5 @@ namespace Directus
 		// Pan level, from -1.0 (left) to 1.0 (right).
 		m_pan = Clamp(pan, -1.0f, 1.0f);
 		m_audioClip.lock()->SetPan(m_pan);
-	}
-
-	bool AudioSource::LoadAudioClip(const string& filePath)
-	{
-		m_filePath = filePath;
-	
-		// Make sure the filePath points to an actual playble audio file
-		if (!FileSystem::IsSupportedAudioFile(m_filePath))
-			return false;
-	
-		// If there is audio clip handle, create one
-		if (m_audioClip.expired())
-		{
-			m_audioClip = GetContext()->GetSubsystem<Audio>()->CreateAudioClip();
-		}
-	
-		// Load the audio (for now it's always in memory)
-		m_audioClipLoaded = m_audioClip.lock()->LoadFromFile(m_filePath);
-	
-		return m_audioClipLoaded;
 	}
 }

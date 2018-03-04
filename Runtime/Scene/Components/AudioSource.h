@@ -47,9 +47,9 @@ namespace Directus
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		//= PROPERTIES =======================================================
-		bool SetAudioClip(std::weak_ptr<AudioClip> audioClip, bool cacheIt = true);
-		std::string GetAudioClipName();
+		//= PROPERTIES ==============================================================
+		bool SetAudioClip(std::weak_ptr<AudioClip> audioClip, bool autoCache = true);
+		const std::string& GetAudioClipName();
 
 		bool Play();
 		bool Stop();
@@ -74,11 +74,9 @@ namespace Directus
 
 		float GetPan() { return m_pan; }
 		void SetPan(float pan);
-		//====================================================================
+		//===========================================================================
 
 	private:
-		bool LoadAudioClip(const std::string& filePath);
-
 		std::weak_ptr<AudioClip> m_audioClip;
 		std::string m_filePath;
 		bool m_mute;
