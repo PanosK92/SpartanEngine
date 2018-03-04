@@ -98,7 +98,6 @@ static unique_ptr<ButtonColorPicker> g_cameraButtonColorPicker;
 		{																\
 			texture.lock()->SetType(textureType);						\
 			material->SetTexture(texture);								\
-			material->SetMultiplier(textureType, 1.0f);					\
 		}																\
 	}																	\
 }																		\
@@ -255,8 +254,8 @@ void Properties::ShowLight(Light* light)
 	if (!light)
 		return;
 
-	//= REFLECT =========================================================
-	const char* types[]				= { "Directional", "Point", "Spot" };
+	//= REFLECT =================================================================
+	static const char* types[]				= { "Directional", "Point", "Spot" };
 	static int typeInt				= (int)light->GetLightType();
 	static const char* typeCharPtr	= types[typeInt];	
 	static float intensity			= light->GetIntensity();
@@ -267,7 +266,7 @@ void Properties::ShowLight(Light* light)
 	static char g_lightRange[BUFFER_TEXT_DEFAULT];
 	EditorHelper::SetCharArray(&g_lightRange[0], range);
 	g_lightButtonColorPicker->SetColor(light->GetColor());
-	//===================================================================
+	//===========================================================================
 	
 	COMPONENT_BEGIN("Light", Icon_Component_Light, light);
 	{
@@ -503,7 +502,7 @@ void Properties::ShowCollider(Collider* collider)
 		return;
 	
 	//= REFLECT ==========================================================
-	const char* g_colShapes[] = {
+	static const char* g_colShapes[] = {
 		"Box",
 		"Sphere",
 		"Static Plane",
@@ -640,7 +639,7 @@ void Properties::ShowMaterial(Material* material)
 	COMPONENT_BEGIN_NO_OPTIONS("Material", Icon_Component_Material);
 	{
 		static float posX = 100.0f;
-		static const ImVec2 g_materialTexSize = ImVec2(80, 80);
+		static const ImVec2 materialTextSize = ImVec2(80, 80);
 
 		auto texAlbedo		= material->GetTextureByType(TextureType_Albedo).lock();
 		auto texRoughness	= material->GetTextureByType(TextureType_Roughness).lock();
@@ -654,7 +653,7 @@ void Properties::ShowMaterial(Material* material)
 		ImGui::Text("Name");
 		ImGui::SameLine(posX); ImGui::Text(material->GetResourceName().c_str());
 
-			// Name
+		// Shader
 		ImGui::Text("Shader");
 		ImGui::SameLine(posX); ImGui::Text(!material->GetShader().expired() ? material->GetShader().lock()->GetResourceName().c_str() : NOT_ASSIGNED);
 
@@ -662,7 +661,7 @@ void Properties::ShowMaterial(Material* material)
 		ImGui::Text(texName);							\
 		ImGui::SameLine(posX); ImGui::Image(			\
 			tex ? tex->GetShaderResource() : nullptr,	\
-			g_materialTexSize,							\
+			materialTextSize,							\
 			ImVec2(0, 0),								\
 			ImVec2(1, 1),								\
 			ImColor(255, 255, 255, 255),				\
@@ -677,19 +676,23 @@ void Properties::ShowMaterial(Material* material)
 			ImGui::SameLine(); g_materialButtonColorPicker->Update();
 
 			// Roughness
-			MAT_TEX(texRoughness, "Roughness", TextureType_Roughness); 
+			MAT_TEX(texRoughness, "Roughness", TextureType_Roughness);
+			roughness = material->GetRoughnessMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matRoughness", &roughness, 0.0f, 1.0f);
 
 			// Metallic
 			MAT_TEX(texMetallic, "Metallic", TextureType_Metallic); 
+			metallic = material->GetMetallicMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matMetallic", &metallic, 0.0f, 1.0f);
 
 			// Normal
 			MAT_TEX(texNormal, "Normal", TextureType_Normal);
+			normal = material->GetNormalMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matNormal", &normal, 0.0f, 1.0f);
 
 			// Height
 			MAT_TEX(texHeight, "Height", TextureType_Height); 
+			height = material->GetHeightMultiplier();
 			ImGui::SameLine(); ImGui::SliderFloat("##matHeight", &height, 0.0f, 1.0f);
 
 			// Occlusion
@@ -733,7 +736,7 @@ void Properties::ShowCamera(Camera* camera)
 		return;
 
 	//= REFLECT ===============================================================
-	const char* projectionTypes[]			= { "Pespective", "Orthographic" };
+	static const char* projectionTypes[]	= { "Pespective", "Orthographic" };
 	static int projectionInt				= (int)camera->GetProjection();
 	static const char* projectionCharPtr	= projectionTypes[projectionInt];
 	static float fov						= camera->GetFOV_Horizontal_Deg();
