@@ -60,6 +60,7 @@ namespace Directus
 		//= IResource ==========================================================
 		bool LoadFromFile(const std::string& filePath) override;
 		bool SaveToFile(const std::string& filePath) override { return true; }
+		unsigned int GetMemory() override;
 		//======================================================================
 
 		bool Play();

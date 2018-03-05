@@ -40,6 +40,7 @@ static string g_fileDialogSelection_Load;
 AssetViewer::AssetViewer()
 {
 	m_title = "Assets";
+	m_windowFlags |= ImGuiWindowFlags_NoScrollbar;
 }
 
 void AssetViewer::Initialize(Context* context)
@@ -55,6 +56,8 @@ void AssetViewer::Update()
 	{
 		g_showFileDialogLoad = true;
 	}
+
+	ImGui::SameLine();
 	
 	// VIEW
 	if (m_fileDialogView->Show(&g_showFileDialogView, &g_fileDialogSelection_View))

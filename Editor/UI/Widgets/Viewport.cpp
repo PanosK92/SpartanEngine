@@ -134,10 +134,9 @@ void Viewport::ShowFrame()
 		ImColor(50, 127, 166, 255)
 	);
 	// Hande model drop
-	auto drop = DragDrop::Get().GetPayload(g_dragDrop_Type_Model);
-	if (drop.type == g_dragDrop_Type_Model)
+	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Model))
 	{
-		auto modelPath = (const char*)drop.data;
+		auto modelPath = (const char*)payload->data;
 		EditorHelper::Get().LoadModel(modelPath);
 	}
 

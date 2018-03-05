@@ -461,8 +461,8 @@ namespace Directus
 		camera->SetName("Camera");
 		camera->AddComponent<Camera>();
 		camera->AddComponent<AudioListener>();
-		camera->AddComponent<Script>().lock()->AddScript(scriptDirectory + "MouseLook.as");
-		camera->AddComponent<Script>().lock()->AddScript(scriptDirectory + "FirstPersonController.as");
+		camera->AddComponent<Script>().lock()->SetScript(scriptDirectory + "MouseLook.as");
+		camera->AddComponent<Script>().lock()->SetScript(scriptDirectory + "FirstPersonController.as");
 		camera->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
 
 		return camera;

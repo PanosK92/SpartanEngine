@@ -26,20 +26,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "EditorHelper.h"
 //=========================
 
+enum DragPayloadType
+{
+	DragPayload_Unknown,
+	DragPayload_Texture,
+	DragPayload_GameObject,
+	DragPayload_Model,
+	DragPayload_Audio,
+	DragPayload_Script
+};
+
 struct DragDropPayload
 {
-	DragDropPayload(const char* data = nullptr, const char* type = nullptr)
+	DragDropPayload(DragPayloadType type = DragPayload_Unknown, const char* data = nullptr)
 	{
 		this->type	= type;
 		this->data	= data;
 	}
-	const char* type;
+	DragPayloadType type;
 	const char* data;
 };
-static const char* g_dragDrop_Type_Texture		= "0";
-static const char* g_dragDrop_Type_GameObject	= "1";
-static const char* g_dragDrop_Type_Model		= "2";
-static const char* g_dragDrop_Type_Audio		= "3";
+
 static bool g_isDragging = false;
 
 class DragDrop
@@ -55,7 +62,7 @@ public:
 	bool DragBegin() { return ImGui::BeginDragDropSource(); }
 	void DragPayload(const DragDropPayload& payload, void* thumbnailShaderResource = nullptr)
 	{
-		ImGui::SetDragDropPayload(payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
+		ImGui::SetDragDropPayload((const char*)&payload.type, (void*)&payload, sizeof(payload), ImGuiCond_Once);
 		if (thumbnailShaderResource)
 		{
 			THUMBNAIL_IMAGE_BY_SHADER_RESOURCE(thumbnailShaderResource, 50);
@@ -67,19 +74,17 @@ public:
 	}
 	void DragEnd() { ImGui::EndDragDropSource(); }
 
-	DragDropPayload GetPayload(const char* type)
+	DragDropPayload* GetPayload(DragPayloadType type)
 	{
-		DragDropPayload payload;
-
 		if (ImGui::BeginDragDropTarget())
 		{
-			if (const ImGuiPayload* imguiPayload = ImGui::AcceptDragDropPayload(type))
+			if (const ImGuiPayload* imguiPayload = ImGui::AcceptDragDropPayload((const char*)&type))
 			{
-				payload = *(DragDropPayload*)imguiPayload->Data;
+				return (DragDropPayload*)imguiPayload->Data;
 			}
 			ImGui::EndDragDropTarget();
 		}
 
-		return payload;
+		return nullptr;
 	}
 };
