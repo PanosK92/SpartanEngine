@@ -90,10 +90,9 @@ static unique_ptr<ButtonColorPicker> g_cameraButtonColorPicker;
 
 #define DROP_TARGET_TEXTURE(textureType)								\
 {																		\
-	auto payload = DragDrop::Get().GetPayload(g_dragDrop_Type_Texture); \
-	if (payload.data)													\
+	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Texture))	\
 	{																	\
-		auto texture = g_resourceManager->Load<Texture>(payload.data);	\
+		auto texture = g_resourceManager->Load<Texture>(payload->data);	\
 		if (!texture.expired())											\
 		{																\
 			texture.lock()->SetType(textureType);						\
@@ -122,6 +121,7 @@ void Properties::Update()
 	if (m_gameObject.expired())
 		return;
 	
+	HandleDropPayloads();
 	auto gameObjectPtr = m_gameObject.lock().get();
 
 	auto transform		= gameObjectPtr->GetTransform();
@@ -828,11 +828,10 @@ void Properties::ShowAudioSource(AudioSource* audioSource)
 		ImGui::SameLine(posX); ImGui::PushItemWidth(250.0f);
 		ImGui::InputText("##audioSourceAudioClip", audioClipCharArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
 		ImGui::PopItemWidth();
-		auto payload = DragDrop::Get().GetPayload(g_dragDrop_Type_Audio); 
-		if (payload.data)													
+		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Audio))													
 		{		
-			EditorHelper::SetCharArray(&audioClipCharArray[0], FileSystem::GetFileNameFromFilePath(payload.data));
-			auto audioClip = g_resourceManager->Load<AudioClip>(payload.data);	
+			EditorHelper::SetCharArray(&audioClipCharArray[0], FileSystem::GetFileNameFromFilePath(payload->data));
+			auto audioClip = g_resourceManager->Load<AudioClip>(payload->data);	
 			audioSource->SetAudioClip(audioClip, false);											
 		}																	
 
@@ -1000,5 +999,17 @@ void Properties::ComponentContextMenu_Add()
 		}
 
 		ImGui::EndPopup();
+	}
+}
+
+void Properties::HandleDropPayloads()
+{
+	auto gameObjectPtr = m_gameObject.lock().get();
+	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
+	{
+		if (auto scriptComponent = gameObjectPtr->AddComponent<Script>().lock())
+		{
+			scriptComponent->SetScript(payload->data);
+		}
 	}
 }

@@ -126,7 +126,8 @@ void FileDialog::Dialog_Top(bool* isVisible)
 	}
 	ImGui::SameLine();
 	ImGui::Text(m_currentPath.c_str());
-	ImGui::PushItemWidth(ImGui::GetWindowSize().x * 0.25f);
+	ImGui::SameLine(ImGui::GetWindowContentRegionWidth() * 0.8f);
+	ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth() * 0.207f);
 	ImGui::SliderFloat("##FileDialogSlider", &m_itemSize, FileDialogStatics::g_itemSizeMin, FileDialogStatics::g_itemSizeMax);
 	ImGui::PopItemWidth();
 }
@@ -136,7 +137,7 @@ void FileDialog::Dialog_Middle()
 	// CONTENT WINDOW START
 	ImGuiWindow* window = ImGui::GetCurrentWindowRead();
 	float contentWidth  = window->ContentsRegionRect.Max.x - window->ContentsRegionRect.Min.x;
-	float contentHeight = window->ContentsRegionRect.Max.y - window->ContentsRegionRect.Min.y - 80;
+	float contentHeight = window->ContentsRegionRect.Max.y - window->ContentsRegionRect.Min.y - (m_style != FileDialog_Basic ? 55.0f : 25.0f);
 	ImGui::BeginChild("##ContentRegion", ImVec2(contentWidth, contentHeight), true);
 
 	FileDialogStatics::g_isMouseHoveringWindow = ImGui::IsMouseHoveringWindow() ? true : FileDialogStatics::g_isMouseHoveringWindow;
@@ -307,19 +308,25 @@ void FileDialog::HandleDrag(const map<basic_string<char>, Thumbnail>::value_type
 		{
 			if (FileSystem::IsSupportedModelFile(entry.first))
 			{
-				FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Model;
+				FileDialogStatics::g_dragDropPayload.type = DragPayload_Model;
 				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
 				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
 			}
 			else if (FileSystem::IsSupportedImageFile(entry.first) || FileSystem::IsEngineTextureFile(entry.first))
 			{
-				FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Texture;
+				FileDialogStatics::g_dragDropPayload.type = DragPayload_Texture;
 				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
 				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
 			}
 			else if (FileSystem::IsSupportedAudioFile(entry.first))
 			{
-				FileDialogStatics::g_dragDropPayload.type = g_dragDrop_Type_Audio;
+				FileDialogStatics::g_dragDropPayload.type = DragPayload_Audio;
+				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
+				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
+			}
+			else if (FileSystem::IsEngineScriptFile(entry.first))
+			{
+				FileDialogStatics::g_dragDropPayload.type = DragPayload_Script;
 				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
 				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
 			}

@@ -97,10 +97,9 @@ void Hierarchy::Tree_Show()
 	if (ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		// Dropping on the scene node should unparent the GameObject
-		auto drop = DragDrop::Get().GetPayload(g_dragDrop_Type_GameObject);
-		if (drop.type == g_dragDrop_Type_GameObject)
+		if (auto payload = DragDrop::Get().GetPayload(DragPayload_GameObject))
 		{
-			auto gameObjectID = (unsigned int)drop.data;
+			auto gameObjectID = (unsigned int)payload->data;
 			if (auto droppedGameObj = HierarchyStatics::g_scene->GetGameObjectByID(gameObjectID).lock())
 			{
 				droppedGameObj->GetTransform()->SetParent(nullptr);
@@ -217,15 +216,14 @@ void Hierarchy::HandleDragDrop(GameObject* gameObjPtr)
 	if (DragDrop::Get().DragBegin())
 	{
 		HierarchyStatics::g_payload.data = (char*)gameObjPtr->GetID();
-		HierarchyStatics::g_payload.type = g_dragDrop_Type_GameObject;
+		HierarchyStatics::g_payload.type = DragPayload_GameObject;
 		DragDrop::Get().DragPayload(HierarchyStatics::g_payload);
 		DragDrop::Get().DragEnd();
 	}
 	// Drop
-	auto drop = DragDrop::Get().GetPayload(g_dragDrop_Type_GameObject);
-	if (drop.type == g_dragDrop_Type_GameObject)
+	if (auto payload = DragDrop::Get().GetPayload(DragPayload_GameObject))
 	{
-		auto gameObjectID = (unsigned int)drop.data;
+		auto gameObjectID = (unsigned int)payload->data;
 		if (auto droppedGameObj = HierarchyStatics::g_scene->GetGameObjectByID(gameObjectID).lock())
 		{
 			if (droppedGameObj->GetID() != gameObjPtr->GetID())

@@ -77,12 +77,12 @@ namespace Directus
 
 		if (scriptPath != NOT_ASSIGNED)
 		{
-			AddScript(scriptPath);
+			SetScript(scriptPath);
 		}
 	}
 	//====================================================================================
 
-	bool Script::AddScript(const string& filePath)
+	bool Script::SetScript(const string& filePath)
 	{
 		// Instantiate the script
 		m_scriptInstance = make_shared<ScriptInstance>();

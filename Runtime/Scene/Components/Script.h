@@ -41,7 +41,7 @@ namespace Directus
 		void Deserialize(FileStream* stream) override;
 		//============================================
 
-		bool AddScript(const std::string& filePath);
+		bool SetScript(const std::string& filePath);
 		std::string GetScriptPath();
 		std::string GetName();
 
