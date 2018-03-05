@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)
+
 # About Directus3D
 Directus3D is a game engine that started as a hobby project and evolved into something greater.
 The source code is clean, modern and tackles a lot of aspects of engine development. Have fun!
