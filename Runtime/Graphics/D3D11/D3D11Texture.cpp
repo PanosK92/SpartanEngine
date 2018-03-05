@@ -68,7 +68,7 @@ namespace Directus
 		subresource.SysMemSlicePitch = (width * height * channels) * sizeof(std::byte);
 
 		// Compute memory usage
-		m_memoryUsage = sizeof(std::byte) * data.size();
+		m_memoryUsage = (unsigned int)(sizeof(std::byte) * data.size());
 
 		// ID3D11Texture2D
 		D3D11_TEXTURE2D_DESC textureDesc;
@@ -151,7 +151,7 @@ namespace Directus
 			height = max(height / 2, 1);
 
 			// Compute memory usage
-			m_memoryUsage += sizeof(std::byte) * mipmaps[i].size();
+			m_memoryUsage += (unsigned int)(sizeof(std::byte) * mipmaps[i].size());
 		}
 		ID3D11Texture2D* texture = nullptr;
 		HRESULT result = m_graphics->GetDevice()->CreateTexture2D(textureDescs.data(), subresourceData.data(), &texture);
@@ -232,7 +232,7 @@ namespace Directus
 		subresource.SysMemSlicePitch = (width * height * channels) * sizeof(std::byte);
 
 		// Compute memory usage
-		m_memoryUsage = sizeof(std::byte) * data.size();
+		m_memoryUsage = (unsigned int)(sizeof(std::byte) * data.size());
 
 		// Copy data from memory to the subresource created in non-mappable memory
 		m_graphics->GetDeviceContext()->UpdateSubresource(texture, 0, nullptr, subresource.pSysMem, subresource.SysMemPitch, 0);

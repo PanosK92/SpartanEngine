@@ -238,14 +238,14 @@ void MenuBar::ShowResourceCache()
 		ImGui::Text(resource->GetResourceFilePath().c_str());			ImGui::NextColumn();
 
 		// Memory
-		unsigned int memory = resource->GetMemory() / 1000.0f; // default in Kb
+		unsigned int memory = (unsigned int)(resource->GetMemory() / 1000.0f); // default in Kb
 		if (memory <= 1024)
 		{
 			ImGui::Text((to_string(memory) + string(" Kb")).c_str());	ImGui::NextColumn();
 		}
 		else
 		{
-			memory = memory / 1000.0f; // turn into Mb
+			memory = (unsigned int)(memory / 1000.0f); // turn into Mb
 			ImGui::Text((to_string(memory) + string(" Mb")).c_str());	ImGui::NextColumn();
 		}		
 	}
