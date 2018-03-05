@@ -163,9 +163,10 @@ namespace Directus
 	
 	void AudioSource::SetMute(bool mute)
 	{
-		if (m_audioClip.expired())
+		if (m_mute == mute || m_audioClip.expired())
 			return;
 	
+		m_mute = mute;
 		m_audioClip.lock()->SetMute(mute);
 	}
 	

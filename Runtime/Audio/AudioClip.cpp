@@ -308,7 +308,7 @@ namespace Directus
 		if (m_result != FMOD_OK)
 		{
 			m_channelFMOD = nullptr;
-			//LogErrorFMOD(m_result); // spams a lot	
+			LogErrorFMOD(m_result); // spams a lot	
 			return false;
 		}
 

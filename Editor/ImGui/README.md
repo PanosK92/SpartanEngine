@@ -107,7 +107,7 @@ Integrating Dear ImGui within your custom engine is a matter of 1) wiring mouse/
 
 _NB: those third-party bindings may be more or less maintained, more or less close to the original API (as people who create language bindings sometimes haven't used the C++ API themselves.. for the good reason that they aren't C++ users). Dear ImGui was designed with C++ in mind and some of the subtleties may be lost in translation with other languages. If your language supports it, I would suggest replicating the function overloading and default parameters used in the original, else the API may be harder to use. In doubt, please check the original C++ version first!_
 
-Languages: (third-party bindinds)
+Languages: (third-party bindings)
 - C: [cimgui](https://github.com/Extrawurst/cimgui)
 - C#/.Net: [ImGui.NET](https://github.com/mellinoe/ImGui.NET)
 - ChaiScript: [imgui-chaiscript](https://github.com/JuJuBoSc/imgui-chaiscript)
@@ -248,7 +248,7 @@ See the FAQ in imgui.cpp for answers.
 
 <b>How do you use Dear ImGui on a platform that may not have a mouse or keyboard?</b>
 
-You can control Dear ImGui with a gamepad, see the explanation in imgui.cpp about how to use the navigation feature (short version: map your gamepad inputs into the `io.NavInputs[]` array and set `io.NavFlags |= ImGuiNavFlags_EnableGamepad`).
+You can control Dear ImGui with a gamepad, see the explanation in imgui.cpp about how to use the navigation feature (short version: map your gamepad inputs into the `io.NavInputs[]` array and set `io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad`).
 
 You can share your computer mouse seamlessy with your console/tablet/phone using [Synergy](http://synergy-project.org). This is the prefered solution for developer productivity. In particular, their [micro-synergy-client](https://github.com/symless/micro-synergy-client) repo there is _uSynergy.c_ sources for a small embeddable that you can use on any platform to connect to your host PC. You may also use a third party solution such as [Remote  ImGui](https://github.com/JordiRos/remoteimgui).
 
