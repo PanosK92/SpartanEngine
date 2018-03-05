@@ -120,8 +120,7 @@ void Properties::Update()
 {
 	if (m_gameObject.expired())
 		return;
-	
-	HandleDropPayloads();
+
 	auto gameObjectPtr = m_gameObject.lock().get();
 
 	auto transform		= gameObjectPtr->GetTransform();
@@ -135,7 +134,7 @@ void Properties::Update()
 	auto rigidBody		= gameObjectPtr->GetComponent<RigidBody>().lock().get();
 	auto collider		= gameObjectPtr->GetComponent<Collider>().lock().get();
 	auto constraint		= gameObjectPtr->GetComponent<Constraint>().lock().get();
-	auto script			= gameObjectPtr->GetComponent<Script>().lock().get();
+	auto scripts		= gameObjectPtr->GetComponents<Script>();
 
 	ImGui::PushItemWidth(g_maxWidth);
 
@@ -150,7 +149,10 @@ void Properties::Update()
 	ShowRigidBody(rigidBody);
 	ShowCollider(collider);
 	ShowConstraint(constraint);
-	ShowScript(script);
+	for (const auto& script : scripts)
+	{
+		ShowScript(script.lock().get());
+	}
 
 	ShowAddComponentButton();
 
@@ -893,13 +895,29 @@ void Properties::ShowScript(Script* script)
 	if (!script)
 		return;
 
-	COMPONENT_BEGIN("Script", Icon_Component_Script, script)
+	//= REFLECT =======================================================
+	static char scriptNameArray[BUFFER_TEXT_DEFAULT] = "N/A";
+	EditorHelper::SetCharArray(&scriptNameArray[0], script->GetName());
+	//=================================================================
+
+	COMPONENT_BEGIN(script->GetName().c_str(), Icon_Component_Script, script)
 	{
-		// Name
-		ImGui::Text("Name");
-		ImGui::SameLine(105); ImGui::Text(script->GetName().c_str());
+		ImGui::Text("Script");
+		ImGui::SameLine(); 
+		ImGui::PushID("##ScriptNameTemp");
+		ImGui::InputText("", scriptNameArray, BUFFER_TEXT_DEFAULT, ImGuiInputTextFlags_ReadOnly);
+		ImGui::PopID();
 	}
 	COMPONENT_END;
+
+	/*if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
+	{
+		auto gameObjectPtr = m_gameObject.lock().get();
+		if (auto scriptComponent = gameObjectPtr->AddComponent<Script>().lock())
+		{
+			scriptComponent->SetScript(payload->data);
+		}
+	}*/
 }
 
 void Properties::ComponentContextMenu_Options(const char* id, IComponent* component)
@@ -999,17 +1017,5 @@ void Properties::ComponentContextMenu_Add()
 		}
 
 		ImGui::EndPopup();
-	}
-}
-
-void Properties::HandleDropPayloads()
-{
-	auto gameObjectPtr = m_gameObject.lock().get();
-	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Script))
-	{
-		if (auto scriptComponent = gameObjectPtr->AddComponent<Script>().lock())
-		{
-			scriptComponent->SetScript(payload->data);
-		}
 	}
 }

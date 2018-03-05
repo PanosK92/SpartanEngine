@@ -70,7 +70,5 @@ private:
 	void ShowAddComponentButton();
 	void ComponentContextMenu_Add();
 
-	void HandleDropPayloads();
-
 	static std::weak_ptr<Directus::GameObject> m_gameObject;
 };
