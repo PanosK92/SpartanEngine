@@ -172,7 +172,7 @@ namespace Directus
 		size += sizeof(float) * 5;
 		size += sizeof(Vector2) * 2;
 		size += sizeof(Vector4);
-		size += sizeof(std::map<TextureType, TexInfo>) + (sizeof(TextureType) + sizeof(TexInfo)) * m_textures.size();
+		size += (unsigned int)(sizeof(std::map<TextureType, TexInfo>) + (sizeof(TextureType) + sizeof(TexInfo)) * m_textures.size());
 
 		return size;
 	}

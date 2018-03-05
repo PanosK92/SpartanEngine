@@ -177,7 +177,7 @@ namespace Directus
 	{
 		float stackHeight	= height / stacks;
 		float radiusStep	= (radiusTop - radiusBottom) / stacks;
-		float ringCount		= stacks + 1;
+		float ringCount		= (float)(stacks + 1);
 
 		for (int i = 0; i < ringCount; i++) 
 		{
