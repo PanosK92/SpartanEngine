@@ -55,10 +55,8 @@ Font importing and rendering    | 100% | Ability to load any font file
 - UI components.
 
 ### Download
-Note: Binaries for v0.2 are old and don't reflect the current state of the engine. 
-Until v0.3 comes out, it's advised that you compile from source.
-- [Binaries](https://onedrive.live.com/download?cid=96760D43099D7718&resid=96760D43099D7718%21130409&authkey=AEEN_tM_7MOzWzc) - Binaries for v0.2 64-bit (65.8 MB).
-- [Compiling](https://github.com/PanosK92/Directus3D/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - A guide on how to compile the engine.
+- [Binaries](https://ci.appveyor.com/api/projects/PanosK92/directus3d/artifacts/Binaries/Release.zip?branch=master) - Binaries from last successful build
+- [Compiling](https://github.com/PanosK92/Directus3D/blob/master/Documentation/CompilingFromSource/CompilingFromSource.md) - A guide on how to compile from source
 
 ### Dependencies
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109).
