@@ -70,9 +70,9 @@ namespace Directus
 		m_nearPlane			= 0.0f;
 		m_farPlane			= 0.0f;
 		m_graphics			= nullptr;
-		m_flags		= 0;
-		m_flags		|= Render_SceneGrid;
-		m_flags		|= Render_Light;
+		m_flags				= 0;
+		m_flags				|= Render_SceneGrid;
+		m_flags				|= Render_Light;
 
 		// Subscribe to events
 		SUBSCRIBE_TO_EVENT(EVENT_RENDER, EVENT_HANDLER(Render));
