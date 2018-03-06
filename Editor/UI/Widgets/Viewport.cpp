@@ -136,8 +136,7 @@ void Viewport::ShowFrame()
 	// Hande model drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Model))
 	{
-		auto modelPath = (const char*)payload->data;
-		EditorHelper::Get().LoadModel(modelPath);
+		EditorHelper::Get().LoadModel(get<string>(payload->data));
 	}
 
 	MousePicking();

@@ -88,18 +88,17 @@ static unique_ptr<ButtonColorPicker> g_cameraButtonColorPicker;
 	}									\
 	ImGui::Separator()					\
 
-#define DROP_TARGET_TEXTURE(textureType)								\
-{																		\
-	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Texture))	\
-	{																	\
-		auto texture = g_resourceManager->Load<Texture>(payload->data);	\
-		if (!texture.expired())											\
-		{																\
-			texture.lock()->SetType(textureType);						\
-			material->SetTexture(texture);								\
-		}																\
-	}																	\
-}																		\
+#define DROP_TARGET_TEXTURE(textureType)																	\
+{																											\
+	if (auto payload = DragDrop::Get().GetPayload(DragPayload_Texture))										\
+	{																										\
+		if (auto texture = g_resourceManager->Load<Texture>(std::get<std::string>(payload->data)).lock())	\
+		{																									\
+			texture->SetType(textureType);																	\
+			material->SetTexture(texture);																	\
+		}																									\
+	}																										\
+}																											\
 //=======================================================================
 
 Properties::Properties()
@@ -657,7 +656,7 @@ void Properties::ShowMaterial(Material* material)
 
 		// Shader
 		ImGui::Text("Shader");
-		ImGui::SameLine(posX); ImGui::Text(!material->GetShader().expired() ? material->GetShader().lock()->GetResourceName().c_str() : NOT_ASSIGNED);
+		ImGui::SameLine(posX); ImGui::Text(!material->GetShader().expired() ? material->GetShader().lock()->GetResourceName().c_str() : NOT_ASSIGNED.c_str());
 
 #define MAT_TEX(tex, texName, texEnum)					\
 		ImGui::Text(texName);							\
@@ -832,8 +831,8 @@ void Properties::ShowAudioSource(AudioSource* audioSource)
 		ImGui::PopItemWidth();
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_Audio))													
 		{		
-			EditorHelper::SetCharArray(&audioClipCharArray[0], FileSystem::GetFileNameFromFilePath(payload->data));
-			auto audioClip = g_resourceManager->Load<AudioClip>(payload->data);	
+			EditorHelper::SetCharArray(&audioClipCharArray[0], FileSystem::GetFileNameFromFilePath(get<string>(payload->data)));
+			auto audioClip = g_resourceManager->Load<AudioClip>(get<string>(payload->data));	
 			audioSource->SetAudioClip(audioClip, false);											
 		}																	
 

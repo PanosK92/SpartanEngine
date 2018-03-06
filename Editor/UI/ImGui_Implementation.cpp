@@ -41,7 +41,7 @@ using namespace Directus;
 //=======================
 
 // Data
-static Uint64					g_Time = 0.0f;
+static Uint64					g_Time = 0;
 static bool						g_MousePressed[3] = { false, false, false };
 static ID3D11Device*            g_pd3dDevice = nullptr;
 static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
