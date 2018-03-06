@@ -18,13 +18,6 @@ At this point we have taken care of all the environment dependencies and we are 
 ![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/GenerateVS2.png)
 3. Next, we switch the solution configuration to **"Release"** and build the entire solution. This will generate **"Editor.exe"** and **"Runtime.dll"** at **"Directus3D\Binaries\Release"**.
 
-##### Providing the required DLLs
-Most of the dependencies are statically linked into Runtime.dll. However FMOD is dynamically linked, hence we have to provide
-it's DLL. The correct way of doing that is to simply copy the DLL from it's respective installation folder on your machine.
-However, I have packed the required DLL in this [fmod64.7z](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/fmod64.7z) file.
-
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Documentation/CompilingFromSource/DLLs.png)
-
 ### Notes
 - We built everything in "Release" configuration as all of the statically linked dependencies have been pre-compiled in "Release" mode and are located at **"Directus3D\ThirdParty\mvsc141_x64\"**. The pre-compiled "Debug" version libraries are compressed in debug.7z in the same folder.
 - Ideally, the projects of the dependencies could be part of the **"Directus"** solution but for the time being any dependencies have to be built by the user.
