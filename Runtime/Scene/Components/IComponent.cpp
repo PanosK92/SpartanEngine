@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ===========================
 #include "IComponent.h"
 #include "Skybox.h"
 #include "Script.h"
@@ -37,7 +37,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../GameObject.h"
 #include "../../Core/Context.h"
 #include "../../Core/GUIDGenerator.h"
-//===================================
+#include "../../FileSystem/FileSystem.h"
+//======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -65,7 +66,7 @@ namespace Directus
 	const string& IComponent::GetGameObjectName()
 	{
 		if (!m_gameObject)
-			return "";
+			return NOT_ASSIGNED;
 
 		return m_gameObject->GetName();
 	}

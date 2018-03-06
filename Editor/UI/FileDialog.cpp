@@ -297,7 +297,7 @@ bool FileDialog::NavigateToDirectory(const string& pathClicked)
 
 void FileDialog::AddThumbnail(const std::string& filePath, Thumbnail_Type type)
 {
-	m_directoryEntries[filePath] = ThumbnailProvider::Get().Thumbnail_Load(filePath, type, m_itemSize);
+	m_directoryEntries[filePath] = ThumbnailProvider::Get().Thumbnail_Load(filePath, type, (int)m_itemSize);
 }
 
 void FileDialog::HandleDrag(const map<basic_string<char>, Thumbnail>::value_type& entry)
@@ -309,25 +309,25 @@ void FileDialog::HandleDrag(const map<basic_string<char>, Thumbnail>::value_type
 			if (FileSystem::IsSupportedModelFile(entry.first))
 			{
 				FileDialogStatics::g_dragDropPayload.type = DragPayload_Model;
-				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
+				FileDialogStatics::g_dragDropPayload.data = entry.first;
 				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
 			}
 			else if (FileSystem::IsSupportedImageFile(entry.first) || FileSystem::IsEngineTextureFile(entry.first))
 			{
 				FileDialogStatics::g_dragDropPayload.type = DragPayload_Texture;
-				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
+				FileDialogStatics::g_dragDropPayload.data = entry.first;
 				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
 			}
 			else if (FileSystem::IsSupportedAudioFile(entry.first))
 			{
 				FileDialogStatics::g_dragDropPayload.type = DragPayload_Audio;
-				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
+				FileDialogStatics::g_dragDropPayload.data = entry.first;
 				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
 			}
 			else if (FileSystem::IsEngineScriptFile(entry.first))
 			{
 				FileDialogStatics::g_dragDropPayload.type = DragPayload_Script;
-				FileDialogStatics::g_dragDropPayload.data = entry.first.c_str();
+				FileDialogStatics::g_dragDropPayload.data = entry.first;
 				DragDrop::Get().DragPayload(FileDialogStatics::g_dragDropPayload, entry.second.texture->GetShaderResource());
 			}
 			DragDrop::Get().DragEnd();

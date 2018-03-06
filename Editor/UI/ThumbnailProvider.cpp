@@ -32,6 +32,8 @@ using namespace std;
 using namespace Directus;
 //=======================
 
+static Thumbnail g_noThumbnail;
+
 ThumbnailProvider::ThumbnailProvider()
 {
 	m_context = nullptr;
@@ -187,5 +189,5 @@ const Thumbnail& ThumbnailProvider::GetThumbnailByType(Thumbnail_Type type)
 			return thumbnail;
 	}
 
-	return Thumbnail();
+	return g_noThumbnail;
 }

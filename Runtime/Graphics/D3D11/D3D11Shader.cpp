@@ -48,13 +48,13 @@ namespace Directus
 
 	D3D11Shader::D3D11Shader(D3D11GraphicsDevice* graphicsDevice) : m_graphics(graphicsDevice)
 	{
-		m_vertexShader = nullptr;
-		m_pixelShader = nullptr;
-		m_VSBlob = nullptr;
-		m_compiled = false;
-		m_entrypoint = NOT_ASSIGNED;
-		m_profile = NOT_ASSIGNED;
-		m_layoutHasBeenSet = false;
+		m_vertexShader		= nullptr;
+		m_pixelShader		= nullptr;
+		m_VSBlob			= nullptr;
+		m_compiled			= false;
+		m_entrypoint		= NOT_ASSIGNED.c_str();
+		m_profile			= NOT_ASSIGNED.c_str();
+		m_layoutHasBeenSet	= false;
 
 		// Create input layout
 		m_D3D11InputLayout = make_shared<D3D11InputLayout>(m_graphics);

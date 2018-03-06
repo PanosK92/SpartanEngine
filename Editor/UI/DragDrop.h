@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "../ImGui/imgui.h"
 #include "EditorHelper.h"
+#include <variant>
 //=========================
 
 enum DragPayloadType
@@ -38,13 +39,14 @@ enum DragPayloadType
 
 struct DragDropPayload
 {
-	DragDropPayload(DragPayloadType type = DragPayload_Unknown, const char* data = nullptr)
+	typedef std::variant<const char*, std::string, unsigned int> payloadVariant;
+	DragDropPayload(DragPayloadType type = DragPayload_Unknown, payloadVariant data = nullptr)
 	{
 		this->type	= type;
 		this->data	= data;
 	}
 	DragPayloadType type;
-	const char* data;
+	payloadVariant data;
 };
 
 static bool g_isDragging = false;

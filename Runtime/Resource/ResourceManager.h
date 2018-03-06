@@ -184,7 +184,7 @@ namespace Directus
 		void AddStandardResourceDirectory(ResourceType type, const std::string& directory);
 		const std::string& GetStandardResourceDirectory(ResourceType type);
 		void SetProjectDirectory(const std::string& directory);
-		const std::string& GetProjectDirectoryAbsolute();
+		std::string GetProjectDirectoryAbsolute();
 		const std::string& GetProjectDirectory() { return m_projectDirectory; }	
 		std::string GetProjectStandardAssetsDirectory() { return m_projectDirectory + "Standard_Assets//"; }
 

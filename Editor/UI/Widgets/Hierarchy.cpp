@@ -99,7 +99,7 @@ void Hierarchy::Tree_Show()
 		// Dropping on the scene node should unparent the GameObject
 		if (auto payload = DragDrop::Get().GetPayload(DragPayload_GameObject))
 		{
-			auto gameObjectID = (unsigned int)payload->data;
+			auto gameObjectID = get<unsigned int>(payload->data);
 			if (auto droppedGameObj = HierarchyStatics::g_scene->GetGameObjectByID(gameObjectID).lock())
 			{
 				droppedGameObj->GetTransform()->SetParent(nullptr);
@@ -215,7 +215,7 @@ void Hierarchy::HandleDragDrop(GameObject* gameObjPtr)
 	// Drag
 	if (DragDrop::Get().DragBegin())
 	{
-		HierarchyStatics::g_payload.data = (char*)gameObjPtr->GetID();
+		HierarchyStatics::g_payload.data = gameObjPtr->GetID();
 		HierarchyStatics::g_payload.type = DragPayload_GameObject;
 		DragDrop::Get().DragPayload(HierarchyStatics::g_payload);
 		DragDrop::Get().DragEnd();
@@ -223,7 +223,7 @@ void Hierarchy::HandleDragDrop(GameObject* gameObjPtr)
 	// Drop
 	if (auto payload = DragDrop::Get().GetPayload(DragPayload_GameObject))
 	{
-		auto gameObjectID = (unsigned int)payload->data;
+		auto gameObjectID = get<unsigned int>(payload->data);
 		if (auto droppedGameObj = HierarchyStatics::g_scene->GetGameObjectByID(gameObjectID).lock())
 		{
 			if (droppedGameObj->GetID() != gameObjPtr->GetID())
