@@ -8,7 +8,7 @@ Note: This project is in an early development stage and there is a lot experimen
 As a result, no design decision is set in stone and it will take a while until the engine is ready to produce games.
 Code quality is prioritized over development speed.
 
-![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Prerequisites/screenshot-v0.3_preview.jpg)
+![Screenshot](https://raw.githubusercontent.com/PanosK92/Directus3D/master/Assets/screenshot-v0.3_preview.jpg)
 
 # Features
 - 20+ audio file formats support.
