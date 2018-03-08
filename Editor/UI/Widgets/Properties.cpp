@@ -170,15 +170,15 @@ void Properties::ShowTransform(Transform* transform)
 	Quaternion rotation	= transform->GetRotation();
 	Vector3 scale		= transform->GetScale();
 
-	static char g_transPosX[BUFFER_TEXT_DEFAULT];
-	static char g_transPosY[BUFFER_TEXT_DEFAULT];
-	static char g_transPosZ[BUFFER_TEXT_DEFAULT];
-	static char g_transRotX[BUFFER_TEXT_DEFAULT];
-	static char g_transRotY[BUFFER_TEXT_DEFAULT];
-	static char g_transRotZ[BUFFER_TEXT_DEFAULT];
-	static char g_transScaX[BUFFER_TEXT_DEFAULT];
-	static char g_transScaY[BUFFER_TEXT_DEFAULT];
-	static char g_transScaZ[BUFFER_TEXT_DEFAULT];
+	char g_transPosX[BUFFER_TEXT_DEFAULT];
+	char g_transPosY[BUFFER_TEXT_DEFAULT];
+	char g_transPosZ[BUFFER_TEXT_DEFAULT];
+	char g_transRotX[BUFFER_TEXT_DEFAULT];
+	char g_transRotY[BUFFER_TEXT_DEFAULT];
+	char g_transRotZ[BUFFER_TEXT_DEFAULT];
+	char g_transScaX[BUFFER_TEXT_DEFAULT];
+	char g_transScaY[BUFFER_TEXT_DEFAULT];
+	char g_transScaZ[BUFFER_TEXT_DEFAULT];
 		
 	EditorHelper::SetCharArray(&g_transPosX[0], position.x);
 	EditorHelper::SetCharArray(&g_transPosY[0], position.y);
@@ -257,14 +257,14 @@ void Properties::ShowLight(Light* light)
 
 	//= REFLECT =================================================================
 	static const char* types[]				= { "Directional", "Point", "Spot" };
-	static int typeInt				= (int)light->GetLightType();
-	static const char* typeCharPtr	= types[typeInt];	
-	static float intensity			= light->GetIntensity();
-	static float angle				= light->GetAngle();
-	static bool castsShadows		= light->GetCastShadows();
-	static float range				= light->GetRange();
+	int typeInt								= (int)light->GetLightType();
+	const char* typeCharPtr					= types[typeInt];	
+	float intensity							= light->GetIntensity();
+	float angle								= light->GetAngle();
+	bool castsShadows						= light->GetCastShadows();
+	float range								= light->GetRange();
 
-	static char g_lightRange[BUFFER_TEXT_DEFAULT];
+	char g_lightRange[BUFFER_TEXT_DEFAULT];
 	EditorHelper::SetCharArray(&g_lightRange[0], range);
 	g_lightButtonColorPicker->SetColor(light->GetColor());
 	//===========================================================================
@@ -358,10 +358,10 @@ void Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
 	auto material = meshRenderer->GetMaterial().lock();
 	string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
 
-	//= REFLECT ====================================================
-	static bool castShadows		= meshRenderer->GetCastShadows();
-	static bool receiveShadows	= meshRenderer->GetReceiveShadows();
-	//==============================================================
+	//= REFLECT ============================================
+	bool castShadows	= meshRenderer->GetCastShadows();
+	bool receiveShadows = meshRenderer->GetReceiveShadows();
+	//======================================================
 	
 	COMPONENT_BEGIN("Mesh Renderer", Icon_Component_MeshRenderer, meshRenderer);
 	{
@@ -393,23 +393,23 @@ void Properties::ShowRigidBody(RigidBody* rigidBody)
 		return;
 
 	//= REFLECT ==============================================================
-	static float mass				= rigidBody->GetMass();
-	static float friction			= rigidBody->GetFriction();
-	static float frictionRolling	= rigidBody->GetFrictionRolling();
-	static float restitution		= rigidBody->GetRestitution();
-	static bool useGravity			= rigidBody->GetUseGravity();
-	static bool isKinematic			= rigidBody->GetIsKinematic();
-	static bool freezePosX			= (bool)rigidBody->GetPositionLock().x;
-	static bool freezePosY			= (bool)rigidBody->GetPositionLock().y;
-	static bool freezePosZ			= (bool)rigidBody->GetPositionLock().z;
-	static bool freezeRotX			= (bool)rigidBody->GetRotationLock().x;
-	static bool freezeRotY			= (bool)rigidBody->GetRotationLock().y;
-	static bool freezeRotZ			= (bool)rigidBody->GetRotationLock().z;
+	float mass				= rigidBody->GetMass();
+	float friction			= rigidBody->GetFriction();
+	float frictionRolling	= rigidBody->GetFrictionRolling();
+	float restitution		= rigidBody->GetRestitution();
+	bool useGravity			= rigidBody->GetUseGravity();
+	bool isKinematic		= rigidBody->GetIsKinematic();
+	bool freezePosX			= (bool)rigidBody->GetPositionLock().x;
+	bool freezePosY			= (bool)rigidBody->GetPositionLock().y;
+	bool freezePosZ			= (bool)rigidBody->GetPositionLock().z;
+	bool freezeRotX			= (bool)rigidBody->GetRotationLock().x;
+	bool freezeRotY			= (bool)rigidBody->GetRotationLock().y;
+	bool freezeRotZ			= (bool)rigidBody->GetRotationLock().z;
 
-	static char massCharArray[BUFFER_TEXT_DEFAULT]				= "0";
-	static char frictionCharArray[BUFFER_TEXT_DEFAULT]			= "0";
-	static char frictionRollingCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-	static char restitutionCharArray[BUFFER_TEXT_DEFAULT]		= "0";
+	char massCharArray[BUFFER_TEXT_DEFAULT]				= "0";
+	char frictionCharArray[BUFFER_TEXT_DEFAULT]			= "0";
+	char frictionRollingCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char restitutionCharArray[BUFFER_TEXT_DEFAULT]		= "0";
 
 	EditorHelper::SetCharArray(&massCharArray[0], mass);
 	EditorHelper::SetCharArray(&frictionCharArray[0], friction);
@@ -444,7 +444,7 @@ void Properties::ShowRigidBody(RigidBody* rigidBody)
 
 		// Is Kinematic
 		ImGui::Text("Is Kinematic");
-		ImGui::SameLine(posX); ImGui::Checkbox("##RigidBodyRestitution", &isKinematic);
+		ImGui::SameLine(posX); ImGui::Checkbox("##RigidBodyKinematic", &isKinematic);
 
 		// Freeze Position
 		ImGui::Text("Freeze Position");
@@ -512,18 +512,18 @@ void Properties::ShowCollider(Collider* collider)
 		"Cone",
 		"Mesh"
 	};	
-	static int shapeInt = (int)collider->GetShapeType();
-	static const char* shapeCharPtr = g_colShapes[shapeInt];
-	static bool optimize = collider->GetOptimize();
-	static Vector3 colliderCenter = collider->GetCenter();
-	static Vector3 colliderBoundingBox = collider->GetBoundingBox();
+	int shapeInt				= (int)collider->GetShapeType();
+	const char* shapeCharPtr	= g_colShapes[shapeInt];
+	bool optimize				= collider->GetOptimize();
+	Vector3 colliderCenter		= collider->GetCenter();
+	Vector3 colliderBoundingBox = collider->GetBoundingBox();
 
-	static char centerXCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-	static char centerYCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-	static char centerZCharArray[BUFFER_TEXT_DEFAULT]	= "0";
-	static char sizeXCharArray[BUFFER_TEXT_DEFAULT]		= "0";
-	static char sizeYCharArray[BUFFER_TEXT_DEFAULT]		= "0";
-	static char sizeZCharArray[BUFFER_TEXT_DEFAULT]		= "0";
+	char centerXCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char centerYCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char centerZCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char sizeXCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char sizeYCharArray[BUFFER_TEXT_DEFAULT]	= "0";
+	char sizeZCharArray[BUFFER_TEXT_DEFAULT]	= "0";
 
 	EditorHelper::SetCharArray(&centerXCharArray[0], colliderCenter.x);
 	EditorHelper::SetCharArray(&centerYCharArray[0], colliderCenter.y);
@@ -618,18 +618,18 @@ void Properties::ShowMaterial(Material* material)
 		return;
 
 	//= REFLECT ======================================================
-	static float roughness	= material->GetRoughnessMultiplier();
-	static float metallic	= material->GetMetallicMultiplier();
-	static float normal		= material->GetNormalMultiplier();
-	static float height		= material->GetHeightMultiplier();
-	static Vector2 tiling	=  material->GetTiling();
-	static Vector2 offset	=  material->GetOffset();
+	float roughness	= material->GetRoughnessMultiplier();
+	float metallic	= material->GetMetallicMultiplier();
+	float normal		= material->GetNormalMultiplier();
+	float height		= material->GetHeightMultiplier();
+	Vector2 tiling	=  material->GetTiling();
+	Vector2 offset	=  material->GetOffset();
 	g_materialButtonColorPicker->SetColor(material->GetColorAlbedo());
 
-	static char tilingXCharArray[BUFFER_TEXT_DEFAULT];
-	static char tilingYCharArray[BUFFER_TEXT_DEFAULT];
-	static char offsetXCharArray[BUFFER_TEXT_DEFAULT];
-	static char offsetYCharArray[BUFFER_TEXT_DEFAULT];	
+	char tilingXCharArray[BUFFER_TEXT_DEFAULT];
+	char tilingYCharArray[BUFFER_TEXT_DEFAULT];
+	char offsetXCharArray[BUFFER_TEXT_DEFAULT];
+	char offsetYCharArray[BUFFER_TEXT_DEFAULT];	
 
 	EditorHelper::SetCharArray(&tilingXCharArray[0], tiling.x);
 	EditorHelper::SetCharArray(&tilingYCharArray[0], tiling.y);
@@ -738,14 +738,14 @@ void Properties::ShowCamera(Camera* camera)
 
 	//= REFLECT ===============================================================
 	static const char* projectionTypes[]	= { "Pespective", "Orthographic" };
-	static int projectionInt				= (int)camera->GetProjection();
-	static const char* projectionCharPtr	= projectionTypes[projectionInt];
-	static float fov						= camera->GetFOV_Horizontal_Deg();
-	static float nearPlane					= camera->GetNearPlane();
-	static float farPlane					= camera->GetFarPlane();
+	int projectionInt						= (int)camera->GetProjection();
+	const char* projectionCharPtr			= projectionTypes[projectionInt];
+	float fov								= camera->GetFOV_Horizontal_Deg();
+	float nearPlane							= camera->GetNearPlane();
+	float farPlane							= camera->GetFarPlane();
 
-	static char nearPlaneCharArray[BUFFER_TEXT_DEFAULT];
-	static char farPlaneCharArray[BUFFER_TEXT_DEFAULT];
+	char nearPlaneCharArray[BUFFER_TEXT_DEFAULT];
+	char farPlaneCharArray[BUFFER_TEXT_DEFAULT];
 
 	EditorHelper::SetCharArray(&nearPlaneCharArray[0], nearPlane);
 	EditorHelper::SetCharArray(&farPlaneCharArray[0], farPlane);
@@ -809,16 +809,16 @@ void Properties::ShowAudioSource(AudioSource* audioSource)
 	if (!audioSource)
 		return;
 
-	//= REFLECT ============================================
-	static char audioClipCharArray[BUFFER_TEXT_DEFAULT];
-	static bool mute		= audioSource->GetMute();
-	static bool playOnStart = audioSource->GetPlayOnStart();
-	static bool loop		= audioSource->GetLoop();
-	static int priority		= audioSource->GetPriority();
-	static float volume		= audioSource->GetVolume();
-	static float pitch		= audioSource->GetPitch();
-	static float pan		= audioSource->GetPan();
-	//======================================================
+	//= REFLECT ========================================
+	char audioClipCharArray[BUFFER_TEXT_DEFAULT];
+	bool mute			= audioSource->GetMute();
+	bool playOnStart	= audioSource->GetPlayOnStart();
+	bool loop			= audioSource->GetLoop();
+	int priority		= audioSource->GetPriority();
+	float volume		= audioSource->GetVolume();
+	float pitch			= audioSource->GetPitch();
+	float pan			= audioSource->GetPan();
+	//==================================================
 
 	COMPONENT_BEGIN("Audio Source", Icon_Component_AudioSource, audioSource);
 	{
@@ -895,7 +895,7 @@ void Properties::ShowScript(Script* script)
 		return;
 
 	//= REFLECT =======================================================
-	static char scriptNameArray[BUFFER_TEXT_DEFAULT] = "N/A";
+	char scriptNameArray[BUFFER_TEXT_DEFAULT] = "N/A";
 	EditorHelper::SetCharArray(&scriptNameArray[0], script->GetName());
 	//=================================================================
 
