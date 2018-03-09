@@ -1,6 +1,8 @@
+
+# Directus3D Game Engine
+<img src="https://doublslash.com/img/assets/Windows8AnimatedLogo.png" width="20" height="20"/>&nbsp;
 [![Build status](https://ci.appveyor.com/api/projects/status/p5duow3h4w8jp506?svg=true)](https://ci.appveyor.com/project/PanosK92/directus3d)
 
-# About Directus3D
 Directus3D is a game engine that started as a hobby project and evolved into something greater.
 The source code is clean, modern and tackles a lot of aspects of engine development. Have fun!
 
@@ -31,12 +33,11 @@ Code quality is prioritized over development speed.
 Feature       		            | Completion | Notes 
 ------------- 		            | :--: | -
 Easy to build               	| 100% | Single click project generation which includes editor and runtime.
-New editor               		| 60% | Replace Qt editor with ImGui editor.
-Debug Rendering    				| 90% | Gizmos, scene grid and G-Buffer visualization.
+New editor               		| 60% | Replace Qt editor with ImGui editor (will wait for native tab support).
+Debug Rendering    				| 90% | Transformation gizmos, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc.
 Improved shadows         		| 90% | Sharper shadows with smoother edges and no shimmering.
 SSAO         					| 90% | -
 Custom mipchain generation 		| 100% | Higher texture fidelity using Lanczos3 scaling.
-Improved debug view             | 100% | Bounding boxes, colliders, raycasts, etc.
 Point light support             | 100% | -
 XML I/O                         | 100% | -
 Architecture improvements       | 100% | Performance improvements, bug fixes and overall higher quality codebase.
