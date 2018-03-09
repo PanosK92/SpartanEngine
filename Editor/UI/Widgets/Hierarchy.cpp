@@ -156,6 +156,7 @@ void Hierarchy::Tree_AddGameObject(GameObject* gameObject)
 	}
 	bool isNodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)gameObject->GetID(), node_flags, gameObject->GetName().c_str());
 
+	// Manully detect some useful states
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
 	{
 		HierarchyStatics::g_hoveredGameObject = gameObject;
@@ -176,6 +177,8 @@ void Hierarchy::Tree_AddGameObject(GameObject* gameObject)
 				Tree_AddGameObject(child->GetGameObjectRef().lock().get());
 			}
 		}
+
+		// Pop if isNodeOpen
 		ImGui::TreePop();
 	}
 }
@@ -204,7 +207,7 @@ void Hierarchy::HandleClicking()
 	}
 
 	// Clicking on empty space - Clear selection
-	if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !ImGui::IsAnyItemHovered())
+	if ((ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) && !HierarchyStatics::g_hoveredGameObject)
 	{
 		SetSelectedGameObject(g_gameObjectEmpty);
 	}
@@ -242,6 +245,7 @@ void Hierarchy::ContextMenu()
 	if (!m_gameObjectSelected.expired())
 	{
 		ImGui::MenuItem("Rename");
+
 		if (ImGui::MenuItem("Delete", "Delete"))
 		{
 			Action_GameObject_Delete(m_gameObjectSelected);
