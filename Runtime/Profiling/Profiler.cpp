@@ -65,14 +65,14 @@ namespace Directus
 
 	void Profiler::BeginBlock(const char* funcName)
 	{
-		m_functionTimings[funcName].start = high_resolution_clock::now();
+		m_timeBlocks[funcName].start = high_resolution_clock::now();
 	}
 
 	void Profiler::EndBlock(const char* funcName)
 	{
-		m_functionTimings[funcName].end			= high_resolution_clock::now();
-		duration<double, milli> ms				= m_functionTimings[funcName].end - m_functionTimings[funcName].start;
-		m_functionTimings[funcName].duration	= (float)ms.count();
+		m_timeBlocks[funcName].end			= high_resolution_clock::now();
+		duration<double, milli> ms				= m_timeBlocks[funcName].end - m_timeBlocks[funcName].start;
+		m_timeBlocks[funcName].duration	= (float)ms.count();
 	}
 
 	void Profiler::UpdateMetrics()
