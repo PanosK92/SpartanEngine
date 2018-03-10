@@ -24,9 +24,8 @@ OBJ_DIR 			= "../Binaries/Obj"
 		language "C++"
 		files { "../Runtime/**.h", "../Runtime/**.cpp", "../Runtime/**.hpp" }
 		systemversion(WIN_SDK_VERSION)
-		flags { "MultiProcessorCompile" }
 		cppdialect "C++17"
-		
+	
 -- Includes
 	includedirs { "../ThirdParty/AngelScript_2.32.0" }
 	includedirs { "../ThirdParty/Assimp_4.1.0" }
@@ -43,11 +42,13 @@ OBJ_DIR 			= "../Binaries/Obj"
 	filter "configurations:Debug"
 		defines { "DEBUG", "COMPILING_LIB" }
 		symbols "On"
+		flags { "MultiProcessorCompile" }
 		
 -- Release configuration
 	filter "configurations:Release"
 		defines { "NDEBUG", "COMPILING_LIB" }
 		optimize "Full"
+		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
 		
 -- Solution configuration "Debug"
 	configuration "Debug"
@@ -86,9 +87,8 @@ OBJ_DIR 			= "../Binaries/Obj"
 		links { RUNTIME_NAME }
 		dependson { RUNTIME_NAME }
 		systemversion(WIN_SDK_VERSION)
-		flags { "MultiProcessorCompile" }
 		cppdialect "C++17"
-		
+
 -- Includes
 	includedirs { "../Runtime" }
 	includedirs { "../ThirdParty/SDL_2.0.8" }
@@ -100,11 +100,13 @@ OBJ_DIR 			= "../Binaries/Obj"
 	filter "configurations:Debug"
 		defines { "DEBUG" }
 		symbols "On"
+		flags { "MultiProcessorCompile" }
 
 -- Release configuration
 	filter "configurations:Release"
 		defines { "NDEBUG" }
 		optimize "Full"
+		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
 		
 -- Output directories	
 	configuration "Debug"
