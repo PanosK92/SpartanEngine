@@ -39,7 +39,8 @@ namespace Directus
 {
 	MeshFilter::MeshFilter(Context* context, GameObject* gameObject, Transform* transform) : IComponent(context, gameObject, transform)
 	{
-		m_meshType = MeshType_Imported;
+		m_meshType	= MeshType_Imported;
+		m_meshRef	= nullptr;
 	}
 
 	MeshFilter::~MeshFilter()
@@ -61,8 +62,8 @@ namespace Directus
 
 		if (m_meshType == MeshType_Imported) // If it was an imported mesh, get it from the resource cache
 		{
-			m_meshRefWeak = GetContext()->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
-			m_meshRef = m_meshRefWeak.lock().get();
+			m_meshRefWeak	= GetContext()->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
+			m_meshRef		= m_meshRefWeak.lock().get();
 			if (m_meshRefWeak.expired())
 			{
 				LOG_WARNING("MeshFilter: Failed to load mesh \"" + meshName + "\".");
@@ -76,15 +77,15 @@ namespace Directus
 
 	void MeshFilter::SetMesh(const weak_ptr<Mesh>& mesh, bool autoCache /* true */)
 	{
-		m_meshRefWeak = mesh;
-		m_meshRef = m_meshRefWeak.lock().get();
+		m_meshRefWeak	= mesh;
+		m_meshRef		= m_meshRefWeak.lock().get();
 
 		// We do allow for a mesh filter with no mesh
 		if (m_meshRefWeak.expired())
 			return;
 
-		m_meshRefWeak = autoCache ? mesh.lock()->Cache<Mesh>() : mesh;
-		m_meshRef = m_meshRefWeak.lock().get();
+		m_meshRefWeak	= autoCache ? mesh.lock()->Cache<Mesh>() : mesh;
+		m_meshRef		= m_meshRefWeak.lock().get();
 	}
 
 	// Sets a default mesh (cube, quad)
@@ -173,12 +174,12 @@ namespace Directus
 
 	const BoundingBox& MeshFilter::GetBoundingBox() const
 	{
-		return !m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetBoundingBox() : BoundingBox();
+		return !m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetBoundingBox() : BoundingBox::Zero;
 	}
 
 	BoundingBox MeshFilter::GetBoundingBoxTransformed()
 	{
-		BoundingBox boundingBox = !m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetBoundingBox() : BoundingBox();
+		BoundingBox boundingBox = !m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetBoundingBox() : BoundingBox::Zero;
 		return boundingBox.Transformed(GetTransform()->GetWorldTransform());
 	}
 

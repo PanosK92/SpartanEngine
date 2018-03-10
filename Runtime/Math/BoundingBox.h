@@ -83,6 +83,7 @@ namespace Directus
 
 			Vector3 min;
 			Vector3 max;
+			static const BoundingBox Zero;
 		};
 	}
 }

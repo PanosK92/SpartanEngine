@@ -28,6 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Directus::Math
 {
+	const BoundingBox BoundingBox::Zero(Vector3::Zero, Vector3::Zero);
+
 	BoundingBox::BoundingBox()
 	{
 		min = Vector3::Infinity;
