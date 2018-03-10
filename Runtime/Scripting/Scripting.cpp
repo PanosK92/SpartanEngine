@@ -29,9 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../FileSystem/FileSystem.h"
 #include "../Core/Context.h"
-#include "../EventSystem/EventSystem.h"
+#include "../Core/EventSystem.h"
 #include "../Core/Settings.h"
-
 //===========================================
 
 namespace Directus

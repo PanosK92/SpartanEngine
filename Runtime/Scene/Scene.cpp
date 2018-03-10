@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Timer.h"
 #include "../Core/Context.h"
 #include "../Core/Stopwatch.h"
-#include "../EventSystem/EventSystem.h"
+#include "../Core/EventSystem.h"
 #include "../Resource/ResourceManager.h"
 #include "../Graphics/Mesh.h"
 #include "../IO/FileStream.h"
@@ -423,7 +423,7 @@ namespace Directus
 			}
 		}
 
-		FIRE_EVENT_DATA(EVENT_SCENE_UPDATED, VectorToVariant(m_renderables));
+		FIRE_EVENT_DATA(EVENT_SCENE_UPDATED, m_renderables);
 	}
 	//===================================================================================================
 

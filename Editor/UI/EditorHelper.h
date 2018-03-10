@@ -29,10 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Graphics/Texture.h"
 #include "Resource/ResourceManager.h"
 #include "Core/Engine.h"
+#include "Core/EventSystem.h"
 #include "FileSystem/FileSystem.h"
 #include "Threading/Threading.h"
-#include "ThumbnailProvider.h"
-#include "EventSystem/EventSystem.h"
 #include "ProgressDialog.h"
 #include "Scene/Scene.h"
 //===================================

@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Grid.h"
 #include "Shader.h"
 #include "../Core/Context.h"
+#include "../Core/EventSystem.h"
 #include "D3D11/D3D11RenderTexture.h"
 #include "DeferredShaders/ShaderVariation.h"
 #include "DeferredShaders/DeferredShader.h"
@@ -40,7 +41,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/Physics.h"
 #include "../Physics/PhysicsDebugDraw.h"
 #include "../Logging/Log.h"
-#include "../EventSystem/EventSystem.h"
 #include "../Resource/ResourceManager.h"
 #include "../Font/Font.h"
 #include "../Profiling/Profiler.h"
@@ -376,7 +376,7 @@ namespace Directus
 		PROFILE_FUNCTION_BEGIN();
 
 		Clear();
-		auto renderablesVec = VariantToVector<weak_ptr<GameObject>>(renderables);
+		auto renderablesVec = VARIANT_GET_FROM(vector<weak_ptr<GameObject>>, renderables);
 
 		for (const auto& renderable : renderablesVec)
 		{

@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DIRECTINPUT_VERSION 0x0800
 
-//= INCLUDES =============================
+//= INCLUDES ======================
 #include "DInput.h"
 #include <dinput.h>
 #include <sstream>
 #include "../../Logging/Log.h"
 #include "../../Core/Engine.h"
 #include "../../Core/Settings.h"
-#include "../../EventSystem/EventSystem.h"
-//========================================
+#include "../../Core/EventSystem.h"
+//=================================
 
 //= NAMESPACES ================
 using namespace std;

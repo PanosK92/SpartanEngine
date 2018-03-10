@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Engine.h"
 #include "../Core/EngineDefs.h"
 #include "../Logging/Log.h"
-#include "../EventSystem/EventSystem.h"
+#include "../Core/EventSystem.h"
 #include "PhysicsDebugDraw.h"
 #include "BulletPhysicsHelper.h"
 #include "BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
@@ -110,7 +110,7 @@ namespace Directus
 		if (!Engine::EngineMode_IsSet(Engine_Game))
 			return;
 
-		float timeStep = deltaTime.GetFloat();
+		float timeStep = VARIANT_GET_FROM(float, deltaTime);
 
 		// This equation must be met: timeStep < maxSubSteps * fixedTimeStep
 		float internalTimeStep = 1.0f / INTERNAL_FPS;

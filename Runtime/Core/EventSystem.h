@@ -47,28 +47,47 @@ To fire an event with data			-> FIRE_EVENT_DATA(EVENT_ID, Variant)
 #define EVENT_MODEL_LOADED		6
 //==============================================================================
 
-//= MACROS =========================================================================================
+//= MACROS ===============================================================================================
 #define EVENT_HANDLER_STATIC(function)			[](Directus::Variant var)		{ function(); }
 #define EVENT_HANDLER(function)					[this](Directus::Variant var)	{ function(); }
 #define EVENT_HANDLER_VARIANT(function)			[this](Directus::Variant var)	{ function(var); }
 #define EVENT_HANDLER_VARIANT_STATIC(function)	[](Directus::Variant var)		{ function(var); }
-#define SUBSCRIBE_TO_EVENT(eventID, function)	Directus::EventSystem::Subscribe(eventID, function);
-#define FIRE_EVENT(eventID)						Directus::EventSystem::Fire(eventID)
-#define FIRE_EVENT_DATA(eventID, data)			Directus::EventSystem::Fire(eventID, data)
-//==================================================================================================
+#define SUBSCRIBE_TO_EVENT(eventID, function)	Directus::EventSystem::Get().Subscribe(eventID, function);
+#define FIRE_EVENT(eventID)						Directus::EventSystem::Get().Fire(eventID)
+#define FIRE_EVENT_DATA(eventID, data)			Directus::EventSystem::Get().Fire(eventID, data)
+//========================================================================================================
 
 namespace Directus
 {
 	class ENGINE_CLASS EventSystem
 	{
 	public:
+		static EventSystem& Get()
+		{
+			static EventSystem instance;
+			return instance;
+		}
+
 		typedef std::function<void(Variant)> subscriber;
 
-		static void Subscribe(int eventID, subscriber&& func) { m_subscribers[eventID].push_back(std::forward<subscriber>(func)); }
-		static void Fire(int eventID, const Variant& data = 0);
-		static void Clear() { m_subscribers.clear(); }
+		void Subscribe(int eventID, subscriber&& func)
+		{
+			m_subscribers[eventID].push_back(std::forward<subscriber>(func));
+		}
+
+		void Fire(int eventID, const Variant& data = 0)
+		{
+			if (m_subscribers.find(eventID) == m_subscribers.end())
+				return;
+
+			for (const auto& subscriber : m_subscribers[eventID])
+			{
+				subscriber(data);
+			}
+		}
+		void Clear() { m_subscribers.clear(); }
 
 	private:
-		static std::map<uint8_t, std::vector<subscriber>> m_subscribers;
+		std::map<uint8_t, std::vector<subscriber>> m_subscribers;
 	};
 }
