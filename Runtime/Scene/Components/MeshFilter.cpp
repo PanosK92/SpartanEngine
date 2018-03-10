@@ -50,7 +50,7 @@ namespace Directus
 	void MeshFilter::Serialize(FileStream* stream)
 	{
 		stream->Write((int)m_meshType);
-		stream->Write(!m_mesh.expired() ? m_mesh.lock()->GetResourceName() : (string)NOT_ASSIGNED);
+		stream->Write(!m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetResourceName() : (string)NOT_ASSIGNED);
 	}
 
 	void MeshFilter::Deserialize(FileStream* stream)
@@ -61,8 +61,9 @@ namespace Directus
 
 		if (m_meshType == MeshType_Imported) // If it was an imported mesh, get it from the resource cache
 		{
-			m_mesh = GetContext()->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
-			if (m_mesh.expired())
+			m_meshRefWeak = GetContext()->GetSubsystem<ResourceManager>()->GetResourceByName<Mesh>(meshName);
+			m_meshRef = m_meshRefWeak.lock().get();
+			if (m_meshRefWeak.expired())
 			{
 				LOG_WARNING("MeshFilter: Failed to load mesh \"" + meshName + "\".");
 			}
@@ -75,13 +76,15 @@ namespace Directus
 
 	void MeshFilter::SetMesh(const weak_ptr<Mesh>& mesh, bool autoCache /* true */)
 	{
-		m_mesh = mesh;
+		m_meshRefWeak = mesh;
+		m_meshRef = m_meshRefWeak.lock().get();
 
 		// We do allow for a mesh filter with no mesh
-		if (m_mesh.expired())
+		if (m_meshRefWeak.expired())
 			return;
 
-		m_mesh = autoCache ? mesh.lock()->Cache<Mesh>() : mesh;
+		m_meshRefWeak = autoCache ? mesh.lock()->Cache<Mesh>() : mesh;
+		m_meshRef = m_meshRefWeak.lock().get();
 	}
 
 	// Sets a default mesh (cube, quad)
@@ -161,26 +164,26 @@ namespace Directus
 
 	bool MeshFilter::SetBuffers()
 	{
-		if (m_mesh.expired())
+		if (m_meshRefWeak.expired())
 			return false;
 
-		m_mesh.lock()->SetBuffers();
+		m_meshRefWeak.lock()->SetBuffers();
 		return true;
 	}
 
 	const BoundingBox& MeshFilter::GetBoundingBox() const
 	{
-		return !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() : BoundingBox();
+		return !m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetBoundingBox() : BoundingBox();
 	}
 
 	BoundingBox MeshFilter::GetBoundingBoxTransformed()
 	{
-		BoundingBox boundingBox = !m_mesh.expired() ? m_mesh.lock()->GetBoundingBox() : BoundingBox();
+		BoundingBox boundingBox = !m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetBoundingBox() : BoundingBox();
 		return boundingBox.Transformed(GetTransform()->GetWorldTransform());
 	}
 
 	string MeshFilter::GetMeshName()
 	{
-		return !m_mesh.expired() ? m_mesh.lock()->GetResourceName() : NOT_ASSIGNED;
+		return !m_meshRefWeak.expired() ? m_meshRefWeak.lock()->GetResourceName() : NOT_ASSIGNED;
 	}
 }

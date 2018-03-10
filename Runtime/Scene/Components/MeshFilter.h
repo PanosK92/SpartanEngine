@@ -74,16 +74,18 @@ namespace Directus
 		Math::BoundingBox GetBoundingBoxTransformed();
 		//==============================================
 
-		//= PROPERTIES ========================================
+		//= PROPERTIES =======================================================
 		MeshType GetMeshType() { return m_meshType; }
 		std::string GetMeshName();
-		const std::weak_ptr<Mesh>& GetMesh() { return m_mesh; }
-		bool HasMesh() { return !m_mesh.expired(); }
-		//=====================================================
+		const std::weak_ptr<Mesh>& GetMesh_RefWeak() { return m_meshRefWeak; }
+		Mesh* GetMesh_Ref() { return m_meshRef; }
+		bool HasMesh() { return !m_meshRefWeak.expired(); }
+		//====================================================================
 
 	private:
 		// A weak reference to the mesh
-		std::weak_ptr<Mesh> m_mesh;
+		std::weak_ptr<Mesh> m_meshRefWeak;
+		Mesh* m_meshRef;
 		// Type of mesh
 		MeshType m_meshType;
 	};

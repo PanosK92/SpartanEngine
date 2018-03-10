@@ -83,7 +83,7 @@ namespace Directus
 			auto newComponent = std::make_shared<T>(
 				m_context, 
 				m_context->GetSubsystem<Scene>()->GetGameObjectByID(GetID()).lock().get(),
-				GetTransform()
+				GetTransformRef()
 				);
 			m_components.insert(make_pair(type, newComponent));
 			newComponent->SetType(IComponent::ToComponentType<T>());
@@ -172,9 +172,9 @@ namespace Directus
 		//======================================================================================================
 
 		// Direct access to performance critical components (not safe)
-		Transform* GetTransform() { return m_transform; }
-		MeshFilter* GetMeshFilter() { return m_meshFilter; }
-		MeshRenderer* GetMeshRenderer() { return m_meshRenderer; }
+		Transform* GetTransformRef() { return m_transform; }
+		MeshFilter* GetMeshFilterRef() { return m_meshFilter; }
+		MeshRenderer* GetMeshRendererRef() { return m_meshRenderer; }
 
 	private:
 		unsigned int m_ID;

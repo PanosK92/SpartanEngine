@@ -183,7 +183,7 @@ namespace Directus
 		m_scriptEngine->RegisterObjectMethod("GameObject", "void SetName(string)", asMETHOD(GameObject, SetName), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "bool IsActive()", asMETHOD(GameObject, IsActive), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "void SetActive(bool)", asMETHOD(GameObject, SetActive), asCALL_THISCALL);
-		m_scriptEngine->RegisterObjectMethod("GameObject", "Transform &GetTransform()", asMETHOD(GameObject, GetTransform), asCALL_THISCALL);	
+		m_scriptEngine->RegisterObjectMethod("GameObject", "Transform &GetTransform()", asMETHOD(GameObject, GetTransformRef), asCALL_THISCALL);	
 		m_scriptEngine->RegisterObjectMethod("GameObject", "Camera &GetCamera()", asMETHOD(GameObject, GetComponent<Camera>), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "RigidBody &GetRigidBody()", asMETHOD(GameObject, GetComponent<RigidBody>), asCALL_THISCALL);
 		m_scriptEngine->RegisterObjectMethod("GameObject", "MeshRenderer &GetMeshRenderer()", asMETHOD(GameObject, GetComponent<MeshRenderer>), asCALL_THISCALL);
@@ -231,7 +231,7 @@ namespace Directus
 	//= MESH RENDERER ===============================================================
 	void ScriptInterface::RegisterMeshRenderer()
 	{
-		m_scriptEngine->RegisterObjectMethod("MeshRenderer", "Material &GetMaterial()", asMETHOD(MeshRenderer, GetMaterial), asCALL_THISCALL);
+		m_scriptEngine->RegisterObjectMethod("MeshRenderer", "Material &GetMaterial()", asMETHOD(MeshRenderer, GetMaterial_RefWeak), asCALL_THISCALL);
 	}
 	//===============================================================================
 

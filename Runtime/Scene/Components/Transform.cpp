@@ -80,7 +80,7 @@ namespace Directus
 			auto parent = GetContext()->GetSubsystem<Scene>()->GetGameObjectByID(parentGameObjectID);
 			if (!parent.expired())
 			{
-				parent.lock()->GetTransform()->AddChild(this);
+				parent.lock()->GetTransformRef()->AddChild(this);
 			}
 		}
 
@@ -332,7 +332,7 @@ namespace Directus
 				continue;
 
 			// get the possible child
-			Transform* possibleChild = gameObject->GetTransform();
+			Transform* possibleChild = gameObject->GetTransformRef();
 
 			// if it doesn't have a parent, forget about it.
 			if (!possibleChild->HasParent())

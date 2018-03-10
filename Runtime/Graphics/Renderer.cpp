@@ -43,7 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EventSystem/EventSystem.h"
 #include "../Resource/ResourceManager.h"
 #include "../Font/Font.h"
-#include "../Profiling/PerformanceProfiler.h"
+#include "../Profiling/Profiler.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -256,7 +256,10 @@ namespace Directus
 		if (!m_graphics->IsInitialized())
 			return;
 
-		PerformanceProfiler::RenderingStarted();
+		//= METRICS ==============
+		PROFILE_FUNCTION_BEGIN();
+		m_renderedMeshesCount = 0;
+		//========================
 
 		// If there is a camera, render the scene
 		if (m_camera)
@@ -296,7 +299,10 @@ namespace Directus
 			m_graphics->Clear(Vector4(0.0f, 0.0f, 0.0f, 1.0f));
 		}
 
-		PerformanceProfiler::RenderingFinished();
+		//= METRICS =====================================
+		PROFILE_FUNCTION_END();
+		m_renderedMeshesPerFrame = m_renderedMeshesCount;
+		//===============================================
 	}
 
 	void Renderer::SetResolutionBackBuffer(int width, int height)
@@ -376,11 +382,8 @@ namespace Directus
 			if (!gameObject)
 				continue;
 
-			// Get meshes
-			if (gameObject->GetMeshRenderer() && gameObject->GetMeshFilter())
-			{
-				m_renderables.push_back(renderable);
-			}
+			// Get renderables
+			m_renderables.push_back(gameObject);
 
 			// Get lights
 			if (auto light = gameObject->GetComponent<Light>().lock())
@@ -430,19 +433,15 @@ namespace Directus
 			Matrix mViewLight		= directionalLight->GetViewMatrix();
 			Matrix mProjectionLight = directionalLight->GetOrthographicProjectionMatrix(cascadeIndex);
 
-			for (const auto& gameObjWeak : m_renderables)
+			for (const auto& gameObj : m_renderables)
 			{
-				auto gameObj = gameObjWeak.lock();
-				if (!gameObj)
-					continue;
-
-				MeshFilter* meshFilter		= gameObj->GetMeshFilter();
-				MeshRenderer* meshRenderer	= gameObj->GetMeshRenderer();
-				auto material				= meshRenderer->GetMaterial();
-				auto mesh					= meshFilter->GetMesh();
+				MeshFilter* meshFilter		= gameObj->GetMeshFilterRef();
+				MeshRenderer* meshRenderer	= gameObj->GetMeshRendererRef();
+				Material* material			= meshRenderer	? meshRenderer->GetMaterial_Ref()	: nullptr;
+				Mesh* mesh					= meshFilter	? meshFilter->GetMesh_Ref()			: nullptr;
 
 				// Make sure we have everything
-				if (mesh.expired() || !meshFilter || !meshRenderer || material.expired())
+				if (!mesh || !meshFilter || !meshRenderer || !material)
 					continue;
 
 				// Skip meshes that don't cast shadows
@@ -450,7 +449,7 @@ namespace Directus
 					continue;
 
 				// Skip transparent meshes (for now)
-				if (material.lock()->GetOpacity() < 1.0f)
+				if (material->GetOpacity() < 1.0f)
 					continue;
 
 				// skip objects outside of the view frustrum
@@ -459,8 +458,8 @@ namespace Directus
 
 				if (meshFilter->SetBuffers())
 				{
-					m_shaderDepth->SetBuffer(gameObj->GetTransform()->GetWorldTransform(), mViewLight, mProjectionLight, 0);
-					m_shaderDepth->DrawIndexed(mesh.lock()->GetIndexCount());
+					m_shaderDepth->SetBuffer(gameObj->GetTransformRef()->GetWorldTransform(), mViewLight, mProjectionLight, 0);
+					m_shaderDepth->DrawIndexed(mesh->GetIndexCount());
 				}
 			}
 		}
@@ -516,19 +515,15 @@ namespace Directus
 				shader->UpdateTextures(m_textures);
 				//==================================================================================
 
-				for (const auto& gameObjWeak : m_renderables) // GAMEOBJECT/MESH ITERATION
+				for (const auto& gameObj : m_renderables) // GAMEOBJECT/MESH ITERATION
 				{
-					auto gameObj = gameObjWeak.lock();
-					if (!gameObj)
-						continue;
-
-					//= Get all that we need ==================================================
-					MeshFilter* meshFilter		= gameObj->GetMeshFilter();
-					MeshRenderer* meshRenderer	= gameObj->GetMeshRenderer();
-					auto objMesh				= meshFilter->GetMesh().lock();
-					auto objMaterial			= meshRenderer->GetMaterial().lock();
-					auto mWorld					= gameObj->GetTransform()->GetWorldTransform();
-					//=========================================================================
+					//= Get all that we need =================================================================
+					MeshFilter* meshFilter		= gameObj->GetMeshFilterRef();
+					MeshRenderer* meshRenderer	= gameObj->GetMeshRendererRef();
+					Mesh* objMesh				= meshFilter	? meshFilter->GetMesh_Ref()			: nullptr;
+					Material* objMaterial		= meshRenderer	? meshRenderer->GetMaterial_Ref()	: nullptr;
+					auto mWorld					= gameObj->GetTransformRef()->GetWorldTransform();
+					//========================================================================================
 
 					// skip objects that are missing required components
 					if (!meshFilter || !objMesh || !meshRenderer || !objMaterial)
@@ -558,7 +553,7 @@ namespace Directus
 						// Render the mesh, finally!				
 						meshRenderer->Render(objMesh->GetIndexCount());
 
-						PerformanceProfiler::RenderingMesh();
+						m_renderedMeshesCount++;
 					}
 				} // GAMEOBJECT/MESH ITERATION
 
@@ -693,7 +688,7 @@ namespace Directus
 			{
 				for (const auto& gameObject : m_renderables)
 				{
-					auto meshFilter = gameObject.lock()->GetComponent<MeshFilter>().lock();
+					auto meshFilter = gameObject->GetMeshFilterRef();
 					m_lineRenderer->AddBoundigBox(meshFilter->GetBoundingBoxTransformed(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
 				}
 			}
@@ -780,7 +775,7 @@ namespace Directus
 		// Performance metrics
 		if (m_flags & Render_PerformanceMetrics)
 		{
-			m_font->SetText(PerformanceProfiler::GetMetrics(), Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f));
+			m_font->SetText(Profiler::Get().GetMetrics(), Vector2(-RESOLUTION_WIDTH * 0.5f + 1.0f, RESOLUTION_HEIGHT * 0.5f));
 			m_font->SetBuffer();
 
 			m_shaderFont->Set();
