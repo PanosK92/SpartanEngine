@@ -675,7 +675,7 @@ namespace Directus
 		}
 
 		// Copy the rest of the filename into the result string
-		strcpy(&relativeFilename[rfMarker], &absoluteDir[afMarker]);
+		strcpy_s(&relativeFilename[rfMarker], absoluteDir.size() - afMarker, &absoluteDir[afMarker]);
 
 		return relativeFilename;
 	}
