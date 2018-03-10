@@ -61,7 +61,8 @@ namespace Directus
 
 		void BeginBlock(const char* funcName);
 		void EndBlock(const char* funcName);
-		float GetBlockTimeMs(const char* funcName) { return m_functionTimings[funcName].duration; }
+		float GetBlockTimeMs(const char* funcName) { return m_timeBlocks[funcName].duration; }
+		const auto& GetAllBlocks() { return m_timeBlocks; }
 		void UpdateMetrics();
 		const std::string& GetMetrics() { return m_metrics; }
 	
@@ -69,16 +70,13 @@ namespace Directus
 		// Converts float to string with specificed precision
 		std::string to_string_precision(float value, int decimals);
 
-		// Settings
-		float m_updateFrequencyMs;
-		float m_timeSinceLastUpdate;
+		// Timings
+		std::map<const char*, Block> m_timeBlocks;
 
 		// Misc
-		
+		float m_updateFrequencyMs;
+		float m_timeSinceLastUpdate;
 		std::string m_metrics;
-
-		// Timings
-		std::map<const char*, Block> m_functionTimings;
 
 		// Dependencies
 		Scene* m_scene;

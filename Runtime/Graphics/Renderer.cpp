@@ -373,6 +373,8 @@ namespace Directus
 	//= RENDER PATHS =================================================================================================
 	void Renderer::AcquireRenderables(const Variant& renderables)
 	{
+		PROFILE_FUNCTION_BEGIN();
+
 		Clear();
 		auto renderablesVec = VariantToVector<weak_ptr<GameObject>>(renderables);
 
@@ -415,10 +417,14 @@ namespace Directus
 				m_farPlane		= m_camera->GetFarPlane();
 			}
 		}
+
+		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::DirectionalLightDepthPass(Light* directionalLight)
 	{
+		PROFILE_FUNCTION_BEGIN();
+
 		if (!directionalLight || !directionalLight->GetCastShadows())
 			return;
 
@@ -465,10 +471,14 @@ namespace Directus
 		}
 
 		m_graphics->EnableDepth(false);
+
+		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::GBufferPass()
 	{
+		PROFILE_FUNCTION_BEGIN();
+
 		if (!m_graphics)
 			return;
 
@@ -561,10 +571,14 @@ namespace Directus
 
 			} // MATERIAL ITERATION
 		} // SHADER ITERATION
+
+		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::PreDeferredPass(void* inTextureNormal, void* inTextureDepth, void* inTextureNormalNoise, void* inRenderTexure, void* outRenderTextureShadowing)
 	{
+		PROFILE_FUNCTION_BEGIN();
+
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
@@ -572,10 +586,14 @@ namespace Directus
 		Pass_Shadowing(inTextureNormal, inTextureDepth, inTextureNormalNoise, m_directionalLight, inRenderTexure);
 		// Blur the shadows and the ssao
 		Pass_Blur(((D3D11RenderTexture*)inRenderTexure)->GetShaderResourceView(), outRenderTextureShadowing, GET_RESOLUTION);
+
+		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::DeferredPass(void* inTextureShadowing, void* outRenderTexture)
 	{
+		PROFILE_FUNCTION_BEGIN();
+
 		if (!m_shaderDeferred->IsCompiled())
 			return;
 
@@ -603,10 +621,14 @@ namespace Directus
 		//=============================================================================
 
 		m_shaderDeferred->Render(m_quad->GetIndexCount());
+
+		PROFILE_FUNCTION_END();
 	}
 
 	void Renderer::PostDeferredPass(shared_ptr<D3D11RenderTexture>& inRenderTextureFrame, shared_ptr<D3D11RenderTexture>& outRenderTexture)
 	{
+		PROFILE_FUNCTION_BEGIN();
+
 		m_quad->SetBuffer();
 		m_graphics->SetCullMode(CullBack);
 
@@ -619,10 +641,14 @@ namespace Directus
 
 		RenderGBuffer();
 		DebugDraw();
+
+		PROFILE_FUNCTION_END();
 	}
 
 	bool Renderer::RenderGBuffer()
 	{
+		PROFILE_FUNCTION_BEGIN();
+
 		bool albedo		= RenderMode_IsSet(Render_Albedo);
 		bool normal		= RenderMode_IsSet(Render_Normal);
 		bool specular	= RenderMode_IsSet(Render_Specular);
@@ -655,11 +681,15 @@ namespace Directus
 		m_shaderTexture->SetTexture(m_gbuffer->GetShaderResource(texType), 0);
 		m_shaderTexture->DrawIndexed(m_quad->GetIndexCount());
 
+		PROFILE_FUNCTION_END();
+
 		return true;
 	}
 
 	void Renderer::DebugDraw()
 	{
+		PROFILE_FUNCTION_BEGIN();
+
 		//= PRIMITIVES ===================================================================================
 		// Anything that is a bunch of vertices (doesn't have a vertex and and index buffer) get's rendered here
 		// by passing it's vertices (VertexPosCol) to the LineRenderer. Typically used only for debugging.
@@ -785,6 +815,8 @@ namespace Directus
 		}
 
 		m_graphics->EnableAlphaBlending(false);
+
+		PROFILE_FUNCTION_END();
 	}
 
 	const Vector4& Renderer::GetClearColor()

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../FileDialog.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"
+#include "Profiling/Profiler.h"
 //============================
 
 //= NAMESPACES ==========
@@ -37,6 +38,7 @@ static bool g_showMetricsWindow		= false;
 static bool g_showStyleEditor		= false;
 static bool g_fileDialogVisible		= false;
 static bool g_showResourceCache		= false;
+static bool g_showProfiler			= false;
 static string g_fileDialogSelection;
 ResourceManager* g_resourceManager	= nullptr;
 Scene* g_scene						= nullptr;
@@ -95,6 +97,7 @@ void MenuBar::Update()
 			ImGui::MenuItem("Metrics", nullptr, &g_showMetricsWindow);
 			ImGui::MenuItem("Style", nullptr, &g_showStyleEditor);
 			ImGui::MenuItem("Resource Cache Viewer", nullptr, &g_showResourceCache);
+			ImGui::MenuItem("Profiler", nullptr, &g_showProfiler);
 			ImGui::EndMenu();
 		}
 
@@ -116,16 +119,14 @@ void MenuBar::Update()
 		ImGui::ShowStyleEditor();
 	}
 
-	ShowFileDialog();
-	ShowAboutWindow();
-	ShowResourceCache();
+	if (g_fileDialogVisible)	ShowFileDialog();
+	if (g_showAboutWindow)		ShowAboutWindow();
+	if (g_showResourceCache)	ShowResourceCache();
+	if (g_showProfiler)			ShowProfiler();
 }
 
 void MenuBar::ShowFileDialog()
 {
-	if (!g_fileDialogVisible)
-		return;
-
 	if (!m_fileDialog->Show(&g_fileDialogVisible, &g_fileDialogSelection))
 		return;
 
@@ -153,9 +154,6 @@ void MenuBar::ShowFileDialog()
 
 void MenuBar::ShowAboutWindow()
 {
-	if (!g_showAboutWindow)
-		return;
-
 	ImGui::Begin("About", &g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
 
 	ImGui::Text("Directus3D %s", ENGINE_VERSION);
@@ -202,9 +200,6 @@ void MenuBar::ShowAboutWindow()
 
 void MenuBar::ShowResourceCache()
 {
-	if (!g_showResourceCache)
-		return;
-
 	auto resources = m_context->GetSubsystem<ResourceManager>()->GetResourceAll();
 	auto totalMemoryUsage =  m_context->GetSubsystem<ResourceManager>()->GetMemoryUsage() / 1000.0f / 1000.0f;
 
@@ -213,7 +208,7 @@ void MenuBar::ShowResourceCache()
 
 	ImGui::Text("Resource count: %d, Total memory usage: %d Mb", (int)resources.size(), (int)totalMemoryUsage);
 	ImGui::Separator();
-	ImGui::Columns(5, "##ResourceCacheViewer");
+	ImGui::Columns(5, "##MenuBar::ShowResourceCacheColumns");
 	ImGui::Text("Type"); ImGui::NextColumn();
 	ImGui::Text("ID"); ImGui::NextColumn();
 	ImGui::Text("Name"); ImGui::NextColumn();
@@ -248,6 +243,26 @@ void MenuBar::ShowResourceCache()
 			memory = (unsigned int)(memory / 1000.0f); // turn into Mb
 			ImGui::Text((to_string(memory) + string(" Mb")).c_str());	ImGui::NextColumn();
 		}		
+	}
+	ImGui::Columns(1);
+
+	ImGui::End();
+}
+
+void MenuBar::ShowProfiler()
+{
+	ImGui::SetNextWindowSize(ImVec2(600, 600), ImGuiCond_FirstUseEver);
+	ImGui::Begin("Profiler", &g_showProfiler, ImGuiWindowFlags_HorizontalScrollbar);
+
+	ImGui::Columns(2, "##MenuBar::ShowProfilerColumns");
+	ImGui::Text("Function"); ImGui::NextColumn();
+	ImGui::Text("Duration (ms)"); ImGui::NextColumn();
+	ImGui::Separator();
+
+	for (const auto& block : Profiler::Get().GetAllBlocks())
+	{
+		ImGui::Text("%s", block.first); ImGui::NextColumn();
+		ImGui::Text("%f ms", block.second.duration); ImGui::NextColumn();	
 	}
 	ImGui::Columns(1);
 
