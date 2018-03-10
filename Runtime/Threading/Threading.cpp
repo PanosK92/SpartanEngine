@@ -55,7 +55,7 @@ namespace Directus
 		}
 
 		// Empty worker threads.
-		m_threads.empty();
+		m_threads.clear();
 	}
 
 	bool Threading::Initialize()
