@@ -41,7 +41,7 @@ namespace Directus
 
 	}
 
-	void Timer::Update()
+	void Timer::Tick()
 	{
 		auto currentTime = high_resolution_clock::now();
 		duration<double, milli> ms = currentTime - m_previousTime;

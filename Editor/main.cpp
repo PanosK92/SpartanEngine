@@ -115,7 +115,7 @@ void Update(bool& isRunning, SDL_Event* event)
 	}
 
 	// Update engine (will simulate and render)
-	g_engine->Update();
+	g_engine->Tick();
 	// Set back buffer as render target (for ImGUI to render on)
 	g_renderer->SetRenderTarget(nullptr);
 	// Update editor
@@ -136,7 +136,7 @@ int main(int argc, char* argv[])
 		LOG_ERROR("main: " + std::string(SDL_GetError()));
 		return -1;
 	}
-	Settings::g_versionSDL = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
+	Settings::Get().g_versionSDL = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
 
 	// Get current resolution
 	Vector2 resolution = GetResolutionDisplayPrimary();

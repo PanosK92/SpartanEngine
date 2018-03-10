@@ -24,8 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include "../FileSystem/FileSystem.h"
 #include "../Logging/Log.h"
-#include "../Math/Vector2.h"
-#include "../Math/Vector4.h"
+#include <fstream>
 //===================================
 
 //= NAMESPACES ================
@@ -33,31 +32,15 @@ using namespace std;
 using namespace Directus::Math;
 //=============================
 
+namespace SettingsIO
+{
+	ofstream fout;
+	ifstream fin;
+	string fileName;
+}
+
 namespace Directus
 {
-	string Settings::g_versionAngelScript;
-	string Settings::g_versionAssimp;
-	string Settings::g_versionBullet;
-	string Settings::g_versionFMOD;
-	string Settings::g_versionFreeImage;
-	string Settings::g_versionFreeType;
-	string Settings::g_versionImGui;
-	string Settings::g_versionPugiXML = "1.80";
-	string Settings::g_versionSDL;
-
-	//= Initialize with default values ================================================
-	bool Settings::m_isFullScreen = false;
-	int Settings::m_vsync = (int)Off;
-	bool Settings::m_isMouseVisible = true;
-	Vector2 Settings::m_resolution = Vector2(1920, 1080);
-	Vector4 Settings::m_viewport = Vector4(0.0f, 0.0f, m_resolution.x, m_resolution.y);
-	int Settings::m_shadowMapResolution = 2048;
-	unsigned int Settings::m_anisotropy = 16;
-	string Settings::m_settingsFileName = "Directus3D.ini";
-	//=================================================================================
-	ofstream Settings::m_fout;
-	ifstream Settings::m_fin;
-
 	template <class T>
 	void WriteSetting(ofstream& fout, const string& name, T value)
 	{
@@ -69,105 +52,73 @@ namespace Directus
 	{
 		for (string line; getline(fin, line); )
 		{
-			auto firstIndex = line.find_first_of("=");
+			auto firstIndex = line.find_first_of('=');
 			if (name == line.substr(0, firstIndex))
 			{
-				auto lastindex = line.find_last_of("=");
+				auto lastindex = line.find_last_of('=');
 				string readValue = line.substr(lastindex + 1, line.length());
-				value = (T)stof(readValue.c_str());
+				value = (T)stof(readValue);
 				return;
 			}
 		}
 	}
 
+	Settings::Settings()
+	{
+		m_isFullScreen			= false;
+		m_vsync					= (int)Off;
+		m_isMouseVisible		= true;
+		m_resolution			= Vector2(1920, 1080);
+		m_viewport				= Vector4(0.0f, 0.0f, m_resolution.x, m_resolution.y);
+		m_shadowMapResolution	= 2048;
+		m_anisotropy			= 16;
+		SettingsIO::fileName	= "Directus3D.ini";
+		g_versionPugiXML		= "1.80";
+		m_maxFPS				= 165.0f;
+	}
+
 	void Settings::Initialize()
 	{
-		if (FileSystem::FileExists(m_settingsFileName))
+		if (FileSystem::FileExists(SettingsIO::fileName))
 		{
 			// Create a settings file
-			m_fin.open(m_settingsFileName, ifstream::in);
+			SettingsIO::fin.open(SettingsIO::fileName, ifstream::in);
 
 			float resolutionX = 0;
 			float resolutionY = 0;
 
 			// Read the settings
-			ReadSetting(m_fin, "FullScreen",			m_isFullScreen);
-			ReadSetting(m_fin, "VSync",					m_vsync);
-			ReadSetting(m_fin, "IsMouseVisible",		m_isMouseVisible);
-			ReadSetting(m_fin, "ResolutionWidth",		resolutionX);
-			ReadSetting(m_fin, "ResolutionHeight",		resolutionY);
-			ReadSetting(m_fin, "ShadowMapResolution",	m_shadowMapResolution);
-			ReadSetting(m_fin, "Anisotropy",			m_anisotropy);
-
+			ReadSetting(SettingsIO::fin, "FullScreen",			m_isFullScreen);
+			ReadSetting(SettingsIO::fin, "VSync",				m_vsync);
+			ReadSetting(SettingsIO::fin, "IsMouseVisible",		m_isMouseVisible);
+			ReadSetting(SettingsIO::fin, "ResolutionWidth",		resolutionX);
+			ReadSetting(SettingsIO::fin, "ResolutionHeight",	resolutionY);
+			ReadSetting(SettingsIO::fin, "ShadowMapResolution",	m_shadowMapResolution);
+			ReadSetting(SettingsIO::fin, "Anisotropy",			m_anisotropy);
+			ReadSetting(SettingsIO::fin, "FPSLimit",			m_maxFPS);
+			
 			m_resolution = Vector2(resolutionX, resolutionY);
 
 			// Close the file.
-			m_fin.close();
+			SettingsIO::fin.close();
 		}
 		else
 		{
 			// Create a settings file
-			m_fout.open(m_settingsFileName, ofstream::out);
+			SettingsIO::fout.open(SettingsIO::fileName, ofstream::out);
 
 			// Write the settings
-			WriteSetting(m_fout, "FullScreen", m_isFullScreen);
-			WriteSetting(m_fout, "VSync", m_vsync);
-			WriteSetting(m_fout, "IsMouseVisible", m_isMouseVisible);
-			WriteSetting(m_fout, "ResolutionWidth", m_resolution.x);
-			WriteSetting(m_fout, "ResolutionHeight", m_resolution.y);
-			WriteSetting(m_fout, "ShadowMapResolution", m_shadowMapResolution);
-			WriteSetting(m_fout, "Anisotropy", m_anisotropy);
+			WriteSetting(SettingsIO::fout, "FullScreen",			m_isFullScreen);
+			WriteSetting(SettingsIO::fout, "VSync",					m_vsync);
+			WriteSetting(SettingsIO::fout, "IsMouseVisible",		m_isMouseVisible);
+			WriteSetting(SettingsIO::fout, "ResolutionWidth",		m_resolution.x);
+			WriteSetting(SettingsIO::fout, "ResolutionHeight",		m_resolution.y);
+			WriteSetting(SettingsIO::fout, "ShadowMapResolution",	m_shadowMapResolution);
+			WriteSetting(SettingsIO::fout, "Anisotropy",			m_anisotropy);
+			WriteSetting(SettingsIO::fout, "FPSLimit",				m_maxFPS);
 
 			// Close the file.
-			m_fout.close();
+			SettingsIO::fout.close();
 		}
 	}
-
-	//= PROPERTIES ==========================================================
-	void Settings::SetResolution(int width, int height)
-	{
-		m_resolution = Vector2((float)width, (float)height);
-	}
-
-	void Settings::SetResolution(const Vector2& resolution)
-	{
-		m_resolution = resolution;
-	}
-
-	int Settings::GetResolutionWidth()
-	{
-		return (int)m_resolution.x;
-	}
-
-	int Settings::GetResolutionHeight()
-	{
-		return (int)m_resolution.y;
-	}
-
-	void Settings::SetViewport(int x, int y, int width, int height)
-	{
-		m_viewport = Vector4((float)x, (float)y, (float)width, (float)height);
-	}
-
-	void Settings::SetViewport(const Vector4& viewport)
-	{
-		m_viewport = viewport;
-	}
-
-	float Settings::GetViewportWidth()
-	{
-		return m_viewport.z;
-	}
-
-	float Settings::GetViewportHeight()
-	{
-		return m_viewport.w;
-	}
-
-	float Settings::GetScreenAspect()
-	{
-		return (float)GetViewportWidth() / (float)GetViewportHeight();
-	}
-
-	//========================================================================
 }

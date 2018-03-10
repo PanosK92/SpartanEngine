@@ -48,7 +48,7 @@ namespace Directus
 	float Stopwatch::GetElapsedTimeSec()
 	{
 		duration<double, milli> seconds = high_resolution_clock::now() - m_start;
-		return (float)(seconds.count() / 1000.0f);
+		return (float)(seconds.count() / 1000);
 	}
 
 	float Stopwatch::GetElapsedTimeMs()
