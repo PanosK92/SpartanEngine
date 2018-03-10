@@ -24,11 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Stopwatch.h"
 #include "../Core/Timer.h"
 #include "../Core/Settings.h"
+#include "../Core/EventSystem.h"
 #include "../Scene/Scene.h"
 #include "../Graphics/Material.h"
 #include "../Graphics/Renderer.h"
 #include "../Resource/ResourceManager.h"
-#include "../EventSystem/EventSystem.h"
 #include <iomanip>
 #include <sstream>
 //======================================

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fmod.hpp"
 #include "fmod_errors.h"
 #include "../Logging/Log.h"
-#include "../EventSystem/EventSystem.h"
+#include "../Core/EventSystem.h"
 #include <sstream>
 #include "../Core/Settings.h"
 #include "../Scene/Components/Transform.h"

@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Graphics/Renderer.h"
 #include "../Audio/Audio.h"
 #include "../Core/EngineBackends.h"
-#include "../EventSystem/EventSystem.h"
+#include "../Core/EventSystem.h"
 #include "../Input/DInput/DInput.h"
 #include "../Physics/Physics.h"
 #include "../Scene/Scene.h"

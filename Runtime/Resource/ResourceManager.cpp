@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ===================
 #include "ResourceManager.h"
 #include "../Scene/GameObject.h"
-#include "../EventSystem/EventSystem.h"
-//=====================================
+#include "../Core/EventSystem.h"
+//==============================
 
 //= NAMESPACES ================
 using namespace std;
