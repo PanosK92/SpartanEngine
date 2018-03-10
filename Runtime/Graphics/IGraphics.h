@@ -79,7 +79,6 @@ namespace Directus
         Texture_Comparison_GreaterEqual,
         Texture_Comparison_Always
 	};
-
 	class IGraphics : public Subsystem
 	{
 	public:

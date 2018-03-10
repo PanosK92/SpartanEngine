@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/Physics.h"
 #include "../Profiling/PerformanceProfiler.h"
 #include "../Scene/Scene.h"
+#include "Stopwatch.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -47,6 +48,7 @@ namespace Directus
 	void* Engine::m_windowHandle	= nullptr;
 	void* Engine::m_windowInstance	= nullptr;
 	unsigned long Engine::m_flags	= 0;
+	static unique_ptr<Stopwatch> g_stopwatch;
 
 	Engine::Engine(Context* context) : Subsystem(context)
 	{
@@ -56,6 +58,7 @@ namespace Directus
 		m_flags |= Engine_Game;
 
 		m_timer			= nullptr;
+		g_stopwatch		= make_unique<Stopwatch>();
 
 		// Register self as a subsystem
 		m_context->RegisterSubsystem(this);
@@ -63,7 +66,7 @@ namespace Directus
 		// Initialize global/static subsystems 
 		Log::Initialize();
 		FileSystem::Initialize();
-		Settings::Initialize();
+		Settings::Get().Initialize();
 
 		// Register subsystems
 		m_context->RegisterSubsystem(new Timer(m_context));
@@ -155,21 +158,30 @@ namespace Directus
 		}
 
 		PerformanceProfiler::Initialize(m_context);
+		g_stopwatch->Start();
 
 		return success;
 	}
 
-	void Engine::Update()
+	void Engine::Tick()
 	{
-		// Timer always ticks
-		m_timer->Update();
+		//= FPS LIMIT ======================================================================
+		if (g_stopwatch->GetElapsedTimeSec() <= 1.0f / Settings::Get().GetMaxFPS())
+		{
+			return;
+		}
+		g_stopwatch->Start();
+		//==================================================================================
 
-		if (m_flags & Engine_Update)
+		// Timer always ticks
+		m_timer->Tick();
+
+		if (EngineMode_IsSet(Engine_Update))
 		{
 			FIRE_EVENT_DATA(EVENT_UPDATE, m_timer->GetDeltaTimeSec());
 		}
 
-		if (m_flags & Engine_Render)
+		if (EngineMode_IsSet(Engine_Render))
 		{
 			FIRE_EVENT(EVENT_RENDER);
 		}

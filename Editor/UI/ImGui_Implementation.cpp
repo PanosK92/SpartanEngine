@@ -330,7 +330,7 @@ bool ImGui_Impl_Initialize(SDL_Window* window, Context* context)
 {
 	g_graphics	= context->GetSubsystem<Graphics>();
 	g_timer		= context->GetSubsystem<Timer>();
-	Settings::g_versionImGui = IMGUI_VERSION;
+	Settings::Get().g_versionImGui = IMGUI_VERSION;
 	SDL_SysWMinfo systemInfo;
 	SDL_VERSION(&systemInfo.version);
 	SDL_GetWindowWMInfo(window, &systemInfo);

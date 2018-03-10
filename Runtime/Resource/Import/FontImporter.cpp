@@ -64,8 +64,8 @@ namespace Directus
 		FT_Int minor;
 		FT_Int rev;
 		FT_Library_Version(m_library, &major, &minor, &rev);
-		Settings::g_versionFreeType = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
-		LOG_INFO("FontImporter: FreeType " + Settings::g_versionFreeType);
+		Settings::Get().g_versionFreeType = to_string(major) + "." + to_string(minor) + "." + to_string(rev);
+		LOG_INFO("FontImporter: FreeType " + Settings::Get().g_versionFreeType);
 	}
 
 	// Glyph metrics:

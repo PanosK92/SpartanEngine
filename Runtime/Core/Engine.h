@@ -45,8 +45,8 @@ namespace Directus
 		bool Initialize() override;
 		//=========================
 
-		// Performs a complete simulation cycle (used to run your game)
-		void Update();
+		// Performs a complete simulation cycle
+		void Tick();
 		// Shuts down the engine
 		void Shutdown();
 
@@ -80,6 +80,5 @@ namespace Directus
 		static void* m_windowInstance;
 		static unsigned long m_flags;
 		Timer* m_timer;
-		bool m_gameToggled;
 	};
 }

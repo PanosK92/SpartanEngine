@@ -54,35 +54,35 @@ namespace Directus
 
 	D3D11GraphicsDevice::D3D11GraphicsDevice(Context* context) : IGraphics(context)
 	{
-		m_driverType = D3D_DRIVER_TYPE_HARDWARE;
-		m_featureLevel = D3D_FEATURE_LEVEL_11_0;
-		m_sdkVersion = D3D11_SDK_VERSION;
+		m_driverType				= D3D_DRIVER_TYPE_HARDWARE;
+		m_featureLevel				= D3D_FEATURE_LEVEL_11_0;
+		m_sdkVersion				= D3D11_SDK_VERSION;
 
-		m_inputLayout = PositionTextureTBN;
-		m_cullMode = CullBack;
-		m_primitiveTopology = TriangleList;
-		m_depthEnabled = true;
-		m_alphaBlendingEnabled = false;
-		m_device = nullptr;
-		m_deviceContext = nullptr;
-		m_swapChain = nullptr;
-		m_renderTargetView = nullptr;
-		m_displayModeList = nullptr;
-		m_displayModeCount = 0;
-		m_refreshRateNumerator = 0;
-		m_refreshRateDenominator = 0;
-		m_depthStencilBuffer = nullptr;
-		m_depthStencilStateEnabled = nullptr;
+		m_inputLayout				= PositionTextureTBN;
+		m_cullMode					= CullBack;
+		m_primitiveTopology			= TriangleList;
+		m_depthEnabled				= true;
+		m_alphaBlendingEnabled		= false;
+		m_device					= nullptr;
+		m_deviceContext				= nullptr;
+		m_swapChain					= nullptr;
+		m_renderTargetView			= nullptr;
+		m_displayModeList			= nullptr;
+		m_displayModeCount			= 0;
+		m_refreshRateNumerator		= 0;
+		m_refreshRateDenominator	= 0;
+		m_depthStencilBuffer		= nullptr;
+		m_depthStencilStateEnabled	= nullptr;
 		m_depthStencilStateDisabled = nullptr;
-		m_depthStencilView = nullptr;
-		m_rasterStateCullFront = nullptr;
-		m_rasterStateCullBack = nullptr;
-		m_rasterStateCullNone = nullptr;
-		m_blendStateAlphaEnabled = nullptr;
-		m_blendStateAlphaDisabled = nullptr;
-		m_drawHandle = nullptr;
-		m_initialized = false;
-		m_maxDepth = 1.0f;
+		m_depthStencilView			= nullptr;
+		m_rasterStateCullFront		= nullptr;
+		m_rasterStateCullBack		= nullptr;
+		m_rasterStateCullNone		= nullptr;
+		m_blendStateAlphaEnabled	= nullptr;
+		m_blendStateAlphaDisabled	= nullptr;
+		m_drawHandle				= nullptr;
+		m_initialized				= false;
+		m_maxDepth					= 1.0f;
 	}
 
 	D3D11GraphicsDevice::~D3D11GraphicsDevice()
@@ -182,11 +182,11 @@ namespace Directus
 
 			// Go through all the display modes and find the one that matches the screen width and height.
 			for (unsigned int i = 0; i < m_displayModeCount; i++)
-			{
+			{	
 				if (m_displayModeList[i].Width == (unsigned int)RESOLUTION_WIDTH && m_displayModeList[i].Height == (unsigned int)RESOLUTION_HEIGHT)
 				{
-					m_refreshRateNumerator = (unsigned int)m_displayModeList[i].RefreshRate.Numerator;
-					m_refreshRateDenominator = (unsigned int)m_displayModeList[i].RefreshRate.Denominator;
+					m_refreshRateNumerator		= (unsigned int)m_displayModeList[i].RefreshRate.Numerator;
+					m_refreshRateDenominator	= (unsigned int)m_displayModeList[i].RefreshRate.Denominator;
 					break;
 				}
 			}
@@ -195,9 +195,7 @@ namespace Directus
 
 		// Create swap chain
 		if (!CreateDeviceAndSwapChain(&m_device, &m_deviceContext, &m_swapChain))
-		{
 			return false;
-		}
 
 		//= RENDER TARGET VIEW =========================================================
 		{

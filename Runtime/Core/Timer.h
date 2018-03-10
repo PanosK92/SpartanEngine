@@ -34,7 +34,7 @@ namespace Directus
 		Timer(Context* context);
 		~Timer();
 
-		void Update();
+		void Tick();
 		float GetDeltaTimeMs() { return m_deltaTimeMs; }
 		float GetDeltaTimeSec() { return m_deltaTimeSec; }
 
