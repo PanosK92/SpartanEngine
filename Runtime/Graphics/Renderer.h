@@ -112,7 +112,8 @@ namespace Directus
 		//====================================================================================
 
 		void Clear();
-		const std::vector<std::weak_ptr<GameObject>>& GetRenderables() { return m_renderables; }
+		const std::vector<GameObject*>& GetRenderables() { return m_renderables; }
+		int GetRendereredMeshes() { return m_renderedMeshesCount; }
 
 	private:	
 		void AcquireRenderables(const Variant& renderables);
@@ -143,11 +144,11 @@ namespace Directus
 		
 		std::unique_ptr<GBuffer> m_gbuffer;
 
-		// GAMEOBJECTS ======================================
-		std::vector<std::weak_ptr<GameObject>> m_renderables;
+		// GAMEOBJECTS ========================
+		std::vector<GameObject*> m_renderables;
 		std::vector<Light*> m_lights;
 		Light* m_directionalLight{};
-		//===================================================
+		//=====================================
 
 		//= RENDER TEXTURES =======================================
 		std::shared_ptr<D3D11RenderTexture> m_renderTexSpare;
@@ -199,5 +200,9 @@ namespace Directus
 		std::vector<ID3D11ShaderResourceView*> m_textures;
 		Graphics* m_graphics;
 		//================================================
+
+		// Metrics
+		int m_renderedMeshesCount;
+		int m_renderedMeshesPerFrame;
 	};
 }

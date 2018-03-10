@@ -20,81 +20,62 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===========================
-#include "PerformanceProfiler.h"
+#include "Profiler.h"
 #include "../Core/Stopwatch.h"
 #include "../Core/Timer.h"
+#include "../Core/Settings.h"
 #include "../Scene/Scene.h"
 #include "../Graphics/Material.h"
+#include "../Graphics/Renderer.h"
 #include "../Resource/ResourceManager.h"
 #include "../EventSystem/EventSystem.h"
 #include <iomanip>
 #include <sstream>
-#include "../Core/Settings.h"
 //======================================
 
-//= NAMESPACES =====
+//= NAMESPACES =============
 using namespace std;
-//==================
+using namespace std::chrono;
+//==========================
 
 namespace Directus
 {
-	Scene* PerformanceProfiler::m_scene;
-	Timer* PerformanceProfiler::m_timer;
-	ResourceManager* PerformanceProfiler::m_resourceManager;
-	unique_ptr<Stopwatch> PerformanceProfiler::m_renderTimer;
-	float PerformanceProfiler::m_renderTimeMs;
-	int PerformanceProfiler::m_renderedMeshesCount;
-	int PerformanceProfiler::m_renderedMeshesPerFrame;
-	string PerformanceProfiler::m_metrics;
-	float PerformanceProfiler::m_updateFrequencyMs;
-	float PerformanceProfiler::m_timeSinceLastUpdate;
-
-	void PerformanceProfiler::Initialize(Context* context)
+	Profiler::Profiler()
 	{
-		// Dependencies
-		m_scene = context->GetSubsystem<Scene>();
-		m_timer = context->GetSubsystem<Timer>();
-		m_resourceManager = context->GetSubsystem<ResourceManager>();
+		m_updateFrequencyMs			= 0;
+		m_timeSinceLastUpdate		= 0;
+		m_metrics					= NOT_ASSIGNED;
+		m_scene						= nullptr;
+		m_timer						= nullptr;
+		m_resourceManager			= nullptr;
+		m_renderer					= nullptr;
+	}
 
-		// Metrics
-		m_renderTimeMs = 0;
-		m_renderedMeshesCount = 0;
-		m_renderedMeshesPerFrame = 0;
-		// Settings
+	void Profiler::Initialize(Context* context)
+	{
+		m_scene				= context->GetSubsystem<Scene>();
+		m_timer				= context->GetSubsystem<Timer>();
+		m_resourceManager	= context->GetSubsystem<ResourceManager>();
+		m_renderer			= context->GetSubsystem<Renderer>();
 		m_updateFrequencyMs = 200;
 
-		// Misc
-		m_renderTimer = make_unique<Stopwatch>();
-
 		// Subscribe to update event
-		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER_STATIC(UpdateMetrics));
+		SUBSCRIBE_TO_EVENT(EVENT_UPDATE, EVENT_HANDLER(UpdateMetrics));
 	}
 
-	void PerformanceProfiler::RenderingStarted()
+	void Profiler::BeginBlock(const char* funcName)
 	{
-		if (m_renderTimer)
-		{
-			m_renderTimer->Start();
-		}
-
-		m_renderedMeshesCount = 0;
+		m_functionTimings[funcName].start = high_resolution_clock::now();
 	}
 
-	void PerformanceProfiler::RenderingMesh()
+	void Profiler::EndBlock(const char* funcName)
 	{
-		m_renderedMeshesCount++;
+		m_functionTimings[funcName].end			= high_resolution_clock::now();
+		duration<double, milli> ms				= m_functionTimings[funcName].end - m_functionTimings[funcName].start;
+		m_functionTimings[funcName].duration	= (float)ms.count();
 	}
 
-	void PerformanceProfiler::RenderingFinished()
-	{
-		if (m_renderTimer)
-		{
-			m_renderTimeMs = m_renderTimer->GetElapsedTimeMs();
-		}
-		m_renderedMeshesPerFrame = m_renderedMeshesCount;
-	}
-
-	void PerformanceProfiler::UpdateMetrics()
+	void Profiler::UpdateMetrics()
 	{
 		float delta = m_timer->GetDeltaTimeMs();
 
@@ -104,18 +85,18 @@ namespace Directus
 			return;
 		}
 
-		float fps = m_scene->GetFPS();	
-		int textures = m_resourceManager->GetResourceCountByType(Resource_Texture);	
-		int materials = m_resourceManager->GetResourceCountByType(Resource_Material);
-		int shaders = m_resourceManager->GetResourceCountByType(Resource_Shader);
+		float fps		= m_scene->GetFPS();	
+		int textures	= m_resourceManager->GetResourceCountByType(Resource_Texture);	
+		int materials	= m_resourceManager->GetResourceCountByType(Resource_Material);
+		int shaders		= m_resourceManager->GetResourceCountByType(Resource_Shader);
 
 		m_metrics =
 			"FPS:\t\t\t\t" + to_string_precision(fps, 2) + "\n"
 			"Frame:\t\t\t\t" + to_string_precision(delta, 2) + " ms\n"
-			"Update:\t\t\t" + to_string_precision(delta - m_renderTimeMs, 2) + " ms\n"
-			"Render:\t\t\t" + to_string_precision(m_renderTimeMs, 2) + " ms\n"
+			//"Update:\t\t\t" + to_string_precision(delta - m_renderTimeMs, 2) + " ms\n" Must compute this properly
+			"Render:\t\t\t" + to_string_precision(GetBlockTimeMs("Directus::Renderer::Render"), 2) + " ms\n"
 			"Resolution:\t\t" + to_string(int(RESOLUTION_WIDTH)) + "x" + to_string(int(RESOLUTION_HEIGHT)) + "\n" 
-			"Meshes Rendered:\t" + to_string(m_renderedMeshesPerFrame) + "\n"
+			"Meshes Rendered:\t" + to_string(m_renderer->GetRendereredMeshes()) + "\n"
 			"Textures:\t\t\t" + to_string(textures) + "\n"
 			"Materials:\t\t\t" + to_string(materials) + "\n"
 			"Shaders:\t\t\t" + to_string(shaders);
@@ -123,7 +104,7 @@ namespace Directus
 		m_timeSinceLastUpdate = 0;
 	}
 
-	string PerformanceProfiler::to_string_precision(float value, int decimals)
+	string Profiler::to_string_precision(float value, int decimals)
 	{
 		ostringstream out;
 		out << fixed << setprecision(decimals) << value;

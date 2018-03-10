@@ -122,14 +122,14 @@ void Properties::Update()
 
 	auto gameObjectPtr = m_gameObject.lock().get();
 
-	auto transform		= gameObjectPtr->GetTransform();
+	auto transform		= gameObjectPtr->GetTransformRef();
 	auto light			= gameObjectPtr->GetComponent<Light>().lock().get();
 	auto camera			= gameObjectPtr->GetComponent<Camera>().lock().get();
 	auto audioSource	= gameObjectPtr->GetComponent<AudioSource>().lock().get();
 	auto audioListener	= gameObjectPtr->GetComponent<AudioListener>().lock().get();
 	auto meshFilter		= gameObjectPtr->GetComponent<MeshFilter>().lock().get();
 	auto meshRenderer	= gameObjectPtr->GetComponent<MeshRenderer>().lock().get();
-	auto material		= meshRenderer ? meshRenderer->GetMaterial().lock().get() : nullptr;
+	auto material		= meshRenderer ? meshRenderer->GetMaterial_RefWeak().lock().get() : nullptr;
 	auto rigidBody		= gameObjectPtr->GetComponent<RigidBody>().lock().get();
 	auto collider		= gameObjectPtr->GetComponent<Collider>().lock().get();
 	auto constraint		= gameObjectPtr->GetComponent<Constraint>().lock().get();
@@ -338,7 +338,7 @@ void Properties::ShowMeshFilter(MeshFilter* meshFilter)
 	if (!meshFilter)
 		return;
 
-	auto mesh = meshFilter->GetMesh().lock();
+	auto mesh = meshFilter->GetMesh_RefWeak().lock();
 	string meshName = mesh ? mesh->GetResourceName() : NOT_ASSIGNED;
 
 	COMPONENT_BEGIN("Mesh Filter", Icon_Component_MeshFilter, meshFilter);
@@ -355,7 +355,7 @@ void Properties::ShowMeshRenderer(MeshRenderer* meshRenderer)
 	if (!meshRenderer)
 		return;
 
-	auto material = meshRenderer->GetMaterial().lock();
+	auto material = meshRenderer->GetMaterial_RefWeak().lock();
 	string materialName = material ? material->GetResourceName() : NOT_ASSIGNED;
 
 	//= REFLECT ============================================

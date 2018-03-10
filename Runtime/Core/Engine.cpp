@@ -33,9 +33,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../EventSystem/EventSystem.h"
 #include "../Input/DInput/DInput.h"
 #include "../Physics/Physics.h"
-#include "../Profiling/PerformanceProfiler.h"
 #include "../Scene/Scene.h"
 #include "Stopwatch.h"
+#include "../Profiling/Profiler.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -157,7 +157,7 @@ namespace Directus
 			success = false;
 		}
 
-		PerformanceProfiler::Initialize(m_context);
+		Profiler::Get().Initialize(m_context);
 		g_stopwatch->Start();
 
 		return success;
@@ -165,13 +165,13 @@ namespace Directus
 
 	void Engine::Tick()
 	{
-		//= FPS LIMIT ======================================================================
-		if (g_stopwatch->GetElapsedTimeSec() <= 1.0f / Settings::Get().GetMaxFPS())
+		//= MAX FPS =============================================================
+		if (g_stopwatch->GetElapsedTimeSec() < 1.0 / Settings::Get().GetMaxFPS())
 		{
 			return;
 		}
 		g_stopwatch->Start();
-		//==================================================================================
+		//=======================================================================
 
 		// Timer always ticks
 		m_timer->Tick();

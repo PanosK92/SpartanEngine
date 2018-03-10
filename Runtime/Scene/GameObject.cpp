@@ -167,7 +167,7 @@ namespace Directus
 		//=============================================
 
 		//= CHILDREN ==================================
-		vector<Transform*> children = GetTransform()->GetChildren();
+		vector<Transform*> children = GetTransformRef()->GetChildren();
 
 		// 1st - children count
 		stream->Write((int)children.size());
@@ -249,7 +249,7 @@ namespace Directus
 		// 3rd - children
 		for (const auto& child : children)
 		{
-			child.lock()->Deserialize(stream, GetTransform());
+			child.lock()->Deserialize(stream, GetTransformRef());
 		}
 		//=============================================
 

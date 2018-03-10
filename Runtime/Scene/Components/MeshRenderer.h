@@ -61,13 +61,15 @@ namespace Directus
 
 		void UseStandardMaterial();
 
-		std::weak_ptr<Material> GetMaterial() { return  m_material; }
-		bool HasMaterial() { return !m_material.expired(); }
+		std::weak_ptr<Material> GetMaterial_RefWeak() { return m_materialRefWeak; }
+		Material* GetMaterial_Ref() { return m_materialRef; }
+		bool HasMaterial() { return !m_materialRefWeak.expired(); }
 		std::string GetMaterialName();
 		//=============================================================================================
 
 	private:
-		std::weak_ptr<Material> m_material;
+		std::weak_ptr<Material> m_materialRefWeak;
+		Material* m_materialRef;
 		bool m_castShadows;
 		bool m_receiveShadows;
 		bool m_usingStandardMaterial;

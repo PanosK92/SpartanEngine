@@ -42,6 +42,7 @@ namespace Directus
 		m_castShadows			= true;
 		m_receiveShadows		= true;
 		m_usingStandardMaterial = false;
+		m_materialRef			= nullptr;
 	}
 
 	MeshRenderer::~MeshRenderer()
@@ -57,7 +58,7 @@ namespace Directus
 		stream->Write(m_usingStandardMaterial);
 		if (!m_usingStandardMaterial)
 		{
-			stream->Write(!m_material.expired() ? m_material.lock()->GetResourceName() : NOT_ASSIGNED);
+			stream->Write(!m_materialRefWeak.expired() ? m_materialRefWeak.lock()->GetResourceName() : NOT_ASSIGNED);
 		}
 	}
 
@@ -74,7 +75,8 @@ namespace Directus
 		{
 			string materialName;
 			stream->Read(&materialName);
-			m_material = m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Material>(materialName);
+			m_materialRefWeak	= m_context->GetSubsystem<ResourceManager>()->GetResourceByName<Material>(materialName);
+			m_materialRef		= m_materialRefWeak.lock().get();
 		}
 	}
 	//==============================================================================
@@ -83,20 +85,20 @@ namespace Directus
 	void MeshRenderer::Render(unsigned int indexCount)
 	{
 		// Check if a material exists
-		if (m_material.expired()) 
+		if (m_materialRefWeak.expired()) 
 		{
 			LOG_WARNING("MeshRenderer: \"" + GetGameObjectName() + "\" has no material. It can't be rendered.");
 			return;
 		}
 		// Check if the material has a shader
-		if (!m_material.lock()->HasShader()) 
+		if (!m_materialRefWeak.lock()->HasShader()) 
 		{
 			LOG_WARNING("MeshRenderer: \"" + GetGameObjectName() + "\" has a material but not a shader associated with it. It can't be rendered.");
 			return;
 		}
 
 		// Get it's shader and render
-		m_material.lock()->GetShader().lock()->Render(indexCount);
+		m_materialRefWeak.lock()->GetShader().lock()->Render(indexCount);
 	}
 
 	//==============================================================================
@@ -117,17 +119,19 @@ namespace Directus
 		{
 			if (auto cachedMat = material->Cache<Material>().lock())
 			{
-				m_material = cachedMat;
+				m_materialRefWeak = cachedMat;
+				m_materialRef = m_materialRefWeak.lock().get();
 				if (cachedMat->HasFilePath())
 				{
-					m_material.lock()->SaveToFile(material->GetResourceFilePath());
+					m_materialRef->SaveToFile(material->GetResourceFilePath());
 					m_usingStandardMaterial = false;
 				}
 			}
 		}
 		else
 		{
-			m_material = material;
+			m_materialRefWeak = material;
+			m_materialRef = m_materialRefWeak.lock().get();
 		}
 	}
 
@@ -145,7 +149,7 @@ namespace Directus
 		SetMaterialFromMemory(material);
 
 		// Return it
-		return GetMaterial();
+		return GetMaterial_RefWeak();
 	}
 
 	void MeshRenderer::UseStandardMaterial()
@@ -166,6 +170,6 @@ namespace Directus
 
 	string MeshRenderer::GetMaterialName()
 	{
-		return !GetMaterial().expired() ? GetMaterial().lock()->GetResourceName() : NOT_ASSIGNED;
+		return !GetMaterial_RefWeak().expired() ? GetMaterial_RefWeak().lock()->GetResourceName() : NOT_ASSIGNED;
 	}
 }

@@ -176,8 +176,8 @@ namespace Directus
 		//============================================================================
 
 		// Set the transform of parentNode as the parent of the newNode's transform
-		Transform* parentTrans = !parentNode.expired() ? parentNode.lock()->GetTransform() : nullptr;
-		newNode.lock()->GetTransform()->SetParent(parentTrans);
+		Transform* parentTrans = !parentNode.expired() ? parentNode.lock()->GetTransformRef() : nullptr;
+		newNode.lock()->GetTransformRef()->SetParent(parentTrans);
 
 		// Set the transformation matrix of the Assimp node to the new node
 		AssimpHelper::SetGameObjectTransform(newNode, assimpNode);
@@ -193,7 +193,7 @@ namespace Directus
 			if (assimpNode->mNumMeshes > 1)
 			{
 				gameobject = scene->CreateGameObject(); // create
-				gameobject.lock()->GetTransform()->SetParent(newNode.lock()->GetTransform()); // set parent
+				gameobject.lock()->GetTransformRef()->SetParent(newNode.lock()->GetTransformRef()); // set parent
 				name += "_" + to_string(i + 1); // set name
 			}
 

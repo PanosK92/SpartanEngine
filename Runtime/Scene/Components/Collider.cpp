@@ -64,7 +64,7 @@ namespace Directus
 		m_lastKnownScale = GetTransform()->GetScale();
 
 		// If there is a mesh, use it's bounding box
-		if (auto meshFilter = GetGameObject()->GetMeshFilter())
+		if (auto meshFilter = GetGameObject()->GetMeshFilterRef())
 		{
 			m_center = GetTransform()->GetPosition();
 			m_size = meshFilter->GetBoundingBoxTransformed().GetSize();
@@ -196,7 +196,7 @@ namespace Directus
 			}
 
 			// Get mesh
-			Mesh* mesh = meshFilter->GetMesh().lock().get();
+			Mesh* mesh = meshFilter->GetMesh_RefWeak().lock().get();
 			if (!mesh)
 			{
 				LOG_WARNING("Collider: Can't construct mesh shape, MeshFilter component doesn't have a mesh.");

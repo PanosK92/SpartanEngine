@@ -23,49 +23,67 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "../Core/EngineDefs.h"
-#include <memory>
 #include <string>
+#include <map>
+#include <chrono>
 //=============================
+
+#define PROFILE_FUNCTION_BEGIN()	Directus::Profiler::Get().BeginBlock(__FUNCTION__)
+#define PROFILE_FUNCTION_END()		Directus::Profiler::Get().EndBlock(__FUNCTION__)
 
 namespace Directus
 {
 	class Context;
-	class Stopwatch;
 	class Scene;
 	class Timer;
 	class ResourceManager;
+	class Renderer;
 
-	class ENGINE_CLASS PerformanceProfiler
+	struct Block
+	{
+		std::chrono::steady_clock::time_point start;
+		std::chrono::steady_clock::time_point end;
+		float duration;
+	};
+
+	class ENGINE_CLASS Profiler
 	{
 	public:
-		static void Initialize(Context* context);
+		static Profiler& Get()
+		{
+			static Profiler instance;
+			return instance;
+		}
 
-		static void RenderingStarted();
-		static void RenderingMesh();
-		static void RenderingFinished();
-		static void UpdateMetrics();
-		static const std::string& GetMetrics() { return m_metrics; }
-		
+		Profiler();
+
+		void Initialize(Context* context);
+
+		void BeginBlock(const char* funcName);
+		void EndBlock(const char* funcName);
+		float GetBlockTimeMs(const char* funcName) { return m_functionTimings[funcName].duration; }
+		void UpdateMetrics();
+		const std::string& GetMetrics() { return m_metrics; }
+	
 	private:
 		// Converts float to string with specificed precision
-		static std::string to_string_precision(float value, int decimals);
-
-		// Metrics
-		static float m_renderTimeMs;
-		static int m_renderedMeshesCount;
-		static int m_renderedMeshesPerFrame;
+		std::string to_string_precision(float value, int decimals);
 
 		// Settings
-		static float m_updateFrequencyMs;
-		static float m_timeSinceLastUpdate;
+		float m_updateFrequencyMs;
+		float m_timeSinceLastUpdate;
 
 		// Misc
-		static std::unique_ptr<Stopwatch> m_renderTimer;
-		static std::string m_metrics;
+		
+		std::string m_metrics;
+
+		// Timings
+		std::map<const char*, Block> m_functionTimings;
 
 		// Dependencies
-		static Scene* m_scene;
-		static Timer* m_timer;
-		static ResourceManager* m_resourceManager;
+		Scene* m_scene;
+		Timer* m_timer;
+		ResourceManager* m_resourceManager;
+		Renderer* m_renderer;
 	};
 }
