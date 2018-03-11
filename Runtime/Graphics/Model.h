@@ -100,6 +100,7 @@ namespace Directus
 
 		// Misc
 		void ComputeMemoryUsage();
+		bool DetermineMeshUniqueness(Mesh* mesh);
 
 		// The root GameObject that represents this model in the scene
 		std::weak_ptr<GameObject> m_rootGameObj;

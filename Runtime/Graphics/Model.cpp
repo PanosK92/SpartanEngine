@@ -145,6 +145,12 @@ namespace Directus
 			LOG_WARNING("Model::AddMesh(): Provided mesh is null, can't execute function");
 			return;
 		}
+
+		// Don't add mesh if it's already added
+		if (DetermineMeshUniqueness(mesh.lock().get()))
+		{	
+			return;
+		}
 			
 		AddStandardComponents(gameObject, mesh);
 
@@ -403,5 +409,71 @@ namespace Directus
 		{
 			m_memoryUsage += mesh.lock()->GetMemory();
 		}
+	}
+
+	bool Model::DetermineMeshUniqueness(Mesh* mesh)
+	{
+		// Problem:
+		// Some meshes can come from model formats like .obj
+		// Such formats contain pure geometry data, meaning that there is no transformation data.
+		// This in turn means that in order to have instances of the same mesh using different transforms,
+		// .obj simply re-defines the mesh in all the needed transformations using the exact same mesh name.
+		// This makes it easy to think that a mesh is already cached, hence ignore it and then see that the model is missing meshes.
+		// Solution:
+		// We simply go through are meshes, all meshes conflicting with or mesh (by name) are kept.
+		// We then compare our mesh against those meshes and to see if it's truly unique or not.
+		// If it is unique, we rename it to something that's also unique, so the engine doesn't discard it.
+
+		// Find all the meshes with the same name
+		vector<weak_ptr<Mesh>> sameNameMeshes;
+		for (const auto& cachedMesh : m_meshes)
+		{
+			if (cachedMesh.lock()->GetResourceName() == mesh->GetResourceName() 
+				|| cachedMesh.lock()->GetResourceName().find(mesh->GetResourceName()) != string::npos)
+			{
+				sameNameMeshes.push_back(cachedMesh);
+			}
+		}
+
+		bool isUnique = true;
+		for (const auto& cachedMesh : sameNameMeshes)
+		{
+			// Vertex count matches
+			if (cachedMesh.lock()->GetVertexCount() != mesh->GetVertexCount())
+				continue;
+
+			vector<VertexPosTexTBN> meshVertices;
+			vector<unsigned int> meshIndices;
+			mesh->GetGeometry(&meshVertices, &meshIndices);
+
+			vector<VertexPosTexTBN> cachedVertices;
+			vector<unsigned int> cachedIndices;
+			cachedMesh.lock()->GetGeometry(&cachedVertices, &cachedIndices);
+
+			bool geometryMatches = true;
+			for (unsigned int i = 0; i < meshVertices.size(); i++)
+			{
+				if (meshVertices[i].position != cachedVertices[i].position)
+				{
+					geometryMatches = false;
+					break;
+				}
+			}
+
+			if (geometryMatches)
+			{
+				isUnique = false;
+				break;
+			}
+		}
+
+		// If the mesh is unique, give it a different name (in case another with the same name exists)
+		if (isUnique)
+		{
+			string num = sameNameMeshes.empty() ? string("") : "_" + to_string(sameNameMeshes.size() + 1);
+			mesh->SetResourceName(mesh->GetResourceName() + num);
+		}
+
+		return !isUnique;
 	}
 }

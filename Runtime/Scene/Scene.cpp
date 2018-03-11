@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include "../Core/Engine.h"
 #include "Components/AudioListener.h"
+#include "../Profiling/Profiler.h"
 //======================================
 
 //= NAMESPACES ================
@@ -98,7 +99,7 @@ namespace Directus
 
 	void Scene::Update()
 	{	
-		Resolve(); // Must manage to do this in an event based manner
+		PROFILE_FUNCTION_BEGIN();
 
 		//= DETECT TOGGLING TO GAME MODE =============================
 		if (Engine::EngineMode_IsSet(Engine_Game) && m_isInEditorMode)
@@ -120,6 +121,8 @@ namespace Directus
 		}
 
 		ComputeFPS();
+
+		PROFILE_FUNCTION_END();
 	}
 
 	void Scene::Clear()
@@ -391,15 +394,15 @@ namespace Directus
 	//= SCENE RESOLUTION  ===============================================================================
 	void Scene::Resolve()
 	{
+		PROFILE_FUNCTION_BEGIN();
+
 		m_renderables.clear();
 		m_renderables.shrink_to_fit();
 
-		bool hasCamera = false;
-		bool hasSkybox = false;
 		for (const auto& gameObject : m_gameObjects)
 		{
-			hasCamera = false;
-			hasSkybox = false;
+			static bool hasCamera = false;
+			static bool hasSkybox = false;
 
 			// Find camera
 			if (gameObject->HasComponent<Camera>())
@@ -425,6 +428,7 @@ namespace Directus
 			}
 		}
 
+		PROFILE_FUNCTION_END();
 		FIRE_EVENT_DATA(EVENT_SCENE_RESOLVED, m_renderables);
 	}
 	//===================================================================================================
